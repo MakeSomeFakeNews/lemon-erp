@@ -57,7 +57,11 @@
               <a-tag v-if="templates[current]" color="blue" :bordered="false">已修改</a-tag>
               <span class="spacer" />
               <span v-perm="'sys:printTemplate:edit'">
-                <a-popconfirm v-if="templates[current]" title="确定恢复默认版式？" @confirm="reset">
+                <a-popconfirm
+                  v-if="templates[current]"
+                  :title="custom ? '恢复默认版式会同时删除上传的 JRXML，确定？' : '确定恢复默认版式？'"
+                  @confirm="reset"
+                >
                   <a-button><template #icon><UndoOutlined /></template>恢复默认</a-button>
                 </a-popconfirm>
               </span>
@@ -80,6 +84,37 @@
                     </a-radio-group>
                   </a-form-item>
                 </a-col>
+                <a-col :span="config.paper === 'custom' ? 10 : 24">
+                  <a-form-item label="纸张">
+                    <a-select v-model:value="config.paper" :options="PAPERS" />
+                  </a-form-item>
+                </a-col>
+                <template v-if="config.paper === 'custom'">
+                  <a-col :span="7">
+                    <a-form-item label="宽（mm）">
+                      <a-input-number v-model:value="config.paperWidth" :min="50" :max="1000" :precision="0" class="full" />
+                    </a-form-item>
+                  </a-col>
+                  <a-col :span="7">
+                    <a-form-item label="高（mm）">
+                      <a-input-number v-model:value="config.paperHeight" :min="50" :max="2000" :precision="0" class="full" />
+                    </a-form-item>
+                  </a-col>
+                </template>
+                <a-col :span="12">
+                  <a-form-item label="页边距">
+                    <a-input-number v-model:value="config.margin" :min="0" :max="40" :precision="0" class="full">
+                      <template #addonAfter>mm</template>
+                    </a-input-number>
+                  </a-form-item>
+                </a-col>
+                <a-col :span="12">
+                  <a-form-item label="字号">
+                    <a-input-number v-model:value="config.fontSize" :min="6" :max="24" :precision="0" class="full">
+                      <template #addonAfter>pt</template>
+                    </a-input-number>
+                  </a-form-item>
+                </a-col>
               </a-row>
               <a-space :size="24">
                 <a-checkbox v-if="!type.slip" v-model:checked="config.showCompany">显示公司名称</a-checkbox>
@@ -87,6 +122,39 @@
               </a-space>
             </a-form>
 
+            <div class="section-title">
+              JRXML 模板
+              <span class="section-hint">需要完全自定义版式时，用 Jaspersoft Studio 7 设计后上传</span>
+            </div>
+            <div class="jrxml">
+              <div class="jrxml-status">
+                <a-tag v-if="custom" color="green" :bordered="false">已上传，按 JRXML 打印</a-tag>
+                <a-tag v-else :bordered="false">未上传，按上面的配置生成</a-tag>
+              </div>
+              <a-space wrap>
+                <a-button size="small" :loading="exporting" @click="downloadDefault">
+                  <template #icon><DownloadOutlined /></template>下载默认模板
+                </a-button>
+                <a-button v-if="custom" size="small" @click="downloadCustom"><template #icon><DownloadOutlined /></template>下载已上传</a-button>
+                <span v-perm="'sys:printTemplate:edit'">
+                  <a-upload accept=".jrxml,.xml" :show-upload-list="false" :before-upload="upload">
+                    <a-button size="small" :loading="uploading"><template #icon><UploadOutlined /></template>上传 JRXML</a-button>
+                  </a-upload>
+                </span>
+                <span v-if="custom" v-perm="'sys:printTemplate:edit'">
+                  <a-popconfirm title="删除后按配置生成版式，确定删除？" @confirm="removeCustom">
+                    <a-button size="small" danger>删除</a-button>
+                  </a-popconfirm>
+                </span>
+              </a-space>
+              <div class="jrxml-hint">
+                模板中可用的参数：TITLE、NO、COMPANY_NAME、NOTE，FIELDS / SIGNS / TOTALS（按名称取值，如
+                <code>$P{FIELDS}.get("供应商")</code>），SECTIONS；明细行的字段名为列名（如 <code>$F{物料名称}</code>）。
+                SaaS 模式下只有平台可以上传。
+              </div>
+            </div>
+
+            <a-alert v-if="custom" type="info" show-icon class="custom-tip" message="已上传 JRXML：标题、纸张、字段和列由 JRXML 决定，以下配置不生效" />
             <template v-for="sec in sections" :key="sec.key">
               <div class="section-title">
                 {{ sec.title }}
@@ -121,52 +189,53 @@
 
           <div class="preview">
             <div class="preview-head">
-              <span>预览（示例数据）</span>
-              <a-button type="link" size="small" @click="zoomOpen = true"><template #icon><ExpandOutlined /></template>放大</a-button>
+              <span>预览（示例数据，与实际打印一致）</span>
+              <a-spin v-if="previewing" size="small" />
+              <span class="spacer" />
+              <a-button type="link" size="small" :disabled="!previewUrl" @click="zoom"><template #icon><ExpandOutlined /></template>放大</a-button>
             </div>
-            <!-- 按 A4 宽度渲染后整体缩放到预览区宽度，与实际打印的排版一致 -->
-            <div ref="previewBox" class="preview-box scroll-hover">
-              <div class="preview-page" :style="{ width: `${pageWidth * previewScale}px`, height: `${pageHeight * previewScale}px` }">
-                <iframe
-                  class="preview-frame"
-                  :srcdoc="previewHtml"
-                  title="打印预览"
-                  :style="{ width: `${pageWidth}px`, height: `${pageHeight}px`, transform: `scale(${previewScale})` }"
-                />
-              </div>
-            </div>
+            <iframe v-if="previewUrl" class="preview-frame" :src="`${previewUrl}#toolbar=0&view=FitH`" title="打印预览" />
+            <div v-else class="preview-empty">{{ previewError || '正在生成预览…' }}</div>
           </div>
         </div>
       </a-card>
     </div>
-
-    <a-modal v-model:open="zoomOpen" :title="`预览 - ${type?.name || ''}`" :footer="null" :width="pageWidth + 48" centered>
-      <iframe class="zoom-frame" :srcdoc="previewHtml" title="打印预览" :style="{ width: `${pageWidth}px` }" />
-    </a-modal>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
   BarcodeOutlined,
+  DownloadOutlined,
   ExpandOutlined,
   FileTextOutlined,
   SettingOutlined,
-  UndoOutlined
+  UndoOutlined,
+  UploadOutlined
 } from '@ant-design/icons-vue'
-import { resetPrintTemplate, savePrintTemplate } from '@/api/system/printTemplate'
+import { defaultJrxml, printPdf } from '@/api/system/print'
+import { downloadJrxml, removeJrxml, resetPrintTemplate, savePrintTemplate, uploadJrxml } from '@/api/system/printTemplate'
 import LabelTemplateEditor from '@/components/label/LabelTemplateEditor.vue'
-import { useElementWidth } from '@/composables/useElementWidth'
 import { LABEL_TYPES, isLabel } from '@/utils/labels'
-import { defaultCompanyName, renderHtml } from '@/utils/print'
-import { COMMON_KEY, PRINT_TYPES, PRINT_TYPE_MAP, applyTemplate, loadTemplates, sampleDoc } from '@/utils/printTemplates'
+import { buildPrintRequest, defaultCompanyName, showPdf } from '@/utils/print'
+import {
+  COMMON_KEY,
+  DEFAULT_FONT_SIZE,
+  DEFAULT_MARGIN,
+  PAPERS,
+  PRINT_TYPES,
+  PRINT_TYPE_MAP,
+  loadTemplates,
+  sampleDoc
+} from '@/utils/printTemplates'
 
 /**
- * 打印模板设计：按单据配置标题、表头字段、明细列、签字栏的显示、顺序、名称与列宽，右侧实时预览
+ * 打印模板设计：按单据配置纸张、标题、表头字段、明细列、签字栏的显示、顺序、名称与列宽，右侧为后端生成的 PDF 预览；
+ * 也可以下载默认版式的 JRXML，用 Jaspersoft Studio 修改后上传
  */
 const groups = computed(() => {
   const map = new Map()
@@ -181,6 +250,7 @@ const config = ref(null)
 const common = ref({ companyName: '' })
 const snapshot = ref('')
 const saving = ref(false)
+const custom = computed(() => !!templates.value[current.value]?.jrxml)
 
 const ALL_SECTIONS = [
   { key: 'fields', title: '表头字段', nameKey: 'label' },
@@ -201,6 +271,11 @@ function buildConfig(t, saved = {}) {
   return {
     title: saved.title || '',
     orientation: saved.orientation || 'portrait',
+    paper: saved.paper || 'A4',
+    paperWidth: saved.paperWidth || 210,
+    paperHeight: saved.paperHeight || 297,
+    margin: saved.margin ?? DEFAULT_MARGIN,
+    fontSize: saved.fontSize || DEFAULT_FONT_SIZE,
     showCompany: saved.showCompany !== false,
     showNote: saved.showNote !== false,
     fields: merge(t.fields, saved.fields, 'label'),
@@ -221,6 +296,10 @@ function toPayload(cfg) {
   return {
     ...(cfg.title?.trim() ? { title: cfg.title.trim() } : {}),
     orientation: cfg.orientation,
+    paper: cfg.paper,
+    ...(cfg.paper === 'custom' ? { paperWidth: cfg.paperWidth || 210, paperHeight: cfg.paperHeight || 297 } : {}),
+    margin: cfg.margin ?? DEFAULT_MARGIN,
+    fontSize: cfg.fontSize || DEFAULT_FONT_SIZE,
     showCompany: cfg.showCompany,
     showNote: cfg.showNote,
     fields: clean(cfg.fields, 'label'),
@@ -257,21 +336,104 @@ function move(key, i, delta) {
   rows.splice(i + delta, 0, row)
 }
 
-// A4 纸 96dpi 下的像素尺寸（210mm × 297mm）
-const A4 = { width: 794, height: 1123 }
-const previewBox = ref()
-const zoomOpen = ref(false)
-const boxWidth = useElementWidth(previewBox)
-const landscape = computed(() => config.value?.orientation === 'landscape')
-const pageWidth = computed(() => (landscape.value ? A4.height : A4.width))
-const pageHeight = computed(() => (landscape.value ? A4.width : A4.height))
-const previewScale = computed(() => (boxWidth.value ? Math.min(1, boxWidth.value / pageWidth.value) : 0.5))
+// ---------------------------------------------------------------- 预览（后端生成 PDF）
 
-const previewHtml = computed(() => {
-  if (!config.value || current.value === COMMON_KEY) return ''
-  const doc = applyTemplate(sampleDoc(type.value), toPayload(config.value), templates.value[COMMON_KEY])
-  return renderHtml([doc], type.value.name)
+/** 用当前（未保存的）配置和示例数据生成的打印请求；已上传 JRXML 时按 JRXML */
+function sampleRequest() {
+  const tpl = { ...toPayload(config.value), ...(custom.value ? { jrxml: true } : {}) }
+  return buildPrintRequest([sampleDoc(type.value)], type.value.name, current.value, templates.value, tpl)
+}
+
+const previewUrl = ref('')
+const previewing = ref(false)
+const previewError = ref('')
+let previewBlob = null
+let previewTimer = null
+let previewSeq = 0
+
+async function renderPreview() {
+  if (!config.value || current.value === COMMON_KEY) return
+  const seq = ++previewSeq
+  previewing.value = true
+  try {
+    const blob = await printPdf(sampleRequest())
+    if (seq !== previewSeq) return
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+    previewBlob = blob
+    previewUrl.value = URL.createObjectURL(blob)
+    previewError.value = ''
+  } catch (e) {
+    if (seq === previewSeq) previewError.value = e?.message || '预览生成失败'
+  } finally {
+    if (seq === previewSeq) previewing.value = false
+  }
+}
+
+// 配置变化后稍等再生成，避免输入时频繁请求
+watch(
+  () => [current.value, JSON.stringify(currentPayload.value), custom.value, templates.value[COMMON_KEY]?.companyName],
+  () => {
+    clearTimeout(previewTimer)
+    previewTimer = setTimeout(renderPreview, 500)
+  }
+)
+
+function zoom() {
+  if (previewBlob) showPdf(previewBlob, `预览 - ${type.value.name}`)
+}
+
+onBeforeUnmount(() => {
+  clearTimeout(previewTimer)
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
 })
+
+// ---------------------------------------------------------------- JRXML
+
+function saveBlob(blob, name) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+const exporting = ref(false)
+async function downloadDefault() {
+  exporting.value = true
+  try {
+    // 按当前配置生成，已上传 JRXML 时也下载按配置生成的默认版式
+    const req = buildPrintRequest([sampleDoc(type.value)], type.value.name, current.value, templates.value, toPayload(config.value))
+    saveBlob(await defaultJrxml(req), `${current.value}.jrxml`)
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function downloadCustom() {
+  saveBlob(await downloadJrxml(current.value), `${current.value}.jrxml`)
+}
+
+const uploading = ref(false)
+async function upload(file) {
+  uploading.value = true
+  try {
+    await uploadJrxml(current.value, file)
+    await refresh()
+    message.success('已上传，之后打印按 JRXML 模板')
+  } finally {
+    uploading.value = false
+  }
+  return false
+}
+
+async function removeCustom() {
+  await removeJrxml(current.value)
+  await refresh()
+  message.success('已删除，改回按配置生成版式')
+}
+
+// ---------------------------------------------------------------- 保存
 
 async function refresh() {
   templates.value = { ...(await loadTemplates(true)) }
@@ -299,6 +461,7 @@ async function reset() {
 onMounted(async () => {
   await refresh()
   select(current.value)
+  renderPreview()
 })
 </script>
 
@@ -437,31 +600,49 @@ onMounted(async () => {
 .preview-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   font-size: 12px;
   color: var(--app-text-3);
   margin-bottom: 6px;
 }
-.zoom-frame {
-  display: block;
-  height: 75vh;
-  border: 1px solid var(--app-border);
-  background: #fff;
-}
-.preview-box {
-  flex: 1;
-  min-height: 0;
-  overflow-x: hidden;
-}
-.preview-page {
-  overflow: hidden;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
-}
 .preview-frame {
-  display: block;
+  flex: 1;
+  min-height: 480px;
+  width: 100%;
   border: 0;
-  transform-origin: top left;
+  border-radius: 4px;
+  background: #fff;
+}
+.preview-empty {
+  flex: 1;
+  min-height: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--app-text-3);
+}
+.full {
+  width: 100%;
+}
+.jrxml {
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.jrxml-status {
+  margin-bottom: 8px;
+}
+.jrxml-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--app-text-3);
+}
+.jrxml-hint code {
+  font-size: 12px;
+}
+.custom-tip {
+  margin-top: 16px;
 }
 .common-form {
   max-width: 480px;

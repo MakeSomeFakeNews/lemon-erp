@@ -2,8 +2,17 @@ plugins {
     id 'lemon.java-conventions'
 }
 
-description = '系统管理：用户、角色、菜单、部门、字典、登录认证'
+description = '系统管理：用户、角色、菜单、部门、字典、登录认证、单据打印'
 
 dependencies {
     api project(':lemon-framework')
+    implementation libs.jasperreports
+    // jasperreports-pdf 依赖的 openpdf 定制版只在 Jaspersoft 私有仓库，改用 Maven Central 上的同版本
+    implementation(libs.jasperreports.pdf) {
+        exclude group: 'com.github.librepdf', module: 'openpdf'
+    }
+    implementation libs.openpdf
+    // 用 JDT 编译报表表达式：javac 在可执行 jar 中找不到依赖的类；jasperreports-jdt 自带的 ecj 版本过旧，不支持 Java 17
+    implementation libs.jasperreports.jdt
+    implementation libs.ecj
 }

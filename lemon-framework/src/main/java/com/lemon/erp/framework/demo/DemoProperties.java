@@ -18,9 +18,9 @@ public class DemoProperties {
 
     /**
      * 演示模式下仍然放行的写请求（Ant 风格路径，不含 context-path）：登录退出、标记消息已读，
-     * 以及用 POST 传参但不修改数据的查询（多维分析、促销预览、上架建议）
+     * 以及用 POST 传参但不修改数据的查询（多维分析、促销预览、上架建议、单据打印）
      */
     private List<String> allowedPaths = new ArrayList<>(List.of(
             "/auth/login", "/auth/logout", "/system/message/read",
-            "/bi/olap/pivot", "/scm/promotion/preview", "/wms/location/putaway"));
+            "/bi/olap/pivot", "/scm/promotion/preview", "/wms/location/putaway", "/system/print/pdf", "/system/print/jrxml"));
 }

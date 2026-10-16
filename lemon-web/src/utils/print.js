@@ -1,97 +1,72 @@
+import { reactive } from 'vue'
+import { message } from 'ant-design-vue'
+import { printPdf } from '@/api/system/print'
 import { useUserStore } from '@/store/user'
-import { COMMON_KEY, applyTemplate, loadTemplates } from './printTemplates'
+import { COMMON_KEY, applyTemplate, layoutOf, loadTemplates } from './printTemplates'
 
 /**
- * 单据打印：生成 A4 打印页面放入隐藏 iframe 后调用浏览器打印（可另存为 PDF）。
- * 传入模板标识时按「系统管理 - 打印模板」中的配置调整版式（见 printTemplates.js）。
+ * 单据打印：页面组装单据，按「系统管理 - 打印模板」中的配置调整后发给后端，由 JasperReports 生成 PDF，
+ * 在预览窗口（components/PrintPreview.vue）中打印或下载。
+ * 后端按纸张自动分页：每页重复表头和列头，末页底部打印签字栏，页脚有页码；上传了 JRXML 的单据按 JRXML 打印。
  * 公司名称：打印模板通用设置 > SaaS 租户名称 > 环境变量 VITE_COMPANY_NAME
  */
 export const COMPANY_NAME = import.meta.env.VITE_COMPANY_NAME || '柠檬ERP'
 
-const esc = (v) =>
-  String(v ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+/** 打印预览窗口的状态（PrintPreview.vue 读取） */
+export const printPreview = reactive({ open: false, url: '', title: '' })
 
-const style = (orientation) => `
-  @page { size: A4 ${orientation === 'landscape' ? 'landscape' : 'portrait'}; margin: 12mm; }
-  * { box-sizing: border-box; }
-  body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 12px; color: #000; margin: 0; }
-  .doc { page-break-after: always; }
-  .doc:last-child { page-break-after: auto; }
-  .company { text-align: center; font-size: 13px; }
-  h1 { text-align: center; font-size: 20px; margin: 4px 0 2px; letter-spacing: 4px; }
-  .sub { text-align: center; margin-bottom: 10px; }
-  .fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 12px; margin-bottom: 8px; }
-  .fields .wide { grid-column: span 3; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { border: 1px solid #000; padding: 4px 6px; }
-  th { background: #f2f2f2; font-weight: 600; }
-  td.r { text-align: right; }
-  tfoot td { font-weight: 600; }
-  .signs { display: flex; justify-content: space-between; margin-top: 18px; }
-  .signs span { min-width: 120px; }
-  .note { margin-top: 8px; }
-  .section { margin: 10px 0 4px; font-weight: 600; }
-  .doc.slip { page-break-after: auto; page-break-inside: avoid; border-bottom: 1px dashed #888; padding-bottom: 10px; margin-bottom: 12px; }
-  .doc.slip h1 { font-size: 15px; letter-spacing: 1px; }
-`
+/** 在预览窗口中显示一个 PDF（Blob） */
+export function showPdf(blob, title) {
+  if (printPreview.url) URL.revokeObjectURL(printPreview.url)
+  printPreview.url = URL.createObjectURL(blob)
+  printPreview.title = title
+  printPreview.open = true
+}
 
-function renderTable(columns, rows, totals) {
-  const cols = columns || []
-  if (!cols.length) return ''
-  const cls = (c) => (c.align === 'right' ? 'r' : '')
-  const cell = (c, r, i) => esc(c.value ? c.value(r, i) : r[c.key])
-  const width = (c) => (c.width ? ` style="width:${Number(c.width)}mm"` : '')
-  const head = `<thead><tr>${cols.map((c) => `<th${width(c)}>${esc(c.title)}</th>`).join('')}</tr></thead>`
-  const body = `<tbody>${(rows || [])
-    .map((r, i) => `<tr>${cols.map((c) => `<td class="${cls(c)}">${cell(c, r, i)}</td>`).join('')}</tr>`)
-    .join('')}</tbody>`
-  const foot = totals
-    ? `<tfoot><tr>${cols.map((c, i) => `<td class="${cls(c)}">${i === 0 ? '合计' : esc(totals[c.key] ?? '')}</td>`).join('')}</tr></tfoot>`
-    : ''
-  return `<table>${head}${body}${foot}</table>`
+const text = (v) => (v === undefined || v === null ? null : String(v))
+
+function toColumns(columns) {
+  return (columns || []).map((c) => ({ key: c.title, title: c.title, right: c.align === 'right', ...(c.width ? { width: c.width } : {}) }))
+}
+
+function toRows(columns, rows) {
+  return (rows || []).map((r, i) => Object.fromEntries((columns || []).map((c) => [c.title, text(c.value ? c.value(r, i) : r[c.key])])))
 }
 
 /**
+ * 页面组装的单据转为打印请求的结构：表头字段、签字栏为 { key, label, value }，明细行为 { 列标题: 文本 }。
+ * key 是单据中的原始名称（打印模板、上传的 JRXML 都按它匹配），label / title 是显示名称
+ *
  * @param {object} doc
  * @param {string} doc.title   单据名称，如 采购订单
  * @param {string} [doc.no]    单号
  * @param {[string, any, boolean?][]} [doc.fields] 表头字段 [标签, 值, 是否整行]
  * @param {{title: string, key?: string, value?: Function, align?: 'right'}[]} [doc.columns] 明细列
  * @param {object[]} [doc.rows] 明细行
- * @param {object} [doc.totals] 合计行 { 列 key: 值 }，第一列显示「合计」
+ * @param {object} [doc.totals] 合计行 { 列 key: 值 }，第一列没有值时显示「合计」
  * @param {(string | [string, any])[]} [doc.signs] 签字栏，如 ['审核', ['制单', '张三']]
  * @param {string} [doc.note]  备注
  * @param {{title: string, columns: object[], rows: object[]}[]} [doc.sections] 主表之后的其他明细表
- * @param {boolean} [doc.slip] 条状单据（工资条）：不单独占一页，之间用虚线分隔
+ * @param {boolean} [doc.slip] 条状单据（工资条）：一页打印多条，之间用虚线分隔
  */
-function renderDoc(doc) {
-  const fields = (doc.fields || [])
-    .map(([label, value, wide]) => `<div class="${wide ? 'wide' : ''}">${esc(label)}：${esc(value ?? '-')}</div>`)
-    .join('')
-  const table = renderTable(doc.columns, doc.rows, doc.totals)
-  const sections = (doc.sections || [])
-    .map((sec) => `<div class="section">${esc(sec.title)}</div>${renderTable(sec.columns, sec.rows)}`)
-    .join('')
-  const signs = doc.signs?.length
-    ? `<div class="signs">${doc.signs
-        .map((s) => [].concat(s))
-        .map(([label, value]) => `<span>${esc(label)}：${esc(value ?? '')}</span>`)
-        .join('')}</div>`
-    : ''
-  return `<div class="doc${doc.slip ? ' slip' : ''}">
-    ${doc.slip || !doc.companyName ? '' : `<div class="company">${esc(doc.companyName)}</div>`}
-    <h1>${esc(doc.title)}</h1>
-    ${doc.no ? `<div class="sub">No. ${esc(doc.no)}</div>` : ''}
-    <div class="fields">${fields}</div>
-    ${table}
-    ${sections}
-    ${doc.note ? `<div class="note">备注：${esc(doc.note)}</div>` : ''}
-    ${signs}
-  </div>`
+export function toPrintDoc(doc) {
+  const columns = doc.columns || []
+  const totals = doc.totals
+    ? Object.fromEntries(columns.filter((c) => c.key && doc.totals[c.key] != null).map((c) => [c.title, text(doc.totals[c.key])]))
+    : {}
+  return {
+    title: doc.title,
+    no: text(doc.no),
+    companyName: doc.companyName,
+    note: text(doc.note),
+    slip: !!doc.slip,
+    fields: (doc.fields || []).map(([label, value, wide]) => ({ key: label, label, value: text(value), wide: !!wide })),
+    columns: toColumns(columns),
+    rows: toRows(columns, doc.rows),
+    totals,
+    signs: (doc.signs || []).map((s) => [].concat(s)).map(([label, value]) => ({ key: label, label, value: text(value) })),
+    sections: (doc.sections || []).map((s) => ({ title: s.title, columns: toColumns(s.columns), rows: toRows(s.columns, s.rows) }))
+  }
 }
 
 /** 默认公司名称：SaaS 模式下为当前租户名称 */
@@ -100,36 +75,38 @@ export function defaultCompanyName() {
 }
 
 /**
- * 生成打印页面的 HTML（单据已套用模板），打印模板设计页预览也使用
+ * 按模板生成打印请求（打印模板设计页预览也使用）
+ *
+ * @param list  规范化后的单据（toPrintDoc 的结果）
+ * @param title 打印任务标题
+ * @param type  打印模板标识
+ * @param templates 已保存的模板
+ * @param [tpl] 使用的模板配置，默认为 templates[type]
  */
-export function renderHtml(list, title = '打印') {
-  // 模板中关闭公司名称时为空字符串，未设置时用默认名称
-  const docs = list.map((d) => ({ ...d, companyName: d.companyName ?? defaultCompanyName() }))
-  return (
-    `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>` +
-    `<style>${style(docs[0]?.orientation)}</style></head><body>${docs.map(renderDoc).join('')}</body></html>`
-  )
+export function buildPrintRequest(list, title, type, templates, tpl = type && templates[type]) {
+  const docs = list.map((d) => applyTemplate({ ...d, companyName: d.companyName ?? defaultCompanyName() }, tpl, templates[COMMON_KEY]))
+  return { type, title, layout: layoutOf(tpl || {}), docs }
 }
 
 /**
- * 打印一张或多张单据（多张时每张一页）
+ * 打印一张或多张单据（多张时每张单独分页、编页码）
  *
- * @param docs  单据（结构见 renderDoc）
- * @param title 打印任务标题（另存为 PDF 时的默认文件名）
+ * @param docs  单据（结构见 toPrintDoc）
+ * @param title 打印任务标题（PDF 文件名）
  * @param type  打印模板标识（printTemplates.js 中的 PRINT_TYPES），不传则按默认版式
  */
 export async function printDocs(docs, title = '打印', type) {
-  let list = [].concat(docs)
+  const list = [].concat(docs).map(toPrintDoc)
+  const templates = await loadTemplates().catch(() => ({}))
+  const hide = message.loading({ content: '正在生成打印文件…', key: 'print', duration: 0 })
   try {
-    const templates = await loadTemplates()
-    list = list.map((d) => applyTemplate(d, type && templates[type], templates[COMMON_KEY]))
-  } catch {
-    // 模板加载失败时按默认版式打印
+    showPdf(await printPdf(buildPrintRequest(list, title, type, templates)), title)
+  } finally {
+    hide()
   }
-  printHtml(renderHtml(list, title))
 }
 
-/** 在隐藏的 iframe 中打印一段完整的 HTML（单据、标签共用） */
+/** 在隐藏的 iframe 中打印一段完整的 HTML（条码标签） */
 export function printHtml(html) {
   const iframe = document.createElement('iframe')
   iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'

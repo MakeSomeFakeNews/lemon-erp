@@ -108,7 +108,7 @@ function print() {
     columns: [
       { title: '摘要', key: 'summary' },
       { title: '会计科目', value: (e) => `${e.accountCode} ${e.accountName}` },
-      { title: '部门 / 辅助', value: (e) => [e.deptName, e.projectName, e.partnerName].filter(Boolean).join(' / ') },
+      { title: '部门 / 辅助', key: 'deptName', value: (e) => [e.deptName, e.projectName, e.partnerName].filter(Boolean).join(' / ') },
       { title: '借方金额', key: 'debit', value: (e) => moneyOrBlank(e.debit), align: 'right' },
       { title: '贷方金额', key: 'credit', value: (e) => moneyOrBlank(e.credit), align: 'right' }
     ],

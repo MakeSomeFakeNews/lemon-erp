@@ -2,6 +2,7 @@
   <a-config-provider :locale="zhCN" :theme="themeConfig">
     <a-app>
       <router-view />
+      <PrintPreview />
     </a-app>
   </a-config-provider>
 </template>
@@ -13,6 +14,7 @@ import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 import { useAppStore } from '@/store/app'
+import PrintPreview from '@/components/print/PrintPreview.vue'
 
 dayjs.locale('zh-cn')
 

@@ -279,12 +279,13 @@ CREATE TABLE sys_config (
     UNIQUE KEY uk_config_key (config_key)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '系统参数';
 
--- 打印模板：租户修改过的单据打印配置（JSON，由前端解释），未修改的单据使用默认版式
+-- 打印模板：租户修改过的单据打印配置（JSON，由前端解释），未修改的单据使用默认版式；上传了 JRXML 的单据按 JRXML 打印
 CREATE TABLE sys_print_template (
     id           BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id    BIGINT      NOT NULL DEFAULT 1 COMMENT '租户ID',
     template_key VARCHAR(64) NOT NULL COMMENT '模板标识，如 scm.purchaseOrder；_common 为通用设置',
     config       TEXT        NOT NULL COMMENT '模板配置 JSON',
+    jrxml        MEDIUMTEXT COMMENT '自定义 JRXML（Jaspersoft Studio 7），为空时按配置生成默认版式',
     create_time  DATETIME             DEFAULT NULL COMMENT '创建时间',
     update_time  DATETIME             DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
