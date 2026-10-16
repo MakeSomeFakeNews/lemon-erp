@@ -20,12 +20,17 @@
 </p>
 
 <p align="center">
+  <a href="https://makesomefakenews.github.io/lemon-erp-website/"><b>官网</b></a> ·
+  <a href="https://makesomefakenews.github.io/lemon-erp-website/manual/guide/"><b>用户手册</b></a> ·
+  <a href="https://makesomefakenews.github.io/lemon-erp-website/dev/start/"><b>开发文档</b></a>
+</p>
+
+<p align="center">
   <a href="#项目简介">项目简介</a> ·
   <a href="#核心亮点">核心亮点</a> ·
   <a href="#功能模块">功能模块</a> ·
   <a href="#系统截图">系统截图</a> ·
-  <a href="#快速开始">快速开始</a> ·
-  <a href="docs/development.md">开发文档</a>
+  <a href="#快速开始">快速开始</a>
 </p>
 
 <p align="center">
@@ -188,7 +193,7 @@
 | 系统监控 | 在线用户（强制下线）、操作日志、登录日志（IP 归属地）、服务监控、缓存监控、定时任务 |
 | 平台功能 | 站内消息、Excel 导入导出、单据附件、字段变更历史 |
 
-> 更详细的功能说明、业务联动关系与架构设计请阅读 [开发文档](docs/development.md)。
+> 每个功能的详细操作说明请阅读 [用户手册](https://makesomefakenews.github.io/lemon-erp-website/manual/guide/)，二次开发请阅读 [开发文档](https://makesomefakenews.github.io/lemon-erp-website/dev/start/)。
 
 ## 系统截图
 
