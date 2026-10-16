@@ -103,7 +103,8 @@
 
         <div v-if="configStore.showDemoAccount" class="tip">
           <span class="tip-dot" />
-          演示账号<template v-if="tenantEnabled">（租户 <b>柠檬科技</b>）</template> <b>admin</b> / <b>admin123</b>（超级管理员）、<b>test</b> / <b>admin123</b>（只读）
+          演示账号<template v-if="tenantEnabled">（租户 <b>柠檬科技</b>）</template>
+          <a class="demo-account" @click="fillDemo('admin')"><b>admin</b> / <b>admin123</b></a>（超级管理员）、<a class="demo-account" @click="fillDemo('test')"><b>test</b> / <b>admin123</b></a>（只读）
         </div>
         <div v-if="configStore.demoMode" class="tip">
           <span class="tip-dot" />
@@ -188,8 +189,18 @@ async function refreshCaptcha() {
   form.captchaCode = ''
   captchaImage.value = c.image
 }
+// ---------------------------------------------------------------- 演示账号
+const DEMO_TENANT = '柠檬科技'
+const DEMO_PASSWORD = 'admin123'
+/** 点击演示账号填入表单；演示模式下默认填好超级管理员，直接点登录即可 */
+function fillDemo(username) {
+  Object.assign(form, { username, password: DEMO_PASSWORD })
+  if (tenantEnabled.value) form.tenantName = DEMO_TENANT
+}
+
 onMounted(async () => {
   await configStore.load(true)
+  if (configStore.demoMode && !form.password) fillDemo(form.username === 'test' ? 'test' : 'admin')
   if (needCaptcha.value) refreshCaptcha()
 })
 
@@ -471,6 +482,13 @@ async function handleLogin() {
   line-height: 1.7;
   color: var(--app-text-2);
   background: rgba(255, 212, 59, 0.14);
+}
+.demo-account {
+  color: inherit;
+  cursor: pointer;
+}
+.demo-account:hover b {
+  color: var(--ant-color-primary, #1677ff);
 }
 .tip + .tip {
   margin-top: 8px;
