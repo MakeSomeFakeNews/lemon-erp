@@ -20,9 +20,9 @@
         <table class="voucher-table">
           <thead>
             <tr>
-              <th style="width: 30%">摘要</th>
-              <th style="width: 32%">会计科目</th>
-              <th style="width: 12%">部门 / 辅助</th>
+              <th style="width: 27%">摘要</th>
+              <th style="width: 27%">会计科目</th>
+              <th style="width: 20%">辅助核算</th>
               <th style="width: 13%">借方金额</th>
               <th style="width: 13%">贷方金额</th>
             </tr>
@@ -32,8 +32,9 @@
               <td>{{ e.summary }}</td>
               <td>{{ e.accountCode }} {{ e.accountName }}</td>
               <td>
-                {{ e.deptName || '' }}
-                <div v-if="e.projectName || e.partnerName" class="aux">{{ [e.projectName, e.partnerName].filter(Boolean).join(' / ') }}</div>
+                <template v-for="a in AUX_ITEMS" :key="a.value">
+                  <div v-if="e[a.name]" class="aux"><span class="aux-label">{{ a.label }}</span>{{ e[a.name] }}</div>
+                </template>
               </td>
               <td :class="['num', { neg: Number(e.debit) < 0 }]">{{ moneyOrBlank(e.debit) }}</td>
               <td :class="['num', { neg: Number(e.credit) < 0 }]">{{ moneyOrBlank(e.credit) }}</td>
@@ -81,7 +82,7 @@ import ChangeLogPanel from '@/components/ChangeLogPanel.vue'
 import ReverseModal from './ReverseModal.vue'
 import { deleteVoucher, getVoucher, voucherAction } from '@/api/fin'
 import { useUserStore } from '@/store/user'
-import { canDeleteVoucher, canReverse, formatMoney, moneyOrBlank, moneyUpper, periodText } from './fin'
+import { AUX_ITEMS, auxText, canDeleteVoucher, canReverse, formatMoney, moneyOrBlank, moneyUpper, periodText } from './fin'
 import { printDocs } from '@/utils/print'
 
 /** 凭证详情（凭证样式），按状态提供编辑、审核、记账等操作；触发 edit(voucher)、changed */
@@ -108,7 +109,7 @@ function print() {
     columns: [
       { title: '摘要', key: 'summary' },
       { title: '会计科目', value: (e) => `${e.accountCode} ${e.accountName}` },
-      { title: '部门 / 辅助', key: 'deptName', value: (e) => [e.deptName, e.projectName, e.partnerName].filter(Boolean).join(' / ') },
+      { title: '部门 / 辅助', key: 'deptName', value: auxText },
       { title: '借方金额', key: 'debit', value: (e) => moneyOrBlank(e.debit), align: 'right' },
       { title: '贷方金额', key: 'credit', value: (e) => moneyOrBlank(e.credit), align: 'right' }
     ],
@@ -243,7 +244,11 @@ defineExpose({ reload: load })
   color: #cf1322;
 }
 .aux {
-  color: var(--ant-color-text-tertiary, #888);
   font-size: 12px;
+  line-height: 1.6;
+}
+.aux-label {
+  margin-right: 4px;
+  color: var(--ant-color-text-tertiary, #888);
 }
 </style>

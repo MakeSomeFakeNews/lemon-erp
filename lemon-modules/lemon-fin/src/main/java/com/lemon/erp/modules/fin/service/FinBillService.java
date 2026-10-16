@@ -302,7 +302,7 @@ public class FinBillService {
         return voucherService.createGenerated(d, VoucherSource.BAD_DEBT, bill.getBillNo(), List.of(
                 VoucherLine.debit(summary, accountService.leafByCode(FinConstants.NON_OPERATING_EXPENSE).getId(), null, amount),
                 VoucherLine.credit(summary, accountService.leafByCode(RECEIVABLE).getId(), null, amount)
-                        .withPartner(VoucherLine.CUSTOMER, bill.getPartnerId()).withProject(bill.getProjectId())));
+                        .withCustomer(bill.getPartnerId()).withProject(bill.getProjectId())));
     }
 
     // ---------------------------------------------------------------- 内部
@@ -319,7 +319,7 @@ public class FinBillService {
             BigDecimal net = bill.getAmount().subtract(bill.getTaxAmount());
             boolean project = "PROJECT".equals(bill.getSourceType());
             lines.add(VoucherLine.debit(summary, accountService.leafByCode(RECEIVABLE).getId(), null, bill.getAmount())
-                    .withPartner(VoucherLine.CUSTOMER, bill.getPartnerId()).withProject(bill.getProjectId()));
+                    .withCustomer(bill.getPartnerId()).withProject(bill.getProjectId()));
             // 项目开票计入合同负债，按完工百分比确认收入时再转入主营业务收入（项目月结）
             // 服务工单收费计入其他业务收入
             String revenue = project ? CONTRACT_LIABILITY : "TICKET".equals(bill.getSourceType()) ? FinConstants.OTHER_REVENUE : REVENUE;
@@ -333,7 +333,7 @@ public class FinBillService {
             String summary = "质量索赔 " + bill.getSourceNo() + " " + partner;
             BigDecimal amount = bill.getAmount().negate();
             lines.add(VoucherLine.debit(summary, accountService.leafByCode(PAYABLE).getId(), null, amount)
-                    .withPartner(VoucherLine.SUPPLIER, bill.getPartnerId()));
+                    .withSupplier(bill.getPartnerId()));
             lines.add(VoucherLine.credit(summary, accountService.leafByCode(NON_OPERATING_INCOME).getId(), null, amount));
             return lines;
         }
@@ -344,7 +344,7 @@ public class FinBillService {
             lines.add(VoucherLine.debit(summary, bill.getExpenseAccountId(), bill.getDeptId(), bill.getAmount().subtract(bill.getTaxAmount())));
             lines.add(VoucherLine.debit(summary, accountService.leafByCode(INPUT_VAT).getId(), null, bill.getTaxAmount()));
             lines.add(VoucherLine.credit(summary, accountService.leafByCode(PAYABLE).getId(), null, bill.getAmount())
-                    .withPartner(VoucherLine.SUPPLIER, bill.getPartnerId()));
+                    .withSupplier(bill.getPartnerId()));
             return lines;
         }
         String summary = (sign.signum() < 0 ? "采购退货 " : "采购入库 ") + bill.getSourceNo() + " " + partner;
@@ -354,7 +354,7 @@ public class FinBillService {
         }
         lines.add(VoucherLine.debit(summary, accountService.leafByCode(INPUT_VAT).getId(), null, bill.getTaxAmount()));
         lines.add(VoucherLine.credit(summary, accountService.leafByCode(PAYABLE).getId(), null, bill.getAmount())
-                .withPartner(VoucherLine.SUPPLIER, bill.getPartnerId()));
+                .withSupplier(bill.getPartnerId()));
         return lines;
     }
 

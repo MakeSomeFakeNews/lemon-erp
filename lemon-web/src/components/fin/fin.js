@@ -21,6 +21,24 @@ export function moneyOrBlank(n) {
 
 export { cached } from '@/utils/cache'
 
+/**
+ * 辅助核算项目（与后端 AuxItem 一致）：key 为分录上的 ID 字段，name 为分录上的名称字段。
+ * 科目上设置的项目在手工凭证中必填，各项目可同时填写
+ */
+export const AUX_ITEMS = [
+  { value: 'DEPT', label: '部门', key: 'deptId', name: 'deptName' },
+  { value: 'CUSTOMER', label: '客户', key: 'customerId', name: 'customerName' },
+  { value: 'SUPPLIER', label: '供应商', key: 'supplierId', name: 'supplierName' },
+  { value: 'PROJECT', label: '项目', key: 'projectId', name: 'projectName' },
+  { value: 'MATERIAL', label: '存货', key: 'materialId', name: 'materialName' }
+]
+
+/** 科目上保存的辅助核算（逗号分隔）→ 数组 */
+export const auxItemsOf = (account) => (account?.auxItems ? account.auxItems.split(',') : [])
+
+/** 分录的辅助核算显示文本：部门 / 客户 / … */
+export const auxText = (entry) => AUX_ITEMS.map((a) => entry[a.name]).filter(Boolean).join(' / ')
+
 /** 金额大写，如 1234.5 → 壹仟贰佰叁拾肆元伍角整 */
 export function moneyUpper(n) {
   const num = Math.round(Math.abs(Number(n) || 0) * 100)

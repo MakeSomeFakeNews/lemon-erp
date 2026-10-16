@@ -4,22 +4,23 @@
 
     <select id="selectByVoucherId" resultType="com.lemon.erp.modules.fin.entity.FinVoucherEntry">
         SELECT e.*, a.code AS account_code, a.name AS account_name, d.name AS dept_name, p.name AS project_name,
-               COALESCE(c.name, s.name) AS partner_name
+               c.name AS customer_name, s.name AS supplier_name, m.name AS material_name
         FROM fin_voucher_entry e
         JOIN fin_account a ON a.id = e.account_id
         LEFT JOIN sys_dept d ON d.id = e.dept_id
         LEFT JOIN pm_project p ON p.id = e.project_id
-        LEFT JOIN scm_customer c ON e.partner_type = 'CUSTOMER' AND c.id = e.partner_id
-        LEFT JOIN scm_supplier s ON e.partner_type = 'SUPPLIER' AND s.id = e.partner_id
+        LEFT JOIN scm_customer c ON c.id = e.customer_id
+        LEFT JOIN scm_supplier s ON s.id = e.supplier_id
+        LEFT JOIN wms_material m ON m.id = e.material_id
         WHERE e.voucher_id = #{voucherId}
         ORDER BY e.seq
     </select>
 
     <insert id="insertBatch">
-        INSERT INTO fin_voucher_entry (voucher_id, seq, summary, account_id, dept_id, project_id, partner_type, partner_id,
+        INSERT INTO fin_voucher_entry (voucher_id, seq, summary, account_id, dept_id, project_id, customer_id, supplier_id, material_id,
                                        debit, credit, create_time, update_time) VALUES
         <foreach collection="list" item="i" separator=",">
-            (#{i.voucherId}, #{i.seq}, #{i.summary}, #{i.accountId}, #{i.deptId}, #{i.projectId}, #{i.partnerType}, #{i.partnerId},
+            (#{i.voucherId}, #{i.seq}, #{i.summary}, #{i.accountId}, #{i.deptId}, #{i.projectId}, #{i.customerId}, #{i.supplierId}, #{i.materialId},
              #{i.debit}, #{i.credit}, NOW(), NOW())
         </foreach>
     </insert>
@@ -76,38 +77,43 @@
         ORDER BY v.voucher_date, v.period, v.voucher_seq, e.seq
     </select>
 
-    <!-- 辅助核算余额：本期发生额（begin ~ end）与截至 end 的余额，只统计已记账凭证 -->
+    <!-- 辅助核算余额：本期发生额（begin ~ end）与截至 end 的余额，只统计已记账凭证；column 为 AuxItem 对应的分录列 -->
+    <sql id="auxColumn">
+        <choose>
+            <when test="dimension.name() == 'DEPT'">e.dept_id</when>
+            <when test="dimension.name() == 'CUSTOMER'">e.customer_id</when>
+            <when test="dimension.name() == 'SUPPLIER'">e.supplier_id</when>
+            <when test="dimension.name() == 'PROJECT'">e.project_id</when>
+            <otherwise>e.material_id</otherwise>
+        </choose>
+    </sql>
+
     <select id="selectAuxBalance" resultType="com.lemon.erp.modules.fin.dto.AuxBalanceRow">
-        SELECT t.aux_id, x.code AS aux_code, x.name AS aux_name, a.id AS account_id, a.code AS account_code, a.name AS account_name,
+        SELECT t.aux_id, <choose><when test="dimension.name() == 'DEPT'">NULL</when><otherwise>x.code</otherwise></choose> AS aux_code,
+               x.name AS aux_name, a.id AS account_id, a.code AS account_code, a.name AS account_name,
                t.debit, t.credit, t.balance
         FROM (
-            SELECT <choose>
-                       <when test="dimension == 'project'">e.project_id</when>
-                       <otherwise>e.partner_id</otherwise>
-                   </choose> AS aux_id,
+            SELECT <include refid="auxColumn"/> AS aux_id,
                    e.account_id,
                    SUM(CASE WHEN v.period &gt;= #{begin} THEN e.debit ELSE 0 END) AS debit,
                    SUM(CASE WHEN v.period &gt;= #{begin} THEN e.credit ELSE 0 END) AS credit,
                    SUM(e.debit - e.credit) AS balance
             FROM fin_voucher_entry e
             JOIN fin_voucher v ON v.id = e.voucher_id
-            WHERE v.status = 'POSTED' AND v.period &lt;= #{end}
-            <choose>
-                <when test="dimension == 'project'">AND e.project_id IS NOT NULL</when>
-                <when test="dimension == 'customer'">AND e.partner_type = 'CUSTOMER'</when>
-                <otherwise>AND e.partner_type = 'SUPPLIER'</otherwise>
-            </choose>
+            WHERE v.status = 'POSTED' AND v.period &lt;= #{end} AND <include refid="auxColumn"/> IS NOT NULL
             <if test="accountId != null">AND e.account_id = #{accountId}</if>
-            GROUP BY <choose><when test="dimension == 'project'">e.project_id</when><otherwise>e.partner_id</otherwise></choose>, e.account_id
+            GROUP BY <include refid="auxColumn"/>, e.account_id
         ) t
         JOIN fin_account a ON a.id = t.account_id
         <choose>
-            <when test="dimension == 'project'">LEFT JOIN pm_project x ON x.id = t.aux_id</when>
-            <when test="dimension == 'customer'">LEFT JOIN scm_customer x ON x.id = t.aux_id</when>
-            <otherwise>LEFT JOIN scm_supplier x ON x.id = t.aux_id</otherwise>
+            <when test="dimension.name() == 'DEPT'">LEFT JOIN sys_dept x ON x.id = t.aux_id</when>
+            <when test="dimension.name() == 'CUSTOMER'">LEFT JOIN scm_customer x ON x.id = t.aux_id</when>
+            <when test="dimension.name() == 'SUPPLIER'">LEFT JOIN scm_supplier x ON x.id = t.aux_id</when>
+            <when test="dimension.name() == 'PROJECT'">LEFT JOIN pm_project x ON x.id = t.aux_id</when>
+            <otherwise>LEFT JOIN wms_material x ON x.id = t.aux_id</otherwise>
         </choose>
         WHERE t.debit &lt;&gt; 0 OR t.credit &lt;&gt; 0 OR t.balance &lt;&gt; 0
-        ORDER BY x.code, a.code
+        ORDER BY <choose><when test="dimension.name() == 'DEPT'">x.name</when><otherwise>x.code</otherwise></choose>, a.code
     </select>
 
 </mapper>

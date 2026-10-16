@@ -10,6 +10,7 @@ import com.lemon.erp.modules.fin.dto.TrialBalance;
 import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.mapper.FinVoucherEntryMapper;
 import com.lemon.erp.modules.fin.model.AccountCategory;
+import com.lemon.erp.modules.fin.model.AuxItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -83,10 +84,10 @@ public class FinReportService {
 
     // ---------------------------------------------------------------- 明细账
 
-    /** 辅助核算余额：dimension 为 project 项目 / customer 客户 / supplier 供应商 */
-    public List<AuxBalanceRow> auxBalance(String dimension, int begin, int end, Long accountId) {
-        if (!List.of("project", "customer", "supplier").contains(dimension)) {
-            throw new BizException("辅助核算类型不正确");
+    /** 辅助核算余额：按辅助核算项目 + 科目统计本期发生额和期末余额 */
+    public List<AuxBalanceRow> auxBalance(AuxItem dimension, int begin, int end, Long accountId) {
+        if (dimension == null) {
+            throw new BizException("请选择辅助核算类型");
         }
         return entryMapper.selectAuxBalance(dimension, begin, end, accountId);
     }

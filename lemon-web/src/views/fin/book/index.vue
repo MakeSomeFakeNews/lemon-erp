@@ -88,9 +88,7 @@
         <a-tab-pane key="aux" tab="辅助核算">
           <div class="filters">
             <a-radio-group v-model:value="aux.dimension" button-style="solid" @change="loadAux">
-              <a-radio-button value="project">项目</a-radio-button>
-              <a-radio-button value="customer">客户</a-radio-button>
-              <a-radio-button value="supplier">供应商</a-radio-button>
+              <a-radio-button v-for="a in AUX_ITEMS" :key="a.value" :value="a.value">{{ a.label }}</a-radio-button>
             </a-radio-group>
             <AccountSelect v-model:value="aux.accountId" placeholder="全部科目" allow-clear class="account" />
             <span>期间</span>
@@ -110,7 +108,7 @@
             :scroll="{ x: 900, y: '100%' }"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'auxName'">{{ record.auxCode }} {{ record.auxName }}</template>
+              <template v-if="column.key === 'auxName'">{{ [record.auxCode, record.auxName].filter(Boolean).join(' ') }}</template>
               <template v-else-if="column.key === 'account'">{{ record.accountCode }} {{ record.accountName }}</template>
               <template v-else-if="['debit', 'credit'].includes(column.key)">
                 <span class="num">{{ moneyOrBlank(record[column.key]) }}</span>
@@ -128,12 +126,12 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import { auxBalance, ledger, trialBalance } from '@/api/fin'
-import { currentPeriod, formatMoney, moneyOrBlank } from '@/components/fin/fin'
+import { AUX_ITEMS, currentPeriod, formatMoney, moneyOrBlank } from '@/components/fin/fin'
 
 const tab = ref('balance')
 const range = reactive({ begin: Math.floor(currentPeriod() / 100) * 100 + 1, end: currentPeriod() })
@@ -199,14 +197,14 @@ function openVoucher(id) {
 }
 
 // ---------------------------------------------------------------- 辅助核算
-const auxColumns = [
-  { title: '项目 / 往来单位', key: 'auxName', width: 240 },
+const auxColumns = computed(() => [
+  { title: AUX_ITEMS.find((a) => a.value === aux.dimension)?.label, key: 'auxName', width: 240 },
   { title: '科目', key: 'account', width: 220 },
   { title: '本期借方', key: 'debit', width: 150, align: 'right' },
   { title: '本期贷方', key: 'credit', width: 150, align: 'right' },
   { title: '期末余额', key: 'balance', width: 170, align: 'right' }
-]
-const aux = reactive({ dimension: 'project', accountId: undefined, rows: [], loading: false })
+])
+const aux = reactive({ dimension: 'PROJECT', accountId: undefined, rows: [], loading: false })
 async function loadAux() {
   aux.loading = true
   try {

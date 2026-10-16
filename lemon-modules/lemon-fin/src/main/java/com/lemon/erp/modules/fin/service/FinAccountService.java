@@ -14,6 +14,7 @@ import com.lemon.erp.modules.fin.mapper.FinBudgetMapper;
 import com.lemon.erp.modules.fin.mapper.FinSettlementMapper;
 import com.lemon.erp.modules.fin.mapper.FinVoucherEntryMapper;
 import com.lemon.erp.modules.fin.model.AccountCategory;
+import com.lemon.erp.modules.fin.model.AuxItem;
 import com.lemon.erp.modules.fin.model.FinConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -101,16 +102,17 @@ public class FinAccountService {
         }
     }
 
-    /** 已使用的科目只能修改名称、备注 */
+    /** 已使用的科目只能修改名称、备注、辅助核算 */
     public void update(Long id, AccountRequest req) {
         FinAccount old = get(id);
         if (used(id) || hasChildren(id)) {
             if (!old.getCode().equals(req.code()) || (req.direction() != null && !old.getDirection().equals(req.direction()))) {
-                throw new BizException("科目已使用或有下级科目，只能修改名称和备注");
+                throw new BizException("科目已使用或有下级科目，只能修改名称、备注和辅助核算");
             }
             accountMapper.update(Wrappers.<FinAccount>lambdaUpdate()
                     .set(FinAccount::getName, req.name().trim())
                     .set(FinAccount::getRemark, req.remark())
+                    .set(FinAccount::getAuxItems, AuxItem.join(req.auxItems()))
                     .eq(FinAccount::getId, id));
             return;
         }
@@ -121,6 +123,10 @@ public class FinAccountService {
             accountMapper.updateById(account);
         } catch (DuplicateKeyException e) {
             throw new BizException("科目编码已存在");
+        }
+        // updateById 不更新 null 字段：取消全部辅助核算时单独清空
+        if (account.getAuxItems() == null) {
+            accountMapper.update(Wrappers.<FinAccount>lambdaUpdate().set(FinAccount::getAuxItems, null).eq(FinAccount::getId, id));
         }
     }
 
@@ -203,6 +209,7 @@ public class FinAccountService {
         account.setCode(code);
         account.setName(req.name().trim());
         account.setRemark(req.remark());
+        account.setAuxItems(AuxItem.join(req.auxItems()));
         if (req.parentId() == null || req.parentId() == 0) {
             if (code.length() != 4) {
                 throw new BizException("一级科目编码为 4 位数字");

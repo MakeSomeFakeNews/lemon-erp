@@ -13,6 +13,7 @@ import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.fin.dto.VoucherEntryRequest;
 import com.lemon.erp.modules.fin.dto.VoucherQuery;
 import com.lemon.erp.modules.fin.dto.VoucherRequest;
+import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.entity.FinBill;
 import com.lemon.erp.modules.fin.entity.FinCostRun;
 import com.lemon.erp.modules.fin.entity.FinDepreciation;
@@ -26,6 +27,7 @@ import com.lemon.erp.modules.fin.mapper.FinDepreciationMapper;
 import com.lemon.erp.modules.fin.mapper.FinSettlementMapper;
 import com.lemon.erp.modules.fin.mapper.FinVoucherEntryMapper;
 import com.lemon.erp.modules.fin.mapper.FinVoucherMapper;
+import com.lemon.erp.modules.fin.model.AuxItem;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.fin.model.VoucherStatus;
@@ -93,7 +95,9 @@ public class FinVoucherService {
     /** @return 新凭证 ID */
     @Transactional
     public Long create(VoucherRequest req) {
-        return insert(req.voucherDate(), req.attachmentCount(), toLines(req.entries()), VoucherSource.MANUAL, null, VoucherStatus.DRAFT);
+        List<VoucherLine> lines = toLines(req.entries());
+        checkAux(lines);
+        return insert(req.voucherDate(), req.attachmentCount(), lines, VoucherSource.MANUAL, null, VoucherStatus.DRAFT);
     }
 
     /** 修改未审核的凭证；改到其他期间时重新分配凭证号 */
@@ -105,6 +109,7 @@ public class FinVoucherService {
             throw new BizException("业务生成的凭证不能修改，可以删除后由业务单据重新生成");
         }
         List<VoucherLine> lines = toLines(req.entries());
+        checkAux(lines);
         List<FinVoucherEntry> entries = validate(lines);
         int period = periodOf(req.voucherDate());
         LambdaUpdateWrapper<FinVoucher> update = Wrappers.<FinVoucher>lambdaUpdate()
@@ -207,7 +212,7 @@ public class FinVoucherService {
         List<VoucherLine> lines = entryMapper.selectList(Wrappers.<FinVoucherEntry>lambdaQuery().eq(FinVoucherEntry::getVoucherId, id)
                         .orderByAsc(FinVoucherEntry::getSeq)).stream()
                 .map(e -> new VoucherLine("冲销 " + v.getPeriod() + " " + v.getVoucherNo() + " " + e.getSummary(), e.getAccountId(), e.getDeptId(),
-                        e.getDebit().negate(), e.getCredit().negate(), e.getProjectId(), e.getPartnerType(), e.getPartnerId()))
+                        e.getDebit().negate(), e.getCredit().negate(), e.getProjectId(), e.getCustomerId(), e.getSupplierId(), e.getMaterialId()))
                 .toList();
         Long redId = insert(d, 0, lines, VoucherSource.REVERSAL, v.getVoucherNo(), VoucherStatus.DRAFT);
         voucherMapper.update(Wrappers.<FinVoucher>lambdaUpdate().set(FinVoucher::getReversalOf, id).eq(FinVoucher::getId, redId));
@@ -360,12 +365,10 @@ public class FinVoucherService {
             e.setSummary(l.summary());
             e.setAccountId(l.accountId());
             e.setDeptId(l.deptId());
-            if (l.partnerId() != null && !VoucherLine.CUSTOMER.equals(l.partnerType()) && !VoucherLine.SUPPLIER.equals(l.partnerType())) {
-                throw new BizException("第 " + (i + 1) + " 条分录：往来单位类型不正确");
-            }
             e.setProjectId(l.projectId());
-            e.setPartnerType(l.partnerId() == null ? null : l.partnerType());
-            e.setPartnerId(l.partnerId());
+            e.setCustomerId(l.customerId());
+            e.setSupplierId(l.supplierId());
+            e.setMaterialId(l.materialId());
             e.setDebit(debit.setScale(2, java.math.RoundingMode.HALF_UP));
             e.setCredit(credit.setScale(2, java.math.RoundingMode.HALF_UP));
             entries.add(e);
@@ -378,7 +381,24 @@ public class FinVoucherService {
         return entries;
     }
 
-    /** 合并同摘要、同科目、同辅助核算（部门、项目、往来单位）、同方向的分录，去掉金额为 0 的 */
+    /**
+     * 手工凭证：科目上设置的辅助核算必填（业务生成的凭证按业务单据带出辅助核算，不校验）。
+     * 科目没有设置的辅助核算也可以填写
+     */
+    private void checkAux(List<VoucherLine> lines) {
+        Map<Long, FinAccount> accounts = accountService.requireLeaves(lines.stream().map(VoucherLine::accountId).toList());
+        for (int i = 0; i < lines.size(); i++) {
+            VoucherLine l = lines.get(i);
+            FinAccount a = accounts.get(l.accountId());
+            for (AuxItem item : AuxItem.parse(a.getAuxItems())) {
+                if (!l.has(item)) {
+                    throw new BizException("第 " + (i + 1) + " 条分录：科目「" + a.getCode() + " " + a.getName() + "」需要填写" + item.label());
+                }
+            }
+        }
+    }
+
+    /** 合并同摘要、同科目、同辅助核算、同方向的分录，去掉金额为 0 的 */
     private static List<VoucherLine> merge(List<VoucherLine> lines) {
         List<VoucherLine> merged = new ArrayList<>();
         for (VoucherLine l : lines) {
@@ -399,8 +419,7 @@ public class FinVoucherService {
                 merged.add(l);
             } else {
                 VoucherLine m = merged.get(idx);
-                merged.set(idx, new VoucherLine(m.summary(), m.accountId(), m.deptId(), m.debit().add(l.debit()), m.credit().add(l.credit()),
-                        m.projectId(), m.partnerType(), m.partnerId()));
+                merged.set(idx, m.withAmounts(m.debit().add(l.debit()), m.credit().add(l.credit())));
             }
         }
         return merged;
@@ -457,7 +476,7 @@ public class FinVoucherService {
     private static List<VoucherLine> toLines(List<VoucherEntryRequest> entries) {
         return entries.stream().map(e -> new VoucherLine(e.summary().trim(), e.accountId(), e.deptId(),
                 e.debit() == null ? BigDecimal.ZERO : e.debit(), e.credit() == null ? BigDecimal.ZERO : e.credit(),
-                e.projectId(), e.partnerType(), e.partnerId())).toList();
+                e.projectId(), e.customerId(), e.supplierId(), e.materialId())).toList();
     }
 
     private void saveEntries(Long voucherId, List<FinVoucherEntry> entries) {

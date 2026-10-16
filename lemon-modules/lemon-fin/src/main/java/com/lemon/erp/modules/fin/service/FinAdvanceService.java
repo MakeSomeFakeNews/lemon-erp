@@ -85,9 +85,9 @@ public class FinAdvanceService {
         List<VoucherLine> lines = receipt
                 ? List.of(VoucherLine.debit(summary, req.accountId(), null, req.amount()),
                 VoucherLine.credit(summary, accountService.leafByCode(FinConstants.ADVANCE_RECEIVED).getId(), null, req.amount())
-                        .withPartner(VoucherLine.CUSTOMER, req.partnerId()))
+                        .withCustomer(req.partnerId()))
                 : List.of(VoucherLine.debit(summary, accountService.leafByCode(FinConstants.PREPAYMENT).getId(), null, req.amount())
-                        .withPartner(VoucherLine.SUPPLIER, req.partnerId()),
+                        .withSupplier(req.partnerId()),
                 VoucherLine.credit(summary, req.accountId(), null, req.amount()));
         Long voucherId = voucherService.createGenerated(req.advanceDate(), VoucherSource.ADVANCE, a.getAdvanceNo(), lines);
         advanceMapper.update(Wrappers.<FinAdvance>lambdaUpdate().set(FinAdvance::getVoucherId, voucherId).eq(FinAdvance::getId, a.getId()));
@@ -132,16 +132,15 @@ public class FinAdvanceService {
         if (summary.length() > 200) {
             summary = summary.substring(0, 200);
         }
-        String partnerType = receipt ? VoucherLine.CUSTOMER : VoucherLine.SUPPLIER;
         List<VoucherLine> lines = receipt
                 ? List.of(VoucherLine.debit(summary, accountService.leafByCode(FinConstants.ADVANCE_RECEIVED).getId(), null, total)
-                        .withPartner(partnerType, a.getPartnerId()),
+                        .withCustomer(a.getPartnerId()),
                 VoucherLine.credit(summary, accountService.leafByCode(FinConstants.RECEIVABLE).getId(), null, total)
-                        .withPartner(partnerType, a.getPartnerId()))
+                        .withCustomer(a.getPartnerId()))
                 : List.of(VoucherLine.debit(summary, accountService.leafByCode(FinConstants.PAYABLE).getId(), null, total)
-                        .withPartner(partnerType, a.getPartnerId()),
+                        .withSupplier(a.getPartnerId()),
                 VoucherLine.credit(summary, accountService.leafByCode(FinConstants.PREPAYMENT).getId(), null, total)
-                        .withPartner(partnerType, a.getPartnerId()));
+                        .withSupplier(a.getPartnerId()));
         Long voucherId = voucherService.createGenerated(d, VoucherSource.ADVANCE, a.getAdvanceNo(), lines);
         for (SettlementItemRequest item : items) {
             FinAdvanceApply apply = new FinAdvanceApply();

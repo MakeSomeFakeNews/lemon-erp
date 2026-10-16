@@ -20,7 +20,7 @@
         </a-col>
       </a-row>
 
-      <a-table row-key="key" size="small" class="entries" :columns="columns" :data-source="form.entries" :pagination="false" :scroll="{ x: 1400 }">
+      <a-table row-key="key" size="small" class="entries" :columns="columns" :data-source="form.entries" :pagination="false" :scroll="{ x: 1320 }">
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'seq'">{{ index + 1 }}</template>
           <template v-else-if="column.key === 'summary'">
@@ -30,23 +30,43 @@
           </template>
           <template v-else-if="column.key === 'accountId'">
             <a-form-item :name="['entries', index, 'accountId']" :rules="[{ required: true, message: '请选择科目' }]" class="cell">
-              <AccountSelect v-model:value="record.accountId" />
+              <AccountSelect :value="record.accountId" @update:value="(v) => changeAccount(record, v)" />
             </a-form-item>
           </template>
-          <template v-else-if="column.key === 'deptId'">
-            <DeptSelect v-model:value="record.deptId" placeholder="选填" />
-          </template>
           <template v-else-if="column.key === 'aux'">
-            <div class="aux-cell">
-              <a-select v-model:value="record.auxType" :options="AUX_TYPES" placeholder="无" allow-clear class="aux-type" @change="clearAux(record)" />
-              <ProjectSelect v-if="record.auxType === 'PROJECT'" v-model:value="record.projectId" class="aux-value" />
-              <PartnerSelect
-                v-else-if="record.auxType"
-                v-model:value="record.partnerId"
-                :type="record.auxType === 'CUSTOMER' ? 'customer' : 'supplier'"
-                :label="record.partnerName"
-                class="aux-value"
-              />
+            <div class="aux-list">
+              <a-form-item
+                v-for="a in visibleAux(record)"
+                :key="a.value"
+                :name="['entries', index, a.key]"
+                :rules="[{ required: isRequired(record, a.value), message: `请选择${a.label}` }]"
+                class="cell aux-item"
+              >
+                <div class="aux-row">
+                  <span :class="['aux-label', { required: isRequired(record, a.value) }]">{{ a.label }}</span>
+                  <DeptSelect v-if="a.value === 'DEPT'" v-model:value="record.deptId" :placeholder="isRequired(record, 'DEPT') ? '必填' : '选填'" class="aux-input" />
+                  <PartnerSelect
+                    v-else-if="a.value === 'CUSTOMER' || a.value === 'SUPPLIER'"
+                    v-model:value="record[a.key]"
+                    :type="a.value === 'CUSTOMER' ? 'customer' : 'supplier'"
+                    :label="record[a.name]"
+                    class="aux-input"
+                  />
+                  <ProjectSelect v-else-if="a.value === 'PROJECT'" v-model:value="record.projectId" class="aux-input" />
+                  <MaterialSelect v-else v-model:value="record.materialId" :label="record.materialName" placeholder="搜索存货编码或名称" class="aux-input" />
+                  <a-button v-if="a.value !== 'DEPT' && !isRequired(record, a.value)" type="text" size="small" title="移除" @click="removeAux(record, a)">
+                    <CloseOutlined />
+                  </a-button>
+                </div>
+              </a-form-item>
+              <a-dropdown v-if="addableAux(record).length" :trigger="['click']">
+                <a class="aux-add"><PlusOutlined /> 辅助核算</a>
+                <template #overlay>
+                  <a-menu @click="({ key }) => record.extraAux.push(key)">
+                    <a-menu-item v-for="a in addableAux(record)" :key="a.value">{{ a.label }}</a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
             </div>
           </template>
           <template v-else-if="column.key === 'debit'">
@@ -80,25 +100,26 @@
         <a-button type="dashed" @click="addRow">
           <template #icon><PlusOutlined /></template>添加分录
         </a-button>
-        <span class="sub-text">摘要获得焦点时自动带出上一行；双击借方 / 贷方金额自动补平差额。只能选择末级科目。</span>
+        <span class="sub-text">摘要获得焦点时自动带出上一行；双击借方 / 贷方金额自动补平差额。只能选择末级科目，科目上设置的辅助核算必填。</span>
       </div>
     </a-form>
   </FormDrawer>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { CloseOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import AccountSelect from './AccountSelect.vue'
 import DeptSelect from './DeptSelect.vue'
 import ProjectSelect from '@/components/pm/ProjectSelect.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
-import { addVoucher, getVoucher, updateVoucher } from '@/api/fin'
+import MaterialSelect from '@/components/wms/MaterialSelect.vue'
+import { accountOptions, addVoucher, getVoucher, updateVoucher } from '@/api/fin'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { rowKey, today } from '@/components/wms/wms'
-import { formatMoney } from './fin'
+import { AUX_ITEMS, auxItemsOf, cached, formatMoney } from './fin'
 
 /** 新增 / 编辑凭证（未审核的手工凭证）。通过 ref 调用 openCreate() / openEdit(record)，保存后触发 success */
 const emit = defineEmits(['success'])
@@ -107,33 +128,56 @@ const columns = [
   { title: '#', key: 'seq', width: 40 },
   { title: '摘要', key: 'summary', width: 260 },
   { title: '会计科目', key: 'accountId', width: 280 },
-  { title: '部门', key: 'deptId', width: 170 },
-  { title: '辅助核算', key: 'aux', width: 300 },
+  { title: '辅助核算', key: 'aux', width: 380 },
   { title: '借方金额', key: 'debit', width: 150 },
   { title: '贷方金额', key: 'credit', width: 150 },
   { title: '', key: 'action', width: 50 }
 ]
 
-const AUX_TYPES = [
-  { label: '项目', value: 'PROJECT' },
-  { label: '客户', value: 'CUSTOMER' },
-  { label: '供应商', value: 'SUPPLIER' }
-]
 const emptyRow = () => ({
   key: rowKey(),
   summary: '',
   accountId: undefined,
-  deptId: undefined,
-  auxType: undefined,
-  projectId: undefined,
-  partnerId: undefined,
+  ...Object.fromEntries(AUX_ITEMS.map((a) => [a.key, undefined])),
+  extraAux: [],
   debit: undefined,
   credit: undefined
 })
-function clearAux(record) {
-  record.projectId = undefined
-  record.partnerId = undefined
-  record.partnerName = undefined
+
+// ---------------------------------------------------------------- 辅助核算
+
+/** 末级科目：ID → 科目（含辅助核算设置） */
+const accounts = ref(new Map())
+onMounted(async () => {
+  accounts.value = new Map((await cached('accounts-leaf', accountOptions)).map((a) => [a.id, a]))
+})
+
+const requiredAux = (record) => auxItemsOf(accounts.value.get(record.accountId))
+const isRequired = (record, item) => requiredAux(record).includes(item)
+const hasValue = (record, a) => record[a.key] !== undefined && record[a.key] !== null
+
+/** 显示的辅助核算：部门（始终可填）、科目设置的、手工添加的、已有值的 */
+const visibleAux = (record) =>
+  AUX_ITEMS.filter((a) => a.value === 'DEPT' || isRequired(record, a.value) || record.extraAux.includes(a.value) || hasValue(record, a))
+const addableAux = (record) => {
+  const shown = new Set(visibleAux(record).map((a) => a.value))
+  return AUX_ITEMS.filter((a) => !shown.has(a.value))
+}
+
+function removeAux(record, a) {
+  record[a.key] = undefined
+  record[a.name] = undefined
+  record.extraAux = record.extraAux.filter((v) => v !== a.value)
+}
+
+/** 换科目：清掉新科目不需要、也不是手工添加的辅助核算（部门保留） */
+function changeAccount(record, accountId) {
+  record.accountId = accountId
+  const required = requiredAux(record)
+  AUX_ITEMS.filter((a) => a.value !== 'DEPT' && !required.includes(a.value) && !record.extraAux.includes(a.value)).forEach((a) => {
+    record[a.key] = undefined
+    record[a.name] = undefined
+  })
 }
 
 const drawer = useFormDrawer({
@@ -146,11 +190,8 @@ const drawer = useFormDrawer({
         key: rowKey(),
         summary: e.summary,
         accountId: e.accountId,
-        deptId: e.deptId,
-        auxType: e.projectId ? 'PROJECT' : e.partnerType || undefined,
-        projectId: e.projectId || undefined,
-        partnerId: e.partnerId || undefined,
-        partnerName: e.partnerName,
+        ...Object.fromEntries(AUX_ITEMS.flatMap((a) => [[a.key, e[a.key] || undefined], [a.name, e[a.name]]])),
+        extraAux: [],
         debit: Number(e.debit) || undefined,
         credit: Number(e.credit) || undefined
       }))
@@ -172,10 +213,7 @@ const drawer = useFormDrawer({
       entries: f.entries.map((e) => ({
         summary: e.summary,
         accountId: e.accountId,
-        deptId: e.deptId || null,
-        projectId: e.auxType === 'PROJECT' ? e.projectId || null : null,
-        partnerType: e.auxType && e.auxType !== 'PROJECT' && e.partnerId ? e.auxType : null,
-        partnerId: e.auxType && e.auxType !== 'PROJECT' ? e.partnerId || null : null,
+        ...Object.fromEntries(AUX_ITEMS.map((a) => [a.key, e[a.key] || null])),
         debit: e.debit || 0,
         credit: e.credit || 0
       }))
@@ -242,16 +280,33 @@ defineExpose({ openCreate: drawer.openCreate, openEdit: drawer.openEdit })
   color: var(--app-text-3);
   font-size: 12px;
 }
-.aux-cell {
+.aux-list {
   display: flex;
+  flex-direction: column;
   gap: 4px;
 }
-.aux-type {
-  width: 90px;
-  flex: none;
+.aux-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
-.aux-value {
+.aux-label {
+  width: 48px;
+  flex: none;
+  font-size: 12px;
+  color: var(--app-text-2);
+}
+.aux-label.required::before {
+  content: '*';
+  margin-right: 2px;
+  color: #ff4d4f;
+}
+.aux-input {
   flex: 1;
   min-width: 0;
+}
+.aux-add {
+  font-size: 12px;
+  align-self: flex-start;
 }
 </style>

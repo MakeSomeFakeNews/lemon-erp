@@ -149,12 +149,12 @@ public class FinCurrencyService implements ExchangeRateProvider {
             String summary = period + " 期末调汇 " + currency;
             if ("AR".equals(kind)) {
                 // 应收增值为收益：借 应收账款 / 贷 财务费用
-                lines.add(VoucherLine.debit(summary, receivable, null, diff).withPartner(VoucherLine.CUSTOMER, partnerId));
+                lines.add(VoucherLine.debit(summary, receivable, null, diff).withCustomer(partnerId));
                 lines.add(VoucherLine.credit(summary, finance, null, diff));
             } else {
                 // 应付增值为损失：借 财务费用 / 贷 应付账款
                 lines.add(VoucherLine.debit(summary, finance, null, diff));
-                lines.add(VoucherLine.credit(summary, payable, null, diff).withPartner(VoucherLine.SUPPLIER, partnerId));
+                lines.add(VoucherLine.credit(summary, payable, null, diff).withSupplier(partnerId));
             }
         }
         List<Map<String, Object>> result = new ArrayList<>();
@@ -177,8 +177,8 @@ public class FinCurrencyService implements ExchangeRateProvider {
             return r;
         }
         Long voucherId = voucherService.createGenerated(end, VoucherSource.FX, sourceNo, lines);
-        List<VoucherLine> reverse = lines.stream().map(l -> new VoucherLine("冲回 " + l.summary(), l.accountId(), l.deptId(), l.credit(),
-                l.debit(), l.projectId(), l.partnerType(), l.partnerId())).toList();
+        List<VoucherLine> reverse = lines.stream()
+                .map(l -> l.withSummary("冲回 " + l.summary()).withAmounts(l.credit(), l.debit())).toList();
         Long reverseId = voucherService.createGenerated(end.plusDays(1), VoucherSource.FX, sourceNo + "-R", reverse);
         r.put("voucherId", voucherId);
         r.put("reverseVoucherId", reverseId);

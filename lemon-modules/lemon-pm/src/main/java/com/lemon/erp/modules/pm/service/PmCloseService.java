@@ -113,7 +113,7 @@ public class PmCloseService {
             List<VoucherLine> list = lines.computeIfAbsent(projectId, k -> new ArrayList<>());
             String summary = "完工百分比确认收入 " + period + "（进度 " + rate.stripTrailingZeros().toPlainString() + "%）";
             list.add(VoucherLine.debit(summary, liability, null, revenue).withProject(projectId)
-                    .withPartner(VoucherLine.CUSTOMER, customerId));
+                    .withCustomer(customerId));
             list.add(VoucherLine.credit(summary, revenueAccount, null, revenue).withProject(projectId));
             String costSummary = "结转项目成本 " + period;
             list.add(VoucherLine.debit(costSummary, costOfSales, null, cost).withProject(projectId));
@@ -142,8 +142,7 @@ public class PmCloseService {
             }
             // 分录带项目所属部门，计入部门预算执行
             Long deptId = p == null ? null : p.getDeptId();
-            List<VoucherLine> withDept = e.getValue().stream().map(l -> l.deptId() != null ? l : new VoucherLine(l.summary(), l.accountId(),
-                    deptId, l.debit(), l.credit(), l.projectId(), l.partnerType(), l.partnerId())).toList();
+            List<VoucherLine> withDept = e.getValue().stream().map(l -> l.deptId() != null ? l : l.withDept(deptId)).toList();
             Long voucherId = voucherService.createGenerated(end, VoucherSource.PROJECT, p == null ? null : p.getCode(), withDept);
             closeMapper.markTimesheets(voucherId, projectId, begin, end);
             closeMapper.markCosts(voucherId, projectId, begin, end);

@@ -27,11 +27,14 @@ public class FinVoucherEntry extends BaseEntity {
     /** 辅助核算：项目 */
     private Long projectId;
 
-    /** 辅助核算：往来单位类型 CUSTOMER / SUPPLIER */
-    private String partnerType;
+    /** 辅助核算：客户 */
+    private Long customerId;
 
-    /** 辅助核算：往来单位 */
-    private Long partnerId;
+    /** 辅助核算：供应商 */
+    private Long supplierId;
+
+    /** 辅助核算：存货（物料） */
+    private Long materialId;
 
     private BigDecimal debit;
 
@@ -50,5 +53,11 @@ public class FinVoucherEntry extends BaseEntity {
     private String projectName;
 
     @TableField(exist = false)
-    private String partnerName;
+    private String customerName;
+
+    @TableField(exist = false)
+    private String supplierName;
+
+    @TableField(exist = false)
+    private String materialName;
 }

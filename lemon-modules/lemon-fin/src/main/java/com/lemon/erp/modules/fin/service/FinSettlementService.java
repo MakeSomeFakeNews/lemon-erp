@@ -300,14 +300,13 @@ public class FinSettlementService {
             boolean receipt = "RECEIPT".equals(s.getKind());
             String summary = (receipt ? "收到 " : "支付 ") + billService.partnerName(s.getKind(), s.getPartnerId()) + " 货款";
             Long partnerAccount = accountService.leafByCode(receipt ? RECEIVABLE : PAYABLE).getId();
-            String partnerType = receipt ? VoucherLine.CUSTOMER : VoucherLine.SUPPLIER;
             // 往来科目按核销的记账本位币，银行按实收实付本位币，外币差额计入财务费用（汇兑损益）
             BigDecimal booked = itemMapper.selectList(Wrappers.<FinSettlementItem>lambdaQuery().eq(FinSettlementItem::getSettlementId, s.getId()))
                     .stream().map(FinSettlementItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
             List<VoucherLine> lines = new java.util.ArrayList<>(receipt
                     ? List.of(VoucherLine.debit(summary, s.getAccountId(), null, s.getAmount()),
-                    VoucherLine.credit(summary, partnerAccount, null, booked).withPartner(partnerType, s.getPartnerId()))
-                    : List.of(VoucherLine.debit(summary, partnerAccount, null, booked).withPartner(partnerType, s.getPartnerId()),
+                    VoucherLine.credit(summary, partnerAccount, null, booked).withCustomer(s.getPartnerId()))
+                    : List.of(VoucherLine.debit(summary, partnerAccount, null, booked).withSupplier(s.getPartnerId()),
                     VoucherLine.credit(summary, s.getAccountId(), null, s.getAmount())));
             BigDecimal diff = receipt ? s.getAmount().subtract(booked) : booked.subtract(s.getAmount());
             if (diff.signum() != 0) {

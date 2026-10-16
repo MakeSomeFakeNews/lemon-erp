@@ -5,6 +5,7 @@ import com.lemon.erp.modules.fin.dto.AuxBalanceRow;
 import com.lemon.erp.modules.fin.dto.LedgerRow;
 import com.lemon.erp.modules.fin.dto.ReportLine;
 import com.lemon.erp.modules.fin.dto.TrialBalance;
+import com.lemon.erp.modules.fin.model.AuxItem;
 import com.lemon.erp.modules.fin.service.FinReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -38,10 +39,10 @@ public class FinReportController {
         return R.ok(reportService.ledger(accountId, begin, end));
     }
 
-    /** 辅助核算余额：dimension = project / customer / supplier */
+    /** 辅助核算余额：dimension 为辅助核算项目（部门、客户、供应商、项目、存货） */
     @GetMapping("/aux")
     @PreAuthorize("@ss.hasPerm('fin:book:list')")
-    public R<List<AuxBalanceRow>> aux(@RequestParam String dimension, @RequestParam int begin, @RequestParam int end,
+    public R<List<AuxBalanceRow>> aux(@RequestParam AuxItem dimension, @RequestParam int begin, @RequestParam int end,
                                       @RequestParam(required = false) Long accountId) {
         return R.ok(reportService.auxBalance(dimension, begin, end, accountId));
     }

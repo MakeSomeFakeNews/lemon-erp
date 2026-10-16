@@ -2103,6 +2103,7 @@ CREATE TABLE fin_account (
     direction   VARCHAR(8)   NOT NULL COMMENT '余额方向 DEBIT借 CREDIT贷',
     status      TINYINT      NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
     remark      VARCHAR(255)          DEFAULT NULL COMMENT '备注',
+    aux_items   VARCHAR(64)           DEFAULT NULL COMMENT '辅助核算项目（逗号分隔，可多选） DEPT部门 CUSTOMER客户 SUPPLIER供应商 PROJECT项目 MATERIAL存货；手工凭证使用该科目时必填',
     create_time DATETIME              DEFAULT NULL COMMENT '创建时间',
     update_time DATETIME              DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
@@ -2200,9 +2201,10 @@ CREATE TABLE fin_voucher_entry (
     summary     VARCHAR(255)   NOT NULL COMMENT '摘要',
     account_id  BIGINT         NOT NULL COMMENT '科目（末级）',
     dept_id     BIGINT                  DEFAULT NULL COMMENT '部门（辅助核算，预算执行按部门统计）',
-    project_id   BIGINT                  DEFAULT NULL COMMENT '项目（辅助核算）',
-    partner_type VARCHAR(16)             DEFAULT NULL COMMENT '往来单位类型（辅助核算） CUSTOMER客户 SUPPLIER供应商',
-    partner_id   BIGINT                  DEFAULT NULL COMMENT '往来单位（辅助核算）',
+    project_id  BIGINT                  DEFAULT NULL COMMENT '项目（辅助核算）',
+    customer_id BIGINT                  DEFAULT NULL COMMENT '客户（辅助核算）',
+    supplier_id BIGINT                  DEFAULT NULL COMMENT '供应商（辅助核算）',
+    material_id BIGINT                  DEFAULT NULL COMMENT '存货（辅助核算）',
     debit       DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '借方金额',
     credit      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '贷方金额',
     create_time DATETIME                DEFAULT NULL COMMENT '创建时间',
@@ -2211,7 +2213,9 @@ CREATE TABLE fin_voucher_entry (
     KEY idx_entry_voucher (voucher_id),
     KEY idx_entry_account (account_id),
     KEY idx_entry_project (project_id),
-    KEY idx_entry_partner (partner_type, partner_id)
+    KEY idx_entry_customer (customer_id),
+    KEY idx_entry_supplier (supplier_id),
+    KEY idx_entry_material (material_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '凭证分录';
 
 CREATE TABLE fin_bill (
@@ -4949,6 +4953,9 @@ INSERT INTO fin_account (id, code, name, parent_id, category, direction, status,
 (61, '6603',   '财务费用',               0,  'PROFIT',    'DEBIT',  1, NOW(), NOW()),
 (62, '6711',   '营业外支出',             0,  'PROFIT',    'DEBIT',  1, NOW(), NOW()),
 (63, '6801',   '所得税费用',             0,  'PROFIT',    'DEBIT',  1, NOW(), NOW());
+-- 往来科目按客户 / 供应商辅助核算
+UPDATE fin_account SET aux_items = 'CUSTOMER' WHERE code IN ('1122', '2203');
+UPDATE fin_account SET aux_items = 'SUPPLIER' WHERE code IN ('1123', '2202');
 
 -- ---------------------------------------------------------------- 人力资源：菜单、字典
 

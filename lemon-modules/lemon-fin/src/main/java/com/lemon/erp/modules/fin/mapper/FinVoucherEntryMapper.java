@@ -5,6 +5,7 @@ import com.lemon.erp.modules.fin.dto.AccountSum;
 import com.lemon.erp.modules.fin.dto.AuxBalanceRow;
 import com.lemon.erp.modules.fin.dto.LedgerRow;
 import com.lemon.erp.modules.fin.entity.FinVoucherEntry;
+import com.lemon.erp.modules.fin.model.AuxItem;
 import org.apache.ibatis.annotations.Param;
 
 import java.math.BigDecimal;
@@ -38,7 +39,7 @@ public interface FinVoucherEntryMapper extends BaseMapper<FinVoucherEntry> {
     /** 科目截至期末的余额（借 - 贷），含未记账凭证 */
     BigDecimal sumBalanceUpTo(@Param("accountId") Long accountId, @Param("period") int period);
 
-    /** @param dimension project / customer / supplier */
-    List<AuxBalanceRow> selectAuxBalance(@Param("dimension") String dimension, @Param("begin") int begin, @Param("end") int end,
+    /** @param dimension 辅助核算项目 */
+    List<AuxBalanceRow> selectAuxBalance(@Param("dimension") AuxItem dimension, @Param("begin") int begin, @Param("end") int end,
                                          @Param("accountId") Long accountId);
 }

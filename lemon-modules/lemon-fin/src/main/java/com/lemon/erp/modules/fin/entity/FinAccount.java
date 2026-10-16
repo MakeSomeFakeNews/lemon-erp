@@ -34,6 +34,9 @@ public class FinAccount extends BaseEntity {
 
     private String remark;
 
+    /** 辅助核算项目（AuxItem 名称，逗号分隔），手工凭证使用该科目时必填 */
+    private String auxItems;
+
     /** 是否末级科目 */
     @TableField(exist = false)
     private Boolean leaf;

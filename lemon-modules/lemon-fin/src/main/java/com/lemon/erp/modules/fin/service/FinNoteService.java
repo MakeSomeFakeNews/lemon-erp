@@ -179,8 +179,8 @@ public class FinNoteService {
         FinNote note = requireStatus(id, NoteKind.RECEIVABLE, NoteStatus.HELD, "拒付");
         String summary = "票据拒付 " + note.getNoteNo();
         FinNoteLog log = settle(note, NoteStatus.HELD, NoteStatus.DISHONORED, NoteAction.DISHONOR, req, null, BigDecimal.ZERO, List.of(
-                new VoucherLine(summary, accountService.leafByCode(FinConstants.RECEIVABLE).getId(), null, note.getAmount(),
-                        BigDecimal.ZERO, null, VoucherLine.CUSTOMER, note.getPartnerId()),
+                VoucherLine.debit(summary, accountService.leafByCode(FinConstants.RECEIVABLE).getId(), null, note.getAmount())
+                        .withCustomer(note.getPartnerId()),
                 VoucherLine.credit(summary, notesReceivable(), null, note.getAmount())));
         FinBill bill = billService.createFromSource(FinConstants.BILL_AR, note.getPartnerId(), BILL_SOURCE_NOTE, note.getId(), note.getNoteNo(),
                 req.actionDate(), note.getAmount(), BigDecimal.ZERO, summary, null);

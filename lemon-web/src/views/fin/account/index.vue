@@ -18,7 +18,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="false"
-        :scroll="{ x: 900, y: '100%' }"
+        :scroll="{ x: 1100, y: '100%' }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
@@ -29,6 +29,9 @@
             <DictTag type="fin_account_category" :value="record.category" />
           </template>
           <template v-else-if="column.key === 'direction'">{{ record.direction === 'DEBIT' ? '借' : '贷' }}</template>
+          <template v-else-if="column.key === 'auxItems'">
+            <a-tag v-for="a in auxLabels(record)" :key="a" :bordered="false" class="aux-tag">{{ a }}</a-tag>
+          </template>
           <template v-else-if="column.key === 'status'">
             <StatusSwitch
               :value="record.status"
@@ -83,6 +86,9 @@
             </a-form-item>
           </a-col>
         </a-row>
+        <a-form-item label="辅助核算" name="auxItems" extra="可多选。手工录入凭证使用该科目时这些项目必填；科目已使用后也可以修改，只影响之后录入的凭证">
+          <a-checkbox-group v-model:value="form.auxItems" :options="AUX_ITEMS" />
+        </a-form-item>
         <a-form-item label="备注" name="remark">
           <a-input v-model:value="form.remark" :maxlength="255" />
         </a-form-item>
@@ -101,8 +107,10 @@ import { accountTree, addAccount, changeAccountStatus, deleteAccount, updateAcco
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
+import { AUX_ITEMS, auxItemsOf } from '@/components/fin/fin'
 
 const userStore = useUserStore()
+const auxLabels = (record) => auxItemsOf(record).map((v) => AUX_ITEMS.find((a) => a.value === v)?.label).filter(Boolean)
 const dict = useDict('fin_account_category')
 
 const columns = [
@@ -110,6 +118,7 @@ const columns = [
   { title: '科目名称', key: 'name', width: 240 },
   { title: '类别', key: 'category', width: 110 },
   { title: '余额方向', key: 'direction', width: 90 },
+  { title: '辅助核算', key: 'auxItems', width: 200 },
   { title: '状态', key: 'status', width: 90 },
   { title: '备注', dataIndex: 'remark', ellipsis: true },
   { title: '操作', key: 'action', width: 210, fixed: 'right' }
@@ -153,11 +162,13 @@ const rules = {
 /** record：编辑；parent：新增下级 */
 function openForm(record, parent) {
   if (record) {
-    form.value = { ...record, parent: undefined, parentId: record.parentId || undefined }
+    form.value = { ...record, parent: undefined, parentId: record.parentId || undefined, auxItems: auxItemsOf(record) }
   } else if (parent) {
-    form.value = { code: parent.code, name: '', category: parent.category, direction: parent.direction, remark: '', parent, parentId: parent.id }
+    // 下级科目默认沿用上级的辅助核算
+    form.value = { code: parent.code, name: '', category: parent.category, direction: parent.direction, remark: '', parent, parentId: parent.id,
+      auxItems: auxItemsOf(parent) }
   } else {
-    form.value = { code: '', name: '', category: 'ASSET', direction: 'DEBIT', remark: '' }
+    form.value = { code: '', name: '', category: 'ASSET', direction: 'DEBIT', remark: '', auxItems: [] }
   }
   formOpen.value = true
 }
@@ -166,8 +177,8 @@ async function submit() {
   await formRef.value.validate()
   saving.value = true
   try {
-    const { id, code, name, parentId, category, direction, remark } = form.value
-    const data = { code, name, parentId: parentId || null, category, direction, remark }
+    const { id, code, name, parentId, category, direction, remark, auxItems } = form.value
+    const data = { code, name, parentId: parentId || null, category, direction, remark, auxItems }
     id ? await updateAccount(id, data) : await addAccount(data)
     message.success('保存成功')
     formOpen.value = false
@@ -194,6 +205,9 @@ async function remove(id) {
 }
 .search {
   width: 240px;
+}
+.aux-tag {
+  margin-inline-end: 4px;
 }
 .leaf-tag {
   margin-left: 6px;
