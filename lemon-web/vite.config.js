@@ -30,6 +30,9 @@ export default defineConfig({
         // 第三方库拆分为独立 chunk，便于浏览器长期缓存
         manualChunks(id) {
           if (!id.includes('node_modules')) return
+          // 图标基础组件及其依赖的颜色库单独成 chunk：放进 antd 会与图标 chunk 循环引用，生产环境加载时 blue 未初始化
+          if (/node_modules\/(@ant-design\/colors|@ctrl\/tinycolor)\//.test(id) ||
+            /@ant-design\/icons-vue\/es\/(components|utils|dynamicCSS|insert-css)/.test(id)) return 'icons-core'
           if (id.includes('@ant-design/icons-vue') || id.includes('@ant-design/icons-svg')) return
           if (id.includes('ant-design-vue') || id.includes('@ant-design') || id.includes('dayjs')) return 'antd'
           if (/node_modules\/(vue|@vue|vue-router|pinia)\//.test(id)) return 'vue'
