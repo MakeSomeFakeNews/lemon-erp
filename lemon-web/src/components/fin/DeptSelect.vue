@@ -8,6 +8,8 @@
     tree-default-expand-all
     show-search
     tree-node-filter-prop="name"
+    :dropdown-match-select-width="false"
+    :dropdown-style="{ minWidth: '200px', maxHeight: '400px', overflow: 'auto' }"
     @change="(v) => emit('update:value', v ?? null)"
   />
 </template>
