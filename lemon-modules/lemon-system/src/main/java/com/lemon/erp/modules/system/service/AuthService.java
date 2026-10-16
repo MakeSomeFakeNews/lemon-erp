@@ -5,6 +5,7 @@ import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.util.ServletUtils;
 import com.lemon.erp.common.util.TreeUtils;
 import com.lemon.erp.common.util.UserAgentUtils;
+import com.lemon.erp.framework.demo.DemoProperties;
 import com.lemon.erp.framework.portal.PortalKind;
 import com.lemon.erp.framework.log.LoginLogEvent;
 import com.lemon.erp.framework.security.LoginUser;
@@ -49,11 +50,12 @@ public class AuthService {
     private final SysTenantLookup tenantLookup;
     private final SettingService settings;
     private final CaptchaService captchaService;
+    private final DemoProperties demoProperties;
 
     public AuthConfig publicConfig() {
         return new AuthConfig(tenantLookup.isEnabled(), settings.get(Setting.SYSTEM_NAME), settings.getBool(Setting.SHOW_DEMO_ACCOUNT),
                 settings.getBool(Setting.WATERMARK), settings.get(Setting.CAPTCHA_MODE), settings.getInt(Setting.PASSWORD_MIN_LENGTH),
-                settings.get(Setting.PASSWORD_COMPLEXITY), settings.getInt(Setting.ATTACHMENT_MAX_MB));
+                settings.get(Setting.PASSWORD_COMPLEXITY), settings.getInt(Setting.ATTACHMENT_MAX_MB), demoProperties.isEnabled());
     }
 
     public LoginResponse login(LoginRequest req) {

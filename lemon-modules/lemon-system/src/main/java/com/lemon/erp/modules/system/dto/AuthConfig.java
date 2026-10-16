@@ -11,7 +11,9 @@ package com.lemon.erp.modules.system.dto;
  * @param passwordMinLength  密码最小长度
  * @param passwordComplexity 密码复杂度
  * @param attachmentMaxMb    附件大小上限（MB）
+ * @param demoMode           是否演示模式（只能查看，不能新增、修改、删除）
  */
 public record AuthConfig(boolean tenantEnabled, String systemName, boolean showDemoAccount, boolean watermark,
-                         String captchaMode, int passwordMinLength, String passwordComplexity, int attachmentMaxMb) {
+                         String captchaMode, int passwordMinLength, String passwordComplexity, int attachmentMaxMb,
+                         boolean demoMode) {
 }

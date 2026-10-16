@@ -25,6 +25,9 @@
     </a-breadcrumb>
 
     <div class="header-right">
+      <a-tooltip v-if="configStore.demoMode" title="当前为演示环境，只能查看，不能新增、修改、删除数据">
+        <a-tag color="orange" :bordered="false" class="demo-tag">演示模式</a-tag>
+      </a-tooltip>
       <MenuSearch />
       <MessageBell />
       <a-tooltip :title="appStore.dark ? '切换到亮色' : '切换到暗色'">
@@ -93,6 +96,7 @@ import MessageBell from './MessageBell.vue'
 import ThemeIcon from '@/components/ThemeIcon.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useAppStore } from '@/store/app'
+import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
 import { buildBreadcrumbIndex } from '@/utils/menu'
 import { HOME_PATH, useModuleNav } from '../useModuleNav'
@@ -103,6 +107,7 @@ const emit = defineEmits(['toggle'])
 const route = useRoute()
 const router = useRouter()
 const appStore = useAppStore()
+const configStore = useConfigStore()
 const userStore = useUserStore()
 
 const { modules, activeModule, openModule } = useModuleNav()
@@ -185,6 +190,10 @@ function confirmLogout() {
   display: flex;
   align-items: center;
   gap: 2px;
+}
+.demo-tag {
+  margin-right: 6px;
+  cursor: default;
 }
 .user-entry {
   display: flex;

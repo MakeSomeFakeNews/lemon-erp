@@ -55,7 +55,9 @@ mysql -uroot -p lemon_erp < sql/init.sql   # 注意：会删除并重建全部�
 | dev（默认） | `application-dev.yml` | 本机 MySQL | 本机 Redis |
 | prod | `application-prod.yml` | 全部取环境变量，无默认值 | Redis |
 
-切换环境：`--spring.profiles.active=prod`。常用环境变量：`DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST`、`REDIS_PORT`、`REDIS_PASSWORD`、`JWT_SECRET`（生产必须设置，至少 32 字节）。
+切换环境：`--spring.profiles.active=prod`。常用环境变量：`DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST`、`REDIS_PORT`、`REDIS_PASSWORD`、`JWT_SECRET`（生产必须设置，至少 32 字节）、`LEMON_TENANT_ENABLED`（SaaS 多租户）、`LEMON_DEMO_ENABLED`（演示模式）。
+
+**演示模式**（`lemon.demo.enabled`，环境变量 `LEMON_DEMO_ENABLED`，默认 `false`）：用于搭建对外演示环境。开启后所有用户只能查看，除 GET 以外的请求都会被 `framework/demo/DemoModeInterceptor` 拦截并提示「演示模式下不能新增、修改、删除数据」；登录、退出、标记消息已读，以及用 POST 传参的只读查询（多维分析、促销预览、上架建议）在 `lemon.demo.allowed-paths` 白名单中放行。顶部导航和登录页显示「演示模式」提示（`GET /auth/config` 返回 `demoMode`）。定时任务不受影响。新增用 POST 传参的只读查询接口时，要把路径加到白名单。
 
 头像等上传文件保存在 `lemon.upload.path`（默认 `./uploads`），通过 `/api/files/**` 访问。
 

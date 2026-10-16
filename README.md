@@ -534,6 +534,8 @@ location /api/ {
 | 柠檬科技 | test | admin123 | 普通用户，只读权限，数据权限为「本部门及以下」 |
 
 > 租户输入框只在开启 SaaS 多租户（`LEMON_TENANT_ENABLED=true`）时显示，默认关闭。
+>
+> 搭建对外演示环境时设置 `LEMON_DEMO_ENABLED=true` 开启演示模式：所有用户只能查看，不能新增、修改、删除数据。
 
 ## 项目结构
 

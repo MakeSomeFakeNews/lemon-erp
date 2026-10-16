@@ -15,7 +15,9 @@ export const useConfigStore = defineStore('config', {
     captchaMode: 'OFF',
     passwordMinLength: 8,
     passwordComplexity: 'LETTER_DIGIT',
-    attachmentMaxMb: 20
+    attachmentMaxMb: 20,
+    /** 演示模式：只能查看，不能新增、修改、删除 */
+    demoMode: false
   }),
   actions: {
     async load(force = false) {

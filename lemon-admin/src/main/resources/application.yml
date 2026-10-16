@@ -45,6 +45,9 @@ lemon:
   tenant:
     # SaaS 多租户：开启后业务数据按租户隔离，登录时需填写租户名称，平台租户可在「系统管理 - 租户管理」开通租户
     enabled: ${LEMON_TENANT_ENABLED:false}
+  demo:
+    # 演示模式：开启后所有用户只能查看，不能新增、修改、删除（登录、退出、查询类接口不受影响）
+    enabled: ${LEMON_DEMO_ENABLED:false}
   # 以下登录、密码相关配置是「系统管理 - 参数设置」中对应参数的默认值，在页面中修改后以页面为准
   jwt:
     expire-hours: 12

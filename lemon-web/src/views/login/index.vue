@@ -105,6 +105,10 @@
           <span class="tip-dot" />
           演示账号<template v-if="tenantEnabled">（租户 <b>柠檬科技</b>）</template> <b>admin</b> / <b>admin123</b>（超级管理员）、<b>test</b> / <b>admin123</b>（只读）
         </div>
+        <div v-if="configStore.demoMode" class="tip">
+          <span class="tip-dot" />
+          当前为演示环境，只能查看，不能新增、修改、删除数据
+        </div>
       </section>
     </main>
 
@@ -467,6 +471,9 @@ async function handleLogin() {
   line-height: 1.7;
   color: var(--app-text-2);
   background: rgba(255, 212, 59, 0.14);
+}
+.tip + .tip {
+  margin-top: 8px;
 }
 .tip-dot {
   display: inline-block;
