@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrEmployeeChangeMapper">
+
+    <select id="selectByEmployee" resultType="com.lemon.erp.modules.hr.entity.HrEmployeeChange">
+        SELECT c.*, fd.name AS from_dept_name, td.name AS to_dept_name, fp.name AS from_position_name,
+               tp.name AS to_position_name, u.nickname AS create_by_name
+        FROM hr_employee_change c
+        LEFT JOIN sys_dept fd ON fd.id = c.from_dept_id
+        LEFT JOIN sys_dept td ON td.id = c.to_dept_id
+        LEFT JOIN hr_position fp ON fp.id = c.from_position_id
+        LEFT JOIN hr_position tp ON tp.id = c.to_position_id
+        LEFT JOIN sys_user u ON u.id = c.create_by
+        WHERE c.employee_id = #{employeeId}
+        ORDER BY c.change_date DESC, c.id DESC
+    </select>
+
+</mapper>

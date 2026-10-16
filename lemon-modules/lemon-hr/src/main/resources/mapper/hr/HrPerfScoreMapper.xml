@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrPerfScoreMapper">
+
+    <select id="selectByAppraisal" resultType="com.lemon.erp.modules.hr.entity.HrPerfScore">
+        SELECT s.*, i.name AS indicator_name, i.weight, i.description
+        FROM hr_perf_score s
+        JOIN hr_perf_indicator i ON i.id = s.indicator_id
+        WHERE s.appraisal_id = #{appraisalId}
+        ORDER BY i.sort, i.id
+    </select>
+
+    <select id="selectBlankForPlan" resultType="com.lemon.erp.modules.hr.entity.HrPerfScore">
+        SELECT a.id AS appraisal_id, i.id AS indicator_id
+        FROM hr_perf_appraisal a
+        JOIN hr_perf_indicator i ON i.plan_id = a.plan_id
+        WHERE a.plan_id = #{planId}
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO hr_perf_score (appraisal_id, indicator_id, create_time, update_time) VALUES
+        <foreach collection="scores" item="s" separator=",">
+            (#{s.appraisalId}, #{s.indicatorId}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

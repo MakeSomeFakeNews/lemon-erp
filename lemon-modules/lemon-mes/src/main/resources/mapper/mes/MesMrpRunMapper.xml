@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesMrpRunMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.MesMrpRun">
+        SELECT r.*, u.nickname AS create_by_name,
+               (SELECT COUNT(*) FROM mes_mrp_result x WHERE x.run_id = r.id AND x.status = 'NEW') AS pending_count
+        FROM mes_mrp_run r
+        LEFT JOIN sys_user u ON u.id = r.create_by
+        ORDER BY r.id DESC
+    </select>
+
+</mapper>

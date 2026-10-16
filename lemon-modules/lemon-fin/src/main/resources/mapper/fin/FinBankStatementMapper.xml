@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinBankStatementMapper">
+
+    <select id="selectStatements" resultType="com.lemon.erp.modules.fin.entity.FinBankStatement">
+        SELECT s.*, v.voucher_no, v.voucher_date
+        FROM fin_bank_statement s
+        LEFT JOIN fin_voucher_entry e ON e.id = s.entry_id
+        LEFT JOIN fin_voucher v ON v.id = e.voucher_id
+        WHERE s.account_id = #{accountId}
+        <if test="begin != null">AND s.txn_date &gt;= #{begin}</if>
+        <if test="end != null">AND s.txn_date &lt;= #{end}</if>
+        ORDER BY s.txn_date, s.id
+    </select>
+
+    <select id="selectEntries" resultType="java.util.Map">
+        SELECT e.id AS "entryId", v.id AS "voucherId", v.voucher_no AS "voucherNo", v.voucher_date AS "voucherDate",
+               e.summary AS "summary", e.debit - e.credit AS "amount",
+               CASE WHEN EXISTS (SELECT 1 FROM fin_bank_statement s WHERE s.entry_id = e.id) THEN 1 ELSE 0 END AS "matched"
+        FROM fin_voucher_entry e
+        JOIN fin_voucher v ON v.id = e.voucher_id
+        WHERE e.account_id = #{accountId}
+        <if test="begin != null">AND v.voucher_date &gt;= #{begin}</if>
+        <if test="end != null">AND v.voucher_date &lt;= #{end}</if>
+        ORDER BY v.voucher_date, v.id, e.seq
+    </select>
+
+    <select id="sumBookBalance" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(t.amount), 0) FROM (
+            SELECT e.debit - e.credit AS amount
+            FROM fin_voucher_entry e
+            JOIN fin_voucher v ON v.id = e.voucher_id
+            WHERE e.account_id = #{accountId} AND v.voucher_date &lt;= #{asOf}
+            UNION ALL
+            SELECT o.debit - o.credit FROM fin_account_opening o WHERE o.account_id = #{accountId}
+        ) t
+    </select>
+
+</mapper>

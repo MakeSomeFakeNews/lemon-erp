@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.pm.mapper.PmProjectMapper">
+
+    <sql id="columns">
+        p.*, c.name AS customer_name, so.order_no AS sales_order_no, u.nickname AS manager_name, d.name AS dept_name,
+        (SELECT COUNT(*) FROM pm_task t WHERE t.project_id = p.id
+            AND NOT EXISTS (SELECT 1 FROM pm_task s WHERE s.parent_id = t.id)) AS task_count,
+        (SELECT COUNT(*) FROM pm_task t WHERE t.project_id = p.id AND t.status = 'DONE'
+            AND NOT EXISTS (SELECT 1 FROM pm_task s WHERE s.parent_id = t.id)) AS done_task_count,
+        (SELECT COUNT(*) FROM pm_task t WHERE t.project_id = p.id AND t.status &lt;&gt; 'DONE' AND t.plan_end &lt; #{today}
+            AND NOT EXISTS (SELECT 1 FROM pm_task s WHERE s.parent_id = t.id)) AS overdue_task_count,
+        (SELECT COUNT(*) FROM pm_member m WHERE m.project_id = p.id) AS member_count,
+        (SELECT COALESCE(SUM(ts.cost), 0) FROM pm_timesheet ts WHERE ts.project_id = p.id AND ts.status = 'APPROVED') AS labor_cost,
+        (SELECT COALESCE(SUM(pc.amount), 0) FROM pm_cost pc WHERE pc.project_id = p.id AND pc.status = 'APPROVED') AS expense_cost,
+        (SELECT COALESCE(SUM(b.amount), 0) FROM pm_billing b WHERE b.project_id = p.id AND b.status = 'BILLED') AS billed_amount,
+        (SELECT COALESCE(SUM(fb.settled_amount), 0) FROM pm_billing b JOIN fin_bill fb ON fb.id = b.bill_id
+            WHERE b.project_id = p.id) AS received_amount
+    </sql>
+
+    <sql id="joins">
+        FROM pm_project p
+        LEFT JOIN scm_customer c ON c.id = p.customer_id
+        LEFT JOIN sys_user u ON u.id = p.manager_id
+        LEFT JOIN sys_dept d ON d.id = p.dept_id
+        LEFT JOIN scm_order so ON so.id = p.sales_order_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.pm.entity.PmProject">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (p.code LIKE CONCAT('%', #{keyword}, '%') OR p.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null and status != ''">AND p.status = #{status}</if>
+            <if test="type != null and type != ''">AND p.type = #{type}</if>
+            <if test="managerId != null">AND p.manager_id = #{managerId}</if>
+            <if test="customerId != null">AND p.customer_id = #{customerId}</if>
+        </where>
+        ORDER BY CASE p.status WHEN 'ACTIVE' THEN 0 WHEN 'PLANNING' THEN 1 WHEN 'APPROVING' THEN 1 WHEN 'SUSPENDED' THEN 2 ELSE 3 END, p.plan_end, p.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.pm.entity.PmProject">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE p.id = #{id}
+    </select>
+
+    <select id="selectOptions" resultType="com.lemon.erp.modules.pm.entity.PmProject">
+        SELECT p.id, p.code, p.name, p.status, p.customer_id, p.manager_id
+        FROM pm_project p
+        WHERE p.status IN ('PLANNING', 'APPROVING', 'ACTIVE', 'SUSPENDED')
+        <if test="userId != null">AND EXISTS (SELECT 1 FROM pm_member m WHERE m.project_id = p.id AND m.user_id = #{userId})</if>
+        ORDER BY p.code
+    </select>
+
+</mapper>

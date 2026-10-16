@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinSupplierStatementMapper">
+
+    <sql id="columns">
+        st.*, s.code AS supplier_code, s.name AS supplier_name, u.nickname AS create_by_name
+    </sql>
+
+    <sql id="joins">
+        FROM fin_supplier_statement st
+        LEFT JOIN scm_supplier s ON s.id = st.supplier_id
+        LEFT JOIN sys_user u ON u.id = st.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinSupplierStatement">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="supplierId != null">st.supplier_id = #{supplierId}</if>
+            <if test="portal">AND st.status &lt;&gt; 'DRAFT'</if>
+            <if test="status != null">AND st.status = #{status}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (st.statement_no LIKE CONCAT('%', #{keyword}, '%') OR s.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY st.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinSupplierStatement">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE st.id = #{id}
+    </select>
+
+    <select id="selectLines" resultType="com.lemon.erp.modules.fin.entity.FinSupplierStatementLine">
+        SELECT * FROM fin_supplier_statement_line WHERE statement_id = #{statementId} ORDER BY bill_date, id
+    </select>
+
+    <select id="selectUnreconciledBills" resultType="com.lemon.erp.modules.fin.entity.FinSupplierStatementLine">
+        SELECT b.id AS bill_id, b.bill_no, b.source_type, b.source_no, b.bill_date, b.amount, b.tax_amount
+        FROM fin_bill b
+        WHERE b.kind = 'AP' AND b.partner_id = #{supplierId} AND b.bill_date &gt;= #{begin} AND b.bill_date &lt;= #{end}
+          AND NOT EXISTS (SELECT 1 FROM fin_supplier_statement_line l WHERE l.bill_id = b.id)
+        ORDER BY b.bill_date, b.id
+    </select>
+
+    <insert id="insertLines">
+        INSERT INTO fin_supplier_statement_line (statement_id, bill_id, bill_no, source_type, source_no, bill_date, amount, tax_amount,
+                                                 create_time) VALUES
+        <foreach collection="lines" item="l" separator=",">
+            (#{l.statementId}, #{l.billId}, #{l.billNo}, #{l.sourceType}, #{l.sourceNo}, #{l.billDate}, #{l.amount}, #{l.taxAmount}, NOW())
+        </foreach>
+    </insert>
+
+    <delete id="deleteLines">
+        DELETE FROM fin_supplier_statement_line WHERE statement_id = #{statementId}
+    </delete>
+
+</mapper>

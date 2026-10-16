@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.QmsAnalysisMapper">
+
+    <select id="selectTrend" resultType="com.lemon.erp.modules.mes.dto.QmsViews$TrendRow">
+        SELECT t.month, t.type, COUNT(*) AS total, SUM(CASE WHEN t.result &lt;&gt; 'FAIL' THEN 1 ELSE 0 END) AS pass,
+               SUM(CASE WHEN t.result = 'FAIL' THEN 1 ELSE 0 END) AS fail
+        FROM (
+            SELECT CONCAT(YEAR(i.inspect_date), '-', LPAD(MONTH(i.inspect_date), 2, '0')) AS month, i.type, i.result
+            FROM mes_inspection i
+            WHERE i.status = 'CONFIRMED' AND i.inspect_date &gt;= #{begin} AND i.inspect_date &lt;= #{end}
+        ) t
+        GROUP BY t.month, t.type
+        ORDER BY t.month, t.type
+    </select>
+
+    <select id="selectPareto" resultType="com.lemon.erp.modules.mes.dto.QmsViews$ParetoRow">
+        SELECT COALESCE(i.defect_type, 'OTHER') AS defect_type, SUM(i.defect_qty) AS qty, COUNT(*) AS batch_count
+        FROM mes_inspection i
+        WHERE i.status = 'CONFIRMED' AND i.result = 'FAIL' AND i.inspect_date &gt;= #{begin} AND i.inspect_date &lt;= #{end}
+        GROUP BY COALESCE(i.defect_type, 'OTHER')
+        ORDER BY qty DESC
+    </select>
+
+    <select id="selectSpcItems" resultType="com.lemon.erp.modules.mes.dto.QmsViews$SpcItem">
+        SELECT pi.id AS plan_item_id, p.name AS plan_name, pi.name AS item_name, pi.unit, m.name AS material_name,
+               COUNT(it.id) AS subgroups
+        FROM qms_inspection_plan_item pi
+        JOIN qms_inspection_plan p ON p.id = pi.plan_id
+        LEFT JOIN wms_material m ON m.id = p.material_id
+        JOIN qms_inspection_item it ON it.plan_item_id = pi.id AND it.measured IS NOT NULL
+        JOIN mes_inspection i ON i.id = it.inspection_id AND i.status = 'CONFIRMED'
+        WHERE pi.method = 'QUANTITATIVE'
+        GROUP BY pi.id, p.name, pi.name, pi.unit, m.name
+        ORDER BY p.name, pi.seq
+    </select>
+
+    <select id="selectSpcRows" resultType="com.lemon.erp.modules.mes.mapper.QmsAnalysisMapper$SpcRow">
+        SELECT i.id AS inspection_id, i.insp_no, i.inspect_date, it.measured
+        FROM qms_inspection_item it
+        JOIN mes_inspection i ON i.id = it.inspection_id
+        WHERE it.plan_item_id = #{planItemId} AND it.measured IS NOT NULL AND i.status = 'CONFIRMED'
+          <if test="begin != null">AND i.inspect_date &gt;= #{begin}</if>
+          <if test="end != null">AND i.inspect_date &lt;= #{end}</if>
+        ORDER BY i.inspect_date, i.id
+    </select>
+
+    <select id="selectPlanItemSpec" resultType="com.lemon.erp.modules.mes.entity.QmsInspectionItem">
+        SELECT pi.id AS plan_item_id, pi.name, pi.unit, pi.lower_limit, pi.upper_limit
+        FROM qms_inspection_plan_item pi
+        WHERE pi.id = #{planItemId}
+    </select>
+
+</mapper>

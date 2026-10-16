@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinConsumableUseMapper">
+
+    <!-- 参考单价：最近一次核算的单价（不晚于领用期间），没有时取物料的参考成本价 -->
+    <sql id="refUnitCost">
+        COALESCE((SELECT mc.unit_cost FROM fin_material_cost mc
+                  WHERE mc.material_id = i.material_id AND mc.unit_cost &gt; 0
+                    AND mc.period &lt;= YEAR(u.use_date) * 100 + MONTH(u.use_date)
+                  ORDER BY mc.period DESC LIMIT 1), m.ref_cost, 0)
+    </sql>
+
+    <sql id="viewSelect">
+        SELECT u.*, d.name AS dept_name, su.nickname AS user_name, w.name AS warehouse_name, a.name AS expense_account_name,
+               sd.doc_no AS wms_doc_no,
+               (SELECT COALESCE(SUM(i.qty), 0) FROM fin_consumable_use_item i WHERE i.use_id = u.id) AS total_qty,
+               (SELECT COALESCE(SUM(ROUND(i.qty * <include refid="refUnitCost"/>, 2)), 0)
+                FROM fin_consumable_use_item i JOIN wms_material m ON m.id = i.material_id WHERE i.use_id = u.id) AS ref_amount
+        FROM fin_consumable_use u
+        LEFT JOIN sys_dept d ON d.id = u.dept_id
+        LEFT JOIN sys_user su ON su.id = u.user_id
+        LEFT JOIN wms_warehouse w ON w.id = u.warehouse_id
+        LEFT JOIN fin_account a ON a.id = u.expense_account_id
+        LEFT JOIN wms_stock_doc sd ON sd.id = u.wms_doc_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinConsumableUse">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="status != null">u.status = #{status}</if>
+            <if test="deptId != null">AND u.dept_id = #{deptId}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (u.use_no LIKE CONCAT('%', #{keyword}, '%') OR u.remark LIKE CONCAT('%', #{keyword}, '%')
+                     OR EXISTS (SELECT 1 FROM fin_consumable_use_item i JOIN wms_material m ON m.id = i.material_id
+                                WHERE i.use_id = u.id AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))))
+            </if>
+        </where>
+        ORDER BY u.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinConsumableUse">
+        <include refid="viewSelect"/>
+        WHERE u.id = #{id}
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.fin.entity.FinConsumableUseItem">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, l.name AS location_name,
+               <include refid="refUnitCost"/> AS ref_unit_cost
+        FROM fin_consumable_use_item i
+        JOIN fin_consumable_use u ON u.id = i.use_id
+        LEFT JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN wms_location l ON l.id = i.location_id
+        WHERE i.use_id = #{useId}
+        ORDER BY i.id
+    </select>
+
+    <insert id="insertItems">
+        INSERT INTO fin_consumable_use_item (use_id, material_id, location_id, batch_no, qty, remark) VALUES
+        <foreach collection="items" item="i" separator=",">
+            (#{i.useId}, #{i.materialId}, #{i.locationId}, #{i.batchNo}, #{i.qty}, #{i.remark})
+        </foreach>
+    </insert>
+
+    <delete id="deleteItems">
+        DELETE FROM fin_consumable_use_item WHERE use_id = #{useId}
+    </delete>
+
+    <select id="selectLedger" resultType="java.util.Map">
+        SELECT t.dept_id AS "deptId", d.name AS "deptName", t.material_id AS "materialId", m.code AS "materialCode",
+               m.name AS "materialName", m.unit AS "unit", t.qty AS "qty", t.ref_amount AS "refAmount"
+        FROM (
+            SELECT u.dept_id, i.material_id, SUM(i.qty) AS qty,
+                   SUM(ROUND(i.qty * <include refid="refUnitCost"/>, 2)) AS ref_amount
+            FROM fin_consumable_use u
+            JOIN fin_consumable_use_item i ON i.use_id = u.id
+            JOIN wms_material m ON m.id = i.material_id
+            WHERE u.status = 'CONFIRMED' AND u.use_date &gt;= #{begin} AND u.use_date &lt;= #{end}
+              <if test="deptId != null">AND u.dept_id = #{deptId}</if>
+            GROUP BY u.dept_id, i.material_id
+        ) t
+        LEFT JOIN sys_dept d ON d.id = t.dept_id
+        LEFT JOIN wms_material m ON m.id = t.material_id
+        ORDER BY d.name, m.code
+    </select>
+
+    <select id="selectForCost" resultType="java.util.Map">
+        SELECT i.material_id AS "materialId", u.dept_id AS "deptId", u.expense_account_id AS "accountId", SUM(i.qty) AS "qty"
+        FROM fin_consumable_use u
+        JOIN fin_consumable_use_item i ON i.use_id = u.id
+        WHERE u.status = 'CONFIRMED' AND u.use_date &gt;= #{begin} AND u.use_date &lt;= #{end}
+        GROUP BY i.material_id, u.dept_id, u.expense_account_id
+    </select>
+
+</mapper>

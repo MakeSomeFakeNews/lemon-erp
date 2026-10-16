@@ -1,0 +1,18 @@
+package com.lemon.erp.modules.crm.mapper;
+
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.time.LocalDate;
+import java.util.Map;
+
+/**
+ * 首页待办数量
+ */
+@Mapper
+public interface CrmTodoMapper {
+
+    Map<String, Object> selectCounts(@Param("userId") Long userId, @Param("today") LocalDate today,
+                                     @Param("tomorrow") LocalDate tomorrow, @Param("in15") LocalDate in15,
+                                     @Param("in30") LocalDate in30);
+}

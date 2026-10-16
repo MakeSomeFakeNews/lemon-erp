@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinCostVarianceMapper">
+
+    <!-- 工单在 next 之前的净领料（领料、补料为正，退料为负），不含产品本身 -->
+    <sql id="netIssues">
+        SELECT d.wo_id, i.material_id, d.biz_date,
+               CASE WHEN d.kind = 'RETURN' THEN -i.qty ELSE i.qty END AS qty
+        FROM mes_wo_doc d
+        JOIN mes_wo_doc_item i ON i.doc_id = d.id
+        JOIN mes_work_order w ON w.id = d.wo_id AND w.material_id &lt;&gt; i.material_id
+        WHERE d.kind IN ('ISSUE', 'SUPPLEMENT', 'RETURN') AND d.biz_date &lt; #{next}
+    </sql>
+
+    <select id="selectOrders" resultType="com.lemon.erp.modules.fin.dto.CostVariance">
+        SELECT o.id AS wo_id, o.wo_no, o.status, o.material_id, m.code AS material_code, m.name AS material_name, m.unit,
+               c.finished_qty, c.hours, c.material_cost AS actual_material, c.labor_cost AS actual_labor,
+               c.overhead_cost AS actual_overhead, c.loss_amount,
+               CASE WHEN ps.id IS NULL THEN 0 ELSE 1 END AS has_std,
+               COALESCE(ps.material_cost, 0) AS std_unit_material, COALESCE(ps.labor_cost, 0) AS std_unit_labor,
+               COALESCE(ps.overhead_cost, 0) AS std_unit_overhead, COALESCE(ps.std_hours, 0) AS std_unit_hours,
+               COALESCE(iss.issued_at_std, 0) AS issued_at_std, COALESCE(iss.missing_std, 0) AS missing_std
+        FROM mes_work_order o
+        JOIN wms_material m ON m.id = o.material_id
+        JOIN (
+            SELECT wo_id, SUM(finished_qty) AS finished_qty, SUM(hours) AS hours, SUM(material_cost) AS material_cost,
+                   SUM(labor_cost) AS labor_cost, SUM(overhead_cost) AS overhead_cost, SUM(loss_amount) AS loss_amount
+            FROM fin_wo_cost
+            WHERE period &lt;= #{period}
+            GROUP BY wo_id
+        ) c ON c.wo_id = o.id
+        LEFT JOIN fin_std_cost ps ON ps.version_id = #{versionId} AND ps.material_id = o.material_id
+        LEFT JOIN (
+            SELECT t.wo_id, SUM(t.qty * COALESCE(sc.unit_cost, 0)) AS issued_at_std,
+                   SUM(CASE WHEN sc.id IS NULL THEN 1 ELSE 0 END) AS missing_std
+            FROM (
+                SELECT n.wo_id, n.material_id, SUM(n.qty) AS qty
+                FROM (<include refid="netIssues"/>) n
+                GROUP BY n.wo_id, n.material_id
+            ) t
+            LEFT JOIN fin_std_cost sc ON sc.version_id = #{versionId} AND sc.material_id = t.material_id
+            GROUP BY t.wo_id
+        ) iss ON iss.wo_id = o.id
+        LEFT JOIN (
+            SELECT wo_id, MAX(biz_date) AS last_finish FROM mes_wo_doc WHERE kind = 'FINISH' GROUP BY wo_id
+        ) lf ON lf.wo_id = o.id
+        WHERE o.wo_type = 'NORMAL'
+          AND ((o.status = 'COMPLETED' AND lf.last_finish &gt;= #{begin} AND lf.last_finish &lt; #{next})
+               OR (o.status = 'CLOSED' AND o.close_time &gt;= #{begin} AND o.close_time &lt; #{next}))
+        ORDER BY o.wo_no
+    </select>
+
+    <select id="selectWoMaterials" resultType="java.util.Map">
+        SELECT material_id AS "materialId", unit_qty AS "unitQty" FROM mes_wo_material WHERE wo_id = #{woId}
+    </select>
+
+    <select id="selectIssues" resultType="java.util.Map">
+        SELECT n.material_id AS "materialId", SUM(n.qty) AS "qty", SUM(n.qty * COALESCE(mc.unit_cost, 0)) AS "amount"
+        FROM (<include refid="netIssues"/>) n
+        LEFT JOIN fin_material_cost mc ON mc.material_id = n.material_id
+             AND mc.period = YEAR(n.biz_date) * 100 + MONTH(n.biz_date)
+        WHERE n.wo_id = #{woId}
+        GROUP BY n.material_id
+    </select>
+
+</mapper>

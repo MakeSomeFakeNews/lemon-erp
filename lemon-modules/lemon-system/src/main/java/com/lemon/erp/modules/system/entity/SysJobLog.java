@@ -1,0 +1,32 @@
+package com.lemon.erp.modules.system.entity;
+
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.lemon.erp.common.base.BaseEntity;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.time.LocalDateTime;
+
+@Data
+@EqualsAndHashCode(callSuper = true)
+@TableName("sys_job_log")
+public class SysJobLog extends BaseEntity {
+
+    private String jobKey;
+
+    /** SCHEDULE 定时 / MANUAL 手动 */
+    private String triggerType;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime startTime;
+
+    private Long costMs;
+
+    /** SUCCESS / FAILED */
+    private String status;
+
+    private String message;
+
+    private Long createBy;
+}

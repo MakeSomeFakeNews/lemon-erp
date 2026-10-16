@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesEquipmentStopMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.MesEquipmentStop">
+        SELECT s.*, e.code AS equipment_code, e.name AS equipment_name, m.order_no AS maintenance_no, u.nickname AS create_by_name
+        FROM mes_equipment_stop s
+        JOIN mes_equipment e ON e.id = s.equipment_id
+        LEFT JOIN mes_maintenance m ON m.id = s.maintenance_id
+        LEFT JOIN sys_user u ON u.id = s.create_by
+        <where>
+            <if test="equipmentId != null">s.equipment_id = #{equipmentId}</if>
+            <if test="from != null">AND s.end_time &gt; #{from}</if>
+            <if test="to != null">AND s.start_time &lt; #{to}</if>
+            <if test="reason != null">AND s.reason = #{reason}</if>
+        </where>
+        ORDER BY s.start_time DESC, s.id DESC
+    </select>
+
+    <select id="selectOverlapping" resultType="com.lemon.erp.modules.mes.entity.MesEquipmentStop">
+        SELECT * FROM mes_equipment_stop
+        WHERE end_time &gt; #{from} AND start_time &lt; #{to}
+        <if test="equipmentId != null">AND equipment_id = #{equipmentId}</if>
+    </select>
+
+    <select id="selectOutput" resultType="java.util.Map">
+        SELECT r.equipment_id AS "equipmentId", r.report_date AS "reportDate", SUM(r.good_qty) AS "goodQty", SUM(r.scrap_qty) AS "scrapQty",
+               SUM((r.good_qty + r.scrap_qty) * op.std_hours) AS "idealHours"
+        FROM mes_report r
+        JOIN mes_wo_op op ON op.id = r.op_id
+        WHERE r.equipment_id IS NOT NULL AND r.report_date &gt;= #{begin} AND r.report_date &lt;= #{end}
+        <if test="equipmentId != null">AND r.equipment_id = #{equipmentId}</if>
+        GROUP BY r.equipment_id, r.report_date
+    </select>
+
+</mapper>

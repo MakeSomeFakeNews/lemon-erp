@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmAsnMapper">
+
+    <sql id="columns">
+        a.*, s.name AS supplier_name, o.order_no, o.warehouse_id, w.name AS warehouse_name, d.doc_no AS trade_doc_no,
+        (SELECT COALESCE(SUM(i.qty), 0) FROM scm_asn_item i WHERE i.asn_id = a.id) AS total_qty
+    </sql>
+
+    <sql id="joins">
+        FROM scm_asn a
+        LEFT JOIN scm_supplier s ON s.id = a.supplier_id
+        LEFT JOIN scm_order o ON o.id = a.order_id
+        LEFT JOIN wms_warehouse w ON w.id = o.warehouse_id
+        LEFT JOIN scm_trade_doc d ON d.id = a.trade_doc_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmAsn">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="supplierId != null">a.supplier_id = #{supplierId}</if>
+            <if test="status != null">AND a.status = #{status}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (a.asn_no LIKE CONCAT('%', #{keyword}, '%') OR o.order_no LIKE CONCAT('%', #{keyword}, '%')
+                     OR s.name LIKE CONCAT('%', #{keyword}, '%') OR a.tracking_no LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY a.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmAsn">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE a.id = #{id}
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.scm.entity.ScmAsnItem">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.batch_enabled, m.serial_enabled
+        FROM scm_asn_item i
+        LEFT JOIN wms_material m ON m.id = i.material_id
+        WHERE i.asn_id = #{asnId}
+        ORDER BY i.id
+    </select>
+
+    <select id="selectOpenLines" resultType="com.lemon.erp.modules.scm.dto.SrmViews$AsnOpenLine">
+        SELECT oi.id AS order_item_id,
+               oi.qty - oi.done_qty + oi.replenish_qty - COALESCE((
+                   SELECT SUM(ai.qty) FROM scm_asn_item ai JOIN scm_asn a ON a.id = ai.asn_id
+                   WHERE ai.order_item_id = oi.id AND a.status = 'SUBMITTED'
+                   <if test="excludeAsnId != null">AND a.id &lt;&gt; #{excludeAsnId}</if>
+               ), 0) AS open_qty
+        FROM scm_order_item oi
+        WHERE oi.order_id = #{orderId}
+        ORDER BY oi.id
+    </select>
+
+    <insert id="insertItems">
+        INSERT INTO scm_asn_item (asn_id, order_item_id, material_id, qty, batch_no, remark, create_time, update_time) VALUES
+        <foreach collection="items" item="i" separator=",">
+            (#{i.asnId}, #{i.orderItemId}, #{i.materialId}, #{i.qty}, #{i.batchNo}, #{i.remark}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+    <update id="transit">
+        UPDATE scm_asn SET status = #{to}, update_time = NOW() WHERE id = #{id} AND status = #{from}
+    </update>
+
+</mapper>

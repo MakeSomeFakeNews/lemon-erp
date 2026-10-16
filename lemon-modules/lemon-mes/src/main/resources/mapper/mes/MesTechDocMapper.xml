@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesTechDocMapper">
+
+    <sql id="viewSelect">
+        SELECT d.*, m.code AS material_code, m.name AS material_name, e.ecn_no, ru.nickname AS release_by_name, u.nickname AS create_by_name,
+               (SELECT COUNT(*) FROM sys_attachment a WHERE a.biz_type = 'mes_doc' AND a.biz_id = d.id) AS file_count
+        FROM mes_tech_doc d
+        LEFT JOIN wms_material m ON m.id = d.material_id
+        LEFT JOIN mes_ecn e ON e.id = d.ecn_id
+        LEFT JOIN sys_user ru ON ru.id = d.release_by
+        LEFT JOIN sys_user u ON u.id = d.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.MesTechDoc">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="latest">NOT EXISTS (SELECT 1 FROM mes_tech_doc n WHERE n.prev_id = d.id)</if>
+            <if test="docType != null">AND d.doc_type = #{docType}</if>
+            <if test="status != null">AND d.status = #{status}</if>
+            <if test="materialId != null">AND d.material_id = #{materialId}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (d.doc_no LIKE CONCAT('%', #{keyword}, '%') OR d.name LIKE CONCAT('%', #{keyword}, '%')
+                     OR m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY d.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.mes.entity.MesTechDoc">
+        <include refid="viewSelect"/>
+        WHERE d.id = #{id}
+    </select>
+
+    <select id="selectVersions" resultType="com.lemon.erp.modules.mes.entity.MesTechDoc">
+        <include refid="viewSelect"/>
+        WHERE d.doc_no = #{docNo}
+        ORDER BY d.id DESC
+    </select>
+
+    <select id="selectReleased" resultType="com.lemon.erp.modules.mes.entity.MesTechDoc">
+        <include refid="viewSelect"/>
+        WHERE d.status = 'RELEASED'
+          AND d.material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY d.material_id, d.doc_type, d.doc_no
+    </select>
+
+</mapper>

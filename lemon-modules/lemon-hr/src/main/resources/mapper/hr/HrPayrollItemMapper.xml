@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrPayrollItemMapper">
+
+    <select id="selectByPayroll" resultType="com.lemon.erp.modules.hr.entity.HrPayrollItem">
+        SELECT i.*, e.emp_no, e.name AS employee_name, d.name AS dept_name
+        FROM hr_payroll_item i
+        JOIN hr_employee e ON e.id = i.employee_id
+        LEFT JOIN sys_dept d ON d.id = i.dept_id
+        WHERE i.payroll_id = #{payrollId}
+        <if test="keyword != null and keyword != ''">
+            AND (e.emp_no LIKE CONCAT('%', #{keyword}, '%') OR e.name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY e.emp_no
+    </select>
+
+    <select id="selectPayslips" resultType="com.lemon.erp.modules.hr.entity.HrPayrollItem">
+        SELECT i.*, p.period, p.status AS payroll_status, e.emp_no, e.name AS employee_name, d.name AS dept_name
+        FROM hr_payroll_item i
+        JOIN hr_payroll p ON p.id = i.payroll_id
+        JOIN hr_employee e ON e.id = i.employee_id
+        LEFT JOIN sys_dept d ON d.id = i.dept_id
+        WHERE i.employee_id = #{employeeId} AND p.status IN ('CONFIRMED', 'PAID')
+        ORDER BY p.period DESC
+    </select>
+
+    <!-- 累计预扣：员工本年此前最近一个月的累计应纳税所得额、累计已扣税额，以及此前的工资月数 -->
+    <select id="selectPriorCumulative" resultType="java.util.Map">
+        SELECT i.employee_id AS "employeeId", i.cum_taxable AS "cumTaxable", i.cum_tax AS "cumTax"
+        FROM hr_payroll_item i
+        JOIN hr_payroll p ON p.id = i.payroll_id
+        WHERE i.employee_id IN <foreach collection="employeeIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND p.period &gt;= #{yearStart} AND p.period &lt; #{period}
+          AND p.period = (SELECT MAX(p2.period) FROM hr_payroll_item i2 JOIN hr_payroll p2 ON p2.id = i2.payroll_id
+                          WHERE i2.employee_id = i.employee_id AND p2.period &gt;= #{yearStart} AND p2.period &lt; #{period})
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO hr_payroll_item (payroll_id, employee_id, dept_id, should_days, month_days, absent_days, late_count,
+            personal_hours, sick_hours, overtime_hours, base_salary, allowance, overtime_pay, piece_wage, perf_grade, perf_bonus,
+            other_bonus, attendance_deduct, gross_pay, social_personal, housing_personal, special_deduct, income_tax, cum_taxable,
+            cum_tax, other_deduct, net_pay, social_company, housing_company, remark, create_time, update_time) VALUES
+        <foreach collection="items" item="i" separator=",">
+            (#{i.payrollId}, #{i.employeeId}, #{i.deptId}, #{i.shouldDays}, #{i.monthDays}, #{i.absentDays}, #{i.lateCount},
+             #{i.personalHours}, #{i.sickHours}, #{i.overtimeHours}, #{i.baseSalary}, #{i.allowance}, #{i.overtimePay}, #{i.pieceWage},
+             #{i.perfGrade}, #{i.perfBonus}, #{i.otherBonus}, #{i.attendanceDeduct}, #{i.grossPay}, #{i.socialPersonal},
+             #{i.housingPersonal}, #{i.specialDeduct}, #{i.incomeTax}, #{i.cumTaxable}, #{i.cumTax}, #{i.otherDeduct}, #{i.netPay},
+             #{i.socialCompany}, #{i.housingCompany},
+             #{i.remark}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+    <!-- 人工成本按部门、岗位类别汇总：岗位类别决定计提科目（生产 → 制造费用，销售 → 销售费用，其余 → 管理费用） -->
+    <select id="selectCostByDept" resultType="java.util.Map">
+        SELECT i.dept_id AS "deptId", d.name AS "deptName", p.category AS "category",
+               SUM(i.gross_pay + i.social_company + i.housing_company) AS "amount"
+        FROM hr_payroll_item i
+        LEFT JOIN sys_dept d ON d.id = i.dept_id
+        LEFT JOIN hr_employee e ON e.id = i.employee_id
+        LEFT JOIN hr_position p ON p.id = e.position_id
+        WHERE i.payroll_id = #{payrollId}
+        GROUP BY i.dept_id, d.name, p.category
+    </select>
+
+    <select id="sumOtherDeduct" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(other_deduct), 0) FROM hr_payroll_item WHERE payroll_id = #{payrollId}
+    </select>
+
+    <select id="selectPieceWages" resultType="java.util.Map">
+        SELECT e.id AS "employeeId", SUM(r.piece_wage) AS "amount"
+        FROM mes_report r
+        JOIN hr_employee e ON e.user_id = r.operator_id
+        WHERE r.piece_wage IS NOT NULL AND r.report_date &gt;= #{begin} AND r.report_date &lt;= #{end}
+        GROUP BY e.id
+    </select>
+
+</mapper>

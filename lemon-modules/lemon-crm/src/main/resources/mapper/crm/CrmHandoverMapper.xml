@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.crm.mapper.CrmHandoverMapper">
+
+    <update id="handoverCustomers">
+        UPDATE crm_customer
+        SET owner_id = #{to},
+            dept_id = <choose><when test="to != null">(SELECT u.dept_id FROM sys_user u WHERE u.id = #{to})</when><otherwise>NULL</otherwise></choose>,
+            claim_time = <choose><when test="to != null">NOW()</when><otherwise>NULL</otherwise></choose>,
+            update_time = NOW()
+        WHERE owner_id = #{from}
+    </update>
+
+    <update id="handoverLeads">
+        UPDATE crm_lead SET owner_id = #{to}, dept_id = (SELECT u.dept_id FROM sys_user u WHERE u.id = #{to}), update_time = NOW()
+        WHERE owner_id = #{from}
+    </update>
+
+    <update id="handoverOpportunities">
+        UPDATE crm_opportunity SET owner_id = #{to}, dept_id = (SELECT u.dept_id FROM sys_user u WHERE u.id = #{to}), update_time = NOW()
+        WHERE owner_id = #{from}
+    </update>
+
+    <update id="handoverTickets">
+        UPDATE crm_ticket SET assignee_id = #{to}, update_time = NOW() WHERE assignee_id = #{from}
+    </update>
+
+</mapper>

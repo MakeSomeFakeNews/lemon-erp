@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrTrainingMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.hr.entity.HrTraining">
+        SELECT t.id, t.title, t.category, t.trainer, t.start_date, t.end_date, t.hours, t.location, t.cost, t.status,
+               t.create_by, t.create_time, t.update_time,
+               COALESCE(r.trainee_count, 0) AS trainee_count, COALESCE(r.attended_count, 0) AS attended_count,
+               COALESCE(r.passed_count, 0) AS passed_count
+        FROM hr_training t
+        LEFT JOIN (SELECT training_id, COUNT(*) AS trainee_count,
+                          SUM(CASE WHEN attended = 1 THEN 1 ELSE 0 END) AS attended_count,
+                          SUM(CASE WHEN passed = 1 THEN 1 ELSE 0 END) AS passed_count
+                   FROM hr_training_record GROUP BY training_id) r ON r.training_id = t.id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (t.title LIKE CONCAT('%', #{keyword}, '%') OR t.trainer LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="category != null and category != ''">AND t.category = #{category}</if>
+            <if test="status != null and status != ''">AND t.status = #{status}</if>
+            <if test="yearStart != null">AND t.start_date BETWEEN #{yearStart} AND #{yearEnd}</if>
+        </where>
+        ORDER BY t.start_date DESC, t.id DESC
+    </select>
+
+</mapper>

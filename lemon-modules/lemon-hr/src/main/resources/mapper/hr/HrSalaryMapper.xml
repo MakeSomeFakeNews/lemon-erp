@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrSalaryMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.hr.entity.HrSalary">
+        SELECT s.id, e.id AS employee_id, s.base_salary, s.post_allowance, s.other_allowance, s.perf_bonus_base,
+               s.social_base, s.housing_base, s.housing_rate, s.bank_name, s.bank_account, s.remark, s.update_time,
+               e.emp_no, e.name AS employee_name, d.name AS dept_name, p.name AS position_name, e.status AS emp_status
+        FROM hr_employee e
+        LEFT JOIN hr_salary s ON s.employee_id = e.id
+        LEFT JOIN sys_dept d ON d.id = e.dept_id
+        LEFT JOIN hr_position p ON p.id = e.position_id
+        WHERE e.status &lt;&gt; 'LEFT'
+        <if test="keyword != null and keyword != ''">
+            AND (e.emp_no LIKE CONCAT('%', #{keyword}, '%') OR e.name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND e.dept_id IN <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
+        <if test="missing != null and missing">AND s.id IS NULL</if>
+        ORDER BY e.emp_no
+    </select>
+
+    <select id="selectProductionSalaries" resultType="com.lemon.erp.modules.hr.entity.HrSalary">
+        SELECT s.*
+        FROM hr_salary s
+        JOIN hr_employee e ON e.id = s.employee_id
+        JOIN hr_position p ON p.id = e.position_id
+        WHERE e.status &lt;&gt; 'LEFT' AND p.category = 'PRODUCTION'
+    </select>
+
+</mapper>

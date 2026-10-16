@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.QmsInspectionItemMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO qms_inspection_item (inspection_id, plan_item_id, seq, name, method, standard, lower_limit, upper_limit, unit,
+                                         critical, measured, defect_count, result)
+        VALUES
+        <foreach collection="items" item="i" separator=",">
+            (#{i.inspectionId}, #{i.planItemId}, #{i.seq}, #{i.name}, #{i.method}, #{i.standard}, #{i.lowerLimit}, #{i.upperLimit},
+             #{i.unit}, #{i.critical}, #{i.measured}, #{i.defectCount}, #{i.result})
+        </foreach>
+    </insert>
+
+</mapper>

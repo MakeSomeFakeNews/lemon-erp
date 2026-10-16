@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmBidMapper">
+
+    <select id="selectByTender" resultType="com.lemon.erp.modules.scm.entity.ScmBid">
+        SELECT b.*, s.code AS supplier_code, s.name AS supplier_name, u.nickname AS submit_by_name
+        FROM scm_bid b
+        LEFT JOIN scm_supplier s ON s.id = b.supplier_id
+        LEFT JOIN sys_user u ON u.id = b.submit_by
+        WHERE b.tender_id = #{tenderId}
+        ORDER BY b.id
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.scm.entity.ScmBidItem">
+        SELECT * FROM scm_bid_item
+        WHERE bid_id IN <foreach collection="bidIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY id
+    </select>
+
+    <insert id="insertItems">
+        INSERT INTO scm_bid_item (bid_id, tender_item_id, price, tax_rate, remark, create_time, update_time) VALUES
+        <foreach collection="items" item="i" separator=",">
+            (#{i.bidId}, #{i.tenderItemId}, #{i.price}, #{i.taxRate}, #{i.remark}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+    <delete id="deleteItems">
+        DELETE FROM scm_bid_item WHERE bid_id = #{bidId}
+    </delete>
+
+</mapper>

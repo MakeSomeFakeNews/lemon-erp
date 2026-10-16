@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrLeaveMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.hr.entity.HrLeave">
+        SELECT l.*, e.emp_no, e.name AS employee_name, d.name AS dept_name, u.nickname AS approve_by_name
+        FROM hr_leave l
+        JOIN hr_employee e ON e.id = l.employee_id
+        LEFT JOIN sys_dept d ON d.id = l.dept_id
+        LEFT JOIN sys_user u ON u.id = l.approve_by
+        <where>
+            <if test="q.keyword != null and q.keyword != ''">
+                (l.leave_no LIKE CONCAT('%', #{q.keyword}, '%') OR e.emp_no LIKE CONCAT('%', #{q.keyword}, '%')
+                 OR e.name LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+            <if test="q.kind != null and q.kind != ''">AND l.kind = #{q.kind}</if>
+            <if test="q.type != null and q.type != ''">AND l.type = #{q.type}</if>
+            <if test="q.status != null and q.status != ''">AND l.status = #{q.status}</if>
+            <if test="q.deptId != null">AND l.dept_id = #{q.deptId}</if>
+            <if test="q.beginDate != null">AND l.start_time &gt;= #{q.beginDate}</if>
+            <if test="q.endBefore != null">AND l.start_time &lt; #{q.endBefore}</if>
+        </where>
+        ORDER BY l.id DESC
+    </select>
+
+    <select id="selectApprovedOverlapping" resultType="com.lemon.erp.modules.hr.entity.HrLeave">
+        SELECT * FROM hr_leave
+        WHERE status = 'APPROVED' AND start_time &lt; #{to} AND end_time &gt; #{from}
+          AND employee_id IN <foreach collection="employeeIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="countOverlapping" resultType="long">
+        SELECT COUNT(*) FROM hr_leave
+        WHERE employee_id = #{employeeId} AND kind = #{kind} AND status IN ('APPROVING', 'APPROVED')
+          AND start_time &lt; #{end} AND end_time &gt; #{start}
+          <if test="excludeId != null">AND id &lt;&gt; #{excludeId}</if>
+    </select>
+
+    <select id="compensatoryBalance" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(CASE WHEN kind = 'OVERTIME' AND type = 'TO_LEAVE' AND status = 'APPROVED' THEN hours
+                                 WHEN kind = 'LEAVE' AND type = 'COMPENSATORY' AND status IN ('APPROVING', 'APPROVED') THEN -hours
+                                 ELSE 0 END), 0)
+        FROM hr_leave WHERE employee_id = #{employeeId}
+    </select>
+
+    <select id="sumHours" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(hours), 0) FROM hr_leave
+        WHERE employee_id = #{employeeId} AND kind = 'LEAVE' AND type = #{type} AND status IN ('APPROVING', 'APPROVED')
+          AND start_time &gt;= #{from} AND start_time &lt; #{to}
+    </select>
+
+</mapper>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmRebateMapper">
+
+    <sql id="viewSelect">
+        SELECT r.*, c.name AS customer_name, b.bill_no, u.nickname AS create_by_name
+        FROM scm_rebate r
+        JOIN scm_customer c ON c.id = r.customer_id
+        LEFT JOIN fin_bill b ON b.id = r.bill_id
+        LEFT JOIN sys_user u ON u.id = r.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmRebate">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="customerId != null">r.customer_id = #{customerId}</if>
+            <if test="status != null">AND r.status = #{status}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (r.rebate_no LIKE CONCAT('%', #{keyword}, '%') OR c.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY r.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmRebate">
+        <include refid="viewSelect"/>
+        WHERE r.id = #{id}
+    </select>
+
+    <select id="selectTiers" resultType="com.lemon.erp.modules.scm.entity.ScmRebateTier">
+        SELECT * FROM scm_rebate_tier WHERE rebate_id = #{rebateId} ORDER BY min_amount
+    </select>
+
+    <delete id="deleteTiers">
+        DELETE FROM scm_rebate_tier WHERE rebate_id = #{rebateId}
+    </delete>
+
+    <insert id="insertTiers">
+        INSERT INTO scm_rebate_tier (rebate_id, min_amount, rate) VALUES
+        <foreach collection="list" item="t" separator=",">(#{rebateId}, #{t.minAmount}, #{t.rate})</foreach>
+    </insert>
+
+    <select id="selectSalesAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(CASE WHEN kind = 'SALES_RETURN' THEN -total_amount ELSE total_amount END), 0)
+        FROM scm_trade_doc
+        WHERE partner_id = #{customerId} AND kind IN ('SALES_OUT', 'SALES_RETURN')
+          AND biz_date &gt;= #{begin} AND biz_date &lt;= #{end}
+    </select>
+
+    <select id="selectEarned" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(rebate_amount), 0) FROM scm_rebate
+        WHERE customer_id = #{customerId} AND status = 'SETTLED' AND settle_mode = 'NEXT_ORDER'
+    </select>
+
+    <select id="selectUsed" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(rebate_amount), 0) FROM scm_order
+        WHERE kind = 'SALES' AND partner_id = #{customerId}
+        <if test="excludeOrderId != null">AND id &lt;&gt; #{excludeOrderId}</if>
+    </select>
+
+</mapper>

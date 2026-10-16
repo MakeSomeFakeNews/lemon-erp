@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmPurchaseContractItemMapper">
+
+    <select id="selectByContract" resultType="com.lemon.erp.modules.scm.entity.ScmPurchaseContractItem">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit
+        FROM scm_purchase_contract_item i
+        LEFT JOIN wms_material m ON m.id = i.material_id
+        WHERE i.contract_id = #{contractId}
+        ORDER BY i.id
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO scm_purchase_contract_item (contract_id, material_id, price, tax_rate, qty_limit, remark, create_time, update_time) VALUES
+        <foreach collection="items" item="i" separator=",">
+            (#{i.contractId}, #{i.materialId}, #{i.price}, #{i.taxRate}, #{i.qtyLimit}, #{i.remark}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

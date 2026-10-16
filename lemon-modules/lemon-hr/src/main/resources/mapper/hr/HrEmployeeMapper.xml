@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrEmployeeMapper">
+
+    <!-- 列表不返回身份证号、住址等敏感字段 -->
+    <sql id="listColumns">
+        e.id, e.emp_no, e.name, e.gender, e.phone, e.email, e.education, e.dept_id, e.position_id, e.user_id, e.shift_id,
+        e.emp_type, e.status, e.entry_date, e.regular_date, e.leave_date, e.create_time, e.update_time,
+        d.name AS dept_name, p.name AS position_name, u.username, s.name AS shift_name
+    </sql>
+
+    <sql id="joins">
+        FROM hr_employee e
+        LEFT JOIN sys_dept d ON d.id = e.dept_id
+        LEFT JOIN hr_position p ON p.id = e.position_id
+        LEFT JOIN sys_user u ON u.id = e.user_id
+        LEFT JOIN hr_shift s ON s.id = e.shift_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.hr.entity.HrEmployee">
+        SELECT <include refid="listColumns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="q.keyword != null and q.keyword != ''">
+                (e.emp_no LIKE CONCAT('%', #{q.keyword}, '%') OR e.name LIKE CONCAT('%', #{q.keyword}, '%')
+                 OR e.phone LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+            <if test="q.deptIds != null and q.deptIds.size() > 0">
+                AND e.dept_id IN <foreach collection="q.deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+            </if>
+            <if test="q.status != null and q.status != ''">AND e.status = #{q.status}</if>
+            <if test="q.status == null or q.status == ''">AND e.status &lt;&gt; 'LEFT'</if>
+            <if test="q.positionId != null">AND e.position_id = #{q.positionId}</if>
+            <if test="q.empType != null and q.empType != ''">AND e.emp_type = #{q.empType}</if>
+        </where>
+        ORDER BY e.emp_no
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.hr.entity.HrEmployee">
+        SELECT e.*, d.name AS dept_name, p.name AS position_name, u.username, s.name AS shift_name
+        <include refid="joins"/>
+        WHERE e.id = #{id}
+    </select>
+
+    <select id="selectOptions" resultType="com.lemon.erp.modules.hr.dto.EmployeeOption">
+        SELECT e.id, e.emp_no, e.name, e.dept_id, d.name AS dept_name, e.user_id
+        FROM hr_employee e
+        LEFT JOIN sys_dept d ON d.id = e.dept_id
+        WHERE e.status &lt;&gt; 'LEFT'
+        <if test="keyword != null and keyword != ''">
+            AND (e.emp_no LIKE CONCAT('%', #{keyword}, '%') OR e.name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY e.emp_no
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectEmployedBetween" resultType="com.lemon.erp.modules.hr.entity.HrEmployee">
+        SELECT e.id, e.emp_no, e.name, e.dept_id, e.user_id, e.shift_id, e.status, e.entry_date, e.leave_date,
+               d.name AS dept_name
+        FROM hr_employee e
+        LEFT JOIN sys_dept d ON d.id = e.dept_id
+        WHERE e.entry_date &lt;= #{to}
+          AND (e.leave_date IS NULL OR e.leave_date &gt;= #{from})
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND e.dept_id IN <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (e.emp_no LIKE CONCAT('%', #{keyword}, '%') OR e.name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY e.emp_no
+    </select>
+
+    <select id="selectStats" resultType="java.util.Map">
+        SELECT COALESCE(SUM(CASE WHEN status &lt;&gt; 'LEFT' THEN 1 ELSE 0 END), 0) AS "active",
+               COALESCE(SUM(CASE WHEN status = 'PROBATION' THEN 1 ELSE 0 END), 0) AS "probation",
+               COALESCE(SUM(CASE WHEN entry_date &gt;= #{monthStart} THEN 1 ELSE 0 END), 0) AS "joined",
+               COALESCE(SUM(CASE WHEN status = 'LEFT' AND leave_date &gt;= #{monthStart} THEN 1 ELSE 0 END), 0) AS "lefted"
+        FROM hr_employee
+    </select>
+
+    <select id="selectCountByDept" resultType="java.util.Map">
+        SELECT e.dept_id AS "deptId", d.name AS "name", COUNT(*) AS "value"
+        FROM hr_employee e
+        LEFT JOIN sys_dept d ON d.id = e.dept_id
+        WHERE e.status &lt;&gt; 'LEFT'
+        GROUP BY e.dept_id, d.name
+        ORDER BY COUNT(*) DESC
+    </select>
+
+    <select id="selectCountByEducation" resultType="java.util.Map">
+        SELECT COALESCE(education, '') AS "name", COUNT(*) AS "value"
+        FROM hr_employee
+        WHERE status &lt;&gt; 'LEFT'
+        GROUP BY education
+        ORDER BY COUNT(*) DESC
+    </select>
+
+</mapper>

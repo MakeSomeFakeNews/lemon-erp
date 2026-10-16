@@ -1,0 +1,10 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '生产制造：生产计划、MRP、工单、BOM、质检、设备'
+
+dependencies {
+    api project(':lemon-modules:lemon-scm')
+    api project(':lemon-modules:lemon-wms')
+}

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.crm.mapper.CrmOpportunityMapper">
+
+    <sql id="columns">
+        o.*, c.name AS customer_name, ct.name AS contact_name, u.nickname AS owner_name, cp.name AS campaign_name
+    </sql>
+
+    <sql id="joins">
+        FROM crm_opportunity o
+        JOIN scm_customer c ON c.id = o.customer_id
+        LEFT JOIN crm_contact ct ON ct.id = o.contact_id
+        LEFT JOIN sys_user u ON u.id = o.owner_id
+        LEFT JOIN crm_campaign cp ON cp.id = o.campaign_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.crm.entity.CrmOpportunity">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (o.opp_no LIKE CONCAT('%', #{keyword}, '%') OR o.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR c.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="stage != null and stage != ''">AND o.stage = #{stage}</if>
+            <if test="status == 'OPEN'">AND o.stage NOT IN ('WON', 'LOST')</if>
+            <if test="status == 'WON' or status == 'LOST'">AND o.stage = #{status}</if>
+            <if test="customerId != null">AND o.customer_id = #{customerId}</if>
+            <if test="ownerId != null">AND o.owner_id = #{ownerId}</if>
+            <if test="campaignId != null">AND o.campaign_id = #{campaignId}</if>
+        </where>
+        ORDER BY CASE WHEN o.stage IN ('WON', 'LOST') THEN 1 ELSE 0 END, o.expected_date, o.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.crm.entity.CrmOpportunity">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE o.id = #{id}
+    </select>
+
+</mapper>

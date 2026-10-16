@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsReservationMapper">
+
+    <sql id="viewSelect">
+        SELECT r.*, w.name AS warehouse_name, m.code AS material_code, m.name AS material_name, m.spec, m.unit,
+               u.nickname AS create_by_name
+        FROM wms_reservation r
+        JOIN wms_warehouse w ON w.id = r.warehouse_id
+        JOIN wms_material m ON m.id = r.material_id
+        LEFT JOIN sys_user u ON u.id = r.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.wms.entity.WmsReservation">
+        <include refid="viewSelect"/>
+        WHERE r.qty &gt; 0
+        <if test="warehouseId != null">AND r.warehouse_id = #{warehouseId}</if>
+        <if test="keyword != null and keyword != ''">
+            AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="sourceNo != null and sourceNo != ''">AND r.source_no LIKE CONCAT('%', #{sourceNo}, '%')</if>
+        ORDER BY r.id DESC
+    </select>
+
+    <select id="selectBySource" resultType="com.lemon.erp.modules.wms.entity.WmsReservation">
+        <include refid="viewSelect"/>
+        WHERE r.source_type = #{sourceType} AND r.source_id = #{sourceId} AND r.qty &gt; 0
+        ORDER BY r.id
+    </select>
+
+    <select id="selectFree" resultType="java.util.Map">
+        SELECT m.id AS "materialId",
+               COALESCE((SELECT SUM(s.qty - s.frozen_qty) FROM wms_stock s
+                         WHERE s.warehouse_id = #{warehouseId} AND s.material_id = m.id), 0) AS "available",
+               COALESCE((SELECT SUM(r.qty) FROM wms_reservation r
+                         WHERE r.warehouse_id = #{warehouseId} AND r.material_id = m.id AND r.qty &gt; 0), 0) AS "reserved"
+        FROM wms_material m
+        WHERE m.id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <update id="consume">
+        UPDATE wms_reservation SET qty = CASE WHEN qty &gt; #{qty} THEN qty - #{qty} ELSE 0 END, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

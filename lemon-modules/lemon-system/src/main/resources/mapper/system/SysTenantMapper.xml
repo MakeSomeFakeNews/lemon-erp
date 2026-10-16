@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.system.mapper.SysTenantMapper">
+
+    <select id="selectAccountCounts" resultType="com.lemon.erp.modules.system.dto.TenantAccountCount">
+        SELECT tenant_id, COUNT(*) AS account_count
+        FROM sys_user
+        WHERE tenant_id IN
+        <foreach collection="tenantIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        GROUP BY tenant_id
+    </select>
+
+</mapper>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinAdvanceMapper">
+
+    <sql id="viewSelect">
+        SELECT a.*, COALESCE(c.name, s.name) AS partner_name, ac.name AS account_name, v.voucher_no
+        FROM fin_advance a
+        LEFT JOIN scm_customer c ON a.kind = 'RECEIPT' AND c.id = a.partner_id
+        LEFT JOIN scm_supplier s ON a.kind = 'PAYMENT' AND s.id = a.partner_id
+        LEFT JOIN fin_account ac ON ac.id = a.account_id
+        LEFT JOIN fin_voucher v ON v.id = a.voucher_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinAdvance">
+        <include refid="viewSelect"/>
+        WHERE a.kind = #{kind}
+        <if test="partnerId != null">AND a.partner_id = #{partnerId}</if>
+        <if test="onlyOpen">AND a.used_amount &lt; a.amount</if>
+        <if test="keyword != null and keyword != ''">
+            AND (a.advance_no LIKE CONCAT('%', #{keyword}, '%') OR c.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR s.name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY a.advance_date DESC, a.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinAdvance">
+        <include refid="viewSelect"/>
+        WHERE a.id = #{id}
+    </select>
+
+    <select id="selectApplies" resultType="com.lemon.erp.modules.fin.entity.FinAdvanceApply">
+        SELECT p.*, b.bill_no, v.voucher_no
+        FROM fin_advance_apply p
+        JOIN fin_bill b ON b.id = p.bill_id
+        LEFT JOIN fin_voucher v ON v.id = p.voucher_id
+        WHERE p.advance_id = #{advanceId}
+        ORDER BY p.id
+    </select>
+
+    <update id="addUsed">
+        UPDATE fin_advance SET used_amount = used_amount + #{amount}, update_time = NOW()
+        WHERE id = #{id} AND used_amount + #{amount} &lt;= amount AND used_amount + #{amount} &gt;= 0
+    </update>
+
+    <select id="sumUnused" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(amount - used_amount), 0) FROM fin_advance WHERE kind = #{kind} AND partner_id = #{partnerId}
+    </select>
+
+</mapper>

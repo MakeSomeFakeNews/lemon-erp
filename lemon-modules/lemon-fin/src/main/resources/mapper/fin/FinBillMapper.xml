@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinBillMapper">
+
+    <!-- 往来单位按种类分别关联客户 / 供应商 -->
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinBill">
+        SELECT b.*, COALESCE(c.code, s.code) AS partner_code, COALESCE(c.name, s.name) AS partner_name, v.voucher_no
+        FROM fin_bill b
+        LEFT JOIN scm_customer c ON b.kind = 'AR' AND c.id = b.partner_id
+        LEFT JOIN scm_supplier s ON b.kind = 'AP' AND s.id = b.partner_id
+        LEFT JOIN fin_voucher v ON v.id = b.voucher_id
+        WHERE b.kind = #{q.kind}
+        <if test="q.partnerId != null">AND b.partner_id = #{q.partnerId}</if>
+        <if test="q.status != null and q.status != ''">AND b.status = #{q.status}</if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND (b.bill_no LIKE CONCAT('%', #{q.keyword}, '%') OR b.source_no LIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+        <if test="q.overdue != null and q.overdue">AND b.status &lt;&gt; 'SETTLED' AND b.due_date &lt; #{today}</if>
+        <if test="q.beginDate != null">AND b.bill_date &gt;= #{q.beginDate}</if>
+        <if test="q.endDate != null">AND b.bill_date &lt;= #{q.endDate}</if>
+        ORDER BY b.id DESC
+    </select>
+
+    <select id="selectUnsettledAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(amount - settled_amount), 0) FROM fin_bill WHERE kind = #{kind} AND partner_id = #{partnerId}
+    </select>
+
+    <select id="selectAging" resultType="com.lemon.erp.modules.fin.dto.AgingRow">
+        SELECT x.partner_id, COALESCE(c.code, s.code) AS partner_code, COALESCE(c.name, s.name) AS partner_name,
+               x.balance, x.not_due, x.d30, x.d60, x.d90, x.over90
+        FROM (
+            SELECT b.partner_id,
+                   SUM(b.amount - COALESCE(st.settled, 0)) AS balance,
+                   SUM(CASE WHEN b.due_date &gt;= #{asOf} THEN b.amount - COALESCE(st.settled, 0) ELSE 0 END) AS not_due,
+                   SUM(CASE WHEN b.due_date &lt; #{asOf} AND b.due_date &gt;= #{d30} THEN b.amount - COALESCE(st.settled, 0) ELSE 0 END) AS d30,
+                   SUM(CASE WHEN b.due_date &lt; #{d30} AND b.due_date &gt;= #{d60} THEN b.amount - COALESCE(st.settled, 0) ELSE 0 END) AS d60,
+                   SUM(CASE WHEN b.due_date &lt; #{d60} AND b.due_date &gt;= #{d90} THEN b.amount - COALESCE(st.settled, 0) ELSE 0 END) AS d90,
+                   SUM(CASE WHEN b.due_date &lt; #{d90} THEN b.amount - COALESCE(st.settled, 0) ELSE 0 END) AS over90
+            FROM fin_bill b
+            <!-- 截至查询日期的核销金额：之后的收付款不扣减，查历史日期的账龄也准确 -->
+            LEFT JOIN (SELECT si.bill_id, SUM(si.amount) AS settled
+                       FROM fin_settlement_item si JOIN fin_settlement s ON s.id = si.settlement_id
+                       WHERE s.settle_date &lt;= #{asOf} AND s.status = 'APPROVED'
+                       GROUP BY si.bill_id) st ON st.bill_id = b.id
+            WHERE b.kind = #{kind} AND b.bill_date &lt;= #{asOf}
+            GROUP BY b.partner_id
+        ) x
+        LEFT JOIN scm_customer c ON #{kind} = 'AR' AND c.id = x.partner_id
+        LEFT JOIN scm_supplier s ON #{kind} = 'AP' AND s.id = x.partner_id
+        WHERE x.balance &lt;&gt; 0
+        ORDER BY x.balance DESC
+    </select>
+
+    <!-- status 必须写在 settled_amount 之前：MySQL 按顺序赋值，后面的表达式会读到已更新的值（H2 读旧值），放在前面两者一致 -->
+    <update id="addSettledFc">
+        UPDATE fin_bill SET settled_fc = settled_fc + #{amount}, update_time = NOW() WHERE id = #{id}
+    </update>
+
+    <!-- 外币单据的未核销余额：[{id, kind, partnerId, currency, remainingFc, remainingBase}] -->
+    <select id="selectOpenForeign" resultType="java.util.Map">
+        SELECT id AS "id", kind AS "kind", partner_id AS "partnerId", currency AS "currency",
+               amount_fc - settled_fc AS "remainingFc", amount - settled_amount AS "remainingBase"
+        FROM fin_bill
+        WHERE currency &lt;&gt; 'CNY' AND amount_fc &lt;&gt; settled_fc AND bill_date &lt;= #{asOf}
+    </select>
+
+    <update id="addBadDebt">
+        UPDATE fin_bill SET bad_debt_amount = bad_debt_amount + #{amount}, update_time = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="addInvoiced">
+        UPDATE fin_bill SET invoiced_amount = invoiced_amount + #{amount}, update_time = NOW()
+        WHERE id = #{id} AND ABS(invoiced_amount + #{amount}) &lt;= ABS(amount)
+          AND (invoiced_amount + #{amount}) * amount &gt;= 0
+    </update>
+
+    <update id="addSettled">
+        UPDATE fin_bill
+        SET status = CASE WHEN settled_amount + #{amount} = amount THEN 'SETTLED'
+                          WHEN settled_amount + #{amount} = 0 THEN 'UNSETTLED' ELSE 'PARTIAL' END,
+            settled_amount = settled_amount + #{amount},
+            update_time = NOW()
+        WHERE id = #{id}
+          AND ((amount &gt;= 0 AND settled_amount + #{amount} &gt;= 0 AND settled_amount + #{amount} &lt;= amount)
+            OR (amount &lt; 0 AND settled_amount + #{amount} &lt;= 0 AND settled_amount + #{amount} &gt;= amount))
+    </update>
+
+    <select id="selectSourceByCategory" resultType="java.util.Map">
+        SELECT m.category AS "category", SUM(i.amount - i.tax_amount) AS "net", SUM(i.tax_amount) AS "tax"
+        FROM scm_trade_doc_item i
+        JOIN wms_material m ON m.id = i.material_id
+        WHERE i.doc_id = #{tradeDocId}
+        GROUP BY m.category
+    </select>
+
+</mapper>

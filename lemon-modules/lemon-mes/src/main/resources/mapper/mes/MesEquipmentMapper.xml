@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesEquipmentMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.MesEquipment">
+        SELECT e.*, w.name AS work_center_name
+        FROM mes_equipment e
+        LEFT JOIN mes_work_center w ON w.id = e.work_center_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (e.code LIKE CONCAT('%', #{keyword}, '%') OR e.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null">AND e.status = #{status}</if>
+            <if test="workCenterId != null">AND e.work_center_id = #{workCenterId}</if>
+            <if test="dueBefore != null">AND e.next_maintain_date &lt;= #{dueBefore} AND e.status &lt;&gt; 'SCRAPPED'</if>
+        </where>
+        ORDER BY <if test="dueBefore != null">e.next_maintain_date, </if>e.code
+    </select>
+
+</mapper>

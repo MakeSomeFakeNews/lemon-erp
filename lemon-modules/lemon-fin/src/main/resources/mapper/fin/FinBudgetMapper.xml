@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinBudgetMapper">
+
+    <select id="selectListView" resultType="com.lemon.erp.modules.fin.entity.FinBudget">
+        SELECT b.*, d.name AS dept_name, a.code AS account_code, a.name AS account_name, a.category AS account_category
+        FROM fin_budget b
+        JOIN fin_account a ON a.id = b.account_id
+        LEFT JOIN sys_dept d ON d.id = b.dept_id
+        WHERE b.budget_year = #{year}
+        <if test="deptId != null">AND b.dept_id = #{deptId}</if>
+        ORDER BY b.dept_id, a.code
+    </select>
+
+</mapper>

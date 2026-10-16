@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmRequisitionMapper">
+
+    <sql id="viewSelect">
+        SELECT r.*, d.name AS dept_name, u.nickname AS create_by_name,
+               (SELECT COUNT(*) FROM scm_requisition_item i WHERE i.requisition_id = r.id) AS item_count
+        FROM scm_requisition r
+        LEFT JOIN sys_dept d ON d.id = r.dept_id
+        LEFT JOIN sys_user u ON u.id = r.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmRequisition">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="keyword != null and keyword != ''">r.req_no LIKE CONCAT('%', #{keyword}, '%')</if>
+            <if test="status != null and status != ''">AND r.status = #{status}</if>
+        </where>
+        ORDER BY r.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmRequisition">
+        <include refid="viewSelect"/>
+        WHERE r.id = #{id}
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.scm.entity.ScmRequisitionItem">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, s.name AS supplier_name, o.order_no
+        FROM scm_requisition_item i
+        JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN scm_supplier s ON s.id = i.supplier_id
+        LEFT JOIN scm_order o ON o.id = i.order_id
+        WHERE i.requisition_id = #{requisitionId}
+        ORDER BY i.id
+    </select>
+
+</mapper>

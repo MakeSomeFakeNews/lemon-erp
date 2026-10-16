@@ -1,0 +1,8 @@
+plugins {
+    // src/main/groovy 下的 *.gradle 文件作为预编译的约定插件，供各模块 plugins { id 'lemon.xxx' } 使用
+    id 'groovy-gradle-plugin'
+}
+
+repositories {
+    gradlePluginPortal()
+}

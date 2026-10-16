@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmWaveMapper">
+
+    <sql id="viewSelect">
+        SELECT v.*, w.name AS warehouse_name, u.nickname AS create_by_name, pu.nickname AS pick_by_name,
+               COALESCE(t.delivery_count, 0) AS delivery_count, COALESCE(t.total_qty, 0) AS total_qty
+        FROM scm_wave v
+        JOIN wms_warehouse w ON w.id = v.warehouse_id
+        LEFT JOIN sys_user u ON u.id = v.create_by
+        LEFT JOIN sys_user pu ON pu.id = v.pick_by
+        LEFT JOIN (
+            SELECT d.wave_id, COUNT(DISTINCT d.id) AS delivery_count, SUM(i.qty) AS total_qty
+            FROM scm_delivery d
+            JOIN scm_delivery_item i ON i.delivery_id = d.id
+            WHERE d.wave_id IS NOT NULL
+            GROUP BY d.wave_id
+        ) t ON t.wave_id = v.id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmWave">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="status != null">v.status = #{status}</if>
+            <if test="warehouseId != null">AND v.warehouse_id = #{warehouseId}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (v.wave_no LIKE CONCAT('%', #{keyword}, '%')
+                     OR EXISTS (SELECT 1 FROM scm_delivery d WHERE d.wave_id = v.id AND d.delivery_no LIKE CONCAT('%', #{keyword}, '%')))
+            </if>
+        </where>
+        ORDER BY v.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmWave">
+        <include refid="viewSelect"/>
+        WHERE v.id = #{id}
+    </select>
+
+    <select id="selectPickLines" resultType="java.util.Map">
+        SELECT d.id AS "deliveryId", d.delivery_no AS "deliveryNo", c.name AS "customerName", p.delivery_item_id AS "deliveryItemId",
+               p.material_id AS "materialId", m.code AS "materialCode", m.name AS "materialName", m.spec AS "spec", m.unit AS "unit",
+               m.serial_enabled AS "serialEnabled", p.location_id AS "locationId", l.code AS "locationCode", l.zone AS "zone",
+               p.batch_no AS "batchNo", b.expiry_date AS "expiryDate", p.qty AS "qty"
+        FROM scm_delivery d
+        JOIN scm_customer c ON c.id = d.customer_id
+        JOIN scm_delivery_pick p ON p.delivery_id = d.id
+        JOIN wms_material m ON m.id = p.material_id
+        LEFT JOIN wms_location l ON l.id = p.location_id
+        LEFT JOIN wms_batch b ON b.material_id = p.material_id AND b.batch_no = p.batch_no AND p.batch_no &lt;&gt; ''
+        WHERE d.wave_id = #{waveId} AND d.status = 'PENDING'
+        ORDER BY CASE WHEN l.id IS NULL THEN 1 ELSE 0 END, l.zone, l.sort, l.code, m.code, p.batch_no, d.delivery_no
+    </select>
+
+    <select id="selectShortages" resultType="java.util.Map">
+        SELECT d.delivery_no AS "deliveryNo", m.code AS "materialCode", m.name AS "materialName", m.unit AS "unit",
+               i.qty AS "qty", COALESCE(s.suggested, 0) AS "suggested"
+        FROM scm_delivery d
+        JOIN scm_delivery_item i ON i.delivery_id = d.id
+        JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN (
+            SELECT delivery_item_id, SUM(qty) AS suggested FROM scm_delivery_pick GROUP BY delivery_item_id
+        ) s ON s.delivery_item_id = i.id
+        WHERE d.wave_id = #{waveId} AND d.status = 'PENDING' AND COALESCE(s.suggested, 0) &lt; i.qty
+        ORDER BY d.delivery_no, m.code
+    </select>
+
+</mapper>

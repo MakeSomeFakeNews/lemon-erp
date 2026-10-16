@@ -1,0 +1,16 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '框架层：安全认证、数据权限、缓存、日志、文件、Excel，以及业务模块之间的契约接口（不依赖业务模块）'
+
+dependencies {
+    api project(':lemon-common')
+    api libs.spring.boot.starter.data.redis
+    api libs.spring.boot.starter.aspectj
+    api libs.mybatis.plus.jsqlparser
+    api libs.jjwt.api
+    implementation libs.ip2region
+    runtimeOnly libs.jjwt.impl
+    runtimeOnly libs.jjwt.jackson
+}

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmOrderChangeMapper">
+
+    <select id="selectByOrder" resultType="com.lemon.erp.modules.scm.entity.ScmOrderChange">
+        SELECT c.*, o.order_no, u.nickname AS create_by_name
+        FROM scm_order_change c
+        JOIN scm_order o ON o.id = c.order_id
+        LEFT JOIN sys_user u ON u.id = c.create_by
+        WHERE c.order_id = #{orderId}
+        ORDER BY c.id DESC
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.scm.entity.ScmOrderChangeItem">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.unit
+        FROM scm_order_change_item i
+        JOIN wms_material m ON m.id = i.material_id
+        WHERE i.change_id = #{changeId}
+        ORDER BY i.id
+    </select>
+
+</mapper>

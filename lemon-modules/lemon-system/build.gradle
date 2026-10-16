@@ -1,0 +1,9 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '系统管理：用户、角色、菜单、部门、字典、登录认证'
+
+dependencies {
+    api project(':lemon-framework')
+}

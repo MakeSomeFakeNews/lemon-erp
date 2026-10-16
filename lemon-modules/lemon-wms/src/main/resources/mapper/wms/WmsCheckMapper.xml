@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsCheckMapper">
+
+    <sql id="viewColumns">
+        c.id, c.doc_no, c.warehouse_id, w.name AS warehouse_name, c.biz_date, c.status, c.remark, c.freeze, c.flow_instance_id, c.dept_id,
+        c.create_by, cu.nickname AS create_by_name, c.confirm_by, fu.nickname AS confirm_by_name, c.confirm_time,
+        c.create_time, c.update_time
+    </sql>
+
+    <sql id="viewJoins">
+        FROM wms_check c
+        LEFT JOIN wms_warehouse w ON w.id = c.warehouse_id
+        LEFT JOIN sys_user cu ON cu.id = c.create_by
+        LEFT JOIN sys_user fu ON fu.id = c.confirm_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.wms.entity.WmsCheck">
+        SELECT <include refid="viewColumns"/>,
+               (SELECT COUNT(*) FROM wms_check_item ci WHERE ci.check_id = c.id) AS item_count,
+               (SELECT COUNT(*) FROM wms_check_item ci WHERE ci.check_id = c.id
+                   AND ci.actual_qty IS NOT NULL AND ci.actual_qty &lt;&gt; ci.book_qty) AS diff_count
+        <include refid="viewJoins"/>
+        <where>
+            <if test="q.docNo != null and q.docNo != ''">c.doc_no LIKE CONCAT('%', #{q.docNo}, '%')</if>
+            <if test="q.warehouseId != null">AND c.warehouse_id = #{q.warehouseId}</if>
+            <if test="q.status != null and q.status != ''">AND c.status = #{q.status}</if>
+            <if test="q.beginDate != null">AND c.biz_date &gt;= #{q.beginDate}</if>
+            <if test="q.endDate != null">AND c.biz_date &lt;= #{q.endDate}</if>
+        </where>
+        ORDER BY c.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.wms.entity.WmsCheck">
+        SELECT <include refid="viewColumns"/>
+        <include refid="viewJoins"/>
+        WHERE c.id = #{id}
+    </select>
+
+</mapper>

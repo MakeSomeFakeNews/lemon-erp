@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmQuotationMapper">
+
+    <sql id="viewSelect">
+        SELECT q.*, c.name AS customer_name, u.nickname AS create_by_name, o.order_no
+        FROM scm_quotation q
+        JOIN scm_customer c ON c.id = q.customer_id
+        LEFT JOIN sys_user u ON u.id = q.create_by
+        LEFT JOIN scm_order o ON o.id = q.order_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmQuotation">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (q.quote_no LIKE CONCAT('%', #{keyword}, '%') OR c.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null and status != ''">AND q.status = #{status}</if>
+            <if test="customerId != null">AND q.customer_id = #{customerId}</if>
+            <if test="opportunityId != null">AND q.opportunity_id = #{opportunityId}</if>
+        </where>
+        ORDER BY q.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmQuotation">
+        <include refid="viewSelect"/>
+        WHERE q.id = #{id}
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.scm.entity.ScmQuotationItem">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit
+        FROM scm_quotation_item i
+        JOIN wms_material m ON m.id = i.material_id
+        WHERE i.quotation_id = #{quotationId}
+        ORDER BY i.id
+    </select>
+
+</mapper>

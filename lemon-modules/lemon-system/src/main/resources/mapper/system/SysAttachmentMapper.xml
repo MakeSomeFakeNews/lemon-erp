@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.system.mapper.SysAttachmentMapper">
+
+    <select id="selectByBiz" resultType="com.lemon.erp.modules.system.entity.SysAttachment">
+        SELECT a.id, a.biz_type, a.biz_id, a.file_name, a.file_size, a.content_type, a.create_by, a.create_time, a.update_time,
+               u.nickname AS create_by_name
+        FROM sys_attachment a
+        LEFT JOIN sys_user u ON u.id = a.create_by
+        WHERE a.biz_type = #{bizType} AND a.biz_id = #{bizId}
+        ORDER BY a.id
+    </select>
+
+</mapper>

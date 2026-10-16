@@ -1,0 +1,10 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '系统监控：在线用户、操作 / 登录日志、服务与缓存监控、定时任务'
+
+dependencies {
+    api project(':lemon-modules:lemon-system')
+    implementation libs.oshi.core
+}

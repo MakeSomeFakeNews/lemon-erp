@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmSupplierMapper">
+
+    <!-- 各项指标分别聚合后再关联，避免多表 JOIN 后重复计数 -->
+    <select id="selectKpi" resultType="com.lemon.erp.modules.scm.dto.SupplierKpi">
+        SELECT s.id AS supplier_id, s.code AS supplier_code, s.name AS supplier_name, s.level,
+               COALESCE(o.order_count, 0) AS order_count,
+               COALESCE(t.purchase_amount, 0) AS purchase_amount,
+               COALESCE(t.in_lines, 0) AS in_lines, COALESCE(t.on_time_lines, 0) AS on_time_lines,
+               COALESCE(t.in_qty, 0) AS in_qty, COALESCE(t.return_qty, 0) AS return_qty,
+               e.total_score AS last_score, e.grade AS last_grade, e.period AS last_period
+        FROM scm_supplier s
+        LEFT JOIN (
+            SELECT partner_id, COUNT(*) AS order_count
+            FROM scm_order
+            WHERE kind = 'PURCHASE' AND status NOT IN ('DRAFT', 'APPROVING')
+            <if test="begin != null">AND order_date &gt;= #{begin}</if>
+            <if test="end != null">AND order_date &lt;= #{end}</if>
+            GROUP BY partner_id
+        ) o ON o.partner_id = s.id
+        LEFT JOIN (
+            SELECT d.partner_id,
+                   SUM(CASE WHEN d.kind = 'PURCHASE_IN' THEN i.amount ELSE -i.amount END) AS purchase_amount,
+                   SUM(CASE WHEN d.kind = 'PURCHASE_IN' THEN 1 ELSE 0 END) AS in_lines,
+                   SUM(CASE WHEN d.kind = 'PURCHASE_IN' AND (oi.delivery_date IS NULL OR d.biz_date &lt;= oi.delivery_date)
+                            THEN 1 ELSE 0 END) AS on_time_lines,
+                   SUM(CASE WHEN d.kind = 'PURCHASE_IN' THEN i.qty ELSE 0 END) AS in_qty,
+                   SUM(CASE WHEN d.kind = 'PURCHASE_RETURN' THEN i.qty ELSE 0 END) AS return_qty
+            FROM scm_trade_doc d
+            JOIN scm_trade_doc_item i ON i.doc_id = d.id
+            JOIN scm_order_item oi ON oi.id = i.order_item_id
+            WHERE d.kind IN ('PURCHASE_IN', 'PURCHASE_RETURN')
+            <if test="begin != null">AND d.biz_date &gt;= #{begin}</if>
+            <if test="end != null">AND d.biz_date &lt;= #{end}</if>
+            GROUP BY d.partner_id
+        ) t ON t.partner_id = s.id
+        LEFT JOIN scm_supplier_eval e ON e.id = (SELECT MAX(e2.id) FROM scm_supplier_eval e2 WHERE e2.supplier_id = s.id)
+        <where>
+            <if test="keyword != null and keyword != ''">
+                s.code LIKE CONCAT('%', #{keyword}, '%') OR s.name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+        </where>
+        ORDER BY purchase_amount DESC, s.code
+    </select>
+
+</mapper>

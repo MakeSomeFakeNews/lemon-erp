@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsStockFlowMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO wms_stock_flow (biz_type, doc_id, doc_no, warehouse_id, location_id, material_id, batch_no, qty, create_by, create_time) VALUES
+        <foreach collection="list" item="f" separator=",">
+            (#{f.bizType}, #{f.docId}, #{f.docNo}, #{f.warehouseId}, #{f.locationId}, #{f.materialId}, #{f.batchNo},
+             #{f.qty}, #{f.createBy}, #{f.createTime})
+        </foreach>
+    </insert>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.wms.dto.StockFlowView">
+        SELECT f.id, f.biz_type, f.doc_id, f.doc_no, f.warehouse_id, w.name AS warehouse_name, f.location_id,
+               l.code AS location_code, f.material_id, m.code AS material_code, m.name AS material_name, m.spec, m.unit,
+               f.batch_no, f.qty, u.nickname AS create_by_name, f.create_time
+        FROM wms_stock_flow f
+        JOIN wms_material m ON m.id = f.material_id
+        JOIN wms_warehouse w ON w.id = f.warehouse_id
+        LEFT JOIN wms_location l ON l.id = f.location_id
+        LEFT JOIN sys_user u ON u.id = f.create_by
+        <where>
+            <if test="q.bizType != null and q.bizType != ''">f.biz_type = #{q.bizType}</if>
+            <if test="q.warehouseId != null">AND f.warehouse_id = #{q.warehouseId}</if>
+            <if test="q.materialId != null">AND f.material_id = #{q.materialId}</if>
+            <if test="q.keyword != null and q.keyword != ''">
+                AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+            <if test="q.batchNo != null and q.batchNo != ''">AND f.batch_no = #{q.batchNo}</if>
+            <if test="q.docNo != null and q.docNo != ''">AND f.doc_no = #{q.docNo}</if>
+            <if test="begin != null">AND f.create_time &gt;= #{begin}</if>
+            <if test="end != null">AND f.create_time &lt; #{end}</if>
+        </where>
+        ORDER BY f.id DESC
+    </select>
+
+    <select id="existsByMaterialId" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM wms_stock_flow WHERE material_id = #{materialId})
+    </select>
+
+</mapper>

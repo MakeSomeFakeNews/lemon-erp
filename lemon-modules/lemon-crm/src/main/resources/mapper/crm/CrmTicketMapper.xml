@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.crm.mapper.CrmTicketMapper">
+
+    <sql id="columns">
+        t.*, c.name AS customer_name, ct.name AS contact_name, ct.phone AS contact_phone, a.nickname AS assignee_name,
+        m.code AS material_code, m.name AS material_name, u.nickname AS create_by_name,
+        CASE WHEN t.status IN ('OPEN', 'PROCESSING') AND t.due_time &lt; NOW() THEN 1 ELSE 0 END AS overdue
+    </sql>
+
+    <sql id="joins">
+        FROM crm_ticket t
+        JOIN scm_customer c ON c.id = t.customer_id
+        LEFT JOIN crm_contact ct ON ct.id = t.contact_id
+        LEFT JOIN sys_user a ON a.id = t.assignee_id
+        LEFT JOIN wms_material m ON m.id = t.material_id
+        LEFT JOIN sys_user u ON u.id = t.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.crm.entity.CrmTicket">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (t.ticket_no LIKE CONCAT('%', #{keyword}, '%') OR t.title LIKE CONCAT('%', #{keyword}, '%')
+                 OR c.name LIKE CONCAT('%', #{keyword}, '%') OR t.serial_no = #{keyword})
+            </if>
+            <if test="type != null and type != ''">AND t.type = #{type}</if>
+            <if test="priority != null and priority != ''">AND t.priority = #{priority}</if>
+            <if test="status != null and status != ''">AND t.status = #{status}</if>
+            <if test="customerId != null">AND t.customer_id = #{customerId}</if>
+            <if test="assigneeId != null">AND t.assignee_id = #{assigneeId}</if>
+            <if test="overdue != null and overdue">AND t.status IN ('OPEN', 'PROCESSING') AND t.due_time &lt; NOW()</if>
+        </where>
+        ORDER BY CASE WHEN t.status IN ('OPEN', 'PROCESSING') THEN 0 ELSE 1 END, t.due_time, t.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.crm.entity.CrmTicket">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE t.id = #{id}
+    </select>
+
+    <!-- 序列号出库轨迹 → 仓库出库单的来源单号 → 销售出库单（客户、日期） -->
+    <select id="selectSerialSales" resultType="java.util.Map">
+        SELECT l.material_id AS "materialId", m.code AS "materialCode", m.name AS "materialName",
+               t.doc_no AS "docNo", CAST(t.biz_date AS CHAR(10)) AS "bizDate", t.partner_id AS "customerId", c.name AS "customerName"
+        FROM wms_serial_log l
+        JOIN wms_material m ON m.id = l.material_id
+        JOIN wms_stock_doc d ON d.doc_no = l.doc_no
+        JOIN scm_trade_doc t ON t.doc_no = d.source_no AND t.kind = 'SALES_OUT'
+        JOIN scm_customer c ON c.id = t.partner_id
+        WHERE l.serial_no = #{serialNo} AND l.direction = -1
+        ORDER BY l.id DESC
+        LIMIT 1
+    </select>
+
+</mapper>

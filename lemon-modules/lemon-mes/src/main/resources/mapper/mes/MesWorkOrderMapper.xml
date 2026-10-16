@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesWorkOrderMapper">
+
+    <sql id="viewSelect">
+        SELECT o.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.batch_enabled, m.serial_enabled,
+               b.version AS bom_version, w.name AS warehouse_name, u.nickname AS create_by_name
+        FROM mes_work_order o
+        JOIN wms_material m ON m.id = o.material_id
+        LEFT JOIN mes_bom b ON b.id = o.bom_id
+        LEFT JOIN wms_warehouse w ON w.id = o.warehouse_id
+        LEFT JOIN sys_user u ON u.id = o.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.MesWorkOrder">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="q.woNo != null and q.woNo != ''">o.wo_no LIKE CONCAT('%', #{q.woNo}, '%')</if>
+            <if test="q.keyword != null and q.keyword != ''">
+                AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+            <if test="q.status != null and q.status != ''">AND o.status = #{q.status}</if>
+            <if test="q.beginDate != null">AND o.plan_start &gt;= #{q.beginDate}</if>
+            <if test="q.endDate != null">AND o.plan_start &lt;= #{q.endDate}</if>
+        </where>
+        ORDER BY o.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.mes.entity.MesWorkOrder">
+        <include refid="viewSelect"/>
+        WHERE o.id = #{id}
+    </select>
+
+    <select id="selectOpenOutput" resultType="java.util.Map">
+        SELECT material_id AS "materialId", SUM(GREATEST(qty - finished_qty, 0)) AS "qty"
+        FROM mes_work_order
+        WHERE status IN <foreach collection="statuses" item="s" open="(" separator="," close=")">#{s}</foreach>
+          AND material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        GROUP BY material_id
+    </select>
+
+    <select id="selectAtpLines" resultType="java.util.Map">
+        SELECT o.plan_end AS "date", 'WO' AS "type", o.wo_no AS "docNo", o.qty - o.finished_qty AS "qty"
+        FROM mes_work_order o
+        WHERE o.material_id = #{materialId} AND o.status IN ('RELEASED', 'STARTED') AND o.qty &gt; o.finished_qty
+          <if test="warehouseId != null">AND (o.warehouse_id = #{warehouseId} OR o.warehouse_id IS NULL)</if>
+        UNION ALL
+        SELECT o.plan_start AS "date", 'WM' AS "type", o.wo_no AS "docNo", -(m.required_qty - m.issued_qty) AS "qty"
+        FROM mes_wo_material m
+        JOIN mes_work_order o ON o.id = m.wo_id
+        WHERE m.material_id = #{materialId} AND o.status IN ('RELEASED', 'STARTED') AND m.required_qty &gt; m.issued_qty
+    </select>
+
+    <select id="selectNetSupply" resultType="java.util.Map">
+        SELECT t.material_id AS "materialId", SUM(t.qty) AS "qty"
+        FROM (
+            SELECT o.material_id, o.qty - o.finished_qty AS qty
+            FROM mes_work_order o
+            WHERE o.status IN ('RELEASED', 'STARTED') AND o.qty &gt; o.finished_qty
+              AND o.material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+            UNION ALL
+            SELECT m.material_id, -(m.required_qty - m.issued_qty) AS qty
+            FROM mes_wo_material m
+            JOIN mes_work_order o ON o.id = m.wo_id
+            WHERE o.status IN ('RELEASED', 'STARTED') AND m.required_qty &gt; m.issued_qty
+              AND m.material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ) t
+        GROUP BY t.material_id
+    </select>
+
+    <select id="selectSupplyTypes" resultType="java.util.Map">
+        SELECT m.id AS "materialId",
+               COALESCE(p.supply_type, CASE WHEN EXISTS (SELECT 1 FROM mes_bom b WHERE b.material_id = m.id AND b.is_default = 1)
+                                            THEN 'MAKE' ELSE 'BUY' END) AS "supplyType"
+        FROM wms_material m
+        LEFT JOIN mes_material_plan p ON p.material_id = m.id
+        WHERE m.id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <update id="markCompleted">
+        UPDATE mes_work_order SET status = 'COMPLETED', finish_time = NOW(), update_time = NOW()
+        WHERE id = #{id} AND status IN ('RELEASED', 'STARTED') AND finished_qty &gt;= qty
+    </update>
+
+    <update id="addFinished">
+        UPDATE mes_work_order SET finished_qty = finished_qty + #{qty}, update_time = NOW()
+        WHERE id = #{id} AND finished_qty + #{qty} &lt;= qty
+    </update>
+
+</mapper>

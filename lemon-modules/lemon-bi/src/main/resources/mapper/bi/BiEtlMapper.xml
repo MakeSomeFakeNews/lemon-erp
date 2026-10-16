@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 数据仓库同步：事实表全量重建（库存快照只重建当天），在同一事务中完成，读取方在提交前看到旧数据。
+     先查询（select*，列别名即事实表列名），再由 insertFacts 分批写入：查询和写入分开，租户插件对两者都能完整处理 -->
+<mapper namespace="com.lemon.erp.modules.bi.mapper.BiEtlMapper">
+
+    <!-- 物料单位成本：期间及以前最近一期成本核算的加权平均单价，没有时取全部采购入库的平均不含税单价 -->
+    <sql id="unitCost">
+        COALESCE((SELECT mc.unit_cost FROM fin_material_cost mc
+                  WHERE mc.material_id = f.material_id AND mc.period &lt;= f.period AND mc.unit_cost &gt; 0
+                  ORDER BY mc.period DESC LIMIT 1),
+                 (SELECT SUM(pi.amount - pi.tax_amount) / SUM(pi.qty) FROM scm_trade_doc_item pi
+                  JOIN scm_trade_doc pd ON pd.id = pi.doc_id
+                  WHERE pi.material_id = f.material_id AND pd.kind = 'PURCHASE_IN'), 0)
+    </sql>
+
+    <delete id="clearSales">DELETE FROM bi_fact_sales WHERE id &gt; 0</delete>
+
+    <select id="selectSales" resultType="java.util.Map">
+        SELECT d.biz_date AS biz_date, YEAR(d.biz_date) * 100 + MONTH(d.biz_date) AS period, d.doc_no AS doc_no,
+               d.partner_id AS customer_id, x.owner_id AS owner_id, i.material_id AS material_id, m.category AS category,
+               d.warehouse_id AS warehouse_id, d.dept_id AS dept_id,
+               CASE WHEN d.kind = 'SALES_OUT' THEN i.qty ELSE -i.qty END AS qty,
+               CASE WHEN d.kind = 'SALES_OUT' THEN i.amount - i.tax_amount ELSE i.tax_amount - i.amount END AS amount,
+               0 AS cost, 0 AS profit
+        FROM scm_trade_doc d
+        JOIN scm_trade_doc_item i ON i.doc_id = d.id
+        JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN crm_customer x ON x.customer_id = d.partner_id
+        WHERE d.kind IN ('SALES_OUT', 'SALES_RETURN')
+    </select>
+
+    <!-- 成本与毛利分两步更新：MySQL 按顺序计算 SET，毛利需要用更新后的成本 -->
+    <update id="costSales">
+        UPDATE bi_fact_sales f SET cost = ROUND(f.qty * <include refid="unitCost"/>, 2) WHERE f.id &gt; 0
+    </update>
+
+    <update id="profitSales">
+        UPDATE bi_fact_sales SET profit = amount - cost WHERE id &gt; 0
+    </update>
+
+    <delete id="clearPurchase">DELETE FROM bi_fact_purchase WHERE id &gt; 0</delete>
+
+    <select id="selectPurchase" resultType="java.util.Map">
+        SELECT d.biz_date AS biz_date, YEAR(d.biz_date) * 100 + MONTH(d.biz_date) AS period, d.doc_no AS doc_no,
+               d.partner_id AS supplier_id, i.material_id AS material_id, m.category AS category, d.warehouse_id AS warehouse_id,
+               CASE WHEN d.kind = 'PURCHASE_IN' THEN i.qty ELSE -i.qty END AS qty,
+               CASE WHEN d.kind = 'PURCHASE_IN' THEN i.amount - i.tax_amount ELSE i.tax_amount - i.amount END AS amount
+        FROM scm_trade_doc d
+        JOIN scm_trade_doc_item i ON i.doc_id = d.id
+        JOIN wms_material m ON m.id = i.material_id
+        WHERE d.kind IN ('PURCHASE_IN', 'PURCHASE_RETURN')
+    </select>
+
+    <delete id="clearInventory">DELETE FROM bi_fact_inventory WHERE snap_date = #{today}</delete>
+
+    <select id="selectInventory" resultType="java.util.Map">
+        SELECT s.warehouse_id AS warehouse_id, s.material_id AS material_id, m.category AS category, SUM(s.qty) AS qty
+        FROM wms_stock s
+        JOIN wms_material m ON m.id = s.material_id
+        GROUP BY s.warehouse_id, s.material_id, m.category
+        HAVING SUM(s.qty) &lt;&gt; 0
+    </select>
+
+    <update id="costInventory">
+        UPDATE bi_fact_inventory f SET amount = ROUND(f.qty * <include refid="unitCost"/>, 2) WHERE f.snap_date = #{today}
+    </update>
+
+    <delete id="clearProduction">DELETE FROM bi_fact_production WHERE id &gt; 0</delete>
+
+    <!-- 延期：完工晚于计划完工日期，或未完工且已超过计划完工日期 -->
+    <select id="selectProduction" resultType="java.util.Map">
+        SELECT w.wo_no AS wo_no,
+               YEAR(COALESCE(w.plan_end, w.create_time)) * 100 + MONTH(COALESCE(w.plan_end, w.create_time)) AS period,
+               w.material_id AS material_id, m.category AS category, w.dept_id AS dept_id, w.status AS status,
+               w.qty AS plan_qty, w.finished_qty AS finished_qty,
+               COALESCE(r.scrap_qty, 0) AS scrap_qty, COALESCE(r.hours, 0) AS hours,
+               CASE WHEN w.plan_end IS NULL THEN 0
+                    WHEN w.status IN ('COMPLETED', 'CLOSED') AND w.finish_time IS NOT NULL
+                         AND CAST(w.finish_time AS DATE) &gt; w.plan_end THEN 1
+                    WHEN w.status IN ('RELEASED', 'STARTED') AND w.plan_end &lt; #{today} THEN 1
+                    ELSE 0 END AS late
+        FROM mes_work_order w
+        JOIN wms_material m ON m.id = w.material_id
+        LEFT JOIN (SELECT wo_id, SUM(scrap_qty) AS scrap_qty, SUM(hours) AS hours FROM mes_report GROUP BY wo_id) r ON r.wo_id = w.id
+        WHERE w.status &lt;&gt; 'DRAFT'
+    </select>
+
+    <delete id="clearFinance">DELETE FROM bi_fact_finance WHERE id &gt; 0</delete>
+
+    <select id="selectFinance" resultType="java.util.Map">
+        SELECT v.period AS period, e.account_id AS account_id, a.category AS category, e.dept_id AS dept_id,
+               SUM(e.debit) AS debit, SUM(e.credit) AS credit
+        FROM fin_voucher_entry e
+        JOIN fin_voucher v ON v.id = e.voucher_id
+        JOIN fin_account a ON a.id = e.account_id
+        WHERE v.status = 'POSTED' AND v.source_type &lt;&gt; 'CLOSE'
+        GROUP BY v.period, e.account_id, a.category, e.dept_id
+    </select>
+
+    <!-- 人力：按月份、部门、岗位类别统计月末在职人数、入职、离职，工资表（已确认、已发放）的应发与人工成本 -->
+    <delete id="clearHr">DELETE FROM bi_fact_hr WHERE id &gt; 0</delete>
+
+    <select id="selectHr" resultType="java.util.Map">
+        SELECT t.dept_id AS dept_id, t.category AS category, SUM(t.headcount) AS headcount, SUM(t.hires) AS hires,
+               SUM(t.leaves) AS leaves, SUM(t.gross_pay) AS gross_pay, SUM(t.labor_cost) AS labor_cost
+        FROM (
+            SELECT e.dept_id, COALESCE(p.category, 'OTHER') AS category,
+                   CASE WHEN e.entry_date &lt;= #{end} AND (e.leave_date IS NULL OR e.leave_date &gt; #{end}) THEN 1 ELSE 0 END AS headcount,
+                   CASE WHEN e.entry_date &gt;= #{begin} AND e.entry_date &lt;= #{end} THEN 1 ELSE 0 END AS hires,
+                   CASE WHEN e.leave_date &gt;= #{begin} AND e.leave_date &lt;= #{end} THEN 1 ELSE 0 END AS leaves,
+                   0 AS gross_pay, 0 AS labor_cost
+            FROM hr_employee e
+            LEFT JOIN hr_position p ON p.id = e.position_id
+            WHERE e.entry_date &lt;= #{end} AND (e.leave_date IS NULL OR e.leave_date &gt;= #{begin})
+            UNION ALL
+            SELECT i.dept_id, COALESCE(p.category, 'OTHER'), 0, 0, 0, i.gross_pay, i.gross_pay + i.social_company + i.housing_company
+            FROM hr_payroll_item i
+            JOIN hr_payroll r ON r.id = i.payroll_id
+            JOIN hr_employee e ON e.id = i.employee_id
+            LEFT JOIN hr_position p ON p.id = e.position_id
+            WHERE r.period = #{period} AND r.status IN ('CONFIRMED', 'PAID')
+        ) t
+        GROUP BY t.dept_id, t.category
+    </select>
+
+    <!-- 客户经营：按月份、负责人统计新增线索、跟进、新增商机、赢单、输单 -->
+    <delete id="clearCrm">DELETE FROM bi_fact_crm WHERE id &gt; 0</delete>
+
+    <select id="selectCrm" resultType="java.util.Map">
+        SELECT t.period AS period, t.owner_id AS owner_id, MAX(u.dept_id) AS dept_id, SUM(t.leads) AS leads,
+               SUM(t.followups) AS followups, SUM(t.opps) AS opps, SUM(t.won) AS won, SUM(t.lost) AS lost,
+               SUM(t.won_amount) AS won_amount
+        FROM (
+            SELECT YEAR(create_time) * 100 + MONTH(create_time) AS period, owner_id, 1 AS leads, 0 AS followups, 0 AS opps,
+                   0 AS won, 0 AS lost, 0 AS won_amount
+            FROM crm_lead WHERE owner_id IS NOT NULL
+            UNION ALL
+            SELECT YEAR(follow_time) * 100 + MONTH(follow_time), create_by, 0, 1, 0, 0, 0, 0 FROM crm_followup WHERE create_by IS NOT NULL
+            UNION ALL
+            SELECT YEAR(create_time) * 100 + MONTH(create_time), owner_id, 0, 0, 1, 0, 0, 0 FROM crm_opportunity WHERE owner_id IS NOT NULL
+            UNION ALL
+            SELECT YEAR(close_date) * 100 + MONTH(close_date), owner_id, 0, 0, 0,
+                   CASE WHEN stage = 'WON' THEN 1 ELSE 0 END, CASE WHEN stage = 'LOST' THEN 1 ELSE 0 END,
+                   CASE WHEN stage = 'WON' THEN amount ELSE 0 END
+            FROM crm_opportunity WHERE owner_id IS NOT NULL AND close_date IS NOT NULL AND stage IN ('WON', 'LOST')
+        ) t
+        LEFT JOIN sys_user u ON u.id = t.owner_id
+        GROUP BY t.period, t.owner_id
+    </select>
+
+    <!-- 项目：按月份、项目统计已审批工时与人工成本、已审批费用（含领料）、月结确认的收入与结转成本 -->
+    <delete id="clearProject">DELETE FROM bi_fact_project WHERE id &gt; 0</delete>
+
+    <select id="selectProject" resultType="java.util.Map">
+        SELECT t.period AS period, t.project_id AS project_id, p.dept_id AS dept_id, p.manager_id AS manager_id,
+               SUM(t.hours) AS hours, SUM(t.labor_cost) AS labor_cost, SUM(t.expense) AS expense, SUM(t.revenue) AS revenue,
+               SUM(t.cost) AS cost
+        FROM (
+            SELECT YEAR(work_date) * 100 + MONTH(work_date) AS period, project_id, hours, cost AS labor_cost, 0 AS expense,
+                   0 AS revenue, 0 AS cost
+            FROM pm_timesheet WHERE status = 'APPROVED'
+            UNION ALL
+            SELECT YEAR(cost_date) * 100 + MONTH(cost_date), project_id, 0, 0, amount, 0, 0 FROM pm_cost WHERE status = 'APPROVED'
+            UNION ALL
+            SELECT period, project_id, 0, 0, 0, revenue, cost FROM pm_revenue
+        ) t
+        JOIN pm_project p ON p.id = t.project_id
+        GROUP BY t.period, t.project_id, p.dept_id, p.manager_id
+    </select>
+
+    <!-- 批量写入事实表；table、columns 只来自 BiEtlService 中的常量，不接受外部输入 -->
+    <insert id="insertFacts">
+        INSERT INTO ${table} (<foreach collection="columns" item="c" separator=", ">${c}</foreach>) VALUES
+        <foreach collection="rows" item="row" separator=",">
+            (<foreach collection="row" item="v" separator=", ">#{v}</foreach>)
+        </foreach>
+    </insert>
+
+    <select id="countRows" resultType="java.util.Map">
+        SELECT (SELECT COUNT(*) FROM bi_fact_sales) AS "sales",
+               (SELECT COUNT(*) FROM bi_fact_purchase) AS "purchase",
+               (SELECT COUNT(*) FROM bi_fact_inventory) AS "inventory",
+               (SELECT COUNT(DISTINCT snap_date) FROM bi_fact_inventory) AS "snapshots",
+               (SELECT COUNT(*) FROM bi_fact_production) AS "production",
+               (SELECT COUNT(*) FROM bi_fact_finance) AS "finance",
+               (SELECT COUNT(*) FROM bi_fact_hr) AS "hr",
+               (SELECT COUNT(*) FROM bi_fact_crm) AS "crm",
+               (SELECT COUNT(*) FROM bi_fact_project) AS "project"
+    </select>
+
+</mapper>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.QmsSupplierClaimMapper">
+
+    <sql id="viewSelect">
+        SELECT c.*, s.name AS supplier_name, n.ncr_no, b.bill_no, u.nickname AS create_by_name
+        FROM qms_supplier_claim c
+        JOIN scm_supplier s ON s.id = c.supplier_id
+        LEFT JOIN qms_ncr n ON n.id = c.ncr_id
+        LEFT JOIN fin_bill b ON b.id = c.bill_id
+        LEFT JOIN sys_user u ON u.id = c.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.QmsSupplierClaim">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="portal">c.status &lt;&gt; 'DRAFT'</if>
+            <if test="status != null">AND c.status = #{status}</if>
+            <if test="supplierId != null">AND c.supplier_id = #{supplierId}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (c.claim_no LIKE CONCAT('%', #{keyword}, '%') OR s.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY c.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.mes.entity.QmsSupplierClaim">
+        <include refid="viewSelect"/>
+        WHERE c.id = #{id}
+    </select>
+
+    <select id="selectStats" resultType="java.util.Map">
+        SELECT supplier_id AS "supplierId", COUNT(*) AS "claims", SUM(amount) AS "amount"
+        FROM qms_supplier_claim
+        WHERE status = 'CONFIRMED'
+          AND supplier_id IN <foreach collection="supplierIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          <if test="beginDate != null">AND claim_date &gt;= #{beginDate}</if>
+          <if test="endDate != null">AND claim_date &lt;= #{endDate}</if>
+        GROUP BY supplier_id
+    </select>
+
+</mapper>

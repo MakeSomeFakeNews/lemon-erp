@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinStdCostVersionMapper">
+
+    <sql id="viewSelect">
+        SELECT v.*, u.nickname AS create_by_name,
+               COALESCE(c.item_count, 0) AS item_count, COALESCE(c.make_count, 0) AS make_count, COALESCE(c.zero_count, 0) AS zero_count
+        FROM fin_std_cost_version v
+        LEFT JOIN sys_user u ON u.id = v.create_by
+        LEFT JOIN (
+            SELECT version_id, COUNT(*) AS item_count, SUM(make) AS make_count,
+                   SUM(CASE WHEN make = 0 AND material_cost = 0 THEN 1 ELSE 0 END) AS zero_count
+            FROM fin_std_cost
+            GROUP BY version_id
+        ) c ON c.version_id = v.id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinStdCostVersion">
+        <include refid="viewSelect"/>
+        ORDER BY v.effective_period DESC, v.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinStdCostVersion">
+        <include refid="viewSelect"/>
+        WHERE v.id = #{id}
+    </select>
+
+    <select id="selectEffective" resultType="com.lemon.erp.modules.fin.entity.FinStdCostVersion">
+        SELECT * FROM fin_std_cost_version
+        WHERE status = 'RELEASED' AND effective_period &lt;= #{period}
+        ORDER BY effective_period DESC, id DESC
+        LIMIT 1
+    </select>
+
+</mapper>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinAssetMoveMapper">
+
+    <select id="selectByAsset" resultType="com.lemon.erp.modules.fin.entity.FinAssetMove">
+        SELECT m.*, fd.name AS from_dept_name, td.name AS to_dept_name, fu.nickname AS from_user_name, tu.nickname AS to_user_name,
+               u.nickname AS create_by_name
+        FROM fin_asset_move m
+        LEFT JOIN sys_dept fd ON fd.id = m.from_dept_id
+        LEFT JOIN sys_dept td ON td.id = m.to_dept_id
+        LEFT JOIN sys_user fu ON fu.id = m.from_user_id
+        LEFT JOIN sys_user tu ON tu.id = m.to_user_id
+        LEFT JOIN sys_user u ON u.id = m.create_by
+        WHERE m.asset_id = #{assetId}
+        ORDER BY m.move_date DESC, m.id DESC
+    </select>
+
+</mapper>

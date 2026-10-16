@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesMaintenanceMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.MesMaintenance">
+        SELECT t.*, e.code AS equipment_code, e.name AS equipment_name, u.nickname AS create_by_name
+        FROM mes_maintenance t
+        JOIN mes_equipment e ON e.id = t.equipment_id
+        LEFT JOIN sys_user u ON u.id = t.create_by
+        <where>
+            <if test="equipmentId != null">t.equipment_id = #{equipmentId}</if>
+            <if test="type != null">AND t.type = #{type}</if>
+            <if test="status != null">AND t.status = #{status}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (t.order_no LIKE CONCAT('%', #{keyword}, '%') OR e.code LIKE CONCAT('%', #{keyword}, '%')
+                     OR e.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY t.id DESC
+    </select>
+
+</mapper>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.pm.mapper.PmCloseMapper">
+
+    <select id="selectUnpostedLabor" resultType="java.util.Map">
+        SELECT t.project_id AS "projectId", pos.category AS "category", SUM(t.cost) AS "amount"
+        FROM pm_timesheet t
+        LEFT JOIN hr_employee e ON e.user_id = t.user_id AND e.status &lt;&gt; 'LEFT'
+        LEFT JOIN hr_position pos ON pos.id = e.position_id
+        WHERE t.status = 'APPROVED' AND t.voucher_id IS NULL
+          AND t.work_date &gt;= #{begin} AND t.work_date &lt;= #{end}
+        GROUP BY t.project_id, pos.category
+        HAVING SUM(t.cost) &lt;&gt; 0
+    </select>
+
+    <select id="selectUnpostedExpense" resultType="java.util.Map">
+        SELECT project_id AS "projectId", SUM(amount) AS "amount"
+        FROM pm_cost
+        WHERE source = 'MANUAL' AND status = 'APPROVED' AND voucher_id IS NULL
+          AND cost_date &gt;= #{begin} AND cost_date &lt;= #{end}
+        GROUP BY project_id
+        HAVING SUM(amount) &lt;&gt; 0
+    </select>
+
+    <select id="selectRecognition" resultType="java.util.Map">
+        SELECT p.id AS "projectId", p.code AS "code", p.customer_id AS "customerId", p.contract_amount AS "contractAmount",
+               p.tax_rate AS "taxRate", p.progress AS "progress", p.status AS "status",
+               COALESCE((SELECT SUM(t.cost) FROM pm_timesheet t
+                         WHERE t.project_id = p.id AND t.status = 'APPROVED' AND t.work_date &lt;= #{end}), 0)
+             + COALESCE((SELECT SUM(c.amount) FROM pm_cost c
+                         WHERE c.project_id = p.id AND c.status = 'APPROVED' AND c.cost_date &lt;= #{end}), 0) AS "cumCost",
+               COALESCE((SELECT SUM(r.revenue) FROM pm_revenue r WHERE r.project_id = p.id), 0) AS "recognizedRevenue",
+               COALESCE((SELECT SUM(r.cost) FROM pm_revenue r WHERE r.project_id = p.id), 0) AS "recognizedCost"
+        FROM pm_project p
+        WHERE p.contract_amount &gt; 0 AND p.status IN ('ACTIVE', 'SUSPENDED', 'FINISHED', 'CLOSED')
+    </select>
+
+    <update id="markTimesheets">
+        UPDATE pm_timesheet SET voucher_id = #{voucherId}, update_time = NOW()
+        WHERE project_id = #{projectId} AND status = 'APPROVED' AND voucher_id IS NULL
+          AND work_date &gt;= #{begin} AND work_date &lt;= #{end}
+    </update>
+
+    <update id="markCosts">
+        UPDATE pm_cost SET voucher_id = #{voucherId}, update_time = NOW()
+        WHERE project_id = #{projectId} AND source = 'MANUAL' AND status = 'APPROVED' AND voucher_id IS NULL
+          AND cost_date &gt;= #{begin} AND cost_date &lt;= #{end}
+    </update>
+
+    <select id="selectByProject" resultType="com.lemon.erp.modules.pm.entity.PmRevenue">
+        SELECT r.*, v.voucher_no
+        FROM pm_revenue r
+        LEFT JOIN fin_voucher v ON v.id = r.voucher_id
+        WHERE r.project_id = #{projectId}
+        ORDER BY r.period, r.id
+    </select>
+
+</mapper>

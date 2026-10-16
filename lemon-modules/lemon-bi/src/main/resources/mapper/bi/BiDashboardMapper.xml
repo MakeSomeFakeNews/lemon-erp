@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.bi.mapper.BiDashboardMapper">
+
+    <select id="selectVisible" resultType="com.lemon.erp.modules.bi.entity.BiDashboard">
+        SELECT d.*, u.nickname AS create_by_name, CASE WHEN d.create_by = #{userId} THEN 1 ELSE 0 END AS mine
+        FROM bi_dashboard d
+        LEFT JOIN sys_user u ON u.id = d.create_by
+        WHERE d.create_by = #{userId} OR d.shared = 1
+        ORDER BY CASE WHEN d.create_by = #{userId} THEN 0 ELSE 1 END, d.id DESC
+    </select>
+
+</mapper>

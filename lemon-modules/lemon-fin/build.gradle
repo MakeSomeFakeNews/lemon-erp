@@ -1,0 +1,11 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '财务管理：总账、应收应付、资金、资产、成本、预算、结账'
+
+dependencies {
+    api project(':lemon-modules:lemon-mes')
+    api project(':lemon-modules:lemon-scm')
+    api project(':lemon-modules:lemon-wms')
+}

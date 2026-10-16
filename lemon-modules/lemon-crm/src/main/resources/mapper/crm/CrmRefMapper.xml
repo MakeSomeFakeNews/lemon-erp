@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 主数据被引用检查（删除物料、仓库、客户、供应商、用户、部门前），见 ReferenceChecker -->
+<mapper namespace="com.lemon.erp.modules.crm.mapper.CrmRefMapper">
+
+    <select id="findMaterial" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM crm_opportunity_item WHERE material_id = #{id}) THEN '商机产品'
+            WHEN EXISTS (SELECT 1 FROM crm_ticket WHERE material_id = #{id}) THEN '服务工单'
+        END
+    </select>
+
+    <select id="findCustomer" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM crm_opportunity WHERE customer_id = #{id}) THEN '商机'
+            WHEN EXISTS (SELECT 1 FROM crm_ticket WHERE customer_id = #{id}) THEN '服务工单'
+            WHEN EXISTS (SELECT 1 FROM crm_followup WHERE customer_id = #{id}) THEN '跟进记录'
+            WHEN EXISTS (SELECT 1 FROM crm_contact WHERE customer_id = #{id}) THEN '联系人'
+        END
+    </select>
+
+    <select id="findUser" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM crm_customer WHERE owner_id = #{id}) THEN '客户负责人'
+            WHEN EXISTS (SELECT 1 FROM crm_opportunity WHERE owner_id = #{id}) THEN '商机'
+            WHEN EXISTS (SELECT 1 FROM crm_lead WHERE owner_id = #{id}) THEN '线索'
+        END
+    </select>
+
+    <select id="findDept" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM crm_customer WHERE dept_id = #{id}) THEN '客户'
+        END
+    </select>
+
+</mapper>

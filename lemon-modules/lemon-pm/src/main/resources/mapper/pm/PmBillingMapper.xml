@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.pm.mapper.PmBillingMapper">
+
+    <select id="selectByProject" resultType="com.lemon.erp.modules.pm.entity.PmBilling">
+        SELECT b.*, t.name AS task_name, fb.settled_amount
+        FROM pm_billing b
+        LEFT JOIN pm_task t ON t.id = b.task_id
+        LEFT JOIN fin_bill fb ON fb.id = b.bill_id
+        WHERE b.project_id = #{projectId}
+        ORDER BY b.plan_date, b.id
+    </select>
+
+</mapper>

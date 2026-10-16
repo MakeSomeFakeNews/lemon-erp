@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinSettlementMapper">
+
+    <sql id="viewSelect">
+        SELECT t.*, COALESCE(c.name, s.name) AS partner_name, a.name AS account_name, v.voucher_no, u.nickname AS create_by_name
+        FROM fin_settlement t
+        LEFT JOIN scm_customer c ON t.kind = 'RECEIPT' AND c.id = t.partner_id
+        LEFT JOIN scm_supplier s ON t.kind = 'PAYMENT' AND s.id = t.partner_id
+        LEFT JOIN fin_account a ON a.id = t.account_id
+        LEFT JOIN fin_voucher v ON v.id = t.voucher_id
+        LEFT JOIN sys_user u ON u.id = t.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinSettlement">
+        <include refid="viewSelect"/>
+        WHERE t.kind = #{kind}
+        <if test="partnerId != null">AND t.partner_id = #{partnerId}</if>
+        <if test="keyword != null and keyword != ''">AND t.settle_no LIKE CONCAT('%', #{keyword}, '%')</if>
+        ORDER BY t.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinSettlement">
+        <include refid="viewSelect"/>
+        WHERE t.id = #{id}
+    </select>
+
+</mapper>

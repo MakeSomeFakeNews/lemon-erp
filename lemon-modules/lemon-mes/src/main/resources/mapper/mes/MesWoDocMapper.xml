@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesWoDocMapper">
+
+    <sql id="viewSelect">
+        SELECT d.*, o.wo_no, w.name AS warehouse_name, u.nickname AS create_by_name
+        FROM mes_wo_doc d
+        JOIN mes_work_order o ON o.id = d.wo_id
+        LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id
+        LEFT JOIN sys_user u ON u.id = d.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.MesWoDoc">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="woId != null">d.wo_id = #{woId}</if>
+            <if test="kind != null and kind != ''">AND d.kind = #{kind}</if>
+        </where>
+        ORDER BY d.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.mes.entity.MesWoDoc">
+        <include refid="viewSelect"/>
+        WHERE d.id = #{id}
+    </select>
+
+</mapper>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.pm.mapper.PmTimesheetMapper">
+
+    <sql id="columns">
+        ts.*, p.code AS project_code, p.name AS project_name, t.name AS task_name, u.nickname AS user_name,
+        au.nickname AS approve_by_name
+    </sql>
+
+    <sql id="joins">
+        FROM pm_timesheet ts
+        JOIN pm_project p ON p.id = ts.project_id
+        LEFT JOIN pm_task t ON t.id = ts.task_id
+        LEFT JOIN sys_user u ON u.id = ts.user_id
+        LEFT JOIN sys_user au ON au.id = ts.approve_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.pm.entity.PmTimesheet">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="projectId != null">ts.project_id = #{projectId}</if>
+            <if test="userId != null">AND ts.user_id = #{userId}</if>
+            <if test="status != null and status != ''">AND ts.status = #{status}</if>
+            <if test="beginDate != null">AND ts.work_date &gt;= #{beginDate}</if>
+            <if test="endDate != null">AND ts.work_date &lt;= #{endDate}</if>
+        </where>
+        ORDER BY ts.work_date DESC, ts.id DESC
+    </select>
+
+    <select id="selectMine" resultType="com.lemon.erp.modules.pm.entity.PmTimesheet">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE ts.user_id = #{userId} AND ts.work_date BETWEEN #{beginDate} AND #{endDate}
+        ORDER BY ts.work_date, ts.id
+    </select>
+
+    <select id="sumDay" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(hours), 0) FROM pm_timesheet
+        WHERE user_id = #{userId} AND work_date = #{workDate} AND status &lt;&gt; 'REJECTED'
+        <if test="excludeId != null">AND id &lt;&gt; #{excludeId}</if>
+    </select>
+
+</mapper>

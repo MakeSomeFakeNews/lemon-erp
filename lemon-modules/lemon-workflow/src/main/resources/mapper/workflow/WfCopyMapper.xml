@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.workflow.mapper.WfCopyMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO wf_copy (process_instance_id, process_name, process_key, node_id, node_name, start_user_id, user_id,
+                             create_time, update_time) VALUES
+        <foreach collection="userIds" item="userId" separator=",">
+            (#{copy.processInstanceId}, #{copy.processName}, #{copy.processKey}, #{copy.nodeId}, #{copy.nodeName},
+             #{copy.startUserId}, #{userId}, #{copy.createTime}, #{copy.createTime})
+        </foreach>
+    </insert>
+
+</mapper>

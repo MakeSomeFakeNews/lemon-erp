@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmSupplierEvalMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmSupplierEval">
+        SELECT e.*, s.code AS supplier_code, s.name AS supplier_name, u.nickname AS create_by_name
+        FROM scm_supplier_eval e
+        JOIN scm_supplier s ON s.id = e.supplier_id
+        LEFT JOIN sys_user u ON u.id = e.create_by
+        <where>
+            <if test="supplierId != null">e.supplier_id = #{supplierId}</if>
+            <if test="period != null and period != ''">AND e.period LIKE CONCAT('%', #{period}, '%')</if>
+        </where>
+        ORDER BY e.id DESC
+    </select>
+
+</mapper>

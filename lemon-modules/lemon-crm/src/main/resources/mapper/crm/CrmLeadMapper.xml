@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.crm.mapper.CrmLeadMapper">
+
+    <sql id="columns">
+        l.*, u.nickname AS owner_name, cp.name AS campaign_name, c.name AS customer_name
+    </sql>
+
+    <sql id="joins">
+        FROM crm_lead l
+        LEFT JOIN sys_user u ON u.id = l.owner_id
+        LEFT JOIN crm_campaign cp ON cp.id = l.campaign_id
+        LEFT JOIN scm_customer c ON c.id = l.customer_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.crm.entity.CrmLead">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (l.lead_no LIKE CONCAT('%', #{keyword}, '%') OR l.company LIKE CONCAT('%', #{keyword}, '%')
+                 OR l.contact_name LIKE CONCAT('%', #{keyword}, '%') OR l.phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null and status != ''">AND l.status = #{status}</if>
+            <if test="source != null and source != ''">AND l.source = #{source}</if>
+            <if test="campaignId != null">AND l.campaign_id = #{campaignId}</if>
+            <if test="ownerId != null">AND l.owner_id = #{ownerId}</if>
+        </where>
+        ORDER BY l.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.crm.entity.CrmLead">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE l.id = #{id}
+    </select>
+
+</mapper>

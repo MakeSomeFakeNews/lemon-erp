@@ -1,0 +1,34 @@
+# 依赖版本统一在这里维护，各模块通过 libs.xxx 引用
+[versions]
+spring-boot = "4.1.1"
+mybatis-plus = "3.5.17"
+jjwt = "0.12.6"
+ip2region = "3.3.7"
+oshi = "6.12.0"
+flowable = "8.0.0"
+
+[libraries]
+spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+spring-boot-starter-webmvc = { module = "org.springframework.boot:spring-boot-starter-webmvc" }
+spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security" }
+spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation" }
+spring-boot-starter-data-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis" }
+spring-boot-starter-aspectj = { module = "org.springframework.boot:spring-boot-starter-aspectj" }
+spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-starter-webmvc-test" }
+spring-boot-starter-security-test = { module = "org.springframework.boot:spring-boot-starter-security-test" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+mybatis-plus-starter = { module = "com.baomidou:mybatis-plus-spring-boot4-starter", version.ref = "mybatis-plus" }
+mybatis-plus-jsqlparser = { module = "com.baomidou:mybatis-plus-jsqlparser", version.ref = "mybatis-plus" }
+jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "jjwt" }
+jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "jjwt" }
+jjwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jjwt" }
+ip2region = { module = "org.lionsoul:ip2region", version.ref = "ip2region" }
+oshi-core = { module = "com.github.oshi:oshi-core", version.ref = "oshi" }
+flowable-starter-process = { module = "org.flowable:flowable-spring-boot-starter-process", version.ref = "flowable" }
+mysql-connector = { module = "com.mysql:mysql-connector-j" }
+h2 = { module = "com.h2database:h2" }
+lombok = { module = "org.projectlombok:lombok" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

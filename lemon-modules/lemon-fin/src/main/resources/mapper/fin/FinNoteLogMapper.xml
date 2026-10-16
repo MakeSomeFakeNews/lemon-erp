@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinNoteLogMapper">
+
+    <!-- 往来单位：收票为客户，背书、开票为供应商 -->
+    <select id="selectByNote" resultType="com.lemon.erp.modules.fin.entity.FinNoteLog">
+        SELECT l.*, COALESCE(c.name, s.name) AS partner_name, a.name AS account_name, st.settle_no, v.voucher_no,
+               b.bill_no, u.nickname AS create_by_name
+        FROM fin_note_log l
+        LEFT JOIN scm_customer c ON l.action = 'RECEIVE' AND c.id = l.partner_id
+        LEFT JOIN scm_supplier s ON l.action IN ('ENDORSE', 'ISSUE') AND s.id = l.partner_id
+        LEFT JOIN fin_account a ON a.id = l.account_id
+        LEFT JOIN fin_settlement st ON st.id = l.settlement_id
+        LEFT JOIN fin_voucher v ON v.id = l.voucher_id
+        LEFT JOIN fin_bill b ON b.id = l.bill_id
+        LEFT JOIN sys_user u ON u.id = l.create_by
+        WHERE l.note_id = #{noteId}
+        ORDER BY l.id
+    </select>
+
+</mapper>

@@ -1,0 +1,9 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '仓库管理：出入库、调拨、盘点、批次序列号、库存'
+
+dependencies {
+    api project(':lemon-framework')
+}

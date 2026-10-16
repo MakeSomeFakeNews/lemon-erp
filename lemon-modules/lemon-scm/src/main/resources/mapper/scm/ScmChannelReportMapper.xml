@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmChannelReportMapper">
+
+    <sql id="viewSelect">
+        SELECT r.*, c.name AS customer_name, c.region, u.nickname AS report_by_name,
+               COALESCE(t.item_count, 0) AS item_count, COALESCE(t.sell_total, 0) AS sell_total, COALESCE(t.stock_total, 0) AS stock_total
+        FROM scm_channel_report r
+        JOIN scm_customer c ON c.id = r.customer_id
+        LEFT JOIN sys_user u ON u.id = r.report_by
+        LEFT JOIN (
+            SELECT report_id, COUNT(*) AS item_count, SUM(sell_qty) AS sell_total, SUM(stock_qty) AS stock_total
+            FROM scm_channel_report_item
+            GROUP BY report_id
+        ) t ON t.report_id = r.id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmChannelReport">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="customerId != null">r.customer_id = #{customerId}</if>
+            <if test="period != null">AND r.period = #{period}</if>
+            <if test="keyword != null and keyword != ''">AND (c.name LIKE CONCAT('%', #{keyword}, '%') OR c.region LIKE CONCAT('%', #{keyword}, '%'))</if>
+        </where>
+        ORDER BY r.period DESC, c.name
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmChannelReport">
+        <include refid="viewSelect"/>
+        WHERE r.id = #{id}
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.scm.entity.ScmChannelReportItem">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit
+        FROM scm_channel_report_item i
+        JOIN wms_material m ON m.id = i.material_id
+        WHERE i.report_id = #{reportId}
+        ORDER BY m.code
+    </select>
+
+    <delete id="deleteItems">
+        DELETE FROM scm_channel_report_item WHERE report_id = #{reportId}
+    </delete>
+
+    <insert id="insertItems">
+        INSERT INTO scm_channel_report_item (report_id, material_id, sell_qty, stock_qty) VALUES
+        <foreach collection="list" item="i" separator=",">(#{reportId}, #{i.materialId}, #{i.sellQty}, #{i.stockQty})</foreach>
+    </insert>
+
+    <select id="selectCatalog" resultType="com.lemon.erp.modules.scm.entity.ScmPriceList">
+        SELECT p.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit
+        FROM scm_price_list p
+        JOIN wms_material m ON m.id = p.material_id AND m.status = 1
+        WHERE (p.customer_level IS NULL <if test="level != null and level != ''">OR p.customer_level = #{level}</if>)
+          AND (p.valid_from IS NULL OR p.valid_from &lt;= #{date})
+          AND (p.valid_to IS NULL OR p.valid_to &gt;= #{date})
+          <if test="keyword != null and keyword != ''">AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))</if>
+        ORDER BY m.code, CASE WHEN p.customer_level IS NULL THEN 1 ELSE 0 END, p.min_qty
+    </select>
+
+    <select id="selectUserDept" resultType="java.lang.Long">
+        SELECT dept_id FROM sys_user WHERE id = #{userId}
+    </select>
+
+</mapper>

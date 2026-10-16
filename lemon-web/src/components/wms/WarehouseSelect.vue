@@ -1,0 +1,45 @@
+<template>
+  <a-select
+    :value="value ?? undefined"
+    show-search
+    :allow-clear="allowClear"
+    :placeholder="placeholder"
+    :options="options"
+    :loading="loading"
+    :disabled="disabled"
+    option-filter-prop="label"
+    @change="(v) => emit('update:value', v ?? null)"
+  />
+</template>
+
+<script setup>
+import { computed, onMounted, ref } from 'vue'
+import { warehouseOptions } from '@/api/wms/warehouse'
+
+/** 仓库下拉：启用的仓库，同一页面内只请求一次；types 限定仓库类型（如 ['DEFECT'] 只显示不良品仓） */
+const props = defineProps({
+  value: Number,
+  placeholder: { type: String, default: '请选择仓库' },
+  allowClear: { type: Boolean, default: true },
+  disabled: Boolean,
+  types: Array
+})
+const emit = defineEmits(['update:value'])
+
+const list = ref([])
+const loading = ref(false)
+const options = computed(() =>
+  list.value
+    .filter((w) => !props.types?.length || props.types.includes(w.type || 'NORMAL'))
+    .map((w) => ({ value: w.id, label: `${w.name}（${w.code}）` }))
+)
+
+onMounted(async () => {
+  loading.value = true
+  try {
+    list.value = await warehouseOptions()
+  } finally {
+    loading.value = false
+  }
+})
+</script>

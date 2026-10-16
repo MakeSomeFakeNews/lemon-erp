@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrContractMapper">
+
+    <sql id="viewSelect">
+        SELECT c.*, e.emp_no, e.name AS employee_name, e.status AS emp_status, d.name AS dept_name
+        FROM hr_contract c
+        JOIN hr_employee e ON e.id = c.employee_id
+        LEFT JOIN sys_dept d ON d.id = e.dept_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.hr.entity.HrContract">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (c.contract_no LIKE CONCAT('%', #{keyword}, '%') OR e.emp_no LIKE CONCAT('%', #{keyword}, '%')
+                 OR e.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null and status != ''">AND c.status = #{status}</if>
+            <if test="contractType != null and contractType != ''">AND c.contract_type = #{contractType}</if>
+            <if test="expireBefore != null">AND c.status = 'ACTIVE' AND c.end_date IS NOT NULL AND c.end_date &lt;= #{expireBefore}</if>
+            <if test="employeeId != null">AND c.employee_id = #{employeeId}</if>
+        </where>
+        ORDER BY c.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.hr.entity.HrContract">
+        <include refid="viewSelect"/>
+        WHERE c.id = #{id}
+    </select>
+
+    <select id="selectExpiring" resultType="com.lemon.erp.modules.hr.entity.HrContract">
+        <include refid="viewSelect"/>
+        WHERE c.status = 'ACTIVE' AND c.end_date IS NOT NULL AND c.end_date &lt;= #{before}
+        ORDER BY c.end_date
+    </select>
+
+</mapper>

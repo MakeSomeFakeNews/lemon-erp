@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsStockMapper">
+
+    <update id="increase">
+        UPDATE wms_stock SET qty = qty + #{qty}, update_time = NOW()
+        WHERE warehouse_id = #{warehouseId} AND location_id = #{locationId}
+          AND material_id = #{materialId} AND batch_no = #{batchNo}
+    </update>
+
+    <!-- 只能扣减未冻结的数量（待检、不合格的库存冻结） -->
+    <update id="decrease">
+        UPDATE wms_stock SET qty = qty - #{qty}, update_time = NOW()
+        WHERE warehouse_id = #{warehouseId} AND location_id = #{locationId}
+          AND material_id = #{materialId} AND batch_no = #{batchNo}
+          AND qty - frozen_qty &gt;= #{qty}
+    </update>
+
+    <update id="freeze">
+        UPDATE wms_stock SET frozen_qty = frozen_qty + #{qty}, update_time = NOW()
+        WHERE warehouse_id = #{warehouseId} AND location_id = #{locationId}
+          AND material_id = #{materialId} AND batch_no = #{batchNo}
+          AND qty - frozen_qty &gt;= #{qty}
+    </update>
+
+    <update id="unfreeze">
+        UPDATE wms_stock SET frozen_qty = frozen_qty - #{qty}, update_time = NOW()
+        WHERE warehouse_id = #{warehouseId} AND location_id = #{locationId}
+          AND material_id = #{materialId} AND batch_no = #{batchNo}
+          AND frozen_qty &gt;= #{qty}
+    </update>
+
+    <sql id="stockSelect">
+        SELECT s.id, s.warehouse_id, w.name AS warehouse_name, s.location_id, l.code AS location_code, l.name AS location_name,
+               s.material_id, m.code AS material_code, m.name AS material_name, m.spec, m.unit,
+               m.batch_enabled, m.serial_enabled, s.batch_no, b.production_date, b.expiry_date, s.qty, s.frozen_qty
+        FROM wms_stock s
+        JOIN wms_material m ON m.id = s.material_id
+        JOIN wms_warehouse w ON w.id = s.warehouse_id
+        LEFT JOIN wms_location l ON l.id = s.location_id
+        LEFT JOIN wms_batch b ON b.material_id = s.material_id AND b.batch_no = s.batch_no
+        <where>
+            <if test="q.hideZero()">s.qty &lt;&gt; 0</if>
+            <if test="q.warehouseId != null">AND s.warehouse_id = #{q.warehouseId}</if>
+            <if test="q.locationId != null">AND s.location_id = #{q.locationId}</if>
+            <if test="q.materialId != null">AND s.material_id = #{q.materialId}</if>
+            <if test="q.keyword != null and q.keyword != ''">
+                AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+            <if test="q.batchNo != null and q.batchNo != ''">AND s.batch_no LIKE CONCAT('%', #{q.batchNo}, '%')</if>
+            <if test="q.category != null and q.category != ''">AND m.category = #{q.category}</if>
+        </where>
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.wms.dto.StockView">
+        <include refid="stockSelect"/>
+        ORDER BY m.code, w.sort, s.warehouse_id, l.code, s.batch_no
+    </select>
+
+    <select id="selectStockList" resultType="com.lemon.erp.modules.wms.dto.StockView">
+        <include refid="stockSelect"/>
+        ORDER BY l.code, m.code, s.batch_no
+    </select>
+
+    <select id="selectSummary" resultType="com.lemon.erp.modules.wms.dto.StockSummaryView">
+        SELECT m.id AS material_id, m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.category,
+               m.safety_stock, COALESCE(SUM(s.qty), 0) AS qty, COALESCE(SUM(s.frozen_qty), 0) AS frozen_qty
+        FROM wms_material m
+        LEFT JOIN wms_stock s ON s.material_id = m.id
+            <if test="q.warehouseId != null">AND s.warehouse_id = #{q.warehouseId}</if>
+        <where>
+            <if test="q.materialId != null">m.id = #{q.materialId}</if>
+            <if test="q.keyword != null and q.keyword != ''">
+                AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+            <if test="q.category != null and q.category != ''">AND m.category = #{q.category}</if>
+        </where>
+        GROUP BY m.id, m.code, m.name, m.spec, m.unit, m.category, m.safety_stock
+        <choose>
+            <when test="q.lowStock != null and q.lowStock">
+                HAVING m.safety_stock IS NOT NULL AND COALESCE(SUM(s.qty), 0) &lt; m.safety_stock
+            </when>
+            <when test="q.hideZero()">
+                HAVING COALESCE(SUM(s.qty), 0) &lt;&gt; 0
+            </when>
+        </choose>
+        ORDER BY m.code
+    </select>
+
+    <select id="selectQtyByMaterial" resultType="java.util.Map">
+        SELECT s.material_id AS "materialId", SUM(s.qty) AS "qty", SUM(s.frozen_qty) AS "frozenQty"
+        FROM wms_stock s
+        JOIN wms_warehouse w ON w.id = s.warehouse_id
+        WHERE s.material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND w.type NOT IN ('DEFECT', 'CONSIGN_OUT', 'CONSIGN_IN')
+        GROUP BY s.material_id
+    </select>
+
+    <select id="selectPickCandidates" resultType="java.util.Map">
+        SELECT s.location_id AS "locationId", l.code AS "locationCode", s.batch_no AS "batchNo", b.expiry_date AS "expiryDate",
+               s.qty - s.frozen_qty AS "qty"
+        FROM wms_stock s
+        LEFT JOIN wms_location l ON l.id = s.location_id
+        LEFT JOIN wms_batch b ON b.material_id = s.material_id AND b.batch_no = s.batch_no AND s.batch_no &lt;&gt; ''
+        WHERE s.warehouse_id = #{warehouseId} AND s.material_id = #{materialId} AND s.qty - s.frozen_qty &gt; 0
+          AND (b.expiry_date IS NULL OR b.expiry_date &gt;= #{today})
+          AND (l.loc_type IS NULL OR l.loc_type &lt;&gt; 'DEFECT')
+        ORDER BY CASE WHEN b.expiry_date IS NULL THEN 1 ELSE 0 END, b.expiry_date, s.batch_no, l.sort, l.code
+    </select>
+
+</mapper>

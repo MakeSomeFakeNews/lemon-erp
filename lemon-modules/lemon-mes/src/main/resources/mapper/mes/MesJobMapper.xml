@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 定时任务（到期提醒等）使用的查询 -->
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesJobMapper">
+
+    <select id="selectMaintainDue" resultType="java.util.Map">
+        SELECT id AS "id", code AS "code", name AS "name", next_maintain_date AS "nextDate"
+        FROM mes_equipment
+        WHERE status &lt;&gt; 'SCRAPPED' AND next_maintain_date IS NOT NULL AND next_maintain_date &lt;= #{before}
+    </select>
+
+    <select id="selectOverdueWorkOrders" resultType="java.util.Map">
+        SELECT id AS "id", wo_no AS "woNo", plan_end AS "planEnd", create_by AS "createBy"
+        FROM mes_work_order
+        WHERE status IN ('RELEASED', 'STARTED') AND plan_end &lt; #{today}
+    </select>
+
+</mapper>

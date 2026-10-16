@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.crm.mapper.CrmStageLogMapper">
+
+    <select id="selectByOpportunity" resultType="com.lemon.erp.modules.crm.entity.CrmStageLog">
+        SELECT l.*, u.nickname AS user_name
+        FROM crm_stage_log l
+        LEFT JOIN sys_user u ON u.id = l.user_id
+        WHERE l.opportunity_id = #{opportunityId}
+        ORDER BY l.id
+    </select>
+
+</mapper>

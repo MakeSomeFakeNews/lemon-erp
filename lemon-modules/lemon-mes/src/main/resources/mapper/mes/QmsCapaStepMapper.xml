@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.QmsCapaStepMapper">
+
+    <select id="selectByCapa" resultType="com.lemon.erp.modules.mes.entity.QmsCapaStep">
+        SELECT s.*, u.nickname AS owner_name
+        FROM qms_capa_step s
+        LEFT JOIN sys_user u ON u.id = s.owner_id
+        WHERE s.capa_id = #{capaId}
+        ORDER BY s.step
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO qms_capa_step (capa_id, step, owner_id, done, create_time, update_time) VALUES
+        <foreach collection="steps" item="s" separator=",">
+            (#{s.capaId}, #{s.step}, #{s.ownerId}, 0, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

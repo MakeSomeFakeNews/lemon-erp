@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesReportMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.MesReport">
+        SELECT r.*, o.wo_no, op.seq AS op_seq, op.name AS op_name, w.name AS work_center_name, u.nickname AS create_by_name,
+               ou.nickname AS operator_name, eq.name AS equipment_name, md.code AS mold_code
+        FROM mes_report r
+        LEFT JOIN sys_user ou ON ou.id = r.operator_id
+        LEFT JOIN mes_equipment eq ON eq.id = r.equipment_id
+        LEFT JOIN mes_mold md ON md.id = r.mold_id
+        JOIN mes_work_order o ON o.id = r.wo_id
+        JOIN mes_wo_op op ON op.id = r.op_id
+        LEFT JOIN mes_work_center w ON w.id = op.work_center_id
+        LEFT JOIN sys_user u ON u.id = r.create_by
+        <where>
+            <if test="woId != null">r.wo_id = #{woId}</if>
+            <if test="beginDate != null">AND r.report_date &gt;= #{beginDate}</if>
+            <if test="endDate != null">AND r.report_date &lt;= #{endDate}</if>
+        </where>
+        ORDER BY r.id DESC
+    </select>
+
+</mapper>

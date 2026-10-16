@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.QmsNcrMapper">
+
+    <sql id="viewSelect">
+        SELECT n.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, s.name AS supplier_name, o.wo_no,
+               i.insp_no, r.wo_no AS rework_wo_no, u.nickname AS create_by_name
+        FROM qms_ncr n
+        JOIN wms_material m ON m.id = n.material_id
+        LEFT JOIN scm_supplier s ON s.id = n.supplier_id
+        LEFT JOIN mes_work_order o ON o.id = n.wo_id
+        LEFT JOIN mes_inspection i ON i.id = n.inspection_id
+        LEFT JOIN mes_work_order r ON r.id = n.rework_wo_id
+        LEFT JOIN sys_user u ON u.id = n.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.QmsNcr">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="status != null">n.status = #{status}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (n.ncr_no LIKE CONCAT('%', #{keyword}, '%') OR n.source_no LIKE CONCAT('%', #{keyword}, '%')
+                     OR m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%')
+                     OR s.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY n.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.mes.entity.QmsNcr">
+        <include refid="viewSelect"/>
+        WHERE n.id = #{id}
+    </select>
+
+    <update id="transit">
+        UPDATE qms_ncr SET status = #{to}, update_time = NOW() WHERE id = #{id} AND status = #{from}
+    </update>
+
+</mapper>

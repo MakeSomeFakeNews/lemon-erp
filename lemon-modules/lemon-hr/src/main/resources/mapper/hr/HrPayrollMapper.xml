@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrPayrollMapper">
+
+    <sql id="columns">
+        p.*, u.nickname AS create_by_name, cu.nickname AS confirm_by_name,
+        av.voucher_no AS accrue_voucher_no, pv.voucher_no AS pay_voucher_no
+    </sql>
+
+    <sql id="joins">
+        FROM hr_payroll p
+        LEFT JOIN sys_user u ON u.id = p.create_by
+        LEFT JOIN sys_user cu ON cu.id = p.confirm_by
+        LEFT JOIN fin_voucher av ON av.id = p.accrue_voucher_id
+        LEFT JOIN fin_voucher pv ON pv.id = p.pay_voucher_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.hr.entity.HrPayroll">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="periodFrom != null">p.period &gt;= #{periodFrom}</if>
+            <if test="periodTo != null">AND p.period &lt;= #{periodTo}</if>
+            <if test="status != null and status != ''">AND p.status = #{status}</if>
+        </where>
+        ORDER BY p.period DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.hr.entity.HrPayroll">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE p.id = #{id}
+    </select>
+
+    <update id="updateTotals">
+        UPDATE hr_payroll
+        SET headcount = (SELECT COUNT(*) FROM hr_payroll_item i WHERE i.payroll_id = #{id}),
+            gross_total = (SELECT COALESCE(SUM(i.gross_pay), 0) FROM hr_payroll_item i WHERE i.payroll_id = #{id}),
+            personal_total = (SELECT COALESCE(SUM(i.social_personal + i.housing_personal), 0) FROM hr_payroll_item i WHERE i.payroll_id = #{id}),
+            tax_total = (SELECT COALESCE(SUM(i.income_tax), 0) FROM hr_payroll_item i WHERE i.payroll_id = #{id}),
+            net_total = (SELECT COALESCE(SUM(i.net_pay), 0) FROM hr_payroll_item i WHERE i.payroll_id = #{id}),
+            company_total = (SELECT COALESCE(SUM(i.social_company + i.housing_company), 0) FROM hr_payroll_item i WHERE i.payroll_id = #{id}),
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

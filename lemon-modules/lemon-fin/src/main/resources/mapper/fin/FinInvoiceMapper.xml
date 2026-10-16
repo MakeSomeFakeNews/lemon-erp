@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinInvoiceMapper">
+
+    <sql id="viewSelect">
+        SELECT i.*, COALESCE(c.name, s.name) AS partner_name, u.nickname AS create_by_name
+        FROM fin_invoice i
+        LEFT JOIN scm_customer c ON i.kind = 'OUTPUT' AND c.id = i.partner_id
+        LEFT JOIN scm_supplier s ON i.kind = 'INPUT' AND s.id = i.partner_id
+        LEFT JOIN sys_user u ON u.id = i.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinInvoice">
+        <include refid="viewSelect"/>
+        WHERE i.kind = #{kind}
+        <if test="keyword != null and keyword != ''">
+            AND (i.invoice_no LIKE CONCAT('%', #{keyword}, '%') OR c.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR s.name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="partnerId != null">AND i.partner_id = #{partnerId}</if>
+        <if test="status != null and status != ''">AND i.status = #{status}</if>
+        ORDER BY i.invoice_date DESC, i.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinInvoice">
+        <include refid="viewSelect"/>
+        WHERE i.id = #{id}
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.fin.entity.FinInvoiceItem">
+        SELECT t.*, b.bill_no, b.source_no, b.amount AS bill_amount
+        FROM fin_invoice_item t
+        JOIN fin_bill b ON b.id = t.bill_id
+        WHERE t.invoice_id = #{invoiceId}
+        ORDER BY t.id
+    </select>
+
+    <select id="selectOpenBills" resultType="com.lemon.erp.modules.fin.entity.FinBill">
+        SELECT b.* FROM fin_bill b
+        WHERE b.kind = #{billKind} AND b.partner_id = #{partnerId} AND b.source_type &lt;&gt; 'MANUAL' AND b.amount &lt;&gt; b.invoiced_amount
+        ORDER BY b.bill_date, b.id
+    </select>
+
+    <select id="selectUninvoiced" resultType="java.util.Map">
+        SELECT b.partner_id AS "partnerId", COALESCE(c.name, s.name) AS "partnerName", COUNT(*) AS "billCount",
+               SUM(b.amount) AS "amount", SUM(b.invoiced_amount) AS "invoiced",
+               SUM(b.amount - b.invoiced_amount) AS "uninvoiced",
+               SUM(CASE WHEN b.amount = 0 THEN 0 ELSE (b.amount - b.invoiced_amount) * b.tax_amount / b.amount END) AS "uninvoicedTax"
+        FROM fin_bill b
+        LEFT JOIN scm_customer c ON b.kind = 'AR' AND c.id = b.partner_id
+        LEFT JOIN scm_supplier s ON b.kind = 'AP' AND s.id = b.partner_id
+        WHERE b.kind = #{billKind} AND b.bill_date &lt;= #{asOf} AND b.amount &lt;&gt; b.invoiced_amount AND b.source_type &lt;&gt; 'MANUAL'
+        GROUP BY b.partner_id, COALESCE(c.name, s.name)
+        ORDER BY 6 DESC
+    </select>
+
+</mapper>

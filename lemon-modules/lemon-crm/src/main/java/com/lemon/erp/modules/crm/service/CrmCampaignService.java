@@ -1,0 +1,90 @@
+package com.lemon.erp.modules.crm.service;
+
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.modules.crm.entity.CrmCampaign;
+import com.lemon.erp.modules.crm.entity.CrmLead;
+import com.lemon.erp.modules.crm.entity.CrmOpportunity;
+import com.lemon.erp.modules.crm.mapper.CrmCampaignMapper;
+import com.lemon.erp.modules.crm.mapper.CrmLeadMapper;
+import com.lemon.erp.modules.crm.mapper.CrmOpportunityMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * 市场活动：效果按关联的线索、商机统计，投入产出比 = 赢单金额 / 实际花费
+ */
+@Service
+@RequiredArgsConstructor
+public class CrmCampaignService {
+
+    private static final Set<String> STATUSES = Set.of("PLANNED", "ACTIVE", "FINISHED", "CANCELED");
+
+    private final CrmCampaignMapper campaignMapper;
+    private final CrmLeadMapper leadMapper;
+    private final CrmOpportunityMapper opportunityMapper;
+
+    public PageResult<CrmCampaign> page(long current, long size, String keyword, String type, String status) {
+        Page<CrmCampaign> page = Page.of(current, size);
+        campaignMapper.selectPageList(page, keyword, type, status);
+        return PageResult.of(page);
+    }
+
+    public CrmCampaign detail(Long id) {
+        CrmCampaign c = campaignMapper.selectDetail(id);
+        if (c == null) {
+            throw new BizException("市场活动不存在");
+        }
+        return c;
+    }
+
+    /** 线索、商机选择来源活动：未取消的活动 */
+    public List<CrmCampaign> options() {
+        return campaignMapper.selectList(Wrappers.<CrmCampaign>lambdaQuery()
+                .select(CrmCampaign::getId, CrmCampaign::getName, CrmCampaign::getType, CrmCampaign::getStatus)
+                .ne(CrmCampaign::getStatus, "CANCELED")
+                .orderByDesc(CrmCampaign::getStartDate));
+    }
+
+    public void create(CrmCampaign c) {
+        check(c);
+        c.setId(null);
+        if (c.getStatus() == null) c.setStatus("PLANNED");
+        campaignMapper.insert(c);
+    }
+
+    public void update(Long id, CrmCampaign c) {
+        detail(id);
+        check(c);
+        c.setId(id);
+        campaignMapper.updateById(c);
+    }
+
+    /** 已有线索或商机关联的活动不能删除，可以取消 */
+    public void delete(List<Long> ids) {
+        for (Long id : ids) {
+            if (leadMapper.exists(Wrappers.<CrmLead>lambdaQuery().eq(CrmLead::getCampaignId, id))
+                    || opportunityMapper.exists(Wrappers.<CrmOpportunity>lambdaQuery().eq(CrmOpportunity::getCampaignId, id))) {
+                throw new BizException("活动「" + detail(id).getName() + "」已有线索或商机，不能删除，可以改为已取消");
+            }
+        }
+        campaignMapper.deleteByIds(ids);
+    }
+
+    private static void check(CrmCampaign c) {
+        if (c.getEndDate().isBefore(c.getStartDate())) {
+            throw new BizException("结束日期不能早于开始日期");
+        }
+        if (c.getStatus() != null && !STATUSES.contains(c.getStatus())) {
+            throw new BizException("活动状态不正确");
+        }
+        if (c.getBudget() == null) c.setBudget(BigDecimal.ZERO);
+        if (c.getActualCost() == null) c.setActualCost(BigDecimal.ZERO);
+    }
+}

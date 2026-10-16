@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 首页待办数量，见 TodoProvider -->
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrTodoMapper">
+
+    <select id="selectCounts" resultType="java.util.Map">
+        SELECT
+            (SELECT COUNT(*) FROM hr_leave WHERE status = 'APPROVING' AND flow_instance_id IS NULL) AS "leaveToApprove",
+            (SELECT COUNT(*) FROM hr_employee WHERE status = 'PROBATION' AND regular_date IS NOT NULL AND regular_date &lt;= #{in15}) AS "probationDue"
+    </select>
+
+</mapper>

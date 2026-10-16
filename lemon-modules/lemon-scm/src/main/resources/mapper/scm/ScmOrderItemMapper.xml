@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper">
+
+    <select id="selectByOrderId" resultType="com.lemon.erp.modules.scm.entity.ScmOrderItem">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.batch_enabled, m.serial_enabled,
+               p.name AS promotion_name
+        FROM scm_order_item i
+        JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN scm_promotion p ON p.id = i.promotion_id
+        WHERE i.order_id = #{orderId}
+        ORDER BY i.id
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO scm_order_item (order_id, material_id, qty, unit_name, unit_ratio, price, tax_rate, amount, tax_amount, done_qty,
+                                    return_qty, delivery_date, remark, orig_price, promotion_id, gift, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.orderId}, #{i.materialId}, #{i.qty}, #{i.unitName}, #{i.unitRatio}, #{i.price}, #{i.taxRate}, #{i.amount}, #{i.taxAmount}, 0,
+             0, #{i.deliveryDate}, #{i.remark}, #{i.origPrice}, #{i.promotionId}, COALESCE(#{i.gift}, 0), NOW(), NOW())
+        </foreach>
+    </insert>
+
+    <update id="addDone">
+        UPDATE scm_order_item SET done_qty = done_qty + #{qty}, update_time = NOW()
+        WHERE id = #{id} AND qty - done_qty + replenish_qty &gt;= #{qty}
+    </update>
+
+    <update id="addReturn">
+        UPDATE scm_order_item
+        SET return_qty = return_qty + #{qty},
+            <if test="replenish">replenish_qty = replenish_qty + #{qty},</if>
+            update_time = NOW()
+        WHERE id = #{id} AND done_qty - return_qty &gt;= #{qty}
+    </update>
+
+</mapper>

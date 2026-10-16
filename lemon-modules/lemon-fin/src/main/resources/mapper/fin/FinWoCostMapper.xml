@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinWoCostMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinWoCost">
+        SELECT c.*, o.wo_no, m.code AS material_code, m.name AS material_name, m.unit
+        FROM fin_wo_cost c
+        JOIN mes_work_order o ON o.id = c.wo_id
+        JOIN wms_material m ON m.id = o.material_id
+        WHERE c.period = #{period}
+        ORDER BY o.wo_no
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO fin_wo_cost (period, wo_id, wip_open, material_cost, labor_cost, overhead_cost, hours, finished_qty,
+                                 finished_amount, unit_cost, wip_close, loss_amount, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.period}, #{i.woId}, #{i.wipOpen}, #{i.materialCost}, #{i.laborCost}, #{i.overheadCost}, #{i.hours},
+             #{i.finishedQty}, #{i.finishedAmount}, #{i.unitCost}, #{i.wipClose}, #{i.lossAmount}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

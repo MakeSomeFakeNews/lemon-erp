@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinVoucherMapper">
+
+    <sql id="viewSelect">
+        SELECT v.*, cu.nickname AS create_by_name, au.nickname AS audit_by_name, pu.nickname AS post_by_name
+        FROM fin_voucher v
+        LEFT JOIN sys_user cu ON cu.id = v.create_by
+        LEFT JOIN sys_user au ON au.id = v.audit_by
+        LEFT JOIN sys_user pu ON pu.id = v.post_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinVoucher">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="q.period != null">v.period = #{q.period}</if>
+            <if test="q.status != null and q.status != ''">AND v.status = #{q.status}</if>
+            <if test="q.sourceType != null and q.sourceType != ''">AND v.source_type = #{q.sourceType}</if>
+            <if test="q.keyword != null and q.keyword != ''">
+                AND (v.voucher_no LIKE CONCAT('%', #{q.keyword}, '%') OR v.summary LIKE CONCAT('%', #{q.keyword}, '%')
+                     OR v.source_no LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+            <if test="q.accountId != null">
+                AND EXISTS (SELECT 1 FROM fin_voucher_entry e JOIN fin_account a ON a.id = e.account_id
+                            JOIN fin_account p ON p.id = #{q.accountId}
+                            WHERE e.voucher_id = v.id AND a.code LIKE CONCAT(p.code, '%'))
+            </if>
+        </where>
+        ORDER BY v.period DESC, v.voucher_seq DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinVoucher">
+        <include refid="viewSelect"/>
+        WHERE v.id = #{id}
+    </select>
+
+</mapper>

@@ -1,0 +1,9 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '首页工作台：经营数据卡片、待办汇总'
+
+dependencies {
+    api project(':lemon-modules:lemon-monitor')
+}

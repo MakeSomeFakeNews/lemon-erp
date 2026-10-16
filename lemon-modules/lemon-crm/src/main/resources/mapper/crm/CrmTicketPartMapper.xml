@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.crm.mapper.CrmTicketPartMapper">
+
+    <select id="selectByTicket" resultType="com.lemon.erp.modules.crm.entity.CrmTicketPart">
+        SELECT p.*, w.name AS warehouse_name, u.nickname AS create_by_name
+        FROM crm_ticket_part p
+        LEFT JOIN wms_warehouse w ON w.id = p.warehouse_id
+        LEFT JOIN sys_user u ON u.id = p.create_by
+        WHERE p.ticket_id = #{ticketId}
+        ORDER BY p.id
+    </select>
+
+</mapper>

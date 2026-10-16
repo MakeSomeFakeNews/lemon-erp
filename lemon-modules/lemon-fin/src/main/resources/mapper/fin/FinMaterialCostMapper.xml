@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinMaterialCostMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinMaterialCost">
+        SELECT c.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.category
+        FROM fin_material_cost c
+        JOIN wms_material m ON m.id = c.material_id
+        WHERE c.period = #{period}
+        <if test="keyword != null and keyword != ''">
+            AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY m.code
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO fin_material_cost (period, material_id, open_qty, open_amount, purchase_qty, purchase_amount, make_qty,
+                                       make_amount, other_in_qty, other_in_amount, issue_qty, issue_amount, sales_qty,
+                                       sales_amount, other_out_qty, other_out_amount, close_qty, close_amount, unit_cost,
+                                       create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.period}, #{i.materialId}, #{i.openQty}, #{i.openAmount}, #{i.purchaseQty}, #{i.purchaseAmount}, #{i.makeQty},
+             #{i.makeAmount}, #{i.otherInQty}, #{i.otherInAmount}, #{i.issueQty}, #{i.issueAmount}, #{i.salesQty},
+             #{i.salesAmount}, #{i.otherOutQty}, #{i.otherOutAmount}, #{i.closeQty}, #{i.closeAmount}, #{i.unitCost},
+             NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

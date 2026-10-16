@@ -1,0 +1,9 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '供应链管理：采购、销售、请购询价报价、发货、供应商与客户'
+
+dependencies {
+    api project(':lemon-modules:lemon-wms')
+}

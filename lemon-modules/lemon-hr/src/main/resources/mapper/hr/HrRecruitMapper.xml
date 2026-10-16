@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrRecruitMapper">
+
+    <sql id="columns">
+        r.*, d.name AS dept_name, p.name AS position_name, u.nickname AS create_by_name,
+        (SELECT COUNT(*) FROM hr_candidate c WHERE c.recruit_id = r.id) AS candidate_count
+    </sql>
+
+    <sql id="joins">
+        FROM hr_recruit r
+        LEFT JOIN sys_dept d ON d.id = r.dept_id
+        LEFT JOIN hr_position p ON p.id = r.position_id
+        LEFT JOIN sys_user u ON u.id = r.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.hr.entity.HrRecruit">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (r.recruit_no LIKE CONCAT('%', #{keyword}, '%') OR r.title LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null and status != ''">AND r.status = #{status}</if>
+            <if test="deptId != null">AND r.dept_id = #{deptId}</if>
+        </where>
+        ORDER BY r.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.hr.entity.HrRecruit">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE r.id = #{id}
+    </select>
+
+    <!-- status 放在 hired_count 之前：MySQL 按顺序计算 SET，两者都基于更新前的 hired_count -->
+    <update id="addHired">
+        UPDATE hr_recruit
+        SET status = CASE WHEN hired_count + 1 &gt;= headcount THEN 'CLOSED' ELSE status END,
+            hired_count = hired_count + 1,
+            update_time = NOW()
+        WHERE id = #{id} AND status = 'OPEN'
+    </update>
+
+</mapper>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmPlanningMapper">
+
+    <select id="selectAtpLines" resultType="java.util.Map">
+        SELECT COALESCE(i.delivery_date, o.delivery_date, #{today}) AS "date",
+               CASE WHEN o.kind = 'PURCHASE' THEN 'PO' ELSE 'SO' END AS "type",
+               o.order_no AS "docNo",
+               CASE WHEN o.kind = 'PURCHASE' THEN i.qty - i.done_qty + i.replenish_qty
+                    ELSE -(i.qty - i.done_qty + i.replenish_qty - COALESCE(rv.qty, 0)) END AS "qty"
+        FROM scm_order_item i
+        JOIN scm_order o ON o.id = i.order_id
+        LEFT JOIN (SELECT source_item_id, SUM(qty) AS qty FROM wms_reservation
+                   WHERE source_type = 'SALES' AND qty &gt; 0 GROUP BY source_item_id) rv ON rv.source_item_id = i.id
+        WHERE i.material_id = #{materialId}
+          AND o.status IN ('APPROVED', 'PARTIAL')
+          AND i.qty - i.done_qty + i.replenish_qty &gt; 0
+          <if test="warehouseId != null">AND (o.warehouse_id = #{warehouseId} OR o.warehouse_id IS NULL)</if>
+        ORDER BY 1
+    </select>
+
+    <select id="selectBackorders" resultType="java.util.Map">
+        SELECT o.id AS "orderId", o.order_no AS "orderNo", o.kind AS "kind", o.order_date AS "orderDate",
+               COALESCE(sp.name, cu.name) AS "partnerName", i.id AS "orderItemId", i.material_id AS "materialId", m.code AS "materialCode",
+               m.name AS "materialName", m.spec AS "spec", m.unit AS "unit",
+               i.qty AS "qty", i.done_qty AS "doneQty", i.qty - i.done_qty + i.replenish_qty AS "openQty",
+               COALESCE(i.delivery_date, o.delivery_date) AS "deliveryDate",
+               COALESCE((SELECT SUM(r.qty) FROM wms_reservation r WHERE r.source_type = 'SALES' AND r.source_item_id = i.id), 0) AS "reservedQty",
+               COALESCE((SELECT SUM(s.qty - s.frozen_qty) FROM wms_stock s WHERE s.material_id = i.material_id), 0) AS "availableQty",
+               u.nickname AS "createByName"
+        FROM scm_order_item i
+        JOIN scm_order o ON o.id = i.order_id
+        JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN scm_supplier sp ON o.kind = 'PURCHASE' AND sp.id = o.partner_id
+        LEFT JOIN scm_customer cu ON o.kind = 'SALES' AND cu.id = o.partner_id
+        LEFT JOIN sys_user u ON u.id = o.create_by
+        WHERE o.kind = #{kind}
+          AND o.status IN ('APPROVED', 'PARTIAL')
+          AND i.qty - i.done_qty + i.replenish_qty &gt; 0
+          <if test="overdueOnly">AND COALESCE(i.delivery_date, o.delivery_date) &lt; #{today}</if>
+          <if test="partnerId != null">AND o.partner_id = #{partnerId}</if>
+          <if test="keyword != null and keyword != ''">
+              AND (o.order_no LIKE CONCAT('%', #{keyword}, '%') OR m.code LIKE CONCAT('%', #{keyword}, '%')
+                   OR m.name LIKE CONCAT('%', #{keyword}, '%'))
+          </if>
+        ORDER BY COALESCE(i.delivery_date, o.delivery_date), o.id, i.id
+    </select>
+
+    <select id="selectReorderMaterials" resultType="java.util.Map">
+        SELECT m.id AS "materialId", m.code AS "code", m.name AS "name", m.spec AS "spec", m.unit AS "unit",
+               m.safety_stock AS "safetyStock", m.reorder_point AS "reorderPoint", m.reorder_qty AS "reorderQty",
+               COALESCE((SELECT SUM(s.qty - s.frozen_qty) FROM wms_stock s JOIN wms_warehouse w ON w.id = s.warehouse_id
+                         WHERE s.material_id = m.id AND w.type NOT IN ('DEFECT', 'CONSIGN_OUT', 'CONSIGN_IN')), 0) AS "available",
+               COALESCE((SELECT SUM(i.qty - i.done_qty + i.replenish_qty) FROM scm_order_item i JOIN scm_order o ON o.id = i.order_id
+                         WHERE i.material_id = m.id AND o.kind = 'PURCHASE' AND o.status IN ('APPROVED', 'PARTIAL')
+                           AND i.qty - i.done_qty + i.replenish_qty &gt; 0), 0) AS "poOpen",
+               COALESCE((SELECT SUM(i.qty - i.done_qty + i.replenish_qty) FROM scm_order_item i JOIN scm_order o ON o.id = i.order_id
+                         WHERE i.material_id = m.id AND o.kind = 'SALES' AND o.status IN ('APPROVED', 'PARTIAL')
+                           AND i.qty - i.done_qty + i.replenish_qty &gt; 0), 0) AS "soOpen"
+        FROM wms_material m
+        WHERE m.status = 1 AND m.reorder_point IS NOT NULL
+          <if test="keyword != null and keyword != ''">
+              AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))
+          </if>
+        ORDER BY m.code
+    </select>
+
+</mapper>

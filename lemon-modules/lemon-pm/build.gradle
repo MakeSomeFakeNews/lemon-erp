@@ -1,0 +1,13 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '项目管理：项目、计划进度、资源工时、成本与核算'
+
+dependencies {
+    api project(':lemon-modules:lemon-fin')
+    api project(':lemon-modules:lemon-hr')
+    api project(':lemon-modules:lemon-scm')
+    api project(':lemon-modules:lemon-system')
+    api project(':lemon-modules:lemon-wms')
+}

@@ -1,0 +1,12 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '通用基础：统一返回、异常、实体基类、校验分组、工具类，不依赖其他模块'
+
+dependencies {
+    api libs.spring.boot.starter.webmvc
+    api libs.spring.boot.starter.validation
+    api libs.spring.boot.starter.security
+    api libs.mybatis.plus.starter
+}

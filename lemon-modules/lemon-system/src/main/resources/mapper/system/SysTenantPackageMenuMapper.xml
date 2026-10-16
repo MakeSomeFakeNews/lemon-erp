@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.system.mapper.SysTenantPackageMenuMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO sys_tenant_package_menu (package_id, menu_id) VALUES
+        <foreach collection="menuIds" item="menuId" separator=",">
+            (#{packageId}, #{menuId})
+        </foreach>
+    </insert>
+
+</mapper>

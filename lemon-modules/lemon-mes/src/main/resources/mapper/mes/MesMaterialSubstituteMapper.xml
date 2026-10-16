@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesMaterialSubstituteMapper">
+
+    <select id="selectByMaterialIds" resultType="com.lemon.erp.modules.mes.entity.MesMaterialSubstitute">
+        SELECT x.*, m.code AS substitute_code, m.name AS substitute_name, m.spec, m.unit, m.serial_enabled,
+               (SELECT COALESCE(SUM(st.qty), 0) FROM wms_stock st WHERE st.material_id = x.substitute_id) AS on_hand_qty
+        FROM mes_material_substitute x
+        JOIN wms_material m ON m.id = x.substitute_id
+        WHERE x.material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY x.material_id, x.priority, m.code
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO mes_material_substitute (material_id, substitute_id, ratio, priority, remark, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.materialId}, #{i.substituteId}, #{i.ratio}, #{i.priority}, #{i.remark}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

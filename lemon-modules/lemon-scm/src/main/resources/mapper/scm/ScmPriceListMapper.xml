@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmPriceListMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmPriceList">
+        SELECT p.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit
+        FROM scm_price_list p
+        JOIN wms_material m ON m.id = p.material_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="level != null and level != ''">AND p.customer_level = #{level}</if>
+        </where>
+        ORDER BY m.code, p.customer_level, p.min_qty
+    </select>
+
+    <select id="selectQuote" resultType="com.lemon.erp.modules.scm.entity.ScmPriceList">
+        SELECT p.*
+        FROM scm_price_list p
+        WHERE p.material_id = #{materialId}
+          AND (p.customer_level IS NULL <if test="level != null and level != ''">OR p.customer_level = #{level}</if>)
+          AND COALESCE(p.min_qty, 0) &lt;= #{qty}
+          AND (p.valid_from IS NULL OR p.valid_from &lt;= #{date})
+          AND (p.valid_to IS NULL OR p.valid_to &gt;= #{date})
+        ORDER BY CASE WHEN p.customer_level IS NULL THEN 1 ELSE 0 END, p.min_qty DESC, p.id DESC
+        LIMIT 1
+    </select>
+
+</mapper>

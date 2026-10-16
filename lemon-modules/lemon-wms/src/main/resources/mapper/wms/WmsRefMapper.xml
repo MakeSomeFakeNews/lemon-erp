@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 主数据被引用检查（删除物料、仓库、客户、供应商、用户、部门前），见 ReferenceChecker -->
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsRefMapper">
+
+    <select id="findUser" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM wms_stock_doc WHERE create_by = #{id}) THEN '出入库单'
+            WHEN EXISTS (SELECT 1 FROM wms_check WHERE create_by = #{id}) THEN '盘点单'
+        END
+    </select>
+
+</mapper>

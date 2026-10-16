@@ -1,0 +1,11 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '人力资源：员工、招聘培训、考勤、绩效、薪酬社保'
+
+dependencies {
+    api project(':lemon-modules:lemon-fin')
+    api project(':lemon-modules:lemon-system')
+    api project(':lemon-modules:lemon-wms')
+}

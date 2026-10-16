@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmPromotionMapper">
+
+    <sql id="viewSelect">
+        SELECT p.*, m.code AS material_code, m.name AS material_name, g.code AS gift_material_code, g.name AS gift_material_name,
+               COALESCE(u.order_count, 0) AS order_count, COALESCE(u.discount_total, 0) AS discount_total, COALESCE(u.gift_total, 0) AS gift_total
+        FROM scm_promotion p
+        LEFT JOIN wms_material m ON m.id = p.material_id
+        LEFT JOIN wms_material g ON g.id = p.gift_material_id
+        LEFT JOIN (
+            SELECT promotion_id, COUNT(DISTINCT order_id) AS order_count, SUM(discount_amount) AS discount_total, SUM(gift_qty) AS gift_total
+            FROM scm_promotion_usage
+            GROUP BY promotion_id
+        ) u ON u.promotion_id = p.id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmPromotion">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="keyword != null and keyword != ''">p.name LIKE CONCAT('%', #{keyword}, '%')</if>
+            <if test="promoType != null">AND p.promo_type = #{promoType}</if>
+            <if test="activeOn != null">AND p.status = 1 AND p.begin_date &lt;= #{activeOn} AND p.end_date &gt;= #{activeOn}</if>
+        </where>
+        ORDER BY p.end_date DESC, p.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmPromotion">
+        <include refid="viewSelect"/>
+        WHERE p.id = #{id}
+    </select>
+
+    <select id="selectApplicable" resultType="com.lemon.erp.modules.scm.entity.ScmPromotion">
+        SELECT * FROM scm_promotion
+        WHERE status = 1 AND end_date &gt;= #{date} AND begin_date &lt;= #{date}
+          AND (customer_level IS NULL<if test="customerLevel != null"> OR customer_level = #{customerLevel}</if>)
+        ORDER BY id
+    </select>
+
+    <select id="selectUsages" resultType="java.util.Map">
+        SELECT u.order_id AS "orderId", o.order_no AS "orderNo", c.name AS "customerName", o.order_date AS "orderDate",
+               o.status AS "status", u.discount_amount AS "discountAmount", u.gift_qty AS "giftQty"
+        FROM scm_promotion_usage u
+        JOIN scm_order o ON o.id = u.order_id
+        LEFT JOIN scm_customer c ON c.id = o.partner_id
+        WHERE u.promotion_id = #{promotionId}
+        ORDER BY u.order_id DESC
+    </select>
+
+    <delete id="deleteUsages">
+        DELETE FROM scm_promotion_usage WHERE order_id = #{orderId}
+    </delete>
+
+    <insert id="insertUsages">
+        INSERT INTO scm_promotion_usage (promotion_id, order_id, discount_amount, gift_qty, create_time) VALUES
+        <foreach collection="list" item="u" separator=",">(#{u.promotionId}, #{orderId}, #{u.discountAmount}, #{u.giftQty}, NOW())</foreach>
+    </insert>
+
+</mapper>

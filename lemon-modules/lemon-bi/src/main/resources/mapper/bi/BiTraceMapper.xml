@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.bi.mapper.BiTraceMapper">
+
+    <select id="selectTradeDocs" resultType="java.util.Map">
+        SELECT d.id AS "id", d.doc_no AS "docNo", d.kind AS "kind", d.biz_date AS "bizDate", d.total_qty AS "totalQty",
+               d.total_amount AS "totalAmount", d.wms_doc_no AS "wmsDocNo"
+        FROM scm_trade_doc d
+        WHERE d.order_id = #{orderId}
+        ORDER BY d.id
+    </select>
+
+    <select id="selectBills" resultType="java.util.Map">
+        SELECT b.id AS "id", b.bill_no AS "billNo", b.kind AS "kind", b.source_no AS "sourceNo", b.bill_date AS "billDate",
+               b.amount AS "amount", b.settled_amount AS "settledAmount", b.status AS "status", v.id AS "voucherId", v.voucher_no AS "voucherNo"
+        FROM fin_bill b
+        JOIN scm_trade_doc d ON d.id = b.source_id AND d.kind = b.source_type
+        LEFT JOIN fin_voucher v ON v.id = b.voucher_id
+        WHERE d.order_id = #{orderId}
+        ORDER BY b.id
+    </select>
+
+    <select id="selectSettlements" resultType="java.util.Map">
+        SELECT s.id AS "id", s.settle_no AS "settleNo", s.kind AS "kind", s.settle_date AS "settleDate", SUM(i.amount) AS "amount",
+               s.status AS "status", v.id AS "voucherId", v.voucher_no AS "voucherNo"
+        FROM fin_settlement_item i
+        JOIN fin_settlement s ON s.id = i.settlement_id
+        JOIN fin_bill b ON b.id = i.bill_id
+        JOIN scm_trade_doc d ON d.id = b.source_id AND d.kind = b.source_type
+        LEFT JOIN fin_voucher v ON v.id = s.voucher_id
+        WHERE d.order_id = #{orderId}
+        GROUP BY s.id, s.settle_no, s.kind, s.settle_date, s.status, v.id, v.voucher_no
+        ORDER BY s.id
+    </select>
+
+    <select id="selectShipments" resultType="java.util.Map">
+        SELECT s.id AS "id", s.ship_no AS "shipNo", s.carrier AS "carrier", s.tracking_no AS "trackingNo", s.ship_date AS "shipDate",
+               s.status AS "status", d.doc_no AS "tradeDocNo"
+        FROM scm_shipment s
+        JOIN scm_trade_doc d ON d.id = s.trade_doc_id
+        WHERE d.order_id = #{orderId}
+        ORDER BY s.id
+    </select>
+
+    <select id="selectInspections" resultType="java.util.Map">
+        SELECT q.id AS "id", q.insp_no AS "inspNo", q.source_no AS "sourceNo", m.code AS "materialCode", m.name AS "materialName",
+               q.inspect_qty AS "inspectQty", q.result AS "result", q.status AS "status", q.inspect_date AS "inspectDate"
+        FROM mes_inspection q
+        JOIN scm_trade_doc d ON d.doc_no = q.source_no AND d.kind = 'PURCHASE_IN'
+        JOIN wms_material m ON m.id = q.material_id
+        WHERE q.type = 'IQC' AND d.order_id = #{orderId}
+        ORDER BY q.id
+    </select>
+
+    <select id="selectPlans" resultType="java.util.Map">
+        SELECT p.id AS "id", p.plan_no AS "planNo", m.code AS "materialCode", m.name AS "materialName", p.qty AS "qty",
+               p.due_date AS "dueDate", p.status AS "status",
+               (SELECT COUNT(*) FROM mes_work_order w WHERE w.plan_id = p.id) AS "woCount",
+               (SELECT COALESCE(SUM(w.finished_qty), 0) FROM mes_work_order w WHERE w.plan_id = p.id) AS "finishedQty"
+        FROM mes_plan p
+        JOIN wms_material m ON m.id = p.material_id
+        WHERE p.sales_order_id = #{orderId}
+        ORDER BY p.id
+    </select>
+
+    <select id="selectProjects" resultType="java.util.Map">
+        SELECT p.id AS "id", p.code AS "code", p.name AS "name", p.status AS "status", p.progress AS "progress"
+        FROM pm_project p
+        WHERE p.sales_order_id = #{orderId}
+        ORDER BY p.id
+    </select>
+
+</mapper>

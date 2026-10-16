@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmInquiryMapper">
+
+    <sql id="viewSelect">
+        SELECT q.*, u.nickname AS create_by_name,
+               (SELECT COUNT(*) FROM scm_inquiry_item i WHERE i.inquiry_id = q.id) AS item_count,
+               (SELECT COUNT(DISTINCT p.supplier_id) FROM scm_inquiry_quote p WHERE p.inquiry_id = q.id) AS supplier_count
+        FROM scm_inquiry q
+        LEFT JOIN sys_user u ON u.id = q.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmInquiry">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="keyword != null and keyword != ''">q.inquiry_no LIKE CONCAT('%', #{keyword}, '%')</if>
+            <if test="status != null and status != ''">AND q.status = #{status}</if>
+        </where>
+        ORDER BY q.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmInquiry">
+        <include refid="viewSelect"/>
+        WHERE q.id = #{id}
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.scm.entity.ScmInquiryItem">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, o.order_no
+        FROM scm_inquiry_item i
+        JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN scm_order o ON o.id = i.order_id
+        WHERE i.inquiry_id = #{inquiryId}
+        ORDER BY i.id
+    </select>
+
+    <select id="selectQuotes" resultType="com.lemon.erp.modules.scm.entity.ScmInquiryQuote">
+        SELECT p.*, s.name AS supplier_name, s.level AS supplier_level
+        FROM scm_inquiry_quote p
+        JOIN scm_supplier s ON s.id = p.supplier_id
+        WHERE p.inquiry_id = #{inquiryId}
+        ORDER BY p.supplier_id, p.item_id
+    </select>
+
+</mapper>

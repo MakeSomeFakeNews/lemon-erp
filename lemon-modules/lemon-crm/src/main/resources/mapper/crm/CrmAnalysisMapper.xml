@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.crm.mapper.CrmAnalysisMapper">
+
+    <select id="selectOverview" resultType="java.util.Map">
+        SELECT
+            (SELECT COUNT(*) FROM scm_customer WHERE create_time &gt;= #{monthStart}) AS "newCustomers",
+            (SELECT COUNT(*) FROM crm_customer WHERE owner_id IS NOT NULL) AS "ownedCustomers",
+            (SELECT COUNT(*) FROM scm_customer c LEFT JOIN crm_customer x ON x.customer_id = c.id
+             WHERE c.status = 1 AND x.owner_id IS NULL) AS "poolCustomers",
+            (SELECT COUNT(*) FROM crm_lead WHERE create_time &gt;= #{monthStart}) AS "newLeads",
+            (SELECT COUNT(*) FROM crm_lead WHERE convert_time &gt;= #{monthStart}) AS "convertedLeads",
+            (SELECT COUNT(*) FROM crm_opportunity WHERE stage NOT IN ('WON', 'LOST')) AS "openOpps",
+            (SELECT COALESCE(SUM(amount), 0) FROM crm_opportunity WHERE stage NOT IN ('WON', 'LOST')) AS "pipeline",
+            (SELECT COALESCE(SUM(amount * probability / 100), 0) FROM crm_opportunity WHERE stage NOT IN ('WON', 'LOST')) AS "weightedPipeline",
+            (SELECT COUNT(*) FROM crm_opportunity WHERE stage = 'WON' AND close_date &gt;= #{monthStart}) AS "wonCount",
+            (SELECT COALESCE(SUM(amount), 0) FROM crm_opportunity WHERE stage = 'WON' AND close_date &gt;= #{monthStart}) AS "wonAmount",
+            (SELECT COUNT(*) FROM crm_opportunity WHERE stage = 'WON') AS "wonTotal",
+            (SELECT COUNT(*) FROM crm_opportunity WHERE stage = 'LOST') AS "lostTotal",
+            (SELECT COUNT(*) FROM crm_ticket WHERE status IN ('OPEN', 'PROCESSING')) AS "openTickets",
+            (SELECT COUNT(*) FROM crm_ticket WHERE status IN ('OPEN', 'PROCESSING') AND due_time &lt; #{now}) AS "overdueTickets",
+            (SELECT AVG(satisfaction) FROM crm_ticket WHERE satisfaction IS NOT NULL) AS "satisfaction"
+    </select>
+
+    <select id="selectCustomerStages" resultType="java.util.Map">
+        SELECT COALESCE(x.stage, 'POTENTIAL') AS "stage", COUNT(*) AS "count"
+        FROM scm_customer c
+        LEFT JOIN crm_customer x ON x.customer_id = c.id
+        WHERE c.status = 1
+        GROUP BY COALESCE(x.stage, 'POTENTIAL')
+    </select>
+
+    <select id="selectFunnel" resultType="java.util.Map">
+        SELECT stage AS "stage", COUNT(*) AS "count", COALESCE(SUM(amount), 0) AS "amount"
+        FROM crm_opportunity
+        GROUP BY stage
+    </select>
+
+    <select id="selectStageReached" resultType="java.util.Map">
+        SELECT to_stage AS "stage", COUNT(DISTINCT opportunity_id) AS "count"
+        FROM crm_stage_log
+        GROUP BY to_stage
+    </select>
+
+    <select id="selectRfmSource" resultType="java.util.Map">
+        SELECT c.id AS "customerId", c.code AS "code", c.name AS "name", u.nickname AS "ownerName",
+               CAST(MAX(CASE WHEN d.kind = 'SALES_OUT' THEN d.biz_date END) AS CHAR(10)) AS "lastDate",
+               SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE 0 END) AS "frequency",
+               SUM(CASE WHEN d.kind = 'SALES_OUT' THEN d.total_amount ELSE -d.total_amount END) AS "monetary"
+        FROM scm_trade_doc d
+        JOIN scm_customer c ON c.id = d.partner_id
+        LEFT JOIN crm_customer x ON x.customer_id = c.id
+        LEFT JOIN sys_user u ON u.id = x.owner_id
+        WHERE d.kind IN ('SALES_OUT', 'SALES_RETURN') AND d.biz_date &gt;= #{since}
+        GROUP BY c.id, c.code, c.name, u.nickname
+        HAVING SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE 0 END) &gt; 0
+    </select>
+
+    <select id="selectMonthlySales" resultType="java.util.Map">
+        SELECT YEAR(biz_date) * 100 + MONTH(biz_date) AS "period",
+               SUM(CASE WHEN kind = 'SALES_OUT' THEN total_amount ELSE -total_amount END) AS "amount",
+               COUNT(DISTINCT partner_id) AS "customers"
+        FROM scm_trade_doc
+        WHERE kind IN ('SALES_OUT', 'SALES_RETURN') AND biz_date &gt;= #{since}
+        GROUP BY YEAR(biz_date) * 100 + MONTH(biz_date)
+    </select>
+
+    <select id="selectMonthlyWon" resultType="java.util.Map">
+        SELECT YEAR(close_date) * 100 + MONTH(close_date) AS "period", COUNT(*) AS "count", SUM(amount) AS "amount"
+        FROM crm_opportunity
+        WHERE stage = 'WON' AND close_date &gt;= #{since}
+        GROUP BY YEAR(close_date) * 100 + MONTH(close_date)
+    </select>
+
+    <select id="selectSourceStats" resultType="java.util.Map">
+        SELECT s.source AS "source", COALESCE(l.leads, 0) AS "leads", COALESCE(l.converted, 0) AS "converted",
+               COALESCE(o.opps, 0) AS "opps", COALESCE(o.won_amount, 0) AS "wonAmount"
+        FROM (SELECT DISTINCT COALESCE(source, 'OTHER') AS source FROM crm_lead
+              UNION SELECT DISTINCT COALESCE(source, 'OTHER') FROM crm_opportunity) s
+        LEFT JOIN (SELECT COALESCE(source, 'OTHER') AS source, COUNT(*) AS leads,
+                          SUM(CASE WHEN status = 'CONVERTED' THEN 1 ELSE 0 END) AS converted
+                   FROM crm_lead GROUP BY COALESCE(source, 'OTHER')) l ON l.source = s.source
+        LEFT JOIN (SELECT COALESCE(source, 'OTHER') AS source, COUNT(*) AS opps,
+                          SUM(CASE WHEN stage = 'WON' THEN amount ELSE 0 END) AS won_amount
+                   FROM crm_opportunity GROUP BY COALESCE(source, 'OTHER')) o ON o.source = s.source
+    </select>
+
+    <select id="selectOwnerStats" resultType="java.util.Map">
+        SELECT u.id AS "userId", u.nickname AS "name",
+               (SELECT COUNT(*) FROM crm_customer x WHERE x.owner_id = u.id) AS "customers",
+               (SELECT COUNT(*) FROM crm_opportunity o WHERE o.owner_id = u.id AND o.stage NOT IN ('WON', 'LOST')) AS "openOpps",
+               (SELECT COALESCE(SUM(o.amount), 0) FROM crm_opportunity o WHERE o.owner_id = u.id AND o.stage NOT IN ('WON', 'LOST')) AS "pipeline",
+               (SELECT COUNT(*) FROM crm_opportunity o WHERE o.owner_id = u.id AND o.stage = 'WON' AND o.close_date &gt;= #{yearStart}) AS "wonCount",
+               (SELECT COALESCE(SUM(o.amount), 0) FROM crm_opportunity o WHERE o.owner_id = u.id AND o.stage = 'WON' AND o.close_date &gt;= #{yearStart}) AS "wonAmount",
+               (SELECT COUNT(*) FROM crm_followup f WHERE f.create_by = u.id AND f.follow_time &gt;= #{monthStart}) AS "followups"
+        FROM sys_user u
+        WHERE EXISTS (SELECT 1 FROM crm_customer x WHERE x.owner_id = u.id)
+           OR EXISTS (SELECT 1 FROM crm_opportunity o WHERE o.owner_id = u.id)
+    </select>
+
+    <select id="selectIndustryStats" resultType="java.util.Map">
+        SELECT COALESCE(x.industry, 'UNKNOWN') AS "industry", COUNT(*) AS "customers", COALESCE(SUM(s.sales), 0) AS "sales"
+        FROM scm_customer c
+        LEFT JOIN crm_customer x ON x.customer_id = c.id
+        LEFT JOIN (SELECT partner_id, SUM(CASE WHEN kind = 'SALES_OUT' THEN total_amount ELSE -total_amount END) AS sales
+                   FROM scm_trade_doc
+                   WHERE kind IN ('SALES_OUT', 'SALES_RETURN') AND biz_date &gt;= #{since}
+                   GROUP BY partner_id) s ON s.partner_id = c.id
+        WHERE c.status = 1
+        GROUP BY COALESCE(x.industry, 'UNKNOWN')
+    </select>
+
+    <select id="selectTicketStats" resultType="java.util.Map">
+        SELECT type AS "type", COUNT(*) AS "count",
+               SUM(CASE WHEN status IN ('OPEN', 'PROCESSING') THEN 1 ELSE 0 END) AS "open",
+               AVG(CASE WHEN resolved_time IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, create_time, resolved_time) END) AS "avgMinutes",
+               SUM(CASE WHEN resolved_time IS NOT NULL AND resolved_time &lt;= due_time THEN 1 ELSE 0 END) AS "onTime",
+               SUM(CASE WHEN resolved_time IS NOT NULL THEN 1 ELSE 0 END) AS "resolved",
+               AVG(satisfaction) AS "satisfaction"
+        FROM crm_ticket
+        GROUP BY type
+    </select>
+
+</mapper>

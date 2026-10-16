@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 主数据被引用检查（删除物料、仓库、客户、供应商、用户、部门前），见 ReferenceChecker -->
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrRefMapper">
+
+    <select id="findUser" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM hr_employee WHERE user_id = #{id}) THEN '员工档案'
+        END
+    </select>
+
+    <select id="findDept" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM hr_employee WHERE dept_id = #{id}) THEN '员工档案'
+            WHEN EXISTS (SELECT 1 FROM hr_recruit WHERE dept_id = #{id}) THEN '招聘需求'
+        END
+    </select>
+
+</mapper>

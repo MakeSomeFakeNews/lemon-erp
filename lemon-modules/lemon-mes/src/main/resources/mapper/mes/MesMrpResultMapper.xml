@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesMrpResultMapper">
+
+    <select id="selectByRun" resultType="com.lemon.erp.modules.mes.entity.MesMrpResult">
+        SELECT r.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, s.name AS supplier_name
+        FROM mes_mrp_result r
+        JOIN wms_material m ON m.id = r.material_id
+        LEFT JOIN scm_supplier s ON s.id = r.supplier_id
+        WHERE r.run_id = #{runId}
+        ORDER BY r.level_no, m.code
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO mes_mrp_result (run_id, material_id, level_no, supply_type, bom_id, gross_qty, on_hand_qty, scheduled_qty,
+                                    allocated_qty, safety_qty, net_qty, suggest_qty, required_date, release_date,
+                                    supplier_id, price, status, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.runId}, #{i.materialId}, #{i.levelNo}, #{i.supplyType}, #{i.bomId}, #{i.grossQty}, #{i.onHandQty},
+             #{i.scheduledQty}, #{i.allocatedQty}, #{i.safetyQty}, #{i.netQty}, #{i.suggestQty}, #{i.requiredDate},
+             #{i.releaseDate}, #{i.supplierId}, #{i.price}, #{i.status}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

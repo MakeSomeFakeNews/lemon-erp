@@ -1,0 +1,10 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '流程中心：Flowable 集成、流程模型设计与发布、待办审批、抄送'
+
+dependencies {
+    api project(':lemon-framework')
+    implementation libs.flowable.starter.process
+}

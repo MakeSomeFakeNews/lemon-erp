@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.crm.mapper.CrmCustomerMapper">
+
+    <sql id="baseColumns">
+        c.id AS customer_id, c.code, c.name, c.level, c.contact, c.phone, c.address, c.credit_limit, c.payment_days, c.status,
+        x.id, x.owner_id, x.dept_id, x.industry, x.source, COALESCE(x.stage, 'POTENTIAL') AS stage, x.region, x.website,
+        x.last_follow_time, x.next_follow_time, x.claim_time, COALESCE(x.create_time, c.create_time) AS create_time,
+        x.update_time, u.nickname AS owner_name,
+        (SELECT COUNT(*) FROM crm_contact ct WHERE ct.customer_id = c.id) AS contact_count,
+        (SELECT COUNT(*) FROM crm_opportunity o WHERE o.customer_id = c.id AND o.stage NOT IN ('WON', 'LOST')) AS open_opp_count,
+        (SELECT COALESCE(SUM(o.amount), 0) FROM crm_opportunity o WHERE o.customer_id = c.id AND o.stage NOT IN ('WON', 'LOST')) AS open_opp_amount
+    </sql>
+
+    <sql id="filters">
+        <if test="keyword != null and keyword != ''">
+            AND (c.code LIKE CONCAT('%', #{keyword}, '%') OR c.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR c.contact LIKE CONCAT('%', #{keyword}, '%') OR c.phone LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="stage != null and stage != ''">AND COALESCE(x.stage, 'POTENTIAL') = #{stage}</if>
+        <if test="industry != null and industry != ''">AND x.industry = #{industry}</if>
+    </sql>
+
+    <select id="selectOwnedPage" resultType="com.lemon.erp.modules.crm.entity.CrmCustomer">
+        SELECT <include refid="baseColumns"/>
+        FROM crm_customer x
+        JOIN scm_customer c ON c.id = x.customer_id
+        LEFT JOIN sys_user u ON u.id = x.owner_id
+        WHERE x.owner_id IS NOT NULL
+        <if test="ownerId != null">AND x.owner_id = #{ownerId}</if>
+        <if test="dueBefore != null">AND x.next_follow_time &lt;= #{dueBefore}</if>
+        <include refid="filters"/>
+        ORDER BY <if test="dueBefore != null">x.next_follow_time, </if>x.last_follow_time DESC, c.code
+    </select>
+
+    <select id="selectPoolPage" resultType="com.lemon.erp.modules.crm.entity.CrmCustomer">
+        SELECT <include refid="baseColumns"/>
+        FROM scm_customer c
+        LEFT JOIN crm_customer x ON x.customer_id = c.id
+        LEFT JOIN sys_user u ON u.id = x.owner_id
+        WHERE c.status = 1 AND x.owner_id IS NULL
+        <include refid="filters"/>
+        ORDER BY c.code
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.crm.entity.CrmCustomer">
+        SELECT <include refid="baseColumns"/>
+        FROM scm_customer c
+        LEFT JOIN crm_customer x ON x.customer_id = c.id
+        LEFT JOIN sys_user u ON u.id = x.owner_id
+        WHERE c.id = #{customerId}
+    </select>
+
+    <select id="selectSummary" resultType="java.util.Map">
+        SELECT
+            (SELECT COALESCE(SUM(CASE WHEN d.kind = 'SALES_OUT' THEN d.total_amount ELSE -d.total_amount END), 0)
+             FROM scm_trade_doc d
+             WHERE d.partner_id = #{customerId} AND d.kind IN ('SALES_OUT', 'SALES_RETURN') AND d.biz_date &gt;= #{since}) AS "salesAmount",
+            (SELECT COUNT(*) FROM scm_order o WHERE o.kind = 'SALES' AND o.partner_id = #{customerId}
+               AND o.status IN ('APPROVED', 'PARTIAL', 'COMPLETED')) AS "orderCount",
+            (SELECT CAST(MAX(o.order_date) AS CHAR(10)) FROM scm_order o WHERE o.kind = 'SALES' AND o.partner_id = #{customerId}
+               AND o.status IN ('APPROVED', 'PARTIAL', 'COMPLETED')) AS "lastOrderDate",
+            (SELECT COALESCE(SUM(b.amount - b.settled_amount), 0) FROM fin_bill b
+             WHERE b.kind = 'AR' AND b.partner_id = #{customerId}) AS "arBalance",
+            (SELECT COUNT(*) FROM crm_opportunity o WHERE o.customer_id = #{customerId} AND o.stage = 'WON') AS "wonCount",
+            (SELECT COALESCE(SUM(o.amount), 0) FROM crm_opportunity o WHERE o.customer_id = #{customerId} AND o.stage = 'WON') AS "wonAmount",
+            (SELECT COUNT(*) FROM crm_ticket t WHERE t.customer_id = #{customerId} AND t.status IN ('OPEN', 'PROCESSING')) AS "openTickets"
+    </select>
+
+    <!-- 已有经营信息且在公海时更新；没有经营信息时由调用方插入 -->
+    <update id="claim">
+        UPDATE crm_customer SET owner_id = #{ownerId}, dept_id = #{deptId}, claim_time = NOW(), update_time = NOW()
+        WHERE customer_id = #{customerId} AND owner_id IS NULL
+    </update>
+
+</mapper>

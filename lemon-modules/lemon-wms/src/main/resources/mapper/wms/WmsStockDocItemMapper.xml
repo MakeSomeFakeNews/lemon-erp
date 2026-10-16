@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsStockDocItemMapper">
+
+    <select id="selectByDocId" resultType="com.lemon.erp.modules.wms.entity.WmsStockDocItem">
+        SELECT i.id, i.doc_id, i.material_id, i.location_id, i.to_location_id, i.batch_no, i.production_date, i.expiry_date,
+               i.qty, i.serial_nos, i.remark, m.code AS material_code, m.name AS material_name, m.spec, m.unit,
+               m.batch_enabled, m.serial_enabled, l.code AS location_code, tl.code AS to_location_code
+        FROM wms_stock_doc_item i
+        JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN wms_location l ON l.id = i.location_id
+        LEFT JOIN wms_location tl ON tl.id = i.to_location_id
+        WHERE i.doc_id = #{docId}
+        ORDER BY i.id
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO wms_stock_doc_item (doc_id, material_id, location_id, to_location_id, batch_no, production_date,
+                                        expiry_date, qty, serial_nos, remark, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.docId}, #{i.materialId}, #{i.locationId}, #{i.toLocationId}, #{i.batchNo}, #{i.productionDate},
+             #{i.expiryDate}, #{i.qty}, #{i.serialNos}, #{i.remark}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

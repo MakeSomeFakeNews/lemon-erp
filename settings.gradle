@@ -1,0 +1,25 @@
+pluginManagement {
+    // 公共构建约定（Java 17、Spring Boot BOM、Lombok、编译参数），见 gradle/build-logic
+    includeBuild('gradle/build-logic')
+}
+
+rootProject.name = 'lemon-erp'
+
+// 依赖方向：lemon-admin → lemon-modules/* → lemon-framework → lemon-common
+include 'lemon-common'
+include 'lemon-framework'
+[
+    'system',     // 系统管理：用户、角色、菜单、部门、字典、登录认证
+    'monitor',    // 系统监控：在线用户、日志、服务与缓存监控、定时任务
+    'workflow',   // 流程中心：Flowable 集成、流程模型、待办审批
+    'dashboard',  // 首页工作台
+    'wms',        // 仓库管理
+    'scm',        // 供应链管理
+    'mes',        // 生产制造
+    'fin',        // 财务管理
+    'hr',         // 人力资源
+    'crm',        // 客户关系
+    'pm',         // 项目管理
+    'bi',         // 商务智能
+].each { include "lemon-modules:lemon-${it}" }
+include 'lemon-admin'

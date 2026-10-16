@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsPutawayMapper">
+
+    <select id="selectDefaultLocations" resultType="java.util.Map">
+        SELECT m.id AS "materialId", l.id AS "locationId", l.code AS "locationCode"
+        FROM wms_material m
+        JOIN wms_location l ON l.id = m.default_location_id AND l.warehouse_id = #{warehouseId} AND l.status = 1
+        WHERE m.id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectStockedLocations" resultType="java.util.Map">
+        SELECT s.material_id AS "materialId", s.batch_no AS "batchNo", l.id AS "locationId", l.code AS "locationCode", s.qty AS "qty"
+        FROM wms_stock s
+        JOIN wms_location l ON l.id = s.location_id AND l.status = 1 AND l.loc_type IN ('STORAGE', 'PICK')
+        WHERE s.warehouse_id = #{warehouseId} AND s.qty &gt; 0
+          AND s.material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY s.qty DESC, l.sort, l.code
+    </select>
+
+    <select id="selectEmptyLocations" resultType="java.util.Map">
+        SELECT l.id AS "locationId", l.code AS "locationCode"
+        FROM wms_location l
+        WHERE l.warehouse_id = #{warehouseId} AND l.status = 1 AND l.loc_type IN ('STORAGE', 'PICK')
+          AND NOT EXISTS (SELECT 1 FROM wms_stock s WHERE s.warehouse_id = l.warehouse_id AND s.location_id = l.id AND s.qty &gt; 0)
+        ORDER BY l.zone, l.sort, l.code
+        LIMIT #{limit}
+    </select>
+
+</mapper>

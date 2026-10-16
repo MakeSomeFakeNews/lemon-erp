@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesMaterialPlanMapper">
+
+    <!-- 生效的物料属性：设置的，或有默认 BOM 为自制、否则为采购 -->
+    <sql id="viewSelect">
+        SELECT m.id, m.code, m.name, m.spec, m.unit, m.category, m.batch_enabled, m.serial_enabled, m.safety_stock,
+               m.status, m.remark,
+               p.supply_type, COALESCE(p.supply_type, CASE WHEN b.id IS NULL THEN 'BUY' ELSE 'MAKE' END) AS effective_supply_type,
+               p.lead_days, p.min_lot, p.lot_multiple, COALESCE(p.over_issue_rate, 0) AS over_issue_rate, p.planner, COALESCE(p.fqc_required, 0) AS fqc_required,
+               b.id AS bom_id, b.version AS bom_version, b.lead_days AS bom_lead_days,
+               sp.supplier_id, s.name AS supplier_name, sp.lead_days AS supplier_lead_days, sp.min_qty AS supplier_min_qty,
+               (SELECT COALESCE(SUM(st.qty), 0) FROM wms_stock st WHERE st.material_id = m.id) AS on_hand_qty,
+               (SELECT COUNT(*) FROM mes_material_substitute x WHERE x.material_id = m.id) AS substitute_count
+        FROM wms_material m
+        LEFT JOIN mes_material_plan p ON p.material_id = m.id
+        LEFT JOIN mes_bom b ON b.material_id = m.id AND b.is_default = 1 AND b.status = 1
+        LEFT JOIN scm_supplier_price sp ON sp.material_id = m.id AND sp.is_default = 1
+        LEFT JOIN scm_supplier s ON s.id = sp.supplier_id
+    </sql>
+
+    <select id="selectViews" resultType="com.lemon.erp.modules.mes.dto.MaterialPlanView">
+        <include refid="viewSelect"/>
+        WHERE m.id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectByMaterialIds" resultType="com.lemon.erp.modules.mes.entity.MesMaterialPlan">
+        SELECT * FROM mes_material_plan
+        WHERE material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectWhereUsed" resultType="com.lemon.erp.modules.mes.dto.MaterialPlanView$WhereUsed">
+        SELECT b.id AS bom_id, b.version, b.is_default, b.status AS bom_status,
+               b.material_id AS product_id, p.code AS product_code, p.name AS product_name, i.qty, i.loss_rate
+        FROM mes_bom_item i
+        JOIN mes_bom b ON b.id = i.bom_id
+        JOIN wms_material p ON p.id = b.material_id
+        WHERE i.material_id = #{materialId}
+        ORDER BY p.code, b.version
+    </select>
+
+</mapper>

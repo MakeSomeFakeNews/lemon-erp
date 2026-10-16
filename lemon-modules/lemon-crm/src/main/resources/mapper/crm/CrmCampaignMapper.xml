@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.crm.mapper.CrmCampaignMapper">
+
+    <sql id="columns">
+        cp.*, u.nickname AS owner_name,
+        COALESCE(l.lead_count, 0) AS lead_count, COALESCE(l.converted_count, 0) AS converted_count,
+        COALESCE(o.opp_count, 0) AS opp_count, COALESCE(o.won_amount, 0) AS won_amount,
+        COALESCE(so.order_amount, 0) AS order_amount, COALESCE(ar.received_amount, 0) AS received_amount
+    </sql>
+
+    <sql id="joins">
+        FROM crm_campaign cp
+        LEFT JOIN sys_user u ON u.id = cp.owner_id
+        LEFT JOIN (SELECT campaign_id, COUNT(*) AS lead_count, SUM(CASE WHEN status = 'CONVERTED' THEN 1 ELSE 0 END) AS converted_count
+                   FROM crm_lead WHERE campaign_id IS NOT NULL GROUP BY campaign_id) l ON l.campaign_id = cp.id
+        LEFT JOIN (SELECT campaign_id, COUNT(*) AS opp_count, SUM(CASE WHEN stage = 'WON' THEN amount ELSE 0 END) AS won_amount
+                   FROM crm_opportunity WHERE campaign_id IS NOT NULL GROUP BY campaign_id) o ON o.campaign_id = cp.id
+        <!-- 实际销售：活动商机生成的销售订单（已审核及以后）；回款：这些订单出库产生的应收单已核销金额 -->
+        LEFT JOIN (SELECT op.campaign_id, SUM(so.total_amount) AS order_amount
+                   FROM crm_opportunity op
+                   JOIN scm_order so ON so.id = op.sales_order_id AND so.status NOT IN ('DRAFT', 'APPROVING')
+                   WHERE op.campaign_id IS NOT NULL GROUP BY op.campaign_id) so ON so.campaign_id = cp.id
+        LEFT JOIN (SELECT op.campaign_id, SUM(b.settled_amount) AS received_amount
+                   FROM crm_opportunity op
+                   JOIN scm_trade_doc d ON d.order_id = op.sales_order_id
+                   JOIN fin_bill b ON b.source_id = d.id AND b.source_type = d.kind
+                   WHERE op.campaign_id IS NOT NULL GROUP BY op.campaign_id) ar ON ar.campaign_id = cp.id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.crm.entity.CrmCampaign">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="keyword != null and keyword != ''">cp.name LIKE CONCAT('%', #{keyword}, '%')</if>
+            <if test="type != null and type != ''">AND cp.type = #{type}</if>
+            <if test="status != null and status != ''">AND cp.status = #{status}</if>
+        </where>
+        ORDER BY cp.start_date DESC, cp.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.crm.entity.CrmCampaign">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE cp.id = #{id}
+    </select>
+
+</mapper>

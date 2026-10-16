@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesInspectionMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.MesInspection">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, s.name AS supplier_name, o.wo_no,
+               u.nickname AS create_by_name, p.name AS plan_name, op.name AS op_name
+        FROM mes_inspection i
+        JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN scm_supplier s ON s.id = i.supplier_id
+        LEFT JOIN mes_work_order o ON o.id = i.wo_id
+        LEFT JOIN sys_user u ON u.id = i.create_by
+        LEFT JOIN qms_inspection_plan p ON p.id = i.plan_id
+        LEFT JOIN mes_wo_op op ON op.id = i.wo_op_id
+        <where>
+            <if test="q.type != null">i.type = #{q.type}</if>
+            <if test="q.result != null">AND i.result = #{q.result}</if>
+            <if test="q.supplierId != null">AND i.supplier_id = #{q.supplierId}</if>
+            <if test="q.keyword != null and q.keyword != ''">
+                AND (i.insp_no LIKE CONCAT('%', #{q.keyword}, '%') OR i.source_no LIKE CONCAT('%', #{q.keyword}, '%')
+                     OR m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+            <if test="q.beginDate != null">AND i.inspect_date &gt;= #{q.beginDate}</if>
+            <if test="q.endDate != null">AND i.inspect_date &lt;= #{q.endDate}</if>
+        </where>
+        ORDER BY i.id DESC
+    </select>
+
+    <sql id="summaryColumns">
+        COUNT(*) AS total_count,
+        SUM(CASE WHEN i.result = 'PASS' THEN 1 ELSE 0 END) AS pass_count,
+        SUM(CASE WHEN i.result = 'FAIL' THEN 1 ELSE 0 END) AS fail_count,
+        SUM(CASE WHEN i.result = 'CONCESSION' THEN 1 ELSE 0 END) AS concession_count,
+        SUM(i.sample_qty) AS sample_qty, SUM(i.defect_qty) AS defect_qty
+    </sql>
+
+    <sql id="dateFilter">
+        <if test="beginDate != null">AND i.inspect_date &gt;= #{beginDate}</if>
+        <if test="endDate != null">AND i.inspect_date &lt;= #{endDate}</if>
+    </sql>
+
+    <select id="selectSummaryByType" resultType="com.lemon.erp.modules.mes.dto.QualitySummary">
+        SELECT i.type AS group_key, i.type AS group_name, <include refid="summaryColumns"/>
+        FROM mes_inspection i
+        WHERE 1 = 1 <include refid="dateFilter"/>
+        GROUP BY i.type
+        ORDER BY i.type
+    </select>
+
+    <select id="selectSummaryBySupplier" resultType="com.lemon.erp.modules.mes.dto.QualitySummary">
+        SELECT s.id AS supplier_id, s.code AS group_key, s.name AS group_name, <include refid="summaryColumns"/>
+        FROM mes_inspection i
+        JOIN scm_supplier s ON s.id = i.supplier_id
+        WHERE i.type = 'IQC' <include refid="dateFilter"/>
+        GROUP BY s.id, s.name
+        ORDER BY total_count DESC
+    </select>
+
+    <select id="selectIqcStats" resultType="java.util.Map">
+        SELECT supplier_id AS "supplierId", COUNT(*) AS "batches",
+               SUM(CASE WHEN result &lt;&gt; 'FAIL' THEN 1 ELSE 0 END) AS "passBatches"
+        FROM mes_inspection
+        WHERE type = 'IQC' AND status = 'CONFIRMED'
+          AND supplier_id IN <foreach collection="supplierIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          <if test="beginDate != null">AND inspect_date &gt;= #{beginDate}</if>
+          <if test="endDate != null">AND inspect_date &lt;= #{endDate}</if>
+        GROUP BY supplier_id
+    </select>
+
+    <select id="sumFqcPassed" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(inspect_qty), 0)
+        FROM mes_inspection
+        WHERE type = 'FQC' AND status = 'CONFIRMED' AND result &lt;&gt; 'FAIL' AND wo_id = #{woId}
+    </select>
+
+</mapper>

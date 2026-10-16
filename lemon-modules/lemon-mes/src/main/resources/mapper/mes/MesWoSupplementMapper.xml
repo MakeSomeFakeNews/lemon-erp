@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesWoSupplementMapper">
+
+    <sql id="viewSelect">
+        SELECT s.*, o.wo_no, p.code AS product_code, p.name AS product_name, u.nickname AS create_by_name
+        FROM mes_wo_supplement s
+        JOIN mes_work_order o ON o.id = s.wo_id
+        JOIN wms_material p ON p.id = o.material_id
+        LEFT JOIN sys_user u ON u.id = s.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.MesWoSupplement">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="q.keyword != null and q.keyword != ''">
+                (s.supp_no LIKE CONCAT('%', #{q.keyword}, '%') OR o.wo_no LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+            <if test="q.woId != null">AND s.wo_id = #{q.woId}</if>
+            <if test="q.status != null and q.status != ''">AND s.status = #{q.status}</if>
+            <if test="q.reason != null and q.reason != ''">AND s.reason = #{q.reason}</if>
+        </where>
+        ORDER BY s.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.mes.entity.MesWoSupplement">
+        <include refid="viewSelect"/>
+        WHERE s.id = #{id}
+    </select>
+
+</mapper>

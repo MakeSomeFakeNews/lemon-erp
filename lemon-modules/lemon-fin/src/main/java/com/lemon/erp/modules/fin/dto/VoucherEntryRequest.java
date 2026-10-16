@@ -1,0 +1,28 @@
+package com.lemon.erp.modules.fin.dto;
+
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+import java.math.BigDecimal;
+
+/**
+ * 凭证分录：借方、贷方只能填一边
+ *
+ * @param accountId 末级科目
+ * @param deptId    部门（辅助核算），选填
+ * @param projectId   项目（辅助核算），选填
+ * @param partnerType 往来单位类型 CUSTOMER / SUPPLIER，与 partnerId 一起填写
+ */
+public record VoucherEntryRequest(
+        @NotBlank(message = "请填写摘要") @Size(max = 255, message = "摘要不能超过255个字符") String summary,
+        @NotNull(message = "请选择科目") Long accountId,
+        Long deptId,
+        @DecimalMin(value = "0", message = "金额不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal debit,
+        @DecimalMin(value = "0", message = "金额不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal credit,
+        Long projectId,
+        String partnerType,
+        Long partnerId) {
+}

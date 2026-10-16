@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinNoteMapper">
+
+    <sql id="viewSelect">
+        SELECT t.*, COALESCE(c.name, s.name) AS partner_name, u.nickname AS create_by_name
+        FROM fin_note t
+        LEFT JOIN scm_customer c ON t.kind = 'RECEIVABLE' AND c.id = t.partner_id
+        LEFT JOIN scm_supplier s ON t.kind = 'PAYABLE' AND s.id = t.partner_id
+        LEFT JOIN sys_user u ON u.id = t.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinNote">
+        <include refid="viewSelect"/>
+        WHERE t.kind = #{kind}
+        <if test="status != null">AND t.status = #{status}</if>
+        <if test="keyword != null and keyword != ''">
+            AND (t.note_no LIKE CONCAT('%', #{keyword}, '%') OR c.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR s.name LIKE CONCAT('%', #{keyword}, '%') OR t.acceptor LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="dueBefore != null">AND t.due_date &lt;= #{dueBefore}</if>
+        ORDER BY t.due_date, t.id
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinNote">
+        <include refid="viewSelect"/>
+        WHERE t.id = #{id}
+    </select>
+
+    <select id="selectDue" resultType="com.lemon.erp.modules.fin.entity.FinNote">
+        <include refid="viewSelect"/>
+        WHERE ((t.kind = 'RECEIVABLE' AND t.status = 'HELD') OR (t.kind = 'PAYABLE' AND t.status = 'ISSUED'))
+          AND t.due_date &lt;= #{dueBefore}
+        ORDER BY t.due_date
+    </select>
+
+    <update id="transit">
+        UPDATE fin_note SET status = #{to}, update_time = NOW() WHERE id = #{id} AND status = #{from}
+    </update>
+
+</mapper>

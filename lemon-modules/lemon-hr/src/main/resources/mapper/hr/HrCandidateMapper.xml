@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrCandidateMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.hr.entity.HrCandidate">
+        SELECT c.id, c.recruit_id, c.name, c.gender, c.phone, c.email, c.education, c.school, c.work_years, c.source,
+               c.expected_salary, c.stage, c.employee_id, c.remark, c.create_time, c.update_time,
+               r.title AS recruit_title, r.recruit_no, e.emp_no,
+               (SELECT COUNT(*) FROM hr_interview i WHERE i.candidate_id = c.id) AS interview_count,
+               (SELECT i.result FROM hr_interview i WHERE i.candidate_id = c.id ORDER BY i.round DESC LIMIT 1) AS last_result
+        FROM hr_candidate c
+        JOIN hr_recruit r ON r.id = c.recruit_id
+        LEFT JOIN hr_employee e ON e.id = c.employee_id
+        <where>
+            <if test="recruitId != null">c.recruit_id = #{recruitId}</if>
+            <if test="stage != null and stage != ''">AND c.stage = #{stage}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (c.name LIKE CONCAT('%', #{keyword}, '%') OR c.phone LIKE CONCAT('%', #{keyword}, '%')
+                     OR c.school LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY c.id DESC
+    </select>
+
+</mapper>

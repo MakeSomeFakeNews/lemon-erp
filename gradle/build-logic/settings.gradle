@@ -1,0 +1,11 @@
+// 构建逻辑（约定插件），由根项目 settings.gradle 通过 includeBuild 引入
+rootProject.name = 'build-logic'
+
+// 约定插件也读取根项目的版本目录
+dependencyResolutionManagement {
+    versionCatalogs {
+        libs {
+            from(files('../libs.versions.toml'))
+        }
+    }
+}

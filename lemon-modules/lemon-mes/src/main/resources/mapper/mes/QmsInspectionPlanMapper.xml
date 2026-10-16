@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.QmsInspectionPlanMapper">
+
+    <sql id="viewSelect">
+        SELECT p.*, m.code AS material_code, m.name AS material_name,
+               (SELECT COUNT(*) FROM qms_inspection_plan_item i WHERE i.plan_id = p.id) AS item_count
+        FROM qms_inspection_plan p
+        LEFT JOIN wms_material m ON m.id = p.material_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.QmsInspectionPlan">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="type != null">p.insp_type = #{type}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (p.name LIKE CONCAT('%', #{keyword}, '%') OR m.code LIKE CONCAT('%', #{keyword}, '%')
+                     OR m.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY p.insp_type, p.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.mes.entity.QmsInspectionPlan">
+        <include refid="viewSelect"/>
+        WHERE p.id = #{id}
+    </select>
+
+    <!-- 物料方案优先，其次按物料分类匹配；同级取最新的 -->
+    <select id="selectMatch" resultType="com.lemon.erp.modules.mes.entity.QmsInspectionPlan">
+        SELECT p.*
+        FROM qms_inspection_plan p
+        JOIN wms_material m ON m.id = #{materialId}
+        WHERE p.insp_type = #{type} AND p.status = 1
+          AND (p.material_id = m.id OR (p.material_id IS NULL AND p.material_category = m.category))
+        ORDER BY CASE WHEN p.material_id IS NULL THEN 1 ELSE 0 END, p.id DESC
+        LIMIT 1
+    </select>
+
+</mapper>

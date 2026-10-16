@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmOrderMapper">
+
+    <!-- 往来单位按订单种类分别关联供应商 / 客户 -->
+    <sql id="viewColumns">
+        o.id, o.order_no, o.kind, o.partner_id, o.order_date, o.delivery_date, o.warehouse_id, o.status, o.total_qty,
+        o.total_amount, o.tax_amount, o.source, o.flow_instance_id, o.remark, o.version, o.currency, o.exchange_rate, o.dept_id, o.create_by, o.approve_by,
+        o.approve_time, o.create_time, o.update_time, o.contract_id, o.supplier_confirm, o.promised_date, o.confirm_remark, o.confirm_time,
+        o.discount_amount, o.rebate_amount, o.external_no,
+        pc.contract_no, COALESCE(sp.code, cu.code) AS partner_code, COALESCE(sp.name, cu.name) AS partner_name,
+        w.name AS warehouse_name, u.nickname AS create_by_name, au.nickname AS approve_by_name,
+        (SELECT COALESCE(SUM(i.done_qty - i.return_qty), 0) FROM scm_order_item i WHERE i.order_id = o.id) AS done_qty
+    </sql>
+
+    <sql id="viewJoins">
+        FROM scm_order o
+        LEFT JOIN scm_supplier sp ON o.kind = 'PURCHASE' AND sp.id = o.partner_id
+        LEFT JOIN scm_customer cu ON o.kind = 'SALES' AND cu.id = o.partner_id
+        LEFT JOIN wms_warehouse w ON w.id = o.warehouse_id
+        LEFT JOIN sys_user u ON u.id = o.create_by
+        LEFT JOIN sys_user au ON au.id = o.approve_by
+        LEFT JOIN scm_purchase_contract pc ON pc.id = o.contract_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmOrder">
+        SELECT <include refid="viewColumns"/>
+        <include refid="viewJoins"/>
+        WHERE o.kind = #{kind}
+        <if test="q.orderNo != null and q.orderNo != ''">
+            AND (o.order_no LIKE CONCAT('%', #{q.orderNo}, '%') OR o.external_no LIKE CONCAT('%', #{q.orderNo}, '%'))
+        </if>
+        <if test="q.partnerId != null">AND o.partner_id = #{q.partnerId}</if>
+        <if test="q.status != null and q.status != ''">AND o.status = #{q.status}</if>
+        <if test="q.beginDate != null">AND o.order_date &gt;= #{q.beginDate}</if>
+        <if test="q.endDate != null">AND o.order_date &lt;= #{q.endDate}</if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND EXISTS (SELECT 1 FROM scm_order_item i JOIN wms_material m ON m.id = i.material_id
+                        WHERE i.order_id = o.id
+                          AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%')))
+        </if>
+        ORDER BY o.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmOrder">
+        SELECT <include refid="viewColumns"/>
+        <include refid="viewJoins"/>
+        WHERE o.id = #{id}
+    </select>
+
+    <select id="selectPortalPage" resultType="com.lemon.erp.modules.scm.entity.ScmOrder">
+        SELECT <include refid="viewColumns"/>
+        <include refid="viewJoins"/>
+        WHERE o.kind = 'PURCHASE' AND o.partner_id = #{supplierId} AND o.status IN ('APPROVED', 'PARTIAL', 'COMPLETED', 'CLOSED')
+        <if test="pending != null and pending">AND o.supplier_confirm IS NULL AND o.status IN ('APPROVED', 'PARTIAL')</if>
+        <if test="keyword != null and keyword != ''">
+            AND (o.order_no LIKE CONCAT('%', #{keyword}, '%')
+                 OR EXISTS (SELECT 1 FROM scm_order_item i JOIN wms_material m ON m.id = i.material_id
+                            WHERE i.order_id = o.id
+                              AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))))
+        </if>
+        ORDER BY o.id DESC
+    </select>
+
+    <update id="unapprove">
+        UPDATE scm_order SET status = 'DRAFT', approve_by = NULL, approve_time = NULL, supplier_confirm = NULL, promised_date = NULL,
+                             confirm_remark = NULL, confirm_time = NULL, update_time = NOW()
+        WHERE id = #{id} AND status = 'APPROVED'
+          AND NOT EXISTS (SELECT 1 FROM scm_order_item i WHERE i.order_id = #{id} AND i.done_qty &gt; 0)
+    </update>
+
+    <select id="selectOpenSalesAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(i.price * o.exchange_rate * GREATEST(i.qty - i.done_qty + i.replenish_qty, 0)), 0)
+        FROM scm_order o
+        JOIN scm_order_item i ON i.order_id = o.id
+        WHERE o.kind = 'SALES' AND o.partner_id = #{customerId} AND o.id &lt;&gt; #{excludeId}
+          AND o.status IN <foreach collection="statuses" item="s" open="(" separator="," close=")">#{s}</foreach>
+    </select>
+
+    <select id="selectOpenQty" resultType="java.util.Map">
+        SELECT i.material_id AS "materialId", SUM(GREATEST(i.qty - i.done_qty + i.replenish_qty, 0)) AS "qty"
+        FROM scm_order o
+        JOIN scm_order_item i ON i.order_id = o.id
+        WHERE o.kind = #{kind}
+          AND o.status IN <foreach collection="statuses" item="s" open="(" separator="," close=")">#{s}</foreach>
+          AND i.material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        GROUP BY i.material_id
+    </select>
+
+</mapper>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmShipmentMapper">
+
+    <sql id="viewSelect">
+        SELECT s.*, d.doc_no AS trade_doc_no, o.order_no, c.name AS customer_name, u.nickname AS create_by_name,
+               sp.code AS carrier_supplier_code, sp.name AS carrier_supplier_name
+        FROM scm_shipment s
+        LEFT JOIN scm_supplier sp ON sp.id = s.carrier_supplier_id
+        JOIN scm_trade_doc d ON d.id = s.trade_doc_id
+        JOIN scm_order o ON o.id = d.order_id
+        JOIN scm_customer c ON c.id = s.customer_id
+        LEFT JOIN sys_user u ON u.id = s.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmShipment">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="q.keyword != null and q.keyword != ''">
+                (s.ship_no LIKE CONCAT('%', #{q.keyword}, '%') OR s.tracking_no LIKE CONCAT('%', #{q.keyword}, '%')
+                 OR d.doc_no LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+            <if test="q.customerId != null">AND s.customer_id = #{q.customerId}</if>
+            <if test="q.carrier != null and q.carrier != ''">AND s.carrier = #{q.carrier}</if>
+            <if test="q.status != null and q.status != ''">AND s.status = #{q.status}</if>
+        </where>
+        ORDER BY s.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmShipment">
+        <include refid="viewSelect"/>
+        WHERE s.id = #{id}
+    </select>
+
+</mapper>

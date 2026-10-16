@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.monitor.mapper.SysLoginLogMapper">
+
+    <update id="truncate">
+        TRUNCATE TABLE sys_login_log
+    </update>
+
+    <!-- SaaS 模式下只能删除本租户的日志（租户条件由拦截器追加），不能 TRUNCATE -->
+    <delete id="deleteAll">
+        DELETE FROM sys_login_log WHERE id &gt; 0
+    </delete>
+
+</mapper>

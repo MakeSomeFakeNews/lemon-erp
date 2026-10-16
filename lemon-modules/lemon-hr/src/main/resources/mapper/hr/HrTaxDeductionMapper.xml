@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrTaxDeductionMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.hr.entity.HrTaxDeduction">
+        SELECT t.*, e.emp_no, e.name AS employee_name, d.name AS dept_name
+        FROM hr_tax_deduction t
+        JOIN hr_employee e ON e.id = t.employee_id
+        LEFT JOIN sys_dept d ON d.id = e.dept_id
+        <where>
+            <if test="keyword != null and keyword != ''">(e.emp_no LIKE CONCAT('%', #{keyword}, '%') OR e.name LIKE CONCAT('%', #{keyword}, '%'))</if>
+            <if test="type != null and type != ''">AND t.type = #{type}</if>
+            <if test="employeeId != null">AND t.employee_id = #{employeeId}</if>
+        </where>
+        ORDER BY e.emp_no, t.type, t.start_period
+    </select>
+
+    <select id="sumByPeriod" resultType="java.util.Map">
+        SELECT employee_id AS "employeeId", SUM(monthly_amount) AS "amount"
+        FROM hr_tax_deduction
+        WHERE employee_id IN <foreach collection="employeeIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND start_period &lt;= #{period} AND (end_period IS NULL OR end_period &gt;= #{period})
+        GROUP BY employee_id
+    </select>
+
+</mapper>

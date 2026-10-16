@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.pm.mapper.PmTaskMapper">
+
+    <sql id="columns">
+        t.*, u.nickname AS assignee_name, pt.name AS predecessor_name,
+        CASE WHEN t.status &lt;&gt; 'DONE' AND t.plan_end &lt; #{today} THEN 1 ELSE 0 END AS overdue
+    </sql>
+
+    <select id="selectByProject" resultType="com.lemon.erp.modules.pm.entity.PmTask">
+        SELECT <include refid="columns"/>
+        FROM pm_task t
+        LEFT JOIN sys_user u ON u.id = t.assignee_id
+        LEFT JOIN pm_task pt ON pt.id = t.predecessor_id
+        WHERE t.project_id = #{projectId}
+        ORDER BY t.sort, t.plan_start, t.id
+    </select>
+
+    <select id="selectOpenByAssignee" resultType="com.lemon.erp.modules.pm.entity.PmTask">
+        SELECT <include refid="columns"/>, p.name AS project_name
+        FROM pm_task t
+        JOIN pm_project p ON p.id = t.project_id
+        LEFT JOIN sys_user u ON u.id = t.assignee_id
+        LEFT JOIN pm_task pt ON pt.id = t.predecessor_id
+        WHERE t.assignee_id = #{userId} AND t.status &lt;&gt; 'DONE' AND p.status IN ('PLANNING', 'APPROVING', 'ACTIVE')
+          AND NOT EXISTS (SELECT 1 FROM pm_task s WHERE s.parent_id = t.id)
+        ORDER BY t.plan_end
+    </select>
+
+    <select id="selectOpenHoursByUser" resultType="java.util.Map">
+        SELECT t.assignee_id AS "userId", SUM(t.plan_hours * (100 - t.progress) / 100) AS "hours"
+        FROM pm_task t
+        JOIN pm_project p ON p.id = t.project_id
+        WHERE t.assignee_id IS NOT NULL AND t.status &lt;&gt; 'DONE' AND p.status IN ('PLANNING', 'APPROVING', 'ACTIVE')
+          AND NOT EXISTS (SELECT 1 FROM pm_task s WHERE s.parent_id = t.id)
+        GROUP BY t.assignee_id
+    </select>
+
+    <select id="sumApprovedHours" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(hours), 0) FROM pm_timesheet WHERE task_id = #{taskId} AND status = 'APPROVED'
+    </select>
+
+</mapper>

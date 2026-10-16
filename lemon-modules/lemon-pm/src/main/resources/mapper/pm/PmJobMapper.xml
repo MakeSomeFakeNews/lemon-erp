@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 定时任务（到期提醒等）使用的查询 -->
+<mapper namespace="com.lemon.erp.modules.pm.mapper.PmJobMapper">
+
+    <select id="selectOverdueTasks" resultType="java.util.Map">
+        SELECT t.id AS "id", t.name AS "name", t.assignee_id AS "assigneeId", t.plan_end AS "planEnd", p.name AS "projectName"
+        FROM pm_task t JOIN pm_project p ON p.id = t.project_id
+        WHERE t.assignee_id IS NOT NULL AND t.status &lt;&gt; 'DONE' AND t.plan_end &lt; #{today} AND p.status = 'ACTIVE'
+    </select>
+
+</mapper>

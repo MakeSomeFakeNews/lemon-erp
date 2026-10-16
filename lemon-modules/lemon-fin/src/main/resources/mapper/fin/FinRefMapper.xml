@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 主数据被引用检查（删除物料、仓库、客户、供应商、用户、部门前），见 ReferenceChecker -->
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinRefMapper">
+
+    <select id="findCustomer" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM fin_bill WHERE partner_id = #{id} AND kind = 'AR') THEN '应收单'
+            WHEN EXISTS (SELECT 1 FROM fin_invoice WHERE partner_id = #{id} AND kind = 'OUTPUT') THEN '销项发票'
+            WHEN EXISTS (SELECT 1 FROM fin_advance WHERE partner_id = #{id} AND kind = 'RECEIPT') THEN '预收款'
+        END
+    </select>
+
+    <select id="findSupplier" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM fin_bill WHERE partner_id = #{id} AND kind = 'AP') THEN '应付单'
+            WHEN EXISTS (SELECT 1 FROM fin_invoice WHERE partner_id = #{id} AND kind = 'INPUT') THEN '进项发票'
+            WHEN EXISTS (SELECT 1 FROM fin_advance WHERE partner_id = #{id} AND kind = 'PAYMENT') THEN '预付款'
+        END
+    </select>
+
+    <select id="findUser" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM fin_voucher WHERE create_by = #{id}) THEN '凭证'
+            WHEN EXISTS (SELECT 1 FROM fin_expense_claim WHERE user_id = #{id}) THEN '费用报销'
+            WHEN EXISTS (SELECT 1 FROM fin_loan WHERE user_id = #{id}) THEN '员工借款'
+        END
+    </select>
+
+    <select id="findDept" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM fin_voucher_entry WHERE dept_id = #{id}) THEN '凭证分录'
+            WHEN EXISTS (SELECT 1 FROM fin_budget WHERE dept_id = #{id}) THEN '预算'
+            WHEN EXISTS (SELECT 1 FROM fin_expense_claim WHERE dept_id = #{id}) THEN '费用报销'
+        END
+    </select>
+
+</mapper>

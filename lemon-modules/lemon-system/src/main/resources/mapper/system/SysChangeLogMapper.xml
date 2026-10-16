@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.system.mapper.SysChangeLogMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO sys_change_log (biz_type, biz_id, field_name, field_label, old_value, new_value, create_by, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.bizType}, #{i.bizId}, #{i.fieldName}, #{i.fieldLabel}, #{i.oldValue}, #{i.newValue}, #{i.createBy}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+    <select id="selectByBiz" resultType="com.lemon.erp.modules.system.entity.SysChangeLog">
+        SELECT l.*, u.nickname AS create_by_name
+        FROM sys_change_log l
+        LEFT JOIN sys_user u ON u.id = l.create_by
+        WHERE l.biz_type = #{bizType} AND l.biz_id = #{bizId}
+        ORDER BY l.id DESC
+    </select>
+
+</mapper>

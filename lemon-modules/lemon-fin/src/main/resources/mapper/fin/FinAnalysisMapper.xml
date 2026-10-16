@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinAnalysisMapper">
+
+    <select id="selectGrossMargin" resultType="java.util.Map">
+        SELECT
+            <choose>
+                <when test="groupBy == 'CUSTOMER'">d.partner_id AS "groupKey", c.name AS "groupName",</when>
+                <when test="groupBy == 'MONTH'">t.period AS "groupKey", CAST(t.period AS CHAR) AS "groupName",</when>
+                <otherwise>i.material_id AS "groupKey", CONCAT(m.code, ' ', m.name) AS "groupName",</otherwise>
+            </choose>
+            SUM(CASE WHEN d.kind = 'SALES_OUT' THEN i.qty ELSE -i.qty END) AS "qty",
+            SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * (i.amount - i.tax_amount)) AS "revenue",
+            SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * i.qty * COALESCE(mc.unit_cost, m.ref_cost, 0)) AS "cost",
+            SUM(CASE WHEN mc.unit_cost IS NULL THEN 1 ELSE 0 END) AS "missingCost"
+        FROM scm_trade_doc_item i
+        JOIN scm_trade_doc d ON d.id = i.doc_id
+        JOIN (SELECT id, YEAR(biz_date) * 100 + MONTH(biz_date) AS period FROM scm_trade_doc
+              WHERE kind IN ('SALES_OUT', 'SALES_RETURN') AND biz_date &gt;= #{begin} AND biz_date &lt;= #{end}) t ON t.id = d.id
+        JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN scm_customer c ON c.id = d.partner_id
+        LEFT JOIN fin_material_cost mc ON mc.material_id = i.material_id AND mc.period = t.period
+        WHERE 1 = 1
+        <if test="customerId != null">AND d.partner_id = #{customerId}</if>
+        GROUP BY
+            <choose>
+                <when test="groupBy == 'CUSTOMER'">d.partner_id, c.name</when>
+                <when test="groupBy == 'MONTH'">t.period</when>
+                <otherwise>i.material_id, m.code, m.name</otherwise>
+            </choose>
+        ORDER BY 4 DESC
+    </select>
+
+    <select id="selectCostCloseByCategory" resultType="java.util.Map">
+        SELECT m.category AS "category", SUM(mc.close_amount) AS "closeAmount"
+        FROM fin_material_cost mc
+        JOIN wms_material m ON m.id = mc.material_id
+        WHERE mc.period = #{period}
+        GROUP BY m.category
+    </select>
+
+    <select id="selectQtyDiff" resultType="java.util.Map">
+        SELECT q.material_id AS "materialId", m.code AS "code", m.name AS "name", q.cost_qty AS "costQty", q.stock_qty AS "stockQty"
+        FROM (
+            SELECT x.material_id, SUM(x.cost_qty) AS cost_qty, SUM(x.stock_qty) AS stock_qty
+            FROM (
+                SELECT material_id, close_qty AS cost_qty, 0 AS stock_qty FROM fin_material_cost WHERE period = #{period}
+                UNION ALL
+                SELECT f.material_id, 0, f.qty
+                FROM wms_stock_flow f
+                JOIN wms_warehouse wh ON wh.id = f.warehouse_id
+                LEFT JOIN wms_stock_doc sd ON f.biz_type IN ('IN', 'OUT', 'TRANSFER') AND sd.id = f.doc_id
+                LEFT JOIN wms_check ck ON f.biz_type = 'CHECK' AND ck.id = f.doc_id
+                WHERE COALESCE(sd.biz_date, ck.biz_date) &lt;= #{end} AND wh.type &lt;&gt; 'CONSIGN_IN'
+            ) x
+            GROUP BY x.material_id
+        ) q
+        JOIN wms_material m ON m.id = q.material_id
+        WHERE q.cost_qty &lt;&gt; q.stock_qty
+        ORDER BY m.code
+    </select>
+
+    <select id="selectCashVoucherEntries" resultType="java.util.Map">
+        SELECT e.voucher_id AS "voucherId", a.code AS "accountCode", e.debit AS "debit", e.credit AS "credit"
+        FROM fin_voucher_entry e
+        JOIN fin_voucher v ON v.id = e.voucher_id
+        JOIN fin_account a ON a.id = e.account_id
+        WHERE v.status = 'POSTED' AND v.period &gt;= #{begin} AND v.period &lt;= #{end}
+          AND EXISTS (SELECT 1 FROM fin_voucher_entry ce JOIN fin_account ca ON ca.id = ce.account_id
+                      WHERE ce.voucher_id = v.id AND (ca.code LIKE '1001%' OR ca.code LIKE '1002%'))
+        ORDER BY e.voucher_id, e.seq
+    </select>
+
+</mapper>

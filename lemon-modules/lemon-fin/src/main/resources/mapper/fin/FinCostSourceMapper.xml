@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinCostSourceMapper">
+
+    <!-- 库存流水按单据的业务日期归属期间：出入库单取 wms_stock_doc，盘点取 wms_check；调拨不影响总库存，排除；
+         供应商寄售仓（VMI）的库存属于供应商，排除。
+         出入库单按单据种类归入入库 / 出库（红字冲销单为负数，冲减原单的同类数量），盘点按增减方向 -->
+    <select id="selectStockMovements" resultType="java.util.Map">
+        SELECT f.material_id AS "materialId", COALESCE(d.biz_type, f.biz_type) AS "bizType",
+               SUM(CASE WHEN d.kind = 'IN' THEN f.qty WHEN d.kind IS NULL AND f.qty &gt; 0 THEN f.qty ELSE 0 END) AS "inQty",
+               SUM(CASE WHEN d.kind = 'OUT' THEN -f.qty WHEN d.kind IS NULL AND f.qty &lt; 0 THEN -f.qty ELSE 0 END) AS "outQty"
+        FROM wms_stock_flow f
+        JOIN wms_warehouse wh ON wh.id = f.warehouse_id
+        LEFT JOIN wms_stock_doc d ON f.biz_type IN ('IN', 'OUT') AND d.id = f.doc_id
+        LEFT JOIN wms_check c ON f.biz_type = 'CHECK' AND c.id = f.doc_id
+        WHERE f.biz_type &lt;&gt; 'TRANSFER' AND wh.type &lt;&gt; 'CONSIGN_IN'
+          <if test="begin != null">AND COALESCE(d.biz_date, c.biz_date) &gt;= #{begin}</if>
+          AND COALESCE(d.biz_date, c.biz_date) &lt;= #{end}
+        GROUP BY f.material_id, COALESCE(d.biz_type, f.biz_type)
+    </select>
+
+    <!-- 参考成本价：没有核算单价时使用 -->
+    <select id="selectRefCosts" resultType="java.util.Map">
+        SELECT id AS "materialId", ref_cost AS "refCost" FROM wms_material WHERE ref_cost &gt; 0
+    </select>
+
+    <select id="selectTradeSums" resultType="java.util.Map">
+        SELECT i.material_id AS "materialId", d.kind AS "kind", SUM(i.qty) AS "qty", SUM(i.amount - i.tax_amount) AS "net"
+        FROM scm_trade_doc d
+        JOIN scm_trade_doc_item i ON i.doc_id = d.id
+        WHERE d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}
+        GROUP BY i.material_id, d.kind
+    </select>
+
+    <!-- 委外收货核销的用料：委外件、子件、数量 -->
+    <select id="selectOutsourceConsumption" resultType="java.util.Map">
+        SELECT product_id AS "productId", material_id AS "materialId", SUM(qty) AS "qty"
+        FROM mes_outsource_consume
+        WHERE biz_date &gt;= #{begin} AND biz_date &lt;= #{end}
+        GROUP BY product_id, material_id
+    </select>
+
+    <select id="selectWoDocSums" resultType="java.util.Map">
+        SELECT d.wo_id AS "woId", i.material_id AS "materialId", d.kind AS "kind", SUM(i.qty) AS "qty"
+        FROM mes_wo_doc d
+        JOIN mes_wo_doc_item i ON i.doc_id = d.id
+        WHERE d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}
+        GROUP BY d.wo_id, i.material_id, d.kind
+    </select>
+
+    <select id="selectReportCosts" resultType="java.util.Map">
+        SELECT r.wo_id AS "woId", SUM(r.hours) AS "hours",
+               SUM(r.hours * COALESCE(w.labor_rate, 0)) AS "labor", SUM(r.hours * COALESCE(w.overhead_rate, 0)) AS "overhead"
+        FROM mes_report r
+        JOIN mes_wo_op op ON op.id = r.op_id
+        LEFT JOIN mes_work_center w ON w.id = op.work_center_id
+        WHERE r.report_date &gt;= #{begin} AND r.report_date &lt;= #{end}
+        GROUP BY r.wo_id
+    </select>
+
+    <select id="selectWorkOrders" resultType="java.util.Map">
+        SELECT o.id AS "id", o.wo_no AS "woNo", o.material_id AS "materialId", o.qty AS "qty", o.status AS "status",
+               o.close_time AS "closeTime",
+               (SELECT COALESCE(SUM(d.total_qty), 0) FROM mes_wo_doc d
+                WHERE d.wo_id = o.id AND d.kind = 'FINISH' AND d.biz_date &lt; #{begin}) AS "finishedBefore"
+        FROM mes_work_order o
+        WHERE o.id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+</mapper>

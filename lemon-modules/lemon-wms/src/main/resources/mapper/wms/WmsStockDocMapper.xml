@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsStockDocMapper">
+
+    <sql id="viewColumns">
+        d.id, d.doc_no, d.kind, d.biz_type, d.warehouse_id, w.name AS warehouse_name, d.to_warehouse_id,
+        tw.name AS to_warehouse_name, d.biz_date, d.status, d.total_qty, d.remark, d.source_no, d.in_transit,
+        d.receive_by, ru.nickname AS receive_by_name, d.receive_time, d.red_of, rd.doc_no AS red_of_no, d.reversed, d.flow_instance_id, d.dept_id,
+        d.create_by, cu.nickname AS create_by_name, d.confirm_by, fu.nickname AS confirm_by_name, d.confirm_time,
+        d.create_time, d.update_time
+    </sql>
+
+    <sql id="viewJoins">
+        FROM wms_stock_doc d
+        LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id
+        LEFT JOIN wms_warehouse tw ON tw.id = d.to_warehouse_id
+        LEFT JOIN sys_user cu ON cu.id = d.create_by
+        LEFT JOIN sys_user fu ON fu.id = d.confirm_by
+        LEFT JOIN sys_user ru ON ru.id = d.receive_by
+        LEFT JOIN wms_stock_doc rd ON rd.id = d.red_of
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.wms.entity.WmsStockDoc">
+        SELECT <include refid="viewColumns"/>
+        <include refid="viewJoins"/>
+        WHERE d.kind = #{kind}
+        <if test="q.docNo != null and q.docNo != ''">AND d.doc_no LIKE CONCAT('%', #{q.docNo}, '%')</if>
+        <if test="q.bizType != null and q.bizType != ''">AND d.biz_type = #{q.bizType}</if>
+        <if test="q.warehouseId != null">AND (d.warehouse_id = #{q.warehouseId} OR d.to_warehouse_id = #{q.warehouseId})</if>
+        <if test="q.status != null and q.status != ''">AND d.status = #{q.status}</if>
+        <if test="q.beginDate != null">AND d.biz_date &gt;= #{q.beginDate}</if>
+        <if test="q.endDate != null">AND d.biz_date &lt;= #{q.endDate}</if>
+        ORDER BY d.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.wms.entity.WmsStockDoc">
+        SELECT <include refid="viewColumns"/>
+        <include refid="viewJoins"/>
+        WHERE d.id = #{id}
+    </select>
+
+</mapper>

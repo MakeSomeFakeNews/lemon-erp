@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 定时任务（到期提醒等）使用的查询 -->
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrJobMapper">
+
+    <select id="selectProbationDue" resultType="java.util.Map">
+        SELECT e.id AS "id", e.name AS "name", e.emp_no AS "empNo", e.regular_date AS "regularDate", d.leader_user_id AS "leaderId"
+        FROM hr_employee e LEFT JOIN sys_dept d ON d.id = e.dept_id
+        WHERE e.status = 'PROBATION' AND e.regular_date IS NOT NULL AND e.regular_date &lt;= #{before}
+    </select>
+
+    <!-- 今天生效的薪资历史，同步到薪资档案 -->
+    <update id="applyEffectiveSalary">
+        UPDATE hr_salary s
+        SET base_salary = (SELECT h.base_salary FROM hr_salary_history h WHERE h.employee_id = s.employee_id AND h.effective_date = #{today}),
+            post_allowance = (SELECT h.post_allowance FROM hr_salary_history h WHERE h.employee_id = s.employee_id AND h.effective_date = #{today}),
+            other_allowance = (SELECT h.other_allowance FROM hr_salary_history h WHERE h.employee_id = s.employee_id AND h.effective_date = #{today}),
+            perf_bonus_base = (SELECT h.perf_bonus_base FROM hr_salary_history h WHERE h.employee_id = s.employee_id AND h.effective_date = #{today}),
+            social_base = (SELECT h.social_base FROM hr_salary_history h WHERE h.employee_id = s.employee_id AND h.effective_date = #{today}),
+            housing_base = (SELECT h.housing_base FROM hr_salary_history h WHERE h.employee_id = s.employee_id AND h.effective_date = #{today}),
+            housing_rate = (SELECT h.housing_rate FROM hr_salary_history h WHERE h.employee_id = s.employee_id AND h.effective_date = #{today}),
+            update_time = NOW()
+        WHERE EXISTS (SELECT 1 FROM hr_salary_history h WHERE h.employee_id = s.employee_id AND h.effective_date = #{today})
+    </update>
+
+</mapper>

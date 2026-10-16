@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.crm.mapper.CrmContractMapper">
+
+    <!-- 已回款：关联销售订单的销售出库 / 退货形成的应收单的已核销金额 -->
+    <sql id="viewSelect">
+        SELECT c.*, cu.name AS customer_name, u.nickname AS owner_name, o.name AS opportunity_name, q.quote_no, so.order_no,
+               COALESCE((SELECT SUM(b.settled_amount) FROM fin_bill b
+                         JOIN scm_trade_doc d ON d.id = b.source_id AND b.source_type IN ('SALES_OUT', 'SALES_RETURN')
+                         WHERE b.kind = 'AR' AND c.order_id IS NOT NULL AND d.order_id = c.order_id), 0) AS received_amount
+        FROM crm_contract c
+        JOIN scm_customer cu ON cu.id = c.customer_id
+        LEFT JOIN sys_user u ON u.id = c.owner_id
+        LEFT JOIN crm_opportunity o ON o.id = c.opportunity_id
+        LEFT JOIN scm_quotation q ON q.id = c.quotation_id
+        LEFT JOIN scm_order so ON so.id = c.order_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.crm.entity.CrmContract">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (c.contract_no LIKE CONCAT('%', #{keyword}, '%') OR c.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR cu.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null and status != ''">AND c.status = #{status}</if>
+            <if test="customerId != null">AND c.customer_id = #{customerId}</if>
+            <if test="opportunityId != null">AND c.opportunity_id = #{opportunityId}</if>
+        </where>
+        ORDER BY c.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.crm.entity.CrmContract">
+        <include refid="viewSelect"/>
+        WHERE c.id = #{id}
+    </select>
+
+    <select id="selectActive" resultType="com.lemon.erp.modules.crm.entity.CrmContract">
+        <include refid="viewSelect"/>
+        WHERE c.status = 'ACTIVE'
+    </select>
+
+</mapper>

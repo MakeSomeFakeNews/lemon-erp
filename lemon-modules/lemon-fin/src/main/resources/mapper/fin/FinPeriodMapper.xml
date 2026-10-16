@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinPeriodMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinPeriod">
+        SELECT p.*, u.nickname AS close_by_name,
+               (SELECT COUNT(*) FROM fin_voucher v WHERE v.period = p.period) AS voucher_count,
+               (SELECT COUNT(*) FROM fin_voucher v WHERE v.period = p.period AND v.status &lt;&gt; 'POSTED') AS unposted_count
+        FROM fin_period p
+        LEFT JOIN sys_user u ON u.id = p.close_by
+        ORDER BY p.period DESC
+    </select>
+
+    <update id="nextSeq">
+        UPDATE fin_period SET voucher_seq = voucher_seq + 1, update_time = NOW()
+        WHERE period = #{period} AND status = 'OPEN'
+    </update>
+
+</mapper>

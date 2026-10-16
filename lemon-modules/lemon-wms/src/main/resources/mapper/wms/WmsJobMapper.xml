@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 定时任务（到期提醒等）使用的查询 -->
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsJobMapper">
+
+    <select id="selectExpiringBatches" resultType="java.util.Map">
+        SELECT b.material_id AS "materialId", b.batch_no AS "batchNo", b.expiry_date AS "expiryDate", m.code AS "code", m.name AS "name",
+               (SELECT COALESCE(SUM(s.qty), 0) FROM wms_stock s WHERE s.material_id = b.material_id AND s.batch_no = b.batch_no) AS "qty"
+        FROM wms_batch b JOIN wms_material m ON m.id = b.material_id
+        WHERE b.expiry_date IS NOT NULL AND b.expiry_date &lt;= #{before}
+          AND EXISTS (SELECT 1 FROM wms_stock s WHERE s.material_id = b.material_id AND s.batch_no = b.batch_no AND s.qty &gt; 0)
+        ORDER BY b.expiry_date
+    </select>
+
+</mapper>

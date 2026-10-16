@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrTrainingRecordMapper">
+
+    <select id="selectByTraining" resultType="com.lemon.erp.modules.hr.entity.HrTrainingRecord">
+        SELECT r.*, e.emp_no, e.name AS employee_name, d.name AS dept_name
+        FROM hr_training_record r
+        JOIN hr_employee e ON e.id = r.employee_id
+        LEFT JOIN sys_dept d ON d.id = e.dept_id
+        WHERE r.training_id = #{trainingId}
+        ORDER BY e.emp_no
+    </select>
+
+    <select id="selectByEmployee" resultType="com.lemon.erp.modules.hr.entity.HrTrainingRecord">
+        SELECT r.*, t.title AS training_title, t.start_date, t.end_date, t.hours, t.category, t.status AS training_status
+        FROM hr_training_record r
+        JOIN hr_training t ON t.id = r.training_id
+        WHERE r.employee_id = #{employeeId}
+        ORDER BY t.start_date DESC
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO hr_training_record (training_id, employee_id, attended, create_time, update_time) VALUES
+        <foreach collection="employeeIds" item="id" separator=",">(#{trainingId}, #{id}, 0, NOW(), NOW())</foreach>
+    </insert>
+
+    <select id="sumHours" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(t.hours), 0)
+        FROM hr_training_record r
+        JOIN hr_training t ON t.id = r.training_id
+        WHERE r.employee_id = #{employeeId} AND r.attended = 1 AND t.status = 'FINISHED'
+          AND t.start_date BETWEEN #{from} AND #{to}
+    </select>
+
+</mapper>

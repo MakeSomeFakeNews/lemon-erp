@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 首页待办数量，见 TodoProvider -->
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesTodoMapper">
+
+    <select id="selectCounts" resultType="java.util.Map">
+        SELECT
+            (SELECT COUNT(*) FROM mes_wo_supplement WHERE status = 'APPROVED') AS "supplementToIssue",
+            (SELECT COUNT(*) FROM mes_work_order WHERE status IN ('RELEASED', 'STARTED') AND plan_end &lt; #{today}) AS "woOverdue",
+            (SELECT COUNT(*) FROM mes_inspection WHERE status = 'DRAFT') AS "qcDraft",
+            (SELECT COUNT(*) FROM qms_ncr WHERE status = 'OPEN') AS "ncrOpen",
+            (SELECT COUNT(*) FROM qms_capa WHERE status = 'OPEN' AND due_date &lt; #{today}) AS "capaOverdue",
+            (SELECT COUNT(*) FROM mes_equipment WHERE status &lt;&gt; 'SCRAPPED' AND next_maintain_date IS NOT NULL AND next_maintain_date &lt;= #{today}) AS "maintainDue"
+    </select>
+
+</mapper>

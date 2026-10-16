@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.pm.mapper.PmCostMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.pm.entity.PmCost">
+        SELECT c.*, p.name AS project_name, u.nickname AS create_by_name
+        FROM pm_cost c
+        JOIN pm_project p ON p.id = c.project_id
+        LEFT JOIN sys_user u ON u.id = c.create_by
+        <where>
+            <if test="projectId != null">c.project_id = #{projectId}</if>
+            <if test="costType != null and costType != ''">AND c.cost_type = #{costType}</if>
+            <if test="beginDate != null">AND c.cost_date &gt;= #{beginDate}</if>
+            <if test="endDate != null">AND c.cost_date &lt;= #{endDate}</if>
+        </where>
+        ORDER BY c.cost_date DESC, c.id DESC
+    </select>
+
+    <select id="selectActualByType" resultType="java.util.Map">
+        SELECT 'LABOR' AS "costType", COALESCE(SUM(cost), 0) AS "amount"
+        FROM pm_timesheet WHERE project_id = #{projectId} AND status = 'APPROVED'
+        UNION ALL
+        SELECT cost_type, SUM(amount) FROM pm_cost WHERE project_id = #{projectId} AND status = 'APPROVED' GROUP BY cost_type
+    </select>
+
+    <select id="selectMonthly" resultType="java.util.Map">
+        SELECT period AS "period", SUM(labor) AS "labor", SUM(expense) AS "expense"
+        FROM (SELECT YEAR(work_date) * 100 + MONTH(work_date) AS period, cost AS labor, 0 AS expense
+              FROM pm_timesheet WHERE project_id = #{projectId} AND status = 'APPROVED'
+              UNION ALL
+              SELECT YEAR(cost_date) * 100 + MONTH(cost_date), 0, amount
+              FROM pm_cost WHERE project_id = #{projectId} AND status = 'APPROVED') t
+        GROUP BY period
+        ORDER BY period
+    </select>
+
+    <select id="selectUnitCosts" resultType="java.util.Map">
+        SELECT m.id AS "materialId",
+               COALESCE((SELECT mc.unit_cost FROM fin_material_cost mc
+                         WHERE mc.material_id = m.id AND mc.unit_cost &gt; 0 ORDER BY mc.period DESC LIMIT 1),
+                        (SELECT SUM(i.amount - i.tax_amount) / SUM(i.qty) FROM scm_trade_doc_item i
+                         JOIN scm_trade_doc d ON d.id = i.doc_id
+                         WHERE i.material_id = m.id AND d.kind = 'PURCHASE_IN'), 0) AS "unitCost"
+        FROM wms_material m
+        WHERE m.id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+</mapper>

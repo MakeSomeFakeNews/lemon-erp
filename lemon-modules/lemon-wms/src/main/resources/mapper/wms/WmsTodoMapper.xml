@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 首页待办数量，见 TodoProvider -->
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsTodoMapper">
+
+    <select id="selectCounts" resultType="java.util.Map">
+        SELECT
+            (SELECT COUNT(*) FROM wms_stock_doc WHERE status = 'DRAFT' AND create_by = #{userId}) AS "docDraft",
+            (SELECT COUNT(*) FROM wms_material m WHERE m.status = 1 AND m.safety_stock IS NOT NULL AND m.safety_stock &gt; (SELECT COALESCE(SUM(s.qty), 0) FROM wms_stock s WHERE s.material_id = m.id)) AS "belowSafety",
+            (SELECT COUNT(*) FROM wms_batch b WHERE b.expiry_date IS NOT NULL AND b.expiry_date &lt;= #{in30} AND EXISTS (SELECT 1 FROM wms_stock s WHERE s.material_id = b.material_id AND s.batch_no = b.batch_no AND s.qty &gt; 0)) AS "batchExpiring",
+            (SELECT COUNT(*) FROM wms_stock_hold WHERE status = 'PENDING') AS "holdPending",
+            (SELECT COUNT(*) FROM wms_stock_hold WHERE status = 'REJECTED') AS "holdRejected"
+    </select>
+
+</mapper>

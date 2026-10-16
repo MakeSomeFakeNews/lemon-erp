@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinExpenseClaimMapper">
+
+    <sql id="viewSelect">
+        SELECT c.*, u.nickname AS user_name, d.name AS dept_name, l.loan_no, v.voucher_no
+        FROM fin_expense_claim c
+        LEFT JOIN sys_user u ON u.id = c.user_id
+        LEFT JOIN sys_dept d ON d.id = c.dept_id
+        LEFT JOIN fin_loan l ON l.id = c.loan_id
+        LEFT JOIN fin_voucher v ON v.id = c.voucher_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinExpenseClaim">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (c.claim_no LIKE CONCAT('%', #{keyword}, '%') OR u.nickname LIKE CONCAT('%', #{keyword}, '%')
+                 OR c.remark LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null and status != ''">AND c.status = #{status}</if>
+            <if test="userId != null">AND c.user_id = #{userId}</if>
+        </where>
+        ORDER BY c.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinExpenseClaim">
+        <include refid="viewSelect"/>
+        WHERE c.id = #{id}
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.fin.entity.FinExpenseClaimItem">
+        SELECT i.*, a.code AS account_code, a.name AS account_name
+        FROM fin_expense_claim_item i
+        JOIN fin_account a ON a.id = i.account_id
+        WHERE i.claim_id = #{claimId}
+        ORDER BY i.id
+    </select>
+
+    <select id="selectCommitted" resultType="java.util.Map">
+        SELECT i.account_id AS "accountId", SUM(i.amount) AS "amount"
+        FROM fin_expense_claim_item i
+        JOIN fin_expense_claim c ON c.id = i.claim_id
+        WHERE c.status IN ('APPROVING', 'APPROVED') AND c.claim_date &gt;= #{begin} AND c.claim_date &lt;= #{end}
+          <if test="deptId != null">AND c.dept_id = #{deptId}</if>
+          <if test="excludeId != null">AND c.id &lt;&gt; #{excludeId}</if>
+        GROUP BY i.account_id
+    </select>
+
+</mapper>

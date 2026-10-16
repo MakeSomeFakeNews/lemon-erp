@@ -1,0 +1,10 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '商务智能：驾驶舱、多维分析、自定义报表、仪表盘、预警'
+
+dependencies {
+    api project(':lemon-modules:lemon-fin')
+    api project(':lemon-modules:lemon-scm')
+}

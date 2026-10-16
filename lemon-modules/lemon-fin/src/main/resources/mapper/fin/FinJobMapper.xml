@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 定时任务（到期提醒等）使用的查询 -->
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinJobMapper">
+
+    <select id="selectOverdueSummary" resultType="java.util.Map">
+        SELECT COUNT(*) AS "count", COALESCE(SUM(amount - settled_amount), 0) AS "amount"
+        FROM fin_bill WHERE kind = #{kind} AND status &lt;&gt; 'SETTLED' AND due_date &lt; #{today}
+    </select>
+
+</mapper>

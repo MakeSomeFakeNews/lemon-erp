@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 定时任务（到期提醒等）使用的查询 -->
+<mapper namespace="com.lemon.erp.modules.crm.mapper.CrmJobMapper">
+
+    <!-- 今天需要跟进的客户（下次跟进时间在今天及之前） -->
+    <select id="selectFollowDue" resultType="java.util.Map">
+        SELECT x.customer_id AS "customerId", x.owner_id AS "ownerId", c.name AS "name", x.next_follow_time AS "nextFollowTime"
+        FROM crm_customer x JOIN scm_customer c ON c.id = x.customer_id
+        WHERE x.owner_id IS NOT NULL AND x.next_follow_time IS NOT NULL AND x.next_follow_time &lt; #{before}
+    </select>
+
+    <!-- 长期未跟进的私海客户：最近跟进（没有跟进时取领取时间）早于 since -->
+    <select id="selectIdle" resultType="java.util.Map">
+        SELECT x.id AS "id", x.owner_id AS "ownerId", c.name AS "name"
+        FROM crm_customer x JOIN scm_customer c ON c.id = x.customer_id
+        WHERE x.owner_id IS NOT NULL AND COALESCE(x.last_follow_time, x.claim_time, x.create_time) &lt; #{since}
+          AND x.stage &lt;&gt; 'DEAL'
+    </select>
+
+    <update id="releaseToPool">
+        UPDATE crm_customer SET owner_id = NULL, dept_id = NULL, claim_time = NULL, update_time = NOW()
+        WHERE id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </update>
+
+</mapper>

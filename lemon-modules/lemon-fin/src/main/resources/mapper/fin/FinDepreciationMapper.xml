@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinDepreciationMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinDepreciation">
+        SELECT r.*, a.code AS asset_code, a.name AS asset_name, d.name AS dept_name, v.voucher_no
+        FROM fin_depreciation r
+        JOIN fin_asset a ON a.id = r.asset_id
+        LEFT JOIN sys_dept d ON d.id = a.dept_id
+        LEFT JOIN fin_voucher v ON v.id = r.voucher_id
+        <where>
+            <if test="period != null">r.period = #{period}</if>
+            <if test="assetId != null">AND r.asset_id = #{assetId}</if>
+        </where>
+        ORDER BY r.period DESC, a.code
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO fin_depreciation (period, asset_id, amount, voucher_id, create_by, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.period}, #{i.assetId}, #{i.amount}, #{i.voucherId}, #{i.createBy}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

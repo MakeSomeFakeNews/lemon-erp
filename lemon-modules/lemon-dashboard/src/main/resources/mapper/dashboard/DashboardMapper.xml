@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.dashboard.mapper.DashboardMapper">
+
+    <!--
+        标量子查询合并为一次往返：
+        - 今日登录：走 idx_login_time_status (login_time, status) 覆盖索引，不回表
+        - 今日操作：走 idx_oper_time 范围扫描
+    -->
+    <select id="selectCounts" resultType="com.lemon.erp.modules.dashboard.dto.DashboardCounts">
+        SELECT (SELECT COUNT(*) FROM sys_user)                                                  AS user_count,
+               (SELECT COUNT(*) FROM sys_role)                                                  AS role_count,
+               (SELECT COUNT(*) FROM sys_menu)                                                  AS menu_count,
+               (SELECT COUNT(*) FROM sys_login_log WHERE login_time &gt;= #{todayStart} AND status = 1) AS today_login_count,
+               (SELECT COUNT(*) FROM sys_oper_log WHERE oper_time &gt;= #{todayStart})               AS today_oper_count
+    </select>
+
+    <!--
+        在数据库中按天分组，最多返回 7 行，不把明细拉到应用内存。
+        login_time 上只做范围条件（不对列套函数），可以走 idx_login_time_status 覆盖索引；
+        CAST(... AS DATE) 只出现在分组表达式中，MySQL 与 H2 均支持
+    -->
+    <select id="selectLoginTrend" resultType="com.lemon.erp.modules.dashboard.dto.LoginTrendRow">
+        SELECT CAST(login_time AS DATE)                    AS login_date,
+               SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS success,
+               SUM(CASE WHEN status = 1 THEN 0 ELSE 1 END) AS fail
+        FROM sys_login_log
+        WHERE login_time &gt;= #{begin}
+        GROUP BY CAST(login_time AS DATE)
+    </select>
+
+    <select id="sumOrderAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(o.total_amount * o.exchange_rate), 0)
+        FROM scm_order o
+        WHERE o.kind = #{kind} AND o.status IN ('APPROVED', 'PARTIAL', 'COMPLETED', 'CLOSED')
+          AND o.order_date &gt;= #{begin} AND o.order_date &lt;= #{end}
+    </select>
+
+    <select id="countOpenOrders" resultType="long">
+        SELECT COUNT(*) FROM scm_order o WHERE o.kind = #{kind} AND o.status IN ('APPROVED', 'PARTIAL')
+    </select>
+
+    <select id="sumBillBalance" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(b.amount - b.settled_amount), 0) FROM fin_bill b WHERE b.kind = #{kind}
+    </select>
+
+    <select id="countOpenWorkOrders" resultType="long">
+        SELECT COUNT(*) FROM mes_work_order w WHERE w.status IN ('RELEASED', 'STARTED')
+    </select>
+
+</mapper>

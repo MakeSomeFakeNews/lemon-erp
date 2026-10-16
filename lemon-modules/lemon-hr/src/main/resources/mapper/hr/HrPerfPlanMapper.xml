@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrPerfPlanMapper">
+
+    <sql id="columns">
+        p.*, u.nickname AS create_by_name, COALESCE(a.total, 0) AS total, COALESCE(a.done_count, 0) AS done_count
+    </sql>
+
+    <sql id="joins">
+        FROM hr_perf_plan p
+        LEFT JOIN sys_user u ON u.id = p.create_by
+        LEFT JOIN (SELECT plan_id, COUNT(*) AS total, SUM(CASE WHEN status = 'DONE' THEN 1 ELSE 0 END) AS done_count
+                   FROM hr_perf_appraisal GROUP BY plan_id) a ON a.plan_id = p.id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.hr.entity.HrPerfPlan">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="keyword != null and keyword != ''">p.name LIKE CONCAT('%', #{keyword}, '%')</if>
+            <if test="status != null and status != ''">AND p.status = #{status}</if>
+        </where>
+        ORDER BY p.start_date DESC, p.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.hr.entity.HrPerfPlan">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE p.id = #{id}
+    </select>
+
+</mapper>

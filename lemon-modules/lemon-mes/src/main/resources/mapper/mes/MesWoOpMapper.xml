@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesWoOpMapper">
+
+    <select id="selectByWo" resultType="com.lemon.erp.modules.mes.entity.MesWoOp">
+        SELECT o.*, w.name AS work_center_name
+        FROM mes_wo_op o
+        LEFT JOIN mes_work_center w ON w.id = o.work_center_id
+        WHERE o.wo_id = #{woId}
+        ORDER BY o.seq, o.id
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO mes_wo_op (wo_id, seq, name, work_center_id, std_hours, piece_rate, first_article, good_qty, scrap_qty, hours, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.woId}, #{i.seq}, #{i.name}, #{i.workCenterId}, #{i.stdHours}, #{i.pieceRate}, COALESCE(#{i.firstArticle}, 0), 0, 0, 0, NOW(), NOW())
+        </foreach>
+    </insert>
+
+    <update id="addReport">
+        UPDATE mes_wo_op SET good_qty = good_qty + #{goodQty}, scrap_qty = scrap_qty + #{scrapQty}, hours = hours + #{hours},
+                             update_time = NOW()
+        WHERE id = #{id} AND good_qty + scrap_qty + #{goodQty} + #{scrapQty} &lt;= #{maxQty}
+    </update>
+
+</mapper>

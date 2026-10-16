@@ -1,0 +1,47 @@
+/*
+ * 所有 Java 模块的公共约定：Java 17、Spring Boot 依赖版本（BOM）、Lombok、编译参数、JUnit 5
+ */
+plugins {
+    id 'java-library'
+}
+
+group = 'com.lemon'
+version = '0.0.1-SNAPSHOT'
+
+def libs = extensions.getByType(VersionCatalogsExtension).named('libs')
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    def bom = platform(libs.findLibrary('spring-boot-dependencies').get())
+    api bom
+    annotationProcessor bom
+    testImplementation bom
+    testAnnotationProcessor bom
+
+    compileOnly libs.findLibrary('lombok').get()
+    annotationProcessor libs.findLibrary('lombok').get()
+    testCompileOnly libs.findLibrary('lombok').get()
+    testAnnotationProcessor libs.findLibrary('lombok').get()
+
+    testImplementation libs.findLibrary('spring-boot-starter-test').get()
+    testRuntimeOnly libs.findLibrary('junit-platform-launcher').get()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    // 保留方法参数名：Spring MVC 的 @PathVariable / @RequestParam 依赖它
+    options.compilerArgs << '-parameters'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

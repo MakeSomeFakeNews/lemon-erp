@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinAssetMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinAsset">
+        SELECT t.*, d.name AS dept_name, a.name AS expense_account_name, cu.nickname AS custodian_name
+        FROM fin_asset t
+        LEFT JOIN sys_dept d ON d.id = t.dept_id
+        LEFT JOIN sys_user cu ON cu.id = t.custodian_id
+        LEFT JOIN fin_account a ON a.id = t.expense_account_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (t.code LIKE CONCAT('%', #{keyword}, '%') OR t.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR t.location LIKE CONCAT('%', #{keyword}, '%') OR cu.nickname LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="category != null and category != ''">AND t.category = #{category}</if>
+            <if test="status != null">AND t.status = #{status}</if>
+            <if test="deptId != null">AND t.dept_id = #{deptId}</if>
+        </where>
+        ORDER BY t.code
+    </select>
+
+    <select id="selectDepreciable" resultType="com.lemon.erp.modules.fin.entity.FinAsset">
+        SELECT * FROM fin_asset
+        WHERE status IN ('IN_USE', 'IDLE') AND use_date &lt; #{periodStart} AND depreciated_months &lt; useful_months
+        ORDER BY code
+    </select>
+
+    <update id="addDepreciation">
+        UPDATE fin_asset
+        SET accumulated = accumulated + #{amount},
+            depreciated_months = depreciated_months + (CASE WHEN #{amount} &gt;= 0 THEN 1 ELSE -1 END),
+            update_time = NOW()
+        WHERE id = #{id}
+        <if test="expectedMonths != null">AND depreciated_months = #{expectedMonths}</if>
+    </update>
+
+</mapper>

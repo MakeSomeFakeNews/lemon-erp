@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsSerialLogMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO wms_serial_log (material_id, serial_no, biz_type, doc_id, doc_no, direction, warehouse_id, location_id,
+                                    batch_no, create_by, create_time) VALUES
+        <foreach collection="list" item="g" separator=",">
+            (#{g.materialId}, #{g.serialNo}, #{g.bizType}, #{g.docId}, #{g.docNo}, #{g.direction}, #{g.warehouseId},
+             #{g.locationId}, #{g.batchNo}, #{g.createBy}, #{g.createTime})
+        </foreach>
+    </insert>
+
+    <select id="selectBySerial" resultType="com.lemon.erp.modules.wms.dto.SerialLogView">
+        SELECT g.id, g.biz_type, g.doc_id, g.doc_no, g.direction, w.name AS warehouse_name, l.code AS location_code,
+               g.batch_no, u.nickname AS create_by_name, g.create_time
+        FROM wms_serial_log g
+        JOIN wms_warehouse w ON w.id = g.warehouse_id
+        LEFT JOIN wms_location l ON l.id = g.location_id
+        LEFT JOIN sys_user u ON u.id = g.create_by
+        WHERE g.material_id = #{materialId} AND g.serial_no = #{serialNo}
+        ORDER BY g.id
+    </select>
+
+</mapper>

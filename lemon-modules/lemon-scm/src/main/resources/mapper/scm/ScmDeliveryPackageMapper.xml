@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmDeliveryPackageMapper">
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.scm.entity.ScmDeliveryPackageItem">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit
+        FROM scm_delivery_package_item i
+        JOIN scm_delivery_package p ON p.id = i.package_id
+        JOIN wms_material m ON m.id = i.material_id
+        WHERE p.delivery_id = #{deliveryId}
+        ORDER BY p.seq, i.id
+    </select>
+
+    <insert id="insertItems">
+        INSERT INTO scm_delivery_package_item (package_id, delivery_item_id, material_id, qty) VALUES
+        <foreach collection="list" item="i" separator=",">(#{packageId}, #{i.deliveryItemId}, #{i.materialId}, #{i.qty})</foreach>
+    </insert>
+
+    <delete id="deleteItems">
+        DELETE FROM scm_delivery_package_item WHERE package_id = #{packageId}
+    </delete>
+
+    <select id="selectPackedQty" resultType="java.util.Map">
+        SELECT i.delivery_item_id AS "deliveryItemId", SUM(i.qty) AS "qty"
+        FROM scm_delivery_package_item i
+        JOIN scm_delivery_package p ON p.id = i.package_id
+        WHERE p.delivery_id = #{deliveryId}
+        <if test="excludePackageId != null">AND p.id &lt;&gt; #{excludePackageId}</if>
+        GROUP BY i.delivery_item_id
+    </select>
+
+</mapper>

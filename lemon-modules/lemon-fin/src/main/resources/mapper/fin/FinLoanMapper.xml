@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinLoanMapper">
+
+    <sql id="viewSelect">
+        SELECT l.*, u.nickname AS user_name, d.name AS dept_name, v.voucher_no
+        FROM fin_loan l
+        LEFT JOIN sys_user u ON u.id = l.user_id
+        LEFT JOIN sys_dept d ON d.id = l.dept_id
+        LEFT JOIN fin_voucher v ON v.id = l.voucher_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinLoan">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (l.loan_no LIKE CONCAT('%', #{keyword}, '%') OR u.nickname LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null and status != ''">AND l.status = #{status}</if>
+            <if test="userId != null">AND l.user_id = #{userId}</if>
+        </where>
+        ORDER BY l.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinLoan">
+        <include refid="viewSelect"/>
+        WHERE l.id = #{id}
+    </select>
+
+    <select id="selectRepays" resultType="com.lemon.erp.modules.fin.entity.FinLoanRepay">
+        SELECT r.*, c.claim_no, v.voucher_no
+        FROM fin_loan_repay r
+        LEFT JOIN fin_expense_claim c ON c.id = r.claim_id
+        LEFT JOIN fin_voucher v ON v.id = r.voucher_id
+        WHERE r.loan_id = #{loanId}
+        ORDER BY r.id
+    </select>
+
+    <update id="addRepaid">
+        UPDATE fin_loan
+        SET repaid_amount = repaid_amount + #{amount},
+            status = CASE WHEN repaid_amount + #{amount} &gt;= amount THEN 'CLEARED' ELSE 'PAID' END,
+            update_time = NOW()
+        WHERE id = #{id} AND status = 'PAID' AND repaid_amount + #{amount} &lt;= amount
+    </update>
+
+</mapper>

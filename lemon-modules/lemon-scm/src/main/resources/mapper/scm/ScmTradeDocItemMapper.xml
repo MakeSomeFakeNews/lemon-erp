@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmTradeDocItemMapper">
+
+    <select id="selectByDocId" resultType="com.lemon.erp.modules.scm.entity.ScmTradeDocItem">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, l.code AS location_code
+        FROM scm_trade_doc_item i
+        JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN wms_location l ON l.id = i.location_id
+        WHERE i.doc_id = #{docId}
+        ORDER BY i.id
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO scm_trade_doc_item (doc_id, order_item_id, material_id, location_id, batch_no, production_date,
+                                        expiry_date, qty, price, tax_rate, amount, tax_amount, serial_nos, remark,
+                                        create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.docId}, #{i.orderItemId}, #{i.materialId}, #{i.locationId}, #{i.batchNo}, #{i.productionDate},
+             #{i.expiryDate}, #{i.qty}, #{i.price}, #{i.taxRate}, #{i.amount}, #{i.taxAmount}, #{i.serialNos},
+             #{i.remark}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+    <select id="sumQtyByDocNo" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(i.qty), 0)
+        FROM scm_trade_doc d JOIN scm_trade_doc_item i ON i.doc_id = d.id
+        WHERE d.doc_no = #{docNo} AND d.kind = #{kind} AND i.material_id = #{materialId}
+    </select>
+
+</mapper>

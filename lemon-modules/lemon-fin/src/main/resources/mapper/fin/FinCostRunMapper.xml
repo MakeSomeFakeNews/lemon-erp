@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinCostRunMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinCostRun">
+        SELECT r.*, v.voucher_no, v.status AS voucher_status, u.nickname AS create_by_name,
+               (SELECT COALESCE(SUM(m.sales_amount), 0) FROM fin_material_cost m WHERE m.period = r.period) AS sales_cost,
+               (SELECT COALESCE(SUM(w.finished_amount), 0) FROM fin_wo_cost w WHERE w.period = r.period) AS finished_cost,
+               (SELECT COALESCE(SUM(w.wip_close), 0) FROM fin_wo_cost w WHERE w.period = r.period) AS wip_cost
+        FROM fin_cost_run r
+        LEFT JOIN fin_voucher v ON v.id = r.voucher_id
+        LEFT JOIN sys_user u ON u.id = r.create_by
+        ORDER BY r.period DESC
+    </select>
+
+</mapper>

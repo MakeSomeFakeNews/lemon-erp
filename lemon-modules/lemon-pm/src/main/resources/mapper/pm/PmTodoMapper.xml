@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 首页待办数量，见 TodoProvider -->
+<mapper namespace="com.lemon.erp.modules.pm.mapper.PmTodoMapper">
+
+    <select id="selectCounts" resultType="java.util.Map">
+        SELECT
+            (SELECT COUNT(*) FROM pm_timesheet t JOIN pm_project p ON p.id = t.project_id WHERE t.status = 'SUBMITTED' AND p.manager_id = #{userId}) AS "timesheetToApprove",
+            (SELECT COUNT(*) FROM pm_task WHERE assignee_id = #{userId} AND status &lt;&gt; 'DONE' AND plan_end &lt; #{today}) AS "taskOverdue"
+    </select>
+
+</mapper>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesMoldMapper">
+
+    <sql id="viewSelect">
+        SELECT t.*, o.wo_no, e.name AS equipment_name
+        FROM mes_mold t
+        LEFT JOIN mes_work_order o ON o.id = t.wo_id
+        LEFT JOIN mes_equipment e ON e.id = t.equipment_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.MesMold">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (t.code LIKE CONCAT('%', #{keyword}, '%') OR t.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="moldType != null">AND t.mold_type = #{moldType}</if>
+            <if test="status != null">AND t.status = #{status}</if>
+            <if test="productId != null">
+                AND EXISTS (SELECT 1 FROM mes_mold_product p WHERE p.mold_id = t.id AND p.material_id = #{productId})
+            </if>
+            <if test="warn != null and warn">
+                AND t.design_life IS NOT NULL AND t.used_count * 100 &gt;= t.design_life * t.warn_ratio AND t.status &lt;&gt; 'SCRAPPED'
+            </if>
+        </where>
+        ORDER BY t.code
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.mes.entity.MesMold">
+        <include refid="viewSelect"/>
+        WHERE t.id = #{id}
+    </select>
+
+    <select id="selectByWo" resultType="com.lemon.erp.modules.mes.entity.MesMold">
+        SELECT * FROM mes_mold WHERE wo_id = #{woId} AND status = 'IN_USE' ORDER BY code
+    </select>
+
+    <select id="selectProducts" resultType="java.util.Map">
+        SELECT p.mold_id AS "moldId", p.material_id AS "materialId", m.code AS "code", m.name AS "name"
+        FROM mes_mold_product p
+        JOIN wms_material m ON m.id = p.material_id
+        WHERE p.mold_id IN <foreach collection="moldIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY p.mold_id, m.code
+    </select>
+
+    <delete id="deleteProducts">
+        DELETE FROM mes_mold_product WHERE mold_id = #{moldId}
+    </delete>
+
+    <insert id="insertProducts">
+        INSERT INTO mes_mold_product (mold_id, material_id) VALUES
+        <foreach collection="productIds" item="p" separator=",">(#{moldId}, #{p})</foreach>
+    </insert>
+
+    <update id="addUsed">
+        UPDATE mes_mold SET used_count = used_count + #{shots}, update_time = NOW() WHERE id = #{id}
+    </update>
+
+    <select id="selectLogs" resultType="com.lemon.erp.modules.mes.entity.MesMoldLog">
+        SELECT l.*, o.wo_no, e.name AS equipment_name, u.nickname AS create_by_name
+        FROM mes_mold_log l
+        LEFT JOIN mes_work_order o ON o.id = l.wo_id
+        LEFT JOIN mes_equipment e ON e.id = l.equipment_id
+        LEFT JOIN sys_user u ON u.id = l.create_by
+        WHERE l.mold_id = #{moldId}
+        ORDER BY l.id DESC
+    </select>
+
+</mapper>

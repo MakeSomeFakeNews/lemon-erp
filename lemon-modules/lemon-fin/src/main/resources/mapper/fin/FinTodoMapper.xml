@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 首页待办数量，见 TodoProvider -->
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinTodoMapper">
+
+    <select id="selectCounts" resultType="java.util.Map">
+        SELECT
+            (SELECT COUNT(*) FROM fin_voucher WHERE status = 'DRAFT') AS "voucherToAudit",
+            (SELECT COUNT(*) FROM fin_voucher WHERE status = 'AUDITED') AS "voucherToPost",
+            (SELECT COUNT(*) FROM fin_bill WHERE kind = 'AR' AND status &lt;&gt; 'SETTLED' AND due_date &lt; #{today}) AS "arOverdue"
+    </select>
+
+</mapper>

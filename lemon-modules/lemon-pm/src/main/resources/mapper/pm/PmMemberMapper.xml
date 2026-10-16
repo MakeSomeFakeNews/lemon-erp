@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.pm.mapper.PmMemberMapper">
+
+    <select id="selectByProject" resultType="com.lemon.erp.modules.pm.entity.PmMember">
+        SELECT m.*, u.nickname AS user_name, u.username AS login_name, d.name AS dept_name,
+               (SELECT COALESCE(SUM(ts.hours), 0) FROM pm_timesheet ts
+                WHERE ts.project_id = m.project_id AND ts.user_id = m.user_id AND ts.status = 'APPROVED') AS approved_hours
+        FROM pm_member m
+        JOIN sys_user u ON u.id = m.user_id
+        LEFT JOIN sys_dept d ON d.id = u.dept_id
+        WHERE m.project_id = #{projectId}
+        ORDER BY CASE m.role WHEN 'MANAGER' THEN 0 ELSE 1 END, m.id
+    </select>
+
+    <select id="selectActiveAssignments" resultType="com.lemon.erp.modules.pm.entity.PmMember">
+        SELECT m.*, u.nickname AS user_name, u.username AS login_name, d.name AS dept_name,
+               p.code AS project_code, p.name AS project_name, p.status AS project_status
+        FROM pm_member m
+        JOIN pm_project p ON p.id = m.project_id
+        JOIN sys_user u ON u.id = m.user_id
+        LEFT JOIN sys_dept d ON d.id = u.dept_id
+        WHERE p.status IN ('PLANNING', 'APPROVING', 'ACTIVE')
+        <if test="deptId != null">AND u.dept_id = #{deptId}</if>
+        ORDER BY u.id, p.code
+    </select>
+
+</mapper>

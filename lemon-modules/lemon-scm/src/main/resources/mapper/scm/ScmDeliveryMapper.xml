@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmDeliveryMapper">
+
+    <sql id="viewSelect">
+        SELECT d.*, o.order_no, c.name AS customer_name, w.name AS warehouse_name, t.doc_no AS trade_doc_no,
+               u.nickname AS create_by_name, pu.nickname AS pick_by_name, wv.wave_no,
+               (SELECT SUM(i.qty) FROM scm_delivery_item i WHERE i.delivery_id = d.id) AS total_qty
+        FROM scm_delivery d
+        JOIN scm_order o ON o.id = d.order_id
+        JOIN scm_customer c ON c.id = d.customer_id
+        JOIN wms_warehouse w ON w.id = d.warehouse_id
+        LEFT JOIN scm_trade_doc t ON t.id = d.trade_doc_id
+        LEFT JOIN sys_user u ON u.id = d.create_by
+        LEFT JOIN sys_user pu ON pu.id = d.pick_by
+        LEFT JOIN scm_wave wv ON wv.id = d.wave_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmDelivery">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                (d.delivery_no LIKE CONCAT('%', #{keyword}, '%') OR o.order_no LIKE CONCAT('%', #{keyword}, '%')
+                 OR c.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null">AND d.status = #{status}</if>
+            <if test="warehouseId != null">AND d.warehouse_id = #{warehouseId}</if>
+            <if test="orderId != null">AND d.order_id = #{orderId}</if>
+        </where>
+        ORDER BY d.id DESC
+    </select>
+
+    <select id="selectByWave" resultType="com.lemon.erp.modules.scm.entity.ScmDelivery">
+        <include refid="viewSelect"/>
+        WHERE d.wave_id = #{waveId}
+        ORDER BY d.id
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmDelivery">
+        <include refid="viewSelect"/>
+        WHERE d.id = #{id}
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.scm.entity.ScmDeliveryItem">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.batch_enabled, m.serial_enabled
+        FROM scm_delivery_item i
+        JOIN wms_material m ON m.id = i.material_id
+        WHERE i.delivery_id = #{deliveryId}
+        ORDER BY i.id
+    </select>
+
+    <select id="selectPicks" resultType="com.lemon.erp.modules.scm.entity.ScmDeliveryPick">
+        SELECT p.*, l.code AS location_code, b.expiry_date, m.code AS material_code, m.name AS material_name, m.unit
+        FROM scm_delivery_pick p
+        JOIN wms_material m ON m.id = p.material_id
+        LEFT JOIN wms_location l ON l.id = p.location_id
+        LEFT JOIN wms_batch b ON b.material_id = p.material_id AND b.batch_no = p.batch_no AND p.batch_no &lt;&gt; ''
+        WHERE p.delivery_id = #{deliveryId}
+        ORDER BY p.delivery_item_id, p.id
+    </select>
+
+    <select id="selectNoticedQty" resultType="java.util.Map">
+        SELECT i.order_item_id AS "orderItemId", SUM(i.qty) AS "qty"
+        FROM scm_delivery_item i
+        JOIN scm_delivery d ON d.id = i.delivery_id
+        WHERE d.order_id = #{orderId} AND d.status IN ('PENDING', 'PICKED')
+        GROUP BY i.order_item_id
+    </select>
+
+</mapper>

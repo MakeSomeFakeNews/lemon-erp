@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesBomOpMapper">
+
+    <select id="selectByBomId" resultType="com.lemon.erp.modules.mes.entity.MesBomOp">
+        SELECT o.*, w.name AS work_center_name
+        FROM mes_bom_op o
+        LEFT JOIN mes_work_center w ON w.id = o.work_center_id
+        WHERE o.bom_id = #{bomId}
+        ORDER BY o.seq, o.id
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO mes_bom_op (bom_id, seq, name, work_center_id, std_hours, piece_rate, first_article, remark, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.bomId}, #{i.seq}, #{i.name}, #{i.workCenterId}, #{i.stdHours}, #{i.pieceRate}, COALESCE(#{i.firstArticle}, 0), #{i.remark}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

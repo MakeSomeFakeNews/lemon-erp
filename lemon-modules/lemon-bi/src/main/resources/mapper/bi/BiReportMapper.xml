@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.bi.mapper.BiReportMapper">
+
+    <select id="selectVisible" resultType="com.lemon.erp.modules.bi.entity.BiReport">
+        SELECT r.*, u.nickname AS create_by_name, CASE WHEN r.create_by = #{userId} THEN 1 ELSE 0 END AS mine
+        FROM bi_report r
+        LEFT JOIN sys_user u ON u.id = r.create_by
+        WHERE (r.create_by = #{userId} OR r.shared = 1)
+        <if test="keyword != null and keyword != ''">AND r.name LIKE CONCAT('%', #{keyword}, '%')</if>
+        <if test="cube != null and cube != ''">AND r.dataset = #{cube}</if>
+        ORDER BY CASE WHEN r.create_by = #{userId} THEN 0 ELSE 1 END, r.id DESC
+    </select>
+
+</mapper>

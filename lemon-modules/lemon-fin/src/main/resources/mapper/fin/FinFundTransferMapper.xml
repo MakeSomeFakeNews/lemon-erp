@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinFundTransferMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinFundTransfer">
+        SELECT t.*, CONCAT(fa.code, ' ', fa.name) AS from_account_name, CONCAT(ta.code, ' ', ta.name) AS to_account_name,
+               v.voucher_no, u.nickname AS create_by_name
+        FROM fin_fund_transfer t
+        LEFT JOIN fin_account fa ON fa.id = t.from_account_id
+        LEFT JOIN fin_account ta ON ta.id = t.to_account_id
+        LEFT JOIN fin_voucher v ON v.id = t.voucher_id
+        LEFT JOIN sys_user u ON u.id = t.create_by
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (t.transfer_no LIKE CONCAT('%', #{keyword}, '%') OR t.remark LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="begin != null">AND t.transfer_date &gt;= #{begin}</if>
+            <if test="end != null">AND t.transfer_date &lt;= #{end}</if>
+        </where>
+        ORDER BY t.transfer_date DESC, t.id DESC
+    </select>
+
+</mapper>

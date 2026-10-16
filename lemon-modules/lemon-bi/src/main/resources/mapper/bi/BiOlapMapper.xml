@@ -1,0 +1,599 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 多维分析：维度编码（BiCube 白名单）选择分组表达式，行维度 r、列维度 c；本文件由维度定义生成，修改维度时同步 BiCube -->
+<mapper namespace="com.lemon.erp.modules.bi.mapper.BiOlapMapper">
+
+    <select id="pivotSales" resultType="java.util.Map">
+        SELECT
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'customer'">f.customer_id</when>
+                <when test="q.row == 'owner'">f.owner_id</when>
+                <when test="q.row == 'material'">f.material_id</when>
+                <when test="q.row == 'category'">f.category</when>
+                <when test="q.row == 'warehouse'">f.warehouse_id</when>
+                <when test="q.row == 'dept'">f.dept_id</when>
+                <when test="q.row == 'level'">c.level</when>
+                <when test="q.row == 'industry'">x.industry</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "r",
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'customer'">f.customer_id</when>
+                <when test="q.col == 'owner'">f.owner_id</when>
+                <when test="q.col == 'material'">f.material_id</when>
+                <when test="q.col == 'category'">f.category</when>
+                <when test="q.col == 'warehouse'">f.warehouse_id</when>
+                <when test="q.col == 'dept'">f.dept_id</when>
+                <when test="q.col == 'level'">c.level</when>
+                <when test="q.col == 'industry'">x.industry</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "c",
+            SUM(f.qty) AS "qty",
+            SUM(f.amount) AS "amount",
+            SUM(f.cost) AS "cost",
+            SUM(f.profit) AS "profit",
+            COUNT(DISTINCT f.doc_no) AS "docs",
+            COUNT(DISTINCT f.customer_id) AS "customers"
+        FROM bi_fact_sales f
+        LEFT JOIN scm_customer c ON c.id = f.customer_id
+        LEFT JOIN crm_customer x ON x.customer_id = f.customer_id
+        <where>
+            <if test="q.begin != null">f.biz_date &gt;= #{q.begin}</if>
+            <if test="q.end != null">AND f.biz_date &lt;= #{q.end}</if>
+            <if test="q.filters != null">
+                <foreach collection="q.filters" index="key" item="vals">
+                    <if test="vals != null and vals.size() > 0">
+                        AND
+                        <choose>
+                            <when test="key == 'year'">FLOOR(f.period / 100)</when>
+                            <when test="key == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                            <when test="key == 'period'">f.period</when>
+                            <when test="key == 'customer'">f.customer_id</when>
+                            <when test="key == 'owner'">f.owner_id</when>
+                            <when test="key == 'material'">f.material_id</when>
+                            <when test="key == 'category'">f.category</when>
+                            <when test="key == 'warehouse'">f.warehouse_id</when>
+                            <when test="key == 'dept'">f.dept_id</when>
+                            <when test="key == 'level'">c.level</when>
+                            <when test="key == 'industry'">x.industry</when>
+                            <otherwise>'-'</otherwise>
+                        </choose>
+                        IN <foreach collection="vals" item="v" open="(" separator="," close=")">#{v}</foreach>
+                    </if>
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'customer'">f.customer_id</when>
+                <when test="q.row == 'owner'">f.owner_id</when>
+                <when test="q.row == 'material'">f.material_id</when>
+                <when test="q.row == 'category'">f.category</when>
+                <when test="q.row == 'warehouse'">f.warehouse_id</when>
+                <when test="q.row == 'dept'">f.dept_id</when>
+                <when test="q.row == 'level'">c.level</when>
+                <when test="q.row == 'industry'">x.industry</when>
+                <otherwise>'-'</otherwise>
+            </choose>,
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'customer'">f.customer_id</when>
+                <when test="q.col == 'owner'">f.owner_id</when>
+                <when test="q.col == 'material'">f.material_id</when>
+                <when test="q.col == 'category'">f.category</when>
+                <when test="q.col == 'warehouse'">f.warehouse_id</when>
+                <when test="q.col == 'dept'">f.dept_id</when>
+                <when test="q.col == 'level'">c.level</when>
+                <when test="q.col == 'industry'">x.industry</when>
+                <otherwise>'-'</otherwise>
+            </choose>
+        ORDER BY 1, 2
+        LIMIT 5000
+    </select>
+
+    <select id="pivotPurchase" resultType="java.util.Map">
+        SELECT
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'supplier'">f.supplier_id</when>
+                <when test="q.row == 'material'">f.material_id</when>
+                <when test="q.row == 'category'">f.category</when>
+                <when test="q.row == 'warehouse'">f.warehouse_id</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "r",
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'supplier'">f.supplier_id</when>
+                <when test="q.col == 'material'">f.material_id</when>
+                <when test="q.col == 'category'">f.category</when>
+                <when test="q.col == 'warehouse'">f.warehouse_id</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "c",
+            SUM(f.qty) AS "qty",
+            SUM(f.amount) AS "amount",
+            COUNT(DISTINCT f.doc_no) AS "docs",
+            COUNT(DISTINCT f.supplier_id) AS "suppliers"
+        FROM bi_fact_purchase f
+        <where>
+            <if test="q.begin != null">f.biz_date &gt;= #{q.begin}</if>
+            <if test="q.end != null">AND f.biz_date &lt;= #{q.end}</if>
+            <if test="q.filters != null">
+                <foreach collection="q.filters" index="key" item="vals">
+                    <if test="vals != null and vals.size() > 0">
+                        AND
+                        <choose>
+                            <when test="key == 'year'">FLOOR(f.period / 100)</when>
+                            <when test="key == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                            <when test="key == 'period'">f.period</when>
+                            <when test="key == 'supplier'">f.supplier_id</when>
+                            <when test="key == 'material'">f.material_id</when>
+                            <when test="key == 'category'">f.category</when>
+                            <when test="key == 'warehouse'">f.warehouse_id</when>
+                            <otherwise>'-'</otherwise>
+                        </choose>
+                        IN <foreach collection="vals" item="v" open="(" separator="," close=")">#{v}</foreach>
+                    </if>
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'supplier'">f.supplier_id</when>
+                <when test="q.row == 'material'">f.material_id</when>
+                <when test="q.row == 'category'">f.category</when>
+                <when test="q.row == 'warehouse'">f.warehouse_id</when>
+                <otherwise>'-'</otherwise>
+            </choose>,
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'supplier'">f.supplier_id</when>
+                <when test="q.col == 'material'">f.material_id</when>
+                <when test="q.col == 'category'">f.category</when>
+                <when test="q.col == 'warehouse'">f.warehouse_id</when>
+                <otherwise>'-'</otherwise>
+            </choose>
+        ORDER BY 1, 2
+        LIMIT 5000
+    </select>
+
+    <select id="pivotInventory" resultType="java.util.Map">
+        SELECT
+            <choose>
+                <when test="q.row == 'snapDate'">CAST(f.snap_date AS CHAR(10))</when>
+                <when test="q.row == 'warehouse'">f.warehouse_id</when>
+                <when test="q.row == 'material'">f.material_id</when>
+                <when test="q.row == 'category'">f.category</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "r",
+            <choose>
+                <when test="q.col == 'snapDate'">CAST(f.snap_date AS CHAR(10))</when>
+                <when test="q.col == 'warehouse'">f.warehouse_id</when>
+                <when test="q.col == 'material'">f.material_id</when>
+                <when test="q.col == 'category'">f.category</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "c",
+            SUM(f.qty) AS "qty",
+            SUM(f.amount) AS "amount",
+            COUNT(DISTINCT f.material_id) AS "materials"
+        FROM bi_fact_inventory f
+        <where>
+            <if test="q.begin != null">f.snap_date &gt;= #{q.begin}</if>
+            <if test="q.end != null">AND f.snap_date &lt;= #{q.end}</if>
+            <if test="q.latest">AND f.snap_date = (SELECT MAX(snap_date) FROM bi_fact_inventory)</if>
+            <if test="q.filters != null">
+                <foreach collection="q.filters" index="key" item="vals">
+                    <if test="vals != null and vals.size() > 0">
+                        AND
+                        <choose>
+                            <when test="key == 'snapDate'">CAST(f.snap_date AS CHAR(10))</when>
+                            <when test="key == 'warehouse'">f.warehouse_id</when>
+                            <when test="key == 'material'">f.material_id</when>
+                            <when test="key == 'category'">f.category</when>
+                            <otherwise>'-'</otherwise>
+                        </choose>
+                        IN <foreach collection="vals" item="v" open="(" separator="," close=")">#{v}</foreach>
+                    </if>
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+            <choose>
+                <when test="q.row == 'snapDate'">CAST(f.snap_date AS CHAR(10))</when>
+                <when test="q.row == 'warehouse'">f.warehouse_id</when>
+                <when test="q.row == 'material'">f.material_id</when>
+                <when test="q.row == 'category'">f.category</when>
+                <otherwise>'-'</otherwise>
+            </choose>,
+            <choose>
+                <when test="q.col == 'snapDate'">CAST(f.snap_date AS CHAR(10))</when>
+                <when test="q.col == 'warehouse'">f.warehouse_id</when>
+                <when test="q.col == 'material'">f.material_id</when>
+                <when test="q.col == 'category'">f.category</when>
+                <otherwise>'-'</otherwise>
+            </choose>
+        ORDER BY 1, 2
+        LIMIT 5000
+    </select>
+
+    <select id="pivotProduction" resultType="java.util.Map">
+        SELECT
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'material'">f.material_id</when>
+                <when test="q.row == 'category'">f.category</when>
+                <when test="q.row == 'status'">f.status</when>
+                <when test="q.row == 'dept'">f.dept_id</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "r",
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'material'">f.material_id</when>
+                <when test="q.col == 'category'">f.category</when>
+                <when test="q.col == 'status'">f.status</when>
+                <when test="q.col == 'dept'">f.dept_id</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "c",
+            COUNT(*) AS "orders",
+            SUM(f.plan_qty) AS "planQty",
+            SUM(f.finished_qty) AS "finishedQty",
+            SUM(f.scrap_qty) AS "scrapQty",
+            SUM(f.hours) AS "hours",
+            SUM(f.late) AS "lateOrders"
+        FROM bi_fact_production f
+        <where>
+            <if test="q.beginPeriod != null">f.period &gt;= #{q.beginPeriod}</if>
+            <if test="q.endPeriod != null">AND f.period &lt;= #{q.endPeriod}</if>
+            <if test="q.filters != null">
+                <foreach collection="q.filters" index="key" item="vals">
+                    <if test="vals != null and vals.size() > 0">
+                        AND
+                        <choose>
+                            <when test="key == 'year'">FLOOR(f.period / 100)</when>
+                            <when test="key == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                            <when test="key == 'period'">f.period</when>
+                            <when test="key == 'material'">f.material_id</when>
+                            <when test="key == 'category'">f.category</when>
+                            <when test="key == 'status'">f.status</when>
+                            <when test="key == 'dept'">f.dept_id</when>
+                            <otherwise>'-'</otherwise>
+                        </choose>
+                        IN <foreach collection="vals" item="v" open="(" separator="," close=")">#{v}</foreach>
+                    </if>
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'material'">f.material_id</when>
+                <when test="q.row == 'category'">f.category</when>
+                <when test="q.row == 'status'">f.status</when>
+                <when test="q.row == 'dept'">f.dept_id</when>
+                <otherwise>'-'</otherwise>
+            </choose>,
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'material'">f.material_id</when>
+                <when test="q.col == 'category'">f.category</when>
+                <when test="q.col == 'status'">f.status</when>
+                <when test="q.col == 'dept'">f.dept_id</when>
+                <otherwise>'-'</otherwise>
+            </choose>
+        ORDER BY 1, 2
+        LIMIT 5000
+    </select>
+
+    <select id="pivotFinance" resultType="java.util.Map">
+        SELECT
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'account'">f.account_id</when>
+                <when test="q.row == 'category'">f.category</when>
+                <when test="q.row == 'dept'">f.dept_id</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "r",
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'account'">f.account_id</when>
+                <when test="q.col == 'category'">f.category</when>
+                <when test="q.col == 'dept'">f.dept_id</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "c",
+            SUM(f.debit) AS "debit",
+            SUM(f.credit) AS "credit",
+            SUM(f.debit - f.credit) AS "net"
+        FROM bi_fact_finance f
+        <where>
+            <if test="q.beginPeriod != null">f.period &gt;= #{q.beginPeriod}</if>
+            <if test="q.endPeriod != null">AND f.period &lt;= #{q.endPeriod}</if>
+            <if test="q.filters != null">
+                <foreach collection="q.filters" index="key" item="vals">
+                    <if test="vals != null and vals.size() > 0">
+                        AND
+                        <choose>
+                            <when test="key == 'year'">FLOOR(f.period / 100)</when>
+                            <when test="key == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                            <when test="key == 'period'">f.period</when>
+                            <when test="key == 'account'">f.account_id</when>
+                            <when test="key == 'category'">f.category</when>
+                            <when test="key == 'dept'">f.dept_id</when>
+                            <otherwise>'-'</otherwise>
+                        </choose>
+                        IN <foreach collection="vals" item="v" open="(" separator="," close=")">#{v}</foreach>
+                    </if>
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'account'">f.account_id</when>
+                <when test="q.row == 'category'">f.category</when>
+                <when test="q.row == 'dept'">f.dept_id</when>
+                <otherwise>'-'</otherwise>
+            </choose>,
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'account'">f.account_id</when>
+                <when test="q.col == 'category'">f.category</when>
+                <when test="q.col == 'dept'">f.dept_id</when>
+                <otherwise>'-'</otherwise>
+            </choose>
+        ORDER BY 1, 2
+        LIMIT 5000
+    </select>
+
+    <select id="pivotHr" resultType="java.util.Map">
+        SELECT
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'dept'">f.dept_id</when>
+                <when test="q.row == 'category'">f.category</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "r",
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'dept'">f.dept_id</when>
+                <when test="q.col == 'category'">f.category</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "c",
+            SUM(f.headcount) AS "headcount",
+            SUM(f.hires) AS "hires",
+            SUM(f.leaves) AS "leaves",
+            SUM(f.gross_pay) AS "grossPay",
+            SUM(f.labor_cost) AS "laborCost"
+        FROM bi_fact_hr f
+        <where>
+            <if test="q.beginPeriod != null">f.period &gt;= #{q.beginPeriod}</if>
+            <if test="q.endPeriod != null">AND f.period &lt;= #{q.endPeriod}</if>
+            <if test="q.filters != null">
+                <foreach collection="q.filters" index="key" item="vals">
+                    <if test="vals != null and vals.size() > 0">
+                        AND
+                        <choose>
+                            <when test="key == 'year'">FLOOR(f.period / 100)</when>
+                            <when test="key == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                            <when test="key == 'period'">f.period</when>
+                            <when test="key == 'dept'">f.dept_id</when>
+                            <when test="key == 'category'">f.category</when>
+                            <otherwise>'-'</otherwise>
+                        </choose>
+                        IN <foreach collection="vals" item="v" open="(" separator="," close=")">#{v}</foreach>
+                    </if>
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'dept'">f.dept_id</when>
+                <when test="q.row == 'category'">f.category</when>
+                <otherwise>'-'</otherwise>
+            </choose>,
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'dept'">f.dept_id</when>
+                <when test="q.col == 'category'">f.category</when>
+                <otherwise>'-'</otherwise>
+            </choose>
+        ORDER BY 1, 2
+        LIMIT 5000
+    </select>
+
+    <select id="pivotCrm" resultType="java.util.Map">
+        SELECT
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'owner'">f.owner_id</when>
+                <when test="q.row == 'dept'">f.dept_id</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "r",
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'owner'">f.owner_id</when>
+                <when test="q.col == 'dept'">f.dept_id</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "c",
+            SUM(f.leads) AS "leads",
+            SUM(f.followups) AS "followups",
+            SUM(f.opps) AS "opps",
+            SUM(f.won) AS "won",
+            SUM(f.lost) AS "lost",
+            SUM(f.won + f.lost) AS "closed",
+            SUM(f.won_amount) AS "wonAmount"
+        FROM bi_fact_crm f
+        <where>
+            <if test="q.beginPeriod != null">f.period &gt;= #{q.beginPeriod}</if>
+            <if test="q.endPeriod != null">AND f.period &lt;= #{q.endPeriod}</if>
+            <if test="q.filters != null">
+                <foreach collection="q.filters" index="key" item="vals">
+                    <if test="vals != null and vals.size() > 0">
+                        AND
+                        <choose>
+                            <when test="key == 'year'">FLOOR(f.period / 100)</when>
+                            <when test="key == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                            <when test="key == 'period'">f.period</when>
+                            <when test="key == 'owner'">f.owner_id</when>
+                            <when test="key == 'dept'">f.dept_id</when>
+                            <otherwise>'-'</otherwise>
+                        </choose>
+                        IN <foreach collection="vals" item="v" open="(" separator="," close=")">#{v}</foreach>
+                    </if>
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'owner'">f.owner_id</when>
+                <when test="q.row == 'dept'">f.dept_id</when>
+                <otherwise>'-'</otherwise>
+            </choose>,
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'owner'">f.owner_id</when>
+                <when test="q.col == 'dept'">f.dept_id</when>
+                <otherwise>'-'</otherwise>
+            </choose>
+        ORDER BY 1, 2
+        LIMIT 5000
+    </select>
+
+    <select id="pivotProject" resultType="java.util.Map">
+        SELECT
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'project'">f.project_id</when>
+                <when test="q.row == 'dept'">f.dept_id</when>
+                <when test="q.row == 'manager'">f.manager_id</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "r",
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'project'">f.project_id</when>
+                <when test="q.col == 'dept'">f.dept_id</when>
+                <when test="q.col == 'manager'">f.manager_id</when>
+                <otherwise>'-'</otherwise>
+            </choose> AS "c",
+            SUM(f.hours) AS "hours",
+            SUM(f.labor_cost) AS "laborCost",
+            SUM(f.expense) AS "expense",
+            SUM(f.revenue) AS "revenue",
+            SUM(f.cost) AS "cost",
+            SUM(f.revenue - f.cost) AS "profit"
+        FROM bi_fact_project f
+        <where>
+            <if test="q.beginPeriod != null">f.period &gt;= #{q.beginPeriod}</if>
+            <if test="q.endPeriod != null">AND f.period &lt;= #{q.endPeriod}</if>
+            <if test="q.filters != null">
+                <foreach collection="q.filters" index="key" item="vals">
+                    <if test="vals != null and vals.size() > 0">
+                        AND
+                        <choose>
+                            <when test="key == 'year'">FLOOR(f.period / 100)</when>
+                            <when test="key == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                            <when test="key == 'period'">f.period</when>
+                            <when test="key == 'project'">f.project_id</when>
+                            <when test="key == 'dept'">f.dept_id</when>
+                            <when test="key == 'manager'">f.manager_id</when>
+                            <otherwise>'-'</otherwise>
+                        </choose>
+                        IN <foreach collection="vals" item="v" open="(" separator="," close=")">#{v}</foreach>
+                    </if>
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+            <choose>
+                <when test="q.row == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.row == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.row == 'period'">f.period</when>
+                <when test="q.row == 'project'">f.project_id</when>
+                <when test="q.row == 'dept'">f.dept_id</when>
+                <when test="q.row == 'manager'">f.manager_id</when>
+                <otherwise>'-'</otherwise>
+            </choose>,
+            <choose>
+                <when test="q.col == 'year'">FLOOR(f.period / 100)</when>
+                <when test="q.col == 'quarter'">CONCAT(FLOOR(f.period / 100), '-Q', FLOOR((MOD(f.period, 100) + 2) / 3))</when>
+                <when test="q.col == 'period'">f.period</when>
+                <when test="q.col == 'project'">f.project_id</when>
+                <when test="q.col == 'dept'">f.dept_id</when>
+                <when test="q.col == 'manager'">f.manager_id</when>
+                <otherwise>'-'</otherwise>
+            </choose>
+        ORDER BY 1, 2
+        LIMIT 5000
+    </select>
+
+    <!-- 维度值名称：ID 类维度按来源表查询 -->
+    <select id="selectLabels" resultType="java.util.Map">
+        <choose>
+            <when test="source == 'customer'">SELECT id AS "k", name AS "v" FROM scm_customer</when>
+            <when test="source == 'supplier'">SELECT id AS "k", name AS "v" FROM scm_supplier</when>
+            <when test="source == 'user'">SELECT id AS "k", nickname AS "v" FROM sys_user</when>
+            <when test="source == 'material'">SELECT id AS "k", CONCAT(code, ' ', name) AS "v" FROM wms_material</when>
+            <when test="source == 'warehouse'">SELECT id AS "k", name AS "v" FROM wms_warehouse</when>
+            <when test="source == 'dept'">SELECT id AS "k", name AS "v" FROM sys_dept</when>
+            <when test="source == 'project'">SELECT id AS "k", CONCAT(code, ' ', name) AS "v" FROM pm_project</when>
+            <otherwise>SELECT id AS "k", CONCAT(code, ' ', name) AS "v" FROM fin_account</otherwise>
+        </choose>
+        WHERE id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+</mapper>

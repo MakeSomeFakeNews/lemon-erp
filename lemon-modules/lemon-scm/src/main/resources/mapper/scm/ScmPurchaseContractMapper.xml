@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmPurchaseContractMapper">
+
+    <sql id="columns">
+        c.*, s.code AS supplier_code, s.name AS supplier_name, u.nickname AS create_by_name, t.tender_no,
+        (SELECT COALESCE(SUM(CASE WHEN o.status = 'CLOSED' THEN ROUND(oi.done_qty * oi.price, 2) ELSE oi.amount END), 0)
+         FROM scm_order o JOIN scm_order_item oi ON oi.order_id = o.id
+         WHERE o.contract_id = c.id AND o.status &lt;&gt; 'DRAFT') AS ordered_amount
+    </sql>
+
+    <sql id="joins">
+        FROM scm_purchase_contract c
+        LEFT JOIN scm_supplier s ON s.id = c.supplier_id
+        LEFT JOIN sys_user u ON u.id = c.create_by
+        LEFT JOIN scm_tender t ON t.id = c.tender_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmPurchaseContract">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="status != null">c.status = #{status}</if>
+            <if test="supplierId != null">AND c.supplier_id = #{supplierId}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (c.contract_no LIKE CONCAT('%', #{keyword}, '%') OR c.name LIKE CONCAT('%', #{keyword}, '%')
+                     OR s.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY c.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmPurchaseContract">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE c.id = #{id}
+    </select>
+
+    <select id="selectActive" resultType="com.lemon.erp.modules.scm.entity.ScmPurchaseContract">
+        SELECT c.id, c.contract_no, c.name, c.supplier_id, c.contract_type, c.start_date, c.end_date, c.amount_limit, c.status
+        FROM scm_purchase_contract c
+        WHERE c.supplier_id = #{supplierId} AND c.status = 'ACTIVE' AND c.start_date &lt;= #{date} AND c.end_date &gt;= #{date}
+        ORDER BY c.end_date
+    </select>
+
+    <select id="selectUsage" resultType="com.lemon.erp.modules.scm.dto.SrmViews$ContractUsage">
+        SELECT oi.material_id,
+               SUM(CASE WHEN o.status = 'CLOSED' THEN oi.done_qty ELSE oi.qty END) AS ordered_qty,
+               SUM(CASE WHEN o.status = 'CLOSED' THEN ROUND(oi.done_qty * oi.price, 2) ELSE oi.amount END) AS ordered_amount,
+               SUM(oi.done_qty - oi.return_qty) AS received_qty
+        FROM scm_order o
+        JOIN scm_order_item oi ON oi.order_id = o.id
+        WHERE o.contract_id = #{contractId} AND o.status &lt;&gt; 'DRAFT'
+          <if test="excludeOrderId != null">AND o.id &lt;&gt; #{excludeOrderId}</if>
+        GROUP BY oi.material_id
+    </select>
+
+    <select id="selectOrders" resultType="com.lemon.erp.modules.scm.entity.ScmOrder">
+        SELECT o.id, o.order_no, o.order_date, o.status, o.total_qty, o.total_amount, o.supplier_confirm,
+               (SELECT COALESCE(SUM(i.done_qty - i.return_qty), 0) FROM scm_order_item i WHERE i.order_id = o.id) AS done_qty
+        FROM scm_order o
+        WHERE o.contract_id = #{contractId}
+        ORDER BY o.id DESC
+    </select>
+
+    <select id="selectPaymentDaysByTradeDoc" resultType="java.lang.Integer">
+        SELECT c.payment_days
+        FROM scm_trade_doc d
+        JOIN scm_order o ON o.id = d.order_id
+        JOIN scm_purchase_contract c ON c.id = o.contract_id
+        WHERE d.id = #{tradeDocId}
+    </select>
+
+    <update id="transit">
+        UPDATE scm_purchase_contract SET status = #{to}, update_time = NOW() WHERE id = #{id} AND status = #{from}
+    </update>
+
+</mapper>

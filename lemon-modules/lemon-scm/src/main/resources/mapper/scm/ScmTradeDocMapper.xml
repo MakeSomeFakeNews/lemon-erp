@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmTradeDocMapper">
+
+    <sql id="viewColumns">
+        d.id, d.doc_no, d.kind, d.order_id, d.partner_id, d.warehouse_id, d.biz_date, d.total_qty, d.total_amount,
+        d.tax_amount, d.wms_doc_id, d.wms_doc_no, d.remark, d.replenish, d.dept_id, d.create_by, d.create_time, d.update_time,
+        o.order_no, COALESCE(sp.code, cu.code) AS partner_code, COALESCE(sp.name, cu.name) AS partner_name,
+        w.name AS warehouse_name, u.nickname AS create_by_name
+    </sql>
+
+    <sql id="viewJoins">
+        FROM scm_trade_doc d
+        JOIN scm_order o ON o.id = d.order_id
+        LEFT JOIN scm_supplier sp ON o.kind = 'PURCHASE' AND sp.id = d.partner_id
+        LEFT JOIN scm_customer cu ON o.kind = 'SALES' AND cu.id = d.partner_id
+        LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id
+        LEFT JOIN sys_user u ON u.id = d.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmTradeDoc">
+        SELECT <include refid="viewColumns"/>
+        <include refid="viewJoins"/>
+        WHERE d.kind = #{kind}
+        <if test="q.docNo != null and q.docNo != ''">AND d.doc_no LIKE CONCAT('%', #{q.docNo}, '%')</if>
+        <if test="q.orderNo != null and q.orderNo != ''">AND o.order_no LIKE CONCAT('%', #{q.orderNo}, '%')</if>
+        <if test="q.orderId != null">AND d.order_id = #{q.orderId}</if>
+        <if test="q.partnerId != null">AND d.partner_id = #{q.partnerId}</if>
+        <if test="q.warehouseId != null">AND d.warehouse_id = #{q.warehouseId}</if>
+        <if test="q.beginDate != null">AND d.biz_date &gt;= #{q.beginDate}</if>
+        <if test="q.endDate != null">AND d.biz_date &lt;= #{q.endDate}</if>
+        ORDER BY d.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmTradeDoc">
+        SELECT <include refid="viewColumns"/>
+        <include refid="viewJoins"/>
+        WHERE d.id = #{id}
+    </select>
+
+</mapper>

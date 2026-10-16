@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesForecastMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.MesForecast">
+        SELECT f.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit
+        FROM mes_forecast f
+        JOIN wms_material m ON m.id = f.material_id
+        <where>
+            <if test="beginPeriod != null">f.period &gt;= #{beginPeriod}</if>
+            <if test="endPeriod != null">AND f.period &lt;= #{endPeriod}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY f.period, m.code
+    </select>
+
+    <!-- 销售订单的需求月份：明细交货日期，没有时取订单交货日期、订单日期 -->
+    <sql id="openSales">
+        SELECT i.material_id,
+               COALESCE(i.delivery_date, o.delivery_date, o.order_date) AS due_date,
+               i.qty - i.done_qty + i.replenish_qty AS remaining,
+               o.id AS order_id
+        FROM scm_order_item i
+        JOIN scm_order o ON o.id = i.order_id
+        WHERE o.kind = 'SALES' AND o.status IN ('APPROVED', 'PARTIAL') AND i.qty - i.done_qty + i.replenish_qty &gt; 0
+    </sql>
+
+    <select id="selectNetForecast" resultType="java.util.Map">
+        SELECT f.material_id AS "materialId", f.period AS "period", f.qty - COALESCE(s.qty, 0) AS "qty"
+        FROM mes_forecast f
+        LEFT JOIN (
+            SELECT x.material_id, YEAR(x.due_date) * 100 + MONTH(x.due_date) AS period, SUM(x.remaining) AS qty
+            FROM (<include refid="openSales"/>) x
+            GROUP BY x.material_id, YEAR(x.due_date) * 100 + MONTH(x.due_date)
+        ) s ON s.material_id = f.material_id AND s.period = f.period
+        WHERE f.period &gt;= #{beginPeriod} AND f.period &lt;= #{endPeriod} AND f.qty - COALESCE(s.qty, 0) &gt; 0
+    </select>
+
+    <select id="selectUnplannedSales" resultType="java.util.Map">
+        SELECT x.material_id AS "materialId", MIN(x.due_date) AS "dueDate",
+               SUM(x.remaining) - COALESCE(MAX(p.qty), 0) AS "qty"
+        FROM (<include refid="openSales"/>) x
+        LEFT JOIN (SELECT sales_order_id, material_id, SUM(qty) AS qty FROM mes_plan
+                   WHERE sales_order_id IS NOT NULL GROUP BY sales_order_id, material_id) p
+               ON p.sales_order_id = x.order_id AND p.material_id = x.material_id
+        GROUP BY x.order_id, x.material_id
+        HAVING SUM(x.remaining) - COALESCE(MAX(p.qty), 0) &gt; 0
+    </select>
+
+</mapper>

@@ -1,0 +1,39 @@
+plugins {
+    id 'lemon.java-conventions'
+    alias(libs.plugins.spring.boot)
+}
+
+description = '启动模块：组装全部业务模块，包含启动类、配置文件和集成测试，打包为可执行 jar'
+
+dependencies {
+    implementation project(':lemon-modules:lemon-system')
+    implementation project(':lemon-modules:lemon-monitor')
+    implementation project(':lemon-modules:lemon-workflow')
+    implementation project(':lemon-modules:lemon-dashboard')
+    implementation project(':lemon-modules:lemon-wms')
+    implementation project(':lemon-modules:lemon-scm')
+    implementation project(':lemon-modules:lemon-mes')
+    implementation project(':lemon-modules:lemon-fin')
+    implementation project(':lemon-modules:lemon-hr')
+    implementation project(':lemon-modules:lemon-crm')
+    implementation project(':lemon-modules:lemon-pm')
+    implementation project(':lemon-modules:lemon-bi')
+    runtimeOnly libs.mysql.connector
+
+    testImplementation libs.spring.boot.starter.webmvc.test
+    testImplementation libs.spring.boot.starter.security.test
+    testRuntimeOnly libs.h2
+}
+
+// 本地开发时上传目录 ./uploads、./attachments 放在项目根目录（测试和 bootTestRun 在本模块目录下运行，文件写到 build/）
+tasks.named('bootRun') {
+    workingDir = rootProject.projectDir
+}
+
+tasks.named('bootJar') {
+    archiveFileName = 'lemon-erp.jar'
+}
+// 只需要可执行 jar
+tasks.named('jar') {
+    enabled = false
+}

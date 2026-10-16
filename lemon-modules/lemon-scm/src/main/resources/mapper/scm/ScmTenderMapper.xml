@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmTenderMapper">
+
+    <sql id="columns">
+        t.*, s.name AS award_supplier_name, c.contract_no, o.order_no, u.nickname AS create_by_name,
+        (SELECT COUNT(*) FROM scm_tender_supplier ts WHERE ts.tender_id = t.id) AS supplier_count,
+        (SELECT COUNT(*) FROM scm_bid b WHERE b.tender_id = t.id) AS bid_count
+    </sql>
+
+    <sql id="joins">
+        FROM scm_tender t
+        LEFT JOIN scm_supplier s ON s.id = t.award_supplier_id
+        LEFT JOIN scm_purchase_contract c ON c.id = t.contract_id
+        LEFT JOIN scm_order o ON o.id = t.order_id
+        LEFT JOIN sys_user u ON u.id = t.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmTender">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="status != null">t.status = #{status}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (t.tender_no LIKE CONCAT('%', #{keyword}, '%') OR t.title LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY t.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.scm.entity.ScmTender">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE t.id = #{id}
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.scm.entity.ScmTenderItem">
+        SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit
+        FROM scm_tender_item i
+        LEFT JOIN wms_material m ON m.id = i.material_id
+        WHERE i.tender_id = #{tenderId}
+        ORDER BY i.id
+    </select>
+
+    <select id="selectSuppliers" resultType="com.lemon.erp.modules.scm.entity.ScmTenderSupplier">
+        SELECT ts.*, s.code AS supplier_code, s.name AS supplier_name,
+               CASE WHEN EXISTS (SELECT 1 FROM scm_bid b WHERE b.tender_id = ts.tender_id AND b.supplier_id = ts.supplier_id)
+                    THEN 1 ELSE 0 END AS bid
+        FROM scm_tender_supplier ts
+        LEFT JOIN scm_supplier s ON s.id = ts.supplier_id
+        WHERE ts.tender_id = #{tenderId}
+        ORDER BY ts.id
+    </select>
+
+    <select id="selectForSupplier" resultType="com.lemon.erp.modules.scm.entity.ScmTender">
+        SELECT t.id, t.tender_no, t.title, t.deadline, t.status, t.open_time, t.remark, t.create_time,
+               CASE WHEN t.status = 'AWARDED' AND t.award_supplier_id = #{supplierId} THEN t.award_supplier_id END AS award_supplier_id,
+               (SELECT COUNT(*) FROM scm_bid b WHERE b.tender_id = t.id AND b.supplier_id = #{supplierId}) AS bid_count
+        FROM scm_tender t
+        JOIN scm_tender_supplier ts ON ts.tender_id = t.id AND ts.supplier_id = #{supplierId}
+        WHERE t.status &lt;&gt; 'DRAFT'
+        ORDER BY t.id DESC
+    </select>
+
+    <update id="transit">
+        UPDATE scm_tender SET status = #{to}, update_time = NOW() WHERE id = #{id} AND status = #{from}
+    </update>
+
+    <insert id="insertItems">
+        INSERT INTO scm_tender_item (tender_id, material_id, qty, required_date, remark, create_time, update_time) VALUES
+        <foreach collection="items" item="i" separator=",">
+            (#{i.tenderId}, #{i.materialId}, #{i.qty}, #{i.requiredDate}, #{i.remark}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+    <delete id="deleteItems">
+        DELETE FROM scm_tender_item WHERE tender_id = #{tenderId}
+    </delete>
+
+    <delete id="deleteSuppliers">
+        DELETE FROM scm_tender_supplier WHERE tender_id = #{tenderId}
+    </delete>
+
+    <insert id="insertSuppliers">
+        INSERT INTO scm_tender_supplier (tender_id, supplier_id, create_time) VALUES
+        <foreach collection="supplierIds" item="s" separator=",">
+            (#{tenderId}, #{s}, NOW())
+        </foreach>
+    </insert>
+
+</mapper>

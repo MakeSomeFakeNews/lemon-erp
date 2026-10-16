@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinAssetCheckMapper">
+
+    <sql id="viewSelect">
+        SELECT c.*, d.name AS dept_name, u.nickname AS create_by_name,
+               (SELECT COUNT(*) FROM fin_asset_check_item i WHERE i.check_id = c.id) AS total,
+               (SELECT COUNT(*) FROM fin_asset_check_item i WHERE i.check_id = c.id AND i.result &lt;&gt; 'PENDING') AS checked,
+               (SELECT COUNT(*) FROM fin_asset_check_item i WHERE i.check_id = c.id AND i.result = 'LOSS') AS loss_count,
+               (SELECT COUNT(*) FROM fin_asset_check_item i WHERE i.check_id = c.id AND i.result = 'MOVED') AS moved_count,
+               (SELECT COUNT(*) FROM fin_asset_check_item i WHERE i.check_id = c.id AND i.result = 'GAIN') AS gain_count
+        FROM fin_asset_check c
+        LEFT JOIN sys_dept d ON d.id = c.dept_id
+        LEFT JOIN sys_user u ON u.id = c.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinAssetCheck">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="status != null">c.status = #{status}</if>
+        </where>
+        ORDER BY c.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinAssetCheck">
+        <include refid="viewSelect"/>
+        WHERE c.id = #{id}
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.fin.entity.FinAssetCheckItem">
+        SELECT i.*, a.code AS asset_code, a.name AS asset_name, a.model, a.original_value - a.accumulated AS net_value,
+               bd.name AS book_dept_name, bu.nickname AS book_user_name, ad.name AS actual_dept_name, au.nickname AS actual_user_name,
+               cb.nickname AS check_by_name
+        FROM fin_asset_check_item i
+        LEFT JOIN fin_asset a ON a.id = i.asset_id
+        LEFT JOIN sys_dept bd ON bd.id = i.book_dept_id
+        LEFT JOIN sys_user bu ON bu.id = i.book_user_id
+        LEFT JOIN sys_dept ad ON ad.id = i.actual_dept_id
+        LEFT JOIN sys_user au ON au.id = i.actual_user_id
+        LEFT JOIN sys_user cb ON cb.id = i.check_by
+        WHERE i.check_id = #{checkId}
+        ORDER BY i.asset_id IS NULL, a.code, i.id
+    </select>
+
+    <select id="selectScope" resultType="com.lemon.erp.modules.fin.entity.FinAsset">
+        SELECT * FROM fin_asset
+        WHERE status &lt;&gt; 'DISPOSED'
+          <if test="deptId != null">AND dept_id = #{deptId}</if>
+          <if test="location != null and location != ''">AND location LIKE CONCAT('%', #{location}, '%')</if>
+        ORDER BY code
+    </select>
+
+    <insert id="insertItems">
+        INSERT INTO fin_asset_check_item (check_id, asset_id, book_dept_id, book_user_id, book_location, result) VALUES
+        <foreach collection="items" item="i" separator=",">
+            (#{i.checkId}, #{i.assetId}, #{i.bookDeptId}, #{i.bookUserId}, #{i.bookLocation}, #{i.result})
+        </foreach>
+    </insert>
+
+</mapper>
