@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.wms.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.framework.data.Queries;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
@@ -8,6 +9,7 @@ import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.ref.RefType;
 import com.lemon.erp.framework.ref.ReferenceGuard;
+import com.lemon.erp.modules.wms.dto.BarcodeMatch;
 import com.lemon.erp.modules.wms.entity.WmsCheckItem;
 import com.lemon.erp.modules.wms.entity.WmsLocation;
 import com.lemon.erp.modules.wms.entity.WmsAssembly;
@@ -230,8 +232,8 @@ public class WmsMaterialService {
     private void checkExtras(WmsMaterial material, Long id) {
         material.setBarcode(StringUtils.hasText(material.getBarcode()) ? material.getBarcode().trim() : null);
         if (material.getBarcode() != null) {
-            WmsMaterial exist = materialMapper.selectOne(Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getBarcode, material.getBarcode())
-                    .last("LIMIT 1"));
+            WmsMaterial exist = Queries.first(materialMapper, Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getBarcode, material.getBarcode())
+                    );
             boolean usedByUnit = unitMapper.exists(Wrappers.<WmsMaterialUnit>lambdaQuery().eq(WmsMaterialUnit::getBarcode, material.getBarcode()));
             if ((exist != null && !Objects.equals(exist.getId(), id)) || usedByUnit) {
                 throw new BizException("wms.error.barcodeAlreadyUsedAnotherMaterialPackaging", material.getBarcode());
@@ -293,17 +295,17 @@ public class WmsMaterialService {
      *
      * @return {material, unit, ratio}：包装条码时 unit、ratio 为辅助单位，否则为基本单位、1；找不到返回 null
      */
-    public java.util.Map<String, Object> byBarcode(String code) {
+    public BarcodeMatch byBarcode(String code) {
         if (!StringUtils.hasText(code)) {
             return null;
         }
         String c = code.trim();
-        WmsMaterial m = materialMapper.selectOne(Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getStatus, 1)
-                .and(w -> w.eq(WmsMaterial::getBarcode, c).or().eq(WmsMaterial::getCode, c)).last("LIMIT 1"));
+        WmsMaterial m = Queries.first(materialMapper, Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getStatus, 1)
+                .and(w -> w.eq(WmsMaterial::getBarcode, c).or().eq(WmsMaterial::getCode, c)));
         if (m != null) {
-            return java.util.Map.of("material", m, "unit", m.getUnit() == null ? "" : m.getUnit(), "ratio", BigDecimal.ONE);
+            return new BarcodeMatch(m, m.getUnit() == null ? "" : m.getUnit(), BigDecimal.ONE);
         }
-        WmsMaterialUnit u = unitMapper.selectOne(Wrappers.<WmsMaterialUnit>lambdaQuery().eq(WmsMaterialUnit::getBarcode, c).last("LIMIT 1"));
+        WmsMaterialUnit u = Queries.first(unitMapper, Wrappers.<WmsMaterialUnit>lambdaQuery().eq(WmsMaterialUnit::getBarcode, c));
         if (u == null) {
             return null;
         }
@@ -311,7 +313,7 @@ public class WmsMaterialService {
         if (m == null || !Integer.valueOf(1).equals(m.getStatus())) {
             return null;
         }
-        return java.util.Map.of("material", m, "unit", u.getUnit(), "ratio", u.getRatio());
+        return new BarcodeMatch(m, u.getUnit(), u.getRatio());
     }
 
     private void checkCodeUnique(String code, Long id) {

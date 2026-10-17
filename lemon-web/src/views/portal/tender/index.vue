@@ -26,7 +26,7 @@
             <span v-else class="sub-text">{{ $t('portal.tender.notBid') }}</span>
           </template>
           <template v-else-if="column.key === 'status'">
-            <a-tag v-if="record.status === 'AWARDED'" :color="record.awardSupplierId ? 'green' : 'default'" :bordered="false">
+            <a-tag v-if="record.status === TenderStatus.AWARDED" :color="record.awardSupplierId ? 'green' : 'default'" :bordered="false">
               {{ record.awardSupplierId ? $t('portal.tender.won') : $t('portal.tender.lost') }}
             </a-tag>
             <DictTag v-else type="scm_tender_status" :value="record.status" />
@@ -46,7 +46,7 @@
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" bordered class="block">
           <a-descriptions-item :label="$t('portal.tender.deadline')">{{ detail.deadline }}</a-descriptions-item>
           <a-descriptions-item :label="$t('common.field.status')">
-            <template v-if="detail.status === 'AWARDED'">{{ detail.awardSupplierId ? $t('portal.tender.won') : $t('portal.tender.lost') }}</template>
+            <template v-if="detail.status === TenderStatus.AWARDED">{{ detail.awardSupplierId ? $t('portal.tender.won') : $t('portal.tender.lost') }}</template>
             <DictTag v-else type="scm_tender_status" :value="detail.status" />
           </a-descriptions-item>
           <a-descriptions-item :label="$t('portal.tender.myBid')">{{ myBid ? $t('portal.tender.submittedAt', { time: myBid.submitTime }) : $t('portal.tender.notBid') }}</a-descriptions-item>
@@ -102,6 +102,7 @@ import { formatQty } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 
+import { TenderStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 /** 供应商门户 - 招标投标：截止前提交或修改报价，定标后显示是否中标 */
@@ -116,7 +117,7 @@ const { checked, visibleColumns } = useColumns(columns, 'portal-tender')
 const { list, loading, size, pagination, load, onTableChange } = useTable(pagePortalTender, reactive({}))
 onMounted(load)
 
-const biddable = (t) => t.status === 'BIDDING' && dayjs(t.deadline).isAfter(dayjs())
+const biddable = (t) => t.status === TenderStatus.BIDDING && dayjs(t.deadline).isAfter(dayjs())
 function remain(tender) {
   const mins = dayjs(tender.deadline).diff(dayjs(), 'minute')
   return mins >= 1440 ? t('portal.tender.remainDays', { n: Math.floor(mins / 1440) })

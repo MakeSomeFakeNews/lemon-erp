@@ -43,7 +43,7 @@
             <div v-if="record.finishTime" class="sub-text">{{ record.finishTime }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === 'CHECKING' ? $t('fin.assetCheck.check') : $t('common.action.view') }}</a-button>
+            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === AssetCheckStatus.CHECKING ? $t('fin.assetCheck.check') : $t('common.action.view') }}</a-button>
           </template>
         </template>
       </a-table>
@@ -128,18 +128,18 @@
             </template>
             <template v-else-if="column.key === 'result'"><DictTag type="fin_asset_check_result" :value="record.result" /></template>
             <template v-else-if="column.key === 'actual'">
-              <template v-if="record.result === 'MOVED'">
+              <template v-if="record.result === AssetCheckResult.MOVED">
                 {{ record.actualDeptName || '-' }}<span v-if="record.actualUserName"> · {{ record.actualUserName }}</span>
                 <div class="sub-text">{{ record.actualLocation }}</div>
               </template>
-              <template v-else-if="record.result === 'GAIN' && record.actualLocation">{{ record.actualLocation }}</template>
+              <template v-else-if="record.result === AssetCheckResult.GAIN && record.actualLocation">{{ record.actualLocation }}</template>
               <span v-else class="sub-text">-</span>
               <div v-if="record.remark" class="sub-text">{{ record.remark }}</div>
             </template>
             <template v-else-if="column.key === 'action'">
               <span v-if="checking" v-perm="'fin:assetCheck:edit'" class="table-actions">
                 <template v-if="record.assetId">
-                  <a-button type="link" size="small" :disabled="record.result === 'NORMAL'" @click="mark(record, 'NORMAL')">{{ $t('fin.assetCheck.normal') }}</a-button>
+                  <a-button type="link" size="small" :disabled="record.result === AssetCheckResult.NORMAL" @click="mark(record, 'NORMAL')">{{ $t('fin.assetCheck.normal') }}</a-button>
                   <a-button type="link" size="small" @click="openRecord(record, 'MOVED')">{{ $t('fin.assetCheck.moved') }}</a-button>
                   <a-button type="link" size="small" danger @click="openRecord(record, 'LOSS')">{{ $t('fin.assetCheck.loss') }}</a-button>
                 </template>
@@ -153,9 +153,9 @@
       </template>
     </SubPage>
 
-    <a-modal v-model:open="recordOpen" :title="`${recordForm.result === 'MOVED' ? $t('fin.assetCheck.moved') : $t('fin.assetCheck.loss')} - ${recordTarget?.assetName || ''}`" @ok="submitRecord">
+    <a-modal v-model:open="recordOpen" :title="`${recordForm.result === AssetCheckResult.MOVED ? $t('fin.assetCheck.moved') : $t('fin.assetCheck.loss')} - ${recordTarget?.assetName || ''}`" @ok="submitRecord">
       <a-form layout="vertical">
-        <a-row v-if="recordForm.result === 'MOVED'" :gutter="16">
+        <a-row v-if="recordForm.result === AssetCheckResult.MOVED" :gutter="16">
           <a-col :span="12">
             <a-form-item :label="$t('fin.assetCheck.actualDept')">
               <DeptSelect v-model:value="recordForm.actualDeptId" />
@@ -173,7 +173,7 @@
           </a-col>
         </a-row>
         <a-form-item :label="$t('common.field.description')">
-          <a-input v-model:value="recordForm.remark" :maxlength="255" :placeholder="recordForm.result === 'LOSS' ? $t('fin.assetCheck.lossPlaceholder') : ''" />
+          <a-input v-model:value="recordForm.remark" :maxlength="255" :placeholder="recordForm.result === AssetCheckResult.LOSS ? $t('fin.assetCheck.lossPlaceholder') : ''" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -212,6 +212,7 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useI18n } from 'vue-i18n'
 
+import { AssetCheckResult, AssetCheckStatus } from '@/constants/enums'
 /** 资产盘点：按部门、存放地点生成清单，逐项录入结果；完成时更新位置变化的资产、处置盘亏的资产 */
 const { t } = useI18n()
 const dict = useDict('fin_asset_check_status', 'fin_asset_check_result')
@@ -264,7 +265,7 @@ const itemColumns = [
 const detailOpen = ref(false)
 const detail = ref()
 const filter = ref('')
-const checking = computed(() => detail.value?.status === 'CHECKING')
+const checking = computed(() => detail.value?.status === AssetCheckStatus.CHECKING)
 const items = computed(() => (detail.value?.items || []).filter((i) => !filter.value || i.result === filter.value))
 const finishTip = computed(() => {
   const d = detail.value
@@ -289,7 +290,7 @@ const recordTarget = ref()
 const recordForm = reactive({})
 function openRecord(item, result) {
   recordTarget.value = item
-  const moved = item.result === 'MOVED'
+  const moved = item.result === AssetCheckResult.MOVED
   Object.assign(recordForm, {
     result,
     actualDeptId: moved ? item.actualDeptId : item.bookDeptId,
@@ -302,7 +303,7 @@ function openRecord(item, result) {
 }
 async function submitRecord() {
   const { actualUserName, ...data } = recordForm
-  if (data.result === 'LOSS') Object.assign(data, { actualDeptId: null, actualUserId: null, actualLocation: null })
+  if (data.result === AssetCheckResult.LOSS) Object.assign(data, { actualDeptId: null, actualUserId: null, actualLocation: null })
   await recordAssetCheck(detail.value.id, recordTarget.value.id, { ...data, remark: data.remark || null })
   recordOpen.value = false
   refresh()

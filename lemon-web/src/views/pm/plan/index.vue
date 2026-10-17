@@ -25,8 +25,8 @@
           <a-button type="text" :disabled="!projectId" @click="loadTasks"><template #icon><ReloadOutlined /></template></a-button>
         </div>
       </div>
-      <a-alert v-if="project && project.status !== 'ACTIVE'" type="info" show-icon class="tip"
-               :message="project.status === 'PLANNING' ? $t('pm.plan.notStarted') : $t('pm.plan.notActive')" />
+      <a-alert v-if="project && project.status !== ProjectStatus.ACTIVE" type="info" show-icon class="tip"
+               :message="project.status === ProjectStatus.PLANNING ? $t('pm.plan.notStarted') : $t('pm.plan.notActive')" />
     </a-card>
 
     <a-card :bordered="false" class="page-card body-card">
@@ -172,7 +172,9 @@ import { useUserStore } from '@/store/user'
 import { load as loadStorage, save as saveStorage } from '@/utils/storage'
 import { flattenTasks, today } from '@/components/pm/pm'
 import { t } from '@/locales'
+import { useAction } from '@/composables/useAction'
 
+import { ProjectStatus } from '@/constants/enums'
 const STORAGE_KEY = 'pm-plan-project'
 const userStore = useUserStore()
 
@@ -183,7 +185,7 @@ const loading = ref(false)
 const view = ref('list')
 const expanded = ref([])
 
-const editable = computed(() => project.value && !['FINISHED', 'CLOSED'].includes(project.value.status))
+const editable = computed(() => project.value && ![ProjectStatus.FINISHED, ProjectStatus.CLOSED].includes(project.value.status))
 
 const columns = [
   { title: t('pm.common.task'), key: 'name', width: 280, fixed: 'left' },
@@ -223,7 +225,7 @@ onMounted(async () => {
   // 没有记住的项目时默认选中第一个进行中的项目
   if (!projectId.value) {
     const list = await projectOptions().catch(() => [])
-    projectId.value = (list.find((p) => p.status === 'ACTIVE') || list[0])?.id
+    projectId.value = (list.find((p) => p.status === ProjectStatus.ACTIVE) || list[0])?.id
   }
   await loadTasks()
 })
@@ -240,7 +242,7 @@ const progressSaving = ref(false)
 
 /** 末级任务，项目进行中，负责人本人或有任务维护权限 */
 const canProgress = (t) =>
-  project.value?.status === 'ACTIVE' && !t.children?.length &&
+  project.value?.status === ProjectStatus.ACTIVE && !t.children?.length &&
   (t.assigneeId === userStore.user?.id || userStore.hasPerm('pm:task:edit'))
 
 function togglePopover(open, record) {
@@ -326,11 +328,7 @@ async function saveTask() {
   }
 }
 
-async function removeTask(record) {
-  await deleteTask(record.id)
-  message.success(t('common.msg.deleteSuccess'))
-  loadTasks()
-}
+const removeTask = useAction((record) => deleteTask(record.id), { successKey: 'common.msg.deleteSuccess', reload: () => loadTasks() })
 </script>
 
 <style scoped>

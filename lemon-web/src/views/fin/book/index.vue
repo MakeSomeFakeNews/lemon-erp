@@ -31,7 +31,7 @@
               <template v-else-if="['openBalance', 'debit', 'credit', 'closeBalance'].includes(column.key)">
                 <span class="num">{{ moneyOrBlank(record[column.key]) }}</span>
               </template>
-              <template v-else-if="column.key === 'direction'">{{ record.direction === 'DEBIT' ? $t('fin.book.dr') : $t('fin.book.cr') }}</template>
+              <template v-else-if="column.key === 'direction'">{{ record.direction === AccountDirection.DEBIT ? $t('fin.book.dr') : $t('fin.book.cr') }}</template>
             </template>
             <template v-if="tb" #summary>
               <a-table-summary fixed>
@@ -65,7 +65,7 @@
             :data-source="ledgerRows"
             :loading="ledgerLoading"
             :pagination="false"
-            :row-class-name="(r) => (r.type !== 'ENTRY' ? 'total-row' : '')"
+            :row-class-name="(r) => (r.type !== LedgerRowType.ENTRY ? 'total-row' : '')"
             :scroll="{ x: 1000, y: '100%' }"
             :locale="{ emptyText: $t('fin.book.selectAccountFirst') }"
           >
@@ -134,6 +134,7 @@ import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import { auxBalance, ledger, trialBalance } from '@/api/fin'
 import { AUX_ITEMS, currentPeriod, formatMoney, moneyOrBlank } from '@/components/fin/fin'
 
+import { AccountDirection, LedgerRowType } from '@/constants/enums'
 const { t } = useI18n()
 const tab = ref('balance')
 const range = reactive({ begin: Math.floor(currentPeriod() / 100) * 100 + 1, end: currentPeriod() })

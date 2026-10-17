@@ -67,7 +67,7 @@
         <CustomFieldsView :key="detail.id" :biz-type="kind === 'sales' ? 'scm_sales' : 'scm_purchase'" :biz-id="detail.id" class="cf-view" />
 
         <a-alert
-          v-if="detail.status === 'APPROVING'"
+          v-if="detail.status === OrderStatus.APPROVING"
           type="info"
           show-icon
           class="doc-desc"
@@ -115,7 +115,7 @@
             <SalesReservationPanel
               v-if="tab === 'reservation'"
               :order="detail"
-              :editable="['APPROVED', 'PARTIAL'].includes(detail.status) && can('sales:reserve')"
+              :editable="[OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(detail.status) && can('sales:reserve')"
             />
           </a-tab-pane>
           <a-tab-pane v-if="kind === 'sales' && can('delivery:list')" key="delivery" :tab="$t('scm.order.tabDelivery')">
@@ -135,7 +135,7 @@
             <OutsourcePanel
               v-if="detail"
               :order-id="detail.id"
-              :editable="['APPROVED', 'PARTIAL', 'COMPLETED'].includes(detail.status) && userStore.hasPerm('scm:purchaseIn:add')"
+              :editable="[OrderStatus.APPROVED, OrderStatus.PARTIAL, OrderStatus.COMPLETED].includes(detail.status) && userStore.hasPerm('scm:purchaseIn:add')"
             />
           </a-tab-pane>
           <a-tab-pane key="trace" :tab="$t('scm.order.tabTrace')">
@@ -205,6 +205,7 @@ import { formatQty } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney, netQty } from './scm'
 import { materialColumns, printDocs } from '@/utils/print'
 
+import { OrderStatus } from '@/constants/enums'
 /**
  * 订单详情：明细执行进度、入库 / 出库与退货记录，按状态提供审核、撤回、反审核、关闭、入库 / 出库、退货等操作。
  * 触发 edit(order)、trade(tradeKind, order)、changed
@@ -369,7 +370,7 @@ const actions = computed(() => {
   const k = props.kind
   const [doTrade, returnTrade] = conf.value.trades
   const list = []
-  if (d.status === 'DRAFT') {
+  if (d.status === OrderStatus.DRAFT) {
     if (can(`${k}:edit`)) list.push({ key: 'edit', label: t('common.action.edit'), icon: EditOutlined, run: () => emit('edit', d) })
     if (can(`${k}:approve`))
       list.push({
@@ -383,7 +384,7 @@ const actions = computed(() => {
           )
       })
   }
-  if (d.status === 'APPROVING' && can(`${k}:approve`)) {
+  if (d.status === OrderStatus.APPROVING && can(`${k}:approve`)) {
     list.push({
       key: 'withdraw',
       label: t('scm.order.withdraw'),
@@ -391,7 +392,7 @@ const actions = computed(() => {
       run: () => confirmAction(t('scm.order.withdrawTitle'), t('scm.order.withdrawContent'), withdrawOrder, t('scm.order.withdrawn'))
     })
   }
-  if (d.status === 'APPROVED' && can(`${k}:approve`)) {
+  if (d.status === OrderStatus.APPROVED && can(`${k}:approve`)) {
     list.push({
       key: 'unapprove',
       label: t('common.action.unaudit'),
@@ -399,7 +400,7 @@ const actions = computed(() => {
       run: () => confirmAction(t('scm.order.unapproveTitle'), t('scm.order.unapproveContent'), unapproveOrder, t('scm.order.unapproved'))
     })
   }
-  if (['APPROVED', 'PARTIAL'].includes(d.status) && can(`${k}:close`)) {
+  if ([OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(d.status) && can(`${k}:close`)) {
     list.push({
       key: 'close',
       label: t('common.action.close'),
@@ -413,13 +414,13 @@ const actions = computed(() => {
         )
     })
   }
-  if (['APPROVED', 'PARTIAL'].includes(d.status) && can(`${k}:change`)) {
+  if ([OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(d.status) && can(`${k}:change`)) {
     list.push({ key: 'change', label: t('scm.order.change'), icon: DiffOutlined, run: () => (changeOpen.value = true) })
   }
-  if (['PARTIAL', 'COMPLETED', 'CLOSED'].includes(d.status) && can(`${returnTrade}:add`)) {
+  if ([OrderStatus.PARTIAL, OrderStatus.COMPLETED, OrderStatus.CLOSED].includes(d.status) && can(`${returnTrade}:add`)) {
     list.push({ key: 'return', label: TRADE_KINDS[returnTrade].label, icon: RollbackOutlined, run: () => emit('trade', returnTrade, d) })
   }
-  if (['APPROVED', 'PARTIAL'].includes(d.status) && can(`${doTrade}:add`)) {
+  if ([OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(d.status) && can(`${doTrade}:add`)) {
     list.push({
       key: 'trade',
       label: TRADE_KINDS[doTrade].label,
@@ -428,7 +429,7 @@ const actions = computed(() => {
       run: () => emit('trade', doTrade, d)
     })
   }
-  if (k === 'sales' && ['APPROVED', 'PARTIAL'].includes(d.status) && can('delivery:add')) {
+  if (k === 'sales' && [OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(d.status) && can('delivery:add')) {
     list.push({
       key: 'delivery',
       label: t('scm.order.tabDelivery'),
@@ -437,7 +438,7 @@ const actions = computed(() => {
     })
   }
   // 销售订单一键建项目（交付类订单）
-  if (k === 'sales' && ['APPROVED', 'PARTIAL', 'COMPLETED'].includes(d.status) && userStore.hasPerm('pm:project:add')) {
+  if (k === 'sales' && [OrderStatus.APPROVED, OrderStatus.PARTIAL, OrderStatus.COMPLETED].includes(d.status) && userStore.hasPerm('pm:project:add')) {
     list.push({
       key: 'project',
       label: t('scm.order.createProject'),

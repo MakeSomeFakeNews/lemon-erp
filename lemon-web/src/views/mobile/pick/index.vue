@@ -57,6 +57,7 @@ import { availableSerials } from '@/api/wms/stock'
 import { qty4 } from '@/components/scm/scm'
 import { formatQty, locationText } from '@/components/wms/wms'
 
+import { DeliveryStatus } from '@/constants/enums'
 /**
  * 拣货：按拣货建议（先到期先出）以库位顺序逐行拣货，扫描库位后扫描物料累计数量，序列号物料扫描序列号；
  * 全部拣完后确认拣货，之后在后台出库
@@ -75,7 +76,7 @@ const saving = ref(false)
 async function searchDeliveries(keyword) {
   loading.value = true
   try {
-    const res = await pageDelivery({ status: 'PENDING', keyword: keyword || undefined, current: 1, size: 50 })
+    const res = await pageDelivery({ status: DeliveryStatus.PENDING, keyword: keyword || undefined, current: 1, size: 50 })
     deliveries.value = res.records
     if (keyword && res.records.length === 1) selectDelivery(res.records[0].id)
   } finally {

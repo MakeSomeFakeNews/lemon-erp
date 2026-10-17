@@ -3,6 +3,7 @@ package com.lemon.erp.modules.bi.controller;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.bi.dto.BiInsight;
 import com.lemon.erp.modules.bi.dto.BoardRequest;
 import com.lemon.erp.modules.bi.dto.PivotRequest;
 import com.lemon.erp.modules.bi.dto.PivotResult;
@@ -25,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 多维分析 /bi/olap、自定义报表 /bi/report、自定义仪表盘 /bi/board
@@ -42,7 +42,7 @@ public class BiAnalysisController {
 
     @GetMapping("/olap/cubes")
     @PreAuthorize(VIEW_PERMS)
-    public R<List<Map<String, Object>>> cubes() {
+    public R<List<BiInsight.CubeInfo>> cubes() {
         return R.ok(olapService.cubes());
     }
 

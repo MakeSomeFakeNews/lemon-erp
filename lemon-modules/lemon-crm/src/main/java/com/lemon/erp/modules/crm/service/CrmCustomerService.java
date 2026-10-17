@@ -9,6 +9,7 @@ import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
+import com.lemon.erp.modules.crm.dto.CrmAnalysis;
 import com.lemon.erp.modules.crm.dto.CrmCustomerRequest;
 import com.lemon.erp.modules.crm.entity.CrmContact;
 import com.lemon.erp.modules.crm.entity.CrmCustomer;
@@ -26,7 +27,6 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -74,7 +74,7 @@ public class CrmCustomerService {
         return c;
     }
 
-    public Map<String, Object> summary(Long customerId) {
+    public CrmAnalysis.CustomerSummary summary(Long customerId) {
         detail(customerId);
         return customerMapper.selectSummary(customerId, LocalDate.now().minusYears(1));
     }

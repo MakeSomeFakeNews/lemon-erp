@@ -33,7 +33,7 @@
             :data-source="list"
             :loading="loading"
             :pagination="pagination"
-            :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: !!r.voucherId || r.sourceType === 'MANUAL' }) }"
+            :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: !!r.voucherId || r.sourceType === BillSource.MANUAL }) }"
             :scroll="{ x: 1560 }"
             @change="onTableChange"
           >
@@ -81,7 +81,7 @@
               <template v-else-if="column.key === 'status'"><DictTag type="fin_bill_status" :value="record.status" /></template>
               <template v-else-if="column.key === 'voucher'">
                 <a v-if="record.voucherId" @click="openVoucher(record.voucherId)">{{ record.voucherNo }}</a>
-                <span v-else class="sub-text">{{ record.sourceType === 'MANUAL' ? $t('fin.billPage.noVoucherOpening') : $t('fin.billPage.notGenerated') }}</span>
+                <span v-else class="sub-text">{{ record.sourceType === BillSource.MANUAL ? $t('fin.billPage.noVoucherOpening') : $t('fin.billPage.notGenerated') }}</span>
               </template>
               <template v-else-if="column.key === 'action'">
                 <span class="table-actions">
@@ -94,7 +94,7 @@
                   >
                     {{ $t('fin.billPage.badDebt') }}
                   </a-button>
-                  <span v-if="record.sourceType === 'MANUAL' && Number(record.settledAmount) === 0" v-perm="`fin:${kind}:remove`">
+                  <span v-if="record.sourceType === BillSource.MANUAL && Number(record.settledAmount) === 0" v-perm="`fin:${kind}:remove`">
                     <a-popconfirm :title="$t('fin.billPage.confirmDelete')" @confirm="remove(record.id)">
                       <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
                     </a-popconfirm>
@@ -212,7 +212,9 @@ import { today } from '@/components/wms/wms'
 import { formatMoney, moneyOrBlank } from './fin'
 import { isForeign } from './currency'
 import { t } from '@/locales'
+import { useAction } from '@/composables/useAction'
 
+import { BillSource, BillStatus } from '@/constants/enums'
 /** 应收管理 / 应付管理，kind = ar | ap */
 const props = defineProps({
   kind: { type: String, required: true }
@@ -266,7 +268,7 @@ const pageTotal = computed(() =>
   list.value.reduce((t, b) => ({ amount: t.amount + Number(b.amount), settled: t.settled + Number(b.settledAmount) }), { amount: 0, settled: 0 })
 )
 const remaining = (b) => Math.round((Number(b.amount) - Number(b.settledAmount)) * 100) / 100
-const overdue = (b) => (b.status === 'SETTLED' ? 0 : Math.max(dayjs().startOf('day').diff(dayjs(b.dueDate), 'day'), 0))
+const overdue = (b) => (b.status === BillStatus.SETTLED ? 0 : Math.max(dayjs().startOf('day').diff(dayjs(b.dueDate), 'day'), 0))
 
 function generate() {
   Modal.confirm({
@@ -303,11 +305,7 @@ async function submit() {
   }
 }
 
-async function remove(id) {
-  await deleteBill(props.kind, id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction((id) => deleteBill(props.kind, id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- 坏账核销
 const badDebtOpen = ref(false)

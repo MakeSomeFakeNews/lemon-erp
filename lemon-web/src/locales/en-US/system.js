@@ -223,7 +223,9 @@ export default {
   },
   bizRule: {
     title: 'Business Rules',
-    subtitle: 'Business control rules of each module. They apply only to the current company (tenant) and take effect immediately'
+    subtitle: 'Business control rules of each module. They apply only to the current company (tenant) and take effect immediately',
+    unlimited: 'Unlimited',
+    insertRow: 'Insert row'
   },
   codeRule: {
     hint: 'Changes only affect documents created afterwards; existing numbers stay unchanged',

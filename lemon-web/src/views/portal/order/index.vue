@@ -44,7 +44,7 @@
     <SubPage :open="detailOpen" :title="detail ? $t('portal.order.detailTitle', { no: detail.orderNo }) : ''" width="min(1000px, 100vw)" @close="detailOpen = false">
       <template v-if="detail && executable(detail)" #extra>
         <a-space>
-          <a-button v-if="detail.supplierConfirm !== 'REJECTED'" v-perm="'portal:asn:add'" @click="openAsn">{{ $t('portal.order.createAsn') }}</a-button>
+          <a-button v-if="detail.supplierConfirm !== SupplierConfirm.REJECTED" v-perm="'portal:asn:add'" @click="openAsn">{{ $t('portal.order.createAsn') }}</a-button>
           <span v-perm="'portal:order:confirm'">
             <a-space>
               <a-button danger @click="openConfirm(false)">{{ $t('portal.order.reject') }}</a-button>
@@ -153,6 +153,7 @@ import { formatQty, today } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 
+import { OrderStatus, SupplierConfirm } from '@/constants/enums'
 const { t } = useI18n()
 
 /** 供应商门户 - 我的订单：确认订单（承诺交期）、发起送货 */
@@ -180,7 +181,7 @@ watch(tab, (t) => {
 })
 onMounted(load)
 
-const executable = (o) => ['APPROVED', 'PARTIAL'].includes(o.status)
+const executable = (o) => [OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(o.status)
 const pct = (a, b) => (Number(b) ? Math.min(100, Math.round((Number(a) / Number(b)) * 100)) : 0)
 const itemColumns = [
   { title: t('portal.order.material'), key: 'material', width: 240 },

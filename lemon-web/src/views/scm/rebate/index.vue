@@ -29,7 +29,7 @@
           <template v-else-if="column.key === 'period'">{{ record.beginDate }} ~ {{ record.endDate }}</template>
           <template v-else-if="column.key === 'mode'"><DictTag type="scm_rebate_settle" :value="record.settleMode" /></template>
           <template v-else-if="column.key === 'result'">
-            <template v-if="record.status === 'SETTLED'">
+            <template v-if="record.status === RebateStatus.SETTLED">
               ¥{{ formatMoney(record.rebateAmount) }}
               <div class="sub-text">{{ $t('scm.rebate.salesTimesRate', { sales: formatMoney(record.salesAmount), rate: Number(record.rate) }) }}</div>
             </template>
@@ -68,7 +68,7 @@
             <a-radio v-for="o in dict.scm_rebate_settle" :key="o.value" :value="o.value">{{ o.label }}</a-radio>
           </a-radio-group>
           <div class="sub-text">
-            {{ form.settleMode === 'CREDIT_NOTE' ? $t('scm.rebate.creditNoteTip') : $t('scm.rebate.balanceTip') }}
+            {{ form.settleMode === RebateSettle.CREDIT_NOTE ? $t('scm.rebate.creditNoteTip') : $t('scm.rebate.balanceTip') }}
           </div>
         </a-form-item>
         <div class="section-title">{{ $t('scm.rebate.tiers') }} <span class="sub-text">{{ $t('scm.rebate.tiersTip') }}</span></div>
@@ -97,7 +97,7 @@
     <SubPage :open="detailOpen" :title="detail ? $t('scm.rebate.detailTitle', { no: detail.rebateNo }) : ''" width="min(900px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <a-space>
-          <template v-if="detail.status === 'ACTIVE'">
+          <template v-if="detail.status === RebateStatus.ACTIVE">
             <span v-perm="'scm:rebate:add'">
               <a-popconfirm :title="$t('scm.rebate.confirmDelete')" @confirm="remove"><a-button danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
             </span>
@@ -123,7 +123,7 @@
           <a-descriptions-item :label="$t('scm.rebate.period')">{{ detail.beginDate }} ~ {{ detail.endDate }}</a-descriptions-item>
           <a-descriptions-item :label="$t('common.field.status')"><DictTag type="scm_rebate_status" :value="detail.status" /></a-descriptions-item>
           <a-descriptions-item :label="$t('scm.rebate.settleMode')"><DictTag type="scm_rebate_settle" :value="detail.settleMode" /></a-descriptions-item>
-          <template v-if="detail.status === 'SETTLED'">
+          <template v-if="detail.status === RebateStatus.SETTLED">
             <a-descriptions-item :label="$t('scm.rebate.settled')">{{ detail.settleDate }}</a-descriptions-item>
             <a-descriptions-item :label="$t('scm.rebate.rebate')">{{ $t('scm.rebate.rebateCalc', { rebate: formatMoney(detail.rebateAmount), sales: formatMoney(detail.salesAmount), rate: Number(detail.rate) }) }}</a-descriptions-item>
             <a-descriptions-item v-if="detail.billNo" :label="$t('scm.rebate.creditNote')">{{ detail.billNo }}</a-descriptions-item>
@@ -171,6 +171,7 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+import { RebateSettle, RebateStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 /** 销售返利：客户 × 期间的阶梯返利协议，期间结束后结算，生成红字应收或计入返利余额在下次订单抵扣 */
@@ -203,7 +204,7 @@ const rules = {
   settleMode: [{ required: true, message: t('scm.rebate.ruleSettleMode') }]
 }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, customerId: undefined, beginDate: undefined, endDate: undefined, settleMode: 'CREDIT_NOTE', remark: '',
+  emptyForm: () => ({ id: undefined, customerId: undefined, beginDate: undefined, endDate: undefined, settleMode: RebateSettle.CREDIT_NOTE, remark: '',
     tiers: [newTier()] }),
   fetch: async (record) => {
     const r = await getRebate(record.id)
@@ -232,7 +233,7 @@ const detailOpen = ref(false)
 const detail = ref()
 const calc = ref()
 const ended = computed(() => detail.value && detail.value.endDate < today())
-const salesNow = computed(() => Number(detail.value?.status === 'SETTLED' ? detail.value.salesAmount : calc.value?.salesAmount) || 0)
+const salesNow = computed(() => Number(detail.value?.status === RebateStatus.SETTLED ? detail.value.salesAmount : calc.value?.salesAmount) || 0)
 const reachedTier = computed(() => [...(detail.value?.tiers || [])].filter((t) => salesNow.value >= Number(t.minAmount))
   .sort((a, b) => Number(b.minAmount) - Number(a.minAmount))[0])
 const nextTierText = computed(() => {
@@ -243,7 +244,7 @@ const nextTierText = computed(() => {
 /** 说明占满最后一行：前面的项数为 客户、期间、状态、兑付方式、创建 + 结算信息（已结算 2~3 项，执行中 2 项） */
 const remarkSpan = computed(() => {
   const d = detail.value
-  const n = 5 + (d?.status === 'SETTLED' ? (d.billNo ? 3 : 2) : calc.value ? 2 : 0)
+  const n = 5 + (d?.status === RebateStatus.SETTLED ? (d.billNo ? 3 : 2) : calc.value ? 2 : 0)
   return 3 - (n % 3)
 })
 const settleTip = computed(() => calc.value
@@ -251,7 +252,7 @@ const settleTip = computed(() => calc.value
 async function openDetail(id) {
   const r = await getRebate(id)
   detail.value = r
-  calc.value = r.status === 'ACTIVE' ? await calcRebate(id) : undefined
+  calc.value = r.status === RebateStatus.ACTIVE ? await calcRebate(id) : undefined
   detailOpen.value = true
 }
 async function settle() {

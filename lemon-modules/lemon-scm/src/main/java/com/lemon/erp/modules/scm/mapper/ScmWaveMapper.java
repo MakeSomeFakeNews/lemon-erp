@@ -2,12 +2,12 @@ package com.lemon.erp.modules.scm.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.lemon.erp.modules.scm.dto.WavePickList;
 import com.lemon.erp.modules.scm.entity.ScmWave;
 import com.lemon.erp.modules.scm.model.WaveStatus;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
-import java.util.Map;
 
 public interface ScmWaveMapper extends BaseMapper<ScmWave> {
 
@@ -21,8 +21,8 @@ public interface ScmWaveMapper extends BaseMapper<ScmWave> {
      * deliveryId、deliveryNo、customerName、deliveryItemId、materialId、materialCode、materialName、spec、unit、serialEnabled、
      * locationId、locationCode、zone、batchNo、expiryDate、qty
      */
-    List<Map<String, Object>> selectPickLines(@Param("waveId") Long waveId);
+    List<WavePickList.PickRow> selectPickLines(@Param("waveId") Long waveId);
 
     /** 拣货建议不足通知数量的明细（库存不足）：deliveryNo、materialCode、materialName、unit、qty、suggested */
-    List<Map<String, Object>> selectShortages(@Param("waveId") Long waveId);
+    List<WavePickList.Shortage> selectShortages(@Param("waveId") Long waveId);
 }

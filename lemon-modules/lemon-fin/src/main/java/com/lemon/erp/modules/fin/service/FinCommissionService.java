@@ -21,7 +21,6 @@ import org.springframework.util.StringUtils;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -150,7 +149,7 @@ public class FinCommissionService {
                     if (rule == null || b.getValue().signum() == 0) {
                         continue;
                     }
-                    BigDecimal amount = b.getValue().multiply(rule.getRate()).divide(Decimals.HUNDRED, 2, RoundingMode.HALF_UP);
+                    BigDecimal amount = b.getValue().multiply(rule.getRate()).divide(Decimals.HUNDRED, Decimals.MONEY_SCALE, Decimals.ROUNDING);
                     commission = commission.add(amount);
                     Map<String, Object> d = new LinkedHashMap<>();
                     d.put("basis", basis.name());
@@ -266,7 +265,7 @@ public class FinCommissionService {
             BigDecimal cost = dec(r.get("qty")).multiply(units.getOrDefault(((Number) r.get("materialId")).longValue(), BigDecimal.ZERO));
             Perf p = perfs.computeIfAbsent(salesman, Perf::new);
             p.salesByCategory.merge(category, net, BigDecimal::add);
-            p.profitByCategory.merge(category, net.subtract(cost).setScale(2, RoundingMode.HALF_UP), BigDecimal::add);
+            p.profitByCategory.merge(category, Decimals.money(net.subtract(cost)), BigDecimal::add);
         }
         for (Map<String, Object> r : queryMapper.selectReceipts(begin, end)) {
             Long salesman = ((Number) r.get("salesmanId")).longValue();
@@ -305,11 +304,11 @@ public class FinCommissionService {
         }
 
         BigDecimal sales() {
-            return Decimals.sum(salesByCategory.values()).setScale(2, RoundingMode.HALF_UP);
+            return Decimals.money(Decimals.sum(salesByCategory.values()));
         }
 
         BigDecimal profit() {
-            return Decimals.sum(profitByCategory.values()).setScale(2, RoundingMode.HALF_UP);
+            return Decimals.money(Decimals.sum(profitByCategory.values()));
         }
 
         Map<String, BigDecimal> byCategory(CommissionBasis basis) {

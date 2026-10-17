@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.modules.fin.dto.ConsumableLedgerRow;
 import com.lemon.erp.modules.fin.dto.ConsumableRequest;
 import com.lemon.erp.modules.fin.entity.FinConsumableUse;
 import com.lemon.erp.modules.fin.entity.FinConsumableUseItem;
@@ -61,7 +62,7 @@ public class FinConsumableService {
     }
 
     /** 领用台账：按部门、物料汇总（参考金额） */
-    public List<Map<String, Object>> ledger(LocalDate begin, LocalDate end, Long deptId) {
+    public List<ConsumableLedgerRow> ledger(LocalDate begin, LocalDate end, Long deptId) {
         return useMapper.selectLedger(begin, end, deptId);
     }
 

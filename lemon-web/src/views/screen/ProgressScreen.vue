@@ -105,6 +105,7 @@ import ScreenPanel from '@/components/screen/ScreenPanel.vue'
 import ScrollList from '@/components/screen/ScrollList.vue'
 import { COLORS, axisStyle, fmtNum, gradient, legend, shortDay, tooltip } from '@/components/screen/screen'
 import { etaText, lineStateLabel, riskLabel } from '@/components/mes/board'
+import { DeliveryRisk } from '@/constants/enums'
 import './screen.css'
 
 /** 生产进度大屏：与「生产看板」相同的数据，在制工单的工序进度与预计完工、各产线状态、今日每小时产出 */
@@ -120,8 +121,8 @@ const yieldColor = computed(() => {
 
 const LINE_COLORS = { RUNNING: COLORS.green, IDLE: COLORS.orange, FREE: COLORS.blue, REST: COLORS.sub }
 const RISK_TAG = { ON_TIME: 'green', AT_RISK: 'orange', OVERDUE: 'red', UNKNOWN: 'gray' }
-const riskClass = (r) => (r === 'OVERDUE' ? 'bad' : r === 'AT_RISK' ? 'warn' : '')
-const barClass = (row) => (row.risk === 'OVERDUE' ? 'danger' : row.risk === 'AT_RISK' ? 'warn' : '')
+const riskClass = (r) => (r === DeliveryRisk.OVERDUE ? 'bad' : r === DeliveryRisk.AT_RISK ? 'warn' : '')
+const barClass = (row) => (row.risk === DeliveryRisk.OVERDUE ? 'danger' : row.risk === DeliveryRisk.AT_RISK ? 'warn' : '')
 const currentJob = (l) => l.jobs.find((j) => j.running)
 
 const orderColumns = [

@@ -2,6 +2,7 @@
 import dayjs from 'dayjs'
 import { t } from '@/locales'
 
+import { BoardOpState } from '@/constants/enums'
 /** 工单状态：RUNNING 今天有报工 / IDLE 停滞 / WAITING 待开工 / TO_STOCK 待入库 */
 export const ORDER_STATE_COLORS = { RUNNING: '#1677ff', IDLE: '#fa8c16', WAITING: '#8c8c8c', TO_STOCK: '#52c41a' }
 /** 交期风险 */
@@ -36,6 +37,6 @@ export function opTip(op, qty) {
   parts.push(t('mes.board.opDone', { good: Number(op.goodQty), qty: Number(qty) }))
   if (Number(op.scrapQty)) parts.push(t('mes.board.opScrap', { n: Number(op.scrapQty) }))
   if (Number(op.todayGood)) parts.push(t('mes.board.opToday', { n: Number(op.todayGood) }))
-  if (op.state !== 'DONE') parts.push(op.eta ? t('mes.board.opEta', { d: String(op.eta).slice(5) }) : t('mes.board.etaUnknown'))
+  if (op.state !== BoardOpState.DONE) parts.push(op.eta ? t('mes.board.opEta', { d: String(op.eta).slice(5) }) : t('mes.board.etaUnknown'))
   return parts.join(' · ')
 }

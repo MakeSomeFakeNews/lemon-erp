@@ -18,7 +18,7 @@
             type="info"
             show-icon
             class="tip"
-            :message="k === 'RECEIPT'
+            :message="k === SettleKind.RECEIPT
               ? $t('fin.advance.tipReceipt')
               : $t('fin.advance.tipPayment')"
           />
@@ -86,7 +86,7 @@
           </a-col>
           <a-col :span="12">
             <a-form-item :label="$t('fin.advance.settleAccount')" name="accountId" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('fin.advance.settleAccount') }) }]">
-              <AccountSelect v-model:value="form.accountId" :prefix="['1001', '1002']" :placeholder="$t('fin.advance.settleAccountPh')" />
+              <AccountSelect v-model:value="form.accountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.advance.settleAccountPh')" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -184,7 +184,10 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { today } from '@/components/wms/wms'
 import { formatMoney } from '@/components/fin/fin'
+import { round2 } from '@/utils/number'
+import { useAction } from '@/composables/useAction'
 
+import { SettleKind } from '@/constants/enums'
 const { t } = useI18n()
 const KINDS = {
   RECEIPT: { tab: t('fin.advance.receiptTab'), label: t('fin.advance.receipt'), partner: 'customer', partnerLabel: t('fin.advance.customer'), billKind: 'ar',
@@ -197,7 +200,6 @@ const KINDS = {
 const dict = useDict('fin_settle_method', 'fin_bill_source')
 const tab = ref('RECEIPT')
 const conf = computed(() => KINDS[tab.value])
-const round2 = (n) => Math.round(n * 100) / 100
 const remaining = (a) => round2(Number(a.amount) - Number(a.usedAmount || 0))
 
 const columns = computed(() => [
@@ -211,7 +213,7 @@ const columns = computed(() => [
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
   { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
 ])
-const query = reactive({ kind: 'RECEIPT', partnerId: undefined, keyword: undefined, onlyOpen: false })
+const query = reactive({ kind: SettleKind.RECEIPT, partnerId: undefined, keyword: undefined, onlyOpen: false })
 const { list, loading, pagination, load, search, onTableChange } = useTable(pageAdvance, query)
 onMounted(load)
 watch(() => query.partnerId, () => search())
@@ -220,11 +222,7 @@ watch(tab, (v) => {
   search()
 })
 
-async function remove(id) {
-  await deleteAdvance(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteAdvance, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- 登记
 const createOpen = ref(false)

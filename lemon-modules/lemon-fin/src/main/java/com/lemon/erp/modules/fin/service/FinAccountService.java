@@ -15,8 +15,8 @@ import com.lemon.erp.modules.fin.mapper.FinAssetMapper;
 import com.lemon.erp.modules.fin.mapper.FinBudgetMapper;
 import com.lemon.erp.modules.fin.mapper.FinSettlementMapper;
 import com.lemon.erp.modules.fin.mapper.FinVoucherEntryMapper;
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.modules.fin.model.AuxItem;
-import com.lemon.erp.modules.fin.model.FinConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -41,6 +42,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FinAccountService {
 
+    /** 科目范围用途：设置的可以是上级科目，不妨碍增加下级 */
+    private static final List<AccountRole> SCOPE_ROLES = Arrays.stream(AccountRole.values()).filter(AccountRole::scope).toList();
 
     private final FinAccountMapper accountMapper;
     private final FinVoucherEntryMapper entryMapper;
@@ -192,10 +195,42 @@ public class FinAccountService {
     /** 结算科目：库存现金、银行存款及其下级的末级科目（收付款、发放工资） */
     public FinAccount requireCashAccount(Long accountId) {
         FinAccount account = requireLeaves(List.of(accountId)).get(accountId);
-        if (!account.getCode().startsWith(FinConstants.CASH) && !account.getCode().startsWith(FinConstants.BANK)) {
+        if (!inScope(account.getCode(), cashCodes())) {
             throw new BizException("fin.error.settlementAccountMustCashBankDeposit");
         }
         return account;
+    }
+
+    /**
+     * 用途当前使用的科目编码（不校验末级、启用）：「凭证科目设置」中设置的默认科目，未设置时取预置编码。
+     * 科目范围用途（库存现金、银行存款）及按编码前缀归类的场景（如现金流量表识别进项、销项税额）使用
+     */
+    public String roleCode(AccountRole role) {
+        FinAccountRule rule = ruleMapper.selectOne(Wrappers.<FinAccountRule>lambdaQuery()
+                .eq(FinAccountRule::getRole, role).eq(FinAccountRule::getDimValue, ""));
+        FinAccount account = rule == null ? null : accountMapper.selectById(rule.getAccountId());
+        return account == null ? role.defaultCode() : account.getCode();
+    }
+
+    /** 货币资金科目（库存现金、银行存款）的编码，其下级科目都是货币资金 */
+    public List<String> cashCodes() {
+        return List.of(roleCode(AccountRole.CASH), roleCode(AccountRole.BANK));
+    }
+
+    /** 科目范围用途当前使用的科目编码，供前端限定结算账户等可选科目 */
+    public Map<String, String> scopeCodes() {
+        Map<String, String> codes = new LinkedHashMap<>();
+        for (AccountRole role : AccountRole.values()) {
+            if (role.scope()) {
+                codes.put(role.name(), roleCode(role));
+            }
+        }
+        return codes;
+    }
+
+    /** 科目编码是否在其中某个科目之下（含本身） */
+    public static boolean inScope(String code, Collection<String> prefixes) {
+        return prefixes.stream().anyMatch(code::startsWith);
     }
 
     /** 科目及其全部下级的 ID（编码前缀匹配） */
@@ -247,16 +282,18 @@ public class FinAccountService {
         return accountMapper.exists(Wrappers.<FinAccount>lambdaQuery().eq(FinAccount::getParentId, id));
     }
 
-    /** 被凭证分录、收付款、固定资产、凭证科目设置使用（这些地方只能用末级科目） */
+    /** 被凭证分录、收付款、固定资产、凭证科目设置（科目范围用途除外）使用（这些地方只能用末级科目） */
     private boolean usedInBooks(Long id) {
         return entryMapper.exists(Wrappers.<FinVoucherEntry>lambdaQuery().eq(FinVoucherEntry::getAccountId, id))
-                || ruleMapper.exists(Wrappers.<FinAccountRule>lambdaQuery().eq(FinAccountRule::getAccountId, id))
+                || ruleMapper.exists(Wrappers.<FinAccountRule>lambdaQuery().eq(FinAccountRule::getAccountId, id)
+                        .notIn(FinAccountRule::getRole, SCOPE_ROLES))
                 || settlementMapper.exists(Wrappers.<FinSettlement>lambdaQuery().eq(FinSettlement::getAccountId, id))
                 || assetMapper.exists(Wrappers.<FinAsset>lambdaQuery().eq(FinAsset::getExpenseAccountId, id));
     }
 
-    /** 已使用：账簿中使用，或编制了预算 */
+    /** 已使用：账簿中使用、编制了预算，或在凭证科目设置中被科目范围用途使用 */
     private boolean used(Long id) {
-        return usedInBooks(id) || budgetMapper.exists(Wrappers.<FinBudget>lambdaQuery().eq(FinBudget::getAccountId, id));
+        return usedInBooks(id) || budgetMapper.exists(Wrappers.<FinBudget>lambdaQuery().eq(FinBudget::getAccountId, id))
+                || ruleMapper.exists(Wrappers.<FinAccountRule>lambdaQuery().eq(FinAccountRule::getAccountId, id));
     }
 }

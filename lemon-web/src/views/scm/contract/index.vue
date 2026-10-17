@@ -30,7 +30,7 @@
           <template v-else-if="column.key === 'type'"><DictTag type="scm_contract_type" :value="record.contractType" /></template>
           <template v-else-if="column.key === 'period'">
             <div>{{ record.startDate }} ~ {{ record.endDate }}</div>
-            <div v-if="record.status === 'ACTIVE' && expired(record)" class="sub-text danger">{{ $t('scm.contract.expired') }}</div>
+            <div v-if="record.status === ContractStatus.ACTIVE && expired(record)" class="sub-text danger">{{ $t('scm.contract.expired') }}</div>
           </template>
           <template v-else-if="column.key === 'amount'">
             <div>{{ $t('scm.contract.orderedAmount', { amount: formatMoney(record.orderedAmount) }) }}</div>
@@ -123,10 +123,10 @@
             <template v-else-if="column.key === 'qtyLimit'">
               <a-form-item
                 :name="['items', index, 'qtyLimit']"
-                :rules="form.contractType === 'FIXED' ? [{ required: true, message: $t('scm.contract.qtyRequired') }] : []"
+                :rules="form.contractType === ContractType.FIXED ? [{ required: true, message: $t('scm.contract.qtyRequired') }] : []"
                 class="cell-item"
               >
-                <a-input-number v-model:value="record.qtyLimit" :min="0" :placeholder="form.contractType === 'FIXED' ? '' : $t('scm.contract.unlimited')" class="full" />
+                <a-input-number v-model:value="record.qtyLimit" :min="0" :placeholder="form.contractType === ContractType.FIXED ? '' : $t('scm.contract.unlimited')" class="full" />
               </a-form-item>
             </template>
             <template v-else-if="column.key === 'remark'">
@@ -144,7 +144,7 @@
       <template v-if="detail" #extra>
         <a-space>
           <a-button v-if="detail.flowInstanceId" @click="flowOpen = true">{{ $t('scm.contract.flowRecord') }}</a-button>
-          <template v-if="detail.status === 'DRAFT'">
+          <template v-if="detail.status === ContractStatus.DRAFT">
             <a-button v-perm="'scm:contract:edit'" @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
             <span v-perm="'scm:contract:remove'">
               <a-popconfirm :title="$t('scm.contract.confirmDelete')" @confirm="remove">
@@ -157,7 +157,7 @@
               </a-popconfirm>
             </span>
           </template>
-          <a-button v-if="detail.status === 'ACTIVE'" v-perm="'scm:contract:close'" @click="openClose">{{ $t('scm.contract.closeContract') }}</a-button>
+          <a-button v-if="detail.status === ContractStatus.ACTIVE" v-perm="'scm:contract:close'" @click="openClose">{{ $t('scm.contract.closeContract') }}</a-button>
         </a-space>
       </template>
       <template v-if="detail">
@@ -165,7 +165,7 @@
           <a-descriptions-item :label="$t('scm.contract.name')" :span="2">{{ detail.name }}</a-descriptions-item>
           <a-descriptions-item :label="$t('common.field.status')">
             <DictTag type="scm_contract_status" :value="detail.status" />
-            <span v-if="detail.status === 'ACTIVE' && expired(detail)" class="danger">{{ $t('scm.contract.expired') }}</span>
+            <span v-if="detail.status === ContractStatus.ACTIVE && expired(detail)" class="danger">{{ $t('scm.contract.expired') }}</span>
           </a-descriptions-item>
           <a-descriptions-item :label="$t('scm.contract.supplier')">{{ detail.supplierCode }} {{ detail.supplierName }}</a-descriptions-item>
           <a-descriptions-item :label="$t('scm.contract.type')"><DictTag type="scm_contract_type" :value="detail.contractType" /></a-descriptions-item>
@@ -254,6 +254,7 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
+import { ContractStatus, ContractType } from '@/constants/enums'
 /** 采购合同 / 框架协议：生效后采购订单可引用，按合同价下单并校验数量、金额上限 */
 const { t } = useI18n()
 const dict = useDict('scm_contract_type', 'scm_contract_status')
@@ -293,7 +294,7 @@ const rules = {
 const num = (v) => (v == null ? undefined : Number(v))
 const drawer = useFormDrawer({
   emptyForm: () => ({
-    id: undefined, name: '', supplierId: undefined, contractType: 'FRAMEWORK', signDate: today(), startDate: today(),
+    id: undefined, name: '', supplierId: undefined, contractType: ContractType.FRAMEWORK, signDate: today(), startDate: today(),
     endDate: dayjs().add(1, 'year').subtract(1, 'day').format('YYYY-MM-DD'), amountLimit: undefined, paymentDays: undefined,
     paymentTerms: '', remark: '', items: [newItem()]
   }),

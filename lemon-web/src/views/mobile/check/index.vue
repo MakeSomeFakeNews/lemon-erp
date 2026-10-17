@@ -62,6 +62,7 @@ import { locationOptions } from '@/api/wms/location'
 import { qty4 } from '@/components/scm/scm'
 import { formatQty, locationText, rowKey, splitSerials } from '@/components/wms/wms'
 
+import { WmsDocStatus } from '@/constants/enums'
 /**
  * 盘点：选择草稿盘点单，扫描库位后扫描物料累计实盘数量（包装条码按换算比例），序列号物料扫描序列号；
  * 账面没有的物料作为盘盈行添加。保存实盘数量，盘点确认仍在后台进行
@@ -81,7 +82,7 @@ const saving = ref(false)
 onMounted(async () => {
   loading.value = true
   try {
-    checks.value = (await pageCheck({ status: 'DRAFT', current: 1, size: 50 })).records
+    checks.value = (await pageCheck({ status: WmsDocStatus.DRAFT, current: 1, size: 50 })).records
   } finally {
     loading.value = false
   }

@@ -24,7 +24,7 @@
               <span :class="{ overdue: row.shipDate < today }">{{ shortDay(row.shipDate) }}</span>
             </template>
             <template v-else-if="column.key === 'statusLabel'">
-              <span :class="['screen-tag', row.status === 'PICKED' ? 'cyan' : 'orange']">{{ row.statusLabel }}</span>
+              <span :class="['screen-tag', row.status === DeliveryStatus.PICKED ? 'cyan' : 'orange']">{{ row.statusLabel }}</span>
             </template>
             <template v-else>{{ row[column.key] || '-' }}</template>
           </template>
@@ -44,7 +44,7 @@
           <template #cell="{ column, row }">
             <template v-if="column.key === 'time'">{{ shortTime(row.time) }}</template>
             <template v-else-if="column.key === 'kind'">
-              <span :class="['screen-tag', row.kind === 'IN' ? 'cyan' : row.kind === 'OUT' ? 'green' : 'gray']">{{ KIND[row.kind] }}</span>
+              <span :class="['screen-tag', row.kind === StockBizType.IN ? 'cyan' : row.kind === StockBizType.OUT ? 'green' : 'gray']">{{ KIND[row.kind] }}</span>
             </template>
             <template v-else-if="column.key === 'qty'"><span class="num-cell">{{ fmtNum(row.qty, 2) }}</span></template>
             <template v-else>{{ row[column.key] || '-' }}</template>
@@ -84,6 +84,7 @@ import ScreenKpi from '@/components/screen/ScreenKpi.vue'
 import ScreenPanel from '@/components/screen/ScreenPanel.vue'
 import ScrollList from '@/components/screen/ScrollList.vue'
 import { COLORS, PALETTE, axisStyle, fmtNum, gradient, hGradient, legend, shortDay, shortTime, tooltip, withDictLabel } from '@/components/screen/screen'
+import { DeliveryStatus, StockBizType } from '@/constants/enums'
 import './screen.css'
 
 /** 仓储物流大屏 */
@@ -93,7 +94,7 @@ const kpi = computed(() => props.data.kpi || {})
 const today = dayjs().format('YYYY-MM-DD')
 const KIND = { IN: t('screen.warehouse.in'), OUT: t('screen.warehouse.out'), TRANSFER: t('screen.warehouse.transfer') }
 /** 出入库类型字典：调拨的名称后端已翻译 */
-const ioType = (r) => (r.kind === 'IN' ? 'wms_in_type' : r.kind === 'OUT' ? 'wms_out_type' : null)
+const ioType = (r) => (r.kind === StockBizType.IN ? 'wms_in_type' : r.kind === StockBizType.OUT ? 'wms_out_type' : null)
 const deliveries = computed(() => withDictLabel(props.data.deliveries, 'scm_delivery_status', 'status', 'statusLabel'))
 const docs = computed(() => (props.data.docs || []).map((r) => (ioType(r) ? withDictLabel([r], ioType, 'bizType', 'typeLabel')[0] : r)))
 const alertCount = computed(() => Number(kpi.value.lowStock || 0) + Number(kpi.value.expiring || 0))

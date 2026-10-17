@@ -43,7 +43,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== 'QUOTING' }) }"
+        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== InquiryStatus.QUOTING }) }"
         :scroll="{ x: 1200, y: '100%' }"
         @change="onTableChange"
       >
@@ -59,10 +59,10 @@
               <a-button type="link" size="small" @click="openDetail(record)">
                 <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
-              <a-button v-if="record.status === 'QUOTING' && !record.supplierCount" v-perm="'scm:inquiry:edit'" type="link" size="small" @click="form.openEdit(record)">
+              <a-button v-if="record.status === InquiryStatus.QUOTING && !record.supplierCount" v-perm="'scm:inquiry:edit'" type="link" size="small" @click="form.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
-              <span v-if="record.status === 'QUOTING'" v-perm="'scm:inquiry:remove'">
+              <span v-if="record.status === InquiryStatus.QUOTING" v-perm="'scm:inquiry:remove'">
                 <a-popconfirm :title="$t('scm.inquiry.confirmDelete')" @confirm="remove([record.id])">
                   <a-button type="link" danger size="small">
                     <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
@@ -96,6 +96,7 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+import { InquiryStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 const dict = useDict('scm_inquiry_status')

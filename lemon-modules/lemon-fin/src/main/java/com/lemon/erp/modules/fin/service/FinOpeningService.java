@@ -29,7 +29,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -57,6 +56,9 @@ import static com.lemon.erp.modules.fin.model.FinConstants.toYearMonth;
 @Service
 @RequiredArgsConstructor
 public class FinOpeningService {
+
+    /** 单位成本保留 6 位，与成本核算（fin_material_cost.unit_cost DECIMAL(18,6)）一致 */
+    private static final int UNIT_COST_SCALE = 6;
 
     private final FinAccountOpeningMapper openingMapper;
     private final FinAccountService accountService;
@@ -236,7 +238,7 @@ public class FinOpeningService {
             c.setCostMethod(CostMethod.WEIGHTED);
             c.setCloseQty(item.qty());
             c.setCloseAmount(item.amount());
-            c.setUnitCost(item.amount().divide(item.qty(), 6, RoundingMode.HALF_UP));
+            c.setUnitCost(item.amount().divide(item.qty(), UNIT_COST_SCALE, Decimals.ROUNDING));
             rows.add(c);
         }
         materialService.mapByIds(seen);

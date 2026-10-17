@@ -44,17 +44,17 @@
               >
                 <div class="aux-row">
                   <span :class="['aux-label', { required: isRequired(record, a.value) }]">{{ a.label }}</span>
-                  <DeptSelect v-if="a.value === 'DEPT'" v-model:value="record.deptId" :placeholder="isRequired(record, 'DEPT') ? $t('fin.voucherForm.required') : $t('fin.voucherForm.optional')" class="aux-input" />
+                  <DeptSelect v-if="a.value === AuxItem.DEPT" v-model:value="record.deptId" :placeholder="isRequired(record, 'DEPT') ? $t('fin.voucherForm.required') : $t('fin.voucherForm.optional')" class="aux-input" />
                   <PartnerSelect
-                    v-else-if="a.value === 'CUSTOMER' || a.value === 'SUPPLIER'"
+                    v-else-if="a.value === AuxItem.CUSTOMER || a.value === AuxItem.SUPPLIER"
                     v-model:value="record[a.key]"
-                    :type="a.value === 'CUSTOMER' ? 'customer' : 'supplier'"
+                    :type="a.value === AuxItem.CUSTOMER ? 'customer' : 'supplier'"
                     :label="record[a.name]"
                     class="aux-input"
                   />
-                  <ProjectSelect v-else-if="a.value === 'PROJECT'" v-model:value="record.projectId" class="aux-input" />
+                  <ProjectSelect v-else-if="a.value === AuxItem.PROJECT" v-model:value="record.projectId" class="aux-input" />
                   <MaterialSelect v-else v-model:value="record.materialId" :label="record.materialName" :placeholder="$t('fin.voucherForm.materialPlaceholder')" class="aux-input" />
-                  <a-button v-if="a.value !== 'DEPT' && !isRequired(record, a.value)" type="text" size="small" :title="$t('fin.voucherForm.remove')" @click="removeAux(record, a)">
+                  <a-button v-if="a.value !== AuxItem.DEPT && !isRequired(record, a.value)" type="text" size="small" :title="$t('fin.voucherForm.remove')" @click="removeAux(record, a)">
                     <CloseOutlined />
                   </a-button>
                 </div>
@@ -122,6 +122,7 @@ import { rowKey, today } from '@/components/wms/wms'
 import { AUX_ITEMS, auxItemsOf, cached, formatMoney } from './fin'
 import { t } from '@/locales'
 
+import { AuxItem } from '@/constants/enums'
 /** 新增 / 编辑凭证（未审核的手工凭证）。通过 ref 调用 openCreate() / openEdit(record)，保存后触发 success */
 const emit = defineEmits(['success'])
 
@@ -159,7 +160,7 @@ const hasValue = (record, a) => record[a.key] !== undefined && record[a.key] !==
 
 /** 显示的辅助核算：部门（始终可填）、科目设置的、手工添加的、已有值的 */
 const visibleAux = (record) =>
-  AUX_ITEMS.filter((a) => a.value === 'DEPT' || isRequired(record, a.value) || record.extraAux.includes(a.value) || hasValue(record, a))
+  AUX_ITEMS.filter((a) => a.value === AuxItem.DEPT || isRequired(record, a.value) || record.extraAux.includes(a.value) || hasValue(record, a))
 const addableAux = (record) => {
   const shown = new Set(visibleAux(record).map((a) => a.value))
   return AUX_ITEMS.filter((a) => !shown.has(a.value))
@@ -175,7 +176,7 @@ function removeAux(record, a) {
 function changeAccount(record, accountId) {
   record.accountId = accountId
   const required = requiredAux(record)
-  AUX_ITEMS.filter((a) => a.value !== 'DEPT' && !required.includes(a.value) && !record.extraAux.includes(a.value)).forEach((a) => {
+  AUX_ITEMS.filter((a) => a.value !== AuxItem.DEPT && !required.includes(a.value) && !record.extraAux.includes(a.value)).forEach((a) => {
     record[a.key] = undefined
     record[a.name] = undefined
   })

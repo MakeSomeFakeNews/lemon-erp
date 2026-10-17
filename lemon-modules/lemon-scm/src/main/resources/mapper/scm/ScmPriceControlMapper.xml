@@ -14,7 +14,7 @@
         ORDER BY m.code
     </select>
 
-    <select id="selectHistory" resultType="java.util.Map">
+    <select id="selectHistory" resultType="com.lemon.erp.modules.scm.dto.ScmPriceViews$OrderPriceHistory">
         SELECT o.id AS "orderId", o.order_no AS "orderNo", o.order_date AS "orderDate", COALESCE(i.orig_price, i.price) AS "price",
                i.tax_rate AS "taxRate", i.qty AS "qty", o.currency AS "currency", o.exchange_rate AS "exchangeRate"
         FROM scm_order_item i

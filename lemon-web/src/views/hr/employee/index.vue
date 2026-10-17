@@ -73,8 +73,8 @@
             </template>
             <template v-else-if="column.key === 'status'">
               <DictTag type="hr_emp_status" :value="record.status" />
-              <div v-if="record.status === 'PROBATION'" class="sub-text">{{ $t('hr.employee.regularOn', { date: record.regularDate || '-' }) }}</div>
-              <div v-else-if="record.status === 'LEFT'" class="sub-text">{{ $t('hr.employee.leftOn', { date: record.leaveDate }) }}</div>
+              <div v-if="record.status === EmployeeStatus.PROBATION" class="sub-text">{{ $t('hr.employee.regularOn', { date: record.regularDate || '-' }) }}</div>
+              <div v-else-if="record.status === EmployeeStatus.LEFT" class="sub-text">{{ $t('hr.employee.leftOn', { date: record.leaveDate }) }}</div>
             </template>
             <template v-else-if="column.key === 'account'">
               <span v-if="record.username">{{ record.username }}</span>
@@ -85,11 +85,11 @@
                 <a-button v-perm="'hr:employee:edit'" type="link" size="small" @click="drawer.openEdit(record)">
                   <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
                 </a-button>
-                <a-dropdown v-if="record.status !== 'LEFT' && userStore.hasPerm('hr:employee:change')">
+                <a-dropdown v-if="record.status !== EmployeeStatus.LEFT && userStore.hasPerm('hr:employee:change')">
                   <a-button type="link" size="small">{{ $t('hr.employee.change') }}<DownOutlined /></a-button>
                   <template #overlay>
                     <a-menu @click="({ key }) => openChange(record, key)">
-                      <a-menu-item v-for="t in changeTypes(record)" :key="t.value" :danger="t.value === 'LEAVE'">{{ t.label }}</a-menu-item>
+                      <a-menu-item v-for="t in changeTypes(record)" :key="t.value" :danger="t.value === ChangeType.LEAVE">{{ t.label }}</a-menu-item>
                     </a-menu>
                   </template>
                 </a-dropdown>
@@ -176,7 +176,7 @@
               </a-radio-group>
             </a-form-item>
           </a-col>
-          <a-col v-if="form.status === 'PROBATION'" :xs="24" :sm="8">
+          <a-col v-if="form.status === EmployeeStatus.PROBATION" :xs="24" :sm="8">
             <a-form-item :label="$t('hr.employee.regularDate')" name="regularDate" :extra="$t('hr.employee.regularExtra')">
               <a-date-picker v-model:value="form.regularDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
@@ -222,7 +222,7 @@
         <a-form-item :label="$t('hr.employee.effectiveDate')" name="changeDate" :rules="[{ required: true, message: $t('hr.employee.effectiveDateRequired') }]">
           <a-date-picker v-model:value="changeForm.changeDate" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
-        <template v-if="changeForm.type === 'TRANSFER'">
+        <template v-if="changeForm.type === ChangeType.TRANSFER">
           <a-form-item :label="$t('hr.employee.toDept')" name="deptId" :rules="[{ required: true, message: $t('hr.employee.toDeptRequired') }]">
             <DeptSelect v-model:value="changeForm.deptId" />
           </a-form-item>
@@ -230,17 +230,17 @@
             <PositionSelect v-model:value="changeForm.positionId" />
           </a-form-item>
         </template>
-        <a-form-item v-if="changeForm.type === 'SALARY'" :label="$t('hr.employee.newSalary')" name="salary" :rules="[{ required: true, message: $t('hr.employee.salaryRequired') }]">
+        <a-form-item v-if="changeForm.type === ChangeType.SALARY" :label="$t('hr.employee.newSalary')" name="salary" :rules="[{ required: true, message: $t('hr.employee.salaryRequired') }]">
           <a-input-number v-model:value="changeForm.salary" :min="0" :precision="2" :addon-after="$t('hr.employee.perMonth')" class="full" />
         </a-form-item>
-        <a-form-item :label="changeForm.type === 'LEAVE' ? $t('hr.employee.leaveReason') : $t('common.field.description')" name="reason">
+        <a-form-item :label="changeForm.type === ChangeType.LEAVE ? $t('hr.employee.leaveReason') : $t('common.field.description')" name="reason">
           <a-textarea v-model:value="changeForm.reason" :rows="2" :maxlength="255" />
         </a-form-item>
-        <a-form-item v-if="changeForm.type === 'LEAVE'" :label="$t('hr.employee.handover')" name="handoverUserId" :extra="$t('hr.employee.handoverExtra')">
+        <a-form-item v-if="changeForm.type === ChangeType.LEAVE" :label="$t('hr.employee.handover')" name="handoverUserId" :extra="$t('hr.employee.handoverExtra')">
           <IdentityUserSelect v-model:value="changeForm.handoverUserId" />
         </a-form-item>
-        <a-alert v-if="changeForm.type === 'LEAVE'" type="warning" show-icon :message="$t('hr.employee.leaveTip')" />
-        <a-alert v-if="changeForm.type === 'TRANSFER'" type="info" show-icon :message="$t('hr.employee.transferTip')" />
+        <a-alert v-if="changeForm.type === ChangeType.LEAVE" type="warning" show-icon :message="$t('hr.employee.leaveTip')" />
+        <a-alert v-if="changeForm.type === ChangeType.TRANSFER" type="info" show-icon :message="$t('hr.employee.transferTip')" />
       </a-form>
     </a-modal>
 
@@ -270,10 +270,10 @@
         <a-tabs class="detail-tabs">
           <a-tab-pane key="changes" :tab="$t('hr.employee.changeHistory')">
             <a-timeline>
-              <a-timeline-item v-for="c in changes" :key="c.id" :color="c.type === 'LEAVE' ? 'gray' : c.type === 'REGULAR' ? 'green' : 'blue'">
+              <a-timeline-item v-for="c in changes" :key="c.id" :color="c.type === ChangeType.LEAVE ? 'gray' : c.type === ChangeType.REGULAR ? 'green' : 'blue'">
                 <div>
                   <DictTag type="hr_change_type" :value="c.type" /> {{ c.changeDate }}
-                  <DictTag v-if="c.status && c.status !== 'DONE'" type="sys_approve_status" :value="c.status" />
+                  <DictTag v-if="c.status && c.status !== ApproveStatus.DONE" type="sys_approve_status" :value="c.status" />
                 </div>
                 <div class="sub-text">{{ changeDesc(c) }}</div>
               </a-timeline-item>
@@ -286,7 +286,7 @@
                 <template v-else-if="column.key === 'term'">{{ record.startDate }} ~ {{ record.endDate || $t('hr.contract.openEnded') }}</template>
                 <template v-else-if="column.key === 'status'">
                   <DictTag type="hr_contract_status" :value="record.status" />
-                  <div v-if="record.status === 'ACTIVE' && record.daysLeft != null && record.daysLeft <= 30" class="warn">
+                  <div v-if="record.status === LaborContractStatus.ACTIVE && record.daysLeft != null && record.daysLeft <= 30" class="warn">
                     {{ record.daysLeft < 0 ? $t('hr.contract.overdueDays', { n: -record.daysLeft }) : $t('hr.employee.expiresIn', { n: record.daysLeft }) }}
                   </div>
                   <div v-else-if="record.terminateDate" class="sub-text">{{ record.terminateDate }} {{ record.terminateReason }}</div>
@@ -372,7 +372,9 @@ import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { t } from '@/locales'
+import { useAction } from '@/composables/useAction'
 
+import { ApproveStatus, ChangeType, EmployeeStatus, LaborContractStatus } from '@/constants/enums'
 const userStore = useUserStore()
 const dict = useDict('hr_emp_status', 'hr_emp_type', 'hr_education', 'hr_change_type', 'sys_approve_status', 'hr_contract_type', 'hr_contract_status')
 const showDept = ref(true)
@@ -485,7 +487,7 @@ const rules = {
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, ...Object.fromEntries(FIELDS.map((f) => [f, undefined])), gender: 'M', empType: 'FULL_TIME',
-    status: 'PROBATION', entryDate: dayjs().format('YYYY-MM-DD'), username: undefined }),
+    status: EmployeeStatus.PROBATION, entryDate: dayjs().format('YYYY-MM-DD'), username: undefined }),
   fetch: (record) => getEmployee(record.id),
   create: addEmployee,
   update: updateEmployee,
@@ -494,11 +496,7 @@ const drawer = useFormDrawer({
 })
 const { formRef, form, isEdit } = drawer
 
-async function remove(id) {
-  await deleteEmployee(id)
-  message.success(t('common.msg.deleteSuccess'))
-  reload()
-}
+const remove = useAction(deleteEmployee, { successKey: 'common.msg.deleteSuccess', reload: () => reload() })
 
 // 人事异动
 const changeOpen = ref(false)
@@ -507,7 +505,7 @@ const changeTarget = ref()
 const changeRef = ref()
 const changeForm = reactive({ type: undefined, changeDate: undefined, deptId: undefined, positionId: undefined, salary: undefined, reason: '', handoverUserId: undefined })
 const changeLabel = computed(() => CHANGE_TYPES.find((c) => c.value === changeForm.type)?.label || t('hr.employee.change'))
-const changeTypes = (record) => CHANGE_TYPES.filter((c) => c.value !== 'REGULAR' || record.status === 'PROBATION')
+const changeTypes = (record) => CHANGE_TYPES.filter((c) => c.value !== ChangeType.REGULAR || record.status === EmployeeStatus.PROBATION)
 
 function openChange(record, type) {
   changeTarget.value = record
@@ -569,11 +567,11 @@ async function openDetail(record) {
 
 function changeDesc(c) {
   switch (c.type) {
-    case 'ENTRY':
+    case ChangeType.ENTRY:
       return t('hr.employee.entryDesc', { dept: c.toDeptName || '', position: c.toPositionName || '' })
-    case 'TRANSFER':
+    case ChangeType.TRANSFER:
       return `${c.fromDeptName || '-'} / ${c.fromPositionName || '-'} → ${c.toDeptName || '-'} / ${c.toPositionName || '-'}`
-    case 'SALARY':
+    case ChangeType.SALARY:
       return t('hr.employee.salaryDesc', { from: c.fromSalary ?? '-', to: c.toSalary ?? '-' })
     default:
       return c.reason || ''

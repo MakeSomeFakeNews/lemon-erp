@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.lemon.erp.modules.bi.mapper.BiInsightMapper">
 
-    <select id="selectSalesByPeriod" resultType="java.util.Map">
+    <select id="selectSalesByPeriod" resultType="com.lemon.erp.modules.bi.dto.BiInsight$PeriodRow">
         SELECT period AS "period", SUM(amount) AS "amount", SUM(cost) AS "cost", SUM(profit) AS "profit", SUM(qty) AS "qty"
         FROM bi_fact_sales
         WHERE period &gt;= #{fromPeriod}
@@ -11,7 +11,7 @@
         ORDER BY period
     </select>
 
-    <select id="selectPurchaseByPeriod" resultType="java.util.Map">
+    <select id="selectPurchaseByPeriod" resultType="com.lemon.erp.modules.bi.dto.BiInsight$PeriodRow">
         SELECT period AS "period", SUM(amount) AS "amount"
         FROM bi_fact_purchase
         WHERE period &gt;= #{fromPeriod}
@@ -20,7 +20,7 @@
     </select>
 
     <!-- 收入：60xx、63xx 贷方 - 借方；费用：64xx、66xx、67xx、68xx 借方 - 贷方 -->
-    <select id="selectFinanceByPeriod" resultType="java.util.Map">
+    <select id="selectFinanceByPeriod" resultType="com.lemon.erp.modules.bi.dto.BiInsight$PeriodRow">
         SELECT f.period AS "period",
                SUM(CASE WHEN a.code LIKE '60%' OR a.code LIKE '63%' THEN f.credit - f.debit ELSE 0 END) AS "revenue",
                SUM(CASE WHEN a.code LIKE '64%' OR a.code LIKE '66%' OR a.code LIKE '67%' OR a.code LIKE '68%'
@@ -32,7 +32,7 @@
         ORDER BY f.period
     </select>
 
-    <select id="selectTopCustomers" resultType="java.util.Map">
+    <select id="selectTopCustomers" resultType="com.lemon.erp.modules.bi.dto.BiInsight$TopItem">
         SELECT f.customer_id AS "id", c.name AS "name", SUM(f.amount) AS "amount", SUM(f.profit) AS "profit"
         FROM bi_fact_sales f
         JOIN scm_customer c ON c.id = f.customer_id
@@ -42,7 +42,7 @@
         LIMIT #{limit}
     </select>
 
-    <select id="selectTopMaterials" resultType="java.util.Map">
+    <select id="selectTopMaterials" resultType="com.lemon.erp.modules.bi.dto.BiInsight$TopItem">
         SELECT f.material_id AS "id", m.name AS "name", SUM(f.qty) AS "qty", SUM(f.amount) AS "amount"
         FROM bi_fact_sales f
         JOIN wms_material m ON m.id = f.material_id
@@ -52,7 +52,7 @@
         LIMIT #{limit}
     </select>
 
-    <select id="selectInventoryByCategory" resultType="java.util.Map">
+    <select id="selectInventoryByCategory" resultType="com.lemon.erp.modules.bi.dto.BiInsight$InventoryCategory">
         SELECT COALESCE(category, '') AS "category", SUM(qty) AS "qty", SUM(amount) AS "amount", CAST(MAX(snap_date) AS CHAR(10)) AS "snapDate"
         FROM bi_fact_inventory
         WHERE snap_date = (SELECT MAX(snap_date) FROM bi_fact_inventory)
@@ -60,7 +60,7 @@
         ORDER BY SUM(amount) DESC
     </select>
 
-    <select id="selectLive" resultType="java.util.Map">
+    <select id="selectLive" resultType="com.lemon.erp.modules.bi.dto.BiInsight$CockpitKpi">
         SELECT
             (SELECT COALESCE(SUM(amount - settled_amount), 0) FROM fin_bill WHERE kind = 'AR') AS "arBalance",
             (SELECT COALESCE(SUM(amount - settled_amount), 0) FROM fin_bill
@@ -79,7 +79,7 @@
             (SELECT COUNT(*) FROM crm_ticket WHERE status IN ('OPEN', 'PROCESSING') AND due_time &lt; #{now}) AS "overdueTickets"
     </select>
 
-    <select id="selectAbcSource" resultType="java.util.Map">
+    <select id="selectAbcSource" resultType="com.lemon.erp.modules.bi.dto.BiInsight$AbcRow">
         SELECT f.material_id AS "materialId", m.code AS "code", m.name AS "name", m.category AS "category",
                SUM(f.qty) AS "qty", SUM(f.cost) AS "cost", SUM(f.amount) AS "amount"
         FROM bi_fact_sales f
@@ -89,7 +89,7 @@
         HAVING SUM(f.amount) &gt; 0
     </select>
 
-    <select id="selectSlowMoving" resultType="java.util.Map">
+    <select id="selectSlowMoving" resultType="com.lemon.erp.modules.bi.dto.BiInsight$SlowMovingRow">
         SELECT s.material_id AS "materialId", m.code AS "code", m.name AS "name", m.category AS "category", m.unit AS "unit",
                SUM(s.qty) AS "qty",
                (SELECT CAST(MAX(f.create_time) AS CHAR(19)) FROM wms_stock_flow f

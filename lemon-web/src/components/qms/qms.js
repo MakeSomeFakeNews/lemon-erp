@@ -1,6 +1,7 @@
 /** 质量管理的常量与工具 */
 import { t } from '@/locales'
 
+import { SamplingMode } from '@/constants/enums'
 /** GB/T 2828.1 检验水平：特殊检验水平 S-1 ~ S-4（小样本、破坏性检验），一般检验水平 I ~ III（通常用 II） */
 export const INSPECTION_LEVELS = [
   { value: 'S1', label: 'S-1' },
@@ -21,8 +22,8 @@ export const levelLabel = (v) => INSPECTION_LEVELS.find((l) => l.value === v)?.l
 /** 方案的抽样说明 */
 export function samplingText(plan) {
   if (!plan) return ''
-  if (plan.samplingMode === 'FULL') return t('qms.common.full')
-  if (plan.samplingMode === 'FIXED') return t('qms.common.fixed', { qty: Number(plan.fixedQty), ac: plan.acceptQty ?? 0 })
+  if (plan.samplingMode === SamplingMode.FULL) return t('qms.common.full')
+  if (plan.samplingMode === SamplingMode.FIXED) return t('qms.common.fixed', { qty: Number(plan.fixedQty), ac: plan.acceptQty ?? 0 })
   return t('qms.common.aql', { aql: Number(plan.aql), level: levelLabel(plan.inspectionLevel) })
 }
 

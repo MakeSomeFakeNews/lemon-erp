@@ -1,8 +1,9 @@
 import dayjs from 'dayjs'
 import { t } from '@/locales'
 
+import { OpportunityStage } from '@/constants/enums'
 /** 进行中的销售阶段（看板列），与后端 CrmConstants.OPEN_STAGES 一致 */
-export const OPEN_STAGES = ['INITIAL', 'NEEDS', 'PROPOSAL', 'NEGOTIATION']
+export const OPEN_STAGES = [OpportunityStage.INITIAL, OpportunityStage.NEEDS, OpportunityStage.PROPOSAL, OpportunityStage.NEGOTIATION]
 export const ALL_STAGES = [...OPEN_STAGES, 'WON', 'LOST']
 /** 各阶段默认赢单概率 */
 export const STAGE_PROBABILITY = { INITIAL: 10, NEEDS: 30, PROPOSAL: 50, NEGOTIATION: 80, WON: 100, LOST: 0 }
@@ -20,9 +21,9 @@ export const now = () => dayjs().format('YYYY-MM-DD HH:mm:ss')
 export const isPast = (t) => !!t && dayjs(t).isBefore(dayjs())
 
 /** 剩余时间：3 天 2 小时 / 5 小时 20 分；已过返回 null */
-export function remaining(t) {
-  if (!t) return null
-  const minutes = dayjs(t).diff(dayjs(), 'minute')
+export function remaining(deadline) {
+  if (!deadline) return null
+  const minutes = dayjs(deadline).diff(dayjs(), 'minute')
   if (minutes < 0) return null
   const d = Math.floor(minutes / 1440)
   const h = Math.floor((minutes % 1440) / 60)
@@ -31,8 +32,8 @@ export function remaining(t) {
 }
 
 /** 超时时长 */
-export function overdueText(t) {
-  const minutes = dayjs().diff(dayjs(t), 'minute')
+export function overdueText(deadline) {
+  const minutes = dayjs().diff(dayjs(deadline), 'minute')
   const d = Math.floor(minutes / 1440)
   const h = Math.floor((minutes % 1440) / 60)
   return d ? t('crm.common.overdueDH', { d, h }) : t('crm.common.overdueHM', { h, m: minutes % 60 })

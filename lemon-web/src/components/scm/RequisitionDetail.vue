@@ -22,14 +22,14 @@
         </a-descriptions>
 
         <a-alert
-          v-if="detail.status === 'APPROVING'"
+          v-if="detail.status === RequisitionStatus.APPROVING"
           type="info"
           show-icon
           class="doc-desc"
           :message="$t('scm.requisition.approvingTip')"
         />
         <a-alert
-          v-else-if="detail.status === 'APPROVED'"
+          v-else-if="detail.status === RequisitionStatus.APPROVED"
           type="info"
           show-icon
           class="doc-desc"
@@ -85,6 +85,7 @@ import { closeRequisition, getRequisition, requisitionToOrder, submitRequisition
 import { useUserStore } from '@/store/user'
 import { formatQty } from '@/components/wms/wms'
 
+import { RequisitionStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 /** 请购单详情：提交审批、生成采购订单、关闭。触发 edit(record)、changed */
@@ -164,10 +165,10 @@ const actions = computed(() => {
   const d = detail.value
   if (!d) return []
   const list = []
-  if (d.status === 'DRAFT' && can('edit')) {
+  if (d.status === RequisitionStatus.DRAFT && can('edit')) {
     list.push({ key: 'edit', label: t('common.action.edit'), icon: EditOutlined, run: () => emit('edit', d) })
   }
-  if (['DRAFT', 'APPROVED'].includes(d.status) && can('edit')) {
+  if ([RequisitionStatus.DRAFT, RequisitionStatus.APPROVED].includes(d.status) && can('edit')) {
     list.push({
       key: 'close',
       label: t('scm.requisition.close'),
@@ -176,7 +177,7 @@ const actions = computed(() => {
       run: () => confirmAction(t('scm.requisition.confirmClose'), t('scm.requisition.confirmCloseTip'), closeRequisition, t('scm.requisition.closed'))
     })
   }
-  if (d.status === 'DRAFT' && can('edit')) {
+  if (d.status === RequisitionStatus.DRAFT && can('edit')) {
     list.push({
       key: 'submit',
       label: t('common.action.submit'),
@@ -188,7 +189,7 @@ const actions = computed(() => {
         )
     })
   }
-  if (d.status === 'APPROVED' && can('order')) {
+  if (d.status === RequisitionStatus.APPROVED && can('order')) {
     list.push({
       key: 'order',
       label: t('scm.requisition.toOrder'),

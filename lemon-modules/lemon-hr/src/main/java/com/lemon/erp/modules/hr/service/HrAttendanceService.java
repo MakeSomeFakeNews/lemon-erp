@@ -23,7 +23,7 @@ import com.lemon.erp.modules.hr.entity.HrShift;
 import com.lemon.erp.modules.hr.mapper.HrAttendanceMapper;
 import com.lemon.erp.modules.hr.mapper.HrEmployeeMapper;
 import com.lemon.erp.modules.hr.mapper.HrLeaveMapper;
-import com.lemon.erp.modules.hr.model.HrConstants;
+import com.lemon.erp.modules.hr.model.HrRules;
 import com.lemon.erp.modules.system.service.SysDeptService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -62,6 +62,7 @@ public class HrAttendanceService {
     private final HrEmployeeService employeeService;
     private final SysDeptService deptService;
     private final HrPayrollLock payrollLock;
+    private final HrRuleService ruleService;
 
     @DataPermission(table = "hr_employee", deptColumn = "dept_id", userColumn = "user_id")
     public PageResult<HrAttendance> page(long current, long size, String keyword, Long deptId, String status,
@@ -157,15 +158,16 @@ public class HrAttendanceService {
         if (e == null) {
             return null;
         }
+        BigDecimal dayHours = ruleService.current().dayHours();
         BigDecimal leave = BigDecimal.ZERO;
         BigDecimal overtime = BigDecimal.ZERO;
         for (HrLeave l : leaveMapper.selectApprovedOverlapping(List.of(e.getId()), date.atStartOfDay(), date.plusDays(1).atStartOfDay())) {
             LocalDate start = l.getStartTime().toLocalDate();
             LocalDate end = l.getEndTime().toLocalDate();
-            // 当天开始并结束的按申请时长，跨天的按全天（不超过 8 小时）
-            BigDecimal hours = start.equals(date) && end.equals(date) ? l.getHours() : l.getHours().min(HrConstants.DAY_HOURS);
+            // 当天开始并结束的按申请时长，跨天的按全天（不超过每日工时，默认 8 小时）
+            BigDecimal hours = start.equals(date) && end.equals(date) ? l.getHours() : l.getHours().min(dayHours);
             if (start.isBefore(date) && end.isAfter(date)) {
-                hours = HrConstants.DAY_HOURS;
+                hours = dayHours;
             }
             if (l.getKind() == LeaveKind.OVERTIME) {
                 overtime = overtime.add(hours);
@@ -175,7 +177,7 @@ public class HrAttendanceService {
         }
         HrAttendance a = attendanceMapper.selectOne(Wrappers.<HrAttendance>lambdaQuery()
                 .eq(HrAttendance::getEmployeeId, e.getId()).eq(HrAttendance::getWorkDate, date));
-        return new DayWork(leave.min(HrConstants.DAY_HOURS), overtime, a == null ? null : a.getWorkHours());
+        return new DayWork(leave.min(dayHours), overtime, a == null ? null : a.getWorkHours());
     }
 
     /**
@@ -191,8 +193,13 @@ public class HrAttendanceService {
         return summarize(employees, ym);
     }
 
-    /** 员工的月度汇总（工资计算、员工自助） */
+    /** 员工的月度汇总（员工自助、考勤页面） */
     public List<AttendanceSummary> summarize(List<HrEmployee> employees, YearMonth ym) {
+        return summarize(employees, ym, ruleService.current());
+    }
+
+    /** 员工的月度汇总，加班倍数按给定的规则（工资计算） */
+    public List<AttendanceSummary> summarize(List<HrEmployee> employees, YearMonth ym, HrRules rules) {
         if (employees.isEmpty()) {
             return List.of();
         }
@@ -250,7 +257,7 @@ public class HrAttendanceService {
                         continue;
                     }
                     overtime = overtime.add(l.getHours());
-                    weighted = weighted.add(l.getHours().multiply(overtimeRate(HrCalendarService.dayType(l.getStartTime().toLocalDate(), holidays))));
+                    weighted = weighted.add(l.getHours().multiply(overtimeRate(HrCalendarService.dayType(l.getStartTime().toLocalDate(), holidays), rules)));
                 } else {
                     leaveHours.merge(l.getType(), l.getHours(), BigDecimal::add);
                 }
@@ -318,11 +325,12 @@ public class HrAttendanceService {
         a.setWorkHours(BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP));
     }
 
-    static BigDecimal overtimeRate(HrCalendarService.DayType type) {
+    /** 加班倍数（业务参数，默认工作日 1.5、休息日 2、法定节假日 3） */
+    static BigDecimal overtimeRate(HrCalendarService.DayType type, HrRules rules) {
         return switch (type) {
-            case WORKDAY -> HrConstants.OVERTIME_WORKDAY;
-            case RESTDAY -> HrConstants.OVERTIME_RESTDAY;
-            case HOLIDAY -> HrConstants.OVERTIME_HOLIDAY;
+            case WORKDAY -> rules.overtimeWorkday();
+            case RESTDAY -> rules.overtimeRestday();
+            case HOLIDAY -> rules.overtimeHoliday();
         };
     }
 

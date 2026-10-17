@@ -28,7 +28,7 @@
           <template v-else-if="column.key === 'category'">
             <DictTag type="fin_account_category" :value="record.category" />
           </template>
-          <template v-else-if="column.key === 'direction'">{{ record.direction === 'DEBIT' ? $t('fin.account.dr') : $t('fin.account.cr') }}</template>
+          <template v-else-if="column.key === 'direction'">{{ record.direction === AccountDirection.DEBIT ? $t('fin.account.dr') : $t('fin.account.cr') }}</template>
           <template v-else-if="column.key === 'auxItems'">
             <a-tag v-for="a in auxLabels(record)" :key="a" :bordered="false" class="aux-tag">{{ a }}</a-tag>
           </template>
@@ -109,7 +109,9 @@ import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { AUX_ITEMS, auxItemsOf } from '@/components/fin/fin'
+import { useAction } from '@/composables/useAction'
 
+import { AccountDirection } from '@/constants/enums'
 const { t } = useI18n()
 const userStore = useUserStore()
 const auxLabels = (record) => auxItemsOf(record).map((v) => AUX_ITEMS.find((a) => a.value === v)?.label).filter(Boolean)
@@ -191,11 +193,7 @@ async function submit() {
   }
 }
 
-async function remove(id) {
-  await deleteAccount(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteAccount, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

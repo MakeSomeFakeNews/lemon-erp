@@ -309,7 +309,7 @@
               </template>
             </template>
           </a-table>
-          <a-button type="dashed" block class="add-row" :disabled="form.supplyType === 'PHANTOM'" @click="addSubstitute">
+          <a-button type="dashed" block class="add-row" :disabled="form.supplyType === SupplyType.PHANTOM" @click="addSubstitute">
             <template #icon><PlusOutlined /></template>{{ $t('wms.material.addSubstitute') }}
           </a-button>
         </template>
@@ -445,6 +445,7 @@ import { toOptions } from '@/utils/dict'
 import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
 import { useCustomColumns, useCustomFields } from '@/composables/useCustomFields'
 
+import { CostMethod, SupplyType } from '@/constants/enums'
 const { t } = useI18n()
 
 /**
@@ -470,8 +471,8 @@ const QTY_KEYS = ['requiredQty', 'issuedQty', 'toIssueQty', 'allocatedQty']
 const belowSafety = (r) => r.safetyStock != null && Number(r.onHandQty) < Number(r.safetyStock)
 const leadText = (p) => {
   if (p.leadDays != null) return t('wms.material.days', { n: p.leadDays })
-  if (p.effectiveSupplyType === 'MAKE' && p.bomLeadDays != null) return t('wms.material.daysBom', { n: p.bomLeadDays })
-  if (['BUY', 'OUTSOURCE'].includes(p.effectiveSupplyType) && p.supplierLeadDays != null) return t('wms.material.daysSupplier', { n: p.supplierLeadDays })
+  if (p.effectiveSupplyType === SupplyType.MAKE && p.bomLeadDays != null) return t('wms.material.daysBom', { n: p.bomLeadDays })
+  if ([SupplyType.BUY, SupplyType.OUTSOURCE].includes(p.effectiveSupplyType) && p.supplierLeadDays != null) return t('wms.material.daysSupplier', { n: p.supplierLeadDays })
   return '-'
 }
 /** 列表中的计划参数摘要 */
@@ -627,7 +628,7 @@ const drawer = useFormDrawer(
       defaultWarehouseId: null,
       defaultLocationId: null,
       refCost: null,
-      costMethod: 'WEIGHTED',
+      costMethod: CostMethod.WEIGHTED,
       remark: '',
       supplyType: '',
       leadDays: null,
@@ -690,7 +691,7 @@ const drawer = useFormDrawer(
             fqcRequired: f.fqcRequired || 0,
             planner: f.planner || null,
             substitutes:
-              f.supplyType === 'PHANTOM'
+              f.supplyType === SupplyType.PHANTOM
                 ? []
                 : f.substitutes.map(({ substituteId, ratio, priority, remark }) => ({ substituteId, ratio, priority, remark: remark || null }))
           }

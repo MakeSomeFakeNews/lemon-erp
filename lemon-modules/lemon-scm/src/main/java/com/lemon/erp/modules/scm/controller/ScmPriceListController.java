@@ -4,11 +4,11 @@ import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.scm.dto.ScmPriceViews;
 import com.lemon.erp.modules.scm.entity.ScmPriceControl;
 import com.lemon.erp.modules.scm.entity.ScmPriceList;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.service.ScmPriceControlService;
-import java.util.Map;
 import com.lemon.erp.modules.scm.service.ScmPriceListService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -123,8 +123,8 @@ public class ScmPriceListController {
     /** 往来单位某物料的历史成交价（kind 为 sales / purchase），订单录入时参考 */
     @GetMapping("/history")
     @PreAuthorize("@ss.hasAnyPerm('scm:price:list', 'scm:sales:list', 'scm:purchase:list')")
-    public R<List<Map<String, Object>>> history(@RequestParam String kind, @RequestParam Long partnerId, @RequestParam Long materialId,
-                                                @RequestParam(defaultValue = "5") int limit) {
+    public R<List<ScmPriceViews.OrderPriceHistory>> history(@RequestParam String kind, @RequestParam Long partnerId, @RequestParam Long materialId,
+                                                            @RequestParam(defaultValue = "5") int limit) {
         return R.ok(controlService.history(OrderKind.ofPath(kind), partnerId, materialId, limit));
     }
 }

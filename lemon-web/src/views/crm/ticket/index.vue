@@ -61,7 +61,7 @@
             <span v-else class="sub-text">{{ $t('crm.common.unassigned') }}</span>
           </template>
           <template v-else-if="column.key === 'due'">
-            <template v-if="['OPEN', 'PROCESSING'].includes(record.status)">
+            <template v-if="[TicketStatus.OPEN, TicketStatus.PROCESSING].includes(record.status)">
               <div v-if="record.overdue" class="danger">{{ overdueText(record.dueTime) }}</div>
               <div v-else>{{ $t('crm.ticket.remain', { time: remaining(record.dueTime) }) }}</div>
               <div class="sub-text">{{ record.dueTime }}</div>
@@ -78,10 +78,10 @@
               <a-button type="link" size="small" @click="openDetail(record)">
                 <template #icon><EyeOutlined /></template>{{ $t('crm.ticket.handle') }}
               </a-button>
-              <a-button v-if="['OPEN', 'PROCESSING'].includes(record.status)" v-perm="'crm:ticket:handle'" type="link" size="small" @click="drawer.openEdit(record)">
+              <a-button v-if="[TicketStatus.OPEN, TicketStatus.PROCESSING].includes(record.status)" v-perm="'crm:ticket:handle'" type="link" size="small" @click="drawer.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
-              <span v-if="record.status === 'OPEN'" v-perm="'crm:ticket:remove'">
+              <span v-if="record.status === TicketStatus.OPEN" v-perm="'crm:ticket:remove'">
                 <a-popconfirm :title="$t('crm.ticket.confirmDelete', { no: record.ticketNo })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
@@ -180,7 +180,9 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { overdueText, remaining } from '@/components/crm/crm'
+import { useAction } from '@/composables/useAction'
 
+import { TicketStatus } from '@/constants/enums'
 const { t } = useI18n()
 const dict = useDict('crm_ticket_type', 'crm_ticket_priority', 'crm_ticket_status', 'crm_ticket_channel')
 
@@ -282,11 +284,7 @@ function applyWarranty() {
   }
 }
 
-async function remove(id) {
-  await deleteTicket(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteTicket, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 const detailOpen = ref(false)
 const detailId = ref()

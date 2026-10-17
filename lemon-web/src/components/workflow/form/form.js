@@ -1,5 +1,6 @@
 import { t } from '@/locales'
 
+import { FormFieldType } from '@/constants/enums'
 /** 流程表单字段（与后端 FormField 对应） */
 
 export const FIELD_TYPES = [
@@ -18,7 +19,7 @@ export const isReservedKey = (key) => RESERVED_KEYS.includes(key) || /^(nrOf|wf)
 export function createField(fields) {
   let i = fields.length + 1
   while (fields.some((f) => f.field === `field${i}`)) i++
-  return { field: `field${i}`, label: t('workflow.form.fieldN', { n: i }), type: 'INPUT', required: false, placeholder: '', options: [] }
+  return { field: `field${i}`, label: t('workflow.form.fieldN', { n: i }), type: FormFieldType.INPUT, required: false, placeholder: '', options: [] }
 }
 
 /** 返回错误提示列表 */
@@ -32,11 +33,11 @@ export function validateFields(fields = []) {
     else if (isReservedKey(f.field)) errors.push(t('workflow.form.keyReserved', { name, key: f.field }))
     else if (keys.has(f.field)) errors.push(t('workflow.form.keyDuplicate', { key: f.field }))
     keys.add(f.field)
-    if (f.type === 'SELECT' && !f.options?.length) errors.push(t('workflow.form.needOption', { name }))
+    if (f.type === FormFieldType.SELECT && !f.options?.length) errors.push(t('workflow.form.needOption', { name }))
   })
   return errors
 }
 
 /** 提交前整理：非下拉字段不保留 options */
 export const normalizeFields = (fields = []) =>
-  fields.map((f) => ({ ...f, options: f.type === 'SELECT' ? f.options || [] : undefined }))
+  fields.map((f) => ({ ...f, options: f.type === FormFieldType.SELECT ? f.options || [] : undefined }))

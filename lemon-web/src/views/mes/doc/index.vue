@@ -74,7 +74,7 @@
     <SubPage :open="detailOpen" :title="detail ? `${detail.name} ${detail.version}` : ''" width="min(900px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <a-space>
-          <template v-if="detail.status === 'DRAFT'">
+          <template v-if="detail.status === MesDocStatus.DRAFT">
             <a-button v-perm="'mes:doc:edit'" @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
             <span v-perm="'mes:doc:remove'">
               <a-popconfirm :title="$t('mes.doc.deleteVersion')" @confirm="remove"><a-button danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
@@ -85,7 +85,7 @@
               </a-popconfirm>
             </span>
           </template>
-          <a-button v-if="detail.status === 'RELEASED' && isLatest" v-perm="'mes:doc:add'" type="primary" @click="openRevise">{{ $t('mes.doc.revise') }}</a-button>
+          <a-button v-if="detail.status === MesDocStatus.RELEASED && isLatest" v-perm="'mes:doc:add'" type="primary" @click="openRevise">{{ $t('mes.doc.revise') }}</a-button>
         </a-space>
       </template>
       <template v-if="detail">
@@ -99,7 +99,7 @@
           <a-descriptions-item v-if="detail.description" :label="$t('common.field.description')" :span="3">{{ detail.description }}</a-descriptions-item>
         </a-descriptions>
         <div class="section-title">{{ $t('mes.doc.files') }}</div>
-        <AttachmentPanel biz-type="mes_doc" :biz-id="detail.id" :editable="detail.status === 'DRAFT' && userStore.hasPerm('mes:doc:edit')" />
+        <AttachmentPanel biz-type="mes_doc" :biz-id="detail.id" :editable="detail.status === MesDocStatus.DRAFT && userStore.hasPerm('mes:doc:edit')" />
         <div class="section-title">{{ $t('mes.doc.versions') }}</div>
         <a-table row-key="id" size="small" :columns="versionColumns" :data-source="versions" :pagination="false">
           <template #bodyCell="{ column, record }">
@@ -146,6 +146,7 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
+import { MesDocStatus } from '@/constants/enums'
 /** 技术文档：图纸、规格书、作业指导书等，按版本发布，发布新版本时旧版本作废 */
 const dict = useDict('mes_doc_type', 'mes_doc_status')
 const userStore = useUserStore()

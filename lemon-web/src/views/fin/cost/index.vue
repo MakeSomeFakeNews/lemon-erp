@@ -185,12 +185,13 @@ import { currentPeriod, formatMoney, moneyOrBlank } from '@/components/fin/fin'
 import { useDict } from '@/composables/useDict'
 import { useI18n } from 'vue-i18n'
 
+import { CostRunKind } from '@/constants/enums'
 const { t } = useI18n()
 
 const period = ref(currentPeriod())
 const runs = ref([])
 const current = computed(() => runs.value.find((r) => r.period === period.value))
-const isOpening = computed(() => current.value?.kind === 'OPENING')
+const isOpening = computed(() => current.value?.kind === CostRunKind.OPENING)
 const tab = ref('materials')
 const keyword = ref('')
 

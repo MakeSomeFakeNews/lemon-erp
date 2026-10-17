@@ -73,7 +73,9 @@ import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { addPriceControl, deletePriceControl, pagePriceControl, updatePriceControl } from '@/api/scm/sourcing'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
+import { useAction } from '@/composables/useAction'
 
+import { PriceControlMode } from '@/constants/enums'
 const { t } = useI18n()
 
 /** 价格控制：物料的最低销售价、最高采购价及控制方式 */
@@ -113,7 +115,7 @@ function openForm(record) {
         minSalePrice: record.minSalePrice != null ? Number(record.minSalePrice) : undefined,
         maxPurchasePrice: record.maxPurchasePrice != null ? Number(record.maxPurchasePrice) : undefined
       }
-    : { materialId: undefined, minSalePrice: undefined, maxPurchasePrice: undefined, controlMode: 'WARN', remark: '' }
+    : { materialId: undefined, minSalePrice: undefined, maxPurchasePrice: undefined, controlMode: PriceControlMode.WARN, remark: '' }
   formOpen.value = true
 }
 async function submit() {
@@ -140,11 +142,7 @@ async function submit() {
     saving.value = false
   }
 }
-async function remove(id) {
-  await deletePriceControl(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deletePriceControl, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

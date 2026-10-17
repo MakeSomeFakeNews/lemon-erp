@@ -48,8 +48,8 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
-              <a-button v-if="record.status === 'AVAILABLE'" v-perm="'mes:mold:issue'" type="link" size="small" @click="openAction(record, 'issue')">{{ $t('mes.mold.action.issue') }}</a-button>
-              <a-button v-if="record.status === 'IN_USE'" v-perm="'mes:mold:issue'" type="link" size="small" @click="openAction(record, 'return')">{{ $t('mes.mold.action.return') }}</a-button>
+              <a-button v-if="record.status === MoldStatus.AVAILABLE" v-perm="'mes:mold:issue'" type="link" size="small" @click="openAction(record, 'issue')">{{ $t('mes.mold.action.issue') }}</a-button>
+              <a-button v-if="record.status === MoldStatus.IN_USE" v-perm="'mes:mold:issue'" type="link" size="small" @click="openAction(record, 'return')">{{ $t('mes.mold.action.return') }}</a-button>
             </span>
           </template>
         </template>
@@ -130,15 +130,15 @@
     <SubPage :open="detailOpen" :title="detail ? `${detail.code} ${detail.name}` : ''" width="min(1000px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <a-space wrap>
-          <template v-if="detail.status === 'AVAILABLE'">
+          <template v-if="detail.status === MoldStatus.AVAILABLE">
             <a-button v-perm="'mes:mold:issue'" type="primary" @click="openAction(detail, 'issue')">{{ $t('mes.mold.action.issue') }}</a-button>
             <a-button v-perm="'mes:mold:edit'" @click="openAction(detail, 'repair')">{{ $t('mes.mold.action.repair') }}</a-button>
           </template>
-          <a-button v-if="detail.status === 'IN_USE'" v-perm="'mes:mold:issue'" type="primary" @click="openAction(detail, 'return')">{{ $t('mes.mold.action.return') }}</a-button>
-          <a-button v-if="detail.status === 'REPAIR'" v-perm="'mes:mold:edit'" type="primary" @click="openAction(detail, 'repaired')">{{ $t('mes.mold.action.repaired') }}</a-button>
-          <a-button v-if="['AVAILABLE', 'REPAIR'].includes(detail.status)" v-perm="'mes:mold:edit'" danger @click="openAction(detail, 'scrap')">{{ $t('mes.mold.action.scrap') }}</a-button>
-          <a-button v-if="detail.status !== 'SCRAPPED'" v-perm="'mes:mold:edit'" @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
-          <span v-if="detail.status !== 'IN_USE'" v-perm="'mes:mold:remove'">
+          <a-button v-if="detail.status === MoldStatus.IN_USE" v-perm="'mes:mold:issue'" type="primary" @click="openAction(detail, 'return')">{{ $t('mes.mold.action.return') }}</a-button>
+          <a-button v-if="detail.status === MoldStatus.REPAIR" v-perm="'mes:mold:edit'" type="primary" @click="openAction(detail, 'repaired')">{{ $t('mes.mold.action.repaired') }}</a-button>
+          <a-button v-if="[MoldStatus.AVAILABLE, MoldStatus.REPAIR].includes(detail.status)" v-perm="'mes:mold:edit'" danger @click="openAction(detail, 'scrap')">{{ $t('mes.mold.action.scrap') }}</a-button>
+          <a-button v-if="detail.status !== MoldStatus.SCRAPPED" v-perm="'mes:mold:edit'" @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
+          <span v-if="detail.status !== MoldStatus.IN_USE" v-perm="'mes:mold:remove'">
             <a-popconfirm :title="$t('mes.mold.deleteConfirm')" @confirm="remove"><a-button danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
           </span>
         </a-space>
@@ -222,6 +222,7 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+import { MoldStatus } from '@/constants/enums'
 /** 模具工装：寿命按模次计，报工时按 ⌈产出 / 模穴数⌉ 累计；达到预警比例、设计寿命时提醒，达到寿命的不能再领用 */
 const dict = useDict('mes_mold_type', 'mes_mold_status', 'mes_mold_action')
 const { t } = useI18n()

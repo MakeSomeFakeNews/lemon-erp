@@ -38,7 +38,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== 'PENDING' || !!r.waveNo }) }"
+        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== DeliveryStatus.PENDING || !!r.waveNo }) }"
         :scroll="{ x: 1400, y: '100%' }"
         @change="onTableChange"
       >
@@ -96,6 +96,7 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useI18n } from 'vue-i18n'
 
+import { DeliveryStatus } from '@/constants/enums'
 const { t } = useI18n()
 const dict = useDict('scm_delivery_status')
 

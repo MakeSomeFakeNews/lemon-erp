@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.wms.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.framework.data.Queries;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -128,8 +129,8 @@ public class StockService {
 
     /** 冻结仓库的盘点（未完成）期间，该仓库不能出入库、调拨 */
     private void checkNotFrozen(Set<Long> warehouseIds) {
-        WmsCheck check = checkMapper.selectOne(Wrappers.<WmsCheck>lambdaQuery().in(WmsCheck::getWarehouseId, warehouseIds)
-                .eq(WmsCheck::getFreeze, 1).in(WmsCheck::getStatus, DocStatus.DRAFT, DocStatus.APPROVING).last("LIMIT 1"));
+        WmsCheck check = Queries.first(checkMapper, Wrappers.<WmsCheck>lambdaQuery().in(WmsCheck::getWarehouseId, warehouseIds)
+                .eq(WmsCheck::getFreeze, 1).in(WmsCheck::getStatus, DocStatus.DRAFT, DocStatus.APPROVING));
         if (check != null) {
             WmsWarehouse w = warehouseMapper.selectById(check.getWarehouseId());
             throw new BizException("wms.error.warehouseCountedNoInboundOutboundTransfer",

@@ -9,14 +9,14 @@
         <PartnerSelect
           :key="kind"
           v-model:value="partnerId"
-          :type="kind === 'AR' ? 'customer' : 'supplier'"
-          :placeholder="kind === 'AR' ? $t('fin.partnerStatement.selectCustomer') : $t('fin.partnerStatement.selectSupplier')"
+          :type="kind === BillKind.AR ? 'customer' : 'supplier'"
+          :placeholder="kind === BillKind.AR ? $t('fin.partnerStatement.selectCustomer') : $t('fin.partnerStatement.selectSupplier')"
           class="partner"
         />
         <a-range-picker v-model:value="range" value-format="YYYY-MM-DD" :allow-clear="false" />
         <a-button type="primary" :disabled="!partnerId" @click="load">{{ $t('common.action.query') }}</a-button>
         <a-button :disabled="!data" @click="print"><template #icon><PrinterOutlined /></template>{{ $t('common.action.print') }}</a-button>
-        <span class="sub-text">{{ kind === 'AR' ? $t('fin.partnerStatement.arTip') : $t('fin.partnerStatement.apTip') }}</span>
+        <span class="sub-text">{{ kind === BillKind.AR ? $t('fin.partnerStatement.arTip') : $t('fin.partnerStatement.apTip') }}</span>
       </div>
 
       <template v-if="data">
@@ -36,8 +36,8 @@
         :data-source="rows"
         :loading="loading"
         :pagination="false"
-        :row-class-name="(r) => (r.type === 'OPENING' ? 'total-row' : '')"
-        :locale="{ emptyText: partnerId ? $t('common.msg.noData') : kind === 'AR' ? $t('fin.partnerStatement.selectCustomerFirst') : $t('fin.partnerStatement.selectSupplierFirst') }"
+        :row-class-name="(r) => (r.type === OPENING ? 'total-row' : '')"
+        :locale="{ emptyText: partnerId ? $t('common.msg.noData') : kind === BillKind.AR ? $t('fin.partnerStatement.selectCustomerFirst') : $t('fin.partnerStatement.selectSupplierFirst') }"
         :scroll="{ x: 1100, y: '100%' }"
       >
         <template #bodyCell="{ column, record }">
@@ -78,6 +78,7 @@ import { useDict } from '@/composables/useDict'
 import { findDict } from '@/utils/dict'
 import { printDocs } from '@/utils/print'
 
+import { BillKind, PartnerLedgerType } from '@/constants/enums'
 /** 往来对账单：客户 / 供应商在期间内的应收应付、收付款、预收预付和逐笔余额，可打印给对方核对 */
 const { t } = useI18n()
 const dict = useDict('fin_bill_source', 'fin_settle_method')
@@ -88,7 +89,7 @@ const data = ref()
 const loading = ref(false)
 
 const labels = computed(() =>
-  kind.value === 'AR'
+  kind.value === BillKind.AR
     ? {
         partner: t('fin.partnerStatement.customer'),
         billAmount: t('fin.partnerStatement.arAmount'),
@@ -124,8 +125,10 @@ const columns = computed(() => [
   { title: t('fin.partnerStatement.balance'), key: 'balance', width: 140, align: 'right' },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true }
 ])
+/** 前端合成的期初行类型（不是后端 PartnerLedgerType 的取值） */
+const OPENING = 'OPENING'
 const rows = computed(() =>
-  data.value ? [{ type: 'OPENING', bizDate: range.value[0], balance: data.value.opening }, ...data.value.rows] : []
+  data.value ? [{ type: OPENING, bizDate: range.value[0], balance: data.value.opening }, ...data.value.rows] : []
 )
 
 function typeText(r) {
@@ -133,8 +136,8 @@ function typeText(r) {
   return { OPENING: t('fin.partnerStatement.opening'), BILL: l.bill, SETTLEMENT: l.settle, ADVANCE: l.advance }[r.type]
 }
 function sourceText(r) {
-  if (r.type === 'OPENING') return ''
-  if (r.type === 'BILL') {
+  if (r.type === OPENING) return ''
+  if (r.type === PartnerLedgerType.BILL) {
     const src = findDict(dict.fin_bill_source, r.sourceType)?.label || r.sourceType || ''
     return [src, r.sourceNo].filter(Boolean).join(' ')
   }

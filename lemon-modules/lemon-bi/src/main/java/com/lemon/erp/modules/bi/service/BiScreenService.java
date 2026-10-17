@@ -2,6 +2,7 @@ package com.lemon.erp.modules.bi.service;
 
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.modules.bi.dto.BiScreen;
 import com.lemon.erp.modules.bi.mapper.BiScreenMapper;
 import com.lemon.erp.modules.bi.model.ScreenKey;
 import com.lemon.erp.modules.mes.dto.BoardView;
@@ -21,6 +22,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * 数据大屏：生产车间、生产进度、仓储物流、销售经营、质量管理。每个大屏一次返回全部数据，页面定时刷新；
@@ -38,277 +41,228 @@ public class BiScreenService {
     /**
      * @param workCenterId 生产车间、生产进度大屏只统计该工作中心，为空统计全部
      */
-    public Map<String, Object> data(ScreenKey key, Long workCenterId) {
+    public BiScreen.ScreenData data(ScreenKey key, Long workCenterId) {
         LocalDate today = LocalDate.now();
-        Map<String, Object> data = switch (key) {
-            case FACTORY -> factory(today, workCenterId);
-            case PROGRESS -> progress(workCenterId);
-            case WAREHOUSE -> warehouse(today);
-            case SALES -> sales(today);
-            case QUALITY -> quality(today);
+        String name = key.name();
+        String title = Messages.get(key.getLabel());
+        String time = LocalDateTime.now().withNano(0).toString();
+        return switch (key) {
+            case FACTORY -> factory(name, title, time, today, workCenterId);
+            case PROGRESS -> progress(name, title, time, workCenterId);
+            case WAREHOUSE -> warehouse(name, title, time, today);
+            case SALES -> sales(name, title, time, today);
+            case QUALITY -> quality(name, title, time, today);
         };
-        data.put("key", key.name());
-        data.put("title", Messages.get(key.getLabel()));
-        data.put("time", LocalDateTime.now().withNano(0).toString());
-        return data;
     }
 
     // ---------------------------------------------------------------- 生产车间
 
-    private Map<String, Object> factory(LocalDate today, Long wc) {
+    private BiScreen.Factory factory(String key, String title, String time, LocalDate today, Long wc) {
         LocalDate monthBegin = today.withDayOfMonth(1);
-        Map<String, Object> todayReport = screenMapper.reportSum(today, today, wc);
-        Map<String, Object> monthReport = screenMapper.reportSum(monthBegin, today, wc);
-        Map<String, Object> counts = screenMapper.workOrderCounts(today, today.plusDays(1), wc);
-        List<Map<String, Object>> equipments = screenMapper.equipments(today, monthBegin, wc);
-        long running = equipments.stream().filter(e -> EquipmentStatus.RUNNING.name().equals(e.get("status"))).count();
+        BiScreen.ReportSum todayReport = screenMapper.reportSum(today, today, wc);
+        BiScreen.ReportSum monthReport = screenMapper.reportSum(monthBegin, today, wc);
+        BiScreen.WorkOrderCounts counts = screenMapper.workOrderCounts(today, today.plusDays(1), wc);
+        List<BiScreen.Equipment> equipments = screenMapper.equipments(today, monthBegin, wc);
+        long running = equipments.stream().filter(e -> e.getStatus() == EquipmentStatus.RUNNING).count();
 
-        Map<String, Object> kpi = new LinkedHashMap<>();
-        kpi.put("todayGood", todayReport.get("good"));
-        kpi.put("todayScrap", todayReport.get("scrap"));
-        kpi.put("todayYield", yieldRate(todayReport));
-        kpi.put("todayHours", todayReport.get("hours"));
-        kpi.put("monthGood", monthReport.get("good"));
-        kpi.put("monthYield", yieldRate(monthReport));
-        kpi.put("todayFinishedIn", wc == null ? screenMapper.finishedInQty(today) : null);
-        kpi.put("activeOrders", counts.get("active"));
-        kpi.put("overdueOrders", counts.get("overdue"));
-        kpi.put("completedOrders", counts.get("completed"));
-        kpi.put("equipments", equipments.size());
-        kpi.put("runningEquipments", running);
-        kpi.put("runningRate", equipments.isEmpty() ? null
-                : BigDecimal.valueOf(running * 100.0 / equipments.size()).setScale(1, RoundingMode.HALF_UP));
+        BiScreen.FactoryKpi kpi = new BiScreen.FactoryKpi(todayReport.getGood(), todayReport.getScrap(), yieldRate(todayReport),
+                todayReport.getHours(), monthReport.getGood(), yieldRate(monthReport),
+                wc == null ? screenMapper.finishedInQty(today) : null,
+                counts.getActive(), counts.getOverdue(), counts.getCompleted(), equipments.size(), running,
+                equipments.isEmpty() ? null : BigDecimal.valueOf(running * 100.0 / equipments.size()).setScale(1, RoundingMode.HALF_UP));
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("workCenter", wc == null ? null : screenMapper.workCenterName(wc));
-        data.put("kpi", kpi);
-        data.put("trend", fillDays(screenMapper.reportTrend(today.minusDays(TREND_DAYS - 1), today, wc), today, "good", "scrap"));
-        data.put("workCenters", screenMapper.workCenterLoad(today, wc));
-        data.put("equipments", equipments);
-        data.put("stopReasons", screenMapper.stopReasons(monthBegin, today.plusDays(1), wc));
-        data.put("workOrders", screenMapper.activeWorkOrders(wc, 50));
-        data.put("reports", screenMapper.recentReports(wc, 30));
-        return data;
+        List<BiScreen.ReportDay> trend = fillDays(screenMapper.reportTrend(today.minusDays(TREND_DAYS - 1), today, wc), today,
+                BiScreen.ReportDay::getDay, d -> {
+                    BiScreen.ReportDay r = new BiScreen.ReportDay();
+                    r.setDay(d);
+                    return r;
+                }, r -> {
+                    r.setGood(zero(r.getGood()));
+                    r.setScrap(zero(r.getScrap()));
+                });
+        return new BiScreen.Factory(key, title, time, wc == null ? null : screenMapper.workCenterName(wc), kpi, trend,
+                screenMapper.workCenterLoad(today, wc), equipments,
+                screenMapper.stopReasons(monthBegin, today.plusDays(1), wc),
+                screenMapper.activeWorkOrders(wc, 50), screenMapper.recentReports(wc, 30));
     }
 
     // ---------------------------------------------------------------- 生产进度
 
     /** 生产进度：与「生产看板」相同的数据 */
-    private Map<String, Object> progress(Long wc) {
+    private BiScreen.Progress progress(String key, String title, String time, Long wc) {
         BoardView board = boardService.board(wc);
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("workCenter", board.workCenter());
-        data.put("kpi", board.kpi());
-        data.put("lines", board.lines());
-        data.put("orders", board.orders());
-        data.put("hourly", board.hourly());
-        return data;
+        return new BiScreen.Progress(key, title, time, board.workCenter(), board.kpi(), board.lines(), board.orders(), board.hourly());
     }
 
     // ---------------------------------------------------------------- 仓储物流
 
-    private Map<String, Object> warehouse(LocalDate today) {
+    private BiScreen.Warehouse warehouse(String key, String title, String time, LocalDate today) {
         LocalDate monthBegin = today.withDayOfMonth(1);
-        Map<String, Object> todayDocs = byKind(screenMapper.stockDocSum(today, today));
-        Map<String, Object> deliveries = screenMapper.deliveryCounts(today);
-        Map<String, Object> overview = screenMapper.stockOverview();
-
-        Map<String, Object> kpi = new LinkedHashMap<>();
-        kpi.put("todayInDocs", todayDocs.get("inDocs"));
-        kpi.put("todayInQty", todayDocs.get("inQty"));
-        kpi.put("todayOutDocs", todayDocs.get("outDocs"));
-        kpi.put("todayOutQty", todayDocs.get("outQty"));
-        kpi.put("pendingPick", deliveries.get("pending"));
-        kpi.put("pendingShip", deliveries.get("picked"));
-        kpi.put("shippedToday", deliveries.get("shipped"));
-        kpi.put("transit", screenMapper.transitCount());
-        kpi.put("skus", overview.get("skus"));
-        kpi.put("stockQty", overview.get("qty"));
-        kpi.put("lowStock", screenMapper.lowStockCount());
-        kpi.put("expiring", screenMapper.expiringBatchCount(today.plusDays(30)));
-
-        List<Map<String, Object>> trendRows = screenMapper.stockDocTrend(today.minusDays(TREND_DAYS - 1), today);
-        List<Map<String, Object>> pivot = new ArrayList<>();
-        for (Map<String, Object> r : trendRows) {
-            Map<String, Object> row = new HashMap<>();
-            row.put("day", r.get("day"));
-            row.put(StockBizType.IN.name().equals(r.get("kind")) ? "inQty" : "outQty", r.get("qty"));
-            pivot.add(row);
-        }
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("kpi", kpi);
-        data.put("trend", fillDays(pivot, today, "inQty", "outQty"));
-        data.put("byType", screenMapper.stockDocByType(monthBegin, today));
-        data.put("warehouses", screenMapper.warehouseStock());
-        data.put("lowStock", screenMapper.lowStock(30));
-        data.put("expiring", screenMapper.expiringBatches(today.plusDays(30), 30));
-        data.put("deliveries", screenMapper.pendingDeliveries(30));
-        List<Map<String, Object>> docs = screenMapper.recentStockDocs(30);
-        for (Map<String, Object> r : docs) {
-            if (StockBizType.TRANSFER.name().equals(r.get("kind"))) {
-                r.put("typeLabel", Messages.get("bi.text.transfer"));
+        // 当日已完成的出入库单：没有时单数为 0、数量为 0
+        long inDocs = 0;
+        long outDocs = 0;
+        BigDecimal inQty = BigDecimal.ZERO;
+        BigDecimal outQty = BigDecimal.ZERO;
+        for (BiScreen.StockDocSum r : screenMapper.stockDocSum(today, today)) {
+            if (r.getKind() == StockBizType.IN) {
+                inDocs = num(r.getDocs());
+                inQty = r.getQty();
+            } else {
+                outDocs = num(r.getDocs());
+                outQty = r.getQty();
             }
         }
-        data.put("docs", docs);
-        return data;
+        BiScreen.DeliveryCounts deliveries = screenMapper.deliveryCounts(today);
+        BiScreen.StockOverview overview = screenMapper.stockOverview();
+
+        BiScreen.WarehouseKpi kpi = new BiScreen.WarehouseKpi(inDocs, inQty, outDocs, outQty,
+                deliveries.getPending(), deliveries.getPicked(), deliveries.getShipped(), screenMapper.transitCount(),
+                overview.getSkus(), overview.getQty(), screenMapper.lowStockCount(), screenMapper.expiringBatchCount(today.plusDays(30)));
+
+        // 数据库按出入库分行，合并为每天一行
+        Map<LocalDate, BiScreen.StockDay> byDay = new LinkedHashMap<>();
+        for (BiScreen.StockDocDay r : screenMapper.stockDocTrend(today.minusDays(TREND_DAYS - 1), today)) {
+            BiScreen.StockDay day = byDay.computeIfAbsent(r.getDay(), d -> {
+                BiScreen.StockDay x = new BiScreen.StockDay();
+                x.setDay(d);
+                return x;
+            });
+            if (r.getQty() != null) {
+                if (r.getKind() == StockBizType.IN) {
+                    day.setInQty(r.getQty());
+                } else {
+                    day.setOutQty(r.getQty());
+                }
+            }
+        }
+        List<BiScreen.StockDay> trend = fillDays(new ArrayList<>(byDay.values()), today, BiScreen.StockDay::getDay, d -> {
+            BiScreen.StockDay x = new BiScreen.StockDay();
+            x.setDay(d);
+            return x;
+        }, r -> {
+            r.setInQty(zero(r.getInQty()));
+            r.setOutQty(zero(r.getOutQty()));
+        });
+
+        List<BiScreen.RecentStockDoc> docs = screenMapper.recentStockDocs(30);
+        for (BiScreen.RecentStockDoc r : docs) {
+            if (r.getKind() == StockBizType.TRANSFER) {
+                r.setTypeLabel(Messages.get("bi.text.transfer"));
+            }
+        }
+        return new BiScreen.Warehouse(key, title, time, kpi, trend, screenMapper.stockDocByType(monthBegin, today),
+                screenMapper.warehouseStock(), screenMapper.lowStock(30), screenMapper.expiringBatches(today.plusDays(30), 30),
+                screenMapper.pendingDeliveries(30), docs);
     }
 
     // ---------------------------------------------------------------- 销售经营
 
-    private Map<String, Object> sales(LocalDate today) {
+    private BiScreen.Sales sales(String key, String title, String time, LocalDate today) {
         LocalDate monthBegin = today.withDayOfMonth(1);
         LocalDate yearBegin = today.withDayOfYear(1);
-        Map<String, Object> todayOrders = screenMapper.salesOrderSum(today, today);
-        Map<String, Object> monthOrders = screenMapper.salesOrderSum(monthBegin, today);
-        Map<String, Object> yearOrders = screenMapper.salesOrderSum(yearBegin, today);
+        BiScreen.OrderSum todayOrders = screenMapper.salesOrderSum(today, today);
+        BiScreen.OrderSum monthOrders = screenMapper.salesOrderSum(monthBegin, today);
+        BiScreen.OrderSum yearOrders = screenMapper.salesOrderSum(yearBegin, today);
 
-        Map<String, Object> kpi = new LinkedHashMap<>();
-        kpi.put("todayOrderAmount", todayOrders.get("amount"));
-        kpi.put("todayOrders", todayOrders.get("orders"));
-        kpi.put("monthOrderAmount", monthOrders.get("amount"));
-        kpi.put("yearOrderAmount", yearOrders.get("amount"));
-        kpi.put("todayShipped", screenMapper.shippedAmount(today, today));
-        kpi.put("monthShipped", screenMapper.shippedAmount(monthBegin, today));
-        kpi.put("yearShipped", screenMapper.shippedAmount(yearBegin, today));
-        BigDecimal lastYear = screenMapper.shippedAmount(yearBegin.minusYears(1), today.minusYears(1));
-        kpi.put("lastYearShipped", lastYear);
-        kpi.put("monthReceipt", screenMapper.receiptAmount(monthBegin, today));
-        kpi.put("yearReceipt", screenMapper.receiptAmount(yearBegin, today));
-        kpi.put("receivable", screenMapper.receivableBalance());
-        kpi.put("overdueOrders", screenMapper.overdueOrderCount(today));
-        kpi.put("newCustomers", screenMapper.newCustomerCount(monthBegin));
+        BiScreen.SalesKpi kpi = new BiScreen.SalesKpi(todayOrders.getAmount(), todayOrders.getOrders(), monthOrders.getAmount(),
+                yearOrders.getAmount(), screenMapper.shippedAmount(today, today), screenMapper.shippedAmount(monthBegin, today),
+                screenMapper.shippedAmount(yearBegin, today), screenMapper.shippedAmount(yearBegin.minusYears(1), today.minusYears(1)),
+                screenMapper.receiptAmount(monthBegin, today), screenMapper.receiptAmount(yearBegin, today),
+                screenMapper.receivableBalance(), screenMapper.overdueOrderCount(today), screenMapper.newCustomerCount(monthBegin));
 
-        Map<Integer, Object> orders = toPeriodMap(screenMapper.monthlyOrders(yearBegin, today));
-        Map<Integer, Object> shipped = toPeriodMap(screenMapper.monthlyShipped(yearBegin, today));
-        Map<Integer, Object> lastShipped = toPeriodMap(screenMapper.monthlyShipped(yearBegin.minusYears(1), yearBegin.minusYears(1).withMonth(12).withDayOfMonth(31)));
-        List<Map<String, Object>> monthly = new ArrayList<>();
+        Map<Integer, BigDecimal> orders = toPeriodMap(screenMapper.monthlyOrders(yearBegin, today));
+        Map<Integer, BigDecimal> shipped = toPeriodMap(screenMapper.monthlyShipped(yearBegin, today));
+        Map<Integer, BigDecimal> lastShipped = toPeriodMap(screenMapper.monthlyShipped(yearBegin.minusYears(1), yearBegin.minusYears(1).withMonth(12).withDayOfMonth(31)));
+        List<BiScreen.SalesMonth> monthly = new ArrayList<>();
         for (int m = 1; m <= 12; m++) {
             int period = today.getYear() * 100 + m;
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("month", m);
-            row.put("orders", m <= today.getMonthValue() ? orders.getOrDefault(period, BigDecimal.ZERO) : null);
-            row.put("shipped", m <= today.getMonthValue() ? shipped.getOrDefault(period, BigDecimal.ZERO) : null);
-            row.put("lastYear", lastShipped.getOrDefault(period - 100, BigDecimal.ZERO));
-            monthly.add(row);
+            boolean past = m <= today.getMonthValue();
+            monthly.add(new BiScreen.SalesMonth(m, past ? orders.getOrDefault(period, BigDecimal.ZERO) : null,
+                    past ? shipped.getOrDefault(period, BigDecimal.ZERO) : null, lastShipped.getOrDefault(period - 100, BigDecimal.ZERO)));
         }
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("kpi", kpi);
-        data.put("monthly", monthly);
-        data.put("topCustomers", screenMapper.topCustomers(yearBegin, today, 10));
-        data.put("topProducts", screenMapper.topProducts(yearBegin, today, 10));
-        List<Map<String, Object>> salesmen = screenMapper.salesmen(monthBegin, today, 8);
-        salesmen.forEach(r -> r.putIfAbsent("name", Messages.get("bi.text.unassigned")));
-        data.put("salesmen", salesmen);
-        data.put("orderStatus", screenMapper.openOrderStatus());
-        data.put("orders", screenMapper.recentOrders(30));
-        return data;
+        List<BiScreen.NameAmount> salesmen = screenMapper.salesmen(monthBegin, today, 8);
+        salesmen.stream().filter(r -> r.getName() == null).forEach(r -> r.setName(Messages.get("bi.text.unassigned")));
+        return new BiScreen.Sales(key, title, time, kpi, monthly, screenMapper.topCustomers(yearBegin, today, 10),
+                screenMapper.topProducts(yearBegin, today, 10), salesmen, screenMapper.openOrderStatus(), screenMapper.recentOrders(30));
     }
 
     // ---------------------------------------------------------------- 质量管理
 
-    private Map<String, Object> quality(LocalDate today) {
+    private BiScreen.Quality quality(String key, String title, String time, LocalDate today) {
         LocalDate monthBegin = today.withDayOfMonth(1);
-        List<Map<String, Object>> byType = screenMapper.inspectionByType(monthBegin, today);
+        List<BiScreen.InspectionType> byType = screenMapper.inspectionByType(monthBegin, today);
         long total = 0;
         long pass = 0;
         long iqcTotal = 0;
         long iqcPass = 0;
-        for (Map<String, Object> r : byType) {
-            long t = num(r.get("total"));
-            long p = num(r.get("pass"));
+        for (BiScreen.InspectionType r : byType) {
+            long t = num(r.getTotal());
+            long p = num(r.getPass());
             total += t;
             pass += p;
-            if (QcType.IQC.name().equals(r.get("type"))) {
+            if (r.getType() == QcType.IQC) {
                 iqcTotal += t;
                 iqcPass += p;
             }
-            r.put("rate", rate(p, t));
+            r.setRate(rate(p, t));
         }
-        Map<String, Object> report = screenMapper.reportSum(monthBegin, today, null);
-        Map<String, Object> ncr = screenMapper.ncrCounts(monthBegin, today.plusDays(1));
+        BiScreen.ReportSum report = screenMapper.reportSum(monthBegin, today, null);
+        BiScreen.NcrCounts ncr = screenMapper.ncrCounts(monthBegin, today.plusDays(1));
 
-        Map<String, Object> kpi = new LinkedHashMap<>();
-        kpi.put("inspections", total);
-        kpi.put("passRate", rate(pass, total));
-        kpi.put("iqcRate", rate(iqcPass, iqcTotal));
-        kpi.put("processRate", rate(pass - iqcPass, total - iqcTotal));
-        kpi.put("productionYield", yieldRate(report));
-        kpi.put("scrapQty", report.get("scrap"));
-        kpi.put("openNcr", ncr.get("open"));
-        kpi.put("monthNcr", ncr.get("created"));
-        kpi.put("doneNcr", ncr.get("done"));
+        BiScreen.QualityKpi kpi = new BiScreen.QualityKpi(total, rate(pass, total), rate(iqcPass, iqcTotal),
+                rate(pass - iqcPass, total - iqcTotal), yieldRate(report), report.getScrap(),
+                ncr.getOpen(), ncr.getCreated(), ncr.getDone());
 
-        List<Map<String, Object>> trend = fillDays(screenMapper.inspectionTrend(today.minusDays(TREND_DAYS - 1), today), today, "total", "pass");
-        for (Map<String, Object> r : trend) {
-            r.put("rate", rate(num(r.get("pass")), num(r.get("total"))));
+        List<BiScreen.InspectionDay> trend = fillDays(screenMapper.inspectionTrend(today.minusDays(TREND_DAYS - 1), today), today,
+                BiScreen.InspectionDay::getDay, d -> {
+                    BiScreen.InspectionDay r = new BiScreen.InspectionDay();
+                    r.setDay(d);
+                    return r;
+                }, r -> {
+                    r.setTotal(num(r.getTotal()));
+                    r.setPass(num(r.getPass()));
+                    r.setRate(rate(r.getPass(), r.getTotal()));
+                });
+        List<BiScreen.SupplierQuality> suppliers = screenMapper.supplierQuality(monthBegin, today, 8);
+        for (BiScreen.SupplierQuality r : suppliers) {
+            long t = num(r.getTotal());
+            r.setRate(rate(t - num(r.getFail()), t));
         }
-        List<Map<String, Object>> suppliers = screenMapper.supplierQuality(monthBegin, today, 8);
-        for (Map<String, Object> r : suppliers) {
-            long t = num(r.get("total"));
-            r.put("rate", rate(t - num(r.get("fail")), t));
-        }
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("kpi", kpi);
-        data.put("byType", byType);
-        data.put("trend", trend);
-        data.put("defects", screenMapper.defectTypes(monthBegin, today, 8));
-        data.put("suppliers", suppliers);
-        data.put("ncrs", screenMapper.openNcrs(30));
-        data.put("inspections", screenMapper.recentInspections(30));
-        return data;
+        return new BiScreen.Quality(key, title, time, kpi, byType, trend, screenMapper.defectTypes(monthBegin, today, 8), suppliers,
+                screenMapper.openNcrs(30), screenMapper.recentInspections(30));
     }
 
     // ---------------------------------------------------------------- 工具
 
-    /** 补齐最近 14 天中没有数据的日期，fields 缺省为 0 */
-    private static List<Map<String, Object>> fillDays(List<Map<String, Object>> rows, LocalDate today, String... fields) {
-        Map<String, Map<String, Object>> byDay = new HashMap<>();
-        for (Map<String, Object> r : rows) {
-            Map<String, Object> merged = byDay.computeIfAbsent(String.valueOf(r.get("day")), k -> new LinkedHashMap<>());
-            r.forEach((k, v) -> {
-                if (v != null) {
-                    merged.put(k, v);
-                }
-            });
+    /** 最近 14 天每天一行，没有数据的日期新建一行；每行再用 fill 把空值补为 0 */
+    private static <T> List<T> fillDays(List<T> rows, LocalDate today, Function<T, LocalDate> dayOf, Function<LocalDate, T> create,
+                                        Consumer<T> fill) {
+        Map<LocalDate, T> byDay = new HashMap<>();
+        for (T r : rows) {
+            byDay.put(dayOf.apply(r), r);
         }
-        List<Map<String, Object>> result = new ArrayList<>();
+        List<T> result = new ArrayList<>();
         for (int i = TREND_DAYS - 1; i >= 0; i--) {
-            LocalDate d = today.minusDays(i);
-            Map<String, Object> row = new LinkedHashMap<>(byDay.getOrDefault(d.toString(), Map.of()));
-            row.put("day", d.toString());
-            for (String f : fields) {
-                row.putIfAbsent(f, BigDecimal.ZERO);
-            }
+            T row = byDay.computeIfAbsent(today.minusDays(i), create);
+            fill.accept(row);
             result.add(row);
         }
         return result;
     }
 
-    private static Map<String, Object> byKind(List<Map<String, Object>> rows) {
-        Map<String, Object> m = new HashMap<>(Map.of("inDocs", 0, "inQty", BigDecimal.ZERO, "outDocs", 0, "outQty", BigDecimal.ZERO));
-        for (Map<String, Object> r : rows) {
-            String prefix = StockBizType.IN.name().equals(r.get("kind")) ? "in" : "out";
-            m.put(prefix + "Docs", r.get("docs"));
-            m.put(prefix + "Qty", r.get("qty"));
-        }
-        return m;
-    }
-
-    private static Map<Integer, Object> toPeriodMap(List<Map<String, Object>> rows) {
-        Map<Integer, Object> m = new HashMap<>();
-        for (Map<String, Object> r : rows) {
-            m.put(((Number) r.get("period")).intValue(), r.get("amount"));
+    private static Map<Integer, BigDecimal> toPeriodMap(List<BiScreen.PeriodAmount> rows) {
+        Map<Integer, BigDecimal> m = new HashMap<>();
+        for (BiScreen.PeriodAmount r : rows) {
+            m.put(r.getPeriod(), r.getAmount());
         }
         return m;
     }
 
     /** 良品率 = 合格 ÷（合格 + 报废），没有报工时为空 */
-    private static BigDecimal yieldRate(Map<String, Object> report) {
-        BigDecimal good = dec(report.get("good"));
-        BigDecimal all = good.add(dec(report.get("scrap")));
+    private static BigDecimal yieldRate(BiScreen.ReportSum report) {
+        BigDecimal good = zero(report.getGood());
+        BigDecimal all = good.add(zero(report.getScrap()));
         return Decimals.percent(good, all, 1);
     }
 
@@ -316,11 +270,11 @@ public class BiScreenService {
         return total == 0 ? null : BigDecimal.valueOf(part * 100.0 / total).setScale(1, RoundingMode.HALF_UP);
     }
 
-    private static long num(Object v) {
-        return v == null ? 0 : ((Number) v).longValue();
+    private static long num(Long v) {
+        return v == null ? 0 : v;
     }
 
-    private static BigDecimal dec(Object v) {
-        return v == null ? BigDecimal.ZERO : new BigDecimal(v.toString());
+    private static BigDecimal zero(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
     }
 }

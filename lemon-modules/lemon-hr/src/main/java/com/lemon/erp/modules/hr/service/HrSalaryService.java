@@ -13,7 +13,7 @@ import com.lemon.erp.modules.hr.entity.HrSalaryHistory;
 import com.lemon.erp.modules.hr.mapper.HrEmployeeMapper;
 import com.lemon.erp.modules.hr.mapper.HrSalaryHistoryMapper;
 import com.lemon.erp.modules.hr.mapper.HrSalaryMapper;
-import com.lemon.erp.modules.hr.model.HrConstants;
+import com.lemon.erp.modules.hr.model.HrRules;
 import com.lemon.erp.modules.system.service.SysDeptService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,6 +43,7 @@ public class HrSalaryService implements LaborCostProvider {
     private final HrEmployeeService employeeService;
     private final SysDeptService deptService;
     private final HrSalaryHistoryMapper historyMapper;
+    private final HrRuleService ruleService;
 
     @DataPermission(table = "hr_employee", deptColumn = "dept_id", userColumn = "user_id")
     public PageResult<HrSalary> page(long current, long size, String keyword, Long deptId, Boolean missing) {
@@ -145,7 +146,8 @@ public class HrSalaryService implements LaborCostProvider {
     }
 
     /**
-     * 员工的小时人工成本 =（基本工资 + 津贴 + 单位社保公积金）/ 174 小时（21.75 天 × 8 小时），项目工时计算人工成本使用
+     * 员工的小时人工成本 =（基本工资 + 津贴 + 单位社保公积金）/ 月计薪小时（月计薪天数 × 每日工时，默认 21.75 × 8 = 174），
+     * 单位社保按业务参数中的默认比例，项目工时计算人工成本使用
      *
      * @return 账号没有关联员工或没有薪资档案时返回 null
      */
@@ -155,10 +157,11 @@ public class HrSalaryService implements LaborCostProvider {
         if (s == null) {
             return null;
         }
+        HrRules rules = ruleService.current();
         BigDecimal monthly = s.getBaseSalary().add(s.getPostAllowance()).add(s.getOtherAllowance())
-                .add(s.getSocialBase().multiply(HrConstants.SOCIAL_COMPANY_RATE))
+                .add(s.getSocialBase().multiply(rules.socialCompanyRate()))
                 .add(s.getHousingBase().multiply(s.getHousingRate()).divide(Decimals.HUNDRED, 2, RoundingMode.HALF_UP));
-        return monthly.divide(HrConstants.MONTH_PAY_DAYS.multiply(HrConstants.DAY_HOURS), 2, RoundingMode.HALF_UP);
+        return monthly.divide(rules.monthPayHours(), 2, RoundingMode.HALF_UP);
     }
 
     /** 生产岗位在职员工的平均小时人工成本（工作中心人工费率参考） */
@@ -168,13 +171,14 @@ public class HrSalaryService implements LaborCostProvider {
         if (list.isEmpty()) {
             return null;
         }
+        HrRules rules = ruleService.current();
         BigDecimal total = BigDecimal.ZERO;
         for (HrSalary s : list) {
             total = total.add(s.getBaseSalary()).add(s.getPostAllowance()).add(s.getOtherAllowance())
-                    .add(s.getSocialBase().multiply(HrConstants.SOCIAL_COMPANY_RATE))
+                    .add(s.getSocialBase().multiply(rules.socialCompanyRate()))
                     .add(s.getHousingBase().multiply(s.getHousingRate()).divide(Decimals.HUNDRED, 2, RoundingMode.HALF_UP));
         }
         return total.divide(BigDecimal.valueOf(list.size()), 6, RoundingMode.HALF_UP)
-                .divide(HrConstants.MONTH_PAY_DAYS.multiply(HrConstants.DAY_HOURS), 2, RoundingMode.HALF_UP);
+                .divide(rules.monthPayHours(), 2, RoundingMode.HALF_UP);
     }
 }

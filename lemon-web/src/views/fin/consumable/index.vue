@@ -136,7 +136,7 @@
     </FormDrawer>
 
     <SubPage :open="detailOpen" :title="detail ? $t('fin.consumable.detailTitle', { no: detail.useNo }) : ''" width="min(900px, 100vw)" @close="detailOpen = false">
-      <template v-if="detail && detail.status === 'DRAFT'" #extra>
+      <template v-if="detail && detail.status === ConsumableStatus.DRAFT" #extra>
         <a-space>
           <span v-perm="'fin:consumable:remove'">
             <a-popconfirm :title="$t('fin.consumable.confirmDelete')" @confirm="remove"><a-button danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
@@ -200,6 +200,7 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useI18n } from 'vue-i18n'
 
+import { ConsumableStatus } from '@/constants/enums'
 /** 低值易耗品领用：按部门领用出库，月末成本核算按实际成本一次计入领用部门的费用 */
 const { t } = useI18n()
 const dict = useDict('fin_consumable_status')

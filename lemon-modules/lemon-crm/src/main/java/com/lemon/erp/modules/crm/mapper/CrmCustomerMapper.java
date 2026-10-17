@@ -2,12 +2,12 @@ package com.lemon.erp.modules.crm.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.lemon.erp.modules.crm.dto.CrmAnalysis;
 import com.lemon.erp.modules.crm.entity.CrmCustomer;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Map;
 
 public interface CrmCustomerMapper extends BaseMapper<CrmCustomer> {
 
@@ -29,7 +29,7 @@ public interface CrmCustomerMapper extends BaseMapper<CrmCustomer> {
     CrmCustomer selectDetail(@Param("customerId") Long customerId);
 
     /** 客户概况：近一年销售额、订单数、最近下单日期、应收余额、进行中商机、未关闭工单 */
-    Map<String, Object> selectSummary(@Param("customerId") Long customerId, @Param("since") LocalDate since);
+    CrmAnalysis.CustomerSummary selectSummary(@Param("customerId") Long customerId, @Param("since") LocalDate since);
 
     /** 领取公海客户：仍在公海时才成功 */
     int claim(@Param("customerId") Long customerId, @Param("ownerId") Long ownerId, @Param("deptId") Long deptId);

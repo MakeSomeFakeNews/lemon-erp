@@ -223,7 +223,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import dayjs from 'dayjs'
-import { Empty, message } from 'ant-design-vue'
+import { Empty } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { AppstoreOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -243,7 +243,9 @@ import { toOptions } from '@/utils/dict'
 import { formatMoney, lineAmount } from '@/components/scm/scm'
 import { rowKey } from '@/components/wms/wms'
 import { OPEN_STAGES, STAGE_PROBABILITY, sum } from '@/components/crm/crm'
+import { useAction } from '@/composables/useAction'
 
+import { OpportunityStage } from '@/constants/enums'
 const { t } = useI18n()
 const simpleImage = Empty.PRESENTED_IMAGE_SIMPLE
 const dict = useDict('crm_opp_stage', 'crm_source')
@@ -299,7 +301,7 @@ function resetQuery() {
   reload()
 }
 
-const isOpen = (r) => r.stage !== 'WON' && r.stage !== 'LOST'
+const isOpen = (r) => r.stage !== OpportunityStage.WON && r.stage !== OpportunityStage.LOST
 const isOverdue = (r) => isOpen(r) && r.expectedDate && dayjs(r.expectedDate).isBefore(dayjs(), 'day')
 
 const campaignOpts = ref([])
@@ -378,11 +380,7 @@ const drawer = useFormDrawer({
 })
 const { formRef, form } = drawer
 
-async function remove(id) {
-  await deleteOpportunity(id)
-  message.success(t('common.msg.deleteSuccess'))
-  reload()
-}
+const remove = useAction(deleteOpportunity, { successKey: 'common.msg.deleteSuccess', reload: () => reload() })
 
 const detailOpen = ref(false)
 const detailId = ref()

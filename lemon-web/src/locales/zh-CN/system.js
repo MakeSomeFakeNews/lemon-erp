@@ -223,7 +223,9 @@ export default {
   },
   bizRule: {
     title: '业务参数',
-    subtitle: '各模块的业务控制规则，只对当前企业（租户）生效；修改后立即生效'
+    subtitle: '各模块的业务控制规则，只对当前企业（租户）生效；修改后立即生效',
+    unlimited: '不限',
+    insertRow: '插入行'
   },
   codeRule: {
     hint: '修改后只影响之后新建的单据，已有单号不变',

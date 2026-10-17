@@ -126,7 +126,7 @@ public class FinFundService {
         }
         LocalDate horizon = ranges.get(n - 1)[1];
         List<FundPlanEntry> entries = planMapper.selectEntries(horizon);
-        BigDecimal balance = planMapper.selectCashBalance();
+        BigDecimal balance = planMapper.selectCashBalance(accountService.cashCodes());
         FundPlan result = new FundPlan(balance, new ArrayList<>());
         result.periods().add(period(Messages.get("fin.text.overdue"), null, today.minusDays(1), entries, balance));
         balance = result.periods().get(0).closing();

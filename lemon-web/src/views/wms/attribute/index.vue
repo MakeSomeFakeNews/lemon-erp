@@ -69,12 +69,12 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { message } from 'ant-design-vue'
 import { ArrowUpOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import { addAttribute, attributes, deleteAttribute, updateAttribute } from '@/api/wms/material'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { rowKey } from '@/components/wms/wms'
+import { useAction } from '@/composables/useAction'
 
 const { t } = useI18n()
 
@@ -120,11 +120,7 @@ function move(i, d) {
   ;[arr[i + d], arr[i]] = [arr[i], arr[i + d]]
 }
 
-async function remove(id) {
-  await deleteAttribute(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteAttribute, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

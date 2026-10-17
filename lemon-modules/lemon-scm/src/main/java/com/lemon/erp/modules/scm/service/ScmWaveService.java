@@ -9,6 +9,7 @@ import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.dto.PickRequest;
+import com.lemon.erp.modules.scm.dto.WavePickList;
 import com.lemon.erp.modules.scm.dto.WaveRequest;
 import com.lemon.erp.modules.scm.entity.ScmDelivery;
 import com.lemon.erp.modules.scm.entity.ScmDeliveryPick;
@@ -47,10 +48,6 @@ public class ScmWaveService {
     private final ScmDeliveryService deliveryService;
     private final DocNoService docNoService;
 
-    /** 拣货单的一行：一个库位、物料、批次的合计数量和各发货通知的分拣数量 */
-    public record PickLine(Long locationId, String locationCode, String zone, Long materialId, String materialCode, String materialName,
-                           String spec, String unit, String batchNo, Object expiryDate, BigDecimal qty, List<Map<String, Object>> sorts) {
-    }
 
     public PageResult<ScmWave> page(long current, long size, WaveStatus status, Long warehouseId, String keyword) {
         Page<ScmWave> page = Page.of(current, size);
@@ -68,21 +65,20 @@ public class ScmWaveService {
     }
 
     /** 拣货单（按库位路径汇总）和库存不足的明细 */
-    public Map<String, Object> pickList(Long id) {
+    public WavePickList pickList(Long id) {
         detail(id);
-        Map<String, PickLine> lines = new LinkedHashMap<>();
-        for (Map<String, Object> r : waveMapper.selectPickLines(id)) {
-            String key = r.get("locationId") + "|" + r.get("materialId") + "|" + r.get("batchNo");
-            BigDecimal qty = new BigDecimal(r.get("qty").toString());
-            PickLine line = lines.get(key);
-            List<Map<String, Object>> sorts = line == null ? new ArrayList<>() : line.sorts();
-            sorts.add(Map.of("deliveryNo", r.get("deliveryNo"), "customerName", r.get("customerName"), "qty", qty));
-            lines.put(key, new PickLine(r.get("locationId") == null ? null : ((Number) r.get("locationId")).longValue(),
-                    (String) r.get("locationCode"), (String) r.get("zone"), ((Number) r.get("materialId")).longValue(),
-                    (String) r.get("materialCode"), (String) r.get("materialName"), (String) r.get("spec"), (String) r.get("unit"),
-                    (String) r.get("batchNo"), r.get("expiryDate"), line == null ? qty : line.qty().add(qty), sorts));
+        Map<String, WavePickList.Line> lines = new LinkedHashMap<>();
+        for (WavePickList.PickRow r : waveMapper.selectPickLines(id)) {
+            String key = r.getLocationId() + "|" + r.getMaterialId() + "|" + r.getBatchNo();
+            BigDecimal qty = r.getQty();
+            WavePickList.Line line = lines.get(key);
+            List<WavePickList.Sort> sorts = line == null ? new ArrayList<>() : line.sorts();
+            sorts.add(new WavePickList.Sort(r.getDeliveryNo(), r.getCustomerName(), qty));
+            lines.put(key, new WavePickList.Line(r.getLocationId(), r.getLocationCode(), r.getZone(), r.getMaterialId(),
+                    r.getMaterialCode(), r.getMaterialName(), r.getSpec(), r.getUnit(),
+                    r.getBatchNo(), r.getExpiryDate(), line == null ? qty : line.qty().add(qty), sorts));
         }
-        return Map.of("lines", new ArrayList<>(lines.values()), "shortages", waveMapper.selectShortages(id));
+        return new WavePickList(new ArrayList<>(lines.values()), waveMapper.selectShortages(id));
     }
 
     @Transactional
@@ -153,9 +149,9 @@ public class ScmWaveService {
         if (pending.isEmpty()) {
             throw new BizException("scm.error.noDeliveryNoticesPendingPickingWave");
         }
-        List<String> shortage = waveMapper.selectShortages(id).stream().map(s -> (String) s.get("deliveryNo")).distinct().toList();
-        List<String> serial = waveMapper.selectPickLines(id).stream().filter(r -> r.get("serialEnabled") instanceof Number n && n.intValue() == 1)
-                .map(r -> (String) r.get("deliveryNo")).filter(no -> !shortage.contains(no)).distinct().toList();
+        List<String> shortage = waveMapper.selectShortages(id).stream().map(WavePickList.Shortage::getDeliveryNo).distinct().toList();
+        List<String> serial = waveMapper.selectPickLines(id).stream().filter(r -> Integer.valueOf(1).equals(r.getSerialEnabled()))
+                .map(WavePickList.PickRow::getDeliveryNo).filter(no -> !shortage.contains(no)).distinct().toList();
         List<ScmDelivery> ready = pending.stream().filter(d -> !shortage.contains(d.getDeliveryNo()) && !serial.contains(d.getDeliveryNo())).toList();
         if (ready.isEmpty()) {
             throw new BizException("scm.error.noDeliveryNoticesCompletePicking", reason(shortage, serial));

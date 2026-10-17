@@ -47,7 +47,7 @@
           </template>
           <template v-else-if="column.key === 'kind'">
             <DictTag type="hr_leave_kind" :value="record.kind" />
-            <DictTag v-if="record.type" :type="record.kind === 'OVERTIME' ? 'hr_overtime_comp' : 'hr_leave_type'" :value="record.type" />
+            <DictTag v-if="record.type" :type="record.kind === LeaveKind.OVERTIME ? 'hr_overtime_comp' : 'hr_leave_type'" :value="record.type" />
           </template>
           <template v-else-if="column.key === 'time'">
             <div>{{ fmt(record.startTime) }}</div>
@@ -56,7 +56,7 @@
           <template v-else-if="column.key === 'hours'">{{ hoursText(record.hours) }}</template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="hr_leave_status" :value="record.status" />
-            <div v-if="record.status === 'APPROVING' && record.flowInstanceId" class="sub-text">{{ $t('hr.leave.inFlow') }}</div>
+            <div v-if="record.status === LeaveStatus.APPROVING && record.flowInstanceId" class="sub-text">{{ $t('hr.leave.inFlow') }}</div>
           </template>
           <template v-else-if="column.key === 'approve'">
             <template v-if="record.approveTime">
@@ -67,7 +67,7 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <a-button
-              v-if="record.status === 'APPROVING' && !record.flowInstanceId"
+              v-if="record.status === LeaveStatus.APPROVING && !record.flowInstanceId"
               v-perm="'hr:leave:approve'"
               type="link"
               size="small"
@@ -84,7 +84,7 @@
       <a-descriptions v-if="current" size="small" :column="1" bordered class="mb">
         <a-descriptions-item :label="$t('hr.leave.kind')">
           {{ dictLabel(dict.hr_leave_kind, current.kind) }}
-          {{ dictLabel(current.kind === 'OVERTIME' ? dict.hr_overtime_comp : dict.hr_leave_type, current.type) }}
+          {{ dictLabel(current.kind === LeaveKind.OVERTIME ? dict.hr_overtime_comp : dict.hr_leave_type, current.type) }}
         </a-descriptions-item>
         <a-descriptions-item :label="$t('hr.leave.time')">{{ fmt(current.startTime) }} {{ $t('hr.leave.to') }} {{ fmt(current.endTime) }}</a-descriptions-item>
         <a-descriptions-item :label="$t('hr.leave.hours')">{{ hoursText(current.hours) }}</a-descriptions-item>
@@ -114,6 +114,7 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { findDict, toOptions } from '@/utils/dict'
 
+import { LeaveKind, LeaveStatus } from '@/constants/enums'
 const { t } = useI18n()
 const dict = useDict('hr_leave_kind', 'hr_leave_type', 'hr_leave_status', 'hr_overtime_comp')
 const dictLabel = (list, v) => findDict(list, v)?.label || ''

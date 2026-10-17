@@ -22,7 +22,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: !!r.voucherId || r.status !== 'APPROVED' }) }"
+        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: !!r.voucherId || r.status !== ApproveStatus.APPROVED }) }"
         :scroll="{ x: 1260 }"
         @change="onTableChange"
       >
@@ -37,14 +37,14 @@
           <template v-else-if="column.key === 'method'"><DictTag type="fin_settle_method" :value="record.method" /></template>
           <template v-else-if="column.key === 'voucher'">
             <a v-if="record.voucherId" @click="openVoucher(record.voucherId)">{{ record.voucherNo }}</a>
-            <DictTag v-else-if="record.status && record.status !== 'APPROVED'" type="sys_approve_status" :value="record.status" />
+            <DictTag v-else-if="record.status && record.status !== ApproveStatus.APPROVED" type="sys_approve_status" :value="record.status" />
             <span v-else class="sub-text">{{ $t('fin.settlementPage.notGenerated') }}</span>
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">{{ $t('common.action.view') }}</a-button>
-              <span v-if="!record.voucherId && record.status !== 'APPROVING'" v-perm="`fin:${kind}:remove`">
-                <a-popconfirm :title="record.status === 'APPROVED' ? $t('fin.settlementPage.confirmDeleteApproved', { no: record.settleNo }) : $t('fin.settlementPage.confirmDelete', { no: record.settleNo })" @confirm="remove(record.id)">
+              <span v-if="!record.voucherId && record.status !== ApproveStatus.APPROVING" v-perm="`fin:${kind}:remove`">
+                <a-popconfirm :title="record.status === ApproveStatus.APPROVED ? $t('fin.settlementPage.confirmDeleteApproved', { no: record.settleNo }) : $t('fin.settlementPage.confirmDelete', { no: record.settleNo })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
                 </a-popconfirm>
               </span>
@@ -75,7 +75,7 @@
           </a-col>
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('fin.settlementPage.account')" name="accountId" :rules="[{ required: true, message: $t('fin.settlementPage.accountRequired') }]">
-              <AccountSelect v-model:value="form.accountId" :prefix="['1001', '1002']" :placeholder="$t('fin.settlementPage.accountPlaceholder')" />
+              <AccountSelect v-model:value="form.accountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.settlementPage.accountPlaceholder')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
@@ -203,7 +203,9 @@ import { today } from '@/components/wms/wms'
 import { formatMoney } from './fin'
 import { BASE_CURRENCY, currencySymbol, fcText, fetchRate, isForeign, useCurrencies } from './currency'
 import { t } from '@/locales'
+import { useAction } from '@/composables/useAction'
 
+import { ApproveStatus } from '@/constants/enums'
 /** 收款单 / 付款单，kind = receipt | payment */
 const props = defineProps({
   kind: { type: String, required: true }
@@ -290,11 +292,7 @@ function generate() {
   })
 }
 
-async function remove(id) {
-  await deleteSettlement(props.kind, id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction((id) => deleteSettlement(props.kind, id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- 新增
 const billColumns = [
@@ -403,7 +401,7 @@ async function submit() {
       exchangeRate: foreign.value ? exchangeRate.value : null
     })
     const saved = await getSettlement(props.kind, id).catch(() => null)
-    message.success(saved?.status === 'APPROVING' ? conf.submitted : conf.success)
+    message.success(saved?.status === ApproveStatus.APPROVING ? conf.submitted : conf.success)
     createOpen.value = false
     load()
   } finally {

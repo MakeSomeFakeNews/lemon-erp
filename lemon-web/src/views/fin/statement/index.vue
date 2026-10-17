@@ -66,7 +66,7 @@
 
     <SubPage :open="detailOpen" :title="detail ? $t('fin.statement.detailTitle', { no: detail.statementNo }) : ''" width="min(980px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
-        <a-space v-if="['DRAFT', 'DISPUTED'].includes(detail.status)">
+        <a-space v-if="[StatementStatus.DRAFT, StatementStatus.DISPUTED].includes(detail.status)">
           <span v-perm="'fin:statement:remove'">
             <a-popconfirm :title="$t('fin.statement.confirmDelete')" @confirm="remove"><a-button danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
           </span>
@@ -117,6 +117,7 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
+import { StatementStatus } from '@/constants/enums'
 /** 供应商对账：汇总期间内的应付单生成对账单，发送后供应商在门户确认并填写发票 */
 const { t } = useI18n()
 const dict = useDict('fin_statement_status')

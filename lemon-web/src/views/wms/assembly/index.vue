@@ -44,10 +44,10 @@
           </template>
           <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }} {{ record.unit }}</template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="record.status === 'DONE' ? 'green' : 'default'" :bordered="false">{{ record.status === 'DONE' ? $t('wms.assembly.done') : $t('wms.assembly.draft') }}</a-tag>
+            <a-tag :color="record.status === WmsDocStatus.DONE ? 'green' : 'default'" :bordered="false">{{ record.status === WmsDocStatus.DONE ? $t('wms.assembly.done') : $t('wms.assembly.draft') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-if="record.status === 'DRAFT'" class="table-actions">
+            <span v-if="record.status === WmsDocStatus.DRAFT" class="table-actions">
               <a-button v-perm="'wms:assembly:add'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
               <span v-perm="'wms:assembly:confirm'">
                 <a-popconfirm :title="$t('wms.assembly.confirmTitle', { no: record.assemblyNo })" @confirm="confirm(record.id)">
@@ -99,7 +99,7 @@
             </a-form-item>
           </a-col>
         </a-row>
-        <div class="section-title">{{ form.kind === 'ASSEMBLE' ? $t('wms.assembly.kitIn') : $t('wms.assembly.kitOut') }}</div>
+        <div class="section-title">{{ form.kind === AssemblyKind.ASSEMBLE ? $t('wms.assembly.kitIn') : $t('wms.assembly.kitOut') }}</div>
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12" :lg="8">
             <a-form-item :label="$t('wms.common.material')" name="materialId">
@@ -129,7 +129,7 @@
         </a-row>
 
         <div class="items-head">
-          <span class="section-title">{{ form.kind === 'ASSEMBLE' ? $t('wms.assembly.compOut', { n: form.items.length }) : $t('wms.assembly.compIn', { n: form.items.length }) }}</span>
+          <span class="section-title">{{ form.kind === AssemblyKind.ASSEMBLE ? $t('wms.assembly.compOut', { n: form.items.length }) : $t('wms.assembly.compIn', { n: form.items.length }) }}</span>
           <a-space>
             <a-button :disabled="!form.materialId || !form.qty" @click="fromBom">{{ $t('wms.assembly.fromBom') }}</a-button>
             <a-button type="primary" ghost @click="addRow"><template #icon><PlusOutlined /></template>{{ $t('wms.assembly.addComp') }}</a-button>
@@ -176,7 +176,7 @@
           <a-descriptions-item :label="$t('wms.assembly.kit')">{{ detail.materialCode }} {{ detail.materialName }} {{ detail.spec || '' }}</a-descriptions-item>
           <a-descriptions-item :label="$t('common.field.quantity')">{{ formatQty(detail.qty) }} {{ detail.unit }}</a-descriptions-item>
           <a-descriptions-item :label="$t('wms.assembly.locationBatch')">{{ detail.locationCode || $t('wms.common.unspecified') }} {{ detail.batchNo || '' }}</a-descriptions-item>
-          <a-descriptions-item :label="$t('common.field.status')">{{ detail.status === 'DONE' ? $t('wms.assembly.done') : $t('wms.assembly.draft') }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.status')">{{ detail.status === WmsDocStatus.DONE ? $t('wms.assembly.done') : $t('wms.assembly.draft') }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.outDocNo" :label="$t('wms.assembly.docs')">{{ $t('wms.assembly.docsValue', { out: detail.outDocNo, in: detail.inDocNo }) }}</a-descriptions-item>
           <a-descriptions-item :label="$t('wms.common.createBy')">{{ detail.createByName }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.serialNos" :label="$t('wms.common.serialNo')">{{ detail.serialNos }}</a-descriptions-item>
@@ -214,7 +214,9 @@ import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
+import { useAction } from '@/composables/useAction'
 
+import { AssemblyKind, WmsDocStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 /** 组装拆卸单：组装消耗子件得到成套件，拆卸相反；确认后生成出入库单 */
@@ -280,7 +282,7 @@ const toItem = (i) => ({
 })
 
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, kind: 'ASSEMBLE', warehouseId: undefined, bizDate: today(), remark: '', materialId: undefined, qty: 1, locationId: null, batchNo: '', serialNos: '', items: [] }),
+  emptyForm: () => ({ id: undefined, kind: AssemblyKind.ASSEMBLE, warehouseId: undefined, bizDate: today(), remark: '', materialId: undefined, qty: 1, locationId: null, batchNo: '', serialNos: '', items: [] }),
   fetch: async (record) => {
     const a = await getAssembly(record.id)
     return {
@@ -345,16 +347,8 @@ async function fromBom() {
   message.success(t('wms.assembly.bomLoaded', { version: bom.version || '', n: bom.items.length }))
 }
 
-async function confirm(id) {
-  await confirmAssembly(id)
-  message.success(t('wms.assembly.confirmed'))
-  load()
-}
-async function remove(id) {
-  await deleteAssembly(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const confirm = useAction(confirmAssembly, { successKey: 'wms.assembly.confirmed', reload: () => load() })
+const remove = useAction(deleteAssembly, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 const detailOpen = ref(false)
 const detail = ref()

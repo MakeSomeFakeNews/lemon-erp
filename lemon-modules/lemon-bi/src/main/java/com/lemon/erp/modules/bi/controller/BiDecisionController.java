@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.bi.controller;
 
+import com.lemon.erp.modules.bi.dto.BiInsight;
 import com.lemon.erp.modules.bi.model.EtlTrigger;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
@@ -24,7 +25,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 经营驾驶舱 /bi/cockpit、决策支持 /bi/decision、预警规则 /bi/alert-rule、数据仓库 /bi/etl
@@ -40,34 +40,34 @@ public class BiDecisionController {
 
     @GetMapping("/cockpit")
     @PreAuthorize("@ss.hasPerm('bi:cockpit:list')")
-    public R<Map<String, Object>> cockpit() {
+    public R<BiInsight.Cockpit> cockpit() {
         return R.ok(cockpitService.cockpit());
     }
 
     /** 销售预测，category 物料分类（选填），months 预测月数 */
     @GetMapping("/decision/forecast")
     @PreAuthorize("@ss.hasPerm('bi:decision:list')")
-    public R<Map<String, Object>> forecast(@RequestParam(required = false) String category,
-                                           @RequestParam(defaultValue = "3") int months) {
+    public R<BiInsight.Forecast> forecast(@RequestParam(required = false) String category,
+                                          @RequestParam(defaultValue = "3") int months) {
         return R.ok(decisionService.forecast(category, months));
     }
 
     @GetMapping("/decision/abc")
     @PreAuthorize("@ss.hasPerm('bi:decision:list')")
-    public R<Map<String, Object>> abc() {
+    public R<BiInsight.Abc> abc() {
         return R.ok(decisionService.abc());
     }
 
     @GetMapping("/decision/slow-moving")
     @PreAuthorize("@ss.hasPerm('bi:decision:list')")
-    public R<List<Map<String, Object>>> slowMoving(@RequestParam(defaultValue = "90") int days) {
+    public R<List<BiInsight.SlowMovingRow>> slowMoving(@RequestParam(defaultValue = "90") int days) {
         return R.ok(decisionService.slowMoving(days));
     }
 
     /** 预警：各启用规则的当前值与是否触发 */
     @GetMapping("/decision/alerts")
     @PreAuthorize("@ss.hasAnyPerm('bi:decision:list', 'bi:cockpit:list')")
-    public R<List<Map<String, Object>>> alerts() {
+    public R<List<BiInsight.AlertResult>> alerts() {
         return R.ok(decisionService.alerts());
     }
 
@@ -81,7 +81,7 @@ public class BiDecisionController {
 
     @GetMapping("/alert-rule/metrics")
     @PreAuthorize("@ss.hasPerm('bi:decision:list')")
-    public R<List<Map<String, Object>>> metrics() {
+    public R<List<BiInsight.MetricOption>> metrics() {
         return R.ok(decisionService.metrics());
     }
 
@@ -113,7 +113,7 @@ public class BiDecisionController {
 
     @GetMapping("/etl/status")
     @PreAuthorize("@ss.hasAnyPerm('bi:etl:list', 'bi:cockpit:list', 'bi:olap:list')")
-    public R<Map<String, Object>> status() {
+    public R<BiInsight.EtlOverview> status() {
         return R.ok(etlService.status());
     }
 

@@ -44,7 +44,7 @@
           </template>
           <template v-else-if="column.key === 'result'">
             <DictTag type="mes_qc_result" :value="record.result" />
-            <a-tag v-if="record.status !== 'CONFIRMED'" color="orange" :bordered="false">{{ $t('mes.inspection.draft') }}</a-tag>
+            <a-tag v-if="record.status !== InspectionStatus.CONFIRMED" color="orange" :bordered="false">{{ $t('mes.inspection.draft') }}</a-tag>
             <div v-if="record.defectType" class="sub-text"><DictTag type="mes_defect_type" :value="record.defectType" /></div>
           </template>
           <template v-else-if="column.key === 'inspectDate'">
@@ -53,7 +53,7 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button v-if="record.status === 'CONFIRMED'" type="link" size="small" @click="openDetail(record)">{{ $t('common.action.view') }}</a-button>
+              <a-button v-if="record.status === InspectionStatus.CONFIRMED" type="link" size="small" @click="openDetail(record)">{{ $t('common.action.view') }}</a-button>
               <template v-else>
                 <a-button v-perm="'mes:qc:edit'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
                 <span v-perm="'mes:qc:edit'">
@@ -82,11 +82,11 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="6">
-            <a-form-item :label="form.type === 'IQC' ? $t('mes.inspection.receiptNo') : $t('mes.inspection.woNo')" name="sourceNo" :extra="sourceExtra">
-              <a-input v-model:value="form.sourceNo" :maxlength="32" :placeholder="form.type === 'FAI' ? '' : $t('mes.woDocForm.optional')" @blur="loadOps" />
+            <a-form-item :label="form.type === QcType.IQC ? $t('mes.inspection.receiptNo') : $t('mes.inspection.woNo')" name="sourceNo" :extra="sourceExtra">
+              <a-input v-model:value="form.sourceNo" :maxlength="32" :placeholder="form.type === QcType.FAI ? '' : $t('mes.woDocForm.optional')" @blur="loadOps" />
             </a-form-item>
           </a-col>
-          <a-col v-if="form.type === 'FAI'" :xs="24" :sm="6">
+          <a-col v-if="form.type === QcType.FAI" :xs="24" :sm="6">
             <a-form-item :label="$t('mes.wo.op')" name="woOpId">
               <a-select v-model:value="form.woOpId" :options="opOptions" :placeholder="$t('mes.inspection.woFirst')" />
             </a-form-item>
@@ -142,14 +142,14 @@
               <template v-else-if="column.key === 'spec'">{{ specText(record) }}</template>
               <template v-else-if="column.key === 'input'">
                 <a-input
-                  v-if="record.method === 'QUANTITATIVE'"
+                  v-if="record.method === ItemMethod.QUANTITATIVE"
                   v-model:value="record.measuredText"
                   :placeholder="$t('mes.inspection.measuredPh', { n: formatQty(match.sampleQty) })"
                 />
                 <a-input-number v-else v-model:value="record.defectCount" :min="0" :max="Number(match.sampleQty)" :addon-before="$t('mes.inspection.fail')" :addon-after="$t('mes.inspection.pcs')" class="full" />
               </template>
               <template v-else-if="column.key === 'judge'">
-                <template v-if="record.method === 'QUANTITATIVE'">
+                <template v-if="record.method === ItemMethod.QUANTITATIVE">
                   <span class="sub-text">{{ $t('mes.inspection.measuredCount', { n: parseMeasured(record.measuredText).length }) }}</span>
                   <span :class="{ danger: defectsOf(record) > 0 }">{{ $t('mes.inspection.outOfSpec', { n: defectsOf(record) }) }}</span>
                 </template>
@@ -159,8 +159,8 @@
           </a-table>
           <div class="judge">
             {{ $t('mes.inspection.defectTotal') }} <b>{{ planDefects }}</b>{{ $t('mes.inspection.judgeLabel') }}
-            <a-tag :color="planResult === 'FAIL' ? 'red' : 'green'">{{ planResult === 'FAIL' ? $t('mes.inspection.fail') : $t('mes.inspection.pass') }}</a-tag>
-            <span v-if="planResult === 'FAIL'" class="sub-text">{{ form.type === 'IQC' ? $t('mes.inspection.failTipIqc') : $t('mes.inspection.failTip') }}</span>
+            <a-tag :color="planResult === QcResult.FAIL ? 'red' : 'green'">{{ planResult === QcResult.FAIL ? $t('mes.inspection.fail') : $t('mes.inspection.pass') }}</a-tag>
+            <span v-if="planResult === QcResult.FAIL" class="sub-text">{{ form.type === QcType.IQC ? $t('mes.inspection.failTipIqc') : $t('mes.inspection.failTip') }}</span>
           </div>
         </template>
 
@@ -199,7 +199,7 @@
           <a-descriptions-item :label="$t('mes.inspection.source')">{{ detail.sourceNo || '-' }} {{ detail.supplierName || '' }}</a-descriptions-item>
           <a-descriptions-item :label="$t('mes.inspection.conclusion')">
             <DictTag type="mes_qc_result" :value="detail.result" />
-            <a-tag v-if="detail.status !== 'CONFIRMED'" color="orange" :bordered="false">{{ $t('mes.inspection.draft') }}</a-tag>
+            <a-tag v-if="detail.status !== InspectionStatus.CONFIRMED" color="orange" :bordered="false">{{ $t('mes.inspection.draft') }}</a-tag>
           </a-descriptions-item>
           <a-descriptions-item :label="$t('mes.wo.material')">{{ detail.materialCode }} {{ detail.materialName }}</a-descriptions-item>
           <a-descriptions-item :label="$t('mes.woDocForm.batch')">{{ detail.batchNo || '-' }}</a-descriptions-item>
@@ -228,7 +228,7 @@
               <span v-else class="sub-text">-</span>
             </template>
             <template v-else-if="column.key === 'result'">
-              <a-tag :color="record.result === 'FAIL' ? 'red' : 'green'" :bordered="false">{{ $t('mes.inspection.failN', { n: record.defectCount }) }}</a-tag>
+              <a-tag :color="record.result === QcResult.FAIL ? 'red' : 'green'" :bordered="false">{{ $t('mes.inspection.failN', { n: record.defectCount }) }}</a-tag>
             </template>
           </template>
         </a-table>
@@ -239,7 +239,6 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
@@ -257,7 +256,9 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { formatQty, today } from '@/components/wms/wms'
+import { useAction } from '@/composables/useAction'
 
+import { InspectionStatus, ItemMethod, QcResult, QcType } from '@/constants/enums'
 /** 质量检验：来料、过程、成品、首件；有检验方案时按方案抽样并逐项录入，自动判定 */
 const dict = useDict('mes_qc_type', 'mes_qc_result', 'mes_defect_type')
 const { t } = useI18n()
@@ -279,12 +280,12 @@ const { list, loading, size, pagination, load, search, onTableChange } = useTabl
 onMounted(load)
 
 const confirmTitle = (r) =>
-  r.result === 'FAIL' ? t('mes.inspection.confirmFail') : t('mes.inspection.confirmPass')
+  r.result === QcResult.FAIL ? t('mes.inspection.confirmFail') : t('mes.inspection.confirmPass')
 
 // ---------------------------------------------------------------- 表单
 const rules = computed(() => ({
   type: [{ required: true, message: t('mes.inspection.typeRequired') }],
-  sourceNo: form.value.type === 'FAI' ? [{ required: true, whitespace: true, message: t('mes.inspection.woNoRequired') }] : [],
+  sourceNo: form.value.type === QcType.FAI ? [{ required: true, whitespace: true, message: t('mes.inspection.woNoRequired') }] : [],
   woOpId: [{ required: true, message: t('mes.inspection.opRequired') }],
   materialId: [{ required: true, message: t('mes.supplementForm.materialRequired') }],
   inspectQty: [{ required: true, message: t('mes.inspection.inspectQtyRequired') }],
@@ -296,7 +297,7 @@ const BASE_FIELDS = ['type', 'sourceNo', 'woOpId', 'materialId', 'batchNo', 'ins
 const blank = (v) => (v === '' || v === undefined ? null : v)
 const drawer = useFormDrawer({
   emptyForm: () => ({
-    id: undefined, type: 'IQC', sourceNo: '', woOpId: undefined, materialId: undefined, batchNo: '', inspectQty: undefined,
+    id: undefined, type: QcType.IQC, sourceNo: '', woOpId: undefined, materialId: undefined, batchNo: '', inspectQty: undefined,
     sampleQty: undefined, defectQty: 0, result: 'PASS', defectType: undefined, defectDesc: '', inspectDate: today(), remark: '',
     manual: false, items: []
   }),
@@ -318,15 +319,15 @@ const drawer = useFormDrawer({
   update: updateInspection,
   toPayload: (f) => {
     const payload = Object.fromEntries(BASE_FIELDS.map((k) => [k, blank(f[k])]))
-    if (f.type !== 'FAI') payload.woOpId = null
+    if (f.type !== QcType.FAI) payload.woOpId = null
     if (usePlan.value) {
       return {
         ...payload,
         planId: match.value.plan.id,
         items: f.items.map((i) => ({
           planItemId: i.planItemId,
-          measured: i.method === 'QUANTITATIVE' ? parseMeasured(i.measuredText) : null,
-          defectCount: i.method === 'QUALITATIVE' ? i.defectCount ?? 0 : null
+          measured: i.method === ItemMethod.QUANTITATIVE ? parseMeasured(i.measuredText) : null,
+          defectCount: i.method === ItemMethod.QUALITATIVE ? i.defectCount ?? 0 : null
         }))
       }
     }
@@ -337,13 +338,13 @@ const drawer = useFormDrawer({
 const { formRef, form } = drawer
 
 const sourceExtra = computed(() =>
-  form.value.type === 'IQC' ? t('mes.inspection.extraIqc') : form.value.type === 'FAI' ? t('mes.inspection.extraFai') : t('mes.inspection.extraWo')
+  form.value.type === QcType.IQC ? t('mes.inspection.extraIqc') : form.value.type === QcType.FAI ? t('mes.inspection.extraFai') : t('mes.inspection.extraWo')
 )
 
 // 首件检验：按工单号加载工序
 const opOptions = ref([])
 async function loadOps() {
-  if (form.value.type !== 'FAI' || !form.value.sourceNo?.trim()) return
+  if (form.value.type !== QcType.FAI || !form.value.sourceNo?.trim()) return
   const page = await pageWo({ woNo: form.value.sourceNo.trim(), size: 5 })
   const wo = page.records.find((w) => w.woNo === form.value.sourceNo.trim())
   if (!wo) {
@@ -358,7 +359,7 @@ async function loadOps() {
   }
 }
 watch(() => form.value.type, loadOps)
-watch(() => drawer.open.value, (open) => open && form.value.type === 'FAI' && loadOps())
+watch(() => drawer.open.value, (open) => open && form.value.type === QcType.FAI && loadOps())
 
 // 检验方案匹配：类型、物料、送检数量变化时重新匹配
 const match = ref(null)
@@ -409,7 +410,7 @@ watch(
 const usePlan = computed(() => !!match.value?.plan && !form.value.manual)
 
 function defectsOf(item) {
-  if (item.method === 'QUANTITATIVE') return parseMeasured(item.measuredText).filter((v) => outOfSpec(v, item)).length
+  if (item.method === ItemMethod.QUANTITATIVE) return parseMeasured(item.measuredText).filter((v) => outOfSpec(v, item)).length
   return Number(item.defectCount || 0)
 }
 const planDefects = computed(() => (form.value.items || []).reduce((s, i) => s + defectsOf(i), 0))
@@ -431,17 +432,9 @@ const itemViewColumns = [
   { title: t('mes.inspection.itemResult'), key: 'result', width: 120 }
 ]
 
-async function confirm(id) {
-  await confirmInspection(id)
-  message.success(t('mes.plan.confirmed'))
-  load()
-}
+const confirm = useAction(confirmInspection, { successKey: 'mes.plan.confirmed', reload: () => load() })
 
-async function remove(id) {
-  await deleteInspection(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteInspection, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- 详情
 const detailOpen = ref(false)

@@ -49,15 +49,15 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button v-if="record.status !== 'DRAFT'" type="link" size="small" @click="openResult(record)">{{ $t('hr.perf.result') }}</a-button>
-              <a-button v-if="record.status === 'DRAFT'" v-perm="'hr:perf:edit'" type="link" size="small" @click="openStart(record)">{{ $t('hr.perf.start') }}</a-button>
-              <span v-if="record.status === 'SCORING'" v-perm="'hr:perf:edit'">
+              <a-button v-if="record.status !== PerfStatus.DRAFT" type="link" size="small" @click="openResult(record)">{{ $t('hr.perf.result') }}</a-button>
+              <a-button v-if="record.status === PerfStatus.DRAFT" v-perm="'hr:perf:edit'" type="link" size="small" @click="openStart(record)">{{ $t('hr.perf.start') }}</a-button>
+              <span v-if="record.status === PerfStatus.SCORING" v-perm="'hr:perf:edit'">
                 <a-popconfirm :title="$t('hr.perf.confirmFinish')" @confirm="finish(record.id)">
                   <a-button type="link" size="small">{{ $t('hr.perf.archive') }}</a-button>
                 </a-popconfirm>
               </span>
-              <a-button v-if="record.status !== 'FINISHED'" v-perm="'hr:perf:edit'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-              <span v-if="record.status === 'DRAFT'" v-perm="'hr:perf:remove'">
+              <a-button v-if="record.status !== PerfStatus.FINISHED" v-perm="'hr:perf:edit'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
+              <span v-if="record.status === PerfStatus.DRAFT" v-perm="'hr:perf:remove'">
                 <a-popconfirm :title="$t('hr.perf.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
@@ -71,7 +71,7 @@
     <!-- 考核方案 -->
     <FormDrawer :drawer="drawer" :create-title="$t('hr.perf.add')" :edit-title="$t('hr.perf.edit')" width="min(760px, 100vw)">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-alert v-if="isEdit && form.status !== 'DRAFT'" type="info" show-icon class="mb" :message="$t('hr.perf.lockedTip')" />
+        <a-alert v-if="isEdit && form.status !== PerfStatus.DRAFT" type="info" show-icon class="mb" :message="$t('hr.perf.lockedTip')" />
         <a-row :gutter="16">
           <a-col :span="24">
             <a-form-item :label="$t('hr.perf.name')" name="name"><a-input v-model:value="form.name" :maxlength="128" :placeholder="$t('hr.perf.namePh')" /></a-form-item>
@@ -192,16 +192,16 @@
               <div v-if="record.selfComment" class="sub-text">{{ $t('hr.perf.selfComment', { text: record.selfComment }) }}</div>
             </template>
             <template v-else-if="column.key === 'action'">
-              <span v-if="resultPlan.status === 'SCORING'" class="table-actions">
+              <span v-if="resultPlan.status === PerfStatus.SCORING" class="table-actions">
                 <a-button
-                  v-if="record.status !== 'DONE' && (record.reviewerId === userStore.user?.id || userStore.hasPerm('hr:perf:score'))"
+                  v-if="record.status !== AppraisalStatus.DONE && (record.reviewerId === userStore.user?.id || userStore.hasPerm('hr:perf:score'))"
                   type="link"
                   size="small"
                   @click="openScore(record)"
                 >
                   {{ $t('hr.perf.score') }}
                 </a-button>
-                <a-popconfirm v-if="record.status === 'DONE' && userStore.hasPerm('hr:perf:score')" :title="$t('hr.perf.confirmReopen')" @confirm="reopen(record.id)">
+                <a-popconfirm v-if="record.status === AppraisalStatus.DONE && userStore.hasPerm('hr:perf:score')" :title="$t('hr.perf.confirmReopen')" @confirm="reopen(record.id)">
                   <a-button type="link" size="small">{{ $t('hr.perf.reopen') }}</a-button>
                 </a-popconfirm>
               </span>
@@ -238,7 +238,9 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { findDict, toOptions } from '@/utils/dict'
+import { useAction } from '@/composables/useAction'
 
+import { AppraisalStatus, PerfPeriodType, PerfStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 const userStore = useUserStore()
@@ -281,8 +283,8 @@ const rules = {
   endDate: [{ required: true, message: t('hr.perf.rule.endDate') }]
 }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, name: '', periodType: 'QUARTER', startDate: dayjs().startOf('quarter').format('YYYY-MM-DD'),
-    endDate: dayjs().endOf('quarter').format('YYYY-MM-DD'), payPeriod: undefined, remark: '', status: 'DRAFT', indicators: DEFAULT_INDICATORS() }),
+  emptyForm: () => ({ id: undefined, name: '', periodType: PerfPeriodType.QUARTER, startDate: dayjs().startOf('quarter').format('YYYY-MM-DD'),
+    endDate: dayjs().endOf('quarter').format('YYYY-MM-DD'), payPeriod: undefined, remark: '', status: PerfStatus.DRAFT, indicators: DEFAULT_INDICATORS() }),
   fetch: (r) => getPerf(r.id),
   create: addPerf,
   update: updatePerf,
@@ -291,7 +293,7 @@ const drawer = useFormDrawer({
   onSuccess: load
 })
 const { formRef, form, isEdit } = drawer
-const locked = computed(() => isEdit.value && form.value.status !== 'DRAFT')
+const locked = computed(() => isEdit.value && form.value.status !== PerfStatus.DRAFT)
 const weightSum = computed(() => (form.value.indicators || []).reduce((s, i) => s + (Number(i.weight) || 0), 0))
 const indicatorRows = computed(() => (form.value.indicators || []).map((i, idx) => ({ ...i, key: idx })))
 const indicatorColumns = [
@@ -301,16 +303,8 @@ const indicatorColumns = [
   { title: '', key: 'action', width: 50 }
 ]
 
-async function remove(id) {
-  await deletePerf(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
-async function finish(id) {
-  await finishPerf(id)
-  message.success(t('hr.perf.archived'))
-  load()
-}
+const remove = useAction(deletePerf, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+const finish = useAction(finishPerf, { successKey: 'hr.perf.archived', reload: () => load() })
 
 // 发起
 const startOpen = ref(false)
@@ -387,11 +381,7 @@ async function afterScore() {
   grades.value = await perfGrades(resultPlan.value.id)
   resultPlan.value = await getPerf(resultPlan.value.id)
 }
-async function reopen(id) {
-  await reopenAppraisal(id)
-  message.success(t('hr.perf.reopened'))
-  afterScore()
-}
+const reopen = useAction(reopenAppraisal, { successKey: 'hr.perf.reopened', reload: () => afterScore() })
 </script>
 
 <style scoped>

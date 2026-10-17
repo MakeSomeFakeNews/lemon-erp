@@ -141,7 +141,6 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
-import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, PlusOutlined, ToolOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
@@ -155,7 +154,9 @@ import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
+import { useAction } from '@/composables/useAction'
 
+import { EquipmentStatus } from '@/constants/enums'
 const router = useRouter()
 const { t } = useI18n()
 const dict = useDict('mes_equipment_status')
@@ -191,7 +192,7 @@ onMounted(load)
 
 /** 保养到期提示：已逾期 / 7 天内 */
 function due(record) {
-  if (!record.nextMaintainDate || record.status === 'SCRAPPED') return null
+  if (!record.nextMaintainDate || record.status === EquipmentStatus.SCRAPPED) return null
   const days = dayjs(record.nextMaintainDate).diff(dayjs().startOf('day'), 'day')
   if (days < 0) return { color: 'red', text: t('mes.equipment.overdue', { n: -days }) }
   if (days <= 7) return { color: 'orange', text: days === 0 ? t('mes.equipment.dueToday') : t('mes.equipment.dueAfter', { n: days }) }
@@ -207,7 +208,7 @@ const rules = {
 }
 const FIELDS = ['code', 'name', 'model', 'workCenterId', 'location', 'purchaseDate', 'status', 'maintainCycleDays', 'lastMaintainDate', 'remark']
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, ...Object.fromEntries(FIELDS.map((f) => [f, undefined])), status: 'RUNNING' }),
+  emptyForm: () => ({ id: undefined, ...Object.fromEntries(FIELDS.map((f) => [f, undefined])), status: EquipmentStatus.RUNNING }),
   fetch: (record) => getEquipment(record.id),
   create: addEquipment,
   update: updateEquipment,
@@ -218,11 +219,7 @@ const { formRef, form } = drawer
 
 const toMaintenance = (record) => router.push({ path: '/mes/maintenance', query: { equipmentId: record.id } })
 
-async function remove(id) {
-  await deleteEquipment(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteEquipment, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

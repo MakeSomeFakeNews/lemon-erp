@@ -32,7 +32,7 @@
           AND p.material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
     </select>
 
-    <select id="selectPurchaseHistory" resultType="java.util.Map">
+    <select id="selectPurchaseHistory" resultType="com.lemon.erp.modules.scm.dto.ScmPriceViews$PurchaseHistory">
         SELECT d.biz_date AS "bizDate", d.doc_no AS "docNo", d.partner_id AS "supplierId", s.name AS "supplierName",
                i.material_id AS "materialId", i.qty AS "qty", i.price AS "price", i.tax_rate AS "taxRate"
         FROM scm_trade_doc_item i

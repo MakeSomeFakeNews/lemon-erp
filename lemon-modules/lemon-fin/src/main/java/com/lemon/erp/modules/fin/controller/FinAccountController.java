@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import com.lemon.erp.modules.fin.dto.AccountRequest;
 import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.service.FinAccountService;
@@ -49,6 +50,12 @@ public class FinAccountController {
     @GetMapping("/options")
     public R<List<FinAccount>> options() {
         return R.ok(accountService.leafOptions());
+    }
+
+    /** 登录即可访问：科目范围用途（库存现金 CASH、银行存款 BANK）当前使用的科目编码，前端据此限定结算账户等可选科目 */
+    @GetMapping("/scopes")
+    public R<Map<String, String>> scopes() {
+        return R.ok(accountService.scopeCodes());
     }
 
     @PostMapping

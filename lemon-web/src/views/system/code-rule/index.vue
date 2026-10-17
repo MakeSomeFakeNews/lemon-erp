@@ -85,7 +85,6 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
 import { EditOutlined, UndoOutlined } from '@ant-design/icons-vue'
@@ -94,6 +93,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import { listCodeRules, resetCodeRule, updateCodeRule } from '@/api/system/codeRule'
 import { useColumns } from '@/composables/useColumns'
 import { useFormDrawer } from '@/composables/useFormDrawer'
+import { useAction } from '@/composables/useAction'
 
 /** 与后端 DocNoCatalog.DateFormat 一致；precision 为日期精确到的周期（越小越精确） */
 const { t } = useI18n()
@@ -183,11 +183,7 @@ const preview = computed(() => {
   return `${form.value.prefix || ''}${date}${'1'.padStart(form.value.seqLength || 4, '0')}`
 })
 
-async function reset(record) {
-  await resetCodeRule(record.key)
-  message.success(t('system.codeRule.resetDone'))
-  load()
-}
+const reset = useAction((record) => resetCodeRule(record.key), { successKey: 'system.codeRule.resetDone', reload: () => load() })
 </script>
 
 <style scoped>

@@ -7,6 +7,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { price as formatPrice } from '@/utils/number'
 
 /** 销售单价与价目价的对比：低于价目价时提示折扣比例 */
 const props = defineProps({
@@ -16,7 +17,6 @@ const props = defineProps({
   symbol: { type: String, default: '¥' }
 })
 
-const formatPrice = (n) => Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
 
 /** 折扣 = (价目价 - 单价) / 价目价，保留 1 位小数 */
 const discount = computed(() => {

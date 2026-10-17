@@ -1,8 +1,8 @@
 <template>
   <div class="check-list">
     <div v-for="(item, i) in items" :key="i" :class="['check-item', item.level]">
-      <CheckCircleFilled v-if="item.level === 'OK'" class="icon ok" />
-      <ExclamationCircleFilled v-else-if="item.level === 'WARN'" class="icon warn" />
+      <CheckCircleFilled v-if="item.level === CheckLevel.OK" class="icon ok" />
+      <ExclamationCircleFilled v-else-if="item.level === CheckLevel.WARN" class="icon warn" />
       <CloseCircleFilled v-else class="icon error" />
       <div class="body">
         <div class="name">{{ item.name }}</div>
@@ -17,6 +17,7 @@
 import { Empty } from 'ant-design-vue'
 import { CheckCircleFilled, CloseCircleFilled, ExclamationCircleFilled } from '@ant-design/icons-vue'
 
+import { CheckLevel } from '@/constants/enums'
 /** 结账检查结果：items [{ name, level: OK | WARN | ERROR, message }] */
 defineProps({
   items: { type: Array, default: () => [] }

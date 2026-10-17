@@ -2,6 +2,7 @@ package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.PermissionService;
+import com.lemon.erp.modules.fin.dto.FinAnalysis;
 import com.lemon.erp.modules.fin.mapper.FinPartnerLedgerMapper;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.model.PartnerLedgerType;
@@ -12,9 +13,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 往来对账单：往来单位在期间内的应收 / 应付单（增加余额）、收 / 付款和预收 / 预付款（减少余额），
@@ -32,7 +31,7 @@ public class FinPartnerLedgerService {
      * @param kind AR 应收（客户）/ AP 应付（供应商）
      * @return {partnerName, opening, rows: [{bizDate, type, docNo, sourceType, sourceNo, increase, decrease, balance, remark}], increase, decrease, closing}
      */
-    public Map<String, Object> statement(BillKind kind, Long partnerId, LocalDate begin, LocalDate end) {
+    public FinAnalysis.PartnerStatement statement(BillKind kind, Long partnerId, LocalDate begin, LocalDate end) {
         FinBillService.checkKind(kind);
         boolean ar = kind == BillKind.AR;
         if (!permissionService.hasPerm(ar ? "fin:ar:list" : "fin:ap:list")) {
@@ -48,30 +47,19 @@ public class FinPartnerLedgerService {
         BigDecimal balance = opening;
         BigDecimal increase = BigDecimal.ZERO;
         BigDecimal decrease = BigDecimal.ZERO;
-        List<Map<String, Object>> rows = new ArrayList<>();
-        for (Map<String, Object> r : ledgerMapper.selectRows(kind, settleKind, partnerId, begin, end)) {
-            BigDecimal amount = new BigDecimal(r.get("amount").toString());
-            boolean bill = PartnerLedgerType.valueOf((String) r.get("type")) == PartnerLedgerType.BILL;
-            Map<String, Object> row = new LinkedHashMap<>(r);
-            row.remove("amount");
-            row.put("increase", bill ? amount : null);
-            row.put("decrease", bill ? null : amount);
+        List<FinAnalysis.StatementLine> rows = new ArrayList<>();
+        for (FinAnalysis.PartnerFlow r : ledgerMapper.selectRows(kind, settleKind, partnerId, begin, end)) {
+            BigDecimal amount = r.getAmount();
+            boolean bill = r.getType() == PartnerLedgerType.BILL;
             balance = bill ? balance.add(amount) : balance.subtract(amount);
-            row.put("balance", balance);
+            rows.add(new FinAnalysis.StatementLine(r.getBizDate(), r.getType(), r.getDocNo(), r.getSourceType(), r.getSourceNo(),
+                    r.getRemark(), bill ? amount : null, bill ? null : amount, balance));
             if (bill) {
                 increase = increase.add(amount);
             } else {
                 decrease = decrease.add(amount);
             }
-            rows.add(row);
         }
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("partnerName", billService.partnerName(kind, partnerId));
-        result.put("opening", opening);
-        result.put("rows", rows);
-        result.put("increase", increase);
-        result.put("decrease", decrease);
-        result.put("closing", balance);
-        return result;
+        return new FinAnalysis.PartnerStatement(billService.partnerName(kind, partnerId), opening, rows, increase, decrease, balance);
     }
 }

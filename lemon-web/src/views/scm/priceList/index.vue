@@ -164,6 +164,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { addPriceList, deletePriceList, pagePriceList, updatePriceList } from '@/api/scm/sourcing'
 import { formatQty, today } from '@/components/wms/wms'
+import { price as formatPrice } from '@/utils/number'
 import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
@@ -172,7 +173,6 @@ import { toOptions } from '@/utils/dict'
 const { t } = useI18n()
 const dict = useDict('scm_customer_level')
 
-const formatPrice = (n) => Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
 const validityText = (r) => (r.validFrom || r.validTo ? `${r.validFrom || t('scm.priceList.unlimited')} ~ ${r.validTo || t('scm.priceList.unlimited')}` : t('scm.priceList.longTerm'))
 function validityTag(r) {
   const d = today()

@@ -65,7 +65,7 @@
               <a-button type="link" size="small" @click="openDetail(record.id)">
                 <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
-              <a-button v-if="record.status === 'APPROVED'" v-perm="'mes:supplement:issue'" type="link" size="small" @click="openIssue(record.id)">
+              <a-button v-if="record.status === SupplementStatus.APPROVED" v-perm="'mes:supplement:issue'" type="link" size="small" @click="openIssue(record.id)">
                 {{ $t('mes.supplement.issue') }}
               </a-button>
               <span v-if="canCancel(record)" v-perm="'mes:supplement:add'">
@@ -105,14 +105,14 @@
               <template v-if="column.key === 'material'">{{ record.materialCode }} {{ record.materialName }}</template>
               <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }} {{ record.unit }}</template>
               <template v-else-if="column.key === 'issuedQty'">
-                <span v-if="Number(record.issuedQty) > 0 || detail.status === 'DONE'">{{ formatQty(record.issuedQty) }} {{ record.unit }}</span>
+                <span v-if="Number(record.issuedQty) > 0 || detail.status === SupplementStatus.DONE">{{ formatQty(record.issuedQty) }} {{ record.unit }}</span>
                 <span v-else class="sub-text">-</span>
               </template>
             </template>
           </a-table>
         </template>
       </a-spin>
-      <template v-if="detail && detail.status === 'APPROVED' && userStore.hasPerm('mes:supplement:issue')" #footer>
+      <template v-if="detail && detail.status === SupplementStatus.APPROVED && userStore.hasPerm('mes:supplement:issue')" #footer>
         <div class="drawer-footer">
           <a-button type="primary" @click="openIssue(detail.id)">{{ $t('mes.supplement.issue') }}</a-button>
         </div>
@@ -124,7 +124,6 @@
 <script setup>
 import SubPage from '@/components/SubPage.vue'
 import { onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
 import { ApartmentOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
@@ -139,7 +138,9 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
+import { useAction } from '@/composables/useAction'
 
+import { SupplementStatus } from '@/constants/enums'
 const userStore = useUserStore()
 const { t } = useI18n()
 const dict = useDict('mes_supplement_status', 'mes_supplement_reason')
@@ -169,13 +170,9 @@ function resetQuery() {
 
 onMounted(load)
 
-const canCancel = (r) => ['APPROVING', 'APPROVED'].includes(r.status) && r.createBy === userStore.user?.id
+const canCancel = (r) => [SupplementStatus.APPROVING, SupplementStatus.APPROVED].includes(r.status) && r.createBy === userStore.user?.id
 
-async function cancel(id) {
-  await cancelSupplement(id)
-  message.success(t('mes.supplement.cancelled'))
-  load()
-}
+const cancel = useAction(cancelSupplement, { successKey: 'mes.supplement.cancelled', reload: () => load() })
 
 // ---------------------------------------------------------------- 新增、发料
 const formOpen = ref(false)

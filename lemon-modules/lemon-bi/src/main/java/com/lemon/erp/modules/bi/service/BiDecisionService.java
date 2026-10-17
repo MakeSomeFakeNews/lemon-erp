@@ -5,6 +5,7 @@ import com.lemon.erp.common.util.Decimals;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.SecurityUtils;
+import com.lemon.erp.modules.bi.dto.BiInsight;
 import com.lemon.erp.modules.bi.entity.BiAlertRule;
 import com.lemon.erp.modules.bi.mapper.BiAlertRuleMapper;
 import com.lemon.erp.modules.bi.mapper.BiInsightMapper;
@@ -57,24 +58,24 @@ public class BiDecisionService {
         }
     }
 
-    public Map<String, Object> forecast(String category, int months) {
+    public BiInsight.Forecast forecast(String category, int months) {
         requireAllData();
         if (months < 1 || months > 12) {
             throw new BizException("bi.error.forecastMonthsMust");
         }
         YearMonth thisMonth = YearMonth.now();
         YearMonth start = thisMonth.minusMonths(23);
-        Map<Integer, Map<String, Object>> rows = BiCockpitService.byPeriod(insightMapper.selectSalesByPeriod(BiCockpitService.period(start), category));
+        Map<Integer, BiInsight.PeriodRow> rows = BiCockpitService.byPeriod(insightMapper.selectSalesByPeriod(BiCockpitService.period(start), category));
         // 本月未结束，只用到上月为止的完整月份
         List<BigDecimal> series = new ArrayList<>();
-        List<Map<String, Object>> history = new ArrayList<>();
+        List<BiInsight.PeriodAmount> history = new ArrayList<>();
         for (int i = 0; i < 24; i++) {
             YearMonth ym = start.plusMonths(i);
-            BigDecimal v = BiCockpitService.value(rows, BiCockpitService.period(ym), "amount");
+            BigDecimal v = BiCockpitService.value(rows, BiCockpitService.period(ym), BiInsight.PeriodRow::getAmount);
             if (ym.isBefore(thisMonth)) {
                 series.add(v);
             }
-            history.add(Map.of("period", BiCockpitService.period(ym), "amount", v));
+            history.add(new BiInsight.PeriodAmount(BiCockpitService.period(ym), v));
         }
         int n = Math.min(12, series.size());
         List<BigDecimal> recent = series.subList(series.size() - n, series.size());
@@ -91,7 +92,7 @@ public class BiDecisionService {
         double a = (sy - b * sx) / n;
         boolean seasonal = series.stream().limit(series.size() - 12L).anyMatch(v -> v.signum() > 0) && series.size() >= 23;
         double yearAvg = seasonal ? series.stream().mapToDouble(BigDecimal::doubleValue).average().orElse(0) : 0;
-        List<Map<String, Object>> forecast = new ArrayList<>();
+        List<BiInsight.PeriodAmount> forecast = new ArrayList<>();
         for (int i = 0; i < months; i++) {
             YearMonth ym = thisMonth.plusMonths(i);
             double trend = a + b * (n + i);
@@ -108,34 +109,25 @@ public class BiDecisionService {
                 }
                 index = cnt == 0 || same == 0 ? 1 : (same / cnt) / yearAvg;
             }
-            forecast.add(Map.of("period", BiCockpitService.period(ym),
-                    "amount", BigDecimal.valueOf(Math.max(0, trend * index)).setScale(2, RoundingMode.HALF_UP)));
+            forecast.add(new BiInsight.PeriodAmount(BiCockpitService.period(ym),
+                    BigDecimal.valueOf(Math.max(0, trend * index)).setScale(2, RoundingMode.HALF_UP)));
         }
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("history", history);
-        result.put("forecast", forecast);
-        result.put("slope", BigDecimal.valueOf(b).setScale(2, RoundingMode.HALF_UP));
-        result.put("seasonal", seasonal);
-        result.put("method", seasonal ? Messages.get("bi.text.linearTrendSeasonalIndex") : Messages.get("bi.text.linearTrendLastMonths", n));
-        return result;
+        return new BiInsight.Forecast(history, forecast, BigDecimal.valueOf(b).setScale(2, RoundingMode.HALF_UP), seasonal,
+                seasonal ? Messages.get("bi.text.linearTrendSeasonalIndex") : Messages.get("bi.text.linearTrendLastMonths", n));
     }
 
     /**
      * ABC 分类：近一年各物料的销售成本（没有成本时用销售额）降序累计，累计占比 70% 以内 A 类、90% 以内 B 类，其余 C 类
      */
-    public Map<String, Object> abc() {
+    public BiInsight.Abc abc() {
         requireAllData();
-        List<Map<String, Object>> src = insightMapper.selectAbcSource(LocalDate.now().minusYears(1));
-        boolean useCost = src.stream().anyMatch(r -> dec(r.get("cost")).signum() > 0);
-        String key = useCost ? "cost" : "amount";
-        List<Map<String, Object>> rows = new ArrayList<>();
-        for (Map<String, Object> r : src) {
-            Map<String, Object> m = new LinkedHashMap<>(r);
-            m.put("value", dec(r.get(key)));
-            rows.add(m);
+        List<BiInsight.AbcRow> rows = new ArrayList<>(insightMapper.selectAbcSource(LocalDate.now().minusYears(1)));
+        boolean useCost = rows.stream().anyMatch(r -> dec(r.getCost()).signum() > 0);
+        for (BiInsight.AbcRow r : rows) {
+            r.setValue(dec(useCost ? r.getCost() : r.getAmount()));
         }
-        rows.sort(Comparator.comparing((Map<String, Object> r) -> (BigDecimal) r.get("value")).reversed());
-        BigDecimal total = Decimals.sum(rows, r -> (BigDecimal) r.get("value"));
+        rows.sort(Comparator.comparing(BiInsight.AbcRow::getValue).reversed());
+        BigDecimal total = Decimals.sum(rows, BiInsight.AbcRow::getValue);
         BigDecimal cum = BigDecimal.ZERO;
         Map<AbcClass, long[]> counts = new EnumMap<>(AbcClass.class);
         Map<AbcClass, BigDecimal> values = new EnumMap<>(AbcClass.class);
@@ -143,44 +135,42 @@ public class BiDecisionService {
             counts.put(c, new long[]{0});
             values.put(c, BigDecimal.ZERO);
         }
-        for (Map<String, Object> r : rows) {
-            BigDecimal v = (BigDecimal) r.get("value");
+        for (BiInsight.AbcRow r : rows) {
+            BigDecimal v = r.getValue();
             BigDecimal before = total.signum() == 0 ? BigDecimal.ZERO : cum.multiply(HUNDRED).divide(total, 2, RoundingMode.HALF_UP);
             cum = cum.add(v);
             BigDecimal pct = total.signum() == 0 ? BigDecimal.ZERO : cum.multiply(HUNDRED).divide(total, 2, RoundingMode.HALF_UP);
             AbcClass cls = AbcClass.of(before);
-            r.put("share", total.signum() == 0 ? BigDecimal.ZERO : v.multiply(HUNDRED).divide(total, 2, RoundingMode.HALF_UP));
-            r.put("cumulative", pct);
-            r.put("class", cls);
+            r.setShare(total.signum() == 0 ? BigDecimal.ZERO : v.multiply(HUNDRED).divide(total, 2, RoundingMode.HALF_UP));
+            r.setCumulative(pct);
+            r.setAbcClass(cls);
             counts.get(cls)[0]++;
             values.merge(cls, v, BigDecimal::add);
         }
-        List<Map<String, Object>> summary = new ArrayList<>();
-        counts.forEach((c, cnt) -> summary.add(Map.of("class", c, "count", cnt[0], "value", values.get(c),
-                "share", total.signum() == 0 ? BigDecimal.ZERO : values.get(c).multiply(HUNDRED).divide(total, 1, RoundingMode.HALF_UP))));
-        return Map.of("rows", rows, "summary", summary, "basis", useCost ? Messages.get("bi.text.costSales") : Messages.get("bi.text.sales"), "total", total);
+        List<BiInsight.AbcSummary> summary = new ArrayList<>();
+        counts.forEach((c, cnt) -> summary.add(new BiInsight.AbcSummary(c, cnt[0], values.get(c),
+                total.signum() == 0 ? BigDecimal.ZERO : values.get(c).multiply(HUNDRED).divide(total, 1, RoundingMode.HALF_UP))));
+        return new BiInsight.Abc(rows, summary, useCost ? Messages.get("bi.text.costSales") : Messages.get("bi.text.sales"), total);
     }
 
     /** 呆滞物料：有库存但超过 days 天没有出库 */
-    public List<Map<String, Object>> slowMoving(int days) {
+    public List<BiInsight.SlowMovingRow> slowMoving(int days) {
         LocalDateTime now = LocalDateTime.now();
-        List<Map<String, Object>> rows = new ArrayList<>();
-        for (Map<String, Object> r : insightMapper.selectSlowMoving(now.minusDays(days))) {
-            Map<String, Object> m = new LinkedHashMap<>(r);
-            Object since = r.get("lastOut") != null ? r.get("lastOut") : r.get("firstIn");
-            m.put("idleDays", since == null ? null : ChronoUnit.DAYS.between(LocalDateTime.parse(since.toString().replace(' ', 'T').substring(0, 19)), now));
-            rows.add(m);
+        List<BiInsight.SlowMovingRow> rows = new ArrayList<>(insightMapper.selectSlowMoving(now.minusDays(days)));
+        for (BiInsight.SlowMovingRow r : rows) {
+            String since = r.getLastOut() != null ? r.getLastOut() : r.getFirstIn();
+            r.setIdleDays(since == null ? null : ChronoUnit.DAYS.between(LocalDateTime.parse(since.replace(' ', 'T').substring(0, 19)), now));
         }
-        rows.sort(Comparator.comparing((Map<String, Object> r) -> dec(r.get("amount"))).reversed());
+        rows.sort(Comparator.comparing((BiInsight.SlowMovingRow r) -> dec(r.getAmount())).reversed());
         return rows;
     }
 
     // ---------------------------------------------------------------- 预警
 
-    public List<Map<String, Object>> metrics() {
-        List<Map<String, Object>> list = new ArrayList<>();
+    public List<BiInsight.MetricOption> metrics() {
+        List<BiInsight.MetricOption> list = new ArrayList<>();
         for (BiAlertMetric m : BiAlertMetric.values()) {
-            list.add(Map.of("key", m.name(), "label", Messages.get(m.getLabel()), "unit", Messages.get(m.getUnit())));
+            list.add(new BiInsight.MetricOption(m.name(), Messages.get(m.getLabel()), Messages.get(m.getUnit())));
         }
         return list;
     }
@@ -212,12 +202,12 @@ public class BiDecisionService {
     /**
      * 计算所有启用规则的指标值，返回每条规则的当前值与是否触发
      */
-    public List<Map<String, Object>> alerts() {
+    public List<BiInsight.AlertResult> alerts() {
         LocalDate today = LocalDate.now();
         LocalDateTime now = LocalDateTime.now();
         int period = today.getYear() * 100 + today.getMonthValue();
         Map<BiAlertMetric, BigDecimal> cache = new LinkedHashMap<>();
-        List<Map<String, Object>> result = new ArrayList<>();
+        List<BiInsight.AlertResult> result = new ArrayList<>();
         for (BiAlertRule rule : rules()) {
             if (!Integer.valueOf(1).equals(rule.getEnabled())) {
                 continue;
@@ -229,19 +219,9 @@ public class BiDecisionService {
             BigDecimal value = cache.computeIfAbsent(metric, m -> m == BiAlertMetric.BUDGET_OVERRUN ? budgetOverrun(today)
                     : insightMapper.selectMetric(m.name(), today, now, period, now.minusDays(SLOW_DAYS)));
             boolean triggered = value != null && rule.getOperator().test(value, rule.getThreshold());
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("ruleId", rule.getId());
-            m.put("name", rule.getName());
-            m.put("metric", metric.name());
-            m.put("metricLabel", Messages.get(metric.getLabel()));
-            m.put("unit", Messages.get(metric.getUnit()));
-            m.put("operator", rule.getOperator());
-            m.put("threshold", rule.getThreshold());
-            m.put("level", rule.getLevel());
-            m.put("value", value == null ? null : value.setScale(2, RoundingMode.HALF_UP));
-            m.put("triggered", triggered);
-            m.put("remark", rule.getRemark());
-            result.add(m);
+            result.add(new BiInsight.AlertResult(rule.getId(), rule.getName(), metric.name(), Messages.get(metric.getLabel()),
+                    Messages.get(metric.getUnit()), rule.getOperator(), rule.getThreshold(), rule.getLevel(),
+                    value == null ? null : value.setScale(2, RoundingMode.HALF_UP), triggered, rule.getRemark()));
         }
         return result;
     }

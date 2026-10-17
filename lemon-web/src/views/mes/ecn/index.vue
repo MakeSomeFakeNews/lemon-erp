@@ -90,7 +90,7 @@
       <template v-if="detail" #extra>
         <a-space>
           <a-button v-if="detail.flowInstanceId" @click="flowOpen = true">{{ $t('mes.ecn.flowRecord') }}</a-button>
-          <template v-if="detail.status === 'DRAFT'">
+          <template v-if="detail.status === EcnStatus.DRAFT">
             <a-button v-perm="'mes:bom:edit'" @click="router.push({ path: '/mes/bom', query: { edit: detail.toBomId } })">{{ $t('mes.ecn.editToBom') }}</a-button>
             <a-button v-perm="'mes:ecn:edit'" @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
             <span v-perm="'mes:ecn:remove'">
@@ -100,7 +100,7 @@
               <a-popconfirm :title="$t('mes.ecn.submitConfirm')" @confirm="submit"><a-button type="primary">{{ $t('common.action.submit') }}</a-button></a-popconfirm>
             </span>
           </template>
-          <template v-if="detail.status === 'APPROVED'">
+          <template v-if="detail.status === EcnStatus.APPROVED">
             <span v-perm="'mes:ecn:approve'">
               <a-popconfirm :title="$t('mes.ecn.cancelConfirm')" @confirm="cancel"><a-button>{{ $t('mes.ecn.cancel') }}</a-button></a-popconfirm>
             </span>
@@ -179,6 +179,7 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
+import { EcnStatus } from '@/constants/enums'
 /** 工程变更（ECN）：复制基准 BOM 为新版本修改，审批后按生效日期切换默认 BOM */
 const dict = useDict('mes_ecn_reason', 'mes_ecn_status')
 const userStore = useUserStore()

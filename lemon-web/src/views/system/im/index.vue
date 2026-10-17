@@ -86,7 +86,7 @@
               <a-form-item :label="$t('system.im.webhook')" :extra="$t('system.im.webhookTip', { prefix: ROBOT_PREFIX[platform] })">
                 <a-input-password v-model:value="form.robotWebhook" :visibility-toggle="true" :placeholder="$t('system.im.webhookPlaceholder')" />
               </a-form-item>
-              <a-form-item v-if="platform !== 'WECOM'" :label="$t('system.im.robotSecret')" :extra="$t('system.im.robotSecretTip')">
+              <a-form-item v-if="platform !== ImPlatform.WECOM" :label="$t('system.im.robotSecret')" :extra="$t('system.im.robotSecretTip')">
                 <div class="secret-row">
                   <a-input-password
                     v-model:value="form.robotSecret"
@@ -230,7 +230,9 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { IM_PLATFORMS, imPlatform } from '@/utils/im'
+import { useAction } from '@/composables/useAction'
 
+import { ImPlatform } from '@/constants/enums'
 /** 第三方集成：每个租户分别接入自己的钉钉、企业微信、飞书应用 */
 const { t } = useI18n()
 const FIELDS = {
@@ -432,11 +434,7 @@ async function submitBind() {
     binding.value = false
   }
 }
-async function unbind(record) {
-  await unbindImUser(record.bindingId)
-  message.success(t('system.im.unboundOk'))
-  load()
-}
+const unbind = useAction((record) => unbindImUser(record.bindingId), { successKey: 'system.im.unboundOk', reload: () => load() })
 
 onMounted(() => {
   loadConfigs()

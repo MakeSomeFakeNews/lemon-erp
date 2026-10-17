@@ -36,7 +36,7 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'period'">{{ periodText(record.period) }}</template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="record.status === 'CLOSED' ? 'default' : 'green'" :bordered="false">{{ record.status === 'CLOSED' ? $t('fin.period.closed') : $t('fin.period.open') }}</a-tag>
+            <a-tag :color="record.status === PeriodStatus.CLOSED ? 'default' : 'green'" :bordered="false">{{ record.status === PeriodStatus.CLOSED ? $t('fin.period.closed') : $t('fin.period.open') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'vouchers'">
             {{ $t('fin.period.voucherCount', { n: record.voucherCount }) }}
@@ -48,7 +48,7 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <span v-perm="'fin:period:close'">
-              <a-button v-if="record.status === 'OPEN'" type="link" size="small" @click="close(record.period)">{{ $t('fin.period.close') }}</a-button>
+              <a-button v-if="record.status === PeriodStatus.OPEN" type="link" size="small" @click="close(record.period)">{{ $t('fin.period.close') }}</a-button>
               <a-popconfirm v-else :title="$t('fin.period.confirmReopen')" @confirm="reopen(record.period)">
                 <a-button type="link" size="small">{{ $t('fin.period.reopen') }}</a-button>
               </a-popconfirm>
@@ -141,7 +141,9 @@ import { closeCheck, closePeriod, pagePeriod, reopenPeriod, transferVat } from '
 import { useTable } from '@/composables/useTable'
 import { currentPeriod, formatMoney, periodText } from '@/components/fin/fin'
 import { useI18n } from 'vue-i18n'
+import { useAction } from '@/composables/useAction'
 
+import { PeriodStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 const columns = [
@@ -207,11 +209,7 @@ async function doClose() {
   }
 }
 
-async function reopen(period) {
-  await reopenPeriod(period)
-  message.success(t('fin.period.reopened'))
-  load()
-}
+const reopen = useAction(reopenPeriod, { successKey: 'fin.period.reopened', reload: () => load() })
 
 // ---------------------------------------------------------------- 增值税结转
 const vatOpen = ref(false)

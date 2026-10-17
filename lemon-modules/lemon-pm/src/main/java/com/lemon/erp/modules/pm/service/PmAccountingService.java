@@ -2,6 +2,7 @@ package com.lemon.erp.modules.pm.service;
 
 import com.lemon.erp.modules.fin.model.BillSource;
 import com.lemon.erp.modules.fin.model.BillKind;
+import com.lemon.erp.modules.pm.dto.MonthlyCost;
 import com.lemon.erp.modules.pm.model.TaskStatus;
 import com.lemon.erp.modules.pm.model.ProjectStatus;
 import com.lemon.erp.modules.pm.model.BillingStatus;
@@ -32,7 +33,6 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Map;
 
 import static com.lemon.erp.common.util.Decimals.HUNDRED;
 
@@ -63,7 +63,7 @@ public class PmAccountingService {
     }
 
     /** 按月成本（人工、费用） */
-    public List<Map<String, Object>> monthly(Long projectId) {
+    public List<MonthlyCost> monthly(Long projectId) {
         return costMapper.selectMonthly(projectId);
     }
 

@@ -2,6 +2,7 @@ package com.lemon.erp.modules.pm.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.lemon.erp.modules.pm.dto.MonthlyCost;
 import com.lemon.erp.modules.pm.entity.PmCost;
 import org.apache.ibatis.annotations.Param;
 
@@ -19,7 +20,7 @@ public interface PmCostMapper extends BaseMapper<PmCost> {
     List<Map<String, Object>> selectActualByType(@Param("projectId") Long projectId);
 
     /** 项目按月成本：人工、费用 */
-    List<Map<String, Object>> selectMonthly(@Param("projectId") Long projectId);
+    List<MonthlyCost> selectMonthly(@Param("projectId") Long projectId);
 
     /**
      * 物料单位成本：最近一期成本核算的加权平均单价，没有时取采购入库的平均不含税单价

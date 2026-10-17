@@ -51,7 +51,7 @@
         WHERE c.id = #{customerId}
     </select>
 
-    <select id="selectSummary" resultType="java.util.Map">
+    <select id="selectSummary" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$CustomerSummary">
         SELECT
             (SELECT COALESCE(SUM(CASE WHEN d.kind = 'SALES_OUT' THEN d.total_amount ELSE -d.total_amount END), 0)
              FROM scm_trade_doc d

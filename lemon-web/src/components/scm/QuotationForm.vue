@@ -41,17 +41,8 @@
         </a-button>
       </div>
 
-      <a-table
-        row-key="key"
-        size="small"
-        class="items-table"
-        :columns="columns"
-        :data-source="form.items"
-        :pagination="false"
-        :scroll="{ x: scrollX }"
-        :locale="{ emptyText: $t('scm.quotation.emptyItems') }"
-      >
-        <template #bodyCell="{ column, record, index }">
+      <LineItemsTable class="items-table" :items="form.items" :columns="columns" :empty-text="$t('scm.quotation.emptyItems')">
+        <template #cell="{ column, record, index }">
           <template v-if="column.key === 'material'">
             <a-form-item :name="['items', index, 'materialId']" :rules="requiredRule($t('scm.quotation.selectMaterial'))" class="cell-item">
               <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
@@ -93,13 +84,8 @@
           <template v-else-if="column.key === 'remark'">
             <a-input v-model:value="record.remark" :maxlength="255" />
           </template>
-          <template v-else-if="column.key === 'action'">
-            <a-button type="link" danger size="small" @click="form.items.splice(index, 1)">
-              <template #icon><DeleteOutlined /></template>
-            </a-button>
-          </template>
         </template>
-      </a-table>
+      </LineItemsTable>
     </a-form>
     <AtpModal
       v-model:open="atpOpen"
@@ -112,16 +98,18 @@
 
 <script setup>
 import { useI18n } from 'vue-i18n'
-import { computed, ref } from 'vue'
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { ref } from 'vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
+import LineItemsTable from '@/components/common/LineItemsTable.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import PartnerSelect from './PartnerSelect.vue'
 import AtpModal from './AtpModal.vue'
 import PriceHint from './PriceHint.vue'
 import { addQuotation, getQuotation, quotePrice, updateQuotation } from '@/api/scm/sourcing'
 import { useFormDrawer } from '@/composables/useFormDrawer'
-import { rowKey, today } from '@/components/wms/wms'
+import { lineKey, useLineItems } from '@/composables/useLineItems'
+import { today } from '@/components/wms/wms'
 import { formatMoney, lineAmount, lineTax } from './scm'
 
 const { t } = useI18n()
@@ -141,7 +129,6 @@ const columns = [
   { title: t('common.field.remark'), key: 'remark', width: 150 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
-const scrollX = columns.reduce((sum, c) => sum + c.width, 0)
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
 const rules = {
@@ -163,7 +150,7 @@ const emptyForm = () => ({
 const num = (v) => (v != null ? Number(v) : undefined)
 const toRow = (item) => ({
   ...item,
-  key: item.id ? `item-${item.id}` : rowKey(),
+  key: lineKey(item),
   materialLabel: item.materialCode ? `${item.materialCode} ${item.materialName}` : undefined,
   qty: num(item.qty),
   price: num(item.price),
@@ -200,11 +187,11 @@ const drawer = useFormDrawer({
 })
 const { form, formRef } = drawer
 
-const totalAmount = computed(() => form.value.items.reduce((sum, i) => sum + lineAmount(i.qty, i.price), 0))
-
-function addRow() {
-  form.value.items.push({ key: rowKey(), materialId: undefined, qty: undefined, price: undefined, taxRate: 13, priceAuto: true })
-}
+const lines = useLineItems(() => form.value.items, {
+  newRow: () => ({ materialId: undefined, qty: undefined, price: undefined, taxRate: 13, priceAuto: true })
+})
+const totalAmount = lines.total((i) => lineAmount(i.qty, i.price), (n) => n)
+const addRow = () => lines.addRow()
 
 /** 按价目表取价：更新价目价；单价为空或是自动带出的，同时更新单价、税率 */
 async function fetchPrice(row) {

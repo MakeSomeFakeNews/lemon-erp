@@ -54,7 +54,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== 'DRAFT' }) }"
+        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== OrderStatus.DRAFT }) }"
         :scroll="{ x: 1500, y: '100%' }"
         @change="onTableChange"
       >
@@ -62,10 +62,10 @@
           <template v-if="column.key === 'orderNo'">
             <a @click="openDetail(record)">{{ record.orderNo }}</a>
             <a-tag v-if="record.version > 1" color="blue" :bordered="false" class="source-tag">V{{ record.version }}</a-tag>
-            <a-tag v-if="record.source === 'MRP'" color="purple" :bordered="false" class="source-tag">MRP</a-tag>
-            <a-tag v-else-if="record.source === 'CONSIGN'" color="cyan" :bordered="false" class="source-tag">{{ $t('scm.order.sourceConsign') }}</a-tag>
-            <a-tag v-else-if="record.source === 'DEALER'" color="purple" :bordered="false" class="source-tag">{{ $t('scm.order.sourceDealer') }}</a-tag>
-            <a-tag v-else-if="record.source === 'IMPORT'" color="lime" :bordered="false" class="source-tag">{{ $t('scm.order.sourceImport') }}</a-tag>
+            <a-tag v-if="record.source === OrderSource.MRP" color="purple" :bordered="false" class="source-tag">MRP</a-tag>
+            <a-tag v-else-if="record.source === OrderSource.CONSIGN" color="cyan" :bordered="false" class="source-tag">{{ $t('scm.order.sourceConsign') }}</a-tag>
+            <a-tag v-else-if="record.source === OrderSource.DEALER" color="purple" :bordered="false" class="source-tag">{{ $t('scm.order.sourceDealer') }}</a-tag>
+            <a-tag v-else-if="record.source === OrderSource.IMPORT" color="lime" :bordered="false" class="source-tag">{{ $t('scm.order.sourceImport') }}</a-tag>
             <div v-if="record.externalNo" class="sub-text">{{ $t('scm.order.externalNoValue', { no: record.externalNo }) }}</div>
           </template>
           <template v-else-if="column.key === 'partner'">
@@ -92,11 +92,11 @@
               <a-button type="link" size="small" @click="openDetail(record)">
                 <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
-              <a-button v-if="record.status === 'DRAFT'" v-perm="`scm:${kind}:edit`" type="link" size="small" @click="form.openEdit(record)">
+              <a-button v-if="record.status === OrderStatus.DRAFT" v-perm="`scm:${kind}:edit`" type="link" size="small" @click="form.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <a-button
-                v-else-if="['APPROVED', 'PARTIAL'].includes(record.status)"
+                v-else-if="[OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(record.status)"
                 v-perm="`scm:${conf.trades[0]}:add`"
                 type="link"
                 size="small"
@@ -158,6 +158,7 @@ import { formatQty } from '@/components/wms/wms'
 import { ORDER_KINDS, formatMoney } from './scm'
 import { currencySymbol, isForeign, useCurrencies } from '@/components/fin/currency'
 
+import { OrderSource, OrderStatus } from '@/constants/enums'
 /**
  * 采购订单 / 销售订单列表页，两个页面共用
  */

@@ -4,6 +4,7 @@ import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.hr.dto.GradeStat;
 import com.lemon.erp.modules.hr.dto.PerfPlanRequest;
 import com.lemon.erp.modules.hr.dto.PerfScoreRequest;
 import com.lemon.erp.modules.hr.dto.PerfStartRequest;
@@ -24,7 +25,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 绩效考核 /hr/perf：考核方案、考核表、评分
@@ -53,7 +53,7 @@ public class HrPerfController {
 
     @GetMapping("/{id}/grades")
     @PreAuthorize("@ss.hasPerm('hr:perf:list')")
-    public R<List<Map<String, Object>>> grades(@PathVariable Long id) {
+    public R<List<GradeStat>> grades(@PathVariable Long id) {
         return R.ok(perfService.gradeStats(id));
     }
 

@@ -1,5 +1,8 @@
 package com.lemon.erp.framework.rule;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 /**
  * 读取当前租户的业务参数（由系统模块实现，按租户缓存）
  */
@@ -14,6 +17,15 @@ public interface BizRules {
 
     default int number(String key) {
         return Integer.parseInt(get(key));
+    }
+
+    default BigDecimal decimal(String key) {
+        return new BigDecimal(get(key));
+    }
+
+    /** 表格型参数：每行一个列表，留空的单元格为 null */
+    default List<List<BigDecimal>> table(String key) {
+        return BizRule.parseTable(get(key));
     }
 
     default <E extends Enum<E>> E option(String key, Class<E> type) {

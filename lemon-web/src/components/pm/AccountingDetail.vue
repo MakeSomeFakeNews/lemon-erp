@@ -33,7 +33,7 @@
 
         <div class="section-head">
           <span class="chart-title">{{ $t('pm.acc.billingPlan') }}</span>
-          <a-button v-perm="'pm:billing:edit'" type="primary" size="small" :disabled="acc.status === 'CLOSED'" @click="openBilling()">
+          <a-button v-perm="'pm:billing:edit'" type="primary" size="small" :disabled="acc.status === ProjectStatus.CLOSED" @click="openBilling()">
             <template #icon><PlusOutlined /></template>{{ $t('pm.acc.addBilling') }}
           </a-button>
         </div>
@@ -54,7 +54,7 @@
             </template>
             <template v-else-if="column.key === 'action'">
               <span class="table-actions">
-                <template v-if="record.status === 'PLANNED'">
+                <template v-if="record.status === BillingStatus.PLANNED">
                   <a-button v-perm="'pm:billing:bill'" type="link" size="small" @click="openBill(record)">{{ $t('pm.acc.bill') }}</a-button>
                   <a-button v-perm="'pm:billing:edit'" type="link" size="small" @click="openBilling(record)"><EditOutlined /></a-button>
                   <span v-perm="'pm:billing:edit'">
@@ -145,7 +145,9 @@ import { formatMoney } from '@/components/scm/scm'
 import { periodLabel, shortMoney } from '@/components/charts/charts'
 import { flattenTasks, indexTag, num, today } from './pm'
 import { t } from '@/locales'
+import { useAction } from '@/composables/useAction'
 
+import { BillingStatus, ProjectStatus } from '@/constants/enums'
 /** 项目核算详情：收入、成本、毛利、挣值、按月成本、收款计划与开票 */
 const props = defineProps({
   open: Boolean,
@@ -294,11 +296,7 @@ async function saveBilling() {
   }
 }
 
-async function removeBilling(record) {
-  await deleteBilling(record.id)
-  message.success(t('common.msg.deleteSuccess'))
-  reload()
-}
+const removeBilling = useAction((record) => deleteBilling(record.id), { successKey: 'common.msg.deleteSuccess', reload: () => reload() })
 
 // 开票
 const billOpen = ref(false)
@@ -327,11 +325,7 @@ async function confirmBill() {
   }
 }
 
-async function unbill(record) {
-  await unbillBilling(record.id)
-  message.success(t('pm.acc.unbilled'))
-  reload()
-}
+const unbill = useAction((record) => unbillBilling(record.id), { successKey: 'pm.acc.unbilled', reload: () => reload() })
 </script>
 
 <style scoped>

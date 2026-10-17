@@ -54,7 +54,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== 'DRAFT' }) }"
+        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== WmsDocStatus.DRAFT }) }"
         :scroll="{ x: 1460, y: '100%' }"
         @change="onTableChange"
       >
@@ -96,7 +96,7 @@
               <a-button type="link" size="small" @click="openDetail(record)">
                 <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
-              <template v-if="record.status === 'DRAFT'">
+              <template v-if="record.status === WmsDocStatus.DRAFT">
                 <a-button v-perm="`wms:${kind}:edit`" type="link" size="small" @click="form.openEdit(record)">
                   <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
                 </a-button>
@@ -111,7 +111,7 @@
                   </template>
                 </a-dropdown>
               </template>
-              <span v-if="kind === 'transfer' && record.status === 'TRANSIT'" v-perm="'wms:transfer:receive'">
+              <span v-if="kind === 'transfer' && record.status === WmsDocStatus.TRANSIT" v-perm="'wms:transfer:receive'">
                 <a-popconfirm
                   :title="$t('wms.doc.confirmReceive', { name: record.toWarehouseName })"
                   :description="$t('wms.doc.receiveTip')"
@@ -173,7 +173,9 @@ import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { DOC_KINDS, canReverse, formatQty, negativeClass } from './wms'
+import { useAction } from '@/composables/useAction'
 
+import { WmsDocStatus } from '@/constants/enums'
 /**
  * 入库单 / 出库单 / 调拨单列表页，三个页面共用
  */
@@ -266,17 +268,9 @@ function onMoreAction(key, record) {
 
 const isTrue = (v) => v === true || v === 1
 
-async function receive(record) {
-  await receiveTransfer(record.id)
-  message.success(t('wms.doc.receiveSuccess'))
-  load()
-}
+const receive = useAction((record) => receiveTransfer(record.id), { successKey: 'wms.doc.receiveSuccess', reload: () => load() })
 
-async function reverse(record) {
-  await reverseDoc(props.kind, record.id)
-  message.success(t('wms.doc.reverseSuccess'))
-  load()
-}
+const reverse = useAction((record) => reverseDoc(props.kind, record.id), { successKey: 'wms.doc.reverseSuccess', reload: () => load() })
 
 async function remove(ids) {
   await deleteDoc(props.kind, ids)

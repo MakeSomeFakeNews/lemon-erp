@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -106,7 +105,7 @@ public class FinTaxService {
         if (r.signum() < 0 || r.compareTo(Decimals.HUNDRED) > 0) {
             throw new BizException("fin.error.taxRateMustBetween");
         }
-        return base.multiply(r).divide(Decimals.HUNDRED, 2, RoundingMode.HALF_UP);
+        return base.multiply(r).divide(Decimals.HUNDRED, Decimals.MONEY_SCALE, Decimals.ROUNDING);
     }
 
     static String sourceNo(int period) {

@@ -121,7 +121,7 @@
           <a-descriptions :column="1" size="small" class="block">
             <a-descriptions-item :label="$t('wms.common.material')">{{ serial.materialCode }} {{ serial.materialName }}</a-descriptions-item>
             <a-descriptions-item :label="$t('wms.trace.currentStatus')"><DictTag type="wms_serial_status" :value="serial.status" /></a-descriptions-item>
-            <a-descriptions-item :label="serial.status === 'IN_STOCK' ? $t('wms.trace.currentPosition') : $t('wms.trace.lastPosition')">
+            <a-descriptions-item :label="serial.status === SerialStatus.IN_STOCK ? $t('wms.trace.currentPosition') : $t('wms.trace.lastPosition')">
               {{ serial.warehouseName }} / {{ locationText(serial.locationCode) }}
             </a-descriptions-item>
             <a-descriptions-item v-if="serial.batchNo" :label="$t('wms.common.batch')">{{ serial.batchNo }}</a-descriptions-item>
@@ -157,6 +157,7 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+import { SerialStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 const dict = useDict('wms_serial_status')

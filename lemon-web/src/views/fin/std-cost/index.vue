@@ -36,7 +36,7 @@
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="fin_std_cost_status" :value="record.status" />
-            <a-tag v-if="record.status === 'DRAFT' && !record.rollupTime" color="orange">{{ $t('fin.stdCost.needRollup') }}</a-tag>
+            <a-tag v-if="record.status === StdCostStatus.DRAFT && !record.rollupTime" color="orange">{{ $t('fin.stdCost.needRollup') }}</a-tag>
             <div v-if="record.releaseTime" class="sub-text">{{ record.releaseTime }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
@@ -66,7 +66,7 @@
 
     <SubPage :open="detailOpen" :title="detail ? $t('fin.stdCost.detailTitle', { name: detail.name }) : ''" width="min(1100px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
-        <a-space v-if="detail.status === 'DRAFT'" v-perm="'fin:stdCost:edit'">
+        <a-space v-if="detail.status === StdCostStatus.DRAFT" v-perm="'fin:stdCost:edit'">
           <a-popconfirm :title="$t('fin.stdCost.confirmDeleteVersion')" @confirm="remove"><a-button danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
           <a-button @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
           <a-button :loading="rolling" @click="rollup">{{ $t('fin.stdCost.rollup') }}</a-button>
@@ -216,6 +216,7 @@ import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { useI18n } from 'vue-i18n'
 
+import { StdCostStatus } from '@/constants/enums'
 /** 标准成本：按版本维护，采购件手工维护标准单价，自制件按默认 BOM 和工艺路线逐级卷算；发布后用于成本差异分析 */
 useDict('fin_std_cost_status')
 const userStore = useUserStore()
@@ -268,7 +269,7 @@ const itemColumns = [
 ]
 const detailOpen = ref(false)
 const detail = ref()
-const editable = computed(() => detail.value?.status === 'DRAFT' && userStore.hasPerm('fin:stdCost:edit'))
+const editable = computed(() => detail.value?.status === StdCostStatus.DRAFT && userStore.hasPerm('fin:stdCost:edit'))
 const itemQuery = reactive({ make: '', keyword: undefined })
 const items = useTable((p) => stdCostItems(detail.value.id, p), itemQuery, { params: (q) => ({ ...q, make: q.make === '' ? undefined : q.make }) })
 async function openDetail(id) {

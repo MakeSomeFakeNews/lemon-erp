@@ -10,6 +10,7 @@ import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.dto.ChannelRequests;
 import com.lemon.erp.modules.scm.dto.OrderItemRequest;
 import com.lemon.erp.modules.scm.dto.OrderRequest;
+import com.lemon.erp.modules.scm.dto.ScmPriceViews;
 import com.lemon.erp.modules.scm.entity.ScmChannelReport;
 import com.lemon.erp.modules.scm.entity.ScmChannelReportItem;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
@@ -57,10 +58,10 @@ public class ScmChannelService {
     private final MessageSender messageSender;
 
     /** 可订货的物料：每个物料的基础价（不限起订量的最低一档）和起订数量阶梯 */
-    public List<Map<String, Object>> catalog(Long customerId, String keyword) {
+    public List<ScmPriceViews.DealerCatalogItem> catalog(Long customerId, String keyword) {
         ScmCustomer dealer = requireDealer(customerId);
-        Map<Long, Map<String, Object>> byMaterial = new LinkedHashMap<>();
-        Map<Long, List<Map<String, Object>>> tiers = new LinkedHashMap<>();
+        Map<Long, ScmPriceViews.DealerCatalogItem> byMaterial = new LinkedHashMap<>();
+        Map<Long, List<ScmPriceViews.PriceTier>> tiers = new LinkedHashMap<>();
         Set<Long> levelSpecific = new HashSet<>();
         for (ScmPriceList p : reportMapper.selectCatalog(dealer.getLevel(), LocalDate.now(), keyword)) {
             // 有本等级价格的物料只用本等级的价格
@@ -69,21 +70,11 @@ public class ScmChannelService {
             } else if (levelSpecific.contains(p.getMaterialId())) {
                 continue;
             }
-            List<Map<String, Object>> materialTiers = tiers.computeIfAbsent(p.getMaterialId(), k -> new ArrayList<>());
-            byMaterial.computeIfAbsent(p.getMaterialId(), k -> {
-                Map<String, Object> row = new LinkedHashMap<>();
-                row.put("materialId", p.getMaterialId());
-                row.put("materialCode", p.getMaterialCode());
-                row.put("materialName", p.getMaterialName());
-                row.put("spec", p.getSpec());
-                row.put("unit", p.getUnit());
-                row.put("price", p.getPrice());
-                row.put("taxRate", p.getTaxRate());
-                row.put("tiers", materialTiers);
-                return row;
-            });
+            List<ScmPriceViews.PriceTier> materialTiers = tiers.computeIfAbsent(p.getMaterialId(), k -> new ArrayList<>());
+            byMaterial.computeIfAbsent(p.getMaterialId(), k -> new ScmPriceViews.DealerCatalogItem(p.getMaterialId(), p.getMaterialCode(),
+                    p.getMaterialName(), p.getSpec(), p.getUnit(), p.getPrice(), p.getTaxRate(), materialTiers));
             if (p.getMinQty() != null && p.getMinQty().signum() > 0) {
-                materialTiers.add(Map.of("minQty", p.getMinQty(), "price", p.getPrice()));
+                materialTiers.add(new ScmPriceViews.PriceTier(p.getMinQty(), p.getPrice()));
             }
         }
         return new ArrayList<>(byMaterial.values());

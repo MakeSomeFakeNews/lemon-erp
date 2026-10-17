@@ -3,6 +3,7 @@ package com.lemon.erp.modules.fin.service;
 import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
+import com.lemon.erp.modules.fin.dto.FinAnalysis;
 import com.lemon.erp.modules.fin.mapper.FinStockAgeMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,7 +13,6 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,10 +35,8 @@ public class FinStockAgeService {
 
     /**
      * @param buckets 分段上限（天，递增），为空用默认
-     * @return {buckets: [{label}], rows: [{materialId, code, name, spec, unit, category, qty, amount, unitCost, oldestDate,
-     * ages: [{qty, amount}]}], total: {qty, amount, ages}}
      */
-    public Map<String, Object> analyze(LocalDate asOf, Long warehouseId, String category, String keyword, List<Integer> buckets) {
+    public FinAnalysis.StockAge analyze(LocalDate asOf, Long warehouseId, String category, String keyword, List<Integer> buckets) {
         LocalDate date = asOf == null ? LocalDate.now() : asOf;
         List<Integer> limits = buckets == null || buckets.isEmpty() ? DEFAULT_BUCKETS : buckets;
         for (int i = 0; i < limits.size(); i++) {
@@ -49,41 +47,40 @@ public class FinStockAgeService {
         if (limits.size() > MAX_BUCKETS) {
             throw new BizException("fin.error.mostStockAgeBucketsAllowed", MAX_BUCKETS);
         }
-        List<Map<String, Object>> labels = new ArrayList<>();
+        List<FinAnalysis.AgeBucket> labels = new ArrayList<>();
         for (int i = 0; i <= limits.size(); i++) {
             String label = i == 0 ? Messages.get("fin.text.days", 0, limits.get(0))
                     : i == limits.size() ? Messages.get("fin.text.overDays", limits.get(i - 1)) : Messages.get("fin.text.days", limits.get(i - 1) + 1, limits.get(i));
-            labels.add(Map.of("label", label));
+            labels.add(new FinAnalysis.AgeBucket(label));
         }
-        List<Map<String, Object>> balances = ageMapper.selectBalances(date, warehouseId, category, keyword);
-        List<Long> ids = balances.stream().map(r -> ((Number) r.get("materialId")).longValue()).toList();
-        Map<Long, List<Map<String, Object>>> inflows = new HashMap<>();
+        List<FinAnalysis.StockAgeRow> balances = ageMapper.selectBalances(date, warehouseId, category, keyword);
+        List<Long> ids = balances.stream().map(FinAnalysis.StockAgeRow::getMaterialId).toList();
+        Map<Long, List<FinAnalysis.StockInflow>> inflows = new HashMap<>();
         Map<Long, BigDecimal> units = new HashMap<>();
         for (int i = 0; i < ids.size(); i += CHUNK) {
             List<Long> chunk = ids.subList(i, Math.min(i + CHUNK, ids.size()));
             ageMapper.selectInflows(date, warehouseId, chunk).forEach(r ->
-                    inflows.computeIfAbsent(((Number) r.get("materialId")).longValue(), k -> new ArrayList<>()).add(r));
-            ageMapper.selectUnitCosts(periodOf(date), chunk).forEach(r -> units.put(((Number) r.get("materialId")).longValue(), dec(r.get("unitCost"))));
+                    inflows.computeIfAbsent(r.getMaterialId(), k -> new ArrayList<>()).add(r));
+            ageMapper.selectUnitCosts(periodOf(date), chunk).forEach(r -> units.put(r.getMaterialId(), dec(r.getUnitCost())));
         }
         int n = limits.size() + 1;
         BigDecimal[] totalQty = zeros(n);
         BigDecimal[] totalAmount = zeros(n);
         BigDecimal sumQty = BigDecimal.ZERO;
         BigDecimal sumAmount = BigDecimal.ZERO;
-        List<Map<String, Object>> rows = new ArrayList<>();
-        for (Map<String, Object> b : balances) {
-            Long id = ((Number) b.get("materialId")).longValue();
-            BigDecimal qty = dec(b.get("qty"));
+        for (FinAnalysis.StockAgeRow b : balances) {
+            Long id = b.getMaterialId();
+            BigDecimal qty = dec(b.getQty());
             BigDecimal unit = units.getOrDefault(id, BigDecimal.ZERO);
             BigDecimal[] ageQty = zeros(n);
             BigDecimal remaining = qty;
             LocalDate oldest = null;
-            for (Map<String, Object> in : inflows.getOrDefault(id, List.of())) {
+            for (FinAnalysis.StockInflow in : inflows.getOrDefault(id, List.of())) {
                 if (remaining.signum() <= 0) {
                     break;
                 }
-                BigDecimal take = remaining.min(dec(in.get("qty")));
-                LocalDate inDate = toDate(in.get("bizDate"));
+                BigDecimal take = remaining.min(dec(in.getQty()));
+                LocalDate inDate = in.getBizDate();
                 int k = bucket(limits, ChronoUnit.DAYS.between(inDate, date));
                 ageQty[k] = ageQty[k].add(take);
                 remaining = remaining.subtract(take);
@@ -103,35 +100,24 @@ public class FinStockAgeService {
             }
             int last = lastNonZero(ageQty);
             ageAmount[last] = ageAmount[last].add(amount.subtract(allocated));
-            List<Map<String, Object>> ages = new ArrayList<>();
+            List<FinAnalysis.AgeCell> ages = new ArrayList<>();
             for (int i = 0; i < n; i++) {
-                ages.add(Map.of("qty", ageQty[i], "amount", ageAmount[i]));
+                ages.add(new FinAnalysis.AgeCell(ageQty[i], ageAmount[i]));
                 totalQty[i] = totalQty[i].add(ageQty[i]);
                 totalAmount[i] = totalAmount[i].add(ageAmount[i]);
             }
-            Map<String, Object> row = new LinkedHashMap<>(b);
-            row.put("unitCost", unit);
-            row.put("amount", amount);
-            row.put("oldestDate", remaining.signum() > 0 ? null : oldest);
-            row.put("ages", ages);
-            rows.add(row);
+            b.setUnitCost(unit);
+            b.setAmount(amount);
+            b.setOldestDate(remaining.signum() > 0 ? null : oldest);
+            b.setAges(ages);
             sumQty = sumQty.add(qty);
             sumAmount = sumAmount.add(amount);
         }
-        List<Map<String, Object>> totalAges = new ArrayList<>();
+        List<FinAnalysis.AgeCell> totalAges = new ArrayList<>();
         for (int i = 0; i < n; i++) {
-            totalAges.add(Map.of("qty", totalQty[i], "amount", totalAmount[i]));
+            totalAges.add(new FinAnalysis.AgeCell(totalQty[i], totalAmount[i]));
         }
-        Map<String, Object> total = new LinkedHashMap<>();
-        total.put("qty", sumQty);
-        total.put("amount", sumAmount);
-        total.put("ages", totalAges);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("asOf", date);
-        result.put("buckets", labels);
-        result.put("rows", rows);
-        result.put("total", total);
-        return result;
+        return new FinAnalysis.StockAge(date, labels, balances, new FinAnalysis.StockAgeTotal(sumQty, sumAmount, totalAges));
     }
 
     private static int bucket(List<Integer> limits, long days) {
@@ -160,15 +146,5 @@ public class FinStockAgeService {
 
     private static BigDecimal dec(Object v) {
         return v == null ? BigDecimal.ZERO : new BigDecimal(v.toString());
-    }
-
-    private static LocalDate toDate(Object v) {
-        if (v instanceof LocalDate d) {
-            return d;
-        }
-        if (v instanceof java.sql.Date d) {
-            return d.toLocalDate();
-        }
-        return LocalDate.parse(v.toString().substring(0, 10));
     }
 }

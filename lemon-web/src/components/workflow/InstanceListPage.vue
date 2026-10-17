@@ -41,7 +41,7 @@
             <DictTag type="wf_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'currentNodes'">
-            <span v-if="record.status === 'RUNNING' && record.currentNodes">{{ record.currentNodes }}</span>
+            <span v-if="record.status === FlowStatus.RUNNING && record.currentNodes">{{ record.currentNodes }}</span>
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'action'">
@@ -49,7 +49,7 @@
               <a-button type="link" size="small" @click="openDetail(record)">
                 <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
-              <template v-if="manage && record.status === 'RUNNING'">
+              <template v-if="manage && record.status === FlowStatus.RUNNING">
                 <a-button v-perm="'wf:instance:cancel'" type="link" size="small" danger @click="openTerminate(record)">
                   <template #icon><StopOutlined /></template>{{ $t('workflow.list.terminate') }}
                 </a-button>
@@ -97,6 +97,7 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+import { FlowStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 /**

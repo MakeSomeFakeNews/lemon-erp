@@ -23,7 +23,7 @@
         SELECT cost_type, SUM(amount) FROM pm_cost WHERE project_id = #{projectId} AND status = 'APPROVED' GROUP BY cost_type
     </select>
 
-    <select id="selectMonthly" resultType="java.util.Map">
+    <select id="selectMonthly" resultType="com.lemon.erp.modules.pm.dto.MonthlyCost">
         SELECT period AS "period", SUM(labor) AS "labor", SUM(expense) AS "expense"
         FROM (SELECT YEAR(work_date) * 100 + MONTH(work_date) AS period, cost AS labor, 0 AS expense
               FROM pm_timesheet WHERE project_id = #{projectId} AND status = 'APPROVED'

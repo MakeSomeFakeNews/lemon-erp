@@ -37,7 +37,7 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
-              <a-button v-if="record.status === 'SUBMITTED'" v-perm="'scm:asn:receive'" type="link" size="small" @click="openReceive(record.id)">{{ $t('scm.asn.receive') }}</a-button>
+              <a-button v-if="record.status === AsnStatus.SUBMITTED" v-perm="'scm:asn:receive'" type="link" size="small" @click="openReceive(record.id)">{{ $t('scm.asn.receive') }}</a-button>
             </span>
           </template>
         </template>
@@ -46,7 +46,7 @@
 
     <SubPage :open="detailOpen" :title="detail ? `${$t('scm.asn.title')} ${detail.asnNo}` : ''" width="min(900px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
-        <a-button v-if="detail.status === 'SUBMITTED'" v-perm="'scm:asn:receive'" type="primary" @click="openReceive(detail.id)">{{ $t('scm.asn.receive') }}</a-button>
+        <a-button v-if="detail.status === AsnStatus.SUBMITTED" v-perm="'scm:asn:receive'" type="primary" @click="openReceive(detail.id)">{{ $t('scm.asn.receive') }}</a-button>
       </template>
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" bordered class="block">
@@ -116,6 +116,7 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useI18n } from 'vue-i18n'
 
+import { AsnStatus } from '@/constants/enums'
 /** 送货通知：供应商在门户按采购订单发起，仓库按送货通知收货生成采购入库 */
 const { t } = useI18n()
 const dict = useDict('scm_asn_status')

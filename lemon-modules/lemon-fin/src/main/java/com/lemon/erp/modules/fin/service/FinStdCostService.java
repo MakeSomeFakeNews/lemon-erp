@@ -1,11 +1,13 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.data.DetailLines;
 import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.modules.fin.dto.StdCostBreakdown;
 import com.lemon.erp.modules.fin.dto.StdCostRequests;
 import com.lemon.erp.modules.fin.entity.FinStdCost;
 import com.lemon.erp.modules.fin.entity.FinStdCostVersion;
@@ -20,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,6 +41,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FinStdCostService {
 
+    /** 标准成本（单价、材料 / 人工 / 制造费用、工时）保留 6 位，与 fin_std_cost 的 DECIMAL(18,6) 一致，比金额、数量精度高以减少逐级累积误差 */
     private static final int SCALE = 6;
     private static final int BATCH = 500;
 
@@ -118,7 +120,7 @@ public class FinStdCostService {
         if (defaultBoms().containsKey(req.materialId())) {
             throw new BizException("fin.error.materialHasDefaultBomManufacturedStandard", m.getCode(), m.getName());
         }
-        BigDecimal price = req.price().setScale(SCALE, RoundingMode.HALF_UP);
+        BigDecimal price = req.price().setScale(SCALE, Decimals.ROUNDING);
         FinStdCost row = costMapper.selectOne(Wrappers.<FinStdCost>lambdaQuery()
                 .eq(FinStdCost::getVersionId, id).eq(FinStdCost::getMaterialId, req.materialId()));
         if (row == null) {
@@ -176,46 +178,37 @@ public class FinStdCostService {
     }
 
     /** 自制件的卷算明细：BOM 子件（用量 × 子件标准成本）和工序（工时 × 费率） */
-    public Map<String, Object> breakdown(Long id, Long materialId) {
+    public StdCostBreakdown breakdown(Long id, Long materialId) {
         detail(id);
         FinStdCost row = costMapper.selectOne(Wrappers.<FinStdCost>lambdaQuery()
                 .eq(FinStdCost::getVersionId, id).eq(FinStdCost::getMaterialId, materialId));
         if (row == null || row.getMake() != 1 || row.getBomId() == null) {
             throw new BizException("fin.error.onlyManufacturedItemsHaveRollupDetails");
         }
-        List<Map<String, Object>> items = costMapper.selectBomItems(List.of(row.getBomId()));
-        Set<Long> ids = items.stream().map(i -> ((Number) i.get("materialId")).longValue()).collect(Collectors.toSet());
+        List<StdCostBreakdown.BomItem> items = costMapper.selectBomItems(List.of(row.getBomId()));
+        Set<Long> ids = items.stream().map(StdCostBreakdown.BomItem::getMaterialId).collect(Collectors.toSet());
         Map<Long, FinStdCost> prices = ids.isEmpty() ? Map.of() : costMapper.selectList(Wrappers.<FinStdCost>lambdaQuery()
                         .eq(FinStdCost::getVersionId, id).in(FinStdCost::getMaterialId, ids))
                 .stream().collect(Collectors.toMap(FinStdCost::getMaterialId, Function.identity()));
         Map<Long, WmsMaterial> info = materialService.mapByIds(ids);
-        List<Map<String, Object>> parts = new ArrayList<>();
-        for (Map<String, Object> i : items) {
-            Long mid = ((Number) i.get("materialId")).longValue();
+        List<StdCostBreakdown.Part> parts = new ArrayList<>();
+        for (StdCostBreakdown.BomItem i : items) {
+            Long mid = i.getMaterialId();
             BigDecimal qty = usage(i);
             FinStdCost p = prices.get(mid);
             BigDecimal unit = p == null ? BigDecimal.ZERO : p.getUnitCost();
             WmsMaterial m = info.get(mid);
-            Map<String, Object> part = new LinkedHashMap<>();
-            part.put("materialId", mid);
-            part.put("materialCode", m == null ? null : m.getCode());
-            part.put("materialName", m == null ? null : m.getName());
-            part.put("unit", m == null ? null : m.getUnit());
-            part.put("make", p == null ? 0 : p.getMake());
-            part.put("qty", i.get("qty"));
-            part.put("lossRate", i.get("lossRate"));
-            part.put("unitQty", qty);
-            part.put("unitCost", unit);
-            part.put("amount", qty.multiply(unit).setScale(SCALE, RoundingMode.HALF_UP));
-            parts.add(part);
+            parts.add(new StdCostBreakdown.Part(mid, m == null ? null : m.getCode(), m == null ? null : m.getName(),
+                    m == null ? null : m.getUnit(), p == null ? 0 : p.getMake(), i.getQty(), i.getLossRate(), qty, unit,
+                    qty.multiply(unit).setScale(SCALE, Decimals.ROUNDING)));
         }
-        List<Map<String, Object>> ops = costMapper.selectBomOps(List.of(row.getBomId()));
-        for (Map<String, Object> op : ops) {
-            BigDecimal hours = dec(op.get("stdHours"));
-            op.put("labor", hours.multiply(dec(op.get("laborRate"))).setScale(SCALE, RoundingMode.HALF_UP));
-            op.put("overhead", hours.multiply(dec(op.get("overheadRate"))).setScale(SCALE, RoundingMode.HALF_UP));
+        List<StdCostBreakdown.BomOp> ops = costMapper.selectBomOps(List.of(row.getBomId()));
+        for (StdCostBreakdown.BomOp op : ops) {
+            BigDecimal hours = dec(op.getStdHours());
+            op.setLabor(hours.multiply(dec(op.getLaborRate())).setScale(SCALE, Decimals.ROUNDING));
+            op.setOverhead(hours.multiply(dec(op.getOverheadRate())).setScale(SCALE, Decimals.ROUNDING));
         }
-        return Map.of("row", row, "items", parts, "ops", ops);
+        return new StdCostBreakdown(row, parts, ops);
     }
 
     @Transactional
@@ -299,8 +292,8 @@ public class FinStdCostService {
     }
 
     /** 单位用量（含损耗）= 用量 × (1 + 损耗率 / 100) */
-    private static BigDecimal usage(Map<String, Object> item) {
-        return dec(item.get("qty")).multiply(BigDecimal.ONE.add(dec(item.get("lossRate")).movePointLeft(2)));
+    private static BigDecimal usage(StdCostBreakdown.BomItem item) {
+        return dec(item.getQty()).multiply(BigDecimal.ONE.add(dec(item.getLossRate()).movePointLeft(2)));
     }
 
     private static BigDecimal dec(Object v) {
@@ -313,8 +306,8 @@ public class FinStdCostService {
         private final Long versionId;
         private final Map<Long, FinStdCost> existing;
         private final Map<Long, Long> boms;
-        private final Map<Long, List<Map<String, Object>>> items = new HashMap<>();
-        private final Map<Long, List<Map<String, Object>>> ops = new HashMap<>();
+        private final Map<Long, List<StdCostBreakdown.BomItem>> items = new HashMap<>();
+        private final Map<Long, List<StdCostBreakdown.BomOp>> ops = new HashMap<>();
         private final Map<Long, BigDecimal> initialPrices = new HashMap<>();
         private final Map<Long, FinStdCost> result = new LinkedHashMap<>();
 
@@ -328,21 +321,18 @@ public class FinStdCostService {
             if (boms.isEmpty()) {
                 return;
             }
-            costMapper.selectBomItems(boms.values()).forEach(i -> items.computeIfAbsent(((Number) i.get("bomId")).longValue(),
-                    k -> new ArrayList<>()).add(i));
-            costMapper.selectBomOps(boms.values()).forEach(o -> ops.computeIfAbsent(((Number) o.get("bomId")).longValue(),
-                    k -> new ArrayList<>()).add(o));
+            costMapper.selectBomItems(boms.values()).forEach(i -> items.computeIfAbsent(i.getBomId(), k -> new ArrayList<>()).add(i));
+            costMapper.selectBomOps(boms.values()).forEach(o -> ops.computeIfAbsent(o.getBomId(), k -> new ArrayList<>()).add(o));
             // 没有标准单价的采购件：取最近一次核算的单价
             Set<Long> missing = new HashSet<>();
             items.values().forEach(list -> list.forEach(i -> {
-                Long m = ((Number) i.get("materialId")).longValue();
+                Long m = i.getMaterialId();
                 if (!boms.containsKey(m) && !existing.containsKey(m)) {
                     missing.add(m);
                 }
             }));
             if (!missing.isEmpty()) {
-                costMapper.selectInitialPrices(missing).forEach(p ->
-                        initialPrices.put(((Number) p.get("materialId")).longValue(), dec(p.get("price"))));
+                costMapper.selectInitialPrices(missing).forEach(p -> initialPrices.put(p.getMaterialId(), dec(p.getPrice())));
             }
         }
 
@@ -355,7 +345,7 @@ public class FinStdCostService {
             Long bomId = boms.get(m);
             if (bomId == null) {
                 FinStdCost e = existing.get(m);
-                FinStdCost c = e == null ? purchased(versionId, m, initialPrices.getOrDefault(m, BigDecimal.ZERO).setScale(SCALE, RoundingMode.HALF_UP))
+                FinStdCost c = e == null ? purchased(versionId, m, initialPrices.getOrDefault(m, BigDecimal.ZERO).setScale(SCALE, Decimals.ROUNDING))
                         : e.getMake() == 0 ? e : purchased(versionId, m, e.getUnitCost());
                 result.put(m, c);
                 return c.getUnitCost();
@@ -367,30 +357,30 @@ public class FinStdCostService {
             }
             path.put(m, Boolean.TRUE);
             BigDecimal material = BigDecimal.ZERO;
-            for (Map<String, Object> i : items.getOrDefault(bomId, List.of())) {
-                Long child = ((Number) i.get("materialId")).longValue();
+            for (StdCostBreakdown.BomItem i : items.getOrDefault(bomId, List.of())) {
+                Long child = i.getMaterialId();
                 material = material.add(usage(i).multiply(compute(child, path)));
             }
             path.remove(m);
             BigDecimal hours = BigDecimal.ZERO;
             BigDecimal labor = BigDecimal.ZERO;
             BigDecimal overhead = BigDecimal.ZERO;
-            for (Map<String, Object> op : ops.getOrDefault(bomId, List.of())) {
-                BigDecimal h = dec(op.get("stdHours"));
+            for (StdCostBreakdown.BomOp op : ops.getOrDefault(bomId, List.of())) {
+                BigDecimal h = dec(op.getStdHours());
                 hours = hours.add(h);
-                labor = labor.add(h.multiply(dec(op.get("laborRate"))));
-                overhead = overhead.add(h.multiply(dec(op.get("overheadRate"))));
+                labor = labor.add(h.multiply(dec(op.getLaborRate())));
+                overhead = overhead.add(h.multiply(dec(op.getOverheadRate())));
             }
             FinStdCost c = new FinStdCost();
             c.setVersionId(versionId);
             c.setMaterialId(m);
             c.setMake(1);
             c.setBomId(bomId);
-            c.setMaterialCost(material.setScale(SCALE, RoundingMode.HALF_UP));
-            c.setLaborCost(labor.setScale(SCALE, RoundingMode.HALF_UP));
-            c.setOverheadCost(overhead.setScale(SCALE, RoundingMode.HALF_UP));
+            c.setMaterialCost(material.setScale(SCALE, Decimals.ROUNDING));
+            c.setLaborCost(labor.setScale(SCALE, Decimals.ROUNDING));
+            c.setOverheadCost(overhead.setScale(SCALE, Decimals.ROUNDING));
             c.setUnitCost(c.getMaterialCost().add(c.getLaborCost()).add(c.getOverheadCost()));
-            c.setStdHours(hours.setScale(SCALE, RoundingMode.HALF_UP));
+            c.setStdHours(hours.setScale(SCALE, Decimals.ROUNDING));
             result.put(m, c);
             return c.getUnitCost();
         }

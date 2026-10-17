@@ -150,6 +150,7 @@ import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 
+import { LocationType } from '@/constants/enums'
 const { t } = useI18n()
 
 const route = useRoute()
@@ -190,7 +191,7 @@ const rules = {
   ]
 }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, warehouseId: undefined, code: '', name: '', zone: '', locType: 'STORAGE', sort: 0, remark: '' }),
+  emptyForm: () => ({ id: undefined, warehouseId: undefined, code: '', name: '', zone: '', locType: LocationType.STORAGE, sort: 0, remark: '' }),
   fetch: (record) => getLocation(record.id),
   create: addLocation,
   update: updateLocation,

@@ -58,12 +58,12 @@
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="sys_common_status" :value="record.status" />
-            <DictTag v-if="record.type !== 'F' && record.visible === 0" type="sys_show_hide" :value="record.visible" />
+            <DictTag v-if="record.type !== MenuType.F && record.visible === 0" type="sys_show_hide" :value="record.visible" />
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button
-                v-if="record.type !== 'F'"
+                v-if="record.type !== MenuType.F"
                 v-perm="'sys:menu:add'"
                 type="link"
                 size="small"
@@ -121,7 +121,7 @@
               <a-input-number v-model:value="form.sort" :min="0" style="width: 100%" />
             </a-form-item>
           </a-col>
-          <template v-if="form.type !== 'F'">
+          <template v-if="form.type !== MenuType.F">
             <a-col :xs="24" :sm="12">
               <a-form-item :label="$t('system.menu.icon')" name="icon">
                 <IconPicker v-model="form.icon" />
@@ -134,11 +134,11 @@
                     {{ $t('system.menu.path') }} <QuestionCircleOutlined />
                   </a-tooltip>
                 </template>
-                <a-input v-model:value="form.path" :placeholder="form.type === 'M' ? '/system' : 'user'" />
+                <a-input v-model:value="form.path" :placeholder="form.type === MenuType.M ? '/system' : 'user'" />
               </a-form-item>
             </a-col>
           </template>
-          <a-col v-if="form.type === 'C'" :xs="24" :sm="12">
+          <a-col v-if="form.type === MenuType.C" :xs="24" :sm="12">
             <a-form-item name="component">
               <template #label>
                 <a-tooltip :title="$t('system.menu.componentTip')">
@@ -148,12 +148,12 @@
               <a-input v-model:value="form.component" placeholder="system/user/index" />
             </a-form-item>
           </a-col>
-          <a-col v-if="form.type !== 'M'" :xs="24" :sm="12">
+          <a-col v-if="form.type !== MenuType.M" :xs="24" :sm="12">
             <a-form-item :label="$t('system.menu.perms')" name="perms">
               <a-input v-model:value="form.perms" placeholder="sys:user:list" />
             </a-form-item>
           </a-col>
-          <a-col v-if="form.type !== 'F'" :xs="24" :sm="12">
+          <a-col v-if="form.type !== MenuType.F" :xs="24" :sm="12">
             <a-form-item :label="$t('system.menu.visible')" name="visible">
               <a-radio-group v-model:value="form.visible" :options="toOptions(dict.sys_show_hide, true)" />
             </a-form-item>
@@ -171,7 +171,6 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import {
   DeleteOutlined,
@@ -194,7 +193,9 @@ import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { toOptions } from '@/utils/dict'
 import { allIds, filterTree, mapTree } from '@/utils/tree'
+import { useAction } from '@/composables/useAction'
 
+import { MenuType } from '@/constants/enums'
 const { t } = useI18n()
 const dict = useDict('sys_menu_type', 'sys_common_status', 'sys_show_hide')
 
@@ -278,14 +279,14 @@ const { form, formRef } = drawer
 function openCreate(parent) {
   drawer.openCreate(
     parent
-      ? { parentId: parent.id, type: parent.type === 'M' ? 'C' : 'F', sort: parent.children?.length ?? 0 }
+      ? { parentId: parent.id, type: parent.type === MenuType.M ? 'C' : 'F', sort: parent.children?.length ?? 0 }
       : { sort: list.value.length }
   )
 }
 
 // 上级菜单只能选目录或菜单；编辑时不能选择自己及下级菜单
 const withoutButtons = (nodes) =>
-  nodes.filter((n) => n.type !== 'F').map((n) => ({ ...n, children: n.children && withoutButtons(n.children) }))
+  nodes.filter((n) => n.type !== MenuType.F).map((n) => ({ ...n, children: n.children && withoutButtons(n.children) }))
 const parentOptions = computed(() => [
   {
     id: 0,
@@ -301,15 +302,11 @@ const parentOptions = computed(() => [
 const rules = computed(() => ({
   name: [{ required: true, message: t('system.menu.inputName') }],
   type: [{ required: true }],
-  path: [{ required: form.value.type === 'C' || !form.value.parentId, message: t('system.menu.inputPath') }],
+  path: [{ required: form.value.type === MenuType.C || !form.value.parentId, message: t('system.menu.inputPath') }],
   component: [{ required: true, message: t('system.menu.inputComponent') }]
 }))
 
-async function remove(id) {
-  await deleteMenu(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteMenu, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

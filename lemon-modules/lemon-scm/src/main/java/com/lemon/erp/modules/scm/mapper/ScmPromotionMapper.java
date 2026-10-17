@@ -2,6 +2,7 @@ package com.lemon.erp.modules.scm.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.lemon.erp.modules.scm.dto.ScmPriceViews;
 import com.lemon.erp.modules.scm.entity.ScmPromotion;
 import com.lemon.erp.modules.scm.model.PromoType;
 import org.apache.ibatis.annotations.Param;
@@ -22,7 +23,7 @@ public interface ScmPromotionMapper extends BaseMapper<ScmPromotion> {
     List<ScmPromotion> selectApplicable(@Param("date") LocalDate date, @Param("customerLevel") String customerLevel);
 
     /** 应用记录：orderId、orderNo、customerName、orderDate、status、discountAmount、giftQty */
-    List<Map<String, Object>> selectUsages(@Param("promotionId") Long promotionId);
+    List<ScmPriceViews.PromotionUsage> selectUsages(@Param("promotionId") Long promotionId);
 
     int deleteUsages(@Param("orderId") Long orderId);
 

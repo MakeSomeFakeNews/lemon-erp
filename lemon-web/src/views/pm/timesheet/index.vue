@@ -29,10 +29,10 @@
               <template v-else-if="column.key === 'hours'">{{ Number(record.hours) }}</template>
               <template v-else-if="column.key === 'status'">
                 <DictTag type="pm_timesheet_status" :value="record.status" />
-                <div v-if="record.status === 'REJECTED'" class="sub-text danger">{{ record.rejectReason }}</div>
+                <div v-if="record.status === TimesheetStatus.REJECTED" class="sub-text danger">{{ record.rejectReason }}</div>
               </template>
               <template v-else-if="column.key === 'action'">
-                <span v-if="record.status !== 'APPROVED'" class="table-actions">
+                <span v-if="record.status !== TimesheetStatus.APPROVED" class="table-actions">
                   <a-button type="link" size="small" @click="openEntry(record)"><EditOutlined /></a-button>
                   <a-popconfirm :title="$t('pm.timesheet.confirmDelete')" @confirm="removeEntry(record)">
                     <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
@@ -97,7 +97,7 @@
             <span v-if="selectedKeys.length" class="sub-text">{{ $t('pm.timesheet.selected', { n: selectedKeys.length, hours: selectedHours }) }}</span>
           </div>
           <a-table row-key="id" size="middle" :columns="reviewColumns" :data-source="list" :loading="loading" :pagination="pagination"
-                   :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== 'SUBMITTED' }) }"
+                   :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== TimesheetStatus.SUBMITTED }) }"
                    :scroll="{ x: 1200 }" @change="onTableChange">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'project'">
@@ -107,10 +107,10 @@
               <template v-else-if="column.key === 'hours'">{{ Number(record.hours) }}</template>
               <template v-else-if="column.key === 'status'">
                 <DictTag type="pm_timesheet_status" :value="record.status" />
-                <div v-if="record.status === 'REJECTED'" class="sub-text danger">{{ record.rejectReason }}</div>
+                <div v-if="record.status === TimesheetStatus.REJECTED" class="sub-text danger">{{ record.rejectReason }}</div>
               </template>
               <template v-else-if="column.key === 'cost'">
-                <template v-if="record.status === 'APPROVED'">
+                <template v-if="record.status === TimesheetStatus.APPROVED">
                   {{ formatMoney(record.cost) }}
                   <div class="sub-text">{{ formatMoney(record.costRate) }} {{ $t('pm.common.yuanPerHour') }}</div>
                 </template>
@@ -183,7 +183,9 @@ import { toOptions } from '@/utils/dict'
 import { formatMoney } from '@/components/scm/scm'
 import { leafTasks, today, weekRange } from '@/components/pm/pm'
 import { t } from '@/locales'
+import { useAction } from '@/composables/useAction'
 
+import { TimesheetStatus } from '@/constants/enums'
 const dict = useDict('pm_timesheet_status')
 const userStore = useUserStore()
 const tab = ref('mine')
@@ -205,12 +207,12 @@ const mineColumns = [
   { title: '', key: 'action', width: 100, fixed: 'right' }
 ]
 
-const weekTotal = computed(() => mine.value.filter((r) => r.status !== 'REJECTED').reduce((s, r) => s + Number(r.hours), 0))
+const weekTotal = computed(() => mine.value.filter((r) => r.status !== TimesheetStatus.REJECTED).reduce((s, r) => s + Number(r.hours), 0))
 const weekDays = computed(() => {
   const names = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((d) => t(`pm.timesheet.week.${d}`))
   return names.map((n, i) => {
     const date = dayjs(week.value[0]).add(i, 'day').format('YYYY-MM-DD')
-    const hours = mine.value.filter((r) => r.workDate === date && r.status !== 'REJECTED').reduce((s, r) => s + Number(r.hours), 0)
+    const hours = mine.value.filter((r) => r.workDate === date && r.status !== TimesheetStatus.REJECTED).reduce((s, r) => s + Number(r.hours), 0)
     return { date, label: `${n} ${date.slice(5)}`, hours }
   })
 })
@@ -315,15 +317,11 @@ async function saveEntry() {
   }
 }
 
-async function removeEntry(record) {
-  await deleteTimesheet(record.id)
-  message.success(t('common.msg.deleteSuccess'))
-  loadMine()
-}
+const removeEntry = useAction((record) => deleteTimesheet(record.id), { successKey: 'common.msg.deleteSuccess', reload: () => loadMine() })
 
 // ---------------------------------------------------------------- 工时审批
 
-const query = reactive({ projectId: undefined, userId: undefined, status: 'SUBMITTED', range: undefined })
+const query = reactive({ projectId: undefined, userId: undefined, status: TimesheetStatus.SUBMITTED, range: undefined })
 const { list, loading, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable(pageTimesheet, query, {
   params: ({ range, ...q }) => ({ ...q, beginDate: range?.[0], endDate: range?.[1] })
 })

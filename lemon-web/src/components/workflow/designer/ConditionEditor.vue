@@ -26,14 +26,14 @@
           <a-input v-else v-model:value="rule.field" :placeholder="$t('workflow.condition.variable')" class="rule-field" />
           <a-select v-model:value="rule.operator" class="rule-op" :options="operatorOptions(fieldOf(rule)?.type)" />
           <a-select
-            v-if="fieldOf(rule)?.type === 'SELECT' && rule.operator !== 'IN'"
+            v-if="fieldOf(rule)?.type === FormFieldType.SELECT && rule.operator !== ConditionOperator.IN"
             v-model:value="rule.value"
             :placeholder="$t('workflow.condition.value')"
             class="rule-value"
             :options="toSelectOptions(fieldOf(rule).options)"
           />
           <a-date-picker
-            v-else-if="fieldOf(rule)?.type === 'DATE'"
+            v-else-if="fieldOf(rule)?.type === FormFieldType.DATE"
             v-model:value="rule.value"
             value-format="YYYY-MM-DD"
             :placeholder="$t('common.field.date')"
@@ -42,7 +42,7 @@
           <a-input
             v-else
             v-model:value="rule.value"
-            :placeholder="rule.operator === 'IN' ? $t('workflow.condition.multiValue') : $t('workflow.condition.value')"
+            :placeholder="rule.operator === ConditionOperator.IN ? $t('workflow.condition.multiValue') : $t('workflow.condition.value')"
             class="rule-value"
           />
           <a-button type="text" size="small" danger :disabled="group.length === 1 && groups.length === 1" @click="removeRule(gi, ri)">
@@ -65,6 +65,7 @@ import { computed } from 'vue'
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { emptyRule, operatorOptions, toSelectOptions } from './flow'
 
+import { ConditionOperator, FormFieldType } from '@/constants/enums'
 /** 条件编辑：条件组之间为「或」，组内条件为「且」。groups 直接修改（ConditionRule[][]） */
 const props = defineProps({
   groups: { type: Array, required: true },

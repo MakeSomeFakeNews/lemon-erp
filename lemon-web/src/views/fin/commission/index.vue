@@ -8,20 +8,20 @@
               <span>{{ $t('fin.commission.period') }}</span>
               <PeriodPicker v-model:value="period" @update:value="loadSheet" />
               <template v-if="sheet">
-                <a-tag :color="sheet.status === 'CONFIRMED' ? 'green' : 'default'" :bordered="false">
-                  {{ sheet.status === 'CONFIRMED' ? $t('fin.commission.confirmed') : $t('fin.commission.draft') }}
+                <a-tag :color="sheet.status === CommissionStatus.CONFIRMED ? 'green' : 'default'" :bordered="false">
+                  {{ sheet.status === CommissionStatus.CONFIRMED ? $t('fin.commission.confirmed') : $t('fin.commission.draft') }}
                 </a-tag>
                 <span>{{ $t('fin.commission.totalLabel') }} <b>¥{{ formatMoney(sheet.totalAmount) }}</b></span>
               </template>
             </a-space>
             <a-space v-perm="'fin:commission:edit'">
-              <a-button v-if="!sheet || sheet.status === 'DRAFT'" :loading="generating" @click="generate">
+              <a-button v-if="!sheet || sheet.status === CommissionStatus.DRAFT" :loading="generating" @click="generate">
                 <template #icon><CalculatorOutlined /></template>{{ sheet ? $t('fin.commission.recalc') : $t('fin.commission.calc') }}
               </a-button>
-              <a-popconfirm v-if="sheet?.status === 'DRAFT'" :title="$t('fin.commission.confirmSheet')" @confirm="confirm">
+              <a-popconfirm v-if="sheet?.status === CommissionStatus.DRAFT" :title="$t('fin.commission.confirmSheet')" @confirm="confirm">
                 <a-button type="primary">{{ $t('common.action.confirm') }}</a-button>
               </a-popconfirm>
-              <a-popconfirm v-if="sheet?.status === 'CONFIRMED'" :title="$t('fin.commission.confirmUnconfirm')" @confirm="unconfirm">
+              <a-popconfirm v-if="sheet?.status === CommissionStatus.CONFIRMED" :title="$t('fin.commission.confirmUnconfirm')" @confirm="unconfirm">
                 <a-button>{{ $t('fin.commission.unconfirm') }}</a-button>
               </a-popconfirm>
             </a-space>
@@ -60,7 +60,7 @@
               </template>
               <template v-else-if="column.key === 'finalAmount'"><b>{{ formatMoney(record.finalAmount) }}</b></template>
               <template v-else-if="column.key === 'action'">
-                <a-button v-if="sheet.status === 'DRAFT'" v-perm="'fin:commission:edit'" type="link" size="small" @click="openAdjust(record)">{{ $t('fin.commission.adjust') }}</a-button>
+                <a-button v-if="sheet.status === CommissionStatus.DRAFT" v-perm="'fin:commission:edit'" type="link" size="small" @click="openAdjust(record)">{{ $t('fin.commission.adjust') }}</a-button>
               </template>
             </template>
           </a-table>
@@ -116,15 +116,15 @@
           <a-input v-model:value="form.name" :maxlength="64" :placeholder="$t('fin.commission.ruleNamePlaceholder')" />
         </a-form-item>
         <a-form-item :label="$t('fin.commission.basis')" name="basis">
-          <a-radio-group v-model:value="form.basis" button-style="solid" @change="form.basis === 'RECEIPT' && (form.materialCategory = undefined)">
+          <a-radio-group v-model:value="form.basis" button-style="solid" @change="form.basis === CommissionBasis.RECEIPT && (form.materialCategory = undefined)">
             <a-radio-button v-for="d in dict.fin_commission_basis" :key="d.value" :value="d.value">{{ d.label }}</a-radio-button>
           </a-radio-group>
         </a-form-item>
         <a-form-item :label="$t('fin.commission.salesman')" name="salesmanId" :extra="$t('fin.commission.emptyAllSalesmen')">
           <IdentityUserSelect v-model:value="form.salesmanId" :label="form.salesmanName" :placeholder="$t('fin.commission.allSalesmen')" />
         </a-form-item>
-        <a-form-item :label="$t('fin.commission.category')" name="materialCategory" :extra="form.basis === 'RECEIPT' ? $t('fin.commission.receiptNoCategory') : $t('fin.commission.emptyAllCategories')">
-          <a-select v-model:value="form.materialCategory" :options="toOptions(dict.wms_material_category)" allow-clear :placeholder="$t('fin.commission.allCategories')" :disabled="form.basis === 'RECEIPT'" />
+        <a-form-item :label="$t('fin.commission.category')" name="materialCategory" :extra="form.basis === CommissionBasis.RECEIPT ? $t('fin.commission.receiptNoCategory') : $t('fin.commission.emptyAllCategories')">
+          <a-select v-model:value="form.materialCategory" :options="toOptions(dict.wms_material_category)" allow-clear :placeholder="$t('fin.commission.allCategories')" :disabled="form.basis === CommissionBasis.RECEIPT" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
@@ -173,7 +173,9 @@ import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { toOptions } from '@/utils/dict'
 import { useI18n } from 'vue-i18n'
+import { useAction } from '@/composables/useAction'
 
+import { CommissionBasis, CommissionStatus } from '@/constants/enums'
 /** 销售提成：按业务员统计当月业绩，按规则计算提成，确认后计入工资表 */
 const { t } = useI18n()
 const dict = useDict('fin_commission_basis', 'wms_material_category')
@@ -228,16 +230,8 @@ async function generate() {
     generating.value = false
   }
 }
-async function confirm() {
-  await confirmCommission(period.value)
-  message.success(t('fin.commission.confirmed'))
-  loadSheet()
-}
-async function unconfirm() {
-  await unconfirmCommission(period.value)
-  message.success(t('fin.commission.unconfirmed'))
-  loadSheet()
-}
+const confirm = useAction(() => confirmCommission(period.value), { successKey: 'fin.commission.confirmed', reload: () => loadSheet() })
+const unconfirm = useAction(() => unconfirmCommission(period.value), { successKey: 'fin.commission.unconfirmed', reload: () => loadSheet() })
 
 const adjustOpen = ref(false)
 const adjusting = ref(false)
@@ -306,11 +300,7 @@ const drawer = useFormDrawer({
   onSuccess: loadRules
 })
 const { formRef, form } = drawer
-async function removeRule(id) {
-  await deleteCommissionRule(id)
-  message.success(t('common.msg.deleteSuccess'))
-  loadRules()
-}
+const removeRule = useAction(deleteCommissionRule, { successKey: 'common.msg.deleteSuccess', reload: () => loadRules() })
 
 watch(tab, (v) => v === 'rule' && loadRules())
 onMounted(loadSheet)

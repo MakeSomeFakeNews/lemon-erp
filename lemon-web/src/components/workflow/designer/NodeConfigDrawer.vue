@@ -10,7 +10,7 @@
         <a-form-item :label="isCc ? $t('workflow.node.cc') : $t('workflow.node.approver')" required>
           <a-radio-group v-model:value="draft.assignee.type" :options="assigneeTypeOptions" @change="onTypeChange" />
         </a-form-item>
-        <a-form-item v-if="draft.assignee.type === 'USER'" :label="$t('workflow.config.selectUser')">
+        <a-form-item v-if="draft.assignee.type === AssigneeType.USER" :label="$t('workflow.config.selectUser')">
           <div class="user-tags">
             <a-tag v-for="(id, i) in draft.assignee.ids" :key="id" closable @close.prevent="removeUser(i)">
               {{ draft.assignee.names[i] || id }}
@@ -20,7 +20,7 @@
             </a-button>
           </div>
         </a-form-item>
-        <a-form-item v-else-if="draft.assignee.type === 'ROLE'" :label="$t('workflow.config.selectRole')" :extra="isCc ? '' : $t('workflow.config.roleExtra')">
+        <a-form-item v-else-if="draft.assignee.type === AssigneeType.ROLE" :label="$t('workflow.config.selectRole')" :extra="isCc ? '' : $t('workflow.config.roleExtra')">
           <a-select
             v-model:value="draft.assignee.ids"
             mode="multiple"
@@ -29,7 +29,7 @@
             option-filter-prop="label"
           />
         </a-form-item>
-        <template v-else-if="draft.assignee.type === 'DEPT_LEADER'">
+        <template v-else-if="draft.assignee.type === AssigneeType.DEPT_LEADER">
           <a-form-item :label="$t('workflow.config.leaderLevel')" :extra="$t('workflow.config.leaderExtra')">
             <a-select v-model:value="draft.assignee.level" :options="LEADER_LEVELS" />
           </a-form-item>
@@ -93,6 +93,7 @@ import {
   requiresIds
 } from './flow'
 
+import { AssigneeType } from '@/constants/enums'
 const { t } = useI18n()
 
 /**
@@ -138,7 +139,7 @@ function onTypeChange() {
   const a = draft.value.assignee
   a.ids = []
   a.names = []
-  if (a.type === 'DEPT_LEADER') a.level = a.level || 1
+  if (a.type === AssigneeType.DEPT_LEADER) a.level = a.level || 1
   else delete a.level
 }
 
@@ -160,7 +161,7 @@ function confirm() {
   const d = draft.value
   if (!d.name?.trim()) return message.warning(t('workflow.config.inputName'))
   d.name = d.name.trim()
-  if (isAssigneeNode.value && d.assignee.type === 'ROLE') {
+  if (isAssigneeNode.value && d.assignee.type === AssigneeType.ROLE) {
     d.assignee.names = d.assignee.ids.map((id) => props.roles.find((r) => r.id === id)?.name || String(id))
   }
   if (isAssigneeNode.value && !requiresIds(d.assignee.type)) {

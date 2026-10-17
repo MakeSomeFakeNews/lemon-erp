@@ -4,6 +4,7 @@ import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.fin.dto.StdCostBreakdown;
 import com.lemon.erp.modules.fin.dto.StdCostRequests;
 import com.lemon.erp.modules.fin.entity.FinStdCost;
 import com.lemon.erp.modules.fin.entity.FinStdCostVersion;
@@ -21,7 +22,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
 
 /**
  * 标准成本版本
@@ -60,7 +60,7 @@ public class FinStdCostController {
     /** 自制件的卷算明细：row、items（子件）、ops（工序） */
     @GetMapping("/{id}/items/{materialId}/breakdown")
     @PreAuthorize("@ss.hasPerm('fin:stdCost:list')")
-    public R<Map<String, Object>> breakdown(@PathVariable Long id, @PathVariable Long materialId) {
+    public R<StdCostBreakdown> breakdown(@PathVariable Long id, @PathVariable Long materialId) {
         return R.ok(stdCostService.breakdown(id, materialId));
     }
 

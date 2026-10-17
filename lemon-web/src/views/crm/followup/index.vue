@@ -68,7 +68,6 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { DeleteOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -81,6 +80,7 @@ import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { TARGET_TYPES, targetType } from '@/components/crm/crm'
+import { useAction } from '@/composables/useAction'
 
 const userStore = useUserStore()
 const { t } = useI18n()
@@ -112,11 +112,7 @@ function resetQuery() {
 
 onMounted(load)
 
-async function remove(id) {
-  await deleteFollowup(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteFollowup, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

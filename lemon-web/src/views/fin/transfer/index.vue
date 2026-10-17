@@ -54,12 +54,12 @@
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('fin.transfer.from')" name="fromAccountId">
-              <AccountSelect v-model:value="form.fromAccountId" :prefix="['1001', '1002']" />
+              <AccountSelect v-model:value="form.fromAccountId" :roles="['CASH', 'BANK']" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('fin.transfer.to')" name="toAccountId">
-              <AccountSelect v-model:value="form.toAccountId" :prefix="['1001', '1002']" />
+              <AccountSelect v-model:value="form.toAccountId" :roles="['CASH', 'BANK']" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
@@ -85,7 +85,6 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowRightOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -98,6 +97,7 @@ import { today } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
+import { useAction } from '@/composables/useAction'
 
 const { t } = useI18n()
 const columns = [
@@ -137,11 +137,7 @@ const drawer = useFormDrawer({
 })
 const { formRef, form } = drawer
 
-async function remove(id) {
-  await deleteFundTransfer(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteFundTransfer, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 const voucherOpen = ref(false)
 const voucherId = ref()

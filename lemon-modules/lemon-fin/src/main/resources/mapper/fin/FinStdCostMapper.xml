@@ -28,14 +28,14 @@
         SELECT id AS "bomId", material_id AS "materialId" FROM mes_bom WHERE is_default = 1 AND status = 1
     </select>
 
-    <select id="selectBomItems" resultType="java.util.Map">
+    <select id="selectBomItems" resultType="com.lemon.erp.modules.fin.dto.StdCostBreakdown$BomItem">
         SELECT bom_id AS "bomId", material_id AS "materialId", qty AS "qty", loss_rate AS "lossRate"
         FROM mes_bom_item
         WHERE bom_id IN <foreach collection="bomIds" item="id" open="(" separator="," close=")">#{id}</foreach>
         ORDER BY bom_id, id
     </select>
 
-    <select id="selectBomOps" resultType="java.util.Map">
+    <select id="selectBomOps" resultType="com.lemon.erp.modules.fin.dto.StdCostBreakdown$BomOp">
         SELECT o.bom_id AS "bomId", o.seq AS "seq", o.name AS "name", w.name AS "workCenterName", o.std_hours AS "stdHours",
                COALESCE(w.labor_rate, 0) AS "laborRate", COALESCE(w.overhead_rate, 0) AS "overheadRate"
         FROM mes_bom_op o
@@ -44,7 +44,7 @@
         ORDER BY o.bom_id, o.seq
     </select>
 
-    <select id="selectInitialPrices" resultType="java.util.Map">
+    <select id="selectInitialPrices" resultType="com.lemon.erp.modules.fin.dto.StdCostBreakdown$InitialPrice">
         SELECT m.id AS "materialId",
                COALESCE((SELECT mc.unit_cost FROM fin_material_cost mc
                          WHERE mc.material_id = m.id AND mc.unit_cost &gt; 0

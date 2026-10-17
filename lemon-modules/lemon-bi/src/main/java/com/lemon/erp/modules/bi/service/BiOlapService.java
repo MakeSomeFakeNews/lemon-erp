@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.bi.service;
 
+import com.lemon.erp.modules.bi.dto.BiInsight;
 import com.lemon.erp.modules.bi.model.DateRange;
 import com.lemon.erp.modules.bi.model.MeasureFormat;
 import com.lemon.erp.common.i18n.Messages;
@@ -41,18 +42,14 @@ public class BiOlapService {
     private final BiOlapMapper olapMapper;
 
     /** 数据集、维度、指标的元数据 */
-    public List<Map<String, Object>> cubes() {
-        List<Map<String, Object>> list = new ArrayList<>();
+    public List<BiInsight.CubeInfo> cubes() {
+        List<BiInsight.CubeInfo> list = new ArrayList<>();
         for (BiCube cube : BiCube.values()) {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("key", cube.name());
-            m.put("label", Messages.get(cube.getLabel()));
-            m.put("dateFilter", cube.getDateFilter());
-            m.put("dims", cube.getDims().stream()
-                    .map(d -> new BiCube.BiDim(d.key(), Messages.get(d.label()), d.labelSource(), d.dictType())).toList());
-            m.put("measures", cube.getMeasures().stream()
-                    .map(x -> new BiCube.BiMeasure(x.key(), Messages.get(x.label()), x.format(), x.numerator(), x.denominator())).toList());
-            list.add(m);
+            list.add(new BiInsight.CubeInfo(cube.name(), Messages.get(cube.getLabel()), cube.getDateFilter(),
+                    cube.getDims().stream()
+                            .map(d -> new BiCube.BiDim(d.key(), Messages.get(d.label()), d.labelSource(), d.dictType())).toList(),
+                    cube.getMeasures().stream()
+                            .map(x -> new BiCube.BiMeasure(x.key(), Messages.get(x.label()), x.format(), x.numerator(), x.denominator())).toList()));
         }
         return list;
     }

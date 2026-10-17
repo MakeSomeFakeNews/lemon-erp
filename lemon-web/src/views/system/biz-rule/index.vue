@@ -16,20 +16,51 @@
             </div>
             <div class="config-control">
               <a-switch
-                v-if="item.type === 'BOOL'"
+                v-if="item.type === SettingType.BOOL"
                 :checked="edits[item.key] === 'true'"
                 :disabled="!canEdit"
                 @change="(v) => (edits[item.key] = String(v))"
               />
-              <a-radio-group v-else-if="item.type === 'SELECT'" v-model:value="edits[item.key]" :disabled="!canEdit" button-style="solid">
+              <a-radio-group v-else-if="item.type === SettingType.SELECT" v-model:value="edits[item.key]" :disabled="!canEdit" button-style="solid">
                 <a-radio-button v-for="o in item.options" :key="o.value" :value="o.value">{{ o.label }}</a-radio-button>
               </a-radio-group>
+              <div v-else-if="item.type === SettingType.TABLE" class="rule-table-wrap">
+                <table class="rule-table">
+                  <thead>
+                    <tr>
+                      <th v-for="c in item.columns" :key="c.label">{{ c.label }}</th>
+                      <th v-if="canEdit" class="op" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, i) in tableRows(edits[item.key])" :key="i">
+                      <td v-for="(c, j) in item.columns" :key="j">
+                        <a-input-number
+                          :value="row[j] === '' ? null : Number(row[j])"
+                          :min="c.min"
+                          :max="c.max"
+                          :precision="c.scale"
+                          :placeholder="c.nullable ? $t('system.bizRule.unlimited') : ''"
+                          :disabled="!canEdit"
+                          size="small"
+                          class="cell"
+                          @change="(v) => setCell(item, i, j, v)"
+                        />
+                      </td>
+                      <td v-if="canEdit" class="op">
+                        <a @click="insertRow(item, i)">{{ $t('system.bizRule.insertRow') }}</a>
+                        <a v-if="tableRows(edits[item.key]).length > 1" class="danger" @click="removeRow(item, i)">{{ $t('common.action.delete') }}</a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
               <a-input-number
                 v-else
                 :value="Number(edits[item.key])"
                 :min="item.min"
                 :max="item.max"
-                :precision="0"
+                :precision="item.type === SettingType.DECIMAL ? item.scale : 0"
                 :disabled="!canEdit"
                 class="number"
                 @change="(v) => (edits[item.key] = v == null ? '' : String(v))"
@@ -37,7 +68,7 @@
               <a v-if="canEdit && edits[item.key] !== item.defaultValue" class="reset" @click="edits[item.key] = item.defaultValue">{{ $t('system.config.restoreDefault') }}</a>
             </div>
             <div class="sub-text">
-              <span v-if="item.remark">{{ $t('system.config.remark', { remark: item.remark }) }}</span>{{ $t('system.config.default', { value: display(item, item.defaultValue) }) }}
+              <span v-if="item.remark">{{ $t('system.config.remark', { remark: item.remark }) }}</span><template v-if="item.type !== SettingType.TABLE">{{ $t('system.config.default', { value: display(item, item.defaultValue) }) }}</template>
             </div>
           </div>
         </a-tab-pane>
@@ -57,6 +88,7 @@ import { useI18n } from 'vue-i18n'
 import { listBizRules, saveBizRules } from '@/api/system/customField'
 import { useUserStore } from '@/store/user'
 
+import { SettingType } from '@/constants/enums'
 /** 业务参数：按模块分组显示各模块登记的业务控制规则（按租户），只提交修改过的 */
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -78,12 +110,35 @@ const groups = computed(() => {
 const dirtyKeys = computed(() => items.value.filter((i) => edits[i.key] !== i.value).map((i) => i.key))
 
 function display(item, value) {
-  if (item.type === 'BOOL') return value === 'true' ? t('system.config.on') : t('system.config.off')
-  if (item.type === 'SELECT') return item.options.find((o) => o.value === value)?.label || value
+  if (item.type === SettingType.BOOL) return value === 'true' ? t('system.config.on') : t('system.config.off')
+  if (item.type === SettingType.SELECT) return item.options.find((o) => o.value === value)?.label || value
   return value
 }
 function discard() {
   items.value.forEach((i) => (edits[i.key] = i.value))
+}
+
+// 表格型参数：行之间用 ; 分隔、单元格之间用 , 分隔，留空表示不限（与后端 BizRule 一致）
+function tableRows(value) {
+  return (value || '').split(';').map((r) => r.split(','))
+}
+function setTable(item, rows) {
+  edits[item.key] = rows.map((r) => r.join(',')).join(';')
+}
+function setCell(item, i, j, v) {
+  const rows = tableRows(edits[item.key])
+  rows[i][j] = v == null ? '' : String(v)
+  setTable(item, rows)
+}
+function insertRow(item, i) {
+  const rows = tableRows(edits[item.key])
+  rows.splice(i + 1, 0, item.columns.map(() => ''))
+  setTable(item, rows)
+}
+function removeRow(item, i) {
+  const rows = tableRows(edits[item.key])
+  rows.splice(i, 1)
+  setTable(item, rows)
 }
 async function load() {
   loading.value = true
@@ -130,6 +185,35 @@ async function save() {
 }
 .number {
   width: 160px;
+}
+.rule-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.rule-table {
+  border-collapse: collapse;
+}
+.rule-table th,
+.rule-table td {
+  padding: 4px 8px;
+  border: 1px solid var(--app-border);
+  text-align: left;
+  white-space: nowrap;
+}
+.rule-table th {
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--app-text-2);
+  background: var(--app-hover);
+}
+.rule-table .cell {
+  width: 150px;
+}
+.rule-table .op a + a {
+  margin-left: 8px;
+}
+.rule-table .danger {
+  color: #ff4d4f;
 }
 .reset {
   font-size: 12px;

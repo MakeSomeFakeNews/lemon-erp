@@ -59,7 +59,7 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <a-button
-              v-if="record.status === 'PENDING' || record.status === 'REJECTED'"
+              v-if="record.status === HoldStatus.PENDING || record.status === HoldStatus.REJECTED"
               v-perm="'wms:hold:release'"
               type="link"
               size="small"
@@ -97,6 +97,7 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+import { HoldStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 const dict = useDict('wms_hold_status')
@@ -132,7 +133,7 @@ const releaseRemark = ref('')
 const current = ref()
 function openRelease(record) {
   current.value = record
-  releaseRemark.value = record.status === 'REJECTED' ? t('wms.hold.concession') : ''
+  releaseRemark.value = record.status === HoldStatus.REJECTED ? t('wms.hold.concession') : ''
   releaseOpen.value = true
 }
 async function submitRelease() {

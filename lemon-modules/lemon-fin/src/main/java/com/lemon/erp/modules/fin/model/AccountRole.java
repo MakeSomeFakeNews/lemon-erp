@@ -4,9 +4,15 @@ import java.util.Map;
 
 /**
  * 自动凭证科目：业务单据生成凭证时各用途使用的科目。
- * 默认取 init.sql 预置科目的编码，可在「凭证科目设置」中改为其他末级科目；带维度的用途可以再按物料分类 / 职位类别 / 收发类别分别指定
+ * 默认取 init.sql 预置科目的编码，可在「凭证科目设置」中改为其他末级科目；带维度的用途可以再按物料分类 / 职位类别 / 收发类别分别指定。
+ * 科目范围用途（{@link #scope()}，如库存现金、银行存款）设置的是一个科目及其全部下级，可以是上级科目，用于识别结算科目、现金流量等
  */
 public enum AccountRole {
+
+    /** 库存现金：其下级末级科目可作为收付款的结算账户，现金流量表、资金计划按此识别现金 */
+    CASH("fin.label.cashCashEquivalents", "fin.label.cashOnHand", "1001", true),
+    /** 银行存款：其下级末级科目可作为结算账户、银行对账的账户 */
+    BANK("fin.label.cashCashEquivalents", "fin.label.bankDeposits", "1002", true),
 
     RECEIVABLE("fin.label.receivablesPayables", "fin.label.accountsReceivable", "1122"),
     PAYABLE("fin.label.receivablesPayables", "fin.label.accountsPayable", "2202"),
@@ -90,9 +96,15 @@ public enum AccountRole {
     private final Dimension dimension;
     /** 维度取值 → 默认科目编码，没有的取 defaultCode */
     private final Map<String, String> dimensionDefaults;
+    /** 科目范围：设置的科目及其全部下级都属于该用途，可以是上级科目，不用于生成凭证 */
+    private final boolean scope;
 
     AccountRole(String group, String label, String defaultCode) {
         this(group, label, defaultCode, Dimension.NONE, Map.of());
+    }
+
+    AccountRole(String group, String label, String defaultCode, boolean scope) {
+        this(group, label, defaultCode, Dimension.NONE, Map.of(), scope);
     }
 
     AccountRole(String group, String label, String defaultCode, Dimension dimension) {
@@ -100,11 +112,21 @@ public enum AccountRole {
     }
 
     AccountRole(String group, String label, String defaultCode, Dimension dimension, Map<String, String> dimensionDefaults) {
+        this(group, label, defaultCode, dimension, dimensionDefaults, false);
+    }
+
+    AccountRole(String group, String label, String defaultCode, Dimension dimension, Map<String, String> dimensionDefaults, boolean scope) {
         this.group = group;
         this.label = label;
         this.defaultCode = defaultCode;
         this.dimension = dimension;
         this.dimensionDefaults = dimensionDefaults;
+        this.scope = scope;
+    }
+
+    /** 是否科目范围用途：设置的科目及其全部下级都属于该用途（按编码前缀匹配），可以是上级科目 */
+    public boolean scope() {
+        return scope;
     }
 
     /** 分组的消息键 */

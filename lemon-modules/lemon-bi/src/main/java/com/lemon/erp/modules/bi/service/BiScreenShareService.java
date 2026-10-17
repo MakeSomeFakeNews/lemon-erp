@@ -4,6 +4,8 @@ import com.lemon.erp.common.i18n.Messages;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.tenant.TenantContext;
+import com.lemon.erp.modules.bi.dto.BiInsight;
+import com.lemon.erp.modules.bi.dto.BiScreen;
 import com.lemon.erp.modules.bi.dto.ScreenShareRequest;
 import com.lemon.erp.modules.bi.entity.BiScreenShare;
 import com.lemon.erp.modules.bi.mapper.BiScreenMapper;
@@ -16,9 +18,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HexFormat;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -70,21 +70,16 @@ public class BiScreenShareService {
     // ---------------------------------------------------------------- 免登录访问
 
     /** 链接信息：{name, company, screens: [{key, label}], intervalSeconds, workCenterId, workCenterName} */
-    public Map<String, Object> publicInfo(String token) {
+    public BiInsight.ShareInfo publicInfo(String token) {
         BiScreenShare share = resolve(token);
-        return TenantContext.callAs(tenantOf(share), () -> {
-            Map<String, Object> info = new LinkedHashMap<>();
-            info.put("name", share.getName());
-            info.put("company", screenMapper.tenantName(tenantOf(share)));
-            info.put("screens", keys(share).stream().map(k -> Map.of("key", k.name(), "label", Messages.get(k.getLabel()))).toList());
-            info.put("intervalSeconds", share.getIntervalSeconds());
-            info.put("workCenterId", share.getWorkCenterId());
-            info.put("workCenterName", share.getWorkCenterId() == null ? null : screenMapper.workCenterName(share.getWorkCenterId()));
-            return info;
-        });
+        return TenantContext.callAs(tenantOf(share), () -> new BiInsight.ShareInfo(share.getName(),
+                screenMapper.tenantName(tenantOf(share)),
+                keys(share).stream().map(k -> new BiInsight.ScreenOption(k.name(), Messages.get(k.getLabel()))).toList(),
+                share.getIntervalSeconds(), share.getWorkCenterId(),
+                share.getWorkCenterId() == null ? null : screenMapper.workCenterName(share.getWorkCenterId())));
     }
 
-    public Map<String, Object> publicData(String token, ScreenKey key) {
+    public BiScreen.ScreenData publicData(String token, ScreenKey key) {
         BiScreenShare share = resolve(token);
         if (!keys(share).contains(key)) {
             throw new BizException("bi.error.screenNotIncludedLink");

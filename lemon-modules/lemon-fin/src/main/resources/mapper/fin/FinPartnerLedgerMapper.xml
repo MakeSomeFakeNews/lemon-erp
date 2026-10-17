@@ -17,7 +17,7 @@
         WHERE kind = #{settleKind} AND partner_id = #{partnerId} AND advance_date &lt; #{date}
     </select>
 
-    <select id="selectRows" resultType="java.util.Map">
+    <select id="selectRows" resultType="com.lemon.erp.modules.fin.dto.FinAnalysis$PartnerFlow">
         SELECT t.biz_date AS "bizDate", t.type AS "type", t.doc_no AS "docNo", t.source_type AS "sourceType",
                t.source_no AS "sourceNo", t.amount AS "amount", t.remark AS "remark"
         FROM (

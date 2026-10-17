@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.lemon.erp.modules.crm.mapper.CrmAnalysisMapper">
 
-    <select id="selectOverview" resultType="java.util.Map">
+    <select id="selectOverview" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$Overview">
         SELECT
             (SELECT COUNT(*) FROM scm_customer WHERE create_time &gt;= #{monthStart}) AS "newCustomers",
             (SELECT COUNT(*) FROM crm_customer WHERE owner_id IS NOT NULL) AS "ownedCustomers",
@@ -22,7 +22,7 @@
             (SELECT AVG(satisfaction) FROM crm_ticket WHERE satisfaction IS NOT NULL) AS "satisfaction"
     </select>
 
-    <select id="selectCustomerStages" resultType="java.util.Map">
+    <select id="selectCustomerStages" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$StageCount">
         SELECT COALESCE(x.stage, 'POTENTIAL') AS "stage", COUNT(*) AS "count"
         FROM scm_customer c
         LEFT JOIN crm_customer x ON x.customer_id = c.id
@@ -30,19 +30,19 @@
         GROUP BY COALESCE(x.stage, 'POTENTIAL')
     </select>
 
-    <select id="selectFunnel" resultType="java.util.Map">
+    <select id="selectFunnel" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$StageCount">
         SELECT stage AS "stage", COUNT(*) AS "count", COALESCE(SUM(amount), 0) AS "amount"
         FROM crm_opportunity
         GROUP BY stage
     </select>
 
-    <select id="selectStageReached" resultType="java.util.Map">
+    <select id="selectStageReached" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$StageCount">
         SELECT to_stage AS "stage", COUNT(DISTINCT opportunity_id) AS "count"
         FROM crm_stage_log
         GROUP BY to_stage
     </select>
 
-    <select id="selectRfmSource" resultType="java.util.Map">
+    <select id="selectRfmSource" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$RfmSource">
         SELECT c.id AS "customerId", c.code AS "code", c.name AS "name", u.nickname AS "ownerName",
                CAST(MAX(CASE WHEN d.kind = 'SALES_OUT' THEN d.biz_date END) AS CHAR(10)) AS "lastDate",
                SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE 0 END) AS "frequency",
@@ -56,7 +56,7 @@
         HAVING SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE 0 END) &gt; 0
     </select>
 
-    <select id="selectMonthlySales" resultType="java.util.Map">
+    <select id="selectMonthlySales" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$MonthlyRow">
         SELECT YEAR(biz_date) * 100 + MONTH(biz_date) AS "period",
                SUM(CASE WHEN kind = 'SALES_OUT' THEN total_amount ELSE -total_amount END) AS "amount",
                COUNT(DISTINCT partner_id) AS "customers"
@@ -65,14 +65,14 @@
         GROUP BY YEAR(biz_date) * 100 + MONTH(biz_date)
     </select>
 
-    <select id="selectMonthlyWon" resultType="java.util.Map">
+    <select id="selectMonthlyWon" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$MonthlyRow">
         SELECT YEAR(close_date) * 100 + MONTH(close_date) AS "period", COUNT(*) AS "count", SUM(amount) AS "amount"
         FROM crm_opportunity
         WHERE stage = 'WON' AND close_date &gt;= #{since}
         GROUP BY YEAR(close_date) * 100 + MONTH(close_date)
     </select>
 
-    <select id="selectSourceStats" resultType="java.util.Map">
+    <select id="selectSourceStats" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$SourceStat">
         SELECT s.source AS "source", COALESCE(l.leads, 0) AS "leads", COALESCE(l.converted, 0) AS "converted",
                COALESCE(o.opps, 0) AS "opps", COALESCE(o.won_amount, 0) AS "wonAmount"
         FROM (SELECT DISTINCT COALESCE(source, 'OTHER') AS source FROM crm_lead
@@ -85,7 +85,7 @@
                    FROM crm_opportunity GROUP BY COALESCE(source, 'OTHER')) o ON o.source = s.source
     </select>
 
-    <select id="selectOwnerStats" resultType="java.util.Map">
+    <select id="selectOwnerStats" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$OwnerStat">
         SELECT u.id AS "userId", u.nickname AS "name",
                (SELECT COUNT(*) FROM crm_customer x WHERE x.owner_id = u.id) AS "customers",
                (SELECT COUNT(*) FROM crm_opportunity o WHERE o.owner_id = u.id AND o.stage NOT IN ('WON', 'LOST')) AS "openOpps",
@@ -98,7 +98,7 @@
            OR EXISTS (SELECT 1 FROM crm_opportunity o WHERE o.owner_id = u.id)
     </select>
 
-    <select id="selectIndustryStats" resultType="java.util.Map">
+    <select id="selectIndustryStats" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$IndustryStat">
         SELECT COALESCE(x.industry, 'UNKNOWN') AS "industry", COUNT(*) AS "customers", COALESCE(SUM(s.sales), 0) AS "sales"
         FROM scm_customer c
         LEFT JOIN crm_customer x ON x.customer_id = c.id
@@ -110,7 +110,7 @@
         GROUP BY COALESCE(x.industry, 'UNKNOWN')
     </select>
 
-    <select id="selectTicketStats" resultType="java.util.Map">
+    <select id="selectTicketStats" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$TicketStat">
         SELECT type AS "type", COUNT(*) AS "count",
                SUM(CASE WHEN status IN ('OPEN', 'PROCESSING') THEN 1 ELSE 0 END) AS "open",
                AVG(CASE WHEN resolved_time IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, create_time, resolved_time) END) AS "avgMinutes",

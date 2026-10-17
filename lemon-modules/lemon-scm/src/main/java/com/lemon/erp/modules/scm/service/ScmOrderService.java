@@ -5,32 +5,22 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.data.DetailLines;
 import com.lemon.erp.framework.data.StatusTransitions;
-import com.lemon.erp.framework.finance.ExchangeRateProvider;
-import com.lemon.erp.framework.finance.PartnerBalanceProvider;
-import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.rule.BizRules;
 import com.lemon.erp.framework.security.datascope.DataScopes;
-import com.lemon.erp.modules.scm.model.CreditControl;
 import com.lemon.erp.framework.workflow.ApprovalFlow;
 import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowApi;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
 import com.lemon.erp.framework.workflow.FlowStatus;
-import com.lemon.erp.modules.scm.dto.CreditUsage;
-import com.lemon.erp.modules.scm.dto.OrderItemRequest;
 import com.lemon.erp.modules.scm.dto.OrderQuery;
 import com.lemon.erp.modules.scm.dto.OrderRequest;
-import com.lemon.erp.modules.scm.entity.ScmCustomer;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
 import com.lemon.erp.modules.scm.entity.ScmOrderItem;
-import com.lemon.erp.modules.scm.entity.ScmSupplier;
 import com.lemon.erp.modules.scm.event.OrderStatusChangedEvent;
 import com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
@@ -38,35 +28,26 @@ import com.lemon.erp.modules.scm.model.OrderDeletedEvent;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.model.OrderStatus;
-import com.lemon.erp.modules.wms.entity.WmsMaterial;
-import com.lemon.erp.modules.wms.entity.WmsMaterialUnit;
-import com.lemon.erp.modules.wms.entity.WmsWarehouse;
 import com.lemon.erp.modules.wms.service.DocNoService;
-import com.lemon.erp.modules.wms.service.WmsMaterialService;
-import com.lemon.erp.modules.wms.service.WmsWarehouseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.ORDER_RULE;
-import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
-import static com.lemon.erp.modules.scm.model.ScmConstants.tax;
 
 /**
  * 采购 / 销售订单：草稿可以修改、删除；审核后才能入库 / 出库。
  * 在流程中心发布了对应的审批流程（OrderKind.processKey）时，审核改为发起审批，审批通过后自动变为已审核。
  * 数据权限按制单人部门 + 制单人过滤。
+ * <p>
+ * 本类负责编排和事务边界：请求转换由 {@link ScmOrderAssembler}，合同价、促销返利、限价由 {@link ScmOrderPricingService}，
+ * 信用额度由 {@link ScmOrderCreditChecker}，门户通知由 {@link ScmOrderNotifier} 完成
  */
 @Service
 @RequiredArgsConstructor
@@ -81,23 +62,15 @@ public class ScmOrderService {
 
     private final ScmOrderMapper orderMapper;
     private final ScmOrderItemMapper itemMapper;
-    private final ScmSupplierService supplierService;
-    private final ScmCustomerService customerService;
-    private final WmsMaterialService materialService;
-    private final WmsWarehouseService warehouseService;
     private final DocNoService docNoService;
     private final FlowApi flowApi;
     private final ApprovalSupport approvalSupport;
-    private final PartnerBalanceProvider balanceProvider;
-    private final ExchangeRateProvider rateProvider;
     private final ApplicationEventPublisher eventPublisher;
     private final ChangeLogger changeLogger;
-    private final ScmContractUsageService contractUsage;
-    private final ScmPortalNotifier portalNotifier;
-    private final ScmPromotionService promotionService;
-    private final ScmRebateService rebateService;
-    private final ScmPriceControlService priceControl;
-    private final BizRules bizRules;
+    private final ScmOrderAssembler assembler;
+    private final ScmOrderPricingService pricing;
+    private final ScmOrderCreditChecker creditChecker;
+    private final ScmOrderNotifier notifier;
 
     @DataPermission(table = "scm_order", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmOrder> page(OrderKind kind, long current, long size, OrderQuery query) {
@@ -142,9 +115,9 @@ public class ScmOrderService {
     /** @param promote 应用促销和返利抵扣（销售订单） */
     @Transactional
     public Long createDraft(OrderKind kind, OrderRequest req, OrderSource source, boolean promote) {
-        List<ScmOrderItem> items = toItems(kind, req);
-        applyContract(kind, req, items, null);
-        ScmPromotionService.Applied applied = promote ? promote(req, items, null) : null;
+        List<ScmOrderItem> items = assembler.toItems(kind, req);
+        pricing.applyContract(kind, req, items, null);
+        ScmPromotionService.Applied applied = promote ? pricing.promote(req, items, null) : null;
         if (applied != null) {
             items = applied.items();
         }
@@ -157,21 +130,20 @@ public class ScmOrderService {
         order.setVersion(1);
         order.setDeptId(user.deptId());
         if (kind == OrderKind.SALES) {
-            Long owner = customerService.get(req.partnerId()).getOwnerId();
-            order.setSalesmanId(owner != null ? owner : user.userId());
+            order.setSalesmanId(assembler.salesmanOf(req.partnerId(), user.userId()));
         }
-        fillHeader(order, req, items);
+        assembler.fillHeader(order, req, items);
         if (source == OrderSource.MANUAL) {
-            priceControl.check(kind, items, order.getExchangeRate());
+            pricing.checkPriceLimit(kind, items, order.getExchangeRate());
         }
         if (applied != null) {
             order.setDiscountAmount(applied.discountAmount());
-            order.setRebateAmount(rebateOf(req));
+            order.setRebateAmount(ScmOrderPricingService.rebateOf(req));
         }
         orderMapper.insert(order);
         saveItems(order.getId(), items);
         if (applied != null) {
-            promotionService.saveUsages(order.getId(), applied.usages());
+            pricing.saveUsages(order.getId(), applied);
         }
         return order.getId();
     }
@@ -183,35 +155,19 @@ public class ScmOrderService {
         orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate().set(ScmOrder::getSalesmanId, salesmanId).eq(ScmOrder::getId, id));
     }
 
-    /** 应用促销、返利抵扣，并按调整后的单价重算金额 */
-    private ScmPromotionService.Applied promote(OrderRequest req, List<ScmOrderItem> items, Long orderId) {
-        rebateService.checkBalance(req.partnerId(), req.rebateAmount(), orderId);
-        ScmPromotionService.Applied applied = promotionService.apply(customerService.get(req.partnerId()), req.orderDate(), items,
-                req.rebateAmount());
-        for (ScmOrderItem item : applied.items()) {
-            item.setAmount(amount(item.getQty(), item.getPrice()));
-            item.setTaxAmount(tax(item.getAmount(), item.getTaxRate()));
-        }
-        return applied;
-    }
-
-    private static BigDecimal rebateOf(OrderRequest req) {
-        return Decimals.money(req.rebateAmount());
-    }
-
     @Transactional
     public void update(OrderKind kind, Long id, OrderRequest req) {
         Object before = orderMapper.selectById(id);
         getDraft(kind, id);
-        List<ScmOrderItem> items = toItems(kind, req);
-        applyContract(kind, req, items, id);
-        ScmPromotionService.Applied applied = kind == OrderKind.SALES ? promote(req, items, id) : null;
+        List<ScmOrderItem> items = assembler.toItems(kind, req);
+        pricing.applyContract(kind, req, items, id);
+        ScmPromotionService.Applied applied = kind == OrderKind.SALES ? pricing.promote(req, items, id) : null;
         if (applied != null) {
             items = applied.items();
         }
         ScmOrder order = new ScmOrder();
-        fillHeader(order, req, items);
-        priceControl.check(kind, items, order.getExchangeRate());
+        assembler.fillHeader(order, req, items);
+        pricing.checkPriceLimit(kind, items, order.getExchangeRate());
         orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
                 .set(ScmOrder::getPartnerId, order.getPartnerId())
                 .set(ScmOrder::getOrderDate, order.getOrderDate())
@@ -225,13 +181,13 @@ public class ScmOrderService {
                 .set(ScmOrder::getExchangeRate, order.getExchangeRate())
                 .set(ScmOrder::getContractId, order.getContractId())
                 .set(applied != null, ScmOrder::getDiscountAmount, applied == null ? null : applied.discountAmount())
-                .set(applied != null, ScmOrder::getRebateAmount, rebateOf(req))
+                .set(applied != null, ScmOrder::getRebateAmount, ScmOrderPricingService.rebateOf(req))
                 .set(ScmOrder::getUpdateTime, LocalDateTime.now())
                 .eq(ScmOrder::getId, id)
                 .eq(ScmOrder::getStatus, OrderStatus.DRAFT));
         DetailLines.replace(itemMapper, ScmOrderItem::getOrderId, id, items, ScmOrderItem::setOrderId, itemMapper::insertBatch);
         if (applied != null) {
-            promotionService.saveUsages(id, applied.usages());
+            pricing.saveUsages(id, applied);
         }
         changeLogger.log("scm_" + kind.path(), id, before, orderMapper.selectById(id), CHANGE_FIELDS);
     }
@@ -247,7 +203,7 @@ public class ScmOrderService {
             throw new BizException("scm.error.orderHasApprovedCannotCanceledContact");
         }
         itemMapper.delete(Wrappers.<ScmOrderItem>lambdaQuery().eq(ScmOrderItem::getOrderId, id));
-        promotionService.deleteUsages(id);
+        pricing.deleteUsages(id);
         orderMapper.deleteById(id);
         eventPublisher.publishEvent(new OrderDeletedEvent(OrderKind.SALES, List.of(id)));
     }
@@ -257,15 +213,11 @@ public class ScmOrderService {
     public void delete(OrderKind kind, List<Long> ids) {
         ids.forEach(id -> getDraft(kind, id));
         itemMapper.delete(Wrappers.<ScmOrderItem>lambdaQuery().in(ScmOrderItem::getOrderId, ids));
-        ids.forEach(promotionService::deleteUsages);
+        ids.forEach(pricing::deleteUsages);
         orderMapper.deleteByIds(ids);
         // 下游（商机等）解除对订单的引用
         eventPublisher.publishEvent(new OrderDeletedEvent(kind, ids));
     }
-
-    /** 占用信用额度的订单状态 */
-    private static final Set<OrderStatus> OPEN_STATUSES = Collections.unmodifiableSet(
-            EnumSet.of(OrderStatus.APPROVING, OrderStatus.APPROVED, OrderStatus.PARTIAL));
 
     /**
      * 审核：发布了审批流程时发起审批（状态变为审批中），否则直接审核通过。销售订单先校验客户信用额度
@@ -276,19 +228,17 @@ public class ScmOrderService {
     public boolean approve(OrderKind kind, Long id) {
         ScmOrder order = getDraft(kind, id);
         if (kind == OrderKind.SALES) {
-            checkCredit(order);
+            creditChecker.checkOnApprove(order);
         }
-        if (order.getContractId() != null) {
-            contractUsage.checkOnApprove(order.getContractId(), order.getPartnerId(), order.getOrderDate(),
-                    itemMapper.selectList(Wrappers.<ScmOrderItem>lambdaQuery().eq(ScmOrderItem::getOrderId, id)), id);
-        }
+        pricing.checkContractOnApprove(order,
+                () -> itemMapper.selectList(Wrappers.<ScmOrderItem>lambdaQuery().eq(ScmOrderItem::getOrderId, id)));
         // 先改状态再发起：流程没有审批节点时会在发起过程中直接结束并回调 onFlowFinished
         return approvalSupport.submit(flowOf(kind), id, Map.of(
                         "amount", order.getTotalAmount().doubleValue(),
                         "orderNo", order.getOrderNo()),
                 () -> {
                     changeStatus(id, OrderStatus.DRAFT, OrderStatus.APPROVED, true);
-                    notifySupplier(kind, order);
+                    notifier.approved(order);
                 },
                 () -> changeStatus(id, OrderStatus.DRAFT, OrderStatus.APPROVING, false),
                 instanceId -> orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
@@ -355,7 +305,7 @@ public class ScmOrderService {
                                 .set(ScmOrder::getApproveTime, LocalDateTime.now()));
                 if (updated) {
                     ScmOrder order = orderMapper.selectById(id);
-                    notifySupplier(order.getKind(), order);
+                    notifier.approved(order);
                 }
             } else {
                 StatusTransitions.tryChange(orderMapper, ScmOrder::getId, id, ScmOrder::getStatus, OrderStatus.APPROVING, OrderStatus.DRAFT, null);
@@ -422,137 +372,8 @@ public class ScmOrderService {
         }
     }
 
-    /** 客户信用额度：应收余额 + 其他未完成订单的未发货金额 + 本订单金额不能超过额度 */
-    private void checkCredit(ScmOrder order) {
-        ScmCustomer customer = customerService.get(order.getPartnerId());
-        if (customer.getCreditLimit() == null || bizRules.option(ScmBizRules.CREDIT_CONTROL, CreditControl.class) != CreditControl.ALL) {
-            return;
-        }
-        BigDecimal open = orderMapper.selectOpenSalesAmount(customer.getId(), order.getId(), OPEN_STATUSES);
-        BigDecimal receivable = balanceProvider.receivableBalance(customer.getId());
-        BigDecimal used = open.add(receivable).add(order.getTotalAmount().multiply(order.getExchangeRate() == null ? BigDecimal.ONE : order.getExchangeRate()));
-        if (used.compareTo(customer.getCreditLimit()) > 0) {
-            throw new BizException("scm.error.exceedsCreditLimitCustomerLimitReceivable",
-                    customer.getName(), plain(customer.getCreditLimit()), plain(receivable), plain(open), plain(order.getTotalAmount()));
-        }
-    }
-
-    /**
-     * 出库前再校验信用额度（审核后客户可能新增了欠款）：应收余额 + 全部未完成订单的未发货金额不能超过额度
-     */
-    void checkCreditBeforeShipment(ScmOrder order) {
-        ScmCustomer customer = customerService.get(order.getPartnerId());
-        if (customer.getCreditLimit() == null || bizRules.option(ScmBizRules.CREDIT_CONTROL, CreditControl.class) == CreditControl.NONE) {
-            return;
-        }
-        BigDecimal open = orderMapper.selectOpenSalesAmount(customer.getId(), 0L, OPEN_STATUSES);
-        BigDecimal receivable = balanceProvider.receivableBalance(customer.getId());
-        if (open.add(receivable).compareTo(customer.getCreditLimit()) > 0) {
-            throw new BizException("scm.error.customerHasExceededCreditLimitDeliveries",
-                    customer.getName(), plain(customer.getCreditLimit()), plain(receivable), plain(open));
-        }
-    }
-
-    /** 信用占用：应收余额、未完成订单金额（客户详情显示） */
-    public CreditUsage creditUsage(Long customerId) {
-        ScmCustomer customer = customerService.get(customerId);
-        BigDecimal open = orderMapper.selectOpenSalesAmount(customerId, 0L, OPEN_STATUSES);
-        BigDecimal receivable = balanceProvider.receivableBalance(customerId);
-        return new CreditUsage(customer.getCreditLimit(), receivable, open);
-    }
-
-    /** 采购订单引用采购合同：按合同价下单并校验 */
-    private void applyContract(OrderKind kind, OrderRequest req, List<ScmOrderItem> items, Long orderId) {
-        if (req.contractId() == null) {
-            return;
-        }
-        if (kind != OrderKind.PURCHASE) {
-            throw new BizException("scm.error.onlyPurchaseOrdersReferencePurchaseContract");
-        }
-        contractUsage.apply(req.contractId(), req.partnerId(), req.orderDate(), req.currency(), items, orderId);
-    }
-
-    /** 采购订单审核通过后通知供应商在门户确认 */
-    private void notifySupplier(OrderKind kind, ScmOrder order) {
-        if (kind == OrderKind.PURCHASE) {
-            portalNotifier.notify(order.getPartnerId(), MessageCategory.REMIND, "新采购订单待确认：" + order.getOrderNo(), // i18n-ignore
-                    "订单金额 " + order.getTotalAmount().stripTrailingZeros().toPlainString() + "，请确认并填写承诺交期", "/portal/order"); // i18n-ignore
-        }
-    }
-
-    /** 校验往来单位、仓库、物料，计算金额 */
-    private List<ScmOrderItem> toItems(OrderKind kind, OrderRequest req) {
-        if (kind == OrderKind.PURCHASE) {
-            ScmSupplier supplier = supplierService.get(req.partnerId());
-            if (!Integer.valueOf(1).equals(supplier.getStatus())) {
-                throw new BizException("scm.error.supplierDisabled", supplier.getName());
-            }
-        } else {
-            ScmCustomer customer = customerService.get(req.partnerId());
-            if (!Integer.valueOf(1).equals(customer.getStatus())) {
-                throw new BizException("scm.error.customerDisabled", customer.getName());
-            }
-        }
-        if (req.warehouseId() != null) {
-            WmsWarehouse warehouse = warehouseService.get(req.warehouseId());
-            if (!Integer.valueOf(1).equals(warehouse.getStatus())) {
-                throw new BizException("scm.error.warehouseDisabled", warehouse.getName());
-            }
-        }
-        Map<Long, WmsMaterial> materials = materialService.getEnabled(req.items().stream().map(OrderItemRequest::materialId).toList());
-        return req.items().stream().map(r -> {
-            WmsMaterial material = materials.get(r.materialId());
-            if (material.isSerialManaged() && r.qty().stripTrailingZeros().scale() > 0) {
-                throw new BizException("scm.error.materialSerialManagedQuantityMustInteger", material.getCode(), material.getName());
-            }
-            ScmOrderItem item = new ScmOrderItem();
-            item.setMaterialId(r.materialId());
-            item.setQty(r.qty());
-            item.setPrice(r.price());
-            item.setTaxRate(r.taxRate() == null ? DEFAULT_TAX_RATE : r.taxRate());
-            item.setAmount(amount(r.qty(), r.price()));
-            item.setTaxAmount(tax(item.getAmount(), item.getTaxRate()));
-            item.setDeliveryDate(r.deliveryDate() != null ? r.deliveryDate() : req.deliveryDate());
-            item.setRemark(r.remark());
-            if (r.unitName() != null && !r.unitName().isBlank() && !r.unitName().equals(material.getUnit())) {
-                WmsMaterialUnit unit = materialService.units(material.getId()).stream().filter(u -> u.getUnit().equals(r.unitName()))
-                        .findFirst().orElseThrow(() -> new BizException("scm.error.materialHasNoAlternateUnit", material.getCode(),
-                                material.getName(), r.unitName()));
-                item.setUnitName(unit.getUnit());
-                item.setUnitRatio(unit.getRatio());
-            }
-            return item;
-        }).toList();
-    }
-
-    private void fillHeader(ScmOrder order, OrderRequest req, List<ScmOrderItem> items) {
-        String currency = req.currency() == null || req.currency().isBlank() ? ExchangeRateProvider.BASE : req.currency().trim();
-        BigDecimal rate = BigDecimal.ONE;
-        if (!ExchangeRateProvider.BASE.equals(currency)) {
-            rate = req.exchangeRate() != null ? req.exchangeRate() : rateProvider.rate(currency, req.orderDate());
-            if (rate == null) {
-                throw new BizException("scm.error.noExchangeRateMaintainCurrencyRates", currency);
-            }
-        }
-        order.setCurrency(currency);
-        order.setExchangeRate(rate);
-        order.setPartnerId(req.partnerId());
-        order.setOrderDate(req.orderDate());
-        order.setDeliveryDate(req.deliveryDate());
-        order.setWarehouseId(req.warehouseId());
-        order.setContractId(req.contractId());
-        order.setRemark(req.remark());
-        order.setTotalQty(Decimals.sum(items, ScmOrderItem::getQty));
-        order.setTotalAmount(Decimals.sum(items, ScmOrderItem::getAmount));
-        order.setTaxAmount(Decimals.sum(items, ScmOrderItem::getTaxAmount));
-    }
-
     private void saveItems(Long orderId, List<ScmOrderItem> items) {
         items.forEach(i -> i.setOrderId(orderId));
         itemMapper.insertBatch(items);
-    }
-
-    private static String plain(BigDecimal v) {
-        return v.stripTrailingZeros().toPlainString();
     }
 }

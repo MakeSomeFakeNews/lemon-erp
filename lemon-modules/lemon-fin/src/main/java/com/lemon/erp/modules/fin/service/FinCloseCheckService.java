@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.modules.fin.model.BillSource;
+import com.lemon.erp.framework.data.Queries;
 import com.lemon.erp.modules.fin.model.CheckLevel;
 import com.lemon.erp.framework.workflow.ApproveStatus;
 import com.lemon.erp.modules.fin.model.PeriodStatus;
@@ -66,8 +67,8 @@ public class FinCloseCheckService {
         LocalDate end = ym.atEndOfMonth();
         List<CheckItem> items = new ArrayList<>();
 
-        FinPeriod earlierOpen = periodMapper.selectOne(Wrappers.<FinPeriod>lambdaQuery().lt(FinPeriod::getPeriod, period)
-                .eq(FinPeriod::getStatus, PeriodStatus.OPEN).orderByAsc(FinPeriod::getPeriod).last("LIMIT 1"));
+        FinPeriod earlierOpen = Queries.first(periodMapper, Wrappers.<FinPeriod>lambdaQuery().lt(FinPeriod::getPeriod, period)
+                .eq(FinPeriod::getStatus, PeriodStatus.OPEN).orderByAsc(FinPeriod::getPeriod));
         items.add(earlierOpen == null ? ok("fin.label.earlierPeriodsClosed") : error("fin.label.earlierPeriodsClosed", Messages.get("fin.text.periodHasNotClosed", earlierOpen.getPeriod())));
 
         long unposted = voucherMapper.selectCount(Wrappers.<FinVoucher>lambdaQuery().eq(FinVoucher::getPeriod, period)
@@ -84,7 +85,7 @@ public class FinCloseCheckService {
                 .isNull(FinSettlement::getVoucherId).eq(FinSettlement::getStatus, ApproveStatus.APPROVED));
         items.add(settles == 0 ? ok("fin.label.vouchersGeneratedReceiptsPayments") : warn("fin.label.vouchersGeneratedReceiptsPayments", Messages.get("fin.text.receiptPaymentDocumentSWithoutVouchers", settles)));
 
-        FinCostRun run = costRunMapper.selectOne(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getPeriod, period).last("LIMIT 1"));
+        FinCostRun run = Queries.first(costRunMapper, Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getPeriod, period));
         items.add(run == null ? warn("fin.label.costAccounting", Messages.get("fin.text.costAccountingHasNotRunPeriod")) : run.getVoucherId() == null ? warn("fin.label.costAccounting", Messages.get("fin.text.costTransferVoucherHasNotGenerated"))
                 : ok("fin.label.costAccounting"));
 

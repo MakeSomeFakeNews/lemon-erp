@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.modules.hr.dto.GradeStat;
 import com.lemon.erp.modules.hr.model.AppraisalStatus;
 import com.lemon.erp.modules.hr.model.PerfGrade;
 import com.lemon.erp.modules.hr.model.PerfStatus;
@@ -74,7 +75,7 @@ public class HrPerfService {
         return p;
     }
 
-    public List<Map<String, Object>> gradeStats(Long planId) {
+    public List<GradeStat> gradeStats(Long planId) {
         return appraisalMapper.selectGradeStats(planId);
     }
 

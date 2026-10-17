@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.mapper;
 
+import com.lemon.erp.modules.fin.dto.FxRevaluation;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -32,7 +33,7 @@ public interface FinBillMapper extends BaseMapper<FinBill> {
     int addSettledFc(@Param("id") Long id, @Param("amount") BigDecimal amount);
 
     /** 截至日期的外币单据未核销余额（期末调汇） */
-    java.util.List<java.util.Map<String, Object>> selectOpenForeign(@Param("asOf") java.time.LocalDate asOf);
+    java.util.List<FxRevaluation.OpenBill> selectOpenForeign(@Param("asOf") java.time.LocalDate asOf);
 
     /** 累加坏账核销金额 */
     int addBadDebt(@Param("id") Long id, @Param("amount") BigDecimal amount);

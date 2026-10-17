@@ -47,7 +47,7 @@
           </template>
           <template v-else-if="column.key === 'trainees'">
             <div>{{ $t('hr.training.traineeCount', { n: record.traineeCount }) }}</div>
-            <div v-if="record.status === 'FINISHED'" class="sub-text">{{ $t('hr.training.attendSummary', { attended: record.attendedCount, passed: record.passedCount }) }}</div>
+            <div v-if="record.status === TrainingStatus.FINISHED" class="sub-text">{{ $t('hr.training.attendSummary', { attended: record.attendedCount, passed: record.passedCount }) }}</div>
           </template>
           <template v-else-if="column.key === 'cost'">{{ formatMoney(record.cost) }}</template>
           <template v-else-if="column.key === 'status'">
@@ -57,13 +57,13 @@
             <span class="table-actions">
               <a-button type="link" size="small" @click="openRecords(record)">{{ $t('hr.training.records') }}</a-button>
               <template v-if="userStore.hasPerm('hr:training:edit')">
-                <a-popconfirm v-if="record.status === 'PLANNED'" :title="$t('hr.training.confirmStart')" @confirm="setStatus(record, 'ONGOING')">
+                <a-popconfirm v-if="record.status === TrainingStatus.PLANNED" :title="$t('hr.training.confirmStart')" @confirm="setStatus(record, 'ONGOING')">
                   <a-button type="link" size="small">{{ $t('hr.training.start') }}</a-button>
                 </a-popconfirm>
-                <a-popconfirm v-if="record.status === 'ONGOING'" :title="$t('hr.training.confirmFinish')" @confirm="setStatus(record, 'FINISHED')">
+                <a-popconfirm v-if="record.status === TrainingStatus.ONGOING" :title="$t('hr.training.confirmFinish')" @confirm="setStatus(record, 'FINISHED')">
                   <a-button type="link" size="small">{{ $t('hr.training.finish') }}</a-button>
                 </a-popconfirm>
-                <a-dropdown v-if="['PLANNED', 'ONGOING'].includes(record.status)">
+                <a-dropdown v-if="[TrainingStatus.PLANNED, TrainingStatus.ONGOING].includes(record.status)">
                   <a-button type="link" size="small">{{ $t('common.action.more') }}<DownOutlined /></a-button>
                   <template #overlay>
                     <a-menu @click="({ key }) => (key === 'edit' ? drawer.openEdit(record) : setStatus(record, 'CANCELED'))">
@@ -73,7 +73,7 @@
                   </template>
                 </a-dropdown>
               </template>
-              <span v-if="['PLANNED', 'CANCELED'].includes(record.status)" v-perm="'hr:training:remove'">
+              <span v-if="[TrainingStatus.PLANNED, TrainingStatus.CANCELED].includes(record.status)" v-perm="'hr:training:remove'">
                 <a-popconfirm :title="$t('hr.training.confirmDelete', { name: record.title })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
@@ -131,7 +131,7 @@
             <a-button type="primary" :disabled="!addIds?.length" @click="doAddTrainees">{{ $t('hr.training.addBtn') }}</a-button>
           </span>
         </div>
-        <a-alert v-if="current.status === 'PLANNED'" type="info" show-icon :message="$t('hr.training.plannedTip')" class="mb" />
+        <a-alert v-if="current.status === TrainingStatus.PLANNED" type="info" show-icon :message="$t('hr.training.plannedTip')" class="mb" />
         <a-table row-key="id" size="small" :columns="recordColumns" :data-source="records" :pagination="false" :scroll="{ x: 760 }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'employee'">
@@ -205,7 +205,9 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
+import { useAction } from '@/composables/useAction'
 
+import { TrainingStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 const userStore = useUserStore()
@@ -258,11 +260,7 @@ async function setStatus(record, status) {
   if (current.value?.id === record.id) current.value = { ...current.value, status }
 }
 
-async function remove(id) {
-  await deleteTraining(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteTraining, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // 学员与成绩
 const recordOpen = ref(false)
@@ -270,8 +268,8 @@ const current = ref()
 const records = ref([])
 const addIds = ref([])
 const savingRecords = ref(false)
-const editableTrainees = computed(() => ['PLANNED', 'ONGOING'].includes(current.value?.status))
-const editableScores = computed(() => ['ONGOING', 'FINISHED'].includes(current.value?.status))
+const editableTrainees = computed(() => [TrainingStatus.PLANNED, TrainingStatus.ONGOING].includes(current.value?.status))
+const editableScores = computed(() => [TrainingStatus.ONGOING, TrainingStatus.FINISHED].includes(current.value?.status))
 const recordColumns = [
   { title: t('hr.training.col.trainee'), key: 'employee', width: 180 },
   { title: t('hr.training.attended'), key: 'attended', width: 100 },

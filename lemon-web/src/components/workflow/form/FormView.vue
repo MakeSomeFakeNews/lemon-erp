@@ -11,6 +11,7 @@
 import { computed } from 'vue'
 import { Empty } from 'ant-design-vue'
 
+import { FormFieldType } from '@/constants/enums'
 /**
  * 只读展示表单数据；没有表单定义时（业务单据发起的流程）直接展示变量
  */
@@ -25,7 +26,7 @@ const items = computed(() => {
       key: f.field,
       label: f.label,
       value: props.data?.[f.field],
-      multiline: f.type === 'TEXTAREA'
+      multiline: f.type === FormFieldType.TEXTAREA
     }))
   }
   return Object.entries(props.data || {}).map(([k, v]) => ({ key: k, label: k, value: v }))

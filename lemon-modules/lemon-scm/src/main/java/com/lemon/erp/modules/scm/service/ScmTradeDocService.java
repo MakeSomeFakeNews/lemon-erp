@@ -73,6 +73,7 @@ public class ScmTradeDocService {
     private final BizRules bizRules;
     private final ScmOrderItemMapper orderItemMapper;
     private final ScmOrderService orderService;
+    private final ScmOrderCreditChecker creditChecker;
     private final WmsStockDocService stockDocService;
     private final DocNoService docNoService;
     private final ApplicationEventPublisher eventPublisher;
@@ -111,7 +112,7 @@ public class ScmTradeDocService {
             throw new BizException("scm.error.orderHasNoReceiptsYetCannot", order.getOrderNo());
         }
         if (kind == TradeKind.SALES_OUT) {
-            orderService.checkCreditBeforeShipment(order);
+            creditChecker.checkBeforeShipment(order);
         }
         Map<Long, ScmOrderItem> orderItems = orderItemMapper.selectByOrderId(order.getId()).stream()
                 .collect(Collectors.toMap(ScmOrderItem::getId, Function.identity()));

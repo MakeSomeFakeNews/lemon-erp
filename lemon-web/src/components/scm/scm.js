@@ -1,4 +1,5 @@
 import { t } from '@/locales'
+import { money, round4 } from '@/utils/number'
 
 /** 订单种类（与后端 OrderKind 的路径一致） */
 export const ORDER_KINDS = {
@@ -31,10 +32,7 @@ export const TRADE_KINDS = {
 }
 
 /** 金额：千分位、2 位小数 */
-export function formatMoney(n) {
-  if (n === null || n === undefined || n === '') return '-'
-  return Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
+export const formatMoney = (n) => money(n)
 
 /** 价税合计 = 数量 × 含税单价（与后端一致，四舍五入到分） */
 export const lineAmount = (qty, price) => Math.round((Number(qty) || 0) * (Number(price) || 0) * 100) / 100
@@ -43,7 +41,7 @@ export const lineAmount = (qty, price) => Math.round((Number(qty) || 0) * (Numbe
 export const lineTax = (amount, rate) => (rate ? Math.round(((amount * rate) / (100 + Number(rate))) * 100) / 100 : 0)
 
 /** 数量相减后保留 4 位小数，避免浮点误差（如 0.3 - 0.1）提交到后端超出精度 */
-export const qty4 = (n) => Math.round(n * 10000) / 10000
+export const qty4 = round4
 
 /** 订单明细的实际完成数量（可退数量） */
 export const netQty = (i) => qty4(Number(i.doneQty || 0) - Number(i.returnQty || 0))

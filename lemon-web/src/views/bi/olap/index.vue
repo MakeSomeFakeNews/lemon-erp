@@ -26,7 +26,7 @@
           />
         </div>
         <div class="field">
-          <span class="field-label">{{ cube?.dateFilter === 'SNAPSHOT' ? $t('bi.olap.snapshotDate') : $t('common.field.dateRange') }}</span>
+          <span class="field-label">{{ cube?.dateFilter === DateFilter.SNAPSHOT ? $t('bi.olap.snapshotDate') : $t('common.field.dateRange') }}</span>
           <a-select v-model:value="range" :options="rangeOptions" style="width: 140px" />
           <a-range-picker v-if="range === 'CUSTOM'" v-model:value="dates" value-format="YYYY-MM-DD" style="width: 240px" />
         </div>
@@ -52,7 +52,7 @@
     </a-card>
 
     <a-alert
-      v-if="cube && cube.dateFilter === 'SNAPSHOT' && range === 'ALL'"
+      v-if="cube && cube.dateFilter === DateFilter.SNAPSHOT && range === 'ALL'"
       class="tip"
       type="info"
       show-icon
@@ -114,6 +114,7 @@ import { addReport, getReport, olapPivot, updateReport } from '@/api/bi'
 import { CHART_TYPES, RANGES, defaultDrill, dimLabelFn, loadCubes, chartMeasure, pivotChartOption } from '@/components/bi/bi'
 import { t } from '@/locales'
 
+import { DateFilter } from '@/constants/enums'
 const route = useRoute()
 const cubes = ref([])
 const cubeKey = ref('SALES')

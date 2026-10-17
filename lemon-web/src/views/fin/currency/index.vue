@@ -131,7 +131,7 @@
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'kind'">
-                  <a-tag :color="record.kind === 'AR' ? 'blue' : 'orange'" :bordered="false">{{ record.kind === 'AR' ? $t('fin.currencyPage.ar') : $t('fin.currencyPage.ap') }}</a-tag>
+                  <a-tag :color="record.kind === BillKind.AR ? 'blue' : 'orange'" :bordered="false">{{ record.kind === BillKind.AR ? $t('fin.currencyPage.ar') : $t('fin.currencyPage.ap') }}</a-tag>
                 </template>
                 <template v-else-if="column.key === 'rate'">{{ Number(record.rate) }}</template>
                 <template v-else-if="column.key === 'remainingFc'">{{ record.currency }} {{ formatMoney(record.remainingFc) }}</template>
@@ -197,6 +197,7 @@ import { currentPeriod, formatMoney, periodText } from '@/components/fin/fin'
 import { useCurrencies } from '@/components/fin/currency'
 import { useI18n } from 'vue-i18n'
 
+import { BillKind } from '@/constants/enums'
 /** 币种与汇率：币种维护、按月汇率、期末调汇 */
 const userStore = useUserStore()
 const { t } = useI18n()

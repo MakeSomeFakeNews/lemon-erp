@@ -43,7 +43,7 @@
           :data-source="ledgerRows"
           :loading="ledgerLoading"
           :pagination="false"
-          :row-class-name="(r) => (r.type !== 'ENTRY' ? 'total-row' : '')"
+          :row-class-name="(r) => (r.type !== LedgerRowType.ENTRY ? 'total-row' : '')"
           :scroll="{ x: ledgerScrollX }"
         >
           <template #bodyCell="{ column, record }">
@@ -71,6 +71,7 @@ import { ledger } from '@/api/fin'
 import { formatMoney, moneyOrBlank, periodText } from '@/components/fin/fin'
 import { t } from '@/locales'
 
+import { LedgerRowType } from '@/constants/enums'
 /**
  * 报表数字追溯：报表行的取数公式、构成科目（各列金额），点击科目查看明细账，再点凭证号查看凭证
  * - row：报表行（lineNo、name、formula、values、accounts）

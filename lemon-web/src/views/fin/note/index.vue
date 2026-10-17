@@ -104,12 +104,12 @@
               <a-input v-model:value="reg.acceptor" :maxlength="128" :placeholder="$t('fin.note.acceptorPlaceholder')" />
             </a-form-item>
           </a-col>
-          <a-col v-if="kind === 'RECEIVABLE'" :xs="24" :sm="8">
+          <a-col v-if="kind === NoteKind.RECEIVABLE" :xs="24" :sm="8">
             <a-form-item :label="$t('fin.note.drawer')" name="drawer">
               <a-input v-model:value="reg.drawer" :maxlength="128" />
             </a-form-item>
           </a-col>
-          <a-col :xs="24" :sm="kind === 'RECEIVABLE' ? 16 : 24">
+          <a-col :xs="24" :sm="kind === NoteKind.RECEIVABLE ? 16 : 24">
             <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-input v-model:value="reg.remark" :maxlength="255" />
             </a-form-item>
@@ -165,7 +165,7 @@
           <a-date-picker v-model:value="settle.actionDate" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
         <a-form-item v-if="action !== 'dishonor'" :label="action === 'pay' ? $t('fin.note.payAccount') : $t('fin.note.inAccount')" required>
-          <AccountSelect v-model:value="settle.accountId" :prefix="['1001', '1002']" :placeholder="$t('fin.note.bankDeposit')" />
+          <AccountSelect v-model:value="settle.accountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.note.bankDeposit')" />
         </a-form-item>
         <template v-if="action === 'discount'">
           <a-row :gutter="12">
@@ -207,7 +207,7 @@
           <a-descriptions-item :label="$t('fin.note.noteNo')">{{ detail.noteNo }}</a-descriptions-item>
           <a-descriptions-item :label="$t('common.field.type')"><DictTag type="fin_note_type" :value="detail.noteType" /> {{ detail.electronic ? $t('fin.note.electronic') : $t('fin.note.paper') }}</a-descriptions-item>
           <a-descriptions-item :label="$t('common.field.status')"><DictTag type="fin_note_status" :value="detail.status" /></a-descriptions-item>
-          <a-descriptions-item :label="detail.kind === 'RECEIVABLE' ? $t('fin.note.fromCustomer') : $t('fin.note.toSupplier')">{{ detail.partnerName }}</a-descriptions-item>
+          <a-descriptions-item :label="detail.kind === NoteKind.RECEIVABLE ? $t('fin.note.fromCustomer') : $t('fin.note.toSupplier')">{{ detail.partnerName }}</a-descriptions-item>
           <a-descriptions-item :label="$t('fin.note.faceAmount')"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
           <a-descriptions-item :label="$t('fin.note.acceptor')">{{ detail.acceptor || '-' }}</a-descriptions-item>
           <a-descriptions-item :label="$t('fin.note.issueDate')">{{ detail.issueDate }}</a-descriptions-item>
@@ -259,6 +259,7 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+import { NoteAction, NoteKind, NoteStatus, NoteType } from '@/constants/enums'
 /** 票据管理：应收票据（收票 → 背书 / 贴现 / 托收 / 拒付）、应付票据（开票 → 兑付） */
 const dict = useDict('fin_note_type', 'fin_note_status', 'fin_note_action')
 const { t } = useI18n()
@@ -317,7 +318,7 @@ const columns = [
   { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'fin-note')
-const query = reactive({ kind: 'RECEIVABLE', status: undefined, keyword: undefined, dueWithin: undefined })
+const query = reactive({ kind: NoteKind.RECEIVABLE, status: undefined, keyword: undefined, dueWithin: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageNote, query)
 watch(kind, (k) => {
   query.kind = k
@@ -331,7 +332,7 @@ watch(dueSoon, (v) => {
 })
 onMounted(load)
 
-const pending = (r) => r.status === 'HELD' || r.status === 'ISSUED'
+const pending = (r) => r.status === NoteStatus.HELD || r.status === NoteStatus.ISSUED
 const daysLeft = (r) => dayjs(r.dueDate).diff(dayjs().startOf('day'), 'day')
 const dueText = (r) =>
   daysLeft(r) < 0 ? t('fin.note.overdueDays', { n: -daysLeft(r) }) : daysLeft(r) === 0 ? t('fin.note.dueToday') : t('fin.note.dueInDays', { n: daysLeft(r) })
@@ -354,7 +355,7 @@ const registerRules = {
 }
 function openRegister() {
   reg.value = {
-    noteType: 'BANK', noteNo: '', electronic: true, partnerId: undefined, amount: undefined, actionDate: today(),
+    noteType: NoteType.BANK, noteNo: '', electronic: true, partnerId: undefined, amount: undefined, actionDate: today(),
     issueDate: today(), dueDate: dayjs().add(6, 'month').format('YYYY-MM-DD'), acceptor: '', drawer: '', remark: '', items: []
   }
   registerOpen.value = true
@@ -368,7 +369,7 @@ async function submitRegister() {
   if (!reg.value.items.length) return message.warning(t('fin.note.fillBills'))
   saving.value = true
   try {
-    await (kind.value === 'RECEIVABLE' ? receiveNote : issueNote)(reg.value)
+    await (kind.value === NoteKind.RECEIVABLE ? receiveNote : issueNote)(reg.value)
     message.success(conf.value.successMsg)
     registerOpen.value = false
     load()
@@ -448,8 +449,8 @@ const lastActionLabel = computed(() => dict.fin_note_action?.find((d) => d.value
 const canDelete = computed(() => {
   const d = detail.value
   if (!d) return false
-  const fresh = d.logs.every((l) => ['RECEIVE', 'ISSUE', 'ENDORSE'].includes(l.action))
-  return fresh && (d.kind === 'RECEIVABLE' ? d.status === 'HELD' : ['ISSUED', 'CANCELLED'].includes(d.status))
+  const fresh = d.logs.every((l) => [NoteAction.RECEIVE, NoteAction.ISSUE, NoteAction.ENDORSE].includes(l.action))
+  return fresh && (d.kind === NoteKind.RECEIVABLE ? d.status === NoteStatus.HELD : [NoteStatus.ISSUED, NoteStatus.CANCELLED].includes(d.status))
 })
 async function openDetail(id) {
   detail.value = await getNote(id)

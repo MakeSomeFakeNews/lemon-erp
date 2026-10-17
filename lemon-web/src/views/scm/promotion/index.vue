@@ -36,7 +36,7 @@
           <template v-else-if="column.key === 'usage'">
             {{ $t('scm.promotion.orderCount', { n: record.orderCount }) }}
             <div class="sub-text">
-              <template v-if="record.promoType === 'GIFT'">{{ $t('scm.promotion.giftTotalText', { qty: formatQty(record.giftTotal) }) }}</template>
+              <template v-if="record.promoType === PromoType.GIFT">{{ $t('scm.promotion.giftTotalText', { qty: formatQty(record.giftTotal) }) }}</template>
               <template v-else>{{ $t('scm.promotion.discountTotalText', { amount: formatMoney(record.discountTotal) }) }}</template>
             </div>
           </template>
@@ -98,7 +98,7 @@
               <MaterialSelect v-model:value="form.materialId" :label="form.materialLabel" :placeholder="$t('scm.promotion.materialPlaceholder')" />
             </a-form-item>
           </a-col>
-          <template v-if="form.promoType === 'DISCOUNT'">
+          <template v-if="form.promoType === PromoType.DISCOUNT">
             <a-col :span="12">
               <a-form-item :label="$t('scm.promotion.discountRate')" required :extra="$t('scm.promotion.discountRateExtra')">
                 <a-input-number v-model:value="form.discountRate" :min="1" :max="99.99" :precision="2" addon-after="%" class="full" />
@@ -110,7 +110,7 @@
               </a-form-item>
             </a-col>
           </template>
-          <template v-else-if="form.promoType === 'REDUCE'">
+          <template v-else-if="form.promoType === PromoType.REDUCE">
             <a-col :span="12">
               <a-form-item :label="$t('scm.promotion.threshold')" required :extra="$t('scm.promotion.thresholdExtra')">
                 <a-input-number v-model:value="form.thresholdAmount" :min="0" :precision="2" prefix="¥" class="full" />
@@ -201,6 +201,7 @@ import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { findDict, toOptions } from '@/utils/dict'
 
+import { PromoType } from '@/constants/enums'
 /** 促销活动：折扣、满减、买赠，手工新建 / 修改销售订单时按订单日期和客户等级自动应用 */
 const dict = useDict('scm_promo_type', 'scm_customer_level', 'wms_material_category', 'scm_order_status')
 const userStore = useUserStore()
@@ -208,11 +209,11 @@ const { t } = useI18n()
 
 const plain = (n) => (n == null ? '' : Number(n).toLocaleString('zh-CN', { maximumFractionDigits: 4 }))
 function ruleText(p) {
-  if (p.promoType === 'DISCOUNT') {
+  if (p.promoType === PromoType.DISCOUNT) {
     const rate = t('scm.promotion.ruleDiscount', { rate: Number(p.discountRate) / 10, off: plain(100 - Number(p.discountRate)) })
     return p.minQty ? t('scm.promotion.ruleDiscountMin', { rule: rate, n: plain(p.minQty) }) : rate
   }
-  if (p.promoType === 'REDUCE') return t('scm.promotion.ruleReduce', { threshold: plain(p.thresholdAmount), reduce: plain(p.reduceAmount) })
+  if (p.promoType === PromoType.REDUCE) return t('scm.promotion.ruleReduce', { threshold: plain(p.thresholdAmount), reduce: plain(p.reduceAmount) })
   return t('scm.promotion.ruleGift', { buy: plain(p.buyQty), gift: p.giftMaterialName || '', qty: plain(p.giftQty) })
 }
 function scopeText(p) {
@@ -245,7 +246,7 @@ const rules = {
   endDate: [{ required: true, message: t('common.rule.requiredSelect', { name: t('common.field.endDate') }) }]
 }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, name: '', promoType: 'DISCOUNT', beginDate: today(), endDate: undefined, customerLevel: undefined,
+  emptyForm: () => ({ id: undefined, name: '', promoType: PromoType.DISCOUNT, beginDate: today(), endDate: undefined, customerLevel: undefined,
     materialId: undefined, materialCategory: undefined, minQty: undefined, discountRate: 90, thresholdAmount: undefined, reduceAmount: undefined,
     buyQty: undefined, giftMaterialId: undefined, giftQty: 1, remark: '' }),
   fetch: async (record) => {

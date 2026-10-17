@@ -46,12 +46,12 @@
             <div v-if="todayIndex >= 0" class="today-line" :style="{ left: `${todayIndex * DAY + DAY / 2}px` }" />
             <div v-for="t in rows" :key="t.id" class="row bar-row">
               <a-tooltip :title="tip(t)">
-                <div v-if="t.milestone === 1 && !t.parent" class="diamond" :class="{ done: t.status === 'DONE', late: t.overdue }"
+                <div v-if="t.milestone === 1 && !t.parent" class="diamond" :class="{ done: t.status === TaskStatus.DONE, late: t.overdue }"
                      :style="{ left: `${offset(t.planEnd) * DAY + DAY / 2 - 7}px` }" />
                 <div
                   v-else
                   class="bar"
-                  :class="{ parent: t.parent, late: t.overdue, done: t.status === 'DONE' }"
+                  :class="{ parent: t.parent, late: t.overdue, done: t.status === TaskStatus.DONE }"
                   :style="barStyle(t)"
                 >
                   <div class="fill" :style="{ width: `${t.progress}%` }" />
@@ -80,6 +80,7 @@ import { FlagFilled } from '@ant-design/icons-vue'
 import { flattenTasks } from './pm'
 import { t as $t } from '@/locales'
 
+import { TaskStatus } from '@/constants/enums'
 /**
  * 甘特图（只读）：左侧任务树，右侧按天的时间轴；上级任务显示为汇总条，里程碑显示为菱形，逾期任务为红色，竖线为今天
  * - tasks：任务树（PmTask，含 children）

@@ -46,7 +46,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== 'DRAFT' }) }"
+        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== QuotationStatus.DRAFT }) }"
         :scroll="{ x: 1500, y: '100%' }"
         @change="onTableChange"
       >
@@ -72,10 +72,10 @@
               <a-button type="link" size="small" @click="openDetail(record)">
                 <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
-              <a-button v-if="record.status === 'DRAFT'" v-perm="'scm:quotation:edit'" type="link" size="small" @click="form.openEdit(record)">
+              <a-button v-if="record.status === QuotationStatus.DRAFT" v-perm="'scm:quotation:edit'" type="link" size="small" @click="form.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
-              <span v-if="record.status === 'DRAFT'" v-perm="'scm:quotation:remove'">
+              <span v-if="record.status === QuotationStatus.DRAFT" v-perm="'scm:quotation:remove'">
                 <a-popconfirm :title="$t('scm.quotation.confirmDelete')" @confirm="remove([record.id])">
                   <a-button type="link" danger size="small">
                     <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
@@ -113,6 +113,7 @@ import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import { formatMoney } from '@/components/scm/scm'
 import { today } from '@/components/wms/wms'
 
+import { QuotationStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 const dict = useDict('scm_quotation_status')
@@ -156,7 +157,7 @@ onMounted(() => {
   }
 })
 
-const isExpired = (r) => !!r.validTo && r.validTo < today() && ['DRAFT', 'APPROVING', 'APPROVED'].includes(r.status)
+const isExpired = (r) => !!r.validTo && r.validTo < today() && [QuotationStatus.DRAFT, QuotationStatus.APPROVING, QuotationStatus.APPROVED].includes(r.status)
 
 function resetQuery() {
   Object.assign(query, emptyQuery())

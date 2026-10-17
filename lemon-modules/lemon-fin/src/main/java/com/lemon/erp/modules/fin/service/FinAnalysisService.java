@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.modules.fin.dto.FinAnalysis;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
@@ -13,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,71 +43,58 @@ public class FinAnalysisService {
     private final FinAccountRuleService accountRules;
 
     /** 销售毛利：按物料、客户或月份汇总，返回 {rows, total} */
-    public Map<String, Object> grossMargin(LocalDate begin, LocalDate end, String groupBy, Long customerId) {
+    public FinAnalysis.GrossMargin grossMargin(LocalDate begin, LocalDate end, String groupBy, Long customerId) {
         if (end.isBefore(begin)) {
             throw new BizException("fin.error.endDateCannotEarlierStartDate");
         }
         String g = MarginGroup.of(groupBy).name();
-        List<Map<String, Object>> rows = new ArrayList<>();
+        List<FinAnalysis.MarginRow> rows = analysisMapper.selectGrossMargin(begin, end, g, customerId);
         BigDecimal revenue = BigDecimal.ZERO;
         BigDecimal cost = BigDecimal.ZERO;
-        for (Map<String, Object> r : analysisMapper.selectGrossMargin(begin, end, g, customerId)) {
-            BigDecimal rev = dec(r.get("revenue")).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal c = dec(r.get("cost")).setScale(2, RoundingMode.HALF_UP);
-            Map<String, Object> row = new LinkedHashMap<>(r);
-            row.put("revenue", rev);
-            row.put("cost", c);
-            row.put("profit", rev.subtract(c));
-            row.put("margin", margin(rev, c));
-            rows.add(row);
+        for (FinAnalysis.MarginRow r : rows) {
+            BigDecimal rev = Decimals.money(dec(r.getRevenue()));
+            BigDecimal c = Decimals.money(dec(r.getCost()));
+            r.setRevenue(rev);
+            r.setCost(c);
+            r.setProfit(rev.subtract(c));
+            r.setMargin(margin(rev, c));
             revenue = revenue.add(rev);
             cost = cost.add(c);
         }
-        Map<String, Object> total = new LinkedHashMap<>();
-        total.put("revenue", revenue);
-        total.put("cost", cost);
-        total.put("profit", revenue.subtract(cost));
-        total.put("margin", margin(revenue, cost));
-        return Map.of("rows", rows, "total", total);
+        return new FinAnalysis.GrossMargin(rows, new FinAnalysis.MarginTotal(revenue, cost, revenue.subtract(cost), margin(revenue, cost)));
     }
 
-    /** 销售毛利明细：按销售出库 / 退货单据明细逐行计算，最多 5000 行，返回 {rows, total, truncated} */
-    public Map<String, Object> grossMarginDetail(LocalDate begin, LocalDate end, Long customerId, String keyword) {
+    /** 销售毛利明细：按销售出库 / 退货单据明细逐行计算，最多 5000 行 */
+    public FinAnalysis.MarginDetail grossMarginDetail(LocalDate begin, LocalDate end, Long customerId, String keyword) {
         if (end.isBefore(begin)) {
             throw new BizException("fin.error.endDateCannotEarlierStartDate");
         }
-        List<Map<String, Object>> list = analysisMapper.selectMarginDetail(begin, end, customerId, keyword, MARGIN_DETAIL_LIMIT + 1);
-        List<Map<String, Object>> rows = new ArrayList<>();
+        List<FinAnalysis.MarginDetailRow> list = analysisMapper.selectMarginDetail(begin, end, customerId, keyword, MARGIN_DETAIL_LIMIT + 1);
+        List<FinAnalysis.MarginDetailRow> rows = new ArrayList<>(list.subList(0, Math.min(list.size(), MARGIN_DETAIL_LIMIT)));
         BigDecimal revenue = BigDecimal.ZERO;
         BigDecimal cost = BigDecimal.ZERO;
-        for (Map<String, Object> r : list.subList(0, Math.min(list.size(), MARGIN_DETAIL_LIMIT))) {
-            BigDecimal rev = dec(r.get("revenue")).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal c = dec(r.get("cost")).setScale(2, RoundingMode.HALF_UP);
-            Map<String, Object> row = new LinkedHashMap<>(r);
-            row.put("revenue", rev);
-            row.put("cost", c);
-            row.put("profit", rev.subtract(c));
-            row.put("margin", margin(rev, c));
-            rows.add(row);
+        for (FinAnalysis.MarginDetailRow r : rows) {
+            BigDecimal rev = Decimals.money(dec(r.getRevenue()));
+            BigDecimal c = Decimals.money(dec(r.getCost()));
+            r.setRevenue(rev);
+            r.setCost(c);
+            r.setProfit(rev.subtract(c));
+            r.setMargin(margin(rev, c));
             revenue = revenue.add(rev);
             cost = cost.add(c);
         }
-        Map<String, Object> total = new LinkedHashMap<>();
-        total.put("revenue", revenue);
-        total.put("cost", cost);
-        total.put("profit", revenue.subtract(cost));
-        total.put("margin", margin(revenue, cost));
-        return Map.of("rows", rows, "total", total, "truncated", list.size() > MARGIN_DETAIL_LIMIT);
+        return new FinAnalysis.MarginDetail(rows, new FinAnalysis.MarginTotal(revenue, cost, revenue.subtract(cost), margin(revenue, cost)),
+                list.size() > MARGIN_DETAIL_LIMIT);
     }
 
     /**
      * 存货对账：原材料、库存商品的总账余额与成本核算期末金额；成本核算期末数量与截至期末的库存流水不一致的物料
      */
-    public Map<String, Object> inventoryReconciliation(int period) {
+    public FinAnalysis.InventoryReconciliation inventoryReconciliation(int period) {
         toYearMonth(period);
         Map<String, BigDecimal> costByAccount = new HashMap<>();
-        for (Map<String, Object> r : analysisMapper.selectCostCloseByCategory(period)) {
-            costByAccount.merge(accountRules.code(AccountRole.INVENTORY, (String) r.get("category")), dec(r.get("closeAmount")), BigDecimal::add);
+        for (FinAnalysis.CategoryAmount r : analysisMapper.selectCostCloseByCategory(period)) {
+            costByAccount.merge(accountRules.code(AccountRole.INVENTORY, r.getCategory()), dec(r.getCloseAmount()), BigDecimal::add);
         }
         String outsource = accountRules.code(AccountRole.OUTSOURCE_MATERIAL, null);
         Set<String> codes = new TreeSet<>(costByAccount.keySet());
@@ -115,7 +102,7 @@ public class FinAnalysisService {
         codes.add(accountRules.code(AccountRole.INVENTORY, FinConstants.CATEGORY_FINISHED));
         codes.add(outsource);
         List<FinAccount> all = accountService.listAll();
-        List<Map<String, Object>> accounts = new ArrayList<>();
+        List<FinAnalysis.InventoryAccount> accounts = new ArrayList<>();
         for (String code : codes) {
             FinAccount parent = all.stream().filter(a -> a.getCode().equals(code)).findFirst().orElse(null);
             if (parent == null) {
@@ -127,44 +114,43 @@ public class FinAnalysisService {
                     gl = gl.add(entryMapper.sumBalanceUpTo(a.getId(), period));
                 }
             }
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("code", code);
-            row.put("name", parent.getName());
-            row.put("glBalance", gl);
             BigDecimal costAmount = outsource.equals(code) ? null : costByAccount.getOrDefault(code, BigDecimal.ZERO);
-            row.put("costAmount", costAmount);
-            row.put("diff", costAmount == null ? null : gl.subtract(costAmount));
-            accounts.add(row);
+            accounts.add(new FinAnalysis.InventoryAccount(code, parent.getName(), gl, costAmount,
+                    costAmount == null ? null : gl.subtract(costAmount)));
         }
-        List<Map<String, Object>> qty = analysisMapper.selectQtyDiff(period, toYearMonth(period).atEndOfMonth());
-        return Map.of("period", period, "accounts", accounts, "qtyDiffs", qty);
+        List<FinAnalysis.QtyDiff> qty = analysisMapper.selectQtyDiff(period, toYearMonth(period).atEndOfMonth());
+        return new FinAnalysis.InventoryReconciliation(period, accounts, qty);
     }
 
     /**
      * 现金流量表（直接法）：已记账凭证中库存现金、银行存款的发生额，按对方科目分类；一张凭证有多个对方科目时按金额比例分摊，
      * 只有现金科目之间的划转不计入
      */
-    public Map<String, Object> cashFlow(int begin, int end) {
+    public FinAnalysis.CashFlow cashFlow(int begin, int end) {
         toYearMonth(begin);
         toYearMonth(end);
         if (end < begin) {
             throw new BizException("fin.error.endPeriodCannotEarlierStartPeriod");
         }
-        Map<Long, List<Map<String, Object>>> byVoucher = new LinkedHashMap<>();
-        for (Map<String, Object> e : analysisMapper.selectCashVoucherEntries(begin, end)) {
-            byVoucher.computeIfAbsent(((Number) e.get("voucherId")).longValue(), k -> new ArrayList<>()).add(e);
+        // 货币资金、进项 / 销项税额按「凭证科目设置」取科目编码，其下级科目同样归类
+        List<String> cash = accountService.cashCodes();
+        String inputVat = accountService.roleCode(AccountRole.INPUT_VAT);
+        String outputVat = accountService.roleCode(AccountRole.OUTPUT_VAT);
+        Map<Long, List<FinAnalysis.CashEntry>> byVoucher = new LinkedHashMap<>();
+        for (FinAnalysis.CashEntry e : analysisMapper.selectCashVoucherEntries(begin, end, cash)) {
+            byVoucher.computeIfAbsent(e.getVoucherId(), k -> new ArrayList<>()).add(e);
         }
         Map<CashItem, BigDecimal> items = new EnumMap<>(CashItem.class);
         for (CashItem item : CashItem.values()) {
             items.put(item, BigDecimal.ZERO);
         }
-        for (List<Map<String, Object>> entries : byVoucher.values()) {
+        for (List<FinAnalysis.CashEntry> entries : byVoucher.values()) {
             BigDecimal cashNet = BigDecimal.ZERO;
-            List<Map<String, Object>> others = new ArrayList<>();
-            for (Map<String, Object> e : entries) {
-                String code = (String) e.get("accountCode");
-                BigDecimal net = dec(e.get("debit")).subtract(dec(e.get("credit")));
-                if (isCash(code)) {
+            List<FinAnalysis.CashEntry> others = new ArrayList<>();
+            for (FinAnalysis.CashEntry e : entries) {
+                String code = e.getAccountCode();
+                BigDecimal net = dec(e.getDebit()).subtract(dec(e.getCredit()));
+                if (FinAccountService.inScope(code, cash)) {
                     cashNet = cashNet.add(net);
                 } else {
                     others.add(e);
@@ -176,7 +162,7 @@ public class FinAnalysisService {
             // 对方科目与现金反方向的金额作为分摊基数（现金流入时取对方贷方，流出时取对方借方）
             boolean inflow = cashNet.signum() > 0;
             BigDecimal base = BigDecimal.ZERO;
-            for (Map<String, Object> e : others) {
+            for (FinAnalysis.CashEntry e : others) {
                 base = base.add(side(e, inflow));
             }
             if (base.signum() == 0) {
@@ -184,19 +170,19 @@ public class FinAnalysisService {
             }
             BigDecimal allocated = BigDecimal.ZERO;
             for (int i = 0; i < others.size(); i++) {
-                Map<String, Object> e = others.get(i);
+                FinAnalysis.CashEntry e = others.get(i);
                 BigDecimal share = side(e, inflow);
                 if (share.signum() == 0) {
                     continue;
                 }
                 BigDecimal amount = i == others.size() - 1 ? cashNet.abs().subtract(allocated)
-                        : cashNet.abs().multiply(share).divide(base, 2, RoundingMode.HALF_UP);
+                        : cashNet.abs().multiply(share).divide(base, Decimals.MONEY_SCALE, Decimals.ROUNDING);
                 allocated = allocated.add(amount);
-                CashItem item = classify((String) e.get("accountCode"), inflow);
+                CashItem item = classify(e.getAccountCode(), inflow, inputVat, outputVat);
                 items.merge(item, amount, BigDecimal::add);
             }
         }
-        List<Map<String, Object>> lines = new ArrayList<>();
+        List<FinAnalysis.CashFlowLine> lines = new ArrayList<>();
         BigDecimal netTotal = BigDecimal.ZERO;
         for (CashSection section : CashSection.values()) {
             BigDecimal in = BigDecimal.ZERO;
@@ -219,12 +205,12 @@ public class FinAnalysisService {
             lines.add(line(section.net, in.subtract(out), 1, true));
             netTotal = netTotal.add(in.subtract(out));
         }
-        BigDecimal opening = cashBalance(previous(begin));
-        BigDecimal closing = cashBalance(end);
+        BigDecimal opening = cashBalance(previous(begin), cash);
+        BigDecimal closing = cashBalance(end, cash);
         lines.add(line("fin.label.ivNetIncreaseCashCashEquivalents", netTotal, 0, true));
         lines.add(line("fin.label.addCashCashEquivalentsBeginningPeriod", opening, 1, false));
         lines.add(line("fin.label.vCashCashEquivalentsEndPeriod", opening.add(netTotal), 0, true));
-        return Map.of("lines", lines, "closingBalance", closing, "balanced", opening.add(netTotal).compareTo(closing) == 0);
+        return new FinAnalysis.CashFlow(lines, closing, opening.add(netTotal).compareTo(closing) == 0);
     }
 
     /** 现金流量项目 */
@@ -253,7 +239,11 @@ public class FinAnalysisService {
         }
     }
 
-    private static CashItem classify(String code, boolean inflow) {
+    /**
+     * 按对方科目归类现金流量项目。除进项、销项税额（取凭证科目设置）外，按企业会计准则一级科目编码前缀归类，
+     * 与资产负债表、利润表的报表模板（FinFinancialStatementService）一样属于报表格式，不随凭证科目设置变化
+     */
+    private static CashItem classify(String code, boolean inflow, String inputVat, String outputVat) {
         if (code.startsWith("2001")) {
             return inflow ? CashItem.BORROW_IN : CashItem.REPAY_OUT;
         }
@@ -268,10 +258,10 @@ public class FinAnalysisService {
         }
         if (inflow) {
             return code.startsWith("1122") || code.startsWith("2203") || code.startsWith("6001") || code.startsWith("6051")
-                    || code.startsWith(FinConstants.OUTPUT_VAT) ? CashItem.SALES_IN : CashItem.OTHER_OPERATING_IN;
+                    || code.startsWith(outputVat) ? CashItem.SALES_IN : CashItem.OTHER_OPERATING_IN;
         }
         if (code.startsWith("2202") || code.startsWith("1123") || code.startsWith("14") || code.startsWith("5001")
-                || code.startsWith("5101") || code.startsWith(FinConstants.INPUT_VAT)) {
+                || code.startsWith("5101") || code.startsWith(inputVat)) {
             return CashItem.PURCHASE_OUT;
         }
         if (code.startsWith("2211")) {
@@ -302,32 +292,23 @@ public class FinAnalysisService {
         }
     }
 
-    private BigDecimal cashBalance(int period) {
+    private BigDecimal cashBalance(int period, List<String> cash) {
         BigDecimal sum = BigDecimal.ZERO;
         for (FinAccount a : accountService.listAll()) {
-            if (Boolean.TRUE.equals(a.getLeaf()) && isCash(a.getCode())) {
+            if (Boolean.TRUE.equals(a.getLeaf()) && FinAccountService.inScope(a.getCode(), cash)) {
                 sum = sum.add(entryMapper.sumBalanceUpTo(a.getId(), period));
             }
         }
         return sum;
     }
 
-    private static boolean isCash(String code) {
-        return code.startsWith(FinConstants.CASH) || code.startsWith(FinConstants.BANK);
-    }
-
-    private static BigDecimal side(Map<String, Object> e, boolean inflow) {
-        return inflow ? dec(e.get("credit")) : dec(e.get("debit"));
+    private static BigDecimal side(FinAnalysis.CashEntry e, boolean inflow) {
+        return inflow ? dec(e.getCredit()) : dec(e.getDebit());
     }
 
     /** 报表行：行名返回给前端显示，按请求语言翻译 */
-    private static Map<String, Object> line(String name, BigDecimal amount, int level, boolean bold) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("name", Messages.get(name));
-        m.put("amount", amount);
-        m.put("level", level);
-        m.put("bold", bold);
-        return m;
+    private static FinAnalysis.CashFlowLine line(String name, BigDecimal amount, int level, boolean bold) {
+        return new FinAnalysis.CashFlowLine(Messages.get(name), amount, level, bold);
     }
 
     private static BigDecimal margin(BigDecimal revenue, BigDecimal cost) {

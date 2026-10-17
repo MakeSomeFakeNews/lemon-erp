@@ -60,7 +60,7 @@
             <DictTag type="hr_attendance_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'source'">
-            <a-tag v-if="record.source === 'MANUAL'" color="purple" :bordered="false">{{ $t('hr.attendance.manual') }}</a-tag>
+            <a-tag v-if="record.source === AttendanceSource.MANUAL" color="purple" :bordered="false">{{ $t('hr.attendance.manual') }}</a-tag>
             <span v-else class="sub-text">{{ $t('hr.attendance.punch') }}</span>
             <div v-if="record.remark" class="sub-text">{{ record.remark }}</div>
           </template>
@@ -266,7 +266,9 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
+import { useAction } from '@/composables/useAction'
 
+import { AttendanceSource, HolidayType } from '@/constants/enums'
 const { t } = useI18n()
 
 const userStore = useUserStore()
@@ -327,11 +329,7 @@ async function saveManual() {
     saving.value = false
   }
 }
-async function removeRecord(id) {
-  await deleteAttendance(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const removeRecord = useAction(deleteAttendance, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // 月度汇总
 const period = ref(Number(dayjs().format('YYYYMM')))
@@ -396,11 +394,7 @@ async function saveShift() {
     saving.value = false
   }
 }
-async function removeShift(id) {
-  await deleteShift(id)
-  message.success(t('common.msg.deleteSuccess'))
-  loadShifts()
-}
+const removeShift = useAction(deleteShift, { successKey: 'common.msg.deleteSuccess', reload: () => loadShifts() })
 
 // 节假日
 const holidayYear = ref(dayjs().year())
@@ -419,7 +413,7 @@ const holidayOpen = ref(false)
 const holidayRef = ref()
 const holidayForm = reactive({})
 function openHoliday(h) {
-  Object.assign(holidayForm, h ? { ...h } : { id: undefined, holidayDate: undefined, type: 'HOLIDAY', name: '' })
+  Object.assign(holidayForm, h ? { ...h } : { id: undefined, holidayDate: undefined, type: HolidayType.HOLIDAY, name: '' })
   holidayOpen.value = true
 }
 async function saveHoliday() {
@@ -436,11 +430,7 @@ async function saveHoliday() {
     saving.value = false
   }
 }
-async function removeHoliday(id) {
-  await deleteHoliday(id)
-  message.success(t('common.msg.deleteSuccess'))
-  loadHolidays()
-}
+const removeHoliday = useAction(deleteHoliday, { successKey: 'common.msg.deleteSuccess', reload: () => loadHolidays() })
 
 onMounted(() => {
   load()

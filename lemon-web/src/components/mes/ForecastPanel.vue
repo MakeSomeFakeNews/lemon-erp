@@ -66,6 +66,7 @@ import { deleteForecast, pageForecast, saveForecast } from '@/api/mes/plan'
 import { currentPeriod } from '@/components/fin/fin'
 import { formatQty } from '@/components/wms/wms'
 import { useTable } from '@/composables/useTable'
+import { useAction } from '@/composables/useAction'
 const { t } = useI18n()
 
 const columns = [
@@ -110,11 +111,7 @@ async function submit() {
     saving.value = false
   }
 }
-async function remove(id) {
-  await deleteForecast(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteForecast, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.mapper;
 
+import com.lemon.erp.modules.fin.dto.FinAnalysis;
 import com.lemon.erp.modules.fin.model.SettleKind;
 import com.lemon.erp.modules.fin.model.BillKind;
 import org.apache.ibatis.annotations.Param;
@@ -7,7 +8,6 @@ import org.apache.ibatis.annotations.Param;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 往来对账单：往来单位的应收应付单、收付款、预收预付
@@ -28,6 +28,6 @@ public interface FinPartnerLedgerMapper {
      *
      * @return [{bizDate, type（BILL / SETTLEMENT / ADVANCE）, docNo, sourceType, sourceNo, amount, remark}]
      */
-    List<Map<String, Object>> selectRows(@Param("billKind") BillKind billKind, @Param("settleKind") SettleKind settleKind,
+    List<FinAnalysis.PartnerFlow> selectRows(@Param("billKind") BillKind billKind, @Param("settleKind") SettleKind settleKind,
                                          @Param("partnerId") Long partnerId, @Param("begin") LocalDate begin, @Param("end") LocalDate end);
 }

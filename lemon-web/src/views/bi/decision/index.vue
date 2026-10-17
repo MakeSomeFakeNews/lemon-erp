@@ -220,6 +220,7 @@ import { percent, periodLabel, shortMoney } from '@/components/charts/charts'
 import { useDict } from '@/composables/useDict'
 import { toOptions } from '@/utils/dict'
 import { t } from '@/locales'
+import { useAction } from '@/composables/useAction'
 
 const OPERATORS = { GT: t('bi.decision.op.GT'), GE: t('bi.decision.op.GE'), LT: t('bi.decision.op.LT'), LE: t('bi.decision.op.LE') }
 const dict = useDict('wms_material_category', 'bi_alert_level')
@@ -403,11 +404,7 @@ async function saveRule() {
   }
 }
 
-async function removeRule(r) {
-  await deleteAlertRule(r.id)
-  message.success(t('common.msg.deleteSuccess'))
-  loadAlerts()
-}
+const removeRule = useAction((r) => deleteAlertRule(r.id), { successKey: 'common.msg.deleteSuccess', reload: () => loadAlerts() })
 
 // 切换到某个标签页时才加载
 const LOADERS = { forecast: loadForecast, abc: loadAbc, slow: loadSlow, alerts: loadAlerts }

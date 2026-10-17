@@ -96,7 +96,7 @@
               <a-radio-group v-model:value="form.samplingMode" :options="toOptions(dict.qms_sampling_mode)" />
             </a-form-item>
           </a-col>
-          <template v-if="form.samplingMode === 'FIXED'">
+          <template v-if="form.samplingMode === SamplingMode.FIXED">
             <a-col :xs="12" :sm="5">
               <a-form-item :label="$t('qms.plan.fixedQty')" name="fixedQty" :extra="$t('qms.plan.fixedQtyExtra')">
                 <a-input-number v-model:value="form.fixedQty" :min="1" :precision="0" class="full" />
@@ -108,7 +108,7 @@
               </a-form-item>
             </a-col>
           </template>
-          <template v-else-if="form.samplingMode === 'AQL'">
+          <template v-else-if="form.samplingMode === SamplingMode.AQL">
             <a-col :xs="12" :sm="5">
               <a-form-item label="AQL" name="aql">
                 <a-select v-model:value="form.aql" :options="AQL_OPTIONS" />
@@ -120,7 +120,7 @@
               </a-form-item>
             </a-col>
           </template>
-          <a-col v-if="form.samplingMode === 'AQL'" :xs="24" :sm="6">
+          <a-col v-if="form.samplingMode === SamplingMode.AQL" :xs="24" :sm="6">
             <a-form-item :label="$t('qms.plan.gbLabel')">
               <span class="sub-text">{{ $t('qms.plan.gbTip') }}</span>
             </a-form-item>
@@ -144,10 +144,10 @@
               <a-select v-model:value="record.method" :options="METHODS" class="full" />
             </template>
             <template v-else-if="column.key === 'standard'">
-              <a-input v-model:value="record.standard" :maxlength="255" :placeholder="record.method === 'QUALITATIVE' ? $t('qms.plan.standardPhQual') : $t('qms.plan.standardPh')" />
+              <a-input v-model:value="record.standard" :maxlength="255" :placeholder="record.method === ItemMethod.QUALITATIVE ? $t('qms.plan.standardPhQual') : $t('qms.plan.standardPh')" />
             </template>
             <template v-else-if="column.key === 'limits'">
-              <a-space v-if="record.method === 'QUANTITATIVE'" :size="4">
+              <a-space v-if="record.method === ItemMethod.QUANTITATIVE" :size="4">
                 <a-input-number v-model:value="record.lowerLimit" :placeholder="$t('qms.plan.lower')" class="limit" />
                 <span>~</span>
                 <a-input-number v-model:value="record.upperLimit" :placeholder="$t('qms.plan.upper')" class="limit" />
@@ -155,7 +155,7 @@
               <span v-else class="sub-text">-</span>
             </template>
             <template v-else-if="column.key === 'unit'">
-              <a-input v-if="record.method === 'QUANTITATIVE'" v-model:value="record.unit" :maxlength="16" placeholder="mm" />
+              <a-input v-if="record.method === ItemMethod.QUANTITATIVE" v-model:value="record.unit" :maxlength="16" placeholder="mm" />
             </template>
             <template v-else-if="column.key === 'critical'">
               <a-checkbox v-model:checked="record.critical" />
@@ -184,7 +184,7 @@
               {{ record.name }}
               <a-tag v-if="record.critical === 1" color="red" :bordered="false">{{ $t('mes.inspection.critical') }}</a-tag>
             </template>
-            <template v-else-if="column.key === 'method'">{{ record.method === 'QUANTITATIVE' ? $t('qms.plan.quantitative') : $t('qms.plan.qualitative') }}</template>
+            <template v-else-if="column.key === 'method'">{{ record.method === ItemMethod.QUANTITATIVE ? $t('qms.plan.quantitative') : $t('qms.plan.qualitative') }}</template>
             <template v-else-if="column.key === 'spec'">{{ specText(record) }}</template>
           </template>
         </a-table>
@@ -195,7 +195,6 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
@@ -210,7 +209,9 @@ import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
+import { useAction } from '@/composables/useAction'
 
+import { InspectionLevel, ItemMethod, QcType, SamplingMode } from '@/constants/enums'
 /** 检验方案：按物料或物料分类定义检验项目与抽样方案，新建检验单时自动匹配 */
 const dict = useDict('mes_qc_type', 'qms_sampling_mode', 'wms_material_category')
 const { t } = useI18n()
@@ -250,8 +251,8 @@ const rules = {
 const num = (v) => (v == null ? undefined : Number(v))
 const drawer = useFormDrawer({
   emptyForm: () => ({
-    id: undefined, name: '', inspType: 'IQC', enabled: true, scope: 'material', materialId: undefined, materialCategory: undefined,
-    samplingMode: 'AQL', fixedQty: undefined, acceptQty: 0, aql: 1, inspectionLevel: 'II', remark: '', items: [newItem()]
+    id: undefined, name: '', inspType: QcType.IQC, enabled: true, scope: 'material', materialId: undefined, materialCategory: undefined,
+    samplingMode: SamplingMode.AQL, fixedQty: undefined, acceptQty: 0, aql: 1, inspectionLevel: InspectionLevel.II, remark: '', items: [newItem()]
   }),
   fetch: async (record) => {
     const p = await getPlan(record.id)
@@ -273,19 +274,19 @@ const drawer = useFormDrawer({
     materialId: f.scope === 'material' ? f.materialId : null,
     materialCategory: f.scope === 'category' ? f.materialCategory : null,
     samplingMode: f.samplingMode,
-    fixedQty: f.samplingMode === 'FIXED' ? f.fixedQty : null,
-    acceptQty: f.samplingMode === 'FIXED' ? f.acceptQty ?? 0 : null,
-    aql: f.samplingMode === 'AQL' ? f.aql : null,
-    inspectionLevel: f.samplingMode === 'AQL' ? f.inspectionLevel : null,
+    fixedQty: f.samplingMode === SamplingMode.FIXED ? f.fixedQty : null,
+    acceptQty: f.samplingMode === SamplingMode.FIXED ? f.acceptQty ?? 0 : null,
+    aql: f.samplingMode === SamplingMode.AQL ? f.aql : null,
+    inspectionLevel: f.samplingMode === SamplingMode.AQL ? f.inspectionLevel : null,
     status: f.enabled ? 1 : 0,
     remark: f.remark || null,
     items: f.items.map((i) => ({
       name: i.name,
       method: i.method,
       standard: i.standard || null,
-      lowerLimit: i.method === 'QUANTITATIVE' ? i.lowerLimit ?? null : null,
-      upperLimit: i.method === 'QUANTITATIVE' ? i.upperLimit ?? null : null,
-      unit: i.method === 'QUANTITATIVE' ? i.unit || null : null,
+      lowerLimit: i.method === ItemMethod.QUANTITATIVE ? i.lowerLimit ?? null : null,
+      upperLimit: i.method === ItemMethod.QUANTITATIVE ? i.upperLimit ?? null : null,
+      unit: i.method === ItemMethod.QUANTITATIVE ? i.unit || null : null,
       critical: !!i.critical
     }))
   }),
@@ -314,11 +315,7 @@ const itemViewColumns = [
   { title: t('common.field.description'), dataIndex: 'standard', ellipsis: true }
 ]
 
-async function remove(id) {
-  await deletePlan(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deletePlan, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 const detailOpen = ref(false)
 const detail = ref()

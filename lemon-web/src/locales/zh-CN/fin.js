@@ -1497,6 +1497,7 @@ export default {
     outCategory: '出库类别',
     sameAsRole: '同「{role}」：{account}',
     saveN: '保存（{n}）',
+    scopeTip: '设置的科目及其全部下级都属于该用途，可以选择上级科目；收付款的结算账户、银行对账、现金流量表、资金计划按此识别',
     invalidAccount: '{code}（科目不存在或不是末级）'
   },
   partnerStatement: {

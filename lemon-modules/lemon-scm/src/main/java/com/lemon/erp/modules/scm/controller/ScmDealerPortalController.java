@@ -6,6 +6,7 @@ import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.dto.ChannelRequests;
+import com.lemon.erp.modules.scm.dto.ScmPriceViews;
 import com.lemon.erp.modules.scm.entity.ScmChannelReport;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
 import com.lemon.erp.modules.scm.service.ScmChannelService;
@@ -24,7 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 经销商门户：只能访问当前账号关联的客户（经销商）的数据
@@ -39,7 +39,7 @@ public class ScmDealerPortalController {
     /** 可订货的物料和价格 */
     @GetMapping("/catalog")
     @PreAuthorize("@ss.hasPerm('dealer:order:list')")
-    public R<List<Map<String, Object>>> catalog(@RequestParam(required = false) String keyword) {
+    public R<List<ScmPriceViews.DealerCatalogItem>> catalog(@RequestParam(required = false) String keyword) {
         return R.ok(channelService.catalog(SecurityUtils.requireCustomerId(), keyword));
     }
 

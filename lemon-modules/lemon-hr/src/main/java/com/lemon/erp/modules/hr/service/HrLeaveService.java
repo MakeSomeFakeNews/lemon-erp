@@ -59,6 +59,7 @@ public class HrLeaveService {
     private final ApprovalSupport approvalSupport;
     private final HrPayrollLock payrollLock;
     private final DictLookup dictLookup;
+    private final HrRuleService ruleService;
 
     @DataPermission(table = "hr_leave", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<HrLeave> page(long current, long size, LeaveQuery query) {
@@ -135,7 +136,7 @@ public class HrLeaveService {
             vars.put("type", leave ? req.type() : LeaveKind.OVERTIME.name());
             vars.put("compensation", leave ? "" : overtimeComp.name());
             vars.put("hours", req.hours().doubleValue());
-            vars.put("days", req.hours().divide(HrConstants.DAY_HOURS, 1, RoundingMode.HALF_UP).doubleValue());
+            vars.put("days", req.hours().divide(ruleService.current().dayHours(), 1, RoundingMode.HALF_UP).doubleValue());
             vars.put("leaveNo", l.getLeaveNo());
             approvalSupport.start(FLOW, l.getId(), vars, () -> { },
                     instanceId -> leaveMapper.update(Wrappers.<HrLeave>lambdaUpdate()

@@ -50,17 +50,15 @@
         </a-space>
       </div>
 
-      <a-table
-        row-key="key"
-        size="small"
+      <LineItemsTable
         class="items-table"
+        :items="form.items"
         :columns="columns"
-        :data-source="form.items"
         :pagination="form.items.length > 50 ? { pageSize: 50, showSizeChanger: false } : false"
-        :scroll="{ x: scrollX }"
-        :locale="{ emptyText: $t('wms.checkDoc.empty') }"
+        :empty-text="$t('wms.checkDoc.empty')"
+        :confirm-remove="(r) => (r.actualQty == null ? undefined : $t('wms.checkDoc.confirmRemoveRow'))"
       >
-        <template #bodyCell="{ column, record }">
+        <template #cell="{ column, record }">
           <template v-if="column.key === 'material'">
             <a-form-item v-if="record.manual" :name="itemName(record, 'materialId')" :rules="requiredRule($t('wms.common.selectMaterial'))" class="cell-item">
               <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
@@ -115,13 +113,8 @@
           <template v-else-if="column.key === 'remark'">
             <a-input v-model:value="record.remark" :maxlength="255" />
           </template>
-          <template v-else-if="column.key === 'action'">
-            <a-button type="link" danger size="small" @click="removeRow(record)">
-              <template #icon><DeleteOutlined /></template>
-            </a-button>
-          </template>
         </template>
-      </a-table>
+      </LineItemsTable>
     </a-form>
   </FormDrawer>
 </template>
@@ -129,9 +122,10 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Modal, message } from 'ant-design-vue'
-import { DeleteOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { PlusOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
+import LineItemsTable from '@/components/common/LineItemsTable.vue'
 import LocationSelect from './LocationSelect.vue'
 import MaterialSelect from './MaterialSelect.vue'
 import QtyDiff from './QtyDiff.vue'
@@ -139,7 +133,8 @@ import SerialInput from './SerialInput.vue'
 import WarehouseSelect from './WarehouseSelect.vue'
 import { addCheck, checkSnapshot, getCheck, updateCheck } from '@/api/wms/check'
 import { useFormDrawer } from '@/composables/useFormDrawer'
-import { formatQty, locationText, rowKey, splitSerials, today } from './wms'
+import { lineKey, useLineItems } from '@/composables/useLineItems'
+import { formatQty, locationText, splitSerials, today } from './wms'
 
 /**
  * 新增 / 编辑盘点单（草稿）：按库存生成明细后录入实盘数量；盘盈的物料可手工添加。
@@ -159,7 +154,6 @@ const columns = [
   { title: t('common.field.remark'), key: 'remark', width: 140 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
-const scrollX = columns.reduce((sum, c) => sum + c.width, 0)
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
 const rules = {
@@ -169,7 +163,7 @@ const rules = {
 
 const toRow = (item) => ({
   ...item,
-  key: item.id ? `item-${item.id}` : rowKey(),
+  key: lineKey(item),
   locationId: item.locationId || null,
   actualQty: item.actualQty ?? null
 })
@@ -200,8 +194,11 @@ const drawer = useFormDrawer({
 })
 const { form, formRef } = drawer
 
-// 表格分页时 index 不是在 items 中的位置，按 key 找
-const itemName = (record, field) => ['items', form.value.items.indexOf(record), field]
+const lines = useLineItems(() => form.value.items, {
+  newRow: () => ({ manual: true, materialId: undefined, locationId: null, bookQty: null, actualQty: null })
+})
+// 表格分页时 index 不是在 items 中的位置，按行对象找
+const itemName = lines.itemName
 
 const diffOf = (r) => (r.actualQty == null || r.bookQty == null ? null : Number(r.actualQty) - Number(r.bookQty))
 const stats = computed(() => ({
@@ -237,9 +234,7 @@ async function generate() {
   }
 }
 
-function addRow() {
-  form.value.items.unshift({ key: rowKey(), manual: true, materialId: undefined, locationId: null, bookQty: null, actualQty: null })
-}
+const addRow = () => lines.addRow({}, { first: true })
 
 function applyMaterial(row, m) {
   Object.assign(row, {
@@ -271,12 +266,6 @@ function fillBook() {
     }
   })
   message.success(n ? t('wms.checkDoc.filled', { n }) : t('wms.checkDoc.nothingToFill'))
-}
-
-function removeRow(record) {
-  const remove = () => form.value.items.splice(form.value.items.indexOf(record), 1)
-  if (record.actualQty == null) return remove()
-  Modal.confirm({ title: t('wms.checkDoc.confirmRemoveRow'), okType: 'danger', onOk: remove })
 }
 
 defineExpose({ openCreate: drawer.openCreate, openEdit: drawer.openEdit })

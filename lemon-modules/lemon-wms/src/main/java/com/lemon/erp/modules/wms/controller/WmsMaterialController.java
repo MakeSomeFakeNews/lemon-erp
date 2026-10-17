@@ -10,6 +10,7 @@ import com.lemon.erp.framework.excel.ImportRequest;
 import com.lemon.erp.framework.excel.ImportResult;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.wms.dto.BarcodeMatch;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import jakarta.validation.Valid;
@@ -55,7 +56,7 @@ public class WmsMaterialController {
 
     /** 扫码：物料条码、包装条码或物料编码 → {material, unit, ratio}，找不到时为空 */
     @GetMapping("/barcode")
-    public R<java.util.Map<String, Object>> byBarcode(@RequestParam String code) {
+    public R<BarcodeMatch> byBarcode(@RequestParam String code) {
         return R.ok(materialService.byBarcode(code));
     }
 

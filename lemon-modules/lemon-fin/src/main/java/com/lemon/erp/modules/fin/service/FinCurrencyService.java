@@ -1,10 +1,13 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.Queries;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.finance.ExchangeRateProvider;
+import com.lemon.erp.modules.fin.dto.FxRevaluation;
 import com.lemon.erp.modules.fin.entity.FinCurrency;
 import com.lemon.erp.modules.fin.entity.FinExchangeRate;
 import com.lemon.erp.modules.fin.entity.FinVoucher;
@@ -20,7 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -102,18 +104,17 @@ public class FinCurrencyService implements ExchangeRateProvider {
         if (currency == null || BASE.equals(currency)) {
             return BigDecimal.ONE;
         }
-        FinExchangeRate r = rateMapper.selectOne(Wrappers.<FinExchangeRate>lambdaQuery().eq(FinExchangeRate::getCurrency, currency)
-                .le(FinExchangeRate::getPeriod, FinConstants.periodOf(date)).orderByDesc(FinExchangeRate::getPeriod).last("LIMIT 1"));
+        FinExchangeRate r = Queries.first(rateMapper, Wrappers.<FinExchangeRate>lambdaQuery().eq(FinExchangeRate::getCurrency, currency)
+                .le(FinExchangeRate::getPeriod, FinConstants.periodOf(date)).orderByDesc(FinExchangeRate::getPeriod));
         return r == null ? null : r.getRate();
     }
 
     /**
      * 期末调汇：生成调汇凭证（期末）和冲回凭证（下月 1 日），都为未审核；每期一次，删除凭证后可重新调汇
      *
-     * @return {voucherId, reverseVoucherId, lines: [{currency, kind, remainingFc, bookBase, newBase, diff}]}
      */
     @Transactional
-    public Map<String, Object> revalue(int period) {
+    public FxRevaluation revalue(int period) {
         periodService.checkOpen(period);
         String sourceNo = "FX-" + period;
         if (voucherMapper.exists(Wrappers.<FinVoucher>lambdaQuery().eq(FinVoucher::getSourceType, VoucherSource.FX)
@@ -122,13 +123,13 @@ public class FinCurrencyService implements ExchangeRateProvider {
         }
         LocalDate end = FinConstants.toYearMonth(period).atEndOfMonth();
         Map<String, BigDecimal> rates = new HashMap<>();
-        Map<String, BigDecimal[]> sums = new LinkedHashMap<>();
+        Map<FxKey, BigDecimal[]> sums = new LinkedHashMap<>();
         List<VoucherLine> lines = new ArrayList<>();
         Long receivable = accountRules.accountId(AccountRole.RECEIVABLE);
         Long payable = accountRules.accountId(AccountRole.PAYABLE);
         Long finance = accountRules.accountId(AccountRole.FINANCE_EXPENSE);
-        for (Map<String, Object> b : billMapper.selectOpenForeign(end)) {
-            String currency = (String) b.get("currency");
+        for (FxRevaluation.OpenBill b : billMapper.selectOpenForeign(end)) {
+            String currency = b.getCurrency();
             BigDecimal rate = rates.computeIfAbsent(currency, c -> {
                 FinExchangeRate r = rateMapper.selectOne(Wrappers.<FinExchangeRate>lambdaQuery().eq(FinExchangeRate::getCurrency, c)
                         .eq(FinExchangeRate::getPeriod, period));
@@ -137,18 +138,18 @@ public class FinCurrencyService implements ExchangeRateProvider {
                 }
                 return r.getRate();
             });
-            BigDecimal fc = new BigDecimal(b.get("remainingFc").toString());
-            BigDecimal book = new BigDecimal(b.get("remainingBase").toString());
-            BigDecimal diff = fc.multiply(rate).setScale(2, RoundingMode.HALF_UP).subtract(book);
-            BillKind kind = BillKind.valueOf((String) b.get("kind"));
-            BigDecimal[] sum = sums.computeIfAbsent(currency + "|" + kind, k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO});
+            BigDecimal fc = b.getRemainingFc();
+            BigDecimal book = b.getRemainingBase();
+            BigDecimal diff = Decimals.money(fc.multiply(rate)).subtract(book);
+            BillKind kind = b.getKind();
+            BigDecimal[] sum = sums.computeIfAbsent(new FxKey(currency, kind), k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO});
             sum[0] = sum[0].add(fc);
             sum[1] = sum[1].add(book);
             sum[2] = sum[2].add(diff);
             if (diff.signum() == 0) {
                 continue;
             }
-            Long partnerId = ((Number) b.get("partnerId")).longValue();
+            Long partnerId = b.getPartnerId();
             String summary = period + " 期末调汇 " + currency; // i18n-ignore
             if (kind == BillKind.AR) {
                 // 应收增值为收益：借 应收账款 / 贷 财务费用
@@ -160,32 +161,21 @@ public class FinCurrencyService implements ExchangeRateProvider {
                 lines.add(VoucherLine.credit(summary, payable, null, diff).withSupplier(partnerId));
             }
         }
-        List<Map<String, Object>> result = new ArrayList<>();
-        sums.forEach((k, v) -> {
-            String[] p = k.split("\\|");
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("currency", p[0]);
-            row.put("kind", p[1]);
-            row.put("rate", rates.get(p[0]));
-            row.put("remainingFc", v[0]);
-            row.put("bookBase", v[1]);
-            row.put("newBase", v[1].add(v[2]));
-            row.put("diff", v[2]);
-            result.add(row);
-        });
-        Map<String, Object> r = new LinkedHashMap<>();
-        r.put("lines", result);
+        List<FxRevaluation.Line> result = new ArrayList<>();
+        sums.forEach((k, v) -> result.add(new FxRevaluation.Line(k.currency(), k.kind(), rates.get(k.currency()), v[0], v[1],
+                v[1].add(v[2]), v[2])));
         if (lines.isEmpty()) {
-            r.put("voucherId", null);
-            return r;
+            return new FxRevaluation(result, null, null);
         }
         Long voucherId = voucherService.createGenerated(end, VoucherSource.FX, sourceNo, lines);
         List<VoucherLine> reverse = lines.stream()
                 .map(l -> l.withSummary("冲回 " + l.summary()) // i18n-ignore
                        .withAmounts(l.credit(), l.debit())).toList();
         Long reverseId = voucherService.createGenerated(end.plusDays(1), VoucherSource.FX, sourceNo + "-R", reverse);
-        r.put("voucherId", voucherId);
-        r.put("reverseVoucherId", reverseId);
-        return r;
+        return new FxRevaluation(result, voucherId, reverseId);
+    }
+
+    /** 调汇汇总的分组：币种 + 应收 / 应付 */
+    private record FxKey(String currency, BillKind kind) {
     }
 }

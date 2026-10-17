@@ -1,6 +1,7 @@
 import dayjs from 'dayjs'
 import { t } from '@/locales'
 
+import { VoucherSource, VoucherStatus } from '@/constants/enums'
 export { formatMoney } from '@/components/scm/scm'
 
 /** dayjs / 'YYYY-MM' → 会计期间 yyyyMM */
@@ -16,10 +17,7 @@ export const periodText = (p) =>
 export const currentPeriod = () => toPeriod(dayjs())
 
 /** 金额为 0 时显示为空，账簿中更易读 */
-export function moneyOrBlank(n) {
-  if (n === null || n === undefined || Number(n) === 0) return ''
-  return Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
+export { moneyOrBlank } from '@/utils/number'
 
 export { cached } from '@/utils/cache'
 
@@ -80,10 +78,10 @@ export function moneyUpper(n) {
 }
 
 /** 与业务单据金额联动的凭证来源，不能直接删除（在业务单据中撤销或做红字冲销） */
-export const UNDELETABLE_SOURCES = ['ADVANCE', 'BAD_DEBT', 'CLAIM', 'LOAN', 'NOTE', 'TRANSFER']
+export const UNDELETABLE_SOURCES = [VoucherSource.ADVANCE, VoucherSource.BAD_DEBT, VoucherSource.CLAIM, VoucherSource.LOAN, VoucherSource.NOTE, VoucherSource.TRANSFER]
 
 /** 可以红字冲销：已记账、未冲销、本身不是红字凭证、不是结转损益凭证 */
-export const canReverse = (v) => v.status === 'POSTED' && v.reversed !== 1 && !v.reversalOf && v.sourceType !== 'CLOSE'
+export const canReverse = (v) => v.status === VoucherStatus.POSTED && v.reversed !== 1 && !v.reversalOf && v.sourceType !== VoucherSource.CLOSE
 
 /** 可以删除：未审核，且不是与业务单据联动的凭证 */
-export const canDeleteVoucher = (v) => v.status === 'DRAFT' && !UNDELETABLE_SOURCES.includes(v.sourceType)
+export const canDeleteVoucher = (v) => v.status === VoucherStatus.DRAFT && !UNDELETABLE_SOURCES.includes(v.sourceType)

@@ -15,7 +15,7 @@
         </a-space>
         <span class="sub-text">
           {{ c.createByName || '-' }} {{ c.createTime }}
-          <template v-if="c.approveTime">{{ $t(c.status === 'REJECTED' ? 'scm.orderChange.rejectedAt' : 'scm.orderChange.effectiveAt', { time: c.approveTime }) }}</template>
+          <template v-if="c.approveTime">{{ $t(c.status === OrderChangeStatus.REJECTED ? 'scm.orderChange.rejectedAt' : 'scm.orderChange.effectiveAt', { time: c.approveTime }) }}</template>
         </span>
       </div>
       <div class="reason">{{ $t('scm.orderChange.reasonValue', { reason: c.reason || '-' }) }}</div>
@@ -52,6 +52,7 @@ import { formatQty } from '@/components/wms/wms'
 import { currencySymbol } from '@/components/fin/currency'
 import { formatMoney } from './scm'
 
+import { OrderChangeStatus } from '@/constants/enums'
 /** 订单变更记录：每次变更的原因、状态、金额及明细的新旧值 */
 const props = defineProps({
   kind: { type: String, required: true },

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.controller;
 
+import com.lemon.erp.modules.fin.dto.OpeningSummary;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
@@ -27,7 +28,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 期初余额：启用向导、科目期初、期初库存、存货期初、期初往来
@@ -43,7 +43,7 @@ public class FinOpeningController {
     /** 启用向导：各项期初数据的完成情况 */
     @GetMapping("/summary")
     @PreAuthorize("@ss.hasPerm('fin:opening:list')")
-    public R<Map<String, Object>> summary() {
+    public R<OpeningSummary> summary() {
         return R.ok(setupService.summary());
     }
 
