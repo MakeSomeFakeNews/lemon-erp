@@ -59,7 +59,11 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
             <a @click="openDetail(record.id)">{{ record.name }}</a>
-            <div class="sub-text">{{ record.code }}</div>
+            <a-tag v-if="record.isTemplate === 1" color="magenta" :bordered="false" class="ml">款式</a-tag>
+            <div class="sub-text">
+              {{ record.code }}
+              <template v-if="record.variantText"> · {{ record.variantText }}</template>
+            </div>
           </template>
           <template v-else-if="column.key === 'category'">
             <DictTag type="wms_material_category" :value="record.category" />
@@ -103,6 +107,9 @@
               </a-button>
               <a-button type="link" size="small" @click="openUnits(record)">
                 <template #icon><SwapOutlined /></template>单位
+              </a-button>
+              <a-button v-if="!record.templateId" type="link" size="small" @click="openVariants(record)">
+                <template #icon><AppstoreAddOutlined /></template>多规格
               </a-button>
               <span v-perm="'wms:material:remove'">
                 <a-popconfirm :title="`确定删除物料「${record.name}」？`" @confirm="remove([record.id])">
@@ -307,6 +314,7 @@
         </template>
       </a-form>
     </FormDrawer>
+    <VariantDrawer v-model:open="variantOpen" :material="variantMaterial" @generated="load" />
 
     <!-- 详情：生产计划、被 BOM 使用、在制工单用料 -->
     <SubPage :open="detailOpen" :title="detail ? `${detail.code} ${detail.name}` : '物料'" width="min(960px, 100vw)" destroy-on-close @close="detailOpen = false">
@@ -407,7 +415,7 @@
 import SubPage from '@/components/SubPage.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { BarcodeOutlined, DeleteOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, QuestionCircleOutlined, SwapOutlined } from '@ant-design/icons-vue'
+import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, QuestionCircleOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -419,6 +427,7 @@ import LabelPrintModal from '@/components/label/LabelPrintModal.vue'
 import LocationSelect from '@/components/wms/LocationSelect.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import MaterialUnitsModal from '@/components/wms/MaterialUnitsModal.vue'
+import VariantDrawer from '@/components/wms/VariantDrawer.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { addMaterial, changeMaterialStatus, deleteMaterial, getMaterial, pageMaterial, updateMaterial, importMaterial } from '@/api/wms/material'
 import { getMaterialPlan, kitMaterialLines, materialPlans, saveMaterialPlan } from '@/api/mes/base'
@@ -471,6 +480,14 @@ const importOpen = ref(false)
 // 辅助单位
 const unitsOpen = ref(false)
 const unitsMaterial = ref()
+// 多规格：生成 SKU、查看库存矩阵
+const variantOpen = ref(false)
+const variantMaterial = ref()
+function openVariants(record) {
+  variantMaterial.value = { ...record }
+  variantOpen.value = true
+}
+
 function openUnits(record) {
   unitsMaterial.value = record
   unitsOpen.value = true
@@ -773,5 +790,8 @@ function openLabels() {
 }
 .add-row {
   margin-top: 8px;
+}
+.ml {
+  margin-left: 6px;
 }
 </style>

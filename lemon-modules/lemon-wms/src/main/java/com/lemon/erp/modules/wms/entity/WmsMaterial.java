@@ -73,11 +73,24 @@ public class WmsMaterial extends BaseEntity {
     /** 存货计价方法，默认月末一次加权平均；修改后从下一次成本核算开始生效 */
     private CostMethod costMethod;
 
+    /** 是否多规格款式（1 是）：按规格属性生成 SKU，款式本身不能出入库；由「多规格」功能设置 */
+    private Integer isTemplate;
+
+    /** SKU 所属的款式 */
+    private Long templateId;
+
+    /** SKU 的规格属性值，如 红色 / XL */
+    private String variantText;
+
     /** 1 启用 0 停用 */
     private Integer status;
 
     @Size(max = 255, message = "备注不能超过255个字符")
     private String remark;
+
+    public boolean isTemplateMaterial() {
+        return Integer.valueOf(1).equals(isTemplate);
+    }
 
     public boolean isBatchManaged() {
         return Integer.valueOf(1).equals(batchEnabled);

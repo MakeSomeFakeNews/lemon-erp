@@ -80,9 +80,14 @@
           明细（{{ form.items.length }} 行，数量 {{ formatQty(totalQty) }}，价税合计 {{ symbol }}{{ formatMoney(totalAmount) }}）
           <span v-if="foreign && Number(form.exchangeRate)" class="sub-text">≈ ¥{{ formatMoney(totalAmount * Number(form.exchangeRate)) }}</span>
         </span>
-        <a-button type="primary" ghost @click="addRow">
-          <template #icon><PlusOutlined /></template>添加物料
-        </a-button>
+        <a-space>
+          <a-button @click="matrixOpen = true">
+            <template #icon><TableOutlined /></template>按规格录入
+          </a-button>
+          <a-button type="primary" ghost @click="addRow">
+            <template #icon><PlusOutlined /></template>添加物料
+          </a-button>
+        </a-space>
       </div>
       <a-alert v-if="promo && (Number(promo.discountAmount) > 0 || promo.gifts.length || Number(form.rebateAmount) > 0)" type="success" show-icon class="promo-tip">
         <template #message>
@@ -183,6 +188,7 @@
         </template>
       </a-table>
     </a-form>
+    <VariantMatrixModal v-model:open="matrixOpen" @confirm="addVariantRows" />
     <AtpModal
       v-if="kind === 'sales'"
       v-model:open="atpOpen"
@@ -197,7 +203,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, PlusOutlined, TableOutlined } from '@ant-design/icons-vue'
+import VariantMatrixModal from '@/components/wms/VariantMatrixModal.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
@@ -459,6 +466,18 @@ function onRateChange() {
 
 const totalQty = computed(() => form.value.items.reduce((sum, i) => sum + baseQty(i), 0))
 const totalAmount = computed(() => form.value.items.reduce((sum, i) => sum + lineAmount(i.unitQty, i.unitPrice), 0))
+
+// 按规格录入：款式的规格矩阵中填写的各 SKU 数量逐行加入明细（单价按物料自动带出）
+const matrixOpen = ref(false)
+function addVariantRows(lines) {
+  lines.forEach(({ material, qty }) => {
+    addRow()
+    const row = form.value.items[form.value.items.length - 1]
+    row.materialId = material.id
+    applyMaterial(row, material)
+    row.unitQty = qty
+  })
+}
 
 function addRow() {
   form.value.items.push({

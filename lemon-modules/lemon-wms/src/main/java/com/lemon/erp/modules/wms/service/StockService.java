@@ -85,6 +85,9 @@ public class StockService {
         }
         Map<Long, WmsMaterial> materials = materialMapper.selectByIds(sorted.stream().map(StockChange::materialId).distinct().toList())
                 .stream().collect(Collectors.toMap(WmsMaterial::getId, Function.identity()));
+        materials.values().stream().filter(WmsMaterial::isTemplateMaterial).findFirst().ifPresent(m -> {
+            throw new BizException("「" + m.getCode() + " " + m.getName() + "」是多规格款式，请选择具体的规格（SKU）");
+        });
         Long userId = SecurityUtils.getUserId();
         LocalDateTime now = LocalDateTime.now();
         List<StockFlow> flows = new ArrayList<>(sorted.size());

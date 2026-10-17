@@ -42,8 +42,9 @@ public class WmsMaterialController {
                                            @RequestParam(defaultValue = "10") long size,
                                            @RequestParam(required = false) String keyword,
                                            @RequestParam(required = false) String category,
-                                           @RequestParam(required = false) Integer status) {
-        return R.ok(materialService.page(current, size, keyword, category, status));
+                                           @RequestParam(required = false) Integer status,
+                                           @RequestParam(required = false) Long templateId) {
+        return R.ok(materialService.page(current, size, keyword, category, status, templateId));
     }
 
     /** 登录即可访问：各单据页面按编码或名称搜索物料 */
