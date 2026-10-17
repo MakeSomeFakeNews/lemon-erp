@@ -1,12 +1,12 @@
 <template>
   <div>
     <div class="head">
-      <span class="title">未核销的{{ kind === 'ar' ? '应收单' : '应付单' }}（人民币，红字单据为负数）</span>
+      <span class="title">{{ kind === 'ar' ? $t('fin.billSettleTable.titleAr') : $t('fin.billSettleTable.titleAp') }}</span>
       <a-space>
-        <a-button size="small" :disabled="!bills.length || !(target > 0)" @click="allocate">按金额自动分配</a-button>
+        <a-button size="small" :disabled="!bills.length || !(target > 0)" @click="allocate">{{ $t('fin.billSettleTable.allocate') }}</a-button>
         <span>
-          核销合计 <b :class="['total', { bad: target > 0 && total !== target }]">¥{{ formatMoney(total) }}</b>
-          <template v-if="target > 0"> / 应为 ¥{{ formatMoney(target) }}</template>
+          {{ $t('fin.billSettleTable.total') }} <b :class="['total', { bad: target > 0 && total !== target }]">¥{{ formatMoney(total) }}</b>
+          <template v-if="target > 0"> / {{ $t('fin.billSettleTable.shouldBe', { amount: formatMoney(target) }) }}</template>
         </span>
       </a-space>
     </div>
@@ -18,7 +18,7 @@
       :loading="loading"
       :pagination="false"
       :scroll="{ y: 320 }"
-      :locale="{ emptyText: partnerId ? '没有未核销的人民币单据' : '请先选择往来单位' }"
+      :locale="{ emptyText: partnerId ? $t('fin.billSettleTable.noBills') : $t('fin.billSettleTable.selectPartner') }"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'source'">
@@ -49,6 +49,7 @@ import { unsettledBills } from '@/api/fin'
 import { useDict } from '@/composables/useDict'
 import { formatMoney } from './fin'
 import { isForeign } from './currency'
+import { t } from '@/locales'
 
 /**
  * 选择要核销的应收 / 应付单（票据收票、背书、开票使用）：只列人民币单据，可按目标金额按到期日先后自动分配。
@@ -65,12 +66,12 @@ const emit = defineEmits(['update:modelValue'])
 useDict('fin_bill_source')
 
 const columns = [
-  { title: '单号', dataIndex: 'billNo', width: 150 },
-  { title: '来源', key: 'source', width: 190 },
-  { title: '到期日', dataIndex: 'dueDate', width: 100 },
-  { title: '金额', key: 'amount', width: 120, align: 'right' },
-  { title: '未核销', key: 'remaining', width: 120, align: 'right' },
-  { title: '本次核销', key: 'settle', width: 150 }
+  { title: t('fin.billSettleTable.billNo'), dataIndex: 'billNo', width: 150 },
+  { title: t('fin.billSettleTable.source'), key: 'source', width: 190 },
+  { title: t('fin.billSettleTable.dueDate'), dataIndex: 'dueDate', width: 110 },
+  { title: t('common.field.amount'), key: 'amount', width: 120, align: 'right' },
+  { title: t('fin.billSettleTable.remaining'), key: 'remaining', width: 120, align: 'right' },
+  { title: t('fin.billSettleTable.settle'), key: 'settle', width: 150 }
 ]
 const bills = ref([])
 const loading = ref(false)

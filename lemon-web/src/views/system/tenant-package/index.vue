@@ -2,9 +2,9 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
-        <a-input-search v-model:value="keyword" placeholder="套餐名称" allow-clear class="search" @search="load" />
+        <a-input-search v-model:value="keyword" :placeholder="$t('system.tenantPackage.name')" allow-clear class="search" @search="load" />
         <a-button v-perm="'sys:tenantPackage:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新增套餐
+          <template #icon><PlusOutlined /></template>{{ $t('system.tenantPackage.add') }}
         </a-button>
       </TableToolbar>
 
@@ -19,15 +19,15 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
-            <a-tag :color="record.status === 1 ? 'green' : 'default'">{{ record.status === 1 ? '启用' : '停用' }}</a-tag>
+            <a-tag :color="record.status === 1 ? 'green' : 'default'">{{ record.status === 1 ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button v-perm="'sys:tenantPackage:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-perm="'sys:tenantPackage:remove'">
-                <a-popconfirm :title="`确定删除套餐「${record.name}」？`" @confirm="remove(record.id)">
+                <a-popconfirm :title="$t('system.tenantPackage.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small" :disabled="record.tenantCount > 0"><DeleteOutlined /></a-button>
                 </a-popconfirm>
               </span>
@@ -37,33 +37,33 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增套餐" edit-title="编辑套餐" width="min(880px, 100vw)">
+    <FormDrawer :drawer="drawer" :create-title="$t('system.tenantPackage.add')" :edit-title="$t('system.tenantPackage.edit')" width="min(880px, 100vw)">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="套餐名称" name="name"><a-input v-model:value="form.name" :maxlength="64" /></a-form-item>
+            <a-form-item :label="$t('system.tenantPackage.name')" name="name"><a-input v-model:value="form.name" :maxlength="64" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="状态" name="status" extra="停用后不能用于新建租户，已有租户不受影响">
+            <a-form-item :label="$t('common.field.status')" name="status" :extra="$t('system.tenantPackage.statusTip')">
               <a-radio-group v-model:value="form.status">
-                <a-radio :value="1">启用</a-radio>
-                <a-radio :value="0">停用</a-radio>
+                <a-radio :value="1">{{ $t('common.status.enabled') }}</a-radio>
+                <a-radio :value="0">{{ $t('common.status.disabled') }}</a-radio>
               </a-radio-group>
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark"><a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" /></a-form-item>
+            <a-form-item :label="$t('common.field.remark')" name="remark"><a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" /></a-form-item>
           </a-col>
           <a-col :span="24">
             <a-form-item
-              label="可用菜单"
+              :label="$t('system.tenantPackage.menus')"
               name="menuIds"
-              extra="租户管理员拥有套餐内的全部菜单；修改后，使用该套餐的租户立即按新菜单生效。菜单、字典、租户、服务监控等平台功能不能加入套餐"
+              :extra="$t('system.tenantPackage.menusTip')"
             >
               <!-- 树中的搜索框、勾选框不作为表单字段收集，校验仍按 menuIds -->
               <a-form-item-rest>
                 <FeaturePicker v-if="catalog" v-model="form.menuIds" :catalog="catalog" :tree="menuTree" class="picker" />
-                <div class="tree-label">菜单明细 <span class="sub-text">按模块勾选后可在这里单独增减页面和按钮</span></div>
+                <div class="tree-label">{{ $t('system.tenantPackage.menuDetail') }} <span class="sub-text">{{ $t('system.tenantPackage.menuDetailTip') }}</span></div>
                 <CheckTree v-model="form.menuIds" :tree="menuTree" check-ancestors height="420px" />
               </a-form-item-rest>
             </a-form-item>
@@ -77,6 +77,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import CheckTree from '@/components/tree/CheckTree.vue'
 import FeaturePicker from '@/components/system/FeaturePicker.vue'
@@ -93,14 +94,16 @@ import {
 } from '@/api/system/tenant'
 import { useColumns } from '@/composables/useColumns'
 import { useFormDrawer } from '@/composables/useFormDrawer'
+import { translateMenus } from '@/store/user'
 
+const { t } = useI18n()
 const columns = [
-  { title: '套餐名称', dataIndex: 'name', width: 200 },
-  { title: '租户数', dataIndex: 'tenantCount', width: 90, align: 'right' },
-  { title: '备注', dataIndex: 'remark', ellipsis: true },
-  { title: '创建时间', dataIndex: 'createTime', width: 170 },
-  { title: '状态', key: 'status', width: 80 },
-  { title: '操作', key: 'action', width: 140, fixed: 'right' }
+  { title: t('system.tenantPackage.name'), dataIndex: 'name', width: 200 },
+  { title: t('system.tenantPackage.tenantCount'), dataIndex: 'tenantCount', width: 90, align: 'right' },
+  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'system-tenant-package')
 const size = ref('middle')
@@ -121,12 +124,12 @@ onMounted(load)
 const menuTree = ref([])
 const catalog = ref()
 async function loadMenuTree() {
-  if (!menuTree.value.length) [menuTree.value, catalog.value] = await Promise.all([tenantPackageMenuTree(), tenantFeatures()])
+  if (!menuTree.value.length) [menuTree.value, catalog.value] = await Promise.all([tenantPackageMenuTree().then(translateMenus), tenantFeatures()])
 }
 
 const rules = {
-  name: [{ required: true, whitespace: true, message: '请输入套餐名称' }],
-  menuIds: [{ validator: (_, v) => (v?.length ? Promise.resolve() : Promise.reject('请选择套餐包含的菜单')) }]
+  name: [{ required: true, whitespace: true, message: t('system.tenantPackage.inputName') }],
+  menuIds: [{ validator: (_, v) => (v?.length ? Promise.resolve() : Promise.reject(t('system.tenantPackage.selectMenus'))) }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, name: '', status: 1, remark: '', menuIds: [] }),
@@ -141,7 +144,7 @@ const { formRef, form } = drawer
 
 async function remove(id) {
   await deleteTenantPackage(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 </script>

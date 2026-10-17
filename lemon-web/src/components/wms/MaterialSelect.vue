@@ -8,7 +8,7 @@
     :options="options"
     :loading="loading"
     :disabled="disabled"
-    :not-found-content="loading ? '加载中…' : '没有匹配的物料'"
+    :not-found-content="loading ? $t('common.msg.loading') : $t('wms.select.noMaterial')"
     @search="onSearch"
     @focus="onFocus"
     @blur="searchText = ''"
@@ -20,6 +20,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { materialByBarcode, materialOptions } from '@/api/wms/material'
+import { t } from '@/locales'
 
 /**
  * 物料下拉：按编码或名称远程搜索启用的物料，支持扫码。
@@ -34,7 +35,7 @@ import { materialByBarcode, materialOptions } from '@/api/wms/material'
 const props = defineProps({
   value: Number,
   label: String,
-  placeholder: { type: String, default: '搜索物料编码、名称或扫码' },
+  placeholder: { type: String, default: () => t('wms.select.materialPlaceholder') },
   disabled: Boolean
 })
 const emit = defineEmits(['update:value', 'select'])
@@ -117,7 +118,7 @@ async function scan(code) {
   clearTimeout(timer)
   pending = false
   await load(code)
-  if (!materials.value.length) message.warning(`没有找到编码、名称或条码为「${code}」的物料`)
+  if (!materials.value.length) message.warning(t('wms.select.materialNotFound', { code }))
 }
 
 /**

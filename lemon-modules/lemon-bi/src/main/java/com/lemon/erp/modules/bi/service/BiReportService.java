@@ -75,7 +75,7 @@ public class BiReportService {
         own(reportMapper.selectById(id));
         for (BiDashboard d : dashboardMapper.selectList(null)) {
             if (readWidgets(d).stream().anyMatch(w -> id.equals(w.reportId()))) {
-                throw new BizException("报表已被仪表盘「" + d.getName() + "」使用，不能删除");
+                throw new BizException("报表已被仪表盘「{0}」使用，不能删除", d.getName());
             }
         }
         reportMapper.deleteById(id);

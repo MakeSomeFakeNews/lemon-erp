@@ -45,6 +45,6 @@ public enum TradeKind {
                 return kind;
             }
         }
-        throw new BizException("不支持的单据类型：" + path);
+        throw new BizException("不支持的单据类型：{0}", path);
     }
 }

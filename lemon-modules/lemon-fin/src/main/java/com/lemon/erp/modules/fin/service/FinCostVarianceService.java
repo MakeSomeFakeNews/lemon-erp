@@ -105,7 +105,7 @@ public class FinCostVarianceService {
         FinConstants.toYearMonth(period);
         FinStdCostVersion version = stdCostService.effective(period);
         if (version == null) {
-            throw new BizException("期间 " + period + " 没有生效的标准成本版本，请先在「标准成本」中发布");
+            throw new BizException("期间 {0} 没有生效的标准成本版本，请先在「标准成本」中发布", period);
         }
         return version;
     }

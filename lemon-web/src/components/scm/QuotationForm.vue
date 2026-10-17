@@ -1,43 +1,43 @@
 <template>
-  <FormDrawer page :drawer="drawer" create-title="新增销售报价" edit-title="编辑销售报价" width="min(1200px, 100vw)">
+  <FormDrawer page :drawer="drawer" :create-title="$t('scm.quotation.createTitle')" :edit-title="$t('scm.quotation.editTitle')" width="min(1200px, 100vw)">
     <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="24" :sm="12" :lg="8">
-          <a-form-item label="客户" name="customerId">
+          <a-form-item :label="$t('scm.quotation.customer')" name="customerId">
             <PartnerSelect v-model:value="form.customerId" type="customer" :label="form.customerName" @select="onCustomerSelect" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="4">
-          <a-form-item label="报价日期" name="quoteDate">
+          <a-form-item :label="$t('scm.quotation.quoteDate')" name="quoteDate">
             <a-date-picker v-model:value="form.quoteDate" value-format="YYYY-MM-DD" class="full" @change="refreshPrices" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="4">
-          <a-form-item label="有效期至" name="validTo">
-            <a-date-picker v-model:value="form.validTo" value-format="YYYY-MM-DD" placeholder="选填" class="full" />
+          <a-form-item :label="$t('scm.quotation.validTo')" name="validTo">
+            <a-date-picker v-model:value="form.validTo" value-format="YYYY-MM-DD" :placeholder="$t('scm.quotation.optional')" class="full" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="8">
-          <a-form-item label="关联商机" name="opportunityId">
+          <a-form-item :label="$t('scm.quotation.opportunity')" name="opportunityId">
             <a-tag v-if="form.opportunityId" closable class="opp-tag" @close="form.opportunityId = undefined">
-              商机 #{{ form.opportunityId }}
+              {{ $t('scm.quotation.opportunityNo', { id: form.opportunityId }) }}
             </a-tag>
-            <span v-else class="sub-text opp-tag">无（从 CRM 商机发起报价时自动关联）</span>
+            <span v-else class="sub-text opp-tag">{{ $t('scm.quotation.noOpportunity') }}</span>
           </a-form-item>
         </a-col>
         <a-col :span="24">
-          <a-form-item label="备注" name="remark">
-            <a-input v-model:value="form.remark" :maxlength="255" placeholder="选填，如付款方式、交付条件" />
+          <a-form-item :label="$t('common.field.remark')" name="remark">
+            <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('scm.quotation.remarkPh')" />
           </a-form-item>
         </a-col>
       </a-row>
 
       <div class="items-head">
         <span class="section-title">
-          明细（{{ form.items.length }} 行，价税合计 ¥{{ formatMoney(totalAmount) }}）
+          {{ $t('scm.quotation.itemsTitle', { n: form.items.length, amount: formatMoney(totalAmount) }) }}
         </span>
         <a-button type="primary" ghost @click="addRow">
-          <template #icon><PlusOutlined /></template>添加物料
+          <template #icon><PlusOutlined /></template>{{ $t('scm.quotation.addMaterial') }}
         </a-button>
       </div>
 
@@ -49,16 +49,16 @@
         :data-source="form.items"
         :pagination="false"
         :scroll="{ x: 1050 }"
-        :locale="{ emptyText: '点击「添加物料」录入明细' }"
+        :locale="{ emptyText: $t('scm.quotation.emptyItems') }"
       >
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
-            <a-form-item :name="['items', index, 'materialId']" :rules="requiredRule('请选择物料')" class="cell-item">
+            <a-form-item :name="['items', index, 'materialId']" :rules="requiredRule($t('scm.quotation.selectMaterial'))" class="cell-item">
               <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
             </a-form-item>
           </template>
           <template v-else-if="column.key === 'qty'">
-            <a-form-item :name="['items', index, 'qty']" :rules="requiredRule('请填写数量')" class="cell-item">
+            <a-form-item :name="['items', index, 'qty']" :rules="requiredRule($t('scm.quotation.inputQty'))" class="cell-item">
               <a-input-number
                 v-model:value="record.qty"
                 :min="0"
@@ -68,10 +68,10 @@
                 @change="fetchPrice(record)"
               />
             </a-form-item>
-            <a v-if="record.materialId" class="atp-link" @click="openAtp(record)">可承诺量</a>
+            <a v-if="record.materialId" class="atp-link" @click="openAtp(record)">{{ $t('scm.quotation.atp') }}</a>
           </template>
           <template v-else-if="column.key === 'price'">
-            <a-form-item :name="['items', index, 'price']" :rules="requiredRule('请填写单价')" class="cell-item">
+            <a-form-item :name="['items', index, 'price']" :rules="requiredRule($t('scm.quotation.inputPrice'))" class="cell-item">
               <a-input-number
                 v-model:value="record.price"
                 :min="0"
@@ -88,7 +88,7 @@
           </template>
           <template v-else-if="column.key === 'amount'">
             <div class="amount">¥{{ formatMoney(lineAmount(record.qty, record.price)) }}</div>
-            <div class="sub-text">税额 {{ formatMoney(lineTax(lineAmount(record.qty, record.price), record.taxRate)) }}</div>
+            <div class="sub-text">{{ $t('scm.quotation.taxAmountVal', { amount: formatMoney(lineTax(lineAmount(record.qty, record.price), record.taxRate)) }) }}</div>
           </template>
           <template v-else-if="column.key === 'remark'">
             <a-input v-model:value="record.remark" :maxlength="255" />
@@ -111,6 +111,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, ref } from 'vue'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -123,6 +124,8 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { rowKey, today } from '@/components/wms/wms'
 import { formatMoney, lineAmount, lineTax } from './scm'
 
+const { t } = useI18n()
+
 /**
  * 新增 / 编辑销售报价（草稿）。选择客户和物料后按销售价目表带出单价、税率，手工改过的单价不再自动覆盖
  * 通过 ref 调用 openCreate(defaults) / openEdit(record)，保存成功后触发 success(id)
@@ -130,19 +133,19 @@ import { formatMoney, lineAmount, lineTax } from './scm'
 const emit = defineEmits(['success'])
 
 const columns = [
-  { title: '物料', key: 'material', width: 280 },
-  { title: '数量', key: 'qty', width: 150 },
-  { title: '含税单价', key: 'price', width: 160 },
-  { title: '税率', key: 'taxRate', width: 110 },
-  { title: '价税合计', key: 'amount', width: 130, align: 'right' },
-  { title: '备注', key: 'remark', width: 150 },
+  { title: t('scm.quotation.material'), key: 'material', width: 280 },
+  { title: t('common.field.quantity'), key: 'qty', width: 150 },
+  { title: t('scm.quotation.taxPrice'), key: 'price', width: 160 },
+  { title: t('scm.quotation.taxRate'), key: 'taxRate', width: 110 },
+  { title: t('scm.quotation.amount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('common.field.remark'), key: 'remark', width: 150 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
 const rules = {
-  customerId: requiredRule('请选择客户'),
-  quoteDate: requiredRule('请选择报价日期')
+  customerId: requiredRule(t('scm.quotation.selectCustomer')),
+  quoteDate: requiredRule(t('scm.quotation.selectQuoteDate'))
 }
 
 const emptyForm = () => ({

@@ -5,7 +5,7 @@
         <div class="m-name">{{ userStore.displayName }}</div>
         <div class="sub-text">{{ userStore.tenantName || '' }}</div>
       </div>
-      <a-button size="small" @click="router.push('/')">返回后台</a-button>
+      <a-button size="small" @click="router.push('/')">{{ $t('mobile.home.backToAdmin') }}</a-button>
     </div>
     <div v-if="pages.length" class="m-tiles">
       <div v-for="p in pages" :key="p.path" class="m-tile" @click="router.push(p.path)">
@@ -13,7 +13,7 @@
         <div>{{ p.title }}</div>
       </div>
     </div>
-    <a-empty v-else description="没有可用的移动作业，请联系管理员授权" />
+    <a-empty v-else :description="$t('mobile.home.empty')" />
   </div>
 </template>
 

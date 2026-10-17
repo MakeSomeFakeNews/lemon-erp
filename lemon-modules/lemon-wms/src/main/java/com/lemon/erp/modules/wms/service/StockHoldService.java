@@ -64,7 +64,7 @@ public class StockHoldService {
                 continue;
             }
             if (stockMapper.freeze(l.warehouseId(), l.locationId(), l.materialId(), l.batchNo(), l.qty()) == 0) {
-                throw new BizException("冻结待检库存失败：" + StockService.describe(m));
+                throw new BizException("冻结待检库存失败：{0}", StockService.describe(m));
             }
             WmsStockHold h = new WmsStockHold();
             h.setStatus(PENDING);

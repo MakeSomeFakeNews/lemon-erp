@@ -1,4 +1,5 @@
 import { message } from 'ant-design-vue'
+import { t } from '@/locales'
 import { useConfigStore } from '@/store/config'
 
 /** 去掉了易混淆字符（0/O、1/l/I）的随机密码字符集 */
@@ -7,9 +8,9 @@ const SYMBOLS = '@#$%&*+-=?'
 
 /** 密码复杂度，与后端 PasswordComplexity 一致 */
 const COMPLEXITY = {
-  LETTER_DIGIT: { text: '包含字母和数字', test: (v) => /[A-Za-z]/.test(v) && /\d/.test(v) },
-  MIXED_CASE_DIGIT: { text: '包含大写字母、小写字母和数字', test: (v) => /[A-Z]/.test(v) && /[a-z]/.test(v) && /\d/.test(v) },
-  LETTER_DIGIT_SYMBOL: { text: '包含字母、数字和特殊字符', symbols: true, test: (v) => /[A-Za-z]/.test(v) && /\d/.test(v) && /[^A-Za-z\d]/.test(v) }
+  LETTER_DIGIT: { text: () => t('components.password.letterDigit'), test: (v) => /[A-Za-z]/.test(v) && /\d/.test(v) },
+  MIXED_CASE_DIGIT: { text: () => t('components.password.mixedCaseDigit'), test: (v) => /[A-Z]/.test(v) && /[a-z]/.test(v) && /\d/.test(v) },
+  LETTER_DIGIT_SYMBOL: { text: () => t('components.password.letterDigitSymbol'), symbols: true, test: (v) => /[A-Za-z]/.test(v) && /\d/.test(v) && /[^A-Za-z\d]/.test(v) }
 }
 
 /** 当前的密码策略（参数设置）：{ minLength, text, symbols, test } */
@@ -21,11 +22,11 @@ function policy() {
 /** 密码要求的提示文字，如「8-32 位，包含字母和数字」 */
 export function passwordHint() {
   const p = policy()
-  return `${p.minLength}-32 位，${p.text}`
+  return t('components.password.hint', { min: p.minLength, rule: p.text() })
 }
 
 /** 新密码的表单校验规则（按参数设置中的密码策略） */
-export function passwordRules(requiredMessage = '请输入密码') {
+export function passwordRules(requiredMessage = t('login.inputPassword')) {
   return [
     { required: true, message: requiredMessage },
     {
@@ -55,9 +56,9 @@ export async function generateAndCopyPassword() {
   const password = randomPassword()
   try {
     await navigator.clipboard.writeText(password)
-    message.success('已生成随机密码并复制到剪贴板')
+    message.success(t('components.password.copied'))
   } catch {
-    message.info('已生成随机密码，请手动复制')
+    message.info(t('components.password.copyManually'))
   }
   return password
 }

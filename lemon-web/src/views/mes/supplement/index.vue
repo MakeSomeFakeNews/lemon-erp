@@ -2,14 +2,14 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="单号" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="申请单号或工单号" allow-clear />
+        <a-form-item :label="$t('mes.supplement.no')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('mes.supplement.keywordPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.mes_supplement_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.mes_supplement_status)" />
         </a-form-item>
-        <a-form-item label="原因" name="reason">
-          <a-select v-model:value="query.reason" placeholder="全部" allow-clear :options="toOptions(dict.mes_supplement_reason)" />
+        <a-form-item :label="$t('mes.supplement.reason')" name="reason">
+          <a-select v-model:value="query.reason" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.mes_supplement_reason)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -24,7 +24,7 @@
         @refresh="load"
       >
         <a-button v-perm="'mes:supplement:add'" type="primary" @click="formOpen = true">
-          <template #icon><PlusOutlined /></template>补料申请
+          <template #icon><PlusOutlined /></template>{{ $t('mes.supplementForm.title') }}
         </a-button>
       </TableToolbar>
 
@@ -52,7 +52,7 @@
           <template v-else-if="column.key === 'totalQty'">{{ formatQty(record.totalQty) }}</template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="mes_supplement_status" :value="record.status" />
-            <a-tooltip v-if="record.flowInstanceId" title="走审批流程">
+            <a-tooltip v-if="record.flowInstanceId" :title="$t('mes.supplement.viaFlow')">
               <ApartmentOutlined class="flow-icon" />
             </a-tooltip>
           </template>
@@ -63,14 +63,14 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record.id)">
-                <template #icon><EyeOutlined /></template>查看
+                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
               <a-button v-if="record.status === 'APPROVED'" v-perm="'mes:supplement:issue'" type="link" size="small" @click="openIssue(record.id)">
-                发料
+                {{ $t('mes.supplement.issue') }}
               </a-button>
               <span v-if="canCancel(record)" v-perm="'mes:supplement:add'">
-                <a-popconfirm :title="`撤销补料申请 ${record.suppNo}？`" @confirm="cancel(record.id)">
-                  <a-button type="link" danger size="small">撤销</a-button>
+                <a-popconfirm :title="$t('mes.supplement.cancelConfirm', { no: record.suppNo })" @confirm="cancel(record.id)">
+                  <a-button type="link" danger size="small">{{ $t('mes.supplement.cancel') }}</a-button>
                 </a-popconfirm>
               </span>
             </span>
@@ -82,23 +82,23 @@
     <SupplementForm v-model:open="formOpen" @success="load" />
     <WoDocForm v-model:open="issueOpen" kind="supplement" :supplement="issueTarget" @success="onIssued" />
 
-    <SubPage :open="detailOpen" :title="detail ? `补料申请 ${detail.suppNo}` : '补料申请'" width="min(800px, 100vw)" destroy-on-close @close="detailOpen = false">
+    <SubPage :open="detailOpen" :title="detail ? $t('mes.supplement.detailTitle', { no: detail.suppNo }) : $t('mes.supplementForm.title')" width="min(800px, 100vw)" destroy-on-close @close="detailOpen = false">
       <template #extra>
         <DictTag v-if="detail" type="mes_supplement_status" :value="detail.status" />
       </template>
       <a-spin :spinning="detailLoading">
         <template v-if="detail">
           <a-descriptions :column="{ xs: 1, sm: 2 }" size="small" class="block">
-            <a-descriptions-item label="工单">{{ detail.woNo }}</a-descriptions-item>
-            <a-descriptions-item label="产品">{{ detail.productCode }} {{ detail.productName }}</a-descriptions-item>
-            <a-descriptions-item label="原因"><DictTag type="mes_supplement_reason" :value="detail.reason" /></a-descriptions-item>
-            <a-descriptions-item label="申请">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
-            <a-descriptions-item label="审批">
-              {{ detail.flowInstanceId ? '审批流程' : '未配置审批流程，提交即通过' }}
+            <a-descriptions-item :label="$t('mes.supplementForm.wo')">{{ detail.woNo }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('mes.wo.product')">{{ detail.productCode }} {{ detail.productName }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('mes.supplement.reason')"><DictTag type="mes_supplement_reason" :value="detail.reason" /></a-descriptions-item>
+            <a-descriptions-item :label="$t('mes.supplement.applied')">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('mes.supplement.approval')">
+              {{ detail.flowInstanceId ? $t('mes.supplement.approvalFlow') : $t('mes.supplement.noFlow') }}
               <span v-if="detail.approveTime" class="sub-text">{{ detail.approveTime }}</span>
             </a-descriptions-item>
-            <a-descriptions-item label="补料单">{{ detail.docNo || '-' }}</a-descriptions-item>
-            <a-descriptions-item v-if="detail.remark" label="说明" :span="2">{{ detail.remark }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('mes.supplement.docNo')">{{ detail.docNo || '-' }}</a-descriptions-item>
+            <a-descriptions-item v-if="detail.remark" :label="$t('common.field.description')" :span="2">{{ detail.remark }}</a-descriptions-item>
           </a-descriptions>
           <a-table row-key="id" size="small" :columns="itemColumns" :data-source="detail.items" :pagination="false">
             <template #bodyCell="{ column, record }">
@@ -114,7 +114,7 @@
       </a-spin>
       <template v-if="detail && detail.status === 'APPROVED' && userStore.hasPerm('mes:supplement:issue')" #footer>
         <div class="drawer-footer">
-          <a-button type="primary" @click="openIssue(detail.id)">发料</a-button>
+          <a-button type="primary" @click="openIssue(detail.id)">{{ $t('mes.supplement.issue') }}</a-button>
         </div>
       </template>
     </SubPage>
@@ -126,6 +126,7 @@ import SubPage from '@/components/SubPage.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { ApartmentOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -140,18 +141,19 @@ import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 
 const userStore = useUserStore()
+const { t } = useI18n()
 const dict = useDict('mes_supplement_status', 'mes_supplement_reason')
 
 const columns = [
-  { title: '申请单号', key: 'suppNo', width: 170 },
-  { title: '工单 / 产品', key: 'wo', width: 240 },
-  { title: '原因', key: 'reason', width: 100, dict: 'mes_supplement_reason' },
-  { title: '数量', key: 'totalQty', width: 90, align: 'right' },
-  { title: '状态', key: 'status', width: 110, dict: 'mes_supplement_status' },
-  { title: '申请人', key: 'creator', width: 170 },
-  { title: '补料单', dataIndex: 'docNo', width: 170 },
-  { title: '说明', dataIndex: 'remark', ellipsis: true, width: 180 },
-  { title: '操作', key: 'action', width: 190, fixed: 'right' }
+  { title: t('mes.supplement.suppNo'), key: 'suppNo', width: 170 },
+  { title: t('mes.supplement.woProduct'), key: 'wo', width: 240 },
+  { title: t('mes.supplement.reason'), key: 'reason', width: 110, dict: 'mes_supplement_reason' },
+  { title: t('common.field.quantity'), key: 'totalQty', width: 90, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 120, dict: 'mes_supplement_status' },
+  { title: t('mes.supplement.applicant'), key: 'creator', width: 170 },
+  { title: t('mes.supplement.docNo'), dataIndex: 'docNo', width: 170 },
+  { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true, width: 180 },
+  { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'mes-supplement')
 const showSearch = ref(true)
@@ -171,7 +173,7 @@ const canCancel = (r) => ['APPROVING', 'APPROVED'].includes(r.status) && r.creat
 
 async function cancel(id) {
   await cancelSupplement(id)
-  message.success('已撤销')
+  message.success(t('mes.supplement.cancelled'))
   load()
 }
 
@@ -192,10 +194,10 @@ function onIssued() {
 
 // ---------------------------------------------------------------- 详情
 const itemColumns = [
-  { title: '物料', key: 'material', width: 260 },
-  { title: '规格', dataIndex: 'spec', width: 140, ellipsis: true },
-  { title: '申请数量', key: 'qty', width: 120, align: 'right' },
-  { title: '已发数量', key: 'issuedQty', width: 120, align: 'right' }
+  { title: t('mes.supplementForm.material'), key: 'material', width: 260 },
+  { title: t('common.field.spec'), dataIndex: 'spec', width: 140, ellipsis: true },
+  { title: t('mes.supplement.applyQty'), key: 'qty', width: 120, align: 'right' },
+  { title: t('mes.supplement.issuedQty'), key: 'issuedQty', width: 120, align: 'right' }
 ]
 const detailOpen = ref(false)
 const detailLoading = ref(false)

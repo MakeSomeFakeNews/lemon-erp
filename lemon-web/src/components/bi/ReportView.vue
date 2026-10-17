@@ -1,7 +1,7 @@
 <template>
   <div class="report-view">
     <a-spin :spinning="loading">
-      <a-empty v-if="!loading && empty" :image="simpleImage" description="没有数据，请先同步数据仓库或调整日期范围" />
+      <a-empty v-if="!loading && empty" :image="simpleImage" :description="$t('bi.common.noDataHint')" />
       <template v-else-if="cube && result">
         <PivotTable v-if="type === 'table'" :cube="cube" :config="config" :result="result" :page-size="10" />
         <EChart v-else-if="option" :option="option" :height="height" />

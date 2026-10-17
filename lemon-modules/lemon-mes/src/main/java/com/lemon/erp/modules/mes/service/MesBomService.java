@@ -90,7 +90,7 @@ public class MesBomService {
         try {
             bomMapper.insert(bom);
         } catch (DuplicateKeyException e) {
-            throw new BizException("该产品已有版本 " + req.version().trim() + " 的 BOM");
+            throw new BizException("该产品已有版本 {0} 的 BOM", req.version().trim());
         }
         saveLines(bom.getId(), req);
         afterSave(bom);
@@ -115,7 +115,7 @@ public class MesBomService {
         try {
             bomMapper.updateById(bom);
         } catch (DuplicateKeyException e) {
-            throw new BizException("该产品已有版本 " + req.version().trim() + " 的 BOM");
+            throw new BizException("该产品已有版本 {0} 的 BOM", req.version().trim());
         }
         if (req.remark() == null && old.getRemark() != null) {
             bomMapper.update(Wrappers.<MesBom>lambdaUpdate().set(MesBom::getRemark, null).eq(MesBom::getId, id));
@@ -180,7 +180,7 @@ public class MesBomService {
         try {
             bomMapper.insert(bom);
         } catch (DuplicateKeyException e) {
-            throw new BizException("该产品已有版本 " + version.trim() + " 的 BOM");
+            throw new BizException("该产品已有版本 {0} 的 BOM", version.trim());
         }
         List<MesBomItem> items = itemMapper.selectByBomId(fromBomId);
         if (!items.isEmpty()) {
@@ -253,7 +253,7 @@ public class MesBomService {
         }
         MesEcn ecn = ecnMapper.selectById(bom.getEcnId());
         if (ecn != null && ecn.getStatus() != EcnStatus.DRAFT && ecn.getStatus() != EcnStatus.EFFECTIVE) {
-            throw new BizException("工程变更 " + ecn.getEcnNo() + " 已提交，变更后的 BOM 不能再修改");
+            throw new BizException("工程变更 {0} 已提交，变更后的 BOM 不能再修改", ecn.getEcnNo());
         }
     }
 
@@ -310,7 +310,7 @@ public class MesBomService {
                 throw new BizException("子件不能是产品本身");
             }
             if (!seen.add(item.materialId())) {
-                throw new BizException("子件重复：" + m.getCode() + " " + m.getName());
+                throw new BizException("子件重复：{0} {1}", m.getCode(), m.getName());
             }
         }
         RefDes.checkUnique(req.items().stream().map(BomItemRequest::refDes).toList());
@@ -340,7 +340,7 @@ public class MesBomService {
         while (!stack.isEmpty()) {
             Long m = stack.pop();
             if (m.equals(product.getId())) {
-                throw new BizException("BOM 存在循环引用：子件的下层用到了产品「" + product.getCode() + " " + product.getName() + "」");
+                throw new BizException("BOM 存在循环引用：子件的下层用到了产品「{0} {1}」", product.getCode(), product.getName());
             }
             if (visited.add(m)) {
                 stack.addAll(edges.getOrDefault(m, List.of()));

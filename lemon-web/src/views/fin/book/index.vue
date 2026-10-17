@@ -2,15 +2,15 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <a-tabs v-model:active-key="tab">
-        <a-tab-pane key="balance" tab="科目余额表">
+        <a-tab-pane key="balance" :tab="$t('fin.book.trialBalance')">
           <div class="filters">
-            <span>期间</span>
+            <span>{{ $t('fin.book.period') }}</span>
             <PeriodPicker v-model:value="range.begin" />
-            <span>至</span>
+            <span>{{ $t('fin.book.to') }}</span>
             <PeriodPicker v-model:value="range.end" />
-            <a-checkbox v-model:checked="showZero">显示无发生额的科目</a-checkbox>
-            <a-button type="primary" @click="loadBalance">查询</a-button>
-            <a-tag v-if="tb" :color="tb.balanced ? 'green' : 'red'" :bordered="false">{{ tb.balanced ? '试算平衡' : '试算不平衡' }}</a-tag>
+            <a-checkbox v-model:checked="showZero">{{ $t('fin.book.showZero') }}</a-checkbox>
+            <a-button type="primary" @click="loadBalance">{{ $t('common.action.query') }}</a-button>
+            <a-tag v-if="tb" :color="tb.balanced ? 'green' : 'red'" :bordered="false">{{ tb.balanced ? $t('fin.book.balanced') : $t('fin.book.unbalanced') }}</a-tag>
           </div>
           <a-table
             row-key="accountId"
@@ -31,31 +31,31 @@
               <template v-else-if="['openBalance', 'debit', 'credit', 'closeBalance'].includes(column.key)">
                 <span class="num">{{ moneyOrBlank(record[column.key]) }}</span>
               </template>
-              <template v-else-if="column.key === 'direction'">{{ record.direction === 'DEBIT' ? '借' : '贷' }}</template>
+              <template v-else-if="column.key === 'direction'">{{ record.direction === 'DEBIT' ? $t('fin.book.dr') : $t('fin.book.cr') }}</template>
             </template>
             <template v-if="tb" #summary>
               <a-table-summary fixed>
                 <a-table-summary-row class="total-row">
-                  <a-table-summary-cell>合计（一级科目）</a-table-summary-cell>
+                  <a-table-summary-cell>{{ $t('fin.book.totalLevel1') }}</a-table-summary-cell>
                   <a-table-summary-cell />
-                  <a-table-summary-cell align="right">借 {{ formatMoney(tb.openDebit) }}<br />贷 {{ formatMoney(tb.openCredit) }}</a-table-summary-cell>
+                  <a-table-summary-cell align="right">{{ $t('fin.book.dr') }} {{ formatMoney(tb.openDebit) }}<br />{{ $t('fin.book.cr') }} {{ formatMoney(tb.openCredit) }}</a-table-summary-cell>
                   <a-table-summary-cell align="right">{{ formatMoney(tb.debit) }}</a-table-summary-cell>
                   <a-table-summary-cell align="right">{{ formatMoney(tb.credit) }}</a-table-summary-cell>
-                  <a-table-summary-cell align="right">借 {{ formatMoney(tb.closeDebit) }}<br />贷 {{ formatMoney(tb.closeCredit) }}</a-table-summary-cell>
+                  <a-table-summary-cell align="right">{{ $t('fin.book.dr') }} {{ formatMoney(tb.closeDebit) }}<br />{{ $t('fin.book.cr') }} {{ formatMoney(tb.closeCredit) }}</a-table-summary-cell>
                 </a-table-summary-row>
               </a-table-summary>
             </template>
           </a-table>
         </a-tab-pane>
 
-        <a-tab-pane key="ledger" tab="明细账">
+        <a-tab-pane key="ledger" :tab="$t('fin.book.ledger')">
           <div class="filters">
-            <AccountSelect v-model:value="ledgerAccount" all placeholder="选择科目（含下级）" class="account" />
-            <span>期间</span>
+            <AccountSelect v-model:value="ledgerAccount" all :placeholder="$t('fin.book.selectAccount')" class="account" />
+            <span>{{ $t('fin.book.period') }}</span>
             <PeriodPicker v-model:value="range.begin" />
-            <span>至</span>
+            <span>{{ $t('fin.book.to') }}</span>
             <PeriodPicker v-model:value="range.end" />
-            <a-button type="primary" :disabled="!ledgerAccount" @click="loadLedger">查询</a-button>
+            <a-button type="primary" :disabled="!ledgerAccount" @click="loadLedger">{{ $t('common.action.query') }}</a-button>
           </div>
           <a-table
             row-key="key"
@@ -67,7 +67,7 @@
             :pagination="false"
             :row-class-name="(r) => (r.type !== 'ENTRY' ? 'total-row' : '')"
             :scroll="{ x: 1000, y: '100%' }"
-            :locale="{ emptyText: '选择科目后查询' }"
+            :locale="{ emptyText: $t('fin.book.selectAccountFirst') }"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'voucherNo'">
@@ -85,17 +85,17 @@
             </template>
           </a-table>
         </a-tab-pane>
-        <a-tab-pane key="aux" tab="辅助核算">
+        <a-tab-pane key="aux" :tab="$t('fin.book.aux')">
           <div class="filters">
             <a-radio-group v-model:value="aux.dimension" button-style="solid" @change="loadAux">
               <a-radio-button v-for="a in AUX_ITEMS" :key="a.value" :value="a.value">{{ a.label }}</a-radio-button>
             </a-radio-group>
-            <AccountSelect v-model:value="aux.accountId" placeholder="全部科目" allow-clear class="account" />
-            <span>期间</span>
+            <AccountSelect v-model:value="aux.accountId" :placeholder="$t('fin.book.allAccounts')" allow-clear class="account" />
+            <span>{{ $t('fin.book.period') }}</span>
             <PeriodPicker v-model:value="range.begin" />
-            <span>至</span>
+            <span>{{ $t('fin.book.to') }}</span>
             <PeriodPicker v-model:value="range.end" />
-            <a-button type="primary" @click="loadAux">查询</a-button>
+            <a-button type="primary" @click="loadAux">{{ $t('common.action.query') }}</a-button>
           </div>
           <a-table
             row-key="key"
@@ -114,7 +114,7 @@
                 <span class="num">{{ moneyOrBlank(record[column.key]) }}</span>
               </template>
               <template v-else-if="column.key === 'balance'">
-                <span class="num">{{ Number(record.balance) >= 0 ? '借' : '贷' }} {{ formatMoney(Math.abs(Number(record.balance))) }}</span>
+                <span class="num">{{ Number(record.balance) >= 0 ? $t('fin.book.dr') : $t('fin.book.cr') }} {{ formatMoney(Math.abs(Number(record.balance))) }}</span>
               </template>
             </template>
           </a-table>
@@ -127,24 +127,26 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import { auxBalance, ledger, trialBalance } from '@/api/fin'
 import { AUX_ITEMS, currentPeriod, formatMoney, moneyOrBlank } from '@/components/fin/fin'
 
+const { t } = useI18n()
 const tab = ref('balance')
 const range = reactive({ begin: Math.floor(currentPeriod() / 100) * 100 + 1, end: currentPeriod() })
 const showZero = ref(false)
 
 // ---------------------------------------------------------------- 科目余额表
 const balanceColumns = [
-  { title: '科目', key: 'account', width: 300 },
-  { title: '方向', key: 'direction', width: 60 },
-  { title: '期初余额', key: 'openBalance', width: 150, align: 'right' },
-  { title: '本期借方', key: 'debit', width: 150, align: 'right' },
-  { title: '本期贷方', key: 'credit', width: 150, align: 'right' },
-  { title: '期末余额', key: 'closeBalance', width: 150, align: 'right' }
+  { title: t('fin.book.account'), key: 'account', width: 300 },
+  { title: t('fin.book.direction'), key: 'direction', width: 80 },
+  { title: t('fin.book.openBalance'), key: 'openBalance', width: 150, align: 'right' },
+  { title: t('fin.book.periodDebit'), key: 'debit', width: 150, align: 'right' },
+  { title: t('fin.book.periodCredit'), key: 'credit', width: 150, align: 'right' },
+  { title: t('fin.book.closeBalance'), key: 'closeBalance', width: 150, align: 'right' }
 ]
 const tb = ref()
 const balanceLoading = ref(false)
@@ -160,14 +162,14 @@ onMounted(loadBalance)
 
 // ---------------------------------------------------------------- 明细账
 const ledgerColumns = [
-  { title: '日期', dataIndex: 'entryDate', width: 110 },
-  { title: '凭证号', key: 'voucherNo', width: 100 },
-  { title: '摘要', dataIndex: 'summary', width: 230, ellipsis: true },
-  { title: '科目', key: 'account', width: 180 },
-  { title: '借方', key: 'debit', width: 140, align: 'right' },
-  { title: '贷方', key: 'credit', width: 140, align: 'right' },
-  { title: '方向', dataIndex: 'side', width: 60, align: 'center' },
-  { title: '余额', key: 'balance', width: 150, align: 'right' }
+  { title: t('common.field.date'), dataIndex: 'entryDate', width: 110 },
+  { title: t('fin.book.voucherNo'), key: 'voucherNo', width: 120 },
+  { title: t('fin.book.summary'), dataIndex: 'summary', width: 230, ellipsis: true },
+  { title: t('fin.book.account'), key: 'account', width: 180 },
+  { title: t('fin.book.debit'), key: 'debit', width: 140, align: 'right' },
+  { title: t('fin.book.credit'), key: 'credit', width: 140, align: 'right' },
+  { title: t('fin.book.direction'), dataIndex: 'side', width: 80, align: 'center' },
+  { title: t('fin.book.balance'), key: 'balance', width: 150, align: 'right' }
 ]
 const ledgerAccount = ref()
 const ledgerRows = ref([])
@@ -199,10 +201,10 @@ function openVoucher(id) {
 // ---------------------------------------------------------------- 辅助核算
 const auxColumns = computed(() => [
   { title: AUX_ITEMS.find((a) => a.value === aux.dimension)?.label, key: 'auxName', width: 240 },
-  { title: '科目', key: 'account', width: 220 },
-  { title: '本期借方', key: 'debit', width: 150, align: 'right' },
-  { title: '本期贷方', key: 'credit', width: 150, align: 'right' },
-  { title: '期末余额', key: 'balance', width: 170, align: 'right' }
+  { title: t('fin.book.account'), key: 'account', width: 220 },
+  { title: t('fin.book.periodDebit'), key: 'debit', width: 150, align: 'right' },
+  { title: t('fin.book.periodCredit'), key: 'credit', width: 150, align: 'right' },
+  { title: t('fin.book.closeBalance'), key: 'balance', width: 170, align: 'right' }
 ])
 const aux = reactive({ dimension: 'PROJECT', accountId: undefined, rows: [], loading: false })
 async function loadAux() {

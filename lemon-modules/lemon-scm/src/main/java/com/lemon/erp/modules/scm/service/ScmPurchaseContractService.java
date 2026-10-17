@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -205,7 +206,7 @@ public class ScmPurchaseContractService {
     private List<ScmPurchaseContractItem> validate(SrmRequests.Contract req) {
         ScmSupplier supplier = supplierService.get(req.supplierId());
         if (!Integer.valueOf(1).equals(supplier.getStatus())) {
-            throw new BizException("供应商「" + supplier.getName() + "」已停用");
+            throw new BizException("供应商「{0}」已停用", supplier.getName());
         }
         if (req.endDate().isBefore(req.startDate())) {
             throw new BizException("到期日期不能早于生效日期");
@@ -273,7 +274,7 @@ public class ScmPurchaseContractService {
     private ScmPurchaseContract requireStatus(Long id, ContractStatus status, String action) {
         ScmPurchaseContract contract = getAccessible(id);
         if (contract.getStatus() != status) {
-            throw new BizException("合同当前状态不能" + action);
+            throw new BizException("合同当前状态不能{0}", I18n.t(action));
         }
         return contract;
     }

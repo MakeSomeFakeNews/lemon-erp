@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.system.controller;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
@@ -45,7 +46,7 @@ public class SysPrintTemplateController {
 
     @PutMapping("/{key}")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
-    @OperLog(title = "打印模板", type = OperType.UPDATE)
+    @OperLog(title = "打印模板", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> save(@PathVariable String key, @RequestBody Map<String, Object> config) {
         templateService.save(key, config);
         return R.ok();
@@ -54,7 +55,7 @@ public class SysPrintTemplateController {
     /** 恢复默认版式（同时删除上传的 JRXML） */
     @DeleteMapping("/{key}")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
-    @OperLog(title = "打印模板-恢复默认", type = OperType.UPDATE)
+    @OperLog(title = "打印模板-恢复默认", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> reset(@PathVariable String key) {
         templateService.reset(key);
         return R.ok();
@@ -78,11 +79,11 @@ public class SysPrintTemplateController {
     /** 上传 JRXML：之后该单据按 JRXML 打印（SaaS 模式下只有平台租户可以上传） */
     @PostMapping("/{key}/jrxml")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
-    @OperLog(title = "打印模板-上传 JRXML", type = OperType.UPDATE, saveParams = false)
+    @OperLog(title = "打印模板-上传 JRXML", type = OperType.UPDATE, saveParams = false) // i18n-ignore 操作日志存库
     public R<Void> uploadJrxml(@PathVariable String key, @RequestParam("file") MultipartFile file) throws IOException {
         printService.checkUploadAllowed();
         if (file.getSize() > 1024 * 1024) {
-            return R.fail("模板文件不能超过 1MB");
+            return R.fail(I18n.t("模板文件不能超过 1MB"));
         }
         String jrxml = new String(file.getBytes(), StandardCharsets.UTF_8);
         printService.validateJrxml(jrxml);
@@ -103,7 +104,7 @@ public class SysPrintTemplateController {
     /** 保存套打底图（为空时删除） */
     @PutMapping("/{key}/background")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
-    @OperLog(title = "打印模板-套打底图", type = OperType.UPDATE, saveParams = false)
+    @OperLog(title = "打印模板-套打底图", type = OperType.UPDATE, saveParams = false) // i18n-ignore 操作日志存库
     public R<Void> saveBackground(@PathVariable String key, @RequestBody BackgroundRequest req) {
         templateService.saveBackground(key, req.dataUrl());
         return R.ok();
@@ -112,7 +113,7 @@ public class SysPrintTemplateController {
     /** 删除上传的 JRXML，改回按配置打印 */
     @DeleteMapping("/{key}/jrxml")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
-    @OperLog(title = "打印模板-删除 JRXML", type = OperType.UPDATE)
+    @OperLog(title = "打印模板-删除 JRXML", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> removeJrxml(@PathVariable String key) {
         templateService.removeJrxml(key);
         return R.ok();

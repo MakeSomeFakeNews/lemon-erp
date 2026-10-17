@@ -39,7 +39,7 @@ public class SysDeptController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:dept:add')")
-    @OperLog(title = "部门管理", type = OperType.INSERT)
+    @OperLog(title = "部门管理", type = OperType.INSERT) // i18n-ignore 操作日志存库
     public R<Void> create(@Validated(Create.class) @RequestBody SysDept dept) {
         deptService.create(dept);
         return R.ok();
@@ -47,7 +47,7 @@ public class SysDeptController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('sys:dept:edit')")
-    @OperLog(title = "部门管理", type = OperType.UPDATE)
+    @OperLog(title = "部门管理", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody SysDept dept) {
         dept.setId(id);
         deptService.update(dept);
@@ -56,7 +56,7 @@ public class SysDeptController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('sys:dept:remove')")
-    @OperLog(title = "部门管理", type = OperType.DELETE)
+    @OperLog(title = "部门管理", type = OperType.DELETE) // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable Long id) {
         deptService.delete(id);
         return R.ok();

@@ -3,7 +3,7 @@
     :open="open"
     :title="title"
     width="min(960px, 100vw)"
-    ok-text="添加到明细"
+    :ok-text="$t('wms.picker.ok')"
     :ok-button-props="{ disabled: !selected.size }"
     destroy-on-close
     @ok="submit"
@@ -12,14 +12,14 @@
     <div class="picker-search">
       <a-input-search
         v-model:value="query.keyword"
-        placeholder="物料编码或名称"
+        :placeholder="$t('wms.common.materialKeyword')"
         allow-clear
         class="picker-input"
         @search="search"
       />
-      <a-input-search v-model:value="query.batchNo" placeholder="批次号" allow-clear class="picker-input" @search="search" />
-      <LocationSelect v-model:value="query.locationId" :warehouse-id="warehouseId" placeholder="全部库位" class="picker-input" />
-      <span class="picker-tip">已选 {{ selected.size }} 项</span>
+      <a-input-search v-model:value="query.batchNo" :placeholder="$t('wms.common.batchNo')" allow-clear class="picker-input" @search="search" />
+      <LocationSelect v-model:value="query.locationId" :warehouse-id="warehouseId" :placeholder="$t('wms.checkDoc.allLocations')" class="picker-input" />
+      <span class="picker-tip">{{ $t('common.table.selected', { n: selected.size }) }}</span>
     </div>
     <a-table
       row-key="id"
@@ -41,7 +41,7 @@
         <template v-else-if="column.key === 'batchNo'">{{ record.batchNo || '-' }}</template>
         <template v-else-if="column.key === 'qty'">
           {{ formatQty(availableQty(record)) }} {{ record.unit }}
-          <div v-if="Number(record.frozenQty)" class="sub-text">冻结 {{ formatQty(record.frozenQty) }}</div>
+          <div v-if="Number(record.frozenQty)" class="sub-text">{{ $t('wms.picker.frozenN', { n: formatQty(record.frozenQty) }) }}</div>
         </template>
       </template>
     </a-table>
@@ -54,6 +54,7 @@ import LocationSelect from './LocationSelect.vue'
 import { pageStock } from '@/api/wms/stock'
 import { useTable } from '@/composables/useTable'
 import { availableQty, formatQty, locationText } from './wms'
+import { t } from '@/locales'
 
 /**
  * 从仓库现有库存中选择（出库、调拨），可跨页多选；确认后返回选中的库存行
@@ -61,16 +62,16 @@ import { availableQty, formatQty, locationText } from './wms'
 const props = defineProps({
   open: Boolean,
   warehouseId: Number,
-  title: { type: String, default: '选择库存' }
+  title: { type: String, default: () => t('wms.picker.title') }
 })
 const emit = defineEmits(['update:open', 'pick'])
 
 const columns = [
-  { title: '物料', key: 'material', width: 260 },
-  { title: '库位', key: 'location', width: 120 },
-  { title: '批次', key: 'batchNo', width: 140 },
-  { title: '有效期至', dataIndex: 'expiryDate', width: 120 },
-  { title: '可用数量', key: 'qty', width: 130, align: 'right' }
+  { title: t('wms.common.material'), key: 'material', width: 260 },
+  { title: t('wms.common.location'), key: 'location', width: 120 },
+  { title: t('wms.common.batch'), key: 'batchNo', width: 140 },
+  { title: t('wms.common.expiryDate'), dataIndex: 'expiryDate', width: 120 },
+  { title: t('wms.common.availableQty'), key: 'qty', width: 130, align: 'right' }
 ]
 
 const query = reactive({ keyword: undefined, batchNo: undefined, locationId: undefined })

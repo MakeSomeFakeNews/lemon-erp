@@ -1,5 +1,5 @@
 <template>
-  <FormDrawer page :drawer="drawer" :create-title="`新增${conf.label}`" :edit-title="`编辑${conf.label}`" width="min(1200px, 100vw)">
+  <FormDrawer page :drawer="drawer" :create-title="$t('scm.orderForm.createTitle', { kind: conf.label })" :edit-title="$t('scm.orderForm.editTitle', { kind: conf.label })" width="min(1200px, 100vw)">
     <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="24" :sm="12" :lg="8">
@@ -16,42 +16,42 @@
             type="warning"
             show-icon
             class="level-warning"
-            message="该供应商评估等级为 D（待改进），请谨慎下单或更换供应商"
+            :message="$t('scm.orderForm.levelD')"
           />
         </a-col>
         <a-col :xs="24" :sm="12" :lg="4">
-          <a-form-item label="订单日期" name="orderDate">
+          <a-form-item :label="$t('scm.order.orderDate')" name="orderDate">
             <a-date-picker v-model:value="form.orderDate" value-format="YYYY-MM-DD" class="full" @change="refreshRate" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="4">
-          <a-form-item label="交货日期" name="deliveryDate">
+          <a-form-item :label="$t('scm.order.deliveryDate')" name="deliveryDate">
             <a-date-picker v-model:value="form.deliveryDate" value-format="YYYY-MM-DD" class="full" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="8">
           <a-form-item :label="conf.warehouseLabel" name="warehouseId">
-            <WarehouseSelect v-model:value="form.warehouseId" placeholder="选填，入库 / 出库时默认" />
+            <WarehouseSelect v-model:value="form.warehouseId" :placeholder="$t('scm.orderForm.warehousePlaceholder')" />
           </a-form-item>
         </a-col>
         <a-col v-if="kind === 'purchase' && (contracts.length || form.contractId)" :xs="24" :sm="12" :lg="8">
-          <a-form-item label="采购合同" name="contractId" extra="引用合同时按合同价下单，校验合同期限和数量、金额上限">
+          <a-form-item :label="$t('scm.order.contract')" name="contractId" :extra="$t('scm.orderForm.contractExtra')">
             <a-select
               v-model:value="form.contractId"
               allow-clear
               :options="contractOptions"
-              placeholder="不引用合同"
+              :placeholder="$t('scm.orderForm.noContract')"
               @change="onContractChange"
             />
           </a-form-item>
         </a-col>
         <a-col :xs="12" :sm="6" :lg="4">
-          <a-form-item label="币种" name="currency">
+          <a-form-item :label="$t('scm.orderForm.currency')" name="currency">
             <a-select :value="form.currency" :options="currencyOptions(currencyList)" :disabled="!!form.contractId" @change="onCurrencyChange" />
           </a-form-item>
         </a-col>
         <a-col v-if="foreign" :xs="12" :sm="6" :lg="4">
-          <a-form-item label="汇率" name="exchangeRate" :extra="`1 ${form.currency} = ? 人民币`">
+          <a-form-item :label="$t('scm.orderForm.exchangeRate')" name="exchangeRate" :extra="$t('scm.orderForm.rateExtra', { currency: form.currency })">
             <a-input-number v-model:value="form.exchangeRate" :min="0" :precision="6" class="full" @change="onRateChange" />
           </a-form-item>
         </a-col>
@@ -60,41 +60,41 @@
             type="info"
             show-icon
             class="fc-tip"
-            :message="`单价、金额均为 ${form.currency} 原币；${kind === 'purchase' ? '供货价格' : '价目表价格'}按人民币维护，自动带出时已按汇率折算为 ${form.currency}（保留 4 位小数）`"
+            :message="$t(kind === 'purchase' ? 'scm.orderForm.foreignTipPurchase' : 'scm.orderForm.foreignTipSales', { currency: form.currency })"
           />
         </a-col>
         <a-col v-if="kind === 'sales' && (rebateBalance > 0 || form.rebateAmount)" :xs="24" :sm="12" :lg="8">
-          <a-form-item label="返利抵扣" name="rebateAmount" :extra="`可用返利余额 ¥${formatMoney(rebateBalance)}，按行金额分摊到单价`">
+          <a-form-item :label="$t('scm.orderForm.rebate')" name="rebateAmount" :extra="$t('scm.orderForm.rebateExtra', { amount: formatMoney(rebateBalance) })">
             <a-input-number v-model:value="form.rebateAmount" :min="0" :max="rebateBalance" :precision="2" prefix="¥" class="full" />
           </a-form-item>
         </a-col>
         <a-col :span="24">
-          <a-form-item label="备注" name="remark">
-            <a-input v-model:value="form.remark" :maxlength="255" placeholder="选填" />
+          <a-form-item :label="$t('common.field.remark')" name="remark">
+            <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('scm.orderForm.optional')" />
           </a-form-item>
         </a-col>
       </a-row>
 
       <div class="items-head">
         <span class="section-title">
-          明细（{{ form.items.length }} 行，数量 {{ formatQty(totalQty) }}，价税合计 {{ symbol }}{{ formatMoney(totalAmount) }}）
+          {{ $t('scm.orderForm.itemsTitle', { n: form.items.length, qty: formatQty(totalQty), amount: symbol + formatMoney(totalAmount) }) }}
           <span v-if="foreign && Number(form.exchangeRate)" class="sub-text">≈ ¥{{ formatMoney(totalAmount * Number(form.exchangeRate)) }}</span>
         </span>
         <a-space>
           <a-button @click="matrixOpen = true">
-            <template #icon><TableOutlined /></template>按规格录入
+            <template #icon><TableOutlined /></template>{{ $t('scm.orderForm.byVariant') }}
           </a-button>
           <a-button type="primary" ghost @click="addRow">
-            <template #icon><PlusOutlined /></template>添加物料
+            <template #icon><PlusOutlined /></template>{{ $t('scm.orderForm.addMaterial') }}
           </a-button>
         </a-space>
       </div>
       <a-alert v-if="promo && (Number(promo.discountAmount) > 0 || promo.gifts.length || Number(form.rebateAmount) > 0)" type="success" show-icon class="promo-tip">
         <template #message>
-          促销优惠 {{ symbol }}{{ formatMoney(promo.discountAmount) }}<span v-if="Number(form.rebateAmount) > 0">，返利抵扣 {{ symbol }}{{ formatMoney(form.rebateAmount) }}</span>，
-          成交价合计约 {{ symbol }}{{ formatMoney(promoTotal) }}
+          {{ $t('scm.orderForm.promoDiscount', { amount: symbol + formatMoney(promo.discountAmount) }) }}<span v-if="Number(form.rebateAmount) > 0">{{ $t('scm.orderForm.promoRebate', { amount: symbol + formatMoney(form.rebateAmount) }) }}</span>{{ $t('scm.order.comma') }}
+          {{ $t('scm.orderForm.promoTotal', { amount: symbol + formatMoney(promoTotal) }) }}
           <div v-for="(n, i) in promo.notes" :key="i" class="sub-text">{{ n }}</div>
-          <div class="sub-text">保存时按订单日期重新计算，单价按原价录入；赠品自动加入订单</div>
+          <div class="sub-text">{{ $t('scm.orderForm.promoNote') }}</div>
         </template>
       </a-alert>
 
@@ -106,16 +106,16 @@
         :data-source="form.items"
         :pagination="false"
         :scroll="{ x: 1150 }"
-        :locale="{ emptyText: '点击「添加物料」录入明细' }"
+        :locale="{ emptyText: $t('scm.orderForm.emptyItems') }"
       >
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
-            <a-form-item :name="['items', index, 'materialId']" :rules="requiredRule('请选择物料')" class="cell-item">
+            <a-form-item :name="['items', index, 'materialId']" :rules="requiredRule($t('scm.orderForm.selectMaterial'))" class="cell-item">
               <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
             </a-form-item>
           </template>
           <template v-else-if="column.key === 'qty'">
-            <a-form-item :name="['items', index, 'unitQty']" :rules="requiredRule('请填写数量')" class="cell-item">
+            <a-form-item :name="['items', index, 'unitQty']" :rules="requiredRule($t('scm.orderForm.inputQty'))" class="cell-item">
               <a-input-number
                 v-model:value="record.unitQty"
                 :min="0"
@@ -137,12 +137,12 @@
             </a-form-item>
             <div v-if="record.unitName && record.unitQty != null" class="sub-text">= {{ formatQty(baseQty(record)) }} {{ record.unit }}</div>
             <div v-if="record.minQty && record.unitQty && baseQty(record) < record.minQty" class="warn-text">
-              低于最小起订量 {{ formatQty(record.minQty) }} {{ record.unit }}
+              {{ $t('scm.orderForm.belowMoq', { qty: formatQty(record.minQty), unit: record.unit || '' }) }}
             </div>
-            <a v-if="kind === 'sales' && record.materialId" class="atp-link" @click="openAtp(record)">可承诺量</a>
+            <a v-if="kind === 'sales' && record.materialId" class="atp-link" @click="openAtp(record)">{{ $t('scm.orderForm.atp') }}</a>
           </template>
           <template v-else-if="column.key === 'price'">
-            <a-form-item :name="['items', index, 'unitPrice']" :rules="requiredRule('请填写单价')" class="cell-item">
+            <a-form-item :name="['items', index, 'unitPrice']" :rules="requiredRule($t('scm.orderForm.inputPrice'))" class="cell-item">
               <a-input-number
                 v-model:value="record.unitPrice"
                 :min="0"
@@ -153,14 +153,14 @@
                 @change="record.priceAuto = false"
               />
             </a-form-item>
-            <div v-if="contractPrices.has(record.materialId)" class="sub-text">合同价</div>
+            <div v-if="contractPrices.has(record.materialId)" class="sub-text">{{ $t('scm.orderForm.contractPrice') }}</div>
             <div v-if="record.lastPrice" class="sub-text">
-              上次 <a @click="useLastPrice(record)">{{ currencySymbol(record.lastPrice.currency) }}{{ formatQty(Number(record.lastPrice.price) * ratioOf(record)) }}</a>
-              （{{ record.lastPrice.orderDate }}）
+              {{ $t('scm.orderForm.lastPrice') }} <a @click="useLastPrice(record)">{{ currencySymbol(record.lastPrice.currency) }}{{ formatQty(Number(record.lastPrice.price) * ratioOf(record)) }}</a>
+              {{ $t('scm.orderForm.paren', { text: record.lastPrice.orderDate }) }}
             </div>
             <div v-if="priceWarning(record)" class="warn-text">{{ priceWarning(record) }}</div>
-            <div v-else-if="form.contractId && record.materialId" class="warn-text">不在合同中</div>
-            <div v-if="record.unitName" class="sub-text">每{{ record.unitName }}</div>
+            <div v-else-if="form.contractId && record.materialId" class="warn-text">{{ $t('scm.orderForm.notInContract') }}</div>
+            <div v-if="record.unitName" class="sub-text">{{ $t('scm.orderForm.perUnit', { unit: record.unitName }) }}</div>
             <PriceHint
               v-if="kind === 'sales'"
               :price="record.unitPrice"
@@ -168,8 +168,8 @@
               :symbol="symbol"
             />
             <div v-if="promoLine(index)" class="promo-text">
-              促销价 {{ symbol }}{{ formatQty(Number(promoLine(index).price) * ratioOf(record)) }}
-              <span v-if="promoLine(index).promotionName">（{{ promoLine(index).promotionName }}）</span>
+              {{ $t('scm.orderForm.promoPrice', { price: symbol + formatQty(Number(promoLine(index).price) * ratioOf(record)) }) }}
+              <span v-if="promoLine(index).promotionName">{{ $t('scm.orderForm.paren', { text: promoLine(index).promotionName }) }}</span>
             </div>
           </template>
           <template v-else-if="column.key === 'taxRate'">
@@ -177,10 +177,10 @@
           </template>
           <template v-else-if="column.key === 'amount'">
             <div class="amount">{{ symbol }}{{ formatMoney(lineAmount(record.unitQty, record.unitPrice)) }}</div>
-            <div class="sub-text">税额 {{ formatMoney(lineTax(lineAmount(record.unitQty, record.unitPrice), record.taxRate)) }}</div>
+            <div class="sub-text">{{ $t('scm.orderForm.taxValue', { amount: formatMoney(lineTax(lineAmount(record.unitQty, record.unitPrice), record.taxRate)) }) }}</div>
           </template>
           <template v-else-if="column.key === 'deliveryDate'">
-            <a-date-picker v-model:value="record.deliveryDate" value-format="YYYY-MM-DD" placeholder="同订单" class="full" />
+            <a-date-picker v-model:value="record.deliveryDate" value-format="YYYY-MM-DD" :placeholder="$t('scm.orderForm.sameAsOrder')" class="full" />
           </template>
           <template v-else-if="column.key === 'remark'">
             <a-input v-model:value="record.remark" :maxlength="255" />
@@ -192,7 +192,7 @@
           </template>
         </template>
       </a-table>
-      <CustomFieldsForm :fields="cfFields" :values="form.cf || {}" title="扩展信息" :span="8" />
+      <CustomFieldsForm :fields="cfFields" :values="form.cf || {}" :title="$t('scm.orderForm.extInfo')" :span="8" />
     </a-form>
     <VariantMatrixModal v-model:open="matrixOpen" @confirm="addVariantRows" />
     <AtpModal
@@ -209,6 +209,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, PlusOutlined, TableOutlined } from '@ant-design/icons-vue'
 import VariantMatrixModal from '@/components/wms/VariantMatrixModal.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -242,24 +243,25 @@ const props = defineProps({
 })
 const emit = defineEmits(['success'])
 
+const { t } = useI18n()
 const conf = computed(() => ORDER_KINDS[props.kind])
 
 const columns = [
-  { title: '物料', key: 'material', width: 280 },
-  { title: '数量', key: 'qty', width: 150 },
-  { title: '含税单价', key: 'price', width: 140 },
-  { title: '税率', key: 'taxRate', width: 110 },
-  { title: '价税合计', key: 'amount', width: 130, align: 'right' },
-  { title: '交货日期', key: 'deliveryDate', width: 140 },
-  { title: '备注', key: 'remark', width: 150 },
+  { title: t('scm.order.material'), key: 'material', width: 280 },
+  { title: t('common.field.quantity'), key: 'qty', width: 150 },
+  { title: t('scm.order.taxPrice'), key: 'price', width: 150 },
+  { title: t('scm.order.taxRate'), key: 'taxRate', width: 110 },
+  { title: t('scm.order.totalAmount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('scm.order.deliveryDate'), key: 'deliveryDate', width: 140 },
+  { title: t('common.field.remark'), key: 'remark', width: 150 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
 const rules = computed(() => ({
-  partnerId: requiredRule(`请选择${conf.value.partnerLabel}`),
-  orderDate: requiredRule('请选择订单日期'),
-  exchangeRate: foreign.value ? [{ required: true, type: 'number', min: 0.000001, message: '请填写汇率' }] : []
+  partnerId: requiredRule(t('common.rule.requiredSelect', { name: conf.value.partnerLabel })),
+  orderDate: requiredRule(t('scm.orderForm.selectOrderDate')),
+  exchangeRate: foreign.value ? [{ required: true, type: 'number', min: 0.000001, message: t('scm.orderForm.inputRate') }] : []
 }))
 
 const emptyForm = () => ({
@@ -326,8 +328,8 @@ const baseQty = (row) => (row.unitQty == null ? 0 : qty4(Number(row.unitQty) * r
 const basePrice = (row) => (row.unitPrice == null ? null : qty4(Number(row.unitPrice) / ratioOf(row)))
 
 const unitOptions = (row) => [
-  { value: '', label: row.unit || '基本单位' },
-  ...row.units.map((u) => ({ value: u.unit, label: `${u.unit}（${formatQty(u.ratio)}${row.unit || ''}）` }))
+  { value: '', label: row.unit || t('scm.orderForm.baseUnit') },
+  ...row.units.map((u) => ({ value: u.unit, label: t('scm.orderForm.unitOption', { unit: u.unit, ratio: `${formatQty(u.ratio)}${row.unit || ''}` }) }))
 ]
 
 /** 换单位：数量保持输入的数字，单价按基本单位价折算到新单位 */
@@ -348,12 +350,12 @@ async function loadContracts(supplierId, date, order) {
   const list = await activeContracts({ supplierId, date: date || undefined })
   // 编辑时引用的合同可能已关闭或到期，仍显示
   if (order?.contractId && !list.some((c) => c.id === order.contractId)) {
-    list.push({ id: order.contractId, contractNo: order.contractNo, name: '（已失效）', items: [] })
+    list.push({ id: order.contractId, contractNo: order.contractNo, name: t('scm.orderForm.expired'), items: [] })
   }
   contracts.value = list
 }
 const contractOptions = computed(() =>
-  contracts.value.map((c) => ({ value: c.id, label: `${c.contractNo} ${c.name}${c.endDate ? `（至 ${c.endDate}）` : ''}` }))
+  contracts.value.map((c) => ({ value: c.id, label: `${c.contractNo} ${c.name}${c.endDate ? t('scm.orderForm.until', { date: c.endDate }) : ''}` }))
 )
 const contractPrices = computed(() => {
   const c = contracts.value.find((x) => x.id === form.value.contractId)
@@ -474,7 +476,7 @@ async function onCurrencyChange(code) {
   }
   form.value.exchangeRate = undefined
   await refreshRate()
-  if (form.value.exchangeRate == null) message.warning(`未维护 ${code} 的汇率，请手工填写`)
+  if (form.value.exchangeRate == null) message.warning(t('scm.orderForm.noRate', { code }))
 }
 
 function onRateChange() {
@@ -606,9 +608,13 @@ function priceWarning(row) {
   if (!c || row.unitPrice == null) return ''
   const rate = foreign.value ? Number(form.value.exchangeRate) || 1 : 1
   const price = (Number(row.unitPrice) / ratioOf(row)) * rate
-  const block = c.controlMode === 'BLOCK' ? '，不能保存' : ''
-  if (props.kind === 'sales' && c.minSalePrice != null && price < Number(c.minSalePrice) - 0.00005) return `低于最低销售价 ¥${Number(c.minSalePrice)}${block}`
-  if (props.kind === 'purchase' && c.maxPurchasePrice != null && price > Number(c.maxPurchasePrice) + 0.00005) return `高于最高采购价 ¥${Number(c.maxPurchasePrice)}${block}`
+  const block = c.controlMode === 'BLOCK' ? t('scm.orderForm.cannotSave') : ''
+  if (props.kind === 'sales' && c.minSalePrice != null && price < Number(c.minSalePrice) - 0.00005) {
+    return t('scm.orderForm.belowMinSale', { price: Number(c.minSalePrice) }) + block
+  }
+  if (props.kind === 'purchase' && c.maxPurchasePrice != null && price > Number(c.maxPurchasePrice) + 0.00005) {
+    return t('scm.orderForm.aboveMaxPurchase', { price: Number(c.maxPurchasePrice) }) + block
+  }
   return ''
 }
 

@@ -8,7 +8,7 @@
   >
     <template #extra>
       <a-space>
-        <a-button v-if="detail" size="small" @click="print"><template #icon><PrinterOutlined /></template>打印</a-button>
+        <a-button v-if="detail" size="small" @click="print"><template #icon><PrinterOutlined /></template>{{ $t('common.action.print') }}</a-button>
         <DictTag v-if="detail" type="scm_order_status" :value="detail.status" />
       </a-space>
     </template>
@@ -16,53 +16,53 @@
     <a-spin :spinning="loading">
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="doc-desc">
-          <a-descriptions-item label="订单号">
+          <a-descriptions-item :label="$t('scm.order.orderNo')">
             {{ detail.orderNo }}
             <a-tag v-if="detail.version > 1" color="blue" :bordered="false" class="ver-tag">V{{ detail.version }}</a-tag>
           </a-descriptions-item>
           <a-descriptions-item :label="conf.partnerLabel">{{ detail.partnerCode }} {{ detail.partnerName }}</a-descriptions-item>
-          <a-descriptions-item label="订单日期">{{ detail.orderDate }}</a-descriptions-item>
-          <a-descriptions-item label="交货日期">{{ detail.deliveryDate || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.order.orderDate')">{{ detail.orderDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.order.deliveryDate')">{{ detail.deliveryDate || '-' }}</a-descriptions-item>
           <a-descriptions-item :label="conf.warehouseLabel">{{ detail.warehouseName || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="来源"><DictTag type="scm_order_source" :value="detail.source" /></a-descriptions-item>
-          <a-descriptions-item label="价税合计">
+          <a-descriptions-item :label="$t('scm.order.source')"><DictTag type="scm_order_source" :value="detail.source" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.order.totalAmount')">
             <b>{{ symbol }}{{ formatMoney(detail.totalAmount) }}</b>
-            <span class="sub-text">（税额 {{ formatMoney(detail.taxAmount) }}）</span>
+            <span class="sub-text">{{ $t('scm.order.taxAmountParen', { amount: formatMoney(detail.taxAmount) }) }}</span>
           </a-descriptions-item>
-          <a-descriptions-item v-if="foreign" label="币种 / 汇率">
+          <a-descriptions-item v-if="foreign" :label="$t('scm.order.currencyRate')">
             {{ detail.currency }} @{{ Number(detail.exchangeRate) }}
             <span class="sub-text">（≈ ¥{{ formatMoney(Number(detail.totalAmount) * Number(detail.exchangeRate || 0)) }}）</span>
           </a-descriptions-item>
-          <a-descriptions-item v-if="Number(detail.discountAmount) || Number(detail.rebateAmount)" label="优惠">
-            <span v-if="Number(detail.discountAmount)">促销 {{ symbol }}{{ formatMoney(detail.discountAmount) }}</span>
-            <span v-if="Number(detail.discountAmount) && Number(detail.rebateAmount)">，</span>
-            <span v-if="Number(detail.rebateAmount)">返利抵扣 {{ symbol }}{{ formatMoney(detail.rebateAmount) }}</span>
+          <a-descriptions-item v-if="Number(detail.discountAmount) || Number(detail.rebateAmount)" :label="$t('scm.order.discount')">
+            <span v-if="Number(detail.discountAmount)">{{ $t('scm.order.promotionAmount', { amount: symbol + formatMoney(detail.discountAmount) }) }}</span>
+            <span v-if="Number(detail.discountAmount) && Number(detail.rebateAmount)">{{ $t('scm.order.comma') }}</span>
+            <span v-if="Number(detail.rebateAmount)">{{ $t('scm.order.rebateAmount', { amount: symbol + formatMoney(detail.rebateAmount) }) }}</span>
           </a-descriptions-item>
-          <a-descriptions-item v-if="detail.contractNo" label="采购合同">{{ detail.contractNo }}</a-descriptions-item>
-          <a-descriptions-item v-if="kind === 'purchase' && detail.approveTime" label="供应商确认">
+          <a-descriptions-item v-if="detail.contractNo" :label="$t('scm.order.contract')">{{ detail.contractNo }}</a-descriptions-item>
+          <a-descriptions-item v-if="kind === 'purchase' && detail.approveTime" :label="$t('scm.order.supplierConfirm')">
             <template v-if="detail.supplierConfirm">
               <DictTag type="scm_supplier_confirm" :value="detail.supplierConfirm" />
-              <span v-if="detail.promisedDate">承诺交期 {{ detail.promisedDate }}</span>
+              <span v-if="detail.promisedDate">{{ $t('scm.order.promisedDateValue', { date: detail.promisedDate }) }}</span>
               <span v-if="detail.confirmRemark" class="sub-text"> {{ detail.confirmRemark }}</span>
             </template>
-            <span v-else class="sub-text">未确认</span>
+            <span v-else class="sub-text">{{ $t('scm.order.unconfirmed') }}</span>
           </a-descriptions-item>
-          <a-descriptions-item v-if="kind === 'sales'" label="业务员">
+          <a-descriptions-item v-if="kind === 'sales'" :label="$t('scm.order.salesman')">
             <template v-if="!salesmanEditing">
               {{ detail.salesmanName || '-' }}
-              <a v-if="userStore.hasPerm('scm:sales:edit')" class="ml" @click="salesmanEditing = true">修改</a>
+              <a v-if="userStore.hasPerm('scm:sales:edit')" class="ml" @click="salesmanEditing = true">{{ $t('common.action.modify') }}</a>
             </template>
             <a-space v-else>
               <IdentityUserSelect v-model:value="salesmanId" :label="detail.salesmanName" class="salesman-select" />
-              <a @click="saveSalesman">保存</a>
-              <a @click="salesmanEditing = false">取消</a>
+              <a @click="saveSalesman">{{ $t('common.action.save') }}</a>
+              <a @click="salesmanEditing = false">{{ $t('common.action.cancel') }}</a>
             </a-space>
           </a-descriptions-item>
-          <a-descriptions-item label="制单">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.approveTime" label="审核">
+          <a-descriptions-item :label="$t('scm.order.prepared')">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.approveTime" :label="$t('scm.order.approved')">
             {{ detail.approveByName || '-' }} {{ detail.approveTime }}
           </a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="备注">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
         <CustomFieldsView :key="detail.id" :biz-type="kind === 'sales' ? 'scm_sales' : 'scm_purchase'" :biz-id="detail.id" class="cf-view" />
 
@@ -71,11 +71,11 @@
           type="info"
           show-icon
           class="doc-desc"
-          message="订单审批中，可在「流程中心 → 我的申请」查看审批进度，审批通过后自动变为已审核"
+          :message="$t('scm.order.approvingTip')"
         />
 
         <a-tabs v-model:active-key="tab" size="small">
-          <a-tab-pane key="items" tab="订单明细">
+          <a-tab-pane key="items" :tab="$t('scm.order.tabItems')">
             <a-table row-key="id" size="small" :columns="itemColumns" :data-source="detail.items" :pagination="false" :scroll="{ x: 950 }">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'material'">
@@ -85,25 +85,25 @@
                 <template v-else-if="column.key === 'qty'">{{ qtyText(record) }}</template>
                 <template v-else-if="column.key === 'price'">
                   <div>{{ symbol }}{{ formatMoney(record.price) }}</div>
-                  <div v-if="record.gift" class="sub-text"><a-tag color="magenta">赠品</a-tag>{{ record.promotionName }}</div>
+                  <div v-if="record.gift" class="sub-text"><a-tag color="magenta">{{ $t('scm.order.gift') }}</a-tag>{{ record.promotionName }}</div>
                   <div v-else-if="record.origPrice != null" class="sub-text">
-                    <del>{{ symbol }}{{ formatMoney(record.origPrice) }}</del> {{ record.promotionName || '优惠分摊' }}
+                    <del>{{ symbol }}{{ formatMoney(record.origPrice) }}</del> {{ record.promotionName || $t('scm.order.discountAllocation') }}
                   </div>
-                  <div v-if="hasUnit(record)" class="sub-text">每{{ record.unitName }} {{ symbol }}{{ formatMoney(record.price * record.unitRatio) }}</div>
-                  <div class="sub-text">税率 {{ Number(record.taxRate) }}%</div>
+                  <div v-if="hasUnit(record)" class="sub-text">{{ $t('scm.order.perUnit', { unit: record.unitName, price: symbol + formatMoney(record.price * record.unitRatio) }) }}</div>
+                  <div class="sub-text">{{ $t('scm.order.taxRateValue', { rate: Number(record.taxRate) }) }}</div>
                 </template>
                 <template v-else-if="column.key === 'amount'">{{ symbol }}{{ formatMoney(record.amount) }}</template>
                 <template v-else-if="column.key === 'progress'">
                   <a-progress :percent="percent(record)" size="small" :status="percent(record) >= 100 ? 'success' : 'normal'" />
                   <div class="sub-text">
-                    {{ kind === 'purchase' ? '已入库' : '已出库' }} {{ formatQty(record.doneQty) }}
-                    <template v-if="Number(record.returnQty)">，已退货 {{ formatQty(record.returnQty) }}</template>
+                    {{ $t(kind === 'purchase' ? 'scm.order.receivedQty' : 'scm.order.shippedQty', { qty: formatQty(record.doneQty) }) }}
+                    <template v-if="Number(record.returnQty)">{{ $t('scm.order.returnedQty', { qty: formatQty(record.returnQty) }) }}</template>
                   </div>
                 </template>
               </template>
             </a-table>
           </a-tab-pane>
-          <a-tab-pane v-for="t in conf.trades" :key="t" :tab="`${TRADE_KINDS[t].label}记录`">
+          <a-tab-pane v-for="t in conf.trades" :key="t" :tab="$t('scm.order.tradeRecords', { kind: TRADE_KINDS[t].label })">
             <a-table row-key="id" size="small" :columns="tradeColumns" :data-source="trades[t]" :pagination="false">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'totalQty'">{{ formatQty(record.totalQty) }}</template>
@@ -111,14 +111,14 @@
               </template>
             </a-table>
           </a-tab-pane>
-          <a-tab-pane v-if="kind === 'sales'" key="reservation" tab="库存预留">
+          <a-tab-pane v-if="kind === 'sales'" key="reservation" :tab="$t('scm.order.tabReservation')">
             <SalesReservationPanel
               v-if="tab === 'reservation'"
               :order="detail"
               :editable="['APPROVED', 'PARTIAL'].includes(detail.status) && can('sales:reserve')"
             />
           </a-tab-pane>
-          <a-tab-pane v-if="kind === 'sales' && can('delivery:list')" key="delivery" tab="发货通知">
+          <a-tab-pane v-if="kind === 'sales' && can('delivery:list')" key="delivery" :tab="$t('scm.order.tabDelivery')">
             <a-table row-key="id" size="small" :columns="deliveryColumns" :data-source="deliveries" :pagination="false">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'deliveryNo'">
@@ -131,23 +131,23 @@
               </template>
             </a-table>
           </a-tab-pane>
-          <a-tab-pane v-if="kind === 'purchase'" key="outsource" tab="委外用料">
+          <a-tab-pane v-if="kind === 'purchase'" key="outsource" :tab="$t('scm.order.tabOutsource')">
             <OutsourcePanel
               v-if="detail"
               :order-id="detail.id"
               :editable="['APPROVED', 'PARTIAL', 'COMPLETED'].includes(detail.status) && userStore.hasPerm('scm:purchaseIn:add')"
             />
           </a-tab-pane>
-          <a-tab-pane key="trace" tab="单据追溯">
+          <a-tab-pane key="trace" :tab="$t('scm.order.tabTrace')">
             <OrderTrace v-if="detail" :kind="kind" :order-id="detail.id" @voucher="(id) => ((voucherId = id), (voucherOpen = true))" />
           </a-tab-pane>
-          <a-tab-pane key="attachment" tab="附件">
+          <a-tab-pane key="attachment" :tab="$t('scm.order.tabAttachment')">
             <AttachmentPanel :biz-type="`scm_${kind}`" :biz-id="orderId" :editable="can(`${kind}:edit`)" />
           </a-tab-pane>
-          <a-tab-pane key="changes" tab="变更记录">
+          <a-tab-pane key="changes" :tab="$t('scm.order.tabChanges')">
             <OrderChangeList v-if="tab === 'changes'" :key="changeSeq" :kind="kind" :order-id="detail.id" :currency="detail.currency" />
           </a-tab-pane>
-          <a-tab-pane key="history" tab="修改历史">
+          <a-tab-pane key="history" :tab="$t('scm.order.tabHistory')">
             <ChangeLogPanel :biz-type="`scm_${kind}`" :biz-id="orderId" />
           </a-tab-pane>
         </a-tabs>
@@ -170,6 +170,7 @@
 import SubPage from '@/components/SubPage.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { Modal, message } from 'ant-design-vue'
 import {
   AuditOutlined,
@@ -215,37 +216,38 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:open', 'edit', 'trade', 'changed'])
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const conf = computed(() => ORDER_KINDS[props.kind])
 const can = (perm) => userStore.hasPerm(`scm:${perm}`)
 const router = useRouter()
 
 const itemColumns = [
-  { title: '物料', key: 'material', width: 240 },
-  { title: '数量', key: 'qty', width: 150, align: 'right' },
-  { title: '含税单价', key: 'price', width: 170, align: 'right' },
-  { title: '价税合计', key: 'amount', width: 120, align: 'right' },
-  { title: '交货日期', dataIndex: 'deliveryDate', width: 110 },
-  { title: '执行进度', key: 'progress', width: 200 },
-  { title: '备注', dataIndex: 'remark', width: 120, ellipsis: true }
+  { title: t('scm.order.material'), key: 'material', width: 240 },
+  { title: t('common.field.quantity'), key: 'qty', width: 150, align: 'right' },
+  { title: t('scm.order.taxPrice'), key: 'price', width: 170, align: 'right' },
+  { title: t('scm.order.totalAmount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('scm.order.deliveryDate'), dataIndex: 'deliveryDate', width: 120 },
+  { title: t('scm.order.progress'), key: 'progress', width: 200 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 120, ellipsis: true }
 ]
 const tradeColumns = [
-  { title: '单据号', dataIndex: 'docNo', width: 170 },
-  { title: '业务日期', dataIndex: 'bizDate', width: 110 },
-  { title: '仓库', dataIndex: 'warehouseName', width: 140 },
-  { title: '数量', key: 'totalQty', width: 100, align: 'right' },
-  { title: '价税合计', key: 'totalAmount', width: 130, align: 'right' },
-  { title: '仓库单据', dataIndex: 'wmsDocNo', width: 170 },
-  { title: '制单人', dataIndex: 'createByName', width: 100 }
+  { title: t('scm.order.docNo'), dataIndex: 'docNo', width: 170 },
+  { title: t('scm.order.bizDate'), dataIndex: 'bizDate', width: 120 },
+  { title: t('scm.order.warehouse'), dataIndex: 'warehouseName', width: 140 },
+  { title: t('common.field.quantity'), key: 'totalQty', width: 100, align: 'right' },
+  { title: t('scm.order.totalAmount'), key: 'totalAmount', width: 130, align: 'right' },
+  { title: t('scm.order.wmsDoc'), dataIndex: 'wmsDocNo', width: 170 },
+  { title: t('scm.order.preparedBy'), dataIndex: 'createByName', width: 110 }
 ]
 const deliveryColumns = [
-  { title: '通知单号', key: 'deliveryNo', width: 170 },
-  { title: '发货日期', dataIndex: 'shipDate', width: 110 },
-  { title: '仓库', dataIndex: 'warehouseName', width: 140 },
-  { title: '数量', key: 'totalQty', width: 100, align: 'right' },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '销售出库单', dataIndex: 'tradeDocNo', width: 170 },
-  { title: '制单人', dataIndex: 'createByName', width: 100 }
+  { title: t('scm.order.deliveryNo'), key: 'deliveryNo', width: 170 },
+  { title: t('scm.order.shipDate'), dataIndex: 'shipDate', width: 110 },
+  { title: t('scm.order.warehouse'), dataIndex: 'warehouseName', width: 140 },
+  { title: t('common.field.quantity'), key: 'totalQty', width: 100, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('scm.order.salesOutDoc'), dataIndex: 'tradeDocNo', width: 170 },
+  { title: t('scm.order.preparedBy'), dataIndex: 'createByName', width: 110 }
 ]
 
 const detail = ref()
@@ -261,26 +263,26 @@ function print() {
     no: d.orderNo,
     fields: [
       [c.partnerLabel, `${d.partnerCode || ''} ${d.partnerName || ''}`],
-      ['订单日期', d.orderDate],
-      ['交货日期', d.deliveryDate],
+      [t('scm.order.orderDate'), d.orderDate],
+      [t('scm.order.deliveryDate'), d.deliveryDate],
       [c.warehouseLabel, d.warehouseName],
-      ['价税合计', `${currencySymbol(d.currency)}${formatMoney(d.totalAmount)}`],
-      ['税额', `${currencySymbol(d.currency)}${formatMoney(d.taxAmount)}`],
-      ...(isForeign(d.currency) ? [['币种 / 汇率', `${d.currency} @${Number(d.exchangeRate)}`]] : []),
-      ...(d.version > 1 ? [['版本', `V${d.version}`]] : [])
+      [t('scm.order.totalAmount'), `${currencySymbol(d.currency)}${formatMoney(d.totalAmount)}`],
+      [t('scm.order.taxAmount'), `${currencySymbol(d.currency)}${formatMoney(d.taxAmount)}`],
+      ...(isForeign(d.currency) ? [[t('scm.order.currencyRate'), `${d.currency} @${Number(d.exchangeRate)}`]] : []),
+      ...(d.version > 1 ? [[t('scm.order.version'), `V${d.version}`]] : [])
     ],
     columns: [
       ...materialColumns(),
-      { title: '数量', value: qtyText, align: 'right' },
-      { title: '含税单价', value: (r) => formatMoney(r.price), align: 'right' },
-      { title: '税率', value: (r) => `${Number(r.taxRate)}%`, align: 'right' },
-      { title: '价税合计', key: 'amount', value: (r) => formatMoney(r.amount), align: 'right' },
-      { title: '交货日期', key: 'deliveryDate' }
+      { title: t('common.field.quantity'), value: qtyText, align: 'right' },
+      { title: t('scm.order.taxPrice'), value: (r) => formatMoney(r.price), align: 'right' },
+      { title: t('scm.order.taxRate'), value: (r) => `${Number(r.taxRate)}%`, align: 'right' },
+      { title: t('scm.order.totalAmount'), key: 'amount', value: (r) => formatMoney(r.amount), align: 'right' },
+      { title: t('scm.order.deliveryDate'), key: 'deliveryDate' }
     ],
     rows: d.items,
     totals: { amount: formatMoney(d.totalAmount) },
     note: d.remark,
-    signs: [['制单', d.createByName], ['审核', d.approveByName], `${c.partnerLabel}确认`]
+    signs: [[t('scm.order.prepared'), d.createByName], [t('scm.order.approved'), d.approveByName], t('scm.order.partnerSign', { partner: c.partnerLabel })]
   }, `${c.label} ${d.orderNo}`, props.kind === 'purchase' ? 'scm.purchaseOrder' : 'scm.salesOrder')
 }
 const loading = ref(false)
@@ -304,7 +306,7 @@ const trades = reactive({})
 const hasUnit = (i) => !!i.unitName && Number(i.unitRatio) > 0
 const qtyText = (i) =>
   hasUnit(i)
-    ? `${formatQty(Number(i.qty) / Number(i.unitRatio))} ${i.unitName}（${formatQty(i.qty)} ${i.unit || ''}）`
+    ? t('scm.order.unitQty', { qty: formatQty(Number(i.qty) / Number(i.unitRatio)), unit: i.unitName, base: `${formatQty(i.qty)} ${i.unit || ''}` })
     : `${formatQty(i.qty)} ${i.unit || ''}`
 const percent = (i) => Math.min(Math.round((netQty(i) / Number(i.qty)) * 100), 100)
 
@@ -314,7 +316,7 @@ const salesmanId = ref()
 watch(salesmanEditing, (v) => v && (salesmanId.value = detail.value?.salesmanId))
 async function saveSalesman() {
   await changeSalesman(detail.value.id, salesmanId.value || null)
-  message.success('业务员已修改')
+  message.success(t('scm.order.salesmanChanged'))
   salesmanEditing.value = false
   load()
 }
@@ -368,46 +370,51 @@ const actions = computed(() => {
   const [doTrade, returnTrade] = conf.value.trades
   const list = []
   if (d.status === 'DRAFT') {
-    if (can(`${k}:edit`)) list.push({ key: 'edit', label: '编辑', icon: EditOutlined, run: () => emit('edit', d) })
+    if (can(`${k}:edit`)) list.push({ key: 'edit', label: t('common.action.edit'), icon: EditOutlined, run: () => emit('edit', d) })
     if (can(`${k}:approve`))
       list.push({
         key: 'approve',
-        label: '审核',
+        label: t('common.action.audit'),
         icon: AuditOutlined,
         primary: true,
         run: () =>
-          confirmAction('审核订单？', '发布了审批流程时将发起审批，否则直接审核通过。', approveOrder, (flow) =>
-            flow ? '已提交审批' : '审核成功'
+          confirmAction(t('scm.order.approveTitle'), t('scm.order.approveContent'), approveOrder, (flow) =>
+            flow ? t('scm.order.submittedForApproval') : t('scm.order.approveSuccess')
           )
       })
   }
   if (d.status === 'APPROVING' && can(`${k}:approve`)) {
     list.push({
       key: 'withdraw',
-      label: '撤回审批',
+      label: t('scm.order.withdraw'),
       icon: UndoOutlined,
-      run: () => confirmAction('撤回审批？', '撤销审批流程，订单回到草稿。', withdrawOrder, '已撤回')
+      run: () => confirmAction(t('scm.order.withdrawTitle'), t('scm.order.withdrawContent'), withdrawOrder, t('scm.order.withdrawn'))
     })
   }
   if (d.status === 'APPROVED' && can(`${k}:approve`)) {
     list.push({
       key: 'unapprove',
-      label: '反审核',
+      label: t('common.action.unaudit'),
       icon: UndoOutlined,
-      run: () => confirmAction('反审核？', '订单回到草稿，可以修改。', unapproveOrder, '已反审核')
+      run: () => confirmAction(t('scm.order.unapproveTitle'), t('scm.order.unapproveContent'), unapproveOrder, t('scm.order.unapproved'))
     })
   }
   if (['APPROVED', 'PARTIAL'].includes(d.status) && can(`${k}:close`)) {
     list.push({
       key: 'close',
-      label: '关闭',
+      label: t('common.action.close'),
       icon: StopOutlined,
       danger: true,
-      run: () => confirmAction('关闭订单？', `关闭后不能再${k === 'purchase' ? '入库' : '出库'}，已完成部分不受影响。`, closeOrder, '已关闭')
+      run: () => confirmAction(
+          t('scm.order.closeTitle'),
+          t(k === 'purchase' ? 'scm.order.closeContentIn' : 'scm.order.closeContentOut'),
+          closeOrder,
+          t('scm.order.closed')
+        )
     })
   }
   if (['APPROVED', 'PARTIAL'].includes(d.status) && can(`${k}:change`)) {
-    list.push({ key: 'change', label: '变更', icon: DiffOutlined, run: () => (changeOpen.value = true) })
+    list.push({ key: 'change', label: t('scm.order.change'), icon: DiffOutlined, run: () => (changeOpen.value = true) })
   }
   if (['PARTIAL', 'COMPLETED', 'CLOSED'].includes(d.status) && can(`${returnTrade}:add`)) {
     list.push({ key: 'return', label: TRADE_KINDS[returnTrade].label, icon: RollbackOutlined, run: () => emit('trade', returnTrade, d) })
@@ -424,7 +431,7 @@ const actions = computed(() => {
   if (k === 'sales' && ['APPROVED', 'PARTIAL'].includes(d.status) && can('delivery:add')) {
     list.push({
       key: 'delivery',
-      label: '发货通知',
+      label: t('scm.order.tabDelivery'),
       icon: SendOutlined,
       run: () => router.push({ path: '/scm/delivery', query: { orderId: d.id, create: 1 } })
     })
@@ -433,7 +440,7 @@ const actions = computed(() => {
   if (k === 'sales' && ['APPROVED', 'PARTIAL', 'COMPLETED'].includes(d.status) && userStore.hasPerm('pm:project:add')) {
     list.push({
       key: 'project',
-      label: '创建项目',
+      label: t('scm.order.createProject'),
       icon: ProjectOutlined,
       run: () =>
         router.push({

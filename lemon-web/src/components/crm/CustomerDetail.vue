@@ -1,30 +1,30 @@
 <template>
-  <SubPage :open="open" :title="detail ? detail.name : '客户详情'" width="min(1000px, 100vw)" destroy-on-close @close="emit('update:open', false)">
+  <SubPage :open="open" :title="detail ? detail.name : $t('crm.customerDetail.title')" width="min(1000px, 100vw)" destroy-on-close @close="emit('update:open', false)">
     <template #extra>
       <a-space v-if="detail">
         <DictTag type="crm_customer_stage" :value="detail.stage" />
         <a-button v-perm="'crm:followup:add'" size="small" @click="followOpen = true">
-          <template #icon><MessageOutlined /></template>写跟进
+          <template #icon><MessageOutlined /></template>{{ $t('crm.common.writeFollowup') }}
         </a-button>
       </a-space>
     </template>
     <a-spin :spinning="loading">
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="block">
-          <a-descriptions-item label="客户编码">{{ detail.code }}</a-descriptions-item>
-          <a-descriptions-item label="客户等级"><DictTag type="scm_customer_level" :value="detail.level" /></a-descriptions-item>
-          <a-descriptions-item label="负责人">{{ detail.ownerName || '公海' }}</a-descriptions-item>
-          <a-descriptions-item label="行业"><DictTag type="crm_industry" :value="detail.industry" /><span v-if="!detail.industry">-</span></a-descriptions-item>
-          <a-descriptions-item label="来源"><DictTag type="crm_source" :value="detail.source" /><span v-if="!detail.source">-</span></a-descriptions-item>
-          <a-descriptions-item label="地区">{{ detail.region || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="联系人">{{ detail.contact || '-' }} {{ detail.phone || '' }}</a-descriptions-item>
-          <a-descriptions-item label="网站">{{ detail.website || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="地址">{{ detail.address || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="最近跟进">{{ detail.lastFollowTime || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="下次跟进">
+          <a-descriptions-item :label="$t('crm.common.f.customerCode')">{{ detail.code }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.customerLevel')"><DictTag type="scm_customer_level" :value="detail.level" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.owner')">{{ detail.ownerName || $t('crm.common.publicPool') }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.industry')"><DictTag type="crm_industry" :value="detail.industry" /><span v-if="!detail.industry">-</span></a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.source')"><DictTag type="crm_source" :value="detail.source" /><span v-if="!detail.source">-</span></a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.region')">{{ detail.region || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.contact')">{{ detail.contact || '-' }} {{ detail.phone || '' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.website')">{{ detail.website || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.address')">{{ detail.address || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.lastFollow')">{{ detail.lastFollowTime || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.nextFollow')">
             <span :class="{ danger: isPast(detail.nextFollowTime) }">{{ detail.nextFollowTime || '-' }}</span>
           </a-descriptions-item>
-          <a-descriptions-item label="信用额度">{{ detail.creditLimit != null ? '¥' + formatMoney(detail.creditLimit) : '不限' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.creditLimit')">{{ detail.creditLimit != null ? '¥' + formatMoney(detail.creditLimit) : $t('crm.common.unlimited') }}</a-descriptions-item>
         </a-descriptions>
 
         <a-row v-if="summary" :gutter="[12, 12]" class="block">
@@ -37,13 +37,13 @@
         </a-row>
 
         <a-tabs v-model:active-key="tab" size="small">
-          <a-tab-pane key="contact" tab="联系人">
+          <a-tab-pane key="contact" :tab="$t('crm.customerDetail.tab.contact')">
             <ContactPanel :customer-id="detail.customerId" :editable="canEdit" @changed="loadDetail" />
           </a-tab-pane>
-          <a-tab-pane key="followup" tab="跟进记录">
+          <a-tab-pane key="followup" :tab="$t('crm.customerDetail.tab.followup')">
             <FollowupTimeline ref="timelineRef" :customer-id="detail.customerId" show-target @saved="reload" />
           </a-tab-pane>
-          <a-tab-pane key="opp" tab="商机">
+          <a-tab-pane key="opp" :tab="$t('crm.customerDetail.tab.opp')">
             <a-table row-key="id" size="small" :columns="oppColumns" :data-source="opps" :pagination="false" :scroll="{ x: 760 }">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'name'">
@@ -55,7 +55,7 @@
               </template>
             </a-table>
           </a-tab-pane>
-          <a-tab-pane key="ticket" tab="服务工单">
+          <a-tab-pane key="ticket" :tab="$t('crm.customerDetail.tab.ticket')">
             <a-table row-key="id" size="small" :columns="ticketColumns" :data-source="tickets" :pagination="false" :scroll="{ x: 760 }">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'title'">
@@ -67,10 +67,10 @@
               </template>
             </a-table>
           </a-tab-pane>
-          <a-tab-pane v-for="t in tradeTabs" :key="t.key" :tab="t.label">
-            <CustomerTrade v-if="tab === t.key" :customer-id="customerId" :kind="t.key" />
+          <a-tab-pane v-for="x in tradeTabs" :key="x.key" :tab="x.label">
+            <CustomerTrade v-if="tab === x.key" :customer-id="customerId" :kind="x.key" />
           </a-tab-pane>
-          <a-tab-pane key="attachment" tab="附件">
+          <a-tab-pane key="attachment" :tab="$t('crm.customerDetail.tab.attachment')">
             <AttachmentPanel biz-type="crm_customer" :biz-id="customerId" :editable="userStore.hasPerm('crm:customer:edit')" />
           </a-tab-pane>
         </a-tabs>
@@ -84,6 +84,7 @@
 import SubPage from '@/components/SubPage.vue'
 import { computed, ref, watch } from 'vue'
 import { MessageOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
 import ContactPanel from './ContactPanel.vue'
@@ -103,6 +104,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:open', 'changed'])
 const userStore = useUserStore()
+const { t } = useI18n()
 
 const detail = ref(null)
 const summary = ref(null)
@@ -118,13 +120,13 @@ const canEdit = computed(() => !!detail.value && (detail.value.ownerId === userS
 /** 客户 360：各模块的单据，按当前用户的权限显示 */
 const tradeTabs = computed(() =>
   [
-    { key: 'contracts', label: '合同', perm: 'crm:contract:list' },
-    { key: 'orders', label: '销售订单', perm: 'scm:sales:list' },
-    { key: 'shipments', label: '发运', perm: 'scm:shipment:list' },
-    { key: 'bills', label: '应收', perm: 'fin:ar:list' },
-    { key: 'receipts', label: '收款', perm: 'fin:receipt:list' },
-    { key: 'projects', label: '项目', perm: 'pm:project:list' }
-  ].filter((t) => userStore.hasPerm(t.perm))
+    { key: 'contracts', label: t('crm.customerDetail.tab.contracts'), perm: 'crm:contract:list' },
+    { key: 'orders', label: t('crm.customerDetail.tab.orders'), perm: 'scm:sales:list' },
+    { key: 'shipments', label: t('crm.customerDetail.tab.shipments'), perm: 'scm:shipment:list' },
+    { key: 'bills', label: t('crm.customerDetail.tab.bills'), perm: 'fin:ar:list' },
+    { key: 'receipts', label: t('crm.customerDetail.tab.receipts'), perm: 'fin:receipt:list' },
+    { key: 'projects', label: t('crm.customerDetail.tab.projects'), perm: 'pm:project:list' }
+  ].filter((x) => userStore.hasPerm(x.perm))
 )
 const credit = ref(null)
 
@@ -133,31 +135,31 @@ const stats = computed(() => {
   const c = credit.value
   // 可用额度 = 信用额度 - 应收余额 - 未完成订单
   const available = c && c.creditLimit != null ? Number(c.creditLimit) - Number(c.receivable || 0) - Number(c.openOrders || 0) : null
-  const creditItem = c ? [{ label: '可用信用额度', value: c.creditLimit == null ? '不限' : `¥${formatMoney(available)}` }] : []
+  const creditItem = c ? [{ label: t('crm.customerDetail.stat.credit'), value: c.creditLimit == null ? t('crm.common.unlimited') : `¥${formatMoney(available)}` }] : []
   return [
     ...creditItem,
-    { label: '近一年销售额', value: `¥${formatMoney(s.salesAmount)}` },
-    { label: '销售订单', value: `${s.orderCount} 张` },
-    { label: '最近下单', value: s.lastOrderDate || '-' },
-    { label: '应收余额', value: `¥${formatMoney(s.arBalance)}` },
-    { label: '赢单', value: `${s.wonCount} 个 · ¥${formatMoney(s.wonAmount)}` },
-    { label: '未关闭工单', value: `${s.openTickets} 张` }
+    { label: t('crm.customerDetail.stat.sales'), value: `¥${formatMoney(s.salesAmount)}` },
+    { label: t('crm.customerDetail.stat.orders'), value: t('crm.customerDetail.stat.ordersValue', { n: s.orderCount }) },
+    { label: t('crm.customerDetail.stat.lastOrder'), value: s.lastOrderDate || '-' },
+    { label: t('crm.customerDetail.stat.ar'), value: `¥${formatMoney(s.arBalance)}` },
+    { label: t('crm.customerDetail.stat.won'), value: t('crm.customerDetail.stat.wonValue', { n: s.wonCount, amount: formatMoney(s.wonAmount) }) },
+    { label: t('crm.customerDetail.stat.openTickets'), value: t('crm.customerDetail.stat.ordersValue', { n: s.openTickets }) }
   ]
 })
 
 const oppColumns = [
-  { title: '商机', key: 'name', width: 220 },
-  { title: '阶段', key: 'stage', width: 100 },
-  { title: '金额', key: 'amount', width: 130, align: 'right' },
-  { title: '预计成交', dataIndex: 'expectedDate', width: 110 },
-  { title: '负责人', dataIndex: 'ownerName', width: 110 }
+  { title: t('crm.common.f.opportunity'), key: 'name', width: 220 },
+  { title: t('crm.common.f.stage'), key: 'stage', width: 110 },
+  { title: t('common.field.amount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('crm.common.f.expectedDate'), dataIndex: 'expectedDate', width: 120 },
+  { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 110 }
 ]
 const ticketColumns = [
-  { title: '工单', key: 'title', width: 240 },
-  { title: '类型', key: 'type', width: 90 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '处理人', dataIndex: 'assigneeName', width: 110 },
-  { title: '受理时间', dataIndex: 'createTime', width: 160 }
+  { title: t('crm.common.f.ticket'), key: 'title', width: 240 },
+  { title: t('common.field.type'), key: 'type', width: 90 },
+  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('crm.common.f.assignee'), dataIndex: 'assigneeName', width: 110 },
+  { title: t('crm.common.f.acceptTime'), dataIndex: 'createTime', width: 160 }
 ]
 
 async function loadDetail() {

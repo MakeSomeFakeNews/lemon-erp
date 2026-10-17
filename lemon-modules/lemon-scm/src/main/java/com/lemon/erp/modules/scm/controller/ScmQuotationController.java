@@ -53,14 +53,14 @@ public class ScmQuotationController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:quotation:add')")
-    @OperLog(title = "销售报价", type = OperType.INSERT)
+    @OperLog(title = "销售报价", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody QuotationRequest req) {
         return R.ok(quotationService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:quotation:edit')")
-    @OperLog(title = "销售报价", type = OperType.UPDATE)
+    @OperLog(title = "销售报价", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody QuotationRequest req) {
         quotationService.update(id, req);
         return R.ok();
@@ -68,7 +68,7 @@ public class ScmQuotationController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('scm:quotation:remove')")
-    @OperLog(title = "销售报价", type = OperType.DELETE)
+    @OperLog(title = "销售报价", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         quotationService.delete(ids);
         return R.ok();
@@ -77,14 +77,14 @@ public class ScmQuotationController {
     /** 提交：返回 true 表示已发起审批，false 表示直接批准 */
     @PostMapping("/{id}/submit")
     @PreAuthorize("@ss.hasPerm('scm:quotation:edit')")
-    @OperLog(title = "销售报价", type = OperType.UPDATE)
+    @OperLog(title = "销售报价", type = OperType.UPDATE) // i18n-ignore
     public R<Boolean> submit(@PathVariable Long id) {
         return R.ok(quotationService.submit(id));
     }
 
     @PostMapping("/{id}/to-order")
     @PreAuthorize("@ss.hasPerm('scm:quotation:order')")
-    @OperLog(title = "报价转销售订单", type = OperType.INSERT)
+    @OperLog(title = "报价转销售订单", type = OperType.INSERT) // i18n-ignore
     public R<Long> toOrder(@PathVariable Long id, @RequestParam(required = false) Long warehouseId,
                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate deliveryDate) {
         return R.ok(quotationService.toOrder(id, warehouseId, deliveryDate));
@@ -92,7 +92,7 @@ public class ScmQuotationController {
 
     @PostMapping("/{id}/lose")
     @PreAuthorize("@ss.hasPerm('scm:quotation:edit')")
-    @OperLog(title = "销售报价", type = OperType.UPDATE)
+    @OperLog(title = "销售报价", type = OperType.UPDATE) // i18n-ignore
     public R<Void> lose(@PathVariable Long id, @RequestParam(required = false) String reason) {
         quotationService.lose(id, reason);
         return R.ok();

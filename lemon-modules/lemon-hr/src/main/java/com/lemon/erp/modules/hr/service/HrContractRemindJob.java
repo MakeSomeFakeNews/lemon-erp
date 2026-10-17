@@ -27,7 +27,7 @@ public class HrContractRemindJob implements JobHandler {
 
     @Override
     public String name() {
-        return "劳动合同到期提醒";
+        return "劳动合同到期提醒";  // i18n-ignore 定时任务名称，任务管理处翻译
     }
 
     @Override
@@ -46,10 +46,10 @@ public class HrContractRemindJob implements JobHandler {
         List<HrContract> list = contractService.expiring(params.getInt("days", 30));
         for (HrContract c : list) {
             messageSender.sendToPermission("hr:contract:list", Message.of("REMIND",
-                    "劳动合同即将到期：" + c.getEmployeeName() + "（" + c.getEmpNo() + "）",
-                    "合同 " + c.getContractNo() + " 将于 " + c.getEndDate() + " 到期，请及时续签或办理终止", "/hr/contract")
+                    "劳动合同即将到期：" + c.getEmployeeName() + "（" + c.getEmpNo() + "）",  // i18n-ignore 站内消息存库
+                    "合同 " + c.getContractNo() + " 将于 " + c.getEndDate() + " 到期，请及时续签或办理终止", "/hr/contract")  // i18n-ignore 站内消息存库
                     .dedup("contract-expiry:" + c.getId()));
         }
-        return "已到期 " + expired + " 份，提醒 " + list.size() + " 份";
+        return "已到期 " + expired + " 份，提醒 " + list.size() + " 份";  // i18n-ignore 任务日志存库
     }
 }

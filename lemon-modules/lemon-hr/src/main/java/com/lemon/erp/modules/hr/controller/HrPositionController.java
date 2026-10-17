@@ -56,7 +56,7 @@ public class HrPositionController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('hr:position:add')")
-    @OperLog(title = "职位管理", type = OperType.INSERT)
+    @OperLog(title = "职位管理", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Void> create(@Validated(Create.class) @RequestBody HrPosition position) {
         positionService.create(position);
         return R.ok();
@@ -64,7 +64,7 @@ public class HrPositionController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('hr:position:edit')")
-    @OperLog(title = "职位管理", type = OperType.UPDATE)
+    @OperLog(title = "职位管理", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody HrPosition position) {
         positionService.update(id, position);
         return R.ok();
@@ -72,7 +72,7 @@ public class HrPositionController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('hr:position:edit')")
-    @OperLog(title = "职位管理-修改状态", type = OperType.UPDATE)
+    @OperLog(title = "职位管理-修改状态", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> changeStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
         positionService.changeStatus(id, req.status());
         return R.ok();
@@ -80,7 +80,7 @@ public class HrPositionController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('hr:position:remove')")
-    @OperLog(title = "职位管理", type = OperType.DELETE)
+    @OperLog(title = "职位管理", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         positionService.delete(ids);
         return R.ok();

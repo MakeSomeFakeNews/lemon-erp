@@ -2,12 +2,12 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
-        <a-select v-model:value="query.status" placeholder="全部状态" allow-clear :options="toOptions(dict.fin_statement_status)" class="filter" @change="search" />
-        <PartnerSelect v-model:value="query.supplierId" type="supplier" allow-clear placeholder="供应商" class="filter-wide" @update:value="search" />
-        <a-input-search v-model:value="query.keyword" placeholder="对账单号、供应商" allow-clear class="filter-wide" @search="search" />
+        <a-select v-model:value="query.status" :placeholder="$t('fin.statement.allStatus')" allow-clear :options="toOptions(dict.fin_statement_status)" class="filter" @change="search" />
+        <PartnerSelect v-model:value="query.supplierId" type="supplier" allow-clear :placeholder="$t('fin.statement.supplier')" class="filter-wide" @update:value="search" />
+        <a-input-search v-model:value="query.keyword" :placeholder="$t('fin.statement.keywordPh')" allow-clear class="filter-wide" @search="search" />
         <template #extra>
           <a-button v-perm="'fin:statement:add'" type="primary" @click="openGenerate">
-            <template #icon><PlusOutlined /></template>生成对账单
+            <template #icon><PlusOutlined /></template>{{ $t('fin.statement.generate') }}
           </a-button>
         </template>
       </TableToolbar>
@@ -29,7 +29,7 @@
           <template v-else-if="column.key === 'period'">{{ record.beginDate }} ~ {{ record.endDate }}</template>
           <template v-else-if="column.key === 'amount'">
             ¥{{ formatMoney(record.amount) }}
-            <div class="sub-text">{{ record.billCount }} 张应付单</div>
+            <div class="sub-text">{{ $t('fin.statement.billCount', { n: record.billCount }) }}</div>
           </template>
           <template v-else-if="column.key === 'invoice'">
             <template v-if="record.invoiceNo">
@@ -43,54 +43,54 @@
             <a-tooltip v-if="record.supplierRemark" :title="record.supplierRemark"><div class="sub-text ellipsis">{{ record.supplierRemark }}</div></a-tooltip>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">查看</a-button>
+            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <a-modal v-model:open="generateOpen" title="生成对账单" :confirm-loading="saving" @ok="submitGenerate">
-      <a-alert type="info" show-icon class="block" message="汇总供应商在期间内还没有对过账的应付单（采购入库、退货、质量索赔等），生成后发送给供应商在门户确认" />
+    <a-modal v-model:open="generateOpen" :title="$t('fin.statement.generate')" :confirm-loading="saving" @ok="submitGenerate">
+      <a-alert type="info" show-icon class="block" :message="$t('fin.statement.generateTip')" />
       <a-form layout="vertical">
-        <a-form-item label="供应商" required>
+        <a-form-item :label="$t('fin.statement.supplier')" required>
           <PartnerSelect v-model:value="gen.supplierId" type="supplier" />
         </a-form-item>
-        <a-form-item label="对账期间" required>
+        <a-form-item :label="$t('fin.statement.period')" required>
           <a-range-picker v-model:value="gen.range" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
-        <a-form-item label="备注">
+        <a-form-item :label="$t('common.field.remark')">
           <a-input v-model:value="gen.remark" :maxlength="255" />
         </a-form-item>
       </a-form>
     </a-modal>
 
-    <SubPage :open="detailOpen" :title="detail ? `对账单 ${detail.statementNo}` : ''" width="min(980px, 100vw)" @close="detailOpen = false">
+    <SubPage :open="detailOpen" :title="detail ? $t('fin.statement.detailTitle', { no: detail.statementNo }) : ''" width="min(980px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <a-space v-if="['DRAFT', 'DISPUTED'].includes(detail.status)">
           <span v-perm="'fin:statement:remove'">
-            <a-popconfirm title="删除对账单？其中的应付单可以重新对账" @confirm="remove"><a-button danger>删除</a-button></a-popconfirm>
+            <a-popconfirm :title="$t('fin.statement.confirmDelete')" @confirm="remove"><a-button danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
           </span>
           <span v-perm="'fin:statement:edit'">
-            <a-popconfirm title="发送给供应商在门户确认？" @confirm="send"><a-button type="primary">发送供应商</a-button></a-popconfirm>
+            <a-popconfirm :title="$t('fin.statement.confirmSend')" @confirm="send"><a-button type="primary">{{ $t('fin.statement.send') }}</a-button></a-popconfirm>
           </span>
         </a-space>
       </template>
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" bordered class="block">
-          <a-descriptions-item label="供应商">{{ detail.supplierCode }} {{ detail.supplierName }}</a-descriptions-item>
-          <a-descriptions-item label="对账期间">{{ detail.beginDate }} ~ {{ detail.endDate }}</a-descriptions-item>
-          <a-descriptions-item label="状态"><DictTag type="fin_statement_status" :value="detail.status" /></a-descriptions-item>
-          <a-descriptions-item label="对账金额"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
-          <a-descriptions-item label="供应商确认">{{ detail.confirmTime || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="发票">
+          <a-descriptions-item :label="$t('fin.statement.supplier')">{{ detail.supplierCode }} {{ detail.supplierName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.statement.period')">{{ detail.beginDate }} ~ {{ detail.endDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.status')"><DictTag type="fin_statement_status" :value="detail.status" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.statement.amount')"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.statement.confirmTime')">{{ detail.confirmTime || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.statement.invoice')">
             <template v-if="detail.invoiceNo">{{ detail.invoiceNo }} ¥{{ formatMoney(detail.invoiceAmount) }} {{ detail.invoiceDate }}</template>
             <span v-else>-</span>
           </a-descriptions-item>
-          <a-descriptions-item v-if="detail.supplierRemark" label="供应商意见" :span="3">{{ detail.supplierRemark }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="备注" :span="3">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.supplierRemark" :label="$t('fin.statement.supplierRemark')" :span="3">{{ detail.supplierRemark }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')" :span="3">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
         <StatementLines :lines="detail.lines" />
-        <div class="section-title">发票及附件</div>
+        <div class="section-title">{{ $t('fin.statement.attachments') }}</div>
         <AttachmentPanel biz-type="fin_statement" :biz-id="detail.id" :editable="userStore.hasPerm('fin:statement:edit')" />
       </template>
     </SubPage>
@@ -100,6 +100,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
@@ -117,17 +118,18 @@ import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
 /** 供应商对账：汇总期间内的应付单生成对账单，发送后供应商在门户确认并填写发票 */
+const { t } = useI18n()
 const dict = useDict('fin_statement_status')
 const userStore = useUserStore()
 
 const columns = [
-  { title: '对账单号', key: 'statementNo', width: 180 },
-  { title: '供应商', dataIndex: 'supplierName', width: 200, ellipsis: true },
-  { title: '对账期间', key: 'period', width: 200 },
-  { title: '对账金额', key: 'amount', width: 150, align: 'right' },
-  { title: '发票', key: 'invoice', width: 180 },
-  { title: '状态', key: 'status', width: 120 },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' }
+  { title: t('fin.statement.statementNo'), key: 'statementNo', width: 180 },
+  { title: t('fin.statement.supplier'), dataIndex: 'supplierName', width: 200, ellipsis: true },
+  { title: t('fin.statement.period'), key: 'period', width: 200 },
+  { title: t('fin.statement.amount'), key: 'amount', width: 160, align: 'right' },
+  { title: t('fin.statement.invoice'), key: 'invoice', width: 180 },
+  { title: t('common.field.status'), key: 'status', width: 130 },
+  { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'fin-statement')
 const query = reactive({ status: undefined, supplierId: undefined, keyword: undefined })
@@ -143,11 +145,11 @@ function openGenerate() {
   generateOpen.value = true
 }
 async function submitGenerate() {
-  if (!gen.value.supplierId || !gen.value.range) return message.warning('请选择供应商和对账期间')
+  if (!gen.value.supplierId || !gen.value.range) return message.warning(t('fin.statement.selectRequired'))
   saving.value = true
   try {
     const id = await generateStatement({ supplierId: gen.value.supplierId, beginDate: gen.value.range[0], endDate: gen.value.range[1], remark: gen.value.remark || null })
-    message.success('已生成对账单')
+    message.success(t('fin.statement.generated'))
     generateOpen.value = false
     load()
     openDetail(id)
@@ -164,13 +166,13 @@ async function openDetail(id) {
 }
 async function send() {
   await sendStatement(detail.value.id)
-  message.success('已发送，供应商可在门户确认')
+  message.success(t('fin.statement.sent'))
   detail.value = await getStatement(detail.value.id)
   load()
 }
 async function remove() {
   await deleteStatement(detail.value.id)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   detailOpen.value = false
   load()
 }

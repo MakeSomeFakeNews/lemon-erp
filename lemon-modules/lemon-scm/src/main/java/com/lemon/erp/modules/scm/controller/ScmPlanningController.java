@@ -64,7 +64,7 @@ public class ScmPlanningController {
 
     @PostMapping("/sales/order/{id}/reservation")
     @PreAuthorize("@ss.hasPerm('scm:sales:reserve')")
-    @OperLog(title = "销售订单预留库存", type = OperType.INSERT)
+    @OperLog(title = "销售订单预留库存", type = OperType.INSERT) // i18n-ignore
     public R<Void> reserve(@PathVariable Long id, @Valid @RequestBody ReserveRequest req) {
         reservationService.reserve(id, req);
         return R.ok();
@@ -73,14 +73,14 @@ public class ScmPlanningController {
     /** 一键预留：返回预留的行数 */
     @PostMapping("/sales/order/{id}/reservation/auto")
     @PreAuthorize("@ss.hasPerm('scm:sales:reserve')")
-    @OperLog(title = "销售订单预留库存", type = OperType.INSERT)
+    @OperLog(title = "销售订单预留库存", type = OperType.INSERT) // i18n-ignore
     public R<Integer> reserveAvailable(@PathVariable Long id, @RequestParam(required = false) Long warehouseId) {
         return R.ok(reservationService.reserveAvailable(id, warehouseId));
     }
 
     @DeleteMapping("/sales/order/{id}/reservation")
     @PreAuthorize("@ss.hasPerm('scm:sales:reserve')")
-    @OperLog(title = "销售订单释放预留", type = OperType.DELETE)
+    @OperLog(title = "销售订单释放预留", type = OperType.DELETE) // i18n-ignore
     public R<Void> release(@PathVariable Long id) {
         reservationService.release(id);
         return R.ok();

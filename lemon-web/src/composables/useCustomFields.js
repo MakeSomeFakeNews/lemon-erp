@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { t } from '@/locales'
 import { batchCustomValues, customFields, customValues, saveCustomValues } from '@/api/system/customField'
 
 /** 业务类型启用的字段，同一页面共用一次请求 */
@@ -19,7 +20,7 @@ export const optionsOf = (f) => (f.options || '').split(/[,，\n]/).map((s) => s
 /** 值的显示文本 */
 export function displayValue(f, v) {
   if (v === undefined || v === null || v === '') return ''
-  if (f.fieldType === 'BOOL') return v === 'true' ? '是' : '否'
+  if (f.fieldType === 'BOOL') return v === 'true' ? t('common.status.yes') : t('common.status.no')
   return v
 }
 
@@ -46,7 +47,7 @@ export function useCustomFields(bizType) {
   function checkRequired(vals) {
     const lack = missing(vals)
     if (!lack.length) return
-    message.warning(`请填写${lack.join('、')}`)
+    message.warning(t('components.customFields.required', { names: lack.join(t('components.excel.listSep')) }))
     const err = new Error('custom field required')
     err.handled = true
     throw err

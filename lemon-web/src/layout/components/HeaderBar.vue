@@ -121,7 +121,7 @@ const moduleItems = computed(() => [
   // 顶部空间有限，「供应链管理」显示为「供应链」
   ...modules.value.map((m) => ({
     key: m.key,
-    label: isZh() ? m.title.replace(/(.{2,})管理$/, '$1') : m.title,
+    label: isZh() ? m.title.replace(/(.{2,})管理$/, '$1') : m.title, // i18n-ignore 中文模块名去掉「管理」后缀
     icon: m.icon ? () => h(MenuIcon, { name: m.icon }) : undefined
   }))
 ])

@@ -1,0 +1,13 @@
+{
+  "状态不能为空": "Status is required",
+  "状态只能是 0 或 1": "Status must be 0 or 1",
+  "没有权限，请联系管理员": "Access denied. Please contact the administrator",
+  "上传文件过大": "The uploaded file is too large",
+  "请求参数格式不正确": "Invalid request format",
+  "参数「{0}」格式不正确": "Parameter \"{0}\" has an invalid format",
+  "缺少参数「{0}」": "Missing parameter \"{0}\"",
+  "不支持 {0} 请求": "{0} requests are not supported",
+  "接口不存在": "API not found",
+  "数据已存在，请刷新后重试": "The data already exists. Please refresh and try again",
+  "系统繁忙，请稍后重试": "The system is busy. Please try again later"
+}

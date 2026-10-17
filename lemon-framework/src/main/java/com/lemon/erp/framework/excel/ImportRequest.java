@@ -10,5 +10,5 @@ import java.util.List;
  */
 public record ImportRequest<T>(
         @NotEmpty(message = "没有要导入的数据")
-        @Size(max = ImportExecutor.MAX_ROWS, message = "一次最多导入" + ImportExecutor.MAX_ROWS + "行") List<ImportRow<T>> rows) {
+        @Size(max = ImportExecutor.MAX_ROWS, message = "一次最多导入{max}行") List<ImportRow<T>> rows) {
 }

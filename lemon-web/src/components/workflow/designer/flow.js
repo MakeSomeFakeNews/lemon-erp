@@ -1,3 +1,5 @@
+import { t } from '@/locales'
+
 /**
  * 流程设计器的数据结构与工具函数（与后端 FlowNode / FlowBranch 对应）
  *
@@ -16,10 +18,10 @@ export const NODE_TYPES = {
 
 /** 审批人类型；requiresIds：需要选择具体成员 / 角色；single：只会得到一个人，不需要多人审批方式 */
 export const ASSIGNEE_TYPES = [
-  { label: '指定成员', value: 'USER', requiresIds: true },
-  { label: '指定角色', value: 'ROLE', requiresIds: true },
-  { label: '部门主管', value: 'DEPT_LEADER', single: true },
-  { label: '发起人自己', value: 'INITIATOR', single: true }
+  { label: t('workflow.assignee.user'), value: 'USER', requiresIds: true },
+  { label: t('workflow.assignee.role'), value: 'ROLE', requiresIds: true },
+  { label: t('workflow.assignee.deptLeader'), value: 'DEPT_LEADER', single: true },
+  { label: t('workflow.assignee.initiator'), value: 'INITIATOR', single: true }
 ]
 
 const assigneeTypeOf = (type) => ASSIGNEE_TYPES.find((t) => t.value === type) || {}
@@ -28,30 +30,30 @@ export const isSingleAssignee = (type) => !!assigneeTypeOf(type).single
 
 /** 部门主管级别：从发起人所在部门向上数，所在部门为第 1 级 */
 export const LEADER_LEVELS = Array.from({ length: 10 }, (_, i) => ({
-  label: i === 0 ? '直属主管（发起人所在部门）' : `第 ${i + 1} 级主管`,
+  label: i === 0 ? t('workflow.leader.directWithDept') : t('workflow.leader.level', { n: i + 1 }),
   value: i + 1
 }))
 
 export const APPROVE_MODES = [
-  { label: '依次审批', value: 'SEQUENTIAL', desc: '按顺序依次审批' },
-  { label: '会签', value: 'AND', desc: '需所有审批人同意' },
-  { label: '或签', value: 'OR', desc: '一名审批人同意即可' }
+  { label: t('workflow.approveMode.sequential'), value: 'SEQUENTIAL', desc: t('workflow.approveMode.sequentialDesc') },
+  { label: t('workflow.approveMode.and'), value: 'AND', desc: t('workflow.approveMode.andDesc') },
+  { label: t('workflow.approveMode.or'), value: 'OR', desc: t('workflow.approveMode.orDesc') }
 ]
 
 export const EMPTY_ACTIONS = [
-  { label: '自动通过', value: 'AUTO_PASS' },
-  { label: '转交超级管理员', value: 'TO_ADMIN' }
+  { label: t('workflow.emptyAction.autoPass'), value: 'AUTO_PASS' },
+  { label: t('workflow.emptyAction.toAdmin'), value: 'TO_ADMIN' }
 ]
 
 export const OPERATORS = [
-  { label: '等于', value: 'EQ' },
-  { label: '不等于', value: 'NE' },
-  { label: '大于', value: 'GT' },
-  { label: '大于等于', value: 'GE' },
-  { label: '小于', value: 'LT' },
-  { label: '小于等于', value: 'LE' },
-  { label: '属于', value: 'IN' },
-  { label: '包含', value: 'CONTAINS' }
+  { label: t('workflow.operator.eq'), value: 'EQ' },
+  { label: t('workflow.operator.ne'), value: 'NE' },
+  { label: t('workflow.operator.gt'), value: 'GT' },
+  { label: t('workflow.operator.ge'), value: 'GE' },
+  { label: t('workflow.operator.lt'), value: 'LT' },
+  { label: t('workflow.operator.le'), value: 'LE' },
+  { label: t('workflow.operator.in'), value: 'IN' },
+  { label: t('workflow.operator.contains'), value: 'CONTAINS' }
 ]
 
 /** 各字段类型可用的比较方式 */
@@ -77,10 +79,10 @@ const labelOf = (list, value) => list.find((i) => i.value === value)?.label || v
 const ID_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/
 const randomId = (prefix) => `${prefix}_${Math.random().toString(36).slice(2, 10).padEnd(8, '0')}`
 
-export const DEFAULT_BRANCH_NAME = '其他情况'
+export const DEFAULT_BRANCH_NAME = t('workflow.node.defaultBranch')
 
 export function createStartNode() {
-  return { id: 'start', type: NODE_TYPES.START, name: '发起人', next: null }
+  return { id: 'start', type: NODE_TYPES.START, name: t('workflow.node.start'), next: null }
 }
 
 export function createBranch(name, defaultBranch = false) {
@@ -95,19 +97,19 @@ export function createNode(type) {
     case NODE_TYPES.APPROVER:
       return {
         ...base,
-        name: '审批人',
+        name: t('workflow.node.approver'),
         assignee: { type: 'USER', ids: [], names: [] },
         approveMode: 'OR',
         emptyAction: 'AUTO_PASS'
       }
     case NODE_TYPES.CC:
-      return { ...base, name: '抄送人', assignee: { type: 'USER', ids: [], names: [] } }
+      return { ...base, name: t('workflow.node.cc'), assignee: { type: 'USER', ids: [], names: [] } }
     case NODE_TYPES.CONDITION:
-      return { ...base, name: '条件分支', branches: [createBranch('条件1'), createBranch(DEFAULT_BRANCH_NAME, true)] }
+      return { ...base, name: t('workflow.node.condition'), branches: [createBranch(t('workflow.node.conditionN', { n: 1 })), createBranch(DEFAULT_BRANCH_NAME, true)] }
     case NODE_TYPES.PARALLEL:
-      return { ...base, name: '并行分支', branches: [createBranch('分支1'), createBranch('分支2')] }
+      return { ...base, name: t('workflow.node.parallel'), branches: [createBranch(t('workflow.node.branchN', { n: 1 })), createBranch(t('workflow.node.branchN', { n: 2 }))] }
     default:
-      throw new Error(`未知节点类型：${type}`)
+      throw new Error(t('workflow.node.unknownType', { type }))
   }
 }
 
@@ -129,9 +131,9 @@ export function removeNode(holder) {
 export function addBranch(node) {
   if (node.type === NODE_TYPES.CONDITION) {
     const count = node.branches.filter((b) => !b.defaultBranch).length
-    node.branches.splice(node.branches.length - 1, 0, createBranch(`条件${count + 1}`))
+    node.branches.splice(node.branches.length - 1, 0, createBranch(t('workflow.node.conditionN', { n: count + 1 })))
   } else {
-    node.branches.push(createBranch(`分支${node.branches.length + 1}`))
+    node.branches.push(createBranch(t('workflow.node.branchN', { n: node.branches.length + 1 })))
   }
 }
 
@@ -170,12 +172,13 @@ const isCompleteRule = (r) => r && r.field && r.operator && r.value !== undefine
 export function assigneeText(node) {
   const a = node.assignee
   if (!a) return ''
-  if (a.type === 'INITIATOR') return '发起人自己'
-  if (a.type === 'DEPT_LEADER') return (a.level || 1) === 1 ? '直属主管' : `第 ${a.level} 级主管`
+  if (a.type === 'INITIATOR') return t('workflow.assignee.initiator')
+  if (a.type === 'DEPT_LEADER') return (a.level || 1) === 1 ? t('workflow.leader.direct') : t('workflow.leader.level', { n: a.level })
   if (!a.ids?.length) return ''
   const names = a.names?.length ? a.names : a.ids.map(String)
-  const prefix = a.type === 'ROLE' ? '角色：' : ''
-  return prefix + (names.length > 3 ? `${names.slice(0, 3).join('、')} 等 ${names.length} 人` : names.join('、'))
+  const sep = t('workflow.text.listSep')
+  const prefix = a.type === 'ROLE' ? t('workflow.text.rolePrefix') : ''
+  return prefix + (names.length > 3 ? t('workflow.text.andMore', { names: names.slice(0, 3).join(sep), n: names.length }) : names.join(sep))
 }
 
 export function nodeSummary(node) {
@@ -183,7 +186,7 @@ export function nodeSummary(node) {
     const who = assigneeText(node)
     if (!who) return ''
     const multi = !isSingleAssignee(node.assignee.type) && (node.assignee.type === 'ROLE' || node.assignee.ids.length > 1)
-    return multi ? `${who}（${labelOf(APPROVE_MODES, node.approveMode)}）` : who
+    return multi ? t('workflow.text.withMode', { who, mode: labelOf(APPROVE_MODES, node.approveMode) }) : who
   }
   if (node.type === NODE_TYPES.CC) return assigneeText(node)
   return ''
@@ -191,24 +194,24 @@ export function nodeSummary(node) {
 
 /** 条件分支的条件文案：组内「且」，组间「或」 */
 export function conditionText(branch, fields = []) {
-  if (branch.defaultBranch) return '未满足其他条件时进入此分支'
+  if (branch.defaultBranch) return t('workflow.text.defaultBranchDesc')
   const fieldOf = (key) => fields.find((f) => f.field === key)
   const valueText = (r) => {
     const options = toSelectOptions(fieldOf(r.field)?.options)
     return String(r.value)
       .split(/[,，]/)
       .map((v) => labelOf(options, v.trim()))
-      .join('、')
+      .join(t('workflow.text.listSep'))
   }
   const groups = (branch.conditions || [])
     .map((g) =>
       g
         .filter(isCompleteRule)
         .map((r) => `${fieldOf(r.field)?.label || r.field} ${labelOf(OPERATORS, r.operator)} ${valueText(r)}`)
-        .join(' 且 ')
+        .join(t('workflow.text.and'))
     )
     .filter(Boolean)
-  return groups.join(' 或 ')
+  return groups.join(t('workflow.text.or'))
 }
 
 // ---------- 校验 ----------
@@ -229,51 +232,51 @@ export function validateFlow(root, fields = []) {
     errors.push(msg)
   }
   const checkId = (id, label) => {
-    if (!ID_PATTERN.test(id || '')) fail(id, `「${label}」的标识不合法`)
-    else if (ids.has(id)) fail(id, `「${label}」的标识重复`)
+    if (!ID_PATTERN.test(id || '')) fail(id, t('workflow.validate.idInvalid', { name: label }))
+    else if (ids.has(id)) fail(id, t('workflow.validate.idDuplicate', { name: label }))
     ids.add(id)
   }
 
   if (!root || root.type !== NODE_TYPES.START) {
-    return { errors: ['流程缺少发起人节点'], invalidIds }
+    return { errors: [t('workflow.validate.noStart')], invalidIds }
   }
 
   walk(root, (node) => {
-    const name = node.name || '未命名节点'
+    const name = node.name || t('workflow.validate.unnamedNode')
     checkId(node.id, name)
-    if (!node.name?.trim()) fail(node.id, '存在未填写名称的节点')
+    if (!node.name?.trim()) fail(node.id, t('workflow.validate.nodeNameEmpty'))
 
     if (node.type === NODE_TYPES.APPROVER || node.type === NODE_TYPES.CC) {
       if (node.type === NODE_TYPES.APPROVER) approverCount++
       const a = node.assignee
-      if (!a?.type) fail(node.id, `「${name}」未设置${node.type === NODE_TYPES.CC ? '抄送人' : '审批人'}`)
+      if (!a?.type) fail(node.id, node.type === NODE_TYPES.CC ? t('workflow.validate.noCc', { name }) : t('workflow.validate.noApprover', { name }))
       else if (requiresIds(a.type) && !a.ids?.length) {
-        fail(node.id, `「${name}」未选择${a.type === 'ROLE' ? '角色' : '成员'}`)
+        fail(node.id, a.type === 'ROLE' ? t('workflow.validate.noRole', { name }) : t('workflow.validate.noUser', { name }))
       }
     }
 
     if (node.type === NODE_TYPES.CONDITION || node.type === NODE_TYPES.PARALLEL) {
       const branches = node.branches || []
-      if (branches.length < 2) fail(node.id, `「${name}」至少需要 2 个分支`)
+      if (branches.length < 2) fail(node.id, t('workflow.validate.minBranches', { name }))
       if (node.type === NODE_TYPES.CONDITION && branches.filter((b) => b.defaultBranch).length !== 1) {
-        fail(node.id, `「${name}」必须有且只有一个「${DEFAULT_BRANCH_NAME}」分支`)
+        fail(node.id, t('workflow.validate.oneDefault', { name, branch: DEFAULT_BRANCH_NAME }))
       }
       branches.forEach((b) => {
-        const bName = b.name || '未命名分支'
+        const bName = b.name || t('workflow.validate.unnamedBranch')
         checkId(b.id, bName)
-        if (!b.name?.trim()) fail(b.id, `「${name}」存在未填写名称的分支`)
+        if (!b.name?.trim()) fail(b.id, t('workflow.validate.branchNameEmpty', { name }))
         if (node.type !== NODE_TYPES.CONDITION || b.defaultBranch) return
         const groups = b.conditions || []
         if (!groups.length || groups.some((g) => !g.length || !g.every(isCompleteRule))) {
-          fail(b.id, `「${bName}」的条件未填写完整`)
+          fail(b.id, t('workflow.validate.conditionIncomplete', { name: bName }))
         } else if (fieldKeys.size && groups.flat().some((r) => !fieldKeys.has(r.field))) {
-          fail(b.id, `「${bName}」引用了表单中不存在的字段`)
+          fail(b.id, t('workflow.validate.fieldMissing', { name: bName }))
         }
       })
     }
   })
 
-  if (!approverCount) errors.unshift('流程至少需要一个审批人节点')
+  if (!approverCount) errors.unshift(t('workflow.validate.noApproverNode'))
   return { errors, invalidIds }
 }
 

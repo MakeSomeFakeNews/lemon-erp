@@ -16,14 +16,14 @@
             <template #icon><ArrowLeftOutlined /></template>
           </a-button>
           <span class="designer-name">{{ model?.name }}</span>
-          <a-tag v-if="model?.version" color="green" :bordered="false">已发布 v{{ model.version }}</a-tag>
-          <a-tag v-else :bordered="false">未发布</a-tag>
-          <a-tag v-if="dirty" color="orange" :bordered="false">有未保存的修改</a-tag>
+          <a-tag v-if="model?.version" color="green" :bordered="false">{{ $t('workflow.model.publishedVersion', { v: model.version }) }}</a-tag>
+          <a-tag v-else :bordered="false">{{ $t('workflow.model.unpublished') }}</a-tag>
+          <a-tag v-if="dirty" color="orange" :bordered="false">{{ $t('workflow.model.dirty') }}</a-tag>
         </div>
         <a-segmented v-model:value="tab" :options="TABS" class="designer-tabs" />
         <a-space class="designer-actions">
           <a-button v-perm="'wf:model:edit'" :loading="saving === 'save'" :disabled="loading || !!saving" @click="save(false)">
-            <template #icon><SaveOutlined /></template>保存
+            <template #icon><SaveOutlined /></template>{{ $t('common.action.save') }}
           </a-button>
           <a-button
             v-perm="'wf:model:deploy'"
@@ -32,13 +32,13 @@
             :disabled="loading || !!saving"
             @click="save(true)"
           >
-            <template #icon><CloudUploadOutlined /></template>保存并发布
+            <template #icon><CloudUploadOutlined /></template>{{ $t('workflow.model.saveAndDeploy') }}
           </a-button>
         </a-space>
       </div>
 
       <a-alert v-if="errors.length" type="error" show-icon closable class="designer-errors" @close="errors = []">
-        <template #message>请修正以下问题后再保存</template>
+        <template #message>{{ $t('workflow.model.fixErrors') }}</template>
         <template #description>
           <ul class="error-list">
             <li v-for="(e, i) in errors" :key="i">{{ e }}</li>
@@ -53,7 +53,7 @@
         <div v-show="tab === 'flow'" class="designer-body">
           <a-alert v-if="model?.business" type="info" show-icon class="business-tip">
             <template #message>
-              该流程由「{{ model.business.name }}」业务单据提交审批，不在「发起申请」中显示。条件分支可以使用业务变量：
+              {{ $t('workflow.model.businessTip', { name: model.business.name }) }}
               <a-tag v-for="v in model.business.variables" :key="v.field" :bordered="false" class="var-tag">{{ v.label }}</a-tag>
             </template>
           </a-alert>
@@ -65,6 +65,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
 import { ArrowLeftOutlined, CloudUploadOutlined, SaveOutlined } from '@ant-design/icons-vue'
@@ -75,6 +76,8 @@ import { normalizeFields, validateFields } from '@/components/workflow/form/form
 import { deployModel, getModel, saveModelDesign } from '@/api/workflow/model'
 import { useDictStore } from '@/store/dict'
 
+const { t } = useI18n()
+
 /** 流程模型设计：表单设计 + 流程设计，全屏弹窗 */
 const props = defineProps({
   open: Boolean,
@@ -83,8 +86,8 @@ const props = defineProps({
 const emit = defineEmits(['update:open', 'saved'])
 
 const TABS = [
-  { label: '表单设计', value: 'form' },
-  { label: '流程设计', value: 'flow' }
+  { label: t('workflow.model.formDesign'), value: 'form' },
+  { label: t('workflow.model.flowDesign'), value: 'flow' }
 ]
 
 const tab = ref('flow')
@@ -112,7 +115,7 @@ const conditionFields = computed(() => [
   ...form.value,
   ...(model.value?.business?.variables || []).map((v) => ({
     field: v.field,
-    label: `${v.label}（业务）`,
+    label: t('workflow.model.businessVar', { label: v.label }),
     type: v.type,
     options: v.dictType
       ? (dictStore.cache[v.dictType] || []).map((d) => ({ label: d.label, value: d.value }))
@@ -147,16 +150,17 @@ watch(
 )
 
 function validate() {
-  const formErrors = validateFields(form.value).map((e) => `表单：${e}`)
-  const flowErrors = validateFlow(flow.value, conditionFields.value).errors.map((e) => `流程：${e}`)
-  return [...formErrors, ...flowErrors]
+  const formErrors = validateFields(form.value).map((msg) => t('workflow.model.formError', { msg }))
+  const flowErrors = validateFlow(flow.value, conditionFields.value).errors.map((msg) => t('workflow.model.flowError', { msg }))
+  return { formErrors, flowErrors }
 }
 
 async function save(deploy) {
   showValidation.value = true
-  errors.value = validate()
+  const { formErrors, flowErrors } = validate()
+  errors.value = [...formErrors, ...flowErrors]
   if (errors.value.length) {
-    tab.value = errors.value[0].startsWith('表单') ? 'form' : 'flow'
+    tab.value = formErrors.length ? 'form' : 'flow'
     return
   }
   saving.value = deploy ? 'deploy' : 'save'
@@ -166,9 +170,9 @@ async function save(deploy) {
     if (deploy) {
       const version = await deployModel(props.modelId)
       model.value.version = version
-      message.success(`发布成功，当前版本 v${version}`)
+      message.success(t('workflow.model.deployed', { v: version }))
     } else {
-      message.success('保存成功')
+      message.success(t('common.msg.saveSuccess'))
     }
     emit('saved')
   } finally {
@@ -182,11 +186,11 @@ function close() {
     return
   }
   Modal.confirm({
-    title: '放弃未保存的修改？',
-    content: '关闭后，本次的设计修改将会丢失。',
-    okText: '放弃修改',
+    title: t('workflow.model.discardTitle'),
+    content: t('workflow.model.discardContent'),
+    okText: t('common.action.discard'),
     okType: 'danger',
-    cancelText: '继续编辑',
+    cancelText: t('workflow.model.keepEditing'),
     onOk: () => emit('update:open', false)
   })
 }

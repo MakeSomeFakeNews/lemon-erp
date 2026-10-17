@@ -25,7 +25,7 @@
       <!-- 标签栏右侧：刷新当前页、标签操作 -->
       <template #rightExtra>
         <div class="tabs-extra">
-          <a-tooltip title="刷新当前页">
+          <a-tooltip :title="$t('components.layout.reloadPage')">
             <a-button type="text" size="small" @click="appStore.reloadPage()">
               <template #icon><ReloadOutlined :spin="appStore.reloading" /></template>
             </a-button>
@@ -57,6 +57,7 @@ import {
   VerticalRightOutlined
 } from '@ant-design/icons-vue'
 import MenuIcon from '@/components/MenuIcon.vue'
+import { t } from '@/locales'
 import { useAppStore, HOME_TAB } from '@/store/app'
 
 const route = useRoute()
@@ -72,24 +73,24 @@ watch(
   { immediate: true }
 )
 
-const currentTab = computed(() => appStore.tabs.find((t) => t.path === route.path) || HOME_TAB)
+const currentTab = computed(() => appStore.tabs.find((tb) => tb.path === route.path) || HOME_TAB)
 
 function menuItems(tab) {
-  const idx = appStore.tabs.findIndex((t) => t.path === tab.path)
-  const closable = appStore.tabs.filter((t) => !t.affix)
+  const idx = appStore.tabs.findIndex((tb) => tb.path === tab.path)
+  const closable = appStore.tabs.filter((tb) => !tb.affix)
   return [
-    { key: 'reload', label: '刷新', icon: () => h(ReloadOutlined), disabled: tab.path !== route.path },
-    { key: 'close', label: '关闭', icon: () => h(CloseOutlined), disabled: !!tab.affix },
+    { key: 'reload', label: t('common.action.refresh'), icon: () => h(ReloadOutlined), disabled: tab.path !== route.path },
+    { key: 'close', label: t('common.action.close'), icon: () => h(CloseOutlined), disabled: !!tab.affix },
     { type: 'divider' },
-    { key: 'others', label: '关闭其他', icon: () => h(ColumnWidthOutlined), disabled: closable.every((t) => t.path === tab.path) },
-    { key: 'left', label: '关闭左侧', icon: () => h(VerticalRightOutlined), disabled: !appStore.tabs.slice(0, idx).some((t) => !t.affix) },
-    { key: 'right', label: '关闭右侧', icon: () => h(VerticalLeftOutlined), disabled: !appStore.tabs.slice(idx + 1).some((t) => !t.affix) },
-    { key: 'all', label: '关闭全部', icon: () => h(MinusOutlined), disabled: !closable.length }
+    { key: 'others', label: t('components.layout.closeOthers'), icon: () => h(ColumnWidthOutlined), disabled: closable.every((tb) => tb.path === tab.path) },
+    { key: 'left', label: t('components.layout.closeLeft'), icon: () => h(VerticalRightOutlined), disabled: !appStore.tabs.slice(0, idx).some((tb) => !tb.affix) },
+    { key: 'right', label: t('components.layout.closeRight'), icon: () => h(VerticalLeftOutlined), disabled: !appStore.tabs.slice(idx + 1).some((tb) => !tb.affix) },
+    { key: 'all', label: t('components.layout.closeAll'), icon: () => h(MinusOutlined), disabled: !closable.length }
   ]
 }
 
 function onChange(path) {
-  const tab = appStore.tabs.find((t) => t.path === path)
+  const tab = appStore.tabs.find((tb) => tb.path === path)
   router.push(tab?.fullPath || path)
 }
 
@@ -103,8 +104,8 @@ function handle(key, tab) {
   if (key === 'close') return close(tab.path)
   appStore.closeTabs(key, tab.path)
   // 当前页被关掉时，跳到操作的标签或首页
-  if (!appStore.tabs.some((t) => t.path === route.path)) {
-    const target = appStore.tabs.find((t) => t.path === tab.path) || HOME_TAB
+  if (!appStore.tabs.some((tb) => tb.path === route.path)) {
+    const target = appStore.tabs.find((tb) => tb.path === tab.path) || HOME_TAB
     router.push(target.fullPath)
   } else if (tab.path !== route.path && key === 'others') {
     router.push(tab.fullPath)

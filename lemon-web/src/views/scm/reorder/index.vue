@@ -2,8 +2,8 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="load" @reset="resetQuery">
-        <a-form-item label="物料" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="物料编码或名称" allow-clear />
+        <a-form-item :label="$t('scm.reorder.material')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('scm.reorder.keywordPh')" allow-clear />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -13,7 +13,7 @@
         type="info"
         show-icon
         class="tip"
-        message="预计库存 = 可用库存 + 采购在途 + 在制净额（在制产出 − 工单待领料）− 销售待发；预计库存低于再订货点（未设置时取安全库存）时建议补货，补货数量取再订货量与补足到再订货点所需数量中的较大者。"
+        :message="$t('scm.reorder.tip')"
       />
       <TableToolbar
         v-model:size="size"
@@ -24,11 +24,11 @@
         @refresh="load"
       >
         <a-button v-perm="'scm:requisition:add'" type="primary" :disabled="!selectedKeys.length" :loading="creating" @click="createRequisition">
-          <template #icon><FileAddOutlined /></template>生成请购单<template v-if="selectedKeys.length">（{{ selectedKeys.length }}）</template>
+          <template #icon><FileAddOutlined /></template>{{ selectedKeys.length ? $t('scm.reorder.createReqN', { n: selectedKeys.length }) : $t('scm.reorder.createReq') }}
         </a-button>
-        <a-date-picker v-model:value="requiredDate" value-format="YYYY-MM-DD" placeholder="需求日期（选填）" />
+        <a-date-picker v-model:value="requiredDate" value-format="YYYY-MM-DD" :placeholder="$t('scm.reorder.requiredDatePh')" />
         <span class="toolbar-switch">
-          <a-switch v-model:checked="query.onlyNeeded" size="small" @change="load" /> 只看需要补货
+          <a-switch v-model:checked="query.onlyNeeded" size="small" @change="load" /> {{ $t('scm.reorder.onlyNeeded') }}
         </span>
       </TableToolbar>
 
@@ -53,7 +53,7 @@
           </template>
           <template v-else-if="column.key === 'point'">
             <div>{{ formatQty(record.reorderPoint) }}</div>
-            <div class="sub-text">安全库存 {{ formatQty(record.safetyStock) }}</div>
+            <div class="sub-text">{{ $t('scm.reorder.safetyStock', { qty: formatQty(record.safetyStock) }) }}</div>
           </template>
           <template v-else-if="['available', 'poOpen', 'soOpen', 'woNet', 'reorderQty'].includes(column.key)">
             {{ formatQty(record[column.key]) }}
@@ -67,7 +67,7 @@
             <span class="sub-text"> {{ record.unit }}</span>
           </template>
           <template v-else-if="column.key === 'orderQty'">
-            <span v-if="record.supplyType === 'MAKE'" class="sub-text">自制件请在生产计划 / MRP 中安排</span>
+            <span v-if="record.supplyType === 'MAKE'" class="sub-text">{{ $t('scm.reorder.makeTip') }}</span>
             <a-input-number
               v-else-if="selectedKeys.includes(record.materialId)"
               v-model:value="record.orderQty"
@@ -76,7 +76,7 @@
               size="small"
               class="full"
             />
-            <span v-else class="sub-text">勾选后可修改</span>
+            <span v-else class="sub-text">{{ $t('scm.reorder.checkToEdit') }}</span>
           </template>
           <template v-else-if="column.key === 'supplier'">
             <PartnerSelect
@@ -84,13 +84,13 @@
               v-model:value="record.orderSupplierId"
               type="supplier"
               :label="record.supplierName"
-              placeholder="选填"
+              :placeholder="$t('scm.reorder.optional')"
               allow-clear
               class="full"
             />
             <template v-else>
               <div>{{ record.supplierName || '-' }}</div>
-              <div v-if="record.price != null" class="sub-text">参考价 ¥{{ formatMoney(record.price) }}</div>
+              <div v-if="record.price != null" class="sub-text">{{ $t('scm.reorder.refPrice', { price: formatMoney(record.price) }) }}</div>
             </template>
           </template>
         </template>
@@ -100,6 +100,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, h, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
@@ -116,6 +117,8 @@ import { useDict } from '@/composables/useDict'
 import { findDict } from '@/utils/dict'
 import { writeExcel } from '@/utils/excel'
 
+const { t } = useI18n()
+
 const router = useRouter()
 const dict = useDict('mes_supply_type')
 
@@ -125,20 +128,20 @@ const isShort = (r) => Number(r.projected) < Number(Number(r.reorderPoint) > 0 ?
 const selectable = (r) => Number(r.suggestQty) > 0 && r.supplyType !== 'MAKE'
 
 const columns = [
-  { title: '物料', key: 'material', width: 240, exportValue: (r) => `${r.code} ${r.name}` },
-  { title: '规格', dataIndex: 'spec', width: 120, ellipsis: true },
-  { title: '单位', dataIndex: 'unit', width: 70 },
-  { title: '供应方式', key: 'supplyType', width: 90, exportValue: (r) => findDict(dict.mes_supply_type, r.supplyType)?.label ?? r.supplyType ?? '' },
-  { title: '再订货点', key: 'point', width: 130, align: 'right', exportValue: (r) => r.reorderPoint },
-  { title: '再订货量', key: 'reorderQty', width: 100, align: 'right' },
-  { title: '可用库存', key: 'available', width: 100, align: 'right' },
-  { title: '采购在途', key: 'poOpen', width: 100, align: 'right' },
-  { title: '在制净额', key: 'woNet', width: 100, align: 'right' },
-  { title: '销售待发', key: 'soOpen', width: 100, align: 'right' },
-  { title: '预计库存', key: 'projected', width: 100, align: 'right' },
-  { title: '建议补货', key: 'suggestQty', width: 120, align: 'right' },
-  { title: '补货数量', key: 'orderQty', width: 170, exportValue: (r) => (selectable(r) ? r.orderQty : '') },
-  { title: '供应商', key: 'supplier', width: 200, exportValue: (r) => r.supplierName || '' }
+  { title: t('scm.reorder.material'), key: 'material', width: 240, exportValue: (r) => `${r.code} ${r.name}` },
+  { title: t('scm.reorder.spec'), dataIndex: 'spec', width: 120, ellipsis: true },
+  { title: t('scm.reorder.unit'), dataIndex: 'unit', width: 70 },
+  { title: t('scm.reorder.supplyType'), key: 'supplyType', width: 110, exportValue: (r) => findDict(dict.mes_supply_type, r.supplyType)?.label ?? r.supplyType ?? '' },
+  { title: t('scm.reorder.reorderPoint'), key: 'point', width: 130, align: 'right', exportValue: (r) => r.reorderPoint },
+  { title: t('scm.reorder.reorderQty'), key: 'reorderQty', width: 110, align: 'right' },
+  { title: t('scm.reorder.available'), key: 'available', width: 130, align: 'right' },
+  { title: t('scm.reorder.poOpen'), key: 'poOpen', width: 150, align: 'right' },
+  { title: t('scm.reorder.woNet'), key: 'woNet', width: 100, align: 'right' },
+  { title: t('scm.reorder.soOpen'), key: 'soOpen', width: 170, align: 'right' },
+  { title: t('scm.reorder.projected'), key: 'projected', width: 130, align: 'right' },
+  { title: t('scm.reorder.suggestQty'), key: 'suggestQty', width: 130, align: 'right' },
+  { title: t('scm.reorder.orderQty'), key: 'orderQty', width: 170, exportValue: (r) => (selectable(r) ? r.orderQty : '') },
+  { title: t('scm.reorder.supplier'), key: 'supplier', width: 200, exportValue: (r) => r.supplierName || '' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'scm-reorder')
 const showSearch = ref(true)
@@ -153,7 +156,7 @@ const pagination = reactive({
   pageSize: 50,
   showSizeChanger: true,
   pageSizeOptions: ['20', '50', '100', '200'],
-  showTotal: (t) => `共 ${t} 条`
+  showTotal: (total) => t('common.table.total', { total })
 })
 
 const selectedKeys = ref([])
@@ -187,7 +190,7 @@ async function createRequisition() {
   const rows = list.value.filter((r) => selectedKeys.value.includes(r.materialId))
   const invalid = rows.find((r) => !(Number(r.orderQty) > 0))
   if (invalid) {
-    message.warning(`请填写「${invalid.code} ${invalid.name}」的补货数量`)
+    message.warning(t('scm.reorder.inputQty', { name: `${invalid.code} ${invalid.name}` }))
     return
   }
   creating.value = true
@@ -202,10 +205,10 @@ async function createRequisition() {
     })
     load()
     Modal.confirm({
-      title: '已生成请购单',
-      content: h('div', `已按 ${rows.length} 个物料生成请购单（草稿），提交审批后可转采购订单。`),
-      okText: '查看请购单',
-      cancelText: '留在本页',
+      title: t('scm.reorder.created'),
+      content: h('div', t('scm.reorder.createdTip', { n: rows.length })),
+      okText: t('scm.reorder.viewReq'),
+      cancelText: t('scm.reorder.stay'),
       onOk: () => router.push({ path: '/scm/requisition', query: { id } })
     })
   } finally {
@@ -221,7 +224,7 @@ async function exportList(cols) {
     return v === null || v === undefined ? '' : v
   }
   await writeExcel(
-    '补货建议',
+    t('scm.reorder.exportName'),
     fields.map((c) => ({ title: c.title, width: c.width ? Math.round(c.width / 7) : 16 })),
     list.value.map((r) => fields.map((c) => valueOf(c, r)))
   )

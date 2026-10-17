@@ -3,6 +3,7 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -74,8 +75,8 @@ public class QmsCapaService {
             s.setOwnerId(req.ownerId());
             return s;
         }).toList());
-        messageSender.send(List.of(req.ownerId()), MessageSender.Message.of("REMIND", "纠正预防待处理：" + capa.getCapaNo(),
-                capa.getTitle() + "，要求 " + capa.getDueDate() + " 前完成", "/qms/capa"));
+        messageSender.send(List.of(req.ownerId()), MessageSender.Message.of("REMIND", "纠正预防待处理：" + capa.getCapaNo(), // i18n-ignore
+                capa.getTitle() + "，要求 " + capa.getDueDate() + " 前完成", "/qms/capa")); // i18n-ignore
         return capa.getId();
     }
 
@@ -96,7 +97,7 @@ public class QmsCapaService {
         }
         boolean done = Boolean.TRUE.equals(req.done());
         if (done && (req.content() == null || req.content().isBlank())) {
-            throw new BizException(step.getStep() + " 请先填写内容再标记完成");
+            throw new BizException("{0} 请先填写内容再标记完成", step.getStep());
         }
         stepMapper.update(Wrappers.<QmsCapaStep>lambdaUpdate()
                 .set(QmsCapaStep::getContent, req.content())
@@ -113,7 +114,7 @@ public class QmsCapaService {
         List<QmsCapaStep> steps = stepMapper.selectByCapa(id);
         List<String> undone = steps.stream().filter(s -> s.getDone() == null || s.getDone() != 1).map(QmsCapaStep::getStep).toList();
         if (!undone.isEmpty()) {
-            throw new BizException("步骤 " + String.join("、", undone) + " 尚未完成");
+            throw new BizException("步骤 {0} 尚未完成", String.join(I18n.t("、"), undone));
         }
         transit(id, CapaStatus.OPEN, CapaStatus.VERIFYING, null);
     }
@@ -170,7 +171,7 @@ public class QmsCapaService {
             throw new BizException("纠正预防单不存在");
         }
         if (capa.getStatus() != status) {
-            throw new BizException("纠正预防单当前状态不能" + action);
+            throw new BizException("纠正预防单当前状态不能{0}", I18n.t(action));
         }
         return capa;
     }

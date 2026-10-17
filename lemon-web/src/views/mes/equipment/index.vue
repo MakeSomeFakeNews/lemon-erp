@@ -2,17 +2,17 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="设备" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="编码或名称" allow-clear />
+        <a-form-item :label="$t('mes.oee.equipment')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('mes.workCenter.codeOrName')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.mes_equipment_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.mes_equipment_status)" />
         </a-form-item>
-        <a-form-item label="工作中心" name="workCenterId">
-          <WorkCenterSelect v-model:value="query.workCenterId" placeholder="全部" />
+        <a-form-item :label="$t('mes.wo.workCenter')" name="workCenterId">
+          <WorkCenterSelect v-model:value="query.workCenterId" :placeholder="$t('common.placeholder.all')" />
         </a-form-item>
-        <a-form-item label="保养提醒" name="dueDays">
-          <a-select v-model:value="query.dueDays" placeholder="全部" allow-clear :options="DUE_OPTIONS" />
+        <a-form-item :label="$t('mes.equipment.dueRemind')" name="dueDays">
+          <a-select v-model:value="query.dueDays" :placeholder="$t('common.placeholder.all')" allow-clear :options="DUE_OPTIONS" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -27,7 +27,7 @@
         @refresh="load"
       >
         <a-button v-perm="'mes:equipment:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新增设备
+          <template #icon><PlusOutlined /></template>{{ $t('mes.equipment.add') }}
         </a-button>
       </TableToolbar>
 
@@ -52,23 +52,23 @@
           <template v-else-if="column.key === 'maintain'">
             <template v-if="record.maintainCycleDays">
               <div>
-                下次 {{ record.nextMaintainDate }}
+                {{ $t('mes.equipment.next', { d: record.nextMaintainDate }) }}
                 <a-tag v-if="due(record)" :color="due(record).color" :bordered="false">{{ due(record).text }}</a-tag>
               </div>
-              <div class="sub-text">每 {{ record.maintainCycleDays }} 天 · 上次 {{ record.lastMaintainDate || '-' }}</div>
+              <div class="sub-text">{{ $t('mes.equipment.cycle', { n: record.maintainCycleDays, last: record.lastMaintainDate || '-' }) }}</div>
             </template>
-            <span v-else class="sub-text">不做定期保养</span>
+            <span v-else class="sub-text">{{ $t('mes.equipment.noMaintain') }}</span>
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button v-perm="'mes:maintain:add'" type="link" size="small" @click="toMaintenance(record)">
-                <template #icon><ToolOutlined /></template>维护
+                <template #icon><ToolOutlined /></template>{{ $t('mes.equipment.maintain') }}
               </a-button>
               <a-button v-perm="'mes:equipment:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-perm="'mes:equipment:remove'">
-                <a-popconfirm :title="`确定删除设备「${record.name}」？`" @confirm="remove(record.id)">
+                <a-popconfirm :title="$t('mes.equipment.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
               </span>
@@ -78,56 +78,56 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增设备" edit-title="编辑设备">
+    <FormDrawer :drawer="drawer" :create-title="$t('mes.equipment.add')" :edit-title="$t('mes.equipment.edit')">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="设备编码" name="code">
-              <a-input v-model:value="form.code" :maxlength="32" placeholder="如：EQ-SMT-01" />
+            <a-form-item :label="$t('mes.equipment.code')" name="code">
+              <a-input v-model:value="form.code" :maxlength="32" :placeholder="$t('mes.equipment.codePh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="设备名称" name="name">
+            <a-form-item :label="$t('mes.equipment.name')" name="name">
               <a-input v-model:value="form.name" :maxlength="64" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="规格型号" name="model">
+            <a-form-item :label="$t('mes.equipment.model')" name="model">
               <a-input v-model:value="form.model" :maxlength="64" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="工作中心" name="workCenterId">
+            <a-form-item :label="$t('mes.wo.workCenter')" name="workCenterId">
               <WorkCenterSelect v-model:value="form.workCenterId" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="安装位置" name="location">
+            <a-form-item :label="$t('mes.equipment.location')" name="location">
               <a-input v-model:value="form.location" :maxlength="64" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="购置日期" name="purchaseDate">
+            <a-form-item :label="$t('mes.equipment.purchaseDate')" name="purchaseDate">
               <a-date-picker v-model:value="form.purchaseDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="状态" name="status">
+            <a-form-item :label="$t('common.field.status')" name="status">
               <a-select v-model:value="form.status" :options="toOptions(dict.mes_equipment_status)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="保养周期" name="maintainCycleDays" extra="不填不做定期保养">
-              <a-input-number v-model:value="form.maintainCycleDays" :min="1" :max="3650" addon-after="天" class="full" />
+            <a-form-item :label="$t('mes.equipment.maintainCycle')" name="maintainCycleDays" :extra="$t('mes.equipment.maintainCycleExtra')">
+              <a-input-number v-model:value="form.maintainCycleDays" :min="1" :max="3650" :addon-after="$t('mes.bom.dayUnit')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="上次保养日期" name="lastMaintainDate" extra="下次保养日期 = 上次保养（或购置）日期 + 周期">
+            <a-form-item :label="$t('mes.equipment.lastMaintain')" name="lastMaintainDate" :extra="$t('mes.equipment.lastMaintainExtra')">
               <a-date-picker v-model:value="form.lastMaintainDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" />
             </a-form-item>
           </a-col>
@@ -143,6 +143,7 @@ import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, PlusOutlined, ToolOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -156,22 +157,23 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
 const router = useRouter()
+const { t } = useI18n()
 const dict = useDict('mes_equipment_status')
 const DUE_OPTIONS = [
-  { value: 0, label: '已到期' },
-  { value: 7, label: '7 天内到期' },
-  { value: 30, label: '30 天内到期' }
+  { value: 0, label: t('mes.equipment.due0') },
+  { value: 7, label: t('mes.equipment.dueIn', { n: 7 }) },
+  { value: 30, label: t('mes.equipment.dueIn', { n: 30 }) }
 ]
 
 const columns = [
-  { title: '设备', key: 'name', width: 240 },
-  { title: '工作中心', dataIndex: 'workCenterName', width: 130 },
-  { title: '位置', dataIndex: 'location', width: 130 },
-  { title: '状态', key: 'status', width: 90, dict: 'mes_equipment_status' },
-  { title: '定期保养', key: 'maintain', width: 260 },
-  { title: '购置日期', dataIndex: 'purchaseDate', width: 110 },
-  { title: '备注', dataIndex: 'remark', width: 150, ellipsis: true },
-  { title: '操作', key: 'action', width: 200, fixed: 'right' }
+  { title: t('mes.oee.equipment'), key: 'name', width: 240 },
+  { title: t('mes.wo.workCenter'), dataIndex: 'workCenterName', width: 130 },
+  { title: t('mes.equipment.locationShort'), dataIndex: 'location', width: 130 },
+  { title: t('common.field.status'), key: 'status', width: 100, dict: 'mes_equipment_status' },
+  { title: t('mes.equipment.periodic'), key: 'maintain', width: 260 },
+  { title: t('mes.equipment.purchaseDate'), dataIndex: 'purchaseDate', width: 120 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 220, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'mes-equipment')
 const showSearch = ref(true)
@@ -191,17 +193,17 @@ onMounted(load)
 function due(record) {
   if (!record.nextMaintainDate || record.status === 'SCRAPPED') return null
   const days = dayjs(record.nextMaintainDate).diff(dayjs().startOf('day'), 'day')
-  if (days < 0) return { color: 'red', text: `逾期 ${-days} 天` }
-  if (days <= 7) return { color: 'orange', text: days === 0 ? '今天到期' : `${days} 天后到期` }
+  if (days < 0) return { color: 'red', text: t('mes.equipment.overdue', { n: -days }) }
+  if (days <= 7) return { color: 'orange', text: days === 0 ? t('mes.equipment.dueToday') : t('mes.equipment.dueAfter', { n: days }) }
   return null
 }
 
 const rules = {
   code: [
-    { required: true, message: '请输入设备编码' },
-    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: '只能包含字母、数字、下划线和短横线' }
+    { required: true, message: t('mes.equipment.codeRequired') },
+    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: t('mes.workCenter.codeRule') }
   ],
-  name: [{ required: true, whitespace: true, message: '请输入设备名称' }]
+  name: [{ required: true, whitespace: true, message: t('mes.equipment.nameRequired') }]
 }
 const FIELDS = ['code', 'name', 'model', 'workCenterId', 'location', 'purchaseDate', 'status', 'maintainCycleDays', 'lastMaintainDate', 'remark']
 const drawer = useFormDrawer({
@@ -218,7 +220,7 @@ const toMaintenance = (record) => router.push({ path: '/mes/maintenance', query:
 
 async function remove(id) {
   await deleteEquipment(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 </script>

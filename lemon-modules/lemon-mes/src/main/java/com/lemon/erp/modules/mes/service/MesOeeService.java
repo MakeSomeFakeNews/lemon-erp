@@ -157,7 +157,7 @@ public class MesOeeService {
             throw new BizException("结束日期不能早于开始日期");
         }
         if (ChronoUnit.DAYS.between(begin, end) >= MAX_DAYS) {
-            throw new BizException("统计范围不能超过 " + MAX_DAYS + " 天");
+            throw new BizException("统计范围不能超过 {0} 天", MAX_DAYS);
         }
     }
 

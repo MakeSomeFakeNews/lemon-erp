@@ -1,5 +1,5 @@
 <template>
-  <FormDrawer page :drawer="drawer" :create-title="`新增${conf.label}`" width="min(1280px, 100vw)">
+  <FormDrawer page :drawer="drawer" :create-title="$t('scm.trade.addKind', { kind: conf.label })" width="min(1280px, 100vw)">
     <a-alert type="info" show-icon class="tip" :message="tip" />
     <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
       <a-row :gutter="16">
@@ -12,8 +12,8 @@
               :options="orderOptions"
               :loading="orderLoading"
               :disabled="fixedOrder"
-              placeholder="搜索订单号"
-              :not-found-content="orderLoading ? '加载中…' : `没有可${conf.action}的订单`"
+              :placeholder="$t('scm.trade.searchOrderNo')"
+              :not-found-content="orderLoading ? $t('common.msg.loading') : $t('scm.trade.noOrder', { action: conf.action })"
               @search="searchOrders"
               @focus="() => !orders.length && searchOrders('')"
               @change="selectOrder"
@@ -21,25 +21,25 @@
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="6">
-          <a-form-item label="仓库" name="warehouseId">
+          <a-form-item :label="$t('scm.trade.warehouse')" name="warehouseId">
             <WarehouseSelect :value="form.warehouseId" :allow-clear="false" @update:value="onWarehouseChange" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="4">
-          <a-form-item label="业务日期" name="bizDate">
+          <a-form-item :label="$t('scm.trade.bizDate')" name="bizDate">
             <a-date-picker v-model:value="form.bizDate" value-format="YYYY-MM-DD" class="full" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="6">
-          <a-form-item label="备注" name="remark">
-            <a-input v-model:value="form.remark" :maxlength="255" placeholder="选填" />
+          <a-form-item :label="$t('common.field.remark')" name="remark">
+            <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('scm.trade.optional')" />
           </a-form-item>
         </a-col>
         <a-col v-if="isReturn" :span="24">
           <a-form-item name="replenish" class="replenish">
             <a-checkbox v-model:checked="form.replenish">
-              退货后需要{{ conf.orderKind === 'sales' ? '补发' : '补收' }}
-              <span class="sub-text">：勾选后订单恢复相应的未完成数量，可继续{{ conf.orderKind === 'sales' ? '出库' : '入库' }}；不勾选视为退款，订单不再补发</span>
+              {{ conf.orderKind === 'sales' ? $t('scm.trade.replenishSales') : $t('scm.trade.replenishPurchase') }}
+              <span class="sub-text">{{ conf.orderKind === 'sales' ? $t('scm.trade.replenishSalesHint') : $t('scm.trade.replenishPurchaseHint') }}</span>
             </a-checkbox>
           </a-form-item>
         </a-col>
@@ -47,11 +47,11 @@
 
       <div class="items-head">
         <span class="section-title">
-          明细（{{ form.items.length }} 行，数量 {{ formatQty(totalQty) }}，价税合计 ¥{{ formatMoney(totalAmount) }}）
+          {{ $t('scm.trade.itemsSummary', { rows: form.items.length, qty: formatQty(totalQty), amount: formatMoney(totalAmount) }) }}
         </span>
         <a-space>
-          <span v-if="partnerName" class="sub-text">{{ ORDER_KINDS[conf.orderKind].partnerLabel }}：{{ partnerName }}</span>
-          <a-button v-if="inbound" size="small" :disabled="!form.warehouseId || !form.items.length" @click="putaway">推荐库位</a-button>
+          <span v-if="partnerName" class="sub-text">{{ $t('scm.trade.labelValue', { label: ORDER_KINDS[conf.orderKind].partnerLabel, value: partnerName }) }}</span>
+          <a-button v-if="inbound" size="small" :disabled="!form.warehouseId || !form.items.length" @click="putaway">{{ $t('scm.trade.suggestLocation') }}</a-button>
         </a-space>
       </div>
 
@@ -63,23 +63,23 @@
         :data-source="form.items"
         :pagination="false"
         :scroll="{ x: scrollX }"
-        :locale="{ emptyText: form.orderId ? `订单没有可${conf.action}的明细` : '请先选择订单' }"
+        :locale="{ emptyText: form.orderId ? $t('scm.trade.noItems', { action: conf.action }) : $t('scm.trade.selectOrderFirst') }"
       >
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
             <div>{{ record.materialCode }} {{ record.materialName }}</div>
             <div class="sub-text">{{ record.spec }}</div>
             <div class="row-tags">
-              <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">批次</a-tag>
-              <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">序列号</a-tag>
+              <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">{{ $t('scm.trade.batch') }}</a-tag>
+              <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">{{ $t('scm.trade.serialNo') }}</a-tag>
             </div>
           </template>
           <template v-else-if="column.key === 'limit'">
             <div>{{ formatQty(record.limit) }} {{ record.unit }}</div>
-            <div class="sub-text">¥{{ formatMoney(record.price) }} / {{ record.unit || '单位' }}</div>
+            <div class="sub-text">¥{{ formatMoney(record.price) }} / {{ record.unit || $t('common.field.unit') }}</div>
           </template>
           <template v-else-if="column.key === 'slot'">
-            <a-form-item :name="['items', index, 'slot']" :rules="requiredRule('请选择库位 / 批次')" class="cell-item">
+            <a-form-item :name="['items', index, 'slot']" :rules="requiredRule($t('scm.trade.selectSlot'))" class="cell-item">
               <StockSlotSelect
                 v-model:value="record.slot"
                 :label="record.slotLabel"
@@ -89,7 +89,7 @@
                 @select="(s) => applySlot(record, s)"
               />
             </a-form-item>
-            <div v-if="record.available != null" class="sub-text">可用 {{ formatQty(record.available) }}</div>
+            <div v-if="record.available != null" class="sub-text">{{ $t('scm.trade.availableN', { qty: formatQty(record.available) }) }}</div>
           </template>
           <template v-else-if="column.key === 'location'">
             <LocationSelect v-model:value="record.locationId" :warehouse-id="form.warehouseId" />
@@ -97,18 +97,18 @@
           <template v-else-if="column.key === 'batchNo'">
             <a-form-item
               :name="['items', index, 'batchNo']"
-              :rules="record.batchEnabled === 1 ? requiredRule('请填写批次号') : []"
+              :rules="record.batchEnabled === 1 ? requiredRule($t('scm.trade.inputBatchNo')) : []"
               class="cell-item"
             >
-              <a-input v-model:value="record.batchNo" :maxlength="64" :disabled="record.batchEnabled !== 1" placeholder="批次号" />
+              <a-input v-model:value="record.batchNo" :maxlength="64" :disabled="record.batchEnabled !== 1" :placeholder="$t('scm.trade.batchNo')" />
             </a-form-item>
             <template v-if="kind === 'purchaseIn' && record.batchEnabled === 1">
-              <a-date-picker v-model:value="record.productionDate" value-format="YYYY-MM-DD" placeholder="生产日期" class="full date-row" />
-              <a-date-picker v-model:value="record.expiryDate" value-format="YYYY-MM-DD" placeholder="有效期至" class="full date-row" />
+              <a-date-picker v-model:value="record.productionDate" value-format="YYYY-MM-DD" :placeholder="$t('scm.trade.productionDate')" class="full date-row" />
+              <a-date-picker v-model:value="record.expiryDate" value-format="YYYY-MM-DD" :placeholder="$t('scm.trade.expiryDate')" class="full date-row" />
             </template>
           </template>
           <template v-else-if="column.key === 'qty'">
-            <a-form-item :name="['items', index, 'qty']" :rules="requiredRule('请填写数量')" class="cell-item">
+            <a-form-item :name="['items', index, 'qty']" :rules="requiredRule($t('scm.trade.inputQty'))" class="cell-item">
               <a-input-number
                 v-model:value="record.qty"
                 :min="0"
@@ -124,12 +124,12 @@
               v-model:value="record.serialNos"
               :expected="record.qty ?? 0"
               :source="conf.fromStock ? serialSource(record) : undefined"
-              :placeholder="conf.fromStock ? '选择或扫码' : '扫码或输入序列号'"
+              :placeholder="conf.fromStock ? $t('scm.trade.selectOrScan') : $t('scm.trade.scanOrInputSerial')"
             />
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-tooltip title="拆分：同一物料从多个库位 / 批次出入">
+            <a-tooltip :title="$t('scm.trade.splitTip')">
               <a-button type="link" size="small" @click="splitRow(index)">
                 <template #icon><SplitCellsOutlined /></template>
               </a-button>
@@ -158,6 +158,7 @@ import { addTrade } from '@/api/scm/trade'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { fillPutaway, formatQty, rowKey, today } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney, lineAmount, netQty, remainingQty } from './scm'
+import { useI18n } from 'vue-i18n'
 
 /**
  * 采购入库 / 采购退货 / 销售出库 / 销售退货：选择订单后按订单明细录入，保存即确认（更新库存）。
@@ -167,29 +168,24 @@ const props = defineProps({
   kind: { type: String, required: true }
 })
 const emit = defineEmits(['success'])
+const { t } = useI18n()
 
 const conf = computed(() => TRADE_KINDS[props.kind])
-const tip = computed(() => {
-  const c = conf.value
-  const stock = c.fromStock ? '从所选仓库的现有库存中选择库位、批次（序列号）' : '录入入库的库位、批次（序列号）'
-  return `${stock}。保存后立即生成仓库${c.fromStock ? '出库单' : '入库单'}并更新库存，${
-    c.orderKind === 'purchase' ? '同时生成应付单' : '同时生成应收单'
-  }，单据不能修改，错误时请${c.returns ? '重新入库 / 出库' : '做退货'}冲回。`
-})
+const tip = computed(() => t(`scm.trade.tip.${props.kind}`))
 
 const columns = computed(() => {
   const c = conf.value
   const list = [
-    { title: '物料', key: 'material', width: 230 },
-    { title: c.returns ? '可退数量' : '未完成数量', key: 'limit', width: 130 },
+    { title: t('scm.trade.material'), key: 'material', width: 230 },
+    { title: c.returns ? t('scm.trade.returnableQty') : t('scm.trade.openQty'), key: 'limit', width: 140 },
     ...(c.fromStock
-      ? [{ title: '库位 / 批次', key: 'slot', width: 230 }]
+      ? [{ title: t('scm.trade.locationBatch'), key: 'slot', width: 230 }]
       : [
-          { title: '库位', key: 'location', width: 150 },
-          { title: '批次号', key: 'batchNo', width: 160 }
+          { title: t('scm.trade.location'), key: 'location', width: 150 },
+          { title: t('scm.trade.batchNo'), key: 'batchNo', width: 160 }
         ]),
-    { title: '数量', key: 'qty', width: 150 },
-    { title: '序列号', key: 'serialNos', width: 260 },
+    { title: t('common.field.quantity'), key: 'qty', width: 150 },
+    { title: t('scm.trade.serialNo'), key: 'serialNos', width: 260 },
     { title: '', key: 'action', width: 80, fixed: 'right' }
   ]
   return list
@@ -198,9 +194,9 @@ const scrollX = computed(() => columns.value.reduce((sum, c) => sum + c.width, 0
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
 const rules = {
-  orderId: requiredRule('请选择订单'),
-  warehouseId: requiredRule('请选择仓库'),
-  bizDate: requiredRule('请选择业务日期')
+  orderId: requiredRule(t('scm.trade.selectOrder')),
+  warehouseId: requiredRule(t('scm.trade.selectWarehouse')),
+  bizDate: requiredRule(t('scm.trade.selectBizDate'))
 }
 
 const emptyForm = () => ({ id: undefined, orderId: undefined, warehouseId: undefined, bizDate: today(), remark: '', replenish: false, items: [] })
@@ -209,14 +205,14 @@ const isReturn = computed(() => props.kind === 'purchaseReturn' || props.kind ==
 const inbound = computed(() => props.kind === 'purchaseIn' || props.kind === 'salesReturn')
 async function putaway() {
   const n = await fillPutaway(form.value.warehouseId, form.value.items)
-  message.info(n ? `已为 ${n} 行推荐库位` : '没有可推荐的库位（已选库位的行不变）')
+  message.info(n ? t('scm.trade.suggestedN', { n }) : t('scm.trade.noSuggestion'))
 }
 
 const drawer = useFormDrawer({
   emptyForm,
   create: async (data) => emit('success', await addTrade(props.kind, data)),
-  update: () => Promise.reject(new Error('单据不能修改')),
-  successMessage: `${TRADE_KINDS[props.kind].label}成功`,
+  update: () => Promise.reject(new Error(t('scm.trade.cannotModify'))),
+  successMessage: t('scm.trade.kindSuccess', { kind: TRADE_KINDS[props.kind].label }),
   toPayload: (f) => ({
     orderId: f.orderId,
     warehouseId: f.warehouseId,
@@ -311,7 +307,7 @@ async function openCreate(order) {
   const full = await loadOrder(order.id)
   const items = toRows(full)
   if (!items.length) {
-    message.warning(`订单没有可${conf.value.action}的明细`)
+    message.warning(t('scm.trade.noItems', { action: conf.value.action }))
     return
   }
   return drawer.openCreate({ orderId: full.id, warehouseId: full.warehouseId || undefined, items })

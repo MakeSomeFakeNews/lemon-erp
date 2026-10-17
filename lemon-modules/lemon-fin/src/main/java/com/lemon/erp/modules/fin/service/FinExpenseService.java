@@ -28,7 +28,7 @@ public class FinExpenseService {
 
     @EventListener
     public void onMaintenanceFinished(MaintenanceFinishedEvent e) {
-        String summary = "设备维护费 " + e.orderNo() + " " + e.equipmentName();
+        String summary = "设备维护费 " + e.orderNo() + " " + e.equipmentName(); // i18n-ignore
         Long voucherId = voucherService.createGenerated(e.date(), VoucherSource.EXPENSE, e.orderNo(), List.of(
                 VoucherLine.debit(summary, accountRules.accountId(AccountRole.MANUFACTURING_OVERHEAD), null, e.cost()),
                 VoucherLine.credit(summary, accountRules.accountId(AccountRole.OTHER_PAYABLE), null, e.cost())));

@@ -82,7 +82,7 @@ public class FinConsumableService {
 
     @Transactional
     public void update(Long id, ConsumableRequest req) {
-        FinConsumableUse use = requireDraft(id, "修改");
+        FinConsumableUse use = requireDraft(id, "领用单已出库，不能修改");
         validate(req);
         apply(use, req);
         useMapper.updateById(use);
@@ -92,7 +92,7 @@ public class FinConsumableService {
 
     @Transactional
     public void delete(Long id) {
-        requireDraft(id, "删除");
+        requireDraft(id, "领用单已出库，不能删除");
         useMapper.deleteItems(id);
         useMapper.deleteById(id);
     }
@@ -100,10 +100,11 @@ public class FinConsumableService {
     /** 出库：生成并确认「部门领用」出库单 */
     @Transactional
     public void confirm(Long id) {
-        FinConsumableUse use = requireDraft(id, "出库");
+        FinConsumableUse use = requireDraft(id, "领用单已出库，不能出库");
         List<FinConsumableUseItem> items = useMapper.selectItems(id);
         WmsStockDoc doc = stockDocService.createConfirmed(StockBizType.OUT, new StockDocRequest(OUT_TYPE, use.getWarehouseId(), null,
-                use.getUseDate(), "低值易耗品领用 " + use.getUseNo() + (StringUtils.hasText(use.getRemark()) ? "：" + use.getRemark() : ""),
+                use.getUseDate(), "低值易耗品领用 " + use.getUseNo() // i18n-ignore
+                + (StringUtils.hasText(use.getRemark()) ? "：" + use.getRemark() : ""),
                 items.stream().map(i -> new StockDocItemRequest(i.getMaterialId(), i.getLocationId(), null, i.getBatchNo(), null, null,
                         i.getQty(), null, i.getRemark())).toList()), use.getUseNo());
         if (useMapper.update(Wrappers.<FinConsumableUse>lambdaUpdate()
@@ -119,10 +120,10 @@ public class FinConsumableService {
         Map<Long, WmsMaterial> materials = materialService.getEnabled(req.items().stream().map(ConsumableRequest.Item::materialId).toList());
         for (WmsMaterial m : materials.values()) {
             if (!FinConstants.LOW_VALUE_CATEGORY.equals(m.getCategory())) {
-                throw new BizException("物料「" + m.getCode() + " " + m.getName() + "」不是低值易耗品");
+                throw new BizException("物料「{0} {1}」不是低值易耗品", m.getCode(), m.getName());
             }
             if (m.isSerialManaged()) {
-                throw new BizException("物料「" + m.getCode() + " " + m.getName() + "」启用了序列号管理，请按固定资产管理");
+                throw new BizException("物料「{0} {1}」启用了序列号管理，请按固定资产管理", m.getCode(), m.getName());
             }
         }
     }
@@ -149,13 +150,14 @@ public class FinConsumableService {
         }).toList());
     }
 
-    private FinConsumableUse requireDraft(Long id, String action) {
+    /** @param error 已出库时的提示（中文模板） */
+    private FinConsumableUse requireDraft(Long id, String error) {
         FinConsumableUse use = id == null ? null : useMapper.selectById(id);
         if (use == null) {
             throw new BizException("领用单不存在");
         }
         if (use.getStatus() != ConsumableStatus.DRAFT) {
-            throw new BizException("领用单已出库，不能" + action);
+            throw new BizException(error);
         }
         return use;
     }

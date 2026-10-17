@@ -1,5 +1,5 @@
 <template>
-  <a-alert v-if="isAdminRole" type="info" show-icon message="管理员角色拥有全部数据权限，无需分配" />
+  <a-alert v-if="isAdminRole" type="info" show-icon :message="$t('system.role.adminAllData')" />
   <template v-else>
     <a-radio-group v-model:value="dataScope" :disabled="readonly" class="scope-options">
       <a-radio v-for="o in options" :key="o.value" :value="o.value" class="scope-option">
@@ -8,7 +8,7 @@
       </a-radio>
     </a-radio-group>
     <div v-if="dataScope === DATA_SCOPE_CUSTOM" class="scope-depts">
-      <div class="scope-depts-title">可访问的部门</div>
+      <div class="scope-depts-title">{{ $t('system.role.accessibleDepts') }}</div>
       <CheckTree v-model="deptIds" :tree="deptTree" :disabled="readonly" :default-expand-level="2" height="320px" />
     </div>
     <PanelActions v-if="!readonly" :dirty="dirty" :saving="saving" @save="save" @reset="reset" />
@@ -18,6 +18,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import CheckTree from '@/components/tree/CheckTree.vue'
 import PanelActions from './PanelActions.vue'
 import { assignRoleDataScope } from '@/api/system/role'
@@ -32,6 +33,7 @@ const props = defineProps({
   readonly: Boolean
 })
 const emit = defineEmits(['saved', 'update:dirty'])
+const { t } = useI18n()
 const dict = useDict('sys_data_scope')
 
 const dataScope = ref()
@@ -58,7 +60,7 @@ watch(dirty, (v) => emit('update:dirty', v), { immediate: true })
 
 async function save() {
   if (dataScope.value === DATA_SCOPE_CUSTOM && !deptIds.value.length) {
-    message.warning('请至少勾选一个部门')
+    message.warning(t('system.role.selectOneDept'))
     return
   }
   saving.value = true
@@ -67,7 +69,7 @@ async function save() {
       dataScope: dataScope.value,
       deptIds: dataScope.value === DATA_SCOPE_CUSTOM ? deptIds.value : []
     })
-    message.success('数据权限已保存，立即生效')
+    message.success(t('system.role.dataScopeSaved'))
     emit('saved')
   } finally {
     saving.value = false

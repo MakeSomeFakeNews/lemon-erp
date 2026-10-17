@@ -2,10 +2,10 @@
   <div class="start-page">
     <a-card :bordered="false" class="page-card">
       <div class="start-toolbar">
-        <a-input v-model:value="keyword" placeholder="搜索流程" allow-clear class="start-search">
+        <a-input v-model:value="keyword" :placeholder="$t('workflow.start.search')" allow-clear class="start-search">
           <template #prefix><SearchOutlined /></template>
         </a-input>
-        <a-button type="text" title="刷新" @click="loadModels">
+        <a-button type="text" :title="$t('common.action.refresh')" @click="loadModels">
           <template #icon><ReloadOutlined /></template>
         </a-button>
       </div>
@@ -18,28 +18,28 @@
               <span class="start-icon"><MenuIcon :name="m.icon || 'AuditOutlined'" /></span>
               <div class="start-card-text">
                 <div class="start-card-name">{{ m.name }}</div>
-                <div class="start-card-remark">{{ m.remark || '点击发起申请' }}</div>
+                <div class="start-card-remark">{{ m.remark || $t('workflow.start.clickToStart') }}</div>
               </div>
             </div>
           </div>
         </div>
-        <a-empty v-if="!loading && !groups.length" :description="keyword ? '没有匹配的流程' : '暂无可发起的流程'" />
+        <a-empty v-if="!loading && !groups.length" :description="keyword ? $t('workflow.start.noMatch') : $t('workflow.start.empty')" />
       </a-spin>
     </a-card>
 
     <!-- 填写申请 -->
     <a-drawer
       v-model:open="drawerOpen"
-      :title="current?.name ? `发起：${current.name}` : '发起申请'"
+      :title="current?.name ? $t('workflow.start.titleWithName', { name: current.name }) : $t('workflow.start.title')"
       width="min(720px, 100vw)"
       destroy-on-close
     >
       <a-spin :spinning="modelLoading">
         <template v-if="current">
           <FormRender v-if="current.form?.length" ref="formRef" :fields="current.form" :model="formData" />
-          <a-alert v-else type="info" show-icon message="该流程没有表单，直接提交即可" class="no-form" />
+          <a-alert v-else type="info" show-icon :message="$t('workflow.start.noForm')" class="no-form" />
           <a-collapse ghost class="flow-preview">
-            <a-collapse-panel key="flow" header="查看审批流程">
+            <a-collapse-panel key="flow" :header="$t('workflow.start.viewFlow')">
               <div class="flow-preview-box">
                 <FlowDesigner :model-value="current.flow" :fields="current.form || []" readonly />
               </div>
@@ -49,8 +49,8 @@
       </a-spin>
       <template #footer>
         <div class="drawer-footer">
-          <a-button @click="drawerOpen = false">取消</a-button>
-          <a-button type="primary" :loading="submitting" :disabled="modelLoading || !current" @click="submit">提交</a-button>
+          <a-button @click="drawerOpen = false">{{ $t('common.action.cancel') }}</a-button>
+          <a-button type="primary" :loading="submitting" :disabled="modelLoading || !current" @click="submit">{{ $t('common.action.submit') }}</a-button>
         </div>
       </template>
     </a-drawer>
@@ -58,6 +58,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
@@ -66,6 +67,8 @@ import FlowDesigner from '@/components/workflow/designer/FlowDesigner.vue'
 import FormRender from '@/components/workflow/form/FormRender.vue'
 import { getStartModel, listStartModels, startInstance } from '@/api/workflow/instance'
 import { useDict } from '@/composables/useDict'
+
+const { t } = useI18n()
 
 const dict = useDict('wf_category')
 
@@ -88,7 +91,7 @@ const groups = computed(() => {
   const kw = keyword.value.trim().toLowerCase()
   const filtered = models.value.filter((m) => !kw || m.name.toLowerCase().includes(kw))
   const result = dict.wf_category.map((d) => ({ value: d.value, label: d.label, items: [] }))
-  const other = { value: '__other', label: '其他', items: [] }
+  const other = { value: '__other', label: t('workflow.start.other'), items: [] }
   filtered.forEach((m) => (result.find((g) => g.value === m.category) || other).items.push(m))
   return [...result, other].filter((g) => g.items.length)
 })
@@ -127,7 +130,7 @@ async function submit() {
   submitting.value = true
   try {
     await startInstance({ modelKey: current.value.modelKey, formData: { ...formData } })
-    message.success('已提交，可在「我的申请」中查看审批进度')
+    message.success(t('workflow.start.submitted'))
     drawerOpen.value = false
   } finally {
     submitting.value = false

@@ -28,7 +28,7 @@ public class ScmConsignController {
     /** 客户寄售结算：生成销售订单并从客户寄售仓出库 */
     @PostMapping("/customer")
     @PreAuthorize("@ss.hasPerm('scm:consign:settle')")
-    @OperLog(title = "客户寄售结算", type = OperType.INSERT)
+    @OperLog(title = "客户寄售结算", type = OperType.INSERT) // i18n-ignore
     public R<Map<String, Long>> settleCustomer(@Valid @RequestBody ConsignSettleRequest req) {
         return R.ok(consignService.settleCustomer(req));
     }
@@ -36,7 +36,7 @@ public class ScmConsignController {
     /** 供应商寄售（VMI）结算：生成采购订单、采购入库到自有仓库，寄售仓消耗出库 */
     @PostMapping("/supplier")
     @PreAuthorize("@ss.hasPerm('scm:consign:settle')")
-    @OperLog(title = "供应商寄售结算", type = OperType.INSERT)
+    @OperLog(title = "供应商寄售结算", type = OperType.INSERT) // i18n-ignore
     public R<Map<String, Long>> settleSupplier(@Valid @RequestBody ConsignSettleRequest req) {
         return R.ok(consignService.settleSupplier(req));
     }

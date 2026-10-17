@@ -69,14 +69,14 @@ public class MesMoldController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('mes:mold:add')")
-    @OperLog(title = "模具工装", type = OperType.INSERT)
+    @OperLog(title = "模具工装", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody MoldRequests.Save req) {
         return R.ok(moldService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('mes:mold:edit')")
-    @OperLog(title = "模具工装", type = OperType.UPDATE)
+    @OperLog(title = "模具工装", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody MoldRequests.Save req) {
         moldService.update(id, req);
         return R.ok();
@@ -84,7 +84,7 @@ public class MesMoldController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('mes:mold:remove')")
-    @OperLog(title = "模具工装", type = OperType.DELETE)
+    @OperLog(title = "模具工装", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
         moldService.delete(id);
         return R.ok();
@@ -92,7 +92,7 @@ public class MesMoldController {
 
     @PostMapping("/{id}/issue")
     @PreAuthorize("@ss.hasPerm('mes:mold:issue')")
-    @OperLog(title = "模具工装-领用", type = OperType.UPDATE)
+    @OperLog(title = "模具工装-领用", type = OperType.UPDATE) // i18n-ignore
     public R<Void> issue(@PathVariable Long id, @Valid @RequestBody MoldRequests.Action req) {
         moldService.issue(id, req);
         return R.ok();
@@ -100,7 +100,7 @@ public class MesMoldController {
 
     @PostMapping("/{id}/return")
     @PreAuthorize("@ss.hasPerm('mes:mold:issue')")
-    @OperLog(title = "模具工装-归还", type = OperType.UPDATE)
+    @OperLog(title = "模具工装-归还", type = OperType.UPDATE) // i18n-ignore
     public R<Void> giveBack(@PathVariable Long id, @Valid @RequestBody MoldRequests.Action req) {
         moldService.giveBack(id, req);
         return R.ok();
@@ -108,7 +108,7 @@ public class MesMoldController {
 
     @PostMapping("/{id}/repair")
     @PreAuthorize("@ss.hasPerm('mes:mold:edit')")
-    @OperLog(title = "模具工装-送修", type = OperType.UPDATE)
+    @OperLog(title = "模具工装-送修", type = OperType.UPDATE) // i18n-ignore
     public R<Void> repair(@PathVariable Long id, @Valid @RequestBody MoldRequests.Action req) {
         moldService.repair(id, req);
         return R.ok();
@@ -116,7 +116,7 @@ public class MesMoldController {
 
     @PostMapping("/{id}/repaired")
     @PreAuthorize("@ss.hasPerm('mes:mold:edit')")
-    @OperLog(title = "模具工装-修复", type = OperType.UPDATE)
+    @OperLog(title = "模具工装-修复", type = OperType.UPDATE) // i18n-ignore
     public R<Void> repaired(@PathVariable Long id, @Valid @RequestBody MoldRequests.Action req) {
         moldService.repaired(id, req);
         return R.ok();
@@ -124,7 +124,7 @@ public class MesMoldController {
 
     @PostMapping("/{id}/scrap")
     @PreAuthorize("@ss.hasPerm('mes:mold:edit')")
-    @OperLog(title = "模具工装-报废", type = OperType.UPDATE)
+    @OperLog(title = "模具工装-报废", type = OperType.UPDATE) // i18n-ignore
     public R<Void> scrap(@PathVariable Long id, @Valid @RequestBody MoldRequests.Action req) {
         moldService.scrap(id, req);
         return R.ok();

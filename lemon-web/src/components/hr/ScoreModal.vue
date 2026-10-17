@@ -1,7 +1,7 @@
 <template>
   <a-modal
     :open="open"
-    :title="mode === 'self' ? '绩效自评' : '绩效评分'"
+    :title="mode === 'self' ? $t('hr.scoreModal.selfTitle') : $t('hr.scoreModal.reviewTitle')"
     :confirm-loading="saving"
     width="min(720px, 100vw)"
     destroy-on-close
@@ -11,9 +11,9 @@
     <a-spin :spinning="loading">
       <template v-if="appraisal">
         <a-descriptions size="small" :column="3" class="head">
-          <a-descriptions-item label="考核">{{ appraisal.planName }}</a-descriptions-item>
-          <a-descriptions-item label="被考核人">{{ appraisal.empNo }} {{ appraisal.employeeName }}</a-descriptions-item>
-          <a-descriptions-item label="部门">{{ appraisal.deptName || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.scoreModal.plan')">{{ appraisal.planName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.scoreModal.appraisee')">{{ appraisal.empNo }} {{ appraisal.employeeName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.dept')">{{ appraisal.deptName || '-' }}</a-descriptions-item>
         </a-descriptions>
         <a-table row-key="indicatorId" size="small" :columns="columns" :data-source="rows" :pagination="false">
           <template #bodyCell="{ column, record }">
@@ -29,13 +29,13 @@
           </template>
         </a-table>
         <div class="total">
-          加权得分：<b>{{ total }}</b>
+          {{ $t('hr.scoreModal.weightedScore') }}<b>{{ total }}</b>
           <a-tag v-if="mode === 'review'" :color="gradeColor" :bordered="false">{{ grade }}</a-tag>
         </div>
         <div v-if="mode === 'review' && appraisal.selfComment" class="self-comment">
-          <span class="sub-text">自评总结：</span>{{ appraisal.selfComment }}
+          <span class="sub-text">{{ $t('hr.scoreModal.selfSummaryLabel') }}</span>{{ appraisal.selfComment }}
         </div>
-        <a-textarea v-model:value="comment" :rows="3" :maxlength="500" :placeholder="mode === 'self' ? '自评总结（选填）' : '评语（选填）'" />
+        <a-textarea v-model:value="comment" :rows="3" :maxlength="500" :placeholder="mode === 'self' ? $t('hr.scoreModal.selfSummaryPh') : $t('hr.scoreModal.commentPh')" />
       </template>
     </a-spin>
   </a-modal>
@@ -44,6 +44,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { getAppraisal, reviewAppraisal, selfEvaluate } from '@/api/hr'
 
 /**
@@ -56,6 +57,7 @@ const props = defineProps({
   mode: { type: String, default: 'review' }
 })
 const emit = defineEmits(['update:open', 'success'])
+const { t } = useI18n()
 
 const appraisal = ref(null)
 const rows = ref([])
@@ -64,10 +66,10 @@ const loading = ref(false)
 const saving = ref(false)
 
 const columns = computed(() => [
-  { title: '指标', key: 'name' },
-  { title: '权重', key: 'weight', width: 80 },
-  ...(props.mode === 'review' ? [{ title: '自评', key: 'selfScore', width: 80 }] : []),
-  { title: props.mode === 'self' ? '自评分' : '评分', key: 'input', width: 130 }
+  { title: t('hr.scoreModal.indicator'), key: 'name' },
+  { title: t('hr.scoreModal.weight'), key: 'weight', width: 90 },
+  ...(props.mode === 'review' ? [{ title: t('hr.scoreModal.self'), key: 'selfScore', width: 100 }] : []),
+  { title: props.mode === 'self' ? t('hr.scoreModal.selfScore') : t('hr.scoreModal.score'), key: 'input', width: 130 }
 ])
 
 const total = computed(() => {
@@ -102,7 +104,7 @@ watch(
 
 async function submit() {
   if (rows.value.some((r) => r.input === undefined || r.input === null)) {
-    message.warning('请为每个指标评分')
+    message.warning(t('hr.scoreModal.scoreAll'))
     return
   }
   saving.value = true
@@ -113,7 +115,7 @@ async function submit() {
     } else {
       await reviewAppraisal(props.appraisalId, data)
     }
-    message.success(props.mode === 'self' ? '自评已提交' : '评分已保存')
+    message.success(props.mode === 'self' ? t('hr.scoreModal.selfSubmitted') : t('hr.scoreModal.reviewSaved'))
     emit('update:open', false)
     emit('success')
   } finally {

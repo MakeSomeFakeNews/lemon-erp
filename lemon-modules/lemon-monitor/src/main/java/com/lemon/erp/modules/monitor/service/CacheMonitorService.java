@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.monitor.service;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.framework.cache.CacheService;
 import com.lemon.erp.framework.security.TokenService;
 import com.lemon.erp.modules.monitor.dto.CacheInfo;
@@ -70,7 +71,7 @@ public class CacheMonitorService {
 
     public List<CacheName> listNames() {
         return CACHES.stream()
-                .map(c -> new CacheName(c.prefix(), c.name(), c.remark(), cache.keys(c.prefix()).size()))
+                .map(c -> new CacheName(c.prefix(), I18n.t(c.name()), I18n.t(c.remark()), cache.keys(c.prefix()).size()))
                 .toList();
     }
 
@@ -104,13 +105,13 @@ public class CacheMonitorService {
 
     private void checkPrefix(String prefix) {
         if (CACHES.stream().noneMatch(c -> c.prefix().equals(prefix))) {
-            throw new BizException("不支持的缓存类型：" + prefix);
+            throw new BizException("不支持的缓存类型：{0}", prefix);
         }
     }
 
     private void checkKey(String key) {
         if (key == null || CACHES.stream().noneMatch(c -> key.startsWith(c.prefix()))) {
-            throw new BizException("不支持的缓存键：" + key);
+            throw new BizException("不支持的缓存键：{0}", key);
         }
     }
 

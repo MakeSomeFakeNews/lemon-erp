@@ -211,12 +211,12 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
         deptMapper.insert(dept);
 
         SysRole adminRole = new SysRole();
-        adminRole.setName("租户管理员");
+        adminRole.setName("租户管理员"); // i18n-ignore 新租户的数据
         adminRole.setCode(PermissionService.ADMIN_ROLE);
         adminRole.setSort(1);
         adminRole.setDataScope(DataScopeType.ALL.code());
         adminRole.setStatus(1);
-        adminRole.setRemark("拥有套餐内的全部权限，菜单随套餐自动调整");
+        adminRole.setRemark("拥有套餐内的全部权限，菜单随套餐自动调整"); // i18n-ignore 新租户的数据
         roleMapper.insert(adminRole);
         if (!menuIds.isEmpty()) {
             roleMenuMapper.insertBatch(adminRole.getId(), menuIds);
@@ -225,7 +225,7 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
         SysUser admin = new SysUser();
         admin.setDeptId(dept.getId());
         admin.setUsername(tenant.getAdminUsername().trim());
-        admin.setNickname("管理员");
+        admin.setNickname("管理员"); // i18n-ignore 新租户的数据
         admin.setPassword(passwordEncoder.encode(tenant.getAdminPassword()));
         admin.setPwdUpdateTime(LocalDateTime.now());
         admin.setPwdReset(1);
@@ -293,7 +293,7 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
             throw new BizException("套餐不存在");
         }
         if (!Integer.valueOf(1).equals(pkg.getStatus())) {
-            throw new BizException("套餐「" + pkg.getName() + "」已停用");
+            throw new BizException("套餐「{0}」已停用", pkg.getName());
         }
         return pkg;
     }

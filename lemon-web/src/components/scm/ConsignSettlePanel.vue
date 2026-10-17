@@ -9,24 +9,24 @@
             <WarehouseSelect
               :value="warehouseId"
               :types="[conf.warehouseType]"
-              :placeholder="`请选择${conf.warehouseLabel}`"
+              :placeholder="$t('common.placeholder.selectName', { name: conf.warehouseLabel })"
               @update:value="onWarehouseChange"
             />
           </a-form-item>
         </a-col>
         <a-col v-if="mode === 'supplier'" :xs="24" :sm="12" :lg="6">
-          <a-form-item label="转入仓库" required extra="结算后采购入库到该自有仓库">
-            <WarehouseSelect v-model:value="targetWarehouseId" :types="OWN_TYPES" placeholder="请选择自有仓库" />
+          <a-form-item :label="$t('scm.consign.targetWarehouse')" required :extra="$t('scm.consign.targetWarehouseExtra')">
+            <WarehouseSelect v-model:value="targetWarehouseId" :types="OWN_TYPES" :placeholder="$t('scm.consign.selectOwnWarehouse')" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="6">
-          <a-form-item label="业务日期" required>
+          <a-form-item :label="$t('scm.consign.bizDate')" required>
             <a-date-picker v-model:value="bizDate" value-format="YYYY-MM-DD" class="full" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :lg="mode === 'supplier' ? 6 : 12">
-          <a-form-item label="备注">
-            <a-input v-model:value="remark" :maxlength="255" placeholder="选填" />
+          <a-form-item :label="$t('common.field.remark')">
+            <a-input v-model:value="remark" :maxlength="255" :placeholder="$t('scm.consign.optional')" />
           </a-form-item>
         </a-col>
       </a-row>
@@ -34,17 +34,17 @@
 
     <a-alert v-if="result" type="success" show-icon closable class="block" @close="result = null">
       <template #message>
-        结算完成，已生成{{ conf.orderLabel }}
-        <a @click="toOrder">查看{{ conf.orderLabel }}</a>
-        <span v-if="result.consumeDocId" class="sub-text">，寄售仓已生成寄售消耗出库单</span>
+        {{ $t('scm.consign.done', { order: conf.orderLabel }) }}
+        <a @click="toOrder">{{ $t('scm.consign.viewOrder', { order: conf.orderLabel }) }}</a>
+        <span v-if="result.consumeDocId" class="sub-text">{{ $t('scm.consign.consumeDone') }}</span>
       </template>
     </a-alert>
 
     <div class="items-head">
       <a-space wrap>
-        <span class="section-title">寄售仓库存</span>
-        <a-input-search v-model:value="keyword" placeholder="物料编码或名称" allow-clear class="filter" />
-        <span class="sub-text">已填 {{ picked.length }} 行，合计 {{ formatQty(pickedQty) }}</span>
+        <span class="section-title">{{ $t('scm.consign.stockTitle') }}</span>
+        <a-input-search v-model:value="keyword" :placeholder="$t('scm.consign.materialKeyword')" allow-clear class="filter" />
+        <span class="sub-text">{{ $t('scm.consign.picked', { n: picked.length, qty: formatQty(pickedQty) }) }}</span>
       </a-space>
       <a-button v-perm="'scm:consign:settle'" type="primary" :loading="saving" :disabled="!picked.length" @click="submit">
         <template #icon><CheckOutlined /></template>{{ conf.submitLabel }}
@@ -59,21 +59,21 @@
       :loading="loading"
       :pagination="{ pageSize: 20, showSizeChanger: false, hideOnSinglePage: true }"
       :scroll="{ x: 1200 }"
-      :locale="{ emptyText: warehouseId ? '寄售仓没有库存' : `请先选择${conf.warehouseLabel}` }"
+      :locale="{ emptyText: warehouseId ? $t('scm.consign.noStock') : $t('scm.consign.selectFirst', { name: conf.warehouseLabel }) }"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'material'">
           <div>{{ record.materialCode }} {{ record.materialName }}</div>
           <div class="sub-text">{{ record.spec }}</div>
-          <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">序列号</a-tag>
+          <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">{{ $t('scm.consign.serialNo') }}</a-tag>
         </template>
         <template v-else-if="column.key === 'slot'">
           {{ locationText(record.locationCode) }}
-          <div v-if="record.batchNo" class="sub-text">批次 {{ record.batchNo }}</div>
+          <div v-if="record.batchNo" class="sub-text">{{ $t('scm.consign.batch', { no: record.batchNo }) }}</div>
         </template>
         <template v-else-if="column.key === 'stock'">
           {{ formatQty(availableQty(record)) }} {{ record.unit }}
-          <div v-if="Number(record.frozenQty)" class="sub-text">冻结 {{ formatQty(record.frozenQty) }}</div>
+          <div v-if="Number(record.frozenQty)" class="sub-text">{{ $t('scm.consign.frozen', { qty: formatQty(record.frozenQty) }) }}</div>
         </template>
         <template v-else-if="column.key === 'qty'">
           <a-input-number
@@ -89,7 +89,7 @@
           <a-input-number v-model:value="record.price" :min="0" :precision="4" prefix="¥" :placeholder="conf.pricePlaceholder" class="full" />
         </template>
         <template v-else-if="column.key === 'taxRate'">
-          <a-input-number v-model:value="record.taxRate" :min="0" :max="100" :precision="2" addon-after="%" placeholder="默认" class="full" />
+          <a-input-number v-model:value="record.taxRate" :min="0" :max="100" :precision="2" addon-after="%" :placeholder="$t('scm.consign.default')" class="full" />
         </template>
         <template v-else-if="column.key === 'serialNos'">
           <SerialInput
@@ -98,7 +98,7 @@
             :source="{ warehouseId, locationId: record.locationId, materialId: record.materialId, batchNo: record.batchNo || undefined }"
             :expected="Number(record.settleQty) || undefined"
             :max-tag-count="3"
-            placeholder="选择或扫码"
+            :placeholder="$t('scm.consign.selectOrScan')"
           />
           <span v-else class="sub-text">-</span>
         </template>
@@ -110,6 +110,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { Modal, message } from 'ant-design-vue'
 import { CheckOutlined } from '@ant-design/icons-vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
@@ -127,26 +128,27 @@ const props = defineProps({
   mode: { type: String, required: true }
 })
 
+const { t } = useI18n()
 const CONF = {
   customer: {
     warehouseType: 'CONSIGN_OUT',
-    warehouseLabel: '客户寄售仓',
-    qtyLabel: '售出数量',
-    pricePlaceholder: '空为价目表',
-    orderLabel: '销售订单',
+    warehouseLabel: t('scm.consign.customerWarehouse'),
+    qtyLabel: t('scm.consign.soldQty'),
+    pricePlaceholder: t('scm.consign.pricePriceList'),
+    orderLabel: t('scm.consign.salesOrder'),
     orderPath: '/scm/sales',
-    submitLabel: '结算售出',
-    tip: '客户寄售：先把货物调拨到客户寄售仓（仍是本公司存货），客户售出后在此结算，生成销售订单并从寄售仓出库（形成应收）。单价为含税单价，不填按销售价目表。'
+    submitLabel: t('scm.consign.settleSold'),
+    tip: t('scm.consign.customerTip')
   },
   supplier: {
     warehouseType: 'CONSIGN_IN',
-    warehouseLabel: '供应商寄售仓',
-    qtyLabel: '领用数量',
-    pricePlaceholder: '空为供货价格',
-    orderLabel: '采购订单',
+    warehouseLabel: t('scm.consign.supplierWarehouse'),
+    qtyLabel: t('scm.consign.usedQty'),
+    pricePlaceholder: t('scm.consign.priceSupply'),
+    orderLabel: t('scm.consign.purchaseOrder'),
     orderPath: '/scm/purchase',
-    submitLabel: '结算领用',
-    tip: '供应商寄售（VMI）：供应商的货寄售入库到供应商寄售仓（不计成本），领用后在此结算，生成采购订单、采购入库到自有仓库（形成应付），寄售仓做寄售消耗出库。单价为含税单价，不填按供货价格。'
+    submitLabel: t('scm.consign.settleUsed'),
+    tip: t('scm.consign.supplierTip')
   }
 }
 const conf = computed(() => CONF[props.mode])
@@ -154,13 +156,13 @@ const conf = computed(() => CONF[props.mode])
 const OWN_TYPES = ['NORMAL', 'RAW', 'FINISHED', 'DEFECT']
 
 const columns = [
-  { title: '物料', key: 'material', width: 220 },
-  { title: '库位 / 批次', key: 'slot', width: 140 },
-  { title: '寄售库存', key: 'stock', width: 120, align: 'right' },
+  { title: t('scm.consign.material'), key: 'material', width: 220 },
+  { title: t('scm.consign.slot'), key: 'slot', width: 150 },
+  { title: t('scm.consign.consignStock'), key: 'stock', width: 130, align: 'right' },
   { title: CONF[props.mode].qtyLabel, key: 'qty', width: 130 },
-  { title: '含税单价', key: 'price', width: 140 },
-  { title: '税率', key: 'taxRate', width: 110 },
-  { title: '序列号', key: 'serialNos', width: 260 }
+  { title: t('scm.consign.taxPrice'), key: 'price', width: 140 },
+  { title: t('scm.consign.taxRate'), key: 'taxRate', width: 110 },
+  { title: t('scm.consign.serialNo'), key: 'serialNos', width: 260 }
 ]
 
 const router = useRouter()
@@ -205,13 +207,13 @@ function onWarehouseChange(id) {
 const toOrder = () => router.push({ path: conf.value.orderPath, query: { id: result.value.orderId } })
 
 function validate() {
-  if (!warehouseId.value) return `请选择${conf.value.warehouseLabel}`
-  if (props.mode === 'supplier' && !targetWarehouseId.value) return '请选择转入仓库'
-  if (!bizDate.value) return '请选择业务日期'
+  if (!warehouseId.value) return t('common.placeholder.selectName', { name: conf.value.warehouseLabel })
+  if (props.mode === 'supplier' && !targetWarehouseId.value) return t('scm.consign.selectTarget')
+  if (!bizDate.value) return t('scm.consign.selectBizDate')
   for (const s of picked.value) {
-    if (Number(s.settleQty) > availableQty(s)) return `${s.materialCode} 的数量超过寄售库存`
+    if (Number(s.settleQty) > availableQty(s)) return t('scm.consign.overStock', { code: s.materialCode })
     if (s.serialEnabled === 1 && splitSerials(s.serialNos).length !== Number(s.settleQty)) {
-      return `${s.materialCode} 需录入 ${formatQty(s.settleQty)} 个序列号`
+      return t('scm.consign.needSerials', { code: s.materialCode, n: formatQty(s.settleQty) })
     }
   }
   return null
@@ -224,8 +226,8 @@ function submit() {
     return
   }
   Modal.confirm({
-    title: `${conf.value.submitLabel}？`,
-    content: `共 ${picked.value.length} 行、数量 ${formatQty(pickedQty.value)}，将生成${conf.value.orderLabel}及出入库单据。`,
+    title: t('scm.consign.confirmTitle', { action: conf.value.submitLabel }),
+    content: t('scm.consign.confirmContent', { n: picked.value.length, qty: formatQty(pickedQty.value), order: conf.value.orderLabel }),
     async onOk() {
       saving.value = true
       try {
@@ -247,7 +249,7 @@ function submit() {
           props.mode === 'customer'
             ? await consignCustomer(data)
             : await consignSupplier({ ...data, targetWarehouseId: targetWarehouseId.value })
-        message.success(`结算成功，已生成${conf.value.orderLabel}`)
+        message.success(t('scm.consign.success', { order: conf.value.orderLabel }))
         remark.value = ''
         loadStock()
       } finally {

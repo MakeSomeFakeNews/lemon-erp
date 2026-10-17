@@ -12,9 +12,9 @@
     </a-spin>
     <template #footer>
       <div class="drawer-footer">
-        <span class="shortcut-hint">{{ shortcut }} + Enter 保存</span>
-        <a-button @click="state.close">取消</a-button>
-        <a-button type="primary" :loading="state.saving" :disabled="state.loading" @click="state.submit">保存</a-button>
+        <span class="shortcut-hint">{{ $t('components.formDrawer.shortcut', { key: shortcut }) }}</span>
+        <a-button @click="state.close">{{ $t('common.action.cancel') }}</a-button>
+        <a-button type="primary" :loading="state.saving" :disabled="state.loading" @click="state.submit">{{ $t('common.action.save') }}</a-button>
       </div>
     </template>
   </component>
@@ -23,6 +23,7 @@
 <script setup>
 import { reactive } from 'vue'
 import { Drawer } from 'ant-design-vue'
+import { t } from '@/locales'
 import SubPage from './SubPage.vue'
 
 /**
@@ -31,8 +32,8 @@ import SubPage from './SubPage.vue'
  */
 const props = defineProps({
   drawer: { type: Object, required: true },
-  createTitle: { type: String, default: '新增' },
-  editTitle: { type: String, default: '编辑' },
+  createTitle: { type: String, default: () => t('common.action.add') },
+  editTitle: { type: String, default: () => t('common.action.edit') },
   width: { type: String, default: 'min(640px, 100vw)' },
   page: Boolean
 })

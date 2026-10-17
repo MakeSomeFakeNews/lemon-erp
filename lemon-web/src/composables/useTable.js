@@ -1,6 +1,7 @@
 import { reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
+import { t } from '@/locales'
 import { useDictStore } from '@/store/dict'
 import { findDict } from '@/utils/dict'
 import { writeExcel } from '@/utils/excel'
@@ -27,7 +28,7 @@ export function useTable(fetcher, query = {}, options = {}) {
     total: 0,
     showSizeChanger: true,
     showQuickJumper: true,
-    showTotal: (total) => `共 ${total} 条`
+    showTotal: (total) => t('common.table.total', { total })
   })
 
   // 请求序号：快速切换筛选条件时，只采用最后一次请求的结果，避免旧数据覆盖新数据
@@ -84,17 +85,17 @@ export function useTable(fetcher, query = {}, options = {}) {
       records.push(...res.records)
       if (records.length >= total || !res.records.length) break
     }
-    if (records.length < total) message.warning(`数据较多，只导出了前 ${records.length} 条，请缩小查询范围`)
+    if (records.length < total) message.warning(t('components.table.exportLimited', { n: records.length }))
     const valueOf = (c, r) => {
       if (c.exportValue) return c.exportValue(r)
       const field = c.dataIndex || c.key
       let v = Array.isArray(field) ? field.reduce((o, k) => o?.[k], r) : r[field]
       if (c.dict) v = findDict(dicts[c.dict], v)?.label ?? v
-      if (Array.isArray(v)) v = v.join('、')
+      if (Array.isArray(v)) v = v.join(t('components.excel.listSep'))
       return v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : v
     }
     await writeExcel(
-      filename || route?.meta?.title || '导出',
+      filename || route?.meta?.title || t('common.action.export'),
       cols.map((c) => ({ title: c.title, width: c.width ? Math.round(c.width / 7) : 16 })),
       records.map((r) => cols.map((c) => valueOf(c, r)))
     )

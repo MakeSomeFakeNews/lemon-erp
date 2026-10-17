@@ -6,7 +6,7 @@
         <div class="node-head">
           <component :is="meta.icon" />
           <span class="node-title">{{ node.name }}</span>
-          <CloseOutlined v-if="!readonly" class="node-close" title="删除节点" @click.stop="remove" />
+          <CloseOutlined v-if="!readonly" class="node-close" :title="$t('workflow.designer.removeNode')" @click.stop="remove" />
         </div>
         <div class="node-body">
           <span v-if="summary" class="node-summary">{{ summary }}</span>
@@ -22,7 +22,7 @@
     <template v-else>
       <div class="branch-wrap">
         <a-button v-if="!readonly" size="small" class="branch-add" @click="addBranchItem">
-          {{ isCondition ? '添加条件' : '添加分支' }}
+          {{ isCondition ? $t('workflow.designer.addCondition') : $t('workflow.designer.addBranch') }}
         </a-button>
         <span v-else class="branch-add branch-label">{{ node.name }}</span>
         <div class="branch-cols">
@@ -31,24 +31,24 @@
             <div :class="branchClass(b)" @click="!b.defaultBranch && ctx.openBranch(node, b)">
               <div class="branch-head">
                 <span class="branch-name">{{ b.name }}</span>
-                <span v-if="isCondition" class="branch-priority">优先级 {{ i + 1 }}</span>
+                <span v-if="isCondition" class="branch-priority">{{ $t('workflow.designer.priority', { n: i + 1 }) }}</span>
                 <CloseOutlined
                   v-if="!readonly && !b.defaultBranch"
                   class="node-close"
-                  title="删除分支"
+                  :title="$t('workflow.designer.removeBranch')"
                   @click.stop="removeBranchItem(b)"
                 />
               </div>
               <div class="branch-body">
                 <template v-if="isCondition">
                   <span v-if="conditionText(b, ctx.fields.value)">{{ conditionText(b, ctx.fields.value) }}</span>
-                  <span v-else class="node-placeholder">请设置条件</span>
+                  <span v-else class="node-placeholder">{{ $t('workflow.designer.setCondition') }}</span>
                 </template>
-                <span v-else class="node-placeholder">{{ readonly ? '同时执行' : '无需设置条件，同时执行' }}</span>
+                <span v-else class="node-placeholder">{{ readonly ? $t('workflow.designer.parallelRun') : $t('workflow.designer.parallelNoCondition') }}</span>
               </div>
               <div v-if="!readonly && !b.defaultBranch && movable(i)" class="branch-move">
-                <LeftOutlined v-if="canMove(i, -1)" title="左移" @click.stop="move(b, -1)" />
-                <RightOutlined v-if="canMove(i, 1)" title="右移" @click.stop="move(b, 1)" />
+                <LeftOutlined v-if="canMove(i, -1)" :title="$t('workflow.designer.moveLeft')" @click.stop="move(b, -1)" />
+                <RightOutlined v-if="canMove(i, 1)" :title="$t('workflow.designer.moveRight')" @click.stop="move(b, 1)" />
               </div>
               <ExclamationCircleFilled v-if="ctx.invalidIds.value.has(b.id)" class="node-invalid-icon" />
             </div>
@@ -65,6 +65,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, inject } from 'vue'
 import { Modal } from 'ant-design-vue'
 import {
@@ -78,6 +79,8 @@ import {
 import AddNodeButton from './AddNodeButton.vue'
 import { DESIGNER_KEY, NODE_TYPES, addBranch, conditionText, moveBranch, nodeSummary, removeBranch, removeNode } from './flow'
 
+const { t } = useI18n()
+
 /** 递归渲染 holder.next 开始的节点链 */
 const props = defineProps({ holder: { type: Object, required: true } })
 const ctx = inject(DESIGNER_KEY)
@@ -90,8 +93,8 @@ const invalid = computed(() => ctx.invalidIds.value.has(node.value.id))
 const summary = computed(() => nodeSummary(node.value))
 
 const META = {
-  [NODE_TYPES.APPROVER]: { icon: AuditOutlined, placeholder: '请设置审批人', cls: 'approver' },
-  [NODE_TYPES.CC]: { icon: SendOutlined, placeholder: '请设置抄送人', cls: 'cc' }
+  [NODE_TYPES.APPROVER]: { icon: AuditOutlined, placeholder: t('workflow.designer.setApprover'), cls: 'approver' },
+  [NODE_TYPES.CC]: { icon: SendOutlined, placeholder: t('workflow.designer.setCc'), cls: 'cc' }
 }
 const meta = computed(() => META[node.value.type] || META[NODE_TYPES.APPROVER])
 
@@ -117,8 +120,8 @@ function removeBranchItem(branch) {
   const hasChildren = !!branch.next
   if (!removeAll && !hasChildren) return doRemove()
   Modal.confirm({
-    title: removeAll ? `删除整个「${node.value.name}」？` : `删除「${branch.name}」？`,
-    content: removeAll ? '分支少于 2 个时将删除整个分支节点及其中的所有节点。' : '该分支下的所有节点将一并删除。',
+    title: removeAll ? t('workflow.designer.confirmRemoveAll', { name: node.value.name }) : t('workflow.designer.confirmRemoveBranch', { name: branch.name }),
+    content: removeAll ? t('workflow.designer.removeAllTip') : t('workflow.designer.removeBranchTip'),
     okType: 'danger',
     onOk: doRemove
   })

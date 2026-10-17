@@ -1,17 +1,17 @@
 <template>
   <a-modal
     v-model:open="printPreview.open"
-    :title="printPreview.title || '打印预览'"
+    :title="printPreview.title || $t('print.preview.title')"
     :width="960"
     centered
     destroy-on-close
     wrap-class-name="print-preview-modal"
     @after-close="release"
   >
-    <iframe ref="frame" class="print-frame" :src="printPreview.url" title="打印预览" />
+    <iframe ref="frame" class="print-frame" :src="printPreview.url" :title="$t('print.preview.title')" />
     <template #footer>
-      <a-button @click="download"><template #icon><DownloadOutlined /></template>下载 PDF</a-button>
-      <a-button type="primary" @click="print"><template #icon><PrinterOutlined /></template>打印</a-button>
+      <a-button @click="download"><template #icon><DownloadOutlined /></template>{{ $t('print.preview.download') }}</a-button>
+      <a-button type="primary" @click="print"><template #icon><PrinterOutlined /></template>{{ $t('print.common.print') }}</a-button>
     </template>
   </a-modal>
 </template>
@@ -19,6 +19,7 @@
 <script setup>
 import { ref } from 'vue'
 import { DownloadOutlined, PrinterOutlined } from '@ant-design/icons-vue'
+import { t } from '@/locales'
 import { printPreview } from '@/utils/print'
 
 /** 打印预览：显示后端生成的 PDF（浏览器内置的 PDF 阅读器），可直接打印或下载 */
@@ -34,7 +35,7 @@ function print() {
 function download() {
   const a = document.createElement('a')
   a.href = printPreview.url
-  a.download = `${printPreview.title || '打印'}.pdf`
+  a.download = `${printPreview.title || t('print.common.print')}.pdf`
   a.click()
 }
 

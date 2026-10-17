@@ -115,7 +115,7 @@ public class HrPayrollService {
         }
         HrPayroll p = payrollMapper.selectOne(Wrappers.<HrPayroll>lambdaQuery().eq(HrPayroll::getPeriod, period));
         if (p != null && !"DRAFT".equals(p.getStatus())) {
-            throw new BizException(period + " 的工资表已确认，不能重新生成");
+            throw new BizException("{0} 的工资表已确认，不能重新生成", period);
         }
         if (p == null) {
             p = new HrPayroll();
@@ -280,7 +280,7 @@ public class HrPayrollService {
     }
 
     private void createAccrual(HrPayroll p) {
-        String summary = "计提 " + p.getPeriod() / 100 + " 年 " + p.getPeriod() % 100 + " 月工资";
+        String summary = "计提 " + p.getPeriod() / 100 + " 年 " + p.getPeriod() % 100 + " 月工资";  // i18n-ignore 凭证摘要存库
         List<VoucherLine> lines = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
         for (Map<String, Object> row : itemMapper.selectCostByDept(p.getId())) {
@@ -319,7 +319,7 @@ public class HrPayrollService {
             throw new BizException("发放日期不能早于工资月份");
         }
         Long bank = accountService.requireCashAccount(req.accountId()).getId();
-        String summary = "发放 " + p.getPeriod() / 100 + " 年 " + p.getPeriod() % 100 + " 月工资";
+        String summary = "发放 " + p.getPeriod() / 100 + " 年 " + p.getPeriod() % 100 + " 月工资";  // i18n-ignore 凭证摘要存库
         BigDecimal otherDeduct = itemMapper.sumOtherDeduct(id);
         BigDecimal withheld = p.getPersonalTotal().add(p.getCompanyTotal()).add(otherDeduct);
         List<VoucherLine> lines = List.of(

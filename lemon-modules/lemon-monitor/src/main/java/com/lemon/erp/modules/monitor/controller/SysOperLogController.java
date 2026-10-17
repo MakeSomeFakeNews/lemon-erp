@@ -47,7 +47,7 @@ public class SysOperLogController {
 
     @DeleteMapping("/clean")
     @PreAuthorize("@ss.hasPerm('monitor:operlog:remove')")
-    @OperLog(title = "操作日志", type = OperType.CLEAN)
+    @OperLog(title = "操作日志", type = OperType.CLEAN) // i18n-ignore 操作日志存库
     public R<Void> clean() {
         operLogService.clean();
         return R.ok();
@@ -55,7 +55,7 @@ public class SysOperLogController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('monitor:operlog:remove')")
-    @OperLog(title = "操作日志", type = OperType.DELETE)
+    @OperLog(title = "操作日志", type = OperType.DELETE) // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         operLogService.delete(ids);
         return R.ok();

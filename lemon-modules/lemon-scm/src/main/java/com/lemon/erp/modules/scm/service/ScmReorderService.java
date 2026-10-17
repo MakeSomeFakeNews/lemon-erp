@@ -82,7 +82,7 @@ public class ScmReorderService {
         if (items == null || items.isEmpty()) {
             throw new BizException("请选择要补货的物料");
         }
-        return requisitionService.create(new RequisitionRequest(LocalDate.now(), "补货建议生成", items));
+        return requisitionService.create(new RequisitionRequest(LocalDate.now(), "补货建议生成", items)); // i18n-ignore
     }
 
     private static BigDecimal dec(Object v) {

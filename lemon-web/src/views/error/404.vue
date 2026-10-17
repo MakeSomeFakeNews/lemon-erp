@@ -1,10 +1,10 @@
 <template>
   <div class="page-card not-found">
-    <a-result status="404" title="页面不存在" sub-title="你访问的页面不存在，或者你没有访问权限。">
+    <a-result status="404" :title="$t('login.notFound.title')" :sub-title="$t('login.notFound.subTitle')">
       <template #extra>
         <a-space>
-          <a-button @click="$router.back()">返回上一页</a-button>
-          <a-button type="primary" @click="$router.replace('/')">回到首页</a-button>
+          <a-button @click="$router.back()">{{ $t('login.notFound.back') }}</a-button>
+          <a-button type="primary" @click="$router.replace('/')">{{ $t('login.notFound.home') }}</a-button>
         </a-space>
       </template>
     </a-result>

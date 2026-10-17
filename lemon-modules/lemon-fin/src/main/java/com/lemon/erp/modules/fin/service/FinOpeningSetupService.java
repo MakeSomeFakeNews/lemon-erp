@@ -122,7 +122,7 @@ public class FinOpeningSetupService {
         return importExecutor.run(req, row -> {
             Long partnerId = ar ? customerId(row.partner().trim()) : supplierId(row.partner().trim());
             billService.create(new BillRequest(kind, partnerId, row.billDate(), row.dueDate(), row.amount(),
-                    row.remark() == null || row.remark().isBlank() ? "期初余额" : row.remark()));
+                    row.remark() == null || row.remark().isBlank() ? "期初余额" : row.remark())); // i18n-ignore
         });
     }
 
@@ -130,7 +130,7 @@ public class FinOpeningSetupService {
         List<ScmCustomer> list = customerMapper.selectList(Wrappers.<ScmCustomer>lambdaQuery()
                 .eq(ScmCustomer::getCode, key).or().eq(ScmCustomer::getName, key));
         if (list.isEmpty()) {
-            throw new BizException("客户「" + key + "」不存在");
+            throw new BizException("客户「{0}」不存在", key);
         }
         return list.stream().filter(c -> key.equals(c.getCode())).findFirst().orElse(list.get(0)).getId();
     }
@@ -139,7 +139,7 @@ public class FinOpeningSetupService {
         List<ScmSupplier> list = supplierMapper.selectList(Wrappers.<ScmSupplier>lambdaQuery()
                 .eq(ScmSupplier::getCode, key).or().eq(ScmSupplier::getName, key));
         if (list.isEmpty()) {
-            throw new BizException("供应商「" + key + "」不存在");
+            throw new BizException("供应商「{0}」不存在", key);
         }
         return list.stream().filter(s -> key.equals(s.getCode())).findFirst().orElse(list.get(0)).getId();
     }

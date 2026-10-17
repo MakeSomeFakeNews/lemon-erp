@@ -1,5 +1,5 @@
 <template>
-  <a-modal :open="open" title="按规格录入" width="min(900px, 100vw)" ok-text="添加到明细" :ok-button-props="{ disabled: !total }" @ok="confirm" @cancel="close">
+  <a-modal :open="open" :title="$t('wms.variant.matrixTitle')" width="min(900px, 100vw)" :ok-text="$t('wms.picker.ok')" :ok-button-props="{ disabled: !total }" @ok="confirm" @cancel="close">
     <a-space direction="vertical" class="full">
       <a-select
         :value="templateId"
@@ -7,7 +7,7 @@
         :filter-option="false"
         :options="templateList"
         :loading="searching"
-        placeholder="搜索款式编码或名称"
+        :placeholder="$t('wms.variant.searchTemplate')"
         class="full"
         @search="search"
         @focus="!templateList.length && search('')"
@@ -15,7 +15,7 @@
       />
       <a-spin :spinning="loading">
         <template v-if="matrix">
-          <div v-if="!matrix.variants.length" class="sub-text">该款式还没有生成 SKU</div>
+          <div v-if="!matrix.variants.length" class="sub-text">{{ $t('wms.variant.noSku') }}</div>
           <!-- 两个属性：行 × 列矩阵 -->
           <div v-else-if="matrix.attributes.length === 2" class="matrix-wrap">
             <table class="matrix">
@@ -23,7 +23,7 @@
                 <tr>
                   <th>{{ matrix.attributes[0].name }} \ {{ matrix.attributes[1].name }}</th>
                   <th v-for="c in matrix.attributes[1].values" :key="c.id">{{ c.value }}</th>
-                  <th>合计</th>
+                  <th>{{ $t('common.field.total') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -46,7 +46,7 @@
               </template>
             </template>
           </a-table>
-          <div v-if="matrix.variants.length" class="summary">合计数量 <b>{{ formatQty(total) }}</b> {{ matrix.template.unit || '' }}</div>
+          <div v-if="matrix.variants.length" class="summary">{{ $t('wms.common.totalQty') }} <b>{{ formatQty(total) }}</b> {{ matrix.template.unit || '' }}</div>
         </template>
       </a-spin>
     </a-space>
@@ -57,6 +57,7 @@
 import { computed, reactive, ref } from 'vue'
 import { materialVariants, templateOptions } from '@/api/wms/material'
 import { formatQty } from '@/components/wms/wms'
+import { t } from '@/locales'
 
 /**
  * 按规格录入：选择款式后，在规格矩阵（如 颜色 × 尺码）中填写各 SKU 的数量，确认后返回
@@ -74,9 +75,9 @@ const qty = reactive({})
 let timer
 
 const columns = [
-  { title: 'SKU 编码', dataIndex: 'code', width: 200 },
-  { title: '规格', dataIndex: 'variantText' },
-  { title: '数量', key: 'qty', width: 160 }
+  { title: t('wms.variant.skuCode'), dataIndex: 'code', width: 200 },
+  { title: t('common.field.spec'), dataIndex: 'variantText' },
+  { title: t('common.field.quantity'), key: 'qty', width: 160 }
 ]
 
 const precision = (v) => (v.serialEnabled === 1 ? 0 : 4)

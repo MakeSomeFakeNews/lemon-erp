@@ -58,7 +58,7 @@ public class FinAssetController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('fin:asset:add')")
-    @OperLog(title = "固定资产", type = OperType.INSERT)
+    @OperLog(title = "固定资产", type = OperType.INSERT) // i18n-ignore
     public R<Void> create(@Valid @RequestBody AssetRequest req) {
         assetService.create(req);
         return R.ok();
@@ -66,7 +66,7 @@ public class FinAssetController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('fin:asset:edit')")
-    @OperLog(title = "固定资产", type = OperType.UPDATE)
+    @OperLog(title = "固定资产", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody AssetRequest req) {
         assetService.update(id, req);
         return R.ok();
@@ -75,14 +75,14 @@ public class FinAssetController {
     /** 处置：收入、清理费用通过固定资产清理，净损益转营业外收支；返回处置凭证 ID */
     @PostMapping("/{id}/dispose")
     @PreAuthorize("@ss.hasPerm('fin:asset:edit')")
-    @OperLog(title = "固定资产-处置", type = OperType.UPDATE)
+    @OperLog(title = "固定资产-处置", type = OperType.UPDATE) // i18n-ignore
     public R<Long> dispose(@PathVariable Long id, @Valid @RequestBody(required = false) DisposeRequest req) {
         return R.ok(assetService.dispose(id, req == null ? new DisposeRequest(null, null, null, null, null) : req));
     }
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('fin:asset:remove')")
-    @OperLog(title = "固定资产", type = OperType.DELETE)
+    @OperLog(title = "固定资产", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         assetService.delete(ids);
         return R.ok();
@@ -100,14 +100,14 @@ public class FinAssetController {
     /** 计提折旧，返回计提的资产数 */
     @PostMapping("/depreciation/{period}")
     @PreAuthorize("@ss.hasPerm('fin:asset:depreciate')")
-    @OperLog(title = "固定资产-计提折旧", type = OperType.INSERT)
+    @OperLog(title = "固定资产-计提折旧", type = OperType.INSERT) // i18n-ignore
     public R<Integer> depreciate(@PathVariable int period) {
         return R.ok(assetService.depreciate(period));
     }
 
     @DeleteMapping("/depreciation/{period}")
     @PreAuthorize("@ss.hasPerm('fin:asset:depreciate')")
-    @OperLog(title = "固定资产-撤销折旧", type = OperType.DELETE)
+    @OperLog(title = "固定资产-撤销折旧", type = OperType.DELETE) // i18n-ignore
     public R<Void> undoDepreciation(@PathVariable int period) {
         assetService.undoDepreciation(period);
         return R.ok();
@@ -116,7 +116,7 @@ public class FinAssetController {
     /** 领用、归还、调拨 */
     @PostMapping("/{id}/move")
     @PreAuthorize("@ss.hasPerm('fin:asset:move')")
-    @OperLog(title = "固定资产-领用调拨", type = OperType.UPDATE)
+    @OperLog(title = "固定资产-领用调拨", type = OperType.UPDATE) // i18n-ignore
     public R<Void> move(@PathVariable Long id, @Valid @RequestBody AssetMoveRequest req) {
         assetService.move(id, req);
         return R.ok();

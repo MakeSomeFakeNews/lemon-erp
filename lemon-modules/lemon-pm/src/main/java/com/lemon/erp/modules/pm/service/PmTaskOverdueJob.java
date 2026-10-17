@@ -29,7 +29,7 @@ public class PmTaskOverdueJob implements JobHandler {
 
     @Override
     public String name() {
-        return "项目任务逾期提醒";
+        return "项目任务逾期提醒"; // i18n-ignore 定时任务名称存库
     }
 
     @Override
@@ -43,9 +43,9 @@ public class PmTaskOverdueJob implements JobHandler {
         List<Map<String, Object>> rows = jobMapper.selectOverdueTasks(today);
         for (Map<String, Object> r : rows) {
             messageSender.send(List.of(((Number) r.get("assigneeId")).longValue()), Message.of("ALERT",
-                    "任务「" + r.get("name") + "」已逾期", "项目「" + r.get("projectName") + "」，计划完成 " + r.get("planEnd"), "/pm/plan")
+                    "任务「" + r.get("name") + "」已逾期", "项目「" + r.get("projectName") + "」，计划完成 " + r.get("planEnd"), "/pm/plan")  // i18n-ignore 站内消息存库
                     .dedup("task-overdue:" + r.get("id") + ":" + today));
         }
-        return "提醒 " + rows.size() + " 个任务";
+        return "提醒 " + rows.size() + " 个任务"; // i18n-ignore 任务日志存库
     }
 }

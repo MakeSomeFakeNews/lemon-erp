@@ -67,7 +67,7 @@ public class ScmSupplierPriceController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:supplier:edit')")
-    @OperLog(title = "供货价格", type = OperType.INSERT)
+    @OperLog(title = "供货价格", type = OperType.INSERT) // i18n-ignore
     public R<Void> create(@Valid @RequestBody SupplierPriceRequest req) {
         priceService.create(req);
         return R.ok();
@@ -75,7 +75,7 @@ public class ScmSupplierPriceController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:supplier:edit')")
-    @OperLog(title = "供货价格", type = OperType.UPDATE)
+    @OperLog(title = "供货价格", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody SupplierPriceRequest req) {
         priceService.update(id, req);
         return R.ok();
@@ -83,7 +83,7 @@ public class ScmSupplierPriceController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('scm:supplier:edit')")
-    @OperLog(title = "供货价格", type = OperType.DELETE)
+    @OperLog(title = "供货价格", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         priceService.delete(ids);
         return R.ok();

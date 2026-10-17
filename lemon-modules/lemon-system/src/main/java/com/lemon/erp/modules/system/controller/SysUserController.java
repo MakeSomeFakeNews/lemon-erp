@@ -51,7 +51,7 @@ public class SysUserController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:user:add')")
-    @OperLog(title = "用户管理", type = OperType.INSERT)
+    @OperLog(title = "用户管理", type = OperType.INSERT) // i18n-ignore 操作日志存库
     public R<Void> create(@Validated(Create.class) @RequestBody SysUser user) {
         userService.create(user);
         return R.ok();
@@ -59,7 +59,7 @@ public class SysUserController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('sys:user:edit')")
-    @OperLog(title = "用户管理", type = OperType.UPDATE)
+    @OperLog(title = "用户管理", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody SysUser user) {
         user.setId(id);
         userService.update(user);
@@ -68,7 +68,7 @@ public class SysUserController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('sys:user:remove')")
-    @OperLog(title = "用户管理", type = OperType.DELETE)
+    @OperLog(title = "用户管理", type = OperType.DELETE) // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         userService.delete(ids);
         return R.ok();
@@ -77,7 +77,7 @@ public class SysUserController {
     /** 批量调整部门 */
     @PutMapping("/dept")
     @PreAuthorize("@ss.hasPerm('sys:user:edit')")
-    @OperLog(title = "用户管理-调整部门", type = OperType.UPDATE)
+    @OperLog(title = "用户管理-调整部门", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> changeDept(@Valid @RequestBody UserDeptRequest req) {
         userService.changeDept(req.userIds(), req.deptId());
         return R.ok();
@@ -85,7 +85,7 @@ public class SysUserController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('sys:user:edit')")
-    @OperLog(title = "用户管理-修改状态", type = OperType.UPDATE)
+    @OperLog(title = "用户管理-修改状态", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> changeStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
         userService.changeStatus(id, req.status());
         return R.ok();
@@ -93,7 +93,7 @@ public class SysUserController {
 
     @PutMapping("/{id}/password")
     @PreAuthorize("@ss.hasPerm('sys:user:resetPwd')")
-    @OperLog(title = "用户管理-重置密码", type = OperType.UPDATE)
+    @OperLog(title = "用户管理-重置密码", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> resetPassword(@PathVariable Long id, @Valid @RequestBody PasswordRequest req) {
         userService.resetPassword(id, req.newPassword());
         return R.ok();

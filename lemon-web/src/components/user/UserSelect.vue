@@ -7,7 +7,7 @@
     :filter-option="false"
     :options="options"
     :loading="loading"
-    :not-found-content="loading ? '加载中…' : '没有匹配的用户'"
+    :not-found-content="loading ? $t('common.msg.loading') : $t('components.user.noMatch')"
     @search="onSearch"
     @focus="onFocus"
     @change="(v) => emit('update:value', v ?? null)"
@@ -17,6 +17,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { pageUser } from '@/api/system/user'
+import { t } from '@/locales'
 
 /**
  * 用户单选下拉：按用户名或昵称远程搜索
@@ -27,7 +28,7 @@ import { pageUser } from '@/api/system/user'
 const props = defineProps({
   value: Number,
   label: String,
-  placeholder: { type: String, default: '搜索用户名或昵称' },
+  placeholder: { type: String, default: () => t('components.user.searchPlaceholder') },
   fetcher: { type: Function, default: pageUser }
 })
 const emit = defineEmits(['update:value'])

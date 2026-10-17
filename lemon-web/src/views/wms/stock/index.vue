@@ -2,20 +2,20 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="仓库" name="warehouseId">
-          <WarehouseSelect v-model:value="query.warehouseId" placeholder="全部" />
+        <a-form-item :label="$t('wms.common.warehouse')" name="warehouseId">
+          <WarehouseSelect v-model:value="query.warehouseId" :placeholder="$t('common.placeholder.all')" />
         </a-form-item>
-        <a-form-item label="物料" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="编码或名称" allow-clear />
+        <a-form-item :label="$t('wms.common.material')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('wms.flow.codeOrName')" allow-clear />
         </a-form-item>
-        <a-form-item label="分类" name="category">
-          <a-select v-model:value="query.category" placeholder="全部" allow-clear :options="toOptions(dict.wms_material_category)" />
+        <a-form-item :label="$t('wms.inout.category')" name="category">
+          <a-select v-model:value="query.category" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_material_category)" />
         </a-form-item>
-        <a-form-item v-if="mode === 'detail'" label="库位" name="locationId">
-          <LocationSelect v-model:value="query.locationId" :warehouse-id="query.warehouseId" placeholder="全部" />
+        <a-form-item v-if="mode === 'detail'" :label="$t('wms.common.location')" name="locationId">
+          <LocationSelect v-model:value="query.locationId" :warehouse-id="query.warehouseId" :placeholder="$t('common.placeholder.all')" />
         </a-form-item>
-        <a-form-item v-if="mode === 'detail'" label="批次号" name="batchNo">
-          <a-input v-model:value="query.batchNo" placeholder="请输入批次号" allow-clear />
+        <a-form-item v-if="mode === 'detail'" :label="$t('wms.common.batchNo')" name="batchNo">
+          <a-input v-model:value="query.batchNo" :placeholder="$t('common.placeholder.input')" allow-clear />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -30,13 +30,13 @@
         @refresh="load"
       >
         <a-radio-group v-model:value="mode" button-style="solid" @change="switchMode">
-          <a-radio-button value="detail">库存明细</a-radio-button>
-          <a-radio-button value="summary">按物料汇总</a-radio-button>
+          <a-radio-button value="detail">{{ $t('wms.stock.detail') }}</a-radio-button>
+          <a-radio-button value="summary">{{ $t('wms.stock.summary') }}</a-radio-button>
         </a-radio-group>
         <a-checkbox v-if="mode === 'summary'" v-model:checked="query.lowStock" class="toolbar-check" @change="search">
-          只看低于安全库存
+          {{ $t('wms.stock.lowOnly') }}
         </a-checkbox>
-        <a-checkbox v-model:checked="query.showZero" class="toolbar-check" @change="search">显示零库存</a-checkbox>
+        <a-checkbox v-model:checked="query.showZero" class="toolbar-check" @change="search">{{ $t('wms.stock.showZero') }}</a-checkbox>
       </TableToolbar>
 
       <a-table
@@ -70,18 +70,18 @@
           </template>
           <template v-else-if="column.key === 'safetyStock'">{{ formatQty(record.safetyStock) }}</template>
           <template v-else-if="column.key === 'frozenQty'">
-            <a-tooltip v-if="Number(record.frozenQty)" title="待检或检验不合格，不能出库，见「库存冻结」">
+            <a-tooltip v-if="Number(record.frozenQty)" :title="$t('wms.stock.frozenTip')">
               <span class="frozen">{{ formatQty(record.frozenQty) }}</span>
             </a-tooltip>
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'qty'">
             <span :class="{ low: isLow(record) }">{{ formatQty(record.qty) }}</span>
-            <a-tag v-if="isLow(record)" color="red" :bordered="false" class="low-tag">低于安全库存</a-tag>
+            <a-tag v-if="isLow(record)" color="red" :bordered="false" class="low-tag">{{ $t('wms.stock.low') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
             <a-button v-if="record.serialEnabled === 1" type="link" size="small" @click="showSerials(record)">
-              <template #icon><BarcodeOutlined /></template>序列号
+              <template #icon><BarcodeOutlined /></template>{{ $t('wms.common.serialNo') }}
             </a-button>
           </template>
         </template>
@@ -92,7 +92,7 @@
       <a-spin :spinning="serialLoading">
         <div class="serial-list">
           <a-tag v-for="sn in serials" :key="sn">{{ sn }}</a-tag>
-          <a-empty v-if="!serialLoading && !serials.length" description="没有在库序列号" />
+          <a-empty v-if="!serialLoading && !serials.length" :description="$t('wms.stock.noSerial')" />
         </div>
       </a-spin>
     </a-modal>
@@ -101,6 +101,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { BarcodeOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -114,29 +115,31 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+const { t } = useI18n()
+
 const dict = useDict('wms_material_category')
 
 const DETAIL_COLUMNS = [
-  { title: '物料', key: 'material', width: 200 },
-  { title: '规格型号', dataIndex: 'spec', width: 140, ellipsis: true },
-  { title: '仓库', dataIndex: 'warehouseName', width: 130 },
-  { title: '库位', key: 'location', width: 110 },
-  { title: '批次', key: 'batchNo', width: 130 },
-  { title: '数量', key: 'qty', width: 110, align: 'right' },
-  { title: '冻结', key: 'frozenQty', width: 90, align: 'right' },
-  { title: '单位', dataIndex: 'unit', width: 70 },
-  { title: '生产日期', dataIndex: 'productionDate', width: 110 },
-  { title: '有效期至', key: 'expiryDate', width: 190 },
-  { title: '操作', key: 'action', width: 100, fixed: 'right' }
+  { title: t('wms.common.material'), key: 'material', width: 200 },
+  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 140, ellipsis: true },
+  { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 130 },
+  { title: t('wms.common.location'), key: 'location', width: 110 },
+  { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
+  { title: t('common.field.quantity'), key: 'qty', width: 110, align: 'right' },
+  { title: t('wms.stock.frozen'), key: 'frozenQty', width: 90, align: 'right' },
+  { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
+  { title: t('wms.common.productionDate'), dataIndex: 'productionDate', width: 110 },
+  { title: t('wms.common.expiryDate'), key: 'expiryDate', width: 190 },
+  { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
 ]
 const SUMMARY_COLUMNS = [
-  { title: '物料', key: 'material', width: 220 },
-  { title: '规格型号', dataIndex: 'spec', width: 160, ellipsis: true },
-  { title: '分类', key: 'category', width: 100, dict: 'wms_material_category' },
-  { title: '单位', dataIndex: 'unit', width: 70 },
-  { title: '安全库存', key: 'safetyStock', width: 110, align: 'right' },
-  { title: '库存数量', key: 'qty', width: 200, align: 'right' },
-  { title: '冻结', key: 'frozenQty', width: 100, align: 'right' }
+  { title: t('wms.common.material'), key: 'material', width: 220 },
+  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 160, ellipsis: true },
+  { title: t('wms.inout.category'), key: 'category', width: 100, dict: 'wms_material_category' },
+  { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
+  { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 120, align: 'right' },
+  { title: t('wms.stock.qty'), key: 'qty', width: 200, align: 'right' },
+  { title: t('wms.stock.frozen'), key: 'frozenQty', width: 100, align: 'right' }
 ]
 
 const mode = ref('detail')
@@ -190,7 +193,7 @@ const serialLoading = ref(false)
 const serialTitle = ref('')
 const serials = ref([])
 async function showSerials(record) {
-  serialTitle.value = `在库序列号：${record.materialName}（${record.warehouseName} / ${locationText(record.locationCode)}）`
+  serialTitle.value = t('wms.stock.serialTitle', { name: record.materialName, slot: `${record.warehouseName} / ${locationText(record.locationCode)}` })
   serials.value = []
   serialOpen.value = true
   serialLoading.value = true

@@ -14,17 +14,17 @@ public class PmFlowBusinesses {
 
     @Bean
     public FlowBusiness projectFlow() {
-        return FlowBusiness.of("pm_project", "项目立项审批",
-                number("contractAmount", "合同金额"),
-                number("budgetAmount", "成本预算"),
-                dict("type", "项目类型", "pm_project_type"),
-                text("projectCode", "项目编号"));
+        return FlowBusiness.of("pm_project", "项目立项审批",  // i18n-ignore 流程模块输出处翻译
+                number("contractAmount", "合同金额"),  // i18n-ignore 流程模块输出处翻译
+                number("budgetAmount", "成本预算"),  // i18n-ignore 流程模块输出处翻译
+                dict("type", "项目类型", "pm_project_type"),  // i18n-ignore 流程模块输出处翻译
+                text("projectCode", "项目编号"));  // i18n-ignore 流程模块输出处翻译
     }
 
     @Bean
     public FlowBusiness costFlow() {
-        return FlowBusiness.of("pm_cost", "项目费用审批",
-                number("amount", "费用金额"),
-                dict("costType", "费用类型", "pm_cost_type"));
+        return FlowBusiness.of("pm_cost", "项目费用审批",  // i18n-ignore 流程模块输出处翻译
+                number("amount", "费用金额"),  // i18n-ignore 流程模块输出处翻译
+                dict("costType", "费用类型", "pm_cost_type"));  // i18n-ignore 流程模块输出处翻译
     }
 }

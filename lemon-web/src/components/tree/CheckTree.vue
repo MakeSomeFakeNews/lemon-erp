@@ -1,16 +1,16 @@
 <template>
   <div class="check-tree">
     <div class="check-tree-toolbar">
-      <a-input v-model:value="keyword" placeholder="搜索" allow-clear size="small" class="check-tree-search">
+      <a-input v-model:value="keyword" :placeholder="$t('common.action.search')" allow-clear size="small" class="check-tree-search">
         <template #prefix><SearchOutlined /></template>
       </a-input>
       <a-space :size="12" wrap>
         <a-checkbox :checked="allChecked" :indeterminate="someChecked" :disabled="disabled" @change="toggleAll">
-          全选
+          {{ $t('components.tree.selectAll') }}
         </a-checkbox>
-        <a-checkbox :checked="expandedKeys.length > 0" @change="toggleExpand">展开</a-checkbox>
+        <a-checkbox :checked="expandedKeys.length > 0" @change="toggleExpand">{{ $t('common.action.expand') }}</a-checkbox>
         <a-tooltip :title="linkageTip">
-          <a-checkbox v-model:checked="linked" :disabled="disabled">父子联动</a-checkbox>
+          <a-checkbox v-model:checked="linked" :disabled="disabled">{{ $t('components.tree.linked') }}</a-checkbox>
         </a-tooltip>
       </a-space>
     </div>
@@ -32,9 +32,9 @@
           <slot name="extra" v-bind="node" />
         </template>
       </a-tree>
-      <a-empty v-else :image="Empty.PRESENTED_IMAGE_SIMPLE" :description="keyword ? '没有匹配的数据' : '暂无数据'" />
+      <a-empty v-else :image="Empty.PRESENTED_IMAGE_SIMPLE" :description="keyword ? $t('components.tree.noMatch') : $t('common.msg.noData')" />
     </div>
-    <div class="check-tree-footer">已选择 {{ modelValue.length }} / {{ allKeys.length }} 项</div>
+    <div class="check-tree-footer">{{ $t('components.tree.selectedOf', { n: modelValue.length, total: allKeys.length }) }}</div>
   </div>
 </template>
 
@@ -42,6 +42,7 @@
 import { computed, ref, watch } from 'vue'
 import { Empty } from 'ant-design-vue'
 import { SearchOutlined } from '@ant-design/icons-vue'
+import { t } from '@/locales'
 import HighlightText from './HighlightText.vue'
 import { allIds, ancestorIds, filterTree, parentMap, selfAndDescendantIds } from '@/utils/tree'
 
@@ -71,7 +72,7 @@ const parents = computed(() => parentMap(props.tree))
 const allChecked = computed(() => allKeys.value.length > 0 && props.modelValue.length === allKeys.value.length)
 const someChecked = computed(() => props.modelValue.length > 0 && !allChecked.value)
 const linkageTip = computed(() =>
-  props.checkAncestors ? '勾选时同时勾选下级和上级，取消时同时取消下级' : '勾选或取消时同时处理全部下级'
+  props.checkAncestors ? t('components.tree.linkAncestors') : t('components.tree.linkDescendants')
 )
 
 const treeData = computed(() => {

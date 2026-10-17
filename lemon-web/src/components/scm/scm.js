@@ -1,17 +1,19 @@
+import { t } from '@/locales'
+
 /** 订单种类（与后端 OrderKind 的路径一致） */
 export const ORDER_KINDS = {
   purchase: {
-    label: '采购订单',
+    label: t('scm.kinds.purchase'),
     partner: 'supplier',
-    partnerLabel: '供应商',
-    warehouseLabel: '收货仓库',
+    partnerLabel: t('scm.kinds.supplier'),
+    warehouseLabel: t('scm.kinds.receiveWarehouse'),
     trades: ['purchaseIn', 'purchaseReturn']
   },
   sales: {
-    label: '销售订单',
+    label: t('scm.kinds.sales'),
     partner: 'customer',
-    partnerLabel: '客户',
-    warehouseLabel: '发货仓库',
+    partnerLabel: t('scm.kinds.customer'),
+    warehouseLabel: t('scm.kinds.shipWarehouse'),
     trades: ['salesOut', 'salesReturn']
   }
 }
@@ -22,10 +24,10 @@ export const ORDER_KINDS = {
  * - returns：退货，数量上限为已完成数量；否则为未完成数量
  */
 export const TRADE_KINDS = {
-  purchaseIn: { label: '采购入库', orderKind: 'purchase', fromStock: false, returns: false, action: '入库' },
-  purchaseReturn: { label: '采购退货', orderKind: 'purchase', fromStock: true, returns: true, action: '退货' },
-  salesOut: { label: '销售出库', orderKind: 'sales', fromStock: true, returns: false, action: '出库' },
-  salesReturn: { label: '销售退货', orderKind: 'sales', fromStock: false, returns: true, action: '退货' }
+  purchaseIn: { label: t('scm.kinds.purchaseIn'), orderKind: 'purchase', fromStock: false, returns: false, action: t('scm.kinds.actionIn') },
+  purchaseReturn: { label: t('scm.kinds.purchaseReturn'), orderKind: 'purchase', fromStock: true, returns: true, action: t('scm.kinds.actionReturn') },
+  salesOut: { label: t('scm.kinds.salesOut'), orderKind: 'sales', fromStock: true, returns: false, action: t('scm.kinds.actionOut') },
+  salesReturn: { label: t('scm.kinds.salesReturn'), orderKind: 'sales', fromStock: false, returns: true, action: t('scm.kinds.actionReturn') }
 }
 
 /** 金额：千分位、2 位小数 */

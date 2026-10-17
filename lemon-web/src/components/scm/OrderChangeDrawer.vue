@@ -1,7 +1,7 @@
 <template>
   <SubPage
     :open="open"
-    :title="order ? `变更${conf.label} ${order.orderNo}` : '订单变更'"
+    :title="order ? $t('scm.orderChange.title', { kind: conf.label, no: order.orderNo }) : $t('scm.orderChange.defaultTitle')"
     width="min(1200px, 100vw)"
     destroy-on-close
     @close="close"
@@ -11,21 +11,21 @@
         type="info"
         show-icon
         class="block"
-        message="修改未完成明细的数量、单价、交货日期，删除未执行的明细或新增明细。发布了「订单变更审批」流程时审批通过后生效，生效后订单版本加 1；销售订单数量减少的明细会释放库存预留。数量不能小于已完成数量（已完成 − 退货补发）。"
+        :message="$t('scm.orderChange.tip')"
       />
       <a-form layout="vertical">
-        <a-form-item label="变更原因" required>
-          <a-textarea v-model:value="reason" :rows="2" :maxlength="255" show-count placeholder="如：客户追加数量、供应商调价" />
+        <a-form-item :label="$t('scm.orderChange.reason')" required>
+          <a-textarea v-model:value="reason" :rows="2" :maxlength="255" show-count :placeholder="$t('scm.orderChange.reasonPlaceholder')" />
         </a-form-item>
       </a-form>
 
       <div class="items-head">
         <span class="section-title">
-          现有明细
-          <span class="sub-text">（{{ changedCount }} 行修改 / 删除，{{ adds.length }} 行新增）</span>
+          {{ $t('scm.orderChange.existing') }}
+          <span class="sub-text">{{ $t('scm.orderChange.counts', { changed: changedCount, added: adds.length }) }}</span>
         </span>
         <span>
-          价税合计 {{ symbol }}{{ formatMoney(order.totalAmount) }}
+          {{ $t('scm.order.totalAmount') }} {{ symbol }}{{ formatMoney(order.totalAmount) }}
           <ArrowRightOutlined class="arrow" />
           <b :class="{ diff: newTotal !== Number(order.totalAmount) }">{{ symbol }}{{ formatMoney(newTotal) }}</b>
         </span>
@@ -38,7 +38,7 @@
           </template>
           <template v-else-if="column.key === 'done'">
             <div>{{ formatQty(record.doneQty) }} {{ record.unit }}</div>
-            <div v-if="Number(record.returnQty)" class="sub-text">退货 {{ formatQty(record.returnQty) }}</div>
+            <div v-if="Number(record.returnQty)" class="sub-text">{{ $t('scm.orderChange.returned', { qty: formatQty(record.returnQty) }) }}</div>
           </template>
           <template v-else-if="column.key === 'qty'">
             <a-input-number
@@ -50,33 +50,33 @@
               class="full"
             />
             <div class="sub-text">
-              原 {{ formatQty(record.qty) }}<template v-if="minQty(record) > 0">，不少于 {{ formatQty(minQty(record)) }}</template>
+              {{ $t('scm.orderChange.orig', { value: formatQty(record.qty) }) }}<template v-if="minQty(record) > 0">{{ $t('scm.orderChange.notLess', { qty: formatQty(minQty(record)) }) }}</template>
             </div>
           </template>
           <template v-else-if="column.key === 'price'">
             <a-input-number v-model:value="record.newPrice" :min="0" :precision="4" :prefix="symbol" :disabled="record.remove" class="full" />
-            <div class="sub-text">原 {{ symbol }}{{ formatMoney(record.price) }}，税率 {{ Number(record.taxRate) }}%</div>
+            <div class="sub-text">{{ $t('scm.orderChange.origPrice', { price: symbol + formatMoney(record.price), rate: Number(record.taxRate) }) }}</div>
           </template>
           <template v-else-if="column.key === 'deliveryDate'">
-            <a-date-picker v-model:value="record.newDeliveryDate" value-format="YYYY-MM-DD" placeholder="同订单" :disabled="record.remove" class="full" />
-            <div class="sub-text">原 {{ record.deliveryDate || '同订单' }}</div>
+            <a-date-picker v-model:value="record.newDeliveryDate" value-format="YYYY-MM-DD" :placeholder="$t('scm.orderForm.sameAsOrder')" :disabled="record.remove" class="full" />
+            <div class="sub-text">{{ $t('scm.orderChange.orig', { value: record.deliveryDate || $t('scm.orderForm.sameAsOrder') }) }}</div>
           </template>
           <template v-else-if="column.key === 'amount'">
             <div class="amount" :class="{ removed: record.remove }">{{ symbol }}{{ formatMoney(lineAmount(record.newQty, record.newPrice)) }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-tooltip :title="removable(record) ? '' : '已执行（入库 / 出库或退货）的明细不能删除'">
-              <a-checkbox v-model:checked="record.remove" :disabled="!removable(record)">删除</a-checkbox>
+            <a-tooltip :title="removable(record) ? '' : $t('scm.orderChange.cannotRemove')">
+              <a-checkbox v-model:checked="record.remove" :disabled="!removable(record)">{{ $t('common.action.delete') }}</a-checkbox>
             </a-tooltip>
-            <div><a-tag v-if="lineAction(record)" :color="lineAction(record) === 'REMOVE' ? 'red' : 'orange'" :bordered="false">{{ lineAction(record) === 'REMOVE' ? '删除' : '已修改' }}</a-tag></div>
+            <div><a-tag v-if="lineAction(record)" :color="lineAction(record) === 'REMOVE' ? 'red' : 'orange'" :bordered="false">{{ lineAction(record) === 'REMOVE' ? $t('common.action.delete') : $t('scm.orderChange.modified') }}</a-tag></div>
           </template>
         </template>
       </a-table>
 
       <div class="items-head">
-        <span class="section-title">新增明细</span>
+        <span class="section-title">{{ $t('scm.orderChange.addLines') }}</span>
         <a-button type="primary" ghost size="small" @click="addRow">
-          <template #icon><PlusOutlined /></template>新增明细
+          <template #icon><PlusOutlined /></template>{{ $t('scm.orderChange.addLines') }}
         </a-button>
       </div>
       <a-table
@@ -103,7 +103,7 @@
             <a-input-number v-model:value="record.taxRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" />
           </template>
           <template v-else-if="column.key === 'deliveryDate'">
-            <a-date-picker v-model:value="record.deliveryDate" value-format="YYYY-MM-DD" placeholder="同订单" class="full" />
+            <a-date-picker v-model:value="record.deliveryDate" value-format="YYYY-MM-DD" :placeholder="$t('scm.orderForm.sameAsOrder')" class="full" />
           </template>
           <template v-else-if="column.key === 'amount'">
             <div class="amount">{{ symbol }}{{ formatMoney(lineAmount(record.qty, record.price)) }}</div>
@@ -119,8 +119,8 @@
 
     <template #footer>
       <div class="drawer-footer">
-        <a-button @click="close">取消</a-button>
-        <a-button type="primary" :loading="saving" @click="submit">提交变更</a-button>
+        <a-button @click="close">{{ $t('common.action.cancel') }}</a-button>
+        <a-button type="primary" :loading="saving" @click="submit">{{ $t('scm.orderChange.submit') }}</a-button>
       </div>
     </template>
   </SubPage>
@@ -130,6 +130,7 @@
 import SubPage from '@/components/SubPage.vue'
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { ArrowRightOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { changeOrder, orderChanges } from '@/api/scm/order'
@@ -149,25 +150,26 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:open', 'success'])
 
+const { t } = useI18n()
 const conf = computed(() => ORDER_KINDS[props.kind])
 const symbol = computed(() => currencySymbol(props.order?.currency))
 
 const lineColumns = [
-  { title: '物料', key: 'material', width: 220 },
-  { title: '已完成', key: 'done', width: 110, align: 'right' },
-  { title: '新数量', key: 'qty', width: 180 },
-  { title: '新含税单价', key: 'price', width: 170 },
-  { title: '新交货日期', key: 'deliveryDate', width: 150 },
-  { title: '价税合计', key: 'amount', width: 120, align: 'right' },
+  { title: t('scm.order.material'), key: 'material', width: 220 },
+  { title: t('scm.orderChange.done'), key: 'done', width: 110, align: 'right' },
+  { title: t('scm.orderChange.newQty'), key: 'qty', width: 180 },
+  { title: t('scm.orderChange.newPrice'), key: 'price', width: 170 },
+  { title: t('scm.orderChange.newDeliveryDate'), key: 'deliveryDate', width: 150 },
+  { title: t('scm.order.totalAmount'), key: 'amount', width: 130, align: 'right' },
   { title: '', key: 'action', width: 90 }
 ]
 const addColumns = [
-  { title: '物料', key: 'material', width: 260 },
-  { title: '数量', key: 'qty', width: 150 },
-  { title: '含税单价', key: 'price', width: 140 },
-  { title: '税率', key: 'taxRate', width: 110 },
-  { title: '交货日期', key: 'deliveryDate', width: 140 },
-  { title: '价税合计', key: 'amount', width: 120, align: 'right' },
+  { title: t('scm.order.material'), key: 'material', width: 260 },
+  { title: t('common.field.quantity'), key: 'qty', width: 150 },
+  { title: t('scm.order.taxPrice'), key: 'price', width: 150 },
+  { title: t('scm.order.taxRate'), key: 'taxRate', width: 110 },
+  { title: t('scm.order.deliveryDate'), key: 'deliveryDate', width: 140 },
+  { title: t('scm.order.totalAmount'), key: 'amount', width: 130, align: 'right' },
   { title: '', key: 'action', width: 50 }
 ]
 
@@ -230,7 +232,7 @@ function close() {
 
 async function submit() {
   if (!reason.value.trim()) {
-    message.warning('请填写变更原因')
+    message.warning(t('scm.orderChange.inputReason'))
     return
   }
   const changed = []
@@ -238,9 +240,9 @@ async function submit() {
     const action = lineAction(i)
     if (!action) continue
     if (action === 'MODIFY') {
-      if (i.newQty == null || Number(i.newQty) <= 0) return message.warning(`${i.materialCode} 的数量必须大于 0，不需要的明细请勾选删除`)
-      if (Number(i.newQty) < minQty(i)) return message.warning(`${i.materialCode} 的数量不能小于已完成数量 ${formatQty(minQty(i))}`)
-      if (i.newPrice == null) return message.warning(`请填写 ${i.materialCode} 的单价`)
+      if (i.newQty == null || Number(i.newQty) <= 0) return message.warning(t('scm.orderChange.qtyPositive', { code: i.materialCode }))
+      if (Number(i.newQty) < minQty(i)) return message.warning(t('scm.orderChange.qtyBelowDone', { code: i.materialCode, qty: formatQty(minQty(i)) }))
+      if (i.newPrice == null) return message.warning(t('scm.orderChange.inputPrice', { code: i.materialCode }))
     }
     changed.push(
       action === 'REMOVE'
@@ -257,7 +259,7 @@ async function submit() {
     )
   }
   for (const [n, a] of adds.value.entries()) {
-    if (!a.materialId || !(Number(a.qty) > 0) || a.price == null) return message.warning(`请完整填写第 ${n + 1} 行新增明细的物料、数量、单价`)
+    if (!a.materialId || !(Number(a.qty) > 0) || a.price == null) return message.warning(t('scm.orderChange.incompleteAdd', { n: n + 1 }))
     changed.push({
       action: 'ADD',
       materialId: a.materialId,
@@ -268,11 +270,11 @@ async function submit() {
     })
   }
   if (!changed.length) {
-    message.warning('没有修改任何明细')
+    message.warning(t('scm.orderChange.noChange'))
     return
   }
   if (lines.value.every((i) => i.remove) && !adds.value.length) {
-    message.warning('不能删除全部明细，请改为关闭订单')
+    message.warning(t('scm.orderChange.cannotRemoveAll'))
     return
   }
   saving.value = true
@@ -280,7 +282,7 @@ async function submit() {
     const id = await changeOrder(props.kind, props.order.id, { reason: reason.value.trim(), lines: changed })
     const list = await orderChanges(props.kind, props.order.id).catch(() => [])
     const saved = list.find((c) => c.id === id)
-    message.success(saved?.status === 'APPROVING' ? '变更已提交审批，审批通过后生效' : '变更已生效，订单版本加 1')
+    message.success(saved?.status === 'APPROVING' ? t('scm.orderChange.submittedApproval') : t('scm.orderChange.effective'))
     close()
     emit('success')
   } finally {

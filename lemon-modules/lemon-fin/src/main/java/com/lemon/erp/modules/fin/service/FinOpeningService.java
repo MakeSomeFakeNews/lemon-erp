@@ -118,7 +118,7 @@ public class FinOpeningService {
             credit = credit.add(c);
         }
         if (debit.compareTo(credit) != 0) {
-            throw new BizException("期初余额借贷不平衡：借方 " + debit.toPlainString() + "，贷方 " + credit.toPlainString());
+            throw new BizException("期初余额借贷不平衡：借方 {0}，贷方 {1}", debit.toPlainString(), credit.toPlainString());
         }
         if (!list.isEmpty()) {
             accountService.requireLeaves(seen);

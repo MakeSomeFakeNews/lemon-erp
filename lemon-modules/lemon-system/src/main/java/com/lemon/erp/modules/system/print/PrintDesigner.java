@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.system.print;
 
+import com.lemon.erp.common.i18n.I18n;
 import net.sf.jasperreports.components.table.DesignCell;
 import net.sf.jasperreports.components.table.StandardColumn;
 import net.sf.jasperreports.components.table.StandardTable;
@@ -74,7 +75,7 @@ final class PrintDesigner {
     private static final int MAX_WEIGHT = 30;
 
     /** 本页页码（页尾求值），与 PAGE_NUMBER（报表结束时求值即总页数）配合显示「第 x 页 / 共 y 页」 */
-    private static final String V_PAGE = "本页页码";
+    private static final String V_PAGE = "本页页码"; // i18n-ignore 报表变量名
 
     private final PrintLayout layout;
     private final int fontSize;
@@ -170,7 +171,7 @@ final class PrintDesigner {
      */
     private JRDesignGroup ending(JasperDesign d, PrintDoc doc, int[] widths) throws JRException {
         JRDesignGroup group = new JRDesignGroup();
-        group.setName("单据");
+        group.setName("单据"); // i18n-ignore 报表分组名
         group.setExpression(new JRDesignExpression("Boolean.TRUE"));
         JRDesignSection footer = (JRDesignSection) group.getGroupFooterSection();
         List<PrintDoc.Column> columns = doc.getColumns();
@@ -181,8 +182,8 @@ final class PrintDesigner {
             for (int i = 0; i < columns.size(); i++) {
                 PrintDoc.Column c = columns.get(i);
                 String value = "$P{" + P_TOTALS + "}.get(" + literal(c.getKey()) + ")";
-                // 第一列没有合计值时显示「合计」
-                String expr = i == 0 ? "java.util.Objects.toString(" + value + ", \"合计\")" : value;
+                // 第一列没有合计值时显示「合计」（按请求语言）
+                String expr = i == 0 ? "java.util.Objects.toString(" + value + ", " + literal(I18n.t("合计")) + ")" : value;
                 JRDesignTextField t = cell(text(expr, x, 0, widths[i], h), c.isRight());
                 t.setBold(true);
                 band.addElement(t);
@@ -207,7 +208,7 @@ final class PrintDesigner {
         }
         if (has(doc.getNote())) {
             JRDesignBand band = band(SplitTypeEnum.STRETCH);
-            band.setHeight(add(band, text("\"备注：\" + $P{" + P_NOTE + "}", 0, 4, width, line(fontSize)), 4));
+            band.setHeight(add(band, text("\"" + I18n.t("备注：").replace("\"", "") + "\" + $P{" + P_NOTE + "}", 0, 4, width, line(fontSize)), 4));
             footer.addBand(band);
         }
         return group;
@@ -276,8 +277,7 @@ final class PrintDesigner {
         }
         int h = line(fontSize - 1);
         // Auto：本页页码在页尾求值，总页数在报表结束时求值
-        JRDesignTextField pages = centered(text("\"第 \" + $V{" + V_PAGE + "} + \" 页 / 共 \" + $V{PAGE_NUMBER} + \" 页\"",
-                0, y, width, h), fontSize - 1);
+        JRDesignTextField pages = centered(text(pagesExpression(), 0, y, width, h), fontSize - 1);
         pages.setEvaluationTime(EvaluationTimeEnum.AUTO);
         band.addElement(pages);
         band.setHeight(y + h);
@@ -419,7 +419,7 @@ final class PrintDesigner {
             }
             int w = f.isWide() || col == SLIP_FIELDS_PER_ROW - 1 ? width - cell * col : cell;
             String value = "$F{" + f.getKey() + "}";
-            JRDesignTextField t = cell(text(literal(f.getLabel() + "：") + " + java.util.Objects.toString(" + value + ", \"\")",
+            JRDesignTextField t = cell(text(labelText(f.getLabel()) + " + java.util.Objects.toString(" + value + ", \"\")",
                     cell * col, y, w, h), false);
             if (f.isWide()) {
                 // 整行的字段（如备注）没有值时不占行
@@ -474,7 +474,7 @@ final class PrintDesigner {
         d.setBottomMargin(margin);
         d.setColumnWidth(width);
         JRDesignStyle style = new JRDesignStyle();
-        style.setName("正文");
+        style.setName("正文"); // i18n-ignore 样式名
         style.setDefault(true);
         style.setFontName(PrintContext.DEFAULT_FONT);
         style.setFontSize((float) fontSize);
@@ -651,7 +651,12 @@ final class PrintDesigner {
 
     /** 「名称：值」，值为空时显示 empty */
     private static String labelled(String label, String param, String key, String empty) {
-        return literal(label + "：") + " + java.util.Objects.toString($P{" + param + "}.get(" + literal(key) + "), " + literal(empty) + ")";
+        return labelText(label) + " + java.util.Objects.toString($P{" + param + "}.get(" + literal(key) + "), " + literal(empty) + ")";
+    }
+
+    /** 名称加冒号的字面量（冒号按请求语言：中文为全角冒号，英文为「: 」） */
+    private static String labelText(String label) {
+        return "\"" + PrintService.safeName(label) + I18n.t("：").replace("\"", "") + "\"";
     }
 
     /** 一行文字的高度（pt） */
@@ -708,6 +713,16 @@ final class PrintDesigner {
      * Java 字符串字面量。名称已由 {@link PrintService} 过滤（只保留文字、数字和少量标点），这里再去掉引号、反斜杠等兜底，
      * 保证表达式中不会出现可执行的代码
      */
+    /** 页码表达式：「第 x 页 / 共 y 页」按请求语言 */
+    private static String pagesExpression() {
+        String[] parts = I18n.t("第 {0} 页 / 共 {1} 页").split("\\{[01]}", -1);
+        if (parts.length != 3) {
+            parts = new String[]{"", " / ", ""};
+        }
+        return "\"" + parts[0].replace("\"", "") + "\" + $V{" + V_PAGE + "} + \"" + parts[1].replace("\"", "")
+                + "\" + $V{PAGE_NUMBER} + \"" + parts[2].replace("\"", "") + "\"";
+    }
+
     static String literal(String s) {
         return "\"" + PrintService.safeName(s) + "\"";
     }

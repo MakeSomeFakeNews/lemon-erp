@@ -5,30 +5,30 @@
         type="info"
         show-icon
         class="tip"
-        message="结账前本期凭证必须全部记账，之前的期间必须已结账；结账时自动生成并记账「结转损益」凭证，把损益类科目余额转入本年利润。反结账只能从最后一个已结账的期间开始。"
+        :message="$t('fin.period.tip')"
       />
       <div class="toolbar">
         <a-space wrap>
-          <span>结账期间</span>
+          <span>{{ $t('fin.period.closePeriod') }}</span>
           <PeriodPicker v-model:value="target" @update:value="checkItems = null" />
           <a-button :loading="checking" @click="runCheck">
-            <template #icon><SafetyCertificateOutlined /></template>结账检查
+            <template #icon><SafetyCertificateOutlined /></template>{{ $t('fin.period.closeCheck') }}
           </a-button>
           <a-button v-perm="'fin:period:tax'" @click="openVat">
-            <template #icon><CalculatorOutlined /></template>增值税结转
+            <template #icon><CalculatorOutlined /></template>{{ $t('fin.period.vatTransfer') }}
           </a-button>
-          <a-button v-perm="'fin:period:close'" type="primary" :loading="saving" @click="close(target)">结账</a-button>
+          <a-button v-perm="'fin:period:close'" type="primary" :loading="saving" @click="close(target)">{{ $t('fin.period.close') }}</a-button>
         </a-space>
       </div>
       <div v-if="checkItems" class="check-panel">
         <div class="check-head">
           <span>
-            {{ periodText(checkedPeriod) }} 结账检查：
-            <span v-if="counts.ERROR" class="error">{{ counts.ERROR }} 项错误</span>
-            <span v-if="counts.WARN" class="warn">{{ counts.ERROR ? '，' : '' }}{{ counts.WARN }} 项提示</span>
-            <span v-if="!counts.ERROR && !counts.WARN" class="ok">全部通过</span>
+            {{ $t('fin.period.checkHead', { period: periodText(checkedPeriod) }) }}
+            <span v-if="counts.ERROR" class="error">{{ $t('fin.period.errorN', { n: counts.ERROR }) }}</span>
+            <span v-if="counts.WARN" class="warn">{{ counts.ERROR ? $t('fin.period.sep') : '' }}{{ $t('fin.period.warnN', { n: counts.WARN }) }}</span>
+            <span v-if="!counts.ERROR && !counts.WARN" class="ok">{{ $t('fin.period.allPassed') }}</span>
           </span>
-          <a @click="checkItems = null">收起</a>
+          <a @click="checkItems = null">{{ $t('common.action.collapse') }}</a>
         </div>
         <CloseCheckList :items="checkItems" />
       </div>
@@ -36,11 +36,11 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'period'">{{ periodText(record.period) }}</template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="record.status === 'CLOSED' ? 'default' : 'green'" :bordered="false">{{ record.status === 'CLOSED' ? '已结账' : '未结账' }}</a-tag>
+            <a-tag :color="record.status === 'CLOSED' ? 'default' : 'green'" :bordered="false">{{ record.status === 'CLOSED' ? $t('fin.period.closed') : $t('fin.period.open') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'vouchers'">
-            {{ record.voucherCount }} 张
-            <span v-if="record.unpostedCount" class="warn">（{{ record.unpostedCount }} 张未记账）</span>
+            {{ $t('fin.period.voucherCount', { n: record.voucherCount }) }}
+            <span v-if="record.unpostedCount" class="warn">{{ $t('fin.period.unposted', { n: record.unpostedCount }) }}</span>
           </template>
           <template v-else-if="column.key === 'close'">
             <template v-if="record.closeTime">{{ record.closeByName }} {{ record.closeTime }}</template>
@@ -48,9 +48,9 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <span v-perm="'fin:period:close'">
-              <a-button v-if="record.status === 'OPEN'" type="link" size="small" @click="close(record.period)">结账</a-button>
-              <a-popconfirm v-else title="反结账将删除本期结转损益凭证，确定？" @confirm="reopen(record.period)">
-                <a-button type="link" size="small">反结账</a-button>
+              <a-button v-if="record.status === 'OPEN'" type="link" size="small" @click="close(record.period)">{{ $t('fin.period.close') }}</a-button>
+              <a-popconfirm v-else :title="$t('fin.period.confirmReopen')" @confirm="reopen(record.period)">
+                <a-button type="link" size="small">{{ $t('fin.period.reopen') }}</a-button>
               </a-popconfirm>
             </span>
           </template>
@@ -61,47 +61,47 @@
     <!-- 结账：先显示检查结果，有错误时不能结账，有提示时须确认 -->
     <a-modal
       v-model:open="closeOpen"
-      :title="`结账 ${periodText(closeTarget)}`"
+      :title="$t('fin.period.closeTitle', { period: periodText(closeTarget) })"
       width="min(640px, 100vw)"
-      ok-text="结账"
+      :ok-text="$t('fin.period.close')"
       :confirm-loading="saving"
       :ok-button-props="{ disabled: !!closeCounts.ERROR || (!!closeCounts.WARN && !warnConfirmed) }"
       @ok="doClose"
     >
       <a-spin :spinning="checking">
         <CloseCheckList :items="closeItems" />
-        <a-alert v-if="closeCounts.ERROR" type="error" show-icon class="mt" message="存在错误项，请处理后再结账。" />
+        <a-alert v-if="closeCounts.ERROR" type="error" show-icon class="mt" :message="$t('fin.period.hasErrors')" />
         <template v-else>
-          <a-checkbox v-if="closeCounts.WARN" v-model:checked="warnConfirmed" class="mt">我已了解以上 {{ closeCounts.WARN }} 项提示，仍然结账</a-checkbox>
-          <div class="mt sub-text">结账后本期不能再录入、修改凭证。</div>
+          <a-checkbox v-if="closeCounts.WARN" v-model:checked="warnConfirmed" class="mt">{{ $t('fin.period.warnConfirm', { n: closeCounts.WARN }) }}</a-checkbox>
+          <div class="mt sub-text">{{ $t('fin.period.closeNote') }}</div>
         </template>
       </a-spin>
     </a-modal>
 
     <!-- 增值税结转 -->
-    <a-modal v-model:open="vatOpen" :title="`增值税结转 ${periodText(target)}`" width="min(560px, 100vw)" :footer="vatResult ? null : undefined"
-      ok-text="结转" :confirm-loading="vatSaving" @ok="runVat">
+    <a-modal v-model:open="vatOpen" :title="$t('fin.period.vatTitle', { period: periodText(target) })" width="min(560px, 100vw)" :footer="vatResult ? null : undefined"
+      :ok-text="$t('fin.period.transfer')" :confirm-loading="vatSaving" @ok="runVat">
       <template v-if="!vatResult">
         <a-alert
           type="info"
           show-icon
           class="tip"
-          message="按本期销项税额减进项税额计算应交增值税，并按税率计提城建税、教育费附加、地方教育附加，生成结转凭证。"
+          :message="$t('fin.period.vatTip')"
         />
         <a-form layout="vertical">
           <a-row :gutter="12">
             <a-col :span="8">
-              <a-form-item label="城建税税率">
+              <a-form-item :label="$t('fin.period.cityRate')">
                 <a-input-number v-model:value="vatForm.cityRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" />
               </a-form-item>
             </a-col>
             <a-col :span="8">
-              <a-form-item label="教育费附加">
+              <a-form-item :label="$t('fin.period.eduRate')">
                 <a-input-number v-model:value="vatForm.eduRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" />
               </a-form-item>
             </a-col>
             <a-col :span="8">
-              <a-form-item label="地方教育附加">
+              <a-form-item :label="$t('fin.period.localRate')">
                 <a-input-number v-model:value="vatForm.localRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" />
               </a-form-item>
             </a-col>
@@ -109,17 +109,17 @@
         </a-form>
       </template>
       <template v-else>
-        <a-result status="success" title="增值税已结转" :sub-title="vatResult.voucherId ? '已生成结转凭证，审核记账后结账' : '本期没有需要结转的税额'">
+        <a-result status="success" :title="$t('fin.period.vatDone')" :sub-title="vatResult.voucherId ? $t('fin.period.vatVoucherGenerated') : $t('fin.period.vatNothing')">
           <template #extra>
             <a-descriptions :column="1" size="small" bordered class="vat-result">
-              <a-descriptions-item label="销项税额">¥{{ formatMoney(vatResult.output) }}</a-descriptions-item>
-              <a-descriptions-item label="进项税额">¥{{ formatMoney(vatResult.input) }}</a-descriptions-item>
-              <a-descriptions-item label="应交增值税"><b>¥{{ formatMoney(vatResult.payable) }}</b></a-descriptions-item>
-              <a-descriptions-item label="附加税费">¥{{ formatMoney(vatResult.surcharge) }}</a-descriptions-item>
+              <a-descriptions-item :label="$t('fin.period.outputTax')">¥{{ formatMoney(vatResult.output) }}</a-descriptions-item>
+              <a-descriptions-item :label="$t('fin.period.inputTax')">¥{{ formatMoney(vatResult.input) }}</a-descriptions-item>
+              <a-descriptions-item :label="$t('fin.period.vatPayable')"><b>¥{{ formatMoney(vatResult.payable) }}</b></a-descriptions-item>
+              <a-descriptions-item :label="$t('fin.period.surcharge')">¥{{ formatMoney(vatResult.surcharge) }}</a-descriptions-item>
             </a-descriptions>
             <a-space class="mt">
-              <a-button v-if="vatResult.voucherId" @click="openVoucher(vatResult.voucherId)">查看凭证</a-button>
-              <a-button type="primary" @click="vatOpen = false">完成</a-button>
+              <a-button v-if="vatResult.voucherId" @click="openVoucher(vatResult.voucherId)">{{ $t('fin.period.viewVoucher') }}</a-button>
+              <a-button type="primary" @click="vatOpen = false">{{ $t('fin.period.done') }}</a-button>
             </a-space>
           </template>
         </a-result>
@@ -140,13 +140,16 @@ import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import { closeCheck, closePeriod, pagePeriod, reopenPeriod, transferVat } from '@/api/fin'
 import { useTable } from '@/composables/useTable'
 import { currentPeriod, formatMoney, periodText } from '@/components/fin/fin'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const columns = [
-  { title: '会计期间', key: 'period', width: 160 },
-  { title: '状态', key: 'status', width: 100 },
-  { title: '凭证', key: 'vouchers', width: 200 },
-  { title: '结账', key: 'close', width: 260 },
-  { title: '操作', key: 'action', width: 120 }
+  { title: t('fin.period.period'), key: 'period', width: 160 },
+  { title: t('common.field.status'), key: 'status', width: 110 },
+  { title: t('fin.period.vouchers'), key: 'vouchers', width: 200 },
+  { title: t('fin.period.close'), key: 'close', width: 260 },
+  { title: t('common.action.operation'), key: 'action', width: 130 }
 ]
 const { list, loading, pagination, load, onTableChange } = useTable(pagePeriod, reactive({}))
 const target = ref(currentPeriod())
@@ -195,7 +198,7 @@ async function doClose() {
   saving.value = true
   try {
     await closePeriod(closeTarget.value)
-    message.success('结账成功')
+    message.success(t('fin.period.closeSuccess'))
     closeOpen.value = false
     if (checkedPeriod.value === closeTarget.value) checkItems.value = null
     load()
@@ -206,7 +209,7 @@ async function doClose() {
 
 async function reopen(period) {
   await reopenPeriod(period)
-  message.success('已反结账')
+  message.success(t('fin.period.reopened'))
   load()
 }
 
@@ -223,7 +226,7 @@ async function runVat() {
   vatSaving.value = true
   try {
     vatResult.value = await transferVat(target.value, { ...vatForm })
-    message.success('增值税结转完成')
+    message.success(t('fin.period.vatSuccess'))
   } finally {
     vatSaving.value = false
   }

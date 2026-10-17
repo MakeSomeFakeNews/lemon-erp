@@ -2,14 +2,14 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="物料" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="编码或名称" allow-clear />
+        <a-form-item :label="$t('wms.common.material')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('wms.flow.codeOrName')" allow-clear />
         </a-form-item>
-        <a-form-item label="分类" name="category">
-          <a-select v-model:value="query.category" placeholder="全部" allow-clear :options="toOptions(dict.wms_material_category)" />
+        <a-form-item :label="$t('wms.inout.category')" name="category">
+          <a-select v-model:value="query.category" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_material_category)" />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.sys_common_status, true)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -24,24 +24,24 @@
         @refresh="load"
       >
         <a-button v-perm="'wms:material:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新增物料
+          <template #icon><PlusOutlined /></template>{{ $t('wms.material.createTitle') }}
         </a-button>
         <a-button v-perm="'wms:material:add'" @click="importOpen = true">
-          <template #icon><ImportOutlined /></template>导入
+          <template #icon><ImportOutlined /></template>{{ $t('common.action.import') }}
         </a-button>
         <span v-perm="'wms:material:remove'">
           <a-popconfirm
-            :title="`确定删除选中的 ${selectedKeys.length} 个物料？`"
+            :title="$t('wms.material.confirmDeleteN', { n: selectedKeys.length })"
             :disabled="!selectedKeys.length"
             @confirm="remove(selectedKeys)"
           >
             <a-button danger :disabled="!selectedKeys.length">
-              <template #icon><DeleteOutlined /></template>批量删除
+              <template #icon><DeleteOutlined /></template>{{ $t('common.action.batchDelete') }}
             </a-button>
           </a-popconfirm>
         </span>
         <a-button :disabled="!selectedKeys.length" @click="openLabels">
-          <template #icon><BarcodeOutlined /></template>打印标签{{ selectedKeys.length ? `（${selectedKeys.length}）` : '' }}
+          <template #icon><BarcodeOutlined /></template>{{ $t('wms.material.printLabel') }}{{ selectedKeys.length ? ` (${selectedKeys.length})` : '' }}
         </a-button>
       </TableToolbar>
 
@@ -59,7 +59,7 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
             <a @click="openDetail(record.id)">{{ record.name }}</a>
-            <a-tag v-if="record.isTemplate === 1" color="magenta" :bordered="false" class="ml">款式</a-tag>
+            <a-tag v-if="record.isTemplate === 1" color="magenta" :bordered="false" class="ml">{{ $t('wms.material.style') }}</a-tag>
             <div class="sub-text">
               {{ record.code }}
               <template v-if="record.variantText"> · {{ record.variantText }}</template>
@@ -69,15 +69,15 @@
             <DictTag type="wms_material_category" :value="record.category" />
           </template>
           <template v-else-if="column.key === 'tracking'">
-            <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">批次</a-tag>
-            <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">序列号</a-tag>
-            <a-tag v-if="record.iqcRequired === 1" color="orange" :bordered="false">来料检验</a-tag>
+            <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">{{ $t('wms.common.batch') }}</a-tag>
+            <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">{{ $t('wms.common.serialNo') }}</a-tag>
+            <a-tag v-if="record.iqcRequired === 1" color="orange" :bordered="false">{{ $t('wms.material.iqc') }}</a-tag>
             <span v-if="record.batchEnabled !== 1 && record.serialEnabled !== 1 && record.iqcRequired !== 1" class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'supplyType'">
             <template v-if="record.plan">
               <DictTag type="mes_supply_type" :value="record.plan.effectiveSupplyType" />
-              <div v-if="!record.plan.supplyType" class="sub-text">自动</div>
+              <div v-if="!record.plan.supplyType" class="sub-text">{{ $t('wms.material.auto') }}</div>
             </template>
           </template>
           <template v-else-if="column.key === 'planRule'">
@@ -101,21 +101,21 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openExtras(record)">
-                <template #icon><PaperClipOutlined /></template>资料
+                <template #icon><PaperClipOutlined /></template>{{ $t('wms.material.extras') }}
               </a-button>
               <a-button v-if="canEdit || canEditPlan" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <a-button type="link" size="small" @click="openUnits(record)">
-                <template #icon><SwapOutlined /></template>单位
+                <template #icon><SwapOutlined /></template>{{ $t('common.field.unit') }}
               </a-button>
               <a-button v-if="!record.templateId" type="link" size="small" @click="openVariants(record)">
-                <template #icon><AppstoreAddOutlined /></template>多规格
+                <template #icon><AppstoreAddOutlined /></template>{{ $t('wms.variant.title') }}
               </a-button>
               <span v-perm="'wms:material:remove'">
-                <a-popconfirm :title="`确定删除物料「${record.name}」？`" @confirm="remove([record.id])">
+                <a-popconfirm :title="$t('wms.material.confirmDelete', { name: record.name })" @confirm="remove([record.id])">
                   <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>删除
+                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
                   </a-button>
                 </a-popconfirm>
               </span>
@@ -125,36 +125,36 @@
       </a-table>
     </a-card>
 
-    <FormDrawer page :drawer="drawer" create-title="新增物料" edit-title="编辑物料" :width="canEditPlan ? 'min(860px, 100vw)' : undefined">
+    <FormDrawer page :drawer="drawer" :create-title="$t('wms.material.createTitle')" :edit-title="$t('wms.material.editTitle')" :width="canEditPlan ? 'min(860px, 100vw)' : undefined">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <div v-if="canEditPlan" class="section-title">基础信息</div>
-        <a-alert v-if="!canEdit && form.id" type="info" show-icon class="tip" message="没有物料修改权限，只能维护生产计划属性" />
+        <div v-if="canEditPlan" class="section-title">{{ $t('wms.material.basic') }}</div>
+        <a-alert v-if="!canEdit && form.id" type="info" show-icon class="tip" :message="$t('wms.material.planOnly')" />
         <a-row :gutter="16">
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item label="物料编码" name="code">
-              <a-input v-model:value="form.code" :maxlength="64" placeholder="如：M0001" :disabled="basicReadonly" />
+            <a-form-item :label="$t('wms.material.code')" name="code">
+              <a-input v-model:value="form.code" :maxlength="64" :placeholder="$t('wms.material.codePh')" :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item label="物料名称" name="name">
+            <a-form-item :label="$t('wms.material.name')" name="name">
               <a-input v-model:value="form.name" :maxlength="128" :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item label="规格型号" name="spec">
+            <a-form-item :label="$t('wms.inout.spec')" name="spec">
               <a-input v-model:value="form.spec" :maxlength="128" :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item label="计量单位" name="unit">
-              <a-auto-complete v-model:value="form.unit" :options="UNITS" :maxlength="16" placeholder="如：个、箱、kg" :disabled="basicReadonly" />
+            <a-form-item :label="$t('wms.material.unit')" name="unit">
+              <a-auto-complete v-model:value="form.unit" :options="UNITS" :maxlength="16" :placeholder="$t('wms.material.unitPh')" :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item label="分类" name="category">
+            <a-form-item :label="$t('wms.inout.category')" name="category">
               <a-select
                 v-model:value="form.category"
-                placeholder="请选择分类"
+                :placeholder="$t('common.placeholder.select')"
                 allow-clear
                 :options="toOptions(dict.wms_material_category)"
                 :disabled="basicReadonly"
@@ -162,116 +162,116 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item label="安全库存" name="safetyStock" extra="库存合计低于该值时预警，MRP 计算净需求时预留">
-              <a-input-number v-model:value="form.safetyStock" :min="0" :precision="4" class="full" placeholder="不预警" :disabled="basicReadonly" />
+            <a-form-item :label="$t('wms.stock.safetyStock')" name="safetyStock" :extra="$t('wms.material.safetyTip')">
+              <a-input-number v-model:value="form.safetyStock" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.noAlert')" :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item name="reorderPoint" extra="为空不参与补货建议">
+            <a-form-item name="reorderPoint" :extra="$t('wms.material.reorderPointExtra')">
               <template #label>
-                再订货点
-                <a-tooltip title="预计库存（可用 + 采购在途 + 在制 − 销售待发 − 工单待领料）不高于此值时出现在「补货建议」，为空不参与">
+                {{ $t('wms.material.reorderPoint') }}
+                <a-tooltip :title="$t('wms.material.reorderPointTip')">
                   <QuestionCircleOutlined class="label-help" />
                 </a-tooltip>
               </template>
-              <a-input-number v-model:value="form.reorderPoint" :min="0" :precision="4" class="full" placeholder="不参与" :disabled="basicReadonly" />
+              <a-input-number v-model:value="form.reorderPoint" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.notInvolved')" :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item label="再订货量" name="reorderQty" extra="经济批量，补货建议的建议数量">
-              <a-input-number v-model:value="form.reorderQty" :min="0" :precision="4" class="full" placeholder="选填" :disabled="basicReadonly" />
+            <a-form-item :label="$t('wms.material.reorderQty')" name="reorderQty" :extra="$t('wms.material.reorderQtyTip')">
+              <a-input-number v-model:value="form.reorderQty" :min="0" :precision="4" class="full" :placeholder="$t('wms.common.optional')" :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item label="条码" name="barcode" extra="扫码选择物料；辅助单位可单独设置条码">
-              <a-input v-model:value="form.barcode" :maxlength="64" placeholder="选填" allow-clear :disabled="basicReadonly" />
+            <a-form-item :label="$t('wms.units.barcode')" name="barcode" :extra="$t('wms.material.barcodeTip')">
+              <a-input v-model:value="form.barcode" :maxlength="64" :placeholder="$t('wms.common.optional')" allow-clear :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item label="参考成本价" name="refCost" extra="按基本单位，没有实际成本时参考使用">
-              <a-input-number v-model:value="form.refCost" :min="0" :precision="4" class="full" placeholder="选填" :disabled="basicReadonly" />
+            <a-form-item :label="$t('wms.material.refCost')" name="refCost" :extra="$t('wms.material.refCostTip')">
+              <a-input-number v-model:value="form.refCost" :min="0" :precision="4" class="full" :placeholder="$t('wms.common.optional')" :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item label="计价方法" name="costMethod" extra="月末成本核算时按此计算出库成本，修改后从下一次核算生效">
+            <a-form-item :label="$t('wms.material.costMethod')" name="costMethod" :extra="$t('wms.material.costMethodTip')">
               <a-select v-model:value="form.costMethod" :options="toOptions(dict.wms_cost_method)" :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item label="默认仓库" name="defaultWarehouseId">
-              <WarehouseSelect v-model:value="form.defaultWarehouseId" placeholder="选填" :disabled="basicReadonly" @update:value="form.defaultLocationId = null" />
+            <a-form-item :label="$t('wms.material.defaultWarehouse')" name="defaultWarehouseId">
+              <WarehouseSelect v-model:value="form.defaultWarehouseId" :placeholder="$t('wms.common.optional')" :disabled="basicReadonly" @update:value="form.defaultLocationId = null" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item label="默认库位" name="defaultLocationId" extra="出入库单选择该仓库时自动带出">
+            <a-form-item :label="$t('wms.material.defaultLocation')" name="defaultLocationId" :extra="$t('wms.material.defaultLocationTip')">
               <LocationSelect v-model:value="form.defaultLocationId" :warehouse-id="form.defaultWarehouseId" :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="追踪方式" extra="已发生库存业务的物料不能修改追踪方式">
+            <a-form-item :label="$t('wms.material.tracking')" :extra="$t('wms.material.trackingTip')">
               <a-space direction="vertical">
                 <a-checkbox :checked="form.batchEnabled === 1" :disabled="basicReadonly" @change="(e) => (form.batchEnabled = e.target.checked ? 1 : 0)">
-                  批次管理<span class="option-desc">：出入库须填写批次号，可记录生产日期、有效期，按批次追踪</span>
+                  {{ $t('wms.material.batchManaged') }}<span class="option-desc">{{ $t('wms.material.batchManagedDesc') }}</span>
                 </a-checkbox>
                 <a-checkbox :checked="form.serialEnabled === 1" :disabled="basicReadonly" @change="(e) => (form.serialEnabled = e.target.checked ? 1 : 0)">
-                  序列号管理<span class="option-desc">：数量为整数，出入库逐个登记序列号，追踪每一件的流转</span>
+                  {{ $t('wms.material.serialManaged') }}<span class="option-desc">{{ $t('wms.material.serialManagedDesc') }}</span>
                 </a-checkbox>
                 <a-checkbox :checked="form.iqcRequired === 1" :disabled="basicReadonly" @change="(e) => (form.iqcRequired = e.target.checked ? 1 : 0)">
-                  来料检验<span class="option-desc">：采购入库后冻结为待检，来料检验合格（或让步接收）后才能出库，不合格的等待退货</span>
+                  {{ $t('wms.material.iqc') }}<span class="option-desc">{{ $t('wms.material.iqcDesc') }}</span>
                 </a-checkbox>
               </a-space>
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" show-count :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
         </a-row>
 
         <template v-if="canEditPlan">
-          <div class="section-title">生产计划</div>
+          <div class="section-title">{{ $t('wms.material.plan') }}</div>
           <a-row :gutter="16">
             <a-col :xs="24" :sm="8">
-              <a-form-item label="物料属性" name="supplyType" :extra="SUPPLY_HINTS[form.supplyType || 'AUTO']">
+              <a-form-item :label="$t('wms.material.supplyType')" name="supplyType" :extra="SUPPLY_HINTS[form.supplyType || 'AUTO']">
                 <a-select v-model:value="form.supplyType" :options="supplyOptions" />
               </a-form-item>
             </a-col>
             <a-col :xs="24" :sm="8">
-              <a-form-item label="提前期" name="leadDays" extra="为空时取 BOM 或供货价格的提前期">
-                <a-input-number v-model:value="form.leadDays" :min="0" :max="365" :precision="0" addon-after="天" class="full" placeholder="自动" />
+              <a-form-item :label="$t('wms.material.leadDays')" name="leadDays" :extra="$t('wms.material.leadDaysTip')">
+                <a-input-number v-model:value="form.leadDays" :min="0" :max="365" :precision="0" :addon-after="$t('common.unit.day')" class="full" :placeholder="$t('wms.material.auto')" />
               </a-form-item>
             </a-col>
             <a-col :xs="24" :sm="8">
-              <a-form-item label="计划员" name="planner">
-                <a-input v-model:value="form.planner" :maxlength="64" placeholder="选填" />
+              <a-form-item :label="$t('wms.material.planner')" name="planner">
+                <a-input v-model:value="form.planner" :maxlength="64" :placeholder="$t('wms.common.optional')" />
               </a-form-item>
             </a-col>
             <a-col :xs="24" :sm="8">
-              <a-form-item label="最小批量" name="minLot" extra="MRP、缺料下单的建议数量不低于该值">
-                <a-input-number v-model:value="form.minLot" :min="0" :precision="4" class="full" placeholder="不限制" />
+              <a-form-item :label="$t('wms.material.minLot')" name="minLot" :extra="$t('wms.material.minLotTip')">
+                <a-input-number v-model:value="form.minLot" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.noLimit')" />
               </a-form-item>
             </a-col>
             <a-col :xs="24" :sm="8">
-              <a-form-item label="批量倍数" name="lotMultiple" extra="建议数量向上取整到该值的整数倍">
-                <a-input-number v-model:value="form.lotMultiple" :min="0" :precision="4" class="full" placeholder="不取整" />
+              <a-form-item :label="$t('wms.material.lotMultiple')" name="lotMultiple" :extra="$t('wms.material.lotMultipleTip')">
+                <a-input-number v-model:value="form.lotMultiple" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.noRounding')" />
               </a-form-item>
             </a-col>
             <a-col :xs="24" :sm="8">
-              <a-form-item label="允许超领" name="overIssueRate" extra="工单领料上限，超出部分须走补料申请">
+              <a-form-item :label="$t('wms.material.overIssue')" name="overIssueRate" :extra="$t('wms.material.overIssueTip')">
                 <a-input-number v-model:value="form.overIssueRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" />
               </a-form-item>
             </a-col>
             <a-col :span="24">
               <a-checkbox :checked="form.fqcRequired === 1" @change="(e) => (form.fqcRequired = e.target.checked ? 1 : 0)">
-                完工需成品检验<span class="option-desc">：工单完工入库的累计数量不能超过已确认的成品检验（FQC）合格数</span>
+                {{ $t('wms.material.fqcRequired') }}<span class="option-desc">{{ $t('wms.material.fqcDesc') }}</span>
               </a-checkbox>
             </a-col>
           </a-row>
 
           <div class="sub-title">
-            替代料
-            <span class="option-desc">主料缺料时，可在「齐套分析」中把工单未领的部分按比例换成替代料</span>
+            {{ $t('wms.material.substitute') }}
+            <span class="option-desc">{{ $t('wms.material.substituteTip') }}</span>
           </div>
           <a-table
             row-key="key"
@@ -280,11 +280,11 @@
             :data-source="form.substitutes"
             :pagination="false"
             :scroll="{ x: 700 }"
-            :locale="{ emptyText: '没有替代料' }"
+            :locale="{ emptyText: $t('wms.material.noSubstitute') }"
           >
             <template #bodyCell="{ column, record, index }">
               <template v-if="column.key === 'substitute'">
-                <a-form-item :name="['substitutes', index, 'substituteId']" :rules="[{ required: true, message: '请选择替代料' }]" class="cell-item">
+                <a-form-item :name="['substitutes', index, 'substituteId']" :rules="[{ required: true, message: $t('wms.material.selectSubstitute') }]" class="cell-item">
                   <MaterialSelect
                     :value="record.substituteId"
                     :label="record.label"
@@ -294,7 +294,7 @@
                 </a-form-item>
               </template>
               <template v-else-if="column.key === 'ratio'">
-                <a-form-item :name="['substitutes', index, 'ratio']" :rules="[{ required: true, message: '请填写比例' }]" class="cell-item">
+                <a-form-item :name="['substitutes', index, 'ratio']" :rules="[{ required: true, message: $t('wms.material.inputRatio') }]" class="cell-item">
                   <a-input-number v-model:value="record.ratio" :min="0" :step="0.5" class="full" />
                 </a-form-item>
               </template>
@@ -302,7 +302,7 @@
                 <a-input-number v-model:value="record.priority" :min="1" :max="99" :precision="0" class="full" />
               </template>
               <template v-else-if="column.key === 'remark'">
-                <a-input v-model:value="record.remark" :maxlength="255" placeholder="适用条件" />
+                <a-input v-model:value="record.remark" :maxlength="255" :placeholder="$t('wms.material.condition')" />
               </template>
               <template v-else-if="column.key === 'action'">
                 <a-button type="link" danger size="small" @click="form.substitutes.splice(index, 1)"><DeleteOutlined /></a-button>
@@ -310,49 +310,49 @@
             </template>
           </a-table>
           <a-button type="dashed" block class="add-row" :disabled="form.supplyType === 'PHANTOM'" @click="addSubstitute">
-            <template #icon><PlusOutlined /></template>添加替代料
+            <template #icon><PlusOutlined /></template>{{ $t('wms.material.addSubstitute') }}
           </a-button>
         </template>
-        <CustomFieldsForm :fields="cfFields" :values="form.cf || {}" title="扩展信息" />
+        <CustomFieldsForm :fields="cfFields" :values="form.cf || {}" :title="$t('wms.material.customFields')" />
       </a-form>
     </FormDrawer>
     <VariantDrawer v-model:open="variantOpen" :material="variantMaterial" @generated="load" />
 
     <!-- 详情：生产计划、被 BOM 使用、在制工单用料 -->
-    <SubPage :open="detailOpen" :title="detail ? `${detail.code} ${detail.name}` : '物料'" width="min(960px, 100vw)" destroy-on-close @close="detailOpen = false">
+    <SubPage :open="detailOpen" :title="detail ? `${detail.code} ${detail.name}` : $t('wms.common.material')" width="min(960px, 100vw)" destroy-on-close @close="detailOpen = false">
       <template #extra>
-        <a-button v-if="detail && (canEdit || canEditPlan)" type="primary" @click="drawer.openEdit({ id: detail.id })">编辑</a-button>
+        <a-button v-if="detail && (canEdit || canEditPlan)" type="primary" @click="drawer.openEdit({ id: detail.id })">{{ $t('common.action.edit') }}</a-button>
       </template>
       <a-spin :spinning="detailLoading">
         <template v-if="detail">
           <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="block">
-            <a-descriptions-item label="规格 / 单位">{{ detail.spec || '-' }} / {{ detail.unit || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="分类"><DictTag type="wms_material_category" :value="detail.category" /></a-descriptions-item>
-            <a-descriptions-item v-if="detail.barcode" label="条码">{{ detail.barcode }}</a-descriptions-item>
-            <a-descriptions-item label="库存 / 安全库存">
+            <a-descriptions-item :label="$t('wms.material.specUnit')">{{ detail.spec || '-' }} / {{ detail.unit || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.inout.category')"><DictTag type="wms_material_category" :value="detail.category" /></a-descriptions-item>
+            <a-descriptions-item v-if="detail.barcode" :label="$t('wms.units.barcode')">{{ detail.barcode }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.material.stockSafety')">
               <span>
                 <span :class="{ danger: belowSafety(detail) }">{{ formatQty(detail.onHandQty) }}</span> /
                 {{ detail.safetyStock != null ? formatQty(detail.safetyStock) : '-' }} {{ detail.unit }}
               </span>
             </a-descriptions-item>
-            <a-descriptions-item label="物料属性">
+            <a-descriptions-item :label="$t('wms.material.supplyType')">
               <span>
                 <DictTag type="mes_supply_type" :value="detail.effectiveSupplyType" />
-                <span v-if="!detail.supplyType" class="sub-text">自动</span>
+                <span v-if="!detail.supplyType" class="sub-text">{{ $t('wms.material.auto') }}</span>
               </span>
             </a-descriptions-item>
-            <a-descriptions-item label="默认 BOM">{{ detail.bomVersion ? `${detail.bomVersion}（生产提前期 ${detail.bomLeadDays} 天）` : '-' }}</a-descriptions-item>
-            <a-descriptions-item label="默认供应商">
-              {{ detail.supplierName ? `${detail.supplierName}（采购提前期 ${detail.supplierLeadDays} 天）` : '-' }}
+            <a-descriptions-item :label="$t('wms.material.defaultBom')">{{ detail.bomVersion ? $t('wms.material.bomLead', { version: detail.bomVersion, days: detail.bomLeadDays }) : '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.material.defaultSupplier')">
+              {{ detail.supplierName ? $t('wms.material.supplierLead', { name: detail.supplierName, days: detail.supplierLeadDays }) : '-' }}
             </a-descriptions-item>
-            <a-descriptions-item label="提前期">{{ leadText(detail) }}</a-descriptions-item>
-            <a-descriptions-item label="批量规则">{{ planRule(detail).join('，') || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="允许超领">{{ formatQty(detail.overIssueRate) }}%</a-descriptions-item>
-            <a-descriptions-item v-if="detail.fqcRequired === 1" label="完工检验">需成品检验</a-descriptions-item>
-            <a-descriptions-item v-if="detail.planner" label="计划员">{{ detail.planner }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.material.leadDays')">{{ leadText(detail) }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.material.lotRule')">{{ planRule(detail).join($t('wms.material.listSep')) || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.material.overIssue')">{{ formatQty(detail.overIssueRate) }}%</a-descriptions-item>
+            <a-descriptions-item v-if="detail.fqcRequired === 1" :label="$t('wms.material.fqc')">{{ $t('wms.material.fqcYes') }}</a-descriptions-item>
+            <a-descriptions-item v-if="detail.planner" :label="$t('wms.material.planner')">{{ detail.planner }}</a-descriptions-item>
           </a-descriptions>
           <a-tabs size="small">
-            <a-tab-pane v-if="canSeeKit" key="usage" :tab="`在制工单用料（${usage.length}）`">
+            <a-tab-pane v-if="canSeeKit" key="usage" :tab="$t('wms.material.usageTab', { n: usage.length })">
               <a-table row-key="woMaterialId" size="small" :columns="usageColumns" :data-source="usage" :pagination="false" :scroll="{ x: 820 }">
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'wo'">
@@ -366,21 +366,21 @@
                 </template>
               </a-table>
             </a-tab-pane>
-            <a-tab-pane key="whereUsed" :tab="`被 BOM 使用（${detail.whereUsed.length}）`">
+            <a-tab-pane key="whereUsed" :tab="$t('wms.material.whereUsedTab', { n: detail.whereUsed.length })">
               <a-table row-key="bomId" size="small" :columns="whereUsedColumns" :data-source="detail.whereUsed" :pagination="false">
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'product'">{{ record.productCode }} {{ record.productName }}</template>
                   <template v-else-if="column.key === 'version'">
                     {{ record.version }}
-                    <a-tag v-if="record.isDefault === 1" color="blue" :bordered="false">默认</a-tag>
-                    <a-tag v-if="record.bomStatus !== 1" :bordered="false">停用</a-tag>
+                    <a-tag v-if="record.isDefault === 1" color="blue" :bordered="false">{{ $t('wms.material.default') }}</a-tag>
+                    <a-tag v-if="record.bomStatus !== 1" :bordered="false">{{ $t('common.status.disabled') }}</a-tag>
                   </template>
                   <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }}</template>
                   <template v-else-if="column.key === 'lossRate'">{{ formatQty(record.lossRate) }}%</template>
                 </template>
               </a-table>
             </a-tab-pane>
-            <a-tab-pane key="substitutes" :tab="`替代料（${detail.substitutes.length}）`">
+            <a-tab-pane key="substitutes" :tab="$t('wms.material.substituteTab', { n: detail.substitutes.length })">
               <a-table row-key="id" size="small" :columns="subViewColumns" :data-source="detail.substitutes" :pagination="false">
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'substitute'">{{ record.substituteCode }} {{ record.substituteName }}</template>
@@ -395,10 +395,10 @@
     </SubPage>
     <ImportModal
       v-model:open="importOpen"
-      title="物料"
+      :title="$t('wms.common.material')"
       :columns="importColumns"
       :importer="importMaterial"
-      :sample="{ code: 'M0001', name: '螺丝', spec: 'M3*8', unit: '个', batchEnabled: '否', serialEnabled: '否', safetyStock: 100 }"
+      :sample="{ code: 'M0001', name: $t('wms.material.sampleName'), spec: 'M3*8', unit: $t('wms.material.sampleUnit'), batchEnabled: $t('wms.material.sampleNo'), serialEnabled: $t('wms.material.sampleNo'), safetyStock: 100 }"
       @success="search"
     />
     <MaterialUnitsModal v-model:open="unitsOpen" :material="unitsMaterial" :editable="canEdit" />
@@ -416,6 +416,8 @@
 <script setup>
 import SubPage from '@/components/SubPage.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { isZh } from '@/locales'
 import { message } from 'ant-design-vue'
 import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, QuestionCircleOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -443,6 +445,8 @@ import { toOptions } from '@/utils/dict'
 import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
 import { useCustomColumns, useCustomFields } from '@/composables/useCustomFields'
 
+const { t } = useI18n()
+
 /**
  * 物料管理：物料主数据只有这一份，仓库、采购、销售、生产共用。
  * 有 mes:material:edit 权限时，编辑抽屉中可维护生产计划属性和替代料（只有该权限时基础信息只读）
@@ -452,32 +456,32 @@ const canEdit = computed(() => userStore.hasPerm('wms:material:edit'))
 const canEditPlan = computed(() => userStore.hasPerm('mes:material:edit'))
 const canSeeKit = computed(() => userStore.hasPerm('mes:kit:list'))
 const dict = useDict('sys_common_status', 'wms_material_category', 'mes_supply_type', 'mes_wo_status', 'wms_cost_method')
-const UNITS = ['个', '件', '台', '箱', '包', '桶', '瓶', '袋', 'kg', 'g', 'L', 'm'].map((value) => ({ value }))
+const UNITS = (isZh() ? ['个', '件', '台', '箱', '包', '桶', '瓶', '袋', 'kg', 'g', 'L', 'm'] : ['pcs', 'set', 'box', 'pack', 'bag', 'bottle', 'drum', 'kg', 'g', 'L', 'm']).map((value) => ({ value })) // i18n-ignore
 const SUPPLY_HINTS = {
-  AUTO: '有启用的默认 BOM 为自制，否则为采购',
-  MAKE: 'MRP 建议生成工单，按 BOM 展开子件',
-  BUY: 'MRP 建议生成采购订单，即使有 BOM 也不展开',
-  OUTSOURCE: '向默认供应商（加工商）下采购订单，同时展开要提供的子件',
-  PHANTOM: '不入库的中间组件，需求直接传给子件，工单用料展开为子件'
+  AUTO: t('wms.material.supplyHint.AUTO'),
+  MAKE: t('wms.material.supplyHint.MAKE'),
+  BUY: t('wms.material.supplyHint.BUY'),
+  OUTSOURCE: t('wms.material.supplyHint.OUTSOURCE'),
+  PHANTOM: t('wms.material.supplyHint.PHANTOM')
 }
-const supplyOptions = computed(() => [{ value: '', label: '自动' }, ...toOptions(dict.mes_supply_type)])
+const supplyOptions = computed(() => [{ value: '', label: t('wms.material.auto') }, ...toOptions(dict.mes_supply_type)])
 const QTY_KEYS = ['requiredQty', 'issuedQty', 'toIssueQty', 'allocatedQty']
 
 const belowSafety = (r) => r.safetyStock != null && Number(r.onHandQty) < Number(r.safetyStock)
 const leadText = (p) => {
-  if (p.leadDays != null) return `${p.leadDays} 天`
-  if (p.effectiveSupplyType === 'MAKE' && p.bomLeadDays != null) return `${p.bomLeadDays} 天（BOM）`
-  if (['BUY', 'OUTSOURCE'].includes(p.effectiveSupplyType) && p.supplierLeadDays != null) return `${p.supplierLeadDays} 天（供货价格）`
+  if (p.leadDays != null) return t('wms.material.days', { n: p.leadDays })
+  if (p.effectiveSupplyType === 'MAKE' && p.bomLeadDays != null) return t('wms.material.daysBom', { n: p.bomLeadDays })
+  if (['BUY', 'OUTSOURCE'].includes(p.effectiveSupplyType) && p.supplierLeadDays != null) return t('wms.material.daysSupplier', { n: p.supplierLeadDays })
   return '-'
 }
 /** 列表中的计划参数摘要 */
 const planRule = (p) =>
   [
-    p.leadDays != null ? `提前期 ${p.leadDays} 天` : null,
-    p.minLot != null ? `最小批量 ${formatQty(p.minLot)}` : null,
-    p.lotMultiple != null ? `倍数 ${formatQty(p.lotMultiple)}` : null,
-    Number(p.overIssueRate) ? `超领 ${formatQty(p.overIssueRate)}%` : null,
-    p.substituteCount ? `替代料 ${p.substituteCount} 个` : null
+    p.leadDays != null ? t('wms.material.rule.lead', { n: p.leadDays }) : null,
+    p.minLot != null ? t('wms.material.rule.minLot', { n: formatQty(p.minLot) }) : null,
+    p.lotMultiple != null ? t('wms.material.rule.multiple', { n: formatQty(p.lotMultiple) }) : null,
+    Number(p.overIssueRate) ? t('wms.material.rule.overIssue', { n: formatQty(p.overIssueRate) }) : null,
+    p.substituteCount ? t('wms.material.rule.substitutes', { n: p.substituteCount }) : null
   ].filter(Boolean)
 
 const importOpen = ref(false)
@@ -506,31 +510,31 @@ function openExtras(record) {
   extrasOpen.value = true
 }
 const importColumns = [
-  { title: '物料编码', key: 'code', required: true },
-  { title: '物料名称', key: 'name', required: true },
-  { title: '规格型号', key: 'spec' },
-  { title: '计量单位', key: 'unit' },
-  { title: '分类', key: 'category', dict: 'wms_material_category' },
-  { title: '批次管理', key: 'batchEnabled', type: 'bool' },
-  { title: '序列号管理', key: 'serialEnabled', type: 'bool' },
-  { title: '来料检验', key: 'iqcRequired', type: 'bool' },
-  { title: '安全库存', key: 'safetyStock', type: 'number' },
-  { title: '备注', key: 'remark' }
+  { title: t('wms.material.code'), key: 'code', required: true },
+  { title: t('wms.material.name'), key: 'name', required: true },
+  { title: t('wms.inout.spec'), key: 'spec' },
+  { title: t('wms.material.unit'), key: 'unit' },
+  { title: t('wms.inout.category'), key: 'category', dict: 'wms_material_category' },
+  { title: t('wms.material.batchManaged'), key: 'batchEnabled', type: 'bool' },
+  { title: t('wms.material.serialManaged'), key: 'serialEnabled', type: 'bool' },
+  { title: t('wms.material.iqc'), key: 'iqcRequired', type: 'bool' },
+  { title: t('wms.stock.safetyStock'), key: 'safetyStock', type: 'number' },
+  { title: t('common.field.remark'), key: 'remark' }
 ]
 
 const columns = [
-  { title: '物料', key: 'name', width: 200 },
-  { title: '规格型号', dataIndex: 'spec', width: 150, ellipsis: true },
-  { title: '单位', dataIndex: 'unit', width: 70 },
-  { title: '条码', key: 'barcode', width: 140, ellipsis: true },
-  { title: '分类', key: 'category', width: 100, dict: 'wms_material_category' },
-  { title: '追踪方式', key: 'tracking', width: 120 },
-  { title: '物料属性', key: 'supplyType', width: 90 },
-  { title: '计划参数', key: 'planRule', width: 150 },
-  { title: '安全库存', key: 'safetyStock', width: 100, align: 'right' },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '创建时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 270, fixed: 'right' }
+  { title: t('wms.common.material'), key: 'name', width: 200 },
+  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 150, ellipsis: true },
+  { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
+  { title: t('wms.units.barcode'), key: 'barcode', width: 140, ellipsis: true },
+  { title: t('wms.inout.category'), key: 'category', width: 100, dict: 'wms_material_category' },
+  { title: t('wms.material.tracking'), key: 'tracking', width: 120 },
+  { title: t('wms.material.supplyType'), key: 'supplyType', width: 110 },
+  { title: t('wms.material.planParams'), key: 'planRule', width: 150 },
+  { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 120, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 270, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'wms-material')
 const showSearch = ref(true)
@@ -567,18 +571,18 @@ onMounted(load)
 
 // ---------------------------------------------------------------- 新增 / 编辑
 const subColumns = [
-  { title: '替代料', key: 'substitute', width: 260 },
-  { title: '替代比例', key: 'ratio', width: 120 },
-  { title: '优先级', key: 'priority', width: 90 },
-  { title: '备注', key: 'remark', width: 180 },
+  { title: t('wms.material.substitute'), key: 'substitute', width: 260 },
+  { title: t('wms.material.ratio'), key: 'ratio', width: 120 },
+  { title: t('wms.material.priority'), key: 'priority', width: 90 },
+  { title: t('common.field.remark'), key: 'remark', width: 180 },
   { title: '', key: 'action', width: 50 }
 ]
 const rules = {
   code: [
-    { required: true, message: '请输入物料编码' },
-    { pattern: /^[A-Za-z0-9_.-]{1,64}$/, message: '只能包含字母、数字、下划线、点和短横线' }
+    { required: true, message: t('wms.material.inputCode') },
+    { pattern: /^[A-Za-z0-9_.-]{1,64}$/, message: t('wms.material.codeRule') }
   ],
-  name: [{ required: true, whitespace: true, message: '请输入物料名称' }]
+  name: [{ required: true, whitespace: true, message: t('wms.material.inputName') }]
 }
 const colSpan = computed(() => (canEditPlan.value ? 8 : 12))
 const basicReadonly = computed(() => !!form.value.id && !canEdit.value)
@@ -705,33 +709,33 @@ function addSubstitute() {
 
 async function remove(ids) {
   await deleteMaterial(ids)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   selectedKeys.value = selectedKeys.value.filter((k) => !ids.includes(k))
   load()
 }
 
 // ---------------------------------------------------------------- 详情
 const usageColumns = [
-  { title: '工单 / 产品', key: 'wo', width: 260 },
-  { title: '计划开工', dataIndex: 'planStart', width: 110 },
-  { title: '需求', key: 'requiredQty', width: 90, align: 'right' },
-  { title: '已领', key: 'issuedQty', width: 90, align: 'right' },
-  { title: '待领', key: 'toIssueQty', width: 90, align: 'right' },
-  { title: '分配库存', key: 'allocatedQty', width: 90, align: 'right' },
-  { title: '缺料', key: 'shortageQty', width: 90, align: 'right' }
+  { title: t('wms.material.woProduct'), key: 'wo', width: 260 },
+  { title: t('wms.material.planStart'), dataIndex: 'planStart', width: 110 },
+  { title: t('wms.material.required'), key: 'requiredQty', width: 90, align: 'right' },
+  { title: t('wms.material.issued'), key: 'issuedQty', width: 90, align: 'right' },
+  { title: t('wms.material.toIssue'), key: 'toIssueQty', width: 90, align: 'right' },
+  { title: t('wms.material.allocated'), key: 'allocatedQty', width: 100, align: 'right' },
+  { title: t('wms.material.shortage'), key: 'shortageQty', width: 90, align: 'right' }
 ]
 const whereUsedColumns = [
-  { title: '产品', key: 'product', width: 260 },
-  { title: 'BOM 版本', key: 'version', width: 160 },
-  { title: '用量', key: 'qty', width: 100, align: 'right' },
-  { title: '损耗率', key: 'lossRate', width: 100, align: 'right' }
+  { title: t('wms.material.product'), key: 'product', width: 260 },
+  { title: t('wms.material.bomVersion'), key: 'version', width: 160 },
+  { title: t('wms.material.usageQty'), key: 'qty', width: 100, align: 'right' },
+  { title: t('wms.material.lossRate'), key: 'lossRate', width: 100, align: 'right' }
 ]
 const subViewColumns = [
-  { title: '优先级', dataIndex: 'priority', width: 80 },
-  { title: '替代料', key: 'substitute', width: 260 },
-  { title: '主料 : 替代料', key: 'ratio', width: 120 },
-  { title: '库存', key: 'onHandQty', width: 120, align: 'right' },
-  { title: '备注', dataIndex: 'remark', ellipsis: true }
+  { title: t('wms.material.priority'), dataIndex: 'priority', width: 80 },
+  { title: t('wms.material.substitute'), key: 'substitute', width: 260 },
+  { title: t('wms.material.mainToSub'), key: 'ratio', width: 140 },
+  { title: t('wms.variant.stock'), key: 'onHandQty', width: 120, align: 'right' },
+  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true }
 ]
 const detailOpen = ref(false)
 const detailLoading = ref(false)

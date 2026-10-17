@@ -41,7 +41,7 @@ public class FinCurrencyController {
 
     @PutMapping
     @PreAuthorize("@ss.hasPerm('fin:currency:edit')")
-    @OperLog(title = "币种", type = OperType.UPDATE)
+    @OperLog(title = "币种", type = OperType.UPDATE) // i18n-ignore
     public R<Void> saveCurrency(@RequestBody FinCurrency currency) {
         currencyService.saveCurrency(currency);
         return R.ok();
@@ -64,7 +64,7 @@ public class FinCurrencyController {
 
     @PutMapping("/rate")
     @PreAuthorize("@ss.hasPerm('fin:currency:edit')")
-    @OperLog(title = "汇率", type = OperType.UPDATE)
+    @OperLog(title = "汇率", type = OperType.UPDATE) // i18n-ignore
     public R<Void> saveRate(@RequestBody RateRequest req) {
         currencyService.saveRate(req.currency(), req.period() == null ? 0 : req.period(), req.rate());
         return R.ok();
@@ -72,7 +72,7 @@ public class FinCurrencyController {
 
     @PostMapping("/revalue/{period}")
     @PreAuthorize("@ss.hasPerm('fin:currency:edit')")
-    @OperLog(title = "期末调汇", type = OperType.INSERT)
+    @OperLog(title = "期末调汇", type = OperType.INSERT) // i18n-ignore
     public R<Map<String, Object>> revalue(@PathVariable int period) {
         return R.ok(currencyService.revalue(period));
     }

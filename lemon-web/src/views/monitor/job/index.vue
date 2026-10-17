@@ -3,7 +3,7 @@
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
         <a-button @click="openLogs()">
-          <template #icon><FileTextOutlined /></template>执行日志
+          <template #icon><FileTextOutlined /></template>{{ $t('monitor.job.logs') }}
         </a-button>
       </TableToolbar>
 
@@ -18,46 +18,46 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
-            <a-tag :color="record.status === 1 ? 'green' : 'default'">{{ record.status === 1 ? '启用' : '停用' }}</a-tag>
+            <a-tag :color="record.status === 1 ? 'green' : 'default'">{{ record.status === 1 ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'lastStatus'">
             <a-tag v-if="record.lastStatus" :color="record.lastStatus === 'SUCCESS' ? 'green' : 'red'">
-              {{ record.lastStatus === 'SUCCESS' ? '成功' : '失败' }}
+              {{ record.lastStatus === 'SUCCESS' ? $t('monitor.job.success') : $t('monitor.job.fail') }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
             <a-button v-perm="'monitor:job:run'" type="link" size="small" :loading="running === record.id" @click="run(record)">
-              <template #icon><PlayCircleOutlined /></template>执行
+              <template #icon><PlayCircleOutlined /></template>{{ $t('monitor.job.run') }}
             </a-button>
             <a-button v-perm="'monitor:job:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-              <template #icon><EditOutlined /></template>修改
+              <template #icon><EditOutlined /></template>{{ $t('common.action.modify') }}
             </a-button>
             <a-button type="link" size="small" @click="openLogs(record)">
-              <template #icon><FileTextOutlined /></template>日志
+              <template #icon><FileTextOutlined /></template>{{ $t('monitor.job.log') }}
             </a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" edit-title="修改定时任务">
+    <FormDrawer :drawer="drawer" :edit-title="$t('monitor.job.editTitle')">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-form-item label="任务">
-          <a-input :value="`${form.name}（${form.jobKey}）`" disabled />
+        <a-form-item :label="$t('monitor.job.job')">
+          <a-input :value="$t('monitor.job.jobLabel', { name: form.name, key: form.jobKey })" disabled />
         </a-form-item>
-        <a-form-item label="Cron 表达式" name="cron" extra="6 段：秒 分 时 日 月 周，如 0 30 1 * * * 表示每天 01:30">
+        <a-form-item :label="$t('monitor.job.cron')" name="cron" :extra="$t('monitor.job.cronTip')">
           <a-input v-model:value="form.cron" placeholder="0 0 8 * * *" />
         </a-form-item>
-        <a-form-item label="参数" name="params" extra="key=value，多个用英文逗号分隔，如 days=30">
+        <a-form-item :label="$t('monitor.job.params')" name="params" :extra="$t('monitor.job.paramsTip')">
           <a-input v-model:value="form.params" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
+        <a-form-item :label="$t('common.field.status')" name="status">
           <a-radio-group v-model:value="form.status">
-            <a-radio :value="1">启用</a-radio>
-            <a-radio :value="0">停用</a-radio>
+            <a-radio :value="1">{{ $t('common.status.enabled') }}</a-radio>
+            <a-radio :value="0">{{ $t('common.status.disabled') }}</a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item label="备注" name="remark">
+        <a-form-item :label="$t('common.field.remark')" name="remark">
           <a-textarea v-model:value="form.remark" :rows="3" />
         </a-form-item>
       </a-form>
@@ -76,11 +76,11 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'triggerType'">
-            {{ record.triggerType === 'MANUAL' ? '手动' : '定时' }}
+            {{ record.triggerType === 'MANUAL' ? $t('monitor.job.manual') : $t('monitor.job.scheduled') }}
           </template>
           <template v-else-if="column.key === 'status'">
             <a-tag :color="record.status === 'SUCCESS' ? 'green' : 'red'">
-              {{ record.status === 'SUCCESS' ? '成功' : '失败' }}
+              {{ record.status === 'SUCCESS' ? $t('monitor.job.success') : $t('monitor.job.fail') }}
             </a-tag>
           </template>
         </template>
@@ -92,6 +92,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { EditOutlined, FileTextOutlined, PlayCircleOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -99,16 +100,17 @@ import { listJob, pageJobLog, runJob, updateJob } from '@/api/monitor/job'
 import { useColumns } from '@/composables/useColumns'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 
+const { t } = useI18n()
 const columns = [
-  { title: '任务名称', dataIndex: 'name', width: 180 },
-  { title: '任务标识', dataIndex: 'jobKey', width: 180 },
+  { title: t('monitor.job.name'), dataIndex: 'name', width: 180 },
+  { title: t('monitor.job.jobKey'), dataIndex: 'jobKey', width: 180 },
   { title: 'Cron', dataIndex: 'cron', width: 140 },
-  { title: '参数', dataIndex: 'params', width: 120, ellipsis: true },
-  { title: '状态', key: 'status', width: 80 },
-  { title: '最近执行', dataIndex: 'lastRunTime', width: 170 },
-  { title: '结果', key: 'lastStatus', width: 80 },
-  { title: '执行说明', dataIndex: 'lastMessage', ellipsis: true },
-  { title: '操作', key: 'action', width: 230, fixed: 'right' }
+  { title: t('monitor.job.params'), dataIndex: 'params', width: 120, ellipsis: true },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('monitor.job.lastRun'), dataIndex: 'lastRunTime', width: 170 },
+  { title: t('monitor.job.result'), key: 'lastStatus', width: 90 },
+  { title: t('monitor.job.lastMessage'), dataIndex: 'lastMessage', ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns)
 const size = ref('middle')
@@ -130,8 +132,8 @@ async function run(record) {
   running.value = record.id
   try {
     const log = await runJob(record.id)
-    if (log.status === 'SUCCESS') message.success(log.message || '执行成功')
-    else message.error(log.message || '执行失败')
+    if (log.status === 'SUCCESS') message.success(log.message || t('monitor.job.runSuccess'))
+    else message.error(log.message || t('monitor.job.runFail'))
     load()
   } finally {
     running.value = null
@@ -139,8 +141,8 @@ async function run(record) {
 }
 
 const rules = {
-  cron: [{ required: true, message: '请填写 Cron 表达式' }],
-  status: [{ required: true, message: '请选择状态' }]
+  cron: [{ required: true, message: t('monitor.job.inputCron') }],
+  status: [{ required: true, message: t('monitor.job.selectStatus') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, jobKey: '', name: '', cron: '', params: '', status: 1, remark: '' }),
@@ -154,22 +156,22 @@ const { formRef, form } = drawer
 // 执行日志
 const logOpen = ref(false)
 const logJob = ref(null)
-const logTitle = computed(() => (logJob.value ? `执行日志 - ${logJob.value.name}` : '执行日志'))
+const logTitle = computed(() => (logJob.value ? t('monitor.job.logsTitle', { name: logJob.value.name }) : t('monitor.job.logs')))
 const logs = reactive({ list: [], total: 0, current: 1, size: 10, loading: false })
 const logPagination = computed(() => ({
   current: logs.current,
   pageSize: logs.size,
   total: logs.total,
   showSizeChanger: true,
-  showTotal: (t) => `共 ${t} 条`
+  showTotal: (total) => t('common.table.total', { total })
 }))
 const logColumns = [
-  { title: '任务', dataIndex: 'jobKey', width: 170 },
-  { title: '触发', key: 'triggerType', width: 70 },
-  { title: '开始时间', dataIndex: 'startTime', width: 170 },
-  { title: '耗时(ms)', dataIndex: 'costMs', width: 90, align: 'right' },
-  { title: '结果', key: 'status', width: 70 },
-  { title: '说明', dataIndex: 'message', ellipsis: true }
+  { title: t('monitor.job.job'), dataIndex: 'jobKey', width: 170 },
+  { title: t('monitor.job.trigger'), key: 'triggerType', width: 90 },
+  { title: t('monitor.job.startTime'), dataIndex: 'startTime', width: 170 },
+  { title: t('monitor.job.costMs'), dataIndex: 'costMs', width: 110, align: 'right' },
+  { title: t('monitor.job.result'), key: 'status', width: 80 },
+  { title: t('common.field.description'), dataIndex: 'message', ellipsis: true }
 ]
 
 async function loadLogs() {

@@ -35,7 +35,7 @@ public enum OrderKind {
                 return kind;
             }
         }
-        throw new BizException("不支持的订单类型：" + path);
+        throw new BizException("不支持的订单类型：{0}", path);
     }
 
     public static OrderKind ofProcessKey(String processKey) {

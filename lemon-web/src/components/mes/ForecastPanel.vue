@@ -1,15 +1,15 @@
 <template>
   <a-card :bordered="false" class="page-card">
     <div class="head">
-      <span class="section-title">销售预测</span>
+      <span class="section-title">{{ $t('mes.forecast.title') }}</span>
       <a-space wrap>
-        <a-input-search v-model:value="keyword" placeholder="物料编码或名称" allow-clear style="width: 200px" @search="search" />
+        <a-input-search v-model:value="keyword" :placeholder="$t('mes.forecast.materialKeyword')" allow-clear style="width: 220px" @search="search" />
         <a-button v-perm="'mes:mrp:run'" type="primary" @click="openAdd">
-          <template #icon><PlusOutlined /></template>预测
+          <template #icon><PlusOutlined /></template>{{ $t('mes.forecast.add') }}
         </a-button>
       </a-space>
     </div>
-    <div class="sub-text tip">MRP 运算时可选择计入未来几个月的预测：预测数量扣减同一月份已审核、未完成的销售订单后作为需求。</div>
+    <div class="sub-text tip">{{ $t('mes.forecast.tip') }}</div>
     <a-table
       row-key="id"
       size="small"
@@ -27,27 +27,27 @@
         <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }} {{ record.unit }}</template>
         <template v-else-if="column.key === 'action'">
           <span v-perm="'mes:mrp:run'">
-            <a-button type="link" size="small" @click="openEdit(record)">修改</a-button>
-            <a-popconfirm title="确定删除该预测？" @confirm="remove(record.id)">
-              <a-button type="link" danger size="small">删除</a-button>
+            <a-button type="link" size="small" @click="openEdit(record)">{{ $t('common.action.modify') }}</a-button>
+            <a-popconfirm :title="$t('mes.forecast.confirmDelete')" @confirm="remove(record.id)">
+              <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
             </a-popconfirm>
           </span>
         </template>
       </template>
     </a-table>
 
-    <a-modal v-model:open="open" title="销售预测" :confirm-loading="saving" destroy-on-close @ok="submit">
+    <a-modal v-model:open="open" :title="$t('mes.forecast.title')" :confirm-loading="saving" destroy-on-close @ok="submit">
       <a-form layout="vertical">
-        <a-form-item label="物料" required>
+        <a-form-item :label="$t('mes.forecast.material')" required>
           <MaterialSelect v-model:value="form.materialId" :label="form.materialLabel" />
         </a-form-item>
-        <a-form-item label="月份" required>
+        <a-form-item :label="$t('mes.forecast.month')" required>
           <PeriodPicker v-model:value="form.period" />
         </a-form-item>
-        <a-form-item label="预测数量" required>
+        <a-form-item :label="$t('mes.forecast.qty')" required>
           <a-input-number v-model:value="form.qty" :min="0.0001" class="full" />
         </a-form-item>
-        <a-form-item label="备注">
+        <a-form-item :label="$t('common.field.remark')">
           <a-input v-model:value="form.remark" :maxlength="255" />
         </a-form-item>
       </a-form>
@@ -59,19 +59,21 @@
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { deleteForecast, pageForecast, saveForecast } from '@/api/mes/plan'
 import { currentPeriod } from '@/components/fin/fin'
 import { formatQty } from '@/components/wms/wms'
 import { useTable } from '@/composables/useTable'
+const { t } = useI18n()
 
 const columns = [
-  { title: '月份', dataIndex: 'period', width: 90 },
-  { title: '物料', key: 'material' },
-  { title: '预测数量', key: 'qty', width: 140, align: 'right' },
-  { title: '备注', dataIndex: 'remark', ellipsis: true },
-  { title: '操作', key: 'action', width: 130 }
+  { title: t('mes.forecast.month'), dataIndex: 'period', width: 90 },
+  { title: t('mes.forecast.material'), key: 'material' },
+  { title: t('mes.forecast.qty'), key: 'qty', width: 150, align: 'right' },
+  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 130 }
 ]
 const keyword = ref()
 const query = reactive({ beginPeriod: currentPeriod() })
@@ -95,13 +97,13 @@ function openEdit(r) {
 async function submit() {
   const f = form.value
   if (!f.materialId || !f.period || !f.qty) {
-    message.warning('请填写物料、月份和数量')
+    message.warning(t('mes.forecast.required'))
     return
   }
   saving.value = true
   try {
     await saveForecast({ materialId: f.materialId, period: f.period, qty: f.qty, remark: f.remark || null })
-    message.success('保存成功')
+    message.success(t('common.msg.saveSuccess'))
     open.value = false
     load()
   } finally {
@@ -110,7 +112,7 @@ async function submit() {
 }
 async function remove(id) {
   await deleteForecast(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 </script>

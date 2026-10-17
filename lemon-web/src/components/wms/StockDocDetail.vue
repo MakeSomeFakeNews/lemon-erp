@@ -8,9 +8,9 @@
   >
     <template #extra>
       <a-space>
-        <a-button v-if="detail" size="small" @click="print"><template #icon><PrinterOutlined /></template>打印</a-button>
-        <a-tag v-if="detail?.redOf" color="red" :bordered="false">红字</a-tag>
-        <a-tag v-if="detail?.reversed === 1" :bordered="false">已冲销</a-tag>
+        <a-button v-if="detail" size="small" @click="print"><template #icon><PrinterOutlined /></template>{{ $t('common.action.print') }}</a-button>
+        <a-tag v-if="detail?.redOf" color="red" :bordered="false">{{ $t('wms.common.red') }}</a-tag>
+        <a-tag v-if="detail?.reversed === 1" :bordered="false">{{ $t('wms.common.reversed') }}</a-tag>
         <DictTag v-if="detail" type="wms_doc_status" :value="detail.status" />
       </a-space>
     </template>
@@ -18,29 +18,29 @@
     <a-spin :spinning="loading">
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="doc-desc">
-          <a-descriptions-item label="单据号">{{ detail.docNo }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('wms.common.docNo')">{{ detail.docNo }}</a-descriptions-item>
           <a-descriptions-item v-if="conf.typeDict" :label="conf.typeLabel">
             <DictTag :type="conf.typeDict" :value="detail.bizType" />
           </a-descriptions-item>
           <a-descriptions-item :label="conf.warehouseLabel">{{ detail.warehouseName }}</a-descriptions-item>
-          <a-descriptions-item v-if="kind === 'transfer'" label="调入仓库">{{ detail.toWarehouseName }}</a-descriptions-item>
-          <a-descriptions-item v-if="kind === 'transfer'" label="调拨方式">
-            {{ inTransit ? '在途调拨（调入仓库收货后入库）' : '直接调拨' }}
+          <a-descriptions-item v-if="kind === 'transfer'" :label="$t('wms.doc.toWarehouse')">{{ detail.toWarehouseName }}</a-descriptions-item>
+          <a-descriptions-item v-if="kind === 'transfer'" :label="$t('wms.doc.transferMode')">
+            {{ inTransit ? $t('wms.doc.inTransitMode') : $t('wms.doc.directTransfer') }}
           </a-descriptions-item>
-          <a-descriptions-item label="业务日期">{{ detail.bizDate }}</a-descriptions-item>
-          <a-descriptions-item label="合计数量">
+          <a-descriptions-item :label="$t('wms.common.bizDate')">{{ detail.bizDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('wms.common.totalQty')">
             <span :class="negativeClass(detail.totalQty)">{{ formatQty(detail.totalQty) }}</span>
           </a-descriptions-item>
-          <a-descriptions-item v-if="detail.sourceNo" label="来源单号">{{ detail.sourceNo }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.redOf" label="冲销原单">{{ detail.redOfNo || detail.redOf }}</a-descriptions-item>
-          <a-descriptions-item label="制单">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.confirmTime" label="确认">
+          <a-descriptions-item v-if="detail.sourceNo" :label="$t('wms.common.sourceNo')">{{ detail.sourceNo }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.redOf" :label="$t('wms.doc.reversedDoc')">{{ detail.redOfNo || detail.redOf }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('wms.doc.prepared')">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.confirmTime" :label="$t('wms.doc.confirmed')">
             {{ detail.confirmByName || '-' }} {{ detail.confirmTime }}
           </a-descriptions-item>
-          <a-descriptions-item v-if="detail.receiveTime" label="收货">
+          <a-descriptions-item v-if="detail.receiveTime" :label="$t('wms.doc.received')">
             {{ detail.receiveByName || '-' }} {{ detail.receiveTime }}
           </a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="备注">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
 
         <a-alert
@@ -48,7 +48,7 @@
           type="info"
           show-icon
           class="doc-desc"
-          message="单据审批中，可在「流程中心 → 我的申请」查看审批进度，审批通过后更新库存"
+          :message="$t('wms.doc.approvingTip')"
         />
 
         <a-table
@@ -90,31 +90,31 @@
       <div class="drawer-footer">
         <template v-if="detail.status === 'DRAFT'">
           <a-button v-if="canEdit" @click="emit('edit', detail)">
-            <template #icon><EditOutlined /></template>编辑
+            <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
           </a-button>
           <a-button v-if="canConfirm" type="primary" :loading="confirming" @click="confirm">
-            <template #icon><CheckOutlined /></template>确认{{ kind === 'in' ? '入库' : kind === 'out' ? '出库' : '调拨' }}
+            <template #icon><CheckOutlined /></template>{{ $t(`wms.doc.confirmAction.${kind}`) }}
           </a-button>
         </template>
         <a-popconfirm
           v-if="showReceive"
-          :title="`确认调入仓库「${detail.toWarehouseName}」已收货？`"
-          description="收货后按明细增加调入仓库的库存"
+          :title="$t('wms.doc.confirmReceive', { name: detail.toWarehouseName })"
+          :description="$t('wms.doc.receiveTip')"
           @confirm="receive"
         >
           <a-button type="primary" :loading="acting">
-            <template #icon><InboxOutlined /></template>收货
+            <template #icon><InboxOutlined /></template>{{ $t('wms.common.receive') }}
           </a-button>
         </a-popconfirm>
         <a-popconfirm
           v-if="showReverse"
-          :title="`确定冲销${conf.label} ${detail.docNo}？`"
-          description="生成红字单据，库存反向变动"
+          :title="$t('wms.doc.confirmReverse', { kind: conf.label, no: detail.docNo })"
+          :description="$t('wms.doc.reverseTip')"
           ok-type="danger"
           @confirm="reverse"
         >
           <a-button danger :loading="acting">
-            <template #icon><RollbackOutlined /></template>冲销
+            <template #icon><RollbackOutlined /></template>{{ $t('wms.common.reverse') }}
           </a-button>
         </a-popconfirm>
       </div>
@@ -125,6 +125,7 @@
 <script setup>
 import SubPage from '@/components/SubPage.vue'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Modal, message } from 'ant-design-vue'
 import { CheckOutlined, EditOutlined, InboxOutlined, PrinterOutlined, RollbackOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -142,6 +143,7 @@ const props = defineProps({
   docId: Number
 })
 const emit = defineEmits(['update:open', 'edit', 'changed'])
+const { t } = useI18n()
 
 const userStore = useUserStore()
 const conf = computed(() => DOC_KINDS[props.kind])
@@ -158,13 +160,13 @@ const showFooter = computed(
 
 const columns = computed(() =>
   [
-    { title: '物料', key: 'material', width: 240 },
-    { title: props.kind === 'transfer' ? '调出库位' : '库位', key: 'location', width: 110 },
-    props.kind === 'transfer' ? { title: '调入库位', key: 'toLocation', width: 110 } : null,
-    { title: '批次', key: 'batchNo', width: 180 },
-    { title: '数量', key: 'qty', width: 120, align: 'right' },
-    { title: '序列号', key: 'serialNos', width: 260 },
-    { title: '备注', dataIndex: 'remark', width: 150, ellipsis: true }
+    { title: t('wms.common.material'), key: 'material', width: 240 },
+    { title: props.kind === 'transfer' ? t('wms.doc.fromLocation') : t('wms.common.location'), key: 'location', width: 120 },
+    props.kind === 'transfer' ? { title: t('wms.doc.toLocation'), key: 'toLocation', width: 120 } : null,
+    { title: t('wms.common.batch'), key: 'batchNo', width: 180 },
+    { title: t('common.field.quantity'), key: 'qty', width: 120, align: 'right' },
+    { title: t('wms.common.serialNo'), key: 'serialNos', width: 260 },
+    { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true }
   ].filter(Boolean)
 )
 
@@ -179,23 +181,24 @@ function print() {
     no: d.docNo,
     fields: [
       [c.warehouseLabel, d.warehouseName],
-      ...(transfer ? [['调入仓库', d.toWarehouseName]] : []),
-      ['业务日期', d.bizDate],
-      ['来源单号', d.sourceNo],
-      ['合计数量', formatQty(d.totalQty)]
+      ...(transfer ? [[t('wms.doc.toWarehouse'), d.toWarehouseName]] : []),
+      [t('wms.common.bizDate'), d.bizDate],
+      [t('wms.common.sourceNo'), d.sourceNo],
+      [t('wms.common.totalQty'), formatQty(d.totalQty)]
     ],
+    // 明细列的 id 是打印模板匹配用的原名称
     columns: [
       ...materialColumns(),
-      { title: transfer ? '调出库位' : '库位', value: (r) => locationText(r.locationCode) },
-      ...(transfer ? [{ title: '调入库位', value: (r) => locationText(r.toLocationCode) }] : []),
-      { title: '批次', key: 'batchNo' },
-      { title: '数量', key: 'qty', value: (r) => formatQty(r.qty), align: 'right' },
-      { title: '序列号', key: 'serialNos' }
+      { id: transfer ? '调出库位' : '库位', title: transfer ? t('wms.doc.fromLocation') : t('wms.common.location'), value: (r) => locationText(r.locationCode) }, // i18n-ignore
+      ...(transfer ? [{ id: '调入库位', title: t('wms.doc.toLocation'), value: (r) => locationText(r.toLocationCode) }] : []), // i18n-ignore
+      { id: '批次', title: t('wms.common.batch'), key: 'batchNo' }, // i18n-ignore
+      { id: '数量', title: t('common.field.quantity'), key: 'qty', value: (r) => formatQty(r.qty), align: 'right' }, // i18n-ignore
+      { id: '序列号', title: t('wms.common.serialNo'), key: 'serialNos' } // i18n-ignore
     ],
     rows: d.items,
     totals: { qty: formatQty(d.totalQty) },
     note: d.remark,
-    signs: [['制单', d.createByName], ['确认', d.confirmByName], '经手人']
+    signs: [[t('wms.doc.prepared'), d.createByName], [t('wms.doc.confirmed'), d.confirmByName], t('wms.doc.handler')]
   }, `${c.label} ${d.docNo}`, `wms.${props.kind}`)
 }
 const loading = ref(false)
@@ -219,15 +222,14 @@ watch(
 
 const confirming = ref(false)
 function confirm() {
-  const action = { in: '入库', out: '出库', transfer: '调拨' }[props.kind]
   Modal.confirm({
-    title: `确认${action}？`,
-    content: '确认后按明细更新库存，单据不能再修改；发布了出入库审批流程时先提交审批。',
+    title: t(`wms.doc.confirmTitle.${props.kind}`),
+    content: t('wms.doc.confirmContent'),
     async onOk() {
       confirming.value = true
       try {
         const flow = await confirmDoc(props.kind, props.docId)
-        message.success(flow ? '已提交出入库审批，审批通过后更新库存' : `${action}成功`)
+        message.success(flow ? t('wms.doc.submittedApproval') : t(`wms.doc.confirmSuccess.${props.kind}`))
         await load()
         emit('changed')
       } finally {
@@ -242,7 +244,7 @@ async function receive() {
   acting.value = true
   try {
     await receiveTransfer(props.docId)
-    message.success('收货成功')
+    message.success(t('wms.doc.receiveSuccess'))
     await load()
     emit('changed')
   } finally {
@@ -254,7 +256,7 @@ async function reverse() {
   acting.value = true
   try {
     await reverseDoc(props.kind, props.docId)
-    message.success('冲销成功，已生成红字单据')
+    message.success(t('wms.doc.reverseSuccess'))
     await load()
     emit('changed')
   } finally {

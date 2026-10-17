@@ -1,0 +1,47 @@
+/** 经销商门户 */
+export default {
+  order: {
+    tip: 'Orders are reviewed by sales after submission and can be withdrawn before approval',
+    shop: 'Place Order',
+    discount: 'Discount ¥{amount}',
+    submitOrder: 'Submit Order ({n} items)',
+    searchPlaceholder: 'Material code or name',
+    priceTip: 'Prices follow the price list (larger quantities get lower prices); promotions are applied automatically on submission',
+    tierPrice: '{qty} {unit} or more: ¥{price}',
+    expectedDelivery: 'Expected Delivery Date',
+    useRebate: 'Use Rebate',
+    rebateBalance: 'Rebate balance ¥{amount}',
+    totalByList: 'Total at List Price',
+    totalTip: '(promotion discounts are subject to the submitted order)',
+    detailTitle: 'Order {no}',
+    confirmCancel: 'Withdraw this order?',
+    cancelOrder: 'Withdraw Order',
+    orderDate: 'Order Date',
+    expected: 'Expected Delivery',
+    promoDiscount: 'Promotion Discount',
+    rebateDeduct: 'Rebate Deduction',
+    gift: 'Gift',
+    orderNo: 'Order No.',
+    material: 'Material',
+    price: 'Price',
+    orderQty: 'Order Qty',
+    submitted: 'Order submitted, awaiting sales approval',
+    shipped: 'Shipped',
+    canceled: 'Withdrawn'
+  },
+  report: {
+    tip: 'Report monthly sales (to end customers) and month-end stock for each product; reporting the same month again overwrites it',
+    report: 'Report',
+    formTitle: 'Stock & Sales Report {period}',
+    submit: 'Submit Report',
+    month: 'Month',
+    formTip: 'Only products with sales or stock entered are reported; the list contains orderable products',
+    itemCount: 'Products',
+    monthSales: 'Monthly Sales',
+    monthEndStock: 'Month-end Stock',
+    reported: 'Reported',
+    product: 'Product',
+    msgEmpty: 'Please enter sales or stock for at least one product',
+    done: 'Reported'
+  }
+}

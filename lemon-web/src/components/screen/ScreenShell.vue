@@ -14,7 +14,7 @@
           <div class="clock">{{ clockText }}</div>
           <div class="status">
             <span v-if="error" class="offline">● {{ error }}</span>
-            <span v-else-if="updatedAt">数据更新于 {{ updatedAt }}</span>
+            <span v-else-if="updatedAt">{{ $t('screen.shell.updatedAt', { time: updatedAt }) }}</span>
           </div>
         </div>
       </header>
@@ -24,9 +24,9 @@
       <main class="screen-body"><slot /></main>
     </div>
     <div :class="['tools', { visible: toolsVisible }]">
-      <button v-if="screens.length > 1" type="button" @click="emit('toggle-play')">{{ playing ? '暂停轮播' : '继续轮播' }}</button>
-      <button type="button" @click="toggleFullscreen">{{ fullscreen ? '退出全屏' : '全屏' }}</button>
-      <button v-if="closable" type="button" @click="emit('close')">返回</button>
+      <button v-if="screens.length > 1" type="button" @click="emit('toggle-play')">{{ playing ? $t('screen.shell.pause') : $t('screen.shell.resume') }}</button>
+      <button type="button" @click="toggleFullscreen">{{ fullscreen ? $t('screen.shell.exitFullscreen') : $t('screen.shell.fullscreen') }}</button>
+      <button v-if="closable" type="button" @click="emit('close')">{{ $t('common.action.back') }}</button>
     </div>
   </div>
 </template>
@@ -34,6 +34,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import dayjs from 'dayjs'
+import { useI18n } from 'vue-i18n'
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from './screen'
 
 /**
@@ -53,6 +54,7 @@ defineProps({
   closable: Boolean
 })
 const emit = defineEmits(['switch', 'toggle-play', 'close'])
+const { t } = useI18n()
 
 const root = ref()
 const scale = ref(1)
@@ -61,8 +63,10 @@ const fullscreen = ref(false)
 const toolsVisible = ref(false)
 
 const canvasStyle = computed(() => ({ width: `${DESIGN_WIDTH}px`, height: `${DESIGN_HEIGHT}px`, transform: `translate(-50%, -50%) scale(${scale.value})` }))
-const WEEK = ['日', '一', '二', '三', '四', '五', '六']
-const dateText = computed(() => `${now.value.format('YYYY 年 M 月 D 日')} 星期${WEEK[now.value.day()]}`)
+const dateText = computed(() => {
+  const d = now.value
+  return t('screen.shell.date', { date: d.format(t('screen.shell.dateFormat')), week: t(`screen.week.${d.day()}`) })
+})
 const clockText = computed(() => now.value.format('HH:mm:ss'))
 
 function resize() {

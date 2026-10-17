@@ -55,14 +55,14 @@ public class QmsNcrController {
     /** 评审处置：data 为 true 表示已进入审批 */
     @PostMapping("/{id}/review")
     @PreAuthorize("@ss.hasPerm('qms:ncr:edit')")
-    @OperLog(title = "不合格品处理-评审处置", type = OperType.UPDATE)
+    @OperLog(title = "不合格品处理-评审处置", type = OperType.UPDATE) // i18n-ignore
     public R<Boolean> review(@PathVariable Long id, @Valid @RequestBody QmsRequests.NcrReview req) {
         return R.ok(ncrService.review(id, req));
     }
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("@ss.hasPerm('qms:ncr:edit')")
-    @OperLog(title = "不合格品处理-取消", type = OperType.UPDATE)
+    @OperLog(title = "不合格品处理-取消", type = OperType.UPDATE) // i18n-ignore
     public R<Void> cancel(@PathVariable Long id) {
         ncrService.cancel(id);
         return R.ok();

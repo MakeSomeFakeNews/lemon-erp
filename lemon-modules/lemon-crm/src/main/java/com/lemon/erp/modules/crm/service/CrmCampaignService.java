@@ -71,7 +71,7 @@ public class CrmCampaignService {
         for (Long id : ids) {
             if (leadMapper.exists(Wrappers.<CrmLead>lambdaQuery().eq(CrmLead::getCampaignId, id))
                     || opportunityMapper.exists(Wrappers.<CrmOpportunity>lambdaQuery().eq(CrmOpportunity::getCampaignId, id))) {
-                throw new BizException("活动「" + detail(id).getName() + "」已有线索或商机，不能删除，可以改为已取消");
+                throw new BizException("活动「{0}」已有线索或商机，不能删除，可以改为已取消", detail(id).getName());
             }
         }
         campaignMapper.deleteByIds(ids);

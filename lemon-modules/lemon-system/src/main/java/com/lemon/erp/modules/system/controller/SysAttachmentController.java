@@ -40,7 +40,7 @@ public class SysAttachmentController {
     }
 
     @PostMapping
-    @OperLog(title = "附件-上传", type = OperType.INSERT, saveParams = false)
+    @OperLog(title = "附件-上传", type = OperType.INSERT, saveParams = false) // i18n-ignore 操作日志存库
     public R<SysAttachment> upload(@RequestParam String bizType, @RequestParam Long bizId,
                                    @RequestParam("file") MultipartFile file) {
         return R.ok(attachmentService.upload(bizType, bizId, file));
@@ -59,7 +59,7 @@ public class SysAttachmentController {
     }
 
     @DeleteMapping("/{id}")
-    @OperLog(title = "附件-删除", type = OperType.DELETE)
+    @OperLog(title = "附件-删除", type = OperType.DELETE) // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable Long id) {
         attachmentService.delete(id);
         return R.ok();

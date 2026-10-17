@@ -2,20 +2,20 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="期间" name="period">
+        <a-form-item :label="$t('fin.voucher.period')" name="period">
           <PeriodPicker v-model:value="query.period" style="width: 100%" />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.fin_voucher_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.fin_voucher_status)" />
         </a-form-item>
-        <a-form-item label="来源" name="sourceType">
-          <a-select v-model:value="query.sourceType" placeholder="全部" allow-clear :options="toOptions(dict.fin_voucher_source)" />
+        <a-form-item :label="$t('fin.voucher.source')" name="sourceType">
+          <a-select v-model:value="query.sourceType" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.fin_voucher_source)" />
         </a-form-item>
-        <a-form-item label="关键字" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="凭证号、摘要或来源单号" allow-clear />
+        <a-form-item :label="$t('common.field.keyword')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('fin.voucher.keywordPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="科目" name="accountId">
-          <AccountSelect v-model:value="query.accountId" all allow-clear placeholder="包含该科目的凭证" />
+        <a-form-item :label="$t('fin.voucher.account')" name="accountId">
+          <AccountSelect v-model:value="query.accountId" all allow-clear :placeholder="$t('fin.voucher.accountPh')" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -30,26 +30,26 @@
         @refresh="load"
       >
         <a-button v-perm="'fin:voucher:add'" type="primary" @click="form.openCreate()">
-          <template #icon><PlusOutlined /></template>新增凭证
+          <template #icon><PlusOutlined /></template>{{ $t('fin.voucher.add') }}
         </a-button>
-        <a-button v-perm="'fin:voucher:audit'" :disabled="!byStatus('DRAFT').length" @click="batch('audit', '审核', byStatus('DRAFT'))">
-          审核（{{ byStatus('DRAFT').length }}）
+        <a-button v-perm="'fin:voucher:audit'" :disabled="!byStatus('DRAFT').length" @click="batch('audit', $t('common.action.audit'), byStatus('DRAFT'))">
+          {{ $t('fin.voucher.withCount', { action: $t('common.action.audit'), n: byStatus('DRAFT').length }) }}
         </a-button>
-        <a-button v-perm="'fin:voucher:post'" :disabled="!byStatus('AUDITED').length" @click="batch('post', '记账', byStatus('AUDITED'))">
-          记账（{{ byStatus('AUDITED').length }}）
+        <a-button v-perm="'fin:voucher:post'" :disabled="!byStatus('AUDITED').length" @click="batch('post', $t('fin.voucher.post'), byStatus('AUDITED'))">
+          {{ $t('fin.voucher.withCount', { action: $t('fin.voucher.post'), n: byStatus('AUDITED').length }) }}
         </a-button>
         <a-dropdown>
-          <a-button>更多 <DownOutlined /></a-button>
+          <a-button>{{ $t('common.action.more') }} <DownOutlined /></a-button>
           <template #overlay>
             <a-menu>
-              <a-menu-item v-if="userStore.hasPerm('fin:voucher:audit')" :disabled="!byStatus('AUDITED').length" @click="batch('unaudit', '反审核', byStatus('AUDITED'))">
-                反审核（{{ byStatus('AUDITED').length }}）
+              <a-menu-item v-if="userStore.hasPerm('fin:voucher:audit')" :disabled="!byStatus('AUDITED').length" @click="batch('unaudit', $t('common.action.unaudit'), byStatus('AUDITED'))">
+                {{ $t('fin.voucher.withCount', { action: $t('common.action.unaudit'), n: byStatus('AUDITED').length }) }}
               </a-menu-item>
-              <a-menu-item v-if="userStore.hasPerm('fin:voucher:post')" :disabled="!byStatus('POSTED').length" @click="batch('unpost', '反记账', byStatus('POSTED'))">
-                反记账（{{ byStatus('POSTED').length }}）
+              <a-menu-item v-if="userStore.hasPerm('fin:voucher:post')" :disabled="!byStatus('POSTED').length" @click="batch('unpost', $t('fin.voucher.unpost'), byStatus('POSTED'))">
+                {{ $t('fin.voucher.withCount', { action: $t('fin.voucher.unpost'), n: byStatus('POSTED').length }) }}
               </a-menu-item>
               <a-menu-item v-if="userStore.hasPerm('fin:voucher:remove')" danger :disabled="!deletable.length" @click="removeSelected">
-                删除（{{ deletable.length }}）
+                {{ $t('fin.voucher.withCount', { action: $t('common.action.delete'), n: deletable.length }) }}
               </a-menu-item>
             </a-menu>
           </template>
@@ -77,8 +77,8 @@
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="fin_voucher_status" :value="record.status" />
-            <a-tag v-if="record.reversalOf" color="red" :bordered="false">红字</a-tag>
-            <a-tag v-if="record.reversed === 1" color="orange" :bordered="false">已冲销</a-tag>
+            <a-tag v-if="record.reversalOf" color="red" :bordered="false">{{ $t('fin.voucher.red') }}</a-tag>
+            <a-tag v-if="record.reversed === 1" color="orange" :bordered="false">{{ $t('fin.voucher.reversed') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'source'">
             <DictTag type="fin_voucher_source" :value="record.sourceType" />
@@ -86,11 +86,11 @@
           </template>
           <template v-else-if="column.key === 'people'">
             <div>{{ record.createByName || '-' }}</div>
-            <div class="sub-text">{{ record.postByName ? '记账 ' + record.postByName : record.auditByName ? '审核 ' + record.auditByName : '未审核' }}</div>
+            <div class="sub-text">{{ record.postByName ? $t('fin.voucher.postedBy', { name: record.postByName }) : record.auditByName ? $t('fin.voucher.auditedBy', { name: record.auditByName }) : $t('fin.voucher.unaudited') }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">查看</a-button>
+              <a-button type="link" size="small" @click="openDetail(record)">{{ $t('common.action.view') }}</a-button>
               <a-button
                 v-if="record.status === 'DRAFT' && record.sourceType === 'MANUAL'"
                 v-perm="'fin:voucher:edit'"
@@ -98,10 +98,10 @@
                 size="small"
                 @click="form.openEdit(record)"
               >
-                编辑
+                {{ $t('common.action.edit') }}
               </a-button>
               <a-button v-if="canReverse(record)" v-perm="'fin:voucher:reverse'" type="link" size="small" danger @click="openReverse(record)">
-                冲销
+                {{ $t('fin.voucher.reverse') }}
               </a-button>
             </span>
           </template>
@@ -118,6 +118,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { Modal, message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { DownOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -135,18 +136,19 @@ import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { canDeleteVoucher, canReverse, currentPeriod, formatMoney, periodText } from '@/components/fin/fin'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const dict = useDict('fin_voucher_status', 'fin_voucher_source')
 
 const columns = [
-  { title: '凭证号', key: 'voucherNo', width: 130 },
-  { title: '日期', dataIndex: 'voucherDate', width: 110 },
-  { title: '摘要', dataIndex: 'summary', width: 260, ellipsis: true },
-  { title: '金额', key: 'amount', width: 140, align: 'right' },
-  { title: '状态', key: 'status', width: 150, dict: 'fin_voucher_status' },
-  { title: '来源', key: 'source', width: 160, dict: 'fin_voucher_source' },
-  { title: '制单 / 记账', key: 'people', width: 150 },
-  { title: '操作', key: 'action', width: 160, fixed: 'right' }
+  { title: t('fin.voucher.voucherNo'), key: 'voucherNo', width: 140 },
+  { title: t('common.field.date'), dataIndex: 'voucherDate', width: 110 },
+  { title: t('fin.voucher.summary'), dataIndex: 'summary', width: 260, ellipsis: true },
+  { title: t('common.field.amount'), key: 'amount', width: 140, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 150, dict: 'fin_voucher_status' },
+  { title: t('fin.voucher.source'), key: 'source', width: 160, dict: 'fin_voucher_source' },
+  { title: t('fin.voucher.people'), key: 'people', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'fin-voucher')
 const showSearch = ref(true)
@@ -166,10 +168,10 @@ const byStatus = (status) => list.value.filter((r) => selectedKeys.value.include
 
 function batch(action, label, ids) {
   Modal.confirm({
-    title: `${label} ${ids.length} 张凭证？`,
+    title: t('fin.voucher.batchConfirm', { action: label, n: ids.length }),
     async onOk() {
       await voucherAction(action, ids)
-      message.success(`${label}成功`)
+      message.success(t('fin.voucher.actionSuccess', { action: label }))
       selectedKeys.value = []
       load()
     }
@@ -181,11 +183,11 @@ const deletable = computed(() => list.value.filter((r) => selectedKeys.value.inc
 function removeSelected() {
   const ids = deletable.value
   Modal.confirm({
-    title: `删除 ${ids.length} 张未审核凭证？`,
+    title: t('fin.voucher.deleteConfirm', { n: ids.length }),
     okType: 'danger',
     async onOk() {
       await deleteVoucher(ids)
-      message.success('删除成功')
+      message.success(t('common.msg.deleteSuccess'))
       selectedKeys.value = []
       load()
     }

@@ -58,9 +58,9 @@ import java.util.Set;
 public class HrEmployeeService {
 
     /** 记录变更历史的字段 */
-    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("empNo", "工号", "name", "姓名", "gender", "性别", "birthDate", "出生日期", "phone", "手机号", "email", "邮箱",
-            "education", "学历", "empType", "用工类型", "regularDate", "计划转正日期", "workStartDate", "参加工作日期", "address", "住址",
-            "emergencyContact", "紧急联系人", "emergencyPhone", "紧急联系电话", "remark", "备注");
+    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("empNo", "工号", "name", "姓名", "gender", "性别", "birthDate", "出生日期", "phone", "手机号", "email", "邮箱",  // i18n-ignore 变更历史存库
+            "education", "学历", "empType", "用工类型", "regularDate", "计划转正日期", "workStartDate", "参加工作日期", "address", "住址",  // i18n-ignore 变更历史存库
+            "emergencyContact", "紧急联系人", "emergencyPhone", "紧急联系电话", "remark", "备注");  // i18n-ignore 变更历史存库
 
     /** 人事异动审批流程标识 */
     public static final String CHANGE_PROCESS_KEY = "hr_change";
@@ -310,7 +310,7 @@ public class HrEmployeeService {
                     throw new BizException("交接人不能是离职员工本人");
                 }
             }
-            default -> throw new BizException("异动类型不正确：" + req.type());
+            default -> throw new BizException("异动类型不正确：{0}", req.type());
         }
     }
 
@@ -337,7 +337,7 @@ public class HrEmployeeService {
                 // 按生效日期记录薪资历史（工资按月末生效的薪资计算）；已生效的同时更新薪资档案
                 salary.setBaseSalary(c.getToSalary());
                 HrSalaryService.recordHistory(historyMapper, id, salary, c.getChangeDate(),
-                        "调薪：" + (c.getReason() == null ? "" : c.getReason()));
+                        "调薪：" + (c.getReason() == null ? "" : c.getReason()));  // i18n-ignore 薪资历史存库
                 if (!c.getChangeDate().isAfter(LocalDate.now())) {
                     salaryMapper.update(Wrappers.<HrSalary>lambdaUpdate().set(HrSalary::getBaseSalary, c.getToSalary())
                             .set(HrSalary::getUpdateTime, LocalDateTime.now()).eq(HrSalary::getId, salary.getId()));
@@ -351,13 +351,13 @@ public class HrEmployeeService {
                 // 停用登录账号，客户、商机、项目、审批待办移交给交接人
                 eventPublisher.publishEvent(new EmployeeLeftEvent(id, e.getUserId(), c.getHandoverUserId(), c.getChangeDate()));
             }
-            default -> throw new BizException("异动类型不正确：" + c.getType());
+            default -> throw new BizException("异动类型不正确：{0}", c.getType());
         }
     }
 
     /** 记录调薪异动（薪资档案修改基本工资时） */
     void logSalaryChange(Long employeeId, BigDecimal from, BigDecimal to, LocalDate effective) {
-        HrEmployeeChange c = newChange(employeeId, "SALARY", effective, "修改薪资档案");
+        HrEmployeeChange c = newChange(employeeId, "SALARY", effective, "修改薪资档案");  // i18n-ignore 异动原因存库
         c.setStatus(CHANGE_DONE);
         c.setFromSalary(from);
         c.setToSalary(to);
@@ -372,7 +372,7 @@ public class HrEmployeeService {
                     || leaveMapper.exists(Wrappers.<HrLeave>lambdaQuery().eq(HrLeave::getEmployeeId, e.getId()))
                     || payrollItemMapper.exists(Wrappers.<HrPayrollItem>lambdaQuery().eq(HrPayrollItem::getEmployeeId, e.getId()));
             if (used) {
-                throw new BizException("员工「" + e.getName() + "」已有考勤或工资记录，不能删除，可以办理离职");
+                throw new BizException("员工「{0}」已有考勤或工资记录，不能删除，可以办理离职", e.getName());
             }
         }
         changeMapper.delete(Wrappers.<HrEmployeeChange>lambdaQuery().in(HrEmployeeChange::getEmployeeId, ids));
@@ -390,7 +390,7 @@ public class HrEmployeeService {
         if (req.userId() != null) {
             HrEmployee linked = employeeMapper.selectOne(Wrappers.<HrEmployee>lambdaQuery().eq(HrEmployee::getUserId, req.userId()));
             if (linked != null && !Objects.equals(linked.getId(), selfId)) {
-                throw new BizException("该登录账号已关联员工「" + linked.getName() + "」");
+                throw new BizException("该登录账号已关联员工「{0}」", linked.getName());
             }
         }
         if (req.empType() != null && !EMP_TYPES.contains(req.empType())) {

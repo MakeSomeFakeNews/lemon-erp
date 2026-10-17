@@ -77,14 +77,14 @@ public class CrmTicketController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('crm:ticket:add')")
-    @OperLog(title = "服务工单", type = OperType.INSERT)
+    @OperLog(title = "服务工单", type = OperType.INSERT) // i18n-ignore 操作日志标题存库
     public R<Long> create(@Valid @RequestBody TicketRequest req) {
         return R.ok(ticketService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('crm:ticket:handle')")
-    @OperLog(title = "服务工单", type = OperType.UPDATE)
+    @OperLog(title = "服务工单", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody TicketRequest req) {
         ticketService.update(id, req);
         return R.ok();
@@ -100,7 +100,7 @@ public class CrmTicketController {
     /** 领用备件：生成服务领用出库单 */
     @PostMapping("/{id}/parts")
     @PreAuthorize("@ss.hasPerm('crm:ticket:handle')")
-    @OperLog(title = "服务工单-领用备件", type = OperType.INSERT)
+    @OperLog(title = "服务工单-领用备件", type = OperType.INSERT) // i18n-ignore 操作日志标题存库
     public R<Long> issueParts(@PathVariable Long id, @Valid @RequestBody TicketPartsRequest req) {
         return R.ok(ticketService.issueParts(id, req));
     }
@@ -108,7 +108,7 @@ public class CrmTicketController {
     /** 服务收费：生成应收单 */
     @PostMapping("/{id}/charge")
     @PreAuthorize("@ss.hasPerm('crm:ticket:handle')")
-    @OperLog(title = "服务工单-收费", type = OperType.INSERT)
+    @OperLog(title = "服务工单-收费", type = OperType.INSERT) // i18n-ignore 操作日志标题存库
     public R<Void> charge(@PathVariable Long id, @Valid @RequestBody TicketChargeRequest req) {
         ticketService.charge(id, req);
         return R.ok();
@@ -116,7 +116,7 @@ public class CrmTicketController {
 
     @PostMapping("/{id}/{action}")
     @PreAuthorize("@ss.hasPerm('crm:ticket:handle')")
-    @OperLog(title = "服务工单-处理", type = OperType.UPDATE)
+    @OperLog(title = "服务工单-处理", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> action(@PathVariable Long id, @PathVariable String action, @Valid @RequestBody TicketActionRequest req) {
         switch (action) {
             case "assign" -> ticketService.assign(id, req);
@@ -124,14 +124,14 @@ public class CrmTicketController {
             case "resolve" -> ticketService.resolve(id, req);
             case "close" -> ticketService.close(id, req);
             case "reopen" -> ticketService.reopen(id, req);
-            default -> throw new BizException("不支持的操作：" + action);
+            default -> throw new BizException("不支持的操作：{0}", action);
         }
         return R.ok();
     }
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('crm:ticket:remove')")
-    @OperLog(title = "服务工单", type = OperType.DELETE)
+    @OperLog(title = "服务工单", type = OperType.DELETE) // i18n-ignore 操作日志标题存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         ticketService.delete(ids);
         return R.ok();

@@ -14,9 +14,10 @@ import java.util.List;
 public record ImSyncResult(int deptTotal, int deptCreated, int memberTotal, int alreadyBound, int matched, int created,
                            int unmatchedCount, List<String> unmatched, String warning) {
 
+    /** 同步结果摘要，存入集成配置（保持中文） */
     public String summary() {
-        String s = "成员 " + memberTotal + " 人：之前已绑定 " + alreadyBound + "，按手机号绑定 " + matched + "，新建账号 " + created
-                + "，未绑定 " + unmatchedCount + (deptCreated > 0 ? "；新建部门 " + deptCreated : "");
-        return warning == null ? s : s + "。" + warning;
+        String s = "成员 " + memberTotal + " 人：之前已绑定 " + alreadyBound + "，按手机号绑定 " + matched + "，新建账号 " + created // i18n-ignore
+                + "，未绑定 " + unmatchedCount + (deptCreated > 0 ? "；新建部门 " + deptCreated : ""); // i18n-ignore
+        return warning == null ? s : s + "。" + warning; // i18n-ignore
     }
 }

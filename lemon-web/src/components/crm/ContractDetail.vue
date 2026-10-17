@@ -1,56 +1,56 @@
 <template>
-  <SubPage :open="open" :title="detail ? `${detail.contractNo} ${detail.name}` : '合同详情'" width="min(960px, 100vw)" destroy-on-close @close="emit('update:open', false)">
+  <SubPage :open="open" :title="detail ? `${detail.contractNo} ${detail.name}` : $t('crm.contractDetail.title')" width="min(960px, 100vw)" destroy-on-close @close="emit('update:open', false)">
     <template #extra>
       <a-space v-if="detail" wrap>
         <DictTag type="crm_contract_status" :value="detail.status" />
         <template v-if="detail.status === 'DRAFT' && userStore.hasPerm('crm:contract:edit')">
-          <a-button size="small" @click="emit('edit', detail)">编辑</a-button>
-          <a-popconfirm title="提交后合同不能再修改，确定提交？" @confirm="submit">
-            <a-button size="small" type="primary">提交</a-button>
+          <a-button size="small" @click="emit('edit', detail)">{{ $t('common.action.edit') }}</a-button>
+          <a-popconfirm :title="$t('crm.contractDetail.confirmSubmit')" @confirm="submit">
+            <a-button size="small" type="primary">{{ $t('common.action.submit') }}</a-button>
           </a-popconfirm>
         </template>
         <template v-if="detail.status === 'ACTIVE' && userStore.hasPerm('crm:contract:edit')">
           <template v-if="!detail.orderId">
-            <a-button v-if="detail.quotationId && userStore.hasPerm('scm:sales:add')" size="small" type="primary" @click="openToOrder">生成销售订单</a-button>
-            <a-button size="small" @click="openLink">关联销售订单</a-button>
+            <a-button v-if="detail.quotationId && userStore.hasPerm('scm:sales:add')" size="small" type="primary" @click="openToOrder">{{ $t('crm.common.toOrder') }}</a-button>
+            <a-button size="small" @click="openLink">{{ $t('crm.contractDetail.link') }}</a-button>
           </template>
-          <a-popconfirm title="确定合同已履行完成？" @confirm="complete">
-            <a-button size="small">完成</a-button>
+          <a-popconfirm :title="$t('crm.contractDetail.confirmComplete')" @confirm="complete">
+            <a-button size="small">{{ $t('crm.contractDetail.complete') }}</a-button>
           </a-popconfirm>
-          <a-button size="small" danger @click="openTerminate">终止</a-button>
+          <a-button size="small" danger @click="openTerminate">{{ $t('crm.contractDetail.terminate') }}</a-button>
         </template>
       </a-space>
     </template>
     <a-spin :spinning="loading">
       <template v-if="detail">
-        <a-alert v-if="detail.status === 'APPROVING'" type="info" show-icon class="block" message="合同审批中，审批通过后生效（执行中）" />
-        <a-alert v-if="detail.status === 'TERMINATED'" type="error" show-icon class="block" :message="`终止原因：${detail.terminateReason || '-'}`" />
+        <a-alert v-if="detail.status === 'APPROVING'" type="info" show-icon class="block" :message="$t('crm.contractDetail.approving')" />
+        <a-alert v-if="detail.status === 'TERMINATED'" type="error" show-icon class="block" :message="$t('crm.contractDetail.terminateReasonText', { reason: detail.terminateReason || '-' })" />
 
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="block">
-          <a-descriptions-item label="客户">{{ detail.customerName }}</a-descriptions-item>
-          <a-descriptions-item label="合同金额"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
-          <a-descriptions-item label="负责人">{{ detail.ownerName || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="签订日期">{{ detail.signDate }}</a-descriptions-item>
-          <a-descriptions-item label="合同期限">{{ detail.startDate || '-' }} ~ {{ detail.endDate || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="商机">{{ detail.opportunityName || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="报价单">{{ detail.quoteNo || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="销售订单">
+          <a-descriptions-item :label="$t('crm.common.f.customer')">{{ detail.customerName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.contractAmount')"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.owner')">{{ detail.ownerName || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.signDate')">{{ detail.signDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.contractDetail.term')">{{ detail.startDate || '-' }} ~ {{ detail.endDate || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.opportunity')">{{ detail.opportunityName || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.quotation')">{{ detail.quoteNo || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.salesOrder')">
             <router-link v-if="detail.orderId" :to="{ path: '/scm/sales', query: { id: detail.orderId } }">{{ detail.orderNo }}</router-link>
-            <span v-else class="sub-text">未关联</span>
+            <span v-else class="sub-text">{{ $t('crm.contractDetail.notLinked') }}</span>
           </a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="主要条款 / 备注" :span="3">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('crm.contractDetail.terms')" :span="3">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
 
         <div class="progress-head">
-          <span class="section-title">回款进度</span>
-          <span>已回款 <b>¥{{ formatMoney(detail.receivedAmount || 0) }}</b> / ¥{{ formatMoney(detail.amount) }}</span>
+          <span class="section-title">{{ $t('crm.contractDetail.progress') }}</span>
+          <span>{{ $t('crm.contractDetail.received') }} <b>¥{{ formatMoney(detail.receivedAmount || 0) }}</b> / ¥{{ formatMoney(detail.amount) }}</span>
         </div>
         <a-progress :percent="percent" :status="percent >= 100 ? 'success' : 'active'" />
-        <div class="sub-text block">回款按关联销售订单出库形成的应收单的核销金额计算，按计划日期先后分摊到各期回款计划。</div>
+        <div class="sub-text block">{{ $t('crm.contractDetail.progressTip') }}</div>
 
         <a-table row-key="id" size="small" :columns="planColumns" :data-source="detail.plans || []" :pagination="false" :scroll="{ x: 640 }">
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'seq'">第 {{ record.seq }} 期</template>
+            <template v-if="column.key === 'seq'">{{ $t('crm.contractDetail.seqText', { seq: record.seq }) }}</template>
             <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}</template>
             <template v-else-if="column.key === 'receivedAmount'">¥{{ formatMoney(record.receivedAmount || 0) }}</template>
             <template v-else-if="column.key === 'collectStatus'">
@@ -60,33 +60,33 @@
             </template>
           </template>
         </a-table>
-        <div v-if="!detail.plans?.length" class="sub-text empty">没有回款计划</div>
+        <div v-if="!detail.plans?.length" class="sub-text empty">{{ $t('crm.contractDetail.noPlans') }}</div>
       </template>
     </a-spin>
 
-    <a-modal v-model:open="linkOpen" title="关联销售订单" :confirm-loading="saving" destroy-on-close @ok="submitLink">
-      <a-alert type="info" show-icon class="block" message="选择该客户已审核的销售订单；关联后按订单出库形成的应收单计算回款" />
+    <a-modal v-model:open="linkOpen" :title="$t('crm.contractDetail.link')" :confirm-loading="saving" destroy-on-close @ok="submitLink">
+      <a-alert type="info" show-icon class="block" :message="$t('crm.contractDetail.linkTip')" />
       <a-select
         v-model:value="linkOrderId"
         show-search
         option-filter-prop="label"
         :options="orderOptions"
         :loading="orderLoading"
-        placeholder="选择销售订单"
-        :not-found-content="orderLoading ? '加载中…' : '该客户没有已审核的销售订单'"
+        :placeholder="$t('crm.contractDetail.selectOrder')"
+        :not-found-content="orderLoading ? $t('crm.common.loading') : $t('crm.contractDetail.noOrders')"
         class="full"
       />
     </a-modal>
 
-    <a-modal v-model:open="toOrderOpen" title="生成销售订单" :confirm-loading="saving" destroy-on-close @ok="submitToOrder">
-      <a-alert type="info" show-icon class="block" :message="`按关联的报价单 ${detail?.quoteNo || ''} 生成销售订单草稿，并与合同关联`" />
+    <a-modal v-model:open="toOrderOpen" :title="$t('crm.common.toOrder')" :confirm-loading="saving" destroy-on-close @ok="submitToOrder">
+      <a-alert type="info" show-icon class="block" :message="$t('crm.contractDetail.toOrderTip', { no: detail?.quoteNo || '' })" />
       <a-form layout="vertical">
-        <a-form-item label="发货仓库"><WarehouseSelect v-model:value="toOrderWarehouseId" /></a-form-item>
+        <a-form-item :label="$t('crm.common.f.warehouse')"><WarehouseSelect v-model:value="toOrderWarehouseId" /></a-form-item>
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="terminateOpen" title="终止合同" :confirm-loading="saving" destroy-on-close @ok="submitTerminate">
-      <a-textarea v-model:value="terminateReason" :rows="3" :maxlength="255" placeholder="终止原因" />
+    <a-modal v-model:open="terminateOpen" :title="$t('crm.contractDetail.terminateTitle')" :confirm-loading="saving" destroy-on-close @ok="submitTerminate">
+      <a-textarea v-model:value="terminateReason" :rows="3" :maxlength="255" :placeholder="$t('crm.contractDetail.terminateReason')" />
     </a-modal>
   </SubPage>
 </template>
@@ -96,6 +96,7 @@ import SubPage from '@/components/SubPage.vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { formatMoney } from '@/components/scm/scm'
@@ -112,6 +113,7 @@ const props = defineProps({
 const emit = defineEmits(['update:open', 'changed', 'edit'])
 const userStore = useUserStore()
 const router = useRouter()
+const { t } = useI18n()
 
 const detail = ref(null)
 const loading = ref(false)
@@ -123,12 +125,12 @@ const percent = computed(() => {
 })
 
 const planColumns = [
-  { title: '期次', key: 'seq', width: 80 },
-  { title: '计划日期', dataIndex: 'planDate', width: 110 },
-  { title: '计划金额', key: 'amount', width: 130, align: 'right' },
-  { title: '已回款', key: 'receivedAmount', width: 130, align: 'right' },
-  { title: '状态', key: 'collectStatus', width: 100 },
-  { title: '说明', dataIndex: 'remark', ellipsis: true }
+  { title: t('crm.contractDetail.col.seq'), key: 'seq', width: 100 },
+  { title: t('crm.common.f.planDate'), dataIndex: 'planDate', width: 110 },
+  { title: t('crm.contractDetail.col.planAmount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('crm.common.f.received'), key: 'receivedAmount', width: 130, align: 'right' },
+  { title: t('common.field.status'), key: 'collectStatus', width: 140 },
+  { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true }
 ]
 
 async function load() {
@@ -155,12 +157,12 @@ function changed() {
 
 async function submit() {
   const submitted = await submitCrmContract(detail.value.id)
-  message.success(submitted ? '已提交审批，审批通过后合同生效' : '合同已生效')
+  message.success(submitted ? t('crm.contractDetail.submittedApproval') : t('crm.contractDetail.activated'))
   changed()
 }
 async function complete() {
   await completeCrmContract(detail.value.id)
-  message.success('合同已完成')
+  message.success(t('crm.contractDetail.completed'))
   changed()
 }
 
@@ -185,13 +187,13 @@ async function openLink() {
 }
 async function submitLink() {
   if (!linkOrderId.value) {
-    message.warning('请选择销售订单')
+    message.warning(t('crm.contractDetail.orderRequired'))
     return
   }
   saving.value = true
   try {
     await linkContractOrder(detail.value.id, linkOrderId.value)
-    message.success('已关联销售订单')
+    message.success(t('crm.contractDetail.linked'))
     linkOpen.value = false
     changed()
   } finally {
@@ -213,7 +215,7 @@ async function submitToOrder() {
     toOrderOpen.value = false
     changed()
     message.success({
-      content: '已生成销售订单草稿，点击查看',
+      content: t('crm.contractDetail.orderCreated'),
       onClick: () => router.push({ path: '/scm/sales', query: { id: orderId } })
     })
   } finally {
@@ -230,13 +232,13 @@ function openTerminate() {
 }
 async function submitTerminate() {
   if (!terminateReason.value.trim()) {
-    message.warning('请填写终止原因')
+    message.warning(t('crm.contractDetail.reasonRequired'))
     return
   }
   saving.value = true
   try {
     await terminateCrmContract(detail.value.id, terminateReason.value.trim())
-    message.success('合同已终止')
+    message.success(t('crm.contractDetail.terminated'))
     terminateOpen.value = false
     changed()
   } finally {

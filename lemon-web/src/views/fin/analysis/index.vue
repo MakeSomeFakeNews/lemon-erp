@@ -2,48 +2,48 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <a-tabs v-model:active-key="tab">
-        <a-tab-pane key="margin" tab="销售毛利">
+        <a-tab-pane key="margin" :tab="$t('fin.analysis.margin')">
           <div class="filters">
             <a-range-picker v-model:value="range" value-format="YYYY-MM-DD" :allow-clear="false" @change="loadMargin" />
             <a-radio-group v-model:value="groupBy" button-style="solid" @change="loadMargin">
-              <a-radio-button value="MATERIAL">按物料</a-radio-button>
-              <a-radio-button value="CUSTOMER">按客户</a-radio-button>
-              <a-radio-button value="MONTH">按月份</a-radio-button>
-              <a-radio-button value="DETAIL">单据明细</a-radio-button>
+              <a-radio-button value="MATERIAL">{{ $t('fin.analysis.byMaterial') }}</a-radio-button>
+              <a-radio-button value="CUSTOMER">{{ $t('fin.analysis.byCustomer') }}</a-radio-button>
+              <a-radio-button value="MONTH">{{ $t('fin.analysis.byMonth') }}</a-radio-button>
+              <a-radio-button value="DETAIL">{{ $t('fin.analysis.byDetail') }}</a-radio-button>
             </a-radio-group>
-            <PartnerSelect v-model:value="customerId" type="customer" allow-clear placeholder="全部客户" class="filter" />
-            <a-input-search v-if="groupBy === 'DETAIL'" v-model:value="keyword" allow-clear placeholder="单据号、物料编码或名称" class="filter" @search="loadMargin" />
+            <PartnerSelect v-model:value="customerId" type="customer" allow-clear :placeholder="$t('fin.analysis.allCustomers')" class="filter" />
+            <a-input-search v-if="groupBy === 'DETAIL'" v-model:value="keyword" allow-clear :placeholder="$t('fin.analysis.detailKeyword')" class="filter" @search="loadMargin" />
           </div>
           <a-alert
             type="info"
             show-icon
             class="tip"
-            message="收入按销售出库（扣除退货）的不含税金额；成本按出库当期成本核算的加权平均单价，当期还未核算成本的物料取物料的参考成本价。"
+            :message="$t('fin.analysis.marginTip')"
           />
           <a-row :gutter="12" class="cards">
             <a-col :xs="12" :md="6">
-              <a-statistic title="销售收入" :value="Number(margin.total?.revenue || 0)" :precision="2" prefix="¥" />
+              <a-statistic :title="$t('fin.analysis.salesRevenue')" :value="Number(margin.total?.revenue || 0)" :precision="2" prefix="¥" />
             </a-col>
             <a-col :xs="12" :md="6">
-              <a-statistic title="销售成本" :value="Number(margin.total?.cost || 0)" :precision="2" prefix="¥" />
+              <a-statistic :title="$t('fin.analysis.salesCost')" :value="Number(margin.total?.cost || 0)" :precision="2" prefix="¥" />
             </a-col>
             <a-col :xs="12" :md="6">
-              <a-statistic title="毛利" :value="Number(margin.total?.profit || 0)" :precision="2" prefix="¥"
+              <a-statistic :title="$t('fin.analysis.grossProfit')" :value="Number(margin.total?.profit || 0)" :precision="2" prefix="¥"
                 :value-style="{ color: Number(margin.total?.profit) < 0 ? '#cf1322' : undefined }" />
             </a-col>
             <a-col :xs="12" :md="6">
-              <a-statistic title="毛利率" :value="margin.total?.margin ?? '-'" :precision="margin.total?.margin == null ? undefined : 2"
+              <a-statistic :title="$t('fin.analysis.grossMargin')" :value="margin.total?.margin ?? '-'" :precision="margin.total?.margin == null ? undefined : 2"
                 :suffix="margin.total?.margin == null ? '' : '%'" />
             </a-col>
           </a-row>
-          <a-alert v-if="margin.truncated" type="warning" show-icon class="tip" message="明细超过 5000 行，只显示前 5000 行（汇总卡片也只统计这些行），请缩小日期范围或按客户、物料筛选" />
+          <a-alert v-if="margin.truncated" type="warning" show-icon class="tip" :message="$t('fin.analysis.truncated')" />
           <a-table
             :row-key="(r) => (groupBy === 'DETAIL' ? `${r.docId}-${r.materialCode}-${r.qty}-${r.revenue}` : r.groupKey ?? r.groupName)"
             size="middle"
             :columns="marginColumns"
             :data-source="margin.rows"
             :loading="marginLoading"
-            :pagination="margin.rows?.length > 20 ? { pageSize: 20, showTotal: (t) => `共 ${t} 条` } : false"
+            :pagination="margin.rows?.length > 20 ? { pageSize: 20, showTotal: (n) => $t('common.table.total', { total: n }) } : false"
             :scroll="{ x: 1000 }"
           >
             <template #bodyCell="{ column, record }">
@@ -59,11 +59,11 @@
               <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }}</template>
               <template v-else-if="column.key === 'cost'">
                 {{ formatMoney(record.cost) }}
-                <a-tooltip v-if="groupBy === 'DETAIL' && !Number(record.costed)" title="出库所在期间还未核算成本，按物料的参考成本价计算">
-                  <a-tag color="orange" :bordered="false" class="hint">参考成本</a-tag>
+                <a-tooltip v-if="groupBy === 'DETAIL' && !Number(record.costed)" :title="$t('fin.analysis.refCostTip')">
+                  <a-tag color="orange" :bordered="false" class="hint">{{ $t('fin.analysis.refCost') }}</a-tag>
                 </a-tooltip>
-                <a-tooltip v-if="Number(record.missingCost) > 0" :title="`${record.missingCost} 行出库所在期间还未核算成本，按物料的参考成本价计算`">
-                  <a-tag color="orange" :bordered="false" class="hint">含参考成本</a-tag>
+                <a-tooltip v-if="Number(record.missingCost) > 0" :title="$t('fin.analysis.missingCostTip', { n: record.missingCost })">
+                  <a-tag color="orange" :bordered="false" class="hint">{{ $t('fin.analysis.hasRefCost') }}</a-tag>
                 </a-tooltip>
               </template>
               <template v-else-if="['revenue', 'profit'].includes(column.key)">
@@ -77,35 +77,35 @@
           </a-table>
         </a-tab-pane>
 
-        <a-tab-pane key="inventory" tab="存货对账">
+        <a-tab-pane key="inventory" :tab="$t('fin.analysis.inventory')">
           <div class="filters">
-            <span>期间</span>
+            <span>{{ $t('fin.analysis.period') }}</span>
             <PeriodPicker v-model:value="period" @update:value="loadInventory" />
-            <span class="sub-text">总账余额与成本核算期末金额核对；数量差异为成本核算期末数量与截至期末的库存流水不一致的物料</span>
+            <span class="sub-text">{{ $t('fin.analysis.inventoryTip') }}</span>
           </div>
           <a-spin :spinning="invLoading">
-            <div class="section-title">科目余额核对</div>
+            <div class="section-title">{{ $t('fin.analysis.accountCheck') }}</div>
             <a-table row-key="code" size="middle" :columns="accountColumns" :data-source="inventory.accounts" :pagination="false" class="block">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'account'">{{ record.code }} {{ record.name }}</template>
                 <template v-else-if="column.key === 'glBalance'">{{ formatMoney(record.glBalance) }}</template>
                 <template v-else-if="column.key === 'costAmount'">
                   <span v-if="record.costAmount != null">{{ formatMoney(record.costAmount) }}</span>
-                  <span v-else class="sub-text">不参与成本核算</span>
+                  <span v-else class="sub-text">{{ $t('fin.analysis.notInCost') }}</span>
                 </template>
                 <template v-else-if="column.key === 'diff'">
                   <template v-if="record.diff != null">
                     <span v-if="Math.abs(Number(record.diff)) >= 0.005" class="neg bold">{{ formatMoney(record.diff) }}</span>
-                    <a-tag v-else color="green" :bordered="false">一致</a-tag>
+                    <a-tag v-else color="green" :bordered="false">{{ $t('fin.analysis.match') }}</a-tag>
                   </template>
                   <span v-else class="sub-text">-</span>
                 </template>
               </template>
             </a-table>
             <div class="section-title">
-              数量差异
+              {{ $t('fin.analysis.qtyDiff') }}
               <a-tag v-if="inventory.period" :color="inventory.qtyDiffs?.length ? 'red' : 'green'" :bordered="false">
-                {{ inventory.qtyDiffs?.length ? `${inventory.qtyDiffs.length} 种物料不一致` : '全部一致' }}
+                {{ inventory.qtyDiffs?.length ? $t('fin.analysis.nMismatch', { n: inventory.qtyDiffs.length }) : $t('fin.analysis.allMatch') }}
               </a-tag>
             </div>
             <a-table
@@ -114,7 +114,7 @@
               :columns="qtyColumns"
               :data-source="inventory.qtyDiffs"
               :pagination="inventory.qtyDiffs?.length > 20 ? { pageSize: 20 } : false"
-              :locale="{ emptyText: '成本核算数量与库存流水一致（或本期还未核算成本）' }"
+              :locale="{ emptyText: $t('fin.analysis.qtyEmpty') }"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'material'">{{ record.code }} {{ record.name }}</template>
@@ -127,20 +127,20 @@
             </a-table>
           </a-spin>
         </a-tab-pane>
-        <a-tab-pane key="age" tab="库龄分析">
+        <a-tab-pane key="age" :tab="$t('fin.analysis.age')">
           <div class="filters">
-            <span>截止日期</span>
+            <span>{{ $t('fin.analysis.asOf') }}</span>
             <a-date-picker v-model:value="age.asOf" value-format="YYYY-MM-DD" :allow-clear="false" />
-            <WarehouseSelect v-model:value="age.warehouseId" placeholder="全部仓库" class="filter" />
-            <a-select v-model:value="age.category" :options="toOptions(dict.wms_material_category)" allow-clear placeholder="全部分类" class="filter-s" />
-            <a-input v-model:value="age.keyword" placeholder="物料编码或名称" allow-clear class="filter" />
-            <a-tooltip title="各段的上限天数，逗号分隔、递增">
+            <WarehouseSelect v-model:value="age.warehouseId" :placeholder="$t('fin.analysis.allWarehouses')" class="filter" />
+            <a-select v-model:value="age.category" :options="toOptions(dict.wms_material_category)" allow-clear :placeholder="$t('fin.analysis.allCategories')" class="filter-s" />
+            <a-input v-model:value="age.keyword" :placeholder="$t('fin.analysis.materialKeyword')" allow-clear class="filter" />
+            <a-tooltip :title="$t('fin.analysis.bucketsTip')">
               <a-input v-model:value="age.buckets" placeholder="30,60,90,180,365" class="filter-s" />
             </a-tooltip>
-            <a-button type="primary" :loading="age.loading" @click="loadAge">查询</a-button>
+            <a-button type="primary" :loading="age.loading" @click="loadAge">{{ $t('common.action.query') }}</a-button>
           </div>
           <div class="sub-text block-tip">
-            结存按先进先出对应到最近的入库记录计算库龄；不选仓库时统计全部仓库（调拨不改变库龄），选仓库时调入算入库。金额 = 数量 × 最近一次核算的单价（没有时取参考成本价）。
+            {{ $t('fin.analysis.ageTip') }}
           </div>
           <div v-if="age.result" class="age-summary">
             <div v-for="(b, i) in age.result.buckets" :key="i" class="age-card" :class="{ old: i >= age.result.buckets.length - 2 }">
@@ -149,9 +149,9 @@
               <div class="sub-text">{{ percent(age.result.total.ages[i].amount, age.result.total.amount) }}</div>
             </div>
             <div class="age-card total">
-              <div class="sub-text">合计</div>
+              <div class="sub-text">{{ $t('common.field.total') }}</div>
               <b>¥{{ formatMoney(age.result.total.amount) }}</b>
-              <div class="sub-text">{{ age.result.rows.length }} 种物料</div>
+              <div class="sub-text">{{ $t('fin.analysis.nMaterials', { n: age.result.rows.length }) }}</div>
             </div>
           </div>
           <a-table
@@ -161,7 +161,7 @@
             :columns="ageColumns"
             :data-source="age.result?.rows || []"
             :loading="age.loading"
-            :pagination="{ pageSize: 50, showSizeChanger: false, showTotal: (t) => `共 ${t} 种物料` }"
+            :pagination="{ pageSize: 50, showSizeChanger: false, showTotal: (n) => $t('fin.analysis.totalMaterials', { n }) }"
             :scroll="{ x: 700 + ageColumns.length * 110 }"
           >
             <template #bodyCell="{ column, record }">
@@ -177,7 +177,7 @@
                   <div class="sub-text">{{ formatMoney(record.ages[column.ageIndex].amount) }}</div>
                 </template>
               </template>
-              <template v-else-if="column.key === 'oldestDate'">{{ record.oldestDate || '早于入库记录' }}</template>
+              <template v-else-if="column.key === 'oldestDate'">{{ record.oldestDate || $t('fin.analysis.beforeRecords') }}</template>
             </template>
           </a-table>
         </a-tab-pane>
@@ -198,8 +198,10 @@ import { useDict } from '@/composables/useDict'
 import { toOptions } from '@/utils/dict'
 import { formatQty, today } from '@/components/wms/wms'
 import { currentPeriod, formatMoney, periodText } from '@/components/fin/fin'
+import { useI18n } from 'vue-i18n'
 
 useDict('scm_trade_kind')
+const { t } = useI18n()
 const tab = ref('margin')
 
 // ---------------------------------------------------------------- 销售毛利
@@ -208,27 +210,27 @@ const groupBy = ref('MATERIAL')
 const customerId = ref()
 const margin = ref({ rows: [], total: {} })
 const marginLoading = ref(false)
-const GROUP_TITLES = { MATERIAL: '物料', CUSTOMER: '客户', MONTH: '月份' }
+const GROUP_TITLES = { MATERIAL: t('fin.analysis.material'), CUSTOMER: t('fin.analysis.customer'), MONTH: t('fin.analysis.month') }
 const keyword = ref('')
 const DETAIL_COLUMNS = [
-  { title: '日期', dataIndex: 'bizDate', width: 110 },
-  { title: '单据', key: 'docNo', width: 200 },
-  { title: '客户', dataIndex: 'customerName', width: 180, ellipsis: true },
-  { title: '物料', key: 'material', width: 260, ellipsis: true },
-  { title: '数量', key: 'qty', width: 100, align: 'right' },
-  { title: '单位', dataIndex: 'unit', width: 70 },
-  { title: '收入', key: 'revenue', width: 130, align: 'right' },
-  { title: '成本', key: 'cost', width: 180, align: 'right' },
-  { title: '毛利', key: 'profit', width: 130, align: 'right' },
-  { title: '毛利率', key: 'margin', width: 90, align: 'right' }
+  { title: t('common.field.date'), dataIndex: 'bizDate', width: 110 },
+  { title: t('fin.analysis.doc'), key: 'docNo', width: 200 },
+  { title: t('fin.analysis.customer'), dataIndex: 'customerName', width: 180, ellipsis: true },
+  { title: t('fin.analysis.material'), key: 'material', width: 260, ellipsis: true },
+  { title: t('common.field.quantity'), key: 'qty', width: 100, align: 'right' },
+  { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
+  { title: t('fin.analysis.revenue'), key: 'revenue', width: 130, align: 'right' },
+  { title: t('fin.analysis.cost'), key: 'cost', width: 190, align: 'right' },
+  { title: t('fin.analysis.grossProfit'), key: 'profit', width: 130, align: 'right' },
+  { title: t('fin.analysis.grossMargin'), key: 'margin', width: 120, align: 'right' }
 ]
 const marginColumns = computed(() => groupBy.value === 'DETAIL' ? DETAIL_COLUMNS : [
   { title: GROUP_TITLES[groupBy.value], key: 'group', width: 240 },
-  ...(groupBy.value === 'MATERIAL' ? [{ title: '销量', key: 'qty', width: 110, align: 'right' }] : []),
-  { title: '收入', key: 'revenue', width: 140, align: 'right' },
-  { title: '成本', key: 'cost', width: 200, align: 'right' },
-  { title: '毛利', key: 'profit', width: 140, align: 'right' },
-  { title: '毛利率', key: 'margin', width: 100, align: 'right' }
+  ...(groupBy.value === 'MATERIAL' ? [{ title: t('fin.analysis.salesQty'), key: 'qty', width: 110, align: 'right' }] : []),
+  { title: t('fin.analysis.revenue'), key: 'revenue', width: 140, align: 'right' },
+  { title: t('fin.analysis.cost'), key: 'cost', width: 200, align: 'right' },
+  { title: t('fin.analysis.grossProfit'), key: 'profit', width: 140, align: 'right' },
+  { title: t('fin.analysis.grossMargin'), key: 'margin', width: 120, align: 'right' }
 ])
 let marginSeq = 0
 async function loadMargin() {
@@ -252,16 +254,16 @@ const period = ref(currentPeriod())
 const inventory = ref({ accounts: [], qtyDiffs: [] })
 const invLoading = ref(false)
 const accountColumns = [
-  { title: '科目', key: 'account', width: 220 },
-  { title: '总账余额', key: 'glBalance', width: 160, align: 'right' },
-  { title: '成本核算期末金额', key: 'costAmount', width: 180, align: 'right' },
-  { title: '差异', key: 'diff', width: 160, align: 'right' }
+  { title: t('fin.analysis.account'), key: 'account', width: 220 },
+  { title: t('fin.analysis.glBalance'), key: 'glBalance', width: 160, align: 'right' },
+  { title: t('fin.analysis.costAmount'), key: 'costAmount', width: 220, align: 'right' },
+  { title: t('fin.analysis.diff'), key: 'diff', width: 160, align: 'right' }
 ]
 const qtyColumns = [
-  { title: '物料', key: 'material', width: 260 },
-  { title: '成本核算期末数量', key: 'costQty', width: 160, align: 'right' },
-  { title: '库存流水结存', key: 'stockQty', width: 160, align: 'right' },
-  { title: '差异', key: 'diff', width: 140, align: 'right' }
+  { title: t('fin.analysis.material'), key: 'material', width: 260 },
+  { title: t('fin.analysis.costQty'), key: 'costQty', width: 200, align: 'right' },
+  { title: t('fin.analysis.stockQty'), key: 'stockQty', width: 180, align: 'right' },
+  { title: t('fin.analysis.diff'), key: 'diff', width: 140, align: 'right' }
 ]
 async function loadInventory() {
   invLoading.value = true
@@ -280,11 +282,11 @@ watch(tab, (t) => {
 const dict = useDict('wms_material_category')
 const age = reactive({ asOf: today(), warehouseId: undefined, category: undefined, keyword: '', buckets: '', loading: false, result: null })
 const ageColumns = computed(() => [
-  { title: '物料', key: 'material', width: 240, fixed: 'left' },
-  { title: '结存数量', key: 'qty', width: 120, align: 'right' },
-  { title: '结存金额', key: 'amount', width: 120, align: 'right' },
+  { title: t('fin.analysis.material'), key: 'material', width: 240, fixed: 'left' },
+  { title: t('fin.analysis.balanceQty'), key: 'qty', width: 130, align: 'right' },
+  { title: t('fin.analysis.balanceAmount'), key: 'amount', width: 140, align: 'right' },
   ...(age.result?.buckets || []).map((b, i) => ({ title: b.label, key: `age${i}`, ageIndex: i, width: 110, align: 'right' })),
-  { title: '最早入库', key: 'oldestDate', width: 120 }
+  { title: t('fin.analysis.oldestDate'), key: 'oldestDate', width: 140 }
 ])
 const percent = (part, all) => (Number(all) ? `${((Number(part) / Number(all)) * 100).toFixed(1)}%` : '-')
 async function loadAge() {

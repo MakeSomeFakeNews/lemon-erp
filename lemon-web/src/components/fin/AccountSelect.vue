@@ -17,6 +17,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { accountOptions, allAccounts } from '@/api/fin'
 import { cached } from './fin'
+import { t } from '@/locales'
 
 /**
  * 科目选择：默认只能选启用的末级科目（凭证、结算账户、折旧科目）；all 为 true 时可选上级科目（账簿、预算）。
@@ -26,7 +27,7 @@ const props = defineProps({
   value: Number,
   all: Boolean,
   prefix: Array,
-  placeholder: { type: String, default: '搜索科目编码或名称' },
+  placeholder: { type: String, default: () => t('fin.accountSelect.placeholder') },
   allowClear: Boolean,
   disabled: Boolean
 })
@@ -37,7 +38,7 @@ const loading = ref(false)
 const options = computed(() =>
   list.value
     .filter((a) => !props.prefix || props.prefix.some((p) => a.code.startsWith(p)))
-    .map((a) => ({ value: a.id, label: `${a.code} ${props.all ? '　'.repeat((a.code.length - 4) / 2) : ''}${a.name}` }))
+    .map((a) => ({ value: a.id, label: `${a.code} ${props.all ? '\u3000'.repeat((a.code.length - 4) / 2) : ''}${a.name}` }))
 )
 
 onMounted(async () => {

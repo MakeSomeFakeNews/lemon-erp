@@ -115,7 +115,7 @@ public class ScmChannelService {
             ScmPriceList p = priceListMapper.selectQuote(l.materialId(), dealer.getId(), dealer.getLevel(), l.qty(), today);
             if (p == null) {
                 WmsMaterial m = materials.get(l.materialId());
-                throw new BizException("物料「" + m.getCode() + " " + m.getName() + "」不在可订货清单中");
+                throw new BizException("物料「{0} {1}」不在可订货清单中", m.getCode(), m.getName());
             }
             return new OrderItemRequest(l.materialId(), l.qty(), p.getPrice(), p.getTaxRate(), null, null);
         }).toList();
@@ -129,7 +129,7 @@ public class ScmChannelService {
         }
         ScmOrder created = orderMapper.selectById(id);
         messageSender.sendToPermission("scm:sales:approve", MessageSender.Message.of("REMIND",
-                "经销商订货待审核：" + created.getOrderNo(), dealer.getName() + " 订货 ¥" + created.getTotalAmount().stripTrailingZeros().toPlainString(),
+                "经销商订货待审核：" + created.getOrderNo(), dealer.getName() + " 订货 ¥" + created.getTotalAmount().stripTrailingZeros().toPlainString(), // i18n-ignore
                 "/scm/sales?id=" + id));
         return id;
     }
@@ -201,7 +201,7 @@ public class ScmChannelService {
     private ScmCustomer requireDealer(Long customerId) {
         ScmCustomer c = customerService.get(customerId);
         if (c.getChannel() != SalesChannel.DEALER || !Integer.valueOf(1).equals(c.getStatus())) {
-            throw new BizException("客户「" + c.getName() + "」不是启用的经销商");
+            throw new BizException("客户「{0}」不是启用的经销商", c.getName());
         }
         return c;
     }

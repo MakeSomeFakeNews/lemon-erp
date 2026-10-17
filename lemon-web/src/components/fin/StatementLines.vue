@@ -12,7 +12,7 @@
     </template>
     <template #summary>
       <a-table-summary-row>
-        <a-table-summary-cell :col-span="3">合计 {{ lines.length }} 张</a-table-summary-cell>
+        <a-table-summary-cell :col-span="3">{{ $t('fin.statementLines.totalCount', { n: lines.length }) }}</a-table-summary-cell>
         <a-table-summary-cell align="right"><b>¥{{ formatMoney(total) }}</b></a-table-summary-cell>
         <a-table-summary-cell />
       </a-table-summary-row>
@@ -24,17 +24,18 @@
 import { computed } from 'vue'
 import DictTag from '@/components/DictTag.vue'
 import { formatMoney } from './fin'
+import { t } from '@/locales'
 
 /** 对账单明细（财务与供应商门户共用）：生成时的应付单快照，退货、索赔为负数 */
 const props = defineProps({
   lines: { type: Array, default: () => [] }
 })
 const columns = [
-  { title: '日期', dataIndex: 'billDate', width: 110 },
-  { title: '应付单号', dataIndex: 'billNo', width: 170 },
-  { title: '来源', key: 'source', width: 240 },
-  { title: '价税合计', key: 'amount', width: 140, align: 'right' },
-  { title: '税额', key: 'tax', width: 120, align: 'right' }
+  { title: t('common.field.date'), dataIndex: 'billDate', width: 110 },
+  { title: t('fin.statementLines.billNo'), dataIndex: 'billNo', width: 170 },
+  { title: t('fin.statementLines.source'), key: 'source', width: 240 },
+  { title: t('fin.statementLines.amount'), key: 'amount', width: 140, align: 'right' },
+  { title: t('fin.statementLines.tax'), key: 'tax', width: 120, align: 'right' }
 ]
 const total = computed(() => props.lines.reduce((s, l) => s + Number(l.amount || 0), 0))
 </script>

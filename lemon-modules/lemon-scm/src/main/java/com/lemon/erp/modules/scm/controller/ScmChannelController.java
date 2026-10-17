@@ -50,7 +50,7 @@ public class ScmChannelController {
      */
     @PostMapping("/scm/sales/import")
     @PreAuthorize("@ss.hasPerm('scm:sales:add')")
-    @OperLog(title = "销售订单-外部导入", type = OperType.INSERT)
+    @OperLog(title = "销售订单-外部导入", type = OperType.INSERT) // i18n-ignore
     public R<ScmOrderImportService.Result> importOrders(@Valid @RequestBody ImportRequest<ChannelRequests.ImportRow> req) {
         return R.ok(importService.importOrders(req));
     }

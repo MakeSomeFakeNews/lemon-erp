@@ -3,11 +3,11 @@
     <div class="im-card">
       <template v-if="!error">
         <a-spin size="large" />
-        <div class="im-text">正在进入{{ label }}…</div>
+        <div class="im-text">{{ $t('login.im.entering', { name: label }) }}</div>
       </template>
-      <a-result v-else status="warning" title="无法自动登录" :sub-title="error">
+      <a-result v-else status="warning" :title="$t('login.im.autoLoginFailed')" :sub-title="error">
         <template #extra>
-          <a-button type="primary" @click="router.replace('/login')">使用账号密码登录</a-button>
+          <a-button type="primary" @click="router.replace('/login')">{{ $t('login.im.passwordLogin') }}</a-button>
         </template>
       </a-result>
     </div>
@@ -17,6 +17,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { getImAuthorizeUrl } from '@/api/system/im'
 import { getToken, removeToken } from '@/utils/auth'
 import { detectImApp, imPlatform } from '@/utils/im'
@@ -25,11 +26,12 @@ import { detectImApp, imPlatform } from '@/utils/im'
  * 免登入口：钉钉、企业微信、飞书的应用首页和消息链接指向这里（?platform=&tenant=&redirect=）。
  * 已登录（令牌有效）直接进入目标页面；否则跳到平台授权（客户端内静默授权，浏览器中扫码），授权后由回调页登录
  */
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const error = ref('')
 const platform = computed(() => route.query.platform)
-const label = computed(() => (platform.value ? imPlatform(platform.value).label : '系统'))
+const label = computed(() => (platform.value ? imPlatform(platform.value).label : t('login.im.system')))
 const redirect = computed(() => {
   const r = route.query.redirect
   return typeof r === 'string' && r.startsWith('/') && !r.startsWith('//') ? r : '/'
@@ -64,7 +66,7 @@ onMounted(async () => {
       redirect: redirect.value
     })
   } catch (e) {
-    error.value = e?.message || '获取授权地址失败'
+    error.value = e?.message || t('login.im.authUrlFailed')
   }
 })
 </script>

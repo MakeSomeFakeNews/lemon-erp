@@ -2,14 +2,14 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="供应商" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="编码或名称" allow-clear />
+        <a-form-item :label="$t('scm.supplier.supplier')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('scm.supplier.codeOrName')" allow-clear />
         </a-form-item>
-        <a-form-item label="等级" name="level">
-          <a-select v-model:value="query.level" placeholder="全部" allow-clear :options="toOptions(dict.scm_supplier_level)" />
+        <a-form-item :label="$t('scm.supplier.level')" name="level">
+          <a-select v-model:value="query.level" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.scm_supplier_level)" />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.sys_common_status, true)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -24,10 +24,10 @@
         @refresh="load"
       >
         <a-button v-perm="'scm:supplier:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新增供应商
+          <template #icon><PlusOutlined /></template>{{ $t('scm.supplier.add') }}
         </a-button>
         <a-button v-perm="'scm:supplier:add'" @click="importOpen = true">
-          <template #icon><ImportOutlined /></template>导入
+          <template #icon><ImportOutlined /></template>{{ $t('common.action.import') }}
         </a-button>
       </TableToolbar>
 
@@ -38,7 +38,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1300, y: '100%' }"
+        :scroll="{ x: 1370, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -53,7 +53,7 @@
             <div>{{ record.contact || '-' }}</div>
             <div v-if="record.phone" class="sub-text">{{ record.phone }}</div>
           </template>
-          <template v-else-if="column.key === 'paymentDays'">{{ record.paymentDays ? `${record.paymentDays} 天` : '现结' }}</template>
+          <template v-else-if="column.key === 'paymentDays'">{{ record.paymentDays ? $t('scm.supplier.days', { n: record.paymentDays }) : $t('scm.supplier.cash') }}</template>
           <template v-else-if="column.key === 'status'">
             <StatusSwitch
               :value="record.status"
@@ -67,21 +67,21 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openExtras(record)">
-                <template #icon><PaperClipOutlined /></template>资料
+                <template #icon><PaperClipOutlined /></template>{{ $t('scm.supplier.extras') }}
               </a-button>
               <a-button type="link" size="small" @click="openPrices(record)">
-                <template #icon><DollarOutlined /></template>供货价格
+                <template #icon><DollarOutlined /></template>{{ $t('scm.supplier.prices') }}
               </a-button>
               <a-button v-perm="'scm:supplier:portal'" type="link" size="small" @click="openPortal(record)">
-                <template #icon><UserOutlined /></template>门户账号
+                <template #icon><UserOutlined /></template>{{ $t('scm.supplier.portal') }}
               </a-button>
               <a-button v-perm="'scm:supplier:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-perm="'scm:supplier:remove'">
-                <a-popconfirm :title="`确定删除供应商「${record.name}」？`" @confirm="remove(record.id)">
+                <a-popconfirm :title="$t('scm.supplier.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>删除
+                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
                   </a-button>
                 </a-popconfirm>
               </span>
@@ -91,71 +91,71 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增供应商" edit-title="编辑供应商">
+    <FormDrawer :drawer="drawer" :create-title="$t('scm.supplier.add')" :edit-title="$t('scm.supplier.edit')">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="供应商编码" name="code">
-              <a-input v-model:value="form.code" :maxlength="32" placeholder="如：S001" />
+            <a-form-item :label="$t('scm.supplier.code')" name="code">
+              <a-input v-model:value="form.code" :maxlength="32" :placeholder="$t('scm.supplier.codePlaceholder')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="供应商名称" name="name">
+            <a-form-item :label="$t('scm.supplier.name')" name="name">
               <a-input v-model:value="form.name" :maxlength="128" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="等级" name="level" extra="供应商评估后自动更新为评定等级">
+            <a-form-item :label="$t('scm.supplier.level')" name="level" :extra="$t('scm.supplier.levelTip')">
               <a-select v-model:value="form.level" allow-clear :options="toOptions(dict.scm_supplier_level)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="账期" name="paymentDays" extra="应付单到期日 = 入库日期 + 账期">
-              <a-input-number v-model:value="form.paymentDays" :min="0" :max="365" addon-after="天" class="full" />
+            <a-form-item :label="$t('scm.supplier.paymentDays')" name="paymentDays" :extra="$t('scm.supplier.paymentDaysTip')">
+              <a-input-number v-model:value="form.paymentDays" :min="0" :max="365" :addon-after="$t('scm.supplier.day')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="联系人" name="contact">
+            <a-form-item :label="$t('scm.supplier.contact')" name="contact">
               <a-input v-model:value="form.contact" :maxlength="64" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="联系电话" name="phone">
+            <a-form-item :label="$t('scm.supplier.phone')" name="phone">
               <a-input v-model:value="form.phone" :maxlength="32" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="邮箱" name="email">
+            <a-form-item :label="$t('common.field.email')" name="email">
               <a-input v-model:value="form.email" :maxlength="128" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="纳税人识别号" name="taxNo">
+            <a-form-item :label="$t('scm.supplier.taxNo')" name="taxNo">
               <a-input v-model:value="form.taxNo" :maxlength="32" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="开户行" name="bankName">
+            <a-form-item :label="$t('scm.supplier.bankName')" name="bankName">
               <a-input v-model:value="form.bankName" :maxlength="128" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="银行账号" name="bankAccount">
+            <a-form-item :label="$t('scm.supplier.bankAccount')" name="bankAccount">
               <a-input v-model:value="form.bankAccount" :maxlength="64" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="地址" name="address">
+            <a-form-item :label="$t('scm.supplier.address')" name="address">
               <a-input v-model:value="form.address" :maxlength="255" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" show-count />
             </a-form-item>
           </a-col>
         </a-row>
-        <CustomFieldsForm :fields="cfFields" :values="form.cf || {}" title="扩展信息" />
+        <CustomFieldsForm :fields="cfFields" :values="form.cf || {}" :title="$t('scm.supplier.extInfo')" />
       </a-form>
     </FormDrawer>
 
@@ -163,10 +163,10 @@
     <PortalAccountDrawer v-model:open="portalOpen" kind="supplier" :partner="portalSupplier" />
     <ImportModal
       v-model:open="importOpen"
-      title="供应商"
+      :title="$t('scm.supplier.supplier')"
       :columns="importColumns"
       :importer="(data) => importPartner('supplier', data)"
-      :sample="{ code: 'S0001', name: '示例供应商', contact: '李四', phone: '13900000000', paymentDays: 30 }"
+      :sample="{ code: 'S0001', name: $t('scm.supplier.sampleName'), contact: $t('scm.supplier.sampleContact'), phone: '13900000000', paymentDays: 30 }"
       @success="search"
     />
     <RecordExtrasModal
@@ -182,6 +182,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, DollarOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -202,6 +203,7 @@ import { toOptions } from '@/utils/dict'
 import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
 import { useCustomColumns, useCustomFields } from '@/composables/useCustomFields'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const dict = useDict('sys_common_status', 'scm_supplier_level')
 
@@ -216,29 +218,29 @@ function openExtras(record) {
   extrasOpen.value = true
 }
 const importColumns = [
-  { title: '供应商编码', key: 'code', required: true },
-  { title: '供应商名称', key: 'name', required: true },
-  { title: '等级', key: 'level', dict: 'scm_supplier_level' },
-  { title: '联系人', key: 'contact' },
-  { title: '联系电话', key: 'phone' },
-  { title: '邮箱', key: 'email' },
-  { title: '地址', key: 'address' },
-  { title: '纳税人识别号', key: 'taxNo' },
-  { title: '开户行', key: 'bankName' },
-  { title: '银行账号', key: 'bankAccount' },
-  { title: '账期(天)', key: 'paymentDays', type: 'int' },
-  { title: '备注', key: 'remark' }
+  { title: t('scm.supplier.code'), key: 'code', required: true },
+  { title: t('scm.supplier.name'), key: 'name', required: true },
+  { title: t('scm.supplier.level'), key: 'level', dict: 'scm_supplier_level' },
+  { title: t('scm.supplier.contact'), key: 'contact' },
+  { title: t('scm.supplier.phone'), key: 'phone' },
+  { title: t('common.field.email'), key: 'email' },
+  { title: t('scm.supplier.address'), key: 'address' },
+  { title: t('scm.supplier.taxNo'), key: 'taxNo' },
+  { title: t('scm.supplier.bankName'), key: 'bankName' },
+  { title: t('scm.supplier.bankAccount'), key: 'bankAccount' },
+  { title: t('scm.supplier.paymentDaysCol'), key: 'paymentDays', type: 'int' },
+  { title: t('common.field.remark'), key: 'remark' }
 ]
 
 const columns = [
-  { title: '供应商', key: 'name', width: 240 },
-  { title: '等级', key: 'level', width: 100, dict: 'scm_supplier_level' },
-  { title: '联系人', key: 'contact', width: 150 },
-  { title: '账期', key: 'paymentDays', width: 90 },
-  { title: '地址', dataIndex: 'address', width: 220, ellipsis: true },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '备注', dataIndex: 'remark', width: 150, ellipsis: true },
-  { title: '操作', key: 'action', width: 400, fixed: 'right' }
+  { title: t('scm.supplier.supplier'), key: 'name', width: 240 },
+  { title: t('scm.supplier.level'), key: 'level', width: 100, dict: 'scm_supplier_level' },
+  { title: t('scm.supplier.contact'), key: 'contact', width: 150 },
+  { title: t('scm.supplier.paymentDays'), key: 'paymentDays', width: 110 },
+  { title: t('scm.supplier.address'), dataIndex: 'address', width: 220, ellipsis: true },
+  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 470, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'scm-supplier')
 const showSearch = ref(true)
@@ -264,11 +266,11 @@ onMounted(load)
 
 const rules = {
   code: [
-    { required: true, message: '请输入供应商编码' },
-    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: '只能包含字母、数字、下划线和短横线' }
+    { required: true, message: t('scm.supplier.codeRequired') },
+    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: t('scm.supplier.codePattern') }
   ],
-  name: [{ required: true, whitespace: true, message: '请输入供应商名称' }],
-  email: [{ type: 'email', message: '邮箱格式不正确' }]
+  name: [{ required: true, whitespace: true, message: t('scm.supplier.nameRequired') }],
+  email: [{ type: 'email', message: t('common.rule.email') }]
 }
 const FIELDS = ['code', 'name', 'level', 'contact', 'phone', 'email', 'address', 'taxNo', 'bankName', 'bankAccount', 'paymentDays', 'remark']
 const drawer = useFormDrawer(
@@ -285,7 +287,7 @@ const { formRef, form } = drawer
 
 async function remove(id) {
   await deletePartner('supplier', id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 

@@ -1,11 +1,12 @@
 import dayjs from 'dayjs'
 import { suggestPutaway } from '@/api/wms/location'
+import { currentLocale, t } from '@/locales'
 
 /** 出入库单的种类（与后端 StockBizType 的路径一致） */
 export const DOC_KINDS = {
-  in: { label: '入库单', typeLabel: '入库类型', typeDict: 'wms_in_type', warehouseLabel: '入库仓库' },
-  out: { label: '出库单', typeLabel: '出库类型', typeDict: 'wms_out_type', warehouseLabel: '出库仓库' },
-  transfer: { label: '调拨单', warehouseLabel: '调出仓库' }
+  in: { label: t('wms.doc.kind.in'), typeLabel: t('wms.doc.kind.inType'), typeDict: 'wms_in_type', warehouseLabel: t('wms.doc.kind.inWarehouse') },
+  out: { label: t('wms.doc.kind.out'), typeLabel: t('wms.doc.kind.outType'), typeDict: 'wms_out_type', warehouseLabel: t('wms.doc.kind.outWarehouse') },
+  transfer: { label: t('wms.doc.kind.transfer'), warehouseLabel: t('wms.doc.kind.fromWarehouse') }
 }
 
 /** 数量：去掉多余的 0，千分位 */
@@ -14,7 +15,7 @@ export const availableQty = (s) => Number(s.qty || 0) - Number(s.frozenQty || 0)
 
 export function formatQty(n) {
   if (n === null || n === undefined || n === '') return '-'
-  return Number(n).toLocaleString('zh-CN', { maximumFractionDigits: 4 })
+  return Number(n).toLocaleString(currentLocale(), { maximumFractionDigits: 4 })
 }
 
 /** 已完成、非业务单据生成、非红字、未冲销的单据可以冲销 */
@@ -24,7 +25,7 @@ export const canReverse = (d) => d.status === 'DONE' && !d.sourceNo && !d.redOf 
 export const negativeClass = (n) => (Number(n) < 0 ? 'qty-negative' : undefined)
 
 /** 库位显示：0 / 空为未指定 */
-export const locationText = (code) => code || '未指定'
+export const locationText = (code) => code || t('wms.common.unspecified')
 
 /** 拆分序列号文本（与后端 WmsConstants.splitSerials 一致） */
 export function splitSerials(text) {
@@ -40,8 +41,8 @@ export const joinSerials = (list) => (list?.length ? list.join(',') : undefined)
 export function expiryStatus(date) {
   if (!date) return null
   const days = dayjs(date).diff(dayjs().startOf('day'), 'day')
-  if (days < 0) return { color: 'red', text: '已过期' }
-  if (days <= 30) return { color: 'orange', text: `${days} 天后到期` }
+  if (days < 0) return { color: 'red', text: t('wms.common.expired') }
+  if (days <= 30) return { color: 'orange', text: t('wms.common.expireInDays', { days }) }
   return null
 }
 

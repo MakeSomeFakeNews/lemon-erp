@@ -66,7 +66,7 @@ public class MesEquipmentController {
 
     @PostMapping("/equipment")
     @PreAuthorize("@ss.hasPerm('mes:equipment:add')")
-    @OperLog(title = "设备台账", type = OperType.INSERT)
+    @OperLog(title = "设备台账", type = OperType.INSERT) // i18n-ignore
     public R<Void> create(@Validated(Create.class) @RequestBody MesEquipment equipment) {
         equipmentService.create(equipment);
         return R.ok();
@@ -74,7 +74,7 @@ public class MesEquipmentController {
 
     @PutMapping("/equipment/{id}")
     @PreAuthorize("@ss.hasPerm('mes:equipment:edit')")
-    @OperLog(title = "设备台账", type = OperType.UPDATE)
+    @OperLog(title = "设备台账", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody MesEquipment equipment) {
         equipmentService.update(id, equipment);
         return R.ok();
@@ -82,7 +82,7 @@ public class MesEquipmentController {
 
     @DeleteMapping("/equipment/{ids}")
     @PreAuthorize("@ss.hasPerm('mes:equipment:remove')")
-    @OperLog(title = "设备台账", type = OperType.DELETE)
+    @OperLog(title = "设备台账", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         equipmentService.delete(ids);
         return R.ok();
@@ -103,7 +103,7 @@ public class MesEquipmentController {
 
     @PostMapping("/maintenance")
     @PreAuthorize("@ss.hasPerm('mes:maintain:add')")
-    @OperLog(title = "设备维护", type = OperType.INSERT)
+    @OperLog(title = "设备维护", type = OperType.INSERT) // i18n-ignore
     public R<Long> createMaintenance(@Valid @RequestBody MaintenanceRequest req) {
         return R.ok(equipmentService.createMaintenance(req));
     }
@@ -111,7 +111,7 @@ public class MesEquipmentController {
     /** 开始处理，body：{ handler } */
     @PostMapping("/maintenance/{id}/start")
     @PreAuthorize("@ss.hasPerm('mes:maintain:handle')")
-    @OperLog(title = "设备维护-开始", type = OperType.UPDATE)
+    @OperLog(title = "设备维护-开始", type = OperType.UPDATE) // i18n-ignore
     public R<Void> start(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         equipmentService.startMaintenance(id, body == null ? null : body.get("handler"));
         return R.ok();
@@ -119,7 +119,7 @@ public class MesEquipmentController {
 
     @PostMapping("/maintenance/{id}/finish")
     @PreAuthorize("@ss.hasPerm('mes:maintain:handle')")
-    @OperLog(title = "设备维护-完成", type = OperType.UPDATE)
+    @OperLog(title = "设备维护-完成", type = OperType.UPDATE) // i18n-ignore
     public R<Void> finish(@PathVariable Long id, @Valid @RequestBody MaintenanceFinishRequest req) {
         equipmentService.finishMaintenance(id, req);
         return R.ok();
@@ -127,7 +127,7 @@ public class MesEquipmentController {
 
     @DeleteMapping("/maintenance/{ids}")
     @PreAuthorize("@ss.hasPerm('mes:maintain:remove')")
-    @OperLog(title = "设备维护", type = OperType.DELETE)
+    @OperLog(title = "设备维护", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteMaintenance(@PathVariable List<Long> ids) {
         equipmentService.deleteMaintenance(ids);
         return R.ok();

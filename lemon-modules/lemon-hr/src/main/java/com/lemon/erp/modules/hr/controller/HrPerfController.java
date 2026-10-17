@@ -59,14 +59,14 @@ public class HrPerfController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('hr:perf:add')")
-    @OperLog(title = "绩效考核", type = OperType.INSERT)
+    @OperLog(title = "绩效考核", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> create(@Valid @RequestBody PerfPlanRequest req) {
         return R.ok(perfService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('hr:perf:edit')")
-    @OperLog(title = "绩效考核", type = OperType.UPDATE)
+    @OperLog(title = "绩效考核", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody PerfPlanRequest req) {
         perfService.update(id, req);
         return R.ok();
@@ -74,7 +74,7 @@ public class HrPerfController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('hr:perf:remove')")
-    @OperLog(title = "绩效考核", type = OperType.DELETE)
+    @OperLog(title = "绩效考核", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable Long id) {
         perfService.delete(id);
         return R.ok();
@@ -83,14 +83,14 @@ public class HrPerfController {
     /** 发起考核，返回考核人数 */
     @PostMapping("/{id}/start")
     @PreAuthorize("@ss.hasPerm('hr:perf:edit')")
-    @OperLog(title = "绩效考核-发起", type = OperType.INSERT)
+    @OperLog(title = "绩效考核-发起", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Integer> start(@PathVariable Long id, @RequestBody(required = false) PerfStartRequest req) {
         return R.ok(perfService.start(id, req == null ? null : req.deptIds()));
     }
 
     @PostMapping("/{id}/finish")
     @PreAuthorize("@ss.hasPerm('hr:perf:edit')")
-    @OperLog(title = "绩效考核-归档", type = OperType.UPDATE)
+    @OperLog(title = "绩效考核-归档", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> finish(@PathVariable Long id) {
         perfService.finish(id);
         return R.ok();
@@ -117,7 +117,7 @@ public class HrPerfController {
 
     /** 登录即可访问：评分人评分，或有「代为评分」权限 */
     @PostMapping("/appraisal/{id}/review")
-    @OperLog(title = "绩效考核-评分", type = OperType.UPDATE)
+    @OperLog(title = "绩效考核-评分", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> review(@PathVariable Long id, @Valid @RequestBody PerfScoreRequest req) {
         perfService.review(id, req);
         return R.ok();
@@ -125,7 +125,7 @@ public class HrPerfController {
 
     @PostMapping("/appraisal/{id}/reopen")
     @PreAuthorize("@ss.hasPerm('hr:perf:score')")
-    @OperLog(title = "绩效考核-退回重评", type = OperType.UPDATE)
+    @OperLog(title = "绩效考核-退回重评", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> reopen(@PathVariable Long id) {
         perfService.reopen(id);
         return R.ok();

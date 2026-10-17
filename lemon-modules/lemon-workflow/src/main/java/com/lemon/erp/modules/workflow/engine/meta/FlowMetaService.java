@@ -42,7 +42,7 @@ public class FlowMetaService {
         try (InputStream in = repositoryService.getResourceAsStream(definition.getDeploymentId(), DESIGN_RESOURCE)) {
             return new FlowDefinitionMeta(processDefinitionId, objectMapper.readValue(in, FlowDesign.class));
         } catch (FlowableObjectNotFoundException | IOException e) {
-            throw new IllegalStateException("流程定义 " + processDefinitionId + " 缺少流程设计，不是由流程模型发布的", e);
+            throw new IllegalStateException("流程定义 " + processDefinitionId + " 缺少流程设计，不是由流程模型发布的", e);  // i18n-ignore 存库或内部异常
         }
     }
 }

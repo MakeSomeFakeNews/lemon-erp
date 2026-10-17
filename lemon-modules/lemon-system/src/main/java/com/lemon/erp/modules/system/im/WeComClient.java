@@ -78,7 +78,7 @@ public class WeComClient implements ImClient {
                 body.put("text", Map.of("content", card.title() + "\n" + nvl(card.content())));
             } else {
                 body.put("msgtype", "textcard");
-                body.put("textcard", Map.of("title", card.title(), "description", nvl(card.content()), "url", card.url(), "btntxt", "详情"));
+                body.put("textcard", Map.of("title", card.title(), "description", nvl(card.content()), "url", card.url(), "btntxt", "详情")); // i18n-ignore 推送到平台的消息
             }
             check(http.post(P, ImHttp.uri(api(), "/cgi-bin/message/send", "access_token", token(config, false)), Map.of(), body));
         }
@@ -123,7 +123,7 @@ public class WeComClient implements ImClient {
 
     @Override
     public void robot(String webhook, String secret, ImCard card) {
-        String content = "**" + card.title() + "**\n" + nvl(card.content()) + (card.url() == null ? "" : "\n[查看详情](" + card.url() + ")");
+        String content = "**" + card.title() + "**\n" + nvl(card.content()) + (card.url() == null ? "" : "\n[查看详情](" + card.url() + ")"); // i18n-ignore 推送到平台的消息
         check(http.post(P, URI.create(webhook), Map.of(), Map.of("msgtype", "markdown", "markdown", Map.of("content", content))));
     }
 

@@ -45,7 +45,7 @@ public class MesMaterialController {
 
     @PutMapping("/{id}/plan")
     @PreAuthorize("@ss.hasPerm('mes:material:edit')")
-    @OperLog(title = "物料计划属性", type = OperType.UPDATE)
+    @OperLog(title = "物料计划属性", type = OperType.UPDATE) // i18n-ignore
     public R<Void> savePlan(@PathVariable Long id, @Valid @RequestBody MaterialPlanRequest req) {
         materialService.savePlan(id, req);
         return R.ok();

@@ -49,14 +49,14 @@ public class WmsAssemblyController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('wms:assembly:add')")
-    @OperLog(title = "组装拆卸单", type = OperType.INSERT)
+    @OperLog(title = "组装拆卸单", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody AssemblyRequest req) {
         return R.ok(assemblyService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('wms:assembly:add')")
-    @OperLog(title = "组装拆卸单", type = OperType.UPDATE)
+    @OperLog(title = "组装拆卸单", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody AssemblyRequest req) {
         assemblyService.update(id, req);
         return R.ok();
@@ -64,7 +64,7 @@ public class WmsAssemblyController {
 
     @PostMapping("/{id}/confirm")
     @PreAuthorize("@ss.hasPerm('wms:assembly:confirm')")
-    @OperLog(title = "组装拆卸确认", type = OperType.UPDATE)
+    @OperLog(title = "组装拆卸确认", type = OperType.UPDATE) // i18n-ignore
     public R<Void> confirm(@PathVariable Long id) {
         assemblyService.confirm(id);
         return R.ok();
@@ -72,7 +72,7 @@ public class WmsAssemblyController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('wms:assembly:add')")
-    @OperLog(title = "组装拆卸单", type = OperType.DELETE)
+    @OperLog(title = "组装拆卸单", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         assemblyService.delete(ids);
         return R.ok();

@@ -2,35 +2,35 @@
   <div class="plan-page">
     <a-card :bordered="false" class="page-card">
       <div class="head">
-        <ProjectSelect v-model:value="projectId" :allow-clear="false" class="project-select" placeholder="选择项目" @update:value="onProject" />
+        <ProjectSelect v-model:value="projectId" :allow-clear="false" class="project-select" :placeholder="$t('pm.common.selectProject')" @update:value="onProject" />
         <template v-if="project">
           <DictTag type="pm_project_status" :value="project.status" />
           <div class="summary">
-            <span class="label">完工进度</span>
+            <span class="label">{{ $t('pm.acc.completion') }}</span>
             <a-progress :percent="Number(project.progress)" size="small" class="progress" />
             <span class="sub-text">
-              计划 {{ project.planStart }} ~ {{ project.planEnd }} · 任务 {{ project.doneTaskCount }} / {{ project.taskCount }}
-              <span v-if="project.overdueTaskCount" class="danger">· 逾期 {{ project.overdueTaskCount }}</span>
+              {{ $t('pm.gantt.plan') }} {{ project.planStart }} ~ {{ project.planEnd }} · {{ $t('pm.common.tasks') }} {{ project.doneTaskCount }} / {{ project.taskCount }}
+              <span v-if="project.overdueTaskCount" class="danger">· {{ $t('pm.common.overdue') }} {{ project.overdueTaskCount }}</span>
             </span>
           </div>
         </template>
         <div class="actions">
           <a-radio-group v-model:value="view" button-style="solid" size="small">
-            <a-radio-button value="list">列表</a-radio-button>
-            <a-radio-button value="gantt">甘特图</a-radio-button>
+            <a-radio-button value="list">{{ $t('pm.plan.list') }}</a-radio-button>
+            <a-radio-button value="gantt">{{ $t('pm.plan.gantt') }}</a-radio-button>
           </a-radio-group>
           <a-button v-if="project" v-perm="'pm:task:edit'" type="primary" :disabled="!editable" @click="openTask()">
-            <template #icon><PlusOutlined /></template>新增任务
+            <template #icon><PlusOutlined /></template>{{ $t('pm.plan.addTask') }}
           </a-button>
           <a-button type="text" :disabled="!projectId" @click="loadTasks"><template #icon><ReloadOutlined /></template></a-button>
         </div>
       </div>
       <a-alert v-if="project && project.status !== 'ACTIVE'" type="info" show-icon class="tip"
-               :message="project.status === 'PLANNING' ? '项目还没有启动，启动后任务负责人才能更新进度' : '项目不在进行中，不能更新任务进度'" />
+               :message="project.status === 'PLANNING' ? $t('pm.plan.notStarted') : $t('pm.plan.notActive')" />
     </a-card>
 
     <a-card :bordered="false" class="page-card body-card">
-      <a-empty v-if="!projectId" description="请选择项目" />
+      <a-empty v-if="!projectId" :description="$t('pm.common.pleaseSelectProject')" />
       <template v-else-if="view === 'list'">
         <a-table
           row-key="id"
@@ -50,20 +50,20 @@
             </template>
             <template v-else-if="column.key === 'dates'">
               <div>{{ record.planStart }} ~ {{ record.planEnd }}</div>
-              <div v-if="record.actualEnd" class="sub-text">完成于 {{ record.actualEnd }}</div>
+              <div v-if="record.actualEnd" class="sub-text">{{ $t('pm.plan.finishedOn', { date: record.actualEnd }) }}</div>
             </template>
             <template v-else-if="column.key === 'hours'">
               {{ Number(record.planHours) }} / <span :class="{ danger: Number(record.actualHours) > Number(record.planHours) && Number(record.planHours) > 0 }">{{ Number(record.actualHours) }}</span>
             </template>
             <template v-else-if="column.key === 'progress'">
-              <a-popover v-if="canProgress(record)" trigger="click" title="更新进度" :open="progressFor === record.id"
+              <a-popover v-if="canProgress(record)" trigger="click" :title="$t('pm.plan.updateProgress')" :open="progressFor === record.id"
                          @open-change="(v) => togglePopover(v, record)">
                 <template #content>
                   <div class="progress-pop">
                     <a-slider v-model:value="progressValue" :step="5" :marks="{ 0: '0', 50: '50', 100: '100' }" />
                     <div class="pop-actions">
-                      <a-button size="small" @click="progressFor = null">取消</a-button>
-                      <a-button size="small" type="primary" :loading="progressSaving" @click="saveProgress(record)">保存</a-button>
+                      <a-button size="small" @click="progressFor = null">{{ $t('common.action.cancel') }}</a-button>
+                      <a-button size="small" type="primary" :loading="progressSaving" @click="saveProgress(record)">{{ $t('common.action.save') }}</a-button>
                     </div>
                   </div>
                 </template>
@@ -73,13 +73,13 @@
             </template>
             <template v-else-if="column.key === 'status'">
               <DictTag type="pm_task_status" :value="record.status" />
-              <a-tag v-if="record.overdue" color="red" :bordered="false">逾期</a-tag>
+              <a-tag v-if="record.overdue" color="red" :bordered="false">{{ $t('pm.common.overdue') }}</a-tag>
             </template>
             <template v-else-if="column.key === 'action'">
               <span v-perm="'pm:task:edit'" class="table-actions">
-                <a-button type="link" size="small" :disabled="!editable" @click="openTask(null, record)">子任务</a-button>
+                <a-button type="link" size="small" :disabled="!editable" @click="openTask(null, record)">{{ $t('pm.plan.subtask') }}</a-button>
                 <a-button type="link" size="small" :disabled="!editable" @click="openTask(record)"><EditOutlined /></a-button>
-                <a-popconfirm :title="`确定删除任务「${record.name}」${record.children?.length ? '及其下级任务' : ''}？`" :disabled="!editable"
+                <a-popconfirm :title="record.children?.length ? $t('pm.plan.confirmDeleteWithChildren', { name: record.name }) : $t('pm.plan.confirmDelete', { name: record.name })" :disabled="!editable"
                               @confirm="removeTask(record)">
                   <a-button type="link" danger size="small" :disabled="!editable"><DeleteOutlined /></a-button>
                 </a-popconfirm>
@@ -92,58 +92,58 @@
     </a-card>
 
     <!-- 任务 -->
-    <a-drawer :open="taskOpen" :title="taskForm.id ? '编辑任务' : '新增任务'" width="min(640px, 100vw)" destroy-on-close @close="taskOpen = false">
+    <a-drawer :open="taskOpen" :title="taskForm.id ? $t('pm.plan.editTask') : $t('pm.plan.addTask')" width="min(640px, 100vw)" destroy-on-close @close="taskOpen = false">
       <a-form ref="taskRef" :model="taskForm" :rules="taskRules" layout="vertical">
         <a-row :gutter="16">
           <a-col :span="24">
-            <a-form-item label="上级任务" name="parentId" extra="上级任务的计划日期、工时、进度由下级任务汇总">
+            <a-form-item :label="$t('pm.plan.parent')" name="parentId" :extra="$t('pm.plan.parentTip')">
               <a-tree-select v-model:value="taskForm.parentId" :tree-data="parentTree" allow-clear tree-default-expand-all
-                             placeholder="顶级任务" :field-names="{ label: 'name', value: 'id', children: 'children' }" />
+                             :placeholder="$t('pm.plan.topLevel')" :field-names="{ label: 'name', value: 'id', children: 'children' }" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="任务名称" name="name">
+            <a-form-item :label="$t('pm.plan.taskName')" name="name">
               <a-input v-model:value="taskForm.name" :maxlength="128" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="负责人" name="assigneeId">
+            <a-form-item :label="$t('pm.common.assignee')" name="assigneeId">
               <IdentityUserSelect v-model:value="taskForm.assigneeId" :label="taskForm.assigneeName" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="计划工时" name="planHours">
-              <a-input-number v-model:value="taskForm.planHours" :min="0" :precision="1" addon-after="小时" class="full" />
+            <a-form-item :label="$t('pm.plan.planHours')" name="planHours">
+              <a-input-number v-model:value="taskForm.planHours" :min="0" :precision="1" :addon-after="$t('pm.common.hourUnit')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="12">
-            <a-form-item label="计划开始" name="planStart">
+            <a-form-item :label="$t('pm.common.planStart')" name="planStart">
               <a-date-picker v-model:value="taskForm.planStart" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="12">
-            <a-form-item label="计划完成" name="planEnd">
+            <a-form-item :label="$t('pm.common.planEnd')" name="planEnd">
               <a-date-picker v-model:value="taskForm.planEnd" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="前置任务" name="predecessorId" extra="前置任务完成后才能开始（完成-开始）">
+            <a-form-item :label="$t('pm.plan.predecessor')" name="predecessorId" :extra="$t('pm.plan.predecessorTip')">
               <a-select v-model:value="taskForm.predecessorId" allow-clear show-search option-filter-prop="label" :options="predecessorOptions"
-                        placeholder="无" />
+                        :placeholder="$t('common.status.none')" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="6">
-            <a-form-item label="排序" name="sort">
+            <a-form-item :label="$t('common.field.sort')" name="sort">
               <a-input-number v-model:value="taskForm.sort" :min="0" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="6">
-            <a-form-item label="里程碑" name="milestone">
+            <a-form-item :label="$t('pm.common.milestone')" name="milestone">
               <a-switch v-model:checked="taskForm.milestone" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="说明" name="description">
+            <a-form-item :label="$t('common.field.description')" name="description">
               <a-textarea v-model:value="taskForm.description" :rows="3" :maxlength="500" />
             </a-form-item>
           </a-col>
@@ -151,8 +151,8 @@
       </a-form>
       <template #footer>
         <div class="drawer-footer">
-          <a-button @click="taskOpen = false">取消</a-button>
-          <a-button type="primary" :loading="taskSaving" @click="saveTask">保存</a-button>
+          <a-button @click="taskOpen = false">{{ $t('common.action.cancel') }}</a-button>
+          <a-button type="primary" :loading="taskSaving" @click="saveTask">{{ $t('common.action.save') }}</a-button>
         </div>
       </template>
     </a-drawer>
@@ -171,6 +171,7 @@ import { addTask, deleteTask, getProject, projectOptions, taskTree, updateTask, 
 import { useUserStore } from '@/store/user'
 import { load as loadStorage, save as saveStorage } from '@/utils/storage'
 import { flattenTasks, today } from '@/components/pm/pm'
+import { t } from '@/locales'
 
 const STORAGE_KEY = 'pm-plan-project'
 const userStore = useUserStore()
@@ -185,14 +186,14 @@ const expanded = ref([])
 const editable = computed(() => project.value && !['FINISHED', 'CLOSED'].includes(project.value.status))
 
 const columns = [
-  { title: '任务', key: 'name', width: 280, fixed: 'left' },
-  { title: '负责人', dataIndex: 'assigneeName', width: 100 },
-  { title: '计划日期', key: 'dates', width: 210 },
-  { title: '计划 / 实际工时', key: 'hours', width: 130 },
-  { title: '进度', key: 'progress', width: 170 },
-  { title: '状态', key: 'status', width: 140 },
-  { title: '前置任务', dataIndex: 'predecessorName', width: 140, ellipsis: true },
-  { title: '操作', key: 'action', width: 170, fixed: 'right' }
+  { title: t('pm.common.task'), key: 'name', width: 280, fixed: 'left' },
+  { title: t('pm.common.assignee'), dataIndex: 'assigneeName', width: 110 },
+  { title: t('pm.common.planDates'), key: 'dates', width: 210 },
+  { title: t('pm.plan.planActualHours'), key: 'hours', width: 160 },
+  { title: t('pm.common.progress'), key: 'progress', width: 170 },
+  { title: t('common.field.status'), key: 'status', width: 150 },
+  { title: t('pm.plan.predecessor'), dataIndex: 'predecessorName', width: 140, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
 ]
 
 async function onProject(id) {
@@ -204,10 +205,10 @@ async function loadTasks() {
   if (!projectId.value) return
   loading.value = true
   try {
-    const [p, t] = await Promise.all([getProject(projectId.value), taskTree(projectId.value)])
+    const [p, tree] = await Promise.all([getProject(projectId.value), taskTree(projectId.value)])
     project.value = p
-    tasks.value = t
-    expanded.value = flattenTasks(t).filter((x) => x.children?.length).map((x) => x.id)
+    tasks.value = tree
+    expanded.value = flattenTasks(tree).filter((x) => x.children?.length).map((x) => x.id)
   } catch {
     // 项目已删除等：清除记住的选择
     projectId.value = undefined
@@ -251,7 +252,7 @@ async function saveProgress(record) {
   progressSaving.value = true
   try {
     await updateTaskProgress(record.id, progressValue.value)
-    message.success('进度已更新')
+    message.success(t('pm.plan.progressUpdated'))
     progressFor.value = null
     loadTasks()
   } finally {
@@ -267,9 +268,9 @@ const taskRef = ref()
 const taskForm = ref({})
 
 const taskRules = {
-  name: [{ required: true, whitespace: true, message: '请输入任务名称' }],
-  planStart: [{ required: true, message: '请选择计划开始日期' }],
-  planEnd: [{ required: true, message: '请选择计划完成日期' }]
+  name: [{ required: true, whitespace: true, message: t('common.rule.required', { name: t('pm.plan.taskName') }) }],
+  planStart: [{ required: true, message: t('common.rule.requiredSelect', { name: t('pm.common.planStartDate') }) }],
+  planEnd: [{ required: true, message: t('common.rule.requiredSelect', { name: t('pm.common.planEndDate') }) }]
 }
 
 /** 上级任务可选范围：排除自己和自己的下级 */
@@ -281,8 +282,8 @@ const parentTree = computed(() => {
 
 const predecessorOptions = computed(() =>
   flattenTasks(tasks.value)
-    .filter((t) => t.id !== taskForm.value.id)
-    .map((t) => ({ value: t.id, label: `${'　'.repeat(t.level)}${t.name}（${t.planEnd} 完成）` }))
+    .filter((task) => task.id !== taskForm.value.id)
+    .map((task) => ({ value: task.id, label: `${'　'.repeat(task.level)}${t('pm.plan.predecessorLabel', { name: task.name, date: task.planEnd })}` }))
 )
 
 function openTask(record, parent) {
@@ -317,7 +318,7 @@ async function saveTask() {
       sort: f.sort ?? 0, description: f.description || null
     }
     f.id ? await updateTask(f.id, payload) : await addTask(payload)
-    message.success('保存成功')
+    message.success(t('common.msg.saveSuccess'))
     taskOpen.value = false
     loadTasks()
   } finally {
@@ -327,7 +328,7 @@ async function saveTask() {
 
 async function removeTask(record) {
   await deleteTask(record.id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   loadTasks()
 }
 </script>

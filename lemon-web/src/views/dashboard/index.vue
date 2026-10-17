@@ -5,7 +5,7 @@
       <div class="hero-main">
         <UserAvatar :src="userStore.user?.avatar" :name="userStore.displayName" :size="52" />
         <div class="hero-text">
-          <h2>{{ greeting() }}，{{ userStore.displayName }}</h2>
+          <h2>{{ $t('dashboard.hello', { greeting: greeting(), name: userStore.displayName }) }}</h2>
           <p>
             {{ today }}
             <template v-if="userStore.roles?.length">
@@ -44,7 +44,7 @@
             <template v-else>{{ Number(c.value) }}<span class="stat-unit"> {{ cardMeta[c.key].unit }}</span></template>
           </div>
           <div v-if="c.previous != null" class="stat-sub">
-            较上月同期
+            {{ $t('dashboard.vsLastMonth') }}
             <span :class="trend(c).cls">{{ trend(c).text }}</span>
           </div>
           <div v-else class="stat-sub">{{ cardMeta[c.key].sub }}</div>
@@ -55,8 +55,8 @@
     <div class="grid">
       <div class="main-col">
         <!-- 功能导航 -->
-        <a-card :bordered="false" class="page-card" title="功能导航">
-          <div v-if="!modules.length" class="empty">暂无可访问的功能</div>
+        <a-card :bordered="false" class="page-card" :title="$t('dashboard.modules')">
+          <div v-if="!modules.length" class="empty">{{ $t('dashboard.noModules') }}</div>
           <div class="modules">
             <div v-for="m in modules" :key="m.path" class="module">
               <div class="module-head">
@@ -73,13 +73,13 @@
 
       <div class="side-col">
         <!-- 待办事项 -->
-        <a-card :bordered="false" class="page-card todo-card" title="待办事项">
+        <a-card :bordered="false" class="page-card todo-card" :title="$t('dashboard.todos')">
           <template #extra>
             <a-button type="text" size="small" :loading="todoLoading" @click="loadTodos"><ReloadOutlined /></a-button>
           </template>
           <div class="card-scroll scroll-hover">
             <a-skeleton v-if="todoLoading && !todos.length" active :paragraph="{ rows: 3 }" />
-            <div v-else-if="!todos.length" class="empty">暂无待办，一切顺利</div>
+            <div v-else-if="!todos.length" class="empty">{{ $t('dashboard.noTodos') }}</div>
             <ul v-else class="list">
               <li v-for="t in todos" :key="t.module + t.title" class="list-item clickable" @click="go(t.link)">
                 <span :class="['dot', t.level]" />
@@ -92,11 +92,11 @@
         </a-card>
 
         <!-- 审批 -->
-        <a-card v-if="userStore.hasPerm('wf:task:todo')" :bordered="false" class="page-card task-card" title="待我审批">
-          <template #extra><router-link to="/workflow/todo">全部</router-link></template>
+        <a-card v-if="userStore.hasPerm('wf:task:todo')" :bordered="false" class="page-card task-card" :title="$t('dashboard.tasks')">
+          <template #extra><router-link to="/workflow/todo">{{ $t('common.status.all') }}</router-link></template>
           <div class="card-scroll scroll-hover">
             <a-skeleton v-if="taskLoading" active :paragraph="{ rows: 2 }" />
-            <div v-else-if="!tasks.length" class="empty">没有待审批的事项</div>
+            <div v-else-if="!tasks.length" class="empty">{{ $t('dashboard.noTasks') }}</div>
             <ul v-else class="list">
               <li v-for="t in tasks" :key="t.taskId" class="list-item clickable" @click="go('/workflow/todo')">
                 <div class="list-main">
@@ -110,11 +110,11 @@
         </a-card>
 
         <!-- 消息 -->
-        <a-card :bordered="false" class="page-card message-card" title="消息通知">
-          <template #extra><router-link to="/messages">全部</router-link></template>
+        <a-card :bordered="false" class="page-card message-card" :title="$t('dashboard.messages')">
+          <template #extra><router-link to="/messages">{{ $t('common.status.all') }}</router-link></template>
           <div class="card-scroll scroll-hover">
             <a-skeleton v-if="msgLoading" active :paragraph="{ rows: 3 }" />
-            <div v-else-if="!messages.length" class="empty">暂无消息</div>
+            <div v-else-if="!messages.length" class="empty">{{ $t('dashboard.noMessages') }}</div>
             <ul v-else class="list">
               <li
                 v-for="m in messages"
@@ -137,6 +137,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ReloadOutlined, RightOutlined } from '@ant-design/icons-vue'
@@ -146,10 +147,13 @@ import { getBusinessCards, getTodos } from '@/api/dashboard'
 import { useElementWidth } from '@/composables/useElementWidth'
 import { pageMessage } from '@/api/system/message'
 import { pageTodoTask } from '@/api/workflow/task'
+import { currentLocale } from '@/locales'
 import { useUserStore } from '@/store/user'
 import { greeting } from '@/utils/format'
 import { flattenPages } from '@/utils/menu'
 import { joinPath } from '@/utils/path'
+
+const { t } = useI18n()
 
 /**
  * 首页工作台：按模块的功能导航、待办事项、待我审批、消息通知。
@@ -158,7 +162,7 @@ import { joinPath } from '@/utils/path'
 const router = useRouter()
 const userStore = useUserStore()
 
-const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
+const today = new Date().toLocaleDateString(currentLocale(), { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
 
 const pages = computed(() => flattenPages(userStore.menus))
 const pagePaths = computed(() => new Set(pages.value.map((p) => p.path)))
@@ -167,10 +171,10 @@ const canVisit = (path) => pagePaths.value.has(path)
 const cardMeta = {
   sales: { icon: 'ShoppingOutlined', color: '#52c41a' },
   purchase: { icon: 'ShoppingCartOutlined', color: '#1677ff' },
-  receivable: { icon: 'RiseOutlined', color: '#fa8c16', sub: '未核销的应收单' },
-  payable: { icon: 'FallOutlined', color: '#722ed1', sub: '未核销的应付单' },
-  toShip: { icon: 'SendOutlined', color: '#13c2c2', unit: '单', sub: '已审核、部分出库' },
-  wip: { icon: 'ProfileOutlined', color: '#eb2f96', unit: '张', sub: '已下达、生产中' }
+  receivable: { icon: 'RiseOutlined', color: '#fa8c16', sub: t('dashboard.card.receivableSub') },
+  payable: { icon: 'FallOutlined', color: '#722ed1', sub: t('dashboard.card.payableSub') },
+  toShip: { icon: 'SendOutlined', color: '#13c2c2', unit: t('dashboard.card.orderUnit'), sub: t('dashboard.card.toShipSub') },
+  wip: { icon: 'ProfileOutlined', color: '#eb2f96', unit: t('dashboard.card.woUnit'), sub: t('dashboard.card.wipSub') }
 }
 const cards = ref([])
 // 经营数据卡片按内容区宽度均匀分行：每张至少 STAT_MIN_WIDTH，各行数量尽量相同（6 张为 6 / 3+3 / 2+2+2，不会出现 4+2）
@@ -187,7 +191,7 @@ const money = (v) => Number(v || 0).toLocaleString('zh-CN', { minimumFractionDig
 function trend(c) {
   const cur = Number(c.value || 0)
   const prev = Number(c.previous || 0)
-  if (!prev) return { text: cur ? '新增' : '持平', cls: 'flat' }
+  if (!prev) return { text: cur ? t('dashboard.trend.new') : t('dashboard.trend.flat'), cls: 'flat' }
   const pct = ((cur - prev) / prev) * 100
   return { text: `${pct >= 0 ? '↑' : '↓'} ${Math.abs(pct).toFixed(1)}%`, cls: pct >= 0 ? 'up' : 'down' }
 }
@@ -195,13 +199,13 @@ function trend(c) {
 /** 快捷操作：常用业务的列表页，按权限显示前 5 个 */
 const quickActions = computed(() =>
   [
-    { path: '/scm/sales', title: '销售订单', icon: 'ShoppingOutlined' },
-    { path: '/scm/purchase', title: '采购订单', icon: 'ShoppingCartOutlined' },
-    { path: '/mes/wo', title: '生产工单', icon: 'ProfileOutlined' },
-    { path: '/wms/stock', title: '库存查询', icon: 'DatabaseOutlined' },
-    { path: '/fin/voucher', title: '凭证', icon: 'FileTextOutlined' },
-    { path: '/fin/claim', title: '费用报销', icon: 'AccountBookOutlined' },
-    { path: '/hr/self', title: '员工自助', icon: 'SmileOutlined' }
+    { path: '/scm/sales', title: t('dashboard.quick.sales'), icon: 'ShoppingOutlined' },
+    { path: '/scm/purchase', title: t('dashboard.quick.purchase'), icon: 'ShoppingCartOutlined' },
+    { path: '/mes/wo', title: t('dashboard.quick.wo'), icon: 'ProfileOutlined' },
+    { path: '/wms/stock', title: t('dashboard.quick.stock'), icon: 'DatabaseOutlined' },
+    { path: '/fin/voucher', title: t('dashboard.quick.voucher'), icon: 'FileTextOutlined' },
+    { path: '/fin/claim', title: t('dashboard.quick.claim'), icon: 'AccountBookOutlined' },
+    { path: '/hr/self', title: t('dashboard.quick.self'), icon: 'SmileOutlined' }
   ].filter((a) => canVisit(a.path)).slice(0, 5)
 )
 

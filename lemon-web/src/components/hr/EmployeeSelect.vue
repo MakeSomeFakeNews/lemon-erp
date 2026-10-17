@@ -8,7 +8,7 @@
     :filter-option="false"
     :options="options"
     :loading="loading"
-    :not-found-content="loading ? '加载中…' : '没有匹配的员工'"
+    :not-found-content="loading ? $t('common.msg.loading') : $t('hr.employeeSelect.notFound')"
     @search="onSearch"
     @focus="onFocus"
     @change="(v) => emit('update:value', v ?? null)"
@@ -17,6 +17,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { t } from '@/locales'
 import { employeeOptions } from '@/api/hr'
 
 /**
@@ -28,7 +29,7 @@ const props = defineProps({
   value: [Number, Array],
   label: String,
   multiple: Boolean,
-  placeholder: { type: String, default: '搜索工号或姓名' }
+  placeholder: { type: String, default: () => t('hr.employeeSelect.placeholder') }
 })
 const emit = defineEmits(['update:value'])
 

@@ -1,21 +1,21 @@
 <template>
-  <a-drawer :open="open" :title="material ? `多规格 · ${material.code} ${material.name}` : ''" width="min(860px, 100vw)" destroy-on-close @close="emit('update:open', false)">
+  <a-drawer :open="open" :title="material ? `${$t('wms.variant.title')} · ${material.code} ${material.name}` : ''" width="min(860px, 100vw)" destroy-on-close @close="emit('update:open', false)">
     <a-spin :spinning="loading">
       <a-alert
         v-if="!isTemplate"
         type="info"
         show-icon
         class="tip"
-        message="选择规格属性和属性值后生成 SKU：每个 SKU 是一个独立的物料（编码 = 款式编码-属性值编码），继承本物料的单位、分类、批次 / 序列号管理、计价方法等；生成后本物料成为款式，不能再直接出入库。"
+        :message="$t('wms.variant.tip')"
       />
-      <div class="section-title">规格属性</div>
+      <div class="section-title">{{ $t('wms.variant.attributes') }}</div>
       <a-select
         v-if="!isTemplate"
         v-model:value="selectedAttrs"
         mode="multiple"
         :options="attrOptions"
         :max-tag-count="3"
-        placeholder="选择规格属性（最多 3 个），如 颜色、尺码"
+        :placeholder="$t('wms.variant.attrPlaceholder')"
         class="full attr-select"
         @change="onAttrsChange"
       />
@@ -24,17 +24,17 @@
         <a-checkbox-group v-model:value="checked[a.id]">
           <a-checkbox v-for="v in a.values" :key="v.id" :value="v.id" :disabled="usedValues.has(v.id)">{{ v.value }}</a-checkbox>
         </a-checkbox-group>
-        <a-button v-if="!isTemplate || a.values.some((v) => !usedValues.has(v.id))" type="link" size="small" @click="checkAll(a)">全选</a-button>
+        <a-button v-if="!isTemplate || a.values.some((v) => !usedValues.has(v.id))" type="link" size="small" @click="checkAll(a)">{{ $t('wms.variant.selectAll') }}</a-button>
       </div>
       <div v-if="canGenerate" class="generate">
-        <span>将新增 <b>{{ newCount }}</b> 个 SKU</span>
-        <a-button v-perm="'wms:material:add'" type="primary" :disabled="!newCount" :loading="generating" @click="generate">生成 SKU</a-button>
-        <span class="sub-text">规格属性可在「仓库 → 基础资料 → 规格属性」中维护</span>
+        <i18n-t keypath="wms.variant.willAdd" tag="span"><template #n><b>{{ newCount }}</b></template></i18n-t>
+        <a-button v-perm="'wms:material:add'" type="primary" :disabled="!newCount" :loading="generating" @click="generate">{{ $t('wms.variant.generate') }}</a-button>
+        <span class="sub-text">{{ $t('wms.variant.attrTip') }}</span>
       </div>
 
       <template v-if="isTemplate && matrix">
         <div class="section-title matrix-title">
-          SKU（{{ matrix.variants.length }} 个）<span v-if="stock" class="sub-text">· 格子中为全部仓库（不含不良品仓）的库存</span>
+          {{ $t('wms.variant.skuCount', { n: matrix.variants.length }) }}<span v-if="stock" class="sub-text">{{ $t('wms.variant.stockTip') }}</span>
         </div>
         <!-- 两个属性：二维矩阵 -->
         <div v-if="matrix.attributes.length === 2" class="matrix-wrap">
@@ -43,7 +43,7 @@
               <tr>
                 <th>{{ matrix.attributes[0].name }} \ {{ matrix.attributes[1].name }}</th>
                 <th v-for="c in matrix.attributes[1].values" :key="c.id">{{ c.value }}</th>
-                <th v-if="stock">合计</th>
+                <th v-if="stock">{{ $t('common.field.total') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -65,7 +65,7 @@
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'stock'">{{ formatQty(stock?.[record.id] || 0) }}</template>
             <template v-else-if="column.key === 'status'">
-              <a-tag :color="record.status === 0 ? 'default' : 'green'" :bordered="false">{{ record.status === 0 ? '停用' : '启用' }}</a-tag>
+              <a-tag :color="record.status === 0 ? 'default' : 'green'" :bordered="false">{{ record.status === 0 ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
             </template>
           </template>
         </a-table>
@@ -79,6 +79,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { attributes, generateVariants, materialVariants, variantStock } from '@/api/wms/material'
 import { formatQty } from '@/components/wms/wms'
+import { t } from '@/locales'
 import { useUserStore } from '@/store/user'
 
 /**
@@ -115,10 +116,10 @@ const newCount = computed(() => {
 })
 
 const variantColumns = [
-  { title: 'SKU 编码', dataIndex: 'code', width: 200 },
-  { title: '规格', dataIndex: 'variantText' },
-  { title: '库存', key: 'stock', width: 110, align: 'right' },
-  { title: '状态', key: 'status', width: 80 }
+  { title: t('wms.variant.skuCode'), dataIndex: 'code', width: 200 },
+  { title: t('common.field.spec'), dataIndex: 'variantText' },
+  { title: t('wms.variant.stock'), key: 'stock', width: 110, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 90 }
 ]
 
 const cell = (r, c) =>
@@ -165,7 +166,7 @@ async function generate() {
   generating.value = true
   try {
     const n = await generateVariants(props.material.id, valueIds)
-    message.success(`已生成 ${n} 个 SKU`)
+    message.success(t('wms.variant.generated', { n }))
     emit('generated')
     // 成为款式后重新加载矩阵
     props.material.isTemplate = 1

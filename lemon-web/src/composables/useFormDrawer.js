@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Modal, message } from 'ant-design-vue'
+import { t } from '@/locales'
 
 /** 提交时默认去掉的只读字段 */
 const READONLY_FIELDS = ['createTime', 'updateTime', 'children']
@@ -22,7 +23,7 @@ const omit = (obj, keys) => Object.fromEntries(Object.entries(obj).filter(([k]) 
  * @param {Function} [options.onSuccess] 保存成功后回调，一般用于刷新列表
  */
 export function useFormDrawer(options) {
-  const { emptyForm, beforeOpen, fetch, create, update, toPayload, onSuccess, successMessage = '保存成功' } = options
+  const { emptyForm, beforeOpen, fetch, create, update, toPayload, onSuccess, successMessage = t('common.msg.saveSuccess') } = options
 
   const open = ref(false)
   const loading = ref(false)
@@ -91,11 +92,11 @@ export function useFormDrawer(options) {
       return
     }
     Modal.confirm({
-      title: '放弃未保存的修改？',
-      content: '关闭后，本次填写的内容将会丢失。',
-      okText: '放弃修改',
+      title: t('system.role.discardTitle'),
+      content: t('components.formDrawer.discardContent'),
+      okText: t('common.action.discard'),
       okType: 'danger',
-      cancelText: '继续编辑',
+      cancelText: t('system.role.keepEditing'),
       onOk: () => (open.value = false)
     })
   }

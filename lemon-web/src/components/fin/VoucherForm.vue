@@ -1,35 +1,35 @@
 <template>
-  <FormDrawer page :drawer="drawer" create-title="新增凭证" edit-title="编辑凭证" width="min(1200px, 100vw)">
+  <FormDrawer page :drawer="drawer" :create-title="$t('fin.voucherForm.createTitle')" :edit-title="$t('fin.voucherForm.editTitle')" width="min(1200px, 100vw)">
     <a-form ref="formRef" :model="form" layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="12" :sm="6">
-          <a-form-item label="凭证日期" name="voucherDate" :rules="[{ required: true, message: '请选择日期' }]">
+          <a-form-item :label="$t('fin.voucherForm.voucherDate')" name="voucherDate" :rules="[{ required: true, message: $t('fin.voucherForm.dateRequired') }]">
             <a-date-picker v-model:value="form.voucherDate" value-format="YYYY-MM-DD" class="full" />
           </a-form-item>
         </a-col>
         <a-col :xs="12" :sm="4">
-          <a-form-item label="附单据数" name="attachmentCount">
-            <a-input-number v-model:value="form.attachmentCount" :min="0" :max="999" addon-after="张" class="full" />
+          <a-form-item :label="$t('fin.voucherForm.attachmentCount')" name="attachmentCount">
+            <a-input-number v-model:value="form.attachmentCount" :min="0" :max="999" :addon-after="$t('fin.voucherForm.sheets')" class="full" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="14" class="balance">
-          <span>借方合计 <b>{{ formatMoney(totalDebit) }}</b></span>
-          <span>贷方合计 <b>{{ formatMoney(totalCredit) }}</b></span>
-          <a-tag v-if="diff === 0 && totalDebit > 0" color="green" :bordered="false">借贷平衡</a-tag>
-          <a-tag v-else-if="diff !== 0" color="red" :bordered="false">差额 {{ formatMoney(Math.abs(diff)) }}</a-tag>
+          <span>{{ $t('fin.voucherForm.totalDebit') }} <b>{{ formatMoney(totalDebit) }}</b></span>
+          <span>{{ $t('fin.voucherForm.totalCredit') }} <b>{{ formatMoney(totalCredit) }}</b></span>
+          <a-tag v-if="diff === 0 && totalDebit > 0" color="green" :bordered="false">{{ $t('fin.voucherForm.balanced') }}</a-tag>
+          <a-tag v-else-if="diff !== 0" color="red" :bordered="false">{{ $t('fin.voucherForm.diff', { amount: formatMoney(Math.abs(diff)) }) }}</a-tag>
         </a-col>
       </a-row>
 
-      <a-table row-key="key" size="small" class="entries" :columns="columns" :data-source="form.entries" :pagination="false" :scroll="{ x: 1320 }">
+      <a-table row-key="key" size="small" class="entries" :columns="columns" :data-source="form.entries" :pagination="false" :scroll="{ x: 1340 }">
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'seq'">{{ index + 1 }}</template>
           <template v-else-if="column.key === 'summary'">
-            <a-form-item :name="['entries', index, 'summary']" :rules="[{ required: true, whitespace: true, message: '请填写摘要' }]" class="cell">
-              <a-input v-model:value="record.summary" :maxlength="255" placeholder="摘要" @focus="copySummary(index)" />
+            <a-form-item :name="['entries', index, 'summary']" :rules="[{ required: true, whitespace: true, message: $t('fin.voucherForm.summaryRequired') }]" class="cell">
+              <a-input v-model:value="record.summary" :maxlength="255" :placeholder="$t('fin.voucherForm.summary')" @focus="copySummary(index)" />
             </a-form-item>
           </template>
           <template v-else-if="column.key === 'accountId'">
-            <a-form-item :name="['entries', index, 'accountId']" :rules="[{ required: true, message: '请选择科目' }]" class="cell">
+            <a-form-item :name="['entries', index, 'accountId']" :rules="[{ required: true, message: $t('fin.voucherForm.accountRequired') }]" class="cell">
               <AccountSelect :value="record.accountId" @update:value="(v) => changeAccount(record, v)" />
             </a-form-item>
           </template>
@@ -39,12 +39,12 @@
                 v-for="a in visibleAux(record)"
                 :key="a.value"
                 :name="['entries', index, a.key]"
-                :rules="[{ required: isRequired(record, a.value), message: `请选择${a.label}` }]"
+                :rules="[{ required: isRequired(record, a.value), message: $t('common.placeholder.selectName', { name: a.label }) }]"
                 class="cell aux-item"
               >
                 <div class="aux-row">
                   <span :class="['aux-label', { required: isRequired(record, a.value) }]">{{ a.label }}</span>
-                  <DeptSelect v-if="a.value === 'DEPT'" v-model:value="record.deptId" :placeholder="isRequired(record, 'DEPT') ? '必填' : '选填'" class="aux-input" />
+                  <DeptSelect v-if="a.value === 'DEPT'" v-model:value="record.deptId" :placeholder="isRequired(record, 'DEPT') ? $t('fin.voucherForm.required') : $t('fin.voucherForm.optional')" class="aux-input" />
                   <PartnerSelect
                     v-else-if="a.value === 'CUSTOMER' || a.value === 'SUPPLIER'"
                     v-model:value="record[a.key]"
@@ -53,14 +53,14 @@
                     class="aux-input"
                   />
                   <ProjectSelect v-else-if="a.value === 'PROJECT'" v-model:value="record.projectId" class="aux-input" />
-                  <MaterialSelect v-else v-model:value="record.materialId" :label="record.materialName" placeholder="搜索存货编码或名称" class="aux-input" />
-                  <a-button v-if="a.value !== 'DEPT' && !isRequired(record, a.value)" type="text" size="small" title="移除" @click="removeAux(record, a)">
+                  <MaterialSelect v-else v-model:value="record.materialId" :label="record.materialName" :placeholder="$t('fin.voucherForm.materialPlaceholder')" class="aux-input" />
+                  <a-button v-if="a.value !== 'DEPT' && !isRequired(record, a.value)" type="text" size="small" :title="$t('fin.voucherForm.remove')" @click="removeAux(record, a)">
                     <CloseOutlined />
                   </a-button>
                 </div>
               </a-form-item>
               <a-dropdown v-if="addableAux(record).length" :trigger="['click']">
-                <a class="aux-add"><PlusOutlined /> 辅助核算</a>
+                <a class="aux-add"><PlusOutlined /> {{ $t('fin.voucherForm.aux') }}</a>
                 <template #overlay>
                   <a-menu @click="({ key }) => record.extraAux.push(key)">
                     <a-menu-item v-for="a in addableAux(record)" :key="a.value">{{ a.label }}</a-menu-item>
@@ -98,9 +98,9 @@
       </a-table>
       <div class="entries-foot">
         <a-button type="dashed" @click="addRow">
-          <template #icon><PlusOutlined /></template>添加分录
+          <template #icon><PlusOutlined /></template>{{ $t('fin.voucherForm.addEntry') }}
         </a-button>
-        <span class="sub-text">摘要获得焦点时自动带出上一行；双击借方 / 贷方金额自动补平差额。只能选择末级科目，科目上设置的辅助核算必填。</span>
+        <span class="sub-text">{{ $t('fin.voucherForm.tip') }}</span>
       </div>
     </a-form>
   </FormDrawer>
@@ -120,17 +120,18 @@ import { accountOptions, addVoucher, getVoucher, updateVoucher } from '@/api/fin
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { rowKey, today } from '@/components/wms/wms'
 import { AUX_ITEMS, auxItemsOf, cached, formatMoney } from './fin'
+import { t } from '@/locales'
 
 /** 新增 / 编辑凭证（未审核的手工凭证）。通过 ref 调用 openCreate() / openEdit(record)，保存后触发 success */
 const emit = defineEmits(['success'])
 
 const columns = [
   { title: '#', key: 'seq', width: 40 },
-  { title: '摘要', key: 'summary', width: 260 },
-  { title: '会计科目', key: 'accountId', width: 280 },
-  { title: '辅助核算', key: 'aux', width: 380 },
-  { title: '借方金额', key: 'debit', width: 150 },
-  { title: '贷方金额', key: 'credit', width: 150 },
+  { title: t('fin.voucherForm.summary'), key: 'summary', width: 260 },
+  { title: t('fin.voucherForm.account'), key: 'accountId', width: 280 },
+  { title: t('fin.voucherForm.aux'), key: 'aux', width: 400 },
+  { title: t('fin.voucherForm.debit'), key: 'debit', width: 150 },
+  { title: t('fin.voucherForm.credit'), key: 'credit', width: 150 },
   { title: '', key: 'action', width: 50 }
 ]
 
@@ -204,8 +205,8 @@ const drawer = useFormDrawer({
   },
   toPayload: (f) => {
     if (diff.value !== 0) {
-      message.error('借贷不平衡')
-      throw new Error('借贷不平衡')
+      message.error(t('fin.voucherForm.unbalanced'))
+      throw new Error('unbalanced')
     }
     return {
       voucherDate: f.voucherDate,
@@ -291,7 +292,7 @@ defineExpose({ openCreate: drawer.openCreate, openEdit: drawer.openEdit })
   gap: 4px;
 }
 .aux-label {
-  width: 48px;
+  width: 72px;
   flex: none;
   font-size: 12px;
   color: var(--app-text-2);

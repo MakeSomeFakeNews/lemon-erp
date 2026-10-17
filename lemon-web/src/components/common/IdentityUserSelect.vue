@@ -3,6 +3,7 @@
 </template>
 
 <script setup>
+import { t } from '@/locales'
 import UserSelect from '@/components/user/UserSelect.vue'
 import { pageIdentityUsers } from '@/api/workflow/identity'
 
@@ -12,7 +13,7 @@ import { pageIdentityUsers } from '@/api/workflow/identity'
 defineProps({
   value: Number,
   label: String,
-  placeholder: { type: String, default: '搜索用户名或昵称' }
+  placeholder: { type: String, default: () => t('components.user.searchPlaceholder') }
 })
 const emit = defineEmits(['update:value'])
 </script>

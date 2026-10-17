@@ -7,13 +7,13 @@
       <a-col v-bind="colProps" class="search-actions" :class="{ 'push-right': true }">
         <a-space>
           <a-button type="primary" html-type="submit">
-            <template #icon><SearchOutlined /></template>查询
+            <template #icon><SearchOutlined /></template>{{ $t('common.action.query') }}
           </a-button>
           <a-button @click="emit('reset')">
-            <template #icon><UndoOutlined /></template>重置
+            <template #icon><UndoOutlined /></template>{{ $t('common.action.reset') }}
           </a-button>
           <a v-if="items.length > collapsedCount" class="toggle" @click="expanded = !expanded">
-            {{ expanded ? '收起' : '展开' }}
+            {{ expanded ? $t('common.action.collapse') : $t('common.action.expand') }}
             <DownOutlined :class="['toggle-icon', { up: expanded }]" />
           </a>
         </a-space>

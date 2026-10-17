@@ -57,7 +57,7 @@ public class WmsWarehouseController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('wms:warehouse:add')")
-    @OperLog(title = "仓库管理", type = OperType.INSERT)
+    @OperLog(title = "仓库管理", type = OperType.INSERT) // i18n-ignore
     public R<Void> create(@Validated(Create.class) @RequestBody WmsWarehouse warehouse) {
         warehouseService.create(warehouse);
         return R.ok();
@@ -65,7 +65,7 @@ public class WmsWarehouseController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('wms:warehouse:edit')")
-    @OperLog(title = "仓库管理", type = OperType.UPDATE)
+    @OperLog(title = "仓库管理", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody WmsWarehouse warehouse) {
         warehouseService.update(id, warehouse);
         return R.ok();
@@ -73,7 +73,7 @@ public class WmsWarehouseController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('wms:warehouse:edit')")
-    @OperLog(title = "仓库管理-修改状态", type = OperType.UPDATE)
+    @OperLog(title = "仓库管理-修改状态", type = OperType.UPDATE) // i18n-ignore
     public R<Void> changeStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
         warehouseService.changeStatus(id, req.status());
         return R.ok();
@@ -81,7 +81,7 @@ public class WmsWarehouseController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('wms:warehouse:remove')")
-    @OperLog(title = "仓库管理", type = OperType.DELETE)
+    @OperLog(title = "仓库管理", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         warehouseService.delete(ids);
         return R.ok();

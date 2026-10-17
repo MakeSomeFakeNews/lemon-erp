@@ -1,9 +1,9 @@
 <template>
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
-      <template #title>业务参数</template>
+      <template #title>{{ $t('system.bizRule.title') }}</template>
       <template #extra>
-        <span class="sub-text">各模块的业务控制规则，只对当前企业（租户）生效；修改后立即生效</span>
+        <span class="sub-text">{{ $t('system.bizRule.subtitle') }}</span>
       </template>
       <div v-if="loading && !groups.length" class="page-spin"><a-spin /></div>
       <a-tabs v-model:active-key="group">
@@ -11,8 +11,8 @@
           <div v-for="item in g.items" :key="item.key" class="config-item">
             <div class="config-label">
               {{ item.label }}
-              <a-tag v-if="item.modified" color="blue" :bordered="false" class="ml">已修改</a-tag>
-              <a-tag v-if="edits[item.key] !== item.value" color="orange" :bordered="false" class="ml">未保存</a-tag>
+              <a-tag v-if="item.modified" color="blue" :bordered="false" class="ml">{{ $t('system.config.modified') }}</a-tag>
+              <a-tag v-if="edits[item.key] !== item.value" color="orange" :bordered="false" class="ml">{{ $t('system.config.unsaved') }}</a-tag>
             </div>
             <div class="config-control">
               <a-switch
@@ -34,17 +34,17 @@
                 class="number"
                 @change="(v) => (edits[item.key] = v == null ? '' : String(v))"
               />
-              <a v-if="canEdit && edits[item.key] !== item.defaultValue" class="reset" @click="edits[item.key] = item.defaultValue">恢复默认</a>
+              <a v-if="canEdit && edits[item.key] !== item.defaultValue" class="reset" @click="edits[item.key] = item.defaultValue">{{ $t('system.config.restoreDefault') }}</a>
             </div>
             <div class="sub-text">
-              <span v-if="item.remark">{{ item.remark }}。</span>默认：{{ display(item, item.defaultValue) }}
+              <span v-if="item.remark">{{ $t('system.config.remark', { remark: item.remark }) }}</span>{{ $t('system.config.default', { value: display(item, item.defaultValue) }) }}
             </div>
           </div>
         </a-tab-pane>
       </a-tabs>
       <div v-if="canEdit" class="config-actions">
-        <a-button :disabled="!dirtyKeys.length" @click="discard">放弃修改</a-button>
-        <a-button type="primary" :loading="saving" :disabled="!dirtyKeys.length" @click="save">保存（{{ dirtyKeys.length }}）</a-button>
+        <a-button :disabled="!dirtyKeys.length" @click="discard">{{ $t('common.action.discard') }}</a-button>
+        <a-button type="primary" :loading="saving" :disabled="!dirtyKeys.length" @click="save">{{ $t('system.config.saveN', { n: dirtyKeys.length }) }}</a-button>
       </div>
     </a-card>
   </div>
@@ -53,10 +53,12 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { listBizRules, saveBizRules } from '@/api/system/customField'
 import { useUserStore } from '@/store/user'
 
 /** 业务参数：按模块分组显示各模块登记的业务控制规则（按租户），只提交修改过的 */
+const { t } = useI18n()
 const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPerm('sys:bizRule:edit'))
 const items = ref([])
@@ -76,7 +78,7 @@ const groups = computed(() => {
 const dirtyKeys = computed(() => items.value.filter((i) => edits[i.key] !== i.value).map((i) => i.key))
 
 function display(item, value) {
-  if (item.type === 'BOOL') return value === 'true' ? '开启' : '关闭'
+  if (item.type === 'BOOL') return value === 'true' ? t('system.config.on') : t('system.config.off')
   if (item.type === 'SELECT') return item.options.find((o) => o.value === value)?.label || value
   return value
 }
@@ -101,7 +103,7 @@ async function save() {
   saving.value = true
   try {
     await saveBizRules(data)
-    message.success('已保存')
+    message.success(t('common.msg.saved'))
     load()
   } finally {
     saving.value = false

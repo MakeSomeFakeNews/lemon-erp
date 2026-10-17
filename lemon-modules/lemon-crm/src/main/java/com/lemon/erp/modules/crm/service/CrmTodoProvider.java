@@ -19,8 +19,8 @@ import java.util.Map;
 public class CrmTodoProvider implements TodoProvider {
 
     private static final List<Def> DEFS = List.of(
-            new Def("followDue", "crm:customer:list", "今天需要跟进的客户", "/crm/customer", "warning"),
-            new Def("ticketMine", "crm:ticket:list", "我处理中的服务工单", "/crm/ticket", "info")
+            new Def("followDue", "crm:customer:list", "今天需要跟进的客户", "/crm/customer", "warning"), // i18n-ignore 首页汇总处翻译
+            new Def("ticketMine", "crm:ticket:list", "我处理中的服务工单", "/crm/ticket", "info") // i18n-ignore 首页汇总处翻译
     );
 
     private final CrmTodoMapper todoMapper;

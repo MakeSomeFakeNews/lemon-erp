@@ -27,7 +27,7 @@ public final class TenantContext {
     public static Long require() {
         Long tenantId = TENANT.get();
         if (tenantId == null) {
-            throw new IllegalStateException("当前操作缺少租户上下文");
+            throw new IllegalStateException("当前操作缺少租户上下文"); // i18n-ignore 内部错误，不返回给前端
         }
         return tenantId;
     }

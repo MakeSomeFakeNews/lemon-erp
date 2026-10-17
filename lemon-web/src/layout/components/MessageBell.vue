@@ -1,7 +1,7 @@
 <template>
   <a-popover v-model:open="open" trigger="click" placement="bottomRight" :overlay-inner-style="{ padding: 0 }" @open-change="onOpen">
     <!-- 面板打开时不显示提示，避免遮住「全部已读」 -->
-    <a-tooltip :title="open ? null : '消息'">
+    <a-tooltip :title="open ? null : $t('message.message')">
       <a-button type="text" class="header-btn">
         <template #icon>
           <a-badge :count="count" :overflow-count="99" size="small" :offset="[2, -2]">
@@ -13,11 +13,11 @@
     <template #content>
       <div class="panel">
         <div class="panel-head">
-          <span>未读消息<span v-if="count" class="head-count">{{ count }}</span></span>
-          <a-button type="link" size="small" :disabled="!count" @click="readAll">全部已读</a-button>
+          <span>{{ $t('components.layout.unreadMessages') }}<span v-if="count" class="head-count">{{ count }}</span></span>
+          <a-button type="link" size="small" :disabled="!count" @click="readAll">{{ $t('message.markAllRead') }}</a-button>
         </div>
         <a-spin :spinning="loading">
-          <div v-if="!list.length" class="empty">没有未读消息</div>
+          <div v-if="!list.length" class="empty">{{ $t('components.layout.noUnread') }}</div>
           <!-- 列表区域固定高度（约 4-5 条），更多消息上下滚动 -->
           <div v-else class="list">
             <div v-for="m in list" :key="m.id" class="item" @click="go(m)">
@@ -28,11 +28,11 @@
               <div v-if="m.content && m.content !== m.title" class="item-content">{{ m.content }}</div>
               <div class="item-time">{{ m.createTime }}</div>
             </div>
-            <div v-if="count > list.length" class="more" @click="goAll">还有 {{ count - list.length }} 条未读，查看全部</div>
+            <div v-if="count > list.length" class="more" @click="goAll">{{ $t('components.layout.moreUnread', { n: count - list.length }) }}</div>
           </div>
         </a-spin>
         <div class="panel-foot">
-          <a @click="goAll">查看全部消息</a>
+          <a @click="goAll">{{ $t('components.layout.viewAll') }}</a>
         </div>
       </div>
     </template>

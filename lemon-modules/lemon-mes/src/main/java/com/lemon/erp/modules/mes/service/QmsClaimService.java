@@ -3,6 +3,7 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.QmsRequests;
@@ -94,8 +95,8 @@ public class QmsClaimService {
         transit(id, ClaimStatus.DRAFT, ClaimStatus.CONFIRMED);
         eventPublisher.publishEvent(new SupplierClaimConfirmedEvent(id, claim.getClaimNo(), claim.getSupplierId(), claim.getAmount(),
                 claim.getClaimDate(), claim.getReason()));
-        portalNotifier.notify(claim.getSupplierId(), "ALERT", "质量索赔：" + claim.getClaimNo(),
-                "索赔金额 " + claim.getAmount().stripTrailingZeros().toPlainString() + "，原因：" + claim.getReason(), "/portal/claim");
+        portalNotifier.notify(claim.getSupplierId(), "ALERT", "质量索赔：" + claim.getClaimNo(), // i18n-ignore
+                "索赔金额 " + claim.getAmount().stripTrailingZeros().toPlainString() + "，原因：" + claim.getReason(), "/portal/claim"); // i18n-ignore
     }
 
     /** 取消已确认的索赔：删除红字应付单 */
@@ -144,7 +145,7 @@ public class QmsClaimService {
             throw new BizException("索赔单不存在");
         }
         if (claim.getStatus() != status) {
-            throw new BizException("索赔单当前状态不能" + action);
+            throw new BizException("索赔单当前状态不能{0}", I18n.t(action));
         }
         return claim;
     }

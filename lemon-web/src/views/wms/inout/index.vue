@@ -2,17 +2,17 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="日期" name="range">
+        <a-form-item :label="$t('common.field.date')" name="range">
           <a-range-picker v-model:value="query.range" value-format="YYYY-MM-DD" :allow-clear="false" />
         </a-form-item>
-        <a-form-item label="仓库" name="warehouseId">
-          <WarehouseSelect v-model:value="query.warehouseId" placeholder="全部" />
+        <a-form-item :label="$t('wms.common.warehouse')" name="warehouseId">
+          <WarehouseSelect v-model:value="query.warehouseId" :placeholder="$t('common.placeholder.all')" />
         </a-form-item>
-        <a-form-item label="物料" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="编码或名称" allow-clear />
+        <a-form-item :label="$t('wms.common.material')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('wms.flow.codeOrName')" allow-clear />
         </a-form-item>
-        <a-form-item label="分类" name="category">
-          <a-select v-model:value="query.category" placeholder="全部" allow-clear :options="toOptions(dict.wms_material_category)" />
+        <a-form-item :label="$t('wms.inout.category')" name="category">
+          <a-select v-model:value="query.category" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_material_category)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -26,7 +26,7 @@
         :columns="COLUMNS"
         @refresh="load"
       >
-        <span class="sub-text">按单据业务日期统计（基本单位）；不选仓库时不含调拨，选择仓库时调入、调出计入其他入库、其他出库</span>
+        <span class="sub-text">{{ $t('wms.inout.tip') }}</span>
       </TableToolbar>
 
       <a-table
@@ -37,7 +37,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1700, y: '100%' }"
+        :scroll="{ x: 1950, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -61,6 +61,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -73,25 +74,27 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+const { t } = useI18n()
+
 /** 收发存汇总：日期范围内各物料的期初、各类入库、各类出库和期末数量 */
 const dict = useDict('wms_material_category')
 
-const q = (title, key, extra = {}) => ({ title, key, dataIndex: key, width: 100, align: 'right', qty: true, ...extra })
+const q = (title, key, extra = {}) => ({ title, key, dataIndex: key, width: 120, align: 'right', qty: true, ...extra })
 const COLUMNS = [
-  { title: '物料', key: 'material', width: 200, fixed: 'left' },
-  { title: '规格型号', dataIndex: 'spec', width: 130, ellipsis: true },
-  { title: '分类', key: 'category', width: 90, dict: 'wms_material_category' },
-  { title: '单位', dataIndex: 'unit', width: 60 },
-  q('期初', 'openQty', { bold: true }),
-  q('采购入库', 'purchaseIn'),
-  q('完工入库', 'productionIn'),
-  q('销售退货', 'salesReturn'),
-  q('其他入库', 'otherIn'),
-  q('销售出库', 'salesOut'),
-  q('生产领料', 'productionOut'),
-  q('采购退货', 'purchaseReturn'),
-  q('其他出库', 'otherOut'),
-  q('期末', 'closeQty', { bold: true, fixed: 'right' })
+  { title: t('wms.common.material'), key: 'material', width: 200, fixed: 'left' },
+  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 130, ellipsis: true },
+  { title: t('wms.inout.category'), key: 'category', width: 100, dict: 'wms_material_category' },
+  { title: t('common.field.unit'), dataIndex: 'unit', width: 60 },
+  q(t('wms.inout.openQty'), 'openQty', { bold: true }),
+  q(t('wms.inout.purchaseIn'), 'purchaseIn'),
+  q(t('wms.inout.productionIn'), 'productionIn'),
+  q(t('wms.inout.salesReturn'), 'salesReturn'),
+  q(t('wms.inout.otherIn'), 'otherIn'),
+  q(t('wms.inout.salesOut'), 'salesOut'),
+  q(t('wms.inout.productionOut'), 'productionOut'),
+  q(t('wms.inout.purchaseReturn'), 'purchaseReturn'),
+  q(t('wms.inout.otherOut'), 'otherOut'),
+  q(t('wms.inout.closeQty'), 'closeQty', { bold: true, fixed: 'right' })
 ]
 const { checked, visibleColumns } = useColumns(COLUMNS, 'wms-inout')
 const showSearch = ref(true)

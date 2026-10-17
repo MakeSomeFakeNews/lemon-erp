@@ -1,7 +1,7 @@
 <template>
   <a-modal
     :open="open"
-    :title="`调整部门（${userIds.length} 人）`"
+    :title="$t('components.user.moveTitle', { n: userIds.length })"
     :confirm-loading="saving"
     :ok-button-props="{ disabled: deptId == null }"
     destroy-on-close
@@ -9,25 +9,26 @@
     @cancel="emit('update:open', false)"
   >
     <a-form layout="vertical">
-      <a-form-item label="目标部门" required>
+      <a-form-item :label="$t('components.user.targetDept')" required>
         <a-tree-select
           v-model:value="deptId"
           :tree-data="options"
           :field-names="{ label: 'name', value: 'id', children: 'children' }"
-          placeholder="请选择部门"
+          :placeholder="$t('common.placeholder.selectName', { name: $t('common.field.dept') })"
           tree-default-expand-all
           show-search
           tree-node-filter-prop="name"
         />
       </a-form-item>
     </a-form>
-    <a-alert type="info" show-icon message="调整后，用户的「本部门」类数据权限会按新部门立即生效。" />
+    <a-alert type="info" show-icon :message="$t('components.user.moveTip')" />
   </a-modal>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { changeUserDept } from '@/api/system/user'
 import { mapTree } from '@/utils/tree'
 
@@ -40,6 +41,7 @@ const props = defineProps({
   defaultDeptId: Number
 })
 const emit = defineEmits(['update:open', 'success'])
+const { t } = useI18n()
 
 const deptId = ref()
 const saving = ref(false)
@@ -55,7 +57,7 @@ async function submit() {
   saving.value = true
   try {
     await changeUserDept(props.userIds, deptId.value)
-    message.success('部门已调整')
+    message.success(t('components.user.moved'))
     emit('update:open', false)
     emit('success', deptId.value)
   } finally {

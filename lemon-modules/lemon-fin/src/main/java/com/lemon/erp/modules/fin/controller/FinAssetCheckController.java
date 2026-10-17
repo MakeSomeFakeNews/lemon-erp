@@ -47,7 +47,7 @@ public class FinAssetCheckController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('fin:assetCheck:add')")
-    @OperLog(title = "资产盘点", type = OperType.INSERT)
+    @OperLog(title = "资产盘点", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody AssetCheckRequests.Create req) {
         return R.ok(checkService.create(req));
     }
@@ -61,7 +61,7 @@ public class FinAssetCheckController {
 
     @PostMapping("/{id}/gains")
     @PreAuthorize("@ss.hasPerm('fin:assetCheck:edit')")
-    @OperLog(title = "资产盘点-盘盈", type = OperType.INSERT)
+    @OperLog(title = "资产盘点-盘盈", type = OperType.INSERT) // i18n-ignore
     public R<Void> addGain(@PathVariable Long id, @Valid @RequestBody AssetCheckRequests.Gain req) {
         checkService.addGain(id, req);
         return R.ok();
@@ -77,14 +77,14 @@ public class FinAssetCheckController {
     /** 完成盘点，返回盘亏处置的资产数 */
     @PostMapping("/{id}/finish")
     @PreAuthorize("@ss.hasPerm('fin:assetCheck:edit')")
-    @OperLog(title = "资产盘点-完成", type = OperType.UPDATE)
+    @OperLog(title = "资产盘点-完成", type = OperType.UPDATE) // i18n-ignore
     public R<Integer> finish(@PathVariable Long id) {
         return R.ok(checkService.finish(id));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('fin:assetCheck:remove')")
-    @OperLog(title = "资产盘点", type = OperType.DELETE)
+    @OperLog(title = "资产盘点", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
         checkService.delete(id);
         return R.ok();

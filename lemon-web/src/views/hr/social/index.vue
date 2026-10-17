@@ -3,12 +3,12 @@
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" @refresh="load">
         <a-button v-perm="'hr:social:edit'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新增方案
+          <template #icon><PlusOutlined /></template>{{ $t('hr.social.add') }}
         </a-button>
         <a-alert
           type="info"
           show-icon
-          message="在「薪资档案」中为员工选择社保方案；未选择方案的员工按默认比例计算（个人 10.5%、单位 26%）。缴费基数按方案的上下限截取，上限为 0 表示不限。"
+          :message="$t('hr.social.tip')"
         />
       </TableToolbar>
       <a-table
@@ -18,7 +18,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="false"
-        :scroll="{ x: 1500, y: '100%' }"
+        :scroll="{ x: 1700, y: '100%' }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
@@ -36,14 +36,14 @@
           <template v-else-if="column.key === 'personalTotal'"><b>{{ pct(personalTotal(record)) }}</b></template>
           <template v-else-if="column.key === 'companyTotal'"><b>{{ pct(companyTotal(record)) }}</b></template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="record.status === 1 ? 'green' : 'default'" :bordered="false">{{ record.status === 1 ? '启用' : '停用' }}</a-tag>
+            <a-tag :color="record.status === 1 ? 'green' : 'default'" :bordered="false">{{ record.status === 1 ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
             <span v-perm="'hr:social:edit'" class="table-actions">
               <a-button type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
-              <a-popconfirm :title="`确定删除社保方案「${record.name}」？`" @confirm="remove(record.id)">
+              <a-popconfirm :title="$t('hr.social.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                 <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
               </a-popconfirm>
             </span>
@@ -52,27 +52,27 @@
       </a-table>
     </a-card>
 
-    <FormDrawer page :drawer="drawer" create-title="新增社保方案" edit-title="编辑社保方案" width="min(720px, 100vw)">
+    <FormDrawer page :drawer="drawer" :create-title="$t('hr.social.createTitle')" :edit-title="$t('hr.social.editTitle')" width="min(720px, 100vw)">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="方案名称" name="name"><a-input v-model:value="form.name" :maxlength="64" placeholder="如：上海社保 2026" /></a-form-item>
+            <a-form-item :label="$t('hr.social.name')" name="name"><a-input v-model:value="form.name" :maxlength="64" :placeholder="$t('hr.social.namePh')" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="参保城市" name="city"><a-input v-model:value="form.city" :maxlength="64" /></a-form-item>
+            <a-form-item :label="$t('hr.social.city')" name="city"><a-input v-model:value="form.city" :maxlength="64" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="社保基数下限" name="baseMin">
-              <a-input-number v-model:value="form.baseMin" :min="0" :precision="2" addon-after="元" class="full" />
+            <a-form-item :label="$t('hr.social.baseMin')" name="baseMin">
+              <a-input-number v-model:value="form.baseMin" :min="0" :precision="2" :addon-after="$t('hr.social.yuan')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="社保基数上限" name="baseMax" extra="0 表示不限">
-              <a-input-number v-model:value="form.baseMax" :min="0" :precision="2" addon-after="元" class="full" />
+            <a-form-item :label="$t('hr.social.baseMax')" name="baseMax" :extra="$t('hr.social.noLimitExtra')">
+              <a-input-number v-model:value="form.baseMax" :min="0" :precision="2" :addon-after="$t('hr.social.yuan')" class="full" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-divider orientation="left" plain>缴费比例（%）</a-divider>
+        <a-divider orientation="left" plain>{{ $t('hr.social.rates') }}</a-divider>
         <a-table row-key="key" size="small" bordered :columns="rateColumns" :data-source="RATE_ITEMS" :pagination="false" class="mb">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'personal' || column.key === 'company'">
@@ -90,34 +90,34 @@
           </template>
           <template #summary>
             <a-table-summary-row>
-              <a-table-summary-cell :index="0"><b>合计</b></a-table-summary-cell>
+              <a-table-summary-cell :index="0"><b>{{ $t('hr.social.total') }}</b></a-table-summary-cell>
               <a-table-summary-cell :index="1"><b>{{ pct(personalTotal(form)) }}</b></a-table-summary-cell>
               <a-table-summary-cell :index="2"><b>{{ pct(companyTotal(form)) }}</b></a-table-summary-cell>
             </a-table-summary-row>
           </template>
         </a-table>
-        <a-divider orientation="left" plain>公积金</a-divider>
+        <a-divider orientation="left" plain>{{ $t('hr.social.housing') }}</a-divider>
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="公积金基数下限" name="housingMin">
-              <a-input-number v-model:value="form.housingMin" :min="0" :precision="2" addon-after="元" class="full" />
+            <a-form-item :label="$t('hr.social.housingMin')" name="housingMin">
+              <a-input-number v-model:value="form.housingMin" :min="0" :precision="2" :addon-after="$t('hr.social.yuan')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="公积金基数上限" name="housingMax" extra="0 表示不限；公积金比例在薪资档案中设置">
-              <a-input-number v-model:value="form.housingMax" :min="0" :precision="2" addon-after="元" class="full" />
+            <a-form-item :label="$t('hr.social.housingMax')" name="housingMax" :extra="$t('hr.social.housingMaxExtra')">
+              <a-input-number v-model:value="form.housingMax" :min="0" :precision="2" :addon-after="$t('hr.social.yuan')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="状态" name="status">
+            <a-form-item :label="$t('common.field.status')" name="status">
               <a-radio-group v-model:value="form.status">
-                <a-radio :value="1">启用</a-radio>
-                <a-radio :value="0">停用</a-radio>
+                <a-radio :value="1">{{ $t('common.status.enabled') }}</a-radio>
+                <a-radio :value="0">{{ $t('common.status.disabled') }}</a-radio>
               </a-radio-group>
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark"><a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" /></a-form-item>
+            <a-form-item :label="$t('common.field.remark')" name="remark"><a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" /></a-form-item>
           </a-col>
         </a-row>
       </a-form>
@@ -126,6 +126,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
@@ -135,36 +136,38 @@ import { formatMoney } from '@/components/scm/scm'
 import { addSocialScheme, deleteSocialScheme, listSocialScheme, updateSocialScheme } from '@/api/hr'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 
+const { t } = useI18n()
+
 const n = (v) => Number(v) || 0
 const pct = (v) => `${+n(v).toFixed(2)}%`
-const rangeText = (min, max) => `${formatMoney(n(min))} ~ ${n(max) ? formatMoney(max) : '不限'}`
+const rangeText = (min, max) => `${formatMoney(n(min))} ~ ${n(max) ? formatMoney(max) : t('hr.social.noLimit')}`
 const personalTotal = (r) => n(r.pensionPersonal) + n(r.medicalPersonal) + n(r.unemploymentPersonal)
 const companyTotal = (r) => n(r.pensionCompany) + n(r.medicalCompany) + n(r.unemploymentCompany) + n(r.injuryCompany)
 
 const columns = [
-  { title: '方案', key: 'name', width: 180, fixed: 'left' },
-  { title: '社保基数', key: 'base', width: 190 },
-  { title: '养老（个人 / 单位）', key: 'pension', rate: true, width: 150, align: 'right' },
-  { title: '医疗（个人 / 单位）', key: 'medical', rate: true, width: 150, align: 'right' },
-  { title: '失业（个人 / 单位）', key: 'unemployment', rate: true, width: 150, align: 'right' },
-  { title: '工伤（单位）', key: 'injury', width: 100, align: 'right' },
-  { title: '个人合计', key: 'personalTotal', width: 100, align: 'right' },
-  { title: '单位合计', key: 'companyTotal', width: 100, align: 'right' },
-  { title: '公积金基数', key: 'housing', width: 190 },
-  { title: '状态', key: 'status', width: 80 },
-  { title: '备注', dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: '操作', key: 'action', width: 130, fixed: 'right' }
+  { title: t('hr.social.col.scheme'), key: 'name', width: 180, fixed: 'left' },
+  { title: t('hr.social.col.base'), key: 'base', width: 190 },
+  { title: t('hr.social.col.pension'), key: 'pension', rate: true, width: 170, align: 'right' },
+  { title: t('hr.social.col.medical'), key: 'medical', rate: true, width: 170, align: 'right' },
+  { title: t('hr.social.col.unemployment'), key: 'unemployment', rate: true, width: 190, align: 'right' },
+  { title: t('hr.social.col.injury'), key: 'injury', width: 140, align: 'right' },
+  { title: t('hr.social.col.personalTotal'), key: 'personalTotal', width: 120, align: 'right' },
+  { title: t('hr.social.col.companyTotal'), key: 'companyTotal', width: 120, align: 'right' },
+  { title: t('hr.social.col.housing'), key: 'housing', width: 190 },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
 ]
 const RATE_ITEMS = [
-  { key: 'pension', label: '养老保险', personal: 'pensionPersonal', company: 'pensionCompany' },
-  { key: 'medical', label: '医疗保险', personal: 'medicalPersonal', company: 'medicalCompany' },
-  { key: 'unemployment', label: '失业保险', personal: 'unemploymentPersonal', company: 'unemploymentCompany' },
-  { key: 'injury', label: '工伤保险', company: 'injuryCompany' }
+  { key: 'pension', label: t('hr.social.item.pension'), personal: 'pensionPersonal', company: 'pensionCompany' },
+  { key: 'medical', label: t('hr.social.item.medical'), personal: 'medicalPersonal', company: 'medicalCompany' },
+  { key: 'unemployment', label: t('hr.social.item.unemployment'), personal: 'unemploymentPersonal', company: 'unemploymentCompany' },
+  { key: 'injury', label: t('hr.social.item.injury'), company: 'injuryCompany' }
 ]
 const rateColumns = [
-  { title: '险种', dataIndex: 'label', width: 120 },
-  { title: '个人', key: 'personal' },
-  { title: '单位', key: 'company' }
+  { title: t('hr.social.col.insurance'), dataIndex: 'label', width: 180 },
+  { title: t('hr.social.col.personal'), key: 'personal' },
+  { title: t('hr.social.col.company'), key: 'company' }
 ]
 
 const list = ref([])
@@ -183,7 +186,7 @@ onMounted(load)
 const FIELDS = ['name', 'city', 'baseMin', 'baseMax', 'pensionPersonal', 'pensionCompany', 'medicalPersonal', 'medicalCompany', 'unemploymentPersonal',
   'unemploymentCompany', 'injuryCompany', 'housingMin', 'housingMax', 'status', 'remark']
 const rules = {
-  name: [{ required: true, whitespace: true, message: '请输入方案名称' }]
+  name: [{ required: true, whitespace: true, message: t('hr.social.rule.name') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({
@@ -213,7 +216,7 @@ const { formRef, form } = drawer
 
 async function remove(id) {
   await deleteSocialScheme(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 </script>

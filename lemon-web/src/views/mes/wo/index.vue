@@ -2,16 +2,16 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="工单号" name="woNo">
-          <a-input v-model:value="query.woNo" placeholder="请输入工单号" allow-clear />
+        <a-form-item :label="$t('mes.wo.woNo')" name="woNo">
+          <a-input v-model:value="query.woNo" :placeholder="$t('mes.wo.woNoPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="产品" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="产品编码或名称" allow-clear />
+        <a-form-item :label="$t('mes.wo.product')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('mes.wo.productPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.mes_wo_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.mes_wo_status)" />
         </a-form-item>
-        <a-form-item label="计划开工" name="range">
+        <a-form-item :label="$t('mes.wo.planStart')" name="range">
           <a-range-picker v-model:value="query.range" value-format="YYYY-MM-DD" style="width: 100%" />
         </a-form-item>
       </SearchForm>
@@ -27,10 +27,10 @@
         @refresh="load"
       >
         <a-button v-perm="'mes:wo:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新增工单
+          <template #icon><PlusOutlined /></template>{{ $t('mes.wo.add') }}
         </a-button>
         <a-button v-perm="'mes:wo:add'" @click="openRework()">
-          <template #icon><RedoOutlined /></template>新建返工工单
+          <template #icon><RedoOutlined /></template>{{ $t('mes.wo.addRework') }}
         </a-button>
       </TableToolbar>
 
@@ -48,10 +48,10 @@
           <template v-if="column.key === 'woNo'">
             <a @click="openDetail(record.id)">{{ record.woNo }}</a>
             <a-tag v-if="record.source === 'MRP'" color="purple" :bordered="false" class="source-tag">MRP</a-tag>
-            <a-tag v-else-if="record.source === 'KIT'" color="orange" :bordered="false" class="source-tag">缺料</a-tag>
-            <a-tag v-else-if="record.source === 'PLAN'" color="blue" :bordered="false" class="source-tag">计划</a-tag>
-            <a-tag v-else-if="record.source === 'SPLIT'" color="cyan" :bordered="false" class="source-tag">拆分</a-tag>
-            <a-tag v-if="record.woType === 'REWORK'" color="orange" :bordered="false" class="source-tag">返工</a-tag>
+            <a-tag v-else-if="record.source === 'KIT'" color="orange" :bordered="false" class="source-tag">{{ $t('mes.wo.source.kit') }}</a-tag>
+            <a-tag v-else-if="record.source === 'PLAN'" color="blue" :bordered="false" class="source-tag">{{ $t('mes.wo.source.plan') }}</a-tag>
+            <a-tag v-else-if="record.source === 'SPLIT'" color="cyan" :bordered="false" class="source-tag">{{ $t('mes.wo.source.split') }}</a-tag>
+            <a-tag v-if="record.woType === 'REWORK'" color="orange" :bordered="false" class="source-tag">{{ $t('mes.wo.source.rework') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'product'">
             <div>{{ record.materialCode }} {{ record.materialName }}</div>
@@ -67,7 +67,7 @@
           </template>
           <template v-else-if="column.key === 'plan'">
             <div>{{ record.planStart || '-' }}</div>
-            <div class="sub-text">至 {{ record.planEnd || '-' }}</div>
+            <div class="sub-text">{{ $t('mes.wo.to', { v: record.planEnd || '-' }) }}</div>
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="mes_wo_status" :value="record.status" />
@@ -75,11 +75,11 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record.id)">
-                <template #icon><EyeOutlined /></template>查看
+                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
               <template v-if="record.status === 'DRAFT'">
-                <a-button v-perm="'mes:wo:edit'" type="link" size="small" @click="drawer.openEdit(record)">编辑</a-button>
-                <a-button v-perm="'mes:wo:release'" type="link" size="small" @click="release(record)">下达</a-button>
+                <a-button v-perm="'mes:wo:edit'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
+                <a-button v-perm="'mes:wo:release'" type="link" size="small" @click="release(record)">{{ $t('mes.wo.release') }}</a-button>
               </template>
             </span>
           </template>
@@ -88,39 +88,39 @@
     </a-card>
 
     <!-- 新增 / 编辑 -->
-    <FormDrawer :drawer="drawer" create-title="新增工单" edit-title="编辑工单">
+    <FormDrawer :drawer="drawer" :create-title="$t('mes.wo.add')" :edit-title="$t('mes.wo.edit')">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-form-item label="产品" name="materialId">
+        <a-form-item :label="$t('mes.wo.product')" name="materialId">
           <MaterialSelect v-model:value="form.materialId" :label="form.materialLabel" @select="onProductSelect" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
             <a-form-item label="BOM" name="bomId">
-              <a-select v-model:value="form.bomId" :options="bomOptions" placeholder="默认 BOM" allow-clear />
+              <a-select v-model:value="form.bomId" :options="bomOptions" :placeholder="$t('mes.wo.defaultBom')" allow-clear />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="生产数量" name="qty">
+            <a-form-item :label="$t('mes.wo.qty')" name="qty">
               <a-input-number v-model:value="form.qty" :min="0" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="计划开工" name="planStart">
+            <a-form-item :label="$t('mes.wo.planStart')" name="planStart">
               <a-date-picker v-model:value="form.planStart" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="计划完工" name="planEnd">
+            <a-form-item :label="$t('mes.wo.planEnd')" name="planEnd">
               <a-date-picker v-model:value="form.planEnd" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="完工入库仓库" name="warehouseId">
-              <WarehouseSelect v-model:value="form.warehouseId" placeholder="选填，完工入库时默认" />
+            <a-form-item :label="$t('mes.wo.finishWarehouse')" name="warehouseId">
+              <WarehouseSelect v-model:value="form.warehouseId" :placeholder="$t('mes.wo.finishWarehousePh')" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" />
             </a-form-item>
           </a-col>
@@ -131,14 +131,14 @@
     <!-- 详情：用料、工序、单据、报工 -->
     <SubPage
       :open="detailOpen"
-      :title="detail ? `工单 ${detail.woNo}` : '工单'"
+      :title="detail ? $t('mes.wo.detailTitle', { no: detail.woNo }) : $t('mes.wo.wo')"
       width="min(1100px, 100vw)"
       destroy-on-close
       @close="detailOpen = false"
     >
       <template #extra>
         <a-space>
-          <a-button v-if="detail" size="small" @click="print"><template #icon><PrinterOutlined /></template>打印</a-button>
+          <a-button v-if="detail" size="small" @click="print"><template #icon><PrinterOutlined /></template>{{ $t('common.action.print') }}</a-button>
           <DictTag v-if="detail?.woType === 'REWORK'" type="mes_wo_type" :value="detail.woType" />
           <DictTag v-if="detail" type="mes_wo_status" :value="detail.status" />
         </a-space>
@@ -146,24 +146,24 @@
       <a-spin :spinning="detailLoading">
         <template v-if="detail">
           <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="block">
-            <a-descriptions-item label="产品">{{ detail.materialCode }} {{ detail.materialName }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('mes.wo.product')">{{ detail.materialCode }} {{ detail.materialName }}</a-descriptions-item>
             <a-descriptions-item label="BOM">{{ detail.bomVersion }}</a-descriptions-item>
-            <a-descriptions-item label="完工 / 计划">{{ formatQty(detail.finishedQty) }} / {{ formatQty(detail.qty) }} {{ detail.unit }}</a-descriptions-item>
-            <a-descriptions-item label="计划日期">{{ detail.planStart || '-' }} ~ {{ detail.planEnd || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="完工入库仓库">{{ detail.warehouseName || '-' }}</a-descriptions-item>
-            <a-descriptions-item v-if="detail.sourceWoId" :label="detail.woType === 'REWORK' ? '返工自' : '拆分自'">
-              <a @click="openDetail(detail.sourceWoId)">{{ sourceWoNo || `工单 #${detail.sourceWoId}` }}</a>
+            <a-descriptions-item :label="$t('mes.wo.finishedOfPlan')">{{ formatQty(detail.finishedQty) }} / {{ formatQty(detail.qty) }} {{ detail.unit }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('mes.wo.planDate')">{{ detail.planStart || '-' }} ~ {{ detail.planEnd || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('mes.wo.finishWarehouse')">{{ detail.warehouseName || '-' }}</a-descriptions-item>
+            <a-descriptions-item v-if="detail.sourceWoId" :label="detail.woType === 'REWORK' ? $t('mes.wo.reworkFrom') : $t('mes.wo.splitFrom')">
+              <a @click="openDetail(detail.sourceWoId)">{{ sourceWoNo || $t('mes.wo.woById', { id: detail.sourceWoId }) }}</a>
             </a-descriptions-item>
-            <a-descriptions-item v-if="scrapReported > 0" label="报工报废 / 已报废入库">
+            <a-descriptions-item v-if="scrapReported > 0" :label="$t('mes.wo.scrapReportedIn')">
               {{ formatQty(scrapReported) }} / {{ formatQty(scrapIn) }} {{ detail.unit }}
             </a-descriptions-item>
-            <a-descriptions-item label="制单">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
-            <a-descriptions-item v-if="detail.releaseTime" label="下达时间">{{ detail.releaseTime }}</a-descriptions-item>
-            <a-descriptions-item v-if="detail.finishTime" label="完工时间">{{ detail.finishTime }}</a-descriptions-item>
-            <a-descriptions-item v-if="detail.remark" label="备注">{{ detail.remark }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('mes.wo.preparedBy')">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
+            <a-descriptions-item v-if="detail.releaseTime" :label="$t('mes.wo.releaseTime')">{{ detail.releaseTime }}</a-descriptions-item>
+            <a-descriptions-item v-if="detail.finishTime" :label="$t('mes.wo.finishTime')">{{ detail.finishTime }}</a-descriptions-item>
+            <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
           </a-descriptions>
           <a-tabs size="small">
-            <a-tab-pane key="materials" tab="用料">
+            <a-tab-pane key="materials" :tab="$t('mes.wo.tab.materials')">
               <a-table row-key="id" size="small" :columns="materialColumns" :data-source="detail.materials" :pagination="false">
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'material'">{{ record.materialCode }} {{ record.materialName }}</template>
@@ -171,35 +171,35 @@
                   <template v-else-if="column.key === 'progress'">
                     <a-progress :percent="pct(record.issuedQty, Number(record.requiredQty) + Number(record.supplementQty || 0))" size="small" />
                     <div class="sub-text">
-                      已领 {{ formatQty(record.issuedQty) }} / 需求 {{ formatQty(record.requiredQty) }} {{ record.unit }}
-                      <template v-if="Number(record.supplementQty)">，含补料 {{ formatQty(record.supplementQty) }}</template>
+                      {{ $t('mes.wo.issuedOfRequired', { issued: formatQty(record.issuedQty), req: formatQty(record.requiredQty), unit: record.unit || '' }) }}
+                      <template v-if="Number(record.supplementQty)">{{ $t('mes.wo.inclSupplement', { v: formatQty(record.supplementQty) }) }}</template>
                     </div>
                   </template>
                 </template>
               </a-table>
             </a-tab-pane>
-            <a-tab-pane key="ops" tab="工序">
+            <a-tab-pane key="ops" :tab="$t('mes.wo.tab.ops')">
               <a-table row-key="id" size="small" :columns="opColumns" :data-source="detail.ops" :pagination="false">
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'name'">
                     {{ record.name }}
-                    <a-tooltip v-if="record.firstArticle === 1" title="首件检验合格前只能报工 1 件，在「质量检验」中新增首件检验">
-                      <a-tag color="purple" :bordered="false">首件</a-tag>
+                    <a-tooltip v-if="record.firstArticle === 1" :title="$t('mes.wo.firstArticleTip')">
+                      <a-tag color="purple" :bordered="false">{{ $t('mes.wo.firstArticle') }}</a-tag>
                     </a-tooltip>
                   </template>
                   <template v-else-if="column.key === 'progress'">
                     <a-progress :percent="pct(record.goodQty, detail.qty)" size="small" />
-                    <div class="sub-text">合格 {{ formatQty(record.goodQty) }}，报废 {{ formatQty(record.scrapQty) }}</div>
+                    <div class="sub-text">{{ $t('mes.wo.goodScrap', { good: formatQty(record.goodQty), scrap: formatQty(record.scrapQty) }) }}</div>
                   </template>
                   <template v-else-if="column.key === 'hours'">
-                    {{ formatQty(record.hours) }} / {{ formatQty(Number(record.stdHours) * Number(detail.qty)) }} 小时
+                    {{ $t('mes.wo.hoursOf', { actual: formatQty(record.hours), std: formatQty(Number(record.stdHours) * Number(detail.qty)) }) }}
                   </template>
                   <template v-else-if="column.key === 'plan'">
                     <template v-if="record.planStart">
                       <div>{{ record.planStart }}</div>
-                      <div class="sub-text">至 {{ record.planEnd || '-' }}</div>
+                      <div class="sub-text">{{ $t('mes.wo.to', { v: record.planEnd || '-' }) }}</div>
                     </template>
-                    <span v-else class="sub-text">未排程</span>
+                    <span v-else class="sub-text">{{ $t('mes.wo.unscheduled') }}</span>
                   </template>
                   <template v-else-if="column.key === 'action'">
                     <a-button
@@ -209,13 +209,13 @@
                       size="small"
                       @click="openReport(record)"
                     >
-                      报工
+                      {{ $t('mes.wo.report') }}
                     </a-button>
                   </template>
                 </template>
               </a-table>
             </a-tab-pane>
-            <a-tab-pane key="docs" tab="领料 / 完工记录">
+            <a-tab-pane key="docs" :tab="$t('mes.wo.tab.docs')">
               <a-table row-key="id" size="small" :columns="docColumns" :data-source="docs" :pagination="false">
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'kind'"><DictTag type="mes_wo_doc_kind" :value="record.kind" /></template>
@@ -223,7 +223,7 @@
                 </template>
               </a-table>
             </a-tab-pane>
-            <a-tab-pane key="reports" tab="报工记录">
+            <a-tab-pane key="reports" :tab="$t('mes.wo.tab.reports')">
               <a-table row-key="id" size="small" :columns="reportColumns" :data-source="reports" :pagination="false">
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'op'">{{ record.opSeq }} {{ record.opName }}</template>
@@ -232,12 +232,12 @@
                   <template v-else-if="column.key === 'pieceWage'">{{ record.pieceWage != null ? '¥' + formatQty(record.pieceWage) : '-' }}</template>
                   <template v-else-if="column.key === 'equipment'">
                     {{ record.equipmentName || '-' }}
-                    <div v-if="record.moldCode" class="sub-text">模具 {{ record.moldCode }} × {{ record.shots }} 模次</div>
+                    <div v-if="record.moldCode" class="sub-text">{{ $t('mes.wo.moldShots', { code: record.moldCode, shots: record.shots }) }}</div>
                   </template>
                 </template>
               </a-table>
             </a-tab-pane>
-            <a-tab-pane key="attachment" tab="附件">
+            <a-tab-pane key="attachment" :tab="$t('mes.wo.tab.attachment')">
               <AttachmentPanel biz-type="mes_wo" :biz-id="detail.id" :editable="userStore.hasPerm('mes:wo:edit')" />
             </a-tab-pane>
           </a-tabs>
@@ -255,35 +255,35 @@
     <WoDocForm v-model:open="docOpen" :kind="docKind" :wo="detail" :scrap-in="scrapIn" @success="refreshDetail" />
 
     <!-- 改量 -->
-    <a-modal v-model:open="qtyOpen" :title="`改量 - 工单 ${detail?.woNo}`" :confirm-loading="saving" @ok="submitQty">
-      <a-alert type="info" show-icon class="block" message="新数量不少于已完工、已报工数量，用料需求按新数量重算。" />
+    <a-modal v-model:open="qtyOpen" :title="$t('mes.wo.qtyTitle', { no: detail?.woNo })" :confirm-loading="saving" @ok="submitQty">
+      <a-alert type="info" show-icon class="block" :message="$t('mes.wo.qtyTip')" />
       <a-form layout="vertical">
-        <a-form-item label="生产数量" required :extra="detail ? `当前 ${formatQty(detail.qty)}，已完工 ${formatQty(detail.finishedQty)} ${detail.unit || ''}` : ''">
+        <a-form-item :label="$t('mes.wo.qty')" required :extra="detail ? $t('mes.wo.qtyExtra', { qty: formatQty(detail.qty), finished: formatQty(detail.finishedQty), unit: detail.unit || '' }) : ''">
           <a-input-number v-model:value="qtyValue" :min="0" :precision="4" :addon-after="detail?.unit || undefined" class="full" />
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- 拆分 -->
-    <a-modal v-model:open="splitOpen" :title="`拆分 - 工单 ${detail?.woNo}`" :confirm-loading="saving" @ok="submitSplit">
+    <a-modal v-model:open="splitOpen" :title="$t('mes.wo.splitTitle', { no: detail?.woNo })" :confirm-loading="saving" @ok="submitSplit">
       <a-alert
         type="info"
         show-icon
         class="block"
-        message="从本工单拆出部分数量生成新的草稿工单，本工单数量相应减少；拆分数量不超过未开工的数量，用料需求按数量重算。"
+        :message="$t('mes.wo.splitTip')"
       />
       <a-form layout="vertical">
-        <a-form-item label="拆分数量" required :extra="detail ? `工单数量 ${formatQty(detail.qty)} ${detail.unit || ''}` : ''">
+        <a-form-item :label="$t('mes.wo.splitQty')" required :extra="detail ? $t('mes.wo.splitExtra', { qty: formatQty(detail.qty), unit: detail.unit || '' }) : ''">
           <a-input-number v-model:value="splitForm.qty" :min="0" :precision="4" :addon-after="detail?.unit || undefined" class="full" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="计划开工">
+            <a-form-item :label="$t('mes.wo.planStart')">
               <a-date-picker v-model:value="splitForm.planStart" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="计划完工">
+            <a-form-item :label="$t('mes.wo.planEnd')">
               <a-date-picker v-model:value="splitForm.planEnd" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
@@ -292,16 +292,16 @@
     </a-modal>
 
     <!-- 返工工单 -->
-    <a-modal v-model:open="reworkOpen" title="新建返工工单" width="640px" :confirm-loading="saving" @ok="submitRework">
+    <a-modal v-model:open="reworkOpen" :title="$t('mes.wo.addRework')" width="640px" :confirm-loading="saving" @ok="submitRework">
       <a-alert
         type="info"
         show-icon
         class="block"
-        message="返工工单的用料为产品本身（领出待返工的产品），工序取默认 BOM，完工后重新入库；保存为草稿，下达后才能领料、报工。"
+        :message="$t('mes.wo.reworkTip')"
       />
       <a-form ref="reworkFormRef" :model="reworkForm" layout="vertical">
-        <a-form-item v-if="reworkForm.sourceWoId" label="返工来源工单">{{ reworkForm.sourceWoNo }}</a-form-item>
-        <a-form-item label="产品" name="materialId" :rules="[{ required: true, message: '请选择产品' }]">
+        <a-form-item v-if="reworkForm.sourceWoId" :label="$t('mes.wo.reworkSource')">{{ reworkForm.sourceWoNo }}</a-form-item>
+        <a-form-item :label="$t('mes.wo.product')" name="materialId" :rules="[{ required: true, message: $t('mes.wo.productRequired') }]">
           <MaterialSelect
             v-model:value="reworkForm.materialId"
             :label="reworkForm.materialLabel"
@@ -311,28 +311,28 @@
         </a-form-item>
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="返工数量" name="qty" :rules="[{ required: true, message: '请填写数量' }]">
+            <a-form-item :label="$t('mes.wo.reworkQty')" name="qty" :rules="[{ required: true, message: $t('mes.wo.qtyRequired') }]">
               <a-input-number v-model:value="reworkForm.qty" :min="0" :precision="4" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="完工入库仓库" name="warehouseId">
-              <WarehouseSelect v-model:value="reworkForm.warehouseId" placeholder="选填，完工入库时默认" />
+            <a-form-item :label="$t('mes.wo.finishWarehouse')" name="warehouseId">
+              <WarehouseSelect v-model:value="reworkForm.warehouseId" :placeholder="$t('mes.wo.finishWarehousePh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="计划开工" name="planStart">
+            <a-form-item :label="$t('mes.wo.planStart')" name="planStart">
               <a-date-picker v-model:value="reworkForm.planStart" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="计划完工" name="planEnd">
+            <a-form-item :label="$t('mes.wo.planEnd')" name="planEnd">
               <a-date-picker v-model:value="reworkForm.planEnd" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark">
-              <a-textarea v-model:value="reworkForm.remark" :rows="2" :maxlength="255" placeholder="返工原因等" />
+            <a-form-item :label="$t('common.field.remark')" name="remark">
+              <a-textarea v-model:value="reworkForm.remark" :rows="2" :maxlength="255" :placeholder="$t('mes.wo.reworkRemarkPh')" />
             </a-form-item>
           </a-col>
         </a-row>
@@ -340,46 +340,46 @@
     </a-modal>
     <SupplementForm v-model:open="supplementOpen" :wo="detail" />
 
-    <a-modal v-model:open="reportOpen" :title="`报工 - ${reportOp?.seq} ${reportOp?.name}`" :confirm-loading="saving" @ok="submitReport">
+    <a-modal v-model:open="reportOpen" :title="$t('mes.wo.reportTitle', { op: `${reportOp?.seq} ${reportOp?.name}` })" :confirm-loading="saving" @ok="submitReport">
       <a-form layout="vertical">
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="报工日期" required>
+            <a-form-item :label="$t('mes.wo.reportDate')" required>
               <a-date-picker v-model:value="report.reportDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="实际工时" required>
-              <a-input-number v-model:value="report.hours" :min="0" :precision="2" addon-after="小时" class="full" />
+            <a-form-item :label="$t('mes.wo.actualHours')" required>
+              <a-input-number v-model:value="report.hours" :min="0" :precision="2" :addon-after="$t('mes.wo.hoursUnit')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="合格数量" required>
+            <a-form-item :label="$t('mes.wo.goodQty')" required>
               <a-input-number v-model:value="report.goodQty" :min="0" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="报废数量">
+            <a-form-item :label="$t('mes.wo.scrapQty')">
               <a-input-number v-model:value="report.scrapQty" :min="0" class="full" />
             </a-form-item>
           </a-col>
         </a-row>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="生产设备" extra="用于设备 OEE">
-              <a-select v-model:value="report.equipmentId" allow-clear show-search option-filter-prop="label" placeholder="不指定" :options="equipmentChoices" />
+            <a-form-item :label="$t('mes.wo.equipment')" :extra="$t('mes.wo.equipmentExtra')">
+              <a-select v-model:value="report.equipmentId" allow-clear show-search option-filter-prop="label" :placeholder="$t('mes.wo.notSpecified')" :options="equipmentChoices" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="模具工装" :extra="shotsHint">
-              <a-select v-model:value="report.moldId" allow-clear placeholder="不使用" :options="moldChoices" :not-found-content="'没有领用到该工单的模具'" />
+            <a-form-item :label="$t('mes.wo.mold')" :extra="shotsHint">
+              <a-select v-model:value="report.moldId" allow-clear :placeholder="$t('mes.wo.notUsed')" :options="moldChoices" :not-found-content="$t('mes.wo.noMold')" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="操作员" :extra="reportOp?.pieceRate != null ? `计件单价 ¥${formatQty(reportOp.pieceRate)} / 件，计入操作员的计件工资` : '不填为本人'">
-          <IdentityUserSelect v-model:value="report.operatorId" placeholder="本人" allow-clear />
+        <a-form-item :label="$t('mes.wo.operator')" :extra="reportOp?.pieceRate != null ? $t('mes.wo.pieceRateExtra', { v: formatQty(reportOp.pieceRate) }) : $t('mes.wo.operatorDefault')">
+          <IdentityUserSelect v-model:value="report.operatorId" :placeholder="$t('mes.wo.self')" allow-clear />
         </a-form-item>
-        <a-form-item label="备注">
+        <a-form-item :label="$t('common.field.remark')">
           <a-input v-model:value="report.remark" :maxlength="255" />
         </a-form-item>
       </a-form>
@@ -393,6 +393,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
 import { EyeOutlined, PlusOutlined, PrinterOutlined, RedoOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
@@ -427,22 +428,24 @@ import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { formatQty, today } from '@/components/wms/wms'
 import { materialColumns as printMaterialColumns, printDocs } from '@/utils/print'
+import { printLabel } from '@/utils/printTemplates'
 
 const userStore = useUserStore()
+const { t } = useI18n()
 const dict = useDict('mes_wo_status', 'mes_wo_type')
 
 const pct = (a, b) => (Number(b) ? Math.min(Math.round((Number(a) / Number(b)) * 100), 100) : 0)
 
 const columns = [
-  { title: '工单号', key: 'woNo', width: 190 },
-  { title: '产品', key: 'product', width: 240 },
-  { title: '完工进度', key: 'progress', width: 180 },
-  { title: '计划日期', key: 'plan', width: 120 },
-  { title: '状态', key: 'status', width: 90, dict: 'mes_wo_status' },
-  { title: '完工仓库', dataIndex: 'warehouseName', width: 120 },
-  { title: '制单人', dataIndex: 'createByName', width: 100 },
-  { title: '创建时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 190, fixed: 'right' }
+  { title: t('mes.wo.woNo'), key: 'woNo', width: 190 },
+  { title: t('mes.wo.product'), key: 'product', width: 240 },
+  { title: t('mes.wo.progress'), key: 'progress', width: 180 },
+  { title: t('mes.wo.planDate'), key: 'plan', width: 120 },
+  { title: t('common.field.status'), key: 'status', width: 100, dict: 'mes_wo_status' },
+  { title: t('mes.wo.finishWarehouseShort'), dataIndex: 'warehouseName', width: 130 },
+  { title: t('mes.wo.preparedByCol'), dataIndex: 'createByName', width: 110 },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'mes-wo')
 const showSearch = ref(true)
@@ -472,7 +475,7 @@ onMounted(() => {
 
 // ---------------------------------------------------------------- 新增 / 编辑
 const boms = ref([])
-const bomOptions = computed(() => boms.value.map((b) => ({ value: b.id, label: `${b.version}${b.isDefault === 1 ? '（默认）' : ''}` })))
+const bomOptions = computed(() => boms.value.map((b) => ({ value: b.id, label: b.isDefault === 1 ? t('mes.wo.bomDefault', { v: b.version }) : b.version })))
 async function loadBoms(materialId) {
   boms.value = materialId ? await bomsOfMaterial(materialId) : []
 }
@@ -483,8 +486,8 @@ async function onProductSelect(m) {
 }
 
 const rules = {
-  materialId: [{ required: true, message: '请选择产品' }],
-  qty: [{ required: true, message: '请填写数量' }]
+  materialId: [{ required: true, message: t('mes.wo.productRequired') }],
+  qty: [{ required: true, message: t('mes.wo.qtyRequired') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, materialId: undefined, bomId: undefined, qty: undefined, planStart: today(), planEnd: undefined, warehouseId: undefined, remark: '' }),
@@ -513,11 +516,11 @@ const { formRef, form } = drawer
 
 function release(record) {
   Modal.confirm({
-    title: `下达工单 ${record.woNo}？`,
-    content: '下达后车间可以领料、报工，工单不能再修改。',
+    title: t('mes.wo.releaseConfirm', { no: record.woNo }),
+    content: t('mes.wo.releaseContent'),
     async onOk() {
       await releaseWo(record.id)
-      message.success('已下达')
+      message.success(t('mes.wo.released'))
       load()
       if (detailOpen.value) refreshDetail()
     }
@@ -526,83 +529,83 @@ function release(record) {
 
 // ---------------------------------------------------------------- 详情
 const materialColumns = [
-  { title: '物料', key: 'material', width: 260 },
-  { title: '单位用量（含损耗）', key: 'unitQty', width: 150, align: 'right' },
-  { title: '领料进度', key: 'progress', width: 260 }
+  { title: t('mes.wo.material'), key: 'material', width: 260 },
+  { title: t('mes.wo.unitQty'), key: 'unitQty', width: 170, align: 'right' },
+  { title: t('mes.wo.issueProgress'), key: 'progress', width: 260 }
 ]
 const opColumns = [
-  { title: '工序号', dataIndex: 'seq', width: 80 },
-  { title: '工序', key: 'name', width: 160 },
-  { title: '工作中心', dataIndex: 'workCenterName', width: 140 },
-  { title: '进度', key: 'progress', width: 220 },
-  { title: '实际 / 标准工时', key: 'hours', width: 170 },
-  { title: '计划日期', key: 'plan', width: 120 },
+  { title: t('mes.wo.opSeq'), dataIndex: 'seq', width: 80 },
+  { title: t('mes.wo.op'), key: 'name', width: 160 },
+  { title: t('mes.wo.workCenter'), dataIndex: 'workCenterName', width: 140 },
+  { title: t('mes.wo.opProgress'), key: 'progress', width: 220 },
+  { title: t('mes.wo.actualStdHours'), key: 'hours', width: 170 },
+  { title: t('mes.wo.planDate'), key: 'plan', width: 120 },
   { title: '', key: 'action', width: 70 }
 ]
 const docColumns = [
-  { title: '单据号', dataIndex: 'docNo', width: 170 },
-  { title: '类型', key: 'kind', width: 100, dict: 'mes_wo_doc_kind' },
-  { title: '仓库', dataIndex: 'warehouseName', width: 130 },
-  { title: '业务日期', dataIndex: 'bizDate', width: 110 },
-  { title: '数量', key: 'totalQty', width: 90, align: 'right' },
-  { title: '仓库单据', dataIndex: 'wmsDocNo', width: 170 },
-  { title: '制单人', dataIndex: 'createByName', width: 100 }
+  { title: t('mes.wo.docNo'), dataIndex: 'docNo', width: 170 },
+  { title: t('common.field.type'), key: 'kind', width: 130, dict: 'mes_wo_doc_kind' },
+  { title: t('mes.wo.warehouse'), dataIndex: 'warehouseName', width: 130 },
+  { title: t('mes.wo.bizDate'), dataIndex: 'bizDate', width: 120 },
+  { title: t('common.field.quantity'), key: 'totalQty', width: 90, align: 'right' },
+  { title: t('mes.wo.wmsDoc'), dataIndex: 'wmsDocNo', width: 170 },
+  { title: t('mes.wo.preparedByCol'), dataIndex: 'createByName', width: 110 }
 ]
 const reportColumns = [
-  { title: '日期', dataIndex: 'reportDate', width: 110 },
-  { title: '工序', key: 'op', width: 140 },
-  { title: '合格', key: 'goodQty', width: 80, align: 'right' },
-  { title: '报废', key: 'scrapQty', width: 80, align: 'right' },
-  { title: '工时', key: 'hours', width: 80, align: 'right' },
-  { title: '操作员', key: 'operator', width: 100 },
-  { title: '计件工资', key: 'pieceWage', width: 90, align: 'right' },
-  { title: '设备 / 模具', key: 'equipment', width: 160 },
-  { title: '备注', dataIndex: 'remark', ellipsis: true }
+  { title: t('common.field.date'), dataIndex: 'reportDate', width: 110 },
+  { title: t('mes.wo.op'), key: 'op', width: 140 },
+  { title: t('mes.wo.good'), key: 'goodQty', width: 80, align: 'right' },
+  { title: t('mes.wo.scrap'), key: 'scrapQty', width: 80, align: 'right' },
+  { title: t('mes.wo.hours'), key: 'hours', width: 80, align: 'right' },
+  { title: t('mes.wo.operator'), key: 'operator', width: 100 },
+  { title: t('mes.wo.pieceWage'), key: 'pieceWage', width: 100, align: 'right' },
+  { title: t('mes.wo.equipmentMold'), key: 'equipment', width: 160 },
+  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true }
 ]
 
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detail = ref()
 
-/** 生产任务单：用料（含补料）和工序 */
+/** 生产任务单：用料（含补料）和工序。名称写中文（打印模板的匹配键），显示时按界面语言翻译（utils/print.js） */
 function print() {
   const d = detail.value
   printDocs({
-    title: '生产任务单',
+    title: '生产任务单', // i18n-ignore
     no: d.woNo,
     fields: [
-      ['产品', `${d.materialCode} ${d.materialName}`],
-      ['BOM 版本', d.bomVersion],
-      ['计划数量', `${formatQty(d.qty)} ${d.unit || ''}`],
-      ['计划开工', d.planStart],
-      ['计划完工', d.planEnd],
-      ['完工入库仓库', d.warehouseName]
+      ['产品', `${d.materialCode} ${d.materialName}`], // i18n-ignore
+      ['BOM 版本', d.bomVersion], // i18n-ignore
+      ['计划数量', `${formatQty(d.qty)} ${d.unit || ''}`], // i18n-ignore
+      ['计划开工', d.planStart], // i18n-ignore
+      ['计划完工', d.planEnd], // i18n-ignore
+      ['完工入库仓库', d.warehouseName] // i18n-ignore
     ],
     columns: [
       ...printMaterialColumns(),
-      { title: '单位用量', value: (r) => formatQty(r.unitQty), align: 'right' },
-      { title: '需求数量', value: (r) => formatQty(r.requiredQty), align: 'right' },
-      { title: '补料', value: (r) => (Number(r.supplementQty) ? formatQty(r.supplementQty) : ''), align: 'right' },
-      { title: '已领', value: (r) => formatQty(r.issuedQty), align: 'right' }
+      { title: '单位用量', value: (r) => formatQty(r.unitQty), align: 'right' }, // i18n-ignore
+      { title: '需求数量', value: (r) => formatQty(r.requiredQty), align: 'right' }, // i18n-ignore
+      { title: '补料', value: (r) => (Number(r.supplementQty) ? formatQty(r.supplementQty) : ''), align: 'right' }, // i18n-ignore
+      { title: '已领', value: (r) => formatQty(r.issuedQty), align: 'right' } // i18n-ignore
     ],
     rows: d.materials,
     sections: d.ops?.length
       ? [{
-          title: '工序',
+          title: '工序', // i18n-ignore
           columns: [
-            { title: '工序号', key: 'seq' },
-            { title: '工序', key: 'name' },
-            { title: '工作中心', key: 'workCenterName' },
-            { title: '合格数', value: () => '' },
-            { title: '报废数', value: () => '' },
-            { title: '操作员', value: () => '' }
+            { title: '工序号', key: 'seq' }, // i18n-ignore
+            { title: '工序', key: 'name' }, // i18n-ignore
+            { title: '工作中心', key: 'workCenterName' }, // i18n-ignore
+            { title: '合格数', value: () => '' }, // i18n-ignore
+            { title: '报废数', value: () => '' }, // i18n-ignore
+            { title: '操作员', value: () => '' } // i18n-ignore
           ],
           rows: d.ops
         }]
       : [],
     note: d.remark,
-    signs: [['制单', d.createByName], '生产主管', '仓库']
-  }, `生产任务单 ${d.woNo}`, 'mes.workOrder')
+    signs: [['制单', d.createByName], '生产主管', '仓库'] // i18n-ignore
+  }, `${printLabel('生产任务单')} ${d.woNo}`, 'mes.workOrder') // i18n-ignore
 }
 const docs = ref([])
 const reports = ref([])
@@ -653,37 +656,37 @@ const actions = computed(() => {
   const list = []
   const can = (p) => userStore.hasPerm(`mes:wo:${p}`)
   if (['DRAFT', 'RELEASED', 'STARTED'].includes(d.status)) {
-    if (userStore.hasPerm('mes:capacity:edit') || can('edit')) list.push({ key: 'schedule', label: '排程', run: () => schedule(d) })
-    if (can('change')) list.push({ key: 'split', label: '拆分', run: openSplit })
+    if (userStore.hasPerm('mes:capacity:edit') || can('edit')) list.push({ key: 'schedule', label: t('mes.wo.schedule'), run: () => schedule(d) })
+    if (can('change')) list.push({ key: 'split', label: t('mes.wo.split'), run: openSplit })
   }
-  if (['STARTED', 'COMPLETED'].includes(d.status) && can('add')) list.push({ key: 'rework', label: '新建返工工单', run: () => openRework(d) })
-  if (d.status === 'DRAFT' && can('release')) list.push({ key: 'release', label: '下达', primary: true, run: () => release(d) })
+  if (['STARTED', 'COMPLETED'].includes(d.status) && can('add')) list.push({ key: 'rework', label: t('mes.wo.addRework'), run: () => openRework(d) })
+  if (d.status === 'DRAFT' && can('release')) list.push({ key: 'release', label: t('mes.wo.release'), primary: true, run: () => release(d) })
   if (['RELEASED', 'STARTED'].includes(d.status)) {
-    if (can('change')) list.push({ key: 'qty', label: '改量', run: openQty })
+    if (can('change')) list.push({ key: 'qty', label: t('mes.wo.changeQty'), run: openQty })
     if (can('release'))
       list.push({
         key: 'close',
-        label: '关闭',
+        label: t('common.action.close'),
         danger: true,
         run: () =>
           Modal.confirm({
-            title: '关闭工单？',
-            content: '未完工部分不再生产，已领未用的物料请先退料。',
+            title: t('mes.wo.closeConfirm'),
+            content: t('mes.wo.closeContent'),
             async onOk() {
               await closeWo(d.id)
-              message.success('已关闭')
+              message.success(t('mes.wo.closed'))
               refreshDetail()
             }
           })
       })
     if (can('issue')) {
-      list.push({ key: 'return', label: '退料', run: () => openDoc('return') })
-      list.push({ key: 'issue', label: '领料', run: () => openDoc('issue') })
+      list.push({ key: 'return', label: t('mes.woDocForm.kind.return'), run: () => openDoc('return') })
+      list.push({ key: 'issue', label: t('mes.woDocForm.kind.issue'), run: () => openDoc('issue') })
     }
-    if (userStore.hasPerm('mes:supplement:add')) list.push({ key: 'supplement', label: '补料申请', run: () => (supplementOpen.value = true) })
+    if (userStore.hasPerm('mes:supplement:add')) list.push({ key: 'supplement', label: t('mes.supplementForm.title'), run: () => (supplementOpen.value = true) })
     if (can('finish')) {
-      list.push({ key: 'scrap', label: '报废入库', run: () => openDoc('scrap') })
-      list.push({ key: 'finish', label: '完工入库', primary: true, run: () => openDoc('finish') })
+      list.push({ key: 'scrap', label: t('mes.woDocForm.kind.scrap'), run: () => openDoc('scrap') })
+      list.push({ key: 'finish', label: t('mes.woDocForm.kind.finish'), primary: true, run: () => openDoc('finish') })
     }
   }
   return list
@@ -692,11 +695,11 @@ const actions = computed(() => {
 // ---------------------------------------------------------------- 排程、改量、拆分、返工
 function schedule(d) {
   Modal.confirm({
-    title: `排程工单 ${d.woNo}？`,
-    content: '按工作中心的有限产能从计划开工日起排定各工序的计划日期，覆盖已有的工序计划日期。',
+    title: t('mes.wo.scheduleConfirm', { no: d.woNo }),
+    content: t('mes.wo.scheduleContent'),
     async onOk() {
       await scheduleWo(d.id)
-      message.success('排程完成')
+      message.success(t('mes.wo.scheduled'))
       refreshDetail()
     }
   })
@@ -710,13 +713,13 @@ function openQty() {
 }
 async function submitQty() {
   if (!(Number(qtyValue.value) > 0)) {
-    message.warning('请填写生产数量')
+    message.warning(t('mes.wo.qtyInputRequired'))
     return
   }
   saving.value = true
   try {
     await changeWoQty(detail.value.id, qtyValue.value)
-    message.success('已修改数量')
+    message.success(t('mes.wo.qtyChanged'))
     qtyOpen.value = false
     refreshDetail()
   } finally {
@@ -732,7 +735,7 @@ function openSplit() {
 }
 async function submitSplit() {
   if (!(Number(splitForm.qty) > 0)) {
-    message.warning('请填写拆分数量')
+    message.warning(t('mes.wo.splitQtyRequired'))
     return
   }
   saving.value = true
@@ -740,7 +743,7 @@ async function submitSplit() {
     const id = await splitWo(detail.value.id, { qty: splitForm.qty, planStart: splitForm.planStart || null, planEnd: splitForm.planEnd || null })
     splitOpen.value = false
     refreshDetail()
-    offerOpen(id, '拆分成功', '已生成新的草稿工单，下达后才能领料、报工。')
+    offerOpen(id, t('mes.wo.splitSuccess'), t('mes.wo.splitSuccessContent'))
   } finally {
     saving.value = false
   }
@@ -748,7 +751,7 @@ async function submitSplit() {
 
 /** 新工单生成后询问是否打开 */
 function offerOpen(id, title, content) {
-  Modal.confirm({ title, content, okText: '打开新工单', cancelText: '留在本页', onOk: () => openDetail(id) })
+  Modal.confirm({ title, content, okText: t('mes.wo.openNew'), cancelText: t('mes.wo.stay'), onOk: () => openDetail(id) })
 }
 
 const reworkOpen = ref(false)
@@ -794,7 +797,7 @@ async function submitRework() {
     )
     reworkOpen.value = false
     load()
-    offerOpen(id, '已新建返工工单', '返工工单为草稿，下达后才能领料、报工。')
+    offerOpen(id, t('mes.wo.reworkCreated'), t('mes.wo.reworkCreatedContent'))
   } finally {
     saving.value = false
   }
@@ -812,12 +815,12 @@ const molds = ref([])
 const equipmentChoices = computed(() => [...equipments.value]
   .sort((a, b) => Number(b.workCenterId === reportOp.value?.workCenterId) - Number(a.workCenterId === reportOp.value?.workCenterId))
   .map((e) => ({ value: e.id, label: `${e.code} ${e.name}` })))
-const moldChoices = computed(() => molds.value.map((m) => ({ value: m.id, label: `${m.code} ${m.name}（${m.cavities} 穴）` })))
+const moldChoices = computed(() => molds.value.map((m) => ({ value: m.id, label: t('mes.wo.moldOption', { code: m.code, name: m.name, n: m.cavities }) })))
 const shotsHint = computed(() => {
   const m = molds.value.find((x) => x.id === report.moldId)
-  if (!m) return '须先在「模具工装」中领用到该工单'
+  if (!m) return t('mes.wo.moldRequired')
   const shots = Math.ceil((Number(report.goodQty || 0) + Number(report.scrapQty || 0)) / m.cavities)
-  return `本次 ${shots} 模次，累计 ${m.usedCount + shots}${m.designLife ? ` / ${m.designLife}` : ''}`
+  return m.designLife ? t('mes.wo.shotsHintLife', { shots, used: m.usedCount + shots, life: m.designLife }) : t('mes.wo.shotsHint', { shots, used: m.usedCount + shots })
 })
 async function openReport(op) {
   reportOp.value = op
@@ -836,7 +839,7 @@ async function submitReport() {
   try {
     await reportWo(detail.value.id, { opId: reportOp.value.id, ...report, operatorId: report.operatorId ?? null,
       equipmentId: report.equipmentId ?? null, moldId: report.moldId ?? null })
-    message.success('报工成功')
+    message.success(t('mes.wo.reportSuccess'))
     reportOpen.value = false
     refreshDetail()
   } finally {

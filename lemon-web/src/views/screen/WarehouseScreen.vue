@@ -1,24 +1,24 @@
 <template>
   <div class="screen-grid">
     <div class="kpis">
-      <ScreenKpi label="今日入库" :value="kpi.todayInQty" :sub="`${fmtNum(kpi.todayInDocs)} 单`" />
-      <ScreenKpi label="今日出库" :value="kpi.todayOutQty" :color="COLORS.green" :sub="`${fmtNum(kpi.todayOutDocs)} 单`" />
-      <ScreenKpi label="待拣货" :value="kpi.pendingPick" unit="单" :color="COLORS.orange" sub="发货通知待拣货" />
-      <ScreenKpi label="待出库" :value="kpi.pendingShip" unit="单" :color="COLORS.orange" sub="已拣货待出库" />
-      <ScreenKpi label="今日已发货" :value="kpi.shippedToday" unit="单" :color="COLORS.green" />
-      <ScreenKpi label="在途调拨" :value="kpi.transit" unit="单" :color="COLORS.blue" sub="已调出待收货" />
-      <ScreenKpi label="在库物料" :value="kpi.skus" unit="种" :color="COLORS.purple" :sub="`合计 ${fmtNum(kpi.stockQty)}`" />
-      <ScreenKpi label="库存预警" :value="alertCount" unit="项" :color="alertCount ? COLORS.red : COLORS.green"
-        :sub="`低于安全库存 ${fmtNum(kpi.lowStock)} · 临期 ${fmtNum(kpi.expiring)}`" :sub-class="alertCount ? 'down' : 'up'" />
+      <ScreenKpi :label="$t('screen.warehouse.todayIn')" :value="kpi.todayInQty" :sub="$t('screen.common.docsN', { n: fmtNum(kpi.todayInDocs) })" />
+      <ScreenKpi :label="$t('screen.warehouse.todayOut')" :value="kpi.todayOutQty" :color="COLORS.green" :sub="$t('screen.common.docsN', { n: fmtNum(kpi.todayOutDocs) })" />
+      <ScreenKpi :label="$t('screen.warehouse.pendingPick')" :value="kpi.pendingPick" :unit="$t('screen.unit.order')" :color="COLORS.orange" :sub="$t('screen.warehouse.pendingPickSub')" />
+      <ScreenKpi :label="$t('screen.warehouse.pendingShip')" :value="kpi.pendingShip" :unit="$t('screen.unit.order')" :color="COLORS.orange" :sub="$t('screen.warehouse.pendingShipSub')" />
+      <ScreenKpi :label="$t('screen.warehouse.shippedToday')" :value="kpi.shippedToday" :unit="$t('screen.unit.order')" :color="COLORS.green" />
+      <ScreenKpi :label="$t('screen.warehouse.transit')" :value="kpi.transit" :unit="$t('screen.unit.order')" :color="COLORS.blue" :sub="$t('screen.warehouse.transitSub')" />
+      <ScreenKpi :label="$t('screen.warehouse.skus')" :value="kpi.skus" :unit="$t('screen.unit.kind')" :color="COLORS.purple" :sub="$t('screen.common.totalN', { n: fmtNum(kpi.stockQty) })" />
+      <ScreenKpi :label="$t('screen.warehouse.alerts')" :value="alertCount" :unit="$t('screen.unit.item')" :color="alertCount ? COLORS.red : COLORS.green"
+        :sub="$t('screen.warehouse.alertSub', { low: fmtNum(kpi.lowStock), expiring: fmtNum(kpi.expiring) })" :sub-class="alertCount ? 'down' : 'up'" />
     </div>
 
     <div class="panels">
-      <ScreenPanel title="近 14 天出入库">
+      <ScreenPanel :title="$t('screen.warehouse.trend')">
         <EChart :option="trendOption" height="100%" dark />
       </ScreenPanel>
-      <ScreenPanel title="待发货">
-        <template #extra>按计划发货日期</template>
-        <ScrollList :columns="deliveryColumns" :rows="data.deliveries || []" :row-height="42" empty-text="没有待发货的通知">
+      <ScreenPanel :title="$t('screen.warehouse.deliveries')">
+        <template #extra>{{ $t('screen.warehouse.byShipDate') }}</template>
+        <ScrollList :columns="deliveryColumns" :rows="deliveries" :row-height="42" :empty-text="$t('screen.warehouse.noDelivery')">
           <template #cell="{ column, row }">
             <template v-if="column.key === 'shipDate'">
               <span :class="{ overdue: row.shipDate < today }">{{ shortDay(row.shipDate) }}</span>
@@ -30,17 +30,17 @@
           </template>
         </ScrollList>
       </ScreenPanel>
-      <ScreenPanel title="各仓库库存">
+      <ScreenPanel :title="$t('screen.warehouse.byWarehouse')">
         <EChart :option="warehouseOption" height="100%" dark />
       </ScreenPanel>
     </div>
 
     <div class="panels">
-      <ScreenPanel title="本月出入库构成">
+      <ScreenPanel :title="$t('screen.warehouse.byType')">
         <EChart :option="typeOption" height="100%" dark />
       </ScreenPanel>
-      <ScreenPanel title="实时出入库">
-        <ScrollList :columns="docColumns" :rows="data.docs || []" :row-height="40" empty-text="还没有出入库">
+      <ScreenPanel :title="$t('screen.warehouse.docs')">
+        <ScrollList :columns="docColumns" :rows="docs" :row-height="40" :empty-text="$t('screen.warehouse.noDoc')">
           <template #cell="{ column, row }">
             <template v-if="column.key === 'time'">{{ shortTime(row.time) }}</template>
             <template v-else-if="column.key === 'kind'">
@@ -51,12 +51,12 @@
           </template>
         </ScrollList>
       </ScreenPanel>
-      <ScreenPanel title="库存预警">
-        <template #extra>低于安全库存、30 天内到期</template>
-        <ScrollList :columns="alertColumns" :rows="alerts" :row-height="42" empty-text="没有库存预警">
+      <ScreenPanel :title="$t('screen.warehouse.alerts')">
+        <template #extra>{{ $t('screen.warehouse.alertHint') }}</template>
+        <ScrollList :columns="alertColumns" :rows="alerts" :row-height="42" :empty-text="$t('screen.warehouse.noAlert')">
           <template #cell="{ column, row }">
             <template v-if="column.key === 'type'">
-              <span :class="['screen-tag', row.type === 'LOW' ? 'orange' : 'red']">{{ row.type === 'LOW' ? '缺货' : row.expired ? '已过期' : '临期' }}</span>
+              <span :class="['screen-tag', row.type === 'LOW' ? 'orange' : 'red']">{{ row.type === 'LOW' ? $t('screen.warehouse.short') : row.expired ? $t('screen.warehouse.expired') : $t('screen.warehouse.expiring') }}</span>
             </template>
             <template v-else-if="column.key === 'detail'">
               <template v-if="row.type === 'LOW'">
@@ -65,7 +65,7 @@
                   <span class="num-cell">{{ fmtNum(row.qty) }} / {{ fmtNum(row.safety) }}</span>
                 </div>
               </template>
-              <span v-else>{{ row.batchNo }} · {{ shortDay(row.expiryDate) }} 到期 · {{ fmtNum(row.qty) }}</span>
+              <span v-else>{{ $t('screen.warehouse.expiryDetail', { batch: row.batchNo, date: shortDay(row.expiryDate), qty: fmtNum(row.qty) }) }}</span>
             </template>
             <template v-else>{{ row[column.key] }}</template>
           </template>
@@ -78,18 +78,24 @@
 <script setup>
 import { computed } from 'vue'
 import dayjs from 'dayjs'
+import { useI18n } from 'vue-i18n'
 import EChart from '@/components/charts/EChart.vue'
 import ScreenKpi from '@/components/screen/ScreenKpi.vue'
 import ScreenPanel from '@/components/screen/ScreenPanel.vue'
 import ScrollList from '@/components/screen/ScrollList.vue'
-import { COLORS, PALETTE, axisStyle, fmtNum, gradient, hGradient, legend, shortDay, shortTime, tooltip } from '@/components/screen/screen'
+import { COLORS, PALETTE, axisStyle, fmtNum, gradient, hGradient, legend, shortDay, shortTime, tooltip, withDictLabel } from '@/components/screen/screen'
 import './screen.css'
 
 /** 仓储物流大屏 */
 const props = defineProps({ data: { type: Object, default: () => ({}) } })
+const { t } = useI18n()
 const kpi = computed(() => props.data.kpi || {})
 const today = dayjs().format('YYYY-MM-DD')
-const KIND = { IN: '入库', OUT: '出库', TRANSFER: '调拨' }
+const KIND = { IN: t('screen.warehouse.in'), OUT: t('screen.warehouse.out'), TRANSFER: t('screen.warehouse.transfer') }
+/** 出入库类型字典：调拨的名称后端已翻译 */
+const ioType = (r) => (r.kind === 'IN' ? 'wms_in_type' : r.kind === 'OUT' ? 'wms_out_type' : null)
+const deliveries = computed(() => withDictLabel(props.data.deliveries, 'scm_delivery_status', 'status', 'statusLabel'))
+const docs = computed(() => (props.data.docs || []).map((r) => (ioType(r) ? withDictLabel([r], ioType, 'bizType', 'typeLabel')[0] : r)))
 const alertCount = computed(() => Number(kpi.value.lowStock || 0) + Number(kpi.value.expiring || 0))
 
 const trendOption = computed(() => {
@@ -101,24 +107,24 @@ const trendOption = computed(() => {
     xAxis: { type: 'category', data: rows.map((r) => shortDay(r.day)), ...axisStyle },
     yAxis: { type: 'value', ...axisStyle },
     series: [
-      { name: '入库', type: 'bar', barWidth: 12, data: rows.map((r) => Number(r.inQty)), itemStyle: { color: gradient(COLORS.cyan, 0.2) } },
-      { name: '出库', type: 'bar', barWidth: 12, data: rows.map((r) => Number(r.outQty)), itemStyle: { color: gradient(COLORS.green, 0.2) } }
+      { name: KIND.IN, type: 'bar', barWidth: 12, data: rows.map((r) => Number(r.inQty)), itemStyle: { color: gradient(COLORS.cyan, 0.2) } },
+      { name: KIND.OUT, type: 'bar', barWidth: 12, data: rows.map((r) => Number(r.outQty)), itemStyle: { color: gradient(COLORS.green, 0.2) } }
     ]
   }
 })
 
 const deliveryColumns = [
-  { key: 'deliveryNo', title: '发货通知', width: '160px' },
-  { key: 'customer', title: '客户', width: '1.4fr' },
-  { key: 'warehouse', title: '仓库', width: '1fr' },
-  { key: 'shipDate', title: '发货日期', width: '90px', align: 'center' },
-  { key: 'statusLabel', title: '状态', width: '90px', align: 'center' }
+  { key: 'deliveryNo', title: t('screen.warehouse.deliveryNo'), width: '160px' },
+  { key: 'customer', title: t('screen.warehouse.customer'), width: '1.4fr' },
+  { key: 'warehouse', title: t('screen.warehouse.warehouse'), width: '1fr' },
+  { key: 'shipDate', title: t('screen.warehouse.shipDate'), width: '96px', align: 'center' },
+  { key: 'statusLabel', title: t('common.field.status'), width: '90px', align: 'center' }
 ]
 
 const warehouseOption = computed(() => {
   const rows = (props.data.warehouses || []).slice(0, 10)
   return {
-    tooltip: tooltip({ formatter: (p) => { const r = rows[p[0].dataIndex]; return `${r.name}<br/>库存 ${fmtNum(r.qty, 2)}<br/>物料 ${fmtNum(r.skus)} 种` } }),
+    tooltip: tooltip({ formatter: (p) => { const r = rows[p[0].dataIndex]; return `${r.name}<br/>${t('screen.warehouse.warehouseTip', { qty: fmtNum(r.qty, 2), skus: fmtNum(r.skus) })}` } }),
     grid: { left: 110, right: 90, top: 8, bottom: 8 },
     xAxis: { type: 'value', show: false },
     yAxis: { type: 'category', inverse: true, data: rows.map((r) => r.name), ...axisStyle, axisLabel: { ...axisStyle.axisLabel, fontSize: 14, color: COLORS.text }, axisLine: { show: false }, axisTick: { show: false } },
@@ -133,7 +139,7 @@ const warehouseOption = computed(() => {
 
 /** 本月出入库按类型：入库在左，出库在右 */
 const typeOption = computed(() => {
-  const rows = props.data.byType || []
+  const rows = withDictLabel(props.data.byType, ioType, 'value', 'label')
   const pie = (kind, center, name) => ({
     name, type: 'pie', radius: ['36%', '56%'], center,
     // 小于约 5% 的扇区不显示标签，避免重叠（悬停可看）
@@ -147,26 +153,26 @@ const typeOption = computed(() => {
     color: PALETTE,
     tooltip: tooltip({ trigger: 'item', formatter: (p) => `${p.seriesName}<br/>${p.name} ${fmtNum(p.value, 2)}（${p.percent}%）` }),
     title: [
-      { text: '入库', left: '25%', top: '47%', textAlign: 'center', textStyle: { color: COLORS.cyan, fontSize: 16 } },
-      { text: '出库', left: '75%', top: '47%', textAlign: 'center', textStyle: { color: COLORS.green, fontSize: 16 } }
+      { text: KIND.IN, left: '25%', top: '47%', textAlign: 'center', textStyle: { color: COLORS.cyan, fontSize: 16 } },
+      { text: KIND.OUT, left: '75%', top: '47%', textAlign: 'center', textStyle: { color: COLORS.green, fontSize: 16 } }
     ],
-    series: [pie('IN', ['25%', '52%'], '入库'), pie('OUT', ['75%', '52%'], '出库')]
+    series: [pie('IN', ['25%', '52%'], KIND.IN), pie('OUT', ['75%', '52%'], KIND.OUT)]
   }
 })
 
 const docColumns = [
-  { key: 'time', title: '时间', width: '110px' },
-  { key: 'docNo', title: '单号', width: '160px' },
-  { key: 'kind', title: '', width: '64px', align: 'center' },
-  { key: 'typeLabel', title: '类型', width: '1fr' },
-  { key: 'warehouse', title: '仓库', width: '1fr' },
-  { key: 'qty', title: '数量', width: '100px', align: 'right' }
+  { key: 'time', title: t('screen.warehouse.time'), width: '110px' },
+  { key: 'docNo', title: t('screen.warehouse.docNo'), width: '160px' },
+  { key: 'kind', title: '', width: '80px', align: 'center' },
+  { key: 'typeLabel', title: t('common.field.type'), width: '1fr' },
+  { key: 'warehouse', title: t('screen.warehouse.warehouse'), width: '1fr' },
+  { key: 'qty', title: t('common.field.quantity'), width: '100px', align: 'right' }
 ]
 
 const alertColumns = [
-  { key: 'type', title: '', width: '72px', align: 'center' },
-  { key: 'name', title: '物料', width: '1fr' },
-  { key: 'detail', title: '库存 / 安全库存、批次', width: '1.3fr' }
+  { key: 'type', title: '', width: '80px', align: 'center' },
+  { key: 'name', title: t('screen.warehouse.material'), width: '1fr' },
+  { key: 'detail', title: t('screen.warehouse.alertDetail'), width: '1.3fr' }
 ]
 const alerts = computed(() => [
   ...(props.data.lowStock || []).map((r) => ({ ...r, type: 'LOW' })),

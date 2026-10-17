@@ -30,8 +30,8 @@ public class WfNotifyService {
         if (e.assigneeId() == null) {
             return;
         }
-        messageSender.send(List.of(e.assigneeId()), Message.of("APPROVAL", "待审批：" + e.processName(),
-                "「" + e.processName() + "」流转到「" + e.taskName() + "」，等待你审批", "/workflow/todo"));
+        messageSender.send(List.of(e.assigneeId()), Message.of("APPROVAL", "待审批：" + e.processName(),  // i18n-ignore 存库或内部异常
+                "「" + e.processName() + "」流转到「" + e.taskName() + "」，等待你审批", "/workflow/todo"));  // i18n-ignore 存库或内部异常
     }
 
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
@@ -42,11 +42,11 @@ public class WfNotifyService {
         }
         HistoricProcessInstance pi = historyService.createHistoricProcessInstanceQuery()
                 .processInstanceId(e.processInstanceId()).singleResult();
-        String name = pi == null || pi.getName() == null ? "你的申请" : "「" + pi.getName() + "」";
+        String name = pi == null || pi.getName() == null ? "你的申请" : "「" + pi.getName() + "」";  // i18n-ignore 存库或内部异常
         String result = switch (e.status()) {
-            case APPROVED -> "已审批通过";
-            case REJECTED -> "已被拒绝";
-            default -> "已结束";
+            case APPROVED -> "已审批通过";  // i18n-ignore 存库或内部异常
+            case REJECTED -> "已被拒绝";  // i18n-ignore 存库或内部异常
+            default -> "已结束";  // i18n-ignore 存库或内部异常
         };
         messageSender.send(List.of(e.startUserId()), Message.of("APPROVAL", name + result, name + result, "/workflow/mine"));
     }

@@ -148,7 +148,7 @@ public class HrRecruitService {
             throw new BizException("招聘需求不在审批中");
         }
         if (r.getFlowInstanceId() != null && flowApi.getStatus(r.getFlowInstanceId()) == FlowStatus.RUNNING) {
-            flowApi.cancel(r.getFlowInstanceId(), "撤回招聘需求");
+            flowApi.cancel(r.getFlowInstanceId(), "撤回招聘需求");  // i18n-ignore 审批意见存库
         }
         recruitMapper.update(Wrappers.<HrRecruit>lambdaUpdate().set(HrRecruit::getStatus, "DRAFT")
                 .eq(HrRecruit::getId, id).eq(HrRecruit::getStatus, "APPROVING"));
@@ -219,7 +219,7 @@ public class HrRecruitService {
     public void deleteCandidates(List<Long> ids) {
         for (HrCandidate c : candidateMapper.selectByIds(ids)) {
             if ("HIRED".equals(c.getStage())) {
-                throw new BizException("「" + c.getName() + "」已入职，不能删除");
+                throw new BizException("「{0}」已入职，不能删除", c.getName());
             }
         }
         interviewMapper.delete(Wrappers.<HrInterview>lambdaQuery().in(HrInterview::getCandidateId, ids));
@@ -297,7 +297,7 @@ public class HrRecruitService {
         }
         HrRecruit r = detail(c.getRecruitId());
         if (recruitMapper.addHired(r.getId()) == 0) {
-            throw new BizException("招聘需求「" + r.getTitle() + "」不在招聘中，不能录用");
+            throw new BizException("招聘需求「{0}」不在招聘中，不能录用", r.getTitle());
         }
         Long userId = req.userId();
         if (userId == null && StringUtils.hasText(req.username())) {
@@ -308,10 +308,10 @@ public class HrRecruitService {
                 req.positionId() != null ? req.positionId() : r.getPositionId(), userId, null,
                 StringUtils.hasText(req.empType()) ? req.empType() : "FULL_TIME", "PROBATION", req.entryDate(),
                 req.regularDate() != null ? req.regularDate() : req.entryDate().plusMonths(3), null, null, null,
-                "招聘录用 " + r.getRecruitNo(), null));
+                "招聘录用 " + r.getRecruitNo(), null));  // i18n-ignore 员工备注存库
         if (req.baseSalary() != null) {
             salaryService.save(employeeId, new SalaryRequest(req.baseSalary(), null, null, null, req.baseSalary(), req.baseSalary(),
-                    BigDecimal.valueOf(5), null, null, "录用时建立", req.entryDate()));
+                    BigDecimal.valueOf(5), null, null, "录用时建立", req.entryDate()));  // i18n-ignore 薪资备注存库
         }
         candidateMapper.update(Wrappers.<HrCandidate>lambdaUpdate()
                 .set(HrCandidate::getStage, "HIRED").set(HrCandidate::getEmployeeId, employeeId)
@@ -337,8 +337,8 @@ public class HrRecruitService {
                         .ne(HrRecruit::getId, r.getId()))
                 .stream().mapToInt(x -> Math.max(x.getHeadcount() - x.getHiredCount(), 0)).sum();
         if (onJob + recruiting + r.getHeadcount() > position.getHeadcount()) {
-            throw new BizException(String.format("超出职位「%s」的编制：编制 %d 人，在职 %d 人，其他招聘中 %d 人，本次招聘 %d 人",
-                    position.getName(), position.getHeadcount(), onJob, recruiting, r.getHeadcount()));
+            throw new BizException("超出职位「{0}」的编制：编制 {1} 人，在职 {2} 人，其他招聘中 {3} 人，本次招聘 {4} 人",
+                    position.getName(), position.getHeadcount(), onJob, recruiting, r.getHeadcount());
         }
     }
 

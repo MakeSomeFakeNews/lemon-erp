@@ -105,7 +105,7 @@ public class ScmAsnService {
             }
             BigDecimal max = open.getOrDefault(r.orderItemId(), BigDecimal.ZERO);
             if (r.qty().compareTo(max) > 0) {
-                throw new BizException("送货数量超过未送货数量 " + max.stripTrailingZeros().toPlainString());
+                throw new BizException("送货数量超过未送货数量 {0}", max.stripTrailingZeros().toPlainString());
             }
             ScmAsnItem item = new ScmAsnItem();
             item.setAsnId(asn.getId());
@@ -116,8 +116,8 @@ public class ScmAsnService {
             item.setRemark(r.remark());
             return item;
         }).toList());
-        messageSender.sendToPermission("scm:asn:receive", MessageSender.Message.of("REMIND", "供应商送货通知：" + asn.getAsnNo(),
-                "采购订单 " + order.getOrderNo() + " 预计 " + (req.expectedDate() != null ? req.expectedDate() : req.shipDate()) + " 到货",
+        messageSender.sendToPermission("scm:asn:receive", MessageSender.Message.of("REMIND", "供应商送货通知：" + asn.getAsnNo(), // i18n-ignore
+                "采购订单 " + order.getOrderNo() + " 预计 " + (req.expectedDate() != null ? req.expectedDate() : req.shipDate()) + " 到货", // i18n-ignore
                 "/scm/asn"));
         return asn.getId();
     }
@@ -148,7 +148,7 @@ public class ScmAsnService {
             SrmRequests.AsnReceiveLine line = lines.get(i.getId());
             BigDecimal qty = line != null ? line.qty() : i.getQty();
             if (qty.signum() > 0 && Integer.valueOf(1).equals(i.getSerialEnabled())) {
-                throw new BizException("物料「" + i.getMaterialCode() + " " + i.getMaterialName() + "」需要录入序列号，请在采购入库中收货");
+                throw new BizException("物料「{0} {1}」需要录入序列号，请在采购入库中收货", i.getMaterialCode(), i.getMaterialName());
             }
             return qty.signum() == 0 ? null : new TradeDocItemRequest(i.getOrderItemId(), line != null ? line.locationId() : null,
                     i.getBatchNo(), null, null, qty, null, i.getRemark());
@@ -157,7 +157,7 @@ public class ScmAsnService {
             throw new BizException("请填写实收数量");
         }
         Long docId = tradeDocService.create(TradeKind.PURCHASE_IN, new TradeDocRequest(asn.getOrderId(), warehouseId, req.bizDate(),
-                "送货通知 " + asn.getAsnNo(), false, items));
+                "送货通知 " + asn.getAsnNo(), false, items)); // i18n-ignore
         if (asnMapper.update(Wrappers.<ScmAsn>lambdaUpdate()
                 .set(ScmAsn::getStatus, AsnStatus.RECEIVED)
                 .set(ScmAsn::getTradeDocId, docId)

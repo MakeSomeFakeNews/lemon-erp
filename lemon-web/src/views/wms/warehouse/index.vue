@@ -2,11 +2,11 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="仓库" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="编码或名称" allow-clear />
+        <a-form-item :label="$t('wms.common.warehouse')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('wms.flow.codeOrName')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.sys_common_status, true)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -21,7 +21,7 @@
         @refresh="load"
       >
         <a-button v-perm="'wms:warehouse:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新增仓库
+          <template #icon><PlusOutlined /></template>{{ $t('wms.warehouse.createTitle') }}
         </a-button>
       </TableToolbar>
 
@@ -60,15 +60,15 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button v-perm="'wms:location:list'" type="link" size="small" @click="toLocations(record)">
-                <template #icon><EnvironmentOutlined /></template>库位
+                <template #icon><EnvironmentOutlined /></template>{{ $t('wms.common.location') }}
               </a-button>
               <a-button v-perm="'wms:warehouse:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-perm="'wms:warehouse:remove'">
-                <a-popconfirm :title="`确定删除仓库「${record.name}」及其库位？`" @confirm="remove(record.id)">
+                <a-popconfirm :title="$t('wms.warehouse.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>删除
+                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
                   </a-button>
                 </a-popconfirm>
               </span>
@@ -78,27 +78,27 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增仓库" edit-title="编辑仓库">
+    <FormDrawer :drawer="drawer" :create-title="$t('wms.warehouse.createTitle')" :edit-title="$t('wms.warehouse.editTitle')">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="仓库编码" name="code">
-              <a-input v-model:value="form.code" :maxlength="32" placeholder="如：WH01" />
+            <a-form-item :label="$t('wms.warehouse.code')" name="code">
+              <a-input v-model:value="form.code" :maxlength="32" :placeholder="$t('wms.warehouse.codePh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="仓库名称" name="name">
-              <a-input v-model:value="form.name" :maxlength="64" placeholder="如：总部成品仓" />
+            <a-form-item :label="$t('wms.warehouse.name')" name="name">
+              <a-input v-model:value="form.name" :maxlength="64" :placeholder="$t('wms.warehouse.namePh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="仓库类型" name="type">
+            <a-form-item :label="$t('wms.warehouse.type')" name="type">
               <template #extra>
-                <a-tooltip v-if="CONSIGN_PARTNER[form.type]" title="寄售仓不计入可用库存；供应商寄售仓的库存属于供应商，不计入存货成本">
-                  <span class="type-hint"><InfoCircleOutlined /> 寄售仓不计入可用库存</span>
+                <a-tooltip v-if="CONSIGN_PARTNER[form.type]" :title="$t('wms.warehouse.consignTip')">
+                  <span class="type-hint"><InfoCircleOutlined /> {{ $t('wms.warehouse.consignHint') }}</span>
                 </a-tooltip>
-                <a-tooltip v-else title="不良品仓的库存不计入 MRP、齐套、可承诺量">
-                  <span class="type-hint"><InfoCircleOutlined /> 不良品仓的库存不参与计划</span>
+                <a-tooltip v-else :title="$t('wms.warehouse.defectTip')">
+                  <span class="type-hint"><InfoCircleOutlined /> {{ $t('wms.warehouse.defectHint') }}</span>
                 </a-tooltip>
               </template>
               <a-select v-model:value="form.type" :options="toOptions(dict.wms_warehouse_type)" @change="form.partnerId = undefined" />
@@ -115,27 +115,27 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="联系人" name="contact">
+            <a-form-item :label="$t('wms.warehouse.contact')" name="contact">
               <a-input v-model:value="form.contact" :maxlength="64" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="联系电话" name="phone">
+            <a-form-item :label="$t('wms.warehouse.phone')" name="phone">
               <a-input v-model:value="form.phone" :maxlength="32" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="地址" name="address">
+            <a-form-item :label="$t('wms.warehouse.address')" name="address">
               <a-input v-model:value="form.address" :maxlength="255" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="排序" name="sort">
+            <a-form-item :label="$t('common.field.sort')" name="sort">
               <a-input-number v-model:value="form.sort" :min="0" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-textarea v-model:value="form.remark" :rows="3" :maxlength="255" show-count />
             </a-form-item>
           </a-col>
@@ -147,6 +147,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, InfoCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
@@ -165,19 +166,21 @@ import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 
+const { t } = useI18n()
+
 const router = useRouter()
 const userStore = useUserStore()
 const dict = useDict('sys_common_status', 'wms_warehouse_type')
 
 const columns = [
-  { title: '仓库', key: 'name', width: 200 },
-  { title: '类型', key: 'type', width: 150, dict: 'wms_warehouse_type' },
-  { title: '地址', dataIndex: 'address', width: 240, ellipsis: true },
-  { title: '联系人', key: 'contact', width: 140 },
-  { title: '排序', dataIndex: 'sort', width: 70 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '备注', dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: '操作', key: 'action', width: 220, fixed: 'right' }
+  { title: t('wms.common.warehouse'), key: 'name', width: 200 },
+  { title: t('common.field.type'), key: 'type', width: 150, dict: 'wms_warehouse_type' },
+  { title: t('wms.warehouse.address'), dataIndex: 'address', width: 240, ellipsis: true },
+  { title: t('wms.warehouse.contact'), key: 'contact', width: 140 },
+  { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 220, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'wms-warehouse')
 const showSearch = ref(true)
@@ -192,8 +195,8 @@ function resetQuery() {
 
 /** 寄售仓的往来单位：客户寄售仓 → 客户，供应商寄售仓 → 供应商 */
 const CONSIGN_PARTNER = {
-  CONSIGN_OUT: { type: 'customer', label: '寄售客户' },
-  CONSIGN_IN: { type: 'supplier', label: '寄售供应商' }
+  CONSIGN_OUT: { type: 'customer', label: t('wms.warehouse.consignCustomer') },
+  CONSIGN_IN: { type: 'supplier', label: t('wms.warehouse.consignSupplier') }
 }
 // 往来单位名称：列表只返回 partnerId，按客户 / 供应商下拉选项映射名称
 const partnerNames = reactive({ customer: new Map(), supplier: new Map() })
@@ -218,11 +221,11 @@ onMounted(() => {
 
 const rules = {
   code: [
-    { required: true, message: '请输入仓库编码' },
-    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: '只能包含字母、数字、下划线和短横线' }
+    { required: true, message: t('wms.warehouse.inputCode') },
+    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: t('wms.location.codeRule') }
   ],
-  name: [{ required: true, whitespace: true, message: '请输入仓库名称' }],
-  partnerId: [{ required: true, message: '请选择寄售仓的往来单位' }]
+  name: [{ required: true, whitespace: true, message: t('wms.warehouse.inputName') }],
+  partnerId: [{ required: true, message: t('wms.warehouse.selectPartner') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, code: '', name: '', type: 'NORMAL', partnerId: undefined, contact: '', phone: '', address: '', sort: 0, remark: '' }),
@@ -248,7 +251,7 @@ const toLocations = (record) => router.push({ path: '/wms/location', query: { wa
 
 async function remove(id) {
   await deleteWarehouse(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 </script>

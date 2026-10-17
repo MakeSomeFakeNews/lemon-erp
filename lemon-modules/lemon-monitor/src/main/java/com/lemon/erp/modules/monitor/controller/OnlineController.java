@@ -34,7 +34,7 @@ public class OnlineController {
 
     @DeleteMapping("/{tokenId}")
     @PreAuthorize("@ss.hasPerm('monitor:online:kick')")
-    @OperLog(title = "在线用户", type = OperType.FORCE)
+    @OperLog(title = "在线用户", type = OperType.FORCE) // i18n-ignore 操作日志存库
     public R<Void> kick(@PathVariable String tokenId) {
         // 只能强退自己能看到的会话（SaaS 模式下为本租户的）
         tokenService.listSessions().stream()

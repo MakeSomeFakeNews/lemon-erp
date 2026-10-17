@@ -1,13 +1,13 @@
 <template>
   <div class="cmd-chart">
-    <a-empty v-if="!rows.length" :image="simpleImage" description="暂无命令统计" />
-    <div v-else class="rows" role="list" :aria-label="`调用次数最多的 ${rows.length} 个 Redis 命令`">
+    <a-empty v-if="!rows.length" :image="simpleImage" :description="$t('monitor.cache.noCommandStats')" />
+    <div v-else class="rows" role="list" :aria-label="$t('monitor.cache.topCommands', { n: rows.length })">
       <a-tooltip v-for="r in rows" :key="r.name" placement="top">
         <template #title>
           <div class="tip-title">{{ r.name.toUpperCase() }}</div>
-          <div>调用次数：{{ formatNumber(r.calls) }}</div>
-          <div>累计耗时：{{ formatUsec(r.usec) }}</div>
-          <div>平均耗时：{{ r.usecPerCall.toFixed(2) }} μs</div>
+          <div>{{ $t('monitor.cache.callsValue', { n: formatNumber(r.calls) }) }}</div>
+          <div>{{ $t('monitor.cache.usecValue', { n: formatUsec(r.usec) }) }}</div>
+          <div>{{ $t('monitor.cache.avgValue', { n: r.usecPerCall.toFixed(2) }) }}</div>
         </template>
         <div class="row" role="listitem" tabindex="0">
           <span class="name">{{ r.name }}</span>

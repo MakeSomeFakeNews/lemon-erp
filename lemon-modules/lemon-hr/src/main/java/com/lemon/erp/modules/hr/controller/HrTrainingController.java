@@ -62,7 +62,7 @@ public class HrTrainingController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('hr:training:add')")
-    @OperLog(title = "培训管理", type = OperType.INSERT)
+    @OperLog(title = "培训管理", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Void> create(@Validated(Create.class) @RequestBody HrTraining training) {
         trainingService.create(training);
         return R.ok();
@@ -70,7 +70,7 @@ public class HrTrainingController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('hr:training:edit')")
-    @OperLog(title = "培训管理", type = OperType.UPDATE)
+    @OperLog(title = "培训管理", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody HrTraining training) {
         trainingService.update(id, training);
         return R.ok();
@@ -78,7 +78,7 @@ public class HrTrainingController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('hr:training:remove')")
-    @OperLog(title = "培训管理", type = OperType.DELETE)
+    @OperLog(title = "培训管理", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         trainingService.delete(ids);
         return R.ok();
@@ -87,7 +87,7 @@ public class HrTrainingController {
     /** 开始 ONGOING / 结束 FINISHED / 取消 CANCELED，body：{ status } */
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('hr:training:edit')")
-    @OperLog(title = "培训管理-状态", type = OperType.UPDATE)
+    @OperLog(title = "培训管理-状态", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> changeStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         trainingService.changeStatus(id, body.get("status"));
         return R.ok();
@@ -96,14 +96,14 @@ public class HrTrainingController {
     /** 添加学员，body：员工 ID 列表；返回新增人数 */
     @PostMapping("/{id}/trainees")
     @PreAuthorize("@ss.hasPerm('hr:training:edit')")
-    @OperLog(title = "培训管理-添加学员", type = OperType.INSERT)
+    @OperLog(title = "培训管理-添加学员", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Integer> addTrainees(@PathVariable Long id, @RequestBody List<Long> employeeIds) {
         return R.ok(trainingService.addTrainees(id, employeeIds));
     }
 
     @DeleteMapping("/{id}/trainees/{recordIds}")
     @PreAuthorize("@ss.hasPerm('hr:training:edit')")
-    @OperLog(title = "培训管理-移除学员", type = OperType.DELETE)
+    @OperLog(title = "培训管理-移除学员", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> removeTrainees(@PathVariable Long id, @PathVariable List<Long> recordIds) {
         trainingService.removeTrainees(id, recordIds);
         return R.ok();
@@ -111,7 +111,7 @@ public class HrTrainingController {
 
     @PutMapping("/{id}/records")
     @PreAuthorize("@ss.hasPerm('hr:training:edit')")
-    @OperLog(title = "培训管理-出勤与成绩", type = OperType.UPDATE)
+    @OperLog(title = "培训管理-出勤与成绩", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> saveRecords(@PathVariable Long id, @Valid @RequestBody TrainingRecordsRequest req) {
         trainingService.saveRecords(id, req.items());
         return R.ok();

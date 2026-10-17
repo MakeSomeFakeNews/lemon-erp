@@ -63,14 +63,14 @@ public class FinConsumableController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('fin:consumable:add')")
-    @OperLog(title = "低值易耗品领用", type = OperType.INSERT)
+    @OperLog(title = "低值易耗品领用", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody ConsumableRequest req) {
         return R.ok(consumableService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('fin:consumable:add')")
-    @OperLog(title = "低值易耗品领用", type = OperType.UPDATE)
+    @OperLog(title = "低值易耗品领用", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody ConsumableRequest req) {
         consumableService.update(id, req);
         return R.ok();
@@ -78,7 +78,7 @@ public class FinConsumableController {
 
     @PostMapping("/{id}/confirm")
     @PreAuthorize("@ss.hasPerm('fin:consumable:confirm')")
-    @OperLog(title = "低值易耗品领用-出库", type = OperType.UPDATE)
+    @OperLog(title = "低值易耗品领用-出库", type = OperType.UPDATE) // i18n-ignore
     public R<Void> confirm(@PathVariable Long id) {
         consumableService.confirm(id);
         return R.ok();
@@ -86,7 +86,7 @@ public class FinConsumableController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('fin:consumable:remove')")
-    @OperLog(title = "低值易耗品领用", type = OperType.DELETE)
+    @OperLog(title = "低值易耗品领用", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
         consumableService.delete(id);
         return R.ok();

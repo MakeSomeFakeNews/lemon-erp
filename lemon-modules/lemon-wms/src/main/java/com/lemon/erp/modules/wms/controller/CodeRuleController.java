@@ -37,7 +37,7 @@ public class CodeRuleController {
 
     @PutMapping("/{key}")
     @PreAuthorize("@ss.hasPerm('sys:codeRule:edit')")
-    @OperLog(title = "编码规则", type = OperType.UPDATE)
+    @OperLog(title = "编码规则", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable String key, @Valid @RequestBody CodeRuleRequest req) {
         ruleService.update(key, req);
         return R.ok();
@@ -46,7 +46,7 @@ public class CodeRuleController {
     /** 恢复默认规则 */
     @DeleteMapping("/{key}")
     @PreAuthorize("@ss.hasPerm('sys:codeRule:edit')")
-    @OperLog(title = "编码规则-恢复默认", type = OperType.UPDATE)
+    @OperLog(title = "编码规则-恢复默认", type = OperType.UPDATE) // i18n-ignore
     public R<Void> reset(@PathVariable String key) {
         ruleService.reset(key);
         return R.ok();

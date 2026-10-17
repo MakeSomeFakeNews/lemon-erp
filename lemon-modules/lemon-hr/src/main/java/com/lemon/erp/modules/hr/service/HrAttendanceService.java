@@ -106,7 +106,7 @@ public class HrAttendanceService {
         }
         for (LocalDateTime t : new LocalDateTime[]{req.checkIn(), req.checkOut()}) {
             if (t != null && !t.toLocalDate().equals(req.workDate())) {
-                throw new BizException("打卡时间必须在 " + req.workDate() + " 当天");
+                throw new BizException("打卡时间必须在 {0} 当天", req.workDate());
             }
         }
         if (req.checkIn() != null && req.checkOut() != null && !req.checkOut().isAfter(req.checkIn())) {
@@ -348,7 +348,7 @@ public class HrAttendanceService {
     static YearMonth toYearMonth(int period) {
         int month = period % 100;
         if (month < 1 || month > 12 || period < 190001 || period > 299912) {
-            throw new BizException("月份格式不正确：" + period);
+            throw new BizException("月份格式不正确：{0}", period);
         }
         return YearMonth.of(period / 100, month);
     }

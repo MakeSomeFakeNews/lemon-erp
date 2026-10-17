@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.mapper.FinCashierMapper;
 import com.lemon.erp.modules.fin.model.FinConstants;
@@ -46,7 +47,7 @@ public class FinCashierService {
             return rows;
         }
         BigDecimal balance = cashierMapper.sumBefore(ids, begin, posted);
-        rows.add(line("OPEN", begin, "期初余额", null, null, balance));
+        rows.add(line("OPEN", begin, I18n.t("期初余额"), null, null, balance));
         List<Map<String, Object>> entries = cashierMapper.selectJournal(ids, begin, end, posted);
         Map<Long, String> counters = counterAccounts(entries, ids);
         BigDecimal dayDebit = BigDecimal.ZERO;
@@ -57,7 +58,7 @@ public class FinCashierService {
         for (Map<String, Object> e : entries) {
             LocalDate date = toDate(e.get("entryDate"));
             if (day != null && !day.equals(date)) {
-                rows.add(line("DAY", day, "本日合计", dayDebit, dayCredit, balance));
+                rows.add(line("DAY", day, I18n.t("本日合计"), dayDebit, dayCredit, balance));
                 dayDebit = BigDecimal.ZERO;
                 dayCredit = BigDecimal.ZERO;
             }
@@ -79,9 +80,9 @@ public class FinCashierService {
             rows.add(row);
         }
         if (day != null) {
-            rows.add(line("DAY", day, "本日合计", dayDebit, dayCredit, balance));
+            rows.add(line("DAY", day, I18n.t("本日合计"), dayDebit, dayCredit, balance));
         }
-        rows.add(line("TOTAL", end, "合计", totalDebit, totalCredit, balance));
+        rows.add(line("TOTAL", end, I18n.t("合计"), totalDebit, totalCredit, balance));
         return rows;
     }
 

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.modules.fin.dto.AccountSum;
 import com.lemon.erp.modules.fin.dto.FinancialRowAccount;
 import com.lemon.erp.modules.fin.dto.FinancialRow;
@@ -161,9 +162,10 @@ final class FinancialTemplate {
         Map<String, Integer> lineNos = new HashMap<>();
         List<FinancialRow> result = new ArrayList<>();
         int lineNo = firstLineNo;
+        // 行名、取数说明返回给前端显示，按请求语言翻译（计算只用 key，不依赖名称）
         for (Row row : rows) {
             if (row.kind == Kind.TITLE) {
-                result.add(new FinancialRow(null, row.name, row.level, true, true, null, null, null));
+                result.add(new FinancialRow(null, I18n.t(row.name), row.level, true, true, null, null, null));
                 continue;
             }
             BigDecimal[] v = zeros(n);
@@ -180,7 +182,7 @@ final class FinancialTemplate {
                     }
                     parts.add((parts.isEmpty() ? (minus ? "-" : "") : (minus ? " - " : " + ")) + lineNos.get(key));
                 }
-                formula = "行 " + String.join("", parts);
+                formula = I18n.t("行 {0}", String.join("", parts));
             } else {
                 List<FinAccount> list = row.kind == Kind.SUB
                         ? leaves.stream().filter(a -> row.prefixes.stream().anyMatch(p -> a.getCode().startsWith(p))).toList()
@@ -203,26 +205,32 @@ final class FinancialTemplate {
             }
             values.put(row.key, v);
             lineNos.put(row.key, lineNo);
-            result.add(new FinancialRow(lineNo++, row.name, row.level, row.bold, false, formula, List.of(v), accounts));
+            result.add(new FinancialRow(lineNo++, I18n.t(row.name), row.level, row.bold, false, formula, List.of(v), accounts));
         }
         return new Result(result, values, lineNo);
     }
 
     private static String formula(Row row) {
+        boolean zh = I18n.isDefault();
+        String listSep = zh ? "、" : ", ";
         StringBuilder sb = new StringBuilder();
         if (!row.prefixes.isEmpty()) {
-            sb.append("科目 ").append(String.join("、", row.prefixes)).append(row.credit ? " 的贷方余额" : " 的借方余额");
+            String codes = String.join(listSep, row.prefixes);
+            sb.append(row.credit ? I18n.t("科目 {0} 的贷方余额", codes) : I18n.t("科目 {0} 的借方余额", codes));
         }
         if (!row.catchCategories.isEmpty()) {
-            sb.append(sb.isEmpty() ? "" : "，").append("以及未列示的其他")
-                    .append(row.catchCategories.stream().sorted().map(FinancialTemplate::categoryLabel).collect(Collectors.joining("、")))
-                    .append("科目");
-            if (row.catchDirection != null) {
-                sb.append(row.catchDirection == AccountDirection.CREDIT ? "（贷方科目）" : "（借方科目）");
+            String categories = row.catchCategories.stream().sorted().map(c -> I18n.t(categoryLabel(c))).collect(Collectors.joining(listSep));
+            sb.append(sb.isEmpty() ? "" : zh ? "，" : ", ");
+            if (row.catchDirection == null) {
+                sb.append(I18n.t("以及未列示的其他{0}科目", categories));
+            } else if (row.catchDirection == AccountDirection.CREDIT) {
+                sb.append(I18n.t("以及未列示的其他{0}科目（贷方科目）", categories));
+            } else {
+                sb.append(I18n.t("以及未列示的其他{0}科目（借方科目）", categories));
             }
         }
         if (row.note != null) {
-            sb.append(sb.isEmpty() ? "" : "；").append(row.note);
+            sb.append(sb.isEmpty() ? "" : zh ? "；" : "; ").append(I18n.t(row.note));
         }
         return sb.toString();
     }

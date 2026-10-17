@@ -1,15 +1,15 @@
 <template>
-  <FormDrawer page :drawer="drawer" create-title="新增发货通知" width="min(1100px, 100vw)">
+  <FormDrawer page :drawer="drawer" :create-title="$t('scm.delivery.addTitle')" width="min(1100px, 100vw)">
     <a-alert
       type="info"
       show-icon
       class="tip"
-      message="发货通知按销售订单的未出库数量生成，保存后按先到期先出自动生成拣货建议；仓库确认拣货后出库，自动生成销售出库单。"
+      :message="$t('scm.delivery.formTip')"
     />
     <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="24" :sm="12" :lg="8">
-          <a-form-item label="销售订单" name="orderId">
+          <a-form-item :label="$t('scm.delivery.salesOrder')" name="orderId">
             <a-select
               :value="form.orderId"
               show-search
@@ -17,8 +17,8 @@
               :options="orderOptions"
               :loading="orderLoading"
               :disabled="fixedOrder"
-              placeholder="搜索订单号"
-              :not-found-content="orderLoading ? '加载中…' : '没有可发货的订单'"
+              :placeholder="$t('scm.delivery.searchOrderNo')"
+              :not-found-content="orderLoading ? $t('common.msg.loading') : $t('scm.delivery.noOrder')"
               @search="searchOrders"
               @focus="() => !orders.length && searchOrders('')"
               @change="selectOrder"
@@ -26,25 +26,25 @@
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="6">
-          <a-form-item label="发货仓库" name="warehouseId">
+          <a-form-item :label="$t('scm.delivery.shipWarehouse')" name="warehouseId">
             <WarehouseSelect v-model:value="form.warehouseId" :allow-clear="false" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="4">
-          <a-form-item label="发货日期" name="shipDate">
+          <a-form-item :label="$t('scm.delivery.shipDate')" name="shipDate">
             <a-date-picker v-model:value="form.shipDate" value-format="YYYY-MM-DD" class="full" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="6">
-          <a-form-item label="备注" name="remark">
-            <a-input v-model:value="form.remark" :maxlength="255" placeholder="选填" />
+          <a-form-item :label="$t('common.field.remark')" name="remark">
+            <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('scm.delivery.optional')" />
           </a-form-item>
         </a-col>
       </a-row>
 
       <div class="items-head">
-        <span class="section-title">明细（{{ form.items.length }} 行，数量 {{ formatQty(totalQty) }}）</span>
-        <span v-if="partnerName" class="sub-text">客户：{{ partnerName }}</span>
+        <span class="section-title">{{ $t('scm.delivery.itemsSummary', { rows: form.items.length, qty: formatQty(totalQty) }) }}</span>
+        <span v-if="partnerName" class="sub-text">{{ $t('scm.delivery.customerIs', { name: partnerName }) }}</span>
       </div>
 
       <a-table
@@ -55,7 +55,7 @@
         :data-source="form.items"
         :pagination="false"
         :scroll="{ x: 860 }"
-        :locale="{ emptyText: form.orderId ? '订单没有未出库且未通知的明细' : '请先选择销售订单' }"
+        :locale="{ emptyText: form.orderId ? $t('scm.delivery.noOpenItems') : $t('scm.delivery.selectOrderFirst') }"
       >
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
@@ -64,7 +64,7 @@
           </template>
           <template v-else-if="column.key === 'limit'">
             <div>{{ formatQty(record.limit) }} {{ record.unit }}</div>
-            <div v-if="record.notified" class="sub-text">已通知未出库 {{ formatQty(record.notified) }}</div>
+            <div v-if="record.notified" class="sub-text">{{ $t('scm.delivery.notifiedN', { qty: formatQty(record.notified) }) }}</div>
           </template>
           <template v-else-if="column.key === 'qty'">
             <a-form-item :name="['items', index, 'qty']" :rules="qtyRule(record)" class="cell-item">
@@ -103,31 +103,33 @@ import { addDelivery, getDelivery, pageDelivery } from '@/api/scm/planning'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { formatQty, rowKey, today } from '@/components/wms/wms'
 import { formatMoney, openQty, qty4 } from './scm'
+import { useI18n } from 'vue-i18n'
 
 /**
  * 新增发货通知：选择销售订单，按未出库且未通知的数量带出明细，可减少数量或删除行。
  * 通过 ref 调用 openCreate(orderId?)：传入订单时订单不可更换；保存成功后触发 success(id)
  */
 const emit = defineEmits(['success'])
+const { t } = useI18n()
 
 const columns = [
-  { title: '物料', key: 'material', width: 260 },
-  { title: '可通知数量', key: 'limit', width: 150 },
-  { title: '通知数量', key: 'qty', width: 170 },
-  { title: '备注', key: 'remark', width: 200 },
+  { title: t('scm.delivery.material'), key: 'material', width: 260 },
+  { title: t('scm.delivery.notifiableQty'), key: 'limit', width: 150 },
+  { title: t('scm.delivery.noticeQty'), key: 'qty', width: 170 },
+  { title: t('common.field.remark'), key: 'remark', width: 200 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
 const rules = {
-  orderId: requiredRule('请选择销售订单'),
-  warehouseId: requiredRule('请选择发货仓库')
+  orderId: requiredRule(t('scm.delivery.selectOrder')),
+  warehouseId: requiredRule(t('scm.delivery.selectWarehouse'))
 }
 const qtyRule = (row) => [
   {
     validator: (_, v) => {
-      if (!v || v <= 0) return Promise.reject(new Error('请填写数量'))
-      if (v > row.limit) return Promise.reject(new Error(`不能超过 ${formatQty(row.limit)}`))
+      if (!v || v <= 0) return Promise.reject(new Error(t('scm.delivery.inputQty')))
+      if (v > row.limit) return Promise.reject(new Error(t('scm.delivery.maxQty', { max: formatQty(row.limit) })))
       return Promise.resolve()
     }
   }
@@ -139,13 +141,13 @@ const drawer = useFormDrawer({
   emptyForm,
   create: async (data) => {
     if (!data.items.length) {
-      message.warning('请保留至少一行明细')
-      throw Object.assign(new Error('请保留至少一行明细'), { handled: true })
+      message.warning(t('scm.delivery.keepOneRow'))
+      throw Object.assign(new Error(t('scm.delivery.keepOneRow')), { handled: true })
     }
     emit('success', await addDelivery(data))
   },
-  update: () => Promise.reject(new Error('发货通知不能修改')),
-  successMessage: '发货通知已保存',
+  update: () => Promise.reject(new Error(t('scm.delivery.cannotModify'))),
+  successMessage: t('scm.delivery.saved'),
   toPayload: (f) => ({
     orderId: f.orderId,
     warehouseId: f.warehouseId,
@@ -231,11 +233,11 @@ async function openCreate(orderId) {
   if (!orderId) return drawer.openCreate()
   const { order, items } = await loadOrder(orderId)
   if (!['APPROVED', 'PARTIAL'].includes(order.status)) {
-    message.warning(`订单 ${order.orderNo} 不是已审核或部分出库状态，不能发货`)
+    message.warning(t('scm.delivery.orderNotShippable', { no: order.orderNo }))
     return
   }
   if (!items.length) {
-    message.warning('订单没有未出库且未通知的明细')
+    message.warning(t('scm.delivery.noOpenItems'))
     return
   }
   return drawer.openCreate({ orderId: order.id, warehouseId: order.warehouseId || undefined, items })

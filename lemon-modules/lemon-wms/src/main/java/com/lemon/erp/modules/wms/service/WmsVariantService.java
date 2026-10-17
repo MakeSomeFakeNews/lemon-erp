@@ -78,7 +78,7 @@ public class WmsVariantService {
                 throw new BizException("属性值编码不能超过16个字符");
             }
             if (!names.add(v.getAttrValue().trim())) {
-                throw new BizException("属性值重复：" + v.getAttrValue());
+                throw new BizException("属性值重复：{0}", v.getAttrValue());
             }
         }
         attr.setName(attr.getName().trim());
@@ -98,7 +98,7 @@ public class WmsVariantService {
                 attributeMapper.updateById(attr);
             }
         } catch (DuplicateKeyException e) {
-            throw new BizException("规格属性「" + attr.getName() + "」已存在");
+            throw new BizException("规格属性「{0}」已存在", attr.getName());
         }
         Map<Long, WmsAttributeValue> existing = valueMapper.selectList(Wrappers.<WmsAttributeValue>lambdaQuery()
                 .eq(WmsAttributeValue::getAttributeId, attr.getId())).stream().collect(Collectors.toMap(WmsAttributeValue::getId, Function.identity()));
@@ -211,7 +211,7 @@ public class WmsVariantService {
             for (Long v : e.getValue()) {
                 WmsAttributeValue value = values.get(v);
                 if (value == null || !value.getAttributeId().equals(e.getKey())) {
-                    throw new BizException("属性值不属于规格属性「" + attrs.get(e.getKey()).getName() + "」");
+                    throw new BizException("属性值不属于规格属性「{0}」", attrs.get(e.getKey()).getName());
                 }
             }
         }
@@ -247,7 +247,7 @@ public class WmsVariantService {
         List<List<WmsAttributeValue>> todo = combos.stream()
                 .filter(c -> !existingKeys.contains(key(c.stream().map(WmsAttributeValue::getId).collect(Collectors.toSet())))).toList();
         if (existingKeys.size() + todo.size() > MAX_VARIANTS) {
-            throw new BizException("一个款式最多 " + MAX_VARIANTS + " 个 SKU");
+            throw new BizException("一个款式最多 {0} 个 SKU", MAX_VARIANTS);
         }
         if (!template.isTemplateMaterial()) {
             materialMapper.update(Wrappers.<WmsMaterial>lambdaUpdate().set(WmsMaterial::getIsTemplate, 1).eq(WmsMaterial::getId, templateId));
@@ -257,10 +257,10 @@ public class WmsVariantService {
             String text = combo.stream().map(WmsAttributeValue::getAttrValue).collect(Collectors.joining(" / "));
             String code = template.getCode() + "-" + suffix;
             if (code.length() > 64) {
-                throw new BizException("SKU 编码超过64个字符：" + code + "，请缩短款式编码或属性值编码");
+                throw new BizException("SKU 编码超过64个字符：{0}，请缩短款式编码或属性值编码", code);
             }
             if (materialMapper.exists(Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getCode, code))) {
-                throw new BizException("物料编码 " + code + " 已存在");
+                throw new BizException("物料编码 {0} 已存在", code);
             }
             WmsMaterial m = new WmsMaterial();
             m.setCode(code);
@@ -323,14 +323,14 @@ public class WmsVariantService {
             throw new BizException("物料不存在");
         }
         if (m.getTemplateId() != null) {
-            throw new BizException("「" + m.getCode() + "」是 SKU，不能作为款式");
+            throw new BizException("「{0}」是 SKU，不能作为款式", m.getCode());
         }
         if (!m.isTemplateMaterial()) {
             if (!forGenerate) {
-                throw new BizException("「" + m.getCode() + "」不是多规格款式");
+                throw new BizException("「{0}」不是多规格款式", m.getCode());
             }
             if (flowMapper.existsByMaterialId(id)) {
-                throw new BizException("「" + m.getCode() + "」已发生库存业务，不能设为多规格款式，请新建款式物料");
+                throw new BizException("「{0}」已发生库存业务，不能设为多规格款式，请新建款式物料", m.getCode());
             }
         }
         return m;

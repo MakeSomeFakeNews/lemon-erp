@@ -49,7 +49,7 @@ public final class RefDes {
         for (String text : refDesList) {
             for (String ref : expandAll(text)) {
                 if (!seen.add(ref)) {
-                    throw new BizException("位号 " + ref + " 重复");
+                    throw new BizException("位号 {0} 重复", ref);
                 }
             }
         }
@@ -71,22 +71,22 @@ public final class RefDes {
     private static List<String> expand(String token) {
         Matcher m = TOKEN.matcher(token);
         if (!m.matches()) {
-            throw new BizException("位号「" + token + "」格式不正确，应为字母加数字，如 R1，连续的可写成 R1-R8");
+            throw new BizException("位号「{0}」格式不正确，应为字母加数字，如 R1，连续的可写成 R1-R8", token);
         }
         if (m.group(4) == null) {
             return List.of(token);
         }
         String prefix = m.group(1);
         if (!m.group(3).isEmpty() && !m.group(3).equals(prefix)) {
-            throw new BizException("位号区间「" + token + "」的前缀不一致");
+            throw new BizException("位号区间「{0}」的前缀不一致", token);
         }
         long start = Long.parseLong(m.group(2));
         long end = Long.parseLong(m.group(4));
         if (end < start) {
-            throw new BizException("位号区间「" + token + "」的结束编号小于起始编号");
+            throw new BizException("位号区间「{0}」的结束编号小于起始编号", token);
         }
         if (end - start + 1 > MAX_RANGE) {
-            throw new BizException("位号区间「" + token + "」超过 " + MAX_RANGE + " 个");
+            throw new BizException("位号区间「{0}」超过 {1} 个", token, MAX_RANGE);
         }
         List<String> list = new ArrayList<>();
         for (long i = start; i <= end; i++) {

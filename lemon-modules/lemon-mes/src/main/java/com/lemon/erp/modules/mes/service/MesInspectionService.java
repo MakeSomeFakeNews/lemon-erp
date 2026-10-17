@@ -171,8 +171,8 @@ public class MesInspectionService {
             if (!pass && holds > 0) {
                 WmsMaterial m = materialService.get(i.getMaterialId());
                 messageSender.sendToPermission("scm:purchaseReturn:add", MessageSender.Message.of("ALERT",
-                        "来料检验不合格：" + m.getCode() + " " + m.getName(),
-                        "采购入库单 " + i.getSourceNo() + " 的 " + m.getName() + " 检验不合格（" + i.getInspNo() + "），库存已冻结，请评审处置",
+                        "来料检验不合格：" + m.getCode() + " " + m.getName(), // i18n-ignore
+                        "采购入库单 " + i.getSourceNo() + " 的 " + m.getName() + " 检验不合格（" + i.getInspNo() + "），库存已冻结，请评审处置", // i18n-ignore
                         "/qms/ncr"));
             }
         }
@@ -194,7 +194,7 @@ public class MesInspectionService {
     private MesInspection getDraft(Long id) {
         MesInspection i = get(id);
         if (i.getStatus() == InspectionStatus.CONFIRMED) {
-            throw new BizException("检验单 " + i.getInspNo() + " 已确认，不能修改或删除");
+            throw new BizException("检验单 {0} 已确认，不能修改或删除", i.getInspNo());
         }
         return i;
     }
@@ -230,14 +230,14 @@ public class MesInspectionService {
     private void fillIqcSource(MesInspection i, String sourceNo, InspectionRequest req) {
         Long supplierId = scmQueryService.purchaseInSupplier(sourceNo);
         if (supplierId == null) {
-            throw new BizException("采购入库单 " + sourceNo + " 不存在");
+            throw new BizException("采购入库单 {0} 不存在", sourceNo);
         }
         BigDecimal received = scmQueryService.purchaseInQty(sourceNo, req.materialId());
         if (received.signum() == 0) {
-            throw new BizException("采购入库单 " + sourceNo + " 中没有该物料");
+            throw new BizException("采购入库单 {0} 中没有该物料", sourceNo);
         }
         if (req.inspectQty().compareTo(received) > 0) {
-            throw new BizException("送检数量不能大于入库数量 " + received.stripTrailingZeros().toPlainString());
+            throw new BizException("送检数量不能大于入库数量 {0}", received.stripTrailingZeros().toPlainString());
         }
         i.setSupplierId(supplierId);
     }
@@ -245,7 +245,7 @@ public class MesInspectionService {
     private void fillWoSource(MesInspection i, String sourceNo, InspectionRequest req) {
         MesWorkOrder wo = workOrderMapper.selectOne(Wrappers.<MesWorkOrder>lambdaQuery().eq(MesWorkOrder::getWoNo, sourceNo));
         if (wo == null) {
-            throw new BizException("生产工单 " + sourceNo + " 不存在");
+            throw new BizException("生产工单 {0} 不存在", sourceNo);
         }
         // 成品、首件检验：工单产品；过程检验：工单产品或工单用料
         boolean product = wo.getMaterialId().equals(req.materialId());
@@ -260,7 +260,7 @@ public class MesInspectionService {
         if (req.type() == QcType.FAI) {
             MesWoOp op = req.woOpId() == null ? null : woOpMapper.selectById(req.woOpId());
             if (op == null || !op.getWoId().equals(wo.getId())) {
-                throw new BizException("请选择工单 " + sourceNo + " 的工序");
+                throw new BizException("请选择工单 {0} 的工序", sourceNo);
             }
             i.setWoOpId(op.getId());
         }
@@ -297,7 +297,7 @@ public class MesInspectionService {
             throw new BizException("检验方案不存在");
         }
         if (plan.getInspType() != req.type()) {
-            throw new BizException("检验方案「" + plan.getName() + "」不是该检验类型的方案");
+            throw new BizException("检验方案「{0}」不是该检验类型的方案", plan.getName());
         }
         QmsViews.PlanMatch sampling = planService.sampling(plan, req.inspectQty());
         Map<Long, QmsInspectionPlanItem> planItems = planService.items(plan.getId()).stream()
@@ -316,14 +316,14 @@ public class MesInspectionService {
             if (p.getMethod() == ItemMethod.QUANTITATIVE) {
                 List<BigDecimal> values = r.measured() == null ? List.of() : r.measured().stream().filter(Objects::nonNull).toList();
                 if (values.isEmpty()) {
-                    throw new BizException("请填写「" + p.getName() + "」的实测值");
+                    throw new BizException("请填写「{0}」的实测值", p.getName());
                 }
                 item.setMeasured(values.stream().map(BigDecimal::toPlainString).collect(Collectors.joining(",")));
                 item.setDefectCount((int) values.stream().filter(v -> outOfSpec(v, p)).count());
             } else {
                 int count = r.defectCount() == null ? 0 : r.defectCount();
                 if (count > sample) {
-                    throw new BizException("「" + p.getName() + "」的不合格数不能大于抽样数量 " + sample);
+                    throw new BizException("「{0}」的不合格数不能大于抽样数量 {1}", p.getName(), sample);
                 }
                 item.setDefectCount(count);
             }

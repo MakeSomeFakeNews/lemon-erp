@@ -24,7 +24,7 @@ public class HrSalaryApplyJob implements JobHandler {
 
     @Override
     public String name() {
-        return "调薪生效";
+        return "调薪生效";  // i18n-ignore 定时任务名称，任务管理处翻译
     }
 
     @Override
@@ -34,6 +34,6 @@ public class HrSalaryApplyJob implements JobHandler {
 
     @Override
     public String run(JobParams params) {
-        return "更新 " + jobMapper.applyEffectiveSalary(LocalDate.now()) + " 份薪资档案";
+        return "更新 " + jobMapper.applyEffectiveSalary(LocalDate.now()) + " 份薪资档案";  // i18n-ignore 任务日志存库
     }
 }

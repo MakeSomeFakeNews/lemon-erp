@@ -3,12 +3,12 @@
     <!-- 左侧：角色列表 -->
     <a-card :bordered="false" class="page-card workspace-side">
       <div class="workspace-side-head">
-        <span>角色</span>
+        <span>{{ $t('system.role.role') }}</span>
         <a-button v-perm="'sys:role:add'" type="link" size="small" @click="openCreate">
-          <template #icon><PlusOutlined /></template>新增
+          <template #icon><PlusOutlined /></template>{{ $t('common.action.add') }}
         </a-button>
       </div>
-      <a-input v-model:value="keyword" placeholder="搜索角色名称或编码" allow-clear>
+      <a-input v-model:value="keyword" :placeholder="$t('system.role.searchPlaceholder')" allow-clear>
         <template #prefix><SearchOutlined /></template>
       </a-input>
       <div class="role-list">
@@ -22,8 +22,8 @@
           >
             <div class="role-item-main">
               <HighlightText :text="r.name" :keyword="keyword" class="role-item-name" />
-              <a-tag v-if="isAdminRole(r)" :bordered="false" color="gold" class="role-item-tag">管理员</a-tag>
-              <a-tag v-else-if="r.status === 0" :bordered="false" class="role-item-tag">停用</a-tag>
+              <a-tag v-if="isAdminRole(r)" :bordered="false" color="gold" class="role-item-tag">{{ $t('system.role.admin') }}</a-tag>
+              <a-tag v-else-if="r.status === 0" :bordered="false" class="role-item-tag">{{ $t('common.status.disabled') }}</a-tag>
             </div>
             <div class="role-item-sub">
               <span class="role-item-code">{{ r.code }}</span>
@@ -33,7 +33,7 @@
           <a-empty
             v-if="!listLoading && !filteredRoles.length"
             :image="Empty.PRESENTED_IMAGE_SIMPLE"
-            :description="keyword ? '没有匹配的角色' : '暂无角色'"
+            :description="keyword ? $t('system.role.noMatch') : $t('system.role.empty')"
           />
         </a-spin>
       </div>
@@ -50,11 +50,11 @@
                 <a-tag :bordered="false" :color="isAdminRole(current) ? 'gold' : undefined">{{ current.code }}</a-tag>
               </div>
               <div class="role-meta">
-                <span><TeamOutlined /> {{ current.userCount }} 名成员</span>
+                <span><TeamOutlined /> {{ $t('system.role.memberCount', { n: current.userCount }) }}</span>
                 <a-divider type="vertical" />
                 <span>
-                  数据权限：
-                  <a-tag v-if="isAdminRole(current)" :bordered="false" color="gold">全部数据</a-tag>
+                  {{ $t('system.role.dataScopeLabel') }}
+                  <a-tag v-if="isAdminRole(current)" :bordered="false" color="gold">{{ $t('system.role.allData') }}</a-tag>
                   <DictTag v-else type="sys_data_scope" :value="current.dataScope" />
                 </span>
                 <template v-if="current.remark">
@@ -73,7 +73,7 @@
               />
               <a-tooltip :title="removeTip">
                 <a-button v-perm="'sys:role:remove'" danger :disabled="!!removeTip" @click="confirmRemove">
-                  <template #icon><DeleteOutlined /></template>删除
+                  <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
                 </a-button>
               </a-tooltip>
             </a-space>
@@ -84,7 +84,7 @@
           <a-spin :spinning="detailLoading">
             <a-tabs v-model:active-key="activeTab">
               <a-tab-pane key="basic">
-                <template #tab><TabTitle title="基本信息" :dirty="dirty.basic" /></template>
+                <template #tab><TabTitle :title="$t('system.role.basicInfo')" :dirty="dirty.basic" /></template>
                 <RoleBasicPanel
                   v-if="detail"
                   v-model:dirty="dirty.basic"
@@ -94,7 +94,7 @@
                 />
               </a-tab-pane>
               <a-tab-pane key="menu">
-                <template #tab><TabTitle title="菜单权限" :dirty="dirty.menu" /></template>
+                <template #tab><TabTitle :title="$t('system.role.menuPerm')" :dirty="dirty.menu" /></template>
                 <RoleMenuPanel
                   v-if="detail"
                   v-model:dirty="dirty.menu"
@@ -105,7 +105,7 @@
                 />
               </a-tab-pane>
               <a-tab-pane key="scope">
-                <template #tab><TabTitle title="数据权限" :dirty="dirty.scope" /></template>
+                <template #tab><TabTitle :title="$t('system.role.dataPerm')" :dirty="dirty.scope" /></template>
                 <RoleDataScopePanel
                   v-if="detail"
                   v-model:dirty="dirty.scope"
@@ -115,7 +115,7 @@
                   @saved="refresh"
                 />
               </a-tab-pane>
-              <a-tab-pane key="users" :tab="`成员（${current.userCount}）`">
+              <a-tab-pane key="users" :tab="$t('system.role.membersTab', { n: current.userCount })">
                 <RoleUserPanel :role="current" :can-assign="canAssignUsers" @changed="loadRoles" />
               </a-tab-pane>
             </a-tabs>
@@ -123,50 +123,51 @@
         </a-card>
       </template>
       <a-card v-else :bordered="false" class="page-card empty-card">
-        <a-empty :description="listLoading ? '加载中…' : '请选择左侧的角色'" />
+        <a-empty :description="listLoading ? $t('common.msg.loading') : $t('system.role.selectRole')" />
       </a-card>
     </div>
 
     <!-- 新增角色：先填基本信息，创建后再分配权限 -->
     <a-modal
       v-model:open="createOpen"
-      title="新增角色"
+      :title="$t('system.role.addRole')"
       :confirm-loading="creating"
-      ok-text="创建并分配权限"
+      :ok-text="$t('system.role.createAndAssign')"
       destroy-on-close
       @ok="submitCreate"
     >
       <a-form ref="createRef" :model="createForm" :rules="createRules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="角色名称" name="name">
-              <a-input v-model:value="createForm.name" :maxlength="64" placeholder="如：财务专员" />
+            <a-form-item :label="$t('system.role.name')" name="name">
+              <a-input v-model:value="createForm.name" :maxlength="64" :placeholder="$t('system.role.namePlaceholder')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="角色编码" name="code">
-              <a-input v-model:value="createForm.code" :maxlength="64" placeholder="如：finance" />
+            <a-form-item :label="$t('system.role.code')" name="code">
+              <a-input v-model:value="createForm.code" :maxlength="64" :placeholder="$t('system.role.codePlaceholder')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="排序" name="sort">
+            <a-form-item :label="$t('common.field.sort')" name="sort">
               <a-input-number v-model:value="createForm.sort" :min="0" style="width: 100%" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-textarea v-model:value="createForm.remark" :rows="2" :maxlength="255" />
             </a-form-item>
           </a-col>
         </a-row>
       </a-form>
-      <a-alert type="info" show-icon message="新角色默认没有菜单权限，数据权限为「本部门数据」，创建后可继续配置。" />
+      <a-alert type="info" show-icon :message="$t('system.role.createTip')" />
     </a-modal>
   </div>
 </template>
 
 <script setup>
 import { computed, h, onMounted, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Empty, Modal, message } from 'ant-design-vue'
 import { DeleteOutlined, PlusOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -181,8 +182,9 @@ import { addRole, changeRoleStatus, deleteRole, getRole, listRoles } from '@/api
 import { menuTree } from '@/api/system/menu'
 import { deptTree } from '@/api/system/dept'
 import { useDict } from '@/composables/useDict'
-import { useUserStore } from '@/store/user'
+import { translateMenus, useUserStore } from '@/store/user'
 
+const { t } = useI18n()
 useDict('sys_data_scope', 'sys_common_status')
 const userStore = useUserStore()
 const can = computed(() => ({
@@ -255,11 +257,11 @@ function confirmDiscard() {
   if (!anyDirty.value) return Promise.resolve(true)
   return new Promise((resolve) =>
     Modal.confirm({
-      title: '放弃未保存的修改？',
-      content: '当前角色有未保存的修改，切换后将会丢失。',
-      okText: '放弃修改',
+      title: t('system.role.discardTitle'),
+      content: t('system.role.discardContent'),
+      okText: t('common.action.discard'),
       okType: 'danger',
-      cancelText: '继续编辑',
+      cancelText: t('system.role.keepEditing'),
       onOk: () => resolve(true),
       onCancel: () => resolve(false)
     })
@@ -273,18 +275,18 @@ async function select(id) {
 
 // ---------- 删除 ----------
 const removeTip = computed(() => {
-  if (isAdminRole(current.value)) return '管理员角色不能删除'
-  if (current.value?.userCount) return '角色下还有成员，请先在「成员」中移除'
+  if (isAdminRole(current.value)) return t('system.role.adminNoDelete')
+  if (current.value?.userCount) return t('system.role.hasMembers')
   return ''
 })
 
 function confirmRemove() {
   Modal.confirm({
-    title: `确定删除角色「${current.value.name}」？`,
+    title: t('system.role.confirmDelete', { name: current.value.name }),
     okType: 'danger',
     async onOk() {
       await deleteRole([current.value.id])
-      message.success('删除成功')
+      message.success(t('common.msg.deleteSuccess'))
       Object.assign(dirty, { basic: false, menu: false, scope: false })
       currentId.value = undefined
       await loadRoles()
@@ -298,7 +300,7 @@ const creating = ref(false)
 const createRef = ref()
 const createForm = reactive({ name: '', code: '', sort: 0, remark: '' })
 const createRules = {
-  name: [{ required: true, message: '请输入角色名称' }],
+  name: [{ required: true, message: t('system.role.inputName') }],
   code: ROLE_CODE_RULES
 }
 
@@ -313,7 +315,7 @@ async function submitCreate() {
   creating.value = true
   try {
     await addRole({ ...createForm, menuIds: [] })
-    message.success('角色已创建，请继续分配菜单权限')
+    message.success(t('system.role.created'))
     createOpen.value = false
     Object.assign(dirty, { basic: false, menu: false, scope: false })
     roles.value = await listRoles()
@@ -330,7 +332,7 @@ const deptTreeData = ref([])
 
 onMounted(async () => {
   await loadRoles()
-  ;[menuTreeData.value, deptTreeData.value] = await Promise.all([menuTree(), deptTree()])
+  ;[menuTreeData.value, deptTreeData.value] = await Promise.all([menuTree().then(translateMenus), deptTree()])
 })
 </script>
 

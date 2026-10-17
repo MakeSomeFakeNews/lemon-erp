@@ -54,7 +54,7 @@ public class MesMrpController {
 
     @PutMapping("/result/{id}")
     @PreAuthorize("@ss.hasPerm('mes:mrp:release')")
-    @OperLog(title = "MRP-调整建议", type = OperType.UPDATE)
+    @OperLog(title = "MRP-调整建议", type = OperType.UPDATE) // i18n-ignore
     public R<Void> updateResult(@PathVariable Long id, @Valid @RequestBody MrpResultRequest req) {
         mrpService.updateResult(id, req);
         return R.ok();
@@ -63,7 +63,7 @@ public class MesMrpController {
     /** @return 生成的工单号、采购订单号 */
     @PostMapping("/release")
     @PreAuthorize("@ss.hasPerm('mes:mrp:release')")
-    @OperLog(title = "MRP-下达", type = OperType.INSERT)
+    @OperLog(title = "MRP-下达", type = OperType.INSERT) // i18n-ignore
     public R<List<String>> release(@Valid @RequestBody MrpReleaseRequest req) {
         return R.ok(mrpService.release(req));
     }

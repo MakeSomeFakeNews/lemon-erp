@@ -37,7 +37,7 @@ public class FinPeriodService {
     public int nextVoucherSeq(int period) {
         ensure(period);
         if (periodMapper.nextSeq(period) == 0) {
-            throw new BizException(period + " 期间已结账，不能再录入或修改凭证");
+            throw new BizException("{0} 期间已结账，不能再录入或修改凭证", period);
         }
         return get(period).getVoucherSeq();
     }
@@ -46,7 +46,7 @@ public class FinPeriodService {
     public void checkOpen(int period) {
         FinPeriod p = get(period);
         if (p != null && CLOSED.equals(p.getStatus())) {
-            throw new BizException(period + " 期间已结账，不能再录入或修改凭证");
+            throw new BizException("{0} 期间已结账，不能再录入或修改凭证", period);
         }
     }
 

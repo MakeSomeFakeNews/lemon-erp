@@ -2,12 +2,12 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
-        <a-select v-model:value="query.docType" placeholder="文档类型" allow-clear :options="toOptions(dict.mes_doc_type)" class="filter" @change="search" />
-        <a-select v-model:value="query.status" placeholder="全部状态" allow-clear :options="toOptions(dict.mes_doc_status)" class="filter" @change="search" />
-        <a-input-search v-model:value="query.keyword" placeholder="文档编号、名称、物料" allow-clear class="filter-wide" @search="search" />
+        <a-select v-model:value="query.docType" :placeholder="$t('mes.doc.docType')" allow-clear :options="toOptions(dict.mes_doc_type)" class="filter" @change="search" />
+        <a-select v-model:value="query.status" :placeholder="$t('mes.doc.allStatus')" allow-clear :options="toOptions(dict.mes_doc_status)" class="filter" @change="search" />
+        <a-input-search v-model:value="query.keyword" :placeholder="$t('mes.doc.keywordPh')" allow-clear class="filter-wide" @search="search" />
         <template #extra>
           <a-button v-perm="'mes:doc:add'" type="primary" @click="drawer.openCreate()">
-            <template #icon><PlusOutlined /></template>新增文档
+            <template #icon><PlusOutlined /></template>{{ $t('mes.doc.add') }}
           </a-button>
         </template>
       </TableToolbar>
@@ -25,12 +25,12 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
             <a @click="openDetail(record.id)">{{ record.name }}</a>
-            <div class="sub-text">{{ record.docNo }} · {{ record.fileCount }} 个文件</div>
+            <div class="sub-text">{{ $t('mes.doc.fileCount', { no: record.docNo, n: record.fileCount }) }}</div>
           </template>
           <template v-else-if="column.key === 'type'"><DictTag type="mes_doc_type" :value="record.docType" /></template>
           <template v-else-if="column.key === 'material'">
             <span v-if="record.materialId">{{ record.materialCode }} {{ record.materialName }}</span>
-            <span v-else class="sub-text">通用</span>
+            <span v-else class="sub-text">{{ $t('mes.doc.general') }}</span>
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="mes_doc_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'release'">
@@ -38,69 +38,69 @@
             <div class="sub-text">{{ record.releaseByName }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">查看</a-button>
+            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增技术文档" edit-title="编辑技术文档">
+    <FormDrawer :drawer="drawer" :create-title="$t('mes.doc.addTitle')" :edit-title="$t('mes.doc.editTitle')">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-form-item label="文档名称" name="name">
+        <a-form-item :label="$t('mes.doc.name')" name="name">
           <a-input v-model:value="form.name" :maxlength="128" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="类型" name="docType">
+            <a-form-item :label="$t('common.field.type')" name="docType">
               <a-select v-model:value="form.docType" :options="toOptions(dict.mes_doc_type)" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="版本" name="version">
-              <a-input v-model:value="form.version" :maxlength="16" placeholder="如 A、V1.0" />
+            <a-form-item :label="$t('mes.doc.version')" name="version">
+              <a-input v-model:value="form.version" :maxlength="16" :placeholder="$t('mes.doc.versionPh')" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="关联物料" name="materialId" extra="不填为通用文档；BOM 详情显示产品和子件的已发布文档">
+        <a-form-item :label="$t('mes.doc.material')" name="materialId" :extra="$t('mes.doc.materialExtra')">
           <MaterialSelect v-model:value="form.materialId" :label="form.materialLabel" />
         </a-form-item>
-        <a-form-item label="说明" name="description">
+        <a-form-item :label="$t('common.field.description')" name="description">
           <a-textarea v-model:value="form.description" :rows="3" :maxlength="500" />
         </a-form-item>
       </a-form>
-      <a-alert v-if="!form.id" type="info" show-icon message="保存后在详情中上传文件，再发布" />
+      <a-alert v-if="!form.id" type="info" show-icon :message="$t('mes.doc.saveTip')" />
     </FormDrawer>
 
     <SubPage :open="detailOpen" :title="detail ? `${detail.name} ${detail.version}` : ''" width="min(900px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <a-space>
           <template v-if="detail.status === 'DRAFT'">
-            <a-button v-perm="'mes:doc:edit'" @click="drawer.openEdit(detail)">编辑</a-button>
+            <a-button v-perm="'mes:doc:edit'" @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
             <span v-perm="'mes:doc:remove'">
-              <a-popconfirm title="删除该版本？" @confirm="remove"><a-button danger>删除</a-button></a-popconfirm>
+              <a-popconfirm :title="$t('mes.doc.deleteVersion')" @confirm="remove"><a-button danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
             </span>
             <span v-perm="'mes:doc:release'">
-              <a-popconfirm :title="detail.prevId ? '发布后上一版本作废，确定？' : '发布后不能再修改，确定？'" @confirm="release">
-                <a-button type="primary">发布</a-button>
+              <a-popconfirm :title="detail.prevId ? $t('mes.doc.releaseConfirmPrev') : $t('mes.doc.releaseConfirm')" @confirm="release">
+                <a-button type="primary">{{ $t('mes.doc.release') }}</a-button>
               </a-popconfirm>
             </span>
           </template>
-          <a-button v-if="detail.status === 'RELEASED' && isLatest" v-perm="'mes:doc:add'" type="primary" @click="openRevise">升版</a-button>
+          <a-button v-if="detail.status === 'RELEASED' && isLatest" v-perm="'mes:doc:add'" type="primary" @click="openRevise">{{ $t('mes.doc.revise') }}</a-button>
         </a-space>
       </template>
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" bordered class="block">
-          <a-descriptions-item label="文档编号">{{ detail.docNo }}</a-descriptions-item>
-          <a-descriptions-item label="类型"><DictTag type="mes_doc_type" :value="detail.docType" /></a-descriptions-item>
-          <a-descriptions-item label="状态"><DictTag type="mes_doc_status" :value="detail.status" /></a-descriptions-item>
-          <a-descriptions-item label="关联物料">{{ detail.materialId ? `${detail.materialCode} ${detail.materialName}` : '通用' }}</a-descriptions-item>
-          <a-descriptions-item label="发布">{{ detail.releaseTime || '-' }} {{ detail.releaseByName || '' }}</a-descriptions-item>
-          <a-descriptions-item label="工程变更">{{ detail.ecnNo || '-' }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.description" label="说明" :span="3">{{ detail.description }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('mes.doc.docNo')">{{ detail.docNo }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.type')"><DictTag type="mes_doc_type" :value="detail.docType" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.status')"><DictTag type="mes_doc_status" :value="detail.status" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('mes.doc.material')">{{ detail.materialId ? `${detail.materialCode} ${detail.materialName}` : $t('mes.doc.general') }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('mes.doc.release')">{{ detail.releaseTime || '-' }} {{ detail.releaseByName || '' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('mes.doc.ecn')">{{ detail.ecnNo || '-' }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.description" :label="$t('common.field.description')" :span="3">{{ detail.description }}</a-descriptions-item>
         </a-descriptions>
-        <div class="section-title">文件</div>
+        <div class="section-title">{{ $t('mes.doc.files') }}</div>
         <AttachmentPanel biz-type="mes_doc" :biz-id="detail.id" :editable="detail.status === 'DRAFT' && userStore.hasPerm('mes:doc:edit')" />
-        <div class="section-title">版本记录</div>
+        <div class="section-title">{{ $t('mes.doc.versions') }}</div>
         <a-table row-key="id" size="small" :columns="versionColumns" :data-source="versions" :pagination="false">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'version'">
@@ -113,12 +113,12 @@
       </template>
     </SubPage>
 
-    <a-modal v-model:open="reviseOpen" title="升版" @ok="submitRevise">
+    <a-modal v-model:open="reviseOpen" :title="$t('mes.doc.revise')" @ok="submitRevise">
       <a-form layout="vertical">
-        <a-form-item label="新版本" required>
+        <a-form-item :label="$t('mes.doc.newVersion')" required>
           <a-input v-model:value="revise.version" :maxlength="16" />
         </a-form-item>
-        <a-form-item label="变更内容">
+        <a-form-item :label="$t('mes.doc.changes')">
           <a-textarea v-model:value="revise.description" :rows="3" :maxlength="500" />
         </a-form-item>
       </a-form>
@@ -131,6 +131,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -149,15 +150,16 @@ import { useUserStore } from '@/store/user'
 const dict = useDict('mes_doc_type', 'mes_doc_status')
 const userStore = useUserStore()
 const route = useRoute()
+const { t } = useI18n()
 
 const columns = [
-  { title: '文档', key: 'name', width: 260 },
-  { title: '类型', key: 'type', width: 110 },
-  { title: '版本', dataIndex: 'version', width: 80 },
-  { title: '关联物料', key: 'material', width: 220 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '发布', key: 'release', width: 170 },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' }
+  { title: t('mes.doc.doc'), key: 'name', width: 260 },
+  { title: t('common.field.type'), key: 'type', width: 110 },
+  { title: t('mes.doc.version'), dataIndex: 'version', width: 80 },
+  { title: t('mes.doc.material'), key: 'material', width: 220 },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('mes.doc.release'), key: 'release', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 80, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'mes-doc')
 const query = reactive({ docType: undefined, status: undefined, keyword: undefined })
@@ -168,9 +170,9 @@ onMounted(() => {
 })
 
 const rules = {
-  name: [{ required: true, whitespace: true, message: '请填写文档名称' }],
-  docType: [{ required: true, message: '请选择类型' }],
-  version: [{ required: true, whitespace: true, message: '请填写版本' }]
+  name: [{ required: true, whitespace: true, message: t('mes.doc.nameRequired') }],
+  docType: [{ required: true, message: t('mes.doc.typeRequired') }],
+  version: [{ required: true, whitespace: true, message: t('mes.doc.versionRequired') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, name: '', docType: 'DRAWING', version: 'A', materialId: undefined, description: '' }),
@@ -193,11 +195,11 @@ const drawer = useFormDrawer({
 const { formRef, form } = drawer
 
 const versionColumns = [
-  { title: '版本', key: 'version', width: 80 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '发布时间', dataIndex: 'releaseTime', width: 170 },
-  { title: '发布人', dataIndex: 'releaseByName', width: 100 },
-  { title: '说明', dataIndex: 'description', ellipsis: true }
+  { title: t('mes.doc.version'), key: 'version', width: 80 },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('mes.doc.releaseTime'), dataIndex: 'releaseTime', width: 170 },
+  { title: t('mes.doc.releaseBy'), dataIndex: 'releaseByName', width: 110 },
+  { title: t('common.field.description'), dataIndex: 'description', ellipsis: true }
 ]
 const detailOpen = ref(false)
 const detail = ref()
@@ -214,13 +216,13 @@ async function refreshDetail() {
 }
 async function release() {
   await releaseDoc(detail.value.id)
-  message.success('已发布')
+  message.success(t('mes.doc.released'))
   refreshDetail()
   load()
 }
 async function remove() {
   await deleteDoc(detail.value.id)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   detailOpen.value = false
   load()
 }
@@ -233,9 +235,9 @@ function openRevise() {
   reviseOpen.value = true
 }
 async function submitRevise() {
-  if (!revise.value.version?.trim()) return message.warning('请填写新版本')
+  if (!revise.value.version?.trim()) return message.warning(t('mes.doc.newVersionRequired'))
   const id = await reviseDoc(detail.value.id, revise.value)
-  message.success('已创建新版本，请上传文件后发布')
+  message.success(t('mes.doc.revised'))
   reviseOpen.value = false
   load()
   openDetail(id)

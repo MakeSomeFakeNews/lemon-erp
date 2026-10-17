@@ -84,7 +84,7 @@ public class SysTenantPackageService extends ServiceImpl<SysTenantPackageMapper,
     public void delete(List<Long> ids) {
         for (Long id : ids) {
             if (tenantService.countByPackage(id) > 0) {
-                throw new BizException("套餐「" + getExisting(id).getName() + "」正在被租户使用，不能删除");
+                throw new BizException("套餐「{0}」正在被租户使用，不能删除", getExisting(id).getName());
             }
         }
         removeByIds(ids);

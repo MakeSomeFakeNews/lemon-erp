@@ -100,12 +100,12 @@ public class FinNoteService {
         checkTotal(req.items(), req.amount());
         String noteNo = req.noteNo().trim();
         if (noteMapper.exists(Wrappers.<FinNote>lambdaQuery().eq(FinNote::getKind, kind).eq(FinNote::getNoteNo, noteNo))) {
-            throw new BizException("票据号码 " + noteNo + " 已登记");
+            throw new BizException("票据号码 {0} 已登记", noteNo);
         }
         AccountRole noteAccount = receivable ? AccountRole.NOTES_RECEIVABLE : AccountRole.NOTES_PAYABLE;
         Long settlementId = settlementService.createForNote(new SettlementRequest(receivable ? SettleKind.RECEIPT.name() : SettleKind.PAYMENT.name(),
                 req.partnerId(), req.actionDate(), accountRules.accountId(noteAccount), SettleMethod.NOTE.name(),
-                (receivable ? "收票 " : "开具票据 ") + noteNo, req.items()), noteAccount);
+                (receivable ? "收票 " : "开具票据 ") + noteNo, req.items()), noteAccount); // i18n-ignore
         FinSettlement settlement = requireCnySettlement(settlementId);
         FinNote note = new FinNote();
         note.setKind(kind);
@@ -132,10 +132,10 @@ public class FinNoteService {
     /** 背书转让：把持有的应收票据转给供应商支付货款（付款审批通过后生效） */
     @Transactional
     public void endorse(Long id, NoteRequests.Endorse req) {
-        FinNote note = requireStatus(id, NoteKind.RECEIVABLE, NoteStatus.HELD, "背书");
+        FinNote note = requireStatus(id, NoteKind.RECEIVABLE, NoteStatus.HELD, "票据当前状态不能背书");
         checkTotal(req.items(), note.getAmount());
         Long settlementId = settlementService.createForNote(new SettlementRequest(SettleKind.PAYMENT.name(), req.supplierId(), req.actionDate(),
-                accountRules.accountId(AccountRole.NOTES_RECEIVABLE), SettleMethod.NOTE.name(), "背书转让票据 " + note.getNoteNo(),
+                accountRules.accountId(AccountRole.NOTES_RECEIVABLE), SettleMethod.NOTE.name(), "背书转让票据 " + note.getNoteNo(), // i18n-ignore
                 req.items()), AccountRole.NOTES_RECEIVABLE);
         FinSettlement settlement = requireCnySettlement(settlementId);
         transit(note, NoteStatus.HELD, FinSettlementService.isApproving(settlement) ? NoteStatus.ENDORSING : NoteStatus.ENDORSED);
@@ -148,13 +148,13 @@ public class FinNoteService {
     /** 贴现：借 银行存款（实收）、财务费用（贴现息），贷 应收票据 */
     @Transactional
     public void discount(Long id, NoteRequests.Settle req) {
-        FinNote note = requireStatus(id, NoteKind.RECEIVABLE, NoteStatus.HELD, "贴现");
+        FinNote note = requireStatus(id, NoteKind.RECEIVABLE, NoteStatus.HELD, "票据当前状态不能贴现");
         Long bank = requireBank(req.accountId());
         BigDecimal interest = req.interest() == null ? BigDecimal.ZERO : req.interest();
         if (interest.compareTo(note.getAmount()) >= 0) {
             throw new BizException("贴现息必须小于票面金额");
         }
-        String summary = "票据贴现 " + note.getNoteNo();
+        String summary = "票据贴现 " + note.getNoteNo(); // i18n-ignore
         List<VoucherLine> lines = new ArrayList<>();
         lines.add(VoucherLine.debit(summary, bank, null, note.getAmount().subtract(interest)));
         if (interest.signum() > 0) {
@@ -167,9 +167,9 @@ public class FinNoteService {
     /** 托收（到期兑付）：借 银行存款，贷 应收票据 */
     @Transactional
     public void collect(Long id, NoteRequests.Settle req) {
-        FinNote note = requireStatus(id, NoteKind.RECEIVABLE, NoteStatus.HELD, "托收");
+        FinNote note = requireStatus(id, NoteKind.RECEIVABLE, NoteStatus.HELD, "票据当前状态不能托收");
         Long bank = requireBank(req.accountId());
-        String summary = "票据托收 " + note.getNoteNo();
+        String summary = "票据托收 " + note.getNoteNo(); // i18n-ignore
         settle(note, NoteStatus.HELD, NoteStatus.COLLECTED, NoteAction.COLLECT, req, bank, BigDecimal.ZERO, List.of(
                 VoucherLine.debit(summary, bank, null, note.getAmount()),
                 VoucherLine.credit(summary, notesReceivable(), null, note.getAmount())));
@@ -178,8 +178,8 @@ public class FinNoteService {
     /** 拒付：票据转回应收账款（生成应收单，客户重新付款），借 应收账款，贷 应收票据 */
     @Transactional
     public void dishonor(Long id, NoteRequests.Settle req) {
-        FinNote note = requireStatus(id, NoteKind.RECEIVABLE, NoteStatus.HELD, "拒付");
-        String summary = "票据拒付 " + note.getNoteNo();
+        FinNote note = requireStatus(id, NoteKind.RECEIVABLE, NoteStatus.HELD, "票据当前状态不能拒付");
+        String summary = "票据拒付 " + note.getNoteNo(); // i18n-ignore
         FinNoteLog log = settle(note, NoteStatus.HELD, NoteStatus.DISHONORED, NoteAction.DISHONOR, req, null, BigDecimal.ZERO, List.of(
                 VoucherLine.debit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, note.getAmount())
                         .withCustomer(note.getPartnerId()),
@@ -193,9 +193,9 @@ public class FinNoteService {
     /** 应付票据到期兑付：借 应付票据，贷 银行存款 */
     @Transactional
     public void pay(Long id, NoteRequests.Settle req) {
-        FinNote note = requireStatus(id, NoteKind.PAYABLE, NoteStatus.ISSUED, "兑付");
+        FinNote note = requireStatus(id, NoteKind.PAYABLE, NoteStatus.ISSUED, "票据当前状态不能兑付");
         Long bank = requireBank(req.accountId());
-        String summary = "应付票据兑付 " + note.getNoteNo();
+        String summary = "应付票据兑付 " + note.getNoteNo(); // i18n-ignore
         settle(note, NoteStatus.ISSUED, NoteStatus.PAID, NoteAction.PAY, req, bank, BigDecimal.ZERO, List.of(
                 VoucherLine.debit(summary, accountRules.accountId(AccountRole.NOTES_PAYABLE), null, note.getAmount()),
                 VoucherLine.credit(summary, bank, null, note.getAmount())));
@@ -302,13 +302,14 @@ public class FinNoteService {
         }
     }
 
-    private FinNote requireStatus(Long id, NoteKind kind, NoteStatus status, String action) {
+    /** @param error 状态不符时的提示（中文模板） */
+    private FinNote requireStatus(Long id, NoteKind kind, NoteStatus status, String error) {
         FinNote note = noteMapper.selectById(id);
         if (note == null || note.getKind() != kind) {
             throw new BizException("票据不存在");
         }
         if (note.getStatus() != status) {
-            throw new BizException("票据当前状态不能" + action);
+            throw new BizException(error);
         }
         return note;
     }
@@ -317,7 +318,7 @@ public class FinNoteService {
     private static void checkTotal(List<SettlementItemRequest> items, BigDecimal amount) {
         BigDecimal total = items.stream().map(SettlementItemRequest::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
         if (total.compareTo(amount) != 0) {
-            throw new BizException("核销合计 " + total.toPlainString() + " 与票面金额 " + amount.toPlainString() + " 不一致");
+            throw new BizException("核销合计 {0} 与票面金额 {1} 不一致", total.toPlainString(), amount.toPlainString());
         }
     }
 

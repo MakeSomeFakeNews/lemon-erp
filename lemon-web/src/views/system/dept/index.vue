@@ -3,9 +3,9 @@
     <!-- 左侧：组织架构 -->
     <a-card :bordered="false" class="page-card workspace-side">
       <div class="workspace-side-head">
-        <span>组织架构</span>
+        <span>{{ $t('system.dept.orgChart') }}</span>
         <a-button v-perm="'sys:dept:add'" type="link" size="small" @click="openDeptCreate()">
-          <template #icon><PlusOutlined /></template>新增
+          <template #icon><PlusOutlined /></template>{{ $t('common.action.add') }}
         </a-button>
       </div>
       <DeptTree v-model="currentId" :tree="deptList" :loading="deptLoading" :show-all="false">
@@ -39,21 +39,21 @@
             </div>
             <a-space wrap>
               <a-button v-perm="'sys:dept:add'" @click="openDeptCreate(current)">
-                <template #icon><PlusOutlined /></template>新增下级
+                <template #icon><PlusOutlined /></template>{{ $t('system.dept.addChild') }}
               </a-button>
               <a-button v-perm="'sys:dept:edit'" @click="deptForm.openEdit(current)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <a-button v-perm="'sys:dept:remove'" danger @click="confirmRemoveDept(current)">
-                <template #icon><DeleteOutlined /></template>删除
+                <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
               </a-button>
             </a-space>
           </div>
           <a-descriptions size="small" :column="{ xs: 1, sm: 2, xl: 4 }" class="dept-desc">
-            <a-descriptions-item label="负责人">{{ current.leaderName || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="联系电话">{{ current.phone || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="邮箱">{{ current.email || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="下级部门">{{ current.children?.length || 0 }} 个</a-descriptions-item>
+            <a-descriptions-item :label="$t('system.dept.leader')">{{ current.leaderName || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('system.dept.contactPhone')">{{ current.phone || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('common.field.email')">{{ current.email || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('system.dept.children')">{{ current.children?.length || 0 }}</a-descriptions-item>
           </a-descriptions>
         </a-card>
 
@@ -61,27 +61,27 @@
           <TableToolbar
             :exporter="exportAll" v-model:size="size" @refresh="load">
             <a-button v-perm="'sys:user:add'" type="primary" @click="userForm.openCreate({ deptId: current.id })">
-              <template #icon><UserAddOutlined /></template>新增成员
+              <template #icon><UserAddOutlined /></template>{{ $t('system.dept.addMember') }}
             </a-button>
             <a-button v-perm="'sys:user:edit'" @click="pickerOpen = true">
-              <template #icon><UsergroupAddOutlined /></template>添加已有用户
+              <template #icon><UsergroupAddOutlined /></template>{{ $t('system.dept.addExisting') }}
             </a-button>
             <a-button v-perm="'sys:user:edit'" :disabled="!selectedKeys.length" @click="openMove(selectedKeys)">
-              <template #icon><SwapOutlined /></template>调整部门{{ selectedKeys.length ? `（${selectedKeys.length}）` : '' }}
+              <template #icon><SwapOutlined /></template>{{ $t('system.user.moveDept') }}{{ selectedKeys.length ? ` (${selectedKeys.length})` : '' }}
             </a-button>
             <template #extra>
               <a-input-search
                 v-model:value="query.username"
-                placeholder="搜索成员"
+                :placeholder="$t('system.dept.searchMember')"
                 allow-clear
                 class="member-search"
                 @search="search"
               />
-              <a-tooltip title="是否显示下级部门的成员">
+              <a-tooltip :title="$t('system.dept.includeChildrenTip')">
                 <a-switch
                   v-model:checked="query.includeChildren"
-                  checked-children="含下级"
-                  un-checked-children="仅本部门"
+                  :checked-children="$t('system.dept.includeChildren')"
+                  :un-checked-children="$t('system.dept.selfOnly')"
                   class="member-switch"
                   @change="search"
                 />
@@ -119,24 +119,24 @@
               <template v-else-if="column.key === 'action'">
                 <span class="table-actions">
                   <a-button v-perm="'sys:user:edit'" type="link" size="small" @click="userForm.openEdit(record)">
-                    <template #icon><EditOutlined /></template>编辑
+                    <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
                   </a-button>
                   <a-button v-perm="'sys:user:edit'" type="link" size="small" @click="openMove([record.id])">
-                    <template #icon><SwapOutlined /></template>调整部门
+                    <template #icon><SwapOutlined /></template>{{ $t('system.user.moveDept') }}
                   </a-button>
                 </span>
               </template>
             </template>
             <template #emptyText>
-              <a-empty :image="Empty.PRESENTED_IMAGE_SIMPLE" description="该部门暂无成员" />
+              <a-empty :image="Empty.PRESENTED_IMAGE_SIMPLE" :description="$t('system.dept.noMembers')" />
             </template>
           </a-table>
         </a-card>
       </template>
 
       <a-card v-else :bordered="false" class="page-card empty-card">
-        <a-empty :description="deptLoading ? '加载中…' : '暂无可管理的部门'">
-          <a-button v-if="!deptLoading" v-perm="'sys:dept:add'" type="primary" @click="openDeptCreate()">新增部门</a-button>
+        <a-empty :description="deptLoading ? $t('common.msg.loading') : $t('system.dept.empty')">
+          <a-button v-if="!deptLoading" v-perm="'sys:dept:add'" type="primary" @click="openDeptCreate()">{{ $t('system.dept.addDept') }}</a-button>
         </a-empty>
       </a-card>
     </div>
@@ -148,10 +148,10 @@
     <UserFormDrawer ref="userForm" :dept-tree="deptList" @success="load" />
     <UserPicker
       v-model:open="pickerOpen"
-      :title="`添加成员到「${current?.name}」`"
+      :title="$t('system.dept.addMembersTitle', { name: current?.name })"
       :fetcher="pageUser"
       :disabled-row="(r) => r.deptId === current?.id"
-      disabled-text="已在本部门"
+      :disabled-text="$t('system.dept.alreadyIn')"
       :submit="addMembers"
     />
     <DeptMoveModal
@@ -166,6 +166,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Empty, Modal, message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import {
   ApartmentOutlined,
   DeleteOutlined,
@@ -193,6 +194,7 @@ import { useUserStore } from '@/store/user'
 import { SUPER_ADMIN_ID } from '@/utils/constants'
 import { findNode, namePath, parentMap } from '@/utils/tree'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const canEditUser = computed(() => userStore.hasPerm('sys:user:edit'))
 useDict('sys_common_status')
@@ -216,9 +218,9 @@ async function loadDepts() {
 
 const nodeActions = computed(() =>
   [
-    userStore.hasPerm('sys:dept:add') && { key: 'add', label: '新增下级', icon: PlusOutlined },
-    userStore.hasPerm('sys:dept:edit') && { key: 'edit', label: '编辑', icon: EditOutlined },
-    userStore.hasPerm('sys:dept:remove') && { key: 'remove', label: '删除', icon: DeleteOutlined, danger: true }
+    userStore.hasPerm('sys:dept:add') && { key: 'add', label: t('system.dept.addChild'), icon: PlusOutlined },
+    userStore.hasPerm('sys:dept:edit') && { key: 'edit', label: t('common.action.edit'), icon: EditOutlined },
+    userStore.hasPerm('sys:dept:remove') && { key: 'remove', label: t('common.action.delete'), icon: DeleteOutlined, danger: true }
   ].filter(Boolean)
 )
 
@@ -230,13 +232,13 @@ function onNodeAction(key, node) {
 
 function confirmRemoveDept(dept) {
   Modal.confirm({
-    title: `确定删除部门「${dept.name}」？`,
-    content: '存在下级部门或成员时不能删除，请先调整。',
+    title: t('system.dept.confirmDelete', { name: dept.name }),
+    content: t('system.dept.deleteTip'),
     okType: 'danger',
     async onOk() {
       const parentId = parentMap(deptList.value).get(dept.id)
       await deleteDept(dept.id)
-      message.success('删除成功')
+      message.success(t('common.msg.deleteSuccess'))
       if (currentId.value === dept.id) currentId.value = parentId ?? undefined
       await loadDepts()
     }
@@ -249,11 +251,11 @@ const openDeptCreate = (parent) => deptForm.value.openCreate(parent)
 
 // ---------- 成员 ----------
 const columns = [
-  { title: '用户', key: 'username', width: 200 },
-  { title: '部门', key: 'dept', width: 140, ellipsis: true },
-  { title: '手机号', dataIndex: 'phone', width: 140 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '操作', key: 'action', width: 190, fixed: 'right' }
+  { title: t('common.field.user'), key: 'username', width: 200 },
+  { title: t('common.field.dept'), key: 'dept', width: 140, ellipsis: true },
+  { title: t('common.field.phone'), dataIndex: 'phone', width: 140 },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('common.action.operation'), key: 'action', width: 230, fixed: 'right' }
 ]
 const query = reactive({ username: undefined, deptId: undefined, includeChildren: true })
 const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange, exportAll } = useTable(
@@ -273,7 +275,7 @@ const pickerOpen = ref(false)
 
 async function addMembers(userIds) {
   await changeUserDept(userIds, current.value.id)
-  message.success(`已添加 ${userIds.length} 名成员`)
+  message.success(t('system.dept.addedN', { n: userIds.length }))
   load()
 }
 

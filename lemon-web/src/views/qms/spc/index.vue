@@ -7,28 +7,28 @@
           show-search
           option-filter-prop="label"
           :options="itemOptions"
-          placeholder="选择定量检验项目"
+          :placeholder="$t('qms.spc.itemPh')"
           class="item-select"
           @change="loadSpc"
         />
         <a-range-picker v-model:value="range" value-format="YYYY-MM-DD" @change="loadSpc" />
-        <span class="sub-text">每张已确认检验单的实测值为一个子组；子组大小 1 用单值-移动极差图，2 ~ 10 用均值-极差图，大于 10 用均值-标准差图</span>
+        <span class="sub-text">{{ $t('qms.spc.tip') }}</span>
       </div>
-      <a-empty v-if="!items.length" description="还没有录入实测值的定量检验项目：在检验方案中添加定量项目，检验时按方案录入实测值" />
+      <a-empty v-if="!items.length" :description="$t('qms.spc.empty')" />
       <template v-else-if="spc">
         <a-row :gutter="[16, 16]">
           <a-col :xs="12" :md="4">
-            <div class="stat"><div class="sub-text">规格</div><div class="stat-value small">{{ specText(spc) }}</div></div>
+            <div class="stat"><div class="sub-text">{{ $t('qms.spc.spec') }}</div><div class="stat-value small">{{ specText(spc) }}</div></div>
           </a-col>
           <a-col :xs="12" :md="4">
-            <div class="stat"><div class="sub-text">子组 / 子组大小</div><div class="stat-value">{{ spc.points.length }} / {{ spc.n || '-' }}</div></div>
+            <div class="stat"><div class="sub-text">{{ $t('qms.spc.subgroups') }}</div><div class="stat-value">{{ spc.points.length }} / {{ spc.n || '-' }}</div></div>
           </a-col>
           <a-col :xs="12" :md="4">
-            <div class="stat"><div class="sub-text">过程均值</div><div class="stat-value">{{ fmt(spc.meanCenter) }}</div></div>
+            <div class="stat"><div class="sub-text">{{ $t('qms.spc.mean') }}</div><div class="stat-value">{{ fmt(spc.meanCenter) }}</div></div>
           </a-col>
           <a-col :xs="12" :md="4">
             <div class="stat">
-              <div class="sub-text">估计标准差 σ</div>
+              <div class="sub-text">{{ $t('qms.spc.sigma') }}</div>
               <div class="stat-value">{{ fmt(spc.sigma) }}</div>
               <div class="sub-text">{{ SIGMA[spc.chart] }}</div>
             </div>
@@ -66,16 +66,18 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import EChart from '@/components/charts/EChart.vue'
+import { useI18n } from 'vue-i18n'
 import { specText } from '@/components/qms/qms'
 import { spcChart, spcItems } from '@/api/qms'
 
 /** SPC：定量检验项目的控制图（I-MR / X̄-R / X̄-S）与过程能力指数 */
+const { t } = useI18n()
 const CHARTS = {
-  I_MR: ['单值图', '移动极差图', '移动极差'],
-  XBAR_R: ['均值图', '极差图', '极差'],
-  XBAR_S: ['均值图', '标准差图', '标准差']
+  I_MR: [t('qms.spc.chart.individuals'), t('qms.spc.chart.movingRangeChart'), t('qms.spc.chart.movingRange')],
+  XBAR_R: [t('qms.spc.chart.xbar'), t('qms.spc.chart.rangeChart'), t('qms.spc.chart.range')],
+  XBAR_S: [t('qms.spc.chart.xbar'), t('qms.spc.chart.stdDevChart'), t('qms.spc.chart.stdDev')]
 }
-const SIGMA = { I_MR: '平均移动极差 / d2', XBAR_R: '平均极差 / d2', XBAR_S: '平均标准差 / c4' }
+const SIGMA = { I_MR: t('qms.spc.sigmaFormula.I_MR'), XBAR_R: t('qms.spc.sigmaFormula.XBAR_R'), XBAR_S: t('qms.spc.sigmaFormula.XBAR_S') }
 const items = ref([])
 const itemId = ref()
 const range = ref()
@@ -84,7 +86,7 @@ const spc = ref()
 const itemOptions = computed(() =>
   items.value.map((i) => ({
     value: i.planItemId,
-    label: `${i.itemName}${i.unit ? `（${i.unit}）` : ''} - ${i.planName}${i.materialName ? ' / ' + i.materialName : ''}，${i.subgroups} 组`
+    label: t('qms.spc.itemOption', { name: `${i.itemName}${i.unit ? ` (${i.unit})` : ''}`, plan: `${i.planName}${i.materialName ? ' / ' + i.materialName : ''}`, n: i.subgroups })
   }))
 )
 
@@ -104,7 +106,7 @@ async function loadSpc() {
 const fmt = (v) => (v == null ? '-' : Number(v).toString())
 /** 过程能力：≥ 1.33 充足，1.0 ~ 1.33 尚可，< 1.0 不足 */
 const capClass = (v) => (v == null ? '' : Number(v) >= 1.33 ? 'good' : Number(v) >= 1 ? 'warn' : 'danger')
-const capText = (v) => (v == null ? '需要规格限' : Number(v) >= 1.67 ? '能力充分' : Number(v) >= 1.33 ? '能力充足' : Number(v) >= 1 ? '能力尚可，需关注' : '能力不足，需改进')
+const capText = (v) => (v == null ? t('qms.spc.cap.needSpec') : Number(v) >= 1.67 ? t('qms.spc.cap.excellent') : Number(v) >= 1.33 ? t('qms.spc.cap.adequate') : Number(v) >= 1 ? t('qms.spc.cap.marginal') : t('qms.spc.cap.poor'))
 
 function axisRange(values) {
   const lo = Math.min(...values)
@@ -126,8 +128,8 @@ function chartOption(field, center, ucl, lcl) {
       trigger: 'axis',
       formatter: (ps) => {
         const p = points[ps[0].dataIndex]
-        const label = field === 'mean' ? (spc.value.chart === 'I_MR' ? '单值' : '均值') : CHARTS[spc.value.chart][2]
-        return `${p.inspNo}<br/>${p.date}<br/>${label}：${Number(p[field])}`
+        const label = field === 'mean' ? (spc.value.chart === 'I_MR' ? t('qms.spc.individual') : t('qms.spc.average')) : CHARTS[spc.value.chart][2]
+        return `${p.inspNo}<br/>${p.date}<br/>${t('qms.spc.tooltip', { label, v: Number(p[field]) })}`
       }
     },
     grid: { left: 56, right: 24, top: 24, bottom: 28 },

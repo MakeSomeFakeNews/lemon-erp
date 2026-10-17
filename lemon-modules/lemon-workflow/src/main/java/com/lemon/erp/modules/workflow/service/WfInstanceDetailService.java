@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.workflow.service;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.security.PermissionService;
@@ -126,7 +127,7 @@ public class WfInstanceDetailService {
         }
         return business.variables().stream()
                 .filter(v -> values.get(v.field()) != null && !"".equals(values.get(v.field())))
-                .map(v -> new InstanceDetail.BusinessField(v.field(), v.label(), v.type(), v.dictType(), values.get(v.field())))
+                .map(v -> new InstanceDetail.BusinessField(v.field(), I18n.t(v.label()), v.type(), v.dictType(), values.get(v.field())))
                 .toList();
     }
 

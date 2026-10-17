@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.workflow.service;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
@@ -53,7 +54,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
         getBaseMapper().selectPageList(page, name, category);
         page.getRecords().forEach(m -> {
             FlowBusiness b = business(m.getModelKey());
-            m.setBusinessName(b == null ? null : b.name());
+            m.setBusinessName(b == null ? null : I18n.t(b.name()));
         });
         return PageResult.of(page);
     }
@@ -63,13 +64,23 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
         return businesses.stream().filter(b -> b.processKey().equals(modelKey)).findFirst().orElse(null);
     }
 
+    /** 业务名称、变量名称按请求语言翻译（输出给前端时使用） */
+    public static FlowBusiness translate(FlowBusiness b) {
+        if (b == null) {
+            return null;
+        }
+        return new FlowBusiness(b.processKey(), I18n.t(b.name()), b.variables().stream()
+                .map(v -> new FlowBusiness.Variable(v.field(), I18n.t(v.label()), v.type(), v.dictType(), v.options()))
+                .toList());
+    }
+
     public WfModel detail(Long id) {
         WfModel model = getExisting(id);
         FlowDesign design = readDesign(model);
         model.setDesigned(design != null);
         model.setForm(design == null ? List.of() : design.form());
         model.setFlow(design == null ? null : design.flow());
-        model.setBusiness(business(model.getModelKey()));
+        model.setBusiness(translate(business(model.getModelKey())));
         return model;
     }
 
@@ -180,7 +191,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
     public WfModel getManualStartable(String modelKey) {
         FlowBusiness b = business(modelKey);
         if (b != null) {
-            throw new BizException("「" + b.name() + "」请在对应的业务单据中提交审批");
+            throw new BizException("「{0}」请在对应的业务单据中提交审批", I18n.t(b.name()));
         }
         return getStartable(modelKey);
     }
@@ -196,7 +207,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
             throw new BizException("流程不存在或未发布");
         }
         if (!Integer.valueOf(1).equals(model.getStatus())) {
-            throw new BizException("流程「" + model.getName() + "」已停用");
+            throw new BizException("流程「{0}」已停用", model.getName());
         }
         return model;
     }

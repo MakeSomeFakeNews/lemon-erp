@@ -127,9 +127,9 @@ public class WfTaskService {
             throw new BizException("转交人不存在或已停用");
         }
         String targetName = identityProvider.getUserNames(List.of(targetUserId)).get(targetUserId);
-        String message = "转交给「" + targetName + "」" + (StringUtils.hasText(comment) ? "：" + comment : "");
+        String note = "转交给「" + targetName + "」" + (StringUtils.hasText(comment) ? "：" + comment : ""); // i18n-ignore 审批意见存库
         FlowableUserContext.runAs(userId, () -> {
-            taskService.addComment(taskId, task.getProcessInstanceId(), ApprovalAction.TRANSFER.name(), message);
+            taskService.addComment(taskId, task.getProcessInstanceId(), ApprovalAction.TRANSFER.name(), note);
             taskService.setAssignee(taskId, String.valueOf(targetUserId));
         });
     }

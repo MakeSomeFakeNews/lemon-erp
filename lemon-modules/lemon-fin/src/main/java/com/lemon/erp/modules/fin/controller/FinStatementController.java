@@ -48,14 +48,14 @@ public class FinStatementController {
 
     @PostMapping("/fin/statement")
     @PreAuthorize("@ss.hasPerm('fin:statement:add')")
-    @OperLog(title = "供应商对账单", type = OperType.INSERT)
+    @OperLog(title = "供应商对账单", type = OperType.INSERT) // i18n-ignore
     public R<Long> generate(@Valid @RequestBody StatementRequests.Generate req) {
         return R.ok(statementService.generate(req));
     }
 
     @PostMapping("/fin/statement/{id}/send")
     @PreAuthorize("@ss.hasPerm('fin:statement:edit')")
-    @OperLog(title = "供应商对账单-发送", type = OperType.UPDATE)
+    @OperLog(title = "供应商对账单-发送", type = OperType.UPDATE) // i18n-ignore
     public R<Void> send(@PathVariable Long id) {
         statementService.send(id);
         return R.ok();
@@ -63,7 +63,7 @@ public class FinStatementController {
 
     @DeleteMapping("/fin/statement/{id}")
     @PreAuthorize("@ss.hasPerm('fin:statement:remove')")
-    @OperLog(title = "供应商对账单", type = OperType.DELETE)
+    @OperLog(title = "供应商对账单", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
         statementService.delete(id);
         return R.ok();
@@ -87,7 +87,7 @@ public class FinStatementController {
 
     @PostMapping("/portal/statement/{id}/confirm")
     @PreAuthorize("@ss.hasPerm('portal:statement:confirm')")
-    @OperLog(title = "门户-对账确认", type = OperType.UPDATE)
+    @OperLog(title = "门户-对账确认", type = OperType.UPDATE) // i18n-ignore
     public R<Void> confirm(@PathVariable Long id, @Valid @RequestBody StatementRequests.Confirm req) {
         statementService.confirm(id, SecurityUtils.requireSupplierId(), req);
         return R.ok();
@@ -95,7 +95,7 @@ public class FinStatementController {
 
     @PutMapping("/portal/statement/{id}/invoice")
     @PreAuthorize("@ss.hasPerm('portal:statement:confirm')")
-    @OperLog(title = "门户-对账单发票", type = OperType.UPDATE)
+    @OperLog(title = "门户-对账单发票", type = OperType.UPDATE) // i18n-ignore
     public R<Void> invoice(@PathVariable Long id, @Valid @RequestBody StatementRequests.Invoice req) {
         statementService.invoice(id, SecurityUtils.requireSupplierId(), req);
         return R.ok();

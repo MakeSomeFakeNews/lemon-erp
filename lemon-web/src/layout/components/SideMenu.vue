@@ -25,6 +25,7 @@ import { computed, h, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLogo from '@/components/AppLogo.vue'
 import MenuIcon from '@/components/MenuIcon.vue'
+import { t } from '@/locales'
 import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
 import { joinPath } from '@/utils/path'
@@ -63,7 +64,7 @@ function toItems(menus, parentPath = '', depth = 0) {
 
 const MODULE_PREFIX = 'module:'
 const menuItems = computed(() => {
-  if (props.full) return [{ key: HOME_PATH, label: '首页', icon: icon('HomeOutlined') }, ...toItems(userStore.menus)]
+  if (props.full) return [{ key: HOME_PATH, label: t('route.dashboard'), icon: icon('HomeOutlined') }, ...toItems(userStore.menus)]
   const m = activeModule.value?.menu
   // 不在任何模块中（首页、个人中心等）：显示模块列表，点击进入模块
   if (!m) return modules.value.map((x) => ({ key: MODULE_PREFIX + x.key, label: x.title, icon: icon(x.icon) }))

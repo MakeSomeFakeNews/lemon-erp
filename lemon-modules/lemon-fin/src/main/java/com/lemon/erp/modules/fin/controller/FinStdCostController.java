@@ -67,14 +67,14 @@ public class FinStdCostController {
     /** 新建版本并卷算，返回版本 ID */
     @PostMapping
     @PreAuthorize("@ss.hasPerm('fin:stdCost:edit')")
-    @OperLog(title = "标准成本", type = OperType.INSERT)
+    @OperLog(title = "标准成本", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody StdCostRequests.Version req) {
         return R.ok(stdCostService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('fin:stdCost:edit')")
-    @OperLog(title = "标准成本", type = OperType.UPDATE)
+    @OperLog(title = "标准成本", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody StdCostRequests.Version req) {
         stdCostService.update(id, req);
         return R.ok();
@@ -82,7 +82,7 @@ public class FinStdCostController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('fin:stdCost:edit')")
-    @OperLog(title = "标准成本", type = OperType.DELETE)
+    @OperLog(title = "标准成本", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
         stdCostService.delete(id);
         return R.ok();
@@ -91,7 +91,7 @@ public class FinStdCostController {
     /** 新增或修改采购件标准单价 */
     @PutMapping("/{id}/items")
     @PreAuthorize("@ss.hasPerm('fin:stdCost:edit')")
-    @OperLog(title = "标准成本-单价", type = OperType.UPDATE)
+    @OperLog(title = "标准成本-单价", type = OperType.UPDATE) // i18n-ignore
     public R<Void> savePrice(@PathVariable Long id, @Valid @RequestBody StdCostRequests.Price req) {
         stdCostService.savePrice(id, req);
         return R.ok();
@@ -99,7 +99,7 @@ public class FinStdCostController {
 
     @DeleteMapping("/{id}/items/{materialId}")
     @PreAuthorize("@ss.hasPerm('fin:stdCost:edit')")
-    @OperLog(title = "标准成本-单价", type = OperType.DELETE)
+    @OperLog(title = "标准成本-单价", type = OperType.DELETE) // i18n-ignore
     public R<Void> removePrice(@PathVariable Long id, @PathVariable Long materialId) {
         stdCostService.removePrice(id, materialId);
         return R.ok();
@@ -108,14 +108,14 @@ public class FinStdCostController {
     /** 卷算，返回单价为 0 的采购件数 */
     @PostMapping("/{id}/rollup")
     @PreAuthorize("@ss.hasPerm('fin:stdCost:edit')")
-    @OperLog(title = "标准成本-卷算", type = OperType.UPDATE)
+    @OperLog(title = "标准成本-卷算", type = OperType.UPDATE) // i18n-ignore
     public R<Integer> rollup(@PathVariable Long id) {
         return R.ok(stdCostService.rollup(id));
     }
 
     @PostMapping("/{id}/release")
     @PreAuthorize("@ss.hasPerm('fin:stdCost:edit')")
-    @OperLog(title = "标准成本-发布", type = OperType.UPDATE)
+    @OperLog(title = "标准成本-发布", type = OperType.UPDATE) // i18n-ignore
     public R<Void> release(@PathVariable Long id) {
         stdCostService.release(id);
         return R.ok();
@@ -123,7 +123,7 @@ public class FinStdCostController {
 
     @PostMapping("/{id}/unrelease")
     @PreAuthorize("@ss.hasPerm('fin:stdCost:edit')")
-    @OperLog(title = "标准成本-取消发布", type = OperType.UPDATE)
+    @OperLog(title = "标准成本-取消发布", type = OperType.UPDATE) // i18n-ignore
     public R<Void> unrelease(@PathVariable Long id) {
         stdCostService.unrelease(id);
         return R.ok();

@@ -1,5 +1,5 @@
 <template>
-  <SubPage :open="open" :title="acc ? `项目核算 - ${acc.code} ${acc.name}` : '项目核算'" width="min(1000px, 100vw)" destroy-on-close
+  <SubPage :open="open" :title="acc ? $t('pm.acc.titleWith', { code: acc.code, name: acc.name }) : $t('pm.acc.title')" width="min(1000px, 100vw)" destroy-on-close
             @close="emit('update:open', false)">
     <a-spin :spinning="loading">
       <template v-if="acc">
@@ -15,26 +15,26 @@
 
         <a-row :gutter="16" class="block">
           <a-col :xs="24" :md="10">
-            <div class="chart-title">挣值分析</div>
+            <div class="chart-title">{{ $t('pm.acc.evm') }}</div>
             <EChart :option="evmChart" height="240px" />
             <div class="sub-text">
-              PV 计划价值 = 预算 × 计划进度；EV 挣值 = 预算 × 完工进度；AC 实际成本。
+              {{ $t('pm.acc.evmTip') }}
               SPI <a-tag :color="indexTag(acc.spi).color" :bordered="false">{{ indexTag(acc.spi).text }}</a-tag>
               CPI <a-tag :color="indexTag(acc.cpi).color" :bordered="false">{{ indexTag(acc.cpi).text }}</a-tag>
-              完工估算 EAC {{ acc.eac == null ? '-' : formatMoney(acc.eac) }}
+              {{ $t('pm.acc.eac') }} {{ acc.eac == null ? '-' : formatMoney(acc.eac) }}
             </div>
           </a-col>
           <a-col :xs="24" :md="14">
-            <div class="chart-title">按月成本</div>
+            <div class="chart-title">{{ $t('pm.acc.monthlyCost') }}</div>
             <EChart v-if="monthly.length" :option="monthlyChart" height="240px" />
-            <a-empty v-else description="还没有成本" />
+            <a-empty v-else :description="$t('pm.acc.noCost')" />
           </a-col>
         </a-row>
 
         <div class="section-head">
-          <span class="chart-title">收款计划</span>
+          <span class="chart-title">{{ $t('pm.acc.billingPlan') }}</span>
           <a-button v-perm="'pm:billing:edit'" type="primary" size="small" :disabled="acc.status === 'CLOSED'" @click="openBilling()">
-            <template #icon><PlusOutlined /></template>新增款项
+            <template #icon><PlusOutlined /></template>{{ $t('pm.acc.addBilling') }}
           </a-button>
         </div>
         <a-table row-key="id" size="small" :columns="billingColumns" :data-source="billings" :pagination="false" :scroll="{ x: 900 }">
@@ -48,34 +48,34 @@
             <template v-else-if="column.key === 'bill'">
               <template v-if="record.billNo">
                 <div>{{ record.billNo }} <span class="sub-text">{{ record.billDate }}</span></div>
-                <a-progress :percent="received(record)" size="small" :format="() => `已收 ${formatMoney(record.settledAmount)}`" class="recv" />
+                <a-progress :percent="received(record)" size="small" :format="() => `${$t('pm.common.received')} ${formatMoney(record.settledAmount)}`" class="recv" />
               </template>
               <span v-else class="sub-text">-</span>
             </template>
             <template v-else-if="column.key === 'action'">
               <span class="table-actions">
                 <template v-if="record.status === 'PLANNED'">
-                  <a-button v-perm="'pm:billing:bill'" type="link" size="small" @click="openBill(record)">开票</a-button>
+                  <a-button v-perm="'pm:billing:bill'" type="link" size="small" @click="openBill(record)">{{ $t('pm.acc.bill') }}</a-button>
                   <a-button v-perm="'pm:billing:edit'" type="link" size="small" @click="openBilling(record)"><EditOutlined /></a-button>
                   <span v-perm="'pm:billing:edit'">
-                    <a-popconfirm :title="`确定删除款项「${record.name}」？`" @confirm="removeBilling(record)">
+                    <a-popconfirm :title="$t('pm.acc.confirmDeleteBilling', { name: record.name })" @confirm="removeBilling(record)">
                       <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                     </a-popconfirm>
                   </span>
                 </template>
                 <span v-else v-perm="'pm:billing:bill'">
-                  <a-popconfirm title="取消开票将删除应收单（已收款或已生成凭证的不能取消），确定？" @confirm="unbill(record)">
-                    <a-button type="link" size="small">取消开票</a-button>
+                  <a-popconfirm :title="$t('pm.acc.confirmUnbill')" @confirm="unbill(record)">
+                    <a-button type="link" size="small">{{ $t('pm.acc.unbill') }}</a-button>
                   </a-popconfirm>
                 </span>
               </span>
             </template>
           </template>
         </a-table>
-        <div class="sub-text billing-tip">开票后在「财务管理 / 应收管理」中生成凭证（计入合同负债），在「收款单」中收款核销。</div>
+        <div class="sub-text billing-tip">{{ $t('pm.acc.billingTip') }}</div>
 
         <div class="section-head">
-          <span class="chart-title">项目月结（入总账）</span>
+          <span class="chart-title">{{ $t('pm.acc.monthClose') }}</span>
         </div>
         <a-table row-key="id" size="small" :columns="revenueColumns" :data-source="revenues" :pagination="false" :scroll="{ x: 800 }">
           <template #bodyCell="{ column, record }">
@@ -87,31 +87,31 @@
     </a-spin>
 
     <!-- 收款计划 -->
-    <a-modal v-model:open="billingOpen" :title="billingForm.id ? '编辑款项' : '新增款项'" :confirm-loading="saving" destroy-on-close @ok="saveBilling">
+    <a-modal v-model:open="billingOpen" :title="billingForm.id ? $t('pm.acc.editBilling') : $t('pm.acc.addBilling')" :confirm-loading="saving" destroy-on-close @ok="saveBilling">
       <a-form ref="billingRef" :model="billingForm" layout="vertical">
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="款项名称" name="name" :rules="[{ required: true, whitespace: true, message: '请填写款项名称' }]">
-              <a-input v-model:value="billingForm.name" :maxlength="64" placeholder="如 预付款、验收款" />
+            <a-form-item :label="$t('pm.acc.billingName')" name="name" :rules="[{ required: true, whitespace: true, message: $t('common.rule.required', { name: $t('pm.acc.billingName') }) }]">
+              <a-input v-model:value="billingForm.name" :maxlength="64" :placeholder="$t('pm.acc.billingNamePlaceholder')" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="关联里程碑" name="taskId">
-              <a-select v-model:value="billingForm.taskId" allow-clear :options="milestoneOptions" placeholder="选填" />
+            <a-form-item :label="$t('pm.acc.linkedMilestone')" name="taskId">
+              <a-select v-model:value="billingForm.taskId" allow-clear :options="milestoneOptions" :placeholder="$t('pm.common.optional')" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="计划开票日期" name="planDate" :rules="[{ required: true, message: '请选择日期' }]">
+            <a-form-item :label="$t('pm.acc.planBillDate')" name="planDate" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('common.field.date') }) }]">
               <a-date-picker v-model:value="billingForm.planDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="金额（含税）" name="amount" :rules="[{ required: true, message: '请填写金额' }]">
-              <a-input-number v-model:value="billingForm.amount" :min="0.01" :precision="2" addon-after="元" class="full" />
+            <a-form-item :label="$t('pm.acc.amountTax')" name="amount" :rules="[{ required: true, message: $t('common.rule.required', { name: $t('common.field.amount') }) }]">
+              <a-input-number v-model:value="billingForm.amount" :min="0.01" :precision="2" :addon-after="$t('pm.common.yuan')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-input v-model:value="billingForm.remark" :maxlength="255" />
             </a-form-item>
           </a-col>
@@ -120,10 +120,10 @@
     </a-modal>
 
     <!-- 开票 -->
-    <a-modal v-model:open="billOpen" title="开票" :confirm-loading="saving" destroy-on-close @ok="confirmBill">
-      <p>为客户「{{ acc?.customerName }}」生成应收单，金额 {{ formatMoney(billTarget?.amount) }}（含税）。</p>
+    <a-modal v-model:open="billOpen" :title="$t('pm.acc.bill')" :confirm-loading="saving" destroy-on-close @ok="confirmBill">
+      <p>{{ $t('pm.acc.billConfirm', { customer: acc?.customerName, amount: formatMoney(billTarget?.amount) }) }}</p>
       <a-form layout="vertical">
-        <a-form-item label="开票日期" required>
+        <a-form-item :label="$t('pm.acc.billDate')" required>
           <a-date-picker v-model:value="billDate" value-format="YYYY-MM-DD" :allow-clear="false" class="full" />
         </a-form-item>
       </a-form>
@@ -144,6 +144,7 @@ import {
 import { formatMoney } from '@/components/scm/scm'
 import { periodLabel, shortMoney } from '@/components/charts/charts'
 import { flattenTasks, indexTag, num, today } from './pm'
+import { t } from '@/locales'
 
 /** 项目核算详情：收入、成本、毛利、挣值、按月成本、收款计划与开票 */
 const props = defineProps({
@@ -161,37 +162,37 @@ const milestoneOptions = ref([])
 const stats = computed(() => {
   const a = acc.value
   return [
-    { label: '完工进度 / 计划进度', value: `${num(a.progress)}% / ${num(a.plannedRate)}%`, cls: num(a.progress) < num(a.plannedRate) ? 'warn' : '' },
-    { label: '已确认收入', value: formatMoney(a.revenue), sub: `不含税合同额 ${formatMoney(a.contractNet)}` },
-    { label: '实际成本', value: formatMoney(a.actualCost), sub: `人工 ${formatMoney(a.laborCost)} · 费用 ${formatMoney(a.expenseCost)}`,
+    { label: t('pm.detail.progressVsPlan'), value: `${num(a.progress)}% / ${num(a.plannedRate)}%`, cls: num(a.progress) < num(a.plannedRate) ? 'warn' : '' },
+    { label: t('pm.acc.revenue'), value: formatMoney(a.revenue), sub: `${t('pm.acc.contractNet')} ${formatMoney(a.contractNet)}` },
+    { label: t('pm.acc.actualCost'), value: formatMoney(a.actualCost), sub: `${t('pm.common.labor')} ${formatMoney(a.laborCost)} · ${t('pm.common.expense')} ${formatMoney(a.expenseCost)}`,
       cls: num(a.budget) > 0 && num(a.actualCost) > num(a.budget) ? 'danger' : '' },
-    { label: '毛利 / 毛利率', value: formatMoney(a.grossProfit), sub: a.grossMargin == null ? '-' : `毛利率 ${a.grossMargin}%`,
+    { label: t('pm.acc.profitMargin'), value: formatMoney(a.grossProfit), sub: a.grossMargin == null ? '-' : `${t('pm.acc.margin')} ${a.grossMargin}%`,
       cls: num(a.grossProfit) < 0 ? 'danger' : '' },
-    { label: '成本预算', value: formatMoney(a.budget) },
-    { label: '合同金额（含税）', value: formatMoney(a.contractAmount) },
-    { label: '已开票', value: formatMoney(a.billed) },
-    { label: '已收款', value: formatMoney(a.received), sub: num(a.billed) ? `应收余额 ${formatMoney(num(a.billed) - num(a.received))}` : '' }
+    { label: t('pm.acc.costBudget'), value: formatMoney(a.budget) },
+    { label: t('pm.project.contractAmountTax'), value: formatMoney(a.contractAmount) },
+    { label: t('pm.acc.billed'), value: formatMoney(a.billed) },
+    { label: t('pm.common.received'), value: formatMoney(a.received), sub: num(a.billed) ? `${t('pm.acc.arBalance')} ${formatMoney(num(a.billed) - num(a.received))}` : '' }
   ]
 })
 
 const revenues = ref([])
 const revenueColumns = [
-  { title: '期间', dataIndex: 'period', width: 90 },
-  { title: '人工入账', key: 'laborCost', width: 120, align: 'right' },
-  { title: '费用入账', key: 'expenseCost', width: 120, align: 'right' },
-  { title: '完工进度', key: 'completionRate', width: 90, align: 'right' },
-  { title: '确认收入', key: 'revenue', width: 120, align: 'right' },
-  { title: '结转成本', key: 'cost', width: 120, align: 'right' },
-  { title: '凭证', dataIndex: 'voucherNo', width: 100 }
+  { title: t('pm.acc.period'), dataIndex: 'period', width: 90 },
+  { title: t('pm.acc.laborPosted'), key: 'laborCost', width: 120, align: 'right' },
+  { title: t('pm.acc.expensePosted'), key: 'expenseCost', width: 130, align: 'right' },
+  { title: t('pm.acc.completion'), key: 'completionRate', width: 110, align: 'right' },
+  { title: t('pm.acc.recognizedRevenue'), key: 'revenue', width: 130, align: 'right' },
+  { title: t('pm.acc.carriedCost'), key: 'cost', width: 120, align: 'right' },
+  { title: t('pm.acc.voucher'), dataIndex: 'voucherNo', width: 100 }
 ]
 
 const billingColumns = [
-  { title: '款项', key: 'name', width: 180 },
-  { title: '计划日期', dataIndex: 'planDate', width: 110 },
-  { title: '金额', key: 'amount', width: 120, align: 'right' },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '应收单 / 收款进度', key: 'bill', width: 260 },
-  { title: '操作', key: 'action', width: 170, fixed: 'right' }
+  { title: t('pm.common.billingItem'), key: 'name', width: 180 },
+  { title: t('pm.common.planDate'), dataIndex: 'planDate', width: 120 },
+  { title: t('common.field.amount'), key: 'amount', width: 120, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('pm.acc.billProgress'), key: 'bill', width: 260 },
+  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
 ]
 
 const evmChart = computed(() => {
@@ -199,7 +200,7 @@ const evmChart = computed(() => {
   return {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (v) => formatMoney(v) },
     grid: { left: 60, right: 16, top: 16, bottom: 30 },
-    xAxis: { type: 'category', data: ['预算 BAC', '计划价值 PV', '挣值 EV', '实际成本 AC'] },
+    xAxis: { type: 'category', data: [t('pm.acc.bac'), t('pm.acc.pv'), t('pm.acc.ev'), t('pm.acc.ac')] },
     yAxis: { type: 'value', axisLabel: { formatter: shortMoney } },
     series: [
       {
@@ -219,13 +220,13 @@ const evmChart = computed(() => {
 
 const monthlyChart = computed(() => ({
   tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-  legend: { data: ['人工', '费用'], top: 0 },
+  legend: { data: [t('pm.common.labor'), t('pm.common.expense')], top: 0 },
   grid: { left: 60, right: 16, top: 36, bottom: 30 },
   xAxis: { type: 'category', data: monthly.value.map((m) => periodLabel(m.period)) },
   yAxis: { type: 'value', axisLabel: { formatter: shortMoney } },
   series: [
-    { name: '人工', type: 'bar', stack: 'cost', barMaxWidth: 32, data: monthly.value.map((m) => num(m.labor)) },
-    { name: '费用', type: 'bar', stack: 'cost', barMaxWidth: 32, data: monthly.value.map((m) => num(m.expense)) }
+    { name: t('pm.common.labor'), type: 'bar', stack: 'cost', barMaxWidth: 32, data: monthly.value.map((m) => num(m.labor)) },
+    { name: t('pm.common.expense'), type: 'bar', stack: 'cost', barMaxWidth: 32, data: monthly.value.map((m) => num(m.expense)) }
   ]
 }))
 
@@ -244,7 +245,7 @@ async function load() {
     billings.value = b
     milestoneOptions.value = flattenTasks(tree)
       .filter((t) => t.milestone === 1)
-      .map((t) => ({ value: t.id, label: `${t.name}（${t.planEnd}）` }))
+      .map((task) => ({ value: task.id, label: `${task.name} (${task.planEnd})` }))
   } finally {
     loading.value = false
   }
@@ -285,7 +286,7 @@ async function saveBilling() {
     const { id, ...data } = billingForm.value
     const payload = { ...data, projectId: props.projectId, taskId: data.taskId || null, remark: data.remark || null }
     id ? await updateBilling(id, payload) : await addBilling(payload)
-    message.success('保存成功')
+    message.success(t('common.msg.saveSuccess'))
     billingOpen.value = false
     reload()
   } finally {
@@ -295,7 +296,7 @@ async function saveBilling() {
 
 async function removeBilling(record) {
   await deleteBilling(record.id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   reload()
 }
 
@@ -306,7 +307,7 @@ const billDate = ref(today())
 
 function openBill(record) {
   if (!acc.value.customerName) {
-    message.warning('项目没有客户，不能开票，请先在项目中设置客户')
+    message.warning(t('pm.acc.noCustomer'))
     return
   }
   billTarget.value = record
@@ -318,7 +319,7 @@ async function confirmBill() {
   saving.value = true
   try {
     await billBilling(billTarget.value.id, billDate.value)
-    message.success('已开票，生成应收单')
+    message.success(t('pm.acc.billed2'))
     billOpen.value = false
     reload()
   } finally {
@@ -328,7 +329,7 @@ async function confirmBill() {
 
 async function unbill(record) {
   await unbillBilling(record.id)
-  message.success('已取消开票')
+  message.success(t('pm.acc.unbilled'))
   reload()
 }
 </script>

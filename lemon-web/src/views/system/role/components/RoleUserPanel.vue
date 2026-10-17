@@ -3,22 +3,22 @@
     <div class="user-panel-toolbar">
       <a-space wrap>
         <a-button v-if="canAssign" type="primary" @click="pickerOpen = true">
-          <template #icon><UsergroupAddOutlined /></template>添加用户
+          <template #icon><UsergroupAddOutlined /></template>{{ $t('system.role.addUsers') }}
         </a-button>
         <a-popconfirm
           v-if="canAssign"
-          :title="`确定将选中的 ${selectedKeys.length} 个用户移出该角色？`"
+          :title="$t('system.role.confirmRemoveN', { n: selectedKeys.length })"
           :disabled="!selectedKeys.length"
           @confirm="remove(selectedKeys)"
         >
           <a-button danger :disabled="!selectedKeys.length">
-            <template #icon><UserDeleteOutlined /></template>批量移除
+            <template #icon><UserDeleteOutlined /></template>{{ $t('system.role.batchRemove') }}
           </a-button>
         </a-popconfirm>
       </a-space>
       <a-input-search
         v-model:value="query.username"
-        placeholder="搜索用户名或昵称"
+        :placeholder="$t('system.role.searchUser')"
         allow-clear
         class="user-panel-search"
         @search="search"
@@ -43,21 +43,21 @@
           <DictTag type="sys_common_status" :value="record.status" />
         </template>
         <template v-else-if="column.key === 'action'">
-          <a-popconfirm :title="`确定将「${record.username}」移出该角色？`" @confirm="remove([record.id])">
+          <a-popconfirm :title="$t('system.role.confirmRemove', { name: record.username })" @confirm="remove([record.id])">
             <a-button type="link" size="small" danger :disabled="isBuiltinAdmin(record)">
-              <template #icon><UserDeleteOutlined /></template>移除
+              <template #icon><UserDeleteOutlined /></template>{{ $t('system.role.remove') }}
             </a-button>
           </a-popconfirm>
         </template>
       </template>
       <template #emptyText>
-        <a-empty :image="Empty.PRESENTED_IMAGE_SIMPLE" description="还没有用户拥有该角色" />
+        <a-empty :image="Empty.PRESENTED_IMAGE_SIMPLE" :description="$t('system.role.noMembers')" />
       </template>
     </a-table>
 
     <UserPicker
       v-model:open="pickerOpen"
-      :title="`为「${role.name}」添加用户`"
+      :title="$t('system.role.addUsersTitle', { name: role.name })"
       :fetcher="(params) => pageRoleUsers(role.id, { ...params, assigned: false })"
       :submit="add"
     />
@@ -67,6 +67,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { Empty, message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { UserDeleteOutlined, UsergroupAddOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import UserCell from '@/components/user/UserCell.vue'
@@ -82,14 +83,15 @@ const props = defineProps({
   canAssign: Boolean
 })
 const emit = defineEmits(['changed'])
+const { t } = useI18n()
 useDict('sys_common_status')
 
 const columns = computed(() => [
-  { title: '用户', key: 'username', width: 200 },
-  { title: '部门', dataIndex: 'deptName', width: 140, ellipsis: true },
-  { title: '手机号', dataIndex: 'phone', width: 140 },
-  { title: '状态', key: 'status', width: 90 },
-  ...(props.canAssign ? [{ title: '操作', key: 'action', width: 100, fixed: 'right' }] : [])
+  { title: t('common.field.user'), key: 'username', width: 200 },
+  { title: t('common.field.dept'), dataIndex: 'deptName', width: 140, ellipsis: true },
+  { title: t('common.field.phone'), dataIndex: 'phone', width: 140 },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  ...(props.canAssign ? [{ title: t('common.action.operation'), key: 'action', width: 110, fixed: 'right' }] : [])
 ])
 
 const query = reactive({ username: undefined })
@@ -115,14 +117,14 @@ const pickerOpen = ref(false)
 
 async function add(userIds) {
   await addRoleUsers(props.role.id, userIds)
-  message.success(`已添加 ${userIds.length} 个用户`)
+  message.success(t('system.role.addedN', { n: userIds.length }))
   load()
   emit('changed')
 }
 
 async function remove(userIds) {
   await removeRoleUsers(props.role.id, userIds)
-  message.success('已移除')
+  message.success(t('system.role.removed'))
   selectedKeys.value = selectedKeys.value.filter((k) => !userIds.includes(k))
   load()
   emit('changed')

@@ -2,11 +2,11 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="关键字" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="单号、借款人或事由" allow-clear />
+        <a-form-item :label="$t('common.field.keyword')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('fin.loan.keywordPlaceholder')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.fin_loan_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.fin_loan_status)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -21,12 +21,12 @@
         @refresh="load"
       >
         <a-button v-perm="'fin:loan:add'" type="primary" @click="openCreate">
-          <template #icon><PlusOutlined /></template>新增借款
+          <template #icon><PlusOutlined /></template>{{ $t('fin.loan.addLoan') }}
         </a-button>
         <a-alert
           type="info"
           show-icon
-          message="提交后发布了 fin_loan 流程时走审批，否则直接待付款；付款生成凭证（借 其他应收款 / 贷 银行存款），报销时可以冲抵借款，也可以现金还款。"
+          :message="$t('fin.loan.tip')"
         />
       </TableToolbar>
       <a-table
@@ -50,7 +50,7 @@
           <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}</template>
           <template v-else-if="column.key === 'repaid'">
             <div>{{ formatMoney(record.repaidAmount) }}</div>
-            <div v-if="record.status === 'PAID'" class="sub-text">未还 <b class="warn">{{ formatMoney(outstanding(record)) }}</b></div>
+            <div v-if="record.status === 'PAID'" class="sub-text">{{ $t('fin.loan.outstanding') }} <b class="warn">{{ formatMoney(outstanding(record)) }}</b></div>
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="fin_loan_status" :value="record.status" />
@@ -58,15 +58,15 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <template v-if="record.status === 'DRAFT'">
-                <a-button v-perm="'fin:loan:add'" type="link" size="small" @click="submit(record)">提交</a-button>
+                <a-button v-perm="'fin:loan:add'" type="link" size="small" @click="submit(record)">{{ $t('common.action.submit') }}</a-button>
                 <span v-perm="'fin:loan:add'">
-                  <a-popconfirm :title="`删除借款单 ${record.loanNo}？`" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small">删除</a-button>
+                  <a-popconfirm :title="$t('fin.loan.confirmDelete', { no: record.loanNo })" @confirm="remove(record.id)">
+                    <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
                   </a-popconfirm>
                 </span>
               </template>
-              <a-button v-if="record.status === 'APPROVED'" v-perm="'fin:loan:pay'" type="link" size="small" @click="openPay(record, 'pay')">付款</a-button>
-              <a-button v-if="record.status === 'PAID'" v-perm="'fin:loan:pay'" type="link" size="small" @click="openPay(record, 'repay')">还款</a-button>
+              <a-button v-if="record.status === 'APPROVED'" v-perm="'fin:loan:pay'" type="link" size="small" @click="openPay(record, 'pay')">{{ $t('fin.loan.pay') }}</a-button>
+              <a-button v-if="record.status === 'PAID'" v-perm="'fin:loan:pay'" type="link" size="small" @click="openPay(record, 'repay')">{{ $t('fin.loan.repay') }}</a-button>
             </span>
           </template>
         </template>
@@ -74,32 +74,32 @@
     </a-card>
 
     <!-- 新增 -->
-    <a-modal v-model:open="createOpen" title="新增借款" :confirm-loading="saving" @ok="save">
+    <a-modal v-model:open="createOpen" :title="$t('fin.loan.addLoan')" :confirm-loading="saving" @ok="save">
       <a-form ref="formRef" :model="form" layout="vertical">
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="借款人" name="userId" extra="不选为本人">
+            <a-form-item :label="$t('fin.loan.borrower')" name="userId" :extra="$t('fin.loan.borrowerExtra')">
               <IdentityUserSelect v-model:value="form.userId" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="部门" name="deptId" extra="不选取借款人的部门">
+            <a-form-item :label="$t('common.field.dept')" name="deptId" :extra="$t('fin.loan.deptExtra')">
               <DeptSelect v-model:value="form.deptId" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="借款日期" name="loanDate" :rules="[{ required: true, message: '请选择借款日期' }]">
+            <a-form-item :label="$t('fin.loan.loanDate')" name="loanDate" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('fin.loan.loanDate') }) }]">
               <a-date-picker v-model:value="form.loanDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="金额" name="amount" :rules="[{ required: true, message: '请填写金额' }]">
+            <a-form-item :label="$t('common.field.amount')" name="amount" :rules="[{ required: true, message: $t('common.rule.required', { name: $t('common.field.amount') }) }]">
               <a-input-number v-model:value="form.amount" :min="0.01" :precision="2" prefix="¥" class="full" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="事由" name="purpose">
-          <a-textarea v-model:value="form.purpose" :rows="2" :maxlength="255" placeholder="如：出差备用金" />
+        <a-form-item :label="$t('fin.loan.purpose')" name="purpose">
+          <a-textarea v-model:value="form.purpose" :rows="2" :maxlength="255" :placeholder="$t('fin.loan.purposePlaceholder')" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -107,55 +107,55 @@
     <!-- 付款 / 还款 -->
     <a-modal
       v-model:open="payOpen"
-      :title="`${payMode === 'pay' ? '借款付款' : '现金还款'} ${payTarget?.loanNo || ''}`"
+      :title="$t(payMode === 'pay' ? 'fin.loan.payTitle' : 'fin.loan.repayTitle', { no: payTarget?.loanNo || '' })"
       :confirm-loading="paying"
       @ok="submitPay"
     >
       <p v-if="payTarget" class="sub-text">
-        {{ payTarget.userName }} 借款 ¥{{ formatMoney(payTarget.amount) }}
-        <template v-if="payMode === 'repay'">，已还 ¥{{ formatMoney(payTarget.repaidAmount) }}，未还 ¥{{ formatMoney(outstanding(payTarget)) }}</template>
+        {{ $t('fin.loan.paySummary', { name: payTarget.userName, amount: formatMoney(payTarget.amount) }) }}
+        <template v-if="payMode === 'repay'">{{ $t('fin.loan.repaySummary', { repaid: formatMoney(payTarget.repaidAmount), outstanding: formatMoney(outstanding(payTarget)) }) }}</template>
       </p>
       <a-form layout="vertical">
-        <a-form-item :label="payMode === 'pay' ? '付款账户' : '收款账户'" required>
-          <AccountSelect v-model:value="payForm.accountId" :prefix="['1001', '1002']" placeholder="库存现金 / 银行存款" />
+        <a-form-item :label="payMode === 'pay' ? $t('fin.loan.payAccount') : $t('fin.loan.receiveAccount')" required>
+          <AccountSelect v-model:value="payForm.accountId" :prefix="['1001', '1002']" :placeholder="$t('fin.loan.accountPlaceholder')" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col v-if="payMode === 'repay'" :span="12">
-            <a-form-item label="还款金额" required>
+            <a-form-item :label="$t('fin.loan.repayAmount')" required>
               <a-input-number v-model:value="payForm.amount" :min="0.01" :max="outstanding(payTarget || {})" :precision="2" prefix="¥" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="日期" required>
+            <a-form-item :label="$t('common.field.date')" required>
               <a-date-picker v-model:value="payForm.date" value-format="YYYY-MM-DD" :allow-clear="false" class="full" />
             </a-form-item>
           </a-col>
         </a-row>
       </a-form>
       <div class="sub-text">
-        {{ payMode === 'pay' ? '生成凭证：借 其他应收款 / 贷 结算账户' : '生成凭证：借 结算账户 / 贷 其他应收款；用报销冲抵的请在「费用报销」中选择该借款' }}
+        {{ payMode === 'pay' ? $t('fin.loan.payVoucherHint') : $t('fin.loan.repayVoucherHint') }}
       </div>
     </a-modal>
 
     <!-- 详情 -->
-    <SubPage :open="detailOpen" :title="detail ? `借款单 ${detail.loanNo}` : ''" width="min(760px, 100vw)" @close="detailOpen = false">
+    <SubPage :open="detailOpen" :title="detail ? $t('fin.loan.detailTitle', { no: detail.loanNo }) : ''" width="min(760px, 100vw)" @close="detailOpen = false">
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2 }" size="small" class="block">
-          <a-descriptions-item label="借款人">{{ detail.userName }}</a-descriptions-item>
-          <a-descriptions-item label="部门">{{ detail.deptName || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="借款日期">{{ detail.loanDate }}</a-descriptions-item>
-          <a-descriptions-item label="状态"><DictTag type="fin_loan_status" :value="detail.status" /></a-descriptions-item>
-          <a-descriptions-item label="金额"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
-          <a-descriptions-item label="已还">¥{{ formatMoney(detail.repaidAmount) }}（未还 {{ formatMoney(outstanding(detail)) }}）</a-descriptions-item>
-          <a-descriptions-item label="付款凭证">{{ detail.voucherNo || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="事由">{{ detail.purpose || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.loan.borrower')">{{ detail.userName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.dept')">{{ detail.deptName || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.loan.loanDate')">{{ detail.loanDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.status')"><DictTag type="fin_loan_status" :value="detail.status" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.amount')"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.loan.repaid')">{{ $t('fin.loan.repaidDetail', { repaid: formatMoney(detail.repaidAmount), outstanding: formatMoney(outstanding(detail)) }) }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.loan.payVoucher')">{{ detail.voucherNo || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.loan.purpose')">{{ detail.purpose || '-' }}</a-descriptions-item>
         </a-descriptions>
-        <div class="section-title">还款记录</div>
-        <a-table row-key="id" size="small" :columns="repayColumns" :data-source="detail.repays" :pagination="false" :locale="{ emptyText: '还没有还款' }">
+        <div class="section-title">{{ $t('fin.loan.repayRecords') }}</div>
+        <a-table row-key="id" size="small" :columns="repayColumns" :data-source="detail.repays" :pagination="false" :locale="{ emptyText: $t('fin.loan.noRepay') }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'amount'">{{ formatMoney(record.amount) }}</template>
             <template v-else-if="column.key === 'method'">
-              <a-tag :color="record.method === 'CLAIM' ? 'blue' : 'green'" :bordered="false">{{ record.method === 'CLAIM' ? '报销冲抵' : '现金还款' }}</a-tag>
+              <a-tag :color="record.method === 'CLAIM' ? 'blue' : 'green'" :bordered="false">{{ record.method === 'CLAIM' ? $t('fin.loan.claimOffset') : $t('fin.loan.cashRepay') }}</a-tag>
               <span v-if="record.claimNo" class="sub-text">{{ record.claimNo }}</span>
             </template>
           </template>
@@ -183,20 +183,22 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { today } from '@/components/wms/wms'
 import { formatMoney } from '@/components/fin/fin'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const dict = useDict('fin_loan_status')
 const outstanding = (l) => Math.round((Number(l.amount || 0) - Number(l.repaidAmount || 0)) * 100) / 100
 
 const columns = [
-  { title: '单号', key: 'loanNo', dataIndex: 'loanNo', width: 160 },
-  { title: '借款人', key: 'user', dataIndex: 'userName', width: 150 },
-  { title: '借款日期', dataIndex: 'loanDate', width: 110 },
-  { title: '金额', key: 'amount', dataIndex: 'amount', width: 130, align: 'right' },
-  { title: '已还', key: 'repaid', dataIndex: 'repaidAmount', width: 130, align: 'right' },
-  { title: '状态', key: 'status', dataIndex: 'status', width: 100, dict: 'fin_loan_status' },
-  { title: '付款凭证', dataIndex: 'voucherNo', width: 110 },
-  { title: '事由', dataIndex: 'purpose', ellipsis: true },
-  { title: '操作', key: 'action', width: 140, fixed: 'right' }
+  { title: t('fin.loan.loanNo'), key: 'loanNo', dataIndex: 'loanNo', width: 160 },
+  { title: t('fin.loan.borrower'), key: 'user', dataIndex: 'userName', width: 150 },
+  { title: t('fin.loan.loanDate'), dataIndex: 'loanDate', width: 120 },
+  { title: t('common.field.amount'), key: 'amount', dataIndex: 'amount', width: 130, align: 'right' },
+  { title: t('fin.loan.repaid'), key: 'repaid', dataIndex: 'repaidAmount', width: 130, align: 'right' },
+  { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'fin_loan_status' },
+  { title: t('fin.loan.payVoucher'), dataIndex: 'voucherNo', width: 130 },
+  { title: t('fin.loan.purpose'), dataIndex: 'purpose', ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'fin-loan')
 const showSearch = ref(true)
@@ -212,13 +214,13 @@ function resetQuery() {
 
 async function submit(record) {
   const flow = await submitLoan(record.id)
-  message.success(flow ? '已提交审批' : '已提交，待付款')
+  message.success(flow ? t('fin.loan.submittedFlow') : t('fin.loan.submittedPay'))
   load()
 }
 
 async function remove(id) {
   await deleteLoan(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 
@@ -237,7 +239,7 @@ async function save() {
   try {
     const f = form.value
     await addLoan({ ...f, userId: f.userId || null, deptId: f.deptId || null, purpose: f.purpose || null })
-    message.success('保存成功，请提交')
+    message.success(t('fin.loan.savedSubmit'))
     createOpen.value = false
     load()
   } finally {
@@ -259,21 +261,21 @@ function openPay(record, mode) {
 }
 async function submitPay() {
   if (!payForm.accountId) {
-    message.warning('请选择结算账户')
+    message.warning(t('fin.loan.accountRequired'))
     return
   }
   if (payMode.value === 'repay' && !payForm.amount) {
-    message.warning('请填写还款金额')
+    message.warning(t('fin.loan.repayAmountRequired'))
     return
   }
   paying.value = true
   try {
     if (payMode.value === 'pay') {
       await payLoan(payTarget.value.id, { accountId: payForm.accountId, date: payForm.date })
-      message.success('已付款，凭证已生成')
+      message.success(t('fin.loan.paid'))
     } else {
       await repayLoan(payTarget.value.id, { ...payForm })
-      message.success('还款成功，凭证已生成')
+      message.success(t('fin.loan.repaidDone'))
     }
     payOpen.value = false
     load()
@@ -284,10 +286,10 @@ async function submitPay() {
 
 // ---------------------------------------------------------------- 详情
 const repayColumns = [
-  { title: '日期', dataIndex: 'repayDate', width: 110 },
-  { title: '金额', key: 'amount', width: 120, align: 'right' },
-  { title: '方式', key: 'method', width: 200 },
-  { title: '凭证', dataIndex: 'voucherNo', width: 110 }
+  { title: t('common.field.date'), dataIndex: 'repayDate', width: 110 },
+  { title: t('common.field.amount'), key: 'amount', width: 120, align: 'right' },
+  { title: t('fin.loan.method'), key: 'method', width: 200 },
+  { title: t('fin.loan.voucher'), dataIndex: 'voucherNo', width: 110 }
 ]
 const detailOpen = ref(false)
 const detail = ref()

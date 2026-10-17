@@ -5,25 +5,26 @@ import { formatMoney } from '@/components/scm/scm'
 import { formatQty } from '@/components/wms/wms'
 import { findDict } from '@/utils/dict'
 import { shortMoney } from '@/components/charts/charts'
+import { t } from '@/locales'
 
 /** 数据集元数据（缓存 1 分钟） */
 export const loadCubes = () => cached('bi-cubes', olapCubes, 60000)
 
 /** 相对日期范围 */
 export const RANGES = [
-  { value: 'THIS_MONTH', label: '本月' },
-  { value: 'THIS_QUARTER', label: '本季度' },
-  { value: 'THIS_YEAR', label: '本年' },
-  { value: 'LAST_12M', label: '近 12 个月' },
-  { value: 'ALL', label: '全部' },
-  { value: 'CUSTOM', label: '自定义' }
+  { value: 'THIS_MONTH', label: t('bi.range.thisMonth') },
+  { value: 'THIS_QUARTER', label: t('bi.range.thisQuarter') },
+  { value: 'THIS_YEAR', label: t('bi.range.thisYear') },
+  { value: 'LAST_12M', label: t('bi.range.last12m') },
+  { value: 'ALL', label: t('common.status.all') },
+  { value: 'CUSTOM', label: t('bi.range.custom') }
 ]
 
 export const CHART_TYPES = [
-  { value: 'bar', label: '柱状图' },
-  { value: 'line', label: '折线图' },
-  { value: 'pie', label: '饼图' },
-  { value: 'table', label: '表格' }
+  { value: 'bar', label: t('bi.chart.bar') },
+  { value: 'line', label: t('bi.chart.line') },
+  { value: 'pie', label: t('bi.chart.pie') },
+  { value: 'table', label: t('bi.chart.table') }
 ]
 
 /** 钻取的默认下一级维度 */
@@ -64,12 +65,12 @@ export function dimLabelFn(cube, dimKey, labels = {}) {
   const dim = cube?.dims.find((d) => d.key === dimKey)
   if (dim?.dictType) store.load(dim.dictType).catch(() => {})
   return (v) => {
-    if (v === null || v === undefined) return '(空)'
-    if (v === '-') return '合计'
+    if (v === null || v === undefined) return t('bi.common.empty')
+    if (v === '-') return t('common.field.total')
     if (labels[v]) return labels[v]
     if (dim?.dictType) return findDict(store.cache[dim.dictType], v)?.label || v
     if (dimKey === 'period' && /^\d{6}$/.test(v)) return `${v.slice(0, 4)}-${v.slice(4)}`
-    if (dimKey === 'year') return `${v} 年`
+    if (dimKey === 'year') return t('bi.common.yearValue', { year: v })
     return v
   }
 }

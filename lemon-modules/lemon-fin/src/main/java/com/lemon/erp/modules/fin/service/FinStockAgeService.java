@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.modules.fin.mapper.FinStockAgeMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -46,12 +47,12 @@ public class FinStockAgeService {
             }
         }
         if (limits.size() > MAX_BUCKETS) {
-            throw new BizException("库龄最多分 " + MAX_BUCKETS + " 段");
+            throw new BizException("库龄最多分 {0} 段", MAX_BUCKETS);
         }
         List<Map<String, Object>> labels = new ArrayList<>();
         for (int i = 0; i <= limits.size(); i++) {
-            String label = i == 0 ? "0-" + limits.get(0) + " 天"
-                    : i == limits.size() ? limits.get(i - 1) + " 天以上" : (limits.get(i - 1) + 1) + "-" + limits.get(i) + " 天";
+            String label = i == 0 ? I18n.t("{0}-{1} 天", 0, limits.get(0))
+                    : i == limits.size() ? I18n.t("{0} 天以上", limits.get(i - 1)) : I18n.t("{0}-{1} 天", limits.get(i - 1) + 1, limits.get(i));
             labels.add(Map.of("label", label));
         }
         List<Map<String, Object>> balances = ageMapper.selectBalances(date, warehouseId, category, keyword);

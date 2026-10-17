@@ -1,15 +1,15 @@
 <template>
   <SubPage
     :open="open"
-    :title="supplier ? `供货价格 - ${supplier.name}` : '供货价格'"
+    :title="supplier ? $t('scm.supplierPrice.titleOf', { name: supplier.name }) : $t('scm.supplierPrice.title')"
     width="min(960px, 100vw)"
     destroy-on-close
     @close="emit('update:open', false)"
   >
     <div class="toolbar">
-      <a-input-search v-model:value="keyword" placeholder="物料编码或名称" allow-clear class="search" @search="search" />
+      <a-input-search v-model:value="keyword" :placeholder="$t('scm.supplierPrice.materialKeyword')" allow-clear class="search" @search="search" />
       <a-button v-perm="'scm:supplier:edit'" type="primary" @click="openForm()">
-        <template #icon><PlusOutlined /></template>添加物料
+        <template #icon><PlusOutlined /></template>{{ $t('scm.supplierPrice.addMaterial') }}
       </a-button>
     </div>
     <a-table row-key="id" size="small" :columns="columns" :data-source="list" :loading="loading" :pagination="pagination" @change="onTableChange">
@@ -17,97 +17,97 @@
         <template v-if="column.key === 'material'">
           <div>
             {{ record.materialCode }} {{ record.materialName }}
-            <a-tag v-if="record.isDefault === 1" color="gold" :bordered="false">默认</a-tag>
+            <a-tag v-if="record.isDefault === 1" color="gold" :bordered="false">{{ $t('scm.supplierPrice.default') }}</a-tag>
           </div>
           <div class="sub-text">{{ record.spec }}</div>
         </template>
         <template v-else-if="column.key === 'price'">
-          <div>¥{{ Number(record.price).toLocaleString('zh-CN', { maximumFractionDigits: 4 }) }} / {{ record.unit || '单位' }}</div>
+          <div>¥{{ Number(record.price).toLocaleString('zh-CN', { maximumFractionDigits: 4 }) }} / {{ record.unit || $t('common.field.unit') }}</div>
           <div class="sub-text">
-            税率 {{ Number(record.taxRate) }}%
+            {{ $t('scm.supplierPrice.taxRateOf', { rate: Number(record.taxRate) }) }}
             <a-tooltip v-if="record.tiers?.length" :title="tierText(record.tiers)">
-              <a-tag color="blue" :bordered="false" class="tier-tag">阶梯价</a-tag>
+              <a-tag color="blue" :bordered="false" class="tier-tag">{{ $t('scm.supplierPrice.tierPrice') }}</a-tag>
             </a-tooltip>
           </div>
         </template>
         <template v-else-if="column.key === 'validity'">
           <template v-if="record.validFrom || record.validTo">
-            <div>{{ record.validFrom || '不限' }} ~ {{ record.validTo || '不限' }}</div>
-            <a-tag v-if="record.validTo && record.validTo < today()" color="red" :bordered="false">已过期</a-tag>
-            <a-tag v-else-if="record.validFrom && record.validFrom > today()" color="orange" :bordered="false">未生效</a-tag>
+            <div>{{ record.validFrom || $t('scm.supplierPrice.unlimited') }} ~ {{ record.validTo || $t('scm.supplierPrice.unlimited') }}</div>
+            <a-tag v-if="record.validTo && record.validTo < today()" color="red" :bordered="false">{{ $t('scm.supplierPrice.expired') }}</a-tag>
+            <a-tag v-else-if="record.validFrom && record.validFrom > today()" color="orange" :bordered="false">{{ $t('scm.supplierPrice.notEffective') }}</a-tag>
           </template>
-          <span v-else class="sub-text">长期有效</span>
+          <span v-else class="sub-text">{{ $t('scm.supplierPrice.longTerm') }}</span>
         </template>
-        <template v-else-if="column.key === 'leadDays'">{{ record.leadDays }} 天</template>
+        <template v-else-if="column.key === 'leadDays'">{{ $t('scm.supplierPrice.days', { n: record.leadDays }) }}</template>
         <template v-else-if="column.key === 'minQty'">{{ formatQty(record.minQty) }}</template>
         <template v-else-if="column.key === 'action'">
           <span class="table-actions">
-            <a-button type="link" size="small" @click="openHistory(record)">价格历史</a-button>
+            <a-button type="link" size="small" @click="openHistory(record)">{{ $t('scm.supplierPrice.history') }}</a-button>
           </span>
           <span v-perm="'scm:supplier:edit'" class="table-actions">
-            <a-button type="link" size="small" @click="openForm(record)">编辑</a-button>
-            <a-popconfirm title="确定删除该供货价格？" @confirm="remove(record.id)">
-              <a-button type="link" danger size="small">删除</a-button>
+            <a-button type="link" size="small" @click="openForm(record)">{{ $t('common.action.edit') }}</a-button>
+            <a-popconfirm :title="$t('scm.supplierPrice.confirmDelete')" @confirm="remove(record.id)">
+              <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
             </a-popconfirm>
           </span>
         </template>
       </template>
     </a-table>
 
-    <a-modal v-model:open="formOpen" :title="form.id ? '编辑供货价格' : '添加供货价格'" :confirm-loading="saving" @ok="submit">
+    <a-modal v-model:open="formOpen" :title="form.id ? $t('scm.supplierPrice.editTitle') : $t('scm.supplierPrice.addTitle')" :confirm-loading="saving" @ok="submit">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-form-item label="物料" name="materialId">
+        <a-form-item :label="$t('scm.supplierPrice.material')" name="materialId">
           <MaterialSelect v-model:value="form.materialId" :label="form.materialLabel" :disabled="!!form.id" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="含税单价" name="price">
+            <a-form-item :label="$t('scm.supplierPrice.taxPrice')" name="price">
               <a-input-number v-model:value="form.price" :min="0" :precision="4" prefix="¥" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="税率" name="taxRate">
+            <a-form-item :label="$t('scm.supplierPrice.taxRate')" name="taxRate">
               <a-input-number v-model:value="form.taxRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="采购提前期" name="leadDays">
-              <a-input-number v-model:value="form.leadDays" :min="0" :max="365" addon-after="天" class="full" />
+            <a-form-item :label="$t('scm.supplierPrice.leadDays')" name="leadDays">
+              <a-input-number v-model:value="form.leadDays" :min="0" :max="365" :addon-after="$t('scm.supplierPrice.day')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="最小起订量" name="minQty">
+            <a-form-item :label="$t('scm.supplierPrice.minQty')" name="minQty">
               <a-input-number v-model:value="form.minQty" :min="0" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="有效期起" name="validFrom">
-              <a-date-picker v-model:value="form.validFrom" value-format="YYYY-MM-DD" placeholder="不限" class="full" />
+            <a-form-item :label="$t('scm.supplierPrice.validFrom')" name="validFrom">
+              <a-date-picker v-model:value="form.validFrom" value-format="YYYY-MM-DD" :placeholder="$t('scm.supplierPrice.unlimited')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="有效期止" name="validTo">
-              <a-date-picker v-model:value="form.validTo" value-format="YYYY-MM-DD" placeholder="不限" class="full" />
+            <a-form-item :label="$t('scm.supplierPrice.validTo')" name="validTo">
+              <a-date-picker v-model:value="form.validTo" value-format="YYYY-MM-DD" :placeholder="$t('scm.supplierPrice.unlimited')" class="full" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="阶梯价" class="tier-item">
+        <a-form-item :label="$t('scm.supplierPrice.tierPrice')" class="tier-item">
           <div v-for="(t, i) in form.tiers" :key="t.key" class="tier-row">
-            <a-input-number v-model:value="t.minQty" :min="0" :precision="4" addon-before="数量 ≥" class="tier-input" />
-            <a-input-number v-model:value="t.price" :min="0" :precision="4" prefix="¥" placeholder="含税单价" class="tier-input" />
+            <a-input-number v-model:value="t.minQty" :min="0" :precision="4" :addon-before="$t('scm.supplierPrice.qtyGte')" class="tier-input" />
+            <a-input-number v-model:value="t.price" :min="0" :precision="4" prefix="¥" :placeholder="$t('scm.supplierPrice.taxPrice')" class="tier-input" />
             <a-button type="link" danger size="small" @click="form.tiers.splice(i, 1)">
               <template #icon><DeleteOutlined /></template>
             </a-button>
           </div>
           <a-button v-if="(form.tiers?.length || 0) < 10" type="dashed" size="small" @click="addTier">
-            <template #icon><PlusOutlined /></template>添加阶梯
+            <template #icon><PlusOutlined /></template>{{ $t('scm.supplierPrice.addTier') }}
           </a-button>
-          <div class="sub-text">采购数量达到阶梯数量时按阶梯单价，最多 10 档</div>
+          <div class="sub-text">{{ $t('scm.supplierPrice.tierTip') }}</div>
         </a-form-item>
         <a-form-item name="isDefault">
-          <a-checkbox v-model:checked="form.isDefault">设为该物料的默认供应商（MRP 按默认供应商生成采购订单）</a-checkbox>
+          <a-checkbox v-model:checked="form.isDefault">{{ $t('scm.supplierPrice.setDefault') }}</a-checkbox>
         </a-form-item>
-        <a-form-item label="备注" name="remark">
+        <a-form-item :label="$t('common.field.remark')" name="remark">
           <a-input v-model:value="form.remark" :maxlength="255" />
         </a-form-item>
       </a-form>
@@ -115,8 +115,8 @@
 
     <a-modal v-model:open="historyOpen" :title="historyTitle" width="min(760px, 100vw)" :footer="null">
       <a-radio-group v-model:value="historyScope" size="small" class="history-scope" @change="loadHistory">
-        <a-radio-button value="supplier">本供应商</a-radio-button>
-        <a-radio-button value="all">全部供应商</a-radio-button>
+        <a-radio-button value="supplier">{{ $t('scm.supplierPrice.thisSupplier') }}</a-radio-button>
+        <a-radio-button value="all">{{ $t('scm.supplierPrice.allSuppliers') }}</a-radio-button>
       </a-radio-group>
       <a-table
         row-key="key"
@@ -125,7 +125,7 @@
         :data-source="history"
         :loading="historyLoading"
         :pagination="{ pageSize: 10, size: 'small' }"
-        :locale="{ emptyText: '没有采购入库记录' }"
+        :locale="{ emptyText: $t('scm.supplierPrice.noHistory') }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'qty'">{{ formatQty(record.qty) }}</template>
@@ -141,6 +141,7 @@
 import SubPage from '@/components/SubPage.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { addPrice, deletePrice, pagePrice, priceHistory, priceTiers, updatePrice } from '@/api/scm/partner'
@@ -153,15 +154,16 @@ const props = defineProps({
   supplier: Object
 })
 const emit = defineEmits(['update:open'])
+const { t } = useI18n()
 
 const columns = [
-  { title: '物料', key: 'material', width: 260 },
-  { title: '含税单价', key: 'price', width: 150 },
-  { title: '有效期', key: 'validity', width: 190 },
-  { title: '提前期', key: 'leadDays', width: 90 },
-  { title: '最小起订量', key: 'minQty', width: 110, align: 'right' },
-  { title: '备注', dataIndex: 'remark', width: 140, ellipsis: true },
-  { title: '操作', key: 'action', width: 190 }
+  { title: t('scm.supplierPrice.material'), key: 'material', width: 260 },
+  { title: t('scm.supplierPrice.taxPrice'), key: 'price', width: 160 },
+  { title: t('scm.supplierPrice.validity'), key: 'validity', width: 190 },
+  { title: t('scm.supplierPrice.leadTime'), key: 'leadDays', width: 100 },
+  { title: t('scm.supplierPrice.minQty'), key: 'minQty', width: 120, align: 'right' },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 220 }
 ]
 
 const keyword = ref('')
@@ -184,12 +186,12 @@ const saving = ref(false)
 const formRef = ref()
 const form = ref({})
 const rules = {
-  materialId: [{ required: true, message: '请选择物料' }],
-  price: [{ required: true, message: '请填写单价' }]
+  materialId: [{ required: true, message: t('scm.supplierPrice.materialRequired') }],
+  price: [{ required: true, message: t('scm.supplierPrice.priceRequired') }]
 }
 
 const formatPrice = (n) => Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
-const tierText = (tiers) => tiers.map((t) => `≥ ${formatQty(t.minQty)}：¥${formatPrice(t.price)}`).join('；')
+const tierText = (tiers) => tiers.map((t) => `≥ ${formatQty(t.minQty)}：¥${formatPrice(t.price)}`).join(t('scm.supplierPrice.sep'))
 const toTier = (t) => ({ key: rowKey(), minQty: t?.minQty != null ? Number(t.minQty) : undefined, price: t?.price != null ? Number(t.price) : undefined })
 
 function addTier() {
@@ -234,7 +236,7 @@ async function submit() {
       tiers: f.tiers.filter((t) => t.minQty != null || t.price != null).map((t) => ({ minQty: t.minQty, price: t.price }))
     }
     f.id ? await updatePrice(f.id, data) : await addPrice(data)
-    message.success('保存成功')
+    message.success(t('common.msg.saveSuccess'))
     formOpen.value = false
     load()
   } finally {
@@ -249,15 +251,15 @@ const historyScope = ref('supplier')
 const historyRecord = ref()
 const history = ref([])
 const historyTitle = computed(() =>
-  historyRecord.value ? `价格历史 - ${historyRecord.value.materialCode} ${historyRecord.value.materialName}` : '价格历史'
+  historyRecord.value ? t('scm.supplierPrice.historyOf', { name: `${historyRecord.value.materialCode} ${historyRecord.value.materialName}` }) : t('scm.supplierPrice.history')
 )
 const historyColumns = [
-  { title: '入库日期', dataIndex: 'bizDate', width: 110 },
-  { title: '入库单号', dataIndex: 'docNo', width: 170 },
-  { title: '供应商', dataIndex: 'supplierName', width: 160, ellipsis: true },
-  { title: '数量', key: 'qty', width: 100, align: 'right' },
-  { title: '含税单价', key: 'price', width: 120, align: 'right' },
-  { title: '税率', key: 'taxRate', width: 80, align: 'right' }
+  { title: t('scm.supplierPrice.inDate'), dataIndex: 'bizDate', width: 120 },
+  { title: t('scm.supplierPrice.inDocNo'), dataIndex: 'docNo', width: 170 },
+  { title: t('scm.supplierPrice.supplier'), dataIndex: 'supplierName', width: 160, ellipsis: true },
+  { title: t('common.field.quantity'), key: 'qty', width: 100, align: 'right' },
+  { title: t('scm.supplierPrice.taxPrice'), key: 'price', width: 130, align: 'right' },
+  { title: t('scm.supplierPrice.taxRate'), key: 'taxRate', width: 80, align: 'right' }
 ]
 
 function openHistory(record) {
@@ -284,7 +286,7 @@ async function loadHistory() {
 
 async function remove(id) {
   await deletePrice(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 </script>

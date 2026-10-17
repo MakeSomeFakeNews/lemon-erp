@@ -50,21 +50,24 @@ public class FinNoteDueRemindJob implements JobHandler {
         LocalDate today = LocalDate.now();
         List<FinNote> due = noteMapper.selectDue(today.plusDays(days));
         if (due.isEmpty()) {
-            return "没有即将到期的票据";
+            // 执行结果写入任务日志，不翻译
+            return "没有即将到期的票据"; // i18n-ignore
         }
         List<FinNote> receivable = due.stream().filter(n -> n.getKind() == NoteKind.RECEIVABLE).toList();
         List<FinNote> payable = due.stream().filter(n -> n.getKind() == NoteKind.PAYABLE).toList();
         if (!receivable.isEmpty()) {
             messageSender.sendToPermission("fin:note:edit", Message.of("REMIND",
-                    receivable.size() + " 张应收票据 " + days + " 天内到期",
-                    "票面合计 " + total(receivable) + "，请及时办理托收", "/fin/note").dedup("note-in-due:" + today));
+                    receivable.size() + " 张应收票据 " + days + " 天内到期", // i18n-ignore
+                    "票面合计 " + total(receivable) + "，请及时办理托收", "/fin/note") // i18n-ignore
+                   .dedup("note-in-due:" + today));
         }
         if (!payable.isEmpty()) {
             messageSender.sendToPermission("fin:note:edit", Message.of("ALERT",
-                    payable.size() + " 张应付票据 " + days + " 天内到期",
-                    "票面合计 " + total(payable) + "，请确保账户资金充足", "/fin/note").dedup("note-out-due:" + today));
+                    payable.size() + " 张应付票据 " + days + " 天内到期", // i18n-ignore
+                    "票面合计 " + total(payable) + "，请确保账户资金充足", "/fin/note") // i18n-ignore
+                   .dedup("note-out-due:" + today));
         }
-        return "应收票据 " + receivable.size() + " 张，应付票据 " + payable.size() + " 张";
+        return "应收票据 " + receivable.size() + " 张，应付票据 " + payable.size() + " 张"; // i18n-ignore
     }
 
     private static String total(List<FinNote> notes) {

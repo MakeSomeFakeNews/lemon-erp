@@ -7,27 +7,27 @@
     @close="emit('update:open', false)"
   >
     <template #extra>
-      <a-button v-if="detail" size="small" @click="print"><template #icon><PrinterOutlined /></template>打印</a-button>
+      <a-button v-if="detail" size="small" @click="print"><template #icon><PrinterOutlined /></template>{{ $t('common.action.print') }}</a-button>
     </template>
     <a-spin :spinning="loading">
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="doc-desc">
-          <a-descriptions-item label="单据号">{{ detail.docNo }}</a-descriptions-item>
-          <a-descriptions-item label="订单号">{{ detail.orderNo }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.trade.docNo')">{{ detail.docNo }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.trade.orderNo')">{{ detail.orderNo }}</a-descriptions-item>
           <a-descriptions-item :label="ORDER_KINDS[conf.orderKind].partnerLabel">{{ detail.partnerName }}</a-descriptions-item>
-          <a-descriptions-item label="仓库">{{ detail.warehouseName }}</a-descriptions-item>
-          <a-descriptions-item label="业务日期">{{ detail.bizDate }}</a-descriptions-item>
-          <a-descriptions-item label="仓库单据">{{ detail.wmsDocNo }}</a-descriptions-item>
-          <a-descriptions-item v-if="conf.returns" label="退货方式">
-            {{ detail.replenish === 1 ? (conf.orderKind === 'sales' ? '退货补发' : '退货补收') : '退货退款' }}
+          <a-descriptions-item :label="$t('scm.trade.warehouse')">{{ detail.warehouseName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.trade.bizDate')">{{ detail.bizDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.trade.wmsDocNo')">{{ detail.wmsDocNo }}</a-descriptions-item>
+          <a-descriptions-item v-if="conf.returns" :label="$t('scm.trade.returnMode')">
+            {{ detail.replenish === 1 ? (conf.orderKind === 'sales' ? $t('scm.trade.returnReship') : $t('scm.trade.returnRereceive')) : $t('scm.trade.returnRefund') }}
           </a-descriptions-item>
-          <a-descriptions-item label="价税合计">
+          <a-descriptions-item :label="$t('scm.trade.totalAmount')">
             <b>¥{{ formatMoney(detail.totalAmount) }}</b>
-            <span class="sub-text">（税额 {{ formatMoney(detail.taxAmount) }}）</span>
-            <div v-if="isForeign(detail.currency)" class="sub-text">原币 {{ fcText(detail.currency, detail.amountFc, detail.exchangeRate) }}</div>
+            <span class="sub-text">{{ $t('scm.trade.taxPart', { amount: formatMoney(detail.taxAmount) }) }}</span>
+            <div v-if="isForeign(detail.currency)" class="sub-text">{{ $t('scm.trade.originalCurrency') }} {{ fcText(detail.currency, detail.amountFc, detail.exchangeRate) }}</div>
           </a-descriptions-item>
-          <a-descriptions-item label="制单">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="备注">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.trade.prepared')">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
 
         <a-table row-key="id" size="small" :columns="columns" :data-source="detail.items" :pagination="false" :scroll="{ x: 900 }">
@@ -45,7 +45,7 @@
             <template v-else-if="column.key === 'price'">¥{{ formatMoney(record.price) }}</template>
             <template v-else-if="column.key === 'amount'">
               <div>¥{{ formatMoney(record.amount) }}</div>
-              <div class="sub-text">税率 {{ Number(record.taxRate) }}%</div>
+              <div class="sub-text">{{ $t('scm.trade.taxRateN', { rate: Number(record.taxRate) }) }}</div>
             </template>
             <template v-else-if="column.key === 'serialNos'">
               <template v-if="record.serialNos">
@@ -69,6 +69,7 @@ import { formatQty, locationText, splitSerials } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney } from './scm'
 import { fcText, isForeign } from '@/components/fin/currency'
 import { materialColumns, printDocs } from '@/utils/print'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   open: Boolean,
@@ -76,16 +77,17 @@ const props = defineProps({
   docId: Number
 })
 const emit = defineEmits(['update:open'])
+const { t } = useI18n()
 
 const conf = computed(() => TRADE_KINDS[props.kind])
 const columns = [
-  { title: '物料', key: 'material', width: 220 },
-  { title: '库位', key: 'location', width: 100 },
-  { title: '批次', key: 'batchNo', width: 160 },
-  { title: '数量', key: 'qty', width: 100, align: 'right' },
-  { title: '含税单价', key: 'price', width: 110, align: 'right' },
-  { title: '价税合计', key: 'amount', width: 120, align: 'right' },
-  { title: '序列号', key: 'serialNos', width: 240 }
+  { title: t('scm.trade.material'), key: 'material', width: 220 },
+  { title: t('scm.trade.location'), key: 'location', width: 100 },
+  { title: t('scm.trade.batch'), key: 'batchNo', width: 160 },
+  { title: t('common.field.quantity'), key: 'qty', width: 100, align: 'right' },
+  { title: t('scm.trade.taxPrice'), key: 'price', width: 130, align: 'right' },
+  { title: t('scm.trade.totalAmount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('scm.trade.serialNo'), key: 'serialNos', width: 240 }
 ]
 
 const detail = ref()
@@ -95,30 +97,30 @@ function print() {
   const c = conf.value
   const partnerLabel = ORDER_KINDS[c.orderKind].partnerLabel
   printDocs({
-    title: c.label + '单',
+    title: t('scm.trade.printTitle', { kind: c.label }),
     no: d.docNo,
     fields: [
-      ['订单号', d.orderNo],
+      [t('scm.trade.orderNo'), d.orderNo],
       [partnerLabel, d.partnerName],
-      ['仓库', d.warehouseName],
-      ['业务日期', d.bizDate],
-      ['仓库单据', d.wmsDocNo],
-      ['价税合计', `¥${formatMoney(d.totalAmount)}`],
-      ...(isForeign(d.currency) ? [['原币', fcText(d.currency, d.amountFc, d.exchangeRate)]] : [])
+      [t('scm.trade.warehouse'), d.warehouseName],
+      [t('scm.trade.bizDate'), d.bizDate],
+      [t('scm.trade.wmsDocNo'), d.wmsDocNo],
+      [t('scm.trade.totalAmount'), `¥${formatMoney(d.totalAmount)}`],
+      ...(isForeign(d.currency) ? [[t('scm.trade.originalCurrency'), fcText(d.currency, d.amountFc, d.exchangeRate)]] : [])
     ],
     columns: [
       ...materialColumns(),
-      { title: '库位', value: (r) => locationText(r.locationCode) },
-      { title: '批次', key: 'batchNo' },
-      { title: '数量', value: (r) => formatQty(r.qty), align: 'right' },
-      { title: '含税单价', value: (r) => formatMoney(r.price), align: 'right' },
-      { title: '价税合计', key: 'amount', value: (r) => formatMoney(r.amount), align: 'right' },
-      { title: '序列号', key: 'serialNos' }
+      { title: t('scm.trade.location'), value: (r) => locationText(r.locationCode) },
+      { title: t('scm.trade.batch'), key: 'batchNo' },
+      { title: t('common.field.quantity'), value: (r) => formatQty(r.qty), align: 'right' },
+      { title: t('scm.trade.taxPrice'), value: (r) => formatMoney(r.price), align: 'right' },
+      { title: t('scm.trade.totalAmount'), key: 'amount', value: (r) => formatMoney(r.amount), align: 'right' },
+      { title: t('scm.trade.serialNo'), key: 'serialNos' }
     ],
     rows: d.items,
     totals: { amount: formatMoney(d.totalAmount) },
     note: d.remark,
-    signs: [['制单', d.createByName], '仓管', partnerLabel + '签收']
+    signs: [[t('scm.trade.prepared'), d.createByName], t('scm.trade.storekeeper'), t('scm.trade.partnerSign', { partner: partnerLabel })]
   }, `${c.label} ${d.docNo}`, `scm.${props.kind}`)
 }
 const loading = ref(false)

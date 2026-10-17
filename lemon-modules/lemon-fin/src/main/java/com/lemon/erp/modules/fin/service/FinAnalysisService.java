@@ -2,6 +2,7 @@ package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.mapper.FinAnalysisMapper;
 import com.lemon.erp.modules.fin.mapper.FinVoucherEntryMapper;
@@ -196,12 +197,12 @@ public class FinAnalysisService {
         }
         List<Map<String, Object>> lines = new ArrayList<>();
         BigDecimal netTotal = BigDecimal.ZERO;
-        for (String section : List.of("OPERATING", "INVESTING", "FINANCING")) {
+        for (CashSection section : CashSection.values()) {
             BigDecimal in = BigDecimal.ZERO;
             BigDecimal out = BigDecimal.ZERO;
-            lines.add(line(sectionName(section), null, 0, true));
+            lines.add(line(section.title, null, 0, true));
             for (CashItem item : CashItem.values()) {
-                if (!item.section.equals(section)) {
+                if (!item.section.equals(section.name())) {
                     continue;
                 }
                 BigDecimal v = items.get(item.name());
@@ -212,9 +213,9 @@ public class FinAnalysisService {
                     out = out.add(v);
                 }
             }
-            lines.add(line(sectionName(section).replace("产生的现金流量", "") + "现金流入小计", in, 1, true));
-            lines.add(line(sectionName(section).replace("产生的现金流量", "") + "现金流出小计", out, 1, true));
-            lines.add(line(sectionName(section).replace("一、", "").replace("二、", "").replace("三、", "") + "净额", in.subtract(out), 1, true));
+            lines.add(line(section.inTotal, in, 1, true));
+            lines.add(line(section.outTotal, out, 1, true));
+            lines.add(line(section.net, in.subtract(out), 1, true));
             netTotal = netTotal.add(in.subtract(out));
         }
         BigDecimal opening = cashBalance(previous(begin));
@@ -281,12 +282,23 @@ public class FinAnalysisService {
         return CashItem.OTHER_OPERATING_OUT;
     }
 
-    private static String sectionName(String section) {
-        return switch (section) {
-            case "OPERATING" -> "一、经营活动产生的现金流量";
-            case "INVESTING" -> "二、投资活动产生的现金流量";
-            default -> "三、筹资活动产生的现金流量";
-        };
+    /** 现金流量表的三类活动：标题、流入小计、流出小计、净额的行名 */
+    private enum CashSection {
+        OPERATING("一、经营活动产生的现金流量", "一、经营活动现金流入小计", "一、经营活动现金流出小计", "经营活动产生的现金流量净额"),
+        INVESTING("二、投资活动产生的现金流量", "二、投资活动现金流入小计", "二、投资活动现金流出小计", "投资活动产生的现金流量净额"),
+        FINANCING("三、筹资活动产生的现金流量", "三、筹资活动现金流入小计", "三、筹资活动现金流出小计", "筹资活动产生的现金流量净额");
+
+        private final String title;
+        private final String inTotal;
+        private final String outTotal;
+        private final String net;
+
+        CashSection(String title, String inTotal, String outTotal, String net) {
+            this.title = title;
+            this.inTotal = inTotal;
+            this.outTotal = outTotal;
+            this.net = net;
+        }
     }
 
     private BigDecimal cashBalance(int period) {
@@ -307,9 +319,10 @@ public class FinAnalysisService {
         return inflow ? dec(e.get("credit")) : dec(e.get("debit"));
     }
 
+    /** 报表行：行名返回给前端显示，按请求语言翻译 */
     private static Map<String, Object> line(String name, BigDecimal amount, int level, boolean bold) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("name", name);
+        m.put("name", I18n.t(name));
         m.put("amount", amount);
         m.put("level", level);
         m.put("bold", bold);

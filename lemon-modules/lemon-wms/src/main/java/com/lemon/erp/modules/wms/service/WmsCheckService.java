@@ -265,8 +265,8 @@ public class WmsCheckService {
             List<String> gain = counted.stream().filter(sn -> !book.contains(sn)).toList();
             List<String> loss = book.stream().filter(sn -> !counted.contains(sn)).toList();
             if (diff.compareTo(BigDecimal.valueOf(gain.size() - loss.size())) != 0) {
-                throw new BizException("第 " + (i + 1) + " 行（" + StockService.describe(material) + "）：账面数量（"
-                        + item.getBookQty().stripTrailingZeros().toPlainString() + "）与在库序列号个数（" + book.size() + "）不一致");
+                throw new BizException("第 {0} 行（{1}）：账面数量（{2}）与在库序列号个数（{3}）不一致", i + 1, StockService.describe(material),
+                        item.getBookQty().stripTrailingZeros().toPlainString(), book.size());
             }
             if (!loss.isEmpty()) {
                 changes.add(StockChange.of(warehouseId, item.getLocationId(), item.getMaterialId(), item.getBatchNo(),
@@ -297,7 +297,7 @@ public class WmsCheckService {
     private WmsCheck getDraft(Long id) {
         WmsCheck check = getAccessible(id);
         if (!DocStatus.DRAFT.name().equals(check.getStatus())) {
-            throw new BizException("盘点单 " + check.getDocNo() + " 已确认，不能修改或删除");
+            throw new BizException("盘点单 {0} 已确认，不能修改或删除", check.getDocNo());
         }
         return check;
     }
@@ -354,7 +354,7 @@ public class WmsCheckService {
                         serialsByMaterial.computeIfAbsent(material.getId(), k -> new HashSet<>()));
                 item.setSerialNos(joinSerials(serials));
             } catch (BizException e) {
-                throw new BizException("第 " + (i + 1) + " 行（" + StockService.describe(material) + "）：" + e.getMessage());
+                throw new BizException("第 {0} 行（{1}）：{2}", i + 1, StockService.describe(material), e.getLocalizedMessage());
             }
         }
         return materials;

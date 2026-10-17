@@ -2,11 +2,11 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
-        <a-input-search v-model:value="query.keyword" placeholder="协议号、客户" allow-clear class="filter-wide" @search="search" />
-        <a-select v-model:value="query.status" placeholder="全部状态" allow-clear :options="toOptions(dict.scm_rebate_status)" class="filter" @change="search" />
+        <a-input-search v-model:value="query.keyword" :placeholder="$t('scm.rebate.searchPlaceholder')" allow-clear class="filter-wide" @search="search" />
+        <a-select v-model:value="query.status" :placeholder="$t('scm.rebate.allStatus')" allow-clear :options="toOptions(dict.scm_rebate_status)" class="filter" @change="search" />
         <template #extra>
           <a-button v-perm="'scm:rebate:add'" type="primary" @click="drawer.openCreate()">
-            <template #icon><PlusOutlined /></template>新增返利协议
+            <template #icon><PlusOutlined /></template>{{ $t('scm.rebate.add') }}
           </a-button>
         </template>
       </TableToolbar>
@@ -31,48 +31,47 @@
           <template v-else-if="column.key === 'result'">
             <template v-if="record.status === 'SETTLED'">
               ¥{{ formatMoney(record.rebateAmount) }}
-              <div class="sub-text">销售额 ¥{{ formatMoney(record.salesAmount) }} × {{ Number(record.rate) }}%</div>
+              <div class="sub-text">{{ $t('scm.rebate.salesTimesRate', { sales: formatMoney(record.salesAmount), rate: Number(record.rate) }) }}</div>
             </template>
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="scm_rebate_status" :value="record.status" />
-            <div v-if="record.billNo" class="sub-text">红字应收 {{ record.billNo }}</div>
+            <div v-if="record.billNo" class="sub-text">{{ $t('scm.rebate.creditNoteNo', { no: record.billNo }) }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">查看</a-button>
+            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增返利协议" edit-title="编辑返利协议">
+    <FormDrawer :drawer="drawer" :create-title="$t('scm.rebate.add')" :edit-title="$t('scm.rebate.edit')">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-form-item label="客户" name="customerId">
+        <a-form-item :label="$t('scm.rebate.customer')" name="customerId">
           <PartnerSelect v-model:value="form.customerId" type="customer" :label="form.customerName" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="开始日期" name="beginDate">
+            <a-form-item :label="$t('common.field.beginDate')" name="beginDate">
               <a-date-picker v-model:value="form.beginDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="结束日期" name="endDate">
+            <a-form-item :label="$t('common.field.endDate')" name="endDate">
               <a-date-picker v-model:value="form.endDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="兑付方式" name="settleMode">
+        <a-form-item :label="$t('scm.rebate.settleMode')" name="settleMode">
           <a-radio-group v-model:value="form.settleMode">
             <a-radio v-for="o in dict.scm_rebate_settle" :key="o.value" :value="o.value">{{ o.label }}</a-radio>
           </a-radio-group>
           <div class="sub-text">
-            {{ form.settleMode === 'CREDIT_NOTE' ? '结算后生成红字应收单冲减客户应收（借 主营业务收入、销项税额 / 贷 应收账款）'
-              : '结算后计入客户的返利余额，新建销售订单时抵扣' }}
+            {{ form.settleMode === 'CREDIT_NOTE' ? $t('scm.rebate.creditNoteTip') : $t('scm.rebate.balanceTip') }}
           </div>
         </a-form-item>
-        <div class="section-title">返利阶梯 <span class="sub-text">期间销售额（出库 - 退货，含税）达到的最高一档返利率 × 全部销售额</span></div>
+        <div class="section-title">{{ $t('scm.rebate.tiers') }} <span class="sub-text">{{ $t('scm.rebate.tiersTip') }}</span></div>
         <a-table row-key="key" size="small" :columns="tierColumns" :data-source="form.tiers" :pagination="false">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'minAmount'">
@@ -82,69 +81,69 @@
               <a-input-number v-model:value="record.rate" :min="0.01" :max="100" :precision="2" addon-after="%" class="full" />
             </template>
             <template v-else-if="column.key === 'action'">
-              <a-button type="link" danger size="small" :disabled="form.tiers.length === 1" @click="form.tiers.splice(index, 1)">删除</a-button>
+              <a-button type="link" danger size="small" :disabled="form.tiers.length === 1" @click="form.tiers.splice(index, 1)">{{ $t('common.action.delete') }}</a-button>
             </template>
           </template>
         </a-table>
         <a-button type="dashed" block class="add-line" @click="form.tiers.push(newTier())">
-          <template #icon><PlusOutlined /></template>添加一档
+          <template #icon><PlusOutlined /></template>{{ $t('scm.rebate.addTier') }}
         </a-button>
-        <a-form-item label="说明" name="remark">
+        <a-form-item :label="$t('common.field.description')" name="remark">
           <a-input v-model:value="form.remark" :maxlength="255" />
         </a-form-item>
       </a-form>
     </FormDrawer>
 
-    <SubPage :open="detailOpen" :title="detail ? `返利协议 ${detail.rebateNo}` : ''" width="min(900px, 100vw)" @close="detailOpen = false">
+    <SubPage :open="detailOpen" :title="detail ? $t('scm.rebate.detailTitle', { no: detail.rebateNo }) : ''" width="min(900px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <a-space>
           <template v-if="detail.status === 'ACTIVE'">
             <span v-perm="'scm:rebate:add'">
-              <a-popconfirm title="删除该返利协议？" @confirm="remove"><a-button danger>删除</a-button></a-popconfirm>
+              <a-popconfirm :title="$t('scm.rebate.confirmDelete')" @confirm="remove"><a-button danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
             </span>
-            <a-button v-perm="'scm:rebate:add'" @click="drawer.openEdit(detail)">编辑</a-button>
+            <a-button v-perm="'scm:rebate:add'" @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
             <span v-perm="'scm:rebate:settle'">
               <a-popconfirm :title="settleTip" :disabled="!ended" @confirm="settle">
-                <a-tooltip :title="ended ? '' : '期间结束后才能结算'">
-                  <a-button type="primary" :disabled="!ended">结算</a-button>
+                <a-tooltip :title="ended ? '' : $t('scm.rebate.settleAfterEnd')">
+                  <a-button type="primary" :disabled="!ended">{{ $t('scm.rebate.settle') }}</a-button>
                 </a-tooltip>
               </a-popconfirm>
             </span>
           </template>
           <span v-else v-perm="'scm:rebate:settle'">
-            <a-popconfirm title="撤销结算：删除红字应收单（须未核销、未生成凭证）或收回未使用的返利余额，确定？" @confirm="unsettle">
-              <a-button>撤销结算</a-button>
+            <a-popconfirm :title="$t('scm.rebate.unsettleConfirm')" @confirm="unsettle">
+              <a-button>{{ $t('scm.rebate.unsettle') }}</a-button>
             </a-popconfirm>
           </span>
         </a-space>
       </template>
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" bordered class="block">
-          <a-descriptions-item label="客户">{{ detail.customerName }}</a-descriptions-item>
-          <a-descriptions-item label="期间">{{ detail.beginDate }} ~ {{ detail.endDate }}</a-descriptions-item>
-          <a-descriptions-item label="状态"><DictTag type="scm_rebate_status" :value="detail.status" /></a-descriptions-item>
-          <a-descriptions-item label="兑付方式"><DictTag type="scm_rebate_settle" :value="detail.settleMode" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.rebate.customer')">{{ detail.customerName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.rebate.period')">{{ detail.beginDate }} ~ {{ detail.endDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.status')"><DictTag type="scm_rebate_status" :value="detail.status" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.rebate.settleMode')"><DictTag type="scm_rebate_settle" :value="detail.settleMode" /></a-descriptions-item>
           <template v-if="detail.status === 'SETTLED'">
-            <a-descriptions-item label="结算">{{ detail.settleDate }}</a-descriptions-item>
-            <a-descriptions-item label="返利">¥{{ formatMoney(detail.rebateAmount) }}（¥{{ formatMoney(detail.salesAmount) }} × {{ Number(detail.rate) }}%）</a-descriptions-item>
-            <a-descriptions-item v-if="detail.billNo" label="红字应收">{{ detail.billNo }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('scm.rebate.settled')">{{ detail.settleDate }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('scm.rebate.rebate')">{{ $t('scm.rebate.rebateCalc', { rebate: formatMoney(detail.rebateAmount), sales: formatMoney(detail.salesAmount), rate: Number(detail.rate) }) }}</a-descriptions-item>
+            <a-descriptions-item v-if="detail.billNo" :label="$t('scm.rebate.creditNote')">{{ detail.billNo }}</a-descriptions-item>
           </template>
           <template v-else-if="calc">
-            <a-descriptions-item :label="ended ? '应返利' : '预估返利'">
-              ¥{{ formatMoney(calc.rebateAmount) }}（¥{{ formatMoney(calc.salesAmount) }} × {{ Number(calc.rate) }}%）
+            <a-descriptions-item :label="ended ? $t('scm.rebate.due') : $t('scm.rebate.estimated')">
+              {{ $t('scm.rebate.rebateCalc', { rebate: formatMoney(calc.rebateAmount), sales: formatMoney(calc.salesAmount), rate: Number(calc.rate) }) }}
             </a-descriptions-item>
-            <a-descriptions-item label="下一档">{{ nextTierText }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('scm.rebate.nextTier')">{{ nextTierText }}</a-descriptions-item>
           </template>
-          <a-descriptions-item label="创建">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="说明" :span="remarkSpan">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.rebate.created')">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.description')" :span="remarkSpan">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
-        <div class="section-title">返利阶梯</div>
+        <div class="section-title">{{ $t('scm.rebate.tiers') }}</div>
         <a-table row-key="id" size="small" :columns="tierViewColumns" :data-source="detail.tiers" :pagination="false">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'minAmount'">¥{{ formatMoney(record.minAmount) }}</template>
             <template v-else-if="column.key === 'rate'">{{ Number(record.rate) }}%</template>
             <template v-else-if="column.key === 'reached'">
-              <a-tag v-if="reachedTier && reachedTier.id === record.id" color="green">当前</a-tag>
+              <a-tag v-if="reachedTier && reachedTier.id === record.id" color="green">{{ $t('scm.rebate.current') }}</a-tag>
             </template>
           </template>
         </a-table>
@@ -154,6 +153,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
@@ -171,16 +171,18 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+const { t } = useI18n()
+
 /** 销售返利：客户 × 期间的阶梯返利协议，期间结束后结算，生成红字应收或计入返利余额在下次订单抵扣 */
 const dict = useDict('scm_rebate_status', 'scm_rebate_settle')
 
 const columns = [
-  { title: '协议', key: 'no', width: 220 },
-  { title: '期间', key: 'period', width: 200 },
-  { title: '兑付方式', key: 'mode', width: 120 },
-  { title: '返利', key: 'result', width: 200 },
-  { title: '状态', key: 'status', width: 160 },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' }
+  { title: t('scm.rebate.agreement'), key: 'no', width: 220 },
+  { title: t('scm.rebate.period'), key: 'period', width: 200 },
+  { title: t('scm.rebate.settleMode'), key: 'mode', width: 140 },
+  { title: t('scm.rebate.rebate'), key: 'result', width: 200 },
+  { title: t('common.field.status'), key: 'status', width: 160 },
+  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'scm-rebate')
 const query = reactive({ keyword: undefined, status: undefined })
@@ -190,15 +192,15 @@ onMounted(load)
 let seq = 0
 const newTier = () => ({ key: ++seq, minAmount: undefined, rate: undefined })
 const tierColumns = [
-  { title: '销售额达到', key: 'minAmount' },
-  { title: '返利率', key: 'rate', width: 160 },
+  { title: t('scm.rebate.salesReach'), key: 'minAmount' },
+  { title: t('scm.rebate.rate'), key: 'rate', width: 160 },
   { title: '', key: 'action', width: 70 }
 ]
 const rules = {
-  customerId: [{ required: true, message: '请选择客户' }],
-  beginDate: [{ required: true, message: '请选择开始日期' }],
-  endDate: [{ required: true, message: '请选择结束日期' }],
-  settleMode: [{ required: true, message: '请选择兑付方式' }]
+  customerId: [{ required: true, message: t('scm.rebate.ruleCustomer') }],
+  beginDate: [{ required: true, message: t('common.rule.requiredSelect', { name: t('common.field.beginDate') }) }],
+  endDate: [{ required: true, message: t('common.rule.requiredSelect', { name: t('common.field.endDate') }) }],
+  settleMode: [{ required: true, message: t('scm.rebate.ruleSettleMode') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, customerId: undefined, beginDate: undefined, endDate: undefined, settleMode: 'CREDIT_NOTE', remark: '',
@@ -222,8 +224,8 @@ const drawer = useFormDrawer({
 const { formRef, form } = drawer
 
 const tierViewColumns = [
-  { title: '销售额达到', key: 'minAmount' },
-  { title: '返利率', key: 'rate', width: 120 },
+  { title: t('scm.rebate.salesReach'), key: 'minAmount' },
+  { title: t('scm.rebate.rate'), key: 'rate', width: 120 },
   { title: '', key: 'reached', width: 80 }
 ]
 const detailOpen = ref(false)
@@ -236,7 +238,7 @@ const reachedTier = computed(() => [...(detail.value?.tiers || [])].filter((t) =
 const nextTierText = computed(() => {
   const next = [...(detail.value?.tiers || [])].filter((t) => salesNow.value < Number(t.minAmount))
     .sort((a, b) => Number(a.minAmount) - Number(b.minAmount))[0]
-  return next ? `再销售 ¥${formatMoney(Number(next.minAmount) - salesNow.value)} 达到 ${Number(next.rate)}%` : '已达到最高一档'
+  return next ? t('scm.rebate.nextTierText', { amount: formatMoney(Number(next.minAmount) - salesNow.value), rate: Number(next.rate) }) : t('scm.rebate.topTier')
 })
 /** 说明占满最后一行：前面的项数为 客户、期间、状态、兑付方式、创建 + 结算信息（已结算 2~3 项，执行中 2 项） */
 const remarkSpan = computed(() => {
@@ -245,7 +247,7 @@ const remarkSpan = computed(() => {
   return 3 - (n % 3)
 })
 const settleTip = computed(() => calc.value
-  ? `按期间销售额 ¥${formatMoney(calc.value.salesAmount)} 结算返利 ¥${formatMoney(calc.value.rebateAmount)}，确定？` : '确定结算？')
+  ? t('scm.rebate.settleConfirm', { sales: formatMoney(calc.value.salesAmount), rebate: formatMoney(calc.value.rebateAmount) }) : t('scm.rebate.settleConfirmPlain'))
 async function openDetail(id) {
   const r = await getRebate(id)
   detail.value = r
@@ -254,19 +256,19 @@ async function openDetail(id) {
 }
 async function settle() {
   const res = await settleRebate(detail.value.id)
-  message.success(`已结算，返利 ¥${formatMoney(res.rebateAmount)}`)
+  message.success(t('scm.rebate.settledMsg', { amount: formatMoney(res.rebateAmount) }))
   openDetail(detail.value.id)
   load()
 }
 async function unsettle() {
   await unsettleRebate(detail.value.id)
-  message.success('已撤销结算')
+  message.success(t('scm.rebate.unsettledMsg'))
   openDetail(detail.value.id)
   load()
 }
 async function remove() {
   await deleteRebate(detail.value.id)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   detailOpen.value = false
   load()
 }

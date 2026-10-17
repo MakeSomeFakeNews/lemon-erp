@@ -19,9 +19,12 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { inject, ref } from 'vue'
 import { ApartmentOutlined, AuditOutlined, BranchesOutlined, SendOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { DESIGNER_KEY, NODE_TYPES, insertNode } from './flow'
+
+const { t } = useI18n()
 
 /** 节点之间的连线和「+」按钮，在 holder（前一个节点或分支）之后插入节点 */
 const props = defineProps({ holder: { type: Object, required: true } })
@@ -29,10 +32,10 @@ const ctx = inject(DESIGNER_KEY)
 const open = ref(false)
 
 const ITEMS = [
-  { type: NODE_TYPES.APPROVER, label: '审批人', icon: AuditOutlined, color: '#ff943e', bg: 'rgba(255, 148, 62, 0.12)' },
-  { type: NODE_TYPES.CC, label: '抄送人', icon: SendOutlined, color: '#3296fa', bg: 'rgba(50, 150, 250, 0.12)' },
-  { type: NODE_TYPES.CONDITION, label: '条件分支', icon: BranchesOutlined, color: '#15bc83', bg: 'rgba(21, 188, 131, 0.12)' },
-  { type: NODE_TYPES.PARALLEL, label: '并行分支', icon: ApartmentOutlined, color: '#718dff', bg: 'rgba(113, 141, 255, 0.12)' }
+  { type: NODE_TYPES.APPROVER, label: t('workflow.node.approver'), icon: AuditOutlined, color: '#ff943e', bg: 'rgba(255, 148, 62, 0.12)' },
+  { type: NODE_TYPES.CC, label: t('workflow.node.cc'), icon: SendOutlined, color: '#3296fa', bg: 'rgba(50, 150, 250, 0.12)' },
+  { type: NODE_TYPES.CONDITION, label: t('workflow.node.condition'), icon: BranchesOutlined, color: '#15bc83', bg: 'rgba(21, 188, 131, 0.12)' },
+  { type: NODE_TYPES.PARALLEL, label: t('workflow.node.parallel'), icon: ApartmentOutlined, color: '#718dff', bg: 'rgba(113, 141, 255, 0.12)' }
 ]
 
 function add(type) {

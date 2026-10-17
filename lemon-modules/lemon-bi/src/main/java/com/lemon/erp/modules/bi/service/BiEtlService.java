@@ -98,7 +98,7 @@ public class BiEtlService {
             running.remove(tenantId);
         }
         if ("FAILED".equals(entry.getStatus())) {
-            throw new BizException("数据同步失败：" + entry.getMessage());
+            throw new BizException("数据同步失败：{0}", entry.getMessage());
         }
         return entry;
     }

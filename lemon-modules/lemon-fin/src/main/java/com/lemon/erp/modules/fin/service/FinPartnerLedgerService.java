@@ -36,7 +36,7 @@ public class FinPartnerLedgerService {
         FinBillService.checkKind(kind);
         boolean ar = FinConstants.BILL_AR.equals(kind);
         if (!permissionService.hasPerm(ar ? "fin:ar:list" : "fin:ap:list")) {
-            throw new BizException("没有权限查看" + (ar ? "应收" : "应付"));
+            throw new BizException(ar ? "没有权限查看应收" : "没有权限查看应付");
         }
         if (begin == null || end == null || end.isBefore(begin)) {
             throw new BizException("日期范围不正确");

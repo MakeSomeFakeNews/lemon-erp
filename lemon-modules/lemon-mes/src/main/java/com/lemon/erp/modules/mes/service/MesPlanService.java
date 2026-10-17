@@ -143,7 +143,7 @@ public class MesPlanService {
             }
             LocalDate due = item.getDeliveryDate() != null ? item.getDeliveryDate()
                     : order.getDeliveryDate() != null ? order.getDeliveryDate() : LocalDate.now();
-            MesPlan plan = newPlan(item.getMaterialId(), remaining, due, "销售订单 " + order.getOrderNo());
+            MesPlan plan = newPlan(item.getMaterialId(), remaining, due, "销售订单 " + order.getOrderNo()); // i18n-ignore
             plan.setSource("SALES");
             plan.setSalesOrderId(order.getId());
             plan.setSalesOrderNo(order.getOrderNo());
@@ -173,11 +173,11 @@ public class MesPlanService {
             throw new BizException("计划数量已全部转为工单");
         }
         if (qty.compareTo(remaining) > 0) {
-            throw new BizException("工单数量超过计划未转工单数量 " + remaining.stripTrailingZeros().toPlainString());
+            throw new BizException("工单数量超过计划未转工单数量 {0}", remaining.stripTrailingZeros().toPlainString());
         }
         LocalDate end = req.planEnd() != null ? req.planEnd() : plan.getDueDate();
         return workOrderService.createDraft(new WorkOrderRequest(plan.getMaterialId(), req.bomId(), qty, req.planStart(), end,
-                req.warehouseId(), "计划 " + plan.getPlanNo()), "PLAN", id);
+                req.warehouseId(), "计划 " + plan.getPlanNo()), "PLAN", id); // i18n-ignore
     }
 
     // ---------------------------------------------------------------- 供 MRP 使用
@@ -192,7 +192,7 @@ public class MesPlanService {
         }
         if ("DRAFT".equals(e.status())) {
             if (planMapper.exists(Wrappers.<MesPlan>lambdaQuery().eq(MesPlan::getSalesOrderId, e.orderId()))) {
-                throw new BizException("销售订单 " + e.orderNo() + " 已生成生产计划，请先删除或关闭计划再反审核");
+                throw new BizException("销售订单 {0} 已生成生产计划，请先删除或关闭计划再反审核", e.orderNo());
             }
         } else if ("CLOSED".equals(e.status())) {
             planMapper.update(Wrappers.<MesPlan>lambdaUpdate().set(MesPlan::getStatus, PlanStatus.CLOSED.name())
@@ -219,7 +219,7 @@ public class MesPlanService {
     private MesPlan getDraft(Long id) {
         MesPlan plan = getAccessible(id);
         if (!PlanStatus.DRAFT.name().equals(plan.getStatus())) {
-            throw new BizException("计划 " + plan.getPlanNo() + " 已确认，不能修改或删除");
+            throw new BizException("计划 {0} 已确认，不能修改或删除", plan.getPlanNo());
         }
         return plan;
     }
@@ -228,7 +228,7 @@ public class MesPlanService {
     private void checkProduct(Long materialId) {
         WmsMaterial product = materialService.getEnabled(List.of(materialId)).get(materialId);
         if (!bomService.defaultBoms(List.of(materialId)).containsKey(materialId)) {
-            throw new BizException("产品「" + product.getCode() + " " + product.getName() + "」没有默认 BOM，不能排生产计划");
+            throw new BizException("产品「{0} {1}」没有默认 BOM，不能排生产计划", product.getCode(), product.getName());
         }
     }
 

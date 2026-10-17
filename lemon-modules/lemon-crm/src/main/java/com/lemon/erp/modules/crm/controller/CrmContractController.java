@@ -46,14 +46,14 @@ public class CrmContractController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('crm:contract:add')")
-    @OperLog(title = "销售合同", type = OperType.INSERT)
+    @OperLog(title = "销售合同", type = OperType.INSERT) // i18n-ignore 操作日志标题存库
     public R<Long> create(@Valid @RequestBody ContractRequest req) {
         return R.ok(contractService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('crm:contract:edit')")
-    @OperLog(title = "销售合同", type = OperType.UPDATE)
+    @OperLog(title = "销售合同", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody ContractRequest req) {
         contractService.update(id, req);
         return R.ok();
@@ -61,7 +61,7 @@ public class CrmContractController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('crm:contract:remove')")
-    @OperLog(title = "销售合同", type = OperType.DELETE)
+    @OperLog(title = "销售合同", type = OperType.DELETE) // i18n-ignore 操作日志标题存库
     public R<Void> delete(@PathVariable Long id) {
         contractService.delete(id);
         return R.ok();
@@ -69,14 +69,14 @@ public class CrmContractController {
 
     @PostMapping("/{id}/submit")
     @PreAuthorize("@ss.hasPerm('crm:contract:edit')")
-    @OperLog(title = "销售合同提交", type = OperType.UPDATE)
+    @OperLog(title = "销售合同提交", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Boolean> submit(@PathVariable Long id) {
         return R.ok(contractService.submit(id));
     }
 
     @PostMapping("/{id}/order/{orderId}")
     @PreAuthorize("@ss.hasPerm('crm:contract:edit')")
-    @OperLog(title = "合同关联订单", type = OperType.UPDATE)
+    @OperLog(title = "合同关联订单", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> linkOrder(@PathVariable Long id, @PathVariable Long orderId) {
         contractService.linkOrder(id, orderId);
         return R.ok();
@@ -85,14 +85,14 @@ public class CrmContractController {
     /** 由关联的报价单生成销售订单，返回订单 ID */
     @PostMapping("/{id}/to-order")
     @PreAuthorize("@ss.hasPerm('crm:contract:edit') and @ss.hasPerm('scm:sales:add')")
-    @OperLog(title = "合同生成订单", type = OperType.INSERT)
+    @OperLog(title = "合同生成订单", type = OperType.INSERT) // i18n-ignore 操作日志标题存库
     public R<Long> toOrder(@PathVariable Long id, @RequestParam(required = false) Long warehouseId) {
         return R.ok(contractService.toOrder(id, warehouseId));
     }
 
     @PostMapping("/{id}/complete")
     @PreAuthorize("@ss.hasPerm('crm:contract:edit')")
-    @OperLog(title = "合同完成", type = OperType.UPDATE)
+    @OperLog(title = "合同完成", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> complete(@PathVariable Long id) {
         contractService.complete(id);
         return R.ok();
@@ -100,7 +100,7 @@ public class CrmContractController {
 
     @PostMapping("/{id}/terminate")
     @PreAuthorize("@ss.hasPerm('crm:contract:edit')")
-    @OperLog(title = "合同终止", type = OperType.UPDATE)
+    @OperLog(title = "合同终止", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> terminate(@PathVariable Long id, @RequestParam(required = false) String reason) {
         contractService.terminate(id, reason);
         return R.ok();

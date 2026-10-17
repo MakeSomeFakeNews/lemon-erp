@@ -21,7 +21,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class DemoModeInterceptor implements HandlerInterceptor {
 
-    public static final String MESSAGE = "演示模式下不能新增、修改、删除数据";
+    /** 提示（输出时按请求语言翻译） */
+    public static final String MESSAGE = "演示模式下不能新增、修改、删除数据"; // i18n-ignore 输出处 I18n.t
 
     private static final Set<String> READ_METHODS = Set.of(HttpMethod.GET.name(), HttpMethod.HEAD.name(), HttpMethod.OPTIONS.name());
 

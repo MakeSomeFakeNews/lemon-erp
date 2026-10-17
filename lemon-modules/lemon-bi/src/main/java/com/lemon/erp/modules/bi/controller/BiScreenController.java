@@ -49,7 +49,7 @@ public class BiScreenController {
 
     @PostMapping("/share")
     @PreAuthorize("@ss.hasPerm('bi:screen:share')")
-    @OperLog(title = "投屏链接", type = OperType.INSERT)
+    @OperLog(title = "投屏链接", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> createShare(@Valid @RequestBody ScreenShareRequest req) {
         requireAllData();
         return R.ok(shareService.create(req));
@@ -57,7 +57,7 @@ public class BiScreenController {
 
     @PutMapping("/share/{id}")
     @PreAuthorize("@ss.hasPerm('bi:screen:share')")
-    @OperLog(title = "投屏链接", type = OperType.UPDATE)
+    @OperLog(title = "投屏链接", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> updateShare(@PathVariable Long id, @Valid @RequestBody ScreenShareRequest req) {
         requireAllData();
         shareService.update(id, req);
@@ -67,7 +67,7 @@ public class BiScreenController {
     /** 重新生成链接，原链接失效 */
     @PostMapping("/share/{id}/reset")
     @PreAuthorize("@ss.hasPerm('bi:screen:share')")
-    @OperLog(title = "投屏链接", type = OperType.UPDATE, saveResult = false)
+    @OperLog(title = "投屏链接", type = OperType.UPDATE, saveResult = false)  // i18n-ignore 操作日志存库
     public R<String> resetShare(@PathVariable Long id) {
         requireAllData();
         return R.ok(shareService.resetToken(id));
@@ -75,7 +75,7 @@ public class BiScreenController {
 
     @DeleteMapping("/share/{id}")
     @PreAuthorize("@ss.hasPerm('bi:screen:share')")
-    @OperLog(title = "投屏链接", type = OperType.DELETE)
+    @OperLog(title = "投屏链接", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> deleteShare(@PathVariable Long id) {
         requireAllData();
         shareService.delete(id);
@@ -101,7 +101,7 @@ public class BiScreenController {
         try {
             return ScreenKey.valueOf(key.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new BizException("大屏不存在：" + key);
+            throw new BizException("大屏不存在：{0}", key);
         }
     }
 }

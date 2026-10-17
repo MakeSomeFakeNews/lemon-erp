@@ -2,11 +2,11 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="关键字" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="询价单号或说明" allow-clear />
+        <a-form-item :label="$t('common.field.keyword')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('scm.inquiry.keywordPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.scm_inquiry_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.scm_inquiry_status)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -21,16 +21,16 @@
         @refresh="load"
       >
         <a-button v-perm="'scm:inquiry:add'" type="primary" @click="form.openCreate()">
-          <template #icon><PlusOutlined /></template>新增询价单
+          <template #icon><PlusOutlined /></template>{{ $t('scm.inquiry.add') }}
         </a-button>
         <span v-perm="'scm:inquiry:remove'">
           <a-popconfirm
-            :title="`确定删除选中的 ${selectedKeys.length} 张询价单？`"
+            :title="$t('scm.inquiry.confirmBatchDelete', { n: selectedKeys.length })"
             :disabled="!selectedKeys.length"
             @confirm="remove(selectedKeys)"
           >
             <a-button danger :disabled="!selectedKeys.length">
-              <template #icon><DeleteOutlined /></template>批量删除
+              <template #icon><DeleteOutlined /></template>{{ $t('common.action.batchDelete') }}
             </a-button>
           </a-popconfirm>
         </span>
@@ -57,15 +57,15 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>查看
+                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
               <a-button v-if="record.status === 'QUOTING' && !record.supplierCount" v-perm="'scm:inquiry:edit'" type="link" size="small" @click="form.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-if="record.status === 'QUOTING'" v-perm="'scm:inquiry:remove'">
-                <a-popconfirm title="确定删除该询价单？" @confirm="remove([record.id])">
+                <a-popconfirm :title="$t('scm.inquiry.confirmDelete')" @confirm="remove([record.id])">
                   <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>删除
+                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
                   </a-button>
                 </a-popconfirm>
               </span>
@@ -81,6 +81,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
@@ -95,19 +96,21 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+const { t } = useI18n()
+
 const dict = useDict('scm_inquiry_status')
 
 const columns = [
-  { title: '询价单号', key: 'inquiryNo', dataIndex: 'inquiryNo', width: 180 },
-  { title: '询价日期', dataIndex: 'inquiryDate', width: 110 },
-  { title: '报价截止', dataIndex: 'deadline', width: 110 },
-  { title: '状态', key: 'status', dataIndex: 'status', width: 100, dict: 'scm_inquiry_status' },
-  { title: '物料行数', dataIndex: 'itemCount', width: 90, align: 'right' },
-  { title: '报价供应商', dataIndex: 'supplierCount', width: 100, align: 'right' },
-  { title: '制单人', dataIndex: 'createByName', width: 100 },
-  { title: '说明', dataIndex: 'remark', width: 200, ellipsis: true },
-  { title: '创建时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 200, fixed: 'right' }
+  { title: t('scm.inquiry.inquiryNo'), key: 'inquiryNo', dataIndex: 'inquiryNo', width: 180 },
+  { title: t('scm.inquiry.inquiryDate'), dataIndex: 'inquiryDate', width: 110 },
+  { title: t('scm.inquiry.deadline'), dataIndex: 'deadline', width: 130 },
+  { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'scm_inquiry_status' },
+  { title: t('scm.inquiry.itemCount'), dataIndex: 'itemCount', width: 120, align: 'right' },
+  { title: t('scm.inquiry.quoteSuppliers'), dataIndex: 'supplierCount', width: 140, align: 'right' },
+  { title: t('scm.inquiry.preparedBy'), dataIndex: 'createByName', width: 110 },
+  { title: t('scm.inquiry.remark'), dataIndex: 'remark', width: 200, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 200, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'scm-inquiry')
 const showSearch = ref(true)
@@ -149,7 +152,7 @@ function onSaved(id) {
 
 async function remove(ids) {
   await deleteInquiry(ids)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   selectedKeys.value = selectedKeys.value.filter((k) => !ids.includes(k))
   load()
 }

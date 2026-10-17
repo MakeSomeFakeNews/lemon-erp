@@ -1,11 +1,11 @@
 <template>
   <a-select
     :value="value"
-    :placeholder="warehouseId ? '选择库位 / 批次' : '请先选择仓库'"
+    :placeholder="warehouseId ? $t('scm.stockSlot.selectSlot') : $t('scm.stockSlot.selectWarehouseFirst')"
     :options="options"
     :loading="loading"
     :disabled="disabled || !warehouseId"
-    :not-found-content="loading ? '加载中…' : '该仓库没有此物料的库存'"
+    :not-found-content="loading ? $t('common.msg.loading') : $t('scm.stockSlot.noStock')"
     @dropdown-visible-change="(open) => open && load()"
     @change="onChange"
   />
@@ -13,6 +13,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { pageStock } from '@/api/wms/stock'
 import { cached } from '@/utils/cache'
 import { availableQty, expiryStatus, formatQty, locationText } from '@/components/wms/wms'
@@ -34,6 +35,7 @@ const props = defineProps({
   includeFrozen: Boolean
 })
 const emit = defineEmits(['update:value', 'select'])
+const { t } = useI18n()
 
 const slots = ref([])
 const loading = ref(false)
@@ -43,7 +45,7 @@ const slotKey = (s) => `${s.locationId || 0}|${s.batchNo || ''}`
 const usable = (s) => (props.includeFrozen ? Number(s.qty) : availableQty(s))
 /** 先到期先出（FEFO）：未过期的按有效期从近到远，没有有效期的随后，已过期的放最后并标注 */
 const sorted = computed(() => {
-  const rank = (s) => (expiryStatus(s.expiryDate)?.text === '已过期' ? 2 : s.expiryDate ? 0 : 1)
+  const rank = (s) => (expiryStatus(s.expiryDate)?.color === 'red' ? 2 : s.expiryDate ? 0 : 1)
   return [...slots.value].sort((a, b) => rank(a) - rank(b) || String(a.expiryDate || '').localeCompare(String(b.expiryDate || '')))
 })
 
@@ -53,13 +55,13 @@ const options = computed(() => {
     return {
       value: slotKey(s),
       label:
-        `${locationText(s.locationCode)}${s.batchNo ? ' · ' + s.batchNo : ''} · 可用 ${formatQty(usable(s))}` +
-        `${Number(s.frozenQty) ? `（冻结 ${formatQty(s.frozenQty)}）` : ''}${expiry ? ` · ${expiry.text}` : ''}`
+        `${locationText(s.locationCode)}${s.batchNo ? ' · ' + s.batchNo : ''} · ${t('scm.stockSlot.available', { qty: formatQty(usable(s)) })}` +
+        `${Number(s.frozenQty) ? t('scm.stockSlot.frozen', { qty: formatQty(s.frozenQty) }) : ''}${expiry ? ` · ${expiry.text}` : ''}`
     }
   })
   if (props.value && !opts.some((o) => o.value === props.value)) {
     const [loc, batch] = props.value.split('|')
-    opts.unshift({ value: props.value, label: props.label || `${loc === '0' ? '未指定' : '库位 ' + loc}${batch ? ' · ' + batch : ''}` })
+    opts.unshift({ value: props.value, label: props.label || `${loc === '0' ? t('scm.stockSlot.unspecified') : t('scm.stockSlot.location', { loc })}${batch ? ' · ' + batch : ''}` })
   }
   return opts
 })

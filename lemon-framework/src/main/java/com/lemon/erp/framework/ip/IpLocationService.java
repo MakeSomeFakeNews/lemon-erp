@@ -23,8 +23,9 @@ import java.util.List;
 @Service
 public class IpLocationService {
 
-    public static final String INTRANET = "内网IP";
-    public static final String UNKNOWN = "未知";
+    // 存入登录日志、在线用户的地点，保持中文（与 IP 库的地名一致）
+    public static final String INTRANET = "内网IP"; // i18n-ignore
+    public static final String UNKNOWN = "未知"; // i18n-ignore
     private static final String DB_PATH = "ip2region/ip2region_v4.xdb";
 
     private final Searcher searcher;
@@ -75,12 +76,12 @@ public class IpLocationService {
 
         List<String> area = new ArrayList<>();
         // 国内地址省略「中国」，直辖市避免「北京市北京市」
-        if (!"中国".equals(country)) area.add(country);
+        if (!"中国".equals(country)) area.add(country); // i18n-ignore IP 库的地名
         if (!province.isEmpty()) area.add(province);
         if (!city.isEmpty() && !city.equals(province)) area.add(city);
         area.removeIf(String::isEmpty);
 
-        String location = "中国".equals(country) ? String.join("", area) : String.join(" ", area);
+        String location = "中国".equals(country) ? String.join("", area) : String.join(" ", area); // i18n-ignore
         if (location.isEmpty()) {
             location = country.isEmpty() ? UNKNOWN : country;
         }

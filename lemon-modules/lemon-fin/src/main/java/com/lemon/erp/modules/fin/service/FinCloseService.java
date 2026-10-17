@@ -51,18 +51,18 @@ public class FinCloseService {
     public void close(int period) {
         FinPeriod p = periodService.ensure(period);
         if (FinPeriodService.CLOSED.equals(p.getStatus())) {
-            throw new BizException(period + " 期间已结账");
+            throw new BizException("{0} 期间已结账", period);
         }
         FinPeriod earlierOpen = periodMapper.selectOne(Wrappers.<FinPeriod>lambdaQuery()
                 .lt(FinPeriod::getPeriod, period).eq(FinPeriod::getStatus, FinPeriodService.OPEN)
                 .orderByAsc(FinPeriod::getPeriod).last("LIMIT 1"));
         if (earlierOpen != null) {
-            throw new BizException("请先结账 " + earlierOpen.getPeriod() + " 期间");
+            throw new BizException("请先结账 {0} 期间", earlierOpen.getPeriod());
         }
         long unposted = voucherMapper.selectCount(Wrappers.<FinVoucher>lambdaQuery()
                 .eq(FinVoucher::getPeriod, period).ne(FinVoucher::getStatus, VoucherStatus.POSTED.name()));
         if (unposted > 0) {
-            throw new BizException(period + " 期间还有 " + unposted + " 张凭证未记账");
+            throw new BizException("{0} 期间还有 {1} 张凭证未记账", period, unposted);
         }
         carryForwardProfit(period);
         if (period % 100 == 12) {
@@ -83,7 +83,7 @@ public class FinCloseService {
     public void reopen(int period) {
         FinPeriod p = periodService.get(period);
         if (p == null || !FinPeriodService.CLOSED.equals(p.getStatus())) {
-            throw new BizException(period + " 期间未结账");
+            throw new BizException("{0} 期间未结账", period);
         }
         if (periodMapper.exists(Wrappers.<FinPeriod>lambdaQuery()
                 .gt(FinPeriod::getPeriod, period).eq(FinPeriod::getStatus, FinPeriodService.CLOSED))) {
@@ -109,7 +109,7 @@ public class FinCloseService {
         Map<Long, FinAccount> profitAccounts = accountService.listAll().stream()
                 .filter(a -> AccountCategory.PROFIT.name().equals(a.getCategory()))
                 .collect(Collectors.toMap(FinAccount::getId, Function.identity()));
-        String summary = "结转 " + period + " 期间损益";
+        String summary = "结转 " + period + " 期间损益"; // i18n-ignore
         List<VoucherLine> lines = new ArrayList<>();
         BigDecimal profit = BigDecimal.ZERO;
         List<AccountSum> sums = entryMapper.sumByAccount(period, period, false).stream()
@@ -144,7 +144,7 @@ public class FinCloseService {
         if (credit.signum() == 0) {
             return;
         }
-        String summary = "结转 " + period / 100 + " 年度利润";
+        String summary = "结转 " + period / 100 + " 年度利润"; // i18n-ignore
         Long distribution = accountRules.accountId(AccountRole.PROFIT_DISTRIBUTION);
         // 盈利：借 本年利润 / 贷 利润分配；亏损相反
         voucherService.createPosted(lastDay(period), VoucherSource.CLOSE, String.valueOf(period), List.of(

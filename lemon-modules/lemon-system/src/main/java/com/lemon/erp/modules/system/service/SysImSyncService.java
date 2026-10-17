@@ -118,7 +118,7 @@ public class SysImSyncService {
                     continue;
                 } catch (BizException e) {
                     // 账号数达到套餐上限等：停止开通，其余成员计入未绑定
-                    warning = "未能继续开通账号：" + e.getMessage();
+                    warning = "未能继续开通账号：" + e.getMessage(); // i18n-ignore 同时存入同步结果
                 }
             }
             unmatchedCount++;

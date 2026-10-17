@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.framework.tenant.PlatformFeatures;
 import com.lemon.erp.modules.system.dto.FeatureCatalogView;
 import com.lemon.erp.modules.system.entity.SysMenu;
@@ -56,11 +57,12 @@ public class SysFeatureService {
         menus.forEach(m -> children.computeIfAbsent(m.getParentId(), k -> new ArrayList<>()).add(m.getId()));
         Set<Long> assignable = menus.stream().map(SysMenu::getId).collect(Collectors.toSet());
         List<FeatureCatalogView.Feature> features = SysFeatureCatalog.FEATURES.stream()
-                .map(f -> new FeatureCatalogView.Feature(f.key(), f.name(), f.group(), f.description(), f.required(), f.requires(),
+                // 名称、分类、说明按请求语言翻译
+                .map(f -> new FeatureCatalogView.Feature(f.key(), I18n.t(f.name()), I18n.t(f.group()), I18n.t(f.description()), f.required(), f.requires(),
                         List.copyOf(expand(f.menus(), children, assignable))))
                 .toList();
         List<FeatureCatalogView.Industry> industries = SysFeatureCatalog.INDUSTRIES.stream()
-                .map(i -> new FeatureCatalogView.Industry(i.key(), i.name(), i.description(), List.copyOf(withRequires(i.features()))))
+                .map(i -> new FeatureCatalogView.Industry(i.key(), I18n.t(i.name()), I18n.t(i.description()), List.copyOf(withRequires(i.features()))))
                 .toList();
         return new FeatureCatalogView(features, industries);
     }
@@ -84,12 +86,12 @@ public class SysFeatureService {
                 return pkg.getId();
             }
         }
-        String base = name == null || name.isBlank() ? "自定义" : name.trim();
+        String base = name == null || name.isBlank() ? "自定义" : name.trim(); // i18n-ignore 套餐名称存库
         String packageName = uniqueName(base, tenantName);
         SysTenantPackage pkg = new SysTenantPackage();
         pkg.setName(packageName);
         pkg.setStatus(1);
-        pkg.setRemark("新建租户「" + tenantName + "」时按功能模块创建");
+        pkg.setRemark("新建租户「" + tenantName + "」时按功能模块创建"); // i18n-ignore 套餐备注存库
         packageMapper.insert(pkg);
         packageMenuMapper.insertBatch(pkg.getId(), menus);
         return pkg.getId();

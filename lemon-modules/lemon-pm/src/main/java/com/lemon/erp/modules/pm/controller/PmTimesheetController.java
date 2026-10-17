@@ -50,7 +50,7 @@ public class PmTimesheetController {
     /** 审批通过 / 驳回，返回处理条数 */
     @PostMapping("/timesheet/review")
     @PreAuthorize("@ss.hasPerm('pm:timesheet:approve')")
-    @OperLog(title = "工时审批", type = OperType.UPDATE)
+    @OperLog(title = "工时审批", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Integer> review(@Valid @RequestBody ReviewRequest req) {
         return R.ok(timesheetService.review(req));
     }
@@ -61,19 +61,19 @@ public class PmTimesheetController {
     }
 
     @PostMapping("/my/timesheet")
-    @OperLog(title = "填报工时", type = OperType.INSERT)
+    @OperLog(title = "填报工时", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<TimesheetSaved> create(@Valid @RequestBody TimesheetRequest req) {
         return R.ok(timesheetService.save(null, req));
     }
 
     @PutMapping("/my/timesheet/{id}")
-    @OperLog(title = "填报工时", type = OperType.UPDATE)
+    @OperLog(title = "填报工时", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<TimesheetSaved> update(@PathVariable Long id, @Valid @RequestBody TimesheetRequest req) {
         return R.ok(timesheetService.save(id, req));
     }
 
     @DeleteMapping("/my/timesheet/{id}")
-    @OperLog(title = "填报工时", type = OperType.DELETE)
+    @OperLog(title = "填报工时", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable Long id) {
         timesheetService.delete(id);
         return R.ok();

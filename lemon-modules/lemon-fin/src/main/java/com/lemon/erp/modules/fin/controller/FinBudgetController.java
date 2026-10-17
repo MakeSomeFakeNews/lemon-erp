@@ -46,14 +46,14 @@ public class FinBudgetController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('fin:budget:edit')")
-    @OperLog(title = "预算", type = OperType.INSERT)
+    @OperLog(title = "预算", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody BudgetRequest req) {
         return R.ok(budgetService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('fin:budget:edit')")
-    @OperLog(title = "预算", type = OperType.UPDATE)
+    @OperLog(title = "预算", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody BudgetRequest req) {
         budgetService.update(id, req);
         return R.ok();
@@ -61,7 +61,7 @@ public class FinBudgetController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('fin:budget:edit')")
-    @OperLog(title = "预算", type = OperType.DELETE)
+    @OperLog(title = "预算", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         budgetService.delete(ids);
         return R.ok();

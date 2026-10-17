@@ -2,17 +2,17 @@
   <a-card :bordered="false" class="page-card decision">
     <a-tabs v-model:activeKey="tab">
       <!-- 销售预测 -->
-      <a-tab-pane key="forecast" tab="销售预测">
+      <a-tab-pane key="forecast" :tab="$t('bi.decision.forecast')">
         <div class="filters">
-          <a-select v-model:value="fc.category" placeholder="全部物料分类" allow-clear :options="toOptions(dict.wms_material_category)" style="width: 160px" />
+          <a-select v-model:value="fc.category" :placeholder="$t('bi.decision.allCategories')" allow-clear :options="toOptions(dict.wms_material_category)" style="width: 160px" />
           <a-radio-group v-model:value="fc.months" button-style="solid">
-            <a-radio-button :value="3">3 个月</a-radio-button>
-            <a-radio-button :value="6">6 个月</a-radio-button>
-            <a-radio-button :value="12">12 个月</a-radio-button>
+            <a-radio-button :value="3">{{ $t('bi.decision.monthsN', { n: 3 }) }}</a-radio-button>
+            <a-radio-button :value="6">{{ $t('bi.decision.monthsN', { n: 6 }) }}</a-radio-button>
+            <a-radio-button :value="12">{{ $t('bi.decision.monthsN', { n: 12 }) }}</a-radio-button>
           </a-radio-group>
-          <a-button type="primary" :loading="fc.loading" @click="loadForecast">预测</a-button>
+          <a-button type="primary" :loading="fc.loading" @click="loadForecast">{{ $t('bi.decision.predict') }}</a-button>
           <span v-if="fc.data" class="sub-text">
-            方法：{{ fc.data.method }}；趋势斜率 {{ formatMoney(fc.data.slope) }} 元 / 月（基于数据仓库的月销售额，本月未结束不参与拟合）
+            {{ $t('bi.decision.method', { method: fc.data.method, slope: formatMoney(fc.data.slope) }) }}
           </span>
         </div>
         <a-spin :spinning="fc.loading">
@@ -21,7 +21,7 @@
             type="warning"
             show-icon
             class="fc-tip"
-            :message="`数据仓库中只有 ${historyMonths} 个完整月份有销售数据，预测需要至少 3 个月的历史，当前结果仅供参考`"
+            :message="$t('bi.decision.fewMonths', { n: historyMonths })"
           />
           <EChart v-if="fc.data" :option="forecastOption" height="340px" />
           <a-table
@@ -30,7 +30,7 @@
             row-key="period"
             :pagination="false"
             :data-source="fc.data.forecast"
-            :columns="[{ title: '月份', key: 'period' }, { title: '预测销售额', key: 'amount', align: 'right' }]"
+            :columns="forecastColumns"
             class="mt"
           >
             <template #bodyCell="{ column, record }">
@@ -42,17 +42,17 @@
       </a-tab-pane>
 
       <!-- ABC 分析 -->
-      <a-tab-pane key="abc" tab="ABC 分析">
+      <a-tab-pane key="abc" :tab="$t('bi.decision.abc')">
         <a-spin :spinning="abc.loading">
           <p class="sub-text">
-            近一年按{{ abc.data?.basis || '销售成本' }}降序累计：累计占比 70% 以内为 A 类（重点管控），70%-90% 为 B 类，其余为 C 类
+            {{ $t('bi.decision.abcHint', { basis: abc.data?.basis || $t('bi.decision.salesCost') }) }}
           </p>
           <a-row :gutter="[16, 16]">
             <a-col v-for="s in abc.data?.summary || []" :key="s.class" :xs="24" :sm="8">
               <div class="summary-card" :class="`cls-${s.class}`">
-                <div class="summary-title">{{ s.class }} 类物料</div>
-                <div class="summary-value">{{ s.count }} 种</div>
-                <div class="sub-text">金额 {{ formatMoney(s.value) }}，占 {{ percent(s.share) }}</div>
+                <div class="summary-title">{{ $t('bi.decision.classTitle', { cls: s.class }) }}</div>
+                <div class="summary-value">{{ $t('bi.decision.kindsN', { n: s.count }) }}</div>
+                <div class="sub-text">{{ $t('bi.decision.classSummary', { amount: formatMoney(s.value), share: percent(s.share) }) }}</div>
               </div>
             </a-col>
           </a-row>
@@ -82,14 +82,14 @@
       </a-tab-pane>
 
       <!-- 呆滞物料 -->
-      <a-tab-pane key="slow" tab="呆滞物料">
+      <a-tab-pane key="slow" :tab="$t('bi.decision.slow')">
         <div class="filters">
-          <span>超过</span>
-          <a-input-number v-model:value="slow.days" :min="0" :max="3650" addon-after="天" style="width: 140px" />
-          <span>没有出库（不含调拨）且有库存</span>
-          <a-button type="primary" :loading="slow.loading" @click="loadSlow">查询</a-button>
+          <span>{{ $t('bi.decision.slowPrefix') }}</span>
+          <a-input-number v-model:value="slow.days" :min="0" :max="3650" :addon-after="$t('bi.decision.days')" style="width: 150px" />
+          <span>{{ $t('bi.decision.slowSuffix') }}</span>
+          <a-button type="primary" :loading="slow.loading" @click="loadSlow">{{ $t('common.action.query') }}</a-button>
           <span v-if="slow.list.length" class="sub-text">
-            共 {{ slow.list.length }} 种，库存金额 {{ formatMoney(slow.list.reduce((s, r) => s + Number(r.amount || 0), 0)) }}（按最新库存快照）
+            {{ $t('bi.decision.slowSummary', { n: slow.list.length, amount: formatMoney(slow.list.reduce((s, r) => s + Number(r.amount || 0), 0)) }) }}
           </span>
         </div>
         <a-table
@@ -106,10 +106,10 @@
             <template v-else-if="column.key === 'category'"><DictTag type="wms_material_category" :value="record.category" /></template>
             <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }} {{ record.unit }}</template>
             <template v-else-if="column.key === 'amount'">{{ formatMoney(record.amount) }}</template>
-            <template v-else-if="column.key === 'lastOut'">{{ record.lastOut || '从未出库' }}</template>
+            <template v-else-if="column.key === 'lastOut'">{{ record.lastOut || $t('bi.decision.neverOut') }}</template>
             <template v-else-if="column.key === 'idleDays'">
               <a-tag v-if="record.idleDays != null" :color="record.idleDays >= 180 ? 'red' : record.idleDays >= 90 ? 'orange' : 'default'" :bordered="false">
-                {{ record.idleDays }} 天
+                {{ $t('bi.decision.daysN', { n: record.idleDays }) }}
               </a-tag>
             </template>
           </template>
@@ -117,10 +117,10 @@
       </a-tab-pane>
 
       <!-- 预警 -->
-      <a-tab-pane key="alerts" tab="预警">
+      <a-tab-pane key="alerts" :tab="$t('bi.decision.alerts')">
         <div class="filters">
-          <a-button :loading="al.loading" @click="loadAlerts"><template #icon><ReloadOutlined /></template>重新计算</a-button>
-          <span class="sub-text">触发 {{ al.list.filter((a) => a.triggered).length }} 条 / 共 {{ al.list.length }} 条启用的规则</span>
+          <a-button :loading="al.loading" @click="loadAlerts"><template #icon><ReloadOutlined /></template>{{ $t('bi.decision.recalc') }}</a-button>
+          <span class="sub-text">{{ $t('bi.decision.triggeredSummary', { n: al.list.filter((a) => a.triggered).length, total: al.list.length }) }}</span>
         </div>
         <a-row :gutter="[16, 16]">
           <a-col v-for="a in al.list" :key="a.ruleId" :xs="24" :md="12" :xl="8">
@@ -128,19 +128,19 @@
               <div class="alert-head">
                 <span class="alert-name">{{ a.name }}</span>
                 <DictTag v-if="a.triggered" type="bi_alert_level" :value="a.level" />
-                <a-tag v-else color="green" :bordered="false">正常</a-tag>
+                <a-tag v-else color="green" :bordered="false">{{ $t('bi.decision.normal') }}</a-tag>
               </div>
               <div class="alert-value">{{ fmtValue(a.value, a.unit) }} <small>{{ a.unit }}</small></div>
-              <div class="sub-text">{{ a.metricLabel }} {{ OPERATORS[a.operator] }} {{ fmtValue(a.threshold, a.unit) }}{{ a.unit }} 时预警</div>
+              <div class="sub-text">{{ $t('bi.decision.alertWhen', { metric: a.metricLabel, op: OPERATORS[a.operator], value: fmtValue(a.threshold, a.unit), unit: a.unit }) }}</div>
               <div v-if="a.triggered && a.remark" class="alert-remark">{{ a.remark }}</div>
             </div>
           </a-col>
         </a-row>
 
-        <a-divider orientation="left">预警规则</a-divider>
+        <a-divider orientation="left">{{ $t('bi.decision.rules') }}</a-divider>
         <div class="filters">
           <a-button v-perm="'bi:alert:edit'" type="primary" @click="openRule(null)">
-            <template #icon><PlusOutlined /></template>新增规则
+            <template #icon><PlusOutlined /></template>{{ $t('bi.decision.addRule') }}
           </a-button>
         </div>
         <a-table size="small" row-key="id" :data-source="rules" :columns="ruleColumns" :pagination="false" :scroll="{ x: 900 }">
@@ -151,12 +151,12 @@
             </template>
             <template v-else-if="column.key === 'level'"><DictTag type="bi_alert_level" :value="record.level" /></template>
             <template v-else-if="column.key === 'enabled'">
-              <a-tag :color="record.enabled === 1 ? 'green' : 'default'" :bordered="false">{{ record.enabled === 1 ? '启用' : '停用' }}</a-tag>
+              <a-tag :color="record.enabled === 1 ? 'green' : 'default'" :bordered="false">{{ record.enabled === 1 ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
             </template>
             <template v-else-if="column.key === 'action'">
               <span v-perm="'bi:alert:edit'" class="table-actions">
-                <a-button type="link" size="small" @click="openRule(record)"><EditOutlined />编辑</a-button>
-                <a-popconfirm :title="`确定删除规则「${record.name}」？`" @confirm="removeRule(record)">
+                <a-button type="link" size="small" @click="openRule(record)"><EditOutlined />{{ $t('common.action.edit') }}</a-button>
+                <a-popconfirm :title="$t('bi.decision.confirmDeleteRule', { name: record.name })" @confirm="removeRule(record)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
               </span>
@@ -166,37 +166,37 @@
       </a-tab-pane>
     </a-tabs>
 
-    <a-modal v-model:open="ruleOpen" :title="ruleForm.id ? '编辑预警规则' : '新增预警规则'" :confirm-loading="ruleSaving" @ok="saveRule">
+    <a-modal v-model:open="ruleOpen" :title="ruleForm.id ? $t('bi.decision.editRule') : $t('bi.decision.createRule')" :confirm-loading="ruleSaving" @ok="saveRule">
       <a-form ref="ruleRef" :model="ruleForm" :rules="ruleRules" layout="vertical">
-        <a-form-item label="规则名称" name="name">
+        <a-form-item :label="$t('bi.decision.ruleName')" name="name">
           <a-input v-model:value="ruleForm.name" :maxlength="64" />
         </a-form-item>
-        <a-form-item label="监控指标" name="metric">
-          <a-select v-model:value="ruleForm.metric" :options="metrics.map((m) => ({ value: m.key, label: `${m.label}（${m.unit}）` }))" />
+        <a-form-item :label="$t('bi.decision.metric')" name="metric">
+          <a-select v-model:value="ruleForm.metric" :options="metrics.map((m) => ({ value: m.key, label: m.unit ? `${m.label} (${m.unit})` : m.label }))" />
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="12">
-            <a-form-item label="比较" name="operator">
+            <a-form-item :label="$t('bi.decision.operator')" name="operator">
               <a-select v-model:value="ruleForm.operator" :options="Object.entries(OPERATORS).map(([value, label]) => ({ value, label }))" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="阈值" name="threshold">
+            <a-form-item :label="$t('bi.decision.threshold')" name="threshold">
               <a-input-number v-model:value="ruleForm.threshold" class="full" :addon-after="metricUnit(ruleForm.metric) || undefined" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="级别" name="level">
+            <a-form-item :label="$t('bi.decision.level')" name="level">
               <a-select v-model:value="ruleForm.level" :options="toOptions(dict.bi_alert_level)" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="启用">
+            <a-form-item :label="$t('common.action.enable')">
               <a-switch v-model:checked="ruleForm.enabledBool" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="处理建议" name="remark">
+        <a-form-item :label="$t('bi.decision.suggestion')" name="remark">
           <a-textarea v-model:value="ruleForm.remark" :rows="2" :maxlength="255" />
         </a-form-item>
       </a-form>
@@ -219,16 +219,18 @@ import { formatQty } from '@/components/wms/wms'
 import { percent, periodLabel, shortMoney } from '@/components/charts/charts'
 import { useDict } from '@/composables/useDict'
 import { toOptions } from '@/utils/dict'
+import { t } from '@/locales'
 
-const OPERATORS = { GT: '大于', GE: '不小于', LT: '小于', LE: '不大于' }
+const OPERATORS = { GT: t('bi.decision.op.GT'), GE: t('bi.decision.op.GE'), LT: t('bi.decision.op.LT'), LE: t('bi.decision.op.LE') }
 const dict = useDict('wms_material_category', 'bi_alert_level')
 const tab = ref('forecast')
 const loaded = new Set()
 
-const fmtValue = (v, unit) => (v === null || v === undefined ? '-' : unit === '元' ? formatMoney(v) : Number(v).toLocaleString('zh-CN'))
+const fmtValue = (v, unit) => (v === null || v === undefined ? '-' : unit === t('bi.common.yuanUnit') ? formatMoney(v) : Number(v).toLocaleString('zh-CN'))
 
 // ---------------------------------------------------------------- 销售预测
 
+const forecastColumns = [{ title: t('bi.decision.month'), key: 'period' }, { title: t('bi.decision.forecastAmount'), key: 'amount', align: 'right' }]
 const fc = reactive({ category: undefined, months: 3, data: null, loading: false })
 
 async function loadForecast() {
@@ -264,10 +266,10 @@ const forecastOption = computed(() => {
     yAxis: { type: 'value', axisLabel: { formatter: shortMoney } },
     series: [
       {
-        name: '实际销售额', type: 'line', smooth: true, data: periods.map((p) => histMap[p] ?? null),
-        markLine: { symbol: 'none', silent: true, label: { formatter: '本月' }, lineStyle: { type: 'dotted' }, data: [{ xAxis: periodLabel(current) }] }
+        name: t('bi.decision.actual'), type: 'line', smooth: true, data: periods.map((p) => histMap[p] ?? null),
+        markLine: { symbol: 'none', silent: true, label: { formatter: t('bi.decision.thisMonth') }, lineStyle: { type: 'dotted' }, data: [{ xAxis: periodLabel(current) }] }
       },
-      { name: '预测', type: 'line', smooth: true, lineStyle: { type: 'dashed' }, data: periods.map((p) => fcMap[p] ?? null) }
+      { name: t('bi.decision.predicted'), type: 'line', smooth: true, lineStyle: { type: 'dashed' }, data: periods.map((p) => fcMap[p] ?? null) }
     ]
   }
 })
@@ -276,13 +278,13 @@ const forecastOption = computed(() => {
 
 const abc = reactive({ data: null, loading: false })
 const abcColumns = [
-  { title: '物料', key: 'material', width: 240 },
-  { title: '分类', key: 'category', width: 100 },
-  { title: '数量', key: 'qty', width: 110, align: 'right' },
-  { title: '金额', key: 'value', width: 140, align: 'right' },
-  { title: '占比', key: 'share', width: 90, align: 'right' },
-  { title: '累计占比', key: 'cumulative', width: 100, align: 'right' },
-  { title: '类别', key: 'class', width: 80 }
+  { title: t('bi.decision.material'), key: 'material', width: 240 },
+  { title: t('bi.decision.category'), key: 'category', width: 110 },
+  { title: t('common.field.quantity'), key: 'qty', width: 110, align: 'right' },
+  { title: t('common.field.amount'), key: 'value', width: 140, align: 'right' },
+  { title: t('bi.decision.share'), key: 'share', width: 90, align: 'right' },
+  { title: t('bi.decision.cumulative'), key: 'cumulative', width: 110, align: 'right' },
+  { title: t('bi.decision.class'), key: 'class', width: 80 }
 ]
 
 async function loadAbc() {
@@ -310,7 +312,7 @@ const paretoOption = computed(() => {
         name: abc.data.basis, type: 'bar', barMaxWidth: 24,
         data: rows.map((r) => ({ value: Number(r.value), itemStyle: { color: { A: '#f5222d', B: '#fa8c16' }[r.class] || '#8c8c8c' } }))
       },
-      { name: '累计占比', type: 'line', yAxisIndex: 1, smooth: true, data: rows.map((r) => Number(r.cumulative)) }
+      { name: t('bi.decision.cumulative'), type: 'line', yAxisIndex: 1, smooth: true, data: rows.map((r) => Number(r.cumulative)) }
     ]
   }
 })
@@ -319,12 +321,12 @@ const paretoOption = computed(() => {
 
 const slow = reactive({ days: 90, list: [], loading: false })
 const slowColumns = [
-  { title: '物料', key: 'material', width: 240 },
-  { title: '分类', key: 'category', width: 100 },
-  { title: '库存数量', key: 'qty', width: 120, align: 'right' },
-  { title: '库存金额', key: 'amount', width: 130, align: 'right' },
-  { title: '最近出库', key: 'lastOut', width: 170 },
-  { title: '呆滞天数', key: 'idleDays', width: 100 }
+  { title: t('bi.decision.material'), key: 'material', width: 240 },
+  { title: t('bi.decision.category'), key: 'category', width: 110 },
+  { title: t('bi.decision.stockQty'), key: 'qty', width: 120, align: 'right' },
+  { title: t('bi.decision.stockAmount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('bi.decision.lastOut'), key: 'lastOut', width: 170 },
+  { title: t('bi.decision.idleDays'), key: 'idleDays', width: 100 }
 ]
 
 async function loadSlow() {
@@ -344,13 +346,13 @@ const metrics = ref([])
 const metricLabel = (k) => metrics.value.find((m) => m.key === k)?.label || k
 const metricUnit = (k) => metrics.value.find((m) => m.key === k)?.unit || ''
 const ruleColumns = [
-  { title: '规则', dataIndex: 'name', width: 180 },
-  { title: '监控指标', key: 'metric', width: 220 },
-  { title: '预警条件', key: 'condition', width: 160 },
-  { title: '级别', key: 'level', width: 80 },
-  { title: '状态', key: 'enabled', width: 80 },
-  { title: '处理建议', dataIndex: 'remark', ellipsis: true },
-  { title: '操作', key: 'action', width: 140, fixed: 'right' }
+  { title: t('bi.decision.rule'), dataIndex: 'name', width: 180 },
+  { title: t('bi.decision.metric'), key: 'metric', width: 220 },
+  { title: t('bi.decision.condition'), key: 'condition', width: 180 },
+  { title: t('bi.decision.level'), key: 'level', width: 80 },
+  { title: t('common.field.status'), key: 'enabled', width: 90 },
+  { title: t('bi.decision.suggestion'), dataIndex: 'remark', ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
 
 async function loadAlerts() {
@@ -367,11 +369,11 @@ const ruleSaving = ref(false)
 const ruleRef = ref()
 const ruleForm = reactive({ id: null, name: '', metric: undefined, operator: 'GT', threshold: 0, level: 'WARN', enabledBool: true, remark: '' })
 const ruleRules = {
-  name: [{ required: true, whitespace: true, message: '请输入规则名称' }],
-  metric: [{ required: true, message: '请选择监控指标' }],
-  operator: [{ required: true, message: '请选择比较方式' }],
-  threshold: [{ required: true, message: '请填写阈值' }],
-  level: [{ required: true, message: '请选择级别' }]
+  name: [{ required: true, whitespace: true, message: t('common.rule.required', { name: t('bi.decision.ruleName') }) }],
+  metric: [{ required: true, message: t('common.rule.requiredSelect', { name: t('bi.decision.metric') }) }],
+  operator: [{ required: true, message: t('common.rule.requiredSelect', { name: t('bi.decision.operator') }) }],
+  threshold: [{ required: true, message: t('common.rule.required', { name: t('bi.decision.threshold') }) }],
+  level: [{ required: true, message: t('common.rule.requiredSelect', { name: t('bi.decision.level') }) }]
 }
 
 function openRule(r) {
@@ -392,7 +394,7 @@ async function saveRule() {
     const { id, enabledBool, ...rest } = ruleForm
     const data = { ...rest, enabled: enabledBool ? 1 : 0, remark: rest.remark || null }
     id ? await updateAlertRule(id, data) : await addAlertRule(data)
-    message.success('保存成功')
+    message.success(t('common.msg.saveSuccess'))
     ruleOpen.value = false
     loadAlerts()
   } finally {
@@ -402,16 +404,16 @@ async function saveRule() {
 
 async function removeRule(r) {
   await deleteAlertRule(r.id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   loadAlerts()
 }
 
 // 切换到某个标签页时才加载
 const LOADERS = { forecast: loadForecast, abc: loadAbc, slow: loadSlow, alerts: loadAlerts }
-watch(tab, (t) => {
-  if (!loaded.has(t)) {
-    loaded.add(t)
-    LOADERS[t]()
+watch(tab, (k) => {
+  if (!loaded.has(k)) {
+    loaded.add(k)
+    LOADERS[k]()
   }
 })
 onMounted(() => {

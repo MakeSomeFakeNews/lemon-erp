@@ -98,10 +98,10 @@ public class MesSupplementService {
                 throw new BizException("补料的物料必须是工单用料");
             }
             if (!seen.add(item.materialId())) {
-                throw new BizException("物料「" + line.getMaterialCode() + " " + line.getMaterialName() + "」重复");
+                throw new BizException("物料「{0} {1}」重复", line.getMaterialCode(), line.getMaterialName());
             }
             if (Integer.valueOf(1).equals(line.getSerialEnabled()) && item.qty().stripTrailingZeros().scale() > 0) {
-                throw new BizException("物料「" + line.getMaterialCode() + " " + line.getMaterialName() + "」启用了序列号管理，数量必须为整数");
+                throw new BizException("物料「{0} {1}」启用了序列号管理，数量必须为整数", line.getMaterialCode(), line.getMaterialName());
             }
         }
         LoginUser user = SecurityUtils.getLoginUser();
@@ -150,7 +150,7 @@ public class MesSupplementService {
         }
         if ("APPROVING".equals(s.getStatus()) && s.getFlowInstanceId() != null
                 && flowApi.getStatus(s.getFlowInstanceId()) == FlowStatus.RUNNING) {
-            flowApi.cancel(s.getFlowInstanceId(), "撤销补料申请");
+            flowApi.cancel(s.getFlowInstanceId(), "撤销补料申请"); // i18n-ignore
         }
         transit(id, List.of("APPROVING", "APPROVED"), "CANCELED");
     }
@@ -181,11 +181,10 @@ public class MesSupplementService {
             }
             BigDecimal left = item.getQty().subtract(item.getIssuedQty());
             if (e.getValue().compareTo(left) > 0) {
-                throw new BizException("物料「" + item.getMaterialCode() + " " + item.getMaterialName() + "」发料数量超过未发数量 "
-                        + left.stripTrailingZeros().toPlainString());
+                throw new BizException("物料「{0} {1}」发料数量超过未发数量 {2}", item.getMaterialCode(), item.getMaterialName(), left.stripTrailingZeros().toPlainString());
             }
         }
-        String remark = "补料申请 " + s.getSuppNo() + (req.remark() == null ? "" : " " + req.remark());
+        String remark = "补料申请 " + s.getSuppNo() + (req.remark() == null ? "" : " " + req.remark()); // i18n-ignore
         MesWoDoc doc = docService.issueSupplement(s.getWoId(), new WoDocRequest(req.warehouseId(), req.bizDate(),
                 remark.length() > 255 ? remark.substring(0, 255) : remark,
                 req.items().stream().map(i -> new WoDocItemRequest(i.materialId(), i.locationId(), i.batchNo(), null, null,
@@ -234,7 +233,7 @@ public class MesSupplementService {
                 .eq(MesWoSupplement::getWoId, e.woId()).in(MesWoSupplement::getStatus, "APPROVING", "APPROVED"))) {
             if (s.getFlowInstanceId() != null && "APPROVING".equals(s.getStatus())
                     && flowApi.getStatus(s.getFlowInstanceId()) == FlowStatus.RUNNING) {
-                flowApi.cancel(s.getFlowInstanceId(), "工单已关闭");
+                flowApi.cancel(s.getFlowInstanceId(), "工单已关闭"); // i18n-ignore
             }
             suppMapper.update(Wrappers.<MesWoSupplement>lambdaUpdate().set(MesWoSupplement::getStatus, "CANCELED")
                     .set(MesWoSupplement::getUpdateTime, LocalDateTime.now())

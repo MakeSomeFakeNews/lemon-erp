@@ -48,14 +48,14 @@ public class QmsCapaController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('qms:capa:add')")
-    @OperLog(title = "纠正预防", type = OperType.INSERT)
+    @OperLog(title = "纠正预防", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody QmsRequests.Capa req) {
         return R.ok(capaService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('qms:capa:add')")
-    @OperLog(title = "纠正预防", type = OperType.UPDATE)
+    @OperLog(title = "纠正预防", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody QmsRequests.Capa req) {
         capaService.update(id, req);
         return R.ok();
@@ -63,7 +63,7 @@ public class QmsCapaController {
 
     @PutMapping("/{id}/steps/{stepId}")
     @PreAuthorize("@ss.hasPerm('qms:capa:edit')")
-    @OperLog(title = "纠正预防-8D 填写", type = OperType.UPDATE)
+    @OperLog(title = "纠正预防-8D 填写", type = OperType.UPDATE) // i18n-ignore
     public R<Void> saveStep(@PathVariable Long id, @PathVariable Long stepId, @Valid @RequestBody QmsRequests.CapaStep req) {
         capaService.saveStep(id, stepId, req);
         return R.ok();
@@ -71,7 +71,7 @@ public class QmsCapaController {
 
     @PostMapping("/{id}/submit")
     @PreAuthorize("@ss.hasPerm('qms:capa:edit')")
-    @OperLog(title = "纠正预防-提交验证", type = OperType.UPDATE)
+    @OperLog(title = "纠正预防-提交验证", type = OperType.UPDATE) // i18n-ignore
     public R<Void> submit(@PathVariable Long id) {
         capaService.submitVerify(id);
         return R.ok();
@@ -79,7 +79,7 @@ public class QmsCapaController {
 
     @PostMapping("/{id}/verify")
     @PreAuthorize("@ss.hasPerm('qms:capa:verify')")
-    @OperLog(title = "纠正预防-效果验证", type = OperType.UPDATE)
+    @OperLog(title = "纠正预防-效果验证", type = OperType.UPDATE) // i18n-ignore
     public R<Void> verify(@PathVariable Long id, @Valid @RequestBody QmsRequests.CapaVerify req) {
         capaService.verify(id, req);
         return R.ok();
@@ -87,7 +87,7 @@ public class QmsCapaController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('qms:capa:remove')")
-    @OperLog(title = "纠正预防", type = OperType.DELETE)
+    @OperLog(title = "纠正预防", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
         capaService.delete(id);
         return R.ok();

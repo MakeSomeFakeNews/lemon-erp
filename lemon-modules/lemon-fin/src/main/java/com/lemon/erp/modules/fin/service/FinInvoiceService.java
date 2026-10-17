@@ -3,6 +3,7 @@ package com.lemon.erp.modules.fin.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.InvoiceRequest;
@@ -23,7 +24,6 @@ import com.lemon.erp.modules.scm.mapper.ScmCustomerMapper;
 import com.lemon.erp.modules.scm.mapper.ScmSupplierMapper;
 import com.lemon.erp.framework.excel.ImportResult;
 import com.lemon.erp.framework.excel.ImportRow;
-import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.springframework.transaction.support.TransactionTemplate;
 import lombok.RequiredArgsConstructor;
@@ -102,7 +102,7 @@ public class FinInvoiceService {
         }
         BigDecimal total = matchBills(billKind, req.partnerId(), null, req.items());
         if (total.compareTo(req.amount()) != 0) {
-            throw new BizException("勾稽金额合计 " + total.toPlainString() + " 与发票价税合计 " + req.amount().toPlainString() + " 不一致");
+            throw new BizException("勾稽金额合计 {0} 与发票价税合计 {1} 不一致", total.toPlainString(), req.amount().toPlainString());
         }
         FinInvoice invoice = new FinInvoice();
         invoice.setKind(req.kind());
@@ -120,7 +120,7 @@ public class FinInvoiceService {
         try {
             invoiceMapper.insert(invoice);
         } catch (DuplicateKeyException e) {
-            throw new BizException("发票号码已登记：" + req.invoiceNo());
+            throw new BizException("发票号码已登记：{0}", req.invoiceNo());
         }
         saveItems(invoice.getId(), req.items());
         return invoice.getId();
@@ -141,7 +141,7 @@ public class FinInvoiceService {
         Set<Long> already = invoice.getItems().stream().map(FinInvoiceItem::getBillId).collect(Collectors.toSet());
         BigDecimal total = matchBills(billKind(invoice.getKind()), invoice.getPartnerId(), already, items);
         if (invoiceMapper.addMatched(id, total) == 0) {
-            throw new BizException("勾稽金额合计超过发票未勾稽金额 " + invoice.getAmount().subtract(invoice.getMatchedAmount()).toPlainString());
+            throw new BizException("勾稽金额合计超过发票未勾稽金额 {0}", invoice.getAmount().subtract(invoice.getMatchedAmount()).toPlainString());
         }
         saveItems(id, items);
     }
@@ -209,7 +209,7 @@ public class FinInvoiceService {
                 String label = names == null ? "" : names.get(row.rowNum() - 1) + "：";
                 String error = validate(d);
                 if (error == null && !seen.add(d.invoiceNo().trim())) {
-                    error = "发票号码重复：" + d.invoiceNo();
+                    error = I18n.t("发票号码重复：{0}", d.invoiceNo());
                 }
                 if (error == null && invoiceMapper.exists(Wrappers.<FinInvoice>lambdaQuery().eq(FinInvoice::getKind, kind)
                         .eq(FinInvoice::getInvoiceNo, d.invoiceNo().trim()))) {
@@ -220,8 +220,8 @@ public class FinInvoiceService {
                 if (error == null) {
                     partnerId = input ? supplierId(d.sellerTaxNo(), d.sellerName()) : customerId(d.buyerTaxNo(), d.buyerName());
                     if (partnerId == null) {
-                        error = (input ? "供应商" : "客户") + "「" + (input ? partyText(d.sellerTaxNo(), d.sellerName()) : partyText(d.buyerTaxNo(), d.buyerName()))
-                                + "」不存在，请先在往来单位中登记（纳税人识别号或名称）";
+                        error = input ? I18n.t("供应商「{0}」不存在，请先在往来单位中登记（纳税人识别号或名称）", partyText(d.sellerTaxNo(), d.sellerName()))
+                                : I18n.t("客户「{0}」不存在，请先在往来单位中登记（纳税人识别号或名称）", partyText(d.buyerTaxNo(), d.buyerName()));
                     }
                 }
                 if (error != null) {
@@ -305,16 +305,16 @@ public class FinInvoiceService {
         for (InvoiceRequest.Item item : items) {
             FinBill bill = bills.get(item.billId());
             if (bill == null || !bill.getKind().equals(billKind) || !bill.getPartnerId().equals(partnerId)) {
-                throw new BizException("勾稽的单据不属于该" + ("AR".equals(billKind) ? "客户" : "供应商"));
+                throw new BizException(FinConstants.BILL_AR.equals(billKind) ? "勾稽的单据不属于该客户" : "勾稽的单据不属于该供应商");
             }
             if (!seen.add(bill.getId()) || (already != null && already.contains(bill.getId()))) {
-                throw new BizException("单据重复：" + bill.getBillNo());
+                throw new BizException("单据重复：{0}", bill.getBillNo());
             }
             if (item.amount().signum() == 0 || item.amount().signum() != bill.getAmount().signum()) {
-                throw new BizException(bill.getBillNo() + "：勾稽金额必须与单据金额同号且不为 0");
+                throw new BizException("{0}：勾稽金额必须与单据金额同号且不为 0", bill.getBillNo());
             }
             if (billMapper.addInvoiced(bill.getId(), item.amount()) == 0) {
-                throw new BizException(bill.getBillNo() + "：勾稽金额超过未开票金额 " + bill.getAmount().subtract(bill.getInvoicedAmount()).toPlainString());
+                throw new BizException("{0}：勾稽金额超过未开票金额 {1}", bill.getBillNo(), bill.getAmount().subtract(bill.getInvoicedAmount()).toPlainString());
             }
             total = total.add(item.amount());
         }
@@ -373,7 +373,7 @@ public class FinInvoiceService {
             return null;
         }
         return violations.stream().sorted(Comparator.comparing(v -> v.getPropertyPath().toString()))
-                .map(ConstraintViolation::getMessage).distinct().collect(Collectors.joining("；"));
+                .map(v -> I18n.t(v.getMessage())).distinct().collect(Collectors.joining("；"));
     }
 
     /**
@@ -394,7 +394,7 @@ public class FinInvoiceService {
             throw new BizException("发票已作废");
         }
         if (invoice.getCertifyPeriod() != null) {
-            throw new BizException("进项发票已认证（" + invoice.getCertifyPeriod() + "），不能作废");
+            throw new BizException("进项发票已认证（{0}），不能作废", invoice.getCertifyPeriod());
         }
         invoiceMapper.update(Wrappers.<FinInvoice>lambdaUpdate().set(FinInvoice::getStatus, VOID).eq(FinInvoice::getId, id)
                 .eq(FinInvoice::getStatus, VALID));
@@ -408,7 +408,7 @@ public class FinInvoiceService {
     public void certify(List<Long> ids, Integer period) {
         for (FinInvoice invoice : invoiceMapper.selectByIds(ids)) {
             if (!INPUT.equals(invoice.getKind()) || !VALID.equals(invoice.getStatus())) {
-                throw new BizException("只能认证有效的进项发票：" + invoice.getInvoiceNo());
+                throw new BizException("只能认证有效的进项发票：{0}", invoice.getInvoiceNo());
             }
         }
         invoiceMapper.update(Wrappers.<FinInvoice>lambdaUpdate().set(FinInvoice::getCertifyPeriod, period).in(FinInvoice::getId, ids));
@@ -426,6 +426,6 @@ public class FinInvoiceService {
         if (INPUT.equals(kind)) {
             return FinConstants.BILL_AP;
         }
-        throw new BizException("发票种类不正确：" + kind);
+        throw new BizException("发票种类不正确：{0}", kind);
     }
 }

@@ -51,7 +51,7 @@ public class SysDictController {
 
     @PostMapping("/type")
     @PreAuthorize("@ss.hasPerm('sys:dict:add')")
-    @OperLog(title = "字典类型", type = OperType.INSERT)
+    @OperLog(title = "字典类型", type = OperType.INSERT) // i18n-ignore 操作日志存库
     public R<Void> createType(@Validated(Create.class) @RequestBody SysDictType type) {
         dictService.createType(type);
         return R.ok();
@@ -59,7 +59,7 @@ public class SysDictController {
 
     @PutMapping("/type/{id}")
     @PreAuthorize("@ss.hasPerm('sys:dict:edit')")
-    @OperLog(title = "字典类型", type = OperType.UPDATE)
+    @OperLog(title = "字典类型", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> updateType(@PathVariable Long id, @Validated(Update.class) @RequestBody SysDictType type) {
         type.setId(id);
         dictService.updateType(type);
@@ -68,7 +68,7 @@ public class SysDictController {
 
     @DeleteMapping("/type/{ids}")
     @PreAuthorize("@ss.hasPerm('sys:dict:remove')")
-    @OperLog(title = "字典类型", type = OperType.DELETE)
+    @OperLog(title = "字典类型", type = OperType.DELETE) // i18n-ignore 操作日志存库
     public R<Void> deleteTypes(@PathVariable List<Long> ids) {
         dictService.deleteTypes(ids);
         return R.ok();
@@ -93,7 +93,7 @@ public class SysDictController {
 
     @PostMapping("/data")
     @PreAuthorize("@ss.hasPerm('sys:dict:add')")
-    @OperLog(title = "字典数据", type = OperType.INSERT)
+    @OperLog(title = "字典数据", type = OperType.INSERT) // i18n-ignore 操作日志存库
     public R<Void> createData(@Validated(Create.class) @RequestBody SysDictData data) {
         dictService.createData(data);
         return R.ok();
@@ -101,7 +101,7 @@ public class SysDictController {
 
     @PutMapping("/data/{id}")
     @PreAuthorize("@ss.hasPerm('sys:dict:edit')")
-    @OperLog(title = "字典数据", type = OperType.UPDATE)
+    @OperLog(title = "字典数据", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> updateData(@PathVariable Long id, @Validated(Update.class) @RequestBody SysDictData data) {
         data.setId(id);
         dictService.updateData(data);
@@ -110,7 +110,7 @@ public class SysDictController {
 
     @DeleteMapping("/data/{ids}")
     @PreAuthorize("@ss.hasPerm('sys:dict:remove')")
-    @OperLog(title = "字典数据", type = OperType.DELETE)
+    @OperLog(title = "字典数据", type = OperType.DELETE) // i18n-ignore 操作日志存库
     public R<Void> deleteData(@PathVariable List<Long> ids) {
         dictService.deleteData(ids);
         return R.ok();

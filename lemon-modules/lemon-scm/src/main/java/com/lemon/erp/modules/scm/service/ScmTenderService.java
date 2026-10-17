@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -127,8 +128,8 @@ public class ScmTenderService {
         }
         transit(id, TenderStatus.DRAFT, TenderStatus.BIDDING);
         for (ScmTenderSupplier s : tenderMapper.selectSuppliers(id)) {
-            portalNotifier.notify(s.getSupplierId(), "REMIND", "招标邀请：" + tender.getTitle(),
-                    "招标编号 " + tender.getTenderNo() + "，请在 " + tender.getDeadline().toString().replace('T', ' ') + " 前投标", "/portal/tender");
+            portalNotifier.notify(s.getSupplierId(), "REMIND", "招标邀请：" + tender.getTitle(), // i18n-ignore
+                    "招标编号 " + tender.getTenderNo() + "，请在 " + tender.getDeadline().toString().replace('T', ' ') + " 前投标", "/portal/tender"); // i18n-ignore
         }
     }
 
@@ -227,7 +228,7 @@ public class ScmTenderService {
             LocalDate start = req.startDate() != null ? req.startDate() : LocalDate.now();
             LocalDate end = req.endDate() != null ? req.endDate() : start.plusYears(1).minusDays(1);
             contractId = contractService.create(new SrmRequests.Contract(tender.getTitle(), req.supplierId(), ContractType.FIXED,
-                    LocalDate.now(), start, end, null, null, null, "招标 " + tender.getTenderNo() + " 定标生成",
+                    LocalDate.now(), start, end, null, null, null, "招标 " + tender.getTenderNo() + " 定标生成", // i18n-ignore
                     items.stream().map(i -> new SrmRequests.ContractItem(i.getMaterialId(), prices.get(i.getId()).getPrice(),
                             prices.get(i.getId()).getTaxRate(), i.getQty(), i.getRemark())).toList()), id);
         } else if (req.target() == AwardTarget.ORDER) {
@@ -236,7 +237,7 @@ public class ScmTenderService {
             }
             LocalDate leadDate = LocalDate.now().plusDays(bid.getDeliveryDays() == null ? 0 : bid.getDeliveryDays());
             orderId = orderService.createDraft(OrderKind.PURCHASE, new OrderRequest(req.supplierId(), LocalDate.now(), null, req.warehouseId(),
-                    "招标 " + tender.getTenderNo() + " 定标生成",
+                    "招标 " + tender.getTenderNo() + " 定标生成", // i18n-ignore
                     items.stream().map(i -> new OrderItemRequest(i.getMaterialId(), i.getQty(), prices.get(i.getId()).getPrice(),
                             prices.get(i.getId()).getTaxRate(), i.getRequiredDate() != null ? i.getRequiredDate() : leadDate, i.getRemark()))
                             .toList()), "TENDER");
@@ -250,8 +251,8 @@ public class ScmTenderService {
                 .eq(ScmTender::getId, id).eq(ScmTender::getStatus, TenderStatus.OPENED)) == 0) {
             throw new BizException("招标状态已变化，请刷新后重试");
         }
-        portalNotifier.notify(req.supplierId(), "REMIND", "中标通知：" + tender.getTitle(),
-                "您在招标 " + tender.getTenderNo() + " 中中标，采购将与您签订合同或下达订单", "/portal/tender");
+        portalNotifier.notify(req.supplierId(), "REMIND", "中标通知：" + tender.getTitle(), // i18n-ignore
+                "您在招标 " + tender.getTenderNo() + " 中中标，采购将与您签订合同或下达订单", "/portal/tender"); // i18n-ignore
     }
 
     // ---------------------------------------------------------------- 供应商门户
@@ -316,7 +317,7 @@ public class ScmTenderService {
         for (Long supplierId : req.supplierIds()) {
             ScmSupplier supplier = supplierService.get(supplierId);
             if (!Integer.valueOf(1).equals(supplier.getStatus())) {
-                throw new BizException("供应商「" + supplier.getName() + "」已停用");
+                throw new BizException("供应商「{0}」已停用", supplier.getName());
             }
         }
     }
@@ -363,7 +364,7 @@ public class ScmTenderService {
     private ScmTender requireStatus(Long id, TenderStatus status, String action) {
         ScmTender tender = getAccessible(id);
         if (tender.getStatus() != status) {
-            throw new BizException("招标当前状态不能" + action);
+            throw new BizException("招标当前状态不能{0}", I18n.t(action));
         }
         return tender;
     }

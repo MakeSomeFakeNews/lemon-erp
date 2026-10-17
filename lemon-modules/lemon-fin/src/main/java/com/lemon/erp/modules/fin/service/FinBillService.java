@@ -144,7 +144,7 @@ public class FinBillService {
         if (amount.signum() == 0) {
             throw new BizException("金额不能为 0");
         }
-        periodGuard.checkOpen(billDate, "AR".equals(kind) ? "应收单" : "应付单");
+        periodGuard.checkOpen(billDate, "AR".equals(kind) ? "应收单" : "应付单"); // i18n-ignore
         FinBill bill = newBill(kind, partnerId, sourceType, sourceId, sourceNo, billDate,
                 billDate.plusDays(paymentDays(kind, partnerId)), amount, tax);
         bill.setRemark(remark);
@@ -162,12 +162,12 @@ public class FinBillService {
         }
         if (bill.getSettledAmount().signum() != 0
                 || settlementItemMapper.exists(Wrappers.<FinSettlementItem>lambdaQuery().eq(FinSettlementItem::getBillId, id))) {
-            throw new BizException(bill.getBillNo() + " 已收款核销，不能取消");
+            throw new BizException("{0} 已收款核销，不能取消", bill.getBillNo());
         }
         if (bill.getVoucherId() != null) {
-            throw new BizException(bill.getBillNo() + " 已生成凭证，请先在财务中删除凭证");
+            throw new BizException("{0} 已生成凭证，请先在财务中删除凭证", bill.getBillNo());
         }
-        periodGuard.checkOpen(bill.getBillDate(), "应收应付单");
+        periodGuard.checkOpen(bill.getBillDate(), "应收应付单"); // i18n-ignore
         billMapper.deleteById(id);
     }
 
@@ -176,11 +176,11 @@ public class FinBillService {
     public void delete(List<Long> ids) {
         for (FinBill bill : billMapper.selectByIds(ids)) {
             if (!"MANUAL".equals(bill.getSourceType())) {
-                throw new BizException(bill.getBillNo() + " 由业务单据生成，不能删除");
+                throw new BizException("{0} 由业务单据生成，不能删除", bill.getBillNo());
             }
             if (bill.getSettledAmount().signum() != 0
                     || settlementItemMapper.exists(Wrappers.<FinSettlementItem>lambdaQuery().eq(FinSettlementItem::getBillId, bill.getId()))) {
-                throw new BizException(bill.getBillNo() + " 已核销，不能删除");
+                throw new BizException("{0} 已核销，不能删除", bill.getBillNo());
             }
         }
         billMapper.deleteByIds(ids);
@@ -193,7 +193,7 @@ public class FinBillService {
                 e.shipDate().plusDays(paymentDays("AP", e.carrierId())), e.freight(), BigDecimal.ZERO);
         bill.setExpenseAccountId(accountRules.accountId(AccountRole.SELLING_EXPENSE));
         bill.setDeptId(e.deptId());
-        bill.setRemark("发运单 " + e.shipNo() + " 运费");
+        bill.setRemark("发运单 " + e.shipNo() + " 运费"); // i18n-ignore
         billMapper.insert(bill);
         shipmentMapper.update(Wrappers.<ScmShipment>lambdaUpdate().set(ScmShipment::getFreightBillId, bill.getId())
                 .eq(ScmShipment::getId, e.shipmentId()));
@@ -203,7 +203,7 @@ public class FinBillService {
     @EventListener
     public void onSupplierClaimConfirmed(SupplierClaimConfirmedEvent e) {
         FinBill bill = createFromSource(BILL_AP, e.supplierId(), BILL_SOURCE_QUALITY_CLAIM, e.claimId(), e.claimNo(), e.claimDate(),
-                e.amount().negate(), BigDecimal.ZERO, "质量索赔 " + e.claimNo() + "：" + e.reason(), null);
+                e.amount().negate(), BigDecimal.ZERO, "质量索赔 " + e.claimNo() + "：" + e.reason(), null); // i18n-ignore
         claimMapper.update(Wrappers.<QmsSupplierClaim>lambdaUpdate().set(QmsSupplierClaim::getBillId, bill.getId())
                 .eq(QmsSupplierClaim::getId, e.claimId()));
     }
@@ -221,7 +221,7 @@ public class FinBillService {
     public void onRebateSettled(RebateSettledEvent e) {
         BigDecimal tax = ScmConstants.tax(e.amount(), REBATE_TAX_RATE);
         FinBill bill = createFromSource(BILL_AR, e.customerId(), BILL_SOURCE_REBATE, e.rebateId(), e.rebateNo(), e.settleDate(),
-                e.amount().negate(), tax.negate(), "销售返利 " + e.rebateNo(), null);
+                e.amount().negate(), tax.negate(), "销售返利 " + e.rebateNo(), null); // i18n-ignore
         rebateMapper.update(Wrappers.<ScmRebate>lambdaUpdate().set(ScmRebate::getBillId, bill.getId()).eq(ScmRebate::getId, e.rebateId()));
     }
 
@@ -261,7 +261,7 @@ public class FinBillService {
                 continue;
             }
             if ("MANUAL".equals(bill.getSourceType())) {
-                throw new BizException(bill.getBillNo() + " 为手工录入的期初单据，不需要生成凭证");
+                throw new BizException("{0} 为手工录入的期初单据，不需要生成凭证", bill.getBillNo());
             }
             Long voucherId = voucherService.createGenerated(bill.getBillDate(),
                     "AR".equals(bill.getKind()) ? VoucherSource.AR : VoucherSource.AP, bill.getBillNo(), lines(bill));
@@ -286,19 +286,19 @@ public class FinBillService {
             throw new BizException("只能核销红字以外的应收单，金额必须大于 0");
         }
         if (bill.getVoucherId() == null && !"MANUAL".equals(bill.getSourceType())) {
-            throw new BizException(bill.getBillNo() + " 还没有生成应收凭证，请先生成凭证");
+            throw new BizException("{0} 还没有生成应收凭证，请先生成凭证", bill.getBillNo());
         }
         if (bill.getCurrency() != null && !"CNY".equals(bill.getCurrency())) {
             throw new BizException("外币应收单请先收款或期末调汇后再处理坏账");
         }
         LocalDate d = date == null ? LocalDate.now() : date;
-        periodGuard.checkOpen(d, "坏账核销");
+        periodGuard.checkOpen(d, "坏账核销"); // i18n-ignore
         if (billMapper.addSettled(id, amount) == 0) {
-            throw new BizException("核销金额超过未核销金额 " + bill.getAmount().subtract(bill.getSettledAmount()).toPlainString());
+            throw new BizException("核销金额超过未核销金额 {0}", bill.getAmount().subtract(bill.getSettledAmount()).toPlainString());
         }
         billMapper.addSettledFc(id, amount);
         billMapper.addBadDebt(id, amount);
-        String summary = "坏账核销 " + bill.getBillNo() + " " + partnerName("AR", bill.getPartnerId())
+        String summary = "坏账核销 " + bill.getBillNo() + " " + partnerName("AR", bill.getPartnerId()) // i18n-ignore
                 + (reason == null || reason.isBlank() ? "" : " " + reason);
         return voucherService.createGenerated(d, VoucherSource.BAD_DEBT, bill.getBillNo(), List.of(
                 VoucherLine.debit(summary, accountRules.accountId(AccountRole.NON_OPERATING_EXPENSE), null, amount),
@@ -314,8 +314,8 @@ public class FinBillService {
         List<VoucherLine> lines = new ArrayList<>();
         BigDecimal sign = BigDecimal.valueOf(bill.getAmount().signum() < 0 ? -1 : 1);
         if ("AR".equals(bill.getKind())) {
-            String summary = (BILL_SOURCE_PROJECT.equals(bill.getSourceType()) ? "项目开票 " : BILL_SOURCE_TICKET.equals(bill.getSourceType()) ? "服务收费 "
-                    : BILL_SOURCE_REBATE.equals(bill.getSourceType()) ? "销售返利 " : sign.signum() < 0 ? "销售退货 " : "销售出库 ")
+            String summary = (BILL_SOURCE_PROJECT.equals(bill.getSourceType()) ? "项目开票 " : BILL_SOURCE_TICKET.equals(bill.getSourceType()) ? "服务收费 " // i18n-ignore
+                    : BILL_SOURCE_REBATE.equals(bill.getSourceType()) ? "销售返利 " : sign.signum() < 0 ? "销售退货 " : "销售出库 ") // i18n-ignore
                     + bill.getSourceNo() + " " + partner;
             BigDecimal net = bill.getAmount().subtract(bill.getTaxAmount());
             boolean project = BILL_SOURCE_PROJECT.equals(bill.getSourceType());
@@ -338,7 +338,7 @@ public class FinBillService {
         }
         if (BILL_SOURCE_QUALITY_CLAIM.equals(bill.getSourceType())) {
             // 质量索赔（红字应付单）：借 应付账款 / 贷 营业外收入
-            String summary = "质量索赔 " + bill.getSourceNo() + " " + partner;
+            String summary = "质量索赔 " + bill.getSourceNo() + " " + partner; // i18n-ignore
             BigDecimal amount = bill.getAmount().negate();
             lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.PAYABLE), null, amount)
                     .withSupplier(bill.getPartnerId()));
@@ -347,7 +347,7 @@ public class FinBillService {
         }
         if (bill.getExpenseAccountId() != null) {
             // 费用类应付（运费等）：借 费用科目、进项税额 / 贷 应付账款
-            String summary = "SHIPMENT".equals(bill.getSourceType()) ? "运费 " + bill.getSourceNo() + " " + partner
+            String summary = "SHIPMENT".equals(bill.getSourceType()) ? "运费 " + bill.getSourceNo() + " " + partner // i18n-ignore
                     : bill.getSourceNo() + " " + partner;
             lines.add(VoucherLine.debit(summary, bill.getExpenseAccountId(), bill.getDeptId(), bill.getAmount().subtract(bill.getTaxAmount())));
             lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INPUT_VAT), null, bill.getTaxAmount()));
@@ -355,7 +355,7 @@ public class FinBillService {
                     .withSupplier(bill.getPartnerId()));
             return lines;
         }
-        String summary = (sign.signum() < 0 ? "采购退货 " : "采购入库 ") + bill.getSourceNo() + " " + partner;
+        String summary = (sign.signum() < 0 ? "采购退货 " : "采购入库 ") + bill.getSourceNo() + " " + partner; // i18n-ignore
         for (Map<String, Object> row : billMapper.selectSourceByCategory(bill.getSourceId())) {
             BigDecimal net = new BigDecimal(row.get("net").toString()).multiply(sign);
             lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INVENTORY, (String) row.get("category")), null, net));
@@ -426,7 +426,7 @@ public class FinBillService {
 
     static void checkKind(String kind) {
         if (!KINDS.contains(kind)) {
-            throw new BizException("单据种类不正确：" + kind);
+            throw new BizException("单据种类不正确：{0}", kind);
         }
     }
 }

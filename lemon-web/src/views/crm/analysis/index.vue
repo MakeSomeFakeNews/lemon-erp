@@ -13,12 +13,12 @@
 
       <a-row :gutter="[16, 16]" class="row">
         <a-col :xs="24" :lg="16">
-          <a-card :bordered="false" class="page-card" title="近 12 个月销售与赢单">
+          <a-card :bordered="false" class="page-card" :title="$t('crm.analysis.card.trend')">
             <EChart :option="trendOption" height="300px" />
           </a-card>
         </a-col>
         <a-col :xs="24" :lg="8">
-          <a-card :bordered="false" class="page-card" title="客户阶段分布">
+          <a-card :bordered="false" class="page-card" :title="$t('crm.analysis.card.stage')">
             <EChart :option="stageOption" height="300px" />
           </a-card>
         </a-col>
@@ -26,7 +26,7 @@
 
       <a-row :gutter="[16, 16]" class="row">
         <a-col :xs="24" :lg="12">
-          <a-card :bordered="false" class="page-card" title="销售漏斗">
+          <a-card :bordered="false" class="page-card" :title="$t('crm.analysis.card.funnel')">
             <EChart :option="funnelOption" height="260px" />
             <a-table row-key="stage" size="small" :columns="funnelColumns" :data-source="funnel" :pagination="false">
               <template #bodyCell="{ column, record }">
@@ -35,21 +35,20 @@
                 <template v-else-if="column.key === 'conversion'">{{ record.conversion == null ? '-' : percent(record.conversion) }}</template>
               </template>
             </a-table>
-            <div class="sub-text note">到达：曾经推进到该阶段的商机数；转化率 = 到达下一阶段 / 到达本阶段</div>
+            <div class="sub-text note">{{ $t('crm.analysis.funnelNote') }}</div>
           </a-card>
         </a-col>
         <a-col :xs="24" :lg="12">
-          <a-card :bordered="false" class="page-card" title="客户价值分层（RFM，近一年）">
+          <a-card :bordered="false" class="page-card" :title="$t('crm.analysis.card.rfm')">
             <EChart :option="rfmOption" height="260px" />
             <div class="sub-text note">
-              与平均值比较：最近购买距今 {{ rfm.avgRecency ?? '-' }} 天、购买 {{ rfm.avgFrequency ?? '-' }} 次、
-              金额 ¥{{ formatMoney(rfm.avgMonetary) }}；R 近、F 多为「价值 / 保持」，M 高为「重要」
+              {{ $t('crm.analysis.rfmNote', { r: rfm.avgRecency ?? '-', f: rfm.avgFrequency ?? '-', m: formatMoney(rfm.avgMonetary) }) }}
             </div>
           </a-card>
         </a-col>
       </a-row>
 
-      <a-card :bordered="false" class="page-card row" title="客户 RFM 明细">
+      <a-card :bordered="false" class="page-card row" :title="$t('crm.analysis.card.rfmDetail')">
         <a-table row-key="customerId" size="small" :columns="rfmColumns" :data-source="rfm.rows || []" :pagination="{ pageSize: 10, showSizeChanger: false }" :scroll="{ x: 860 }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'customer'">
@@ -57,16 +56,16 @@
               <div class="sub-text">{{ record.code }}</div>
             </template>
             <template v-else-if="column.key === 'recency'">
-              <span :class="record.recent ? 'good' : 'bad'">{{ record.recency }} 天</span>
+              <span :class="record.recent ? 'good' : 'bad'">{{ $t('crm.analysis.days', { n: record.recency }) }}</span>
             </template>
             <template v-else-if="column.key === 'frequency'">
-              <span :class="record.frequent ? 'good' : 'bad'">{{ record.frequency }} 次</span>
+              <span :class="record.frequent ? 'good' : 'bad'">{{ $t('crm.analysis.times', { n: record.frequency }) }}</span>
             </template>
             <template v-else-if="column.key === 'monetary'">
               <span :class="record.valuable ? 'good' : 'bad'">¥{{ formatMoney(record.monetary) }}</span>
             </template>
             <template v-else-if="column.key === 'segment'">
-              <a-tag :color="segmentColor(record.segment)" :bordered="false">{{ record.segment }}</a-tag>
+              <a-tag :color="segmentColor(record.segment)" :bordered="false">{{ segmentText(record.segment) }}</a-tag>
             </template>
           </template>
         </a-table>
@@ -74,7 +73,7 @@
 
       <a-row :gutter="[16, 16]" class="row">
         <a-col :xs="24" :lg="12">
-          <a-card :bordered="false" class="page-card" title="来源分析">
+          <a-card :bordered="false" class="page-card" :title="$t('crm.analysis.card.source')">
             <a-table row-key="source" size="small" :columns="sourceColumns" :data-source="sources" :pagination="false">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'source'"><DictTag type="crm_source" :value="record.source" /></template>
@@ -85,13 +84,13 @@
           </a-card>
         </a-col>
         <a-col :xs="24" :lg="12">
-          <a-card :bordered="false" class="page-card" title="行业分布（近一年销售额）">
+          <a-card :bordered="false" class="page-card" :title="$t('crm.analysis.card.industry')">
             <EChart :option="industryOption" height="260px" />
           </a-card>
         </a-col>
       </a-row>
 
-      <a-card :bordered="false" class="page-card row" title="销售人员排名">
+      <a-card :bordered="false" class="page-card row" :title="$t('crm.analysis.card.owner')">
         <a-table row-key="userId" size="small" :columns="ownerColumns" :data-source="owners" :pagination="false" :scroll="{ x: 800 }">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'rank'">
@@ -102,11 +101,11 @@
         </a-table>
       </a-card>
 
-      <a-card :bordered="false" class="page-card row" title="服务质量">
+      <a-card :bordered="false" class="page-card row" :title="$t('crm.analysis.card.service')">
         <a-table row-key="type" size="small" :columns="ticketColumns" :data-source="tickets" :pagination="false" :scroll="{ x: 760 }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'type'"><DictTag type="crm_ticket_type" :value="record.type" /></template>
-            <template v-else-if="column.key === 'hours'">{{ record.avgMinutes == null ? '-' : `${(record.avgMinutes / 60).toFixed(1)} 小时` }}</template>
+            <template v-else-if="column.key === 'hours'">{{ record.avgMinutes == null ? '-' : $t('crm.analysis.hours', { n: (record.avgMinutes / 60).toFixed(1) }) }}</template>
             <template v-else-if="column.key === 'onTime'">{{ Number(record.resolved) ? percent((record.onTime * 100) / record.resolved) : '-' }}</template>
             <template v-else-if="column.key === 'satisfaction'">
               <a-rate v-if="record.satisfaction" :value="Math.round(Number(record.satisfaction) * 2) / 2" allow-half disabled class="rate" />
@@ -121,6 +120,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import EChart from '@/components/charts/EChart.vue'
 import { crmFunnel, crmIndustries, crmOverview, crmOwners, crmRfm, crmSources, crmTickets, crmTrend } from '@/api/crm'
@@ -128,6 +128,7 @@ import { useDict } from '@/composables/useDict'
 import { formatMoney } from '@/components/scm/scm'
 import { monthLabel, percent, shortMoney } from '@/components/charts/charts'
 
+const { t } = useI18n()
 const dict = useDict('crm_opp_stage', 'crm_customer_stage', 'crm_industry', 'crm_source', 'crm_ticket_type')
 const label = (type, v) => dict[type].find((d) => d.value === v)?.label || v
 
@@ -163,28 +164,28 @@ const num = (v) => Number(v) || 0
 const kpis = computed(() => {
   const o = overview.value
   return [
-    { label: '本月新增客户', value: num(o.newCustomers), sub: `负责中 ${num(o.ownedCustomers)} · 公海 ${num(o.poolCustomers)}` },
-    { label: '本月新增线索', value: num(o.newLeads), sub: `本月转化 ${num(o.convertedLeads)}` },
-    { label: '进行中商机', value: `¥${shortMoney(o.pipeline)}`, sub: `${num(o.openOpps)} 个 · 加权 ¥${shortMoney(o.weightedPipeline)}` },
-    { label: '本月赢单', value: `¥${shortMoney(o.wonAmount)}`, sub: `${num(o.wonCount)} 个` },
-    { label: '赢单率', value: o.winRate == null ? '-' : percent(o.winRate), sub: `赢 ${num(o.wonTotal)} · 输 ${num(o.lostTotal)}` },
+    { label: t('crm.analysis.kpi.newCustomers'), value: num(o.newCustomers), sub: t('crm.analysis.kpi.newCustomersSub', { owned: num(o.ownedCustomers), pool: num(o.poolCustomers) }) },
+    { label: t('crm.analysis.kpi.newLeads'), value: num(o.newLeads), sub: t('crm.analysis.kpi.newLeadsSub', { n: num(o.convertedLeads) }) },
+    { label: t('crm.analysis.kpi.pipeline'), value: `¥${shortMoney(o.pipeline)}`, sub: t('crm.analysis.kpi.pipelineSub', { n: num(o.openOpps), w: shortMoney(o.weightedPipeline) }) },
+    { label: t('crm.analysis.kpi.won'), value: `¥${shortMoney(o.wonAmount)}`, sub: t('crm.analysis.kpi.wonSub', { n: num(o.wonCount) }) },
+    { label: t('crm.analysis.kpi.winRate'), value: o.winRate == null ? '-' : percent(o.winRate), sub: t('crm.analysis.kpi.winRateSub', { won: num(o.wonTotal), lost: num(o.lostTotal) }) },
     {
-      label: '未关闭工单',
+      label: t('crm.analysis.kpi.openTickets'),
       value: num(o.openTickets),
-      sub: `超时 ${num(o.overdueTickets)} · 满意度 ${o.satisfaction == null ? '-' : Number(o.satisfaction).toFixed(1)}`
+      sub: t('crm.analysis.kpi.openTicketsSub', { overdue: num(o.overdueTickets), s: o.satisfaction == null ? '-' : Number(o.satisfaction).toFixed(1) })
     }
   ]
 })
 
 const trendOption = computed(() => ({
   tooltip: { trigger: 'axis' },
-  legend: { data: ['销售额', '赢单金额'] },
+  legend: { data: [t('crm.analysis.sales'), t('crm.analysis.wonAmount')] },
   grid: { left: 60, right: 20, top: 40, bottom: 30 },
   xAxis: { type: 'category', data: trend.value.map((r) => monthLabel(r.period)) },
   yAxis: { type: 'value', axisLabel: { formatter: (v) => shortMoney(v) } },
   series: [
-    { name: '销售额', type: 'bar', barMaxWidth: 28, data: trend.value.map((r) => num(r.sales)) },
-    { name: '赢单金额', type: 'line', smooth: true, data: trend.value.map((r) => num(r.wonAmount)) }
+    { name: t('crm.analysis.sales'), type: 'bar', barMaxWidth: 28, data: trend.value.map((r) => num(r.sales)) },
+    { name: t('crm.analysis.wonAmount'), type: 'line', smooth: true, data: trend.value.map((r) => num(r.wonAmount)) }
   ]
 }))
 
@@ -203,7 +204,7 @@ const stageOption = computed(() => ({
 }))
 
 const funnelOption = computed(() => ({
-  tooltip: { trigger: 'item', formatter: (p) => `${p.name}<br/>到达 ${p.value} 个` },
+  tooltip: { trigger: 'item', formatter: (p) => `${p.name}<br/>${t('crm.analysis.reachedTip', { n: p.value })}` },
   series: [
     {
       type: 'funnel',
@@ -217,61 +218,63 @@ const funnelOption = computed(() => ({
   ]
 }))
 const funnelColumns = [
-  { title: '阶段', key: 'stage', width: 110 },
-  { title: '当前商机', dataIndex: 'count', width: 90, align: 'right' },
-  { title: '金额', key: 'amount', width: 140, align: 'right' },
-  { title: '到达', dataIndex: 'reached', width: 80, align: 'right' },
-  { title: '转化率', key: 'conversion', width: 90, align: 'right' }
+  { title: t('crm.common.f.stage'), key: 'stage', width: 110 },
+  { title: t('crm.analysis.col.current'), dataIndex: 'count', width: 90, align: 'right' },
+  { title: t('common.field.amount'), key: 'amount', width: 140, align: 'right' },
+  { title: t('crm.analysis.col.reached'), dataIndex: 'reached', width: 90, align: 'right' },
+  { title: t('crm.analysis.col.conversion'), key: 'conversion', width: 100, align: 'right' }
 ]
 
-const SEGMENT_COLORS = {
-  重要价值客户: 'gold',
-  重要发展客户: 'green',
-  重要保持客户: 'blue',
-  重要挽留客户: 'red',
-  一般价值客户: 'cyan',
-  一般发展客户: 'lime',
-  一般保持客户: 'geekblue',
-  一般挽留客户: 'default'
+// 后端返回的分层名称（中文）→ 颜色、译文键
+const SEGMENTS = {
+  重要价值客户: ['gold', 'importantValue'], // i18n-ignore
+  重要发展客户: ['green', 'importantDevelop'], // i18n-ignore
+  重要保持客户: ['blue', 'importantKeep'], // i18n-ignore
+  重要挽留客户: ['red', 'importantWinback'], // i18n-ignore
+  一般价值客户: ['cyan', 'generalValue'], // i18n-ignore
+  一般发展客户: ['lime', 'generalDevelop'], // i18n-ignore
+  一般保持客户: ['geekblue', 'generalKeep'], // i18n-ignore
+  一般挽留客户: ['default', 'generalWinback'] // i18n-ignore
 }
-const segmentColor = (s) => SEGMENT_COLORS[s] || 'default'
+const segmentColor = (s) => SEGMENTS[s]?.[0] || 'default'
+const segmentText = (s) => (SEGMENTS[s] ? t(`crm.analysis.seg.${SEGMENTS[s][1]}`) : s)
 const rfmOption = computed(() => {
   const segs = (rfm.value.segments || []).slice().reverse()
   return {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { data: ['客户数', '销售额'] },
+    legend: { data: [t('crm.analysis.customers'), t('crm.analysis.sales')] },
     grid: { left: 100, right: 40, top: 40, bottom: 20 },
     xAxis: [
-      { type: 'value', name: '客户数', minInterval: 1 },
-      { type: 'value', name: '销售额', axisLabel: { formatter: (v) => shortMoney(v) }, splitLine: { show: false } }
+      { type: 'value', name: t('crm.analysis.customers'), minInterval: 1 },
+      { type: 'value', name: t('crm.analysis.sales'), axisLabel: { formatter: (v) => shortMoney(v) }, splitLine: { show: false } }
     ],
-    yAxis: { type: 'category', data: segs.map((s) => s.segment) },
+    yAxis: { type: 'category', data: segs.map((s) => segmentText(s.segment)) },
     series: [
-      { name: '客户数', type: 'bar', barMaxWidth: 14, data: segs.map((s) => num(s.count)) },
-      { name: '销售额', type: 'bar', xAxisIndex: 1, barMaxWidth: 14, data: segs.map((s) => num(s.amount)) }
+      { name: t('crm.analysis.customers'), type: 'bar', barMaxWidth: 14, data: segs.map((s) => num(s.count)) },
+      { name: t('crm.analysis.sales'), type: 'bar', xAxisIndex: 1, barMaxWidth: 14, data: segs.map((s) => num(s.amount)) }
     ]
   }
 })
 const rfmColumns = [
-  { title: '客户', key: 'customer', width: 220 },
-  { title: '负责人', dataIndex: 'ownerName', width: 100 },
-  { title: '最近购买（R）', key: 'recency', width: 120, align: 'right' },
-  { title: '购买次数（F）', key: 'frequency', width: 120, align: 'right' },
-  { title: '购买金额（M）', key: 'monetary', width: 150, align: 'right' },
-  { title: '客户分层', key: 'segment', width: 140 }
+  { title: t('crm.common.f.customer'), key: 'customer', width: 220 },
+  { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 100 },
+  { title: t('crm.analysis.col.recency'), key: 'recency', width: 120, align: 'right' },
+  { title: t('crm.analysis.col.frequency'), key: 'frequency', width: 130, align: 'right' },
+  { title: t('crm.analysis.col.monetary'), key: 'monetary', width: 150, align: 'right' },
+  { title: t('crm.analysis.col.segment'), key: 'segment', width: 160 }
 ]
 
 const sourceColumns = [
-  { title: '来源', key: 'source', width: 110 },
-  { title: '线索', dataIndex: 'leads', width: 70, align: 'right' },
-  { title: '已转化', dataIndex: 'converted', width: 80, align: 'right' },
-  { title: '转化率', key: 'rate', width: 80, align: 'right' },
-  { title: '商机', dataIndex: 'opps', width: 70, align: 'right' },
-  { title: '赢单金额', key: 'wonAmount', width: 130, align: 'right' }
+  { title: t('crm.common.f.source'), key: 'source', width: 110 },
+  { title: t('crm.analysis.col.leads'), dataIndex: 'leads', width: 70, align: 'right' },
+  { title: t('crm.analysis.col.converted'), dataIndex: 'converted', width: 90, align: 'right' },
+  { title: t('crm.analysis.col.conversion'), key: 'rate', width: 100, align: 'right' },
+  { title: t('crm.analysis.col.opps'), dataIndex: 'opps', width: 70, align: 'right' },
+  { title: t('crm.analysis.wonAmount'), key: 'wonAmount', width: 130, align: 'right' }
 ]
 
 const industryOption = computed(() => ({
-  tooltip: { trigger: 'item', formatter: (p) => `${p.name}<br/>销售额 ¥${formatMoney(p.value)}<br/>客户 ${p.data.customers} 个` },
+  tooltip: { trigger: 'item', formatter: (p) => `${p.name}<br/>${t('crm.analysis.industryTip', { amount: formatMoney(p.value) })}<br/>${t('crm.analysis.industryCustomers', { n: p.data.customers })}` },
   legend: { type: 'scroll', bottom: 0 },
   series: [
     {
@@ -279,7 +282,7 @@ const industryOption = computed(() => ({
       radius: '62%',
       center: ['50%', '45%'],
       data: industries.value.map((r) => ({
-        name: r.industry === 'UNKNOWN' ? '未设置' : label('crm_industry', r.industry),
+        name: r.industry === 'UNKNOWN' ? t('crm.analysis.unset') : label('crm_industry', r.industry),
         value: num(r.sales),
         customers: num(r.customers)
       }))
@@ -288,23 +291,23 @@ const industryOption = computed(() => ({
 }))
 
 const ownerColumns = [
-  { title: '排名', key: 'rank', width: 60 },
-  { title: '销售', dataIndex: 'name', width: 120 },
-  { title: '负责客户', dataIndex: 'customers', width: 90, align: 'right' },
-  { title: '在途商机', dataIndex: 'openOpps', width: 90, align: 'right' },
-  { title: '在途金额', key: 'pipeline', width: 140, align: 'right' },
-  { title: '本年赢单', dataIndex: 'wonCount', width: 90, align: 'right' },
-  { title: '本年赢单金额', key: 'wonAmount', width: 150, align: 'right' },
-  { title: '本月跟进', dataIndex: 'followups', width: 90, align: 'right' }
+  { title: t('crm.analysis.col.rank'), key: 'rank', width: 70 },
+  { title: t('crm.analysis.col.sales'), dataIndex: 'name', width: 120 },
+  { title: t('crm.analysis.col.customers'), dataIndex: 'customers', width: 100, align: 'right' },
+  { title: t('crm.analysis.col.openOpps'), dataIndex: 'openOpps', width: 100, align: 'right' },
+  { title: t('crm.analysis.col.pipeline'), key: 'pipeline', width: 140, align: 'right' },
+  { title: t('crm.analysis.col.wonCount'), dataIndex: 'wonCount', width: 100, align: 'right' },
+  { title: t('crm.analysis.col.wonAmount'), key: 'wonAmount', width: 160, align: 'right' },
+  { title: t('crm.analysis.col.followups'), dataIndex: 'followups', width: 140, align: 'right' }
 ]
 
 const ticketColumns = [
-  { title: '工单类型', key: 'type', width: 100 },
-  { title: '工单数', dataIndex: 'count', width: 80, align: 'right' },
-  { title: '未关闭', dataIndex: 'open', width: 80, align: 'right' },
-  { title: '平均解决时长', key: 'hours', width: 120, align: 'right' },
-  { title: '按时解决率', key: 'onTime', width: 110, align: 'right' },
-  { title: '平均满意度', key: 'satisfaction', width: 160 }
+  { title: t('crm.analysis.col.ticketType'), key: 'type', width: 110 },
+  { title: t('crm.analysis.col.ticketCount'), dataIndex: 'count', width: 80, align: 'right' },
+  { title: t('crm.analysis.col.open'), dataIndex: 'open', width: 80, align: 'right' },
+  { title: t('crm.analysis.col.avgHours'), key: 'hours', width: 130, align: 'right' },
+  { title: t('crm.analysis.col.onTime'), key: 'onTime', width: 120, align: 'right' },
+  { title: t('crm.analysis.col.satisfaction'), key: 'satisfaction', width: 160 }
 ]
 </script>
 

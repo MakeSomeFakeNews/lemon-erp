@@ -6,29 +6,29 @@
         <template v-if="project">
           <DictTag type="pm_project_status" :value="project.status" />
           <span class="sub-text">
-            成本预算 {{ formatMoney(project.budgetAmount) }} · 实际 <b :class="{ danger: overBudget }">{{ formatMoney(totalActual) }}</b>
-            · 执行率 {{ totalRate }}
+            {{ $t('pm.acc.costBudget') }} {{ formatMoney(project.budgetAmount) }} · {{ $t('pm.common.actual') }} <b :class="{ danger: overBudget }">{{ formatMoney(totalActual) }}</b>
+            · {{ $t('pm.cost.execRate') }} {{ totalRate }}
           </span>
         </template>
         <div class="actions">
           <a-button v-if="project" v-perm="'pm:cost:budget'" :disabled="project.status === 'CLOSED'" @click="openBudget">
-            <template #icon><EditOutlined /></template>编制预算
+            <template #icon><EditOutlined /></template>{{ $t('pm.cost.editBudget') }}
           </a-button>
           <a-button v-if="project" v-perm="'pm:cost:issue'" :disabled="project.status !== 'ACTIVE'" @click="issueOpen = true">
-            <template #icon><ExportOutlined /></template>项目领料
+            <template #icon><ExportOutlined /></template>{{ $t('pm.issue.title') }}
           </a-button>
           <a-button v-if="project" v-perm="'pm:cost:add'" type="primary" :disabled="!openProject" @click="openCost">
-            <template #icon><PlusOutlined /></template>录入费用
+            <template #icon><PlusOutlined /></template>{{ $t('pm.cost.addCost') }}
           </a-button>
         </div>
       </div>
     </a-card>
 
-    <a-empty v-if="!projectId" class="page-card empty-card" description="请选择项目" />
+    <a-empty v-if="!projectId" class="page-card empty-card" :description="$t('pm.common.pleaseSelectProject')" />
     <template v-else>
       <a-row :gutter="16">
         <a-col :xs="24" :lg="12">
-          <a-card :bordered="false" class="page-card" title="预算与实际">
+          <a-card :bordered="false" class="page-card" :title="$t('pm.cost.budgetActual')">
             <a-table row-key="costType" size="small" :columns="budgetColumns" :data-source="budgets" :pagination="false" :loading="loading">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'costType'"><DictTag type="pm_cost_type" :value="record.costType" /></template>
@@ -41,29 +41,29 @@
                 <template v-else-if="column.key === 'rate'">
                   <a-progress v-if="Number(record.amount)" :percent="Math.min(rate(record), 100)" size="small"
                               :status="rate(record) > 100 ? 'exception' : 'normal'" :format="() => `${rate(record)}%`" />
-                  <span v-else-if="Number(record.actual)" class="danger">无预算</span>
+                  <span v-else-if="Number(record.actual)" class="danger">{{ $t('pm.cost.noBudget') }}</span>
                 </template>
               </template>
             </a-table>
           </a-card>
         </a-col>
         <a-col :xs="24" :lg="12">
-          <a-card :bordered="false" class="page-card" title="预算与实际对比">
+          <a-card :bordered="false" class="page-card" :title="$t('pm.cost.budgetActualChart')">
             <EChart :option="budgetChart" height="260px" />
           </a-card>
         </a-col>
       </a-row>
 
-      <a-card :bordered="false" class="page-card" title="按月成本">
+      <a-card :bordered="false" class="page-card" :title="$t('pm.acc.monthlyCost')">
         <EChart v-if="monthly.length" :option="monthlyChart" height="260px" />
-        <a-empty v-else description="还没有成本" />
+        <a-empty v-else :description="$t('pm.acc.noCost')" />
       </a-card>
 
-      <a-card :bordered="false" class="page-card" title="费用明细">
+      <a-card :bordered="false" class="page-card" :title="$t('pm.cost.costDetail')">
         <div class="filters">
-          <a-select v-model:value="query.costType" class="w140" placeholder="全部类型" allow-clear :options="toOptions(dict.pm_cost_type)" @change="search" />
+          <a-select v-model:value="query.costType" class="w140" :placeholder="$t('pm.cost.allTypes')" allow-clear :options="toOptions(dict.pm_cost_type)" @change="search" />
           <a-range-picker v-model:value="query.range" value-format="YYYY-MM-DD" @change="search" />
-          <span class="sub-text">人工成本来自审批通过的工时，不在此列出</span>
+          <span class="sub-text">{{ $t('pm.cost.laborNote') }}</span>
         </div>
         <a-table row-key="id" size="middle" :columns="costColumns" :data-source="list" :loading="tableLoading" :pagination="pagination"
                  :scroll="{ x: 900 }" @change="onTableChange">
@@ -71,13 +71,13 @@
             <template v-if="column.key === 'costType'"><DictTag type="pm_cost_type" :value="record.costType" /></template>
             <template v-else-if="column.key === 'amount'">{{ formatMoney(record.amount) }}</template>
             <template v-else-if="column.key === 'source'">
-              <a-tag v-if="record.source === 'ISSUE'" color="cyan" :bordered="false">领料 {{ record.sourceNo }}</a-tag>
-              <span v-else class="sub-text">手工录入</span>
+              <a-tag v-if="record.source === 'ISSUE'" color="cyan" :bordered="false">{{ $t('pm.cost.issue') }} {{ record.sourceNo }}</a-tag>
+              <span v-else class="sub-text">{{ $t('pm.cost.manual') }}</span>
               <DictTag v-if="record.status && record.status !== 'APPROVED'" type="sys_approve_status" :value="record.status" />
             </template>
             <template v-else-if="column.key === 'action'">
               <span v-if="record.source === 'MANUAL'" v-perm="'pm:cost:remove'">
-                <a-popconfirm title="确定删除这条费用？" @confirm="removeCost(record.id)">
+                <a-popconfirm :title="$t('pm.cost.confirmDelete')" @confirm="removeCost(record.id)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
               </span>
@@ -88,38 +88,38 @@
     </template>
 
     <!-- 编制预算 -->
-    <a-modal v-model:open="budgetOpen" title="编制成本预算" :confirm-loading="budgetSaving" destroy-on-close @ok="saveBudget">
-      <a-form layout="horizontal" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+    <a-modal v-model:open="budgetOpen" :title="$t('pm.cost.budgetTitle')" :confirm-loading="budgetSaving" destroy-on-close @ok="saveBudget">
+      <a-form layout="horizontal" :label-col="{ span: 8 }" :wrapper-col="{ span: 16 }">
         <a-form-item v-for="b in budgetForm" :key="b.costType" :label="typeLabel(b.costType)">
-          <a-input-number v-model:value="b.amount" :min="0" :precision="2" addon-after="元" class="full" />
+          <a-input-number v-model:value="b.amount" :min="0" :precision="2" :addon-after="$t('pm.common.yuan')" class="full" />
         </a-form-item>
-        <a-form-item label="合计">
+        <a-form-item :label="$t('common.field.total')">
           <b>{{ formatMoney(budgetForm.reduce((s, b) => s + (Number(b.amount) || 0), 0)) }}</b>
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- 录入费用 -->
-    <a-modal v-model:open="costOpen" title="录入费用" :confirm-loading="costSaving" destroy-on-close @ok="saveCost">
+    <a-modal v-model:open="costOpen" :title="$t('pm.cost.addCost')" :confirm-loading="costSaving" destroy-on-close @ok="saveCost">
       <a-form ref="costRef" :model="costForm" layout="vertical">
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="成本类型" name="costType" :rules="[{ required: true, message: '请选择成本类型' }]">
+            <a-form-item :label="$t('pm.cost.costType')" name="costType" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('pm.cost.costType') }) }]">
               <a-select v-model:value="costForm.costType" :options="manualTypeOptions" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="发生日期" name="costDate" :rules="[{ required: true, message: '请选择日期' }]">
+            <a-form-item :label="$t('pm.cost.costDate')" name="costDate" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('common.field.date') }) }]">
               <a-date-picker v-model:value="costForm.costDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="金额（不含税）" name="amount" :rules="[{ required: true, message: '请填写金额' }]">
-              <a-input-number v-model:value="costForm.amount" :min="0.01" :precision="2" addon-after="元" class="full" />
+            <a-form-item :label="$t('pm.cost.amountNet')" name="amount" :rules="[{ required: true, message: $t('common.rule.required', { name: $t('common.field.amount') }) }]">
+              <a-input-number v-model:value="costForm.amount" :min="0.01" :precision="2" :addon-after="$t('pm.common.yuan')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="说明" name="description">
+            <a-form-item :label="$t('common.field.description')" name="description">
               <a-input v-model:value="costForm.description" :maxlength="255" />
             </a-form-item>
           </a-col>
@@ -147,6 +147,7 @@ import { load as loadStorage, save as saveStorage } from '@/utils/storage'
 import { formatMoney } from '@/components/scm/scm'
 import { shortMoney, periodLabel } from '@/components/charts/charts'
 import { MANUAL_COST_TYPES, today } from '@/components/pm/pm'
+import { t } from '@/locales'
 
 const STORAGE_KEY = 'pm-plan-project'
 const dict = useDict('pm_cost_type', 'sys_approve_status')
@@ -172,23 +173,23 @@ const diff = (r) => Number(r.amount) - Number(r.actual)
 const rate = (r) => Math.round((Number(r.actual) * 1000) / Number(r.amount)) / 10
 
 const budgetColumns = [
-  { title: '成本类型', key: 'costType', width: 90 },
-  { title: '预算', key: 'amount', align: 'right' },
-  { title: '实际', key: 'actual', align: 'right' },
-  { title: '差异', key: 'diff', align: 'right' },
-  { title: '执行率', key: 'rate', width: 150 }
+  { title: t('pm.cost.costType'), key: 'costType', width: 110 },
+  { title: t('pm.common.budget'), key: 'amount', align: 'right' },
+  { title: t('pm.common.actual'), key: 'actual', align: 'right' },
+  { title: t('pm.cost.diff'), key: 'diff', align: 'right' },
+  { title: t('pm.cost.execRate'), key: 'rate', width: 150 }
 ]
 
 const budgetChart = computed(() => ({
   tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-  legend: { data: ['预算', '实际'], top: 0 },
+  legend: { data: [t('pm.common.budget'), t('pm.common.actual')], top: 0 },
   grid: { left: 60, right: 16, top: 36, bottom: 30 },
   xAxis: { type: 'category', data: budgets.value.map((b) => typeLabel(b.costType)) },
   yAxis: { type: 'value', axisLabel: { formatter: shortMoney } },
   series: [
-    { name: '预算', type: 'bar', barMaxWidth: 24, data: budgets.value.map((b) => Number(b.amount)) },
+    { name: t('pm.common.budget'), type: 'bar', barMaxWidth: 24, data: budgets.value.map((b) => Number(b.amount)) },
     {
-      name: '实际',
+      name: t('pm.common.actual'),
       type: 'bar',
       barMaxWidth: 24,
       data: budgets.value.map((b) => ({
@@ -201,13 +202,13 @@ const budgetChart = computed(() => ({
 
 const monthlyChart = computed(() => ({
   tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-  legend: { data: ['人工', '费用'], top: 0 },
+  legend: { data: [t('pm.common.labor'), t('pm.common.expense')], top: 0 },
   grid: { left: 60, right: 16, top: 36, bottom: 30 },
   xAxis: { type: 'category', data: monthly.value.map((m) => periodLabel(m.period)) },
   yAxis: { type: 'value', axisLabel: { formatter: shortMoney } },
   series: [
-    { name: '人工', type: 'bar', stack: 'cost', barMaxWidth: 32, data: monthly.value.map((m) => Number(m.labor)) },
-    { name: '费用', type: 'bar', stack: 'cost', barMaxWidth: 32, data: monthly.value.map((m) => Number(m.expense)) }
+    { name: t('pm.common.labor'), type: 'bar', stack: 'cost', barMaxWidth: 32, data: monthly.value.map((m) => Number(m.labor)) },
+    { name: t('pm.common.expense'), type: 'bar', stack: 'cost', barMaxWidth: 32, data: monthly.value.map((m) => Number(m.expense)) }
   ]
 }))
 
@@ -218,12 +219,12 @@ const { list, loading: tableLoading, pagination, load: loadCosts, search, onTabl
 })
 
 const costColumns = [
-  { title: '日期', dataIndex: 'costDate', width: 110 },
-  { title: '类型', key: 'costType', width: 90 },
-  { title: '金额', key: 'amount', width: 130, align: 'right' },
-  { title: '说明', dataIndex: 'description', ellipsis: true },
-  { title: '来源', key: 'source', width: 200 },
-  { title: '录入人', dataIndex: 'createByName', width: 100 },
+  { title: t('common.field.date'), dataIndex: 'costDate', width: 110 },
+  { title: t('common.field.type'), key: 'costType', width: 100 },
+  { title: t('common.field.amount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('common.field.description'), dataIndex: 'description', ellipsis: true },
+  { title: t('pm.cost.source'), key: 'source', width: 200 },
+  { title: t('pm.common.enteredBy'), dataIndex: 'createByName', width: 110 },
   { title: '', key: 'action', width: 60, fixed: 'right' }
 ]
 
@@ -268,7 +269,7 @@ async function saveBudget() {
   budgetSaving.value = true
   try {
     await saveBudgets(projectId.value, budgetForm.value.map((b) => ({ costType: b.costType, amount: b.amount || 0 })))
-    message.success('预算已保存')
+    message.success(t('pm.cost.budgetSaved'))
     budgetOpen.value = false
     refresh()
   } finally {
@@ -296,7 +297,7 @@ async function saveCost() {
   costSaving.value = true
   try {
     await addCost({ ...costForm.value, projectId: projectId.value, description: costForm.value.description || null })
-    message.success('保存成功（发布了项目费用审批流程时，审批通过后计入项目成本）')
+    message.success(t('pm.cost.costSaved'))
     costOpen.value = false
     refresh()
   } finally {
@@ -306,7 +307,7 @@ async function saveCost() {
 
 async function removeCost(id) {
   await deleteCost(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   refresh()
 }
 

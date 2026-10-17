@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
  */
 public final class UserAgentUtils {
 
-    private static final String UNKNOWN = "未知";
+    private static final String UNKNOWN = "未知"; // i18n-ignore 存入登录日志
 
     private record Browser(String name, Pattern pattern) {
     }

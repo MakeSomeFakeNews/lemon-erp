@@ -1,12 +1,12 @@
 <template>
   <a-spin :spinning="loading">
-    <a-empty v-if="!loading && !list.length" description="订单中没有委外件（物料属性为委外且有默认 BOM 的物料）" />
+    <a-empty v-if="!loading && !list.length" :description="$t('scm.outsource.empty')" />
     <template v-else>
       <div class="ops">
-        <span class="sub-text">加工商处结存 = 已发 - 已退 - 已核销；委外件收货时按单位用量自动核销用料，成本核算把核销的子件成本转入委外件</span>
+        <span class="sub-text">{{ $t('scm.outsource.tip') }}</span>
         <a-space v-if="editable">
-          <a-button size="small" type="primary" @click="openIssue">委外发料</a-button>
-          <a-button size="small" @click="openReturn">委外退料</a-button>
+          <a-button size="small" type="primary" @click="openIssue">{{ $t('scm.outsource.issue') }}</a-button>
+          <a-button size="small" @click="openReturn">{{ $t('scm.outsource.return') }}</a-button>
         </a-space>
       </div>
       <a-table row-key="id" size="small" :columns="columns" :data-source="list" :pagination="false" :scroll="{ x: 900 }">
@@ -18,36 +18,36 @@
           </template>
           <template v-else-if="column.key === 'atSupplier'">
             <span :class="{ danger: atSupplier(record) < 0 }">{{ formatQty(atSupplier(record)) }}</span>
-            <div v-if="atSupplier(record) < 0" class="sub-text danger">超耗（核销多于实发）</div>
+            <div v-if="atSupplier(record) < 0" class="sub-text danger">{{ $t('scm.outsource.overConsumed') }}</div>
           </template>
           <template v-else-if="column.qty">{{ formatQty(record[column.dataIndex]) }}</template>
         </template>
       </a-table>
     </template>
 
-    <a-modal v-model:open="open" :title="mode === 'issue' ? '委外发料' : '委外退料'" width="min(760px, 100vw)" :confirm-loading="saving" destroy-on-close @ok="submit">
+    <a-modal v-model:open="open" :title="mode === 'issue' ? $t('scm.outsource.issue') : $t('scm.outsource.return')" width="min(760px, 100vw)" :confirm-loading="saving" destroy-on-close @ok="submit">
       <a-form layout="inline" class="head">
-        <a-form-item label="仓库" required>
+        <a-form-item :label="$t('scm.order.warehouse')" required>
           <WarehouseSelect v-model:value="form.warehouseId" style="width: 180px" @change="form.items = []" />
         </a-form-item>
-        <a-form-item label="日期" required>
+        <a-form-item :label="$t('common.field.date')" required>
           <a-date-picker v-model:value="form.bizDate" value-format="YYYY-MM-DD" />
         </a-form-item>
-        <a-button v-if="mode === 'issue'" :disabled="!form.warehouseId" @click="pickerOpen = true">选择库存</a-button>
+        <a-button v-if="mode === 'issue'" :disabled="!form.warehouseId" @click="pickerOpen = true">{{ $t('scm.outsource.pickStock') }}</a-button>
       </a-form>
       <a-table row-key="key" size="small" :columns="formColumns" :data-source="form.items" :pagination="false">
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">{{ record.materialCode }} {{ record.materialName }}</template>
           <template v-else-if="column.key === 'slot'">
-            <template v-if="mode === 'issue'">{{ record.locationCode || '未指定' }}{{ record.batchNo ? ' · ' + record.batchNo : '' }}</template>
-            <a-input v-else-if="record.batchEnabled === 1" v-model:value="record.batchNo" size="small" placeholder="批次号" />
+            <template v-if="mode === 'issue'">{{ record.locationCode || $t('scm.stockSlot.unspecified') }}{{ record.batchNo ? ' · ' + record.batchNo : '' }}</template>
+            <a-input v-else-if="record.batchEnabled === 1" v-model:value="record.batchNo" size="small" :placeholder="$t('scm.outsource.batchNo')" />
           </template>
           <template v-else-if="column.key === 'qty'">
             <a-input-number v-model:value="record.qty" :min="0.0001" :max="record.max" size="small" />
             <span class="sub-text"> / {{ formatQty(record.max) }}</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" danger size="small" @click="form.items.splice(index, 1)">删除</a-button>
+            <a-button type="link" danger size="small" @click="form.items.splice(index, 1)">{{ $t('common.action.delete') }}</a-button>
           </template>
         </template>
       </a-table>
@@ -59,6 +59,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import StockPicker from '@/components/wms/StockPicker.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { outsourceIssue, outsourceMaterials, outsourceReturn } from '@/api/scm/order'
@@ -70,21 +71,22 @@ const props = defineProps({
   editable: Boolean
 })
 const emit = defineEmits(['changed'])
+const { t } = useI18n()
 
 const columns = [
-  { title: '委外件', key: 'product', width: 180 },
-  { title: '子件', key: 'material', width: 200 },
-  { title: '单位用量', dataIndex: 'unitQty', width: 90, align: 'right', qty: true },
-  { title: '需求', dataIndex: 'requiredQty', width: 90, align: 'right', qty: true },
-  { title: '已发', dataIndex: 'issuedQty', width: 90, align: 'right', qty: true },
-  { title: '已退', dataIndex: 'returnedQty', width: 90, align: 'right', qty: true },
-  { title: '已核销', dataIndex: 'consumedQty', width: 90, align: 'right', qty: true },
-  { title: '加工商结存', key: 'atSupplier', width: 120, align: 'right' }
+  { title: t('scm.outsource.product'), key: 'product', width: 180 },
+  { title: t('scm.outsource.component'), key: 'material', width: 200 },
+  { title: t('scm.outsource.unitQty'), dataIndex: 'unitQty', width: 100, align: 'right', qty: true },
+  { title: t('scm.outsource.required'), dataIndex: 'requiredQty', width: 100, align: 'right', qty: true },
+  { title: t('scm.outsource.issued'), dataIndex: 'issuedQty', width: 90, align: 'right', qty: true },
+  { title: t('scm.outsource.returned'), dataIndex: 'returnedQty', width: 100, align: 'right', qty: true },
+  { title: t('scm.outsource.consumed'), dataIndex: 'consumedQty', width: 100, align: 'right', qty: true },
+  { title: t('scm.outsource.atSupplier'), key: 'atSupplier', width: 140, align: 'right' }
 ]
 const formColumns = [
-  { title: '物料', key: 'material', width: 220 },
-  { title: '库位 / 批次', key: 'slot', width: 160 },
-  { title: '数量', key: 'qty', width: 180 },
+  { title: t('scm.order.material'), key: 'material', width: 220 },
+  { title: t('scm.consign.slot'), key: 'slot', width: 160 },
+  { title: t('common.field.quantity'), key: 'qty', width: 180 },
   { title: '', key: 'action', width: 60 }
 ]
 const atSupplier = (r) => Number(r.issuedQty) - Number(r.returnedQty) - Number(r.consumedQty)
@@ -125,7 +127,7 @@ function openReturn() {
     byMaterial.set(r.materialId, e)
   })
   if (!byMaterial.size) {
-    message.info('加工商处没有结存的物料')
+    message.info(t('scm.outsource.noBalance'))
     return
   }
   form.value = { warehouseId: undefined, bizDate: today(), items: [...byMaterial.values()] }
@@ -135,7 +137,7 @@ function onPick(stocks) {
   const allowed = new Set(list.value.map((r) => r.materialId))
   stocks.forEach((s) => {
     if (!allowed.has(s.materialId)) {
-      message.warning(`${s.materialCode} 不是委外用料`)
+      message.warning(t('scm.outsource.notMaterial', { code: s.materialCode }))
       return
     }
     if (form.value.items.some((i) => i.key === s.id)) return
@@ -146,7 +148,7 @@ function onPick(stocks) {
 async function submit() {
   const f = form.value
   if (!f.warehouseId || !f.items.length) {
-    message.warning('请选择仓库和物料')
+    message.warning(t('scm.outsource.selectRequired'))
     return
   }
   saving.value = true
@@ -157,7 +159,7 @@ async function submit() {
       items: f.items.map((i) => ({ materialId: i.materialId, locationId: i.locationId || null, batchNo: i.batchNo || null, qty: i.qty }))
     }
     mode.value === 'issue' ? await outsourceIssue(props.orderId, data) : await outsourceReturn(props.orderId, data)
-    message.success(mode.value === 'issue' ? '已发料' : '已退料')
+    message.success(mode.value === 'issue' ? t('scm.outsource.issuedMsg') : t('scm.outsource.returnedMsg'))
     open.value = false
     load()
     emit('changed')

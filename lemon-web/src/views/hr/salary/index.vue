@@ -2,14 +2,14 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="员工" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="工号或姓名" allow-clear />
+        <a-form-item :label="$t('hr.salary.employee')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('hr.salary.keywordPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="部门" name="deptId">
-          <DeptSelect v-model:value="query.deptId" placeholder="全部" />
+        <a-form-item :label="$t('common.field.dept')" name="deptId">
+          <DeptSelect v-model:value="query.deptId" :placeholder="$t('common.placeholder.all')" />
         </a-form-item>
-        <a-form-item label="档案" name="missing">
-          <a-select v-model:value="query.missing" placeholder="全部" allow-clear :options="[{ value: true, label: '未建立薪资档案' }]" />
+        <a-form-item :label="$t('hr.salary.profile')" name="missing">
+          <a-select v-model:value="query.missing" :placeholder="$t('common.placeholder.all')" allow-clear :options="[{ value: true, label: $t('hr.salary.missing') }]" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -24,7 +24,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1300, y: '100%' }"
+        :scroll="{ x: 1600, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -39,7 +39,7 @@
           <template v-else-if="column.key === 'scheme'">
             <template v-if="record.id">
               <span v-if="record.schemeId">{{ schemeName(record) }}</span>
-              <span v-else class="sub-text">默认比例</span>
+              <span v-else class="sub-text">{{ $t('hr.salary.defaultRates') }}</span>
             </template>
             <span v-else class="sub-text">-</span>
           </template>
@@ -49,9 +49,9 @@
           <template v-else-if="column.key === 'monthly'">
             <template v-if="record.id">
               <div>{{ formatMoney(monthlyCost(record)) }}</div>
-              <div class="sub-text">时薪成本 {{ formatMoney(monthlyCost(record) / 174) }}</div>
+              <div class="sub-text">{{ $t('hr.salary.hourlyCost', { amount: formatMoney(monthlyCost(record) / 174) }) }}</div>
             </template>
-            <a-tag v-else color="orange" :bordered="false">未建立</a-tag>
+            <a-tag v-else color="orange" :bordered="false">{{ $t('hr.salary.notCreated') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'bank'">
             <template v-if="record.bankAccount">
@@ -62,74 +62,74 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <a-button v-perm="'hr:salary:edit'" type="link" size="small" @click="openEdit(record)">
-              <template #icon><EditOutlined /></template>{{ record.id ? '调整' : '建立档案' }}
+              <template #icon><EditOutlined /></template>{{ record.id ? $t('hr.salary.adjust') : $t('hr.salary.create') }}
             </a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <a-drawer v-model:open="open" :title="`薪资档案 - ${current?.employeeName || ''}`" width="min(640px, 100vw)" destroy-on-close>
+    <a-drawer v-model:open="open" :title="$t('hr.salary.drawerTitle', { name: current?.employeeName || '' })" width="min(640px, 100vw)" destroy-on-close>
       <a-form ref="formRef" :model="form" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="基本工资" name="baseSalary" :rules="[{ required: true, message: '请填写基本工资' }]" extra="修改基本工资会记录一条调薪异动">
-              <a-input-number v-model:value="form.baseSalary" :min="0" :precision="2" addon-after="元/月" class="full" />
+            <a-form-item :label="$t('hr.salary.baseSalary')" name="baseSalary" :rules="[{ required: true, message: $t('hr.salary.rule.baseSalary') }]" :extra="$t('hr.salary.baseSalaryExtra')">
+              <a-input-number v-model:value="form.baseSalary" :min="0" :precision="2" :addon-after="$t('hr.salary.perMonth')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="岗位津贴" name="postAllowance">
-              <a-input-number v-model:value="form.postAllowance" :min="0" :precision="2" addon-after="元/月" class="full" />
+            <a-form-item :label="$t('hr.salary.postAllowance')" name="postAllowance">
+              <a-input-number v-model:value="form.postAllowance" :min="0" :precision="2" :addon-after="$t('hr.salary.perMonth')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="其他补贴" name="otherAllowance" extra="餐补、交通等，不参与缺勤扣款计算">
-              <a-input-number v-model:value="form.otherAllowance" :min="0" :precision="2" addon-after="元/月" class="full" />
+            <a-form-item :label="$t('hr.salary.otherAllowance')" name="otherAllowance" :extra="$t('hr.salary.otherAllowanceExtra')">
+              <a-input-number v-model:value="form.otherAllowance" :min="0" :precision="2" :addon-after="$t('hr.salary.perMonth')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="绩效奖金基数" name="perfBonusBase" extra="实发 = 基数 × 绩效系数（S 1.5 / A 1.2 / B 1.0 / C 0.8 / D 0）">
-              <a-input-number v-model:value="form.perfBonusBase" :min="0" :precision="2" addon-after="元" class="full" />
+            <a-form-item :label="$t('hr.salary.perfBonusBase')" name="perfBonusBase" :extra="$t('hr.salary.perfBonusBaseExtra')">
+              <a-input-number v-model:value="form.perfBonusBase" :min="0" :precision="2" :addon-after="$t('hr.salary.yuan')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="社保方案" name="schemeId" extra="按方案的缴费比例和基数上下限计算社保；不选按默认比例（个人 10.5%、单位 26%）">
-              <a-select v-model:value="form.schemeId" allow-clear placeholder="默认比例" :options="schemeOptions" />
+            <a-form-item :label="$t('hr.salary.scheme')" name="schemeId" :extra="$t('hr.salary.schemeExtra')">
+              <a-select v-model:value="form.schemeId" allow-clear :placeholder="$t('hr.salary.defaultRates')" :options="schemeOptions" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="社保基数" name="socialBase" extra="不填按基本工资 + 岗位津贴">
+            <a-form-item :label="$t('hr.salary.socialBase')" name="socialBase" :extra="$t('hr.salary.socialBaseExtra')">
               <a-input-number v-model:value="form.socialBase" :min="0" :precision="2" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="公积金基数" name="housingBase">
+            <a-form-item :label="$t('hr.salary.housingBase')" name="housingBase">
               <a-input-number v-model:value="form.housingBase" :min="0" :precision="2" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="公积金比例" name="housingRate">
+            <a-form-item :label="$t('hr.salary.housingRate')" name="housingRate">
               <a-input-number v-model:value="form.housingRate" :min="5" :max="12" :precision="0" addon-after="%" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="工资卡开户行" name="bankName"><a-input v-model:value="form.bankName" :maxlength="128" /></a-form-item>
+            <a-form-item :label="$t('hr.salary.bankName')" name="bankName"><a-input v-model:value="form.bankName" :maxlength="128" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="工资卡账号" name="bankAccount"><a-input v-model:value="form.bankAccount" :maxlength="64" /></a-form-item>
+            <a-form-item :label="$t('hr.salary.bankAccount')" name="bankAccount"><a-input v-model:value="form.bankAccount" :maxlength="64" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="生效日期" name="effectiveDate" extra="晚于今天的调整到期后计入工资；工资表按月末生效的薪资计算">
-              <a-date-picker v-model:value="form.effectiveDate" value-format="YYYY-MM-DD" class="full" placeholder="默认今天（新建档案为入职日期）" />
+            <a-form-item :label="$t('hr.salary.effectiveDate')" name="effectiveDate" :extra="$t('hr.salary.effectiveDateExtra')">
+              <a-date-picker v-model:value="form.effectiveDate" value-format="YYYY-MM-DD" class="full" :placeholder="$t('hr.salary.effectiveDatePh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="备注" name="remark"><a-input v-model:value="form.remark" :maxlength="255" /></a-form-item>
+            <a-form-item :label="$t('common.field.remark')" name="remark"><a-input v-model:value="form.remark" :maxlength="255" /></a-form-item>
           </a-col>
         </a-row>
         <a-alert type="info" show-icon :message="estimate" />
         <template v-if="history.length">
-          <div class="history-title">薪资历史</div>
+          <div class="history-title">{{ $t('hr.salary.history') }}</div>
           <a-table row-key="id" size="small" :columns="historyColumns" :data-source="history" :pagination="false">
             <template #bodyCell="{ column, record: h }">
               <template v-if="column.key === 'amount'">{{ formatMoney(h[column.dataIndex]) }}</template>
@@ -139,8 +139,8 @@
       </a-form>
       <template #footer>
         <div class="drawer-footer">
-          <a-button @click="open = false">取消</a-button>
-          <a-button type="primary" :loading="saving" @click="save">保存</a-button>
+          <a-button @click="open = false">{{ $t('common.action.cancel') }}</a-button>
+          <a-button type="primary" :loading="saving" @click="save">{{ $t('common.action.save') }}</a-button>
         </div>
       </template>
     </a-drawer>
@@ -148,6 +148,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { EditOutlined } from '@ant-design/icons-vue'
@@ -161,21 +162,23 @@ import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 
+const { t } = useI18n()
+
 useDict('hr_emp_status')
 const showSearch = ref(true)
 const columns = [
-  { title: '员工', key: 'employee', width: 240, fixed: 'left' },
-  { title: '基本工资', key: 'baseSalary', width: 110, align: 'right' },
-  { title: '岗位津贴', key: 'postAllowance', width: 100, align: 'right' },
-  { title: '其他补贴', key: 'otherAllowance', width: 100, align: 'right' },
-  { title: '绩效基数', key: 'perfBonusBase', width: 100, align: 'right' },
-  { title: '社保方案', key: 'scheme', width: 140, exportValue: (r) => (r.id ? (r.schemeId ? schemeName(r) : '默认比例') : '') },
-  { title: '社保基数', key: 'socialBase', width: 110, align: 'right' },
-  { title: '公积金基数', key: 'housingBase', width: 110, align: 'right' },
-  { title: '公积金比例', key: 'housingRate', width: 90, align: 'right' },
-  { title: '月度人工成本', key: 'monthly', width: 150, align: 'right' },
-  { title: '工资卡', key: 'bank', width: 170 },
-  { title: '操作', key: 'action', width: 110, fixed: 'right' }
+  { title: t('hr.salary.employee'), key: 'employee', width: 240, fixed: 'left' },
+  { title: t('hr.salary.baseSalary'), key: 'baseSalary', width: 120, align: 'right' },
+  { title: t('hr.salary.postAllowance'), key: 'postAllowance', width: 150, align: 'right' },
+  { title: t('hr.salary.otherAllowance'), key: 'otherAllowance', width: 130, align: 'right' },
+  { title: t('hr.salary.col.perfBonusBase'), key: 'perfBonusBase', width: 130, align: 'right' },
+  { title: t('hr.salary.scheme'), key: 'scheme', width: 180, exportValue: (r) => (r.id ? (r.schemeId ? schemeName(r) : t('hr.salary.defaultRates')) : '') },
+  { title: t('hr.salary.socialBase'), key: 'socialBase', width: 170, align: 'right' },
+  { title: t('hr.salary.housingBase'), key: 'housingBase', width: 150, align: 'right' },
+  { title: t('hr.salary.housingRate'), key: 'housingRate', width: 140, align: 'right' },
+  { title: t('hr.salary.col.monthly'), key: 'monthly', width: 160, align: 'right' },
+  { title: t('hr.salary.col.bank'), key: 'bank', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'hr-salary')
 const emptyQuery = () => ({ keyword: undefined, deptId: undefined, missing: undefined })
@@ -199,9 +202,16 @@ async function loadSchemes() {
 const schemeOptions = computed(() =>
   schemes.value
     .filter((s) => s.status === 1 || s.id === form.schemeId)
-    .map((s) => ({ value: s.id, label: `${s.name}${s.city ? `（${s.city}）` : ''} · 个人 ${+schemeRates(s).personal.toFixed(2)}% / 单位 ${+schemeRates(s).company.toFixed(2)}%` }))
+    .map((s) => ({
+      value: s.id,
+      label: t('hr.salary.schemeOption', {
+        name: s.city ? t('hr.salary.nameCity', { name: s.name, city: s.city }) : s.name,
+        personal: +schemeRates(s).personal.toFixed(2),
+        company: +schemeRates(s).company.toFixed(2)
+      })
+    }))
 )
-const schemeName = (r) => r.schemeName || schemes.value.find((s) => s.id === r.schemeId)?.name || `方案 #${r.schemeId}`
+const schemeName = (r) => r.schemeName || schemes.value.find((s) => s.id === r.schemeId)?.name || t('hr.salary.schemeNo', { id: r.schemeId })
 function schemeRates(s) {
   if (!s) return DEFAULT_RATES
   const n = (v) => Number(v) || 0
@@ -227,11 +237,11 @@ const formRef = ref()
 const form = reactive({})
 const history = ref([])
 const historyColumns = [
-  { title: '生效日期', dataIndex: 'effectiveDate', width: 110 },
-  { title: '基本工资', key: 'amount', dataIndex: 'baseSalary', width: 110, align: 'right' },
-  { title: '岗位津贴', key: 'amount', dataIndex: 'postAllowance', width: 100, align: 'right' },
-  { title: '社保基数', key: 'amount', dataIndex: 'socialBase', width: 100, align: 'right' },
-  { title: '说明', dataIndex: 'remark', ellipsis: true }
+  { title: t('hr.salary.effectiveDate'), dataIndex: 'effectiveDate', width: 120 },
+  { title: t('hr.salary.baseSalary'), key: 'amount', dataIndex: 'baseSalary', width: 110, align: 'right' },
+  { title: t('hr.salary.postAllowance'), key: 'amount', dataIndex: 'postAllowance', width: 130, align: 'right' },
+  { title: t('hr.salary.socialBase'), key: 'amount', dataIndex: 'socialBase', width: 130, align: 'right' },
+  { title: t('hr.salary.col.description'), dataIndex: 'remark', ellipsis: true }
 ]
 function openEdit(record) {
   current.value = record
@@ -259,14 +269,14 @@ const estimate = computed(() => {
   const housing = form.housingBase ?? base
   const personal = (social * ratesOf(form.schemeId).personal) / 100 + (housing * (form.housingRate || 7)) / 100
   const cost = monthlyCost({ ...form, socialBase: social, housingBase: housing })
-  return `个人社保公积金约 ${formatMoney(personal)} 元/月，单位人工成本约 ${formatMoney(cost)} 元/月（项目工时按 ${formatMoney(cost / 174)} 元/小时计算）`
+  return t('hr.salary.estimate', { personal: formatMoney(personal), cost: formatMoney(cost), hourly: formatMoney(cost / 174) })
 })
 async function save() {
   await formRef.value.validate()
   saving.value = true
   try {
     await saveSalary(current.value.employeeId, Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v === '' || v === undefined ? null : v])))
-    message.success('已保存')
+    message.success(t('common.msg.saved'))
     open.value = false
     load()
   } finally {

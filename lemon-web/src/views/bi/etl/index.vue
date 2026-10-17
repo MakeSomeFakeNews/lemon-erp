@@ -3,17 +3,17 @@
     <a-card :bordered="false" class="page-card">
       <div class="head">
         <div>
-          <div class="title">数据仓库</div>
+          <div class="title">{{ $t('bi.etl.title') }}</div>
           <div class="sub-text">
-            <template v-if="status.running"><a-badge status="processing" />正在同步…</template>
-            <template v-else-if="status.lastSuccess">最近一次成功同步：{{ dayjs(status.lastSuccess).format('YYYY-MM-DD HH:mm:ss') }}</template>
-            <template v-else>尚未同步</template>
+            <template v-if="status.running"><a-badge status="processing" />{{ $t('bi.etl.syncing') }}</template>
+            <template v-else-if="status.lastSuccess">{{ $t('bi.etl.lastSuccess', { time: dayjs(status.lastSuccess).format('YYYY-MM-DD HH:mm:ss') }) }}</template>
+            <template v-else>{{ $t('bi.etl.never') }}</template>
           </div>
         </div>
         <a-space>
-          <a-button @click="loadStatus"><template #icon><ReloadOutlined /></template>刷新</a-button>
+          <a-button @click="loadStatus"><template #icon><ReloadOutlined /></template>{{ $t('common.action.refresh') }}</a-button>
           <a-button v-perm="'bi:etl:run'" type="primary" :loading="running" @click="run">
-            <template #icon><SyncOutlined /></template>立即同步
+            <template #icon><SyncOutlined /></template>{{ $t('bi.etl.syncNow') }}
           </a-button>
         </a-space>
       </div>
@@ -22,8 +22,8 @@
           <div class="fact">
             <div class="fact-name">{{ f.name }}</div>
             <div class="fact-value">
-              {{ formatNumber(status[f.key]) }} <small>行</small>
-              <a-tag v-if="f.key === 'inventory'" :bordered="false" class="snap">{{ status.snapshots || 0 }} 天快照</a-tag>
+              {{ formatNumber(status[f.key]) }} <small>{{ $t('bi.etl.rows') }}</small>
+              <a-tag v-if="f.key === 'inventory'" :bordered="false" class="snap">{{ $t('bi.etl.snapshots', { n: status.snapshots || 0 }) }}</a-tag>
             </div>
             <div class="sub-text">{{ f.desc }}</div>
           </div>
@@ -31,16 +31,14 @@
       </a-row>
       <a-alert class="info" type="info" show-icon>
         <template #message>
-          每天凌晨 1:30 自动同步（配置项 lemon.bi.etl-cron，设为 "-" 关闭定时同步），也可以手动「立即同步」。
-          经营驾驶舱、多维分析、自定义报表和决策支持读取数据仓库，业务数据变化后同步才会反映到分析中；
-          每次同步全量重建销售、采购、生产、财务事实表，并保存当天的库存快照（历史快照保留，用于库存趋势分析）。
+          {{ $t('bi.etl.tip') }}
         </template>
       </a-alert>
     </a-card>
 
-    <a-card :bordered="false" class="page-card table-card" title="同步日志">
+    <a-card :bordered="false" class="page-card table-card" :title="$t('bi.etl.logs')">
       <template #extra>
-        <a-select v-model:value="query.status" placeholder="全部状态" allow-clear :options="toOptions(dict.bi_etl_status)" style="width: 120px" @change="search" />
+        <a-select v-model:value="query.status" :placeholder="$t('bi.etl.allStatus')" allow-clear :options="toOptions(dict.bi_etl_status)" style="width: 140px" @change="search" />
       </template>
       <a-table
         row-key="id"
@@ -55,7 +53,7 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'trigger'">
             <a-tag :bordered="false" :color="record.triggerType === 'MANUAL' ? 'blue' : 'purple'">
-              {{ record.triggerType === 'MANUAL' ? '手动' : '定时' }}
+              {{ record.triggerType === 'MANUAL' ? $t('bi.etl.manual') : $t('bi.etl.schedule') }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="bi_etl_status" :value="record.status" /></template>
@@ -66,7 +64,7 @@
           <template v-else-if="column.key === 'message'">
             <span v-if="record.message" class="error">{{ record.message }}</span>
           </template>
-          <template v-else-if="column.key === 'user'">{{ record.createByName || (record.triggerType === 'SCHEDULE' ? '系统' : '-') }}</template>
+          <template v-else-if="column.key === 'user'">{{ record.createByName || (record.triggerType === 'SCHEDULE' ? $t('bi.etl.system') : '-') }}</template>
         </template>
       </a-table>
     </a-card>
@@ -84,31 +82,32 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { formatNumber } from '@/utils/format'
+import { t } from '@/locales'
 
 const FACTS = [
-  { key: 'sales', name: '销售事实', desc: '销售出库 / 退货明细，含成本与毛利（按存货单位成本）' },
-  { key: 'purchase', name: '采购事实', desc: '采购入库 / 退货明细，不含税金额' },
-  { key: 'inventory', name: '库存快照', desc: '每天按仓库、物料汇总的库存数量与金额' },
-  { key: 'production', name: '生产事实', desc: '已下达的工单：计划、完工、报废、工时、是否延期' },
-  { key: 'finance', name: '财务事实', desc: '已记账凭证按期间、科目、部门汇总（不含结转损益）' },
-  { key: 'hr', name: '人力事实', desc: '最近 24 个月按部门、岗位类别的月末人数、入职、离职、工资与人工成本' },
-  { key: 'crm', name: '客户经营事实', desc: '按月份、负责人的新增线索、跟进、新增商机、赢单与输单' },
-  { key: 'project', name: '项目事实', desc: '按月份、项目的已审批工时与人工成本、费用、月结确认的收入与结转成本' }
+  { key: 'sales', name: t('bi.etl.fact.sales'), short: t('bi.etl.factShort.sales'), desc: t('bi.etl.factDesc.sales') },
+  { key: 'purchase', name: t('bi.etl.fact.purchase'), short: t('bi.etl.factShort.purchase'), desc: t('bi.etl.factDesc.purchase') },
+  { key: 'inventory', name: t('bi.etl.fact.inventory'), short: t('bi.etl.factShort.inventory'), desc: t('bi.etl.factDesc.inventory') },
+  { key: 'production', name: t('bi.etl.fact.production'), short: t('bi.etl.factShort.production'), desc: t('bi.etl.factDesc.production') },
+  { key: 'finance', name: t('bi.etl.fact.finance'), short: t('bi.etl.factShort.finance'), desc: t('bi.etl.factDesc.finance') },
+  { key: 'hr', name: t('bi.etl.fact.hr'), short: t('bi.etl.factShort.hr'), desc: t('bi.etl.factDesc.hr') },
+  { key: 'crm', name: t('bi.etl.fact.crm'), short: t('bi.etl.factShort.crm'), desc: t('bi.etl.factDesc.crm') },
+  { key: 'project', name: t('bi.etl.fact.project'), short: t('bi.etl.factShort.project'), desc: t('bi.etl.factDesc.project') }
 ]
-const LABELS = Object.fromEntries(FACTS.map((f) => [f.key, f.name.replace('事实', '')]))
+const LABELS = Object.fromEntries(FACTS.map((f) => [f.key, f.short]))
 
 const dict = useDict('bi_etl_status')
 const status = ref({})
 const running = ref(false)
 
 const columns = [
-  { title: '开始时间', dataIndex: 'startTime', width: 170 },
-  { title: '触发方式', key: 'trigger', width: 90 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '耗时', key: 'duration', width: 90 },
-  { title: '行数', key: 'rows', width: 360 },
-  { title: '失败原因', key: 'message', ellipsis: true },
-  { title: '操作人', key: 'user', width: 110 }
+  { title: t('bi.etl.startTime'), dataIndex: 'startTime', width: 170 },
+  { title: t('bi.etl.trigger'), key: 'trigger', width: 100 },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('bi.etl.duration'), key: 'duration', width: 90 },
+  { title: t('bi.etl.rowCount'), key: 'rows', width: 360 },
+  { title: t('bi.etl.failReason'), key: 'message', ellipsis: true },
+  { title: t('bi.etl.operator'), key: 'user', width: 110 }
 ]
 
 const query = reactive({ status: undefined })
@@ -125,7 +124,7 @@ function parseCounts(text) {
 function duration(r) {
   if (!r.endTime) return '-'
   const ms = dayjs(r.endTime).diff(dayjs(r.startTime))
-  return ms < 1000 ? '< 1 秒' : `${(ms / 1000).toFixed(1)} 秒`
+  return ms < 1000 ? t('bi.etl.lessThanSecond') : t('bi.etl.seconds', { n: (ms / 1000).toFixed(1) })
 }
 
 async function loadStatus() {
@@ -136,7 +135,7 @@ async function run() {
   running.value = true
   try {
     const log = await runEtl()
-    message.success(`同步完成：${parseCounts(log.rowCounts).map((c) => `${c.label} ${c.value} 行`).join('，')}`)
+    message.success(t('bi.etl.done', { detail: parseCounts(log.rowCounts).map((c) => t('bi.etl.rowsOf', { label: c.label, n: c.value })).join(t('bi.etl.sep')) }))
   } finally {
     running.value = false
     loadStatus()

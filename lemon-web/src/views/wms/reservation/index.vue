@@ -2,14 +2,14 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="仓库" name="warehouseId">
-          <WarehouseSelect v-model:value="query.warehouseId" placeholder="全部" />
+        <a-form-item :label="$t('wms.common.warehouse')" name="warehouseId">
+          <WarehouseSelect v-model:value="query.warehouseId" :placeholder="$t('common.placeholder.all')" />
         </a-form-item>
-        <a-form-item label="物料" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="物料编码或名称" allow-clear />
+        <a-form-item :label="$t('wms.common.material')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('wms.common.materialKeyword')" allow-clear />
         </a-form-item>
-        <a-form-item label="来源单号" name="sourceNo">
-          <a-input v-model:value="query.sourceNo" placeholder="销售订单号" allow-clear />
+        <a-form-item :label="$t('wms.common.sourceNo')" name="sourceNo">
+          <a-input v-model:value="query.sourceNo" :placeholder="$t('wms.reservation.orderNoPh')" allow-clear />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -26,7 +26,7 @@
         <a-alert
           type="info"
           show-icon
-          message="预留不锁定库位批次；其他出库、调拨不能占用已预留的库存；销售出库时核销本订单的预留，订单完成、关闭或反审核时自动释放。"
+          :message="$t('wms.reservation.tip')"
         />
       </TableToolbar>
       <a-table
@@ -53,9 +53,9 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <span v-perm="'wms:reservation:release'">
-              <a-popconfirm title="确定释放该预留？释放后库存可被其他订单或出库占用" @confirm="release(record)">
+              <a-popconfirm :title="$t('wms.reservation.confirmRelease')" @confirm="release(record)">
                 <a-button type="link" danger size="small">
-                  <template #icon><UnlockOutlined /></template>释放
+                  <template #icon><UnlockOutlined /></template>{{ $t('wms.reservation.release') }}
                 </a-button>
               </a-popconfirm>
             </span>
@@ -68,6 +68,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { UnlockOutlined } from '@ant-design/icons-vue'
@@ -79,19 +80,21 @@ import { formatQty } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 
+const { t } = useI18n()
+
 const router = useRouter()
 
 const columns = [
-  { title: '销售订单', key: 'sourceNo', dataIndex: 'sourceNo', width: 180 },
-  { title: '仓库', dataIndex: 'warehouseName', width: 140 },
-  { title: '物料', key: 'material', width: 240, exportValue: (r) => `${r.materialCode} ${r.materialName}` },
-  { title: '规格', dataIndex: 'spec', width: 140, ellipsis: true },
-  { title: '预留数量', key: 'qty', dataIndex: 'qty', width: 130, align: 'right' },
-  { title: '单位', dataIndex: 'unit', width: 70 },
-  { title: '说明', dataIndex: 'remark', width: 180, ellipsis: true },
-  { title: '预留人', dataIndex: 'createByName', width: 100 },
-  { title: '预留时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 90, fixed: 'right' }
+  { title: t('wms.reservation.salesOrder'), key: 'sourceNo', dataIndex: 'sourceNo', width: 180 },
+  { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 140 },
+  { title: t('wms.common.material'), key: 'material', width: 240, exportValue: (r) => `${r.materialCode} ${r.materialName}` },
+  { title: t('common.field.spec'), dataIndex: 'spec', width: 140, ellipsis: true },
+  { title: t('wms.reservation.qty'), key: 'qty', dataIndex: 'qty', width: 130, align: 'right' },
+  { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
+  { title: t('common.field.description'), dataIndex: 'remark', width: 180, ellipsis: true },
+  { title: t('wms.reservation.by'), dataIndex: 'createByName', width: 110 },
+  { title: t('wms.reservation.time'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'wms-reservation')
 const showSearch = ref(true)
@@ -110,7 +113,7 @@ const toOrder = (record) => router.push({ path: '/scm/sales', query: { id: recor
 
 async function release(record) {
   await releaseReservation(record.id)
-  message.success('已释放')
+  message.success(t('wms.reservation.released'))
   load()
 }
 </script>

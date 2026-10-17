@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.service;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.modules.fin.service.FinAccountRuleService;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -62,7 +63,7 @@ public class PmCloseService {
     public int close(int period) {
         LocalDate begin = FinConstants.firstDay(period);
         LocalDate end = FinConstants.lastDay(period);
-        periodGuard.checkOpen(end, "项目月结");
+        periodGuard.checkOpen(end, "项目月结"); // i18n-ignore 财务模块输出处翻译，译文已登记
         Long contractCost = accountRules.accountId(AccountRole.CONTRACT_COST);
 
         // 按项目汇总本期的分录
@@ -72,7 +73,7 @@ public class PmCloseService {
             Long projectId = ((Number) row.get("projectId")).longValue();
             BigDecimal amount = decimal(row.get("amount"));
             Long expense = accountRules.accountId(AccountRole.SALARY_EXPENSE, (String) row.get("category"));
-            String summary = "项目人工成本 " + period;
+            String summary = "项目人工成本 " + period; // i18n-ignore 凭证摘要存库
             List<VoucherLine> list = lines.computeIfAbsent(projectId, k -> new ArrayList<>());
             list.add(VoucherLine.debit(summary, contractCost, null, amount).withProject(projectId));
             list.add(VoucherLine.credit(summary, expense, null, amount).withProject(projectId));
@@ -82,7 +83,7 @@ public class PmCloseService {
         for (Map<String, Object> row : closeMapper.selectUnpostedExpense(begin, end)) {
             Long projectId = ((Number) row.get("projectId")).longValue();
             BigDecimal amount = decimal(row.get("amount"));
-            String summary = "项目费用 " + period;
+            String summary = "项目费用 " + period; // i18n-ignore 凭证摘要存库
             List<VoucherLine> list = lines.computeIfAbsent(projectId, k -> new ArrayList<>());
             list.add(VoucherLine.debit(summary, contractCost, null, amount).withProject(projectId));
             list.add(VoucherLine.credit(summary, otherPayable, null, amount).withProject(projectId));
@@ -111,11 +112,11 @@ public class PmCloseService {
             }
             Long customerId = row.get("customerId") == null ? null : ((Number) row.get("customerId")).longValue();
             List<VoucherLine> list = lines.computeIfAbsent(projectId, k -> new ArrayList<>());
-            String summary = "完工百分比确认收入 " + period + "（进度 " + rate.stripTrailingZeros().toPlainString() + "%）";
+            String summary = "完工百分比确认收入 " + period + "（进度 " + rate.stripTrailingZeros().toPlainString() + "%）"; // i18n-ignore 凭证摘要存库
             list.add(VoucherLine.debit(summary, liability, null, revenue).withProject(projectId)
                     .withCustomer(customerId));
             list.add(VoucherLine.credit(summary, revenueAccount, null, revenue).withProject(projectId));
-            String costSummary = "结转项目成本 " + period;
+            String costSummary = "结转项目成本 " + period; // i18n-ignore 凭证摘要存库
             list.add(VoucherLine.debit(costSummary, costOfSales, null, cost).withProject(projectId));
             list.add(VoucherLine.credit(costSummary, contractCost, null, cost).withProject(projectId));
             PmRevenue r = new PmRevenue();
@@ -181,7 +182,7 @@ public class PmCloseService {
     /** 已入总账的工时、费用不能删除或撤销 */
     public static void checkNotPosted(Long voucherId, String what) {
         if (voucherId != null) {
-            throw new BizException(what + "已在项目月结中入账，请先删除月结凭证");
+            throw new BizException("{0}已在项目月结中入账，请先删除月结凭证", I18n.t(what));
         }
     }
 

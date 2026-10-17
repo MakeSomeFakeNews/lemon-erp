@@ -1,0 +1,47 @@
+/** 经销商门户 */
+export default {
+  order: {
+    tip: '订单提交后由销售审核，审核前可以撤销',
+    shop: '我要订货',
+    discount: '优惠 ¥{amount}',
+    submitOrder: '提交订单（{n} 种）',
+    searchPlaceholder: '物料编码或名称',
+    priceTip: '价格按价目表（起订数量越大价格越低），提交时自动应用促销活动',
+    tierPrice: '满 {qty} {unit}：¥{price}',
+    expectedDelivery: '期望交货日期',
+    useRebate: '使用返利',
+    rebateBalance: '返利余额 ¥{amount}',
+    totalByList: '按价目价合计',
+    totalTip: '（促销优惠以提交后的订单为准）',
+    detailTitle: '订单 {no}',
+    confirmCancel: '撤销该订单？',
+    cancelOrder: '撤销订单',
+    orderDate: '下单日期',
+    expected: '期望交货',
+    promoDiscount: '促销优惠',
+    rebateDeduct: '返利抵扣',
+    gift: '赠品',
+    orderNo: '订单号',
+    material: '物料',
+    price: '价格',
+    orderQty: '订货数量',
+    submitted: '订单已提交，等待销售审核',
+    shipped: '已发货',
+    canceled: '已撤销'
+  },
+  report: {
+    tip: '每月上报各产品的当月销量（卖给终端客户）和月末库存，同一月份重复上报会覆盖',
+    report: '上报',
+    formTitle: '库存销量上报 {period}',
+    submit: '提交上报',
+    month: '月份',
+    formTip: '只上报填写了销量或库存的产品；产品清单为可订货的产品',
+    itemCount: '产品数',
+    monthSales: '当月销量',
+    monthEndStock: '月末库存',
+    reported: '上报',
+    product: '产品',
+    msgEmpty: '请填写至少一个产品的销量或库存',
+    done: '已上报'
+  }
+}

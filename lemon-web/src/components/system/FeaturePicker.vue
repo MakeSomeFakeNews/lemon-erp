@@ -1,6 +1,6 @@
 <template>
   <div class="feature-picker">
-    <div class="section-label">行业模板 <span class="sub-text">选择后自动勾选该行业常用的功能模块，可再调整</span></div>
+    <div class="section-label">{{ $t('components.feature.industry') }} <span class="sub-text">{{ $t('components.feature.industryTip') }}</span></div>
     <div class="industries">
       <div
         v-for="i in catalog.industries"
@@ -10,13 +10,13 @@
       >
         <div class="industry-name">{{ i.name }}</div>
         <div class="industry-desc">{{ i.description }}</div>
-        <div class="industry-count">{{ i.features.length }} 个模块</div>
+        <div class="industry-count">{{ $t('components.feature.moduleCount', { n: i.features.length }) }}</div>
       </div>
     </div>
 
     <div class="section-label">
-      功能模块
-      <span class="sub-text">已选 {{ checkedKeys.length }} / {{ catalog.features.length }}；勾选时自动加上依赖的模块，取消时一并取消依赖它的模块</span>
+      {{ $t('components.feature.modules') }}
+      <span class="sub-text">{{ $t('components.feature.modulesTip', { n: checkedKeys.length, total: catalog.features.length }) }}</span>
     </div>
     <div v-for="g in groups" :key="g.name" class="group">
       <div class="group-name">{{ g.name }}</div>
@@ -33,9 +33,9 @@
             @change="(e) => toggle(f, e.target.checked)"
           />
           <span class="feature-text">
-            <span class="feature-name">{{ f.name }}<a-tag v-if="f.required" :bordered="false" class="req">必选</a-tag></span>
+            <span class="feature-name">{{ f.name }}<a-tag v-if="f.required" :bordered="false" class="req">{{ $t('components.feature.required') }}</a-tag></span>
             <span class="feature-desc">{{ f.description }}</span>
-            <span v-if="f.requires.length" class="feature-req">依赖：{{ f.requires.map(nameOf).join('、') }}</span>
+            <span v-if="f.requires.length" class="feature-req">{{ $t('components.feature.requires', { names: f.requires.map(nameOf).join($t('components.excel.listSep')) }) }}</span>
           </span>
         </label>
       </div>
@@ -46,6 +46,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { t } from '@/locales'
 
 /**
  * 按功能模块选择菜单：行业模板一键勾选，模块勾选 / 取消时同步菜单（v-model 为菜单 ID 列表）。
@@ -146,12 +147,12 @@ function toggle(feature, on) {
     const keys = withRequires([feature.key])
     const added = [...keys].filter((k) => k !== feature.key && state.value[k] !== 'all').map(nameOf)
     keys.forEach((k) => byKey.value[k].menuIds.forEach((id) => ids.add(id)))
-    if (added.length) message.info(`同时勾选了依赖的模块：${added.join('、')}`)
+    if (added.length) message.info(t('components.feature.addedDeps', { names: added.join(t('components.excel.listSep')) }))
   } else {
     const keys = dependents(feature.key)
     const removed = [...keys].filter((k) => k !== feature.key).map(nameOf)
     keys.forEach((k) => byKey.value[k].menuIds.forEach((id) => ids.delete(id)))
-    if (removed.length) message.info(`同时取消了依赖它的模块：${removed.join('、')}`)
+    if (removed.length) message.info(t('components.feature.removedDeps', { names: removed.join(t('components.excel.listSep')) }))
   }
   industry.value = undefined
   emit('industry', null)

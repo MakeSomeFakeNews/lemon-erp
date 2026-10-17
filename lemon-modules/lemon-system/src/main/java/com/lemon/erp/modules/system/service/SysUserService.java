@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.ref.RefType;
 import com.lemon.erp.framework.ref.ReferenceGuard;
@@ -161,7 +162,7 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         checkOperable(ids);
         // 有业务数据的用户只能停用：删除后单据上的制单人、负责人会失效
         for (SysUser user : listByIds(ids)) {
-            referenceGuard.checkDeletable(RefType.USER, user.getId(), "用户「" + user.getUsername() + "」");
+            referenceGuard.checkDeletable(RefType.USER, user.getId(), I18n.t("用户「{0}」", user.getUsername()));
         }
         removeByIds(ids);
         userRoleMapper.delete(Wrappers.<SysUserRole>lambdaQuery().in(SysUserRole::getUserId, ids));
@@ -206,7 +207,10 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         Supplier<Long> counter = () -> count(Wrappers.<SysUser>lambdaQuery().in(SysUser::getId, distinct));
         long count = all ? counter.get() : DataPermissionContext.execute(DATA_RULE, counter);
         if (count < distinct.size()) {
-            throw new BizException(all ? "用户不存在" : "没有权限访问该用户数据");
+            if (all) {
+                throw new BizException("用户不存在");
+            }
+            throw new BizException("没有权限访问该用户数据");
         }
     }
 

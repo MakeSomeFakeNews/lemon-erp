@@ -80,14 +80,14 @@ public class MesEcnController {
     /** 提交：data 为 true 表示已进入审批 */
     @PostMapping("/{id}/submit")
     @PreAuthorize("@ss.hasPerm('mes:ecn:approve')")
-    @OperLog(title = "工程变更-提交", type = OperType.UPDATE)
+    @OperLog(title = "工程变更-提交", type = OperType.UPDATE) // i18n-ignore
     public R<Boolean> submit(@PathVariable Long id) {
         return R.ok(ecnService.submit(id));
     }
 
     @PostMapping("/{id}/effect")
     @PreAuthorize("@ss.hasPerm('mes:ecn:approve')")
-    @OperLog(title = "工程变更-立即生效", type = OperType.UPDATE)
+    @OperLog(title = "工程变更-立即生效", type = OperType.UPDATE) // i18n-ignore
     public R<Void> effect(@PathVariable Long id) {
         ecnService.effectNow(id);
         return R.ok();
@@ -95,7 +95,7 @@ public class MesEcnController {
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("@ss.hasPerm('mes:ecn:approve')")
-    @OperLog(title = "工程变更-取消", type = OperType.UPDATE)
+    @OperLog(title = "工程变更-取消", type = OperType.UPDATE) // i18n-ignore
     public R<Void> cancel(@PathVariable Long id) {
         ecnService.cancel(id);
         return R.ok();

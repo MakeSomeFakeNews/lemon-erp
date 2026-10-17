@@ -1,9 +1,9 @@
 <template>
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
-      <template #title>凭证科目设置</template>
+      <template #title>{{ $t('fin.accountRule.title') }}</template>
       <template #extra>
-        <span class="sub-text">业务单据生成凭证时按此取科目；未设置的使用预置科目，只影响之后生成的凭证</span>
+        <span class="sub-text">{{ $t('fin.accountRule.tip') }}</span>
       </template>
       <div v-if="loading && !groups.length" class="page-spin"><a-spin /></div>
       <a-tabs v-model:active-key="group">
@@ -11,21 +11,21 @@
           <div v-for="role in g.roles" :key="role.role" class="rule-item">
             <div class="rule-label">
               {{ role.label }}
-              <a-tag v-if="isModified(role)" color="blue" :bordered="false" class="ml">已设置</a-tag>
-              <a-tag v-if="isDirty(role)" color="orange" :bordered="false" class="ml">未保存</a-tag>
+              <a-tag v-if="isModified(role)" color="blue" :bordered="false" class="ml">{{ $t('fin.accountRule.modified') }}</a-tag>
+              <a-tag v-if="isDirty(role)" color="orange" :bordered="false" class="ml">{{ $t('fin.accountRule.unsaved') }}</a-tag>
             </div>
             <div class="rule-control">
               <AccountSelect
                 v-model:value="edits[role.role].accountId"
                 allow-clear
                 :disabled="!canEdit"
-                :placeholder="`预置：${accountText(role.defaultCode)}`"
+                :placeholder="$t('fin.accountRule.preset', { account: accountText(role.defaultCode) })"
                 class="account"
               />
             </div>
             <template v-if="role.dimension !== 'NONE'">
               <div class="sub-text dim-tip">
-                按{{ role.dimension === 'MATERIAL_CATEGORY' ? '物料分类' : '职位类别' }}分别设置（未设置的使用上面的科目）：
+                {{ $t('fin.accountRule.byDimension', { dim: role.dimension === 'MATERIAL_CATEGORY' ? $t('fin.accountRule.materialCategory') : $t('fin.accountRule.positionCategory') }) }}
               </div>
               <div v-for="d in dict[role.dictType]" :key="d.value" class="dim-row">
                 <span class="dim-label">{{ d.label }}</span>
@@ -42,8 +42,8 @@
         </a-tab-pane>
       </a-tabs>
       <div v-if="canEdit" class="rule-actions">
-        <a-button :disabled="!dirtyRoles.length" @click="discard">放弃修改</a-button>
-        <a-button type="primary" :loading="saving" :disabled="!dirtyRoles.length" @click="save">保存（{{ dirtyRoles.length }}）</a-button>
+        <a-button :disabled="!dirtyRoles.length" @click="discard">{{ $t('common.action.discard') }}</a-button>
+        <a-button type="primary" :loading="saving" :disabled="!dirtyRoles.length" @click="save">{{ $t('fin.accountRule.saveN', { n: dirtyRoles.length }) }}</a-button>
       </div>
     </a-card>
   </div>
@@ -52,6 +52,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { accountOptions, accountRules, saveAccountRule } from '@/api/fin'
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
@@ -62,6 +63,7 @@ import { cached } from '@/components/fin/fin'
  * 凭证科目设置：业务单据自动生成凭证时各用途使用的科目。存货、收入、成本可按物料分类，工资费用可按职位类别分别设置；
  * 优先级为 分类设置 → 用途设置 → 预置科目
  */
+const { t } = useI18n()
 const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPerm('fin:accountRule:edit'))
 const dict = useDict('wms_material_category', 'hr_position_category')
@@ -87,7 +89,7 @@ const accountById = computed(() => new Map(accounts.value.map((a) => [a.id, a]))
 
 function accountText(code) {
   const a = accountByCode.value.get(code)
-  return a ? `${a.code} ${a.name}` : `${code}（科目不存在或不是末级）`
+  return a ? `${a.code} ${a.name}` : t('fin.accountRule.invalidAccount', { code })
 }
 
 /** 分类未设置时实际使用的科目：用途设置 → 该分类的预置科目 */
@@ -95,9 +97,9 @@ function dimPlaceholder(role, value) {
   const id = edits[role.role].accountId
   if (id) {
     const a = accountById.value.get(id)
-    return `同上：${a ? `${a.code} ${a.name}` : id}`
+    return t('fin.accountRule.sameAsAbove', { account: a ? `${a.code} ${a.name}` : id })
   }
-  return `预置：${accountText(role.dimensionDefaults?.[value] || role.defaultCode)}`
+  return t('fin.accountRule.preset', { account: accountText(role.dimensionDefaults?.[value] || role.defaultCode) })
 }
 
 async function load() {
@@ -135,7 +137,7 @@ async function save() {
     for (const r of dirtyRoles.value) {
       await saveAccountRule(r.role, { accountId: edits[r.role].accountId ?? null, items: cleanItems(edits[r.role].items) })
     }
-    message.success('已保存')
+    message.success(t('common.msg.saved'))
     await load()
   } finally {
     saving.value = false
@@ -172,7 +174,7 @@ async function save() {
   margin-bottom: 6px;
 }
 .dim-label {
-  width: 96px;
+  width: 140px;
   flex-shrink: 0;
   color: var(--app-text-2);
 }

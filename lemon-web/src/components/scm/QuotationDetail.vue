@@ -1,14 +1,14 @@
 <template>
   <SubPage
     :open="open"
-    :title="detail ? `销售报价 ${detail.quoteNo}` : '销售报价'"
+    :title="detail ? $t('scm.quotation.titleNo', { no: detail.quoteNo }) : $t('scm.quotation.title')"
     width="min(1100px, 100vw)"
     destroy-on-close
     @close="emit('update:open', false)"
   >
     <template #extra>
       <a-space v-if="detail">
-        <a-tag v-if="expired" color="red" :bordered="false">已过期</a-tag>
+        <a-tag v-if="expired" color="red" :bordered="false">{{ $t('scm.quotation.expired') }}</a-tag>
         <DictTag type="scm_quotation_status" :value="detail.status" />
       </a-space>
     </template>
@@ -16,21 +16,21 @@
     <a-spin :spinning="loading">
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="doc-desc">
-          <a-descriptions-item label="报价单号">{{ detail.quoteNo }}</a-descriptions-item>
-          <a-descriptions-item label="客户">{{ detail.customerName }}</a-descriptions-item>
-          <a-descriptions-item label="报价日期">{{ detail.quoteDate }}</a-descriptions-item>
-          <a-descriptions-item label="有效期至">{{ detail.validTo || '不限' }}</a-descriptions-item>
-          <a-descriptions-item label="价税合计">
+          <a-descriptions-item :label="$t('scm.quotation.quoteNo')">{{ detail.quoteNo }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.quotation.customer')">{{ detail.customerName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.quotation.quoteDate')">{{ detail.quoteDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.quotation.validTo')">{{ detail.validTo || $t('scm.quotation.unlimited') }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.quotation.amount')">
             <b>¥{{ formatMoney(detail.totalAmount) }}</b>
-            <span class="sub-text">（税额 {{ formatMoney(detail.taxAmount) }}）</span>
+            <span class="sub-text">{{ $t('scm.quotation.taxAmountParen', { amount: formatMoney(detail.taxAmount) }) }}</span>
           </a-descriptions-item>
-          <a-descriptions-item v-if="detail.opportunityId" label="关联商机">#{{ detail.opportunityId }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.orderId" label="销售订单">
+          <a-descriptions-item v-if="detail.opportunityId" :label="$t('scm.quotation.opportunity')">#{{ detail.opportunityId }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.orderId" :label="$t('scm.quotation.salesOrder')">
             <a @click="toOrder(detail.orderId)">{{ detail.orderNo }}</a>
           </a-descriptions-item>
-          <a-descriptions-item label="制单">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="备注">{{ detail.remark }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.lostReason" label="失效原因">{{ detail.lostReason }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.quotation.creator')">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.lostReason" :label="$t('scm.quotation.lostReason')">{{ detail.lostReason }}</a-descriptions-item>
         </a-descriptions>
 
         <a-alert
@@ -38,14 +38,14 @@
           type="info"
           show-icon
           class="doc-desc"
-          message="报价单审批中，可在「流程中心 → 我的申请」查看审批进度，审批通过后自动变为已批准"
+          :message="$t('scm.quotation.approvingTip')"
         />
         <a-alert
           v-else-if="detail.status === 'APPROVED' && expired"
           type="warning"
           show-icon
           class="doc-desc"
-          message="报价已过有效期，不能转为销售订单，请重新报价"
+          :message="$t('scm.quotation.expiredTip')"
         />
 
         <a-table row-key="id" size="small" :columns="itemColumns" :data-source="detail.items" :pagination="false" :scroll="{ x: 850 }">
@@ -57,7 +57,7 @@
             <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }} {{ record.unit }}</template>
             <template v-else-if="column.key === 'price'">
               <div>¥{{ formatMoney(record.price) }}</div>
-              <div class="sub-text">税率 {{ Number(record.taxRate) }}%</div>
+              <div class="sub-text">{{ $t('scm.quotation.taxRateVal', { n: Number(record.taxRate) }) }}</div>
               <PriceHint :price="record.price" :list-price="record.listPrice" />
             </template>
             <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}</template>
@@ -74,26 +74,27 @@
       </div>
     </template>
 
-    <a-modal v-model:open="orderOpen" title="转销售订单" :confirm-loading="saving" @ok="submitOrder">
-      <p>按报价明细生成草稿销售订单，生成后请到销售订单审核。</p>
+    <a-modal v-model:open="orderOpen" :title="$t('scm.quotation.toOrder')" :confirm-loading="saving" @ok="submitOrder">
+      <p>{{ $t('scm.quotation.toOrderTip') }}</p>
       <a-form layout="vertical">
-        <a-form-item label="发货仓库">
-          <WarehouseSelect v-model:value="orderForm.warehouseId" placeholder="选填，出库时默认" />
+        <a-form-item :label="$t('scm.quotation.shipWarehouse')">
+          <WarehouseSelect v-model:value="orderForm.warehouseId" :placeholder="$t('scm.quotation.shipWarehousePh')" />
         </a-form-item>
-        <a-form-item label="交货日期">
-          <a-date-picker v-model:value="orderForm.deliveryDate" value-format="YYYY-MM-DD" placeholder="选填" class="full" />
+        <a-form-item :label="$t('scm.quotation.deliveryDate')">
+          <a-date-picker v-model:value="orderForm.deliveryDate" value-format="YYYY-MM-DD" :placeholder="$t('scm.quotation.optional')" class="full" />
         </a-form-item>
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="loseOpen" title="标记失效" :confirm-loading="saving" @ok="submitLose">
-      <p>报价未成交或已作废，标记后不能再转销售订单。</p>
-      <a-textarea v-model:value="loseReason" :rows="3" :maxlength="255" placeholder="失效原因，如：客户选择了其他供应商、价格未达成一致" />
+    <a-modal v-model:open="loseOpen" :title="$t('scm.quotation.markLost')" :confirm-loading="saving" @ok="submitLose">
+      <p>{{ $t('scm.quotation.markLostTip') }}</p>
+      <a-textarea v-model:value="loseReason" :rows="3" :maxlength="255" :placeholder="$t('scm.quotation.lostReasonPh')" />
     </a-modal>
   </SubPage>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import SubPage from '@/components/SubPage.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -107,6 +108,8 @@ import { useUserStore } from '@/store/user'
 import { formatQty, today } from '@/components/wms/wms'
 import { formatMoney } from './scm'
 
+const { t } = useI18n()
+
 /** 销售报价详情：提交审批、转销售订单、标记失效。触发 edit(record)、changed */
 const props = defineProps({
   open: Boolean,
@@ -119,11 +122,11 @@ const can = (perm) => userStore.hasPerm(`scm:quotation:${perm}`)
 const router = useRouter()
 
 const itemColumns = [
-  { title: '物料', key: 'material', width: 240 },
-  { title: '数量', key: 'qty', width: 120, align: 'right' },
-  { title: '含税单价', key: 'price', width: 170, align: 'right' },
-  { title: '价税合计', key: 'amount', width: 130, align: 'right' },
-  { title: '备注', dataIndex: 'remark', width: 160, ellipsis: true }
+  { title: t('scm.quotation.material'), key: 'material', width: 240 },
+  { title: t('common.field.quantity'), key: 'qty', width: 120, align: 'right' },
+  { title: t('scm.quotation.taxPrice'), key: 'price', width: 170, align: 'right' },
+  { title: t('scm.quotation.amount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true }
 ]
 
 const detail = ref()
@@ -171,13 +174,13 @@ async function submitOrder() {
       deliveryDate: orderForm.deliveryDate || undefined
     })
     orderOpen.value = false
-    await afterChange('已生成销售订单')
+    await afterChange(t('scm.quotation.orderCreated'))
     if (userStore.hasPerm('scm:sales:list')) {
       Modal.confirm({
-        title: '已生成销售订单',
-        content: `销售订单 ${detail.value?.orderNo || ''} 为草稿状态，是否前往查看并审核？`,
-        okText: '前往查看',
-        cancelText: '留在此页',
+        title: t('scm.quotation.orderCreated'),
+        content: t('scm.quotation.orderCreatedTip', { no: detail.value?.orderNo || '' }),
+        okText: t('scm.quotation.goView'),
+        cancelText: t('scm.quotation.stay'),
         onOk: () => toOrder(orderId)
       })
     }
@@ -193,7 +196,7 @@ async function submitLose() {
   try {
     await loseQuotation(props.quotationId, loseReason.value || undefined)
     loseOpen.value = false
-    await afterChange('已标记失效')
+    await afterChange(t('scm.quotation.markedLost'))
   } finally {
     saving.value = false
   }
@@ -204,12 +207,12 @@ const actions = computed(() => {
   if (!d) return []
   const list = []
   if (d.status === 'DRAFT' && can('edit')) {
-    list.push({ key: 'edit', label: '编辑', icon: EditOutlined, run: () => emit('edit', d) })
+    list.push({ key: 'edit', label: t('common.action.edit'), icon: EditOutlined, run: () => emit('edit', d) })
   }
   if (['DRAFT', 'APPROVED'].includes(d.status) && can('edit')) {
     list.push({
       key: 'lose',
-      label: '标记失效',
+      label: t('scm.quotation.markLost'),
       icon: CloseCircleOutlined,
       danger: true,
       run: () => {
@@ -221,16 +224,16 @@ const actions = computed(() => {
   if (d.status === 'DRAFT' && can('edit')) {
     list.push({
       key: 'submit',
-      label: '提交',
+      label: t('common.action.submit'),
       icon: SendOutlined,
       primary: true,
       run: () =>
         Modal.confirm({
-          title: '提交报价单？',
-          content: '发布了审批流程时将发起审批，否则直接批准。',
+          title: t('scm.quotation.confirmSubmit'),
+          content: t('scm.quotation.confirmSubmitTip'),
           async onOk() {
             const flow = await submitQuotation(props.quotationId)
-            await afterChange(flow ? '已提交审批' : '已批准')
+            await afterChange(flow ? t('scm.quotation.submittedFlow') : t('scm.quotation.approved'))
           }
         })
     })
@@ -238,7 +241,7 @@ const actions = computed(() => {
   if (d.status === 'APPROVED' && !expired.value && can('order')) {
     list.push({
       key: 'order',
-      label: '转销售订单',
+      label: t('scm.quotation.toOrder'),
       icon: ShoppingOutlined,
       primary: true,
       run: () => {

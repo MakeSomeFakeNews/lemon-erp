@@ -1,37 +1,37 @@
 <template>
   <div class="screen-grid">
     <div class="kpis">
-      <ScreenKpi label="本月检验" :value="kpi.inspections" unit="批" />
-      <ScreenKpi label="综合合格率" :value="kpi.passRate" :digits="1" unit="%" :color="rateColor(kpi.passRate)" />
-      <ScreenKpi label="来料合格率" :value="kpi.iqcRate" :digits="1" unit="%" :color="rateColor(kpi.iqcRate)" />
-      <ScreenKpi label="过程 / 成品合格率" :value="kpi.processRate" :digits="1" unit="%" :color="rateColor(kpi.processRate)" />
-      <ScreenKpi label="生产良品率" :value="kpi.productionYield" :digits="1" unit="%" :color="rateColor(kpi.productionYield)" sub="本月报工" />
-      <ScreenKpi label="本月报废" :value="kpi.scrapQty" :color="Number(kpi.scrapQty) ? COLORS.orange : COLORS.green" />
-      <ScreenKpi label="待处置不合格品" :value="kpi.openNcr" unit="单" :color="Number(kpi.openNcr) ? COLORS.red : COLORS.green" />
-      <ScreenKpi label="本月不合格品" :value="kpi.monthNcr" unit="单" :color="COLORS.purple" :sub="`已处置 ${fmtNum(kpi.doneNcr)} 单`" />
+      <ScreenKpi :label="$t('screen.quality.inspections')" :value="kpi.inspections" :unit="$t('screen.unit.lot')" />
+      <ScreenKpi :label="$t('screen.quality.passRate')" :value="kpi.passRate" :digits="1" unit="%" :color="rateColor(kpi.passRate)" />
+      <ScreenKpi :label="$t('screen.quality.iqcRate')" :value="kpi.iqcRate" :digits="1" unit="%" :color="rateColor(kpi.iqcRate)" />
+      <ScreenKpi :label="$t('screen.quality.processRate')" :value="kpi.processRate" :digits="1" unit="%" :color="rateColor(kpi.processRate)" />
+      <ScreenKpi :label="$t('screen.quality.productionYield')" :value="kpi.productionYield" :digits="1" unit="%" :color="rateColor(kpi.productionYield)" :sub="$t('screen.quality.fromReports')" />
+      <ScreenKpi :label="$t('screen.quality.scrapQty')" :value="kpi.scrapQty" :color="Number(kpi.scrapQty) ? COLORS.orange : COLORS.green" />
+      <ScreenKpi :label="$t('screen.quality.openNcr')" :value="kpi.openNcr" :unit="$t('screen.unit.order')" :color="Number(kpi.openNcr) ? COLORS.red : COLORS.green" />
+      <ScreenKpi :label="$t('screen.quality.monthNcr')" :value="kpi.monthNcr" :unit="$t('screen.unit.order')" :color="COLORS.purple" :sub="$t('screen.quality.doneNcr', { n: fmtNum(kpi.doneNcr) })" />
     </div>
 
     <div class="panels">
-      <ScreenPanel title="近 14 天检验合格率">
+      <ScreenPanel :title="$t('screen.quality.trend')">
         <EChart :option="trendOption" height="100%" dark />
       </ScreenPanel>
-      <ScreenPanel title="各类检验合格率">
-        <template #extra>本月已确认的检验</template>
+      <ScreenPanel :title="$t('screen.quality.byType')">
+        <template #extra>{{ $t('screen.quality.byTypeHint') }}</template>
         <EChart :option="typeOption" height="100%" dark />
       </ScreenPanel>
-      <ScreenPanel title="不良类型柏拉图">
-        <template #extra>本月不合格 / 让步接收</template>
+      <ScreenPanel :title="$t('screen.quality.pareto')">
+        <template #extra>{{ $t('screen.quality.paretoHint') }}</template>
         <EChart :option="paretoOption" height="100%" dark />
       </ScreenPanel>
     </div>
 
     <div class="panels">
-      <ScreenPanel title="供应商来料质量">
-        <template #extra>本月，按合格率从低到高</template>
+      <ScreenPanel :title="$t('screen.quality.suppliers')">
+        <template #extra>{{ $t('screen.quality.suppliersHint') }}</template>
         <EChart :option="supplierOption" height="100%" dark />
       </ScreenPanel>
-      <ScreenPanel title="最近检验">
-        <ScrollList :columns="inspectionColumns" :rows="data.inspections || []" :row-height="40" empty-text="还没有检验记录">
+      <ScreenPanel :title="$t('screen.quality.recent')">
+        <ScrollList :columns="inspectionColumns" :rows="inspections" :row-height="40" :empty-text="$t('screen.quality.noInspection')">
           <template #cell="{ column, row }">
             <template v-if="column.key === 'date'">{{ shortDay(row.date) }}</template>
             <template v-else-if="column.key === 'resultLabel'">
@@ -44,8 +44,8 @@
           </template>
         </ScrollList>
       </ScreenPanel>
-      <ScreenPanel title="待处置不合格品">
-        <ScrollList :columns="ncrColumns" :rows="data.ncrs || []" :row-height="42" empty-text="没有待处置的不合格品">
+      <ScreenPanel :title="$t('screen.quality.openNcr')">
+        <ScrollList :columns="ncrColumns" :rows="ncrs" :row-height="42" :empty-text="$t('screen.quality.noNcr')">
           <template #cell="{ column, row }">
             <template v-if="column.key === 'qty'"><span class="num-cell bad">{{ fmtNum(row.qty) }}</span></template>
             <template v-else-if="column.key === 'statusLabel'"><span class="screen-tag orange">{{ row.statusLabel }}</span></template>
@@ -59,17 +59,25 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import EChart from '@/components/charts/EChart.vue'
 import ScreenKpi from '@/components/screen/ScreenKpi.vue'
 import ScreenPanel from '@/components/screen/ScreenPanel.vue'
 import ScrollList from '@/components/screen/ScrollList.vue'
-import { COLORS, axisStyle, fmtNum, gradient, hGradient, legend, shortDay, tooltip } from '@/components/screen/screen'
+import { COLORS, axisStyle, fmtNum, gradient, hGradient, legend, shortDay, tooltip, withDictLabel } from '@/components/screen/screen'
 import './screen.css'
 
 /** 质量管理大屏 */
 const props = defineProps({ data: { type: Object, default: () => ({}) } })
+const { t } = useI18n()
 const kpi = computed(() => props.data.kpi || {})
 const rateColor = (v) => (v === null || v === undefined ? COLORS.cyan : Number(v) >= 98 ? COLORS.green : Number(v) >= 95 ? COLORS.orange : COLORS.red)
+const inspections = computed(() =>
+  withDictLabel(withDictLabel(props.data.inspections, 'mes_qc_type', 'type', 'typeLabel'), 'mes_qc_result', 'result', 'resultLabel'))
+const ncrs = computed(() => {
+  const rows = withDictLabel(props.data.ncrs, 'qms_ncr_source', 'source', 'sourceLabel')
+  return withDictLabel(withDictLabel(rows, 'mes_defect_type', 'defectType', 'defectLabel'), 'qms_ncr_status', 'status', 'statusLabel')
+})
 const RESULT_COLOR = { PASS: 'green', FAIL: 'red', CONCESSION: 'orange' }
 
 const trendOption = computed(() => {
@@ -84,18 +92,18 @@ const trendOption = computed(() => {
       { type: 'value', min: 0, max: 100, ...axisStyle, splitLine: { show: false }, axisLabel: { ...axisStyle.axisLabel, formatter: '{value}%' } }
     ],
     series: [
-      { name: '检验批次', type: 'bar', barWidth: 14, data: rows.map((r) => Number(r.total)), itemStyle: { color: gradient(COLORS.cyan, 0.2) } },
-      { name: '合格率', type: 'line', yAxisIndex: 1, smooth: true, symbolSize: 6, connectNulls: true, data: rows.map((r) => (r.rate === null ? null : Number(r.rate))), itemStyle: { color: COLORS.green } }
+      { name: t('screen.quality.lots'), type: 'bar', barWidth: 14, data: rows.map((r) => Number(r.total)), itemStyle: { color: gradient(COLORS.cyan, 0.2) } },
+      { name: t('screen.quality.rate'), type: 'line', yAxisIndex: 1, smooth: true, symbolSize: 6, connectNulls: true, data: rows.map((r) => (r.rate === null ? null : Number(r.rate))), itemStyle: { color: COLORS.green } }
     ]
   }
 })
 
 /** 各类检验一个仪表盘 */
 const typeOption = computed(() => {
-  const rows = (props.data.byType || []).slice(0, 4)
+  const rows = withDictLabel(props.data.byType, 'mes_qc_type', 'type', 'label').slice(0, 4)
   const n = Math.max(rows.length, 1)
   return {
-    title: rows.length ? undefined : { text: '本月还没有检验', left: 'center', top: 'middle', textStyle: { color: COLORS.sub, fontSize: 15, fontWeight: 400 } },
+    title: rows.length ? undefined : { text: t('screen.quality.noInspectionMonth'), left: 'center', top: 'middle', textStyle: { color: COLORS.sub, fontSize: 15, fontWeight: 400 } },
     series: rows.map((r, i) => ({
       type: 'gauge', center: [`${((i + 0.5) * 100) / n}%`, '55%'], radius: n > 2 ? '62%' : '70%',
       startAngle: 220, endAngle: -40, min: 0, max: 100,
@@ -104,19 +112,19 @@ const typeOption = computed(() => {
       axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: false }, pointer: { show: false },
       title: { show: true, offsetCenter: [0, '72%'], color: COLORS.text, fontSize: 15 },
       detail: { valueAnimation: true, offsetCenter: [0, '0%'], fontSize: 24, fontWeight: 700, color: rateColor(r.rate), formatter: (v) => (r.rate === null ? '-' : `${v}%`) },
-      data: [{ value: r.rate === null ? 0 : Number(r.rate), name: `${r.label} ${r.total} 批` }]
+      data: [{ value: r.rate === null ? 0 : Number(r.rate), name: `${r.label} ${t('screen.quality.lotsN', { n: r.total })}` }]
     }))
   }
 })
 
 const paretoOption = computed(() => {
-  const rows = props.data.defects || []
+  const rows = withDictLabel(props.data.defects, 'mes_defect_type', 'value', 'label')
   const total = rows.reduce((s, r) => s + Number(r.times), 0)
   let acc = 0
   const cum = rows.map((r) => { acc += Number(r.times); return total ? Number(((acc * 100) / total).toFixed(1)) : 0 })
   return {
     tooltip: tooltip(),
-    title: rows.length ? undefined : { text: '本月没有不良记录', left: 'center', top: 'middle', textStyle: { color: COLORS.sub, fontSize: 15, fontWeight: 400 } },
+    title: rows.length ? undefined : { text: t('screen.quality.noDefect'), left: 'center', top: 'middle', textStyle: { color: COLORS.sub, fontSize: 15, fontWeight: 400 } },
     grid: { left: 40, right: 46, top: 24, bottom: 40 },
     xAxis: { type: 'category', data: rows.map((r) => r.label), ...axisStyle, axisLabel: { ...axisStyle.axisLabel, interval: 0, rotate: rows.length > 5 ? 30 : 0 } },
     yAxis: [
@@ -124,8 +132,8 @@ const paretoOption = computed(() => {
       { type: 'value', min: 0, max: 100, ...axisStyle, splitLine: { show: false }, axisLabel: { ...axisStyle.axisLabel, formatter: '{value}%' } }
     ],
     series: [
-      { name: '次数', type: 'bar', barWidth: 20, data: rows.map((r) => Number(r.times)), itemStyle: { color: gradient(COLORS.orange, 0.2) } },
-      { name: '累计占比', type: 'line', yAxisIndex: 1, smooth: true, symbolSize: 6, data: cum, itemStyle: { color: COLORS.red } }
+      { name: t('screen.quality.times'), type: 'bar', barWidth: 20, data: rows.map((r) => Number(r.times)), itemStyle: { color: gradient(COLORS.orange, 0.2) } },
+      { name: t('screen.quality.cumulative'), type: 'line', yAxisIndex: 1, smooth: true, symbolSize: 6, data: cum, itemStyle: { color: COLORS.red } }
     ]
   }
 })
@@ -133,8 +141,8 @@ const paretoOption = computed(() => {
 const supplierOption = computed(() => {
   const rows = props.data.suppliers || []
   return {
-    tooltip: tooltip({ formatter: (p) => { const r = rows[p[0].dataIndex]; return `${r.name}<br/>合格率 ${r.rate}%<br/>检验 ${r.total} 批，不合格 ${r.fail} 批` } }),
-    title: rows.length ? undefined : { text: '本月没有来料检验', left: 'center', top: 'middle', textStyle: { color: COLORS.sub, fontSize: 15, fontWeight: 400 } },
+    tooltip: tooltip({ formatter: (p) => { const r = rows[p[0].dataIndex]; return `${r.name}<br/>${t('screen.quality.supplierTip', { rate: r.rate, total: r.total, fail: r.fail })}` } }),
+    title: rows.length ? undefined : { text: t('screen.quality.noIqc'), left: 'center', top: 'middle', textStyle: { color: COLORS.sub, fontSize: 15, fontWeight: 400 } },
     grid: { left: 130, right: 70, top: 4, bottom: 4 },
     xAxis: { type: 'value', min: 0, max: 100, show: false },
     yAxis: { type: 'category', inverse: true, data: rows.map((r) => r.name), ...axisStyle, axisLabel: { ...axisStyle.axisLabel, fontSize: 14, color: COLORS.text, width: 120, overflow: 'truncate' }, axisLine: { show: false }, axisTick: { show: false } },
@@ -148,19 +156,19 @@ const supplierOption = computed(() => {
 })
 
 const inspectionColumns = [
-  { key: 'date', title: '日期', width: '64px' },
-  { key: 'inspNo', title: '检验单', width: '150px' },
-  { key: 'typeLabel', title: '类型', width: '90px' },
-  { key: 'material', title: '物料', width: '1fr' },
-  { key: 'defectQty', title: '不良', width: '60px', align: 'right' },
-  { key: 'resultLabel', title: '结论', width: '96px', align: 'center' }
+  { key: 'date', title: t('common.field.date'), width: '64px' },
+  { key: 'inspNo', title: t('screen.quality.inspNo'), width: '150px' },
+  { key: 'typeLabel', title: t('common.field.type'), width: '100px' },
+  { key: 'material', title: t('screen.quality.material'), width: '1fr' },
+  { key: 'defectQty', title: t('screen.quality.defect'), width: '70px', align: 'right' },
+  { key: 'resultLabel', title: t('screen.quality.result'), width: '110px', align: 'center' }
 ]
 const ncrColumns = [
-  { key: 'ncrNo', title: '处理单', width: '140px' },
-  { key: 'material', title: '物料', width: '1fr' },
-  { key: 'defectLabel', title: '不良类型', width: '90px' },
-  { key: 'qty', title: '数量', width: '64px', align: 'right' },
-  { key: 'statusLabel', title: '状态', width: '84px', align: 'center' }
+  { key: 'ncrNo', title: t('screen.quality.ncrNo'), width: '140px' },
+  { key: 'material', title: t('screen.quality.material'), width: '1fr' },
+  { key: 'defectLabel', title: t('screen.quality.defectType'), width: '100px' },
+  { key: 'qty', title: t('common.field.quantity'), width: '64px', align: 'right' },
+  { key: 'statusLabel', title: t('common.field.status'), width: '100px', align: 'center' }
 ]
 </script>
 

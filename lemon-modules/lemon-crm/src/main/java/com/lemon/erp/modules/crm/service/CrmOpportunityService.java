@@ -186,7 +186,7 @@ public class CrmOpportunityService {
     public void delete(List<Long> ids) {
         for (CrmOpportunity o : opportunityMapper.selectByIds(ids)) {
             if (o.getSalesOrderId() != null) {
-                throw new BizException("商机「" + o.getName() + "」已生成销售订单，不能删除");
+                throw new BizException("商机「{0}」已生成销售订单，不能删除", o.getName());
             }
         }
         itemMapper.delete(Wrappers.<CrmOpportunityItem>lambdaQuery().in(CrmOpportunityItem::getOpportunityId, ids));
@@ -206,7 +206,7 @@ public class CrmOpportunityService {
             throw new BizException("赢单后才能生成销售订单");
         }
         if (o.getSalesOrderId() != null && orderMapper.selectById(o.getSalesOrderId()) != null) {
-            throw new BizException("已生成销售订单 " + o.getSalesOrderNo());
+            throw new BizException("已生成销售订单 {0}", o.getSalesOrderNo());
         }
         if (o.getItems().isEmpty()) {
             throw new BizException("商机没有产品明细，请先维护产品明细");
@@ -216,7 +216,7 @@ public class CrmOpportunityService {
                 .toList();
         Long orderId = orderService.createDraft(OrderKind.SALES, new OrderRequest(o.getCustomerId(), LocalDate.now(),
                 req.deliveryDate() != null ? req.deliveryDate() : o.getExpectedDate(), req.warehouseId(),
-                "商机 " + o.getOppNo() + " " + o.getName(), items), "CRM");
+                "商机 " + o.getOppNo() + " " + o.getName(), items), "CRM"); // i18n-ignore 存库的订单备注
         ScmOrder order = orderMapper.selectById(orderId);
         opportunityMapper.update(Wrappers.<CrmOpportunity>lambdaUpdate()
                 .set(CrmOpportunity::getSalesOrderId, orderId)

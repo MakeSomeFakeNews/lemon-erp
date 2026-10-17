@@ -67,7 +67,7 @@ public class WmsMaterialController {
 
     @org.springframework.web.bind.annotation.PutMapping("/{id}/units")
     @PreAuthorize("@ss.hasPerm('wms:material:edit')")
-    @OperLog(title = "物料辅助单位", type = OperType.UPDATE)
+    @OperLog(title = "物料辅助单位", type = OperType.UPDATE) // i18n-ignore
     public R<Void> saveUnits(@PathVariable Long id, @RequestBody List<com.lemon.erp.modules.wms.entity.WmsMaterialUnit> units) {
         materialService.saveUnits(id, units);
         return R.ok();
@@ -81,7 +81,7 @@ public class WmsMaterialController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('wms:material:add')")
-    @OperLog(title = "物料管理", type = OperType.INSERT)
+    @OperLog(title = "物料管理", type = OperType.INSERT) // i18n-ignore
     /** @return 新物料 ID */
     public R<Long> create(@Validated(Create.class) @RequestBody WmsMaterial material) {
         materialService.create(material);
@@ -92,13 +92,13 @@ public class WmsMaterialController {
     /** Excel 导入：逐行按新增校验，任何一行出错整批不导入 */
     @PostMapping("/import")
     @PreAuthorize("@ss.hasPerm('wms:material:add')")
-    @OperLog(title = "物料管理-导入", type = OperType.IMPORT)
+    @OperLog(title = "物料管理-导入", type = OperType.IMPORT) // i18n-ignore
     public R<ImportResult> importRows(@Valid @RequestBody ImportRequest<WmsMaterial> req) {
         return R.ok(importExecutor.run(req, materialService::create, Create.class));
     }
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('wms:material:edit')")
-    @OperLog(title = "物料管理", type = OperType.UPDATE)
+    @OperLog(title = "物料管理", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody WmsMaterial material) {
         materialService.update(id, material);
         return R.ok();
@@ -106,7 +106,7 @@ public class WmsMaterialController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('wms:material:edit')")
-    @OperLog(title = "物料管理-修改状态", type = OperType.UPDATE)
+    @OperLog(title = "物料管理-修改状态", type = OperType.UPDATE) // i18n-ignore
     public R<Void> changeStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
         materialService.changeStatus(id, req.status());
         return R.ok();
@@ -114,7 +114,7 @@ public class WmsMaterialController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('wms:material:remove')")
-    @OperLog(title = "物料管理", type = OperType.DELETE)
+    @OperLog(title = "物料管理", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         materialService.delete(ids);
         return R.ok();

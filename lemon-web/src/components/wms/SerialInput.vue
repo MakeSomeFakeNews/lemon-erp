@@ -9,7 +9,7 @@
       :disabled="disabled"
       :max-tag-count="maxTagCount"
       :placeholder="placeholder"
-      :not-found-content="source ? (loading ? '加载中…' : '该位置没有在库序列号') : null"
+      :not-found-content="source ? (loading ? $t('common.msg.loading') : $t('wms.select.noSerial')) : null"
       @dropdown-visible-change="(open) => open && loadOptions()"
       @change="onChange"
     />
@@ -23,6 +23,7 @@
 import { computed, ref, watch } from 'vue'
 import { availableSerials } from '@/api/wms/stock'
 import { joinSerials, splitSerials } from './wms'
+import { t } from '@/locales'
 
 /**
  * 序列号录入：支持扫码枪逐个录入、粘贴多个（逗号 / 空格 / 换行分隔）。
@@ -36,7 +37,7 @@ const props = defineProps({
   expected: Number,
   disabled: Boolean,
   maxTagCount: { type: Number, default: 6 },
-  placeholder: { type: String, default: '扫码或输入序列号' }
+  placeholder: { type: String, default: () => t('wms.doc.serialInputTip') }
 })
 const emit = defineEmits(['update:value'])
 

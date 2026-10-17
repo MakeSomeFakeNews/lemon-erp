@@ -46,9 +46,9 @@ public class MesWoOverdueJob implements JobHandler {
                 continue;
             }
             messageSender.send(List.of(((Number) r.get("createBy")).longValue()), Message.of("ALERT",
-                    "工单 " + r.get("woNo") + " 已逾期", "计划完工日期 " + r.get("planEnd") + "，请跟进生产进度或关闭工单", "/mes/wo")
+                    "工单 " + r.get("woNo") + " 已逾期", "计划完工日期 " + r.get("planEnd") + "，请跟进生产进度或关闭工单", "/mes/wo") // i18n-ignore
                     .dedup("wo-overdue:" + r.get("id") + ":" + today));
         }
-        return "提醒 " + rows.size() + " 张工单";
+        return "提醒 " + rows.size() + " 张工单"; // i18n-ignore
     }
 }

@@ -107,7 +107,7 @@ public class MesMrpService {
                 .map(planService::getAccessible).toList();
         for (MesPlan plan : plans) {
             if (!PlanStatus.CONFIRMED.name().equals(plan.getStatus())) {
-                throw new BizException("计划 " + plan.getPlanNo() + " 不是已确认状态，不能参与运算");
+                throw new BizException("计划 {0} 不是已确认状态，不能参与运算", plan.getPlanNo());
             }
         }
         // 需求：生产计划 + 销售订单未计划部分 + 销售预测（扣减同月销售订单）
@@ -125,7 +125,7 @@ public class MesMrpService {
             }
         }
         if (req.forecastMonths() != null && req.forecastMonths() > 0) {
-            sources.add("销售预测 " + req.forecastMonths() + " 个月");
+            sources.add("销售预测 " + req.forecastMonths() + " 个月"); // i18n-ignore
             YearMonth first = YearMonth.now();
             YearMonth last = first.plusMonths(req.forecastMonths() - 1L);
             for (Map<String, Object> row : forecastMapper.selectNetForecast(first.getYear() * 100 + first.getMonthValue(),
@@ -158,7 +158,7 @@ public class MesMrpService {
                     found.remove(id);
                 } else if (!found.containsKey(id)) {
                     WmsMaterial m = materialService.get(id);
-                    throw new BizException("物料「" + m.getCode() + " " + m.getName() + "」的物料属性需要 BOM，但没有启用的默认 BOM");
+                    throw new BizException("物料「{0} {1}」的物料属性需要 BOM，但没有启用的默认 BOM", m.getCode(), m.getName());
                 }
             }
             boms.putAll(found);
@@ -326,7 +326,7 @@ public class MesMrpService {
         for (MesMrpResult r : rows.stream().filter(r -> SupplyType.valueOf(r.getSupplyType()).purchased()).toList()) {
             if (r.getSupplierId() == null) {
                 WmsMaterial m = materials.get(r.getMaterialId());
-                throw new BizException("请先为采购 / 委外件「" + m.getCode() + " " + m.getName() + "」指定供应商");
+                throw new BizException("请先为采购 / 委外件「{0} {1}」指定供应商", m.getCode(), m.getName());
             }
             bySupplier.computeIfAbsent(r.getSupplierId(), k -> new ArrayList<>()).add(r);
         }
@@ -376,7 +376,7 @@ public class MesMrpService {
     /** 低层码：物料在 BOM 树中出现的最深层级 */
     private static void assignLevel(Long materialId, int level, Map<Long, Integer> levels, Map<Long, List<MesBomItem>> children) {
         if (level > MAX_LEVEL) {
-            throw new BizException("BOM 层级超过 " + MAX_LEVEL + " 层，可能存在循环引用");
+            throw new BizException("BOM 层级超过 {0} 层，可能存在循环引用", MAX_LEVEL);
         }
         Integer current = levels.get(materialId);
         if (current != null && current >= level) {

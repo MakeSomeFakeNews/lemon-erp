@@ -75,7 +75,7 @@ public class ScmSupplierController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:supplier:add')")
-    @OperLog(title = "供应商管理", type = OperType.INSERT)
+    @OperLog(title = "供应商管理", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Validated(Create.class) @RequestBody ScmSupplier supplier) {
         supplierService.create(supplier);
         return R.ok(supplier.getId());
@@ -85,13 +85,13 @@ public class ScmSupplierController {
     /** Excel 导入：逐行按新增校验，任何一行出错整批不导入 */
     @PostMapping("/import")
     @PreAuthorize("@ss.hasPerm('scm:supplier:add')")
-    @OperLog(title = "供应商管理-导入", type = OperType.IMPORT)
+    @OperLog(title = "供应商管理-导入", type = OperType.IMPORT) // i18n-ignore
     public R<ImportResult> importRows(@Valid @RequestBody ImportRequest<ScmSupplier> req) {
         return R.ok(importExecutor.run(req, supplierService::create, Create.class));
     }
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:supplier:edit')")
-    @OperLog(title = "供应商管理", type = OperType.UPDATE)
+    @OperLog(title = "供应商管理", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody ScmSupplier supplier) {
         supplierService.update(id, supplier);
         return R.ok();
@@ -99,7 +99,7 @@ public class ScmSupplierController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('scm:supplier:edit')")
-    @OperLog(title = "供应商管理-修改状态", type = OperType.UPDATE)
+    @OperLog(title = "供应商管理-修改状态", type = OperType.UPDATE) // i18n-ignore
     public R<Void> changeStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
         supplierService.changeStatus(id, req.status());
         return R.ok();
@@ -107,7 +107,7 @@ public class ScmSupplierController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('scm:supplier:remove')")
-    @OperLog(title = "供应商管理", type = OperType.DELETE)
+    @OperLog(title = "供应商管理", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         supplierService.delete(ids);
         return R.ok();

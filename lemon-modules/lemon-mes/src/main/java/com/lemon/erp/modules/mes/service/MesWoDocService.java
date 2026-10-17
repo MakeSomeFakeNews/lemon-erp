@@ -3,6 +3,7 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.WoDocItemRequest;
@@ -118,7 +119,7 @@ public class MesWoDocService {
             }
             if (workOrderMapper.addFinished(woId, total) == 0) {
                 BigDecimal remaining = wo.getQty().subtract(workOrderMapper.selectById(woId).getFinishedQty());
-                throw new BizException("完工数量超过未完工数量 " + remaining.stripTrailingZeros().toPlainString());
+                throw new BizException("完工数量超过未完工数量 {0}", remaining.stripTrailingZeros().toPlainString());
             }
             checkFinishLimit(wo, total);
         } else if (kind == WoDocKind.SCRAP) {
@@ -135,7 +136,7 @@ public class MesWoDocService {
                 WmsMaterial m = materials.get(e.getKey());
                 String name = m == null ? String.valueOf(e.getKey()) : m.getCode() + " " + m.getName();
                 if (wm == null) {
-                    throw new BizException("物料「" + name + "」不是工单用料");
+                    throw new BizException("物料「{0}」不是工单用料", name);
                 }
                 switch (kind) {
                     case ISSUE -> {
@@ -146,7 +147,7 @@ public class MesWoDocService {
                     }
                     case RETURN -> {
                         if (woMaterialMapper.addIssued(wm.getId(), e.getValue().negate(), null) == 0) {
-                            throw new BizException("物料「" + name + "」退料数量超过已领数量");
+                            throw new BizException("物料「{0}」退料数量超过已领数量", name);
                         }
                     }
                     default -> woMaterialMapper.addSupplement(wm.getId(), e.getValue());
@@ -157,7 +158,7 @@ public class MesWoDocService {
         String docNo = docNoService.next(kind.getPrefix());
         List<MesWoDocItem> items = req.items().stream().map(r -> toItem(kind, r, materials.get(r.materialId()))).toList();
         StockDocRequest stockReq = new StockDocRequest(kind.getStockBizType(), req.warehouseId(), null, req.bizDate(),
-                truncate(req.remark() == null ? "工单 " + wo.getWoNo() : "工单 " + wo.getWoNo() + " " + req.remark()),
+                truncate(req.remark() == null ? "工单 " + wo.getWoNo() : "工单 " + wo.getWoNo() + " " + req.remark()), // i18n-ignore
                 items.stream().map(i -> new StockDocItemRequest(i.getMaterialId(), i.getLocationId(), null, i.getBatchNo(),
                         i.getProductionDate(), i.getExpiryDate(), i.getQty(), i.getSerialNos(), null)).toList());
         WmsStockDoc stockDoc = stockDocService.createConfirmed(kind.getStockKind(), stockReq, docNo);
@@ -193,8 +194,7 @@ public class MesWoDocService {
         if (!ops.isEmpty() && ops.stream().anyMatch(op -> op.getGoodQty().signum() > 0 || op.getScrapQty().signum() > 0)) {
             MesWoOp last = ops.stream().max(Comparator.comparing(MesWoOp::getSeq)).orElseThrow();
             if (after.compareTo(last.getGoodQty()) > 0) {
-                throw new BizException("完工数量超过末道工序「" + last.getName() + "」的累计合格数 " + plain(last.getGoodQty())
-                        + "（已完工 " + plain(wo.getFinishedQty()) + "），请先报工");
+                throw new BizException("完工数量超过末道工序「{0}」的累计合格数 {1}（已完工 {2}），请先报工", last.getName(), plain(last.getGoodQty()), plain(wo.getFinishedQty()));
             }
         }
         MesMaterialPlan plan = materialPlanService.plans(Set.of(wo.getMaterialId())).get(wo.getMaterialId());
@@ -202,8 +202,7 @@ public class MesWoDocService {
             BigDecimal passed = inspectionMapper.sumFqcPassed(wo.getId());
             passed = passed == null ? BigDecimal.ZERO : passed;
             if (after.compareTo(passed) > 0) {
-                throw new BizException("该产品完工需成品检验：已确认的检验合格数 " + plain(passed) + "，已完工 "
-                        + plain(wo.getFinishedQty()) + "，请先做成品检验");
+                throw new BizException("该产品完工需成品检验：已确认的检验合格数 {0}，已完工 {1}，请先做成品检验", plain(passed), plain(wo.getFinishedQty()));
             }
         }
     }
@@ -220,7 +219,7 @@ public class MesWoDocService {
         BigDecimal received = docMapper.selectList(Wrappers.<MesWoDoc>lambdaQuery().eq(MesWoDoc::getWoId, wo.getId())
                 .eq(MesWoDoc::getKind, WoDocKind.SCRAP.name())).stream().map(MesWoDoc::getTotalQty).reduce(BigDecimal.ZERO, BigDecimal::add);
         if (received.add(qty).compareTo(scrapped) > 0) {
-            throw new BizException("报废入库数量超过报工报废数量：报废 " + plain(scrapped) + "，已入库 " + plain(received));
+            throw new BizException("报废入库数量超过报工报废数量：报废 {0}，已入库 {1}", plain(scrapped), plain(received));
         }
     }
 
@@ -229,10 +228,10 @@ public class MesWoDocService {
         BigDecimal limit = wm.getRequiredQty().multiply(BigDecimal.valueOf(100).add(rate))
                 .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP).add(wm.getSupplementQty());
         BigDecimal left = limit.subtract(wm.getIssuedQty()).max(BigDecimal.ZERO);
-        return "物料「" + name + "」领料超过上限：需求 " + plain(wm.getRequiredQty())
-                + (rate.signum() > 0 ? "，允许超领 " + plain(rate) + "%" : "")
-                + (wm.getSupplementQty().signum() > 0 ? "，已补料 " + plain(wm.getSupplementQty()) : "")
-                + "，已领 " + plain(wm.getIssuedQty()) + "，最多还能领 " + plain(left) + "；超出部分请提交补料申请";
+        return I18n.t("物料「{0}」领料超过上限：需求 {1}", name, plain(wm.getRequiredQty()))
+                + (rate.signum() > 0 ? I18n.t("，允许超领 {0}%", plain(rate)) : "")
+                + (wm.getSupplementQty().signum() > 0 ? I18n.t("，已补料 {0}", plain(wm.getSupplementQty())) : "")
+                + I18n.t("，已领 {0}，最多还能领 {1}；超出部分请提交补料申请", plain(wm.getIssuedQty()), plain(left));
     }
 
     private static String plain(BigDecimal v) {

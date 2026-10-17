@@ -2,11 +2,11 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="产品" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="物料编码或名称" allow-clear />
+        <a-form-item :label="$t('mes.bom.product')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('mes.bom.materialKeyword')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.sys_common_status, true)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -21,7 +21,7 @@
         @refresh="load"
       >
         <a-button v-perm="'mes:bom:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新增 BOM
+          <template #icon><PlusOutlined /></template>{{ $t('mes.bom.add') }}
         </a-button>
       </TableToolbar>
 
@@ -42,13 +42,13 @@
           </template>
           <template v-else-if="column.key === 'version'">
             {{ record.version }}
-            <a-tag v-if="record.isDefault === 1" color="gold" :bordered="false">默认</a-tag>
-            <a-tooltip v-if="pending(record)" :title="`工程变更 ${record.ecnNo} 生效后启用`">
-              <a-tag color="orange" :bordered="false">变更中</a-tag>
+            <a-tag v-if="record.isDefault === 1" color="gold" :bordered="false">{{ $t('mes.bom.default') }}</a-tag>
+            <a-tooltip v-if="pending(record)" :title="$t('mes.bom.pendingTip', { no: record.ecnNo })">
+              <a-tag color="orange" :bordered="false">{{ $t('mes.bom.changing') }}</a-tag>
             </a-tooltip>
           </template>
-          <template v-else-if="column.key === 'leadDays'">{{ record.leadDays }} 天</template>
-          <template v-else-if="column.key === 'lines'">{{ record.itemCount }} 个子件 · {{ record.opCount }} 道工序</template>
+          <template v-else-if="column.key === 'leadDays'">{{ $t('mes.bom.days', { n: record.leadDays }) }}</template>
+          <template v-else-if="column.key === 'lines'">{{ $t('mes.bom.lines', { items: record.itemCount, ops: record.opCount }) }}</template>
           <template v-else-if="column.key === 'status'">
             <StatusSwitch
               :value="record.status"
@@ -61,19 +61,19 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>查看
+                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
               <a-button v-if="editable(record)" v-perm="'mes:bom:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <a-button v-if="record.isDefault !== 1 && !pending(record)" v-perm="'mes:bom:edit'" type="link" size="small" @click="makeDefault(record)">
-                设为默认
+                {{ $t('mes.bom.setDefault') }}
               </a-button>
               <a-button v-if="!pending(record)" v-perm="'mes:ecn:add'" type="link" size="small" @click="router.push({ path: '/mes/ecn', query: { bomId: record.id } })">
-                发起变更
+                {{ $t('mes.bom.startEcn') }}
               </a-button>
               <span v-perm="'mes:bom:remove'">
-                <a-popconfirm :title="`确定删除 BOM ${record.version}？`" @confirm="remove(record.id)">
+                <a-popconfirm :title="$t('mes.bom.confirmDelete', { v: record.version })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small">
                     <template #icon><DeleteOutlined /></template>
                   </a-button>
@@ -86,53 +86,53 @@
     </a-card>
 
     <!-- 新增 / 编辑 -->
-    <FormDrawer page :drawer="drawer" create-title="新增 BOM" edit-title="编辑 BOM" width="min(1200px, 100vw)">
+    <FormDrawer page :drawer="drawer" :create-title="$t('mes.bom.add')" :edit-title="$t('mes.bom.edit')" width="min(1200px, 100vw)">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-alert
           v-if="pending(form)"
           type="warning"
           show-icon
           class="block"
-          :message="`该版本由工程变更 ${form.ecnNo} 创建：修改子件和工序后在工程变更中提交，生效后自动启用并接替默认`"
+          :message="$t('mes.bom.ecnTip', { no: form.ecnNo })"
         />
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="产品" name="materialId">
+            <a-form-item :label="$t('mes.bom.product')" name="materialId">
               <MaterialSelect v-model:value="form.materialId" :label="form.materialLabel" :disabled="pending(form)" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="6">
-            <a-form-item label="版本号" name="version">
-              <a-input v-model:value="form.version" :maxlength="16" placeholder="如 V1.0" />
+            <a-form-item :label="$t('mes.bom.versionNo')" name="version">
+              <a-input v-model:value="form.version" :maxlength="16" :placeholder="$t('mes.bom.versionPh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="6">
-            <a-form-item label="生产提前期" name="leadDays">
-              <a-input-number v-model:value="form.leadDays" :min="0" :max="365" addon-after="天" class="full" />
+            <a-form-item :label="$t('mes.bom.leadDays')" name="leadDays">
+              <a-input-number v-model:value="form.leadDays" :min="0" :max="365" :addon-after="$t('mes.bom.dayUnit')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="18">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-input v-model:value="form.remark" :maxlength="255" />
             </a-form-item>
           </a-col>
           <a-col v-if="!pending(form)" :xs="24" :sm="6">
             <a-form-item label=" " name="isDefault">
-              <a-checkbox v-model:checked="form.isDefault">设为默认 BOM</a-checkbox>
+              <a-checkbox v-model:checked="form.isDefault">{{ $t('mes.bom.setDefaultBom') }}</a-checkbox>
             </a-form-item>
           </a-col>
         </a-row>
 
         <div class="items-head">
-          <span class="section-title">子件（单位用量：生产 1 个产品的用量）</span>
+          <span class="section-title">{{ $t('mes.bom.itemsTitle') }}</span>
           <a-button type="primary" ghost size="small" @click="form.items.push({ key: rowKey(), qty: 1, lossRate: 0 })">
-            <template #icon><PlusOutlined /></template>添加子件
+            <template #icon><PlusOutlined /></template>{{ $t('mes.bom.addItem') }}
           </a-button>
         </div>
         <a-table row-key="key" size="small" class="items-table" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: 1180 }">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'material'">
-              <a-form-item :name="['items', index, 'materialId']" :rules="[{ required: true, message: '请选择子件' }]" class="cell-item">
+              <a-form-item :name="['items', index, 'materialId']" :rules="[{ required: true, message: $t('mes.bom.itemRequired') }]" class="cell-item">
                 <MaterialSelect
                   v-model:value="record.materialId"
                   :label="record.materialLabel"
@@ -144,7 +144,7 @@
               <span class="cell-text">{{ record.spec || '-' }}</span>
             </template>
             <template v-else-if="column.key === 'qty'">
-              <a-form-item :name="['items', index, 'qty']" :rules="[{ required: true, message: '请填写用量' }]" class="cell-item">
+              <a-form-item :name="['items', index, 'qty']" :rules="[{ required: true, message: $t('mes.bom.qtyRequired') }]" class="cell-item">
                 <a-input-number v-model:value="record.qty" :min="0" :precision="6" :addon-after="record.unit || undefined" class="full" />
               </a-form-item>
             </template>
@@ -154,7 +154,7 @@
                 :rules="[{ validator: (_, v) => refDesValidator(record, v), trigger: 'blur' }]"
                 class="cell-item"
               >
-                <a-input v-model:value="record.refDes" :maxlength="1000" placeholder="如 R1,R2 或 C1-C8" />
+                <a-input v-model:value="record.refDes" :maxlength="1000" :placeholder="$t('mes.bom.refDesPh')" />
                 <template #extra>
                   <span :class="{ warn: refDesHint(record)?.warn }">{{ refDesHint(record)?.text }}</span>
                 </template>
@@ -164,7 +164,7 @@
               <a-input-number v-model:value="record.lossRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" />
             </template>
             <template v-else-if="column.key === 'remark'">
-              <a-input v-model:value="record.remark" :maxlength="255" placeholder="选填" />
+              <a-input v-model:value="record.remark" :maxlength="255" :placeholder="$t('mes.woDocForm.optional')" />
             </template>
             <template v-else-if="column.key === 'action'">
               <a-button type="link" danger size="small" @click="form.items.splice(index, 1)"><DeleteOutlined /></a-button>
@@ -173,9 +173,9 @@
         </a-table>
 
         <div class="items-head">
-          <span class="section-title">工艺路线（工序按工序号执行，标准工时为每个产品的工时）</span>
+          <span class="section-title">{{ $t('mes.bom.opsTitle') }}</span>
           <a-button type="primary" ghost size="small" @click="addOp">
-            <template #icon><PlusOutlined /></template>添加工序
+            <template #icon><PlusOutlined /></template>{{ $t('mes.bom.addOp') }}
           </a-button>
         </div>
         <a-table row-key="key" size="small" class="items-table" :columns="opColumns" :data-source="form.ops" :pagination="false">
@@ -184,23 +184,23 @@
               <a-input-number v-model:value="record.seq" :min="1" class="full" />
             </template>
             <template v-else-if="column.key === 'name'">
-              <a-form-item :name="['ops', index, 'name']" :rules="[{ required: true, message: '请填写工序名称' }]" class="cell-item">
+              <a-form-item :name="['ops', index, 'name']" :rules="[{ required: true, message: $t('mes.bom.opNameRequired') }]" class="cell-item">
                 <a-input v-model:value="record.name" :maxlength="64" />
               </a-form-item>
             </template>
             <template v-else-if="column.key === 'workCenterId'">
-              <a-form-item :name="['ops', index, 'workCenterId']" :rules="[{ required: true, message: '请选择工作中心' }]" class="cell-item">
+              <a-form-item :name="['ops', index, 'workCenterId']" :rules="[{ required: true, message: $t('mes.workCenterSelect.placeholder') }]" class="cell-item">
                 <WorkCenterSelect v-model:value="record.workCenterId" />
               </a-form-item>
             </template>
             <template v-else-if="column.key === 'stdHours'">
-              <a-input-number v-model:value="record.stdHours" :min="0" :precision="4" addon-after="小时" class="full" />
+              <a-input-number v-model:value="record.stdHours" :min="0" :precision="4" :addon-after="$t('mes.wo.hoursUnit')" class="full" />
             </template>
             <template v-else-if="column.key === 'pieceRate'">
-              <a-input-number v-model:value="record.pieceRate" :min="0" :precision="4" addon-after="元" placeholder="不计件" class="full" />
+              <a-input-number v-model:value="record.pieceRate" :min="0" :precision="4" :addon-after="$t('mes.bom.yuan')" :placeholder="$t('mes.bom.noPiece')" class="full" />
             </template>
             <template v-else-if="column.key === 'firstArticle'">
-              <a-checkbox v-model:checked="record.firstArticle">需首件检验</a-checkbox>
+              <a-checkbox v-model:checked="record.firstArticle">{{ $t('mes.bom.needFirstArticle') }}</a-checkbox>
             </template>
             <template v-else-if="column.key === 'action'">
               <a-button type="link" danger size="small" @click="form.ops.splice(index, 1)"><DeleteOutlined /></a-button>
@@ -219,7 +219,7 @@
     >
       <a-spin :spinning="detailLoading">
         <template v-if="detail">
-          <div class="section-title">物料清单（点击展开自制子件的下层）</div>
+          <div class="section-title">{{ $t('mes.bom.treeTitle') }}</div>
           <a-table
             row-key="key"
             size="small"
@@ -232,7 +232,7 @@
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'material'">
                 {{ record.materialCode }} {{ record.materialName }}
-                <a-tag v-if="record.childBomId" color="cyan" :bordered="false">自制</a-tag>
+                <a-tag v-if="record.childBomId" color="cyan" :bordered="false">{{ $t('mes.bom.selfMade') }}</a-tag>
               </template>
               <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }} {{ record.unit }}</template>
               <template v-else-if="column.key === 'refDes'">
@@ -240,31 +240,31 @@
                   <span class="ref-des">{{ record.refDes }}</span>
                 </a-tooltip>
                 <span v-else class="sub-text">-</span>
-                <div v-if="record.refDes" class="sub-text">共 {{ refDesCount(record.refDes) }} 个</div>
+                <div v-if="record.refDes" class="sub-text">{{ $t('mes.bom.refCount', { n: refDesCount(record.refDes) }) }}</div>
               </template>
               <template v-else-if="column.key === 'lossRate'">{{ Number(record.lossRate) ? `${Number(record.lossRate)}%` : '-' }}</template>
               <template v-else-if="column.key === 'total'">{{ formatQty(record.total) }} {{ record.unit }}</template>
             </template>
           </a-table>
-          <div class="section-title">工艺路线</div>
+          <div class="section-title">{{ $t('mes.bom.routing') }}</div>
           <a-table row-key="id" size="small" :columns="opViewColumns" :data-source="detail.ops" :pagination="false">
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'stdHours'">{{ formatQty(record.stdHours) }} 小时</template>
-              <template v-else-if="column.key === 'pieceRate'">{{ record.pieceRate != null ? `¥${formatQty(record.pieceRate)} / 件` : '-' }}</template>
+              <template v-if="column.key === 'stdHours'">{{ $t('mes.bom.hoursN', { v: formatQty(record.stdHours) }) }}</template>
+              <template v-else-if="column.key === 'pieceRate'">{{ record.pieceRate != null ? $t('mes.bom.perPiece', { v: formatQty(record.pieceRate) }) : '-' }}</template>
               <template v-else-if="column.key === 'firstArticle'">
-                <a-tag v-if="record.firstArticle === 1" color="purple" :bordered="false">首件检验</a-tag>
+                <a-tag v-if="record.firstArticle === 1" color="purple" :bordered="false">{{ $t('mes.bom.firstArticle') }}</a-tag>
                 <span v-else class="sub-text">-</span>
               </template>
             </template>
           </a-table>
           <template v-if="docs.length">
-            <div class="section-title">技术文档（产品与子件的已发布文档）</div>
+            <div class="section-title">{{ $t('mes.bom.docsTitle') }}</div>
             <a-table row-key="id" size="small" :columns="docColumns" :data-source="docs" :pagination="false">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'material'">{{ record.materialCode }} {{ record.materialName }}</template>
                 <template v-else-if="column.key === 'doc'">
                   <a @click="router.push({ path: '/mes/doc', query: { id: record.id } })">{{ record.name }}</a>
-                  <div class="sub-text">{{ record.docNo }} · {{ record.fileCount }} 个文件</div>
+                  <div class="sub-text">{{ $t('mes.doc.fileCount', { no: record.docNo, n: record.fileCount }) }}</div>
                 </template>
                 <template v-else-if="column.key === 'type'"><DictTag type="mes_doc_type" :value="record.docType" /></template>
               </template>
@@ -282,6 +282,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -300,17 +301,18 @@ import { toOptions } from '@/utils/dict'
 import { formatQty, rowKey } from '@/components/wms/wms'
 
 const userStore = useUserStore()
+const { t } = useI18n()
 const dict = useDict('sys_common_status')
 
 const columns = [
-  { title: '产品', key: 'product', width: 260 },
-  { title: '版本', key: 'version', width: 130 },
-  { title: '提前期', key: 'leadDays', width: 90 },
-  { title: '结构', key: 'lines', width: 170 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '备注', dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: '更新时间', dataIndex: 'updateTime', width: 170 },
-  { title: '操作', key: 'action', width: 260, fixed: 'right' }
+  { title: t('mes.bom.product'), key: 'product', width: 260 },
+  { title: t('mes.bom.version'), key: 'version', width: 130 },
+  { title: t('mes.bom.leadTime'), key: 'leadDays', width: 100 },
+  { title: t('mes.bom.structure'), key: 'lines', width: 190 },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 300, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'mes-bom')
 const showSearch = ref(true)
@@ -337,26 +339,26 @@ const editable = (bom) => !pending(bom) || bom.ecnStatus === 'DRAFT'
 
 // ---------------------------------------------------------------- 表单
 const itemColumns = [
-  { title: '子件', key: 'material', width: 260 },
-  { title: '规格', key: 'spec', width: 160 },
-  { title: '单位用量', key: 'qty', width: 170 },
-  { title: '损耗率', key: 'lossRate', width: 110 },
-  { title: '位号', key: 'refDes', width: 220 },
-  { title: '备注', key: 'remark', width: 160 },
+  { title: t('mes.bom.item'), key: 'material', width: 260 },
+  { title: t('common.field.spec'), key: 'spec', width: 160 },
+  { title: t('mes.bom.unitQty'), key: 'qty', width: 170 },
+  { title: t('mes.bom.lossRate'), key: 'lossRate', width: 110 },
+  { title: t('mes.bom.refDes'), key: 'refDes', width: 220 },
+  { title: t('common.field.remark'), key: 'remark', width: 160 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
 const opColumns = [
-  { title: '工序号', key: 'seq', width: 100 },
-  { title: '工序名称', key: 'name', width: 200 },
-  { title: '工作中心', key: 'workCenterId', width: 220 },
-  { title: '标准工时', key: 'stdHours', width: 170 },
-  { title: '计件单价', key: 'pieceRate', width: 150 },
-  { title: '首件检验', key: 'firstArticle', width: 130 },
+  { title: t('mes.wo.opSeq'), key: 'seq', width: 100 },
+  { title: t('mes.bom.opName'), key: 'name', width: 200 },
+  { title: t('mes.wo.workCenter'), key: 'workCenterId', width: 220 },
+  { title: t('mes.bom.stdHours'), key: 'stdHours', width: 170 },
+  { title: t('mes.bom.pieceRate'), key: 'pieceRate', width: 150 },
+  { title: t('mes.bom.firstArticle'), key: 'firstArticle', width: 160 },
   { title: '', key: 'action', width: 50 }
 ]
 const rules = {
-  materialId: [{ required: true, message: '请选择产品' }],
-  version: [{ required: true, whitespace: true, message: '请填写版本号' }]
+  materialId: [{ required: true, message: t('mes.wo.productRequired') }],
+  version: [{ required: true, whitespace: true, message: t('mes.bom.versionRequired') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, materialId: undefined, version: 'V1.0', leadDays: 0, isDefault: true, remark: '', items: [], ops: [] }),
@@ -399,13 +401,13 @@ function addOp() {
 
 async function makeDefault(record) {
   await setDefaultBom(record.id)
-  message.success('已设为默认 BOM')
+  message.success(t('mes.bom.defaultSet'))
   load()
 }
 
 async function remove(id) {
   await deleteBom(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 
@@ -417,18 +419,18 @@ function parseRefDes(text) {
   const list = []
   for (const raw of (text || '').trim().toUpperCase().split(/[,，;；、\s]+/)) {
     if (!raw) continue
-    const t = raw.replace(/[－~～]/g, '-')
-    const m = REF_TOKEN.exec(t)
-    if (!m) return { error: `位号「${raw}」格式不正确，应为字母加数字，如 R1，连续的写成 R1-R8` }
+    const tok = raw.replace(/[－~～]/g, '-')
+    const m = REF_TOKEN.exec(tok)
+    if (!m) return { error: t('mes.bom.refInvalid', { v: raw }) }
     if (m[4] == null) {
-      list.push(t)
+      list.push(tok)
       continue
     }
-    if (m[3] && m[3] !== m[1]) return { error: `位号区间「${raw}」的前缀不一致` }
+    if (m[3] && m[3] !== m[1]) return { error: t('mes.bom.refPrefix', { v: raw }) }
     const start = Number(m[2])
     const end = Number(m[4])
-    if (end < start) return { error: `位号区间「${raw}」的结束编号小于起始编号` }
-    if (end - start + 1 > 5000) return { error: `位号区间「${raw}」超过 5000 个` }
+    if (end < start) return { error: t('mes.bom.refRange', { v: raw }) }
+    if (end - start + 1 > 5000) return { error: t('mes.bom.refTooMany', { v: raw }) }
     for (let i = start; i <= end; i++) list.push(m[1] + i)
   }
   return { list }
@@ -444,7 +446,7 @@ function refDesValidator(record, value) {
     form.value.items.filter((i) => i !== record).flatMap((i) => parseRefDes(i.refDes).list || [])
   )
   const dup = list.find((r) => others.has(r))
-  return dup ? Promise.reject(`位号 ${dup} 与其他子件重复`) : Promise.resolve()
+  return dup ? Promise.reject(t('mes.bom.refDup', { v: dup })) : Promise.resolve()
 }
 
 /** 位号数与整数用量不一致时提示（按盘、按 kg 计量的物料用量与位号数无关，不拦截） */
@@ -453,33 +455,33 @@ function refDesHint(record) {
   if (!list?.length) return null
   const qty = Number(record.qty)
   const mismatch = Number.isInteger(qty) && qty > 0 && qty !== list.length
-  return { text: mismatch ? `共 ${list.length} 个，与用量 ${qty} 不一致` : `共 ${list.length} 个`, warn: mismatch }
+  return { text: mismatch ? t('mes.bom.refMismatch', { n: list.length, qty }) : t('mes.bom.refCount', { n: list.length }), warn: mismatch }
 }
 
 // ---------------------------------------------------------------- 详情：BOM 树
 const treeColumns = [
-  { title: '物料', key: 'material', width: 280 },
-  { title: '规格', dataIndex: 'spec', width: 160, ellipsis: true },
-  { title: '单位用量', key: 'qty', width: 110, align: 'right' },
-  { title: '损耗率', key: 'lossRate', width: 80, align: 'right' },
-  { title: '累计用量（每个产品）', key: 'total', width: 160, align: 'right' },
-  { title: '位号', key: 'refDes', width: 180 },
-  { title: '备注', dataIndex: 'remark', width: 140, ellipsis: true }
+  { title: t('mes.wo.material'), key: 'material', width: 280 },
+  { title: t('common.field.spec'), dataIndex: 'spec', width: 160, ellipsis: true },
+  { title: t('mes.bom.unitQty'), key: 'qty', width: 110, align: 'right' },
+  { title: t('mes.bom.lossRate'), key: 'lossRate', width: 90, align: 'right' },
+  { title: t('mes.bom.totalQty'), key: 'total', width: 180, align: 'right' },
+  { title: t('mes.bom.refDes'), key: 'refDes', width: 180 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true }
 ]
 const opViewColumns = [
-  { title: '工序号', dataIndex: 'seq', width: 90 },
-  { title: '工序名称', dataIndex: 'name', width: 180 },
-  { title: '工作中心', dataIndex: 'workCenterName', width: 180 },
-  { title: '标准工时', key: 'stdHours', width: 120 },
-  { title: '计件单价', key: 'pieceRate', width: 120 },
-  { title: '首件检验', key: 'firstArticle', width: 100 }
+  { title: t('mes.wo.opSeq'), dataIndex: 'seq', width: 90 },
+  { title: t('mes.bom.opName'), dataIndex: 'name', width: 180 },
+  { title: t('mes.wo.workCenter'), dataIndex: 'workCenterName', width: 180 },
+  { title: t('mes.bom.stdHours'), key: 'stdHours', width: 120 },
+  { title: t('mes.bom.pieceRate'), key: 'pieceRate', width: 120 },
+  { title: t('mes.bom.firstArticle'), key: 'firstArticle', width: 130 }
 ]
 const docColumns = [
-  { title: '物料', key: 'material', width: 220 },
-  { title: '文档', key: 'doc', width: 240 },
-  { title: '类型', key: 'type', width: 110 },
-  { title: '版本', dataIndex: 'version', width: 80 },
-  { title: '发布时间', dataIndex: 'releaseTime', width: 160 }
+  { title: t('mes.wo.material'), key: 'material', width: 220 },
+  { title: t('mes.doc.doc'), key: 'doc', width: 240 },
+  { title: t('common.field.type'), key: 'type', width: 110 },
+  { title: t('mes.doc.version'), dataIndex: 'version', width: 80 },
+  { title: t('mes.doc.releaseTime'), dataIndex: 'releaseTime', width: 160 }
 ]
 const docs = ref([])
 const detailOpen = ref(false)

@@ -3,51 +3,51 @@
     <a-card :bordered="false" class="page-card">
       <div class="config">
         <div class="field">
-          <span class="field-label">数据集</span>
+          <span class="field-label">{{ $t('bi.common.cube') }}</span>
           <a-select v-model:value="cubeKey" :options="cubeOptions" style="width: 130px" @change="onCubeChange" />
         </div>
         <div class="field">
-          <span class="field-label">行维度</span>
+          <span class="field-label">{{ $t('bi.olap.row') }}</span>
           <a-select v-model:value="row" :options="dimOptions" style="width: 130px" />
         </div>
         <div class="field">
-          <span class="field-label">列维度</span>
-          <a-select v-model:value="col" :options="colOptions" allow-clear placeholder="不分列" style="width: 130px" />
+          <span class="field-label">{{ $t('bi.olap.col') }}</span>
+          <a-select v-model:value="col" :options="colOptions" allow-clear :placeholder="$t('bi.olap.noCol')" style="width: 130px" />
         </div>
         <div class="field">
-          <span class="field-label">指标</span>
+          <span class="field-label">{{ $t('bi.olap.measures') }}</span>
           <a-select
             v-model:value="measures"
             mode="multiple"
             :options="measureOptions"
             :max-tag-count="2"
-            placeholder="全部指标"
+            :placeholder="$t('bi.olap.allMeasures')"
             style="min-width: 200px; max-width: 360px"
           />
         </div>
         <div class="field">
-          <span class="field-label">{{ cube?.dateFilter === 'SNAPSHOT' ? '快照日期' : '日期范围' }}</span>
-          <a-select v-model:value="range" :options="rangeOptions" style="width: 120px" />
+          <span class="field-label">{{ cube?.dateFilter === 'SNAPSHOT' ? $t('bi.olap.snapshotDate') : $t('common.field.dateRange') }}</span>
+          <a-select v-model:value="range" :options="rangeOptions" style="width: 140px" />
           <a-range-picker v-if="range === 'CUSTOM'" v-model:value="dates" value-format="YYYY-MM-DD" style="width: 240px" />
         </div>
         <div class="field">
           <a-button type="primary" :loading="loading" @click="query">
-            <template #icon><SearchOutlined /></template>查询
+            <template #icon><SearchOutlined /></template>{{ $t('common.action.query') }}
           </a-button>
           <a-button v-perm="'bi:report:add'" :disabled="!result" @click="openSave(false)">
-            <template #icon><SaveOutlined /></template>保存为报表
+            <template #icon><SaveOutlined /></template>{{ $t('bi.olap.saveAs') }}
           </a-button>
-          <a-button v-if="report?.mine" v-perm="'bi:report:edit'" :disabled="!result" @click="openSave(true)">更新报表</a-button>
+          <a-button v-if="report?.mine" v-perm="'bi:report:edit'" :disabled="!result" @click="openSave(true)">{{ $t('bi.olap.update') }}</a-button>
         </div>
       </div>
       <div v-if="report || filterTags.length || drillStack.length" class="filters">
-        <a-tag v-if="report" color="blue" :bordered="false">报表：{{ report.name }}</a-tag>
-        <span v-if="filterTags.length" class="sub-text">筛选：</span>
+        <a-tag v-if="report" color="blue" :bordered="false">{{ $t('bi.olap.reportTag', { name: report.name }) }}</a-tag>
+        <span v-if="filterTags.length" class="sub-text">{{ $t('bi.olap.filters') }}</span>
         <a-tag v-for="t in filterTags" :key="t.key" closable @close.prevent="removeFilter(t)">{{ t.text }}</a-tag>
         <a-button v-if="drillStack.length" size="small" @click="drillBack">
-          <template #icon><RollbackOutlined /></template>返回上一级
+          <template #icon><RollbackOutlined /></template>{{ $t('bi.olap.drillBack') }}
         </a-button>
-        <a-button v-if="filterTags.length" size="small" type="link" @click="clearFilters">清除筛选</a-button>
+        <a-button v-if="filterTags.length" size="small" type="link" @click="clearFilters">{{ $t('bi.olap.clearFilters') }}</a-button>
       </div>
     </a-card>
 
@@ -56,7 +56,7 @@
       class="tip"
       type="info"
       show-icon
-      message="库存分析不选日期且不按快照日期分组时，只统计最新一次快照"
+      :message="$t('bi.olap.snapshotTip')"
     />
 
     <a-card :bordered="false" class="page-card" :title="chartTitle">
@@ -64,38 +64,38 @@
         <a-segmented v-model:value="chartType" :options="CHART_TYPES.filter((c) => c.value !== 'table')" size="small" />
       </template>
       <a-spin :spinning="loading">
-        <a-empty v-if="!result || !result.rowTotals.length" description="暂无数据：调整条件后查询，或先在「数据仓库」中同步数据" />
+        <a-empty v-if="!result || !result.rowTotals.length" :description="$t('bi.olap.noData')" />
         <EChart v-else-if="chartOption" :option="chartOption" height="340px" @click="onChartClick" />
       </a-spin>
     </a-card>
 
     <a-card :bordered="false" class="page-card">
       <template #title>
-        透视表
+        {{ $t('bi.olap.pivot') }}
         <span v-if="result" class="sub-text title-sub">
-          {{ result.begin || '不限' }} ~ {{ result.end || '不限' }} · {{ result.rowTotals.length }} 行
+          {{ result.begin || $t('bi.olap.unlimited') }} ~ {{ result.end || $t('bi.olap.unlimited') }} · {{ $t('bi.olap.rowsN', { n: result.rowTotals.length }) }}
         </span>
       </template>
       <template #extra>
-        <span class="sub-text">点击行维度的值钻取到</span>
-        <a-select v-model:value="drillTarget" :options="drillOptions" size="small" style="width: 110px; margin-left: 8px" />
+        <span class="sub-text">{{ $t('bi.olap.drillTo') }}</span>
+        <a-select v-model:value="drillTarget" :options="drillOptions" size="small" style="width: 120px; margin-left: 8px" />
       </template>
       <PivotTable v-if="cube && result" :cube="cube" :config="lastConfig" :result="result" drillable @drill="drill" />
       <a-empty v-else />
     </a-card>
 
-    <a-modal v-model:open="saveOpen" :title="saveUpdate ? '更新报表' : '保存为报表'" :confirm-loading="saving" @ok="save">
+    <a-modal v-model:open="saveOpen" :title="saveUpdate ? $t('bi.olap.update') : $t('bi.olap.saveAs')" :confirm-loading="saving" @ok="save">
       <a-form layout="vertical">
-        <a-form-item label="报表名称" required>
-          <a-input v-model:value="saveForm.name" :maxlength="64" placeholder="如：近 12 个月销售趋势" />
+        <a-form-item :label="$t('bi.report.reportName')" required>
+          <a-input v-model:value="saveForm.name" :maxlength="64" :placeholder="$t('bi.olap.namePlaceholder')" />
         </a-form-item>
-        <a-form-item label="默认图表">
+        <a-form-item :label="$t('bi.common.defaultChart')">
           <a-radio-group v-model:value="saveForm.chart" :options="CHART_TYPES" />
         </a-form-item>
-        <a-form-item label="共享给所有人" extra="共享后其他用户可以查看、在仪表盘中使用，只有你可以修改">
+        <a-form-item :label="$t('bi.common.shareAll')" :extra="$t('bi.olap.shareExtra')">
           <a-switch v-model:checked="saveForm.shared" />
         </a-form-item>
-        <a-form-item label="说明">
+        <a-form-item :label="$t('common.field.description')">
           <a-textarea v-model:value="saveForm.remark" :rows="2" :maxlength="255" />
         </a-form-item>
       </a-form>
@@ -112,6 +112,7 @@ import EChart from '@/components/charts/EChart.vue'
 import PivotTable from '@/components/bi/PivotTable.vue'
 import { addReport, getReport, olapPivot, updateReport } from '@/api/bi'
 import { CHART_TYPES, RANGES, defaultDrill, dimLabelFn, loadCubes, chartMeasure, pivotChartOption } from '@/components/bi/bi'
+import { t } from '@/locales'
 
 const route = useRoute()
 const cubes = ref([])
@@ -142,14 +143,14 @@ const dimName = (key) => cube.value?.dims.find((d) => d.key === key)?.label || k
 
 const chartTitle = computed(() => {
   const m = cube.value ? chartMeasure(cube.value, lastConfig.value) : null
-  return result.value && m ? `${m.label} · 按${dimName(lastConfig.value.row)}` : '图表'
+  return result.value && m ? t('bi.olap.chartTitle', { measure: m.label, dim: dimName(lastConfig.value.row) }) : t('bi.olap.chart')
 })
 const chartOption = computed(() =>
   cube.value && result.value ? pivotChartOption(cube.value, lastConfig.value, result.value, chartType.value) : null)
 
 const filterTags = computed(() =>
   Object.entries(filters.value).flatMap(([dim, values]) =>
-    values.map((v) => ({ key: `${dim}|${v}`, dim, value: v, text: `${dimName(dim)}：${filterNames.value[`${dim}|${v}`] || v}` }))))
+    values.map((v) => ({ key: `${dim}|${v}`, dim, value: v, text: t('bi.olap.filterTag', { dim: dimName(dim), value: filterNames.value[`${dim}|${v}`] || v }) }))))
 
 function currentRequest() {
   const custom = range.value === 'CUSTOM'
@@ -168,7 +169,7 @@ function currentRequest() {
 
 async function query() {
   if (!row.value) {
-    message.warning('请选择行维度')
+    message.warning(t('bi.olap.selectRow'))
     return
   }
   const req = currentRequest()
@@ -260,7 +261,7 @@ function openSave(update) {
 
 async function save() {
   if (!saveForm.name.trim()) {
-    message.warning('请输入报表名称')
+    message.warning(t('common.rule.required', { name: t('bi.report.reportName') }))
     return
   }
   saving.value = true
@@ -274,11 +275,11 @@ async function save() {
     if (saveUpdate.value) {
       await updateReport(report.value.id, data)
       report.value = { ...report.value, name: data.name, shared: data.shared, remark: data.remark }
-      message.success('报表已更新')
+      message.success(t('bi.olap.updated'))
     } else {
       const id = await addReport(data)
       report.value = { id, name: data.name, shared: data.shared, remark: data.remark, mine: true }
-      message.success('已保存，可在「自定义报表」和「自定义仪表盘」中使用')
+      message.success(t('bi.olap.saved'))
     }
     saveOpen.value = false
   } finally {

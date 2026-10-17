@@ -45,10 +45,10 @@ public class SysAttachmentService {
         checkAccess(bizType, bizId, true);
         if (attachmentMapper.selectCount(Wrappers.<SysAttachment>lambdaQuery()
                 .eq(SysAttachment::getBizType, bizType).eq(SysAttachment::getBizId, bizId)) >= MAX_PER_BIZ) {
-            throw new BizException("每张单据最多上传 " + MAX_PER_BIZ + " 个附件");
+            throw new BizException("每张单据最多上传 {0} 个附件", MAX_PER_BIZ);
         }
         String name = file.getOriginalFilename();
-        name = name == null || name.isBlank() ? "未命名" : Path.of(name.replace('\\', '/')).getFileName().toString();
+        name = name == null || name.isBlank() ? "未命名" : Path.of(name.replace('\\', '/')).getFileName().toString(); // i18n-ignore 附件名称存库
         if (name.length() > 200) {
             name = name.substring(name.length() - 200);
         }

@@ -71,7 +71,7 @@ public class SysTenantPackageController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:tenantPackage:add')")
-    @OperLog(title = "租户套餐", type = OperType.INSERT)
+    @OperLog(title = "租户套餐", type = OperType.INSERT) // i18n-ignore 操作日志存库
     public R<Void> create(@Validated(Create.class) @RequestBody SysTenantPackage pkg) {
         packageService.create(pkg);
         return R.ok();
@@ -79,7 +79,7 @@ public class SysTenantPackageController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('sys:tenantPackage:edit')")
-    @OperLog(title = "租户套餐", type = OperType.GRANT)
+    @OperLog(title = "租户套餐", type = OperType.GRANT) // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody SysTenantPackage pkg) {
         pkg.setId(id);
         packageService.update(pkg);
@@ -88,7 +88,7 @@ public class SysTenantPackageController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('sys:tenantPackage:remove')")
-    @OperLog(title = "租户套餐", type = OperType.DELETE)
+    @OperLog(title = "租户套餐", type = OperType.DELETE) // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         packageService.delete(ids);
         return R.ok();

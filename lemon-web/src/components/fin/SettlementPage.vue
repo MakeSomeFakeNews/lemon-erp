@@ -3,15 +3,15 @@
     <a-card :bordered="false" class="page-card table-card">
       <div class="toolbar">
         <a-space wrap>
-          <PartnerSelect v-model:value="query.partnerId" :type="conf.partner" allow-clear :placeholder="`全部${conf.partnerLabel}`" class="filter" />
-          <a-input-search v-model:value="query.keyword" placeholder="单号" allow-clear class="filter" @search="search" />
+          <PartnerSelect v-model:value="query.partnerId" :type="conf.partner" allow-clear :placeholder="conf.allPartners" class="filter" />
+          <a-input-search v-model:value="query.keyword" :placeholder="$t('fin.settlementPage.no')" allow-clear class="filter" @search="search" />
         </a-space>
         <a-space>
           <a-button v-perm="`fin:${kind}:voucher`" :disabled="!selectedKeys.length" @click="generate">
-            <template #icon><FileAddOutlined /></template>生成凭证（{{ selectedKeys.length }}）
+            <template #icon><FileAddOutlined /></template>{{ $t('fin.settlementPage.generateN', { n: selectedKeys.length }) }}
           </a-button>
           <a-button v-perm="`fin:${kind}:add`" type="primary" @click="openCreate">
-            <template #icon><PlusOutlined /></template>新增{{ conf.label }}单
+            <template #icon><PlusOutlined /></template>{{ conf.newTitle }}
           </a-button>
         </a-space>
       </div>
@@ -23,7 +23,7 @@
         :loading="loading"
         :pagination="pagination"
         :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: !!r.voucherId || r.status !== 'APPROVED' }) }"
-        :scroll="{ x: 1200 }"
+        :scroll="{ x: 1260 }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -38,14 +38,14 @@
           <template v-else-if="column.key === 'voucher'">
             <a v-if="record.voucherId" @click="openVoucher(record.voucherId)">{{ record.voucherNo }}</a>
             <DictTag v-else-if="record.status && record.status !== 'APPROVED'" type="sys_approve_status" :value="record.status" />
-            <span v-else class="sub-text">未生成</span>
+            <span v-else class="sub-text">{{ $t('fin.settlementPage.notGenerated') }}</span>
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">查看</a-button>
+              <a-button type="link" size="small" @click="openDetail(record)">{{ $t('common.action.view') }}</a-button>
               <span v-if="!record.voucherId && record.status !== 'APPROVING'" v-perm="`fin:${kind}:remove`">
-                <a-popconfirm :title="record.status === 'APPROVED' ? `删除 ${record.settleNo}，恢复单据的核销金额？` : `删除 ${record.settleNo}？`" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small">删除</a-button>
+                <a-popconfirm :title="record.status === 'APPROVED' ? $t('fin.settlementPage.confirmDeleteApproved', { no: record.settleNo }) : $t('fin.settlementPage.confirmDelete', { no: record.settleNo })" @confirm="remove(record.id)">
+                  <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
                 </a-popconfirm>
               </span>
             </span>
@@ -55,37 +55,37 @@
     </a-card>
 
     <!-- 新增：选择往来单位后列出未核销单据，填写本次核销金额 -->
-    <SubPage :open="createOpen" :title="`新增${conf.label}单`" width="min(980px, 100vw)" destroy-on-close @close="createOpen = false">
+    <SubPage :open="createOpen" :title="conf.newTitle" width="min(980px, 100vw)" destroy-on-close @close="createOpen = false">
       <a-form ref="formRef" :model="form" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item :label="conf.partnerLabel" name="partnerId" :rules="[{ required: true, message: `请选择${conf.partnerLabel}` }]">
+            <a-form-item :label="conf.partnerLabel" name="partnerId" :rules="[{ required: true, message: $t('common.placeholder.selectName', { name: conf.partnerLabel }) }]">
               <PartnerSelect v-model:value="form.partnerId" :type="conf.partner" @update:value="loadBills" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="6">
-            <a-form-item :label="`${conf.label}日期`" name="settleDate" :rules="[{ required: true, message: '请选择日期' }]">
+            <a-form-item :label="conf.dateLabel" name="settleDate" :rules="[{ required: true, message: $t('fin.settlementPage.dateRequired') }]">
               <a-date-picker v-model:value="form.settleDate" value-format="YYYY-MM-DD" class="full" @change="refreshRate" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="6">
-            <a-form-item label="结算方式" name="method">
+            <a-form-item :label="$t('fin.settlementPage.method')" name="method">
               <a-select v-model:value="form.method" :options="toOptions(dict.fin_settle_method)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="结算账户" name="accountId" :rules="[{ required: true, message: '请选择结算账户' }]">
-              <AccountSelect v-model:value="form.accountId" :prefix="['1001', '1002']" placeholder="库存现金 / 银行存款" />
+            <a-form-item :label="$t('fin.settlementPage.account')" name="accountId" :rules="[{ required: true, message: $t('fin.settlementPage.accountRequired') }]">
+              <AccountSelect v-model:value="form.accountId" :prefix="['1001', '1002']" :placeholder="$t('fin.settlementPage.accountPlaceholder')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-input v-model:value="form.remark" :maxlength="255" />
             </a-form-item>
           </a-col>
           <a-col v-if="foreign" :xs="24" :sm="12">
-            <a-form-item :label="`汇率（1 ${settleCurrency} = ? 人民币）`" required>
-              <a-input-number v-model:value="exchangeRate" :min="0" :precision="6" class="full" placeholder="未维护汇率，请填写" />
+            <a-form-item :label="$t('fin.settlementPage.rateLabel', { currency: settleCurrency })" required>
+              <a-input-number v-model:value="exchangeRate" :min="0" :precision="6" class="full" :placeholder="$t('fin.settlementPage.ratePlaceholder')" />
             </a-form-item>
           </a-col>
         </a-row>
@@ -95,27 +95,27 @@
         type="info"
         show-icon
         class="block"
-        :message="`本次核销的是 ${settleCurrency} 外币单据，核销金额为原币。外币核销按单据记账汇率冲销往来，与实${conf.label.slice(0, 1)}本位币的差额生成凭证时计入财务费用（汇兑损益）。`"
+        :message="conf.foreignTip(settleCurrency)"
       />
       <a-alert
         v-else-if="currencies.length > 1"
         type="warning"
         show-icon
         class="block"
-        :message="`该${conf.partnerLabel}有不同币种的单据（${currencies.join('、')}），一张${conf.label}单只能核销同一币种的单据`"
+        :message="conf.multiCurrency(currencies.join(', '))"
       />
       <div class="bills-head">
-        <span class="section-title">未核销的{{ conf.billLabel }}（红字单据为负数，可冲抵）</span>
+        <span class="section-title">{{ conf.billsTitle }}</span>
         <a-space>
-          <a-button size="small" :disabled="!bills.length" @click="fillAll">全部核销</a-button>
+          <a-button size="small" :disabled="!bills.length" @click="fillAll">{{ $t('fin.settlementPage.fillAll') }}</a-button>
           <span v-if="foreign">
-            原币 {{ settleCurrency }} {{ formatMoney(total) }}，实{{ conf.label.slice(0, 1) }}本位币 <b class="total">¥{{ formatMoney(baseTotal) }}</b>
+            {{ conf.foreignTotal(settleCurrency, formatMoney(total)) }} <b class="total">¥{{ formatMoney(baseTotal) }}</b>
           </span>
-          <span v-else>本次{{ conf.label }} <b class="total">¥{{ formatMoney(total) }}</b></span>
+          <span v-else>{{ conf.thisTotal }} <b class="total">¥{{ formatMoney(total) }}</b></span>
         </a-space>
       </div>
       <a-table row-key="id" size="small" :columns="billColumns" :data-source="bills" :loading="billLoading" :pagination="false"
-        :locale="{ emptyText: form.partnerId ? '没有未核销的单据' : `请先选择${conf.partnerLabel}` }">
+        :locale="{ emptyText: form.partnerId ? $t('fin.settlementPage.noBills') : $t('fin.settlementPage.selectPartnerFirst', { name: conf.partnerLabel }) }">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'source'">
             <DictTag type="fin_bill_source" :value="record.sourceType" />
@@ -132,7 +132,7 @@
             {{ isForeign(record.currency) ? `${record.currency} ` : '' }}{{ formatMoney(remaining(record)) }}
           </template>
           <template v-else-if="column.key === 'settle'">
-            <a-tooltip :title="blocked(record) ? `已选择 ${settleCurrency} 单据，不能混合核销不同币种` : ''">
+            <a-tooltip :title="blocked(record) ? $t('fin.settlementPage.blocked', { currency: settleCurrency }) : ''">
               <a-input-number
                 v-model:value="record.settle"
                 :precision="2"
@@ -148,34 +148,34 @@
       </a-table>
       <template #footer>
         <div class="drawer-footer">
-          <a-button @click="createOpen = false">取消</a-button>
-          <a-button type="primary" :loading="saving" :disabled="total <= 0 || (foreign && !(Number(exchangeRate) > 0))" @click="submit">确认{{ conf.label }}</a-button>
+          <a-button @click="createOpen = false">{{ $t('common.action.cancel') }}</a-button>
+          <a-button type="primary" :loading="saving" :disabled="total <= 0 || (foreign && !(Number(exchangeRate) > 0))" @click="submit">{{ conf.confirm }}</a-button>
         </div>
       </template>
     </SubPage>
 
     <!-- 详情 -->
-    <SubPage :open="detailOpen" :title="detail ? `${conf.label}单 ${detail.settleNo}` : ''" width="min(820px, 100vw)" @close="detailOpen = false">
+    <SubPage :open="detailOpen" :title="detail ? conf.detailTitle(detail.settleNo) : ''" width="min(820px, 100vw)" @close="detailOpen = false">
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2 }" size="small" class="block">
           <a-descriptions-item :label="conf.partnerLabel">{{ detail.partnerName }}</a-descriptions-item>
-          <a-descriptions-item label="日期">{{ detail.settleDate }}</a-descriptions-item>
-          <a-descriptions-item label="金额"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
-          <a-descriptions-item v-if="isForeign(detail.currency)" label="原币 / 汇率">
+          <a-descriptions-item :label="$t('common.field.date')">{{ detail.settleDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.amount')"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
+          <a-descriptions-item v-if="isForeign(detail.currency)" :label="$t('fin.settlementPage.fcRate')">
             {{ fcText(detail.currency, detail.amountFc, detail.exchangeRate) }}
           </a-descriptions-item>
-          <a-descriptions-item label="结算账户">{{ detail.accountName }}</a-descriptions-item>
-          <a-descriptions-item label="结算方式"><DictTag type="fin_settle_method" :value="detail.method" /></a-descriptions-item>
-          <a-descriptions-item label="凭证">{{ detail.voucherNo || '未生成' }}</a-descriptions-item>
-          <a-descriptions-item label="制单">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="备注">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.settlementPage.account')">{{ detail.accountName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.settlementPage.method')"><DictTag type="fin_settle_method" :value="detail.method" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.settlementPage.voucher')">{{ detail.voucherNo || $t('fin.settlementPage.notGenerated') }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.settlementPage.preparedBy')">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
         <a-table row-key="id" size="small" :columns="itemColumns" :data-source="detail.items" :pagination="false">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'billAmount'">{{ formatMoney(record.billAmount) }}</template>
             <template v-else-if="column.key === 'amount'">
               {{ formatMoney(record.amount) }}
-              <div v-if="isForeign(detail.currency) && record.amountFc != null" class="sub-text">原币 {{ detail.currency }} {{ formatMoney(record.amountFc) }}</div>
+              <div v-if="isForeign(detail.currency) && record.amountFc != null" class="sub-text">{{ $t('fin.settlementPage.originalN', { amount: `${detail.currency} ${formatMoney(record.amountFc)}` }) }}</div>
             </template>
           </template>
         </a-table>
@@ -202,6 +202,7 @@ import { toOptions } from '@/utils/dict'
 import { today } from '@/components/wms/wms'
 import { formatMoney } from './fin'
 import { BASE_CURRENCY, currencySymbol, fcText, fetchRate, isForeign, useCurrencies } from './currency'
+import { t } from '@/locales'
 
 /** 收款单 / 付款单，kind = receipt | payment */
 const props = defineProps({
@@ -209,22 +210,60 @@ const props = defineProps({
 })
 
 const CONF = {
-  receipt: { label: '收款', partner: 'customer', partnerLabel: '客户', billKind: 'ar', billLabel: '应收单' },
-  payment: { label: '付款', partner: 'supplier', partnerLabel: '供应商', billKind: 'ap', billLabel: '应付单' }
+  receipt: {
+    partner: 'customer',
+    billKind: 'ar',
+    partnerLabel: t('fin.settlementPage.receipt.partner'),
+    allPartners: t('fin.settlementPage.receipt.allPartners'),
+    newTitle: t('fin.settlementPage.receipt.newTitle'),
+    dateLabel: t('fin.settlementPage.receipt.date'),
+    billsTitle: t('fin.settlementPage.receipt.billsTitle'),
+    thisTotal: t('fin.settlementPage.receipt.thisTotal'),
+    confirm: t('fin.settlementPage.receipt.confirm'),
+    generateTip: t('fin.settlementPage.receipt.generateTip'),
+    submitted: t('fin.settlementPage.receipt.submitted'),
+    success: t('fin.settlementPage.receipt.success'),
+    foreignTip: (currency) => t('fin.settlementPage.receipt.foreignTip', { currency }),
+    multiCurrency: (currencies) => t('fin.settlementPage.receipt.multiCurrency', { currencies }),
+    foreignTotal: (currency, amount) => t('fin.settlementPage.receipt.foreignTotal', { currency, amount }),
+    detailTitle: (no) => t('fin.settlementPage.receipt.detailTitle', { no }),
+    generateConfirm: (n) => t('fin.settlementPage.receipt.generateConfirm', { n }),
+    filledTip: (currency) => t('fin.settlementPage.receipt.filledTip', { currency })
+  },
+  payment: {
+    partner: 'supplier',
+    billKind: 'ap',
+    partnerLabel: t('fin.settlementPage.payment.partner'),
+    allPartners: t('fin.settlementPage.payment.allPartners'),
+    newTitle: t('fin.settlementPage.payment.newTitle'),
+    dateLabel: t('fin.settlementPage.payment.date'),
+    billsTitle: t('fin.settlementPage.payment.billsTitle'),
+    thisTotal: t('fin.settlementPage.payment.thisTotal'),
+    confirm: t('fin.settlementPage.payment.confirm'),
+    generateTip: t('fin.settlementPage.payment.generateTip'),
+    submitted: t('fin.settlementPage.payment.submitted'),
+    success: t('fin.settlementPage.payment.success'),
+    foreignTip: (currency) => t('fin.settlementPage.payment.foreignTip', { currency }),
+    multiCurrency: (currencies) => t('fin.settlementPage.payment.multiCurrency', { currencies }),
+    foreignTotal: (currency, amount) => t('fin.settlementPage.payment.foreignTotal', { currency, amount }),
+    detailTitle: (no) => t('fin.settlementPage.payment.detailTitle', { no }),
+    generateConfirm: (n) => t('fin.settlementPage.payment.generateConfirm', { n }),
+    filledTip: (currency) => t('fin.settlementPage.payment.filledTip', { currency })
+  }
 }
 const conf = CONF[props.kind]
 const dict = useDict('fin_settle_method', 'fin_bill_source', 'sys_approve_status')
 
 const columns = [
-  { title: '单号', key: 'settleNo', width: 170 },
+  { title: t('fin.settlementPage.no'), key: 'settleNo', width: 170 },
   { title: conf.partnerLabel, dataIndex: 'partnerName', width: 220, ellipsis: true },
-  { title: '日期', dataIndex: 'settleDate', width: 110 },
-  { title: '金额', key: 'amount', width: 170, align: 'right' },
-  { title: '结算账户', dataIndex: 'accountName', width: 130 },
-  { title: '方式', key: 'method', width: 110 },
-  { title: '凭证', key: 'voucher', width: 110 },
-  { title: '制单人', dataIndex: 'createByName', width: 100 },
-  { title: '操作', key: 'action', width: 130, fixed: 'right' }
+  { title: t('common.field.date'), dataIndex: 'settleDate', width: 110 },
+  { title: t('common.field.amount'), key: 'amount', width: 170, align: 'right' },
+  { title: t('fin.settlementPage.account'), dataIndex: 'accountName', width: 150 },
+  { title: t('fin.settlementPage.methodShort'), key: 'method', width: 110 },
+  { title: t('fin.settlementPage.voucher'), key: 'voucher', width: 120 },
+  { title: t('fin.settlementPage.createBy'), dataIndex: 'createByName', width: 120 },
+  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
 const query = reactive({ partnerId: undefined, keyword: undefined })
 const { list, loading, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable(
@@ -236,11 +275,11 @@ onMounted(load)
 
 function generate() {
   Modal.confirm({
-    title: `为 ${selectedKeys.value.length} 张${conf.label}单生成凭证？`,
-    content: props.kind === 'receipt' ? '借 银行存款 / 贷 应收账款' : '借 应付账款 / 贷 银行存款',
+    title: conf.generateConfirm(selectedKeys.value.length),
+    content: conf.generateTip,
     async onOk() {
       const count = await settlementVoucher(props.kind, selectedKeys.value)
-      message.success(`已生成 ${count} 张凭证（未审核）`)
+      message.success(t('fin.settlementPage.generated', { n: count }))
       selectedKeys.value = []
       load()
     }
@@ -249,19 +288,19 @@ function generate() {
 
 async function remove(id) {
   await deleteSettlement(props.kind, id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 
 // ---------------------------------------------------------------- 新增
 const billColumns = [
-  { title: '单号', dataIndex: 'billNo', width: 150 },
-  { title: '来源', key: 'source', width: 200 },
-  { title: '日期', dataIndex: 'billDate', width: 100 },
-  { title: '到期日', dataIndex: 'dueDate', width: 100 },
-  { title: '金额', key: 'amount', width: 140, align: 'right' },
-  { title: '未核销', key: 'remaining', width: 120, align: 'right' },
-  { title: '本次核销', key: 'settle', width: 150 }
+  { title: t('fin.settlementPage.no'), dataIndex: 'billNo', width: 150 },
+  { title: t('fin.settlementPage.source'), key: 'source', width: 200 },
+  { title: t('common.field.date'), dataIndex: 'billDate', width: 110 },
+  { title: t('fin.settlementPage.dueDate'), dataIndex: 'dueDate', width: 110 },
+  { title: t('common.field.amount'), key: 'amount', width: 140, align: 'right' },
+  { title: t('fin.settlementPage.remaining'), key: 'remaining', width: 120, align: 'right' },
+  { title: t('fin.settlementPage.settle'), key: 'settle', width: 150 }
 ]
 const createOpen = ref(false)
 const saving = ref(false)
@@ -332,7 +371,7 @@ function fillAll() {
   bills.value.forEach((b) => {
     if (curOf(b) === cur) b.settle = remaining(b)
   })
-  if (currencies.value.length > 1) message.info(`已填写 ${cur} 单据，其他币种的单据请另开${conf.label}单`)
+  if (currencies.value.length > 1) message.info(conf.filledTip(cur))
 }
 
 async function submit() {
@@ -343,11 +382,11 @@ async function submit() {
   }
   const items = bills.value.filter((b) => Number(b.settle)).map((b) => ({ billId: b.id, amount: b.settle }))
   if (new Set(bills.value.filter((b) => Number(b.settle)).map(curOf)).size > 1) {
-    message.warning('不能混合核销不同币种的单据')
+    message.warning(t('fin.settlementPage.mixedCurrency'))
     return
   }
   if (foreign.value && !(Number(exchangeRate.value) > 0)) {
-    message.warning('请填写汇率')
+    message.warning(t('fin.settlementPage.rateRequired'))
     return
   }
   saving.value = true
@@ -359,7 +398,7 @@ async function submit() {
       exchangeRate: foreign.value ? exchangeRate.value : null
     })
     const saved = await getSettlement(props.kind, id).catch(() => null)
-    message.success(saved?.status === 'APPROVING' ? `${conf.label}单已提交审批，审批通过后核销` : `${conf.label}成功`)
+    message.success(saved?.status === 'APPROVING' ? conf.submitted : conf.success)
     createOpen.value = false
     load()
   } finally {
@@ -369,11 +408,11 @@ async function submit() {
 
 // ---------------------------------------------------------------- 详情
 const itemColumns = [
-  { title: '核销单据', dataIndex: 'billNo', width: 160 },
-  { title: '来源单号', dataIndex: 'sourceNo', width: 170 },
-  { title: '单据日期', dataIndex: 'billDate', width: 110 },
-  { title: '单据金额', key: 'billAmount', width: 130, align: 'right' },
-  { title: '本次核销', key: 'amount', width: 130, align: 'right' }
+  { title: t('fin.settlementPage.settledBill'), dataIndex: 'billNo', width: 160 },
+  { title: t('fin.settlementPage.sourceNo'), dataIndex: 'sourceNo', width: 170 },
+  { title: t('fin.settlementPage.billDate'), dataIndex: 'billDate', width: 110 },
+  { title: t('fin.settlementPage.billAmount'), key: 'billAmount', width: 130, align: 'right' },
+  { title: t('fin.settlementPage.settle'), key: 'amount', width: 130, align: 'right' }
 ]
 const detailOpen = ref(false)
 const detail = ref()

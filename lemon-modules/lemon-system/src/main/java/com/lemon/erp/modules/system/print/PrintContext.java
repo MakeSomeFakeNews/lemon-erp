@@ -26,14 +26,15 @@ import java.util.Locale;
 final class PrintContext {
 
     /** 默认版式使用的字体名 */
-    static final String DEFAULT_FONT = "宋体";
+    static final String DEFAULT_FONT = "宋体"; // i18n-ignore 字体名
 
     private static final String PDF_FONT = "STSong-Light";
     private static final String PDF_ENCODING = "UniGB-UCS2-H";
 
-    private static final List<String> FAMILY_NAMES = List.of(DEFAULT_FONT, "SimSun", "新宋体", "NSimSun", "黑体", "SimHei",
-            "微软雅黑", "Microsoft YaHei", "仿宋", "FangSong", "楷体", "KaiTi", "PingFang SC", "Noto Sans SC", "Noto Serif SC",
-            "Source Han Sans SC", "思源黑体", "思源宋体", "SansSerif", "Serif", "Dialog", "DejaVu Sans", "DejaVu Serif", "Arial");
+    // 字体名（i18n-ignore）
+    private static final List<String> FAMILY_NAMES = List.of(DEFAULT_FONT, "SimSun", "新宋体", "NSimSun", "黑体", "SimHei", // i18n-ignore
+            "微软雅黑", "Microsoft YaHei", "仿宋", "FangSong", "楷体", "KaiTi", "PingFang SC", "Noto Sans SC", "Noto Serif SC", // i18n-ignore
+            "Source Han Sans SC", "思源黑体", "思源宋体", "SansSerif", "Serif", "Dialog", "DejaVu Sans", "DejaVu Serif", "Arial"); // i18n-ignore
 
     private PrintContext() {
     }

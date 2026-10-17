@@ -3,11 +3,11 @@
     <div class="im-card">
       <template v-if="!error">
         <a-spin size="large" />
-        <div class="im-text">{{ bindMode ? '正在绑定…' : '正在登录…' }}</div>
+        <div class="im-text">{{ bindMode ? $t('login.im.binding') : $t('login.im.loggingIn') }}</div>
       </template>
-      <a-result v-else status="warning" :title="bindMode ? '绑定失败' : '登录失败'" :sub-title="error">
+      <a-result v-else status="warning" :title="bindMode ? $t('login.im.bindFailed') : $t('login.im.loginFailed')" :sub-title="error">
         <template #extra>
-          <a-button type="primary" @click="back">{{ getToken() ? '返回个人中心' : '返回登录' }}</a-button>
+          <a-button type="primary" @click="back">{{ getToken() ? $t('login.im.backProfile') : $t('login.im.backLogin') }}</a-button>
         </template>
       </a-result>
     </div>
@@ -18,6 +18,7 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { imCallback } from '@/api/system/im'
 import { useUserStore } from '@/store/user'
 import { getToken, setToken } from '@/utils/auth'
@@ -27,6 +28,7 @@ import { imPlatform } from '@/utils/im'
  * 钉钉、企业微信、飞书授权后跳回的页面：把授权码交给后端，登录（保存令牌）或完成个人中心的账号绑定。
  * 钉钉的授权码参数为 authCode，其他平台为 code
  */
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
@@ -42,14 +44,14 @@ onMounted(async () => {
   const code = route.query.authCode || route.query.code
   const state = route.query.state
   if (!code || !state) {
-    error.value = '没有收到授权码，可能是取消了授权'
+    error.value = t('login.im.noCode')
     return
   }
   try {
     const res = await imCallback({ code, state })
     const label = imPlatform(res.platform).label
     if (res.bind) {
-      message.success(`已绑定${label}账号`)
+      message.success(t('login.im.bound', { name: label }))
       router.replace({ path: '/profile', query: { tab: 'im' } })
       return
     }
@@ -58,14 +60,14 @@ onMounted(async () => {
     setToken(res.token)
     userStore.token = res.token
     if (res.passwordExpired) {
-      message.warning('当前密码为管理员设置的初始密码或已过期，请先修改密码', 4)
+      message.warning(t('login.mustChange'), 4)
       router.replace({ path: '/profile', query: { tab: 'password' } })
     } else {
-      message.success('登录成功')
+      message.success(t('login.success'))
       router.replace(res.redirect || '/')
     }
   } catch (e) {
-    error.value = e?.message || '授权失败'
+    error.value = e?.message || t('login.im.authFailed')
   }
 })
 </script>

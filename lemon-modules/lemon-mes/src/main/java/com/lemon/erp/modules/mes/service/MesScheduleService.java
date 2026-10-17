@@ -93,7 +93,7 @@ public class MesScheduleService {
             int guard = 0;
             while (need.signum() > 0) {
                 if (++guard > MAX_DAYS) {
-                    throw new BizException("工作中心「" + capacity.name(op.getWorkCenterId()) + "」在 " + MAX_DAYS + " 天内没有足够的产能，请检查工作日和每日工时");
+                    throw new BizException("工作中心「{0}」在 {1} 天内没有足够的产能，请检查工作日和每日工时", capacity.name(op.getWorkCenterId()), MAX_DAYS);
                 }
                 String key = op.getWorkCenterId() + "|" + d;
                 BigDecimal free = capacity.hours(op.getWorkCenterId(), d).subtract(used.getOrDefault(key, BigDecimal.ZERO));

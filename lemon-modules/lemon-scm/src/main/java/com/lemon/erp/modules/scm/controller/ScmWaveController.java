@@ -57,14 +57,14 @@ public class ScmWaveController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:wave:add')")
-    @OperLog(title = "拣货波次", type = OperType.INSERT)
+    @OperLog(title = "拣货波次", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody WaveRequest req) {
         return R.ok(waveService.create(req));
     }
 
     @PostMapping("/{id}/deliveries")
     @PreAuthorize("@ss.hasPerm('scm:wave:add')")
-    @OperLog(title = "拣货波次-加入通知", type = OperType.UPDATE)
+    @OperLog(title = "拣货波次-加入通知", type = OperType.UPDATE) // i18n-ignore
     public R<Void> addDeliveries(@PathVariable Long id, @Valid @RequestBody WaveRequest req) {
         waveService.addDeliveries(id, req);
         return R.ok();
@@ -72,7 +72,7 @@ public class ScmWaveController {
 
     @DeleteMapping("/{id}/deliveries/{deliveryId}")
     @PreAuthorize("@ss.hasPerm('scm:wave:add')")
-    @OperLog(title = "拣货波次-移出通知", type = OperType.UPDATE)
+    @OperLog(title = "拣货波次-移出通知", type = OperType.UPDATE) // i18n-ignore
     public R<Void> removeDelivery(@PathVariable Long id, @PathVariable Long deliveryId) {
         waveService.removeDelivery(id, deliveryId);
         return R.ok();
@@ -87,7 +87,7 @@ public class ScmWaveController {
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("@ss.hasPerm('scm:wave:add')")
-    @OperLog(title = "拣货波次-取消", type = OperType.UPDATE)
+    @OperLog(title = "拣货波次-取消", type = OperType.UPDATE) // i18n-ignore
     public R<Void> cancel(@PathVariable Long id) {
         waveService.cancel(id);
         return R.ok();
@@ -96,7 +96,7 @@ public class ScmWaveController {
     /** 完成拣货：返回确认拣货的发货通知数和跳过的通知（库存不足、有序列号物料） */
     @PostMapping("/{id}/complete")
     @PreAuthorize("@ss.hasPerm('scm:wave:pick')")
-    @OperLog(title = "拣货波次-完成拣货", type = OperType.UPDATE)
+    @OperLog(title = "拣货波次-完成拣货", type = OperType.UPDATE) // i18n-ignore
     public R<ScmWaveService.CompleteResult> complete(@PathVariable Long id) {
         return R.ok(waveService.complete(id));
     }

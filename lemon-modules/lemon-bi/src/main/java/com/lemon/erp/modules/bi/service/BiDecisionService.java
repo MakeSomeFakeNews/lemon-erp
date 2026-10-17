@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.bi.service;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -111,7 +112,7 @@ public class BiDecisionService {
         result.put("forecast", forecast);
         result.put("slope", BigDecimal.valueOf(b).setScale(2, RoundingMode.HALF_UP));
         result.put("seasonal", seasonal);
-        result.put("method", seasonal ? "线性趋势 × 季节指数" : "线性趋势（最近 " + n + " 个月）");
+        result.put("method", seasonal ? I18n.t("线性趋势 × 季节指数") : I18n.t("线性趋势（最近 {0} 个月）", n));
         return result;
     }
 
@@ -154,7 +155,7 @@ public class BiDecisionService {
         List<Map<String, Object>> summary = new ArrayList<>();
         counts.forEach((c, cnt) -> summary.add(Map.of("class", c, "count", cnt[0], "value", values.get(c),
                 "share", total.signum() == 0 ? BigDecimal.ZERO : values.get(c).multiply(HUNDRED).divide(total, 1, RoundingMode.HALF_UP))));
-        return Map.of("rows", rows, "summary", summary, "basis", useCost ? "销售成本" : "销售额", "total", total);
+        return Map.of("rows", rows, "summary", summary, "basis", useCost ? I18n.t("销售成本") : I18n.t("销售额"), "total", total);
     }
 
     /** 呆滞物料：有库存但超过 days 天没有出库 */
@@ -176,7 +177,7 @@ public class BiDecisionService {
     public List<Map<String, Object>> metrics() {
         List<Map<String, Object>> list = new ArrayList<>();
         for (BiAlertMetric m : BiAlertMetric.values()) {
-            list.add(Map.of("key", m.name(), "label", m.getLabel(), "unit", m.getUnit()));
+            list.add(Map.of("key", m.name(), "label", I18n.t(m.getLabel()), "unit", I18n.t(m.getUnit())));
         }
         return list;
     }
@@ -234,8 +235,8 @@ public class BiDecisionService {
             m.put("ruleId", rule.getId());
             m.put("name", rule.getName());
             m.put("metric", metric.name());
-            m.put("metricLabel", metric.getLabel());
-            m.put("unit", metric.getUnit());
+            m.put("metricLabel", I18n.t(metric.getLabel()));
+            m.put("unit", I18n.t(metric.getUnit()));
             m.put("operator", rule.getOperator());
             m.put("threshold", rule.getThreshold());
             m.put("level", rule.getLevel());

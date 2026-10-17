@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.dashboard.service;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermissionContext;
@@ -44,27 +45,27 @@ public class DashboardBusinessService {
         boolean allData = SecurityUtils.getDataScope().all();
         List<Card> cards = new ArrayList<>();
         if (permissionService.hasPerm("scm:sales:list")) {
-            cards.add(new Card("sales", "本月销售额", "MONEY",
+            cards.add(new Card("sales", I18n.t("本月销售额"), "MONEY",
                     scoped(ORDER_RULE, () -> dashboardMapper.sumOrderAmount("SALES", month.atDay(1), today)),
                     scoped(ORDER_RULE, () -> dashboardMapper.sumOrderAmount("SALES", last.atDay(1), lastSameDay)), "/scm/sales"));
         }
         if (permissionService.hasPerm("scm:purchase:list")) {
-            cards.add(new Card("purchase", "本月采购额", "MONEY",
+            cards.add(new Card("purchase", I18n.t("本月采购额"), "MONEY",
                     scoped(ORDER_RULE, () -> dashboardMapper.sumOrderAmount("PURCHASE", month.atDay(1), today)),
                     scoped(ORDER_RULE, () -> dashboardMapper.sumOrderAmount("PURCHASE", last.atDay(1), lastSameDay)), "/scm/purchase"));
         }
         if (allData && permissionService.hasPerm("fin:ar:list")) {
-            cards.add(new Card("receivable", "应收余额", "MONEY", dashboardMapper.sumBillBalance("AR"), null, "/fin/ar"));
+            cards.add(new Card("receivable", I18n.t("应收余额"), "MONEY", dashboardMapper.sumBillBalance("AR"), null, "/fin/ar"));
         }
         if (allData && permissionService.hasPerm("fin:ap:list")) {
-            cards.add(new Card("payable", "应付余额", "MONEY", dashboardMapper.sumBillBalance("AP"), null, "/fin/ap"));
+            cards.add(new Card("payable", I18n.t("应付余额"), "MONEY", dashboardMapper.sumBillBalance("AP"), null, "/fin/ap"));
         }
         if (permissionService.hasPerm("scm:sales:list")) {
-            cards.add(new Card("toShip", "待发货订单", "COUNT",
+            cards.add(new Card("toShip", I18n.t("待发货订单"), "COUNT",
                     BigDecimal.valueOf(scoped(ORDER_RULE, () -> dashboardMapper.countOpenOrders("SALES"))), null, "/scm/sales"));
         }
         if (permissionService.hasPerm("mes:wo:list")) {
-            cards.add(new Card("wip", "在制工单", "COUNT",
+            cards.add(new Card("wip", I18n.t("在制工单"), "COUNT",
                     BigDecimal.valueOf(scoped(WO_RULE, dashboardMapper::countOpenWorkOrders)), null, "/mes/wo"));
         }
         return cards;

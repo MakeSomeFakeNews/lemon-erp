@@ -2,11 +2,11 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="标题" name="name">
-          <a-input v-model:value="query.name" placeholder="流程标题或名称" allow-clear />
+        <a-form-item :label="$t('workflow.list.title')" name="name">
+          <a-input v-model:value="query.name" :placeholder="$t('workflow.list.titlePh')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.wf_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wf_status)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -47,11 +47,11 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>查看
+                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
               <template v-if="manage && record.status === 'RUNNING'">
                 <a-button v-perm="'wf:instance:cancel'" type="link" size="small" danger @click="openTerminate(record)">
-                  <template #icon><StopOutlined /></template>终止
+                  <template #icon><StopOutlined /></template>{{ $t('workflow.list.terminate') }}
                 </a-button>
               </template>
             </span>
@@ -65,24 +65,25 @@
     <!-- 终止流程 -->
     <a-modal
       v-model:open="terminateOpen"
-      :title="`终止流程：${terminateTarget?.name || ''}`"
-      ok-text="终止"
+      :title="$t('workflow.list.terminateTitle', { name: terminateTarget?.name || '' })"
+      :ok-text="$t('workflow.list.terminate')"
       :ok-button-props="{ danger: true }"
       :confirm-loading="terminating"
       destroy-on-close
       @ok="submitTerminate"
     >
       <a-form ref="terminateRef" :model="terminateForm" layout="vertical">
-        <a-form-item label="终止原因" name="reason" :rules="[{ required: true, whitespace: true, message: '请填写终止原因' }]">
+        <a-form-item :label="$t('workflow.list.terminateReason')" name="reason" :rules="[{ required: true, whitespace: true, message: $t('workflow.list.terminateReasonRequired') }]">
           <a-textarea v-model:value="terminateForm.reason" :rows="3" :maxlength="500" show-count />
         </a-form-item>
       </a-form>
-      <a-alert type="warning" show-icon message="终止后流程立即结束，不可恢复。" />
+      <a-alert type="warning" show-icon :message="$t('workflow.list.terminateTip')" />
     </a-modal>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { EyeOutlined, StopOutlined } from '@ant-design/icons-vue'
@@ -95,6 +96,8 @@ import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
+
+const { t } = useI18n()
 
 /**
  * 流程实例列表：「我的申请」与「流程实例」共用
@@ -109,15 +112,15 @@ const props = defineProps({
 const dict = useDict('wf_status', 'wf_category')
 
 const columns = [
-  { title: '标题', key: 'name', width: 220, ellipsis: true },
-  { title: '流程', dataIndex: 'processName', width: 140, ellipsis: true },
-  { title: '分类', key: 'category', width: 100 },
-  ...(props.manage ? [{ title: '发起人', dataIndex: 'startUserName', width: 110 }] : []),
-  { title: '状态', key: 'status', width: 90 },
-  { title: '当前节点', key: 'currentNodes', width: 140, ellipsis: true },
-  { title: '发起时间', dataIndex: 'startTime', width: 170 },
-  { title: '结束时间', dataIndex: 'endTime', width: 170 },
-  { title: '操作', key: 'action', width: props.manage ? 150 : 90, fixed: 'right' }
+  { title: t('workflow.list.title'), key: 'name', width: 220, ellipsis: true },
+  { title: t('workflow.list.process'), dataIndex: 'processName', width: 140, ellipsis: true },
+  { title: t('workflow.list.category'), key: 'category', width: 100 },
+  ...(props.manage ? [{ title: t('workflow.list.initiator'), dataIndex: 'startUserName', width: 120 }] : []),
+  { title: t('common.field.status'), key: 'status', width: 110 },
+  { title: t('workflow.list.currentNode'), key: 'currentNodes', width: 140, ellipsis: true },
+  { title: t('workflow.list.startTime'), dataIndex: 'startTime', width: 170 },
+  { title: t('workflow.list.endTime'), dataIndex: 'endTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: props.manage ? 170 : 100, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, props.storageKey)
 const showSearch = ref(true)
@@ -155,7 +158,7 @@ async function submitTerminate() {
   terminating.value = true
   try {
     await terminateInstance(terminateTarget.value.id, terminateForm.reason.trim())
-    message.success('流程已终止')
+    message.success(t('workflow.list.terminated'))
     terminateOpen.value = false
     load()
   } finally {

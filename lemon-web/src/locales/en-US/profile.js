@@ -1,0 +1,25 @@
+/** 个人中心 */
+export default {
+  changeAvatar: 'Click to change avatar',
+  mobile: 'Mobile',
+  registerTime: 'Registered',
+  basicInfo: 'Profile',
+  nickname: 'Nickname',
+  saveInfo: 'Save Profile',
+  changePassword: 'Change Password',
+  oldPassword: 'Current Password',
+  confirmPassword: 'Confirm New Password',
+  imAccounts: 'Linked Accounts',
+  imTip: 'After binding, you can sign in by scanning a QR code with the platform, open the system from the platform without signing in, and receive messages such as approval to-dos',
+  imBound: 'Bound to {name} · {time}',
+  confirmUnbind: 'Unbind {name}?',
+  imageOnly: 'Only images can be uploaded',
+  imageTooLarge: 'The image cannot exceed 2 MB',
+  avatarUpdated: 'Avatar updated',
+  uploadFailed: 'Upload failed',
+  infoSaved: 'Profile saved',
+  inputOldPassword: 'Enter your current password',
+  inputConfirm: 'Enter the new password again',
+  mismatch: 'The passwords do not match',
+  passwordChanged: 'Password changed'
+}

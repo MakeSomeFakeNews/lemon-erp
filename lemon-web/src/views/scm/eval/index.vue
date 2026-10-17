@@ -4,15 +4,15 @@
       <a-tabs v-model:active-key="tab" class="eval-tabs">
         <template #rightExtra>
           <a-button v-perm="'scm:eval:add'" type="primary" @click="openEval()">
-            <template #icon><PlusOutlined /></template>新增评估
+            <template #icon><PlusOutlined /></template>{{ $t('scm.eval.add') }}
           </a-button>
         </template>
 
-        <a-tab-pane key="kpi" tab="供应商绩效">
+        <a-tab-pane key="kpi" :tab="$t('scm.eval.kpiTab')">
           <div class="filters">
-            <a-input-search v-model:value="kpiQuery.keyword" placeholder="供应商编码或名称" allow-clear class="filter" @search="kpiTable.search" />
+            <a-input-search v-model:value="kpiQuery.keyword" :placeholder="$t('scm.eval.supplierKeyword')" allow-clear class="filter" @search="kpiTable.search" />
             <a-range-picker v-model:value="kpiQuery.range" value-format="YYYY-MM-DD" @change="kpiTable.search" />
-            <span class="sub-text">按入库业务日期统计；准时 = 入库日期不晚于订单明细交货日期</span>
+            <span class="sub-text">{{ $t('scm.eval.kpiTip') }}</span>
           </div>
           <a-table
             row-key="supplierId"
@@ -36,42 +36,42 @@
               <template v-else-if="column.key === 'onTimeRate'">
                 <template v-if="record.onTimeRate != null">
                   <a-progress :percent="Number(record.onTimeRate)" size="small" :status="record.onTimeRate < 90 ? 'exception' : 'success'" />
-                  <div class="sub-text">{{ record.onTimeLines }} / {{ record.inLines }} 行</div>
+                  <div class="sub-text">{{ $t('scm.eval.lines', { done: record.onTimeLines, total: record.inLines }) }}</div>
                 </template>
-                <span v-else class="sub-text">无入库</span>
+                <span v-else class="sub-text">{{ $t('scm.eval.noReceipt') }}</span>
               </template>
               <template v-else-if="column.key === 'iqcPassRate'">
                 <template v-if="record.iqcPassRate != null">
                   <span :class="{ danger: record.iqcPassRate < 95 }">{{ record.iqcPassRate }}%</span>
-                  <span class="sub-text">（{{ record.iqcPassBatches }}/{{ record.iqcBatches }} 批）</span>
+                  <span class="sub-text">{{ $t('scm.eval.batches', { pass: record.iqcPassBatches, total: record.iqcBatches }) }}</span>
                 </template>
                 <span v-else class="sub-text">-</span>
-                <div v-if="record.claimCount" class="sub-text danger">质量索赔 {{ record.claimCount }} 次 ¥{{ formatMoney(record.claimAmount) }}</div>
+                <div v-if="record.claimCount" class="sub-text danger">{{ $t('scm.eval.claims', { n: record.claimCount, amount: formatMoney(record.claimAmount) }) }}</div>
               </template>
               <template v-else-if="column.key === 'returnRate'">
                 <span v-if="record.returnRate != null" :class="{ danger: record.returnRate > 2 }">{{ record.returnRate }}%</span>
                 <span v-else class="sub-text">-</span>
-                <div class="sub-text">退 {{ formatQty(record.returnQty) }} / 入 {{ formatQty(record.inQty) }}</div>
+                <div class="sub-text">{{ $t('scm.eval.returnOfIn', { ret: formatQty(record.returnQty), qty: formatQty(record.inQty) }) }}</div>
               </template>
               <template v-else-if="column.key === 'last'">
                 <template v-if="record.lastScore != null">
-                  <b>{{ Number(record.lastScore) }}</b> 分
+                  <b>{{ Number(record.lastScore) }}</b> {{ $t('scm.eval.points') }}
                   <DictTag type="scm_supplier_level" :value="record.lastGrade" />
                   <div class="sub-text">{{ record.lastPeriod }}</div>
                 </template>
-                <span v-else class="sub-text">未评估</span>
+                <span v-else class="sub-text">{{ $t('scm.eval.notEvaluated') }}</span>
               </template>
               <template v-else-if="column.key === 'action'">
-                <a-button v-perm="'scm:eval:add'" type="link" size="small" @click="openEval(record)">评估</a-button>
+                <a-button v-perm="'scm:eval:add'" type="link" size="small" @click="openEval(record)">{{ $t('scm.eval.evaluate') }}</a-button>
               </template>
             </template>
           </a-table>
         </a-tab-pane>
 
-        <a-tab-pane key="records" tab="评估记录">
+        <a-tab-pane key="records" :tab="$t('scm.eval.recordsTab')">
           <div class="filters">
-            <PartnerSelect v-model:value="recordQuery.supplierId" type="supplier" placeholder="全部供应商" allow-clear class="filter" />
-            <a-input-search v-model:value="recordQuery.period" placeholder="考核期间" allow-clear class="filter" @search="recordTable.search" />
+            <PartnerSelect v-model:value="recordQuery.supplierId" type="supplier" :placeholder="$t('scm.eval.allSuppliers')" allow-clear class="filter" />
+            <a-input-search v-model:value="recordQuery.period" :placeholder="$t('scm.eval.period')" allow-clear class="filter" @search="recordTable.search" />
           </div>
           <a-table
             row-key="id"
@@ -89,8 +89,7 @@
                 <div class="sub-text">{{ record.supplierCode }}</div>
               </template>
               <template v-else-if="column.key === 'scores'">
-                质量 {{ Number(record.qualityScore) }} · 交期 {{ Number(record.deliveryScore) }} · 价格 {{ Number(record.priceScore) }} · 服务
-                {{ Number(record.serviceScore) }}
+                {{ $t('scm.eval.scoresText', { q: Number(record.qualityScore), d: Number(record.deliveryScore), p: Number(record.priceScore), s: Number(record.serviceScore) }) }}
               </template>
               <template v-else-if="column.key === 'total'">
                 <b>{{ Number(record.totalScore) }}</b>
@@ -100,8 +99,8 @@
               </template>
               <template v-else-if="column.key === 'action'">
                 <span v-perm="'scm:eval:remove'">
-                  <a-popconfirm title="确定删除该评估记录？" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small">删除</a-button>
+                  <a-popconfirm :title="$t('scm.eval.confirmDelete')" @confirm="remove(record.id)">
+                    <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
                   </a-popconfirm>
                 </span>
               </template>
@@ -111,29 +110,29 @@
       </a-tabs>
     </a-card>
 
-    <a-modal v-model:open="evalOpen" title="供应商评估" :confirm-loading="saving" width="560px" @ok="submit">
+    <a-modal v-model:open="evalOpen" :title="$t('scm.eval.title')" :confirm-loading="saving" width="600px" @ok="submit">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :span="14">
-            <a-form-item label="供应商" name="supplierId">
+            <a-form-item :label="$t('scm.eval.supplier')" name="supplierId">
               <PartnerSelect v-model:value="form.supplierId" type="supplier" :label="form.supplierLabel" />
             </a-form-item>
           </a-col>
           <a-col :span="10">
-            <a-form-item label="考核期间" name="period">
-              <a-input v-model:value="form.period" :maxlength="16" placeholder="如 2026-Q3" />
+            <a-form-item :label="$t('scm.eval.period')" name="period">
+              <a-input v-model:value="form.period" :maxlength="16" :placeholder="$t('scm.eval.periodPlaceholder')" />
             </a-form-item>
           </a-col>
           <a-col v-for="s in SCORES" :key="s.key" :span="12">
-            <a-form-item :label="`${s.label}（权重 ${s.weight}%）`" :name="s.key">
-              <a-input-number v-model:value="form[s.key]" :min="0" :max="100" :precision="1" addon-after="分" class="full" />
+            <a-form-item :label="$t('scm.eval.scoreLabel', { label: s.label, weight: s.weight })" :name="s.key">
+              <a-input-number v-model:value="form[s.key]" :min="0" :max="100" :precision="1" :addon-after="$t('scm.eval.points')" class="full" />
             </a-form-item>
           </a-col>
         </a-row>
         <div class="total">
-          综合得分 <b>{{ total }}</b>，评定等级 <DictTag type="scm_supplier_level" :value="grade" />
+          {{ $t('scm.eval.totalLabel') }} <b>{{ total }}</b>{{ $t('scm.eval.gradeLabel') }} <DictTag type="scm_supplier_level" :value="grade" />
         </div>
-        <a-form-item label="评语" name="remark">
+        <a-form-item :label="$t('scm.eval.comment')" name="remark">
           <a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" />
         </a-form-item>
       </a-form>
@@ -145,6 +144,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
@@ -153,18 +153,19 @@ import { useTable } from '@/composables/useTable'
 import { formatMoney } from '@/components/scm/scm'
 import { formatQty } from '@/components/wms/wms'
 
+const { t } = useI18n()
 const tab = ref('kpi')
 
 const kpiColumns = [
-  { title: '供应商', key: 'supplier', width: 220 },
-  { title: '等级', key: 'level', width: 90 },
-  { title: '订单数', dataIndex: 'orderCount', width: 80, align: 'right' },
-  { title: '入库金额', key: 'purchaseAmount', width: 140, align: 'right' },
-  { title: '准时交货率', key: 'onTimeRate', width: 180 },
-  { title: '来料合格率', key: 'iqcPassRate', width: 170 },
-  { title: '退货率', key: 'returnRate', width: 150 },
-  { title: '最近评估', key: 'last', width: 160 },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' }
+  { title: t('scm.eval.supplier'), key: 'supplier', width: 220 },
+  { title: t('scm.eval.level'), key: 'level', width: 90 },
+  { title: t('scm.eval.orderCount'), dataIndex: 'orderCount', width: 90, align: 'right' },
+  { title: t('scm.eval.purchaseAmount'), key: 'purchaseAmount', width: 140, align: 'right' },
+  { title: t('scm.eval.onTimeRate'), key: 'onTimeRate', width: 180 },
+  { title: t('scm.eval.iqcPassRate'), key: 'iqcPassRate', width: 170 },
+  { title: t('scm.eval.returnRate'), key: 'returnRate', width: 170 },
+  { title: t('scm.eval.last'), key: 'last', width: 160 },
+  { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
 ]
 const kpiQuery = reactive({ keyword: undefined, range: undefined })
 const kpiTable = useTable(supplierKpi, kpiQuery, {
@@ -172,15 +173,15 @@ const kpiTable = useTable(supplierKpi, kpiQuery, {
 })
 
 const recordColumns = [
-  { title: '供应商', key: 'supplier', width: 220 },
-  { title: '考核期间', dataIndex: 'period', width: 100 },
-  { title: '各项得分', key: 'scores', width: 300 },
-  { title: '综合得分', key: 'total', width: 90, align: 'right' },
-  { title: '等级', key: 'grade', width: 90 },
-  { title: '评语', dataIndex: 'remark', width: 180, ellipsis: true },
-  { title: '评估人', dataIndex: 'createByName', width: 100 },
-  { title: '评估时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' }
+  { title: t('scm.eval.supplier'), key: 'supplier', width: 220 },
+  { title: t('scm.eval.period'), dataIndex: 'period', width: 100 },
+  { title: t('scm.eval.scores'), key: 'scores', width: 360 },
+  { title: t('scm.eval.total'), key: 'total', width: 110, align: 'right' },
+  { title: t('scm.eval.level'), key: 'grade', width: 90 },
+  { title: t('scm.eval.comment'), dataIndex: 'remark', width: 180, ellipsis: true },
+  { title: t('scm.eval.evaluator'), dataIndex: 'createByName', width: 110 },
+  { title: t('scm.eval.evalTime'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
 ]
 const recordQuery = reactive({ supplierId: undefined, period: undefined })
 const recordTable = useTable(pageEval, recordQuery)
@@ -193,10 +194,10 @@ onMounted(() => {
 
 // ---------------------------------------------------------------- 评估
 const SCORES = [
-  { key: 'qualityScore', label: '质量', weight: 40 },
-  { key: 'deliveryScore', label: '交期', weight: 30 },
-  { key: 'priceScore', label: '价格', weight: 20 },
-  { key: 'serviceScore', label: '服务', weight: 10 }
+  { key: 'qualityScore', label: t('scm.eval.quality'), weight: 40 },
+  { key: 'deliveryScore', label: t('scm.eval.delivery'), weight: 30 },
+  { key: 'priceScore', label: t('scm.eval.price'), weight: 20 },
+  { key: 'serviceScore', label: t('scm.eval.service'), weight: 10 }
 ]
 const evalOpen = ref(false)
 const saving = ref(false)
@@ -204,12 +205,12 @@ const formRef = ref()
 const form = ref({})
 const required = (msg) => [{ required: true, message: msg }]
 const rules = {
-  supplierId: required('请选择供应商'),
-  period: required('请填写考核期间'),
-  qualityScore: required('请打分'),
-  deliveryScore: required('请打分'),
-  priceScore: required('请打分'),
-  serviceScore: required('请打分')
+  supplierId: required(t('scm.eval.supplierRequired')),
+  period: required(t('scm.eval.periodRequired')),
+  qualityScore: required(t('scm.eval.scoreRequired')),
+  deliveryScore: required(t('scm.eval.scoreRequired')),
+  priceScore: required(t('scm.eval.scoreRequired')),
+  serviceScore: required(t('scm.eval.scoreRequired'))
 }
 
 const total = computed(() => {
@@ -251,7 +252,7 @@ async function submit() {
   try {
     const { supplierLabel, ...data } = form.value
     await addEval(data)
-    message.success(`评估完成，综合得分 ${total.value}`)
+    message.success(t('scm.eval.done', { score: total.value }))
     evalOpen.value = false
     kpiTable.load()
     recordTable.load()
@@ -262,7 +263,7 @@ async function submit() {
 
 async function remove(id) {
   await deleteEval(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   recordTable.load()
 }
 </script>

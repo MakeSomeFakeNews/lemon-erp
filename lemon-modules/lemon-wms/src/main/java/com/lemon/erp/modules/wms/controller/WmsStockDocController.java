@@ -53,14 +53,14 @@ public class WmsStockDocController {
     /** @return 新单据 ID */
     @PostMapping
     @PreAuthorize("@ss.hasPerm('wms:' + #kind + ':add')")
-    @OperLog(title = "出入库单", type = OperType.INSERT)
+    @OperLog(title = "出入库单", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@PathVariable String kind, @Valid @RequestBody StockDocRequest req) {
         return R.ok(docService.create(StockBizType.ofDocPath(kind), req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('wms:' + #kind + ':edit')")
-    @OperLog(title = "出入库单", type = OperType.UPDATE)
+    @OperLog(title = "出入库单", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable String kind, @PathVariable Long id, @Valid @RequestBody StockDocRequest req) {
         docService.update(StockBizType.ofDocPath(kind), id, req);
         return R.ok();
@@ -68,7 +68,7 @@ public class WmsStockDocController {
 
     @PostMapping("/{id}/confirm")
     @PreAuthorize("@ss.hasPerm('wms:' + #kind + ':confirm')")
-    @OperLog(title = "出入库单-确认", type = OperType.UPDATE)
+    @OperLog(title = "出入库单-确认", type = OperType.UPDATE) // i18n-ignore
     public R<Boolean> confirm(@PathVariable String kind, @PathVariable Long id) {
         return R.ok(docService.confirm(StockBizType.ofDocPath(kind), id));
     }
@@ -76,7 +76,7 @@ public class WmsStockDocController {
     /** 冲销已完成的手工单据，返回红字单据 ID */
     @PostMapping("/{id}/reverse")
     @PreAuthorize("@ss.hasPerm('wms:' + #kind + ':reverse')")
-    @OperLog(title = "出入库单-冲销", type = OperType.INSERT)
+    @OperLog(title = "出入库单-冲销", type = OperType.INSERT) // i18n-ignore
     public R<Long> reverse(@PathVariable String kind, @PathVariable Long id) {
         return R.ok(docService.reverse(StockBizType.ofDocPath(kind), id));
     }
@@ -84,7 +84,7 @@ public class WmsStockDocController {
     /** 在途调拨收货 */
     @PostMapping("/{id}/receive")
     @PreAuthorize("@ss.hasPerm('wms:transfer:receive') and #kind == 'transfer'")
-    @OperLog(title = "调拨单-收货", type = OperType.UPDATE)
+    @OperLog(title = "调拨单-收货", type = OperType.UPDATE) // i18n-ignore
     public R<Void> receive(@PathVariable String kind, @PathVariable Long id) {
         docService.receive(id);
         return R.ok();
@@ -92,7 +92,7 @@ public class WmsStockDocController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('wms:' + #kind + ':remove')")
-    @OperLog(title = "出入库单", type = OperType.DELETE)
+    @OperLog(title = "出入库单", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable String kind, @PathVariable List<Long> ids) {
         docService.delete(StockBizType.ofDocPath(kind), ids);
         return R.ok();

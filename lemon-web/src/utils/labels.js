@@ -2,6 +2,7 @@ import JsBarcode from 'jsbarcode'
 import QRCode from 'qrcode'
 import { loadTemplates } from './printTemplates'
 import { printHtml } from './print'
+import { t as $t } from '@/locales'
 
 /**
  * 条码标签：物料、库位、箱号。标签模板（尺寸、条码类型、显示的字段）在「打印模板」中维护，按模板标识保存（label.*）。
@@ -12,45 +13,45 @@ import { printHtml } from './print'
 export const LABEL_TYPES = [
   {
     key: 'label.material',
-    name: '物料标签',
+    name: $t('wms.label.material.name'),
     codeType: 'CODE128',
     fields: [
-      { key: 'name', label: '物料名称' },
-      { key: 'code', label: '物料编码' },
-      { key: 'spec', label: '规格型号' },
-      { key: 'unit', label: '单位' }
+      { key: 'name', label: $t('wms.label.material.fieldName') },
+      { key: 'code', label: $t('wms.label.material.fieldCode') },
+      { key: 'spec', label: $t('wms.label.material.fieldSpec') },
+      { key: 'unit', label: $t('wms.label.material.fieldUnit') }
     ],
     value: (d) => d.barcode || d.code,
-    sample: { code: 'IPC-3000', name: '工控主机', spec: 'i5-1235U/16G/512G', unit: '台', barcode: '6970000000017' }
+    sample: { code: 'IPC-3000', name: $t('wms.label.material.sampleName'), spec: 'i5-1235U/16G/512G', unit: $t('wms.label.material.sampleUnit'), barcode: '6970000000017' }
   },
   {
     key: 'label.location',
-    name: '库位标签',
+    name: $t('wms.label.location.name'),
     codeType: 'QR',
     fields: [
-      { key: 'code', label: '库位编码' },
-      { key: 'name', label: '库位名称' },
-      { key: 'zone', label: '区域' },
-      { key: 'warehouse', label: '仓库' }
+      { key: 'code', label: $t('wms.label.location.fieldCode') },
+      { key: 'name', label: $t('wms.label.location.fieldName') },
+      { key: 'zone', label: $t('wms.label.location.fieldZone') },
+      { key: 'warehouse', label: $t('wms.label.location.fieldWarehouse') }
     ],
     value: (d) => d.code,
-    sample: { code: 'A-01-02', name: '整机区 1 排 2 层', zone: 'A 区', warehouse: '深圳成品仓' }
+    sample: { code: 'A-01-02', name: $t('wms.label.location.sampleName'), zone: $t('wms.label.location.sampleZone'), warehouse: $t('wms.label.location.sampleWarehouse') }
   },
   {
     key: 'label.box',
-    name: '箱标签',
+    name: $t('wms.label.box.name'),
     codeType: 'CODE128',
     fields: [
-      { key: 'boxNo', label: '箱号' },
-      { key: 'customer', label: '客户' },
-      { key: 'deliveryNo', label: '发货通知' },
-      { key: 'seq', label: '箱序' },
-      { key: 'contents', label: '箱内物料' },
-      { key: 'weight', label: '毛重' }
+      { key: 'boxNo', label: $t('wms.label.box.fieldBoxNo') },
+      { key: 'customer', label: $t('wms.label.box.fieldCustomer') },
+      { key: 'deliveryNo', label: $t('wms.label.box.fieldDeliveryNo') },
+      { key: 'seq', label: $t('wms.label.box.fieldSeq') },
+      { key: 'contents', label: $t('wms.label.box.fieldContents') },
+      { key: 'weight', label: $t('wms.label.box.fieldWeight') }
     ],
     value: (d) => d.boxNo,
-    sample: { boxNo: 'FH202610150001-01', customer: '深圳智造自动化有限公司', deliveryNo: 'FH202610150001', seq: '1 / 3',
-      contents: 'IPC-3000 × 2、PKG-ESD × 4', weight: '12.5 kg' }
+    sample: { boxNo: 'FH202610150001-01', customer: $t('wms.label.box.sampleCustomer'), deliveryNo: 'FH202610150001', seq: '1 / 3',
+      contents: $t('wms.label.box.sampleContents'), weight: '12.5 kg' }
   }
 ]
 export const LABEL_TYPE_MAP = Object.fromEntries(LABEL_TYPES.map((t) => [t.key, t]))
@@ -83,7 +84,7 @@ async function codeSvg(value, cfg) {
   try {
     JsBarcode(svg, String(value), { format: 'CODE128', displayValue: cfg.showText, fontSize: 12, textMargin: 1, height: 40, margin: 0, width: 1.6 })
   } catch {
-    return `<div class="code-error">无法生成条码：${esc(value)}</div>`
+    return `<div class="code-error">${esc($t('wms.label.codeError', { value }))}</div>`
   }
   svg.setAttribute('preserveAspectRatio', 'none')
   return svg.outerHTML
@@ -130,7 +131,7 @@ export async function renderLabelsHtml(type, list, cfg) {
     .code-error { color: #c00; font-size: 8pt; }
     @media screen { body { background: #f0f0f0; padding: 8px; } .label { background: #fff; margin-bottom: 8px; box-shadow: 0 0 0 1px #ccc; } }
   `
-  return `<!doctype html><html><head><meta charset="utf-8"><title>标签</title><style>${style}</style></head><body>${labels.join('')}</body></html>`
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc($t('wms.label.title'))}</title><style>${style}</style></head><body>${labels.join('')}</body></html>`
 }
 
 /**

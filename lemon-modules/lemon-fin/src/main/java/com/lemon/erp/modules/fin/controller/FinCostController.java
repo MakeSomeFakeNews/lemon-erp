@@ -76,14 +76,14 @@ public class FinCostController {
     /** 核算（已核算的重新核算），返回核算的物料数和单价为 0 的物料 */
     @PostMapping("/{period}/run")
     @PreAuthorize("@ss.hasPerm('fin:cost:run')")
-    @OperLog(title = "成本核算", type = OperType.INSERT)
+    @OperLog(title = "成本核算", type = OperType.INSERT) // i18n-ignore
     public R<CostRunResult> run(@PathVariable int period) {
         return R.ok(costService.run(period));
     }
 
     @DeleteMapping("/{period}")
     @PreAuthorize("@ss.hasPerm('fin:cost:run')")
-    @OperLog(title = "成本核算-撤销", type = OperType.DELETE)
+    @OperLog(title = "成本核算-撤销", type = OperType.DELETE) // i18n-ignore
     public R<Void> undo(@PathVariable int period) {
         costService.undo(period);
         return R.ok();

@@ -18,6 +18,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { t } from '@/locales'
 
 /**
  * 自动滚动列表：行数超过可视区域时每隔 interval 毫秒上移一行，首尾相接循环
@@ -29,7 +30,7 @@ const props = defineProps({
   rows: { type: Array, default: () => [] },
   rowHeight: { type: Number, default: 40 },
   interval: { type: Number, default: 3000 },
-  emptyText: { type: String, default: '暂无数据' }
+  emptyText: { type: String, default: () => t('common.msg.noData') }
 })
 
 const viewport = ref()

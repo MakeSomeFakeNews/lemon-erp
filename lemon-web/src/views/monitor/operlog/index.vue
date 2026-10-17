@@ -2,29 +2,29 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="操作模块" name="title">
-          <a-input v-model:value="query.title" placeholder="如 用户管理" allow-clear />
+        <a-form-item :label="$t('monitor.operlog.title')" name="title">
+          <a-input v-model:value="query.title" :placeholder="$t('monitor.operlog.titlePlaceholder')" allow-clear />
         </a-form-item>
-        <a-form-item label="操作人" name="operator">
-          <a-input v-model:value="query.operator" placeholder="请输入操作人" allow-clear />
+        <a-form-item :label="$t('monitor.operlog.operator')" name="operator">
+          <a-input v-model:value="query.operator" :placeholder="$t('common.placeholder.inputName', { name: $t('monitor.operlog.operator') })" allow-clear />
         </a-form-item>
-        <a-form-item label="操作类型" name="operType">
+        <a-form-item :label="$t('monitor.operlog.operType')" name="operType">
           <a-select
             v-model:value="query.operType"
-            placeholder="全部"
+            :placeholder="$t('common.placeholder.all')"
             allow-clear
             :options="toOptions(dict.sys_oper_type, true)"
           />
         </a-form-item>
-        <a-form-item label="操作状态" name="status">
+        <a-form-item :label="$t('monitor.operlog.status')" name="status">
           <a-select
             v-model:value="query.status"
-            placeholder="全部"
+            :placeholder="$t('common.placeholder.all')"
             allow-clear
             :options="toOptions(dict.sys_success_fail, true)"
           />
         </a-form-item>
-        <a-form-item label="操作时间" name="range">
+        <a-form-item :label="$t('monitor.operlog.operTime')" name="range">
           <a-range-picker v-model:value="query.range" value-format="YYYY-MM-DD" style="width: 100%" />
         </a-form-item>
       </SearchForm>
@@ -41,19 +41,19 @@
       >
         <span v-perm="'monitor:operlog:remove'">
           <a-popconfirm
-            :title="`确定删除选中的 ${selectedKeys.length} 条日志？`"
+            :title="$t('monitor.loginlog.confirmDeleteN', { n: selectedKeys.length })"
             :disabled="!selectedKeys.length"
             @confirm="remove(selectedKeys)"
           >
             <a-button danger :disabled="!selectedKeys.length">
-              <template #icon><DeleteOutlined /></template>删除
+              <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
             </a-button>
           </a-popconfirm>
         </span>
         <span v-perm="'monitor:operlog:remove'">
-          <a-popconfirm title="确定清空全部操作日志？此操作不可恢复" ok-type="danger" @confirm="clean">
+          <a-popconfirm :title="$t('monitor.operlog.confirmClean')" ok-type="danger" @confirm="clean">
             <a-button danger>
-              <template #icon><ClearOutlined /></template>清空
+              <template #icon><ClearOutlined /></template>{{ $t('common.action.clear') }}
             </a-button>
           </a-popconfirm>
         </span>
@@ -89,12 +89,12 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>详情
+                <template #icon><EyeOutlined /></template>{{ $t('common.action.detail') }}
               </a-button>
               <span v-perm="'monitor:operlog:remove'">
-                <a-popconfirm title="确定删除该日志？" @confirm="remove([record.id])">
+                <a-popconfirm :title="$t('monitor.loginlog.confirmDelete')" @confirm="remove([record.id])">
                   <a-button type="link" size="small" danger>
-                    <template #icon><DeleteOutlined /></template>删除
+                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
                   </a-button>
                 </a-popconfirm>
               </span>
@@ -105,41 +105,41 @@
     </a-card>
 
     <!-- 详情 -->
-    <a-drawer v-model:open="detailOpen" title="操作日志详情" width="min(720px, 100vw)">
+    <a-drawer v-model:open="detailOpen" :title="$t('monitor.operlog.detailTitle')" width="min(720px, 100vw)">
       <a-spin :spinning="detailLoading">
         <template v-if="detail">
           <a-descriptions :column="{ xs: 1, sm: 2 }" bordered size="small">
-            <a-descriptions-item label="操作模块">{{ detail.title }}</a-descriptions-item>
-            <a-descriptions-item label="操作类型">
+            <a-descriptions-item :label="$t('monitor.operlog.title')">{{ detail.title }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.operlog.operType')">
               <DictTag type="sys_oper_type" :value="detail.operType" />
             </a-descriptions-item>
-            <a-descriptions-item label="操作人">{{ detail.operator }}</a-descriptions-item>
-            <a-descriptions-item label="操作 IP">
+            <a-descriptions-item :label="$t('monitor.operlog.operator')">{{ detail.operator }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.operlog.ip')">
               {{ detail.ip }}
               <span v-if="detail.location" class="location">（{{ detail.location }}）</span>
             </a-descriptions-item>
-            <a-descriptions-item label="操作时间">{{ detail.operTime }}</a-descriptions-item>
-            <a-descriptions-item label="耗时">{{ detail.costTime }} ms</a-descriptions-item>
-            <a-descriptions-item label="状态">
+            <a-descriptions-item :label="$t('monitor.operlog.operTime')">{{ detail.operTime }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.operlog.cost')">{{ detail.costTime }} ms</a-descriptions-item>
+            <a-descriptions-item :label="$t('common.field.status')">
               <DictTag type="sys_success_fail" :value="detail.status" />
             </a-descriptions-item>
-            <a-descriptions-item label="请求">
+            <a-descriptions-item :label="$t('monitor.operlog.request')">
               <a-tag :color="METHOD_COLORS[detail.requestMethod]" :bordered="false">{{ detail.requestMethod }}</a-tag>
               {{ detail.url }}
             </a-descriptions-item>
-            <a-descriptions-item label="方法" :span="2">
+            <a-descriptions-item :label="$t('monitor.operlog.method')" :span="2">
               <a-typography-text code copyable>{{ detail.method }}</a-typography-text>
             </a-descriptions-item>
           </a-descriptions>
 
-          <h4 class="block-title">请求参数</h4>
-          <pre class="code-block">{{ prettyJson(detail.params) || '无' }}</pre>
+          <h4 class="block-title">{{ $t('monitor.operlog.params') }}</h4>
+          <pre class="code-block">{{ prettyJson(detail.params) || $t('common.status.none') }}</pre>
 
-          <h4 class="block-title">返回结果</h4>
-          <pre class="code-block">{{ prettyJson(detail.result) || '无' }}</pre>
+          <h4 class="block-title">{{ $t('monitor.operlog.result') }}</h4>
+          <pre class="code-block">{{ prettyJson(detail.result) || $t('common.status.none') }}</pre>
 
           <template v-if="detail.errorMsg">
-            <h4 class="block-title">异常信息</h4>
+            <h4 class="block-title">{{ $t('monitor.operlog.error') }}</h4>
             <a-alert type="error" :message="detail.errorMsg" show-icon />
           </template>
         </template>
@@ -151,6 +151,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { ClearOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -163,20 +164,21 @@ import { toOptions } from '@/utils/dict'
 import { prettyJson } from '@/utils/format'
 
 const METHOD_COLORS = { GET: 'blue', POST: 'green', PUT: 'orange', DELETE: 'red' }
+const { t } = useI18n()
 const dict = useDict('sys_oper_type', 'sys_success_fail')
 
 const columns = [
-  { title: '编号', dataIndex: 'id', width: 80 },
-  { title: '操作模块', dataIndex: 'title', width: 130 },
-  { title: '操作类型', key: 'operType', width: 100, dict: 'sys_oper_type' },
-  { title: '操作人', dataIndex: 'operator', width: 110 },
-  { title: '请求', key: 'url', width: 260 },
-  { title: '操作 IP', dataIndex: 'ip', width: 140 },
-  { title: '操作地点', dataIndex: 'location', width: 160, ellipsis: true },
-  { title: '状态', key: 'status', width: 90, dict: 'sys_success_fail' },
-  { title: '耗时', key: 'costTime', width: 100 },
-  { title: '操作时间', dataIndex: 'operTime', width: 180 },
-  { title: '操作', key: 'action', width: 150, fixed: 'right' }
+  { title: t('monitor.loginlog.id'), dataIndex: 'id', width: 80 },
+  { title: t('monitor.operlog.title'), dataIndex: 'title', width: 130 },
+  { title: t('monitor.operlog.operType'), key: 'operType', width: 100, dict: 'sys_oper_type' },
+  { title: t('monitor.operlog.operator'), dataIndex: 'operator', width: 110 },
+  { title: t('monitor.operlog.request'), key: 'url', width: 260 },
+  { title: t('monitor.operlog.ip'), dataIndex: 'ip', width: 140 },
+  { title: t('monitor.operlog.location'), dataIndex: 'location', width: 160, ellipsis: true },
+  { title: t('common.field.status'), key: 'status', width: 90, dict: 'sys_success_fail' },
+  { title: t('monitor.operlog.cost'), key: 'costTime', width: 100 },
+  { title: t('monitor.operlog.operTime'), dataIndex: 'operTime', width: 180 },
+  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns)
 const showSearch = ref(true)
@@ -200,14 +202,14 @@ function resetQuery() {
 
 async function remove(ids) {
   await deleteOperLog(ids)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   selectedKeys.value = []
   load()
 }
 
 async function clean() {
   await cleanOperLog()
-  message.success('已清空')
+  message.success(t('monitor.loginlog.cleaned'))
   selectedKeys.value = []
   search()
 }

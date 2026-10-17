@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.modules.fin.dto.AccountSum;
 import com.lemon.erp.modules.fin.dto.FinancialStatement;
 import com.lemon.erp.modules.fin.dto.FinancialMetric;
@@ -139,7 +140,8 @@ public class FinFinancialStatementService {
                 metric("资产负债率", right, "liabilityTotal", left, "assetTotal", true, "负债合计 ÷ 资产总计"),
                 ratio("流动比率", left, right, false, "流动资产合计 ÷ 流动负债合计"),
                 ratio("速动比率", left, right, true, "（流动资产合计 - 存货）÷ 流动负债合计"));
-        return new FinancialStatement("资产负债表", "会小企01表", List.of("期末余额", "年初余额"), left.rows(), right.rows(), metrics, balanced);
+        return new FinancialStatement(I18n.t("资产负债表"), I18n.t("会小企01表"), List.of(I18n.t("期末余额"), I18n.t("年初余额")), left.rows(), right.rows(),
+                metrics, balanced);
     }
 
     /** 利润表：本月金额、本年累计、上年同期累计 */
@@ -157,7 +159,8 @@ public class FinFinancialStatementService {
                 incomeMetric("营业利润率", r, "营业利润 ÷ 营业收入", "operating"),
                 incomeMetric("净利率", r, "净利润 ÷ 营业收入", "net"),
                 incomeMetric("期间费用率", r, "（销售费用 + 管理费用 + 财务费用）÷ 营业收入", "selling", "admin", "finance"));
-        return new FinancialStatement("利润表", "会小企02表", List.of("本月金额", "本年累计金额", "上年同期累计"), r.rows(), null, metrics, null);
+        return new FinancialStatement(I18n.t("利润表"), I18n.t("会小企02表"), List.of(I18n.t("本月金额"), I18n.t("本年累计金额"), I18n.t("上年同期累计")),
+                r.rows(), null, metrics, null);
     }
 
     /** 本年各月（截至 period）的营业收入、营业成本、营业利润、净利润 */
@@ -183,12 +186,12 @@ public class FinFinancialStatementService {
         return list;
     }
 
-    // ---------------------------------------------------------------- 指标
+    // ---------------------------------------------------------------- 指标（名称、单位、说明返回给前端显示，按请求语言翻译）
 
     private static FinancialMetric metric(String name, FinancialTemplate.Result a, String aKey, FinancialTemplate.Result b, String bKey,
                                           boolean percent, String hint) {
-        return new FinancialMetric(name, divide(a.get(aKey, 0), b.get(bKey, 0), percent), divide(a.get(aKey, 1), b.get(bKey, 1), percent),
-                percent ? "%" : "倍", hint);
+        return new FinancialMetric(I18n.t(name), divide(a.get(aKey, 0), b.get(bKey, 0), percent), divide(a.get(aKey, 1), b.get(bKey, 1), percent),
+                percent ? "%" : I18n.t("倍"), I18n.t(hint));
     }
 
     private static FinancialMetric ratio(String name, FinancialTemplate.Result left, FinancialTemplate.Result right, boolean quick, String hint) {
@@ -200,7 +203,7 @@ public class FinFinancialStatementService {
             }
             v[i] = divide(current, right.get("currentLiability", i), false);
         }
-        return new FinancialMetric(name, v[0], v[1], "倍", hint);
+        return new FinancialMetric(I18n.t(name), v[0], v[1], I18n.t("倍"), I18n.t(hint));
     }
 
     private static FinancialMetric incomeMetric(String name, FinancialTemplate.Result r, String hint, String... keys) {
@@ -212,7 +215,7 @@ public class FinFinancialStatementService {
             }
             v[i] = divide(x, r.get("revenue", i), true);
         }
-        return new FinancialMetric(name, v[0], v[1], "%", hint);
+        return new FinancialMetric(I18n.t(name), v[0], v[1], "%", I18n.t(hint));
     }
 
     /** 分母为 0 时为空 */

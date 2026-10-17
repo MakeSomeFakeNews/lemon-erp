@@ -63,14 +63,14 @@ public class MesKitController {
     /** @return 生成的采购订单号、工单号 */
     @PostMapping("/release")
     @PreAuthorize("@ss.hasPerm('mes:kit:release')")
-    @OperLog(title = "齐套分析-缺料下单", type = OperType.INSERT)
+    @OperLog(title = "齐套分析-缺料下单", type = OperType.INSERT) // i18n-ignore
     public R<List<String>> release(@Valid @RequestBody KitReleaseRequest req) {
         return R.ok(kitService.release(req));
     }
 
     @PostMapping("/substitute")
     @PreAuthorize("@ss.hasPerm('mes:kit:substitute')")
-    @OperLog(title = "齐套分析-替代料", type = OperType.UPDATE)
+    @OperLog(title = "齐套分析-替代料", type = OperType.UPDATE) // i18n-ignore
     public R<Void> substitute(@Valid @RequestBody SubstituteSwitchRequest req) {
         kitService.switchSubstitute(req);
         return R.ok();

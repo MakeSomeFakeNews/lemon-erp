@@ -4,6 +4,7 @@ import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.AssetRequest;
@@ -106,7 +107,7 @@ public class FinAssetService {
             }
             BigDecimal tax = req.taxAmount() == null ? BigDecimal.ZERO : req.taxAmount();
             FinBill bill = billService.createFromSource("AP", req.supplierId(), "ASSET", asset.getId(), asset.getCode(), req.useDate(),
-                    req.originalValue().add(tax), tax, "购入固定资产 " + asset.getName(), null);
+                    req.originalValue().add(tax), tax, "购入固定资产 " + asset.getName(), null); // i18n-ignore
             billMapper.update(Wrappers.<FinBill>lambdaUpdate()
                     .set(FinBill::getExpenseAccountId, accountRules.accountId(AccountRole.FIXED_ASSET))
                     .set(FinBill::getDeptId, asset.getDeptId()).eq(FinBill::getId, bill.getId()));
@@ -138,14 +139,14 @@ public class FinAssetService {
         // 直接修改了使用部门、使用人、存放地点的，记入变动履历
         if (!Objects.equals(old.getDeptId(), asset.getDeptId()) || !Objects.equals(old.getCustodianId(), asset.getCustodianId())
                 || !Objects.equals(old.getLocation(), asset.getLocation())) {
-            saveMove(old, AssetMoveType.TRANSFER, LocalDate.now(), asset.getDeptId(), asset.getCustodianId(), asset.getLocation(), "修改资产资料");
+            saveMove(old, AssetMoveType.TRANSFER, LocalDate.now(), asset.getDeptId(), asset.getCustodianId(), asset.getLocation(), "修改资产资料"); // i18n-ignore
         }
     }
 
     public void delete(List<Long> ids) {
         for (FinAsset a : assetMapper.selectByIds(ids)) {
             if (depreciationMapper.exists(Wrappers.<FinDepreciation>lambdaQuery().eq(FinDepreciation::getAssetId, a.getId()))) {
-                throw new BizException("资产「" + a.getName() + "」已计提折旧，不能删除，可以处置");
+                throw new BizException("资产「{0}」已计提折旧，不能删除，可以处置", a.getName());
             }
         }
         assetMapper.deleteByIds(ids);
@@ -175,14 +176,14 @@ public class FinAssetService {
                 && asset.getDepreciatedMonths() < asset.getUsefulMonths();
         if (depreciableThisMonth && !depreciationMapper.exists(Wrappers.<FinDepreciation>lambdaQuery()
                 .eq(FinDepreciation::getPeriod, period).eq(FinDepreciation::getAssetId, id))) {
-            throw new BizException("当月减少的固定资产当月照提折旧，请先计提 " + period + " 期间的折旧再处置");
+            throw new BizException("当月减少的固定资产当月照提折旧，请先计提 {0} 期间的折旧再处置", period);
         }
         BigDecimal income = req.income() == null ? BigDecimal.ZERO : req.income();
         BigDecimal expense = req.expense() == null ? BigDecimal.ZERO : req.expense();
         if ((income.signum() > 0 || expense.signum() > 0) && req.settleAccountId() == null) {
             throw new BizException("有处置收入或清理费用时请选择收付款账户");
         }
-        String summary = "处置固定资产 " + asset.getCode() + " " + asset.getName();
+        String summary = "处置固定资产 " + asset.getCode() + " " + asset.getName(); // i18n-ignore
         Long disposal = accountRules.accountId(AccountRole.ASSET_DISPOSAL);
         BigDecimal net = asset.getOriginalValue().subtract(asset.getAccumulated());
         List<VoucherLine> lines = new ArrayList<>(List.of(
@@ -191,22 +192,22 @@ public class FinAssetService {
                 VoucherLine.credit(summary, accountRules.accountId(AccountRole.FIXED_ASSET), null, asset.getOriginalValue())));
         if (income.signum() > 0) {
             Long bank = accountService.requireCashAccount(req.settleAccountId()).getId();
-            lines.add(VoucherLine.debit(summary + "-处置收入", bank, null, income));
-            lines.add(VoucherLine.credit(summary + "-处置收入", disposal, null, income));
+            lines.add(VoucherLine.debit(summary + "-处置收入", bank, null, income)); // i18n-ignore
+            lines.add(VoucherLine.credit(summary + "-处置收入", disposal, null, income)); // i18n-ignore
         }
         if (expense.signum() > 0) {
             Long bank = accountService.requireCashAccount(req.settleAccountId()).getId();
-            lines.add(VoucherLine.debit(summary + "-清理费用", disposal, null, expense));
-            lines.add(VoucherLine.credit(summary + "-清理费用", bank, null, expense));
+            lines.add(VoucherLine.debit(summary + "-清理费用", disposal, null, expense)); // i18n-ignore
+            lines.add(VoucherLine.credit(summary + "-清理费用", bank, null, expense)); // i18n-ignore
         }
         // 固定资产清理余额（借方为损失）转营业外收支
         BigDecimal loss = net.add(expense).subtract(income);
         if (loss.signum() > 0) {
-            lines.add(VoucherLine.debit(summary + "-净损失", accountRules.accountId(AccountRole.NON_OPERATING_EXPENSE), null, loss));
-            lines.add(VoucherLine.credit(summary + "-净损失", disposal, null, loss));
+            lines.add(VoucherLine.debit(summary + "-净损失", accountRules.accountId(AccountRole.NON_OPERATING_EXPENSE), null, loss)); // i18n-ignore
+            lines.add(VoucherLine.credit(summary + "-净损失", disposal, null, loss)); // i18n-ignore
         } else if (loss.signum() < 0) {
-            lines.add(VoucherLine.debit(summary + "-净收益", disposal, null, loss.negate()));
-            lines.add(VoucherLine.credit(summary + "-净收益", accountRules.accountId(AccountRole.NON_OPERATING_INCOME), null, loss.negate()));
+            lines.add(VoucherLine.debit(summary + "-净收益", disposal, null, loss.negate())); // i18n-ignore
+            lines.add(VoucherLine.credit(summary + "-净收益", accountRules.accountId(AccountRole.NON_OPERATING_INCOME), null, loss.negate())); // i18n-ignore
         }
         Long voucherId = voucherService.createGenerated(disposeDate, VoucherSource.ASSET, asset.getCode(), lines);
         assetMapper.update(Wrappers.<FinAsset>lambdaUpdate()
@@ -321,23 +322,23 @@ public class FinAssetService {
     public int depreciate(int period) {
         periodService.checkOpen(period);
         if (depreciationMapper.exists(Wrappers.<FinDepreciation>lambdaQuery().eq(FinDepreciation::getPeriod, period))) {
-            throw new BizException(period + " 期间已计提折旧");
+            throw new BizException("{0} 期间已计提折旧", period);
         }
         // 必须按月顺序计提：之后的期间已计提时不能补提，之前有计提时上一期必须已计提
         if (depreciationMapper.exists(Wrappers.<FinDepreciation>lambdaQuery().gt(FinDepreciation::getPeriod, period))) {
-            throw new BizException("之后的期间已计提折旧，不能再计提 " + period);
+            throw new BizException("之后的期间已计提折旧，不能再计提 {0}", period);
         }
         if (depreciationMapper.exists(Wrappers.<FinDepreciation>lambdaQuery().lt(FinDepreciation::getPeriod, period))
                 && !depreciationMapper.exists(Wrappers.<FinDepreciation>lambdaQuery().eq(FinDepreciation::getPeriod, previous(period)))) {
-            throw new BizException("请先计提 " + previous(period) + " 期间的折旧");
+            throw new BizException("请先计提 {0} 期间的折旧", previous(period));
         }
         LocalDate start = firstDay(period);
         List<FinAsset> assets = assetMapper.selectDepreciable(start);
         if (assets.isEmpty()) {
-            throw new BizException(period + " 期间没有需要计提折旧的资产");
+            throw new BizException("{0} 期间没有需要计提折旧的资产", period);
         }
         Long userId = SecurityUtils.getUserId();
-        String summary = "计提 " + period + " 期间折旧";
+        String summary = "计提 " + period + " 期间折旧"; // i18n-ignore
         Long credit = accountRules.accountId(AccountRole.DEPRECIATION);
         List<FinDepreciation> records = new ArrayList<>();
         List<VoucherLine> lines = new ArrayList<>();
@@ -348,7 +349,7 @@ public class FinAssetService {
                 continue;
             }
             if (assetMapper.addDepreciation(a.getId(), amount, a.getDepreciatedMonths()) == 0) {
-                throw new BizException("资产「" + a.getName() + "」正在被修改，请重试");
+                throw new BizException("资产「{0}」正在被修改，请重试", a.getName());
             }
             FinDepreciation r = new FinDepreciation();
             r.setPeriod(period);
@@ -360,7 +361,7 @@ public class FinAssetService {
             total = total.add(amount);
         }
         if (records.isEmpty()) {
-            throw new BizException(period + " 期间没有需要计提折旧的资产");
+            throw new BizException("{0} 期间没有需要计提折旧的资产", period);
         }
         lines.add(VoucherLine.credit(summary, credit, null, total));
         Long voucherId = voucherService.createGenerated(lastDay(period), VoucherSource.DEPRECIATION, String.valueOf(period), lines);
@@ -368,7 +369,7 @@ public class FinAssetService {
         try {
             depreciationMapper.insertBatch(records);
         } catch (DuplicateKeyException e) {
-            throw new BizException(period + " 期间已计提折旧");
+            throw new BizException("{0} 期间已计提折旧", period);
         }
         return records.size();
     }
@@ -379,7 +380,7 @@ public class FinAssetService {
         FinDepreciation latest = depreciationMapper.selectOne(Wrappers.<FinDepreciation>lambdaQuery()
                 .orderByDesc(FinDepreciation::getPeriod).last("LIMIT 1"));
         if (latest == null || latest.getPeriod() != period) {
-            throw new BizException("只能撤销最近一期（" + (latest == null ? "无" : latest.getPeriod()) + "）的折旧");
+            throw new BizException("只能撤销最近一期（{0}）的折旧", latest == null ? I18n.t("无") : latest.getPeriod());
         }
         List<FinDepreciation> records = depreciationMapper.selectList(Wrappers.<FinDepreciation>lambdaQuery()
                 .eq(FinDepreciation::getPeriod, period));

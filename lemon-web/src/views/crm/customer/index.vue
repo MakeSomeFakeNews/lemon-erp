@@ -2,17 +2,17 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="客户" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="编码、名称、联系人或电话" allow-clear />
+        <a-form-item :label="$t('crm.common.f.customer')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('crm.customer.kwPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="阶段" name="stage">
-          <a-select v-model:value="query.stage" placeholder="全部" allow-clear :options="toOptions(dict.crm_customer_stage)" />
+        <a-form-item :label="$t('crm.common.f.stage')" name="stage">
+          <a-select v-model:value="query.stage" :placeholder="$t('crm.common.all')" allow-clear :options="toOptions(dict.crm_customer_stage)" />
         </a-form-item>
-        <a-form-item label="行业" name="industry">
-          <a-select v-model:value="query.industry" placeholder="全部" allow-clear :options="toOptions(dict.crm_industry)" />
+        <a-form-item :label="$t('crm.common.f.industry')" name="industry">
+          <a-select v-model:value="query.industry" :placeholder="$t('crm.common.all')" allow-clear :options="toOptions(dict.crm_industry)" />
         </a-form-item>
-        <a-form-item v-if="query.scope !== 'pool'" label="跟进提醒" name="dueToday">
-          <a-checkbox v-model:checked="query.dueToday">今日待跟进</a-checkbox>
+        <a-form-item v-if="query.scope !== 'pool'" :label="$t('crm.customer.followRemind')" name="dueToday">
+          <a-checkbox v-model:checked="query.dueToday">{{ $t('crm.customer.dueToday') }}</a-checkbox>
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -27,21 +27,21 @@
         @refresh="load"
       >
         <a-radio-group v-model:value="query.scope" button-style="solid" @change="onScope">
-          <a-radio-button value="mine">我的客户</a-radio-button>
-          <a-radio-button value="team">团队客户</a-radio-button>
-          <a-radio-button value="pool">公海</a-radio-button>
+          <a-radio-button value="mine">{{ $t('crm.customer.scope.mine') }}</a-radio-button>
+          <a-radio-button value="team">{{ $t('crm.customer.scope.team') }}</a-radio-button>
+          <a-radio-button value="pool">{{ $t('crm.common.publicPool') }}</a-radio-button>
         </a-radio-group>
         <a-button v-perm="'crm:customer:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新增客户
+          <template #icon><PlusOutlined /></template>{{ $t('crm.customer.add') }}
         </a-button>
         <a-button v-if="query.scope === 'pool'" v-perm="'crm:customer:claim'" :disabled="!selectedKeys.length" @click="claim(selectedKeys)">
-          <template #icon><UserAddOutlined /></template>领取
+          <template #icon><UserAddOutlined /></template>{{ $t('crm.common.claim') }}
         </a-button>
         <a-button v-perm="'crm:customer:assign'" :disabled="!selectedKeys.length" @click="openAssign(selectedKeys)">
-          <template #icon><SwapOutlined /></template>分配
+          <template #icon><SwapOutlined /></template>{{ $t('crm.common.assign') }}
         </a-button>
         <span v-if="selectedKeys.length" class="selected-tip">
-          已选 {{ selectedKeys.length }} 项 <a @click="selectedKeys = []">清空</a>
+          {{ $t('crm.common.selectedN', { n: selectedKeys.length }) }} <a @click="selectedKeys = []">{{ $t('crm.common.clear') }}</a>
         </span>
       </TableToolbar>
 
@@ -72,7 +72,7 @@
           </template>
           <template v-else-if="column.key === 'owner'">
             <span v-if="record.ownerName">{{ record.ownerName }}</span>
-            <span v-else class="sub-text">公海</span>
+            <span v-else class="sub-text">{{ $t('crm.common.publicPool') }}</span>
           </template>
           <template v-else-if="column.key === 'contact'">
             <div>{{ record.contact || '-' }}</div>
@@ -80,30 +80,30 @@
           </template>
           <template v-else-if="column.key === 'opp'">
             <template v-if="record.openOppCount">
-              <div>{{ record.openOppCount }} 个</div>
+              <div>{{ $t('crm.common.countN', { n: record.openOppCount }) }}</div>
               <div class="sub-text">¥{{ formatMoney(record.openOppAmount) }}</div>
             </template>
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'follow'">
-            <div>{{ record.lastFollowTime || '未跟进' }}</div>
+            <div>{{ record.lastFollowTime || $t('crm.common.notFollowed') }}</div>
             <div v-if="record.nextFollowTime" :class="isPast(record.nextFollowTime) ? 'danger' : 'sub-text'">
-              下次 {{ record.nextFollowTime }}
+              {{ $t('crm.common.next', { time: record.nextFollowTime }) }}
             </div>
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>详情
+                <template #icon><EyeOutlined /></template>{{ $t('common.action.detail') }}
               </a-button>
               <a-button v-if="query.scope === 'pool'" v-perm="'crm:customer:claim'" type="link" size="small" @click="claim([record.customerId])">
-                <template #icon><UserAddOutlined /></template>领取
+                <template #icon><UserAddOutlined /></template>{{ $t('crm.common.claim') }}
               </a-button>
               <a-button v-else v-perm="'crm:followup:add'" type="link" size="small" @click="openFollow(record)">
-                <template #icon><MessageOutlined /></template>写跟进
+                <template #icon><MessageOutlined /></template>{{ $t('crm.common.writeFollowup') }}
               </a-button>
               <a-dropdown v-if="moreActions(record).length">
-                <a-button type="link" size="small">更多<DownOutlined /></a-button>
+                <a-button type="link" size="small">{{ $t('crm.common.more') }}<DownOutlined /></a-button>
                 <template #overlay>
                   <a-menu @click="({ key }) => onMore(key, record)">
                     <a-menu-item v-for="a in moreActions(record)" :key="a.key">{{ a.label }}</a-menu-item>
@@ -116,62 +116,62 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增客户" edit-title="编辑客户">
-      <a-alert v-if="!drawer.isEdit.value" type="info" show-icon class="tip" message="新增的客户负责人为你本人；填写了联系人时同时建立首要联系人" />
+    <FormDrawer :drawer="drawer" :create-title="$t('crm.customer.add')" :edit-title="$t('crm.customer.editTitle')">
+      <a-alert v-if="!drawer.isEdit.value" type="info" show-icon class="tip" :message="$t('crm.customer.createTip')" />
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="客户编码" name="code">
-              <a-input v-model:value="form.code" :maxlength="32" placeholder="如：C010" />
+            <a-form-item :label="$t('crm.common.f.customerCode')" name="code">
+              <a-input v-model:value="form.code" :maxlength="32" :placeholder="$t('crm.customer.codePh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="客户名称" name="name">
+            <a-form-item :label="$t('crm.customer.name')" name="name">
               <a-input v-model:value="form.name" :maxlength="128" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="客户等级" name="level">
+            <a-form-item :label="$t('crm.common.f.customerLevel')" name="level">
               <a-select v-model:value="form.level" allow-clear :options="toOptions(dict.scm_customer_level)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="客户阶段" name="stage">
+            <a-form-item :label="$t('crm.customer.stage')" name="stage">
               <a-select v-model:value="form.stage" :options="toOptions(dict.crm_customer_stage)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="行业" name="industry">
+            <a-form-item :label="$t('crm.common.f.industry')" name="industry">
               <a-select v-model:value="form.industry" allow-clear :options="toOptions(dict.crm_industry)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="来源" name="source">
+            <a-form-item :label="$t('crm.common.f.source')" name="source">
               <a-select v-model:value="form.source" allow-clear :options="toOptions(dict.crm_source)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="联系人" name="contact">
+            <a-form-item :label="$t('crm.common.f.contact')" name="contact">
               <a-input v-model:value="form.contact" :maxlength="64" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="联系电话" name="phone">
+            <a-form-item :label="$t('crm.customer.contactPhone')" name="phone">
               <a-input v-model:value="form.phone" :maxlength="32" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="地区" name="region">
-              <a-input v-model:value="form.region" :maxlength="64" placeholder="如：上海" />
+            <a-form-item :label="$t('crm.common.f.region')" name="region">
+              <a-input v-model:value="form.region" :maxlength="64" :placeholder="$t('crm.customer.regionPh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="网站" name="website">
+            <a-form-item :label="$t('crm.common.f.website')" name="website">
               <a-input v-model:value="form.website" :maxlength="128" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="地址" name="address">
+            <a-form-item :label="$t('crm.common.f.address')" name="address">
               <a-input v-model:value="form.address" :maxlength="255" />
             </a-form-item>
           </a-col>
@@ -179,10 +179,10 @@
       </a-form>
     </FormDrawer>
 
-    <a-modal v-model:open="assignOpen" title="分配客户" :confirm-loading="assigning" destroy-on-close @ok="submitAssign">
-      <p>将选中的 {{ assignIds.length }} 个客户分配给：</p>
-      <IdentityUserSelect v-model:value="assignOwner" placeholder="不选择则放回公海" class="full" />
-      <div class="sub-text hint">不选择负责人时客户放回公海，其他销售可以领取</div>
+    <a-modal v-model:open="assignOpen" :title="$t('crm.customer.assignTitle')" :confirm-loading="assigning" destroy-on-close @ok="submitAssign">
+      <p>{{ $t('crm.customer.assignTo', { n: assignIds.length }) }}</p>
+      <IdentityUserSelect v-model:value="assignOwner" :placeholder="$t('crm.customer.assignPh')" class="full" />
+      <div class="sub-text hint">{{ $t('crm.customer.assignHint') }}</div>
     </a-modal>
 
     <CustomerDetail v-model:open="detailOpen" :customer-id="detailId" @changed="load" />
@@ -194,6 +194,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { DownOutlined, EyeOutlined, MessageOutlined, PlusOutlined, SwapOutlined, UserAddOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -214,18 +215,19 @@ import { isPast } from '@/components/crm/crm'
 
 const route = useRoute()
 const userStore = useUserStore()
+const { t } = useI18n()
 const dict = useDict('scm_customer_level', 'crm_customer_stage', 'crm_industry', 'crm_source')
 
 const columns = [
-  { title: '客户', key: 'name', width: 240 },
-  { title: '阶段', key: 'stage', width: 100, dict: 'crm_customer_stage' },
-  { title: '行业', key: 'industry', width: 110, dict: 'crm_industry' },
-  { title: '负责人', key: 'owner', width: 110 },
-  { title: '联系人', key: 'contact', width: 150 },
-  { title: '在途商机', key: 'opp', width: 130, align: 'right' },
-  { title: '地区', dataIndex: 'region', width: 100, ellipsis: true },
-  { title: '最近 / 下次跟进', key: 'follow', width: 210 },
-  { title: '操作', key: 'action', width: 230, fixed: 'right' }
+  { title: t('crm.common.f.customer'), key: 'name', width: 240 },
+  { title: t('crm.common.f.stage'), key: 'stage', width: 110, dict: 'crm_customer_stage' },
+  { title: t('crm.common.f.industry'), key: 'industry', width: 110, dict: 'crm_industry' },
+  { title: t('crm.common.f.owner'), key: 'owner', width: 110 },
+  { title: t('crm.common.f.contact'), key: 'contact', width: 150 },
+  { title: t('crm.customer.col.openOpp'), key: 'opp', width: 150, align: 'right' },
+  { title: t('crm.common.f.region'), dataIndex: 'region', width: 100, ellipsis: true },
+  { title: t('crm.customer.col.follow'), key: 'follow', width: 220 },
+  { title: t('common.action.operation'), key: 'action', width: 260, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'crm-customer')
 const showSearch = ref(true)
@@ -255,11 +257,11 @@ onMounted(() => {
 const isOwner = (r) => r.ownerId && r.ownerId === userStore.user?.id
 
 function moreActions(record) {
-  if (query.scope === 'pool') return userStore.hasPerm('crm:customer:assign') ? [{ key: 'assign', label: '分配' }] : []
+  if (query.scope === 'pool') return userStore.hasPerm('crm:customer:assign') ? [{ key: 'assign', label: t('crm.common.assign') }] : []
   const actions = []
-  if (isOwner(record) || userStore.hasPerm('crm:customer:edit')) actions.push({ key: 'edit', label: '编辑' })
-  if (userStore.hasPerm('crm:customer:assign')) actions.push({ key: 'assign', label: '分配 / 转移' })
-  if (isOwner(record) || userStore.hasPerm('crm:customer:assign')) actions.push({ key: 'release', label: '放回公海' })
+  if (isOwner(record) || userStore.hasPerm('crm:customer:edit')) actions.push({ key: 'edit', label: t('common.action.edit') })
+  if (userStore.hasPerm('crm:customer:assign')) actions.push({ key: 'assign', label: t('crm.customer.assignTransfer') })
+  if (isOwner(record) || userStore.hasPerm('crm:customer:assign')) actions.push({ key: 'release', label: t('crm.customer.release') })
   return actions
 }
 
@@ -273,10 +275,10 @@ function onMore(key, record) {
 
 const rules = {
   code: [
-    { required: true, message: '请输入客户编码' },
-    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: '只能包含字母、数字、下划线和短横线' }
+    { required: true, message: t('crm.customer.codeRequired') },
+    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: t('crm.common.codePattern') }
   ],
-  name: [{ required: true, whitespace: true, message: '请输入客户名称' }]
+  name: [{ required: true, whitespace: true, message: t('crm.customer.nameRequired') }]
 }
 const FIELDS = ['code', 'name', 'level', 'contact', 'phone', 'address', 'industry', 'source', 'stage', 'region', 'website']
 const drawer = useFormDrawer({
@@ -309,7 +311,7 @@ async function submitAssign() {
   assigning.value = true
   try {
     await assignCustomers(assignIds.value, assignOwner.value)
-    message.success(assignOwner.value ? '分配成功' : '已放回公海')
+    message.success(assignOwner.value ? t('crm.customer.assigned') : t('crm.customer.released'))
     assignOpen.value = false
     selectedKeys.value = []
     load()
@@ -320,15 +322,15 @@ async function submitAssign() {
 
 async function claim(ids) {
   const count = await claimCustomers(ids)
-  if (count === ids.length) message.success(`已领取 ${count} 个客户`)
-  else message.warning(`领取 ${count} 个，${ids.length - count} 个已被其他人领取`)
+  if (count === ids.length) message.success(t('crm.customer.claimed', { n: count }))
+  else message.warning(t('crm.customer.claimPartial', { n: count, m: ids.length - count }))
   selectedKeys.value = []
   load()
 }
 
 async function release(record) {
   await releaseCustomers([record.customerId])
-  message.success(`「${record.name}」已放回公海`)
+  message.success(t('crm.customer.releasedOne', { name: record.name }))
   load()
 }
 
@@ -346,7 +348,7 @@ const followId = ref()
 const followTitle = ref('')
 function openFollow(record) {
   followId.value = record.customerId
-  followTitle.value = `写跟进 - ${record.name}`
+  followTitle.value = t('crm.common.followTitle', { name: record.name })
   followOpen.value = true
 }
 </script>

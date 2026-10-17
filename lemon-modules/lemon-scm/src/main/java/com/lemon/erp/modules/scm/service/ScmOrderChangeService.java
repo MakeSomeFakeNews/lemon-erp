@@ -107,7 +107,7 @@ public class ScmOrderChangeService {
                     throw new BizException("变更的明细不属于该订单");
                 }
                 if (!seen.add(item.getId())) {
-                    throw new BizException("同一明细不能重复变更：" + item.getMaterialCode());
+                    throw new BizException("同一明细不能重复变更：{0}", item.getMaterialCode());
                 }
                 ci.setOrderItemId(item.getId());
                 ci.setMaterialId(item.getMaterialId());
@@ -116,14 +116,14 @@ public class ScmOrderChangeService {
                 ci.setOldDeliveryDate(item.getDeliveryDate());
                 if ("REMOVE".equals(l.action())) {
                     if (item.getDoneQty().signum() != 0 || item.getReturnQty().signum() != 0) {
-                        throw new BizException(item.getMaterialCode() + " " + item.getMaterialName() + " 已有出入库，不能删除，请改数量");
+                        throw new BizException("{0} {1} 已有出入库，不能删除，请改数量", item.getMaterialCode(), item.getMaterialName());
                     }
                 } else {
                     BigDecimal qty = l.qty() == null ? item.getQty() : l.qty();
                     BigDecimal min = item.getDoneQty().subtract(item.getReplenishQty() == null ? BigDecimal.ZERO : item.getReplenishQty());
                     if (qty.compareTo(min) < 0) {
-                        throw new BizException(item.getMaterialCode() + " " + item.getMaterialName() + " 的数量不能少于已完成的 "
-                                + min.stripTrailingZeros().toPlainString());
+                        throw new BizException("{0} {1} 的数量不能少于已完成的 {2}", item.getMaterialCode(), item.getMaterialName(),
+                                min.stripTrailingZeros().toPlainString());
                     }
                     checkWhole(materialService.get(item.getMaterialId()), qty);
                     ci.setNewQty(qty);
@@ -189,7 +189,7 @@ public class ScmOrderChangeService {
         }
         ScmOrder order = orderMapper.selectById(c.getOrderId());
         if (!OrderStatus.EXECUTABLE.contains(order.getStatus()) && !OrderStatus.COMPLETED.name().equals(order.getStatus())) {
-            throw new BizException("订单 " + order.getOrderNo() + " 已关闭，变更不能生效");
+            throw new BizException("订单 {0} 已关闭，变更不能生效", order.getOrderNo());
         }
         boolean sales = OrderKind.SALES.name().equals(order.getKind());
         for (ScmOrderChangeItem ci : changeItemMapper.selectList(Wrappers.<ScmOrderChangeItem>lambdaQuery().eq(ScmOrderChangeItem::getChangeId, changeId))) {
@@ -224,7 +224,7 @@ public class ScmOrderChangeService {
                     ScmOrderItem item = orderItemMapper.selectById(ci.getOrderItemId());
                     BigDecimal min = item.getDoneQty().subtract(item.getReplenishQty());
                     if (ci.getNewQty().compareTo(min) < 0) {
-                        throw new BizException(item.getMaterialCode() + " 的数量不能少于已完成的数量");
+                        throw new BizException("{0} 的数量不能少于已完成的数量", item.getMaterialCode());
                     }
                     BigDecimal amount = amount(ci.getNewQty(), ci.getNewPrice());
                     orderItemMapper.update(Wrappers.<ScmOrderItem>lambdaUpdate().set(ScmOrderItem::getQty, ci.getNewQty())
@@ -253,7 +253,7 @@ public class ScmOrderChangeService {
 
     private static void checkWhole(WmsMaterial m, BigDecimal qty) {
         if (m.isSerialManaged() && qty.stripTrailingZeros().scale() > 0) {
-            throw new BizException("物料「" + m.getCode() + " " + m.getName() + "」启用了序列号管理，数量必须为整数");
+            throw new BizException("物料「{0} {1}」启用了序列号管理，数量必须为整数", m.getCode(), m.getName());
         }
     }
 }

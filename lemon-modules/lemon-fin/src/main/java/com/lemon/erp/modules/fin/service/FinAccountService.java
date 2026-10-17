@@ -141,10 +141,10 @@ public class FinAccountService {
     public void delete(List<Long> ids) {
         for (FinAccount a : accountMapper.selectByIds(ids)) {
             if (hasChildren(a.getId())) {
-                throw new BizException("科目「" + a.getCode() + " " + a.getName() + "」有下级科目，不能删除");
+                throw new BizException("科目「{0} {1}」有下级科目，不能删除", a.getCode(), a.getName());
             }
             if (used(a.getId())) {
-                throw new BizException("科目「" + a.getCode() + " " + a.getName() + "」已被使用，不能删除，可以停用");
+                throw new BizException("科目「{0} {1}」已被使用，不能删除，可以停用", a.getCode(), a.getName());
             }
         }
         accountMapper.deleteByIds(ids);
@@ -156,13 +156,13 @@ public class FinAccountService {
     public FinAccount leafByCode(String code) {
         FinAccount account = accountMapper.selectOne(Wrappers.<FinAccount>lambdaQuery().eq(FinAccount::getCode, code));
         if (account == null) {
-            throw new BizException("缺少会计科目 " + code + "，请在「会计科目」中添加");
+            throw new BizException("缺少会计科目 {0}，请在「会计科目」中添加", code);
         }
         if (hasChildren(account.getId())) {
-            throw new BizException("会计科目 " + code + " " + account.getName() + " 有下级科目，自动生成凭证需要末级科目");
+            throw new BizException("会计科目 {0} {1} 有下级科目，自动生成凭证需要末级科目", code, account.getName());
         }
         if (!Integer.valueOf(1).equals(account.getStatus())) {
-            throw new BizException("会计科目 " + code + " " + account.getName() + " 已停用");
+            throw new BizException("会计科目 {0} {1} 已停用", code, account.getName());
         }
         return account;
     }
@@ -177,13 +177,13 @@ public class FinAccountService {
         for (Long id : ids) {
             FinAccount a = map.get(id);
             if (a == null) {
-                throw new BizException("科目不存在：" + id);
+                throw new BizException("科目不存在：{0}", id);
             }
             if (parents.contains(id)) {
-                throw new BizException("科目「" + a.getCode() + " " + a.getName() + "」不是末级科目");
+                throw new BizException("科目「{0} {1}」不是末级科目", a.getCode(), a.getName());
             }
             if (!Integer.valueOf(1).equals(a.getStatus())) {
-                throw new BizException("科目「" + a.getCode() + " " + a.getName() + "」已停用");
+                throw new BizException("科目「{0} {1}」已停用", a.getCode(), a.getName());
             }
         }
         return map;
@@ -233,10 +233,10 @@ public class FinAccountService {
             throw new BizException("上级科目不能是自己");
         }
         if (!code.startsWith(parent.getCode()) || code.length() != parent.getCode().length() + 2) {
-            throw new BizException("下级科目编码为上级编码 " + parent.getCode() + " 后加 2 位数字");
+            throw new BizException("下级科目编码为上级编码 {0} 后加 2 位数字", parent.getCode());
         }
         if (selfId == null && usedInBooks(parent.getId())) {
-            throw new BizException("上级科目「" + parent.getName() + "」已被使用，不能增加下级科目");
+            throw new BizException("上级科目「{0}」已被使用，不能增加下级科目", parent.getName());
         }
         account.setParentId(parent.getId());
         account.setCategory(parent.getCategory());

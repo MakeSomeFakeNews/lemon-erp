@@ -47,9 +47,9 @@ public class MesMaintainRemindJob implements JobHandler {
         List<Map<String, Object>> rows = jobMapper.selectMaintainDue(LocalDate.now().plusDays(params.getInt("days", 3)));
         for (Map<String, Object> r : rows) {
             messageSender.sendToPermission("mes:maintain:handle", Message.of("REMIND",
-                    "设备「" + r.get("code") + " " + r.get("name") + "」需要保养", "计划保养日期 " + r.get("nextDate"), "/mes/maintenance")
+                    "设备「" + r.get("code") + " " + r.get("name") + "」需要保养", "计划保养日期 " + r.get("nextDate"), "/mes/maintenance") // i18n-ignore
                     .dedup("maintain:" + r.get("id") + ":" + r.get("nextDate")));
         }
-        return "提醒 " + rows.size() + " 台设备";
+        return "提醒 " + rows.size() + " 台设备"; // i18n-ignore
     }
 }

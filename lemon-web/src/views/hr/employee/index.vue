@@ -16,17 +16,17 @@
 
       <a-card v-show="showSearch" :bordered="false" class="page-card">
         <SearchForm :model="query" @search="search" @reset="resetQuery">
-          <a-form-item label="员工" name="keyword">
-            <a-input v-model:value="query.keyword" placeholder="工号、姓名或手机号" allow-clear />
+          <a-form-item :label="$t('hr.employee.employee')" name="keyword">
+            <a-input v-model:value="query.keyword" :placeholder="$t('hr.employee.keywordPh')" allow-clear />
           </a-form-item>
-          <a-form-item label="状态" name="status">
-            <a-select v-model:value="query.status" placeholder="在职（不含离职）" allow-clear :options="toOptions(dict.hr_emp_status)" />
+          <a-form-item :label="$t('common.field.status')" name="status">
+            <a-select v-model:value="query.status" :placeholder="$t('hr.employee.statusPh')" allow-clear :options="toOptions(dict.hr_emp_status)" />
           </a-form-item>
-          <a-form-item label="职位" name="positionId">
-            <PositionSelect v-model:value="query.positionId" placeholder="全部" />
+          <a-form-item :label="$t('hr.employee.position')" name="positionId">
+            <PositionSelect v-model:value="query.positionId" :placeholder="$t('common.placeholder.all')" />
           </a-form-item>
-          <a-form-item label="用工类型" name="empType">
-            <a-select v-model:value="query.empType" placeholder="全部" allow-clear :options="toOptions(dict.hr_emp_type)" />
+          <a-form-item :label="$t('hr.employee.empType')" name="empType">
+            <a-select v-model:value="query.empType" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.hr_emp_type)" />
           </a-form-item>
         </SearchForm>
       </a-card>
@@ -35,13 +35,13 @@
         <TableToolbar
           :exporter="exportAll" v-model:size="size" v-model:checked="checked" v-model:show-search="showSearch" :columns="columns" @refresh="reload">
           <a-button v-perm="'hr:employee:add'" type="primary" @click="drawer.openCreate({ deptId: query.deptId })">
-            <template #icon><PlusOutlined /></template>办理入职
+            <template #icon><PlusOutlined /></template>{{ $t('hr.employee.onboard') }}
           </a-button>
           <a-button v-perm="'hr:employee:add'" @click="importOpen = true">
-            <template #icon><ImportOutlined /></template>导入
+            <template #icon><ImportOutlined /></template>{{ $t('common.action.import') }}
           </a-button>
           <template #extra>
-            <a-tooltip :title="showDept ? '隐藏部门' : '显示部门'">
+            <a-tooltip :title="showDept ? $t('hr.employee.hideDept') : $t('hr.employee.showDept')">
               <a-button type="text" @click="showDept = !showDept">
                 <template #icon><MenuFoldOutlined v-if="showDept" /><MenuUnfoldOutlined v-else /></template>
               </a-button>
@@ -66,27 +66,27 @@
             </template>
             <template v-else-if="column.key === 'dept'">
               <div>{{ record.deptName || '-' }}</div>
-              <div class="sub-text">{{ record.positionName || '未设置职位' }}</div>
+              <div class="sub-text">{{ record.positionName || $t('hr.employee.noPosition') }}</div>
             </template>
             <template v-else-if="column.key === 'empType'">
               <DictTag type="hr_emp_type" :value="record.empType" />
             </template>
             <template v-else-if="column.key === 'status'">
               <DictTag type="hr_emp_status" :value="record.status" />
-              <div v-if="record.status === 'PROBATION'" class="sub-text">转正 {{ record.regularDate || '-' }}</div>
-              <div v-else-if="record.status === 'LEFT'" class="sub-text">离职 {{ record.leaveDate }}</div>
+              <div v-if="record.status === 'PROBATION'" class="sub-text">{{ $t('hr.employee.regularOn', { date: record.regularDate || '-' }) }}</div>
+              <div v-else-if="record.status === 'LEFT'" class="sub-text">{{ $t('hr.employee.leftOn', { date: record.leaveDate }) }}</div>
             </template>
             <template v-else-if="column.key === 'account'">
               <span v-if="record.username">{{ record.username }}</span>
-              <span v-else class="sub-text">未关联</span>
+              <span v-else class="sub-text">{{ $t('hr.employee.unlinked') }}</span>
             </template>
             <template v-else-if="column.key === 'action'">
               <span class="table-actions">
                 <a-button v-perm="'hr:employee:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                  <template #icon><EditOutlined /></template>编辑
+                  <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
                 </a-button>
                 <a-dropdown v-if="record.status !== 'LEFT' && userStore.hasPerm('hr:employee:change')">
-                  <a-button type="link" size="small">异动<DownOutlined /></a-button>
+                  <a-button type="link" size="small">{{ $t('hr.employee.change') }}<DownOutlined /></a-button>
                   <template #overlay>
                     <a-menu @click="({ key }) => openChange(record, key)">
                       <a-menu-item v-for="t in changeTypes(record)" :key="t.value" :danger="t.value === 'LEAVE'">{{ t.label }}</a-menu-item>
@@ -94,7 +94,7 @@
                   </template>
                 </a-dropdown>
                 <span v-perm="'hr:employee:remove'">
-                  <a-popconfirm :title="`确定删除员工「${record.name}」？`" @confirm="remove(record.id)">
+                  <a-popconfirm :title="$t('hr.employee.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                     <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                   </a-popconfirm>
                 </span>
@@ -106,105 +106,105 @@
     </div>
 
     <!-- 入职 / 编辑 -->
-    <FormDrawer page :drawer="drawer" create-title="办理入职" edit-title="编辑员工档案" width="min(760px, 100vw)">
+    <FormDrawer page :drawer="drawer" :create-title="$t('hr.employee.onboard')" :edit-title="$t('hr.employee.editTitle')" width="min(760px, 100vw)">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-divider orientation="left" plain>基本信息</a-divider>
+        <a-divider orientation="left" plain>{{ $t('hr.employee.basicInfo') }}</a-divider>
         <a-row :gutter="16">
           <a-col :xs="24" :sm="8">
-            <a-form-item label="工号" name="empNo"><a-input v-model:value="form.empNo" :maxlength="32" placeholder="如：E0101" /></a-form-item>
+            <a-form-item :label="$t('hr.employee.empNo')" name="empNo"><a-input v-model:value="form.empNo" :maxlength="32" :placeholder="$t('hr.employee.empNoPh')" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="姓名" name="name"><a-input v-model:value="form.name" :maxlength="64" /></a-form-item>
+            <a-form-item :label="$t('hr.employee.name')" name="name"><a-input v-model:value="form.name" :maxlength="64" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="性别" name="gender">
+            <a-form-item :label="$t('hr.employee.gender')" name="gender">
               <a-radio-group v-model:value="form.gender" :options="GENDERS" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="出生日期" name="birthDate">
+            <a-form-item :label="$t('hr.employee.birthDate')" name="birthDate">
               <a-date-picker v-model:value="form.birthDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="16">
-            <a-form-item label="身份证号" name="idCard"><a-input v-model:value="form.idCard" :maxlength="18" /></a-form-item>
+            <a-form-item :label="$t('hr.employee.idCard')" name="idCard"><a-input v-model:value="form.idCard" :maxlength="18" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="手机号" name="phone"><a-input v-model:value="form.phone" :maxlength="32" /></a-form-item>
+            <a-form-item :label="$t('common.field.phone')" name="phone"><a-input v-model:value="form.phone" :maxlength="32" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="邮箱" name="email"><a-input v-model:value="form.email" :maxlength="128" /></a-form-item>
+            <a-form-item :label="$t('common.field.email')" name="email"><a-input v-model:value="form.email" :maxlength="128" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="学历" name="education">
+            <a-form-item :label="$t('hr.employee.education')" name="education">
               <a-select v-model:value="form.education" allow-clear :options="toOptions(dict.hr_education)" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-divider orientation="left" plain>任职信息</a-divider>
+        <a-divider orientation="left" plain>{{ $t('hr.employee.jobInfo') }}</a-divider>
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="部门" name="deptId" :extra="isEdit ? '部门、职位通过「异动 - 调岗」调整' : undefined">
+            <a-form-item :label="$t('common.field.dept')" name="deptId" :extra="isEdit ? $t('hr.employee.deptExtra') : undefined">
               <DeptSelect v-model:value="form.deptId" :disabled="isEdit" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="职位" name="positionId">
+            <a-form-item :label="$t('hr.employee.position')" name="positionId">
               <PositionSelect v-model:value="form.positionId" :disabled="isEdit" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="用工类型" name="empType">
+            <a-form-item :label="$t('hr.employee.empType')" name="empType">
               <a-select v-model:value="form.empType" :options="toOptions(dict.hr_emp_type)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="入职日期" name="entryDate">
+            <a-form-item :label="$t('hr.employee.entryDate')" name="entryDate">
               <a-date-picker v-model:value="form.entryDate" value-format="YYYY-MM-DD" class="full" :disabled="isEdit" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="参加工作日期" name="workStartDate" extra="法定年假按累计工作年限计算">
-              <a-date-picker v-model:value="form.workStartDate" value-format="YYYY-MM-DD" class="full" placeholder="默认入职日期" />
+            <a-form-item :label="$t('hr.employee.workStartDate')" name="workStartDate" :extra="$t('hr.employee.workStartExtra')">
+              <a-date-picker v-model:value="form.workStartDate" value-format="YYYY-MM-DD" class="full" :placeholder="$t('hr.employee.workStartPh')" />
             </a-form-item>
           </a-col>
           <a-col v-if="!isEdit" :xs="24" :sm="8">
-            <a-form-item label="入职状态" name="status">
+            <a-form-item :label="$t('hr.employee.entryStatus')" name="status">
               <a-radio-group v-model:value="form.status">
-                <a-radio-button value="PROBATION">试用期</a-radio-button>
-                <a-radio-button value="REGULAR">直接转正</a-radio-button>
+                <a-radio-button value="PROBATION">{{ $t('hr.employee.probation') }}</a-radio-button>
+                <a-radio-button value="REGULAR">{{ $t('hr.employee.directRegular') }}</a-radio-button>
               </a-radio-group>
             </a-form-item>
           </a-col>
           <a-col v-if="form.status === 'PROBATION'" :xs="24" :sm="8">
-            <a-form-item label="计划转正日期" name="regularDate" extra="不填为入职日期 + 3 个月">
+            <a-form-item :label="$t('hr.employee.regularDate')" name="regularDate" :extra="$t('hr.employee.regularExtra')">
               <a-date-picker v-model:value="form.regularDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="班次" name="shiftId" extra="不选使用默认班次">
+            <a-form-item :label="$t('hr.employee.shift')" name="shiftId" :extra="$t('hr.employee.shiftExtra')">
               <a-select v-model:value="form.shiftId" allow-clear :options="shiftOptions" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="登录账号" name="userId" extra="关联后可以使用员工自助">
+            <a-form-item :label="$t('hr.employee.account')" name="userId" :extra="$t('hr.employee.userExtra')">
               <IdentityUserSelect v-model:value="form.userId" :label="form.username" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-divider orientation="left" plain>其他</a-divider>
+        <a-divider orientation="left" plain>{{ $t('hr.employee.other') }}</a-divider>
         <a-row :gutter="16">
           <a-col :span="24">
-            <a-form-item label="住址" name="address"><a-input v-model:value="form.address" :maxlength="255" /></a-form-item>
+            <a-form-item :label="$t('hr.employee.address')" name="address"><a-input v-model:value="form.address" :maxlength="255" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="紧急联系人" name="emergencyContact"><a-input v-model:value="form.emergencyContact" :maxlength="64" /></a-form-item>
+            <a-form-item :label="$t('hr.employee.emergencyContact')" name="emergencyContact"><a-input v-model:value="form.emergencyContact" :maxlength="64" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="紧急联系电话" name="emergencyPhone"><a-input v-model:value="form.emergencyPhone" :maxlength="32" /></a-form-item>
+            <a-form-item :label="$t('hr.employee.emergencyPhone')" name="emergencyPhone"><a-input v-model:value="form.emergencyPhone" :maxlength="32" /></a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark"><a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" /></a-form-item>
+            <a-form-item :label="$t('common.field.remark')" name="remark"><a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" /></a-form-item>
           </a-col>
         </a-row>
       </a-form>
@@ -213,34 +213,34 @@
     <!-- 人事异动 -->
     <a-modal
       v-model:open="changeOpen"
-      :title="`${changeLabel}：${changeTarget?.name || ''}`"
+      :title="$t('hr.employee.changeTitle', { type: changeLabel, name: changeTarget?.name || '' })"
       :confirm-loading="changing"
       destroy-on-close
       @ok="submitChange"
     >
       <a-form ref="changeRef" :model="changeForm" layout="vertical">
-        <a-form-item label="生效日期" name="changeDate" :rules="[{ required: true, message: '请选择生效日期' }]">
+        <a-form-item :label="$t('hr.employee.effectiveDate')" name="changeDate" :rules="[{ required: true, message: $t('hr.employee.effectiveDateRequired') }]">
           <a-date-picker v-model:value="changeForm.changeDate" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
         <template v-if="changeForm.type === 'TRANSFER'">
-          <a-form-item label="调入部门" name="deptId" :rules="[{ required: true, message: '请选择调入部门' }]">
+          <a-form-item :label="$t('hr.employee.toDept')" name="deptId" :rules="[{ required: true, message: $t('hr.employee.toDeptRequired') }]">
             <DeptSelect v-model:value="changeForm.deptId" />
           </a-form-item>
-          <a-form-item label="新职位" name="positionId">
+          <a-form-item :label="$t('hr.employee.newPosition')" name="positionId">
             <PositionSelect v-model:value="changeForm.positionId" />
           </a-form-item>
         </template>
-        <a-form-item v-if="changeForm.type === 'SALARY'" label="调整后基本工资" name="salary" :rules="[{ required: true, message: '请填写基本工资' }]">
-          <a-input-number v-model:value="changeForm.salary" :min="0" :precision="2" addon-after="元/月" class="full" />
+        <a-form-item v-if="changeForm.type === 'SALARY'" :label="$t('hr.employee.newSalary')" name="salary" :rules="[{ required: true, message: $t('hr.employee.salaryRequired') }]">
+          <a-input-number v-model:value="changeForm.salary" :min="0" :precision="2" :addon-after="$t('hr.employee.perMonth')" class="full" />
         </a-form-item>
-        <a-form-item :label="changeForm.type === 'LEAVE' ? '离职原因' : '说明'" name="reason">
+        <a-form-item :label="changeForm.type === 'LEAVE' ? $t('hr.employee.leaveReason') : $t('common.field.description')" name="reason">
           <a-textarea v-model:value="changeForm.reason" :rows="2" :maxlength="255" />
         </a-form-item>
-        <a-form-item v-if="changeForm.type === 'LEAVE'" label="工作交接人" name="handoverUserId" extra="负责的客户、线索、商机、服务工单、项目、未完成任务和审批待办移交给交接人；不选时客户退回公海">
+        <a-form-item v-if="changeForm.type === 'LEAVE'" :label="$t('hr.employee.handover')" name="handoverUserId" :extra="$t('hr.employee.handoverExtra')">
           <IdentityUserSelect v-model:value="changeForm.handoverUserId" />
         </a-form-item>
-        <a-alert v-if="changeForm.type === 'LEAVE'" type="warning" show-icon message="离职后员工不再参与考勤和工资核算，关联的登录账号会被停用并强制下线。" />
-        <a-alert v-if="changeForm.type === 'TRANSFER'" type="info" show-icon message="调岗后关联的登录账号同步调整部门，部门负责人审批和数据权限按新部门生效。" />
+        <a-alert v-if="changeForm.type === 'LEAVE'" type="warning" show-icon :message="$t('hr.employee.leaveTip')" />
+        <a-alert v-if="changeForm.type === 'TRANSFER'" type="info" show-icon :message="$t('hr.employee.transferTip')" />
       </a-form>
     </a-modal>
 
@@ -248,27 +248,27 @@
     <SubPage v-model:open="detailOpen" :title="detail?.name" width="min(760px, 100vw)" destroy-on-close>
       <template v-if="detail">
         <a-descriptions bordered size="small" :column="{ xs: 1, sm: 2 }">
-          <a-descriptions-item label="工号">{{ detail.empNo }}</a-descriptions-item>
-          <a-descriptions-item label="状态"><DictTag type="hr_emp_status" :value="detail.status" /></a-descriptions-item>
-          <a-descriptions-item label="部门">{{ detail.deptName }}</a-descriptions-item>
-          <a-descriptions-item label="职位">{{ detail.positionName || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="性别">{{ genderText(detail.gender) }}</a-descriptions-item>
-          <a-descriptions-item label="出生日期">{{ detail.birthDate || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="身份证号">{{ detail.idCard || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="学历"><DictTag type="hr_education" :value="detail.education" /></a-descriptions-item>
-          <a-descriptions-item label="手机号">{{ detail.phone || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="邮箱">{{ detail.email || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="入职日期">{{ detail.entryDate }}</a-descriptions-item>
-          <a-descriptions-item label="转正日期">{{ detail.regularDate || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="用工类型"><DictTag type="hr_emp_type" :value="detail.empType" /></a-descriptions-item>
-          <a-descriptions-item label="班次">{{ detail.shiftName || '默认班次' }}</a-descriptions-item>
-          <a-descriptions-item label="登录账号">{{ detail.username || '未关联' }}</a-descriptions-item>
-          <a-descriptions-item label="紧急联系人">{{ detail.emergencyContact || '-' }} {{ detail.emergencyPhone }}</a-descriptions-item>
-          <a-descriptions-item label="住址" :span="2">{{ detail.address || '-' }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.leaveDate" label="离职" :span="2">{{ detail.leaveDate }} {{ detail.leaveReason }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.employee.empNo')">{{ detail.empNo }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.status')"><DictTag type="hr_emp_status" :value="detail.status" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.dept')">{{ detail.deptName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.employee.position')">{{ detail.positionName || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.employee.gender')">{{ genderText(detail.gender) }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.employee.birthDate')">{{ detail.birthDate || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.employee.idCard')">{{ detail.idCard || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.employee.education')"><DictTag type="hr_education" :value="detail.education" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.phone')">{{ detail.phone || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.email')">{{ detail.email || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.employee.entryDate')">{{ detail.entryDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.employee.regularDateActual')">{{ detail.regularDate || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.employee.empType')"><DictTag type="hr_emp_type" :value="detail.empType" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.employee.shift')">{{ detail.shiftName || $t('hr.employee.defaultShift') }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.employee.account')">{{ detail.username || $t('hr.employee.unlinked') }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.employee.emergencyContact')">{{ detail.emergencyContact || '-' }} {{ detail.emergencyPhone }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('hr.employee.address')" :span="2">{{ detail.address || '-' }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.leaveDate" :label="$t('hr.employee.left')" :span="2">{{ detail.leaveDate }} {{ detail.leaveReason }}</a-descriptions-item>
         </a-descriptions>
         <a-tabs class="detail-tabs">
-          <a-tab-pane key="changes" tab="异动记录">
+          <a-tab-pane key="changes" :tab="$t('hr.employee.changeHistory')">
             <a-timeline>
               <a-timeline-item v-for="c in changes" :key="c.id" :color="c.type === 'LEAVE' ? 'gray' : c.type === 'REGULAR' ? 'green' : 'blue'">
                 <div>
@@ -279,42 +279,42 @@
               </a-timeline-item>
             </a-timeline>
           </a-tab-pane>
-          <a-tab-pane key="contract" tab="劳动合同">
+          <a-tab-pane key="contract" :tab="$t('hr.employee.contracts')">
             <a-table row-key="id" size="small" :columns="contractColumns" :data-source="contracts" :pagination="false" :scroll="{ x: 640 }">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'contractType'"><DictTag type="hr_contract_type" :value="record.contractType" /></template>
-                <template v-else-if="column.key === 'term'">{{ record.startDate }} ~ {{ record.endDate || '无固定期限' }}</template>
+                <template v-else-if="column.key === 'term'">{{ record.startDate }} ~ {{ record.endDate || $t('hr.contract.openEnded') }}</template>
                 <template v-else-if="column.key === 'status'">
                   <DictTag type="hr_contract_status" :value="record.status" />
                   <div v-if="record.status === 'ACTIVE' && record.daysLeft != null && record.daysLeft <= 30" class="warn">
-                    {{ record.daysLeft < 0 ? `已过期 ${-record.daysLeft} 天` : `${record.daysLeft} 天后到期` }}
+                    {{ record.daysLeft < 0 ? $t('hr.contract.overdueDays', { n: -record.daysLeft }) : $t('hr.employee.expiresIn', { n: record.daysLeft }) }}
                   </div>
                   <div v-else-if="record.terminateDate" class="sub-text">{{ record.terminateDate }} {{ record.terminateReason }}</div>
                 </template>
               </template>
             </a-table>
             <div v-if="userStore.hasPerm('hr:contract:list')" class="sub-text contract-link">
-              <router-link to="/hr/contract">到「劳动合同」中签订、续签或终止</router-link>
+              <router-link to="/hr/contract">{{ $t('hr.employee.contractLink') }}</router-link>
             </div>
           </a-tab-pane>
-          <a-tab-pane key="training" tab="培训记录">
+          <a-tab-pane key="training" :tab="$t('hr.employee.trainings')">
             <a-table row-key="id" size="small" :columns="trainingColumns" :data-source="trainings" :pagination="false">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'attended'">
-                  <a-tag :color="record.attended ? 'green' : 'default'" :bordered="false">{{ record.attended ? '出勤' : '未出勤' }}</a-tag>
+                  <a-tag :color="record.attended ? 'green' : 'default'" :bordered="false">{{ record.attended ? $t('hr.employee.attended') : $t('hr.employee.absent') }}</a-tag>
                 </template>
                 <template v-else-if="column.key === 'passed'">
-                  <span v-if="record.passed === 1" class="ok">通过</span>
-                  <span v-else-if="record.passed === 0" class="sub-text">未通过</span>
+                  <span v-if="record.passed === 1" class="ok">{{ $t('hr.employee.passed') }}</span>
+                  <span v-else-if="record.passed === 0" class="sub-text">{{ $t('hr.employee.failed') }}</span>
                   <span v-else class="sub-text">-</span>
                 </template>
               </template>
             </a-table>
           </a-tab-pane>
-          <a-tab-pane key="attachment" tab="附件">
+          <a-tab-pane key="attachment" :tab="$t('hr.employee.attachments')">
             <AttachmentPanel biz-type="hr_employee" :biz-id="detail.id" :editable="userStore.hasPerm('hr:employee:edit')" />
           </a-tab-pane>
-          <a-tab-pane key="history" tab="变更记录">
+          <a-tab-pane key="history" :tab="$t('hr.employee.history')">
             <ChangeLogPanel biz-type="hr_employee" :biz-id="detail.id" />
           </a-tab-pane>
         </a-tabs>
@@ -322,10 +322,10 @@
     </SubPage>
     <ImportModal
       v-model:open="importOpen"
-      title="员工档案"
+      :title="$t('hr.employee.importTitle')"
       :columns="importColumns"
       :importer="importEmployee"
-      :sample="{ empNo: 'E0001', name: '王五', gender: '男', deptId: '研发部', entryDate: '2026-01-05' }"
+      :sample="{ empNo: 'E0001', name: $t('hr.employee.sampleName'), gender: $t('hr.common.male'), deptId: $t('hr.employee.sampleDept'), entryDate: '2026-01-05' }"
       @success="search"
     />
   </div>
@@ -371,6 +371,7 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
+import { t } from '@/locales'
 
 const userStore = useUserStore()
 const dict = useDict('hr_emp_status', 'hr_emp_type', 'hr_education', 'hr_change_type', 'sys_approve_status', 'hr_contract_type', 'hr_contract_status')
@@ -387,37 +388,37 @@ const flatMap = (tree, map = new Map()) => {
   return map
 }
 const importColumns = [
-  { title: '工号', key: 'empNo', required: true },
-  { title: '姓名', key: 'name', required: true },
-  { title: '性别', key: 'gender', lookup: async () => new Map([['男', 'M'], ['女', 'F'], ['M', 'M'], ['F', 'F']]) },
-  { title: '出生日期', key: 'birthDate', type: 'date' },
-  { title: '身份证号', key: 'idCard' },
-  { title: '手机号', key: 'phone' },
-  { title: '邮箱', key: 'email' },
-  { title: '学历', key: 'education', dict: 'hr_education' },
-  { title: '部门', key: 'deptId', required: true, lookup: async () => flatMap(await deptTree()) },
-  { title: '职位', key: 'positionId', lookup: async () => new Map((await positionOptions()).map((p) => [p.name, p.id])) },
-  { title: '用工类型', key: 'empType', dict: 'hr_emp_type' },
-  { title: '状态', key: 'status', dict: 'hr_emp_status' },
-  { title: '入职日期', key: 'entryDate', type: 'date', required: true },
-  { title: '计划转正日期', key: 'regularDate', type: 'date' },
-  { title: '参加工作日期', key: 'workStartDate', type: 'date' },
-  { title: '住址', key: 'address' },
-  { title: '紧急联系人', key: 'emergencyContact' },
-  { title: '紧急联系电话', key: 'emergencyPhone' },
-  { title: '备注', key: 'remark' }
+  { title: t('hr.employee.empNo'), key: 'empNo', required: true },
+  { title: t('hr.employee.name'), key: 'name', required: true },
+  { title: t('hr.employee.gender'), key: 'gender', lookup: async () => new Map([['男', 'M'], ['女', 'F'], ['M', 'M'], ['F', 'F'], [t('hr.common.male'), 'M'], [t('hr.common.female'), 'F']]) }, // i18n-ignore 兼容中文模板
+  { title: t('hr.employee.birthDate'), key: 'birthDate', type: 'date' },
+  { title: t('hr.employee.idCard'), key: 'idCard' },
+  { title: t('common.field.phone'), key: 'phone' },
+  { title: t('common.field.email'), key: 'email' },
+  { title: t('hr.employee.education'), key: 'education', dict: 'hr_education' },
+  { title: t('common.field.dept'), key: 'deptId', required: true, lookup: async () => flatMap(await deptTree()) },
+  { title: t('hr.employee.position'), key: 'positionId', lookup: async () => new Map((await positionOptions()).map((p) => [p.name, p.id])) },
+  { title: t('hr.employee.empType'), key: 'empType', dict: 'hr_emp_type' },
+  { title: t('common.field.status'), key: 'status', dict: 'hr_emp_status' },
+  { title: t('hr.employee.entryDate'), key: 'entryDate', type: 'date', required: true },
+  { title: t('hr.employee.regularDate'), key: 'regularDate', type: 'date' },
+  { title: t('hr.employee.workStartDate'), key: 'workStartDate', type: 'date' },
+  { title: t('hr.employee.address'), key: 'address' },
+  { title: t('hr.employee.emergencyContact'), key: 'emergencyContact' },
+  { title: t('hr.employee.emergencyPhone'), key: 'emergencyPhone' },
+  { title: t('common.field.remark'), key: 'remark' }
 ]
 
 const columns = [
-  { title: '员工', key: 'name', width: 160, fixed: 'left' },
-  { title: '部门 / 职位', key: 'dept', width: 180 },
-  { title: '用工类型', key: 'empType', width: 100, dict: 'hr_emp_type' },
-  { title: '状态', key: 'status', width: 130, dict: 'hr_emp_status' },
-  { title: '入职日期', dataIndex: 'entryDate', width: 110 },
-  { title: '手机号', dataIndex: 'phone', width: 130 },
-  { title: '学历', dataIndex: 'education', width: 90, customRender: ({ text }) => dict.hr_education.find((d) => d.value === text)?.label || '-' },
-  { title: '登录账号', key: 'account', width: 120 },
-  { title: '操作', key: 'action', width: 190, fixed: 'right' }
+  { title: t('hr.employee.employee'), key: 'name', width: 160, fixed: 'left' },
+  { title: t('hr.employee.deptPosition'), key: 'dept', width: 180 },
+  { title: t('hr.employee.empType'), key: 'empType', width: 130, dict: 'hr_emp_type' },
+  { title: t('common.field.status'), key: 'status', width: 130, dict: 'hr_emp_status' },
+  { title: t('hr.employee.entryDate'), dataIndex: 'entryDate', width: 110 },
+  { title: t('common.field.phone'), dataIndex: 'phone', width: 130 },
+  { title: t('hr.employee.education'), dataIndex: 'education', width: 100, customRender: ({ text }) => dict.hr_education.find((d) => d.value === text)?.label || '-' },
+  { title: t('hr.employee.account'), key: 'account', width: 130 },
+  { title: t('common.action.operation'), key: 'action', width: 210, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'hr-employee')
 
@@ -445,10 +446,10 @@ async function loadDept() {
 // 概况
 const stats = ref({})
 const statCards = computed(() => [
-  { label: '在职员工', value: stats.value.active ?? '-' },
-  { label: '试用期', value: stats.value.probation ?? '-', color: '#fa8c16' },
-  { label: '本月入职', value: stats.value.joinedThisMonth ?? '-', color: '#52c41a' },
-  { label: '本月离职', value: stats.value.leftThisMonth ?? '-', color: '#8c8c8c' }
+  { label: t('hr.employee.statActive'), value: stats.value.active ?? '-' },
+  { label: t('hr.employee.probation'), value: stats.value.probation ?? '-', color: '#fa8c16' },
+  { label: t('hr.employee.statJoined'), value: stats.value.joinedThisMonth ?? '-', color: '#52c41a' },
+  { label: t('hr.employee.statLeft'), value: stats.value.leftThisMonth ?? '-', color: '#8c8c8c' }
 ])
 async function loadStats() {
   stats.value = await employeeStats()
@@ -465,7 +466,7 @@ onMounted(async () => {
   loadDept()
   loadStats()
   const shifts = await listShift().catch(() => [])
-  shiftOptions.value = shifts.map((s) => ({ value: s.id, label: `${s.name}（${s.startTime}-${s.endTime}）${s.isDefault ? ' 默认' : ''}` }))
+  shiftOptions.value = shifts.map((s) => ({ value: s.id, label: t(s.isDefault ? 'hr.employee.shiftOptionDefault' : 'hr.employee.shiftOption', { name: s.name, start: s.startTime, end: s.endTime }) }))
 })
 
 // 入职 / 编辑
@@ -473,14 +474,14 @@ const FIELDS = ['empNo', 'name', 'gender', 'birthDate', 'idCard', 'phone', 'emai
   'shiftId', 'empType', 'status', 'entryDate', 'regularDate', 'address', 'emergencyContact', 'emergencyPhone', 'remark', 'workStartDate']
 const rules = {
   empNo: [
-    { required: true, message: '请输入工号' },
-    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: '只能包含字母、数字、下划线和短横线' }
+    { required: true, message: t('hr.employee.empNoRequired') },
+    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: t('hr.position.codePattern') }
   ],
-  name: [{ required: true, whitespace: true, message: '请输入姓名' }],
-  deptId: [{ required: true, message: '请选择部门' }],
-  entryDate: [{ required: true, message: '请选择入职日期' }],
-  idCard: [{ pattern: /^$|^\d{17}[\dXx]$/, message: '身份证号格式不正确' }],
-  email: [{ type: 'email', message: '邮箱格式不正确' }]
+  name: [{ required: true, whitespace: true, message: t('hr.employee.nameRequired') }],
+  deptId: [{ required: true, message: t('hr.employee.deptRequired') }],
+  entryDate: [{ required: true, message: t('hr.employee.entryDateRequired') }],
+  idCard: [{ pattern: /^$|^\d{17}[\dXx]$/, message: t('hr.employee.idCardInvalid') }],
+  email: [{ type: 'email', message: t('common.rule.email') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, ...Object.fromEntries(FIELDS.map((f) => [f, undefined])), gender: 'M', empType: 'FULL_TIME',
@@ -495,7 +496,7 @@ const { formRef, form, isEdit } = drawer
 
 async function remove(id) {
   await deleteEmployee(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   reload()
 }
 
@@ -505,8 +506,8 @@ const changing = ref(false)
 const changeTarget = ref()
 const changeRef = ref()
 const changeForm = reactive({ type: undefined, changeDate: undefined, deptId: undefined, positionId: undefined, salary: undefined, reason: '', handoverUserId: undefined })
-const changeLabel = computed(() => CHANGE_TYPES.find((t) => t.value === changeForm.type)?.label || '异动')
-const changeTypes = (record) => CHANGE_TYPES.filter((t) => t.value !== 'REGULAR' || record.status === 'PROBATION')
+const changeLabel = computed(() => CHANGE_TYPES.find((c) => c.value === changeForm.type)?.label || t('hr.employee.change'))
+const changeTypes = (record) => CHANGE_TYPES.filter((c) => c.value !== 'REGULAR' || record.status === 'PROBATION')
 
 function openChange(record, type) {
   changeTarget.value = record
@@ -520,7 +521,7 @@ async function submitChange() {
   changing.value = true
   try {
     const submitted = await changeEmployee(changeTarget.value.id, { ...changeForm })
-    message.success(submitted ? `${changeLabel.value}已提交审批，审批通过后生效` : `${changeLabel.value}已办理`)
+    message.success(submitted ? t('hr.employee.changeSubmitted', { type: changeLabel.value }) : t('hr.employee.changeDone', { type: changeLabel.value }))
     changeOpen.value = false
     reload()
   } finally {
@@ -534,27 +535,27 @@ const detail = ref()
 const changes = ref([])
 const trainings = ref([])
 const trainingColumns = [
-  { title: '培训', dataIndex: 'trainingTitle' },
-  { title: '日期', dataIndex: 'startDate', width: 110 },
-  { title: '课时', dataIndex: 'hours', width: 70 },
-  { title: '出勤', key: 'attended', width: 80 },
-  { title: '成绩', dataIndex: 'score', width: 70 },
-  { title: '结果', key: 'passed', width: 80 }
+  { title: t('hr.employee.training'), dataIndex: 'trainingTitle' },
+  { title: t('common.field.date'), dataIndex: 'startDate', width: 110 },
+  { title: t('hr.employee.hours'), dataIndex: 'hours', width: 80 },
+  { title: t('hr.employee.attendance'), key: 'attended', width: 110 },
+  { title: t('hr.employee.score'), dataIndex: 'score', width: 80 },
+  { title: t('hr.employee.result'), key: 'passed', width: 80 }
 ]
 
 const contracts = ref([])
 const contractColumns = [
-  { title: '合同编号', dataIndex: 'contractNo', width: 150 },
-  { title: '类型', key: 'contractType', width: 130 },
-  { title: '期限', key: 'term', width: 200 },
-  { title: '状态', key: 'status', width: 150 }
+  { title: t('hr.contract.contractNo'), dataIndex: 'contractNo', width: 150 },
+  { title: t('common.field.type'), key: 'contractType', width: 130 },
+  { title: t('hr.contract.term'), key: 'term', width: 200 },
+  { title: t('common.field.status'), key: 'status', width: 150 }
 ]
 
 async function openDetail(record) {
   detailOpen.value = true
   detail.value = null
   contracts.value = []
-  const [d, c, t, ct] = await Promise.all([
+  const [d, c, tr, ct] = await Promise.all([
     getEmployee(record.id),
     employeeChanges(record.id),
     employeeTrainings(record.id),
@@ -562,18 +563,18 @@ async function openDetail(record) {
   ])
   detail.value = d
   changes.value = c
-  trainings.value = t
+  trainings.value = tr
   contracts.value = ct.records
 }
 
 function changeDesc(c) {
   switch (c.type) {
     case 'ENTRY':
-      return `入职 ${c.toDeptName || ''} ${c.toPositionName || ''}`
+      return t('hr.employee.entryDesc', { dept: c.toDeptName || '', position: c.toPositionName || '' })
     case 'TRANSFER':
       return `${c.fromDeptName || '-'} / ${c.fromPositionName || '-'} → ${c.toDeptName || '-'} / ${c.toPositionName || '-'}`
     case 'SALARY':
-      return `基本工资 ${c.fromSalary ?? '-'} → ${c.toSalary ?? '-'}`
+      return t('hr.employee.salaryDesc', { from: c.fromSalary ?? '-', to: c.toSalary ?? '-' })
     default:
       return c.reason || ''
   }

@@ -2,22 +2,22 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="业务类型" name="bizType">
-          <a-select v-model:value="query.bizType" placeholder="全部" allow-clear :options="toOptions(dict.wms_biz_type)" />
+        <a-form-item :label="$t('wms.flow.bizType')" name="bizType">
+          <a-select v-model:value="query.bizType" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_biz_type)" />
         </a-form-item>
-        <a-form-item label="物料" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="编码或名称" allow-clear />
+        <a-form-item :label="$t('wms.common.material')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('wms.flow.codeOrName')" allow-clear />
         </a-form-item>
-        <a-form-item label="仓库" name="warehouseId">
-          <WarehouseSelect v-model:value="query.warehouseId" placeholder="全部" />
+        <a-form-item :label="$t('wms.common.warehouse')" name="warehouseId">
+          <WarehouseSelect v-model:value="query.warehouseId" :placeholder="$t('common.placeholder.all')" />
         </a-form-item>
-        <a-form-item label="单据号" name="docNo">
-          <a-input v-model:value="query.docNo" placeholder="完整单据号" allow-clear />
+        <a-form-item :label="$t('wms.common.docNo')" name="docNo">
+          <a-input v-model:value="query.docNo" :placeholder="$t('wms.flow.fullDocNo')" allow-clear />
         </a-form-item>
-        <a-form-item label="批次号" name="batchNo">
-          <a-input v-model:value="query.batchNo" placeholder="完整批次号" allow-clear />
+        <a-form-item :label="$t('wms.common.batchNo')" name="batchNo">
+          <a-input v-model:value="query.batchNo" :placeholder="$t('wms.flow.fullBatchNo')" allow-clear />
         </a-form-item>
-        <a-form-item label="日期" name="range">
+        <a-form-item :label="$t('common.field.date')" name="range">
           <a-range-picker v-model:value="query.range" value-format="YYYY-MM-DD" style="width: 100%" />
         </a-form-item>
       </SearchForm>
@@ -63,6 +63,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -75,18 +76,20 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+const { t } = useI18n()
+
 const dict = useDict('wms_biz_type')
 
 const columns = [
-  { title: '时间', dataIndex: 'createTime', width: 170 },
-  { title: '业务类型', key: 'bizType', width: 90, dict: 'wms_biz_type' },
-  { title: '单据号', dataIndex: 'docNo', width: 160 },
-  { title: '物料', key: 'material', width: 220 },
-  { title: '仓库', dataIndex: 'warehouseName', width: 130 },
-  { title: '库位', key: 'location', width: 100 },
-  { title: '批次', key: 'batchNo', width: 130 },
-  { title: '变动数量', key: 'qty', width: 120, align: 'right' },
-  { title: '操作人', dataIndex: 'createByName', width: 100 }
+  { title: t('wms.flow.time'), dataIndex: 'createTime', width: 170 },
+  { title: t('wms.flow.bizType'), key: 'bizType', width: 120, dict: 'wms_biz_type' },
+  { title: t('wms.common.docNo'), dataIndex: 'docNo', width: 160 },
+  { title: t('wms.common.material'), key: 'material', width: 220 },
+  { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 130 },
+  { title: t('wms.common.location'), key: 'location', width: 100 },
+  { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
+  { title: t('wms.flow.changeQty'), key: 'qty', width: 120, align: 'right' },
+  { title: t('wms.flow.operator'), dataIndex: 'createByName', width: 100 }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'wms-flow')
 const showSearch = ref(true)

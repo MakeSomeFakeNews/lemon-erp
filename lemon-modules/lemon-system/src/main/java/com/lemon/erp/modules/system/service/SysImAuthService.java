@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.framework.cache.CacheService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.tenant.TenantContext;
@@ -69,7 +70,7 @@ public class SysImAuthService {
         return configService.enabledList().stream()
                 .filter(c -> Boolean.TRUE.equals(c.getLoginEnabled()))
                 .sorted((a, b) -> a.getPlatform().compareTo(b.getPlatform()))
-                .map(c -> new ImProvider(c.getPlatform(), c.getPlatform().label())).toList();
+                .map(c -> new ImProvider(c.getPlatform(), I18n.t(c.getPlatform().label()))).toList();
     }
 
     /**
@@ -95,7 +96,7 @@ public class SysImAuthService {
         TenantContext.set(tenant);
         SysImConfig c = configService.requireEnabled(platform);
         if (!Boolean.TRUE.equals(c.getLoginEnabled())) {
-            throw new BizException("未开启" + platform.label() + "登录");
+            throw new BizException("未开启{0}登录", I18n.t(platform.label()));
         }
         return authorizeUrl(c, new State(tenant, platform, false, null, safeRedirect(redirect)), inApp);
     }
@@ -147,12 +148,13 @@ public class SysImAuthService {
                 .eq(SysImUser::getPlatform, p).eq(SysImUser::getImUserId, identity.userId()));
         SysUser user = binding == null ? null : userMapper.selectById(binding.getUserId());
         if (user == null) {
-            String msg = "该" + p.label() + "账号（" + identity.userId() + "）还没有绑定系统用户，请先用账号密码登录，在个人中心绑定，或联系管理员同步通讯录";
             String name = p.label() + ":" + identity.userId();
-            authService.recordLoginFailure(name.length() > 64 ? name.substring(0, 64) : name, "该" + p.label() + "账号未绑定系统用户");
-            throw new BizException(msg);
+            // 登录日志的内容保持中文
+            authService.recordLoginFailure(name.length() > 64 ? name.substring(0, 64) : name, "该" + p.label() + "账号未绑定系统用户"); // i18n-ignore
+            throw new BizException("该{0}账号（{1}）还没有绑定系统用户，请先用账号密码登录，在个人中心绑定，或联系管理员同步通讯录",
+                    I18n.t(p.label()), identity.userId());
         }
-        LoginResponse login = authService.loginAs(user, p.label() + "登录");
+        LoginResponse login = authService.loginAs(user, p.label() + "登录"); // i18n-ignore 登录日志
         return new ImCallbackResult(p, false, login.token(), login.passwordExpired(), state.redirect());
     }
 
@@ -162,7 +164,7 @@ public class SysImAuthService {
                 .eq(SysImUser::getPlatform, platform).eq(SysImUser::getImUserId, imUserId));
         if (other != null && !other.getUserId().equals(userId)) {
             SysUser u = userMapper.selectById(other.getUserId());
-            throw new BizException("该" + platform.label() + "账号已绑定用户「" + (u == null ? other.getUserId() : u.getUsername()) + "」，请先解除绑定");
+            throw new BizException("该{0}账号已绑定用户「{1}」，请先解除绑定", I18n.t(platform.label()), u == null ? other.getUserId() : u.getUsername());
         }
         SysImUser mine = imUserMapper.selectOne(Wrappers.<SysImUser>lambdaQuery()
                 .eq(SysImUser::getUserId, userId).eq(SysImUser::getPlatform, platform));
@@ -189,7 +191,7 @@ public class SysImAuthService {
                 .sorted((a, b) -> a.getPlatform().compareTo(b.getPlatform()))
                 .map(c -> {
                     SysImUser b = mine.get(c.getPlatform());
-                    return new ImMyBinding(c.getPlatform(), c.getPlatform().label(), b != null,
+                    return new ImMyBinding(c.getPlatform(), I18n.t(c.getPlatform().label()), b != null,
                             b == null ? null : b.getImUserId(), b == null ? null : b.getImName(), b == null ? null : b.getCreateTime());
                 }).toList();
     }

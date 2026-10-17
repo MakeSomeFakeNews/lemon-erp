@@ -4,6 +4,7 @@ import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.FundPlan;
@@ -80,11 +81,13 @@ public class FinFundService {
         t.setFee(fee);
         t.setRemark(req.remark());
         t.setCreateBy(SecurityUtils.getUserId());
-        String summary = "账户调拨" + (req.remark() == null || req.remark().isBlank() ? "" : " " + req.remark());
+        String summary = "账户调拨" + (req.remark() // i18n-ignore
+                == null || req.remark().isBlank() ? "" : " " + req.remark());
         List<VoucherLine> lines = new ArrayList<>();
         lines.add(VoucherLine.debit(summary, req.toAccountId(), null, req.amount()));
         if (fee.signum() > 0) {
-            lines.add(VoucherLine.debit(summary + "-手续费", accountRules.accountId(AccountRole.FINANCE_EXPENSE), null, fee));
+            lines.add(VoucherLine.debit(summary + "-手续费", // i18n-ignore
+                    accountRules.accountId(AccountRole.FINANCE_EXPENSE), null, fee));
         }
         lines.add(VoucherLine.credit(summary, req.fromAccountId(), null, req.amount().add(fee)));
         t.setVoucherId(voucherService.createGenerated(req.transferDate(), VoucherSource.TRANSFER, t.getTransferNo(), lines));
@@ -125,7 +128,7 @@ public class FinFundService {
         List<FundPlanEntry> entries = planMapper.selectEntries(horizon);
         BigDecimal balance = planMapper.selectCashBalance();
         FundPlan result = new FundPlan(balance, new ArrayList<>());
-        result.periods().add(period("已逾期", null, today.minusDays(1), entries, balance));
+        result.periods().add(period(I18n.t("已逾期"), null, today.minusDays(1), entries, balance));
         balance = result.periods().get(0).closing();
         DateTimeFormatter md = DateTimeFormatter.ofPattern("M/d");
         for (LocalDate[] r : ranges) {

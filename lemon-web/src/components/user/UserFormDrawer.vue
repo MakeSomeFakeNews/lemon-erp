@@ -1,24 +1,24 @@
 <template>
-  <FormDrawer :drawer="drawer" create-title="新增用户" edit-title="编辑用户">
+  <FormDrawer :drawer="drawer" :create-title="$t('system.user.addUser')" :edit-title="$t('components.user.editUser')">
     <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="24" :sm="12">
-          <a-form-item label="用户名" name="username">
-            <a-input v-model:value="form.username" placeholder="登录用户名" :maxlength="64" />
+          <a-form-item :label="$t('login.username')" name="username">
+            <a-input v-model:value="form.username" :placeholder="$t('components.user.usernamePlaceholder')" :maxlength="64" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12">
-          <a-form-item label="昵称" name="nickname">
-            <a-input v-model:value="form.nickname" placeholder="显示名称" :maxlength="64" />
+          <a-form-item :label="$t('profile.nickname')" name="nickname">
+            <a-input v-model:value="form.nickname" :placeholder="$t('print.template.alias')" :maxlength="64" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12">
-          <a-form-item label="所属部门" name="deptId">
+          <a-form-item :label="$t('components.user.dept')" name="deptId">
             <a-tree-select
               v-model:value="form.deptId"
               :tree-data="deptOptions"
               :field-names="{ label: 'name', value: 'id', children: 'children' }"
-              placeholder="请选择部门"
+              :placeholder="$t('common.placeholder.selectName', { name: $t('common.field.dept') })"
               tree-default-expand-all
               show-search
               tree-node-filter-prop="name"
@@ -27,10 +27,10 @@
           </a-form-item>
         </a-col>
         <a-col v-if="!form.id" :xs="24" :sm="12">
-          <a-form-item label="密码" name="password">
+          <a-form-item :label="$t('login.password')" name="password">
             <a-input-group compact class="password-group">
               <a-input-password v-model:value="form.password" :placeholder="passwordHint()" autocomplete="new-password" />
-              <a-tooltip title="随机生成并复制">
+              <a-tooltip :title="$t('system.user.generatePassword')">
                 <a-button @click="fillPassword">
                   <template #icon><ThunderboltOutlined /></template>
                 </a-button>
@@ -39,28 +39,28 @@
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12">
-          <a-form-item label="手机号" name="phone">
+          <a-form-item :label="$t('common.field.phone')" name="phone">
             <a-input v-model:value="form.phone" :maxlength="32" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12">
-          <a-form-item label="邮箱" name="email">
+          <a-form-item :label="$t('common.field.email')" name="email">
             <a-input v-model:value="form.email" :maxlength="128" />
           </a-form-item>
         </a-col>
         <a-col :span="24">
-          <a-form-item label="角色" name="roleIds">
+          <a-form-item :label="$t('system.role.role')" name="roleIds">
             <a-select
               v-model:value="form.roleIds"
               mode="multiple"
               :options="roleOptionList"
-              placeholder="请选择角色"
+              :placeholder="$t('common.placeholder.selectName', { name: $t('system.role.role') })"
               option-filter-prop="label"
             />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12">
-          <a-form-item label="状态" name="status">
+          <a-form-item :label="$t('common.field.status')" name="status">
             <a-radio-group
               v-model:value="form.status"
               :options="toOptions(dict.sys_common_status, true)"
@@ -69,7 +69,7 @@
           </a-form-item>
         </a-col>
         <a-col :span="24">
-          <a-form-item label="备注" name="remark">
+          <a-form-item :label="$t('common.field.remark')" name="remark">
             <a-textarea v-model:value="form.remark" :rows="3" :maxlength="255" show-count />
           </a-form-item>
         </a-col>
@@ -81,6 +81,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { ThunderboltOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import FormDrawer from '@/components/FormDrawer.vue'
 import { addUser, getUser, updateUser } from '@/api/system/user'
 import { roleOptions } from '@/api/system/role'
@@ -101,6 +102,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['success'])
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const dict = useDict('sys_common_status')
 
@@ -140,10 +142,10 @@ const drawer = useFormDrawer({
 const { form, formRef } = drawer
 
 const rules = {
-  username: [{ required: true, message: '请输入用户名' }],
-  deptId: [{ required: true, message: '请选择所属部门' }],
+  username: [{ required: true, message: t('login.inputUsername') }],
+  deptId: [{ required: true, message: t('components.user.selectDept') }],
   password: passwordRules(),
-  email: [{ type: 'email', message: '邮箱格式不正确' }]
+  email: [{ type: 'email', message: t('common.rule.email') }]
 }
 
 async function fillPassword() {

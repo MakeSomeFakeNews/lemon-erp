@@ -2,10 +2,10 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
-        <span class="sub-text">期间 P 的成本差异使用生效期间不晚于 P 的最近一个已发布版本</span>
+        <span class="sub-text">{{ $t('fin.stdCost.versionTip') }}</span>
         <template #extra>
           <a-button v-perm="'fin:stdCost:edit'" type="primary" @click="drawer.openCreate()">
-            <template #icon><PlusOutlined /></template>新建版本
+            <template #icon><PlusOutlined /></template>{{ $t('fin.stdCost.newVersion') }}
           </a-button>
         </template>
       </TableToolbar>
@@ -28,88 +28,88 @@
           <template v-else-if="column.key === 'period'">{{ periodText(record.effectivePeriod) }}</template>
           <template v-else-if="column.key === 'count'">
             {{ record.itemCount }}
-            <div class="sub-text">自制 {{ record.makeCount }} · 采购 {{ record.itemCount - record.makeCount }}</div>
+            <div class="sub-text">{{ $t('fin.stdCost.makeBuyCount', { make: record.makeCount, buy: record.itemCount - record.makeCount }) }}</div>
           </template>
           <template v-else-if="column.key === 'zero'">
-            <a-tag v-if="record.zeroCount" color="warning">{{ record.zeroCount }} 个采购件单价为 0</a-tag>
+            <a-tag v-if="record.zeroCount" color="warning">{{ $t('fin.stdCost.zeroCountTag', { n: record.zeroCount }) }}</a-tag>
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="fin_std_cost_status" :value="record.status" />
-            <a-tag v-if="record.status === 'DRAFT' && !record.rollupTime" color="orange">需重新卷算</a-tag>
+            <a-tag v-if="record.status === 'DRAFT' && !record.rollupTime" color="orange">{{ $t('fin.stdCost.needRollup') }}</a-tag>
             <div v-if="record.releaseTime" class="sub-text">{{ record.releaseTime }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">查看</a-button>
+            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新建标准成本版本" edit-title="编辑标准成本版本">
+    <FormDrawer :drawer="drawer" :create-title="$t('fin.stdCost.createTitle')" :edit-title="$t('fin.stdCost.editTitle')">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-form-item label="版本名称" name="name">
-          <a-input v-model:value="form.name" :maxlength="64" placeholder="如：2026 年标准成本" />
+        <a-form-item :label="$t('fin.stdCost.versionName')" name="name">
+          <a-input v-model:value="form.name" :maxlength="64" :placeholder="$t('fin.stdCost.versionNamePh')" />
         </a-form-item>
-        <a-form-item label="生效期间" name="effectivePeriod">
+        <a-form-item :label="$t('fin.stdCost.effectivePeriod')" name="effectivePeriod">
           <PeriodPicker v-model:value="form.effectivePeriod" class="full" />
         </a-form-item>
-        <a-form-item v-if="!form.id" label="复制版本" name="copyFromId" extra="复制采购件的标准单价；不选时取最近一次成本核算的单价（没有时取参考成本价）">
-          <a-select v-model:value="form.copyFromId" allow-clear placeholder="不复制" :options="versionOptions" />
+        <a-form-item v-if="!form.id" :label="$t('fin.stdCost.copyFrom')" name="copyFromId" :extra="$t('fin.stdCost.copyFromExtra')">
+          <a-select v-model:value="form.copyFromId" allow-clear :placeholder="$t('fin.stdCost.noCopy')" :options="versionOptions" />
         </a-form-item>
-        <a-form-item label="说明" name="remark">
+        <a-form-item :label="$t('common.field.description')" name="remark">
           <a-textarea v-model:value="form.remark" :rows="3" :maxlength="255" />
         </a-form-item>
       </a-form>
-      <a-alert v-if="!form.id" type="info" show-icon message="保存后按当前的默认 BOM 和工艺路线卷算自制件的标准成本" />
+      <a-alert v-if="!form.id" type="info" show-icon :message="$t('fin.stdCost.saveTip')" />
     </FormDrawer>
 
-    <SubPage :open="detailOpen" :title="detail ? `标准成本 ${detail.name}` : ''" width="min(1100px, 100vw)" @close="detailOpen = false">
+    <SubPage :open="detailOpen" :title="detail ? $t('fin.stdCost.detailTitle', { name: detail.name }) : ''" width="min(1100px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <a-space v-if="detail.status === 'DRAFT'" v-perm="'fin:stdCost:edit'">
-          <a-popconfirm title="删除该版本？" @confirm="remove"><a-button danger>删除</a-button></a-popconfirm>
-          <a-button @click="drawer.openEdit(detail)">编辑</a-button>
-          <a-button :loading="rolling" @click="rollup">卷算</a-button>
-          <a-popconfirm title="发布后不能再修改，差异分析从生效期间开始使用该版本，确定？" @confirm="release">
-            <a-button type="primary">发布</a-button>
+          <a-popconfirm :title="$t('fin.stdCost.confirmDeleteVersion')" @confirm="remove"><a-button danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
+          <a-button @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
+          <a-button :loading="rolling" @click="rollup">{{ $t('fin.stdCost.rollup') }}</a-button>
+          <a-popconfirm :title="$t('fin.stdCost.confirmRelease')" @confirm="release">
+            <a-button type="primary">{{ $t('fin.stdCost.release') }}</a-button>
           </a-popconfirm>
         </a-space>
         <span v-else v-perm="'fin:stdCost:edit'">
-          <a-popconfirm title="取消发布后可以修改，差异分析改用更早的版本，确定？" @confirm="unrelease">
-            <a-button>取消发布</a-button>
+          <a-popconfirm :title="$t('fin.stdCost.confirmUnrelease')" @confirm="unrelease">
+            <a-button>{{ $t('fin.stdCost.unrelease') }}</a-button>
           </a-popconfirm>
         </span>
       </template>
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" bordered class="block">
-          <a-descriptions-item label="生效期间">{{ periodText(detail.effectivePeriod) }}</a-descriptions-item>
-          <a-descriptions-item label="状态">
+          <a-descriptions-item :label="$t('fin.stdCost.effectivePeriod')">{{ periodText(detail.effectivePeriod) }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.status')">
             <DictTag type="fin_std_cost_status" :value="detail.status" />
             <span v-if="detail.releaseTime" class="sub-text">{{ detail.releaseTime }}</span>
           </a-descriptions-item>
-          <a-descriptions-item label="卷算">
+          <a-descriptions-item :label="$t('fin.stdCost.rollup')">
             <span v-if="detail.rollupTime">{{ detail.rollupTime }}</span>
-            <a-tag v-else color="orange">修改了单价，需重新卷算</a-tag>
+            <a-tag v-else color="orange">{{ $t('fin.stdCost.priceChangedRollup') }}</a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="物料">自制 {{ detail.makeCount }}，采购 {{ detail.itemCount - detail.makeCount }}</a-descriptions-item>
-          <a-descriptions-item label="单价为 0 的采购件">
-            <a v-if="detail.zeroCount" class="warn" @click="filterZero">{{ detail.zeroCount }} 个</a>
-            <span v-else>无</span>
+          <a-descriptions-item :label="$t('fin.stdCost.material')">{{ $t('fin.stdCost.makeBuyDetail', { make: detail.makeCount, buy: detail.itemCount - detail.makeCount }) }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.stdCost.zeroPriceParts')">
+            <a v-if="detail.zeroCount" class="warn" @click="filterZero">{{ $t('fin.stdCost.nItems', { n: detail.zeroCount }) }}</a>
+            <span v-else>{{ $t('common.status.none') }}</span>
           </a-descriptions-item>
-          <a-descriptions-item label="创建">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="说明" :span="3">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.stdCost.created')">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.description')" :span="3">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
         <div class="toolbar">
           <a-space wrap>
             <a-radio-group v-model:value="itemQuery.make" button-style="solid" @change="items.search">
-              <a-radio-button value="">全部</a-radio-button>
-              <a-radio-button :value="1">自制件</a-radio-button>
-              <a-radio-button :value="0">采购件</a-radio-button>
+              <a-radio-button value="">{{ $t('common.status.all') }}</a-radio-button>
+              <a-radio-button :value="1">{{ $t('fin.stdCost.makePart') }}</a-radio-button>
+              <a-radio-button :value="0">{{ $t('fin.stdCost.buyPart') }}</a-radio-button>
             </a-radio-group>
-            <a-input-search v-model:value="itemQuery.keyword" placeholder="物料编码或名称" allow-clear class="filter-wide" @search="items.search" />
+            <a-input-search v-model:value="itemQuery.keyword" :placeholder="$t('fin.stdCost.materialKeyword')" allow-clear class="filter-wide" @search="items.search" />
           </a-space>
           <a-button v-if="editable" type="primary" ghost @click="openPrice()">
-            <template #icon><PlusOutlined /></template>添加采购件
+            <template #icon><PlusOutlined /></template>{{ $t('fin.stdCost.addBuyPart') }}
           </a-button>
         </div>
         <a-table
@@ -128,8 +128,8 @@
               <div class="sub-text">{{ record.spec }} {{ record.unit }}</div>
             </template>
             <template v-else-if="column.key === 'make'">
-              <a-tag v-if="record.make" color="blue">自制</a-tag>
-              <a-tag v-else>采购</a-tag>
+              <a-tag v-if="record.make" color="blue">{{ $t('fin.stdCost.make') }}</a-tag>
+              <a-tag v-else>{{ $t('fin.stdCost.buy') }}</a-tag>
               <div v-if="record.bomVersion" class="sub-text">BOM {{ record.bomVersion }}</div>
             </template>
             <template v-else-if="column.key === 'unitCost'">
@@ -139,11 +139,11 @@
             <template v-else-if="column.num">{{ record.make ? fmt(record[column.key]) : column.key === 'materialCost' ? fmt(record.materialCost) : '' }}</template>
             <template v-else-if="column.key === 'action'">
               <span class="table-actions">
-                <a-button v-if="record.make" type="link" size="small" @click="openBreakdown(record)">明细</a-button>
+                <a-button v-if="record.make" type="link" size="small" @click="openBreakdown(record)">{{ $t('fin.stdCost.breakdown') }}</a-button>
                 <template v-else-if="editable">
-                  <a-button type="link" size="small" @click="openPrice(record)">改价</a-button>
-                  <a-popconfirm title="从版本中删除该采购件？" @confirm="removePrice(record)">
-                    <a-button type="link" size="small" danger>删除</a-button>
+                  <a-button type="link" size="small" @click="openPrice(record)">{{ $t('fin.stdCost.changePrice') }}</a-button>
+                  <a-popconfirm :title="$t('fin.stdCost.confirmRemovePart')" @confirm="removePrice(record)">
+                    <a-button type="link" size="small" danger>{{ $t('common.action.delete') }}</a-button>
                   </a-popconfirm>
                 </template>
               </span>
@@ -153,12 +153,12 @@
       </template>
     </SubPage>
 
-    <a-modal v-model:open="priceOpen" :title="priceForm.label ? `标准单价 - ${priceForm.label}` : '添加采购件'" @ok="submitPrice">
+    <a-modal v-model:open="priceOpen" :title="priceForm.label ? $t('fin.stdCost.priceTitle', { label: priceForm.label }) : $t('fin.stdCost.addBuyPart')" @ok="submitPrice">
       <a-form layout="vertical">
-        <a-form-item v-if="!priceForm.label" label="物料" required>
+        <a-form-item v-if="!priceForm.label" :label="$t('fin.stdCost.material')" required>
           <MaterialSelect v-model:value="priceForm.materialId" />
         </a-form-item>
-        <a-form-item label="标准单价" required extra="修改后须重新卷算自制件">
+        <a-form-item :label="$t('fin.stdCost.stdPrice')" required :extra="$t('fin.stdCost.stdPriceExtra')">
           <a-input-number v-model:value="priceForm.price" :min="0" :precision="4" prefix="¥" class="full" />
         </a-form-item>
       </a-form>
@@ -166,12 +166,12 @@
 
     <a-modal v-model:open="breakdownOpen" :title="breakdownTitle" width="min(900px, 100vw)" :footer="null">
       <template v-if="breakdown">
-        <div class="section-title">材料 {{ fmt(breakdown.row.materialCost) }}</div>
+        <div class="section-title">{{ $t('fin.stdCost.materialSection', { amount: fmt(breakdown.row.materialCost) }) }}</div>
         <a-table row-key="materialId" size="small" :columns="partColumns" :data-source="breakdown.items" :pagination="false" :scroll="{ x: 720 }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'material'">
               {{ record.materialCode }} {{ record.materialName }}
-              <a-tag v-if="record.make" color="blue" class="ml">自制</a-tag>
+              <a-tag v-if="record.make" color="blue" class="ml">{{ $t('fin.stdCost.make') }}</a-tag>
             </template>
             <template v-else-if="column.key === 'qty'">
               {{ fmt(record.unitQty) }} {{ record.unit }}
@@ -181,14 +181,14 @@
             <template v-else-if="column.key === 'amount'">{{ fmt(record.amount) }}</template>
           </template>
         </a-table>
-        <div class="section-title">人工 {{ fmt(breakdown.row.laborCost) }}、制造费用 {{ fmt(breakdown.row.overheadCost) }}</div>
+        <div class="section-title">{{ $t('fin.stdCost.laborSection', { labor: fmt(breakdown.row.laborCost), overhead: fmt(breakdown.row.overheadCost) }) }}</div>
         <a-table row-key="seq" size="small" :columns="opColumns" :data-source="breakdown.ops" :pagination="false" :scroll="{ x: 720 }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'op'">{{ record.seq }} {{ record.name }}<div class="sub-text">{{ record.workCenterName }}</div></template>
             <template v-else-if="column.fmt">{{ fmt(record[column.key]) }}</template>
           </template>
         </a-table>
-        <div class="sub-text tip">按卷算时的 BOM 和当前的工作中心费率显示；修改 BOM、费率后请重新卷算</div>
+        <div class="sub-text tip">{{ $t('fin.stdCost.breakdownTip') }}</div>
       </template>
     </a-modal>
   </div>
@@ -214,20 +214,22 @@ import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
+import { useI18n } from 'vue-i18n'
 
 /** 标准成本：按版本维护，采购件手工维护标准单价，自制件按默认 BOM 和工艺路线逐级卷算；发布后用于成本差异分析 */
 useDict('fin_std_cost_status')
 const userStore = useUserStore()
+const { t } = useI18n()
 
 const fmt = (n) => (n == null ? '' : Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 }))
 
 const columns = [
-  { title: '版本', key: 'name', width: 240 },
-  { title: '生效期间', key: 'period', width: 120 },
-  { title: '物料数', key: 'count', width: 150 },
-  { title: '待补单价', key: 'zero', width: 170 },
-  { title: '状态', key: 'status', width: 200 },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' }
+  { title: t('fin.stdCost.version'), key: 'name', width: 240 },
+  { title: t('fin.stdCost.effectivePeriod'), key: 'period', width: 130 },
+  { title: t('fin.stdCost.materialCount'), key: 'count', width: 160 },
+  { title: t('fin.stdCost.missingPrice'), key: 'zero', width: 200 },
+  { title: t('common.field.status'), key: 'status', width: 200 },
+  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'fin-std-cost')
 const { list, loading, size, pagination, load, onTableChange } = useTable(pageStdCost, reactive({}))
@@ -235,8 +237,8 @@ onMounted(load)
 
 const versionOptions = computed(() => list.value.map((v) => ({ value: v.id, label: `${v.name}（${periodText(v.effectivePeriod)}）` })))
 const rules = {
-  name: [{ required: true, whitespace: true, message: '请填写版本名称' }],
-  effectivePeriod: [{ required: true, message: '请选择生效期间' }]
+  name: [{ required: true, whitespace: true, message: t('fin.stdCost.versionNameRequired') }],
+  effectivePeriod: [{ required: true, message: t('fin.stdCost.effectivePeriodRequired') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, name: '', effectivePeriod: currentPeriod(), copyFromId: undefined, remark: '' }),
@@ -255,14 +257,14 @@ const { formRef, form } = drawer
 
 // ---------------------------------------------------------------- 详情
 const itemColumns = [
-  { title: '物料', key: 'material', width: 260 },
-  { title: '类型', key: 'make', width: 100 },
-  { title: '材料', key: 'materialCost', num: true, width: 120, align: 'right' },
-  { title: '人工', key: 'laborCost', num: true, width: 110, align: 'right' },
-  { title: '制造费用', key: 'overheadCost', num: true, width: 110, align: 'right' },
-  { title: '单位标准成本', key: 'unitCost', width: 130, align: 'right' },
-  { title: '标准工时', key: 'stdHours', width: 100, align: 'right' },
-  { title: '操作', key: 'action', width: 120, fixed: 'right' }
+  { title: t('fin.stdCost.material'), key: 'material', width: 260 },
+  { title: t('common.field.type'), key: 'make', width: 110 },
+  { title: t('fin.stdCost.materialCost'), key: 'materialCost', num: true, width: 120, align: 'right' },
+  { title: t('fin.stdCost.labor'), key: 'laborCost', num: true, width: 110, align: 'right' },
+  { title: t('fin.stdCost.overhead'), key: 'overheadCost', num: true, width: 120, align: 'right' },
+  { title: t('fin.stdCost.unitStdCost'), key: 'unitCost', width: 150, align: 'right' },
+  { title: t('fin.stdCost.stdHours'), key: 'stdHours', width: 110, align: 'right' },
+  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
 const detailOpen = ref(false)
 const detail = ref()
@@ -288,8 +290,8 @@ async function rollup() {
   rolling.value = true
   try {
     const zero = await rollupStdCost(detail.value.id)
-    if (zero) message.warning(`卷算完成，有 ${zero} 个采购件单价为 0，请补录后重新卷算`)
-    else message.success('卷算完成')
+    if (zero) message.warning(t('fin.stdCost.rollupDoneZero', { n: zero }))
+    else message.success(t('fin.stdCost.rollupDone'))
     refreshDetail()
     load()
   } finally {
@@ -298,19 +300,19 @@ async function rollup() {
 }
 async function release() {
   await releaseStdCost(detail.value.id)
-  message.success('已发布')
+  message.success(t('fin.stdCost.released'))
   refreshDetail()
   load()
 }
 async function unrelease() {
   await unreleaseStdCost(detail.value.id)
-  message.success('已取消发布')
+  message.success(t('fin.stdCost.unreleased'))
   refreshDetail()
   load()
 }
 async function remove() {
   await deleteStdCost(detail.value.id)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   detailOpen.value = false
   load()
 }
@@ -324,41 +326,41 @@ function openPrice(record) {
   priceOpen.value = true
 }
 async function submitPrice() {
-  if (!priceForm.materialId) return message.warning('请选择物料')
-  if (priceForm.price == null) return message.warning('请填写标准单价')
+  if (!priceForm.materialId) return message.warning(t('fin.stdCost.selectMaterial'))
+  if (priceForm.price == null) return message.warning(t('fin.stdCost.inputStdPrice'))
   await saveStdPrice(detail.value.id, { materialId: priceForm.materialId, price: priceForm.price })
-  message.success('已保存，请重新卷算')
+  message.success(t('fin.stdCost.savedRollup'))
   priceOpen.value = false
   refreshDetail()
   load()
 }
 async function removePrice(record) {
   await removeStdPrice(detail.value.id, record.materialId)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   refreshDetail()
   load()
 }
 
 const partColumns = [
-  { title: '子件', key: 'material' },
-  { title: '单位用量（含损耗）', key: 'qty', width: 170, align: 'right' },
-  { title: '标准成本', key: 'unitCost', width: 120, align: 'right' },
-  { title: '金额', key: 'amount', width: 120, align: 'right' }
+  { title: t('fin.stdCost.component'), key: 'material' },
+  { title: t('fin.stdCost.unitQty'), key: 'qty', width: 190, align: 'right' },
+  { title: t('fin.stdCost.stdCost'), key: 'unitCost', width: 120, align: 'right' },
+  { title: t('common.field.amount'), key: 'amount', width: 120, align: 'right' }
 ]
 const opColumns = [
-  { title: '工序', key: 'op' },
-  { title: '标准工时', key: 'stdHours', fmt: true, width: 100, align: 'right' },
-  { title: '人工费率', key: 'laborRate', fmt: true, width: 100, align: 'right' },
-  { title: '人工', key: 'labor', fmt: true, width: 100, align: 'right' },
-  { title: '制造费用率', key: 'overheadRate', fmt: true, width: 110, align: 'right' },
-  { title: '制造费用', key: 'overhead', fmt: true, width: 100, align: 'right' }
+  { title: t('fin.stdCost.operation'), key: 'op' },
+  { title: t('fin.stdCost.stdHours'), key: 'stdHours', fmt: true, width: 110, align: 'right' },
+  { title: t('fin.stdCost.laborRate'), key: 'laborRate', fmt: true, width: 110, align: 'right' },
+  { title: t('fin.stdCost.labor'), key: 'labor', fmt: true, width: 100, align: 'right' },
+  { title: t('fin.stdCost.overheadRate'), key: 'overheadRate', fmt: true, width: 130, align: 'right' },
+  { title: t('fin.stdCost.overhead'), key: 'overhead', fmt: true, width: 110, align: 'right' }
 ]
 const breakdownOpen = ref(false)
 const breakdown = ref()
 const breakdownTitle = ref('')
 async function openBreakdown(record) {
   breakdown.value = await stdCostBreakdown(detail.value.id, record.materialId)
-  breakdownTitle.value = `卷算明细 - ${record.materialCode} ${record.materialName}：${fmt(record.unitCost)}`
+  breakdownTitle.value = t('fin.stdCost.breakdownTitle', { material: `${record.materialCode} ${record.materialName}`, cost: fmt(record.unitCost) })
   breakdownOpen.value = true
 }
 </script>

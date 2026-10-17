@@ -3,6 +3,7 @@ package com.lemon.erp.modules.wms.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.period.BizPeriodGuard;
 import com.lemon.erp.framework.security.LoginUser;
@@ -248,7 +249,7 @@ public class WmsStockDocService {
     public void receive(Long id) {
         WmsStockDoc doc = getAccessible(TRANSFER, id);
         if (!DocStatus.TRANSIT.name().equals(doc.getStatus())) {
-            throw new BizException("调拨单 " + doc.getDocNo() + " 不是在途状态");
+            throw new BizException("调拨单 {0} 不是在途状态", doc.getDocNo());
         }
         periodGuard.checkOpen(LocalDate.now(), "调拨收货");
         int updated = docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate()
@@ -275,13 +276,16 @@ public class WmsStockDocService {
     public Long reverse(StockBizType kind, Long id) {
         WmsStockDoc doc = getAccessible(kind, id);
         if (doc.getSourceNo() != null) {
-            throw new BizException("由业务单据（" + doc.getSourceNo() + "）生成的出入库，请在业务单据中办理退货");
+            throw new BizException("由业务单据（{0}）生成的出入库，请在业务单据中办理退货", doc.getSourceNo());
         }
         if (doc.getRedOf() != null) {
             throw new BizException("红字单据不能再冲销");
         }
         if (!DocStatus.DONE.name().equals(doc.getStatus())) {
-            throw new BizException(DocStatus.TRANSIT.name().equals(doc.getStatus()) ? "在途调拨请先收货再冲销" : "只能冲销已完成的单据");
+            if (DocStatus.TRANSIT.name().equals(doc.getStatus())) {
+                throw new BizException("在途调拨请先收货再冲销");
+            }
+            throw new BizException("只能冲销已完成的单据");
         }
         LocalDate bizDate = LocalDate.now();
         if (kind == TRANSFER) {
@@ -303,7 +307,7 @@ public class WmsStockDocService {
         red.setWarehouseId(doc.getWarehouseId());
         red.setToWarehouseId(doc.getToWarehouseId());
         red.setBizDate(bizDate);
-        red.setRemark("冲销 " + doc.getDocNo());
+        red.setRemark("冲销 " + doc.getDocNo()); // i18n-ignore 存入单据备注
         red.setInTransit(0);
         red.setRedOf(id);
         red.setReversed(0);
@@ -344,7 +348,7 @@ public class WmsStockDocService {
             WmsBatch batch = batchMapper.selectOne(Wrappers.<WmsBatch>lambdaQuery().eq(WmsBatch::getMaterialId, item.getMaterialId())
                     .eq(WmsBatch::getBatchNo, item.getBatchNo()));
             if (batch != null && batch.getExpiryDate() != null && batch.getExpiryDate().isBefore(bizDate)) {
-                throw new BizException("批次 " + item.getBatchNo() + " 已于 " + batch.getExpiryDate() + " 过期，不能发出，请报废出库或调拨到不良品仓");
+                throw new BizException("批次 {0} 已于 {1} 过期，不能发出，请报废出库或调拨到不良品仓", item.getBatchNo(), batch.getExpiryDate());
             }
         }
     }
@@ -356,7 +360,7 @@ public class WmsStockDocService {
         Supplier<WmsStockDoc> loader = () -> docMapper.selectById(id);
         WmsStockDoc doc = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(STOCK_DOC_RULE, loader);
         if (doc == null || !kind.name().equals(doc.getKind())) {
-            throw new BizException(kind.getLabel() + "不存在或没有权限");
+            throw new BizException("{0}不存在或没有权限", I18n.t(kind.getLabel()));
         }
         return doc;
     }
@@ -364,7 +368,7 @@ public class WmsStockDocService {
     private WmsStockDoc getDraft(StockBizType kind, Long id) {
         WmsStockDoc doc = getAccessible(kind, id);
         if (!DocStatus.DRAFT.name().equals(doc.getStatus())) {
-            throw new BizException(kind.getLabel() + " " + doc.getDocNo() + " 已确认，不能修改或删除");
+            throw new BizException("{0} {1} 已确认，不能修改或删除", I18n.t(kind.getLabel()), doc.getDocNo());
         }
         return doc;
     }
@@ -396,18 +400,26 @@ public class WmsStockDocService {
     /** 手工出入库只能是其他出入库：采购、销售、生产、项目等类型由对应的业务单据生成 */
     private static void checkManualType(StockBizType kind, String bizType) {
         if (kind != TRANSFER && bizType != null && !MANUAL_TYPES.contains(bizType)) {
-            throw new BizException("手工" + (kind == IN ? "入库" : "出库") + "只能选择「其他" + (kind == IN ? "入库" : "出库")
-                    + "」，采购、销售、生产、项目等出入库请在对应的业务单据中办理");
+            if (kind == IN) {
+                throw new BizException("手工入库只能选择「其他入库」，采购、销售、生产、项目等出入库请在对应的业务单据中办理");
+            }
+            throw new BizException("手工出库只能选择「其他出库」，采购、销售、生产、项目等出入库请在对应的业务单据中办理");
         }
     }
 
     private void validate(StockBizType kind, String bizType, Long warehouseId, Long toWarehouseId,
                           List<WmsStockDocItem> items, boolean strict) {
         if (kind != TRANSFER && !StringUtils.hasText(bizType)) {
-            throw new BizException(kind == IN ? "请选择入库类型" : "请选择出库类型");
+            if (kind == IN) {
+                throw new BizException("请选择入库类型");
+            }
+            throw new BizException("请选择出库类型");
         }
         if (kind != TRANSFER && !(kind == IN ? IN_TYPES : OUT_TYPES).contains(bizType)) {
-            throw new BizException((kind == IN ? "入库类型" : "出库类型") + "不正确：" + bizType);
+            if (kind == IN) {
+                throw new BizException("入库类型不正确：{0}", bizType);
+            }
+            throw new BizException("出库类型不正确：{0}", bizType);
         }
         if (items.isEmpty()) {
             throw new BizException("请添加明细");
@@ -417,7 +429,10 @@ public class WmsStockDocService {
         WmsWarehouse toWarehouse = kind == TRANSFER ? refs.warehouse(toWarehouseId, "调入仓库") : null;
         // 供应商寄售仓（VMI）只能做寄售入库，寄售入库只能入供应商寄售仓
         if (kind == IN && ("CONSIGN_IN".equals(bizType) != "CONSIGN_IN".equals(warehouse.getType()))) {
-            throw new BizException("CONSIGN_IN".equals(bizType) ? "寄售入库请选择供应商寄售仓" : "供应商寄售仓只能做寄售入库");
+            if ("CONSIGN_IN".equals(bizType)) {
+                throw new BizException("寄售入库请选择供应商寄售仓");
+            }
+            throw new BizException("供应商寄售仓只能做寄售入库");
         }
         Map<Long, WmsMaterial> materials = refs.materials(items.stream().map(WmsStockDocItem::getMaterialId).toList(), kind == IN);
         Map<Long, WmsLocation> locations = refs.locations(items.stream()
@@ -445,7 +460,7 @@ public class WmsStockDocService {
                         serialsByMaterial.computeIfAbsent(material.getId(), k -> new HashSet<>()));
                 item.setSerialNos(joinSerials(serials));
             } catch (BizException e) {
-                throw new BizException("第 " + (i + 1) + " 行（" + StockService.describe(material) + "）：" + e.getMessage());
+                throw new BizException("第 {0} 行（{1}）：{2}", i + 1, StockService.describe(material), e.getLocalizedMessage());
             }
         }
     }
@@ -476,14 +491,14 @@ public class WmsStockDocService {
         List<String> serials = splitSerials(text);
         int count = qty.intValue();
         if (strict ? serials.size() != count : serials.size() > count) {
-            throw new BizException("序列号个数（" + serials.size() + "）与数量（" + count + "）不一致");
+            throw new BizException("序列号个数（{0}）与数量（{1}）不一致", serials.size(), count);
         }
         for (String sn : serials) {
             if (sn.length() > 64) {
-                throw new BizException("序列号不能超过64个字符：" + sn);
+                throw new BizException("序列号不能超过64个字符：{0}", sn);
             }
             if (!seen.add(sn)) {
-                throw new BizException("序列号重复：" + sn);
+                throw new BizException("序列号重复：{0}", sn);
             }
         }
         return serials;
@@ -504,7 +519,7 @@ public class WmsStockDocService {
                     changes.add(StockChange.of(doc.getToWarehouseId(), item.getToLocationId(), item.getMaterialId(),
                             item.getBatchNo(), item.getQty(), serials));
                 }
-                default -> throw new IllegalArgumentException("不支持的单据类型：" + kind);
+                default -> throw new IllegalArgumentException("不支持的单据类型：" + kind); // i18n-ignore 内部错误
             }
         }
         return changes;

@@ -1,8 +1,8 @@
 <template>
-  <a-tooltip :title="`搜索菜单（${shortcut} K）`">
+  <a-tooltip :title="$t('components.layout.searchMenuShortcut', { key: shortcut })">
     <button type="button" class="search-trigger" @click="show">
       <SearchOutlined />
-      <span class="trigger-text hide-mobile">搜索菜单</span>
+      <span class="trigger-text hide-mobile">{{ $t('components.layout.searchMenu') }}</span>
       <kbd class="trigger-kbd hide-mobile">{{ shortcut }} K</kbd>
     </button>
   </a-tooltip>
@@ -20,7 +20,7 @@
       ref="inputRef"
       v-model:value="keyword"
       size="large"
-      placeholder="输入页面名称或所属模块，如：入库、凭证、财务"
+      :placeholder="$t('components.layout.searchPlaceholder')"
       allow-clear
       :bordered="false"
       class="search-input"
@@ -29,7 +29,7 @@
       <template #prefix><SearchOutlined class="input-icon" /></template>
     </a-input>
 
-    <div class="result-title">{{ keyword.trim() ? `${results.length} 个结果` : '最近访问' }}</div>
+    <div class="result-title">{{ keyword.trim() ? $t('components.layout.resultsN', { n: results.length }) : $t('components.layout.recent') }}</div>
     <ul ref="listRef" class="result-list scroll-hover">
       <li
         v-for="(item, i) in results"
@@ -50,13 +50,13 @@
         </span>
         <EnterOutlined v-if="i === activeIndex" class="item-enter" />
       </li>
-      <li v-if="!results.length" class="empty">{{ keyword.trim() ? '没有匹配的页面' : '还没有访问记录，输入关键字搜索' }}</li>
+      <li v-if="!results.length" class="empty">{{ keyword.trim() ? $t('components.layout.noMatch') : $t('components.layout.noRecent') }}</li>
     </ul>
 
     <div class="footer-tip">
-      <span><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
-      <span><kbd>Enter</kbd> 打开</span>
-      <span><kbd>Esc</kbd> 关闭</span>
+      <span><kbd>↑</kbd><kbd>↓</kbd> {{ $t('common.action.select') }}</span>
+      <span><kbd>Enter</kbd> {{ $t('components.layout.open') }}</span>
+      <span><kbd>Esc</kbd> {{ $t('common.action.close') }}</span>
     </div>
   </a-modal>
 </template>

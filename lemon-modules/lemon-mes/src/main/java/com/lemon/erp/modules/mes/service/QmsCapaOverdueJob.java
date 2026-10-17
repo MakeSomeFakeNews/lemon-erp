@@ -42,9 +42,9 @@ public class QmsCapaOverdueJob implements JobHandler {
         LocalDate today = LocalDate.now();
         List<QmsCapa> overdue = capaMapper.selectOverdue(today);
         for (QmsCapa c : overdue) {
-            messageSender.send(List.of(c.getOwnerId()), Message.of("ALERT", "纠正预防已逾期：" + c.getCapaNo(),
-                    c.getTitle() + "，要求完成日期 " + c.getDueDate(), "/qms/capa").dedup("capa-overdue:" + c.getId() + ":" + today));
+            messageSender.send(List.of(c.getOwnerId()), Message.of("ALERT", "纠正预防已逾期：" + c.getCapaNo(), // i18n-ignore
+                    c.getTitle() + "，要求完成日期 " + c.getDueDate(), "/qms/capa").dedup("capa-overdue:" + c.getId() + ":" + today)); // i18n-ignore
         }
-        return overdue.isEmpty() ? "没有逾期的纠正预防" : "逾期 " + overdue.size() + " 项";
+        return overdue.isEmpty() ? "没有逾期的纠正预防" : "逾期 " + overdue.size() + " 项"; // i18n-ignore
     }
 }

@@ -4,23 +4,23 @@
       <a-tabs v-model:active-key="tab" destroy-inactive-tab-pane>
         <template #rightExtra>
           <a-button v-perm="'fin:advance:add'" type="primary" @click="openCreate">
-            <template #icon><PlusOutlined /></template>登记{{ conf.label }}
+            <template #icon><PlusOutlined /></template>{{ conf.addLabel }}
           </a-button>
         </template>
 
         <a-tab-pane v-for="k in ['RECEIPT', 'PAYMENT']" :key="k" :tab="KINDS[k].tab">
           <div class="filters">
-            <PartnerSelect v-model:value="query.partnerId" :type="KINDS[k].partner" allow-clear :placeholder="`全部${KINDS[k].partnerLabel}`" class="filter" />
-            <a-input-search v-model:value="query.keyword" placeholder="单号或备注" allow-clear class="filter" @search="search" />
-            <a-checkbox v-model:checked="query.onlyOpen" @change="search">只看有余额的</a-checkbox>
+            <PartnerSelect v-model:value="query.partnerId" :type="KINDS[k].partner" allow-clear :placeholder="KINDS[k].allPartner" class="filter" />
+            <a-input-search v-model:value="query.keyword" :placeholder="$t('fin.advance.keywordPh')" allow-clear class="filter" @search="search" />
+            <a-checkbox v-model:checked="query.onlyOpen" @change="search">{{ $t('fin.advance.onlyOpen') }}</a-checkbox>
           </div>
           <a-alert
             type="info"
             show-icon
             class="tip"
             :message="k === 'RECEIPT'
-              ? '收到客户预付的款项登记为预收（借 银行存款 / 贷 预收账款）；开出应收单后在这里冲抵（借 预收账款 / 贷 应收账款）。'
-              : '预先支付给供应商的款项登记为预付（借 预付账款 / 贷 银行存款）；收到应付单后在这里冲抵（借 应付账款 / 贷 预付账款）。'"
+              ? $t('fin.advance.tipReceipt')
+              : $t('fin.advance.tipPayment')"
           />
           <a-table
             row-key="id"
@@ -44,7 +44,7 @@
               <template v-else-if="column.key === 'used'">
                 <div>{{ formatMoney(record.usedAmount) }}</div>
                 <div class="sub-text">
-                  余 <b>{{ formatMoney(remaining(record)) }}</b>
+                  {{ $t('fin.advance.left') }} <b>{{ formatMoney(remaining(record)) }}</b>
                 </div>
               </template>
               <template v-else-if="column.key === 'voucher'">
@@ -53,10 +53,10 @@
               </template>
               <template v-else-if="column.key === 'action'">
                 <span class="table-actions">
-                  <a-button v-if="remaining(record) > 0" v-perm="'fin:advance:add'" type="link" size="small" @click="openApply(record)">冲抵</a-button>
+                  <a-button v-if="remaining(record) > 0" v-perm="'fin:advance:add'" type="link" size="small" @click="openApply(record)">{{ $t('fin.advance.apply') }}</a-button>
                   <span v-if="!Number(record.usedAmount)" v-perm="'fin:advance:add'">
-                    <a-popconfirm :title="`删除 ${record.advanceNo}？同时删除生成的凭证（须未审核）。`" @confirm="remove(record.id)">
-                      <a-button type="link" danger size="small">删除</a-button>
+                    <a-popconfirm :title="$t('fin.advance.confirmDelete', { no: record.advanceNo })" @confirm="remove(record.id)">
+                      <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
                     </a-popconfirm>
                   </span>
                 </span>
@@ -68,59 +68,59 @@
     </a-card>
 
     <!-- 登记 -->
-    <a-modal v-model:open="createOpen" :title="`登记${conf.label}`" :confirm-loading="saving" @ok="submit">
+    <a-modal v-model:open="createOpen" :title="conf.addLabel" :confirm-loading="saving" @ok="submit">
       <a-form ref="formRef" :model="form" layout="vertical">
-        <a-form-item :label="conf.partnerLabel" name="partnerId" :rules="[{ required: true, message: `请选择${conf.partnerLabel}` }]">
+        <a-form-item :label="conf.partnerLabel" name="partnerId" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: conf.partnerLabel }) }]">
           <PartnerSelect v-model:value="form.partnerId" :type="conf.partner" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="日期" name="advanceDate" :rules="[{ required: true, message: '请选择日期' }]">
+            <a-form-item :label="$t('common.field.date')" name="advanceDate" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('common.field.date') }) }]">
               <a-date-picker v-model:value="form.advanceDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="金额" name="amount" :rules="[{ required: true, message: '请填写金额' }]">
+            <a-form-item :label="$t('common.field.amount')" name="amount" :rules="[{ required: true, message: $t('common.rule.required', { name: $t('common.field.amount') }) }]">
               <a-input-number v-model:value="form.amount" :min="0.01" :precision="2" prefix="¥" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="结算账户" name="accountId" :rules="[{ required: true, message: '请选择结算账户' }]">
-              <AccountSelect v-model:value="form.accountId" :prefix="['1001', '1002']" placeholder="库存现金 / 银行存款" />
+            <a-form-item :label="$t('fin.advance.settleAccount')" name="accountId" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('fin.advance.settleAccount') }) }]">
+              <AccountSelect v-model:value="form.accountId" :prefix="['1001', '1002']" :placeholder="$t('fin.advance.settleAccountPh')" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="结算方式" name="method">
+            <a-form-item :label="$t('fin.advance.method')" name="method">
               <a-select v-model:value="form.method" :options="toOptions(dict.fin_settle_method)" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="备注" name="remark">
-          <a-input v-model:value="form.remark" :maxlength="255" placeholder="如：合同 HT-2026-001 定金" />
+        <a-form-item :label="$t('common.field.remark')" name="remark">
+          <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('fin.advance.remarkPh')" />
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- 冲抵 -->
-    <SubPage :open="applyOpen" :title="`冲抵${conf.label} ${applyTarget?.advanceNo || ''}`" width="min(900px, 100vw)" destroy-on-close @close="applyOpen = false">
+    <SubPage :open="applyOpen" :title="conf.applyTitle + ' ' + (applyTarget?.advanceNo || '')" width="min(900px, 100vw)" destroy-on-close @close="applyOpen = false">
       <template v-if="applyTarget">
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" class="block">
           <a-descriptions-item :label="conf.partnerLabel">{{ applyTarget.partnerName }}</a-descriptions-item>
-          <a-descriptions-item :label="`${conf.label}金额`">¥{{ formatMoney(applyTarget.amount) }}</a-descriptions-item>
-          <a-descriptions-item label="可冲抵余额"><b>¥{{ formatMoney(remaining(applyTarget)) }}</b></a-descriptions-item>
+          <a-descriptions-item :label="conf.amountLabel">¥{{ formatMoney(applyTarget.amount) }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.advance.available')"><b>¥{{ formatMoney(remaining(applyTarget)) }}</b></a-descriptions-item>
         </a-descriptions>
         <div class="bills-head">
           <a-space>
-            <span>冲抵日期</span>
+            <span>{{ $t('fin.advance.applyDate') }}</span>
             <a-date-picker v-model:value="applyDate" value-format="YYYY-MM-DD" :allow-clear="false" />
           </a-space>
           <a-space>
-            <a-button size="small" :disabled="!bills.length" @click="autoFill">按到期日自动分配</a-button>
-            <span>本次冲抵 <b :class="['total', { warn: applyTotal > remaining(applyTarget) }]">¥{{ formatMoney(applyTotal) }}</b></span>
+            <a-button size="small" :disabled="!bills.length" @click="autoFill">{{ $t('fin.advance.autoFill') }}</a-button>
+            <span>{{ $t('fin.advance.thisApply') }} <b :class="['total', { warn: applyTotal > remaining(applyTarget) }]">¥{{ formatMoney(applyTotal) }}</b></span>
           </a-space>
         </div>
         <a-table row-key="id" size="small" :columns="billColumns" :data-source="bills" :loading="billLoading" :pagination="false"
-          :locale="{ emptyText: `没有未核销的${conf.billLabel}` }">
+          :locale="{ emptyText: conf.emptyBills }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'source'">
               <DictTag type="fin_bill_source" :value="record.sourceType" />
@@ -136,8 +136,8 @@
       </template>
       <template #footer>
         <div class="drawer-footer">
-          <a-button @click="applyOpen = false">取消</a-button>
-          <a-button type="primary" :loading="applying" :disabled="applyTotal <= 0" @click="submitApply">确认冲抵</a-button>
+          <a-button @click="applyOpen = false">{{ $t('common.action.cancel') }}</a-button>
+          <a-button type="primary" :loading="applying" :disabled="applyTotal <= 0" @click="submitApply">{{ $t('fin.advance.confirmApply') }}</a-button>
         </div>
       </template>
     </SubPage>
@@ -147,16 +147,16 @@
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2 }" size="small" class="block">
           <a-descriptions-item :label="KINDS[detail.kind]?.partnerLabel">{{ detail.partnerName }}</a-descriptions-item>
-          <a-descriptions-item label="日期">{{ detail.advanceDate }}</a-descriptions-item>
-          <a-descriptions-item label="金额"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
-          <a-descriptions-item label="已冲抵">¥{{ formatMoney(detail.usedAmount) }}（余 {{ formatMoney(remaining(detail)) }}）</a-descriptions-item>
-          <a-descriptions-item label="结算账户">{{ detail.accountName }}</a-descriptions-item>
-          <a-descriptions-item label="结算方式"><DictTag type="fin_settle_method" :value="detail.method" /></a-descriptions-item>
-          <a-descriptions-item label="凭证">{{ detail.voucherNo || '-' }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="备注">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.date')">{{ detail.advanceDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.amount')"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.advance.used')">{{ $t('fin.advance.usedText', { used: formatMoney(detail.usedAmount), left: formatMoney(remaining(detail)) }) }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.advance.settleAccount')">{{ detail.accountName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.advance.method')"><DictTag type="fin_settle_method" :value="detail.method" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.advance.voucher')">{{ detail.voucherNo || '-' }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
-        <div class="section-title block-title">冲抵记录</div>
-        <a-table row-key="id" size="small" :columns="applyColumns" :data-source="detail.applies" :pagination="false" :locale="{ emptyText: '还没有冲抵' }">
+        <div class="section-title block-title">{{ $t('fin.advance.records') }}</div>
+        <a-table row-key="id" size="small" :columns="applyColumns" :data-source="detail.applies" :pagination="false" :locale="{ emptyText: $t('fin.advance.noRecords') }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'amount'">{{ formatMoney(record.amount) }}</template>
           </template>
@@ -172,6 +172,7 @@
 import SubPage from '@/components/SubPage.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
@@ -184,9 +185,14 @@ import { toOptions } from '@/utils/dict'
 import { today } from '@/components/wms/wms'
 import { formatMoney } from '@/components/fin/fin'
 
+const { t } = useI18n()
 const KINDS = {
-  RECEIPT: { tab: '预收（客户）', label: '预收', partner: 'customer', partnerLabel: '客户', billKind: 'ar', billLabel: '应收单' },
-  PAYMENT: { tab: '预付（供应商）', label: '预付', partner: 'supplier', partnerLabel: '供应商', billKind: 'ap', billLabel: '应付单' }
+  RECEIPT: { tab: t('fin.advance.receiptTab'), label: t('fin.advance.receipt'), partner: 'customer', partnerLabel: t('fin.advance.customer'), billKind: 'ar',
+    addLabel: t('fin.advance.addReceipt'), allPartner: t('fin.advance.allCustomers'), amountLabel: t('fin.advance.receiptAmount'),
+    applyTitle: t('fin.advance.applyReceipt'), emptyBills: t('fin.advance.noArBills') },
+  PAYMENT: { tab: t('fin.advance.paymentTab'), label: t('fin.advance.payment'), partner: 'supplier', partnerLabel: t('fin.advance.supplier'), billKind: 'ap',
+    addLabel: t('fin.advance.addPayment'), allPartner: t('fin.advance.allSuppliers'), amountLabel: t('fin.advance.paymentAmount'),
+    applyTitle: t('fin.advance.applyPayment'), emptyBills: t('fin.advance.noApBills') }
 }
 const dict = useDict('fin_settle_method', 'fin_bill_source')
 const tab = ref('RECEIPT')
@@ -195,28 +201,28 @@ const round2 = (n) => Math.round(n * 100) / 100
 const remaining = (a) => round2(Number(a.amount) - Number(a.usedAmount || 0))
 
 const columns = computed(() => [
-  { title: '单号', key: 'advanceNo', width: 160 },
+  { title: t('fin.advance.docNo'), key: 'advanceNo', width: 160 },
   { title: conf.value.partnerLabel, dataIndex: 'partnerName', width: 200, ellipsis: true },
-  { title: '日期', dataIndex: 'advanceDate', width: 110 },
-  { title: '结算账户 / 方式', key: 'account', width: 150 },
-  { title: '金额', key: 'amount', width: 130, align: 'right' },
-  { title: '已冲抵', key: 'used', width: 130, align: 'right' },
-  { title: '凭证', key: 'voucher', width: 110 },
-  { title: '备注', dataIndex: 'remark', ellipsis: true },
-  { title: '操作', key: 'action', width: 120, fixed: 'right' }
+  { title: t('common.field.date'), dataIndex: 'advanceDate', width: 110 },
+  { title: t('fin.advance.accountMethod'), key: 'account', width: 170 },
+  { title: t('common.field.amount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('fin.advance.used'), key: 'used', width: 130, align: 'right' },
+  { title: t('fin.advance.voucher'), key: 'voucher', width: 110 },
+  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
 ])
 const query = reactive({ kind: 'RECEIPT', partnerId: undefined, keyword: undefined, onlyOpen: false })
 const { list, loading, pagination, load, search, onTableChange } = useTable(pageAdvance, query)
 onMounted(load)
 watch(() => query.partnerId, () => search())
-watch(tab, (t) => {
-  Object.assign(query, { kind: t, partnerId: undefined, keyword: undefined })
+watch(tab, (v) => {
+  Object.assign(query, { kind: v, partnerId: undefined, keyword: undefined })
   search()
 })
 
 async function remove(id) {
   await deleteAdvance(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 
@@ -234,7 +240,7 @@ async function submit() {
   saving.value = true
   try {
     await addAdvance({ ...form.value, remark: form.value.remark || null })
-    message.success('登记成功，凭证已生成')
+    message.success(t('fin.advance.created'))
     createOpen.value = false
     load()
   } finally {
@@ -244,13 +250,13 @@ async function submit() {
 
 // ---------------------------------------------------------------- 冲抵
 const billColumns = [
-  { title: '单号', dataIndex: 'billNo', width: 150 },
-  { title: '来源', key: 'source', width: 200 },
-  { title: '日期', dataIndex: 'billDate', width: 100 },
-  { title: '到期日', dataIndex: 'dueDate', width: 100 },
-  { title: '金额', key: 'amount', width: 110, align: 'right' },
-  { title: '未核销', key: 'remaining', width: 110, align: 'right' },
-  { title: '本次冲抵', key: 'apply', width: 150 }
+  { title: t('fin.advance.docNo'), dataIndex: 'billNo', width: 150 },
+  { title: t('fin.advance.source'), key: 'source', width: 200 },
+  { title: t('common.field.date'), dataIndex: 'billDate', width: 100 },
+  { title: t('fin.advance.dueDate'), dataIndex: 'dueDate', width: 100 },
+  { title: t('common.field.amount'), key: 'amount', width: 110, align: 'right' },
+  { title: t('fin.advance.unsettled'), key: 'remaining', width: 120, align: 'right' },
+  { title: t('fin.advance.thisApply'), key: 'apply', width: 150 }
 ]
 const applyOpen = ref(false)
 const applying = ref(false)
@@ -290,14 +296,14 @@ function autoFill() {
 
 async function submitApply() {
   if (applyTotal.value > remaining(applyTarget.value)) {
-    message.warning(`冲抵合计超过可冲抵余额 ¥${formatMoney(remaining(applyTarget.value))}`)
+    message.warning(t('fin.advance.overApply', { amount: formatMoney(remaining(applyTarget.value)) }))
     return
   }
   const items = bills.value.filter((b) => Number(b.apply) > 0).map((b) => ({ billId: b.id, amount: b.apply }))
   applying.value = true
   try {
     await applyAdvance(applyTarget.value.id, { date: applyDate.value, items })
-    message.success('冲抵成功，凭证已生成')
+    message.success(t('fin.advance.applied'))
     applyOpen.value = false
     load()
   } finally {
@@ -307,10 +313,10 @@ async function submitApply() {
 
 // ---------------------------------------------------------------- 详情
 const applyColumns = [
-  { title: '冲抵单据', dataIndex: 'billNo', width: 160 },
-  { title: '冲抵日期', dataIndex: 'applyDate', width: 120 },
-  { title: '金额', key: 'amount', width: 130, align: 'right' },
-  { title: '凭证', dataIndex: 'voucherNo', width: 120 }
+  { title: t('fin.advance.applyBill'), dataIndex: 'billNo', width: 160 },
+  { title: t('fin.advance.applyDate'), dataIndex: 'applyDate', width: 120 },
+  { title: t('common.field.amount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('fin.advance.voucher'), dataIndex: 'voucherNo', width: 120 }
 ]
 const detailOpen = ref(false)
 const detail = ref()

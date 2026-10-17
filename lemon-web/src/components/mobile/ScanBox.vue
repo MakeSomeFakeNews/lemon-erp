@@ -12,7 +12,7 @@
     >
       <template #prefix><ScanOutlined /></template>
     </a-input>
-    <a-button size="large" type="primary" @click="submit">确定</a-button>
+    <a-button size="large" type="primary" @click="submit">{{ $t('common.action.confirm') }}</a-button>
   </div>
   <div v-if="tip" class="scan-tip" :class="tipType">{{ tip }}</div>
 </template>
@@ -21,12 +21,13 @@
 import { nextTick, onMounted, ref } from 'vue'
 import { ScanOutlined } from '@ant-design/icons-vue'
 import { feedback } from './mobile'
+import { t } from '@/locales'
 
 /**
  * 扫码输入框：PDA 扫码枪按键盘输入并回车，手机可手工输入。触发 scan(code)，处理后保持焦点便于连续扫码。
  * 页面通过 ref 调用 show(text, ok) 显示处理结果
  */
-defineProps({ placeholder: { type: String, default: '扫描或输入条码' } })
+defineProps({ placeholder: { type: String, default: () => t('mobile.scan.placeholder') } })
 const emit = defineEmits(['scan'])
 
 const inputRef = ref()

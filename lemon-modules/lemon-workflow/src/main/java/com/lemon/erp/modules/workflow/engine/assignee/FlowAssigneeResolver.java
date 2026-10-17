@@ -33,7 +33,7 @@ public class FlowAssigneeResolver {
                                 FlowIdentityProvider identityProvider) {
         for (AssigneeStrategy strategy : strategies) {
             if (this.strategies.put(strategy.type(), strategy) != null) {
-                throw new IllegalStateException("审批人类型 " + strategy.type() + " 存在多个策略实现");
+                throw new IllegalStateException("审批人类型 " + strategy.type() + " 存在多个策略实现");  // i18n-ignore 存库或内部异常
             }
         }
         this.metaService = metaService;
@@ -58,7 +58,7 @@ public class FlowAssigneeResolver {
     public List<Long> resolveUsers(AssigneeConfig config, DelegateExecution execution) {
         AssigneeStrategy strategy = strategies.get(config.type());
         if (strategy == null) {
-            throw new IllegalStateException("不支持的审批人类型：" + config.type());
+            throw new IllegalStateException("不支持的审批人类型：" + config.type());  // i18n-ignore 存库或内部异常
         }
         Long initiatorId = toUserId((String) execution.getVariable(FlowVariables.INITIATOR));
         List<Long> candidates = strategy.resolve(new AssigneeContext(config, initiatorId));

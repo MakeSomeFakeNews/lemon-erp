@@ -2,26 +2,26 @@
   <div>
     <!-- 选择发货通知 -->
     <template v-if="!detail">
-      <ScanBox ref="scanRef" placeholder="扫描或输入发货通知号" @scan="searchDeliveries" />
+      <ScanBox ref="scanRef" :placeholder="$t('mobile.pick.scanDelivery')" @scan="searchDeliveries" />
       <a-spin :spinning="loading">
         <div v-for="d in deliveries" :key="d.id" class="m-card m-click" @click="selectDelivery(d.id)">
           <div class="m-row"><b>{{ d.deliveryNo }}</b><a-tag v-if="d.waveNo" color="blue">{{ d.waveNo }}</a-tag></div>
           <div class="m-row sub-text"><span>{{ d.customerName }} · {{ d.warehouseName }}</span><span>{{ d.shipDate }}</span></div>
         </div>
-        <a-empty v-if="!loading && !deliveries.length" description="没有待拣货的发货通知" />
+        <a-empty v-if="!loading && !deliveries.length" :description="$t('mobile.pick.noDeliveries')" />
       </a-spin>
     </template>
 
     <!-- 按库位顺序拣货 -->
     <template v-else>
       <div class="m-card">
-        <div class="m-row"><b>{{ detail.deliveryNo }}</b><a @click="reset">换通知</a></div>
+        <div class="m-row"><b>{{ detail.deliveryNo }}</b><a @click="reset">{{ $t('mobile.putaway.change') }}</a></div>
         <div class="sub-text">{{ detail.customerName }} · {{ detail.warehouseName }}</div>
         <a-alert v-if="shortItems.length" type="warning" show-icon class="m-current"
-          :message="`${shortItems.map((i) => i.materialName).join('、')} 拣货建议不足，请在后台调整后再拣货`" />
+          :message="$t('mobile.pick.shortage', { names: shortItems.map((i) => i.materialName).join($t('mobile.common.listSep')) })" />
       </div>
-      <ScanBox ref="scanRef" placeholder="扫描库位，再扫描物料 / 序列号" @scan="onScan" />
-      <div v-if="currentLocation" class="m-current">当前库位 <a-tag color="blue">{{ currentLocation.code }}</a-tag></div>
+      <ScanBox ref="scanRef" :placeholder="$t('mobile.common.scanLocThenItem')" @scan="onScan" />
+      <div v-if="currentLocation" class="m-current">{{ $t('mobile.common.currentLocation') }} <a-tag color="blue">{{ currentLocation.code }}</a-tag></div>
       <div v-for="row in rows" :key="row.key" class="m-card" :class="{ 'm-active': row === activeRow }" @click="activeRow = row">
         <div class="m-row">
           <a-tag color="orange">{{ locationText(row.locationCode) }}</a-tag>
@@ -30,16 +30,16 @@
           </span>
         </div>
         <div><b>{{ row.materialCode }} {{ row.materialName }}</b></div>
-        <div class="sub-text">{{ row.spec }}{{ row.batchNo ? ` 批次 ${row.batchNo}` : '' }}</div>
-        <a-input-number v-if="row.serialEnabled !== 1" v-model:value="row.picked" :min="0" :max="row.qty" addon-before="已拣" class="m-field" />
+        <div class="sub-text">{{ row.spec }}{{ row.batchNo ? $t('mobile.common.batchN', { no: row.batchNo }) : '' }}</div>
+        <a-input-number v-if="row.serialEnabled !== 1" v-model:value="row.picked" :min="0" :max="row.qty" :addon-before="$t('mobile.pick.picked')" class="m-field" />
         <div v-else class="m-serials">
-          <span class="sub-text">扫描序列号：</span>
+          <span class="sub-text">{{ $t('mobile.common.scanSerialOnly') }}</span>
           <a-tag v-for="s in row.serials" :key="s" closable @close="removeSerial(row, s)">{{ s }}</a-tag>
         </div>
       </div>
       <div class="m-footer">
-        <span>已拣 <b>{{ doneCount }}</b> / {{ rows.length }} 行</span>
-        <a-button type="primary" size="large" :loading="saving" :disabled="!!shortItems.length" @click="submit">确认拣货</a-button>
+        <span>{{ $t('mobile.pick.picked') }} <b>{{ doneCount }}</b> / {{ $t('mobile.common.lines', { n: rows.length }) }}</span>
+        <a-button type="primary" size="large" :loading="saving" :disabled="!!shortItems.length" @click="submit">{{ $t('mobile.pick.submit') }}</a-button>
       </div>
     </template>
   </div>
@@ -47,6 +47,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import ScanBox from '@/components/mobile/ScanBox.vue'
 import { resolveScan } from '@/components/mobile/mobile'
@@ -60,6 +61,7 @@ import { formatQty, locationText } from '@/components/wms/wms'
  * 拣货：按拣货建议（先到期先出）以库位顺序逐行拣货，扫描库位后扫描物料累计数量，序列号物料扫描序列号；
  * 全部拣完后确认拣货，之后在后台出库
  */
+const { t } = useI18n()
 const scanRef = ref()
 const loading = ref(false)
 const deliveries = ref([])
@@ -117,31 +119,31 @@ async function onScan(code) {
   if (hit.type === 'location') {
     currentLocation.value = hit.location
     const next = rows.value.find((r) => r.locationId === hit.location.id && r.picked < r.qty)
-    if (!next) return scan.show(`${hit.location.code} 没有待拣的物料`, false)
+    if (!next) return scan.show(t('mobile.pick.nothingHere', { code: hit.location.code }), false)
     activeRow.value = next
-    return scan.show(`库位 ${hit.location.code}`)
+    return scan.show(t('mobile.common.locationN', { code: hit.location.code }))
   }
   if (hit.type === 'material') {
     const list = rows.value.filter((r) => r.materialId === hit.material.id && r.picked < r.qty)
-    if (!list.length) return scan.show(`${hit.material.code} 不需要拣货或已拣完`, false)
+    if (!list.length) return scan.show(t('mobile.pick.notNeeded', { code: hit.material.code }), false)
     const row = currentLocation.value ? list.find((r) => r.locationId === currentLocation.value.id) : list.find((r) => !r.locationId)
-    if (!row) return scan.show(`请到库位 ${list.map((r) => locationText(r.locationCode)).join('、')} 拣货`, false)
+    if (!row) return scan.show(t('mobile.pick.goTo', { locations: list.map((r) => locationText(r.locationCode)).join(t('mobile.common.listSep')) }), false)
     activeRow.value = row
-    if (row.serialEnabled === 1) return scan.show(`${row.materialName}：请扫描序列号`)
-    if (qty4(row.picked + hit.ratio) > row.qty) return scan.show(`${row.materialName} 超过应拣数量`, false)
+    if (row.serialEnabled === 1) return scan.show(t('mobile.common.scanSerial', { name: row.materialName }))
+    if (qty4(row.picked + hit.ratio) > row.qty) return scan.show(t('mobile.pick.overQty', { name: row.materialName }), false)
     row.picked = qty4(row.picked + hit.ratio)
-    return scan.show(`${row.materialName} +${formatQty(hit.ratio)}，${formatQty(row.picked)} / ${formatQty(row.qty)}`)
+    return scan.show(t('mobile.pick.added', { name: row.materialName, qty: formatQty(hit.ratio), picked: formatQty(row.picked), total: formatQty(row.qty) }))
   }
   const row = activeRow.value
-  if (row?.serialEnabled !== 1) return scan.show(`未识别的条码 ${code}`, false)
+  if (row?.serialEnabled !== 1) return scan.show(t('mobile.common.unknownCode', { code }), false)
   row.serialPool ??= await availableSerials({ warehouseId: detail.value.warehouseId, locationId: row.locationId || undefined,
     materialId: row.materialId, batchNo: row.batchNo || undefined })
-  if (!row.serialPool.includes(code)) return scan.show(`序列号 ${code} 不在该库位 / 批次`, false)
-  if (rows.value.some((r) => r.serials.includes(code))) return scan.show(`序列号 ${code} 已扫描`, false)
-  if (row.serials.length >= row.qty) return scan.show(`${row.materialName} 超过应拣数量`, false)
+  if (!row.serialPool.includes(code)) return scan.show(t('mobile.pick.serialNotHere', { code }), false)
+  if (rows.value.some((r) => r.serials.includes(code))) return scan.show(t('mobile.common.serialScanned', { code }), false)
+  if (row.serials.length >= row.qty) return scan.show(t('mobile.pick.overQty', { name: row.materialName }), false)
   row.serials.push(code)
   row.picked = row.serials.length
-  scan.show(`${row.materialName} 序列号 ${code}，${row.picked} / ${row.qty}`)
+  scan.show(t('mobile.pick.serialAdded', { name: row.materialName, code, picked: row.picked, total: row.qty }))
 }
 function removeSerial(row, s) {
   row.serials = row.serials.filter((x) => x !== s)
@@ -150,7 +152,7 @@ function removeSerial(row, s) {
 
 async function submit() {
   const left = rows.value.find((r) => qty4(Number(r.picked) || 0) !== r.qty)
-  if (left) return message.warning(`${locationText(left.locationCode)} ${left.materialName}：已拣 ${formatQty(left.picked)}，应拣 ${formatQty(left.qty)}`)
+  if (left) return message.warning(t('mobile.pick.unfinished', { location: locationText(left.locationCode), name: left.materialName, picked: formatQty(left.picked), total: formatQty(left.qty) }))
   saving.value = true
   try {
     await pickDelivery(detail.value.id, {
@@ -159,7 +161,7 @@ async function submit() {
         serialNos: r.serialEnabled === 1 ? r.serials.join(',') : null
       }))
     })
-    message.success('拣货完成')
+    message.success(t('mobile.pick.done'))
     reset()
   } finally {
     saving.value = false

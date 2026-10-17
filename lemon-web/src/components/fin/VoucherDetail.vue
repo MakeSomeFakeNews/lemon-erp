@@ -1,30 +1,30 @@
 <template>
-  <SubPage :open="open" title="记账凭证" width="min(980px, 100vw)" destroy-on-close @close="emit('update:open', false)">
+  <SubPage :open="open" :title="$t('fin.voucherDetail.title')" width="min(980px, 100vw)" destroy-on-close @close="emit('update:open', false)">
     <template #extra>
       <a-space>
-        <a-button v-if="v" size="small" @click="print"><template #icon><PrinterOutlined /></template>打印</a-button>
-        <a-tag v-if="v?.reversalOf" color="red" :bordered="false">红字</a-tag>
-        <a-tag v-if="v?.reversed === 1" color="orange" :bordered="false">已冲销</a-tag>
+        <a-button v-if="v" size="small" @click="print"><template #icon><PrinterOutlined /></template>{{ $t('common.action.print') }}</a-button>
+        <a-tag v-if="v?.reversalOf" color="red" :bordered="false">{{ $t('fin.voucherDetail.red') }}</a-tag>
+        <a-tag v-if="v?.reversed === 1" color="orange" :bordered="false">{{ $t('fin.voucherDetail.reversed') }}</a-tag>
         <DictTag v-if="v" type="fin_voucher_status" :value="v.status" />
       </a-space>
     </template>
     <a-spin :spinning="loading">
       <div v-if="v" class="voucher">
-        <div class="voucher-title">记 账 凭 证</div>
+        <div class="voucher-title">{{ $t('fin.voucherDetail.heading') }}</div>
         <div class="voucher-head">
-          <span>凭证字号：<b>{{ v.voucherNo }}</b></span>
-          <span>日期：{{ v.voucherDate }}</span>
-          <span>期间：{{ periodText(v.period) }}</span>
-          <span>附单据 {{ v.attachmentCount }} 张</span>
+          <span>{{ $t('fin.voucherDetail.voucherNo') }}<b>{{ v.voucherNo }}</b></span>
+          <span>{{ $t('fin.voucherDetail.date', { date: v.voucherDate }) }}</span>
+          <span>{{ $t('fin.voucherDetail.period', { period: periodText(v.period) }) }}</span>
+          <span>{{ $t('fin.voucherDetail.attachmentCount', { n: v.attachmentCount }) }}</span>
         </div>
         <table class="voucher-table">
           <thead>
             <tr>
-              <th style="width: 27%">摘要</th>
-              <th style="width: 27%">会计科目</th>
-              <th style="width: 20%">辅助核算</th>
-              <th style="width: 13%">借方金额</th>
-              <th style="width: 13%">贷方金额</th>
+              <th style="width: 27%">{{ $t('fin.voucherDetail.summary') }}</th>
+              <th style="width: 27%">{{ $t('fin.voucherDetail.account') }}</th>
+              <th style="width: 20%">{{ $t('fin.voucherDetail.aux') }}</th>
+              <th style="width: 13%">{{ $t('fin.voucherDetail.debit') }}</th>
+              <th style="width: 13%">{{ $t('fin.voucherDetail.credit') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -42,21 +42,21 @@
           </tbody>
           <tfoot>
             <tr>
-              <td colspan="3">合计：{{ moneyUpper(v.totalDebit) }}</td>
+              <td colspan="3">{{ isZh() ? $t('fin.voucherDetail.totalUpper', { amount: moneyUpper(v.totalDebit) }) : $t('common.field.total') }}</td>
               <td :class="['num', { neg: Number(v.totalDebit) < 0 }]">{{ formatMoney(v.totalDebit) }}</td>
               <td :class="['num', { neg: Number(v.totalCredit) < 0 }]">{{ formatMoney(v.totalCredit) }}</td>
             </tr>
           </tfoot>
         </table>
         <div class="voucher-foot">
-          <span>来源：<DictTag type="fin_voucher_source" :value="v.sourceType" /> {{ v.sourceNo || '' }}</span>
-          <span>制单：{{ v.createByName || '-' }}</span>
-          <span>审核：{{ v.auditByName || '-' }}</span>
-          <span>记账：{{ v.postByName || '-' }}</span>
+          <span>{{ $t('fin.voucherDetail.source') }}<DictTag type="fin_voucher_source" :value="v.sourceType" /> {{ v.sourceNo || '' }}</span>
+          <span>{{ $t('fin.voucherDetail.preparedBy', { name: v.createByName || '-' }) }}</span>
+          <span>{{ $t('fin.voucherDetail.approvedBy', { name: v.auditByName || '-' }) }}</span>
+          <span>{{ $t('fin.voucherDetail.postedBy', { name: v.postByName || '-' }) }}</span>
         </div>
-        <div class="attachment-head">附件（原始凭证）</div>
+        <div class="attachment-head">{{ $t('fin.voucherDetail.attachmentHead') }}</div>
         <AttachmentPanel biz-type="fin_voucher" :biz-id="v.id" :editable="userStore.hasPerm('fin:voucher:edit')" />
-        <div class="attachment-head">变更记录</div>
+        <div class="attachment-head">{{ $t('fin.voucherDetail.changeLog') }}</div>
         <ChangeLogPanel biz-type="fin_voucher" :biz-id="v.id" />
       </div>
     </a-spin>
@@ -84,6 +84,8 @@ import { deleteVoucher, getVoucher, voucherAction } from '@/api/fin'
 import { useUserStore } from '@/store/user'
 import { AUX_ITEMS, auxText, canDeleteVoucher, canReverse, formatMoney, moneyOrBlank, moneyUpper, periodText } from './fin'
 import { printDocs } from '@/utils/print'
+import { useI18n } from 'vue-i18n'
+import { isZh } from '@/locales'
 
 /** 凭证详情（凭证样式），按状态提供编辑、审核、记账等操作；触发 edit(voucher)、changed */
 const props = defineProps({
@@ -92,6 +94,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:open', 'edit', 'changed', 'reversed'])
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const v = ref()
 const loading = ref(false)
@@ -99,24 +102,30 @@ const loading = ref(false)
 function print() {
   const d = v.value
   printDocs({
-    title: '记账凭证',
+    // 打印模板（utils/printTemplates.js）按名称匹配，非中文界面下按译文名称打印
+    title: t('fin.voucherDetail.title'),
     no: d.voucherNo,
     fields: [
-      ['日期', d.voucherDate],
-      ['期间', periodText(d.period)],
-      ['附单据', `${d.attachmentCount ?? 0} 张`]
+      [t('common.field.date'), d.voucherDate],
+      [t('fin.voucherDetail.printPeriod'), periodText(d.period)],
+      [t('fin.voucherDetail.printAttachment'), t('fin.voucherDetail.attachmentN', { n: d.attachmentCount ?? 0 })]
     ],
     columns: [
-      { title: '摘要', key: 'summary' },
-      { title: '会计科目', value: (e) => `${e.accountCode} ${e.accountName}` },
-      { title: '部门 / 辅助', key: 'deptName', value: auxText },
-      { title: '借方金额', key: 'debit', value: (e) => moneyOrBlank(e.debit), align: 'right' },
-      { title: '贷方金额', key: 'credit', value: (e) => moneyOrBlank(e.credit), align: 'right' }
+      { title: t('fin.voucherDetail.summary'), key: 'summary' },
+      { title: t('fin.voucherDetail.account'), value: (e) => `${e.accountCode} ${e.accountName}` },
+      { title: t('fin.voucherDetail.deptAux'), key: 'deptName', value: auxText },
+      { title: t('fin.voucherDetail.debit'), key: 'debit', value: (e) => moneyOrBlank(e.debit), align: 'right' },
+      { title: t('fin.voucherDetail.credit'), key: 'credit', value: (e) => moneyOrBlank(e.credit), align: 'right' }
     ],
     rows: d.entries,
-    totals: { summary: '合计', deptName: moneyUpper(d.totalDebit), debit: formatMoney(d.totalDebit), credit: formatMoney(d.totalCredit) },
-    signs: [['制单', d.createByName], ['审核', d.auditByName], ['记账', d.postByName], '财务主管']
-  }, `记账凭证 ${d.voucherNo}`, 'fin.voucher')
+    totals: { summary: t('common.field.total'), deptName: isZh() ? moneyUpper(d.totalDebit) : '', debit: formatMoney(d.totalDebit), credit: formatMoney(d.totalCredit) },
+    signs: [
+      [t('fin.voucherDetail.signPrepared'), d.createByName],
+      [t('fin.voucherDetail.signApproved'), d.auditByName],
+      [t('fin.voucherDetail.signPosted'), d.postByName],
+      t('fin.voucherDetail.signManager')
+    ]
+  }, t('fin.voucherDetail.printTitle', { no: d.voucherNo }), 'fin.voucher')
 }
 
 async function load() {
@@ -145,7 +154,7 @@ async function onReversed(id) {
 
 async function act(action, label) {
   await voucherAction(action, v.value.id)
-  message.success(`${label}成功`)
+  message.success(t('fin.voucherDetail.actionSuccess', { action: label }))
   await load()
   emit('changed')
 }
@@ -159,34 +168,34 @@ const actions = computed(() => {
     if (can('remove') && canDeleteVoucher(d))
       list.push({
         key: 'remove',
-        label: '删除',
+        label: t('common.action.delete'),
         danger: true,
         run: () =>
           Modal.confirm({
-            title: `删除凭证 ${d.voucherNo}？`,
-            content: d.sourceType !== 'MANUAL' ? '业务生成的凭证删除后，可以在来源单据中重新生成。' : undefined,
+            title: t('fin.voucherDetail.confirmDelete', { no: d.voucherNo }),
+            content: d.sourceType !== 'MANUAL' ? t('fin.voucherDetail.deleteTip') : undefined,
             okType: 'danger',
             async onOk() {
               await deleteVoucher(d.id)
-              message.success('删除成功')
+              message.success(t('common.msg.deleteSuccess'))
               emit('update:open', false)
               emit('changed')
             }
           })
       })
-    if (d.sourceType === 'MANUAL' && can('edit')) list.push({ key: 'edit', label: '编辑', run: () => emit('edit', d) })
-    if (can('add')) list.push({ key: 'submit', label: '提交审批', run: () => act('submit', '提交审批') })
-    if (can('audit')) list.push({ key: 'audit', label: '审核', primary: true, run: () => act('audit', '审核') })
+    if (d.sourceType === 'MANUAL' && can('edit')) list.push({ key: 'edit', label: t('common.action.edit'), run: () => emit('edit', d) })
+    if (can('add')) list.push({ key: 'submit', label: t('fin.voucherDetail.submit'), run: () => act('submit', t('fin.voucherDetail.submit')) })
+    if (can('audit')) list.push({ key: 'audit', label: t('common.action.audit'), primary: true, run: () => act('audit', t('common.action.audit')) })
   }
   if (d.status === 'AUDITED') {
-    if (can('audit')) list.push({ key: 'unaudit', label: '反审核', run: () => act('unaudit', '反审核') })
-    if (can('post')) list.push({ key: 'post', label: '记账', primary: true, run: () => act('post', '记账') })
+    if (can('audit')) list.push({ key: 'unaudit', label: t('common.action.unaudit'), run: () => act('unaudit', t('common.action.unaudit')) })
+    if (can('post')) list.push({ key: 'post', label: t('fin.voucherDetail.post'), primary: true, run: () => act('post', t('fin.voucherDetail.post')) })
   }
   if (d.status === 'POSTED' && d.sourceType !== 'CLOSE' && can('post')) {
-    list.push({ key: 'unpost', label: '反记账', run: () => act('unpost', '反记账') })
+    list.push({ key: 'unpost', label: t('fin.voucherDetail.unpost'), run: () => act('unpost', t('fin.voucherDetail.unpost')) })
   }
   if (canReverse(d) && can('reverse')) {
-    list.push({ key: 'reverse', label: '红字冲销', danger: true, run: () => (reverseOpen.value = true) })
+    list.push({ key: 'reverse', label: t('fin.voucherDetail.reverse'), danger: true, run: () => (reverseOpen.value = true) })
   }
   return list
 })

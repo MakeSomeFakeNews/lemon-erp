@@ -3,81 +3,81 @@
     <a-card :bordered="false" class="page-card table-card">
       <a-tabs v-model:active-key="tab">
         <!-- ---------------------------------------------------------------- 启用向导 -->
-        <a-tab-pane key="guide" tab="启用向导">
+        <a-tab-pane key="guide" :tab="$t('fin.opening.guideTab')">
           <a-alert
             type="info"
             show-icon
             class="tip"
-            message="系统上线时按顺序准备期初数据：先确认会计科目和凭证科目设置，再录入科目期初、导入期初库存、录入存货期初金额、导入期初往来，最后核对往来与科目期初是否一致。"
+            :message="$t('fin.opening.guideTip')"
           />
           <a-spin :spinning="loadingSummary">
             <div v-if="summary" class="guide">
               <div class="guide-step">
                 <div class="guide-no done">1</div>
                 <div class="guide-body">
-                  <div class="guide-title">会计科目与凭证科目</div>
-                  <div class="sub-text">在「会计科目」中按企业实际增加明细科目、设置辅助核算；在「凭证科目设置」中确认自动凭证使用的科目</div>
+                  <div class="guide-title">{{ $t('fin.opening.step1') }}</div>
+                  <div class="sub-text">{{ $t('fin.opening.step1Tip') }}</div>
                 </div>
               </div>
               <div class="guide-step">
                 <div :class="['guide-no', { done: summary.accounts.count && accountsBalanced }]">2</div>
                 <div class="guide-body">
-                  <div class="guide-title">科目期初</div>
+                  <div class="guide-title">{{ $t('fin.opening.accountTab') }}</div>
                   <div class="sub-text">
-                    已录入 {{ summary.accounts.count }} 个科目，借方 {{ money(summary.accounts.debit) }}、贷方 {{ money(summary.accounts.credit) }}
-                    <span v-if="summary.accounts.count && !accountsBalanced" class="bad">（借贷不平衡）</span>
+                    {{ $t('fin.opening.step2Tip', { n: summary.accounts.count, debit: money(summary.accounts.debit), credit: money(summary.accounts.credit) }) }}
+                    <span v-if="summary.accounts.count && !accountsBalanced" class="bad">{{ $t('fin.opening.unbalanced') }}</span>
                   </div>
                 </div>
-                <a-button @click="tab = 'account'">去录入</a-button>
+                <a-button @click="tab = 'account'">{{ $t('fin.opening.goEnter') }}</a-button>
               </div>
               <div class="guide-step">
                 <div :class="['guide-no', { done: summary.stockDocs.length }]">3</div>
                 <div class="guide-body">
-                  <div class="guide-title">期初库存</div>
+                  <div class="guide-title">{{ $t('fin.opening.step3') }}</div>
                   <div class="sub-text">
-                    按仓库、库位、批次、序列号导入启用时的结存数量，生成启用期间前一天的「期初入库」单。
-                    已导入 {{ summary.stockDocs.length }} 张，共 {{ formatQty(stockDocQty) }}
+                    {{ $t('fin.opening.step3Tip') }}
+                    {{ $t('fin.opening.step3Done', { n: summary.stockDocs.length, qty: formatQty(stockDocQty) }) }}
                   </div>
                   <div v-if="summary.stockDocs.length" class="guide-docs">
                     <a-tag v-for="d in summary.stockDocs" :key="d.id" :bordered="false" :color="d.reversed ? 'default' : 'gold'">
-                      {{ d.docNo }} {{ d.warehouseName }} {{ formatQty(d.totalQty) }}{{ d.reversed ? '（已冲销）' : '' }}
+                      {{ d.docNo }} {{ d.warehouseName }} {{ formatQty(d.totalQty) }}{{ d.reversed ? $t('fin.opening.reversed') : '' }}
                     </a-tag>
                   </div>
                 </div>
                 <a-space v-perm="'fin:opening:edit'">
-                  <span class="sub-text">启用期间</span>
+                  <span class="sub-text">{{ $t('fin.opening.startPeriod') }}</span>
                   <PeriodPicker v-model:value="guideStart" :disabled="!!startPeriod && stock.locked" />
                   <a-button :disabled="!guideStart" @click="stockInImportOpen = true">
-                    <template #icon><ImportOutlined /></template>导入期初库存
+                    <template #icon><ImportOutlined /></template>{{ $t('fin.opening.importStock') }}
                   </a-button>
                 </a-space>
               </div>
               <div class="guide-step">
                 <div :class="['guide-no', { done: summary.stock.saved }]">4</div>
                 <div class="guide-body">
-                  <div class="guide-title">存货期初</div>
+                  <div class="guide-title">{{ $t('fin.opening.stockTab') }}</div>
                   <div class="sub-text">
-                    数量按期初库存自动带出，录入或导入金额，作为启用期间成本核算的期初；应与原材料、库存商品的科目期初一致。
-                    {{ summary.stock.saved ? `已保存（${periodText(summary.stock.openingPeriod)} 结存）` : '未保存' }}
+                    {{ $t('fin.opening.step4Tip') }}
+                    {{ summary.stock.saved ? $t('fin.opening.savedAt', { period: periodText(summary.stock.openingPeriod) }) : $t('fin.opening.notSaved') }}
                   </div>
                 </div>
-                <a-button @click="tab = 'stock'">去录入</a-button>
+                <a-button @click="tab = 'stock'">{{ $t('fin.opening.goEnter') }}</a-button>
               </div>
               <div class="guide-step">
                 <div :class="['guide-no', { done: summary.bills.AR.count || summary.bills.AP.count }]">5</div>
                 <div class="guide-body">
-                  <div class="guide-title">期初往来</div>
-                  <div class="sub-text">按客户、供应商导入启用时未收、未付的余额（手工应收应付单），之后在收付款中核销</div>
+                  <div class="guide-title">{{ $t('fin.opening.step5') }}</div>
+                  <div class="sub-text">{{ $t('fin.opening.step5Tip') }}</div>
                   <div v-for="k in ['AR', 'AP']" :key="k" class="guide-check">
-                    {{ k === 'AR' ? '应收' : '应付' }} {{ summary.bills[k].count }} 张，合计 {{ money(summary.bills[k].amount) }}；
-                    科目 {{ summary.bills[k].accountCode }} 期初 {{ money(summary.bills[k].ledger) }}
-                    <a-tag v-if="Math.abs(summary.bills[k].amount - summary.bills[k].ledger) < 0.005" color="green" :bordered="false">一致</a-tag>
-                    <a-tag v-else color="orange" :bordered="false">相差 {{ money(summary.bills[k].amount - summary.bills[k].ledger) }}</a-tag>
+                    {{ $t(k === 'AR' ? 'fin.opening.arCheck' : 'fin.opening.apCheck', { n: summary.bills[k].count, amount: money(summary.bills[k].amount) }) }}
+                    {{ $t('fin.opening.ledgerCheck', { code: summary.bills[k].accountCode, amount: money(summary.bills[k].ledger) }) }}
+                    <a-tag v-if="Math.abs(summary.bills[k].amount - summary.bills[k].ledger) < 0.005" color="green" :bordered="false">{{ $t('fin.opening.match') }}</a-tag>
+                    <a-tag v-else color="orange" :bordered="false">{{ $t('fin.opening.diff', { amount: money(summary.bills[k].amount - summary.bills[k].ledger) }) }}</a-tag>
                   </div>
                 </div>
                 <a-space v-perm="'fin:opening:edit'" direction="vertical">
-                  <a-button @click="openBillImport('AR')"><template #icon><ImportOutlined /></template>导入期初应收</a-button>
-                  <a-button @click="openBillImport('AP')"><template #icon><ImportOutlined /></template>导入期初应付</a-button>
+                  <a-button @click="openBillImport('AR')"><template #icon><ImportOutlined /></template>{{ $t('fin.opening.importAr') }}</a-button>
+                  <a-button @click="openBillImport('AP')"><template #icon><ImportOutlined /></template>{{ $t('fin.opening.importAp') }}</a-button>
                 </a-space>
               </div>
             </div>
@@ -85,25 +85,25 @@
         </a-tab-pane>
 
         <!-- ---------------------------------------------------------------- 科目期初 -->
-        <a-tab-pane key="account" tab="科目期初">
+        <a-tab-pane key="account" :tab="$t('fin.opening.accountTab')">
           <a-alert
             type="info"
             show-icon
             class="tip"
-            message="录入系统启用时各末级科目的余额，借方合计必须等于贷方合计；计入余额表、明细账、资产负债表的期初。已有结账的期间后不能修改。"
+            :message="$t('fin.opening.accountTip')"
           />
           <div class="toolbar">
-            <a-input-search v-model:value="accountKeyword" placeholder="科目编码或名称" allow-clear class="search" />
-            <a-checkbox v-model:checked="onlyFilled">只看有余额的科目</a-checkbox>
+            <a-input-search v-model:value="accountKeyword" :placeholder="$t('fin.opening.accountKeyword')" allow-clear class="search" />
+            <a-checkbox v-model:checked="onlyFilled">{{ $t('fin.opening.onlyFilled') }}</a-checkbox>
             <span class="spacer" />
             <span :class="['balance', { bad: !balanced }]">
-              借方 {{ money(totals.debit) }} · 贷方 {{ money(totals.credit) }}
-              <template v-if="!balanced">· 差额 {{ money(totals.debit - totals.credit) }}</template>
+              {{ $t('fin.opening.debit') }} {{ money(totals.debit) }} · {{ $t('fin.opening.credit') }} {{ money(totals.credit) }}
+              <template v-if="!balanced">· {{ $t('fin.opening.difference') }} {{ money(totals.debit - totals.credit) }}</template>
             </span>
             <a-button v-perm="'fin:opening:edit'" @click="accountImportOpen = true">
-              <template #icon><ImportOutlined /></template>导入
+              <template #icon><ImportOutlined /></template>{{ $t('common.action.import') }}
             </a-button>
-            <a-button v-perm="'fin:opening:edit'" type="primary" :loading="savingAccounts" @click="submitAccounts">保存科目期初</a-button>
+            <a-button v-perm="'fin:opening:edit'" type="primary" :loading="savingAccounts" @click="submitAccounts">{{ $t('fin.opening.saveAccounts') }}</a-button>
           </div>
           <a-table
             row-key="accountId"
@@ -112,12 +112,12 @@
             :columns="accountColumns"
             :data-source="filteredAccounts"
             :loading="loadingAccounts"
-            :pagination="{ pageSize: 50, showSizeChanger: false, showTotal: (t) => `共 ${t} 个末级科目` }"
+            :pagination="{ pageSize: 50, showSizeChanger: false, showTotal: (total) => $t('fin.opening.totalAccounts', { total }) }"
             :scroll="{ x: 760, y: '100%' }"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'category'"><DictTag type="fin_account_category" :value="record.category" /></template>
-              <template v-else-if="column.key === 'direction'">{{ record.direction === 'DEBIT' ? '借' : '贷' }}</template>
+              <template v-else-if="column.key === 'direction'">{{ record.direction === 'DEBIT' ? $t('fin.opening.dr') : $t('fin.opening.cr') }}</template>
               <template v-else-if="column.key === 'debit' || column.key === 'credit'">
                 <a-input-number
                   v-model:value="record[column.key]"
@@ -134,23 +134,22 @@
         </a-tab-pane>
 
         <!-- ---------------------------------------------------------------- 存货期初 -->
-        <a-tab-pane key="stock" tab="存货期初">
+        <a-tab-pane key="stock" :tab="$t('fin.opening.stockTab')">
           <a-alert type="info" show-icon class="tip">
             <template #message>
-              录入启用期间之前的结存数量和金额，作为启用期间成本核算的期初；数量默认按库存流水推算。
-              存货期初金额应与「原材料」「库存商品」的科目期初一致。核算过成本后不能修改。
+              {{ $t('fin.opening.stockTip') }}
             </template>
           </a-alert>
           <div class="toolbar">
-            <span>启用期间</span>
+            <span>{{ $t('fin.opening.startPeriod') }}</span>
             <PeriodPicker :value="startPeriod" :disabled="stock.locked" @update:value="changeStart" />
-            <a-tag v-if="stock.locked" color="orange" :bordered="false">已核算成本，不能修改</a-tag>
+            <a-tag v-if="stock.locked" color="orange" :bordered="false">{{ $t('fin.opening.locked') }}</a-tag>
             <span class="spacer" />
             <span v-for="c in stock.checks" :key="c.accountCode" :class="['balance', { bad: Number(c.stockAmount) !== Number(c.ledgerAmount) }]">
-              {{ c.accountCode }} {{ c.accountName }}：存货 {{ money(c.stockAmount) }} / 科目期初 {{ money(c.ledgerAmount) }}
+              {{ $t('fin.opening.stockCheck', { code: c.accountCode, name: c.accountName, stock: money(c.stockAmount), ledger: money(c.ledgerAmount) }) }}
             </span>
             <a-button v-perm="'fin:opening:edit'" :disabled="stock.locked || !startPeriod" @click="stockImportOpen = true">
-              <template #icon><ImportOutlined /></template>导入
+              <template #icon><ImportOutlined /></template>{{ $t('common.action.import') }}
             </a-button>
             <a-button
               v-perm="'fin:opening:edit'"
@@ -159,7 +158,7 @@
               :loading="savingStock"
               @click="submitStock"
             >
-              保存存货期初
+              {{ $t('fin.opening.saveStock') }}
             </a-button>
           </div>
           <a-table
@@ -169,9 +168,9 @@
             :columns="stockColumns"
             :data-source="stockRows"
             :loading="loadingStock"
-            :pagination="{ pageSize: 50, showSizeChanger: false, showTotal: (t) => `共 ${t} 个物料` }"
+            :pagination="{ pageSize: 50, showSizeChanger: false, showTotal: (total) => $t('fin.opening.totalMaterials', { total }) }"
             :scroll="{ x: 900, y: '100%' }"
-            :locale="{ emptyText: startPeriod ? '启用期间之前没有库存' : '请先选择启用期间' }"
+            :locale="{ emptyText: startPeriod ? $t('fin.opening.noStock') : $t('fin.opening.selectStartFirst') }"
           >
             <template #bodyCell="{ column, record, index }">
               <template v-if="column.key === 'material'">
@@ -212,29 +211,29 @@
             </template>
           </a-table>
           <a-button v-if="!stock.locked && startPeriod" type="dashed" block class="add-row" @click="addStockRow">
-            <template #icon><PlusOutlined /></template>添加物料
+            <template #icon><PlusOutlined /></template>{{ $t('fin.opening.addMaterial') }}
           </a-button>
         </a-tab-pane>
       </a-tabs>
     </a-card>
     <ImportModal
       v-model:open="accountImportOpen"
-      title="科目期初"
+      :title="$t('fin.opening.accountTab')"
       :columns="accountImportColumns"
       :importer="fillAccounts"
       :sample="{ code: '1001', debit: 10000 }"
     />
     <ImportModal
       v-model:open="stockInImportOpen"
-      title="期初库存"
+      :title="$t('fin.opening.step3')"
       :columns="stockInImportColumns"
       :importer="(data) => importOpeningStock(guideStart, data)"
-      :sample="{ warehouse: '原料仓', materialCode: 'M0001', qty: 100 }"
+      :sample="{ warehouse: $t('fin.opening.sampleWarehouse'), materialCode: 'M0001', qty: 100 }"
       @success="loadSummary(); loadStock(guideStart)"
     />
     <ImportModal
       v-model:open="billImportOpen"
-      :title="billImportKind === 'AR' ? '期初应收' : '期初应付'"
+      :title="billImportKind === 'AR' ? $t('fin.opening.openingAr') : $t('fin.opening.openingAp')"
       :columns="billImportColumns"
       :importer="(data) => importOpeningBills(billImportKind, data)"
       :sample="{ partner: billImportKind === 'AR' ? 'C0001' : 'S0001', billDate: '2026-01-31', amount: 10000 }"
@@ -242,7 +241,7 @@
     />
     <ImportModal
       v-model:open="stockImportOpen"
-      title="存货期初"
+      :title="$t('fin.opening.stockTab')"
       :columns="stockImportColumns"
       :importer="fillStock"
       :sample="{ code: 'M0001', qty: 100, amount: 1000 }"
@@ -253,6 +252,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, ImportOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -266,6 +266,7 @@ import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
 
 useDict('fin_account_category')
+const { t } = useI18n()
 const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPerm('fin:opening:edit'))
 const money = (n) => formatMoney(Number(n) || 0)
@@ -289,25 +290,25 @@ async function loadSummary() {
 
 const stockInImportOpen = ref(false)
 const stockInImportColumns = [
-  { title: '仓库', key: 'warehouse', required: true },
-  { title: '库位', key: 'location' },
-  { title: '物料编码', key: 'materialCode', required: true },
-  { title: '物料名称', key: 'materialName' },
-  { title: '批次号', key: 'batchNo' },
-  { title: '数量', key: 'qty', type: 'number', required: true },
-  { title: '序列号', key: 'serialNos' },
-  { title: '生产日期', key: 'productionDate', type: 'date' },
-  { title: '有效期至', key: 'expiryDate', type: 'date' }
+  { title: t('fin.opening.warehouse'), key: 'warehouse', required: true },
+  { title: t('fin.opening.location'), key: 'location' },
+  { title: t('fin.opening.materialCode'), key: 'materialCode', required: true },
+  { title: t('fin.opening.materialName'), key: 'materialName' },
+  { title: t('fin.opening.batchNo'), key: 'batchNo' },
+  { title: t('common.field.quantity'), key: 'qty', type: 'number', required: true },
+  { title: t('fin.opening.serialNos'), key: 'serialNos' },
+  { title: t('fin.opening.productionDate'), key: 'productionDate', type: 'date' },
+  { title: t('fin.opening.expiryDate'), key: 'expiryDate', type: 'date' }
 ]
 
 const billImportOpen = ref(false)
 const billImportKind = ref('AR')
 const billImportColumns = [
-  { title: '往来单位（编码或名称）', key: 'partner', required: true },
-  { title: '单据日期', key: 'billDate', type: 'date', required: true },
-  { title: '到期日', key: 'dueDate', type: 'date' },
-  { title: '金额', key: 'amount', type: 'number', required: true },
-  { title: '备注', key: 'remark' }
+  { title: t('fin.opening.partnerCol'), key: 'partner', required: true },
+  { title: t('fin.opening.billDate'), key: 'billDate', type: 'date', required: true },
+  { title: t('fin.opening.dueDate'), key: 'dueDate', type: 'date' },
+  { title: t('common.field.amount'), key: 'amount', type: 'number', required: true },
+  { title: t('common.field.remark'), key: 'remark' }
 ]
 function openBillImport(kind) {
   billImportKind.value = kind
@@ -316,12 +317,12 @@ function openBillImport(kind) {
 
 // ---------------------------------------------------------------- 科目期初
 const accountColumns = [
-  { title: '科目编码', dataIndex: 'code', width: 110 },
-  { title: '科目名称', dataIndex: 'name', width: 200 },
-  { title: '类别', key: 'category', width: 90 },
-  { title: '方向', key: 'direction', width: 60, align: 'center' },
-  { title: '期初借方', key: 'debit', width: 150 },
-  { title: '期初贷方', key: 'credit', width: 150 }
+  { title: t('fin.opening.accountCode'), dataIndex: 'code', width: 120 },
+  { title: t('fin.opening.accountName'), dataIndex: 'name', width: 200 },
+  { title: t('fin.opening.category'), key: 'category', width: 100 },
+  { title: t('fin.opening.direction'), key: 'direction', width: 80, align: 'center' },
+  { title: t('fin.opening.openingDebit'), key: 'debit', width: 150 },
+  { title: t('fin.opening.openingCredit'), key: 'credit', width: 150 }
 ]
 const accounts = ref([])
 const loadingAccounts = ref(false)
@@ -352,29 +353,29 @@ async function loadAccounts() {
 // 导入：按科目编码填入表格，核对后再保存
 const accountImportOpen = ref(false)
 const accountImportColumns = [
-  { title: '科目编码', key: 'code', required: true },
-  { title: '科目名称', key: 'name' },
-  { title: '期初借方', key: 'debit', type: 'number' },
-  { title: '期初贷方', key: 'credit', type: 'number' }
+  { title: t('fin.opening.accountCode'), key: 'code', required: true },
+  { title: t('fin.opening.accountName'), key: 'name' },
+  { title: t('fin.opening.openingDebit'), key: 'debit', type: 'number' },
+  { title: t('fin.opening.openingCredit'), key: 'credit', type: 'number' }
 ]
 async function fillAccounts({ rows }) {
   const byCode = new Map(accounts.value.map((a) => [a.code, a]))
   const errors = []
   rows.forEach(({ rowNum, data }) => {
     const a = byCode.get(data.code)
-    if (!a) errors.push({ rowNum, message: `科目「${data.code}」不存在或不是末级科目` })
-    else if (data.debit < 0 || data.credit < 0) errors.push({ rowNum, message: '金额不能小于0' })
+    if (!a) errors.push({ rowNum, message: t('fin.opening.accountNotFound', { code: data.code }) })
+    else if (data.debit < 0 || data.credit < 0) errors.push({ rowNum, message: t('fin.opening.amountNegative') })
   })
   if (!errors.length) {
     rows.forEach(({ data }) => Object.assign(byCode.get(data.code), { debit: data.debit || null, credit: data.credit || null }))
-    message.info('已填入表格，请核对后点击「保存科目期初」')
+    message.info(t('fin.opening.filledAccounts'))
   }
   return { total: rows.length, imported: errors.length ? 0 : rows.length, errors }
 }
 
 async function submitAccounts() {
   if (!balanced.value) {
-    message.warning('借方合计与贷方合计不相等')
+    message.warning(t('fin.opening.notBalanced'))
     return
   }
   savingAccounts.value = true
@@ -382,7 +383,7 @@ async function submitAccounts() {
     await saveAccountOpenings(
       accounts.value.filter((a) => Number(a.debit) || Number(a.credit)).map((a) => ({ accountId: a.accountId, debit: a.debit || 0, credit: a.credit || 0 }))
     )
-    message.success('科目期初已保存')
+    message.success(t('fin.opening.accountsSaved'))
     loadAccounts()
     loadStock()
   } finally {
@@ -392,11 +393,11 @@ async function submitAccounts() {
 
 // ---------------------------------------------------------------- 存货期初
 const stockColumns = [
-  { title: '物料', key: 'material', width: 260 },
-  { title: '账面结存', key: 'bookQty', width: 120, align: 'right' },
-  { title: '期初数量', key: 'qty', width: 140 },
-  { title: '单价', key: 'price', width: 140 },
-  { title: '期初金额', key: 'amount', width: 160 },
+  { title: t('fin.opening.material'), key: 'material', width: 260 },
+  { title: t('fin.opening.bookQty'), key: 'bookQty', width: 130, align: 'right' },
+  { title: t('fin.opening.openingQty'), key: 'qty', width: 140 },
+  { title: t('common.field.price'), key: 'price', width: 140 },
+  { title: t('fin.opening.openingAmount'), key: 'amount', width: 160 },
   { title: '', key: 'action', width: 50 }
 ]
 const stock = ref({ locked: false, checks: [], rows: [] })
@@ -428,10 +429,10 @@ function addStockRow() {
 
 const stockImportOpen = ref(false)
 const stockImportColumns = [
-  { title: '物料编码', key: 'code', required: true },
-  { title: '物料名称', key: 'name' },
-  { title: '期初数量', key: 'qty', type: 'number', required: true },
-  { title: '期初金额', key: 'amount', type: 'number', required: true }
+  { title: t('fin.opening.materialCode'), key: 'code', required: true },
+  { title: t('fin.opening.materialName'), key: 'name' },
+  { title: t('fin.opening.openingQty'), key: 'qty', type: 'number', required: true },
+  { title: t('fin.opening.openingAmount'), key: 'amount', type: 'number', required: true }
 ]
 async function fillStock({ rows }) {
   const byCode = new Map(stockRows.value.filter((r) => r.materialCode).map((r) => [r.materialCode, r]))
@@ -439,17 +440,17 @@ async function fillStock({ rows }) {
   const found = new Map()
   for (const { rowNum, data } of rows) {
     if (data.qty < 0 || data.amount < 0) {
-      errors.push({ rowNum, message: '数量和金额不能小于0' })
+      errors.push({ rowNum, message: t('fin.opening.qtyAmountNegative') })
       continue
     }
     if (!data.qty && data.amount) {
-      errors.push({ rowNum, message: '数量为 0 的物料不能有期初金额' })
+      errors.push({ rowNum, message: t('fin.opening.zeroQtyAmount') })
       continue
     }
     if (byCode.has(data.code)) continue
     const m = (await materialOptions(data.code)).find((x) => x.code === data.code)
     if (m) found.set(data.code, m)
-    else errors.push({ rowNum, message: `物料「${data.code}」不存在或已停用` })
+    else errors.push({ rowNum, message: t('fin.opening.materialNotFound', { code: data.code }) })
   }
   if (!errors.length) {
     rows.forEach(({ data }) => {
@@ -462,7 +463,7 @@ async function fillStock({ rows }) {
       }
       Object.assign(r, { qty: data.qty, amount: data.amount })
     })
-    message.info('已填入表格，请核对后点击「保存存货期初」')
+    message.info(t('fin.opening.filledStock'))
   }
   return { total: rows.length, imported: errors.length ? 0 : rows.length, errors }
 }
@@ -470,7 +471,7 @@ async function fillStock({ rows }) {
 async function submitStock() {
   const items = stockRows.value.filter((r) => r.materialId)
   if (items.some((r) => !r.qty && Number(r.amount))) {
-    message.warning('数量为 0 的物料不能有期初金额')
+    message.warning(t('fin.opening.zeroQtyAmount'))
     return
   }
   savingStock.value = true
@@ -479,7 +480,7 @@ async function submitStock() {
       startPeriod: startPeriod.value,
       items: items.map((r) => ({ materialId: r.materialId, qty: r.qty || 0, amount: r.amount || 0 }))
     })
-    message.success('存货期初已保存')
+    message.success(t('fin.opening.stockSaved'))
     loadStock()
   } finally {
     savingStock.value = false

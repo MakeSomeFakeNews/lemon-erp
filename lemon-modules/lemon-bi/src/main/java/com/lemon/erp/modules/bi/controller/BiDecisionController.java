@@ -86,7 +86,7 @@ public class BiDecisionController {
 
     @PostMapping("/alert-rule")
     @PreAuthorize("@ss.hasPerm('bi:alert:edit')")
-    @OperLog(title = "预警规则", type = OperType.INSERT)
+    @OperLog(title = "预警规则", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Void> createRule(@Valid @RequestBody BiAlertRule rule) {
         decisionService.saveRule(null, rule);
         return R.ok();
@@ -94,7 +94,7 @@ public class BiDecisionController {
 
     @PutMapping("/alert-rule/{id}")
     @PreAuthorize("@ss.hasPerm('bi:alert:edit')")
-    @OperLog(title = "预警规则", type = OperType.UPDATE)
+    @OperLog(title = "预警规则", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> updateRule(@PathVariable Long id, @Valid @RequestBody BiAlertRule rule) {
         decisionService.saveRule(id, rule);
         return R.ok();
@@ -102,7 +102,7 @@ public class BiDecisionController {
 
     @DeleteMapping("/alert-rule/{id}")
     @PreAuthorize("@ss.hasPerm('bi:alert:edit')")
-    @OperLog(title = "预警规则", type = OperType.DELETE)
+    @OperLog(title = "预警规则", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> deleteRule(@PathVariable Long id) {
         decisionService.deleteRule(id);
         return R.ok();
@@ -126,7 +126,7 @@ public class BiDecisionController {
 
     @PostMapping("/etl/run")
     @PreAuthorize("@ss.hasPerm('bi:etl:run')")
-    @OperLog(title = "数据仓库-同步", type = OperType.UPDATE)
+    @OperLog(title = "数据仓库-同步", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<BiEtlLog> run() {
         return R.ok(etlService.run("MANUAL"));
     }

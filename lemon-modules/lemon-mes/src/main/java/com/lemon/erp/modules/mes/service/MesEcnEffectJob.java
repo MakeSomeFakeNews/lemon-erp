@@ -34,6 +34,6 @@ public class MesEcnEffectJob implements JobHandler {
     @Override
     public String run(JobParams params) {
         int n = ecnService.effectDue(LocalDate.now());
-        return n == 0 ? "没有到期生效的工程变更" : "生效 " + n + " 项工程变更";
+        return n == 0 ? "没有到期生效的工程变更" : "生效 " + n + " 项工程变更"; // i18n-ignore
     }
 }

@@ -130,7 +130,7 @@ public class FinBankService {
             throw new BizException("该凭证分录已勾对");
         }
         if (new BigDecimal(entry.get("amount").toString()).compareTo(s.getAmount()) != 0) {
-            throw new BizException("金额不一致：流水 " + s.getAmount().toPlainString() + "，分录 " + entry.get("amount"));
+            throw new BizException("金额不一致：流水 {0}，分录 {1}", s.getAmount().toPlainString(), entry.get("amount"));
         }
         statementMapper.update(Wrappers.<FinBankStatement>lambdaUpdate().set(FinBankStatement::getEntryId, entryId).eq(FinBankStatement::getId, statementId));
     }

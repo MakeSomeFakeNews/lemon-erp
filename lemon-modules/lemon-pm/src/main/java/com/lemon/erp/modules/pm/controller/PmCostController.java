@@ -49,14 +49,14 @@ public class PmCostController {
 
     @PostMapping("/cost")
     @PreAuthorize("@ss.hasPerm('pm:cost:add')")
-    @OperLog(title = "项目费用", type = OperType.INSERT)
+    @OperLog(title = "项目费用", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> create(@Valid @RequestBody CostRequest req) {
         return R.ok(costService.create(req));
     }
 
     @DeleteMapping("/cost/{ids}")
     @PreAuthorize("@ss.hasPerm('pm:cost:remove')")
-    @OperLog(title = "项目费用", type = OperType.DELETE)
+    @OperLog(title = "项目费用", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         costService.delete(ids);
         return R.ok();
@@ -71,7 +71,7 @@ public class PmCostController {
 
     @PutMapping("/project/{id}/budget")
     @PreAuthorize("@ss.hasPerm('pm:cost:budget')")
-    @OperLog(title = "项目预算", type = OperType.UPDATE)
+    @OperLog(title = "项目预算", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> saveBudgets(@PathVariable Long id, @Valid @RequestBody BudgetRequest req) {
         costService.saveBudgets(id, req);
         return R.ok();
@@ -79,7 +79,7 @@ public class PmCostController {
 
     @PostMapping("/project/{id}/issue")
     @PreAuthorize("@ss.hasPerm('pm:cost:issue')")
-    @OperLog(title = "项目领料", type = OperType.INSERT)
+    @OperLog(title = "项目领料", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> issue(@PathVariable Long id, @Valid @RequestBody IssueRequest req) {
         return R.ok(costService.issue(id, req));
     }

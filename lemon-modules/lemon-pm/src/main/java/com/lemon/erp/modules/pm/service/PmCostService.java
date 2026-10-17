@@ -113,12 +113,12 @@ public class PmCostService {
     public void delete(List<Long> ids) {
         for (PmCost c : costMapper.selectByIds(ids)) {
             if (!"MANUAL".equals(c.getSource())) {
-                throw new BizException("领料生成的成本（" + c.getSourceNo() + "）不能删除");
+                throw new BizException("领料生成的成本（{0}）不能删除", c.getSourceNo());
             }
             if ("APPROVING".equals(c.getStatus())) {
                 throw new BizException("费用审批中，请先在「我的申请」中撤回");
             }
-            PmCloseService.checkNotPosted(c.getVoucherId(), "费用");
+            PmCloseService.checkNotPosted(c.getVoucherId(), "费用"); // i18n-ignore checkNotPosted 中翻译
         }
         costMapper.deleteByIds(ids);
     }
@@ -157,8 +157,8 @@ public class PmCostService {
         if (typeBudget != null && typeBudget.getAmount().signum() > 0) {
             BigDecimal after = typeBudget.getActual().add(amount);
             if (after.compareTo(typeBudget.getAmount()) > 0) {
-                throw new BizException("超出项目「" + costType + "」类预算：预算 " + plain(typeBudget.getAmount()) + "，已发生 "
-                        + plain(typeBudget.getActual()) + "，本次 " + plain(amount));
+                throw new BizException("超出项目「{0}」类预算：预算 {1}，已发生 {2}，本次 {3}", costType, plain(typeBudget.getAmount()),
+                        plain(typeBudget.getActual()), plain(amount));
             }
             return;
         }
@@ -166,7 +166,7 @@ public class PmCostService {
         if (budget.signum() > 0) {
             BigDecimal actual = rows.stream().map(PmBudget::getActual).reduce(BigDecimal.ZERO, BigDecimal::add);
             if (actual.add(amount).compareTo(budget) > 0) {
-                throw new BizException("超出项目成本预算：预算 " + plain(budget) + "，已发生 " + plain(actual) + "，本次 " + plain(amount));
+                throw new BizException("超出项目成本预算：预算 {0}，已发生 {1}，本次 {2}", plain(budget), plain(actual), plain(amount));
             }
         }
     }
@@ -186,7 +186,7 @@ public class PmCostService {
         budgetMapper.delete(Wrappers.<PmBudget>lambdaQuery().eq(PmBudget::getProjectId, projectId));
         for (BudgetRequest.Item item : req.items()) {
             if (!COST_TYPES.contains(item.costType())) {
-                throw new BizException("成本类型不正确：" + item.costType());
+                throw new BizException("成本类型不正确：{0}", item.costType());
             }
             if (item.amount().signum() == 0) {
                 continue;
@@ -212,8 +212,9 @@ public class PmCostService {
         if (!"ACTIVE".equals(p.getStatus())) {
             throw new BizException("项目进行中才能领料");
         }
+        String remark = req.remark() == null ? "项目领料 " + p.getName() : req.remark(); // i18n-ignore 单据备注存库
         WmsStockDoc doc = stockDocService.createConfirmed(StockBizType.OUT, new StockDocRequest("PROJECT", req.warehouseId(), null,
-                req.bizDate(), req.remark() == null ? "项目领料 " + p.getName() : req.remark(), req.items()), p.getCode());
+                req.bizDate(), remark, req.items()), p.getCode());
         Map<Long, BigDecimal> unitCosts = new HashMap<>();
         for (Map<String, Object> r : costMapper.selectUnitCosts(req.items().stream().map(StockDocItemRequest::materialId).toList())) {
             unitCosts.put(((Number) r.get("materialId")).longValue(), new BigDecimal(r.get("unitCost").toString()));
@@ -228,7 +229,7 @@ public class PmCostService {
         c.setCostType("MATERIAL");
         c.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
         c.setCostDate(req.bizDate());
-        c.setDescription("项目领料 " + doc.getDocNo());
+        c.setDescription("项目领料 " + doc.getDocNo()); // i18n-ignore 存库
         c.setSource("ISSUE");
         c.setSourceNo(doc.getDocNo());
         c.setCreateBy(SecurityUtils.getUserId());

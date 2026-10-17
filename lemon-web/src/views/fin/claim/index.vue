@@ -2,14 +2,14 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="关键字" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="单号、报销人或事由" allow-clear />
+        <a-form-item :label="$t('common.field.keyword')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('fin.claim.keywordPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.fin_claim_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.fin_claim_status)" />
         </a-form-item>
         <a-form-item name="mine">
-          <a-checkbox v-model:checked="query.mine" @change="search">只看我的</a-checkbox>
+          <a-checkbox v-model:checked="query.mine" @change="search">{{ $t('fin.claim.mine') }}</a-checkbox>
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -24,12 +24,12 @@
         @refresh="load"
       >
         <a-button v-perm="'fin:claim:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新增报销
+          <template #icon><PlusOutlined /></template>{{ $t('fin.claim.add') }}
         </a-button>
         <a-alert
           type="info"
           show-icon
-          message="提交时检查费用预算；发布了 fin_expense 流程时走审批，否则直接待付款。付款时有关联借款的先冲抵借款，差额再付款。"
+          :message="$t('fin.claim.hint')"
         />
       </TableToolbar>
       <a-table
@@ -54,7 +54,7 @@
           <template v-else-if="column.key === 'loan'">
             <template v-if="record.loanId">
               <div>{{ record.loanNo }}</div>
-              <div v-if="Number(record.loanOffset)" class="sub-text">冲抵 {{ formatMoney(record.loanOffset) }}</div>
+              <div v-if="Number(record.loanOffset)" class="sub-text">{{ $t('fin.claim.offsetText', { amount: formatMoney(record.loanOffset) }) }}</div>
             </template>
             <span v-else class="sub-text">-</span>
           </template>
@@ -71,15 +71,15 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <template v-if="record.status === 'DRAFT'">
-                <a-button v-perm="'fin:claim:add'" type="link" size="small" @click="drawer.openEdit(record)">编辑</a-button>
-                <a-button v-perm="'fin:claim:add'" type="link" size="small" @click="submit(record)">提交</a-button>
+                <a-button v-perm="'fin:claim:add'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
+                <a-button v-perm="'fin:claim:add'" type="link" size="small" @click="submit(record)">{{ $t('common.action.submit') }}</a-button>
                 <span v-perm="'fin:claim:add'">
-                  <a-popconfirm :title="`删除报销单 ${record.claimNo}？`" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small">删除</a-button>
+                  <a-popconfirm :title="$t('fin.claim.confirmDelete', { no: record.claimNo })" @confirm="remove(record.id)">
+                    <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
                   </a-popconfirm>
                 </span>
               </template>
-              <a-button v-if="record.status === 'APPROVED'" v-perm="'fin:claim:pay'" type="link" size="small" @click="openPay(record)">付款</a-button>
+              <a-button v-if="record.status === 'APPROVED'" v-perm="'fin:claim:pay'" type="link" size="small" @click="openPay(record)">{{ $t('fin.claim.pay') }}</a-button>
             </span>
           </template>
         </template>
@@ -87,48 +87,48 @@
     </a-card>
 
     <!-- 新增 / 编辑 -->
-    <FormDrawer page :drawer="drawer" create-title="新增报销" edit-title="编辑报销" width="min(1080px, 100vw)">
+    <FormDrawer page :drawer="drawer" :create-title="$t('fin.claim.add')" :edit-title="$t('fin.claim.edit')" width="min(1080px, 100vw)">
       <a-form ref="formRef" :model="form" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="6">
-            <a-form-item label="报销人" name="userId" extra="不选为本人">
+            <a-form-item :label="$t('fin.claim.claimant')" name="userId" :extra="$t('fin.claim.claimantExtra')">
               <IdentityUserSelect v-model:value="form.userId" :label="form.userName" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="6">
-            <a-form-item label="费用部门" name="deptId" extra="不选取报销人的部门">
+            <a-form-item :label="$t('fin.claim.expenseDept')" name="deptId" :extra="$t('fin.claim.expenseDeptExtra')">
               <DeptSelect v-model:value="form.deptId" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="5">
-            <a-form-item label="报销日期" name="claimDate" :rules="[{ required: true, message: '请选择报销日期' }]">
+            <a-form-item :label="$t('fin.claim.claimDate')" name="claimDate" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('fin.claim.claimDate') }) }]">
               <a-date-picker v-model:value="form.claimDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="7">
-            <a-form-item label="冲抵借款" name="loanId" extra="付款时先冲抵该借款的未还金额">
+            <a-form-item :label="$t('fin.claim.offsetLoan')" name="loanId" :extra="$t('fin.claim.offsetLoanExtra')">
               <a-select
                 v-model:value="form.loanId"
                 allow-clear
-                placeholder="报销人未还清的借款"
+                :placeholder="$t('fin.claim.loanPh')"
                 :options="loanOptions"
                 :loading="loanLoading"
-                :not-found-content="loanLoading ? '加载中…' : '没有未还清的借款'"
+                :not-found-content="loanLoading ? $t('common.msg.loading') : $t('fin.claim.noLoan')"
               />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="事由" name="remark">
-              <a-input v-model:value="form.remark" :maxlength="255" placeholder="如：10 月上海出差" />
+            <a-form-item :label="$t('fin.claim.reason')" name="remark">
+              <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('fin.claim.reasonPh')" />
             </a-form-item>
           </a-col>
         </a-row>
       </a-form>
       <div class="items-head">
-        <span class="section-title">报销明细</span>
+        <span class="section-title">{{ $t('fin.claim.items') }}</span>
         <a-space>
-          <span>合计 <b class="total">¥{{ formatMoney(itemTotal) }}</b></span>
-          <a-button size="small" @click="addItem"><template #icon><PlusOutlined /></template>添加一行</a-button>
+          <span>{{ $t('common.field.total') }} <b class="total">¥{{ formatMoney(itemTotal) }}</b></span>
+          <a-button size="small" @click="addItem"><template #icon><PlusOutlined /></template>{{ $t('common.action.addRow') }}</a-button>
         </a-space>
       </div>
       <a-table row-key="key" size="small" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: 980 }">
@@ -137,16 +137,16 @@
             <a-date-picker v-model:value="record.expenseDate" value-format="YYYY-MM-DD" class="full" />
           </template>
           <template v-else-if="column.key === 'accountId'">
-            <AccountSelect v-model:value="record.accountId" :prefix="EXPENSE_PREFIX" placeholder="费用科目" />
+            <AccountSelect v-model:value="record.accountId" :prefix="EXPENSE_PREFIX" :placeholder="$t('fin.claim.expenseAccount')" />
           </template>
           <template v-else-if="column.key === 'projectId'">
-            <ProjectSelect v-model:value="record.projectId" placeholder="不归集到项目" />
+            <ProjectSelect v-model:value="record.projectId" :placeholder="$t('fin.claim.noProject')" />
           </template>
           <template v-else-if="column.key === 'amount'">
             <a-input-number v-model:value="record.amount" :min="0.01" :precision="2" class="full" />
           </template>
           <template v-else-if="column.key === 'remark'">
-            <a-input v-model:value="record.remark" :maxlength="255" placeholder="如：高铁票" />
+            <a-input v-model:value="record.remark" :maxlength="255" :placeholder="$t('fin.claim.itemRemarkPh')" />
           </template>
           <template v-else-if="column.key === 'action'">
             <a-button type="link" danger size="small" :disabled="form.items.length <= 1" @click="form.items.splice(index, 1)">
@@ -158,43 +158,43 @@
     </FormDrawer>
 
     <!-- 付款 -->
-    <a-modal v-model:open="payOpen" :title="`报销付款 ${payTarget?.claimNo || ''}`" :confirm-loading="paying" @ok="submitPay">
+    <a-modal v-model:open="payOpen" :title="$t('fin.claim.payTitle', { no: payTarget?.claimNo || '' })" :confirm-loading="paying" @ok="submitPay">
       <a-alert
         type="info"
         show-icon
         class="tip"
         :message="payTarget?.loanId
-          ? `该报销关联借款 ${payTarget.loanNo}：先冲抵借款的未还金额（贷 其他应收款），差额再从结算账户付款；借款已还清时全额付款。`
-          : '生成凭证：借 费用科目（部门、项目）/ 贷 结算账户。'"
+          ? $t('fin.claim.payTipLoan', { no: payTarget.loanNo })
+          : $t('fin.claim.payTip')"
       />
-      <p v-if="payTarget">{{ payTarget.userName }} 报销 <b>¥{{ formatMoney(payTarget.amount) }}</b></p>
+      <p v-if="payTarget">{{ $t('fin.claim.payLine', { name: payTarget.userName }) }} <b>¥{{ formatMoney(payTarget.amount) }}</b></p>
       <a-form layout="vertical">
-        <a-form-item label="付款账户" :required="!payTarget?.loanId" :extra="payTarget?.loanId ? '借款未还金额足以冲抵全部报销额时可以不选' : ''">
-          <AccountSelect v-model:value="payForm.accountId" :prefix="['1001', '1002']" placeholder="库存现金 / 银行存款" />
+        <a-form-item :label="$t('fin.claim.payAccount')" :required="!payTarget?.loanId" :extra="payTarget?.loanId ? $t('fin.claim.payAccountExtra') : ''">
+          <AccountSelect v-model:value="payForm.accountId" :prefix="['1001', '1002']" :placeholder="$t('fin.claim.payAccountPh')" />
         </a-form-item>
-        <a-form-item label="付款日期" required>
+        <a-form-item :label="$t('fin.claim.payDate')" required>
           <a-date-picker v-model:value="payForm.date" value-format="YYYY-MM-DD" :allow-clear="false" class="full" />
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- 详情 -->
-    <SubPage :open="detailOpen" :title="detail ? `报销单 ${detail.claimNo}` : ''" width="min(860px, 100vw)" @close="detailOpen = false">
+    <SubPage :open="detailOpen" :title="detail ? $t('fin.claim.detailTitle', { no: detail.claimNo }) : ''" width="min(860px, 100vw)" @close="detailOpen = false">
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2 }" size="small" class="block">
-          <a-descriptions-item label="报销人">{{ detail.userName }}</a-descriptions-item>
-          <a-descriptions-item label="费用部门">{{ detail.deptName || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="报销日期">{{ detail.claimDate }}</a-descriptions-item>
-          <a-descriptions-item label="状态"><DictTag type="fin_claim_status" :value="detail.status" /></a-descriptions-item>
-          <a-descriptions-item label="金额"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
-          <a-descriptions-item label="冲抵借款">
+          <a-descriptions-item :label="$t('fin.claim.claimant')">{{ detail.userName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.claim.expenseDept')">{{ detail.deptName || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.claim.claimDate')">{{ detail.claimDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.status')"><DictTag type="fin_claim_status" :value="detail.status" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.amount')"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.claim.offsetLoan')">
             {{ detail.loanNo || '-' }}
-            <span v-if="Number(detail.loanOffset)" class="sub-text">（冲抵 {{ formatMoney(detail.loanOffset) }}）</span>
+            <span v-if="Number(detail.loanOffset)" class="sub-text">{{ $t('fin.claim.offsetParen', { amount: formatMoney(detail.loanOffset) }) }}</span>
           </a-descriptions-item>
-          <a-descriptions-item label="付款">{{ detail.payDate || '-' }} {{ detail.voucherNo || '' }}</a-descriptions-item>
-          <a-descriptions-item label="事由">{{ detail.remark || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.claim.pay')">{{ detail.payDate || '-' }} {{ detail.voucherNo || '' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.claim.reason')">{{ detail.remark || '-' }}</a-descriptions-item>
         </a-descriptions>
-        <div class="section-title">报销明细</div>
+        <div class="section-title">{{ $t('fin.claim.items') }}</div>
         <a-table row-key="id" size="small" :columns="detailColumns" :data-source="detail.items" :pagination="false">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'account'">{{ record.accountCode }} {{ record.accountName }}</template>
@@ -212,6 +212,7 @@
 import SubPage from '@/components/SubPage.vue'
 import { computed, h, onMounted, reactive, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -235,19 +236,20 @@ import { formatMoney } from '@/components/fin/fin'
 /** 费用科目：制造费用、销售费用、管理费用、财务费用下的末级科目 */
 const EXPENSE_PREFIX = ['5101', '6601', '6602', '6603']
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const dict = useDict('fin_claim_status')
 
 const columns = [
-  { title: '单号', key: 'claimNo', dataIndex: 'claimNo', width: 160 },
-  { title: '报销人', key: 'user', dataIndex: 'userName', width: 150 },
-  { title: '报销日期', dataIndex: 'claimDate', width: 110 },
-  { title: '金额', key: 'amount', dataIndex: 'amount', width: 130, align: 'right' },
-  { title: '冲抵借款', key: 'loan', dataIndex: 'loanNo', width: 150 },
-  { title: '状态', key: 'status', dataIndex: 'status', width: 100, dict: 'fin_claim_status' },
-  { title: '付款', key: 'pay', dataIndex: 'payDate', width: 130 },
-  { title: '事由', dataIndex: 'remark', ellipsis: true },
-  { title: '操作', key: 'action', width: 170, fixed: 'right' }
+  { title: t('fin.claim.claimNo'), key: 'claimNo', dataIndex: 'claimNo', width: 160 },
+  { title: t('fin.claim.claimant'), key: 'user', dataIndex: 'userName', width: 150 },
+  { title: t('fin.claim.claimDate'), dataIndex: 'claimDate', width: 120 },
+  { title: t('common.field.amount'), key: 'amount', dataIndex: 'amount', width: 130, align: 'right' },
+  { title: t('fin.claim.offsetLoan'), key: 'loan', dataIndex: 'loanNo', width: 150 },
+  { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 120, dict: 'fin_claim_status' },
+  { title: t('fin.claim.pay'), key: 'pay', dataIndex: 'payDate', width: 130 },
+  { title: t('fin.claim.reason'), dataIndex: 'remark', ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'fin-claim')
 const showSearch = ref(true)
@@ -263,10 +265,10 @@ function resetQuery() {
 
 async function submit(record) {
   const res = await submitClaim(record.id)
-  const text = res.flow ? '已提交审批' : '已提交，待付款'
+  const text = res.flow ? t('fin.claim.submittedFlow') : t('fin.claim.submitted')
   if (res.warnings?.length) {
     Modal.warning({
-      title: `${text}，但超出预算`,
+      title: t('fin.claim.overBudget', { text }),
       content: h('ul', { class: 'warn-list' }, res.warnings.map((w) => h('li', w)))
     })
   } else {
@@ -277,7 +279,7 @@ async function submit(record) {
 
 async function remove(id) {
   await deleteClaim(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 
@@ -285,11 +287,11 @@ async function remove(id) {
 let seq = 0
 const emptyItem = (date) => ({ key: ++seq, expenseDate: date || today(), accountId: undefined, projectId: undefined, amount: undefined, remark: '' })
 const itemColumns = [
-  { title: '费用日期', key: 'expenseDate', width: 140 },
-  { title: '费用科目', key: 'accountId', width: 220 },
-  { title: '项目', key: 'projectId', width: 180 },
-  { title: '金额', key: 'amount', width: 130 },
-  { title: '说明', key: 'remark' },
+  { title: t('fin.claim.expenseDate'), key: 'expenseDate', width: 140 },
+  { title: t('fin.claim.expenseAccount'), key: 'accountId', width: 220 },
+  { title: t('fin.claim.project'), key: 'projectId', width: 180 },
+  { title: t('common.field.amount'), key: 'amount', width: 130 },
+  { title: t('common.field.description'), key: 'remark' },
   { title: '', key: 'action', width: 50 }
 ]
 const drawer = useFormDrawer({
@@ -328,7 +330,7 @@ const drawer = useFormDrawer({
       .map((i) => ({ expenseDate: i.expenseDate || null, accountId: i.accountId, projectId: i.projectId || null, amount: i.amount, remark: i.remark || null }))
   }),
   onSuccess: load,
-  successMessage: '保存成功，请提交'
+  successMessage: t('fin.claim.savedSubmit')
 })
 const { formRef, form } = drawer
 const itemTotal = computed(() => Math.round((form.value.items || []).reduce((s, i) => s + (Number(i.amount) || 0), 0) * 100) / 100)
@@ -343,7 +345,7 @@ const loanLoading = ref(false)
 const loanOptions = computed(() => {
   const opts = loans.value.map((l) => ({
     value: l.id,
-    label: `${l.loanNo} ${l.loanDate} 未还 ¥${formatMoney(Number(l.amount) - Number(l.repaidAmount || 0))}`
+    label: t('fin.claim.loanOption', { no: l.loanNo, date: l.loanDate, amount: formatMoney(Number(l.amount) - Number(l.repaidAmount || 0)) })
   }))
   const f = form.value
   if (f.loanId && !opts.some((o) => o.value === f.loanId)) opts.unshift({ value: f.loanId, label: f.loanNo || String(f.loanId) })
@@ -385,13 +387,13 @@ function openPay(record) {
 }
 async function submitPay() {
   if (!payForm.accountId && !payTarget.value.loanId) {
-    message.warning('请选择付款账户')
+    message.warning(t('common.rule.requiredSelect', { name: t('fin.claim.payAccount') }))
     return
   }
   paying.value = true
   try {
     await payClaim(payTarget.value.id, { accountId: payForm.accountId || null, date: payForm.date })
-    message.success('已付款，凭证已生成')
+    message.success(t('fin.claim.paid'))
     payOpen.value = false
     load()
   } finally {
@@ -401,10 +403,10 @@ async function submitPay() {
 
 // ---------------------------------------------------------------- 详情
 const detailColumns = [
-  { title: '费用日期', dataIndex: 'expenseDate', width: 110 },
-  { title: '费用科目', key: 'account', width: 200 },
-  { title: '金额', key: 'amount', width: 120, align: 'right' },
-  { title: '说明', dataIndex: 'remark', ellipsis: true }
+  { title: t('fin.claim.expenseDate'), dataIndex: 'expenseDate', width: 120 },
+  { title: t('fin.claim.expenseAccount'), key: 'account', width: 200 },
+  { title: t('common.field.amount'), key: 'amount', width: 120, align: 'right' },
+  { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true }
 ]
 const detailOpen = ref(false)
 const detail = ref()

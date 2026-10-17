@@ -91,7 +91,7 @@ public class MesTechDocController {
 
     @PostMapping("/{id}/release")
     @PreAuthorize("@ss.hasPerm('mes:doc:release')")
-    @OperLog(title = "技术文档-发布", type = OperType.UPDATE)
+    @OperLog(title = "技术文档-发布", type = OperType.UPDATE) // i18n-ignore
     public R<Void> release(@PathVariable Long id) {
         docService.release(id);
         return R.ok();
@@ -100,7 +100,7 @@ public class MesTechDocController {
     /** 升版，返回新版本 ID */
     @PostMapping("/{id}/revise")
     @PreAuthorize("@ss.hasPerm('mes:doc:add')")
-    @OperLog(title = "技术文档-升版", type = OperType.INSERT)
+    @OperLog(title = "技术文档-升版", type = OperType.INSERT) // i18n-ignore
     public R<Long> revise(@PathVariable Long id, @Valid @RequestBody PlmRequests.Revise req) {
         return R.ok(docService.revise(id, req));
     }

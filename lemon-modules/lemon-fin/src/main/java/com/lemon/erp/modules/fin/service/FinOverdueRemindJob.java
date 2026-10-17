@@ -42,10 +42,12 @@ public class FinOverdueRemindJob implements JobHandler {
         Map<String, Object> s = jobMapper.selectOverdueSummary("AR", today);
         long count = s == null ? 0 : ((Number) s.get("count")).longValue();
         if (count == 0) {
-            return "没有逾期应收";
+            // 执行结果写入任务日志，不翻译
+            return "没有逾期应收"; // i18n-ignore
         }
-        messageSender.sendToPermission("fin:ar:list", Message.of("ALERT", "有 " + count + " 张应收单已逾期",
-                "逾期未收金额 " + s.get("amount") + "，请在账龄分析中跟进", "/fin/ar").dedup("ar-overdue:" + today));
-        return "逾期应收 " + count + " 张";
+        messageSender.sendToPermission("fin:ar:list", Message.of("ALERT", "有 " + count + " 张应收单已逾期", // i18n-ignore
+                "逾期未收金额 " + s.get("amount") + "，请在账龄分析中跟进", "/fin/ar") // i18n-ignore
+               .dedup("ar-overdue:" + today));
+        return "逾期应收 " + count + " 张"; // i18n-ignore
     }
 }

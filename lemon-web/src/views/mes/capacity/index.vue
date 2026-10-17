@@ -3,29 +3,29 @@
     <a-card :bordered="false" class="page-card">
       <a-tabs v-model:active-key="tab">
         <!-- 负荷分析 -->
-        <a-tab-pane key="load" tab="负荷分析">
+        <a-tab-pane key="load" :tab="$t('mes.capacity.loadTab')">
           <div class="toolbar">
             <a-space wrap>
               <a-range-picker v-model:value="range" value-format="YYYY-MM-DD" :allow-clear="false" @change="loadData" />
-              <WorkCenterSelect v-model:value="workCenterId" placeholder="全部工作中心" class="wc-select" />
-              <a-button @click="loadData"><template #icon><ReloadOutlined /></template>刷新</a-button>
+              <WorkCenterSelect v-model:value="workCenterId" :placeholder="$t('mes.capacity.allWc')" class="wc-select" />
+              <a-button @click="loadData"><template #icon><ReloadOutlined /></template>{{ $t('common.action.refresh') }}</a-button>
             </a-space>
             <a-button v-perm="'mes:capacity:edit'" type="primary" :loading="scheduling" @click="scheduleAllWo">
-              <template #icon><ScheduleOutlined /></template>全部排程
+              <template #icon><ScheduleOutlined /></template>{{ $t('mes.capacity.scheduleAll') }}
             </a-button>
           </div>
           <a-alert
             type="info"
             show-icon
             class="tip"
-            message="产能 = 每资源每日工时 × 资源数（工作日以外为 0，工厂日历可单独调整）；负荷 = 各工序剩余数量 × 标准工时，按工序计划日期均摊到工作日。利用率超过 85% 橙色、超过 100% 红色。"
+            :message="$t('mes.capacity.tip')"
           />
           <div class="legend">
-            <span><i class="cell-dot lv-idle" />空闲</span>
+            <span><i class="cell-dot lv-idle" />{{ $t('mes.capacity.idle') }}</span>
             <span><i class="cell-dot lv-ok" />≤ 85%</span>
             <span><i class="cell-dot lv-high" />85% ~ 100%</span>
-            <span><i class="cell-dot lv-over" />超负荷</span>
-            <span><i class="cell-dot lv-off" />休息</span>
+            <span><i class="cell-dot lv-over" />{{ $t('mes.capacity.over') }}</span>
+            <span><i class="cell-dot lv-off" />{{ $t('mes.capacity.off') }}</span>
           </div>
           <a-table
             row-key="workCenterId"
@@ -49,20 +49,20 @@
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'wc'">
                 <div>{{ record.name }}</div>
-                <div class="sub-text">{{ record.code }}，{{ record.ops?.length || 0 }} 道工序</div>
+                <div class="sub-text">{{ $t('mes.capacity.wcOps', { code: record.code, n: record.ops?.length || 0 }) }}</div>
               </template>
               <template v-else-if="column.key === 'util'">
                 <div :class="['util', levelOf(record.load, record.capacity)]">{{ utilText(record.load, record.capacity) }}</div>
-                <div class="sub-text">{{ formatQty(round(record.load)) }} / {{ formatQty(round(record.capacity)) }} 工时</div>
+                <div class="sub-text">{{ $t('mes.capacity.loadOfCap', { load: formatQty(round(record.load)), cap: formatQty(round(record.capacity)) }) }}</div>
               </template>
               <template v-else-if="column.date">
-                <a-tooltip v-if="dayOf(record, column.date)" :title="`${column.date}：负荷 ${formatQty(round(dayOf(record, column.date).load))} / 产能 ${formatQty(round(dayOf(record, column.date).capacity))} 工时`">
+                <a-tooltip v-if="dayOf(record, column.date)" :title="$t('mes.capacity.dayTip', { date: column.date, load: formatQty(round(dayOf(record, column.date).load)), cap: formatQty(round(dayOf(record, column.date).capacity)) })">
                   <div :class="['day-cell', levelOf(dayOf(record, column.date).load, dayOf(record, column.date).capacity)]">
                     <template v-if="Number(dayOf(record, column.date).capacity) || Number(dayOf(record, column.date).load)">
                       <div class="day-load">{{ formatQty(round(dayOf(record, column.date).load)) }}</div>
                       <div class="day-cap">/ {{ formatQty(round(dayOf(record, column.date).capacity)) }}</div>
                     </template>
-                    <span v-else class="day-cap">休</span>
+                    <span v-else class="day-cap">{{ $t('mes.capacity.offShort') }}</span>
                   </div>
                 </a-tooltip>
               </template>
@@ -77,7 +77,7 @@
                   <template v-else-if="column.key === 'op'">{{ op.seq }} {{ op.opName }}</template>
                   <template v-else-if="column.key === 'plan'">
                     <template v-if="op.planStart">{{ op.planStart }} ~ {{ op.planEnd || '-' }}</template>
-                    <span v-else class="sub-text">未排程</span>
+                    <span v-else class="sub-text">{{ $t('mes.wo.unscheduled') }}</span>
                   </template>
                   <template v-else-if="column.key === 'hours'">{{ formatQty(round(op.hours)) }}</template>
                 </template>
@@ -87,11 +87,11 @@
         </a-tab-pane>
 
         <!-- 工厂日历 -->
-        <a-tab-pane key="calendar" tab="工厂日历">
+        <a-tab-pane key="calendar" :tab="$t('mes.capacity.calendarTab')">
           <div class="toolbar">
             <a-space wrap>
               <a-select v-model:value="calWc" :options="calWcOptions" show-search option-filter-prop="label" class="wc-select" @change="loadCalendar" />
-              <span class="sub-text">点击日期设置当天每个资源的可用工时（0 为休息），优先于工作中心的工作日设置；工作中心未单独设置时取全厂设置。</span>
+              <span class="sub-text">{{ $t('mes.capacity.calendarTip') }}</span>
             </a-space>
           </div>
           <a-row :gutter="16">
@@ -99,24 +99,24 @@
               <a-calendar v-model:value="calMonth" @panel-change="onPanelChange" @select="onSelectDate">
                 <template #dateCellRender="{ current }">
                   <div v-if="entryOf(current)" :class="['cal-entry', { inherited: entryOf(current).workCenterId !== calWc, off: !Number(entryOf(current).hours) }]">
-                    <div>{{ Number(entryOf(current).hours) ? `${formatQty(entryOf(current).hours)} 小时` : '休息' }}</div>
-                    <div v-if="entryOf(current).workCenterId !== calWc" class="sub-text">全厂</div>
+                    <div>{{ Number(entryOf(current).hours) ? $t('mes.bom.hoursN', { v: formatQty(entryOf(current).hours) }) : $t('mes.capacity.off') }}</div>
+                    <div v-if="entryOf(current).workCenterId !== calWc" class="sub-text">{{ $t('mes.capacity.factory') }}</div>
                     <div v-if="entryOf(current).remark" class="cal-remark">{{ entryOf(current).remark }}</div>
                   </div>
                 </template>
               </a-calendar>
             </a-col>
             <a-col :xs="24" :lg="8">
-              <div class="section-title">本月设置（{{ calWcLabel }}）</div>
+              <div class="section-title">{{ $t('mes.capacity.monthSettings', { wc: calWcLabel }) }}</div>
               <a-table row-key="id" size="small" :columns="calColumns" :data-source="ownEntries" :loading="calLoading" :pagination="false">
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'hours'">
-                    <span v-if="Number(record.hours)">{{ formatQty(record.hours) }} 小时</span>
-                    <a-tag v-else :bordered="false">休息</a-tag>
+                    <span v-if="Number(record.hours)">{{ $t('mes.bom.hoursN', { v: formatQty(record.hours) }) }}</span>
+                    <a-tag v-else :bordered="false">{{ $t('mes.capacity.off') }}</a-tag>
                   </template>
                   <template v-else-if="column.key === 'action'">
                     <span v-perm="'mes:capacity:edit'">
-                      <a-popconfirm title="删除后恢复按工作日计算，确定删除？" @confirm="removeEntry(record.id)">
+                      <a-popconfirm :title="$t('mes.capacity.deleteConfirm')" @confirm="removeEntry(record.id)">
                         <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                       </a-popconfirm>
                     </span>
@@ -131,17 +131,17 @@
 
     <a-modal v-model:open="entryOpen" :title="`${entryForm.calDate} · ${calWcLabel}`" :confirm-loading="saving" @ok="submitEntry">
       <a-form layout="vertical">
-        <a-form-item label="每资源可用工时" required extra="0 表示休息；加班时可大于工作中心的每日工时">
-          <a-input-number v-model:value="entryForm.hours" :min="0" :max="24" :precision="2" addon-after="小时" class="full" />
+        <a-form-item :label="$t('mes.capacity.hoursPerResource')" required :extra="$t('mes.capacity.hoursExtra')">
+          <a-input-number v-model:value="entryForm.hours" :min="0" :max="24" :precision="2" :addon-after="$t('mes.wo.hoursUnit')" class="full" />
         </a-form-item>
-        <a-form-item label="备注">
-          <a-input v-model:value="entryForm.remark" :maxlength="100" placeholder="如：国庆节、周六加班" />
+        <a-form-item :label="$t('common.field.remark')">
+          <a-input v-model:value="entryForm.remark" :maxlength="100" :placeholder="$t('mes.capacity.remarkPh')" />
         </a-form-item>
       </a-form>
       <template #footer>
-        <a-button v-if="entryForm.id" danger :loading="saving" class="footer-left" @click="removeEntry(entryForm.id, true)">删除设置</a-button>
-        <a-button @click="entryOpen = false">取消</a-button>
-        <a-button type="primary" :loading="saving" @click="submitEntry">保存</a-button>
+        <a-button v-if="entryForm.id" danger :loading="saving" class="footer-left" @click="removeEntry(entryForm.id, true)">{{ $t('mes.capacity.deleteSetting') }}</a-button>
+        <a-button @click="entryOpen = false">{{ $t('common.action.cancel') }}</a-button>
+        <a-button type="primary" :loading="saving" @click="submitEntry">{{ $t('common.action.save') }}</a-button>
       </template>
     </a-modal>
   </div>
@@ -153,6 +153,7 @@ import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import { Modal, message } from 'ant-design-vue'
 import { DeleteOutlined, ReloadOutlined, ScheduleOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import WorkCenterSelect from '@/components/mes/WorkCenterSelect.vue'
 import { workCenterOptions } from '@/api/mes/base'
@@ -162,9 +163,10 @@ import { useUserStore } from '@/store/user'
 
 const router = useRouter()
 const userStore = useUserStore()
+const { t } = useI18n()
 const tab = ref('load')
 
-const WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+const WEEK = t('mes.capacity.week').split(',')
 const MAX_DAYS = 92
 const round = (n) => Math.round(Number(n || 0) * 100) / 100
 
@@ -179,7 +181,7 @@ function levelOf(load, capacity) {
 }
 function utilText(load, capacity) {
   const c = Number(capacity || 0)
-  if (!c) return Number(load) > 0 ? '无产能' : '-'
+  if (!c) return Number(load) > 0 ? t('mes.capacity.noCapacity') : '-'
   return `${Math.round((Number(load || 0) / c) * 100)}%`
 }
 
@@ -197,8 +199,8 @@ const days = computed(() => {
   return list
 })
 const loadColumns = computed(() => [
-  { title: '工作中心', key: 'wc', width: 200, fixed: 'left' },
-  { title: '利用率', key: 'util', width: 150, fixed: 'left' },
+  { title: t('mes.wo.workCenter'), key: 'wc', width: 200, fixed: 'left' },
+  { title: t('mes.capacity.util'), key: 'util', width: 150, fixed: 'left' },
   ...days.value.map((d) => ({
     key: d.format('YYYY-MM-DD'),
     date: d.format('YYYY-MM-DD'),
@@ -209,11 +211,11 @@ const loadColumns = computed(() => [
   }))
 ])
 const opColumns = [
-  { title: '工单', key: 'woNo', width: 180 },
-  { title: '工单状态', key: 'woStatus', width: 100 },
-  { title: '工序', key: 'op', width: 160 },
-  { title: '计划日期', key: 'plan', width: 200 },
-  { title: '剩余工时', key: 'hours', width: 100, align: 'right' }
+  { title: t('mes.wo.wo'), key: 'woNo', width: 180 },
+  { title: t('mes.capacity.woStatus'), key: 'woStatus', width: 120 },
+  { title: t('mes.wo.op'), key: 'op', width: 160 },
+  { title: t('mes.wo.planDate'), key: 'plan', width: 200 },
+  { title: t('mes.capacity.remainingHours'), key: 'hours', width: 130, align: 'right' }
 ]
 
 /** 每行按日期建索引，单元格直接取 */
@@ -224,7 +226,7 @@ async function loadData() {
   const [from, to] = range.value || []
   if (!from || !to) return
   if (dayjs(to).diff(dayjs(from), 'day') + 1 > MAX_DAYS) {
-    message.warning(`日期范围不能超过 ${MAX_DAYS} 天`)
+    message.warning(t('mes.capacity.maxDays', { n: MAX_DAYS }))
     return
   }
   loading.value = true
@@ -238,13 +240,13 @@ async function loadData() {
 const scheduling = ref(false)
 function scheduleAllWo() {
   Modal.confirm({
-    title: '全部排程？',
-    content: '按计划开工日顺序对全部未结束工单重新排程，覆盖已有的工序计划日期。',
+    title: t('mes.capacity.scheduleAllConfirm'),
+    content: t('mes.capacity.scheduleAllContent'),
     async onOk() {
       scheduling.value = true
       try {
         const count = await scheduleAll()
-        message.success(`已排程 ${count} 张工单`)
+        message.success(t('mes.capacity.scheduledN', { n: count }))
         loadData()
       } finally {
         scheduling.value = false
@@ -260,8 +262,8 @@ const toWo = (id) => router.push({ path: '/mes/wo', query: { id } })
 // ---------------------------------------------------------------- 工厂日历
 const centers = ref([])
 const calWc = ref(0)
-const calWcOptions = computed(() => [{ value: 0, label: '全厂' }, ...centers.value.map((w) => ({ value: w.id, label: `${w.code} ${w.name}` }))])
-const calWcLabel = computed(() => calWcOptions.value.find((o) => o.value === calWc.value)?.label || '全厂')
+const calWcOptions = computed(() => [{ value: 0, label: t('mes.capacity.factory') }, ...centers.value.map((w) => ({ value: w.id, label: `${w.code} ${w.name}` }))])
+const calWcLabel = computed(() => calWcOptions.value.find((o) => o.value === calWc.value)?.label || t('mes.capacity.factory'))
 const calMonth = ref(dayjs())
 const entries = ref([])
 const calLoading = ref(false)
@@ -293,9 +295,9 @@ const ownEntries = computed(() => {
   return entries.value.filter((e) => Number(e.workCenterId) === Number(calWc.value) && e.calDate.startsWith(month))
 })
 const calColumns = [
-  { title: '日期', dataIndex: 'calDate', width: 110 },
-  { title: '工时', key: 'hours', width: 90 },
-  { title: '备注', dataIndex: 'remark', ellipsis: true },
+  { title: t('common.field.date'), dataIndex: 'calDate', width: 110 },
+  { title: t('mes.wo.hours'), key: 'hours', width: 90 },
+  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
   { title: '', key: 'action', width: 50 }
 ]
 
@@ -325,13 +327,13 @@ function onSelectDate(date, info) {
 
 async function submitEntry() {
   if (entryForm.hours == null) {
-    message.warning('请填写工时')
+    message.warning(t('mes.capacity.hoursRequired'))
     return
   }
   saving.value = true
   try {
     await saveCalendar({ workCenterId: calWc.value || 0, calDate: entryForm.calDate, hours: entryForm.hours, remark: entryForm.remark || null })
-    message.success('已保存')
+    message.success(t('common.msg.saved'))
     entryOpen.value = false
     loadCalendar()
   } finally {
@@ -343,7 +345,7 @@ async function removeEntry(id, fromModal) {
   saving.value = true
   try {
     await deleteCalendar(id)
-    message.success('已删除')
+    message.success(t('common.msg.deleted'))
     if (fromModal) entryOpen.value = false
     loadCalendar()
   } finally {

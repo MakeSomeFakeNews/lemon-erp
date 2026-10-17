@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.framework.cache.CacheService;
 import com.lemon.erp.framework.rule.BizRule;
 import com.lemon.erp.framework.rule.BizRuleProvider;
@@ -54,17 +55,18 @@ public class SysBizRuleService implements BizRules {
             Map<String, Object> m = new LinkedHashMap<>();
             String value = saved.getOrDefault(r.key(), r.defaultValue());
             m.put("key", r.key());
-            m.put("module", r.module());
-            m.put("label", r.label());
+            // 模块、名称、选项、说明由各模块登记，按请求语言翻译
+            m.put("module", I18n.t(r.module()));
+            m.put("label", I18n.t(r.label()));
             m.put("type", r.type().name());
             m.put("value", value);
             m.put("defaultValue", r.defaultValue());
             m.put("modified", !Objects.equals(value, r.defaultValue()));
             m.put("options", r.options() == null ? null : Arrays.stream(r.options().getEnumConstants())
-                    .map(o -> Map.of("value", o.name(), "label", o.label())).toList());
+                    .map(o -> Map.of("value", o.name(), "label", I18n.t(o.label()))).toList());
             m.put("min", r.min());
             m.put("max", r.max());
-            m.put("remark", r.remark());
+            m.put("remark", I18n.t(r.remark()));
             return m;
         }).toList();
     }
@@ -100,7 +102,7 @@ public class SysBizRuleService implements BizRules {
     private BizRule definition(String key) {
         BizRule rule = key == null ? null : definitions().get(key);
         if (rule == null) {
-            throw new BizException("业务参数不存在：" + key);
+            throw new BizException("业务参数不存在：{0}", key);
         }
         return rule;
     }
@@ -133,27 +135,27 @@ public class SysBizRuleService implements BizRules {
     }
 
     private static void validate(BizRule r, String value) {
-        String name = "「" + r.label() + "」";
+        String name = I18n.t(r.label());
         if (r.type() == SettingType.NUMBER) {
             int n;
             try {
                 n = Integer.parseInt(value);
             } catch (NumberFormatException e) {
-                throw new BizException(name + "必须是整数");
+                throw new BizException("「{0}」必须是整数", name);
             }
             if (n < r.min() || n > r.max()) {
-                throw new BizException(name + "的范围是 " + r.min() + " - " + r.max());
+                throw new BizException("「{0}」的范围是 {1} - {2}", name, r.min(), r.max());
             }
         } else if (r.type() == SettingType.BOOL) {
             if (!Boolean.TRUE.toString().equals(value) && !Boolean.FALSE.toString().equals(value)) {
-                throw new BizException(name + "只能是 true 或 false");
+                throw new BizException("「{0}」只能是 true 或 false", name);
             }
         } else if (r.type() == SettingType.SELECT) {
             if (Arrays.stream(r.options().getEnumConstants()).map(OptionEnum::name).noneMatch(value::equals)) {
-                throw new BizException(name + "的取值无效：" + value);
+                throw new BizException("「{0}」的取值无效：{1}", name, value);
             }
         } else {
-            throw new BizException(name + "的类型不支持");
+            throw new BizException("「{0}」的类型不支持", name);
         }
     }
 }

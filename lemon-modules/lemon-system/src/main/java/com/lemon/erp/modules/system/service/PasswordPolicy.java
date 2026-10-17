@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.system.service;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.framework.cache.CacheService;
 import com.lemon.erp.framework.setting.PasswordComplexity;
 import com.lemon.erp.framework.setting.Setting;
@@ -40,10 +41,10 @@ public class PasswordPolicy {
     /** 按指定的策略校验（保存参数时用修改后的策略校验初始密码） */
     public static void check(String password, int minLength, PasswordComplexity complexity, String name) {
         if (password == null || password.length() < minLength || password.length() > MAX_LENGTH) {
-            throw new BizException(name + "长度为 " + minLength + "-" + MAX_LENGTH + " 位");
+            throw new BizException("{0}长度为 {1}-{2} 位", I18n.t(name), minLength, MAX_LENGTH);
         }
         if (!complexity.matches(password)) {
-            throw new BizException(name + "必须" + complexity.requirement());
+            throw new BizException("{0}必须{1}", I18n.t(name), I18n.t(complexity.requirement()));
         }
     }
 
@@ -52,7 +53,7 @@ public class PasswordPolicy {
         Integer fails = cache.get(failKey(username), Integer.class);
         if (fails != null && fails >= settings.getInt(Setting.LOGIN_MAX_RETRY)) {
             long seconds = Math.max(cache.getExpire(failKey(username)), 60);
-            throw new BizException("密码错误次数过多，账号已锁定，请 " + (seconds + 59) / 60 + " 分钟后再试或联系管理员重置密码");
+            throw new BizException("密码错误次数过多，账号已锁定，请 {0} 分钟后再试或联系管理员重置密码", (seconds + 59) / 60);
         }
     }
 

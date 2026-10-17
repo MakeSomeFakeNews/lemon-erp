@@ -64,14 +64,14 @@ public class PmProjectController {
 
     @PostMapping("/project")
     @PreAuthorize("@ss.hasPerm('pm:project:add')")
-    @OperLog(title = "项目管理", type = OperType.INSERT)
+    @OperLog(title = "项目管理", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> create(@Valid @RequestBody ProjectRequest req) {
         return R.ok(projectService.create(req));
     }
 
     @PutMapping("/project/{id}")
     @PreAuthorize("@ss.hasPerm('pm:project:edit')")
-    @OperLog(title = "项目管理", type = OperType.UPDATE)
+    @OperLog(title = "项目管理", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody ProjectRequest req) {
         projectService.update(id, req);
         return R.ok();
@@ -80,14 +80,14 @@ public class PmProjectController {
     /** 状态：ACTIVE 启动 / 恢复，SUSPENDED 暂停，FINISHED 完成，CLOSED 关闭；body：{ status }。返回 true 表示已提交立项审批 */
     @PutMapping("/project/{id}/status")
     @PreAuthorize("@ss.hasPerm('pm:project:edit')")
-    @OperLog(title = "项目管理-状态", type = OperType.UPDATE)
+    @OperLog(title = "项目管理-状态", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Boolean> changeStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         return R.ok(projectService.changeStatus(id, body.get("status")));
     }
 
     @DeleteMapping("/project/{ids}")
     @PreAuthorize("@ss.hasPerm('pm:project:remove')")
-    @OperLog(title = "项目管理", type = OperType.DELETE)
+    @OperLog(title = "项目管理", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         projectService.delete(ids);
         return R.ok();
@@ -103,7 +103,7 @@ public class PmProjectController {
 
     @PostMapping("/project/{id}/member")
     @PreAuthorize("@ss.hasPerm('pm:member:edit')")
-    @OperLog(title = "项目成员", type = OperType.INSERT)
+    @OperLog(title = "项目成员", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Void> addMember(@PathVariable Long id, @Valid @RequestBody MemberRequest req) {
         projectService.get(id);
         memberService.save(id, null, req);
@@ -112,7 +112,7 @@ public class PmProjectController {
 
     @PutMapping("/project/{id}/member/{memberId}")
     @PreAuthorize("@ss.hasPerm('pm:member:edit')")
-    @OperLog(title = "项目成员", type = OperType.UPDATE)
+    @OperLog(title = "项目成员", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> updateMember(@PathVariable Long id, @PathVariable Long memberId, @Valid @RequestBody MemberRequest req) {
         memberService.save(id, memberId, req);
         return R.ok();
@@ -120,7 +120,7 @@ public class PmProjectController {
 
     @DeleteMapping("/project/{id}/member/{memberId}")
     @PreAuthorize("@ss.hasPerm('pm:member:edit')")
-    @OperLog(title = "项目成员", type = OperType.DELETE)
+    @OperLog(title = "项目成员", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> deleteMember(@PathVariable Long id, @PathVariable Long memberId) {
         memberService.delete(id, memberId);
         return R.ok();

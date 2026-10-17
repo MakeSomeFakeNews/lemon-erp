@@ -39,7 +39,7 @@ public class ScmSupplierPortalController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:supplier:portal')")
-    @OperLog(title = "供应商门户账号", type = OperType.INSERT)
+    @OperLog(title = "供应商门户账号", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@PathVariable Long supplierId, @Valid @RequestBody SrmRequests.PortalAccount req) {
         supplierService.get(supplierId);
         return R.ok(portalAccounts.create(PortalKind.SUPPLIER, supplierId,
@@ -48,7 +48,7 @@ public class ScmSupplierPortalController {
 
     @PutMapping("/{userId}/status")
     @PreAuthorize("@ss.hasPerm('scm:supplier:portal')")
-    @OperLog(title = "供应商门户账号-状态", type = OperType.UPDATE)
+    @OperLog(title = "供应商门户账号-状态", type = OperType.UPDATE) // i18n-ignore
     public R<Void> status(@PathVariable Long supplierId, @PathVariable Long userId, @Valid @RequestBody SrmRequests.Status req) {
         portalAccounts.changeStatus(PortalKind.SUPPLIER, supplierId, userId, req.status());
         return R.ok();
@@ -56,7 +56,7 @@ public class ScmSupplierPortalController {
 
     @PutMapping("/{userId}/password")
     @PreAuthorize("@ss.hasPerm('scm:supplier:portal')")
-    @OperLog(title = "供应商门户账号-重置密码", type = OperType.UPDATE)
+    @OperLog(title = "供应商门户账号-重置密码", type = OperType.UPDATE) // i18n-ignore
     public R<Void> password(@PathVariable Long supplierId, @PathVariable Long userId, @Valid @RequestBody SrmRequests.Password req) {
         portalAccounts.resetPassword(PortalKind.SUPPLIER, supplierId, userId, req.password());
         return R.ok();

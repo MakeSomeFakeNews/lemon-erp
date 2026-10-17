@@ -11,7 +11,7 @@
   >
     <template #bodyCell="{ column, record }">
       <template v-if="column.key === '__row'">
-        <a v-if="drillable && record.r !== null && record.r !== '-'" class="row-link" title="钻取" @click="emit('drill', record.r)">
+        <a v-if="drillable && record.r !== null && record.r !== '-'" class="row-link" :title="$t('bi.common.drill')" @click="emit('drill', record.r)">
           {{ record.label }}
         </a>
         <span v-else>{{ record.label }}</span>
@@ -23,7 +23,7 @@
     <template #summary>
       <a-table-summary fixed="bottom">
         <a-table-summary-row class="total-row">
-          <a-table-summary-cell :index="0">合计</a-table-summary-cell>
+          <a-table-summary-cell :index="0">{{ $t('common.field.total') }}</a-table-summary-cell>
           <a-table-summary-cell v-for="(c, i) in leafColumns" :key="c.dataIndex" :index="i + 1" align="right">
             <span class="num">{{ formatMeasure(totals[c.dataIndex], c.format) }}</span>
           </a-table-summary-cell>
@@ -35,6 +35,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { activeMeasures, dimLabelFn, formatMeasure } from './bi'
 
 /**
@@ -50,6 +51,7 @@ const props = defineProps({
   pageSize: { type: Number, default: 50 }
 })
 const emit = defineEmits(['drill'])
+const { t } = useI18n()
 
 const measures = computed(() => activeMeasures(props.cube, props.config))
 const rowLabel = computed(() => dimLabelFn(props.cube, props.config.row, props.result?.labels?.rows))
@@ -68,14 +70,14 @@ const measureColumn = (prefix, m) => ({
 
 const columns = computed(() => {
   const dim = props.cube.dims.find((d) => d.key === props.config.row)
-  const first = { title: dim?.label || '汇总', key: '__row', fixed: 'left', width: 180, ellipsis: true }
+  const first = { title: dim?.label || t('bi.common.summary'), key: '__row', fixed: 'left', width: 180, ellipsis: true }
   if (!hasCol.value) return [first, ...measures.value.map((m) => measureColumn('T', m))]
   const groups = colValues.value.map((c) => ({
     title: colLabel.value(c),
     key: `g-${c}`,
     children: measures.value.map((m) => measureColumn(`C${c}`, m))
   }))
-  groups.push({ title: '合计', key: 'g-total', children: measures.value.map((m) => measureColumn('T', m)) })
+  groups.push({ title: t('common.field.total'), key: 'g-total', children: measures.value.map((m) => measureColumn('T', m)) })
   return [first, ...groups]
 })
 

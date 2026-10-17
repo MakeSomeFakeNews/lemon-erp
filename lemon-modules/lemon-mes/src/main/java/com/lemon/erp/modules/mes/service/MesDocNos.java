@@ -26,7 +26,7 @@ public class MesDocNos {
         types.add(doc("MR", "MRP 运算"));
         types.add(doc("SC", "生产工单"));
         types.add(doc("FG", "返工工单"));
-        Arrays.stream(WoDocKind.values()).forEach(k -> types.add(doc(k.getPrefix(), k.getLabel() + "单")));
+        Arrays.stream(WoDocKind.values()).forEach(k -> types.add(doc(k.getPrefix(), k.getLabel() + "单"))); // i18n-ignore
         types.add(doc("BS", "补料申请"));
         types.add(doc("WX", "设备维修"));
         types.add(doc(MesEcnService.DOC_NO, "工程变更"));

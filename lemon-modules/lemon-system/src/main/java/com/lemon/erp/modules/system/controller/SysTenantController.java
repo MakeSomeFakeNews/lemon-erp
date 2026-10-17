@@ -52,7 +52,7 @@ public class SysTenantController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:tenant:add')")
-    @OperLog(title = "租户管理", type = OperType.INSERT)
+    @OperLog(title = "租户管理", type = OperType.INSERT) // i18n-ignore 操作日志存库
     public R<Void> create(@Validated(Create.class) @RequestBody SysTenant tenant) {
         tenantService.create(tenant);
         return R.ok();
@@ -60,7 +60,7 @@ public class SysTenantController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('sys:tenant:edit')")
-    @OperLog(title = "租户管理", type = OperType.UPDATE)
+    @OperLog(title = "租户管理", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody SysTenant tenant) {
         tenant.setId(id);
         tenantService.update(tenant);
@@ -69,7 +69,7 @@ public class SysTenantController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('sys:tenant:edit')")
-    @OperLog(title = "租户管理-修改状态", type = OperType.UPDATE)
+    @OperLog(title = "租户管理-修改状态", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> changeStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
         tenantService.changeStatus(id, req.status());
         return R.ok();
@@ -77,7 +77,7 @@ public class SysTenantController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('sys:tenant:remove')")
-    @OperLog(title = "租户管理", type = OperType.DELETE)
+    @OperLog(title = "租户管理", type = OperType.DELETE) // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         tenantService.delete(ids);
         return R.ok();

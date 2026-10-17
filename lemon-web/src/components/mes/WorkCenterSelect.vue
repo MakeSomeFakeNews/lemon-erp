@@ -14,11 +14,12 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { workCenterOptions } from '@/api/mes/base'
+import { t } from '@/locales'
 
 /** 工作中心下拉：启用的工作中心 */
 defineProps({
   value: Number,
-  placeholder: { type: String, default: '请选择工作中心' }
+  placeholder: { type: String, default: () => t('mes.workCenterSelect.placeholder') }
 })
 const emit = defineEmits(['update:value'])
 

@@ -34,21 +34,21 @@ public class ProfileController {
     }
 
     @PutMapping
-    @OperLog(title = "个人中心", type = OperType.UPDATE)
+    @OperLog(title = "个人中心", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> update(@Valid @RequestBody ProfileRequest req) {
         profileService.update(req);
         return R.ok();
     }
 
     @PutMapping("/password")
-    @OperLog(title = "个人中心-修改密码", type = OperType.UPDATE)
+    @OperLog(title = "个人中心-修改密码", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> changePassword(@Valid @RequestBody PasswordRequest req) {
         profileService.changePassword(req);
         return R.ok();
     }
 
     @PostMapping("/avatar")
-    @OperLog(title = "个人中心-上传头像", type = OperType.UPDATE)
+    @OperLog(title = "个人中心-上传头像", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
         return R.ok(profileService.uploadAvatar(file));
     }

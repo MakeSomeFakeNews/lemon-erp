@@ -37,7 +37,7 @@ public class MesOutsourceController {
     /** 委外发料：生成委外发料出库单 */
     @PostMapping("/issue")
     @PreAuthorize("@ss.hasPerm('scm:purchaseIn:add')")
-    @OperLog(title = "委外发料", type = OperType.INSERT)
+    @OperLog(title = "委外发料", type = OperType.INSERT) // i18n-ignore
     public R<Void> issue(@PathVariable Long orderId, @Valid @RequestBody OutsourceStockRequest req) {
         outsourceService.issue(orderId, req);
         return R.ok();
@@ -46,7 +46,7 @@ public class MesOutsourceController {
     /** 委外退料：加工商退回未用完的物料，生成委外收回入库单 */
     @PostMapping("/return")
     @PreAuthorize("@ss.hasPerm('scm:purchaseIn:add')")
-    @OperLog(title = "委外退料", type = OperType.INSERT)
+    @OperLog(title = "委外退料", type = OperType.INSERT) // i18n-ignore
     public R<Void> returnMaterials(@PathVariable Long orderId, @Valid @RequestBody OutsourceStockRequest req) {
         outsourceService.returnMaterials(orderId, req);
         return R.ok();

@@ -71,7 +71,7 @@ public class HrPositionService {
     public void delete(List<Long> ids) {
         for (HrPosition p : positionMapper.selectByIds(ids)) {
             if (employeeMapper.exists(Wrappers.<HrEmployee>lambdaQuery().eq(HrEmployee::getPositionId, p.getId()))) {
-                throw new BizException("职位「" + p.getName() + "」已有员工，不能删除，可以停用");
+                throw new BizException("职位「{0}」已有员工，不能删除，可以停用", p.getName());
             }
         }
         positionMapper.deleteByIds(ids);

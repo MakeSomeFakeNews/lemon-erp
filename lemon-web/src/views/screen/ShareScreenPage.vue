@@ -8,9 +8,9 @@
     :title-suffix="info.workCenterName"
   />
   <div v-else class="share-state">
-    <div class="state-title">{{ error ? '无法打开大屏' : '正在打开大屏…' }}</div>
+    <div class="state-title">{{ error ? $t('screen.share.openFailed') : $t('screen.share.opening') }}</div>
     <div v-if="error" class="state-msg">{{ error }}</div>
-    <div v-if="error" class="state-msg sub">{{ retryIn }} 秒后重试</div>
+    <div v-if="error" class="state-msg sub">{{ $t('screen.share.retryIn', { n: retryIn }) }}</div>
   </div>
 </template>
 

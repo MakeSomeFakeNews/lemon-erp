@@ -14,8 +14,8 @@ public class CrmFlowBusinesses {
 
     @Bean
     public FlowBusiness contractFlow() {
-        return FlowBusiness.of("crm_contract", "销售合同审批",
-                number("amount", "合同金额"),
-                text("contractNo", "合同编号"));
+        return FlowBusiness.of("crm_contract", "销售合同审批", // i18n-ignore 流程模块输出处翻译
+                number("amount", "合同金额"), // i18n-ignore 流程模块输出处翻译
+                text("contractNo", "合同编号")); // i18n-ignore 流程模块输出处翻译
     }
 }

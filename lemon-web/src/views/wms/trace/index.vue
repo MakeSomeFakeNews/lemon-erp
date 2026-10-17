@@ -2,28 +2,28 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm v-if="tab === 'batch'" :model="batchQuery" @search="search" @reset="resetQuery">
-        <a-form-item label="批次号" name="batchNo">
-          <a-input v-model:value="batchQuery.batchNo" placeholder="请输入批次号" allow-clear />
+        <a-form-item :label="$t('wms.common.batchNo')" name="batchNo">
+          <a-input v-model:value="batchQuery.batchNo" :placeholder="$t('common.placeholder.input')" allow-clear />
         </a-form-item>
-        <a-form-item label="物料" name="keyword">
-          <a-input v-model:value="batchQuery.keyword" placeholder="编码或名称" allow-clear />
+        <a-form-item :label="$t('wms.common.material')" name="keyword">
+          <a-input v-model:value="batchQuery.keyword" :placeholder="$t('wms.flow.codeOrName')" allow-clear />
         </a-form-item>
-        <a-form-item label="有效期至" name="expireBefore" tooltip="有效期在该日期（含）之前的批次，用于临期、过期预警">
-          <a-date-picker v-model:value="batchQuery.expireBefore" value-format="YYYY-MM-DD" placeholder="不限" style="width: 100%" />
+        <a-form-item :label="$t('wms.common.expiryDate')" name="expireBefore" :tooltip="$t('wms.trace.expireBeforeTip')">
+          <a-date-picker v-model:value="batchQuery.expireBefore" value-format="YYYY-MM-DD" :placeholder="$t('wms.trace.any')" style="width: 100%" />
         </a-form-item>
       </SearchForm>
       <SearchForm v-else :model="serialQuery" @search="search" @reset="resetQuery">
-        <a-form-item label="序列号" name="serialNo">
-          <a-input v-model:value="serialQuery.serialNo" placeholder="扫码或输入序列号" allow-clear />
+        <a-form-item :label="$t('wms.common.serialNo')" name="serialNo">
+          <a-input v-model:value="serialQuery.serialNo" :placeholder="$t('wms.doc.serialInputTip')" allow-clear />
         </a-form-item>
-        <a-form-item label="物料" name="keyword">
-          <a-input v-model:value="serialQuery.keyword" placeholder="编码或名称" allow-clear />
+        <a-form-item :label="$t('wms.common.material')" name="keyword">
+          <a-input v-model:value="serialQuery.keyword" :placeholder="$t('wms.flow.codeOrName')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="serialQuery.status" placeholder="全部" allow-clear :options="toOptions(dict.wms_serial_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="serialQuery.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_serial_status)" />
         </a-form-item>
-        <a-form-item label="仓库" name="warehouseId">
-          <WarehouseSelect v-model:value="serialQuery.warehouseId" placeholder="全部" />
+        <a-form-item :label="$t('wms.common.warehouse')" name="warehouseId">
+          <WarehouseSelect v-model:value="serialQuery.warehouseId" :placeholder="$t('common.placeholder.all')" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -32,11 +32,11 @@
       <TableToolbar
         :exporter="exportAll" v-model:size="size" v-model:show-search="showSearch" @refresh="load">
         <a-radio-group v-model:value="tab" button-style="solid" @change="switchTab">
-          <a-radio-button value="batch">批次追踪</a-radio-button>
-          <a-radio-button value="serial">序列号追踪</a-radio-button>
+          <a-radio-button value="batch">{{ $t('wms.trace.batchTrace') }}</a-radio-button>
+          <a-radio-button value="serial">{{ $t('wms.trace.serialTrace') }}</a-radio-button>
         </a-radio-group>
         <a-checkbox v-if="tab === 'batch'" v-model:checked="batchQuery.inStock" class="toolbar-check" @change="search">
-          只看有库存的批次
+          {{ $t('wms.trace.inStockOnly') }}
         </a-checkbox>
       </TableToolbar>
 
@@ -74,7 +74,7 @@
           <template v-else-if="column.key === 'batchNo'">{{ record.batchNo || '-' }}</template>
           <template v-else-if="column.key === 'action'">
             <a-button type="link" size="small" @click="openTrace(record)">
-              <template #icon><NodeIndexOutlined /></template>追踪
+              <template #icon><NodeIndexOutlined /></template>{{ $t('wms.trace.trace') }}
             </a-button>
           </template>
         </template>
@@ -86,21 +86,21 @@
       <a-spin :spinning="traceLoading">
         <template v-if="batch">
           <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="block">
-            <a-descriptions-item label="物料">{{ batch.materialCode }} {{ batch.materialName }}</a-descriptions-item>
-            <a-descriptions-item label="批次号">{{ batch.batchNo }}</a-descriptions-item>
-            <a-descriptions-item label="在库数量">{{ formatQty(batch.qty) }} {{ batch.unit }}</a-descriptions-item>
-            <a-descriptions-item label="生产日期">{{ batch.productionDate || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="有效期至">{{ batch.expiryDate || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="首次入库">{{ batch.createTime }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.common.material')">{{ batch.materialCode }} {{ batch.materialName }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.common.batchNo')">{{ batch.batchNo }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.trace.inStockQty')">{{ formatQty(batch.qty) }} {{ batch.unit }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.common.productionDate')">{{ batch.productionDate || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.common.expiryDate')">{{ batch.expiryDate || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.trace.firstIn')">{{ batch.createTime }}</a-descriptions-item>
           </a-descriptions>
-          <div class="section-title">库存分布</div>
+          <div class="section-title">{{ $t('wms.trace.distribution') }}</div>
           <a-table row-key="id" size="small" :columns="distColumns" :data-source="distribution" :pagination="false" class="block">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'location'">{{ locationText(record.locationCode) }}</template>
               <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }}</template>
             </template>
           </a-table>
-          <div class="section-title">出入库记录（最近 100 条）</div>
+          <div class="section-title">{{ $t('wms.trace.flows') }}</div>
           <a-table row-key="id" size="small" :columns="flowColumns" :data-source="flows" :pagination="false" :scroll="{ x: 700 }">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'bizType'"><DictTag type="wms_biz_type" :value="record.bizType" /></template>
@@ -119,18 +119,18 @@
       <a-spin :spinning="traceLoading">
         <template v-if="serial">
           <a-descriptions :column="1" size="small" class="block">
-            <a-descriptions-item label="物料">{{ serial.materialCode }} {{ serial.materialName }}</a-descriptions-item>
-            <a-descriptions-item label="当前状态"><DictTag type="wms_serial_status" :value="serial.status" /></a-descriptions-item>
-            <a-descriptions-item :label="serial.status === 'IN_STOCK' ? '当前位置' : '最后所在'">
+            <a-descriptions-item :label="$t('wms.common.material')">{{ serial.materialCode }} {{ serial.materialName }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.trace.currentStatus')"><DictTag type="wms_serial_status" :value="serial.status" /></a-descriptions-item>
+            <a-descriptions-item :label="serial.status === 'IN_STOCK' ? $t('wms.trace.currentPosition') : $t('wms.trace.lastPosition')">
               {{ serial.warehouseName }} / {{ locationText(serial.locationCode) }}
             </a-descriptions-item>
-            <a-descriptions-item v-if="serial.batchNo" label="批次">{{ serial.batchNo }}</a-descriptions-item>
+            <a-descriptions-item v-if="serial.batchNo" :label="$t('wms.common.batch')">{{ serial.batchNo }}</a-descriptions-item>
           </a-descriptions>
           <a-timeline>
             <a-timeline-item v-for="log in logs" :key="log.id" :color="log.direction > 0 ? 'green' : 'orange'">
               <div class="log-head">
                 <DictTag type="wms_biz_type" :value="log.bizType" />
-                <span>{{ log.direction > 0 ? '入' : '出' }} {{ log.warehouseName }} / {{ locationText(log.locationCode) }}</span>
+                <span>{{ log.direction > 0 ? $t('wms.trace.in') : $t('wms.trace.out') }} {{ log.warehouseName }} / {{ locationText(log.locationCode) }}</span>
               </div>
               <div class="sub-text">{{ log.createTime }} · {{ log.docNo }} · {{ log.createByName || '-' }}</div>
             </a-timeline-item>
@@ -144,6 +144,7 @@
 <script setup>
 import SubPage from '@/components/SubPage.vue'
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { NodeIndexOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -156,39 +157,41 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+const { t } = useI18n()
+
 const dict = useDict('wms_serial_status')
 
 const batchColumns = [
-  { title: '批次号', dataIndex: 'batchNo', width: 150 },
-  { title: '物料', key: 'material', width: 240 },
-  { title: '生产日期', dataIndex: 'productionDate', width: 110 },
-  { title: '有效期至', key: 'expiryDate', width: 190 },
-  { title: '在库数量', key: 'qty', width: 120, align: 'right' },
-  { title: '首次入库', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 90, fixed: 'right' }
+  { title: t('wms.common.batchNo'), dataIndex: 'batchNo', width: 150 },
+  { title: t('wms.common.material'), key: 'material', width: 240 },
+  { title: t('wms.common.productionDate'), dataIndex: 'productionDate', width: 110 },
+  { title: t('wms.common.expiryDate'), key: 'expiryDate', width: 190 },
+  { title: t('wms.trace.inStockQty'), key: 'qty', width: 120, align: 'right' },
+  { title: t('wms.trace.firstIn'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
 const serialColumns = [
-  { title: '序列号', dataIndex: 'serialNo', width: 180 },
-  { title: '物料', key: 'material', width: 240 },
-  { title: '状态', key: 'status', width: 90, dict: 'wms_serial_status' },
-  { title: '位置', key: 'position', width: 200 },
-  { title: '批次', key: 'batchNo', width: 120 },
-  { title: '首次入库', dataIndex: 'createTime', width: 170 },
-  { title: '最近变动', dataIndex: 'updateTime', width: 170 },
-  { title: '操作', key: 'action', width: 90, fixed: 'right' }
+  { title: t('wms.common.serialNo'), dataIndex: 'serialNo', width: 180 },
+  { title: t('wms.common.material'), key: 'material', width: 240 },
+  { title: t('common.field.status'), key: 'status', width: 90, dict: 'wms_serial_status' },
+  { title: t('wms.trace.position'), key: 'position', width: 200 },
+  { title: t('wms.common.batch'), key: 'batchNo', width: 120 },
+  { title: t('wms.trace.firstIn'), dataIndex: 'createTime', width: 170 },
+  { title: t('wms.trace.lastChange'), dataIndex: 'updateTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
 const distColumns = [
-  { title: '仓库', dataIndex: 'warehouseName' },
-  { title: '库位', key: 'location' },
-  { title: '数量', key: 'qty', align: 'right' }
+  { title: t('wms.common.warehouse'), dataIndex: 'warehouseName' },
+  { title: t('wms.common.location'), key: 'location' },
+  { title: t('common.field.quantity'), key: 'qty', align: 'right' }
 ]
 const flowColumns = [
-  { title: '时间', dataIndex: 'createTime', width: 170 },
-  { title: '业务', key: 'bizType', width: 80, dict: 'wms_biz_type' },
-  { title: '单据号', dataIndex: 'docNo', width: 160 },
-  { title: '位置', key: 'position', width: 180 },
-  { title: '数量', key: 'qty', width: 100, align: 'right' },
-  { title: '操作人', dataIndex: 'createByName', width: 100 }
+  { title: t('wms.flow.time'), dataIndex: 'createTime', width: 170 },
+  { title: t('wms.trace.biz'), key: 'bizType', width: 110, dict: 'wms_biz_type' },
+  { title: t('wms.common.docNo'), dataIndex: 'docNo', width: 160 },
+  { title: t('wms.trace.position'), key: 'position', width: 180 },
+  { title: t('common.field.quantity'), key: 'qty', width: 100, align: 'right' },
+  { title: t('wms.flow.operator'), dataIndex: 'createByName', width: 100 }
 ]
 
 const tab = ref('batch')
@@ -233,7 +236,7 @@ async function openTrace(record) {
   traceLoading.value = true
   try {
     if (tab.value === 'batch') {
-      batchTitle.value = `批次追踪：${record.batchNo}`
+      batchTitle.value = t('wms.trace.batchTitle', { no: record.batchNo })
       batch.value = undefined
       batchOpen.value = true
       const params = { materialId: record.materialId, batchNo: record.batchNo }
@@ -247,7 +250,7 @@ async function openTrace(record) {
       distribution.value = stock.records.filter((s) => s.batchNo === record.batchNo)
       flows.value = flow.records
     } else {
-      serialTitle.value = `序列号追踪：${record.serialNo}`
+      serialTitle.value = t('wms.trace.serialTitle', { no: record.serialNo })
       serial.value = undefined
       serialOpen.value = true
       logs.value = await serialLogs(record.id)

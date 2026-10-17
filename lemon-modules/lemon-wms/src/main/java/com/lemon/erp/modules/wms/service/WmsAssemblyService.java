@@ -129,7 +129,7 @@ public class WmsAssemblyService {
         List<StockDocItemRequest> product = List.of(new StockDocItemRequest(a.getMaterialId(), a.getLocationId(), null, a.getBatchNo(),
                 a.getProductionDate(), a.getExpiryDate(), a.getQty(), a.getSerialNos(), null));
         boolean assemble = a.getKind() == AssemblyKind.ASSEMBLE;
-        String remark = (assemble ? "组装 " : "拆卸 ") + a.getAssemblyNo();
+        String remark = (assemble ? "组装 " : "拆卸 ") + a.getAssemblyNo(); // i18n-ignore 存入单据备注
         // 先出库后入库：组装时子件先出库，拆卸时成套件先出库
         WmsStockDoc out = docService.createConfirmed(StockBizType.OUT, new StockDocRequest(WmsConstants.ASSEMBLY, a.getWarehouseId(), null,
                 a.getBizDate(), remark, assemble ? parts : product), a.getAssemblyNo());
@@ -160,7 +160,7 @@ public class WmsAssemblyService {
             }
         }
         materials.values().stream().filter(WmsMaterial::isTemplateMaterial).findFirst().ifPresent(m -> {
-            throw new BizException("「" + m.getCode() + "」是多规格款式，请选择具体的规格（SKU）");
+            throw new BizException("「{0}」是多规格款式，请选择具体的规格（SKU）", m.getCode());
         });
     }
 
@@ -208,7 +208,7 @@ public class WmsAssemblyService {
     private WmsAssembly getDraft(Long id) {
         WmsAssembly a = getAccessible(id);
         if (a.getStatus() != DocStatus.DRAFT) {
-            throw new BizException(a.getAssemblyNo() + " 已确认，不能修改");
+            throw new BizException("{0} 已确认，不能修改", a.getAssemblyNo());
         }
         return a;
     }

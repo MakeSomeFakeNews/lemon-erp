@@ -1,7 +1,7 @@
 <template>
   <SubPage
     :open="open"
-    :title="detail ? `盘点单 ${detail.docNo}` : '盘点单'"
+    :title="detail ? `${$t('wms.checkDoc.title')} ${detail.docNo}` : $t('wms.checkDoc.title')"
     width="min(1100px, 100vw)"
     destroy-on-close
     @close="emit('update:open', false)"
@@ -13,28 +13,28 @@
     <a-spin :spinning="loading">
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="doc-desc">
-          <a-descriptions-item label="单据号">{{ detail.docNo }}</a-descriptions-item>
-          <a-descriptions-item label="盘点仓库">{{ detail.warehouseName }}</a-descriptions-item>
-          <a-descriptions-item label="盘点日期">{{ detail.bizDate }}</a-descriptions-item>
-          <a-descriptions-item label="冻结仓库">
-            <a-tag v-if="detail.freeze === true || detail.freeze === 1" color="orange" :bordered="false">盘点期间冻结出入库</a-tag>
-            <span v-else>否</span>
+          <a-descriptions-item :label="$t('wms.common.docNo')">{{ detail.docNo }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('wms.checkDoc.warehouse')">{{ detail.warehouseName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('wms.checkDoc.date')">{{ detail.bizDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('wms.checkDoc.freeze')">
+            <a-tag v-if="detail.freeze === true || detail.freeze === 1" color="orange" :bordered="false">{{ $t('wms.checkDoc.frozenTag') }}</a-tag>
+            <span v-else>{{ $t('common.status.no') }}</span>
           </a-descriptions-item>
-          <a-descriptions-item label="制单">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.confirmTime" label="确认">
+          <a-descriptions-item :label="$t('wms.doc.prepared')">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.confirmTime" :label="$t('wms.doc.confirmed')">
             {{ detail.confirmByName || '-' }} {{ detail.confirmTime }}
           </a-descriptions-item>
-          <a-descriptions-item label="明细">{{ detail.items.length }} 行，有差异 {{ diffRows.length }} 行</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="备注">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('wms.checkDoc.items')">{{ $t('wms.checkDoc.itemsSummary', { n: detail.items.length, diff: diffRows.length }) }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
 
         <div class="filter-bar">
           <a-radio-group v-model:value="filter" size="small" button-style="solid">
-            <a-radio-button value="all">全部</a-radio-button>
-            <a-radio-button value="diff">有差异</a-radio-button>
-            <a-radio-button v-if="detail.status === 'DRAFT'" value="pending">未录入</a-radio-button>
+            <a-radio-button value="all">{{ $t('common.status.all') }}</a-radio-button>
+            <a-radio-button value="diff">{{ $t('wms.checkDoc.hasDiff') }}</a-radio-button>
+            <a-radio-button v-if="detail.status === 'DRAFT'" value="pending">{{ $t('wms.checkDoc.notCounted') }}</a-radio-button>
           </a-radio-group>
-          <span v-if="detail.status === 'DRAFT'" class="sub-text">草稿中的账面数量为最近一次保存时的库存，确认时以当时的库存为准</span>
+          <span v-if="detail.status === 'DRAFT'" class="sub-text">{{ $t('wms.checkDoc.draftBookTip') }}</span>
         </div>
 
         <a-table row-key="id" size="small" :columns="columns" :data-source="rows" :pagination="{ pageSize: 50 }" :scroll="{ x: 960 }">
@@ -47,7 +47,7 @@
             <template v-else-if="column.key === 'batchNo'">{{ record.batchNo || '-' }}</template>
             <template v-else-if="column.key === 'bookQty'">{{ formatQty(record.bookQty) }}</template>
             <template v-else-if="column.key === 'actualQty'">
-              <span v-if="record.actualQty == null" class="sub-text">未录入</span>
+              <span v-if="record.actualQty == null" class="sub-text">{{ $t('wms.checkDoc.notCounted') }}</span>
               <span v-else>{{ formatQty(record.actualQty) }} {{ record.unit }}</span>
             </template>
             <template v-else-if="column.key === 'diff'"><QtyDiff :value="diffOf(record)" /></template>
@@ -65,10 +65,10 @@
     <template v-if="detail?.status === 'DRAFT' && (canEdit || canConfirm)" #footer>
       <div class="drawer-footer">
         <a-button v-if="canEdit" @click="emit('edit', detail)">
-          <template #icon><EditOutlined /></template>编辑
+          <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
         </a-button>
         <a-button v-if="canConfirm" type="primary" :loading="confirming" @click="confirm">
-          <template #icon><CheckOutlined /></template>确认盘点
+          <template #icon><CheckOutlined /></template>{{ $t('wms.checkDoc.confirm') }}
         </a-button>
       </div>
     </template>
@@ -78,6 +78,7 @@
 <script setup>
 import SubPage from '@/components/SubPage.vue'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Modal, message } from 'ant-design-vue'
 import { CheckOutlined, EditOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -91,20 +92,21 @@ const props = defineProps({
   checkId: Number
 })
 const emit = defineEmits(['update:open', 'edit', 'changed'])
+const { t } = useI18n()
 
 const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPerm('wms:check:edit'))
 const canConfirm = computed(() => userStore.hasPerm('wms:check:confirm'))
 
 const columns = [
-  { title: '物料', key: 'material', width: 240 },
-  { title: '库位', key: 'location', width: 110 },
-  { title: '批次', key: 'batchNo', width: 130 },
-  { title: '账面数量', key: 'bookQty', width: 100, align: 'right' },
-  { title: '实盘数量', key: 'actualQty', width: 120, align: 'right' },
-  { title: '差异', key: 'diff', width: 90, align: 'right' },
-  { title: '实盘序列号', key: 'serialNos', width: 240 },
-  { title: '备注', dataIndex: 'remark', width: 140, ellipsis: true }
+  { title: t('wms.common.material'), key: 'material', width: 240 },
+  { title: t('wms.common.location'), key: 'location', width: 110 },
+  { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
+  { title: t('wms.checkDoc.bookQty'), key: 'bookQty', width: 110, align: 'right' },
+  { title: t('wms.checkDoc.actualQty'), key: 'actualQty', width: 120, align: 'right' },
+  { title: t('wms.checkDoc.diff'), key: 'diff', width: 100, align: 'right' },
+  { title: t('wms.checkDoc.actualSerials'), key: 'serialNos', width: 240 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true }
 ]
 
 const detail = ref()
@@ -141,13 +143,13 @@ watch(
 const confirming = ref(false)
 function confirm() {
   Modal.confirm({
-    title: '确认盘点？',
-    content: '将以当前库存为账面数量计算差异，盘盈入库、盘亏出库，库存调整为实盘数量。确认后不能修改。',
+    title: t('wms.checkDoc.confirmTitle'),
+    content: t('wms.checkDoc.confirmContent'),
     async onOk() {
       confirming.value = true
       try {
         const approving = await confirmCheck(props.checkId)
-        message.success(approving ? '已提交盘点差异审批，审批通过后调整库存' : '盘点已确认，库存已调整')
+        message.success(approving ? t('wms.checkDoc.submittedApproval') : t('wms.checkDoc.confirmed'))
         await load()
         emit('changed')
       } finally {

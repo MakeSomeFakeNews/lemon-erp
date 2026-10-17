@@ -105,7 +105,7 @@ public class ScmSupplierPriceService {
             boolean hasDefault = priceMapper.exists(Wrappers.<ScmSupplierPrice>lambdaQuery()
                     .eq(ScmSupplierPrice::getMaterialId, materialId).eq(ScmSupplierPrice::getIsDefault, 1));
             p.setIsDefault(hasDefault ? 0 : 1);
-            p.setRemark("询价定标");
+            p.setRemark("询价定标"); // i18n-ignore
             priceMapper.insert(p);
             return;
         }
@@ -137,7 +137,7 @@ public class ScmSupplierPriceService {
         java.util.Set<BigDecimal> seen = new java.util.HashSet<>();
         for (SupplierPriceRequest.Tier t : req.tiers()) {
             if (!seen.add(t.minQty().stripTrailingZeros())) {
-                throw new BizException("阶梯起订数量重复：" + t.minQty().stripTrailingZeros().toPlainString());
+                throw new BizException("阶梯起订数量重复：{0}", t.minQty().stripTrailingZeros().toPlainString());
             }
             ScmSupplierPriceTier tier = new ScmSupplierPriceTier();
             tier.setPriceId(priceId);

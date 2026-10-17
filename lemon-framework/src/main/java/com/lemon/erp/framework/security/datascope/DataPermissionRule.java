@@ -14,7 +14,7 @@ import java.util.Locale;
 public record DataPermissionRule(String table, String deptColumn, String userColumn) {
 
     public DataPermissionRule {
-        Assert.hasText(table, "数据权限规则必须指定表名");
+        Assert.hasText(table, "数据权限规则必须指定表名"); // i18n-ignore 内部错误
         table = table.toLowerCase(Locale.ROOT);
     }
 
