@@ -115,17 +115,74 @@
             </a-table>
           </a-spin>
         </a-tab-pane>
+        <a-tab-pane key="age" tab="库龄分析">
+          <div class="filters">
+            <span>截止日期</span>
+            <a-date-picker v-model:value="age.asOf" value-format="YYYY-MM-DD" :allow-clear="false" />
+            <WarehouseSelect v-model:value="age.warehouseId" placeholder="全部仓库" class="filter" />
+            <a-select v-model:value="age.category" :options="toOptions(dict.wms_material_category)" allow-clear placeholder="全部分类" class="filter-s" />
+            <a-input v-model:value="age.keyword" placeholder="物料编码或名称" allow-clear class="filter" />
+            <a-tooltip title="各段的上限天数，逗号分隔、递增">
+              <a-input v-model:value="age.buckets" placeholder="30,60,90,180,365" class="filter-s" />
+            </a-tooltip>
+            <a-button type="primary" :loading="age.loading" @click="loadAge">查询</a-button>
+          </div>
+          <div class="sub-text block-tip">
+            结存按先进先出对应到最近的入库记录计算库龄；不选仓库时统计全部仓库（调拨不改变库龄），选仓库时调入算入库。金额 = 数量 × 最近一次核算的单价（没有时取参考成本价）。
+          </div>
+          <div v-if="age.result" class="age-summary">
+            <div v-for="(b, i) in age.result.buckets" :key="i" class="age-card" :class="{ old: i >= age.result.buckets.length - 2 }">
+              <div class="sub-text">{{ b.label }}</div>
+              <b>¥{{ formatMoney(age.result.total.ages[i].amount) }}</b>
+              <div class="sub-text">{{ percent(age.result.total.ages[i].amount, age.result.total.amount) }}</div>
+            </div>
+            <div class="age-card total">
+              <div class="sub-text">合计</div>
+              <b>¥{{ formatMoney(age.result.total.amount) }}</b>
+              <div class="sub-text">{{ age.result.rows.length }} 种物料</div>
+            </div>
+          </div>
+          <a-table
+            row-key="materialId"
+            size="small"
+            bordered
+            :columns="ageColumns"
+            :data-source="age.result?.rows || []"
+            :loading="age.loading"
+            :pagination="{ pageSize: 50, showSizeChanger: false, showTotal: (t) => `共 ${t} 种物料` }"
+            :scroll="{ x: 700 + ageColumns.length * 110 }"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'material'">
+                <div>{{ record.code }} {{ record.name }}</div>
+                <div class="sub-text">{{ record.spec }}</div>
+              </template>
+              <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }} {{ record.unit }}</template>
+              <template v-else-if="column.key === 'amount'">{{ formatMoney(record.amount) }}</template>
+              <template v-else-if="column.ageIndex != null">
+                <template v-if="Number(record.ages[column.ageIndex].qty)">
+                  <div>{{ formatQty(record.ages[column.ageIndex].qty) }}</div>
+                  <div class="sub-text">{{ formatMoney(record.ages[column.ageIndex].amount) }}</div>
+                </template>
+              </template>
+              <template v-else-if="column.key === 'oldestDate'">{{ record.oldestDate || '早于入库记录' }}</template>
+            </template>
+          </a-table>
+        </a-tab-pane>
       </a-tabs>
     </a-card>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
-import { grossMargin, inventoryCheck } from '@/api/fin'
+import { grossMargin, inventoryCheck, stockAge } from '@/api/fin'
+import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
+import { useDict } from '@/composables/useDict'
+import { toOptions } from '@/utils/dict'
 import { formatQty, today } from '@/components/wms/wms'
 import { currentPeriod, formatMoney, periodText } from '@/components/fin/fin'
 
@@ -184,7 +241,36 @@ async function loadInventory() {
     invLoading.value = false
   }
 }
-watch(tab, (t) => t === 'inventory' && !inventory.value.period && loadInventory())
+watch(tab, (t) => {
+  if (t === 'inventory' && !inventory.value.period) loadInventory()
+  if (t === 'age' && !age.result) loadAge()
+})
+
+// ---------------------------------------------------------------- 库龄分析
+const dict = useDict('wms_material_category')
+const age = reactive({ asOf: today(), warehouseId: undefined, category: undefined, keyword: '', buckets: '', loading: false, result: null })
+const ageColumns = computed(() => [
+  { title: '物料', key: 'material', width: 240, fixed: 'left' },
+  { title: '结存数量', key: 'qty', width: 120, align: 'right' },
+  { title: '结存金额', key: 'amount', width: 120, align: 'right' },
+  ...(age.result?.buckets || []).map((b, i) => ({ title: b.label, key: `age${i}`, ageIndex: i, width: 110, align: 'right' })),
+  { title: '最早入库', key: 'oldestDate', width: 120 }
+])
+const percent = (part, all) => (Number(all) ? `${((Number(part) / Number(all)) * 100).toFixed(1)}%` : '-')
+async function loadAge() {
+  age.loading = true
+  try {
+    age.result = await stockAge({
+      asOf: age.asOf,
+      warehouseId: age.warehouseId || undefined,
+      category: age.category || undefined,
+      keyword: age.keyword?.trim() || undefined,
+      buckets: age.buckets?.trim() || undefined
+    })
+  } finally {
+    age.loading = false
+  }
+}
 </script>
 
 <style scoped>
@@ -224,5 +310,29 @@ watch(tab, (t) => t === 'inventory' && !inventory.value.period && loadInventory(
 }
 .bold {
   font-weight: 600;
+}
+.block-tip {
+  margin-bottom: 12px;
+}
+.age-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.age-card {
+  min-width: 130px;
+  padding: 10px 14px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+}
+.age-card.old b {
+  color: var(--status-critical);
+}
+.age-card.total {
+  background: var(--app-primary-bg);
+}
+.filter-s {
+  width: 150px;
 }
 </style>
