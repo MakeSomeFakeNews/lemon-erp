@@ -4,9 +4,71 @@ import { currentLocale, t } from '@/locales'
 
 /** 出入库单的种类（与后端 StockBizType 的路径一致） */
 export const DOC_KINDS = {
-  in: { label: t('wms.doc.kind.in'), typeLabel: t('wms.doc.kind.inType'), typeDict: 'wms_in_type', warehouseLabel: t('wms.doc.kind.inWarehouse') },
-  out: { label: t('wms.doc.kind.out'), typeLabel: t('wms.doc.kind.outType'), typeDict: 'wms_out_type', warehouseLabel: t('wms.doc.kind.outWarehouse') },
+  in: {
+    label: t('wms.doc.kind.in'),
+    typeLabel: t('wms.doc.kind.inType'),
+    typeDict: 'wms_in_type',
+    categoryLabel: t('wms.doc.inCategory'),
+    categoryDict: 'wms_in_category',
+    warehouseLabel: t('wms.doc.kind.inWarehouse')
+  },
+  out: {
+    label: t('wms.doc.kind.out'),
+    typeLabel: t('wms.doc.kind.outType'),
+    typeDict: 'wms_out_type',
+    categoryLabel: t('wms.doc.outCategory'),
+    categoryDict: 'wms_out_category',
+    warehouseLabel: t('wms.doc.kind.outWarehouse')
+  },
   transfer: { label: t('wms.doc.kind.transfer'), warehouseLabel: t('wms.doc.kind.fromWarehouse') }
+}
+
+/** 手工单据可以选择的出入库类型（与后端 WmsConstants.MANUAL_IN_TYPES / MANUAL_OUT_TYPES 一致） */
+export const MANUAL_TYPES = { in: ['OTHER', 'CONSIGN_IN'], out: ['OTHER', 'SCRAP'] }
+
+/**
+ * 由业务单据自动生成的出入库类型 → 生成它的单据（语言包 wms.doc.typeSource 下的键），手工单据中不可选。
+ * 字典中新增了这里没有的类型时显示为「由业务单据自动生成」
+ */
+export const AUTO_TYPE_SOURCES = {
+  in: {
+    PURCHASE: 'purchaseIn',
+    PRODUCTION: 'woFinish',
+    SALES_RETURN: 'salesReturn',
+    PRODUCTION_RETURN: 'woReturn',
+    OUTSOURCE_RETURN: 'outsourceReturn',
+    SCRAP_IN: 'woScrap',
+    OPENING: 'opening',
+    ASSEMBLY: 'assembly'
+  },
+  out: {
+    SALES: 'salesOut',
+    PRODUCTION: 'woIssue',
+    PURCHASE_RETURN: 'purchaseReturn',
+    PROJECT: 'project',
+    OUTSOURCE: 'outsourceIssue',
+    SERVICE: 'service',
+    CONSIGN: 'consign',
+    CONSUME: 'consume',
+    ASSEMBLY: 'assembly'
+  }
+}
+
+/** 收发类别字典（业务字典，可在「业务字典」中新增）：其他入库用入库类别，其他出库、报废出库用出库类别；其他类型为空 */
+export function ioCategoryDict(kind, bizType) {
+  if (kind === 'in' && bizType === 'OTHER') return 'wms_in_category'
+  if (kind === 'out' && (bizType === 'OTHER' || bizType === 'SCRAP')) return 'wms_out_category'
+  return undefined
+}
+
+/** 出入库类型下拉：列出字典中的全部类型，业务单据生成的类型不可选，并说明由哪种单据生成 */
+export function docTypeOptions(kind, list = []) {
+  const manual = MANUAL_TYPES[kind] || []
+  return list.map((d) => {
+    if (manual.includes(d.value)) return { value: d.value, label: d.label }
+    const source = AUTO_TYPE_SOURCES[kind]?.[d.value]
+    return { value: d.value, label: d.label, disabled: true, hint: source ? t(`wms.doc.typeSource.${source}`) : t('wms.doc.typeSource.business') }
+  })
 }
 
 /** 数量：去掉多余的 0，千分位 */

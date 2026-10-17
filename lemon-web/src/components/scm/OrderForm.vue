@@ -105,7 +105,7 @@
         :columns="columns"
         :data-source="form.items"
         :pagination="false"
-        :scroll="{ x: 1150 }"
+        :scroll="{ x: scrollX }"
         :locale="{ emptyText: $t('scm.orderForm.emptyItems') }"
       >
         <template #bodyCell="{ column, record, index }">
@@ -250,12 +250,13 @@ const columns = [
   { title: t('scm.order.material'), key: 'material', width: 280 },
   { title: t('common.field.quantity'), key: 'qty', width: 150 },
   { title: t('scm.order.taxPrice'), key: 'price', width: 150 },
-  { title: t('scm.order.taxRate'), key: 'taxRate', width: 110 },
+  { title: t('scm.order.taxRate'), key: 'taxRate', width: 130 },
   { title: t('scm.order.totalAmount'), key: 'amount', width: 130, align: 'right' },
   { title: t('scm.order.deliveryDate'), key: 'deliveryDate', width: 140 },
   { title: t('common.field.remark'), key: 'remark', width: 150 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
+const scrollX = columns.reduce((sum, c) => sum + c.width, 0)
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
 const rules = computed(() => ({

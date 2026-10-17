@@ -117,8 +117,12 @@ const conditionFields = computed(() => [
     field: v.field,
     label: t('workflow.model.businessVar', { label: v.label }),
     type: v.type,
+    // 字典类型的变量：字典取值（含租户新增的）+ 字典之外的固定值（如加班时假期类型为 OVERTIME）
     options: v.dictType
-      ? (dictStore.cache[v.dictType] || []).map((d) => ({ label: d.label, value: d.value }))
+      ? [
+          ...(dictStore.cache[v.dictType] || []).map((d) => ({ label: d.label, value: d.value })),
+          ...(v.options || []).map((o) => ({ label: o, value: o }))
+        ]
       : v.options || []
   }))
 ])

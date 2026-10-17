@@ -92,7 +92,29 @@ export default {
     confirmDeleteDrafts: '确定删除选中的 {n} 张草稿？',
     confirmDeleteDoc: '确定删除{kind} {no}？',
     sourceN: '来源 {no}',
-    reverseOfN: '冲销 {no}'
+    reverseOfN: '冲销 {no}',
+    inCategory: '入库类别',
+    outCategory: '出库类别',
+    ioCategoryTip: '可选；成本结转凭证按类别取「凭证科目设置」中的对方科目，类别可在「业务字典」中维护',
+    typeSource: {
+      business: '由业务单据自动生成',
+      purchaseIn: '由采购入库单自动生成',
+      purchaseReturn: '由采购退货单自动生成',
+      salesOut: '由销售出库单自动生成',
+      salesReturn: '由销售退货单自动生成',
+      woIssue: '由工单领料、补料自动生成',
+      woReturn: '由工单退料自动生成',
+      woFinish: '由工单完工入库自动生成',
+      woScrap: '由工单报废入库自动生成',
+      outsourceIssue: '由委外发料自动生成',
+      outsourceReturn: '由委外收回自动生成',
+      project: '由项目领料自动生成',
+      service: '由服务工单领用备件自动生成',
+      consign: '由寄售结算自动生成',
+      consume: '由低值易耗品领用单自动生成',
+      opening: '由期初库存导入自动生成',
+      assembly: '由组装拆卸单自动生成'
+    }
   },
   checkDoc: {
     title: '盘点单',

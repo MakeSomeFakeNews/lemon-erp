@@ -87,7 +87,7 @@
         :columns="addColumns"
         :data-source="adds"
         :pagination="false"
-        :scroll="{ x: 1000 }"
+        :scroll="{ x: addScrollX }"
       >
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
@@ -164,14 +164,15 @@ const lineColumns = [
   { title: '', key: 'action', width: 90 }
 ]
 const addColumns = [
-  { title: t('scm.order.material'), key: 'material', width: 260 },
+  { title: t('scm.order.material'), key: 'material', width: 290 },
   { title: t('common.field.quantity'), key: 'qty', width: 150 },
   { title: t('scm.order.taxPrice'), key: 'price', width: 150 },
-  { title: t('scm.order.taxRate'), key: 'taxRate', width: 110 },
+  { title: t('scm.order.taxRate'), key: 'taxRate', width: 130 },
   { title: t('scm.order.deliveryDate'), key: 'deliveryDate', width: 140 },
   { title: t('scm.order.totalAmount'), key: 'amount', width: 130, align: 'right' },
   { title: '', key: 'action', width: 50 }
 ]
+const addScrollX = addColumns.reduce((sum, c) => sum + c.width, 0)
 
 const reason = ref('')
 const lines = ref([])

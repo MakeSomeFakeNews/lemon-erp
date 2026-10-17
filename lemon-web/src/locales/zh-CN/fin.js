@@ -205,6 +205,7 @@ export default {
     over90: '90 天以上'
   },
   settlementPage: {
+    noteMethodHint: '{label}（由票据业务自动生成）',
     receipt: {
       partner: '客户',
       allPartners: '全部客户',
@@ -1492,6 +1493,9 @@ export default {
     byDimension: '按{dim}分别设置（未设置的使用上面的科目）：',
     materialCategory: '物料分类',
     positionCategory: '职位类别',
+    inCategory: '入库类别',
+    outCategory: '出库类别',
+    sameAsRole: '同「{role}」：{account}',
     saveN: '保存（{n}）',
     invalidAccount: '{code}（科目不存在或不是末级）'
   },

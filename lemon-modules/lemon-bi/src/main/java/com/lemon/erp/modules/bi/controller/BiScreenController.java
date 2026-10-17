@@ -82,13 +82,13 @@ public class BiScreenController {
         return R.ok();
     }
 
-    /** 大屏数据：key 为 factory / warehouse / sales / quality */
+    /** 大屏数据：key 为 factory / progress / warehouse / sales / quality */
     @GetMapping("/{key}")
     @PreAuthorize("@ss.hasPerm('bi:screen:list')")
     public R<Map<String, Object>> data(@PathVariable String key, @RequestParam(required = false) Long workCenterId) {
         requireAllData();
         ScreenKey screen = parse(key);
-        return R.ok(screenService.data(screen, screen == ScreenKey.FACTORY ? workCenterId : null));
+        return R.ok(screenService.data(screen, screen.isByWorkCenter() ? workCenterId : null));
     }
 
     private static void requireAllData() {

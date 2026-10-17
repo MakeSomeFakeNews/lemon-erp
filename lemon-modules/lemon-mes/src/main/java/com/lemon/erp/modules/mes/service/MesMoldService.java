@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.MoldRequests;
@@ -19,7 +20,6 @@ import com.lemon.erp.modules.mes.mapper.MesWorkOrderMapper;
 import com.lemon.erp.modules.mes.model.EquipmentStatus;
 import com.lemon.erp.modules.mes.model.MoldAction;
 import com.lemon.erp.modules.mes.model.MoldStatus;
-import com.lemon.erp.modules.mes.model.MoldType;
 import com.lemon.erp.modules.mes.model.WorkOrderStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -50,8 +50,9 @@ public class MesMoldService {
     private final MesWorkOrderMapper workOrderMapper;
     private final MesEquipmentMapper equipmentMapper;
     private final MessageSender messageSender;
+    private final DictLookup dictLookup;
 
-    public PageResult<MesMold> page(long current, long size, String keyword, MoldType moldType, MoldStatus status, Long productId,
+    public PageResult<MesMold> page(long current, long size, String keyword, String moldType, MoldStatus status, Long productId,
                                     Boolean warn) {
         Page<MesMold> page = Page.of(current, size);
         moldMapper.selectPageList(page, keyword, moldType, status, productId, warn);
@@ -240,7 +241,8 @@ public class MesMoldService {
         logMapper.insert(l);
     }
 
-    private static void fill(MesMold mold, MoldRequests.Save req) {
+    private void fill(MesMold mold, MoldRequests.Save req) {
+        dictLookup.check("mes_mold_type", req.moldType(), "mes.label.moldType");
         mold.setCode(req.code().trim());
         mold.setName(req.name().trim());
         mold.setMoldType(req.moldType());

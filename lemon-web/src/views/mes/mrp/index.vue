@@ -21,7 +21,7 @@
             <a>{{ record.runNo }}</a>
           </template>
           <template v-else-if="column.key === 'planNos'">
-            <span class="ellipsis">{{ record.planNos || '-' }}</span>
+            <span class="ellipsis" :title="record.planNos">{{ record.planNos || '-' }}</span>
             <div v-if="record.sources" class="sub-text">{{ record.sources }}</div>
           </template>
           <template v-else-if="column.key === 'pending'">

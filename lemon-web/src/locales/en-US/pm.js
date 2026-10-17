@@ -230,6 +230,7 @@ export default {
     predecessorLabel: '{name} (finishes {date})'
   },
   cost: {
+    laborFromTimesheet: '{label} (from approved timesheets)',
     execRate: 'Execution',
     editBudget: 'Edit Budget',
     addCost: 'Add Expense',

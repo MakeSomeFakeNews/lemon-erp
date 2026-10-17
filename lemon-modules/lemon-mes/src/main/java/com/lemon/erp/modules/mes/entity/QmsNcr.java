@@ -7,7 +7,6 @@ import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.modules.mes.model.Disposition;
 import com.lemon.erp.modules.mes.model.NcrSource;
 import com.lemon.erp.modules.mes.model.NcrStatus;
-import com.lemon.erp.modules.mes.model.Responsibility;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -46,7 +45,8 @@ public class QmsNcr extends BaseEntity {
 
     private Disposition disposition;
 
-    private Responsibility responsibility;
+    /** 责任方(业务字典 qms_responsibility) */
+    private String responsibility;
 
     private String reviewOpinion;
 

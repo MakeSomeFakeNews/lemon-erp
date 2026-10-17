@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.org.EmployeeDeptChangedEvent;
 import com.lemon.erp.framework.org.EmployeeLeftEvent;
 import com.lemon.erp.framework.record.ChangeLogger;
@@ -47,7 +48,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * 员工档案与人事异动：入职（试用）→ 转正 → 调岗 / 调薪 → 离职，每次变化记录一条异动。
@@ -71,7 +71,8 @@ public class HrEmployeeService {
     static final String PROBATION = "PROBATION";
     static final String REGULAR = "REGULAR";
     static final String LEFT = "LEFT";
-    private static final Set<String> EMP_TYPES = Set.of("FULL_TIME", "PART_TIME", "INTERN", "OUTSOURCE");
+    /** 默认用工类型（字典 hr_emp_type 的内置值） */
+    static final String FULL_TIME = "FULL_TIME";
     private static final int OPTION_LIMIT = 50;
 
     private final HrEmployeeMapper employeeMapper;
@@ -86,6 +87,7 @@ public class HrEmployeeService {
     private final HrSalaryHistoryMapper historyMapper;
     private final FlowApi flowApi;
     private final ChangeLogger changeLogger;
+    private final DictLookup dictLookup;
 
     /** @param deptId 部门（含下级部门） */
     @DataPermission(table = "hr_employee", deptColumn = "dept_id", userColumn = "user_id")
@@ -393,9 +395,7 @@ public class HrEmployeeService {
                 throw new BizException("hr.error.loginAccountAlreadyLinkedEmployee", linked.getName());
             }
         }
-        if (req.empType() != null && !EMP_TYPES.contains(req.empType())) {
-            throw new BizException("hr.error.invalidEmploymentType");
-        }
+        dictLookup.check("hr_emp_type", req.empType(), "hr.label.empType");
         if (req.workStartDate() != null && req.workStartDate().isAfter(req.entryDate())) {
             throw new BizException("hr.error.careerStartDateCannotLaterHire");
         }
@@ -410,7 +410,7 @@ public class HrEmployeeService {
         e.setEducation(emptyToNull(req.education()));
         e.setUserId(req.userId());
         e.setShiftId(req.shiftId());
-        e.setEmpType(req.empType() == null ? "FULL_TIME" : req.empType());
+        e.setEmpType(req.empType() == null || req.empType().isBlank() ? FULL_TIME : req.empType());
         e.setAddress(emptyToNull(req.address()));
         e.setEmergencyContact(emptyToNull(req.emergencyContact()));
         e.setEmergencyPhone(emptyToNull(req.emergencyPhone()));

@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.lemon.erp.modules.mes.entity.MesMold;
 import com.lemon.erp.modules.mes.entity.MesMoldLog;
 import com.lemon.erp.modules.mes.model.MoldStatus;
-import com.lemon.erp.modules.mes.model.MoldType;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.Collection;
@@ -19,7 +18,7 @@ public interface MesMoldMapper extends BaseMapper<MesMold> {
      * @param productId 适用该产品
      * @param warn      只看达到寿命预警的
      */
-    IPage<MesMold> selectPageList(IPage<MesMold> page, @Param("keyword") String keyword, @Param("moldType") MoldType moldType,
+    IPage<MesMold> selectPageList(IPage<MesMold> page, @Param("keyword") String keyword, @Param("moldType") String moldType,
                                   @Param("status") MoldStatus status, @Param("productId") Long productId, @Param("warn") Boolean warn);
 
     MesMold selectDetail(@Param("id") Long id);

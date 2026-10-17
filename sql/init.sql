@@ -505,6 +505,7 @@ CREATE TABLE sys_dict_type (
     id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     name        VARCHAR(64)  NOT NULL COMMENT '字典名称',
     type        VARCHAR(100) NOT NULL COMMENT '字典类型编码',
+    kind        VARCHAR(16)  NOT NULL DEFAULT 'SYSTEM' COMMENT '种类 SYSTEM系统字典（取值由程序内置，全平台共用，只能改名称、颜色、排序） BUSINESS业务字典（每个租户各自维护，可新增取值）',
     status      TINYINT      NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
     remark      VARCHAR(255)          DEFAULT NULL COMMENT '备注',
     create_time DATETIME              DEFAULT NULL COMMENT '创建时间',
@@ -515,17 +516,19 @@ CREATE TABLE sys_dict_type (
 
 CREATE TABLE sys_dict_data (
     id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID：系统字典只有平台（1）一份；业务字典每个租户一份，新租户开通时从平台复制',
     dict_type   VARCHAR(100) NOT NULL COMMENT '字典类型编码',
     dict_label  VARCHAR(100) NOT NULL COMMENT '字典标签',
     dict_value  VARCHAR(100) NOT NULL COMMENT '字典键值',
     tag_color   VARCHAR(32)           DEFAULT NULL COMMENT '标签颜色(ant-design-vue Tag color)',
     sort        INT          NOT NULL DEFAULT 0 COMMENT '排序',
     status      TINYINT      NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
+    builtin     TINYINT      NOT NULL DEFAULT 0 COMMENT '内置取值 1是：程序依赖该取值，不能删除、不能改键值（系统字典的取值全部内置）',
     remark      VARCHAR(255)          DEFAULT NULL COMMENT '备注',
     create_time DATETIME              DEFAULT NULL COMMENT '创建时间',
     update_time DATETIME              DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_dict_type_value (dict_type, dict_value)
+    UNIQUE KEY uk_dict_type_value (dict_type, dict_value, tenant_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '字典数据';
 
 CREATE TABLE sys_oper_log (
@@ -951,6 +954,7 @@ CREATE TABLE wms_stock_doc (
     doc_no          VARCHAR(32)    NOT NULL COMMENT '单据号',
     kind            VARCHAR(16)    NOT NULL COMMENT '单据种类 IN入库 OUT出库 TRANSFER调拨',
     biz_type        VARCHAR(32)             DEFAULT NULL COMMENT '入库类型(字典 wms_in_type) / 出库类型(字典 wms_out_type)，调拨为空',
+    io_category     VARCHAR(32)             DEFAULT NULL COMMENT '收发类别：其他入库为字典 wms_in_category，其他出库、报废出库为字典 wms_out_category（业务字典），成本凭证按类别取对方科目；业务单据生成的为空',
     warehouse_id    BIGINT         NOT NULL COMMENT '仓库；调拨为调出仓库',
     to_warehouse_id BIGINT                  DEFAULT NULL COMMENT '调入仓库，仅调拨',
     biz_date        DATE           NOT NULL COMMENT '业务日期',
@@ -4327,7 +4331,7 @@ CREATE TABLE pm_project (
     budget_control  TINYINT        NOT NULL DEFAULT 0 COMMENT '超预算控制 1是：费用、领料超过成本预算时不能录入',
     manager_id      BIGINT         NOT NULL COMMENT '项目经理',
     dept_id         BIGINT                  DEFAULT NULL COMMENT '负责部门（数据权限）',
-    priority        VARCHAR(8)     NOT NULL DEFAULT 'MEDIUM' COMMENT '优先级(字典 pm_priority)',
+    priority        VARCHAR(16)     NOT NULL DEFAULT 'MEDIUM' COMMENT '优先级(字典 pm_priority)',
     status          VARCHAR(16)    NOT NULL COMMENT '状态(字典 pm_project_status) PLANNING规划中 APPROVING立项审批中 ACTIVE进行中 SUSPENDED已暂停 FINISHED已完成 CLOSED已关闭',
     plan_start      DATE           NOT NULL COMMENT '计划开始',
     plan_end        DATE           NOT NULL COMMENT '计划完成',
@@ -4669,9 +4673,9 @@ CREATE TABLE bi_screen_share (
     tenant_id        BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     name             VARCHAR(64)  NOT NULL COMMENT '名称，如 一车间电视',
     token            CHAR(32)     NOT NULL COMMENT '访问令牌（128 位随机数），链接中使用',
-    screens          VARCHAR(128) NOT NULL COMMENT '大屏（逗号分隔） FACTORY生产车间 WAREHOUSE仓储物流 SALES销售经营 QUALITY质量管理，多个时轮播',
+    screens          VARCHAR(128) NOT NULL COMMENT '大屏（逗号分隔） FACTORY生产车间 PROGRESS生产进度 WAREHOUSE仓储物流 SALES销售经营 QUALITY质量管理，多个时轮播',
     interval_seconds INT          NOT NULL DEFAULT 60 COMMENT '轮播间隔（秒）',
-    work_center_id   BIGINT                DEFAULT NULL COMMENT '生产车间大屏只显示该工作中心，为空显示全部',
+    work_center_id   BIGINT                DEFAULT NULL COMMENT '生产车间、生产进度大屏只显示该工作中心，为空显示全部',
     expire_time      DATETIME              DEFAULT NULL COMMENT '有效期至，为空长期有效',
     status           TINYINT      NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
     last_access_time DATETIME              DEFAULT NULL COMMENT '最近访问时间',
@@ -6763,6 +6767,32 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('sys_im_platform', '企业微信', 'WECOM', 'green', 2, 1, NOW(), NOW()),
 ('sys_im_platform', '飞书', 'FEISHU', 'cyan', 3, 1, NOW(), NOW());
 
+-- 业务字典：各租户维护自己的业务字典取值（系统管理员可见）
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(352, 1, '业务字典', 'C', 'biz-dict', 'system/bizDict/index', 'sys:bizdict:list', 'TagsOutlined', 5, 1, 1, NOW(), NOW()),
+(3520, 352, '业务字典维护', 'F', NULL, NULL, 'sys:bizdict:edit', NULL, 1, 1, 1, NOW(), NOW());
+
+-- 收发类别：手工其他入库 / 其他出库的用途分类（业务字典，月末成本凭证可按类别设置对方科目）
+INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
+(161, '入库类别', 'wms_in_category', 'BUSINESS', 1, '其他入库的用途分类，可在凭证科目设置中按类别指定对方科目', NOW(), NOW()),
+(162, '出库类别', 'wms_out_category', 'BUSINESS', 1, '其他出库、报废出库的用途分类，可在凭证科目设置中按类别指定对方科目', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('wms_in_category', '样品退回', 'SAMPLE_RETURN', 'blue', 1, 1, NOW(), NOW()),
+('wms_in_category', '受赠入库', 'GIFT', 'green', 2, 1, NOW(), NOW()),
+('wms_in_category', '领用退回', 'USE_RETURN', 'cyan', 3, 1, NOW(), NOW()),
+('wms_in_category', '其他', 'OTHER', 'default', 9, 1, NOW(), NOW()),
+('wms_out_category', '样品出库', 'SAMPLE', 'blue', 1, 1, NOW(), NOW()),
+('wms_out_category', '赠品出库', 'GIFT', 'green', 2, 1, NOW(), NOW()),
+('wms_out_category', '福利领用', 'WELFARE', 'orange', 3, 1, NOW(), NOW()),
+('wms_out_category', '研发领用', 'RD', 'purple', 4, 1, NOW(), NOW()),
+('wms_out_category', '办公领用', 'OFFICE', 'cyan', 5, 1, NOW(), NOW()),
+('wms_out_category', '其他', 'OTHER', 'default', 9, 1, NOW(), NOW());
+
+-- 生产看板：在制工单的工序进度、预计完工，各产线今天的生产情况（普通用户、总经理、生产计划员、车间主管）
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(351, 922, '生产看板', 'C', 'board', 'mes/board/index', 'mes:board:list', 'DashboardOutlined', 0, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES (2, 351), (3, 351), (7, 351), (8, 351);
+
 -- 凭证科目设置：自动凭证各用途使用的科目
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
 (340, 936, '凭证科目设置', 'C', 'account-rule', 'fin/account-rule/index', 'fin:accountRule:list', 'NodeIndexOutlined', 5, 1, 1, NOW(), NOW()),
@@ -6806,3 +6836,34 @@ ALTER TABLE hr_position AUTO_INCREMENT = 100;
 ALTER TABLE hr_shift AUTO_INCREMENT = 100;
 ALTER TABLE hr_employee AUTO_INCREMENT = 100;
 ALTER TABLE bi_alert_rule AUTO_INCREMENT = 100;
+
+-- 字典种类：业务字典由各租户自己维护（可新增取值），其余为系统字典；程序依赖的取值标记为内置（不能删除、不能改键值）
+UPDATE sys_dict_type SET kind = 'BUSINESS' WHERE type IN ('wf_category', 'scm_customer_level', 'scm_carrier', 'mes_supplement_reason',
+    'fin_asset_category', 'hr_education', 'hr_candidate_source', 'crm_industry', 'crm_campaign_type', 'hr_training_category',
+    'crm_follow_method', 'crm_ticket_channel', 'pm_priority', 'wms_material_category', 'hr_position_category', 'fin_settle_method',
+    'mes_defect_type', 'crm_source', 'hr_emp_type', 'crm_ticket_type', 'pm_project_type', 'hr_contract_type', 'hr_leave_type',
+    'pm_member_role', 'mes_ecn_reason', 'mes_doc_type', 'qms_responsibility', 'mes_mold_type', 'mes_stop_reason');
+UPDATE sys_dict_data SET builtin = 1
+WHERE dict_type NOT IN (SELECT type FROM sys_dict_type WHERE kind = 'BUSINESS')
+   OR (dict_type = 'wms_material_category' AND dict_value IN ('RAW', 'SEMI', 'FINISHED', 'LOW_VALUE'))
+   OR (dict_type = 'hr_position_category' AND dict_value IN ('PRODUCTION', 'SALES'))
+   OR (dict_type = 'fin_settle_method' AND dict_value IN ('TRANSFER', 'NOTE'))
+   OR (dict_type IN ('mes_defect_type', 'crm_source') AND dict_value = 'OTHER')
+   OR (dict_type = 'hr_emp_type' AND dict_value = 'FULL_TIME')
+   OR (dict_type = 'hr_contract_type' AND dict_value IN ('FIXED', 'OPEN'))
+   OR (dict_type = 'hr_leave_type' AND dict_value IN ('ANNUAL', 'PERSONAL', 'SICK', 'COMPENSATORY'))
+   OR (dict_type = 'pm_member_role' AND dict_value IN ('MANAGER', 'DEVELOPER'))
+   OR dict_type = 'wf_category'
+   OR (dict_type = 'scm_customer_level' AND dict_value = 'POTENTIAL')
+   OR (dict_type = 'crm_ticket_type' AND dict_value = 'REPAIR')
+   OR (dict_type = 'pm_project_type' AND dict_value = 'DELIVERY')
+   OR (dict_type = 'mes_ecn_reason' AND dict_value = 'DESIGN')
+   OR (dict_type = 'mes_doc_type' AND dict_value = 'DRAWING')
+   OR (dict_type = 'mes_mold_type' AND dict_value = 'MOLD')
+   OR (dict_type = 'qms_responsibility' AND dict_value = 'SUPPLIER')
+   OR (dict_type = 'fin_asset_category' AND dict_value = 'ELECTRONIC')
+   OR (dict_type = 'mes_stop_reason' AND dict_value IN ('BREAKDOWN', 'MAINTAIN', 'NO_ORDER'))
+   OR (dict_type IN ('crm_follow_method', 'crm_ticket_channel') AND dict_value = 'PHONE')
+   OR (dict_type = 'crm_ticket_channel' AND dict_value = 'ONSITE')
+   OR (dict_type = 'pm_priority' AND dict_value = 'MEDIUM')
+   OR (dict_type = 'hr_training_category' AND dict_value = 'SKILL');

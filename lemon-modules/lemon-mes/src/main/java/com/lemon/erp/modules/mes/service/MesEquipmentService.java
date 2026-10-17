@@ -188,7 +188,7 @@ public class MesEquipmentService {
             stop.setStartTime(m.getStartTime());
             stop.setEndTime(now);
             stop.setHours(BigDecimal.valueOf(Duration.between(m.getStartTime(), now).toSeconds()).divide(BigDecimal.valueOf(3600), 2, RoundingMode.HALF_UP));
-            stop.setReason(m.getType() == MaintenanceType.REPAIR ? StopReason.BREAKDOWN : StopReason.MAINTAIN);
+            stop.setReason(m.getType() == MaintenanceType.REPAIR ? StopReason.BREAKDOWN.name() : StopReason.MAINTAIN.name());
             stop.setMaintenanceId(id);
             stop.setRemark(m.getContent());
             stop.setCreateBy(SecurityUtils.getUserId());

@@ -22,6 +22,13 @@ public interface FinCostSourceMapper {
     List<Map<String, Object>> selectStockMovements(@Param("begin") LocalDate begin, @Param("end") LocalDate end);
 
     /**
+     * 填写了收发类别的出入库单（其他入库、其他出库、报废出库）按类别汇总的数量，不含供应商寄售仓
+     *
+     * @return [{materialId, kind（IN / OUT）, ioCategory, qty（入库为入库数量、出库为出库数量，红字为负）}]
+     */
+    List<Map<String, Object>> selectIoCategoryMovements(@Param("begin") LocalDate begin, @Param("end") LocalDate end);
+
+    /**
      * 采购入库 / 退货、销售出库 / 退货，按物料、种类汇总数量和不含税金额
      *
      * @return [{materialId, kind, qty, net}]

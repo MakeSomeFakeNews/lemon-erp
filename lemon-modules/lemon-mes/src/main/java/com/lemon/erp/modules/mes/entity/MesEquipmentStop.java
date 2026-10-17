@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
-import com.lemon.erp.modules.mes.model.StopReason;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -29,7 +28,8 @@ public class MesEquipmentStop extends BaseEntity {
 
     private BigDecimal hours;
 
-    private StopReason reason;
+    /** 停机原因(业务字典 mes_stop_reason)，是否计划停机见 StopReason.isPlanned */
+    private String reason;
 
     private Long maintenanceId;
 

@@ -12,7 +12,7 @@
             <if test="equipmentId != null">s.equipment_id = #{equipmentId}</if>
             <if test="from != null">AND s.end_time &gt; #{from}</if>
             <if test="to != null">AND s.start_time &lt; #{to}</if>
-            <if test="reason != null">AND s.reason = #{reason}</if>
+            <if test="reason != null and reason != ''">AND s.reason = #{reason}</if>
         </where>
         ORDER BY s.start_time DESC, s.id DESC
     </select>

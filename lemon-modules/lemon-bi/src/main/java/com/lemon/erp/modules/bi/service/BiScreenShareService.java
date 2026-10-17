@@ -91,7 +91,7 @@ public class BiScreenShareService {
         if (!keys(share).contains(key)) {
             throw new BizException("bi.error.screenNotIncludedLink");
         }
-        return TenantContext.callAs(tenantOf(share), () -> screenService.data(key, key == ScreenKey.FACTORY ? share.getWorkCenterId() : null));
+        return TenantContext.callAs(tenantOf(share), () -> screenService.data(key, key.isByWorkCenter() ? share.getWorkCenterId() : null));
     }
 
     /** 按令牌查找（跨租户），校验启用和有效期，按间隔记录访问时间 */

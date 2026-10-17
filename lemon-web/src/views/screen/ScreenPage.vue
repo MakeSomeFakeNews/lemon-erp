@@ -14,14 +14,14 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { screenData } from '@/api/bi/screen'
-import { SCREENS } from '@/components/screen/screen'
+import { SCREENS, WORK_CENTER_SCREENS } from '@/components/screen/screen'
 import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
 import ScreenRunner from './ScreenRunner.vue'
 
 /**
  * 登录后打开的大屏：/screen/factory，多个大屏轮播 /screen/factory?rotate=factory,quality&interval=60，
- * 生产车间可按工作中心 ?workCenterId=1
+ * 生产车间、生产进度可按工作中心 ?workCenterId=1
  */
 const route = useRoute()
 const router = useRouter()
@@ -39,8 +39,9 @@ const company = computed(() => userStore.tenantName || configStore.systemName)
 const workCenterName = ref('')
 
 async function fetch(key) {
-  const data = await screenData(key, key === 'FACTORY' ? { workCenterId: workCenterId.value } : undefined)
-  if (key === 'FACTORY') workCenterName.value = data.workCenter || ''
+  const byWorkCenter = WORK_CENTER_SCREENS.includes(key)
+  const data = await screenData(key, byWorkCenter ? { workCenterId: workCenterId.value } : undefined)
+  if (byWorkCenter) workCenterName.value = data.workCenter || ''
   return data
 }
 

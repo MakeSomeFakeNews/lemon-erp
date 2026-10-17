@@ -32,6 +32,12 @@ public final class TenantContext {
         return tenantId;
     }
 
+    /** 当前租户，没有租户上下文（未开启多租户等）时为平台租户 */
+    public static Long currentOrPlatform() {
+        Long tenantId = TENANT.get();
+        return tenantId == null ? PLATFORM_TENANT_ID : tenantId;
+    }
+
     public static boolean isPlatform() {
         return PLATFORM_TENANT_ID.equals(TENANT.get());
     }

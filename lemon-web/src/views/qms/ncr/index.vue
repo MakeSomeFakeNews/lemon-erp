@@ -228,7 +228,10 @@ const { list, loading, size, pagination, load, search, onTableChange } = useTabl
 onMounted(load)
 
 // 手工登记不提供「检验不合格」来源
-const sourceOptions = computed(() => toOptions(dict.qms_ncr_source).filter((o) => o.value !== 'INSPECTION'))
+// 检验来源由检验不合格自动生成，手工登记时显示为禁用并说明
+const sourceOptions = computed(() =>
+  toOptions(dict.qms_ncr_source).map((o) => (o.value !== 'INSPECTION' ? o : { ...o, label: t('qms.ncr.inspectionSourceHint', { label: o.label }), disabled: true }))
+)
 const rules = {
   source: [{ required: true, message: t('qms.capa.sourceRequired') }],
   materialId: [{ required: true, message: t('mes.supplementForm.materialRequired') }],

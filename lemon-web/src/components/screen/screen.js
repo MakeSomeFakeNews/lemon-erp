@@ -1,5 +1,5 @@
 /** 数据大屏的通用工具：设计尺寸、配色、数字格式、图表基础配置 */
-import { t, tt } from '@/locales'
+import { isZh, t, tt } from '@/locales'
 
 /** 设计稿尺寸，页面按比例缩放铺满屏幕 */
 export const DESIGN_WIDTH = 1920
@@ -19,10 +19,13 @@ export const PALETTE = [COLORS.cyan, COLORS.green, COLORS.orange, COLORS.purple,
 
 export const SCREENS = [
   { key: 'FACTORY', label: t('screen.screens.factory'), desc: t('screen.screens.factoryDesc') },
+  { key: 'PROGRESS', label: t('screen.screens.progress'), desc: t('screen.screens.progressDesc') },
   { key: 'WAREHOUSE', label: t('screen.screens.warehouse'), desc: t('screen.screens.warehouseDesc') },
   { key: 'SALES', label: t('screen.screens.sales'), desc: t('screen.screens.salesDesc') },
   { key: 'QUALITY', label: t('screen.screens.quality'), desc: t('screen.screens.qualityDesc') }
 ]
+/** 可以只看某个工作中心的大屏 */
+export const WORK_CENTER_SCREENS = ['FACTORY', 'PROGRESS']
 /** 后端按字典关联出的中文名称：按原始值取界面语言的字典译文，没有值或译文时用原名称 */
 export const dictLabel = (type, value, label) => (value === null || value === undefined || value === '' ? label : tt(`dict.${type}.${value}`, label))
 /** 列表中某个字段按字典翻译：rows 中 labelKey ← valueKey */
@@ -37,12 +40,24 @@ export function fmtNum(v, digits = 0) {
   return n.toLocaleString('zh-CN', { maximumFractionDigits: digits, minimumFractionDigits: 0 })
 }
 
-/** 金额：一万以上显示为「万」 */
+/** 金额的显示单位：中文一万以上为「万元」；英文一百万以上为 M、一千以上为 K（不用「万」，英文没有这个计数单位） */
+export function moneyUnit(v) {
+  const a = Math.abs(Number(v) || 0)
+  if (isZh()) return a >= 1e4 ? { div: 1e4, unit: t('screen.unit.tenKYuan') } : { div: 1, unit: t('screen.unit.yuan') }
+  if (a >= 1e6) return { div: 1e6, unit: t('screen.unit.mYuan') }
+  if (a >= 1e3) return { div: 1e3, unit: t('screen.unit.kYuan') }
+  return { div: 1, unit: t('screen.unit.yuan') }
+}
+
+/** 图表中金额序列统一的单位（一组数据用同一个单位）：中文万元，英文千元（K） */
+export const chartMoneyUnit = () => (isZh() ? { div: 1e4, unit: t('screen.unit.tenKYuan') } : { div: 1e3, unit: t('screen.unit.kYuan') })
+
+/** 金额：按 moneyUnit 缩放，最多两位小数 */
 export function fmtMoney(v) {
   if (v === null || v === undefined) return { value: '-', unit: '' }
   const n = Number(v)
-  if (Math.abs(n) >= 10000) return { value: (n / 10000).toLocaleString('zh-CN', { maximumFractionDigits: 2 }), unit: t('screen.unit.tenKYuan') }
-  return { value: n.toLocaleString('zh-CN', { maximumFractionDigits: 2 }), unit: t('screen.unit.yuan') }
+  const u = moneyUnit(n)
+  return { value: (n / u.div).toLocaleString('zh-CN', { maximumFractionDigits: 2 }), unit: u.unit }
 }
 
 export const fmtRate = (v) => (v === null || v === undefined ? '-' : `${Number(v).toFixed(1)}`)

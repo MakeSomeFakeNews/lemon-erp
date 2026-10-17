@@ -376,8 +376,8 @@ public class HrPayrollService {
                 : BigDecimal.valueOf(s.shouldDays()).divide(BigDecimal.valueOf(s.monthDays()), 6, RoundingMode.HALF_UP);
         BigDecimal daily = salary.getBaseSalary().add(salary.getPostAllowance()).divide(HrConstants.MONTH_PAY_DAYS, 6, RoundingMode.HALF_UP);
         BigDecimal hourly = daily.divide(HrConstants.DAY_HOURS, 6, RoundingMode.HALF_UP);
-        BigDecimal personal = s.leaveHoursOf("PERSONAL");
-        BigDecimal sick = s.leaveHoursOf("SICK");
+        BigDecimal personal = s.leaveHoursOf(HrLeaveService.LEAVE_PERSONAL);
+        BigDecimal sick = s.leaveHoursOf(HrLeaveService.LEAVE_SICK);
 
         item.setMonthDays(BigDecimal.valueOf(s.monthDays()));
         item.setShouldDays(BigDecimal.valueOf(s.shouldDays()));

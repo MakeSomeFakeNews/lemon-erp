@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.StopRequest;
 import com.lemon.erp.modules.mes.entity.MesEquipment;
@@ -25,8 +26,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -51,6 +52,7 @@ public class MesOeeService {
     private final MesEquipmentStopMapper stopMapper;
     private final MesWorkCenterMapper workCenterMapper;
     private final MesCalendarMapper calendarMapper;
+    private final DictLookup dictLookup;
 
     /** 一台设备（某天或期间合计）的 OEE；比率为 0~1 的小数，分母为 0 时为空 */
     public record Oee(Long equipmentId, String equipmentCode, String equipmentName, String workCenterName, LocalDate date,
@@ -60,7 +62,7 @@ public class MesOeeService {
     }
 
     /** 设备 OEE 明细：期间合计、每天、按原因的停机时长 */
-    public record Detail(Oee total, List<Oee> days, Map<StopReason, BigDecimal> downtime) {
+    public record Detail(Oee total, List<Oee> days, Map<String, BigDecimal> downtime) {
     }
 
     /** 期间内各设备（未报废）的 OEE */
@@ -88,7 +90,7 @@ public class MesOeeService {
     // ---------------------------------------------------------------- 停机记录
 
     public PageResult<MesEquipmentStop> stops(long current, long size, Long equipmentId, LocalDate beginDate, LocalDate endDate,
-                                              StopReason reason) {
+                                              String reason) {
         Page<MesEquipmentStop> page = Page.of(current, size);
         stopMapper.selectPageList(page, equipmentId, beginDate == null ? null : beginDate.atStartOfDay(),
                 endDate == null ? null : endDate.plusDays(1).atStartOfDay(), reason);
@@ -144,6 +146,7 @@ public class MesOeeService {
         if (overlap) {
             throw new BizException("mes.error.overlapsExistingDowntimeRecordEquipment");
         }
+        dictLookup.check("mes_stop_reason", req.reason(), "mes.label.stopReason");
         stop.setEquipmentId(req.equipmentId());
         stop.setStartTime(req.startTime());
         stop.setEndTime(req.endTime());
@@ -178,7 +181,7 @@ public class MesOeeService {
         /** 设备 → 日期 → [计划停机, 非计划停机] */
         private final Map<Long, Map<LocalDate, BigDecimal[]>> stops = new HashMap<>();
         /** 设备 → 原因 → 时长（期间内） */
-        private final Map<Long, Map<StopReason, BigDecimal>> reasons = new HashMap<>();
+        private final Map<Long, Map<String, BigDecimal>> reasons = new HashMap<>();
         /** 设备 → 日期 → [合格, 报废, 理论工时] */
         private final Map<Long, Map<LocalDate, BigDecimal[]>> output = new HashMap<>();
 
@@ -196,9 +199,9 @@ public class MesOeeService {
                     BigDecimal h = hours(from, to);
                     BigDecimal[] v = stops.computeIfAbsent(s.getEquipmentId(), k -> new HashMap<>())
                             .computeIfAbsent(d, k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
-                    int idx = s.getReason().isPlanned() ? 0 : 1;
+                    int idx = StopReason.isPlanned(s.getReason()) ? 0 : 1;
                     v[idx] = v[idx].add(h);
-                    reasons.computeIfAbsent(s.getEquipmentId(), k -> new EnumMap<>(StopReason.class)).merge(s.getReason(), h, BigDecimal::add);
+                    reasons.computeIfAbsent(s.getEquipmentId(), k -> new LinkedHashMap<>()).merge(s.getReason(), h, BigDecimal::add);
                 }
             }
             for (Map<String, Object> r : stopMapper.selectOutput(equipmentId, begin, end)) {
@@ -244,7 +247,7 @@ public class MesOeeService {
             return oee(e, null, cal, plannedStop, planned, down, good, scrap, ideal);
         }
 
-        Map<StopReason, BigDecimal> downtimeByReason(Long equipmentId) {
+        Map<String, BigDecimal> downtimeByReason(Long equipmentId) {
             return reasons.getOrDefault(equipmentId, Map.of());
         }
 

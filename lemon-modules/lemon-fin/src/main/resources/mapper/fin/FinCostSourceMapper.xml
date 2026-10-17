@@ -19,6 +19,18 @@
         GROUP BY f.material_id, COALESCE(d.biz_type, f.biz_type)
     </select>
 
+    <!-- 按收发类别汇总的其他出入库数量（成本凭证按类别取对方科目） -->
+    <select id="selectIoCategoryMovements" resultType="java.util.Map">
+        SELECT f.material_id AS "materialId", d.kind AS "kind", d.io_category AS "ioCategory",
+               SUM(CASE WHEN d.kind = 'IN' THEN f.qty ELSE -f.qty END) AS "qty"
+        FROM wms_stock_flow f
+        JOIN wms_warehouse wh ON wh.id = f.warehouse_id
+        JOIN wms_stock_doc d ON d.id = f.doc_id
+        WHERE f.biz_type IN ('IN', 'OUT') AND d.io_category IS NOT NULL AND wh.type &lt;&gt; 'CONSIGN_IN'
+          AND d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}
+        GROUP BY f.material_id, d.kind, d.io_category
+    </select>
+
     <!-- 已完成的组装拆卸单及其子件（按业务日期） -->
     <select id="selectAssemblies" resultType="java.util.Map">
         SELECT a.assembly_no AS "assemblyNo", a.kind AS "kind", a.material_id AS "productId", a.qty AS "qty",

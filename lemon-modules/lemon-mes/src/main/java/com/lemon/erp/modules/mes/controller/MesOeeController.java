@@ -6,7 +6,6 @@ import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.mes.dto.StopRequest;
 import com.lemon.erp.modules.mes.entity.MesEquipmentStop;
-import com.lemon.erp.modules.mes.model.StopReason;
 import com.lemon.erp.modules.mes.service.MesOeeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -60,7 +59,7 @@ public class MesOeeController {
                                                  @RequestParam(required = false) Long equipmentId,
                                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate beginDate,
                                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-                                                 @RequestParam(required = false) StopReason reason) {
+                                                 @RequestParam(required = false) String reason) {
         return R.ok(oeeService.stops(current, size, equipmentId, beginDate, endDate, reason));
     }
 

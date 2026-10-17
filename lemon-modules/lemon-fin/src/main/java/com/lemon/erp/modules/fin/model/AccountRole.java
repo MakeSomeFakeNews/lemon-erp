@@ -4,7 +4,7 @@ import java.util.Map;
 
 /**
  * 自动凭证科目：业务单据生成凭证时各用途使用的科目。
- * 默认取 init.sql 预置科目的编码，可在「凭证科目设置」中改为其他末级科目；带维度的用途可以再按物料分类 / 职位类别分别指定
+ * 默认取 init.sql 预置科目的编码，可在「凭证科目设置」中改为其他末级科目；带维度的用途可以再按物料分类 / 职位类别 / 收发类别分别指定
  */
 public enum AccountRole {
 
@@ -25,6 +25,10 @@ public enum AccountRole {
     MANUFACTURING_OVERHEAD("fin.label.inventoryCost", "fin.label.manufacturingOverhead", "5101"),
     CONTRACT_COST("fin.label.inventoryCost", "fin.label.contractPerformanceCostProjects", "5401"),
     PENDING_LOSS("fin.label.inventoryCost", "fin.label.pendingPropertyGainsLossesCountSurplus", "1901"),
+    /** 其他入库（按入库类别）的对方科目：成本结转凭证 借 存货 / 贷 该科目；未设置时同待处理财产损溢 */
+    OTHER_IN_OFFSET("fin.label.inventoryCost", "fin.label.otherInOffset", "1901", Dimension.IN_CATEGORY),
+    /** 其他出库、报废出库（按出库类别）的对方科目：借 该科目 / 贷 存货，如福利领用 → 应付职工薪酬、研发领用 → 研发支出；未设置时同待处理财产损溢 */
+    OTHER_OUT_OFFSET("fin.label.inventoryCost", "fin.label.otherOutOffset", "1901", Dimension.OUT_CATEGORY),
 
     REVENUE("fin.label.revenueExpenses", "fin.label.mainOperatingRevenue", "6001", Dimension.MATERIAL_CATEGORY),
     COST_OF_SALES("fin.label.revenueExpenses", "fin.label.mainOperatingCost", "6401", Dimension.MATERIAL_CATEGORY),
@@ -62,7 +66,11 @@ public enum AccountRole {
         /** 字典 wms_material_category */
         MATERIAL_CATEGORY("wms_material_category"),
         /** 字典 hr_position_category */
-        POSITION_CATEGORY("hr_position_category");
+        POSITION_CATEGORY("hr_position_category"),
+        /** 字典 wms_in_category：入库类别 */
+        IN_CATEGORY("wms_in_category"),
+        /** 字典 wms_out_category：出库类别 */
+        OUT_CATEGORY("wms_out_category");
 
         private final String dictType;
 
@@ -120,6 +128,11 @@ public enum AccountRole {
 
     public Map<String, String> dimensionDefaults() {
         return dimensionDefaults;
+    }
+
+    /** 没有任何设置时改用的用途（如其他出入库的对方科目沿用待处理财产损溢的设置），没有为空 */
+    public AccountRole fallback() {
+        return this == OTHER_IN_OFFSET || this == OTHER_OUT_OFFSET ? PENDING_LOSS : null;
     }
 
     /** 某个维度取值的默认科目编码 */

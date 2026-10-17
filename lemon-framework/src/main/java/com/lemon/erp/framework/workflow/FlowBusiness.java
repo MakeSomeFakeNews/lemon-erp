@@ -21,7 +21,7 @@ public record FlowBusiness(String processKey, String name, List<Variable> variab
      *
      * @param type     与流程表单字段类型一致：NUMBER、SELECT、INPUT
      * @param dictType SELECT 类型的取值来自哪个字典（可选值为字典值）
-     * @param options  SELECT 类型不使用字典时的可选值
+     * @param options  SELECT 类型不使用字典时的可选值；使用字典时为字典之外额外的可选值（如加班时假期类型为 OVERTIME）
      */
     public record Variable(String field, String label, String type, String dictType, List<String> options) {
 
@@ -33,8 +33,9 @@ public record FlowBusiness(String processKey, String name, List<Variable> variab
             return new Variable(field, label, "INPUT", null, List.of());
         }
 
-        public static Variable dict(String field, String label, String dictType) {
-            return new Variable(field, label, "SELECT", dictType, List.of());
+        /** 取值来自字典，另外还可能取字典之外的几个固定值 */
+        public static Variable dict(String field, String label, String dictType, String... extraOptions) {
+            return new Variable(field, label, "SELECT", dictType, List.of(extraOptions));
         }
 
         public static Variable select(String field, String label, String... options) {

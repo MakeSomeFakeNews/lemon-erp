@@ -33,7 +33,7 @@ public class BiScreenShare extends BaseEntity {
     /** 轮播间隔（秒） */
     private Integer intervalSeconds;
 
-    /** 生产车间大屏只显示该工作中心，为空显示全部（修改时可清空） */
+    /** 生产车间、生产进度大屏只显示该工作中心，为空显示全部（修改时可清空） */
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Long workCenterId;
 

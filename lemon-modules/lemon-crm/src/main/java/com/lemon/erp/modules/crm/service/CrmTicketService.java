@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.crm.dto.TicketActionRequest;
@@ -50,7 +51,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class CrmTicketService {
 
-    private static final Set<String> TYPES = Set.of("CONSULT", "COMPLAINT", "REPAIR", "RETURN", "SUGGESTION");
     private static final Set<String> ACTIVE = Set.of("OPEN", "PROCESSING");
 
     private final CrmTicketMapper ticketMapper;
@@ -61,6 +61,7 @@ public class CrmTicketService {
     private final CrmTicketPartMapper partMapper;
     private final WmsStockDocService stockDocService;
     private final FinBillService billService;
+    private final DictLookup dictLookup;
 
     public PageResult<CrmTicket> page(long current, long size, String keyword, String type, String priority, String status,
                                       Long customerId, Long assigneeId, Boolean overdue) {
@@ -232,9 +233,9 @@ public class CrmTicketService {
 
     private void check(TicketRequest req) {
         customerService.detail(req.customerId());
-        if (!TYPES.contains(req.type())) {
-            throw new BizException("crm.error.invalidTicketType");
-        }
+        // 工单类型、受理渠道是业务字典（租户可新增），优先级是系统字典（决定处理时限）
+        dictLookup.check("crm_ticket_type", req.type(), "crm.label.ticketType");
+        dictLookup.check("crm_ticket_channel", req.channel(), "crm.label.ticketChannel");
         if (!CrmConstants.SLA_HOURS.containsKey(req.priority())) {
             throw new BizException("crm.error.invalidPriority");
         }

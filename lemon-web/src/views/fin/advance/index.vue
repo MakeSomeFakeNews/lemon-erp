@@ -119,7 +119,7 @@
             <span>{{ $t('fin.advance.thisApply') }} <b :class="['total', { warn: applyTotal > remaining(applyTarget) }]">¥{{ formatMoney(applyTotal) }}</b></span>
           </a-space>
         </div>
-        <a-table row-key="id" size="small" :columns="billColumns" :data-source="bills" :loading="billLoading" :pagination="false"
+        <a-table row-key="id" size="small" :columns="billColumns" :data-source="bills" :loading="billLoading" :pagination="false" :scroll="{ x: billScrollX }"
           :locale="{ emptyText: conf.emptyBills }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'source'">
@@ -258,6 +258,7 @@ const billColumns = [
   { title: t('fin.advance.unsettled'), key: 'remaining', width: 120, align: 'right' },
   { title: t('fin.advance.thisApply'), key: 'apply', width: 150 }
 ]
+const billScrollX = billColumns.reduce((sum, c) => sum + c.width, 0)
 const applyOpen = ref(false)
 const applying = ref(false)
 const applyTarget = ref()

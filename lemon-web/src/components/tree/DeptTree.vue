@@ -27,7 +27,7 @@
         >
           <template #title="node">
             <div class="dept-node">
-              <HighlightText :text="node.name" :keyword="keyword" :class="['dept-node-name', { 'is-disabled': node.status === 0 }]" />
+              <HighlightText :text="node.name" :keyword="keyword" :title="node.name" :class="['dept-node-name', { 'is-disabled': node.status === 0 }]" />
               <a-tag v-if="node.status === 0" :bordered="false" class="dept-node-tag">{{ $t('common.status.disabled') }}</a-tag>
               <span v-if="$slots.actions" class="dept-node-actions" @click.stop>
                 <slot name="actions" :node="node.dataRef" />

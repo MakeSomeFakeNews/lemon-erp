@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 
 /**
  * 凭证科目设置：业务单据自动生成凭证时，按用途（{@link AccountRole}）取科目。
- * 优先级：用途 + 维度取值的设置 → 用途的默认设置 → 预置科目编码（按维度取值区分，如半成品、成品为库存商品）
+ * 优先级：用途 + 维度取值的设置 → 用途的默认设置 → 后备用途（{@link AccountRole#fallback()}）的设置 → 预置科目编码（按维度取值区分，如半成品、成品为库存商品）
  */
 @Service
 @RequiredArgsConstructor
@@ -58,6 +58,9 @@ public class FinAccountRuleService {
                 .in(FinAccountRule::getDimValue, dim.isEmpty() ? List.of(NO_DIM) : List.of(dim, NO_DIM)));
         FinAccountRule rule = rules.stream().filter(r -> dim.equals(r.getDimValue())).findFirst()
                 .orElseGet(() -> rules.stream().filter(r -> NO_DIM.equals(r.getDimValue())).findFirst().orElse(null));
+        if (rule == null && role.fallback() != null) {
+            return account(role.fallback(), null);
+        }
         if (rule == null) {
             return accountService.leafByCode(role.defaultCode(dim.isEmpty() ? null : dim));
         }
@@ -81,7 +84,7 @@ public class FinAccountRuleService {
             rules.stream().filter(r -> !NO_DIM.equals(r.getDimValue())).forEach(r -> items.put(r.getDimValue(), r.getAccountId()));
             // 分组、用途名称返回给页面显示，按请求语言翻译
             views.add(new RoleView(role.name(), Messages.get(role.groupKey()), Messages.get(role.labelKey()), role.dimension().name(), role.dimension().dictType(),
-                    role.defaultCode(), role.dimensionDefaults(), accountId, items));
+                    role.defaultCode(), role.dimensionDefaults(), role.fallback() == null ? null : role.fallback().name(), accountId, items));
         }
         return views;
     }
@@ -133,14 +136,15 @@ public class FinAccountRuleService {
     /**
      * 一个用途的设置
      *
-     * @param dimension         维度（NONE、MATERIAL_CATEGORY、POSITION_CATEGORY）
+     * @param dimension         维度（NONE、MATERIAL_CATEGORY、POSITION_CATEGORY、IN_CATEGORY、OUT_CATEGORY）
      * @param dictType          维度取值所在的字典
      * @param defaultCode       预置科目编码
      * @param dimensionDefaults 维度取值 → 预置科目编码（没有的取 defaultCode）
+     * @param fallback          没有设置时沿用的用途，没有为空
      * @param accountId         设置的默认科目，未设置为空
      * @param items             维度取值 → 设置的科目
      */
     public record RoleView(String role, String group, String label, String dimension, String dictType, String defaultCode,
-                           Map<String, String> dimensionDefaults, Long accountId, Map<String, Long> items) {
+                           Map<String, String> dimensionDefaults, String fallback, Long accountId, Map<String, Long> items) {
     }
 }

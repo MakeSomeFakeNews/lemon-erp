@@ -70,7 +70,7 @@
           </a-col>
           <a-col :xs="12" :sm="6">
             <a-form-item :label="$t('fin.settlementPage.method')" name="method">
-              <a-select v-model:value="form.method" :options="toOptions(dict.fin_settle_method)" />
+              <a-select v-model:value="form.method" :options="methodOptions" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
@@ -114,7 +114,7 @@
           <span v-else>{{ conf.thisTotal }} <b class="total">¥{{ formatMoney(total) }}</b></span>
         </a-space>
       </div>
-      <a-table row-key="id" size="small" :columns="billColumns" :data-source="bills" :loading="billLoading" :pagination="false"
+      <a-table row-key="id" size="small" :columns="billColumns" :data-source="bills" :loading="billLoading" :pagination="false" :scroll="{ x: billScrollX }"
         :locale="{ emptyText: form.partnerId ? $t('fin.settlementPage.noBills') : $t('fin.settlementPage.selectPartnerFirst', { name: conf.partnerLabel }) }">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'source'">
@@ -253,6 +253,10 @@ const CONF = {
 }
 const conf = CONF[props.kind]
 const dict = useDict('fin_settle_method', 'fin_bill_source', 'sys_approve_status')
+// 票据结算由票据业务（收票、背书、开票）自动生成，手工收付款时显示为禁用并说明
+const methodOptions = computed(() =>
+  toOptions(dict.fin_settle_method).map((o) => (o.value !== 'NOTE' ? o : { ...o, label: t('fin.settlementPage.noteMethodHint', { label: o.label }), disabled: true }))
+)
 
 const columns = [
   { title: t('fin.settlementPage.no'), key: 'settleNo', width: 170 },
@@ -302,6 +306,7 @@ const billColumns = [
   { title: t('fin.settlementPage.remaining'), key: 'remaining', width: 120, align: 'right' },
   { title: t('fin.settlementPage.settle'), key: 'settle', width: 150 }
 ]
+const billScrollX = billColumns.reduce((sum, c) => sum + c.width, 0)
 const createOpen = ref(false)
 const saving = ref(false)
 const formRef = ref()

@@ -111,7 +111,7 @@
               <a-input-number v-model:value="form.qty" :min="0" :precision="form.serialEnabled === 1 ? 0 : 4" :addon-after="form.unit || undefined" class="full" />
             </a-form-item>
           </a-col>
-          <a-col :xs="12" :sm="6" :lg="4">
+          <a-col :xs="12" :sm="6" :lg="6">
             <a-form-item :label="$t('wms.common.location')" name="locationId">
               <LocationSelect v-model:value="form.locationId" :warehouse-id="form.warehouseId" />
             </a-form-item>
@@ -135,7 +135,7 @@
             <a-button type="primary" ghost @click="addRow"><template #icon><PlusOutlined /></template>{{ $t('wms.assembly.addComp') }}</a-button>
           </a-space>
         </div>
-        <a-table row-key="key" size="small" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: 960 }"
+        <a-table row-key="key" size="small" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: itemScrollX }"
           :locale="{ emptyText: $t('wms.assembly.empty') }">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'material'">
@@ -244,13 +244,14 @@ function resetQuery() {
 }
 
 const itemColumns = [
-  { title: t('wms.assembly.component'), key: 'material', width: 280 },
+  { title: t('wms.assembly.component'), key: 'material', width: 300 },
   { title: t('common.field.quantity'), key: 'qty', width: 160 },
-  { title: t('wms.common.location'), key: 'location', width: 150 },
+  { title: t('wms.common.location'), key: 'location', width: 200 },
   { title: t('wms.common.batchNo'), key: 'batchNo', width: 140 },
   { title: t('wms.common.serialNo'), key: 'serialNos', width: 180 },
   { title: '', key: 'action', width: 50 }
 ]
+const itemScrollX = itemColumns.reduce((sum, c) => sum + c.width, 0)
 const detailColumns = [
   { title: t('wms.assembly.component'), key: 'material' },
   { title: t('common.field.quantity'), key: 'qty', width: 130, align: 'right' },

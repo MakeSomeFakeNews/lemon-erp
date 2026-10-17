@@ -106,7 +106,7 @@
               <a-button type="primary" @click="openApply('LEAVE')">{{ $t('hr.self.applyLeave') }}</a-button>
               <a-button @click="openApply('OVERTIME')">{{ $t('hr.self.applyOvertime') }}</a-button>
             </div>
-            <a-table row-key="id" size="small" :columns="leaveColumns" :data-source="leaves" :pagination="{ pageSize: 10 }" :scroll="{ x: 900 }">
+            <a-table row-key="id" size="small" :columns="leaveColumns" :data-source="leaves" :pagination="{ pageSize: 10 }" :scroll="{ x: leaveScrollX }">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'kind'">
                   <DictTag type="hr_leave_kind" :value="record.kind" />
@@ -357,10 +357,11 @@ const leaveColumns = [
   { title: t('hr.self.kind'), key: 'kind', width: 150 },
   { title: t('hr.self.time'), key: 'time', width: 220 },
   { title: t('hr.self.duration'), key: 'hours', width: 140 },
-  { title: t('hr.self.reason'), dataIndex: 'reason', ellipsis: true },
+  { title: t('hr.self.reason'), dataIndex: 'reason', width: 200, ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 140 },
   { title: '', key: 'action', width: 80 }
 ]
+const leaveScrollX = leaveColumns.reduce((sum, c) => sum + c.width, 0)
 const canCancel = (r) => r.status === 'APPROVING' || (r.status === 'APPROVED' && dayjs(r.startTime).isAfter(dayjs()))
 async function loadLeaves() {
   leaves.value = await selfLeaves()

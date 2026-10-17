@@ -279,7 +279,7 @@
             :columns="subColumns"
             :data-source="form.substitutes"
             :pagination="false"
-            :scroll="{ x: 700 }"
+            :scroll="{ x: subScrollX }"
             :locale="{ emptyText: $t('wms.material.noSubstitute') }"
           >
             <template #bodyCell="{ column, record, index }">
@@ -571,12 +571,13 @@ onMounted(load)
 
 // ---------------------------------------------------------------- 新增 / 编辑
 const subColumns = [
-  { title: t('wms.material.substitute'), key: 'substitute', width: 260 },
+  { title: t('wms.material.substitute'), key: 'substitute', width: 290 },
   { title: t('wms.material.ratio'), key: 'ratio', width: 120 },
   { title: t('wms.material.priority'), key: 'priority', width: 90 },
   { title: t('common.field.remark'), key: 'remark', width: 180 },
   { title: '', key: 'action', width: 50 }
 ]
+const subScrollX = subColumns.reduce((sum, c) => sum + c.width, 0)
 const rules = {
   code: [
     { required: true, message: t('wms.material.inputCode') },

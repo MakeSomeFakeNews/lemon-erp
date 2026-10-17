@@ -64,11 +64,11 @@ const trade = (key, name, partner, sign) => ({
   signs: [n.prepared, n.storekeeper, sign],
   note: true
 })
-const stock = (key, name, warehouse, transfer) => ({
+const stock = (key, name, warehouse, transfer, type, category) => ({
   key,
   module: n.warehouse,
   name,
-  fields: [warehouse, ...(transfer ? [n.inWarehouse] : []), n.bizDate, n.sourceNo, n.totalQty],
+  fields: [...(type ? [type, category] : []), warehouse, ...(transfer ? [n.inWarehouse] : []), n.bizDate, n.sourceNo, n.totalQty],
   columns: [...MATERIAL_COLUMNS, transfer ? n.outLocation : n.location, ...(transfer ? [n.inLocation] : []), n.batch, num(n.quantity), n.serialNo],
   signs: [n.prepared, n.confirmed, n.handler],
   note: true
@@ -109,8 +109,8 @@ export const PRINT_TYPES = [
     signs: [n.packer, n.reviewer, n.customerSign],
     note: true
   },
-  stock('wms.in', n.wmsIn, n.inboundWarehouse),
-  stock('wms.out', n.wmsOut, n.outboundWarehouse),
+  stock('wms.in', n.wmsIn, n.inboundWarehouse, false, n.inType, n.inCategory),
+  stock('wms.out', n.wmsOut, n.outboundWarehouse, false, n.outType, n.outCategory),
   stock('wms.transfer', n.transfer, n.outWarehouse, true),
   {
     key: 'fin.voucher',

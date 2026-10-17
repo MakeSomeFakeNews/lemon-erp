@@ -27,7 +27,7 @@
         </a-col>
       </a-row>
 
-      <a-table row-key="key" size="small" class="items-table" :columns="columns" :data-source="form.items" :pagination="false" :scroll="{ x: 1000 }">
+      <a-table row-key="key" size="small" class="items-table" :columns="columns" :data-source="form.items" :pagination="false" :scroll="{ x: scrollX }">
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
             <div>{{ record.materialCode }} {{ record.materialName }}</div>
@@ -156,13 +156,14 @@ const columns = computed(() => [
   ...(outbound.value
     ? [{ title: t('mes.woDocForm.slot'), key: 'slot', width: 230 }]
     : [
-        { title: t('mes.woDocForm.location'), key: 'location', width: 150 },
+        { title: t('mes.woDocForm.location'), key: 'location', width: 200 },
         { title: t('mes.woDocForm.batchNo'), key: 'batchNo', width: 160 }
       ]),
   { title: t('common.field.quantity'), key: 'qty', width: 150 },
   { title: t('mes.woDocForm.serialNo'), key: 'serialNos', width: 240 },
   { title: '', key: 'action', width: 80, fixed: 'right' }
 ])
+const scrollX = computed(() => columns.value.reduce((sum, c) => sum + c.width, 0))
 
 const formRef = ref()
 const form = ref({ warehouseId: undefined, bizDate: today(), remark: '', items: [] })

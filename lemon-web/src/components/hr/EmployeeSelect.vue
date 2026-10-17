@@ -6,6 +6,7 @@
     allow-clear
     :placeholder="placeholder"
     :filter-option="false"
+    :dropdown-match-select-width="300"
     :options="options"
     :loading="loading"
     :not-found-content="loading ? $t('common.msg.loading') : $t('hr.employeeSelect.notFound')"

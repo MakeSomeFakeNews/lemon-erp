@@ -44,7 +44,7 @@
           :loading="ledgerLoading"
           :pagination="false"
           :row-class-name="(r) => (r.type !== 'ENTRY' ? 'total-row' : '')"
-          :scroll="{ x: 760 }"
+          :scroll="{ x: ledgerScrollX }"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'voucherNo'">
@@ -94,12 +94,13 @@ const accountColumns = computed(() => [
 const ledgerColumns = [
   { title: t('common.field.date'), dataIndex: 'entryDate', width: 110 },
   { title: t('fin.reportDrill.voucherNo'), key: 'voucherNo', width: 140 },
-  { title: t('fin.reportDrill.summary'), dataIndex: 'summary', ellipsis: true },
+  { title: t('fin.reportDrill.summary'), dataIndex: 'summary', width: 220, ellipsis: true },
   { title: t('fin.reportDrill.debit'), key: 'debit', width: 120, align: 'right' },
   { title: t('fin.reportDrill.credit'), key: 'credit', width: 120, align: 'right' },
   { title: t('fin.reportDrill.side'), dataIndex: 'side', width: 80, align: 'center' },
   { title: t('fin.reportDrill.balance'), key: 'balance', width: 130, align: 'right' }
 ]
+const ledgerScrollX = ledgerColumns.reduce((sum, c) => sum + c.width, 0)
 
 const ledgerAccount = ref()
 const ledgerRows = ref([])

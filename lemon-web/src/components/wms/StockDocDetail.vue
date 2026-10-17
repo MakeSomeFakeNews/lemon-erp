@@ -22,6 +22,9 @@
           <a-descriptions-item v-if="conf.typeDict" :label="conf.typeLabel">
             <DictTag :type="conf.typeDict" :value="detail.bizType" />
           </a-descriptions-item>
+          <a-descriptions-item v-if="detail.ioCategory" :label="conf.categoryLabel">
+            <DictTag :type="conf.categoryDict" :value="detail.ioCategory" />
+          </a-descriptions-item>
           <a-descriptions-item :label="conf.warehouseLabel">{{ detail.warehouseName }}</a-descriptions-item>
           <a-descriptions-item v-if="kind === 'transfer'" :label="$t('wms.doc.toWarehouse')">{{ detail.toWarehouseName }}</a-descriptions-item>
           <a-descriptions-item v-if="kind === 'transfer'" :label="$t('wms.doc.transferMode')">
@@ -133,6 +136,9 @@ import { confirmDoc, getDoc, receiveTransfer, reverseDoc } from '@/api/wms/doc'
 import { useUserStore } from '@/store/user'
 import { DOC_KINDS, canReverse, formatQty, locationText, negativeClass, splitSerials } from './wms'
 import { materialColumns, printDocs } from '@/utils/print'
+import { printName } from '@/utils/printTemplates'
+import { useDict } from '@/composables/useDict'
+import { findDict } from '@/utils/dict'
 
 /**
  * 出入库单详情；草稿可以编辑（触发 edit）、确认（更新库存后触发 changed）
@@ -147,6 +153,7 @@ const { t } = useI18n()
 
 const userStore = useUserStore()
 const conf = computed(() => DOC_KINDS[props.kind])
+const dict = useDict('wms_in_type', 'wms_out_type', 'wms_in_category', 'wms_out_category')
 const canEdit = computed(() => userStore.hasPerm(`wms:${props.kind}:edit`))
 const canConfirm = computed(() => userStore.hasPerm(`wms:${props.kind}:confirm`))
 const inTransit = computed(() => detail.value?.inTransit === true || detail.value?.inTransit === 1)
@@ -180,6 +187,12 @@ function print() {
     title: c.label,
     no: d.docNo,
     fields: [
+      ...(c.typeDict
+        ? [
+            [c.typeLabel, findDict(dict[c.typeDict], d.bizType)?.label ?? d.bizType, false, printName(props.kind === 'in' ? 'inType' : 'outType')],
+            [c.categoryLabel, findDict(dict[c.categoryDict], d.ioCategory)?.label ?? d.ioCategory, false, printName(props.kind === 'in' ? 'inCategory' : 'outCategory')]
+          ]
+        : []),
       [c.warehouseLabel, d.warehouseName],
       ...(transfer ? [[t('wms.doc.toWarehouse'), d.toWarehouseName]] : []),
       [t('wms.common.bizDate'), d.bizDate],

@@ -129,7 +129,7 @@
             <template #icon><PlusOutlined /></template>{{ $t('mes.bom.addItem') }}
           </a-button>
         </div>
-        <a-table row-key="key" size="small" class="items-table" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: 1180 }">
+        <a-table row-key="key" size="small" class="items-table" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: itemScrollX }">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'material'">
               <a-form-item :name="['items', index, 'materialId']" :rules="[{ required: true, message: $t('mes.bom.itemRequired') }]" class="cell-item">
@@ -178,7 +178,7 @@
             <template #icon><PlusOutlined /></template>{{ $t('mes.bom.addOp') }}
           </a-button>
         </div>
-        <a-table row-key="key" size="small" class="items-table" :columns="opColumns" :data-source="form.ops" :pagination="false">
+        <a-table row-key="key" size="small" class="items-table" :columns="opColumns" :data-source="form.ops" :pagination="false" :scroll="{ x: opScrollX }">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'seq'">
               <a-input-number v-model:value="record.seq" :min="1" class="full" />
@@ -339,7 +339,7 @@ const editable = (bom) => !pending(bom) || bom.ecnStatus === 'DRAFT'
 
 // ---------------------------------------------------------------- 表单
 const itemColumns = [
-  { title: t('mes.bom.item'), key: 'material', width: 260 },
+  { title: t('mes.bom.item'), key: 'material', width: 290 },
   { title: t('common.field.spec'), key: 'spec', width: 160 },
   { title: t('mes.bom.unitQty'), key: 'qty', width: 170 },
   { title: t('mes.bom.lossRate'), key: 'lossRate', width: 110 },
@@ -347,6 +347,7 @@ const itemColumns = [
   { title: t('common.field.remark'), key: 'remark', width: 160 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
+const itemScrollX = itemColumns.reduce((sum, c) => sum + c.width, 0)
 const opColumns = [
   { title: t('mes.wo.opSeq'), key: 'seq', width: 100 },
   { title: t('mes.bom.opName'), key: 'name', width: 200 },
@@ -356,6 +357,7 @@ const opColumns = [
   { title: t('mes.bom.firstArticle'), key: 'firstArticle', width: 160 },
   { title: '', key: 'action', width: 50 }
 ]
+const opScrollX = opColumns.reduce((sum, c) => sum + c.width, 0)
 const rules = {
   materialId: [{ required: true, message: t('mes.wo.productRequired') }],
   version: [{ required: true, whitespace: true, message: t('mes.bom.versionRequired') }]

@@ -101,7 +101,7 @@
                   <div v-if="entryOf(current)" :class="['cal-entry', { inherited: entryOf(current).workCenterId !== calWc, off: !Number(entryOf(current).hours) }]">
                     <div>{{ Number(entryOf(current).hours) ? $t('mes.bom.hoursN', { v: formatQty(entryOf(current).hours) }) : $t('mes.capacity.off') }}</div>
                     <div v-if="entryOf(current).workCenterId !== calWc" class="sub-text">{{ $t('mes.capacity.factory') }}</div>
-                    <div v-if="entryOf(current).remark" class="cal-remark">{{ entryOf(current).remark }}</div>
+                    <div v-if="entryOf(current).remark" class="cal-remark" :title="entryOf(current).remark">{{ entryOf(current).remark }}</div>
                   </div>
                 </template>
               </a-calendar>

@@ -3,6 +3,7 @@
  * 1. 语言包：zh-CN 与 en-US 的键是否一致（menu、dict 只有译文，不检查）
  * 2. 代码中 t('a.b') / $t('a.b') / tt('a.b') 使用的键是否在 zh-CN、en-US 中都存在（只检查字面量键）
  * 3. 代码中残留的中文（去掉注释和 console 输出后；行内写 i18n-ignore 表示有意保留，如中文大写金额）
+ * 4. sql/init.sql 中的内置菜单、字典数据是否在 en-US/menu.js、en-US/dict.js 中有英文（中文直接使用数据库中的名称）
  * 有问题时退出码为 1
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
@@ -54,6 +55,20 @@ for (const lang of LANGS) {
     if (typeof v === 'string' && /(^|[^{'])[@|$]/.test(v.replace(/\{'[@|${}]'\}/g, ''))) {
       problems.push(`[${lang} 特殊字符] ${k}: ${v}（@ | $ 要写成 {'@'}）`)
     }
+  }
+}
+
+// 内置菜单、字典的英文：按 init.sql 中的 INSERT 逐条检查
+const initSql = readFileSync(join(ROOT, '..', 'sql', 'init.sql'), 'utf8')
+const inserts = (table) => [...initSql.matchAll(new RegExp(`INSERT INTO ${table} \\([^)]*\\) VALUES\\s*([\\s\\S]*?);\\s*$`, 'gm'))].map((m) => m[1])
+for (const block of inserts('sys_menu')) {
+  for (const m of block.matchAll(/^\((\d+),\s*\d+,\s*'([^']*)'/gm)) {
+    if (!keys['en-US'].has(`menu.${m[1]}`)) problems.push(`[en-US/menu.js 缺少] ${m[1]}: ${m[2]}`)
+  }
+}
+for (const block of inserts('sys_dict_data')) {
+  for (const m of block.matchAll(/^\((?:\d+,\s*)?'([a-z_]+)',\s*'([^']*)',\s*'([^']*)'/gm)) {
+    if (!keys['en-US'].has(`dict.${m[1]}.${m[3]}`)) problems.push(`[en-US/dict.js 缺少] ${m[1]}.${m[3]}: ${m[2]}`)
   }
 }
 

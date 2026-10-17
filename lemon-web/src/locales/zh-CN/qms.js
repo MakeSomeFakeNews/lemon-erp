@@ -112,6 +112,7 @@ export default {
     aql: 'AQL {aql} · 检验水平 {level}'
   },
   ncr: {
+    inspectionSourceHint: '{label}（由检验单自动生成）',
     keywordPh: '单号、来源单号、物料、供应商',
     add: '登记不合格',
     addTitle: '登记不合格品',

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
@@ -60,7 +61,8 @@ public class PmProjectService {
     public static final String PROCESS_KEY = "pm_project";
     private static final String BUSINESS_KEY_PREFIX = "pm_project:";
 
-    private static final Set<String> TYPES = Set.of("RD", "DELIVERY", "ENGINEERING", "INTERNAL");
+    /** 默认优先级（业务字典 pm_priority 的内置值） */
+    private static final String DEFAULT_PRIORITY = "MEDIUM";
     private static final Map<String, Set<String>> TRANSITIONS = Map.of(
             "ACTIVE", Set.of("PLANNING", "SUSPENDED"),
             "SUSPENDED", Set.of("ACTIVE"),
@@ -80,6 +82,7 @@ public class PmProjectService {
     private final FlowApi flowApi;
     private final ChangeLogger changeLogger;
     private final ScmQueryService scmQueryService;
+    private final DictLookup dictLookup;
 
     /** @param mine 只看我负责（项目经理）的 */
     @DataPermission(table = "pm_project", deptColumn = "dept_id", userColumn = "manager_id")
@@ -250,9 +253,8 @@ public class PmProjectService {
         if (exist != null && !Objects.equals(exist.getId(), selfId)) {
             throw new BizException("pm.error.projectCodeAlreadyExists");
         }
-        if (!TYPES.contains(req.type())) {
-            throw new BizException("pm.error.invalidProjectType");
-        }
+        dictLookup.check("pm_project_type", req.type(), "pm.label.projectType");
+        dictLookup.check("pm_priority", req.priority(), "pm.label.priority");
         if (req.planEnd().isBefore(req.planStart())) {
             throw new BizException("pm.error.plannedEndDateCannotEarlierPlanned");
         }
@@ -284,7 +286,7 @@ public class PmProjectService {
         p.setBudgetControl(Integer.valueOf(1).equals(req.budgetControl()) ? 1 : 0);
         p.setManagerId(manager.getId());
         p.setDeptId(manager.getDeptId());
-        p.setPriority(req.priority() == null ? "MEDIUM" : req.priority());
+        p.setPriority(req.priority() == null || req.priority().isBlank() ? DEFAULT_PRIORITY : req.priority());
         p.setPlanStart(req.planStart());
         p.setPlanEnd(req.planEnd());
         p.setContractAmount(req.contractAmount() == null ? BigDecimal.ZERO : req.contractAmount());
@@ -293,6 +295,6 @@ public class PmProjectService {
     }
 
     static MemberRequest managerMember(Long userId, LocalDate joinDate) {
-        return new MemberRequest(userId, "MANAGER", 100, null, joinDate, null, null);
+        return new MemberRequest(userId, PmMemberService.ROLE_MANAGER, 100, null, joinDate, null, null);
     }
 }

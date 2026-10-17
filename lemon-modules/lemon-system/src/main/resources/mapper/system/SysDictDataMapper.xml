@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.system.mapper.SysDictDataMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO sys_dict_data (tenant_id, dict_type, dict_label, dict_value, tag_color, sort, status, builtin, remark, create_time, update_time) VALUES
+        <foreach collection="list" item="d" separator=",">
+            (#{d.tenantId}, #{d.dictType}, #{d.dictLabel}, #{d.dictValue}, #{d.tagColor}, #{d.sort}, #{d.status}, #{d.builtin}, #{d.remark}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

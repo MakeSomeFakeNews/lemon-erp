@@ -5,6 +5,7 @@
     :allow-clear="allowClear"
     :placeholder="placeholder || $t(type === 'supplier' ? 'scm.partnerSelect.searchSupplier' : 'scm.partnerSelect.searchCustomer')"
     :filter-option="false"
+    :dropdown-match-select-width="360"
     :options="options"
     :loading="loading"
     :disabled="disabled"

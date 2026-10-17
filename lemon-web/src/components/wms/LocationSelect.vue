@@ -8,6 +8,7 @@
     :loading="loading"
     :disabled="disabled || !warehouseId"
     option-filter-prop="label"
+    :dropdown-match-select-width="280"
     @change="(v) => emit('update:value', v ?? null)"
   />
 </template>

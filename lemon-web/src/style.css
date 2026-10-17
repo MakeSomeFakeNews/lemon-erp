@@ -373,3 +373,24 @@ body {
 .app-sider .ant-menu-inline-collapsed .ant-menu-item-selected::before {
   display: none;
 }
+
+/* 下拉框按内容宽度展开（见 main.js），最宽不超过 560px，更长的选项换行显示而不是省略 */
+.ant-select-dropdown {
+  max-width: min(560px, calc(100vw - 32px));
+}
+.ant-select-dropdown .ant-select-item-option-content {
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* 表格中的标签：英文等较长文字在窄列中换行，不溢出单元格（省略列保持单行） */
+.ant-table-cell:not(.ant-table-cell-ellipsis) .ant-tag {
+  white-space: normal;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+/* 可编辑明细表中的下拉框占满单元格（:where 不增加优先级，组件中显式设置的宽度仍然生效） */
+:where(.ant-table-cell) .ant-select {
+  width: 100%;
+}

@@ -1,6 +1,6 @@
 export default {
   hello: '{greeting}, {name}',
-  vsLastMonth: 'vs. same period last month',
+  vsLastMonth: 'vs. last month',
   modules: 'Modules',
   noModules: 'No accessible features',
   todos: 'To-dos',
@@ -10,10 +10,10 @@ export default {
   messages: 'Messages',
   noMessages: 'No messages',
   card: {
-    receivableSub: 'Receivables not written off',
-    payableSub: 'Payables not written off',
+    receivableSub: 'Open receivables',
+    payableSub: 'Open payables',
     orderUnit: 'orders',
-    toShipSub: 'Approved or partially delivered',
+    toShipSub: 'Approved, not fully shipped',
     woUnit: 'orders',
     wipSub: 'Released or in production'
   },

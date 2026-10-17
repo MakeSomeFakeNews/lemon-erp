@@ -160,7 +160,10 @@ const loading = ref(false)
 
 const openProject = computed(() => project.value && !['FINISHED', 'CLOSED'].includes(project.value.status))
 const typeLabel = (v) => findDict(dict.pm_cost_type, v)?.label || v
-const manualTypeOptions = computed(() => toOptions(dict.pm_cost_type).filter((o) => MANUAL_COST_TYPES.includes(o.value)))
+// 人工成本来自已审批的工时，不能手工录入：显示为禁用并说明原因
+const manualTypeOptions = computed(() =>
+  toOptions(dict.pm_cost_type).map((o) => (MANUAL_COST_TYPES.includes(o.value) ? o : { ...o, label: t('pm.cost.laborFromTimesheet', { label: o.label }), disabled: true }))
+)
 
 const totalActual = computed(() => budgets.value.reduce((s, b) => s + Number(b.actual || 0), 0))
 const overBudget = computed(() => Number(project.value?.budgetAmount) > 0 && totalActual.value > Number(project.value.budgetAmount))

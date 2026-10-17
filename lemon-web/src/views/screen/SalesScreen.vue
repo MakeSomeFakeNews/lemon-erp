@@ -17,7 +17,7 @@
 
     <div class="panels sales-top">
       <ScreenPanel :title="$t('screen.sales.monthly')">
-        <template #extra>{{ $t('screen.sales.monthlyHint') }}</template>
+        <template #extra>{{ $t('screen.sales.monthlyHint', { unit: chartUnit.unit }) }}</template>
         <EChart :option="monthlyOption" height="100%" dark />
       </ScreenPanel>
       <ScreenPanel :title="$t('screen.sales.topCustomers')">
@@ -59,7 +59,8 @@ import EChart from '@/components/charts/EChart.vue'
 import ScreenKpi from '@/components/screen/ScreenKpi.vue'
 import ScreenPanel from '@/components/screen/ScreenPanel.vue'
 import ScrollList from '@/components/screen/ScrollList.vue'
-import { COLORS, axisStyle, fmtMoney, fmtNum, gradient, hGradient, legend, shortDay, tooltip, withDictLabel } from '@/components/screen/screen'
+import { COLORS, axisStyle, chartMoneyUnit, fmtMoney, fmtNum, gradient, hGradient, legend, moneyUnit, shortDay, tooltip, withDictLabel } from '@/components/screen/screen'
+import { shortMoney } from '@/components/charts/charts'
 import './screen.css'
 
 /** 销售经营大屏 */
@@ -67,10 +68,11 @@ const props = defineProps({ data: { type: Object, default: () => ({}) } })
 const { t } = useI18n()
 const kpi = computed(() => props.data.kpi || {})
 
-/** 指标卡金额：一万以上按万元显示两位小数 */
+/** 指标卡金额：按 moneyUnit 缩放（中文万元、英文 K / M），缩放后两位小数 */
 function money(v) {
   const n = Number(v || 0)
-  return Math.abs(n) >= 10000 ? { value: n / 10000, unit: t('screen.unit.tenKYuan'), digits: 2 } : { value: n, unit: t('screen.unit.yuan'), digits: 0 }
+  const u = moneyUnit(n)
+  return { value: n / u.div, unit: u.unit, digits: u.div > 1 ? 2 : 0 }
 }
 const moneyText = (v) => { const m = fmtMoney(v); return `${m.value} ${m.unit}` }
 const growth = computed(() => {
@@ -79,11 +81,12 @@ const growth = computed(() => {
 })
 const growthText = computed(() => (growth.value === null ? t('screen.sales.noLastYear') : t('screen.sales.yoy', { rate: `${growth.value >= 0 ? '+' : ''}${growth.value.toFixed(1)}` })))
 
-const wan = (v) => (v === null || v === undefined ? null : Number((Number(v) / 10000).toFixed(2)))
+const chartUnit = chartMoneyUnit()
+const wan = (v) => (v === null || v === undefined ? null : Number((Number(v) / chartUnit.div).toFixed(2)))
 const monthlyOption = computed(() => {
   const rows = props.data.monthly || []
   return {
-    tooltip: tooltip({ valueFormatter: (v) => (v === null || v === undefined ? '-' : `${v} ${t('screen.unit.tenKYuan')}`) }),
+    tooltip: tooltip({ valueFormatter: (v) => (v === null || v === undefined ? '-' : `${v} ${chartUnit.unit}`) }),
     legend: legend(),
     grid: { left: 56, right: 16, top: 36, bottom: 26 },
     xAxis: { type: 'category', data: rows.map((r) => t(`screen.month.${Number(r.month)}`)), ...axisStyle },
@@ -118,9 +121,9 @@ const salesmanOption = computed(() => {
   const rows = props.data.salesmen || []
   return {
     tooltip: tooltip({ formatter: (p) => { const r = rows[p[0].dataIndex]; return `${r.name}<br/>${moneyText(r.amount)}　${t('screen.common.docsN', { n: r.orders })}` } }),
-    grid: { left: 50, right: 16, top: 30, bottom: 30 },
+    grid: { left: 16, right: 16, top: 30, bottom: 30, containLabel: true },
     xAxis: { type: 'category', data: rows.map((r) => r.name), ...axisStyle, axisLabel: { ...axisStyle.axisLabel, color: COLORS.text } },
-    yAxis: { type: 'value', ...axisStyle, axisLabel: { ...axisStyle.axisLabel, formatter: (v) => (v >= 10000 ? t('screen.unit.tenKN', { n: v / 10000 }) : v) } },
+    yAxis: { type: 'value', ...axisStyle, axisLabel: { ...axisStyle.axisLabel, formatter: (v) => shortMoney(v) } },
     series: [{
       type: 'bar', barWidth: 22, data: rows.map((r) => Number(r.amount)),
       itemStyle: { color: gradient(COLORS.purple, 0.2), borderRadius: [4, 4, 0, 0] },

@@ -8,6 +8,7 @@ import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.system.entity.SysDictData;
 import com.lemon.erp.modules.system.entity.SysDictType;
+import com.lemon.erp.modules.system.model.DictKind;
 import com.lemon.erp.modules.system.service.SysDictService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -39,8 +40,9 @@ public class SysDictController {
                                                @RequestParam(defaultValue = "10") long size,
                                                @RequestParam(required = false) String name,
                                                @RequestParam(required = false) String type,
-                                               @RequestParam(required = false) Integer status) {
-        return R.ok(dictService.pageType(current, size, name, type, status));
+                                               @RequestParam(required = false) Integer status,
+                                               @RequestParam(required = false) DictKind kind) {
+        return R.ok(dictService.pageType(current, size, name, type, status, kind));
     }
 
     @GetMapping("/type/{id}")
