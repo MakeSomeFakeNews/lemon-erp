@@ -1,51 +1,50 @@
 <template>
-  <div class="rule-page">
-    <a-card :bordered="false" class="page-card">
+  <div class="table-page">
+    <a-card :bordered="false" class="page-card table-card">
       <template #title>凭证科目设置</template>
       <template #extra>
         <span class="sub-text">业务单据生成凭证时按此取科目；未设置的使用预置科目，只影响之后生成的凭证</span>
       </template>
-      <a-spin :spinning="loading">
-        <a-tabs v-model:active-key="group">
-          <a-tab-pane v-for="g in groups" :key="g.key" :tab="g.key">
-            <div v-for="role in g.roles" :key="role.role" class="rule-item">
-              <div class="rule-label">
-                {{ role.label }}
-                <a-tag v-if="isModified(role)" color="blue" :bordered="false" class="ml">已设置</a-tag>
-                <a-tag v-if="isDirty(role)" color="orange" :bordered="false" class="ml">未保存</a-tag>
+      <div v-if="loading && !groups.length" class="page-spin"><a-spin /></div>
+      <a-tabs v-model:active-key="group">
+        <a-tab-pane v-for="g in groups" :key="g.key" :tab="g.key">
+          <div v-for="role in g.roles" :key="role.role" class="rule-item">
+            <div class="rule-label">
+              {{ role.label }}
+              <a-tag v-if="isModified(role)" color="blue" :bordered="false" class="ml">已设置</a-tag>
+              <a-tag v-if="isDirty(role)" color="orange" :bordered="false" class="ml">未保存</a-tag>
+            </div>
+            <div class="rule-control">
+              <AccountSelect
+                v-model:value="edits[role.role].accountId"
+                allow-clear
+                :disabled="!canEdit"
+                :placeholder="`预置：${accountText(role.defaultCode)}`"
+                class="account"
+              />
+            </div>
+            <template v-if="role.dimension !== 'NONE'">
+              <div class="sub-text dim-tip">
+                按{{ role.dimension === 'MATERIAL_CATEGORY' ? '物料分类' : '职位类别' }}分别设置（未设置的使用上面的科目）：
               </div>
-              <div class="rule-control">
+              <div v-for="d in dict[role.dictType]" :key="d.value" class="dim-row">
+                <span class="dim-label">{{ d.label }}</span>
                 <AccountSelect
-                  v-model:value="edits[role.role].accountId"
+                  v-model:value="edits[role.role].items[d.value]"
                   allow-clear
                   :disabled="!canEdit"
-                  :placeholder="`预置：${accountText(role.defaultCode)}`"
+                  :placeholder="dimPlaceholder(role, d.value)"
                   class="account"
                 />
               </div>
-              <template v-if="role.dimension !== 'NONE'">
-                <div class="sub-text dim-tip">
-                  按{{ role.dimension === 'MATERIAL_CATEGORY' ? '物料分类' : '职位类别' }}分别设置（未设置的使用上面的科目）：
-                </div>
-                <div v-for="d in dict[role.dictType]" :key="d.value" class="dim-row">
-                  <span class="dim-label">{{ d.label }}</span>
-                  <AccountSelect
-                    v-model:value="edits[role.role].items[d.value]"
-                    allow-clear
-                    :disabled="!canEdit"
-                    :placeholder="dimPlaceholder(role, d.value)"
-                    class="account"
-                  />
-                </div>
-              </template>
-            </div>
-          </a-tab-pane>
-        </a-tabs>
-        <div v-if="canEdit" class="rule-actions">
-          <a-button :disabled="!dirtyRoles.length" @click="discard">放弃修改</a-button>
-          <a-button type="primary" :loading="saving" :disabled="!dirtyRoles.length" @click="save">保存（{{ dirtyRoles.length }}）</a-button>
-        </div>
-      </a-spin>
+            </template>
+          </div>
+        </a-tab-pane>
+      </a-tabs>
+      <div v-if="canEdit" class="rule-actions">
+        <a-button :disabled="!dirtyRoles.length" @click="discard">放弃修改</a-button>
+        <a-button type="primary" :loading="saving" :disabled="!dirtyRoles.length" @click="save">保存（{{ dirtyRoles.length }}）</a-button>
+      </div>
     </a-card>
   </div>
 </template>
@@ -181,11 +180,16 @@ async function save() {
   margin-left: 6px;
 }
 .rule-actions {
+  flex: none;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   max-width: 760px;
-  margin-top: 16px;
+  padding-top: 12px;
+}
+.page-spin {
+  padding: 48px 0;
+  text-align: center;
 }
 .sub-text {
   color: var(--app-text-3);
