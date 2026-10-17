@@ -45,3 +45,6 @@ lemon-web/.vite/
 ### 上传文件、业务附件 ###
 /uploads/
 /attachments/
+
+### Docker ###
+docker/.env

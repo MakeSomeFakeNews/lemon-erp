@@ -46,6 +46,8 @@ mysql -uroot -p lemon_erp < sql/init.sql   # 注意：会删除并重建全部�
 ./gradlew bootRun
 ```
 
+Docker 部署：`docker/` 目录提供后端、前端（Nginx）镜像的 Dockerfile 和 `docker-compose.yml`（MySQL + Redis + 后端 + 前端），`cd docker && cp .env.example .env && docker compose up -d --build` 一键启动；`./docker/build.sh` 构建、推送镜像。
+
 打包：`./gradlew build` 生成 `lemon-admin/build/libs/lemon-erp.jar`，`java -jar lemon-erp.jar --spring.profiles.active=prod` 运行。
 
 ### 多环境配置

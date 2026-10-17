@@ -518,6 +518,20 @@
 
 ## 快速开始
 
+### Docker 一键部署
+
+安装了 Docker（含 Compose v2）时，一条命令启动 MySQL、Redis、后端和前端：
+
+```bash
+cd docker
+cp .env.example .env        # 修改其中的密码和 JWT_SECRET
+docker compose up -d --build
+```
+
+启动完成后访问 http://localhost（端口见 `.env` 中的 `WEB_PORT`）。单独构建、推送镜像使用 `./docker/build.sh`，详见 [Docker 部署](https://makesomefakenews.github.io/lemon-erp-website/dev/deploy/docker)。
+
+### 源码运行
+
 **1. 初始化数据库**
 
 ```bash
@@ -598,6 +612,7 @@ lemon-erp
 ├── lemon-admin         启动模块：组装全部业务模块，打包为可执行 jar
 ├── lemon-web           前端（Vite + Vue 3 + Ant Design Vue）
 ├── sql/init.sql        建表与初始数据
+├── docker              Dockerfile、docker-compose 一键部署与镜像构建脚本
 └── docs                开发文档与截图
 ```
 

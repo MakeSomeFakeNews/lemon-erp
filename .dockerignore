@@ -1,0 +1,15 @@
+# Docker 构建上下文中排除的文件，减小上下文、避免把本地产物和密钥打进镜像
+.git
+.gradle
+.idea
+.vscode
+**/build
+**/out
+**/*.iml
+lemon-web/node_modules
+lemon-web/dist
+lemon-web/.vite
+uploads
+attachments
+docs
+docker/.env
