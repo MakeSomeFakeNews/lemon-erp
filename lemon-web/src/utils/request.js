@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { message } from 'ant-design-vue'
 import { getToken, removeToken } from './auth'
+import { currentLocale, t } from '@/locales'
 
 const request = axios.create({
   baseURL: '/api',
@@ -12,6 +13,8 @@ request.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  // 后端按此返回对应语言的提示
+  config.headers['X-Lang'] = currentLocale()
   return config
 })
 
@@ -44,7 +47,7 @@ function toLogin() {
     redirecting = false
     return
   }
-  message.warning({ content: '登录已过期，请重新登录', key: 'relogin', duration: 1.5 })
+  message.warning({ content: t('layout.relogin'), key: 'relogin', duration: 1.5 })
   setTimeout(() => {
     location.href = `/login?redirect=${encodeURIComponent(location.pathname + location.search)}`
   }, 800)
@@ -64,7 +67,7 @@ request.interceptors.response.use(
     if (res.code === 401) {
       toLogin()
     } else {
-      showError(res.msg || '请求失败')
+      showError(res.msg || t('layout.requestFailed'))
     }
     return reject(new Error(res.msg))
   },
@@ -73,11 +76,11 @@ request.interceptors.response.use(
     if (status === 401) {
       toLogin()
     } else if (status === 403) {
-      showError('没有权限，请联系管理员')
+      showError(t('layout.forbidden'))
     } else if (error.code === 'ECONNABORTED') {
-      showError('请求超时，请稍后重试')
+      showError(t('layout.timeout'))
     } else {
-      showError(error.response?.data?.msg || (status ? `服务异常（${status}）` : '网络连接失败'))
+      showError(error.response?.data?.msg || (status ? t('layout.serverError', { status }) : t('layout.networkError')))
     }
     return reject(error)
   }

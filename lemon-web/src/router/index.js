@@ -3,6 +3,8 @@ import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
 import { getToken } from '@/utils/auth'
 import { joinPath } from '@/utils/path'
+import { t } from '@/locales'
+import { useAppStore } from '@/store/app'
 import BasicLayout from '@/layout/BasicLayout.vue'
 
 export const LAYOUT_NAME = 'Layout'
@@ -15,19 +17,19 @@ const constantRoutes = [
     path: '/login',
     name: 'Login',
     component: () => import('@/views/login/index.vue'),
-    meta: { title: '登录' }
+    meta: { title: t('route.login') }
   },
   {
     path: '/im-callback',
     name: 'ImCallback',
     component: () => import('@/views/login/ImCallback.vue'),
-    meta: { title: '授权登录' }
+    meta: { title: t('route.imLogin') }
   },
   {
     path: '/im-login',
     name: 'ImEntry',
     component: () => import('@/views/login/ImEntry.vue'),
-    meta: { title: '授权登录' }
+    meta: { title: t('route.imLogin') }
   },
   {
     path: '/',
@@ -39,19 +41,19 @@ const constantRoutes = [
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
-        meta: { title: '首页', icon: 'HomeOutlined', affix: true }
+        meta: { title: t('route.dashboard'), icon: 'HomeOutlined', affix: true }
       },
       {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/profile/index.vue'),
-        meta: { title: '个人中心', icon: 'UserOutlined' }
+        meta: { title: t('route.profile'), icon: 'UserOutlined' }
       },
       {
         path: 'messages',
         name: 'Messages',
         component: () => import('@/views/message/index.vue'),
-        meta: { title: '我的消息', icon: 'BellOutlined' }
+        meta: { title: t('route.messages'), icon: 'BellOutlined' }
       }
     ]
   }
@@ -61,8 +63,8 @@ constantRoutes.push({
   path: MOBILE_PATH,
   name: MOBILE_NAME,
   component: () => import('@/layout/MobileLayout.vue'),
-  meta: { title: '移动作业' },
-  children: [{ path: '', name: 'MobileHome', component: () => import('@/views/mobile/home.vue'), meta: { title: '移动作业' } }]
+  meta: { title: t('route.mobile') },
+  children: [{ path: '', name: 'MobileHome', component: () => import('@/views/mobile/home.vue'), meta: { title: t('route.mobile') } }]
 })
 
 /** 数据大屏：全屏显示，不使用后台布局；/screen-share 为投屏链接，免登录 */
@@ -72,13 +74,13 @@ constantRoutes.push(
     path: '/screen/:key',
     name: 'Screen',
     component: () => import('@/views/screen/ScreenPage.vue'),
-    meta: { title: '数据大屏' }
+    meta: { title: t('route.screen') }
   },
   {
     path: `${SCREEN_SHARE_PATH}:token`,
     name: 'ScreenShare',
     component: () => import('@/views/screen/ShareScreenPage.vue'),
-    meta: { title: '数据大屏' }
+    meta: { title: t('route.screen') }
   }
 )
 
@@ -153,9 +155,10 @@ router.beforeEach(async (to) => {
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('@/views/error/404.vue'),
-      meta: { title: '页面不存在' }
+      meta: { title: t('route.notFound') }
     })
     userStore.routesLoaded = true
+    useAppStore().retitleTabs((path) => router.resolve(path).meta?.title)
     // 动态路由刚添加，需要重新匹配一次
     const home = to.path === '/dashboard' ? portalHome(userStore.user) : null
     if (home) {

@@ -1,5 +1,6 @@
 package com.lemon.erp.framework.demo;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.R;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -38,7 +39,7 @@ public class DemoModeInterceptor implements HandlerInterceptor {
         }
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.getWriter().write("{\"code\":" + R.FORBIDDEN + ",\"msg\":\"" + MESSAGE + "\"}");
+        response.getWriter().write("{\"code\":" + R.FORBIDDEN + ",\"msg\":\"" + I18n.t(MESSAGE) + "\"}");
         return false;
     }
 }

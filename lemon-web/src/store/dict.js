@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
 import { getDictDataByType } from '@/api/system/dict'
+import { tt } from '@/locales'
 
 /**
- * 字典缓存：同一类型只请求一次，并发请求共享同一个 Promise
+ * 字典缓存：同一类型只请求一次，并发请求共享同一个 Promise；标签按界面语言翻译
  */
 export const useDictStore = defineStore('dict', {
   state: () => ({
@@ -16,7 +17,8 @@ export const useDictStore = defineStore('dict', {
           type,
           getDictDataByType(type)
             .then((list) => {
-              this.cache[type] = list || []
+              // 字典标签按界面语言翻译（locales/<语言>/dict.js，没有译文时用数据库中的名称）
+              this.cache[type] = (list || []).map((d) => ({ ...d, label: tt(`dict.${type}.${d.value}`, d.label) }))
               return this.cache[type]
             })
             .finally(() => pending.delete(type))

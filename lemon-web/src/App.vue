@@ -1,5 +1,5 @@
 <template>
-  <a-config-provider :locale="zhCN" :theme="themeConfig">
+  <a-config-provider :locale="antdLocale" :theme="themeConfig">
     <a-app>
       <router-view />
       <PrintPreview />
@@ -11,12 +11,17 @@
 import { computed, watchEffect } from 'vue'
 import { theme } from 'ant-design-vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
+import enUS from 'ant-design-vue/es/locale/en_US'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
+import 'dayjs/locale/en'
+import { isZh } from '@/locales'
 import { useAppStore } from '@/store/app'
 import PrintPreview from '@/components/print/PrintPreview.vue'
 
-dayjs.locale('zh-cn')
+// Ant Design 组件和日期按界面语言（切换语言会刷新页面）
+const antdLocale = isZh() ? zhCN : enUS
+dayjs.locale(isZh() ? 'zh-cn' : 'en')
 
 const appStore = useAppStore()
 
