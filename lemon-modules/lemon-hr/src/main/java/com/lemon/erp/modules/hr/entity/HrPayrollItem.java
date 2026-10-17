@@ -58,6 +58,9 @@ public class HrPayrollItem extends BaseEntity {
     /** 计件工资：本月报工的合格数 × 工序计件单价 */
     private BigDecimal pieceWage;
 
+    /** 销售提成：取已确认的销售提成表（按员工关联的用户） */
+    private BigDecimal commission;
+
     /** 绩效等级 */
     private String perfGrade;
 

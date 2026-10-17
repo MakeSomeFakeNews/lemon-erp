@@ -11,6 +11,8 @@ export const approveOrder = (kind, id) => request.post(`/scm/${kind}/order/${id}
 export const withdrawOrder = (kind, id) => request.post(`/scm/${kind}/order/${id}/withdraw`)
 export const unapproveOrder = (kind, id) => request.post(`/scm/${kind}/order/${id}/unapprove`)
 export const closeOrder = (kind, id) => request.post(`/scm/${kind}/order/${id}/close`)
+/** 修改销售订单的业务员 */
+export const changeSalesman = (id, salesmanId) => request.put(`/scm/sales/order/${id}/salesman`, { salesmanId })
 export const deleteOrder = (kind, ids) => request.delete(`/scm/${kind}/order/${[].concat(ids).join(',')}`)
 /** 单据追溯：订单的下游单据（按权限返回） */
 export const orderTrace = (kind, id) => request.get(`/bi/trace/order/${kind}/${id}`)

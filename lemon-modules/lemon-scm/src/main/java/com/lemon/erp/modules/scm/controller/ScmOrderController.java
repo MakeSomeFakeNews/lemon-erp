@@ -104,6 +104,19 @@ public class ScmOrderController {
         return R.ok();
     }
 
+    public record SalesmanRequest(Long salesmanId) {
+    }
+
+    /** 修改销售订单的业务员 */
+    @PutMapping("/{id}/salesman")
+    @PreAuthorize("@ss.hasPerm('scm:sales:edit')")
+    @OperLog(title = "订单-业务员", type = OperType.UPDATE)
+    public R<Void> changeSalesman(@PathVariable String kind, @PathVariable Long id, @RequestBody SalesmanRequest req) {
+        OrderKind.ofPath(kind);
+        orderService.changeSalesman(id, req.salesmanId());
+        return R.ok();
+    }
+
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('scm:' + #kind + ':remove')")
     @OperLog(title = "订单", type = OperType.DELETE)

@@ -143,6 +143,8 @@
                   <a-descriptions-item label="绩效奖金">
                     {{ formatMoney(slip.perfBonus) }} <DictTag v-if="slip.perfGrade" type="hr_perf_grade" :value="slip.perfGrade" />
                   </a-descriptions-item>
+                  <a-descriptions-item v-if="Number(slip.pieceWage)" label="计件工资">{{ formatMoney(slip.pieceWage) }}</a-descriptions-item>
+                  <a-descriptions-item v-if="Number(slip.commission)" label="销售提成">{{ formatMoney(slip.commission) }}</a-descriptions-item>
                   <a-descriptions-item label="其他奖金">{{ formatMoney(slip.otherBonus) }}</a-descriptions-item>
                   <a-descriptions-item label="考勤扣款">
                     -{{ formatMoney(slip.attendanceDeduct) }}

@@ -47,6 +47,17 @@
             </template>
             <span v-else class="sub-text">未确认</span>
           </a-descriptions-item>
+          <a-descriptions-item v-if="kind === 'sales'" label="业务员">
+            <template v-if="!salesmanEditing">
+              {{ detail.salesmanName || '-' }}
+              <a v-if="userStore.hasPerm('scm:sales:edit')" class="ml" @click="salesmanEditing = true">修改</a>
+            </template>
+            <a-space v-else>
+              <IdentityUserSelect v-model:value="salesmanId" :label="detail.salesmanName" class="salesman-select" />
+              <a @click="saveSalesman">保存</a>
+              <a @click="salesmanEditing = false">取消</a>
+            </a-space>
+          </a-descriptions-item>
           <a-descriptions-item label="制单">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.approveTime" label="审核">
             {{ detail.approveByName || '-' }} {{ detail.approveTime }}
@@ -182,7 +193,8 @@ import ChangeLogPanel from '@/components/ChangeLogPanel.vue'
 import OrderChangeDrawer from './OrderChangeDrawer.vue'
 import OrderChangeList from './OrderChangeList.vue'
 import { currencySymbol, isForeign } from '@/components/fin/currency'
-import { approveOrder, closeOrder, getOrder, unapproveOrder, withdrawOrder } from '@/api/scm/order'
+import { approveOrder, changeSalesman, closeOrder, getOrder, unapproveOrder, withdrawOrder } from '@/api/scm/order'
+import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import { pageTrade } from '@/api/scm/trade'
 import { pageDelivery } from '@/api/scm/planning'
 import { useUserStore } from '@/store/user'
@@ -293,6 +305,17 @@ const qtyText = (i) =>
     ? `${formatQty(Number(i.qty) / Number(i.unitRatio))} ${i.unitName}（${formatQty(i.qty)} ${i.unit || ''}）`
     : `${formatQty(i.qty)} ${i.unit || ''}`
 const percent = (i) => Math.min(Math.round((netQty(i) / Number(i.qty)) * 100), 100)
+
+// 业务员（销售提成按此统计）
+const salesmanEditing = ref(false)
+const salesmanId = ref()
+watch(salesmanEditing, (v) => v && (salesmanId.value = detail.value?.salesmanId))
+async function saveSalesman() {
+  await changeSalesman(detail.value.id, salesmanId.value || null)
+  message.success('业务员已修改')
+  salesmanEditing.value = false
+  load()
+}
 
 async function load() {
   loading.value = true
@@ -431,6 +454,12 @@ defineExpose({ reload: load })
 </script>
 
 <style scoped>
+.ml {
+  margin-left: 6px;
+}
+.salesman-select {
+  width: 200px;
+}
 .doc-desc {
   margin-bottom: 16px;
 }

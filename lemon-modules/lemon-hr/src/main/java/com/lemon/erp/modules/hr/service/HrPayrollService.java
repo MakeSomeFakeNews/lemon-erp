@@ -15,6 +15,7 @@ import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.fin.service.FinAccountService;
+import com.lemon.erp.modules.fin.service.FinCommissionService;
 import com.lemon.erp.modules.fin.service.FinVoucherService;
 import com.lemon.erp.modules.hr.dto.AttendanceSummary;
 import com.lemon.erp.modules.hr.dto.PayrollAdjustRequest;
@@ -78,6 +79,7 @@ public class HrPayrollService {
     private final HrPerfAppraisalMapper appraisalMapper;
     private final HrAttendanceService attendanceService;
     private final FinVoucherService voucherService;
+    private final FinCommissionService commissionService;
     private final FinAccountService accountService;
     private final FinAccountRuleService accountRules;
     private final DocNoService docNoService;
@@ -139,6 +141,10 @@ public class HrPayrollService {
         for (Map<String, Object> row : itemMapper.selectPieceWages(ym.atDay(1), ym.atEndOfMonth())) {
             pieceWages.put(((Number) row.get("employeeId")).longValue(), new BigDecimal(row.get("amount").toString()));
         }
+        // 销售提成：已确认的提成表按业务员（用户）
+        Map<Long, BigDecimal> commissions = commissionService.confirmedAmounts(period);
+        Map<Long, Long> userOf = new HashMap<>();
+        payable.stream().filter(e -> e.getUserId() != null).forEach(e -> userOf.put(e.getId(), e.getUserId()));
         List<Long> ids = payable.stream().map(HrEmployee::getId).toList();
         Map<Long, BigDecimal> special = socialService.deductionsOf(ids, period);
         Map<Long, HrSocialScheme> schemes = socialService.schemesByIds(salaries.values().stream().map(HrSalary::getSchemeId)
@@ -157,6 +163,8 @@ public class HrPayrollService {
             item.setOtherBonus(BigDecimal.ZERO);
             item.setOtherDeduct(BigDecimal.ZERO);
             item.setPieceWage(pieceWages.getOrDefault(s.employeeId(), BigDecimal.ZERO));
+            Long userId = userOf.get(s.employeeId());
+            item.setCommission(userId == null ? BigDecimal.ZERO : commissions.getOrDefault(userId, BigDecimal.ZERO));
             HrSalary salary = salaries.get(s.employeeId());
             item.setSpecialDeduct(special.getOrDefault(s.employeeId(), BigDecimal.ZERO));
             calculate(item, salary, s, grades.get(s.employeeId()), salary.getSchemeId() == null ? null : schemes.get(salary.getSchemeId()),
@@ -390,8 +398,11 @@ public class HrPayrollService {
         if (item.getPieceWage() == null) {
             item.setPieceWage(BigDecimal.ZERO);
         }
+        if (item.getCommission() == null) {
+            item.setCommission(BigDecimal.ZERO);
+        }
         BigDecimal gross = item.getBaseSalary().add(item.getAllowance()).add(item.getOvertimePay()).add(item.getPerfBonus())
-                .add(item.getPieceWage()).add(item.getOtherBonus()).subtract(item.getAttendanceDeduct());
+                .add(item.getPieceWage()).add(item.getCommission()).add(item.getOtherBonus()).subtract(item.getAttendanceDeduct());
         item.setGrossPay(gross.max(BigDecimal.ZERO));
         BigDecimal housingRate = salary.getHousingRate().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
         if (scheme == null) {

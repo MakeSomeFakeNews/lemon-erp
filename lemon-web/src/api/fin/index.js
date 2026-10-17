@@ -268,3 +268,15 @@ export const cashJournal = (params) => request.get('/fin/cashier/journal', { par
 export const cashDaily = (params) => request.get('/fin/cashier/daily', { params })
 /** 未生成凭证的收付款 → { RECEIPT: { count, amount }, PAYMENT: {...} } */
 export const cashUnvouchered = () => request.get('/fin/cashier/unvouchered')
+
+/** 销售提成：规则 */
+export const commissionRules = () => request.get('/fin/commission/rule')
+export const addCommissionRule = (data) => request.post('/fin/commission/rule', data)
+export const updateCommissionRule = (id, data) => request.put(`/fin/commission/rule/${id}`, data)
+export const deleteCommissionRule = (id) => request.delete(`/fin/commission/rule/${id}`)
+/** 提成表：period → { id, period, status, totalAmount, lines }，没有计算时为 null */
+export const commissionSheet = (period) => request.get(`/fin/commission/${period}`)
+export const generateCommission = (period) => request.post(`/fin/commission/${period}/generate`)
+export const adjustCommission = (lineId, data) => request.put(`/fin/commission/line/${lineId}`, data)
+export const confirmCommission = (period) => request.post(`/fin/commission/${period}/confirm`)
+export const unconfirmCommission = (period) => request.post(`/fin/commission/${period}/unconfirm`)

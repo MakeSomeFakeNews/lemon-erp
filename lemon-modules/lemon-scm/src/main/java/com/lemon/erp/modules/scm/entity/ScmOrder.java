@@ -91,6 +91,9 @@ public class ScmOrder extends BaseEntity {
 
     private Long createBy;
 
+    /** 业务员（销售订单）：默认客户的负责销售，没有时为制单人 */
+    private Long salesmanId;
+
     private Long approveBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -109,6 +112,9 @@ public class ScmOrder extends BaseEntity {
 
     @TableField(exist = false)
     private String createByName;
+
+    @TableField(exist = false)
+    private String salesmanName;
 
     @TableField(exist = false)
     private String approveByName;
