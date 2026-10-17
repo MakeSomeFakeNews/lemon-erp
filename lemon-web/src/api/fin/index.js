@@ -250,3 +250,10 @@ export const deleteStatement = (id) => request.delete(`/fin/statement/${id}`)
 export const accountRules = () => request.get('/fin/account-rule')
 /** 保存一个用途的设置：{ accountId, items: { 维度取值: 科目ID } }，为空的使用预置科目 */
 export const saveAccountRule = (role, data) => request.put(`/fin/account-rule/${role}`, data)
+
+/** 出纳：日记账 { accountId?, begin, end, posted } → [{ type, entryDate, voucherNo, summary, counterAccounts, debit, credit, balance }] */
+export const cashJournal = (params) => request.get('/fin/cashier/journal', { params })
+/** 资金日报 { begin, end, posted } → { rows, total } */
+export const cashDaily = (params) => request.get('/fin/cashier/daily', { params })
+/** 未生成凭证的收付款 → { RECEIPT: { count, amount }, PAYMENT: {...} } */
+export const cashUnvouchered = () => request.get('/fin/cashier/unvouchered')
