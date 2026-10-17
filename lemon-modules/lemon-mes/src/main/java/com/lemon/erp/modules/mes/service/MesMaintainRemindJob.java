@@ -2,6 +2,7 @@ package com.lemon.erp.modules.mes.service;
 
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender.Message;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.modules.mes.mapper.MesJobMapper;
@@ -46,7 +47,7 @@ public class MesMaintainRemindJob implements JobHandler {
     public String run(JobParams params) {
         List<Map<String, Object>> rows = jobMapper.selectMaintainDue(LocalDate.now().plusDays(params.getInt("days", 3)));
         for (Map<String, Object> r : rows) {
-            messageSender.sendToPermission("mes:maintain:handle", Message.of("REMIND",
+            messageSender.sendToPermission("mes:maintain:handle", Message.of(MessageCategory.REMIND,
                     "设备「" + r.get("code") + " " + r.get("name") + "」需要保养", "计划保养日期 " + r.get("nextDate"), "/mes/maintenance") // i18n-ignore
                     .dedup("maintain:" + r.get("id") + ":" + r.get("nextDate")));
         }

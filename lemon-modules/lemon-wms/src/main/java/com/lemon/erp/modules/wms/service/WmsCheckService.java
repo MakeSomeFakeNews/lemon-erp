@@ -139,7 +139,7 @@ public class WmsCheckService {
         check.setBizDate(req.bizDate());
         check.setRemark(req.remark());
         check.setFreeze(Boolean.TRUE.equals(req.freeze()) ? 1 : 0);
-        check.setStatus(DocStatus.DRAFT.name());
+        check.setStatus(DocStatus.DRAFT);
         check.setDeptId(user.deptId());
         check.setCreateBy(user.userId());
         checkMapper.insert(check);
@@ -160,7 +160,7 @@ public class WmsCheckService {
                 .set(WmsCheck::getFreeze, Boolean.TRUE.equals(req.freeze()) ? 1 : 0)
                 .set(WmsCheck::getUpdateTime, LocalDateTime.now())
                 .eq(WmsCheck::getId, id)
-                .eq(WmsCheck::getStatus, DocStatus.DRAFT.name()));
+                .eq(WmsCheck::getStatus, DocStatus.DRAFT));
         itemMapper.delete(Wrappers.<WmsCheckItem>lambdaQuery().eq(WmsCheckItem::getCheckId, id));
         saveItems(id, items);
     }
@@ -197,8 +197,8 @@ public class WmsCheckService {
                 loss = diff.signum() < 0 ? loss.subtract(diff) : loss;
             }
             if (diffLines > 0) {
-                if (checkMapper.update(Wrappers.<WmsCheck>lambdaUpdate().set(WmsCheck::getStatus, DocStatus.APPROVING.name())
-                        .eq(WmsCheck::getId, id).eq(WmsCheck::getStatus, DocStatus.DRAFT.name())) == 0) {
+                if (checkMapper.update(Wrappers.<WmsCheck>lambdaUpdate().set(WmsCheck::getStatus, DocStatus.APPROVING)
+                        .eq(WmsCheck::getId, id).eq(WmsCheck::getStatus, DocStatus.DRAFT)) == 0) {
                     throw new BizException("wms.error.stockCountHasConfirmedRefresh");
                 }
                 String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id,
@@ -218,14 +218,14 @@ public class WmsCheckService {
         }
         Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
         WmsCheck check = checkMapper.selectById(id);
-        if (check == null || !DocStatus.APPROVING.name().equals(check.getStatus())) {
+        if (check == null || check.getStatus() != DocStatus.APPROVING) {
             return;
         }
         if (e.status() == FlowStatus.APPROVED) {
             adjust(check, DocStatus.APPROVING);
         } else {
-            checkMapper.update(Wrappers.<WmsCheck>lambdaUpdate().set(WmsCheck::getStatus, DocStatus.DRAFT.name())
-                    .eq(WmsCheck::getId, id).eq(WmsCheck::getStatus, DocStatus.APPROVING.name()));
+            checkMapper.update(Wrappers.<WmsCheck>lambdaUpdate().set(WmsCheck::getStatus, DocStatus.DRAFT)
+                    .eq(WmsCheck::getId, id).eq(WmsCheck::getStatus, DocStatus.APPROVING));
         }
     }
 
@@ -233,12 +233,12 @@ public class WmsCheckService {
     private void adjust(WmsCheck check, DocStatus from) {
         Long id = check.getId();
         int updated = checkMapper.update(Wrappers.<WmsCheck>lambdaUpdate()
-                .set(WmsCheck::getStatus, DocStatus.DONE.name())
+                .set(WmsCheck::getStatus, DocStatus.DONE)
                 .set(WmsCheck::getConfirmBy, SecurityUtils.getUserId())
                 .set(WmsCheck::getConfirmTime, LocalDateTime.now())
                 .set(WmsCheck::getUpdateTime, LocalDateTime.now())
                 .eq(WmsCheck::getId, id)
-                .eq(WmsCheck::getStatus, from.name()));
+                .eq(WmsCheck::getStatus, from));
         if (updated == 0) {
             throw new BizException("wms.error.stockCountHasConfirmedRefresh");
         }
@@ -296,7 +296,7 @@ public class WmsCheckService {
 
     private WmsCheck getDraft(Long id) {
         WmsCheck check = getAccessible(id);
-        if (!DocStatus.DRAFT.name().equals(check.getStatus())) {
+        if (check.getStatus() != DocStatus.DRAFT) {
             throw new BizException("wms.error.stockCountHasConfirmedCannotModified", check.getDocNo());
         }
         return check;
@@ -377,7 +377,7 @@ public class WmsCheckService {
         return serialMapper.selectList(Wrappers.<WmsSerial>lambdaQuery()
                         .select(WmsSerial::getMaterialId, WmsSerial::getSerialNo, WmsSerial::getLocationId, WmsSerial::getBatchNo)
                         .eq(WmsSerial::getWarehouseId, warehouseId)
-                        .eq(WmsSerial::getStatus, SerialStatus.IN_STOCK.name())
+                        .eq(WmsSerial::getStatus, SerialStatus.IN_STOCK)
                         .in(WmsSerial::getMaterialId, materialIds)
                         .orderByAsc(WmsSerial::getSerialNo))
                 .stream().collect(Collectors.groupingBy(s -> slotKey(s.getLocationId(), s.getMaterialId(), s.getBatchNo()),

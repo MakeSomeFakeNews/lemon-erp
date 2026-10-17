@@ -31,7 +31,9 @@ import com.lemon.erp.modules.mes.model.EquipmentStatus;
 import com.lemon.erp.modules.mes.model.PlanStatus;
 import com.lemon.erp.modules.mes.model.SupplyType;
 import com.lemon.erp.modules.mes.model.WorkOrderClosedEvent;
+import com.lemon.erp.modules.mes.model.WorkOrderSource;
 import com.lemon.erp.modules.mes.model.WorkOrderStatus;
+import com.lemon.erp.modules.mes.model.WorkOrderType;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.entity.WmsWarehouse;
 import com.lemon.erp.modules.wms.service.DocNoService;
@@ -55,6 +57,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 
 import static com.lemon.erp.modules.mes.model.MesConstants.WO_RULE;
@@ -108,27 +111,27 @@ public class MesWorkOrderService {
 
     @Transactional
     public Long create(WorkOrderRequest req) {
-        return createDraft(req, "MANUAL", null);
+        return createDraft(req, WorkOrderSource.MANUAL, null);
     }
 
     /**
      * 新建草稿工单，MRP 下达、生产计划转工单时也调用
      *
-     * @param source MANUAL / MRP
+     * @param source 工单来源
      */
     @Transactional
-    public Long createDraft(WorkOrderRequest req, String source, Long planId) {
+    public Long createDraft(WorkOrderRequest req, WorkOrderSource source, Long planId) {
         MesBom bom = resolveBom(req);
         LoginUser user = SecurityUtils.getLoginUser();
         MesWorkOrder wo = new MesWorkOrder();
-        wo.setWoNo(docNoService.next("SC"));
+        wo.setWoNo(docNoService.next(MesDocNos.WORK_ORDER));
         wo.setMaterialId(req.materialId());
         wo.setBomId(bom.getId());
         wo.setQty(req.qty());
         wo.setPlanStart(req.planStart());
         wo.setPlanEnd(req.planEnd());
         wo.setWarehouseId(req.warehouseId());
-        wo.setStatus(WorkOrderStatus.DRAFT.name());
+        wo.setStatus(WorkOrderStatus.DRAFT);
         wo.setFinishedQty(BigDecimal.ZERO);
         wo.setSource(source);
         wo.setPlanId(planId);
@@ -155,7 +158,7 @@ public class MesWorkOrderService {
                 .set(MesWorkOrder::getRemark, req.remark())
                 .set(MesWorkOrder::getUpdateTime, LocalDateTime.now())
                 .eq(MesWorkOrder::getId, id)
-                .eq(MesWorkOrder::getStatus, WorkOrderStatus.DRAFT.name()));
+                .eq(MesWorkOrder::getStatus, WorkOrderStatus.DRAFT));
         woMaterialMapper.delete(Wrappers.<MesWoMaterial>lambdaQuery().eq(MesWoMaterial::getWoId, id));
         woOpMapper.delete(Wrappers.<MesWoOp>lambdaQuery().eq(MesWoOp::getWoId, id));
         generateLines(id, bom, req.qty());
@@ -172,13 +175,13 @@ public class MesWorkOrderService {
     /** 下达：车间可以开始领料、报工 */
     public void release(Long id) {
         getDraft(id);
-        transit(id, List.of(WorkOrderStatus.DRAFT.name()), WorkOrderStatus.RELEASED, true);
+        transit(id, Set.of(WorkOrderStatus.DRAFT), WorkOrderStatus.RELEASED, true);
     }
 
     /** 关闭：未完工的工单不再生产，已领未用的物料请先退料 */
     public void close(Long id) {
         MesWorkOrder wo = getAccessible(id);
-        if (!WorkOrderStatus.EXECUTABLE.contains(wo.getStatus())) {
+        if (!wo.getStatus().isExecutable()) {
             throw new BizException("mes.error.onlyReleasedProductionWorkOrdersClosed");
         }
         transit(id, WorkOrderStatus.EXECUTABLE, WorkOrderStatus.CLOSED, false);
@@ -281,8 +284,8 @@ public class MesWorkOrderService {
     @Transactional
     public Long split(Long id, BigDecimal qty, LocalDate planStart, LocalDate planEnd) {
         MesWorkOrder wo = getAccessible(id);
-        boolean draft = WorkOrderStatus.DRAFT.name().equals(wo.getStatus());
-        if (!draft && !WorkOrderStatus.EXECUTABLE.contains(wo.getStatus())) {
+        boolean draft = wo.getStatus() == WorkOrderStatus.DRAFT;
+        if (!draft && !wo.getStatus().isExecutable()) {
             throw new BizException("mes.error.onlyDraftReleasedProductionWorkOrders");
         }
         BigDecimal free = wo.getQty().subtract(startedQty(wo));
@@ -291,7 +294,7 @@ public class MesWorkOrderService {
         }
         Long newId = createDraft(new WorkOrderRequest(wo.getMaterialId(), wo.getBomId(), qty,
                 planStart != null ? planStart : wo.getPlanStart(), planEnd != null ? planEnd : wo.getPlanEnd(), wo.getWarehouseId(),
-                "拆分自 " + wo.getWoNo()), "SPLIT", wo.getPlanId()); // i18n-ignore
+                "拆分自 " + wo.getWoNo()), WorkOrderSource.SPLIT, wo.getPlanId()); // i18n-ignore
         workOrderMapper.update(Wrappers.<MesWorkOrder>lambdaUpdate().set(MesWorkOrder::getSourceWoId, id).eq(MesWorkOrder::getId, newId));
         BigDecimal left = wo.getQty().subtract(qty);
         if (draft) {
@@ -317,17 +320,17 @@ public class MesWorkOrderService {
         }
         LoginUser user = SecurityUtils.getLoginUser();
         MesWorkOrder wo = new MesWorkOrder();
-        wo.setWoNo(docNoService.next("FG"));
+        wo.setWoNo(docNoService.next(MesDocNos.REWORK_ORDER));
         wo.setMaterialId(req.materialId());
         wo.setBomId(bom.getId());
         wo.setQty(req.qty());
-        wo.setWoType("REWORK");
+        wo.setWoType(WorkOrderType.REWORK);
         wo.setPlanStart(req.planStart());
         wo.setPlanEnd(req.planEnd());
         wo.setWarehouseId(req.warehouseId());
-        wo.setStatus(WorkOrderStatus.DRAFT.name());
+        wo.setStatus(WorkOrderStatus.DRAFT);
         wo.setFinishedQty(BigDecimal.ZERO);
-        wo.setSource("REWORK");
+        wo.setSource(WorkOrderSource.REWORK);
         wo.setSourceWoId(sourceWoId);
         wo.setRemark(req.remark());
         wo.setDeptId(user.deptId());
@@ -381,7 +384,7 @@ public class MesWorkOrderService {
 
     MesWorkOrder getExecutable(Long id) {
         MesWorkOrder wo = getAccessible(id);
-        if (!WorkOrderStatus.EXECUTABLE.contains(wo.getStatus())) {
+        if (!wo.getStatus().isExecutable()) {
             throw new BizException("mes.error.workOrderNotReleasedProduction", wo.getWoNo());
         }
         return wo;
@@ -390,9 +393,9 @@ public class MesWorkOrderService {
     /** 首次领料、报工、完工入库后：已下达 → 生产中 */
     void markStarted(Long id) {
         workOrderMapper.update(Wrappers.<MesWorkOrder>lambdaUpdate()
-                .set(MesWorkOrder::getStatus, WorkOrderStatus.STARTED.name())
+                .set(MesWorkOrder::getStatus, WorkOrderStatus.STARTED)
                 .eq(MesWorkOrder::getId, id)
-                .eq(MesWorkOrder::getStatus, WorkOrderStatus.RELEASED.name()));
+                .eq(MesWorkOrder::getStatus, WorkOrderStatus.RELEASED));
     }
 
     /** 完工入库满数量：已完工；计划下全部工单的完工数量达到计划数量时，计划自动关闭（不再参与 MRP） */
@@ -405,11 +408,11 @@ public class MesWorkOrderService {
             return;
         }
         MesPlan plan = planMapper.selectById(wo.getPlanId());
-        if (plan != null && PlanStatus.CONFIRMED.name().equals(plan.getStatus())
+        if (plan != null && plan.getStatus() == PlanStatus.CONFIRMED
                 && planMapper.selectFinishedQty(plan.getId()).compareTo(plan.getQty()) >= 0) {
-            planMapper.update(Wrappers.<MesPlan>lambdaUpdate().set(MesPlan::getStatus, PlanStatus.CLOSED.name())
+            planMapper.update(Wrappers.<MesPlan>lambdaUpdate().set(MesPlan::getStatus, PlanStatus.CLOSED)
                     .set(MesPlan::getUpdateTime, LocalDateTime.now())
-                    .eq(MesPlan::getId, plan.getId()).eq(MesPlan::getStatus, PlanStatus.CONFIRMED.name()));
+                    .eq(MesPlan::getId, plan.getId()).eq(MesPlan::getStatus, PlanStatus.CONFIRMED));
         }
     }
 
@@ -417,15 +420,15 @@ public class MesWorkOrderService {
 
     private MesWorkOrder getDraft(Long id) {
         MesWorkOrder wo = getAccessible(id);
-        if (!WorkOrderStatus.DRAFT.name().equals(wo.getStatus())) {
+        if (wo.getStatus() != WorkOrderStatus.DRAFT) {
             throw new BizException("mes.error.workOrderHasReleasedCannotModified", wo.getWoNo());
         }
         return wo;
     }
 
-    private void transit(Long id, List<String> from, WorkOrderStatus to, boolean release) {
+    private void transit(Long id, Set<WorkOrderStatus> from, WorkOrderStatus to, boolean release) {
         var update = Wrappers.<MesWorkOrder>lambdaUpdate()
-                .set(MesWorkOrder::getStatus, to.name())
+                .set(MesWorkOrder::getStatus, to)
                 .set(MesWorkOrder::getUpdateTime, LocalDateTime.now())
                 .eq(MesWorkOrder::getId, id)
                 .in(MesWorkOrder::getStatus, from);
@@ -483,7 +486,7 @@ public class MesWorkOrderService {
     public int switchDraftBom(Long fromBomId, Long toBomId) {
         MesBom bom = bomService.getBom(toBomId);
         List<MesWorkOrder> drafts = workOrderMapper.selectList(Wrappers.<MesWorkOrder>lambdaQuery()
-                .eq(MesWorkOrder::getBomId, fromBomId).eq(MesWorkOrder::getStatus, WorkOrderStatus.DRAFT.name()));
+                .eq(MesWorkOrder::getBomId, fromBomId).eq(MesWorkOrder::getStatus, WorkOrderStatus.DRAFT));
         for (MesWorkOrder wo : drafts) {
             workOrderMapper.update(Wrappers.<MesWorkOrder>lambdaUpdate().set(MesWorkOrder::getBomId, toBomId)
                     .set(MesWorkOrder::getUpdateTime, LocalDateTime.now()).eq(MesWorkOrder::getId, wo.getId()));
@@ -536,7 +539,7 @@ public class MesWorkOrderService {
         List<Long> ids = items.stream().map(MesBomItem::getMaterialId).toList();
         Map<Long, MesMaterialPlan> plans = materialPlanService.plans(ids);
         List<Long> phantomIds = ids.stream()
-                .filter(id -> plans.containsKey(id) && SupplyType.PHANTOM.name().equals(plans.get(id).getSupplyType())).toList();
+                .filter(id -> plans.containsKey(id) && plans.get(id).getSupplyType() == SupplyType.PHANTOM).toList();
         Map<Long, MesBom> phantomBoms = bomService.defaultBoms(phantomIds);
         for (MesBomItem item : items) {
             BigDecimal unit = factor.multiply(unitQty(item));

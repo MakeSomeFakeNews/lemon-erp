@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.modules.hr.model.PayrollStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
@@ -26,7 +27,7 @@ public class HrPayrollLock {
             return;
         }
         int period = date.getYear() * 100 + date.getMonthValue();
-        if (payrollMapper.exists(Wrappers.<HrPayroll>lambdaQuery().eq(HrPayroll::getPeriod, period).ne(HrPayroll::getStatus, "DRAFT"))) {
+        if (payrollMapper.exists(Wrappers.<HrPayroll>lambdaQuery().eq(HrPayroll::getPeriod, period).ne(HrPayroll::getStatus, PayrollStatus.DRAFT))) {
             throw new BizException("hr.error.payrollHasConfirmedCannot", date.getYear(), date.getMonthValue(), Messages.get(what));
         }
     }

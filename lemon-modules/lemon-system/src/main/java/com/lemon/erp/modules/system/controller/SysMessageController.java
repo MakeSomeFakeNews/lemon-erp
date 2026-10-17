@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.controller;
 
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.modules.system.entity.SysMessage;
 import com.lemon.erp.modules.system.service.SysMessageService;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +31,7 @@ public class SysMessageController {
     public R<PageResult<SysMessage>> page(@RequestParam(defaultValue = "1") long current,
                                           @RequestParam(defaultValue = "10") long size,
                                           @RequestParam(required = false) Boolean unread,
-                                          @RequestParam(required = false) String category) {
+                                          @RequestParam(required = false) MessageCategory category) {
         return R.ok(messageService.mine(current, size, unread, category));
     }
 

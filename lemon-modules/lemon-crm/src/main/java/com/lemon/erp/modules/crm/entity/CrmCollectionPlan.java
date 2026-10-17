@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.lemon.erp.modules.crm.model.CollectStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -31,9 +32,9 @@ public class CrmCollectionPlan extends BaseEntity {
     @TableField(exist = false)
     private BigDecimal receivedAmount;
 
-    /** RECEIVED 已回款 / PARTIAL 部分回款 / OVERDUE 逾期 / PENDING 未到期 */
+    /** 回款状态 */
     @TableField(exist = false)
-    private String collectStatus;
+    private CollectStatus collectStatus;
 
     @TableField(exist = false)
     private String contractNo;

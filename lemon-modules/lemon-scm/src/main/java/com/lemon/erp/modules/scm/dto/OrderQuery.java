@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.dto;
 
+import com.lemon.erp.modules.scm.model.OrderStatus;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
@@ -11,7 +12,7 @@ import java.time.LocalDate;
  * @param keyword   物料编码或名称：包含该物料的订单
  * @param beginDate 订单日期范围
  */
-public record OrderQuery(String orderNo, Long partnerId, String status, String keyword,
+public record OrderQuery(String orderNo, Long partnerId, OrderStatus status, String keyword,
                          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate beginDate,
                          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 }

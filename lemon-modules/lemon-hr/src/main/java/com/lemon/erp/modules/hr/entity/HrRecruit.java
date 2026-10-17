@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.RecruitStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -47,7 +48,7 @@ public class HrRecruit extends BaseEntity {
     private LocalDate deadline;
 
     /** 状态(字典 hr_recruit_status) DRAFT草稿 APPROVING审批中 OPEN招聘中 CLOSED已关闭 */
-    private String status;
+    private RecruitStatus status;
 
     /** 审批流程实例 */
     private String flowInstanceId;

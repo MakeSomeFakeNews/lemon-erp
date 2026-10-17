@@ -14,9 +14,9 @@ public enum Setting {
     WATERMARK("sys.watermark", Group.BASIC, "framework.label.setting.watermark", SettingType.BOOL, null, "false", null, 0, 0,
             "framework.label.setting.watermark.remark"),
 
-    CAPTCHA_MODE("captcha.mode", Group.LOGIN, "framework.label.setting.captchaMode", SettingType.SELECT, null, "OFF", CaptchaMode.class, 0, 0,
+    CAPTCHA_MODE("captcha.mode", Group.LOGIN, "framework.label.setting.captchaMode", SettingType.SELECT, null, CaptchaMode.OFF.name(), CaptchaMode.class, 0, 0,
             "framework.label.setting.captchaMode.remark"),
-    CAPTCHA_TYPE("captcha.type", Group.LOGIN, "framework.label.setting.captchaType", SettingType.SELECT, null, "MATH", CaptchaType.class, 0, 0,
+    CAPTCHA_TYPE("captcha.type", Group.LOGIN, "framework.label.setting.captchaType", SettingType.SELECT, null, CaptchaType.MATH.name(), CaptchaType.class, 0, 0,
             "framework.label.setting.captchaType.remark"),
     LOGIN_MAX_RETRY("login.maxRetry", Group.LOGIN, "framework.label.setting.loginMaxRetry", SettingType.NUMBER, "lemon.security.login-max-retry", "5", null, 1, 20,
             "framework.label.setting.loginMaxRetry.remark"),
@@ -29,7 +29,7 @@ public enum Setting {
 
     PASSWORD_MIN_LENGTH("password.minLength", Group.PASSWORD, "framework.label.setting.passwordMinLength", SettingType.NUMBER, "lemon.security.password-min-length", "8", null, 6, 32,
             "framework.label.setting.passwordMinLength.remark"),
-    PASSWORD_COMPLEXITY("password.complexity", Group.PASSWORD, "framework.label.setting.passwordComplexity", SettingType.SELECT, null, "LETTER_DIGIT", PasswordComplexity.class, 0, 0,
+    PASSWORD_COMPLEXITY("password.complexity", Group.PASSWORD, "framework.label.setting.passwordComplexity", SettingType.SELECT, null, PasswordComplexity.LETTER_DIGIT.name(), PasswordComplexity.class, 0, 0,
             "framework.label.setting.passwordComplexity.remark"),
     PASSWORD_EXPIRE_DAYS("password.expireDays", Group.PASSWORD, "framework.label.setting.passwordExpireDays", SettingType.NUMBER, "lemon.security.password-expire-days", "0", null, 0, 3650,
             "framework.label.setting.passwordExpireDays.remark"),

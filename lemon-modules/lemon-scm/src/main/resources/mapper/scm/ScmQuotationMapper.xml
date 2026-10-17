@@ -16,7 +16,7 @@
             <if test="keyword != null and keyword != ''">
                 (q.quote_no LIKE CONCAT('%', #{keyword}, '%') OR c.name LIKE CONCAT('%', #{keyword}, '%'))
             </if>
-            <if test="status != null and status != ''">AND q.status = #{status}</if>
+            <if test="status != null">AND q.status = #{status}</if>
             <if test="customerId != null">AND q.customer_id = #{customerId}</if>
             <if test="opportunityId != null">AND q.opportunity_id = #{opportunityId}</if>
         </where>

@@ -11,7 +11,7 @@
         LEFT JOIN fin_voucher v ON v.id = b.voucher_id
         WHERE b.kind = #{q.kind}
         <if test="q.partnerId != null">AND b.partner_id = #{q.partnerId}</if>
-        <if test="q.status != null and q.status != ''">AND b.status = #{q.status}</if>
+        <if test="q.status != null">AND b.status = #{q.status}</if>
         <if test="q.keyword != null and q.keyword != ''">
             AND (b.bill_no LIKE CONCAT('%', #{q.keyword}, '%') OR b.source_no LIKE CONCAT('%', #{q.keyword}, '%'))
         </if>

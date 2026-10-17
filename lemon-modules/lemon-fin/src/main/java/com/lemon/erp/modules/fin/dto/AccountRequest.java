@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.dto;
 
+import com.lemon.erp.modules.fin.model.AccountDirection;
+import com.lemon.erp.modules.fin.model.AccountCategory;
 import com.lemon.erp.modules.fin.model.AuxItem;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -19,8 +21,8 @@ public record AccountRequest(
         @NotBlank(message = "{fin.valid.enterAccountCode}") @Pattern(regexp = "^\\d{4,20}$", message = "{fin.valid.accountCodeMustDigits}") String code,
         @NotBlank(message = "{fin.valid.enterAccountName}") @Size(max = 64, message = "{fin.valid.accountNameCannotExceedCharacters}") String name,
         Long parentId,
-        String category,
-        String direction,
+        AccountCategory category,
+        AccountDirection direction,
         @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}") String remark,
         List<AuxItem> auxItems) {
 }

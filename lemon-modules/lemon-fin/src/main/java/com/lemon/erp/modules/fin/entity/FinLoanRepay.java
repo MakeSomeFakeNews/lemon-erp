@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.lemon.erp.modules.fin.model.LoanRepayMethod;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -24,7 +25,7 @@ public class FinLoanRepay extends BaseEntity {
     private BigDecimal amount;
 
     /** CASH 现金还款 / CLAIM 报销冲抵 */
-    private String method;
+    private LoanRepayMethod method;
 
     private Long claimId;
 

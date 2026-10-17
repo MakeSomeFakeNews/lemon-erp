@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.PayrollStatus;
+import com.lemon.erp.modules.hr.model.PerfGrade;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -62,7 +64,7 @@ public class HrPayrollItem extends BaseEntity {
     private BigDecimal commission;
 
     /** 绩效等级 */
-    private String perfGrade;
+    private PerfGrade perfGrade;
 
     /** 绩效奖金 */
     private BigDecimal perfBonus;
@@ -118,5 +120,5 @@ public class HrPayrollItem extends BaseEntity {
     @TableField(exist = false)
     private Integer period;
     @TableField(exist = false)
-    private String payrollStatus;
+    private PayrollStatus payrollStatus;
 }

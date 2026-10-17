@@ -17,7 +17,11 @@ public final class ScmConstants {
     public static final DataPermissionRule CONTRACT_RULE = new DataPermissionRule("scm_purchase_contract", "dept_id", "create_by");
     public static final DataPermissionRule TENDER_RULE = new DataPermissionRule("scm_tender", "dept_id", "create_by");
 
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+    /** 默认税率（%），明细未填写税率时使用 */
+    public static final BigDecimal DEFAULT_TAX_RATE = BigDecimal.valueOf(13);
+
+    /** 百分比换算 */
+    public static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private ScmConstants() {
     }

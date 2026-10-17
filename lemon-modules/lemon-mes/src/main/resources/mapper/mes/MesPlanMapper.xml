@@ -15,7 +15,7 @@
                 (p.plan_no LIKE CONCAT('%', #{keyword}, '%') OR m.code LIKE CONCAT('%', #{keyword}, '%')
                  OR m.name LIKE CONCAT('%', #{keyword}, '%'))
             </if>
-            <if test="status != null and status != ''">AND p.status = #{status}</if>
+            <if test="status != null">AND p.status = #{status}</if>
         </where>
         ORDER BY p.id DESC
     </select>

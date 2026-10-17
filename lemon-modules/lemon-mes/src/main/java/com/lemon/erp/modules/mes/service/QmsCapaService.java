@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.QmsRequests;
@@ -75,7 +76,7 @@ public class QmsCapaService {
             s.setOwnerId(req.ownerId());
             return s;
         }).toList());
-        messageSender.send(List.of(req.ownerId()), MessageSender.Message.of("REMIND", "纠正预防待处理：" + capa.getCapaNo(), // i18n-ignore
+        messageSender.send(List.of(req.ownerId()), MessageSender.Message.of(MessageCategory.REMIND, "纠正预防待处理：" + capa.getCapaNo(), // i18n-ignore
                 capa.getTitle() + "，要求 " + capa.getDueDate() + " 前完成", "/qms/capa")); // i18n-ignore
         return capa.getId();
     }

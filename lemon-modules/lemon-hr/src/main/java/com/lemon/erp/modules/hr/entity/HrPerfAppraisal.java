@@ -1,5 +1,8 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.AppraisalStatus;
+import com.lemon.erp.modules.hr.model.PerfGrade;
+import com.lemon.erp.modules.hr.model.PerfStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -38,10 +41,10 @@ public class HrPerfAppraisal extends BaseEntity {
     private BigDecimal score;
 
     /** 等级(字典 hr_perf_grade) S A B C D */
-    private String grade;
+    private PerfGrade grade;
 
     /** 状态(字典 hr_appraisal_status) SELF待自评 REVIEW待评分 DONE已完成 */
-    private String status;
+    private AppraisalStatus status;
 
     /** 自评总结 */
     private String selfComment;
@@ -64,7 +67,7 @@ public class HrPerfAppraisal extends BaseEntity {
     @TableField(exist = false)
     private String planName;
     @TableField(exist = false)
-    private String planStatus;
+    private PerfStatus planStatus;
     /** 被考核人的账号 */
     @TableField(exist = false)
     private Long employeeUserId;

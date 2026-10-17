@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.dto;
 
+import com.lemon.erp.modules.crm.model.TicketPriority;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -11,7 +12,7 @@ public record TicketRequest(
         @NotNull(message = "{crm.valid.selectCustomer}") Long customerId,
         Long contactId,
         @NotBlank(message = "{crm.valid.selectTicketType}") String type,
-        @NotBlank(message = "{crm.valid.selectPriority}") String priority,
+        @NotNull(message = "{crm.valid.selectPriority}") TicketPriority priority,
         String channel,
         @NotBlank(message = "{crm.valid.enterTitle}") @Size(max = 128, message = "{crm.valid.titleCannotExceedCharacters2}") String title,
         @Size(max = 2000, message = "{crm.valid.descriptionCannotExceedCharacters2}") String description,

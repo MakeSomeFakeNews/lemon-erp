@@ -11,7 +11,11 @@ import com.lemon.erp.framework.workflow.FlowFinishedEvent;
 import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.fin.dto.SettlementItemRequest;
 import com.lemon.erp.modules.fin.dto.SettlementRequest;
-import com.lemon.erp.modules.fin.model.SettleMethod;
+import com.lemon.erp.modules.fin.model.SettleMethods;
+import com.lemon.erp.modules.fin.model.BillKind;
+import com.lemon.erp.modules.fin.model.FinConstants;
+import com.lemon.erp.modules.fin.model.SettleKind;
+import com.lemon.erp.framework.workflow.ApproveStatus;
 import com.lemon.erp.modules.fin.entity.FinBill;
 import com.lemon.erp.modules.fin.entity.FinSettlement;
 import com.lemon.erp.modules.fin.entity.FinSettlementItem;
@@ -47,9 +51,6 @@ public class FinSettlementService {
     /** 付款审批流程标识（只有付款单走审批） */
     public static final String PAYMENT_PROCESS_KEY = "fin_payment";
     private static final String BUSINESS_KEY_PREFIX = "fin_payment:";
-    private static final String STATUS_APPROVING = "APPROVING";
-    private static final String STATUS_APPROVED = "APPROVED";
-    private static final String STATUS_REJECTED = "REJECTED";
 
     private final FinSettlementMapper settlementMapper;
     private final FinSettlementItemMapper itemMapper;
@@ -63,7 +64,7 @@ public class FinSettlementService {
     private final com.lemon.erp.framework.finance.ExchangeRateProvider rateProvider;
     private final FlowApi flowApi;
 
-    public PageResult<FinSettlement> page(long current, long size, String kind, Long partnerId, String keyword) {
+    public PageResult<FinSettlement> page(long current, long size, SettleKind kind, Long partnerId, String keyword) {
         checkKind(kind);
         Page<FinSettlement> page = Page.of(current, size);
         settlementMapper.selectPageList(page, kind, partnerId, keyword);
@@ -83,7 +84,7 @@ public class FinSettlementService {
     @Transactional
     public Long create(SettlementRequest req) {
         // 票据结算的收付款单由票据业务生成（只能在票据管理中删除），手工收付款不能选择
-        if (SettleMethod.NOTE.name().equals(req.method())) {
+        if (SettleMethods.NOTE.equals(req.method())) {
             throw new BizException("fin.error.noteSettleMethodNotManual");
         }
         accountService.requireCashAccount(req.accountId());
@@ -106,25 +107,25 @@ public class FinSettlementService {
 
     /** 审批中（付款审批未结束） */
     public static boolean isApproving(FinSettlement s) {
-        return STATUS_APPROVING.equals(s.getStatus());
+        return s.getStatus() == ApproveStatus.APPROVING;
     }
 
     private Long doCreate(SettlementRequest req) {
         checkKind(req.kind());
-        periodGuard.checkOpen(req.settleDate(), "RECEIPT".equals(req.kind()) ? "fin.label.receipt" : "fin.label.payment");
-        String billKind = "RECEIPT".equals(req.kind()) ? "AR" : "AP";
+        periodGuard.checkOpen(req.settleDate(), req.kind() == SettleKind.RECEIPT ? "fin.label.receipt" : "fin.label.payment");
+        BillKind billKind = req.kind().billKind();
         // 付款发布了审批流程时先提交审批，审批通过后核销
-        boolean approval = "PAYMENT".equals(req.kind()) && flowApi.isAvailable(PAYMENT_PROCESS_KEY);
+        boolean approval = req.kind() == SettleKind.PAYMENT && flowApi.isAvailable(PAYMENT_PROCESS_KEY);
         Set<Long> seen = new HashSet<>();
         Map<Long, FinBill> bills = billMapper.selectByIds(req.items().stream().map(SettlementItemRequest::billId).toList())
                 .stream().collect(Collectors.toMap(FinBill::getId, Function.identity()));
         // 外币：同一张收付款单只能核销同一币种的单据，核销金额为原币
-        Set<String> currencies = bills.values().stream().map(b -> b.getCurrency() == null ? "CNY" : b.getCurrency()).collect(Collectors.toSet());
+        Set<String> currencies = bills.values().stream().map(b -> b.getCurrency() == null ? FinConstants.BASE_CURRENCY : b.getCurrency()).collect(Collectors.toSet());
         if (currencies.size() > 1) {
             throw new BizException("fin.error.receiptPaymentOnlySettleDocumentsSame");
         }
-        String currency = currencies.isEmpty() ? "CNY" : currencies.iterator().next();
-        boolean foreign = !"CNY".equals(currency);
+        String currency = currencies.isEmpty() ? FinConstants.BASE_CURRENCY : currencies.iterator().next();
+        boolean foreign = !FinConstants.BASE_CURRENCY.equals(currency);
         BigDecimal settleRate = !foreign ? BigDecimal.ONE : req.exchangeRate() != null ? req.exchangeRate() : rateProvider.rate(currency, req.settleDate());
         if (settleRate == null) {
             throw new BizException("fin.error.enterExchangeRateReceiptPayment", currency);
@@ -134,8 +135,8 @@ public class FinSettlementService {
         BigDecimal totalFc = BigDecimal.ZERO;
         for (SettlementItemRequest item : req.items()) {
             FinBill bill = bills.get(item.billId());
-            if (bill == null || !bill.getKind().equals(billKind) || !bill.getPartnerId().equals(req.partnerId())) {
-                throw new BizException("AR".equals(billKind) ? "fin.error.settledDocumentDoesNotBelongCustomer" : "fin.error.settledDocumentDoesNotBelongSupplier");
+            if (bill == null || bill.getKind() != billKind || !bill.getPartnerId().equals(req.partnerId())) {
+                throw new BizException(billKind == BillKind.AR ? "fin.error.settledDocumentDoesNotBelongCustomer" : "fin.error.settledDocumentDoesNotBelongSupplier");
             }
             if (!seen.add(item.billId())) {
                 throw new BizException("fin.error.duplicateDocument", bill.getBillNo());
@@ -161,7 +162,7 @@ public class FinSettlementService {
             throw new BizException("fin.error.receiptPaymentAmountMustGreaterAfter");
         }
         FinSettlement s = new FinSettlement();
-        s.setSettleNo(docNoService.next("RECEIPT".equals(req.kind()) ? "SK" : "FK"));
+        s.setSettleNo(docNoService.next(req.kind() == SettleKind.RECEIPT ? FinDocNos.RECEIPT : FinDocNos.PAYMENT));
         s.setKind(req.kind());
         s.setPartnerId(req.partnerId());
         s.setSettleDate(req.settleDate());
@@ -173,7 +174,7 @@ public class FinSettlementService {
         s.setExchangeRate(settleRate);
         s.setAmountFc(totalFc);
         s.setRemark(req.remark());
-        s.setStatus(approval ? STATUS_APPROVING : STATUS_APPROVED);
+        s.setStatus(approval ? ApproveStatus.APPROVING : ApproveStatus.APPROVED);
         s.setCreateBy(SecurityUtils.getUserId());
         settlementMapper.insert(s);
         itemMapper.insertBatch(req.items().stream().map(i -> {
@@ -202,7 +203,7 @@ public class FinSettlementService {
             return;
         }
         FinSettlement s = settlementMapper.selectById(Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length())));
-        if (s == null || !STATUS_APPROVING.equals(s.getStatus())) {
+        if (s == null || s.getStatus() != ApproveStatus.APPROVING) {
             return;
         }
         boolean approved = e.status() == FlowStatus.APPROVED;
@@ -221,9 +222,9 @@ public class FinSettlementService {
             }
         }
         settlementMapper.update(Wrappers.<FinSettlement>lambdaUpdate()
-                .set(FinSettlement::getStatus, approved ? STATUS_APPROVED : STATUS_REJECTED)
+                .set(FinSettlement::getStatus, approved ? ApproveStatus.APPROVED : ApproveStatus.REJECTED)
                 .eq(FinSettlement::getId, s.getId())
-                .eq(FinSettlement::getStatus, STATUS_APPROVING));
+                .eq(FinSettlement::getStatus, ApproveStatus.APPROVING));
     }
 
     /** 核销：本位币按单据记账汇率（原币核销完时取剩余本位币，避免尾差），同时累加原币已核销 */
@@ -238,7 +239,7 @@ public class FinSettlementService {
 
     /** 原币核销金额对应的记账本位币：本位币单据即为本身；外币按记账汇率，核销完剩余原币时取剩余本位币 */
     private static BigDecimal baseOf(FinBill bill, BigDecimal fc) {
-        if (bill.getCurrency() == null || "CNY".equals(bill.getCurrency())) {
+        if (bill.getCurrency() == null || FinConstants.BASE_CURRENCY.equals(bill.getCurrency())) {
             return fc;
         }
         BigDecimal remainingFc = bill.getAmountFc().subtract(bill.getSettledFc());
@@ -266,18 +267,18 @@ public class FinSettlementService {
             if (s == null) {
                 continue;
             }
-            if (!forNote && SettleMethod.NOTE.name().equals(s.getMethod())) {
+            if (!forNote && SettleMethods.NOTE.equals(s.getMethod())) {
                 throw new BizException("fin.error.generatedNoteTransactionDeleteNoteNotes", s.getSettleNo());
             }
             if (s.getVoucherId() != null) {
                 throw new BizException("fin.error.alreadyHasVoucherDeleteVoucherFirst", s.getSettleNo());
             }
-            if (STATUS_APPROVING.equals(s.getStatus())) {
+            if (s.getStatus() == ApproveStatus.APPROVING) {
                 throw new BizException("fin.error.underApprovalWithdrawMyRequestsFirst", s.getSettleNo());
             }
             periodGuard.checkOpen(s.getSettleDate(), "fin.label.receiptPayment");
             // 已拒绝的付款没有核销过，不需要恢复
-            if (STATUS_APPROVED.equals(s.getStatus())) {
+            if (s.getStatus() == ApproveStatus.APPROVED) {
                 for (FinSettlementItem item : itemMapper.selectList(Wrappers.<FinSettlementItem>lambdaQuery()
                         .eq(FinSettlementItem::getSettlementId, id))) {
                     billMapper.addSettled(item.getBillId(), item.getAmount().negate());
@@ -295,10 +296,10 @@ public class FinSettlementService {
         int count = 0;
         for (FinSettlement s : settlementMapper.selectByIds(ids)) {
             // 审批中、已拒绝的付款不生成凭证
-            if (s.getVoucherId() != null || !STATUS_APPROVED.equals(s.getStatus())) {
+            if (s.getVoucherId() != null || s.getStatus() != ApproveStatus.APPROVED) {
                 continue;
             }
-            boolean receipt = "RECEIPT".equals(s.getKind());
+            boolean receipt = s.getKind() == SettleKind.RECEIPT;
             String summary = (receipt ? "收到 " : "支付 ") + billService.partnerName(s.getKind(), s.getPartnerId()) + " 货款"; // i18n-ignore
             Long partnerAccount = accountRules.accountId(receipt ? AccountRole.RECEIVABLE : AccountRole.PAYABLE);
             // 往来科目按核销的记账本位币，银行按实收实付本位币，外币差额计入财务费用（汇兑损益）
@@ -323,8 +324,8 @@ public class FinSettlementService {
         return count;
     }
 
-    private static void checkKind(String kind) {
-        if (!"RECEIPT".equals(kind) && !"PAYMENT".equals(kind)) {
+    private static void checkKind(SettleKind kind) {
+        if (kind == null) {
             throw new BizException("fin.error.invalidReceiptPaymentKind", kind);
         }
     }

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.finance.ExchangeRateProvider;
 import com.lemon.erp.framework.rule.BizRules;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -40,10 +41,12 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static com.lemon.erp.modules.scm.model.ScmConstants.HUNDRED;
 import static com.lemon.erp.modules.scm.model.ScmConstants.TRADE_RULE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
 import static com.lemon.erp.modules.scm.model.ScmConstants.tax;
@@ -80,14 +83,14 @@ public class ScmTradeDocService {
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmTradeDoc> page(TradeKind kind, long current, long size, TradeDocQuery query) {
         Page<ScmTradeDoc> page = Page.of(current, size);
-        docMapper.selectPageList(page, kind.name(), query);
+        docMapper.selectPageList(page, kind, query);
         return PageResult.of(page);
     }
 
     public ScmTradeDoc detail(TradeKind kind, Long id) {
         Supplier<ScmTradeDoc> loader = () -> docMapper.selectById(id);
         ScmTradeDoc doc = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(TRADE_RULE, loader);
-        if (doc == null || !kind.name().equals(doc.getKind())) {
+        if (doc == null || doc.getKind() != kind) {
             throw new BizException("scm.error.doesNotExistAccessDenied2", Messages.get(kind.getLabelKey()));
         }
         ScmTradeDoc detail = docMapper.selectDetail(id);
@@ -99,7 +102,7 @@ public class ScmTradeDocService {
     @Transactional
     public Long create(TradeKind kind, TradeDocRequest req) {
         ScmOrder order = orderService.getAccessible(kind.getOrderKind(), req.orderId());
-        List<String> allowed = kind.isReturns() ? OrderStatus.RETURNABLE : OrderStatus.EXECUTABLE;
+        Set<OrderStatus> allowed = kind.isReturns() ? OrderStatus.RETURNABLE : OrderStatus.EXECUTABLE;
         if (!allowed.contains(order.getStatus())) {
             if (!kind.isReturns()) {
                 throw new BizException("scm.error.orderNotApprovedPartiallyCompletedNot", order.getOrderNo(), Messages.get(kind.getLabelKey()));
@@ -133,7 +136,7 @@ public class ScmTradeDocService {
                 ScmOrderItem latest = orderItemMapper.selectById(orderItem.getId());
                 BigDecimal max = kind.isReturns() ? latest.netQty() : latest.remainingQty();
                 if (!kind.isReturns() && overRate.signum() > 0) {
-                    max = latest.getQty().multiply(BigDecimal.valueOf(100).add(overRate)).divide(BigDecimal.valueOf(100), 4, RoundingMode.DOWN)
+                    max = latest.getQty().multiply(HUNDRED.add(overRate)).divide(HUNDRED, 4, RoundingMode.DOWN)
                             .subtract(latest.getDoneQty()).add(latest.getReplenishQty());
                 }
                 throw new BizException("scm.error.rowQuantityExceeds", i + 1, orderItem.getMaterialCode(), orderItem.getMaterialName(),
@@ -142,7 +145,7 @@ public class ScmTradeDocService {
             items.add(toItem(kind, r, orderItem, rate(order)));
         }
 
-        StockDocRequest stockReq = new StockDocRequest(kind.getStockBizType(), req.warehouseId(), null, req.bizDate(),
+        StockDocRequest stockReq = new StockDocRequest(kind.getStockBizType().name(), req.warehouseId(), null, req.bizDate(),
                 req.remark(),
                 items.stream().map(ScmTradeDocService::toStockItem).toList());
         if (kind == TradeKind.PURCHASE_RETURN) {
@@ -162,7 +165,7 @@ public class ScmTradeDocService {
         LoginUser user = SecurityUtils.getLoginUser();
         ScmTradeDoc doc = new ScmTradeDoc();
         doc.setDocNo(docNo);
-        doc.setKind(kind.name());
+        doc.setKind(kind);
         doc.setOrderId(order.getId());
         doc.setPartnerId(order.getPartnerId());
         doc.setWarehouseId(req.warehouseId());
@@ -170,7 +173,7 @@ public class ScmTradeDocService {
         doc.setTotalQty(items.stream().map(ScmTradeDocItem::getQty).reduce(BigDecimal.ZERO, BigDecimal::add));
         doc.setTotalAmount(items.stream().map(ScmTradeDocItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
         doc.setTaxAmount(items.stream().map(ScmTradeDocItem::getTaxAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
-        doc.setCurrency(order.getCurrency() == null ? "CNY" : order.getCurrency());
+        doc.setCurrency(order.getCurrency() == null ? ExchangeRateProvider.BASE : order.getCurrency());
         doc.setExchangeRate(rate(order));
         doc.setAmountFc(req.items().stream().map(r -> amount(r.qty(), orderItems.get(r.orderItemId()).getPrice()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add));
@@ -189,7 +192,7 @@ public class ScmTradeDocService {
             reservationService.releaseIfDone(order.getId());
         }
         BigDecimal sign = BigDecimal.valueOf(kind.sign());
-        eventPublisher.publishEvent(new TradeDocConfirmedEvent(doc.getId(), kind.name(), docNo, order.getPartnerId(),
+        eventPublisher.publishEvent(new TradeDocConfirmedEvent(doc.getId(), kind, docNo, order.getPartnerId(),
                 req.bizDate(), doc.getTotalAmount().multiply(sign), doc.getTaxAmount().multiply(sign), doc.getCurrency(),
                 doc.getExchangeRate(), doc.getAmountFc().multiply(sign)));
         return doc.getId();

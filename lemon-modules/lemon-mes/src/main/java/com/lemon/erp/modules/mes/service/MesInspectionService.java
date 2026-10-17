@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.InspectionItemRequest;
@@ -170,7 +171,7 @@ public class MesInspectionService {
             int holds = holdService.inspect(i.getSourceNo(), i.getMaterialId(), i.getBatchNo(), pass, i.getInspNo());
             if (!pass && holds > 0) {
                 WmsMaterial m = materialService.get(i.getMaterialId());
-                messageSender.sendToPermission("scm:purchaseReturn:add", MessageSender.Message.of("ALERT",
+                messageSender.sendToPermission("scm:purchaseReturn:add", MessageSender.Message.of(MessageCategory.ALERT,
                         "来料检验不合格：" + m.getCode() + " " + m.getName(), // i18n-ignore
                         "采购入库单 " + i.getSourceNo() + " 的 " + m.getName() + " 检验不合格（" + i.getInspNo() + "），库存已冻结，请评审处置", // i18n-ignore
                         "/qms/ncr"));

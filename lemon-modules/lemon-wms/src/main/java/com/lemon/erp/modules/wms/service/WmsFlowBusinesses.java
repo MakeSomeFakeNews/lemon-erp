@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.wms.service;
 
 import com.lemon.erp.framework.workflow.FlowBusiness;
+import com.lemon.erp.modules.wms.model.StockBizType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,7 +25,7 @@ public class WmsFlowBusinesses {
     @Bean
     public FlowBusiness stockDocFlow() {
         return FlowBusiness.of("wms_stock_doc", "wms.label.inboundOutboundConfirmationApproval",
-                select("kind", "wms.label.documentType", "IN", "OUT", "TRANSFER"),
+                select("kind", "wms.label.documentType", StockBizType.IN, StockBizType.OUT, StockBizType.TRANSFER),
                 text("bizType", "wms.label.businessTypeEGPurchaseSales"),
                 number("totalQty", "wms.label.totalQty"),
                 text("docNo", "wms.label.documentNo"));

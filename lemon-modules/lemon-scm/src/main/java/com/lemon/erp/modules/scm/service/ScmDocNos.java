@@ -24,22 +24,30 @@ public class ScmDocNos {
     public static final String SUPPLIER = "GYS";
     public static final String CUSTOMER = "KH";
 
+    /** 单据编号规则标识 */
+    public static final String REQUISITION = "QG";
+    public static final String INQUIRY = "XJ";
+    public static final String QUOTATION = "BJ";
+    public static final String ORDER_CHANGE = "BG";
+    public static final String DELIVERY = "FH";
+    public static final String SHIPMENT = "FY";
+
     @Bean
     @Order(1)
     public DocNoCatalog scmDocNoCatalog() {
         List<DocNoCatalog.Type> types = new ArrayList<>();
-        types.add(doc("QG", "scm.label.purchaseRequisition"));
-        types.add(doc("XJ", "scm.label.rfq"));
+        types.add(doc(REQUISITION, "scm.label.purchaseRequisition"));
+        types.add(doc(INQUIRY, "scm.label.rfq"));
         types.add(doc(ScmTenderService.DOC_NO, "scm.label.tender"));
         types.add(doc(ScmPurchaseContractService.DOC_NO, "scm.label.purchaseContract"));
-        types.add(doc("BJ", "scm.label.salesQuotation"));
+        types.add(doc(QUOTATION, "scm.label.salesQuotation"));
         Arrays.stream(OrderKind.values()).forEach(k -> types.add(doc(k.getPrefix(), k.getLabelKey())));
-        types.add(doc("BG", "scm.label.orderChange"));
+        types.add(doc(ORDER_CHANGE, "scm.label.orderChange"));
         types.add(doc(ScmAsnService.DOC_NO, "scm.label.asn"));
         Arrays.stream(TradeKind.values()).forEach(k -> types.add(doc(k.getPrefix(), k.getLabelKey())));
-        types.add(doc("FH", "scm.label.deliveryNotice"));
+        types.add(doc(DELIVERY, "scm.label.deliveryNotice"));
         types.add(doc(ScmWaveService.DOC_NO, "scm.label.pickingWave"));
-        types.add(doc("FY", "scm.label.shipment"));
+        types.add(doc(SHIPMENT, "scm.label.shipment"));
         types.add(doc(ScmRebateService.DOC_NO, "scm.label.salesRebate"));
         types.add(master(SUPPLIER, "scm.label.supplierCode"));
         types.add(master(CUSTOMER, "scm.label.customerCode"));

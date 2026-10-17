@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.wms.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.lemon.erp.modules.wms.model.StockBizType;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -8,7 +9,8 @@ import java.time.LocalDateTime;
 @Data
 public class SerialLogView {
     private Long id;
-    private String bizType;
+    /** 库存业务类型：入库 / 出库 / 调拨 / 盘点 */
+    private StockBizType bizType;
     private Long docId;
     private String docNo;
     /** 1 入 -1 出 */

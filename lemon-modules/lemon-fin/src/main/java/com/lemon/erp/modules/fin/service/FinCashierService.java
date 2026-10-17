@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.LedgerRowType;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.entity.FinAccount;
@@ -47,7 +48,7 @@ public class FinCashierService {
             return rows;
         }
         BigDecimal balance = cashierMapper.sumBefore(ids, begin, posted);
-        rows.add(line("OPEN", begin, Messages.get("fin.text.openingBalance"), null, null, balance));
+        rows.add(line(LedgerRowType.OPEN, begin, Messages.get("fin.text.openingBalance"), null, null, balance));
         List<Map<String, Object>> entries = cashierMapper.selectJournal(ids, begin, end, posted);
         Map<Long, String> counters = counterAccounts(entries, ids);
         BigDecimal dayDebit = BigDecimal.ZERO;
@@ -58,7 +59,7 @@ public class FinCashierService {
         for (Map<String, Object> e : entries) {
             LocalDate date = toDate(e.get("entryDate"));
             if (day != null && !day.equals(date)) {
-                rows.add(line("DAY", day, Messages.get("fin.text.dailyTotal"), dayDebit, dayCredit, balance));
+                rows.add(line(LedgerRowType.DAY, day, Messages.get("fin.text.dailyTotal"), dayDebit, dayCredit, balance));
                 dayDebit = BigDecimal.ZERO;
                 dayCredit = BigDecimal.ZERO;
             }
@@ -70,7 +71,7 @@ public class FinCashierService {
             dayCredit = dayCredit.add(credit);
             totalDebit = totalDebit.add(debit);
             totalCredit = totalCredit.add(credit);
-            Map<String, Object> row = line("ENTRY", date, (String) e.get("summary"), debit, credit, balance);
+            Map<String, Object> row = line(LedgerRowType.ENTRY, date, (String) e.get("summary"), debit, credit, balance);
             row.put("voucherId", e.get("voucherId"));
             row.put("voucherNo", e.get("voucherNo"));
             row.put("voucherStatus", e.get("voucherStatus"));
@@ -80,9 +81,9 @@ public class FinCashierService {
             rows.add(row);
         }
         if (day != null) {
-            rows.add(line("DAY", day, Messages.get("fin.text.dailyTotal"), dayDebit, dayCredit, balance));
+            rows.add(line(LedgerRowType.DAY, day, Messages.get("fin.text.dailyTotal"), dayDebit, dayCredit, balance));
         }
-        rows.add(line("TOTAL", end, Messages.get("fin.text.total"), totalDebit, totalCredit, balance));
+        rows.add(line(LedgerRowType.TOTAL, end, Messages.get("fin.text.total"), totalDebit, totalCredit, balance));
         return rows;
     }
 
@@ -178,7 +179,7 @@ public class FinCashierService {
         return a.getCode().startsWith(FinConstants.CASH) || a.getCode().startsWith(FinConstants.BANK);
     }
 
-    private static Map<String, Object> line(String type, LocalDate date, String summary, BigDecimal debit, BigDecimal credit, BigDecimal balance) {
+    private static Map<String, Object> line(LedgerRowType type, LocalDate date, String summary, BigDecimal debit, BigDecimal credit, BigDecimal balance) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("type", type);
         row.put("entryDate", date);

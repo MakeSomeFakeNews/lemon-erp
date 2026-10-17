@@ -16,7 +16,7 @@ import com.lemon.erp.modules.wms.mapper.WmsLocationMapper;
 import com.lemon.erp.modules.wms.mapper.WmsMaterialMapper;
 import com.lemon.erp.modules.wms.mapper.WmsWarehouseMapper;
 import com.lemon.erp.modules.wms.model.StockBizType;
-import com.lemon.erp.modules.wms.model.WmsConstants;
+import com.lemon.erp.modules.wms.model.StockInType;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
@@ -110,7 +110,7 @@ public class WmsOpeningStockService {
                 for (int i = 0; i < items.size() && errors.isEmpty(); i += DOC_ROWS) {
                     List<ImportRow<StockDocItemRequest>> chunk = items.subList(i, Math.min(i + DOC_ROWS, items.size()));
                     try {
-                        docService.createConfirmed(StockBizType.IN, new StockDocRequest(WmsConstants.OPENING, warehouseId, null, bizDate,
+                        docService.createConfirmed(StockBizType.IN, new StockDocRequest(StockInType.OPENING, warehouseId, null, bizDate,
                                 "期初库存导入", chunk.stream().map(ImportRow::data).toList()), null); // i18n-ignore 存入单据备注
                     } catch (BizException e) {
                         String range = chunk.get(0).rowNum() + "-" + chunk.get(chunk.size() - 1).rowNum();

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.mapper;
 
+import com.lemon.erp.modules.mes.model.WorkOrderStatus;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.lemon.erp.modules.mes.dto.KitLineView;
 import com.lemon.erp.modules.mes.entity.MesWoMaterial;
@@ -31,7 +32,7 @@ public interface MesWoMaterialMapper extends BaseMapper<MesWoMaterial> {
      *
      * @param materialIds 只查这些物料，为空查全部（同一物料的分配与其他物料无关）
      */
-    List<KitLineView> selectOpenLines(@Param("statuses") Collection<String> statuses,
+    List<KitLineView> selectOpenLines(@Param("statuses") Collection<WorkOrderStatus> statuses,
                                       @Param("materialIds") Collection<Long> materialIds);
 
     /**
@@ -39,6 +40,6 @@ public interface MesWoMaterialMapper extends BaseMapper<MesWoMaterial> {
      *
      * @return [{materialId, qty}]
      */
-    List<Map<String, Object>> selectOpenAllocated(@Param("statuses") Collection<String> statuses,
+    List<Map<String, Object>> selectOpenAllocated(@Param("statuses") Collection<WorkOrderStatus> statuses,
                                                   @Param("materialIds") Collection<Long> materialIds);
 }

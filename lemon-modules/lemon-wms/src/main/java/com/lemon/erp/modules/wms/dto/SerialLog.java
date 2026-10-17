@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.wms.dto;
 
+import com.lemon.erp.modules.wms.model.StockBizType;
+
 import java.time.LocalDateTime;
 
 /**
@@ -7,6 +9,6 @@ import java.time.LocalDateTime;
  *
  * @param direction 1 入 -1 出
  */
-public record SerialLog(Long materialId, String serialNo, String bizType, Long docId, String docNo, int direction,
+public record SerialLog(Long materialId, String serialNo, StockBizType bizType, Long docId, String docNo, int direction,
                         Long warehouseId, long locationId, String batchNo, Long createBy, LocalDateTime createTime) {
 }

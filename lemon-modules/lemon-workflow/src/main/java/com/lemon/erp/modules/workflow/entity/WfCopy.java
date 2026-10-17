@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.framework.workflow.FlowStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -38,5 +39,5 @@ public class WfCopy extends BaseEntity {
     /** 流程当前状态，仅列表展示用 */
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     @TableField(exist = false)
-    private String status;
+    private FlowStatus status;
 }

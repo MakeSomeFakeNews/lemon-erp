@@ -19,11 +19,13 @@ import com.lemon.erp.modules.crm.mapper.CrmOpportunityItemMapper;
 import com.lemon.erp.modules.crm.mapper.CrmOpportunityMapper;
 import com.lemon.erp.modules.crm.mapper.CrmStageLogMapper;
 import com.lemon.erp.modules.crm.model.CrmConstants;
+import com.lemon.erp.modules.crm.model.OpportunityStage;
 import com.lemon.erp.modules.scm.dto.OrderItemRequest;
 import com.lemon.erp.modules.scm.dto.OrderRequest;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
 import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
+import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.service.ScmOrderService;
 import com.lemon.erp.modules.system.entity.SysUser;
 import com.lemon.erp.modules.system.mapper.SysUserMapper;
@@ -50,8 +52,6 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class CrmOpportunityService {
-
-    private static final BigDecimal DEFAULT_TAX_RATE = BigDecimal.valueOf(13);
 
     private final CrmOpportunityMapper opportunityMapper;
     private final CrmOpportunityItemMapper itemMapper;
@@ -104,14 +104,14 @@ public class CrmOpportunityService {
         customerService.detail(req.customerId());
         CrmOpportunity o = new CrmOpportunity();
         List<CrmOpportunityItem> items = fill(o, req);
-        String stage = req.stage() != null ? req.stage() : CrmConstants.OPEN_STAGES.get(0);
+        OpportunityStage stage = req.stage() != null ? req.stage() : OpportunityStage.INITIAL;
         // 新建只能是进行中的阶段，赢单 / 输单在商机详情中推进阶段时处理
-        if (!CrmConstants.OPEN_STAGES.contains(stage)) {
+        if (stage.isClosed()) {
             throw new BizException("crm.error.createStageMustBeOpen");
         }
-        o.setOppNo(docNoService.next("SJ"));
+        o.setOppNo(docNoService.next(CrmDocNos.OPPORTUNITY));
         o.setStage(stage);
-        if (o.getProbability() == null) o.setProbability(CrmConstants.STAGE_PROBABILITY.get(stage));
+        if (o.getProbability() == null) o.setProbability(stage.getProbability());
         o.setLeadId(leadId);
         o.setCreateBy(SecurityUtils.getUserId());
         opportunityMapper.insert(o);
@@ -149,37 +149,37 @@ public class CrmOpportunityService {
     @Transactional
     public void changeStage(Long id, StageRequest req) {
         CrmOpportunity o = get(id);
-        String to = req.stage();
-        if (!CrmConstants.STAGES.contains(to)) {
-            throw new BizException("crm.error.invalidSalesStage");
-        }
-        if (to.equals(o.getStage())) {
+        OpportunityStage to = req.stage();
+        if (to == o.getStage()) {
             return;
         }
-        if ("WON".equals(o.getStage())) {
+        if (o.getStage() == OpportunityStage.WON) {
             throw new BizException("crm.error.stageWonOpportunityCannotChanged");
         }
-        if ("LOST".equals(to) && !StringUtils.hasText(req.lostReason())) {
+        if (to == OpportunityStage.LOST && !StringUtils.hasText(req.lostReason())) {
             throw new BizException("crm.error.enterLostReason");
         }
-        boolean closed = "WON".equals(to) || "LOST".equals(to);
+        boolean closed = to.isClosed();
         opportunityMapper.update(Wrappers.<CrmOpportunity>lambdaUpdate()
                 .set(CrmOpportunity::getStage, to)
-                .set(CrmOpportunity::getProbability, CrmConstants.STAGE_PROBABILITY.get(to))
+                .set(CrmOpportunity::getProbability, to.getProbability())
                 .set(CrmOpportunity::getCloseDate, closed ? LocalDate.now() : null)
-                .set(CrmOpportunity::getLostReason, "LOST".equals(to) ? req.lostReason() : null)
+                .set(CrmOpportunity::getLostReason, to == OpportunityStage.LOST ? req.lostReason() : null)
                 .set(CrmOpportunity::getUpdateTime, LocalDateTime.now())
                 .eq(CrmOpportunity::getId, id)
                 .eq(CrmOpportunity::getStage, o.getStage()));
         log(id, o.getStage(), to);
-        if ("WON".equals(to)) {
+        if (to == OpportunityStage.WON) {
             customerService.markDeal(o.getCustomerId());
         }
     }
 
     /** 生成的销售订单（草稿）被删除后，商机解除关联，可以重新生成订单或删除 */
-    @EventListener(condition = "#e.kind == 'SALES'")
+    @EventListener
     public void onOrderDeleted(OrderDeletedEvent e) {
+        if (e.kind() != OrderKind.SALES) {
+            return;
+        }
         opportunityMapper.update(Wrappers.<CrmOpportunity>lambdaUpdate()
                 .set(CrmOpportunity::getSalesOrderId, null).set(CrmOpportunity::getSalesOrderNo, null)
                 .in(CrmOpportunity::getSalesOrderId, e.orderIds()));
@@ -206,7 +206,7 @@ public class CrmOpportunityService {
     @Transactional
     public Long createOrder(Long id, OppOrderRequest req) {
         CrmOpportunity o = detail(id);
-        if (!"WON".equals(o.getStage())) {
+        if (o.getStage() != OpportunityStage.WON) {
             throw new BizException("crm.error.salesOrderOnlyCreatedAfterOpportunity");
         }
         if (o.getSalesOrderId() != null && orderMapper.selectById(o.getSalesOrderId()) != null) {
@@ -220,7 +220,7 @@ public class CrmOpportunityService {
                 .toList();
         Long orderId = orderService.createDraft(OrderKind.SALES, new OrderRequest(o.getCustomerId(), LocalDate.now(),
                 req.deliveryDate() != null ? req.deliveryDate() : o.getExpectedDate(), req.warehouseId(),
-                "商机 " + o.getOppNo() + " " + o.getName(), items), "CRM"); // i18n-ignore 存库的订单备注
+                "商机 " + o.getOppNo() + " " + o.getName(), items), OrderSource.CRM); // i18n-ignore 存库的订单备注
         ScmOrder order = orderMapper.selectById(orderId);
         opportunityMapper.update(Wrappers.<CrmOpportunity>lambdaUpdate()
                 .set(CrmOpportunity::getSalesOrderId, orderId)
@@ -233,7 +233,7 @@ public class CrmOpportunityService {
 
     private CrmOpportunity getOpen(Long id) {
         CrmOpportunity o = get(id);
-        if ("WON".equals(o.getStage()) || "LOST".equals(o.getStage())) {
+        if (o.getStage().isClosed()) {
             throw new BizException("crm.error.wonLostOpportunitiesCannotModified");
         }
         return o;
@@ -254,7 +254,7 @@ public class CrmOpportunityService {
             item.setMaterialId(i.materialId());
             item.setQty(i.qty());
             item.setPrice(i.price());
-            item.setTaxRate(i.taxRate() == null ? DEFAULT_TAX_RATE : i.taxRate());
+            item.setTaxRate(i.taxRate() == null ? CrmConstants.DEFAULT_TAX_RATE : i.taxRate());
             item.setAmount(i.qty().multiply(i.price()).setScale(2, RoundingMode.HALF_UP));
             return item;
         }).toList();
@@ -291,7 +291,7 @@ public class CrmOpportunityService {
         itemMapper.insertBatch(items);
     }
 
-    private void log(Long id, String from, String to) {
+    private void log(Long id, OpportunityStage from, OpportunityStage to) {
         CrmStageLog log = new CrmStageLog();
         log.setOpportunityId(id);
         log.setFromStage(from);

@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.mes.dto;
 
+import com.lemon.erp.modules.mes.model.WorkOrderStatus;
+import com.lemon.erp.modules.mes.model.WorkOrderType;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -13,8 +15,8 @@ import java.time.LocalDateTime;
 public class BoardOrderRow {
     private Long id;
     private String woNo;
-    private String woType;
-    private String status;
+    private WorkOrderType woType;
+    private WorkOrderStatus status;
     private BigDecimal qty;
     private BigDecimal finishedQty;
     private LocalDate planStart;

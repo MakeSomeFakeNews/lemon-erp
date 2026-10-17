@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.controller;
 
+import com.lemon.erp.modules.pm.model.ProjectStatus;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
@@ -81,7 +82,7 @@ public class PmProjectController {
     @PutMapping("/project/{id}/status")
     @PreAuthorize("@ss.hasPerm('pm:project:edit')")
     @OperLog(title = "项目管理-状态", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
-    public R<Boolean> changeStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public R<Boolean> changeStatus(@PathVariable Long id, @RequestBody Map<String, ProjectStatus> body) {
         return R.ok(projectService.changeStatus(id, body.get("status")));
     }
 

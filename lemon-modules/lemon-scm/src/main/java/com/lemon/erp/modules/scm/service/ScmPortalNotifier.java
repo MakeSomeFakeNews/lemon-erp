@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.service;
 
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.portal.PortalAccounts;
 import com.lemon.erp.framework.portal.PortalKind;
@@ -21,7 +22,7 @@ public class ScmPortalNotifier {
     /**
      * @param link 门户页面路由，如 /portal/order
      */
-    public void notify(Long supplierId, String category, String title, String content, String link) {
+    public void notify(Long supplierId, MessageCategory category, String title, String content, String link) {
         List<Long> users = portalAccounts.enabledUserIds(PortalKind.SUPPLIER, supplierId);
         if (!users.isEmpty()) {
             messageSender.send(users, MessageSender.Message.of(category, title, content, link));

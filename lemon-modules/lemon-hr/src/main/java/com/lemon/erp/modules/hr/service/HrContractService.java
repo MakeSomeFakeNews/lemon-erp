@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.modules.hr.model.HrDictValues;
+import com.lemon.erp.modules.hr.model.LaborContractStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -25,9 +27,6 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class HrContractService {
-
-    /** 无固定期限合同（字典 hr_contract_type 的内置值）：没有结束日期；其他类型（含租户新增的）必须填结束日期 */
-    static final String OPEN_TERM = "OPEN";
 
     private final HrContractMapper contractMapper;
     private final HrEmployeeService employeeService;
@@ -56,8 +55,8 @@ public class HrContractService {
         employeeService.get(req.getEmployeeId());
         HrContract c = normalize(req);
         c.setId(null);
-        c.setContractNo(req.getContractNo() == null || req.getContractNo().isBlank() ? docNoService.next("HT") : req.getContractNo().trim());
-        c.setStatus("ACTIVE");
+        c.setContractNo(req.getContractNo() == null || req.getContractNo().isBlank() ? docNoService.next(HrDocNos.CONTRACT) : req.getContractNo().trim());
+        c.setStatus(LaborContractStatus.ACTIVE);
         c.setPrevContractId(null);
         c.setCreateBy(SecurityUtils.getUserId());
         if (contractMapper.exists(Wrappers.<HrContract>lambdaQuery().eq(HrContract::getContractNo, c.getContractNo()))) {
@@ -70,7 +69,7 @@ public class HrContractService {
     @Transactional
     public void update(Long id, HrContract req) {
         HrContract old = detail(id);
-        if (!"ACTIVE".equals(old.getStatus())) {
+        if (old.getStatus() != LaborContractStatus.ACTIVE) {
             throw new BizException("hr.error.onlyActiveContractsModified");
         }
         HrContract c = normalize(req);
@@ -84,7 +83,7 @@ public class HrContractService {
     @Transactional
     public Long renew(Long id, HrContract req) {
         HrContract old = detail(id);
-        if (!"ACTIVE".equals(old.getStatus()) && !"EXPIRED".equals(old.getStatus())) {
+        if (!old.getStatus().isRenewable()) {
             throw new BizException("hr.error.onlyActiveExpiredContractsRenewed");
         }
         req.setEmployeeId(old.getEmployeeId());
@@ -95,7 +94,7 @@ public class HrContractService {
             req.setContractType(old.getContractType());
         }
         Long newId = create(req);
-        contractMapper.update(Wrappers.<HrContract>lambdaUpdate().set(HrContract::getStatus, "RENEWED").eq(HrContract::getId, id));
+        contractMapper.update(Wrappers.<HrContract>lambdaUpdate().set(HrContract::getStatus, LaborContractStatus.RENEWED).eq(HrContract::getId, id));
         contractMapper.update(Wrappers.<HrContract>lambdaUpdate().set(HrContract::getPrevContractId, id).eq(HrContract::getId, newId));
         return newId;
     }
@@ -103,10 +102,10 @@ public class HrContractService {
     @Transactional
     public void terminate(Long id, LocalDate date, String reason) {
         HrContract c = detail(id);
-        if (!"ACTIVE".equals(c.getStatus())) {
+        if (c.getStatus() != LaborContractStatus.ACTIVE) {
             throw new BizException("hr.error.onlyActiveContractsTerminated");
         }
-        contractMapper.update(Wrappers.<HrContract>lambdaUpdate().set(HrContract::getStatus, "TERMINATED")
+        contractMapper.update(Wrappers.<HrContract>lambdaUpdate().set(HrContract::getStatus, LaborContractStatus.TERMINATED)
                 .set(HrContract::getTerminateDate, date == null ? LocalDate.now() : date).set(HrContract::getTerminateReason, reason)
                 .eq(HrContract::getId, id));
     }
@@ -114,7 +113,7 @@ public class HrContractService {
     @Transactional
     public void delete(Long id) {
         HrContract c = detail(id);
-        if (!"ACTIVE".equals(c.getStatus())) {
+        if (c.getStatus() != LaborContractStatus.ACTIVE) {
             throw new BizException("hr.error.onlyActiveContractsDeletedEntryErrors");
         }
         contractMapper.deleteById(id);
@@ -123,15 +122,15 @@ public class HrContractService {
     /** 员工离职：生效中的合同终止 */
     @EventListener
     public void onEmployeeLeft(EmployeeLeftEvent e) {
-        contractMapper.update(Wrappers.<HrContract>lambdaUpdate().set(HrContract::getStatus, "TERMINATED")
+        contractMapper.update(Wrappers.<HrContract>lambdaUpdate().set(HrContract::getStatus, LaborContractStatus.TERMINATED)
                 .set(HrContract::getTerminateDate, e.leaveDate()).set(HrContract::getTerminateReason, "员工离职")  // i18n-ignore 终止原因存库
-                .eq(HrContract::getEmployeeId, e.employeeId()).eq(HrContract::getStatus, "ACTIVE"));
+                .eq(HrContract::getEmployeeId, e.employeeId()).eq(HrContract::getStatus, LaborContractStatus.ACTIVE));
     }
 
     /** 到期日已过的生效中合同改为已到期，返回更新数 */
     public int markExpired() {
-        return contractMapper.update(Wrappers.<HrContract>lambdaUpdate().set(HrContract::getStatus, "EXPIRED")
-                .eq(HrContract::getStatus, "ACTIVE").isNotNull(HrContract::getEndDate).lt(HrContract::getEndDate, LocalDate.now()));
+        return contractMapper.update(Wrappers.<HrContract>lambdaUpdate().set(HrContract::getStatus, LaborContractStatus.EXPIRED)
+                .eq(HrContract::getStatus, LaborContractStatus.ACTIVE).isNotNull(HrContract::getEndDate).lt(HrContract::getEndDate, LocalDate.now()));
     }
 
     public List<HrContract> expiring(int days) {
@@ -148,7 +147,7 @@ public class HrContractService {
         if (req.getStartDate() == null) {
             throw new BizException("hr.error.selectContractStartDate");
         }
-        if (OPEN_TERM.equals(req.getContractType())) {
+        if (HrDictValues.CONTRACT_TYPE_OPEN.equals(req.getContractType())) {
             req.setEndDate(null);
         } else if (req.getEndDate() == null) {
             throw new BizException("hr.error.selectContractEndDateExceptOpen");

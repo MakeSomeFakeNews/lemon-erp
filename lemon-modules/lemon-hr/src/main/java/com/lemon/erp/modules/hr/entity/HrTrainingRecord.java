@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.TrainingStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -52,5 +53,5 @@ public class HrTrainingRecord extends BaseEntity {
     @TableField(exist = false)
     private String category;
     @TableField(exist = false)
-    private String trainingStatus;
+    private TrainingStatus trainingStatus;
 }

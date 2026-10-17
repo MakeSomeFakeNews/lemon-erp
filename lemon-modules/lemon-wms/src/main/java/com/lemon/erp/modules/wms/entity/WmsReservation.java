@@ -3,6 +3,7 @@ package com.lemon.erp.modules.wms.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.wms.model.ReservationSource;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -23,8 +24,7 @@ public class WmsReservation extends BaseEntity {
     /** 剩余预留数量（出库核销后减少） */
     private BigDecimal qty;
 
-    /** 来源类型：SALES 销售订单 */
-    private String sourceType;
+    private ReservationSource sourceType;
 
     private Long sourceId;
 

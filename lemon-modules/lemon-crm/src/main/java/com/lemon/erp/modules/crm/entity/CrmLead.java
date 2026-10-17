@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.lemon.erp.modules.crm.model.LeadStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -57,7 +58,7 @@ public class CrmLead extends BaseEntity {
     private Long deptId;
 
     /** 状态(字典 crm_lead_status) NEW待跟进 FOLLOWING跟进中 CONVERTED已转化 INVALID无效 */
-    private String status;
+    private LeadStatus status;
 
     /** 转化后的客户 */
     private Long customerId;

@@ -7,6 +7,7 @@ import com.lemon.erp.modules.scm.dto.AtpResult;
 import com.lemon.erp.modules.scm.mapper.ScmPlanningMapper;
 import com.lemon.erp.modules.scm.model.AtpLine;
 import com.lemon.erp.modules.scm.model.AtpProvider;
+import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.wms.service.StockReservationService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import com.lemon.erp.modules.wms.service.WmsStockQueryService;
@@ -95,9 +96,9 @@ public class ScmPlanningService {
         return new AtpResult(available, reserved, free, atp, promiseDate, result);
     }
 
-    /** 欠交清单：kind = SALES 客户欠交 / PURCHASE 供应商欠交 */
+    /** 欠交清单：销售订单为客户欠交，采购订单为供应商欠交 */
     @DataPermission(table = "scm_order", deptColumn = "dept_id", userColumn = "create_by")
-    public PageResult<Map<String, Object>> backorders(long current, long size, String kind, boolean overdueOnly, String keyword,
+    public PageResult<Map<String, Object>> backorders(long current, long size, OrderKind kind, boolean overdueOnly, String keyword,
                                                       Long partnerId) {
         Page<Map<String, Object>> page = Page.of(current, size);
         planningMapper.selectBackorders(page, kind, overdueOnly, keyword, partnerId, LocalDate.now());

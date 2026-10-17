@@ -14,6 +14,9 @@ import com.lemon.erp.modules.crm.entity.CrmContact;
 import com.lemon.erp.modules.crm.entity.CrmCustomer;
 import com.lemon.erp.modules.crm.entity.CrmLead;
 import com.lemon.erp.modules.crm.mapper.CrmLeadMapper;
+import com.lemon.erp.modules.crm.model.CrmConstants;
+import com.lemon.erp.modules.crm.model.CustomerStage;
+import com.lemon.erp.modules.crm.model.LeadStatus;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
 import com.lemon.erp.modules.system.entity.SysUser;
 import com.lemon.erp.modules.system.mapper.SysUserMapper;
@@ -27,7 +30,6 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * 销售线索：待跟进 → 跟进中（写过跟进）→ 已转化（生成客户、联系人，可同时生成商机）/ 无效。
@@ -36,8 +38,6 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class CrmLeadService {
-
-    private static final Set<String> OPEN = Set.of("NEW", "FOLLOWING");
 
     private final CrmLeadMapper leadMapper;
     private final CrmCustomerService customerService;
@@ -64,8 +64,8 @@ public class CrmLeadService {
     public Long create(LeadRequest req) {
         CrmLead l = new CrmLead();
         fill(l, req);
-        l.setLeadNo(docNoService.next("XL"));
-        l.setStatus("NEW");
+        l.setLeadNo(docNoService.next(CrmDocNos.LEAD));
+        l.setStatus(LeadStatus.NEW);
         l.setCreateBy(SecurityUtils.getUserId());
         leadMapper.insert(l);
         return l.getId();
@@ -97,7 +97,7 @@ public class CrmLeadService {
     @Transactional
     public void delete(List<Long> ids) {
         for (CrmLead l : leadMapper.selectByIds(ids)) {
-            if ("CONVERTED".equals(l.getStatus())) {
+            if (l.getStatus() == LeadStatus.CONVERTED) {
                 throw new BizException("crm.error.leadHasConvertedCustomerCannotDeleted", l.getCompany());
             }
         }
@@ -108,7 +108,7 @@ public class CrmLeadService {
     public void invalidate(Long id, String reason) {
         getOpen(id);
         leadMapper.update(Wrappers.<CrmLead>lambdaUpdate()
-                .set(CrmLead::getStatus, "INVALID").set(CrmLead::getInvalidReason, reason)
+                .set(CrmLead::getStatus, LeadStatus.INVALID).set(CrmLead::getInvalidReason, reason)
                 .eq(CrmLead::getId, id));
     }
 
@@ -125,14 +125,14 @@ public class CrmLeadService {
         sc.setName(l.getCompany());
         sc.setContact(l.getContactName());
         sc.setPhone(l.getPhone());
-        sc.setLevel("POTENTIAL");
+        sc.setLevel(CrmConstants.CUSTOMER_LEVEL_POTENTIAL);
         CrmCustomer ext = new CrmCustomer();
         ext.setOwnerId(l.getOwnerId());
         ext.setDeptId(l.getDeptId());
         ext.setIndustry(l.getIndustry());
         ext.setSource(l.getSource());
         ext.setRegion(l.getRegion());
-        ext.setStage("INTENT");
+        ext.setStage(CustomerStage.INTENT);
         ext.setLastFollowTime(l.getLastFollowTime());
         ext.setClaimTime(l.getOwnerId() == null ? null : LocalDateTime.now());
         CrmContact contact = null;
@@ -145,7 +145,7 @@ public class CrmLeadService {
         }
         Long customerId = customerService.createFromLead(sc, ext, contact);
         leadMapper.update(Wrappers.<CrmLead>lambdaUpdate()
-                .set(CrmLead::getStatus, "CONVERTED")
+                .set(CrmLead::getStatus, LeadStatus.CONVERTED)
                 .set(CrmLead::getCustomerId, customerId)
                 .set(CrmLead::getConvertTime, LocalDateTime.now())
                 .eq(CrmLead::getId, id));
@@ -165,13 +165,13 @@ public class CrmLeadService {
         CrmLead l = detail(id);
         leadMapper.update(Wrappers.<CrmLead>lambdaUpdate()
                 .set(CrmLead::getLastFollowTime, followTime)
-                .set("NEW".equals(l.getStatus()), CrmLead::getStatus, "FOLLOWING")
+                .set(l.getStatus() == LeadStatus.NEW, CrmLead::getStatus, LeadStatus.FOLLOWING)
                 .eq(CrmLead::getId, id));
     }
 
     private CrmLead getOpen(Long id) {
         CrmLead l = detail(id);
-        if (!OPEN.contains(l.getStatus())) {
+        if (!l.getStatus().isOpen()) {
             throw new BizException("crm.error.leadHasAlreadyConvertedVoided");
         }
         return l;

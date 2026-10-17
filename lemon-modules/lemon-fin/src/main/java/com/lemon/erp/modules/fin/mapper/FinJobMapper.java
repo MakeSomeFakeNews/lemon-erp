@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.mapper;
 
+import com.lemon.erp.modules.fin.model.BillKind;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -14,5 +15,5 @@ import java.util.Map;
 @Mapper
 public interface FinJobMapper {
 
-    Map<String, Object> selectOverdueSummary(@Param("kind") String kind, @Param("today") LocalDate today);
+    Map<String, Object> selectOverdueSummary(@Param("kind") BillKind kind, @Param("today") LocalDate today);
 }

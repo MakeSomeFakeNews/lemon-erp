@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.dto;
 
+import com.lemon.erp.modules.scm.model.SupplierLevel;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -13,7 +14,7 @@ public class SupplierKpi {
     private Long supplierId;
     private String supplierCode;
     private String supplierName;
-    private String level;
+    private SupplierLevel level;
 
     /** 采购订单数（已审核及以后） */
     private Long orderCount;
@@ -41,7 +42,7 @@ public class SupplierKpi {
 
     /** 最近一次评估 */
     private BigDecimal lastScore;
-    private String lastGrade;
+    private SupplierLevel lastGrade;
     private String lastPeriod;
 
     /** 准时交货率（%） */

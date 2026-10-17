@@ -80,14 +80,14 @@ public class MesMaterialService {
             }
         }
         materialService.getEnabled(seen);
-        SupplyType type = SupplyType.of(req.supplyType());
+        SupplyType type = req.supplyType();
         if (type == SupplyType.PHANTOM && !subs.isEmpty()) {
             throw new BizException("mes.error.phantomItemsNeitherStockedNorIssued");
         }
 
         MesMaterialPlan plan = new MesMaterialPlan();
         plan.setMaterialId(id);
-        plan.setSupplyType(type == null ? null : type.name());
+        plan.setSupplyType(type);
         plan.setLeadDays(req.leadDays());
         plan.setMinLot(req.minLot());
         plan.setLotMultiple(req.lotMultiple());
@@ -146,7 +146,7 @@ public class MesMaterialService {
 
     /** 生效的物料属性：设置的，或有默认 BOM 为自制、否则为采购 */
     public static SupplyType supplyType(MesMaterialPlan plan, boolean hasBom) {
-        SupplyType type = plan == null ? null : SupplyType.of(plan.getSupplyType());
+        SupplyType type = plan == null ? null : plan.getSupplyType();
         return type != null ? type : hasBom ? SupplyType.MAKE : SupplyType.BUY;
     }
 

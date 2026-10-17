@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.scm.service;
 
 import com.lemon.erp.framework.workflow.FlowBusiness;
+import com.lemon.erp.modules.scm.model.OrderKind;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -52,7 +53,7 @@ public class ScmFlowBusinesses {
     @Bean
     public FlowBusiness orderChangeFlow() {
         return FlowBusiness.of("scm_order_change", "scm.label.orderChangeApproval",
-                select("kind", "scm.label.orderType", "PURCHASE", "SALES"),
+                select("kind", "scm.label.orderType", OrderKind.values()),
                 number("amountDelta", "scm.label.changeAmountDifferencePositiveIncrease"),
                 text("orderNo", "scm.label.orderNo"));
     }

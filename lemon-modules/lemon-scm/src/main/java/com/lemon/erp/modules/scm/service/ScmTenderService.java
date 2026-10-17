@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
@@ -23,6 +24,7 @@ import com.lemon.erp.modules.scm.mapper.ScmTenderMapper;
 import com.lemon.erp.modules.scm.model.AwardTarget;
 import com.lemon.erp.modules.scm.model.ContractType;
 import com.lemon.erp.modules.scm.model.OrderKind;
+import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.model.TenderStatus;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
@@ -40,6 +42,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.TENDER_RULE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
 
@@ -53,7 +56,6 @@ public class ScmTenderService {
 
     /** 招标编号的编码规则标识 */
     public static final String DOC_NO = "ZB";
-    private static final BigDecimal DEFAULT_TAX_RATE = BigDecimal.valueOf(13);
 
     private final ScmTenderMapper tenderMapper;
     private final ScmBidMapper bidMapper;
@@ -128,7 +130,7 @@ public class ScmTenderService {
         }
         transit(id, TenderStatus.DRAFT, TenderStatus.BIDDING);
         for (ScmTenderSupplier s : tenderMapper.selectSuppliers(id)) {
-            portalNotifier.notify(s.getSupplierId(), "REMIND", "招标邀请：" + tender.getTitle(), // i18n-ignore
+            portalNotifier.notify(s.getSupplierId(), MessageCategory.REMIND, "招标邀请：" + tender.getTitle(), // i18n-ignore
                     "招标编号 " + tender.getTenderNo() + "，请在 " + tender.getDeadline().toString().replace('T', ' ') + " 前投标", "/portal/tender"); // i18n-ignore
         }
     }
@@ -240,7 +242,7 @@ public class ScmTenderService {
                     "招标 " + tender.getTenderNo() + " 定标生成", // i18n-ignore
                     items.stream().map(i -> new OrderItemRequest(i.getMaterialId(), i.getQty(), prices.get(i.getId()).getPrice(),
                             prices.get(i.getId()).getTaxRate(), i.getRequiredDate() != null ? i.getRequiredDate() : leadDate, i.getRemark()))
-                            .toList()), "TENDER");
+                            .toList()), OrderSource.TENDER);
         }
         if (tenderMapper.update(Wrappers.<ScmTender>lambdaUpdate()
                 .set(ScmTender::getStatus, TenderStatus.AWARDED)
@@ -251,7 +253,7 @@ public class ScmTenderService {
                 .eq(ScmTender::getId, id).eq(ScmTender::getStatus, TenderStatus.OPENED)) == 0) {
             throw new BizException("scm.error.tenderStatusHasChangedRefreshTry");
         }
-        portalNotifier.notify(req.supplierId(), "REMIND", "中标通知：" + tender.getTitle(), // i18n-ignore
+        portalNotifier.notify(req.supplierId(), MessageCategory.REMIND, "中标通知：" + tender.getTitle(), // i18n-ignore
                 "您在招标 " + tender.getTenderNo() + " 中中标，采购将与您签订合同或下达订单", "/portal/tender"); // i18n-ignore
     }
 

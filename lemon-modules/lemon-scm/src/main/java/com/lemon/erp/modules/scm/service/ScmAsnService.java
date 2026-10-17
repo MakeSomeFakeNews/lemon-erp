@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.dto.SrmRequests;
@@ -19,7 +20,6 @@ import com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
 import com.lemon.erp.modules.scm.model.AsnStatus;
 import com.lemon.erp.modules.scm.model.OrderKind;
-import com.lemon.erp.modules.scm.model.OrderStatus;
 import com.lemon.erp.modules.scm.model.SupplierConfirm;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.wms.service.DocNoService;
@@ -116,7 +116,7 @@ public class ScmAsnService {
             item.setRemark(r.remark());
             return item;
         }).toList());
-        messageSender.sendToPermission("scm:asn:receive", MessageSender.Message.of("REMIND", "供应商送货通知：" + asn.getAsnNo(), // i18n-ignore
+        messageSender.sendToPermission("scm:asn:receive", MessageSender.Message.of(MessageCategory.REMIND, "供应商送货通知：" + asn.getAsnNo(), // i18n-ignore
                 "采购订单 " + order.getOrderNo() + " 预计 " + (req.expectedDate() != null ? req.expectedDate() : req.shipDate()) + " 到货", // i18n-ignore
                 "/scm/asn"));
         return asn.getId();
@@ -170,10 +170,10 @@ public class ScmAsnService {
 
     private ScmOrder requireOrder(Long orderId, Long supplierId) {
         ScmOrder order = orderId == null ? null : orderMapper.selectById(orderId);
-        if (order == null || !OrderKind.PURCHASE.name().equals(order.getKind()) || !order.getPartnerId().equals(supplierId)) {
+        if (order == null || order.getKind() != OrderKind.PURCHASE || !order.getPartnerId().equals(supplierId)) {
             throw new BizException("scm.error.purchaseOrderDoesNotExist");
         }
-        if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
+        if (!order.getStatus().isExecutable()) {
             throw new BizException("scm.error.orderNotReceivableStatusApprovedPartially");
         }
         if (order.getSupplierConfirm() == SupplierConfirm.REJECTED) {

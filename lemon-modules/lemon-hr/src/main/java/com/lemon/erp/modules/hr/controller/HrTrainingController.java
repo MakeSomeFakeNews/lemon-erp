@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.controller;
 
+import com.lemon.erp.modules.hr.dto.TrainingStatusRequest;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.common.validation.Create;
@@ -25,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 培训管理 /hr/training
@@ -88,8 +88,8 @@ public class HrTrainingController {
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('hr:training:edit')")
     @OperLog(title = "培训管理-状态", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
-    public R<Void> changeStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        trainingService.changeStatus(id, body.get("status"));
+    public R<Void> changeStatus(@PathVariable Long id, @RequestBody TrainingStatusRequest req) {
+        trainingService.changeStatus(id, req.status());
         return R.ok();
     }
 

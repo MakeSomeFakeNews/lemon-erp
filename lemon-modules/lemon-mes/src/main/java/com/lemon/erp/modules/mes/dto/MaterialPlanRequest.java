@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.dto;
 
+import com.lemon.erp.modules.mes.model.SupplyType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -7,7 +8,6 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -20,7 +20,7 @@ import java.util.List;
  * @param fqcRequired 1 完工需成品检验
  */
 public record MaterialPlanRequest(
-        @Pattern(regexp = "^(MAKE|BUY|OUTSOURCE|PHANTOM)$", message = "{mes.valid.invalidMaterialType}") String supplyType,
+        SupplyType supplyType,
         @Min(value = 0, message = "{mes.valid.leadTimeCannotLess}") @Max(value = 365, message = "{mes.valid.leadTimeCannotExceedDays}") Integer leadDays,
         @DecimalMin(value = "0", inclusive = false, message = "{mes.valid.minimumLotSizeMustGreater}")
         @Digits(integer = 14, fraction = 4, message = "{mes.valid.minimumLotSizeAllowsMostDecimal}") BigDecimal minLot,

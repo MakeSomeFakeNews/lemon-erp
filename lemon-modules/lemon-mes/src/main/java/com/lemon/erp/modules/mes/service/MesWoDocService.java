@@ -25,6 +25,7 @@ import com.lemon.erp.modules.wms.dto.StockDocItemRequest;
 import com.lemon.erp.modules.wms.dto.StockDocRequest;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.entity.WmsStockDoc;
+import com.lemon.erp.modules.wms.model.WarehouseType;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import com.lemon.erp.modules.wms.service.WmsStockDocService;
@@ -74,7 +75,7 @@ public class MesWoDocService {
     private final MesInspectionMapper inspectionMapper;
     private final com.lemon.erp.modules.wms.service.WmsWarehouseService warehouseService;
 
-    public PageResult<MesWoDoc> page(long current, long size, Long woId, String kind) {
+    public PageResult<MesWoDoc> page(long current, long size, Long woId, WoDocKind kind) {
         if (woId != null) {
             workOrderService.getAccessible(woId);
         }
@@ -165,7 +166,7 @@ public class MesWoDocService {
 
         MesWoDoc doc = new MesWoDoc();
         doc.setDocNo(docNo);
-        doc.setKind(kind.name());
+        doc.setKind(kind);
         doc.setWoId(woId);
         doc.setWarehouseId(req.warehouseId());
         doc.setBizDate(req.bizDate());
@@ -212,12 +213,12 @@ public class MesWoDocService {
         if (req.items().stream().anyMatch(i -> !i.materialId().equals(wo.getMaterialId()))) {
             throw new BizException("mes.error.scrapReceiptMaterialMustWorkOrder");
         }
-        if (!"DEFECT".equals(warehouseService.get(req.warehouseId()).getType())) {
+        if (warehouseService.get(req.warehouseId()).getType() != WarehouseType.DEFECT) {
             throw new BizException("mes.error.selectDefectiveGoodsWarehouseScrapReceipts");
         }
         BigDecimal scrapped = woOpMapper.selectByWo(wo.getId()).stream().map(MesWoOp::getScrapQty).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal received = docMapper.selectList(Wrappers.<MesWoDoc>lambdaQuery().eq(MesWoDoc::getWoId, wo.getId())
-                .eq(MesWoDoc::getKind, WoDocKind.SCRAP.name())).stream().map(MesWoDoc::getTotalQty).reduce(BigDecimal.ZERO, BigDecimal::add);
+                .eq(MesWoDoc::getKind, WoDocKind.SCRAP)).stream().map(MesWoDoc::getTotalQty).reduce(BigDecimal.ZERO, BigDecimal::add);
         if (received.add(qty).compareTo(scrapped) > 0) {
             throw new BizException("mes.error.scrapReceiptQuantityExceedsReportedScrap", plain(scrapped), plain(received));
         }

@@ -100,8 +100,7 @@ public class ScmQueryService {
      */
     public Map<String, Object> salesOrder(Long orderId) {
         ScmOrder o = orderId == null ? null : orderMapper.selectById(orderId);
-        if (o == null || !OrderKind.SALES.name().equals(o.getKind()) || OrderStatus.DRAFT.name().equals(o.getStatus())
-                || OrderStatus.APPROVING.name().equals(o.getStatus())) {
+        if (o == null || o.getKind() != OrderKind.SALES || o.getStatus().isUnaudited()) {
             return null;
         }
         return Map.of("orderNo", o.getOrderNo(), "partnerId", o.getPartnerId(), "totalAmount", o.getTotalAmount());
@@ -110,13 +109,13 @@ public class ScmQueryService {
     public Long purchaseInSupplier(String docNo) {
         ScmTradeDoc doc = tradeDocMapper.selectOne(Wrappers.<ScmTradeDoc>lambdaQuery()
                 .eq(ScmTradeDoc::getDocNo, docNo)
-                .eq(ScmTradeDoc::getKind, TradeKind.PURCHASE_IN.name()));
+                .eq(ScmTradeDoc::getKind, TradeKind.PURCHASE_IN));
         return doc == null ? null : doc.getPartnerId();
     }
 
     /** 采购入库单中某物料的入库数量（来料检验校验送检数量），单据或物料不存在时为 0 */
     public BigDecimal purchaseInQty(String docNo, Long materialId) {
-        BigDecimal v = tradeDocItemMapper.sumQtyByDocNo(docNo, TradeKind.PURCHASE_IN.name(), materialId);
+        BigDecimal v = tradeDocItemMapper.sumQtyByDocNo(docNo, TradeKind.PURCHASE_IN, materialId);
         return v == null ? BigDecimal.ZERO : v;
     }
 
@@ -125,7 +124,7 @@ public class ScmQueryService {
         if (materialIds.isEmpty()) {
             return map;
         }
-        for (Map<String, Object> row : orderMapper.selectOpenQty(kind.name(), OrderStatus.OPEN, materialIds)) {
+        for (Map<String, Object> row : orderMapper.selectOpenQty(kind, OrderStatus.OPEN, materialIds)) {
             map.put(((Number) row.get("materialId")).longValue(), new BigDecimal(row.get("qty").toString()));
         }
         return map;

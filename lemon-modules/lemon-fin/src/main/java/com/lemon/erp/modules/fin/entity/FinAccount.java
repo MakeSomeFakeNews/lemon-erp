@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.lemon.erp.modules.fin.model.AccountDirection;
+import com.lemon.erp.modules.fin.model.AccountCategory;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -24,10 +26,10 @@ public class FinAccount extends BaseEntity {
     private Long parentId;
 
     /** AccountCategory */
-    private String category;
+    private AccountCategory category;
 
     /** 余额方向 DEBIT / CREDIT */
-    private String direction;
+    private AccountDirection direction;
 
     /** 1 启用 0 停用 */
     private Integer status;

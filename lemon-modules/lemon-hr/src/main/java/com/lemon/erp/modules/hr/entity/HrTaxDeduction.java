@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.DeductionType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -19,7 +20,7 @@ public class HrTaxDeduction extends BaseEntity {
     private Long employeeId;
 
     /** 字典 hr_deduction_type */
-    private String type;
+    private DeductionType type;
 
     private BigDecimal monthlyAmount;
 

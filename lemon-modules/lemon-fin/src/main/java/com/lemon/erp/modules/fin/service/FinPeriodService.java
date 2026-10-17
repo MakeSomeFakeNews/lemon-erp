@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.PeriodStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -20,9 +21,6 @@ import static com.lemon.erp.modules.fin.model.FinConstants.toYearMonth;
 @Service
 @RequiredArgsConstructor
 public class FinPeriodService {
-
-    static final String OPEN = "OPEN";
-    static final String CLOSED = "CLOSED";
 
     private final FinPeriodMapper periodMapper;
 
@@ -45,14 +43,14 @@ public class FinPeriodService {
     /** 期间未结账（不存在视为未结账） */
     public void checkOpen(int period) {
         FinPeriod p = get(period);
-        if (p != null && CLOSED.equals(p.getStatus())) {
+        if (p != null && p.getStatus() == PeriodStatus.CLOSED) {
             throw new BizException("fin.error.periodClosedVouchersNoLongerEntered", period);
         }
     }
 
     public boolean isClosed(int period) {
         FinPeriod p = get(period);
-        return p != null && CLOSED.equals(p.getStatus());
+        return p != null && p.getStatus() == PeriodStatus.CLOSED;
     }
 
     FinPeriod get(int period) {
@@ -68,7 +66,7 @@ public class FinPeriodService {
         }
         p = new FinPeriod();
         p.setPeriod(period);
-        p.setStatus(OPEN);
+        p.setStatus(PeriodStatus.OPEN);
         p.setVoucherSeq(0);
         try {
             periodMapper.insert(p);

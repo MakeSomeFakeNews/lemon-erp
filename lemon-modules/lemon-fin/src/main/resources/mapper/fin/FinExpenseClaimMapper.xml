@@ -18,7 +18,7 @@
                 (c.claim_no LIKE CONCAT('%', #{keyword}, '%') OR u.nickname LIKE CONCAT('%', #{keyword}, '%')
                  OR c.remark LIKE CONCAT('%', #{keyword}, '%'))
             </if>
-            <if test="status != null and status != ''">AND c.status = #{status}</if>
+            <if test="status != null">AND c.status = #{status}</if>
             <if test="userId != null">AND c.user_id = #{userId}</if>
         </where>
         ORDER BY c.id DESC

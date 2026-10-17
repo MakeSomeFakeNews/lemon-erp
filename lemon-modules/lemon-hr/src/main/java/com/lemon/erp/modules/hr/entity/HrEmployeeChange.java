@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.framework.workflow.ApproveStatus;
+import com.lemon.erp.modules.hr.model.ChangeType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -21,7 +23,7 @@ public class HrEmployeeChange extends BaseEntity {
     private Long employeeId;
 
     /** 异动类型(字典 hr_change_type) ENTRY入职 REGULAR转正 TRANSFER调岗 SALARY调薪 LEAVE离职 */
-    private String type;
+    private ChangeType type;
 
     /** 生效日期 */
     private LocalDate changeDate;
@@ -48,7 +50,7 @@ public class HrEmployeeChange extends BaseEntity {
     private String reason;
 
     /** DONE 已生效 / APPROVING 审批中 / REJECTED 已拒绝 / CANCELED 已撤回 */
-    private String status;
+    private ApproveStatus status;
 
     private String flowInstanceId;
 

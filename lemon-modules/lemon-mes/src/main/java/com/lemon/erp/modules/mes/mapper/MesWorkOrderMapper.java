@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.mapper;
 
+import com.lemon.erp.modules.mes.model.WorkOrderStatus;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.lemon.erp.modules.mes.dto.WorkOrderQuery;
@@ -22,7 +23,7 @@ public interface MesWorkOrderMapper extends BaseMapper<MesWorkOrder> {
      *
      * @return [{materialId, qty}]
      */
-    List<Map<String, Object>> selectOpenOutput(@Param("statuses") Collection<String> statuses,
+    List<Map<String, Object>> selectOpenOutput(@Param("statuses") Collection<WorkOrderStatus> statuses,
                                                @Param("materialIds") Collection<Long> materialIds);
 
     /** 可承诺量：在制工单的未完工产出（正数）、工单未领用料（负数）：[{date, type, docNo, qty}] */

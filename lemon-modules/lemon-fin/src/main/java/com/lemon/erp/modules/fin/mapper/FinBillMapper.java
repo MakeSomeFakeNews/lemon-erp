@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.mapper;
 
+import com.lemon.erp.modules.fin.model.BillKind;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.lemon.erp.modules.fin.dto.AgingRow;
@@ -21,7 +22,7 @@ public interface FinBillMapper extends BaseMapper<FinBill> {
      *
      * @param d30 asOf - 30 天，到期日早于它的逾期超过 30 天，依此类推
      */
-    IPage<AgingRow> selectAging(IPage<AgingRow> page, @Param("kind") String kind, @Param("asOf") LocalDate asOf,
+    IPage<AgingRow> selectAging(IPage<AgingRow> page, @Param("kind") BillKind kind, @Param("asOf") LocalDate asOf,
                                 @Param("d30") LocalDate d30, @Param("d60") LocalDate d60, @Param("d90") LocalDate d90);
 
     /** 核销（金额与单据同号），累计不超过单据金额；返回 0 表示超出 */
@@ -47,5 +48,5 @@ public interface FinBillMapper extends BaseMapper<FinBill> {
     List<Map<String, Object>> selectSourceByCategory(@Param("tradeDocId") Long tradeDocId);
 
     /** 往来单位未核销金额合计 */
-    BigDecimal selectUnsettledAmount(@Param("kind") String kind, @Param("partnerId") Long partnerId);
+    BigDecimal selectUnsettledAmount(@Param("kind") BillKind kind, @Param("partnerId") Long partnerId);
 }

@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.bi.service;
 
+import com.lemon.erp.modules.bi.model.EtlTrigger;
+import com.lemon.erp.modules.bi.model.EtlStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -67,10 +69,10 @@ public class BiEtlService {
     /**
      * 执行同步
      *
-     * @param trigger MANUAL 手动 / SCHEDULE 定时
+     * @param trigger 触发方式
      * @return 同步日志
      */
-    public BiEtlLog run(String trigger) {
+    public BiEtlLog run(EtlTrigger trigger) {
         Long tenantId = TenantContext.require();
         if (!running.add(tenantId)) {
             throw new BizException("bi.error.dataSyncRunningTryAgainLater");
@@ -78,16 +80,16 @@ public class BiEtlService {
         BiEtlLog entry = new BiEtlLog();
         entry.setTriggerType(trigger);
         entry.setStartTime(LocalDateTime.now());
-        entry.setStatus("RUNNING");
-        entry.setCreateBy("MANUAL".equals(trigger) ? SecurityUtils.getUserIdOrNull() : null);
+        entry.setStatus(EtlStatus.RUNNING);
+        entry.setCreateBy(trigger == EtlTrigger.MANUAL ? SecurityUtils.getUserIdOrNull() : null);
         try {
             logMapper.insert(entry);
             Map<String, Integer> counts = transactionTemplate.execute(status -> load());
-            entry.setStatus("SUCCESS");
+            entry.setStatus(EtlStatus.SUCCESS);
             entry.setRowCounts(format(counts));
         } catch (RuntimeException e) {
             log.error("数据仓库同步失败", e);
-            entry.setStatus("FAILED");
+            entry.setStatus(EtlStatus.FAILED);
             String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
             entry.setMessage(msg.length() > 1000 ? msg.substring(0, 1000) : msg);
         } finally {
@@ -97,7 +99,7 @@ public class BiEtlService {
             }
             running.remove(tenantId);
         }
-        if ("FAILED".equals(entry.getStatus())) {
+        if (entry.getStatus() == EtlStatus.FAILED) {
             throw new BizException("bi.error.dataSyncFailed", entry.getMessage());
         }
         return entry;
@@ -120,7 +122,7 @@ public class BiEtlService {
     /** 最近一次成功同步的时间，没有时为空 */
     public LocalDateTime lastSuccess() {
         List<BiEtlLog> list = logMapper.selectPage(Page.of(1, 1, false), Wrappers.<BiEtlLog>lambdaQuery()
-                .eq(BiEtlLog::getStatus, "SUCCESS").orderByDesc(BiEtlLog::getId)).getRecords();
+                .eq(BiEtlLog::getStatus, EtlStatus.SUCCESS).orderByDesc(BiEtlLog::getId)).getRecords();
         return list.isEmpty() ? null : list.get(0).getEndTime();
     }
 

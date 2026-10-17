@@ -80,11 +80,11 @@ public class ScmShipmentService {
         }
         LoginUser user = SecurityUtils.getLoginUser();
         ScmShipment shipment = new ScmShipment();
-        shipment.setShipNo(docNoService.next("FY"));
+        shipment.setShipNo(docNoService.next(ScmDocNos.SHIPMENT));
         shipment.setTradeDocId(doc.getId());
         shipment.setCustomerId(doc.getPartnerId());
         fill(shipment, req);
-        shipment.setStatus(PENDING.name());
+        shipment.setStatus(PENDING);
         shipment.setDeptId(user.deptId());
         shipment.setCreateBy(user.userId());
         shipmentMapper.insert(shipment);
@@ -95,7 +95,7 @@ public class ScmShipmentService {
     /** 已签收的不能修改 */
     public void update(Long id, ShipmentRequest req) {
         ScmShipment old = getAccessible(id);
-        if (SIGNED.name().equals(old.getStatus())) {
+        if (old.getStatus() == SIGNED) {
             throw new BizException("scm.error.shipmentHasSignedCannotModified");
         }
         ScmShipment shipment = new ScmShipment();
@@ -128,11 +128,11 @@ public class ScmShipmentService {
         LocalDate date = req.date() == null ? LocalDate.now() : req.date();
         transit(shipment, Set.of(PENDING, EXCEPTION), SHIPPED, Wrappers.<ScmShipment>lambdaUpdate()
                 .set(ScmShipment::getTrackingNo, trackingNo)
-                .set(ScmShipment::getShipDate, PENDING.name().equals(shipment.getStatus()) ? date : shipment.getShipDate()));
+                .set(ScmShipment::getShipDate, shipment.getStatus() == PENDING ? date : shipment.getShipDate()));
         addTrack(id, SHIPPED, StringUtils.hasText(req.content()) ? req.content()
-                : (PENDING.name().equals(shipment.getStatus()) ? "已发货" : "异常已处理，继续运输") + "，运单号 " + trackingNo); // i18n-ignore
+                : (shipment.getStatus() == PENDING ? "已发货" : "异常已处理，继续运输") + "，运单号 " + trackingNo); // i18n-ignore
         // 首次发货：运费生成承运商应付单
-        if (PENDING.name().equals(shipment.getStatus()) && shipment.getCarrierSupplierId() != null
+        if (shipment.getStatus() == PENDING && shipment.getCarrierSupplierId() != null
                 && shipment.getFreight() != null && shipment.getFreight().signum() > 0) {
             eventPublisher.publishEvent(new ShipmentShippedEvent(id, shipment.getShipNo(), shipment.getCarrierSupplierId(),
                     shipment.getFreight(), date, shipment.getDeptId()));
@@ -145,10 +145,10 @@ public class ScmShipmentService {
         if (!StringUtils.hasText(req.content())) {
             throw new BizException("scm.error.enterTrackingUpdate");
         }
-        if (!SHIPPED.name().equals(shipment.getStatus()) && !EXCEPTION.name().equals(shipment.getStatus())) {
+        if (!shipment.getStatus().isInTransit()) {
             throw new BizException("scm.error.trackingUpdatesOnlyAddedShipmentsTransit");
         }
-        addTrack(id, ShipmentStatus.valueOf(shipment.getStatus()), req.content().trim());
+        addTrack(id, shipment.getStatus(), req.content().trim());
     }
 
     /** 标记异常：运输中 → 异常 */
@@ -167,7 +167,7 @@ public class ScmShipmentService {
     public void sign(Long id, ShipmentActionRequest req) {
         ScmShipment shipment = getAccessible(id);
         LocalDate date = req.date() == null ? LocalDate.now() : req.date();
-        transit(shipment, Set.of(SHIPPED, EXCEPTION), SIGNED, Wrappers.<ScmShipment>lambdaUpdate().set(ScmShipment::getSignDate, date));
+        transit(shipment, ShipmentStatus.IN_TRANSIT, SIGNED, Wrappers.<ScmShipment>lambdaUpdate().set(ScmShipment::getSignDate, date));
         addTrack(id, SIGNED, StringUtils.hasText(req.content()) ? req.content().trim() : "客户已签收"); // i18n-ignore
     }
 
@@ -175,7 +175,7 @@ public class ScmShipmentService {
     @Transactional
     public void delete(List<Long> ids) {
         for (Long id : ids) {
-            if (!PENDING.name().equals(getAccessible(id).getStatus())) {
+            if (getAccessible(id).getStatus() != PENDING) {
                 throw new BizException("scm.error.onlyShipmentsPendingDispatchDeleted");
             }
         }
@@ -194,11 +194,11 @@ public class ScmShipmentService {
 
     private void transit(ScmShipment shipment, Set<ShipmentStatus> from, ShipmentStatus to,
                          LambdaUpdateWrapper<ScmShipment> update) {
-        if (from.stream().noneMatch(s -> s.name().equals(shipment.getStatus()))) {
+        if (!from.contains(shipment.getStatus())) {
             throw new BizException("scm.error.operationNotAllowedShipmentSCurrent");
         }
         int updated = shipmentMapper.update(update
-                .set(ScmShipment::getStatus, to.name())
+                .set(ScmShipment::getStatus, to)
                 .set(ScmShipment::getUpdateTime, LocalDateTime.now())
                 .eq(ScmShipment::getId, shipment.getId())
                 .eq(ScmShipment::getStatus, shipment.getStatus()));
@@ -211,7 +211,7 @@ public class ScmShipmentService {
         ScmShipmentTrack track = new ScmShipmentTrack();
         track.setShipmentId(shipmentId);
         track.setTrackTime(LocalDateTime.now());
-        track.setStatus(status.name());
+        track.setStatus(status);
         track.setContent(content);
         track.setCreateBy(SecurityUtils.getUserId());
         trackMapper.insert(track);

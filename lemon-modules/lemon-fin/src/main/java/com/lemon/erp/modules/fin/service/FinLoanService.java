@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.LoanRepayMethod;
+import com.lemon.erp.modules.fin.model.LoanStatus;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -47,7 +49,7 @@ public class FinLoanService {
     private final DocNoService docNoService;
     private final FlowApi flowApi;
 
-    public PageResult<FinLoan> page(long current, long size, String keyword, String status, Long userId) {
+    public PageResult<FinLoan> page(long current, long size, String keyword, LoanStatus status, Long userId) {
         Page<FinLoan> page = Page.of(current, size);
         loanMapper.selectPageList(page, keyword, status, userId);
         return PageResult.of(page);
@@ -66,13 +68,13 @@ public class FinLoanService {
     public Long create(LoanRequest req) {
         LoginUser user = SecurityUtils.getLoginUser();
         FinLoan l = new FinLoan();
-        l.setLoanNo(docNoService.next("JK"));
+        l.setLoanNo(docNoService.next(FinDocNos.LOAN));
         l.setUserId(req.userId() == null ? user.userId() : req.userId());
         l.setDeptId(req.deptId() == null ? user.deptId() : req.deptId());
         l.setLoanDate(req.loanDate());
         l.setAmount(req.amount());
         l.setRepaidAmount(BigDecimal.ZERO);
-        l.setStatus("DRAFT");
+        l.setStatus(LoanStatus.DRAFT);
         l.setPurpose(req.purpose());
         l.setCreateBy(user.userId());
         loanMapper.insert(l);
@@ -81,19 +83,19 @@ public class FinLoanService {
 
     @Transactional
     public void delete(Long id) {
-        requireStatus(id, "DRAFT");
+        requireStatus(id, LoanStatus.DRAFT);
         loanMapper.deleteById(id);
     }
 
     /** @return true 已发起审批 */
     @Transactional
     public boolean submit(Long id) {
-        FinLoan l = requireStatus(id, "DRAFT");
+        FinLoan l = requireStatus(id, LoanStatus.DRAFT);
         if (!flowApi.isAvailable(PROCESS_KEY)) {
-            transit(id, "DRAFT", "APPROVED");
+            transit(id, LoanStatus.DRAFT, LoanStatus.APPROVED);
             return false;
         }
-        transit(id, "DRAFT", "APPROVING");
+        transit(id, LoanStatus.DRAFT, LoanStatus.APPROVING);
         String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of("loanNo", l.getLoanNo(), "amount", l.getAmount()));
         loanMapper.update(Wrappers.<FinLoan>lambdaUpdate().set(FinLoan::getFlowInstanceId, instanceId).eq(FinLoan::getId, id));
         return true;
@@ -105,18 +107,18 @@ public class FinLoanService {
             return;
         }
         Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        loanMapper.update(Wrappers.<FinLoan>lambdaUpdate().set(FinLoan::getStatus, e.status() == FlowStatus.APPROVED ? "APPROVED" : "DRAFT")
-                .eq(FinLoan::getId, id).eq(FinLoan::getStatus, "APPROVING"));
+        loanMapper.update(Wrappers.<FinLoan>lambdaUpdate().set(FinLoan::getStatus, e.status() == FlowStatus.APPROVED ? LoanStatus.APPROVED : LoanStatus.DRAFT)
+                .eq(FinLoan::getId, id).eq(FinLoan::getStatus, LoanStatus.APPROVING));
     }
 
     /** 付款：借 其他应收款 / 贷 结算账户 */
     @Transactional
     public void pay(Long id, Long accountId, LocalDate date) {
-        FinLoan l = requireStatus(id, "APPROVED");
+        FinLoan l = requireStatus(id, LoanStatus.APPROVED);
         LocalDate d = date == null ? LocalDate.now() : date;
         periodGuard.checkOpen(d, "fin.label.loanPayment");
         accountService.requireCashAccount(accountId);
-        transit(id, "APPROVED", "PAID");
+        transit(id, LoanStatus.APPROVED, LoanStatus.PAID);
         String summary = "员工借款 " + l.getLoanNo() // i18n-ignore
                 + " " + l.getUserName() + (l.getPurpose() == null ? "" : " " + l.getPurpose());
         Long voucherId = voucherService.createGenerated(d, VoucherSource.LOAN, l.getLoanNo(), List.of(
@@ -129,7 +131,7 @@ public class FinLoanService {
     /** 现金还款：借 结算账户 / 贷 其他应收款 */
     @Transactional
     public void repay(Long id, Long accountId, BigDecimal amount, LocalDate date) {
-        FinLoan l = requireStatus(id, "PAID");
+        FinLoan l = requireStatus(id, LoanStatus.PAID);
         LocalDate d = date == null ? LocalDate.now() : date;
         periodGuard.checkOpen(d, "fin.label.loanRepayment");
         accountService.requireCashAccount(accountId);
@@ -140,21 +142,21 @@ public class FinLoanService {
         Long voucherId = voucherService.createGenerated(d, VoucherSource.LOAN, l.getLoanNo(), List.of(
                 VoucherLine.debit(summary, accountId, null, amount),
                 VoucherLine.credit(summary, accountRules.accountId(AccountRole.OTHER_RECEIVABLE), l.getDeptId(), amount)));
-        addRepay(l, amount, d, "CASH", null, accountId, voucherId);
+        addRepay(l, amount, d, LoanRepayMethod.CASH, null, accountId, voucherId);
     }
 
     /** 报销冲抵（由报销付款调用，凭证在报销凭证中） */
     void offsetByClaim(Long loanId, BigDecimal amount, LocalDate date, Long claimId, Long voucherId) {
-        addRepay(requireStatus(loanId, "PAID"), amount, date, "CLAIM", claimId, null, voucherId);
+        addRepay(requireStatus(loanId, LoanStatus.PAID), amount, date, LoanRepayMethod.CLAIM, claimId, null, voucherId);
     }
 
     /** 未还金额 */
     BigDecimal outstanding(Long loanId) {
         FinLoan l = loanMapper.selectById(loanId);
-        return l == null || !"PAID".equals(l.getStatus()) ? BigDecimal.ZERO : l.getAmount().subtract(l.getRepaidAmount());
+        return l == null || l.getStatus() != LoanStatus.PAID ? BigDecimal.ZERO : l.getAmount().subtract(l.getRepaidAmount());
     }
 
-    private void addRepay(FinLoan l, BigDecimal amount, LocalDate date, String method, Long claimId, Long accountId, Long voucherId) {
+    private void addRepay(FinLoan l, BigDecimal amount, LocalDate date, LoanRepayMethod method, Long claimId, Long accountId, Long voucherId) {
         if (loanMapper.addRepaid(l.getId(), amount) == 0) {
             throw new BizException("fin.error.repaymentAmountExceedsOutstandingAmount", l.getAmount().subtract(l.getRepaidAmount()).toPlainString());
         }
@@ -170,15 +172,15 @@ public class FinLoanService {
         repayMapper.insert(r);
     }
 
-    private FinLoan requireStatus(Long id, String status) {
+    private FinLoan requireStatus(Long id, LoanStatus status) {
         FinLoan l = detail(id);
-        if (!status.equals(l.getStatus())) {
+        if (l.getStatus() != status) {
             throw new BizException("fin.error.loanHasInvalidStatusRefresh", l.getLoanNo());
         }
         return l;
     }
 
-    private void transit(Long id, String from, String to) {
+    private void transit(Long id, LoanStatus from, LoanStatus to) {
         if (loanMapper.update(Wrappers.<FinLoan>lambdaUpdate().set(FinLoan::getStatus, to).eq(FinLoan::getId, id)
                 .eq(FinLoan::getStatus, from)) == 0) {
             throw new BizException("fin.error.loanStatusHasChangedRefresh");

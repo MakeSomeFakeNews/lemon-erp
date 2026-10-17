@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.controller;
 
+import com.lemon.erp.modules.mes.model.KitStatus;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
@@ -36,7 +37,7 @@ public class MesKitController {
     @GetMapping("/orders")
     @PreAuthorize("@ss.hasPerm('mes:kit:list')")
     public R<List<WoKitView>> orders(@RequestParam(required = false) String woNo,
-                                     @RequestParam(required = false) String kitStatus) {
+                                     @RequestParam(required = false) KitStatus kitStatus) {
         return R.ok(kitService.orders(woNo, kitStatus));
     }
 

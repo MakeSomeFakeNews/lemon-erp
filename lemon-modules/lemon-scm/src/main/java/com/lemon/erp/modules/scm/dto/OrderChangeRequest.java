@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.dto;
 
+import com.lemon.erp.modules.scm.model.OrderChangeAction;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -7,7 +8,6 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -22,7 +22,7 @@ public record OrderChangeRequest(
         @NotEmpty(message = "{scm.valid.enterChangeDetails}") @Size(max = 200) List<@Valid @NotNull Line> lines) {
 
     public record Line(
-            @NotBlank @Pattern(regexp = "^(ADD|MODIFY|REMOVE)$", message = "{scm.valid.invalidChangeAction}") String action,
+            @NotNull(message = "{scm.valid.invalidChangeAction}") OrderChangeAction action,
             Long orderItemId,
             Long materialId,
             @DecimalMin(value = "0", inclusive = false, message = "{scm.valid.quantityMustGreater}") @Digits(integer = 14, fraction = 4) BigDecimal qty,

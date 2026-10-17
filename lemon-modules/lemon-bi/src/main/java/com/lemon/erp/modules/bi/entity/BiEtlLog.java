@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.bi.entity;
 
+import com.lemon.erp.modules.bi.model.EtlTrigger;
+import com.lemon.erp.modules.bi.model.EtlStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -18,7 +20,7 @@ import java.time.LocalDateTime;
 public class BiEtlLog extends BaseEntity {
 
     /** 触发方式 MANUAL手动 SCHEDULE定时 */
-    private String triggerType;
+    private EtlTrigger triggerType;
 
     /** 开始时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -29,7 +31,7 @@ public class BiEtlLog extends BaseEntity {
     private LocalDateTime endTime;
 
     /** 状态(字典 bi_etl_status) RUNNING运行中 SUCCESS成功 FAILED失败 */
-    private String status;
+    private EtlStatus status;
 
     /** 各事实表行数，如 sales=120,purchase=80 */
     private String rowCounts;

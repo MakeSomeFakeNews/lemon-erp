@@ -6,6 +6,7 @@ import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.scm.dto.RequisitionRequest;
 import com.lemon.erp.modules.scm.entity.ScmRequisition;
+import com.lemon.erp.modules.scm.model.RequisitionStatus;
 import com.lemon.erp.modules.scm.service.ScmRequisitionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +38,7 @@ public class ScmRequisitionController {
     public R<PageResult<ScmRequisition>> page(@RequestParam(defaultValue = "1") long current,
                                               @RequestParam(defaultValue = "10") long size,
                                               @RequestParam(required = false) String keyword,
-                                              @RequestParam(required = false) String status) {
+                                              @RequestParam(required = false) RequisitionStatus status) {
         return R.ok(requisitionService.page(current, size, keyword, status));
     }
 

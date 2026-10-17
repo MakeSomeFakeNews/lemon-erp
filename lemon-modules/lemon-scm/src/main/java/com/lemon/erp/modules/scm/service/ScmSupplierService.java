@@ -20,6 +20,7 @@ import com.lemon.erp.modules.scm.mapper.ScmSupplierEvalMapper;
 import com.lemon.erp.modules.scm.mapper.ScmSupplierMapper;
 import com.lemon.erp.modules.scm.mapper.ScmSupplierPriceMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
+import com.lemon.erp.modules.scm.model.SupplierLevel;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -51,10 +52,10 @@ public class ScmSupplierService {
     private final SupplierQualityProvider qualityProvider;
 
     /** @param keyword 编码或名称，模糊匹配 */
-    public PageResult<ScmSupplier> page(long current, long size, String keyword, String level, Integer status) {
+    public PageResult<ScmSupplier> page(long current, long size, String keyword, SupplierLevel level, Integer status) {
         Page<ScmSupplier> page = supplierMapper.selectPage(Page.of(current, size), Wrappers.<ScmSupplier>lambdaQuery()
                 .and(StringUtils.hasText(keyword), w -> w.like(ScmSupplier::getCode, keyword).or().like(ScmSupplier::getName, keyword))
-                .eq(StringUtils.hasText(level), ScmSupplier::getLevel, level)
+                .eq(level != null, ScmSupplier::getLevel, level)
                 .eq(status != null, ScmSupplier::getStatus, status)
                 .orderByAsc(ScmSupplier::getCode));
         return PageResult.of(page);
@@ -75,7 +76,8 @@ public class ScmSupplierService {
                         .and(StringUtils.hasText(keyword), w -> w.like(ScmSupplier::getCode, keyword).or().like(ScmSupplier::getName, keyword))
                         .orderByAsc(ScmSupplier::getCode))
                 .getRecords().stream()
-                .map(s -> new PartnerOption(s.getId(), s.getCode(), s.getName(), s.getContact(), s.getPhone(), s.getAddress(), s.getLevel()))
+                .map(s -> new PartnerOption(s.getId(), s.getCode(), s.getName(), s.getContact(), s.getPhone(), s.getAddress(),
+                        s.getLevel() == null ? null : s.getLevel().name()))
                 .toList();
     }
 
@@ -115,7 +117,7 @@ public class ScmSupplierService {
     public void delete(List<Long> ids) {
         for (ScmSupplier supplier : supplierMapper.selectByIds(ids)) {
             if (orderMapper.exists(Wrappers.<ScmOrder>lambdaQuery()
-                    .eq(ScmOrder::getKind, OrderKind.PURCHASE.name()).eq(ScmOrder::getPartnerId, supplier.getId()))) {
+                    .eq(ScmOrder::getKind, OrderKind.PURCHASE).eq(ScmOrder::getPartnerId, supplier.getId()))) {
                 throw new BizException("scm.error.supplierHasPurchaseOrdersCannotDeleted", supplier.getName());
             }
             referenceGuard.checkDeletable(RefType.SUPPLIER, supplier.getId(), Messages.get("scm.text.supplier", supplier.getName()));

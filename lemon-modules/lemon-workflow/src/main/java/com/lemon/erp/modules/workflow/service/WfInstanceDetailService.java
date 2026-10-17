@@ -19,6 +19,7 @@ import com.lemon.erp.modules.workflow.model.ApprovalAction;
 import com.lemon.erp.modules.workflow.model.FlowDesign;
 import com.lemon.erp.modules.workflow.model.FlowNode;
 import com.lemon.erp.modules.workflow.model.FormField;
+import com.lemon.erp.modules.workflow.model.NodeStatus;
 import lombok.RequiredArgsConstructor;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.TaskService;
@@ -54,9 +55,6 @@ public class WfInstanceDetailService {
     /** 查看任意流程的权限（流程实例管理） */
     private static final String VIEW_ALL_PERM = "wf:instance:list";
 
-    private static final String NODE_DONE = "DONE";
-    private static final String NODE_RUNNING = "RUNNING";
-    private static final String NODE_REJECTED = "REJECTED";
 
     private final HistoryService historyService;
     private final TaskService taskService;
@@ -87,10 +85,11 @@ public class WfInstanceDetailService {
         String todoTaskId = tasks.stream()
                 .filter(t -> t.getEndTime() == null && String.valueOf(userId).equals(t.getAssignee()))
                 .map(HistoricTaskInstance::getId).findFirst().orElse(null);
-        boolean running = FlowStatus.RUNNING.name().equals(instance.getBusinessStatus());
+        FlowStatus status = FlowStatus.of(instance.getBusinessStatus());
+        boolean running = status == FlowStatus.RUNNING;
 
         return new InstanceDetail(instance.getId(), instance.getName(), instance.getProcessDefinitionKey(),
-                instance.getProcessDefinitionName(), instance.getBusinessStatus(), startUserId, names.get(startUserId),
+                instance.getProcessDefinitionName(), status, startUserId, names.get(startUserId),
                 toLocalDateTime(instance.getStartTime()), toLocalDateTime(instance.getEndTime()),
                 design.form(), formData(processInstanceId, design.form()),
                 businessData(processInstanceId, instance.getProcessDefinitionKey()), design.flow(),
@@ -149,9 +148,9 @@ public class WfInstanceDetailService {
      * 节点状态：走过的节点和分支为 DONE，审批中为 RUNNING，被拒绝的审批节点为 REJECTED。
      * 只返回设计中的节点和分支（分支对应 BPMN 中同 ID 的连线），不暴露自动生成的 BPMN 元素
      */
-    private Map<String, String> nodeStatus(String processInstanceId, FlowDefinitionMeta meta,
+    private Map<String, NodeStatus> nodeStatus(String processInstanceId, FlowDefinitionMeta meta,
                                            List<HistoricTaskInstance> tasks) {
-        Map<String, String> status = new HashMap<>();
+        Map<String, NodeStatus> status = new HashMap<>();
         for (HistoricActivityInstance activity : historyService.createHistoricActivityInstanceQuery()
                 .processInstanceId(processInstanceId).list()) {
             String id = activity.getActivityId();
@@ -159,13 +158,13 @@ public class WfInstanceDetailService {
                 continue;
             }
             if (activity.getEndTime() == null) {
-                status.put(id, NODE_RUNNING);
+                status.put(id, NodeStatus.RUNNING);
             } else {
-                status.putIfAbsent(id, NODE_DONE);
+                status.putIfAbsent(id, NodeStatus.DONE);
             }
         }
-        tasks.stream().filter(t -> ApprovalAction.REJECT.name().equals(action(t)))
-                .forEach(t -> status.put(t.getTaskDefinitionKey(), NODE_REJECTED));
+        tasks.stream().filter(t -> action(t) == ApprovalAction.REJECT)
+                .forEach(t -> status.put(t.getTaskDefinitionKey(), NodeStatus.REJECTED));
         return status;
     }
 
@@ -188,21 +187,21 @@ public class WfInstanceDetailService {
             Long assignee = toUserId(task.getAssignee());
             List<Comment> list = taskComments.getOrDefault(task.getId(), List.of());
             for (Comment c : list) {
-                if (ApprovalAction.TRANSFER.name().equals(c.getType())) {
+                if (ApprovalAction.of(c.getType()) == ApprovalAction.TRANSFER) {
                     Long operator = toUserId(c.getUserId());
                     records.add(new ApprovalRecord(task.getTaskDefinitionKey(), task.getName(), ApprovalAction.TRANSFER,
                             operator, names.get(operator), c.getFullMessage(), toLocalDateTime(c.getTime())));
                 }
             }
-            String action = action(task);
+            ApprovalAction action = action(task);
             if (task.getEndTime() == null) {
                 pending.add(new ApprovalRecord(task.getTaskDefinitionKey(), task.getName(), ApprovalAction.PENDING,
                         assignee, names.get(assignee), null, null));
             } else if (action != null) {
-                String comment = list.stream().filter(c -> action.equals(c.getType()))
+                String comment = list.stream().filter(c -> ApprovalAction.of(c.getType()) == action)
                         .map(Comment::getFullMessage).findFirst().orElse(null);
                 records.add(new ApprovalRecord(task.getTaskDefinitionKey(), task.getName(),
-                        ApprovalAction.of(action), assignee, names.get(assignee), comment,
+                        action, assignee, names.get(assignee), comment,
                         toLocalDateTime(task.getEndTime())));
             }
             // 已结束但没有处理结果的任务（或签被他人处理、被拒绝或撤回时取消的任务）不展示
@@ -231,9 +230,9 @@ public class WfInstanceDetailService {
         return records;
     }
 
-    private static String action(HistoricTaskInstance task) {
+    private static ApprovalAction action(HistoricTaskInstance task) {
         Object action = task.getTaskLocalVariables().get(FlowVariables.TASK_ACTION);
-        return action == null ? null : action.toString();
+        return action == null ? null : ApprovalAction.of(action.toString());
     }
 
     private static Set<Long> collectUserIds(HistoricProcessInstance instance, List<HistoricTaskInstance> tasks,

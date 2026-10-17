@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.entity;
 
+import com.lemon.erp.modules.pm.model.BillingStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -33,7 +34,7 @@ public class PmBilling extends BaseEntity {
     private BigDecimal amount;
 
     /** 状态(字典 pm_billing_status) PLANNED待开票 BILLED已开票 */
-    private String status;
+    private BillingStatus status;
 
     /** 生成的应收单 */
     private Long billId;

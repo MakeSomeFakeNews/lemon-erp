@@ -15,7 +15,9 @@ import com.lemon.erp.modules.mes.entity.MesBom;
 import com.lemon.erp.modules.mes.entity.MesMaterialPlan;
 import com.lemon.erp.modules.mes.entity.MesPlan;
 import com.lemon.erp.modules.mes.mapper.MesPlanMapper;
+import com.lemon.erp.modules.mes.model.PlanSource;
 import com.lemon.erp.modules.mes.model.PlanStatus;
+import com.lemon.erp.modules.mes.model.WorkOrderSource;
 import com.lemon.erp.modules.mes.model.SupplyType;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
 import com.lemon.erp.modules.scm.entity.ScmOrderItem;
@@ -57,7 +59,7 @@ public class MesPlanService {
     private final MesWorkOrderService workOrderService;
 
     @DataPermission(table = "mes_plan", deptColumn = "dept_id", userColumn = "create_by")
-    public PageResult<MesPlan> page(long current, long size, String keyword, String status) {
+    public PageResult<MesPlan> page(long current, long size, String keyword, PlanStatus status) {
         Page<MesPlan> page = Page.of(current, size);
         planMapper.selectPageList(page, keyword, status);
         return PageResult.of(page);
@@ -81,7 +83,7 @@ public class MesPlanService {
                 .set(MesPlan::getRemark, req.remark())
                 .set(MesPlan::getUpdateTime, LocalDateTime.now())
                 .eq(MesPlan::getId, id)
-                .eq(MesPlan::getStatus, PlanStatus.DRAFT.name()));
+                .eq(MesPlan::getStatus, PlanStatus.DRAFT));
     }
 
     @Transactional
@@ -94,18 +96,18 @@ public class MesPlanService {
         for (Long id : ids) {
             getDraft(id);
             planMapper.update(Wrappers.<MesPlan>lambdaUpdate()
-                    .set(MesPlan::getStatus, PlanStatus.CONFIRMED.name())
+                    .set(MesPlan::getStatus, PlanStatus.CONFIRMED)
                     .eq(MesPlan::getId, id)
-                    .eq(MesPlan::getStatus, PlanStatus.DRAFT.name()));
+                    .eq(MesPlan::getStatus, PlanStatus.DRAFT));
         }
     }
 
     public void close(Long id) {
         MesPlan plan = getAccessible(id);
-        if (PlanStatus.CLOSED.name().equals(plan.getStatus())) {
+        if (plan.getStatus() == PlanStatus.CLOSED) {
             throw new BizException("mes.error.planClosed");
         }
-        planMapper.update(Wrappers.<MesPlan>lambdaUpdate().set(MesPlan::getStatus, PlanStatus.CLOSED.name()).eq(MesPlan::getId, id));
+        planMapper.update(Wrappers.<MesPlan>lambdaUpdate().set(MesPlan::getStatus, PlanStatus.CLOSED).eq(MesPlan::getId, id));
     }
 
     /**
@@ -117,7 +119,7 @@ public class MesPlanService {
     @Transactional
     public int fromSalesOrder(Long orderId) {
         ScmOrder order = orderService.detail(OrderKind.SALES, orderId);
-        if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
+        if (!order.getStatus().isExecutable()) {
             throw new BizException("mes.error.plansOnlyGeneratedApprovedPartiallyDelivered");
         }
         List<Long> materialIds = order.getItems().stream().map(ScmOrderItem::getMaterialId).toList();
@@ -144,7 +146,7 @@ public class MesPlanService {
             LocalDate due = item.getDeliveryDate() != null ? item.getDeliveryDate()
                     : order.getDeliveryDate() != null ? order.getDeliveryDate() : LocalDate.now();
             MesPlan plan = newPlan(item.getMaterialId(), remaining, due, "销售订单 " + order.getOrderNo()); // i18n-ignore
-            plan.setSource("SALES");
+            plan.setSource(PlanSource.SALES);
             plan.setSalesOrderId(order.getId());
             plan.setSalesOrderNo(order.getOrderNo());
             planMapper.insert(plan);
@@ -164,7 +166,7 @@ public class MesPlanService {
     @Transactional
     public Long toWorkOrder(Long id, PlanWorkOrderRequest req) {
         MesPlan plan = getAccessible(id);
-        if (!PlanStatus.CONFIRMED.name().equals(plan.getStatus())) {
+        if (plan.getStatus() != PlanStatus.CONFIRMED) {
             throw new BizException("mes.error.onlyConfirmedPlansConvertedWorkOrders");
         }
         BigDecimal remaining = plan.getQty().subtract(planMapper.selectWoQty(id));
@@ -177,7 +179,7 @@ public class MesPlanService {
         }
         LocalDate end = req.planEnd() != null ? req.planEnd() : plan.getDueDate();
         return workOrderService.createDraft(new WorkOrderRequest(plan.getMaterialId(), req.bomId(), qty, req.planStart(), end,
-                req.warehouseId(), "计划 " + plan.getPlanNo()), "PLAN", id); // i18n-ignore
+                req.warehouseId(), "计划 " + plan.getPlanNo()), WorkOrderSource.PLAN, id); // i18n-ignore
     }
 
     // ---------------------------------------------------------------- 供 MRP 使用
@@ -187,17 +189,17 @@ public class MesPlanService {
      */
     @EventListener
     public void onOrderStatusChanged(OrderStatusChangedEvent e) {
-        if (!"SALES".equals(e.kind())) {
+        if (e.kind() != OrderKind.SALES) {
             return;
         }
-        if ("DRAFT".equals(e.status())) {
+        if (e.status() == OrderStatus.DRAFT) {
             if (planMapper.exists(Wrappers.<MesPlan>lambdaQuery().eq(MesPlan::getSalesOrderId, e.orderId()))) {
                 throw new BizException("mes.error.salesOrderHasProductionPlansDelete", e.orderNo());
             }
-        } else if ("CLOSED".equals(e.status())) {
-            planMapper.update(Wrappers.<MesPlan>lambdaUpdate().set(MesPlan::getStatus, PlanStatus.CLOSED.name())
+        } else if (e.status() == OrderStatus.CLOSED) {
+            planMapper.update(Wrappers.<MesPlan>lambdaUpdate().set(MesPlan::getStatus, PlanStatus.CLOSED)
                     .eq(MesPlan::getSalesOrderId, e.orderId())
-                    .in(MesPlan::getStatus, PlanStatus.DRAFT.name(), PlanStatus.CONFIRMED.name()));
+                    .in(MesPlan::getStatus, PlanStatus.DRAFT, PlanStatus.CONFIRMED));
         }
     }
 
@@ -218,7 +220,7 @@ public class MesPlanService {
 
     private MesPlan getDraft(Long id) {
         MesPlan plan = getAccessible(id);
-        if (!PlanStatus.DRAFT.name().equals(plan.getStatus())) {
+        if (plan.getStatus() != PlanStatus.DRAFT) {
             throw new BizException("mes.error.planConfirmedCannotModifiedDeleted", plan.getPlanNo());
         }
         return plan;
@@ -235,12 +237,12 @@ public class MesPlanService {
     private MesPlan newPlan(Long materialId, BigDecimal qty, LocalDate dueDate, String remark) {
         LoginUser user = SecurityUtils.getLoginUser();
         MesPlan plan = new MesPlan();
-        plan.setPlanNo(docNoService.next("JH"));
+        plan.setPlanNo(docNoService.next(MesDocNos.PLAN));
         plan.setMaterialId(materialId);
         plan.setQty(qty);
         plan.setDueDate(dueDate);
-        plan.setSource("MANUAL");
-        plan.setStatus(PlanStatus.DRAFT.name());
+        plan.setSource(PlanSource.MANUAL);
+        plan.setStatus(PlanStatus.DRAFT);
         plan.setRemark(remark);
         plan.setDeptId(user.deptId());
         plan.setCreateBy(user.userId());

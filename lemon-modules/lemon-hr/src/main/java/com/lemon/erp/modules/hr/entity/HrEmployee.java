@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.EmployeeStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -56,7 +57,7 @@ public class HrEmployee extends BaseEntity {
     private String empType;
 
     /** 状态(字典 hr_emp_status) PROBATION试用 REGULAR正式 LEFT离职 */
-    private String status;
+    private EmployeeStatus status;
 
     /** 入职日期 */
     private LocalDate entryDate;

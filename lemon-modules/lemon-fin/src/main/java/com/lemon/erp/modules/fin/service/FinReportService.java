@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.LedgerRowType;
+import com.lemon.erp.modules.fin.model.AccountDirection;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.dto.AccountSum;
@@ -58,7 +60,7 @@ public class FinReportService {
             row.setDirection(a.getDirection());
             row.setLevel((a.getCode().length() - 4) / 2 + 1);
             row.setLeaf(a.getLeaf());
-            boolean debitSide = "DEBIT".equals(a.getDirection());
+            boolean debitSide = a.getDirection() == AccountDirection.DEBIT;
             row.setOpenBalance(debitSide ? od.subtract(oc) : oc.subtract(od));
             row.setDebit(d);
             row.setCredit(c);
@@ -92,7 +94,7 @@ public class FinReportService {
         checkRange(begin, end);
         FinAccount account = accountService.get(accountId);
         List<Long> ids = accountService.selfAndChildren(account);
-        boolean debitSide = "DEBIT".equals(account.getDirection());
+        boolean debitSide = account.getDirection() == AccountDirection.DEBIT;
         Map<Long, AccountSum> open = toMap(entryMapper.sumByAccount(null, previous(begin), false));
         BigDecimal od = BigDecimal.ZERO, oc = BigDecimal.ZERO;
         for (Long id : ids) {
@@ -105,7 +107,7 @@ public class FinReportService {
         BigDecimal balance = debitSide ? od.subtract(oc) : oc.subtract(od);
         List<LedgerRow> rows = new ArrayList<>();
         LedgerRow first = new LedgerRow();
-        first.setType("OPEN");
+        first.setType(LedgerRowType.OPEN);
         first.setEntryDate(toYearMonth(begin).atDay(1));
         first.setSummary(Messages.get("fin.text.openingBalance"));
         first.setBalance(balance);
@@ -113,7 +115,7 @@ public class FinReportService {
         rows.add(first);
         BigDecimal totalDebit = BigDecimal.ZERO, totalCredit = BigDecimal.ZERO;
         for (LedgerRow r : entryMapper.selectLedger(ids, begin, end)) {
-            r.setType("ENTRY");
+            r.setType(LedgerRowType.ENTRY);
             balance = balance.add(debitSide ? r.getDebit().subtract(r.getCredit()) : r.getCredit().subtract(r.getDebit()));
             r.setBalance(balance);
             r.setSide(side(balance, debitSide));
@@ -122,7 +124,7 @@ public class FinReportService {
             rows.add(r);
         }
         LedgerRow total = new LedgerRow();
-        total.setType("TOTAL");
+        total.setType(LedgerRowType.TOTAL);
         total.setEntryDate(toYearMonth(end).atEndOfMonth());
         total.setSummary(Messages.get("fin.text.periodTotal"));
         total.setDebit(totalDebit);

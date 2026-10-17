@@ -16,6 +16,7 @@ import com.lemon.erp.modules.scm.mapper.ScmCustomerMapper;
 import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
 import com.lemon.erp.modules.scm.mapper.ScmPriceListMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
+import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.mapper.WmsMaterialMapper;
 import jakarta.validation.ConstraintViolation;
@@ -34,6 +35,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
+
 /**
  * 外部订单导入（电商 / 门店）：统一格式按行提交（Excel 解析后或接口直接调用），同一外部单号的多行生成一张销售订单草稿（来源「外部导入」），
  * 单价为空时按价目表取价。外部单号已导入过的整单跳过（防重）；其他错误整批不导入
@@ -42,10 +45,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ScmOrderImportService {
 
-    /** 外部导入订单的来源 */
-    public static final String SOURCE_IMPORT = "IMPORT";
-
-    private static final BigDecimal DEFAULT_TAX_RATE = BigDecimal.valueOf(13);
 
     private final ScmOrderService orderService;
     private final ScmOrderMapper orderMapper;
@@ -143,7 +142,7 @@ public class ScmOrderImportService {
             items.add(new OrderItemRequest(m.getId(), d.qty(), price, taxRate, d.deliveryDate(), d.remark()));
         }
         Long id = orderService.createDraft(OrderKind.SALES, new OrderRequest(customer.getId(), first.orderDate(), first.deliveryDate(), null,
-                "外部单号 " + externalNo, items), SOURCE_IMPORT); // i18n-ignore
+                "外部单号 " + externalNo, items), OrderSource.IMPORT); // i18n-ignore
         orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate().set(ScmOrder::getExternalNo, externalNo).eq(ScmOrder::getId, id));
     }
 

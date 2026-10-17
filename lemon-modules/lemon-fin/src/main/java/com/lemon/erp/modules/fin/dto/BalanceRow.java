@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.dto;
 
+import com.lemon.erp.modules.fin.model.AccountDirection;
+import com.lemon.erp.modules.fin.model.AccountCategory;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -13,8 +15,8 @@ public class BalanceRow {
     private Long accountId;
     private String code;
     private String name;
-    private String category;
-    private String direction;
+    private AccountCategory category;
+    private AccountDirection direction;
     private Integer level;
     private Boolean leaf;
 

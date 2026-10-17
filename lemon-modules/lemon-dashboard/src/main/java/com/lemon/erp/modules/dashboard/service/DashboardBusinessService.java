@@ -6,6 +6,8 @@ import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermissionContext;
 import com.lemon.erp.framework.security.datascope.DataPermissionRule;
 import com.lemon.erp.modules.dashboard.mapper.DashboardMapper;
+import com.lemon.erp.modules.dashboard.model.DashboardBillKind;
+import com.lemon.erp.modules.dashboard.model.DashboardOrderKind;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -29,11 +31,18 @@ public class DashboardBusinessService {
     private final DashboardMapper dashboardMapper;
     private final PermissionService permissionService;
 
+    /** 卡片数值的种类 */
+    public enum CardKind {
+        /** 金额 */
+        MONEY,
+        /** 数量 */
+        COUNT
+    }
+
     /**
-     * @param kind     MONEY 金额 / COUNT 数量
      * @param previous 上月同口径的值（用于环比），没有时为空
      */
-    public record Card(String key, String label, String kind, BigDecimal value, BigDecimal previous, String link) {
+    public record Card(String key, String label, CardKind kind, BigDecimal value, BigDecimal previous, String link) {
     }
 
     public List<Card> cards() {
@@ -45,27 +54,27 @@ public class DashboardBusinessService {
         boolean allData = SecurityUtils.getDataScope().all();
         List<Card> cards = new ArrayList<>();
         if (permissionService.hasPerm("scm:sales:list")) {
-            cards.add(new Card("sales", Messages.get("dashboard.text.salesMonth"), "MONEY",
-                    scoped(ORDER_RULE, () -> dashboardMapper.sumOrderAmount("SALES", month.atDay(1), today)),
-                    scoped(ORDER_RULE, () -> dashboardMapper.sumOrderAmount("SALES", last.atDay(1), lastSameDay)), "/scm/sales"));
+            cards.add(new Card("sales", Messages.get("dashboard.text.salesMonth"), CardKind.MONEY,
+                    scoped(ORDER_RULE, () -> dashboardMapper.sumOrderAmount(DashboardOrderKind.SALES, month.atDay(1), today)),
+                    scoped(ORDER_RULE, () -> dashboardMapper.sumOrderAmount(DashboardOrderKind.SALES, last.atDay(1), lastSameDay)), "/scm/sales"));
         }
         if (permissionService.hasPerm("scm:purchase:list")) {
-            cards.add(new Card("purchase", Messages.get("dashboard.text.purchasesMonth"), "MONEY",
-                    scoped(ORDER_RULE, () -> dashboardMapper.sumOrderAmount("PURCHASE", month.atDay(1), today)),
-                    scoped(ORDER_RULE, () -> dashboardMapper.sumOrderAmount("PURCHASE", last.atDay(1), lastSameDay)), "/scm/purchase"));
+            cards.add(new Card("purchase", Messages.get("dashboard.text.purchasesMonth"), CardKind.MONEY,
+                    scoped(ORDER_RULE, () -> dashboardMapper.sumOrderAmount(DashboardOrderKind.PURCHASE, month.atDay(1), today)),
+                    scoped(ORDER_RULE, () -> dashboardMapper.sumOrderAmount(DashboardOrderKind.PURCHASE, last.atDay(1), lastSameDay)), "/scm/purchase"));
         }
         if (allData && permissionService.hasPerm("fin:ar:list")) {
-            cards.add(new Card("receivable", Messages.get("dashboard.text.receivableBalance"), "MONEY", dashboardMapper.sumBillBalance("AR"), null, "/fin/ar"));
+            cards.add(new Card("receivable", Messages.get("dashboard.text.receivableBalance"), CardKind.MONEY, dashboardMapper.sumBillBalance(DashboardBillKind.AR), null, "/fin/ar"));
         }
         if (allData && permissionService.hasPerm("fin:ap:list")) {
-            cards.add(new Card("payable", Messages.get("dashboard.text.payableBalance"), "MONEY", dashboardMapper.sumBillBalance("AP"), null, "/fin/ap"));
+            cards.add(new Card("payable", Messages.get("dashboard.text.payableBalance"), CardKind.MONEY, dashboardMapper.sumBillBalance(DashboardBillKind.AP), null, "/fin/ap"));
         }
         if (permissionService.hasPerm("scm:sales:list")) {
-            cards.add(new Card("toShip", Messages.get("dashboard.text.ordersShip"), "COUNT",
-                    BigDecimal.valueOf(scoped(ORDER_RULE, () -> dashboardMapper.countOpenOrders("SALES"))), null, "/scm/sales"));
+            cards.add(new Card("toShip", Messages.get("dashboard.text.ordersShip"), CardKind.COUNT,
+                    BigDecimal.valueOf(scoped(ORDER_RULE, () -> dashboardMapper.countOpenOrders(DashboardOrderKind.SALES))), null, "/scm/sales"));
         }
         if (permissionService.hasPerm("mes:wo:list")) {
-            cards.add(new Card("wip", Messages.get("dashboard.text.workOrdersProgress"), "COUNT",
+            cards.add(new Card("wip", Messages.get("dashboard.text.workOrdersProgress"), CardKind.COUNT,
                     BigDecimal.valueOf(scoped(WO_RULE, dashboardMapper::countOpenWorkOrders)), null, "/mes/wo"));
         }
         return cards;

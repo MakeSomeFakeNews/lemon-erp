@@ -6,6 +6,7 @@ import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.scm.dto.QuotationRequest;
 import com.lemon.erp.modules.scm.entity.ScmQuotation;
+import com.lemon.erp.modules.scm.model.QuotationStatus;
 import com.lemon.erp.modules.scm.service.ScmQuotationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +40,7 @@ public class ScmQuotationController {
     public R<PageResult<ScmQuotation>> page(@RequestParam(defaultValue = "1") long current,
                                             @RequestParam(defaultValue = "10") long size,
                                             @RequestParam(required = false) String keyword,
-                                            @RequestParam(required = false) String status,
+                                            @RequestParam(required = false) QuotationStatus status,
                                             @RequestParam(required = false) Long customerId,
                                             @RequestParam(required = false) Long opportunityId) {
         return R.ok(quotationService.page(current, size, keyword, status, customerId, opportunityId));

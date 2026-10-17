@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.dto;
 
+import com.lemon.erp.modules.crm.model.CustomerStage;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -17,7 +18,7 @@ public record CrmCustomerRequest(
         @Size(max = 255, message = "{crm.valid.addressCannotExceedCharacters}") String address,
         String industry,
         String source,
-        String stage,
+        CustomerStage stage,
         @Size(max = 64, message = "{crm.valid.regionCannotExceedCharacters}") String region,
         @Size(max = 128, message = "{crm.valid.websiteCannotExceedCharacters}") String website) {
 }

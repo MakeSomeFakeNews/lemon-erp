@@ -17,7 +17,7 @@
                 (s.supp_no LIKE CONCAT('%', #{q.keyword}, '%') OR o.wo_no LIKE CONCAT('%', #{q.keyword}, '%'))
             </if>
             <if test="q.woId != null">AND s.wo_id = #{q.woId}</if>
-            <if test="q.status != null and q.status != ''">AND s.status = #{q.status}</if>
+            <if test="q.status != null">AND s.status = #{q.status}</if>
             <if test="q.reason != null and q.reason != ''">AND s.reason = #{q.reason}</if>
         </where>
         ORDER BY s.id DESC

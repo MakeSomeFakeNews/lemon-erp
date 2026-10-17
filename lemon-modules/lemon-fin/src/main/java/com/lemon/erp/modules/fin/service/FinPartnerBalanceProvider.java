@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.SettleKind;
+import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.framework.finance.PartnerBalanceProvider;
 import com.lemon.erp.modules.fin.mapper.FinBillMapper;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +19,8 @@ public class FinPartnerBalanceProvider implements PartnerBalanceProvider {
     /** 应收余额 = 未核销的应收单 - 未冲抵的预收款 */
     @Override
     public BigDecimal receivableBalance(Long customerId) {
-        BigDecimal v = billMapper.selectUnsettledAmount("AR", customerId);
-        BigDecimal advance = advanceMapper.sumUnused("RECEIPT", customerId);
+        BigDecimal v = billMapper.selectUnsettledAmount(BillKind.AR, customerId);
+        BigDecimal advance = advanceMapper.sumUnused(SettleKind.RECEIPT, customerId);
         return (v == null ? BigDecimal.ZERO : v).subtract(advance == null ? BigDecimal.ZERO : advance);
     }
 }

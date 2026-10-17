@@ -18,7 +18,7 @@
                  OR s.name LIKE CONCAT('%', #{keyword}, '%'))
         </if>
         <if test="partnerId != null">AND i.partner_id = #{partnerId}</if>
-        <if test="status != null and status != ''">AND i.status = #{status}</if>
+        <if test="status != null">AND i.status = #{status}</if>
         <if test="unmatched">AND i.status = 'VALID' AND i.matched_amount &lt;&gt; i.amount</if>
         ORDER BY i.invoice_date DESC, i.id DESC
     </select>

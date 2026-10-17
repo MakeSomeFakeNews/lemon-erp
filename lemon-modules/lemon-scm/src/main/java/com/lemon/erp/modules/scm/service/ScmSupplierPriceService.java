@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
+
 /**
  * 供货价格：供应商可供应的物料、含税单价、提前期；每个物料可以指定一个默认供应商
  */
@@ -25,7 +27,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ScmSupplierPriceService {
 
-    private static final BigDecimal DEFAULT_TAX_RATE = BigDecimal.valueOf(13);
 
     private final ScmSupplierPriceMapper priceMapper;
     private final ScmSupplierService supplierService;

@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.BudgetControl;
+import com.lemon.erp.modules.fin.model.AccountDirection;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.dto.AccountSum;
@@ -88,13 +90,13 @@ public class FinBudgetService {
             allLeaves.addAll(leaves);
         }
         List<AccountSum> sums = allLeaves.isEmpty() ? List.of() : entryMapper.sumByPeriodDept(year * 100 + 1, year * 100 + 12, allLeaves);
-        Map<Long, String> directions = new HashMap<>();
+        Map<Long, AccountDirection> directions = new HashMap<>();
         accounts.forEach(a -> directions.put(a.getId(), a.getDirection()));
 
         List<BudgetExecution> result = new ArrayList<>();
         for (FinBudget b : budgets) {
             Set<Long> leaves = new HashSet<>(leavesByBudget.get(b.getId()));
-            boolean debitSide = "DEBIT".equals(directions.get(b.getAccountId()));
+            boolean debitSide = directions.get(b.getAccountId()) == AccountDirection.DEBIT;
             BigDecimal[] actual = new BigDecimal[12];
             Arrays.fill(actual, BigDecimal.ZERO);
             for (AccountSum s : sums) {
@@ -128,7 +130,7 @@ public class FinBudgetService {
      */
     public List<String> check(int year, Long deptId, Map<Long, BigDecimal> amounts, Map<Long, BigDecimal> committed) {
         List<FinBudget> budgets = list(year, null).stream()
-                .filter(b -> !"NONE".equals(b.getControlMode()) && b.getControlMode() != null)
+                .filter(b -> b.getControlMode() != null && b.getControlMode() != BudgetControl.NONE)
                 .filter(b -> b.getDeptId() == 0 || Objects.equals(b.getDeptId(), deptId)).toList();
         if (budgets.isEmpty()) {
             return List.of();
@@ -150,7 +152,7 @@ public class FinBudgetService {
             if (over.signum() > 0) {
                 Object[] args = {b.getDeptId() == 0 ? Messages.get("fin.text.companyWide") : b.getDeptName(), b.getAccountCode(), b.getAccountName(), year,
                         plain(b.getTotal()), plain(actual), plain(pending), plain(request), plain(over)};
-                if ("BLOCK".equals(b.getControlMode())) {
+                if (b.getControlMode() == BudgetControl.BLOCK) {
                     throw new BizException(BUDGET_OVER, args);
                 }
                 warnings.add(Messages.get(BUDGET_OVER, args));
@@ -198,7 +200,7 @@ public class FinBudgetService {
         b.setM12(m.get(11));
         b.setTotal(m.stream().reduce(BigDecimal.ZERO, BigDecimal::add));
         b.setRemark(req.remark());
-        b.setControlMode(req.controlMode() == null || req.controlMode().isBlank() ? "NONE" : req.controlMode());
+        b.setControlMode(req.controlMode() == null ? BudgetControl.NONE : req.controlMode());
         return b;
     }
 

@@ -119,7 +119,7 @@ public class ScmCustomerService {
     public void delete(List<Long> ids) {
         for (ScmCustomer customer : customerMapper.selectByIds(ids)) {
             if (orderMapper.exists(Wrappers.<ScmOrder>lambdaQuery()
-                    .eq(ScmOrder::getKind, OrderKind.SALES.name()).eq(ScmOrder::getPartnerId, customer.getId()))) {
+                    .eq(ScmOrder::getKind, OrderKind.SALES).eq(ScmOrder::getPartnerId, customer.getId()))) {
                 throw new BizException("scm.error.customerHasSalesOrdersCannotDeleted", customer.getName());
             }
             referenceGuard.checkDeletable(RefType.CUSTOMER, customer.getId(), Messages.get("scm.text.customer", customer.getName()));

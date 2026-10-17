@@ -10,7 +10,7 @@ import java.util.List;
  */
 public enum BiCube {
 
-    SALES("bi.label.salesAnalysis", "DATE", List.of(
+    SALES("bi.label.salesAnalysis", DateFilter.DATE, List.of(
             BiDim.YEAR, BiDim.QUARTER, BiDim.PERIOD,
             new BiDim("customer", "bi.label.customer", "customer", null),
             new BiDim("owner", "bi.label.salesRep", "user", null),
@@ -20,82 +20,82 @@ public enum BiCube {
             new BiDim("dept", "bi.label.dept", "dept", null),
             new BiDim("level", "bi.label.customerLevel", null, "scm_customer_level"),
             new BiDim("industry", "bi.label.customerIndustry", null, "crm_industry")),
-            List.of(BiMeasure.sum("qty", "bi.label.quantity", "QTY"), BiMeasure.sum("amount", "bi.label.salesAmount", "MONEY"),
-                    BiMeasure.sum("cost", "bi.label.costOfSales", "MONEY"), BiMeasure.sum("profit", "bi.label.grossProfit", "MONEY"),
+            List.of(BiMeasure.sum("qty", "bi.label.quantity", MeasureFormat.QTY), BiMeasure.sum("amount", "bi.label.salesAmount", MeasureFormat.MONEY),
+                    BiMeasure.sum("cost", "bi.label.costOfSales", MeasureFormat.MONEY), BiMeasure.sum("profit", "bi.label.grossProfit", MeasureFormat.MONEY),
                     BiMeasure.ratio("margin", "bi.label.grossMargin", "profit", "amount"),
-                    BiMeasure.sum("docs", "bi.label.outboundDocs", "COUNT"), BiMeasure.sum("customers", "bi.label.customers", "COUNT"))),
+                    BiMeasure.sum("docs", "bi.label.outboundDocs", MeasureFormat.COUNT), BiMeasure.sum("customers", "bi.label.customers", MeasureFormat.COUNT))),
 
-    PURCHASE("bi.label.purchaseAnalysis", "DATE", List.of(
+    PURCHASE("bi.label.purchaseAnalysis", DateFilter.DATE, List.of(
             BiDim.YEAR, BiDim.QUARTER, BiDim.PERIOD,
             new BiDim("supplier", "bi.label.supplier", "supplier", null),
             new BiDim("material", "bi.label.material", "material", null),
             new BiDim("category", "bi.label.materialCategory", null, "wms_material_category"),
             new BiDim("warehouse", "bi.label.warehouse2", "warehouse", null)),
-            List.of(BiMeasure.sum("qty", "bi.label.quantity", "QTY"), BiMeasure.sum("amount", "bi.label.purchaseAmount", "MONEY"),
+            List.of(BiMeasure.sum("qty", "bi.label.quantity", MeasureFormat.QTY), BiMeasure.sum("amount", "bi.label.purchaseAmount", MeasureFormat.MONEY),
                     BiMeasure.ratio("avgPrice", "bi.label.averagePrice", "amount", "qty"),
-                    BiMeasure.sum("docs", "bi.label.inboundDocs", "COUNT"), BiMeasure.sum("suppliers", "bi.label.suppliers", "COUNT"))),
+                    BiMeasure.sum("docs", "bi.label.inboundDocs", MeasureFormat.COUNT), BiMeasure.sum("suppliers", "bi.label.suppliers", MeasureFormat.COUNT))),
 
-    INVENTORY("bi.label.inventoryAnalysis", "SNAPSHOT", List.of(
+    INVENTORY("bi.label.inventoryAnalysis", DateFilter.SNAPSHOT, List.of(
             new BiDim("snapDate", "bi.label.snapshotDate", null, null),
             new BiDim("warehouse", "bi.label.warehouse2", "warehouse", null),
             new BiDim("material", "bi.label.material", "material", null),
             new BiDim("category", "bi.label.materialCategory", null, "wms_material_category")),
-            List.of(BiMeasure.sum("qty", "bi.label.stockQuantity", "QTY"), BiMeasure.sum("amount", "bi.label.stockValue", "MONEY"),
-                    BiMeasure.sum("materials", "bi.label.materials", "COUNT"))),
+            List.of(BiMeasure.sum("qty", "bi.label.stockQuantity", MeasureFormat.QTY), BiMeasure.sum("amount", "bi.label.stockValue", MeasureFormat.MONEY),
+                    BiMeasure.sum("materials", "bi.label.materials", MeasureFormat.COUNT))),
 
-    PRODUCTION("bi.label.productionAnalysis", "PERIOD", List.of(
+    PRODUCTION("bi.label.productionAnalysis", DateFilter.PERIOD, List.of(
             BiDim.YEAR, BiDim.QUARTER, BiDim.PERIOD,
             new BiDim("material", "bi.label.product", "material", null),
             new BiDim("category", "bi.label.materialCategory", null, "wms_material_category"),
             new BiDim("status", "bi.label.workOrderStatus", null, "mes_wo_status"),
             new BiDim("dept", "bi.label.dept", "dept", null)),
-            List.of(BiMeasure.sum("orders", "bi.label.workOrders", "COUNT"), BiMeasure.sum("planQty", "bi.label.plannedQty", "QTY"),
-                    BiMeasure.sum("finishedQty", "bi.label.completedQty", "QTY"), BiMeasure.sum("scrapQty", "bi.label.scrapQty", "QTY"),
-                    BiMeasure.sum("hours", "bi.label.reportedHours", "QTY"), BiMeasure.sum("lateOrders", "bi.label.lateWorkOrders2", "COUNT"),
+            List.of(BiMeasure.sum("orders", "bi.label.workOrders", MeasureFormat.COUNT), BiMeasure.sum("planQty", "bi.label.plannedQty", MeasureFormat.QTY),
+                    BiMeasure.sum("finishedQty", "bi.label.completedQty", MeasureFormat.QTY), BiMeasure.sum("scrapQty", "bi.label.scrapQty", MeasureFormat.QTY),
+                    BiMeasure.sum("hours", "bi.label.reportedHours", MeasureFormat.QTY), BiMeasure.sum("lateOrders", "bi.label.lateWorkOrders2", MeasureFormat.COUNT),
                     BiMeasure.ratio("completion", "bi.label.completionRate", "finishedQty", "planQty"),
                     BiMeasure.ratio("scrapRate", "bi.label.scrapRate", "scrapQty", "finishedQty"))),
 
-    FINANCE("bi.label.financialAnalysis", "PERIOD", List.of(
+    FINANCE("bi.label.financialAnalysis", DateFilter.PERIOD, List.of(
             BiDim.YEAR, BiDim.QUARTER, BiDim.PERIOD,
             new BiDim("account", "bi.label.account", "account", null),
             new BiDim("category", "bi.label.accountCategory", null, "fin_account_category"),
             new BiDim("dept", "bi.label.dept", "dept", null)),
-            List.of(BiMeasure.sum("debit", "bi.label.debitAmount", "MONEY"), BiMeasure.sum("credit", "bi.label.creditAmount", "MONEY"),
-                    BiMeasure.sum("net", "bi.label.netDebitCredit", "MONEY"))),
+            List.of(BiMeasure.sum("debit", "bi.label.debitAmount", MeasureFormat.MONEY), BiMeasure.sum("credit", "bi.label.creditAmount", MeasureFormat.MONEY),
+                    BiMeasure.sum("net", "bi.label.netDebitCredit", MeasureFormat.MONEY))),
 
-    HR("bi.label.hrAnalysis", "PERIOD", List.of(
+    HR("bi.label.hrAnalysis", DateFilter.PERIOD, List.of(
             BiDim.YEAR, BiDim.QUARTER, BiDim.PERIOD,
             new BiDim("dept", "bi.label.dept", "dept", null),
             new BiDim("category", "bi.label.positionCategory", null, "hr_position_category")),
-            List.of(BiMeasure.sum("headcount", "bi.label.monthEndHeadcountSummedMonth", "COUNT"), BiMeasure.sum("hires", "bi.label.hires", "COUNT"),
-                    BiMeasure.sum("leaves", "bi.label.leavers", "COUNT"), BiMeasure.ratio("turnover", "bi.label.turnoverRate", "leaves", "headcount"),
-                    BiMeasure.sum("grossPay", "bi.label.grossPay", "MONEY"), BiMeasure.sum("laborCost", "bi.label.laborCostInclEmployerSocialInsurance", "MONEY"))),
+            List.of(BiMeasure.sum("headcount", "bi.label.monthEndHeadcountSummedMonth", MeasureFormat.COUNT), BiMeasure.sum("hires", "bi.label.hires", MeasureFormat.COUNT),
+                    BiMeasure.sum("leaves", "bi.label.leavers", MeasureFormat.COUNT), BiMeasure.ratio("turnover", "bi.label.turnoverRate", "leaves", "headcount"),
+                    BiMeasure.sum("grossPay", "bi.label.grossPay", MeasureFormat.MONEY), BiMeasure.sum("laborCost", "bi.label.laborCostInclEmployerSocialInsurance", MeasureFormat.MONEY))),
 
-    CRM("bi.label.customerAnalysis", "PERIOD", List.of(
+    CRM("bi.label.customerAnalysis", DateFilter.PERIOD, List.of(
             BiDim.YEAR, BiDim.QUARTER, BiDim.PERIOD,
             new BiDim("owner", "bi.label.owner", "user", null),
             new BiDim("dept", "bi.label.dept", "dept", null)),
-            List.of(BiMeasure.sum("leads", "bi.label.newLeads", "COUNT"), BiMeasure.sum("followups", "bi.label.followUps", "COUNT"),
-                    BiMeasure.sum("opps", "bi.label.newOpportunities", "COUNT"), BiMeasure.sum("won", "bi.label.won", "COUNT"), BiMeasure.sum("lost", "bi.label.lost", "COUNT"),
-                    BiMeasure.ratio("winRate", "bi.label.winRate", "won", "closed"), BiMeasure.sum("wonAmount", "bi.label.wonAmount", "MONEY"))),
+            List.of(BiMeasure.sum("leads", "bi.label.newLeads", MeasureFormat.COUNT), BiMeasure.sum("followups", "bi.label.followUps", MeasureFormat.COUNT),
+                    BiMeasure.sum("opps", "bi.label.newOpportunities", MeasureFormat.COUNT), BiMeasure.sum("won", "bi.label.won", MeasureFormat.COUNT), BiMeasure.sum("lost", "bi.label.lost", MeasureFormat.COUNT),
+                    BiMeasure.ratio("winRate", "bi.label.winRate", "won", "closed"), BiMeasure.sum("wonAmount", "bi.label.wonAmount", MeasureFormat.MONEY))),
 
-    PROJECT("bi.label.projectAnalysis", "PERIOD", List.of(
+    PROJECT("bi.label.projectAnalysis", DateFilter.PERIOD, List.of(
             BiDim.YEAR, BiDim.QUARTER, BiDim.PERIOD,
             new BiDim("project", "bi.label.project", "project", null),
             new BiDim("dept", "bi.label.dept", "dept", null),
             new BiDim("manager", "bi.label.projectManager", "user", null)),
-            List.of(BiMeasure.sum("hours", "bi.label.hours", "QTY"), BiMeasure.sum("laborCost", "bi.label.laborCost", "MONEY"),
-                    BiMeasure.sum("expense", "bi.label.expensesInclMaterials", "MONEY"), BiMeasure.sum("revenue", "bi.label.recognizedRevenue", "MONEY"),
-                    BiMeasure.sum("cost", "bi.label.recognizedCost", "MONEY"), BiMeasure.sum("profit", "bi.label.grossProfit", "MONEY"),
+            List.of(BiMeasure.sum("hours", "bi.label.hours", MeasureFormat.QTY), BiMeasure.sum("laborCost", "bi.label.laborCost", MeasureFormat.MONEY),
+                    BiMeasure.sum("expense", "bi.label.expensesInclMaterials", MeasureFormat.MONEY), BiMeasure.sum("revenue", "bi.label.recognizedRevenue", MeasureFormat.MONEY),
+                    BiMeasure.sum("cost", "bi.label.recognizedCost", MeasureFormat.MONEY), BiMeasure.sum("profit", "bi.label.grossProfit", MeasureFormat.MONEY),
                     BiMeasure.ratio("margin", "bi.label.grossMargin", "profit", "revenue")));
 
     /** 名称的消息键（维度、指标的 label 同样是消息键），输出时按请求语言取消息 */
     private final String label;
-    private final String dateFilter;
+    private final DateFilter dateFilter;
     private final List<BiDim> dims;
     private final List<BiMeasure> measures;
 
-    BiCube(String label, String dateFilter, List<BiDim> dims, List<BiMeasure> measures) {
+    BiCube(String label, DateFilter dateFilter, List<BiDim> dims, List<BiMeasure> measures) {
         this.label = label;
         this.dateFilter = dateFilter;
         this.dims = dims;
@@ -106,7 +106,7 @@ public enum BiCube {
         return label;
     }
 
-    public String getDateFilter() {
+    public DateFilter getDateFilter() {
         return dateFilter;
     }
 
@@ -139,14 +139,17 @@ public enum BiCube {
      *
      * @param format MONEY 金额、QTY 数量、COUNT 计数、PERCENT 百分比、PRICE 单价
      */
-    public record BiMeasure(String key, String label, String format, String numerator, String denominator) {
+    public record BiMeasure(String key, String label, MeasureFormat format, String numerator, String denominator) {
 
-        static BiMeasure sum(String key, String label, String format) {
+        /** 单价指标（其他比率指标为百分比） */
+        static final String AVG_PRICE = "avgPrice";
+
+        static BiMeasure sum(String key, String label, MeasureFormat format) {
             return new BiMeasure(key, label, format, null, null);
         }
 
         static BiMeasure ratio(String key, String label, String numerator, String denominator) {
-            return new BiMeasure(key, label, "avgPrice".equals(key) ? "PRICE" : "PERCENT", numerator, denominator);
+            return new BiMeasure(key, label, AVG_PRICE.equals(key) ? MeasureFormat.PRICE : MeasureFormat.PERCENT, numerator, denominator);
         }
 
         public boolean isRatio() {

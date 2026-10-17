@@ -16,6 +16,7 @@ import com.lemon.erp.modules.wms.dto.StockDocRequest;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.entity.WmsStockDoc;
 import com.lemon.erp.modules.wms.model.StockBizType;
+import com.lemon.erp.modules.wms.model.StockOutType;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import com.lemon.erp.modules.wms.service.WmsStockDocService;
@@ -38,8 +39,6 @@ public class FinConsumableService {
 
     /** 领用单号的编码规则标识 */
     public static final String DOC_NO = "YH";
-    /** 出库类型：部门领用 */
-    public static final String OUT_TYPE = "CONSUME";
 
     private final FinConsumableUseMapper useMapper;
     private final FinAccountService accountService;
@@ -102,7 +101,7 @@ public class FinConsumableService {
     public void confirm(Long id) {
         FinConsumableUse use = requireDraft(id, "fin.error.requisitionHasAlreadyIssued");
         List<FinConsumableUseItem> items = useMapper.selectItems(id);
-        WmsStockDoc doc = stockDocService.createConfirmed(StockBizType.OUT, new StockDocRequest(OUT_TYPE, use.getWarehouseId(), null,
+        WmsStockDoc doc = stockDocService.createConfirmed(StockBizType.OUT, new StockDocRequest(StockOutType.CONSUME, use.getWarehouseId(), null,
                 use.getUseDate(), "低值易耗品领用 " + use.getUseNo() // i18n-ignore
                 + (StringUtils.hasText(use.getRemark()) ? "：" + use.getRemark() : ""),
                 items.stream().map(i -> new StockDocItemRequest(i.getMaterialId(), i.getLocationId(), null, i.getBatchNo(), null, null,

@@ -25,6 +25,7 @@ import com.lemon.erp.modules.system.entity.SysMenu;
 import com.lemon.erp.modules.system.entity.SysUser;
 import com.lemon.erp.modules.system.mapper.SysMenuMapper;
 import com.lemon.erp.modules.system.mapper.SysUserMapper;
+import com.lemon.erp.modules.system.model.MenuType;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -149,7 +150,7 @@ public class AuthService {
         LoginUser loginUser = SecurityUtils.getLoginUser();
         List<SysMenu> menus = loginUser.isAdmin()
                 ? menuMapper.selectList(Wrappers.<SysMenu>lambdaQuery()
-                        .in(SysMenu::getType, SysMenu.TYPE_DIR, SysMenu.TYPE_MENU)
+                        .in(SysMenu::getType, MenuType.M, MenuType.C)
                         .eq(SysMenu::getStatus, 1)
                         .orderByAsc(SysMenu::getSort))
                 : menuMapper.selectRouterMenusByUserId(loginUser.userId(), tenantLookup.currentPackageId());

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.dto;
 
+import com.lemon.erp.modules.mes.model.SupplyType;
 import com.lemon.erp.modules.mes.entity.MesMaterialSubstitute;
 import lombok.Data;
 
@@ -24,9 +25,9 @@ public class MaterialPlanView {
     private String remark;
 
     /** 设置的物料属性，为空表示自动 */
-    private String supplyType;
+    private SupplyType supplyType;
     /** 生效的物料属性：设置的，或有默认 BOM 为 MAKE、否则为 BUY */
-    private String effectiveSupplyType;
+    private SupplyType effectiveSupplyType;
     private Integer leadDays;
     private BigDecimal minLot;
     private BigDecimal lotMultiple;

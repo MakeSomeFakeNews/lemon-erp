@@ -24,7 +24,6 @@ import com.lemon.erp.modules.scm.mapper.ScmDeliveryPickMapper;
 import com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper;
 import com.lemon.erp.modules.scm.model.DeliveryStatus;
 import com.lemon.erp.modules.scm.model.OrderKind;
-import com.lemon.erp.modules.scm.model.OrderStatus;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import com.lemon.erp.modules.wms.service.WmsStockQueryService;
@@ -84,7 +83,7 @@ public class ScmDeliveryService {
     @Transactional
     public Long create(DeliveryRequest req) {
         ScmOrder order = orderService.getAccessible(OrderKind.SALES, req.orderId());
-        if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
+        if (!order.getStatus().isExecutable()) {
             throw new BizException("scm.error.orderNotApprovedPartiallyDeliveredCannot", order.getOrderNo());
         }
         warehouseService.get(req.warehouseId());
@@ -96,7 +95,7 @@ public class ScmDeliveryService {
 
         LoginUser user = SecurityUtils.getLoginUser();
         ScmDelivery d = new ScmDelivery();
-        d.setDeliveryNo(docNoService.next("FH"));
+        d.setDeliveryNo(docNoService.next(ScmDocNos.DELIVERY));
         d.setOrderId(order.getId());
         d.setCustomerId(order.getPartnerId());
         d.setWarehouseId(req.warehouseId());

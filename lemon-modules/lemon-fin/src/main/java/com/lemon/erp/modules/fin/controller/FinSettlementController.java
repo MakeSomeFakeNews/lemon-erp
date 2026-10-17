@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.controller;
 
+import com.lemon.erp.modules.fin.model.SettleKind;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
@@ -40,7 +41,7 @@ public class FinSettlementController {
                                              @RequestParam(defaultValue = "10") long size,
                                              @RequestParam(required = false) Long partnerId,
                                              @RequestParam(required = false) String keyword) {
-        return R.ok(settlementService.page(current, size, kind.toUpperCase(Locale.ROOT), partnerId, keyword));
+        return R.ok(settlementService.page(current, size, settleKind(kind), partnerId, keyword));
     }
 
     @GetMapping("/{id}")
@@ -53,7 +54,7 @@ public class FinSettlementController {
     @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':add')")
     @OperLog(title = "收付款", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@PathVariable String kind, @Valid @RequestBody SettlementRequest req) {
-        if (!kind.toUpperCase(Locale.ROOT).equals(req.kind())) {
+        if (settleKind(kind) != req.kind()) {
             return R.fail(Messages.get("fin.text.documentKindDoesNotMatch"));
         }
         return R.ok(settlementService.create(req));
@@ -72,5 +73,10 @@ public class FinSettlementController {
     @OperLog(title = "收付款-生成凭证", type = OperType.INSERT) // i18n-ignore
     public R<Integer> voucher(@PathVariable String kind, @PathVariable List<Long> ids) {
         return R.ok(settlementService.generateVouchers(ids));
+    }
+
+    /** 路径中的种类 receipt / payment */
+    private static SettleKind settleKind(String kind) {
+        return SettleKind.valueOf(kind.toUpperCase(Locale.ROOT));
     }
 }

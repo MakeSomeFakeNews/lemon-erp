@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.wms.model.HoldStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -18,8 +19,7 @@ import java.time.LocalDateTime;
 @TableName("wms_stock_hold")
 public class WmsStockHold extends BaseEntity {
 
-    /** PENDING 待检 / REJECTED 不合格（待退货）/ RELEASED 已放行 / RETURNED 已退货 */
-    private String status;
+    private HoldStatus status;
 
     private Long warehouseId;
 

@@ -40,6 +40,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.lemon.erp.modules.scm.model.ScmConstants.CONTRACT_RULE;
+import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 
 /**
  * 采购合同 / 框架协议：草稿 → 提交（发布了审批流程时审批）→ 生效 → 关闭。生效且在期限内的合同可被采购订单引用，
@@ -53,7 +54,6 @@ public class ScmPurchaseContractService {
     public static final String DOC_NO = "CGHT";
     public static final String PROCESS_KEY = "scm_contract";
     private static final String BUSINESS_KEY_PREFIX = PROCESS_KEY + ":";
-    private static final BigDecimal DEFAULT_TAX_RATE = BigDecimal.valueOf(13);
 
     private final ScmPurchaseContractMapper contractMapper;
     private final ScmPurchaseContractItemMapper itemMapper;

@@ -7,6 +7,7 @@ import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.bi.entity.BiAlertRule;
 import com.lemon.erp.modules.bi.mapper.BiAlertRuleMapper;
 import com.lemon.erp.modules.bi.mapper.BiInsightMapper;
+import com.lemon.erp.modules.bi.model.AbcClass;
 import com.lemon.erp.modules.bi.model.BiAlertMetric;
 import com.lemon.erp.modules.fin.dto.BudgetExecution;
 import com.lemon.erp.modules.fin.service.FinBudgetService;
@@ -21,6 +22,7 @@ import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -133,9 +135,9 @@ public class BiDecisionService {
         rows.sort(Comparator.comparing((Map<String, Object> r) -> (BigDecimal) r.get("value")).reversed());
         BigDecimal total = rows.stream().map(r -> (BigDecimal) r.get("value")).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal cum = BigDecimal.ZERO;
-        Map<String, long[]> counts = new LinkedHashMap<>();
-        Map<String, BigDecimal> values = new LinkedHashMap<>();
-        for (String c : List.of("A", "B", "C")) {
+        Map<AbcClass, long[]> counts = new EnumMap<>(AbcClass.class);
+        Map<AbcClass, BigDecimal> values = new EnumMap<>(AbcClass.class);
+        for (AbcClass c : AbcClass.values()) {
             counts.put(c, new long[]{0});
             values.put(c, BigDecimal.ZERO);
         }
@@ -144,8 +146,7 @@ public class BiDecisionService {
             BigDecimal before = total.signum() == 0 ? BigDecimal.ZERO : cum.multiply(HUNDRED).divide(total, 2, RoundingMode.HALF_UP);
             cum = cum.add(v);
             BigDecimal pct = total.signum() == 0 ? BigDecimal.ZERO : cum.multiply(HUNDRED).divide(total, 2, RoundingMode.HALF_UP);
-            // 按进入该物料前的累计占比分类，保证第一个物料总是 A 类
-            String cls = before.compareTo(BigDecimal.valueOf(70)) < 0 ? "A" : before.compareTo(BigDecimal.valueOf(90)) < 0 ? "B" : "C";
+            AbcClass cls = AbcClass.of(before);
             r.put("share", total.signum() == 0 ? BigDecimal.ZERO : v.multiply(HUNDRED).divide(total, 2, RoundingMode.HALF_UP));
             r.put("cumulative", pct);
             r.put("class", cls);
@@ -225,12 +226,7 @@ public class BiDecisionService {
             }
             BigDecimal value = cache.computeIfAbsent(metric, m -> m == BiAlertMetric.BUDGET_OVERRUN ? budgetOverrun(today)
                     : insightMapper.selectMetric(m.name(), today, now, period, now.minusDays(SLOW_DAYS)));
-            boolean triggered = value != null && switch (rule.getOperator()) {
-                case "GT" -> value.compareTo(rule.getThreshold()) > 0;
-                case "GE" -> value.compareTo(rule.getThreshold()) >= 0;
-                case "LT" -> value.compareTo(rule.getThreshold()) < 0;
-                default -> value.compareTo(rule.getThreshold()) <= 0;
-            };
+            boolean triggered = value != null && rule.getOperator().test(value, rule.getThreshold());
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("ruleId", rule.getId());
             m.put("name", rule.getName());

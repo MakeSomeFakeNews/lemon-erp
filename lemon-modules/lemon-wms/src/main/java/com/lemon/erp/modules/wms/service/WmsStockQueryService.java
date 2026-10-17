@@ -75,7 +75,7 @@ public class WmsStockQueryService {
                         .eq(WmsSerial::getWarehouseId, warehouseId)
                         .eq(WmsSerial::getLocationId, locationOrNone(locationId))
                         .eq(WmsSerial::getMaterialId, materialId)
-                        .eq(WmsSerial::getStatus, SerialStatus.IN_STOCK.name())
+                        .eq(WmsSerial::getStatus, SerialStatus.IN_STOCK)
                         .eq(WmsSerial::getBatchNo, batchOrNone(batchNo))
                         .orderByAsc(WmsSerial::getSerialNo))
                 .getRecords().stream().map(WmsSerial::getSerialNo).toList();

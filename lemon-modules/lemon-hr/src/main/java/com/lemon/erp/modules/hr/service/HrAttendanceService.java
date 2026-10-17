@@ -1,5 +1,11 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.modules.hr.model.AttendanceSource;
+import com.lemon.erp.modules.hr.model.AttendanceStatus;
+import com.lemon.erp.modules.hr.model.EmployeeStatus;
+import com.lemon.erp.modules.hr.model.LeaveKind;
+import com.lemon.erp.modules.hr.model.LeaveStatus;
+import com.lemon.erp.modules.hr.model.OvertimeComp;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -70,7 +76,7 @@ public class HrAttendanceService {
     @Transactional
     public HrAttendance clock() {
         HrEmployee e = employeeService.current();
-        if (HrEmployeeService.LEFT.equals(e.getStatus())) {
+        if (e.getStatus() == EmployeeStatus.LEFT) {
             throw new BizException("hr.error.employeesWhoHaveLeftCannotClock");
         }
         LocalDateTime now = LocalDateTime.now().withNano(0);
@@ -81,7 +87,7 @@ public class HrAttendanceService {
             a.setEmployeeId(e.getId());
             a.setWorkDate(today);
             a.setCheckIn(now);
-            a.setSource("CLOCK");
+            a.setSource(AttendanceSource.CLOCK);
             evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(today));
             try {
                 attendanceMapper.insert(a);
@@ -125,7 +131,7 @@ public class HrAttendanceService {
         }
         a.setCheckIn(req.checkIn());
         a.setCheckOut(req.checkOut());
-        a.setSource("MANUAL");
+        a.setSource(AttendanceSource.MANUAL);
         a.setRemark(req.remark());
         evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(req.workDate()));
         if (insert) {
@@ -141,12 +147,6 @@ public class HrAttendanceService {
         attendanceMapper.deleteByIds(ids);
     }
 
-    /**
-     * 月度汇总（考勤页面，按数据权限）
-     *
-     * @param period yyyyMM
-     */
-    @DataPermission(table = "hr_employee", deptColumn = "dept_id", userColumn = "user_id")
     /**
      * 登录账号对应员工某一天的请假、加班和出勤（项目工时校验）
      *
@@ -167,7 +167,7 @@ public class HrAttendanceService {
             if (start.isBefore(date) && end.isAfter(date)) {
                 hours = HrConstants.DAY_HOURS;
             }
-            if ("OVERTIME".equals(l.getKind())) {
+            if (l.getKind() == LeaveKind.OVERTIME) {
                 overtime = overtime.add(hours);
             } else {
                 leave = leave.add(hours);
@@ -178,6 +178,12 @@ public class HrAttendanceService {
         return new DayWork(leave.min(HrConstants.DAY_HOURS), overtime, a == null ? null : a.getWorkHours());
     }
 
+    /**
+     * 月度汇总（考勤页面，按数据权限）
+     *
+     * @param period yyyyMM
+     */
+    @DataPermission(table = "hr_employee", deptColumn = "dept_id", userColumn = "user_id")
     public List<AttendanceSummary> summaryPage(int period, Long deptId, String keyword) {
         YearMonth ym = toYearMonth(period);
         List<HrEmployee> employees = employeeMapper.selectEmployedBetween(ym.atDay(1), ym.atEndOfMonth(),
@@ -216,12 +222,15 @@ public class HrAttendanceService {
                 HrAttendance a = mine.get(d);
                 if (a != null) {
                     actual++;
-                    switch (a.getStatus()) {
-                        case "LATE" -> late++;
-                        case "EARLY" -> early++;
-                        case "LATE_EARLY" -> { late++; early++; }
-                        case "MISSING" -> { if (d.isBefore(today)) missing++; }
-                        default -> { }
+                    AttendanceStatus status = a.getStatus();
+                    if (status.isLate()) {
+                        late++;
+                    }
+                    if (status.isEarly()) {
+                        early++;
+                    }
+                    if (status == AttendanceStatus.MISSING && d.isBefore(today)) {
+                        missing++;
                     }
                 } else if (d.isBefore(today) && !onLeave(myLeaves, d)) {
                     absent++;
@@ -235,9 +244,9 @@ public class HrAttendanceService {
                 if (!YearMonth.from(l.getStartTime()).equals(ym)) {
                     continue;
                 }
-                if ("OVERTIME".equals(l.getKind())) {
+                if (l.getKind() == LeaveKind.OVERTIME) {
                     // 转调休的加班不发加班费
-                    if (HrLeaveService.OVERTIME_TO_LEAVE.equals(l.getType())) {
+                    if (OvertimeComp.of(l.getType()) == OvertimeComp.TO_LEAVE) {
                         continue;
                     }
                     overtime = overtime.add(l.getHours());
@@ -262,7 +271,7 @@ public class HrAttendanceService {
                 .collect(Collectors.toMap(HrAttendance::getWorkDate, a -> a));
         List<HrLeave> leaves = leaveMapper.selectList(Wrappers.<HrLeave>lambdaQuery()
                 .eq(HrLeave::getEmployeeId, e.getId())
-                .in(HrLeave::getStatus, "APPROVING", "APPROVED")
+                .in(HrLeave::getStatus, LeaveStatus.EFFECTIVE)
                 .lt(HrLeave::getStartTime, last.plusDays(1).atStartOfDay())
                 .gt(HrLeave::getEndTime, first.atStartOfDay()));
         List<CalendarDay> days = new ArrayList<>();
@@ -273,7 +282,7 @@ public class HrAttendanceService {
             List<HrLeave> dayLeaves = leaves.stream().filter(l -> covers(l, day)).toList();
             boolean employed = !d.isBefore(e.getEntryDate()) && (e.getLeaveDate() == null || !d.isAfter(e.getLeaveDate()));
             boolean absent = workday && employed && d.isBefore(today) && !records.containsKey(d)
-                    && dayLeaves.stream().noneMatch(l -> "LEAVE".equals(l.getKind()) && "APPROVED".equals(l.getStatus()));
+                    && dayLeaves.stream().noneMatch(l -> l.getKind() == LeaveKind.LEAVE && l.getStatus() == LeaveStatus.APPROVED);
             days.add(new CalendarDay(d, workday, h == null ? null : h.getName(), records.get(d), dayLeaves, absent));
         }
         return days;
@@ -297,11 +306,11 @@ public class HrAttendanceService {
         a.setLateMinutes(late);
         a.setEarlyMinutes(early);
         if (a.getCheckIn() == null || a.getCheckOut() == null) {
-            a.setStatus("MISSING");
+            a.setStatus(AttendanceStatus.MISSING);
             a.setWorkHours(BigDecimal.ZERO);
             return;
         }
-        a.setStatus(late > 0 && early > 0 ? "LATE_EARLY" : late > 0 ? "LATE" : early > 0 ? "EARLY" : "NORMAL");
+        a.setStatus(AttendanceStatus.of(late, early));
         long minutes = Duration.between(a.getCheckIn(), a.getCheckOut()).toMinutes();
         if (minutes > LUNCH_THRESHOLD_MINUTES) {
             minutes -= 60;
@@ -323,7 +332,7 @@ public class HrAttendanceService {
     }
 
     private static boolean onLeave(List<HrLeave> leaves, LocalDate d) {
-        return leaves.stream().anyMatch(l -> "LEAVE".equals(l.getKind()) && covers(l, d));
+        return leaves.stream().anyMatch(l -> l.getKind() == LeaveKind.LEAVE && covers(l, d));
     }
 
     private HrAttendance find(Long employeeId, LocalDate date) {

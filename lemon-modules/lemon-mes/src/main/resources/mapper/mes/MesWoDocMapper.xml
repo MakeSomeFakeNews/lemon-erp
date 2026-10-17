@@ -14,7 +14,7 @@
         <include refid="viewSelect"/>
         <where>
             <if test="woId != null">d.wo_id = #{woId}</if>
-            <if test="kind != null and kind != ''">AND d.kind = #{kind}</if>
+            <if test="kind != null">AND d.kind = #{kind}</if>
         </where>
         ORDER BY d.id DESC
     </select>

@@ -3,6 +3,7 @@ package com.lemon.erp.modules.wms.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.modules.wms.entity.WmsReservation;
+import com.lemon.erp.modules.wms.model.ReservationSource;
 import org.apache.ibatis.annotations.Param;
 
 import java.math.BigDecimal;
@@ -15,7 +16,7 @@ public interface WmsReservationMapper extends BaseMapper<WmsReservation> {
     Page<WmsReservation> selectPageList(Page<WmsReservation> page, @Param("warehouseId") Long warehouseId,
                                         @Param("keyword") String keyword, @Param("sourceNo") String sourceNo);
 
-    List<WmsReservation> selectBySource(@Param("sourceType") String sourceType, @Param("sourceId") Long sourceId);
+    List<WmsReservation> selectBySource(@Param("sourceType") ReservationSource sourceType, @Param("sourceId") Long sourceId);
 
     /** 仓库中各物料的可用库存（库存 - 冻结）与预留：[{materialId, available, reserved}] */
     List<Map<String, Object>> selectFree(@Param("warehouseId") Long warehouseId, @Param("materialIds") Collection<Long> materialIds);

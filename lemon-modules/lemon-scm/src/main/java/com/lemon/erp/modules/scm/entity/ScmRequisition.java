@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.scm.model.RequisitionStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -24,7 +25,7 @@ public class ScmRequisition extends BaseEntity {
     private LocalDate reqDate;
 
     /** DRAFT / APPROVING / APPROVED / ORDERED / CLOSED */
-    private String status;
+    private RequisitionStatus status;
 
     private String remark;
 

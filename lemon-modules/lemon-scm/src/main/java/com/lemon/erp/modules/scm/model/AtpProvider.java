@@ -16,6 +16,9 @@ public interface AtpProvider {
     /** 各物料的未来净供需合计（全部仓库）：供应为正、需求为负，没有的物料不在结果中 */
     Map<Long, BigDecimal> netQty(Collection<Long> materialIds);
 
+    /** 未设置供应方式的物料按采购处理（与生产模块 SupplyType.BUY 一致） */
+    String DEFAULT_SUPPLY_TYPE = "BUY";
+
     /** 物料的供应方式（MAKE 自制 / BUY 采购 / OUTSOURCE 委外），没有设置的不在结果中 */
     default Map<Long, String> supplyTypes(Collection<Long> materialIds) {
         return Map.of();

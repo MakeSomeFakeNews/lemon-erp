@@ -1,10 +1,9 @@
 package com.lemon.erp.modules.fin.dto;
 
+import com.lemon.erp.modules.fin.model.SettleKind;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -14,7 +13,7 @@ import java.time.LocalDate;
  * 预收（客户）/ 预付（供应商）登记
  */
 public record AdvanceRequest(
-        @NotBlank @Pattern(regexp = "^(RECEIPT|PAYMENT)$", message = "{fin.valid.invalidKind}") String kind,
+        @NotNull(message = "{fin.valid.invalidKind}") SettleKind kind,
         @NotNull(message = "{fin.valid.selectBusinessPartner}") Long partnerId,
         @NotNull(message = "{fin.valid.selectDate}") LocalDate advanceDate,
         @NotNull(message = "{fin.valid.selectSettlementAccount}") Long accountId,

@@ -1,5 +1,8 @@
 package com.lemon.erp.modules.mes.entity;
 
+import com.lemon.erp.modules.mes.model.WorkOrderSource;
+import com.lemon.erp.modules.mes.model.WorkOrderStatus;
+import com.lemon.erp.modules.mes.model.WorkOrderType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -29,7 +32,7 @@ public class MesWorkOrder extends BaseEntity {
     private BigDecimal qty;
 
     /** NORMAL 普通 / REWORK 返工 */
-    private String woType;
+    private WorkOrderType woType;
 
     private LocalDate planStart;
 
@@ -39,12 +42,12 @@ public class MesWorkOrder extends BaseEntity {
     private Long warehouseId;
 
     /** WorkOrderStatus */
-    private String status;
+    private WorkOrderStatus status;
 
     private BigDecimal finishedQty;
 
-    /** MANUAL 手工 / MRP */
-    private String source;
+    /** 工单来源 */
+    private WorkOrderSource source;
 
     private Long planId;
 

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.lemon.erp.modules.fin.model.PeriodStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -21,7 +22,7 @@ public class FinPeriod extends BaseEntity {
     private Integer period;
 
     /** OPEN / CLOSED */
-    private String status;
+    private PeriodStatus status;
 
     /** 本期已使用的最大凭证号 */
     private Integer voucherSeq;

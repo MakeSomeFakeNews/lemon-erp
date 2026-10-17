@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.dto;
 
+import com.lemon.erp.modules.crm.model.OpportunityStage;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -25,7 +26,7 @@ public record OpportunityRequest(
         @NotNull(message = "{crm.valid.selectCustomer}") Long customerId,
         Long contactId,
         @DecimalMin(value = "0", message = "{crm.valid.amountCannotLess}") @Digits(integer = 16, fraction = 2, message = "{crm.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount,
-        String stage,
+        OpportunityStage stage,
         @Min(value = 0, message = "{crm.valid.winProbabilityMustBetween}") @Max(value = 100, message = "{crm.valid.winProbabilityMustBetween}") Integer probability,
         LocalDate expectedDate,
         String source,

@@ -2,6 +2,7 @@ package com.lemon.erp.modules.wms.service;
 
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender.Message;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.modules.wms.mapper.WmsJobMapper;
@@ -48,7 +49,7 @@ public class WmsBatchExpiryJob implements JobHandler {
         List<Map<String, Object>> rows = jobMapper.selectExpiringBatches(today.plusDays(params.getInt("days", 30)));
         for (Map<String, Object> r : rows) {
             boolean expired = LocalDate.parse(String.valueOf(r.get("expiryDate")).substring(0, 10)).isBefore(today);
-            messageSender.sendToPermission("wms:stock:list", Message.of(expired ? "ALERT" : "REMIND",
+            messageSender.sendToPermission("wms:stock:list", Message.of(expired ? MessageCategory.ALERT : MessageCategory.REMIND,
                     (expired ? "批次已过期：" : "批次即将到期：") + r.get("code") + " " + r.get("name") + " 批次 " + r.get("batchNo"), // i18n-ignore 站内消息存库
                     "有效期至 " + r.get("expiryDate") + "，库存 " + r.get("qty"), "/wms/trace") // i18n-ignore
                     .dedup("batch-expiry:" + r.get("materialId") + ":" + r.get("batchNo") + (expired ? ":expired" : "")));

@@ -13,6 +13,7 @@ import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.scm.dto.PartnerOption;
 import com.lemon.erp.modules.scm.dto.SupplierKpi;
 import com.lemon.erp.modules.scm.entity.ScmSupplier;
+import com.lemon.erp.modules.scm.model.SupplierLevel;
 import com.lemon.erp.modules.scm.service.ScmSupplierService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +46,7 @@ public class ScmSupplierController {
     public R<PageResult<ScmSupplier>> page(@RequestParam(defaultValue = "1") long current,
                                        @RequestParam(defaultValue = "10") long size,
                                        @RequestParam(required = false) String keyword,
-                                       @RequestParam(required = false) String level,
+                                       @RequestParam(required = false) SupplierLevel level,
                                        @RequestParam(required = false) Integer status) {
         return R.ok(supplierService.page(current, size, keyword, level, status));
     }

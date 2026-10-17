@@ -8,6 +8,7 @@ import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
 import com.lemon.erp.modules.scm.mapper.ScmPurchaseContractMapper;
 import com.lemon.erp.modules.scm.mapper.ScmSupplierMapper;
 import com.lemon.erp.modules.scm.mapper.ScmTenderMapper;
+import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.ScmConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -31,9 +32,9 @@ public class ScmRecordTypes implements RecordTypeProvider {
     public List<RecordType> recordTypes() {
         return List.of(
                 new RecordType("scm_purchase", "scm.label.purchaseOrder", "scm:purchase:list", "scm:purchase:edit",
-                        ScmConstants.ORDER_RULE, id -> order(id, "PURCHASE")),
+                        ScmConstants.ORDER_RULE, id -> order(id, OrderKind.PURCHASE)),
                 new RecordType("scm_sales", "scm.label.salesOrder", "scm:sales:list", "scm:sales:edit",
-                        ScmConstants.ORDER_RULE, id -> order(id, "SALES")),
+                        ScmConstants.ORDER_RULE, id -> order(id, OrderKind.SALES)),
                 new RecordType("scm_customer", "scm.label.customer", "scm:customer:list", "scm:customer:edit", null, customerMapper::selectById),
                 new RecordType("scm_supplier", "scm.label.supplier", "scm:supplier:list", "scm:supplier:edit", null, supplierMapper::selectById),
                 new RecordType("scm_contract", "scm.label.purchaseContract", "scm:contract:list", "scm:contract:edit",
@@ -41,8 +42,8 @@ public class ScmRecordTypes implements RecordTypeProvider {
                 new RecordType("scm_tender", "scm.label.tender", "scm:tender:list", "scm:tender:edit", ScmConstants.TENDER_RULE, tenderMapper::selectById));
     }
 
-    private ScmOrder order(long id, String kind) {
+    private ScmOrder order(long id, OrderKind kind) {
         ScmOrder o = orderMapper.selectById(id);
-        return o != null && kind.equals(o.getKind()) ? o : null;
+        return o != null && o.getKind() == kind ? o : null;
     }
 }

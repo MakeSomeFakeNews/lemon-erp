@@ -3,6 +3,9 @@ package com.lemon.erp.modules.fin.service;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.SettleKind;
+import com.lemon.erp.modules.fin.model.BillKind;
+import com.lemon.erp.modules.fin.model.BillSource;
+import com.lemon.erp.modules.fin.model.BillStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -45,18 +48,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import static com.lemon.erp.modules.fin.model.FinConstants.BILL_AP;
-import static com.lemon.erp.modules.fin.model.FinConstants.BILL_AR;
-import static com.lemon.erp.modules.fin.model.FinConstants.BILL_SOURCE_PROJECT;
-import static com.lemon.erp.modules.fin.model.FinConstants.BILL_SOURCE_QUALITY_CLAIM;
-import static com.lemon.erp.modules.fin.model.FinConstants.BILL_SOURCE_TICKET;
-import static com.lemon.erp.modules.fin.model.FinConstants.BILL_SOURCE_REBATE;
 import static com.lemon.erp.modules.fin.model.FinConstants.INPUT_VAT;
 import static com.lemon.erp.modules.fin.model.FinConstants.OUTPUT_VAT;
 
@@ -73,7 +68,6 @@ import static com.lemon.erp.modules.fin.model.FinConstants.OUTPUT_VAT;
 @RequiredArgsConstructor
 public class FinBillService {
 
-    private static final Set<String> KINDS = Set.of("AR", "AP");
     private static final BigDecimal REBATE_TAX_RATE = BigDecimal.valueOf(13);
 
     private final FinBillMapper billMapper;
@@ -98,16 +92,16 @@ public class FinBillService {
     }
 
     /** 往来单位未核销的单据，收付款时选择核销 */
-    public List<FinBill> unsettled(String kind, Long partnerId) {
+    public List<FinBill> unsettled(BillKind kind, Long partnerId) {
         checkKind(kind);
         return billMapper.selectList(Wrappers.<FinBill>lambdaQuery()
                 .eq(FinBill::getKind, kind)
                 .eq(FinBill::getPartnerId, partnerId)
-                .ne(FinBill::getStatus, "SETTLED")
+                .ne(FinBill::getStatus, BillStatus.SETTLED)
                 .orderByAsc(FinBill::getDueDate).orderByAsc(FinBill::getId));
     }
 
-    public PageResult<AgingRow> aging(long current, long size, String kind, LocalDate asOf) {
+    public PageResult<AgingRow> aging(long current, long size, BillKind kind, LocalDate asOf) {
         checkKind(kind);
         LocalDate date = asOf == null ? LocalDate.now() : asOf;
         Page<AgingRow> page = Page.of(current, size);
@@ -123,7 +117,7 @@ public class FinBillService {
             throw new BizException("fin.error.amountCannot");
         }
         int paymentDays = paymentDays(req.kind(), req.partnerId());
-        FinBill bill = newBill(req.kind(), req.partnerId(), "MANUAL", null, null, req.billDate(),
+        FinBill bill = newBill(req.kind(), req.partnerId(), BillSource.MANUAL, null, null, req.billDate(),
                 req.dueDate() != null ? req.dueDate() : req.billDate().plusDays(paymentDays), req.amount(), BigDecimal.ZERO);
         bill.setRemark(req.remark());
         billMapper.insert(bill);
@@ -138,13 +132,13 @@ public class FinBillService {
      * @return 应收 / 应付单
      */
     @Transactional
-    public FinBill createFromSource(String kind, Long partnerId, String sourceType, Long sourceId, String sourceNo,
+    public FinBill createFromSource(BillKind kind, Long partnerId, BillSource sourceType, Long sourceId, String sourceNo,
                                     LocalDate billDate, BigDecimal amount, BigDecimal tax, String remark, Long projectId) {
         checkKind(kind);
         if (amount.signum() == 0) {
             throw new BizException("fin.error.amountCannot");
         }
-        periodGuard.checkOpen(billDate, "AR".equals(kind) ? "fin.label.receivable" : "fin.label.payable");
+        periodGuard.checkOpen(billDate, kind == BillKind.AR ? "fin.label.receivable" : "fin.label.payable");
         FinBill bill = newBill(kind, partnerId, sourceType, sourceId, sourceNo, billDate,
                 billDate.plusDays(paymentDays(kind, partnerId)), amount, tax);
         bill.setRemark(remark);
@@ -175,7 +169,7 @@ public class FinBillService {
     @Transactional
     public void delete(List<Long> ids) {
         for (FinBill bill : billMapper.selectByIds(ids)) {
-            if (!"MANUAL".equals(bill.getSourceType())) {
+            if (bill.getSourceType() != BillSource.MANUAL) {
                 throw new BizException("fin.error.generatedBusinessDocumentCannotDeleted", bill.getBillNo());
             }
             if (bill.getSettledAmount().signum() != 0
@@ -189,8 +183,8 @@ public class FinBillService {
     /** 发运单发货：运费生成承运商应付单（借 销售费用），与发货在同一事务 */
     @EventListener
     public void onShipmentShipped(ShipmentShippedEvent e) {
-        FinBill bill = newBill("AP", e.carrierId(), "SHIPMENT", e.shipmentId(), e.shipNo(), e.shipDate(),
-                e.shipDate().plusDays(paymentDays("AP", e.carrierId())), e.freight(), BigDecimal.ZERO);
+        FinBill bill = newBill(BillKind.AP, e.carrierId(), BillSource.SHIPMENT, e.shipmentId(), e.shipNo(), e.shipDate(),
+                e.shipDate().plusDays(paymentDays(BillKind.AP, e.carrierId())), e.freight(), BigDecimal.ZERO);
         bill.setExpenseAccountId(accountRules.accountId(AccountRole.SELLING_EXPENSE));
         bill.setDeptId(e.deptId());
         bill.setRemark("发运单 " + e.shipNo() + " 运费"); // i18n-ignore
@@ -202,7 +196,7 @@ public class FinBillService {
     /** 供应商质量索赔确认：生成红字应付单冲减应付，与确认同一事务 */
     @EventListener
     public void onSupplierClaimConfirmed(SupplierClaimConfirmedEvent e) {
-        FinBill bill = createFromSource(BILL_AP, e.supplierId(), BILL_SOURCE_QUALITY_CLAIM, e.claimId(), e.claimNo(), e.claimDate(),
+        FinBill bill = createFromSource(BillKind.AP, e.supplierId(), BillSource.QUALITY_CLAIM, e.claimId(), e.claimNo(), e.claimDate(),
                 e.amount().negate(), BigDecimal.ZERO, "质量索赔 " + e.claimNo() + "：" + e.reason(), null); // i18n-ignore
         claimMapper.update(Wrappers.<QmsSupplierClaim>lambdaUpdate().set(QmsSupplierClaim::getBillId, bill.getId())
                 .eq(QmsSupplierClaim::getId, e.claimId()));
@@ -220,7 +214,7 @@ public class FinBillService {
     @EventListener
     public void onRebateSettled(RebateSettledEvent e) {
         BigDecimal tax = ScmConstants.tax(e.amount(), REBATE_TAX_RATE);
-        FinBill bill = createFromSource(BILL_AR, e.customerId(), BILL_SOURCE_REBATE, e.rebateId(), e.rebateNo(), e.settleDate(),
+        FinBill bill = createFromSource(BillKind.AR, e.customerId(), BillSource.REBATE, e.rebateId(), e.rebateNo(), e.settleDate(),
                 e.amount().negate(), tax.negate(), "销售返利 " + e.rebateNo(), null); // i18n-ignore
         rebateMapper.update(Wrappers.<ScmRebate>lambdaUpdate().set(ScmRebate::getBillId, bill.getId()).eq(ScmRebate::getId, e.rebateId()));
     }
@@ -234,13 +228,13 @@ public class FinBillService {
     /** 出入库确认后生成应收 / 应付单，与出入库在同一事务 */
     @EventListener
     public void onTradeDocConfirmed(TradeDocConfirmedEvent e) {
-        TradeKind kind = TradeKind.valueOf(e.kind());
-        String billKind = kind.getOrderKind() == OrderKind.SALES ? BILL_AR : BILL_AP;
+        TradeKind kind = e.kind();
+        BillKind billKind = kind.getOrderKind() == OrderKind.SALES ? BillKind.AR : BillKind.AP;
         // 采购订单引用了约定付款天数的采购合同时按合同计算到期日
         Integer contractDays = kind.getOrderKind() == OrderKind.PURCHASE ? scmQueryService.contractPaymentDays(e.docId()) : null;
         LocalDate due = e.bizDate().plusDays(contractDays != null ? contractDays : paymentDays(billKind, e.partnerId()));
-        FinBill bill = newBill(billKind, e.partnerId(), kind.name(), e.docId(), e.docNo(), e.bizDate(), due, e.totalAmount(), e.taxAmount());
-        if (e.currency() != null && !"CNY".equals(e.currency())) {
+        FinBill bill = newBill(billKind, e.partnerId(), BillSource.valueOf(kind.name()), e.docId(), e.docNo(), e.bizDate(), due, e.totalAmount(), e.taxAmount());
+        if (e.currency() != null && !FinConstants.BASE_CURRENCY.equals(e.currency())) {
             bill.setCurrency(e.currency());
             bill.setExchangeRate(e.exchangeRate());
             bill.setAmountFc(e.totalAmountFc());
@@ -260,11 +254,11 @@ public class FinBillService {
             if (bill.getVoucherId() != null) {
                 continue;
             }
-            if ("MANUAL".equals(bill.getSourceType())) {
+            if (bill.getSourceType() == BillSource.MANUAL) {
                 throw new BizException("fin.error.manuallyEnteredOpeningDocumentDoesNot", bill.getBillNo());
             }
             Long voucherId = voucherService.createGenerated(bill.getBillDate(),
-                    "AR".equals(bill.getKind()) ? VoucherSource.AR : VoucherSource.AP, bill.getBillNo(), lines(bill));
+                    bill.getKind().voucherSource(), bill.getBillNo(), lines(bill));
             billMapper.update(Wrappers.<FinBill>lambdaUpdate().set(FinBill::getVoucherId, voucherId).eq(FinBill::getId, bill.getId()));
             count++;
         }
@@ -279,16 +273,16 @@ public class FinBillService {
     @Transactional
     public Long writeOffBadDebt(Long id, BigDecimal amount, LocalDate date, String reason) {
         FinBill bill = billMapper.selectById(id);
-        if (bill == null || !"AR".equals(bill.getKind())) {
+        if (bill == null || bill.getKind() != BillKind.AR) {
             throw new BizException("fin.error.receivableDoesNotExist");
         }
         if (bill.getAmount().signum() <= 0 || amount == null || amount.signum() <= 0) {
             throw new BizException("fin.error.onlyNonReversalReceivablesWrittenOff");
         }
-        if (bill.getVoucherId() == null && !"MANUAL".equals(bill.getSourceType())) {
+        if (bill.getVoucherId() == null && bill.getSourceType() != BillSource.MANUAL) {
             throw new BizException("fin.error.noReceivableVoucherHasGeneratedGenerate", bill.getBillNo());
         }
-        if (bill.getCurrency() != null && !"CNY".equals(bill.getCurrency())) {
+        if (bill.getCurrency() != null && !FinConstants.BASE_CURRENCY.equals(bill.getCurrency())) {
             throw new BizException("fin.error.foreignCurrencyReceivablesReceivePaymentRevalue");
         }
         LocalDate d = date == null ? LocalDate.now() : date;
@@ -298,7 +292,7 @@ public class FinBillService {
         }
         billMapper.addSettledFc(id, amount);
         billMapper.addBadDebt(id, amount);
-        String summary = "坏账核销 " + bill.getBillNo() + " " + partnerName("AR", bill.getPartnerId()) // i18n-ignore
+        String summary = "坏账核销 " + bill.getBillNo() + " " + partnerName(BillKind.AR, bill.getPartnerId()) // i18n-ignore
                 + (reason == null || reason.isBlank() ? "" : " " + reason);
         return voucherService.createGenerated(d, VoucherSource.BAD_DEBT, bill.getBillNo(), List.of(
                 VoucherLine.debit(summary, accountRules.accountId(AccountRole.NON_OPERATING_EXPENSE), null, amount),
@@ -313,12 +307,12 @@ public class FinBillService {
         String partner = partnerName(bill.getKind(), bill.getPartnerId());
         List<VoucherLine> lines = new ArrayList<>();
         BigDecimal sign = BigDecimal.valueOf(bill.getAmount().signum() < 0 ? -1 : 1);
-        if ("AR".equals(bill.getKind())) {
-            String summary = (BILL_SOURCE_PROJECT.equals(bill.getSourceType()) ? "项目开票 " : BILL_SOURCE_TICKET.equals(bill.getSourceType()) ? "服务收费 " // i18n-ignore
-                    : BILL_SOURCE_REBATE.equals(bill.getSourceType()) ? "销售返利 " : sign.signum() < 0 ? "销售退货 " : "销售出库 ") // i18n-ignore
+        if (bill.getKind() == BillKind.AR) {
+            String summary = (bill.getSourceType() == BillSource.PROJECT ? "项目开票 " : bill.getSourceType() == BillSource.TICKET ? "服务收费 " // i18n-ignore
+                    : bill.getSourceType() == BillSource.REBATE ? "销售返利 " : sign.signum() < 0 ? "销售退货 " : "销售出库 ") // i18n-ignore
                     + bill.getSourceNo() + " " + partner;
             BigDecimal net = bill.getAmount().subtract(bill.getTaxAmount());
-            boolean project = BILL_SOURCE_PROJECT.equals(bill.getSourceType());
+            boolean project = bill.getSourceType() == BillSource.PROJECT;
             lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, bill.getAmount())
                     .withCustomer(bill.getPartnerId()).withProject(bill.getProjectId()));
             if (isTradeDoc(bill)) {
@@ -329,14 +323,14 @@ public class FinBillService {
                 // 项目开票计入合同负债，按完工百分比确认收入时再转入主营业务收入（项目月结）
                 // 服务工单收费计入其他业务收入
                 AccountRole revenue = project ? AccountRole.CONTRACT_LIABILITY
-                        : BILL_SOURCE_TICKET.equals(bill.getSourceType()) ? AccountRole.OTHER_REVENUE : AccountRole.REVENUE;
+                        : bill.getSourceType() == BillSource.TICKET ? AccountRole.OTHER_REVENUE : AccountRole.REVENUE;
                 lines.add(VoucherLine.credit(summary, accountRules.accountId(revenue), null, net)
                         .withProject(bill.getProjectId()));
             }
             lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.OUTPUT_VAT), null, bill.getTaxAmount()));
             return lines;
         }
-        if (BILL_SOURCE_QUALITY_CLAIM.equals(bill.getSourceType())) {
+        if (bill.getSourceType() == BillSource.QUALITY_CLAIM) {
             // 质量索赔（红字应付单）：借 应付账款 / 贷 营业外收入
             String summary = "质量索赔 " + bill.getSourceNo() + " " + partner; // i18n-ignore
             BigDecimal amount = bill.getAmount().negate();
@@ -347,7 +341,7 @@ public class FinBillService {
         }
         if (bill.getExpenseAccountId() != null) {
             // 费用类应付（运费等）：借 费用科目、进项税额 / 贷 应付账款
-            String summary = "SHIPMENT".equals(bill.getSourceType()) ? "运费 " + bill.getSourceNo() + " " + partner // i18n-ignore
+            String summary = bill.getSourceType() == BillSource.SHIPMENT ? "运费 " + bill.getSourceNo() + " " + partner // i18n-ignore
                     : bill.getSourceNo() + " " + partner;
             lines.add(VoucherLine.debit(summary, bill.getExpenseAccountId(), bill.getDeptId(), bill.getAmount().subtract(bill.getTaxAmount())));
             lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INPUT_VAT), null, bill.getTaxAmount()));
@@ -367,7 +361,7 @@ public class FinBillService {
     }
 
     private static boolean isTradeDoc(FinBill bill) {
-        return Arrays.stream(TradeKind.values()).anyMatch(k -> k.name().equals(bill.getSourceType()));
+        return bill.getSourceType() != null && bill.getSourceType().isTrade();
     }
 
     /** 不含税收入按出库单各物料分类的金额比例分摊，尾差计入最后一类 */
@@ -390,10 +384,10 @@ public class FinBillService {
         return result;
     }
 
-    private FinBill newBill(String kind, Long partnerId, String sourceType, Long sourceId, String sourceNo, LocalDate billDate,
+    private FinBill newBill(BillKind kind, Long partnerId, BillSource sourceType, Long sourceId, String sourceNo, LocalDate billDate,
                             LocalDate dueDate, BigDecimal amount, BigDecimal tax) {
         FinBill bill = new FinBill();
-        bill.setBillNo(docNoService.next("AR".equals(kind) ? "YS" : "YF"));
+        bill.setBillNo(docNoService.next(kind == BillKind.AR ? FinDocNos.RECEIVABLE : FinDocNos.PAYABLE));
         bill.setKind(kind);
         bill.setPartnerId(partnerId);
         bill.setSourceType(sourceType);
@@ -406,26 +400,30 @@ public class FinBillService {
         bill.setSettledAmount(BigDecimal.ZERO);
         bill.setInvoicedAmount(BigDecimal.ZERO);
         bill.setBadDebtAmount(BigDecimal.ZERO);
-        bill.setCurrency("CNY");
+        bill.setCurrency(FinConstants.BASE_CURRENCY);
         bill.setExchangeRate(BigDecimal.ONE);
         bill.setAmountFc(amount);
         bill.setSettledFc(BigDecimal.ZERO);
-        bill.setStatus("UNSETTLED");
+        bill.setStatus(BillStatus.UNSETTLED);
         bill.setCreateBy(SecurityUtils.getUserId());
         return bill;
     }
 
-    private int paymentDays(String kind, Long partnerId) {
-        Integer days = "AR".equals(kind) ? customerService.get(partnerId).getPaymentDays() : supplierService.get(partnerId).getPaymentDays();
+    private int paymentDays(BillKind kind, Long partnerId) {
+        Integer days = kind == BillKind.AR ? customerService.get(partnerId).getPaymentDays() : supplierService.get(partnerId).getPaymentDays();
         return days == null ? 0 : days;
     }
 
-    String partnerName(String kind, Long partnerId) {
-        return FinConstants.BILL_AR.equals(kind) || SettleKind.RECEIPT.name().equals(kind) ? customerService.get(partnerId).getName() : supplierService.get(partnerId).getName();
+    String partnerName(BillKind kind, Long partnerId) {
+        return kind == BillKind.AR ? customerService.get(partnerId).getName() : supplierService.get(partnerId).getName();
     }
 
-    static void checkKind(String kind) {
-        if (!KINDS.contains(kind)) {
+    String partnerName(SettleKind kind, Long partnerId) {
+        return partnerName(kind.billKind(), partnerId);
+    }
+
+    static void checkKind(BillKind kind) {
+        if (kind == null) {
             throw new BizException("fin.error.invalidDocumentKind", kind);
         }
     }

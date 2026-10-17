@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.dto;
 
+import com.lemon.erp.modules.fin.model.BudgetControl;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -20,5 +21,5 @@ public record BudgetRequest(
         @NotNull(message = "{fin.valid.selectAccount}") Long accountId,
         @NotNull(message = "{fin.valid.enterMonthlyBudgets}") @Size(min = 12, max = 12, message = "{fin.valid.enterBudgetMonths}") List<BigDecimal> months,
         @Size(max = 255) String remark,
-        @jakarta.validation.constraints.Pattern(regexp = "^(NONE|WARN|BLOCK)?$", message = "{fin.valid.invalidBudgetControlMode}") String controlMode) {
+        BudgetControl controlMode) {
 }

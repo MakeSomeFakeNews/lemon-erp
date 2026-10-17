@@ -49,18 +49,17 @@ public class CrmFollowupService {
         }
         Long customerId = null;
         switch (req.targetType()) {
-            case "CUSTOMER" -> {
+            case CUSTOMER -> {
                 customerService.detail(req.targetId());
                 customerId = req.targetId();
                 customerService.touchFollow(customerId, time, req.nextTime());
             }
-            case "LEAD" -> leadService.touchFollow(req.targetId(), time);
-            case "OPPORTUNITY" -> {
+            case LEAD -> leadService.touchFollow(req.targetId(), time);
+            case OPPORTUNITY -> {
                 CrmOpportunity o = opportunityService.get(req.targetId());
                 customerId = o.getCustomerId();
                 customerService.touchFollow(customerId, time, req.nextTime());
             }
-            default -> throw new BizException("crm.valid.invalidFollowUpTarget");
         }
         LoginUser user = SecurityUtils.getLoginUser();
         CrmFollowup f = new CrmFollowup();

@@ -22,6 +22,8 @@ import com.lemon.erp.modules.scm.mapper.ScmRequisitionItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmRequisitionMapper;
 import com.lemon.erp.modules.scm.model.OrderDeletedEvent;
 import com.lemon.erp.modules.scm.model.OrderKind;
+import com.lemon.erp.modules.scm.model.OrderSource;
+import com.lemon.erp.modules.scm.model.RequisitionStatus;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
@@ -58,7 +60,7 @@ public class ScmRequisitionService {
     private final FlowApi flowApi;
 
     @DataPermission(table = "scm_requisition", deptColumn = "dept_id", userColumn = "create_by")
-    public PageResult<ScmRequisition> page(long current, long size, String keyword, String status) {
+    public PageResult<ScmRequisition> page(long current, long size, String keyword, RequisitionStatus status) {
         Page<ScmRequisition> page = Page.of(current, size);
         requisitionMapper.selectPageList(page, keyword, status);
         return PageResult.of(page);
@@ -75,10 +77,10 @@ public class ScmRequisitionService {
     public Long create(RequisitionRequest req) {
         LoginUser user = SecurityUtils.getLoginUser();
         ScmRequisition r = new ScmRequisition();
-        r.setReqNo(docNoService.next("QG"));
+        r.setReqNo(docNoService.next(ScmDocNos.REQUISITION));
         r.setReqDate(req.reqDate());
         r.setRemark(req.remark());
-        r.setStatus("DRAFT");
+        r.setStatus(RequisitionStatus.DRAFT);
         r.setDeptId(user.deptId());
         r.setCreateBy(user.userId());
         requisitionMapper.insert(r);
@@ -112,10 +114,10 @@ public class ScmRequisitionService {
     public boolean submit(Long id) {
         ScmRequisition r = getDraft(id);
         if (!flowApi.isAvailable(PROCESS_KEY)) {
-            transit(id, "DRAFT", "APPROVED", true);
+            transit(id, RequisitionStatus.DRAFT, RequisitionStatus.APPROVED, true);
             return false;
         }
-        transit(id, "DRAFT", "APPROVING", false);
+        transit(id, RequisitionStatus.DRAFT, RequisitionStatus.APPROVING, false);
         String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of("reqNo", r.getReqNo()));
         requisitionMapper.update(Wrappers.<ScmRequisition>lambdaUpdate().set(ScmRequisition::getFlowInstanceId, instanceId)
                 .eq(ScmRequisition::getId, id));
@@ -130,10 +132,10 @@ public class ScmRequisitionService {
         Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
         boolean approved = e.status() == FlowStatus.APPROVED;
         requisitionMapper.update(Wrappers.<ScmRequisition>lambdaUpdate()
-                .set(ScmRequisition::getStatus, approved ? "APPROVED" : "DRAFT")
+                .set(ScmRequisition::getStatus, approved ? RequisitionStatus.APPROVED : RequisitionStatus.DRAFT)
                 .set(approved, ScmRequisition::getApproveBy, SecurityUtils.getUserIdOrNull())
                 .set(approved, ScmRequisition::getApproveTime, LocalDateTime.now())
-                .eq(ScmRequisition::getId, id).eq(ScmRequisition::getStatus, "APPROVING"));
+                .eq(ScmRequisition::getId, id).eq(ScmRequisition::getStatus, RequisitionStatus.APPROVING));
     }
 
     /**
@@ -144,7 +146,7 @@ public class ScmRequisitionService {
     @Transactional
     public List<Long> toOrders(Long id, Long warehouseId) {
         ScmRequisition r = getAccessible(id);
-        if (!"APPROVED".equals(r.getStatus())) {
+        if (r.getStatus() != RequisitionStatus.APPROVED) {
             throw new BizException("scm.error.requisitionMustApprovedBeforeGeneratingPurchase");
         }
         List<ScmRequisitionItem> items = itemMapper.selectList(Wrappers.<ScmRequisitionItem>lambdaQuery()
@@ -170,28 +172,28 @@ public class ScmRequisitionService {
             LocalDate delivery = list.stream().map(ScmRequisitionItem::getRequiredDate).filter(java.util.Objects::nonNull)
                     .min(LocalDate::compareTo).orElse(null);
             Long orderId = orderService.createDraft(OrderKind.PURCHASE, new OrderRequest(supplierId, LocalDate.now(), delivery, warehouseId,
-                    "请购单 " + r.getReqNo(), lines), "REQUISITION"); // i18n-ignore
+                    "请购单 " + r.getReqNo(), lines), OrderSource.REQUISITION); // i18n-ignore
             itemMapper.update(Wrappers.<ScmRequisitionItem>lambdaUpdate().set(ScmRequisitionItem::getOrderId, orderId)
                     .in(ScmRequisitionItem::getId, list.stream().map(ScmRequisitionItem::getId).toList()));
             orderIds.add(orderId);
         });
-        transit(id, "APPROVED", "ORDERED", false);
+        transit(id, RequisitionStatus.APPROVED, RequisitionStatus.ORDERED, false);
         return orderIds;
     }
 
     @Transactional
     public void close(Long id) {
         ScmRequisition r = getAccessible(id);
-        if (!"APPROVED".equals(r.getStatus()) && !"DRAFT".equals(r.getStatus())) {
+        if (!r.getStatus().isClosable()) {
             throw new BizException("scm.error.onlyDraftApprovedRequisitionsClosed");
         }
-        transit(id, r.getStatus(), "CLOSED", false);
+        transit(id, r.getStatus(), RequisitionStatus.CLOSED, false);
     }
 
     /** 生成的草稿采购订单删除后，明细恢复为未下单，请购单恢复为已批准 */
     @EventListener
     public void onOrderDeleted(OrderDeletedEvent e) {
-        if (!OrderKind.PURCHASE.name().equals(e.kind())) {
+        if (e.kind() != OrderKind.PURCHASE) {
             return;
         }
         List<ScmRequisitionItem> items = itemMapper.selectList(Wrappers.<ScmRequisitionItem>lambdaQuery().in(ScmRequisitionItem::getOrderId, e.orderIds()));
@@ -199,8 +201,8 @@ public class ScmRequisitionService {
             return;
         }
         itemMapper.update(Wrappers.<ScmRequisitionItem>lambdaUpdate().set(ScmRequisitionItem::getOrderId, null).in(ScmRequisitionItem::getOrderId, e.orderIds()));
-        requisitionMapper.update(Wrappers.<ScmRequisition>lambdaUpdate().set(ScmRequisition::getStatus, "APPROVED")
-                .in(ScmRequisition::getId, items.stream().map(ScmRequisitionItem::getRequisitionId).distinct().toList()).eq(ScmRequisition::getStatus, "ORDERED"));
+        requisitionMapper.update(Wrappers.<ScmRequisition>lambdaUpdate().set(ScmRequisition::getStatus, RequisitionStatus.APPROVED)
+                .in(ScmRequisition::getId, items.stream().map(ScmRequisitionItem::getRequisitionId).distinct().toList()).eq(ScmRequisition::getStatus, RequisitionStatus.ORDERED));
     }
 
     private void saveItems(Long id, RequisitionRequest req) {
@@ -217,7 +219,7 @@ public class ScmRequisitionService {
         }
     }
 
-    private void transit(Long id, String from, String to, boolean approve) {
+    private void transit(Long id, RequisitionStatus from, RequisitionStatus to, boolean approve) {
         int updated = requisitionMapper.update(Wrappers.<ScmRequisition>lambdaUpdate()
                 .set(ScmRequisition::getStatus, to)
                 .set(approve, ScmRequisition::getApproveBy, SecurityUtils.getUserIdOrNull())
@@ -231,7 +233,7 @@ public class ScmRequisitionService {
 
     private ScmRequisition getDraft(Long id) {
         ScmRequisition r = getAccessible(id);
-        if (!"DRAFT".equals(r.getStatus())) {
+        if (r.getStatus() != RequisitionStatus.DRAFT) {
             throw new BizException("scm.error.onlyDraftRequisitionsModifiedDeletedSubmitted");
         }
         return r;

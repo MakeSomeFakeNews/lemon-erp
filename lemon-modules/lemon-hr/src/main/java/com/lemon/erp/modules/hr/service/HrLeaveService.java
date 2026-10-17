@@ -17,7 +17,12 @@ import com.lemon.erp.modules.hr.entity.HrEmployee;
 import com.lemon.erp.modules.hr.entity.HrLeave;
 import com.lemon.erp.modules.hr.entity.HrShift;
 import com.lemon.erp.modules.hr.mapper.HrLeaveMapper;
+import com.lemon.erp.modules.hr.model.EmployeeStatus;
 import com.lemon.erp.modules.hr.model.HrConstants;
+import com.lemon.erp.modules.hr.model.HrDictValues;
+import com.lemon.erp.modules.hr.model.LeaveKind;
+import com.lemon.erp.modules.hr.model.LeaveStatus;
+import com.lemon.erp.modules.hr.model.OvertimeComp;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
@@ -43,19 +48,7 @@ import java.util.Objects;
 public class HrLeaveService {
 
     public static final String PROCESS_KEY = "hr_leave";
-    /** 加班补偿方式（hr_leave.type，字典 hr_overtime_comp）：发加班费 / 转调休 */
-    public static final String OVERTIME_PAY = "PAY";
-    public static final String OVERTIME_TO_LEAVE = "TO_LEAVE";
     private static final String BUSINESS_KEY_PREFIX = "hr_leave:";
-    /*
-     * 假期类型（业务字典 hr_leave_type，租户可新增）。以下内置值有特殊处理：年假、调休提交时校验余额，
-     * 事假全额扣发、病假按比例扣发工资（HrPayrollService）。其他类型（婚假、产假及租户新增的类型）
-     * 按普通带薪假处理：不校验余额、不扣工资，已通过的请假在考勤汇总中同样不计旷工
-     */
-    public static final String LEAVE_ANNUAL = "ANNUAL";
-    public static final String LEAVE_PERSONAL = "PERSONAL";
-    public static final String LEAVE_SICK = "SICK";
-    public static final String LEAVE_COMPENSATORY = "COMPENSATORY";
 
     private final HrLeaveMapper leaveMapper;
     private final HrEmployeeService employeeService;
@@ -86,7 +79,7 @@ public class HrLeaveService {
     @Transactional
     public Long apply(LeaveRequest req) {
         HrEmployee e = employeeService.current();
-        if (HrEmployeeService.LEFT.equals(e.getStatus())) {
+        if (e.getStatus() == EmployeeStatus.LEFT) {
             throw new BizException("hr.error.employeesWhoHaveLeftCannotSubmit");
         }
         if (!req.endTime().isAfter(req.startTime())) {
@@ -99,7 +92,7 @@ public class HrLeaveService {
         if (req.hours().multiply(BigDecimal.valueOf(60)).compareTo(BigDecimal.valueOf(spanHours)) > 0) {
             throw new BizException("hr.error.durationCannotExceedTimeBetweenStart");
         }
-        boolean leave = "LEAVE".equals(req.kind());
+        boolean leave = req.kind() == LeaveKind.LEAVE;
         if (leave && (req.type() == null || req.type().isBlank())) {
             throw new BizException("hr.error.selectLeaveType");
         }
@@ -107,38 +100,38 @@ public class HrLeaveService {
             dictLookup.check("hr_leave_type", req.type(), "hr.label.leaveType");
         }
         // 加班的补偿方式：加班费（默认）或转调休
-        String overtimeType = OVERTIME_TO_LEAVE.equals(req.type()) ? OVERTIME_TO_LEAVE : OVERTIME_PAY;
+        OvertimeComp overtimeComp = OvertimeComp.of(req.type());
         payrollLock.checkOpen(req.startTime().toLocalDate(), leave ? "hr.label.submitLeaveRequestsMonth" : "hr.label.submitOvertimeRequestsMonth");
         if (leaveMapper.countOverlapping(e.getId(), req.kind(), null, req.startTime(), req.endTime()) > 0) {
             throw new BizException(leave ? "hr.error.leaveRequestAlreadyExistsPeriod" : "hr.error.overtimeRequestAlreadyExistsPeriod");
         }
-        if (leave && LEAVE_ANNUAL.equals(req.type())) {
+        if (leave && HrDictValues.LEAVE_ANNUAL.equals(req.type())) {
             checkAnnualBalance(e, req);
         }
-        if (leave && LEAVE_COMPENSATORY.equals(req.type())) {
+        if (leave && HrDictValues.LEAVE_COMPENSATORY.equals(req.type())) {
             BigDecimal balance = compensatoryBalance(e.getId());
             if (req.hours().compareTo(balance) > 0) {
                 throw new BizException("hr.error.insufficientCompTimeHoursAvailableApproved", balance.stripTrailingZeros().toPlainString());
             }
         }
         HrLeave l = new HrLeave();
-        l.setLeaveNo(docNoService.next("QJ"));
+        l.setLeaveNo(docNoService.next(HrDocNos.LEAVE));
         l.setEmployeeId(e.getId());
         l.setKind(req.kind());
-        l.setType(leave ? req.type() : overtimeType);
+        l.setType(leave ? req.type() : overtimeComp.name());
         l.setStartTime(req.startTime());
         l.setEndTime(req.endTime());
         l.setHours(req.hours());
         l.setReason(req.reason());
-        l.setStatus("APPROVING");
+        l.setStatus(LeaveStatus.APPROVING);
         l.setDeptId(e.getDeptId());
         l.setCreateBy(SecurityUtils.getUserId());
         leaveMapper.insert(l);
         if (flowApi.isAvailable(PROCESS_KEY)) {
             Map<String, Object> vars = new HashMap<>();
-            vars.put("kind", req.kind());
-            vars.put("type", leave ? req.type() : "OVERTIME");
-            vars.put("compensation", leave ? "" : overtimeType);
+            vars.put("kind", req.kind().name());
+            vars.put("type", leave ? req.type() : LeaveKind.OVERTIME.name());
+            vars.put("compensation", leave ? "" : overtimeComp.name());
             vars.put("hours", req.hours().doubleValue());
             vars.put("days", req.hours().divide(HrConstants.DAY_HOURS, 1, RoundingMode.HALF_UP).doubleValue());
             vars.put("leaveNo", l.getLeaveNo());
@@ -156,8 +149,8 @@ public class HrLeaveService {
         if (!Objects.equals(l.getEmployeeId(), e.getId())) {
             throw new BizException("hr.error.onlyCancelOwnRequests");
         }
-        boolean approving = "APPROVING".equals(l.getStatus());
-        if (!approving && !("APPROVED".equals(l.getStatus()) && l.getStartTime().isAfter(LocalDateTime.now()))) {
+        boolean approving = l.getStatus() == LeaveStatus.APPROVING;
+        if (!approving && !(l.getStatus() == LeaveStatus.APPROVED && l.getStartTime().isAfter(LocalDateTime.now()))) {
             throw new BizException("hr.error.onlyRequestsUnderApprovalNotYet");
         }
         payrollLock.checkOpen(l.getStartTime().toLocalDate(), "hr.label.cancelRequestsMonth");
@@ -165,16 +158,16 @@ public class HrLeaveService {
             flowApi.cancel(l.getFlowInstanceId(), "撤销申请");  // i18n-ignore 审批意见存库
         }
         leaveMapper.update(Wrappers.<HrLeave>lambdaUpdate()
-                .set(HrLeave::getStatus, "CANCELED")
+                .set(HrLeave::getStatus, LeaveStatus.CANCELED)
                 .eq(HrLeave::getId, id)
-                .in(HrLeave::getStatus, "APPROVING", "APPROVED"));
+                .in(HrLeave::getStatus, LeaveStatus.EFFECTIVE));
     }
 
     /** 人事审批（没有走审批流程的申请） */
     @Transactional
     public void approve(Long id, ApproveRequest req) {
         HrLeave l = get(id);
-        if (!"APPROVING".equals(l.getStatus())) {
+        if (l.getStatus() != LeaveStatus.APPROVING) {
             throw new BizException("hr.error.requestNotUnderApproval");
         }
         if (l.getFlowInstanceId() != null) {
@@ -184,7 +177,7 @@ public class HrLeaveService {
             throw new BizException("hr.error.cannotApproveOwnRequest");
         }
         payrollLock.checkOpen(l.getStartTime().toLocalDate(), "hr.label.approveRequestsMonth");
-        finish(id, req.approved() ? "APPROVED" : "REJECTED", SecurityUtils.getUserId(), req.comment());
+        finish(id, req.approved() ? LeaveStatus.APPROVED : LeaveStatus.REJECTED, SecurityUtils.getUserId(), req.comment());
     }
 
     /** 审批流程结束：通过 / 拒绝 / 撤销，与审批操作同一事务，不抛异常 */
@@ -194,12 +187,7 @@ public class HrLeaveService {
             return;
         }
         Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        String status = switch (e.status()) {
-            case APPROVED -> "APPROVED";
-            case REJECTED -> "REJECTED";
-            default -> "CANCELED";
-        };
-        finish(id, status, SecurityUtils.getUserIdOrNull(), null);
+        finish(id, LeaveStatus.ofFlow(e.status()), SecurityUtils.getUserIdOrNull(), null);
     }
 
     public HrLeave get(Long id) {
@@ -218,20 +206,20 @@ public class HrLeaveService {
 
     /** 本年已用（含审批中）年假小时 */
     public BigDecimal annualUsedHours(Long employeeId, int year) {
-        return leaveMapper.sumHours(employeeId, LEAVE_ANNUAL, LocalDate.of(year, 1, 1).atStartOfDay(),
+        return leaveMapper.sumHours(employeeId, HrDictValues.LEAVE_ANNUAL, LocalDate.of(year, 1, 1).atStartOfDay(),
                 LocalDate.of(year + 1, 1, 1).atStartOfDay());
     }
 
     // ---------------------------------------------------------------- 内部
 
-    private void finish(Long id, String status, Long approveBy, String comment) {
+    private void finish(Long id, LeaveStatus status, Long approveBy, String comment) {
         leaveMapper.update(Wrappers.<HrLeave>lambdaUpdate()
                 .set(HrLeave::getStatus, status)
                 .set(HrLeave::getApproveBy, approveBy)
                 .set(HrLeave::getApproveTime, LocalDateTime.now())
                 .set(HrLeave::getApproveComment, comment)
                 .eq(HrLeave::getId, id)
-                .eq(HrLeave::getStatus, "APPROVING"));
+                .eq(HrLeave::getStatus, LeaveStatus.APPROVING));
     }
 
     /** 年假余额 = 年假天数 × 标准工时 - 本年已用（含审批中） */

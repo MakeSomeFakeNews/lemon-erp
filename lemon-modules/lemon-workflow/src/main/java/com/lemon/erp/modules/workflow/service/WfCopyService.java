@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
+import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.framework.workflow.identity.FlowIdentityProvider;
 import com.lemon.erp.modules.workflow.entity.WfCopy;
 import com.lemon.erp.modules.workflow.mapper.WfCopyMapper;
@@ -58,7 +59,7 @@ public class WfCopyService {
                 records.stream().map(WfCopy::getStartUserId).filter(Objects::nonNull).collect(Collectors.toSet()));
         records.forEach(c -> {
             HistoricProcessInstance instance = instances.get(c.getProcessInstanceId());
-            c.setStatus(instance == null ? null : instance.getBusinessStatus());
+            c.setStatus(instance == null ? null : FlowStatus.of(instance.getBusinessStatus()));
             c.setStartUserName(names.get(c.getStartUserId()));
         });
         return PageResult.of(page);

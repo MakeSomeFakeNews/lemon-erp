@@ -19,7 +19,7 @@
             <if test="q.keyword != null and q.keyword != ''">
                 AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%'))
             </if>
-            <if test="q.status != null and q.status != ''">AND o.status = #{q.status}</if>
+            <if test="q.status != null">AND o.status = #{q.status}</if>
             <if test="q.beginDate != null">AND o.plan_start &gt;= #{q.beginDate}</if>
             <if test="q.endDate != null">AND o.plan_start &lt;= #{q.endDate}</if>
         </where>

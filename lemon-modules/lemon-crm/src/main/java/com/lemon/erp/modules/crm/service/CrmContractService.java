@@ -19,10 +19,13 @@ import com.lemon.erp.modules.crm.entity.CrmOpportunity;
 import com.lemon.erp.modules.crm.mapper.CrmCollectionPlanMapper;
 import com.lemon.erp.modules.crm.mapper.CrmContractMapper;
 import com.lemon.erp.modules.crm.mapper.CrmOpportunityMapper;
+import com.lemon.erp.modules.crm.model.CollectStatus;
+import com.lemon.erp.modules.crm.model.SalesContractStatus;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
 import com.lemon.erp.modules.scm.entity.ScmQuotation;
 import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
 import com.lemon.erp.modules.scm.mapper.ScmQuotationMapper;
+import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.service.ScmCustomerService;
 import com.lemon.erp.modules.scm.service.ScmQuotationService;
 import com.lemon.erp.modules.system.entity.SysUser;
@@ -81,8 +84,8 @@ public class CrmContractService {
     @Transactional
     public Long create(ContractRequest req) {
         CrmContract c = new CrmContract();
-        c.setContractNo(docNoService.next("XSHT"));
-        c.setStatus("DRAFT");
+        c.setContractNo(docNoService.next(CrmDocNos.CONTRACT));
+        c.setStatus(SalesContractStatus.DRAFT);
         c.setCreateBy(SecurityUtils.getUserId());
         fill(c, req);
         contractMapper.insert(c);
@@ -92,7 +95,7 @@ public class CrmContractService {
 
     @Transactional
     public void update(Long id, ContractRequest req) {
-        requireStatus(id, "DRAFT");
+        requireStatus(id, SalesContractStatus.DRAFT);
         CrmContract c = new CrmContract();
         fill(c, req);
         contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getName, c.getName())
@@ -108,7 +111,7 @@ public class CrmContractService {
 
     @Transactional
     public void delete(Long id) {
-        requireStatus(id, "DRAFT");
+        requireStatus(id, SalesContractStatus.DRAFT);
         planMapper.delete(Wrappers.<CrmCollectionPlan>lambdaQuery().eq(CrmCollectionPlan::getContractId, id));
         contractMapper.deleteById(id);
     }
@@ -116,12 +119,12 @@ public class CrmContractService {
     /** @return true 已发起审批 */
     @Transactional
     public boolean submit(Long id) {
-        CrmContract c = requireStatus(id, "DRAFT");
+        CrmContract c = requireStatus(id, SalesContractStatus.DRAFT);
         if (!flowApi.isAvailable(PROCESS_KEY)) {
-            activate(id, "DRAFT");
+            activate(id, SalesContractStatus.DRAFT);
             return false;
         }
-        transit(id, "DRAFT", "APPROVING");
+        transit(id, SalesContractStatus.DRAFT, SalesContractStatus.APPROVING);
         String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id,
                 Map.of("contractNo", c.getContractNo(), "amount", c.getAmount(), "customerId", c.getCustomerId()));
         contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getFlowInstanceId, instanceId).eq(CrmContract::getId, id));
@@ -135,22 +138,22 @@ public class CrmContractService {
         }
         Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
         if (e.status() == FlowStatus.APPROVED) {
-            activate(id, "APPROVING");
+            activate(id, SalesContractStatus.APPROVING);
         } else {
-            contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getStatus, "DRAFT")
-                    .eq(CrmContract::getId, id).eq(CrmContract::getStatus, "APPROVING"));
+            contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getStatus, SalesContractStatus.DRAFT)
+                    .eq(CrmContract::getId, id).eq(CrmContract::getStatus, SalesContractStatus.APPROVING));
         }
     }
 
     /** 关联已有的销售订单（同一客户、已审核及之后） */
     @Transactional
     public void linkOrder(Long id, Long orderId) {
-        CrmContract c = requireStatus(id, "ACTIVE");
+        CrmContract c = requireStatus(id, SalesContractStatus.ACTIVE);
         ScmOrder order = orderMapper.selectById(orderId);
-        if (order == null || !"SALES".equals(order.getKind()) || !order.getPartnerId().equals(c.getCustomerId())) {
+        if (order == null || order.getKind() != OrderKind.SALES || !order.getPartnerId().equals(c.getCustomerId())) {
             throw new BizException("crm.error.selectSalesOrderCustomer");
         }
-        if ("DRAFT".equals(order.getStatus()) || "APPROVING".equals(order.getStatus())) {
+        if (order.getStatus().isUnaudited()) {
             throw new BizException("crm.error.salesOrderOnlyLinkedContractAfter");
         }
         if (contractMapper.exists(Wrappers.<CrmContract>lambdaQuery().eq(CrmContract::getOrderId, orderId).ne(CrmContract::getId, id))) {
@@ -162,7 +165,7 @@ public class CrmContractService {
     /** 由合同关联的已批准报价单生成销售订单（草稿）并关联 */
     @Transactional
     public Long toOrder(Long id, Long warehouseId) {
-        CrmContract c = requireStatus(id, "ACTIVE");
+        CrmContract c = requireStatus(id, SalesContractStatus.ACTIVE);
         if (c.getOrderId() != null) {
             throw new BizException("crm.error.contractAlreadyLinkedSalesOrder", c.getOrderNo());
         }
@@ -176,15 +179,15 @@ public class CrmContractService {
 
     @Transactional
     public void complete(Long id) {
-        requireStatus(id, "ACTIVE");
-        transit(id, "ACTIVE", "COMPLETED");
+        requireStatus(id, SalesContractStatus.ACTIVE);
+        transit(id, SalesContractStatus.ACTIVE, SalesContractStatus.COMPLETED);
     }
 
     @Transactional
     public void terminate(Long id, String reason) {
-        requireStatus(id, "ACTIVE");
-        contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getStatus, "TERMINATED")
-                .set(CrmContract::getTerminateReason, reason).eq(CrmContract::getId, id).eq(CrmContract::getStatus, "ACTIVE"));
+        requireStatus(id, SalesContractStatus.ACTIVE);
+        contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getStatus, SalesContractStatus.TERMINATED)
+                .set(CrmContract::getTerminateReason, reason).eq(CrmContract::getId, id).eq(CrmContract::getStatus, SalesContractStatus.ACTIVE));
     }
 
     /** 回款计划及各期回款状态：实际回款按计划日期先后分摊 */
@@ -197,8 +200,8 @@ public class CrmContractService {
             BigDecimal got = left.min(p.getAmount());
             left = left.subtract(got);
             p.setReceivedAmount(got);
-            p.setCollectStatus(got.compareTo(p.getAmount()) >= 0 ? "RECEIVED"
-                    : p.getPlanDate().isBefore(today) ? "OVERDUE" : got.signum() > 0 ? "PARTIAL" : "PENDING");
+            p.setCollectStatus(got.compareTo(p.getAmount()) >= 0 ? CollectStatus.RECEIVED
+                    : p.getPlanDate().isBefore(today) ? CollectStatus.OVERDUE : got.signum() > 0 ? CollectStatus.PARTIAL : CollectStatus.PENDING);
             p.setContractNo(c.getContractNo());
             p.setCustomerName(c.getCustomerName());
             p.setOwnerId(c.getOwnerId());
@@ -210,13 +213,13 @@ public class CrmContractService {
     public List<CrmCollectionPlan> overduePlans() {
         List<CrmCollectionPlan> result = new ArrayList<>();
         for (CrmContract c : contractMapper.selectActive()) {
-            plans(c).stream().filter(p -> "OVERDUE".equals(p.getCollectStatus())).forEach(result::add);
+            plans(c).stream().filter(p -> p.getCollectStatus() == CollectStatus.OVERDUE).forEach(result::add);
         }
         return result;
     }
 
-    private void activate(Long id, String from) {
-        if (contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getStatus, "ACTIVE")
+    private void activate(Long id, SalesContractStatus from) {
+        if (contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getStatus, SalesContractStatus.ACTIVE)
                 .set(CrmContract::getApproveTime, LocalDateTime.now()).eq(CrmContract::getId, id).eq(CrmContract::getStatus, from)) == 0) {
             throw new BizException("crm.error.contractStatusHasChangedRefresh");
         }
@@ -284,16 +287,16 @@ public class CrmContractService {
         }
     }
 
-    private CrmContract requireStatus(Long id, String status) {
+    private CrmContract requireStatus(Long id, SalesContractStatus status) {
         getAccessible(id);
         CrmContract c = contractMapper.selectDetail(id);
-        if (!status.equals(c.getStatus())) {
+        if (c.getStatus() != status) {
             throw new BizException("crm.error.contractHasInvalidStatusRefresh", c.getContractNo());
         }
         return c;
     }
 
-    private void transit(Long id, String from, String to) {
+    private void transit(Long id, SalesContractStatus from, SalesContractStatus to) {
         if (contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getStatus, to).eq(CrmContract::getId, id)
                 .eq(CrmContract::getStatus, from)) == 0) {
             throw new BizException("crm.error.contractStatusHasChangedRefresh");

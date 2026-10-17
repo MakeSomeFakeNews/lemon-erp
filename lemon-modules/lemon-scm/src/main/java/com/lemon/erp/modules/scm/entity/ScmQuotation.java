@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.scm.model.QuotationStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -33,7 +34,7 @@ public class ScmQuotation extends BaseEntity {
     private LocalDate validTo;
 
     /** DRAFT / APPROVING / APPROVED / ORDERED / LOST */
-    private String status;
+    private QuotationStatus status;
 
     private BigDecimal totalAmount;
 

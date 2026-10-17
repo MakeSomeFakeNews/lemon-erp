@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.modules.hr.model.TrainingStatus;
 import com.lemon.erp.modules.fin.service.FinAccountRuleService;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -39,11 +40,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class HrTrainingService {
 
-    private static final Map<String, Set<String>> TRANSITIONS = Map.of(
-            "ONGOING", Set.of("PLANNED"),
-            "FINISHED", Set.of("ONGOING"),
-            "CANCELED", Set.of("PLANNED", "ONGOING"));
-
     private final HrTrainingMapper trainingMapper;
     private final HrTrainingRecordMapper recordMapper;
     private final FinVoucherService voucherService;
@@ -73,14 +69,14 @@ public class HrTrainingService {
     public void create(HrTraining t) {
         check(t);
         t.setId(null);
-        t.setStatus("PLANNED");
+        t.setStatus(TrainingStatus.PLANNED);
         t.setCreateBy(SecurityUtils.getUserId());
         trainingMapper.insert(t);
     }
 
     public void update(Long id, HrTraining t) {
         HrTraining old = get(id);
-        if (!"PLANNED".equals(old.getStatus()) && !"ONGOING".equals(old.getStatus())) {
+        if (!old.getStatus().isEditable()) {
             throw new BizException("hr.error.finishedCanceledTrainingCannotModified");
         }
         check(t);
@@ -94,7 +90,7 @@ public class HrTrainingService {
     @Transactional
     public void delete(List<Long> ids) {
         for (HrTraining t : trainingMapper.selectByIds(ids)) {
-            if (!"PLANNED".equals(t.getStatus()) && !"CANCELED".equals(t.getStatus())) {
+            if (!t.getStatus().isDeletable()) {
                 throw new BizException("hr.error.trainingHasStartedCannotDeleted", t.getTitle());
             }
         }
@@ -104,17 +100,16 @@ public class HrTrainingService {
 
     /** 状态流转：开始、结束、取消 */
     @Transactional
-    public void changeStatus(Long id, String status) {
+    public void changeStatus(Long id, TrainingStatus status) {
         HrTraining t = get(id);
-        Set<String> from = TRANSITIONS.get(status);
-        if (from == null || !from.contains(t.getStatus())) {
+        if (!t.getStatus().canChangeTo(status)) {
             throw new BizException("hr.error.operationNotAllowedCurrentTrainingStatus");
         }
         trainingMapper.update(Wrappers.<HrTraining>lambdaUpdate().set(HrTraining::getStatus, status)
                 .set(HrTraining::getUpdateTime, LocalDateTime.now())
                 .eq(HrTraining::getId, id).eq(HrTraining::getStatus, t.getStatus()));
         // 培训结束：有费用时生成培训费凭证（借 管理费用-培训费 / 贷 其他应付款）
-        if ("FINISHED".equals(status) && t.getCost() != null && t.getCost().signum() > 0 && t.getVoucherId() == null) {
+        if (status == TrainingStatus.FINISHED && t.getCost() != null && t.getCost().signum() > 0 && t.getVoucherId() == null) {
             String summary = "培训费 " + t.getTitle();  // i18n-ignore 凭证摘要存库
             LocalDate date = t.getEndDate() != null ? t.getEndDate() : LocalDate.now();
             Long voucherId = voucherService.createGenerated(date, VoucherSource.EXPENSE, null, List.of(
@@ -156,7 +151,7 @@ public class HrTrainingService {
     @Transactional
     public void saveRecords(Long id, List<TrainingRecordRequest> items) {
         HrTraining t = get(id);
-        if (!"ONGOING".equals(t.getStatus()) && !"FINISHED".equals(t.getStatus())) {
+        if (!t.getStatus().isRecordable()) {
             throw new BizException("hr.error.attendanceScoresOnlyRecordedAfterTraining");
         }
         Map<Long, HrTrainingRecord> records = recordMapper.selectList(Wrappers.<HrTrainingRecord>lambdaQuery()
@@ -195,7 +190,7 @@ public class HrTrainingService {
     }
 
     private static void checkEditable(HrTraining t) {
-        if (!"PLANNED".equals(t.getStatus()) && !"ONGOING".equals(t.getStatus())) {
+        if (!t.getStatus().isEditable()) {
             throw new BizException("hr.error.traineesCannotChangedFinishedCanceledTraining");
         }
     }

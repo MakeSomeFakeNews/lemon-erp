@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.wms.model.DocStatus;
+import com.lemon.erp.modules.wms.model.StockBizType;
+import com.lemon.erp.modules.wms.model.StockDocType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -22,10 +25,13 @@ public class WmsStockDoc extends BaseEntity {
 
     private String docNo;
 
-    /** StockBizType：IN / OUT / TRANSFER */
-    private String kind;
+    /** 入库 / 出库 / 调拨 */
+    private StockBizType kind;
 
-    /** 入库类型（字典 wms_in_type）/ 出库类型（字典 wms_out_type），调拨为空 */
+    /**
+     * 入库类型（StockInType）/ 出库类型（StockOutType），调拨为空。两种类型存于同一列，故保留 String，
+     * 比较通过 StockDocType#matches 或 {@link #docType()} 完成
+     */
     private String bizType;
 
     /** 收发类别：其他入库为字典 wms_in_category，其他出库、报废出库为字典 wms_out_category（业务字典），可为空；成本凭证按类别取对方科目 */
@@ -39,8 +45,7 @@ public class WmsStockDoc extends BaseEntity {
 
     private LocalDate bizDate;
 
-    /** DocStatus */
-    private String status;
+    private DocStatus status;
 
     private BigDecimal totalQty;
 
@@ -97,4 +102,9 @@ public class WmsStockDoc extends BaseEntity {
     /** 明细，仅详情返回 */
     @TableField(exist = false)
     private List<WmsStockDocItem> items;
+
+    /** 解析后的入库 / 出库类型，调拨或无效取值为 null */
+    public StockDocType docType() {
+        return kind == null ? null : StockDocType.of(kind, bizType);
+    }
 }

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.mapper;
 
+import com.lemon.erp.modules.fin.model.ExpenseClaimStatus;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.modules.fin.entity.FinExpenseClaim;
@@ -12,7 +13,7 @@ import java.util.Map;
 
 public interface FinExpenseClaimMapper extends BaseMapper<FinExpenseClaim> {
 
-    Page<FinExpenseClaim> selectPageList(Page<FinExpenseClaim> page, @Param("keyword") String keyword, @Param("status") String status,
+    Page<FinExpenseClaim> selectPageList(Page<FinExpenseClaim> page, @Param("keyword") String keyword, @Param("status") ExpenseClaimStatus status,
                                          @Param("userId") Long userId);
 
     FinExpenseClaim selectDetail(@Param("id") Long id);

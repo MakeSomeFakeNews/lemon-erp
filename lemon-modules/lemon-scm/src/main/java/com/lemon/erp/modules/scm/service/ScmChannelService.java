@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.dto.ChannelRequests;
@@ -19,6 +20,7 @@ import com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
 import com.lemon.erp.modules.scm.mapper.ScmPriceListMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
+import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.model.SalesChannel;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
@@ -43,9 +45,6 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class ScmChannelService {
-
-    /** 经销商订单的来源 */
-    public static final String SOURCE_DEALER = "DEALER";
 
     private final ScmChannelReportMapper reportMapper;
     private final ScmPriceListMapper priceListMapper;
@@ -92,13 +91,13 @@ public class ScmChannelService {
 
     public PageResult<ScmOrder> orders(Long customerId, long current, long size) {
         Page<ScmOrder> page = orderMapper.selectPage(Page.of(current, size), Wrappers.<ScmOrder>lambdaQuery()
-                .eq(ScmOrder::getKind, OrderKind.SALES.name()).eq(ScmOrder::getPartnerId, customerId).orderByDesc(ScmOrder::getId));
+                .eq(ScmOrder::getKind, OrderKind.SALES).eq(ScmOrder::getPartnerId, customerId).orderByDesc(ScmOrder::getId));
         return PageResult.of(page);
     }
 
     public ScmOrder order(Long customerId, Long id) {
         ScmOrder order = orderMapper.selectDetail(id);
-        if (order == null || !OrderKind.SALES.name().equals(order.getKind()) || !customerId.equals(order.getPartnerId())) {
+        if (order == null || order.getKind() != OrderKind.SALES || !customerId.equals(order.getPartnerId())) {
             throw new BizException("scm.error.orderDoesNotExist");
         }
         order.setItems(itemMapper.selectByOrderId(id));
@@ -121,14 +120,14 @@ public class ScmChannelService {
         }).toList();
         OrderRequest order = new OrderRequest(customerId, today, req.deliveryDate(), null, req.remark(), items, null, null, null,
                 req.rebateAmount());
-        Long id = orderService.createDraft(OrderKind.SALES, order, SOURCE_DEALER, true);
+        Long id = orderService.createDraft(OrderKind.SALES, order, OrderSource.DEALER, true);
         // 记到负责销售名下，按其数据权限可见、审核
         if (dealer.getOwnerId() != null) {
             orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate().set(ScmOrder::getCreateBy, dealer.getOwnerId())
                     .set(ScmOrder::getDeptId, reportMapper.selectUserDept(dealer.getOwnerId())).eq(ScmOrder::getId, id));
         }
         ScmOrder created = orderMapper.selectById(id);
-        messageSender.sendToPermission("scm:sales:approve", MessageSender.Message.of("REMIND",
+        messageSender.sendToPermission("scm:sales:approve", MessageSender.Message.of(MessageCategory.REMIND,
                 "经销商订货待审核：" + created.getOrderNo(), dealer.getName() + " 订货 ¥" + created.getTotalAmount().stripTrailingZeros().toPlainString(), // i18n-ignore
                 "/scm/sales?id=" + id));
         return id;

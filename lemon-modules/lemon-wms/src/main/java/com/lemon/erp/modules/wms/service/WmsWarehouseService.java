@@ -18,6 +18,7 @@ import com.lemon.erp.modules.wms.mapper.WmsLocationMapper;
 import com.lemon.erp.modules.wms.mapper.WmsStockDocMapper;
 import com.lemon.erp.modules.wms.mapper.WmsStockMapper;
 import com.lemon.erp.modules.wms.mapper.WmsWarehouseMapper;
+import com.lemon.erp.modules.wms.model.WarehouseType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,7 +63,7 @@ public class WmsWarehouseService {
                         .eq(WmsWarehouse::getStatus, 1)
                         .orderByAsc(WmsWarehouse::getSort)
                         .orderByAsc(WmsWarehouse::getId))
-                .stream().map(w -> new OptionItem(w.getId(), w.getCode(), w.getName(), w.getType())).toList();
+                .stream().map(w -> new OptionItem(w.getId(), w.getCode(), w.getName(), w.getType() == null ? null : w.getType().name())).toList();
     }
 
     public void create(WmsWarehouse warehouse) {
@@ -121,23 +122,16 @@ public class WmsWarehouseService {
         }
     }
 
-    private static final java.util.Set<String> TYPES = java.util.Set.of("NORMAL", "RAW", "FINISHED", "DEFECT", "CONSIGN_OUT", "CONSIGN_IN");
-
-    private static String normalizeType(String type) {
-        if (type == null || type.isBlank()) {
-            return "NORMAL";
-        }
-        if (!TYPES.contains(type)) {
-            throw new BizException("wms.error.invalidWarehouseType", type);
-        }
-        return type;
+    /** 未选择仓库类型时为普通仓 */
+    private static WarehouseType normalizeType(WarehouseType type) {
+        return type == null ? WarehouseType.NORMAL : type;
     }
 
     /** 寄售仓必须指定客户（客户寄售仓）/ 供应商（供应商寄售仓），其他仓库不关联往来单位 */
     private static void checkPartner(WmsWarehouse w) {
-        if (w.getType().startsWith("CONSIGN")) {
+        if (w.getType().isConsign()) {
             if (w.getPartnerId() == null) {
-                if ("CONSIGN_OUT".equals(w.getType())) {
+                if (w.getType() == WarehouseType.CONSIGN_OUT) {
                     throw new BizException("wms.error.selectCustomerCustomerConsignmentWarehouse");
                 }
                 throw new BizException("wms.error.selectSupplierSupplierConsignmentWarehouse");

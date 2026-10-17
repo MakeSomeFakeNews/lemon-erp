@@ -24,7 +24,9 @@ import com.lemon.erp.modules.fin.model.NoteAction;
 import com.lemon.erp.modules.fin.model.NoteKind;
 import com.lemon.erp.modules.fin.model.NoteStatus;
 import com.lemon.erp.modules.fin.model.SettleKind;
-import com.lemon.erp.modules.fin.model.SettleMethod;
+import com.lemon.erp.modules.fin.model.SettleMethods;
+import com.lemon.erp.modules.fin.model.BillKind;
+import com.lemon.erp.modules.fin.model.BillSource;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import lombok.RequiredArgsConstructor;
@@ -48,8 +50,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FinNoteService {
     private static final String PAYMENT_BUSINESS_KEY = FinSettlementService.PAYMENT_PROCESS_KEY + ":";
-    /** 拒付转回的应收单来源（字典 fin_bill_source） */
-    private static final String BILL_SOURCE_NOTE = "NOTE";
 
     private final FinNoteMapper noteMapper;
     private final FinNoteLogMapper logMapper;
@@ -103,8 +103,8 @@ public class FinNoteService {
             throw new BizException("fin.error.noteNumberAlreadyRegistered", noteNo);
         }
         AccountRole noteAccount = receivable ? AccountRole.NOTES_RECEIVABLE : AccountRole.NOTES_PAYABLE;
-        Long settlementId = settlementService.createForNote(new SettlementRequest(receivable ? SettleKind.RECEIPT.name() : SettleKind.PAYMENT.name(),
-                req.partnerId(), req.actionDate(), accountRules.accountId(noteAccount), SettleMethod.NOTE.name(),
+        Long settlementId = settlementService.createForNote(new SettlementRequest(receivable ? SettleKind.RECEIPT : SettleKind.PAYMENT,
+                req.partnerId(), req.actionDate(), accountRules.accountId(noteAccount), SettleMethods.NOTE,
                 (receivable ? "收票 " : "开具票据 ") + noteNo, req.items()), noteAccount); // i18n-ignore
         FinSettlement settlement = requireCnySettlement(settlementId);
         FinNote note = new FinNote();
@@ -134,8 +134,8 @@ public class FinNoteService {
     public void endorse(Long id, NoteRequests.Endorse req) {
         FinNote note = requireStatus(id, NoteKind.RECEIVABLE, NoteStatus.HELD, "fin.error.noteCannotEndorsedCurrentStatus");
         checkTotal(req.items(), note.getAmount());
-        Long settlementId = settlementService.createForNote(new SettlementRequest(SettleKind.PAYMENT.name(), req.supplierId(), req.actionDate(),
-                accountRules.accountId(AccountRole.NOTES_RECEIVABLE), SettleMethod.NOTE.name(), "背书转让票据 " + note.getNoteNo(), // i18n-ignore
+        Long settlementId = settlementService.createForNote(new SettlementRequest(SettleKind.PAYMENT, req.supplierId(), req.actionDate(),
+                accountRules.accountId(AccountRole.NOTES_RECEIVABLE), SettleMethods.NOTE, "背书转让票据 " + note.getNoteNo(), // i18n-ignore
                 req.items()), AccountRole.NOTES_RECEIVABLE);
         FinSettlement settlement = requireCnySettlement(settlementId);
         transit(note, NoteStatus.HELD, FinSettlementService.isApproving(settlement) ? NoteStatus.ENDORSING : NoteStatus.ENDORSED);
@@ -184,7 +184,7 @@ public class FinNoteService {
                 VoucherLine.debit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, note.getAmount())
                         .withCustomer(note.getPartnerId()),
                 VoucherLine.credit(summary, notesReceivable(), null, note.getAmount())));
-        FinBill bill = billService.createFromSource(FinConstants.BILL_AR, note.getPartnerId(), BILL_SOURCE_NOTE, note.getId(), note.getNoteNo(),
+        FinBill bill = billService.createFromSource(BillKind.AR, note.getPartnerId(), BillSource.NOTE, note.getId(), note.getNoteNo(),
                 req.actionDate(), note.getAmount(), BigDecimal.ZERO, summary, null);
         billMapper.update(Wrappers.<FinBill>lambdaUpdate().set(FinBill::getVoucherId, log.getVoucherId()).eq(FinBill::getId, bill.getId()));
         logMapper.update(Wrappers.<FinNoteLog>lambdaUpdate().set(FinNoteLog::getBillId, bill.getId()).eq(FinNoteLog::getId, log.getId()));

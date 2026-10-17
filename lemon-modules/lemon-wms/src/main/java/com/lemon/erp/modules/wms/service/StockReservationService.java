@@ -10,6 +10,7 @@ import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.entity.WmsReservation;
 import com.lemon.erp.modules.wms.mapper.WmsMaterialMapper;
 import com.lemon.erp.modules.wms.mapper.WmsReservationMapper;
+import com.lemon.erp.modules.wms.model.ReservationSource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +41,7 @@ public class StockReservationService {
         return PageResult.of(page);
     }
 
-    public List<WmsReservation> bySource(String sourceType, Long sourceId) {
+    public List<WmsReservation> bySource(ReservationSource sourceType, Long sourceId) {
         return reservationMapper.selectBySource(sourceType, sourceId);
     }
 
@@ -66,7 +67,7 @@ public class StockReservationService {
 
     /** 预留：数量不超过空闲库存 */
     @Transactional
-    public void reserve(String sourceType, Long sourceId, Long sourceItemId, String sourceNo, Long warehouseId, Long materialId,
+    public void reserve(ReservationSource sourceType, Long sourceId, Long sourceItemId, String sourceNo, Long warehouseId, Long materialId,
                         BigDecimal qty, String remark) {
         if (qty.signum() <= 0) {
             throw new BizException("wms.error.reservedQuantityMustGreater");
@@ -93,7 +94,7 @@ public class StockReservationService {
 
     /** 来源出库：核销该明细在该仓库的预留 */
     @Transactional
-    public void consume(String sourceType, Long sourceItemId, Long warehouseId, BigDecimal qty) {
+    public void consume(ReservationSource sourceType, Long sourceItemId, Long warehouseId, BigDecimal qty) {
         BigDecimal left = qty;
         for (WmsReservation r : reservationMapper.selectList(Wrappers.<WmsReservation>lambdaQuery()
                 .eq(WmsReservation::getSourceType, sourceType).eq(WmsReservation::getSourceItemId, sourceItemId)
@@ -109,14 +110,14 @@ public class StockReservationService {
 
     /** 释放来源的全部预留 */
     @Transactional
-    public void release(String sourceType, Long sourceId) {
+    public void release(ReservationSource sourceType, Long sourceId) {
         reservationMapper.update(Wrappers.<WmsReservation>lambdaUpdate().set(WmsReservation::getQty, BigDecimal.ZERO)
                 .eq(WmsReservation::getSourceType, sourceType).eq(WmsReservation::getSourceId, sourceId).gt(WmsReservation::getQty, 0));
     }
 
     /** 释放来源明细的全部预留（订单变更减少数量、删除明细时） */
     @Transactional
-    public void releaseItem(String sourceType, Long sourceItemId) {
+    public void releaseItem(ReservationSource sourceType, Long sourceItemId) {
         reservationMapper.update(Wrappers.<WmsReservation>lambdaUpdate().set(WmsReservation::getQty, BigDecimal.ZERO)
                 .eq(WmsReservation::getSourceType, sourceType).eq(WmsReservation::getSourceItemId, sourceItemId).gt(WmsReservation::getQty, 0));
     }

@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.bi.service;
 
+import com.lemon.erp.modules.bi.model.DateRange;
+import com.lemon.erp.modules.bi.model.MeasureFormat;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -17,7 +19,6 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -156,14 +157,7 @@ public class BiOlapService {
         if (!StringUtils.hasText(req.range())) {
             return new LocalDate[]{req.begin(), req.end()};
         }
-        return switch (req.range()) {
-            case "THIS_MONTH" -> new LocalDate[]{today.withDayOfMonth(1), today};
-            case "THIS_QUARTER" -> new LocalDate[]{YearMonth.of(today.getYear(), (today.getMonthValue() - 1) / 3 * 3 + 1).atDay(1), today};
-            case "THIS_YEAR" -> new LocalDate[]{today.withDayOfYear(1), today};
-            case "LAST_12M" -> new LocalDate[]{YearMonth.from(today).minusMonths(11).atDay(1), today};
-            case "ALL" -> new LocalDate[]{null, null};
-            default -> throw new BizException("bi.error.invalidDateRange", req.range());
-        };
+        return DateRange.of(req.range()).resolve(today);
     }
 
     private static Integer toPeriod(LocalDate d) {
@@ -181,7 +175,7 @@ public class BiOlapService {
                 if (measure.isRatio()) {
                     BigDecimal num = dec(m.get(measure.numerator()));
                     BigDecimal den = dec(m.get(measure.denominator()));
-                    BigDecimal v = den.signum() == 0 ? null : "PRICE".equals(measure.format())
+                    BigDecimal v = den.signum() == 0 ? null : measure.format() == MeasureFormat.PRICE
                             ? num.divide(den, 4, RoundingMode.HALF_UP)
                             : num.multiply(HUNDRED).divide(den, 2, RoundingMode.HALF_UP);
                     m.put(measure.key(), v);

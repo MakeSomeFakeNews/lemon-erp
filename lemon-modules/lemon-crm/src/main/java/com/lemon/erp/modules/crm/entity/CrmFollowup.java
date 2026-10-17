@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.lemon.erp.modules.crm.model.FollowupTarget;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -18,7 +19,7 @@ import java.time.LocalDateTime;
 public class CrmFollowup extends BaseEntity {
 
     /** 跟进对象 CUSTOMER客户 LEAD线索 OPPORTUNITY商机 */
-    private String targetType;
+    private FollowupTarget targetType;
 
     /** 对象ID */
     private Long targetId;

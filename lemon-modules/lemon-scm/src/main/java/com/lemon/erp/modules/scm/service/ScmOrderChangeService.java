@@ -15,6 +15,8 @@ import com.lemon.erp.modules.scm.mapper.ScmOrderChangeItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmOrderChangeMapper;
 import com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
+import com.lemon.erp.modules.scm.model.OrderChangeAction;
+import com.lemon.erp.modules.scm.model.OrderChangeStatus;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.OrderStatus;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
@@ -36,6 +38,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
 import static com.lemon.erp.modules.scm.model.ScmConstants.tax;
 
@@ -49,7 +52,6 @@ public class ScmOrderChangeService {
 
     public static final String PROCESS_KEY = "scm_order_change";
     private static final String BUSINESS_KEY_PREFIX = "scm_order_change:";
-    private static final BigDecimal DEFAULT_TAX_RATE = BigDecimal.valueOf(13);
 
     private final ScmOrderChangeMapper changeMapper;
     private final ScmOrderChangeItemMapper changeItemMapper;
@@ -76,11 +78,11 @@ public class ScmOrderChangeService {
     @Transactional
     public Long create(OrderKind kind, Long orderId, OrderChangeRequest req) {
         ScmOrder order = orderService.getAccessible(kind, orderId);
-        if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
+        if (!order.getStatus().isExecutable()) {
             throw new BizException("scm.error.onlyApprovedPartiallyCompletedOrdersChanged");
         }
         if (changeMapper.exists(Wrappers.<ScmOrderChange>lambdaQuery().eq(ScmOrderChange::getOrderId, orderId)
-                .eq(ScmOrderChange::getStatus, "APPROVING"))) {
+                .eq(ScmOrderChange::getStatus, OrderChangeStatus.APPROVING))) {
             throw new BizException("scm.error.orderHasChangeRequestPendingApproval");
         }
         Map<Long, ScmOrderItem> items = orderItemMapper.selectByOrderId(orderId).stream()
@@ -90,7 +92,7 @@ public class ScmOrderChangeService {
         for (OrderChangeRequest.Line l : req.lines()) {
             ScmOrderChangeItem ci = new ScmOrderChangeItem();
             ci.setAction(l.action());
-            if ("ADD".equals(l.action())) {
+            if (l.action() == OrderChangeAction.ADD) {
                 if (l.materialId() == null || l.qty() == null || l.price() == null) {
                     throw new BizException("scm.error.newLinesRequireMaterialQuantityUnit");
                 }
@@ -114,7 +116,7 @@ public class ScmOrderChangeService {
                 ci.setOldQty(item.getQty());
                 ci.setOldPrice(item.getPrice());
                 ci.setOldDeliveryDate(item.getDeliveryDate());
-                if ("REMOVE".equals(l.action())) {
+                if (l.action() == OrderChangeAction.REMOVE) {
                     if (item.getDoneQty().signum() != 0 || item.getReturnQty().signum() != 0) {
                         throw new BizException("scm.error.alreadyHasReceiptsDeliveriesCannotDeleted", item.getMaterialCode(), item.getMaterialName());
                     }
@@ -137,15 +139,15 @@ public class ScmOrderChangeService {
         BigDecimal newAmount = order.getTotalAmount();
         for (ScmOrderChangeItem ci : lines) {
             BigDecimal oldLine = ci.getOldQty() == null ? BigDecimal.ZERO : amount(ci.getOldQty(), ci.getOldPrice());
-            BigDecimal newLine = "REMOVE".equals(ci.getAction()) ? BigDecimal.ZERO : amount(ci.getNewQty(), ci.getNewPrice());
+            BigDecimal newLine = ci.getAction() == OrderChangeAction.REMOVE ? BigDecimal.ZERO : amount(ci.getNewQty(), ci.getNewPrice());
             newAmount = newAmount.subtract(oldLine).add(newLine);
         }
         ScmOrderChange c = new ScmOrderChange();
-        c.setChangeNo(docNoService.next("BG"));
+        c.setChangeNo(docNoService.next(ScmDocNos.ORDER_CHANGE));
         c.setOrderId(orderId);
         c.setVersion((order.getVersion() == null ? 1 : order.getVersion()) + 1);
         c.setReason(req.reason());
-        c.setStatus("APPROVING");
+        c.setStatus(OrderChangeStatus.APPROVING);
         c.setOldAmount(order.getTotalAmount());
         c.setNewAmount(newAmount);
         c.setCreateBy(SecurityUtils.getUserId());
@@ -174,27 +176,27 @@ public class ScmOrderChangeService {
         if (e.status() == FlowStatus.APPROVED) {
             apply(id);
         } else {
-            changeMapper.update(Wrappers.<ScmOrderChange>lambdaUpdate().set(ScmOrderChange::getStatus, "REJECTED")
-                    .eq(ScmOrderChange::getId, id).eq(ScmOrderChange::getStatus, "APPROVING"));
+            changeMapper.update(Wrappers.<ScmOrderChange>lambdaUpdate().set(ScmOrderChange::getStatus, OrderChangeStatus.REJECTED)
+                    .eq(ScmOrderChange::getId, id).eq(ScmOrderChange::getStatus, OrderChangeStatus.APPROVING));
         }
     }
 
     /** 生效：写入订单明细，重算合计，升版本 */
     private void apply(Long changeId) {
         ScmOrderChange c = changeMapper.selectById(changeId);
-        if (c == null || changeMapper.update(Wrappers.<ScmOrderChange>lambdaUpdate().set(ScmOrderChange::getStatus, "APPROVED")
+        if (c == null || changeMapper.update(Wrappers.<ScmOrderChange>lambdaUpdate().set(ScmOrderChange::getStatus, OrderChangeStatus.APPROVED)
                 .set(ScmOrderChange::getApproveTime, LocalDateTime.now())
-                .eq(ScmOrderChange::getId, changeId).eq(ScmOrderChange::getStatus, "APPROVING")) == 0) {
+                .eq(ScmOrderChange::getId, changeId).eq(ScmOrderChange::getStatus, OrderChangeStatus.APPROVING)) == 0) {
             return;
         }
         ScmOrder order = orderMapper.selectById(c.getOrderId());
-        if (!OrderStatus.EXECUTABLE.contains(order.getStatus()) && !OrderStatus.COMPLETED.name().equals(order.getStatus())) {
+        if (!order.getStatus().isExecutable() && order.getStatus() != OrderStatus.COMPLETED) {
             throw new BizException("scm.error.orderClosedChangeCannotTakeEffect", order.getOrderNo());
         }
-        boolean sales = OrderKind.SALES.name().equals(order.getKind());
+        boolean sales = order.getKind() == OrderKind.SALES;
         for (ScmOrderChangeItem ci : changeItemMapper.selectList(Wrappers.<ScmOrderChangeItem>lambdaQuery().eq(ScmOrderChangeItem::getChangeId, changeId))) {
             switch (ci.getAction()) {
-                case "ADD" -> {
+                case ADD -> {
                     ScmOrderItem item = new ScmOrderItem();
                     item.setOrderId(order.getId());
                     item.setMaterialId(ci.getMaterialId());
@@ -211,13 +213,13 @@ public class ScmOrderChangeService {
                     changeItemMapper.update(Wrappers.<ScmOrderChangeItem>lambdaUpdate().set(ScmOrderChangeItem::getOrderItemId, item.getId())
                             .eq(ScmOrderChangeItem::getId, ci.getId()));
                 }
-                case "REMOVE" -> {
+                case REMOVE -> {
                     if (orderItemMapper.delete(Wrappers.<ScmOrderItem>lambdaQuery().eq(ScmOrderItem::getId, ci.getOrderItemId())
                             .eq(ScmOrderItem::getDoneQty, BigDecimal.ZERO).eq(ScmOrderItem::getReturnQty, BigDecimal.ZERO)) == 0) {
                         throw new BizException("scm.error.lineAlreadyHasReceiptsDeliveriesCannot");
                     }
                     if (sales) {
-                        reservationService.releaseItem("SALES", ci.getOrderItemId());
+                        reservationService.releaseItem(ScmReservationService.SOURCE_SALES, ci.getOrderItemId());
                     }
                 }
                 default -> {
@@ -232,7 +234,7 @@ public class ScmOrderChangeService {
                             .set(ScmOrderItem::getTaxAmount, tax(amount, item.getTaxRate()))
                             .set(ScmOrderItem::getDeliveryDate, ci.getNewDeliveryDate()).eq(ScmOrderItem::getId, item.getId()));
                     if (sales && ci.getNewQty().compareTo(item.getQty()) < 0) {
-                        reservationService.releaseItem("SALES", item.getId());
+                        reservationService.releaseItem(ScmReservationService.SOURCE_SALES, item.getId());
                     }
                 }
             }

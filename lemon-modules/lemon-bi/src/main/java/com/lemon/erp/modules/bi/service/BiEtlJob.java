@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.bi.service;
 
+import com.lemon.erp.modules.bi.model.EtlTrigger;
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
 import com.lemon.erp.modules.bi.entity.BiEtlLog;
@@ -43,7 +44,7 @@ public class BiEtlJob implements JobHandler {
 
     @Override
     public String run(JobParams params) {
-        BiEtlLog log = etlService.run("SCHEDULE");
+        BiEtlLog log = etlService.run(EtlTrigger.SCHEDULE);
         return log.getStatus() + (log.getRowCounts() == null ? "" : "：" + log.getRowCounts());
     }
 }

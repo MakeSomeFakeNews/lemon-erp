@@ -1,10 +1,11 @@
 package com.lemon.erp.modules.bi.entity;
 
+import com.lemon.erp.modules.bi.model.AlertOperator;
+import com.lemon.erp.modules.bi.model.AlertLevel;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -28,17 +29,15 @@ public class BiAlertRule extends BaseEntity {
     private String metric;
 
     /** GT 大于 / GE 不小于 / LT 小于 / LE 不大于 */
-    @NotBlank(message = "{bi.valid.selectComparison}")
-    @Pattern(regexp = "GT|GE|LT|LE", message = "{bi.valid.invalidComparison}")
-    private String operator;
+    @NotNull(message = "{bi.valid.selectComparison}")
+    private AlertOperator operator;
 
     @NotNull(message = "{bi.valid.enterThreshold}")
     private BigDecimal threshold;
 
     /** INFO / WARN / DANGER */
-    @NotBlank(message = "{bi.valid.selectLevel}")
-    @Pattern(regexp = "INFO|WARN|DANGER", message = "{bi.valid.invalidLevel}")
-    private String level;
+    @NotNull(message = "{bi.valid.selectLevel}")
+    private AlertLevel level;
 
     private Integer enabled;
 

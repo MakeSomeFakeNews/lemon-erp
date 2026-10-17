@@ -121,7 +121,7 @@ public class MesEquipmentService {
             throw new BizException("mes.error.equipmentHasScrapped");
         }
         MesMaintenance m = new MesMaintenance();
-        m.setOrderNo(docNoService.next("WX"));
+        m.setOrderNo(docNoService.next(MesDocNos.MAINTENANCE));
         m.setEquipmentId(req.equipmentId());
         m.setType(req.type());
         m.setContent(req.content().trim());

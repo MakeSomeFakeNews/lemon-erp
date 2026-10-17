@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.lemon.erp.modules.wms.dto.SerialQuery;
 import com.lemon.erp.modules.wms.dto.SerialView;
 import com.lemon.erp.modules.wms.entity.WmsSerial;
+import com.lemon.erp.modules.wms.model.SerialStatus;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.Collection;
@@ -16,7 +17,7 @@ public interface WmsSerialMapper extends BaseMapper<WmsSerial> {
 
     /** 批量更新序列号的位置和状态 */
     void updateSlot(@Param("ids") Collection<Long> ids, @Param("warehouseId") Long warehouseId,
-                    @Param("locationId") long locationId, @Param("batchNo") String batchNo, @Param("status") String status);
+                    @Param("locationId") long locationId, @Param("batchNo") String batchNo, @Param("status") SerialStatus status);
 
     IPage<SerialView> selectPageList(IPage<SerialView> page, @Param("q") SerialQuery query);
 

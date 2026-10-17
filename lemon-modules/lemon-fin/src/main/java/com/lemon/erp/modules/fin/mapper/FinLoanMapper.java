@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.mapper;
 
+import com.lemon.erp.modules.fin.model.LoanStatus;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.modules.fin.entity.FinLoan;
@@ -11,7 +12,7 @@ import java.util.List;
 
 public interface FinLoanMapper extends BaseMapper<FinLoan> {
 
-    Page<FinLoan> selectPageList(Page<FinLoan> page, @Param("keyword") String keyword, @Param("status") String status,
+    Page<FinLoan> selectPageList(Page<FinLoan> page, @Param("keyword") String keyword, @Param("status") LoanStatus status,
                                  @Param("userId") Long userId);
 
     FinLoan selectDetail(@Param("id") Long id);

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.scm.model.OrderChangeStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -28,7 +29,7 @@ public class ScmOrderChange extends BaseEntity {
     private String reason;
 
     /** APPROVING / APPROVED / REJECTED */
-    private String status;
+    private OrderChangeStatus status;
 
     private BigDecimal oldAmount;
 

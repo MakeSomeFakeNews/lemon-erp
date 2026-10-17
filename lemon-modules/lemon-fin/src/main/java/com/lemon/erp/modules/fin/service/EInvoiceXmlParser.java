@@ -52,7 +52,7 @@ final class EInvoiceXmlParser {
         Element typeEl = first(doc.getDocumentElement(), "EInvoiceType");
         String typeName = typeEl == null ? null : text(typeEl, "LabelName");
         // 按 XML 中的发票类型名称识别
-        String type = (typeName != null && typeName.contains("普通") ? InvoiceType.E_NORMAL : InvoiceType.E_SPECIAL).name(); // i18n-ignore
+        InvoiceType type = typeName != null && typeName.contains("普通") ? InvoiceType.E_NORMAL : InvoiceType.E_SPECIAL; // i18n-ignore
         List<InvoiceImport.Line> lines = new ArrayList<>();
         NodeList items = doc.getElementsByTagNameNS("*", "IssuItemInformation");
         if (items.getLength() == 0) {

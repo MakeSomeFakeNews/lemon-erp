@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.mes.dto;
 
+import com.lemon.erp.modules.mes.model.KitStatus;
+import com.lemon.erp.modules.mes.model.WorkOrderStatus;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -14,7 +16,7 @@ import java.time.LocalDate;
 public class WoKitView {
     private Long woId;
     private String woNo;
-    private String status;
+    private WorkOrderStatus status;
     private Long productId;
     private String productCode;
     private String productName;
@@ -31,5 +33,5 @@ public class WoKitView {
     /** 按已领 + 分配到的库存最多能生产的数量（含已完工） */
     private BigDecimal buildableQty;
     /** 字典 mes_kit_status：ISSUED 已领齐 / COMPLETE 齐套 / PARTIAL 部分缺料（还能继续生产）/ SHORT 缺料（无法继续生产） */
-    private String kitStatus;
+    private KitStatus kitStatus;
 }

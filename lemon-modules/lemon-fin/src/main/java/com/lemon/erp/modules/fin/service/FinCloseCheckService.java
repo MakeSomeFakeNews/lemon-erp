@@ -1,5 +1,9 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.BillSource;
+import com.lemon.erp.modules.fin.model.CheckLevel;
+import com.lemon.erp.framework.workflow.ApproveStatus;
+import com.lemon.erp.modules.fin.model.PeriodStatus;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -53,7 +57,7 @@ public class FinCloseCheckService {
     private final FinReportService reportService;
 
     /** @param level OK 通过 / WARN 提示 / ERROR 不能结账 */
-    public record CheckItem(String name, String level, String message) {
+    public record CheckItem(String name, CheckLevel level, String message) {
     }
 
     public List<CheckItem> check(int period) {
@@ -63,21 +67,21 @@ public class FinCloseCheckService {
         List<CheckItem> items = new ArrayList<>();
 
         FinPeriod earlierOpen = periodMapper.selectOne(Wrappers.<FinPeriod>lambdaQuery().lt(FinPeriod::getPeriod, period)
-                .eq(FinPeriod::getStatus, FinPeriodService.OPEN).orderByAsc(FinPeriod::getPeriod).last("LIMIT 1"));
+                .eq(FinPeriod::getStatus, PeriodStatus.OPEN).orderByAsc(FinPeriod::getPeriod).last("LIMIT 1"));
         items.add(earlierOpen == null ? ok("fin.label.earlierPeriodsClosed") : error("fin.label.earlierPeriodsClosed", Messages.get("fin.text.periodHasNotClosed", earlierOpen.getPeriod())));
 
         long unposted = voucherMapper.selectCount(Wrappers.<FinVoucher>lambdaQuery().eq(FinVoucher::getPeriod, period)
-                .ne(FinVoucher::getStatus, VoucherStatus.POSTED.name()));
+                .ne(FinVoucher::getStatus, VoucherStatus.POSTED));
         items.add(unposted == 0 ? ok("fin.label.allVouchersPosted") : error("fin.label.allVouchersPosted", Messages.get("fin.text.voucherSNotApprovedNotPosted", unposted)));
 
         boolean balanced = reportService.trialBalance(period, period, false).balanced();
         items.add(balanced ? ok("fin.label.trialBalance") : error("fin.label.trialBalance", Messages.get("fin.text.debitsCreditsOpeningBalancePeriodActivity")));
 
         long bills = billMapper.selectCount(Wrappers.<FinBill>lambdaQuery().between(FinBill::getBillDate, begin, end)
-                .isNull(FinBill::getVoucherId).ne(FinBill::getSourceType, "MANUAL"));
+                .isNull(FinBill::getVoucherId).ne(FinBill::getSourceType, BillSource.MANUAL));
         items.add(bills == 0 ? ok("fin.label.vouchersGeneratedReceivablesPayables") : warn("fin.label.vouchersGeneratedReceivablesPayables", Messages.get("fin.text.receivablePayableDocumentSWithoutVouchers", bills)));
         long settles = settlementMapper.selectCount(Wrappers.<FinSettlement>lambdaQuery().between(FinSettlement::getSettleDate, begin, end)
-                .isNull(FinSettlement::getVoucherId).eq(FinSettlement::getStatus, "APPROVED"));
+                .isNull(FinSettlement::getVoucherId).eq(FinSettlement::getStatus, ApproveStatus.APPROVED));
         items.add(settles == 0 ? ok("fin.label.vouchersGeneratedReceiptsPayments") : warn("fin.label.vouchersGeneratedReceiptsPayments", Messages.get("fin.text.receiptPaymentDocumentSWithoutVouchers", settles)));
 
         FinCostRun run = costRunMapper.selectOne(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getPeriod, period).last("LIMIT 1"));
@@ -100,14 +104,14 @@ public class FinCloseCheckService {
 
     /** 检查项名称返回给前端显示，按请求语言翻译；message 已在调用处翻译 */
     private static CheckItem ok(String name) {
-        return new CheckItem(Messages.get(name), "OK", null);
+        return new CheckItem(Messages.get(name), CheckLevel.OK, null);
     }
 
     private static CheckItem warn(String name, String message) {
-        return new CheckItem(Messages.get(name), "WARN", message);
+        return new CheckItem(Messages.get(name), CheckLevel.WARN, message);
     }
 
     private static CheckItem error(String name, String message) {
-        return new CheckItem(Messages.get(name), "ERROR", message);
+        return new CheckItem(Messages.get(name), CheckLevel.ERROR, message);
     }
 }

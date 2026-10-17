@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.bi.controller;
 
+import com.lemon.erp.modules.bi.model.EtlTrigger;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
@@ -128,6 +129,6 @@ public class BiDecisionController {
     @PreAuthorize("@ss.hasPerm('bi:etl:run')")
     @OperLog(title = "数据仓库-同步", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<BiEtlLog> run() {
-        return R.ok(etlService.run("MANUAL"));
+        return R.ok(etlService.run(EtlTrigger.MANUAL));
     }
 }

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.service;
 
+import com.lemon.erp.modules.mes.model.SupplementStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -108,11 +109,11 @@ public class MesSupplementService {
         BigDecimal total = req.items().stream().map(SupplementRequest.Item::qty).reduce(BigDecimal.ZERO, BigDecimal::add);
         boolean flow = flowApi.isAvailable(PROCESS_KEY);
         MesWoSupplement s = new MesWoSupplement();
-        s.setSuppNo(docNoService.next("BS"));
+        s.setSuppNo(docNoService.next(MesDocNos.SUPPLEMENT));
         s.setWoId(wo.getId());
         s.setReason(req.reason());
         s.setTotalQty(total);
-        s.setStatus(flow ? "APPROVING" : "APPROVED");
+        s.setStatus(flow ? SupplementStatus.APPROVING : SupplementStatus.APPROVED);
         s.setApproveTime(flow ? null : LocalDateTime.now());
         s.setRemark(req.remark());
         s.setDeptId(user.deptId());
@@ -145,14 +146,14 @@ public class MesSupplementService {
         if (!Objects.equals(s.getCreateBy(), SecurityUtils.getUserId())) {
             throw new BizException("mes.error.onlyCancelOwnRequests");
         }
-        if (!"APPROVING".equals(s.getStatus()) && !"APPROVED".equals(s.getStatus())) {
+        if (!s.getStatus().isActive()) {
             throw new BizException("mes.error.onlyRequestsUnderApprovalAwaitingIssue");
         }
-        if ("APPROVING".equals(s.getStatus()) && s.getFlowInstanceId() != null
+        if (s.getStatus() == SupplementStatus.APPROVING && s.getFlowInstanceId() != null
                 && flowApi.getStatus(s.getFlowInstanceId()) == FlowStatus.RUNNING) {
             flowApi.cancel(s.getFlowInstanceId(), "撤销补料申请"); // i18n-ignore
         }
-        transit(id, List.of("APPROVING", "APPROVED"), "CANCELED");
+        transit(id, SupplementStatus.ACTIVE, SupplementStatus.CANCELED);
     }
 
     /**
@@ -167,7 +168,7 @@ public class MesSupplementService {
         if (s == null) {
             throw new BizException("mes.error.supplementaryIssueRequestDoesNotExist");
         }
-        if (!"APPROVED".equals(s.getStatus())) {
+        if (s.getStatus() != SupplementStatus.APPROVED) {
             throw new BizException("mes.error.onlyRequestsAwaitingIssueIssued");
         }
         Map<Long, MesWoSupplementItem> items = itemMapper.selectBySupp(id).stream()
@@ -201,7 +202,7 @@ public class MesSupplementService {
         });
         boolean allIssued = itemMapper.selectBySupp(id).stream().allMatch(i -> i.getIssuedQty().compareTo(i.getQty()) >= 0);
         if (allIssued) {
-            transit(id, List.of("APPROVED"), "DONE");
+            transit(id, Set.of(SupplementStatus.APPROVED), SupplementStatus.DONE);
         }
         return doc.getDocNo();
     }
@@ -213,31 +214,31 @@ public class MesSupplementService {
             return;
         }
         Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        String status = switch (e.status()) {
-            case APPROVED -> "APPROVED";
-            case REJECTED -> "REJECTED";
-            default -> "CANCELED";
+        SupplementStatus status = switch (e.status()) {
+            case APPROVED -> SupplementStatus.APPROVED;
+            case REJECTED -> SupplementStatus.REJECTED;
+            default -> SupplementStatus.CANCELED;
         };
         suppMapper.update(Wrappers.<MesWoSupplement>lambdaUpdate()
                 .set(MesWoSupplement::getStatus, status)
                 .set(MesWoSupplement::getApproveTime, LocalDateTime.now())
                 .set(MesWoSupplement::getUpdateTime, LocalDateTime.now())
                 .eq(MesWoSupplement::getId, id)
-                .eq(MesWoSupplement::getStatus, "APPROVING"));
+                .eq(MesWoSupplement::getStatus, SupplementStatus.APPROVING));
     }
 
     /** 工单关闭：审批中、待发料的补料申请自动撤销（撤销审批流程） */
     @EventListener
     public void onWorkOrderClosed(WorkOrderClosedEvent e) {
         for (MesWoSupplement s : suppMapper.selectList(Wrappers.<MesWoSupplement>lambdaQuery()
-                .eq(MesWoSupplement::getWoId, e.woId()).in(MesWoSupplement::getStatus, "APPROVING", "APPROVED"))) {
-            if (s.getFlowInstanceId() != null && "APPROVING".equals(s.getStatus())
+                .eq(MesWoSupplement::getWoId, e.woId()).in(MesWoSupplement::getStatus, SupplementStatus.ACTIVE))) {
+            if (s.getFlowInstanceId() != null && s.getStatus() == SupplementStatus.APPROVING
                     && flowApi.getStatus(s.getFlowInstanceId()) == FlowStatus.RUNNING) {
                 flowApi.cancel(s.getFlowInstanceId(), "工单已关闭"); // i18n-ignore
             }
-            suppMapper.update(Wrappers.<MesWoSupplement>lambdaUpdate().set(MesWoSupplement::getStatus, "CANCELED")
+            suppMapper.update(Wrappers.<MesWoSupplement>lambdaUpdate().set(MesWoSupplement::getStatus, SupplementStatus.CANCELED)
                     .set(MesWoSupplement::getUpdateTime, LocalDateTime.now())
-                    .eq(MesWoSupplement::getId, s.getId()).in(MesWoSupplement::getStatus, "APPROVING", "APPROVED"));
+                    .eq(MesWoSupplement::getId, s.getId()).in(MesWoSupplement::getStatus, SupplementStatus.ACTIVE));
         }
     }
 
@@ -252,7 +253,7 @@ public class MesSupplementService {
         return s;
     }
 
-    private void transit(Long id, List<String> from, String to) {
+    private void transit(Long id, Set<SupplementStatus> from, SupplementStatus to) {
         int updated = suppMapper.update(Wrappers.<MesWoSupplement>lambdaUpdate()
                 .set(MesWoSupplement::getStatus, to)
                 .set(MesWoSupplement::getUpdateTime, LocalDateTime.now())

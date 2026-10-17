@@ -6,6 +6,7 @@ import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.scm.dto.AtpResult;
 import com.lemon.erp.modules.scm.dto.ReserveRequest;
+import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.service.ScmPlanningService;
 import com.lemon.erp.modules.scm.service.ScmReservationService;
 import com.lemon.erp.modules.wms.entity.WmsReservation;
@@ -48,11 +49,11 @@ public class ScmPlanningController {
     @PreAuthorize("@ss.hasPerm('scm:backorder:list')")
     public R<PageResult<Map<String, Object>>> backorders(@RequestParam(defaultValue = "1") long current,
                                                          @RequestParam(defaultValue = "10") long size,
-                                                         @RequestParam(defaultValue = "SALES") String kind,
+                                                         @RequestParam(required = false) OrderKind kind,
                                                          @RequestParam(defaultValue = "false") boolean overdueOnly,
                                                          @RequestParam(required = false) String keyword,
                                                          @RequestParam(required = false) Long partnerId) {
-        return R.ok(planningService.backorders(current, size, "PURCHASE".equals(kind) ? "PURCHASE" : "SALES", overdueOnly, keyword,
+        return R.ok(planningService.backorders(current, size, kind == null ? OrderKind.SALES : kind, overdueOnly, keyword,
                 partnerId));
     }
 

@@ -16,6 +16,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -153,9 +154,9 @@ public class FinAnalysisService {
         for (Map<String, Object> e : analysisMapper.selectCashVoucherEntries(begin, end)) {
             byVoucher.computeIfAbsent(((Number) e.get("voucherId")).longValue(), k -> new ArrayList<>()).add(e);
         }
-        Map<String, BigDecimal> items = new LinkedHashMap<>();
+        Map<CashItem, BigDecimal> items = new EnumMap<>(CashItem.class);
         for (CashItem item : CashItem.values()) {
-            items.put(item.name(), BigDecimal.ZERO);
+            items.put(item, BigDecimal.ZERO);
         }
         for (List<Map<String, Object>> entries : byVoucher.values()) {
             BigDecimal cashNet = BigDecimal.ZERO;
@@ -192,7 +193,7 @@ public class FinAnalysisService {
                         : cashNet.abs().multiply(share).divide(base, 2, RoundingMode.HALF_UP);
                 allocated = allocated.add(amount);
                 CashItem item = classify((String) e.get("accountCode"), inflow);
-                items.merge(item.name(), amount, BigDecimal::add);
+                items.merge(item, amount, BigDecimal::add);
             }
         }
         List<Map<String, Object>> lines = new ArrayList<>();
@@ -202,10 +203,10 @@ public class FinAnalysisService {
             BigDecimal out = BigDecimal.ZERO;
             lines.add(line(section.title, null, 0, true));
             for (CashItem item : CashItem.values()) {
-                if (!item.section.equals(section.name())) {
+                if (item.section != section) {
                     continue;
                 }
-                BigDecimal v = items.get(item.name());
+                BigDecimal v = items.get(item);
                 lines.add(line(item.label, v, 1, false));
                 if (item.inflow) {
                     in = in.add(v);
@@ -228,24 +229,24 @@ public class FinAnalysisService {
 
     /** 现金流量项目 */
     private enum CashItem {
-        SALES_IN("OPERATING", true, "fin.label.cashReceivedSalesGoodsRenderingServices"),
-        OTHER_OPERATING_IN("OPERATING", true, "fin.label.otherCashReceivedRelatingOperatingActivities"),
-        PURCHASE_OUT("OPERATING", false, "fin.label.cashPaidGoodsServices"),
-        SALARY_OUT("OPERATING", false, "fin.label.cashPaidBehalfEmployees"),
-        TAX_OUT("OPERATING", false, "fin.label.taxesPaid"),
-        OTHER_OPERATING_OUT("OPERATING", false, "fin.label.otherCashPaidRelatingOperatingActivities"),
-        ASSET_DISPOSAL_IN("INVESTING", true, "fin.label.netCashReceivedDisposalFixedAssets"),
-        ASSET_OUT("INVESTING", false, "fin.label.cashPaidAcquireFixedAssetsIntangible"),
-        CAPITAL_IN("FINANCING", true, "fin.label.cashReceivedCapitalContributions"),
-        BORROW_IN("FINANCING", true, "fin.label.cashReceivedBorrowings"),
-        REPAY_OUT("FINANCING", false, "fin.label.cashRepaymentsDebts"),
-        DIVIDEND_OUT("FINANCING", false, "fin.label.cashPaidDividendsProfitDistributionInterest");
+        SALES_IN(CashSection.OPERATING, true, "fin.label.cashReceivedSalesGoodsRenderingServices"),
+        OTHER_OPERATING_IN(CashSection.OPERATING, true, "fin.label.otherCashReceivedRelatingOperatingActivities"),
+        PURCHASE_OUT(CashSection.OPERATING, false, "fin.label.cashPaidGoodsServices"),
+        SALARY_OUT(CashSection.OPERATING, false, "fin.label.cashPaidBehalfEmployees"),
+        TAX_OUT(CashSection.OPERATING, false, "fin.label.taxesPaid"),
+        OTHER_OPERATING_OUT(CashSection.OPERATING, false, "fin.label.otherCashPaidRelatingOperatingActivities"),
+        ASSET_DISPOSAL_IN(CashSection.INVESTING, true, "fin.label.netCashReceivedDisposalFixedAssets"),
+        ASSET_OUT(CashSection.INVESTING, false, "fin.label.cashPaidAcquireFixedAssetsIntangible"),
+        CAPITAL_IN(CashSection.FINANCING, true, "fin.label.cashReceivedCapitalContributions"),
+        BORROW_IN(CashSection.FINANCING, true, "fin.label.cashReceivedBorrowings"),
+        REPAY_OUT(CashSection.FINANCING, false, "fin.label.cashRepaymentsDebts"),
+        DIVIDEND_OUT(CashSection.FINANCING, false, "fin.label.cashPaidDividendsProfitDistributionInterest");
 
-        private final String section;
+        private final CashSection section;
         private final boolean inflow;
         private final String label;
 
-        CashItem(String section, boolean inflow, String label) {
+        CashItem(CashSection section, boolean inflow, String label) {
             this.section = section;
             this.inflow = inflow;
             this.label = label;

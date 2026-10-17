@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.TrainingStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -54,7 +55,7 @@ public class HrTraining extends BaseEntity {
     private Long voucherId;
 
     /** PLANNED / ONGOING / FINISHED / CANCELED */
-    private String status;
+    private TrainingStatus status;
 
     @Size(max = 1000, message = "{hr.valid.trainingContentCannotExceedCharacters}")
     private String content;

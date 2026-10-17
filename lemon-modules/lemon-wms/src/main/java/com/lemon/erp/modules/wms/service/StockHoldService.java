@@ -11,6 +11,7 @@ import com.lemon.erp.modules.wms.mapper.WmsMaterialMapper;
 import com.lemon.erp.modules.wms.mapper.WmsStockHoldMapper;
 import com.lemon.erp.modules.wms.mapper.WmsStockMapper;
 import com.lemon.erp.modules.wms.model.HoldLine;
+import com.lemon.erp.modules.wms.model.HoldStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -33,11 +34,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class StockHoldService {
-
-    public static final String PENDING = "PENDING";
-    public static final String REJECTED = "REJECTED";
-    public static final String RELEASED = "RELEASED";
-    public static final String RETURNED = "RETURNED";
 
     private final WmsStockHoldMapper holdMapper;
     private final WmsStockMapper stockMapper;
@@ -67,7 +63,7 @@ public class StockHoldService {
                 throw new BizException("wms.error.failedFreezeStockPendingInspection", StockService.describe(m));
             }
             WmsStockHold h = new WmsStockHold();
-            h.setStatus(PENDING);
+            h.setStatus(HoldStatus.PENDING);
             h.setWarehouseId(l.warehouseId());
             h.setLocationId(l.locationId());
             h.setMaterialId(l.materialId());
@@ -93,14 +89,14 @@ public class StockHoldService {
                 .eq(WmsStockHold::getSourceNo, sourceNo)
                 .eq(WmsStockHold::getMaterialId, materialId)
                 .eq(StringUtils.hasText(batchNo), WmsStockHold::getBatchNo, batchNo)
-                .eq(WmsStockHold::getStatus, PENDING));
+                .eq(WmsStockHold::getStatus, HoldStatus.PENDING));
         for (WmsStockHold h : holds) {
             if (pass) {
                 release(h, inspNo, null);
             } else {
                 holdMapper.update(Wrappers.<WmsStockHold>lambdaUpdate()
-                        .set(WmsStockHold::getStatus, REJECTED).set(WmsStockHold::getInspNo, inspNo)
-                        .eq(WmsStockHold::getId, h.getId()).eq(WmsStockHold::getStatus, PENDING));
+                        .set(WmsStockHold::getStatus, HoldStatus.REJECTED).set(WmsStockHold::getInspNo, inspNo)
+                        .eq(WmsStockHold::getId, h.getId()).eq(WmsStockHold::getStatus, HoldStatus.PENDING));
             }
         }
         return holds.size();
@@ -117,7 +113,7 @@ public class StockHoldService {
                 .eq(WmsStockHold::getSourceNo, sourceNo)
                 .eq(WmsStockHold::getMaterialId, materialId)
                 .eq(StringUtils.hasText(batchNo), WmsStockHold::getBatchNo, batchNo)
-                .in(WmsStockHold::getStatus, PENDING, REJECTED));
+                .in(WmsStockHold::getStatus, HoldStatus.HOLDING));
         holds.forEach(h -> release(h, null, remark));
         return holds;
     }
@@ -126,7 +122,7 @@ public class StockHoldService {
     @Transactional
     public void release(Long id, String remark) {
         WmsStockHold h = holdMapper.selectById(id);
-        if (h == null || !(PENDING.equals(h.getStatus()) || REJECTED.equals(h.getStatus()))) {
+        if (h == null || !h.getStatus().isHolding()) {
             throw new BizException("wms.error.holdRecordDoesNotExistHas");
         }
         release(h, null, remark);
@@ -145,7 +141,7 @@ public class StockHoldService {
                     .eq(WmsStockHold::getLocationId, l.locationId())
                     .eq(WmsStockHold::getMaterialId, l.materialId())
                     .eq(WmsStockHold::getBatchNo, l.batchNo())
-                    .in(WmsStockHold::getStatus, PENDING, REJECTED)
+                    .in(WmsStockHold::getStatus, HoldStatus.HOLDING)
                     .orderByDesc(WmsStockHold::getStatus) // REJECTED 在 PENDING 之前
                     .orderByAsc(WmsStockHold::getId));
             for (WmsStockHold h : holds) {
@@ -153,7 +149,7 @@ public class StockHoldService {
                     break;
                 }
                 BigDecimal take = remaining.min(h.getQty());
-                if (holdMapper.consume(h.getId(), take, RETURNED) == 0
+                if (holdMapper.consume(h.getId(), take, HoldStatus.RETURNED) == 0
                         || stockMapper.unfreeze(h.getWarehouseId(), h.getLocationId(), h.getMaterialId(), h.getBatchNo(), take) == 0) {
                     throw new BizException("wms.error.frozenStockHasChangedRefreshTry");
                 }
@@ -176,7 +172,7 @@ public class StockHoldService {
 
     private void release(WmsStockHold h, String inspNo, String remark) {
         if (holdMapper.update(Wrappers.<WmsStockHold>lambdaUpdate()
-                .set(WmsStockHold::getStatus, RELEASED)
+                .set(WmsStockHold::getStatus, HoldStatus.RELEASED)
                 .set(WmsStockHold::getQty, BigDecimal.ZERO)
                 .set(inspNo != null, WmsStockHold::getInspNo, inspNo)
                 .set(remark != null, WmsStockHold::getRemark, remark)
@@ -184,7 +180,7 @@ public class StockHoldService {
                 .set(WmsStockHold::getReleaseTime, LocalDateTime.now())
                 .eq(WmsStockHold::getId, h.getId())
                 .eq(WmsStockHold::getQty, h.getQty())
-                .in(WmsStockHold::getStatus, PENDING, REJECTED)) == 0
+                .in(WmsStockHold::getStatus, HoldStatus.HOLDING)) == 0
                 || stockMapper.unfreeze(h.getWarehouseId(), h.getLocationId(), h.getMaterialId(), h.getBatchNo(), h.getQty()) == 0) {
             throw new BizException("wms.error.frozenStockHasChangedRefreshTry");
         }

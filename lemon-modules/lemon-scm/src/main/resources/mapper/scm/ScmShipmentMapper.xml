@@ -22,7 +22,7 @@
             </if>
             <if test="q.customerId != null">AND s.customer_id = #{q.customerId}</if>
             <if test="q.carrier != null and q.carrier != ''">AND s.carrier = #{q.carrier}</if>
-            <if test="q.status != null and q.status != ''">AND s.status = #{q.status}</if>
+            <if test="q.status != null">AND s.status = #{q.status}</if>
         </where>
         ORDER BY s.id DESC
     </select>

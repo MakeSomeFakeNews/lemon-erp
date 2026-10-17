@@ -1,10 +1,10 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.HolidayType;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -27,7 +27,6 @@ public class HrHoliday extends BaseEntity {
     private String name;
 
     /** HOLIDAY 法定节假日 / WORKDAY 调休上班 */
-    @NotBlank(message = "{hr.valid.selectType}")
-    @Pattern(regexp = "HOLIDAY|WORKDAY", message = "{hr.valid.invalidType}")
-    private String type;
+    @NotNull(message = "{hr.valid.selectType}")
+    private HolidayType type;
 }

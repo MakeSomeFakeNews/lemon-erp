@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.scm.mapper;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.modules.scm.model.OrderKind;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
@@ -17,7 +18,7 @@ public interface ScmPlanningMapper {
                                              @Param("today") LocalDate today);
 
     /** 欠交清单：未完成的订单明细，按交货日期 */
-    Page<Map<String, Object>> selectBackorders(Page<Map<String, Object>> page, @Param("kind") String kind,
+    Page<Map<String, Object>> selectBackorders(Page<Map<String, Object>> page, @Param("kind") OrderKind kind,
                                                @Param("overdueOnly") boolean overdueOnly, @Param("keyword") String keyword,
                                                @Param("partnerId") Long partnerId, @Param("today") LocalDate today);
 

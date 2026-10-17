@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.ExpenseClaimStatus;
+import com.lemon.erp.modules.fin.model.LoanStatus;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -61,7 +63,7 @@ public class FinClaimService {
     public record SubmitResult(boolean flow, List<String> warnings) {
     }
 
-    public PageResult<FinExpenseClaim> page(long current, long size, String keyword, String status, Long userId) {
+    public PageResult<FinExpenseClaim> page(long current, long size, String keyword, ExpenseClaimStatus status, Long userId) {
         Page<FinExpenseClaim> page = Page.of(current, size);
         claimMapper.selectPageList(page, keyword, status, userId);
         return PageResult.of(page);
@@ -80,8 +82,8 @@ public class FinClaimService {
     public Long create(ClaimRequest req) {
         LoginUser user = SecurityUtils.getLoginUser();
         FinExpenseClaim c = new FinExpenseClaim();
-        c.setClaimNo(docNoService.next("BX"));
-        c.setStatus("DRAFT");
+        c.setClaimNo(docNoService.next(FinDocNos.EXPENSE_CLAIM));
+        c.setStatus(ExpenseClaimStatus.DRAFT);
         c.setLoanOffset(BigDecimal.ZERO);
         c.setCreateBy(user.userId());
         fill(c, req, user);
@@ -92,21 +94,21 @@ public class FinClaimService {
 
     @Transactional
     public void update(Long id, ClaimRequest req) {
-        requireStatus(id, "DRAFT");
+        requireStatus(id, ExpenseClaimStatus.DRAFT);
         FinExpenseClaim c = new FinExpenseClaim();
         fill(c, req, SecurityUtils.getLoginUser());
         claimMapper.update(Wrappers.<FinExpenseClaim>lambdaUpdate().set(FinExpenseClaim::getUserId, c.getUserId())
                 .set(FinExpenseClaim::getDeptId, c.getDeptId()).set(FinExpenseClaim::getClaimDate, c.getClaimDate())
                 .set(FinExpenseClaim::getLoanId, c.getLoanId()).set(FinExpenseClaim::getAmount, c.getAmount())
                 .set(FinExpenseClaim::getRemark, c.getRemark()).set(FinExpenseClaim::getUpdateTime, LocalDateTime.now())
-                .eq(FinExpenseClaim::getId, id).eq(FinExpenseClaim::getStatus, "DRAFT"));
+                .eq(FinExpenseClaim::getId, id).eq(FinExpenseClaim::getStatus, ExpenseClaimStatus.DRAFT));
         itemMapper.delete(Wrappers.<FinExpenseClaimItem>lambdaQuery().eq(FinExpenseClaimItem::getClaimId, id));
         saveItems(id, req);
     }
 
     @Transactional
     public void delete(Long id) {
-        requireStatus(id, "DRAFT");
+        requireStatus(id, ExpenseClaimStatus.DRAFT);
         itemMapper.delete(Wrappers.<FinExpenseClaimItem>lambdaQuery().eq(FinExpenseClaimItem::getClaimId, id));
         claimMapper.deleteById(id);
     }
@@ -114,13 +116,13 @@ public class FinClaimService {
     /** 提交：先做预算控制（超预算禁止时抛出异常），发布了报销审批流程时发起审批，否则直接批准 */
     @Transactional
     public SubmitResult submit(Long id) {
-        FinExpenseClaim c = requireStatus(id, "DRAFT");
+        FinExpenseClaim c = requireStatus(id, ExpenseClaimStatus.DRAFT);
         List<String> warnings = checkBudget(c);
         if (!flowApi.isAvailable(PROCESS_KEY)) {
-            transit(id, "DRAFT", "APPROVED");
+            transit(id, ExpenseClaimStatus.DRAFT, ExpenseClaimStatus.APPROVED);
             return new SubmitResult(false, warnings);
         }
-        transit(id, "DRAFT", "APPROVING");
+        transit(id, ExpenseClaimStatus.DRAFT, ExpenseClaimStatus.APPROVING);
         String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of("claimNo", c.getClaimNo(), "amount", c.getAmount()));
         claimMapper.update(Wrappers.<FinExpenseClaim>lambdaUpdate().set(FinExpenseClaim::getFlowInstanceId, instanceId).eq(FinExpenseClaim::getId, id));
         return new SubmitResult(true, warnings);
@@ -133,14 +135,14 @@ public class FinClaimService {
         }
         Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
         claimMapper.update(Wrappers.<FinExpenseClaim>lambdaUpdate()
-                .set(FinExpenseClaim::getStatus, e.status() == FlowStatus.APPROVED ? "APPROVED" : "DRAFT")
-                .eq(FinExpenseClaim::getId, id).eq(FinExpenseClaim::getStatus, "APPROVING"));
+                .set(FinExpenseClaim::getStatus, e.status() == FlowStatus.APPROVED ? ExpenseClaimStatus.APPROVED : ExpenseClaimStatus.DRAFT)
+                .eq(FinExpenseClaim::getId, id).eq(FinExpenseClaim::getStatus, ExpenseClaimStatus.APPROVING));
     }
 
     /** 付款：有借款时先冲抵借款（不超过未还金额），差额付款 */
     @Transactional
     public void pay(Long id, Long accountId, LocalDate date) {
-        FinExpenseClaim c = requireStatus(id, "APPROVED");
+        FinExpenseClaim c = requireStatus(id, ExpenseClaimStatus.APPROVED);
         LocalDate d = date == null ? LocalDate.now() : date;
         periodGuard.checkOpen(d, "fin.label.expenseClaimPayment");
         BigDecimal offset = c.getLoanId() == null ? BigDecimal.ZERO : loanService.outstanding(c.getLoanId()).min(c.getAmount());
@@ -148,7 +150,7 @@ public class FinClaimService {
         if (cash.signum() > 0) {
             accountService.requireCashAccount(accountId);
         }
-        transit(id, "APPROVED", "PAID");
+        transit(id, ExpenseClaimStatus.APPROVED, ExpenseClaimStatus.PAID);
         String summary = "报销 " + c.getClaimNo() + " " + c.getUserName() + (c.getRemark() == null ? "" : " " + c.getRemark()); // i18n-ignore
         List<VoucherLine> lines = new ArrayList<>();
         for (FinExpenseClaimItem i : c.getItems()) {
@@ -186,7 +188,7 @@ public class FinClaimService {
         c.setRemark(req.remark());
         if (req.loanId() != null) {
             FinLoan loan = loanMapper.selectById(req.loanId());
-            if (loan == null || !loan.getUserId().equals(c.getUserId()) || !"PAID".equals(loan.getStatus())) {
+            if (loan == null || !loan.getUserId().equals(c.getUserId()) || loan.getStatus() != LoanStatus.PAID) {
                 throw new BizException("fin.error.offsetLoanMustOutstandingLoanClaimant");
             }
         }
@@ -199,7 +201,7 @@ public class FinClaimService {
         Map<Long, FinAccount> accounts = accountService.requireLeaves(req.items().stream().map(ClaimRequest.Item::accountId).toList());
         for (ClaimRequest.Item i : req.items()) {
             FinAccount a = accounts.get(i.accountId());
-            if (!AccountCategory.PROFIT.name().equals(a.getCategory()) && !AccountCategory.COST.name().equals(a.getCategory())) {
+            if (a.getCategory() != AccountCategory.PROFIT && a.getCategory() != AccountCategory.COST) {
                 throw new BizException("fin.error.expenseAccountMustProfitLossCost", a.getCode(), a.getName());
             }
             FinExpenseClaimItem item = new FinExpenseClaimItem();
@@ -213,15 +215,15 @@ public class FinClaimService {
         }
     }
 
-    private FinExpenseClaim requireStatus(Long id, String status) {
+    private FinExpenseClaim requireStatus(Long id, ExpenseClaimStatus status) {
         FinExpenseClaim c = detail(id);
-        if (!status.equals(c.getStatus())) {
+        if (c.getStatus() != status) {
             throw new BizException("fin.error.statusExpenseClaimIncorrectRefresh", c.getClaimNo());
         }
         return c;
     }
 
-    private void transit(Long id, String from, String to) {
+    private void transit(Long id, ExpenseClaimStatus from, ExpenseClaimStatus to) {
         if (claimMapper.update(Wrappers.<FinExpenseClaim>lambdaUpdate().set(FinExpenseClaim::getStatus, to).eq(FinExpenseClaim::getId, id)
                 .eq(FinExpenseClaim::getStatus, from)) == 0) {
             throw new BizException("fin.error.expenseClaimStatusHasChangedRefresh");

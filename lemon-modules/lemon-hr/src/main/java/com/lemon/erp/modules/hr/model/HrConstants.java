@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
 /**
- * 人力资源的计算规则：计薪天数、社保公积金比例、个税税率表、考勤扣款、绩效等级。
+ * 人力资源的计算规则：计薪天数、社保公积金比例、个税税率表、考勤扣款、年假（绩效等级见 PerfGrade）。
  * 个税按月计算（应纳税所得额 = 应发 - 个人社保公积金 - 5000），未实现累计预扣法和专项附加扣除
  */
 public final class HrConstants {
@@ -72,29 +72,6 @@ public final class HrConstants {
         throw new IllegalStateException();
     }
 
-    /** 绩效等级：90 分及以上 S，80 A，70 B，60 C，其余 D */
-    public static String grade(BigDecimal score) {
-        double s = score.doubleValue();
-        return s >= 90 ? "S" : s >= 80 ? "A" : s >= 70 ? "B" : s >= 60 ? "C" : "D";
-    }
-
-    /** 绩效奖金系数 */
-    public static BigDecimal bonusCoefficient(String grade) {
-        if (grade == null) {
-            return BigDecimal.ZERO;
-        }
-        return switch (grade) {
-            case "S" -> new BigDecimal("1.5");
-            case "A" -> new BigDecimal("1.2");
-            case "B" -> BigDecimal.ONE;
-            case "C" -> new BigDecimal("0.8");
-            default -> BigDecimal.ZERO;
-        };
-    }
-
-    /**
-     * 年假天数（按本单位工龄简化）：满 1 年不满 10 年 5 天，满 10 年不满 20 年 10 天，满 20 年 15 天
-     */
     /** 法定年假：累计工作满 1 年不满 10 年 5 天，满 10 年不满 20 年 10 天，满 20 年 15 天 */
     public static int annualLeaveDays(LocalDate workStart, LocalDate asOf) {
         long years = ChronoUnit.YEARS.between(workStart, asOf);

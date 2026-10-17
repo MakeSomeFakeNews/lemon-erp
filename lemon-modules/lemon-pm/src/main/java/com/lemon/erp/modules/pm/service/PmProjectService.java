@@ -27,6 +27,9 @@ import com.lemon.erp.modules.pm.mapper.PmMemberMapper;
 import com.lemon.erp.modules.pm.mapper.PmProjectMapper;
 import com.lemon.erp.modules.pm.mapper.PmTaskMapper;
 import com.lemon.erp.modules.pm.mapper.PmTimesheetMapper;
+import com.lemon.erp.modules.pm.model.BillingStatus;
+import com.lemon.erp.modules.pm.model.ProjectStatus;
+import com.lemon.erp.modules.pm.model.TimesheetStatus;
 import com.lemon.erp.modules.scm.service.ScmCustomerService;
 import com.lemon.erp.modules.scm.service.ScmQueryService;
 import com.lemon.erp.modules.system.entity.SysUser;
@@ -43,7 +46,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * 项目：规划中 → 进行中 ⇄ 已暂停 → 已完成 → 已关闭。项目经理自动加入成员；
@@ -63,11 +65,8 @@ public class PmProjectService {
 
     /** 默认优先级（业务字典 pm_priority 的内置值） */
     private static final String DEFAULT_PRIORITY = "MEDIUM";
-    private static final Map<String, Set<String>> TRANSITIONS = Map.of(
-            "ACTIVE", Set.of("PLANNING", "SUSPENDED"),
-            "SUSPENDED", Set.of("ACTIVE"),
-            "FINISHED", Set.of("ACTIVE"),
-            "CLOSED", Set.of("FINISHED"));
+    /** 默认税率（%） */
+    private static final BigDecimal DEFAULT_TAX_RATE = BigDecimal.valueOf(6);
 
     private final PmProjectMapper projectMapper;
     private final PmMemberMapper memberMapper;
@@ -117,7 +116,7 @@ public class PmProjectService {
     public Long create(ProjectRequest req) {
         PmProject p = new PmProject();
         fill(p, req, null);
-        p.setStatus("PLANNING");
+        p.setStatus(ProjectStatus.PLANNING);
         p.setBudgetAmount(BigDecimal.ZERO);
         p.setProgress(BigDecimal.ZERO);
         p.setCreateBy(SecurityUtils.getUserId());
@@ -130,7 +129,7 @@ public class PmProjectService {
     public void update(Long id, ProjectRequest req) {
         Object before = projectMapper.selectById(id);
         PmProject old = get(id);
-        if ("CLOSED".equals(old.getStatus())) {
+        if (old.getStatus() == ProjectStatus.CLOSED) {
             throw new BizException("pm.error.closedProjectsCannotModified");
         }
         PmProject p = new PmProject();
@@ -163,11 +162,11 @@ public class PmProjectService {
      * @return true 已提交立项审批
      */
     @Transactional
-    public boolean changeStatus(Long id, String status) {
+    public boolean changeStatus(Long id, ProjectStatus status) {
         PmProject p = get(id);
-        if ("ACTIVE".equals(status) && "PLANNING".equals(p.getStatus()) && flowApi.isAvailable(PROCESS_KEY)) {
+        if (status == ProjectStatus.ACTIVE && p.getStatus() == ProjectStatus.PLANNING && flowApi.isAvailable(PROCESS_KEY)) {
             int updated = projectMapper.update(Wrappers.<PmProject>lambdaUpdate()
-                    .set(PmProject::getStatus, "APPROVING").eq(PmProject::getId, id).eq(PmProject::getStatus, "PLANNING"));
+                    .set(PmProject::getStatus, ProjectStatus.APPROVING).eq(PmProject::getId, id).eq(PmProject::getStatus, ProjectStatus.PLANNING));
             if (updated == 0) {
                 throw new BizException("pm.error.projectStatusHasChangedRefresh");
             }
@@ -180,22 +179,21 @@ public class PmProjectService {
             projectMapper.update(Wrappers.<PmProject>lambdaUpdate().set(PmProject::getFlowInstanceId, instanceId).eq(PmProject::getId, id));
             return true;
         }
-        Set<String> from = TRANSITIONS.get(status);
-        if (from == null || !from.contains(p.getStatus())) {
+        if (status == null || !status.allowedFrom().contains(p.getStatus())) {
             throw new BizException("pm.error.operationNotAllowedCurrentProjectStatus");
         }
-        if (("FINISHED".equals(status) || "CLOSED".equals(status)) && timesheetMapper.exists(Wrappers.<PmTimesheet>lambdaQuery()
-                .eq(PmTimesheet::getProjectId, id).eq(PmTimesheet::getStatus, "SUBMITTED"))) {
+        if (status.isFinished() && timesheetMapper.exists(Wrappers.<PmTimesheet>lambdaQuery()
+                .eq(PmTimesheet::getProjectId, id).eq(PmTimesheet::getStatus, TimesheetStatus.SUBMITTED))) {
             throw new BizException("pm.error.projectHasTimesheetsPendingApprovalApprove");
         }
-        if ("FINISHED".equals(status) && billingMapper.exists(Wrappers.<PmBilling>lambdaQuery()
-                .eq(PmBilling::getProjectId, id).eq(PmBilling::getStatus, "PLANNED"))) {
+        if (status == ProjectStatus.FINISHED && billingMapper.exists(Wrappers.<PmBilling>lambdaQuery()
+                .eq(PmBilling::getProjectId, id).eq(PmBilling::getStatus, BillingStatus.PLANNED))) {
             throw new BizException("pm.error.projectHasUninvoicedBillingPlansInvoice");
         }
         projectMapper.update(Wrappers.<PmProject>lambdaUpdate()
                 .set(PmProject::getStatus, status)
-                .set("ACTIVE".equals(status) && p.getActualStart() == null, PmProject::getActualStart, LocalDate.now())
-                .set("FINISHED".equals(status), PmProject::getActualEnd, LocalDate.now())
+                .set(status == ProjectStatus.ACTIVE && p.getActualStart() == null, PmProject::getActualStart, LocalDate.now())
+                .set(status == ProjectStatus.FINISHED, PmProject::getActualEnd, LocalDate.now())
                 .set(PmProject::getUpdateTime, LocalDateTime.now())
                 .eq(PmProject::getId, id)
                 .eq(PmProject::getStatus, p.getStatus()));
@@ -211,11 +209,11 @@ public class PmProjectService {
         Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
         boolean approved = e.status() == FlowStatus.APPROVED;
         projectMapper.update(Wrappers.<PmProject>lambdaUpdate()
-                .set(PmProject::getStatus, approved ? "ACTIVE" : "PLANNING")
+                .set(PmProject::getStatus, approved ? ProjectStatus.ACTIVE : ProjectStatus.PLANNING)
                 .set(approved, PmProject::getActualStart, LocalDate.now())
                 .set(PmProject::getUpdateTime, LocalDateTime.now())
                 .eq(PmProject::getId, id)
-                .eq(PmProject::getStatus, "APPROVING"));
+                .eq(PmProject::getStatus, ProjectStatus.APPROVING));
     }
 
     /** 只能删除规划中、没有工时和费用的项目 */
@@ -223,12 +221,12 @@ public class PmProjectService {
     public void delete(List<Long> ids) {
         for (Long id : ids) {
             PmProject p = get(id);
-            if (!"PLANNING".equals(p.getStatus())) {
+            if (p.getStatus() != ProjectStatus.PLANNING) {
                 throw new BizException("pm.error.projectHasStartedCannotDeleted", p.getName());
             }
             if (timesheetMapper.exists(Wrappers.<PmTimesheet>lambdaQuery().eq(PmTimesheet::getProjectId, id))
                     || costMapper.exists(Wrappers.<PmCost>lambdaQuery().eq(PmCost::getProjectId, id))
-                    || billingMapper.exists(Wrappers.<PmBilling>lambdaQuery().eq(PmBilling::getProjectId, id).eq(PmBilling::getStatus, "BILLED"))) {
+                    || billingMapper.exists(Wrappers.<PmBilling>lambdaQuery().eq(PmBilling::getProjectId, id).eq(PmBilling::getStatus, BillingStatus.BILLED))) {
                 throw new BizException("pm.error.projectHasTimesheetsExpensesInvoicesCannot", p.getName());
             }
         }
@@ -242,7 +240,7 @@ public class PmProjectService {
     /** 未关闭、未完成的项目（录入工时、费用、领料） */
     PmProject getOpen(Long id) {
         PmProject p = get(id);
-        if ("FINISHED".equals(p.getStatus()) || "CLOSED".equals(p.getStatus())) {
+        if (p.getStatus().isFinished()) {
             throw new BizException("pm.error.projectFinishedClosed");
         }
         return p;
@@ -290,7 +288,7 @@ public class PmProjectService {
         p.setPlanStart(req.planStart());
         p.setPlanEnd(req.planEnd());
         p.setContractAmount(req.contractAmount() == null ? BigDecimal.ZERO : req.contractAmount());
-        p.setTaxRate(req.taxRate() == null ? BigDecimal.valueOf(6) : req.taxRate());
+        p.setTaxRate(req.taxRate() == null ? DEFAULT_TAX_RATE : req.taxRate());
         p.setDescription(req.description());
     }
 

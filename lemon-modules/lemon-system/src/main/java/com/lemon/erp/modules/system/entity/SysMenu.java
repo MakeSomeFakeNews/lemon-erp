@@ -2,10 +2,10 @@ package com.lemon.erp.modules.system.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.TreeEntity;
+import com.lemon.erp.modules.system.model.MenuType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -14,16 +14,10 @@ import lombok.EqualsAndHashCode;
 @TableName("sys_menu")
 public class SysMenu extends TreeEntity<SysMenu> {
 
-    public static final String TYPE_DIR = "M";
-    public static final String TYPE_MENU = "C";
-    public static final String TYPE_BUTTON = "F";
-
     @NotBlank(message = "{system.valid.menuNameRequired}")
     private String name;
 
-    /** M 目录 C 菜单 F 按钮 */
-    @Pattern(regexp = "[MCF]", message = "{system.valid.menuTypeMustMCF}")
-    private String type;
+    private MenuType type;
 
     private String path;
 

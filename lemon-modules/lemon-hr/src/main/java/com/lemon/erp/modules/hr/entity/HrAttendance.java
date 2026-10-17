@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.AttendanceSource;
+import com.lemon.erp.modules.hr.model.AttendanceStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -34,7 +36,7 @@ public class HrAttendance extends BaseEntity {
     private LocalDateTime checkOut;
 
     /** 状态(字典 hr_attendance_status) NORMAL正常 LATE迟到 EARLY早退 LATE_EARLY迟到早退 MISSING缺卡 */
-    private String status;
+    private AttendanceStatus status;
 
     /** 迟到分钟 */
     private Integer lateMinutes;
@@ -46,7 +48,7 @@ public class HrAttendance extends BaseEntity {
     private BigDecimal workHours;
 
     /** 来源 CLOCK打卡 MANUAL补录 */
-    private String source;
+    private AttendanceSource source;
 
     /** 补录说明 */
     private String remark;

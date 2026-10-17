@@ -2,6 +2,7 @@ package com.lemon.erp.modules.pm.service;
 
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender.Message;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.modules.pm.mapper.PmJobMapper;
@@ -42,7 +43,7 @@ public class PmTaskOverdueJob implements JobHandler {
         LocalDate today = LocalDate.now();
         List<Map<String, Object>> rows = jobMapper.selectOverdueTasks(today);
         for (Map<String, Object> r : rows) {
-            messageSender.send(List.of(((Number) r.get("assigneeId")).longValue()), Message.of("ALERT",
+            messageSender.send(List.of(((Number) r.get("assigneeId")).longValue()), Message.of(MessageCategory.ALERT,
                     "任务「" + r.get("name") + "」已逾期", "项目「" + r.get("projectName") + "」，计划完成 " + r.get("planEnd"), "/pm/plan")  // i18n-ignore 站内消息存库
                     .dedup("task-overdue:" + r.get("id") + ":" + today));
         }

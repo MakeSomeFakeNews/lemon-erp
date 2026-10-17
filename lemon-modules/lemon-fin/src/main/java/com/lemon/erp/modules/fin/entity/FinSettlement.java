@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.lemon.erp.framework.workflow.ApproveStatus;
+import com.lemon.erp.modules.fin.model.SettleKind;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -21,7 +23,7 @@ public class FinSettlement extends BaseEntity {
     private String settleNo;
 
     /** RECEIPT / PAYMENT */
-    private String kind;
+    private SettleKind kind;
 
     private Long partnerId;
 
@@ -45,7 +47,7 @@ public class FinSettlement extends BaseEntity {
     private Long voucherId;
 
     /** APPROVED 已生效（已核销）/ APPROVING 审批中 / REJECTED 已拒绝；只有付款单会审批 */
-    private String status;
+    private ApproveStatus status;
 
     private String flowInstanceId;
 

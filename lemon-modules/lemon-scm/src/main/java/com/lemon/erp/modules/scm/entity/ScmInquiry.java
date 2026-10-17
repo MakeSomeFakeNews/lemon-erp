@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.scm.model.InquiryStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -25,7 +26,7 @@ public class ScmInquiry extends BaseEntity {
     private LocalDate deadline;
 
     /** QUOTING / FINISHED / CLOSED */
-    private String status;
+    private InquiryStatus status;
 
     private String remark;
 

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.dto;
 
+import com.lemon.erp.modules.mes.model.SupplyType;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -15,7 +16,7 @@ public class MaterialKitView {
     private String materialName;
     private String spec;
     private String unit;
-    private String supplyType;
+    private SupplyType supplyType;
 
     private int woCount;
     private BigDecimal requiredQty;

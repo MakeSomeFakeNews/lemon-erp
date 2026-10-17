@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.common.validation.Update;
+import com.lemon.erp.modules.scm.model.SupplierLevel;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -27,7 +28,7 @@ public class ScmSupplier extends BaseEntity {
     private String name;
 
     /** 等级，字典 scm_supplier_level；供应商评估后按最近一次评定等级更新 */
-    private String level;
+    private SupplierLevel level;
 
     @Size(max = 64, message = "{scm.valid.contactCannotExceedCharacters}")
     private String contact;

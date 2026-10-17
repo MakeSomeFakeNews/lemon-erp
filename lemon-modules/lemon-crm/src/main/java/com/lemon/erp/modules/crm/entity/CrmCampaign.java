@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.lemon.erp.modules.crm.model.CampaignStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -49,7 +50,7 @@ public class CrmCampaign extends BaseEntity {
     private Integer targetLeads;
 
     /** PLANNED / ACTIVE / FINISHED / CANCELED */
-    private String status;
+    private CampaignStatus status;
 
     private Long ownerId;
 
