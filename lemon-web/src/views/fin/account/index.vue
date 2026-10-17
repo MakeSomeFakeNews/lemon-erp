@@ -18,7 +18,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="false"
-        :scroll="{ x: 1100, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
@@ -122,9 +122,10 @@ const columns = [
   { title: t('fin.account.direction'), key: 'direction', width: 130 },
   { title: t('fin.account.aux'), key: 'auxItems', width: 200 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 200, ellipsis: true },
   { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
 ]
+const scrollX = columns.reduce((sum, c) => sum + c.width, 0)
 
 const keyword = ref('')
 const list = ref([])

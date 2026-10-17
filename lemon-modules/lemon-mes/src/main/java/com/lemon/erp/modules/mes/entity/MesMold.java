@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.modules.mes.model.MoldStatus;
-import com.lemon.erp.modules.mes.model.MoldType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -23,7 +22,8 @@ public class MesMold extends BaseEntity {
 
     private String name;
 
-    private MoldType moldType;
+    /** 类型(业务字典 mes_mold_type) */
+    private String moldType;
 
     private String spec;
 

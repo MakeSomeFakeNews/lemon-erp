@@ -7,7 +7,7 @@
           {{ $t('common.action.back') }}
         </a-button>
         <a-divider type="vertical" />
-        <div class="sub-page-title">
+        <div class="sub-page-title" :title="title || undefined">
           <slot name="title">{{ title }}</slot>
         </div>
         <div v-if="$slots.extra" class="sub-page-extra">

@@ -347,6 +347,7 @@ export default {
     releasedOne: '「{name}」已放回公海'
   },
   opportunity: {
+    closedStageHint: '{label}（请在商机详情中推进阶段）',
     kwPh: '编号、名称或客户',
     board: '看板',
     list: '列表',

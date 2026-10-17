@@ -1,7 +1,5 @@
 package com.lemon.erp.modules.mes.dto;
 
-import com.lemon.erp.modules.mes.model.DocType;
-import com.lemon.erp.modules.mes.model.EcnReason;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -26,7 +24,7 @@ public final class PlmRequests {
             @NotBlank(message = "{mes.valid.enterChangeTitle}") @Size(max = 128, message = "{mes.valid.titleCannotExceedCharacters}") String title,
             Long fromBomId,
             @Size(max = 16, message = "{mes.valid.versionCannotExceedCharacters}") String newVersion,
-            @NotNull(message = "{mes.valid.selectChangeReason}") EcnReason reason,
+            @NotBlank(message = "{mes.valid.selectChangeReason}") String reason,
             @Size(max = 1000, message = "{mes.valid.changeDescriptionCannotExceedCharacters}") String description,
             @NotNull(message = "{mes.valid.selectEffectiveDate}") LocalDate effectiveDate,
             Boolean syncDraftWo) {
@@ -34,7 +32,7 @@ public final class PlmRequests {
 
     public record Doc(
             @NotBlank(message = "{mes.valid.enterDocumentName}") @Size(max = 128, message = "{mes.valid.nameCannotExceedCharacters2}") String name,
-            @NotNull(message = "{mes.valid.selectDocumentType}") DocType docType,
+            @NotBlank(message = "{mes.valid.selectDocumentType}") String docType,
             Long materialId,
             @NotBlank(message = "{mes.valid.enterVersion2}") @Size(max = 16, message = "{mes.valid.versionCannotExceedCharacters2}") String version,
             Long ecnId,

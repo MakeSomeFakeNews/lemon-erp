@@ -4,6 +4,7 @@
     show-search
     :allow-clear="allowClear"
     option-filter-prop="label"
+    :dropdown-match-select-width="360"
     :placeholder="placeholder"
     :options="options"
     :loading="loading"

@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.lemon.erp.modules.mes.dto.PlmRequests;
 import com.lemon.erp.modules.mes.entity.MesTechDoc;
 import com.lemon.erp.modules.mes.model.DocStatus;
-import com.lemon.erp.modules.mes.model.DocType;
 import com.lemon.erp.modules.mes.service.MesTechDocService;
 
 import java.util.List;
@@ -39,7 +38,7 @@ public class MesTechDocController {
     @PreAuthorize("@ss.hasPerm('mes:doc:list')")
     public R<PageResult<MesTechDoc>> page(@RequestParam(defaultValue = "1") long current,
                                           @RequestParam(defaultValue = "10") long size,
-                                          @RequestParam(required = false) DocType docType,
+                                          @RequestParam(required = false) String docType,
                                           @RequestParam(required = false) DocStatus status,
                                           @RequestParam(required = false) Long materialId,
                                           @RequestParam(required = false) String keyword,

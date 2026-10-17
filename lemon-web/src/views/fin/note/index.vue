@@ -216,7 +216,7 @@
           <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')" :span="3">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
         <div class="section-title">{{ $t('fin.note.logs') }}</div>
-        <a-table row-key="id" size="small" :columns="logColumns" :data-source="detail.logs" :pagination="false" :scroll="{ x: 900 }">
+        <a-table row-key="id" size="small" :columns="logColumns" :data-source="detail.logs" :pagination="false" :scroll="{ x: logScrollX }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'action'"><DictTag type="fin_note_action" :value="record.action" /></template>
             <template v-else-if="column.key === 'target'">{{ record.partnerName || record.accountName || '-' }}</template>
@@ -437,8 +437,9 @@ const logColumns = [
   { title: t('common.field.amount'), key: 'amount', width: 150, align: 'right' },
   { title: t('fin.note.documents'), key: 'ref', width: 240 },
   { title: t('fin.note.operator'), dataIndex: 'createByName', width: 100 },
-  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 200, ellipsis: true }
 ]
+const logScrollX = logColumns.reduce((sum, c) => sum + c.width, 0)
 const detailOpen = ref(false)
 const detail = ref()
 const lastLog = computed(() => detail.value?.logs?.[detail.value.logs.length - 1])

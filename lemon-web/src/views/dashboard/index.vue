@@ -41,13 +41,13 @@
           <div class="stat-label">{{ c.label }}</div>
           <div class="stat-value">
             <template v-if="c.kind === 'MONEY'"><span class="stat-unit">¥</span>{{ money(c.value) }}</template>
-            <template v-else>{{ Number(c.value) }}<span class="stat-unit"> {{ cardMeta[c.key].unit }}</span></template>
+            <template v-else>{{ Number(c.value) }}<span class="stat-unit suffix">{{ cardMeta[c.key].unit }}</span></template>
           </div>
-          <div v-if="c.previous != null" class="stat-sub">
+          <div v-if="c.previous != null" class="stat-sub" :title="`${$t('dashboard.vsLastMonth')} ${trend(c).text}`">
             {{ $t('dashboard.vsLastMonth') }}
             <span :class="trend(c).cls">{{ trend(c).text }}</span>
           </div>
-          <div v-else class="stat-sub">{{ cardMeta[c.key].sub }}</div>
+          <div v-else class="stat-sub" :title="cardMeta[c.key].sub">{{ cardMeta[c.key].sub }}</div>
         </div>
       </router-link>
     </div>
@@ -386,10 +386,15 @@ onMounted(async () => {
   font-weight: 400;
   color: var(--app-text-3);
 }
+.stat-unit.suffix {
+  margin-left: 4px;
+}
 .stat-sub {
   font-size: 12px;
   color: var(--app-text-3);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .stat-sub .up {
   color: #52c41a;

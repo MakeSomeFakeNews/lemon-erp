@@ -133,7 +133,7 @@
             <template #icon><PlusOutlined /></template>{{ $t('qms.plan.addItem') }}
           </a-button>
         </div>
-        <a-table row-key="key" size="small" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: 1000 }">
+        <a-table row-key="key" size="small" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: itemScrollX }">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'name'">
               <a-form-item :name="['items', index, 'name']" :rules="[{ required: true, whitespace: true, message: $t('qms.plan.itemRequired') }]" class="cell-item">
@@ -299,13 +299,14 @@ function addItem() {
 
 const itemColumns = [
   { title: t('mes.inspection.item'), key: 'name', width: 180 },
-  { title: t('qms.plan.method'), key: 'method', width: 120 },
+  { title: t('qms.plan.method'), key: 'method', width: 150 },
   { title: t('qms.plan.standard'), key: 'standard', width: 220 },
   { title: t('qms.plan.limits'), key: 'limits', width: 240 },
   { title: t('common.field.unit'), key: 'unit', width: 90 },
   { title: t('mes.inspection.critical'), key: 'critical', width: 70, align: 'center' },
   { title: '', key: 'action', width: 50 }
 ]
+const itemScrollX = itemColumns.reduce((sum, c) => sum + c.width, 0)
 const itemViewColumns = [
   { title: t('mes.inspection.item'), key: 'name', width: 180 },
   { title: t('qms.plan.method'), key: 'method', width: 120 },

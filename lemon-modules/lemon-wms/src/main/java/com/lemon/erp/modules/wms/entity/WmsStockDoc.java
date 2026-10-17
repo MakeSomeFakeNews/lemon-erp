@@ -28,6 +28,9 @@ public class WmsStockDoc extends BaseEntity {
     /** 入库类型（字典 wms_in_type）/ 出库类型（字典 wms_out_type），调拨为空 */
     private String bizType;
 
+    /** 收发类别：其他入库为字典 wms_in_category，其他出库、报废出库为字典 wms_out_category（业务字典），可为空；成本凭证按类别取对方科目 */
+    private String ioCategory;
+
     /** 仓库；调拨为调出仓库 */
     private Long warehouseId;
 

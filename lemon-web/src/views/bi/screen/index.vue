@@ -18,7 +18,7 @@
             <div class="card-desc">{{ s.desc }}</div>
             <a-space class="card-actions" wrap>
               <a-select
-                v-if="s.key === 'FACTORY'"
+                v-if="WORK_CENTER_SCREENS.includes(s.key)"
                 v-model:value="workCenterId"
                 :options="workCenters"
                 allow-clear
@@ -123,7 +123,7 @@ import { CopyOutlined, ExpandOutlined, PlusOutlined } from '@ant-design/icons-vu
 import FormDrawer from '@/components/FormDrawer.vue'
 import { createShare, deleteShare, listShares, resetShare, updateShare } from '@/api/bi/screen'
 import { workCenterOptions } from '@/api/mes/base'
-import { SCREENS, screenLabel } from '@/components/screen/screen'
+import { SCREENS, WORK_CENTER_SCREENS, screenLabel } from '@/components/screen/screen'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useUserStore } from '@/store/user'
 import { useI18n } from 'vue-i18n'
@@ -149,7 +149,7 @@ function open(keys) {
     params.set('rotate', keys.join(',').toLowerCase())
     params.set('interval', String(interval.value || 60))
   }
-  if (keys.includes('FACTORY') && workCenterId.value) params.set('workCenterId', String(workCenterId.value))
+  if (keys.some((k) => WORK_CENTER_SCREENS.includes(k)) && workCenterId.value) params.set('workCenterId', String(workCenterId.value))
   const query = params.toString()
   window.open(`/screen/${keys[0].toLowerCase()}${query ? `?${query}` : ''}`, '_blank')
 }
@@ -257,6 +257,7 @@ onMounted(async () => {
   flex: 1;
   background: linear-gradient(180deg, #00e4ff, rgba(0, 228, 255, 0.15));
 }
+.thumb.progress .bar { background: linear-gradient(180deg, #3d8bff, rgba(61, 139, 255, 0.15)); }
 .thumb.warehouse .bar { background: linear-gradient(180deg, #2fe6a5, rgba(47, 230, 165, 0.15)); }
 .thumb.sales .bar { background: linear-gradient(180deg, #ffb03a, rgba(255, 176, 58, 0.15)); }
 .thumb.quality .bar { background: linear-gradient(180deg, #a77bff, rgba(167, 123, 255, 0.15)); }

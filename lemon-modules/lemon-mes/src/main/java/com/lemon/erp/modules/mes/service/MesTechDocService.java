@@ -5,12 +5,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.PlmRequests;
 import com.lemon.erp.modules.mes.entity.MesTechDoc;
 import com.lemon.erp.modules.mes.mapper.MesTechDocMapper;
 import com.lemon.erp.modules.mes.model.DocStatus;
-import com.lemon.erp.modules.mes.model.DocType;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
@@ -35,9 +35,10 @@ public class MesTechDocService {
     private final MesTechDocMapper docMapper;
     private final WmsMaterialService materialService;
     private final DocNoService docNoService;
+    private final DictLookup dictLookup;
 
     /** @param latest 只列每个文档的最新版本 */
-    public PageResult<MesTechDoc> page(long current, long size, DocType docType, DocStatus status, Long materialId, String keyword,
+    public PageResult<MesTechDoc> page(long current, long size, String docType, DocStatus status, Long materialId, String keyword,
                                        boolean latest) {
         Page<MesTechDoc> page = Page.of(current, size);
         docMapper.selectPageList(page, docType, status, materialId, keyword, latest);
@@ -132,6 +133,7 @@ public class MesTechDocService {
     }
 
     private void apply(MesTechDoc doc, PlmRequests.Doc req) {
+        dictLookup.check("mes_doc_type", req.docType(), "mes.label.docType");
         if (req.materialId() != null) {
             materialService.get(req.materialId());
         }

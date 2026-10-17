@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.workflow.FlowApi;
@@ -74,6 +75,7 @@ public class QmsNcrService {
     private final FlowApi flowApi;
     private final MessageSender messageSender;
     private final MesWorkOrderService workOrderService;
+    private final DictLookup dictLookup;
 
     public PageResult<QmsNcr> page(long current, long size, NcrStatus status, String keyword) {
         Page<QmsNcr> page = Page.of(current, size);
@@ -110,6 +112,10 @@ public class QmsNcrService {
     /** 手工登记 */
     @Transactional
     public Long create(QmsRequests.Ncr req) {
+        // 检验来源的处理单只由检验不合格自动生成（且不能删除，误判只能取消），不能手工登记
+        if (req.source() == NcrSource.INSPECTION) {
+            throw new BizException("mes.error.ncrInspectionSourceNotManual");
+        }
         materialService.get(req.materialId());
         QmsNcr ncr = newNcr(req.source(), req.materialId(), req.batchNo(), req.qty());
         ncr.setSupplierId(req.supplierId());
@@ -136,6 +142,7 @@ public class QmsNcrService {
     public boolean review(Long id, QmsRequests.NcrReview req) {
         QmsNcr ncr = requireStatus(id, NcrStatus.OPEN, "mes.label.review");
         checkDisposition(ncr, req);
+        dictLookup.check("qms_responsibility", req.responsibility(), "mes.label.responsibility");
         ncrMapper.update(Wrappers.<QmsNcr>lambdaUpdate()
                 .set(QmsNcr::getDisposition, req.disposition())
                 .set(QmsNcr::getResponsibility, req.responsibility())
@@ -148,7 +155,7 @@ public class QmsNcrService {
             String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of(
                     "qty", ncr.getQty().doubleValue(),
                     "disposition", req.disposition().name(),
-                    "responsibility", req.responsibility().name(),
+                    "responsibility", req.responsibility(),
                     "ncrNo", ncr.getNcrNo()));
             ncrMapper.update(Wrappers.<QmsNcr>lambdaUpdate().set(QmsNcr::getFlowInstanceId, instanceId).eq(QmsNcr::getId, id));
             return true;

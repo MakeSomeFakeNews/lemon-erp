@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.period.BizPeriodGuard;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -47,15 +48,17 @@ import static com.lemon.erp.modules.wms.model.StockBizType.IN;
 import static com.lemon.erp.modules.wms.model.StockBizType.OUT;
 import static com.lemon.erp.modules.wms.model.StockBizType.TRANSFER;
 import static com.lemon.erp.modules.wms.model.WmsConstants.IN_TYPES;
-import static com.lemon.erp.modules.wms.model.WmsConstants.MANUAL_TYPES;
+import static com.lemon.erp.modules.wms.model.WmsConstants.CONSIGN_IN;
 import static com.lemon.erp.modules.wms.model.WmsConstants.NO_BATCH;
 import static com.lemon.erp.modules.wms.model.WmsConstants.NO_EXPIRED_OUT_TYPES;
 import static com.lemon.erp.modules.wms.model.WmsConstants.NO_LOCATION;
 import static com.lemon.erp.modules.wms.model.WmsConstants.OUT_TYPES;
 import static com.lemon.erp.modules.wms.model.WmsConstants.STOCK_DOC_RULE;
 import static com.lemon.erp.modules.wms.model.WmsConstants.batchOrNone;
+import static com.lemon.erp.modules.wms.model.WmsConstants.ioCategoryDict;
 import static com.lemon.erp.modules.wms.model.WmsConstants.joinSerials;
 import static com.lemon.erp.modules.wms.model.WmsConstants.locationOrNone;
+import static com.lemon.erp.modules.wms.model.WmsConstants.manualTypes;
 import static com.lemon.erp.modules.wms.model.WmsConstants.splitSerials;
 
 /**
@@ -74,6 +77,7 @@ public class WmsStockDocService {
     private final BizPeriodGuard periodGuard;
     private final WmsBatchMapper batchMapper;
     private final com.lemon.erp.framework.workflow.FlowApi flowApi;
+    private final DictLookup dictLookup;
 
     public static final String PROCESS_KEY = "wms_stock_doc";
     private static final String BUSINESS_KEY_PREFIX = "wms_stock_doc:";
@@ -119,6 +123,7 @@ public class WmsStockDocService {
         doc.setDocNo(docNoService.next(kind));
         doc.setKind(kind.name());
         doc.setBizType(kind == TRANSFER ? null : req.bizType());
+        doc.setIoCategory(ioCategory(kind, req));
         doc.setWarehouseId(req.warehouseId());
         doc.setToWarehouseId(kind == TRANSFER ? req.toWarehouseId() : null);
         doc.setBizDate(req.bizDate());
@@ -138,7 +143,7 @@ public class WmsStockDocService {
     @Transactional
     public void update(StockBizType kind, Long id, StockDocRequest req) {
         WmsStockDoc draft = getDraft(kind, id);
-        // 业务单据生成的草稿（目前都是保存即确认，不会出现）之外，手工单据只能是其他出入库
+        // 业务单据生成的草稿（目前都是保存即确认，不会出现）之外，手工单据只能是允许手工新增的类型
         if (draft.getSourceNo() == null) {
             checkManualType(kind, req.bizType());
         }
@@ -146,6 +151,7 @@ public class WmsStockDocService {
         validate(kind, req.bizType(), req.warehouseId(), req.toWarehouseId(), items, false);
         docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate()
                 .set(WmsStockDoc::getBizType, kind == TRANSFER ? null : req.bizType())
+                .set(WmsStockDoc::getIoCategory, ioCategory(kind, req))
                 .set(WmsStockDoc::getWarehouseId, req.warehouseId())
                 .set(WmsStockDoc::getToWarehouseId, kind == TRANSFER ? req.toWarehouseId() : null)
                 .set(WmsStockDoc::getBizDate, req.bizDate())
@@ -304,6 +310,7 @@ public class WmsStockDocService {
         red.setDocNo(docNoService.next(kind));
         red.setKind(kind.name());
         red.setBizType(doc.getBizType());
+        red.setIoCategory(doc.getIoCategory());
         red.setWarehouseId(doc.getWarehouseId());
         red.setToWarehouseId(doc.getToWarehouseId());
         red.setBizDate(bizDate);
@@ -397,14 +404,28 @@ public class WmsStockDocService {
      *
      * @param strict 确认时为 true：序列号个数必须与数量一致；草稿只要求不超过数量
      */
-    /** 手工出入库只能是其他出入库：采购、销售、生产、项目等类型由对应的业务单据生成 */
+    /** 手工入库只能是其他入库、寄售入库，手工出库只能是其他出库、报废出库：采购、销售、生产、项目等类型由对应的业务单据生成 */
     private static void checkManualType(StockBizType kind, String bizType) {
-        if (kind != TRANSFER && bizType != null && !MANUAL_TYPES.contains(bizType)) {
+        if (kind != TRANSFER && bizType != null && !manualTypes(kind).contains(bizType)) {
             if (kind == IN) {
-                throw new BizException("wms.error.manualInboundOnlyUseOtherInbound");
+                throw new BizException("wms.error.manualInboundTypeNotAllowed");
             }
-            throw new BizException("wms.error.manualOutboundOnlyUseOtherOutbound");
+            throw new BizException("wms.error.manualOutboundTypeNotAllowed");
         }
+    }
+
+    /**
+     * 收发类别：其他入库按字典 wms_in_category、其他出库和报废出库按字典 wms_out_category 校验（当前租户的业务字典），
+     * 其他类型不保存。可不填
+     */
+    private String ioCategory(StockBizType kind, StockDocRequest req) {
+        String dict = ioCategoryDict(kind, req.bizType());
+        if (dict == null || !StringUtils.hasText(req.ioCategory())) {
+            return null;
+        }
+        String value = req.ioCategory().trim();
+        dictLookup.check(dict, value, kind == IN ? "wms.label.inCategory" : "wms.label.outCategory");
+        return value;
     }
 
     private void validate(StockBizType kind, String bizType, Long warehouseId, Long toWarehouseId,
@@ -428,8 +449,8 @@ public class WmsStockDocService {
         WmsWarehouse warehouse = refs.warehouse(warehouseId, kind == TRANSFER ? "wms.label.sourceWarehouse" : "wms.label.warehouse", kind == IN);
         WmsWarehouse toWarehouse = kind == TRANSFER ? refs.warehouse(toWarehouseId, "wms.label.destinationWarehouse") : null;
         // 供应商寄售仓（VMI）只能做寄售入库，寄售入库只能入供应商寄售仓
-        if (kind == IN && ("CONSIGN_IN".equals(bizType) != "CONSIGN_IN".equals(warehouse.getType()))) {
-            if ("CONSIGN_IN".equals(bizType)) {
+        if (kind == IN && (CONSIGN_IN.equals(bizType) != CONSIGN_IN.equals(warehouse.getType()))) {
+            if (CONSIGN_IN.equals(bizType)) {
                 throw new BizException("wms.error.consignmentInboundRequiresSupplierConsignmentWarehouse");
             }
             throw new BizException("wms.error.supplierConsignmentWarehousesOnlyAllowConsignment");

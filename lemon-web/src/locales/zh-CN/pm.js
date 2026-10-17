@@ -230,6 +230,7 @@ export default {
     predecessorLabel: '{name}（{date} 完成）'
   },
   cost: {
+    laborFromTimesheet: '{label}（来自已审批的工时）',
     execRate: '执行率',
     editBudget: '编制预算',
     addCost: '录入费用',

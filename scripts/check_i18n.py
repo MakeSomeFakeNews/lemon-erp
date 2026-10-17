@@ -9,7 +9,6 @@
   [缺少键]   代码中 new BizException("键")、Messages.get("键")、校验注解 message = "{键}" 使用的键不存在
   [中文]     Java 代码中残留的中文字符串（注释、日志除外）：返回前端的文字改为消息键；
              存入数据库的内容（站内消息、操作日志标题、单据摘要等）有意保留中文的，在行内写 // i18n-ignore
-  [过渡]     仍在使用 Messages.legacyText（迁移用的过渡方法，应改为消息键）
 """
 import glob, os, re, sys
 
@@ -117,8 +116,6 @@ def main():
             for i, line in enumerate(text.split('\n'), 1):
                 if 'i18n-ignore' in raw_lines[i - 1]:
                     continue
-                if 'Messages.legacyText(' in line:
-                    problems.append(f'[过渡] {rel}:{i}: {raw_lines[i - 1].strip()[:110]}')
                 if re.search(r'\blog\.(trace|debug|info|warn|error)\s*\(', line):
                     continue
                 for m in re.finditer(LIT, line):

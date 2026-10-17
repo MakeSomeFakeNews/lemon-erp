@@ -16,7 +16,7 @@
         <include refid="viewSelect"/>
         <where>
             <if test="latest">NOT EXISTS (SELECT 1 FROM mes_tech_doc n WHERE n.prev_id = d.id)</if>
-            <if test="docType != null">AND d.doc_type = #{docType}</if>
+            <if test="docType != null and docType != ''">AND d.doc_type = #{docType}</if>
             <if test="status != null">AND d.status = #{status}</if>
             <if test="materialId != null">AND d.material_id = #{materialId}</if>
             <if test="keyword != null and keyword != ''">

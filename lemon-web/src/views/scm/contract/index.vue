@@ -105,7 +105,7 @@
             <template #icon><PlusOutlined /></template>{{ $t('scm.contract.addMaterial') }}
           </a-button>
         </div>
-        <a-table row-key="key" size="small" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: 900 }">
+        <a-table row-key="key" size="small" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: itemScrollX }">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'material'">
               <a-form-item :name="['items', index, 'materialId']" :rules="[{ required: true, message: $t('scm.contract.materialRequired') }]" class="cell-item">
@@ -327,11 +327,12 @@ const addItem = () => form.value.items.push(newItem())
 const itemColumns = [
   { title: t('scm.contract.material'), key: 'material', width: 280 },
   { title: t('scm.contract.contractPrice'), key: 'price', width: 190 },
-  { title: t('scm.contract.taxRate'), key: 'taxRate', width: 110 },
+  { title: t('scm.contract.taxRate'), key: 'taxRate', width: 130 },
   { title: t('scm.contract.qtyLimit'), key: 'qtyLimit', width: 140 },
   { title: t('common.field.remark'), key: 'remark', width: 160 },
   { title: '', key: 'action', width: 50 }
 ]
+const itemScrollX = itemColumns.reduce((sum, c) => sum + c.width, 0)
 
 // ---------------------------------------------------------------- 详情
 const usageColumns = [

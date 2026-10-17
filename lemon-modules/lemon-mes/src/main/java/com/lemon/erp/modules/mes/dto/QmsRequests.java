@@ -6,7 +6,6 @@ import com.lemon.erp.modules.mes.model.InspectionLevel;
 import com.lemon.erp.modules.mes.model.ItemMethod;
 import com.lemon.erp.modules.mes.model.NcrSource;
 import com.lemon.erp.modules.mes.model.QcType;
-import com.lemon.erp.modules.mes.model.Responsibility;
 import com.lemon.erp.modules.mes.model.SamplingMode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
@@ -86,7 +85,7 @@ public final class QmsRequests {
      */
     public record NcrReview(
             @NotNull(message = "{mes.valid.selectDisposition}") Disposition disposition,
-            @NotNull(message = "{mes.valid.selectResponsibility}") Responsibility responsibility,
+            @NotBlank(message = "{mes.valid.selectResponsibility}") String responsibility,
             @Size(max = 500, message = "{mes.valid.reviewOpinionCannotExceedCharacters}") String reviewOpinion,
             Long reworkWarehouseId) {
     }

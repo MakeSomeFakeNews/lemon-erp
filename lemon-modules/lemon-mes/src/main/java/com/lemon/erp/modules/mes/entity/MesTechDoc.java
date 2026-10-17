@@ -6,7 +6,6 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.modules.mes.model.DocStatus;
-import com.lemon.erp.modules.mes.model.DocType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -24,7 +23,8 @@ public class MesTechDoc extends BaseEntity {
 
     private String name;
 
-    private DocType docType;
+    /** 文档类型(业务字典 mes_doc_type) */
+    private String docType;
 
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Long materialId;

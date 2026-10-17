@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -71,7 +72,7 @@ import static com.lemon.erp.modules.fin.model.FinConstants.previous;
  * 生成成本结转凭证（未审核）：领料 借 生产成本 / 贷 原材料、库存商品；人工、制造费用 借 生产成本 / 贷 制造费用
  * （生产岗位工资计提时计入制造费用）；制造费用差异（期末制造费用余额）转主营业务成本；关闭工单的剩余在产品转主营业务成本；
  * 完工 借 库存商品 / 贷 生产成本；销售成本 借 主营业务成本 / 贷 存货；项目领料 借 合同履约成本；委外发料 借 委托加工物资；
- * 其他出入库 待处理财产损溢。
+ * 其他出入库 待处理财产损溢（填写了收发类别的按类别取凭证科目设置中的对方科目）。
  * 必须逐月核算（首次核算或存货期初之后的第一期除外）；期间未结账、成本凭证未审核时可以重新核算
  */
 @Service
@@ -231,6 +232,9 @@ public class FinCostService {
         private final Map<Long, BigDecimal> outsourceOut = new HashMap<>();
         /** 服务工单领用的备件（售后），计入销售费用 */
         private final Map<Long, BigDecimal> serviceOut = new HashMap<>();
+        /** 物料 → 入库类别 / 出库类别 → 数量：其他出入库按类别取对方科目 */
+        private final Map<Long, Map<String, BigDecimal>> categoryIn = new HashMap<>();
+        private final Map<Long, Map<String, BigDecimal>> categoryOut = new HashMap<>();
         /** 低值易耗品部门领用：[物料、部门、费用科目、数量] */
         private List<Map<String, Object>> consumeRows = List.of();
         /** 委外件 → 子件 → 收货核销的数量：子件成本从委托加工物资转入委外件 */
@@ -298,6 +302,11 @@ public class FinCostService {
                 }
             }
             consumeRows = consumableMapper.selectForCost(begin, end);
+            for (Map<String, Object> row : sourceMapper.selectIoCategoryMovements(begin, end)) {
+                Map<Long, Map<String, BigDecimal>> target = StockBizType.IN.name().equals(row.get("kind")) ? categoryIn : categoryOut;
+                target.computeIfAbsent(id(row, "materialId"), k -> new HashMap<>())
+                        .merge((String) row.get("ioCategory"), dec(row, "qty"), BigDecimal::add);
+            }
             for (Map<String, Object> row : sourceMapper.selectTradeSums(begin, end)) {
                 trade.computeIfAbsent(id(row, "materialId"), k -> new HashMap<>())
                         .put((String) row.get("kind"), new BigDecimal[]{dec(row, "qty"), dec(row, "net")});
@@ -857,8 +866,39 @@ public class FinCostService {
             salesByAccount.forEach((code, amount) -> lines.add(VoucherLine.credit(summary + "-销售成本", code, null, amount))); // i18n-ignore
             BigDecimal other = otherByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
             otherByAccount.forEach((code, amount) -> lines.add(VoucherLine.debit(summary + "-其他出入库", code, null, amount))); // i18n-ignore
-            lines.add(VoucherLine.credit(summary + "-其他出入库", accountRules.accountId(AccountRole.PENDING_LOSS), null, other)); // i18n-ignore
+            otherOffsets(other).forEach((account, amount) -> lines.add(VoucherLine.credit(summary + "-其他出入库", account, null, amount))); // i18n-ignore
             return lines.stream().anyMatch(l -> !l.isZero()) ? lines : List.of();
+        }
+
+        /**
+         * 其他出入库的对方科目（贷方金额，负数记借方）：填写了收发类别的按「数量 × 本期单价」拆出，
+         * 出库 借 出库类别的对方科目、入库 贷 入库类别的对方科目（凭证科目设置，未设置时同待处理财产损溢）；
+         * 其余（盘盈盘亏、未填类别、计价差额等）计入待处理财产损溢，存货科目的金额不变
+         *
+         * @param other 其他出入库使存货增加的净额
+         */
+        private Map<Long, BigDecimal> otherOffsets(BigDecimal other) {
+            Long pendingLoss = accountRules.accountId(AccountRole.PENDING_LOSS);
+            Map<Long, BigDecimal> offsets = new LinkedHashMap<>();
+            offsets.put(pendingLoss, other);
+            Map<String, Long> accounts = new HashMap<>();
+            BiConsumer<Map<Long, Map<String, BigDecimal>>, AccountRole> split = (byMaterial, role) -> byMaterial.forEach((m, byCategory) -> {
+                FinMaterialCost c = materials.get(m);
+                if (c == null) {
+                    return;
+                }
+                byCategory.forEach((cat, qty) -> {
+                    // 入库贷方为正，出库记借方（贷方为负）
+                    BigDecimal amount = money(qty.multiply(c.getUnitCost()));
+                    BigDecimal credit = role == AccountRole.OTHER_IN_OFFSET ? amount : amount.negate();
+                    Long account = accounts.computeIfAbsent(role.name() + ":" + cat, k -> accountRules.accountId(role, cat));
+                    offsets.merge(account, credit, BigDecimal::add);
+                    offsets.merge(pendingLoss, credit.negate(), BigDecimal::add);
+                });
+            });
+            split.accept(categoryIn, AccountRole.OTHER_IN_OFFSET);
+            split.accept(categoryOut, AccountRole.OTHER_OUT_OFFSET);
+            return offsets;
         }
 
         private String category(Long materialId) {

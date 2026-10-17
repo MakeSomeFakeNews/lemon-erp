@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.framework.workflow.FlowApi;
@@ -32,7 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * 请假 / 加班申请：员工在员工自助中提交。流程中心发布了「hr_leave」流程时走审批流程，
@@ -47,7 +47,15 @@ public class HrLeaveService {
     public static final String OVERTIME_PAY = "PAY";
     public static final String OVERTIME_TO_LEAVE = "TO_LEAVE";
     private static final String BUSINESS_KEY_PREFIX = "hr_leave:";
-    private static final Set<String> LEAVE_TYPES = Set.of("ANNUAL", "PERSONAL", "SICK", "MARRIAGE", "MATERNITY", "COMPENSATORY");
+    /*
+     * 假期类型（业务字典 hr_leave_type，租户可新增）。以下内置值有特殊处理：年假、调休提交时校验余额，
+     * 事假全额扣发、病假按比例扣发工资（HrPayrollService）。其他类型（婚假、产假及租户新增的类型）
+     * 按普通带薪假处理：不校验余额、不扣工资，已通过的请假在考勤汇总中同样不计旷工
+     */
+    public static final String LEAVE_ANNUAL = "ANNUAL";
+    public static final String LEAVE_PERSONAL = "PERSONAL";
+    public static final String LEAVE_SICK = "SICK";
+    public static final String LEAVE_COMPENSATORY = "COMPENSATORY";
 
     private final HrLeaveMapper leaveMapper;
     private final HrEmployeeService employeeService;
@@ -55,6 +63,7 @@ public class HrLeaveService {
     private final DocNoService docNoService;
     private final FlowApi flowApi;
     private final HrPayrollLock payrollLock;
+    private final DictLookup dictLookup;
 
     @DataPermission(table = "hr_leave", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<HrLeave> page(long current, long size, LeaveQuery query) {
@@ -91,8 +100,11 @@ public class HrLeaveService {
             throw new BizException("hr.error.durationCannotExceedTimeBetweenStart");
         }
         boolean leave = "LEAVE".equals(req.kind());
-        if (leave && !LEAVE_TYPES.contains(req.type())) {
+        if (leave && (req.type() == null || req.type().isBlank())) {
             throw new BizException("hr.error.selectLeaveType");
+        }
+        if (leave) {
+            dictLookup.check("hr_leave_type", req.type(), "hr.label.leaveType");
         }
         // 加班的补偿方式：加班费（默认）或转调休
         String overtimeType = OVERTIME_TO_LEAVE.equals(req.type()) ? OVERTIME_TO_LEAVE : OVERTIME_PAY;
@@ -100,10 +112,10 @@ public class HrLeaveService {
         if (leaveMapper.countOverlapping(e.getId(), req.kind(), null, req.startTime(), req.endTime()) > 0) {
             throw new BizException(leave ? "hr.error.leaveRequestAlreadyExistsPeriod" : "hr.error.overtimeRequestAlreadyExistsPeriod");
         }
-        if (leave && "ANNUAL".equals(req.type())) {
+        if (leave && LEAVE_ANNUAL.equals(req.type())) {
             checkAnnualBalance(e, req);
         }
-        if (leave && "COMPENSATORY".equals(req.type())) {
+        if (leave && LEAVE_COMPENSATORY.equals(req.type())) {
             BigDecimal balance = compensatoryBalance(e.getId());
             if (req.hours().compareTo(balance) > 0) {
                 throw new BizException("hr.error.insufficientCompTimeHoursAvailableApproved", balance.stripTrailingZeros().toPlainString());
@@ -206,7 +218,7 @@ public class HrLeaveService {
 
     /** 本年已用（含审批中）年假小时 */
     public BigDecimal annualUsedHours(Long employeeId, int year) {
-        return leaveMapper.sumHours(employeeId, "ANNUAL", LocalDate.of(year, 1, 1).atStartOfDay(),
+        return leaveMapper.sumHours(employeeId, LEAVE_ANNUAL, LocalDate.of(year, 1, 1).atStartOfDay(),
                 LocalDate.of(year + 1, 1, 1).atStartOfDay());
     }
 

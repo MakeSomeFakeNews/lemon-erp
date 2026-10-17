@@ -105,7 +105,7 @@
           </a-col>
         </a-row>
         <div class="section-title">{{ $t('fin.consumable.materials') }}</div>
-        <a-table row-key="key" size="small" :columns="formItemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: 860 }">
+        <a-table row-key="key" size="small" :columns="formItemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: formItemScrollX }">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'material'">
               <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" class="full" @select="(m) => onMaterial(record, m)" />
@@ -237,13 +237,14 @@ const rules = {
   expenseAccountId: [{ required: true, message: t('common.rule.requiredSelect', { name: t(c + 'expenseAccount') }) }]
 }
 const formItemColumns = [
-  { title: t(c + 'material'), key: 'material', width: 260 },
-  { title: t(c + 'location'), key: 'location', width: 150 },
+  { title: t(c + 'material'), key: 'material', width: 290 },
+  { title: t(c + 'location'), key: 'location', width: 200 },
   { title: t(c + 'batch'), key: 'batchNo', width: 130 },
   { title: t('common.field.quantity'), key: 'qty', width: 150 },
   { title: t('common.field.remark'), key: 'remark', width: 140 },
   { title: t('common.action.operation'), key: 'action', width: 90 }
 ]
+const formItemScrollX = formItemColumns.reduce((sum, c) => sum + c.width, 0)
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, deptId: undefined, userId: undefined, useDate: today(), warehouseId: undefined, expenseAccountId: undefined,
     remark: '', items: [newItem()] }),

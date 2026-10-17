@@ -57,7 +57,7 @@
         :columns="columns"
         :data-source="form.items"
         :pagination="form.items.length > 50 ? { pageSize: 50, showSizeChanger: false } : false"
-        :scroll="{ x: 1260 }"
+        :scroll="{ x: scrollX }"
         :locale="{ emptyText: $t('wms.checkDoc.empty') }"
       >
         <template #bodyCell="{ column, record }">
@@ -149,8 +149,8 @@ const emit = defineEmits(['success'])
 const { t } = useI18n()
 
 const columns = [
-  { title: t('wms.common.material'), key: 'material', width: 250 },
-  { title: t('wms.common.location'), key: 'location', width: 140 },
+  { title: t('wms.common.material'), key: 'material', width: 290 },
+  { title: t('wms.common.location'), key: 'location', width: 200 },
   { title: t('wms.common.batch'), key: 'batchNo', width: 140 },
   { title: t('wms.checkDoc.bookQty'), key: 'bookQty', width: 110, align: 'right' },
   { title: t('wms.checkDoc.actualQty'), key: 'actualQty', width: 160 },
@@ -159,6 +159,7 @@ const columns = [
   { title: t('common.field.remark'), key: 'remark', width: 140 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
+const scrollX = columns.reduce((sum, c) => sum + c.width, 0)
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
 const rules = {

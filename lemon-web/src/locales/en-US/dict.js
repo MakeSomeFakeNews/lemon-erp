@@ -90,6 +90,22 @@ export default {
     'ASSEMBLY': 'Assembly/Disassembly', // 组装拆卸
   },
   // 出库类型
+  // 入库类别（业务字典）
+  wms_in_category: {
+    SAMPLE_RETURN: 'Sample Return', // 样品退回
+    GIFT: 'Gift Received', // 受赠入库
+    USE_RETURN: 'Usage Return', // 领用退回
+    OTHER: 'Other' // 其他
+  },
+  // 出库类别（业务字典）
+  wms_out_category: {
+    SAMPLE: 'Samples', // 样品出库
+    GIFT: 'Giveaways', // 赠品出库
+    WELFARE: 'Employee Welfare', // 福利领用
+    RD: 'R&D Use', // 研发领用
+    OFFICE: 'Office Use', // 办公领用
+    OTHER: 'Other' // 其他
+  },
   wms_out_type: {
     'SALES': 'Sales Delivery', // 销售出库
     'PRODUCTION': 'Material Issue', // 生产领料

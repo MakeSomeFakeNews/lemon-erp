@@ -16,7 +16,7 @@ public class HrFlowBusinesses {
     public FlowBusiness leaveFlow() {
         return FlowBusiness.of("hr_leave", "hr.label.leaveOvertimeApproval",
                 dict("kind", "hr.label.requestKind", "hr_leave_kind"),
-                select("type", "hr.label.leaveTypeOvertimeOvertime", "ANNUAL", "PERSONAL", "SICK", "MARRIAGE", "MATERNITY", "COMPENSATORY", "OVERTIME"),
+                dict("type", "hr.label.leaveTypeOvertimeOvertime", "hr_leave_type", "OVERTIME"),
                 number("days", "hr.label.days"),
                 number("hours", "hr.label.hours"),
                 dict("compensation", "hr.label.overtimeCompensation", "hr_overtime_comp"));

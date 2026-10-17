@@ -3,8 +3,10 @@ package com.lemon.erp.modules.bi.service;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.bi.mapper.BiScreenMapper;
 import com.lemon.erp.modules.bi.model.ScreenKey;
+import com.lemon.erp.modules.mes.dto.BoardView;
 import com.lemon.erp.modules.mes.model.EquipmentStatus;
 import com.lemon.erp.modules.mes.model.QcType;
+import com.lemon.erp.modules.mes.service.MesBoardService;
 import com.lemon.erp.modules.wms.model.StockBizType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 数据大屏：生产车间、仓储物流、销售经营、质量管理。每个大屏一次返回全部数据，页面定时刷新；
+ * 数据大屏：生产车间、生产进度、仓储物流、销售经营、质量管理。每个大屏一次返回全部数据，页面定时刷新；
  * 按当前租户统计全部数据（不按部门拆分），登录查看需要「全部数据」权限，投屏链接由有该权限的用户创建
  */
 @Service
@@ -31,14 +33,16 @@ public class BiScreenService {
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final BiScreenMapper screenMapper;
+    private final MesBoardService boardService;
 
     /**
-     * @param workCenterId 生产车间大屏只统计该工作中心，为空统计全部
+     * @param workCenterId 生产车间、生产进度大屏只统计该工作中心，为空统计全部
      */
     public Map<String, Object> data(ScreenKey key, Long workCenterId) {
         LocalDate today = LocalDate.now();
         Map<String, Object> data = switch (key) {
             case FACTORY -> factory(today, workCenterId);
+            case PROGRESS -> progress(workCenterId);
             case WAREHOUSE -> warehouse(today);
             case SALES -> sales(today);
             case QUALITY -> quality(today);
@@ -84,6 +88,20 @@ public class BiScreenService {
         data.put("stopReasons", screenMapper.stopReasons(monthBegin, today.plusDays(1), wc));
         data.put("workOrders", screenMapper.activeWorkOrders(wc, 50));
         data.put("reports", screenMapper.recentReports(wc, 30));
+        return data;
+    }
+
+    // ---------------------------------------------------------------- 生产进度
+
+    /** 生产进度：与「生产看板」相同的数据 */
+    private Map<String, Object> progress(Long wc) {
+        BoardView board = boardService.board(wc);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("workCenter", board.workCenter());
+        data.put("kpi", board.kpi());
+        data.put("lines", board.lines());
+        data.put("orders", board.orders());
+        data.put("hourly", board.hourly());
         return data;
     }
 

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.org.EmployeeLeftEvent;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.hr.entity.HrContract;
@@ -17,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Set;
 
 /**
  * 劳动合同：签订、续签（原合同变为已续签）、终止；到期日之后自动变为已到期；员工离职时生效中的合同自动终止
@@ -26,11 +26,13 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class HrContractService {
 
-    private static final Set<String> TYPES = Set.of("FIXED", "OPEN", "TASK", "INTERN", "LABOR");
+    /** 无固定期限合同（字典 hr_contract_type 的内置值）：没有结束日期；其他类型（含租户新增的）必须填结束日期 */
+    static final String OPEN_TERM = "OPEN";
 
     private final HrContractMapper contractMapper;
     private final HrEmployeeService employeeService;
     private final DocNoService docNoService;
+    private final DictLookup dictLookup;
 
     public PageResult<HrContract> page(long current, long size, String keyword, String status, String type, Integer expireDays, Long employeeId) {
         Page<HrContract> page = Page.of(current, size);
@@ -138,14 +140,15 @@ public class HrContractService {
         return list;
     }
 
-    private static HrContract normalize(HrContract req) {
-        if (req.getContractType() == null || !TYPES.contains(req.getContractType())) {
+    private HrContract normalize(HrContract req) {
+        if (req.getContractType() == null || req.getContractType().isBlank()) {
             throw new BizException("hr.error.selectContractType");
         }
+        dictLookup.check("hr_contract_type", req.getContractType(), "hr.label.contractType");
         if (req.getStartDate() == null) {
             throw new BizException("hr.error.selectContractStartDate");
         }
-        if ("OPEN".equals(req.getContractType())) {
+        if (OPEN_TERM.equals(req.getContractType())) {
             req.setEndDate(null);
         } else if (req.getEndDate() == null) {
             throw new BizException("hr.error.selectContractEndDateExceptOpen");

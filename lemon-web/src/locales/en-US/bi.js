@@ -178,7 +178,7 @@ export default {
     intervalSeconds: 'Rotation Interval (s)',
     interval: 'Interval',
     workCenter: 'Work Center',
-    workCenterExtra: 'The Production screen shows only this work center',
+    workCenterExtra: 'The Production and Production Progress screens show only this work center',
     expireTime: 'Valid Until',
     lastAccess: 'Last Access',
     link: 'Link',

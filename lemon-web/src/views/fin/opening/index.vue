@@ -169,7 +169,7 @@
             :data-source="stockRows"
             :loading="loadingStock"
             :pagination="{ pageSize: 50, showSizeChanger: false, showTotal: (total) => $t('fin.opening.totalMaterials', { total }) }"
-            :scroll="{ x: 900, y: '100%' }"
+            :scroll="{ x: stockScrollX, y: '100%' }"
             :locale="{ emptyText: startPeriod ? $t('fin.opening.noStock') : $t('fin.opening.selectStartFirst') }"
           >
             <template #bodyCell="{ column, record, index }">
@@ -393,13 +393,14 @@ async function submitAccounts() {
 
 // ---------------------------------------------------------------- 存货期初
 const stockColumns = [
-  { title: t('fin.opening.material'), key: 'material', width: 260 },
+  { title: t('fin.opening.material'), key: 'material', width: 290 },
   { title: t('fin.opening.bookQty'), key: 'bookQty', width: 130, align: 'right' },
   { title: t('fin.opening.openingQty'), key: 'qty', width: 140 },
   { title: t('common.field.price'), key: 'price', width: 140 },
   { title: t('fin.opening.openingAmount'), key: 'amount', width: 160 },
   { title: '', key: 'action', width: 50 }
 ]
+const stockScrollX = stockColumns.reduce((sum, c) => sum + c.width, 0)
 const stock = ref({ locked: false, checks: [], rows: [] })
 const stockRows = ref([])
 const startPeriod = ref()

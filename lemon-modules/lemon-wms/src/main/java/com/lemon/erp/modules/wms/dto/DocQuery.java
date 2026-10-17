@@ -10,8 +10,10 @@ import java.time.LocalDate;
  * @param docNo       单据号，模糊匹配
  * @param bizType     入库 / 出库类型
  * @param warehouseId 仓库（调拨单匹配调出或调入仓库）
+ * @param ioCategory  收发类别（仅出入库单）
  */
 public record DocQuery(String docNo, String bizType, Long warehouseId, String status,
                        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate beginDate,
-                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+                       String ioCategory) {
 }

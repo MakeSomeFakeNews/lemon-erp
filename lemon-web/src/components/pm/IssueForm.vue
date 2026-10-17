@@ -27,7 +27,7 @@
         <a-button type="primary" ghost size="small" @click="addRow"><template #icon><PlusOutlined /></template>{{ $t('pm.issue.addMaterial') }}</a-button>
       </div>
       <a-table row-key="key" size="small" class="items-table" :columns="columns" :data-source="form.items" :pagination="false"
-               :scroll="{ x: 1000 }">
+               :scroll="{ x: scrollX }">
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
             <a-form-item :name="['items', index, 'materialId']" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('pm.issue.material') }) }]" class="cell-item">
@@ -102,12 +102,13 @@ const props = defineProps({
 const emit = defineEmits(['update:open', 'success'])
 
 const columns = [
-  { title: t('pm.issue.material'), key: 'material', width: 260 },
+  { title: t('pm.issue.material'), key: 'material', width: 290 },
   { title: t('pm.issue.slot'), key: 'slot', width: 260 },
   { title: t('common.field.quantity'), key: 'qty', width: 150 },
   { title: t('pm.issue.serialNo'), key: 'serialNos', width: 240 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
+const scrollX = columns.reduce((sum, c) => sum + c.width, 0)
 
 const formRef = ref()
 const form = ref({ warehouseId: undefined, bizDate: today(), remark: '', items: [] })

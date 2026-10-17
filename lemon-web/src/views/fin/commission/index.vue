@@ -73,7 +73,7 @@
               <template #icon><PlusOutlined /></template>{{ $t('fin.commission.addRule') }}
             </a-button>
           </div>
-          <a-table row-key="id" size="middle" :columns="ruleColumns" :data-source="rules" :loading="rulesLoading" :pagination="false" :scroll="{ x: 1000 }">
+          <a-table row-key="id" size="middle" :columns="ruleColumns" :data-source="rules" :loading="rulesLoading" :pagination="false" :scroll="{ x: ruleScrollX }">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'basis'"><DictTag type="fin_commission_basis" :value="record.basis" /></template>
               <template v-else-if="column.key === 'salesman'">{{ record.salesmanName || $t('fin.commission.allSalesmen') }}</template>
@@ -269,9 +269,10 @@ const ruleColumns = [
   { title: t('fin.commission.threshold'), key: 'threshold', width: 130, align: 'right' },
   { title: t('fin.commission.rate'), key: 'rate', width: 90, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 200, ellipsis: true },
   { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
 ]
+const ruleScrollX = ruleColumns.reduce((sum, c) => sum + c.width, 0)
 const rules = ref([])
 const rulesLoading = ref(false)
 async function loadRules() {

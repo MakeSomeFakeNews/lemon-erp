@@ -43,7 +43,7 @@
                c.name AS "workCenter", COALESCE(g.good, 0) AS "good", COALESCE(s.hours, 0) AS "stopHours"
         FROM mes_equipment e
         LEFT JOIN mes_work_center c ON c.id = e.work_center_id
-        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_equipment_status' AND dd.dict_value = e.status
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_equipment_status' AND dd.dict_value = e.status AND dd.tenant_id = 1
         LEFT JOIN (
             SELECT equipment_id, SUM(good_qty) AS good FROM mes_report
             WHERE report_date = #{day} AND equipment_id IS NOT NULL GROUP BY equipment_id
@@ -58,10 +58,11 @@
     </select>
 
     <select id="stopReasons" resultType="java.util.Map">
+        <bind name="dictTenant" value="@com.lemon.erp.framework.tenant.TenantContext@currentOrPlatform()"/>
         SELECT COALESCE(dd.dict_label, s.reason) AS "label", SUM(s.hours) AS "hours", s.reason AS "value"
         FROM mes_equipment_stop s
         JOIN mes_equipment e ON e.id = s.equipment_id
-        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_stop_reason' AND dd.dict_value = s.reason
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_stop_reason' AND dd.dict_value = s.reason AND dd.tenant_id = #{dictTenant}
         WHERE s.start_time &gt;= #{begin} AND s.start_time &lt; #{end}
         <if test="wc != null">AND e.work_center_id = #{wc}</if>
         GROUP BY s.reason, dd.dict_label
@@ -128,7 +129,7 @@
     <select id="stockDocByType" resultType="java.util.Map">
         SELECT d.kind AS "kind", COALESCE(dd.dict_label, d.biz_type) AS "label", SUM(d.total_qty) AS "qty", d.biz_type AS "value"
         FROM wms_stock_doc d
-        LEFT JOIN sys_dict_data dd ON dd.dict_type = CASE WHEN d.kind = 'IN' THEN 'wms_in_type' ELSE 'wms_out_type' END AND dd.dict_value = d.biz_type
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = CASE WHEN d.kind = 'IN' THEN 'wms_in_type' ELSE 'wms_out_type' END AND dd.dict_value = d.biz_type AND dd.tenant_id = 1
         WHERE d.status = 'DONE' AND d.kind IN ('IN', 'OUT') AND d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}
         GROUP BY d.kind, d.biz_type, dd.dict_label
         ORDER BY 3 DESC
@@ -193,7 +194,7 @@
         FROM scm_delivery d
         LEFT JOIN scm_customer c ON c.id = d.customer_id
         LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id
-        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'scm_delivery_status' AND dd.dict_value = d.status
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'scm_delivery_status' AND dd.dict_value = d.status AND dd.tenant_id = 1
         WHERE d.status IN ('PENDING', 'PICKED')
         ORDER BY d.ship_date, d.id
         LIMIT #{limit}
@@ -217,7 +218,7 @@
                w.name AS "warehouse", d.total_qty AS "qty", d.confirm_time AS "time", d.biz_type AS "bizType"
         FROM wms_stock_doc d
         LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id
-        LEFT JOIN sys_dict_data dd ON dd.dict_type = CASE WHEN d.kind = 'IN' THEN 'wms_in_type' ELSE 'wms_out_type' END AND dd.dict_value = d.biz_type
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = CASE WHEN d.kind = 'IN' THEN 'wms_in_type' ELSE 'wms_out_type' END AND dd.dict_value = d.biz_type AND dd.tenant_id = 1
         WHERE d.status IN ('DONE', 'TRANSIT') AND d.confirm_time IS NOT NULL
         ORDER BY d.confirm_time DESC, d.id DESC
         LIMIT #{limit}
@@ -313,7 +314,7 @@
     <select id="openOrderStatus" resultType="java.util.Map">
         SELECT o.status AS "status", COALESCE(dd.dict_label, o.status) AS "label", COUNT(*) AS "orders", SUM(o.total_amount) AS "amount"
         FROM scm_order o
-        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'scm_order_status' AND dd.dict_value = o.status
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'scm_order_status' AND dd.dict_value = o.status AND dd.tenant_id = 1
         WHERE o.kind = 'SALES' AND o.status IN ('DRAFT', 'APPROVING', 'APPROVED', 'PARTIAL')
         GROUP BY o.status, dd.dict_label, dd.sort
         ORDER BY dd.sort
@@ -333,7 +334,7 @@
                COALESCE(dd.dict_label, o.status) AS "statusLabel", o.order_date AS "orderDate"
         FROM scm_order o
         LEFT JOIN scm_customer c ON c.id = o.partner_id
-        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'scm_order_status' AND dd.dict_value = o.status
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'scm_order_status' AND dd.dict_value = o.status AND dd.tenant_id = 1
         WHERE o.kind = 'SALES'
         ORDER BY o.id DESC
         LIMIT #{limit}
@@ -347,7 +348,7 @@
                SUM(CASE WHEN i.result = 'FAIL' THEN 1 ELSE 0 END) AS "fail",
                SUM(CASE WHEN i.result = 'CONCESSION' THEN 1 ELSE 0 END) AS "concession"
         FROM mes_inspection i
-        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_qc_type' AND dd.dict_value = i.type
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_qc_type' AND dd.dict_value = i.type AND dd.tenant_id = 1
         WHERE i.status = 'CONFIRMED' AND i.inspect_date &gt;= #{begin} AND i.inspect_date &lt;= #{end}
         GROUP BY i.type, dd.dict_label, dd.sort
         ORDER BY dd.sort
@@ -362,9 +363,10 @@
     </select>
 
     <select id="defectTypes" resultType="java.util.Map">
+        <bind name="dictTenant" value="@com.lemon.erp.framework.tenant.TenantContext@currentOrPlatform()"/>
         SELECT COALESCE(dd.dict_label, i.defect_type) AS "label", COUNT(*) AS "times", SUM(i.defect_qty) AS "qty", i.defect_type AS "value"
         FROM mes_inspection i
-        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_defect_type' AND dd.dict_value = i.defect_type
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_defect_type' AND dd.dict_value = i.defect_type AND dd.tenant_id = #{dictTenant}
         WHERE i.status = 'CONFIRMED' AND i.result &lt;&gt; 'PASS' AND i.defect_type IS NOT NULL
           AND i.inspect_date &gt;= #{begin} AND i.inspect_date &lt;= #{end}
         GROUP BY i.defect_type, dd.dict_label
@@ -395,14 +397,15 @@
     </select>
 
     <select id="openNcrs" resultType="java.util.Map">
+        <bind name="dictTenant" value="@com.lemon.erp.framework.tenant.TenantContext@currentOrPlatform()"/>
         SELECT n.ncr_no AS "ncrNo", m.name AS "material", n.qty AS "qty", COALESCE(ds.dict_label, n.source) AS "sourceLabel",
                dt.dict_label AS "defectLabel", COALESCE(st.dict_label, n.status) AS "statusLabel", n.create_time AS "time",
                n.source AS "source", n.defect_type AS "defectType", n.status AS "status"
         FROM qms_ncr n
         JOIN wms_material m ON m.id = n.material_id
-        LEFT JOIN sys_dict_data ds ON ds.dict_type = 'qms_ncr_source' AND ds.dict_value = n.source
-        LEFT JOIN sys_dict_data dt ON dt.dict_type = 'mes_defect_type' AND dt.dict_value = n.defect_type
-        LEFT JOIN sys_dict_data st ON st.dict_type = 'qms_ncr_status' AND st.dict_value = n.status
+        LEFT JOIN sys_dict_data ds ON ds.dict_type = 'qms_ncr_source' AND ds.dict_value = n.source AND ds.tenant_id = 1
+        LEFT JOIN sys_dict_data dt ON dt.dict_type = 'mes_defect_type' AND dt.dict_value = n.defect_type AND dt.tenant_id = #{dictTenant}
+        LEFT JOIN sys_dict_data st ON st.dict_type = 'qms_ncr_status' AND st.dict_value = n.status AND st.tenant_id = 1
         WHERE n.status IN ('OPEN', 'APPROVING')
         ORDER BY n.id DESC
         LIMIT #{limit}
@@ -413,8 +416,8 @@
                COALESCE(dr.dict_label, i.result) AS "resultLabel", i.defect_qty AS "defectQty", i.inspect_date AS "date", i.type AS "type"
         FROM mes_inspection i
         JOIN wms_material m ON m.id = i.material_id
-        LEFT JOIN sys_dict_data dt ON dt.dict_type = 'mes_qc_type' AND dt.dict_value = i.type
-        LEFT JOIN sys_dict_data dr ON dr.dict_type = 'mes_qc_result' AND dr.dict_value = i.result
+        LEFT JOIN sys_dict_data dt ON dt.dict_type = 'mes_qc_type' AND dt.dict_value = i.type AND dt.tenant_id = 1
+        LEFT JOIN sys_dict_data dr ON dr.dict_type = 'mes_qc_result' AND dr.dict_value = i.result AND dr.tenant_id = 1
         WHERE i.status = 'CONFIRMED'
         ORDER BY i.confirm_time DESC, i.id DESC
         LIMIT #{limit}

@@ -48,7 +48,7 @@
         :columns="columns"
         :data-source="form.items"
         :pagination="false"
-        :scroll="{ x: 1050 }"
+        :scroll="{ x: scrollX }"
         :locale="{ emptyText: $t('scm.quotation.emptyItems') }"
       >
         <template #bodyCell="{ column, record, index }">
@@ -136,11 +136,12 @@ const columns = [
   { title: t('scm.quotation.material'), key: 'material', width: 280 },
   { title: t('common.field.quantity'), key: 'qty', width: 150 },
   { title: t('scm.quotation.taxPrice'), key: 'price', width: 160 },
-  { title: t('scm.quotation.taxRate'), key: 'taxRate', width: 110 },
+  { title: t('scm.quotation.taxRate'), key: 'taxRate', width: 130 },
   { title: t('scm.quotation.amount'), key: 'amount', width: 130, align: 'right' },
   { title: t('common.field.remark'), key: 'remark', width: 150 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
+const scrollX = columns.reduce((sum, c) => sum + c.width, 0)
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
 const rules = {

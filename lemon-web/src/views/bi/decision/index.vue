@@ -143,7 +143,7 @@
             <template #icon><PlusOutlined /></template>{{ $t('bi.decision.addRule') }}
           </a-button>
         </div>
-        <a-table size="small" row-key="id" :data-source="rules" :columns="ruleColumns" :pagination="false" :scroll="{ x: 900 }">
+        <a-table size="small" row-key="id" :data-source="rules" :columns="ruleColumns" :pagination="false" :scroll="{ x: ruleScrollX }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'metric'">{{ metricLabel(record.metric) }}</template>
             <template v-else-if="column.key === 'condition'">
@@ -351,9 +351,10 @@ const ruleColumns = [
   { title: t('bi.decision.condition'), key: 'condition', width: 180 },
   { title: t('bi.decision.level'), key: 'level', width: 80 },
   { title: t('common.field.status'), key: 'enabled', width: 90 },
-  { title: t('bi.decision.suggestion'), dataIndex: 'remark', ellipsis: true },
+  { title: t('bi.decision.suggestion'), dataIndex: 'remark', width: 220, ellipsis: true },
   { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
+const ruleScrollX = ruleColumns.reduce((sum, c) => sum + c.width, 0)
 
 async function loadAlerts() {
   al.loading = true

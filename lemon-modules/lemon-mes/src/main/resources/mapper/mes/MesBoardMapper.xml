@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 生产看板，见 MesBoardService -->
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesBoardMapper">
+
+    <select id="selectOrders" resultType="com.lemon.erp.modules.mes.dto.BoardOrderRow">
+        SELECT w.id, w.wo_no, w.wo_type, w.status, w.qty, w.finished_qty, w.plan_start, w.plan_end,
+               m.code AS material_code, m.name AS material_name, m.spec, m.unit,
+               p.sales_order_no, c.name AS customer_name, COALESCE(p.due_date, o.delivery_date) AS due_date,
+               (SELECT MAX(r.create_time) FROM mes_report r WHERE r.wo_id = w.id) AS last_report_time
+        FROM mes_work_order w
+        JOIN wms_material m ON m.id = w.material_id
+        LEFT JOIN mes_plan p ON p.id = w.plan_id
+        LEFT JOIN scm_order o ON o.id = p.sales_order_id
+        LEFT JOIN scm_customer c ON c.id = o.partner_id
+        WHERE w.status IN ('RELEASED', 'STARTED')
+        ORDER BY w.id
+    </select>
+
+    <select id="selectOps" resultType="com.lemon.erp.modules.mes.entity.MesWoOp">
+        SELECT o.*, c.name AS work_center_name
+        FROM mes_wo_op o
+        JOIN mes_work_order w ON w.id = o.wo_id
+        LEFT JOIN mes_work_center c ON c.id = o.work_center_id
+        WHERE w.status IN ('RELEASED', 'STARTED')
+        ORDER BY o.wo_id, o.seq, o.id
+    </select>
+
+    <select id="sumByOp" resultType="com.lemon.erp.modules.mes.dto.BoardReportSum">
+        SELECT r.op_id AS id, SUM(r.good_qty) AS good, SUM(r.scrap_qty) AS scrap, SUM(r.hours) AS hours, MAX(r.create_time) AS last_time
+        FROM mes_report r
+        WHERE r.report_date = #{day}
+        GROUP BY r.op_id
+    </select>
+
+    <select id="sumByWorkCenter" resultType="com.lemon.erp.modules.mes.dto.BoardReportSum">
+        SELECT o.work_center_id AS id, SUM(r.good_qty) AS good, SUM(r.scrap_qty) AS scrap, SUM(r.hours) AS hours, MAX(r.create_time) AS last_time
+        FROM mes_report r
+        JOIN mes_wo_op o ON o.id = r.op_id
+        WHERE r.report_date = #{day}
+        GROUP BY o.work_center_id
+    </select>
+
+    <select id="sumByHour" resultType="com.lemon.erp.modules.mes.dto.BoardHourRow">
+        SELECT HOUR(r.create_time) AS report_hour, SUM(r.good_qty) AS good, SUM(r.scrap_qty) AS scrap
+        FROM mes_report r
+        <if test="wc != null">JOIN mes_wo_op o ON o.id = r.op_id AND o.work_center_id = #{wc}</if>
+        WHERE r.report_date = #{day}
+        GROUP BY HOUR(r.create_time)
+    </select>
+
+    <select id="countFinished" resultType="long">
+        SELECT COUNT(*)
+        FROM mes_work_order w
+        WHERE w.finish_time &gt;= #{from} AND w.finish_time &lt; #{to}
+        <if test="wc != null">AND EXISTS (SELECT 1 FROM mes_wo_op o WHERE o.wo_id = w.id AND o.work_center_id = #{wc})</if>
+    </select>
+
+</mapper>

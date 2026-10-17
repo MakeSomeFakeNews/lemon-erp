@@ -81,8 +81,8 @@
             <div v-if="isForeign(record.currency)" class="sub-text">{{ record.currency }} @{{ Number(record.exchangeRate) }}</div>
           </template>
           <template v-else-if="column.key === 'progress'">
-            <a-progress :percent="progress(record)" size="small" :status="progress(record) >= 100 ? 'success' : 'normal'" />
-            <div class="sub-text">{{ formatQty(record.doneQty) }} / {{ formatQty(record.totalQty) }}</div>
+            <a-progress :percent="progress(record)" size="small" :show-info="false" :status="progress(record) >= 100 ? 'success' : 'normal'" />
+            <div class="sub-text">{{ formatQty(record.doneQty) }} / {{ formatQty(record.totalQty) }} · {{ progress(record) }}%</div>
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="scm_order_status" :value="record.status" />
@@ -199,7 +199,7 @@ const columns = [
   { title: conf.partnerLabel, key: 'partner', width: 200 },
   { title: t('scm.order.orderDeliveryDate'), key: 'dates', width: 140 },
   { title: t('scm.order.totalAmount'), key: 'totalAmount', width: 130, align: 'right' },
-  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('common.field.status'), key: 'status', width: 120 },
   { title: props.kind === 'purchase' ? t('scm.order.inProgress') : t('scm.order.outProgress'), key: 'progress', width: 190 },
   { title: conf.warehouseLabel, dataIndex: 'warehouseName', width: 120 },
   { title: t('scm.order.preparedBy'), dataIndex: 'createByName', width: 110 },

@@ -183,7 +183,7 @@
           <span>{{ $t('crm.opportunity.items') }}</span>
           <a-button size="small" @click="addItem"><template #icon><PlusOutlined /></template>{{ $t('crm.opportunity.addItem') }}</a-button>
         </div>
-        <a-table row-key="key" size="small" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: 800 }" class="items">
+        <a-table row-key="key" size="small" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: itemScrollX }" class="items">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'material'">
               <a-form-item :name="['items', index, 'materialId']" :rules="[{ required: true, message: $t('crm.common.materialRequired') }]" class="cell">
@@ -252,7 +252,10 @@ const STATUS_OPTIONS = [
   { value: 'WON', label: t('crm.common.status.won') },
   { value: 'LOST', label: t('crm.common.status.lost') }
 ]
-const openStageOptions = computed(() => toOptions(dict.crm_opp_stage).filter((o) => OPEN_STAGES.includes(o.value)))
+// 新建只能选进行中的阶段；赢单 / 输单显示为禁用并提示在商机详情中推进
+const openStageOptions = computed(() =>
+  toOptions(dict.crm_opp_stage).map((o) => (OPEN_STAGES.includes(o.value) ? o : { ...o, label: t('crm.opportunity.closedStageHint', { label: o.label }), disabled: true }))
+)
 
 const columns = [
   { title: t('crm.common.f.opportunity'), key: 'name', width: 220 },
@@ -323,13 +326,14 @@ function addItem() {
 const itemsTotal = computed(() => form.value.items.reduce((s, i) => s + lineAmount(i.qty, i.price), 0))
 
 const itemColumns = [
-  { title: t('crm.common.f.material'), key: 'material', width: 260 },
+  { title: t('crm.common.f.material'), key: 'material', width: 290 },
   { title: t('common.field.quantity'), key: 'qty', width: 120 },
   { title: t('crm.common.f.priceTax'), key: 'price', width: 160 },
-  { title: t('crm.common.f.taxRate'), key: 'taxRate', width: 110 },
+  { title: t('crm.common.f.taxRate'), key: 'taxRate', width: 130 },
   { title: t('common.field.amount'), key: 'amount', width: 120, align: 'right' },
   { title: '', key: 'action', width: 50 }
 ]
+const itemScrollX = itemColumns.reduce((sum, c) => sum + c.width, 0)
 
 const rules = {
   name: [{ required: true, whitespace: true, message: t('crm.opportunity.nameRequired') }],

@@ -347,6 +347,7 @@ export default {
     releasedOne: '"{name}" returned to the public pool'
   },
   opportunity: {
+    closedStageHint: '{label} (advance the stage in the opportunity details)',
     kwPh: 'No., name or customer',
     board: 'Board',
     list: 'List',

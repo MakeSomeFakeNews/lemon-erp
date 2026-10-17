@@ -3,7 +3,7 @@
 <mapper namespace="com.lemon.erp.modules.wms.mapper.WmsStockDocMapper">
 
     <sql id="viewColumns">
-        d.id, d.doc_no, d.kind, d.biz_type, d.warehouse_id, w.name AS warehouse_name, d.to_warehouse_id,
+        d.id, d.doc_no, d.kind, d.biz_type, d.io_category, d.warehouse_id, w.name AS warehouse_name, d.to_warehouse_id,
         tw.name AS to_warehouse_name, d.biz_date, d.status, d.total_qty, d.remark, d.source_no, d.in_transit,
         d.receive_by, ru.nickname AS receive_by_name, d.receive_time, d.red_of, rd.doc_no AS red_of_no, d.reversed, d.flow_instance_id, d.dept_id,
         d.create_by, cu.nickname AS create_by_name, d.confirm_by, fu.nickname AS confirm_by_name, d.confirm_time,
@@ -26,6 +26,7 @@
         WHERE d.kind = #{kind}
         <if test="q.docNo != null and q.docNo != ''">AND d.doc_no LIKE CONCAT('%', #{q.docNo}, '%')</if>
         <if test="q.bizType != null and q.bizType != ''">AND d.biz_type = #{q.bizType}</if>
+        <if test="q.ioCategory != null and q.ioCategory != ''">AND d.io_category = #{q.ioCategory}</if>
         <if test="q.warehouseId != null">AND (d.warehouse_id = #{q.warehouseId} OR d.to_warehouse_id = #{q.warehouseId})</if>
         <if test="q.status != null and q.status != ''">AND d.status = #{q.status}</if>
         <if test="q.beginDate != null">AND d.biz_date &gt;= #{q.beginDate}</if>

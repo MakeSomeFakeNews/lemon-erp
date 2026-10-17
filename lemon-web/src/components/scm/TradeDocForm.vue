@@ -181,7 +181,7 @@ const columns = computed(() => {
     ...(c.fromStock
       ? [{ title: t('scm.trade.locationBatch'), key: 'slot', width: 230 }]
       : [
-          { title: t('scm.trade.location'), key: 'location', width: 150 },
+          { title: t('scm.trade.location'), key: 'location', width: 200 },
           { title: t('scm.trade.batchNo'), key: 'batchNo', width: 160 }
         ]),
     { title: t('common.field.quantity'), key: 'qty', width: 150 },

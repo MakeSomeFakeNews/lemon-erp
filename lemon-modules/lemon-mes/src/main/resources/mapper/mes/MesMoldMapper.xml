@@ -15,7 +15,7 @@
             <if test="keyword != null and keyword != ''">
                 (t.code LIKE CONCAT('%', #{keyword}, '%') OR t.name LIKE CONCAT('%', #{keyword}, '%'))
             </if>
-            <if test="moldType != null">AND t.mold_type = #{moldType}</if>
+            <if test="moldType != null and moldType != ''">AND t.mold_type = #{moldType}</if>
             <if test="status != null">AND t.status = #{status}</if>
             <if test="productId != null">
                 AND EXISTS (SELECT 1 FROM mes_mold_product p WHERE p.mold_id = t.id AND p.material_id = #{productId})

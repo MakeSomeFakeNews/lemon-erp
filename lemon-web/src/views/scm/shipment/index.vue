@@ -55,7 +55,7 @@
           </template>
           <template v-else-if="column.key === 'receiver'">
             <div>{{ record.receiver || '-' }} {{ record.phone }}</div>
-            <div class="sub-text ellipsis">{{ record.address }}</div>
+            <div class="sub-text ellipsis" :title="record.address">{{ record.address }}</div>
           </template>
           <template v-else-if="column.key === 'freight'">{{ record.freight != null ? '¥' + formatMoney(record.freight) : '-' }}</template>
           <template v-else-if="column.key === 'status'">

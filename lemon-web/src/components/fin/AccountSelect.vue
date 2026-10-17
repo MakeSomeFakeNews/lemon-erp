@@ -8,7 +8,7 @@
     :loading="loading"
     :disabled="disabled"
     option-filter-prop="label"
-    :dropdown-match-select-width="false"
+    :dropdown-match-select-width="400"
     @change="(v) => emit('update:value', v ?? null)"
   />
 </template>

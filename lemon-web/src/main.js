@@ -1,13 +1,19 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import Antd from 'ant-design-vue'
+import Antd, { Select, TreeSelect } from 'ant-design-vue'
 import 'ant-design-vue/dist/reset.css'
 import App from './App.vue'
 import { i18n } from './locales'
 import router from './router'
 import perm from './directives/perm'
 import { isHandledError } from './utils/request'
+import { installEllipsisTitle } from './utils/ellipsisTitle'
 import './style.css'
+
+// 下拉框默认按内容宽度展开（不窄于输入框），避免放在表格窄列中时选项被省略；过长的选项在 style.css 中换行
+for (const comp of [Select, TreeSelect]) {
+  comp.props.dropdownMatchSelectWidth = { type: [Boolean, Number], default: false }
+}
 
 const app = createApp(App)
 app.use(i18n)
@@ -23,4 +29,5 @@ app.config.errorHandler = (err, instance, info) => {
 window.addEventListener('unhandledrejection', (e) => {
   if (isHandledError(e.reason)) e.preventDefault()
 })
+installEllipsisTitle()
 app.mount('#app')

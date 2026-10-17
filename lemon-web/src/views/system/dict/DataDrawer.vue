@@ -10,6 +10,8 @@
       <a-typography-text v-if="dictType" code>{{ dictType.type }}</a-typography-text>
     </template>
 
+    <a-alert v-if="dictType" type="info" show-icon class="kind-tip" :message="kindTip" />
+
     <TableToolbar
       :exporter="exportAll" v-model:size="size" @refresh="load">
       <a-input-search
@@ -19,10 +21,10 @@
         style="width: 200px"
         @search="search"
       />
-      <a-button v-perm="'sys:dict:add'" type="primary" @click="openForm()">
+      <a-button v-if="!isSystem" v-perm="perms.add" type="primary" @click="openForm()">
         <template #icon><PlusOutlined /></template>{{ $t('system.dict.addData') }}
       </a-button>
-      <span v-perm="'sys:dict:remove'">
+      <span v-if="!isSystem" v-perm="perms.remove">
         <a-popconfirm
           :title="$t('system.dict.confirmDeleteDataN', { n: selectedKeys.length })"
           :disabled="!selectedKeys.length"
@@ -42,8 +44,8 @@
       :data-source="list"
       :loading="loading"
       :pagination="pagination"
-      :row-selection="rowSelection"
-      :scroll="{ x: 700 }"
+      :row-selection="isSystem ? undefined : rowSelection"
+      :scroll="{ x: 760 }"
       @change="onTableChange"
     >
       <template #bodyCell="{ column, record }">
@@ -52,16 +54,19 @@
         </template>
         <template v-else-if="column.key === 'value'">
           <a-typography-text code>{{ record.value }}</a-typography-text>
+          <a-tooltip v-if="record.builtin === 1 && !isSystem" :title="$t('system.dict.builtinTip')">
+            <a-tag :bordered="false" class="builtin-tag">{{ $t('system.dict.builtin') }}</a-tag>
+          </a-tooltip>
         </template>
         <template v-else-if="column.key === 'status'">
           <DictTag type="sys_common_status" :value="record.status" />
         </template>
         <template v-else-if="column.key === 'action'">
           <span class="table-actions">
-            <a-button v-perm="'sys:dict:edit'" type="link" size="small" @click="openForm(record)">
+            <a-button v-perm="perms.edit" type="link" size="small" @click="openForm(record)">
               <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
             </a-button>
-            <span v-perm="'sys:dict:remove'">
+            <span v-if="!isSystem && record.builtin !== 1" v-perm="perms.remove">
               <a-popconfirm :title="$t('system.dict.confirmDeleteData')" @confirm="remove([record.id])">
                 <a-button type="link" size="small" danger>
                   <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
@@ -91,7 +96,8 @@
           </a-col>
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('system.dict.value')" name="value">
-              <a-input v-model:value="form.value" :placeholder="$t('system.dict.valuePlaceholder')" :maxlength="100" />
+              <a-input v-model:value="form.value" :placeholder="$t('system.dict.valuePlaceholder')" :maxlength="100"
+                :disabled="isSystem || form.builtin === 1" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
@@ -119,7 +125,7 @@
           </a-col>
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('common.field.status')" name="status">
-              <a-radio-group v-model:value="form.status" :options="toOptions(dict.sys_common_status, true)" />
+              <a-radio-group v-model:value="form.status" :options="toOptions(dict.sys_common_status, true)" :disabled="isSystem" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
@@ -134,21 +140,26 @@
 </template>
 
 <script setup>
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
-import { addDictData, deleteDictData, pageDictData, updateDictData } from '@/api/system/dict'
+import { addBizDictData, addDictData, deleteBizDictData, deleteDictData, pageBizDictData, pageDictData, updateBizDictData, updateDictData } from '@/api/system/dict'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { useDictStore } from '@/store/dict'
 import { toOptions } from '@/utils/dict'
 
+/**
+ * 字典数据：系统字典只能改名称、颜色、排序、备注；业务字典可以新增取值，内置取值（程序依赖）不能删除、不能改键值。
+ * biz 为「业务字典」页面（当前租户自己的取值，权限 sys:bizdict:*），否则为平台的「字典管理」
+ */
 const props = defineProps({
   open: Boolean,
-  dictType: Object
+  dictType: Object,
+  biz: Boolean
 })
 const emit = defineEmits(['update:open'])
 
@@ -177,9 +188,21 @@ const COLORS = [
 ]
 const tagColor = (c) => (c && c !== 'default' ? c : undefined)
 
+const isSystem = computed(() => props.dictType?.kind === 'SYSTEM')
+const perms = computed(() => (props.biz
+  ? { add: 'sys:bizdict:edit', edit: 'sys:bizdict:edit', remove: 'sys:bizdict:edit' }
+  : { add: 'sys:dict:add', edit: 'sys:dict:edit', remove: 'sys:dict:remove' }))
+const api = computed(() => (props.biz
+  ? { page: pageBizDictData, add: addBizDictData, update: updateBizDictData, remove: deleteBizDictData }
+  : { page: pageDictData, add: addDictData, update: updateDictData, remove: deleteDictData }))
+const kindTip = computed(() => {
+  if (isSystem.value) return t('system.dict.systemTip')
+  return props.biz ? t('system.dict.businessTip') : t('system.dict.platformBusinessTip')
+})
+
 const columns = [
   { title: t('system.dict.label'), key: 'label', width: 160 },
-  { title: t('system.dict.value'), key: 'value', width: 120 },
+  { title: t('system.dict.value'), key: 'value', width: 180 },
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
   { title: t('common.field.status'), key: 'status', width: 90, dict: 'sys_common_status' },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
@@ -188,7 +211,7 @@ const columns = [
 
 const query = reactive({ dictType: undefined, label: undefined })
 const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange, exportAll } = useTable(
-  pageDictData,
+  (params) => api.value.page(params),
   query
 )
 
@@ -220,7 +243,11 @@ const emptyForm = () => ({
 const form = ref(emptyForm())
 const rules = {
   label: [{ required: true, message: t('system.dict.inputLabel') }],
-  value: [{ required: true, message: t('system.dict.inputValue') }]
+  value: [
+    { required: true, message: t('system.dict.inputValue') },
+    // 业务字典的键值存入各业务表的编码字段，与后端 SysDictService 的格式一致
+    { validator: (_, v) => (isSystem.value || form.value.builtin === 1 || !v || /^[A-Z][A-Z0-9_]{0,15}$/.test(v) ? Promise.resolve() : Promise.reject(t('system.dict.bizValuePattern'))) }
+  ]
 }
 
 function openForm(record) {
@@ -234,7 +261,8 @@ async function submit() {
   try {
     const { id, createTime, updateTime, ...rest } = form.value
     const data = { ...rest, dictType: props.dictType.type }
-    id ? await updateDictData(id, data) : await addDictData(data)
+    const { builtin, ...payload } = data
+    id ? await api.value.update(id, payload) : await api.value.add(payload)
     dictStore.clear(props.dictType.type)
     message.success(t('common.msg.saveSuccess'))
     formOpen.value = false
@@ -245,7 +273,7 @@ async function submit() {
 }
 
 async function remove(ids) {
-  await deleteDictData(ids)
+  await api.value.remove(ids)
   dictStore.clear(props.dictType.type)
   message.success(t('common.msg.deleteSuccess'))
   selectedKeys.value = []
@@ -272,6 +300,12 @@ async function remove(ids) {
 }
 .color-option.active {
   border-color: var(--app-primary);
+}
+.kind-tip {
+  margin-bottom: 12px;
+}
+.builtin-tag {
+  margin-left: 6px;
 }
 .preview {
   margin-top: 12px;

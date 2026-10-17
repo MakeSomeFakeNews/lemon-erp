@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.workflow.FlowApi;
@@ -56,6 +57,7 @@ public class MesEcnService {
     private final MesWorkOrderService workOrderService;
     private final DocNoService docNoService;
     private final FlowApi flowApi;
+    private final DictLookup dictLookup;
 
     public PageResult<MesEcn> page(long current, long size, EcnStatus status, String keyword) {
         Page<MesEcn> page = Page.of(current, size);
@@ -145,7 +147,7 @@ public class MesEcnService {
         }
         transit(id, EcnStatus.DRAFT, EcnStatus.APPROVING);
         String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of(
-                "reason", ecn.getReason().name(),
+                "reason", ecn.getReason(),
                 "materialCode", ecn.getMaterialCode(),
                 "ecnNo", ecn.getEcnNo()));
         ecnMapper.update(Wrappers.<MesEcn>lambdaUpdate().set(MesEcn::getFlowInstanceId, instanceId).eq(MesEcn::getId, id));
@@ -224,7 +226,8 @@ public class MesEcnService {
         }
     }
 
-    private static void apply(MesEcn ecn, PlmRequests.Ecn req) {
+    private void apply(MesEcn ecn, PlmRequests.Ecn req) {
+        dictLookup.check("mes_ecn_reason", req.reason(), "mes.label.changeReason");
         ecn.setTitle(req.title().trim());
         ecn.setReason(req.reason());
         ecn.setDescription(req.description());

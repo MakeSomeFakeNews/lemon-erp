@@ -306,7 +306,7 @@ public class HrRecruitService {
         Long employeeId = employeeService.create(new EmployeeRequest(req.empNo(), c.getName(), c.getGender(), null, null,
                 c.getPhone(), c.getEmail(), c.getEducation(), r.getDeptId(),
                 req.positionId() != null ? req.positionId() : r.getPositionId(), userId, null,
-                StringUtils.hasText(req.empType()) ? req.empType() : "FULL_TIME", "PROBATION", req.entryDate(),
+                StringUtils.hasText(req.empType()) ? req.empType() : HrEmployeeService.FULL_TIME, "PROBATION", req.entryDate(),
                 req.regularDate() != null ? req.regularDate() : req.entryDate().plusMonths(3), null, null, null,
                 "招聘录用 " + r.getRecruitNo(), null));  // i18n-ignore 员工备注存库
         if (req.baseSalary() != null) {

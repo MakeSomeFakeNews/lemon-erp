@@ -7,8 +7,27 @@
             <a-select
               :value="form.bizType"
               :placeholder="$t('common.placeholder.selectName', { name: conf.typeLabel })"
-              :options="manualTypeOptions"
+              :options="typeOptions"
+              option-label-prop="label"
+              :dropdown-match-select-width="false"
               @change="onBizTypeChange"
+            >
+              <template #option="{ label, hint }">
+                <div class="type-option" :title="hint">
+                  <span>{{ label }}</span>
+                  <span v-if="hint" class="type-hint">{{ hint }}</span>
+                </div>
+              </template>
+            </a-select>
+          </a-form-item>
+        </a-col>
+        <a-col v-if="categoryDict" :xs="24" :sm="12" :lg="6">
+          <a-form-item :label="categoryLabel" name="ioCategory" :extra="$t('wms.doc.ioCategoryTip')">
+            <a-select
+              v-model:value="form.ioCategory"
+              allow-clear
+              :placeholder="$t('wms.common.optional')"
+              :options="toOptions(dict[categoryDict])"
             />
           </a-form-item>
         </a-col>
@@ -18,6 +37,7 @@
               :value="form.warehouseId"
               :allow-clear="false"
               :types="consignIn ? ['CONSIGN_IN'] : undefined"
+              :exclude-types="kind === 'in' && !consignIn ? ['CONSIGN_IN'] : undefined"
               :placeholder="consignIn ? $t('wms.doc.selectConsignWarehouse') : $t('wms.common.selectWarehouse')"
               @update:value="onWarehouseChange"
             />
@@ -161,7 +181,7 @@ import { addDoc, getDoc, updateDoc } from '@/api/wms/doc'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { toOptions } from '@/utils/dict'
-import { DOC_KINDS, availableQty, fillPutaway, formatQty, locationText, rowKey, today } from './wms'
+import { DOC_KINDS, availableQty, docTypeOptions, fillPutaway, formatQty, ioCategoryDict, locationText, rowKey, today } from './wms'
 
 /**
  * 新增 / 编辑出入库单（草稿）。入库手工录入物料；出库、调拨从仓库现有库存中选择。
@@ -174,19 +194,22 @@ const emit = defineEmits(['success'])
 const { t } = useI18n()
 
 const conf = computed(() => DOC_KINDS[props.kind])
-const dict = useDict('wms_in_type', 'wms_out_type')
-/** 手工单据只能是其他出入库、报废出库；采购、销售、生产、项目等由业务单据生成 */
-const MANUAL_TYPES = { in: ['OTHER', 'CONSIGN_IN'], out: ['OTHER', 'SCRAP'] }
-/** 寄售入库：供应商的货寄售入库到供应商寄售仓（不计存货成本），只能选供应商寄售仓 */
+const dict = useDict('wms_in_type', 'wms_out_type', 'wms_in_category', 'wms_out_category')
+/**
+ * 类型下拉列出字典中的全部类型：手工单据只能选其他出入库、寄售入库、报废出库，
+ * 采购、销售、生产、项目等类型不可选，提示由哪种业务单据自动生成
+ */
+const typeOptions = computed(() => docTypeOptions(props.kind, dict[conf.value.typeDict]))
+/** 寄售入库：供应商的货寄售入库到供应商寄售仓（不计存货成本），只能选供应商寄售仓；其他入库不能选供应商寄售仓 */
 const consignIn = computed(() => props.kind === 'in' && form.value.bizType === 'CONSIGN_IN')
-const manualTypeOptions = computed(() =>
-  toOptions(dict[conf.value.typeDict]).filter((o) => (MANUAL_TYPES[props.kind] || []).includes(o.value))
-)
+/** 收发类别：其他入库选入库类别，其他出库、报废出库选出库类别（业务字典，成本凭证按类别取对方科目） */
+const categoryDict = computed(() => ioCategoryDict(props.kind, form.value.bizType))
+const categoryLabel = computed(() => (props.kind === 'in' ? t('wms.doc.inCategory') : t('wms.doc.outCategory')))
 
 const COLUMNS = {
   in: [
-    { title: t('wms.common.material'), key: 'material', width: 260 },
-    { title: t('wms.common.location'), key: 'location', width: 150 },
+    { title: t('wms.common.material'), key: 'material', width: 290 },
+    { title: t('wms.common.location'), key: 'location', width: 200 },
     { title: t('wms.common.batchNo'), key: 'batchNo', width: 150 },
     { title: t('wms.common.productionDate'), key: 'productionDate', width: 140 },
     { title: t('wms.common.expiryDate'), key: 'expiryDate', width: 140 },
@@ -206,7 +229,7 @@ const COLUMNS = {
     { title: t('wms.common.material'), key: 'material', width: 240 },
     { title: t('wms.doc.fromLocation'), key: 'location', width: 120 },
     { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
-    { title: t('wms.doc.toLocation'), key: 'toLocation', width: 160 },
+    { title: t('wms.doc.toLocation'), key: 'toLocation', width: 200 },
     { title: t('common.field.quantity'), key: 'qty', width: 160 },
     { title: t('wms.common.serialNo'), key: 'serialNos', width: 280 },
     { title: t('common.field.remark'), key: 'remark', width: 150 }
@@ -226,6 +249,7 @@ const rules = computed(() => ({
 const emptyForm = () => ({
   id: undefined,
   bizType: undefined,
+  ioCategory: undefined,
   warehouseId: undefined,
   toWarehouseId: undefined,
   bizDate: today(),
@@ -259,12 +283,13 @@ const drawer = useFormDrawer({
   emptyForm,
   fetch: async (record) => {
     const doc = await getDoc(props.kind, record.id)
-    return { ...doc, inTransit: doc.inTransit === true || doc.inTransit === 1, items: doc.items.map(toRow) }
+    return { ...doc, ioCategory: doc.ioCategory || undefined, inTransit: doc.inTransit === true || doc.inTransit === 1, items: doc.items.map(toRow) }
   },
   create: (data) => addDoc(props.kind, data),
   update: (id, data) => updateDoc(props.kind, id, data),
   toPayload: (f) => ({
     bizType: f.bizType,
+    ioCategory: ioCategoryDict(props.kind, f.bizType) ? f.ioCategory || null : null,
     warehouseId: f.warehouseId,
     toWarehouseId: f.toWarehouseId,
     bizDate: f.bizDate,
@@ -316,10 +341,11 @@ async function putaway() {
   message.info(n ? t('wms.doc.suggested', { n }) : t('wms.doc.noSuggestion'))
 }
 
-/** 切换寄售入库与其他入库时仓库类型不同，清空已选仓库 */
+/** 切换寄售入库与其他入库时仓库类型不同，清空已选仓库；收发类别的字典不同时清空类别 */
 function onBizTypeChange(type) {
   const prev = form.value.bizType
   form.value.bizType = type
+  if (ioCategoryDict(props.kind, type) !== ioCategoryDict(props.kind, prev)) form.value.ioCategory = undefined
   if (props.kind === 'in' && form.value.warehouseId && (type === 'CONSIGN_IN') !== (prev === 'CONSIGN_IN')) onWarehouseChange(null)
 }
 
@@ -396,6 +422,15 @@ defineExpose({ openCreate: drawer.openCreate, openEdit: drawer.openEdit })
 }
 .section-title {
   font-weight: 500;
+}
+.type-option {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.type-hint {
+  color: var(--app-text-3);
+  font-size: 12px;
 }
 .items-table :deep(.ant-table-cell) {
   vertical-align: top;

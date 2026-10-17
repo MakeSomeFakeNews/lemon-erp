@@ -104,7 +104,11 @@ public class CrmOpportunityService {
         customerService.detail(req.customerId());
         CrmOpportunity o = new CrmOpportunity();
         List<CrmOpportunityItem> items = fill(o, req);
-        String stage = req.stage() != null && CrmConstants.OPEN_STAGES.contains(req.stage()) ? req.stage() : "INITIAL";
+        String stage = req.stage() != null ? req.stage() : CrmConstants.OPEN_STAGES.get(0);
+        // 新建只能是进行中的阶段，赢单 / 输单在商机详情中推进阶段时处理
+        if (!CrmConstants.OPEN_STAGES.contains(stage)) {
+            throw new BizException("crm.error.createStageMustBeOpen");
+        }
         o.setOppNo(docNoService.next("SJ"));
         o.setStage(stage);
         if (o.getProbability() == null) o.setProbability(CrmConstants.STAGE_PROBABILITY.get(stage));

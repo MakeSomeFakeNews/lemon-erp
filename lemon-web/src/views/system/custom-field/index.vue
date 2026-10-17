@@ -11,7 +11,7 @@
           <template #icon><PlusOutlined /></template>{{ $t('system.customField.addField') }}
         </a-button>
       </div>
-      <a-table row-key="id" size="middle" :columns="columns" :data-source="list" :loading="loading" :pagination="false" :scroll="{ x: 1000, y: '100%' }">
+      <a-table row-key="id" size="middle" :columns="columns" :data-source="list" :loading="loading" :pagination="false" :scroll="{ x: scrollX, y: '100%' }">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'bizType'">{{ typeName(record.bizType) }}</template>
           <template v-else-if="column.key === 'fieldType'"><DictTag type="sys_custom_field_type" :value="record.fieldType" /></template>
@@ -104,12 +104,13 @@ const columns = [
   { title: t('system.customField.label'), dataIndex: 'label', width: 140 },
   { title: t('system.customField.fieldKey'), dataIndex: 'fieldKey', width: 130 },
   { title: t('common.field.type'), key: 'fieldType', width: 100 },
-  { title: t('system.customField.options'), dataIndex: 'options', ellipsis: true },
+  { title: t('system.customField.options'), dataIndex: 'options', width: 220, ellipsis: true },
   { title: t('system.customField.flags'), key: 'flags', width: 190 },
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
   { title: t('common.field.status'), key: 'status', width: 90 },
   { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
+const scrollX = columns.reduce((sum, c) => sum + c.width, 0)
 async function load() {
   loading.value = true
   try {

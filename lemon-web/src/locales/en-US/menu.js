@@ -178,6 +178,8 @@ export default {
   348: 'Partner Statements', // 往来对账单
   349: 'Data Screens', // 数据大屏
   350: 'Integrations', // 第三方集成
+  351: 'Production Board', // 生产看板
+  352: 'Business Dictionaries', // 业务字典
   901: 'Purchasing', // 采购
   902: 'Sales', // 销售
   903: 'Business Partners', // 往来单位
@@ -544,4 +546,5 @@ export default {
   3490: 'Manage Display Links', // 投屏链接管理
   3500: 'Edit Integration Settings', // 集成配置修改
   3501: 'Sync & Bind Contacts', // 通讯录同步与绑定
+  3520: 'Maintain Business Dictionaries', // 业务字典维护
 }

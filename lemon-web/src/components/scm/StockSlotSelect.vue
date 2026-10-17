@@ -3,6 +3,8 @@
     :value="value"
     :placeholder="warehouseId ? $t('scm.stockSlot.selectSlot') : $t('scm.stockSlot.selectWarehouseFirst')"
     :options="options"
+    option-label-prop="short"
+    :dropdown-match-select-width="420"
     :loading="loading"
     :disabled="disabled || !warehouseId"
     :not-found-content="loading ? $t('common.msg.loading') : $t('scm.stockSlot.noStock')"
@@ -22,7 +24,7 @@ import { availableQty, expiryStatus, formatQty, locationText } from '@/component
  * 库存位置选择：列出仓库中某物料各库位、批次的现有库存，出库、退货时选择从哪里出；
  * 批次按先到期先出排序，临期、过期的批次在选项中标注。
  * - value：`${locationId}|${batchNo}`，未选时为 undefined
- * - @select({ locationId, locationCode, batchNo, qty, label })
+ * - @select({ locationId, locationCode, batchNo, qty, label })，label 为「库位 · 批次」短名称（选择框中显示短名称，下拉中显示完整信息）
  */
 const props = defineProps({
   value: String,
@@ -52,16 +54,19 @@ const sorted = computed(() => {
 const options = computed(() => {
   const opts = sorted.value.map((s) => {
     const expiry = expiryStatus(s.expiryDate)
+    const short = `${locationText(s.locationCode)}${s.batchNo ? ' · ' + s.batchNo : ''}`
     return {
       value: slotKey(s),
+      short,
       label:
-        `${locationText(s.locationCode)}${s.batchNo ? ' · ' + s.batchNo : ''} · ${t('scm.stockSlot.available', { qty: formatQty(usable(s)) })}` +
+        `${short} · ${t('scm.stockSlot.available', { qty: formatQty(usable(s)) })}` +
         `${Number(s.frozenQty) ? t('scm.stockSlot.frozen', { qty: formatQty(s.frozenQty) }) : ''}${expiry ? ` · ${expiry.text}` : ''}`
     }
   })
   if (props.value && !opts.some((o) => o.value === props.value)) {
     const [loc, batch] = props.value.split('|')
-    opts.unshift({ value: props.value, label: props.label || `${loc === '0' ? t('scm.stockSlot.unspecified') : t('scm.stockSlot.location', { loc })}${batch ? ' · ' + batch : ''}` })
+    const label = props.label || `${loc === '0' ? t('scm.stockSlot.unspecified') : t('scm.stockSlot.location', { loc })}${batch ? ' · ' + batch : ''}`
+    opts.unshift({ value: props.value, label, short: label })
   }
   return opts
 })
@@ -94,7 +99,8 @@ function onChange(v) {
   emit('update:value', v)
   const slot = slots.value.find((s) => slotKey(s) === v)
   if (slot) {
-    const label = options.value.find((o) => o.value === v)?.label
+    // 回显用短名称（库位 · 批次），完整信息只在下拉中显示
+    const label = options.value.find((o) => o.value === v)?.short
     emit('select', { locationId: slot.locationId || null, locationCode: slot.locationCode, batchNo: slot.batchNo || '', qty: usable(slot), label })
   }
 }

@@ -16,7 +16,7 @@ import java.util.List;
  *
  * @param screens         显示的大屏，多个时轮播
  * @param intervalSeconds 轮播间隔（秒）
- * @param workCenterId    生产车间大屏只显示该工作中心，为空显示全部
+ * @param workCenterId    生产车间、生产进度大屏只显示该工作中心，为空显示全部
  * @param expireTime      有效期至，为空长期有效
  * @param status          1 启用 0 停用
  */

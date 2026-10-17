@@ -8,6 +8,9 @@
         <a-form-item :label="$t('system.dict.type')" name="type">
           <a-input v-model:value="query.type" :placeholder="$t('system.dict.inputType')" allow-clear />
         </a-form-item>
+        <a-form-item :label="$t('system.dict.kind')" name="kind">
+          <a-select v-model:value="query.kind" :placeholder="$t('common.placeholder.all')" allow-clear :options="KIND_OPTIONS" />
+        </a-form-item>
         <a-form-item :label="$t('common.field.status')" name="status">
           <a-select
             v-model:value="query.status"
@@ -59,7 +62,7 @@
         :loading="loading"
         :pagination="pagination"
         :row-selection="rowSelection"
-        :scroll="{ x: 900, y: '100%' }"
+        :scroll="{ x: 1010, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -67,6 +70,9 @@
             <a @click="openData(record)">
               <a-typography-text code>{{ record.type }}</a-typography-text>
             </a>
+          </template>
+          <template v-else-if="column.key === 'kind'">
+            <a-tag :color="record.kind === 'BUSINESS' ? 'green' : 'blue'" :bordered="false">{{ kindLabel(record.kind) }}</a-tag>
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="sys_common_status" :value="record.status" />
@@ -79,7 +85,7 @@
               <a-button v-perm="'sys:dict:edit'" type="link" size="small" @click="openForm(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
-              <span v-perm="'sys:dict:remove'">
+              <span v-if="record.kind === 'BUSINESS'" v-perm="'sys:dict:remove'">
                 <a-popconfirm :title="$t('system.dict.confirmDelete')" @confirm="remove([record.id])">
                   <a-button type="link" size="small" danger>
                     <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
@@ -108,7 +114,12 @@
           </a-col>
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('system.dict.type')" name="type">
-              <a-input v-model:value="form.type" :placeholder="$t('system.dict.typePlaceholder')" :maxlength="100" />
+              <a-input v-model:value="form.type" :placeholder="$t('system.dict.typePlaceholder')" :maxlength="100" :disabled="!!form.id" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
+            <a-form-item :label="$t('system.dict.kind')" name="kind" :extra="$t('system.dict.kindExtra')">
+              <a-radio-group v-model:value="form.kind" :options="KIND_OPTIONS" :disabled="!!form.id" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
@@ -161,9 +172,16 @@ const { t } = useI18n()
 const dictStore = useDictStore()
 const dict = useDict('sys_common_status')
 
+const KIND_OPTIONS = [
+  { value: 'SYSTEM', label: t('system.dict.kindSystem') },
+  { value: 'BUSINESS', label: t('system.dict.kindBusiness') }
+]
+const kindLabel = (k) => KIND_OPTIONS.find((o) => o.value === k)?.label || k
+
 const columns = [
   { title: t('system.dict.name'), dataIndex: 'name', width: 180 },
   { title: t('system.dict.type'), key: 'type', width: 220 },
+  { title: t('system.dict.kind'), key: 'kind', width: 110 },
   { title: t('common.field.status'), key: 'status', width: 90, dict: 'sys_common_status' },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 180 },
@@ -172,7 +190,7 @@ const columns = [
 const { checked, visibleColumns } = useColumns(columns)
 const showSearch = ref(true)
 
-const query = reactive({ name: undefined, type: undefined, status: undefined })
+const query = reactive({ name: undefined, type: undefined, kind: undefined, status: undefined })
 const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange, exportAll } = useTable(
   pageDictType,
   query
@@ -180,7 +198,7 @@ const { list, loading, size, pagination, selectedKeys, rowSelection, load, searc
 onMounted(load)
 
 function resetQuery() {
-  Object.assign(query, { name: undefined, type: undefined, status: undefined })
+  Object.assign(query, { name: undefined, type: undefined, kind: undefined, status: undefined })
   search()
 }
 
@@ -193,7 +211,7 @@ function clearCache() {
 const formOpen = ref(false)
 const saving = ref(false)
 const formRef = ref()
-const emptyForm = () => ({ id: undefined, name: '', type: '', status: 1, remark: '' })
+const emptyForm = () => ({ id: undefined, name: '', type: '', kind: 'BUSINESS', status: 1, remark: '' })
 const form = ref(emptyForm())
 let originalType = ''
 const rules = {

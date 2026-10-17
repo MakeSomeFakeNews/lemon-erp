@@ -178,7 +178,7 @@ export default {
     intervalSeconds: '轮播间隔（秒）',
     interval: '轮播间隔',
     workCenter: '工作中心',
-    workCenterExtra: '生产车间大屏只显示该工作中心',
+    workCenterExtra: '生产车间、生产进度大屏只显示该工作中心',
     expireTime: '有效期至',
     lastAccess: '最近访问',
     link: '链接',

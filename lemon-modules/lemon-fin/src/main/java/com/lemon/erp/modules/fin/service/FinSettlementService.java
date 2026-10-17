@@ -82,6 +82,10 @@ public class FinSettlementService {
     /** @return 新单据 ID */
     @Transactional
     public Long create(SettlementRequest req) {
+        // 票据结算的收付款单由票据业务生成（只能在票据管理中删除），手工收付款不能选择
+        if (SettleMethod.NOTE.name().equals(req.method())) {
+            throw new BizException("fin.error.noteSettleMethodNotManual");
+        }
         accountService.requireCashAccount(req.accountId());
         return doCreate(req);
     }

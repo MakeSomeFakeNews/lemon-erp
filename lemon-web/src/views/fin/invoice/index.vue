@@ -44,7 +44,7 @@
             :loading="loading"
             :pagination="pagination"
             :row-selection="k === 'INPUT' ? { ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== 'VALID' }) } : undefined"
-            :scroll="{ x: 1200 }"
+            :scroll="{ x: scrollX }"
             @change="onTableChange"
           >
             <template #bodyCell="{ column, record }">
@@ -419,10 +419,12 @@ const columns = computed(() => [
   { title: t('common.field.status'), key: 'status', width: 90 },
   { title: t('fin.invoice.match'), key: 'matched', width: 170 },
   ...(kind.value === 'INPUT' ? [{ title: t('fin.invoice.certifyPeriod'), key: 'certify', width: 140 }] : []),
-  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 200, ellipsis: true },
   { title: t('fin.invoice.registeredBy'), dataIndex: 'createByName', width: 120 },
   { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
 ])
+// 进项发票带勾选列
+const scrollX = computed(() => columns.value.reduce((sum, c) => sum + c.width, 0) + (kind.value === 'INPUT' ? 32 : 0))
 const query = reactive({ kind: 'OUTPUT', partnerId: undefined, status: undefined, keyword: undefined, unmatched: false })
 const { list, loading, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable(pageInvoice, query)
 onMounted(load)

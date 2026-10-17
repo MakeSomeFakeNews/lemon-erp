@@ -8,7 +8,6 @@ import com.lemon.erp.modules.mes.dto.MoldRequests;
 import com.lemon.erp.modules.mes.entity.MesMold;
 import com.lemon.erp.modules.mes.entity.MesMoldLog;
 import com.lemon.erp.modules.mes.model.MoldStatus;
-import com.lemon.erp.modules.mes.model.MoldType;
 import com.lemon.erp.modules.mes.service.MesMoldService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +40,7 @@ public class MesMoldController {
     public R<PageResult<MesMold>> page(@RequestParam(defaultValue = "1") long current,
                                        @RequestParam(defaultValue = "10") long size,
                                        @RequestParam(required = false) String keyword,
-                                       @RequestParam(required = false) MoldType moldType,
+                                       @RequestParam(required = false) String moldType,
                                        @RequestParam(required = false) MoldStatus status,
                                        @RequestParam(required = false) Long productId,
                                        @RequestParam(required = false) Boolean warn) {

@@ -8,6 +8,9 @@
         <a-form-item v-if="conf.typeDict" :label="conf.typeLabel" name="bizType">
           <a-select v-model:value="query.bizType" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict[conf.typeDict])" />
         </a-form-item>
+        <a-form-item v-if="conf.categoryDict" :label="conf.categoryLabel" name="ioCategory">
+          <a-select v-model:value="query.ioCategory" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict[conf.categoryDict])" />
+        </a-form-item>
         <a-form-item :label="$t('common.field.status')" name="status">
           <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_doc_status)" />
         </a-form-item>
@@ -52,7 +55,7 @@
         :loading="loading"
         :pagination="pagination"
         :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== 'DRAFT' }) }"
-        :scroll="{ x: 1350, y: '100%' }"
+        :scroll="{ x: 1460, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -65,6 +68,10 @@
           </template>
           <template v-else-if="column.key === 'bizType'">
             <DictTag :type="conf.typeDict" :value="record.bizType" />
+          </template>
+          <template v-else-if="column.key === 'ioCategory'">
+            <DictTag v-if="record.ioCategory" :type="conf.categoryDict" :value="record.ioCategory" />
+            <span v-else>-</span>
           </template>
           <template v-else-if="column.key === 'warehouse'">
             <span v-if="kind === 'transfer'">{{ record.warehouseName }} <ArrowRightOutlined class="arrow" /> {{ record.toWarehouseName }}</span>
@@ -177,11 +184,12 @@ const props = defineProps({
 const { t } = useI18n()
 const userStore = useUserStore()
 const conf = DOC_KINDS[props.kind]
-const dict = useDict('wms_doc_status', ...(conf.typeDict ? [conf.typeDict] : []))
+const dict = useDict('wms_doc_status', ...(conf.typeDict ? [conf.typeDict, conf.categoryDict] : []))
 
 const columns = [
   { title: t('wms.common.docNo'), key: 'docNo', width: 170 },
   conf.typeDict ? { title: conf.typeLabel, key: 'bizType', width: 120 } : null,
+  conf.categoryDict ? { title: conf.categoryLabel, key: 'ioCategory', width: 110 } : null,
   { title: props.kind === 'transfer' ? t('wms.doc.fromTo') : t('wms.common.warehouse'), key: 'warehouse', width: props.kind === 'transfer' ? 240 : 140 },
   { title: t('wms.common.bizDate'), dataIndex: 'bizDate', width: 120 },
   { title: t('wms.common.totalQty'), key: 'totalQty', width: 110, align: 'right' },
@@ -195,7 +203,7 @@ const columns = [
 const { checked, visibleColumns } = useColumns(columns, `wms-${props.kind}`)
 const showSearch = ref(true)
 
-const emptyQuery = () => ({ docNo: undefined, bizType: undefined, status: undefined, warehouseId: undefined, range: undefined })
+const emptyQuery = () => ({ docNo: undefined, bizType: undefined, ioCategory: undefined, status: undefined, warehouseId: undefined, range: undefined })
 const query = reactive(emptyQuery())
 const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable(
   (params) => pageDoc(props.kind, params),

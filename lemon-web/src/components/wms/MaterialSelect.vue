@@ -5,6 +5,7 @@
     show-search
     :placeholder="placeholder"
     :filter-option="false"
+    :dropdown-match-select-width="400"
     :options="options"
     :loading="loading"
     :disabled="disabled"

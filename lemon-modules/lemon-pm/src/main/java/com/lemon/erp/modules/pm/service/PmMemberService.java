@@ -2,6 +2,7 @@ package com.lemon.erp.modules.pm.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.modules.hr.service.HrSalaryService;
 import com.lemon.erp.modules.pm.dto.MemberRequest;
 import com.lemon.erp.modules.pm.dto.ResourceRow;
@@ -23,7 +24,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * 项目成员与资源分配：成员的小时成本默认按人力资源的薪资档案计算；资源负荷汇总每人在各项目的投入比例
@@ -32,13 +32,15 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class PmMemberService {
 
-    private static final Set<String> ROLES = Set.of("MANAGER", "DEVELOPER", "TESTER", "IMPLEMENTER", "ENGINEER", "CONSULTANT");
+    /** 项目经理（业务字典 pm_member_role 的内置值）：项目经理自动加入成员并排在最前；其他角色（含租户新增的）无特殊处理 */
+    static final String ROLE_MANAGER = "MANAGER";
 
     private final PmMemberMapper memberMapper;
     private final PmTaskMapper taskMapper;
     private final PmTimesheetMapper timesheetMapper;
     private final HrSalaryService salaryService;
     private final SysUserMapper userMapper;
+    private final DictLookup dictLookup;
 
     public List<PmMember> list(Long projectId) {
         return memberMapper.selectByProject(projectId);
@@ -46,9 +48,7 @@ public class PmMemberService {
 
     @Transactional
     public void save(Long projectId, Long id, MemberRequest req) {
-        if (!ROLES.contains(req.role())) {
-            throw new BizException("pm.error.invalidProjectRole");
-        }
+        dictLookup.check("pm_member_role", req.role(), "pm.label.memberRole");
         if (userMapper.selectById(req.userId()) == null) {
             throw new BizException("pm.error.userNotFound");
         }
@@ -130,7 +130,7 @@ public class PmMemberService {
     void addManager(Long projectId, Long userId, LocalDate joinDate) {
         PmMember exist = find(projectId, userId);
         if (exist != null) {
-            memberMapper.update(Wrappers.<PmMember>lambdaUpdate().set(PmMember::getRole, "MANAGER").eq(PmMember::getId, exist.getId()));
+            memberMapper.update(Wrappers.<PmMember>lambdaUpdate().set(PmMember::getRole, ROLE_MANAGER).eq(PmMember::getId, exist.getId()));
             return;
         }
         save(projectId, null, PmProjectService.managerMember(userId, joinDate));
