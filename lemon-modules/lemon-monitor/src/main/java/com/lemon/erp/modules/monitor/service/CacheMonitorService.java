@@ -6,11 +6,13 @@ import com.lemon.erp.framework.security.TokenService;
 import com.lemon.erp.modules.monitor.dto.CacheInfo;
 import com.lemon.erp.modules.monitor.dto.CacheName;
 import com.lemon.erp.modules.monitor.dto.CacheValue;
+import com.lemon.erp.modules.system.im.ImHttp;
 import com.lemon.erp.modules.system.service.CaptchaService;
 import com.lemon.erp.modules.system.service.PasswordPolicy;
 import com.lemon.erp.modules.system.service.SysBizRuleService;
 import com.lemon.erp.modules.system.service.SysConfigService;
 import com.lemon.erp.modules.system.service.SysDictService;
+import com.lemon.erp.modules.system.service.SysImAuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,7 +44,9 @@ public class CacheMonitorService {
             new CacheName(PasswordPolicy.FAIL_KEY, "登录失败", "按用户名记录的连续登录失败次数，达到上限时锁定账号；清空即解除锁定", 0),
             new CacheName(CaptchaService.CACHE_KEY, "登录验证码", "验证码答案，2 分钟内有效，校验一次后作废", 0),
             new CacheName(SysConfigService.CACHE_KEY, "系统参数", "参数设置中修改过的参数，保存时自动清理", 0),
-            new CacheName(SysBizRuleService.CACHE_KEY, "业务参数", "按租户缓存的业务参数（修改过的），保存时自动清理", 0));
+            new CacheName(SysBizRuleService.CACHE_KEY, "业务参数", "按租户缓存的业务参数（修改过的），保存时自动清理", 0),
+            new CacheName(ImHttp.TOKEN_KEY, "第三方集成令牌", "钉钉、企业微信、飞书应用的 access_token，按租户和平台缓存，修改集成配置时自动清理", 0),
+            new CacheName(SysImAuthService.STATE_KEY, "第三方授权", "钉钉、企业微信、飞书授权登录 / 绑定的 state，10 分钟内有效，使用一次后作废", 0));
     /** 单次最多返回的 key 数量，避免一次性返回过多 */
     private static final int MAX_KEYS = 1000;
 

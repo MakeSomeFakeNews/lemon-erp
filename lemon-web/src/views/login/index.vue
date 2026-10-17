@@ -101,6 +101,19 @@
           </a-button>
         </a-form>
 
+        <template v-if="imProviders.length">
+          <div class="im-divider"><span>其他登录方式</span></div>
+          <div class="im-logins">
+            <a-tooltip v-for="p in imProviders" :key="p.platform" :title="`${p.label}登录`">
+              <button type="button" class="im-login" :disabled="!!imLoading" @click="imLogin(p.platform)">
+                <a-spin v-if="imLoading === p.platform" size="small" />
+                <ImPlatformIcon v-else :platform="p.platform" :size="34" />
+                <span>{{ p.label }}</span>
+              </button>
+            </a-tooltip>
+          </div>
+        </template>
+
         <div v-if="configStore.showDemoAccount" class="tip">
           <span class="tip-dot" />
           演示账号<template v-if="tenantEnabled">（租户 <b>柠檬科技</b>）</template>
@@ -118,7 +131,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
@@ -136,7 +149,9 @@ import {
   UserOutlined
 } from '@ant-design/icons-vue'
 import { getCaptcha } from '@/api/auth'
+import { getImAuthorizeUrl, listImProviders } from '@/api/system/im'
 import AppLogo from '@/components/AppLogo.vue'
+import ImPlatformIcon from '@/components/im/ImPlatformIcon.vue'
 import ThemeIcon from '@/components/ThemeIcon.vue'
 import { useAppStore } from '@/store/app'
 import { useConfigStore } from '@/store/config'
@@ -198,10 +213,46 @@ function fillDemo(username) {
   if (tenantEnabled.value) form.tenantName = DEMO_TENANT
 }
 
+// ---------------------------------------------------------------- 第三方登录（钉钉、企业微信、飞书）
+/** SaaS 模式下按填写的租户显示该租户启用的登录方式 */
+const imProviders = ref([])
+const imLoading = ref(null)
+let providerTimer
+let providerSeq = 0
+async function loadProviders() {
+  const seq = ++providerSeq
+  const name = form.tenantName?.trim()
+  if (tenantEnabled.value && !name) {
+    imProviders.value = []
+    return
+  }
+  const list = await listImProviders(tenantEnabled.value ? name : undefined).catch(() => [])
+  if (seq === providerSeq) imProviders.value = list
+}
+watch(
+  () => form.tenantName,
+  () => {
+    clearTimeout(providerTimer)
+    providerTimer = setTimeout(loadProviders, 400)
+  }
+)
+async function imLogin(platform) {
+  imLoading.value = platform
+  try {
+    location.href = await getImAuthorizeUrl(platform, {
+      tenantName: tenantEnabled.value ? form.tenantName?.trim() : undefined,
+      redirect: route.query.redirect
+    })
+  } catch (e) {
+    imLoading.value = null
+  }
+}
+
 onMounted(async () => {
   await configStore.load(true)
   if (configStore.demoMode && !form.password) fillDemo(form.username === 'test' ? 'test' : 'admin')
   if (needCaptcha.value) refreshCaptcha()
+  loadProviders()
 })
 
 async function handleLogin() {
@@ -473,6 +524,51 @@ async function handleLogin() {
   height: 46px;
   font-size: 16px;
   border-radius: 10px;
+}
+.im-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 16px;
+  font-size: 12px;
+  color: var(--app-text-3);
+}
+.im-divider::before,
+.im-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--app-border);
+}
+.im-logins {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+}
+.im-login {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 56px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--app-text-2);
+  transition: transform 0.2s;
+}
+.im-login:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+.im-login:disabled {
+  cursor: default;
+}
+.im-login :deep(.ant-spin) {
+  height: 34px;
+  display: flex;
+  align-items: center;
 }
 .tip {
   margin-top: 22px;

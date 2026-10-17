@@ -34,8 +34,9 @@ import java.util.Set;
 public class OperLogAspect {
 
     private static final int MAX_LENGTH = 2000;
-    /** 完全隐藏：密码 */
-    private static final Set<String> SECRET_FIELDS = Set.of("password", "oldPassword", "newPassword");
+    /** 完全隐藏：密码、第三方应用密钥、群机器人地址和加签密钥 */
+    private static final Set<String> SECRET_FIELDS = Set.of("password", "oldPassword", "newPassword", "appSecret",
+            "robotWebhook", "robotSecret");
     /** 部分隐藏（保留首尾）：证件号、银行卡号、手机号 */
     private static final Set<String> PARTIAL_FIELDS = Set.of("idCard", "bankAccount", "phone", "mobile", "emergencyPhone");
     /** 薪资类金额：隐藏数值 */

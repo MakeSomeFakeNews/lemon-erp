@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.system.mapper.SysImUserMapper">
+
+    <select id="selectBindingPage" resultType="com.lemon.erp.modules.system.dto.ImBindingRow">
+        SELECT u.id AS user_id, u.username, u.nickname, u.phone, u.status, d.name AS dept_name,
+               b.id AS binding_id, b.im_user_id, b.im_name, b.create_time AS bind_time
+        FROM sys_user u
+        LEFT JOIN sys_dept d ON d.id = u.dept_id
+        LEFT JOIN sys_im_user b ON b.user_id = u.id AND b.platform = #{q.platform}
+        WHERE u.supplier_id IS NULL AND u.customer_id IS NULL
+        <if test="q.bound != null and q.bound">AND b.id IS NOT NULL</if>
+        <if test="q.bound != null and !q.bound">AND b.id IS NULL</if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND (u.username LIKE CONCAT('%', #{q.keyword}, '%') OR u.nickname LIKE CONCAT('%', #{q.keyword}, '%')
+                 OR u.phone LIKE CONCAT('%', #{q.keyword}, '%') OR b.im_user_id LIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+        ORDER BY u.id
+    </select>
+
+</mapper>

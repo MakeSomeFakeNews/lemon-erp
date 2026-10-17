@@ -69,6 +69,23 @@
               <a-button type="primary" :loading="savingPwd" @click="savePassword">修改密码</a-button>
             </a-form>
           </a-tab-pane>
+          <a-tab-pane v-if="imList.length" key="im" tab="第三方账号">
+            <div class="tab-form im-list">
+              <p class="im-tip">绑定后可以用对应平台扫码登录、在平台中免登打开系统，并接收审批待办等消息</p>
+              <div v-for="b in imList" :key="b.platform" class="im-item">
+                <ImPlatformIcon :platform="b.platform" :size="40" />
+                <div class="im-main">
+                  <div class="im-name">{{ b.label }}</div>
+                  <div v-if="b.bound" class="im-sub">已绑定 {{ b.imName || b.imUserId }} · {{ b.bindTime }}</div>
+                  <div v-else class="im-sub">未绑定</div>
+                </div>
+                <a-popconfirm v-if="b.bound" :title="`确定解除${b.label}绑定？`" @confirm="unbindIm(b)">
+                  <a-button>解除绑定</a-button>
+                </a-popconfirm>
+                <a-button v-else type="primary" ghost :loading="imBinding === b.platform" @click="bindIm(b)">绑定</a-button>
+              </div>
+            </div>
+          </a-tab-pane>
         </a-tabs>
       </a-card>
     </a-col>
@@ -86,7 +103,9 @@ import {
   MailOutlined,
   PhoneOutlined
 } from '@ant-design/icons-vue'
+import ImPlatformIcon from '@/components/im/ImPlatformIcon.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import { getImBindUrl, listMyIm, unbindMyIm } from '@/api/system/im'
 import { AVATAR_UPLOAD_URL, getProfile, updatePassword, updateProfile } from '@/api/profile'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
@@ -97,7 +116,8 @@ const userStore = useUserStore()
 const user = ref({})
 const roleNames = ref([])
 const deptName = ref()
-const activeTab = ref(useRoute().query.tab === 'password' ? 'password' : 'info')
+const routeTab = useRoute().query.tab
+const activeTab = ref(['password', 'im'].includes(routeTab) ? routeTab : 'info')
 
 async function load() {
   const res = await getProfile()
@@ -106,7 +126,30 @@ async function load() {
   deptName.value = res.deptName
   Object.assign(info, { nickname: res.user.nickname, email: res.user.email, phone: res.user.phone })
 }
-onMounted(load)
+onMounted(() => {
+  load()
+  loadIm()
+})
+
+// 第三方账号：当前租户启用的钉钉、企业微信、飞书
+const imList = ref([])
+const imBinding = ref(null)
+async function loadIm() {
+  imList.value = await listMyIm().catch(() => [])
+}
+async function bindIm(b) {
+  imBinding.value = b.platform
+  try {
+    location.href = await getImBindUrl(b.platform)
+  } catch (e) {
+    imBinding.value = null
+  }
+}
+async function unbindIm(b) {
+  await unbindMyIm(b.platform)
+  message.success('已解除绑定')
+  loadIm()
+}
 
 // 头像上传
 const uploadHeaders = { Authorization: `Bearer ${getToken()}` }
@@ -258,5 +301,35 @@ async function savePassword() {
 .tab-form {
   max-width: 480px;
   padding-top: 8px;
+}
+.im-list {
+  max-width: 560px;
+}
+.im-tip {
+  color: var(--app-text-3);
+  margin-bottom: 16px;
+}
+.im-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+}
+.im-item + .im-item {
+  margin-top: 12px;
+}
+.im-main {
+  flex: 1;
+  min-width: 0;
+}
+.im-name {
+  font-weight: 600;
+  color: var(--app-text);
+}
+.im-sub {
+  font-size: 12px;
+  color: var(--app-text-3);
 }
 </style>

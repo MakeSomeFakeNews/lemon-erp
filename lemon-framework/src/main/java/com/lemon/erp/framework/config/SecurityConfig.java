@@ -38,6 +38,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, WebMvcConfig.FILE_URL_PREFIX + "**").permitAll()
                         // 大屏投屏链接：免登录只读，按链接令牌校验
                         .requestMatchers(HttpMethod.GET, "/screen-share/**").permitAll()
+                        // 钉钉、企业微信、飞书授权登录：授权页地址和回调
+                        .requestMatchers("/auth/im/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, resp, ex) ->

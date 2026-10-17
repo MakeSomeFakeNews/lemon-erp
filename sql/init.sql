@@ -224,6 +224,9 @@ DROP TABLE IF EXISTS sys_dept;
 DROP TABLE IF EXISTS sys_tenant;
 DROP TABLE IF EXISTS sys_code_rule;
 DROP TABLE IF EXISTS sys_biz_rule;
+DROP TABLE IF EXISTS sys_im_config;
+DROP TABLE IF EXISTS sys_im_user;
+DROP TABLE IF EXISTS sys_im_dept;
 DROP TABLE IF EXISTS sys_custom_value;
 DROP TABLE IF EXISTS sys_custom_field;
 DROP TABLE IF EXISTS sys_print_template;
@@ -318,6 +321,56 @@ CREATE TABLE sys_biz_rule (
     PRIMARY KEY (id),
     UNIQUE KEY uk_biz_rule (rule_key, tenant_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '业务参数（按租户）：各模块的业务控制规则，只保存修改过的';
+
+CREATE TABLE sys_im_config (
+    id                BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id         BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID',
+    platform          VARCHAR(16)  NOT NULL COMMENT '平台 DINGTALK钉钉 WECOM企业微信 FEISHU飞书',
+    enabled           TINYINT      NOT NULL DEFAULT 0 COMMENT '是否启用 1是 0否',
+    corp_id           VARCHAR(64)           DEFAULT NULL COMMENT '企业ID（企业微信 corpid）',
+    app_key           VARCHAR(64)           DEFAULT NULL COMMENT '应用标识（钉钉 Client ID / AppKey，飞书 App ID）',
+    app_secret        VARCHAR(128)          DEFAULT NULL COMMENT '应用密钥（钉钉 Client Secret，企业微信应用 Secret，飞书 App Secret），不返回前端',
+    agent_id          VARCHAR(32)           DEFAULT NULL COMMENT '应用 AgentId（钉钉、企业微信，发送工作通知用）',
+    home_url          VARCHAR(255)          DEFAULT NULL COMMENT '系统访问地址（外网可访问的前端地址），登录回调和消息链接使用',
+    login_enabled     TINYINT      NOT NULL DEFAULT 1 COMMENT '扫码登录与应用内免登 1开启 0关闭',
+    message_enabled   TINYINT      NOT NULL DEFAULT 1 COMMENT '站内消息同步推送给已绑定的成员 1开启 0关闭',
+    sync_create       TINYINT      NOT NULL DEFAULT 0 COMMENT '同步通讯录时自动创建部门和账号 1是 0否（否则只按手机号绑定已有账号）',
+    robot_webhook     VARCHAR(500)          DEFAULT NULL COMMENT '群机器人 Webhook 地址',
+    robot_secret      VARCHAR(128)          DEFAULT NULL COMMENT '群机器人加签密钥（钉钉、飞书），不返回前端',
+    robot_categories  VARCHAR(64)           DEFAULT NULL COMMENT '推送到群机器人的消息类别（逗号分隔，字典 sys_message_category）',
+    last_sync_time    DATETIME              DEFAULT NULL COMMENT '最近同步通讯录时间',
+    last_sync_result  VARCHAR(255)          DEFAULT NULL COMMENT '最近同步结果',
+    create_time       DATETIME              DEFAULT NULL COMMENT '创建时间',
+    update_time       DATETIME              DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_im_config (platform, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '第三方集成（钉钉、企业微信、飞书）的应用配置，按租户';
+
+CREATE TABLE sys_im_user (
+    id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID',
+    user_id     BIGINT       NOT NULL COMMENT '系统用户',
+    platform    VARCHAR(16)  NOT NULL COMMENT '平台 DINGTALK WECOM FEISHU',
+    im_user_id  VARCHAR(64)  NOT NULL COMMENT '平台中的成员 userid',
+    im_name     VARCHAR(64)           DEFAULT NULL COMMENT '平台中的成员姓名',
+    create_time DATETIME              DEFAULT NULL COMMENT '绑定时间',
+    update_time DATETIME              DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_im_user_member (platform, im_user_id, tenant_id),
+    UNIQUE KEY uk_im_user_user (user_id, platform, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '系统用户与钉钉 / 企业微信 / 飞书成员的绑定';
+
+CREATE TABLE sys_im_dept (
+    id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID',
+    dept_id     BIGINT       NOT NULL COMMENT '系统部门',
+    platform    VARCHAR(16)  NOT NULL COMMENT '平台 DINGTALK WECOM FEISHU',
+    im_dept_id  VARCHAR(64)  NOT NULL COMMENT '平台中的部门 ID',
+    create_time DATETIME              DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME              DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_im_dept (platform, im_dept_id, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '同步通讯录时系统部门与平台部门的对应关系';
 
 CREATE TABLE sys_custom_field (
     id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -6697,6 +6750,18 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 (3460, 346, '业务参数修改', 'F', NULL, NULL, 'sys:bizRule:edit', NULL, 1, 1, 1, NOW(), NOW());
 INSERT INTO sys_role_menu (role_id, menu_id) VALUES
 (2, 346);
+
+-- 第三方集成：钉钉、企业微信、飞书（扫码登录、消息推送、通讯录同步）
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(350, 1, '第三方集成', 'C', 'im', 'system/im/index', 'sys:im:list', 'ApiOutlined', 13, 1, 1, NOW(), NOW()),
+(3500, 350, '集成配置修改', 'F', NULL, NULL, 'sys:im:edit', NULL, 1, 1, 1, NOW(), NOW()),
+(3501, 350, '通讯录同步与绑定', 'F', NULL, NULL, 'sys:im:sync', NULL, 2, 1, 1, NOW(), NOW());
+INSERT INTO sys_dict_type (id, name, type, status, remark, create_time, update_time) VALUES
+(160, '集成平台', 'sys_im_platform', 1, '第三方集成的平台', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('sys_im_platform', '钉钉', 'DINGTALK', 'blue', 1, 1, NOW(), NOW()),
+('sys_im_platform', '企业微信', 'WECOM', 'green', 2, 1, NOW(), NOW()),
+('sys_im_platform', '飞书', 'FEISHU', 'cyan', 3, 1, NOW(), NOW());
 
 -- 凭证科目设置：自动凭证各用途使用的科目
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
