@@ -1,12 +1,13 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.StatementRequests;
 import com.lemon.erp.modules.fin.entity.FinSupplierStatement;
 import com.lemon.erp.modules.fin.entity.FinSupplierStatementLine;
@@ -19,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -75,11 +75,10 @@ public class FinStatementService {
         st.setSupplierId(req.supplierId());
         st.setBeginDate(req.beginDate());
         st.setEndDate(req.endDate());
-        st.setAmount(lines.stream().map(FinSupplierStatementLine::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
+        st.setAmount(Decimals.sum(lines, FinSupplierStatementLine::getAmount));
         st.setBillCount(lines.size());
         st.setStatus(StatementStatus.DRAFT);
         st.setRemark(req.remark());
-        st.setCreateBy(SecurityUtils.getUserId());
         statementMapper.insert(st);
         lines.forEach(l -> l.setStatementId(st.getId()));
         statementMapper.insertLines(lines);
@@ -121,16 +120,13 @@ public class FinStatementService {
         if (!agree && (req.remark() == null || req.remark().isBlank())) {
             throw new BizException("fin.error.describeDispute");
         }
-        if (statementMapper.update(Wrappers.<FinSupplierStatement>lambdaUpdate()
-                .set(FinSupplierStatement::getStatus, agree ? StatementStatus.CONFIRMED : StatementStatus.DISPUTED)
-                .set(FinSupplierStatement::getSupplierRemark, req.remark())
-                .set(FinSupplierStatement::getConfirmTime, LocalDateTime.now())
-                .set(agree, FinSupplierStatement::getInvoiceNo, req.invoiceNo())
-                .set(agree, FinSupplierStatement::getInvoiceAmount, req.invoiceAmount())
-                .set(agree, FinSupplierStatement::getInvoiceDate, req.invoiceDate())
-                .eq(FinSupplierStatement::getId, id).eq(FinSupplierStatement::getStatus, StatementStatus.SENT)) == 0) {
-            throw new BizException("fin.error.statementStatusHasChangedRefreshTry");
-        }
+        StatusTransitions.change(statementMapper, FinSupplierStatement::getId, id, FinSupplierStatement::getStatus,
+                StatementStatus.SENT, agree ? StatementStatus.CONFIRMED : StatementStatus.DISPUTED, w -> w
+                        .set(FinSupplierStatement::getSupplierRemark, req.remark())
+                        .set(FinSupplierStatement::getConfirmTime, LocalDateTime.now())
+                        .set(agree, FinSupplierStatement::getInvoiceNo, req.invoiceNo())
+                        .set(agree, FinSupplierStatement::getInvoiceAmount, req.invoiceAmount())
+                        .set(agree, FinSupplierStatement::getInvoiceDate, req.invoiceDate()), "fin.error.statementStatusHasChangedRefreshTry");
         messageSender.send(List.of(st.getCreateBy()), MessageSender.Message.of(agree ? MessageCategory.REMIND : MessageCategory.ALERT,
                 st.getSupplierName() + (agree ? " 已确认对账单 " : " 对对账单有异议 ") + st.getStatementNo(), // i18n-ignore
                 agree ? "对账金额 " + st.getAmount().stripTrailingZeros().toPlainString() : req.remark(), "/fin/statement")); // i18n-ignore
@@ -151,9 +147,7 @@ public class FinStatementService {
     }
 
     private void transit(Long id, StatementStatus from, StatementStatus to) {
-        if (statementMapper.update(Wrappers.<FinSupplierStatement>lambdaUpdate().set(FinSupplierStatement::getStatus, to)
-                .eq(FinSupplierStatement::getId, id).eq(FinSupplierStatement::getStatus, from)) == 0) {
-            throw new BizException("fin.error.statementStatusHasChangedRefreshTry");
-        }
+        StatusTransitions.change(statementMapper, FinSupplierStatement::getId, id, FinSupplierStatement::getStatus, from, to,
+                "fin.error.statementStatusHasChangedRefreshTry");
     }
 }

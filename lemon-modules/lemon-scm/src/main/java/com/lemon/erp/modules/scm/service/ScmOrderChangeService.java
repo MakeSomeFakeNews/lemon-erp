@@ -2,10 +2,11 @@ package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.framework.security.SecurityUtils;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.scm.dto.OrderChangeRequest;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
 import com.lemon.erp.modules.scm.entity.ScmOrderChange;
@@ -51,7 +52,7 @@ import static com.lemon.erp.modules.scm.model.ScmConstants.tax;
 public class ScmOrderChangeService {
 
     public static final String PROCESS_KEY = "scm_order_change";
-    private static final String BUSINESS_KEY_PREFIX = "scm_order_change:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "scm_order_change:");
 
     private final ScmOrderChangeMapper changeMapper;
     private final ScmOrderChangeItemMapper changeItemMapper;
@@ -61,7 +62,7 @@ public class ScmOrderChangeService {
     private final WmsMaterialService materialService;
     private final StockReservationService reservationService;
     private final DocNoService docNoService;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
 
     public List<ScmOrderChange> list(OrderKind kind, Long orderId) {
         orderService.getAccessible(kind, orderId);
@@ -122,7 +123,7 @@ public class ScmOrderChangeService {
                     }
                 } else {
                     BigDecimal qty = l.qty() == null ? item.getQty() : l.qty();
-                    BigDecimal min = item.getDoneQty().subtract(item.getReplenishQty() == null ? BigDecimal.ZERO : item.getReplenishQty());
+                    BigDecimal min = item.getDoneQty().subtract(Decimals.nz(item.getReplenishQty()));
                     if (qty.compareTo(min) < 0) {
                         throw new BizException("scm.error.quantityCannotLessCompletedQuantity", item.getMaterialCode(), item.getMaterialName(),
                                 min.stripTrailingZeros().toPlainString());
@@ -150,43 +151,37 @@ public class ScmOrderChangeService {
         c.setStatus(OrderChangeStatus.APPROVING);
         c.setOldAmount(order.getTotalAmount());
         c.setNewAmount(newAmount);
-        c.setCreateBy(SecurityUtils.getUserId());
         changeMapper.insert(c);
         lines.forEach(ci -> {
             ci.setChangeId(c.getId());
             changeItemMapper.insert(ci);
         });
-        if (flowApi.isAvailable(PROCESS_KEY)) {
-            String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + c.getId(), Map.of("changeNo", c.getChangeNo(),
-                    "orderNo", order.getOrderNo(), "kind", kind.name(), "amountDelta", newAmount.subtract(order.getTotalAmount())));
-            changeMapper.update(Wrappers.<ScmOrderChange>lambdaUpdate().set(ScmOrderChange::getFlowInstanceId, instanceId)
-                    .eq(ScmOrderChange::getId, c.getId()));
-        } else {
-            apply(c.getId());
-        }
+        // 变更单新建即为审批中，发起前无需再改状态
+        approvalSupport.submit(FLOW, c.getId(), Map.of("changeNo", c.getChangeNo(),
+                        "orderNo", order.getOrderNo(), "kind", kind.name(), "amountDelta", newAmount.subtract(order.getTotalAmount())),
+                () -> apply(c.getId()), () -> { },
+                instanceId -> changeMapper.update(Wrappers.<ScmOrderChange>lambdaUpdate().set(ScmOrderChange::getFlowInstanceId, instanceId)
+                        .eq(ScmOrderChange::getId, c.getId())));
         return c.getId();
     }
 
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        if (e.status() == FlowStatus.APPROVED) {
-            apply(id);
-        } else {
-            changeMapper.update(Wrappers.<ScmOrderChange>lambdaUpdate().set(ScmOrderChange::getStatus, OrderChangeStatus.REJECTED)
-                    .eq(ScmOrderChange::getId, id).eq(ScmOrderChange::getStatus, OrderChangeStatus.APPROVING));
-        }
+        FLOW.onFinished(e, (id, approved) -> {
+            if (approved) {
+                apply(id);
+            } else {
+                StatusTransitions.tryChange(changeMapper, ScmOrderChange::getId, id, ScmOrderChange::getStatus,
+                        OrderChangeStatus.APPROVING, OrderChangeStatus.REJECTED, null);
+            }
+        });
     }
 
     /** 生效：写入订单明细，重算合计，升版本 */
     private void apply(Long changeId) {
         ScmOrderChange c = changeMapper.selectById(changeId);
-        if (c == null || changeMapper.update(Wrappers.<ScmOrderChange>lambdaUpdate().set(ScmOrderChange::getStatus, OrderChangeStatus.APPROVED)
-                .set(ScmOrderChange::getApproveTime, LocalDateTime.now())
-                .eq(ScmOrderChange::getId, changeId).eq(ScmOrderChange::getStatus, OrderChangeStatus.APPROVING)) == 0) {
+        if (c == null || !StatusTransitions.tryChange(changeMapper, ScmOrderChange::getId, changeId, ScmOrderChange::getStatus,
+                OrderChangeStatus.APPROVING, OrderChangeStatus.APPROVED, w -> w.set(ScmOrderChange::getApproveTime, LocalDateTime.now()))) {
             return;
         }
         ScmOrder order = orderMapper.selectById(c.getOrderId());
@@ -244,9 +239,9 @@ public class ScmOrderChangeService {
             throw new BizException("scm.error.orderMustHaveLeastOneLine");
         }
         orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
-                .set(ScmOrder::getTotalQty, items.stream().map(ScmOrderItem::getQty).reduce(BigDecimal.ZERO, BigDecimal::add))
-                .set(ScmOrder::getTotalAmount, items.stream().map(ScmOrderItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add))
-                .set(ScmOrder::getTaxAmount, items.stream().map(ScmOrderItem::getTaxAmount).reduce(BigDecimal.ZERO, BigDecimal::add))
+                .set(ScmOrder::getTotalQty, Decimals.sum(items, ScmOrderItem::getQty))
+                .set(ScmOrder::getTotalAmount, Decimals.sum(items, ScmOrderItem::getAmount))
+                .set(ScmOrder::getTaxAmount, Decimals.sum(items, ScmOrderItem::getTaxAmount))
                 .set(ScmOrder::getVersion, c.getVersion())
                 .set(ScmOrder::getUpdateTime, LocalDateTime.now())
                 .eq(ScmOrder::getId, order.getId()));

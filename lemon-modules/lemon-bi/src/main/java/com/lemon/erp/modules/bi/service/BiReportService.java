@@ -59,7 +59,6 @@ public class BiReportService {
         r.setShared(Integer.valueOf(1).equals(req.shared()) ? 1 : 0);
         r.setRemark(req.remark());
         if (id == null) {
-            r.setCreateBy(SecurityUtils.getUserId());
             reportMapper.insert(r);
             return r.getId();
         }
@@ -108,7 +107,6 @@ public class BiReportService {
             throw new BizException("bi.error.tooManyWidgets");
         }
         if (id == null) {
-            d.setCreateBy(SecurityUtils.getUserId());
             dashboardMapper.insert(d);
             return d.getId();
         }

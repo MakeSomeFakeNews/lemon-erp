@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.mes.service;
 
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.mes.model.MrpResultStatus;
 import com.lemon.erp.modules.mes.model.WorkOrderSource;
@@ -7,7 +9,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.modules.mes.dto.MrpReleaseRequest;
 import com.lemon.erp.modules.mes.dto.MrpResultRequest;
 import com.lemon.erp.modules.mes.dto.MrpRunRequest;
@@ -242,7 +244,7 @@ public class MesMrpService {
             r.setOnHandQty(onHand.getOrDefault(id, BigDecimal.ZERO));
             r.setScheduledQty(scheduled.getOrDefault(id, BigDecimal.ZERO));
             r.setAllocatedQty(allocated.getOrDefault(id, BigDecimal.ZERO));
-            r.setSafetyQty(material.getSafetyStock() == null ? BigDecimal.ZERO : material.getSafetyStock());
+            r.setSafetyQty(Decimals.nz(material.getSafetyStock()));
             BigDecimal available = r.getOnHandQty().add(r.getScheduledQty()).subtract(r.getAllocatedQty()).subtract(r.getSafetyQty());
             BigDecimal net = g.subtract(available).max(BigDecimal.ZERO);
             r.setNetQty(net);
@@ -366,12 +368,8 @@ public class MesMrpService {
     }
 
     private void markReleased(Long id, String releaseNo) {
-        int updated = resultMapper.update(Wrappers.<MesMrpResult>lambdaUpdate()
-                .set(MesMrpResult::getStatus, MrpResultStatus.RELEASED)
-                .set(MesMrpResult::getReleaseNo, releaseNo)
-                .eq(MesMrpResult::getId, id)
-                .eq(MesMrpResult::getStatus, MrpResultStatus.NEW));
-        if (updated == 0) {
+        if (!StatusTransitions.tryChange(resultMapper, MesMrpResult::getId, id, MesMrpResult::getStatus, MrpResultStatus.NEW,
+                MrpResultStatus.RELEASED, w -> w.set(MesMrpResult::getReleaseNo, releaseNo))) {
             throw new BizException("mes.error.suggestionHasAlreadyReleasedRefresh");
         }
     }

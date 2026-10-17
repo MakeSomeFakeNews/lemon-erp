@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.mes.model.WoDocKind;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -38,6 +39,7 @@ public class MesWoDoc extends BaseEntity {
 
     private String remark;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

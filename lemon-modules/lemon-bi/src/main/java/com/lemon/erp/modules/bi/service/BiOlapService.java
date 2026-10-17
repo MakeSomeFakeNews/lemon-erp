@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import static com.lemon.erp.common.util.Decimals.HUNDRED;
+
 /**
  * 多维分析：选择数据集、行维度、列维度、指标和筛选条件，在数据仓库事实表上汇总；支持钻取（前端把点击的维度值加入筛选并切换维度）。
  * 比率指标（毛利率、完工率、平均单价）按汇总后的分子 / 分母计算；行合计、列合计、总计分别查询，去重计数指标也准确
@@ -35,8 +37,6 @@ import java.util.function.Function;
 @Service
 @RequiredArgsConstructor
 public class BiOlapService {
-
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final BiOlapMapper olapMapper;
 

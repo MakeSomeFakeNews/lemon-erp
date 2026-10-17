@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -117,14 +118,21 @@ public class QmsCapaService {
         if (!undone.isEmpty()) {
             throw new BizException("mes.error.stepsNotCompleted", String.join(Messages.get("mes.label.listSeparator"), undone));
         }
-        transit(id, CapaStatus.OPEN, CapaStatus.VERIFYING, null);
+        StatusTransitions.change(capaMapper, QmsCapa::getId, id, QmsCapa::getStatus, CapaStatus.OPEN, CapaStatus.VERIFYING,
+                "mes.error.capaStatusHasChangedRefreshTry");
     }
 
     /** 效果验证：有效关闭，无效退回处理中（保留验证说明） */
     @Transactional
     public void verify(Long id, QmsRequests.CapaVerify req) {
         requireStatus(id, CapaStatus.VERIFYING, "mes.label.verify");
-        transit(id, CapaStatus.VERIFYING, req.effective() ? CapaStatus.CLOSED : CapaStatus.OPEN, req.verifyResult());
+        if (!StatusTransitions.tryChange(capaMapper, QmsCapa::getId, id, QmsCapa::getStatus, CapaStatus.VERIFYING,
+                req.effective() ? CapaStatus.CLOSED : CapaStatus.OPEN,
+                w -> w.set(QmsCapa::getVerifyResult, req.verifyResult())
+                        .set(QmsCapa::getVerifiedBy, SecurityUtils.getUserId())
+                        .set(QmsCapa::getVerifyTime, LocalDateTime.now()))) {
+            throw new BizException("mes.error.capaStatusHasChangedRefreshTry");
+        }
     }
 
     /** 删除：处理中的 */
@@ -152,18 +160,6 @@ public class QmsCapaService {
         capa.setDescription(req.description());
         capa.setOwnerId(req.ownerId());
         capa.setDueDate(req.dueDate());
-    }
-
-    private void transit(Long id, CapaStatus from, CapaStatus to, String verifyResult) {
-        boolean verified = from == CapaStatus.VERIFYING;
-        if (capaMapper.update(Wrappers.<QmsCapa>lambdaUpdate()
-                .set(QmsCapa::getStatus, to)
-                .set(verified, QmsCapa::getVerifyResult, verifyResult)
-                .set(verified, QmsCapa::getVerifiedBy, SecurityUtils.getUserId())
-                .set(verified, QmsCapa::getVerifyTime, LocalDateTime.now())
-                .eq(QmsCapa::getId, id).eq(QmsCapa::getStatus, from)) == 0) {
-            throw new BizException("mes.error.capaStatusHasChangedRefreshTry");
-        }
     }
 
     private QmsCapa requireStatus(Long id, CapaStatus status, String action) {

@@ -7,6 +7,8 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.hr.dto.PerfPlanRequest;
@@ -48,8 +50,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class HrPerfService {
 
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
-
     private final HrPerfPlanMapper planMapper;
     private final HrPerfIndicatorMapper indicatorMapper;
     private final HrPerfAppraisalMapper appraisalMapper;
@@ -83,7 +83,6 @@ public class HrPerfService {
         HrPerfPlan p = new HrPerfPlan();
         fill(p, req);
         p.setStatus(PerfStatus.DRAFT);
-        p.setCreateBy(SecurityUtils.getUserId());
         planMapper.insert(p);
         saveIndicators(p.getId(), req.indicators());
         return p.getId();
@@ -166,8 +165,7 @@ public class HrPerfService {
         if (!scores.isEmpty()) {
             scoreMapper.insertBatch(scores);
         }
-        planMapper.update(Wrappers.<HrPerfPlan>lambdaUpdate().set(HrPerfPlan::getStatus, PerfStatus.SCORING)
-                .eq(HrPerfPlan::getId, id).eq(HrPerfPlan::getStatus, PerfStatus.DRAFT));
+        StatusTransitions.tryChange(planMapper, HrPerfPlan::getId, id, HrPerfPlan::getStatus, PerfStatus.DRAFT, PerfStatus.SCORING);
         return items.size();
     }
 
@@ -183,8 +181,7 @@ public class HrPerfService {
         if (pending > 0) {
             throw new BizException("hr.error.appraisalFormSHaveNotScored", pending);
         }
-        planMapper.update(Wrappers.<HrPerfPlan>lambdaUpdate().set(HrPerfPlan::getStatus, PerfStatus.FINISHED)
-                .eq(HrPerfPlan::getId, id).eq(HrPerfPlan::getStatus, PerfStatus.SCORING));
+        StatusTransitions.tryChange(planMapper, HrPerfPlan::getId, id, HrPerfPlan::getStatus, PerfStatus.SCORING, PerfStatus.FINISHED);
     }
 
     // ---------------------------------------------------------------- 考核表
@@ -222,11 +219,9 @@ public class HrPerfService {
             throw new BizException("hr.error.appraisalFormNotSelfAssessmentStage");
         }
         BigDecimal total = saveScores(a, req, true);
-        appraisalMapper.update(Wrappers.<HrPerfAppraisal>lambdaUpdate()
-                .set(HrPerfAppraisal::getSelfScore, total)
-                .set(HrPerfAppraisal::getSelfComment, req.comment())
-                .set(HrPerfAppraisal::getStatus, AppraisalStatus.REVIEW)
-                .eq(HrPerfAppraisal::getId, id).eq(HrPerfAppraisal::getStatus, AppraisalStatus.SELF));
+        StatusTransitions.tryChange(appraisalMapper, HrPerfAppraisal::getId, id, HrPerfAppraisal::getStatus,
+                AppraisalStatus.SELF, AppraisalStatus.REVIEW,
+                w -> w.set(HrPerfAppraisal::getSelfScore, total).set(HrPerfAppraisal::getSelfComment, req.comment()));
     }
 
     /** 评分：评分人或有「代为评分」权限的用户；员工未自评时也可以直接评分 */
@@ -292,7 +287,7 @@ public class HrPerfService {
                     .set(HrPerfScore::getUpdateTime, LocalDateTime.now())
                     .eq(HrPerfScore::getId, s.getId()));
         }
-        return total.divide(HUNDRED, 1, RoundingMode.HALF_UP);
+        return total.divide(Decimals.HUNDRED, 1, RoundingMode.HALF_UP);
     }
 
     private static Long reviewerOf(HrEmployee e, Map<Long, SysDept> depts) {
@@ -312,8 +307,8 @@ public class HrPerfService {
     }
 
     private void saveIndicators(Long planId, List<PerfPlanRequest.Indicator> list) {
-        BigDecimal sum = list.stream().map(PerfPlanRequest.Indicator::weight).reduce(BigDecimal.ZERO, BigDecimal::add);
-        if (sum.compareTo(HUNDRED) != 0) {
+        BigDecimal sum = Decimals.sum(list, PerfPlanRequest.Indicator::weight);
+        if (sum.compareTo(Decimals.HUNDRED) != 0) {
             throw new BizException("hr.error.indicatorWeightsMustTotalCurrently", sum.stripTrailingZeros().toPlainString());
         }
         int sort = 0;

@@ -1,11 +1,11 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.CostRunResult;
 import com.lemon.erp.modules.fin.entity.FinCostLayer;
 import com.lemon.erp.modules.fin.entity.FinCostRun;
@@ -161,7 +161,6 @@ public class FinCostService {
         }
         FinCostRun run = new FinCostRun();
         run.setPeriod(period);
-        run.setCreateBy(SecurityUtils.getUserId());
         run.setKind(CostRunKind.RUN);
         List<VoucherLine> lines = calc.voucherLines();
         run.setOverheadVariance(calc.overheadVariance);
@@ -670,11 +669,11 @@ public class FinCostService {
                 BigDecimal total = money(a.qty().multiply(unitOf(a.product())));
                 Map<Long, BigDecimal> weights = new LinkedHashMap<>();
                 a.parts().forEach((p, q) -> weights.put(p, q.multiply(lastUnitCost(p))));
-                BigDecimal weightSum = weights.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal weightSum = Decimals.sum(weights.values());
                 if (weightSum.signum() == 0) {
                     weights.clear();
                     weights.putAll(a.parts());
-                    weightSum = weights.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+                    weightSum = Decimals.sum(weights.values());
                 }
                 BigDecimal allocated = BigDecimal.ZERO;
                 List<Long> parts = new ArrayList<>(weights.keySet());
@@ -731,8 +730,8 @@ public class FinCostService {
         /** 先进先出的期初批次：上期结存批次与上期期末一致时沿用，否则（首次使用先进先出等）以上期期末为一个批次 */
         private List<FifoValuation.Layer> openingLayers(Long m, FinMaterialCost c) {
             List<FinCostLayer> layers = prevLayers.getOrDefault(m, List.of());
-            BigDecimal qty = layers.stream().map(FinCostLayer::getQty).reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal amount = layers.stream().map(FinCostLayer::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal qty = Decimals.sum(layers, FinCostLayer::getQty);
+            BigDecimal amount = Decimals.sum(layers, FinCostLayer::getAmount);
             if (!layers.isEmpty() && qty.compareTo(c.getOpenQty()) == 0 && amount.compareTo(c.getOpenAmount()) == 0) {
                 return layers.stream().map(l -> new FifoValuation.Layer(l.getInDate(), l.getQty(), l.getAmount())).toList();
             }
@@ -759,8 +758,8 @@ public class FinCostService {
             // 领料：按领用物料的存货科目，金额取工单成本中的材料成本合计（与工单口径一致）
             Map<Long, BigDecimal> issueByAccount = new HashMap<>();
             materials.values().forEach(c -> issueByAccount.merge(inventory.apply(category(c.getMaterialId())), c.getIssueAmount(), BigDecimal::add));
-            BigDecimal issueTotal = issueByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal woMaterial = woCosts.values().stream().map(FinWoCost::getMaterialCost).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal issueTotal = Decimals.sum(issueByAccount.values());
+            BigDecimal woMaterial = Decimals.sum(woCosts.values(), FinWoCost::getMaterialCost);
             lines.add(VoucherLine.debit(summary + "-生产领料", wip, null, woMaterial)); // i18n-ignore
             issueByAccount.forEach((code, amount) -> lines.add(VoucherLine.credit(summary + "-生产领料", code, null, amount))); // i18n-ignore
             // 工单材料成本与物料领用金额的尾差（四舍五入）计入生产成本
@@ -770,19 +769,19 @@ public class FinCostService {
             }
             // 人工、制造费用按工时 × 费率分配到工单：生产岗位工资计提时已计入制造费用，这里从制造费用转出
             Long overheadAccount = accountRules.accountId(AccountRole.MANUFACTURING_OVERHEAD);
-            BigDecimal labor = woCosts.values().stream().map(FinWoCost::getLaborCost).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal labor = Decimals.sum(woCosts.values(), FinWoCost::getLaborCost);
             lines.add(VoucherLine.debit(summary + "-直接人工", wip, null, labor)); // i18n-ignore
             lines.add(VoucherLine.credit(summary + "-直接人工", overheadAccount, null, labor)); // i18n-ignore
-            BigDecimal overhead = woCosts.values().stream().map(FinWoCost::getOverheadCost).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal overhead = Decimals.sum(woCosts.values(), FinWoCost::getOverheadCost);
             lines.add(VoucherLine.debit(summary + "-制造费用", wip, null, overhead)); // i18n-ignore
             lines.add(VoucherLine.credit(summary + "-制造费用", overheadAccount, null, overhead)); // i18n-ignore
             // 制造费用差异：截至期末的制造费用余额（实际发生 - 已分配）全部转入主营业务成本
             BigDecimal balance = entryMapper.sumBalanceUpTo(overheadAccount, period);
-            overheadVariance = money((balance == null ? BigDecimal.ZERO : balance).subtract(labor).subtract(overhead));
+            overheadVariance = money(Decimals.nz(balance).subtract(labor).subtract(overhead));
             lines.add(VoucherLine.debit(summary + "-制造费用差异", accountRules.accountId(AccountRole.COST_OF_SALES), null, overheadVariance)); // i18n-ignore
             lines.add(VoucherLine.credit(summary + "-制造费用差异", overheadAccount, null, overheadVariance)); // i18n-ignore
             // 关闭工单的剩余在产品转生产损失（计入主营业务成本）
-            BigDecimal loss = woCosts.values().stream().map(FinWoCost::getLossAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal loss = Decimals.sum(woCosts.values(), FinWoCost::getLossAmount);
             lines.add(VoucherLine.debit(summary + "-关闭工单损失", accountRules.accountId(AccountRole.COST_OF_SALES), null, loss)); // i18n-ignore
             lines.add(VoucherLine.credit(summary + "-关闭工单损失", wip, null, loss)); // i18n-ignore
             // 完工入库：按产品的存货科目
@@ -792,7 +791,7 @@ public class FinCostService {
                 finishedByAccount.merge(inventory.apply(category(product)), w.getFinishedAmount(), BigDecimal::add);
             }
             finishedByAccount.forEach((code, amount) -> lines.add(VoucherLine.debit(summary + "-完工入库", code, null, amount))); // i18n-ignore
-            BigDecimal finished = finishedByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal finished = Decimals.sum(finishedByAccount.values());
             lines.add(VoucherLine.credit(summary + "-完工入库", wip, null, finished)); // i18n-ignore
             // 销售成本、其他出入库
             Map<Long, BigDecimal> salesByAccount = new HashMap<>();
@@ -819,16 +818,16 @@ public class FinCostService {
                 otherByAccount.merge(code, c.getOtherInAmount().subtract(c.getOtherOutAmount()).add(project).add(outsource).add(service)
                         .add(assemblyOutAmount), BigDecimal::add);
             });
-            BigDecimal project = projectByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal project = Decimals.sum(projectByAccount.values());
             lines.add(VoucherLine.debit(summary + "-项目领料", accountRules.accountId(AccountRole.CONTRACT_COST), null, project)); // i18n-ignore
             projectByAccount.forEach((code, amount) -> lines.add(VoucherLine.credit(summary + "-项目领料", code, null, amount))); // i18n-ignore
             // 委外收货核销用料：借 委外件存货科目 / 贷 委托加工物资
             Map<Long, BigDecimal> consumedByAccount = new HashMap<>();
             outsourceConsumedAmount.forEach((product, amount) -> consumedByAccount.merge(inventory.apply(category(product)), amount, BigDecimal::add));
             consumedByAccount.forEach((code, amount) -> lines.add(VoucherLine.debit(summary + "-委外核销用料", code, null, amount))); // i18n-ignore
-            BigDecimal consumedTotal = consumedByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal consumedTotal = Decimals.sum(consumedByAccount.values());
             lines.add(VoucherLine.credit(summary + "-委外核销用料", accountRules.accountId(AccountRole.OUTSOURCE_MATERIAL), null, consumedTotal)); // i18n-ignore
-            BigDecimal outsource = outsourceByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal outsource = Decimals.sum(outsourceByAccount.values());
             lines.add(VoucherLine.debit(summary + "-委外发料", accountRules.accountId(AccountRole.OUTSOURCE_MATERIAL), null, outsource)); // i18n-ignore
             outsourceByAccount.forEach((code, amount) -> lines.add(VoucherLine.credit(summary + "-委外发料", code, null, amount))); // i18n-ignore
             // 低值易耗品部门领用：按实际单价一次摊销，借 领用单的费用科目（领用部门），贷 周转材料；不再计入待处理财产损溢
@@ -854,16 +853,16 @@ public class FinCostService {
             }
             assemblyInByAccount.forEach((code, amount) -> lines.add(VoucherLine.debit(summary + "-组装拆卸", code, null, amount))); // i18n-ignore
             assemblyOutByAccount.forEach((code, amount) -> lines.add(VoucherLine.credit(summary + "-组装拆卸", code, null, amount))); // i18n-ignore
-            BigDecimal assemblyDiff = assemblyOutByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .subtract(assemblyInByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add));
+            BigDecimal assemblyDiff = Decimals.sum(assemblyOutByAccount.values())
+                    .subtract(Decimals.sum(assemblyInByAccount.values()));
             lines.add(VoucherLine.debit(summary + "-组装拆卸尾差", accountRules.accountId(AccountRole.PENDING_LOSS), null, assemblyDiff)); // i18n-ignore
-            BigDecimal service = serviceByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal service = Decimals.sum(serviceByAccount.values());
             lines.add(VoucherLine.debit(summary + "-售后备件", accountRules.accountId(AccountRole.SELLING_EXPENSE), null, service)); // i18n-ignore
             serviceByAccount.forEach((code, amount) -> lines.add(VoucherLine.credit(summary + "-售后备件", code, null, amount))); // i18n-ignore
             salesByCategory.forEach((category, amount) -> lines.add(
                     VoucherLine.debit(summary + "-销售成本", accountRules.accountId(AccountRole.COST_OF_SALES, category), null, amount))); // i18n-ignore
             salesByAccount.forEach((code, amount) -> lines.add(VoucherLine.credit(summary + "-销售成本", code, null, amount))); // i18n-ignore
-            BigDecimal other = otherByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal other = Decimals.sum(otherByAccount.values());
             otherByAccount.forEach((code, amount) -> lines.add(VoucherLine.debit(summary + "-其他出入库", code, null, amount))); // i18n-ignore
             otherOffsets(other).forEach((account, amount) -> lines.add(VoucherLine.credit(summary + "-其他出入库", account, null, amount))); // i18n-ignore
             return lines.stream().anyMatch(l -> !l.isZero()) ? lines : List.of();

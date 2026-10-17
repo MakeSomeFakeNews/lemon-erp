@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -39,6 +40,7 @@ public class PmRevenue extends BaseEntity {
 
     private Long voucherId;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

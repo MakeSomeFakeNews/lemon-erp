@@ -3,6 +3,7 @@ package com.lemon.erp.modules.wms.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
@@ -94,9 +95,8 @@ public class StockHoldService {
             if (pass) {
                 release(h, inspNo, null);
             } else {
-                holdMapper.update(Wrappers.<WmsStockHold>lambdaUpdate()
-                        .set(WmsStockHold::getStatus, HoldStatus.REJECTED).set(WmsStockHold::getInspNo, inspNo)
-                        .eq(WmsStockHold::getId, h.getId()).eq(WmsStockHold::getStatus, HoldStatus.PENDING));
+                StatusTransitions.tryChange(holdMapper, WmsStockHold::getId, h.getId(), WmsStockHold::getStatus,
+                        HoldStatus.PENDING, HoldStatus.REJECTED, w -> w.set(WmsStockHold::getInspNo, inspNo));
             }
         }
         return holds.size();

@@ -4,12 +4,14 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.hr.dto.ApproveRequest;
 import com.lemon.erp.modules.hr.dto.LeaveQuery;
 import com.lemon.erp.modules.hr.dto.LeaveRequest;
@@ -48,13 +50,13 @@ import java.util.Objects;
 public class HrLeaveService {
 
     public static final String PROCESS_KEY = "hr_leave";
-    private static final String BUSINESS_KEY_PREFIX = "hr_leave:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "hr_leave:");
 
     private final HrLeaveMapper leaveMapper;
     private final HrEmployeeService employeeService;
     private final HrCalendarService calendarService;
     private final DocNoService docNoService;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
     private final HrPayrollLock payrollLock;
     private final DictLookup dictLookup;
 
@@ -125,9 +127,9 @@ public class HrLeaveService {
         l.setReason(req.reason());
         l.setStatus(LeaveStatus.APPROVING);
         l.setDeptId(e.getDeptId());
-        l.setCreateBy(SecurityUtils.getUserId());
         leaveMapper.insert(l);
-        if (flowApi.isAvailable(PROCESS_KEY)) {
+        // 申请创建时即为审批中；没有发布流程时由人事审批
+        if (approvalSupport.isAvailable(FLOW)) {
             Map<String, Object> vars = new HashMap<>();
             vars.put("kind", req.kind().name());
             vars.put("type", leave ? req.type() : LeaveKind.OVERTIME.name());
@@ -135,8 +137,9 @@ public class HrLeaveService {
             vars.put("hours", req.hours().doubleValue());
             vars.put("days", req.hours().divide(HrConstants.DAY_HOURS, 1, RoundingMode.HALF_UP).doubleValue());
             vars.put("leaveNo", l.getLeaveNo());
-            String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + l.getId(), vars);
-            leaveMapper.update(Wrappers.<HrLeave>lambdaUpdate().set(HrLeave::getFlowInstanceId, instanceId).eq(HrLeave::getId, l.getId()));
+            approvalSupport.start(FLOW, l.getId(), vars, () -> { },
+                    instanceId -> leaveMapper.update(Wrappers.<HrLeave>lambdaUpdate()
+                            .set(HrLeave::getFlowInstanceId, instanceId).eq(HrLeave::getId, l.getId())));
         }
         return l.getId();
     }
@@ -154,8 +157,8 @@ public class HrLeaveService {
             throw new BizException("hr.error.onlyRequestsUnderApprovalNotYet");
         }
         payrollLock.checkOpen(l.getStartTime().toLocalDate(), "hr.label.cancelRequestsMonth");
-        if (approving && l.getFlowInstanceId() != null && flowApi.getStatus(l.getFlowInstanceId()) == FlowStatus.RUNNING) {
-            flowApi.cancel(l.getFlowInstanceId(), "撤销申请");  // i18n-ignore 审批意见存库
+        if (approving) {
+            approvalSupport.cancelIfRunning(l.getFlowInstanceId(), "撤销申请");  // i18n-ignore 审批意见存库
         }
         leaveMapper.update(Wrappers.<HrLeave>lambdaUpdate()
                 .set(HrLeave::getStatus, LeaveStatus.CANCELED)
@@ -183,11 +186,8 @@ public class HrLeaveService {
     /** 审批流程结束：通过 / 拒绝 / 撤销，与审批操作同一事务，不抛异常 */
     @EventListener(condition = "#e.processKey == 'hr_leave'")
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        finish(id, LeaveStatus.ofFlow(e.status()), SecurityUtils.getUserIdOrNull(), null);
+        FLOW.onFinishedWithStatus(e, (id, status) ->
+                finish(id, LeaveStatus.ofFlow(status), SecurityUtils.getUserIdOrNull(), null));
     }
 
     public HrLeave get(Long id) {
@@ -200,8 +200,7 @@ public class HrLeaveService {
 
     /** 调休余额 = 已批准的转调休加班小时 - 已申请（审批中、已通过）的调休小时 */
     public BigDecimal compensatoryBalance(Long employeeId) {
-        BigDecimal v = leaveMapper.compensatoryBalance(employeeId);
-        return v == null ? BigDecimal.ZERO : v;
+        return Decimals.nz(leaveMapper.compensatoryBalance(employeeId));
     }
 
     /** 本年已用（含审批中）年假小时 */
@@ -213,13 +212,9 @@ public class HrLeaveService {
     // ---------------------------------------------------------------- 内部
 
     private void finish(Long id, LeaveStatus status, Long approveBy, String comment) {
-        leaveMapper.update(Wrappers.<HrLeave>lambdaUpdate()
-                .set(HrLeave::getStatus, status)
-                .set(HrLeave::getApproveBy, approveBy)
-                .set(HrLeave::getApproveTime, LocalDateTime.now())
-                .set(HrLeave::getApproveComment, comment)
-                .eq(HrLeave::getId, id)
-                .eq(HrLeave::getStatus, LeaveStatus.APPROVING));
+        StatusTransitions.tryChange(leaveMapper, HrLeave::getId, id, HrLeave::getStatus, LeaveStatus.APPROVING, status,
+                w -> w.set(HrLeave::getApproveBy, approveBy).set(HrLeave::getApproveTime, LocalDateTime.now())
+                        .set(HrLeave::getApproveComment, comment));
     }
 
     /** 年假余额 = 年假天数 × 标准工时 - 本年已用（含审批中） */

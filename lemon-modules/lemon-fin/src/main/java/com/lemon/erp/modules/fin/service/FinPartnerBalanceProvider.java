@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.fin.model.SettleKind;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.framework.finance.PartnerBalanceProvider;
@@ -21,6 +22,6 @@ public class FinPartnerBalanceProvider implements PartnerBalanceProvider {
     public BigDecimal receivableBalance(Long customerId) {
         BigDecimal v = billMapper.selectUnsettledAmount(BillKind.AR, customerId);
         BigDecimal advance = advanceMapper.sumUnused(SettleKind.RECEIPT, customerId);
-        return (v == null ? BigDecimal.ZERO : v).subtract(advance == null ? BigDecimal.ZERO : advance);
+        return Decimals.nz(v).subtract(Decimals.nz(advance));
     }
 }

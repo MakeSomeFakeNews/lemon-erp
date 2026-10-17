@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -32,6 +33,7 @@ public class FinAssetCheck extends BaseEntity {
 
     private String remark;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

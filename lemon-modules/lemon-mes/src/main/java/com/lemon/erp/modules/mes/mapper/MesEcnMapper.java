@@ -17,6 +17,4 @@ public interface MesEcnMapper extends BaseMapper<MesEcn> {
 
     /** 已批准且到了生效日期的 */
     List<MesEcn> selectDue(@Param("today") LocalDate today);
-
-    int transit(@Param("id") Long id, @Param("from") EcnStatus from, @Param("to") EcnStatus to);
 }

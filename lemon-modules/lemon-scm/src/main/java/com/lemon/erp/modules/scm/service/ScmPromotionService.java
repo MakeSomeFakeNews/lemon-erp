@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.scm.dto.PromotionRequests;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
 import com.lemon.erp.modules.scm.entity.ScmOrderItem;
@@ -42,7 +42,6 @@ import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
 @RequiredArgsConstructor
 public class ScmPromotionService {
 
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     private static final BigDecimal GIFT_TAX_RATE = BigDecimal.valueOf(13);
 
     private final ScmPromotionMapper promotionMapper;
@@ -79,7 +78,6 @@ public class ScmPromotionService {
         ScmPromotion p = new ScmPromotion();
         fill(p, req);
         p.setStatus(1);
-        p.setCreateBy(SecurityUtils.getUserId());
         promotionMapper.insert(p);
         return p.getId();
     }
@@ -180,7 +178,7 @@ public class ScmPromotionService {
                     .min(Comparator.comparing(ScmPromotion::getDiscountRate))
                     .ifPresent(p -> {
                         BigDecimal before = amount(item.getQty(), item.getPrice());
-                        item.setPrice(item.getPrice().multiply(p.getDiscountRate()).divide(HUNDRED, 4, RoundingMode.HALF_UP));
+                        item.setPrice(item.getPrice().multiply(p.getDiscountRate()).divide(Decimals.HUNDRED, 4, RoundingMode.HALF_UP));
                         item.setPromotionId(p.getId());
                         usage(usages, p, before.subtract(amount(item.getQty(), item.getPrice())), BigDecimal.ZERO);
                     });
@@ -229,7 +227,7 @@ public class ScmPromotionService {
             usage(usages, p, BigDecimal.ZERO, g.getQty());
             notes.add(Messages.get("scm.text.gift", gift.getName(), plain(g.getQty()), p.getName()));
         }
-        BigDecimal discount = usages.values().stream().map(Usage::discountAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal discount = Decimals.sum(usages.values(), Usage::discountAmount);
         // 返利抵扣：按非赠品行金额分摊
         if (rebate != null && rebate.signum() > 0) {
             if (rebate.compareTo(sum(items)) > 0) {
@@ -256,7 +254,7 @@ public class ScmPromotionService {
     }
 
     private static BigDecimal sum(List<ScmOrderItem> lines) {
-        return lines.stream().map(i -> amount(i.getQty(), i.getPrice())).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return Decimals.sum(lines, i -> amount(i.getQty(), i.getPrice()));
     }
 
     private static boolean matches(ScmPromotion p, WmsMaterial m) {
@@ -280,7 +278,7 @@ public class ScmPromotionService {
         }
         switch (req.promoType()) {
             case DISCOUNT -> {
-                if (req.discountRate() == null || req.discountRate().signum() <= 0 || req.discountRate().compareTo(HUNDRED) >= 0) {
+                if (req.discountRate() == null || req.discountRate().signum() <= 0 || req.discountRate().compareTo(Decimals.HUNDRED) >= 0) {
                     throw new BizException("scm.error.discountRateMustGreaterLess");
                 }
             }

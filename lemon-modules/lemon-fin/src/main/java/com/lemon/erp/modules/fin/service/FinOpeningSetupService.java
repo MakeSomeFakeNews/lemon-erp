@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.model.CostRunKind;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -60,8 +61,8 @@ public class FinOpeningSetupService {
     public Map<String, Object> summary() {
         Map<String, Object> result = new LinkedHashMap<>();
         List<FinAccountOpening> openings = openingMapper.selectList(null);
-        BigDecimal debit = openings.stream().map(FinAccountOpening::getDebit).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal credit = openings.stream().map(FinAccountOpening::getCredit).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal debit = Decimals.sum(openings, FinAccountOpening::getDebit);
+        BigDecimal credit = Decimals.sum(openings, FinAccountOpening::getCredit);
         result.put("accounts", Map.of("count", openings.size(), "debit", debit, "credit", credit));
         result.put("stockDocs", queryMapper.selectOpeningStockDocs());
 

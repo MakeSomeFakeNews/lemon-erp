@@ -5,8 +5,7 @@ import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.record.RecordType;
 import com.lemon.erp.framework.record.RecordTypeProvider;
 import com.lemon.erp.framework.security.PermissionService;
-import com.lemon.erp.framework.security.SecurityUtils;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
+import com.lemon.erp.framework.security.datascope.DataScopes;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -67,8 +66,7 @@ public class SysRecordAccessService {
             throw new BizException("system.error.noPermissionView", Messages.get(type.name()), Messages.get(what));
         }
         Supplier<Object> loader = () -> type.loader().apply(bizId);
-        Object record = type.rule() == null || SecurityUtils.getDataScope().all()
-                ? loader.get() : DataPermissionContext.execute(type.rule(), loader);
+        Object record = type.rule() == null ? loader.get() : DataScopes.load(type.rule(), loader);
         if (record == null) {
             throw new BizException("system.error.doesNotExistAccessDenied", Messages.get(type.name()));
         }

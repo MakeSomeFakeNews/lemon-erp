@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.QmsRequests;
@@ -93,7 +94,10 @@ public class QmsClaimService {
     @Transactional
     public void confirm(Long id) {
         QmsSupplierClaim claim = requireStatus(id, ClaimStatus.DRAFT, "mes.label.confirm");
-        transit(id, ClaimStatus.DRAFT, ClaimStatus.CONFIRMED);
+        if (!StatusTransitions.tryChange(claimMapper, QmsSupplierClaim::getId, id, QmsSupplierClaim::getStatus, ClaimStatus.DRAFT,
+                ClaimStatus.CONFIRMED, w -> w.set(QmsSupplierClaim::getConfirmTime, LocalDateTime.now()))) {
+            throw new BizException("mes.error.claimStatusHasChangedRefreshTry");
+        }
         eventPublisher.publishEvent(new SupplierClaimConfirmedEvent(id, claim.getClaimNo(), claim.getSupplierId(), claim.getAmount(),
                 claim.getClaimDate(), claim.getReason()));
         portalNotifier.notify(claim.getSupplierId(), MessageCategory.ALERT, "质量索赔：" + claim.getClaimNo(), // i18n-ignore
@@ -104,7 +108,8 @@ public class QmsClaimService {
     @Transactional
     public void cancel(Long id) {
         QmsSupplierClaim claim = requireStatus(id, ClaimStatus.CONFIRMED, "mes.label.cancel");
-        transit(id, ClaimStatus.CONFIRMED, ClaimStatus.CANCELLED);
+        StatusTransitions.change(claimMapper, QmsSupplierClaim::getId, id, QmsSupplierClaim::getStatus, ClaimStatus.CONFIRMED,
+                ClaimStatus.CANCELLED, "mes.error.claimStatusHasChangedRefreshTry");
         eventPublisher.publishEvent(new SupplierClaimCancelledEvent(id, claim.getClaimNo(), claim.getBillId()));
     }
 
@@ -137,15 +142,6 @@ public class QmsClaimService {
         claim.setClaimDate(req.claimDate());
         claim.setAmount(req.amount());
         claim.setReason(req.reason());
-    }
-
-    private void transit(Long id, ClaimStatus from, ClaimStatus to) {
-        if (claimMapper.update(Wrappers.<QmsSupplierClaim>lambdaUpdate()
-                .set(QmsSupplierClaim::getStatus, to)
-                .set(to == ClaimStatus.CONFIRMED, QmsSupplierClaim::getConfirmTime, LocalDateTime.now())
-                .eq(QmsSupplierClaim::getId, id).eq(QmsSupplierClaim::getStatus, from)) == 0) {
-            throw new BizException("mes.error.claimStatusHasChangedRefreshTry");
-        }
     }
 
     private QmsSupplierClaim requireStatus(Long id, ClaimStatus status, String action) {

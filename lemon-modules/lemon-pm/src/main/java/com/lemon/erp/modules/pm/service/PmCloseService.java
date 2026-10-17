@@ -7,7 +7,6 @@ import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.period.BizPeriodGuard;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.event.VoucherDeletedEvent;
 import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.VoucherLine;
@@ -35,6 +34,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.lemon.erp.common.util.Decimals.HUNDRED;
+
 /**
  * 项目月结（项目入总账），按项目生成凭证：
  * <ul>
@@ -48,8 +49,6 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class PmCloseService {
-
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final PmCloseMapper closeMapper;
     private final PmProjectMapper projectMapper;
@@ -131,7 +130,6 @@ public class PmCloseService {
         }
 
         int count = 0;
-        Long userId = SecurityUtils.getUserId();
         Map<Long, PmProject> projects = new HashMap<>();
         if (!lines.isEmpty()) {
             projectMapper.selectByIds(lines.keySet()).forEach(p -> projects.put(p.getId(), p));
@@ -159,7 +157,6 @@ public class PmCloseService {
             r.setLaborCost(a[0]);
             r.setExpenseCost(a[1]);
             r.setVoucherId(voucherId);
-            r.setCreateBy(userId);
             closeMapper.insert(r);
             count++;
         }

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.hr.model.LeaveKind;
 import com.lemon.erp.modules.hr.model.LeaveStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -66,6 +67,7 @@ public class HrLeave extends BaseEntity {
     private Long deptId;
 
     /** 申请人 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

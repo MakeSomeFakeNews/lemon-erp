@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.bi.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.bi.mapper.BiInsightMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,14 +16,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.lemon.erp.common.util.Decimals.HUNDRED;
+
 /**
  * 经营驾驶舱：销售、采购、利润的月度趋势和同比环比（数据仓库），应收应付、在途订单、生产、项目、客户服务等实时指标
  */
 @Service
 @RequiredArgsConstructor
 public class BiCockpitService {
-
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final BiInsightMapper insightMapper;
     private final BiEtlService etlService;
@@ -110,6 +111,6 @@ public class BiCockpitService {
     }
 
     static BigDecimal ratio(BigDecimal num, BigDecimal den) {
-        return den.signum() == 0 ? null : num.multiply(HUNDRED).divide(den, 1, RoundingMode.HALF_UP);
+        return Decimals.percent(num, den, 1);
     }
 }

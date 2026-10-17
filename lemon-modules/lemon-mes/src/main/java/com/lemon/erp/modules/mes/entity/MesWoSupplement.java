@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.mes.model.SupplementStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -45,6 +46,7 @@ public class MesWoSupplement extends BaseEntity {
 
     private Long deptId;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

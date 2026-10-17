@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.entity.WmsReservation;
 import com.lemon.erp.modules.wms.mapper.WmsMaterialMapper;
@@ -59,10 +59,9 @@ public class StockReservationService {
 
     /** 已预留数量，warehouseId 为空表示全部仓库 */
     public BigDecimal reserved(Long warehouseId, Long materialId) {
-        return reservationMapper.selectList(Wrappers.<WmsReservation>lambdaQuery()
-                        .eq(warehouseId != null, WmsReservation::getWarehouseId, warehouseId)
-                        .eq(WmsReservation::getMaterialId, materialId).gt(WmsReservation::getQty, 0))
-                .stream().map(WmsReservation::getQty).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return Decimals.sum(reservationMapper.selectList(Wrappers.<WmsReservation>lambdaQuery()
+                .eq(warehouseId != null, WmsReservation::getWarehouseId, warehouseId)
+                .eq(WmsReservation::getMaterialId, materialId).gt(WmsReservation::getQty, 0)), WmsReservation::getQty);
     }
 
     /** 预留：数量不超过空闲库存 */
@@ -88,7 +87,6 @@ public class StockReservationService {
         r.setSourceItemId(sourceItemId);
         r.setSourceNo(sourceNo);
         r.setRemark(remark);
-        r.setCreateBy(SecurityUtils.getUserIdOrNull());
         reservationMapper.insert(r);
     }
 
@@ -147,10 +145,9 @@ public class StockReservationService {
         pairs.forEach((warehouseId, materialIds) -> free(warehouseId, materialIds).forEach((materialId, free) -> {
             if (free.signum() < 0) {
                 WmsMaterial m = materialMapper.selectById(materialId);
-                BigDecimal reserved = reservationMapper.selectList(Wrappers.<WmsReservation>lambdaQuery()
-                                .eq(WmsReservation::getWarehouseId, warehouseId).eq(WmsReservation::getMaterialId, materialId)
-                                .gt(WmsReservation::getQty, 0)).stream().map(WmsReservation::getQty)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal reserved = Decimals.sum(reservationMapper.selectList(Wrappers.<WmsReservation>lambdaQuery()
+                        .eq(WmsReservation::getWarehouseId, warehouseId).eq(WmsReservation::getMaterialId, materialId)
+                        .gt(WmsReservation::getQty, 0)), WmsReservation::getQty);
                 String sources = reservationMapper.selectList(Wrappers.<WmsReservation>lambdaQuery()
                                 .eq(WmsReservation::getWarehouseId, warehouseId).eq(WmsReservation::getMaterialId, materialId)
                                 .gt(WmsReservation::getQty, 0).last("LIMIT 3")).stream().map(WmsReservation::getSourceNo)

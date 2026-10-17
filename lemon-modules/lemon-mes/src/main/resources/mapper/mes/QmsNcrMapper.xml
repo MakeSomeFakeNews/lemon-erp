@@ -32,8 +32,4 @@
         WHERE n.id = #{id}
     </select>
 
-    <update id="transit">
-        UPDATE qms_ncr SET status = #{to}, update_time = NOW() WHERE id = #{id} AND status = #{from}
-    </update>
-
 </mapper>

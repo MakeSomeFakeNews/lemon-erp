@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.mes.model.WorkOrderSource;
 import com.lemon.erp.modules.mes.model.WorkOrderStatus;
 import com.lemon.erp.modules.mes.model.WorkOrderType;
@@ -58,6 +59,7 @@ public class MesWorkOrder extends BaseEntity {
 
     private Long deptId;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

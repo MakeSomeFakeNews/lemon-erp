@@ -1,8 +1,8 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.entity.FinBankStatement;
 import com.lemon.erp.modules.fin.mapper.FinBankStatementMapper;
@@ -74,7 +74,6 @@ public class FinBankService {
             s.setSummary(r.summary());
             s.setRefNo(ref);
             s.setBatchNo(batch);
-            s.setCreateBy(SecurityUtils.getUserId());
             statementMapper.insert(s);
             count++;
         }
@@ -157,7 +156,7 @@ public class FinBankService {
         BigDecimal book = statementMapper.sumBookBalance(accountId, d);
         List<FinBankStatement> statements = statementMapper.selectStatements(accountId, null, d);
         BigDecimal bank = bankBalance != null ? bankBalance
-                : statements.stream().map(FinBankStatement::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+                : Decimals.sum(statements, FinBankStatement::getAmount);
         List<FinBankStatement> bankOnly = statements.stream().filter(s -> s.getEntryId() == null).toList();
         List<Map<String, Object>> bookOnly = statementMapper.selectEntries(accountId, null, d).stream()
                 .filter(e -> ((Number) e.get("matched")).intValue() == 0).toList();

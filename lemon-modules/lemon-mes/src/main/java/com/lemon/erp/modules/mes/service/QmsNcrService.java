@@ -6,13 +6,14 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.mes.dto.QmsRequests;
 import com.lemon.erp.modules.mes.dto.WorkOrderRequest;
 import com.lemon.erp.modules.mes.entity.MesInspection;
@@ -66,7 +67,7 @@ public class QmsNcrService {
     public static final String DOC_NO = "NC";
     /** 不合格品处置审批的流程标识 */
     public static final String PROCESS_KEY = "qms_ncr";
-    private static final String BUSINESS_KEY_PREFIX = PROCESS_KEY + ":";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, PROCESS_KEY + ":");
 
     private final QmsNcrMapper ncrMapper;
     private final MesWorkOrderMapper workOrderMapper;
@@ -74,7 +75,7 @@ public class QmsNcrService {
     private final StockHoldService holdService;
     private final WmsStockDocService stockDocService;
     private final DocNoService docNoService;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
     private final MessageSender messageSender;
     private final MesWorkOrderService workOrderService;
     private final DictLookup dictLookup;
@@ -152,35 +153,30 @@ public class QmsNcrService {
                 .eq(QmsNcr::getId, id));
         ncr.setDisposition(req.disposition());
         ncr.setResponsibility(req.responsibility());
-        if (flowApi.isAvailable(PROCESS_KEY)) {
-            transit(id, NcrStatus.OPEN, NcrStatus.APPROVING);
-            String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of(
-                    "qty", ncr.getQty().doubleValue(),
-                    "disposition", req.disposition().name(),
-                    "responsibility", req.responsibility(),
-                    "ncrNo", ncr.getNcrNo()));
-            ncrMapper.update(Wrappers.<QmsNcr>lambdaUpdate().set(QmsNcr::getFlowInstanceId, instanceId).eq(QmsNcr::getId, id));
-            return true;
-        }
-        execute(ncr, req.reworkWarehouseId(), NcrStatus.OPEN);
-        return false;
+        return approvalSupport.submit(FLOW, id, Map.of(
+                        "qty", ncr.getQty().doubleValue(),
+                        "disposition", req.disposition().name(),
+                        "responsibility", req.responsibility(),
+                        "ncrNo", ncr.getNcrNo()),
+                () -> execute(ncr, req.reworkWarehouseId(), NcrStatus.OPEN),
+                () -> transit(id, NcrStatus.OPEN, NcrStatus.APPROVING),
+                instanceId -> ncrMapper.update(Wrappers.<QmsNcr>lambdaUpdate().set(QmsNcr::getFlowInstanceId, instanceId).eq(QmsNcr::getId, id)));
     }
 
     /** 审批结束：通过 → 执行处置；拒绝、撤回 → 退回待评审 */
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        QmsNcr ncr = ncrMapper.selectById(Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length())));
-        if (ncr == null || ncr.getStatus() != NcrStatus.APPROVING) {
-            return;
-        }
-        if (e.status() == FlowStatus.APPROVED) {
-            execute(ncr, null, NcrStatus.APPROVING);
-        } else {
-            transit(ncr.getId(), NcrStatus.APPROVING, NcrStatus.OPEN);
-        }
+        FLOW.onFinished(e, (id, approved) -> {
+            QmsNcr ncr = ncrMapper.selectById(id);
+            if (ncr == null || ncr.getStatus() != NcrStatus.APPROVING) {
+                return;
+            }
+            if (approved) {
+                execute(ncr, null, NcrStatus.APPROVING);
+            } else {
+                transit(id, NcrStatus.APPROVING, NcrStatus.OPEN);
+            }
+        });
     }
 
     /** 取消：只有待评审的可以取消（误登记） */
@@ -251,12 +247,10 @@ public class QmsNcrService {
             }
             case SORT -> "挑选处理"; // i18n-ignore
         };
-        if (ncrMapper.update(Wrappers.<QmsNcr>lambdaUpdate()
-                .set(QmsNcr::getStatus, NcrStatus.DONE)
-                .set(QmsNcr::getResultNote, note)
-                .set(QmsNcr::getReworkWoId, ncr.getReworkWoId())
-                .set(QmsNcr::getDoneTime, LocalDateTime.now())
-                .eq(QmsNcr::getId, ncr.getId()).eq(QmsNcr::getStatus, from)) == 0) {
+        if (!StatusTransitions.tryChange(ncrMapper, QmsNcr::getId, ncr.getId(), QmsNcr::getStatus, from, NcrStatus.DONE,
+                w -> w.set(QmsNcr::getResultNote, note)
+                        .set(QmsNcr::getReworkWoId, ncr.getReworkWoId())
+                        .set(QmsNcr::getDoneTime, LocalDateTime.now()))) {
             throw new BizException("mes.error.ncrStatusHasChangedRefreshTry");
         }
     }
@@ -303,8 +297,10 @@ public class QmsNcrService {
         return "已生成返工工单（草稿）"; // i18n-ignore
     }
 
+    /** 状态变更（校验原状态），同时更新修改时间 */
     private void transit(Long id, NcrStatus from, NcrStatus to) {
-        if (ncrMapper.transit(id, from, to) == 0) {
+        if (!StatusTransitions.tryChange(ncrMapper, QmsNcr::getId, id, QmsNcr::getStatus, from, to,
+                w -> w.set(QmsNcr::getUpdateTime, LocalDateTime.now()))) {
             throw new BizException("mes.error.ncrStatusHasChangedRefreshTry");
         }
     }

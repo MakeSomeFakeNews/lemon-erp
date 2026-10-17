@@ -52,6 +52,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.lemon.erp.common.util.Decimals.HUNDRED;
+import static com.lemon.erp.common.util.Decimals.sum;
 import static com.lemon.erp.modules.mes.model.MesConstants.WO_RULE;
 
 /**
@@ -69,7 +71,6 @@ import static com.lemon.erp.modules.mes.model.MesConstants.WO_RULE;
 @RequiredArgsConstructor
 public class MesKitService {
 
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final MesWoMaterialMapper woMaterialMapper;
     private final MesWorkOrderMapper workOrderMapper;
@@ -346,10 +347,6 @@ public class MesKitService {
         v.setKitStatus(allIssued ? KitStatus.ISSUED : shortLines == 0 ? KitStatus.COMPLETE
                 : buildable.compareTo(wo.getFinishedQty()) > 0 ? KitStatus.PARTIAL : KitStatus.SHORT);
         return v;
-    }
-
-    private static BigDecimal sum(List<KitLineView> list, Function<KitLineView, BigDecimal> f) {
-        return list.stream().map(f).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     /** 有数据权限的工单 ID */

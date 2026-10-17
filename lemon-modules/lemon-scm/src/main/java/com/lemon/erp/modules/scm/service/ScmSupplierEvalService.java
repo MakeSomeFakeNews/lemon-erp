@@ -3,7 +3,6 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.dto.SupplierEvalRequest;
 import com.lemon.erp.modules.scm.entity.ScmSupplier;
 import com.lemon.erp.modules.scm.entity.ScmSupplierEval;
@@ -56,7 +55,6 @@ public class ScmSupplierEvalService {
         eval.setTotalScore(total);
         eval.setGrade(SupplierLevel.ofScore(total));
         eval.setRemark(req.remark());
-        eval.setCreateBy(SecurityUtils.getUserId());
         evalMapper.insert(eval);
         supplierMapper.update(Wrappers.<ScmSupplier>lambdaUpdate()
                 .set(ScmSupplier::getLevel, eval.getGrade())

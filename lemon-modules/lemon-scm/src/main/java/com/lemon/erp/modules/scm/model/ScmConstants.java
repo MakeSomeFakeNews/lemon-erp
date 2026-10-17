@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.model;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.security.datascope.DataPermissionRule;
 
 import java.math.BigDecimal;
@@ -20,9 +21,6 @@ public final class ScmConstants {
     /** 默认税率（%），明细未填写税率时使用 */
     public static final BigDecimal DEFAULT_TAX_RATE = BigDecimal.valueOf(13);
 
-    /** 百分比换算 */
-    public static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
-
     private ScmConstants() {
     }
 
@@ -36,6 +34,6 @@ public final class ScmConstants {
         if (taxRate == null || taxRate.signum() == 0) {
             return BigDecimal.ZERO.setScale(2);
         }
-        return amount.multiply(taxRate).divide(HUNDRED.add(taxRate), 2, RoundingMode.HALF_UP);
+        return amount.multiply(taxRate).divide(Decimals.HUNDRED.add(taxRate), 2, RoundingMode.HALF_UP);
     }
 }

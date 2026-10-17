@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.mapper.FinStockAgeMapper;
@@ -7,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -94,11 +94,11 @@ public class FinStockAgeService {
                 ageQty[n - 1] = ageQty[n - 1].add(remaining);
             }
             // 各段金额 = 数量 × 单价，四舍五入的尾差计入最后一个有数量的段
-            BigDecimal amount = money(qty.multiply(unit));
+            BigDecimal amount = Decimals.money(qty.multiply(unit));
             BigDecimal[] ageAmount = new BigDecimal[n];
             BigDecimal allocated = BigDecimal.ZERO;
             for (int i = 0; i < n; i++) {
-                ageAmount[i] = money(ageQty[i].multiply(unit));
+                ageAmount[i] = Decimals.money(ageQty[i].multiply(unit));
                 allocated = allocated.add(ageAmount[i]);
             }
             int last = lastNonZero(ageQty);
@@ -156,10 +156,6 @@ public class FinStockAgeService {
         BigDecimal[] a = new BigDecimal[n];
         java.util.Arrays.fill(a, BigDecimal.ZERO);
         return a;
-    }
-
-    private static BigDecimal money(BigDecimal v) {
-        return v.setScale(2, RoundingMode.HALF_UP);
     }
 
     private static BigDecimal dec(Object v) {

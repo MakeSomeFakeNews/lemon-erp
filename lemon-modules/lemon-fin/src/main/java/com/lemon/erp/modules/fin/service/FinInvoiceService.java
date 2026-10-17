@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.InvoiceRequest;
 import com.lemon.erp.modules.fin.entity.FinBill;
 import com.lemon.erp.modules.fin.entity.FinInvoice;
@@ -109,7 +108,6 @@ public class FinInvoiceService {
         invoice.setSource(InvoiceSource.MANUAL);
         invoice.setStatus(InvoiceStatus.VALID);
         invoice.setRemark(req.remark());
-        invoice.setCreateBy(SecurityUtils.getUserId());
         try {
             invoiceMapper.insert(invoice);
         } catch (DuplicateKeyException e) {
@@ -272,7 +270,6 @@ public class FinInvoiceService {
         invoice.setBuyerName(d.buyerName());
         invoice.setSource(source);
         invoice.setStatus(InvoiceStatus.VALID);
-        invoice.setCreateBy(SecurityUtils.getUserId());
         invoiceMapper.insert(invoice);
         if (d.lines() != null) {
             int seq = 1;

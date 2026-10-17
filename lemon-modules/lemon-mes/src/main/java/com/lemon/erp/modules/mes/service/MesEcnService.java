@@ -5,12 +5,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.mes.dto.EcnDiff;
 import com.lemon.erp.modules.mes.dto.PlmRequests;
 import com.lemon.erp.modules.mes.entity.MesBom;
@@ -53,13 +54,13 @@ public class MesEcnService {
     /** 工程变更单号的编码规则标识 */
     public static final String DOC_NO = "ECN";
     public static final String PROCESS_KEY = "mes_ecn";
-    private static final String BUSINESS_KEY_PREFIX = PROCESS_KEY + ":";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, PROCESS_KEY + ":");
 
     private final MesEcnMapper ecnMapper;
     private final MesBomService bomService;
     private final MesWorkOrderService workOrderService;
     private final DocNoService docNoService;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
     private final DictLookup dictLookup;
     private final TransactionTemplate transactionTemplate;
 
@@ -145,35 +146,29 @@ public class MesEcnService {
         if (diff.items().isEmpty() && diff.ops().isEmpty()) {
             throw new BizException("mes.error.newBomIdenticalOriginalModifyVersion", ecn.getToVersion());
         }
-        if (!flowApi.isAvailable(PROCESS_KEY)) {
-            approve(id, EcnStatus.DRAFT);
-            return false;
-        }
-        transit(id, EcnStatus.DRAFT, EcnStatus.APPROVING);
-        String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of(
-                "reason", ecn.getReason(),
-                "materialCode", ecn.getMaterialCode(),
-                "ecnNo", ecn.getEcnNo()));
-        ecnMapper.update(Wrappers.<MesEcn>lambdaUpdate().set(MesEcn::getFlowInstanceId, instanceId).eq(MesEcn::getId, id));
-        return true;
+        return approvalSupport.submit(FLOW, id, Map.of(
+                        "reason", ecn.getReason(),
+                        "materialCode", ecn.getMaterialCode(),
+                        "ecnNo", ecn.getEcnNo()),
+                () -> approve(id, EcnStatus.DRAFT),
+                () -> transit(id, EcnStatus.DRAFT, EcnStatus.APPROVING),
+                instanceId -> ecnMapper.update(Wrappers.<MesEcn>lambdaUpdate().set(MesEcn::getFlowInstanceId, instanceId).eq(MesEcn::getId, id)));
     }
 
     /** 审批结束：通过 → 批准（到期立即生效）；拒绝、撤回 → 草稿 */
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        MesEcn ecn = ecnMapper.selectById(id);
-        if (ecn == null || ecn.getStatus() != EcnStatus.APPROVING) {
-            return;
-        }
-        if (e.status() == FlowStatus.APPROVED) {
-            approve(id, EcnStatus.APPROVING);
-        } else {
-            transit(id, EcnStatus.APPROVING, EcnStatus.DRAFT);
-        }
+        FLOW.onFinished(e, (id, approved) -> {
+            MesEcn ecn = ecnMapper.selectById(id);
+            if (ecn == null || ecn.getStatus() != EcnStatus.APPROVING) {
+                return;
+            }
+            if (approved) {
+                approve(id, EcnStatus.APPROVING);
+            } else {
+                transit(id, EcnStatus.APPROVING, EcnStatus.DRAFT);
+            }
+        });
     }
 
     /** 取消：草稿、待生效的可以取消，变更后的 BOM（没有被工单使用时）删除 */
@@ -220,10 +215,8 @@ public class MesEcnService {
     // ---------------------------------------------------------------- 内部
 
     private void approve(Long id, EcnStatus from) {
-        if (ecnMapper.update(Wrappers.<MesEcn>lambdaUpdate()
-                .set(MesEcn::getStatus, EcnStatus.APPROVED)
-                .set(MesEcn::getApproveTime, LocalDateTime.now())
-                .eq(MesEcn::getId, id).eq(MesEcn::getStatus, from)) == 0) {
+        if (!StatusTransitions.tryChange(ecnMapper, MesEcn::getId, id, MesEcn::getStatus, from, EcnStatus.APPROVED,
+                w -> w.set(MesEcn::getApproveTime, LocalDateTime.now()))) {
             throw new BizException("mes.error.ecnStatusHasChangedRefreshTry");
         }
         MesEcn ecn = ecnMapper.selectById(id);
@@ -236,11 +229,8 @@ public class MesEcnService {
         bomService.activateForEcn(ecn.getFromBomId(), ecn.getToBomId());
         int synced = Integer.valueOf(1).equals(ecn.getSyncDraftWo()) ? workOrderService.switchDraftBom(ecn.getFromBomId(), ecn.getToBomId()) : 0;
         String note = "新版本已启用" + (synced > 0 ? "，同步草稿工单 " + synced + " 张" : ""); // i18n-ignore
-        if (ecnMapper.update(Wrappers.<MesEcn>lambdaUpdate()
-                .set(MesEcn::getStatus, EcnStatus.EFFECTIVE)
-                .set(MesEcn::getEffectTime, LocalDateTime.now())
-                .set(MesEcn::getResultNote, note)
-                .eq(MesEcn::getId, ecn.getId()).eq(MesEcn::getStatus, EcnStatus.APPROVED)) == 0) {
+        if (!StatusTransitions.tryChange(ecnMapper, MesEcn::getId, ecn.getId(), MesEcn::getStatus, EcnStatus.APPROVED, EcnStatus.EFFECTIVE,
+                w -> w.set(MesEcn::getEffectTime, LocalDateTime.now()).set(MesEcn::getResultNote, note))) {
             throw new BizException("mes.error.ecnStatusHasChangedRefreshTry");
         }
     }
@@ -254,8 +244,10 @@ public class MesEcnService {
         ecn.setSyncDraftWo(Boolean.FALSE.equals(req.syncDraftWo()) ? 0 : 1);
     }
 
+    /** 状态变更（校验原状态），同时更新修改时间 */
     private void transit(Long id, EcnStatus from, EcnStatus to) {
-        if (ecnMapper.transit(id, from, to) == 0) {
+        if (!StatusTransitions.tryChange(ecnMapper, MesEcn::getId, id, MesEcn::getStatus, from, to,
+                w -> w.set(MesEcn::getUpdateTime, LocalDateTime.now()))) {
             throw new BizException("mes.error.ecnStatusHasChangedRefreshTry");
         }
     }

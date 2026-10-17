@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.framework.workflow.ApproveStatus;
 import com.lemon.erp.modules.hr.model.ChangeType;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -58,6 +59,7 @@ public class HrEmployeeChange extends BaseEntity {
     private Long handoverUserId;
 
     /** 办理人 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

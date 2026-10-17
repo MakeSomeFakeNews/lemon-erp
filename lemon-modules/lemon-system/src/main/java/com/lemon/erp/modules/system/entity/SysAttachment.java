@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.system.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -31,6 +32,7 @@ public class SysAttachment extends BaseEntity {
     @JsonIgnore
     private String storagePath;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     /** 上传人 */

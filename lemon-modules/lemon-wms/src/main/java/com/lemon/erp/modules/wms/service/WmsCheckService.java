@@ -4,14 +4,16 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.DetailLines;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.period.BizPeriodGuard;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.security.datascope.DataScopes;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.wms.dto.CheckItemRequest;
 import com.lemon.erp.modules.wms.dto.CheckRequest;
 import com.lemon.erp.modules.wms.dto.DocQuery;
@@ -47,7 +49,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.lemon.erp.modules.wms.model.WmsConstants.CHECK_RULE;
@@ -76,10 +77,10 @@ public class WmsCheckService {
     private final DocNoService docNoService;
     private final StockService stockService;
     private final BizPeriodGuard periodGuard;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
 
     public static final String PROCESS_KEY = "wms_check";
-    private static final String BUSINESS_KEY_PREFIX = "wms_check:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "wms_check:");
 
     @DataPermission(table = "wms_check", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<WmsCheck> page(long current, long size, DocQuery query) {
@@ -141,7 +142,6 @@ public class WmsCheckService {
         check.setFreeze(Boolean.TRUE.equals(req.freeze()) ? 1 : 0);
         check.setStatus(DocStatus.DRAFT);
         check.setDeptId(user.deptId());
-        check.setCreateBy(user.userId());
         checkMapper.insert(check);
         saveItems(check.getId(), items);
         return check.getId();
@@ -161,8 +161,7 @@ public class WmsCheckService {
                 .set(WmsCheck::getUpdateTime, LocalDateTime.now())
                 .eq(WmsCheck::getId, id)
                 .eq(WmsCheck::getStatus, DocStatus.DRAFT));
-        itemMapper.delete(Wrappers.<WmsCheckItem>lambdaQuery().eq(WmsCheckItem::getCheckId, id));
-        saveItems(id, items);
+        DetailLines.replace(itemMapper, WmsCheckItem::getCheckId, id, items, WmsCheckItem::setCheckId, itemMapper::insertBatch);
     }
 
     @Transactional
@@ -181,7 +180,8 @@ public class WmsCheckService {
     public boolean confirm(Long id) {
         WmsCheck check = getDraft(id);
         periodGuard.checkStockOpen(check.getBizDate(), StockBizType.CHECK.getLabelKey());
-        if (flowApi.isAvailable(PROCESS_KEY)) {
+        // 只有存在差异时才审批
+        if (approvalSupport.isAvailable(FLOW)) {
             List<WmsCheckItem> items = itemMapper.selectList(Wrappers.<WmsCheckItem>lambdaQuery().eq(WmsCheckItem::getCheckId, id));
             validate(check.getWarehouseId(), items, true);
             fillBookQty(check.getWarehouseId(), items);
@@ -197,13 +197,12 @@ public class WmsCheckService {
                 loss = diff.signum() < 0 ? loss.subtract(diff) : loss;
             }
             if (diffLines > 0) {
-                if (checkMapper.update(Wrappers.<WmsCheck>lambdaUpdate().set(WmsCheck::getStatus, DocStatus.APPROVING)
-                        .eq(WmsCheck::getId, id).eq(WmsCheck::getStatus, DocStatus.DRAFT)) == 0) {
-                    throw new BizException("wms.error.stockCountHasConfirmedRefresh");
-                }
-                String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id,
-                        Map.of("docNo", check.getDocNo(), "gainQty", gain, "lossQty", loss, "diffLines", diffLines));
-                checkMapper.update(Wrappers.<WmsCheck>lambdaUpdate().set(WmsCheck::getFlowInstanceId, instanceId).eq(WmsCheck::getId, id));
+                approvalSupport.start(FLOW, id,
+                        Map.of("docNo", check.getDocNo(), "gainQty", gain, "lossQty", loss, "diffLines", diffLines),
+                        () -> StatusTransitions.change(checkMapper, WmsCheck::getId, id, WmsCheck::getStatus,
+                                DocStatus.DRAFT, DocStatus.APPROVING, "wms.error.stockCountHasConfirmedRefresh"),
+                        instanceId -> checkMapper.update(Wrappers.<WmsCheck>lambdaUpdate()
+                                .set(WmsCheck::getFlowInstanceId, instanceId).eq(WmsCheck::getId, id)));
                 return true;
             }
         }
@@ -213,35 +212,28 @@ public class WmsCheckService {
 
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        WmsCheck check = checkMapper.selectById(id);
-        if (check == null || check.getStatus() != DocStatus.APPROVING) {
-            return;
-        }
-        if (e.status() == FlowStatus.APPROVED) {
-            adjust(check, DocStatus.APPROVING);
-        } else {
-            checkMapper.update(Wrappers.<WmsCheck>lambdaUpdate().set(WmsCheck::getStatus, DocStatus.DRAFT)
-                    .eq(WmsCheck::getId, id).eq(WmsCheck::getStatus, DocStatus.APPROVING));
-        }
+        FLOW.onFinished(e, (id, approved) -> {
+            WmsCheck check = checkMapper.selectById(id);
+            if (check == null || check.getStatus() != DocStatus.APPROVING) {
+                return;
+            }
+            if (approved) {
+                adjust(check, DocStatus.APPROVING);
+            } else {
+                StatusTransitions.tryChange(checkMapper, WmsCheck::getId, id, WmsCheck::getStatus,
+                        DocStatus.APPROVING, DocStatus.DRAFT);
+            }
+        });
     }
 
     /** 按确认时的账面数量计算差异，盘盈入库、盘亏出库，库存调整为实盘数量 */
     private void adjust(WmsCheck check, DocStatus from) {
         Long id = check.getId();
-        int updated = checkMapper.update(Wrappers.<WmsCheck>lambdaUpdate()
-                .set(WmsCheck::getStatus, DocStatus.DONE)
-                .set(WmsCheck::getConfirmBy, SecurityUtils.getUserId())
-                .set(WmsCheck::getConfirmTime, LocalDateTime.now())
-                .set(WmsCheck::getUpdateTime, LocalDateTime.now())
-                .eq(WmsCheck::getId, id)
-                .eq(WmsCheck::getStatus, from));
-        if (updated == 0) {
-            throw new BizException("wms.error.stockCountHasConfirmedRefresh");
-        }
+        StatusTransitions.change(checkMapper, WmsCheck::getId, id, WmsCheck::getStatus, from, DocStatus.DONE, w -> w
+                        .set(WmsCheck::getConfirmBy, SecurityUtils.getUserId())
+                        .set(WmsCheck::getConfirmTime, LocalDateTime.now())
+                        .set(WmsCheck::getUpdateTime, LocalDateTime.now()),
+                "wms.error.stockCountHasConfirmedRefresh");
         Long warehouseId = check.getWarehouseId();
         List<WmsCheckItem> items = itemMapper.selectList(Wrappers.<WmsCheckItem>lambdaQuery()
                 .eq(WmsCheckItem::getCheckId, id).orderByAsc(WmsCheckItem::getId));
@@ -278,20 +270,14 @@ public class WmsCheckService {
             }
         }
         // 保存确认时的账面数量
-        itemMapper.delete(Wrappers.<WmsCheckItem>lambdaQuery().eq(WmsCheckItem::getCheckId, id));
-        saveItems(id, items);
+        DetailLines.replace(itemMapper, WmsCheckItem::getCheckId, id, items, WmsCheckItem::setCheckId, itemMapper::insertBatch);
         stockService.apply(StockBizType.CHECK, id, check.getDocNo(), changes);
     }
 
     // ---------------------------------------------------------------- 校验
 
     private WmsCheck getAccessible(Long id) {
-        Supplier<WmsCheck> loader = () -> checkMapper.selectById(id);
-        WmsCheck check = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(CHECK_RULE, loader);
-        if (check == null) {
-            throw new BizException("wms.error.stockCountDoesNotExistAccess");
-        }
-        return check;
+        return DataScopes.require(CHECK_RULE, () -> checkMapper.selectById(id), "wms.error.stockCountDoesNotExistAccess");
     }
 
     private WmsCheck getDraft(Long id) {

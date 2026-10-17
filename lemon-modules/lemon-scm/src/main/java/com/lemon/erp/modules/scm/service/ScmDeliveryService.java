@@ -4,11 +4,12 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
 import com.lemon.erp.framework.security.datascope.DataPermissionRule;
+import com.lemon.erp.framework.security.datascope.DataScopes;
 import com.lemon.erp.modules.scm.dto.DeliveryRequest;
 import com.lemon.erp.modules.scm.dto.PickRequest;
 import com.lemon.erp.modules.scm.dto.TradeDocItemRequest;
@@ -40,7 +41,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.lemon.erp.modules.wms.model.WmsConstants.batchOrNone;
@@ -103,7 +103,6 @@ public class ScmDeliveryService {
         d.setStatus(DeliveryStatus.PENDING);
         d.setRemark(req.remark());
         d.setDeptId(user.deptId());
-        d.setCreateBy(user.userId());
         deliveryMapper.insert(d);
 
         for (DeliveryRequest.Item r : req.items()) {
@@ -161,9 +160,8 @@ public class ScmDeliveryService {
         }
         pickMapper.delete(Wrappers.<ScmDeliveryPick>lambdaQuery().eq(ScmDeliveryPick::getDeliveryId, id));
         picks.forEach(pickMapper::insert);
-        deliveryMapper.update(Wrappers.<ScmDelivery>lambdaUpdate().set(ScmDelivery::getStatus, DeliveryStatus.PICKED)
-                .set(ScmDelivery::getPickBy, SecurityUtils.getUserIdOrNull()).set(ScmDelivery::getPickTime, LocalDateTime.now())
-                .eq(ScmDelivery::getId, id).eq(ScmDelivery::getStatus, d.getStatus()));
+        StatusTransitions.tryChange(deliveryMapper, ScmDelivery::getId, id, ScmDelivery::getStatus, d.getStatus(), DeliveryStatus.PICKED,
+                w -> w.set(ScmDelivery::getPickBy, SecurityUtils.getUserIdOrNull()).set(ScmDelivery::getPickTime, LocalDateTime.now()));
     }
 
     /**
@@ -183,8 +181,8 @@ public class ScmDeliveryService {
                 .toList();
         Long docId = tradeDocService.create(TradeKind.SALES_OUT, new TradeDocRequest(d.getOrderId(), d.getWarehouseId(),
                 bizDate == null ? LocalDate.now() : bizDate, "发货通知 " + d.getDeliveryNo(), null, lines)); // i18n-ignore
-        deliveryMapper.update(Wrappers.<ScmDelivery>lambdaUpdate().set(ScmDelivery::getStatus, DeliveryStatus.SHIPPED)
-                .set(ScmDelivery::getTradeDocId, docId).eq(ScmDelivery::getId, id).eq(ScmDelivery::getStatus, DeliveryStatus.PICKED));
+        StatusTransitions.tryChange(deliveryMapper, ScmDelivery::getId, id, ScmDelivery::getStatus, DeliveryStatus.PICKED, DeliveryStatus.SHIPPED,
+                w -> w.set(ScmDelivery::getTradeDocId, docId));
         return docId;
     }
 
@@ -242,12 +240,7 @@ public class ScmDeliveryService {
     }
 
     private ScmDelivery getAccessible(Long id) {
-        Supplier<ScmDelivery> loader = () -> deliveryMapper.selectById(id);
-        ScmDelivery d = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(RULE, loader);
-        if (d == null) {
-            throw new BizException("scm.error.deliveryNoticeDoesNotExistAccess");
-        }
-        return d;
+        return DataScopes.require(RULE, () -> deliveryMapper.selectById(id), "scm.error.deliveryNoticeDoesNotExistAccess");
     }
 
     private static String plain(BigDecimal v) {

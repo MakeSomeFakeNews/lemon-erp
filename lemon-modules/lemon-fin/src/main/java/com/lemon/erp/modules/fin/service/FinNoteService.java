@@ -1,13 +1,12 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.fin.dto.NoteRequests;
 import com.lemon.erp.modules.fin.dto.SettlementItemRequest;
 import com.lemon.erp.modules.fin.dto.SettlementRequest;
@@ -49,8 +48,6 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class FinNoteService {
-    private static final String PAYMENT_BUSINESS_KEY = FinSettlementService.PAYMENT_PROCESS_KEY + ":";
-
     private final FinNoteMapper noteMapper;
     private final FinNoteLogMapper logMapper;
     private final FinSettlementMapper settlementMapper;
@@ -120,7 +117,6 @@ public class FinNoteService {
         note.setAcceptor(req.acceptor());
         note.setStatus(receivable ? NoteStatus.HELD : FinSettlementService.isApproving(settlement) ? NoteStatus.ISSUING : NoteStatus.ISSUED);
         note.setRemark(req.remark());
-        note.setCreateBy(SecurityUtils.getUserId());
         noteMapper.insert(note);
         FinNoteLog log = newLog(note, receivable ? NoteAction.RECEIVE : NoteAction.ISSUE, req.actionDate(), req.remark());
         log.setPartnerId(req.partnerId());
@@ -150,7 +146,7 @@ public class FinNoteService {
     public void discount(Long id, NoteRequests.Settle req) {
         FinNote note = requireStatus(id, NoteKind.RECEIVABLE, NoteStatus.HELD, "fin.error.noteCannotDiscountedCurrentStatus");
         Long bank = requireBank(req.accountId());
-        BigDecimal interest = req.interest() == null ? BigDecimal.ZERO : req.interest();
+        BigDecimal interest = Decimals.nz(req.interest());
         if (interest.compareTo(note.getAmount()) >= 0) {
             throw new BizException("fin.error.discountInterestMustLessFaceAmount");
         }
@@ -249,16 +245,15 @@ public class FinNoteService {
      */
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(PAYMENT_BUSINESS_KEY)) {
-            return;
-        }
-        Long settlementId = Long.valueOf(e.businessKey().substring(PAYMENT_BUSINESS_KEY.length()));
+        FinSettlementService.PAYMENT_FLOW.onFinished(e, this::onPaymentFinished);
+    }
+
+    private void onPaymentFinished(Long settlementId, boolean approved) {
         FinNoteLog log = logMapper.selectOne(Wrappers.<FinNoteLog>lambdaQuery().eq(FinNoteLog::getSettlementId, settlementId)
                 .in(FinNoteLog::getAction, NoteAction.ENDORSE, NoteAction.ISSUE));
         if (log == null) {
             return;
         }
-        boolean approved = e.status() == FlowStatus.APPROVED;
         if (log.getAction() == NoteAction.ENDORSE) {
             noteMapper.transit(log.getNoteId(), NoteStatus.ENDORSING, approved ? NoteStatus.ENDORSED : NoteStatus.HELD);
         } else {
@@ -292,7 +287,6 @@ public class FinNoteService {
         log.setAmount(note.getAmount());
         log.setInterest(BigDecimal.ZERO);
         log.setRemark(remark);
-        log.setCreateBy(SecurityUtils.getUserId());
         return log;
     }
 
@@ -316,7 +310,7 @@ public class FinNoteService {
 
     /** 票据为人民币，核销的单据合计须等于票面金额 */
     private static void checkTotal(List<SettlementItemRequest> items, BigDecimal amount) {
-        BigDecimal total = items.stream().map(SettlementItemRequest::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = Decimals.sum(items, SettlementItemRequest::amount);
         if (total.compareTo(amount) != 0) {
             throw new BizException("fin.error.totalSettledDoesNotEqualFace", total.toPlainString(), amount.toPlainString());
         }

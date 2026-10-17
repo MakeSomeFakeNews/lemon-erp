@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.wms.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -38,6 +39,7 @@ public class WmsCheck extends BaseEntity {
 
     private Long deptId;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     private Long confirmBy;

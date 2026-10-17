@@ -679,6 +679,19 @@ public void onOrderApproved(FlowFinishedEvent e) {
 - **兜底防护**：分页单页最多 500 条（`MybatisPlusConfig.MAX_PAGE_SIZE`）；不带 WHERE 的 UPDATE、DELETE 会被拦截。
 - **Redis 批量读写**：批量读取用 `CacheService.getAll`（Redis 实现是一次 `MGET`）；只需要数量时不读取值。
 
+## 单据开发的公共组件
+
+新写单据时直接使用下面的组件，不要在业务 Service 中重复实现：
+
+| 场景 | 组件 | 说明 |
+| --- | --- | --- |
+| 接入审批 | `framework/workflow/ApprovalFlow`、`ApprovalSupport` | 在 Service 中声明 `ApprovalFlow` 常量（流程标识 + 业务标识前缀，前缀上线后不能修改）。提交用 `approvalSupport.submit(flow, id, 变量, 直接审核, 改为审批中, 记录实例ID)`（流程未发布时直接审核；变量需要查询时传 `Supplier`）；创建即审批中或有条件才审批的用 `isAvailable` + `start`；撤回用 `cancelIfRunning`。审批结果在 `@EventListener` 中用 `FLOW.onFinished(e, (id, approved) -> ...)`，需要区分驳回和撤销时用 `onFinishedWithStatus` |
+| 状态流转 | `framework/data/StatusTransitions` | 按原状态条件更新：`change`（失败抛出提示刷新的异常，可追加其他字段）、`tryChange`（返回是否成功）、`changeFromAny` / `tryChangeFromAny`（多个原状态）。wrapper 更新不会自动填充 `updateTime`，需要时在追加字段中设置 |
+| 按数据权限读取单据 | `framework/security/datascope/DataScopes` | `load(rule, loader)`；`require(rule, loader, [校验,] 不存在的消息键)`，看不到的数据视为不存在 |
+| 明细行整体替换 | `framework/data/DetailLines` | `replace(mapper, 单据字段, 单据ID, 明细, 设置单据ID, 批量插入)`：先删后用 XML 中的多值 INSERT 插入 |
+| 金额、数量 | `common/util/Decimals` | `nz`、`sum`、`money`（2 位）、`qty`（4 位）、`percent`、`HUNDRED`；精度约定：金额 2 位、数量和单价 4 位，HALF_UP |
+| 制单人 | `MybatisPlusConfig.CreateByInnerInterceptor` | 插入实体时 `createBy` 为空则自动填当前登录用户，不用手工赋值；实体的 `createBy` 在 JSON 中只读，前端传入的值不会被接收。用 mapper XML 多值 INSERT 插入的仍需自己赋值 |
+
 ## 目录结构
 
 Gradle 多模块项目，Java 包名与模块一一对应（`com.lemon.erp.common`、`com.lemon.erp.framework`、`com.lemon.erp.modules.<模块>`）：

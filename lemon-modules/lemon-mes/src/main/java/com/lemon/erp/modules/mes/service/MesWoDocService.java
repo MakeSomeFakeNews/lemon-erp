@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.WoDocItemRequest;
 import com.lemon.erp.modules.mes.dto.WoDocRequest;
@@ -112,7 +113,7 @@ public class MesWoDocService {
     private Long save(Long woId, WoDocKind kind, WoDocRequest req) {
         MesWorkOrder wo = workOrderService.getExecutable(woId);
         Map<Long, WmsMaterial> materials = materialService.mapByIds(req.items().stream().map(WoDocItemRequest::materialId).toList());
-        BigDecimal total = req.items().stream().map(WoDocItemRequest::qty).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = Decimals.sum(req.items(), WoDocItemRequest::qty);
 
         if (kind == WoDocKind.FINISH) {
             if (req.items().stream().anyMatch(i -> !i.materialId().equals(wo.getMaterialId()))) {
@@ -200,8 +201,7 @@ public class MesWoDocService {
         }
         MesMaterialPlan plan = materialPlanService.plans(Set.of(wo.getMaterialId())).get(wo.getMaterialId());
         if (plan != null && Integer.valueOf(1).equals(plan.getFqcRequired())) {
-            BigDecimal passed = inspectionMapper.sumFqcPassed(wo.getId());
-            passed = passed == null ? BigDecimal.ZERO : passed;
+            BigDecimal passed = Decimals.nz(inspectionMapper.sumFqcPassed(wo.getId()));
             if (after.compareTo(passed) > 0) {
                 throw new BizException("mes.error.productRequiresFinalInspectionBeforeCompletion", plain(passed), plain(wo.getFinishedQty()));
             }
@@ -216,9 +216,9 @@ public class MesWoDocService {
         if (warehouseService.get(req.warehouseId()).getType() != WarehouseType.DEFECT) {
             throw new BizException("mes.error.selectDefectiveGoodsWarehouseScrapReceipts");
         }
-        BigDecimal scrapped = woOpMapper.selectByWo(wo.getId()).stream().map(MesWoOp::getScrapQty).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal received = docMapper.selectList(Wrappers.<MesWoDoc>lambdaQuery().eq(MesWoDoc::getWoId, wo.getId())
-                .eq(MesWoDoc::getKind, WoDocKind.SCRAP)).stream().map(MesWoDoc::getTotalQty).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal scrapped = Decimals.sum(woOpMapper.selectByWo(wo.getId()), MesWoOp::getScrapQty);
+        BigDecimal received = Decimals.sum(docMapper.selectList(Wrappers.<MesWoDoc>lambdaQuery().eq(MesWoDoc::getWoId, wo.getId())
+                .eq(MesWoDoc::getKind, WoDocKind.SCRAP)), MesWoDoc::getTotalQty);
         if (received.add(qty).compareTo(scrapped) > 0) {
             throw new BizException("mes.error.scrapReceiptQuantityExceedsReportedScrap", plain(scrapped), plain(received));
         }
@@ -226,8 +226,8 @@ public class MesWoDocService {
 
     /** 领料上限 = 需求 × (1 + 允许超领比例) + 已补料 */
     private static String overIssueMessage(String name, MesWoMaterial wm, BigDecimal rate) {
-        BigDecimal limit = wm.getRequiredQty().multiply(BigDecimal.valueOf(100).add(rate))
-                .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP).add(wm.getSupplementQty());
+        BigDecimal limit = wm.getRequiredQty().multiply(Decimals.HUNDRED.add(rate))
+                .divide(Decimals.HUNDRED, 4, RoundingMode.HALF_UP).add(wm.getSupplementQty());
         BigDecimal left = limit.subtract(wm.getIssuedQty()).max(BigDecimal.ZERO);
         return Messages.get("mes.text.materialExceedsIssueLimitRequired", name, plain(wm.getRequiredQty()))
                 + (rate.signum() > 0 ? Messages.get("mes.text.overIssueAllowance", plain(rate)) : "")

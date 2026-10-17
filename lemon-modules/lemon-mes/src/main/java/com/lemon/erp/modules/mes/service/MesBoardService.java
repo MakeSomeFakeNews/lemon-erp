@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.mes.dto.BoardOrderRow;
 import com.lemon.erp.modules.mes.dto.BoardReportSum;
 import com.lemon.erp.modules.mes.dto.BoardView;
@@ -30,6 +31,9 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.lemon.erp.common.util.Decimals.HUNDRED;
+import static com.lemon.erp.common.util.Decimals.nz;
+
 /**
  * 生产看板：在制工单走到了哪道工序、还剩几道、预计哪天完工，各产线今天的生产情况。数据全部来自工单工序和报工，只读不写库。
  * <p>
@@ -44,7 +48,6 @@ public class MesBoardService {
     /** 推演的最长天数，超过时视为产能不足、无法估算 */
     private static final int MAX_DAYS = 366;
     private static final int MAX_JOBS = 8;
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final MesBoardMapper boardMapper;
     private final MesWorkCenterMapper workCenterMapper;
@@ -311,8 +314,8 @@ public class MesBoardService {
             }
         }
         BigDecimal remaining = workCenterId == null
-                ? orders.stream().map(BoardView.Order::remainingHours).reduce(BigDecimal.ZERO, BigDecimal::add)
-                : lines.stream().map(BoardView.Line::remainingHours).reduce(BigDecimal.ZERO, BigDecimal::add);
+                ? Decimals.sum(orders, BoardView.Order::remainingHours)
+                : Decimals.sum(lines, BoardView.Line::remainingHours);
         LocalDate allDone = risks.containsKey(DeliveryRisk.UNKNOWN) ? null : orders.stream().map(BoardView.Order::eta)
                 .filter(Objects::nonNull).max(Comparator.naturalOrder()).orElse(null);
         return new BoardView.Kpi(orders.size(), count(states, BoardOrderState.RUNNING), count(states, BoardOrderState.IDLE),
@@ -356,10 +359,6 @@ public class MesBoardService {
 
     private static BigDecimal scale(BigDecimal v) {
         return v.setScale(1, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal nz(BigDecimal v) {
-        return v == null ? BigDecimal.ZERO : v;
     }
 
     private static <K> int count(Map<K, Long> map, K key) {

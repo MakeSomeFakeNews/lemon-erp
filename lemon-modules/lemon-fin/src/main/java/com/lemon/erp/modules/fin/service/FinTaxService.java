@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
@@ -28,7 +29,6 @@ import static com.lemon.erp.modules.fin.model.FinConstants.toYearMonth;
 @RequiredArgsConstructor
 public class FinTaxService {
 
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final FinVoucherService voucherService;
     private final FinVoucherMapper voucherMapper;
@@ -103,10 +103,10 @@ public class FinTaxService {
 
     private static BigDecimal tax(BigDecimal base, BigDecimal rate, int defaultRate) {
         BigDecimal r = rate == null ? BigDecimal.valueOf(defaultRate) : rate;
-        if (r.signum() < 0 || r.compareTo(HUNDRED) > 0) {
+        if (r.signum() < 0 || r.compareTo(Decimals.HUNDRED) > 0) {
             throw new BizException("fin.error.taxRateMustBetween");
         }
-        return base.multiply(r).divide(HUNDRED, 2, RoundingMode.HALF_UP);
+        return base.multiply(r).divide(Decimals.HUNDRED, 2, RoundingMode.HALF_UP);
     }
 
     static String sourceNo(int period) {

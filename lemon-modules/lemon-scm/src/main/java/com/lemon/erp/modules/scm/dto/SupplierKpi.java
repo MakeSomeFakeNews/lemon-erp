@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.dto;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.scm.model.SupplierLevel;
 import lombok.Data;
 
@@ -61,9 +62,6 @@ public class SupplierKpi {
     }
 
     private static BigDecimal rate(BigDecimal part, BigDecimal total) {
-        if (part == null || total == null || total.signum() == 0) {
-            return null;
-        }
-        return part.multiply(BigDecimal.valueOf(100)).divide(total, 1, java.math.RoundingMode.HALF_UP);
+        return part == null ? null : Decimals.percent(part, total, 1);
     }
 }

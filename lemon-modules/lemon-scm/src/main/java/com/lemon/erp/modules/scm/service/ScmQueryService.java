@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
 import com.lemon.erp.modules.scm.entity.ScmSupplierPrice;
 import com.lemon.erp.modules.scm.entity.ScmSupplierPriceTier;
@@ -115,8 +116,7 @@ public class ScmQueryService {
 
     /** 采购入库单中某物料的入库数量（来料检验校验送检数量），单据或物料不存在时为 0 */
     public BigDecimal purchaseInQty(String docNo, Long materialId) {
-        BigDecimal v = tradeDocItemMapper.sumQtyByDocNo(docNo, TradeKind.PURCHASE_IN, materialId);
-        return v == null ? BigDecimal.ZERO : v;
+        return Decimals.nz(tradeDocItemMapper.sumQtyByDocNo(docNo, TradeKind.PURCHASE_IN, materialId));
     }
 
     private Map<Long, BigDecimal> openQty(OrderKind kind, Collection<Long> materialIds) {

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.crm.model.FollowupTarget;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -48,6 +49,7 @@ public class CrmFollowup extends BaseEntity {
     private Long deptId;
 
     /** 跟进人 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

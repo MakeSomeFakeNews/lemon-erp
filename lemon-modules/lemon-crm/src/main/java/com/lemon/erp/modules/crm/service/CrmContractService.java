@@ -4,15 +4,17 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.org.UserLookup;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
 import com.lemon.erp.framework.security.datascope.DataPermissionRule;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.security.datascope.DataScopes;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.crm.dto.ContractRequest;
 import com.lemon.erp.modules.crm.entity.CrmCollectionPlan;
 import com.lemon.erp.modules.crm.entity.CrmContract;
@@ -40,7 +42,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
 /**
  * 销售合同：可来自商机、报价单；关联销售订单（选已有订单，或由已批准的报价单生成），回款 = 该订单销售出库应收单的核销金额，
@@ -51,7 +52,7 @@ import java.util.function.Supplier;
 public class CrmContractService {
 
     public static final String PROCESS_KEY = "crm_contract";
-    private static final String BUSINESS_KEY_PREFIX = "crm_contract:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "crm_contract:");
     private static final DataPermissionRule RULE = new DataPermissionRule("crm_contract", "dept_id", "owner_id");
 
     private final CrmContractMapper contractMapper;
@@ -62,7 +63,7 @@ public class CrmContractService {
     private final ScmOrderService orderService;
     private final UserLookup userLookup;
     private final DocNoService docNoService;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
 
     @DataPermission(table = "crm_contract", deptColumn = "dept_id", userColumn = "owner_id")
     public PageResult<CrmContract> page(long current, long size, String keyword, String status, Long customerId, Long opportunityId) {
@@ -83,7 +84,6 @@ public class CrmContractService {
         CrmContract c = new CrmContract();
         c.setContractNo(docNoService.next(CrmDocNos.CONTRACT));
         c.setStatus(SalesContractStatus.DRAFT);
-        c.setCreateBy(SecurityUtils.getUserId());
         fill(c, req);
         contractMapper.insert(c);
         savePlans(c.getId(), req);
@@ -117,29 +117,24 @@ public class CrmContractService {
     @Transactional
     public boolean submit(Long id) {
         CrmContract c = requireStatus(id, SalesContractStatus.DRAFT);
-        if (!flowApi.isAvailable(PROCESS_KEY)) {
-            activate(id, SalesContractStatus.DRAFT);
-            return false;
-        }
-        transit(id, SalesContractStatus.DRAFT, SalesContractStatus.APPROVING);
-        String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id,
-                Map.of("contractNo", c.getContractNo(), "amount", c.getAmount(), "customerId", c.getCustomerId()));
-        contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getFlowInstanceId, instanceId).eq(CrmContract::getId, id));
-        return true;
+        return approvalSupport.submit(FLOW, id,
+                Map.of("contractNo", c.getContractNo(), "amount", c.getAmount(), "customerId", c.getCustomerId()),
+                () -> activate(id, SalesContractStatus.DRAFT),
+                () -> transit(id, SalesContractStatus.DRAFT, SalesContractStatus.APPROVING),
+                instanceId -> contractMapper.update(Wrappers.<CrmContract>lambdaUpdate()
+                        .set(CrmContract::getFlowInstanceId, instanceId).eq(CrmContract::getId, id)));
     }
 
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        if (e.status() == FlowStatus.APPROVED) {
-            activate(id, SalesContractStatus.APPROVING);
-        } else {
-            contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getStatus, SalesContractStatus.DRAFT)
-                    .eq(CrmContract::getId, id).eq(CrmContract::getStatus, SalesContractStatus.APPROVING));
-        }
+        FLOW.onFinished(e, (id, approved) -> {
+            if (approved) {
+                activate(id, SalesContractStatus.APPROVING);
+            } else {
+                StatusTransitions.tryChange(contractMapper, CrmContract::getId, id, CrmContract::getStatus,
+                        SalesContractStatus.APPROVING, SalesContractStatus.DRAFT, null);
+            }
+        });
     }
 
     /** 关联已有的销售订单（同一客户、已审核及之后） */
@@ -183,15 +178,15 @@ public class CrmContractService {
     @Transactional
     public void terminate(Long id, String reason) {
         requireStatus(id, SalesContractStatus.ACTIVE);
-        contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getStatus, SalesContractStatus.TERMINATED)
-                .set(CrmContract::getTerminateReason, reason).eq(CrmContract::getId, id).eq(CrmContract::getStatus, SalesContractStatus.ACTIVE));
+        StatusTransitions.tryChange(contractMapper, CrmContract::getId, id, CrmContract::getStatus,
+                SalesContractStatus.ACTIVE, SalesContractStatus.TERMINATED, w -> w.set(CrmContract::getTerminateReason, reason));
     }
 
     /** 回款计划及各期回款状态：实际回款按计划日期先后分摊 */
     public List<CrmCollectionPlan> plans(CrmContract c) {
         List<CrmCollectionPlan> plans = planMapper.selectList(Wrappers.<CrmCollectionPlan>lambdaQuery()
                 .eq(CrmCollectionPlan::getContractId, c.getId()).orderByAsc(CrmCollectionPlan::getPlanDate).orderByAsc(CrmCollectionPlan::getSeq));
-        BigDecimal left = c.getReceivedAmount() == null ? BigDecimal.ZERO : c.getReceivedAmount().max(BigDecimal.ZERO);
+        BigDecimal left = Decimals.nz(c.getReceivedAmount()).max(BigDecimal.ZERO);
         LocalDate today = LocalDate.now();
         for (CrmCollectionPlan p : plans) {
             BigDecimal got = left.min(p.getAmount());
@@ -216,8 +211,8 @@ public class CrmContractService {
     }
 
     private void activate(Long id, SalesContractStatus from) {
-        if (contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getStatus, SalesContractStatus.ACTIVE)
-                .set(CrmContract::getApproveTime, LocalDateTime.now()).eq(CrmContract::getId, id).eq(CrmContract::getStatus, from)) == 0) {
+        if (!StatusTransitions.tryChange(contractMapper, CrmContract::getId, id, CrmContract::getStatus, from, SalesContractStatus.ACTIVE,
+                w -> w.set(CrmContract::getApproveTime, LocalDateTime.now()))) {
             throw new BizException("crm.error.contractStatusHasChangedRefresh");
         }
     }
@@ -240,7 +235,7 @@ public class CrmContractService {
             }
         }
         if (req.plans() != null) {
-            BigDecimal total = req.plans().stream().map(ContractRequest.Plan::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal total = Decimals.sum(req.plans(), ContractRequest.Plan::amount);
             if (total.compareTo(req.amount()) > 0) {
                 throw new BizException("crm.error.collectionPlanTotalExceedsContractAmount", total.toPlainString());
             }
@@ -291,18 +286,11 @@ public class CrmContractService {
     }
 
     private void transit(Long id, SalesContractStatus from, SalesContractStatus to) {
-        if (contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getStatus, to).eq(CrmContract::getId, id)
-                .eq(CrmContract::getStatus, from)) == 0) {
-            throw new BizException("crm.error.contractStatusHasChangedRefresh");
-        }
+        StatusTransitions.change(contractMapper, CrmContract::getId, id, CrmContract::getStatus, from, to,
+                "crm.error.contractStatusHasChangedRefresh");
     }
 
     private CrmContract getAccessible(Long id) {
-        Supplier<CrmContract> loader = () -> contractMapper.selectById(id);
-        CrmContract c = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(RULE, loader);
-        if (c == null) {
-            throw new BizException("crm.error.contractDoesNotExistDoNot");
-        }
-        return c;
+        return DataScopes.require(RULE, () -> contractMapper.selectById(id), "crm.error.contractDoesNotExistDoNot");
     }
 }

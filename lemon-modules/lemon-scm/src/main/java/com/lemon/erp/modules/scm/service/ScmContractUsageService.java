@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.scm.service;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.finance.ExchangeRateProvider;
 import com.lemon.erp.modules.scm.dto.SrmViews;
 import com.lemon.erp.modules.scm.entity.ScmOrderItem;
@@ -105,8 +106,8 @@ public class ScmContractUsageService {
             }
         }
         if (contract.getAmountLimit() != null) {
-            BigDecimal used = usage.values().stream().map(SrmViews.ContractUsage::orderedAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal amount = items.stream().map(ScmOrderItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal used = Decimals.sum(usage.values(), SrmViews.ContractUsage::orderedAmount);
+            BigDecimal amount = Decimals.sum(items, ScmOrderItem::getAmount);
             if (used.add(amount).compareTo(contract.getAmountLimit()) > 0) {
                 throw new BizException("scm.error.exceedsAmountLimitPurchaseContractAlready", contract.getContractNo(),
                         plain(contract.getAmountLimit()), plain(used));

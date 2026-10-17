@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.hr.model.RecruitStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -54,6 +55,7 @@ public class HrRecruit extends BaseEntity {
     private String flowInstanceId;
 
     /** 申请人 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

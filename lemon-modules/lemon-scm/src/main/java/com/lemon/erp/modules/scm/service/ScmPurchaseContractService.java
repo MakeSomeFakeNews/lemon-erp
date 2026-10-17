@@ -5,13 +5,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.DetailLines;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.security.datascope.DataScopes;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.scm.dto.SrmRequests;
 import com.lemon.erp.modules.scm.dto.SrmViews;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
@@ -36,7 +38,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.lemon.erp.modules.scm.model.ScmConstants.CONTRACT_RULE;
@@ -53,7 +54,7 @@ public class ScmPurchaseContractService {
     /** 合同编号的编码规则标识 */
     public static final String DOC_NO = "CGHT";
     public static final String PROCESS_KEY = "scm_contract";
-    private static final String BUSINESS_KEY_PREFIX = PROCESS_KEY + ":";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, PROCESS_KEY + ":");
 
     private final ScmPurchaseContractMapper contractMapper;
     private final ScmPurchaseContractItemMapper itemMapper;
@@ -61,7 +62,7 @@ public class ScmPurchaseContractService {
     private final ScmSupplierService supplierService;
     private final WmsMaterialService materialService;
     private final DocNoService docNoService;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
 
     @DataPermission(table = "scm_purchase_contract", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmPurchaseContract> page(long current, long size, ContractStatus status, Long supplierId, String keyword) {
@@ -115,7 +116,6 @@ public class ScmPurchaseContractService {
         contract.setStatus(ContractStatus.DRAFT);
         contract.setTenderId(tenderId);
         contract.setDeptId(user.deptId());
-        contract.setCreateBy(user.userId());
         contractMapper.insert(contract);
         saveItems(contract.getId(), items);
         return contract.getId();
@@ -127,8 +127,8 @@ public class ScmPurchaseContractService {
         List<ScmPurchaseContractItem> items = validate(req);
         apply(contract, req);
         contractMapper.updateById(contract);
-        itemMapper.delete(Wrappers.<ScmPurchaseContractItem>lambdaQuery().eq(ScmPurchaseContractItem::getContractId, id));
-        saveItems(id, items);
+        DetailLines.replace(itemMapper, ScmPurchaseContractItem::getContractId, id, items, ScmPurchaseContractItem::setContractId,
+                itemMapper::insertBatch);
     }
 
     @Transactional
@@ -149,45 +149,35 @@ public class ScmPurchaseContractService {
     @Transactional
     public boolean submit(Long id) {
         ScmPurchaseContract contract = requireStatus(id, ContractStatus.DRAFT, "scm.label.submit");
-        if (!flowApi.isAvailable(PROCESS_KEY)) {
-            activate(id, ContractStatus.DRAFT);
-            return false;
-        }
-        transit(id, ContractStatus.DRAFT, ContractStatus.APPROVING);
-        String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of(
-                "amount", contractAmount(contract, itemMapper.selectByContract(id)).doubleValue(),
-                "contractType", contract.getContractType().name(),
-                "contractNo", contract.getContractNo()));
-        contractMapper.update(Wrappers.<ScmPurchaseContract>lambdaUpdate().set(ScmPurchaseContract::getFlowInstanceId, instanceId)
-                .eq(ScmPurchaseContract::getId, id));
-        return true;
+        return approvalSupport.submit(FLOW, id, Map.of(
+                        "amount", contractAmount(contract, itemMapper.selectByContract(id)).doubleValue(),
+                        "contractType", contract.getContractType().name(),
+                        "contractNo", contract.getContractNo()),
+                () -> activate(id, ContractStatus.DRAFT),
+                () -> transit(id, ContractStatus.DRAFT, ContractStatus.APPROVING),
+                instanceId -> contractMapper.update(Wrappers.<ScmPurchaseContract>lambdaUpdate()
+                        .set(ScmPurchaseContract::getFlowInstanceId, instanceId).eq(ScmPurchaseContract::getId, id)));
     }
 
     /** 审批结束：通过 → 生效；拒绝、撤回 → 草稿 */
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        if (e.status() == FlowStatus.APPROVED) {
-            contractMapper.update(Wrappers.<ScmPurchaseContract>lambdaUpdate()
-                    .set(ScmPurchaseContract::getStatus, ContractStatus.ACTIVE)
-                    .set(ScmPurchaseContract::getApproveTime, LocalDateTime.now())
-                    .eq(ScmPurchaseContract::getId, id).eq(ScmPurchaseContract::getStatus, ContractStatus.APPROVING));
-        } else {
-            contractMapper.transit(id, ContractStatus.APPROVING, ContractStatus.DRAFT);
-        }
+        FLOW.onFinished(e, (id, approved) -> {
+            if (approved) {
+                StatusTransitions.tryChange(contractMapper, ScmPurchaseContract::getId, id, ScmPurchaseContract::getStatus,
+                        ContractStatus.APPROVING, ContractStatus.ACTIVE, w -> w.set(ScmPurchaseContract::getApproveTime, LocalDateTime.now()));
+            } else {
+                contractMapper.transit(id, ContractStatus.APPROVING, ContractStatus.DRAFT);
+            }
+        });
     }
 
     /** 关闭：不再允许新订单引用，已下单的订单不受影响 */
     @Transactional
     public void close(Long id, String reason) {
         requireStatus(id, ContractStatus.ACTIVE, "scm.label.close");
-        if (contractMapper.update(Wrappers.<ScmPurchaseContract>lambdaUpdate()
-                .set(ScmPurchaseContract::getStatus, ContractStatus.CLOSED)
-                .set(ScmPurchaseContract::getCloseReason, reason)
-                .eq(ScmPurchaseContract::getId, id).eq(ScmPurchaseContract::getStatus, ContractStatus.ACTIVE)) == 0) {
+        if (!StatusTransitions.tryChange(contractMapper, ScmPurchaseContract::getId, id, ScmPurchaseContract::getStatus,
+                ContractStatus.ACTIVE, ContractStatus.CLOSED, w -> w.set(ScmPurchaseContract::getCloseReason, reason))) {
             throw new BizException("scm.error.contractStatusHasChangedRefreshTry");
         }
     }
@@ -248,10 +238,8 @@ public class ScmPurchaseContractService {
     }
 
     private void activate(Long id, ContractStatus from) {
-        if (contractMapper.update(Wrappers.<ScmPurchaseContract>lambdaUpdate()
-                .set(ScmPurchaseContract::getStatus, ContractStatus.ACTIVE)
-                .set(ScmPurchaseContract::getApproveTime, LocalDateTime.now())
-                .eq(ScmPurchaseContract::getId, id).eq(ScmPurchaseContract::getStatus, from)) == 0) {
+        if (!StatusTransitions.tryChange(contractMapper, ScmPurchaseContract::getId, id, ScmPurchaseContract::getStatus,
+                from, ContractStatus.ACTIVE, w -> w.set(ScmPurchaseContract::getApproveTime, LocalDateTime.now()))) {
             throw new BizException("scm.error.contractStatusHasChangedRefreshTry");
         }
     }
@@ -263,12 +251,7 @@ public class ScmPurchaseContractService {
     }
 
     private ScmPurchaseContract getAccessible(Long id) {
-        Supplier<ScmPurchaseContract> loader = () -> contractMapper.selectById(id);
-        ScmPurchaseContract contract = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(CONTRACT_RULE, loader);
-        if (contract == null) {
-            throw new BizException("scm.error.purchaseContractDoesNotExistAccess");
-        }
-        return contract;
+        return DataScopes.require(CONTRACT_RULE, () -> contractMapper.selectById(id), "scm.error.purchaseContractDoesNotExistAccess");
     }
 
     private ScmPurchaseContract requireStatus(Long id, ContractStatus status, String actionKey) {

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.crm.entity.CrmCampaign;
 import com.lemon.erp.modules.crm.entity.CrmLead;
 import com.lemon.erp.modules.crm.entity.CrmOpportunity;
@@ -14,7 +15,6 @@ import com.lemon.erp.modules.crm.model.CampaignStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -79,7 +79,7 @@ public class CrmCampaignService {
         if (c.getEndDate().isBefore(c.getStartDate())) {
             throw new BizException("crm.error.endDateCannotEarlierStartDate");
         }
-        if (c.getBudget() == null) c.setBudget(BigDecimal.ZERO);
-        if (c.getActualCost() == null) c.setActualCost(BigDecimal.ZERO);
+        c.setBudget(Decimals.nz(c.getBudget()));
+        c.setActualCost(Decimals.nz(c.getActualCost()));
     }
 }

@@ -2,6 +2,8 @@ package com.lemon.erp.modules.mes.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.DetailLines;
 import com.lemon.erp.modules.mes.dto.MaterialPlanRequest;
 import com.lemon.erp.modules.mes.dto.MaterialPlanView;
 import com.lemon.erp.modules.mes.dto.SubstituteRequest;
@@ -91,7 +93,7 @@ public class MesMaterialService {
         plan.setLeadDays(req.leadDays());
         plan.setMinLot(req.minLot());
         plan.setLotMultiple(req.lotMultiple());
-        plan.setOverIssueRate(req.overIssueRate() == null ? BigDecimal.ZERO : req.overIssueRate());
+        plan.setOverIssueRate(Decimals.nz(req.overIssueRate()));
         plan.setPlanner(req.planner() == null || req.planner().isBlank() ? null : req.planner().trim());
         plan.setFqcRequired(Integer.valueOf(1).equals(req.fqcRequired()) ? 1 : 0);
         MesMaterialPlan old = planMapper.selectOne(Wrappers.<MesMaterialPlan>lambdaQuery().eq(MesMaterialPlan::getMaterialId, id));
@@ -111,18 +113,14 @@ public class MesMaterialService {
                     .eq(MesMaterialPlan::getId, old.getId()));
         }
 
-        substituteMapper.delete(Wrappers.<MesMaterialSubstitute>lambdaQuery().eq(MesMaterialSubstitute::getMaterialId, id));
-        if (!subs.isEmpty()) {
-            substituteMapper.insertBatch(subs.stream().map(s -> {
-                MesMaterialSubstitute x = new MesMaterialSubstitute();
-                x.setMaterialId(id);
-                x.setSubstituteId(s.substituteId());
-                x.setRatio(s.ratio());
-                x.setPriority(s.priority() == null ? 1 : s.priority());
-                x.setRemark(s.remark());
-                return x;
-            }).toList());
-        }
+        DetailLines.replace(substituteMapper, MesMaterialSubstitute::getMaterialId, id, subs.stream().map(s -> {
+            MesMaterialSubstitute x = new MesMaterialSubstitute();
+            x.setSubstituteId(s.substituteId());
+            x.setRatio(s.ratio());
+            x.setPriority(s.priority() == null ? 1 : s.priority());
+            x.setRemark(s.remark());
+            return x;
+        }).toList(), MesMaterialSubstitute::setMaterialId, substituteMapper::insertBatch);
     }
 
     // ---------------------------------------------------------------- 供 MRP、工单、齐套分析使用
@@ -178,7 +176,7 @@ public class MesMaterialService {
 
     /** 允许超领比例（%），没有设置为 0 */
     public static BigDecimal overIssueRate(MesMaterialPlan plan) {
-        return plan == null || plan.getOverIssueRate() == null ? BigDecimal.ZERO : plan.getOverIssueRate();
+        return plan == null ? BigDecimal.ZERO : Decimals.nz(plan.getOverIssueRate());
     }
 
 }

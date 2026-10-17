@@ -6,10 +6,12 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.SecurityUtils;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.fin.event.VoucherDeletedEvent;
 import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.VoucherLine;
@@ -51,7 +53,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.lemon.erp.modules.hr.model.HrConstants.money;
+import static com.lemon.erp.common.util.Decimals.money;
 
 /**
  * 薪酬核算：按月生成工资表（草稿）→ 确认（生成计提凭证）→ 发放（生成发放凭证）。
@@ -73,7 +75,7 @@ public class HrPayrollService {
 
     /** 工资表审批流程标识 */
     public static final String PROCESS_KEY = "hr_payroll";
-    private static final String BUSINESS_KEY_PREFIX = "hr_payroll:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "hr_payroll:");
 
     private final HrPayrollMapper payrollMapper;
     private final HrPayrollItemMapper itemMapper;
@@ -87,7 +89,7 @@ public class HrPayrollService {
     private final FinAccountRuleService accountRules;
     private final DocNoService docNoService;
     private final HrSalaryService salaryService;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
     private final HrSocialService socialService;
 
     public PageResult<HrPayroll> page(long current, long size, Integer year, String status) {
@@ -125,7 +127,6 @@ public class HrPayrollService {
             p.setPayrollNo(docNoService.next(HrDocNos.PAYROLL));
             p.setPeriod(period);
             p.setStatus(PayrollStatus.DRAFT);
-            p.setCreateBy(SecurityUtils.getUserId());
             payrollMapper.insert(p);
         } else {
             itemMapper.delete(Wrappers.<HrPayrollItem>lambdaQuery().eq(HrPayrollItem::getPayrollId, p.getId()));
@@ -187,8 +188,8 @@ public class HrPayrollService {
             throw new BizException("hr.error.payrollLineDoesNotExist");
         }
         getWithStatus(item.getPayrollId(), PayrollStatus.DRAFT);
-        BigDecimal bonus = req.otherBonus() == null ? BigDecimal.ZERO : req.otherBonus();
-        BigDecimal deduct = req.otherDeduct() == null ? BigDecimal.ZERO : req.otherDeduct();
+        BigDecimal bonus = Decimals.nz(req.otherBonus());
+        BigDecimal deduct = Decimals.nz(req.otherDeduct());
         BigDecimal gross = item.getGrossPay().subtract(item.getOtherBonus()).add(bonus);
         BigDecimal[] prior = prior(item);
         item.setOtherBonus(bonus);
@@ -221,51 +222,39 @@ public class HrPayrollService {
         if (p.getHeadcount() == 0) {
             throw new BizException("hr.error.payrollHasNoLines");
         }
-        if (!flowApi.isAvailable(PROCESS_KEY)) {
-            doConfirm(p, PayrollStatus.DRAFT, SecurityUtils.getUserId());
-            return false;
-        }
-        int updated = payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
-                .set(HrPayroll::getStatus, PayrollStatus.APPROVING).eq(HrPayroll::getId, id).eq(HrPayroll::getStatus, PayrollStatus.DRAFT));
-        if (updated == 0) {
-            throw new BizException("hr.error.payrollStatusHasChangedRefresh");
-        }
-        String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of(
-                "period", p.getPeriod(),
-                "headcount", p.getHeadcount(),
-                "amount", p.getGrossTotal() == null ? 0 : p.getGrossTotal().doubleValue()));
-        payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate().set(HrPayroll::getFlowInstanceId, instanceId).eq(HrPayroll::getId, id));
-        return true;
+        return approvalSupport.submit(FLOW, id, Map.of(
+                        "period", p.getPeriod(),
+                        "headcount", p.getHeadcount(),
+                        "amount", p.getGrossTotal() == null ? 0 : p.getGrossTotal().doubleValue()),
+                () -> doConfirm(p, PayrollStatus.DRAFT, SecurityUtils.getUserId()),
+                () -> StatusTransitions.change(payrollMapper, HrPayroll::getId, id, HrPayroll::getStatus,
+                        PayrollStatus.DRAFT, PayrollStatus.APPROVING, "hr.error.payrollStatusHasChangedRefresh"),
+                instanceId -> payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
+                        .set(HrPayroll::getFlowInstanceId, instanceId).eq(HrPayroll::getId, id)));
     }
 
     /** 工资表审批结束：通过 → 确认并生成计提凭证；拒绝、撤销 → 草稿 */
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        HrPayroll p = payrollMapper.selectById(Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length())));
-        if (p == null || p.getStatus() != PayrollStatus.APPROVING) {
-            return;
-        }
-        if (e.status() == FlowStatus.APPROVED) {
-            doConfirm(p, PayrollStatus.APPROVING, SecurityUtils.getUserIdOrNull());
-        } else {
-            payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
-                    .set(HrPayroll::getStatus, PayrollStatus.DRAFT).eq(HrPayroll::getId, p.getId()).eq(HrPayroll::getStatus, PayrollStatus.APPROVING));
-        }
+        FLOW.onFinished(e, (id, approved) -> {
+            HrPayroll p = payrollMapper.selectById(id);
+            if (p == null || p.getStatus() != PayrollStatus.APPROVING) {
+                return;
+            }
+            if (approved) {
+                doConfirm(p, PayrollStatus.APPROVING, SecurityUtils.getUserIdOrNull());
+            } else {
+                StatusTransitions.tryChange(payrollMapper, HrPayroll::getId, p.getId(), HrPayroll::getStatus,
+                        PayrollStatus.APPROVING, PayrollStatus.DRAFT);
+            }
+        });
     }
 
     private void doConfirm(HrPayroll p, PayrollStatus fromStatus, Long confirmBy) {
-        int updated = payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
-                .set(HrPayroll::getStatus, PayrollStatus.CONFIRMED)
-                .set(HrPayroll::getConfirmBy, confirmBy)
-                .set(HrPayroll::getConfirmTime, LocalDateTime.now())
-                .eq(HrPayroll::getId, p.getId())
-                .eq(HrPayroll::getStatus, fromStatus));
-        if (updated == 0) {
-            throw new BizException("hr.error.payrollStatusHasChangedRefresh");
-        }
+        StatusTransitions.change(payrollMapper, HrPayroll::getId, p.getId(), HrPayroll::getStatus,
+                fromStatus, PayrollStatus.CONFIRMED,
+                w -> w.set(HrPayroll::getConfirmBy, confirmBy).set(HrPayroll::getConfirmTime, LocalDateTime.now()),
+                "hr.error.payrollStatusHasChangedRefresh");
         createAccrual(p);
     }
 
@@ -305,13 +294,9 @@ public class HrPayrollService {
         if (p.getAccrueVoucherId() != null) {
             voucherService.delete(List.of(p.getAccrueVoucherId()));
         }
-        payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
-                .set(HrPayroll::getStatus, PayrollStatus.DRAFT)
-                .set(HrPayroll::getConfirmBy, null)
-                .set(HrPayroll::getConfirmTime, null)
-                .set(HrPayroll::getAccrueVoucherId, null)
-                .eq(HrPayroll::getId, id)
-                .eq(HrPayroll::getStatus, PayrollStatus.CONFIRMED));
+        StatusTransitions.tryChange(payrollMapper, HrPayroll::getId, id, HrPayroll::getStatus,
+                PayrollStatus.CONFIRMED, PayrollStatus.DRAFT,
+                w -> w.set(HrPayroll::getConfirmBy, null).set(HrPayroll::getConfirmTime, null).set(HrPayroll::getAccrueVoucherId, null));
     }
 
     /** 发放：生成发放凭证（未审核） */
@@ -332,15 +317,10 @@ public class HrPayrollService {
                 VoucherLine.credit(summary, accountRules.accountId(AccountRole.OTHER_PAYABLE), null, withheld));
         Long voucherId = voucherService.createGenerated(req.payDate(), VoucherSource.SALARY, p.getPayrollNo(),
                 lines.stream().filter(l -> !l.isZero()).toList());
-        int updated = payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
-                .set(HrPayroll::getStatus, PayrollStatus.PAID)
-                .set(HrPayroll::getPayDate, req.payDate())
-                .set(HrPayroll::getPayVoucherId, voucherId)
-                .eq(HrPayroll::getId, id)
-                .eq(HrPayroll::getStatus, PayrollStatus.CONFIRMED));
-        if (updated == 0) {
-            throw new BizException("hr.error.payrollStatusHasChangedRefresh");
-        }
+        StatusTransitions.change(payrollMapper, HrPayroll::getId, id, HrPayroll::getStatus,
+                PayrollStatus.CONFIRMED, PayrollStatus.PAID,
+                w -> w.set(HrPayroll::getPayDate, req.payDate()).set(HrPayroll::getPayVoucherId, voucherId),
+                "hr.error.payrollStatusHasChangedRefresh");
     }
 
     @Transactional
@@ -407,15 +387,15 @@ public class HrPayrollService {
         BigDecimal gross = item.getBaseSalary().add(item.getAllowance()).add(item.getOvertimePay()).add(item.getPerfBonus())
                 .add(item.getPieceWage()).add(item.getCommission()).add(item.getOtherBonus()).subtract(item.getAttendanceDeduct());
         item.setGrossPay(gross.max(BigDecimal.ZERO));
-        BigDecimal housingRate = salary.getHousingRate().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+        BigDecimal housingRate = salary.getHousingRate().divide(Decimals.HUNDRED, 4, RoundingMode.HALF_UP);
         if (scheme == null) {
             item.setSocialPersonal(money(salary.getSocialBase().multiply(HrConstants.SOCIAL_PERSONAL_RATE)));
             item.setSocialCompany(money(salary.getSocialBase().multiply(HrConstants.SOCIAL_COMPANY_RATE)));
             item.setHousingPersonal(money(salary.getHousingBase().multiply(housingRate)));
         } else {
             BigDecimal base = HrSocialScheme.clamp(salary.getSocialBase(), scheme.getBaseMin(), scheme.getBaseMax());
-            item.setSocialPersonal(money(base.multiply(scheme.personalRate()).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP)));
-            item.setSocialCompany(money(base.multiply(scheme.companyRate()).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP)));
+            item.setSocialPersonal(money(base.multiply(scheme.personalRate()).divide(Decimals.HUNDRED, 4, RoundingMode.HALF_UP)));
+            item.setSocialCompany(money(base.multiply(scheme.companyRate()).divide(Decimals.HUNDRED, 4, RoundingMode.HALF_UP)));
             BigDecimal housingBase = HrSocialScheme.clamp(salary.getHousingBase(), scheme.getHousingMin(), scheme.getHousingMax());
             item.setHousingPersonal(money(housingBase.multiply(housingRate)));
         }
@@ -442,13 +422,13 @@ public class HrPayrollService {
 
     private static BigDecimal monthTaxable(HrPayrollItem item) {
         return item.getGrossPay().subtract(item.getSocialPersonal()).subtract(item.getHousingPersonal())
-                .subtract(item.getSpecialDeduct() == null ? BigDecimal.ZERO : item.getSpecialDeduct()).subtract(HrConstants.TAX_THRESHOLD);
+                .subtract(Decimals.nz(item.getSpecialDeduct())).subtract(HrConstants.TAX_THRESHOLD);
     }
 
     /** 由明细反推此前的累计值（调整时重算个税） */
     private static BigDecimal[] prior(HrPayrollItem item) {
-        BigDecimal cumTaxable = item.getCumTaxable() == null ? BigDecimal.ZERO : item.getCumTaxable();
-        BigDecimal cumTax = item.getCumTax() == null ? BigDecimal.ZERO : item.getCumTax();
+        BigDecimal cumTaxable = Decimals.nz(item.getCumTaxable());
+        BigDecimal cumTax = Decimals.nz(item.getCumTax());
         return new BigDecimal[]{cumTaxable.subtract(monthTaxable(item)), cumTax.subtract(item.getIncomeTax())};
     }
 

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.SettleKind;
@@ -10,7 +11,6 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.AgingRow;
 import com.lemon.erp.modules.fin.dto.BillQuery;
 import com.lemon.erp.modules.fin.dto.BillRequest;
@@ -362,7 +362,7 @@ public class FinBillService {
     /** 不含税收入按出库单各物料分类的金额比例分摊，尾差计入最后一类 */
     private Map<String, BigDecimal> revenueByCategory(FinBill bill, BigDecimal net) {
         List<Map<String, Object>> rows = billMapper.selectSourceByCategory(bill.getSourceId());
-        BigDecimal total = rows.stream().map(r -> new BigDecimal(r.get("net").toString())).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = Decimals.sum(rows, r -> new BigDecimal(r.get("net").toString()));
         Map<String, BigDecimal> result = new LinkedHashMap<>();
         if (rows.isEmpty() || total.signum() == 0) {
             result.put(null, net);
@@ -400,7 +400,6 @@ public class FinBillService {
         bill.setAmountFc(amount);
         bill.setSettledFc(BigDecimal.ZERO);
         bill.setStatus(BillStatus.UNSETTLED);
-        bill.setCreateBy(SecurityUtils.getUserId());
         return bill;
     }
 

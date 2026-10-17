@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -92,6 +93,7 @@ public class ScmOrder extends BaseEntity {
 
     private Long deptId;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     /** 业务员（销售订单）：默认客户的负责销售，没有时为制单人 */

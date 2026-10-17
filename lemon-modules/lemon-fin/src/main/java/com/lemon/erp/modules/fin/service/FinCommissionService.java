@@ -1,7 +1,9 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.entity.FinCommission;
 import com.lemon.erp.modules.fin.entity.FinCommissionLine;
@@ -48,7 +50,6 @@ import static com.lemon.erp.modules.fin.model.FinConstants.toYearMonth;
 @RequiredArgsConstructor
 public class FinCommissionService {
 
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final FinCommissionRuleMapper ruleMapper;
     private final FinCommissionMapper commissionMapper;
@@ -69,7 +70,7 @@ public class FinCommissionService {
         }
         rule.setName(rule.getName().trim());
         rule.setMaterialCategory(StringUtils.hasText(rule.getMaterialCategory()) ? rule.getMaterialCategory() : null);
-        rule.setThreshold(rule.getThreshold() == null ? BigDecimal.ZERO : rule.getThreshold());
+        rule.setThreshold(Decimals.nz(rule.getThreshold()));
         rule.setStatus(rule.getStatus() == null ? 1 : rule.getStatus());
         if (rule.getId() == null) {
             ruleMapper.insert(rule);
@@ -127,7 +128,6 @@ public class FinCommissionService {
             sheet.setPeriod(period);
             sheet.setStatus(CommissionStatus.DRAFT);
             sheet.setTotalAmount(BigDecimal.ZERO);
-            sheet.setCreateBy(SecurityUtils.getUserId());
             commissionMapper.insert(sheet);
         } else {
             lineMapper.selectList(Wrappers.<FinCommissionLine>lambdaQuery().eq(FinCommissionLine::getCommissionId, sheet.getId()))
@@ -150,7 +150,7 @@ public class FinCommissionService {
                     if (rule == null || b.getValue().signum() == 0) {
                         continue;
                     }
-                    BigDecimal amount = b.getValue().multiply(rule.getRate()).divide(HUNDRED, 2, RoundingMode.HALF_UP);
+                    BigDecimal amount = b.getValue().multiply(rule.getRate()).divide(Decimals.HUNDRED, 2, RoundingMode.HALF_UP);
                     commission = commission.add(amount);
                     Map<String, Object> d = new LinkedHashMap<>();
                     d.put("basis", basis.name());
@@ -194,7 +194,7 @@ public class FinCommissionService {
         if (sheet.getStatus() != CommissionStatus.DRAFT) {
             throw new BizException("fin.error.commissionSheetConfirmedCannotAdjusted");
         }
-        BigDecimal a = adjust == null ? BigDecimal.ZERO : adjust;
+        BigDecimal a = Decimals.nz(adjust);
         lineMapper.update(Wrappers.<FinCommissionLine>lambdaUpdate()
                 .set(FinCommissionLine::getAdjustAmount, a)
                 .set(FinCommissionLine::getFinalAmount, line.getCommissionAmount().add(a))
@@ -207,13 +207,10 @@ public class FinCommissionService {
     @Transactional
     public void confirm(int period) {
         FinCommission sheet = requireSheet(period);
-        if (commissionMapper.update(Wrappers.<FinCommission>lambdaUpdate()
-                .set(FinCommission::getStatus, CommissionStatus.CONFIRMED)
-                .set(FinCommission::getConfirmBy, SecurityUtils.getUserId())
-                .set(FinCommission::getConfirmTime, LocalDateTime.now())
-                .eq(FinCommission::getId, sheet.getId()).eq(FinCommission::getStatus, CommissionStatus.DRAFT)) == 0) {
-            throw new BizException("fin.error.commissionSheetAlreadyConfirmed");
-        }
+        StatusTransitions.change(commissionMapper, FinCommission::getId, sheet.getId(), FinCommission::getStatus,
+                CommissionStatus.DRAFT, CommissionStatus.CONFIRMED, w -> w
+                        .set(FinCommission::getConfirmBy, SecurityUtils.getUserId())
+                        .set(FinCommission::getConfirmTime, LocalDateTime.now()), "fin.error.commissionSheetAlreadyConfirmed");
     }
 
     /** 取消确认（已生成的工资表不会自动更新，需重新生成草稿工资表） */
@@ -287,8 +284,8 @@ public class FinCommissionService {
     }
 
     private void refreshTotal(Long sheetId) {
-        BigDecimal total = lineMapper.selectList(Wrappers.<FinCommissionLine>lambdaQuery().eq(FinCommissionLine::getCommissionId, sheetId))
-                .stream().map(FinCommissionLine::getFinalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = Decimals.sum(lineMapper.selectList(Wrappers.<FinCommissionLine>lambdaQuery()
+                .eq(FinCommissionLine::getCommissionId, sheetId)), FinCommissionLine::getFinalAmount);
         commissionMapper.update(Wrappers.<FinCommission>lambdaUpdate().set(FinCommission::getTotalAmount, total).eq(FinCommission::getId, sheetId));
     }
 
@@ -308,11 +305,11 @@ public class FinCommissionService {
         }
 
         BigDecimal sales() {
-            return salesByCategory.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add).setScale(2, RoundingMode.HALF_UP);
+            return Decimals.sum(salesByCategory.values()).setScale(2, RoundingMode.HALF_UP);
         }
 
         BigDecimal profit() {
-            return profitByCategory.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add).setScale(2, RoundingMode.HALF_UP);
+            return Decimals.sum(profitByCategory.values()).setScale(2, RoundingMode.HALF_UP);
         }
 
         Map<String, BigDecimal> byCategory(CommissionBasis basis) {

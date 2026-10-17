@@ -5,12 +5,14 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.datascope.DataPermission;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.ApproveStatus;
 import com.lemon.erp.framework.workflow.FlowApi;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.pm.dto.BudgetRequest;
 import com.lemon.erp.modules.pm.dto.CostRequest;
 import com.lemon.erp.modules.pm.dto.IssueRequest;
@@ -34,7 +36,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -52,13 +53,14 @@ public class PmCostService {
 
     /** 项目费用审批流程标识 */
     public static final String PROCESS_KEY = "pm_cost";
-    private static final String BUSINESS_KEY_PREFIX = "pm_cost:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "pm_cost:");
 
     private final PmCostMapper costMapper;
     private final PmBudgetMapper budgetMapper;
     private final PmProjectMapper projectMapper;
     private final PmProjectService projectService;
     private final WmsStockDocService stockDocService;
+    private final ApprovalSupport approvalSupport;
     private final FlowApi flowApi;
 
     /** 按项目的数据权限（项目部门、项目经理）过滤 */
@@ -83,13 +85,13 @@ public class PmCostService {
         c.setCostDate(req.costDate());
         c.setDescription(req.description());
         c.setSource(CostSource.MANUAL);
-        c.setCreateBy(SecurityUtils.getUserId());
         // 发布了「项目费用」审批流程时审批通过后才计入项目成本
-        boolean approval = flowApi.isAvailable(PROCESS_KEY);
+        // 费用先以审批中插入、再按单据 ID 发起流程，不适用 ApprovalSupport.submit（先改审批中再发起）的顺序
+        boolean approval = approvalSupport.isAvailable(FLOW);
         c.setStatus(approval ? ApproveStatus.APPROVING : ApproveStatus.APPROVED);
         costMapper.insert(c);
         if (approval) {
-            String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + c.getId(), Map.of(
+            String instanceId = flowApi.start(FLOW.processKey(), FLOW.businessKey(c.getId()), Map.of(
                     "amount", req.amount().doubleValue(),
                     "costType", req.costType().name(),
                     "projectId", req.projectId()));
@@ -101,13 +103,8 @@ public class PmCostService {
     /** 费用审批结束：通过 → 计入项目成本；拒绝、撤销 → 已拒绝 */
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        costMapper.update(Wrappers.<PmCost>lambdaUpdate()
-                .set(PmCost::getStatus, e.status() == FlowStatus.APPROVED ? ApproveStatus.APPROVED : ApproveStatus.REJECTED)
-                .eq(PmCost::getId, Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length())))
-                .eq(PmCost::getStatus, ApproveStatus.APPROVING));
+        FLOW.onFinished(e, (id, approved) -> StatusTransitions.tryChange(costMapper, PmCost::getId, id, PmCost::getStatus,
+                ApproveStatus.APPROVING, approved ? ApproveStatus.APPROVED : ApproveStatus.REJECTED, null));
     }
 
     /** 只能删除手工录入的费用；领料成本需要在仓库做退料 */
@@ -140,7 +137,7 @@ public class PmCostService {
             PmBudget b = byType.getOrDefault(type, new PmBudget());
             b.setProjectId(projectId);
             b.setCostType(type);
-            if (b.getAmount() == null) b.setAmount(BigDecimal.ZERO);
+            b.setAmount(Decimals.nz(b.getAmount()));
             b.setActual(actual.getOrDefault(type, BigDecimal.ZERO));
             rows.add(b);
         }
@@ -164,9 +161,9 @@ public class PmCostService {
             }
             return;
         }
-        BigDecimal budget = p.getBudgetAmount() == null ? BigDecimal.ZERO : p.getBudgetAmount();
+        BigDecimal budget = Decimals.nz(p.getBudgetAmount());
         if (budget.signum() > 0) {
-            BigDecimal actual = rows.stream().map(PmBudget::getActual).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal actual = Decimals.sum(rows, PmBudget::getActual);
             if (actual.add(amount).compareTo(budget) > 0) {
                 throw new BizException("pm.error.exceedsProjectCostBudgetBudgetIncurred", plain(budget), plain(actual), plain(amount));
             }
@@ -224,14 +221,13 @@ public class PmCostService {
         }
         PmCost c = new PmCost();
         c.setProjectId(projectId);
-        checkBudget(p, CostType.MATERIAL, amount.setScale(2, RoundingMode.HALF_UP));
+        checkBudget(p, CostType.MATERIAL, Decimals.money(amount));
         c.setCostType(CostType.MATERIAL);
-        c.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
+        c.setAmount(Decimals.money(amount));
         c.setCostDate(req.bizDate());
         c.setDescription("项目领料 " + doc.getDocNo()); // i18n-ignore 存库
         c.setSource(CostSource.ISSUE);
         c.setSourceNo(doc.getDocNo());
-        c.setCreateBy(SecurityUtils.getUserId());
         costMapper.insert(c);
         return c.getId();
     }

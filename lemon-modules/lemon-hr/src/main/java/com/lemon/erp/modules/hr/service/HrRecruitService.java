@@ -10,10 +10,10 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.data.StatusTransitions;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.hr.dto.CandidateRequest;
 import com.lemon.erp.modules.hr.dto.EmployeeRequest;
 import com.lemon.erp.modules.hr.dto.HireRequest;
@@ -53,14 +53,14 @@ import java.util.Map;
 public class HrRecruitService {
 
     public static final String PROCESS_KEY = "hr_recruit";
-    private static final String BUSINESS_KEY_PREFIX = "hr_recruit:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "hr_recruit:");
 
     private final HrRecruitMapper recruitMapper;
     private final HrCandidateMapper candidateMapper;
     private final HrInterviewMapper interviewMapper;
     private final HrEmployeeService employeeService;
     private final DocNoService docNoService;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
     private final UserAccountProvisioner accountProvisioner;
     private final HrSalaryService salaryService;
     private final HrEmployeeMapper employeeMapper;
@@ -94,7 +94,6 @@ public class HrRecruitService {
         r.setRecruitNo(docNoService.next(HrDocNos.RECRUIT));
         r.setHiredCount(0);
         r.setStatus(RecruitStatus.DRAFT);
-        r.setCreateBy(SecurityUtils.getUserId());
         recruitMapper.insert(r);
         return r.getId();
     }
@@ -133,15 +132,12 @@ public class HrRecruitService {
     public boolean approve(Long id) {
         HrRecruit r = getDraft(id);
         checkHeadcount(r);
-        if (!flowApi.isAvailable(PROCESS_KEY)) {
-            transit(id, RecruitStatus.DRAFT, RecruitStatus.OPEN);
-            return false;
-        }
-        transit(id, RecruitStatus.DRAFT, RecruitStatus.APPROVING);
-        String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of(
-                "headcount", r.getHeadcount(), "deptId", r.getDeptId(), "recruitNo", r.getRecruitNo()));
-        recruitMapper.update(Wrappers.<HrRecruit>lambdaUpdate().set(HrRecruit::getFlowInstanceId, instanceId).eq(HrRecruit::getId, id));
-        return true;
+        return approvalSupport.submit(FLOW, id, Map.of(
+                        "headcount", r.getHeadcount(), "deptId", r.getDeptId(), "recruitNo", r.getRecruitNo()),
+                () -> transit(id, RecruitStatus.DRAFT, RecruitStatus.OPEN),
+                () -> transit(id, RecruitStatus.DRAFT, RecruitStatus.APPROVING),
+                instanceId -> recruitMapper.update(Wrappers.<HrRecruit>lambdaUpdate()
+                        .set(HrRecruit::getFlowInstanceId, instanceId).eq(HrRecruit::getId, id)));
     }
 
     /** 撤回审批 */
@@ -151,11 +147,9 @@ public class HrRecruitService {
         if (r.getStatus() != RecruitStatus.APPROVING) {
             throw new BizException("hr.error.jobRequisitionNotUnderApproval");
         }
-        if (r.getFlowInstanceId() != null && flowApi.getStatus(r.getFlowInstanceId()) == FlowStatus.RUNNING) {
-            flowApi.cancel(r.getFlowInstanceId(), "撤回招聘需求");  // i18n-ignore 审批意见存库
-        }
-        recruitMapper.update(Wrappers.<HrRecruit>lambdaUpdate().set(HrRecruit::getStatus, RecruitStatus.DRAFT)
-                .eq(HrRecruit::getId, id).eq(HrRecruit::getStatus, RecruitStatus.APPROVING));
+        approvalSupport.cancelIfRunning(r.getFlowInstanceId(), "撤回招聘需求");  // i18n-ignore 审批意见存库
+        StatusTransitions.tryChange(recruitMapper, HrRecruit::getId, id, HrRecruit::getStatus,
+                RecruitStatus.APPROVING, RecruitStatus.DRAFT);
     }
 
     /** 关闭：停止招聘，未结束的应聘者不受影响 */
@@ -166,14 +160,8 @@ public class HrRecruitService {
 
     @EventListener(condition = "#e.processKey == 'hr_recruit'")
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        recruitMapper.update(Wrappers.<HrRecruit>lambdaUpdate()
-                .set(HrRecruit::getStatus, e.status() == FlowStatus.APPROVED ? RecruitStatus.OPEN : RecruitStatus.DRAFT)
-                .eq(HrRecruit::getId, id)
-                .eq(HrRecruit::getStatus, RecruitStatus.APPROVING));
+        FLOW.onFinished(e, (id, approved) -> StatusTransitions.tryChange(recruitMapper, HrRecruit::getId, id,
+                HrRecruit::getStatus, RecruitStatus.APPROVING, approved ? RecruitStatus.OPEN : RecruitStatus.DRAFT));
     }
 
     // ---------------------------------------------------------------- 应聘者
@@ -201,7 +189,6 @@ public class HrRecruitService {
         HrCandidate c = new HrCandidate();
         fill(c, req);
         c.setStage(CandidateStage.NEW);
-        c.setCreateBy(SecurityUtils.getUserId());
         candidateMapper.insert(c);
         return c.getId();
     }
@@ -355,12 +342,8 @@ public class HrRecruitService {
     }
 
     private void transit(Long id, RecruitStatus from, RecruitStatus to) {
-        int updated = recruitMapper.update(Wrappers.<HrRecruit>lambdaUpdate()
-                .set(HrRecruit::getStatus, to).set(HrRecruit::getUpdateTime, LocalDateTime.now())
-                .eq(HrRecruit::getId, id).eq(HrRecruit::getStatus, from));
-        if (updated == 0) {
-            throw new BizException("hr.error.jobRequisitionStatusHasChangedRefresh");
-        }
+        StatusTransitions.change(recruitMapper, HrRecruit::getId, id, HrRecruit::getStatus, from, to,
+                w -> w.set(HrRecruit::getUpdateTime, LocalDateTime.now()), "hr.error.jobRequisitionStatusHasChangedRefresh");
     }
 
     private HrCandidate activeCandidate(Long id) {

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.DetailLines;
 import com.lemon.erp.modules.mes.dto.QmsRequests;
 import com.lemon.erp.modules.mes.dto.QmsViews;
 import com.lemon.erp.modules.mes.entity.QmsInspectionPlan;
@@ -151,7 +152,6 @@ public class QmsPlanService {
     }
 
     private void saveItems(Long planId, List<QmsRequests.PlanItem> reqs) {
-        itemMapper.delete(Wrappers.<QmsInspectionPlanItem>lambdaQuery().eq(QmsInspectionPlanItem::getPlanId, planId));
         List<QmsInspectionPlanItem> items = new ArrayList<>();
         int seq = 1;
         for (QmsRequests.PlanItem r : reqs) {
@@ -163,7 +163,6 @@ public class QmsPlanService {
                 throw new BizException("mes.error.lowerLimitItemCannotGreaterUpper", r.name());
             }
             QmsInspectionPlanItem item = new QmsInspectionPlanItem();
-            item.setPlanId(planId);
             item.setSeq(seq++);
             item.setName(r.name().trim());
             item.setMethod(r.method());
@@ -175,6 +174,6 @@ public class QmsPlanService {
             item.setCritical(Boolean.TRUE.equals(r.critical()) ? 1 : 0);
             items.add(item);
         }
-        itemMapper.insertBatch(items);
+        DetailLines.replace(itemMapper, QmsInspectionPlanItem::getPlanId, planId, items, QmsInspectionPlanItem::setPlanId, itemMapper::insertBatch);
     }
 }

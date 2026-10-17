@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.crm.model.OpportunityStage;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -74,6 +75,7 @@ public class CrmOpportunity extends BaseEntity {
     private String remark;
 
     /** 创建人 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.framework.workflow.ApproveStatus;
 import com.lemon.erp.modules.pm.model.CostSource;
 import com.lemon.erp.modules.pm.model.CostType;
@@ -50,6 +51,7 @@ public class PmCost extends BaseEntity {
     private String sourceNo;
 
     /** 录入人 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

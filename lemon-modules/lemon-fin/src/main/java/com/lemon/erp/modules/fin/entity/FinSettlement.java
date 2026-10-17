@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.framework.workflow.ApproveStatus;
 import com.lemon.erp.modules.fin.model.SettleKind;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -53,6 +54,7 @@ public class FinSettlement extends BaseEntity {
 
     private String remark;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

@@ -7,11 +7,13 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.fin.dto.ClaimRequest;
 import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.entity.FinExpenseClaim;
@@ -45,7 +47,7 @@ import java.util.Map;
 public class FinClaimService {
 
     public static final String PROCESS_KEY = "fin_expense";
-    private static final String BUSINESS_KEY_PREFIX = "fin_expense:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "fin_expense:");
 
     private final FinExpenseClaimMapper claimMapper;
     private final FinExpenseClaimItemMapper itemMapper;
@@ -57,7 +59,7 @@ public class FinClaimService {
     private final FinAccountRuleService accountRules;
     private final FinBizPeriodGuard periodGuard;
     private final DocNoService docNoService;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
 
     /** @param warnings 超预算提示（预算控制为「提示」时） */
     public record SubmitResult(boolean flow, List<String> warnings) {
@@ -85,7 +87,6 @@ public class FinClaimService {
         c.setClaimNo(docNoService.next(FinDocNos.EXPENSE_CLAIM));
         c.setStatus(ExpenseClaimStatus.DRAFT);
         c.setLoanOffset(BigDecimal.ZERO);
-        c.setCreateBy(user.userId());
         fill(c, req, user);
         claimMapper.insert(c);
         saveItems(c.getId(), req);
@@ -118,25 +119,17 @@ public class FinClaimService {
     public SubmitResult submit(Long id) {
         FinExpenseClaim c = requireStatus(id, ExpenseClaimStatus.DRAFT);
         List<String> warnings = checkBudget(c);
-        if (!flowApi.isAvailable(PROCESS_KEY)) {
-            transit(id, ExpenseClaimStatus.DRAFT, ExpenseClaimStatus.APPROVED);
-            return new SubmitResult(false, warnings);
-        }
-        transit(id, ExpenseClaimStatus.DRAFT, ExpenseClaimStatus.APPROVING);
-        String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of("claimNo", c.getClaimNo(), "amount", c.getAmount()));
-        claimMapper.update(Wrappers.<FinExpenseClaim>lambdaUpdate().set(FinExpenseClaim::getFlowInstanceId, instanceId).eq(FinExpenseClaim::getId, id));
-        return new SubmitResult(true, warnings);
+        boolean flow = approvalSupport.submit(FLOW, id, Map.of("claimNo", c.getClaimNo(), "amount", c.getAmount()),
+                () -> transit(id, ExpenseClaimStatus.DRAFT, ExpenseClaimStatus.APPROVED),
+                () -> transit(id, ExpenseClaimStatus.DRAFT, ExpenseClaimStatus.APPROVING),
+                instanceId -> claimMapper.update(Wrappers.<FinExpenseClaim>lambdaUpdate().set(FinExpenseClaim::getFlowInstanceId, instanceId).eq(FinExpenseClaim::getId, id)));
+        return new SubmitResult(flow, warnings);
     }
 
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        claimMapper.update(Wrappers.<FinExpenseClaim>lambdaUpdate()
-                .set(FinExpenseClaim::getStatus, e.status() == FlowStatus.APPROVED ? ExpenseClaimStatus.APPROVED : ExpenseClaimStatus.DRAFT)
-                .eq(FinExpenseClaim::getId, id).eq(FinExpenseClaim::getStatus, ExpenseClaimStatus.APPROVING));
+        FLOW.onFinished(e, (id, approved) -> StatusTransitions.tryChange(claimMapper, FinExpenseClaim::getId, id, FinExpenseClaim::getStatus,
+                ExpenseClaimStatus.APPROVING, approved ? ExpenseClaimStatus.APPROVED : ExpenseClaimStatus.DRAFT));
     }
 
     /** 付款：有借款时先冲抵借款（不超过未还金额），差额付款 */
@@ -193,7 +186,7 @@ public class FinClaimService {
             }
         }
         c.setLoanId(req.loanId());
-        c.setAmount(req.items().stream().map(ClaimRequest.Item::amount).reduce(BigDecimal.ZERO, BigDecimal::add));
+        c.setAmount(Decimals.sum(req.items(), ClaimRequest.Item::amount));
     }
 
     /** 费用科目须为损益类或成本类末级科目 */
@@ -224,9 +217,7 @@ public class FinClaimService {
     }
 
     private void transit(Long id, ExpenseClaimStatus from, ExpenseClaimStatus to) {
-        if (claimMapper.update(Wrappers.<FinExpenseClaim>lambdaUpdate().set(FinExpenseClaim::getStatus, to).eq(FinExpenseClaim::getId, id)
-                .eq(FinExpenseClaim::getStatus, from)) == 0) {
-            throw new BizException("fin.error.expenseClaimStatusHasChangedRefresh");
-        }
+        StatusTransitions.change(claimMapper, FinExpenseClaim::getId, id, FinExpenseClaim::getStatus, from, to,
+                "fin.error.expenseClaimStatusHasChangedRefresh");
     }
 }

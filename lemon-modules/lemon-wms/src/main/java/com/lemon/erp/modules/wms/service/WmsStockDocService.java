@@ -5,12 +5,18 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.DetailLines;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.period.BizPeriodGuard;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
+import com.lemon.erp.framework.security.datascope.DataScopes;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
+import com.lemon.erp.framework.workflow.FlowFinishedEvent;
 import com.lemon.erp.modules.wms.dto.DocQuery;
 import com.lemon.erp.modules.wms.dto.StockDocItemRequest;
 import com.lemon.erp.modules.wms.dto.StockDocRequest;
@@ -31,6 +37,7 @@ import com.lemon.erp.modules.wms.model.StockInType;
 import com.lemon.erp.modules.wms.model.StockOutType;
 import com.lemon.erp.modules.wms.model.WarehouseType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,7 +52,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static com.lemon.erp.modules.wms.model.StockBizType.IN;
@@ -74,11 +80,11 @@ public class WmsStockDocService {
     private final StockService stockService;
     private final BizPeriodGuard periodGuard;
     private final WmsBatchMapper batchMapper;
-    private final com.lemon.erp.framework.workflow.FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
     private final DictLookup dictLookup;
 
     public static final String PROCESS_KEY = "wms_stock_doc";
-    private static final String BUSINESS_KEY_PREFIX = "wms_stock_doc:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "wms_stock_doc:");
 
     @DataPermission(table = "wms_stock_doc", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<WmsStockDoc> page(StockBizType kind, long current, long size, DocQuery query) {
@@ -132,7 +138,6 @@ public class WmsStockDocService {
         doc.setTotalQty(totalQty(items));
         doc.setStatus(DocStatus.DRAFT);
         doc.setDeptId(user.deptId());
-        doc.setCreateBy(user.userId());
         docMapper.insert(doc);
         saveItems(doc.getId(), items);
         return doc;
@@ -159,8 +164,7 @@ public class WmsStockDocService {
                 .set(WmsStockDoc::getUpdateTime, LocalDateTime.now())
                 .eq(WmsStockDoc::getId, id)
                 .eq(WmsStockDoc::getStatus, DocStatus.DRAFT));
-        itemMapper.delete(Wrappers.<WmsStockDocItem>lambdaQuery().eq(WmsStockDocItem::getDocId, id));
-        saveItems(id, items);
+        DetailLines.replace(itemMapper, WmsStockDocItem::getDocId, id, items, WmsStockDocItem::setDocId, itemMapper::insertBatch);
     }
 
     /** 只能删除草稿 */
@@ -180,38 +184,39 @@ public class WmsStockDocService {
     @Transactional
     public boolean confirm(StockBizType kind, Long id) {
         WmsStockDoc doc = getDraft(kind, id);
-        if (doc.getSourceNo() == null && flowApi.isAvailable(PROCESS_KEY)) {
-            List<WmsStockDocItem> items = itemMapper.selectList(Wrappers.<WmsStockDocItem>lambdaQuery()
-                    .eq(WmsStockDocItem::getDocId, id).orderByAsc(WmsStockDocItem::getId));
-            validate(kind, doc.getBizType(), doc.getWarehouseId(), doc.getToWarehouseId(), items, true);
-            if (docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate().set(WmsStockDoc::getStatus, DocStatus.APPROVING)
-                    .eq(WmsStockDoc::getId, id).eq(WmsStockDoc::getStatus, DocStatus.DRAFT)) == 0) {
-                throw new BizException("wms.error.documentHasConfirmedRefresh");
-            }
-            String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, java.util.Map.of("docNo", doc.getDocNo(),
-                    "kind", kind.name(), "bizType", doc.getBizType() == null ? "" : doc.getBizType(), "totalQty", doc.getTotalQty()));
-            docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate().set(WmsStockDoc::getFlowInstanceId, instanceId).eq(WmsStockDoc::getId, id));
-            return true;
+        // 业务单据生成的出入库不走审批
+        if (doc.getSourceNo() != null) {
+            doConfirm(kind, doc);
+            return false;
         }
-        doConfirm(kind, doc);
-        return false;
+        return approvalSupport.submit(FLOW, id, Map.of("docNo", doc.getDocNo(),
+                        "kind", kind.name(), "bizType", doc.getBizType() == null ? "" : doc.getBizType(), "totalQty", doc.getTotalQty()),
+                () -> doConfirm(kind, doc),
+                () -> {
+                    List<WmsStockDocItem> items = itemMapper.selectList(Wrappers.<WmsStockDocItem>lambdaQuery()
+                            .eq(WmsStockDocItem::getDocId, id).orderByAsc(WmsStockDocItem::getId));
+                    validate(kind, doc.getBizType(), doc.getWarehouseId(), doc.getToWarehouseId(), items, true);
+                    StatusTransitions.change(docMapper, WmsStockDoc::getId, id, WmsStockDoc::getStatus,
+                            DocStatus.DRAFT, DocStatus.APPROVING, "wms.error.documentHasConfirmedRefresh");
+                },
+                instanceId -> docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate()
+                        .set(WmsStockDoc::getFlowInstanceId, instanceId).eq(WmsStockDoc::getId, id)));
     }
 
-    @org.springframework.context.event.EventListener
-    public void onFlowFinished(com.lemon.erp.framework.workflow.FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        WmsStockDoc doc = docMapper.selectById(Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length())));
-        if (doc == null || doc.getStatus() != DocStatus.APPROVING) {
-            return;
-        }
-        if (e.status() == com.lemon.erp.framework.workflow.FlowStatus.APPROVED) {
-            doConfirm(doc.getKind(), doc, DocStatus.APPROVING);
-        } else {
-            docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate().set(WmsStockDoc::getStatus, DocStatus.DRAFT)
-                    .eq(WmsStockDoc::getId, doc.getId()).eq(WmsStockDoc::getStatus, DocStatus.APPROVING));
-        }
+    @EventListener
+    public void onFlowFinished(FlowFinishedEvent e) {
+        FLOW.onFinished(e, (id, approved) -> {
+            WmsStockDoc doc = docMapper.selectById(id);
+            if (doc == null || doc.getStatus() != DocStatus.APPROVING) {
+                return;
+            }
+            if (approved) {
+                doConfirm(doc.getKind(), doc, DocStatus.APPROVING);
+            } else {
+                StatusTransitions.tryChange(docMapper, WmsStockDoc::getId, id, WmsStockDoc::getStatus,
+                        DocStatus.APPROVING, DocStatus.DRAFT);
+            }
+        });
     }
 
     private void doConfirm(StockBizType kind, WmsStockDoc doc) {
@@ -227,16 +232,12 @@ public class WmsStockDocService {
         }
         Long id = doc.getId();
         boolean transit = kind == TRANSFER && Integer.valueOf(1).equals(doc.getInTransit());
-        int updated = docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate()
-                .set(WmsStockDoc::getStatus, transit ? DocStatus.TRANSIT : DocStatus.DONE)
-                .set(WmsStockDoc::getConfirmBy, SecurityUtils.getUserId())
-                .set(WmsStockDoc::getConfirmTime, LocalDateTime.now())
-                .set(WmsStockDoc::getUpdateTime, LocalDateTime.now())
-                .eq(WmsStockDoc::getId, id)
-                .eq(WmsStockDoc::getStatus, from));
-        if (updated == 0) {
-            throw new BizException("wms.error.documentHasConfirmedRefresh");
-        }
+        StatusTransitions.change(docMapper, WmsStockDoc::getId, id, WmsStockDoc::getStatus,
+                from, transit ? DocStatus.TRANSIT : DocStatus.DONE, w -> w
+                        .set(WmsStockDoc::getConfirmBy, SecurityUtils.getUserId())
+                        .set(WmsStockDoc::getConfirmTime, LocalDateTime.now())
+                        .set(WmsStockDoc::getUpdateTime, LocalDateTime.now()),
+                "wms.error.documentHasConfirmedRefresh");
         List<WmsStockDocItem> items = itemMapper.selectList(Wrappers.<WmsStockDocItem>lambdaQuery()
                 .eq(WmsStockDocItem::getDocId, id).orderByAsc(WmsStockDocItem::getId));
         validate(kind, doc.getBizType(), doc.getWarehouseId(), doc.getToWarehouseId(), items, true);
@@ -256,14 +257,11 @@ public class WmsStockDocService {
             throw new BizException("wms.error.transferOrderNotTransit", doc.getDocNo());
         }
         periodGuard.checkOpen(LocalDate.now(), "wms.label.transferReceipt");
-        int updated = docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate()
-                .set(WmsStockDoc::getStatus, DocStatus.DONE)
-                .set(WmsStockDoc::getReceiveBy, SecurityUtils.getUserId())
-                .set(WmsStockDoc::getReceiveTime, LocalDateTime.now())
-                .eq(WmsStockDoc::getId, id).eq(WmsStockDoc::getStatus, DocStatus.TRANSIT));
-        if (updated == 0) {
-            throw new BizException("wms.error.transferOrderHasReceivedRefresh");
-        }
+        StatusTransitions.change(docMapper, WmsStockDoc::getId, id, WmsStockDoc::getStatus,
+                DocStatus.TRANSIT, DocStatus.DONE, w -> w
+                        .set(WmsStockDoc::getReceiveBy, SecurityUtils.getUserId())
+                        .set(WmsStockDoc::getReceiveTime, LocalDateTime.now()),
+                "wms.error.transferOrderHasReceivedRefresh");
         List<WmsStockDocItem> items = itemMapper.selectList(Wrappers.<WmsStockDocItem>lambdaQuery()
                 .eq(WmsStockDocItem::getDocId, id).orderByAsc(WmsStockDocItem::getId));
         refs.warehouse(doc.getToWarehouseId(), "wms.label.destinationWarehouse", true);
@@ -319,7 +317,6 @@ public class WmsStockDocService {
         red.setTotalQty(doc.getTotalQty().negate());
         red.setStatus(DocStatus.DONE);
         red.setDeptId(user.deptId());
-        red.setCreateBy(user.userId());
         red.setConfirmBy(user.userId());
         red.setConfirmTime(LocalDateTime.now());
         docMapper.insert(red);
@@ -362,12 +359,8 @@ public class WmsStockDocService {
 
     /** 在数据权限范围内的单据 */
     private WmsStockDoc getAccessible(StockBizType kind, Long id) {
-        Supplier<WmsStockDoc> loader = () -> docMapper.selectById(id);
-        WmsStockDoc doc = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(STOCK_DOC_RULE, loader);
-        if (doc == null || kind != doc.getKind()) {
-            throw new BizException("wms.error.doesNotExistAccessDenied", Messages.get(kind.getLabelKey()));
-        }
-        return doc;
+        return DataScopes.require(STOCK_DOC_RULE, () -> docMapper.selectById(id), doc -> doc.getKind() == kind,
+                "wms.error.doesNotExistAccessDenied", Messages.get(kind.getLabelKey()));
     }
 
     private WmsStockDoc getDraft(StockBizType kind, Long id) {
@@ -556,6 +549,6 @@ public class WmsStockDocService {
     }
 
     private static BigDecimal totalQty(List<WmsStockDocItem> items) {
-        return items.stream().map(WmsStockDocItem::getQty).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return Decimals.sum(items, WmsStockDocItem::getQty);
     }
 }

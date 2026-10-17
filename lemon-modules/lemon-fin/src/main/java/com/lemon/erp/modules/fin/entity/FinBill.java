@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.fin.model.BillStatus;
 import com.lemon.erp.modules.fin.model.BillSource;
 import com.lemon.erp.modules.fin.model.BillKind;
@@ -78,6 +79,7 @@ public class FinBill extends BaseEntity {
 
     private String remark;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

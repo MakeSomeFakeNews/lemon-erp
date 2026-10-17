@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.fin.model.BillSource;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.model.AccountRole;
@@ -56,7 +57,6 @@ public class FinAssetService {
 
     /** 新增、修改时可选的状态 */
     private static final Set<AssetStatus> STATUSES = Set.of(AssetStatus.IN_USE, AssetStatus.IDLE);
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final FinAssetMapper assetMapper;
     private final FinDepreciationMapper depreciationMapper;
@@ -91,7 +91,7 @@ public class FinAssetService {
         fill(asset, req);
         // 系统上线前已使用的资产：录入期初已计提月数和累计折旧，之后从下一个月继续计提
         int months = req.openingMonths() == null ? 0 : req.openingMonths();
-        BigDecimal accumulated = req.openingAccumulated() == null ? BigDecimal.ZERO : req.openingAccumulated();
+        BigDecimal accumulated = Decimals.nz(req.openingAccumulated());
         if (months > req.usefulMonths() || accumulated.compareTo(req.originalValue()) > 0) {
             throw new BizException("fin.error.openingDepreciatedMonthsAccumulatedDepreciationCannot");
         }
@@ -108,7 +108,7 @@ public class FinAssetService {
         }
         if (req.supplierId() != null) {
             // 采购新增：生成应付单（借 固定资产、进项税额 / 贷 应付账款），在应付管理中生成凭证、付款
-            BigDecimal tax = req.taxAmount() == null ? BigDecimal.ZERO : req.taxAmount();
+            BigDecimal tax = Decimals.nz(req.taxAmount());
             FinBill bill = billService.createFromSource(BillKind.AP, req.supplierId(), BillSource.ASSET, asset.getId(), asset.getCode(), req.useDate(),
                     req.originalValue().add(tax), tax, "购入固定资产 " + asset.getName(), null); // i18n-ignore
             billMapper.update(Wrappers.<FinBill>lambdaUpdate()
@@ -182,8 +182,8 @@ public class FinAssetService {
                 .eq(FinDepreciation::getPeriod, period).eq(FinDepreciation::getAssetId, id))) {
             throw new BizException("fin.error.fixedAssetsReducedMonthStillDepreciated", period);
         }
-        BigDecimal income = req.income() == null ? BigDecimal.ZERO : req.income();
-        BigDecimal expense = req.expense() == null ? BigDecimal.ZERO : req.expense();
+        BigDecimal income = Decimals.nz(req.income());
+        BigDecimal expense = Decimals.nz(req.expense());
         if ((income.signum() > 0 || expense.signum() > 0) && req.settleAccountId() == null) {
             throw new BizException("fin.error.selectCashBankAccountWhenDisposal");
         }
@@ -400,7 +400,7 @@ public class FinAssetService {
 
     /** 本月折旧额：最后一个月为剩余可折旧金额 */
     static BigDecimal depreciationOf(FinAsset a) {
-        BigDecimal depreciable = a.getOriginalValue().multiply(BigDecimal.ONE.subtract(a.getResidualRate().divide(HUNDRED, 6, RoundingMode.HALF_UP)))
+        BigDecimal depreciable = a.getOriginalValue().multiply(BigDecimal.ONE.subtract(a.getResidualRate().divide(Decimals.HUNDRED, 6, RoundingMode.HALF_UP)))
                 .setScale(2, RoundingMode.HALF_UP);
         BigDecimal remaining = depreciable.subtract(a.getAccumulated());
         if (a.getDepreciatedMonths() + 1 >= a.getUsefulMonths()) {
@@ -410,7 +410,7 @@ public class FinAssetService {
     }
 
     static BigDecimal monthly(FinAsset a) {
-        return a.getOriginalValue().multiply(BigDecimal.ONE.subtract(a.getResidualRate().divide(HUNDRED, 6, RoundingMode.HALF_UP)))
+        return a.getOriginalValue().multiply(BigDecimal.ONE.subtract(a.getResidualRate().divide(Decimals.HUNDRED, 6, RoundingMode.HALF_UP)))
                 .divide(BigDecimal.valueOf(a.getUsefulMonths()), 2, RoundingMode.HALF_UP);
     }
 

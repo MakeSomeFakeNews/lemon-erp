@@ -65,7 +65,6 @@ public class CrmLeadService {
         fill(l, req);
         l.setLeadNo(docNoService.next(CrmDocNos.LEAD));
         l.setStatus(LeadStatus.NEW);
-        l.setCreateBy(SecurityUtils.getUserId());
         leadMapper.insert(l);
         return l.getId();
     }

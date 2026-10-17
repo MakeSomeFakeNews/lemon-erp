@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.bi.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.bi.model.EtlTrigger;
 import com.lemon.erp.modules.bi.model.EtlStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -40,6 +41,7 @@ public class BiEtlLog extends BaseEntity {
     private String message;
 
     /** 操作人，定时任务为空 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

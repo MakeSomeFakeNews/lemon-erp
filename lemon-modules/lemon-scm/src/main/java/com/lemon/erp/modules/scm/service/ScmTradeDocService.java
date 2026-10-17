@@ -4,12 +4,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.finance.ExchangeRateProvider;
 import com.lemon.erp.framework.rule.BizRules;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
+import com.lemon.erp.framework.security.datascope.DataScopes;
 import com.lemon.erp.modules.scm.dto.TradeDocItemRequest;
 import com.lemon.erp.modules.scm.dto.TradeDocQuery;
 import com.lemon.erp.modules.scm.dto.TradeDocRequest;
@@ -43,10 +44,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static com.lemon.erp.modules.scm.model.ScmConstants.HUNDRED;
 import static com.lemon.erp.modules.scm.model.ScmConstants.TRADE_RULE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
 import static com.lemon.erp.modules.scm.model.ScmConstants.tax;
@@ -88,8 +87,7 @@ public class ScmTradeDocService {
     }
 
     public ScmTradeDoc detail(TradeKind kind, Long id) {
-        Supplier<ScmTradeDoc> loader = () -> docMapper.selectById(id);
-        ScmTradeDoc doc = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(TRADE_RULE, loader);
+        ScmTradeDoc doc = DataScopes.load(TRADE_RULE, () -> docMapper.selectById(id));
         if (doc == null || doc.getKind() != kind) {
             throw new BizException("scm.error.doesNotExistAccessDenied2", Messages.get(kind.getLabelKey()));
         }
@@ -136,7 +134,7 @@ public class ScmTradeDocService {
                 ScmOrderItem latest = orderItemMapper.selectById(orderItem.getId());
                 BigDecimal max = kind.isReturns() ? latest.netQty() : latest.remainingQty();
                 if (!kind.isReturns() && overRate.signum() > 0) {
-                    max = latest.getQty().multiply(HUNDRED.add(overRate)).divide(HUNDRED, 4, RoundingMode.DOWN)
+                    max = latest.getQty().multiply(Decimals.HUNDRED.add(overRate)).divide(Decimals.HUNDRED, 4, RoundingMode.DOWN)
                             .subtract(latest.getDoneQty()).add(latest.getReplenishQty());
                 }
                 throw new BizException("scm.error.rowQuantityExceeds", i + 1, orderItem.getMaterialCode(), orderItem.getMaterialName(),
@@ -170,19 +168,17 @@ public class ScmTradeDocService {
         doc.setPartnerId(order.getPartnerId());
         doc.setWarehouseId(req.warehouseId());
         doc.setBizDate(req.bizDate());
-        doc.setTotalQty(items.stream().map(ScmTradeDocItem::getQty).reduce(BigDecimal.ZERO, BigDecimal::add));
-        doc.setTotalAmount(items.stream().map(ScmTradeDocItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
-        doc.setTaxAmount(items.stream().map(ScmTradeDocItem::getTaxAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
+        doc.setTotalQty(Decimals.sum(items, ScmTradeDocItem::getQty));
+        doc.setTotalAmount(Decimals.sum(items, ScmTradeDocItem::getAmount));
+        doc.setTaxAmount(Decimals.sum(items, ScmTradeDocItem::getTaxAmount));
         doc.setCurrency(order.getCurrency() == null ? ExchangeRateProvider.BASE : order.getCurrency());
         doc.setExchangeRate(rate(order));
-        doc.setAmountFc(req.items().stream().map(r -> amount(r.qty(), orderItems.get(r.orderItemId()).getPrice()))
-                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        doc.setAmountFc(Decimals.sum(req.items(), r -> amount(r.qty(), orderItems.get(r.orderItemId()).getPrice())));
         doc.setWmsDocId(stockDoc.getId());
         doc.setWmsDocNo(stockDoc.getDocNo());
         doc.setRemark(req.remark());
         doc.setReplenish(kind.isReturns() && Boolean.TRUE.equals(req.replenish()) ? 1 : 0);
         doc.setDeptId(user.deptId());
-        doc.setCreateBy(user.userId());
         docMapper.insert(doc);
         items.forEach(i -> i.setDocId(doc.getId()));
         itemMapper.insertBatch(items);

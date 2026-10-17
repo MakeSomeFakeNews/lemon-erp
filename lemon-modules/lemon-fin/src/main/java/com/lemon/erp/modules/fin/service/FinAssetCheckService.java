@@ -3,6 +3,7 @@ package com.lemon.erp.modules.fin.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.AssetCheckRequests;
@@ -71,7 +72,6 @@ public class FinAssetCheckService {
         check.setLocation(location);
         check.setStatus(AssetCheckStatus.CHECKING);
         check.setRemark(req.remark());
-        check.setCreateBy(SecurityUtils.getUserId());
         checkMapper.insert(check);
         checkMapper.insertItems(assets.stream().map(a -> {
             FinAssetCheckItem item = new FinAssetCheckItem();
@@ -167,12 +167,8 @@ public class FinAssetCheckService {
                 disposed++;
             }
         }
-        if (checkMapper.update(Wrappers.<FinAssetCheck>lambdaUpdate()
-                .set(FinAssetCheck::getStatus, AssetCheckStatus.DONE)
-                .set(FinAssetCheck::getFinishTime, LocalDateTime.now())
-                .eq(FinAssetCheck::getId, id).eq(FinAssetCheck::getStatus, AssetCheckStatus.CHECKING)) == 0) {
-            throw new BizException("fin.error.assetCountStatusHasChangedRefresh");
-        }
+        StatusTransitions.change(checkMapper, FinAssetCheck::getId, id, FinAssetCheck::getStatus,
+                AssetCheckStatus.CHECKING, AssetCheckStatus.DONE, w -> w.set(FinAssetCheck::getFinishTime, LocalDateTime.now()), "fin.error.assetCountStatusHasChangedRefresh");
         return disposed;
     }
 

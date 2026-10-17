@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.mes.dto.BomItemRequest;
 import com.lemon.erp.modules.mes.dto.BomOpRequest;
 import com.lemon.erp.modules.mes.dto.BomRequest;
@@ -28,7 +29,6 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -362,7 +362,7 @@ public class MesBomService {
             item.setBomId(bomId);
             item.setMaterialId(r.materialId());
             item.setQty(r.qty());
-            item.setLossRate(r.lossRate() == null ? BigDecimal.ZERO : r.lossRate());
+            item.setLossRate(Decimals.nz(r.lossRate()));
             item.setRefDes(RefDes.normalize(r.refDes()));
             item.setRemark(r.remark());
             return item;
@@ -374,7 +374,7 @@ public class MesBomService {
                 op.setSeq(r.seq());
                 op.setName(r.name().trim());
                 op.setWorkCenterId(r.workCenterId());
-                op.setStdHours(r.stdHours() == null ? BigDecimal.ZERO : r.stdHours());
+                op.setStdHours(Decimals.nz(r.stdHours()));
                 op.setPieceRate(r.pieceRate());
                 op.setFirstArticle(Boolean.TRUE.equals(r.firstArticle()) ? 1 : 0);
                 op.setRemark(r.remark());

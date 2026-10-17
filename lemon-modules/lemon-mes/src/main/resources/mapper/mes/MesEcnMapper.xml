@@ -33,8 +33,4 @@
         SELECT * FROM mes_ecn WHERE status = 'APPROVED' AND effective_date &lt;= #{today} ORDER BY effective_date, id
     </select>
 
-    <update id="transit">
-        UPDATE mes_ecn SET status = #{to}, update_time = NOW() WHERE id = #{id} AND status = #{from}
-    </update>
-
 </mapper>

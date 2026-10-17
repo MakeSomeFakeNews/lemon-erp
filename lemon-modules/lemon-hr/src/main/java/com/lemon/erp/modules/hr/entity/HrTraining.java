@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.hr.model.TrainingStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -60,6 +61,7 @@ public class HrTraining extends BaseEntity {
     @Size(max = 1000, message = "{hr.valid.trainingContentCannotExceedCharacters}")
     private String content;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     /** 学员人数、出勤人数、通过人数 */

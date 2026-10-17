@@ -72,7 +72,6 @@ public class CrmFollowupService {
         f.setNextTime(req.nextTime());
         f.setNextPlan(req.nextPlan());
         f.setDeptId(user.deptId());
-        f.setCreateBy(user.userId());
         followupMapper.insert(f);
         return f.getId();
     }
