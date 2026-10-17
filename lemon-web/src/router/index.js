@@ -18,6 +18,18 @@ const constantRoutes = [
     meta: { title: '登录' }
   },
   {
+    path: '/im-callback',
+    name: 'ImCallback',
+    component: () => import('@/views/login/ImCallback.vue'),
+    meta: { title: '授权登录' }
+  },
+  {
+    path: '/im-login',
+    name: 'ImEntry',
+    component: () => import('@/views/login/ImEntry.vue'),
+    meta: { title: '授权登录' }
+  },
+  {
     path: '/',
     name: LAYOUT_NAME,
     component: BasicLayout,
@@ -104,7 +116,10 @@ function menusToRoutes(menus, parentPath = '', routes = []) {
   return routes
 }
 
-const WHITE_LIST = ['/login']
+/** 免登录的页面：登录页、钉钉 / 企业微信 / 飞书的授权回调页和免登入口 */
+const WHITE_LIST = ['/login', '/im-callback', '/im-login']
+/** 已登录时也不加载菜单和路由的页面：回调页、免登入口自行处理登录（令牌可能已过期） */
+const BARE_PAGES = ['/im-callback', '/im-login']
 /** 门户账号没有首页工作台，进入所属门户：供应商 → 供应商门户，经销商 → 经销商门户 */
 const portalHome = (user) => (user?.supplierId ? '/portal/order' : user?.customerId ? '/dealer/order' : null)
 
@@ -119,6 +134,9 @@ router.beforeEach(async (to) => {
   }
   if (!getToken()) {
     return WHITE_LIST.includes(to.path) ? true : { path: '/login', query: { redirect: to.fullPath } }
+  }
+  if (BARE_PAGES.includes(to.path)) {
+    return true
   }
   if (to.path === '/login') {
     return '/'

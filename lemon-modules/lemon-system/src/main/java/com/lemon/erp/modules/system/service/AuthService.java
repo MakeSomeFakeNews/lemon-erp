@@ -88,8 +88,33 @@ public class AuthService {
             throw loginFailed(req.username(), request, "账号已停用");
         }
         passwordPolicy.clearFailures(req.username());
+        return issue(user, request, "登录成功");
+    }
+
+    /**
+     * 第三方授权登录（钉钉、企业微信、飞书）：平台已确认身份并按绑定关系找到用户，校验状态后签发令牌。调用前须设置租户
+     *
+     * @param via 登录方式，记入登录日志，如「钉钉登录」
+     */
+    public LoginResponse loginAs(SysUser user, String via) {
+        HttpServletRequest request = ServletUtils.getRequest();
+        if (!Integer.valueOf(1).equals(user.getStatus())) {
+            throw loginFailed(user.getUsername(), request, "账号已停用");
+        }
+        if (user.getSupplierId() != null || user.getCustomerId() != null) {
+            throw loginFailed(user.getUsername(), request, "门户账号不能使用" + via);
+        }
+        return issue(user, request, via + "成功");
+    }
+
+    /** 第三方授权登录失败（如成员未绑定用户）记入登录日志 */
+    public void recordLoginFailure(String username, String msg) {
+        publishLoginLog(username, ServletUtils.getRequest(), 0, msg);
+    }
+
+    private LoginResponse issue(SysUser user, HttpServletRequest request, String msg) {
         String token = tokenService.createToken(user.getId(), user.getUsername(), request);
-        publishLoginLog(user.getUsername(), request, 1, "登录成功");
+        publishLoginLog(user.getUsername(), request, 1, msg);
         boolean mustChange = Integer.valueOf(1).equals(user.getPwdReset()) || passwordPolicy.isExpired(user.getPwdUpdateTime());
         return new LoginResponse(token, mustChange);
     }

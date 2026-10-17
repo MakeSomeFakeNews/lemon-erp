@@ -74,3 +74,8 @@ lemon:
   user:
     # 录用时开通的登录账号的初始密码
     initial-password: Lemon@123
+  # 钉钉、企业微信、飞书开放平台的接口地址（默认为官方地址，一般不用配置）；应用在「系统管理 - 第三方集成」中按租户配置
+  # im:
+  #   feishu:
+  #     api: https://open.larksuite.com            # Lark 国际版
+  #     accounts: https://accounts.larksuite.com

@@ -6,8 +6,10 @@ import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.system.entity.SysMessage;
+import com.lemon.erp.modules.system.im.MessageSentEvent;
 import com.lemon.erp.modules.system.mapper.SysMessageMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -20,7 +22,8 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * 站内消息：业务模块通过 {@link MessageSender} 发送，用户在顶栏铃铛和「我的消息」中查看
+ * 站内消息：业务模块通过 {@link MessageSender} 发送，用户在顶栏铃铛和「我的消息」中查看；
+ * 写入后发布 {@link MessageSentEvent}，事务提交后同步推送到已接入的钉钉、企业微信、飞书（{@code SysImPushService}）
  */
 @Service
 @RequiredArgsConstructor
@@ -30,6 +33,7 @@ public class SysMessageService implements MessageSender {
     private static final int CONTENT_MAX = 500;
 
     private final SysMessageMapper messageMapper;
+    private final ApplicationEventPublisher publisher;
 
     @Override
     public void send(Collection<Long> userIds, Message message) {
@@ -54,6 +58,7 @@ public class SysMessageService implements MessageSender {
             m.setDedupKey(message.dedupKey());
             return m;
         }).toList());
+        publisher.publishEvent(new MessageSentEvent(List.copyOf(targets), message));
     }
 
     @Override
