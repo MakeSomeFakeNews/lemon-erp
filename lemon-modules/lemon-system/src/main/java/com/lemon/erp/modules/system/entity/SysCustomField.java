@@ -18,21 +18,21 @@ import lombok.EqualsAndHashCode;
 @TableName("sys_custom_field")
 public class SysCustomField extends BaseEntity {
 
-    @NotBlank(message = "请选择业务类型")
+    @NotBlank(message = "{system.valid.selectBusinessType}")
     private String bizType;
 
-    @NotBlank(message = "请填写字段标识")
-    @Pattern(regexp = "^[A-Za-z][A-Za-z0-9_]{0,31}$", message = "字段标识为字母开头的字母、数字、下划线，最多32个字符")
+    @NotBlank(message = "{system.valid.enterFieldKey}")
+    @Pattern(regexp = "^[A-Za-z][A-Za-z0-9_]{0,31}$", message = "{system.valid.fieldKeyMustStartLetterContain}")
     private String fieldKey;
 
-    @NotBlank(message = "请填写显示名称")
-    @Size(max = 32, message = "显示名称不能超过32个字符")
+    @NotBlank(message = "{system.valid.enterDisplayName}")
+    @Size(max = 32, message = "{system.valid.displayNameCannotExceedCharacters}")
     private String label;
 
-    @NotNull(message = "请选择类型")
+    @NotNull(message = "{system.valid.selectType}")
     private CustomFieldType fieldType;
 
-    @Size(max = 1000, message = "选项不能超过1000个字符")
+    @Size(max = 1000, message = "{system.valid.optionsCannotExceedCharacters}")
     private String options;
 
     private Integer required;
@@ -43,6 +43,6 @@ public class SysCustomField extends BaseEntity {
 
     private Integer status;
 
-    @Size(max = 255, message = "说明不能超过255个字符")
+    @Size(max = 255, message = "{system.valid.descriptionCannotExceedCharacters}")
     private String remark;
 }

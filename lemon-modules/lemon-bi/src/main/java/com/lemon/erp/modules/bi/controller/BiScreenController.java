@@ -93,7 +93,7 @@ public class BiScreenController {
 
     private static void requireAllData() {
         if (!SecurityUtils.getDataScope().all()) {
-            throw new BizException("数据大屏汇总全公司数据，需要「全部数据」的数据权限");
+            throw new BizException("bi.error.dataScreensAggregateCompanyWideData");
         }
     }
 
@@ -101,7 +101,7 @@ public class BiScreenController {
         try {
             return ScreenKey.valueOf(key.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new BizException("大屏不存在：{0}", key);
+            throw new BizException("bi.error.dataScreenNotFound", key);
         }
     }
 }

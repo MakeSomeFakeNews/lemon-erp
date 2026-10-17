@@ -17,7 +17,7 @@ public final class AssetCheckRequests {
 
     /** 新建盘点：按部门、存放地点（包含）生成盘点清单，都为空时盘点全部未处置资产 */
     public record Create(
-            @NotNull(message = "请选择盘点日期") LocalDate checkDate,
+            @NotNull(message = "{fin.valid.selectCountDate}") LocalDate checkDate,
             Long deptId,
             @Size(max = 128) String location,
             @Size(max = 255) String remark) {
@@ -25,7 +25,7 @@ public final class AssetCheckRequests {
 
     /** 录入盘点结果：位置变化时填写实际的部门、使用人、存放地点 */
     public record Record(
-            @NotNull(message = "请选择盘点结果") AssetCheckResult result,
+            @NotNull(message = "{fin.valid.selectCountResult}") AssetCheckResult result,
             Long actualDeptId,
             Long actualUserId,
             @Size(max = 128) String actualLocation,
@@ -34,7 +34,7 @@ public final class AssetCheckRequests {
 
     /** 盘盈：账外资产，完成后在固定资产中登记卡片 */
     public record Gain(
-            @NotBlank(message = "请填写资产名称") @Size(max = 64) String name,
+            @NotBlank(message = "{fin.valid.enterAssetName}") @Size(max = 64) String name,
             @Size(max = 128) String location,
             @Size(max = 255) String remark) {
     }

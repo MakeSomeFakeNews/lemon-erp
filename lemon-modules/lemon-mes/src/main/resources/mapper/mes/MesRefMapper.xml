@@ -1,45 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<!-- 主数据被引用检查（删除物料、仓库、客户、供应商、用户、部门前），见 ReferenceChecker -->
+<!-- 主数据被引用检查（删除物料、仓库、客户、供应商、用户、部门前），见 ReferenceChecker；返回引用单据名称的消息键 -->
 <mapper namespace="com.lemon.erp.modules.mes.mapper.MesRefMapper">
 
     <select id="findMaterial" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM mes_bom WHERE material_id = #{id}) THEN 'BOM'
-            WHEN EXISTS (SELECT 1 FROM mes_bom_item WHERE material_id = #{id}) THEN 'BOM 子件'
-            WHEN EXISTS (SELECT 1 FROM mes_material_substitute WHERE substitute_id = #{id}) THEN '替代料设置'
-            WHEN EXISTS (SELECT 1 FROM mes_plan WHERE material_id = #{id}) THEN '生产计划'
-            WHEN EXISTS (SELECT 1 FROM mes_forecast WHERE material_id = #{id}) THEN '销售预测'
-            WHEN EXISTS (SELECT 1 FROM mes_outsource_material WHERE material_id = #{id} OR product_id = #{id}) THEN '委外用料'
-            WHEN EXISTS (SELECT 1 FROM mes_work_order WHERE material_id = #{id}) THEN '生产工单'
-            WHEN EXISTS (SELECT 1 FROM mes_wo_material WHERE material_id = #{id}) THEN '工单用料'
-            WHEN EXISTS (SELECT 1 FROM mes_inspection WHERE material_id = #{id}) THEN '质量检验'
+            WHEN EXISTS (SELECT 1 FROM mes_bom WHERE material_id = #{id}) THEN 'mes.label.bom'
+            WHEN EXISTS (SELECT 1 FROM mes_bom_item WHERE material_id = #{id}) THEN 'mes.label.bomComponent'
+            WHEN EXISTS (SELECT 1 FROM mes_material_substitute WHERE substitute_id = #{id}) THEN 'mes.label.substituteSetting'
+            WHEN EXISTS (SELECT 1 FROM mes_plan WHERE material_id = #{id}) THEN 'mes.label.productionPlan'
+            WHEN EXISTS (SELECT 1 FROM mes_forecast WHERE material_id = #{id}) THEN 'mes.label.salesForecast'
+            WHEN EXISTS (SELECT 1 FROM mes_outsource_material WHERE material_id = #{id} OR product_id = #{id}) THEN 'mes.label.outsourcingMaterial'
+            WHEN EXISTS (SELECT 1 FROM mes_work_order WHERE material_id = #{id}) THEN 'mes.label.workOrder'
+            WHEN EXISTS (SELECT 1 FROM mes_wo_material WHERE material_id = #{id}) THEN 'mes.label.workOrderMaterial'
+            WHEN EXISTS (SELECT 1 FROM mes_inspection WHERE material_id = #{id}) THEN 'mes.label.qualityInspection'
         END
     </select>
 
     <select id="findWarehouse" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM mes_work_order WHERE warehouse_id = #{id}) THEN '生产工单'
-            WHEN EXISTS (SELECT 1 FROM mes_wo_doc WHERE warehouse_id = #{id}) THEN '工单领料 / 完工单'
+            WHEN EXISTS (SELECT 1 FROM mes_work_order WHERE warehouse_id = #{id}) THEN 'mes.label.workOrder'
+            WHEN EXISTS (SELECT 1 FROM mes_wo_doc WHERE warehouse_id = #{id}) THEN 'mes.label.workOrderIssueCompletionDocument'
         END
     </select>
 
     <select id="findSupplier" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM mes_inspection WHERE supplier_id = #{id}) THEN '来料检验'
+            WHEN EXISTS (SELECT 1 FROM mes_inspection WHERE supplier_id = #{id}) THEN 'mes.label.incomingInspection'
         END
     </select>
 
     <select id="findUser" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM mes_work_order WHERE create_by = #{id}) THEN '生产工单'
-            WHEN EXISTS (SELECT 1 FROM mes_plan WHERE create_by = #{id}) THEN '生产计划'
+            WHEN EXISTS (SELECT 1 FROM mes_work_order WHERE create_by = #{id}) THEN 'mes.label.workOrder'
+            WHEN EXISTS (SELECT 1 FROM mes_plan WHERE create_by = #{id}) THEN 'mes.label.productionPlan'
         END
     </select>
 
     <select id="findDept" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM mes_work_order WHERE dept_id = #{id}) THEN '生产工单'
+            WHEN EXISTS (SELECT 1 FROM mes_work_order WHERE dept_id = #{id}) THEN 'mes.label.workOrder'
         END
     </select>
 

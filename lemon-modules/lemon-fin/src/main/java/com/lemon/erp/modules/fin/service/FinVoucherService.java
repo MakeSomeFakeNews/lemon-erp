@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.rule.BizRules;
@@ -89,7 +89,7 @@ public class FinVoucherService {
     public FinVoucher detail(Long id) {
         FinVoucher voucher = voucherMapper.selectDetail(id);
         if (voucher == null) {
-            throw new BizException("凭证不存在");
+            throw new BizException("fin.error.voucherNotFound");
         }
         voucher.setEntries(entryMapper.selectByVoucherId(id));
         return voucher;
@@ -109,7 +109,7 @@ public class FinVoucherService {
         Object before = voucherMapper.selectById(id);
         FinVoucher old = getWithStatus(id, VoucherStatus.DRAFT);
         if (!VoucherSource.MANUAL.name().equals(old.getSourceType())) {
-            throw new BizException("业务生成的凭证不能修改，可以删除后由业务单据重新生成");
+            throw new BizException("fin.error.vouchersGeneratedBusinessDocumentsCannotModified");
         }
         List<VoucherLine> lines = toLines(req.entries());
         checkAux(lines);
@@ -142,8 +142,8 @@ public class FinVoucherService {
             FinVoucher v = getWithStatus(id, VoucherStatus.DRAFT);
             periodService.checkOpen(v.getPeriod());
             if (UNDELETABLE_SOURCES.contains(v.getSourceType())) {
-                throw new BizException("凭证 {0} 由{1}（{2}）生成，不能删除，请在业务单据中撤销或做红字冲销",
-                        v.getVoucherNo(), I18n.t(sourceLabel(v.getSourceType())), v.getSourceNo());
+                throw new BizException("fin.error.voucherGeneratedCannotDeletedCancelBusiness",
+                        v.getVoucherNo(), Messages.get(sourceLabel(v.getSourceType())), v.getSourceNo());
             }
         }
         // 删除红字冲销凭证后，原凭证可以重新冲销
@@ -168,7 +168,7 @@ public class FinVoucherService {
             return;
         }
         if (!VoucherStatus.DRAFT.name().equals(v.getStatus())) {
-            throw new BizException("凭证 {0} 已审核，请先反审核或做红字冲销", v.getVoucherNo());
+            throw new BizException("fin.error.voucherApprovedUnapproveReverseFirst", v.getVoucherNo());
         }
         periodService.checkOpen(v.getPeriod());
         entryMapper.delete(Wrappers.<FinVoucherEntry>lambdaQuery().eq(FinVoucherEntry::getVoucherId, id));
@@ -182,12 +182,12 @@ public class FinVoucherService {
 
     private static String sourceLabel(String source) {
         return switch (source) {
-            case "ADVANCE" -> "预收预付";
-            case "BAD_DEBT" -> "坏账核销";
-            case "CLAIM" -> "费用报销";
-            case "LOAN" -> "员工借款";
-            case "NOTE" -> "票据";
-            case "TRANSFER" -> "账户调拨";
+            case "ADVANCE" -> "fin.label.advanceReceiptPayment";
+            case "BAD_DEBT" -> "fin.label.badDebtWriteOff";
+            case "CLAIM" -> "fin.label.expenseClaim";
+            case "LOAN" -> "fin.label.employeeLoan";
+            case "NOTE" -> "fin.label.note";
+            case "TRANSFER" -> "fin.label.fundTransfer";
             default -> source;
         };
     }
@@ -199,18 +199,18 @@ public class FinVoucherService {
      */
     @Transactional
     public Long reverse(Long id, LocalDate date) {
-        FinVoucher v = getWithStatus(id, VoucherStatus.POSTED, "只能冲销已记账的凭证");
+        FinVoucher v = getWithStatus(id, VoucherStatus.POSTED, "fin.error.onlyPostedVouchersReversed");
         if (VoucherSource.CLOSE.name().equals(v.getSourceType())) {
-            throw new BizException("结转损益凭证随结账生成，请反结账");
+            throw new BizException("fin.error.profitLossClosingVouchersGeneratedPeriod");
         }
         if (v.getReversalOf() != null) {
-            throw new BizException("红字凭证不能再冲销");
+            throw new BizException("fin.error.reversalVoucherCannotReversedAgain");
         }
         LocalDate d = date == null ? LocalDate.now() : date;
         periodService.checkOpen(periodOf(d));
         if (voucherMapper.update(Wrappers.<FinVoucher>lambdaUpdate().set(FinVoucher::getReversed, 1)
                 .eq(FinVoucher::getId, id).eq(FinVoucher::getReversed, 0)) == 0) {
-            throw new BizException("凭证 {0} 已冲销", v.getVoucherNo());
+            throw new BizException("fin.error.voucherHasAlreadyReversed", v.getVoucherNo());
         }
         List<VoucherLine> lines = entryMapper.selectList(Wrappers.<FinVoucherEntry>lambdaQuery().eq(FinVoucherEntry::getVoucherId, id)
                         .orderByAsc(FinVoucherEntry::getSeq)).stream()
@@ -227,25 +227,25 @@ public class FinVoucherService {
     @Transactional
     public void audit(List<Long> ids) {
         if (flowApi.isAvailable(PROCESS_KEY)) {
-            throw new BizException("已启用凭证审批流程，请提交审批，审批通过后自动审核");
+            throw new BizException("fin.error.voucherApprovalWorkflowEnabledSubmitApproval");
         }
-        transit(ids, VoucherStatus.DRAFT, VoucherStatus.AUDITED, "只能审核未审核的凭证");
+        transit(ids, VoucherStatus.DRAFT, VoucherStatus.AUDITED, "fin.error.onlyUnapprovedVouchersApproved");
     }
 
     /** 提交审批（发布了凭证审批流程时）：未审核 → 审批中，每张凭证一个流程 */
     @Transactional
     public void submit(List<Long> ids) {
         if (!flowApi.isAvailable(PROCESS_KEY)) {
-            throw new BizException("没有发布凭证审批流程，请直接审核");
+            throw new BizException("fin.error.noVoucherApprovalWorkflowDeployedApprove");
         }
         for (Long id : ids) {
-            FinVoucher v = getWithStatus(id, VoucherStatus.DRAFT, "只能提交未审核的凭证");
+            FinVoucher v = getWithStatus(id, VoucherStatus.DRAFT, "fin.error.onlyUnapprovedVouchersSubmitted");
             periodService.checkOpen(v.getPeriod());
             int updated = voucherMapper.update(Wrappers.<FinVoucher>lambdaUpdate()
                     .set(FinVoucher::getStatus, VoucherStatus.APPROVING.name())
                     .eq(FinVoucher::getId, id).eq(FinVoucher::getStatus, VoucherStatus.DRAFT.name()));
             if (updated == 0) {
-                throw new BizException("凭证 {0} 状态已变化，请刷新", v.getVoucherNo());
+                throw new BizException("fin.error.statusVoucherHasChangedRefresh", v.getVoucherNo());
             }
             String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of(
                     "amount", v.getTotalDebit() == null ? 0 : v.getTotalDebit().doubleValue(),
@@ -273,13 +273,13 @@ public class FinVoucherService {
 
     @Transactional
     public void unaudit(List<Long> ids) {
-        transit(ids, VoucherStatus.AUDITED, VoucherStatus.DRAFT, "只能反审核已审核、未记账的凭证");
+        transit(ids, VoucherStatus.AUDITED, VoucherStatus.DRAFT, "fin.error.onlyApprovedUnpostedVouchersUnapproved");
     }
 
     /** 记账：已审核 → 已记账 */
     @Transactional
     public void post(List<Long> ids) {
-        transit(ids, VoucherStatus.AUDITED, VoucherStatus.POSTED, "只能记账已审核的凭证");
+        transit(ids, VoucherStatus.AUDITED, VoucherStatus.POSTED, "fin.error.onlyApprovedVouchersPosted");
     }
 
     @Transactional
@@ -287,10 +287,10 @@ public class FinVoucherService {
         for (Long id : ids) {
             FinVoucher v = voucherMapper.selectById(id);
             if (v != null && VoucherSource.CLOSE.name().equals(v.getSourceType())) {
-                throw new BizException("结转损益凭证由结账自动生成，请反结账");
+                throw new BizException("fin.error.profitLossClosingVouchersGeneratedAutomatically");
             }
         }
-        transit(ids, VoucherStatus.POSTED, VoucherStatus.AUDITED, "只能反记账已记账的凭证");
+        transit(ids, VoucherStatus.POSTED, VoucherStatus.AUDITED, "fin.error.onlyPostedVouchersUnposted");
     }
 
     // ---------------------------------------------------------------- 供业务生成凭证使用
@@ -353,7 +353,7 @@ public class FinVoucherService {
     /** 每条分录只填借方或贷方、科目为启用的末级科目、借贷平衡且合计大于 0 */
     private List<FinVoucherEntry> validate(List<VoucherLine> lines) {
         if (lines.size() < 2) {
-            throw new BizException("凭证至少需要两条分录");
+            throw new BizException("fin.error.voucherNeedsLeastTwoEntries");
         }
         accountService.requireLeaves(lines.stream().map(VoucherLine::accountId).toList());
         List<FinVoucherEntry> entries = new ArrayList<>(lines.size());
@@ -362,7 +362,7 @@ public class FinVoucherService {
             BigDecimal debit = l.debit() == null ? BigDecimal.ZERO : l.debit();
             BigDecimal credit = l.credit() == null ? BigDecimal.ZERO : l.credit();
             if ((debit.signum() == 0) == (credit.signum() == 0)) {
-                throw new BizException("第 {0} 条分录：借方、贷方金额必须且只能填一个", i + 1);
+                throw new BizException("fin.error.entryEnterExactlyOneDebitCredit", i + 1);
             }
             FinVoucherEntry e = new FinVoucherEntry();
             e.setSeq(i + 1);
@@ -380,7 +380,7 @@ public class FinVoucherService {
         BigDecimal debit = total(entries, true);
         BigDecimal credit = total(entries, false);
         if (debit.compareTo(credit) != 0) {
-            throw new BizException("借贷不平衡：借方合计 {0}，贷方合计 {1}", debit.toPlainString(), credit.toPlainString());
+            throw new BizException("fin.error.debitsCreditsDoNotBalanceTotal", debit.toPlainString(), credit.toPlainString());
         }
         return entries;
     }
@@ -396,7 +396,7 @@ public class FinVoucherService {
             FinAccount a = accounts.get(l.accountId());
             for (AuxItem item : AuxItem.parse(a.getAuxItems())) {
                 if (!l.has(item)) {
-                    throw new BizException("第 {0} 条分录：科目「{1} {2}」需要填写{3}", i + 1, a.getCode(), a.getName(), I18n.t(item.label()));
+                    throw new BizException("fin.error.entryAccountRequires", i + 1, a.getCode(), a.getName(), Messages.get(item.labelKey()));
                 }
             }
         }
@@ -438,7 +438,7 @@ public class FinVoucherService {
             // 不相容职务分离：制单人不能审核自己的凭证（超级管理员除外，便于单人体验）
             if (to == VoucherStatus.AUDITED && from == VoucherStatus.DRAFT && Objects.equals(v.getCreateBy(), userId)
                     && !SecurityUtils.getLoginUser().isAdmin() && !bizRules.bool(FinBizRules.VOUCHER_SELF_AUDIT)) {
-                throw new BizException("凭证 {0} 是你制单的，不能自己审核", v.getVoucherNo());
+                throw new BizException("fin.error.preparedVoucherCannotApproveYourself", v.getVoucherNo());
             }
             LambdaUpdateWrapper<FinVoucher> update = Wrappers.<FinVoucher>lambdaUpdate()
                     .set(FinVoucher::getStatus, to.name())
@@ -457,23 +457,23 @@ public class FinVoucherService {
                 case DRAFT -> update.set(FinVoucher::getAuditBy, null).set(FinVoucher::getAuditTime, null);
             }
             if (voucherMapper.update(update) == 0) {
-                throw new BizException("凭证 {0} 状态已变化，请刷新", v.getVoucherNo());
+                throw new BizException("fin.error.statusVoucherHasChangedRefresh", v.getVoucherNo());
             }
         }
     }
 
     private FinVoucher getWithStatus(Long id, VoucherStatus status) {
-        return getWithStatus(id, status, status == VoucherStatus.DRAFT ? "凭证不是未审核状态" : status == VoucherStatus.AUDITED ? "凭证不是已审核状态" : "凭证不是已记账状态");
+        return getWithStatus(id, status, status == VoucherStatus.DRAFT ? "fin.error.voucherNotUnapprovedStatus" : status == VoucherStatus.AUDITED ? "fin.error.voucherNotApprovedStatus" : "fin.error.voucherNotPostedStatus");
     }
 
     private FinVoucher getWithStatus(Long id, VoucherStatus status, String error) {
         FinVoucher v = voucherMapper.selectById(id);
         if (v == null) {
-            throw new BizException("凭证不存在");
+            throw new BizException("fin.error.voucherNotFound");
         }
         if (!status.name().equals(v.getStatus())) {
-            // error 为中文模板，按请求语言翻译后作为参数
-            throw new BizException("{0} {1}：{2}", v.getPeriod(), v.getVoucherNo(), I18n.t(error));
+            // error 为消息键，按请求语言取消息后作为参数
+            throw new BizException("fin.error.voucherStatusInvalid", v.getPeriod(), v.getVoucherNo(), Messages.get(error));
         }
         return v;
     }

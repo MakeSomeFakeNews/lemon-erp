@@ -16,13 +16,13 @@ import java.util.List;
  */
 public record InspectionItemRequest(
         Long planItemId,
-        @Size(max = 64, message = "检验项目名称不能超过64个字符") String name,
+        @Size(max = 64, message = "{mes.valid.inspectionItemNameCannotExceedCharacters}") String name,
         ItemMethod method,
         @Size(max = 255) String standard,
         BigDecimal lowerLimit,
         BigDecimal upperLimit,
         @Size(max = 16) String unit,
         Boolean critical,
-        @Size(max = 200, message = "实测值不能超过200个") List<BigDecimal> measured,
-        @Min(value = 0, message = "不合格数不能小于0") Integer defectCount) {
+        @Size(max = 200, message = "{mes.valid.mostMeasuredValues}") List<BigDecimal> measured,
+        @Min(value = 0, message = "{mes.valid.defectCountCannotLess}") Integer defectCount) {
 }

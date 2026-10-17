@@ -2,7 +2,7 @@ package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.dto.PromotionRequests;
@@ -64,7 +64,7 @@ public class ScmPromotionService {
     public ScmPromotion detail(Long id) {
         ScmPromotion p = id == null ? null : promotionMapper.selectDetail(id);
         if (p == null) {
-            throw new BizException("促销活动不存在");
+            throw new BizException("scm.error.promotionDoesNotExist");
         }
         return p;
     }
@@ -96,7 +96,7 @@ public class ScmPromotionService {
     public void delete(Long id) {
         ScmPromotion p = detail(id);
         if (p.getOrderCount() != null && p.getOrderCount() > 0) {
-            throw new BizException("促销「{0}」已应用到订单，不能删除，可以停用", p.getName());
+            throw new BizException("scm.error.promotionHasAppliedOrdersCannotDeleted", p.getName());
         }
         promotionMapper.deleteById(id);
     }
@@ -202,7 +202,7 @@ public class ScmPromotionService {
         if (bestReduce != null) {
             BigDecimal off = allocate(reduceLines, bestReduce.getReduceAmount());
             usage(usages, bestReduce, off, BigDecimal.ZERO);
-            notes.add(I18n.t("满 {0} 减 {1}（{2}）", plain(bestReduce.getThresholdAmount()), plain(bestReduce.getReduceAmount()), bestReduce.getName()));
+            notes.add(Messages.get("scm.text.offOver", plain(bestReduce.getThresholdAmount()), plain(bestReduce.getReduceAmount()), bestReduce.getName()));
         }
         // 买赠：每买 buyQty 个适用物料赠送 giftQty 个赠品
         for (ScmPromotion p : promos) {
@@ -227,16 +227,16 @@ public class ScmPromotionService {
             g.setRemark("赠品：" + p.getName()); // i18n-ignore
             result.add(g);
             usage(usages, p, BigDecimal.ZERO, g.getQty());
-            notes.add(I18n.t("赠 {0} × {1}（{2}）", gift.getName(), plain(g.getQty()), p.getName()));
+            notes.add(Messages.get("scm.text.gift", gift.getName(), plain(g.getQty()), p.getName()));
         }
         BigDecimal discount = usages.values().stream().map(Usage::discountAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         // 返利抵扣：按非赠品行金额分摊
         if (rebate != null && rebate.signum() > 0) {
             if (rebate.compareTo(sum(items)) > 0) {
-                throw new BizException("返利抵扣金额不能超过订单金额 {0}", plain(sum(items)));
+                throw new BizException("scm.error.rebateDeductionCannotExceedOrderAmount", plain(sum(items)));
             }
             allocate(items, rebate);
-            notes.add(I18n.t("返利抵扣 {0}", plain(rebate)));
+            notes.add(Messages.get("scm.text.rebateDeduction", plain(rebate)));
         }
         items.forEach(i -> i.setOrigPrice(i.getPrice().compareTo(origPrices.get(i)) == 0 ? null : origPrices.get(i)));
         return new Applied(result, discount, new ArrayList<>(usages.values()), notes);
@@ -276,24 +276,24 @@ public class ScmPromotionService {
 
     private void fill(ScmPromotion p, PromotionRequests.Save req) {
         if (req.endDate().isBefore(req.beginDate())) {
-            throw new BizException("结束日期不能早于开始日期");
+            throw new BizException("scm.error.endDateCannotEarlierStartDate");
         }
         switch (req.promoType()) {
             case DISCOUNT -> {
                 if (req.discountRate() == null || req.discountRate().signum() <= 0 || req.discountRate().compareTo(HUNDRED) >= 0) {
-                    throw new BizException("折扣率须大于 0、小于 100");
+                    throw new BizException("scm.error.discountRateMustGreaterLess");
                 }
             }
             case REDUCE -> {
                 if (req.thresholdAmount() == null || req.reduceAmount() == null || req.reduceAmount().signum() <= 0
                         || req.reduceAmount().compareTo(req.thresholdAmount()) >= 0) {
-                    throw new BizException("请填写满减门槛和减免金额，减免金额须小于门槛");
+                    throw new BizException("scm.error.enterThresholdReductionAmountReductionMust");
                 }
             }
             case GIFT -> {
                 if (req.buyQty() == null || req.buyQty().signum() <= 0 || req.giftMaterialId() == null || req.giftQty() == null
                         || req.giftQty().signum() <= 0) {
-                    throw new BizException("请填写购买数量、赠品和赠送数量");
+                    throw new BizException("scm.error.enterPurchaseQuantityGiftGiftQuantity");
                 }
                 materialService.getEnabled(List.of(req.giftMaterialId()));
             }

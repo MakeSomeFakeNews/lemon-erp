@@ -28,7 +28,7 @@ public class BiEtlJob implements JobHandler {
 
     @Override
     public String name() {
-        return "数据仓库同步"; // i18n-ignore 定时任务名称，任务管理处翻译
+        return "bi.label.dataWarehouseSync";
     }
 
     @Override

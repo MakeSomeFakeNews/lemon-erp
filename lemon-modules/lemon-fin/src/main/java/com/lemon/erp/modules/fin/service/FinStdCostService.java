@@ -55,7 +55,7 @@ public class FinStdCostService {
     public FinStdCostVersion detail(Long id) {
         FinStdCostVersion v = id == null ? null : versionMapper.selectDetail(id);
         if (v == null) {
-            throw new BizException("标准成本版本不存在");
+            throw new BizException("fin.error.standardCostVersionNotFound");
         }
         return v;
     }
@@ -113,10 +113,10 @@ public class FinStdCostService {
         requireDraft(id);
         WmsMaterial m = materialService.mapByIds(List.of(req.materialId())).get(req.materialId());
         if (m == null) {
-            throw new BizException("物料不存在");
+            throw new BizException("fin.error.materialNotFound");
         }
         if (defaultBoms().containsKey(req.materialId())) {
-            throw new BizException("物料「{0} {1}」有默认 BOM，是自制件，标准成本由卷算得出", m.getCode(), m.getName());
+            throw new BizException("fin.error.materialHasDefaultBomManufacturedStandard", m.getCode(), m.getName());
         }
         BigDecimal price = req.price().setScale(SCALE, RoundingMode.HALF_UP);
         FinStdCost row = costMapper.selectOne(Wrappers.<FinStdCost>lambdaQuery()
@@ -141,10 +141,10 @@ public class FinStdCostService {
         FinStdCost row = costMapper.selectOne(Wrappers.<FinStdCost>lambdaQuery()
                 .eq(FinStdCost::getVersionId, id).eq(FinStdCost::getMaterialId, materialId));
         if (row == null) {
-            throw new BizException("物料不在该版本中");
+            throw new BizException("fin.error.materialNotVersion");
         }
         if (row.getMake() == 1) {
-            throw new BizException("自制件由卷算得出，不能删除");
+            throw new BizException("fin.error.manufacturedItemsComeCostRollupCannot");
         }
         costMapper.deleteById(row.getId());
         markStale(id);
@@ -182,7 +182,7 @@ public class FinStdCostService {
         FinStdCost row = costMapper.selectOne(Wrappers.<FinStdCost>lambdaQuery()
                 .eq(FinStdCost::getVersionId, id).eq(FinStdCost::getMaterialId, materialId));
         if (row == null || row.getMake() != 1 || row.getBomId() == null) {
-            throw new BizException("只有自制件有卷算明细");
+            throw new BizException("fin.error.onlyManufacturedItemsHaveRollupDetails");
         }
         List<Map<String, Object>> items = costMapper.selectBomItems(List.of(row.getBomId()));
         Set<Long> ids = items.stream().map(i -> ((Number) i.get("materialId")).longValue()).collect(Collectors.toSet());
@@ -223,12 +223,12 @@ public class FinStdCostService {
     public void release(Long id) {
         FinStdCostVersion v = requireDraft(id);
         if (v.getRollupTime() == null) {
-            throw new BizException("修改单价后还没有重新卷算，请先卷算");
+            throw new BizException("fin.error.unitCostsChangedWithoutNewRollup");
         }
         boolean clash = versionMapper.exists(Wrappers.<FinStdCostVersion>lambdaQuery()
                 .eq(FinStdCostVersion::getStatus, StdCostStatus.RELEASED).eq(FinStdCostVersion::getEffectivePeriod, v.getEffectivePeriod()));
         if (clash) {
-            throw new BizException("期间 {0} 已有发布的标准成本版本，请先取消发布", v.getEffectivePeriod());
+            throw new BizException("fin.error.periodAlreadyHasReleasedStandardCost", v.getEffectivePeriod());
         }
         changeStatus(id, StdCostStatus.DRAFT, StdCostStatus.RELEASED, LocalDateTime.now());
     }
@@ -237,7 +237,7 @@ public class FinStdCostService {
     @Transactional
     public void unrelease(Long id) {
         if (detail(id).getStatus() != StdCostStatus.RELEASED) {
-            throw new BizException("版本未发布");
+            throw new BizException("fin.error.versionNotReleased");
         }
         changeStatus(id, StdCostStatus.RELEASED, StdCostStatus.DRAFT, null);
     }
@@ -252,14 +252,14 @@ public class FinStdCostService {
                 .set(FinStdCostVersion::getStatus, to).set(FinStdCostVersion::getReleaseTime, releaseTime)
                 .set(FinStdCostVersion::getUpdateTime, LocalDateTime.now())
                 .eq(FinStdCostVersion::getId, id).eq(FinStdCostVersion::getStatus, from)) == 0) {
-            throw new BizException("版本状态已变化，请刷新后重试");
+            throw new BizException("fin.error.versionStatusHasChangedRefreshTry");
         }
     }
 
     private FinStdCostVersion requireDraft(Long id) {
         FinStdCostVersion v = detail(id);
         if (v.getStatus() != StdCostStatus.DRAFT) {
-            throw new BizException("版本已发布，不能修改");
+            throw new BizException("fin.error.versionReleasedCannotModified");
         }
         return v;
     }
@@ -267,7 +267,7 @@ public class FinStdCostService {
     private void checkName(String name, Long excludeId) {
         if (versionMapper.exists(Wrappers.<FinStdCostVersion>lambdaQuery().eq(FinStdCostVersion::getName, name)
                 .ne(excludeId != null, FinStdCostVersion::getId, excludeId))) {
-            throw new BizException("版本名称「{0}」已存在", name);
+            throw new BizException("fin.error.versionNameAlreadyExists", name);
         }
     }
 
@@ -367,7 +367,7 @@ public class FinStdCostService {
             }
             if (path.containsKey(m)) {
                 Map<Long, WmsMaterial> info = materialService.mapByIds(path.keySet());
-                throw new BizException("BOM 存在循环引用：{0}", path.keySet().stream().map(id -> info.get(id) == null ? String.valueOf(id)
+                throw new BizException("fin.error.circularBomReference", path.keySet().stream().map(id -> info.get(id) == null ? String.valueOf(id)
                         : info.get(id).getCode()).collect(Collectors.joining(" → ")));
             }
             path.put(m, Boolean.TRUE);

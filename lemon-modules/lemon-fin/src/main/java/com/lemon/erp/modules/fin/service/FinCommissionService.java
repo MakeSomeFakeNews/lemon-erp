@@ -65,7 +65,7 @@ public class FinCommissionService {
     @Transactional
     public Long saveRule(FinCommissionRule rule) {
         if (rule.getBasis() == CommissionBasis.RECEIPT && StringUtils.hasText(rule.getMaterialCategory())) {
-            throw new BizException("回款提成不区分物料分类");
+            throw new BizException("fin.error.collectionBasedCommissionDoesNotDistinguish");
         }
         rule.setName(rule.getName().trim());
         rule.setMaterialCategory(StringUtils.hasText(rule.getMaterialCategory()) ? rule.getMaterialCategory() : null);
@@ -75,7 +75,7 @@ public class FinCommissionService {
             ruleMapper.insert(rule);
         } else {
             if (ruleMapper.selectById(rule.getId()) == null) {
-                throw new BizException("提成规则不存在");
+                throw new BizException("fin.error.commissionRuleNotFound");
             }
             ruleMapper.updateById(rule);
             // 可为空的字段
@@ -119,7 +119,7 @@ public class FinCommissionService {
         toYearMonth(period);
         FinCommission sheet = commissionMapper.selectOne(Wrappers.<FinCommission>lambdaQuery().eq(FinCommission::getPeriod, period));
         if (sheet != null && sheet.getStatus() != CommissionStatus.DRAFT) {
-            throw new BizException("{0} 的提成表已确认，请先取消确认", period);
+            throw new BizException("fin.error.commissionSheetConfirmedUnconfirmFirst", period);
         }
         Map<Long, FinCommissionLine> oldLines = new HashMap<>();
         if (sheet == null) {
@@ -188,11 +188,11 @@ public class FinCommissionService {
     public void adjust(Long lineId, BigDecimal adjust, String remark) {
         FinCommissionLine line = lineMapper.selectById(lineId);
         if (line == null) {
-            throw new BizException("提成明细不存在");
+            throw new BizException("fin.error.commissionDetailNotFound");
         }
         FinCommission sheet = commissionMapper.selectById(line.getCommissionId());
         if (sheet.getStatus() != CommissionStatus.DRAFT) {
-            throw new BizException("提成表已确认，不能调整");
+            throw new BizException("fin.error.commissionSheetConfirmedCannotAdjusted");
         }
         BigDecimal a = adjust == null ? BigDecimal.ZERO : adjust;
         lineMapper.update(Wrappers.<FinCommissionLine>lambdaUpdate()
@@ -212,7 +212,7 @@ public class FinCommissionService {
                 .set(FinCommission::getConfirmBy, SecurityUtils.getUserId())
                 .set(FinCommission::getConfirmTime, LocalDateTime.now())
                 .eq(FinCommission::getId, sheet.getId()).eq(FinCommission::getStatus, CommissionStatus.DRAFT)) == 0) {
-            throw new BizException("提成表已确认");
+            throw new BizException("fin.error.commissionSheetAlreadyConfirmed");
         }
     }
 
@@ -281,7 +281,7 @@ public class FinCommissionService {
     private FinCommission requireSheet(int period) {
         FinCommission sheet = commissionMapper.selectOne(Wrappers.<FinCommission>lambdaQuery().eq(FinCommission::getPeriod, period));
         if (sheet == null) {
-            throw new BizException("{0} 还没有计算提成", period);
+            throw new BizException("fin.error.commissionHasNotCalculated", period);
         }
         return sheet;
     }

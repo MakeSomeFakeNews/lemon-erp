@@ -148,13 +148,13 @@ public class CrmContractService {
         CrmContract c = requireStatus(id, "ACTIVE");
         ScmOrder order = orderMapper.selectById(orderId);
         if (order == null || !"SALES".equals(order.getKind()) || !order.getPartnerId().equals(c.getCustomerId())) {
-            throw new BizException("请选择该客户的销售订单");
+            throw new BizException("crm.error.selectSalesOrderCustomer");
         }
         if ("DRAFT".equals(order.getStatus()) || "APPROVING".equals(order.getStatus())) {
-            throw new BizException("销售订单审核后才能关联合同");
+            throw new BizException("crm.error.salesOrderOnlyLinkedContractAfter");
         }
         if (contractMapper.exists(Wrappers.<CrmContract>lambdaQuery().eq(CrmContract::getOrderId, orderId).ne(CrmContract::getId, id))) {
-            throw new BizException("该销售订单已关联其他合同");
+            throw new BizException("crm.error.salesOrderAlreadyLinkedAnotherContract");
         }
         contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getOrderId, orderId).eq(CrmContract::getId, id));
     }
@@ -164,10 +164,10 @@ public class CrmContractService {
     public Long toOrder(Long id, Long warehouseId) {
         CrmContract c = requireStatus(id, "ACTIVE");
         if (c.getOrderId() != null) {
-            throw new BizException("合同已关联销售订单 {0}", c.getOrderNo());
+            throw new BizException("crm.error.contractAlreadyLinkedSalesOrder", c.getOrderNo());
         }
         if (c.getQuotationId() == null) {
-            throw new BizException("合同没有关联报价单，请关联已有的销售订单");
+            throw new BizException("crm.error.contractHasNoLinkedQuotationLink");
         }
         Long orderId = quotationService.toOrder(c.getQuotationId(), warehouseId, c.getStartDate());
         contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getOrderId, orderId).eq(CrmContract::getId, id));
@@ -218,31 +218,31 @@ public class CrmContractService {
     private void activate(Long id, String from) {
         if (contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getStatus, "ACTIVE")
                 .set(CrmContract::getApproveTime, LocalDateTime.now()).eq(CrmContract::getId, id).eq(CrmContract::getStatus, from)) == 0) {
-            throw new BizException("合同状态已变化，请刷新");
+            throw new BizException("crm.error.contractStatusHasChangedRefresh");
         }
     }
 
     private void fill(CrmContract c, ContractRequest req) {
         customerService.get(req.customerId());
         if (req.endDate() != null && req.startDate() != null && req.endDate().isBefore(req.startDate())) {
-            throw new BizException("结束日期不能早于开始日期");
+            throw new BizException("crm.error.endDateCannotEarlierStartDate");
         }
         if (req.opportunityId() != null) {
             CrmOpportunity o = opportunityMapper.selectById(req.opportunityId());
             if (o == null || !o.getCustomerId().equals(req.customerId())) {
-                throw new BizException("商机不属于该客户");
+                throw new BizException("crm.error.opportunityDoesNotBelongCustomer");
             }
         }
         if (req.quotationId() != null) {
             ScmQuotation q = quotationMapper.selectById(req.quotationId());
             if (q == null || !q.getCustomerId().equals(req.customerId())) {
-                throw new BizException("报价单不属于该客户");
+                throw new BizException("crm.error.quotationDoesNotBelongCustomer");
             }
         }
         if (req.plans() != null) {
             BigDecimal total = req.plans().stream().map(ContractRequest.Plan::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
             if (total.compareTo(req.amount()) > 0) {
-                throw new BizException("回款计划合计 {0} 超过合同金额", total.toPlainString());
+                throw new BizException("crm.error.collectionPlanTotalExceedsContractAmount", total.toPlainString());
             }
         }
         c.setName(req.name().trim());
@@ -261,7 +261,7 @@ public class CrmContractService {
         } else {
             SysUser owner = userMapper.selectById(req.ownerId());
             if (owner == null) {
-                throw new BizException("负责人不存在");
+                throw new BizException("crm.error.ownerDoesNotExist");
             }
             c.setOwnerId(owner.getId());
             c.setDeptId(owner.getDeptId());
@@ -288,7 +288,7 @@ public class CrmContractService {
         getAccessible(id);
         CrmContract c = contractMapper.selectDetail(id);
         if (!status.equals(c.getStatus())) {
-            throw new BizException("合同 {0} 状态不正确，请刷新", c.getContractNo());
+            throw new BizException("crm.error.contractHasInvalidStatusRefresh", c.getContractNo());
         }
         return c;
     }
@@ -296,7 +296,7 @@ public class CrmContractService {
     private void transit(Long id, String from, String to) {
         if (contractMapper.update(Wrappers.<CrmContract>lambdaUpdate().set(CrmContract::getStatus, to).eq(CrmContract::getId, id)
                 .eq(CrmContract::getStatus, from)) == 0) {
-            throw new BizException("合同状态已变化，请刷新");
+            throw new BizException("crm.error.contractStatusHasChangedRefresh");
         }
     }
 
@@ -304,7 +304,7 @@ public class CrmContractService {
         Supplier<CrmContract> loader = () -> contractMapper.selectById(id);
         CrmContract c = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(RULE, loader);
         if (c == null) {
-            throw new BizException("合同不存在或没有权限");
+            throw new BizException("crm.error.contractDoesNotExistDoNot");
         }
         return c;
     }

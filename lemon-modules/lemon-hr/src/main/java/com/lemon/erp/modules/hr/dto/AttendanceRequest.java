@@ -11,9 +11,9 @@ import java.time.LocalDateTime;
  * 补录考勤（补卡）：覆盖当天的打卡时间
  */
 public record AttendanceRequest(
-        @NotNull(message = "请选择员工") Long employeeId,
-        @NotNull(message = "请选择日期") LocalDate workDate,
+        @NotNull(message = "{hr.valid.selectEmployee}") Long employeeId,
+        @NotNull(message = "{hr.valid.selectDate}") LocalDate workDate,
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime checkIn,
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime checkOut,
-        @NotNull(message = "请填写补录说明") @Size(min = 1, max = 255, message = "补录说明为1-255个字符") String remark) {
+        @NotNull(message = "{hr.valid.enterReasonManualRecord}") @Size(min = 1, max = 255, message = "{hr.valid.reasonMustCharacters}") String remark) {
 }

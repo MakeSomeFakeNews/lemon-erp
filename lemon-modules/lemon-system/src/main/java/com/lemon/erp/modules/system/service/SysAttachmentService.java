@@ -45,7 +45,7 @@ public class SysAttachmentService {
         checkAccess(bizType, bizId, true);
         if (attachmentMapper.selectCount(Wrappers.<SysAttachment>lambdaQuery()
                 .eq(SysAttachment::getBizType, bizType).eq(SysAttachment::getBizId, bizId)) >= MAX_PER_BIZ) {
-            throw new BizException("每张单据最多上传 {0} 个附件", MAX_PER_BIZ);
+            throw new BizException("system.error.upAttachmentsPerDocument", MAX_PER_BIZ);
         }
         String name = file.getOriginalFilename();
         name = name == null || name.isBlank() ? "未命名" : Path.of(name.replace('\\', '/')).getFileName().toString(); // i18n-ignore 附件名称存库
@@ -81,7 +81,7 @@ public class SysAttachmentService {
         checkAccess(a.getBizType(), a.getBizId(), false);
         Path file = fileStorageService.resolveAttachment(a.getStoragePath());
         if (!Files.isRegularFile(file)) {
-            throw new BizException("附件文件不存在");
+            throw new BizException("system.error.attachmentFileDoesNotExist");
         }
         return Map.entry(a, file);
     }
@@ -103,12 +103,12 @@ public class SysAttachmentService {
     private SysAttachment get(Long id) {
         SysAttachment a = attachmentMapper.selectById(id);
         if (a == null) {
-            throw new BizException("附件不存在");
+            throw new BizException("system.error.attachmentDoesNotExist");
         }
         return a;
     }
 
     private void checkAccess(String bizType, Long bizId, boolean write) {
-        recordAccessService.check(bizType, bizId, write, "附件");
+        recordAccessService.check(bizType, bizId, write, "system.label.attachments");
     }
 }

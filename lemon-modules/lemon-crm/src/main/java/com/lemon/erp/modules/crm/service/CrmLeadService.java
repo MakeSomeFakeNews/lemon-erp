@@ -55,7 +55,7 @@ public class CrmLeadService {
     public CrmLead detail(Long id) {
         CrmLead l = leadMapper.selectDetail(id);
         if (l == null) {
-            throw new BizException("线索不存在");
+            throw new BizException("crm.error.leadDoesNotExist");
         }
         return l;
     }
@@ -98,7 +98,7 @@ public class CrmLeadService {
     public void delete(List<Long> ids) {
         for (CrmLead l : leadMapper.selectByIds(ids)) {
             if ("CONVERTED".equals(l.getStatus())) {
-                throw new BizException("线索「{0}」已转化为客户，不能删除", l.getCompany());
+                throw new BizException("crm.error.leadHasConvertedCustomerCannotDeleted", l.getCompany());
             }
         }
         leadMapper.deleteByIds(ids);
@@ -172,7 +172,7 @@ public class CrmLeadService {
     private CrmLead getOpen(Long id) {
         CrmLead l = detail(id);
         if (!OPEN.contains(l.getStatus())) {
-            throw new BizException("线索已转化或已作废");
+            throw new BizException("crm.error.leadHasAlreadyConvertedVoided");
         }
         return l;
     }
@@ -195,7 +195,7 @@ public class CrmLeadService {
         } else {
             SysUser owner = userMapper.selectById(req.ownerId());
             if (owner == null) {
-                throw new BizException("负责人不存在");
+                throw new BizException("crm.error.ownerDoesNotExist");
             }
             l.setOwnerId(owner.getId());
             l.setDeptId(owner.getDeptId());

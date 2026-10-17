@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.lemon.erp.common.base.TreeEntity;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.util.TreeUtils;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.TokenService;
@@ -58,7 +58,7 @@ public class SysDeptService extends ServiceImpl<SysDeptMapper, SysDept> {
     public void update(SysDept dept) {
         SysDept old = getById(dept.getId());
         if (old == null) {
-            throw new BizException("部门不存在");
+            throw new BizException("system.error.departmentDoesNotExist");
         }
         checkDataScope(dept.getId());
         normalize(dept);
@@ -68,16 +68,16 @@ public class SysDeptService extends ServiceImpl<SysDeptMapper, SysDept> {
         boolean parentChanged = !Objects.equals(old.getParentId(), dept.getParentId());
         if (parentChanged) {
             if (Objects.equals(dept.getId(), dept.getParentId())) {
-                throw new BizException("上级部门不能是自己");
+                throw new BizException("system.error.parentDepartmentCannotItself");
             }
             if (selfAndDescendantIds(dept.getId()).contains(dept.getParentId())) {
-                throw new BizException("上级部门不能是自己的下级部门");
+                throw new BizException("system.error.parentDepartmentCannotOneSubDepartments");
             }
         }
         checkParent(dept, parentChanged);
         if (dept.getStatus() == 0 && exists(Wrappers.<SysDept>lambdaQuery()
                 .eq(SysDept::getParentId, dept.getId()).eq(SysDept::getStatus, 1))) {
-            throw new BizException("该部门包含未停用的下级部门，不允许停用");
+            throw new BizException("system.error.departmentHasEnabledSubDepartmentsCannot");
         }
         updateById(dept);
         tokenService.evictAllLoginUsers();
@@ -87,12 +87,12 @@ public class SysDeptService extends ServiceImpl<SysDeptMapper, SysDept> {
     public void delete(Long id) {
         checkDataScope(id);
         if (exists(Wrappers.<SysDept>lambdaQuery().eq(SysDept::getParentId, id))) {
-            throw new BizException("存在下级部门，不允许删除");
+            throw new BizException("system.error.departmentHasSubDepartmentsCannotDeleted");
         }
         if (userMapper.exists(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getDeptId, id))) {
-            throw new BizException("部门下存在用户，不允许删除");
+            throw new BizException("system.error.departmentHasUsersCannotDeleted");
         }
-        referenceGuard.checkDeletable(RefType.DEPT, id, I18n.t("部门"));
+        referenceGuard.checkDeletable(RefType.DEPT, id, Messages.get("system.text.department"));
         removeById(id);
         roleDeptMapper.delete(Wrappers.<SysRoleDept>lambdaQuery().eq(SysRoleDept::getDeptId, id));
         tokenService.evictAllLoginUsers();
@@ -101,7 +101,7 @@ public class SysDeptService extends ServiceImpl<SysDeptMapper, SysDept> {
     /** 当前用户没有该部门的数据权限时抛出异常 */
     public void checkDataScope(Long deptId) {
         if (!SecurityUtils.getDataScope().canAccessDept(deptId)) {
-            throw new BizException("没有该部门的数据权限");
+            throw new BizException("system.error.noDataPermissionDepartment");
         }
     }
 
@@ -139,19 +139,19 @@ public class SysDeptService extends ServiceImpl<SysDeptMapper, SysDept> {
     private void checkParent(SysDept dept, boolean checkScope) {
         if (dept.getParentId() == TreeEntity.ROOT_PARENT_ID) {
             if (checkScope && !SecurityUtils.getDataScope().all()) {
-                throw new BizException("没有权限设置顶级部门");
+                throw new BizException("system.error.noPermissionSetTopLevelDepartment");
             }
             return;
         }
         SysDept parent = getById(dept.getParentId());
         if (parent == null) {
-            throw new BizException("上级部门不存在");
+            throw new BizException("system.error.parentDepartmentDoesNotExist");
         }
         if (checkScope) {
             checkDataScope(parent.getId());
         }
         if (parent.getStatus() == 0 && dept.getStatus() == 1) {
-            throw new BizException("上级部门已停用，不允许启用或新增下级部门");
+            throw new BizException("system.error.parentDepartmentDisabledSubDepartmentsCannot");
         }
     }
 
@@ -159,7 +159,7 @@ public class SysDeptService extends ServiceImpl<SysDeptMapper, SysDept> {
     private void checkLeader(Long leaderUserId) {
         if (leaderUserId != null && !userMapper.exists(Wrappers.<SysUser>lambdaQuery()
                 .eq(SysUser::getId, leaderUserId).eq(SysUser::getStatus, 1))) {
-            throw new BizException("负责人不存在或已停用");
+            throw new BizException("system.error.ownerDoesNotExistDisabled");
         }
     }
 

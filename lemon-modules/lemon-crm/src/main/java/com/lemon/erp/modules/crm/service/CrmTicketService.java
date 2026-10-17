@@ -72,7 +72,7 @@ public class CrmTicketService {
     public CrmTicket detail(Long id) {
         CrmTicket t = ticketMapper.selectDetail(id);
         if (t == null) {
-            throw new BizException("工单不存在");
+            throw new BizException("crm.error.ticketDoesNotExist");
         }
         return t;
     }
@@ -127,7 +127,7 @@ public class CrmTicketService {
     public void assign(Long id, TicketActionRequest req) {
         getActive(id);
         if (req.assigneeId() == null) {
-            throw new BizException("请选择处理人");
+            throw new BizException("crm.error.selectAssignee");
         }
         ticketMapper.update(Wrappers.<CrmTicket>lambdaUpdate().set(CrmTicket::getAssigneeId, req.assigneeId()).eq(CrmTicket::getId, id));
         log(id, "ASSIGN", req.content());
@@ -137,7 +137,7 @@ public class CrmTicketService {
     @Transactional
     public void process(Long id, TicketActionRequest req) {
         CrmTicket t = getActive(id);
-        requireContent(req, "请填写处理记录");
+        requireContent(req, "crm.error.enterProcessingNote");
         if ("OPEN".equals(t.getStatus())) {
             ticketMapper.update(Wrappers.<CrmTicket>lambdaUpdate()
                     .set(CrmTicket::getStatus, "PROCESSING")
@@ -150,7 +150,7 @@ public class CrmTicketService {
     @Transactional
     public void resolve(Long id, TicketActionRequest req) {
         getActive(id);
-        requireContent(req, "请填写解决方案");
+        requireContent(req, "crm.error.enterSolution");
         ticketMapper.update(Wrappers.<CrmTicket>lambdaUpdate()
                 .set(CrmTicket::getStatus, "RESOLVED")
                 .set(CrmTicket::getSolution, req.content())
@@ -164,7 +164,7 @@ public class CrmTicketService {
     public void close(Long id, TicketActionRequest req) {
         CrmTicket t = detail(id);
         if (!"RESOLVED".equals(t.getStatus())) {
-            throw new BizException("工单解决后才能关闭");
+            throw new BizException("crm.error.ticketOnlyClosedAfterResolved");
         }
         ticketMapper.update(Wrappers.<CrmTicket>lambdaUpdate()
                 .set(CrmTicket::getStatus, "CLOSED")
@@ -179,9 +179,9 @@ public class CrmTicketService {
     public void reopen(Long id, TicketActionRequest req) {
         CrmTicket t = detail(id);
         if (ACTIVE.contains(t.getStatus())) {
-            throw new BizException("工单未解决，不需要重新打开");
+            throw new BizException("crm.error.ticketNotResolvedDoesNotNeed");
         }
-        requireContent(req, "请填写重新打开的原因");
+        requireContent(req, "crm.error.enterReasonReopening");
         ticketMapper.update(Wrappers.<CrmTicket>lambdaUpdate()
                 .set(CrmTicket::getStatus, "PROCESSING")
                 .set(CrmTicket::getResolvedTime, null)
@@ -196,7 +196,7 @@ public class CrmTicketService {
     public void delete(List<Long> ids) {
         for (CrmTicket t : ticketMapper.selectByIds(ids)) {
             if (!"OPEN".equals(t.getStatus())) {
-                throw new BizException("工单 {0} 已开始处理，不能删除", t.getTicketNo());
+                throw new BizException("crm.error.ticketAlreadyProcessedCannotDeleted", t.getTicketNo());
             }
         }
         logMapper.delete(Wrappers.<CrmTicketLog>lambdaQuery().in(CrmTicketLog::getTicketId, ids));
@@ -225,7 +225,7 @@ public class CrmTicketService {
     private CrmTicket getActive(Long id) {
         CrmTicket t = detail(id);
         if (!ACTIVE.contains(t.getStatus())) {
-            throw new BizException("工单已解决或已关闭");
+            throw new BizException("crm.error.ticketHasAlreadyResolvedClosed");
         }
         return t;
     }
@@ -233,22 +233,22 @@ public class CrmTicketService {
     private void check(TicketRequest req) {
         customerService.detail(req.customerId());
         if (!TYPES.contains(req.type())) {
-            throw new BizException("工单类型不正确");
+            throw new BizException("crm.error.invalidTicketType");
         }
         if (!CrmConstants.SLA_HOURS.containsKey(req.priority())) {
-            throw new BizException("优先级不正确");
+            throw new BizException("crm.error.invalidPriority");
         }
         if (req.contactId() != null) {
             CrmContact contact = contactMapper.selectById(req.contactId());
             if (contact == null || !Objects.equals(contact.getCustomerId(), req.customerId())) {
-                throw new BizException("联系人不属于该客户");
+                throw new BizException("crm.error.contactDoesNotBelongCustomer");
             }
         }
     }
 
-    private static void requireContent(TicketActionRequest req, String message) {
+    private static void requireContent(TicketActionRequest req, String messageKey) {
         if (req == null || !StringUtils.hasText(req.content())) {
-            throw new BizException(message);
+            throw new BizException(messageKey);
         }
     }
 
@@ -275,7 +275,7 @@ public class CrmTicketService {
     public Long issueParts(Long id, TicketPartsRequest req) {
         CrmTicket t = detail(id);
         if ("CLOSED".equals(t.getStatus())) {
-            throw new BizException("工单已关闭，不能领用备件");
+            throw new BizException("crm.error.ticketClosedSparePartsCannotIssued");
         }
         WmsStockDoc doc = stockDocService.createConfirmed(StockBizType.OUT, new StockDocRequest("SERVICE", req.warehouseId(), null,
                 req.bizDate(), req.remark() == null ? "服务工单 " + t.getTicketNo() + " 领用备件" : req.remark(), req.items()), t.getTicketNo()); // i18n-ignore 存库的单据备注
@@ -298,7 +298,7 @@ public class CrmTicketService {
     public void charge(Long id, TicketChargeRequest req) {
         CrmTicket t = detail(id);
         if (t.getFeeBillId() != null) {
-            throw new BizException("工单已收费");
+            throw new BizException("crm.error.ticketHasAlreadyCharged");
         }
         BigDecimal rate = req.taxRate() == null ? BigDecimal.valueOf(6) : req.taxRate();
         BigDecimal tax = req.amount().multiply(rate).divide(BigDecimal.valueOf(100).add(rate), 2, RoundingMode.HALF_UP);

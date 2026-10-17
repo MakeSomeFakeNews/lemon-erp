@@ -47,7 +47,7 @@ public class MesSupplementController {
     /** @return 申请 ID */
     @PostMapping
     @PreAuthorize("@ss.hasPerm('mes:supplement:add')")
-    @OperLog(title = "补料申请", type = OperType.INSERT)
+    @OperLog(title = "补料申请", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody SupplementRequest req) {
         return R.ok(supplementService.create(req));
     }

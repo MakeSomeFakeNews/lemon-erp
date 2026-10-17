@@ -94,7 +94,7 @@ public class FinOpeningService {
     @Transactional
     public void saveAccountOpenings(AccountOpeningRequest req) {
         if (periodMapper.exists(Wrappers.<FinPeriod>lambdaQuery().eq(FinPeriod::getStatus, FinPeriodService.CLOSED))) {
-            throw new BizException("已有结账的期间，不能再修改科目期初余额");
+            throw new BizException("fin.error.somePeriodsClosedAccountOpeningBalances");
         }
         List<FinAccountOpening> list = new ArrayList<>();
         Set<Long> seen = new HashSet<>();
@@ -107,7 +107,7 @@ public class FinOpeningService {
                 continue;
             }
             if (!seen.add(item.accountId())) {
-                throw new BizException("科目重复");
+                throw new BizException("fin.error.duplicateAccount");
             }
             FinAccountOpening o = new FinAccountOpening();
             o.setAccountId(item.accountId());
@@ -118,7 +118,7 @@ public class FinOpeningService {
             credit = credit.add(c);
         }
         if (debit.compareTo(credit) != 0) {
-            throw new BizException("期初余额借贷不平衡：借方 {0}，贷方 {1}", debit.toPlainString(), credit.toPlainString());
+            throw new BizException("fin.error.openingBalancesDoNotBalanceDebit", debit.toPlainString(), credit.toPlainString());
         }
         if (!list.isEmpty()) {
             accountService.requireLeaves(seen);
@@ -194,7 +194,7 @@ public class FinOpeningService {
         toYearMonth(req.startPeriod());
         int openPeriod = previous(req.startPeriod());
         if (runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, FinCostService.RUN))) {
-            throw new BizException("已经核算过成本，不能再修改存货期初；请先撤销全部成本核算");
+            throw new BizException("fin.error.costsHaveCalculatedInventoryOpeningsNo");
         }
         FinCostRun old = openingRun();
         if (old != null) {
@@ -205,13 +205,13 @@ public class FinOpeningService {
         List<FinMaterialCost> rows = new ArrayList<>();
         for (StockOpeningRequest.Item item : req.items()) {
             if (!seen.add(item.materialId())) {
-                throw new BizException("物料重复");
+                throw new BizException("fin.error.duplicateMaterial");
             }
             if (item.qty().signum() == 0 && item.amount().signum() == 0) {
                 continue;
             }
             if (item.qty().signum() == 0) {
-                throw new BizException("数量为 0 的物料不能有期初金额");
+                throw new BizException("fin.error.materialsZeroQuantityCannotHaveOpening");
             }
             FinMaterialCost c = new FinMaterialCost();
             c.setPeriod(openPeriod);

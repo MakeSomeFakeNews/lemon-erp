@@ -3,7 +3,7 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.QmsRequests;
@@ -59,7 +59,7 @@ public class QmsClaimService {
     public QmsSupplierClaim detail(Long id) {
         QmsSupplierClaim claim = id == null ? null : claimMapper.selectDetail(id);
         if (claim == null) {
-            throw new BizException("索赔单不存在");
+            throw new BizException("mes.error.claimDoesNotExist");
         }
         return claim;
     }
@@ -77,21 +77,21 @@ public class QmsClaimService {
 
     @Transactional
     public void update(Long id, QmsRequests.Claim req) {
-        QmsSupplierClaim claim = requireStatus(id, ClaimStatus.DRAFT, "修改");
+        QmsSupplierClaim claim = requireStatus(id, ClaimStatus.DRAFT, "mes.label.edit");
         apply(claim, req);
         claimMapper.updateById(claim);
     }
 
     @Transactional
     public void delete(Long id) {
-        requireStatus(id, ClaimStatus.DRAFT, "删除");
+        requireStatus(id, ClaimStatus.DRAFT, "mes.label.delete");
         claimMapper.deleteById(id);
     }
 
     /** 确认：财务生成红字应付单 */
     @Transactional
     public void confirm(Long id) {
-        QmsSupplierClaim claim = requireStatus(id, ClaimStatus.DRAFT, "确认");
+        QmsSupplierClaim claim = requireStatus(id, ClaimStatus.DRAFT, "mes.label.confirm");
         transit(id, ClaimStatus.DRAFT, ClaimStatus.CONFIRMED);
         eventPublisher.publishEvent(new SupplierClaimConfirmedEvent(id, claim.getClaimNo(), claim.getSupplierId(), claim.getAmount(),
                 claim.getClaimDate(), claim.getReason()));
@@ -102,7 +102,7 @@ public class QmsClaimService {
     /** 取消已确认的索赔：删除红字应付单 */
     @Transactional
     public void cancel(Long id) {
-        QmsSupplierClaim claim = requireStatus(id, ClaimStatus.CONFIRMED, "取消");
+        QmsSupplierClaim claim = requireStatus(id, ClaimStatus.CONFIRMED, "mes.label.cancel");
         transit(id, ClaimStatus.CONFIRMED, ClaimStatus.CANCELLED);
         eventPublisher.publishEvent(new SupplierClaimCancelledEvent(id, claim.getClaimNo(), claim.getBillId()));
     }
@@ -114,13 +114,13 @@ public class QmsClaimService {
         if (req.ncrId() != null) {
             QmsNcr ncr = ncrMapper.selectById(req.ncrId());
             if (ncr == null) {
-                throw new BizException("不合格品处理单不存在");
+                throw new BizException("mes.error.nonconformanceReportDoesNotExist");
             }
             if (ncr.getStatus() == NcrStatus.CANCELLED) {
-                throw new BizException("不合格品处理单已取消");
+                throw new BizException("mes.error.ncrHasCancelled");
             }
             if (ncr.getSupplierId() != null && !ncr.getSupplierId().equals(req.supplierId())) {
-                throw new BizException("索赔供应商与不合格品处理单的供应商不一致");
+                throw new BizException("mes.error.claimSupplierDoesNotMatchNcr");
             }
         }
         claim.setSupplierId(req.supplierId());
@@ -135,17 +135,17 @@ public class QmsClaimService {
                 .set(QmsSupplierClaim::getStatus, to)
                 .set(to == ClaimStatus.CONFIRMED, QmsSupplierClaim::getConfirmTime, LocalDateTime.now())
                 .eq(QmsSupplierClaim::getId, id).eq(QmsSupplierClaim::getStatus, from)) == 0) {
-            throw new BizException("索赔单状态已变化，请刷新后重试");
+            throw new BizException("mes.error.claimStatusHasChangedRefreshTry");
         }
     }
 
     private QmsSupplierClaim requireStatus(Long id, ClaimStatus status, String action) {
         QmsSupplierClaim claim = claimMapper.selectById(id);
         if (claim == null) {
-            throw new BizException("索赔单不存在");
+            throw new BizException("mes.error.claimDoesNotExist");
         }
         if (claim.getStatus() != status) {
-            throw new BizException("索赔单当前状态不能{0}", I18n.t(action));
+            throw new BizException("mes.error.currentClaimStatusDoesNotAllow", Messages.get(action));
         }
         return claim;
     }

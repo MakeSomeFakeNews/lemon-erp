@@ -16,18 +16,18 @@ public class FinDocNos {
     @Bean
     @Order(5)
     public DocNoCatalog finDocNoCatalog() {
-        return DocNoCatalog.of("财务管理",
-                doc("YS", "应收单"),
-                doc("YF", "应付单"),
-                doc("SK", "收款单"),
-                doc("FK", "付款单"),
-                doc("YSK", "预收款"),
-                doc("YFK", "预付款"),
-                doc("BX", "费用报销"),
-                doc("JK", "员工借款"),
-                doc(FinFundService.TRANSFER_NO, "账户调拨"),
-                doc(FinStatementService.DOC_NO, "供应商对账单"),
-                doc(FinAssetCheckService.DOC_NO, "资产盘点"),
-                doc(FinConsumableService.DOC_NO, "低值易耗品领用"));
+        return DocNoCatalog.of("fin.label.financialManagement",
+                doc("YS", "fin.label.receivable"),
+                doc("YF", "fin.label.payable"),
+                doc("SK", "fin.label.receipt"),
+                doc("FK", "fin.label.payment"),
+                doc("YSK", "fin.label.advanceReceipt"),
+                doc("YFK", "fin.label.advancePayment"),
+                doc("BX", "fin.label.expenseClaim"),
+                doc("JK", "fin.label.employeeLoan"),
+                doc(FinFundService.TRANSFER_NO, "fin.label.fundTransfer"),
+                doc(FinStatementService.DOC_NO, "fin.label.supplierStatement"),
+                doc(FinAssetCheckService.DOC_NO, "fin.label.assetCount"),
+                doc(FinConsumableService.DOC_NO, "fin.label.consumableRequisition"));
     }
 }

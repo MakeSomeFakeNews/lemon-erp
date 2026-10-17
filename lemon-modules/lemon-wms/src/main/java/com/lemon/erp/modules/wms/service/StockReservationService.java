@@ -3,6 +3,7 @@ package com.lemon.erp.modules.wms.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
@@ -68,13 +69,13 @@ public class StockReservationService {
     public void reserve(String sourceType, Long sourceId, Long sourceItemId, String sourceNo, Long warehouseId, Long materialId,
                         BigDecimal qty, String remark) {
         if (qty.signum() <= 0) {
-            throw new BizException("预留数量必须大于0");
+            throw new BizException("wms.error.reservedQuantityMustGreater");
         }
         // 锁定物料行，避免并发预留同一物料超出空闲库存
         WmsMaterial material = materialMapper.selectOne(Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getId, materialId).last("FOR UPDATE"));
         BigDecimal free = free(warehouseId, List.of(materialId)).getOrDefault(materialId, BigDecimal.ZERO);
         if (free.compareTo(qty) < 0) {
-            throw new BizException("{0} {1} 空闲库存不足：可预留 {2}，需要 {3}", material.getCode(), material.getName(),
+            throw new BizException("wms.error.insufficientFreeStockReservableRequired", material.getCode(), material.getName(),
                     plain(free.max(BigDecimal.ZERO)), plain(qty));
         }
         WmsReservation r = new WmsReservation();
@@ -124,14 +125,14 @@ public class StockReservationService {
     public void releaseById(Long id) {
         if (reservationMapper.update(Wrappers.<WmsReservation>lambdaUpdate().set(WmsReservation::getQty, BigDecimal.ZERO)
                 .eq(WmsReservation::getId, id).gt(WmsReservation::getQty, 0)) == 0) {
-            throw new BizException("预留不存在或已释放");
+            throw new BizException("wms.error.reservationDoesNotExistHasReleased");
         }
     }
 
     public WmsReservation get(Long id) {
         WmsReservation r = reservationMapper.selectById(id);
         if (r == null) {
-            throw new BizException("预留不存在");
+            throw new BizException("wms.error.reservationDoesNotExist");
         }
         return r;
     }
@@ -152,8 +153,8 @@ public class StockReservationService {
                 String sources = reservationMapper.selectList(Wrappers.<WmsReservation>lambdaQuery()
                                 .eq(WmsReservation::getWarehouseId, warehouseId).eq(WmsReservation::getMaterialId, materialId)
                                 .gt(WmsReservation::getQty, 0).last("LIMIT 3")).stream().map(WmsReservation::getSourceNo)
-                        .collect(Collectors.joining("、"));
-                throw new BizException("{0} {1} 的库存已被预留（共 {2}，{3} 等），出库后不足以满足预留，请先释放预留",
+                        .collect(Collectors.joining(Messages.get("wms.text.listSeparator")));
+                throw new BizException("wms.error.stockReservedTotalEtcAfterOutbound",
                         m.getCode(), m.getName(), plain(reserved), sources);
             }
         }));

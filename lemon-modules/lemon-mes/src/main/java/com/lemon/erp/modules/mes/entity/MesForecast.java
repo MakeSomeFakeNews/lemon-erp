@@ -20,19 +20,19 @@ import java.math.BigDecimal;
 @TableName("mes_forecast")
 public class MesForecast extends BaseEntity {
 
-    @NotNull(message = "请选择物料")
+    @NotNull(message = "{mes.valid.selectMaterial}")
     private Long materialId;
 
     /** 月份 yyyyMM */
-    @NotNull(message = "请选择月份")
+    @NotNull(message = "{mes.valid.selectMonth}")
     private Integer period;
 
-    @NotNull(message = "请填写预测数量")
-    @DecimalMin(value = "0", inclusive = false, message = "预测数量必须大于0")
-    @Digits(integer = 14, fraction = 4, message = "数量最多4位小数")
+    @NotNull(message = "{mes.valid.enterForecastQuantity}")
+    @DecimalMin(value = "0", inclusive = false, message = "{mes.valid.forecastQuantityMustGreater}")
+    @Digits(integer = 14, fraction = 4, message = "{mes.valid.quantityAllowsMostDecimalPlaces}")
     private BigDecimal qty;
 
-    @Size(max = 255, message = "备注不能超过255个字符")
+    @Size(max = 255, message = "{mes.valid.remarkCannotExceedCharacters}")
     private String remark;
 
     private Long createBy;

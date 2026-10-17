@@ -16,10 +16,10 @@ public class HrDocNos {
     @Bean
     @Order(7)
     public DocNoCatalog hrDocNoCatalog() {
-        return DocNoCatalog.of("人力资源",
-                doc("HT", "劳动合同"),
-                doc("ZP", "招聘需求"),
-                doc("QJ", "假勤申请"),
-                doc("GZ", "工资表"));
+        return DocNoCatalog.of("hr.label.humanResources",
+                doc("HT", "hr.label.employmentContract"),
+                doc("ZP", "hr.label.jobRequisition"),
+                doc("QJ", "hr.label.leaveOvertimeRequest"),
+                doc("GZ", "hr.label.payroll"));
     }
 }

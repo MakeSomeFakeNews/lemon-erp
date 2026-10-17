@@ -16,9 +16,9 @@ import java.time.LocalDate;
  * @param amount  未收 / 未付金额，可为负数（如期初预收冲减）
  */
 public record OpeningBillRow(
-        @NotBlank(message = "请填写往来单位") String partner,
-        @NotNull(message = "请填写单据日期") LocalDate billDate,
+        @NotBlank(message = "{fin.valid.enterBusinessPartner}") String partner,
+        @NotNull(message = "{fin.valid.enterDocumentDate}") LocalDate billDate,
         LocalDate dueDate,
-        @NotNull(message = "请填写金额") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal amount,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+        @NotNull(message = "{fin.valid.enterAmount}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount,
+        @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}") String remark) {
 }

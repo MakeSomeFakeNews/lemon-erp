@@ -21,17 +21,17 @@ import java.util.List;
 public record ClaimRequest(
         Long userId,
         Long deptId,
-        @NotNull(message = "请选择报销日期") LocalDate claimDate,
+        @NotNull(message = "{fin.valid.selectClaimDate}") LocalDate claimDate,
         Long loanId,
-        @Size(max = 255, message = "事由不能超过255个字符") String remark,
-        @NotEmpty(message = "请添加报销明细") @Size(max = 100, message = "明细不能超过100行") List<@Valid @NotNull Item> items) {
+        @Size(max = 255, message = "{fin.valid.reasonCannotExceedCharacters}") String remark,
+        @NotEmpty(message = "{fin.valid.addExpenseClaimDetails}") @Size(max = 100, message = "{fin.valid.detailsCannotExceedLines}") List<@Valid @NotNull Item> items) {
 
     public record Item(
             LocalDate expenseDate,
-            @NotNull(message = "请选择费用科目") Long accountId,
+            @NotNull(message = "{fin.valid.selectExpenseAccount}") Long accountId,
             Long projectId,
-            @NotNull(message = "请填写金额") @DecimalMin(value = "0.01", message = "金额必须大于0")
-            @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal amount,
-            @Size(max = 255, message = "说明不能超过255个字符") String remark) {
+            @NotNull(message = "{fin.valid.enterAmount}") @DecimalMin(value = "0.01", message = "{fin.valid.amountMustGreater}")
+            @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount,
+            @Size(max = 255, message = "{fin.valid.descriptionCannotExceedCharacters}") String remark) {
     }
 }

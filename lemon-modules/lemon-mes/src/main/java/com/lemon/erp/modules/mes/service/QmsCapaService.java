@@ -3,7 +3,7 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -54,7 +54,7 @@ public class QmsCapaService {
     public QmsCapa detail(Long id) {
         QmsCapa capa = id == null ? null : capaMapper.selectDetail(id);
         if (capa == null) {
-            throw new BizException("纠正预防单不存在");
+            throw new BizException("mes.error.capaDoesNotExist");
         }
         capa.setSteps(stepMapper.selectByCapa(id));
         return capa;
@@ -82,7 +82,7 @@ public class QmsCapaService {
 
     @Transactional
     public void update(Long id, QmsRequests.Capa req) {
-        QmsCapa capa = requireStatus(id, CapaStatus.OPEN, "修改");
+        QmsCapa capa = requireStatus(id, CapaStatus.OPEN, "mes.label.edit");
         apply(capa, req);
         capaMapper.updateById(capa);
     }
@@ -90,14 +90,14 @@ public class QmsCapaService {
     /** 填写步骤：处理中才能修改 */
     @Transactional
     public void saveStep(Long id, Long stepId, QmsRequests.CapaStep req) {
-        requireStatus(id, CapaStatus.OPEN, "填写步骤");
+        requireStatus(id, CapaStatus.OPEN, "mes.label.fillSteps");
         QmsCapaStep step = stepMapper.selectById(stepId);
         if (step == null || !step.getCapaId().equals(id)) {
-            throw new BizException("步骤不属于该纠正预防单");
+            throw new BizException("mes.error.stepDoesNotBelongCapa");
         }
         boolean done = Boolean.TRUE.equals(req.done());
         if (done && (req.content() == null || req.content().isBlank())) {
-            throw new BizException("{0} 请先填写内容再标记完成", step.getStep());
+            throw new BizException("mes.error.fillContentBeforeMarkingCompleted", step.getStep());
         }
         stepMapper.update(Wrappers.<QmsCapaStep>lambdaUpdate()
                 .set(QmsCapaStep::getContent, req.content())
@@ -110,11 +110,11 @@ public class QmsCapaService {
     /** 提交效果验证：全部步骤完成后 */
     @Transactional
     public void submitVerify(Long id) {
-        requireStatus(id, CapaStatus.OPEN, "提交验证");
+        requireStatus(id, CapaStatus.OPEN, "mes.label.submitVerification");
         List<QmsCapaStep> steps = stepMapper.selectByCapa(id);
         List<String> undone = steps.stream().filter(s -> s.getDone() == null || s.getDone() != 1).map(QmsCapaStep::getStep).toList();
         if (!undone.isEmpty()) {
-            throw new BizException("步骤 {0} 尚未完成", String.join(I18n.t("、"), undone));
+            throw new BizException("mes.error.stepsNotCompleted", String.join(Messages.get("mes.label.listSeparator"), undone));
         }
         transit(id, CapaStatus.OPEN, CapaStatus.VERIFYING, null);
     }
@@ -122,14 +122,14 @@ public class QmsCapaService {
     /** 效果验证：有效关闭，无效退回处理中（保留验证说明） */
     @Transactional
     public void verify(Long id, QmsRequests.CapaVerify req) {
-        requireStatus(id, CapaStatus.VERIFYING, "验证");
+        requireStatus(id, CapaStatus.VERIFYING, "mes.label.verify");
         transit(id, CapaStatus.VERIFYING, req.effective() ? CapaStatus.CLOSED : CapaStatus.OPEN, req.verifyResult());
     }
 
     /** 删除：处理中的 */
     @Transactional
     public void delete(Long id) {
-        requireStatus(id, CapaStatus.OPEN, "删除");
+        requireStatus(id, CapaStatus.OPEN, "mes.label.delete");
         stepMapper.delete(Wrappers.<QmsCapaStep>lambdaQuery().eq(QmsCapaStep::getCapaId, id));
         capaMapper.deleteById(id);
     }
@@ -140,7 +140,7 @@ public class QmsCapaService {
         if (req.source() == CapaSource.NCR) {
             QmsNcr ncr = req.ncrId() == null ? null : ncrMapper.selectById(req.ncrId());
             if (ncr == null) {
-                throw new BizException("请选择来源不合格品处理单");
+                throw new BizException("mes.error.selectSourceNcr");
             }
             capa.setNcrId(ncr.getId());
         } else {
@@ -161,17 +161,17 @@ public class QmsCapaService {
                 .set(verified, QmsCapa::getVerifiedBy, SecurityUtils.getUserId())
                 .set(verified, QmsCapa::getVerifyTime, LocalDateTime.now())
                 .eq(QmsCapa::getId, id).eq(QmsCapa::getStatus, from)) == 0) {
-            throw new BizException("纠正预防单状态已变化，请刷新后重试");
+            throw new BizException("mes.error.capaStatusHasChangedRefreshTry");
         }
     }
 
     private QmsCapa requireStatus(Long id, CapaStatus status, String action) {
         QmsCapa capa = capaMapper.selectById(id);
         if (capa == null) {
-            throw new BizException("纠正预防单不存在");
+            throw new BizException("mes.error.capaDoesNotExist");
         }
         if (capa.getStatus() != status) {
-            throw new BizException("纠正预防单当前状态不能{0}", I18n.t(action));
+            throw new BizException("mes.error.currentCapaStatusDoesNotAllow", Messages.get(action));
         }
         return capa;
     }

@@ -53,7 +53,7 @@ public class FinStatementService {
     public FinSupplierStatement detail(Long id, Long supplierId) {
         FinSupplierStatement st = id == null ? null : statementMapper.selectDetail(id);
         if (st == null || (supplierId != null && (!supplierId.equals(st.getSupplierId()) || st.getStatus() == StatementStatus.DRAFT))) {
-            throw new BizException("对账单不存在");
+            throw new BizException("fin.error.statementNotFound");
         }
         st.setLines(statementMapper.selectLines(id));
         return st;
@@ -63,11 +63,11 @@ public class FinStatementService {
     public Long generate(StatementRequests.Generate req) {
         supplierService.get(req.supplierId());
         if (req.endDate().isBefore(req.beginDate())) {
-            throw new BizException("对账期间结束日期不能早于开始日期");
+            throw new BizException("fin.error.statementEndDateCannotEarlierStart");
         }
         List<FinSupplierStatementLine> lines = statementMapper.selectUnreconciledBills(req.supplierId(), req.beginDate(), req.endDate());
         if (lines.isEmpty()) {
-            throw new BizException("期间内没有需要对账的应付单（已对过账的不再计入）");
+            throw new BizException("fin.error.noPayablesReconcilePeriodAlreadyReconciled");
         }
         FinSupplierStatement st = new FinSupplierStatement();
         st.setStatementNo(docNoService.next(DOC_NO));
@@ -90,7 +90,7 @@ public class FinStatementService {
     public void send(Long id) {
         FinSupplierStatement st = detail(id, null);
         if (st.getStatus() != StatementStatus.DRAFT && st.getStatus() != StatementStatus.DISPUTED) {
-            throw new BizException("对账单已发送或已确认");
+            throw new BizException("fin.error.statementHasAlreadySentConfirmed");
         }
         transit(id, st.getStatus(), StatementStatus.SENT);
         portalNotifier.notify(st.getSupplierId(), "REMIND", "对账单待确认：" + st.getStatementNo(), // i18n-ignore
@@ -103,7 +103,7 @@ public class FinStatementService {
     public void delete(Long id) {
         FinSupplierStatement st = detail(id, null);
         if (st.getStatus() != StatementStatus.DRAFT && st.getStatus() != StatementStatus.DISPUTED) {
-            throw new BizException("已发送待确认或已确认的对账单不能删除");
+            throw new BizException("fin.error.statementsSentConfirmedCannotDeleted");
         }
         statementMapper.deleteLines(id);
         statementMapper.deleteById(id);
@@ -114,11 +114,11 @@ public class FinStatementService {
     public void confirm(Long id, Long supplierId, StatementRequests.Confirm req) {
         FinSupplierStatement st = detail(id, supplierId);
         if (st.getStatus() != StatementStatus.SENT) {
-            throw new BizException("对账单不是待确认状态");
+            throw new BizException("fin.error.statementNotPendingConfirmation");
         }
         boolean agree = req.agree();
         if (!agree && (req.remark() == null || req.remark().isBlank())) {
-            throw new BizException("请说明异议");
+            throw new BizException("fin.error.describeDispute");
         }
         if (statementMapper.update(Wrappers.<FinSupplierStatement>lambdaUpdate()
                 .set(FinSupplierStatement::getStatus, agree ? StatementStatus.CONFIRMED : StatementStatus.DISPUTED)
@@ -128,7 +128,7 @@ public class FinStatementService {
                 .set(agree, FinSupplierStatement::getInvoiceAmount, req.invoiceAmount())
                 .set(agree, FinSupplierStatement::getInvoiceDate, req.invoiceDate())
                 .eq(FinSupplierStatement::getId, id).eq(FinSupplierStatement::getStatus, StatementStatus.SENT)) == 0) {
-            throw new BizException("对账单状态已变化，请刷新后重试");
+            throw new BizException("fin.error.statementStatusHasChangedRefreshTry");
         }
         messageSender.send(List.of(st.getCreateBy()), MessageSender.Message.of(agree ? "REMIND" : "ALERT",
                 st.getSupplierName() + (agree ? " 已确认对账单 " : " 对对账单有异议 ") + st.getStatementNo(), // i18n-ignore
@@ -140,7 +140,7 @@ public class FinStatementService {
     public void invoice(Long id, Long supplierId, StatementRequests.Invoice req) {
         FinSupplierStatement st = detail(id, supplierId);
         if (st.getStatus() != StatementStatus.CONFIRMED) {
-            throw new BizException("确认对账后才能填写发票");
+            throw new BizException("fin.error.invoicesOnlyEnteredAfterStatementConfirmed");
         }
         statementMapper.update(Wrappers.<FinSupplierStatement>lambdaUpdate()
                 .set(FinSupplierStatement::getInvoiceNo, req.invoiceNo())
@@ -152,7 +152,7 @@ public class FinStatementService {
     private void transit(Long id, StatementStatus from, StatementStatus to) {
         if (statementMapper.update(Wrappers.<FinSupplierStatement>lambdaUpdate().set(FinSupplierStatement::getStatus, to)
                 .eq(FinSupplierStatement::getId, id).eq(FinSupplierStatement::getStatus, from)) == 0) {
-            throw new BizException("对账单状态已变化，请刷新后重试");
+            throw new BizException("fin.error.statementStatusHasChangedRefreshTry");
         }
     }
 }

@@ -1,7 +1,7 @@
 package com.lemon.erp.modules.wms.service;
 
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.wms.entity.WmsLocation;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.entity.WmsWarehouse;
@@ -39,10 +39,10 @@ class WmsReferenceLoader {
     WmsWarehouse warehouse(Long id, String label, boolean requireEnabled) {
         WmsWarehouse warehouse = id == null ? null : warehouseMapper.selectById(id);
         if (warehouse == null) {
-            throw new BizException("{0}不存在", I18n.t(label));
+            throw new BizException("wms.error.doesNotExist", Messages.get(label));
         }
         if (requireEnabled && !Integer.valueOf(1).equals(warehouse.getStatus())) {
-            throw new BizException("{0}「{1}」已停用", I18n.t(label), warehouse.getName());
+            throw new BizException("wms.error.disabled", Messages.get(label), warehouse.getName());
         }
         return warehouse;
     }
@@ -58,10 +58,10 @@ class WmsReferenceLoader {
         for (Long id : ids) {
             WmsMaterial material = map.get(id);
             if (material == null) {
-                throw new BizException("物料不存在：{0}", id);
+                throw new BizException("wms.error.materialNotFound2", id);
             }
             if (requireEnabled && !Integer.valueOf(1).equals(material.getStatus())) {
-                throw new BizException("物料「{0} {1}」已停用", material.getCode(), material.getName());
+                throw new BizException("wms.error.materialDisabled", material.getCode(), material.getName());
             }
         }
         return map;
@@ -76,7 +76,7 @@ class WmsReferenceLoader {
         Map<Long, WmsLocation> map = locationMapper.selectByIds(list).stream()
                 .collect(Collectors.toMap(WmsLocation::getId, Function.identity()));
         if (map.size() < list.size()) {
-            throw new BizException("库位不存在");
+            throw new BizException("wms.error.locationDoesNotExist");
         }
         return map;
     }
@@ -92,10 +92,10 @@ class WmsReferenceLoader {
         }
         WmsLocation location = locations.get(locationId);
         if (location == null || !Objects.equals(location.getWarehouseId(), warehouse.getId())) {
-            throw new BizException("库位不属于仓库「{0}」", warehouse.getName());
+            throw new BizException("wms.error.locationDoesNotBelongWarehouse", warehouse.getName());
         }
         if (requireEnabled && !Integer.valueOf(1).equals(location.getStatus())) {
-            throw new BizException("库位「{0}」已停用", location.getCode());
+            throw new BizException("wms.error.locationDisabled", location.getCode());
         }
     }
 }

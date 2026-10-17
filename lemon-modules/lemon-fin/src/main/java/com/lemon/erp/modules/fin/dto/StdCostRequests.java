@@ -25,17 +25,17 @@ public final class StdCostRequests {
      * @param copyFromId      复制的版本，为空时采购件单价取最近一次成本核算的单价（没有时取参考成本价）
      */
     public record Version(
-            @NotBlank(message = "请填写版本名称") @Size(max = 64, message = "版本名称不能超过64个字符") String name,
-            @NotNull(message = "请选择生效期间") @Min(value = 190001, message = "生效期间格式不正确")
-            @Max(value = 299912, message = "生效期间格式不正确") Integer effectivePeriod,
+            @NotBlank(message = "{fin.valid.enterVersionName}") @Size(max = 64, message = "{fin.valid.versionNameCannotExceedCharacters}") String name,
+            @NotNull(message = "{fin.valid.selectEffectivePeriod}") @Min(value = 190001, message = "{fin.valid.invalidEffectivePeriodFormat}")
+            @Max(value = 299912, message = "{fin.valid.invalidEffectivePeriodFormat}") Integer effectivePeriod,
             Long copyFromId,
-            @Size(max = 255, message = "说明不能超过255个字符") String remark) {
+            @Size(max = 255, message = "{fin.valid.descriptionCannotExceedCharacters}") String remark) {
     }
 
     /** 采购件标准单价（新增或修改） */
     public record Price(
-            @NotNull(message = "请选择物料") Long materialId,
-            @NotNull(message = "请填写标准单价") @DecimalMin(value = "0", message = "标准单价不能为负数")
-            @Digits(integer = 12, fraction = 6, message = "标准单价格式不正确") BigDecimal price) {
+            @NotNull(message = "{fin.valid.selectMaterial}") Long materialId,
+            @NotNull(message = "{fin.valid.enterStandardUnitPrice}") @DecimalMin(value = "0", message = "{fin.valid.standardUnitPriceCannotNegative}")
+            @Digits(integer = 12, fraction = 6, message = "{fin.valid.invalidStandardUnitPriceFormat}") BigDecimal price) {
     }
 }

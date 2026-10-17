@@ -78,27 +78,27 @@ public class HrLeaveService {
     public Long apply(LeaveRequest req) {
         HrEmployee e = employeeService.current();
         if (HrEmployeeService.LEFT.equals(e.getStatus())) {
-            throw new BizException("已离职员工不能提交申请");
+            throw new BizException("hr.error.employeesWhoHaveLeftCannotSubmit");
         }
         if (!req.endTime().isAfter(req.startTime())) {
-            throw new BizException("结束时间必须晚于开始时间");
+            throw new BizException("hr.error.endTimeMustLaterStartTime2");
         }
         if (req.hours().remainder(new BigDecimal("0.5")).signum() != 0) {
-            throw new BizException("时长按 0.5 小时递增");
+            throw new BizException("hr.error.durationMustHourIncrements");
         }
         long spanHours = Duration.between(req.startTime(), req.endTime()).toMinutes();
         if (req.hours().multiply(BigDecimal.valueOf(60)).compareTo(BigDecimal.valueOf(spanHours)) > 0) {
-            throw new BizException("时长不能超过开始到结束的时间");
+            throw new BizException("hr.error.durationCannotExceedTimeBetweenStart");
         }
         boolean leave = "LEAVE".equals(req.kind());
         if (leave && !LEAVE_TYPES.contains(req.type())) {
-            throw new BizException("请选择假期类型");
+            throw new BizException("hr.error.selectLeaveType");
         }
         // 加班的补偿方式：加班费（默认）或转调休
         String overtimeType = OVERTIME_TO_LEAVE.equals(req.type()) ? OVERTIME_TO_LEAVE : OVERTIME_PAY;
-        payrollLock.checkOpen(req.startTime().toLocalDate(), leave ? "提交该月的请假申请" : "提交该月的加班申请");
+        payrollLock.checkOpen(req.startTime().toLocalDate(), leave ? "hr.label.submitLeaveRequestsMonth" : "hr.label.submitOvertimeRequestsMonth");
         if (leaveMapper.countOverlapping(e.getId(), req.kind(), null, req.startTime(), req.endTime()) > 0) {
-            throw new BizException(leave ? "该时间段已有请假申请" : "该时间段已有加班申请");
+            throw new BizException(leave ? "hr.error.leaveRequestAlreadyExistsPeriod" : "hr.error.overtimeRequestAlreadyExistsPeriod");
         }
         if (leave && "ANNUAL".equals(req.type())) {
             checkAnnualBalance(e, req);
@@ -106,7 +106,7 @@ public class HrLeaveService {
         if (leave && "COMPENSATORY".equals(req.type())) {
             BigDecimal balance = compensatoryBalance(e.getId());
             if (req.hours().compareTo(balance) > 0) {
-                throw new BizException("调休余额不足：可调休 {0} 小时（来自已批准的转调休加班）", balance.stripTrailingZeros().toPlainString());
+                throw new BizException("hr.error.insufficientCompTimeHoursAvailableApproved", balance.stripTrailingZeros().toPlainString());
             }
         }
         HrLeave l = new HrLeave();
@@ -142,13 +142,13 @@ public class HrLeaveService {
         HrLeave l = get(id);
         HrEmployee e = employeeService.current();
         if (!Objects.equals(l.getEmployeeId(), e.getId())) {
-            throw new BizException("只能撤销自己的申请");
+            throw new BizException("hr.error.onlyCancelOwnRequests");
         }
         boolean approving = "APPROVING".equals(l.getStatus());
         if (!approving && !("APPROVED".equals(l.getStatus()) && l.getStartTime().isAfter(LocalDateTime.now()))) {
-            throw new BizException("只能撤销审批中或尚未开始的申请");
+            throw new BizException("hr.error.onlyRequestsUnderApprovalNotYet");
         }
-        payrollLock.checkOpen(l.getStartTime().toLocalDate(), "撤销该月的申请");
+        payrollLock.checkOpen(l.getStartTime().toLocalDate(), "hr.label.cancelRequestsMonth");
         if (approving && l.getFlowInstanceId() != null && flowApi.getStatus(l.getFlowInstanceId()) == FlowStatus.RUNNING) {
             flowApi.cancel(l.getFlowInstanceId(), "撤销申请");  // i18n-ignore 审批意见存库
         }
@@ -163,15 +163,15 @@ public class HrLeaveService {
     public void approve(Long id, ApproveRequest req) {
         HrLeave l = get(id);
         if (!"APPROVING".equals(l.getStatus())) {
-            throw new BizException("申请不在审批中");
+            throw new BizException("hr.error.requestNotUnderApproval");
         }
         if (l.getFlowInstanceId() != null) {
-            throw new BizException("该申请正在走审批流程，请在流程中心处理");
+            throw new BizException("hr.error.requestApprovalWorkflowHandleWorkflowCenter");
         }
         if (Objects.equals(l.getCreateBy(), SecurityUtils.getUserId())) {
-            throw new BizException("不能审批自己的申请");
+            throw new BizException("hr.error.cannotApproveOwnRequest");
         }
-        payrollLock.checkOpen(l.getStartTime().toLocalDate(), "审批该月的申请");
+        payrollLock.checkOpen(l.getStartTime().toLocalDate(), "hr.label.approveRequestsMonth");
         finish(id, req.approved() ? "APPROVED" : "REJECTED", SecurityUtils.getUserId(), req.comment());
     }
 
@@ -193,7 +193,7 @@ public class HrLeaveService {
     public HrLeave get(Long id) {
         HrLeave l = id == null ? null : leaveMapper.selectById(id);
         if (l == null) {
-            throw new BizException("申请不存在");
+            throw new BizException("hr.error.requestDoesNotExist");
         }
         return l;
     }
@@ -230,7 +230,7 @@ public class HrLeaveService {
                 HrConstants.annualLeaveDays(e.getWorkStartDate() != null ? e.getWorkStartDate() : e.getEntryDate(), LocalDate.of(year, 12, 31))));
         BigDecimal left = quota.subtract(annualUsedHours(e.getId(), year));
         if (req.hours().compareTo(left) > 0) {
-            throw new BizException("年假余额不足：剩余 {0} 小时", left.stripTrailingZeros().toPlainString());
+            throw new BizException("hr.error.insufficientAnnualLeaveHoursRemaining", left.stripTrailingZeros().toPlainString());
         }
     }
 }

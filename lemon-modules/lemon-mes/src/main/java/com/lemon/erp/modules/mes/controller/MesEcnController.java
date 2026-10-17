@@ -56,14 +56,14 @@ public class MesEcnController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('mes:ecn:add')")
-    @OperLog(title = "工程变更", type = OperType.INSERT)
+    @OperLog(title = "工程变更", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody PlmRequests.Ecn req) {
         return R.ok(ecnService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('mes:ecn:edit')")
-    @OperLog(title = "工程变更", type = OperType.UPDATE)
+    @OperLog(title = "工程变更", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody PlmRequests.Ecn req) {
         ecnService.update(id, req);
         return R.ok();
@@ -71,7 +71,7 @@ public class MesEcnController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('mes:ecn:remove')")
-    @OperLog(title = "工程变更", type = OperType.DELETE)
+    @OperLog(title = "工程变更", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
         ecnService.delete(id);
         return R.ok();

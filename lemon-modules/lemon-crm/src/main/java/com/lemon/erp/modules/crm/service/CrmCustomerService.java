@@ -72,7 +72,7 @@ public class CrmCustomerService {
     public CrmCustomer detail(Long customerId) {
         CrmCustomer c = customerMapper.selectDetail(customerId);
         if (c == null) {
-            throw new BizException("客户不存在");
+            throw new BizException("crm.error.customerDoesNotExist");
         }
         return c;
     }
@@ -136,7 +136,7 @@ public class CrmCustomerService {
         if (ownerId != null) {
             SysUser owner = userMapper.selectById(ownerId);
             if (owner == null || !Integer.valueOf(1).equals(owner.getStatus())) {
-                throw new BizException("负责人不存在或已停用");
+                throw new BizException("crm.error.ownerDoesNotExistDisabled");
             }
             deptId = owner.getDeptId();
         }
@@ -199,7 +199,7 @@ public class CrmCustomerService {
         } else {
             CrmContact old = contactMapper.selectById(id);
             if (old == null || !Objects.equals(old.getCustomerId(), contact.getCustomerId())) {
-                throw new BizException("联系人不存在");
+                throw new BizException("crm.error.contactDoesNotExist");
             }
             contact.setId(id);
             contactMapper.updateById(contact);
@@ -271,7 +271,7 @@ public class CrmCustomerService {
 
     void checkOwnerOrPerm(CrmCustomer c, String perm) {
         if (!Objects.equals(c.getOwnerId(), SecurityUtils.getUserId()) && !permissionService.hasPerm(perm)) {
-            throw new BizException("只有负责人可以操作该客户");
+            throw new BizException("crm.error.onlyOwnerOperateCustomer");
         }
     }
 
@@ -286,7 +286,7 @@ public class CrmCustomerService {
 
     private static CrmCustomer newExt(Long customerId, CrmCustomerRequest req) {
         if (req.stage() != null && !STAGES.contains(req.stage())) {
-            throw new BizException("客户阶段不正确");
+            throw new BizException("crm.error.invalidCustomerStage");
         }
         CrmCustomer x = new CrmCustomer();
         x.setCustomerId(customerId);

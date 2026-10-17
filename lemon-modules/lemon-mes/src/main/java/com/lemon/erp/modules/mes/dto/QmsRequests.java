@@ -37,23 +37,23 @@ public final class QmsRequests {
      * @param aql        AQL（AQL 抽样）
      */
     public record Plan(
-            @NotBlank(message = "请填写方案名称") @Size(max = 64, message = "方案名称不能超过64个字符") String name,
-            @NotNull(message = "请选择检验类型") QcType inspType,
+            @NotBlank(message = "{mes.valid.enterSchemeName}") @Size(max = 64, message = "{mes.valid.schemeNameCannotExceedCharacters}") String name,
+            @NotNull(message = "{mes.valid.selectInspectionType}") QcType inspType,
             Long materialId,
             @Size(max = 32) String materialCategory,
-            @NotNull(message = "请选择抽样方式") SamplingMode samplingMode,
-            @DecimalMin(value = "0", inclusive = false, message = "抽样数量必须大于0") BigDecimal fixedQty,
-            @Min(value = 0, message = "允收不良数不能小于0") Integer acceptQty,
+            @NotNull(message = "{mes.valid.selectSamplingMode}") SamplingMode samplingMode,
+            @DecimalMin(value = "0", inclusive = false, message = "{mes.valid.sampleQuantityMustGreater2}") BigDecimal fixedQty,
+            @Min(value = 0, message = "{mes.valid.acceptanceNumberCannotLess}") Integer acceptQty,
             BigDecimal aql,
             InspectionLevel inspectionLevel,
             Integer status,
             @Size(max = 255) String remark,
-            @NotEmpty(message = "请添加检验项目") @Size(max = 100, message = "检验项目不能超过100项") List<@Valid @NotNull PlanItem> items) {
+            @NotEmpty(message = "{mes.valid.addInspectionItems}") @Size(max = 100, message = "{mes.valid.inspectionItemsCannotExceed}") List<@Valid @NotNull PlanItem> items) {
     }
 
     public record PlanItem(
-            @NotBlank(message = "请填写检验项目") @Size(max = 64, message = "检验项目不能超过64个字符") String name,
-            @NotNull(message = "请选择判定方式") ItemMethod method,
+            @NotBlank(message = "{mes.valid.enterInspectionItem}") @Size(max = 64, message = "{mes.valid.inspectionItemCannotExceedCharacters}") String name,
+            @NotNull(message = "{mes.valid.selectJudgmentMethod}") ItemMethod method,
             @Size(max = 255) String standard,
             BigDecimal target,
             BigDecimal lowerLimit,
@@ -68,15 +68,15 @@ public final class QmsRequests {
      * @param woNo 生产工单号：返工时按工单产品生成返工工单
      */
     public record Ncr(
-            @NotNull(message = "请选择来源") NcrSource source,
-            @NotNull(message = "请选择物料") Long materialId,
+            @NotNull(message = "{mes.valid.selectSource}") NcrSource source,
+            @NotNull(message = "{mes.valid.selectMaterial}") Long materialId,
             @Size(max = 64) String batchNo,
-            @NotNull(message = "请填写数量") @DecimalMin(value = "0", inclusive = false, message = "数量必须大于0")
+            @NotNull(message = "{mes.valid.enterQuantity}") @DecimalMin(value = "0", inclusive = false, message = "{mes.valid.quantityMustGreater}")
             @Digits(integer = 14, fraction = 4) BigDecimal qty,
             Long supplierId,
             @Size(max = 32) String woNo,
             @Size(max = 32) String defectType,
-            @NotBlank(message = "请填写不合格描述") @Size(max = 500, message = "描述不能超过500个字符") String description) {
+            @NotBlank(message = "{mes.valid.enterNonconformanceDescription}") @Size(max = 500, message = "{mes.valid.descriptionCannotExceedCharacters3}") String description) {
     }
 
     /**
@@ -85,39 +85,39 @@ public final class QmsRequests {
      * @param reworkWarehouseId 返工工单的完工入库仓库（返工时必填）
      */
     public record NcrReview(
-            @NotNull(message = "请选择处置方式") Disposition disposition,
-            @NotNull(message = "请选择责任方") Responsibility responsibility,
-            @Size(max = 500, message = "评审意见不能超过500个字符") String reviewOpinion,
+            @NotNull(message = "{mes.valid.selectDisposition}") Disposition disposition,
+            @NotNull(message = "{mes.valid.selectResponsibility}") Responsibility responsibility,
+            @Size(max = 500, message = "{mes.valid.reviewOpinionCannotExceedCharacters}") String reviewOpinion,
             Long reworkWarehouseId) {
     }
 
     public record Capa(
-            @NotNull(message = "请选择来源") CapaSource source,
+            @NotNull(message = "{mes.valid.selectSource}") CapaSource source,
             Long ncrId,
-            @NotBlank(message = "请填写问题标题") @Size(max = 128, message = "标题不能超过128个字符") String title,
-            @Size(max = 1000, message = "描述不能超过1000个字符") String description,
-            @NotNull(message = "请选择负责人") Long ownerId,
-            @NotNull(message = "请选择要求完成日期") LocalDate dueDate) {
+            @NotBlank(message = "{mes.valid.enterProblemTitle}") @Size(max = 128, message = "{mes.valid.titleCannotExceedCharacters}") String title,
+            @Size(max = 1000, message = "{mes.valid.descriptionCannotExceedCharacters4}") String description,
+            @NotNull(message = "{mes.valid.selectOwner}") Long ownerId,
+            @NotNull(message = "{mes.valid.selectDueDate2}") LocalDate dueDate) {
     }
 
     public record CapaStep(
-            @Size(max = 2000, message = "内容不能超过2000个字符") String content,
+            @Size(max = 2000, message = "{mes.valid.contentCannotExceedCharacters2}") String content,
             Long ownerId,
             Boolean done) {
     }
 
     /** 效果验证：有效则关闭，无效退回处理中 */
     public record CapaVerify(
-            @NotNull(message = "请选择验证结论") Boolean effective,
-            @NotBlank(message = "请填写验证说明") @Size(max = 500, message = "验证说明不能超过500个字符") String verifyResult) {
+            @NotNull(message = "{mes.valid.selectVerificationConclusion}") Boolean effective,
+            @NotBlank(message = "{mes.valid.enterVerificationNotes}") @Size(max = 500, message = "{mes.valid.verificationNotesCannotExceedCharacters}") String verifyResult) {
     }
 
     public record Claim(
-            @NotNull(message = "请选择供应商") Long supplierId,
+            @NotNull(message = "{mes.valid.selectSupplier}") Long supplierId,
             Long ncrId,
-            @NotNull(message = "请选择索赔日期") LocalDate claimDate,
-            @NotNull(message = "请填写索赔金额") @DecimalMin(value = "0", inclusive = false, message = "索赔金额必须大于0")
-            @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal amount,
-            @NotBlank(message = "请填写索赔原因") @Size(max = 500, message = "索赔原因不能超过500个字符") String reason) {
+            @NotNull(message = "{mes.valid.selectClaimDate}") LocalDate claimDate,
+            @NotNull(message = "{mes.valid.enterClaimAmount}") @DecimalMin(value = "0", inclusive = false, message = "{mes.valid.claimAmountMustGreater}")
+            @Digits(integer = 16, fraction = 2, message = "{mes.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount,
+            @NotBlank(message = "{mes.valid.enterClaimReason}") @Size(max = 500, message = "{mes.valid.claimReasonCannotExceedCharacters}") String reason) {
     }
 }

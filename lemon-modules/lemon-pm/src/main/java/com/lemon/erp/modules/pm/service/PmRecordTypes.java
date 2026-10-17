@@ -20,7 +20,7 @@ public class PmRecordTypes implements RecordTypeProvider {
 
     @Override
     public List<RecordType> recordTypes() {
-        return List.of(new RecordType("pm_project", "项目", "pm:project:list", "pm:project:edit",
+        return List.of(new RecordType("pm_project", "pm.label.project", "pm:project:list", "pm:project:edit",
                 new DataPermissionRule("pm_project", "dept_id", "manager_id"), projectMapper::selectById));
     }
 }

@@ -1,7 +1,7 @@
 package com.lemon.erp.modules.system.service;
 
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.record.RecordType;
 import com.lemon.erp.framework.record.RecordTypeProvider;
 import com.lemon.erp.framework.security.PermissionService;
@@ -31,7 +31,7 @@ public class SysRecordAccessService {
     public RecordType type(String code) {
         RecordType type = code == null ? null : typeMap().get(code);
         if (type == null) {
-            throw new BizException("不支持的业务类型");
+            throw new BizException("system.error.unsupportedBusinessType");
         }
         return type;
     }
@@ -52,24 +52,25 @@ public class SysRecordAccessService {
 
     /**
      * @param write true 校验修改权限，false 校验查看权限
+     * @param what  提示中访问内容（如「附件」）的消息键
      */
     public void check(String bizType, Long bizId, boolean write, String what) {
         RecordType type = type(bizType);
         if (bizId == null) {
-            throw new BizException("不支持的业务类型");
+            throw new BizException("system.error.unsupportedBusinessType");
         }
         String perm = write ? type.editPerm() : type.viewPerm();
         if (Arrays.stream(perm.split(",")).map(String::trim).noneMatch(permissionService::hasPerm)) {
             if (write) {
-                throw new BizException("没有权限修改{0}的{1}", I18n.t(type.name()), I18n.t(what));
+                throw new BizException("system.error.noPermissionModify", Messages.get(type.name()), Messages.get(what));
             }
-            throw new BizException("没有权限查看{0}的{1}", I18n.t(type.name()), I18n.t(what));
+            throw new BizException("system.error.noPermissionView", Messages.get(type.name()), Messages.get(what));
         }
         Supplier<Object> loader = () -> type.loader().apply(bizId);
         Object record = type.rule() == null || SecurityUtils.getDataScope().all()
                 ? loader.get() : DataPermissionContext.execute(type.rule(), loader);
         if (record == null) {
-            throw new BizException("{0}不存在或没有权限", I18n.t(type.name()));
+            throw new BizException("system.error.doesNotExistAccessDenied", Messages.get(type.name()));
         }
     }
 }

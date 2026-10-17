@@ -18,8 +18,8 @@ import java.util.List;
 @TableName("wms_attribute")
 public class WmsAttribute extends BaseEntity {
 
-    @NotBlank(message = "请填写属性名称")
-    @Size(max = 32, message = "属性名称不能超过32个字符")
+    @NotBlank(message = "{wms.valid.enterAttributeName}")
+    @Size(max = 32, message = "{wms.valid.attributeNameCannotExceedCharacters}")
     private String name;
 
     private Integer sort;
@@ -27,7 +27,7 @@ public class WmsAttribute extends BaseEntity {
     /** 1 启用 0 停用 */
     private Integer status;
 
-    @Size(max = 255, message = "备注不能超过255个字符")
+    @Size(max = 255, message = "{wms.valid.remarkCannotExceedCharacters}")
     private String remark;
 
     @TableField(exist = false)

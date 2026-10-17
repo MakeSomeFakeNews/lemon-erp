@@ -17,15 +17,15 @@ import java.util.List;
  * @param reason 字典 mes_supplement_reason
  */
 public record SupplementRequest(
-        @NotNull(message = "请选择工单") Long woId,
-        @NotBlank(message = "请选择补料原因") @Size(max = 16, message = "补料原因不正确") String reason,
-        @Size(max = 255, message = "说明不能超过255个字符") String remark,
-        @NotEmpty(message = "请添加补料明细") @Size(max = 200, message = "明细不能超过200行") List<@Valid @NotNull Item> items) {
+        @NotNull(message = "{mes.valid.selectWorkOrder}") Long woId,
+        @NotBlank(message = "{mes.valid.selectSupplementaryIssueReason}") @Size(max = 16, message = "{mes.valid.invalidSupplementaryIssueReason}") String reason,
+        @Size(max = 255, message = "{mes.valid.descriptionCannotExceedCharacters}") String remark,
+        @NotEmpty(message = "{mes.valid.addSupplementaryIssueLines}") @Size(max = 200, message = "{mes.valid.noMoreLines}") List<@Valid @NotNull Item> items) {
 
     public record Item(
-            @NotNull(message = "请选择物料") Long materialId,
-            @NotNull(message = "请填写数量")
-            @DecimalMin(value = "0", inclusive = false, message = "数量必须大于0")
-            @Digits(integer = 14, fraction = 4, message = "数量最多4位小数") BigDecimal qty) {
+            @NotNull(message = "{mes.valid.selectMaterial}") Long materialId,
+            @NotNull(message = "{mes.valid.enterQuantity}")
+            @DecimalMin(value = "0", inclusive = false, message = "{mes.valid.quantityMustGreater}")
+            @Digits(integer = 14, fraction = 4, message = "{mes.valid.quantityAllowsMostDecimalPlaces}") BigDecimal qty) {
     }
 }

@@ -44,7 +44,7 @@ public class HrSocialService {
     public void saveScheme(Long id, HrSocialScheme scheme) {
         if (scheme.getBaseMax() != null && scheme.getBaseMax().signum() > 0 && scheme.getBaseMin() != null
                 && scheme.getBaseMax().compareTo(scheme.getBaseMin()) < 0) {
-            throw new BizException("社保基数上限不能小于下限");
+            throw new BizException("hr.error.socialInsuranceBaseUpperLimitCannot");
         }
         scheme.setId(id);
         if (scheme.getStatus() == null) {
@@ -54,7 +54,7 @@ public class HrSocialService {
             schemeMapper.insert(scheme);
         } else {
             if (schemeMapper.selectById(id) == null) {
-                throw new BizException("社保方案不存在");
+                throw new BizException("hr.error.socialInsuranceSchemeDoesNotExist");
             }
             schemeMapper.updateById(scheme);
         }
@@ -62,7 +62,7 @@ public class HrSocialService {
 
     public void deleteScheme(Long id) {
         if (salaryMapper.exists(Wrappers.<HrSalary>lambdaQuery().eq(HrSalary::getSchemeId, id))) {
-            throw new BizException("社保方案已被薪资档案使用，不能删除");
+            throw new BizException("hr.error.socialInsuranceSchemeUsedSalaryProfiles");
         }
         schemeMapper.deleteById(id);
     }
@@ -79,10 +79,10 @@ public class HrSocialService {
     public void saveDeduction(Long id, HrTaxDeduction d) {
         employeeService.get(d.getEmployeeId());
         if (d.getType() == null || d.getMonthlyAmount() == null || d.getMonthlyAmount().signum() <= 0 || d.getStartPeriod() == null) {
-            throw new BizException("请填写扣除项目、每月金额和开始月份");
+            throw new BizException("hr.error.enterDeductionItemMonthlyAmountStart");
         }
         if (d.getEndPeriod() != null && d.getEndPeriod() < d.getStartPeriod()) {
-            throw new BizException("结束月份不能早于开始月份");
+            throw new BizException("hr.error.endMonthCannotEarlierStartMonth");
         }
         d.setId(id);
         if (id == null) {

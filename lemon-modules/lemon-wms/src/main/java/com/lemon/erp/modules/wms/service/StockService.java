@@ -2,7 +2,7 @@ package com.lemon.erp.modules.wms.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.wms.dto.SerialLog;
 import com.lemon.erp.modules.wms.dto.StockFlow;
@@ -87,7 +87,7 @@ public class StockService {
         Map<Long, WmsMaterial> materials = materialMapper.selectByIds(sorted.stream().map(StockChange::materialId).distinct().toList())
                 .stream().collect(Collectors.toMap(WmsMaterial::getId, Function.identity()));
         materials.values().stream().filter(WmsMaterial::isTemplateMaterial).findFirst().ifPresent(m -> {
-            throw new BizException("「{0} {1}」是多规格款式，请选择具体的规格（SKU）", m.getCode(), m.getName());
+            throw new BizException("wms.error.multiVariantStyleSelectSpecificVariant", m.getCode(), m.getName());
         });
         Long userId = SecurityUtils.getUserId();
         LocalDateTime now = LocalDateTime.now();
@@ -132,7 +132,7 @@ public class StockService {
                 .eq(WmsCheck::getFreeze, 1).in(WmsCheck::getStatus, DocStatus.DRAFT.name(), DocStatus.APPROVING.name()).last("LIMIT 1"));
         if (check != null) {
             WmsWarehouse w = warehouseMapper.selectById(check.getWarehouseId());
-            throw new BizException("仓库「{0}」正在盘点（{1}），盘点完成前不能出入库、调拨",
+            throw new BizException("wms.error.warehouseCountedNoInboundOutboundTransfer",
                     w == null ? check.getWarehouseId() : w.getName(), check.getDocNo());
         }
     }
@@ -166,9 +166,9 @@ public class StockService {
                     .eq(WmsStock::getBatchNo, c.batchNo()));
             BigDecimal available = stock == null ? BigDecimal.ZERO : stock.getQty().subtract(stock.getFrozenQty());
             String frozen = stock == null || stock.getFrozenQty().signum() == 0 ? ""
-                    : I18n.t("（另有冻结 {0}，待检或不合格）", stock.getFrozenQty().stripTrailingZeros().toPlainString());
-            throw new BizException("库存不足：{0}{1}，可用 {2}，需要 {3}{4}", describe(material),
-                    c.batchNo().isEmpty() ? "" : I18n.t("（批次 {0}）", c.batchNo()),
+                    : Messages.get("wms.text.moreFrozenPendingFailedInspection", stock.getFrozenQty().stripTrailingZeros().toPlainString());
+            throw new BizException("wms.error.insufficientStockAvailableRequired", describe(material),
+                    c.batchNo().isEmpty() ? "" : Messages.get("wms.text.batch", c.batchNo()),
                     available.stripTrailingZeros().toPlainString(), qty.stripTrailingZeros().toPlainString(), frozen);
         }
     }
@@ -191,7 +191,7 @@ public class StockService {
                     s.setSerialNo(sn);
                     created.add(s);
                 } else if (SerialStatus.IN_STOCK.name().equals(serial.getStatus())) {
-                    throw new BizException("序列号已在库：{0} {1}", describe(material), sn);
+                    throw new BizException("wms.error.serialNoAlreadyStock", describe(material), sn);
                 } else {
                     returned.add(serial.getId());
                 }
@@ -220,7 +220,7 @@ public class StockService {
                     && serial.getLocationId() == c.locationId()
                     && Objects.equals(serial.getBatchNo(), c.batchNo());
             if (!inSlot) {
-                throw new BizException("序列号不在该库存位置：{0} {1}", describe(material), sn);
+                throw new BizException("wms.error.serialNoNotStockLocation", describe(material), sn);
             }
             ids.add(serial.getId());
         }

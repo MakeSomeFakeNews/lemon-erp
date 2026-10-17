@@ -1,7 +1,7 @@
 package com.lemon.erp.framework.ref;
 
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
@@ -22,7 +22,7 @@ public class ReferenceGuard {
         for (ReferenceChecker checker : checkers) {
             String ref = checker.findReference(type, id);
             if (ref != null) {
-                throw new BizException("{0}已被{1}使用，不能删除，可以停用", label, I18n.t(ref));
+                throw new BizException("framework.error.usedCannotDeletedDisableInstead", label, Messages.get(ref));
             }
         }
     }

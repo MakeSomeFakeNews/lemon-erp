@@ -43,7 +43,7 @@ public class ScmPortalOrderService {
         ScmOrder order = id == null ? null : orderMapper.selectById(id);
         if (order == null || !OrderKind.PURCHASE.name().equals(order.getKind()) || !order.getPartnerId().equals(supplierId)
                 || !VISIBLE.contains(order.getStatus())) {
-            throw new BizException("采购订单不存在");
+            throw new BizException("scm.error.purchaseOrderDoesNotExist");
         }
         ScmOrder detail = orderMapper.selectDetail(id);
         detail.setItems(itemMapper.selectByOrderId(id));
@@ -55,14 +55,14 @@ public class ScmPortalOrderService {
     public void confirm(Long id, Long supplierId, SrmRequests.OrderConfirm req) {
         ScmOrder order = detail(id, supplierId);
         if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
-            throw new BizException("订单已完成或已关闭");
+            throw new BizException("scm.error.orderCompletedClosed");
         }
         boolean accept = req.accept();
         if (accept && req.promisedDate() == null) {
-            throw new BizException("请填写承诺交期");
+            throw new BizException("scm.error.enterPromisedDeliveryDate");
         }
         if (!accept && (req.remark() == null || req.remark().isBlank())) {
-            throw new BizException("请填写拒绝原因");
+            throw new BizException("scm.error.enterRejectionReason");
         }
         orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
                 .set(ScmOrder::getSupplierConfirm, accept ? SupplierConfirm.ACCEPTED : SupplierConfirm.REJECTED)

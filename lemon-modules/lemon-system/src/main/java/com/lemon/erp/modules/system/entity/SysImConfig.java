@@ -23,32 +23,32 @@ import java.time.LocalDateTime;
 @TableName("sys_im_config")
 public class SysImConfig extends BaseEntity {
 
-    @NotNull(message = "平台不能为空")
+    @NotNull(message = "{system.valid.platformRequired}")
     private ImPlatform platform;
 
     private Boolean enabled;
 
     /** 企业微信 corpid */
-    @Size(max = 64, message = "企业ID不能超过64个字符")
+    @Size(max = 64, message = "{system.valid.corpIdCannotExceedCharacters}")
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String corpId;
 
     /** 钉钉 Client ID（AppKey）、飞书 App ID */
-    @Size(max = 64, message = "应用标识不能超过64个字符")
+    @Size(max = 64, message = "{system.valid.appIdCannotExceedCharacters}")
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String appKey;
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    @Size(max = 128, message = "应用密钥不能超过128个字符")
+    @Size(max = 128, message = "{system.valid.appSecretCannotExceedCharacters}")
     private String appSecret;
 
     /** 钉钉、企业微信应用的 AgentId */
-    @Size(max = 32, message = "AgentId不能超过32个字符")
+    @Size(max = 32, message = "{system.valid.agentidCannotExceedCharacters}")
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String agentId;
 
     /** 系统访问地址：外网可访问的前端地址，如 https://erp.example.com */
-    @Size(max = 255, message = "系统访问地址不能超过255个字符")
+    @Size(max = 255, message = "{system.valid.systemUrlCannotExceedCharacters}")
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String homeUrl;
 
@@ -59,16 +59,16 @@ public class SysImConfig extends BaseEntity {
     /** 同步通讯录时自动创建部门和账号（否则只按手机号绑定已有账号） */
     private Boolean syncCreate;
 
-    @Size(max = 500, message = "Webhook 地址不能超过500个字符")
+    @Size(max = 500, message = "{system.valid.webhookUrlCannotExceedCharacters}")
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String robotWebhook;
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    @Size(max = 128, message = "加签密钥不能超过128个字符")
+    @Size(max = 128, message = "{system.valid.signingSecretCannotExceedCharacters}")
     private String robotSecret;
 
     /** 推送到群机器人的消息类别，逗号分隔（字典 sys_message_category） */
-    @Size(max = 64, message = "消息类别过多")
+    @Size(max = 64, message = "{system.valid.tooManyMessageCategories}")
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String robotCategories;
 

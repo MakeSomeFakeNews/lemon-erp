@@ -56,7 +56,7 @@ public class FinLoanService {
     public FinLoan detail(Long id) {
         FinLoan l = loanMapper.selectDetail(id);
         if (l == null) {
-            throw new BizException("借款单不存在");
+            throw new BizException("fin.error.loanNotFound");
         }
         l.setRepays(loanMapper.selectRepays(id));
         return l;
@@ -114,7 +114,7 @@ public class FinLoanService {
     public void pay(Long id, Long accountId, LocalDate date) {
         FinLoan l = requireStatus(id, "APPROVED");
         LocalDate d = date == null ? LocalDate.now() : date;
-        periodGuard.checkOpen(d, "借款付款");
+        periodGuard.checkOpen(d, "fin.label.loanPayment");
         accountService.requireCashAccount(accountId);
         transit(id, "APPROVED", "PAID");
         String summary = "员工借款 " + l.getLoanNo() // i18n-ignore
@@ -131,10 +131,10 @@ public class FinLoanService {
     public void repay(Long id, Long accountId, BigDecimal amount, LocalDate date) {
         FinLoan l = requireStatus(id, "PAID");
         LocalDate d = date == null ? LocalDate.now() : date;
-        periodGuard.checkOpen(d, "借款还款");
+        periodGuard.checkOpen(d, "fin.label.loanRepayment");
         accountService.requireCashAccount(accountId);
         if (amount == null || amount.signum() <= 0) {
-            throw new BizException("还款金额必须大于 0");
+            throw new BizException("fin.error.repaymentAmountMustGreater");
         }
         String summary = "归还借款 " + l.getLoanNo() + " " + l.getUserName(); // i18n-ignore
         Long voucherId = voucherService.createGenerated(d, VoucherSource.LOAN, l.getLoanNo(), List.of(
@@ -156,7 +156,7 @@ public class FinLoanService {
 
     private void addRepay(FinLoan l, BigDecimal amount, LocalDate date, String method, Long claimId, Long accountId, Long voucherId) {
         if (loanMapper.addRepaid(l.getId(), amount) == 0) {
-            throw new BizException("还款金额超过未还金额 {0}", l.getAmount().subtract(l.getRepaidAmount()).toPlainString());
+            throw new BizException("fin.error.repaymentAmountExceedsOutstandingAmount", l.getAmount().subtract(l.getRepaidAmount()).toPlainString());
         }
         FinLoanRepay r = new FinLoanRepay();
         r.setLoanId(l.getId());
@@ -173,7 +173,7 @@ public class FinLoanService {
     private FinLoan requireStatus(Long id, String status) {
         FinLoan l = detail(id);
         if (!status.equals(l.getStatus())) {
-            throw new BizException("借款单 {0} 状态不正确，请刷新", l.getLoanNo());
+            throw new BizException("fin.error.loanHasInvalidStatusRefresh", l.getLoanNo());
         }
         return l;
     }
@@ -181,7 +181,7 @@ public class FinLoanService {
     private void transit(Long id, String from, String to) {
         if (loanMapper.update(Wrappers.<FinLoan>lambdaUpdate().set(FinLoan::getStatus, to).eq(FinLoan::getId, id)
                 .eq(FinLoan::getStatus, from)) == 0) {
-            throw new BizException("借款单状态已变化，请刷新");
+            throw new BizException("fin.error.loanStatusHasChangedRefresh");
         }
     }
 }

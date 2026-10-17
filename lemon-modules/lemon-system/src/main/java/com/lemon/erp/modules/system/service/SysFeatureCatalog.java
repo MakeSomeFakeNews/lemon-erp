@@ -14,6 +14,8 @@ final class SysFeatureCatalog {
     }
 
     /**
+     * 名称、分类、说明是消息键（system 资源包），输出时 {@code Messages.get}
+     *
      * @param key      标识
      * @param group    分类（页面上分组显示）
      * @param required 必选（基础平台）
@@ -23,7 +25,11 @@ final class SysFeatureCatalog {
     record Feature(String key, String name, String group, String description, boolean required, List<Long> menus, List<String> requires) {
     }
 
-    /** @param features 包含的模块（依赖的模块和基础平台自动加入） */
+    /**
+     * 名称、说明是消息键
+     *
+     * @param features 包含的模块（依赖的模块和基础平台自动加入）
+     */
     record Industry(String key, String name, String description, List<String> features) {
     }
 
@@ -32,59 +38,59 @@ final class SysFeatureCatalog {
     }
 
     static final List<Feature> FEATURES = List.of(
-            new Feature("CORE", "基础平台", "基础", "系统管理、流程审批、物料与仓库、客户与供应商等基础资料", true,
+            new Feature("CORE", "system.label.corePlatform", "system.label.core", "system.label.systemAdministrationApprovalWorkflowsMasterData", true,
                     List.of(1L, 2L, 3L, 914L, 903L), List.of()),
             // 供应链
-            f("PURCHASE", "采购管理", "供应链", "请购、采购订单、送货通知、采购入库与退货、补货建议", List.of(901L), "INVENTORY"),
-            f("SOURCING", "采购寻源", "供应链", "询价比价、招标采购、采购合同", List.of(904L), "PURCHASE"),
-            f("SUPPLIER_PORTAL", "供应商门户", "供应链", "供应商在线确认订单、送货、对账、投标、处理索赔", List.of(13L), "PURCHASE"),
-            f("SALES", "销售管理", "供应链", "报价、价目表、销售订单、发货通知与波次拣货、出库退货、物流发运、欠交跟踪",
+            f("PURCHASE", "system.label.purchasing", "system.label.supplyChain", "system.label.purchaseRequisitionsPurchaseOrdersDeliveryNotices", List.of(901L), "INVENTORY"),
+            f("SOURCING", "system.label.sourcing", "system.label.supplyChain", "system.label.rfqsPriceComparisonTenderingPurchaseContracts", List.of(904L), "PURCHASE"),
+            f("SUPPLIER_PORTAL", "system.label.supplierPortal", "system.label.supplyChain", "system.label.suppliersConfirmOrdersShipReconcileBid", List.of(13L), "PURCHASE"),
+            f("SALES", "system.label.sales", "system.label.supplyChain", "system.label.quotationsPriceListsSalesOrdersDelivery",
                     List.of(269L, 270L, 143L, 271L, 315L, 144L, 145L, 146L, 272L), "INVENTORY"),
-            f("CHANNEL", "渠道分销", "供应链", "促销、返利、渠道库存、寄售结算、经销商门户", List.of(312L, 313L, 314L, 287L, 14L), "SALES"),
-            f("COMMISSION", "销售提成", "供应链", "按销售额、毛利、回款计算业务员提成", List.of(344L), "SALES"),
+            f("CHANNEL", "system.label.channelDistribution", "system.label.supplyChain", "system.label.promotionsRebatesChannelInventoryConsignmentSettlement", List.of(312L, 313L, 314L, 287L, 14L), "SALES"),
+            f("COMMISSION", "system.label.salesCommission", "system.label.supplyChain", "system.label.calculateSalespersonCommissionSalesGrossProfit", List.of(344L), "SALES"),
             // 仓储
-            f("INVENTORY", "库存管理", "仓储", "出入库、调拨、盘点、组装拆卸，库存查询、流水、批次序列号、收发存汇总", List.of(911L, 912L)),
-            f("WAREHOUSE_OPS", "仓储作业", "仓储", "库存预留与冻结、手机 / PDA 扫码收货、上架、拣货、盘点", List.of(913L, 15L), "INVENTORY"),
+            f("INVENTORY", "system.label.inventory", "system.label.warehousing", "system.label.inboundOutboundTransfersStockCountsAssembly", List.of(911L, 912L)),
+            f("WAREHOUSE_OPS", "system.label.warehouseOperations", "system.label.warehousing", "system.label.stockReservationFreezingMobilePdaScanning", List.of(913L, 15L), "INVENTORY"),
             // 生产与质量
-            f("PRODUCTION", "生产管理", "生产与质量", "生产计划、MRP、产能排程、生产工单、齐套分析、物料清单、工作中心",
+            f("PRODUCTION", "system.label.production", "system.label.productionQuality", "system.label.productionPlanningMrpCapacitySchedulingWork",
                     List.of(921L, 922L, 166L, 167L), "INVENTORY", "PURCHASE"),
-            f("ENGINEERING", "工程技术", "生产与质量", "工程变更、技术文档", List.of(305L, 306L), "PRODUCTION"),
-            f("EQUIPMENT", "设备管理", "生产与质量", "设备台账、设备维护、设备 OEE、模具工装", List.of(164L, 165L, 310L, 311L), "PRODUCTION"),
-            f("QUALITY", "质量管理", "生产与质量", "检验方案与检验、不合格品处理、纠正预防、供应商索赔、质量分析与 SPC", List.of(12L), "INVENTORY"),
+            f("ENGINEERING", "system.label.engineering", "system.label.productionQuality", "system.label.engineeringChangesTechnicalDocuments", List.of(305L, 306L), "PRODUCTION"),
+            f("EQUIPMENT", "system.label.equipment", "system.label.productionQuality", "system.label.equipmentLedgerMaintenanceOeeMoldsTooling", List.of(164L, 165L, 310L, 311L), "PRODUCTION"),
+            f("QUALITY", "system.label.quality", "system.label.productionQuality", "system.label.inspectionPlansInspectionsNonconformanceHandlingCapa", List.of(12L), "INVENTORY"),
             // 财务
-            f("GL", "总账", "财务", "凭证、账簿、财务报表、期末结账、会计科目与期初", List.of(931L, 936L)),
-            f("ARAP", "应收应付", "财务", "应收应付、收付款、预收预付、发票、对账", List.of(932L), "GL"),
-            f("FUND", "资金与费用", "财务", "出纳、费用报销、员工借款、银行对账、票据、资金计划", List.of(933L), "GL"),
-            f("ASSET", "资产管理", "财务", "固定资产与折旧、资产盘点、低值易耗品", List.of(187L, 307L, 308L), "GL"),
-            f("COST", "成本核算", "财务", "存货成本核算、标准成本与差异分析", List.of(188L, 309L), "GL", "INVENTORY"),
-            f("BUDGET", "预算与分析", "财务", "预算编制与执行、经营分析", List.of(935L), "GL"),
+            f("GL", "system.label.generalLedger", "system.label.finance", "system.label.vouchersLedgersFinancialStatementsPeriodClose", List.of(931L, 936L)),
+            f("ARAP", "system.label.receivablesPayables", "system.label.finance", "system.label.receivablesPayablesReceiptsPaymentsAdvancesInvoices", List.of(932L), "GL"),
+            f("FUND", "system.label.fundsExpenses", "system.label.finance", "system.label.cashierExpenseReimbursementEmployeeLoansBank", List.of(933L), "GL"),
+            f("ASSET", "system.label.assets", "system.label.finance", "system.label.fixedAssetsDepreciationAssetCountsLow", List.of(187L, 307L, 308L), "GL"),
+            f("COST", "system.label.costAccounting", "system.label.finance", "system.label.inventoryCostingStandardCostVarianceAnalysis", List.of(188L, 309L), "GL", "INVENTORY"),
+            f("BUDGET", "system.label.budgetAnalysis", "system.label.finance", "system.label.budgetPreparationExecutionBusinessAnalysis", List.of(935L), "GL"),
             // 客户与项目
-            f("CRM", "客户关系", "客户与项目", "客户、线索、商机、跟进、合同、服务工单、市场活动", List.of(9L)),
-            f("PROJECT", "项目管理", "客户与项目", "项目计划进度、资源、工时、成本与核算", List.of(10L)),
+            f("CRM", "system.label.crm", "system.label.customersProjects", "system.label.customersLeadsOpportunitiesFollowUpsContracts", List.of(9L)),
+            f("PROJECT", "system.label.projects", "system.label.customersProjects", "system.label.projectPlansProgressResourcesTimesheetsCosts", List.of(10L)),
             // 人力资源
-            f("HR", "人事管理", "人力资源", "员工档案、劳动合同、招聘培训、考勤假勤、绩效", List.of(951L, 952L, 953L)),
-            f("PAYROLL", "薪酬福利", "人力资源", "薪资档案、薪酬核算、社保、专项附加扣除", List.of(954L), "HR"),
+            f("HR", "system.label.hr", "system.label.humanResources", "system.label.employeeRecordsLaborContractsRecruitingTraining", List.of(951L, 952L, 953L)),
+            f("PAYROLL", "system.label.payrollBenefits", "system.label.humanResources", "system.label.salaryProfilesPayrollSocialInsuranceSpecial", List.of(954L), "HR"),
             // 分析
-            f("BI", "商务智能", "分析", "经营驾驶舱、多维分析、自定义报表与仪表盘、决策支持、数据仓库",
+            f("BI", "system.label.businessIntelligence", "system.label.analytics", "system.label.businessCockpitPivotAnalysisCustomReports",
                     List.of(260L, 261L, 262L, 263L, 264L, 265L)),
-            f("SCREEN", "数据大屏", "分析", "生产车间、仓储物流、销售经营、质量管理大屏，投屏链接", List.of(349L)));
+            f("SCREEN", "system.label.dataScreens", "system.label.analytics", "system.label.dataScreensShopFloorWarehousingLogistics", List.of(349L)));
 
     static final List<Industry> INDUSTRIES = List.of(
-            new Industry("DISCRETE", "离散制造", "机械、电子、设备组装等按订单或计划生产的企业",
+            new Industry("DISCRETE", "system.label.discreteManufacturing", "system.label.machineryElectronicsEquipmentAssemblyOtherMake",
                     List.of("PURCHASE", "SOURCING", "SUPPLIER_PORTAL", "SALES", "INVENTORY", "WAREHOUSE_OPS", "PRODUCTION", "ENGINEERING",
                             "EQUIPMENT", "QUALITY", "GL", "ARAP", "FUND", "ASSET", "COST", "BUDGET", "HR", "PAYROLL", "BI", "SCREEN")),
-            new Industry("PROCESS", "流程加工", "食品、化工、医药等按配方批量生产，重视批次与保质期",
+            new Industry("PROCESS", "system.label.processManufacturing", "system.label.foodChemicalsPharmaceuticalsOtherBatchProduction",
                     List.of("PURCHASE", "SALES", "INVENTORY", "WAREHOUSE_OPS", "PRODUCTION", "EQUIPMENT", "QUALITY",
                             "GL", "ARAP", "FUND", "ASSET", "COST", "BUDGET", "HR", "PAYROLL", "BI", "SCREEN")),
-            new Industry("TRADING", "商贸批发", "以采购、仓储、分销为主，没有生产环节",
+            new Industry("TRADING", "system.label.tradingWholesale", "system.label.mainlyPurchasingWarehousingDistributionWithoutProduction",
                     List.of("PURCHASE", "SOURCING", "SALES", "CHANNEL", "COMMISSION", "INVENTORY", "WAREHOUSE_OPS",
                             "GL", "ARAP", "FUND", "BUDGET", "CRM", "BI", "SCREEN")),
-            new Industry("RETAIL", "电商零售", "多渠道接单、仓储发货为主",
+            new Industry("RETAIL", "system.label.eCommerceRetail", "system.label.mainlyMultiChannelOrdersWarehousingShipping",
                     List.of("PURCHASE", "SALES", "CHANNEL", "INVENTORY", "WAREHOUSE_OPS", "GL", "ARAP", "FUND", "BI", "SCREEN")),
-            new Industry("PROJECT", "工程项目", "建筑安装、系统集成等按项目采购、施工和核算",
+            new Industry("PROJECT", "system.label.engineeringProjects", "system.label.constructionInstallationSystemIntegrationOtherProject",
                     List.of("PURCHASE", "SALES", "INVENTORY", "PROJECT", "CRM", "GL", "ARAP", "FUND", "ASSET", "BUDGET", "HR", "PAYROLL", "BI")),
-            new Industry("SERVICE", "专业服务", "软件、咨询、设计等以人工和项目为主",
+            new Industry("SERVICE", "system.label.professionalServices", "system.label.softwareConsultingDesignOtherLaborProject",
                     List.of("SALES", "CRM", "PROJECT", "GL", "ARAP", "FUND", "BUDGET", "HR", "PAYROLL", "BI")),
-            new Industry("FULL", "全部功能", "开通全部功能模块",
+            new Industry("FULL", "system.label.allFeatures", "system.label.enableAllFeatureModules",
                     FEATURES.stream().map(Feature::key).toList()));
 }

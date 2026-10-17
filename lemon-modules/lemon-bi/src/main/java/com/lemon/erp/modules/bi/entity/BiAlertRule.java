@@ -19,29 +19,29 @@ import java.math.BigDecimal;
 @TableName("bi_alert_rule")
 public class BiAlertRule extends BaseEntity {
 
-    @NotBlank(message = "规则名称不能为空")
-    @Size(max = 64, message = "规则名称不能超过64个字符")
+    @NotBlank(message = "{bi.valid.ruleNameRequired}")
+    @Size(max = 64, message = "{bi.valid.ruleNameCannotExceedCharacters}")
     private String name;
 
     /** 监控指标（BiAlertMetric） */
-    @NotBlank(message = "请选择监控指标")
+    @NotBlank(message = "{bi.valid.selectMetric}")
     private String metric;
 
     /** GT 大于 / GE 不小于 / LT 小于 / LE 不大于 */
-    @NotBlank(message = "请选择比较方式")
-    @Pattern(regexp = "GT|GE|LT|LE", message = "比较方式不正确")
+    @NotBlank(message = "{bi.valid.selectComparison}")
+    @Pattern(regexp = "GT|GE|LT|LE", message = "{bi.valid.invalidComparison}")
     private String operator;
 
-    @NotNull(message = "请填写阈值")
+    @NotNull(message = "{bi.valid.enterThreshold}")
     private BigDecimal threshold;
 
     /** INFO / WARN / DANGER */
-    @NotBlank(message = "请选择级别")
-    @Pattern(regexp = "INFO|WARN|DANGER", message = "级别不正确")
+    @NotBlank(message = "{bi.valid.selectLevel}")
+    @Pattern(regexp = "INFO|WARN|DANGER", message = "{bi.valid.invalidLevel}")
     private String level;
 
     private Integer enabled;
 
-    @Size(max = 255, message = "处理建议不能超过255个字符")
+    @Size(max = 255, message = "{bi.valid.suggestionCannotExceedCharacters}")
     private String remark;
 }

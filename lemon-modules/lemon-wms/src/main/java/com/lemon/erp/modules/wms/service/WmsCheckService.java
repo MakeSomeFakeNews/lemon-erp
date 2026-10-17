@@ -102,7 +102,7 @@ public class WmsCheckService {
      * @param keyword    物料编码或名称，可为空
      */
     public List<WmsCheckItem> snapshot(Long warehouseId, Long locationId, String keyword, String category) {
-        refs.warehouse(warehouseId, "盘点仓库");
+        refs.warehouse(warehouseId, "wms.label.countWarehouse");
         List<StockView> stocks = stockMapper.selectStockList(
                 new StockQuery(warehouseId, locationId, null, keyword, null, category, false, null));
         Set<Long> serialMaterialIds = stocks.stream().filter(s -> Integer.valueOf(1).equals(s.getSerialEnabled()))
@@ -180,7 +180,7 @@ public class WmsCheckService {
     @Transactional
     public boolean confirm(Long id) {
         WmsCheck check = getDraft(id);
-        periodGuard.checkStockOpen(check.getBizDate(), "盘点单");
+        periodGuard.checkStockOpen(check.getBizDate(), StockBizType.CHECK.getLabelKey());
         if (flowApi.isAvailable(PROCESS_KEY)) {
             List<WmsCheckItem> items = itemMapper.selectList(Wrappers.<WmsCheckItem>lambdaQuery().eq(WmsCheckItem::getCheckId, id));
             validate(check.getWarehouseId(), items, true);
@@ -199,7 +199,7 @@ public class WmsCheckService {
             if (diffLines > 0) {
                 if (checkMapper.update(Wrappers.<WmsCheck>lambdaUpdate().set(WmsCheck::getStatus, DocStatus.APPROVING.name())
                         .eq(WmsCheck::getId, id).eq(WmsCheck::getStatus, DocStatus.DRAFT.name())) == 0) {
-                    throw new BizException("盘点单已确认，请刷新");
+                    throw new BizException("wms.error.stockCountHasConfirmedRefresh");
                 }
                 String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id,
                         Map.of("docNo", check.getDocNo(), "gainQty", gain, "lossQty", loss, "diffLines", diffLines));
@@ -240,7 +240,7 @@ public class WmsCheckService {
                 .eq(WmsCheck::getId, id)
                 .eq(WmsCheck::getStatus, from.name()));
         if (updated == 0) {
-            throw new BizException("盘点单已确认，请刷新");
+            throw new BizException("wms.error.stockCountHasConfirmedRefresh");
         }
         Long warehouseId = check.getWarehouseId();
         List<WmsCheckItem> items = itemMapper.selectList(Wrappers.<WmsCheckItem>lambdaQuery()
@@ -265,7 +265,7 @@ public class WmsCheckService {
             List<String> gain = counted.stream().filter(sn -> !book.contains(sn)).toList();
             List<String> loss = book.stream().filter(sn -> !counted.contains(sn)).toList();
             if (diff.compareTo(BigDecimal.valueOf(gain.size() - loss.size())) != 0) {
-                throw new BizException("第 {0} 行（{1}）：账面数量（{2}）与在库序列号个数（{3}）不一致", i + 1, StockService.describe(material),
+                throw new BizException("wms.error.lineBookQuantityDoesNotMatch", i + 1, StockService.describe(material),
                         item.getBookQty().stripTrailingZeros().toPlainString(), book.size());
             }
             if (!loss.isEmpty()) {
@@ -289,7 +289,7 @@ public class WmsCheckService {
         Supplier<WmsCheck> loader = () -> checkMapper.selectById(id);
         WmsCheck check = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(CHECK_RULE, loader);
         if (check == null) {
-            throw new BizException("盘点单不存在或没有权限");
+            throw new BizException("wms.error.stockCountDoesNotExistAccess");
         }
         return check;
     }
@@ -297,7 +297,7 @@ public class WmsCheckService {
     private WmsCheck getDraft(Long id) {
         WmsCheck check = getAccessible(id);
         if (!DocStatus.DRAFT.name().equals(check.getStatus())) {
-            throw new BizException("盘点单 {0} 已确认，不能修改或删除", check.getDocNo());
+            throw new BizException("wms.error.stockCountHasConfirmedCannotModified", check.getDocNo());
         }
         return check;
     }
@@ -322,9 +322,9 @@ public class WmsCheckService {
      */
     private Map<Long, WmsMaterial> validate(Long warehouseId, List<WmsCheckItem> items, boolean strict) {
         if (items.isEmpty()) {
-            throw new BizException("请添加盘点明细");
+            throw new BizException("wms.valid.addCountItems");
         }
-        WmsWarehouse warehouse = refs.warehouse(warehouseId, "盘点仓库");
+        WmsWarehouse warehouse = refs.warehouse(warehouseId, "wms.label.countWarehouse");
         // 盘点允许停用的物料、库位：它们可能还有库存
         Map<Long, WmsMaterial> materials = refs.materials(items.stream().map(WmsCheckItem::getMaterialId).toList(), false);
         Map<Long, WmsLocation> locations = refs.locations(items.stream().map(WmsCheckItem::getLocationId).toList());
@@ -338,14 +338,14 @@ public class WmsCheckService {
                 if (!material.isBatchManaged()) {
                     item.setBatchNo(NO_BATCH);
                 } else if (item.getBatchNo().isEmpty()) {
-                    throw new BizException("物料启用了批次管理，请填写批次号");
+                    throw new BizException("wms.error.materialBatchManagedEnterBatchNo");
                 }
                 if (!slots.add(slotKey(item.getLocationId(), item.getMaterialId(), item.getBatchNo()))) {
-                    throw new BizException("同一库位、物料、批次的明细重复");
+                    throw new BizException("wms.error.duplicateLinesSameLocationMaterialBatch");
                 }
                 if (item.getActualQty() == null) {
                     if (strict) {
-                        throw new BizException("请填写实盘数量");
+                        throw new BizException("wms.error.enterCountedQuantity");
                     }
                     item.setSerialNos(null);
                     continue;
@@ -354,7 +354,7 @@ public class WmsCheckService {
                         serialsByMaterial.computeIfAbsent(material.getId(), k -> new HashSet<>()));
                 item.setSerialNos(joinSerials(serials));
             } catch (BizException e) {
-                throw new BizException("第 {0} 行（{1}）：{2}", i + 1, StockService.describe(material), e.getLocalizedMessage());
+                throw new BizException("wms.error.line", i + 1, StockService.describe(material), e.getLocalizedMessage());
             }
         }
         return materials;

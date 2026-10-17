@@ -17,11 +17,11 @@ import java.util.List;
  * @param leadDays  生产提前期（天）
  */
 public record BomRequest(
-        @NotNull(message = "请选择产品") Long materialId,
-        @NotBlank(message = "请填写版本号") @Size(max = 16, message = "版本号不能超过16个字符") String version,
+        @NotNull(message = "{mes.valid.selectProduct}") Long materialId,
+        @NotBlank(message = "{mes.valid.enterVersion}") @Size(max = 16, message = "{mes.valid.versionCannotExceedCharacters}") String version,
         Integer isDefault,
-        @Min(value = 0, message = "提前期不能小于0") @Max(value = 365, message = "提前期不能超过365天") Integer leadDays,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark,
-        @NotEmpty(message = "请添加子件") @Size(max = 500, message = "子件不能超过500行") List<@Valid @NotNull BomItemRequest> items,
-        @Size(max = 50, message = "工序不能超过50道") List<@Valid @NotNull BomOpRequest> ops) {
+        @Min(value = 0, message = "{mes.valid.leadTimeCannotLess}") @Max(value = 365, message = "{mes.valid.leadTimeCannotExceedDays}") Integer leadDays,
+        @Size(max = 255, message = "{mes.valid.remarkCannotExceedCharacters}") String remark,
+        @NotEmpty(message = "{mes.valid.addComponents}") @Size(max = 500, message = "{mes.valid.componentsCannotExceedLines}") List<@Valid @NotNull BomItemRequest> items,
+        @Size(max = 50, message = "{mes.valid.operationsCannotExceed}") List<@Valid @NotNull BomOpRequest> ops) {
 }

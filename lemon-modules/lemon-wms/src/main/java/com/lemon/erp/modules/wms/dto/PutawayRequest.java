@@ -11,9 +11,9 @@ import java.util.List;
  * 上架推荐：入库仓库和各行的物料、批次
  */
 public record PutawayRequest(
-        @NotNull(message = "请选择仓库") Long warehouseId,
-        @NotEmpty(message = "请添加明细") @Size(max = 500, message = "明细不能超过500行") List<@Valid @NotNull Line> lines) {
+        @NotNull(message = "{wms.valid.selectWarehouse}") Long warehouseId,
+        @NotEmpty(message = "{wms.valid.addLineItems}") @Size(max = 500, message = "{wms.valid.lineItemsCannotExceed2}") List<@Valid @NotNull Line> lines) {
 
-    public record Line(@NotNull(message = "请选择物料") Long materialId, @Size(max = 64) String batchNo) {
+    public record Line(@NotNull(message = "{wms.valid.selectMaterial}") Long materialId, @Size(max = 64) String batchNo) {
     }
 }

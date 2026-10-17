@@ -12,8 +12,8 @@ import java.util.List;
 @Getter
 @AllArgsConstructor
 public enum PortalKind {
-    SUPPLIER("supplier", "/portal", "portal:", "供应商"),
-    DEALER("dealer", "/dealer", "dealer:", "经销商");
+    SUPPLIER("supplier", "/portal", "portal:", "framework.enum.PortalKind.supplier"),
+    DEALER("dealer", "/dealer", "dealer:", "framework.enum.PortalKind.dealer");
 
     /** 内置角色编码 */
     private final String role;
@@ -21,6 +21,7 @@ public enum PortalKind {
     private final String modulePath;
     /** 门户权限标识前缀 */
     private final String permPrefix;
+    /** 名称的消息键 */
     private final String label;
 
     /** 门户账号还可以访问的公共接口：登录信息、个人中心、站内消息、字典、附件（附件按业务记录再校验） */

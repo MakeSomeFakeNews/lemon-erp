@@ -79,16 +79,16 @@ public class CaptchaService {
     /** 校验并作废验证码（不区分大小写） */
     public void verify(String captchaId, String code) {
         if (captchaId == null || captchaId.isBlank() || code == null || code.isBlank()) {
-            throw new BizException("请输入验证码");
+            throw new BizException("system.error.enterCaptcha");
         }
         String key = CACHE_KEY + captchaId;
         String answer = cache.get(key, String.class);
         cache.delete(key);
         if (answer == null) {
-            throw new BizException("验证码已过期，请刷新");
+            throw new BizException("system.error.captchaHasExpiredRefresh");
         }
         if (!answer.equalsIgnoreCase(code.trim().toUpperCase(Locale.ROOT))) {
-            throw new BizException("验证码错误");
+            throw new BizException("system.error.incorrectCaptcha");
         }
     }
 
@@ -127,7 +127,7 @@ public class CaptchaService {
             ImageIO.write(image, "png", out);
             return Base64.getEncoder().encodeToString(out.toByteArray());
         } catch (IOException e) {
-            throw new BizException("生成验证码失败");
+            throw new BizException("system.error.failedGenerateCaptcha");
         }
     }
 

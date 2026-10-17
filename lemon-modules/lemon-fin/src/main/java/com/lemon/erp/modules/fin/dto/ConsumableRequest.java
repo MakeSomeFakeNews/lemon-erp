@@ -18,19 +18,19 @@ import java.util.List;
  * @param expenseAccountId 费用科目：管理费用、制造费用、销售费用等
  */
 public record ConsumableRequest(
-        @NotNull(message = "请选择领用部门") Long deptId,
+        @NotNull(message = "{fin.valid.selectIssuingDepartment}") Long deptId,
         Long userId,
-        @NotNull(message = "请选择仓库") Long warehouseId,
-        @NotNull(message = "请选择领用日期") LocalDate useDate,
-        @NotNull(message = "请选择费用科目") Long expenseAccountId,
-        @Size(max = 255, message = "用途不能超过255个字符") String remark,
-        @NotEmpty(message = "请添加领用物料") @Size(max = 200, message = "明细不能超过200行") List<@Valid @NotNull Item> items) {
+        @NotNull(message = "{fin.valid.selectWarehouse}") Long warehouseId,
+        @NotNull(message = "{fin.valid.selectIssueDate}") LocalDate useDate,
+        @NotNull(message = "{fin.valid.selectExpenseAccount}") Long expenseAccountId,
+        @Size(max = 255, message = "{fin.valid.purposeCannotExceedCharacters}") String remark,
+        @NotEmpty(message = "{fin.valid.addMaterialsIssue}") @Size(max = 200, message = "{fin.valid.noMoreLines}") List<@Valid @NotNull Item> items) {
 
     public record Item(
-            @NotNull(message = "请选择物料") Long materialId,
+            @NotNull(message = "{fin.valid.selectMaterial}") Long materialId,
             Long locationId,
             @Size(max = 64) String batchNo,
-            @NotNull(message = "请填写数量") @DecimalMin(value = "0", inclusive = false, message = "数量必须大于0")
+            @NotNull(message = "{fin.valid.enterQuantity}") @DecimalMin(value = "0", inclusive = false, message = "{fin.valid.quantityMustGreater}")
             @Digits(integer = 14, fraction = 4) BigDecimal qty,
             @Size(max = 255) String remark) {
     }

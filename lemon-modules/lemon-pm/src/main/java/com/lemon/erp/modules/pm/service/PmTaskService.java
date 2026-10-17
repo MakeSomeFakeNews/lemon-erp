@@ -71,7 +71,7 @@ public class PmTaskService {
     public void update(Long id, TaskRequest req) {
         PmTask old = get(id);
         if (!old.getProjectId().equals(req.projectId())) {
-            throw new BizException("任务不能移到其他项目");
+            throw new BizException("pm.error.tasksCannotMovedAnotherProject");
         }
         projectService.getOpen(old.getProjectId());
         PmTask t = new PmTask();
@@ -99,7 +99,7 @@ public class PmTaskService {
         List<PmTask> all = taskMapper.selectList(Wrappers.<PmTask>lambdaQuery().eq(PmTask::getProjectId, t.getProjectId()));
         Set<Long> ids = descendants(all, id);
         if (timesheetMapper.exists(Wrappers.<PmTimesheet>lambdaQuery().in(PmTimesheet::getTaskId, ids))) {
-            throw new BizException("任务（或下级任务）已有工时，不能删除");
+            throw new BizException("pm.error.taskSubtaskHasTimesheetsCannotDeleted");
         }
         taskMapper.update(Wrappers.<PmTask>lambdaUpdate().set(PmTask::getPredecessorId, null).in(PmTask::getPredecessorId, ids));
         taskMapper.deleteByIds(ids);
@@ -112,23 +112,23 @@ public class PmTaskService {
     @Transactional
     public void updateProgress(Long id, int progress) {
         if (progress < 0 || progress > 100) {
-            throw new BizException("进度为 0-100");
+            throw new BizException("pm.error.progressMust");
         }
         PmTask t = get(id);
         if (!Objects.equals(t.getAssigneeId(), SecurityUtils.getUserId()) && !permissionService.hasPerm("pm:task:edit")) {
-            throw new BizException("只有任务负责人可以更新进度");
+            throw new BizException("pm.error.onlyTaskAssigneeUpdateProgress");
         }
         PmProject p = projectService.get(t.getProjectId());
         if (!"ACTIVE".equals(p.getStatus())) {
-            throw new BizException("项目不在进行中，不能更新进度");
+            throw new BizException("pm.error.projectNotProgressCannotUpdateProgress");
         }
         if (taskMapper.exists(Wrappers.<PmTask>lambdaQuery().eq(PmTask::getParentId, id))) {
-            throw new BizException("上级任务的进度由下级任务汇总");
+            throw new BizException("pm.error.progressParentTaskRolledUpSubtasks");
         }
         if (progress > 0 && t.getPredecessorId() != null) {
             PmTask pre = taskMapper.selectById(t.getPredecessorId());
             if (pre != null && !"DONE".equals(pre.getStatus())) {
-                throw new BizException("前置任务「{0}」还没有完成", pre.getName());
+                throw new BizException("pm.error.predecessorTaskNotCompletedYet", pre.getName());
             }
         }
         String status = progress == 0 ? "TODO" : progress == 100 ? "DONE" : "DOING";
@@ -143,7 +143,7 @@ public class PmTaskService {
     public PmTask get(Long id) {
         PmTask t = id == null ? null : taskMapper.selectById(id);
         if (t == null) {
-            throw new BizException("任务不存在");
+            throw new BizException("pm.error.taskNotFound");
         }
         return t;
     }
@@ -236,7 +236,7 @@ public class PmTaskService {
 
     private void fill(PmTask t, TaskRequest req, Long selfId) {
         if (req.planEnd().isBefore(req.planStart())) {
-            throw new BizException("计划完成日期不能早于计划开始日期");
+            throw new BizException("pm.error.plannedEndDateCannotEarlierPlanned");
         }
         long parentId = req.parentId() == null ? 0L : req.parentId();
         List<PmTask> all = taskMapper.selectList(Wrappers.<PmTask>lambdaQuery().eq(PmTask::getProjectId, req.projectId()));
@@ -244,25 +244,25 @@ public class PmTaskService {
         if (parentId != 0) {
             PmTask parent = byId.get(parentId);
             if (parent == null) {
-                throw new BizException("上级任务不存在");
+                throw new BizException("pm.error.parentTaskNotFound");
             }
             if (selfId != null && descendants(all, selfId).contains(parentId)) {
-                throw new BizException("上级任务不能是自己或自己的下级");
+                throw new BizException("pm.error.parentTaskCannotItselfOneSubtasks");
             }
             if (timesheetMapper.exists(Wrappers.<PmTimesheet>lambdaQuery().eq(PmTimesheet::getTaskId, parentId))) {
-                throw new BizException("上级任务「{0}」已有工时，不能再拆分下级任务", parent.getName());
+                throw new BizException("pm.error.parentTaskAlreadyHasTimesheetsCannot", parent.getName());
             }
         }
         if (req.predecessorId() != null) {
             PmTask pre = byId.get(req.predecessorId());
             if (pre == null) {
-                throw new BizException("前置任务不存在");
+                throw new BizException("pm.error.predecessorTaskNotFound");
             }
             if (selfId != null && (descendants(all, selfId).contains(pre.getId()) || dependsOn(byId, pre.getId(), selfId))) {
-                throw new BizException("前置任务不能是自己、自己的下级，也不能形成循环依赖");
+                throw new BizException("pm.error.predecessorCannotTaskItselfSubtaskCannot");
             }
             if (req.planStart().isBefore(pre.getPlanEnd())) {
-                throw new BizException("计划开始日期不能早于前置任务「{0}」的计划完成日期 {1}", pre.getName(), pre.getPlanEnd());
+                throw new BizException("pm.error.plannedStartDateCannotEarlierPlanned", pre.getName(), pre.getPlanEnd());
             }
         }
         t.setProjectId(req.projectId());

@@ -2,7 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.util.ServletUtils;
 import com.lemon.erp.common.util.TreeUtils;
 import com.lemon.erp.common.util.UserAgentUtils;
@@ -54,7 +54,12 @@ public class AuthService {
     private final DemoProperties demoProperties;
 
     public AuthConfig publicConfig() {
-        return new AuthConfig(tenantLookup.isEnabled(), I18n.t(settings.get(Setting.SYSTEM_NAME)), settings.getBool(Setting.SHOW_DEMO_ACCOUNT),
+        // 未修改系统名称时按语言显示默认名称
+        String systemName = settings.get(Setting.SYSTEM_NAME);
+        if (Setting.SYSTEM_NAME.defaultValue().equals(systemName)) {
+            systemName = Messages.get("framework.label.defaultSystemName");
+        }
+        return new AuthConfig(tenantLookup.isEnabled(), systemName, settings.getBool(Setting.SHOW_DEMO_ACCOUNT),
                 settings.getBool(Setting.WATERMARK), settings.get(Setting.CAPTCHA_MODE), settings.getInt(Setting.PASSWORD_MIN_LENGTH),
                 settings.get(Setting.PASSWORD_COMPLEXITY), settings.getInt(Setting.ATTACHMENT_MAX_MB), demoProperties.isEnabled());
     }
@@ -66,7 +71,7 @@ public class AuthService {
         try {
             TenantContext.set(tenantLookup.resolveLoginTenant(req.tenantName()));
         } catch (BizException e) {
-            throw loginFailed(req.username(), request, e.getTemplate(), e.getArgs());
+            throw loginFailed(req.username(), request, e.getMessageKey(), e.getArgs());
         }
         try {
             passwordPolicy.checkLocked(req.username());
@@ -76,20 +81,20 @@ public class AuthService {
                 captchaService.verify(req.captchaId(), req.captchaCode());
             }
         } catch (BizException e) {
-            throw loginFailed(req.username(), request, e.getTemplate(), e.getArgs());
+            throw loginFailed(req.username(), request, e.getMessageKey(), e.getArgs());
         }
         SysUser user = userMapper.selectOne(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getUsername, req.username()));
         if (user == null || !passwordEncoder.matches(req.password(), user.getPassword())) {
             // 不存在的用户名同样计数，避免借此探测账号是否存在
             int left = passwordPolicy.recordFailure(req.username());
             if (left == 0) {
-                throw loginFailed(req.username(), request, "用户名或密码错误，账号已锁定");
+                throw loginFailed(req.username(), request, "system.error.wrongUsernamePasswordAccountLocked");
             }
-            throw left <= 2 ? loginFailed(req.username(), request, "用户名或密码错误，再错 {0} 次将锁定账号", left)
-                    : loginFailed(req.username(), request, "用户名或密码错误");
+            throw left <= 2 ? loginFailed(req.username(), request, "system.error.wrongUsernamePasswordAccountWillLocked", left)
+                    : loginFailed(req.username(), request, "system.error.wrongUsernamePassword");
         }
         if (!Integer.valueOf(1).equals(user.getStatus())) {
-            throw loginFailed(req.username(), request, "账号已停用");
+            throw loginFailed(req.username(), request, "system.error.accountDisabled");
         }
         passwordPolicy.clearFailures(req.username());
         return issue(user, request, "登录成功"); // i18n-ignore 登录日志
@@ -98,19 +103,20 @@ public class AuthService {
     /**
      * 第三方授权登录（钉钉、企业微信、飞书）：平台已确认身份并按绑定关系找到用户，校验状态后签发令牌。调用前须设置租户
      *
-     * @param via 登录方式，记入登录日志，如「钉钉登录」
+     * @param viaKey 登录方式的消息键，如「钉钉登录」；登录日志记默认语言（中文）
      */
-    public LoginResponse loginAs(SysUser user, String via) {
+    public LoginResponse loginAs(SysUser user, String viaKey) {
         HttpServletRequest request = ServletUtils.getRequest();
         if (!Integer.valueOf(1).equals(user.getStatus())) {
-            throw loginFailed(user.getUsername(), request, "账号已停用");
+            throw loginFailed(user.getUsername(), request, "system.error.accountDisabled");
         }
         if (user.getSupplierId() != null || user.getCustomerId() != null) {
             // 登录日志记中文，提示按请求语言
+            String via = Messages.get(Messages.DEFAULT_LOCALE, viaKey);
             publishLoginLog(user.getUsername(), request, 0, "门户账号不能使用" + via); // i18n-ignore
-            throw new BizException("门户账号不能使用{0}", I18n.t(via));
+            throw new BizException("system.error.portalAccountsCannotUse", Messages.get(viaKey));
         }
-        return issue(user, request, via + "成功"); // i18n-ignore 登录日志
+        return issue(user, request, Messages.get(Messages.DEFAULT_LOCALE, viaKey) + "成功"); // i18n-ignore 登录日志
     }
 
     /** 第三方授权登录失败（如成员未绑定用户）记入登录日志 */
@@ -166,10 +172,11 @@ public class AuthService {
                 .toList());
     }
 
-    /** 登录失败：登录日志记中文，返回的异常按请求语言翻译 */
-    private BizException loginFailed(String username, HttpServletRequest request, String template, Object... args) {
-        publishLoginLog(username, request, 0, I18n.format(template, args));
-        return new BizException(template, args);
+    /** 登录失败：登录日志记默认语言（中文），返回的异常按请求语言 */
+    private BizException loginFailed(String username, HttpServletRequest request, String messageKey, Object... args) {
+        BizException e = new BizException(messageKey, args);
+        publishLoginLog(username, request, 0, e.getMessage());
+        return e;
     }
 
     private void publishLoginLog(String username, HttpServletRequest request, int status, String msg) {

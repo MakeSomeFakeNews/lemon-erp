@@ -14,19 +14,19 @@ public class WmsFlowBusinesses {
 
     @Bean
     public FlowBusiness checkFlow() {
-        return FlowBusiness.of("wms_check", "盘点差异审批",
-                number("gainQty", "盘盈数量"),
-                number("lossQty", "盘亏数量"),
-                number("diffLines", "差异行数"),
-                text("docNo", "盘点单号"));
+        return FlowBusiness.of("wms_check", "wms.label.stockCountDifferenceApproval",
+                number("gainQty", "wms.label.gainQty"),
+                number("lossQty", "wms.label.lossQty"),
+                number("diffLines", "wms.label.differenceLines"),
+                text("docNo", "wms.label.stockCountNo"));
     }
 
     @Bean
     public FlowBusiness stockDocFlow() {
-        return FlowBusiness.of("wms_stock_doc", "出入库确认审批",
-                select("kind", "单据类型", "IN", "OUT", "TRANSFER"),
-                text("bizType", "业务类型（如 PURCHASE、SALES、OTHER）"),
-                number("totalQty", "总数量"),
-                text("docNo", "单号"));
+        return FlowBusiness.of("wms_stock_doc", "wms.label.inboundOutboundConfirmationApproval",
+                select("kind", "wms.label.documentType", "IN", "OUT", "TRANSFER"),
+                text("bizType", "wms.label.businessTypeEGPurchaseSales"),
+                number("totalQty", "wms.label.totalQty"),
+                text("docNo", "wms.label.documentNo"));
     }
 }

@@ -60,7 +60,7 @@ public class ScmRebateService {
     public ScmRebate detail(Long id) {
         ScmRebate r = id == null ? null : rebateMapper.selectDetail(id);
         if (r == null) {
-            throw new BizException("返利协议不存在");
+            throw new BizException("scm.error.rebateAgreementDoesNotExist");
         }
         r.setTiers(rebateMapper.selectTiers(id));
         return r;
@@ -108,11 +108,11 @@ public class ScmRebateService {
     public Calc settle(Long id, LocalDate settleDate) {
         ScmRebate r = requireActive(id);
         if (!r.getEndDate().isBefore(LocalDate.now())) {
-            throw new BizException("返利期间 {0} 还没有结束，不能结算", r.getEndDate());
+            throw new BizException("scm.error.rebatePeriodHasNotEndedCannot", r.getEndDate());
         }
         Calc c = calc(r, r.getEndDate());
         if (c.rebateAmount().signum() <= 0) {
-            throw new BizException("期间销售额 {0} 没有达到返利阶梯", plain(c.salesAmount()));
+            throw new BizException("scm.error.periodSalesAmountDoesNotReach", plain(c.salesAmount()));
         }
         LocalDate date = settleDate != null ? settleDate : LocalDate.now();
         if (rebateMapper.update(Wrappers.<ScmRebate>lambdaUpdate()
@@ -121,7 +121,7 @@ public class ScmRebateService {
                 .set(ScmRebate::getSettleDate, date).set(ScmRebate::getSettleBy, SecurityUtils.getUserId())
                 .set(ScmRebate::getUpdateTime, LocalDateTime.now())
                 .eq(ScmRebate::getId, id).eq(ScmRebate::getStatus, RebateStatus.ACTIVE)) == 0) {
-            throw new BizException("返利协议状态已变化，请刷新后重试");
+            throw new BizException("scm.error.rebateAgreementStatusHasChangedRefresh");
         }
         if (r.getSettleMode() == RebateSettle.CREDIT_NOTE) {
             eventPublisher.publishEvent(new RebateSettledEvent(id, r.getRebateNo(), r.getCustomerId(), c.rebateAmount(), date));
@@ -134,10 +134,10 @@ public class ScmRebateService {
     public void unsettle(Long id) {
         ScmRebate r = detail(id);
         if (r.getStatus() != RebateStatus.SETTLED) {
-            throw new BizException("返利协议没有结算");
+            throw new BizException("scm.error.rebateAgreementHasNotSettled");
         }
         if (r.getSettleMode() == RebateSettle.NEXT_ORDER && balance(r.getCustomerId(), null).compareTo(r.getRebateAmount()) < 0) {
-            throw new BizException("返利已在销售订单中抵扣，不能撤销结算");
+            throw new BizException("scm.error.rebateHasDeductedSalesOrdersSettlement");
         }
         rebateMapper.update(Wrappers.<ScmRebate>lambdaUpdate()
                 .set(ScmRebate::getStatus, RebateStatus.ACTIVE).set(ScmRebate::getSalesAmount, null).set(ScmRebate::getRate, null)
@@ -165,7 +165,7 @@ public class ScmRebateService {
         }
         BigDecimal balance = balance(customerId, excludeOrderId);
         if (amount.compareTo(balance) > 0) {
-            throw new BizException("返利抵扣 {0} 超过客户的返利余额 {1}", plain(amount), plain(balance));
+            throw new BizException("scm.error.rebateDeductionExceedsCustomerSRebate", plain(amount), plain(balance));
         }
     }
 
@@ -179,22 +179,22 @@ public class ScmRebateService {
     private ScmRebate requireActive(Long id) {
         ScmRebate r = detail(id);
         if (r.getStatus() != RebateStatus.ACTIVE) {
-            throw new BizException("返利协议已结算，不能修改");
+            throw new BizException("scm.error.rebateAgreementHasSettledCannotModified");
         }
         return r;
     }
 
     private void validate(RebateRequest req) {
         if (req.endDate().isBefore(req.beginDate())) {
-            throw new BizException("结束日期不能早于开始日期");
+            throw new BizException("scm.error.endDateCannotEarlierStartDate");
         }
         if (req.tiers().stream().map(t -> t.minAmount().stripTrailingZeros()).collect(HashSet::new, HashSet::add, HashSet::addAll).size()
                 != req.tiers().size()) {
-            throw new BizException("返利阶梯的销售额不能重复");
+            throw new BizException("scm.error.rebateTierSalesAmountsCannotDuplicated");
         }
         ScmCustomer customer = customerService.get(req.customerId());
         if (!Integer.valueOf(1).equals(customer.getStatus())) {
-            throw new BizException("客户「{0}」已停用", customer.getName());
+            throw new BizException("scm.error.customerDisabled", customer.getName());
         }
     }
 

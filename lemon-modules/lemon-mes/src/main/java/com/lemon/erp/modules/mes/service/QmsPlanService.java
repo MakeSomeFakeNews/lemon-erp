@@ -45,7 +45,7 @@ public class QmsPlanService {
     public QmsInspectionPlan detail(Long id) {
         QmsInspectionPlan plan = id == null ? null : planMapper.selectDetail(id);
         if (plan == null) {
-            throw new BizException("检验方案不存在");
+            throw new BizException("mes.error.inspectionPlanDoesNotExist");
         }
         plan.setItems(items(id));
         return plan;
@@ -97,7 +97,7 @@ public class QmsPlanService {
     /** 按方案和批量计算抽样数量、Ac / Re */
     public QmsViews.PlanMatch sampling(QmsInspectionPlan plan, BigDecimal lotQty) {
         if (lotQty == null || lotQty.signum() <= 0) {
-            throw new BizException("请填写送检数量");
+            throw new BizException("mes.valid.enterLotQuantity");
         }
         return switch (plan.getSamplingMode()) {
             case FULL -> new QmsViews.PlanMatch(plan, lotQty, null, 0, 1);
@@ -119,7 +119,7 @@ public class QmsPlanService {
     private QmsInspectionPlan toEntity(QmsRequests.Plan req) {
         boolean byMaterial = req.materialId() != null;
         if (byMaterial == StringUtils.hasText(req.materialCategory())) {
-            throw new BizException("请选择适用物料或物料分类（二选一）");
+            throw new BizException("mes.error.selectApplicableMaterialMaterialCategoryOne");
         }
         if (byMaterial) {
             materialService.get(req.materialId());
@@ -132,13 +132,13 @@ public class QmsPlanService {
         plan.setSamplingMode(req.samplingMode());
         if (req.samplingMode() == SamplingMode.FIXED) {
             if (req.fixedQty() == null) {
-                throw new BizException("请填写固定抽样数量");
+                throw new BizException("mes.error.enterFixedSampleQuantity");
             }
             plan.setFixedQty(req.fixedQty());
             plan.setAcceptQty(req.acceptQty() == null ? 0 : req.acceptQty());
         } else if (req.samplingMode() == SamplingMode.AQL) {
             if (req.aql() == null || req.inspectionLevel() == null) {
-                throw new BizException("请填写 AQL 和检验水平");
+                throw new BizException("mes.error.enterAqlInspectionLevel");
             }
             // 校验 AQL 在表中
             AqlSampling.plan(100, req.inspectionLevel(), req.aql());
@@ -157,10 +157,10 @@ public class QmsPlanService {
         for (QmsRequests.PlanItem r : reqs) {
             boolean quantitative = r.method() == ItemMethod.QUANTITATIVE;
             if (quantitative && r.lowerLimit() == null && r.upperLimit() == null) {
-                throw new BizException("定量项目「{0}」请填写上限或下限", r.name());
+                throw new BizException("mes.error.enterUpperLowerLimitQuantitativeItem", r.name());
             }
             if (quantitative && r.lowerLimit() != null && r.upperLimit() != null && r.lowerLimit().compareTo(r.upperLimit()) > 0) {
-                throw new BizException("项目「{0}」的下限不能大于上限", r.name());
+                throw new BizException("mes.error.lowerLimitItemCannotGreaterUpper", r.name());
             }
             QmsInspectionPlanItem item = new QmsInspectionPlanItem();
             item.setPlanId(planId);

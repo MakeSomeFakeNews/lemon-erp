@@ -2,7 +2,7 @@ package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.rule.BizRules;
 import com.lemon.erp.framework.security.LoginUser;
@@ -88,7 +88,7 @@ public class ScmTradeDocService {
         Supplier<ScmTradeDoc> loader = () -> docMapper.selectById(id);
         ScmTradeDoc doc = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(TRADE_RULE, loader);
         if (doc == null || !kind.name().equals(doc.getKind())) {
-            throw new BizException("{0}单不存在或没有权限", I18n.t(kind.getLabel()));
+            throw new BizException("scm.error.doesNotExistAccessDenied2", Messages.get(kind.getLabelKey()));
         }
         ScmTradeDoc detail = docMapper.selectDetail(id);
         detail.setItems(itemMapper.selectByDocId(id));
@@ -102,12 +102,12 @@ public class ScmTradeDocService {
         List<String> allowed = kind.isReturns() ? OrderStatus.RETURNABLE : OrderStatus.EXECUTABLE;
         if (!allowed.contains(order.getStatus())) {
             if (!kind.isReturns()) {
-                throw new BizException("订单 {0} 不是已审核或部分完成状态，不能{1}", order.getOrderNo(), I18n.t(kind.getLabel()));
+                throw new BizException("scm.error.orderNotApprovedPartiallyCompletedNot", order.getOrderNo(), Messages.get(kind.getLabelKey()));
             }
             if (kind.inbound()) {
-                throw new BizException("订单 {0} 还没有出库，不能退货", order.getOrderNo());
+                throw new BizException("scm.error.orderHasNoDeliveriesYetCannot", order.getOrderNo());
             }
-            throw new BizException("订单 {0} 还没有入库，不能退货", order.getOrderNo());
+            throw new BizException("scm.error.orderHasNoReceiptsYetCannot", order.getOrderNo());
         }
         if (kind == TradeKind.SALES_OUT) {
             orderService.checkCreditBeforeShipment(order);
@@ -124,7 +124,7 @@ public class ScmTradeDocService {
             TradeDocItemRequest r = req.items().get(i);
             ScmOrderItem orderItem = orderItems.get(r.orderItemId());
             if (orderItem == null) {
-                throw new BizException("第 {0} 行：订单明细不属于订单 {1}", i + 1, order.getOrderNo());
+                throw new BizException("scm.error.rowOrderLineDoesNotBelong", i + 1, order.getOrderNo());
             }
             int updated = kind.isReturns() ? orderItemMapper.addReturn(orderItem.getId(), r.qty(), Boolean.TRUE.equals(req.replenish()))
                     : orderItemMapper.addDone(orderItem.getId(), r.qty(), overRate);
@@ -136,8 +136,8 @@ public class ScmTradeDocService {
                     max = latest.getQty().multiply(BigDecimal.valueOf(100).add(overRate)).divide(BigDecimal.valueOf(100), 4, RoundingMode.DOWN)
                             .subtract(latest.getDoneQty()).add(latest.getReplenishQty());
                 }
-                throw new BizException("第 {0} 行（{1} {2}）：数量超出{3} {4}", i + 1, orderItem.getMaterialCode(), orderItem.getMaterialName(),
-                        I18n.t(kind.isReturns() ? "可退数量" : overRate.signum() > 0 ? "允许超收 / 超发后的数量" : "未完成数量"), plain(max));
+                throw new BizException("scm.error.rowQuantityExceeds", i + 1, orderItem.getMaterialCode(), orderItem.getMaterialName(),
+                        Messages.get(kind.isReturns() ? "scm.label.returnableQuantity" : overRate.signum() > 0 ? "scm.label.quantityAllowedOverReceiptOverDelivery" : "scm.label.openQuantity"), plain(max));
             }
             items.add(toItem(kind, r, orderItem, rate(order)));
         }

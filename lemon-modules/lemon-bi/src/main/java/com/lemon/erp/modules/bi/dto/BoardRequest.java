@@ -15,13 +15,13 @@ import java.util.List;
  * @param widgets 组件：报表、宽度（栅格 6-24）、图表类型（为空使用报表的图表类型）
  */
 public record BoardRequest(
-        @NotBlank(message = "仪表盘名称不能为空") @Size(max = 64, message = "名称不能超过64个字符") String name,
-        @NotNull(message = "请添加组件") @Size(max = 20, message = "组件不能超过20个") List<@Valid @NotNull Widget> widgets,
+        @NotBlank(message = "{bi.valid.dashboardNameRequired}") @Size(max = 64, message = "{bi.valid.nameCannotExceedCharacters}") String name,
+        @NotNull(message = "{bi.valid.addWidgets}") @Size(max = 20, message = "{bi.valid.noMoreWidgets}") List<@Valid @NotNull Widget> widgets,
         Integer shared,
-        @Size(max = 255, message = "说明不能超过255个字符") String remark) {
+        @Size(max = 255, message = "{bi.valid.descriptionCannotExceedCharacters}") String remark) {
 
-    public record Widget(@NotNull(message = "请选择报表") Long reportId,
-                         @NotNull(message = "请选择宽度") @Min(value = 6, message = "宽度为6-24") @Max(value = 24, message = "宽度为6-24") Integer span,
+    public record Widget(@NotNull(message = "{bi.valid.selectReport}") Long reportId,
+                         @NotNull(message = "{bi.valid.selectWidth}") @Min(value = 6, message = "{bi.valid.widthMust}") @Max(value = 24, message = "{bi.valid.widthMust}") Integer span,
                          String chart) {
     }
 }

@@ -1,6 +1,6 @@
 package com.lemon.erp.modules.pm.service;
 
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.service.FinAccountRuleService;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -63,7 +63,7 @@ public class PmCloseService {
     public int close(int period) {
         LocalDate begin = FinConstants.firstDay(period);
         LocalDate end = FinConstants.lastDay(period);
-        periodGuard.checkOpen(end, "项目月结"); // i18n-ignore 财务模块输出处翻译，译文已登记
+        periodGuard.checkOpen(end, "pm.label.projectPeriodClose");
         Long contractCost = accountRules.accountId(AccountRole.CONTRACT_COST);
 
         // 按项目汇总本期的分录
@@ -182,7 +182,7 @@ public class PmCloseService {
     /** 已入总账的工时、费用不能删除或撤销 */
     public static void checkNotPosted(Long voucherId, String what) {
         if (voucherId != null) {
-            throw new BizException("{0}已在项目月结中入账，请先删除月结凭证", I18n.t(what));
+            throw new BizException("pm.error.hasPostedProjectPeriodCloseDelete", Messages.get(what));
         }
     }
 

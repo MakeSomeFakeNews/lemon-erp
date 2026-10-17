@@ -2,9 +2,9 @@ package com.lemon.erp.framework.setting;
 
 /** 登录验证码 */
 public enum CaptchaMode implements OptionEnum {
-    OFF("关闭"),
-    ALWAYS("每次登录"),
-    AFTER_FAILURE("密码输错后");
+    OFF("framework.enum.CaptchaMode.off"),
+    ALWAYS("framework.enum.CaptchaMode.always"),
+    AFTER_FAILURE("framework.enum.CaptchaMode.afterFailure");
 
     private final String label;
 

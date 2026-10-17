@@ -7,7 +7,7 @@ import java.util.List;
  * 流程设计器据此在条件分支中提供可选的变量；这些流程只能由业务单据发起，「发起申请」中不显示。
  *
  * @param processKey 流程标识，与流程模型的标识一致
- * @param name       业务名称，如「采购订单审核」
+ * @param name       业务名称（消息键），如「采购订单审核」；变量的 label 同样是消息键，输出时 {@code Messages.get}
  * @param variables  发起时传入、可用于条件分支的流程变量
  */
 public record FlowBusiness(String processKey, String name, List<Variable> variables) {

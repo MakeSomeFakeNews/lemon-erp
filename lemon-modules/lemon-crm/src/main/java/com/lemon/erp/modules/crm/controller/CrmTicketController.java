@@ -124,7 +124,7 @@ public class CrmTicketController {
             case "resolve" -> ticketService.resolve(id, req);
             case "close" -> ticketService.close(id, req);
             case "reopen" -> ticketService.reopen(id, req);
-            default -> throw new BizException("不支持的操作：{0}", action);
+            default -> throw new BizException("crm.error.unsupportedAction", action);
         }
         return R.ok();
     }

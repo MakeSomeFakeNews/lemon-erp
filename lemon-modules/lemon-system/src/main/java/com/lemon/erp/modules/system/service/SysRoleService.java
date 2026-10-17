@@ -95,9 +95,9 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
     @Transactional
     public void update(SysRole role) {
         SysRole old = getExisting(role.getId());
-        checkNotAdminRole(old, "非超级管理员不允许修改超级管理员角色");
+        checkNotAdminRole(old);
         if (isAdminRole(old) && !PermissionService.ADMIN_ROLE.equals(role.getCode())) {
-            throw new BizException("不允许修改超级管理员角色编码");
+            throw new BizException("system.error.superAdministratorRoleCodeCannotChanged");
         }
         checkCodeUnique(role);
         // 数据权限只能通过 assignDataScope 修改
@@ -119,23 +119,23 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
     public void assignDataScope(Long id, RoleDataScopeRequest req) {
         SysRole role = getExisting(id);
         if (isAdminRole(role)) {
-            throw new BizException("超级管理员拥有全部数据权限，无需分配");
+            throw new BizException("system.error.superAdministratorHasAllDataPermissions");
         }
         DataScopeType type = DataScopeType.of(req.dataScope());
         if (type == null) {
-            throw new BizException("数据权限取值不正确");
+            throw new BizException("system.valid.invalidDataPermissionValue");
         }
         boolean operatorAll = SecurityUtils.getDataScope().all();
         if (type == DataScopeType.ALL && !operatorAll) {
-            throw new BizException("没有权限分配全部数据权限");
+            throw new BizException("system.error.noPermissionAssignAllDataPermission");
         }
         List<Long> deptIds = type == DataScopeType.CUSTOM ? distinctIds(req.deptIds()) : List.of();
         if (type == DataScopeType.CUSTOM) {
             if (deptIds.isEmpty()) {
-                throw new BizException("请选择自定义数据权限的部门");
+                throw new BizException("system.error.selectDepartmentsCustomDataPermission");
             }
             if (deptService.listByIds(deptIds).size() < deptIds.size()) {
-                throw new BizException("部门不存在");
+                throw new BizException("system.error.departmentDoesNotExist");
             }
         }
         if (!operatorAll) {
@@ -152,9 +152,9 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
     public void changeStatus(Long id, Integer status) {
         SysRole role = getExisting(id);
         if (isAdminRole(role) && status == 0) {
-            throw new BizException("不允许停用超级管理员角色");
+            throw new BizException("system.error.superAdministratorRoleCannotDisabled");
         }
-        checkNotAdminRole(role, "非超级管理员不允许修改超级管理员角色");
+        checkNotAdminRole(role);
         SysRole update = new SysRole();
         update.setId(id);
         update.setStatus(status);
@@ -166,11 +166,11 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
     public void delete(List<Long> ids) {
         for (SysRole role : listByIds(ids)) {
             if (isAdminRole(role)) {
-                throw new BizException("不允许删除超级管理员角色");
+                throw new BizException("system.error.superAdministratorRoleCannotDeleted");
             }
         }
         if (userRoleMapper.exists(Wrappers.<SysUserRole>lambdaQuery().in(SysUserRole::getRoleId, ids))) {
-            throw new BizException("角色已分配给用户，不允许删除");
+            throw new BizException("system.error.roleAssignedUsersCannotDeleted");
         }
         removeByIds(ids);
         roleMenuMapper.delete(Wrappers.<SysRoleMenu>lambdaQuery().in(SysRoleMenu::getRoleId, ids));
@@ -181,7 +181,7 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
     private SysRole getExisting(Long id) {
         SysRole role = getById(id);
         if (role == null) {
-            throw new BizException("角色不存在");
+            throw new BizException("system.error.roleDoesNotExist");
         }
         return role;
     }
@@ -190,9 +190,9 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
         return PermissionService.ADMIN_ROLE.equals(role.getCode());
     }
 
-    private static void checkNotAdminRole(SysRole role, String message) {
+    private static void checkNotAdminRole(SysRole role) {
         if (isAdminRole(role) && !SecurityUtils.getLoginUser().isAdmin()) {
-            throw new BizException(message);
+            throw new BizException("system.error.onlySuperAdministratorModifySuperAdministrator");
         }
     }
 
@@ -204,7 +204,7 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
         }
         Set<Long> own = new HashSet<>(menuMapper.selectMenuIdsByUserId(loginUser.userId(), tenantLookup.currentPackageId()));
         if (!own.containsAll(menuIds.stream().filter(Objects::nonNull).toList())) {
-            throw new BizException("不能授予自己没有的菜单权限");
+            throw new BizException("system.error.cannotGrantMenuPermissionsDoNot");
         }
     }
 
@@ -218,7 +218,7 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
     private void checkCodeUnique(SysRole role) {
         SysRole exist = getOne(Wrappers.<SysRole>lambdaQuery().eq(SysRole::getCode, role.getCode()));
         if (exist != null && !Objects.equals(exist.getId(), role.getId())) {
-            throw new BizException("角色编码已存在");
+            throw new BizException("system.error.roleCodeAlreadyExists");
         }
     }
 

@@ -2,7 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.record.RecordType;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.modules.system.entity.SysCustomField;
@@ -46,7 +46,7 @@ public class SysCustomFieldService {
 
     /** 可扩展字段的业务类型：[{code, name}] */
     public List<Map<String, String>> types() {
-        return recordAccess.types().stream().map(t -> Map.of("code", t.code(), "name", I18n.t(t.name()))).toList();
+        return recordAccess.types().stream().map(t -> Map.of("code", t.code(), "name", Messages.get(t.name()))).toList();
     }
 
     /** 全部定义（管理页面），按业务类型、排序 */
@@ -67,7 +67,7 @@ public class SysCustomFieldService {
     public Long save(SysCustomField f) {
         recordAccess.type(f.getBizType());
         if (f.getFieldType() == CustomFieldType.SELECT && options(f).isEmpty()) {
-            throw new BizException("下拉选择请填写选项");
+            throw new BizException("system.error.enterOptionsDropDown");
         }
         f.setLabel(f.getLabel().trim());
         f.setRequired(Integer.valueOf(1).equals(f.getRequired()) ? 1 : 0);
@@ -77,21 +77,21 @@ public class SysCustomFieldService {
         try {
             if (f.getId() == null) {
                 if (fieldMapper.selectCount(Wrappers.<SysCustomField>lambdaQuery().eq(SysCustomField::getBizType, f.getBizType())) >= MAX_FIELDS) {
-                    throw new BizException("每个业务类型最多 {0} 个自定义字段", MAX_FIELDS);
+                    throw new BizException("system.error.upCustomFieldsPerBusinessType", MAX_FIELDS);
                 }
                 fieldMapper.insert(f);
             } else {
                 SysCustomField old = fieldMapper.selectById(f.getId());
                 if (old == null) {
-                    throw new BizException("自定义字段不存在");
+                    throw new BizException("system.error.customFieldDoesNotExist");
                 }
                 if (!old.getBizType().equals(f.getBizType()) || !old.getFieldKey().equals(f.getFieldKey())) {
-                    throw new BizException("业务类型、字段标识不能修改");
+                    throw new BizException("system.error.businessTypeFieldKeyCannotChanged");
                 }
                 fieldMapper.updateById(f);
             }
         } catch (DuplicateKeyException e) {
-            throw new BizException("字段标识「{0}」已存在", f.getFieldKey());
+            throw new BizException("system.error.fieldKeyAlreadyExists", f.getFieldKey());
         }
         return f.getId();
     }
@@ -110,7 +110,7 @@ public class SysCustomFieldService {
 
     /** 一条记录的值：字段标识 → 值 */
     public Map<String, String> values(String bizType, Long bizId) {
-        recordAccess.check(bizType, bizId, false, "自定义字段");
+        recordAccess.check(bizType, bizId, false, "system.text.customFields");
         Map<String, String> result = new LinkedHashMap<>();
         valueMapper.selectList(Wrappers.<SysCustomValue>lambdaQuery().eq(SysCustomValue::getBizType, bizType).eq(SysCustomValue::getBizId, bizId))
                 .forEach(v -> result.put(v.getFieldKey(), v.getFieldValue()));
@@ -121,13 +121,13 @@ public class SysCustomFieldService {
     public Map<Long, Map<String, String>> batchValues(String bizType, Collection<Long> bizIds) {
         RecordType type = recordAccess.type(bizType);
         if (Arrays.stream(type.viewPerm().split(",")).map(String::trim).noneMatch(permissionService::hasPerm)) {
-            throw new BizException("没有权限查看{0}的{1}", I18n.t(type.name()), I18n.t("自定义字段"));
+            throw new BizException("system.error.noPermissionView", Messages.get(type.name()), Messages.get("system.text.customFields"));
         }
         if (bizIds == null || bizIds.isEmpty()) {
             return Map.of();
         }
         if (bizIds.size() > MAX_BATCH) {
-            throw new BizException("一次最多 {0} 条", MAX_BATCH);
+            throw new BizException("system.error.upRecordsTime", MAX_BATCH);
         }
         Map<Long, Map<String, String>> result = new HashMap<>();
         valueMapper.selectList(Wrappers.<SysCustomValue>lambdaQuery().eq(SysCustomValue::getBizType, bizType).in(SysCustomValue::getBizId, bizIds))
@@ -140,7 +140,7 @@ public class SysCustomFieldService {
      */
     @Transactional
     public void saveValues(String bizType, Long bizId, Map<String, String> values) {
-        recordAccess.check(bizType, bizId, true, "自定义字段");
+        recordAccess.check(bizType, bizId, true, "system.text.customFields");
         Map<String, SysCustomField> fields = enabled(bizType).stream().collect(Collectors.toMap(SysCustomField::getFieldKey, f -> f));
         Map<String, String> input = values == null ? Map.of() : values;
         Map<String, String> clean = new LinkedHashMap<>();
@@ -149,7 +149,7 @@ public class SysCustomFieldService {
             v = v == null ? null : v.trim();
             if (v == null || v.isEmpty()) {
                 if (Integer.valueOf(1).equals(f.getRequired())) {
-                    throw new BizException("请填写「{0}」", f.getLabel());
+                    throw new BizException("system.error.fill", f.getLabel());
                 }
                 continue;
             }
@@ -173,21 +173,21 @@ public class SysCustomFieldService {
 
     private static String validate(SysCustomField f, String v) {
         if (v.length() > MAX_VALUE) {
-            throw new BizException("「{0}」不能超过{1}个字符", f.getLabel(), MAX_VALUE);
+            throw new BizException("system.error.cannotExceedCharacters", f.getLabel(), MAX_VALUE);
         }
         switch (f.getFieldType()) {
             case NUMBER -> {
                 try {
                     return new BigDecimal(v).stripTrailingZeros().toPlainString();
                 } catch (NumberFormatException e) {
-                    throw new BizException("「{0}」请填写数字", f.getLabel());
+                    throw new BizException("system.error.mustNumber", f.getLabel());
                 }
             }
             case DATE -> {
                 try {
                     return LocalDate.parse(v.length() > 10 ? v.substring(0, 10) : v).toString();
                 } catch (DateTimeParseException e) {
-                    throw new BizException("「{0}」请填写日期", f.getLabel());
+                    throw new BizException("system.error.mustDate", f.getLabel());
                 }
             }
             case BOOL -> {
@@ -195,7 +195,7 @@ public class SysCustomFieldService {
             }
             case SELECT -> {
                 if (!options(f).contains(v)) {
-                    throw new BizException("「{0}」请从选项中选择", f.getLabel());
+                    throw new BizException("system.error.mustOneOptions", f.getLabel());
                 }
                 return v;
             }

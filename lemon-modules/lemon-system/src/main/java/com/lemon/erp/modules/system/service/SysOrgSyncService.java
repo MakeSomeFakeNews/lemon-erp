@@ -35,7 +35,7 @@ public class SysOrgSyncService implements UserAccountProvisioner {
     public Long create(String username, String nickname, Long deptId, String phone, String email) {
         tenantLookup.checkAccountLimit();
         if (userMapper.exists(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getUsername, username))) {
-            throw new BizException("登录名「{0}」已存在", username);
+            throw new BizException("system.error.loginNameAlreadyExists", username);
         }
         SysUser user = new SysUser();
         user.setUsername(username);

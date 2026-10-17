@@ -122,7 +122,7 @@ public class WmsAssemblyService {
                 .set(WmsAssembly::getConfirmBy, SecurityUtils.getUserId())
                 .set(WmsAssembly::getConfirmTime, LocalDateTime.now())
                 .eq(WmsAssembly::getId, id).eq(WmsAssembly::getStatus, DocStatus.DRAFT)) == 0) {
-            throw new BizException("单据已确认，请刷新");
+            throw new BizException("wms.error.documentHasConfirmedRefresh");
         }
         List<StockDocItemRequest> parts = items.stream().map(i -> new StockDocItemRequest(i.getMaterialId(), i.getLocationId(), null,
                 i.getBatchNo(), i.getProductionDate(), i.getExpiryDate(), i.getQty(), i.getSerialNos(), i.getRemark())).toList();
@@ -149,18 +149,18 @@ public class WmsAssemblyService {
                         .distinct().toList()).stream().collect(Collectors.toMap(WmsMaterial::getId, Function.identity()));
         WmsMaterial product = materials.get(req.materialId());
         if (product == null) {
-            throw new BizException("成套件不存在");
+            throw new BizException("wms.error.kitDoesNotExist");
         }
         for (StockDocItemRequest i : req.items()) {
             if (i.materialId().equals(req.materialId())) {
-                throw new BizException("子件不能与成套件相同");
+                throw new BizException("wms.error.componentCannotSameKit");
             }
             if (!materials.containsKey(i.materialId())) {
-                throw new BizException("子件不存在");
+                throw new BizException("wms.error.componentDoesNotExist");
             }
         }
         materials.values().stream().filter(WmsMaterial::isTemplateMaterial).findFirst().ifPresent(m -> {
-            throw new BizException("「{0}」是多规格款式，请选择具体的规格（SKU）", m.getCode());
+            throw new BizException("wms.error.multiVariantStyleSelectSpecificVariant2", m.getCode());
         });
     }
 
@@ -200,7 +200,7 @@ public class WmsAssemblyService {
     private WmsAssembly getAccessible(Long id) {
         WmsAssembly a = DataPermissionContext.execute(RULE, () -> assemblyMapper.selectById(id));
         if (a == null) {
-            throw new BizException("组装拆卸单不存在");
+            throw new BizException("wms.error.assemblyOrderDoesNotExist");
         }
         return a;
     }
@@ -208,7 +208,7 @@ public class WmsAssemblyService {
     private WmsAssembly getDraft(Long id) {
         WmsAssembly a = getAccessible(id);
         if (a.getStatus() != DocStatus.DRAFT) {
-            throw new BizException("{0} 已确认，不能修改", a.getAssemblyNo());
+            throw new BizException("wms.error.hasConfirmedCannotModified", a.getAssemblyNo());
         }
         return a;
     }

@@ -14,30 +14,30 @@ public class FinFlowBusinesses {
 
     @Bean
     public FlowBusiness voucherFlow() {
-        return FlowBusiness.of("fin_voucher", "凭证审批",
-                number("amount", "借方金额合计"),
-                dict("sourceType", "凭证来源", "fin_voucher_source"),
-                text("voucherNo", "凭证号"));
+        return FlowBusiness.of("fin_voucher", "fin.label.voucherApproval",
+                number("amount", "fin.label.totalDebit"),
+                dict("sourceType", "fin.label.voucherSource", "fin_voucher_source"),
+                text("voucherNo", "fin.label.voucherNo"));
     }
 
     @Bean
     public FlowBusiness paymentFlow() {
-        return FlowBusiness.of("fin_payment", "付款审批",
-                number("amount", "付款金额"),
-                text("settleNo", "付款单号"));
+        return FlowBusiness.of("fin_payment", "fin.label.paymentApproval",
+                number("amount", "fin.label.paymentAmount"),
+                text("settleNo", "fin.label.paymentNo"));
     }
 
     @Bean
     public FlowBusiness expenseFlow() {
-        return FlowBusiness.of("fin_expense", "费用报销审批",
-                number("amount", "报销金额"),
-                text("claimNo", "报销单号"));
+        return FlowBusiness.of("fin_expense", "fin.label.expenseClaimApproval",
+                number("amount", "fin.label.claimAmount"),
+                text("claimNo", "fin.label.claimNo"));
     }
 
     @Bean
     public FlowBusiness loanFlow() {
-        return FlowBusiness.of("fin_loan", "员工借款审批",
-                number("amount", "借款金额"),
-                text("loanNo", "借款单号"));
+        return FlowBusiness.of("fin_loan", "fin.label.employeeLoanApproval",
+                number("amount", "fin.label.loanAmount"),
+                text("loanNo", "fin.label.loanNo"));
     }
 }

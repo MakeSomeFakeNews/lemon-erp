@@ -34,7 +34,7 @@ public class WmsLocationService {
     public WmsLocation get(Long id) {
         WmsLocation location = id == null ? null : locationMapper.selectById(id);
         if (location == null) {
-            throw new BizException("库位不存在");
+            throw new BizException("wms.error.locationDoesNotExist");
         }
         return location;
     }
@@ -64,7 +64,7 @@ public class WmsLocationService {
     public void update(Long id, WmsLocation location) {
         WmsLocation old = get(id);
         if (!Objects.equals(old.getWarehouseId(), location.getWarehouseId())) {
-            throw new BizException("不能修改库位所属仓库");
+            throw new BizException("wms.error.warehouseLocationCannotChanged");
         }
         checkCodeUnique(old.getWarehouseId(), location.getCode(), id);
         location.setId(id);
@@ -89,7 +89,7 @@ public class WmsLocationService {
             if (stockMapper.exists(Wrappers.<WmsStock>lambdaQuery()
                     .eq(WmsStock::getWarehouseId, location.getWarehouseId())
                     .eq(WmsStock::getLocationId, location.getId()))) {
-                throw new BizException("库位「{0}」已有库存记录，不能删除，可以停用", location.getCode());
+                throw new BizException("wms.error.locationHasStockRecordsCannotDeleted", location.getCode());
             }
         }
         locationMapper.deleteByIds(ids);
@@ -100,7 +100,7 @@ public class WmsLocationService {
                 .eq(WmsLocation::getWarehouseId, warehouseId)
                 .eq(WmsLocation::getCode, code));
         if (exist != null && !Objects.equals(exist.getId(), id)) {
-            throw new BizException("该仓库下库位编码已存在");
+            throw new BizException("wms.error.locationCodeAlreadyExistsWarehouse");
         }
     }
 }

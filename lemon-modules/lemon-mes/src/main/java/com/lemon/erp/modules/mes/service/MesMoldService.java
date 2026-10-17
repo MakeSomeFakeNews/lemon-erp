@@ -3,7 +3,7 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -62,7 +62,7 @@ public class MesMoldService {
     public MesMold detail(Long id) {
         MesMold mold = id == null ? null : moldMapper.selectDetail(id);
         if (mold == null) {
-            throw new BizException("模具不存在");
+            throw new BizException("mes.error.moldDoesNotExist");
         }
         fillProducts(List.of(mold));
         return mold;
@@ -112,7 +112,7 @@ public class MesMoldService {
         MesMold mold = detail(id);
         if (mold.getStatus() == MoldStatus.IN_USE
                 || logMapper.exists(Wrappers.<MesMoldLog>lambdaQuery().eq(MesMoldLog::getMoldId, id).eq(MesMoldLog::getAction, MoldAction.USE))) {
-            throw new BizException("模具「{0}」已有使用记录或正在使用，不能删除，可以报废", mold.getCode());
+            throw new BizException("mes.error.moldHasUsageRecordsUseCannot", mold.getCode());
         }
         moldMapper.deleteProducts(id);
         logMapper.delete(Wrappers.<MesMoldLog>lambdaQuery().eq(MesMoldLog::getMoldId, id));
@@ -124,46 +124,46 @@ public class MesMoldService {
     public void issue(Long id, MoldRequests.Action req) {
         MesMold mold = detail(id);
         if (req.woId() == null) {
-            throw new BizException("请选择工单");
+            throw new BizException("mes.valid.selectWorkOrder");
         }
         MesWorkOrder wo = workOrderMapper.selectById(req.woId());
         if (wo == null || !WorkOrderStatus.EXECUTABLE.contains(wo.getStatus())) {
-            throw new BizException("只能领用到已下达、生产中的工单");
+            throw new BizException("mes.error.moldsOnlyCheckedOutReleasedProduction");
         }
         if (mold.getProductIds() != null && !mold.getProductIds().isEmpty() && !mold.getProductIds().contains(wo.getMaterialId())) {
-            throw new BizException("模具「{0}」不适用于工单 {1} 的产品", mold.getCode(), wo.getWoNo());
+            throw new BizException("mes.error.moldNotApplicableProductWorkOrder", mold.getCode(), wo.getWoNo());
         }
         if (mold.getDesignLife() != null && mold.getUsedCount() >= mold.getDesignLife()) {
-            throw new BizException("模具「{0}」已达到设计寿命 {1} 模次，不能再领用", mold.getCode(), mold.getDesignLife());
+            throw new BizException("mes.error.moldHasReachedDesignLifeShots", mold.getCode(), mold.getDesignLife());
         }
         if (req.equipmentId() != null) {
             MesEquipment e = equipmentMapper.selectById(req.equipmentId());
             if (e == null || e.getStatus() == EquipmentStatus.SCRAPPED) {
-                throw new BizException("设备不存在或已报废");
+                throw new BizException("mes.error.equipmentDoesNotExistHasScrapped");
             }
         }
-        transit(id, MoldStatus.AVAILABLE, MoldStatus.IN_USE, req.woId(), req.equipmentId(), null, "在库");
+        transit(id, MoldStatus.AVAILABLE, MoldStatus.IN_USE, req.woId(), req.equipmentId(), null, "mes.label.stock");
         log(id, MoldAction.ISSUE, req.date(), req.woId(), req.equipmentId(), null, null, req.remark());
     }
 
     @Transactional
     public void giveBack(Long id, MoldRequests.Action req) {
         MesMold mold = detail(id);
-        transit(id, MoldStatus.IN_USE, MoldStatus.AVAILABLE, null, null, req.location(), "使用中");
+        transit(id, MoldStatus.IN_USE, MoldStatus.AVAILABLE, null, null, req.location(), "mes.label.use");
         log(id, MoldAction.RETURN, req.date(), mold.getWoId(), mold.getEquipmentId(), null, null, req.remark());
     }
 
     @Transactional
     public void repair(Long id, MoldRequests.Action req) {
         detail(id);
-        transit(id, MoldStatus.AVAILABLE, MoldStatus.REPAIR, null, null, null, "在库（使用中的请先归还）");
+        transit(id, MoldStatus.AVAILABLE, MoldStatus.REPAIR, null, null, null, "mes.label.stockReturnMoldsUseFirst");
         log(id, MoldAction.REPAIR, req.date(), null, null, null, null, req.remark());
     }
 
     @Transactional
     public void repaired(Long id, MoldRequests.Action req) {
         detail(id);
-        transit(id, MoldStatus.REPAIR, MoldStatus.AVAILABLE, null, null, req.location(), "维修中");
+        transit(id, MoldStatus.REPAIR, MoldStatus.AVAILABLE, null, null, req.location(), "mes.label.underRepair");
         log(id, MoldAction.REPAIRED, req.date(), null, null, null, null, req.remark());
     }
 
@@ -172,11 +172,11 @@ public class MesMoldService {
         MesMold mold = detail(id);
         if (mold.getStatus() == MoldStatus.IN_USE || mold.getStatus() == MoldStatus.SCRAPPED) {
             if (mold.getStatus() == MoldStatus.IN_USE) {
-                throw new BizException("模具正在使用，请先归还");
+                throw new BizException("mes.error.moldUseReturnFirst");
             }
-            throw new BizException("模具已报废");
+            throw new BizException("mes.error.moldHasScrapped");
         }
-        transit(id, mold.getStatus(), MoldStatus.SCRAPPED, null, null, null, "在库或维修中");
+        transit(id, mold.getStatus(), MoldStatus.SCRAPPED, null, null, null, "mes.label.stockUnderRepair");
         log(id, MoldAction.SCRAP, req.date(), null, null, null, null, req.remark());
     }
 
@@ -189,7 +189,7 @@ public class MesMoldService {
     public int use(Long moldId, Long woId, Long equipmentId, Long reportId, LocalDate date, BigDecimal qty) {
         MesMold mold = detail(moldId);
         if (mold.getStatus() != MoldStatus.IN_USE || !woId.equals(mold.getWoId())) {
-            throw new BizException("模具「{0}」没有领用到该工单", mold.getCode());
+            throw new BizException("mes.error.moldNotCheckedOutWorkOrder", mold.getCode());
         }
         int shots = qty.divide(BigDecimal.valueOf(mold.getCavities()), 0, RoundingMode.CEILING).intValueExact();
         if (shots <= 0) {
@@ -214,14 +214,14 @@ public class MesMoldService {
         return shots;
     }
 
-    private void transit(Long id, MoldStatus from, MoldStatus to, Long woId, Long equipmentId, String location, String fromText) {
+    private void transit(Long id, MoldStatus from, MoldStatus to, Long woId, Long equipmentId, String location, String fromTextKey) {
         int updated = moldMapper.update(Wrappers.<MesMold>lambdaUpdate()
                 .set(MesMold::getStatus, to).set(MesMold::getWoId, woId).set(MesMold::getEquipmentId, equipmentId)
                 .set(StringUtils.hasText(location), MesMold::getLocation, StringUtils.hasText(location) ? location.trim() : null)
                 .set(MesMold::getUpdateTime, LocalDateTime.now())
                 .eq(MesMold::getId, id).eq(MesMold::getStatus, from));
         if (updated == 0) {
-            throw new BizException("只能操作{0}的模具", I18n.t(fromText));
+            throw new BizException("mes.error.onlyMoldsOperated", Messages.get(fromTextKey));
         }
     }
 
@@ -260,7 +260,7 @@ public class MesMoldService {
 
     private void checkCode(String code, Long id) {
         if (moldMapper.exists(Wrappers.<MesMold>lambdaQuery().eq(MesMold::getCode, code.trim()).ne(id != null, MesMold::getId, id))) {
-            throw new BizException("编码「{0}」已存在", code);
+            throw new BizException("mes.error.codeAlreadyExists", code);
         }
     }
 

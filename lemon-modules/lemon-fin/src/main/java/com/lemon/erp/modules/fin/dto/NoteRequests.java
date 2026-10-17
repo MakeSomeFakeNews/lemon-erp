@@ -29,27 +29,27 @@ public final class NoteRequests {
      * @param items      核销的应收单 / 应付单
      */
     public record Register(
-            @NotNull(message = "请选择票据类型") NoteType noteType,
-            @NotBlank(message = "请填写票据号码") @Size(max = 64, message = "票据号码不能超过64个字符") String noteNo,
+            @NotNull(message = "{fin.valid.selectNoteType}") NoteType noteType,
+            @NotBlank(message = "{fin.valid.enterNoteNumber}") @Size(max = 64, message = "{fin.valid.noteNumberCannotExceedCharacters}") String noteNo,
             Boolean electronic,
-            @NotNull(message = "请选择往来单位") Long partnerId,
-            @NotNull(message = "请填写票面金额") @DecimalMin(value = "0", inclusive = false, message = "票面金额必须大于 0")
-            @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal amount,
-            @NotNull(message = "请选择出票日期") LocalDate issueDate,
-            @NotNull(message = "请选择到期日期") LocalDate dueDate,
-            @Size(max = 128, message = "出票人不能超过128个字符") String drawer,
-            @Size(max = 128, message = "承兑人不能超过128个字符") String acceptor,
-            @NotNull(message = "请选择日期") LocalDate actionDate,
-            @NotEmpty(message = "请选择要核销的单据") @Size(max = 500) List<@Valid @NotNull SettlementItemRequest> items,
-            @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+            @NotNull(message = "{fin.valid.selectBusinessPartner}") Long partnerId,
+            @NotNull(message = "{fin.valid.enterFaceAmount}") @DecimalMin(value = "0", inclusive = false, message = "{fin.valid.faceAmountMustGreater}")
+            @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount,
+            @NotNull(message = "{fin.valid.selectIssueDate2}") LocalDate issueDate,
+            @NotNull(message = "{fin.valid.selectExpiryDate}") LocalDate dueDate,
+            @Size(max = 128, message = "{fin.valid.drawerCannotExceedCharacters}") String drawer,
+            @Size(max = 128, message = "{fin.valid.acceptorCannotExceedCharacters}") String acceptor,
+            @NotNull(message = "{fin.valid.selectDate}") LocalDate actionDate,
+            @NotEmpty(message = "{fin.valid.selectDocumentsWriteOff}") @Size(max = 500) List<@Valid @NotNull SettlementItemRequest> items,
+            @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}") String remark) {
     }
 
     /** 背书转让：把持有的应收票据转给供应商支付货款，核销应付单，核销合计须等于票面金额 */
     public record Endorse(
-            @NotNull(message = "请选择供应商") Long supplierId,
-            @NotNull(message = "请选择背书日期") LocalDate actionDate,
-            @NotEmpty(message = "请选择要核销的应付单") @Size(max = 500) List<@Valid @NotNull SettlementItemRequest> items,
-            @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+            @NotNull(message = "{fin.valid.selectSupplier}") Long supplierId,
+            @NotNull(message = "{fin.valid.selectEndorsementDate}") LocalDate actionDate,
+            @NotEmpty(message = "{fin.valid.selectPayablesWriteOff}") @Size(max = 500) List<@Valid @NotNull SettlementItemRequest> items,
+            @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}") String remark) {
     }
 
     /**
@@ -59,10 +59,10 @@ public final class NoteRequests {
      * @param interest  贴现息（只有贴现）
      */
     public record Settle(
-            @NotNull(message = "请选择日期") LocalDate actionDate,
+            @NotNull(message = "{fin.valid.selectDate}") LocalDate actionDate,
             Long accountId,
-            @DecimalMin(value = "0", message = "贴现息不能小于 0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数")
+            @DecimalMin(value = "0", message = "{fin.valid.discountInterestCannotLess}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}")
             BigDecimal interest,
-            @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+            @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}") String remark) {
     }
 }

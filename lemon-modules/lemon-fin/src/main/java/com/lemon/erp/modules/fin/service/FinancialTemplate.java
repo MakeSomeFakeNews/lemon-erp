@@ -1,6 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.dto.AccountSum;
 import com.lemon.erp.modules.fin.dto.FinancialRowAccount;
 import com.lemon.erp.modules.fin.dto.FinancialRow;
@@ -165,7 +165,7 @@ final class FinancialTemplate {
         // 行名、取数说明返回给前端显示，按请求语言翻译（计算只用 key，不依赖名称）
         for (Row row : rows) {
             if (row.kind == Kind.TITLE) {
-                result.add(new FinancialRow(null, I18n.t(row.name), row.level, true, true, null, null, null));
+                result.add(new FinancialRow(null, Messages.get(row.name), row.level, true, true, null, null, null));
                 continue;
             }
             BigDecimal[] v = zeros(n);
@@ -182,7 +182,7 @@ final class FinancialTemplate {
                     }
                     parts.add((parts.isEmpty() ? (minus ? "-" : "") : (minus ? " - " : " + ")) + lineNos.get(key));
                 }
-                formula = I18n.t("行 {0}", String.join("", parts));
+                formula = Messages.get("fin.text.line", String.join("", parts));
             } else {
                 List<FinAccount> list = row.kind == Kind.SUB
                         ? leaves.stream().filter(a -> row.prefixes.stream().anyMatch(p -> a.getCode().startsWith(p))).toList()
@@ -205,43 +205,43 @@ final class FinancialTemplate {
             }
             values.put(row.key, v);
             lineNos.put(row.key, lineNo);
-            result.add(new FinancialRow(lineNo++, I18n.t(row.name), row.level, row.bold, false, formula, List.of(v), accounts));
+            result.add(new FinancialRow(lineNo++, Messages.get(row.name), row.level, row.bold, false, formula, List.of(v), accounts));
         }
         return new Result(result, values, lineNo);
     }
 
     private static String formula(Row row) {
-        boolean zh = I18n.isDefault();
+        boolean zh = Messages.isDefaultLanguage();
         String listSep = zh ? "、" : ", ";
         StringBuilder sb = new StringBuilder();
         if (!row.prefixes.isEmpty()) {
             String codes = String.join(listSep, row.prefixes);
-            sb.append(row.credit ? I18n.t("科目 {0} 的贷方余额", codes) : I18n.t("科目 {0} 的借方余额", codes));
+            sb.append(row.credit ? Messages.get("fin.text.creditBalanceAccounts", codes) : Messages.get("fin.text.debitBalanceAccounts", codes));
         }
         if (!row.catchCategories.isEmpty()) {
-            String categories = row.catchCategories.stream().sorted().map(c -> I18n.t(categoryLabel(c))).collect(Collectors.joining(listSep));
+            String categories = row.catchCategories.stream().sorted().map(c -> Messages.get(categoryLabel(c))).collect(Collectors.joining(listSep));
             sb.append(sb.isEmpty() ? "" : zh ? "，" : ", ");
             if (row.catchDirection == null) {
-                sb.append(I18n.t("以及未列示的其他{0}科目", categories));
+                sb.append(Messages.get("fin.text.otherUnlistedAccounts", categories));
             } else if (row.catchDirection == AccountDirection.CREDIT) {
-                sb.append(I18n.t("以及未列示的其他{0}科目（贷方科目）", categories));
+                sb.append(Messages.get("fin.text.otherUnlistedAccountsCreditAccounts", categories));
             } else {
-                sb.append(I18n.t("以及未列示的其他{0}科目（借方科目）", categories));
+                sb.append(Messages.get("fin.text.otherUnlistedAccountsDebitAccounts", categories));
             }
         }
         if (row.note != null) {
-            sb.append(sb.isEmpty() ? "" : zh ? "；" : "; ").append(I18n.t(row.note));
+            sb.append(sb.isEmpty() ? "" : zh ? "；" : "; ").append(Messages.get(row.note));
         }
         return sb.toString();
     }
 
     private static String categoryLabel(AccountCategory c) {
         return switch (c) {
-            case ASSET -> "资产类";
-            case LIABILITY -> "负债类";
-            case EQUITY -> "所有者权益类";
-            case COST -> "成本类";
-            case PROFIT -> "损益类";
+            case ASSET -> "fin.label.asset";
+            case LIABILITY -> "fin.label.liability";
+            case EQUITY -> "fin.label.ownersEquity";
+            case COST -> "fin.label.cost";
+            case PROFIT -> "fin.label.profitLoss";
         };
     }
 

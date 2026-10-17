@@ -24,9 +24,9 @@ public class MesRecordTypes implements RecordTypeProvider {
 
     @Override
     public List<RecordType> recordTypes() {
-        return List.of(new RecordType("mes_wo", "生产工单", "mes:wo:list", "mes:wo:edit",
+        return List.of(new RecordType("mes_wo", "mes.label.workOrder", "mes:wo:list", "mes:wo:edit",
                         MesConstants.WO_RULE, workOrderMapper::selectById),
-                new RecordType("mes_doc", "技术文档", "mes:doc:list", "mes:doc:edit", null, docMapper::selectById),
-                new RecordType("mes_ecn", "工程变更", "mes:ecn:list", "mes:ecn:edit", null, ecnMapper::selectById));
+                new RecordType("mes_doc", "mes.label.technicalDocument", "mes:doc:list", "mes:doc:edit", null, docMapper::selectById),
+                new RecordType("mes_ecn", "mes.label.ecn", "mes:ecn:list", "mes:ecn:edit", null, ecnMapper::selectById));
     }
 }

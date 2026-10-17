@@ -95,7 +95,7 @@ public class ScmInquiryService {
     public void update(Long id, InquiryRequest req) {
         getQuoting(id);
         if (quoteMapper.exists(Wrappers.<ScmInquiryQuote>lambdaQuery().eq(ScmInquiryQuote::getInquiryId, id))) {
-            throw new BizException("已有供应商报价，不能修改询价明细");
+            throw new BizException("scm.error.suppliersHaveAlreadyQuotedRfqLines");
         }
         inquiryMapper.update(Wrappers.<ScmInquiry>lambdaUpdate().set(ScmInquiry::getInquiryDate, req.inquiryDate())
                 .set(ScmInquiry::getDeadline, req.deadline()).set(ScmInquiry::getRemark, req.remark())
@@ -122,10 +122,10 @@ public class ScmInquiryService {
         Set<Long> seen = new HashSet<>();
         for (InquiryQuoteRequest.Line l : req.lines()) {
             if (!itemIds.contains(l.itemId())) {
-                throw new BizException("报价明细不属于该询价单");
+                throw new BizException("scm.error.quotationLineDoesNotBelongRfq");
             }
             if (!seen.add(l.itemId())) {
-                throw new BizException("同一明细不能重复报价");
+                throw new BizException("scm.error.sameLineCannotQuotedMoreOnce");
             }
         }
         List<Long> old = quoteMapper.selectList(Wrappers.<ScmInquiryQuote>lambdaQuery().eq(ScmInquiryQuote::getInquiryId, id)
@@ -176,7 +176,7 @@ public class ScmInquiryService {
             }
             ScmInquiryQuote quote = quotes.get(e.getValue());
             if (quote == null || !quote.getItemId().equals(item.getId())) {
-                throw new BizException("中标报价与询价明细不匹配");
+                throw new BizException("scm.error.winningQuotationDoesNotMatchRfq");
             }
             itemMapper.update(Wrappers.<ScmInquiryItem>lambdaUpdate().set(ScmInquiryItem::getSelectedQuoteId, quote.getId())
                     .eq(ScmInquiryItem::getId, item.getId()));
@@ -184,7 +184,7 @@ public class ScmInquiryService {
             bySupplier.computeIfAbsent(quote.getSupplierId(), k -> new ArrayList<>()).add(item);
         }
         if (selectedOf.isEmpty()) {
-            throw new BizException("请至少为一行明细选择中标供应商");
+            throw new BizException("scm.error.selectWinningSupplierLeastOneLine");
         }
         if (req.updatePrice()) {
             selectedOf.forEach((itemId, quote) -> supplierPriceService.applyQuote(quote.getSupplierId(), items.get(itemId).getMaterialId(),
@@ -243,14 +243,14 @@ public class ScmInquiryService {
                 .set(ScmInquiry::getUpdateTime, LocalDateTime.now())
                 .eq(ScmInquiry::getId, id).eq(ScmInquiry::getStatus, "QUOTING"));
         if (updated == 0) {
-            throw new BizException("询价单状态已变化，请刷新");
+            throw new BizException("scm.error.rfqStatusHasChangedRefresh");
         }
     }
 
     private ScmInquiry getQuoting(Long id) {
         ScmInquiry q = getAccessible(id);
         if (!"QUOTING".equals(q.getStatus())) {
-            throw new BizException("询价单已完成或已关闭");
+            throw new BizException("scm.error.rfqCompletedClosed");
         }
         return q;
     }
@@ -259,7 +259,7 @@ public class ScmInquiryService {
         Supplier<ScmInquiry> loader = () -> inquiryMapper.selectById(id);
         ScmInquiry q = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(RULE, loader);
         if (q == null) {
-            throw new BizException("询价单不存在或没有权限");
+            throw new BizException("scm.error.rfqDoesNotExistAccessDenied");
         }
         return q;
     }

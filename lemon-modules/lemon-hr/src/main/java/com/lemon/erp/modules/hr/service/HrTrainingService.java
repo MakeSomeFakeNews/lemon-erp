@@ -60,7 +60,7 @@ public class HrTrainingService {
     public HrTraining get(Long id) {
         HrTraining t = id == null ? null : trainingMapper.selectById(id);
         if (t == null) {
-            throw new BizException("培训不存在");
+            throw new BizException("hr.error.trainingDoesNotExist");
         }
         return t;
     }
@@ -81,7 +81,7 @@ public class HrTrainingService {
     public void update(Long id, HrTraining t) {
         HrTraining old = get(id);
         if (!"PLANNED".equals(old.getStatus()) && !"ONGOING".equals(old.getStatus())) {
-            throw new BizException("已结束或已取消的培训不能修改");
+            throw new BizException("hr.error.finishedCanceledTrainingCannotModified");
         }
         check(t);
         t.setId(id);
@@ -95,7 +95,7 @@ public class HrTrainingService {
     public void delete(List<Long> ids) {
         for (HrTraining t : trainingMapper.selectByIds(ids)) {
             if (!"PLANNED".equals(t.getStatus()) && !"CANCELED".equals(t.getStatus())) {
-                throw new BizException("培训「{0}」已开始，不能删除", t.getTitle());
+                throw new BizException("hr.error.trainingHasStartedCannotDeleted", t.getTitle());
             }
         }
         recordMapper.delete(Wrappers.<HrTrainingRecord>lambdaQuery().in(HrTrainingRecord::getTrainingId, ids));
@@ -108,7 +108,7 @@ public class HrTrainingService {
         HrTraining t = get(id);
         Set<String> from = TRANSITIONS.get(status);
         if (from == null || !from.contains(t.getStatus())) {
-            throw new BizException("培训当前状态不能执行该操作");
+            throw new BizException("hr.error.operationNotAllowedCurrentTrainingStatus");
         }
         trainingMapper.update(Wrappers.<HrTraining>lambdaUpdate().set(HrTraining::getStatus, status)
                 .set(HrTraining::getUpdateTime, LocalDateTime.now())
@@ -157,14 +157,14 @@ public class HrTrainingService {
     public void saveRecords(Long id, List<TrainingRecordRequest> items) {
         HrTraining t = get(id);
         if (!"ONGOING".equals(t.getStatus()) && !"FINISHED".equals(t.getStatus())) {
-            throw new BizException("培训开始后才能录入出勤和成绩");
+            throw new BizException("hr.error.attendanceScoresOnlyRecordedAfterTraining");
         }
         Map<Long, HrTrainingRecord> records = recordMapper.selectList(Wrappers.<HrTrainingRecord>lambdaQuery()
                         .eq(HrTrainingRecord::getTrainingId, id))
                 .stream().collect(Collectors.toMap(HrTrainingRecord::getId, Function.identity()));
         for (TrainingRecordRequest req : items) {
             if (!records.containsKey(req.id())) {
-                throw new BizException("参训记录不属于该培训");
+                throw new BizException("hr.error.attendanceRecordDoesNotBelongTraining");
             }
             boolean attended = Integer.valueOf(1).equals(req.attended());
             recordMapper.update(Wrappers.<HrTrainingRecord>lambdaUpdate()
@@ -188,7 +188,7 @@ public class HrTrainingService {
 
     private static void check(HrTraining t) {
         if (t.getEndDate().isBefore(t.getStartDate())) {
-            throw new BizException("结束日期不能早于开始日期");
+            throw new BizException("hr.error.endDateCannotEarlierStartDate");
         }
         if (t.getHours() == null) t.setHours(BigDecimal.ZERO);
         if (t.getCost() == null) t.setCost(BigDecimal.ZERO);
@@ -196,7 +196,7 @@ public class HrTrainingService {
 
     private static void checkEditable(HrTraining t) {
         if (!"PLANNED".equals(t.getStatus()) && !"ONGOING".equals(t.getStatus())) {
-            throw new BizException("已结束或已取消的培训不能调整学员");
+            throw new BizException("hr.error.traineesCannotChangedFinishedCanceledTraining");
         }
     }
 }

@@ -12,16 +12,16 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 首页待办：按权限返回本模块的待处理事项
+ * 首页待办：按权限返回本模块的待处理事项（标题为消息键）
  */
 @Component
 @RequiredArgsConstructor
 public class ScmTodoProvider implements TodoProvider {
 
     private static final List<Def> DEFS = List.of(
-            new Def("purchaseOverdue", "scm:purchaseIn:add", "采购订单逾期未到货", "/scm/purchase-in", "danger"),
-            new Def("salesOverdue", "scm:salesOut:add", "销售订单逾期未发货", "/scm/sales-out", "danger"),
-            new Def("shipmentException", "scm:shipment:list", "发运异常", "/scm/shipment", "danger")
+            new Def("purchaseOverdue", "scm:purchaseIn:add", "scm.label.purchaseOrdersOverdueNotReceived", "/scm/purchase-in", "danger"),
+            new Def("salesOverdue", "scm:salesOut:add", "scm.label.salesOrdersOverdueNotShipped", "/scm/sales-out", "danger"),
+            new Def("shipmentException", "scm:shipment:list", "scm.label.shipmentException", "/scm/shipment", "danger")
     );
 
     private final ScmTodoMapper todoMapper;

@@ -2,7 +2,7 @@ package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.mapper.FinAnalysisMapper;
 import com.lemon.erp.modules.fin.mapper.FinVoucherEntryMapper;
@@ -44,7 +44,7 @@ public class FinAnalysisService {
     /** 销售毛利：按物料、客户或月份汇总，返回 {rows, total} */
     public Map<String, Object> grossMargin(LocalDate begin, LocalDate end, String groupBy, Long customerId) {
         if (end.isBefore(begin)) {
-            throw new BizException("结束日期不能早于开始日期");
+            throw new BizException("fin.error.endDateCannotEarlierStartDate");
         }
         String g = MarginGroup.of(groupBy).name();
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -73,7 +73,7 @@ public class FinAnalysisService {
     /** 销售毛利明细：按销售出库 / 退货单据明细逐行计算，最多 5000 行，返回 {rows, total, truncated} */
     public Map<String, Object> grossMarginDetail(LocalDate begin, LocalDate end, Long customerId, String keyword) {
         if (end.isBefore(begin)) {
-            throw new BizException("结束日期不能早于开始日期");
+            throw new BizException("fin.error.endDateCannotEarlierStartDate");
         }
         List<Map<String, Object>> list = analysisMapper.selectMarginDetail(begin, end, customerId, keyword, MARGIN_DETAIL_LIMIT + 1);
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -147,7 +147,7 @@ public class FinAnalysisService {
         toYearMonth(begin);
         toYearMonth(end);
         if (end < begin) {
-            throw new BizException("结束期间不能早于开始期间");
+            throw new BizException("fin.error.endPeriodCannotEarlierStartPeriod");
         }
         Map<Long, List<Map<String, Object>>> byVoucher = new LinkedHashMap<>();
         for (Map<String, Object> e : analysisMapper.selectCashVoucherEntries(begin, end)) {
@@ -220,26 +220,26 @@ public class FinAnalysisService {
         }
         BigDecimal opening = cashBalance(previous(begin));
         BigDecimal closing = cashBalance(end);
-        lines.add(line("四、现金及现金等价物净增加额", netTotal, 0, true));
-        lines.add(line("加：期初现金及现金等价物余额", opening, 1, false));
-        lines.add(line("五、期末现金及现金等价物余额", opening.add(netTotal), 0, true));
+        lines.add(line("fin.label.ivNetIncreaseCashCashEquivalents", netTotal, 0, true));
+        lines.add(line("fin.label.addCashCashEquivalentsBeginningPeriod", opening, 1, false));
+        lines.add(line("fin.label.vCashCashEquivalentsEndPeriod", opening.add(netTotal), 0, true));
         return Map.of("lines", lines, "closingBalance", closing, "balanced", opening.add(netTotal).compareTo(closing) == 0);
     }
 
     /** 现金流量项目 */
     private enum CashItem {
-        SALES_IN("OPERATING", true, "销售商品、提供劳务收到的现金"),
-        OTHER_OPERATING_IN("OPERATING", true, "收到其他与经营活动有关的现金"),
-        PURCHASE_OUT("OPERATING", false, "购买商品、接受劳务支付的现金"),
-        SALARY_OUT("OPERATING", false, "支付给职工以及为职工支付的现金"),
-        TAX_OUT("OPERATING", false, "支付的各项税费"),
-        OTHER_OPERATING_OUT("OPERATING", false, "支付其他与经营活动有关的现金"),
-        ASSET_DISPOSAL_IN("INVESTING", true, "处置固定资产、无形资产和其他长期资产收回的现金净额"),
-        ASSET_OUT("INVESTING", false, "购建固定资产、无形资产和其他长期资产支付的现金"),
-        CAPITAL_IN("FINANCING", true, "吸收投资收到的现金"),
-        BORROW_IN("FINANCING", true, "取得借款收到的现金"),
-        REPAY_OUT("FINANCING", false, "偿还债务支付的现金"),
-        DIVIDEND_OUT("FINANCING", false, "分配股利、利润或偿付利息支付的现金");
+        SALES_IN("OPERATING", true, "fin.label.cashReceivedSalesGoodsRenderingServices"),
+        OTHER_OPERATING_IN("OPERATING", true, "fin.label.otherCashReceivedRelatingOperatingActivities"),
+        PURCHASE_OUT("OPERATING", false, "fin.label.cashPaidGoodsServices"),
+        SALARY_OUT("OPERATING", false, "fin.label.cashPaidBehalfEmployees"),
+        TAX_OUT("OPERATING", false, "fin.label.taxesPaid"),
+        OTHER_OPERATING_OUT("OPERATING", false, "fin.label.otherCashPaidRelatingOperatingActivities"),
+        ASSET_DISPOSAL_IN("INVESTING", true, "fin.label.netCashReceivedDisposalFixedAssets"),
+        ASSET_OUT("INVESTING", false, "fin.label.cashPaidAcquireFixedAssetsIntangible"),
+        CAPITAL_IN("FINANCING", true, "fin.label.cashReceivedCapitalContributions"),
+        BORROW_IN("FINANCING", true, "fin.label.cashReceivedBorrowings"),
+        REPAY_OUT("FINANCING", false, "fin.label.cashRepaymentsDebts"),
+        DIVIDEND_OUT("FINANCING", false, "fin.label.cashPaidDividendsProfitDistributionInterest");
 
         private final String section;
         private final boolean inflow;
@@ -284,9 +284,9 @@ public class FinAnalysisService {
 
     /** 现金流量表的三类活动：标题、流入小计、流出小计、净额的行名 */
     private enum CashSection {
-        OPERATING("一、经营活动产生的现金流量", "一、经营活动现金流入小计", "一、经营活动现金流出小计", "经营活动产生的现金流量净额"),
-        INVESTING("二、投资活动产生的现金流量", "二、投资活动现金流入小计", "二、投资活动现金流出小计", "投资活动产生的现金流量净额"),
-        FINANCING("三、筹资活动产生的现金流量", "三、筹资活动现金流入小计", "三、筹资活动现金流出小计", "筹资活动产生的现金流量净额");
+        OPERATING("fin.label.iCashFlowsOperatingActivities", "fin.label.subtotalCashInflowsOperatingActivities", "fin.label.subtotalCashOutflowsOperatingActivities", "fin.label.netCashFlowsOperatingActivities"),
+        INVESTING("fin.label.iiCashFlowsInvestingActivities", "fin.label.subtotalCashInflowsInvestingActivities", "fin.label.subtotalCashOutflowsInvestingActivities", "fin.label.netCashFlowsInvestingActivities"),
+        FINANCING("fin.label.iiiCashFlowsFinancingActivities", "fin.label.subtotalCashInflowsFinancingActivities", "fin.label.subtotalCashOutflowsFinancingActivities", "fin.label.netCashFlowsFinancingActivities");
 
         private final String title;
         private final String inTotal;
@@ -322,7 +322,7 @@ public class FinAnalysisService {
     /** 报表行：行名返回给前端显示，按请求语言翻译 */
     private static Map<String, Object> line(String name, BigDecimal amount, int level, boolean bold) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("name", I18n.t(name));
+        m.put("name", Messages.get(name));
         m.put("amount", amount);
         m.put("level", level);
         m.put("bold", bold);

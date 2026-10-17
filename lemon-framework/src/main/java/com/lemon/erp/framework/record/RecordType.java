@@ -9,7 +9,7 @@ import java.util.function.LongFunction;
  * 附件、变更历史按这里的权限和数据权限校验访问
  *
  * @param code     类型编码，如 scm_purchase，前端 AttachmentPanel / ChangeLogPanel 的 biz-type
- * @param name     名称
+ * @param name     名称（消息键，由登记的模块声明，输出时 {@code Messages.get}）
  * @param viewPerm 查看附件、变更历史需要的权限，多个用逗号分隔（有其一即可，如内部与供应商门户共用的单据）
  * @param editPerm 上传、删除附件需要的权限，多个用逗号分隔
  * @param rule     业务记录的数据权限规则，为空不按数据权限过滤

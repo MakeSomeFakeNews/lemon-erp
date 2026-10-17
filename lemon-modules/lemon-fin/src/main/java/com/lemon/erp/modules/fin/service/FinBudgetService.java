@@ -1,7 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.dto.AccountSum;
 import com.lemon.erp.modules.fin.dto.BudgetExecution;
 import com.lemon.erp.modules.fin.dto.BudgetRequest;
@@ -35,7 +35,7 @@ public class FinBudgetService {
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     /** 超预算提示（异常消息模板，按请求语言翻译） */
-    private static final String BUDGET_OVER = "{0}「{1} {2}」{3} 年预算 {4}，已执行 {5}，在途 {6}，本次 {7}，超出 {8}";
+    private static final String BUDGET_OVER = "fin.error.budgetExceeded";
 
     private final FinBudgetMapper budgetMapper;
     private final FinVoucherEntryMapper entryMapper;
@@ -50,21 +50,21 @@ public class FinBudgetService {
         try {
             budgetMapper.insert(budget);
         } catch (DuplicateKeyException e) {
-            throw new BizException("该年度、部门、科目已编制预算，请直接修改");
+            throw new BizException("fin.error.budgetAlreadyExistsYearDepartmentAccount");
         }
         return budget.getId();
     }
 
     public void update(Long id, BudgetRequest req) {
         if (budgetMapper.selectById(id) == null) {
-            throw new BizException("预算不存在");
+            throw new BizException("fin.error.budgetDoesNotExist");
         }
         FinBudget budget = toEntity(req);
         budget.setId(id);
         try {
             budgetMapper.updateById(budget);
         } catch (DuplicateKeyException e) {
-            throw new BizException("该年度、部门、科目已编制预算");
+            throw new BizException("fin.error.budgetAlreadyExistsYearDepartmentAccount2");
         }
     }
 
@@ -112,7 +112,7 @@ public class FinBudgetService {
             BigDecimal totalActual = Arrays.stream(actual).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal rate = b.getTotal().signum() == 0 ? null
                     : totalActual.multiply(HUNDRED).divide(b.getTotal(), 1, RoundingMode.HALF_UP);
-            result.add(new BudgetExecution(b.getId(), b.getBudgetYear(), b.getDeptId(), b.getDeptId() == 0 ? I18n.t("全公司") : b.getDeptName(),
+            result.add(new BudgetExecution(b.getId(), b.getBudgetYear(), b.getDeptId(), b.getDeptId() == 0 ? Messages.get("fin.text.companyWide") : b.getDeptName(),
                     b.getAccountId(), b.getAccountCode(), b.getAccountName(), months, List.of(actual), b.getTotal(), totalActual, rate));
         }
         return result;
@@ -148,12 +148,12 @@ public class FinBudgetService {
             BigDecimal actual = e == null ? BigDecimal.ZERO : e.totalActual();
             BigDecimal over = actual.add(pending).add(request).subtract(b.getTotal());
             if (over.signum() > 0) {
-                Object[] args = {b.getDeptId() == 0 ? I18n.t("全公司") : b.getDeptName(), b.getAccountCode(), b.getAccountName(), year,
+                Object[] args = {b.getDeptId() == 0 ? Messages.get("fin.text.companyWide") : b.getDeptName(), b.getAccountCode(), b.getAccountName(), year,
                         plain(b.getTotal()), plain(actual), plain(pending), plain(request), plain(over)};
                 if ("BLOCK".equals(b.getControlMode())) {
                     throw new BizException(BUDGET_OVER, args);
                 }
-                warnings.add(I18n.t(BUDGET_OVER, args));
+                warnings.add(Messages.get(BUDGET_OVER, args));
             }
         }
         return warnings;
@@ -182,7 +182,7 @@ public class FinBudgetService {
         b.setAccountId(req.accountId());
         List<BigDecimal> m = req.months().stream().map(v -> v == null ? BigDecimal.ZERO : v.setScale(2, RoundingMode.HALF_UP)).toList();
         if (m.stream().anyMatch(v -> v.signum() < 0)) {
-            throw new BizException("预算金额不能小于0");
+            throw new BizException("fin.error.budgetAmountsCannotLess");
         }
         b.setM01(m.get(0));
         b.setM02(m.get(1));

@@ -27,12 +27,12 @@ import java.util.List;
 public class WfModel extends BaseEntity {
 
     /** 流程标识，即 BPMN 流程 ID，发布后不能修改 */
-    @NotBlank(message = "流程标识不能为空")
-    @Pattern(regexp = "^[A-Za-z][A-Za-z0-9_]{0,63}$", message = "流程标识只能包含字母、数字、下划线，且以字母开头")
+    @NotBlank(message = "{workflow.valid.processKeyRequired}")
+    @Pattern(regexp = "^[A-Za-z][A-Za-z0-9_]{0,63}$", message = "{workflow.valid.processKeyMayOnlyContainLetters}")
     private String modelKey;
 
-    @NotBlank(message = "流程名称不能为空")
-    @Size(max = 64, message = "流程名称不能超过64个字符")
+    @NotBlank(message = "{workflow.valid.processNameRequired}")
+    @Size(max = 64, message = "{workflow.valid.processNameCannotExceedCharacters}")
     private String name;
 
     /** 分类，字典 wf_category */
@@ -58,7 +58,7 @@ public class WfModel extends BaseEntity {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime deployTime;
 
-    @Size(max = 255, message = "备注不能超过255个字符")
+    @Size(max = 255, message = "{workflow.valid.remarkCannotExceedCharacters}")
     private String remark;
 
     /** 流程设计 JSON（FlowDesign），通过 form / flow 读取 */

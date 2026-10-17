@@ -72,13 +72,13 @@ public class WmsVariantService {
         Set<String> names = new HashSet<>();
         for (WmsAttributeValue v : values) {
             if (!StringUtils.hasText(v.getAttrValue()) || v.getAttrValue().trim().length() > 32) {
-                throw new BizException("属性值不能为空，且不能超过32个字符");
+                throw new BizException("wms.error.attributeValueRequiredCannotExceedCharacters");
             }
             if (v.getCode() != null && v.getCode().trim().length() > 16) {
-                throw new BizException("属性值编码不能超过16个字符");
+                throw new BizException("wms.error.attributeValueCodeCannotExceedCharacters");
             }
             if (!names.add(v.getAttrValue().trim())) {
-                throw new BizException("属性值重复：{0}", v.getAttrValue());
+                throw new BizException("wms.error.duplicateAttributeValue", v.getAttrValue());
             }
         }
         attr.setName(attr.getName().trim());
@@ -93,12 +93,12 @@ public class WmsVariantService {
                 attributeMapper.insert(attr);
             } else {
                 if (attributeMapper.selectById(attr.getId()) == null) {
-                    throw new BizException("规格属性不存在");
+                    throw new BizException("wms.error.variantAttributeDoesNotExist");
                 }
                 attributeMapper.updateById(attr);
             }
         } catch (DuplicateKeyException e) {
-            throw new BizException("规格属性「{0}」已存在", attr.getName());
+            throw new BizException("wms.error.variantAttributeAlreadyExists", attr.getName());
         }
         Map<Long, WmsAttributeValue> existing = valueMapper.selectList(Wrappers.<WmsAttributeValue>lambdaQuery()
                 .eq(WmsAttributeValue::getAttributeId, attr.getId())).stream().collect(Collectors.toMap(WmsAttributeValue::getId, Function.identity()));
@@ -106,7 +106,7 @@ public class WmsVariantService {
         List<Long> removed = existing.keySet().stream().filter(id -> !kept.contains(id)).toList();
         if (!removed.isEmpty()) {
             if (variantValueMapper.exists(Wrappers.<WmsVariantValue>lambdaQuery().in(WmsVariantValue::getValueId, removed))) {
-                throw new BizException("已被 SKU 使用的属性值不能删除");
+                throw new BizException("wms.error.attributeValuesUsedSkusCannotDeleted");
             }
             valueMapper.deleteByIds(removed);
         }
@@ -133,7 +133,7 @@ public class WmsVariantService {
     @Transactional
     public void deleteAttribute(Long id) {
         if (variantValueMapper.exists(Wrappers.<WmsVariantValue>lambdaQuery().eq(WmsVariantValue::getAttributeId, id))) {
-            throw new BizException("规格属性已被 SKU 使用，不能删除，可以停用");
+            throw new BizException("wms.error.variantAttributeUsedSkusCannotDeleted");
         }
         valueMapper.delete(Wrappers.<WmsAttributeValue>lambdaQuery().eq(WmsAttributeValue::getAttributeId, id));
         attributeMapper.deleteById(id);
@@ -197,12 +197,12 @@ public class WmsVariantService {
     public int generate(Long templateId, Map<Long, List<Long>> valueIds) {
         WmsMaterial template = requireTemplate(templateId, true);
         if (valueIds == null || valueIds.isEmpty() || valueIds.values().stream().anyMatch(l -> l == null || l.isEmpty())) {
-            throw new BizException("请为每个规格属性至少选择一个属性值");
+            throw new BizException("wms.error.selectLeastOneValueEachAttribute");
         }
         Map<Long, WmsAttribute> attrs = attributeMapper.selectByIds(valueIds.keySet()).stream()
                 .collect(Collectors.toMap(WmsAttribute::getId, Function.identity()));
         if (attrs.size() != valueIds.size()) {
-            throw new BizException("规格属性不存在");
+            throw new BizException("wms.error.variantAttributeDoesNotExist");
         }
         Set<Long> allValueIds = valueIds.values().stream().flatMap(List::stream).collect(Collectors.toSet());
         Map<Long, WmsAttributeValue> values = valueMapper.selectByIds(allValueIds).stream()
@@ -211,7 +211,7 @@ public class WmsVariantService {
             for (Long v : e.getValue()) {
                 WmsAttributeValue value = values.get(v);
                 if (value == null || !value.getAttributeId().equals(e.getKey())) {
-                    throw new BizException("属性值不属于规格属性「{0}」", attrs.get(e.getKey()).getName());
+                    throw new BizException("wms.error.valueDoesNotBelongVariantAttribute", attrs.get(e.getKey()).getName());
                 }
             }
         }
@@ -220,7 +220,7 @@ public class WmsVariantService {
                 .eq(WmsVariantValue::getTemplateId, templateId));
         Set<Long> existingAttrs = existingValues.stream().map(WmsVariantValue::getAttributeId).collect(Collectors.toSet());
         if (!existingAttrs.isEmpty() && !existingAttrs.equals(valueIds.keySet())) {
-            throw new BizException("该款式已按其他规格属性生成过 SKU，属性需要保持一致");
+            throw new BizException("wms.error.skusStyleGeneratedOtherAttributesAttributes");
         }
         Set<String> existingKeys = existingValues.stream().collect(Collectors.groupingBy(WmsVariantValue::getMaterialId,
                         Collectors.mapping(WmsVariantValue::getValueId, Collectors.toSet())))
@@ -247,7 +247,7 @@ public class WmsVariantService {
         List<List<WmsAttributeValue>> todo = combos.stream()
                 .filter(c -> !existingKeys.contains(key(c.stream().map(WmsAttributeValue::getId).collect(Collectors.toSet())))).toList();
         if (existingKeys.size() + todo.size() > MAX_VARIANTS) {
-            throw new BizException("一个款式最多 {0} 个 SKU", MAX_VARIANTS);
+            throw new BizException("wms.error.styleHaveMostSkus", MAX_VARIANTS);
         }
         if (!template.isTemplateMaterial()) {
             materialMapper.update(Wrappers.<WmsMaterial>lambdaUpdate().set(WmsMaterial::getIsTemplate, 1).eq(WmsMaterial::getId, templateId));
@@ -257,10 +257,10 @@ public class WmsVariantService {
             String text = combo.stream().map(WmsAttributeValue::getAttrValue).collect(Collectors.joining(" / "));
             String code = template.getCode() + "-" + suffix;
             if (code.length() > 64) {
-                throw new BizException("SKU 编码超过64个字符：{0}，请缩短款式编码或属性值编码", code);
+                throw new BizException("wms.error.skuCodeExceedsCharactersShortenStyle", code);
             }
             if (materialMapper.exists(Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getCode, code))) {
-                throw new BizException("物料编码 {0} 已存在", code);
+                throw new BizException("wms.error.materialCodeAlreadyExists2", code);
             }
             WmsMaterial m = new WmsMaterial();
             m.setCode(code);
@@ -320,17 +320,17 @@ public class WmsVariantService {
     private WmsMaterial requireTemplate(Long id, boolean forGenerate) {
         WmsMaterial m = id == null ? null : materialMapper.selectById(id);
         if (m == null) {
-            throw new BizException("物料不存在");
+            throw new BizException("wms.error.materialNotFound");
         }
         if (m.getTemplateId() != null) {
-            throw new BizException("「{0}」是 SKU，不能作为款式", m.getCode());
+            throw new BizException("wms.error.skuCannotStyle", m.getCode());
         }
         if (!m.isTemplateMaterial()) {
             if (!forGenerate) {
-                throw new BizException("「{0}」不是多规格款式", m.getCode());
+                throw new BizException("wms.error.notMultiVariantStyle", m.getCode());
             }
             if (flowMapper.existsByMaterialId(id)) {
-                throw new BizException("「{0}」已发生库存业务，不能设为多规格款式，请新建款式物料", m.getCode());
+                throw new BizException("wms.error.hasStockTransactionsCannotBecomeMulti", m.getCode());
             }
         }
         return m;

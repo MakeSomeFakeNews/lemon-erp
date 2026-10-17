@@ -9,8 +9,8 @@ import jakarta.validation.constraints.Size;
  * 保存自定义报表：分析配置 + 名称
  */
 public record ReportRequest(
-        @NotBlank(message = "报表名称不能为空") @Size(max = 64, message = "报表名称不能超过64个字符") String name,
-        @NotNull(message = "请设置分析配置") @Valid PivotRequest config,
+        @NotBlank(message = "{bi.valid.reportNameRequired}") @Size(max = 64, message = "{bi.valid.reportNameCannotExceedCharacters}") String name,
+        @NotNull(message = "{bi.valid.configureAnalysis}") @Valid PivotRequest config,
         Integer shared,
-        @Size(max = 255, message = "说明不能超过255个字符") String remark) {
+        @Size(max = 255, message = "{bi.valid.descriptionCannotExceedCharacters}") String remark) {
 }

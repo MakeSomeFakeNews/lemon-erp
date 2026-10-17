@@ -26,13 +26,13 @@ public class FinRecordTypes implements RecordTypeProvider {
 
     @Override
     public List<RecordType> recordTypes() {
-        return List.of(new RecordType("fin_voucher", "凭证", "fin:voucher:list", "fin:voucher:edit",
+        return List.of(new RecordType("fin_voucher", "fin.label.voucher", "fin:voucher:list", "fin:voucher:edit",
                         null, voucherMapper::selectById),
                 // 对账单的发票等附件：财务与供应商门户共用
-                new RecordType("fin_statement", "供应商对账单", "fin:statement:list,portal:statement:list",
+                new RecordType("fin_statement", "fin.label.supplierStatement", "fin:statement:list,portal:statement:list",
                         "fin:statement:edit,portal:statement:confirm", null, this::statement),
                 // 发票的版式文件（PDF / OFD）、XML
-                new RecordType("fin_invoice", "发票", "fin:invoice:list", "fin:invoice:edit", null, invoiceMapper::selectById));
+                new RecordType("fin_invoice", "fin.label.invoice", "fin:invoice:list", "fin:invoice:edit", null, invoiceMapper::selectById));
     }
 
     /** 供应商账号只能访问本供应商已发送的对账单 */

@@ -49,7 +49,7 @@ public class FinCurrencyService implements ExchangeRateProvider {
 
     public void saveCurrency(FinCurrency c) {
         if (c.getCode() == null || !c.getCode().matches("^[A-Z]{3}$")) {
-            throw new BizException("币种代码为 3 位大写字母，如 USD");
+            throw new BizException("fin.error.currencyCodeMustUppercaseLettersE");
         }
         FinCurrency old = currencyMapper.selectOne(Wrappers.<FinCurrency>lambdaQuery().eq(FinCurrency::getCode, c.getCode()));
         c.setIsBase(BASE.equals(c.getCode()) ? 1 : 0);
@@ -80,13 +80,13 @@ public class FinCurrencyService implements ExchangeRateProvider {
     public void saveRate(String currency, int period, BigDecimal rate) {
         FinConstants.toYearMonth(period);
         if (BASE.equals(currency)) {
-            throw new BizException("本位币不需要维护汇率");
+            throw new BizException("fin.error.baseCurrencyDoesNotNeedExchange");
         }
         if (!currencyMapper.exists(Wrappers.<FinCurrency>lambdaQuery().eq(FinCurrency::getCode, currency))) {
-            throw new BizException("币种不存在：{0}", currency);
+            throw new BizException("fin.error.currencyNotFound", currency);
         }
         if (rate == null || rate.signum() <= 0) {
-            throw new BizException("汇率必须大于 0");
+            throw new BizException("fin.error.exchangeRateMustGreater");
         }
         rateMapper.delete(Wrappers.<FinExchangeRate>lambdaQuery().eq(FinExchangeRate::getCurrency, currency).eq(FinExchangeRate::getPeriod, period));
         FinExchangeRate r = new FinExchangeRate();
@@ -117,7 +117,7 @@ public class FinCurrencyService implements ExchangeRateProvider {
         String sourceNo = "FX-" + period;
         if (voucherMapper.exists(Wrappers.<FinVoucher>lambdaQuery().eq(FinVoucher::getSourceType, VoucherSource.FX.name())
                 .eq(FinVoucher::getSourceNo, sourceNo))) {
-            throw new BizException("{0} 已调汇，如需重新调汇请先删除调汇凭证", period);
+            throw new BizException("fin.error.hasAlreadyRevaluedDeleteRevaluationVoucher", period);
         }
         LocalDate end = FinConstants.toYearMonth(period).atEndOfMonth();
         Map<String, BigDecimal> rates = new HashMap<>();
@@ -132,7 +132,7 @@ public class FinCurrencyService implements ExchangeRateProvider {
                 FinExchangeRate r = rateMapper.selectOne(Wrappers.<FinExchangeRate>lambdaQuery().eq(FinExchangeRate::getCurrency, c)
                         .eq(FinExchangeRate::getPeriod, period));
                 if (r == null) {
-                    throw new BizException("请先维护 {0} 在 {1} 的汇率", c, period);
+                    throw new BizException("fin.error.maintainExchangeRateFirst", c, period);
                 }
                 return r.getRate();
             });

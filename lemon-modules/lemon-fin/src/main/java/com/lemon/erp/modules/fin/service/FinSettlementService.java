@@ -73,7 +73,7 @@ public class FinSettlementService {
     public FinSettlement detail(Long id) {
         FinSettlement s = settlementMapper.selectDetail(id);
         if (s == null) {
-            throw new BizException("收付款单不存在");
+            throw new BizException("fin.error.receiptPaymentDocumentNotFound");
         }
         s.setItems(itemMapper.selectBySettlement(id));
         return s;
@@ -95,7 +95,7 @@ public class FinSettlementService {
     @Transactional
     public Long createForNote(SettlementRequest req, AccountRole noteAccount) {
         if (!accountRules.accountId(noteAccount).equals(req.accountId())) {
-            throw new BizException("票据结算科目不正确");
+            throw new BizException("fin.error.invalidNoteSettlementAccount");
         }
         return doCreate(req);
     }
@@ -107,7 +107,7 @@ public class FinSettlementService {
 
     private Long doCreate(SettlementRequest req) {
         checkKind(req.kind());
-        periodGuard.checkOpen(req.settleDate(), "RECEIPT".equals(req.kind()) ? "收款单" : "付款单");
+        periodGuard.checkOpen(req.settleDate(), "RECEIPT".equals(req.kind()) ? "fin.label.receipt" : "fin.label.payment");
         String billKind = "RECEIPT".equals(req.kind()) ? "AR" : "AP";
         // 付款发布了审批流程时先提交审批，审批通过后核销
         boolean approval = "PAYMENT".equals(req.kind()) && flowApi.isAvailable(PAYMENT_PROCESS_KEY);
@@ -117,13 +117,13 @@ public class FinSettlementService {
         // 外币：同一张收付款单只能核销同一币种的单据，核销金额为原币
         Set<String> currencies = bills.values().stream().map(b -> b.getCurrency() == null ? "CNY" : b.getCurrency()).collect(Collectors.toSet());
         if (currencies.size() > 1) {
-            throw new BizException("同一张收付款单只能核销同一币种的单据");
+            throw new BizException("fin.error.receiptPaymentOnlySettleDocumentsSame");
         }
         String currency = currencies.isEmpty() ? "CNY" : currencies.iterator().next();
         boolean foreign = !"CNY".equals(currency);
         BigDecimal settleRate = !foreign ? BigDecimal.ONE : req.exchangeRate() != null ? req.exchangeRate() : rateProvider.rate(currency, req.settleDate());
         if (settleRate == null) {
-            throw new BizException("请填写 {0} 的收付款汇率", currency);
+            throw new BizException("fin.error.enterExchangeRateReceiptPayment", currency);
         }
         Map<Long, BigDecimal> baseAmounts = new HashMap<>();
         BigDecimal total = BigDecimal.ZERO;
@@ -131,13 +131,13 @@ public class FinSettlementService {
         for (SettlementItemRequest item : req.items()) {
             FinBill bill = bills.get(item.billId());
             if (bill == null || !bill.getKind().equals(billKind) || !bill.getPartnerId().equals(req.partnerId())) {
-                throw new BizException("AR".equals(billKind) ? "核销的单据不属于该客户" : "核销的单据不属于该供应商");
+                throw new BizException("AR".equals(billKind) ? "fin.error.settledDocumentDoesNotBelongCustomer" : "fin.error.settledDocumentDoesNotBelongSupplier");
             }
             if (!seen.add(item.billId())) {
-                throw new BizException("单据重复：{0}", bill.getBillNo());
+                throw new BizException("fin.error.duplicateDocument", bill.getBillNo());
             }
             if (item.amount().signum() == 0 || item.amount().signum() != bill.getAmount().signum()) {
-                throw new BizException("{0}：核销金额必须与单据金额同号且不为 0", bill.getBillNo());
+                throw new BizException("fin.error.settledAmountMustNonZeroHave", bill.getBillNo());
             }
             BigDecimal base = baseOf(bill, item.amount());
             baseAmounts.put(bill.getId(), base);
@@ -145,7 +145,7 @@ public class FinSettlementService {
                 // 审批通过后才核销，这里只校验当前的未核销金额
                 BigDecimal remaining = foreign ? bill.getAmountFc().subtract(bill.getSettledFc()) : bill.getAmount().subtract(bill.getSettledAmount());
                 if (item.amount().abs().compareTo(remaining.abs()) > 0) {
-                    throw new BizException("{0}：核销金额超过未核销金额 {1}", bill.getBillNo(), remaining.toPlainString());
+                    throw new BizException("fin.error.settledAmountExceedsOutstandingAmount", bill.getBillNo(), remaining.toPlainString());
                 }
             } else {
                 settle(bill, base, item.amount());
@@ -154,7 +154,7 @@ public class FinSettlementService {
             totalFc = totalFc.add(item.amount());
         }
         if (totalFc.signum() <= 0) {
-            throw new BizException("收付款金额必须大于 0（红字单据冲抵后）");
+            throw new BizException("fin.error.receiptPaymentAmountMustGreaterAfter");
         }
         FinSettlement s = new FinSettlement();
         s.setSettleNo(docNoService.next("RECEIPT".equals(req.kind()) ? "SK" : "FK"));
@@ -203,7 +203,7 @@ public class FinSettlementService {
         }
         boolean approved = e.status() == FlowStatus.APPROVED;
         if (approved) {
-            periodGuard.checkOpen(s.getSettleDate(), "付款单");
+            periodGuard.checkOpen(s.getSettleDate(), "fin.label.payment");
             Map<Long, FinBill> bills = new HashMap<>();
             List<FinSettlementItem> items = itemMapper.selectList(Wrappers.<FinSettlementItem>lambdaQuery()
                     .eq(FinSettlementItem::getSettlementId, s.getId()));
@@ -211,7 +211,7 @@ public class FinSettlementService {
             for (FinSettlementItem item : items) {
                 FinBill bill = bills.get(item.getBillId());
                 if (bill == null) {
-                    throw new BizException("核销的单据不存在：{0}", item.getBillId());
+                    throw new BizException("fin.error.settledDocumentNotFound", item.getBillId());
                 }
                 settle(bill, item.getAmount(), item.getAmountFc());
             }
@@ -227,7 +227,7 @@ public class FinSettlementService {
         if (billMapper.addSettled(bill.getId(), base) == 0) {
             FinBill latest = billMapper.selectById(bill.getId());
             BigDecimal remaining = latest == null ? BigDecimal.ZERO : latest.getAmount().subtract(latest.getSettledAmount());
-            throw new BizException("{0}：核销金额超过未核销金额 {1}", bill.getBillNo(), remaining.toPlainString());
+            throw new BizException("fin.error.settledAmountExceedsOutstandingAmount", bill.getBillNo(), remaining.toPlainString());
         }
         billMapper.addSettledFc(bill.getId(), fc == null ? base : fc);
     }
@@ -263,15 +263,15 @@ public class FinSettlementService {
                 continue;
             }
             if (!forNote && SettleMethod.NOTE.name().equals(s.getMethod())) {
-                throw new BizException("{0} 由票据业务生成，请在「票据管理」中删除票据", s.getSettleNo());
+                throw new BizException("fin.error.generatedNoteTransactionDeleteNoteNotes", s.getSettleNo());
             }
             if (s.getVoucherId() != null) {
-                throw new BizException("{0} 已生成凭证，请先删除凭证", s.getSettleNo());
+                throw new BizException("fin.error.alreadyHasVoucherDeleteVoucherFirst", s.getSettleNo());
             }
             if (STATUS_APPROVING.equals(s.getStatus())) {
-                throw new BizException("{0} 审批中，请先在「我的申请」中撤回", s.getSettleNo());
+                throw new BizException("fin.error.underApprovalWithdrawMyRequestsFirst", s.getSettleNo());
             }
-            periodGuard.checkOpen(s.getSettleDate(), "收付款单");
+            periodGuard.checkOpen(s.getSettleDate(), "fin.label.receiptPayment");
             // 已拒绝的付款没有核销过，不需要恢复
             if (STATUS_APPROVED.equals(s.getStatus())) {
                 for (FinSettlementItem item : itemMapper.selectList(Wrappers.<FinSettlementItem>lambdaQuery()
@@ -321,7 +321,7 @@ public class FinSettlementService {
 
     private static void checkKind(String kind) {
         if (!"RECEIPT".equals(kind) && !"PAYMENT".equals(kind)) {
-            throw new BizException("收付款种类不正确：{0}", kind);
+            throw new BizException("fin.error.invalidReceiptPaymentKind", kind);
         }
     }
 }

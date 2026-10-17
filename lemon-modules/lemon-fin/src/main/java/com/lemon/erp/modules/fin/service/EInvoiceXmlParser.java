@@ -31,18 +31,18 @@ final class EInvoiceXmlParser {
         Document doc = read(content);
         String invoiceNo = text(doc.getDocumentElement(), "InvoiceNumber", "EIid");
         if (invoiceNo == null) {
-            throw new BizException("不是数电票 XML 文件（没有发票号码）");
+            throw new BizException("fin.error.notFullyDigitalizedEInvoiceXml");
         }
         String date = text(doc.getDocumentElement(), "IssueTime", "RequestTime");
         if (date == null || date.length() < 10) {
-            throw new BizException("数电票 {0} 没有开票日期", invoiceNo);
+            throw new BizException("fin.error.eInvoiceHasNoIssueDate", invoiceNo);
         }
         BigDecimal net = decimal(text(doc.getDocumentElement(), "TotalAmWithoutTax"));
         BigDecimal tax = decimal(text(doc.getDocumentElement(), "TotalTaxAm"));
         BigDecimal total = decimal(text(doc.getDocumentElement(), "TotalTax-includedAmount"));
         if (total == null) {
             if (net == null) {
-                throw new BizException("数电票 {0} 没有金额", invoiceNo);
+                throw new BizException("fin.error.eInvoiceHasNoAmount", invoiceNo);
             }
             total = net.add(tax == null ? BigDecimal.ZERO : tax);
         }
@@ -89,7 +89,7 @@ final class EInvoiceXmlParser {
             DocumentBuilder builder = f.newDocumentBuilder();
             return builder.parse(new ByteArrayInputStream(content));
         } catch (Exception e) {
-            throw new BizException("XML 文件解析失败：{0}", e.getMessage());
+            throw new BizException("fin.error.failedParseXmlFile", e.getMessage());
         }
     }
 

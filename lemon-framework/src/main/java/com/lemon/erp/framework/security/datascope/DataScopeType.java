@@ -7,11 +7,11 @@ import java.util.Arrays;
  */
 public enum DataScopeType {
 
-    ALL(1, "全部数据"),
-    CUSTOM(2, "自定义数据"),
-    DEPT(3, "本部门数据"),
-    DEPT_AND_CHILD(4, "本部门及以下数据"),
-    SELF(5, "仅本人数据");
+    ALL(1, "framework.enum.DataScopeType.all"),
+    CUSTOM(2, "framework.enum.DataScopeType.custom"),
+    DEPT(3, "framework.enum.DataScopeType.dept"),
+    DEPT_AND_CHILD(4, "framework.enum.DataScopeType.deptAndChild"),
+    SELF(5, "framework.enum.DataScopeType.self");
 
     private final int code;
     private final String label;

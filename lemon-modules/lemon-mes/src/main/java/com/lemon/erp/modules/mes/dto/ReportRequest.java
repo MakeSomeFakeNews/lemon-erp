@@ -16,13 +16,13 @@ import java.time.LocalDate;
  * @param moldId      使用的模具（须已领用到该工单），按 ⌈(合格 + 报废) / 模穴数⌉ 累计模次
  */
 public record ReportRequest(
-        @NotNull(message = "请选择工序") Long opId,
-        @NotNull(message = "请选择报工日期") LocalDate reportDate,
-        @NotNull(message = "请填写合格数量") @DecimalMin(value = "0", message = "合格数量不能小于0")
+        @NotNull(message = "{mes.valid.selectOperation}") Long opId,
+        @NotNull(message = "{mes.valid.selectReportDate}") LocalDate reportDate,
+        @NotNull(message = "{mes.valid.enterGoodQuantity}") @DecimalMin(value = "0", message = "{mes.valid.goodQuantityCannotLess}")
         @Digits(integer = 14, fraction = 4) BigDecimal goodQty,
-        @DecimalMin(value = "0", message = "报废数量不能小于0") @Digits(integer = 14, fraction = 4) BigDecimal scrapQty,
-        @NotNull(message = "请填写工时") @DecimalMin(value = "0", message = "工时不能小于0") @Digits(integer = 14, fraction = 4) BigDecimal hours,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark,
+        @DecimalMin(value = "0", message = "{mes.valid.scrapQuantityCannotLess}") @Digits(integer = 14, fraction = 4) BigDecimal scrapQty,
+        @NotNull(message = "{mes.valid.enterHours}") @DecimalMin(value = "0", message = "{mes.valid.hoursCannotLess}") @Digits(integer = 14, fraction = 4) BigDecimal hours,
+        @Size(max = 255, message = "{mes.valid.remarkCannotExceedCharacters}") String remark,
         Long operatorId,
         Long equipmentId,
         Long moldId) {

@@ -1,7 +1,7 @@
 package com.lemon.erp.modules.system.print;
 
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.tenant.TenantContext;
 import com.lemon.erp.framework.tenant.TenantProperties;
 import com.lemon.erp.modules.system.service.SysPrintTemplateService;
@@ -105,7 +105,7 @@ public class PrintService {
             return export(prints, request.getTitle());
         } catch (JRException e) {
             log.warn("打印失败：{}", e.getMessage(), e);
-            throw new BizException("打印失败：{0}", e.getMessage());
+            throw new BizException("system.error.printingFailed", e.getMessage());
         }
     }
 
@@ -116,7 +116,7 @@ public class PrintService {
             JasperDesign design = docs.get(0).isSlip() ? slipDesign(request, docs) : design(request, docs.get(0));
             return JRXmlWriter.writeReport(design, StandardCharsets.UTF_8.name());
         } catch (JRException e) {
-            throw new BizException("生成模板失败：{0}", e.getMessage());
+            throw new BizException("system.error.failedGenerateTemplate", e.getMessage());
         }
     }
 
@@ -124,22 +124,22 @@ public class PrintService {
     public void validateJrxml(String jrxml) {
         checkUploadAllowed();
         if (jrxml == null || jrxml.isBlank()) {
-            throw new BizException("模板文件为空");
+            throw new BizException("system.error.templateFileEmpty");
         }
         if (jrxml.length() > MAX_JRXML) {
-            throw new BizException("模板文件不能超过 1MB");
+            throw new BizException("system.text.templateFileCannotExceedMb");
         }
         try {
             custom(jrxml);
         } catch (JRException | RuntimeException e) {
-            throw new BizException("模板无法编译（需为 Jaspersoft Studio 7 的 JRXML）：{0}", rootMessage(e));
+            throw new BizException("system.error.templateCannotCompiledMustJaspersoftStudio", rootMessage(e));
         }
     }
 
     /** SaaS 模式下只有平台租户能上传 JRXML：其中的 Java 表达式在服务器上执行 */
     public void checkUploadAllowed() {
         if (tenantProperties.isEnabled() && !TenantContext.isPlatform()) {
-            throw new BizException("SaaS 模式下租户不能上传 JRXML 模板，请在打印模板中调整版式");
+            throw new BizException("system.error.saasModeTenantsCannotUploadJrxml");
         }
     }
 
@@ -196,7 +196,7 @@ public class PrintService {
         SimplePdfExporterConfiguration config = new SimplePdfExporterConfiguration();
         config.setMetadataTitle(title);
         config.setDisplayMetadataTitle(true);
-        config.setMetadataCreator("柠檬ERP");
+        config.setMetadataCreator(Messages.get("framework.label.defaultSystemName"));
         exporter.setConfiguration(config);
         exporter.exportReport();
         return out.toByteArray();
@@ -251,17 +251,17 @@ public class PrintService {
     private static List<PrintDoc> normalize(PrintRequest request) {
         List<PrintDoc> docs = request.getDocs();
         if (docs == null || docs.isEmpty()) {
-            throw new BizException("没有要打印的单据");
+            throw new BizException("system.error.noDocumentsPrint");
         }
         if (docs.size() > MAX_DOCS) {
-            throw new BizException("一次最多打印 {0} 张单据", MAX_DOCS);
+            throw new BizException("system.error.upDocumentsPrintedTime", MAX_DOCS);
         }
         int rows = docs.stream().mapToInt(d -> d.getRows() == null ? 0 : d.getRows().size()).sum();
         if (rows > MAX_ROWS) {
-            throw new BizException("一次最多打印 {0} 行明细", MAX_ROWS);
+            throw new BizException("system.error.upDetailRowsPrintedTime", MAX_ROWS);
         }
         checkLayout(request.getLayout());
-        request.setTitle(text(request.getTitle() == null ? I18n.t("打印") : request.getTitle()));
+        request.setTitle(text(request.getTitle() == null ? Messages.get("system.text.print") : request.getTitle()));
         docs.forEach(PrintService::normalize);
         return docs;
     }
@@ -275,10 +275,10 @@ public class PrintService {
             o.setItems(List.of());
         }
         if (o.getItems().size() > 80) {
-            throw new BizException("套打的定位字段过多");
+            throw new BizException("system.error.tooManyPositionedFieldsPrePrinted");
         }
         if (Math.abs(o.getOffsetX()) > 50 || Math.abs(o.getOffsetY()) > 50) {
-            throw new BizException("套打偏移不能超过 50mm");
+            throw new BizException("system.error.prePrintedFormOffsetCannotExceed");
         }
         for (PrintOverlay.Item it : o.getItems()) {
             if (it.getFontSize() != null && (it.getFontSize() < 6 || it.getFontSize() > 36)) {
@@ -292,7 +292,7 @@ public class PrintService {
                 d.setColumns(List.of());
             }
             if (d.getColumns().size() > 30 || d.getRows() > 100 || d.getRowHeight() < 3 || d.getRowHeight() > 50) {
-                throw new BizException("套打的明细区设置不正确");
+                throw new BizException("system.error.invalidDetailAreaSettingsPrePrinted");
             }
             d.getColumns().forEach(c -> c.setWidth(Math.min(Math.max(c.getWidth(), 5), 500)));
         }
@@ -301,16 +301,16 @@ public class PrintService {
 
     private static void checkLayout(PrintLayout l) {
         if (l == null) {
-            throw new BizException("纸张设置不正确");
+            throw new BizException("system.error.invalidPaperSettings");
         }
         if (l.getWidth() < 50 || l.getWidth() > 1000 || l.getHeight() < 50 || l.getHeight() > 2000) {
-            throw new BizException("纸张尺寸应在 50mm ~ 1000mm 之间");
+            throw new BizException("system.error.paperSizeMustBetweenMmMm");
         }
         if (l.getMargin() < 0 || l.getMargin() > 40 || l.getMargin() * 2 >= Math.min(l.getWidth(), l.getHeight()) - 20) {
-            throw new BizException("页边距不正确");
+            throw new BizException("system.error.invalidMargin");
         }
         if (l.getFontSize() < 6 || l.getFontSize() > 24) {
-            throw new BizException("字号应在 6 ~ 24 之间");
+            throw new BizException("system.error.fontSizeMustBetween");
         }
     }
 
@@ -329,7 +329,7 @@ public class PrintService {
             doc.setSections(List.of());
         }
         if (doc.getSections().size() > 5) {
-            throw new BizException("明细表过多");
+            throw new BizException("system.error.tooManyDetailTables");
         }
         for (PrintDoc.Section s : doc.getSections()) {
             s.setTitle(safeName(s.getTitle()));
@@ -343,7 +343,7 @@ public class PrintService {
             return List.of();
         }
         if (items.size() > MAX_ITEMS) {
-            throw new BizException("字段过多");
+            throw new BizException("system.error.tooManyFields");
         }
         Set<String> used = new HashSet<>();
         for (int i = 0; i < items.size(); i++) {
@@ -359,10 +359,10 @@ public class PrintService {
     /** 明细列：规范化 key，返回 原 key → 新 key */
     private static Map<String, String> columns(List<PrintDoc.Column> columns, String fallback) {
         if (columns == null) {
-            throw new BizException("明细列不正确");
+            throw new BizException("system.error.invalidDetailColumns");
         }
         if (columns.size() > MAX_ITEMS) {
-            throw new BizException("明细列过多");
+            throw new BizException("system.error.tooManyDetailColumns");
         }
         Map<String, String> keys = new HashMap<>();
         Set<String> used = new HashSet<>();

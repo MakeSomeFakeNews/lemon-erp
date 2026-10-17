@@ -16,7 +16,7 @@ public final class SecurityUtils {
         if (auth != null && auth.getPrincipal() instanceof LoginUser user) {
             return user;
         }
-        throw new BizException(R.UNAUTHORIZED, "未登录");
+        throw new BizException(R.UNAUTHORIZED, "framework.error.notSigned");
     }
 
     public static Long getUserId() {
@@ -43,7 +43,7 @@ public final class SecurityUtils {
     public static Long requireSupplierId() {
         Long supplierId = getLoginUser().supplierId();
         if (supplierId == null) {
-            throw new BizException(R.FORBIDDEN, "供应商门户仅供供应商账号使用");
+            throw new BizException(R.FORBIDDEN, "framework.error.supplierPortalOnlySupplierAccounts");
         }
         return supplierId;
     }
@@ -52,7 +52,7 @@ public final class SecurityUtils {
     public static Long requireCustomerId() {
         Long customerId = getLoginUser().customerId();
         if (customerId == null) {
-            throw new BizException(R.FORBIDDEN, "经销商门户仅供经销商账号使用");
+            throw new BizException(R.FORBIDDEN, "framework.error.dealerPortalOnlyDealerAccounts");
         }
         return customerId;
     }

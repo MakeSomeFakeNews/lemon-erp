@@ -3,7 +3,7 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.PlmRequests;
@@ -47,7 +47,7 @@ public class MesTechDocService {
     public MesTechDoc detail(Long id) {
         MesTechDoc doc = id == null ? null : docMapper.selectDetail(id);
         if (doc == null) {
-            throw new BizException("技术文档不存在");
+            throw new BizException("mes.error.technicalDocumentDoesNotExist");
         }
         return doc;
     }
@@ -74,34 +74,34 @@ public class MesTechDocService {
 
     @Transactional
     public void update(Long id, PlmRequests.Doc req) {
-        MesTechDoc doc = requireStatus(id, DocStatus.DRAFT, "修改");
+        MesTechDoc doc = requireStatus(id, DocStatus.DRAFT, "mes.label.edit");
         apply(doc, req);
         try {
             docMapper.updateById(doc);
         } catch (DuplicateKeyException e) {
-            throw new BizException("文档已有版本 {0}", req.version().trim());
+            throw new BizException("mes.error.documentAlreadyHasVersion", req.version().trim());
         }
     }
 
     @Transactional
     public void delete(Long id) {
-        requireStatus(id, DocStatus.DRAFT, "删除");
+        requireStatus(id, DocStatus.DRAFT, "mes.label.delete");
         docMapper.deleteById(id);
     }
 
     /** 发布：须上传文件；上一版本作废 */
     @Transactional
     public void release(Long id) {
-        MesTechDoc doc = requireStatus(id, DocStatus.DRAFT, "发布");
+        MesTechDoc doc = requireStatus(id, DocStatus.DRAFT, "mes.label.release");
         if (doc.getFileCount() == null || doc.getFileCount() == 0) {
-            throw new BizException("请先上传文档文件");
+            throw new BizException("mes.error.uploadDocumentFilesFirst");
         }
         if (docMapper.update(Wrappers.<MesTechDoc>lambdaUpdate()
                 .set(MesTechDoc::getStatus, DocStatus.RELEASED)
                 .set(MesTechDoc::getReleaseBy, SecurityUtils.getUserId())
                 .set(MesTechDoc::getReleaseTime, LocalDateTime.now())
                 .eq(MesTechDoc::getId, id).eq(MesTechDoc::getStatus, DocStatus.DRAFT)) == 0) {
-            throw new BizException("文档状态已变化，请刷新后重试");
+            throw new BizException("mes.error.documentStatusHasChangedRefreshTry");
         }
         if (doc.getPrevId() != null) {
             docMapper.update(Wrappers.<MesTechDoc>lambdaUpdate().set(MesTechDoc::getStatus, DocStatus.OBSOLETE)
@@ -112,9 +112,9 @@ public class MesTechDocService {
     /** 升版：已发布的最新版本复制为新的草稿版本（文件在新版本中重新上传） */
     @Transactional
     public Long revise(Long id, PlmRequests.Revise req) {
-        MesTechDoc doc = requireStatus(id, DocStatus.RELEASED, "升版");
+        MesTechDoc doc = requireStatus(id, DocStatus.RELEASED, "mes.label.revise");
         if (docMapper.exists(Wrappers.<MesTechDoc>lambdaQuery().eq(MesTechDoc::getPrevId, id))) {
-            throw new BizException("该版本已有新版本");
+            throw new BizException("mes.error.newerVersionAlreadyExists");
         }
         MesTechDoc next = new MesTechDoc();
         next.setDocNo(doc.getDocNo());
@@ -147,14 +147,14 @@ public class MesTechDocService {
         try {
             docMapper.insert(doc);
         } catch (DuplicateKeyException e) {
-            throw new BizException("文档已有版本 {0}", doc.getVersion());
+            throw new BizException("mes.error.documentAlreadyHasVersion", doc.getVersion());
         }
     }
 
     private MesTechDoc requireStatus(Long id, DocStatus status, String action) {
         MesTechDoc doc = detail(id);
         if (doc.getStatus() != status) {
-            throw new BizException("文档当前状态不能{0}", I18n.t(action));
+            throw new BizException("mes.error.currentDocumentStatusDoesNotAllow", Messages.get(action));
         }
         return doc;
     }

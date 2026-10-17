@@ -1,6 +1,6 @@
 package com.lemon.erp.framework.demo;
 
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.R;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -21,8 +21,10 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class DemoModeInterceptor implements HandlerInterceptor {
 
-    /** 提示（输出时按请求语言翻译） */
-    public static final String MESSAGE = "演示模式下不能新增、修改、删除数据"; // i18n-ignore 输出处 I18n.t
+    /** 提示的消息键，输出时按请求语言取消息 */
+    public static final String MESSAGE_KEY = "framework.error.demoModeReadOnly";
+    /** 默认语言（中文）的提示 */
+    public static final String MESSAGE = Messages.get(Messages.DEFAULT_LOCALE, MESSAGE_KEY);
 
     private static final Set<String> READ_METHODS = Set.of(HttpMethod.GET.name(), HttpMethod.HEAD.name(), HttpMethod.OPTIONS.name());
 
@@ -40,7 +42,7 @@ public class DemoModeInterceptor implements HandlerInterceptor {
         }
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.getWriter().write("{\"code\":" + R.FORBIDDEN + ",\"msg\":\"" + I18n.t(MESSAGE) + "\"}");
+        response.getWriter().write("{\"code\":" + R.FORBIDDEN + ",\"msg\":\"" + Messages.get(MESSAGE_KEY) + "\"}");
         return false;
     }
 }

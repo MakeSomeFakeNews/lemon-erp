@@ -15,7 +15,7 @@ import static com.lemon.erp.framework.code.DocNoCatalog.Type.doc;
 import static com.lemon.erp.framework.code.DocNoCatalog.Type.master;
 
 /**
- * 供应链模块的单据编号（编码规则页面可配置），规则标识与 docNoService.next 的参数一致
+ * 供应链模块的单据编号（编码规则页面可配置），规则标识与 docNoService.next 的参数一致；名称为消息键
  */
 @Configuration
 public class ScmDocNos {
@@ -28,21 +28,21 @@ public class ScmDocNos {
     @Order(1)
     public DocNoCatalog scmDocNoCatalog() {
         List<DocNoCatalog.Type> types = new ArrayList<>();
-        types.add(doc("QG", "请购单"));
-        types.add(doc("XJ", "询价单"));
-        types.add(doc(ScmTenderService.DOC_NO, "招标"));
-        types.add(doc(ScmPurchaseContractService.DOC_NO, "采购合同"));
-        types.add(doc("BJ", "销售报价"));
-        Arrays.stream(OrderKind.values()).forEach(k -> types.add(doc(k.getPrefix(), k.getLabel())));
-        types.add(doc("BG", "订单变更"));
-        types.add(doc(ScmAsnService.DOC_NO, "送货通知"));
-        Arrays.stream(TradeKind.values()).forEach(k -> types.add(doc(k.getPrefix(), k.getLabel())));
-        types.add(doc("FH", "发货通知"));
-        types.add(doc(ScmWaveService.DOC_NO, "拣货波次"));
-        types.add(doc("FY", "物流发运"));
-        types.add(doc(ScmRebateService.DOC_NO, "销售返利"));
-        types.add(master(SUPPLIER, "供应商编码"));
-        types.add(master(CUSTOMER, "客户编码"));
-        return new DocNoCatalog("供应链管理", types);
+        types.add(doc("QG", "scm.label.purchaseRequisition"));
+        types.add(doc("XJ", "scm.label.rfq"));
+        types.add(doc(ScmTenderService.DOC_NO, "scm.label.tender"));
+        types.add(doc(ScmPurchaseContractService.DOC_NO, "scm.label.purchaseContract"));
+        types.add(doc("BJ", "scm.label.salesQuotation"));
+        Arrays.stream(OrderKind.values()).forEach(k -> types.add(doc(k.getPrefix(), k.getLabelKey())));
+        types.add(doc("BG", "scm.label.orderChange"));
+        types.add(doc(ScmAsnService.DOC_NO, "scm.label.asn"));
+        Arrays.stream(TradeKind.values()).forEach(k -> types.add(doc(k.getPrefix(), k.getLabelKey())));
+        types.add(doc("FH", "scm.label.deliveryNotice"));
+        types.add(doc(ScmWaveService.DOC_NO, "scm.label.pickingWave"));
+        types.add(doc("FY", "scm.label.shipment"));
+        types.add(doc(ScmRebateService.DOC_NO, "scm.label.salesRebate"));
+        types.add(master(SUPPLIER, "scm.label.supplierCode"));
+        types.add(master(CUSTOMER, "scm.label.customerCode"));
+        return new DocNoCatalog("scm.label.supplyChainManagement", types);
     }
 }

@@ -48,11 +48,11 @@ public class SysMenuService extends ServiceImpl<SysMenuMapper, SysMenu> {
 
     public void update(SysMenu menu) {
         if (Objects.equals(menu.getId(), menu.getParentId())) {
-            throw new BizException("上级菜单不能是自己");
+            throw new BizException("system.error.parentMenuCannotItself");
         }
         if (TreeUtils.selfAndDescendantIds(list(Wrappers.<SysMenu>lambdaQuery()
                 .select(SysMenu::getId, SysMenu::getParentId)), menu.getId()).contains(menu.getParentId())) {
-            throw new BizException("上级菜单不能是自己的下级菜单");
+            throw new BizException("system.error.parentMenuCannotOneSubMenus");
         }
         normalize(menu);
         updateById(menu);
@@ -62,7 +62,7 @@ public class SysMenuService extends ServiceImpl<SysMenuMapper, SysMenu> {
     @Transactional
     public void delete(Long id) {
         if (exists(Wrappers.<SysMenu>lambdaQuery().eq(SysMenu::getParentId, id))) {
-            throw new BizException("存在子菜单，不允许删除");
+            throw new BizException("system.error.menuHasSubMenusCannotDeleted");
         }
         removeById(id);
         roleMenuMapper.delete(Wrappers.<SysRoleMenu>lambdaQuery().eq(SysRoleMenu::getMenuId, id));

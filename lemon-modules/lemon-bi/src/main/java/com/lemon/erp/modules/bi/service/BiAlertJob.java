@@ -28,7 +28,7 @@ public class BiAlertJob implements JobHandler {
 
     @Override
     public String name() {
-        return "经营预警推送"; // i18n-ignore 定时任务名称，任务管理处翻译
+        return "bi.label.businessAlertPush";
     }
 
     @Override

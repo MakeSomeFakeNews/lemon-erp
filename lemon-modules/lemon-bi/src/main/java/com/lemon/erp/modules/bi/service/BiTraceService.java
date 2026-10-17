@@ -30,7 +30,7 @@ public class BiTraceService {
         try {
             orderKind = OrderKind.valueOf(kind.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new BizException("订单类型不正确");
+            throw new BizException("bi.error.invalidOrderType");
         }
         orderService.detail(orderKind, orderId);
         boolean sales = orderKind == OrderKind.SALES;

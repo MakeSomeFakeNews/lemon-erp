@@ -2,7 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.tenant.PlatformFeatures;
 import com.lemon.erp.modules.system.dto.FeatureCatalogView;
 import com.lemon.erp.modules.system.entity.SysMenu;
@@ -58,11 +58,11 @@ public class SysFeatureService {
         Set<Long> assignable = menus.stream().map(SysMenu::getId).collect(Collectors.toSet());
         List<FeatureCatalogView.Feature> features = SysFeatureCatalog.FEATURES.stream()
                 // 名称、分类、说明按请求语言翻译
-                .map(f -> new FeatureCatalogView.Feature(f.key(), I18n.t(f.name()), I18n.t(f.group()), I18n.t(f.description()), f.required(), f.requires(),
+                .map(f -> new FeatureCatalogView.Feature(f.key(), Messages.get(f.name()), Messages.get(f.group()), Messages.get(f.description()), f.required(), f.requires(),
                         List.copyOf(expand(f.menus(), children, assignable))))
                 .toList();
         List<FeatureCatalogView.Industry> industries = SysFeatureCatalog.INDUSTRIES.stream()
-                .map(i -> new FeatureCatalogView.Industry(i.key(), I18n.t(i.name()), I18n.t(i.description()), List.copyOf(withRequires(i.features()))))
+                .map(i -> new FeatureCatalogView.Industry(i.key(), Messages.get(i.name()), Messages.get(i.description()), List.copyOf(withRequires(i.features()))))
                 .toList();
         return new FeatureCatalogView(features, industries);
     }
@@ -75,7 +75,7 @@ public class SysFeatureService {
     public Long resolvePackage(String name, String tenantName, Collection<Long> menuIds) {
         Set<Long> menus = normalize(menuIds);
         if (menus.isEmpty()) {
-            throw new BizException("请选择租户的功能");
+            throw new BizException("system.error.selectTenantSFeatures");
         }
         Map<Long, Set<Long>> packageMenus = new HashMap<>();
         packageMenuMapper.selectList(Wrappers.lambdaQuery())

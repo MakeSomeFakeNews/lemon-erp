@@ -64,7 +64,7 @@ public class StockHoldService {
                 continue;
             }
             if (stockMapper.freeze(l.warehouseId(), l.locationId(), l.materialId(), l.batchNo(), l.qty()) == 0) {
-                throw new BizException("冻结待检库存失败：{0}", StockService.describe(m));
+                throw new BizException("wms.error.failedFreezeStockPendingInspection", StockService.describe(m));
             }
             WmsStockHold h = new WmsStockHold();
             h.setStatus(PENDING);
@@ -127,7 +127,7 @@ public class StockHoldService {
     public void release(Long id, String remark) {
         WmsStockHold h = holdMapper.selectById(id);
         if (h == null || !(PENDING.equals(h.getStatus()) || REJECTED.equals(h.getStatus()))) {
-            throw new BizException("冻结记录不存在或已处理");
+            throw new BizException("wms.error.holdRecordDoesNotExistHas");
         }
         release(h, null, remark);
     }
@@ -155,7 +155,7 @@ public class StockHoldService {
                 BigDecimal take = remaining.min(h.getQty());
                 if (holdMapper.consume(h.getId(), take, RETURNED) == 0
                         || stockMapper.unfreeze(h.getWarehouseId(), h.getLocationId(), h.getMaterialId(), h.getBatchNo(), take) == 0) {
-                    throw new BizException("冻结库存已变化，请刷新后重试");
+                    throw new BizException("wms.error.frozenStockHasChangedRefreshTry");
                 }
                 remaining = remaining.subtract(take);
             }
@@ -186,7 +186,7 @@ public class StockHoldService {
                 .eq(WmsStockHold::getQty, h.getQty())
                 .in(WmsStockHold::getStatus, PENDING, REJECTED)) == 0
                 || stockMapper.unfreeze(h.getWarehouseId(), h.getLocationId(), h.getMaterialId(), h.getBatchNo(), h.getQty()) == 0) {
-            throw new BizException("冻结库存已变化，请刷新后重试");
+            throw new BizException("wms.error.frozenStockHasChangedRefreshTry");
         }
     }
 }

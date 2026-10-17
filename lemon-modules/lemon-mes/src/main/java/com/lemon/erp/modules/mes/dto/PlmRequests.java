@@ -23,28 +23,28 @@ public final class PlmRequests {
      * @param newVersion 新版本号（修改变更时忽略）
      */
     public record Ecn(
-            @NotBlank(message = "请填写变更标题") @Size(max = 128, message = "标题不能超过128个字符") String title,
+            @NotBlank(message = "{mes.valid.enterChangeTitle}") @Size(max = 128, message = "{mes.valid.titleCannotExceedCharacters}") String title,
             Long fromBomId,
-            @Size(max = 16, message = "版本号不能超过16个字符") String newVersion,
-            @NotNull(message = "请选择变更原因") EcnReason reason,
-            @Size(max = 1000, message = "变更说明不能超过1000个字符") String description,
-            @NotNull(message = "请选择生效日期") LocalDate effectiveDate,
+            @Size(max = 16, message = "{mes.valid.versionCannotExceedCharacters}") String newVersion,
+            @NotNull(message = "{mes.valid.selectChangeReason}") EcnReason reason,
+            @Size(max = 1000, message = "{mes.valid.changeDescriptionCannotExceedCharacters}") String description,
+            @NotNull(message = "{mes.valid.selectEffectiveDate}") LocalDate effectiveDate,
             Boolean syncDraftWo) {
     }
 
     public record Doc(
-            @NotBlank(message = "请填写文档名称") @Size(max = 128, message = "名称不能超过128个字符") String name,
-            @NotNull(message = "请选择文档类型") DocType docType,
+            @NotBlank(message = "{mes.valid.enterDocumentName}") @Size(max = 128, message = "{mes.valid.nameCannotExceedCharacters2}") String name,
+            @NotNull(message = "{mes.valid.selectDocumentType}") DocType docType,
             Long materialId,
-            @NotBlank(message = "请填写版本") @Size(max = 16, message = "版本不能超过16个字符") String version,
+            @NotBlank(message = "{mes.valid.enterVersion2}") @Size(max = 16, message = "{mes.valid.versionCannotExceedCharacters2}") String version,
             Long ecnId,
-            @Size(max = 500, message = "说明不能超过500个字符") String description) {
+            @Size(max = 500, message = "{mes.valid.descriptionCannotExceedCharacters2}") String description) {
     }
 
     /** 升版：从已发布的版本复制出新的草稿版本 */
     public record Revise(
-            @NotBlank(message = "请填写新版本") @Size(max = 16, message = "版本不能超过16个字符") String version,
+            @NotBlank(message = "{mes.valid.enterNewVersion}") @Size(max = 16, message = "{mes.valid.versionCannotExceedCharacters2}") String version,
             Long ecnId,
-            @Size(max = 500, message = "说明不能超过500个字符") String description) {
+            @Size(max = 500, message = "{mes.valid.descriptionCannotExceedCharacters2}") String description) {
     }
 }

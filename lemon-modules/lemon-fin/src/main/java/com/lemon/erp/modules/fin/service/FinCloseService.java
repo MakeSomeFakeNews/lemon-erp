@@ -51,18 +51,18 @@ public class FinCloseService {
     public void close(int period) {
         FinPeriod p = periodService.ensure(period);
         if (FinPeriodService.CLOSED.equals(p.getStatus())) {
-            throw new BizException("{0} 期间已结账", period);
+            throw new BizException("fin.error.periodHasClosed", period);
         }
         FinPeriod earlierOpen = periodMapper.selectOne(Wrappers.<FinPeriod>lambdaQuery()
                 .lt(FinPeriod::getPeriod, period).eq(FinPeriod::getStatus, FinPeriodService.OPEN)
                 .orderByAsc(FinPeriod::getPeriod).last("LIMIT 1"));
         if (earlierOpen != null) {
-            throw new BizException("请先结账 {0} 期间", earlierOpen.getPeriod());
+            throw new BizException("fin.error.closePeriodFirst", earlierOpen.getPeriod());
         }
         long unposted = voucherMapper.selectCount(Wrappers.<FinVoucher>lambdaQuery()
                 .eq(FinVoucher::getPeriod, period).ne(FinVoucher::getStatus, VoucherStatus.POSTED.name()));
         if (unposted > 0) {
-            throw new BizException("{0} 期间还有 {1} 张凭证未记账", period, unposted);
+            throw new BizException("fin.error.periodStillHasUnpostedVoucherS", period, unposted);
         }
         carryForwardProfit(period);
         if (period % 100 == 12) {
@@ -75,7 +75,7 @@ public class FinCloseService {
                 .eq(FinPeriod::getPeriod, period)
                 .eq(FinPeriod::getStatus, FinPeriodService.OPEN));
         if (updated == 0) {
-            throw new BizException("期间状态已变化，请刷新");
+            throw new BizException("fin.error.periodStatusHasChangedRefresh");
         }
     }
 
@@ -83,11 +83,11 @@ public class FinCloseService {
     public void reopen(int period) {
         FinPeriod p = periodService.get(period);
         if (p == null || !FinPeriodService.CLOSED.equals(p.getStatus())) {
-            throw new BizException("{0} 期间未结账", period);
+            throw new BizException("fin.error.periodHasNotClosed", period);
         }
         if (periodMapper.exists(Wrappers.<FinPeriod>lambdaQuery()
                 .gt(FinPeriod::getPeriod, period).eq(FinPeriod::getStatus, FinPeriodService.CLOSED))) {
-            throw new BizException("请先反结账之后的期间");
+            throw new BizException("fin.error.reopenLaterPeriodsFirst");
         }
         periodMapper.update(Wrappers.<FinPeriod>lambdaUpdate()
                 .set(FinPeriod::getStatus, FinPeriodService.OPEN)

@@ -120,7 +120,7 @@ public class FinBillService {
     public Long create(BillRequest req) {
         checkKind(req.kind());
         if (req.amount().signum() == 0) {
-            throw new BizException("金额不能为 0");
+            throw new BizException("fin.error.amountCannot");
         }
         int paymentDays = paymentDays(req.kind(), req.partnerId());
         FinBill bill = newBill(req.kind(), req.partnerId(), "MANUAL", null, null, req.billDate(),
@@ -142,9 +142,9 @@ public class FinBillService {
                                     LocalDate billDate, BigDecimal amount, BigDecimal tax, String remark, Long projectId) {
         checkKind(kind);
         if (amount.signum() == 0) {
-            throw new BizException("金额不能为 0");
+            throw new BizException("fin.error.amountCannot");
         }
-        periodGuard.checkOpen(billDate, "AR".equals(kind) ? "应收单" : "应付单"); // i18n-ignore
+        periodGuard.checkOpen(billDate, "AR".equals(kind) ? "fin.label.receivable" : "fin.label.payable");
         FinBill bill = newBill(kind, partnerId, sourceType, sourceId, sourceNo, billDate,
                 billDate.plusDays(paymentDays(kind, partnerId)), amount, tax);
         bill.setRemark(remark);
@@ -162,12 +162,12 @@ public class FinBillService {
         }
         if (bill.getSettledAmount().signum() != 0
                 || settlementItemMapper.exists(Wrappers.<FinSettlementItem>lambdaQuery().eq(FinSettlementItem::getBillId, id))) {
-            throw new BizException("{0} 已收款核销，不能取消", bill.getBillNo());
+            throw new BizException("fin.error.hasSettledCannotCanceled", bill.getBillNo());
         }
         if (bill.getVoucherId() != null) {
-            throw new BizException("{0} 已生成凭证，请先在财务中删除凭证", bill.getBillNo());
+            throw new BizException("fin.error.voucherHasGeneratedDeleteVoucherFinance", bill.getBillNo());
         }
-        periodGuard.checkOpen(bill.getBillDate(), "应收应付单"); // i18n-ignore
+        periodGuard.checkOpen(bill.getBillDate(), "fin.label.receivablePayable");
         billMapper.deleteById(id);
     }
 
@@ -176,11 +176,11 @@ public class FinBillService {
     public void delete(List<Long> ids) {
         for (FinBill bill : billMapper.selectByIds(ids)) {
             if (!"MANUAL".equals(bill.getSourceType())) {
-                throw new BizException("{0} 由业务单据生成，不能删除", bill.getBillNo());
+                throw new BizException("fin.error.generatedBusinessDocumentCannotDeleted", bill.getBillNo());
             }
             if (bill.getSettledAmount().signum() != 0
                     || settlementItemMapper.exists(Wrappers.<FinSettlementItem>lambdaQuery().eq(FinSettlementItem::getBillId, bill.getId()))) {
-                throw new BizException("{0} 已核销，不能删除", bill.getBillNo());
+                throw new BizException("fin.error.hasWrittenOffCannotDeleted", bill.getBillNo());
             }
         }
         billMapper.deleteByIds(ids);
@@ -261,7 +261,7 @@ public class FinBillService {
                 continue;
             }
             if ("MANUAL".equals(bill.getSourceType())) {
-                throw new BizException("{0} 为手工录入的期初单据，不需要生成凭证", bill.getBillNo());
+                throw new BizException("fin.error.manuallyEnteredOpeningDocumentDoesNot", bill.getBillNo());
             }
             Long voucherId = voucherService.createGenerated(bill.getBillDate(),
                     "AR".equals(bill.getKind()) ? VoucherSource.AR : VoucherSource.AP, bill.getBillNo(), lines(bill));
@@ -280,21 +280,21 @@ public class FinBillService {
     public Long writeOffBadDebt(Long id, BigDecimal amount, LocalDate date, String reason) {
         FinBill bill = billMapper.selectById(id);
         if (bill == null || !"AR".equals(bill.getKind())) {
-            throw new BizException("应收单不存在");
+            throw new BizException("fin.error.receivableDoesNotExist");
         }
         if (bill.getAmount().signum() <= 0 || amount == null || amount.signum() <= 0) {
-            throw new BizException("只能核销红字以外的应收单，金额必须大于 0");
+            throw new BizException("fin.error.onlyNonReversalReceivablesWrittenOff");
         }
         if (bill.getVoucherId() == null && !"MANUAL".equals(bill.getSourceType())) {
-            throw new BizException("{0} 还没有生成应收凭证，请先生成凭证", bill.getBillNo());
+            throw new BizException("fin.error.noReceivableVoucherHasGeneratedGenerate", bill.getBillNo());
         }
         if (bill.getCurrency() != null && !"CNY".equals(bill.getCurrency())) {
-            throw new BizException("外币应收单请先收款或期末调汇后再处理坏账");
+            throw new BizException("fin.error.foreignCurrencyReceivablesReceivePaymentRevalue");
         }
         LocalDate d = date == null ? LocalDate.now() : date;
-        periodGuard.checkOpen(d, "坏账核销"); // i18n-ignore
+        periodGuard.checkOpen(d, "fin.label.badDebtWriteOff");
         if (billMapper.addSettled(id, amount) == 0) {
-            throw new BizException("核销金额超过未核销金额 {0}", bill.getAmount().subtract(bill.getSettledAmount()).toPlainString());
+            throw new BizException("fin.error.writeOffAmountExceedsOutstandingAmount", bill.getAmount().subtract(bill.getSettledAmount()).toPlainString());
         }
         billMapper.addSettledFc(id, amount);
         billMapper.addBadDebt(id, amount);
@@ -426,7 +426,7 @@ public class FinBillService {
 
     static void checkKind(String kind) {
         if (!KINDS.contains(kind)) {
-            throw new BizException("单据种类不正确：{0}", kind);
+            throw new BizException("fin.error.invalidDocumentKind", kind);
         }
     }
 }

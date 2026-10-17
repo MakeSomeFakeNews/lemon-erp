@@ -3,7 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.quality.SupplierQualityProvider;
 import com.lemon.erp.framework.record.ChangeLogger;
@@ -63,7 +63,7 @@ public class ScmSupplierService {
     public ScmSupplier get(Long id) {
         ScmSupplier supplier = id == null ? null : supplierMapper.selectById(id);
         if (supplier == null) {
-            throw new BizException("供应商不存在");
+            throw new BizException("scm.error.supplierDoesNotExist");
         }
         return supplier;
     }
@@ -116,9 +116,9 @@ public class ScmSupplierService {
         for (ScmSupplier supplier : supplierMapper.selectByIds(ids)) {
             if (orderMapper.exists(Wrappers.<ScmOrder>lambdaQuery()
                     .eq(ScmOrder::getKind, OrderKind.PURCHASE.name()).eq(ScmOrder::getPartnerId, supplier.getId()))) {
-                throw new BizException("供应商「{0}」已有采购订单，不能删除，可以停用", supplier.getName());
+                throw new BizException("scm.error.supplierHasPurchaseOrdersCannotDeleted", supplier.getName());
             }
-            referenceGuard.checkDeletable(RefType.SUPPLIER, supplier.getId(), I18n.t("供应商「{0}」", supplier.getName()));
+            referenceGuard.checkDeletable(RefType.SUPPLIER, supplier.getId(), Messages.get("scm.text.supplier", supplier.getName()));
         }
         priceMapper.delete(Wrappers.<ScmSupplierPrice>lambdaQuery().in(ScmSupplierPrice::getSupplierId, ids));
         evalMapper.delete(Wrappers.<ScmSupplierEval>lambdaQuery().in(ScmSupplierEval::getSupplierId, ids));
@@ -148,7 +148,7 @@ public class ScmSupplierService {
     private void checkCodeUnique(String code, Long id) {
         ScmSupplier exist = supplierMapper.selectOne(Wrappers.<ScmSupplier>lambdaQuery().eq(ScmSupplier::getCode, code));
         if (exist != null && !Objects.equals(exist.getId(), id)) {
-            throw new BizException("供应商编码已存在");
+            throw new BizException("scm.error.supplierCodeAlreadyExists");
         }
     }
 }

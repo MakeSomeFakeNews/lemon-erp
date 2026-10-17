@@ -21,12 +21,12 @@ public class WmsDocNos {
     @Bean
     @Order(2)
     public DocNoCatalog wmsDocNoCatalog() {
-        return DocNoCatalog.of("仓库管理",
-                doc(StockBizType.IN.getPrefix(), StockBizType.IN.getLabel()),
-                doc(StockBizType.OUT.getPrefix(), StockBizType.OUT.getLabel()),
-                doc(StockBizType.TRANSFER.getPrefix(), StockBizType.TRANSFER.getLabel()),
-                doc(StockBizType.CHECK.getPrefix(), StockBizType.CHECK.getLabel()),
-                doc(WmsAssemblyService.DOC_NO, "组装拆卸单"),
-                master(MATERIAL, "物料编码"));
+        return DocNoCatalog.of("wms.label.module",
+                doc(StockBizType.IN.getPrefix(), StockBizType.IN.getLabelKey()),
+                doc(StockBizType.OUT.getPrefix(), StockBizType.OUT.getLabelKey()),
+                doc(StockBizType.TRANSFER.getPrefix(), StockBizType.TRANSFER.getLabelKey()),
+                doc(StockBizType.CHECK.getPrefix(), StockBizType.CHECK.getLabelKey()),
+                doc(WmsAssemblyService.DOC_NO, "wms.label.assemblyOrder"),
+                master(MATERIAL, "wms.label.materialCode"));
     }
 }

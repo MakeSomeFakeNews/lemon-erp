@@ -67,7 +67,7 @@ public class PmAccountingController {
     public R<Integer> close(@RequestBody Map<String, Integer> body) {
         Integer period = body.get("period");
         if (period == null || period < 200001 || period % 100 < 1 || period % 100 > 12) {
-            throw new BizException("请选择月结期间");
+            throw new BizException("pm.error.selectClosingPeriod");
         }
         return R.ok(closeService.close(period));
     }

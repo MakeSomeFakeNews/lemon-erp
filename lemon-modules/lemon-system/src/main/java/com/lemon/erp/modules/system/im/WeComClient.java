@@ -62,7 +62,7 @@ public class WeComClient implements ImClient {
         JsonNode r = check(http.get(P, ImHttp.uri(api(), "/cgi-bin/auth/getuserinfo", "access_token", token(config, false), "code", code), Map.of()));
         String userId = ImHttp.text(r, "userid");
         if (userId == null) {
-            throw new BizException("该企业微信账号不是本企业的成员");
+            throw new BizException("system.error.wecomAccountNotMemberOrganization");
         }
         return new ImIdentity(userId, null);
     }

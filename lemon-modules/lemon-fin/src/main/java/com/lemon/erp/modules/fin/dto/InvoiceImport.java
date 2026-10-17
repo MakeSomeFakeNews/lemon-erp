@@ -18,15 +18,15 @@ import java.util.List;
  * @param lines       明细行（XML 导入时有）
  */
 public record InvoiceImport(
-        @NotBlank(message = "请填写发票号码") @Size(max = 32, message = "发票号码不能超过32个字符") String invoiceNo,
-        @Pattern(regexp = "^(SPECIAL|NORMAL|E_SPECIAL|E_NORMAL)?$", message = "发票类型不正确") String invoiceType,
-        @NotNull(message = "请填写开票日期") LocalDate invoiceDate,
-        @Size(max = 32, message = "销售方纳税人识别号不能超过32个字符") String sellerTaxNo,
-        @Size(max = 128, message = "销售方名称不能超过128个字符") String sellerName,
-        @Size(max = 32, message = "购买方纳税人识别号不能超过32个字符") String buyerTaxNo,
-        @Size(max = 128, message = "购买方名称不能超过128个字符") String buyerName,
-        @NotNull(message = "请填写价税合计") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal amount,
-        @NotNull(message = "请填写税额") @Digits(integer = 16, fraction = 2, message = "税额最多2位小数") BigDecimal taxAmount,
+        @NotBlank(message = "{fin.valid.enterInvoiceNumber}") @Size(max = 32, message = "{fin.valid.invoiceNumberCannotExceedCharacters}") String invoiceNo,
+        @Pattern(regexp = "^(SPECIAL|NORMAL|E_SPECIAL|E_NORMAL)?$", message = "{fin.valid.invalidInvoiceType}") String invoiceType,
+        @NotNull(message = "{fin.valid.enterInvoiceDate}") LocalDate invoiceDate,
+        @Size(max = 32, message = "{fin.valid.sellerTaxpayerIdCannotExceedCharacters}") String sellerTaxNo,
+        @Size(max = 128, message = "{fin.valid.sellerNameCannotExceedCharacters}") String sellerName,
+        @Size(max = 32, message = "{fin.valid.buyerTaxpayerIdCannotExceedCharacters}") String buyerTaxNo,
+        @Size(max = 128, message = "{fin.valid.buyerNameCannotExceedCharacters}") String buyerName,
+        @NotNull(message = "{fin.valid.enterTotalAmountIncludingTax}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount,
+        @NotNull(message = "{fin.valid.enterTaxAmount}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.taxAmountAllowsMostDecimalPlaces}") BigDecimal taxAmount,
         List<Line> lines) {
 
     public record Line(String itemName, String spec, String unit, BigDecimal qty, BigDecimal price, BigDecimal amount,

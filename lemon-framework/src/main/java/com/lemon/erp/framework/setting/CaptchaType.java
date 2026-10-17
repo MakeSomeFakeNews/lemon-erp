@@ -2,8 +2,8 @@ package com.lemon.erp.framework.setting;
 
 /** 验证码类型 */
 public enum CaptchaType implements OptionEnum {
-    MATH("算术题"),
-    CHAR("字母数字");
+    MATH("framework.enum.CaptchaType.math"),
+    CHAR("framework.enum.CaptchaType.char");
 
     private final String label;
 

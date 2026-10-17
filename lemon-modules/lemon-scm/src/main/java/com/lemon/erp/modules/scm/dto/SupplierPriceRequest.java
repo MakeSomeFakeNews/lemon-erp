@@ -24,23 +24,23 @@ import java.util.List;
  * @param tiers     阶梯价：采购数量达到起订数量时按阶梯单价
  */
 public record SupplierPriceRequest(
-        @NotNull(message = "请选择供应商") Long supplierId,
-        @NotNull(message = "请选择物料") Long materialId,
-        @NotNull(message = "请填写单价")
-        @DecimalMin(value = "0", message = "单价不能小于0")
-        @Digits(integer = 14, fraction = 4, message = "单价最多4位小数") BigDecimal price,
-        @DecimalMin(value = "0", message = "税率不能小于0") @DecimalMax(value = "100", message = "税率不能大于100") BigDecimal taxRate,
-        @Min(value = 0, message = "提前期不能小于0") @Max(value = 365, message = "提前期不能超过365天") Integer leadDays,
-        @DecimalMin(value = "0", message = "最小起订量不能小于0") BigDecimal minQty,
+        @NotNull(message = "{scm.valid.selectSupplier}") Long supplierId,
+        @NotNull(message = "{scm.valid.selectMaterial}") Long materialId,
+        @NotNull(message = "{scm.valid.enterUnitPrice}")
+        @DecimalMin(value = "0", message = "{scm.valid.unitPriceCannotLess}")
+        @Digits(integer = 14, fraction = 4, message = "{scm.valid.unitPriceAllowsMostDecimalPlaces}") BigDecimal price,
+        @DecimalMin(value = "0", message = "{scm.valid.taxRateCannotNegative}") @DecimalMax(value = "100", message = "{scm.valid.taxRateCannotExceed}") BigDecimal taxRate,
+        @Min(value = 0, message = "{scm.valid.leadTimeCannotLess2}") @Max(value = 365, message = "{scm.valid.leadTimeCannotExceedDays2}") Integer leadDays,
+        @DecimalMin(value = "0", message = "{scm.valid.minimumOrderQuantityCannotLess}") BigDecimal minQty,
         Integer isDefault,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark,
+        @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}") String remark,
         java.time.LocalDate validFrom,
         java.time.LocalDate validTo,
-        @Size(max = 10, message = "阶梯价不能超过10档") List<@Valid @NotNull Tier> tiers) {
+        @Size(max = 10, message = "{scm.valid.priceTiersCannotExceed}") List<@Valid @NotNull Tier> tiers) {
 
     public record Tier(
-            @NotNull(message = "请填写阶梯起订数量") @DecimalMin(value = "0", inclusive = false, message = "阶梯起订数量必须大于0") BigDecimal minQty,
-            @NotNull(message = "请填写阶梯单价") @DecimalMin(value = "0", message = "阶梯单价不能小于0")
-            @Digits(integer = 14, fraction = 4, message = "单价最多4位小数") BigDecimal price) {
+            @NotNull(message = "{scm.valid.enterTierMinimumQuantity}") @DecimalMin(value = "0", inclusive = false, message = "{scm.valid.tierMinimumQuantityMustGreater}") BigDecimal minQty,
+            @NotNull(message = "{scm.valid.enterTierUnitPrice}") @DecimalMin(value = "0", message = "{scm.valid.tierUnitPriceCannotLess}")
+            @Digits(integer = 14, fraction = 4, message = "{scm.valid.unitPriceAllowsMostDecimalPlaces}") BigDecimal price) {
     }
 }

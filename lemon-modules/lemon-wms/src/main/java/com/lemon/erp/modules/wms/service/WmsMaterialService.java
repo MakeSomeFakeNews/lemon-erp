@@ -3,7 +3,7 @@ package com.lemon.erp.modules.wms.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.ref.RefType;
@@ -78,7 +78,7 @@ public class WmsMaterialService {
     public WmsMaterial get(Long id) {
         WmsMaterial material = id == null ? null : materialMapper.selectById(id);
         if (material == null) {
-            throw new BizException("物料不存在");
+            throw new BizException("wms.error.materialNotFound");
         }
         return material;
     }
@@ -94,10 +94,10 @@ public class WmsMaterialService {
         for (Long id : ids) {
             WmsMaterial material = map.get(id);
             if (material == null) {
-                throw new BizException("物料不存在：{0}", id);
+                throw new BizException("wms.error.materialNotFound2", id);
             }
             if (!Integer.valueOf(1).equals(material.getStatus())) {
-                throw new BizException("物料「{0} {1}」已停用", material.getCode(), material.getName());
+                throw new BizException("wms.error.materialDisabled", material.getCode(), material.getName());
             }
         }
         return map;
@@ -152,7 +152,7 @@ public class WmsMaterialService {
         boolean trackingChanged = !Objects.equals(old.getBatchEnabled(), material.getBatchEnabled())
                 || !Objects.equals(old.getSerialEnabled(), material.getSerialEnabled());
         if (trackingChanged && flowMapper.existsByMaterialId(id)) {
-            throw new BizException("物料已发生库存业务，不能修改批次、序列号管理方式");
+            throw new BizException("wms.error.materialHasStockTransactionsBatchSerial");
         }
         material.setId(id);
         material.setStatus(null);
@@ -192,12 +192,12 @@ public class WmsMaterialService {
                     || assemblyMapper.exists(Wrappers.<WmsAssembly>lambdaQuery().eq(WmsAssembly::getMaterialId, id))
                     || assemblyItemMapper.exists(Wrappers.<WmsAssemblyItem>lambdaQuery().eq(WmsAssemblyItem::getMaterialId, id));
             if (used) {
-                throw new BizException("物料「{0}」已被单据使用，不能删除，可以停用", material.getName());
+                throw new BizException("wms.error.materialUsedDocumentsCannotDeletedDisable", material.getName());
             }
             if (material.isTemplateMaterial() && materialMapper.exists(Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getTemplateId, id))) {
-                throw new BizException("款式「{0}」下还有 SKU，请先删除 SKU", material.getName());
+                throw new BizException("wms.error.styleStillHasSkusDeleteThem", material.getName());
             }
-            referenceGuard.checkDeletable(RefType.MATERIAL, id, I18n.t("物料「{0} {1}」", material.getCode(), material.getName()));
+            referenceGuard.checkDeletable(RefType.MATERIAL, id, Messages.get("wms.text.material", material.getCode(), material.getName()));
         }
         materialMapper.deleteByIds(ids);
         variantValueMapper.delete(Wrappers.<WmsVariantValue>lambdaQuery().in(WmsVariantValue::getMaterialId, ids));
@@ -220,7 +220,7 @@ public class WmsMaterialService {
                     .last("LIMIT 1"));
             boolean usedByUnit = unitMapper.exists(Wrappers.<WmsMaterialUnit>lambdaQuery().eq(WmsMaterialUnit::getBarcode, material.getBarcode()));
             if ((exist != null && !Objects.equals(exist.getId(), id)) || usedByUnit) {
-                throw new BizException("条码已被其他物料或包装单位使用：{0}", material.getBarcode());
+                throw new BizException("wms.error.barcodeAlreadyUsedAnotherMaterialPackaging", material.getBarcode());
             }
         }
         if (material.getDefaultWarehouseId() == null) {
@@ -228,7 +228,7 @@ public class WmsMaterialService {
         } else if (material.getDefaultLocationId() != null) {
             WmsLocation location = locationMapper.selectById(material.getDefaultLocationId());
             if (location == null || !location.getWarehouseId().equals(material.getDefaultWarehouseId())) {
-                throw new BizException("默认库位不属于默认仓库");
+                throw new BizException("wms.error.defaultLocationDoesNotBelongDefault");
             }
         }
     }
@@ -247,14 +247,14 @@ public class WmsMaterialService {
         java.util.Set<String> names = new java.util.HashSet<>();
         for (WmsMaterialUnit u : units) {
             if (!StringUtils.hasText(u.getUnit()) || u.getUnit().trim().length() > 16) {
-                throw new BizException("辅助单位名称不能为空，且不超过16个字符");
+                throw new BizException("wms.error.alternateUnitNameRequiredCannotExceed");
             }
             u.setUnit(u.getUnit().trim());
             if (u.getUnit().equals(material.getUnit()) || !names.add(u.getUnit())) {
-                throw new BizException("辅助单位重复：{0}", u.getUnit());
+                throw new BizException("wms.error.duplicateAlternateUnit", u.getUnit());
             }
             if (u.getRatio() == null || u.getRatio().signum() <= 0) {
-                throw new BizException("换算率必须大于0：{0}", u.getUnit());
+                throw new BizException("wms.error.conversionRatioMustGreater", u.getUnit());
             }
             u.setBarcode(StringUtils.hasText(u.getBarcode()) ? u.getBarcode().trim() : null);
             if (u.getBarcode() != null) {
@@ -262,7 +262,7 @@ public class WmsMaterialService {
                         || unitMapper.exists(Wrappers.<WmsMaterialUnit>lambdaQuery().eq(WmsMaterialUnit::getBarcode, u.getBarcode())
                         .ne(WmsMaterialUnit::getMaterialId, materialId));
                 if (used || units.stream().filter(o -> u.getBarcode().equals(o.getBarcode())).count() > 1) {
-                    throw new BizException("条码已被使用：{0}", u.getBarcode());
+                    throw new BizException("wms.error.barcodeAlreadyUse", u.getBarcode());
                 }
             }
         }
@@ -303,7 +303,7 @@ public class WmsMaterialService {
     private void checkCodeUnique(String code, Long id) {
         WmsMaterial exist = materialMapper.selectOne(Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getCode, code));
         if (exist != null && !Objects.equals(exist.getId(), id)) {
-            throw new BizException("物料编码已存在");
+            throw new BizException("wms.error.materialCodeAlreadyExists");
         }
     }
 }

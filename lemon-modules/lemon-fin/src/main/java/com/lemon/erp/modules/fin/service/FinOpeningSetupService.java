@@ -110,7 +110,7 @@ public class FinOpeningSetupService {
         toYearMonth(startPeriod);
         if (runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, FinCostService.RUN)
                 .ge(FinCostRun::getPeriod, previous(startPeriod)))) {
-            throw new BizException("启用期间及之后已核算成本，不能再导入期初库存；请先撤销成本核算");
+            throw new BizException("fin.error.costsHaveCalculatedStartPeriodLater");
         }
         return openingStockService.importRows(req, lastDay(previous(startPeriod)));
     }
@@ -130,7 +130,7 @@ public class FinOpeningSetupService {
         List<ScmCustomer> list = customerMapper.selectList(Wrappers.<ScmCustomer>lambdaQuery()
                 .eq(ScmCustomer::getCode, key).or().eq(ScmCustomer::getName, key));
         if (list.isEmpty()) {
-            throw new BizException("客户「{0}」不存在", key);
+            throw new BizException("fin.error.customerDoesNotExist", key);
         }
         return list.stream().filter(c -> key.equals(c.getCode())).findFirst().orElse(list.get(0)).getId();
     }
@@ -139,7 +139,7 @@ public class FinOpeningSetupService {
         List<ScmSupplier> list = supplierMapper.selectList(Wrappers.<ScmSupplier>lambdaQuery()
                 .eq(ScmSupplier::getCode, key).or().eq(ScmSupplier::getName, key));
         if (list.isEmpty()) {
-            throw new BizException("供应商「{0}」不存在", key);
+            throw new BizException("fin.error.supplierDoesNotExist", key);
         }
         return list.stream().filter(s -> key.equals(s.getCode())).findFirst().orElse(list.get(0)).getId();
     }

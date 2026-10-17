@@ -49,7 +49,7 @@ public class MesMaterialService {
             return List.of();
         }
         if (ids.size() > 500) {
-            throw new BizException("一次最多查询500个物料");
+            throw new BizException("mes.error.mostMaterialsPerQuery");
         }
         return planMapper.selectViews(ids);
     }
@@ -57,7 +57,7 @@ public class MesMaterialService {
     public MaterialPlanView detail(Long id) {
         List<MaterialPlanView> views = planMapper.selectViews(List.of(id));
         if (views.isEmpty()) {
-            throw new BizException("物料不存在");
+            throw new BizException("mes.error.materialNotFound");
         }
         MaterialPlanView view = views.get(0);
         view.setSubstitutes(substitutes(List.of(id)).getOrDefault(id, List.of()));
@@ -73,16 +73,16 @@ public class MesMaterialService {
         Set<Long> seen = new HashSet<>();
         for (SubstituteRequest s : subs) {
             if (s.substituteId().equals(id)) {
-                throw new BizException("替代料不能是物料本身");
+                throw new BizException("mes.error.substituteCannotMaterialItself");
             }
             if (!seen.add(s.substituteId())) {
-                throw new BizException("替代料重复");
+                throw new BizException("mes.error.duplicateSubstitute");
             }
         }
         materialService.getEnabled(seen);
         SupplyType type = SupplyType.of(req.supplyType());
         if (type == SupplyType.PHANTOM && !subs.isEmpty()) {
-            throw new BizException("虚拟件不入库、不领料，不需要替代料");
+            throw new BizException("mes.error.phantomItemsNeitherStockedNorIssued");
         }
 
         MesMaterialPlan plan = new MesMaterialPlan();

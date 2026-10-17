@@ -21,25 +21,25 @@ import java.util.List;
  * @param probability 赢单概率，不填按阶段默认
  */
 public record OpportunityRequest(
-        @NotBlank(message = "商机名称不能为空") @Size(max = 128, message = "商机名称不能超过128个字符") String name,
-        @NotNull(message = "请选择客户") Long customerId,
+        @NotBlank(message = "{crm.valid.opportunityNameRequired}") @Size(max = 128, message = "{crm.valid.opportunityNameCannotExceedCharacters}") String name,
+        @NotNull(message = "{crm.valid.selectCustomer}") Long customerId,
         Long contactId,
-        @DecimalMin(value = "0", message = "金额不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal amount,
+        @DecimalMin(value = "0", message = "{crm.valid.amountCannotLess}") @Digits(integer = 16, fraction = 2, message = "{crm.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount,
         String stage,
-        @Min(value = 0, message = "赢单概率为0-100") @Max(value = 100, message = "赢单概率为0-100") Integer probability,
+        @Min(value = 0, message = "{crm.valid.winProbabilityMustBetween}") @Max(value = 100, message = "{crm.valid.winProbabilityMustBetween}") Integer probability,
         LocalDate expectedDate,
         String source,
         Long campaignId,
         Long ownerId,
-        @Size(max = 500, message = "备注不能超过500个字符") String remark,
-        @Size(max = 100, message = "产品明细不能超过100行") List<@Valid @NotNull Item> items) {
+        @Size(max = 500, message = "{crm.valid.remarkCannotExceedCharacters}") String remark,
+        @Size(max = 100, message = "{crm.valid.productLinesCannotExceedRows}") List<@Valid @NotNull Item> items) {
 
     public record Item(
-            @NotNull(message = "请选择产品") Long materialId,
-            @NotNull(message = "请填写数量") @DecimalMin(value = "0", inclusive = false, message = "数量必须大于0")
-            @Digits(integer = 14, fraction = 4, message = "数量最多4位小数") BigDecimal qty,
-            @NotNull(message = "请填写单价") @DecimalMin(value = "0", message = "单价不能小于0")
-            @Digits(integer = 14, fraction = 4, message = "单价最多4位小数") BigDecimal price,
-            @DecimalMin(value = "0", message = "税率不能小于0") @DecimalMax(value = "100", message = "税率不能大于100") BigDecimal taxRate) {
+            @NotNull(message = "{crm.valid.selectProduct}") Long materialId,
+            @NotNull(message = "{crm.valid.enterQuantity}") @DecimalMin(value = "0", inclusive = false, message = "{crm.valid.quantityMustGreater}")
+            @Digits(integer = 14, fraction = 4, message = "{crm.valid.quantityAllowsMostDecimalPlaces}") BigDecimal qty,
+            @NotNull(message = "{crm.valid.enterUnitPrice}") @DecimalMin(value = "0", message = "{crm.valid.unitPriceCannotLess}")
+            @Digits(integer = 14, fraction = 4, message = "{crm.valid.unitPriceAllowsMostDecimalPlaces}") BigDecimal price,
+            @DecimalMin(value = "0", message = "{crm.valid.taxRateCannotNegative}") @DecimalMax(value = "100", message = "{crm.valid.taxRateCannotExceed}") BigDecimal taxRate) {
     }
 }

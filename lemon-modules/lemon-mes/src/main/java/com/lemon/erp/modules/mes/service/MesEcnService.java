@@ -3,7 +3,7 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -66,7 +66,7 @@ public class MesEcnService {
     public MesEcn detail(Long id) {
         MesEcn ecn = id == null ? null : ecnMapper.selectDetail(id);
         if (ecn == null) {
-            throw new BizException("工程变更不存在");
+            throw new BizException("mes.error.ecnDoesNotExist");
         }
         return ecn;
     }
@@ -83,19 +83,19 @@ public class MesEcnService {
     @Transactional
     public Long create(PlmRequests.Ecn req) {
         if (req.fromBomId() == null) {
-            throw new BizException("请选择变更的 BOM");
+            throw new BizException("mes.error.selectBomChange");
         }
         if (!StringUtils.hasText(req.newVersion())) {
-            throw new BizException("请填写新版本号");
+            throw new BizException("mes.error.enterNewVersion");
         }
         MesBom from = bomService.getBom(req.fromBomId());
         if (from.getEcnId() != null && ecnMapper.exists(Wrappers.<MesEcn>lambdaQuery().eq(MesEcn::getId, from.getEcnId())
                 .ne(MesEcn::getStatus, EcnStatus.EFFECTIVE))) {
-            throw new BizException("该版本还在工程变更中，不能作为变更的基准");
+            throw new BizException("mes.error.versionStillEcnCannotUsedBase");
         }
         if (ecnMapper.exists(Wrappers.<MesEcn>lambdaQuery().eq(MesEcn::getFromBomId, from.getId())
                 .in(MesEcn::getStatus, EcnStatus.DRAFT, EcnStatus.APPROVING, EcnStatus.APPROVED))) {
-            throw new BizException("该 BOM 已有未完成的工程变更");
+            throw new BizException("mes.error.bomAlreadyHasUnfinishedEcn");
         }
         LoginUser user = SecurityUtils.getLoginUser();
         MesEcn ecn = new MesEcn();
@@ -114,7 +114,7 @@ public class MesEcnService {
 
     @Transactional
     public void update(Long id, PlmRequests.Ecn req) {
-        MesEcn ecn = requireStatus(id, EcnStatus.DRAFT, "修改");
+        MesEcn ecn = requireStatus(id, EcnStatus.DRAFT, "mes.label.edit");
         apply(ecn, req);
         ecnMapper.updateById(ecn);
     }
@@ -122,7 +122,7 @@ public class MesEcnService {
     /** 删除草稿：变更后的 BOM 一并删除 */
     @Transactional
     public void delete(Long id) {
-        MesEcn ecn = requireStatus(id, EcnStatus.DRAFT, "删除");
+        MesEcn ecn = requireStatus(id, EcnStatus.DRAFT, "mes.label.delete");
         ecnMapper.deleteById(id);
         bomService.deleteForEcn(ecn.getToBomId());
     }
@@ -134,10 +134,10 @@ public class MesEcnService {
      */
     @Transactional
     public boolean submit(Long id) {
-        MesEcn ecn = requireStatus(id, EcnStatus.DRAFT, "提交");
+        MesEcn ecn = requireStatus(id, EcnStatus.DRAFT, "mes.label.submit");
         EcnDiff diff = diff(id);
         if (diff.items().isEmpty() && diff.ops().isEmpty()) {
-            throw new BizException("变更后的 BOM 与变更前相同，请先在物料清单中修改版本 {0}", ecn.getToVersion());
+            throw new BizException("mes.error.newBomIdenticalOriginalModifyVersion", ecn.getToVersion());
         }
         if (!flowApi.isAvailable(PROCESS_KEY)) {
             approve(id, EcnStatus.DRAFT);
@@ -175,7 +175,7 @@ public class MesEcnService {
     public void cancel(Long id) {
         MesEcn ecn = detail(id);
         if (ecn.getStatus() != EcnStatus.DRAFT && ecn.getStatus() != EcnStatus.APPROVED) {
-            throw new BizException("变更当前状态不能取消");
+            throw new BizException("mes.error.currentEcnStatusDoesNotAllow");
         }
         transit(id, ecn.getStatus(), EcnStatus.CANCELLED);
         bomService.deleteForEcn(ecn.getToBomId());
@@ -184,7 +184,7 @@ public class MesEcnService {
     /** 立即生效（待生效的，不等生效日期） */
     @Transactional
     public void effectNow(Long id) {
-        MesEcn ecn = requireStatus(id, EcnStatus.APPROVED, "生效");
+        MesEcn ecn = requireStatus(id, EcnStatus.APPROVED, "mes.label.takeEffect");
         effect(ecn);
     }
 
@@ -203,7 +203,7 @@ public class MesEcnService {
                 .set(MesEcn::getStatus, EcnStatus.APPROVED)
                 .set(MesEcn::getApproveTime, LocalDateTime.now())
                 .eq(MesEcn::getId, id).eq(MesEcn::getStatus, from)) == 0) {
-            throw new BizException("变更状态已变化，请刷新后重试");
+            throw new BizException("mes.error.ecnStatusHasChangedRefreshTry");
         }
         MesEcn ecn = ecnMapper.selectById(id);
         if (!ecn.getEffectiveDate().isAfter(LocalDate.now())) {
@@ -220,7 +220,7 @@ public class MesEcnService {
                 .set(MesEcn::getEffectTime, LocalDateTime.now())
                 .set(MesEcn::getResultNote, note)
                 .eq(MesEcn::getId, ecn.getId()).eq(MesEcn::getStatus, EcnStatus.APPROVED)) == 0) {
-            throw new BizException("变更状态已变化，请刷新后重试");
+            throw new BizException("mes.error.ecnStatusHasChangedRefreshTry");
         }
     }
 
@@ -234,14 +234,14 @@ public class MesEcnService {
 
     private void transit(Long id, EcnStatus from, EcnStatus to) {
         if (ecnMapper.transit(id, from, to) == 0) {
-            throw new BizException("变更状态已变化，请刷新后重试");
+            throw new BizException("mes.error.ecnStatusHasChangedRefreshTry");
         }
     }
 
     private MesEcn requireStatus(Long id, EcnStatus status, String action) {
         MesEcn ecn = detail(id);
         if (ecn.getStatus() != status) {
-            throw new BizException("变更当前状态不能{0}", I18n.t(action));
+            throw new BizException("mes.error.currentEcnStatusDoesNotAllow2", Messages.get(action));
         }
         return ecn;
     }

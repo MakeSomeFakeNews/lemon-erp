@@ -56,7 +56,7 @@ public class SysChangeLogService implements ChangeLogger {
     }
 
     public PageResult<SysChangeLog> page(String bizType, Long bizId, long current, long size) {
-        recordAccessService.check(bizType, bizId, false, "变更历史");
+        recordAccessService.check(bizType, bizId, false, "system.label.changeHistory2");
         Page<SysChangeLog> page = Page.of(current, size);
         changeLogMapper.selectByBiz(page, bizType, bizId);
         return PageResult.of(page);

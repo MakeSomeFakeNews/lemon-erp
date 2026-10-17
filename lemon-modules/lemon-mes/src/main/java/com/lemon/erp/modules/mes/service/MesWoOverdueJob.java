@@ -29,7 +29,7 @@ public class MesWoOverdueJob implements JobHandler {
 
     @Override
     public String name() {
-        return "工单逾期提醒";
+        return "mes.label.workOrderOverdueReminder";
     }
 
     @Override

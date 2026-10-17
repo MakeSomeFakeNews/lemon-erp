@@ -29,7 +29,7 @@ public class WmsBatchExpiryJob implements JobHandler {
 
     @Override
     public String name() {
-        return "批次临期提醒";
+        return "wms.label.batchExpiryReminder";
     }
 
     @Override

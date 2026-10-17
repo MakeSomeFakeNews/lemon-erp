@@ -2,7 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.cache.CacheService;
 import com.lemon.erp.framework.setting.OptionEnum;
 import com.lemon.erp.framework.setting.PasswordComplexity;
@@ -57,10 +57,10 @@ public class SysConfigService implements SettingService {
             String def = defaultValue(s);
             String value = saved.getOrDefault(s.key(), def);
             List<SettingItem.Option> options = s.options() == null ? null : Arrays.stream(s.options().getEnumConstants())
-                    .map(o -> new SettingItem.Option(o.name(), I18n.t(o.label()))).toList();
-            // 分组、名称、选项、说明按请求语言翻译
-            return new SettingItem(s.key(), s.group().name(), I18n.t(s.group().label()), I18n.t(s.label()), s.type().name(), value, def,
-                    !Objects.equals(value, def), options, s.min(), s.max(), I18n.t(s.remark()));
+                    .map(o -> new SettingItem.Option(o.name(), Messages.get(o.label()))).toList();
+            // 分组、名称、选项、说明是消息键，按请求语言取消息
+            return new SettingItem(s.key(), s.group().name(), Messages.get(s.group().label()), Messages.get(s.label()), s.type().name(), value, def,
+                    !Objects.equals(value, def), options, s.min(), s.max(), Messages.get(s.remark()));
         }).toList();
     }
 
@@ -75,7 +75,7 @@ public class SysConfigService implements SettingService {
         values.forEach((key, raw) -> {
             Setting s = Setting.ofKey(key);
             if (s == null) {
-                throw new BizException("参数不存在：{0}", key);
+                throw new BizException("system.error.settingDoesNotExist", key);
             }
             String value = raw == null ? null : raw.trim();
             if (value != null && !value.isEmpty()) {
@@ -86,7 +86,7 @@ public class SysConfigService implements SettingService {
         // 初始密码须符合（修改后的）密码策略
         String initial = valueAfter(changes, Setting.USER_INITIAL_PASSWORD);
         PasswordPolicy.check(initial, Integer.parseInt(valueAfter(changes, Setting.PASSWORD_MIN_LENGTH)),
-                PasswordComplexity.valueOf(valueAfter(changes, Setting.PASSWORD_COMPLEXITY)), "初始密码");
+                PasswordComplexity.valueOf(valueAfter(changes, Setting.PASSWORD_COMPLEXITY)), Setting.USER_INITIAL_PASSWORD.label());
 
         changes.forEach((s, value) -> {
             SysConfig row = configMapper.selectOne(Wrappers.<SysConfig>lambdaQuery().eq(SysConfig::getConfigKey, s.key()));
@@ -116,27 +116,27 @@ public class SysConfigService implements SettingService {
     }
 
     private static void validate(Setting s, String value) {
-        String name = I18n.t(s.label());
+        String name = Messages.get(s.label());
         if (s.type() == SettingType.NUMBER) {
             int n;
             try {
                 n = Integer.parseInt(value);
             } catch (NumberFormatException e) {
-                throw new BizException("「{0}」必须是整数", name);
+                throw new BizException("system.error.mustInteger", name);
             }
             if (n < s.min() || n > s.max()) {
-                throw new BizException("「{0}」的范围是 {1} - {2}", name, s.min(), s.max());
+                throw new BizException("system.error.mustBetween", name, s.min(), s.max());
             }
         } else if (s.type() == SettingType.BOOL) {
             if (!Boolean.TRUE.toString().equals(value) && !Boolean.FALSE.toString().equals(value)) {
-                throw new BizException("「{0}」只能是 true 或 false", name);
+                throw new BizException("system.error.mustTrueFalse", name);
             }
         } else if (s.type() == SettingType.SELECT) {
             if (Arrays.stream(s.options().getEnumConstants()).map(OptionEnum::name).noneMatch(value::equals)) {
-                throw new BizException("「{0}」的取值无效：{1}", name, value);
+                throw new BizException("system.error.invalidValue", name, value);
             }
         } else if (value.length() < s.min() || value.length() > s.max()) {
-            throw new BizException("「{0}」的长度为 {1} - {2} 个字符", name, s.min(), s.max());
+            throw new BizException("system.error.mustCharactersLong2", name, s.min(), s.max());
         }
     }
 

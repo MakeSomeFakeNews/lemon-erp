@@ -107,7 +107,7 @@ public class MesMrpService {
                 .map(planService::getAccessible).toList();
         for (MesPlan plan : plans) {
             if (!PlanStatus.CONFIRMED.name().equals(plan.getStatus())) {
-                throw new BizException("计划 {0} 不是已确认状态，不能参与运算", plan.getPlanNo());
+                throw new BizException("mes.error.planNotConfirmedCannotTakePart", plan.getPlanNo());
             }
         }
         // 需求：生产计划 + 销售订单未计划部分 + 销售预测（扣减同月销售订单）
@@ -115,10 +115,10 @@ public class MesMrpService {
         plans.forEach(p -> demands.add(new Demand(p.getMaterialId(), p.getQty(), p.getDueDate())));
         List<String> sources = new ArrayList<>();
         if (!plans.isEmpty()) {
-            sources.add("生产计划");
+            sources.add("生产计划"); // i18n-ignore
         }
         if (Boolean.TRUE.equals(req.includeSales())) {
-            sources.add("销售订单");
+            sources.add("销售订单"); // i18n-ignore
             for (Map<String, Object> row : forecastMapper.selectUnplannedSales()) {
                 demands.add(new Demand(((Number) row.get("materialId")).longValue(), new BigDecimal(row.get("qty").toString()),
                         toDate(row.get("dueDate"))));
@@ -137,10 +137,10 @@ public class MesMrpService {
             }
         }
         if (sources.isEmpty()) {
-            throw new BizException("请选择生产计划，或计入销售订单、销售预测");
+            throw new BizException("mes.error.selectProductionPlansIncludeSalesOrders");
         }
         if (demands.isEmpty()) {
-            throw new BizException("没有需要运算的需求");
+            throw new BizException("mes.error.noDemandRunMrp");
         }
 
         // 1. 展开 BOM 结构：需要 BOM 的物料（自制、委外、虚拟件）→ 默认 BOM 及子件；设为采购的物料即使有 BOM 也不展开
@@ -158,7 +158,7 @@ public class MesMrpService {
                     found.remove(id);
                 } else if (!found.containsKey(id)) {
                     WmsMaterial m = materialService.get(id);
-                    throw new BizException("物料「{0} {1}」的物料属性需要 BOM，但没有启用的默认 BOM", m.getCode(), m.getName());
+                    throw new BizException("mes.error.materialRequiresBomButHasNo", m.getCode(), m.getName());
                 }
             }
             boms.putAll(found);
@@ -303,7 +303,7 @@ public class MesMrpService {
     public List<String> release(MrpReleaseRequest req) {
         List<MesMrpResult> rows = req.resultIds().stream().distinct().map(this::getNew).toList();
         if (rows.stream().anyMatch(r -> r.getSuggestQty().signum() <= 0)) {
-            throw new BizException("建议数量为 0 的行不需要下达");
+            throw new BizException("mes.error.linesSuggestedQuantityDoNotNeed");
         }
         Map<Long, WmsMaterial> materials = materialService.mapByIds(rows.stream().map(MesMrpResult::getMaterialId).toList());
         MesMrpRun mrpRun = runMapper.selectById(rows.get(0).getRunId());
@@ -326,7 +326,7 @@ public class MesMrpService {
         for (MesMrpResult r : rows.stream().filter(r -> SupplyType.valueOf(r.getSupplyType()).purchased()).toList()) {
             if (r.getSupplierId() == null) {
                 WmsMaterial m = materials.get(r.getMaterialId());
-                throw new BizException("请先为采购 / 委外件「{0} {1}」指定供应商", m.getCode(), m.getName());
+                throw new BizException("mes.error.specifySupplierPurchasedOutsourcedItemFirst", m.getCode(), m.getName());
             }
             bySupplier.computeIfAbsent(r.getSupplierId(), k -> new ArrayList<>()).add(r);
         }
@@ -354,10 +354,10 @@ public class MesMrpService {
     private MesMrpResult getNew(Long id) {
         MesMrpResult r = resultMapper.selectById(id);
         if (r == null) {
-            throw new BizException("运算结果不存在");
+            throw new BizException("mes.error.mrpResultDoesNotExist");
         }
         if (!"NEW".equals(r.getStatus())) {
-            throw new BizException("该建议已下达或无需处理");
+            throw new BizException("mes.error.suggestionHasReleasedNeedsNoAction");
         }
         return r;
     }
@@ -369,14 +369,14 @@ public class MesMrpService {
                 .eq(MesMrpResult::getId, id)
                 .eq(MesMrpResult::getStatus, "NEW"));
         if (updated == 0) {
-            throw new BizException("建议已被下达，请刷新");
+            throw new BizException("mes.error.suggestionHasAlreadyReleasedRefresh");
         }
     }
 
     /** 低层码：物料在 BOM 树中出现的最深层级 */
     private static void assignLevel(Long materialId, int level, Map<Long, Integer> levels, Map<Long, List<MesBomItem>> children) {
         if (level > MAX_LEVEL) {
-            throw new BizException("BOM 层级超过 {0} 层，可能存在循环引用", MAX_LEVEL);
+            throw new BizException("mes.error.bomExceedsLevelsMayCircularReference", MAX_LEVEL);
         }
         Integer current = levels.get(materialId);
         if (current != null && current >= level) {

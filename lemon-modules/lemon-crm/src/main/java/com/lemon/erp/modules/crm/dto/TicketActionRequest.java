@@ -9,6 +9,6 @@ import jakarta.validation.constraints.Size;
  */
 public record TicketActionRequest(
         Long assigneeId,
-        @Size(max = 2000, message = "内容不能超过2000个字符") String content,
-        @Min(value = 1, message = "满意度为1-5") @Max(value = 5, message = "满意度为1-5") Integer satisfaction) {
+        @Size(max = 2000, message = "{crm.valid.contentCannotExceedCharacters}") String content,
+        @Min(value = 1, message = "{crm.valid.satisfactionMustBetween}") @Max(value = 5, message = "{crm.valid.satisfactionMustBetween}") Integer satisfaction) {
 }

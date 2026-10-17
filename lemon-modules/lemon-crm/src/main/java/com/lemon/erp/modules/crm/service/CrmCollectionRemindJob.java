@@ -27,7 +27,7 @@ public class CrmCollectionRemindJob implements JobHandler {
 
     @Override
     public String name() {
-        return "合同回款提醒"; // i18n-ignore 定时任务名称，任务管理处翻译
+        return "crm.label.contractCollectionReminder";
     }
 
     @Override

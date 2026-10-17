@@ -2,7 +2,7 @@ package com.lemon.erp.modules.mes.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.mes.dto.OutsourceStockRequest;
 import com.lemon.erp.modules.mes.entity.MesBom;
 import com.lemon.erp.modules.mes.entity.MesBomItem;
@@ -61,7 +61,7 @@ public class MesOutsourceService {
     public void issue(Long orderId, OutsourceStockRequest req) {
         ScmOrder order = executableOrder(orderId);
         List<MesOutsourceMaterial> lines = ensureLines(orderId);
-        Map<MesOutsourceMaterial, BigDecimal> alloc = allocate(lines, req.items(), l -> l.getRequiredQty().subtract(l.getIssuedQty()), "发料");
+        Map<MesOutsourceMaterial, BigDecimal> alloc = allocate(lines, req.items(), l -> l.getRequiredQty().subtract(l.getIssuedQty()), "mes.label.issue");
         stockDocService.createConfirmed(StockBizType.OUT, new StockDocRequest("OUTSOURCE", req.warehouseId(), null,
                 req.bizDate(), req.remark() == null ? "委外发料 " + order.getOrderNo() : req.remark(), req.items()), order.getOrderNo()); // i18n-ignore
         alloc.forEach((line, qty) -> materialMapper.addIssued(line.getId(), qty));
@@ -71,12 +71,12 @@ public class MesOutsourceService {
     public void returnMaterials(Long orderId, OutsourceStockRequest req) {
         ScmOrder order = orderService.detail(OrderKind.PURCHASE, orderId);
         List<MesOutsourceMaterial> lines = ensureLines(orderId);
-        Map<MesOutsourceMaterial, BigDecimal> alloc = allocate(lines, req.items(), MesOutsourceService::atSupplier, "退料");
+        Map<MesOutsourceMaterial, BigDecimal> alloc = allocate(lines, req.items(), MesOutsourceService::atSupplier, "mes.label.return");
         stockDocService.createConfirmed(StockBizType.IN, new StockDocRequest("OUTSOURCE_RETURN", req.warehouseId(), null,
                 req.bizDate(), req.remark() == null ? "委外退料 " + order.getOrderNo() : req.remark(), req.items()), order.getOrderNo()); // i18n-ignore
         alloc.forEach((line, qty) -> {
             if (materialMapper.addReturned(line.getId(), qty) == 0) {
-                throw new BizException("退料数量超过加工商处结存");
+                throw new BizException("mes.error.returnQuantityExceedsBalanceSubcontractor");
             }
         });
     }
@@ -129,7 +129,7 @@ public class MesOutsourceService {
     private ScmOrder executableOrder(Long orderId) {
         ScmOrder order = orderService.detail(OrderKind.PURCHASE, orderId);
         if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
-            throw new BizException("委外订单 {0} 不是已审核或部分完成状态，不能发料", order.getOrderNo());
+            throw new BizException("mes.error.outsourcingOrderNotApprovedPartiallyCompleted", order.getOrderNo());
         }
         return order;
     }
@@ -144,7 +144,7 @@ public class MesOutsourceService {
         byMaterial.forEach((materialId, qty) -> {
             List<MesOutsourceMaterial> candidates = lines.stream().filter(l -> l.getMaterialId().equals(materialId)).toList();
             if (candidates.isEmpty()) {
-                throw new BizException("物料不在该委外订单的用料中，不能{0}", I18n.t(action));
+                throw new BizException("mes.error.materialNotOutsourcingOrderSMaterials", Messages.get(action));
             }
             BigDecimal left = qty;
             for (int k = 0; k < candidates.size() && left.signum() > 0; k++) {

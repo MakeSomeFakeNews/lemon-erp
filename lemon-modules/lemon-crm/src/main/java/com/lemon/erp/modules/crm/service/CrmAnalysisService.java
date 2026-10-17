@@ -175,7 +175,7 @@ public class CrmAnalysisService {
     static String segment(boolean recent, boolean frequent, boolean valuable) {
         String level = valuable ? "重要" : "一般"; // i18n-ignore
         String kind = recent ? (frequent ? "价值" : "发展") : (frequent ? "保持" : "挽留"); // i18n-ignore
-        return level + kind + "客户";
+        return level + kind + "客户"; // i18n-ignore 分层名称是标识，由前端按中文名翻译
     }
 
     private static BigDecimal num(Object v) {

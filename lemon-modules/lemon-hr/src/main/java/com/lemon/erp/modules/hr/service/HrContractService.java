@@ -43,7 +43,7 @@ public class HrContractService {
     public HrContract detail(Long id) {
         HrContract c = contractMapper.selectDetail(id);
         if (c == null) {
-            throw new BizException("劳动合同不存在");
+            throw new BizException("hr.error.employmentContractDoesNotExist");
         }
         fillDaysLeft(c);
         return c;
@@ -59,7 +59,7 @@ public class HrContractService {
         c.setPrevContractId(null);
         c.setCreateBy(SecurityUtils.getUserId());
         if (contractMapper.exists(Wrappers.<HrContract>lambdaQuery().eq(HrContract::getContractNo, c.getContractNo()))) {
-            throw new BizException("合同编号已存在");
+            throw new BizException("hr.error.contractNoAlreadyExists");
         }
         contractMapper.insert(c);
         return c.getId();
@@ -69,7 +69,7 @@ public class HrContractService {
     public void update(Long id, HrContract req) {
         HrContract old = detail(id);
         if (!"ACTIVE".equals(old.getStatus())) {
-            throw new BizException("只能修改生效中的合同");
+            throw new BizException("hr.error.onlyActiveContractsModified");
         }
         HrContract c = normalize(req);
         contractMapper.update(Wrappers.<HrContract>lambdaUpdate().set(HrContract::getContractType, c.getContractType())
@@ -83,7 +83,7 @@ public class HrContractService {
     public Long renew(Long id, HrContract req) {
         HrContract old = detail(id);
         if (!"ACTIVE".equals(old.getStatus()) && !"EXPIRED".equals(old.getStatus())) {
-            throw new BizException("只能续签生效中或已到期的合同");
+            throw new BizException("hr.error.onlyActiveExpiredContractsRenewed");
         }
         req.setEmployeeId(old.getEmployeeId());
         if (req.getStartDate() == null && old.getEndDate() != null) {
@@ -102,7 +102,7 @@ public class HrContractService {
     public void terminate(Long id, LocalDate date, String reason) {
         HrContract c = detail(id);
         if (!"ACTIVE".equals(c.getStatus())) {
-            throw new BizException("只能终止生效中的合同");
+            throw new BizException("hr.error.onlyActiveContractsTerminated");
         }
         contractMapper.update(Wrappers.<HrContract>lambdaUpdate().set(HrContract::getStatus, "TERMINATED")
                 .set(HrContract::getTerminateDate, date == null ? LocalDate.now() : date).set(HrContract::getTerminateReason, reason)
@@ -113,7 +113,7 @@ public class HrContractService {
     public void delete(Long id) {
         HrContract c = detail(id);
         if (!"ACTIVE".equals(c.getStatus())) {
-            throw new BizException("只能删除生效中的合同（录入错误时）");
+            throw new BizException("hr.error.onlyActiveContractsDeletedEntryErrors");
         }
         contractMapper.deleteById(id);
     }
@@ -140,18 +140,18 @@ public class HrContractService {
 
     private static HrContract normalize(HrContract req) {
         if (req.getContractType() == null || !TYPES.contains(req.getContractType())) {
-            throw new BizException("请选择合同类型");
+            throw new BizException("hr.error.selectContractType");
         }
         if (req.getStartDate() == null) {
-            throw new BizException("请选择合同开始日期");
+            throw new BizException("hr.error.selectContractStartDate");
         }
         if ("OPEN".equals(req.getContractType())) {
             req.setEndDate(null);
         } else if (req.getEndDate() == null) {
-            throw new BizException("请选择合同结束日期（无固定期限合同除外）");
+            throw new BizException("hr.error.selectContractEndDateExceptOpen");
         }
         if (req.getEndDate() != null && req.getEndDate().isBefore(req.getStartDate())) {
-            throw new BizException("合同结束日期不能早于开始日期");
+            throw new BizException("hr.error.contractEndDateCannotEarlierStart");
         }
         if (req.getSignDate() == null) {
             req.setSignDate(req.getStartDate());
@@ -160,7 +160,7 @@ public class HrContractService {
             req.setProbationMonths(0);
         }
         if (req.getProbationMonths() < 0 || req.getProbationMonths() > 6) {
-            throw new BizException("试用期为 0 ~ 6 个月");
+            throw new BizException("hr.error.probationMustMonths");
         }
         return req;
     }

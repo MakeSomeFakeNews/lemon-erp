@@ -17,10 +17,10 @@ import java.util.List;
 @TableName("sys_role")
 public class SysRole extends BaseEntity {
 
-    @NotBlank(message = "角色名称不能为空")
+    @NotBlank(message = "{system.valid.roleNameRequired}")
     private String name;
 
-    @NotBlank(message = "角色编码不能为空")
+    @NotBlank(message = "{system.valid.roleCodeRequired}")
     private String code;
 
     private Integer sort;
@@ -30,8 +30,8 @@ public class SysRole extends BaseEntity {
     private Integer dataScope;
 
     /** 1 启用 0 停用 */
-    @Min(value = 0, message = "状态只能是 0 或 1")
-    @Max(value = 1, message = "状态只能是 0 或 1")
+    @Min(value = 0, message = "{system.valid.statusMust}")
+    @Max(value = 1, message = "{system.valid.statusMust}")
     private Integer status;
 
     private String remark;

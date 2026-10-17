@@ -33,42 +33,42 @@ public final class SrmRequests {
      * @param paymentDays 付款天数：引用合同的采购订单生成应付单时按此计算到期日（未填按供应商账期）
      */
     public record Contract(
-            @NotBlank(message = "请填写合同名称") @Size(max = 128, message = "合同名称不能超过128个字符") String name,
-            @NotNull(message = "请选择供应商") Long supplierId,
-            @NotNull(message = "请选择合同类型") ContractType contractType,
-            @NotNull(message = "请选择签订日期") LocalDate signDate,
-            @NotNull(message = "请选择生效日期") LocalDate startDate,
-            @NotNull(message = "请选择到期日期") LocalDate endDate,
-            @DecimalMin(value = "0", inclusive = false, message = "金额上限必须大于0") @Digits(integer = 16, fraction = 2) BigDecimal amountLimit,
-            @Min(value = 0, message = "付款天数不能小于0") @Max(value = 3650, message = "付款天数不能超过3650") Integer paymentDays,
-            @Size(max = 255, message = "付款条款不能超过255个字符") String paymentTerms,
-            @Size(max = 500, message = "备注不能超过500个字符") String remark,
-            @NotEmpty(message = "请添加合同物料") @Size(max = 500, message = "明细不能超过500行") List<@Valid @NotNull ContractItem> items) {
+            @NotBlank(message = "{scm.valid.enterContractName}") @Size(max = 128, message = "{scm.valid.contractNameCannotExceedCharacters}") String name,
+            @NotNull(message = "{scm.valid.selectSupplier}") Long supplierId,
+            @NotNull(message = "{scm.valid.selectContractType}") ContractType contractType,
+            @NotNull(message = "{scm.valid.selectSigningDate}") LocalDate signDate,
+            @NotNull(message = "{scm.valid.selectEffectiveDate}") LocalDate startDate,
+            @NotNull(message = "{scm.valid.selectExpiryDate}") LocalDate endDate,
+            @DecimalMin(value = "0", inclusive = false, message = "{scm.valid.amountLimitMustGreater}") @Digits(integer = 16, fraction = 2) BigDecimal amountLimit,
+            @Min(value = 0, message = "{scm.valid.paymentDaysCannotLess}") @Max(value = 3650, message = "{scm.valid.paymentDaysCannotExceed}") Integer paymentDays,
+            @Size(max = 255, message = "{scm.valid.paymentTermsCannotExceedCharacters}") String paymentTerms,
+            @Size(max = 500, message = "{scm.valid.remarkCannotExceedCharacters2}") String remark,
+            @NotEmpty(message = "{scm.valid.addContractMaterials}") @Size(max = 500, message = "{scm.valid.lineItemsCannotExceed}") List<@Valid @NotNull ContractItem> items) {
     }
 
     public record ContractItem(
-            @NotNull(message = "请选择物料") Long materialId,
-            @NotNull(message = "请填写合同单价") @DecimalMin(value = "0", message = "单价不能小于0") @Digits(integer = 14, fraction = 4) BigDecimal price,
-            @DecimalMin(value = "0", message = "税率不能小于0") @DecimalMax(value = "100", message = "税率不能超过100") BigDecimal taxRate,
-            @DecimalMin(value = "0", inclusive = false, message = "数量上限必须大于0") @Digits(integer = 14, fraction = 4) BigDecimal qtyLimit,
+            @NotNull(message = "{scm.valid.selectMaterial}") Long materialId,
+            @NotNull(message = "{scm.valid.enterContractUnitPrice}") @DecimalMin(value = "0", message = "{scm.valid.unitPriceCannotLess}") @Digits(integer = 14, fraction = 4) BigDecimal price,
+            @DecimalMin(value = "0", message = "{scm.valid.taxRateCannotNegative}") @DecimalMax(value = "100", message = "{scm.valid.taxRateCannotExceed2}") BigDecimal taxRate,
+            @DecimalMin(value = "0", inclusive = false, message = "{scm.valid.quantityLimitMustGreater}") @Digits(integer = 14, fraction = 4) BigDecimal qtyLimit,
             @Size(max = 255) String remark) {
     }
 
-    public record Close(@NotBlank(message = "请填写关闭原因") @Size(max = 255, message = "关闭原因不能超过255个字符") String reason) {
+    public record Close(@NotBlank(message = "{scm.valid.enterCloseReason}") @Size(max = 255, message = "{scm.valid.closeReasonCannotExceedCharacters}") String reason) {
     }
 
     /** 招标 */
     public record Tender(
-            @NotBlank(message = "请填写招标标题") @Size(max = 128, message = "标题不能超过128个字符") String title,
-            @NotNull(message = "请选择投标截止时间") LocalDateTime deadline,
-            @Size(max = 500, message = "招标说明不能超过500个字符") String remark,
-            @NotEmpty(message = "请添加招标物料") @Size(max = 200, message = "明细不能超过200行") List<@Valid @NotNull TenderItem> items,
-            @NotEmpty(message = "请选择邀请的供应商") @Size(max = 50, message = "邀请的供应商不能超过50家") List<@NotNull Long> supplierIds) {
+            @NotBlank(message = "{scm.valid.enterTenderTitle}") @Size(max = 128, message = "{scm.valid.titleCannotExceedCharacters}") String title,
+            @NotNull(message = "{scm.valid.selectBidDeadline}") LocalDateTime deadline,
+            @Size(max = 500, message = "{scm.valid.tenderDescriptionCannotExceedCharacters}") String remark,
+            @NotEmpty(message = "{scm.valid.addTenderMaterials}") @Size(max = 200, message = "{scm.valid.noMoreLines}") List<@Valid @NotNull TenderItem> items,
+            @NotEmpty(message = "{scm.valid.selectInvitedSuppliers}") @Size(max = 50, message = "{scm.valid.invitedSuppliersCannotExceed}") List<@NotNull Long> supplierIds) {
     }
 
     public record TenderItem(
-            @NotNull(message = "请选择物料") Long materialId,
-            @NotNull(message = "请填写数量") @DecimalMin(value = "0", inclusive = false, message = "数量必须大于0") @Digits(integer = 14, fraction = 4) BigDecimal qty,
+            @NotNull(message = "{scm.valid.selectMaterial}") Long materialId,
+            @NotNull(message = "{scm.valid.enterQuantity}") @DecimalMin(value = "0", inclusive = false, message = "{scm.valid.quantityMustGreater}") @Digits(integer = 14, fraction = 4) BigDecimal qty,
             LocalDate requiredDate,
             @Size(max = 255) String remark) {
     }
@@ -78,15 +78,15 @@ public final class SrmRequests {
      */
     public record Bid(
             Long supplierId,
-            @Min(value = 0, message = "交货期不能小于0") @Max(value = 3650, message = "交货期不能超过3650天") Integer deliveryDays,
-            @Size(max = 500, message = "投标说明不能超过500个字符") String remark,
-            @NotEmpty(message = "请填写报价") List<@Valid @NotNull BidItem> items) {
+            @Min(value = 0, message = "{scm.valid.deliveryLeadTimeCannotLess}") @Max(value = 3650, message = "{scm.valid.deliveryLeadTimeCannotExceedDays}") Integer deliveryDays,
+            @Size(max = 500, message = "{scm.valid.bidDescriptionCannotExceedCharacters}") String remark,
+            @NotEmpty(message = "{scm.valid.enterQuotation}") List<@Valid @NotNull BidItem> items) {
     }
 
     public record BidItem(
             @NotNull Long tenderItemId,
-            @NotNull(message = "请填写单价") @DecimalMin(value = "0", inclusive = false, message = "单价必须大于0") @Digits(integer = 14, fraction = 4) BigDecimal price,
-            @DecimalMin(value = "0", message = "税率不能小于0") @DecimalMax(value = "100", message = "税率不能超过100") BigDecimal taxRate,
+            @NotNull(message = "{scm.valid.enterUnitPrice}") @DecimalMin(value = "0", inclusive = false, message = "{scm.valid.unitPriceMustGreater}") @Digits(integer = 14, fraction = 4) BigDecimal price,
+            @DecimalMin(value = "0", message = "{scm.valid.taxRateCannotNegative}") @DecimalMax(value = "100", message = "{scm.valid.taxRateCannotExceed2}") BigDecimal taxRate,
             @Size(max = 255) String remark) {
     }
 
@@ -99,9 +99,9 @@ public final class SrmRequests {
      * @param endDate     生成合同的到期日期（默认一年）
      */
     public record Award(
-            @NotNull(message = "请选择中标供应商") Long supplierId,
-            @Size(max = 255, message = "定标说明不能超过255个字符") String reason,
-            @NotNull(message = "请选择定标后生成的单据") AwardTarget target,
+            @NotNull(message = "{scm.valid.selectWinningSupplier}") Long supplierId,
+            @Size(max = 255, message = "{scm.valid.awardDescriptionCannotExceedCharacters}") String reason,
+            @NotNull(message = "{scm.valid.selectDocumentGenerateAfterAward}") AwardTarget target,
             Long warehouseId,
             LocalDate startDate,
             LocalDate endDate) {
@@ -109,25 +109,25 @@ public final class SrmRequests {
 
     /** 供应商确认订单：接受时填写承诺交期，拒绝时填写原因 */
     public record OrderConfirm(
-            @NotNull(message = "请选择接受或拒绝") Boolean accept,
+            @NotNull(message = "{scm.valid.chooseAcceptReject}") Boolean accept,
             LocalDate promisedDate,
-            @Size(max = 255, message = "说明不能超过255个字符") String remark) {
+            @Size(max = 255, message = "{scm.valid.descriptionCannotExceedCharacters}") String remark) {
     }
 
     /** 送货通知 */
     public record Asn(
-            @NotNull(message = "请选择采购订单") Long orderId,
-            @NotNull(message = "请选择发货日期") LocalDate shipDate,
+            @NotNull(message = "{scm.valid.selectPurchaseOrder}") Long orderId,
+            @NotNull(message = "{scm.valid.selectShipDate}") LocalDate shipDate,
             LocalDate expectedDate,
             @Size(max = 64) String carrier,
             @Size(max = 64) String trackingNo,
             @Size(max = 255) String remark,
-            @NotEmpty(message = "请填写送货明细") List<@Valid @NotNull AsnItem> items) {
+            @NotEmpty(message = "{scm.valid.enterDeliveryLines}") List<@Valid @NotNull AsnItem> items) {
     }
 
     public record AsnItem(
             @NotNull Long orderItemId,
-            @NotNull(message = "请填写送货数量") @DecimalMin(value = "0", inclusive = false, message = "送货数量必须大于0") @Digits(integer = 14, fraction = 4) BigDecimal qty,
+            @NotNull(message = "{scm.valid.enterDeliveryQuantity}") @DecimalMin(value = "0", inclusive = false, message = "{scm.valid.deliveryQuantityMustGreater}") @Digits(integer = 14, fraction = 4) BigDecimal qty,
             @Size(max = 64) String batchNo,
             @Size(max = 255) String remark) {
     }
@@ -140,25 +140,25 @@ public final class SrmRequests {
      */
     public record AsnReceive(
             Long warehouseId,
-            @NotNull(message = "请选择收货日期") LocalDate bizDate,
+            @NotNull(message = "{scm.valid.selectReceiptDate}") LocalDate bizDate,
             List<@Valid @NotNull AsnReceiveLine> lines) {
     }
 
     public record AsnReceiveLine(
             @NotNull Long asnItemId,
-            @NotNull @DecimalMin(value = "0", message = "实收数量不能小于0") BigDecimal qty,
+            @NotNull @DecimalMin(value = "0", message = "{scm.valid.receivedQuantityCannotLess}") BigDecimal qty,
             Long locationId) {
     }
 
     /** 开通门户账号 */
     public record PortalAccount(
-            @NotBlank(message = "请填写登录账号") @Size(max = 64, message = "账号不能超过64个字符") String username,
-            @NotBlank(message = "请填写联系人") @Size(max = 64) String nickname,
+            @NotBlank(message = "{scm.valid.enterLoginAccount}") @Size(max = 64, message = "{scm.valid.accountCannotExceedCharacters}") String username,
+            @NotBlank(message = "{scm.valid.enterContact}") @Size(max = 64) String nickname,
             @Size(max = 32) String phone,
-            @NotBlank(message = "请填写初始密码") @Size(max = 64) String password) {
+            @NotBlank(message = "{scm.valid.enterInitialPassword}") @Size(max = 64) String password) {
     }
 
-    public record Password(@NotBlank(message = "请填写新密码") @Size(max = 64) String password) {
+    public record Password(@NotBlank(message = "{scm.valid.enterNewPassword}") @Size(max = 64) String password) {
     }
 
     public record Status(@NotNull @Min(0) @Max(1) Integer status) {

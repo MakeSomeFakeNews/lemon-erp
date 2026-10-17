@@ -15,16 +15,16 @@ import java.util.List;
  * 新增 / 修改询价单（还没有报价时可以修改）
  */
 public record InquiryRequest(
-        @NotNull(message = "请选择询价日期") LocalDate inquiryDate,
+        @NotNull(message = "{scm.valid.selectRfqDate}") LocalDate inquiryDate,
         LocalDate deadline,
-        @Size(max = 255, message = "说明不能超过255个字符") String remark,
-        @NotEmpty(message = "请添加明细") @Size(max = 200, message = "明细不能超过200行") List<@Valid @NotNull Item> items) {
+        @Size(max = 255, message = "{scm.valid.descriptionCannotExceedCharacters}") String remark,
+        @NotEmpty(message = "{scm.valid.addLineItems}") @Size(max = 200, message = "{scm.valid.noMoreLines}") List<@Valid @NotNull Item> items) {
 
     public record Item(
-            @NotNull(message = "请选择物料") Long materialId,
-            @NotNull(message = "请填写数量") @DecimalMin(value = "0", inclusive = false, message = "数量必须大于0")
-            @Digits(integer = 14, fraction = 4, message = "数量最多4位小数") BigDecimal qty,
+            @NotNull(message = "{scm.valid.selectMaterial}") Long materialId,
+            @NotNull(message = "{scm.valid.enterQuantity}") @DecimalMin(value = "0", inclusive = false, message = "{scm.valid.quantityMustGreater}")
+            @Digits(integer = 14, fraction = 4, message = "{scm.valid.quantityAllowsMostDecimalPlaces}") BigDecimal qty,
             LocalDate requiredDate,
-            @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+            @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}") String remark) {
     }
 }

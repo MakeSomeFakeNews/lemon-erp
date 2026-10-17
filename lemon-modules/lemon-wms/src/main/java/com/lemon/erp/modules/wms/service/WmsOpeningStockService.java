@@ -2,7 +2,7 @@ package com.lemon.erp.modules.wms.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.excel.ImportRequest;
 import com.lemon.erp.framework.excel.ImportResult;
 import com.lemon.erp.framework.excel.ImportRow;
@@ -75,9 +75,9 @@ public class WmsOpeningStockService {
                         .findFirst().orElse(null);
                 WmsMaterial m = materials.get(d.materialCode().trim());
                 if (wh == null) {
-                    error = I18n.t("仓库「{0}」不存在", d.warehouse());
+                    error = Messages.get("wms.text.warehouseDoesNotExist", d.warehouse());
                 } else if (m == null) {
-                    error = I18n.t("物料「{0}」不存在", d.materialCode());
+                    error = Messages.get("wms.text.materialDoesNotExist", d.materialCode());
                 } else {
                     Long locationId = null;
                     if (StringUtils.hasText(d.location())) {
@@ -85,7 +85,7 @@ public class WmsOpeningStockService {
                                         Wrappers.<WmsLocation>lambdaQuery().eq(WmsLocation::getWarehouseId, id)).stream()
                                 .collect(Collectors.toMap(WmsLocation::getCode, Function.identity(), (a, b) -> a))).get(d.location().trim());
                         if (loc == null) {
-                            error = I18n.t("仓库「{0}」中没有库位「{1}」", wh.getName(), d.location());
+                            error = Messages.get("wms.text.warehouseHasNoLocation", wh.getName(), d.location());
                         } else {
                             locationId = loc.getId();
                         }
@@ -114,7 +114,7 @@ public class WmsOpeningStockService {
                                 "期初库存导入", chunk.stream().map(ImportRow::data).toList()), null); // i18n-ignore 存入单据备注
                     } catch (BizException e) {
                         String range = chunk.get(0).rowNum() + "-" + chunk.get(chunk.size() - 1).rowNum();
-                        errors.add(new ImportResult.RowError(chunk.get(0).rowNum(), I18n.t("第 {0} 行：{1}", range, e.getLocalizedMessage())));
+                        errors.add(new ImportResult.RowError(chunk.get(0).rowNum(), Messages.get("wms.text.line", range, e.getLocalizedMessage())));
                     }
                 }
             });
@@ -131,6 +131,6 @@ public class WmsOpeningStockService {
             return null;
         }
         return violations.stream().sorted(Comparator.comparing(v -> v.getPropertyPath().toString()))
-                .map(v -> I18n.t(v.getMessage())).distinct().collect(Collectors.joining(I18n.t("；")));
+                .map(ConstraintViolation::getMessage).distinct().collect(Collectors.joining(Messages.get("wms.text.separator")));
     }
 }

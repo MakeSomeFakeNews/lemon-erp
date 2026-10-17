@@ -3,7 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.ref.RefType;
@@ -62,7 +62,7 @@ public class ScmCustomerService {
     public ScmCustomer get(Long id) {
         ScmCustomer customer = id == null ? null : customerMapper.selectById(id);
         if (customer == null) {
-            throw new BizException("客户不存在");
+            throw new BizException("scm.error.customerDoesNotExist");
         }
         return customer;
     }
@@ -120,9 +120,9 @@ public class ScmCustomerService {
         for (ScmCustomer customer : customerMapper.selectByIds(ids)) {
             if (orderMapper.exists(Wrappers.<ScmOrder>lambdaQuery()
                     .eq(ScmOrder::getKind, OrderKind.SALES.name()).eq(ScmOrder::getPartnerId, customer.getId()))) {
-                throw new BizException("客户「{0}」已有销售订单，不能删除，可以停用", customer.getName());
+                throw new BizException("scm.error.customerHasSalesOrdersCannotDeleted", customer.getName());
             }
-            referenceGuard.checkDeletable(RefType.CUSTOMER, customer.getId(), I18n.t("客户「{0}」", customer.getName()));
+            referenceGuard.checkDeletable(RefType.CUSTOMER, customer.getId(), Messages.get("scm.text.customer", customer.getName()));
         }
         customerMapper.deleteByIds(ids);
     }
@@ -130,7 +130,7 @@ public class ScmCustomerService {
     private void checkCodeUnique(String code, Long id) {
         ScmCustomer exist = customerMapper.selectOne(Wrappers.<ScmCustomer>lambdaQuery().eq(ScmCustomer::getCode, code));
         if (exist != null && !Objects.equals(exist.getId(), id)) {
-            throw new BizException("客户编码已存在");
+            throw new BizException("scm.error.customerCodeAlreadyExists");
         }
     }
 }

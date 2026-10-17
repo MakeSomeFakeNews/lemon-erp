@@ -1,6 +1,6 @@
 package com.lemon.erp.modules.workflow.service;
 
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.security.PermissionService;
@@ -70,7 +70,7 @@ public class WfInstanceDetailService {
         HistoricProcessInstance instance = historyService.createHistoricProcessInstanceQuery()
                 .processInstanceId(processInstanceId).processInstanceTenantId(FlowTenant.current()).singleResult();
         if (instance == null) {
-            throw new BizException("流程不存在");
+            throw new BizException("workflow.error.processNotFound");
         }
         List<HistoricTaskInstance> tasks = historyService.createHistoricTaskInstanceQuery()
                 .processInstanceId(processInstanceId).includeTaskLocalVariables()
@@ -108,7 +108,7 @@ public class WfInstanceDetailService {
                 || copies.stream().anyMatch(c -> userId.equals(c.getUserId()))
                 || permissionService.hasPerm(VIEW_ALL_PERM);
         if (!viewable) {
-            throw new BizException(R.FORBIDDEN, "没有权限查看该流程");
+            throw new BizException(R.FORBIDDEN, "workflow.error.noPermissionViewProcess");
         }
     }
 
@@ -127,7 +127,7 @@ public class WfInstanceDetailService {
         }
         return business.variables().stream()
                 .filter(v -> values.get(v.field()) != null && !"".equals(values.get(v.field())))
-                .map(v -> new InstanceDetail.BusinessField(v.field(), I18n.t(v.label()), v.type(), v.dictType(), values.get(v.field())))
+                .map(v -> new InstanceDetail.BusinessField(v.field(), Messages.get(v.label()), v.type(), v.dictType(), values.get(v.field())))
                 .toList();
     }
 
@@ -213,7 +213,7 @@ public class WfInstanceDetailService {
         copiesByNode.forEach((nodeId, list) -> records.add(new ApprovalRecord(nodeId, list.get(0).getNodeName(),
                 ApprovalAction.CC, null,
                 list.stream().map(c -> names.get(c.getUserId())).filter(Objects::nonNull)
-                        .collect(Collectors.joining("、")),
+                        .collect(Collectors.joining(Messages.get("workflow.text.listSeparator"))),
                 null, list.get(0).getCreateTime())));
 
         for (Comment c : comments) {

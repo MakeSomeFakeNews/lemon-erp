@@ -31,7 +31,7 @@ public class FinNoteDueRemindJob implements JobHandler {
 
     @Override
     public String name() {
-        return "票据到期提醒";
+        return "fin.label.noteDueReminder";
     }
 
     @Override

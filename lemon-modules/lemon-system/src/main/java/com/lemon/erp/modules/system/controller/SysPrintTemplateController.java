@@ -1,6 +1,6 @@
 package com.lemon.erp.modules.system.controller;
 
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
@@ -83,7 +83,7 @@ public class SysPrintTemplateController {
     public R<Void> uploadJrxml(@PathVariable String key, @RequestParam("file") MultipartFile file) throws IOException {
         printService.checkUploadAllowed();
         if (file.getSize() > 1024 * 1024) {
-            return R.fail(I18n.t("模板文件不能超过 1MB"));
+            return R.fail(Messages.get("system.text.templateFileCannotExceedMb"));
         }
         String jrxml = new String(file.getBytes(), StandardCharsets.UTF_8);
         printService.validateJrxml(jrxml);

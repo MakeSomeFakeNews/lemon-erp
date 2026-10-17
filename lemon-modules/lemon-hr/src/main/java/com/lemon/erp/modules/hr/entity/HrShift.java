@@ -24,31 +24,31 @@ import java.time.LocalTime;
 @TableName("hr_shift")
 public class HrShift extends BaseEntity {
 
-    @NotBlank(message = "班次名称不能为空")
-    @Size(max = 64, message = "班次名称不能超过64个字符")
+    @NotBlank(message = "{hr.valid.shiftNameCannotEmpty}")
+    @Size(max = 64, message = "{hr.valid.shiftNameCannotExceedCharacters}")
     private String name;
 
-    @NotNull(message = "请选择上班时间")
+    @NotNull(message = "{hr.valid.selectStartTime2}")
     @JsonFormat(pattern = "HH:mm")
     private LocalTime startTime;
 
-    @NotNull(message = "请选择下班时间")
+    @NotNull(message = "{hr.valid.selectEndTime2}")
     @JsonFormat(pattern = "HH:mm")
     private LocalTime endTime;
 
     /** 迟到 / 早退宽限（分钟） */
-    @Min(value = 0, message = "宽限分钟不能小于0")
-    @Max(value = 120, message = "宽限分钟不能超过120")
+    @Min(value = 0, message = "{hr.valid.graceMinutesCannotLess}")
+    @Max(value = 120, message = "{hr.valid.graceMinutesCannotExceed}")
     private Integer flexMinutes;
 
     /** 标准工时（小时），请假按此折算天数 */
-    @DecimalMin(value = "1", message = "标准工时至少1小时")
-    @DecimalMax(value = "12", message = "标准工时不能超过12小时")
+    @DecimalMin(value = "1", message = "{hr.valid.standardHoursMustLeastHour}")
+    @DecimalMax(value = "12", message = "{hr.valid.standardHoursCannotExceedHours}")
     private BigDecimal workHours;
 
     /** 是否默认班次，未指定班次的员工使用 */
     private Integer isDefault;
 
-    @Size(max = 255, message = "备注不能超过255个字符")
+    @Size(max = 255, message = "{hr.valid.remarkCannotExceedCharacters}")
     private String remark;
 }

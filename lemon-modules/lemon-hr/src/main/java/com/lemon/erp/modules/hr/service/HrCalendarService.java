@@ -2,7 +2,7 @@ package com.lemon.erp.modules.hr.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.hr.entity.HrEmployee;
 import com.lemon.erp.modules.hr.entity.HrHoliday;
 import com.lemon.erp.modules.hr.entity.HrShift;
@@ -47,7 +47,7 @@ public class HrCalendarService {
     @Transactional
     public void saveShift(Long id, HrShift shift) {
         if (!shift.getEndTime().isAfter(shift.getStartTime())) {
-            throw new BizException("下班时间必须晚于上班时间（暂不支持跨天班次）");
+            throw new BizException("hr.error.endTimeMustLaterStartTime");
         }
         if (shift.getFlexMinutes() == null) shift.setFlexMinutes(0);
         if (shift.getWorkHours() == null) shift.setWorkHours(BigDecimal.valueOf(8));
@@ -59,7 +59,7 @@ public class HrCalendarService {
         } else {
             HrShift old = shiftMapper.selectById(id);
             if (old == null) {
-                throw new BizException("班次不存在");
+                throw new BizException("hr.error.shiftDoesNotExist");
             }
             if (Integer.valueOf(1).equals(old.getIsDefault())) {
                 shift.setIsDefault(1);
@@ -78,10 +78,10 @@ public class HrCalendarService {
             return;
         }
         if (Integer.valueOf(1).equals(shift.getIsDefault())) {
-            throw new BizException("默认班次不能删除，请先把其他班次设为默认");
+            throw new BizException("hr.error.defaultShiftCannotDeletedSetAnother");
         }
         if (employeeMapper.exists(Wrappers.<HrEmployee>lambdaQuery().eq(HrEmployee::getShiftId, id))) {
-            throw new BizException("班次「{0}」已分配给员工，不能删除", shift.getName());
+            throw new BizException("hr.error.shiftAssignedEmployeesCannotDeleted", shift.getName());
         }
         shiftMapper.deleteById(id);
     }
@@ -91,7 +91,7 @@ public class HrCalendarService {
         HrShift shift = shiftMapper.selectList(Wrappers.<HrShift>lambdaQuery().eq(HrShift::getIsDefault, 1)).stream().findFirst().orElse(null);
         if (shift == null) {
             shift = new HrShift();
-            shift.setName(I18n.t("标准班"));
+            shift.setName(Messages.get("hr.text.standardShift"));
             shift.setStartTime(LocalTime.of(9, 0));
             shift.setEndTime(LocalTime.of(18, 0));
             shift.setFlexMinutes(0);
@@ -122,7 +122,7 @@ public class HrCalendarService {
     public void saveHoliday(Long id, HrHoliday holiday) {
         HrHoliday exist = holidayMapper.selectOne(Wrappers.<HrHoliday>lambdaQuery().eq(HrHoliday::getHolidayDate, holiday.getHolidayDate()));
         if (exist != null && !Objects.equals(exist.getId(), id)) {
-            throw new BizException("{0} 已设置为「{1}」", holiday.getHolidayDate(), exist.getName());
+            throw new BizException("hr.error.alreadySet", holiday.getHolidayDate(), exist.getName());
         }
         holiday.setId(id);
         if (id == null) {

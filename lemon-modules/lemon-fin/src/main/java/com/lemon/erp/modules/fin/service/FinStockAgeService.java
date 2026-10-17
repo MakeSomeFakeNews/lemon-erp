@@ -1,7 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.mapper.FinStockAgeMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,16 +43,16 @@ public class FinStockAgeService {
         List<Integer> limits = buckets == null || buckets.isEmpty() ? DEFAULT_BUCKETS : buckets;
         for (int i = 0; i < limits.size(); i++) {
             if (limits.get(i) <= 0 || (i > 0 && limits.get(i) <= limits.get(i - 1))) {
-                throw new BizException("库龄分段必须是递增的正整数");
+                throw new BizException("fin.error.stockAgeBucketsMustIncreasingPositive");
             }
         }
         if (limits.size() > MAX_BUCKETS) {
-            throw new BizException("库龄最多分 {0} 段", MAX_BUCKETS);
+            throw new BizException("fin.error.mostStockAgeBucketsAllowed", MAX_BUCKETS);
         }
         List<Map<String, Object>> labels = new ArrayList<>();
         for (int i = 0; i <= limits.size(); i++) {
-            String label = i == 0 ? I18n.t("{0}-{1} 天", 0, limits.get(0))
-                    : i == limits.size() ? I18n.t("{0} 天以上", limits.get(i - 1)) : I18n.t("{0}-{1} 天", limits.get(i - 1) + 1, limits.get(i));
+            String label = i == 0 ? Messages.get("fin.text.days", 0, limits.get(0))
+                    : i == limits.size() ? Messages.get("fin.text.overDays", limits.get(i - 1)) : Messages.get("fin.text.days", limits.get(i - 1) + 1, limits.get(i));
             labels.add(Map.of("label", label));
         }
         List<Map<String, Object>> balances = ageMapper.selectBalances(date, warehouseId, category, keyword);

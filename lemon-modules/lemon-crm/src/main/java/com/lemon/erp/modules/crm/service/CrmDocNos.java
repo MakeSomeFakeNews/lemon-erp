@@ -16,10 +16,10 @@ public class CrmDocNos {
     @Bean
     @Order(6)
     public DocNoCatalog crmDocNoCatalog() {
-        return DocNoCatalog.of("客户关系", // i18n-ignore 编码规则目录名称，输出处翻译
-                doc("XL", "线索"), // i18n-ignore 编码规则目录名称，输出处翻译
-                doc("SJ", "销售机会"), // i18n-ignore 编码规则目录名称，输出处翻译
-                doc("XSHT", "销售合同"), // i18n-ignore 编码规则目录名称，输出处翻译
-                doc("FW", "服务工单")); // i18n-ignore 编码规则目录名称，输出处翻译
+        return DocNoCatalog.of("crm.label.crm",
+                doc("XL", "crm.label.lead"),
+                doc("SJ", "crm.label.opportunity"),
+                doc("XSHT", "crm.label.salesContract"),
+                doc("FW", "crm.label.serviceTicket"));
     }
 }

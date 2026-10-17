@@ -67,7 +67,7 @@ public class FeishuClient implements ImClient {
                 Map.of("Authorization", "Bearer " + t.path("access_token").asString()))).path("data");
         String userId = ImHttp.text(u, "user_id");
         if (userId == null) {
-            throw new BizException("飞书未返回 user_id：请在应用中开通「获取用户 user ID」权限，且只有企业成员可以登录");
+            throw new BizException("system.error.feishuReturnedNoUserIdGrant");
         }
         return new ImIdentity(userId, ImHttp.text(u, "name"));
     }

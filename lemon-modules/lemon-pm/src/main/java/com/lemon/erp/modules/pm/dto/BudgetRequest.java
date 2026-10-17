@@ -12,10 +12,10 @@ import java.util.List;
 /**
  * 编制项目成本预算：按成本类型，合计为项目成本预算
  */
-public record BudgetRequest(@NotNull(message = "请填写预算") List<@Valid @NotNull Item> items) {
+public record BudgetRequest(@NotNull(message = "{pm.valid.enterBudget}") List<@Valid @NotNull Item> items) {
 
-    public record Item(@NotBlank(message = "请选择成本类型") String costType,
-                       @NotNull(message = "请填写预算金额") @DecimalMin(value = "0", message = "预算不能小于0")
-                       @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal amount) {
+    public record Item(@NotBlank(message = "{pm.valid.selectCostType}") String costType,
+                       @NotNull(message = "{pm.valid.enterBudgetAmount}") @DecimalMin(value = "0", message = "{pm.valid.budgetCannotNegative}")
+                       @Digits(integer = 16, fraction = 2, message = "{pm.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount) {
     }
 }

@@ -11,11 +11,11 @@ import java.util.List;
 /**
  * 销售订单预留库存
  */
-public record ReserveRequest(@NotEmpty(message = "请填写预留明细") List<@Valid @NotNull Line> lines) {
+public record ReserveRequest(@NotEmpty(message = "{scm.valid.enterReservationLines}") List<@Valid @NotNull Line> lines) {
 
     public record Line(
-            @NotNull(message = "请选择订单明细") Long orderItemId,
-            @NotNull(message = "请选择仓库") Long warehouseId,
-            @NotNull(message = "请填写预留数量") @DecimalMin(value = "0", inclusive = false, message = "预留数量必须大于0") BigDecimal qty) {
+            @NotNull(message = "{scm.valid.selectOrderLine}") Long orderItemId,
+            @NotNull(message = "{scm.valid.selectWarehouse}") Long warehouseId,
+            @NotNull(message = "{scm.valid.enterReservedQuantity}") @DecimalMin(value = "0", inclusive = false, message = "{scm.valid.reservedQuantityMustGreater}") BigDecimal qty) {
     }
 }

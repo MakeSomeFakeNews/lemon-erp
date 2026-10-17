@@ -1,6 +1,6 @@
 package com.lemon.erp.modules.pm.service;
 
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -57,7 +57,7 @@ public class PmTimesheetService {
 
     public List<PmTimesheet> mine(LocalDate beginDate, LocalDate endDate) {
         if (endDate.isBefore(beginDate) || endDate.isAfter(beginDate.plusDays(62))) {
-            throw new BizException("日期范围不正确（最多 62 天）");
+            throw new BizException("pm.error.invalidDateRangeUpDays");
         }
         return timesheetMapper.selectMine(SecurityUtils.getUserId(), beginDate, endDate);
     }
@@ -67,35 +67,35 @@ public class PmTimesheetService {
         Long userId = SecurityUtils.getUserId();
         projectService.getOpen(req.projectId());
         if (memberService.find(req.projectId(), userId) == null) {
-            throw new BizException("你不是该项目的成员，不能填报工时");
+            throw new BizException("pm.error.notMemberProjectCannotSubmitTimesheets");
         }
         if (req.workDate().isAfter(LocalDate.now())) {
-            throw new BizException("不能填报未来日期的工时");
+            throw new BizException("pm.error.timesheetsCannotSubmittedFutureDates");
         }
         if (req.taskId() != null) {
             PmTask task = taskService.get(req.taskId());
             if (!task.getProjectId().equals(req.projectId())) {
-                throw new BizException("任务不属于该项目");
+                throw new BizException("pm.error.taskDoesNotBelongProject");
             }
         }
         BigDecimal day = timesheetMapper.sumDay(userId, req.workDate(), id).add(req.hours());
         if (day.compareTo(BigDecimal.valueOf(24)) > 0) {
-            throw new BizException("{0} 的工时合计不能超过 24 小时", req.workDate());
+            throw new BizException("pm.error.totalHoursCannotExceed", req.workDate());
         }
         // 考勤校验：全天请假不能填报；超出当天出勤（含加班）时提示
         String warning = null;
         DayWork work = attendanceService.dayWork(userId, req.workDate());
         if (work != null) {
             if (work.leaveHours().compareTo(HrConstants.DAY_HOURS) >= 0) {
-                throw new BizException("{0} 全天请假，不能填报工时", req.workDate());
+                throw new BizException("pm.error.fullDayLeaveTimesheetsCannotSubmitted", req.workDate());
             }
             if (work.attendedHours() != null) {
                 BigDecimal limit = work.attendedHours().add(work.overtimeHours());
                 if (day.compareTo(limit) > 0) {
-                    warning = I18n.t("{0} 出勤 {1} 小时（含加班），已填报 {2} 小时，超出出勤", req.workDate(), plain(limit), plain(day));
+                    warning = Messages.get("pm.text.attendedHoursInclOvertimeHoursReported", req.workDate(), plain(limit), plain(day));
                 }
             } else if (work.leaveHours().signum() > 0 && day.add(work.leaveHours()).compareTo(HrConstants.DAY_HOURS) > 0) {
-                warning = I18n.t("{0} 请假 {1} 小时，工时与请假合计超过 8 小时", req.workDate(), plain(work.leaveHours()));
+                warning = Messages.get("pm.text.hoursLeaveTimesheetPlusLeaveExceeds", req.workDate(), plain(work.leaveHours()));
             }
         }
         PmTimesheet ts = new PmTimesheet();
@@ -145,7 +145,7 @@ public class PmTimesheetService {
         Long me = SecurityUtils.getUserId();
         boolean approved = Boolean.TRUE.equals(req.approved());
         if (!approved && !StringUtils.hasText(req.reason())) {
-            throw new BizException("请填写驳回原因");
+            throw new BizException("pm.error.enterRejectionReason");
         }
         Set<Long> tasks = new HashSet<>();
         int count = 0;
@@ -154,14 +154,14 @@ public class PmTimesheetService {
                 continue;
             }
             if (Objects.equals(ts.getUserId(), me)) {
-                throw new BizException("不能审批自己的工时");
+                throw new BizException("pm.error.cannotApproveOwnTimesheets");
             }
             PmProject project = projectService.get(ts.getProjectId());
             if (!Objects.equals(project.getManagerId(), me) && !SecurityUtils.getDataScope().all()) {
-                throw new BizException("只有项目经理可以审批项目「{0}」的工时", project.getName());
+                throw new BizException("pm.error.onlyProjectManagerApproveTimesheetsProject", project.getName());
             }
             if ("CLOSED".equals(project.getStatus())) {
-                throw new BizException("项目「{0}」已关闭，不能再审批工时", project.getName());
+                throw new BizException("pm.error.projectClosedTimesheetsNoLongerApproved", project.getName());
             }
             BigDecimal rate = null;
             BigDecimal cost = BigDecimal.ZERO;
@@ -190,10 +190,10 @@ public class PmTimesheetService {
     private PmTimesheet getEditable(Long id) {
         PmTimesheet ts = timesheetMapper.selectById(id);
         if (ts == null || !Objects.equals(ts.getUserId(), SecurityUtils.getUserId())) {
-            throw new BizException("工时不存在");
+            throw new BizException("pm.error.timesheetNotFound");
         }
         if ("APPROVED".equals(ts.getStatus())) {
-            throw new BizException("已审批通过的工时不能修改、删除");
+            throw new BizException("pm.error.approvedTimesheetsCannotModifiedDeleted");
         }
         return ts;
     }

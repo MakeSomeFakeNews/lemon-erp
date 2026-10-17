@@ -7,7 +7,7 @@ package com.lemon.erp.framework.ref;
 public interface ReferenceChecker {
 
     /**
-     * @return 引用它的单据名称（如「BOM」「采购订单」），没有引用返回 null
+     * @return 引用它的单据名称的消息键（如「BOM」「采购订单」，由实现的模块登记，{@link ReferenceGuard} 取消息），没有引用返回 null
      */
     String findReference(RefType type, Long id);
 }

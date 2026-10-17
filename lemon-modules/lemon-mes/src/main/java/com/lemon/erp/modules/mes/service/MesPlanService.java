@@ -103,7 +103,7 @@ public class MesPlanService {
     public void close(Long id) {
         MesPlan plan = getAccessible(id);
         if (PlanStatus.CLOSED.name().equals(plan.getStatus())) {
-            throw new BizException("计划已关闭");
+            throw new BizException("mes.error.planClosed");
         }
         planMapper.update(Wrappers.<MesPlan>lambdaUpdate().set(MesPlan::getStatus, PlanStatus.CLOSED.name()).eq(MesPlan::getId, id));
     }
@@ -118,7 +118,7 @@ public class MesPlanService {
     public int fromSalesOrder(Long orderId) {
         ScmOrder order = orderService.detail(OrderKind.SALES, orderId);
         if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
-            throw new BizException("只能由已审核、部分出库的销售订单生成计划");
+            throw new BizException("mes.error.plansOnlyGeneratedApprovedPartiallyDelivered");
         }
         List<Long> materialIds = order.getItems().stream().map(ScmOrderItem::getMaterialId).toList();
         Map<Long, MesBom> boms = bomService.defaultBoms(materialIds);
@@ -151,7 +151,7 @@ public class MesPlanService {
             count++;
         }
         if (count == 0) {
-            throw new BizException("订单中没有需要计划的物料：自制、委外件都已生成计划，或订单中没有自制件");
+            throw new BizException("mes.error.noMaterialsPlanOrderSelfMade");
         }
         return count;
     }
@@ -165,15 +165,15 @@ public class MesPlanService {
     public Long toWorkOrder(Long id, PlanWorkOrderRequest req) {
         MesPlan plan = getAccessible(id);
         if (!PlanStatus.CONFIRMED.name().equals(plan.getStatus())) {
-            throw new BizException("只有已确认的计划可以转工单");
+            throw new BizException("mes.error.onlyConfirmedPlansConvertedWorkOrders");
         }
         BigDecimal remaining = plan.getQty().subtract(planMapper.selectWoQty(id));
         BigDecimal qty = req.qty() != null ? req.qty() : remaining;
         if (qty.signum() <= 0) {
-            throw new BizException("计划数量已全部转为工单");
+            throw new BizException("mes.error.planQuantityHasFullyConvertedWork");
         }
         if (qty.compareTo(remaining) > 0) {
-            throw new BizException("工单数量超过计划未转工单数量 {0}", remaining.stripTrailingZeros().toPlainString());
+            throw new BizException("mes.error.workOrderQuantityExceedsUnconvertedPlan", remaining.stripTrailingZeros().toPlainString());
         }
         LocalDate end = req.planEnd() != null ? req.planEnd() : plan.getDueDate();
         return workOrderService.createDraft(new WorkOrderRequest(plan.getMaterialId(), req.bomId(), qty, req.planStart(), end,
@@ -192,7 +192,7 @@ public class MesPlanService {
         }
         if ("DRAFT".equals(e.status())) {
             if (planMapper.exists(Wrappers.<MesPlan>lambdaQuery().eq(MesPlan::getSalesOrderId, e.orderId()))) {
-                throw new BizException("销售订单 {0} 已生成生产计划，请先删除或关闭计划再反审核", e.orderNo());
+                throw new BizException("mes.error.salesOrderHasProductionPlansDelete", e.orderNo());
             }
         } else if ("CLOSED".equals(e.status())) {
             planMapper.update(Wrappers.<MesPlan>lambdaUpdate().set(MesPlan::getStatus, PlanStatus.CLOSED.name())
@@ -209,7 +209,7 @@ public class MesPlanService {
         Supplier<MesPlan> loader = () -> planMapper.selectById(id);
         MesPlan plan = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(PLAN_RULE, loader);
         if (plan == null) {
-            throw new BizException("生产计划不存在或没有权限");
+            throw new BizException("mes.error.productionPlanDoesNotExistAccess");
         }
         return plan;
     }
@@ -219,7 +219,7 @@ public class MesPlanService {
     private MesPlan getDraft(Long id) {
         MesPlan plan = getAccessible(id);
         if (!PlanStatus.DRAFT.name().equals(plan.getStatus())) {
-            throw new BizException("计划 {0} 已确认，不能修改或删除", plan.getPlanNo());
+            throw new BizException("mes.error.planConfirmedCannotModifiedDeleted", plan.getPlanNo());
         }
         return plan;
     }
@@ -228,7 +228,7 @@ public class MesPlanService {
     private void checkProduct(Long materialId) {
         WmsMaterial product = materialService.getEnabled(List.of(materialId)).get(materialId);
         if (!bomService.defaultBoms(List.of(materialId)).containsKey(materialId)) {
-            throw new BizException("产品「{0} {1}」没有默认 BOM，不能排生产计划", product.getCode(), product.getName());
+            throw new BizException("mes.error.productHasNoDefaultBomCannot", product.getCode(), product.getName());
         }
     }
 

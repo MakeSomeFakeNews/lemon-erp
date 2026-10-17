@@ -96,7 +96,7 @@ public class HrPayrollService {
     public HrPayroll detail(Long id, String keyword) {
         HrPayroll p = payrollMapper.selectDetail(id);
         if (p == null) {
-            throw new BizException("工资表不存在");
+            throw new BizException("hr.error.payrollDoesNotExist");
         }
         p.setItems(itemMapper.selectByPayroll(id, keyword));
         return p;
@@ -111,11 +111,11 @@ public class HrPayrollService {
     public Long generate(int period) {
         YearMonth ym = HrAttendanceService.toYearMonth(period);
         if (ym.isAfter(YearMonth.now())) {
-            throw new BizException("不能生成未来月份的工资表");
+            throw new BizException("hr.error.cannotGeneratePayrollFutureMonth");
         }
         HrPayroll p = payrollMapper.selectOne(Wrappers.<HrPayroll>lambdaQuery().eq(HrPayroll::getPeriod, period));
         if (p != null && !"DRAFT".equals(p.getStatus())) {
-            throw new BizException("{0} 的工资表已确认，不能重新生成", period);
+            throw new BizException("hr.error.payrollHasConfirmedCannotRegenerated", period);
         }
         if (p == null) {
             p = new HrPayroll();
@@ -133,7 +133,7 @@ public class HrPayrollService {
                 YearMonth.of(period / 100, period % 100).atEndOfMonth());
         List<HrEmployee> payable = employees.stream().filter(e -> salaries.containsKey(e.getId())).toList();
         if (payable.isEmpty()) {
-            throw new BizException("本月没有建立薪资档案的在职员工，请先在「薪资档案」中维护");
+            throw new BizException("hr.error.noActiveEmployeesHaveSalaryProfiles");
         }
         Map<Long, String> grades = appraisalMapper.selectPayGrades(period).stream()
                 .collect(Collectors.toMap(HrPerfAppraisal::getEmployeeId, HrPerfAppraisal::getGrade, (a, b) -> b));
@@ -181,7 +181,7 @@ public class HrPayrollService {
     public void adjust(Long itemId, PayrollAdjustRequest req) {
         HrPayrollItem item = itemMapper.selectById(itemId);
         if (item == null) {
-            throw new BizException("工资明细不存在");
+            throw new BizException("hr.error.payrollLineDoesNotExist");
         }
         getWithStatus(item.getPayrollId(), "DRAFT");
         BigDecimal bonus = req.otherBonus() == null ? BigDecimal.ZERO : req.otherBonus();
@@ -216,7 +216,7 @@ public class HrPayrollService {
     public boolean confirm(Long id) {
         HrPayroll p = getWithStatus(id, "DRAFT");
         if (p.getHeadcount() == 0) {
-            throw new BizException("工资表没有明细");
+            throw new BizException("hr.error.payrollHasNoLines");
         }
         if (!flowApi.isAvailable(PROCESS_KEY)) {
             doConfirm(p, "DRAFT", SecurityUtils.getUserId());
@@ -225,7 +225,7 @@ public class HrPayrollService {
         int updated = payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
                 .set(HrPayroll::getStatus, "APPROVING").eq(HrPayroll::getId, id).eq(HrPayroll::getStatus, "DRAFT"));
         if (updated == 0) {
-            throw new BizException("工资表状态已变化，请刷新");
+            throw new BizException("hr.error.payrollStatusHasChangedRefresh");
         }
         String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of(
                 "period", p.getPeriod(),
@@ -261,7 +261,7 @@ public class HrPayrollService {
                 .eq(HrPayroll::getId, p.getId())
                 .eq(HrPayroll::getStatus, fromStatus));
         if (updated == 0) {
-            throw new BizException("工资表状态已变化，请刷新");
+            throw new BizException("hr.error.payrollStatusHasChangedRefresh");
         }
         createAccrual(p);
     }
@@ -271,10 +271,10 @@ public class HrPayrollService {
     public void regenerateAccrual(Long id) {
         HrPayroll p = payrollMapper.selectById(id);
         if (p == null || "DRAFT".equals(p.getStatus())) {
-            throw new BizException("工资表确认后才能生成计提凭证");
+            throw new BizException("hr.error.accrualVoucherOnlyGeneratedAfterPayroll");
         }
         if (p.getAccrueVoucherId() != null) {
-            throw new BizException("计提凭证已生成");
+            throw new BizException("hr.error.accrualVoucherAlreadyGenerated");
         }
         createAccrual(p);
     }
@@ -316,7 +316,7 @@ public class HrPayrollService {
     public void pay(Long id, PayrollPayRequest req) {
         HrPayroll p = getWithStatus(id, "CONFIRMED");
         if (req.payDate().isBefore(FinConstants.firstDay(p.getPeriod()))) {
-            throw new BizException("发放日期不能早于工资月份");
+            throw new BizException("hr.error.paymentDateCannotEarlierPayrollMonth");
         }
         Long bank = accountService.requireCashAccount(req.accountId()).getId();
         String summary = "发放 " + p.getPeriod() / 100 + " 年 " + p.getPeriod() % 100 + " 月工资";  // i18n-ignore 凭证摘要存库
@@ -336,7 +336,7 @@ public class HrPayrollService {
                 .eq(HrPayroll::getId, id)
                 .eq(HrPayroll::getStatus, "CONFIRMED"));
         if (updated == 0) {
-            throw new BizException("工资表状态已变化，请刷新");
+            throw new BizException("hr.error.payrollStatusHasChangedRefresh");
         }
     }
 
@@ -452,13 +452,13 @@ public class HrPayrollService {
     private HrPayroll getWithStatus(Long id, String status) {
         HrPayroll p = payrollMapper.selectById(id);
         if (p == null) {
-            throw new BizException("工资表不存在");
+            throw new BizException("hr.error.payrollDoesNotExist");
         }
         if (!status.equals(p.getStatus())) {
             throw new BizException(switch (status) {
-                case "DRAFT" -> "只能调整、确认、删除草稿状态的工资表";
-                case "CONFIRMED" -> "工资表不是已确认状态";
-                default -> "工资表状态不正确";
+                case "DRAFT" -> "hr.error.onlyDraftPayrollsAdjustedConfirmedDeleted";
+                case "CONFIRMED" -> "hr.error.payrollNotConfirmed";
+                default -> "hr.error.invalidPayrollStatus";
             });
         }
         return p;

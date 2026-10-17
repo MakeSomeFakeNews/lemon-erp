@@ -9,5 +9,5 @@ import java.util.List;
  *
  * @param warehouseId 工单的完工入库仓库、采购订单的收货仓库，选填
  */
-public record MrpReleaseRequest(@NotEmpty(message = "请选择要下达的建议") List<Long> resultIds, Long warehouseId) {
+public record MrpReleaseRequest(@NotEmpty(message = "{mes.valid.selectSuggestionsRelease}") List<Long> resultIds, Long warehouseId) {
 }

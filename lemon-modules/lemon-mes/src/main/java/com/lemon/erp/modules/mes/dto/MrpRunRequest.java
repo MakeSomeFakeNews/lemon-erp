@@ -14,8 +14,8 @@ import java.util.List;
  * @param forecastMonths 计入从本月起几个月的销售预测（扣减同月销售订单），为空或 0 不计入
  */
 public record MrpRunRequest(
-        @Size(max = 200, message = "一次最多200个计划") List<Long> planIds,
+        @Size(max = 200, message = "{mes.valid.mostPlansTime}") List<Long> planIds,
         Boolean includeSales,
-        @Min(value = 0, message = "预测月数不能小于0") @Max(value = 12, message = "预测月数不能超过12") Integer forecastMonths,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+        @Min(value = 0, message = "{mes.valid.forecastMonthsCannotLess}") @Max(value = 12, message = "{mes.valid.forecastMonthsCannotExceed}") Integer forecastMonths,
+        @Size(max = 255, message = "{mes.valid.remarkCannotExceedCharacters}") String remark) {
 }

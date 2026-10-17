@@ -2,7 +2,7 @@ package com.lemon.erp.modules.hr.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.hr.entity.HrPayroll;
 import com.lemon.erp.modules.hr.mapper.HrPayrollMapper;
 import lombok.RequiredArgsConstructor;
@@ -20,13 +20,14 @@ public class HrPayrollLock {
 
     private final HrPayrollMapper payrollMapper;
 
+    /** @param what 被禁止的操作（消息键） */
     public void checkOpen(LocalDate date, String what) {
         if (date == null) {
             return;
         }
         int period = date.getYear() * 100 + date.getMonthValue();
         if (payrollMapper.exists(Wrappers.<HrPayroll>lambdaQuery().eq(HrPayroll::getPeriod, period).ne(HrPayroll::getStatus, "DRAFT"))) {
-            throw new BizException("{0} 年 {1} 月的工资表已确认，不能再{2}", date.getYear(), date.getMonthValue(), I18n.t(what));
+            throw new BizException("hr.error.payrollHasConfirmedCannot", date.getYear(), date.getMonthValue(), Messages.get(what));
         }
     }
 }

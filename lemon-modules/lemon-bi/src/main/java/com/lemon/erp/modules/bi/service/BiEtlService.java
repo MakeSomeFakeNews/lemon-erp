@@ -73,7 +73,7 @@ public class BiEtlService {
     public BiEtlLog run(String trigger) {
         Long tenantId = TenantContext.require();
         if (!running.add(tenantId)) {
-            throw new BizException("数据同步正在运行，请稍后再试");
+            throw new BizException("bi.error.dataSyncRunningTryAgainLater");
         }
         BiEtlLog entry = new BiEtlLog();
         entry.setTriggerType(trigger);
@@ -98,7 +98,7 @@ public class BiEtlService {
             running.remove(tenantId);
         }
         if ("FAILED".equals(entry.getStatus())) {
-            throw new BizException("数据同步失败：{0}", entry.getMessage());
+            throw new BizException("bi.error.dataSyncFailed", entry.getMessage());
         }
         return entry;
     }

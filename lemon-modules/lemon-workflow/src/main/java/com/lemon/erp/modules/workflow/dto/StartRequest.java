@@ -10,5 +10,5 @@ import java.util.Map;
  * @param modelKey 流程标识
  * @param formData 表单数据，键为表单字段标识
  */
-public record StartRequest(@NotBlank(message = "流程标识不能为空") String modelKey, Map<String, Object> formData) {
+public record StartRequest(@NotBlank(message = "{workflow.valid.processKeyRequired}") String modelKey, Map<String, Object> formData) {
 }

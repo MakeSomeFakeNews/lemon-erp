@@ -76,7 +76,7 @@ public class ScmShipmentService {
         // 按出库单的数据权限读取
         ScmTradeDoc doc = tradeDocService.detail(TradeKind.SALES_OUT, req.tradeDocId());
         if (shipmentMapper.exists(Wrappers.<ScmShipment>lambdaQuery().eq(ScmShipment::getTradeDocId, doc.getId()))) {
-            throw new BizException("出库单 {0} 已创建发运单", doc.getDocNo());
+            throw new BizException("scm.error.salesDeliveryAlreadyHasShipment", doc.getDocNo());
         }
         LoginUser user = SecurityUtils.getLoginUser();
         ScmShipment shipment = new ScmShipment();
@@ -96,13 +96,13 @@ public class ScmShipmentService {
     public void update(Long id, ShipmentRequest req) {
         ScmShipment old = getAccessible(id);
         if (SIGNED.name().equals(old.getStatus())) {
-            throw new BizException("发运单已签收，不能修改");
+            throw new BizException("scm.error.shipmentHasSignedCannotModified");
         }
         ScmShipment shipment = new ScmShipment();
         fill(shipment, req);
         if (old.getFreightBillId() != null && (!Objects.equals(old.getCarrierSupplierId(), shipment.getCarrierSupplierId())
                 || compare(old.getFreight(), shipment.getFreight()) != 0)) {
-            throw new BizException("已生成运费应付单，不能修改运费和承运商");
+            throw new BizException("scm.error.freightPayableHasGeneratedFreightCarrier");
         }
         shipmentMapper.update(Wrappers.<ScmShipment>lambdaUpdate()
                 .set(ScmShipment::getCarrier, shipment.getCarrier())
@@ -123,7 +123,7 @@ public class ScmShipmentService {
         ScmShipment shipment = getAccessible(id);
         String trackingNo = StringUtils.hasText(req.trackingNo()) ? req.trackingNo().trim() : shipment.getTrackingNo();
         if (!StringUtils.hasText(trackingNo)) {
-            throw new BizException("请填写运单号");
+            throw new BizException("scm.error.enterTrackingNo");
         }
         LocalDate date = req.date() == null ? LocalDate.now() : req.date();
         transit(shipment, Set.of(PENDING, EXCEPTION), SHIPPED, Wrappers.<ScmShipment>lambdaUpdate()
@@ -143,10 +143,10 @@ public class ScmShipmentService {
     public void track(Long id, ShipmentActionRequest req) {
         ScmShipment shipment = getAccessible(id);
         if (!StringUtils.hasText(req.content())) {
-            throw new BizException("请填写物流动态");
+            throw new BizException("scm.error.enterTrackingUpdate");
         }
         if (!SHIPPED.name().equals(shipment.getStatus()) && !EXCEPTION.name().equals(shipment.getStatus())) {
-            throw new BizException("只能为运输中、异常的发运单添加物流动态");
+            throw new BizException("scm.error.trackingUpdatesOnlyAddedShipmentsTransit");
         }
         addTrack(id, ShipmentStatus.valueOf(shipment.getStatus()), req.content().trim());
     }
@@ -156,7 +156,7 @@ public class ScmShipmentService {
     public void exception(Long id, ShipmentActionRequest req) {
         ScmShipment shipment = getAccessible(id);
         if (!StringUtils.hasText(req.content())) {
-            throw new BizException("请填写异常说明");
+            throw new BizException("scm.error.enterExceptionDescription");
         }
         transit(shipment, Set.of(SHIPPED), EXCEPTION, Wrappers.<ScmShipment>lambdaUpdate());
         addTrack(id, EXCEPTION, req.content().trim());
@@ -176,7 +176,7 @@ public class ScmShipmentService {
     public void delete(List<Long> ids) {
         for (Long id : ids) {
             if (!PENDING.name().equals(getAccessible(id).getStatus())) {
-                throw new BizException("只能删除待发运的发运单");
+                throw new BizException("scm.error.onlyShipmentsPendingDispatchDeleted");
             }
         }
         trackMapper.delete(Wrappers.<ScmShipmentTrack>lambdaQuery().in(ScmShipmentTrack::getShipmentId, ids));
@@ -187,7 +187,7 @@ public class ScmShipmentService {
         Supplier<ScmShipment> loader = () -> shipmentMapper.selectById(id);
         ScmShipment shipment = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(SHIPMENT_RULE, loader);
         if (shipment == null) {
-            throw new BizException("发运单不存在或没有权限");
+            throw new BizException("scm.error.shipmentDoesNotExistAccessDenied");
         }
         return shipment;
     }
@@ -195,7 +195,7 @@ public class ScmShipmentService {
     private void transit(ScmShipment shipment, Set<ShipmentStatus> from, ShipmentStatus to,
                          LambdaUpdateWrapper<ScmShipment> update) {
         if (from.stream().noneMatch(s -> s.name().equals(shipment.getStatus()))) {
-            throw new BizException("发运单当前状态不能执行该操作");
+            throw new BizException("scm.error.operationNotAllowedShipmentSCurrent");
         }
         int updated = shipmentMapper.update(update
                 .set(ScmShipment::getStatus, to.name())
@@ -203,7 +203,7 @@ public class ScmShipmentService {
                 .eq(ScmShipment::getId, shipment.getId())
                 .eq(ScmShipment::getStatus, shipment.getStatus()));
         if (updated == 0) {
-            throw new BizException("发运单状态已变化，请刷新");
+            throw new BizException("scm.error.shipmentStatusHasChangedRefresh");
         }
     }
 

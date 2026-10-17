@@ -41,7 +41,7 @@ public class MesPlanController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('mes:plan:add')")
-    @OperLog(title = "生产计划", type = OperType.INSERT)
+    @OperLog(title = "生产计划", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody PlanRequest req) {
         return R.ok(planService.create(req));
     }
@@ -56,7 +56,7 @@ public class MesPlanController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('mes:plan:edit')")
-    @OperLog(title = "生产计划", type = OperType.UPDATE)
+    @OperLog(title = "生产计划", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody PlanRequest req) {
         planService.update(id, req);
         return R.ok();
@@ -88,7 +88,7 @@ public class MesPlanController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('mes:plan:remove')")
-    @OperLog(title = "生产计划", type = OperType.DELETE)
+    @OperLog(title = "生产计划", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         planService.delete(ids);
         return R.ok();

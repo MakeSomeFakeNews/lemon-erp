@@ -13,14 +13,15 @@ import java.util.Locale;
 @AllArgsConstructor
 public enum StockBizType {
 
-    IN("RK", "入库单"),
-    OUT("CK", "出库单"),
-    TRANSFER("DB", "调拨单"),
-    CHECK("PD", "盘点单");
+    IN("RK", "wms.label.inboundOrder"),
+    OUT("CK", "wms.label.outboundOrder"),
+    TRANSFER("DB", "wms.label.transferOrder"),
+    CHECK("PD", "wms.label.stockCountOrder");
 
     /** 单据号前缀 */
     private final String prefix;
-    private final String label;
+    /** 名称的消息键 */
+    private final String labelKey;
 
     /** 接口路径与权限标识中使用的名称：in / out / transfer / check */
     public String path() {
@@ -34,6 +35,6 @@ public enum StockBizType {
                 return type;
             }
         }
-        throw new BizException("不支持的单据类型：{0}", path);
+        throw new BizException("wms.error.unsupportedDocumentType", path);
     }
 }

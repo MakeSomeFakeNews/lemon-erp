@@ -21,20 +21,20 @@ import java.math.BigDecimal;
 @TableName("scm_price_control")
 public class ScmPriceControl extends BaseEntity {
 
-    @NotNull(message = "请选择物料")
+    @NotNull(message = "{scm.valid.selectMaterial}")
     private Long materialId;
 
-    @DecimalMin(value = "0", message = "最低销售价不能小于0")
-    @Digits(integer = 14, fraction = 4, message = "单价最多4位小数")
+    @DecimalMin(value = "0", message = "{scm.valid.minimumSalesPriceCannotLess}")
+    @Digits(integer = 14, fraction = 4, message = "{scm.valid.unitPriceAllowsMostDecimalPlaces}")
     private BigDecimal minSalePrice;
 
-    @DecimalMin(value = "0", message = "最高采购价不能小于0")
-    @Digits(integer = 14, fraction = 4, message = "单价最多4位小数")
+    @DecimalMin(value = "0", message = "{scm.valid.maximumPurchasePriceCannotLess}")
+    @Digits(integer = 14, fraction = 4, message = "{scm.valid.unitPriceAllowsMostDecimalPlaces}")
     private BigDecimal maxPurchasePrice;
 
     private PriceControlMode controlMode;
 
-    @Size(max = 255, message = "备注不能超过255个字符")
+    @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}")
     private String remark;
 
     @TableField(exist = false)

@@ -71,7 +71,7 @@ public class HrAttendanceService {
     public HrAttendance clock() {
         HrEmployee e = employeeService.current();
         if (HrEmployeeService.LEFT.equals(e.getStatus())) {
-            throw new BizException("已离职员工不能打卡");
+            throw new BizException("hr.error.employeesWhoHaveLeftCannotClock");
         }
         LocalDateTime now = LocalDateTime.now().withNano(0);
         LocalDate today = now.toLocalDate();
@@ -102,20 +102,20 @@ public class HrAttendanceService {
     public void manual(AttendanceRequest req) {
         HrEmployee e = employeeService.get(req.employeeId());
         if (req.checkIn() == null && req.checkOut() == null) {
-            throw new BizException("请至少填写上班或下班时间");
+            throw new BizException("hr.error.enterLeastClockClockOutTime");
         }
         for (LocalDateTime t : new LocalDateTime[]{req.checkIn(), req.checkOut()}) {
             if (t != null && !t.toLocalDate().equals(req.workDate())) {
-                throw new BizException("打卡时间必须在 {0} 当天", req.workDate());
+                throw new BizException("hr.error.clockTimesMust", req.workDate());
             }
         }
         if (req.checkIn() != null && req.checkOut() != null && !req.checkOut().isAfter(req.checkIn())) {
-            throw new BizException("下班时间必须晚于上班时间");
+            throw new BizException("hr.error.clockOutTimeMustLaterClock");
         }
         if (req.workDate().isBefore(e.getEntryDate()) || req.workDate().isAfter(LocalDate.now())) {
-            throw new BizException("只能补录入职以后、今天及以前的考勤");
+            throw new BizException("hr.error.attendanceOnlyRecordedDatesAfterHiring");
         }
-        payrollLock.checkOpen(req.workDate(), "补录考勤");
+        payrollLock.checkOpen(req.workDate(), "hr.label.addAttendanceRecords");
         HrAttendance a = find(e.getId(), req.workDate());
         boolean insert = a == null;
         if (insert) {
@@ -137,7 +137,7 @@ public class HrAttendanceService {
 
     @Transactional
     public void delete(List<Long> ids) {
-        attendanceMapper.selectByIds(ids).forEach(a -> payrollLock.checkOpen(a.getWorkDate(), "删除考勤"));
+        attendanceMapper.selectByIds(ids).forEach(a -> payrollLock.checkOpen(a.getWorkDate(), "hr.label.deleteAttendanceRecords"));
         attendanceMapper.deleteByIds(ids);
     }
 
@@ -348,7 +348,7 @@ public class HrAttendanceService {
     static YearMonth toYearMonth(int period) {
         int month = period % 100;
         if (month < 1 || month > 12 || period < 190001 || period > 299912) {
-            throw new BizException("月份格式不正确：{0}", period);
+            throw new BizException("hr.error.invalidMonthFormat", period);
         }
         return YearMonth.of(period / 100, month);
     }

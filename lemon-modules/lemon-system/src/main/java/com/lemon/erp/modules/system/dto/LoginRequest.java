@@ -8,8 +8,8 @@ import jakarta.validation.constraints.NotBlank;
  * @param captchaCode 验证码
  */
 public record LoginRequest(
-        @NotBlank(message = "用户名不能为空") String username,
-        @NotBlank(message = "密码不能为空") String password,
+        @NotBlank(message = "{system.valid.usernameRequired}") String username,
+        @NotBlank(message = "{system.valid.passwordRequired}") String password,
         String tenantName,
         String captchaId,
         String captchaCode) {

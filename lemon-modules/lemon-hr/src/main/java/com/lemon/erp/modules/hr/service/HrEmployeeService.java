@@ -100,7 +100,7 @@ public class HrEmployeeService {
     public HrEmployee detail(Long id) {
         HrEmployee e = employeeMapper.selectDetail(id);
         if (e == null) {
-            throw new BizException("员工不存在");
+            throw new BizException("hr.error.employeeDoesNotExist");
         }
         if (!permissionService.hasPerm("hr:employee:edit") && !Objects.equals(e.getUserId(), SecurityUtils.getUserId())) {
             e.setIdCard(mask(e.getIdCard()));
@@ -111,7 +111,7 @@ public class HrEmployeeService {
     public HrEmployee get(Long id) {
         HrEmployee e = id == null ? null : employeeMapper.selectById(id);
         if (e == null) {
-            throw new BizException("员工不存在");
+            throw new BizException("hr.error.employeeDoesNotExist");
         }
         return e;
     }
@@ -135,7 +135,7 @@ public class HrEmployeeService {
     public HrEmployee current() {
         HrEmployee e = employeeMapper.selectOne(Wrappers.<HrEmployee>lambdaQuery().eq(HrEmployee::getUserId, SecurityUtils.getUserId()));
         if (e == null) {
-            throw new BizException("当前账号没有关联员工档案，请联系人事在「员工档案」中关联登录账号");
+            throw new BizException("hr.error.accountNotLinkedEmployeeProfileAsk");
         }
         return e;
     }
@@ -157,7 +157,7 @@ public class HrEmployeeService {
         e.setRegularDate(req.regularDate() != null ? req.regularDate()
                 : PROBATION.equals(e.getStatus()) ? req.entryDate().plusMonths(HrConstants.PROBATION_MONTHS) : req.entryDate());
         employeeMapper.insert(e);
-        HrEmployeeChange c = newChange(e.getId(), "ENTRY", req.entryDate(), "入职");
+        HrEmployeeChange c = newChange(e.getId(), "ENTRY", req.entryDate(), "入职");  // i18n-ignore 异动原因存库
         c.setToDeptId(e.getDeptId());
         c.setToPositionId(e.getPositionId());
         changeMapper.insert(c);
@@ -204,11 +204,11 @@ public class HrEmployeeService {
     public boolean change(Long id, EmployeeChangeRequest req) {
         HrEmployee e = get(id);
         if (req.changeDate().isBefore(e.getEntryDate())) {
-            throw new BizException("生效日期不能早于入职日期");
+            throw new BizException("hr.error.effectiveDateCannotEarlierHireDate");
         }
         if (changeMapper.exists(Wrappers.<HrEmployeeChange>lambdaQuery()
                 .eq(HrEmployeeChange::getEmployeeId, id).eq(HrEmployeeChange::getStatus, CHANGE_APPROVING))) {
-            throw new BizException("该员工有审批中的异动，请等待审批完成或撤回后再办理");
+            throw new BizException("hr.error.employeeHasPersonnelChangeUnderApproval");
         }
         HrEmployeeChange c = newChange(id, req.type(), req.changeDate(), req.reason());
         c.setHandoverUserId(req.handoverUserId());
@@ -266,10 +266,10 @@ public class HrEmployeeService {
 
     private static void checkChangeable(HrEmployee e, String type) {
         if (LEFT.equals(e.getStatus())) {
-            throw new BizException("员工已离职");
+            throw new BizException("hr.error.employeeHasLeft");
         }
         if ("REGULAR".equals(type) && !PROBATION.equals(e.getStatus())) {
-            throw new BizException("只有试用期员工可以转正");
+            throw new BizException("hr.error.onlyProbationaryEmployeesMadePermanent");
         }
     }
 
@@ -282,10 +282,10 @@ public class HrEmployeeService {
             }
             case "TRANSFER" -> {
                 if (req.deptId() == null) {
-                    throw new BizException("请选择调入部门");
+                    throw new BizException("hr.error.selectTargetDepartment");
                 }
                 if (req.deptId().equals(e.getDeptId()) && Objects.equals(req.positionId(), e.getPositionId())) {
-                    throw new BizException("部门和职位都没有变化");
+                    throw new BizException("hr.error.neitherDepartmentNorPositionHasChanged");
                 }
                 c.setFromDeptId(e.getDeptId());
                 c.setToDeptId(req.deptId());
@@ -294,11 +294,11 @@ public class HrEmployeeService {
             }
             case "SALARY" -> {
                 if (req.salary() == null) {
-                    throw new BizException("请填写调整后的基本工资");
+                    throw new BizException("hr.error.enterNewBaseSalary");
                 }
                 HrSalary salary = salaryMapper.selectOne(Wrappers.<HrSalary>lambdaQuery().eq(HrSalary::getEmployeeId, e.getId()));
                 if (salary == null) {
-                    throw new BizException("请先在「薪资档案」中建立该员工的薪资档案");
+                    throw new BizException("hr.error.createSalaryProfileEmployeeSalaryProfiles");
                 }
                 c.setFromSalary(salary.getBaseSalary());
                 c.setToSalary(req.salary());
@@ -307,10 +307,10 @@ public class HrEmployeeService {
                 c.setFromDeptId(e.getDeptId());
                 c.setFromPositionId(e.getPositionId());
                 if (req.handoverUserId() != null && req.handoverUserId().equals(e.getUserId())) {
-                    throw new BizException("交接人不能是离职员工本人");
+                    throw new BizException("hr.error.handoverPersonCannotLeavingEmployee");
                 }
             }
-            default -> throw new BizException("异动类型不正确：{0}", req.type());
+            default -> throw new BizException("hr.error.invalidChangeType", req.type());
         }
     }
 
@@ -332,7 +332,7 @@ public class HrEmployeeService {
             case "SALARY" -> {
                 HrSalary salary = salaryMapper.selectOne(Wrappers.<HrSalary>lambdaQuery().eq(HrSalary::getEmployeeId, id));
                 if (salary == null) {
-                    throw new BizException("员工的薪资档案已删除，不能调薪");
+                    throw new BizException("hr.error.employeeSSalaryProfileHasDeleted");
                 }
                 // 按生效日期记录薪资历史（工资按月末生效的薪资计算）；已生效的同时更新薪资档案
                 salary.setBaseSalary(c.getToSalary());
@@ -351,7 +351,7 @@ public class HrEmployeeService {
                 // 停用登录账号，客户、商机、项目、审批待办移交给交接人
                 eventPublisher.publishEvent(new EmployeeLeftEvent(id, e.getUserId(), c.getHandoverUserId(), c.getChangeDate()));
             }
-            default -> throw new BizException("异动类型不正确：{0}", c.getType());
+            default -> throw new BizException("hr.error.invalidChangeType", c.getType());
         }
     }
 
@@ -372,7 +372,7 @@ public class HrEmployeeService {
                     || leaveMapper.exists(Wrappers.<HrLeave>lambdaQuery().eq(HrLeave::getEmployeeId, e.getId()))
                     || payrollItemMapper.exists(Wrappers.<HrPayrollItem>lambdaQuery().eq(HrPayrollItem::getEmployeeId, e.getId()));
             if (used) {
-                throw new BizException("员工「{0}」已有考勤或工资记录，不能删除，可以办理离职", e.getName());
+                throw new BizException("hr.error.employeeHasAttendancePayrollRecordsCannot", e.getName());
             }
         }
         changeMapper.delete(Wrappers.<HrEmployeeChange>lambdaQuery().in(HrEmployeeChange::getEmployeeId, ids));
@@ -385,19 +385,19 @@ public class HrEmployeeService {
     private void fill(HrEmployee e, EmployeeRequest req, Long selfId) {
         HrEmployee exist = employeeMapper.selectOne(Wrappers.<HrEmployee>lambdaQuery().eq(HrEmployee::getEmpNo, req.empNo()));
         if (exist != null && !Objects.equals(exist.getId(), selfId)) {
-            throw new BizException("工号已存在");
+            throw new BizException("hr.error.employeeNoAlreadyExists");
         }
         if (req.userId() != null) {
             HrEmployee linked = employeeMapper.selectOne(Wrappers.<HrEmployee>lambdaQuery().eq(HrEmployee::getUserId, req.userId()));
             if (linked != null && !Objects.equals(linked.getId(), selfId)) {
-                throw new BizException("该登录账号已关联员工「{0}」", linked.getName());
+                throw new BizException("hr.error.loginAccountAlreadyLinkedEmployee", linked.getName());
             }
         }
         if (req.empType() != null && !EMP_TYPES.contains(req.empType())) {
-            throw new BizException("用工类型不正确");
+            throw new BizException("hr.error.invalidEmploymentType");
         }
         if (req.workStartDate() != null && req.workStartDate().isAfter(req.entryDate())) {
-            throw new BizException("参加工作日期不能晚于入职日期");
+            throw new BizException("hr.error.careerStartDateCannotLaterHire");
         }
         e.setWorkStartDate(req.workStartDate());
         e.setEmpNo(req.empNo());

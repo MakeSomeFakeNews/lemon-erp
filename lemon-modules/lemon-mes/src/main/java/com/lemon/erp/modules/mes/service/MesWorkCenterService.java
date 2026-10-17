@@ -37,7 +37,7 @@ public class MesWorkCenterService {
     public MesWorkCenter get(Long id) {
         MesWorkCenter wc = id == null ? null : workCenterMapper.selectById(id);
         if (wc == null) {
-            throw new BizException("工作中心不存在");
+            throw new BizException("mes.error.workCenterDoesNotExist");
         }
         return wc;
     }
@@ -78,7 +78,7 @@ public class MesWorkCenterService {
         for (MesWorkCenter wc : workCenterMapper.selectByIds(ids)) {
             if (bomOpMapper.exists(Wrappers.<MesBomOp>lambdaQuery().eq(MesBomOp::getWorkCenterId, wc.getId()))
                     || equipmentMapper.exists(Wrappers.<MesEquipment>lambdaQuery().eq(MesEquipment::getWorkCenterId, wc.getId()))) {
-                throw new BizException("工作中心「{0}」已被工艺路线或设备使用，不能删除，可以停用", wc.getName());
+                throw new BizException("mes.error.workCenterUsedRoutingsEquipmentCannot", wc.getName());
             }
         }
         workCenterMapper.deleteByIds(ids);
@@ -87,7 +87,7 @@ public class MesWorkCenterService {
     private void checkCodeUnique(String code, Long id) {
         MesWorkCenter exist = workCenterMapper.selectOne(Wrappers.<MesWorkCenter>lambdaQuery().eq(MesWorkCenter::getCode, code));
         if (exist != null && !Objects.equals(exist.getId(), id)) {
-            throw new BizException("工作中心编码已存在");
+            throw new BizException("mes.error.workCenterCodeAlreadyExists");
         }
     }
 

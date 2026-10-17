@@ -56,7 +56,7 @@ public class FinConsumableService {
     public FinConsumableUse detail(Long id) {
         FinConsumableUse use = id == null ? null : useMapper.selectDetail(id);
         if (use == null) {
-            throw new BizException("领用单不存在");
+            throw new BizException("fin.error.requisitionNotFound");
         }
         use.setItems(useMapper.selectItems(id));
         return use;
@@ -82,7 +82,7 @@ public class FinConsumableService {
 
     @Transactional
     public void update(Long id, ConsumableRequest req) {
-        FinConsumableUse use = requireDraft(id, "领用单已出库，不能修改");
+        FinConsumableUse use = requireDraft(id, "fin.error.requisitionHasIssuedCannotModified");
         validate(req);
         apply(use, req);
         useMapper.updateById(use);
@@ -92,7 +92,7 @@ public class FinConsumableService {
 
     @Transactional
     public void delete(Long id) {
-        requireDraft(id, "领用单已出库，不能删除");
+        requireDraft(id, "fin.error.requisitionHasIssuedCannotDeleted");
         useMapper.deleteItems(id);
         useMapper.deleteById(id);
     }
@@ -100,7 +100,7 @@ public class FinConsumableService {
     /** 出库：生成并确认「部门领用」出库单 */
     @Transactional
     public void confirm(Long id) {
-        FinConsumableUse use = requireDraft(id, "领用单已出库，不能出库");
+        FinConsumableUse use = requireDraft(id, "fin.error.requisitionHasAlreadyIssued");
         List<FinConsumableUseItem> items = useMapper.selectItems(id);
         WmsStockDoc doc = stockDocService.createConfirmed(StockBizType.OUT, new StockDocRequest(OUT_TYPE, use.getWarehouseId(), null,
                 use.getUseDate(), "低值易耗品领用 " + use.getUseNo() // i18n-ignore
@@ -111,7 +111,7 @@ public class FinConsumableService {
                 .set(FinConsumableUse::getStatus, ConsumableStatus.CONFIRMED)
                 .set(FinConsumableUse::getWmsDocId, doc.getId())
                 .eq(FinConsumableUse::getId, id).eq(FinConsumableUse::getStatus, ConsumableStatus.DRAFT)) == 0) {
-            throw new BizException("领用单状态已变化，请刷新后重试");
+            throw new BizException("fin.error.requisitionStatusHasChangedRefreshTry");
         }
     }
 
@@ -120,10 +120,10 @@ public class FinConsumableService {
         Map<Long, WmsMaterial> materials = materialService.getEnabled(req.items().stream().map(ConsumableRequest.Item::materialId).toList());
         for (WmsMaterial m : materials.values()) {
             if (!FinConstants.LOW_VALUE_CATEGORY.equals(m.getCategory())) {
-                throw new BizException("物料「{0} {1}」不是低值易耗品", m.getCode(), m.getName());
+                throw new BizException("fin.error.materialNotLowValueConsumable", m.getCode(), m.getName());
             }
             if (m.isSerialManaged()) {
-                throw new BizException("物料「{0} {1}」启用了序列号管理，请按固定资产管理", m.getCode(), m.getName());
+                throw new BizException("fin.error.materialUsesSerialNumberManagementManage", m.getCode(), m.getName());
             }
         }
     }
@@ -154,7 +154,7 @@ public class FinConsumableService {
     private FinConsumableUse requireDraft(Long id, String error) {
         FinConsumableUse use = id == null ? null : useMapper.selectById(id);
         if (use == null) {
-            throw new BizException("领用单不存在");
+            throw new BizException("fin.error.requisitionNotFound");
         }
         if (use.getStatus() != ConsumableStatus.DRAFT) {
             throw new BizException(error);

@@ -12,9 +12,9 @@ import java.time.LocalDate;
  *
  */
 public record MaintenanceRequest(
-        @NotNull(message = "请选择设备") Long equipmentId,
-        @NotNull(message = "请选择类型") MaintenanceType type,
-        @NotBlank(message = "请填写故障现象或保养内容") @Size(max = 255, message = "内容不能超过255个字符") String content,
+        @NotNull(message = "{mes.valid.selectEquipment}") Long equipmentId,
+        @NotNull(message = "{mes.valid.selectType}") MaintenanceType type,
+        @NotBlank(message = "{mes.valid.enterSymptomMaintenanceContent}") @Size(max = 255, message = "{mes.valid.contentCannotExceedCharacters}") String content,
         LocalDate planDate,
-        @Size(max = 64, message = "处理人不能超过64个字符") String handler) {
+        @Size(max = 64, message = "{mes.valid.handlerCannotExceedCharacters}") String handler) {
 }

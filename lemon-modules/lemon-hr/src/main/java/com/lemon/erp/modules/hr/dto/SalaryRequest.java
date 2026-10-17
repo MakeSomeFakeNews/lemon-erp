@@ -16,16 +16,16 @@ import java.time.LocalDate;
  * @param effectiveDate 生效日期：新建档案默认入职日期，调整默认当天；晚于今天的调整到期后计入工资
  */
 public record SalaryRequest(
-        @NotNull(message = "请填写基本工资") @DecimalMin(value = "0", message = "基本工资不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal baseSalary,
-        @DecimalMin(value = "0", message = "岗位津贴不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal postAllowance,
-        @DecimalMin(value = "0", message = "其他补贴不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal otherAllowance,
-        @DecimalMin(value = "0", message = "绩效奖金基数不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal perfBonusBase,
-        @DecimalMin(value = "0", message = "社保基数不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal socialBase,
-        @DecimalMin(value = "0", message = "公积金基数不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal housingBase,
-        @DecimalMin(value = "5", message = "公积金比例为5%-12%") @DecimalMax(value = "12", message = "公积金比例为5%-12%") BigDecimal housingRate,
-        @Size(max = 128, message = "开户行不能超过128个字符") String bankName,
-        @Size(max = 64, message = "银行账号不能超过64个字符") String bankAccount,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark,
+        @NotNull(message = "{hr.valid.enterBaseSalary}") @DecimalMin(value = "0", message = "{hr.valid.baseSalaryCannotLess}") @Digits(integer = 16, fraction = 2, message = "{hr.valid.amountAllowsMostDecimalPlaces}") BigDecimal baseSalary,
+        @DecimalMin(value = "0", message = "{hr.valid.positionAllowanceCannotLess}") @Digits(integer = 16, fraction = 2, message = "{hr.valid.amountAllowsMostDecimalPlaces}") BigDecimal postAllowance,
+        @DecimalMin(value = "0", message = "{hr.valid.otherAllowancesCannotLess}") @Digits(integer = 16, fraction = 2, message = "{hr.valid.amountAllowsMostDecimalPlaces}") BigDecimal otherAllowance,
+        @DecimalMin(value = "0", message = "{hr.valid.performanceBonusBaseCannotLess}") @Digits(integer = 16, fraction = 2, message = "{hr.valid.amountAllowsMostDecimalPlaces}") BigDecimal perfBonusBase,
+        @DecimalMin(value = "0", message = "{hr.valid.socialInsuranceBaseCannotLess}") @Digits(integer = 16, fraction = 2, message = "{hr.valid.amountAllowsMostDecimalPlaces}") BigDecimal socialBase,
+        @DecimalMin(value = "0", message = "{hr.valid.housingFundBaseCannotLess}") @Digits(integer = 16, fraction = 2, message = "{hr.valid.amountAllowsMostDecimalPlaces}") BigDecimal housingBase,
+        @DecimalMin(value = "5", message = "{hr.valid.housingFundRateMust}") @DecimalMax(value = "12", message = "{hr.valid.housingFundRateMust}") BigDecimal housingRate,
+        @Size(max = 128, message = "{hr.valid.bankNameCannotExceedCharacters}") String bankName,
+        @Size(max = 64, message = "{hr.valid.bankAccountCannotExceedCharacters}") String bankAccount,
+        @Size(max = 255, message = "{hr.valid.remarkCannotExceedCharacters}") String remark,
         LocalDate effectiveDate,
         Long schemeId) {
 
