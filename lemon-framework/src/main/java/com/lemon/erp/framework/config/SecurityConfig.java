@@ -1,5 +1,6 @@
 package com.lemon.erp.framework.config;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
@@ -44,10 +45,10 @@ public class SecurityConfig {
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, resp, ex) ->
                                 writeJson(resp, objectMapper, HttpServletResponse.SC_UNAUTHORIZED,
-                                        R.fail(R.UNAUTHORIZED, "未登录或登录已过期")))
+                                        R.fail(R.UNAUTHORIZED, I18n.t("未登录或登录已过期"))))
                         .accessDeniedHandler((req, resp, ex) ->
                                 writeJson(resp, objectMapper, HttpServletResponse.SC_FORBIDDEN,
-                                        R.fail(R.FORBIDDEN, "没有权限，请联系管理员"))))
+                                        R.fail(R.FORBIDDEN, I18n.t("没有权限，请联系管理员")))))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

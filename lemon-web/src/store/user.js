@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import * as authApi from '@/api/auth'
 import { getToken, setToken, removeToken } from '@/utils/auth'
+import { tt } from '@/locales'
 import { useAppStore } from './app'
 import { useDictStore } from './dict'
 
@@ -36,7 +37,7 @@ export const useUserStore = defineStore('user', {
       this.roles = info.roles
       this.perms = info.perms
       this.tenantName = info.tenantName
-      this.menus = menus
+      this.menus = translateMenus(menus)
     },
     async logout() {
       try {
@@ -59,3 +60,8 @@ export const useUserStore = defineStore('user', {
     }
   }
 })
+
+/** 菜单名称按界面语言翻译（locales/<语言>/menu.js 按菜单 ID，没有译文时用数据库中的名称） */
+function translateMenus(menus) {
+  return (menus || []).map((m) => ({ ...m, name: tt(`menu.${m.id}`, m.name), children: m.children && translateMenus(m.children) }))
+}

@@ -25,12 +25,13 @@
     </a-breadcrumb>
 
     <div class="header-right">
-      <a-tooltip v-if="configStore.demoMode" title="当前为演示环境，只能查看，不能新增、修改、删除数据">
-        <a-tag color="orange" :bordered="false" class="demo-tag">演示模式</a-tag>
+      <a-tooltip v-if="configStore.demoMode" :title="$t('layout.demoTip')">
+        <a-tag color="orange" :bordered="false" class="demo-tag">{{ $t('layout.demoMode') }}</a-tag>
       </a-tooltip>
       <MenuSearch />
       <MessageBell />
-      <a-tooltip :title="appStore.dark ? '切换到亮色' : '切换到暗色'">
+      <LangSwitch btn-class="header-btn" />
+      <a-tooltip :title="appStore.dark ? $t('layout.toLight') : $t('layout.toDark')">
         <a-button type="text" class="header-btn" @click="appStore.toggleDark()">
           <template #icon>
             <ThemeIcon :dark="appStore.dark" />
@@ -59,16 +60,16 @@
             </template>
             <a-menu-item key="profile" @click="router.push('/profile')">
               <template #icon><UserOutlined /></template>
-              个人中心
+              {{ $t('route.profile') }}
             </a-menu-item>
             <a-menu-item key="messages" @click="router.push('/messages')">
               <template #icon><BellOutlined /></template>
-              我的消息
+              {{ $t('route.messages') }}
             </a-menu-item>
             <a-menu-divider />
             <a-menu-item key="logout" danger @click="confirmLogout">
               <template #icon><LogoutOutlined /></template>
-              退出登录
+              {{ $t('common.action.logout') }}
             </a-menu-item>
           </a-menu>
         </template>
@@ -81,6 +82,7 @@
 import { computed, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import {
   BellOutlined,
   DownOutlined,
@@ -93,17 +95,20 @@ import {
 import MenuIcon from '@/components/MenuIcon.vue'
 import MenuSearch from './MenuSearch.vue'
 import MessageBell from './MessageBell.vue'
+import LangSwitch from '@/components/LangSwitch.vue'
 import ThemeIcon from '@/components/ThemeIcon.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useAppStore } from '@/store/app'
 import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
 import { buildBreadcrumbIndex } from '@/utils/menu'
+import { isZh } from '@/locales'
 import { HOME_PATH, useModuleNav } from '../useModuleNav'
 
 defineProps({ collapsed: Boolean, mobile: Boolean })
 const emit = defineEmits(['toggle'])
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const appStore = useAppStore()
@@ -112,11 +117,11 @@ const userStore = useUserStore()
 
 const { modules, activeModule, openModule } = useModuleNav()
 const moduleItems = computed(() => [
-  { key: HOME_PATH, label: '首页', icon: () => h(MenuIcon, { name: 'HomeOutlined' }) },
+  { key: HOME_PATH, label: t('route.dashboard'), icon: () => h(MenuIcon, { name: 'HomeOutlined' }) },
   // 顶部空间有限，「供应链管理」显示为「供应链」
   ...modules.value.map((m) => ({
     key: m.key,
-    label: m.title.replace(/(.{2,})管理$/, '$1'),
+    label: isZh() ? m.title.replace(/(.{2,})管理$/, '$1') : m.title,
     icon: m.icon ? () => h(MenuIcon, { name: m.icon }) : undefined
   }))
 ])
@@ -130,9 +135,9 @@ const breadcrumbs = computed(() => {
 
 function confirmLogout() {
   Modal.confirm({
-    title: '退出登录',
-    content: '确定要退出当前账号吗？',
-    okText: '退出',
+    title: t('common.action.logout'),
+    content: t('layout.logoutConfirm'),
+    okText: t('layout.logoutOk'),
     async onOk() {
       await userStore.logout()
       // 刷新页面以清空已注册的动态路由

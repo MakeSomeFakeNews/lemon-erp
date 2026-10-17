@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia'
 import { load, save } from '@/utils/storage'
+import { t } from '@/locales'
 
 const SETTINGS_KEY = 'lemon_erp_settings'
 const TABS_KEY = 'lemon_erp_tabs'
 
-export const HOME_TAB = { path: '/dashboard', fullPath: '/dashboard', title: '首页', icon: 'HomeOutlined', affix: true }
+export const HOME_TAB = { path: '/dashboard', fullPath: '/dashboard', title: t('route.dashboard'), icon: 'HomeOutlined', affix: true }
 
 const prefersDark = () => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
 
@@ -35,6 +36,14 @@ export const useAppStore = defineStore('app', {
       this.persistSettings()
     },
 
+    /** 路由加载后按当前语言刷新标签标题（标签保存的是上次显示的标题） */
+    retitleTabs(titleOf) {
+      this.tabs.forEach((tab) => {
+        const title = tab.path === HOME_TAB.path ? HOME_TAB.title : titleOf(tab.path)
+        if (title) tab.title = title
+      })
+      this.persistTabs()
+    },
     persistTabs() {
       save(TABS_KEY, this.tabs)
     },
@@ -43,6 +52,7 @@ export const useAppStore = defineStore('app', {
       const exist = this.tabs.find((t) => t.path === route.path)
       if (exist) {
         exist.fullPath = route.fullPath
+        exist.title = route.meta.title
       } else {
         this.tabs.push({ path: route.path, fullPath: route.fullPath, title: route.meta.title, icon: route.meta.icon })
       }
