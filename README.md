@@ -31,6 +31,7 @@
   <a href="#在线演示">在线演示</a> ·
   <a href="#核心亮点">核心亮点</a> ·
   <a href="#功能模块">功能模块</a> ·
+  <a href="#系统架构">系统架构</a> ·
   <a href="#系统截图">系统截图</a> ·
   <a href="#快速开始">快速开始</a>
 </p>
@@ -207,6 +208,18 @@
 | 平台功能 | 站内消息、Excel 导入导出、单据附件、字段变更历史 |
 
 > 每个功能的详细操作说明请阅读 [用户手册](https://makesomefakenews.github.io/lemon-erp-website/manual/guide/)，二次开发请阅读 [开发文档](https://makesomefakenews.github.io/lemon-erp-website/dev/start/)。
+
+## 系统架构
+
+### 业务架构
+
+蓝色虚线是模块内的业务流程，灰色虚线是跨模块的自动联动（生成下游单据、更新库存、生成应收应付与凭证）。
+
+![柠檬ERP 业务架构图](docs/architecture/business.png)
+
+### 技术架构
+
+![柠檬ERP 技术架构图](docs/architecture/tech.png)
 
 ## 系统截图
 
