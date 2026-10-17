@@ -24,8 +24,8 @@ import java.util.List;
  */
 final class EInvoiceXmlParser {
 
-    /** 小数税率的位数 */
-    private static final int RATE_SCALE = 4;
+    /** 税率（百分数）保留的小数位 */
+    private static final int RATE_SCALE = 2;
 
     private EInvoiceXmlParser() {
     }
@@ -140,7 +140,7 @@ final class EInvoiceXmlParser {
         }
     }
 
-    /** 税率：0.13、13% 或 13 都按 0.13 */
+    /** 税率：0.13、13% 或 13 都按 13（百分数，与其他单据的税率一致） */
     private static BigDecimal rate(String v) {
         if (v == null) {
             return null;
@@ -149,7 +149,8 @@ final class EInvoiceXmlParser {
         if (r == null) {
             return null;
         }
-        // 发票明细的税率按小数存储（如 0.13，fin_invoice_line.tax_rate DECIMAL(6,4)），保留 4 位
-        return r.compareTo(BigDecimal.ONE) > 0 || v.contains("%") ? r.divide(Decimals.HUNDRED, RATE_SCALE, Decimals.ROUNDING) : r;
+        // 发票明细的税率按百分数存储（fin_invoice_line.tax_rate DECIMAL(5,2)）：不大于 1 且没有 % 的视为小数写法，乘以 100
+        BigDecimal percent = r.compareTo(BigDecimal.ONE) > 0 || v.contains("%") ? r : r.multiply(Decimals.HUNDRED);
+        return percent.setScale(RATE_SCALE, Decimals.ROUNDING);
     }
 }

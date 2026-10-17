@@ -24,7 +24,7 @@
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'qty'">{{ record.qty != null ? Number(record.qty) : '' }} {{ record.unit || '' }}</template>
             <template v-else-if="column.key === 'price'">{{ record.price != null ? Number(record.price) : '' }}</template>
-            <template v-else-if="column.key === 'taxRate'">{{ record.taxRate != null ? `${Math.round(Number(record.taxRate) * 10000) / 100}%` : '' }}</template>
+            <template v-else-if="column.key === 'taxRate'">{{ record.taxRate != null ? `${Number(record.taxRate)}%` : '' }}</template>
             <template v-else-if="['amount', 'taxAmount'].includes(column.key)">{{ formatMoney(record[column.key]) }}</template>
           </template>
         </a-table>
