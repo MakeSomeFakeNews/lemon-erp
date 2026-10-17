@@ -10,6 +10,7 @@ import com.lemon.erp.framework.ref.ReferenceGuard;
 import com.lemon.erp.modules.wms.entity.WmsCheckItem;
 import com.lemon.erp.modules.wms.entity.WmsLocation;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
+import com.lemon.erp.modules.wms.model.CostMethod;
 import com.lemon.erp.modules.wms.entity.WmsMaterialUnit;
 import com.lemon.erp.modules.wms.entity.WmsStockDocItem;
 import com.lemon.erp.modules.wms.mapper.WmsCheckItemMapper;
@@ -37,7 +38,7 @@ public class WmsMaterialService {
 
     /** 记录变更历史的字段 */
     private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "物料编码", "name", "物料名称", "spec", "规格型号", "unit", "计量单位", "category", "分类",
-            "batchEnabled", "批次管理", "serialEnabled", "序列号管理", "iqcRequired", "来料检验", "safetyStock", "安全库存", "reorderPoint", "再订货点", "reorderQty", "再订货量", "barcode", "条码", "defaultWarehouseId", "默认仓库", "refCost", "参考成本价", "remark", "备注");
+            "batchEnabled", "批次管理", "serialEnabled", "序列号管理", "iqcRequired", "来料检验", "safetyStock", "安全库存", "reorderPoint", "再订货点", "reorderQty", "再订货量", "barcode", "条码", "defaultWarehouseId", "默认仓库", "refCost", "参考成本价", "costMethod", "计价方法", "remark", "备注");
 
     /** 下拉搜索最多返回的条数 */
     private static final int OPTION_LIMIT = 50;
@@ -179,6 +180,9 @@ public class WmsMaterialService {
         material.setBatchEnabled(Integer.valueOf(1).equals(material.getBatchEnabled()) ? 1 : 0);
         material.setSerialEnabled(Integer.valueOf(1).equals(material.getSerialEnabled()) ? 1 : 0);
         material.setIqcRequired(Integer.valueOf(1).equals(material.getIqcRequired()) ? 1 : 0);
+        if (material.getCostMethod() == null) {
+            material.setCostMethod(CostMethod.WEIGHTED);
+        }
     }
 
     /** 条码不能与其他物料（含辅助单位的包装条码）重复；默认库位须属于默认仓库 */

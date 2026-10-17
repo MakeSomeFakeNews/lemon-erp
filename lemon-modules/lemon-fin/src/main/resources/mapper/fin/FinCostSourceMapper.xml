@@ -67,4 +67,27 @@
         WHERE o.id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
     </select>
 
+    <!-- 移动加权平均、先进先出物料的出入库明细（按单据 + 物料汇总），按业务日期、发生顺序排列。
+         qty 带正负号（入库为正、出库为负，红字单相反）；采购入库 / 退货带出不含税金额，完工入库带出工单 -->
+    <select id="selectCostEvents" resultType="java.util.Map">
+        SELECT f.material_id AS "materialId", COALESCE(d.biz_date, c.biz_date) AS "bizDate", MIN(f.id) AS "seq",
+               COALESCE(d.biz_type, f.biz_type) AS "bizType", MAX(d.kind) AS "docKind", SUM(f.qty) AS "qty",
+               MAX(t.qty) AS "tradeQty", MAX(t.net) AS "tradeNet", MAX(w.wo_id) AS "woId"
+        FROM wms_stock_flow f
+        JOIN wms_warehouse wh ON wh.id = f.warehouse_id
+        LEFT JOIN wms_stock_doc d ON f.biz_type IN ('IN', 'OUT') AND d.id = f.doc_id
+        LEFT JOIN wms_check c ON f.biz_type = 'CHECK' AND c.id = f.doc_id
+        LEFT JOIN (SELECT td.wms_doc_id, ti.material_id, SUM(ti.qty) AS qty, SUM(ti.amount - ti.tax_amount) AS net
+                   FROM scm_trade_doc td
+                   JOIN scm_trade_doc_item ti ON ti.doc_id = td.id
+                   WHERE td.biz_date &gt;= #{begin} AND td.biz_date &lt;= #{end} AND td.wms_doc_id IS NOT NULL
+                   GROUP BY td.wms_doc_id, ti.material_id) t ON t.wms_doc_id = d.id AND t.material_id = f.material_id
+        LEFT JOIN mes_wo_doc w ON w.wms_doc_id = d.id AND w.kind = 'FINISH'
+        WHERE f.biz_type &lt;&gt; 'TRANSFER' AND wh.type &lt;&gt; 'CONSIGN_IN'
+          AND COALESCE(d.biz_date, c.biz_date) &gt;= #{begin} AND COALESCE(d.biz_date, c.biz_date) &lt;= #{end}
+          AND f.material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        GROUP BY f.material_id, f.biz_type, f.doc_id, COALESCE(d.biz_date, c.biz_date), COALESCE(d.biz_type, f.biz_type)
+        ORDER BY COALESCE(d.biz_date, c.biz_date), MIN(f.id)
+    </select>
+
 </mapper>

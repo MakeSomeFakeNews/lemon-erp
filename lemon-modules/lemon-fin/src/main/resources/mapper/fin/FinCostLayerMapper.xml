@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinCostLayerMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO fin_cost_layer (period, material_id, seq, in_date, qty, amount, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.period}, #{i.materialId}, #{i.seq}, #{i.inDate}, #{i.qty}, #{i.amount}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

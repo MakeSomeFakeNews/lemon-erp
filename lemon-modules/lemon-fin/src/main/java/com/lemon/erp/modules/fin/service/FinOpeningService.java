@@ -20,6 +20,7 @@ import com.lemon.erp.modules.fin.mapper.FinCostSourceMapper;
 import com.lemon.erp.modules.fin.mapper.FinMaterialCostMapper;
 import com.lemon.erp.modules.fin.mapper.FinPeriodMapper;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
+import com.lemon.erp.modules.wms.model.CostMethod;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -230,6 +231,7 @@ public class FinOpeningService {
             c.setSalesAmount(zero);
             c.setOtherOutQty(zero);
             c.setOtherOutAmount(zero);
+            c.setCostMethod(CostMethod.WEIGHTED);
             c.setCloseQty(item.qty());
             c.setCloseAmount(item.amount());
             c.setUnitCost(item.amount().divide(item.qty(), 6, RoundingMode.HALF_UP));

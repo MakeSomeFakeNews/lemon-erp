@@ -7,6 +7,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import com.lemon.erp.modules.wms.model.CostMethod;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -68,6 +69,9 @@ public class WmsMaterial extends BaseEntity {
     /** 参考成本价：没有核算单价时按此计价 */
     @DecimalMin(value = "0", message = "参考成本价不能小于0")
     private BigDecimal refCost;
+
+    /** 存货计价方法，默认月末一次加权平均；修改后从下一次成本核算开始生效 */
+    private CostMethod costMethod;
 
     /** 1 启用 0 停用 */
     private Integer status;
