@@ -20,6 +20,7 @@
 </p>
 
 <p align="center">
+  <a href="https://erp.dqq.me"><b>在线演示</b></a> ·
   <a href="https://makesomefakenews.github.io/lemon-erp-website/"><b>官网</b></a> ·
   <a href="https://makesomefakenews.github.io/lemon-erp-website/manual/guide/"><b>用户手册</b></a> ·
   <a href="https://makesomefakenews.github.io/lemon-erp-website/dev/start/"><b>开发文档</b></a>
@@ -27,6 +28,7 @@
 
 <p align="center">
   <a href="#项目简介">项目简介</a> ·
+  <a href="#在线演示">在线演示</a> ·
   <a href="#核心亮点">核心亮点</a> ·
   <a href="#功能模块">功能模块</a> ·
   <a href="#系统截图">系统截图</a> ·
@@ -49,6 +51,17 @@
 **开发初衷**：为中小企业提供开源、好用、完整的 ERP，降低企业信息化成本；让开发者和软件公司可以基于柠檬ERP 快速交付项目；也为初学者提供一个学习企业级 Java 开发的完整范例。
 
 > 如果这个项目对你有帮助，请点一下右上角的 **Star**，这是对我们最大的鼓励！
+
+## 在线演示
+
+演示地址：**https://erp.dqq.me**
+
+| 租户 | 账号 | 密码 | 说明 |
+| --- | --- | --- | --- |
+| 柠檬科技 | admin | admin123 | 超级管理员，可以浏览全部功能 |
+| 柠檬科技 | test | admin123 | 普通用户（只读），数据权限为「本部门及以下」 |
+
+> 演示环境开启了演示模式，只能查看，不能新增、修改、删除数据。完整体验请参考 [快速开始](#快速开始) 自行部署。
 
 ## 核心亮点
 
