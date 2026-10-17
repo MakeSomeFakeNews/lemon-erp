@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.lemon.erp.modules.crm.model.CustomerStage;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -34,7 +35,7 @@ public class CrmCustomer extends BaseEntity {
     private String source;
 
     /** 客户阶段(字典 crm_customer_stage) POTENTIAL潜在 INTENT意向 DEAL成交 LOST流失 */
-    private String stage;
+    private CustomerStage stage;
 
     /** 所在地区 */
     private String region;

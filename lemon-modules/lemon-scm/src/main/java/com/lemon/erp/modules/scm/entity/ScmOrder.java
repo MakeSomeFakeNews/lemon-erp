@@ -5,6 +5,9 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.scm.model.OrderKind;
+import com.lemon.erp.modules.scm.model.OrderSource;
+import com.lemon.erp.modules.scm.model.OrderStatus;
 import com.lemon.erp.modules.scm.model.SupplierConfirm;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -24,8 +27,8 @@ public class ScmOrder extends BaseEntity {
 
     private String orderNo;
 
-    /** OrderKind：PURCHASE / SALES */
-    private String kind;
+    /** 订单种类：采购 / 销售 */
+    private OrderKind kind;
 
     /** 供应商 / 客户 */
     private Long partnerId;
@@ -37,8 +40,8 @@ public class ScmOrder extends BaseEntity {
     /** 默认收货 / 发货仓库 */
     private Long warehouseId;
 
-    /** OrderStatus */
-    private String status;
+    /** 订单状态 */
+    private OrderStatus status;
 
     private BigDecimal totalQty;
 
@@ -47,8 +50,8 @@ public class ScmOrder extends BaseEntity {
 
     private BigDecimal taxAmount;
 
-    /** MANUAL 手工 / MRP 物料需求计划 */
-    private String source;
+    /** 订单来源 */
+    private OrderSource source;
 
     private String flowInstanceId;
 

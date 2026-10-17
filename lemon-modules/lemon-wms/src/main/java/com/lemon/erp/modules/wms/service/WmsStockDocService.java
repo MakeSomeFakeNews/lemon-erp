@@ -26,6 +26,10 @@ import com.lemon.erp.modules.wms.mapper.WmsStockDocMapper;
 import com.lemon.erp.modules.wms.model.DocStatus;
 import com.lemon.erp.modules.wms.model.StockBizType;
 import com.lemon.erp.modules.wms.model.StockChange;
+import com.lemon.erp.modules.wms.model.StockDocType;
+import com.lemon.erp.modules.wms.model.StockInType;
+import com.lemon.erp.modules.wms.model.StockOutType;
+import com.lemon.erp.modules.wms.model.WarehouseType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -47,18 +51,12 @@ import java.util.stream.Stream;
 import static com.lemon.erp.modules.wms.model.StockBizType.IN;
 import static com.lemon.erp.modules.wms.model.StockBizType.OUT;
 import static com.lemon.erp.modules.wms.model.StockBizType.TRANSFER;
-import static com.lemon.erp.modules.wms.model.WmsConstants.IN_TYPES;
-import static com.lemon.erp.modules.wms.model.WmsConstants.CONSIGN_IN;
 import static com.lemon.erp.modules.wms.model.WmsConstants.NO_BATCH;
-import static com.lemon.erp.modules.wms.model.WmsConstants.NO_EXPIRED_OUT_TYPES;
 import static com.lemon.erp.modules.wms.model.WmsConstants.NO_LOCATION;
-import static com.lemon.erp.modules.wms.model.WmsConstants.OUT_TYPES;
 import static com.lemon.erp.modules.wms.model.WmsConstants.STOCK_DOC_RULE;
 import static com.lemon.erp.modules.wms.model.WmsConstants.batchOrNone;
-import static com.lemon.erp.modules.wms.model.WmsConstants.ioCategoryDict;
 import static com.lemon.erp.modules.wms.model.WmsConstants.joinSerials;
 import static com.lemon.erp.modules.wms.model.WmsConstants.locationOrNone;
-import static com.lemon.erp.modules.wms.model.WmsConstants.manualTypes;
 import static com.lemon.erp.modules.wms.model.WmsConstants.splitSerials;
 
 /**
@@ -85,7 +83,7 @@ public class WmsStockDocService {
     @DataPermission(table = "wms_stock_doc", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<WmsStockDoc> page(StockBizType kind, long current, long size, DocQuery query) {
         Page<WmsStockDoc> page = Page.of(current, size);
-        docMapper.selectPageList(page, kind.name(), query);
+        docMapper.selectPageList(page, kind, query);
         return PageResult.of(page);
     }
 
@@ -121,7 +119,7 @@ public class WmsStockDocService {
         LoginUser user = SecurityUtils.getLoginUser();
         WmsStockDoc doc = new WmsStockDoc();
         doc.setDocNo(docNoService.next(kind));
-        doc.setKind(kind.name());
+        doc.setKind(kind);
         doc.setBizType(kind == TRANSFER ? null : req.bizType());
         doc.setIoCategory(ioCategory(kind, req));
         doc.setWarehouseId(req.warehouseId());
@@ -132,7 +130,7 @@ public class WmsStockDocService {
         doc.setInTransit(kind == TRANSFER && Boolean.TRUE.equals(req.inTransit()) ? 1 : 0);
         doc.setReversed(0);
         doc.setTotalQty(totalQty(items));
-        doc.setStatus(DocStatus.DRAFT.name());
+        doc.setStatus(DocStatus.DRAFT);
         doc.setDeptId(user.deptId());
         doc.setCreateBy(user.userId());
         docMapper.insert(doc);
@@ -160,7 +158,7 @@ public class WmsStockDocService {
                 .set(WmsStockDoc::getTotalQty, totalQty(items))
                 .set(WmsStockDoc::getUpdateTime, LocalDateTime.now())
                 .eq(WmsStockDoc::getId, id)
-                .eq(WmsStockDoc::getStatus, DocStatus.DRAFT.name()));
+                .eq(WmsStockDoc::getStatus, DocStatus.DRAFT));
         itemMapper.delete(Wrappers.<WmsStockDocItem>lambdaQuery().eq(WmsStockDocItem::getDocId, id));
         saveItems(id, items);
     }
@@ -186,8 +184,8 @@ public class WmsStockDocService {
             List<WmsStockDocItem> items = itemMapper.selectList(Wrappers.<WmsStockDocItem>lambdaQuery()
                     .eq(WmsStockDocItem::getDocId, id).orderByAsc(WmsStockDocItem::getId));
             validate(kind, doc.getBizType(), doc.getWarehouseId(), doc.getToWarehouseId(), items, true);
-            if (docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate().set(WmsStockDoc::getStatus, DocStatus.APPROVING.name())
-                    .eq(WmsStockDoc::getId, id).eq(WmsStockDoc::getStatus, DocStatus.DRAFT.name())) == 0) {
+            if (docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate().set(WmsStockDoc::getStatus, DocStatus.APPROVING)
+                    .eq(WmsStockDoc::getId, id).eq(WmsStockDoc::getStatus, DocStatus.DRAFT)) == 0) {
                 throw new BizException("wms.error.documentHasConfirmedRefresh");
             }
             String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, java.util.Map.of("docNo", doc.getDocNo(),
@@ -205,14 +203,14 @@ public class WmsStockDocService {
             return;
         }
         WmsStockDoc doc = docMapper.selectById(Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length())));
-        if (doc == null || !DocStatus.APPROVING.name().equals(doc.getStatus())) {
+        if (doc == null || doc.getStatus() != DocStatus.APPROVING) {
             return;
         }
         if (e.status() == com.lemon.erp.framework.workflow.FlowStatus.APPROVED) {
-            doConfirm(StockBizType.valueOf(doc.getKind()), doc, DocStatus.APPROVING);
+            doConfirm(doc.getKind(), doc, DocStatus.APPROVING);
         } else {
-            docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate().set(WmsStockDoc::getStatus, DocStatus.DRAFT.name())
-                    .eq(WmsStockDoc::getId, doc.getId()).eq(WmsStockDoc::getStatus, DocStatus.APPROVING.name()));
+            docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate().set(WmsStockDoc::getStatus, DocStatus.DRAFT)
+                    .eq(WmsStockDoc::getId, doc.getId()).eq(WmsStockDoc::getStatus, DocStatus.APPROVING));
         }
     }
 
@@ -230,19 +228,19 @@ public class WmsStockDocService {
         Long id = doc.getId();
         boolean transit = kind == TRANSFER && Integer.valueOf(1).equals(doc.getInTransit());
         int updated = docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate()
-                .set(WmsStockDoc::getStatus, transit ? DocStatus.TRANSIT.name() : DocStatus.DONE.name())
+                .set(WmsStockDoc::getStatus, transit ? DocStatus.TRANSIT : DocStatus.DONE)
                 .set(WmsStockDoc::getConfirmBy, SecurityUtils.getUserId())
                 .set(WmsStockDoc::getConfirmTime, LocalDateTime.now())
                 .set(WmsStockDoc::getUpdateTime, LocalDateTime.now())
                 .eq(WmsStockDoc::getId, id)
-                .eq(WmsStockDoc::getStatus, from.name()));
+                .eq(WmsStockDoc::getStatus, from));
         if (updated == 0) {
             throw new BizException("wms.error.documentHasConfirmedRefresh");
         }
         List<WmsStockDocItem> items = itemMapper.selectList(Wrappers.<WmsStockDocItem>lambdaQuery()
                 .eq(WmsStockDocItem::getDocId, id).orderByAsc(WmsStockDocItem::getId));
         validate(kind, doc.getBizType(), doc.getWarehouseId(), doc.getToWarehouseId(), items, true);
-        if (kind == OUT && NO_EXPIRED_OUT_TYPES.contains(doc.getBizType())) {
+        if (doc.docType() instanceof StockOutType out && out.forbidsExpired()) {
             checkNotExpired(items, doc.getBizDate());
         }
         List<StockChange> changes = toChanges(kind, doc, items);
@@ -254,15 +252,15 @@ public class WmsStockDocService {
     @Transactional
     public void receive(Long id) {
         WmsStockDoc doc = getAccessible(TRANSFER, id);
-        if (!DocStatus.TRANSIT.name().equals(doc.getStatus())) {
+        if (doc.getStatus() != DocStatus.TRANSIT) {
             throw new BizException("wms.error.transferOrderNotTransit", doc.getDocNo());
         }
         periodGuard.checkOpen(LocalDate.now(), "wms.label.transferReceipt");
         int updated = docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate()
-                .set(WmsStockDoc::getStatus, DocStatus.DONE.name())
+                .set(WmsStockDoc::getStatus, DocStatus.DONE)
                 .set(WmsStockDoc::getReceiveBy, SecurityUtils.getUserId())
                 .set(WmsStockDoc::getReceiveTime, LocalDateTime.now())
-                .eq(WmsStockDoc::getId, id).eq(WmsStockDoc::getStatus, DocStatus.TRANSIT.name()));
+                .eq(WmsStockDoc::getId, id).eq(WmsStockDoc::getStatus, DocStatus.TRANSIT));
         if (updated == 0) {
             throw new BizException("wms.error.transferOrderHasReceivedRefresh");
         }
@@ -287,8 +285,8 @@ public class WmsStockDocService {
         if (doc.getRedOf() != null) {
             throw new BizException("wms.error.redDocumentCannotReversed");
         }
-        if (!DocStatus.DONE.name().equals(doc.getStatus())) {
-            if (DocStatus.TRANSIT.name().equals(doc.getStatus())) {
+        if (doc.getStatus() != DocStatus.DONE) {
+            if (doc.getStatus() == DocStatus.TRANSIT) {
                 throw new BizException("wms.error.receiveTransitTransferBeforeReversing");
             }
             throw new BizException("wms.error.onlyCompletedDocumentsReversed");
@@ -308,7 +306,7 @@ public class WmsStockDocService {
         LoginUser user = SecurityUtils.getLoginUser();
         WmsStockDoc red = new WmsStockDoc();
         red.setDocNo(docNoService.next(kind));
-        red.setKind(kind.name());
+        red.setKind(kind);
         red.setBizType(doc.getBizType());
         red.setIoCategory(doc.getIoCategory());
         red.setWarehouseId(doc.getWarehouseId());
@@ -319,7 +317,7 @@ public class WmsStockDocService {
         red.setRedOf(id);
         red.setReversed(0);
         red.setTotalQty(doc.getTotalQty().negate());
-        red.setStatus(DocStatus.DONE.name());
+        red.setStatus(DocStatus.DONE);
         red.setDeptId(user.deptId());
         red.setCreateBy(user.userId());
         red.setConfirmBy(user.userId());
@@ -366,7 +364,7 @@ public class WmsStockDocService {
     private WmsStockDoc getAccessible(StockBizType kind, Long id) {
         Supplier<WmsStockDoc> loader = () -> docMapper.selectById(id);
         WmsStockDoc doc = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(STOCK_DOC_RULE, loader);
-        if (doc == null || !kind.name().equals(doc.getKind())) {
+        if (doc == null || kind != doc.getKind()) {
             throw new BizException("wms.error.doesNotExistAccessDenied", Messages.get(kind.getLabelKey()));
         }
         return doc;
@@ -374,7 +372,7 @@ public class WmsStockDocService {
 
     private WmsStockDoc getDraft(StockBizType kind, Long id) {
         WmsStockDoc doc = getAccessible(kind, id);
-        if (!DocStatus.DRAFT.name().equals(doc.getStatus())) {
+        if (doc.getStatus() != DocStatus.DRAFT) {
             throw new BizException("wms.error.hasConfirmedCannotModifiedDeleted", Messages.get(kind.getLabelKey()), doc.getDocNo());
         }
         return doc;
@@ -406,7 +404,11 @@ public class WmsStockDocService {
      */
     /** 手工入库只能是其他入库、寄售入库，手工出库只能是其他出库、报废出库：采购、销售、生产、项目等类型由对应的业务单据生成 */
     private static void checkManualType(StockBizType kind, String bizType) {
-        if (kind != TRANSFER && bizType != null && !manualTypes(kind).contains(bizType)) {
+        if (kind == TRANSFER || bizType == null) {
+            return;
+        }
+        StockDocType type = StockDocType.of(kind, bizType);
+        if (type == null || !type.isManual()) {
             if (kind == IN) {
                 throw new BizException("wms.error.manualInboundTypeNotAllowed");
             }
@@ -419,7 +421,8 @@ public class WmsStockDocService {
      * 其他类型不保存。可不填
      */
     private String ioCategory(StockBizType kind, StockDocRequest req) {
-        String dict = ioCategoryDict(kind, req.bizType());
+        StockDocType type = StockDocType.of(kind, req.bizType());
+        String dict = type == null ? null : type.ioCategoryDict();
         if (dict == null || !StringUtils.hasText(req.ioCategory())) {
             return null;
         }
@@ -436,7 +439,7 @@ public class WmsStockDocService {
             }
             throw new BizException("wms.error.selectOutboundType");
         }
-        if (kind != TRANSFER && !(kind == IN ? IN_TYPES : OUT_TYPES).contains(bizType)) {
+        if (kind != TRANSFER && StockDocType.of(kind, bizType) == null) {
             if (kind == IN) {
                 throw new BizException("wms.error.invalidInboundType", bizType);
             }
@@ -449,8 +452,9 @@ public class WmsStockDocService {
         WmsWarehouse warehouse = refs.warehouse(warehouseId, kind == TRANSFER ? "wms.label.sourceWarehouse" : "wms.label.warehouse", kind == IN);
         WmsWarehouse toWarehouse = kind == TRANSFER ? refs.warehouse(toWarehouseId, "wms.label.destinationWarehouse") : null;
         // 供应商寄售仓（VMI）只能做寄售入库，寄售入库只能入供应商寄售仓
-        if (kind == IN && (CONSIGN_IN.equals(bizType) != CONSIGN_IN.equals(warehouse.getType()))) {
-            if (CONSIGN_IN.equals(bizType)) {
+        boolean consignIn = StockInType.CONSIGN_IN.matches(bizType);
+        if (kind == IN && consignIn != (warehouse.getType() == WarehouseType.CONSIGN_IN)) {
+            if (consignIn) {
                 throw new BizException("wms.error.consignmentInboundRequiresSupplierConsignmentWarehouse");
             }
             throw new BizException("wms.error.supplierConsignmentWarehousesOnlyAllowConsignment");

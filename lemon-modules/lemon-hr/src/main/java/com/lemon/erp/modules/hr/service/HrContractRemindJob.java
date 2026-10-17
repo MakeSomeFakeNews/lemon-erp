@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
 import com.lemon.erp.framework.message.MessageSender.Message;
@@ -45,7 +46,7 @@ public class HrContractRemindJob implements JobHandler {
         int expired = contractService.markExpired();
         List<HrContract> list = contractService.expiring(params.getInt("days", 30));
         for (HrContract c : list) {
-            messageSender.sendToPermission("hr:contract:list", Message.of("REMIND",
+            messageSender.sendToPermission("hr:contract:list", Message.of(MessageCategory.REMIND,
                     "劳动合同即将到期：" + c.getEmployeeName() + "（" + c.getEmpNo() + "）",  // i18n-ignore 站内消息存库
                     "合同 " + c.getContractNo() + " 将于 " + c.getEndDate() + " 到期，请及时续签或办理终止", "/hr/contract")  // i18n-ignore 站内消息存库
                     .dedup("contract-expiry:" + c.getId()));

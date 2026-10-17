@@ -13,6 +13,7 @@ import com.lemon.erp.modules.crm.entity.CrmContact;
 import com.lemon.erp.modules.crm.entity.CrmCustomer;
 import com.lemon.erp.modules.crm.mapper.CrmContactMapper;
 import com.lemon.erp.modules.crm.mapper.CrmCustomerMapper;
+import com.lemon.erp.modules.crm.model.CustomerStage;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
 import com.lemon.erp.modules.scm.service.ScmCustomerService;
 import com.lemon.erp.modules.system.entity.SysUser;
@@ -28,7 +29,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * 客户经营：客户主数据与供应链共用（scm_customer），CRM 补充负责人、行业、来源、客户阶段、跟进时间。
@@ -38,8 +38,6 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class CrmCustomerService {
-
-    private static final Set<String> STAGES = Set.of("POTENTIAL", "INTENT", "DEAL", "LOST");
 
     private final CrmCustomerMapper customerMapper;
     private final CrmContactMapper contactMapper;
@@ -230,7 +228,7 @@ public class CrmCustomerService {
         }
         x = new CrmCustomer();
         x.setCustomerId(customerId);
-        x.setStage("POTENTIAL");
+        x.setStage(CustomerStage.POTENTIAL);
         try {
             customerMapper.insert(x);
         } catch (DuplicateKeyException e) {
@@ -266,7 +264,7 @@ public class CrmCustomerService {
     /** 赢单：客户阶段变为成交 */
     void markDeal(Long customerId) {
         CrmCustomer x = ensure(customerId);
-        customerMapper.update(Wrappers.<CrmCustomer>lambdaUpdate().set(CrmCustomer::getStage, "DEAL").eq(CrmCustomer::getId, x.getId()));
+        customerMapper.update(Wrappers.<CrmCustomer>lambdaUpdate().set(CrmCustomer::getStage, CustomerStage.DEAL).eq(CrmCustomer::getId, x.getId()));
     }
 
     void checkOwnerOrPerm(CrmCustomer c, String perm) {
@@ -285,14 +283,11 @@ public class CrmCustomerService {
     }
 
     private static CrmCustomer newExt(Long customerId, CrmCustomerRequest req) {
-        if (req.stage() != null && !STAGES.contains(req.stage())) {
-            throw new BizException("crm.error.invalidCustomerStage");
-        }
         CrmCustomer x = new CrmCustomer();
         x.setCustomerId(customerId);
         x.setIndustry(req.industry());
         x.setSource(req.source());
-        x.setStage(req.stage() == null ? "POTENTIAL" : req.stage());
+        x.setStage(req.stage() == null ? CustomerStage.POTENTIAL : req.stage());
         x.setRegion(req.region());
         x.setWebsite(req.website());
         return x;

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.lemon.erp.modules.fin.model.SettleKind;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -21,7 +22,7 @@ public class FinAdvance extends BaseEntity {
     private String advanceNo;
 
     /** RECEIPT 预收 / PAYMENT 预付 */
-    private String kind;
+    private SettleKind kind;
 
     private Long partnerId;
 

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.controller;
 
+import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
@@ -58,7 +59,7 @@ public class FinOpeningController {
     @PostMapping("/bills/{kind}/import")
     @PreAuthorize("@ss.hasPerm('fin:opening:edit')")
     @OperLog(title = "期初往来导入", type = OperType.IMPORT) // i18n-ignore
-    public R<ImportResult> importBills(@PathVariable String kind, @Valid @RequestBody ImportRequest<OpeningBillRow> req) {
+    public R<ImportResult> importBills(@PathVariable BillKind kind, @Valid @RequestBody ImportRequest<OpeningBillRow> req) {
         return R.ok(setupService.importBills(kind, req));
     }
 

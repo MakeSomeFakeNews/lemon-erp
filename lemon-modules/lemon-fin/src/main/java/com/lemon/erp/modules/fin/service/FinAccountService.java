@@ -15,7 +15,6 @@ import com.lemon.erp.modules.fin.mapper.FinAssetMapper;
 import com.lemon.erp.modules.fin.mapper.FinBudgetMapper;
 import com.lemon.erp.modules.fin.mapper.FinSettlementMapper;
 import com.lemon.erp.modules.fin.mapper.FinVoucherEntryMapper;
-import com.lemon.erp.modules.fin.model.AccountCategory;
 import com.lemon.erp.modules.fin.model.AuxItem;
 import com.lemon.erp.modules.fin.model.FinConstants;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +40,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FinAccountService {
 
-    private static final Set<String> DIRECTIONS = Set.of("DEBIT", "CREDIT");
 
     private final FinAccountMapper accountMapper;
     private final FinVoucherEntryMapper entryMapper;
@@ -109,7 +107,7 @@ public class FinAccountService {
     public void update(Long id, AccountRequest req) {
         FinAccount old = get(id);
         if (used(id) || hasChildren(id)) {
-            if (!old.getCode().equals(req.code()) || (req.direction() != null && !old.getDirection().equals(req.direction()))) {
+            if (!old.getCode().equals(req.code()) || (req.direction() != null && old.getDirection() != req.direction())) {
                 throw new BizException("fin.error.accountUseHasSubAccountsOnly");
             }
             accountMapper.update(Wrappers.<FinAccount>lambdaUpdate()
@@ -217,10 +215,10 @@ public class FinAccountService {
             if (code.length() != 4) {
                 throw new BizException("fin.error.levelAccountCodeMustDigits");
             }
-            if (req.category() == null || !isCategory(req.category())) {
+            if (req.category() == null) {
                 throw new BizException("fin.error.selectAccountCategory");
             }
-            if (req.direction() == null || !DIRECTIONS.contains(req.direction())) {
+            if (req.direction() == null) {
                 throw new BizException("fin.error.selectBalanceDirection");
             }
             account.setParentId(0L);
@@ -240,16 +238,7 @@ public class FinAccountService {
         }
         account.setParentId(parent.getId());
         account.setCategory(parent.getCategory());
-        account.setDirection(req.direction() != null && DIRECTIONS.contains(req.direction()) ? req.direction() : parent.getDirection());
-    }
-
-    private static boolean isCategory(String category) {
-        for (AccountCategory c : AccountCategory.values()) {
-            if (c.name().equals(category)) {
-                return true;
-            }
-        }
-        return false;
+        account.setDirection(req.direction() != null ? req.direction() : parent.getDirection());
     }
 
     private boolean hasChildren(Long id) {

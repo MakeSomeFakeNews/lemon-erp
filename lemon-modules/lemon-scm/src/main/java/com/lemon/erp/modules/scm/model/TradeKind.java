@@ -2,6 +2,9 @@ package com.lemon.erp.modules.scm.model;
 
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.modules.wms.model.StockBizType;
+import com.lemon.erp.modules.wms.model.StockDocType;
+import com.lemon.erp.modules.wms.model.StockInType;
+import com.lemon.erp.modules.wms.model.StockOutType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -13,10 +16,10 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum TradeKind {
 
-    PURCHASE_IN("purchaseIn", "CR", "scm.label.purchaseReceipt", OrderKind.PURCHASE, false, StockBizType.IN, "PURCHASE"),
-    PURCHASE_RETURN("purchaseReturn", "CT", "scm.label.purchaseReturn", OrderKind.PURCHASE, true, StockBizType.OUT, "PURCHASE_RETURN"),
-    SALES_OUT("salesOut", "XC", "scm.label.salesDelivery", OrderKind.SALES, false, StockBizType.OUT, "SALES"),
-    SALES_RETURN("salesReturn", "XT", "scm.label.salesReturn", OrderKind.SALES, true, StockBizType.IN, "SALES_RETURN");
+    PURCHASE_IN("purchaseIn", "CR", "scm.label.purchaseReceipt", OrderKind.PURCHASE, false, StockBizType.IN, StockInType.PURCHASE),
+    PURCHASE_RETURN("purchaseReturn", "CT", "scm.label.purchaseReturn", OrderKind.PURCHASE, true, StockBizType.OUT, StockOutType.PURCHASE_RETURN),
+    SALES_OUT("salesOut", "XC", "scm.label.salesDelivery", OrderKind.SALES, false, StockBizType.OUT, StockOutType.SALES),
+    SALES_RETURN("salesReturn", "XT", "scm.label.salesReturn", OrderKind.SALES, true, StockBizType.IN, StockInType.SALES_RETURN);
 
     /** 接口路径与权限标识中使用的名称 */
     private final String path;
@@ -29,7 +32,7 @@ public enum TradeKind {
     /** 生成的仓库单据种类 */
     private final StockBizType stockKind;
     /** 仓库单据的入库类型（字典 wms_in_type）/ 出库类型（字典 wms_out_type） */
-    private final String stockBizType;
+    private final StockDocType stockBizType;
 
     public boolean inbound() {
         return stockKind == StockBizType.IN;

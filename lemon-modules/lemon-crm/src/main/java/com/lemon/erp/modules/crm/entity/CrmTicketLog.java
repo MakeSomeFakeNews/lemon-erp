@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.lemon.erp.modules.crm.model.TicketAction;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -18,7 +19,7 @@ public class CrmTicketLog extends BaseEntity {
     private Long ticketId;
 
     /** 动作 CREATE受理 ASSIGN指派 PROCESS处理 RESOLVE解决 CLOSE关闭 REOPEN重新打开 */
-    private String action;
+    private TicketAction action;
 
     /** 内容 */
     private String content;

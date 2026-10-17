@@ -1,8 +1,8 @@
 package com.lemon.erp.modules.hr.dto;
 
+import com.lemon.erp.modules.hr.model.ChangeType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -19,7 +19,7 @@ import java.time.LocalDate;
  * @param handoverUserId 离职交接人：负责的客户、商机、项目、审批待办移交给他；为空时客户退回公海
  */
 public record EmployeeChangeRequest(
-        @NotBlank(message = "{hr.valid.selectChangeType}") String type,
+        @NotNull(message = "{hr.valid.selectChangeType}") ChangeType type,
         @NotNull(message = "{hr.valid.selectEffectiveDate}") LocalDate changeDate,
         Long deptId,
         Long positionId,

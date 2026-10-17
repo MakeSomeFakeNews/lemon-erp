@@ -6,6 +6,7 @@ import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.dict.DictLookup;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.MoldRequests;
@@ -20,7 +21,6 @@ import com.lemon.erp.modules.mes.mapper.MesWorkOrderMapper;
 import com.lemon.erp.modules.mes.model.EquipmentStatus;
 import com.lemon.erp.modules.mes.model.MoldAction;
 import com.lemon.erp.modules.mes.model.MoldStatus;
-import com.lemon.erp.modules.mes.model.WorkOrderStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -128,7 +128,7 @@ public class MesMoldService {
             throw new BizException("mes.valid.selectWorkOrder");
         }
         MesWorkOrder wo = workOrderMapper.selectById(req.woId());
-        if (wo == null || !WorkOrderStatus.EXECUTABLE.contains(wo.getStatus())) {
+        if (wo == null || !wo.getStatus().isExecutable()) {
             throw new BizException("mes.error.moldsOnlyCheckedOutReleasedProduction");
         }
         if (mold.getProductIds() != null && !mold.getProductIds().isEmpty() && !mold.getProductIds().contains(wo.getMaterialId())) {
@@ -205,10 +205,10 @@ public class MesMoldService {
             BigDecimal warnAt = BigDecimal.valueOf(life).multiply(mold.getWarnRatio()).divide(BigDecimal.valueOf(100), 0, RoundingMode.CEILING);
             String name = "「" + mold.getCode() + " " + mold.getName() + "」";
             if (after >= life && before < life) {
-                messageSender.sendToPermission("mes:mold:edit", MessageSender.Message.of("ALERT", "模具" + name + "已达到设计寿命", // i18n-ignore
+                messageSender.sendToPermission("mes:mold:edit", MessageSender.Message.of(MessageCategory.ALERT, "模具" + name + "已达到设计寿命", // i18n-ignore
                         "累计 " + after + " / " + life + " 模次，归还后不能再领用，请安排维修或报废", "/mes/mold").dedup("mold-life:" + moldId + ":" + life)); // i18n-ignore
             } else if (after < life && BigDecimal.valueOf(after).compareTo(warnAt) >= 0 && BigDecimal.valueOf(before).compareTo(warnAt) < 0) {
-                messageSender.sendToPermission("mes:mold:edit", MessageSender.Message.of("REMIND", "模具" + name + "即将到达寿命", // i18n-ignore
+                messageSender.sendToPermission("mes:mold:edit", MessageSender.Message.of(MessageCategory.REMIND, "模具" + name + "即将到达寿命", // i18n-ignore
                         "累计 " + after + " / " + life + " 模次", "/mes/mold").dedup("mold-warn:" + moldId + ":" + life)); // i18n-ignore
             }
         }

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.lemon.erp.modules.crm.model.OpportunityStage;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -34,7 +35,7 @@ public class CrmOpportunity extends BaseEntity {
     private BigDecimal amount;
 
     /** 销售阶段(字典 crm_opp_stage) INITIAL初步接洽 NEEDS需求确认 PROPOSAL方案报价 NEGOTIATION商务谈判 WON赢单 LOST输单 */
-    private String stage;
+    private OpportunityStage stage;
 
     /** 赢单概率（%），默认按阶段 */
     private Integer probability;

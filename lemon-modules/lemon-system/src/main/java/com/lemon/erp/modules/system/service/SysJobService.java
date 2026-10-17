@@ -15,6 +15,8 @@ import com.lemon.erp.modules.system.entity.SysJobLog;
 import com.lemon.erp.modules.system.entity.SysTenant;
 import com.lemon.erp.modules.system.mapper.SysJobLogMapper;
 import com.lemon.erp.modules.system.mapper.SysJobMapper;
+import com.lemon.erp.modules.system.model.JobRunStatus;
+import com.lemon.erp.modules.system.model.JobTrigger;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -121,7 +123,7 @@ public class SysJobService {
 
     /** 立即执行一次（在当前请求线程中），返回执行结果 */
     public SysJobLog runNow(Long id) {
-        return execute(get(id), "MANUAL", SecurityUtils.getUserIdOrNull());
+        return execute(get(id), JobTrigger.MANUAL, SecurityUtils.getUserIdOrNull());
     }
 
     public PageResult<SysJobLog> logs(long current, long size, String jobKey) {
@@ -158,12 +160,12 @@ public class SysJobService {
         futures.put(key, scheduler.schedule(() -> {
             SysJob latest = jobMapper.selectOne(Wrappers.<SysJob>lambdaQuery().eq(SysJob::getJobKey, key));
             if (latest != null) {
-                execute(latest, "SCHEDULE", null);
+                execute(latest, JobTrigger.SCHEDULE, null);
             }
         }, new CronTrigger(job.getCron())));
     }
 
-    private SysJobLog execute(SysJob job, String trigger, Long userId) {
+    private SysJobLog execute(SysJob job, JobTrigger trigger, Long userId) {
         JobHandler handler = handlers().get(job.getJobKey());
         if (handler == null) {
             throw new BizException("system.error.jobNoLongerExists", job.getName());
@@ -179,11 +181,11 @@ public class SysJobService {
         long start = System.currentTimeMillis();
         try {
             TenantRun result = runForTenants(handler, new JobParams(job.getParams()));
-            entry.setStatus(result.failed() ? "FAILED" : "SUCCESS");
+            entry.setStatus(result.failed() ? JobRunStatus.FAILED : JobRunStatus.SUCCESS);
             entry.setMessage(truncate(result.message()));
         } catch (RuntimeException e) {
             log.warn("定时任务 {} 执行失败", job.getJobKey(), e);
-            entry.setStatus("FAILED");
+            entry.setStatus(JobRunStatus.FAILED);
             entry.setMessage(truncate(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
         } finally {
             running.remove(job.getJobKey());

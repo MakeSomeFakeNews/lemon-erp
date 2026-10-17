@@ -42,8 +42,6 @@ import java.util.stream.Collectors;
 public class MesScheduleService {
 
     private static final int MAX_DAYS = 730;
-    private static final List<String> OPEN = List.of(WorkOrderStatus.DRAFT.name(), WorkOrderStatus.RELEASED.name(),
-            WorkOrderStatus.STARTED.name());
 
     private final MesWorkOrderMapper workOrderMapper;
     private final MesWoOpMapper woOpMapper;
@@ -55,7 +53,7 @@ public class MesScheduleService {
     @Transactional
     public MesWorkOrder scheduleOne(Long woId) {
         MesWorkOrder wo = workOrderService.getAccessible(woId);
-        if (!OPEN.contains(wo.getStatus())) {
+        if (!wo.getStatus().isOpen()) {
             throw new BizException("mes.error.onlyUnfinishedWorkOrdersScheduled");
         }
         LocalDate today = LocalDate.now();
@@ -69,7 +67,7 @@ public class MesScheduleService {
         LocalDate today = LocalDate.now();
         WorkCalendar capacity = calendar(today);
         Map<String, BigDecimal> used = new HashMap<>();
-        List<MesWorkOrder> list = workOrderMapper.selectList(Wrappers.<MesWorkOrder>lambdaQuery().in(MesWorkOrder::getStatus, OPEN));
+        List<MesWorkOrder> list = workOrderMapper.selectList(Wrappers.<MesWorkOrder>lambdaQuery().in(MesWorkOrder::getStatus, WorkOrderStatus.OPEN));
         list.sort(Comparator.comparing((MesWorkOrder w) -> w.getPlanStart() == null ? LocalDate.MAX : w.getPlanStart())
                 .thenComparing(MesWorkOrder::getId));
         for (MesWorkOrder wo : list) {
@@ -132,7 +130,7 @@ public class MesScheduleService {
         }
         LocalDate today = LocalDate.now();
         WorkCalendar capacity = calendar(from.isBefore(today) ? from : today);
-        Map<Long, MesWorkOrder> wos = workOrderMapper.selectList(Wrappers.<MesWorkOrder>lambdaQuery().in(MesWorkOrder::getStatus, OPEN))
+        Map<Long, MesWorkOrder> wos = workOrderMapper.selectList(Wrappers.<MesWorkOrder>lambdaQuery().in(MesWorkOrder::getStatus, WorkOrderStatus.OPEN))
                 .stream().collect(Collectors.toMap(MesWorkOrder::getId, Function.identity()));
         Map<Long, Map<LocalDate, BigDecimal>> loads = new HashMap<>();
         Map<Long, List<Map<String, Object>>> opRows = new HashMap<>();

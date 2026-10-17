@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.entity;
 
+import com.lemon.erp.modules.pm.model.ProjectStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -55,7 +56,7 @@ public class PmMember extends BaseEntity {
     @TableField(exist = false)
     private String projectName;
     @TableField(exist = false)
-    private String projectStatus;
+    private ProjectStatus projectStatus;
     /** 已审批工时 */
     @TableField(exist = false)
     private BigDecimal approvedHours;

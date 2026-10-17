@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.modules.hr.model.HolidayType;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
@@ -145,14 +146,14 @@ public class HrCalendarService {
     public static boolean isWorkday(LocalDate date, Map<LocalDate, HrHoliday> holidays) {
         HrHoliday h = holidays.get(date);
         if (h != null) {
-            return "WORKDAY".equals(h.getType());
+            return h.getType() == HolidayType.WORKDAY;
         }
         return date.getDayOfWeek() != DayOfWeek.SATURDAY && date.getDayOfWeek() != DayOfWeek.SUNDAY;
     }
 
     public static DayType dayType(LocalDate date, Map<LocalDate, HrHoliday> holidays) {
         HrHoliday h = holidays.get(date);
-        if (h != null && "HOLIDAY".equals(h.getType())) {
+        if (h != null && h.getType() == HolidayType.HOLIDAY) {
             return DayType.HOLIDAY;
         }
         return isWorkday(date, holidays) ? DayType.WORKDAY : DayType.RESTDAY;

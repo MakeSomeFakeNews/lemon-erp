@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.entity;
 
+import com.lemon.erp.modules.mes.model.SupplementStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -28,8 +29,8 @@ public class MesWoSupplement extends BaseEntity {
 
     private BigDecimal totalQty;
 
-    /** APPROVING / APPROVED / REJECTED / CANCELED / DONE */
-    private String status;
+    /** 补料状态 */
+    private SupplementStatus status;
 
     private String flowInstanceId;
 

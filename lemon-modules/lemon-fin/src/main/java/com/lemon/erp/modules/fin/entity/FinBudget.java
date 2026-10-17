@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.lemon.erp.modules.fin.model.AccountCategory;
+import com.lemon.erp.modules.fin.model.BudgetControl;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -50,7 +52,7 @@ public class FinBudget extends BaseEntity {
     private BigDecimal total;
 
     /** 预算控制：NONE / WARN / BLOCK（费用报销） */
-    private String controlMode;
+    private BudgetControl controlMode;
 
     private String remark;
 
@@ -64,5 +66,5 @@ public class FinBudget extends BaseEntity {
     private String accountName;
 
     @TableField(exist = false)
-    private String accountCategory;
+    private AccountCategory accountCategory;
 }

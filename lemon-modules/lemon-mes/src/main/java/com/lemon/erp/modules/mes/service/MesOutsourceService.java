@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.mes.service;
 
+import com.lemon.erp.modules.wms.model.StockOutType;
+import com.lemon.erp.modules.wms.model.StockInType;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
@@ -15,7 +17,7 @@ import com.lemon.erp.modules.mes.model.SupplyType;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
 import com.lemon.erp.modules.scm.event.TradeDocConfirmedEvent;
 import com.lemon.erp.modules.scm.model.OrderKind;
-import com.lemon.erp.modules.scm.model.OrderStatus;
+import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.scm.service.ScmOrderService;
 import com.lemon.erp.modules.wms.dto.StockDocItemRequest;
 import com.lemon.erp.modules.wms.dto.StockDocRequest;
@@ -62,7 +64,7 @@ public class MesOutsourceService {
         ScmOrder order = executableOrder(orderId);
         List<MesOutsourceMaterial> lines = ensureLines(orderId);
         Map<MesOutsourceMaterial, BigDecimal> alloc = allocate(lines, req.items(), l -> l.getRequiredQty().subtract(l.getIssuedQty()), "mes.label.issue");
-        stockDocService.createConfirmed(StockBizType.OUT, new StockDocRequest("OUTSOURCE", req.warehouseId(), null,
+        stockDocService.createConfirmed(StockBizType.OUT, new StockDocRequest(StockOutType.OUTSOURCE, req.warehouseId(), null,
                 req.bizDate(), req.remark() == null ? "委外发料 " + order.getOrderNo() : req.remark(), req.items()), order.getOrderNo()); // i18n-ignore
         alloc.forEach((line, qty) -> materialMapper.addIssued(line.getId(), qty));
     }
@@ -72,7 +74,7 @@ public class MesOutsourceService {
         ScmOrder order = orderService.detail(OrderKind.PURCHASE, orderId);
         List<MesOutsourceMaterial> lines = ensureLines(orderId);
         Map<MesOutsourceMaterial, BigDecimal> alloc = allocate(lines, req.items(), MesOutsourceService::atSupplier, "mes.label.return");
-        stockDocService.createConfirmed(StockBizType.IN, new StockDocRequest("OUTSOURCE_RETURN", req.warehouseId(), null,
+        stockDocService.createConfirmed(StockBizType.IN, new StockDocRequest(StockInType.OUTSOURCE_RETURN, req.warehouseId(), null,
                 req.bizDate(), req.remark() == null ? "委外退料 " + order.getOrderNo() : req.remark(), req.items()), order.getOrderNo()); // i18n-ignore
         alloc.forEach((line, qty) -> {
             if (materialMapper.addReturned(line.getId(), qty) == 0) {
@@ -84,8 +86,8 @@ public class MesOutsourceService {
     /** 委外件收货 / 退货：按单位用量核销（退货冲回）用料，与入库同一事务 */
     @EventListener
     public void onTradeDocConfirmed(TradeDocConfirmedEvent e) {
-        boolean in = "PURCHASE_IN".equals(e.kind());
-        if (!in && !"PURCHASE_RETURN".equals(e.kind())) {
+        boolean in = e.kind() == TradeKind.PURCHASE_IN;
+        if (!in && e.kind() != TradeKind.PURCHASE_RETURN) {
             return;
         }
         List<Map<String, Object>> items = materialMapper.selectTradeItems(e.docId());
@@ -128,7 +130,7 @@ public class MesOutsourceService {
 
     private ScmOrder executableOrder(Long orderId) {
         ScmOrder order = orderService.detail(OrderKind.PURCHASE, orderId);
-        if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
+        if (!order.getStatus().isExecutable()) {
             throw new BizException("mes.error.outsourcingOrderNotApprovedPartiallyCompleted", order.getOrderNo());
         }
         return order;

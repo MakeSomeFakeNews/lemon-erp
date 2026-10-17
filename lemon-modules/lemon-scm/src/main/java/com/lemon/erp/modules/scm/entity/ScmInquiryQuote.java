@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.scm.model.SupplierLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -33,5 +34,5 @@ public class ScmInquiryQuote extends BaseEntity {
     @TableField(exist = false)
     private String supplierName;
     @TableField(exist = false)
-    private String supplierLevel;
+    private SupplierLevel supplierLevel;
 }

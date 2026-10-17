@@ -234,7 +234,7 @@ public class FinFinancialStatementService {
 
     private List<FinAccount> profitLeaves() {
         return accountService.listAll().stream()
-                .filter(a -> a.getLeaf() && AccountCategory.PROFIT.name().equals(a.getCategory())).toList();
+                .filter(a -> a.getLeaf() && a.getCategory() == AccountCategory.PROFIT).toList();
     }
 
     private static Map<Long, AccountSum> toMap(List<AccountSum> list) {

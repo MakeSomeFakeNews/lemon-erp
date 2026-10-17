@@ -55,7 +55,7 @@ public enum AccountRole {
 
     SALARY("fin.label.payroll", "fin.label.employeeBenefitsPayable", "2211"),
     /** 默认：生产岗位 → 制造费用（成本核算时按工时分配到工单），销售岗位 → 销售费用，其余 → 管理费用-工资 */
-    SALARY_EXPENSE("fin.label.payroll", "fin.label.salaryExpenses", "660201", Dimension.POSITION_CATEGORY, Map.of("PRODUCTION", "5101", "SALES", "6601")),
+    SALARY_EXPENSE("fin.label.payroll", "fin.label.salaryExpenses", "660201", Dimension.POSITION_CATEGORY, Map.of(FinConstants.POSITION_PRODUCTION, "5101", FinConstants.POSITION_SALES, "6601")),
 
     PROFIT_THIS_YEAR("fin.label.periodEnd", "fin.label.currentYearProfit", "4103"),
     PROFIT_DISTRIBUTION("fin.label.periodEnd", "fin.label.profitDistribution", "4104");

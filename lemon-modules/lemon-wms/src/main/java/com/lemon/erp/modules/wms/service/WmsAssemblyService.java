@@ -23,6 +23,8 @@ import com.lemon.erp.modules.wms.mapper.WmsMaterialMapper;
 import com.lemon.erp.modules.wms.model.AssemblyKind;
 import com.lemon.erp.modules.wms.model.DocStatus;
 import com.lemon.erp.modules.wms.model.StockBizType;
+import com.lemon.erp.modules.wms.model.StockInType;
+import com.lemon.erp.modules.wms.model.StockOutType;
 import com.lemon.erp.modules.wms.model.WmsConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -131,9 +133,9 @@ public class WmsAssemblyService {
         boolean assemble = a.getKind() == AssemblyKind.ASSEMBLE;
         String remark = (assemble ? "组装 " : "拆卸 ") + a.getAssemblyNo(); // i18n-ignore 存入单据备注
         // 先出库后入库：组装时子件先出库，拆卸时成套件先出库
-        WmsStockDoc out = docService.createConfirmed(StockBizType.OUT, new StockDocRequest(WmsConstants.ASSEMBLY, a.getWarehouseId(), null,
+        WmsStockDoc out = docService.createConfirmed(StockBizType.OUT, new StockDocRequest(StockOutType.ASSEMBLY, a.getWarehouseId(), null,
                 a.getBizDate(), remark, assemble ? parts : product), a.getAssemblyNo());
-        WmsStockDoc in = docService.createConfirmed(StockBizType.IN, new StockDocRequest(WmsConstants.ASSEMBLY, a.getWarehouseId(), null,
+        WmsStockDoc in = docService.createConfirmed(StockBizType.IN, new StockDocRequest(StockInType.ASSEMBLY, a.getWarehouseId(), null,
                 a.getBizDate(), remark, assemble ? product : parts), a.getAssemblyNo());
         assemblyMapper.update(Wrappers.<WmsAssembly>lambdaUpdate()
                 .set(WmsAssembly::getOutDocId, out.getId()).set(WmsAssembly::getOutDocNo, out.getDocNo())

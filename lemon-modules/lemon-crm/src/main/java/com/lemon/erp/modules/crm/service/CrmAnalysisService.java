@@ -2,7 +2,7 @@ package com.lemon.erp.modules.crm.service;
 
 import com.lemon.erp.modules.crm.dto.RfmRow;
 import com.lemon.erp.modules.crm.mapper.CrmAnalysisMapper;
-import com.lemon.erp.modules.crm.model.CrmConstants;
+import com.lemon.erp.modules.crm.model.OpportunityStage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -47,16 +47,16 @@ public class CrmAnalysisService {
         analysisMapper.selectFunnel().forEach(r -> current.put((String) r.get("stage"), r));
         Map<String, Long> reached = new HashMap<>();
         analysisMapper.selectStageReached().forEach(r -> reached.put((String) r.get("stage"), num(r.get("count")).longValue()));
-        List<String> stages = new ArrayList<>(CrmConstants.OPEN_STAGES);
-        stages.add("WON");
+        List<OpportunityStage> stages = new ArrayList<>(OpportunityStage.OPEN_STAGES);
+        stages.add(OpportunityStage.WON);
         List<Map<String, Object>> rows = new ArrayList<>();
         for (int i = 0; i < stages.size(); i++) {
-            String stage = stages.get(i);
+            String stage = stages.get(i).name();
             Map<String, Object> cur = current.getOrDefault(stage, Map.of());
             // 跳过中间阶段直接推进的商机也计入前面的阶段
             long reach = 0;
             for (int j = i; j < stages.size(); j++) {
-                reach = Math.max(reach, reached.getOrDefault(stages.get(j), 0L));
+                reach = Math.max(reach, reached.getOrDefault(stages.get(j).name(), 0L));
             }
             long reachedHere = reach;
             Map<String, Object> row = new LinkedHashMap<>();
@@ -71,9 +71,9 @@ public class CrmAnalysisService {
             long next = (long) rows.get(i + 1).get("reached");
             rows.get(i).put("conversion", here == 0 ? null : BigDecimal.valueOf(next * 100).divide(BigDecimal.valueOf(here), 1, RoundingMode.HALF_UP));
         }
-        Map<String, Object> lost = current.getOrDefault("LOST", Map.of());
+        Map<String, Object> lost = current.getOrDefault(OpportunityStage.LOST.name(), Map.of());
         Map<String, Object> lostRow = new LinkedHashMap<>();
-        lostRow.put("stage", "LOST");
+        lostRow.put("stage", OpportunityStage.LOST.name());
         lostRow.put("count", num(lost.get("count")));
         lostRow.put("amount", num(lost.get("amount")));
         rows.add(lostRow);

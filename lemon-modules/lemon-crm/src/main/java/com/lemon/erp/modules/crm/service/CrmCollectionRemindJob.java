@@ -3,6 +3,7 @@ package com.lemon.erp.modules.crm.service;
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
 import com.lemon.erp.framework.message.MessageSender.Message;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.modules.crm.entity.CrmCollectionPlan;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +43,7 @@ public class CrmCollectionRemindJob implements JobHandler {
             if (p.getOwnerId() == null) {
                 continue;
             }
-            messageSender.send(List.of(p.getOwnerId()), Message.of("REMIND", "合同回款逾期：" + p.getContractNo() + " 第 " + p.getSeq() + " 期", // i18n-ignore 站内消息存库
+            messageSender.send(List.of(p.getOwnerId()), Message.of(MessageCategory.REMIND, "合同回款逾期：" + p.getContractNo() + " 第 " + p.getSeq() + " 期", // i18n-ignore 站内消息存库
                     p.getCustomerName() + " 计划 " + p.getPlanDate() + " 回款 " + p.getAmount().toPlainString() + "，已回 " // i18n-ignore 站内消息存库
                             + p.getReceivedAmount().toPlainString(), "/crm/contract").dedup("collection-overdue:" + p.getId()));
         }

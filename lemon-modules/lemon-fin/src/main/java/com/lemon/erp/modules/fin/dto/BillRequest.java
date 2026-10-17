@@ -1,7 +1,7 @@
 package com.lemon.erp.modules.fin.dto;
 
+import com.lemon.erp.modules.fin.model.BillKind;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -15,7 +15,7 @@ import java.time.LocalDate;
  * @param dueDate 到期日，不填按往来单位账期计算
  */
 public record BillRequest(
-        @NotBlank(message = "{fin.valid.selectKind}") String kind,
+        @NotNull(message = "{fin.valid.selectKind}") BillKind kind,
         @NotNull(message = "{fin.valid.selectBusinessPartner}") Long partnerId,
         @NotNull(message = "{fin.valid.selectDate}") LocalDate billDate,
         LocalDate dueDate,

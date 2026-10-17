@@ -3,6 +3,7 @@ package com.lemon.erp.modules.system.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.system.model.JobRunStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -31,8 +32,8 @@ public class SysJob extends BaseEntity {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime lastRunTime;
 
-    /** SUCCESS / FAILED */
-    private String lastStatus;
+    /** 最近一次执行的结果 */
+    private JobRunStatus lastStatus;
 
     private String lastMessage;
 

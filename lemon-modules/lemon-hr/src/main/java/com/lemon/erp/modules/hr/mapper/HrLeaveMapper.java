@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.mapper;
 
+import com.lemon.erp.modules.hr.model.LeaveKind;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.lemon.erp.modules.hr.dto.LeaveQuery;
@@ -20,7 +21,7 @@ public interface HrLeaveMapper extends BaseMapper<HrLeave> {
                                             @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
     /** 时间段与 [start, end) 重叠的审批中 / 已通过的同种申请数 */
-    long countOverlapping(@Param("employeeId") Long employeeId, @Param("kind") String kind, @Param("excludeId") Long excludeId,
+    long countOverlapping(@Param("employeeId") Long employeeId, @Param("kind") LeaveKind kind, @Param("excludeId") Long excludeId,
                           @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
     /** 开始时间在 [from, to) 内的审批中 / 已通过的某类请假小时数 */

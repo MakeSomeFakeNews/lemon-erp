@@ -1,5 +1,11 @@
 package com.lemon.erp.modules.fin.controller;
 
+import com.lemon.erp.modules.fin.model.BillKind;
+import com.lemon.erp.modules.fin.model.LoanStatus;
+import com.lemon.erp.modules.fin.model.ExpenseClaimStatus;
+import com.lemon.erp.modules.fin.model.SettleKind;
+import com.lemon.erp.modules.fin.model.InvoiceStatus;
+import com.lemon.erp.modules.fin.model.InvoiceKind;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
@@ -119,8 +125,8 @@ public class FinExtController {
     @GetMapping("/invoice")
     @PreAuthorize("@ss.hasPerm('fin:invoice:list')")
     public R<PageResult<FinInvoice>> invoices(@RequestParam(defaultValue = "1") long current, @RequestParam(defaultValue = "10") long size,
-                                              @RequestParam String kind, @RequestParam(required = false) String keyword,
-                                              @RequestParam(required = false) Long partnerId, @RequestParam(required = false) String status,
+                                              @RequestParam InvoiceKind kind, @RequestParam(required = false) String keyword,
+                                              @RequestParam(required = false) Long partnerId, @RequestParam(required = false) InvoiceStatus status,
                                               @RequestParam(defaultValue = "false") boolean unmatched) {
         return R.ok(invoiceService.page(current, size, kind, keyword, partnerId, status, unmatched));
     }
@@ -129,7 +135,7 @@ public class FinExtController {
     @PostMapping("/invoice/import-xml")
     @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
     @OperLog(title = "数电票导入", type = OperType.IMPORT) // i18n-ignore
-    public R<FinInvoiceService.InvoiceImportResult> importInvoiceXml(@RequestParam String kind, @RequestParam("files") List<MultipartFile> files,
+    public R<FinInvoiceService.InvoiceImportResult> importInvoiceXml(@RequestParam InvoiceKind kind, @RequestParam("files") List<MultipartFile> files,
                                                                      @RequestParam(defaultValue = "true") boolean autoMatch) throws IOException {
         if (files.isEmpty() || files.size() > MAX_INVOICE_FILES) {
             throw new BizException("fin.error.importXmlFilesTime", MAX_INVOICE_FILES);
@@ -149,7 +155,7 @@ public class FinExtController {
     @PostMapping("/invoice/import")
     @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
     @OperLog(title = "发票清单导入", type = OperType.IMPORT) // i18n-ignore
-    public R<FinInvoiceService.InvoiceImportResult> importInvoices(@RequestParam String kind, @RequestParam(defaultValue = "true") boolean autoMatch,
+    public R<FinInvoiceService.InvoiceImportResult> importInvoices(@RequestParam InvoiceKind kind, @RequestParam(defaultValue = "true") boolean autoMatch,
                                                                    @Valid @RequestBody ImportRequest<InvoiceImport> req) {
         return R.ok(invoiceService.importRows(kind, req.rows(), autoMatch));
     }
@@ -181,14 +187,14 @@ public class FinExtController {
 
     @GetMapping("/invoice/open-bills")
     @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
-    public R<List<FinBill>> openBills(@RequestParam String kind, @RequestParam Long partnerId) {
+    public R<List<FinBill>> openBills(@RequestParam InvoiceKind kind, @RequestParam Long partnerId) {
         return R.ok(invoiceService.openBills(kind, partnerId));
     }
 
     /** 未开票收入（OUTPUT）/ 暂估应付（INPUT） */
     @GetMapping("/invoice/uninvoiced")
     @PreAuthorize("@ss.hasPerm('fin:invoice:list')")
-    public R<List<Map<String, Object>>> uninvoiced(@RequestParam String kind,
+    public R<List<Map<String, Object>>> uninvoiced(@RequestParam InvoiceKind kind,
                                                    @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate asOf) {
         return R.ok(invoiceService.uninvoiced(kind, asOf));
     }
@@ -224,7 +230,7 @@ public class FinExtController {
     @GetMapping("/advance")
     @PreAuthorize("@ss.hasPerm('fin:advance:list')")
     public R<PageResult<FinAdvance>> advances(@RequestParam(defaultValue = "1") long current, @RequestParam(defaultValue = "10") long size,
-                                              @RequestParam String kind, @RequestParam(required = false) Long partnerId,
+                                              @RequestParam SettleKind kind, @RequestParam(required = false) Long partnerId,
                                               @RequestParam(required = false) String keyword, @RequestParam(defaultValue = "false") boolean onlyOpen) {
         return R.ok(advanceService.page(current, size, kind, partnerId, keyword, onlyOpen));
     }
@@ -332,7 +338,7 @@ public class FinExtController {
     @GetMapping("/claim")
     @PreAuthorize("@ss.hasPerm('fin:claim:list')")
     public R<PageResult<FinExpenseClaim>> claims(@RequestParam(defaultValue = "1") long current, @RequestParam(defaultValue = "10") long size,
-                                                 @RequestParam(required = false) String keyword, @RequestParam(required = false) String status,
+                                                 @RequestParam(required = false) String keyword, @RequestParam(required = false) ExpenseClaimStatus status,
                                                  @RequestParam(defaultValue = "false") boolean mine) {
         return R.ok(claimService.page(current, size, keyword, status, mine ? SecurityUtils.getUserId() : null));
     }
@@ -389,7 +395,7 @@ public class FinExtController {
     @GetMapping("/loan")
     @PreAuthorize("@ss.hasAnyPerm('fin:loan:list', 'fin:claim:add')")
     public R<PageResult<FinLoan>> loans(@RequestParam(defaultValue = "1") long current, @RequestParam(defaultValue = "10") long size,
-                                        @RequestParam(required = false) String keyword, @RequestParam(required = false) String status,
+                                        @RequestParam(required = false) String keyword, @RequestParam(required = false) LoanStatus status,
                                         @RequestParam(required = false) Long userId) {
         return R.ok(loanService.page(current, size, keyword, status, userId));
     }
@@ -452,7 +458,7 @@ public class FinExtController {
     /** 往来对账单：kind 为 AR（客户）/ AP（供应商） */
     @GetMapping("/partner-statement")
     @PreAuthorize("@ss.hasPerm('fin:partnerStatement:list')")
-    public R<Map<String, Object>> partnerStatement(@RequestParam String kind, @RequestParam Long partnerId,
+    public R<Map<String, Object>> partnerStatement(@RequestParam BillKind kind, @RequestParam Long partnerId,
                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate begin,
                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
         return R.ok(partnerLedgerService.statement(kind, partnerId, begin, end));

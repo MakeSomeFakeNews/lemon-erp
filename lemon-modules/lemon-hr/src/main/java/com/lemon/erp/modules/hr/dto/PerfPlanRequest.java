@@ -1,12 +1,12 @@
 package com.lemon.erp.modules.hr.dto;
 
+import com.lemon.erp.modules.hr.model.PerfPeriodType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -20,7 +20,7 @@ import java.util.List;
  */
 public record PerfPlanRequest(
         @NotBlank(message = "{hr.valid.appraisalNameCannotEmpty}") @Size(max = 128, message = "{hr.valid.appraisalNameCannotExceedCharacters}") String name,
-        @NotNull(message = "{hr.valid.selectAppraisalPeriod}") @Pattern(regexp = "MONTH|QUARTER|YEAR", message = "{hr.valid.invalidAppraisalPeriod}") String periodType,
+        @NotNull(message = "{hr.valid.selectAppraisalPeriod}") PerfPeriodType periodType,
         @NotNull(message = "{hr.valid.selectStartDate}") LocalDate startDate,
         @NotNull(message = "{hr.valid.selectEndDate}") LocalDate endDate,
         Integer payPeriod,

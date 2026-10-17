@@ -150,8 +150,8 @@ final class FinancialTemplate {
         for (Row row : rows) {
             if (row.kind == Kind.ACCOUNT && !row.catchCategories.isEmpty()) {
                 for (FinAccount a : leaves) {
-                    if (!used.contains(a.getId()) && row.catchCategories.stream().anyMatch(c -> c.name().equals(a.getCategory()))
-                            && (row.catchDirection == null || row.catchDirection.name().equals(a.getDirection()))) {
+                    if (!used.contains(a.getId()) && row.catchCategories.contains(a.getCategory())
+                            && (row.catchDirection == null || row.catchDirection == a.getDirection())) {
                         used.add(a.getId());
                         matched.get(row).add(a);
                     }

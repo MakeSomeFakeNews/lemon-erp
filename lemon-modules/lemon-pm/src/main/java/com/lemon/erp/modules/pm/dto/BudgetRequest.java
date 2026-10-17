@@ -1,9 +1,9 @@
 package com.lemon.erp.modules.pm.dto;
 
+import com.lemon.erp.modules.pm.model.CostType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
@@ -14,7 +14,7 @@ import java.util.List;
  */
 public record BudgetRequest(@NotNull(message = "{pm.valid.enterBudget}") List<@Valid @NotNull Item> items) {
 
-    public record Item(@NotBlank(message = "{pm.valid.selectCostType}") String costType,
+    public record Item(@NotNull(message = "{pm.valid.selectCostType}") CostType costType,
                        @NotNull(message = "{pm.valid.enterBudgetAmount}") @DecimalMin(value = "0", message = "{pm.valid.budgetCannotNegative}")
                        @Digits(integer = 16, fraction = 2, message = "{pm.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount) {
     }

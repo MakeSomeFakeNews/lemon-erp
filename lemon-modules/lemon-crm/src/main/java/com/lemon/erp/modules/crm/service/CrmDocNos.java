@@ -13,13 +13,22 @@ import static com.lemon.erp.framework.code.DocNoCatalog.Type.doc;
 @Configuration
 public class CrmDocNos {
 
+    /** 销售线索 */
+    public static final String LEAD = "XL";
+    /** 商机 */
+    public static final String OPPORTUNITY = "SJ";
+    /** 销售合同 */
+    public static final String CONTRACT = "XSHT";
+    /** 服务工单 */
+    public static final String TICKET = "FW";
+
     @Bean
     @Order(6)
     public DocNoCatalog crmDocNoCatalog() {
         return DocNoCatalog.of("crm.label.crm",
-                doc("XL", "crm.label.lead"),
-                doc("SJ", "crm.label.opportunity"),
-                doc("XSHT", "crm.label.salesContract"),
-                doc("FW", "crm.label.serviceTicket"));
+                doc(LEAD, "crm.label.lead"),
+                doc(OPPORTUNITY, "crm.label.opportunity"),
+                doc(CONTRACT, "crm.label.salesContract"),
+                doc(TICKET, "crm.label.serviceTicket"));
     }
 }

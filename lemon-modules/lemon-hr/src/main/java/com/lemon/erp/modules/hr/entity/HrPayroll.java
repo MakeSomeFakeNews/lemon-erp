@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.PayrollStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -27,7 +28,7 @@ public class HrPayroll extends BaseEntity {
     private Integer period;
 
     /** 状态(字典 hr_payroll_status) DRAFT草稿 CONFIRMED已确认 PAID已发放 */
-    private String status;
+    private PayrollStatus status;
 
     /** 人数 */
     private Integer headcount;

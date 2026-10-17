@@ -96,7 +96,7 @@ public class MesBoardService {
                 .thenComparing(BoardOrderRow::getId));
         Map<Long, LocalDate> eta = new HashMap<>();
         for (BoardOrderRow wo : sorted) {
-            boolean started = WorkOrderStatus.STARTED.name().equals(wo.getStatus());
+            boolean started = wo.getStatus() == WorkOrderStatus.STARTED;
             LocalDate cursor = started || wo.getPlanStart() == null || wo.getPlanStart().isBefore(today) ? today : wo.getPlanStart();
             for (MesWoOp op : opsByWo.getOrDefault(wo.getId(), List.of())) {
                 if (left(wo.getQty(), op).signum() <= 0) {

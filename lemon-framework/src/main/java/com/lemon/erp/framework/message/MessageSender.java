@@ -19,13 +19,13 @@ public interface MessageSender {
     void sendToPermission(String perm, Message message);
 
     /**
-     * @param category 字典 sys_message_category：APPROVAL 审批、REMIND 提醒、ALERT 预警、SYSTEM 系统
+     * @param category 消息类别
      * @param link     前端路由（如 /workflow/todo），点击消息跳转
      * @param dedupKey 去重键：同一用户已有相同去重键的消息时不再发送（定时提醒每天只发一次），为空不去重
      */
-    record Message(String category, String title, String content, String link, String dedupKey) {
+    record Message(MessageCategory category, String title, String content, String link, String dedupKey) {
 
-        public static Message of(String category, String title, String content, String link) {
+        public static Message of(MessageCategory category, String title, String content, String link) {
             return new Message(category, title, content, link, null);
         }
 

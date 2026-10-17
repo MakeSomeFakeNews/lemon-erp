@@ -3,6 +3,7 @@ package com.lemon.erp.modules.workflow.service;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
+import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.framework.workflow.identity.FlowIdentityProvider;
 import com.lemon.erp.modules.workflow.dto.TaskItem;
 import com.lemon.erp.modules.workflow.engine.FlowVariables;
@@ -77,11 +78,11 @@ public class WfTaskService {
                 : q.includeTaskLocalVariables().orderByHistoricTaskInstanceEndTime().desc()
                 .listPage(firstResult(current, size), maxResults(size));
         return new PageResult<>(toItems(tasks, HistoricTaskInstance::getEndTime,
-                t -> Objects.toString(t.getTaskLocalVariables().get(FlowVariables.TASK_ACTION), null)), total);
+                t -> ApprovalAction.of(Objects.toString(t.getTaskLocalVariables().get(FlowVariables.TASK_ACTION), null))), total);
     }
 
     private <T extends TaskInfo> List<TaskItem> toItems(List<T> tasks, Function<T, Date> endTime,
-                                                        Function<T, String> action) {
+                                                        Function<T, ApprovalAction> action) {
         if (tasks.isEmpty()) {
             return List.of();
         }
@@ -96,7 +97,7 @@ public class WfTaskService {
                     p == null ? null : p.getName(), p == null ? null : p.getProcessDefinitionKey(), startUserId,
                     names.get(startUserId), p == null ? null : toLocalDateTime(p.getStartTime()),
                     toLocalDateTime(t.getCreateTime()), toLocalDateTime(endTime.apply(t)), action.apply(t),
-                    p == null ? null : p.getBusinessStatus());
+                    p == null ? null : FlowStatus.of(p.getBusinessStatus()));
         }).toList();
     }
 

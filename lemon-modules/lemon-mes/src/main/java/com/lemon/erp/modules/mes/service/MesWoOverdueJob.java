@@ -2,6 +2,7 @@ package com.lemon.erp.modules.mes.service;
 
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender.Message;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.modules.mes.mapper.MesJobMapper;
@@ -45,7 +46,7 @@ public class MesWoOverdueJob implements JobHandler {
             if (r.get("createBy") == null) {
                 continue;
             }
-            messageSender.send(List.of(((Number) r.get("createBy")).longValue()), Message.of("ALERT",
+            messageSender.send(List.of(((Number) r.get("createBy")).longValue()), Message.of(MessageCategory.ALERT,
                     "工单 " + r.get("woNo") + " 已逾期", "计划完工日期 " + r.get("planEnd") + "，请跟进生产进度或关闭工单", "/mes/wo") // i18n-ignore
                     .dedup("wo-overdue:" + r.get("id") + ":" + today));
         }

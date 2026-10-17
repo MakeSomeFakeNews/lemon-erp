@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.entity;
 
+import com.lemon.erp.modules.pm.model.ProjectStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -48,7 +49,7 @@ public class PmProject extends BaseEntity {
     private String priority;
 
     /** 状态(字典 pm_project_status) PLANNING规划中 ACTIVE进行中 SUSPENDED已暂停 FINISHED已完成 CLOSED已关闭 */
-    private String status;
+    private ProjectStatus status;
 
     /** 计划开始 */
     private LocalDate planStart;

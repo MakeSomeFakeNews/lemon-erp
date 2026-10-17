@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.PerfPeriodType;
+import com.lemon.erp.modules.hr.model.PerfStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -21,7 +23,7 @@ public class HrPerfPlan extends BaseEntity {
     private String name;
 
     /** 周期 MONTH月度 QUARTER季度 YEAR年度 */
-    private String periodType;
+    private PerfPeriodType periodType;
 
     /** 考核开始日期 */
     private LocalDate startDate;
@@ -33,7 +35,7 @@ public class HrPerfPlan extends BaseEntity {
     private Integer payPeriod;
 
     /** 状态(字典 hr_perf_status) DRAFT草稿 SCORING考核中 FINISHED已归档 */
-    private String status;
+    private PerfStatus status;
 
     /** 说明 */
     private String remark;

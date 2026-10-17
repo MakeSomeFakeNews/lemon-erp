@@ -120,7 +120,7 @@ public class MesWorkOrderController {
     public R<PageResult<MesWoDoc>> docs(@RequestParam(defaultValue = "1") long current,
                                         @RequestParam(defaultValue = "10") long size,
                                         @RequestParam(required = false) Long woId,
-                                        @RequestParam(required = false) String kind) {
+                                        @RequestParam(required = false) WoDocKind kind) {
         return R.ok(docService.page(current, size, woId, kind));
     }
 

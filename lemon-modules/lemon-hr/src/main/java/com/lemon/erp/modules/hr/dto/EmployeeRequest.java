@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.dto;
 
+import com.lemon.erp.modules.hr.model.EmployeeStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -30,7 +31,7 @@ public record EmployeeRequest(
         Long userId,
         Long shiftId,
         String empType,
-        String status,
+        EmployeeStatus status,
         @NotNull(message = "{hr.valid.selectHireDate}") LocalDate entryDate,
         LocalDate regularDate,
         @Size(max = 255, message = "{hr.valid.addressCannotExceedCharacters}") String address,

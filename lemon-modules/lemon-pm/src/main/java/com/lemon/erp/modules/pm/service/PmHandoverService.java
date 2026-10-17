@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.service;
 
+import com.lemon.erp.modules.pm.model.TaskStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.framework.org.EmployeeLeftEvent;
 import com.lemon.erp.modules.pm.entity.PmMember;
@@ -40,6 +41,6 @@ public class PmHandoverService {
         projectMapper.update(Wrappers.<PmProject>lambdaUpdate().set(PmProject::getManagerId, to).set(PmProject::getUpdateTime, now)
                 .eq(PmProject::getManagerId, e.userId()));
         taskMapper.update(Wrappers.<PmTask>lambdaUpdate().set(PmTask::getAssigneeId, to).set(PmTask::getUpdateTime, now)
-                .eq(PmTask::getAssigneeId, e.userId()).ne(PmTask::getStatus, "DONE"));
+                .eq(PmTask::getAssigneeId, e.userId()).ne(PmTask::getStatus, TaskStatus.DONE));
     }
 }

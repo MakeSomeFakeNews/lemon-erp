@@ -1,9 +1,9 @@
 package com.lemon.erp.modules.fin.dto;
 
+import com.lemon.erp.modules.fin.model.InvoiceType;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -19,7 +19,7 @@ import java.util.List;
  */
 public record InvoiceImport(
         @NotBlank(message = "{fin.valid.enterInvoiceNumber}") @Size(max = 32, message = "{fin.valid.invoiceNumberCannotExceedCharacters}") String invoiceNo,
-        @Pattern(regexp = "^(SPECIAL|NORMAL|E_SPECIAL|E_NORMAL)?$", message = "{fin.valid.invalidInvoiceType}") String invoiceType,
+        InvoiceType invoiceType,
         @NotNull(message = "{fin.valid.enterInvoiceDate}") LocalDate invoiceDate,
         @Size(max = 32, message = "{fin.valid.sellerTaxpayerIdCannotExceedCharacters}") String sellerTaxNo,
         @Size(max = 128, message = "{fin.valid.sellerNameCannotExceedCharacters}") String sellerName,

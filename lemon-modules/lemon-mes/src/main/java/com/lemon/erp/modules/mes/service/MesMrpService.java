@@ -1,5 +1,8 @@
 package com.lemon.erp.modules.mes.service;
 
+import com.lemon.erp.modules.scm.model.OrderSource;
+import com.lemon.erp.modules.mes.model.MrpResultStatus;
+import com.lemon.erp.modules.mes.model.WorkOrderSource;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -106,7 +109,7 @@ public class MesMrpService {
         List<MesPlan> plans = (req.planIds() == null ? List.<Long>of() : req.planIds()).stream().distinct()
                 .map(planService::getAccessible).toList();
         for (MesPlan plan : plans) {
-            if (!PlanStatus.CONFIRMED.name().equals(plan.getStatus())) {
+            if (plan.getStatus() != PlanStatus.CONFIRMED) {
                 throw new BizException("mes.error.planNotConfirmedCannotTakePart", plan.getPlanNo());
             }
         }
@@ -218,7 +221,7 @@ public class MesMrpService {
             MesMrpResult r = new MesMrpResult();
             r.setMaterialId(id);
             r.setLevelNo(levels.get(id));
-            r.setSupplyType(type.name());
+            r.setSupplyType(type);
             r.setBomId(bom == null ? null : bom.getId());
             r.setGrossQty(g);
             r.setRequiredDate(required.get(id));
@@ -231,7 +234,7 @@ public class MesMrpService {
                 r.setNetQty(g);
                 r.setSuggestQty(BigDecimal.ZERO);
                 r.setReleaseDate(r.getRequiredDate());
-                r.setStatus("NONE");
+                r.setStatus(MrpResultStatus.NONE);
                 results.add(r);
                 explode(children.getOrDefault(id, List.of()), g, r.getRequiredDate(), gross, required);
                 continue;
@@ -252,7 +255,7 @@ public class MesMrpService {
                 // 阶梯价：按建议数量
                 r.setPrice(scmQueryService.effectivePrice(price, r.getSuggestQty()));
             }
-            r.setStatus(r.getSuggestQty().signum() > 0 ? "NEW" : "NONE");
+            r.setStatus(r.getSuggestQty().signum() > 0 ? MrpResultStatus.NEW : MrpResultStatus.NONE);
             results.add(r);
             // 自制件、委外件按建议数量展开为下层的毛需求（委外件的子件提供给加工商），需求日期为本层开工 / 下单日期
             if (bom != null && r.getSuggestQty().signum() > 0) {
@@ -261,10 +264,10 @@ public class MesMrpService {
         }
 
         // 新运算后，之前运算中未下达的建议作废，避免按过时的数据重复下单
-        resultMapper.update(Wrappers.<MesMrpResult>lambdaUpdate().set(MesMrpResult::getStatus, "EXPIRED")
-                .eq(MesMrpResult::getStatus, "NEW"));
+        resultMapper.update(Wrappers.<MesMrpResult>lambdaUpdate().set(MesMrpResult::getStatus, MrpResultStatus.EXPIRED)
+                .eq(MesMrpResult::getStatus, MrpResultStatus.NEW));
         MesMrpRun run = new MesMrpRun();
-        run.setRunNo(docNoService.next("MR"));
+        run.setRunNo(docNoService.next(MesDocNos.MRP_RUN));
         run.setPlanNos(plans.stream().map(MesPlan::getPlanNo).collect(Collectors.joining(",")));
         run.setSources(String.join("、", sources));
         run.setResultCount(results.size());
@@ -282,7 +285,7 @@ public class MesMrpService {
     public void updateResult(Long id, MrpResultRequest req) {
         MesMrpResult r = getNew(id);
         BigDecimal price = req.price();
-        boolean buy = SupplyType.valueOf(r.getSupplyType()).purchased();
+        boolean buy = r.getSupplyType().purchased();
         if (buy && req.supplierId() != null && price == null) {
             ScmSupplierPrice p = scmQueryService.supplierPrice(req.supplierId(), r.getMaterialId());
             price = p == null ? null : p.getPrice();
@@ -313,17 +316,17 @@ public class MesMrpService {
                 : planService.getByNo(mrpRun.getPlanNos());
         List<String> docNos = new ArrayList<>();
 
-        for (MesMrpResult r : rows.stream().filter(r -> SupplyType.MAKE.name().equals(r.getSupplyType())).toList()) {
+        for (MesMrpResult r : rows.stream().filter(r -> r.getSupplyType() == SupplyType.MAKE).toList()) {
             Long planId = singlePlan != null && singlePlan.getMaterialId().equals(r.getMaterialId()) ? singlePlan.getId() : null;
             Long woId = workOrderService.createDraft(new WorkOrderRequest(r.getMaterialId(), r.getBomId(), r.getSuggestQty(),
-                    r.getReleaseDate(), r.getRequiredDate(), req.warehouseId(), remark), "MRP", planId);
+                    r.getReleaseDate(), r.getRequiredDate(), req.warehouseId(), remark), WorkOrderSource.MRP, planId);
             String woNo = workOrderMapper.selectById(woId).getWoNo();
             markReleased(r.getId(), woNo);
             docNos.add(woNo);
         }
 
         Map<Long, List<MesMrpResult>> bySupplier = new LinkedHashMap<>();
-        for (MesMrpResult r : rows.stream().filter(r -> SupplyType.valueOf(r.getSupplyType()).purchased()).toList()) {
+        for (MesMrpResult r : rows.stream().filter(r -> r.getSupplyType().purchased()).toList()) {
             if (r.getSupplierId() == null) {
                 WmsMaterial m = materials.get(r.getMaterialId());
                 throw new BizException("mes.error.specifySupplierPurchasedOutsourcedItemFirst", m.getCode(), m.getName());
@@ -341,7 +344,7 @@ public class MesMrpService {
                         r.getRequiredDate(), null);
             }).toList();
             Long orderId = orderService.createDraft(OrderKind.PURCHASE,
-                    new OrderRequest(e.getKey(), LocalDate.now(), delivery, req.warehouseId(), remark, items), "MRP");
+                    new OrderRequest(e.getKey(), LocalDate.now(), delivery, req.warehouseId(), remark, items), OrderSource.MRP);
             String orderNo = scmQueryService.orderNo(orderId);
             list.forEach(r -> markReleased(r.getId(), orderNo));
             docNos.add(orderNo);
@@ -356,7 +359,7 @@ public class MesMrpService {
         if (r == null) {
             throw new BizException("mes.error.mrpResultDoesNotExist");
         }
-        if (!"NEW".equals(r.getStatus())) {
+        if (r.getStatus() != MrpResultStatus.NEW) {
             throw new BizException("mes.error.suggestionHasReleasedNeedsNoAction");
         }
         return r;
@@ -364,10 +367,10 @@ public class MesMrpService {
 
     private void markReleased(Long id, String releaseNo) {
         int updated = resultMapper.update(Wrappers.<MesMrpResult>lambdaUpdate()
-                .set(MesMrpResult::getStatus, "RELEASED")
+                .set(MesMrpResult::getStatus, MrpResultStatus.RELEASED)
                 .set(MesMrpResult::getReleaseNo, releaseNo)
                 .eq(MesMrpResult::getId, id)
-                .eq(MesMrpResult::getStatus, "NEW"));
+                .eq(MesMrpResult::getStatus, MrpResultStatus.NEW));
         if (updated == 0) {
             throw new BizException("mes.error.suggestionHasAlreadyReleasedRefresh");
         }

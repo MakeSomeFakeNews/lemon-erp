@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.workflow.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.lemon.erp.framework.workflow.FlowStatus;
 
 import java.time.LocalDateTime;
 
@@ -13,7 +14,7 @@ import java.time.LocalDateTime;
  * @param currentNodes 运行中的节点名称，多个用「、」分隔
  */
 public record InstanceItem(String id, String name, String processKey, String processName, String category,
-                           String status, Long startUserId, String startUserName,
+                           FlowStatus status, Long startUserId, String startUserName,
                            @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
                            @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
                            String currentNodes) {

@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.lemon.erp.modules.fin.model.VoucherStatus;
+import com.lemon.erp.modules.fin.model.CostRunKind;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -21,7 +23,7 @@ public class FinCostRun extends BaseEntity {
     private Long voucherId;
 
     /** RUN 核算 / OPENING 存货期初 */
-    private String kind;
+    private CostRunKind kind;
 
     /** 本期转入主营业务成本的制造费用差异 */
     private BigDecimal overheadVariance;
@@ -32,7 +34,7 @@ public class FinCostRun extends BaseEntity {
     private String voucherNo;
 
     @TableField(exist = false)
-    private String voucherStatus;
+    private VoucherStatus voucherStatus;
 
     @TableField(exist = false)
     private String createByName;

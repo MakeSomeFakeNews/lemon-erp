@@ -1,5 +1,11 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.modules.hr.model.CandidateStage;
+import com.lemon.erp.modules.hr.model.EmployeeStatus;
+import com.lemon.erp.modules.hr.model.HrConstants;
+import com.lemon.erp.modules.hr.model.HrDictValues;
+import com.lemon.erp.modules.hr.model.InterviewResult;
+import com.lemon.erp.modules.hr.model.RecruitStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -36,7 +42,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * 招聘：用人部门提交招聘需求（草稿 → 审批 → 招聘中），HR 录入应聘者并安排面试，
@@ -49,7 +54,6 @@ public class HrRecruitService {
 
     public static final String PROCESS_KEY = "hr_recruit";
     private static final String BUSINESS_KEY_PREFIX = "hr_recruit:";
-    private static final Set<String> ACTIVE_STAGES = Set.of("NEW", "INTERVIEW", "OFFER");
 
     private final HrRecruitMapper recruitMapper;
     private final HrCandidateMapper candidateMapper;
@@ -80,16 +84,16 @@ public class HrRecruitService {
     public List<HrRecruit> openOptions() {
         return recruitMapper.selectList(Wrappers.<HrRecruit>lambdaQuery()
                 .select(HrRecruit::getId, HrRecruit::getRecruitNo, HrRecruit::getTitle, HrRecruit::getDeptId, HrRecruit::getPositionId)
-                .eq(HrRecruit::getStatus, "OPEN").orderByDesc(HrRecruit::getId));
+                .eq(HrRecruit::getStatus, RecruitStatus.OPEN).orderByDesc(HrRecruit::getId));
     }
 
     @Transactional
     public Long create(RecruitRequest req) {
         HrRecruit r = new HrRecruit();
         fill(r, req);
-        r.setRecruitNo(docNoService.next("ZP"));
+        r.setRecruitNo(docNoService.next(HrDocNos.RECRUIT));
         r.setHiredCount(0);
-        r.setStatus("DRAFT");
+        r.setStatus(RecruitStatus.DRAFT);
         r.setCreateBy(SecurityUtils.getUserId());
         recruitMapper.insert(r);
         return r.getId();
@@ -111,7 +115,7 @@ public class HrRecruitService {
                 .set(HrRecruit::getDeadline, r.getDeadline())
                 .set(HrRecruit::getUpdateTime, LocalDateTime.now())
                 .eq(HrRecruit::getId, id)
-                .eq(HrRecruit::getStatus, "DRAFT"));
+                .eq(HrRecruit::getStatus, RecruitStatus.DRAFT));
     }
 
     @Transactional
@@ -130,10 +134,10 @@ public class HrRecruitService {
         HrRecruit r = getDraft(id);
         checkHeadcount(r);
         if (!flowApi.isAvailable(PROCESS_KEY)) {
-            transit(id, "DRAFT", "OPEN");
+            transit(id, RecruitStatus.DRAFT, RecruitStatus.OPEN);
             return false;
         }
-        transit(id, "DRAFT", "APPROVING");
+        transit(id, RecruitStatus.DRAFT, RecruitStatus.APPROVING);
         String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of(
                 "headcount", r.getHeadcount(), "deptId", r.getDeptId(), "recruitNo", r.getRecruitNo()));
         recruitMapper.update(Wrappers.<HrRecruit>lambdaUpdate().set(HrRecruit::getFlowInstanceId, instanceId).eq(HrRecruit::getId, id));
@@ -144,20 +148,20 @@ public class HrRecruitService {
     @Transactional
     public void withdraw(Long id) {
         HrRecruit r = detail(id);
-        if (!"APPROVING".equals(r.getStatus())) {
+        if (r.getStatus() != RecruitStatus.APPROVING) {
             throw new BizException("hr.error.jobRequisitionNotUnderApproval");
         }
         if (r.getFlowInstanceId() != null && flowApi.getStatus(r.getFlowInstanceId()) == FlowStatus.RUNNING) {
             flowApi.cancel(r.getFlowInstanceId(), "撤回招聘需求");  // i18n-ignore 审批意见存库
         }
-        recruitMapper.update(Wrappers.<HrRecruit>lambdaUpdate().set(HrRecruit::getStatus, "DRAFT")
-                .eq(HrRecruit::getId, id).eq(HrRecruit::getStatus, "APPROVING"));
+        recruitMapper.update(Wrappers.<HrRecruit>lambdaUpdate().set(HrRecruit::getStatus, RecruitStatus.DRAFT)
+                .eq(HrRecruit::getId, id).eq(HrRecruit::getStatus, RecruitStatus.APPROVING));
     }
 
     /** 关闭：停止招聘，未结束的应聘者不受影响 */
     @Transactional
     public void close(Long id) {
-        transit(id, "OPEN", "CLOSED");
+        transit(id, RecruitStatus.OPEN, RecruitStatus.CLOSED);
     }
 
     @EventListener(condition = "#e.processKey == 'hr_recruit'")
@@ -167,9 +171,9 @@ public class HrRecruitService {
         }
         Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
         recruitMapper.update(Wrappers.<HrRecruit>lambdaUpdate()
-                .set(HrRecruit::getStatus, e.status() == FlowStatus.APPROVED ? "OPEN" : "DRAFT")
+                .set(HrRecruit::getStatus, e.status() == FlowStatus.APPROVED ? RecruitStatus.OPEN : RecruitStatus.DRAFT)
                 .eq(HrRecruit::getId, id)
-                .eq(HrRecruit::getStatus, "APPROVING"));
+                .eq(HrRecruit::getStatus, RecruitStatus.APPROVING));
     }
 
     // ---------------------------------------------------------------- 应聘者
@@ -191,12 +195,12 @@ public class HrRecruitService {
     @Transactional
     public Long createCandidate(CandidateRequest req) {
         HrRecruit r = detail(req.recruitId());
-        if (!"OPEN".equals(r.getStatus())) {
+        if (r.getStatus() != RecruitStatus.OPEN) {
             throw new BizException("hr.error.jobRequisitionNotOpen");
         }
         HrCandidate c = new HrCandidate();
         fill(c, req);
-        c.setStage("NEW");
+        c.setStage(CandidateStage.NEW);
         c.setCreateBy(SecurityUtils.getUserId());
         candidateMapper.insert(c);
         return c.getId();
@@ -205,7 +209,7 @@ public class HrRecruitService {
     @Transactional
     public void updateCandidate(Long id, CandidateRequest req) {
         HrCandidate old = candidate(id);
-        if ("HIRED".equals(old.getStage())) {
+        if (old.getStage() == CandidateStage.HIRED) {
             throw new BizException("hr.error.hiredCandidatesCannotModified");
         }
         HrCandidate c = new HrCandidate();
@@ -218,7 +222,7 @@ public class HrRecruitService {
     @Transactional
     public void deleteCandidates(List<Long> ids) {
         for (HrCandidate c : candidateMapper.selectByIds(ids)) {
-            if ("HIRED".equals(c.getStage())) {
+            if (c.getStage() == CandidateStage.HIRED) {
                 throw new BizException("hr.error.hasHiredCannotDeleted", c.getName());
             }
         }
@@ -239,8 +243,8 @@ public class HrRecruitService {
         i.setRound((int) (long) interviewMapper.selectCount(Wrappers.<HrInterview>lambdaQuery().eq(HrInterview::getCandidateId, candidateId)) + 1);
         fill(i, req);
         interviewMapper.insert(i);
-        if ("NEW".equals(c.getStage())) {
-            changeStage(candidateId, "NEW", "INTERVIEW");
+        if (c.getStage() == CandidateStage.NEW) {
+            changeStage(candidateId, CandidateStage.NEW, CandidateStage.INTERVIEW);
         }
         return i.getId();
     }
@@ -262,15 +266,15 @@ public class HrRecruitService {
     @Transactional
     public void offer(Long candidateId) {
         HrCandidate c = activeCandidate(candidateId);
-        if (!"INTERVIEW".equals(c.getStage())) {
+        if (c.getStage() != CandidateStage.INTERVIEW) {
             throw new BizException("hr.error.offersOnlySentCandidatesInterviewStage");
         }
         boolean passed = interviewMapper.exists(Wrappers.<HrInterview>lambdaQuery()
-                .eq(HrInterview::getCandidateId, candidateId).eq(HrInterview::getResult, "PASS"));
+                .eq(HrInterview::getCandidateId, candidateId).eq(HrInterview::getResult, InterviewResult.PASS));
         if (!passed) {
             throw new BizException("hr.error.noPassedInterviewYetCannotSend");
         }
-        changeStage(candidateId, "INTERVIEW", "OFFER");
+        changeStage(candidateId, CandidateStage.INTERVIEW, CandidateStage.OFFER);
     }
 
     /** 淘汰 / 放弃 */
@@ -278,7 +282,7 @@ public class HrRecruitService {
     public void reject(Long candidateId, String reason) {
         HrCandidate c = activeCandidate(candidateId);
         candidateMapper.update(Wrappers.<HrCandidate>lambdaUpdate()
-                .set(HrCandidate::getStage, "REJECTED")
+                .set(HrCandidate::getStage, CandidateStage.REJECTED)
                 .set(reason != null && !reason.isBlank(), HrCandidate::getRemark, reason)
                 .eq(HrCandidate::getId, candidateId)
                 .eq(HrCandidate::getStage, c.getStage()));
@@ -292,7 +296,7 @@ public class HrRecruitService {
     @Transactional
     public Long hire(Long candidateId, HireRequest req) {
         HrCandidate c = candidate(candidateId);
-        if (!"OFFER".equals(c.getStage())) {
+        if (c.getStage() != CandidateStage.OFFER) {
             throw new BizException("hr.error.onlyCandidatesOfferHired");
         }
         HrRecruit r = detail(c.getRecruitId());
@@ -306,15 +310,15 @@ public class HrRecruitService {
         Long employeeId = employeeService.create(new EmployeeRequest(req.empNo(), c.getName(), c.getGender(), null, null,
                 c.getPhone(), c.getEmail(), c.getEducation(), r.getDeptId(),
                 req.positionId() != null ? req.positionId() : r.getPositionId(), userId, null,
-                StringUtils.hasText(req.empType()) ? req.empType() : HrEmployeeService.FULL_TIME, "PROBATION", req.entryDate(),
-                req.regularDate() != null ? req.regularDate() : req.entryDate().plusMonths(3), null, null, null,
+                StringUtils.hasText(req.empType()) ? req.empType() : HrDictValues.EMP_TYPE_FULL_TIME, EmployeeStatus.PROBATION, req.entryDate(),
+                req.regularDate() != null ? req.regularDate() : req.entryDate().plusMonths(HrConstants.PROBATION_MONTHS), null, null, null,
                 "招聘录用 " + r.getRecruitNo(), null));  // i18n-ignore 员工备注存库
         if (req.baseSalary() != null) {
             salaryService.save(employeeId, new SalaryRequest(req.baseSalary(), null, null, null, req.baseSalary(), req.baseSalary(),
                     BigDecimal.valueOf(5), null, null, "录用时建立", req.entryDate()));  // i18n-ignore 薪资备注存库
         }
         candidateMapper.update(Wrappers.<HrCandidate>lambdaUpdate()
-                .set(HrCandidate::getStage, "HIRED").set(HrCandidate::getEmployeeId, employeeId)
+                .set(HrCandidate::getStage, CandidateStage.HIRED).set(HrCandidate::getEmployeeId, employeeId)
                 .eq(HrCandidate::getId, candidateId));
         return employeeId;
     }
@@ -331,9 +335,9 @@ public class HrRecruitService {
             return;
         }
         long onJob = employeeMapper.selectCount(Wrappers.<HrEmployee>lambdaQuery()
-                .eq(HrEmployee::getPositionId, position.getId()).ne(HrEmployee::getStatus, HrEmployeeService.LEFT));
+                .eq(HrEmployee::getPositionId, position.getId()).ne(HrEmployee::getStatus, EmployeeStatus.LEFT));
         int recruiting = recruitMapper.selectList(Wrappers.<HrRecruit>lambdaQuery()
-                        .eq(HrRecruit::getPositionId, position.getId()).in(HrRecruit::getStatus, "APPROVING", "OPEN")
+                        .eq(HrRecruit::getPositionId, position.getId()).in(HrRecruit::getStatus, RecruitStatus.OCCUPYING)
                         .ne(HrRecruit::getId, r.getId()))
                 .stream().mapToInt(x -> Math.max(x.getHeadcount() - x.getHiredCount(), 0)).sum();
         if (onJob + recruiting + r.getHeadcount() > position.getHeadcount()) {
@@ -344,13 +348,13 @@ public class HrRecruitService {
 
     private HrRecruit getDraft(Long id) {
         HrRecruit r = detail(id);
-        if (!"DRAFT".equals(r.getStatus())) {
+        if (r.getStatus() != RecruitStatus.DRAFT) {
             throw new BizException("hr.error.onlyDraftJobRequisitionsModifiedDeleted");
         }
         return r;
     }
 
-    private void transit(Long id, String from, String to) {
+    private void transit(Long id, RecruitStatus from, RecruitStatus to) {
         int updated = recruitMapper.update(Wrappers.<HrRecruit>lambdaUpdate()
                 .set(HrRecruit::getStatus, to).set(HrRecruit::getUpdateTime, LocalDateTime.now())
                 .eq(HrRecruit::getId, id).eq(HrRecruit::getStatus, from));
@@ -361,13 +365,13 @@ public class HrRecruitService {
 
     private HrCandidate activeCandidate(Long id) {
         HrCandidate c = candidate(id);
-        if (!ACTIVE_STAGES.contains(c.getStage())) {
+        if (!c.getStage().isActive()) {
             throw new BizException("hr.error.candidateHasHiredRejected");
         }
         return c;
     }
 
-    private void changeStage(Long id, String from, String to) {
+    private void changeStage(Long id, CandidateStage from, CandidateStage to) {
         candidateMapper.update(Wrappers.<HrCandidate>lambdaUpdate().set(HrCandidate::getStage, to)
                 .eq(HrCandidate::getId, id).eq(HrCandidate::getStage, from));
     }
@@ -403,7 +407,7 @@ public class HrRecruitService {
         i.setInterviewerId(req.interviewerId());
         i.setMethod(req.method());
         i.setScore(req.score());
-        i.setResult(req.result() == null ? "PENDING" : req.result());
+        i.setResult(req.result() == null ? InterviewResult.PENDING : req.result());
         i.setFeedback(req.feedback());
     }
 }

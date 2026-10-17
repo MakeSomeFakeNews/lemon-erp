@@ -4,11 +4,12 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.lemon.erp.modules.scm.dto.TradeDocQuery;
 import com.lemon.erp.modules.scm.entity.ScmTradeDoc;
+import com.lemon.erp.modules.scm.model.TradeKind;
 import org.apache.ibatis.annotations.Param;
 
 public interface ScmTradeDocMapper extends BaseMapper<ScmTradeDoc> {
 
-    IPage<ScmTradeDoc> selectPageList(IPage<ScmTradeDoc> page, @Param("kind") String kind, @Param("q") TradeDocQuery query);
+    IPage<ScmTradeDoc> selectPageList(IPage<ScmTradeDoc> page, @Param("kind") TradeKind kind, @Param("q") TradeDocQuery query);
 
     ScmTradeDoc selectDetail(@Param("id") Long id);
 }

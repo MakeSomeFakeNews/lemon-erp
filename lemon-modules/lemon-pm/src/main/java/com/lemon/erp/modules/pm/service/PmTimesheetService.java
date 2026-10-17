@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.pm.service;
 
+import com.lemon.erp.modules.pm.model.TimesheetStatus;
+import com.lemon.erp.modules.pm.model.ProjectStatus;
 import com.lemon.erp.common.i18n.Messages;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -105,7 +107,7 @@ public class PmTimesheetService {
         ts.setWorkDate(req.workDate());
         ts.setHours(req.hours());
         ts.setContent(req.content());
-        ts.setStatus("SUBMITTED");
+        ts.setStatus(TimesheetStatus.SUBMITTED);
         ts.setCost(BigDecimal.ZERO);
         if (id == null) {
             timesheetMapper.insert(ts);
@@ -118,7 +120,7 @@ public class PmTimesheetService {
                 .set(PmTimesheet::getWorkDate, ts.getWorkDate())
                 .set(PmTimesheet::getHours, ts.getHours())
                 .set(PmTimesheet::getContent, ts.getContent())
-                .set(PmTimesheet::getStatus, "SUBMITTED")
+                .set(PmTimesheet::getStatus, TimesheetStatus.SUBMITTED)
                 .set(PmTimesheet::getRejectReason, null)
                 .set(PmTimesheet::getUpdateTime, LocalDateTime.now())
                 .eq(PmTimesheet::getId, id));
@@ -150,7 +152,7 @@ public class PmTimesheetService {
         Set<Long> tasks = new HashSet<>();
         int count = 0;
         for (PmTimesheet ts : timesheetMapper.selectByIds(req.ids())) {
-            if (!"SUBMITTED".equals(ts.getStatus())) {
+            if (ts.getStatus() != TimesheetStatus.SUBMITTED) {
                 continue;
             }
             if (Objects.equals(ts.getUserId(), me)) {
@@ -160,7 +162,7 @@ public class PmTimesheetService {
             if (!Objects.equals(project.getManagerId(), me) && !SecurityUtils.getDataScope().all()) {
                 throw new BizException("pm.error.onlyProjectManagerApproveTimesheetsProject", project.getName());
             }
-            if ("CLOSED".equals(project.getStatus())) {
+            if (project.getStatus() == ProjectStatus.CLOSED) {
                 throw new BizException("pm.error.projectClosedTimesheetsNoLongerApproved", project.getName());
             }
             BigDecimal rate = null;
@@ -171,14 +173,14 @@ public class PmTimesheetService {
                 cost = ts.getHours().multiply(rate).setScale(2, RoundingMode.HALF_UP);
             }
             count += timesheetMapper.update(Wrappers.<PmTimesheet>lambdaUpdate()
-                    .set(PmTimesheet::getStatus, approved ? "APPROVED" : "REJECTED")
+                    .set(PmTimesheet::getStatus, approved ? TimesheetStatus.APPROVED : TimesheetStatus.REJECTED)
                     .set(PmTimesheet::getCostRate, rate)
                     .set(PmTimesheet::getCost, cost)
                     .set(PmTimesheet::getApproveBy, me)
                     .set(PmTimesheet::getApproveTime, LocalDateTime.now())
                     .set(PmTimesheet::getRejectReason, approved ? null : req.reason())
                     .eq(PmTimesheet::getId, ts.getId())
-                    .eq(PmTimesheet::getStatus, "SUBMITTED"));
+                    .eq(PmTimesheet::getStatus, TimesheetStatus.SUBMITTED));
             if (approved && ts.getTaskId() != null) {
                 tasks.add(ts.getTaskId());
             }
@@ -192,7 +194,7 @@ public class PmTimesheetService {
         if (ts == null || !Objects.equals(ts.getUserId(), SecurityUtils.getUserId())) {
             throw new BizException("pm.error.timesheetNotFound");
         }
-        if ("APPROVED".equals(ts.getStatus())) {
+        if (ts.getStatus() == TimesheetStatus.APPROVED) {
             throw new BizException("pm.error.approvedTimesheetsCannotModifiedDeleted");
         }
         return ts;

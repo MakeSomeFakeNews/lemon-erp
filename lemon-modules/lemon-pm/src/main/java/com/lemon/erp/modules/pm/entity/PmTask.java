@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.entity;
 
+import com.lemon.erp.modules.pm.model.TaskStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -46,7 +47,7 @@ public class PmTask extends BaseEntity {
     private Integer progress;
 
     /** 状态(字典 pm_task_status) TODO未开始 DOING进行中 DONE已完成 */
-    private String status;
+    private TaskStatus status;
 
     /** 是否里程碑 */
     private Integer milestone;

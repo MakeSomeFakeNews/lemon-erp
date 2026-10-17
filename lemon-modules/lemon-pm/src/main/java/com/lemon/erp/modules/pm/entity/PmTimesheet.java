@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.entity;
 
+import com.lemon.erp.modules.pm.model.TimesheetStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -38,7 +39,7 @@ public class PmTimesheet extends BaseEntity {
     private String content;
 
     /** 状态(字典 pm_timesheet_status) SUBMITTED待审批 APPROVED已通过 REJECTED已驳回 */
-    private String status;
+    private TimesheetStatus status;
 
     /** 审批时的小时成本 */
     private BigDecimal costRate;

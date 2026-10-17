@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.BillKind;
+import com.lemon.erp.modules.fin.model.CostRunKind;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.excel.ImportExecutor;
@@ -28,8 +30,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.lemon.erp.modules.fin.model.FinConstants.BILL_AP;
-import static com.lemon.erp.modules.fin.model.FinConstants.BILL_AR;
 import static com.lemon.erp.modules.fin.model.FinConstants.lastDay;
 import static com.lemon.erp.modules.fin.model.FinConstants.previous;
 import static com.lemon.erp.modules.fin.model.FinConstants.toYearMonth;
@@ -67,20 +67,20 @@ public class FinOpeningSetupService {
         result.put("accounts", Map.of("count", openings.size(), "debit", debit, "credit", credit));
         result.put("stockDocs", queryMapper.selectOpeningStockDocs());
 
-        FinCostRun opening = runMapper.selectOne(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, FinCostService.OPENING));
+        FinCostRun opening = runMapper.selectOne(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, CostRunKind.OPENING));
         Map<String, Object> stock = new LinkedHashMap<>();
         stock.put("saved", opening != null);
         stock.put("openingPeriod", opening == null ? null : opening.getPeriod());
-        stock.put("costed", runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, FinCostService.RUN)));
+        stock.put("costed", runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, CostRunKind.RUN)));
         result.put("stock", stock);
 
         List<FinAccount> accounts = accountService.listAll();
         Map<String, Object> bills = new LinkedHashMap<>();
-        for (String kind : List.of(BILL_AR, BILL_AP)) {
+        for (BillKind kind : BillKind.values()) {
             Map<String, Object> b = new LinkedHashMap<>();
             b.put("count", 0);
             b.put("amount", BigDecimal.ZERO);
-            boolean ar = BILL_AR.equals(kind);
+            boolean ar = kind == BillKind.AR;
             String code = accountRules.code(ar ? AccountRole.RECEIVABLE : AccountRole.PAYABLE, null);
             BigDecimal ledger = BigDecimal.ZERO;
             for (FinAccountOpening o : openings) {
@@ -91,7 +91,7 @@ public class FinOpeningSetupService {
             }
             b.put("accountCode", code);
             b.put("ledger", ledger);
-            bills.put(kind, b);
+            bills.put(kind.name(), b);
         }
         for (Map<String, Object> row : queryMapper.selectManualBillSums()) {
             @SuppressWarnings("unchecked")
@@ -108,7 +108,7 @@ public class FinOpeningSetupService {
     /** 期初库存导入：生成启用期间前一天的期初入库单 */
     public ImportResult importStock(int startPeriod, ImportRequest<OpeningStockRow> req) {
         toYearMonth(startPeriod);
-        if (runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, FinCostService.RUN)
+        if (runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, CostRunKind.RUN)
                 .ge(FinCostRun::getPeriod, previous(startPeriod)))) {
             throw new BizException("fin.error.costsHaveCalculatedStartPeriodLater");
         }
@@ -116,9 +116,9 @@ public class FinOpeningSetupService {
     }
 
     /** 期初往来导入：按往来单位编码或名称逐行生成手工应收 / 应付单 */
-    public ImportResult importBills(String kind, ImportRequest<OpeningBillRow> req) {
+    public ImportResult importBills(BillKind kind, ImportRequest<OpeningBillRow> req) {
         FinBillService.checkKind(kind);
-        boolean ar = BILL_AR.equals(kind);
+        boolean ar = kind == BillKind.AR;
         return importExecutor.run(req, row -> {
             Long partnerId = ar ? customerId(row.partner().trim()) : supplierId(row.partner().trim());
             billService.create(new BillRequest(kind, partnerId, row.billDate(), row.dueDate(), row.amount(),

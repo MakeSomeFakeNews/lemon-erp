@@ -3,6 +3,7 @@ package com.lemon.erp.modules.system.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.system.entity.SysMessage;
@@ -69,11 +70,11 @@ public class SysMessageService implements MessageSender {
 
     // ---------------------------------------------------------------- 我的消息
 
-    public PageResult<SysMessage> mine(long current, long size, Boolean unread, String category) {
+    public PageResult<SysMessage> mine(long current, long size, Boolean unread, MessageCategory category) {
         Page<SysMessage> page = messageMapper.selectPage(Page.of(current, size), Wrappers.<SysMessage>lambdaQuery()
                 .eq(SysMessage::getUserId, SecurityUtils.getUserId())
                 .eq(Boolean.TRUE.equals(unread), SysMessage::getReadFlag, 0)
-                .eq(StringUtils.hasText(category), SysMessage::getCategory, category)
+                .eq(category != null, SysMessage::getCategory, category)
                 .orderByDesc(SysMessage::getId));
         return PageResult.of(page);
     }

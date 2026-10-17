@@ -1,5 +1,10 @@
 package com.lemon.erp.modules.pm.service;
 
+import com.lemon.erp.modules.fin.model.BillSource;
+import com.lemon.erp.modules.fin.model.BillKind;
+import com.lemon.erp.modules.pm.model.TaskStatus;
+import com.lemon.erp.modules.pm.model.ProjectStatus;
+import com.lemon.erp.modules.pm.model.BillingStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -69,7 +74,7 @@ public class PmAccountingService {
     @Transactional
     public void saveBilling(Long id, BillingRequest req) {
         PmProject p = projectService.get(req.projectId());
-        if ("CLOSED".equals(p.getStatus())) {
+        if (p.getStatus() == ProjectStatus.CLOSED) {
             throw new BizException("pm.error.projectClosed");
         }
         if (req.taskId() != null) {
@@ -86,7 +91,7 @@ public class PmAccountingService {
         b.setAmount(req.amount());
         b.setRemark(req.remark());
         if (id == null) {
-            b.setStatus("PLANNED");
+            b.setStatus(BillingStatus.PLANNED);
             billingMapper.insert(b);
             return;
         }
@@ -115,20 +120,20 @@ public class PmAccountingService {
         }
         if (b.getTaskId() != null) {
             PmTask milestone = taskMapper.selectById(b.getTaskId());
-            if (milestone != null && !"DONE".equals(milestone.getStatus())) {
+            if (milestone != null && milestone.getStatus() != TaskStatus.DONE) {
                 throw new BizException("pm.error.linkedMilestoneNotCompletedCannotInvoice", milestone.getName());
             }
         }
         LocalDate date = billDate == null ? LocalDate.now() : billDate;
         BigDecimal tax = b.getAmount().multiply(p.getTaxRate()).divide(HUNDRED.add(p.getTaxRate()), 2, RoundingMode.HALF_UP);
-        FinBill bill = billService.createFromSource("AR", p.getCustomerId(), "PROJECT", b.getId(), p.getCode(), date,
+        FinBill bill = billService.createFromSource(BillKind.AR, p.getCustomerId(), BillSource.PROJECT, b.getId(), p.getCode(), date,
                 b.getAmount(), tax, p.getName() + " " + b.getName(), p.getId());
         int updated = billingMapper.update(Wrappers.<PmBilling>lambdaUpdate()
-                .set(PmBilling::getStatus, "BILLED")
+                .set(PmBilling::getStatus, BillingStatus.BILLED)
                 .set(PmBilling::getBillId, bill.getId())
                 .set(PmBilling::getBillNo, bill.getBillNo())
                 .set(PmBilling::getBillDate, date)
-                .eq(PmBilling::getId, id).eq(PmBilling::getStatus, "PLANNED"));
+                .eq(PmBilling::getId, id).eq(PmBilling::getStatus, BillingStatus.PLANNED));
         if (updated == 0) {
             throw new BizException("pm.error.billingPlanStatusHasChangedRefresh");
         }
@@ -138,12 +143,12 @@ public class PmAccountingService {
     @Transactional
     public void unbill(Long id) {
         PmBilling b = billingMapper.selectById(id);
-        if (b == null || !"BILLED".equals(b.getStatus())) {
+        if (b == null || b.getStatus() != BillingStatus.BILLED) {
             throw new BizException("pm.error.billingPlanNotInvoiced");
         }
         billService.deleteSourceBill(b.getBillId());
         billingMapper.update(Wrappers.<PmBilling>lambdaUpdate()
-                .set(PmBilling::getStatus, "PLANNED").set(PmBilling::getBillId, null)
+                .set(PmBilling::getStatus, BillingStatus.PLANNED).set(PmBilling::getBillId, null)
                 .set(PmBilling::getBillNo, null).set(PmBilling::getBillDate, null)
                 .eq(PmBilling::getId, id));
     }
@@ -153,7 +158,7 @@ public class PmAccountingService {
         if (b == null) {
             throw new BizException("pm.error.billingPlanNotFound");
         }
-        if (!"PLANNED".equals(b.getStatus())) {
+        if (b.getStatus() != BillingStatus.PLANNED) {
             throw new BizException("pm.error.invoicedBillingPlansCannotModifiedDeleted");
         }
         return b;
@@ -187,7 +192,7 @@ public class PmAccountingService {
 
     /** 计划进度 = 已过天数 / 计划工期，限制在 0-1；已完成的项目为 1 */
     static BigDecimal plannedRatio(PmProject p) {
-        if ("FINISHED".equals(p.getStatus()) || "CLOSED".equals(p.getStatus())) {
+        if (p.getStatus().isFinished()) {
             return BigDecimal.ONE;
         }
         long total = ChronoUnit.DAYS.between(p.getPlanStart(), p.getPlanEnd()) + 1;

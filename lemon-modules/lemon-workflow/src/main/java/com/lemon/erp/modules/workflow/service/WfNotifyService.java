@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.workflow.service;
 
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender.Message;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
@@ -30,7 +31,7 @@ public class WfNotifyService {
         if (e.assigneeId() == null) {
             return;
         }
-        messageSender.send(List.of(e.assigneeId()), Message.of("APPROVAL", "待审批：" + e.processName(),  // i18n-ignore 存库或内部异常
+        messageSender.send(List.of(e.assigneeId()), Message.of(MessageCategory.APPROVAL, "待审批：" + e.processName(),  // i18n-ignore 存库或内部异常
                 "「" + e.processName() + "」流转到「" + e.taskName() + "」，等待你审批", "/workflow/todo"));  // i18n-ignore 存库或内部异常
     }
 
@@ -48,6 +49,6 @@ public class WfNotifyService {
             case REJECTED -> "已被拒绝";  // i18n-ignore 存库或内部异常
             default -> "已结束";  // i18n-ignore 存库或内部异常
         };
-        messageSender.send(List.of(e.startUserId()), Message.of("APPROVAL", name + result, name + result, "/workflow/mine"));
+        messageSender.send(List.of(e.startUserId()), Message.of(MessageCategory.APPROVAL, name + result, name + result, "/workflow/mine"));
     }
 }

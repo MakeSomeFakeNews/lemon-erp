@@ -11,6 +11,7 @@ import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
+import com.lemon.erp.framework.workflow.ApproveStatus;
 import com.lemon.erp.framework.workflow.FlowApi;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
 import com.lemon.erp.framework.workflow.FlowStatus;
@@ -32,7 +33,10 @@ import com.lemon.erp.modules.hr.mapper.HrLeaveMapper;
 import com.lemon.erp.modules.hr.mapper.HrPayrollItemMapper;
 import com.lemon.erp.modules.hr.mapper.HrSalaryHistoryMapper;
 import com.lemon.erp.modules.hr.mapper.HrSalaryMapper;
+import com.lemon.erp.modules.hr.model.ChangeType;
+import com.lemon.erp.modules.hr.model.EmployeeStatus;
 import com.lemon.erp.modules.hr.model.HrConstants;
+import com.lemon.erp.modules.hr.model.HrDictValues;
 import com.lemon.erp.modules.system.service.SysDeptService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -65,14 +69,6 @@ public class HrEmployeeService {
     /** 人事异动审批流程标识 */
     public static final String CHANGE_PROCESS_KEY = "hr_change";
     private static final String CHANGE_KEY_PREFIX = "hr_change:";
-    private static final String CHANGE_APPROVING = "APPROVING";
-    private static final String CHANGE_DONE = "DONE";
-
-    static final String PROBATION = "PROBATION";
-    static final String REGULAR = "REGULAR";
-    static final String LEFT = "LEFT";
-    /** 默认用工类型（字典 hr_emp_type 的内置值） */
-    static final String FULL_TIME = "FULL_TIME";
     private static final int OPTION_LIMIT = 50;
 
     private final HrEmployeeMapper employeeMapper;
@@ -155,11 +151,11 @@ public class HrEmployeeService {
         e.setDeptId(req.deptId());
         e.setPositionId(req.positionId());
         e.setEntryDate(req.entryDate());
-        e.setStatus(REGULAR.equals(req.status()) ? REGULAR : PROBATION);
+        e.setStatus(req.status() == EmployeeStatus.REGULAR ? EmployeeStatus.REGULAR : EmployeeStatus.PROBATION);
         e.setRegularDate(req.regularDate() != null ? req.regularDate()
-                : PROBATION.equals(e.getStatus()) ? req.entryDate().plusMonths(HrConstants.PROBATION_MONTHS) : req.entryDate());
+                : e.getStatus() == EmployeeStatus.PROBATION ? req.entryDate().plusMonths(HrConstants.PROBATION_MONTHS) : req.entryDate());
         employeeMapper.insert(e);
-        HrEmployeeChange c = newChange(e.getId(), "ENTRY", req.entryDate(), "入职");  // i18n-ignore 异动原因存库
+        HrEmployeeChange c = newChange(e.getId(), ChangeType.ENTRY, req.entryDate(), "入职");  // i18n-ignore 异动原因存库
         c.setToDeptId(e.getDeptId());
         c.setToPositionId(e.getPositionId());
         changeMapper.insert(c);
@@ -174,7 +170,7 @@ public class HrEmployeeService {
         HrEmployee e = new HrEmployee();
         fill(e, req, id);
         e.setId(id);
-        if (PROBATION.equals(old.getStatus()) && req.regularDate() != null) {
+        if (old.getStatus() == EmployeeStatus.PROBATION && req.regularDate() != null) {
             e.setRegularDate(req.regularDate());
         }
         employeeMapper.updateById(e);
@@ -209,7 +205,7 @@ public class HrEmployeeService {
             throw new BizException("hr.error.effectiveDateCannotEarlierHireDate");
         }
         if (changeMapper.exists(Wrappers.<HrEmployeeChange>lambdaQuery()
-                .eq(HrEmployeeChange::getEmployeeId, id).eq(HrEmployeeChange::getStatus, CHANGE_APPROVING))) {
+                .eq(HrEmployeeChange::getEmployeeId, id).eq(HrEmployeeChange::getStatus, ApproveStatus.APPROVING))) {
             throw new BizException("hr.error.employeeHasPersonnelChangeUnderApproval");
         }
         HrEmployeeChange c = newChange(id, req.type(), req.changeDate(), req.reason());
@@ -217,15 +213,15 @@ public class HrEmployeeService {
         prepareChange(e, c, req);
         if (!flowApi.isAvailable(CHANGE_PROCESS_KEY)) {
             applyChange(e, c);
-            c.setStatus(CHANGE_DONE);
+            c.setStatus(ApproveStatus.DONE);
             changeMapper.insert(c);
             return false;
         }
         // 先保存再发起：流程没有审批节点时会在发起过程中直接结束并回调 onChangeFlowFinished
-        c.setStatus(CHANGE_APPROVING);
+        c.setStatus(ApproveStatus.APPROVING);
         changeMapper.insert(c);
         Map<String, Object> vars = new HashMap<>();
-        vars.put("type", c.getType());
+        vars.put("type", c.getType().name());
         vars.put("employeeName", e.getName());
         vars.put("empNo", e.getEmpNo());
         vars.put("deptId", e.getDeptId());
@@ -246,7 +242,7 @@ public class HrEmployeeService {
             return;
         }
         HrEmployeeChange c = changeMapper.selectById(Long.valueOf(e.businessKey().substring(CHANGE_KEY_PREFIX.length())));
-        if (c == null || !CHANGE_APPROVING.equals(c.getStatus())) {
+        if (c == null || c.getStatus() != ApproveStatus.APPROVING) {
             return;
         }
         if (e.status() == FlowStatus.APPROVED) {
@@ -254,23 +250,23 @@ public class HrEmployeeService {
             checkChangeable(emp, c.getType());
             applyChange(emp, c);
         }
-        String status = switch (e.status()) {
-            case APPROVED -> CHANGE_DONE;
-            case REJECTED -> "REJECTED";
-            default -> "CANCELED";
+        ApproveStatus status = switch (e.status()) {
+            case APPROVED -> ApproveStatus.DONE;
+            case REJECTED -> ApproveStatus.REJECTED;
+            default -> ApproveStatus.CANCELED;
         };
         changeMapper.update(Wrappers.<HrEmployeeChange>lambdaUpdate()
                 .set(HrEmployeeChange::getStatus, status)
                 .set(HrEmployeeChange::getUpdateTime, LocalDateTime.now())
                 .eq(HrEmployeeChange::getId, c.getId())
-                .eq(HrEmployeeChange::getStatus, CHANGE_APPROVING));
+                .eq(HrEmployeeChange::getStatus, ApproveStatus.APPROVING));
     }
 
-    private static void checkChangeable(HrEmployee e, String type) {
-        if (LEFT.equals(e.getStatus())) {
+    private static void checkChangeable(HrEmployee e, ChangeType type) {
+        if (e.getStatus() == EmployeeStatus.LEFT) {
             throw new BizException("hr.error.employeeHasLeft");
         }
-        if ("REGULAR".equals(type) && !PROBATION.equals(e.getStatus())) {
+        if (type == ChangeType.REGULAR && e.getStatus() != EmployeeStatus.PROBATION) {
             throw new BizException("hr.error.onlyProbationaryEmployeesMadePermanent");
         }
     }
@@ -279,10 +275,10 @@ public class HrEmployeeService {
     private void prepareChange(HrEmployee e, HrEmployeeChange c, EmployeeChangeRequest req) {
         checkChangeable(e, req.type());
         switch (req.type()) {
-            case "REGULAR" -> {
+            case REGULAR -> {
                 // 转正无需其他内容
             }
-            case "TRANSFER" -> {
+            case TRANSFER -> {
                 if (req.deptId() == null) {
                     throw new BizException("hr.error.selectTargetDepartment");
                 }
@@ -294,7 +290,7 @@ public class HrEmployeeService {
                 c.setFromPositionId(e.getPositionId());
                 c.setToPositionId(req.positionId());
             }
-            case "SALARY" -> {
+            case SALARY -> {
                 if (req.salary() == null) {
                     throw new BizException("hr.error.enterNewBaseSalary");
                 }
@@ -305,7 +301,7 @@ public class HrEmployeeService {
                 c.setFromSalary(salary.getBaseSalary());
                 c.setToSalary(req.salary());
             }
-            case "LEAVE" -> {
+            case LEAVE -> {
                 c.setFromDeptId(e.getDeptId());
                 c.setFromPositionId(e.getPositionId());
                 if (req.handoverUserId() != null && req.handoverUserId().equals(e.getUserId())) {
@@ -320,10 +316,10 @@ public class HrEmployeeService {
     private void applyChange(HrEmployee e, HrEmployeeChange c) {
         Long id = e.getId();
         switch (c.getType()) {
-            case "REGULAR" -> employeeMapper.update(Wrappers.<HrEmployee>lambdaUpdate()
-                    .set(HrEmployee::getStatus, REGULAR).set(HrEmployee::getRegularDate, c.getChangeDate())
+            case REGULAR -> employeeMapper.update(Wrappers.<HrEmployee>lambdaUpdate()
+                    .set(HrEmployee::getStatus, EmployeeStatus.REGULAR).set(HrEmployee::getRegularDate, c.getChangeDate())
                     .eq(HrEmployee::getId, id));
-            case "TRANSFER" -> {
+            case TRANSFER -> {
                 employeeMapper.update(Wrappers.<HrEmployee>lambdaUpdate()
                         .set(HrEmployee::getDeptId, c.getToDeptId()).set(HrEmployee::getPositionId, c.getToPositionId())
                         .eq(HrEmployee::getId, id));
@@ -331,7 +327,7 @@ public class HrEmployeeService {
                     eventPublisher.publishEvent(new EmployeeDeptChangedEvent(id, e.getUserId(), c.getToDeptId()));
                 }
             }
-            case "SALARY" -> {
+            case SALARY -> {
                 HrSalary salary = salaryMapper.selectOne(Wrappers.<HrSalary>lambdaQuery().eq(HrSalary::getEmployeeId, id));
                 if (salary == null) {
                     throw new BizException("hr.error.employeeSSalaryProfileHasDeleted");
@@ -345,9 +341,9 @@ public class HrEmployeeService {
                             .set(HrSalary::getUpdateTime, LocalDateTime.now()).eq(HrSalary::getId, salary.getId()));
                 }
             }
-            case "LEAVE" -> {
+            case LEAVE -> {
                 employeeMapper.update(Wrappers.<HrEmployee>lambdaUpdate()
-                        .set(HrEmployee::getStatus, LEFT).set(HrEmployee::getLeaveDate, c.getChangeDate())
+                        .set(HrEmployee::getStatus, EmployeeStatus.LEFT).set(HrEmployee::getLeaveDate, c.getChangeDate())
                         .set(HrEmployee::getLeaveReason, c.getReason())
                         .eq(HrEmployee::getId, id));
                 // 停用登录账号，客户、商机、项目、审批待办移交给交接人
@@ -359,8 +355,8 @@ public class HrEmployeeService {
 
     /** 记录调薪异动（薪资档案修改基本工资时） */
     void logSalaryChange(Long employeeId, BigDecimal from, BigDecimal to, LocalDate effective) {
-        HrEmployeeChange c = newChange(employeeId, "SALARY", effective, "修改薪资档案");  // i18n-ignore 异动原因存库
-        c.setStatus(CHANGE_DONE);
+        HrEmployeeChange c = newChange(employeeId, ChangeType.SALARY, effective, "修改薪资档案");  // i18n-ignore 异动原因存库
+        c.setStatus(ApproveStatus.DONE);
         c.setFromSalary(from);
         c.setToSalary(to);
         changeMapper.insert(c);
@@ -410,14 +406,14 @@ public class HrEmployeeService {
         e.setEducation(emptyToNull(req.education()));
         e.setUserId(req.userId());
         e.setShiftId(req.shiftId());
-        e.setEmpType(req.empType() == null || req.empType().isBlank() ? FULL_TIME : req.empType());
+        e.setEmpType(req.empType() == null || req.empType().isBlank() ? HrDictValues.EMP_TYPE_FULL_TIME : req.empType());
         e.setAddress(emptyToNull(req.address()));
         e.setEmergencyContact(emptyToNull(req.emergencyContact()));
         e.setEmergencyPhone(emptyToNull(req.emergencyPhone()));
         e.setRemark(emptyToNull(req.remark()));
     }
 
-    private static HrEmployeeChange newChange(Long employeeId, String type, LocalDate date, String reason) {
+    private static HrEmployeeChange newChange(Long employeeId, ChangeType type, LocalDate date, String reason) {
         HrEmployeeChange c = new HrEmployeeChange();
         c.setEmployeeId(employeeId);
         c.setType(type);

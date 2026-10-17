@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.bi.service;
 
+import com.lemon.erp.framework.message.MessageCategory;
+import com.lemon.erp.modules.bi.model.AlertLevel;
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
 import com.lemon.erp.framework.message.MessageSender.Message;
@@ -42,8 +44,8 @@ public class BiAlertJob implements JobHandler {
         List<Map<String, Object>> triggered = decisionService.alerts().stream()
                 .filter(a -> Boolean.TRUE.equals(a.get("triggered"))).toList();
         for (Map<String, Object> a : triggered) {
-            String level = String.valueOf(a.get("level"));
-            messageSender.sendToPermission("bi:decision:list", Message.of("INFO".equals(level) ? "REMIND" : "ALERT",
+            MessageCategory category = a.get("level") == AlertLevel.INFO ? MessageCategory.REMIND : MessageCategory.ALERT;
+            messageSender.sendToPermission("bi:decision:list", Message.of(category,
                     "经营预警：" + a.get("name"), "当前值 " + a.get("value") + (a.get("remark") == null ? "" : "，" + a.get("remark")),  // i18n-ignore 站内消息存库
                     "/bi/decision").dedup("bi-alert:" + a.get("ruleId") + ":" + today));
         }

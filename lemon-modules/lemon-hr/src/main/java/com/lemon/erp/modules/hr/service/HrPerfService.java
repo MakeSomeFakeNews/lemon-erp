@@ -1,5 +1,8 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.modules.hr.model.AppraisalStatus;
+import com.lemon.erp.modules.hr.model.PerfGrade;
+import com.lemon.erp.modules.hr.model.PerfStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -18,7 +21,6 @@ import com.lemon.erp.modules.hr.mapper.HrPerfAppraisalMapper;
 import com.lemon.erp.modules.hr.mapper.HrPerfIndicatorMapper;
 import com.lemon.erp.modules.hr.mapper.HrPerfPlanMapper;
 import com.lemon.erp.modules.hr.mapper.HrPerfScoreMapper;
-import com.lemon.erp.modules.hr.model.HrConstants;
 import com.lemon.erp.modules.system.entity.SysDept;
 import com.lemon.erp.modules.system.service.SysDeptService;
 import lombok.RequiredArgsConstructor;
@@ -80,7 +82,7 @@ public class HrPerfService {
     public Long create(PerfPlanRequest req) {
         HrPerfPlan p = new HrPerfPlan();
         fill(p, req);
-        p.setStatus("DRAFT");
+        p.setStatus(PerfStatus.DRAFT);
         p.setCreateBy(SecurityUtils.getUserId());
         planMapper.insert(p);
         saveIndicators(p.getId(), req.indicators());
@@ -90,7 +92,7 @@ public class HrPerfService {
     @Transactional
     public void update(Long id, PerfPlanRequest req) {
         HrPerfPlan old = getPlan(id);
-        if (!"DRAFT".equals(old.getStatus())) {
+        if (old.getStatus() != PerfStatus.DRAFT) {
             // 考核开始后只能修改名称、说明和奖金发放月份，指标不能再改
             planMapper.update(Wrappers.<HrPerfPlan>lambdaUpdate()
                     .set(HrPerfPlan::getName, req.name().trim()).set(HrPerfPlan::getRemark, req.remark())
@@ -114,7 +116,7 @@ public class HrPerfService {
     @Transactional
     public void delete(Long id) {
         HrPerfPlan p = getPlan(id);
-        if (!"DRAFT".equals(p.getStatus())) {
+        if (p.getStatus() != PerfStatus.DRAFT) {
             throw new BizException("hr.error.onlyDraftAppraisalPlansDeleted");
         }
         indicatorMapper.delete(Wrappers.<HrPerfIndicator>lambdaQuery().eq(HrPerfIndicator::getPlanId, id));
@@ -130,7 +132,7 @@ public class HrPerfService {
     @Transactional
     public int start(Long id, List<Long> deptIds) {
         HrPerfPlan p = getPlan(id);
-        if (!"DRAFT".equals(p.getStatus())) {
+        if (p.getStatus() != PerfStatus.DRAFT) {
             throw new BizException("hr.error.appraisalAlreadyStarted");
         }
         Set<Long> scope = null;
@@ -142,7 +144,7 @@ public class HrPerfService {
         }
         LocalDate today = LocalDate.now();
         List<HrEmployee> employees = employeeMapper.selectEmployedBetween(today, today, scope, null).stream()
-                .filter(e -> !HrEmployeeService.LEFT.equals(e.getStatus())).toList();
+                .filter(e -> e.getStatus().isOnJob()).toList();
         if (employees.isEmpty()) {
             throw new BizException("hr.error.noActiveEmployeesSelectedScope");
         }
@@ -156,7 +158,7 @@ public class HrPerfService {
             a.setDeptId(e.getDeptId());
             Long reviewer = reviewerOf(e, depts);
             a.setReviewerId(reviewer != null ? reviewer : starter);
-            a.setStatus(e.getUserId() != null ? "SELF" : "REVIEW");
+            a.setStatus(e.getUserId() != null ? AppraisalStatus.SELF : AppraisalStatus.REVIEW);
             items.add(a);
         }
         appraisalMapper.insertBatch(items);
@@ -164,8 +166,8 @@ public class HrPerfService {
         if (!scores.isEmpty()) {
             scoreMapper.insertBatch(scores);
         }
-        planMapper.update(Wrappers.<HrPerfPlan>lambdaUpdate().set(HrPerfPlan::getStatus, "SCORING")
-                .eq(HrPerfPlan::getId, id).eq(HrPerfPlan::getStatus, "DRAFT"));
+        planMapper.update(Wrappers.<HrPerfPlan>lambdaUpdate().set(HrPerfPlan::getStatus, PerfStatus.SCORING)
+                .eq(HrPerfPlan::getId, id).eq(HrPerfPlan::getStatus, PerfStatus.DRAFT));
         return items.size();
     }
 
@@ -173,16 +175,16 @@ public class HrPerfService {
     @Transactional
     public void finish(Long id) {
         HrPerfPlan p = getPlan(id);
-        if (!"SCORING".equals(p.getStatus())) {
+        if (p.getStatus() != PerfStatus.SCORING) {
             throw new BizException("hr.error.appraisalNotProgress");
         }
         long pending = appraisalMapper.selectCount(Wrappers.<HrPerfAppraisal>lambdaQuery()
-                .eq(HrPerfAppraisal::getPlanId, id).ne(HrPerfAppraisal::getStatus, "DONE"));
+                .eq(HrPerfAppraisal::getPlanId, id).ne(HrPerfAppraisal::getStatus, AppraisalStatus.DONE));
         if (pending > 0) {
             throw new BizException("hr.error.appraisalFormSHaveNotScored", pending);
         }
-        planMapper.update(Wrappers.<HrPerfPlan>lambdaUpdate().set(HrPerfPlan::getStatus, "FINISHED")
-                .eq(HrPerfPlan::getId, id).eq(HrPerfPlan::getStatus, "SCORING"));
+        planMapper.update(Wrappers.<HrPerfPlan>lambdaUpdate().set(HrPerfPlan::getStatus, PerfStatus.FINISHED)
+                .eq(HrPerfPlan::getId, id).eq(HrPerfPlan::getStatus, PerfStatus.SCORING));
     }
 
     // ---------------------------------------------------------------- 考核表
@@ -216,15 +218,15 @@ public class HrPerfService {
         if (!Objects.equals(a.getEmployeeUserId(), SecurityUtils.getUserId())) {
             throw new BizException("hr.error.onlyFillOwnSelfAssessment");
         }
-        if (!"SELF".equals(a.getStatus()) || !"SCORING".equals(a.getPlanStatus())) {
+        if (a.getStatus() != AppraisalStatus.SELF || a.getPlanStatus() != PerfStatus.SCORING) {
             throw new BizException("hr.error.appraisalFormNotSelfAssessmentStage");
         }
         BigDecimal total = saveScores(a, req, true);
         appraisalMapper.update(Wrappers.<HrPerfAppraisal>lambdaUpdate()
                 .set(HrPerfAppraisal::getSelfScore, total)
                 .set(HrPerfAppraisal::getSelfComment, req.comment())
-                .set(HrPerfAppraisal::getStatus, "REVIEW")
-                .eq(HrPerfAppraisal::getId, id).eq(HrPerfAppraisal::getStatus, "SELF"));
+                .set(HrPerfAppraisal::getStatus, AppraisalStatus.REVIEW)
+                .eq(HrPerfAppraisal::getId, id).eq(HrPerfAppraisal::getStatus, AppraisalStatus.SELF));
     }
 
     /** 评分：评分人或有「代为评分」权限的用户；员工未自评时也可以直接评分 */
@@ -237,37 +239,37 @@ public class HrPerfService {
         if (Objects.equals(a.getEmployeeUserId(), SecurityUtils.getUserId())) {
             throw new BizException("hr.error.cannotScoreYourself");
         }
-        if ("DONE".equals(a.getStatus()) || !"SCORING".equals(a.getPlanStatus())) {
+        if (a.getStatus() == AppraisalStatus.DONE || a.getPlanStatus() != PerfStatus.SCORING) {
             throw new BizException("hr.error.appraisalFormHasScoredAppraisalArchived");
         }
         BigDecimal total = saveScores(a, req, false);
         appraisalMapper.update(Wrappers.<HrPerfAppraisal>lambdaUpdate()
                 .set(HrPerfAppraisal::getScore, total)
-                .set(HrPerfAppraisal::getGrade, HrConstants.grade(total))
+                .set(HrPerfAppraisal::getGrade, PerfGrade.of(total))
                 .set(HrPerfAppraisal::getReviewComment, req.comment())
                 .set(HrPerfAppraisal::getReviewTime, LocalDateTime.now())
-                .set(HrPerfAppraisal::getStatus, "DONE")
-                .eq(HrPerfAppraisal::getId, id).ne(HrPerfAppraisal::getStatus, "DONE"));
+                .set(HrPerfAppraisal::getStatus, AppraisalStatus.DONE)
+                .eq(HrPerfAppraisal::getId, id).ne(HrPerfAppraisal::getStatus, AppraisalStatus.DONE));
     }
 
     /** 退回重评：已完成的考核表回到待评分（考核未归档） */
     @Transactional
     public void reopen(Long id) {
         HrPerfAppraisal a = appraisal(id);
-        if (!"DONE".equals(a.getStatus()) || !"SCORING".equals(a.getPlanStatus())) {
+        if (a.getStatus() != AppraisalStatus.DONE || a.getPlanStatus() != PerfStatus.SCORING) {
             throw new BizException("hr.error.onlyScoredFormsOngoingAppraisalReturned");
         }
         appraisalMapper.update(Wrappers.<HrPerfAppraisal>lambdaUpdate()
-                .set(HrPerfAppraisal::getStatus, "REVIEW").set(HrPerfAppraisal::getScore, null).set(HrPerfAppraisal::getGrade, null)
+                .set(HrPerfAppraisal::getStatus, AppraisalStatus.REVIEW).set(HrPerfAppraisal::getScore, null).set(HrPerfAppraisal::getGrade, null)
                 .eq(HrPerfAppraisal::getId, id));
     }
 
     /** 待我自评、待我评分的数量 */
     public long[] pendingCounts(Long userId, Long employeeId) {
         long self = employeeId == null ? 0 : appraisalMapper.selectCount(Wrappers.<HrPerfAppraisal>lambdaQuery()
-                .eq(HrPerfAppraisal::getEmployeeId, employeeId).eq(HrPerfAppraisal::getStatus, "SELF"));
+                .eq(HrPerfAppraisal::getEmployeeId, employeeId).eq(HrPerfAppraisal::getStatus, AppraisalStatus.SELF));
         long review = appraisalMapper.selectCount(Wrappers.<HrPerfAppraisal>lambdaQuery()
-                .eq(HrPerfAppraisal::getReviewerId, userId).in(HrPerfAppraisal::getStatus, "SELF", "REVIEW"));
+                .eq(HrPerfAppraisal::getReviewerId, userId).in(HrPerfAppraisal::getStatus, AppraisalStatus.REVIEWABLE));
         return new long[]{self, review};
     }
 

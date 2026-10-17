@@ -121,8 +121,8 @@ public class WfInstanceService {
         if (StringUtils.hasText(query.name())) {
             q.processInstanceNameLike("%" + query.name() + "%");
         }
-        if (StringUtils.hasText(query.status())) {
-            q.processInstanceBusinessStatus(query.status());
+        if (query.status() != null) {
+            q.processInstanceBusinessStatus(query.status().name());
         }
         long total = q.count();
         List<HistoricProcessInstance> list = total == 0 ? List.of()
@@ -146,7 +146,7 @@ public class WfInstanceService {
         return list.stream().map(p -> {
             Long startUserId = toUserId(p.getStartUserId());
             return new InstanceItem(p.getId(), p.getName(), p.getProcessDefinitionKey(), p.getProcessDefinitionName(),
-                    categories.get(p.getProcessDefinitionKey()), p.getBusinessStatus(), startUserId,
+                    categories.get(p.getProcessDefinitionKey()), FlowStatus.of(p.getBusinessStatus()), startUserId,
                     names.get(startUserId), toLocalDateTime(p.getStartTime()),
                     toLocalDateTime(p.getEndTime()), currentNodes.get(p.getId()));
         }).toList();

@@ -7,6 +7,7 @@ import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.finance.ExchangeRateProvider;
 import com.lemon.erp.framework.finance.PartnerBalanceProvider;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -30,6 +31,7 @@ import com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
 import com.lemon.erp.modules.scm.model.OrderDeletedEvent;
 import com.lemon.erp.modules.scm.model.OrderKind;
+import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.model.OrderStatus;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.entity.WmsMaterialUnit;
@@ -46,10 +48,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 
+import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.ORDER_RULE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
 import static com.lemon.erp.modules.scm.model.ScmConstants.tax;
@@ -69,10 +75,6 @@ public class ScmOrderService {
 
     /** 审批流程的业务标识前缀，businessKey = scm_order:订单ID */
     private static final String BUSINESS_KEY_PREFIX = "scm_order:";
-    private static final BigDecimal DEFAULT_TAX_RATE = BigDecimal.valueOf(13);
-
-    /** 订单来源：手工录入（保存时校验价格控制） */
-    private static final String MANUAL = "MANUAL";
 
     private final ScmOrderMapper orderMapper;
     private final ScmOrderItemMapper itemMapper;
@@ -96,7 +98,7 @@ public class ScmOrderService {
     @DataPermission(table = "scm_order", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmOrder> page(OrderKind kind, long current, long size, OrderQuery query) {
         Page<ScmOrder> page = Page.of(current, size);
-        orderMapper.selectPageList(page, kind.name(), query);
+        orderMapper.selectPageList(page, kind, query);
         return PageResult.of(page);
     }
 
@@ -110,22 +112,22 @@ public class ScmOrderService {
     /** 手工新建：销售订单自动应用促销，可使用返利抵扣 */
     @Transactional
     public Long create(OrderKind kind, OrderRequest req) {
-        return createDraft(kind, req, MANUAL, kind == OrderKind.SALES);
+        return createDraft(kind, req, OrderSource.MANUAL, kind == OrderKind.SALES);
     }
 
     /**
      * 新建草稿订单，MRP 生成采购订单时也调用
      *
-     * @param source MANUAL 手工 / MRP
+     * @param source 订单来源
      */
     @Transactional
-    public Long createDraft(OrderKind kind, OrderRequest req, String source) {
+    public Long createDraft(OrderKind kind, OrderRequest req, OrderSource source) {
         return createDraft(kind, req, source, false);
     }
 
     /** @param promote 应用促销和返利抵扣（销售订单） */
     @Transactional
-    public Long createDraft(OrderKind kind, OrderRequest req, String source, boolean promote) {
+    public Long createDraft(OrderKind kind, OrderRequest req, OrderSource source, boolean promote) {
         List<ScmOrderItem> items = toItems(kind, req);
         applyContract(kind, req, items, null);
         ScmPromotionService.Applied applied = promote ? promote(req, items, null) : null;
@@ -135,9 +137,9 @@ public class ScmOrderService {
         LoginUser user = SecurityUtils.getLoginUser();
         ScmOrder order = new ScmOrder();
         order.setOrderNo(docNoService.next(kind.getPrefix()));
-        order.setKind(kind.name());
+        order.setKind(kind);
         order.setSource(source);
-        order.setStatus(OrderStatus.DRAFT.name());
+        order.setStatus(OrderStatus.DRAFT);
         order.setVersion(1);
         order.setDeptId(user.deptId());
         order.setCreateBy(user.userId());
@@ -146,7 +148,7 @@ public class ScmOrderService {
             order.setSalesmanId(owner != null ? owner : user.userId());
         }
         fillHeader(order, req, items);
-        if (MANUAL.equals(source)) {
+        if (source == OrderSource.MANUAL) {
             priceControl.check(kind, items, order.getExchangeRate());
         }
         if (applied != null) {
@@ -213,29 +215,29 @@ public class ScmOrderService {
                 .set(applied != null, ScmOrder::getRebateAmount, rebateOf(req))
                 .set(ScmOrder::getUpdateTime, LocalDateTime.now())
                 .eq(ScmOrder::getId, id)
-                .eq(ScmOrder::getStatus, OrderStatus.DRAFT.name()));
+                .eq(ScmOrder::getStatus, OrderStatus.DRAFT));
         itemMapper.delete(Wrappers.<ScmOrderItem>lambdaQuery().eq(ScmOrderItem::getOrderId, id));
         saveItems(id, items);
         if (applied != null) {
             promotionService.saveUsages(id, applied.usages());
         }
-        changeLogger.log("scm_" + kind.name().toLowerCase(java.util.Locale.ROOT), id, before, orderMapper.selectById(id), CHANGE_FIELDS);
+        changeLogger.log("scm_" + kind.path(), id, before, orderMapper.selectById(id), CHANGE_FIELDS);
     }
 
     /** 经销商门户撤销自己下的草稿订单：按客户校验（门户账号不受内部数据权限限制） */
     @Transactional
     public void deleteDealerDraft(Long customerId, Long id) {
         ScmOrder order = orderMapper.selectById(id);
-        if (order == null || !OrderKind.SALES.name().equals(order.getKind()) || !customerId.equals(order.getPartnerId())) {
+        if (order == null || order.getKind() != OrderKind.SALES || !customerId.equals(order.getPartnerId())) {
             throw new BizException("scm.error.orderDoesNotExist");
         }
-        if (!OrderStatus.DRAFT.name().equals(order.getStatus())) {
+        if (order.getStatus() != OrderStatus.DRAFT) {
             throw new BizException("scm.error.orderHasApprovedCannotCanceledContact");
         }
         itemMapper.delete(Wrappers.<ScmOrderItem>lambdaQuery().eq(ScmOrderItem::getOrderId, id));
         promotionService.deleteUsages(id);
         orderMapper.deleteById(id);
-        eventPublisher.publishEvent(new OrderDeletedEvent(OrderKind.SALES.name(), List.of(id)));
+        eventPublisher.publishEvent(new OrderDeletedEvent(OrderKind.SALES, List.of(id)));
     }
 
     /** 只能删除草稿 */
@@ -246,12 +248,12 @@ public class ScmOrderService {
         ids.forEach(promotionService::deleteUsages);
         orderMapper.deleteByIds(ids);
         // 下游（商机等）解除对订单的引用
-        eventPublisher.publishEvent(new OrderDeletedEvent(kind.name(), ids));
+        eventPublisher.publishEvent(new OrderDeletedEvent(kind, ids));
     }
 
     /** 占用信用额度的订单状态 */
-    private static final List<String> OPEN_STATUSES = List.of(OrderStatus.APPROVING.name(), OrderStatus.APPROVED.name(),
-            OrderStatus.PARTIAL.name());
+    private static final Set<OrderStatus> OPEN_STATUSES = Collections.unmodifiableSet(
+            EnumSet.of(OrderStatus.APPROVING, OrderStatus.APPROVED, OrderStatus.PARTIAL));
 
     /**
      * 审核：发布了审批流程时发起审批（状态变为审批中），否则直接审核通过。销售订单先校验客户信用额度
@@ -286,7 +288,7 @@ public class ScmOrderService {
     @Transactional
     public void withdraw(OrderKind kind, Long id) {
         ScmOrder order = getAccessible(kind, id);
-        if (!OrderStatus.APPROVING.name().equals(order.getStatus())) {
+        if (order.getStatus() != OrderStatus.APPROVING) {
             throw new BizException("scm.error.orderNotUnderApproval");
         }
         if (order.getFlowInstanceId() != null && flowApi.getStatus(order.getFlowInstanceId()) == FlowStatus.RUNNING) {
@@ -294,9 +296,9 @@ public class ScmOrderService {
         }
         // 流程撤销事件已把订单改回草稿时这里不再更新
         orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
-                .set(ScmOrder::getStatus, OrderStatus.DRAFT.name())
+                .set(ScmOrder::getStatus, OrderStatus.DRAFT)
                 .eq(ScmOrder::getId, id)
-                .eq(ScmOrder::getStatus, OrderStatus.APPROVING.name()));
+                .eq(ScmOrder::getStatus, OrderStatus.APPROVING));
     }
 
     /** 反审核：已审核且还没有入库 / 出库的订单回到草稿 */
@@ -307,18 +309,18 @@ public class ScmOrderService {
             throw new BizException("scm.error.orderHasReceiptsDeliveriesNotApproved");
         }
         // 下游（已生成的生产计划等）可以阻止反审核
-        eventPublisher.publishEvent(new OrderStatusChangedEvent(kind.name(), id, order.getOrderNo(), OrderStatus.DRAFT.name()));
+        eventPublisher.publishEvent(new OrderStatusChangedEvent(kind, id, order.getOrderNo(), OrderStatus.DRAFT));
     }
 
     /** 关闭：不再入库 / 出库（如供应商无法继续供货），已完成部分不受影响 */
     @Transactional
     public void close(OrderKind kind, Long id) {
         ScmOrder order = getAccessible(kind, id);
-        if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
+        if (!order.getStatus().isExecutable()) {
             throw new BizException("scm.error.onlyApprovedPartiallyCompletedOrdersClosed");
         }
         int updated = orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
-                .set(ScmOrder::getStatus, OrderStatus.CLOSED.name())
+                .set(ScmOrder::getStatus, OrderStatus.CLOSED)
                 .set(ScmOrder::getUpdateTime, LocalDateTime.now())
                 .eq(ScmOrder::getId, id)
                 .in(ScmOrder::getStatus, OrderStatus.EXECUTABLE));
@@ -326,7 +328,7 @@ public class ScmOrderService {
             throw new BizException("scm.error.orderStatusHasChangedRefresh");
         }
         // 下游联动关闭（未完成的生产计划等）
-        eventPublisher.publishEvent(new OrderStatusChangedEvent(kind.name(), id, order.getOrderNo(), OrderStatus.CLOSED.name()));
+        eventPublisher.publishEvent(new OrderStatusChangedEvent(kind, id, order.getOrderNo(), OrderStatus.CLOSED));
     }
 
     /** 审批结束：通过 → 已审核；拒绝、撤销 → 草稿。与审批操作在同一事务中 */
@@ -340,20 +342,20 @@ public class ScmOrderService {
         // 只处理仍在审批中的订单（已撤回、删除的忽略），不抛异常，避免回滚审批操作
         if (e.status() == FlowStatus.APPROVED) {
             int updated = orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
-                    .set(ScmOrder::getStatus, OrderStatus.APPROVED.name())
+                    .set(ScmOrder::getStatus, OrderStatus.APPROVED)
                     .set(ScmOrder::getApproveBy, SecurityUtils.getUserIdOrNull())
                     .set(ScmOrder::getApproveTime, LocalDateTime.now())
                     .eq(ScmOrder::getId, id)
-                    .eq(ScmOrder::getStatus, OrderStatus.APPROVING.name()));
+                    .eq(ScmOrder::getStatus, OrderStatus.APPROVING));
             if (updated > 0) {
                 ScmOrder order = orderMapper.selectById(id);
-                notifySupplier(OrderKind.valueOf(order.getKind()), order);
+                notifySupplier(order.getKind(), order);
             }
         } else {
             orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
-                    .set(ScmOrder::getStatus, OrderStatus.DRAFT.name())
+                    .set(ScmOrder::getStatus, OrderStatus.DRAFT)
                     .eq(ScmOrder::getId, id)
-                    .eq(ScmOrder::getStatus, OrderStatus.APPROVING.name()));
+                    .eq(ScmOrder::getStatus, OrderStatus.APPROVING));
         }
     }
 
@@ -368,7 +370,7 @@ public class ScmOrderService {
     ScmOrder getAccessible(OrderKind kind, Long id) {
         Supplier<ScmOrder> loader = () -> orderMapper.selectById(id);
         ScmOrder order = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(ORDER_RULE, loader);
-        if (order == null || !kind.name().equals(order.getKind())) {
+        if (order == null || order.getKind() != kind) {
             throw new BizException("scm.error.doesNotExistAccessDenied", Messages.get(kind.getLabelKey()));
         }
         return order;
@@ -384,17 +386,17 @@ public class ScmOrderService {
         boolean any = items.stream().anyMatch(i -> i.getDoneQty().signum() > 0);
         OrderStatus status = all ? OrderStatus.COMPLETED : any ? OrderStatus.PARTIAL : OrderStatus.APPROVED;
         orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
-                .set(ScmOrder::getStatus, status.name())
+                .set(ScmOrder::getStatus, status)
                 .set(ScmOrder::getUpdateTime, LocalDateTime.now())
                 .eq(ScmOrder::getId, orderId)
-                .in(ScmOrder::getStatus, OrderStatus.APPROVED.name(), OrderStatus.PARTIAL.name(), OrderStatus.COMPLETED.name()));
+                .in(ScmOrder::getStatus, OrderStatus.APPROVED, OrderStatus.PARTIAL, OrderStatus.COMPLETED));
     }
 
     // ---------------------------------------------------------------- 内部
 
     private ScmOrder getDraft(OrderKind kind, Long id) {
         ScmOrder order = getAccessible(kind, id);
-        if (!OrderStatus.DRAFT.name().equals(order.getStatus())) {
+        if (order.getStatus() != OrderStatus.DRAFT) {
             throw new BizException("scm.error.notDraftCannotModifiedDeletedApproved", Messages.get(kind.getLabelKey()), order.getOrderNo());
         }
         return order;
@@ -402,10 +404,10 @@ public class ScmOrderService {
 
     private void changeStatus(Long id, OrderStatus from, OrderStatus to, boolean approved) {
         var update = Wrappers.<ScmOrder>lambdaUpdate()
-                .set(ScmOrder::getStatus, to.name())
+                .set(ScmOrder::getStatus, to)
                 .set(ScmOrder::getUpdateTime, LocalDateTime.now())
                 .eq(ScmOrder::getId, id)
-                .eq(ScmOrder::getStatus, from.name());
+                .eq(ScmOrder::getStatus, from);
         if (approved) {
             update.set(ScmOrder::getApproveBy, SecurityUtils.getUserId()).set(ScmOrder::getApproveTime, LocalDateTime.now());
         }
@@ -467,7 +469,7 @@ public class ScmOrderService {
     /** 采购订单审核通过后通知供应商在门户确认 */
     private void notifySupplier(OrderKind kind, ScmOrder order) {
         if (kind == OrderKind.PURCHASE) {
-            portalNotifier.notify(order.getPartnerId(), "REMIND", "新采购订单待确认：" + order.getOrderNo(), // i18n-ignore
+            portalNotifier.notify(order.getPartnerId(), MessageCategory.REMIND, "新采购订单待确认：" + order.getOrderNo(), // i18n-ignore
                     "订单金额 " + order.getTotalAmount().stripTrailingZeros().toPlainString() + "，请确认并填写承诺交期", "/portal/order"); // i18n-ignore
         }
     }

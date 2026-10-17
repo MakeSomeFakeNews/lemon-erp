@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.pm.service;
 
+import com.lemon.erp.modules.pm.model.TaskStatus;
+import com.lemon.erp.modules.pm.model.ProjectStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.PermissionService;
@@ -60,7 +62,7 @@ public class PmTaskService {
         PmTask t = new PmTask();
         fill(t, req, null);
         t.setProgress(0);
-        t.setStatus("TODO");
+        t.setStatus(TaskStatus.TODO);
         t.setActualHours(BigDecimal.ZERO);
         taskMapper.insert(t);
         recalc(p.getId());
@@ -111,7 +113,7 @@ public class PmTaskService {
      */
     @Transactional
     public void updateProgress(Long id, int progress) {
-        if (progress < 0 || progress > 100) {
+        if (progress < 0 || progress > TaskStatus.FULL_PROGRESS) {
             throw new BizException("pm.error.progressMust");
         }
         PmTask t = get(id);
@@ -119,7 +121,7 @@ public class PmTaskService {
             throw new BizException("pm.error.onlyTaskAssigneeUpdateProgress");
         }
         PmProject p = projectService.get(t.getProjectId());
-        if (!"ACTIVE".equals(p.getStatus())) {
+        if (p.getStatus() != ProjectStatus.ACTIVE) {
             throw new BizException("pm.error.projectNotProgressCannotUpdateProgress");
         }
         if (taskMapper.exists(Wrappers.<PmTask>lambdaQuery().eq(PmTask::getParentId, id))) {
@@ -127,15 +129,15 @@ public class PmTaskService {
         }
         if (progress > 0 && t.getPredecessorId() != null) {
             PmTask pre = taskMapper.selectById(t.getPredecessorId());
-            if (pre != null && !"DONE".equals(pre.getStatus())) {
+            if (pre != null && pre.getStatus() != TaskStatus.DONE) {
                 throw new BizException("pm.error.predecessorTaskNotCompletedYet", pre.getName());
             }
         }
-        String status = progress == 0 ? "TODO" : progress == 100 ? "DONE" : "DOING";
+        TaskStatus status = TaskStatus.ofProgress(progress);
         taskMapper.update(Wrappers.<PmTask>lambdaUpdate()
                 .set(PmTask::getProgress, progress)
                 .set(PmTask::getStatus, status)
-                .set(PmTask::getActualEnd, progress == 100 ? LocalDate.now() : null)
+                .set(PmTask::getActualEnd, status == TaskStatus.DONE ? LocalDate.now() : null)
                 .eq(PmTask::getId, id));
         recalc(t.getProjectId());
     }
@@ -208,16 +210,16 @@ public class PmTaskService {
         BigDecimal planHours = kids.stream().map(PmTask::getPlanHours).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal actualHours = kids.stream().map(PmTask::getActualHours).reduce(BigDecimal.ZERO, BigDecimal::add);
         int p = progress.setScale(0, RoundingMode.HALF_UP).intValue();
-        if (p == 100 && kids.stream().anyMatch(k -> !"DONE".equals(k.getStatus()))) {
-            p = 99;
+        if (p == TaskStatus.FULL_PROGRESS && kids.stream().anyMatch(k -> k.getStatus() != TaskStatus.DONE)) {
+            p = TaskStatus.FULL_PROGRESS - 1;
         }
-        String status = kids.stream().allMatch(k -> "DONE".equals(k.getStatus())) ? "DONE"
-                : kids.stream().allMatch(k -> "TODO".equals(k.getStatus())) ? "TODO" : "DOING";
-        LocalDate actualEnd = "DONE".equals(status)
+        TaskStatus status = kids.stream().allMatch(k -> k.getStatus() == TaskStatus.DONE) ? TaskStatus.DONE
+                : kids.stream().allMatch(k -> k.getStatus() == TaskStatus.TODO) ? TaskStatus.TODO : TaskStatus.DOING;
+        LocalDate actualEnd = status == TaskStatus.DONE
                 ? kids.stream().map(PmTask::getActualEnd).filter(Objects::nonNull).max(LocalDate::compareTo).orElse(LocalDate.now()) : null;
         boolean changed = !start.equals(parent.getPlanStart()) || !end.equals(parent.getPlanEnd())
                 || planHours.compareTo(parent.getPlanHours()) != 0 || actualHours.compareTo(parent.getActualHours()) != 0
-                || p != parent.getProgress() || !status.equals(parent.getStatus()) || !Objects.equals(actualEnd, parent.getActualEnd());
+                || p != parent.getProgress() || status != parent.getStatus() || !Objects.equals(actualEnd, parent.getActualEnd());
         parent.setPlanStart(start);
         parent.setPlanEnd(end);
         parent.setPlanHours(planHours);

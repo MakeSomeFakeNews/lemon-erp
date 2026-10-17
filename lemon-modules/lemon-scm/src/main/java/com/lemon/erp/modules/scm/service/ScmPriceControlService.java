@@ -82,7 +82,7 @@ public class ScmPriceControlService {
 
     /** 往来单位某物料最近的成交价 */
     public List<Map<String, Object>> history(OrderKind kind, Long partnerId, Long materialId, int limit) {
-        return controlMapper.selectHistory(kind.name(), partnerId, materialId, Math.max(1, Math.min(limit, MAX_HISTORY)));
+        return controlMapper.selectHistory(kind, partnerId, materialId, Math.max(1, Math.min(limit, MAX_HISTORY)));
     }
 
     /**

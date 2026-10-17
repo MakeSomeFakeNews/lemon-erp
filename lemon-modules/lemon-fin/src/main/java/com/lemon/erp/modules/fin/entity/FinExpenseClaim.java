@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.lemon.erp.modules.fin.model.ExpenseClaimStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -36,7 +37,7 @@ public class FinExpenseClaim extends BaseEntity {
     /** 冲借款金额 */
     private BigDecimal loanOffset;
 
-    private String status;
+    private ExpenseClaimStatus status;
 
     private Long payAccountId;
 

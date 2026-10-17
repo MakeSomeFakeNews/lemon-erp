@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.scm.model.TradeKind;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -20,8 +21,8 @@ public class ScmTradeDoc extends BaseEntity {
 
     private String docNo;
 
-    /** TradeKind */
-    private String kind;
+    /** 出入库种类 */
+    private TradeKind kind;
 
     private Long orderId;
 

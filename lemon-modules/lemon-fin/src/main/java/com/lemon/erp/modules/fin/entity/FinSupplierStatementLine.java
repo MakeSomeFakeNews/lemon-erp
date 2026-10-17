@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.lemon.erp.modules.fin.model.BillSource;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -24,7 +25,7 @@ public class FinSupplierStatementLine {
 
     private String billNo;
 
-    private String sourceType;
+    private BillSource sourceType;
 
     private String sourceNo;
 

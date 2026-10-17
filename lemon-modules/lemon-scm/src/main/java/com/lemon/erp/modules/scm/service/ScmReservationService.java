@@ -9,6 +9,7 @@ import com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.OrderStatus;
 import com.lemon.erp.modules.wms.entity.WmsReservation;
+import com.lemon.erp.modules.wms.model.ReservationSource;
 import com.lemon.erp.modules.wms.service.StockReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
@@ -29,7 +30,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ScmReservationService {
 
-    public static final String SOURCE_SALES = "SALES";
+    public static final ReservationSource SOURCE_SALES = ReservationSource.SALES;
 
     private final ScmOrderService orderService;
     private final ScmOrderItemMapper orderItemMapper;
@@ -104,7 +105,7 @@ public class ScmReservationService {
     /** 订单出库完成后释放剩余预留（预留在其他仓库、从别的仓库发了货的情况） */
     void releaseIfDone(Long orderId) {
         ScmOrder order = orderService.getAccessible(OrderKind.SALES, orderId);
-        if (OrderStatus.COMPLETED.name().equals(order.getStatus())) {
+        if (order.getStatus() == OrderStatus.COMPLETED) {
             reservationService.release(SOURCE_SALES, orderId);
         }
     }
@@ -112,15 +113,15 @@ public class ScmReservationService {
     /** 订单关闭、反审核后释放预留 */
     @EventListener
     public void onOrderStatusChanged(OrderStatusChangedEvent e) {
-        if (OrderKind.SALES.name().equals(e.kind())
-                && (OrderStatus.CLOSED.name().equals(e.status()) || OrderStatus.DRAFT.name().equals(e.status()))) {
+        if (e.kind() == OrderKind.SALES
+                && (e.status() == OrderStatus.CLOSED || e.status() == OrderStatus.DRAFT)) {
             reservationService.release(SOURCE_SALES, e.orderId());
         }
     }
 
     private ScmOrder executable(Long orderId) {
         ScmOrder order = orderService.getAccessible(OrderKind.SALES, orderId);
-        if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
+        if (!order.getStatus().isExecutable()) {
             throw new BizException("scm.error.onlyApprovedPartiallyDeliveredSalesOrders");
         }
         return order;

@@ -8,6 +8,7 @@ import com.lemon.erp.modules.scm.dto.InquiryFinishRequest;
 import com.lemon.erp.modules.scm.dto.InquiryQuoteRequest;
 import com.lemon.erp.modules.scm.dto.InquiryRequest;
 import com.lemon.erp.modules.scm.entity.ScmInquiry;
+import com.lemon.erp.modules.scm.model.InquiryStatus;
 import com.lemon.erp.modules.scm.service.ScmInquiryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +40,7 @@ public class ScmInquiryController {
     public R<PageResult<ScmInquiry>> page(@RequestParam(defaultValue = "1") long current,
                                           @RequestParam(defaultValue = "10") long size,
                                           @RequestParam(required = false) String keyword,
-                                          @RequestParam(required = false) String status) {
+                                          @RequestParam(required = false) InquiryStatus status) {
         return R.ok(inquiryService.page(current, size, keyword, status));
     }
 

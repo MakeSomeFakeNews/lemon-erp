@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.lemon.erp.modules.fin.model.VoucherSource;
+import com.lemon.erp.modules.fin.model.VoucherStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -38,10 +40,10 @@ public class FinVoucher extends BaseEntity {
     private Integer attachmentCount;
 
     /** VoucherStatus */
-    private String status;
+    private VoucherStatus status;
 
     /** VoucherSource */
-    private String sourceType;
+    private VoucherSource sourceType;
 
     private String sourceNo;
 

@@ -13,13 +13,22 @@ import static com.lemon.erp.framework.code.DocNoCatalog.Type.doc;
 @Configuration
 public class HrDocNos {
 
+    /** 劳动合同 */
+    public static final String CONTRACT = "HT";
+    /** 招聘需求 */
+    public static final String RECRUIT = "ZP";
+    /** 请假 / 加班申请 */
+    public static final String LEAVE = "QJ";
+    /** 工资表 */
+    public static final String PAYROLL = "GZ";
+
     @Bean
     @Order(7)
     public DocNoCatalog hrDocNoCatalog() {
         return DocNoCatalog.of("hr.label.humanResources",
-                doc("HT", "hr.label.employmentContract"),
-                doc("ZP", "hr.label.jobRequisition"),
-                doc("QJ", "hr.label.leaveOvertimeRequest"),
-                doc("GZ", "hr.label.payroll"));
+                doc(CONTRACT, "hr.label.employmentContract"),
+                doc(RECRUIT, "hr.label.jobRequisition"),
+                doc(LEAVE, "hr.label.leaveOvertimeRequest"),
+                doc(PAYROLL, "hr.label.payroll"));
     }
 }

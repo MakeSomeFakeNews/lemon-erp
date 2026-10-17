@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.EmployeeStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -61,5 +62,5 @@ public class HrSalary extends BaseEntity {
     @TableField(exist = false)
     private String positionName;
     @TableField(exist = false)
-    private String empStatus;
+    private EmployeeStatus empStatus;
 }

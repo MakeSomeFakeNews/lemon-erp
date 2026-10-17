@@ -1,5 +1,6 @@
 package com.lemon.erp.framework.workflow;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -16,30 +17,45 @@ public record FlowBusiness(String processKey, String name, List<Variable> variab
         return new FlowBusiness(processKey, name, List.of(variables));
     }
 
+    /** 流程变量的类型，与流程表单字段类型（FieldType）中的同名取值一致 */
+    public enum VariableType {
+        /** 数字 */
+        NUMBER,
+        /** 文本 */
+        INPUT,
+        /** 下拉选择 */
+        SELECT
+    }
+
     /**
      * 流程变量
      *
-     * @param type     与流程表单字段类型一致：NUMBER、SELECT、INPUT
+     * @param type     变量类型，与流程表单字段类型一致
      * @param dictType SELECT 类型的取值来自哪个字典（可选值为字典值）
      * @param options  SELECT 类型不使用字典时的可选值；使用字典时为字典之外额外的可选值（如加班时假期类型为 OVERTIME）
      */
-    public record Variable(String field, String label, String type, String dictType, List<String> options) {
+    public record Variable(String field, String label, VariableType type, String dictType, List<String> options) {
 
         public static Variable number(String field, String label) {
-            return new Variable(field, label, "NUMBER", null, List.of());
+            return new Variable(field, label, VariableType.NUMBER, null, List.of());
         }
 
         public static Variable text(String field, String label) {
-            return new Variable(field, label, "INPUT", null, List.of());
+            return new Variable(field, label, VariableType.INPUT, null, List.of());
         }
 
         /** 取值来自字典，另外还可能取字典之外的几个固定值 */
         public static Variable dict(String field, String label, String dictType, String... extraOptions) {
-            return new Variable(field, label, "SELECT", dictType, List.of(extraOptions));
+            return new Variable(field, label, VariableType.SELECT, dictType, List.of(extraOptions));
         }
 
         public static Variable select(String field, String label, String... options) {
-            return new Variable(field, label, "SELECT", null, List.of(options));
+            return new Variable(field, label, VariableType.SELECT, null, List.of(options));
+        }
+
+        /** 可选值为枚举的名称 */
+        public static Variable select(String field, String label, Enum<?>... options) {
+            return new Variable(field, label, VariableType.SELECT, null, Arrays.stream(options).map(Enum::name).toList());
         }
     }
 }

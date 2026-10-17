@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.modules.scm.dto.SrmRequests;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
@@ -26,9 +27,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ScmPortalOrderService {
 
-    private static final List<String> VISIBLE = List.of(OrderStatus.APPROVED.name(), OrderStatus.PARTIAL.name(),
-            OrderStatus.COMPLETED.name(), OrderStatus.CLOSED.name());
-
     private final ScmOrderMapper orderMapper;
     private final ScmOrderItemMapper itemMapper;
     private final MessageSender messageSender;
@@ -41,8 +39,8 @@ public class ScmPortalOrderService {
 
     public ScmOrder detail(Long id, Long supplierId) {
         ScmOrder order = id == null ? null : orderMapper.selectById(id);
-        if (order == null || !OrderKind.PURCHASE.name().equals(order.getKind()) || !order.getPartnerId().equals(supplierId)
-                || !VISIBLE.contains(order.getStatus())) {
+        if (order == null || order.getKind() != OrderKind.PURCHASE || !order.getPartnerId().equals(supplierId)
+                || !OrderStatus.AUDITED.contains(order.getStatus())) {
             throw new BizException("scm.error.purchaseOrderDoesNotExist");
         }
         ScmOrder detail = orderMapper.selectDetail(id);
@@ -54,7 +52,7 @@ public class ScmPortalOrderService {
     @Transactional
     public void confirm(Long id, Long supplierId, SrmRequests.OrderConfirm req) {
         ScmOrder order = detail(id, supplierId);
-        if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
+        if (!order.getStatus().isExecutable()) {
             throw new BizException("scm.error.orderCompletedClosed");
         }
         boolean accept = req.accept();
@@ -71,7 +69,7 @@ public class ScmPortalOrderService {
                 .set(ScmOrder::getConfirmTime, LocalDateTime.now())
                 .eq(ScmOrder::getId, id));
         String result = accept ? "已接受，承诺交期 " + req.promisedDate() : "已拒绝：" + req.remark(); // i18n-ignore
-        messageSender.send(List.of(order.getCreateBy()), MessageSender.Message.of(accept ? "REMIND" : "ALERT",
+        messageSender.send(List.of(order.getCreateBy()), MessageSender.Message.of(accept ? MessageCategory.REMIND : MessageCategory.ALERT,
                 "供应商" + (accept ? "接受" : "拒绝") + "了采购订单 " + order.getOrderNo(), order.getPartnerName() + " " + result, "/scm/purchase")); // i18n-ignore
     }
 }

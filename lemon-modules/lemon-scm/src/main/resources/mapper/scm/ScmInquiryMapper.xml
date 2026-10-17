@@ -14,7 +14,7 @@
         <include refid="viewSelect"/>
         <where>
             <if test="keyword != null and keyword != ''">q.inquiry_no LIKE CONCAT('%', #{keyword}, '%')</if>
-            <if test="status != null and status != ''">AND q.status = #{status}</if>
+            <if test="status != null">AND q.status = #{status}</if>
         </where>
         ORDER BY q.id DESC
     </select>

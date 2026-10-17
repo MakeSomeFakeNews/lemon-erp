@@ -9,6 +9,7 @@ import com.lemon.erp.modules.scm.entity.ScmSupplier;
 import com.lemon.erp.modules.scm.entity.ScmSupplierEval;
 import com.lemon.erp.modules.scm.mapper.ScmSupplierEvalMapper;
 import com.lemon.erp.modules.scm.mapper.ScmSupplierMapper;
+import com.lemon.erp.modules.scm.model.SupplierLevel;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,7 +54,7 @@ public class ScmSupplierEvalService {
                 .add(req.serviceScore().multiply(BigDecimal.valueOf(0.1)))
                 .setScale(1, RoundingMode.HALF_UP);
         eval.setTotalScore(total);
-        eval.setGrade(grade(total));
+        eval.setGrade(SupplierLevel.ofScore(total));
         eval.setRemark(req.remark());
         eval.setCreateBy(SecurityUtils.getUserId());
         evalMapper.insert(eval);
@@ -76,10 +77,5 @@ public class ScmSupplierEvalService {
                     .set(ScmSupplier::getLevel, latest == null ? null : latest.getGrade())
                     .eq(ScmSupplier::getId, supplierId));
         }
-    }
-
-    static String grade(BigDecimal score) {
-        double s = score.doubleValue();
-        return s >= 90 ? "A" : s >= 75 ? "B" : s >= 60 ? "C" : "D";
     }
 }

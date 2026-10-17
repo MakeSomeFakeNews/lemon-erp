@@ -3,6 +3,7 @@ package com.lemon.erp.modules.system.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.framework.message.MessageCategory;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -18,8 +19,7 @@ public class SysMessage extends BaseEntity {
 
     private Long userId;
 
-    /** 字典 sys_message_category */
-    private String category;
+    private MessageCategory category;
 
     private String title;
 

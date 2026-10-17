@@ -16,7 +16,10 @@ import com.lemon.erp.modules.fin.mapper.FinBillMapper;
 import com.lemon.erp.modules.fin.mapper.FinInvoiceItemMapper;
 import com.lemon.erp.modules.fin.mapper.FinInvoiceLineMapper;
 import com.lemon.erp.modules.fin.mapper.FinInvoiceMapper;
-import com.lemon.erp.modules.fin.model.FinConstants;
+import com.lemon.erp.modules.fin.model.BillKind;
+import com.lemon.erp.modules.fin.model.InvoiceKind;
+import com.lemon.erp.modules.fin.model.InvoiceSource;
+import com.lemon.erp.modules.fin.model.InvoiceStatus;
 import com.lemon.erp.modules.fin.model.InvoiceType;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
 import com.lemon.erp.modules.scm.entity.ScmSupplier;
@@ -51,16 +54,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FinInvoiceService {
 
-    /** 发票种类：销项（开给客户）、进项（供应商开来） */
-    public static final String OUTPUT = "OUTPUT";
-    public static final String INPUT = "INPUT";
-    private static final String VALID = "VALID";
-    private static final String VOID = "VOID";
-    /** 来源：手工登记、数电票 XML 导入、发票清单（Excel）导入 */
-    private static final String SOURCE_MANUAL = "MANUAL";
-    static final String SOURCE_XML = "XML";
-    static final String SOURCE_EXCEL = "EXCEL";
-
     private final FinInvoiceMapper invoiceMapper;
     private final FinInvoiceItemMapper itemMapper;
     private final FinInvoiceLineMapper lineMapper;
@@ -71,7 +64,7 @@ public class FinInvoiceService {
     private final TransactionTemplate transactionTemplate;
 
     /** @param unmatched 只看还没有勾稽完的有效发票 */
-    public PageResult<FinInvoice> page(long current, long size, String kind, String keyword, Long partnerId, String status, boolean unmatched) {
+    public PageResult<FinInvoice> page(long current, long size, InvoiceKind kind, String keyword, Long partnerId, InvoiceStatus status, boolean unmatched) {
         Page<FinInvoice> page = Page.of(current, size);
         invoiceMapper.selectPageList(page, kind, keyword, partnerId, status, unmatched);
         return PageResult.of(page);
@@ -89,14 +82,13 @@ public class FinInvoiceService {
     }
 
     /** 可勾稽的单据：往来单位未完全开票 / 收票的应收应付单 */
-    public List<FinBill> openBills(String kind, Long partnerId) {
-        String billKind = billKind(kind);
-        return invoiceMapper.selectOpenBills(billKind, partnerId);
+    public List<FinBill> openBills(InvoiceKind kind, Long partnerId) {
+        return invoiceMapper.selectOpenBills(kind.billKind(), partnerId);
     }
 
     @Transactional
     public Long create(InvoiceRequest req) {
-        String billKind = billKind(req.kind());
+        BillKind billKind = req.kind().billKind();
         if (req.taxAmount().abs().compareTo(req.amount().abs()) > 0) {
             throw new BizException("fin.error.taxAmountCannotExceedTotalAmount");
         }
@@ -107,14 +99,14 @@ public class FinInvoiceService {
         FinInvoice invoice = new FinInvoice();
         invoice.setKind(req.kind());
         invoice.setInvoiceNo(req.invoiceNo().trim());
-        invoice.setInvoiceType(req.invoiceType() == null || req.invoiceType().isBlank() ? InvoiceType.SPECIAL.name() : req.invoiceType());
+        invoice.setInvoiceType(req.invoiceType() == null ? InvoiceType.SPECIAL : req.invoiceType());
         invoice.setPartnerId(req.partnerId());
         invoice.setInvoiceDate(req.invoiceDate());
         invoice.setAmount(req.amount());
         invoice.setTaxAmount(req.taxAmount());
         invoice.setMatchedAmount(total);
-        invoice.setSource(SOURCE_MANUAL);
-        invoice.setStatus(VALID);
+        invoice.setSource(InvoiceSource.MANUAL);
+        invoice.setStatus(InvoiceStatus.VALID);
         invoice.setRemark(req.remark());
         invoice.setCreateBy(SecurityUtils.getUserId());
         try {
@@ -132,14 +124,14 @@ public class FinInvoiceService {
     @Transactional
     public void match(Long id, List<InvoiceRequest.Item> items) {
         FinInvoice invoice = detail(id);
-        if (!VALID.equals(invoice.getStatus())) {
+        if (invoice.getStatus() != InvoiceStatus.VALID) {
             throw new BizException("fin.error.invoiceHasVoided");
         }
         if (items == null || items.isEmpty()) {
             throw new BizException("fin.valid.selectDocumentsMatch");
         }
         Set<Long> already = invoice.getItems().stream().map(FinInvoiceItem::getBillId).collect(Collectors.toSet());
-        BigDecimal total = matchBills(billKind(invoice.getKind()), invoice.getPartnerId(), already, items);
+        BigDecimal total = matchBills(invoice.getKind().billKind(), invoice.getPartnerId(), already, items);
         if (invoiceMapper.addMatched(id, total) == 0) {
             throw new BizException("fin.error.totalMatchedAmountExceedsInvoiceS", invoice.getAmount().subtract(invoice.getMatchedAmount()).toPlainString());
         }
@@ -150,7 +142,7 @@ public class FinInvoiceService {
     @Transactional
     public void unmatch(Long id) {
         FinInvoice invoice = detail(id);
-        if (!VALID.equals(invoice.getStatus())) {
+        if (invoice.getStatus() != InvoiceStatus.VALID) {
             throw new BizException("fin.error.invoiceHasVoided");
         }
         for (FinInvoiceItem item : invoice.getItems()) {
@@ -165,7 +157,7 @@ public class FinInvoiceService {
      *
      * @param files 文件名 → 内容
      */
-    public InvoiceImportResult importXml(String kind, Map<String, byte[]> files, boolean autoMatch) {
+    public InvoiceImportResult importXml(InvoiceKind kind, Map<String, byte[]> files, boolean autoMatch) {
         List<ImportRow<InvoiceImport>> rows = new ArrayList<>();
         List<ImportResult.RowError> errors = new ArrayList<>();
         List<String> names = new ArrayList<>(files.keySet());
@@ -179,12 +171,12 @@ public class FinInvoiceService {
         if (!errors.isEmpty()) {
             return new InvoiceImportResult(names.size(), 0, 0, 0, errors);
         }
-        return importInvoices(kind, rows, SOURCE_XML, autoMatch, names);
+        return importInvoices(kind, rows, InvoiceSource.XML, autoMatch, names);
     }
 
     /** 导入发票清单（税务数字账户导出的 Excel，前端解析后按行提交） */
-    public InvoiceImportResult importRows(String kind, List<ImportRow<InvoiceImport>> rows, boolean autoMatch) {
-        return importInvoices(kind, rows, SOURCE_EXCEL, autoMatch, null);
+    public InvoiceImportResult importRows(InvoiceKind kind, List<ImportRow<InvoiceImport>> rows, boolean autoMatch) {
+        return importInvoices(kind, rows, InvoiceSource.EXCEL, autoMatch, null);
     }
 
     /**
@@ -193,10 +185,10 @@ public class FinInvoiceService {
      *
      * @param names 各行的名称（XML 文件名），提示错误用
      */
-    private InvoiceImportResult importInvoices(String kind, List<ImportRow<InvoiceImport>> rows, String source, boolean autoMatch,
+    private InvoiceImportResult importInvoices(InvoiceKind kind, List<ImportRow<InvoiceImport>> rows, InvoiceSource source, boolean autoMatch,
                                                List<String> names) {
-        String billKind = billKind(kind);
-        boolean input = INPUT.equals(kind);
+        BillKind billKind = kind.billKind();
+        boolean input = kind == InvoiceKind.INPUT;
         List<ImportResult.RowError> errors = new ArrayList<>();
         int[] counts = {0, 0, 0};
         transactionTemplate.executeWithoutResult(status -> {
@@ -244,11 +236,11 @@ public class FinInvoiceService {
         return new InvoiceImportResult(rows.size(), counts[0], counts[1], counts[2], errors);
     }
 
-    private Long insertImported(String kind, InvoiceImport d, Long partnerId, String source) {
+    private Long insertImported(InvoiceKind kind, InvoiceImport d, Long partnerId, InvoiceSource source) {
         FinInvoice invoice = new FinInvoice();
         invoice.setKind(kind);
         invoice.setInvoiceNo(d.invoiceNo().trim());
-        invoice.setInvoiceType(d.invoiceType() == null || d.invoiceType().isBlank() ? InvoiceType.E_SPECIAL.name() : d.invoiceType());
+        invoice.setInvoiceType(d.invoiceType() == null ? InvoiceType.E_SPECIAL : d.invoiceType());
         invoice.setPartnerId(partnerId);
         invoice.setInvoiceDate(d.invoiceDate());
         invoice.setAmount(d.amount());
@@ -259,7 +251,7 @@ public class FinInvoiceService {
         invoice.setBuyerTaxNo(d.buyerTaxNo());
         invoice.setBuyerName(d.buyerName());
         invoice.setSource(source);
-        invoice.setStatus(VALID);
+        invoice.setStatus(InvoiceStatus.VALID);
         invoice.setCreateBy(SecurityUtils.getUserId());
         invoiceMapper.insert(invoice);
         if (d.lines() != null) {
@@ -283,7 +275,7 @@ public class FinInvoiceService {
     }
 
     /** 往来单位只有一张未开票金额恰好等于发票金额的单据时自动勾稽 */
-    private boolean autoMatch(String billKind, Long invoiceId, Long partnerId, BigDecimal amount) {
+    private boolean autoMatch(BillKind billKind, Long invoiceId, Long partnerId, BigDecimal amount) {
         List<FinBill> candidates = invoiceMapper.selectOpenBills(billKind, partnerId).stream()
                 .filter(b -> b.getAmount().subtract(b.getInvoicedAmount()).compareTo(amount) == 0).toList();
         if (candidates.size() != 1) {
@@ -297,15 +289,15 @@ public class FinInvoiceService {
     }
 
     /** 校验并占用应收应付单的未开票金额，返回勾稽合计 */
-    private BigDecimal matchBills(String billKind, Long partnerId, Set<Long> already, List<InvoiceRequest.Item> items) {
+    private BigDecimal matchBills(BillKind billKind, Long partnerId, Set<Long> already, List<InvoiceRequest.Item> items) {
         Map<Long, FinBill> bills = billMapper.selectByIds(items.stream().map(InvoiceRequest.Item::billId).toList()).stream()
                 .collect(Collectors.toMap(FinBill::getId, Function.identity()));
         Set<Long> seen = new HashSet<>();
         BigDecimal total = BigDecimal.ZERO;
         for (InvoiceRequest.Item item : items) {
             FinBill bill = bills.get(item.billId());
-            if (bill == null || !bill.getKind().equals(billKind) || !bill.getPartnerId().equals(partnerId)) {
-                throw new BizException(FinConstants.BILL_AR.equals(billKind) ? "fin.error.matchedDocumentDoesNotBelongCustomer" : "fin.error.matchedDocumentDoesNotBelongSupplier");
+            if (bill == null || bill.getKind() != billKind || !bill.getPartnerId().equals(partnerId)) {
+                throw new BizException(billKind == BillKind.AR ? "fin.error.matchedDocumentDoesNotBelongCustomer" : "fin.error.matchedDocumentDoesNotBelongSupplier");
             }
             if (!seen.add(bill.getId()) || (already != null && already.contains(bill.getId()))) {
                 throw new BizException("fin.error.duplicateDocument", bill.getBillNo());
@@ -390,14 +382,14 @@ public class FinInvoiceService {
     @Transactional
     public void cancel(Long id) {
         FinInvoice invoice = detail(id);
-        if (!VALID.equals(invoice.getStatus())) {
+        if (invoice.getStatus() != InvoiceStatus.VALID) {
             throw new BizException("fin.error.invoiceHasVoided");
         }
         if (invoice.getCertifyPeriod() != null) {
             throw new BizException("fin.error.inputInvoiceHasCertifiedCannotVoided", invoice.getCertifyPeriod());
         }
-        invoiceMapper.update(Wrappers.<FinInvoice>lambdaUpdate().set(FinInvoice::getStatus, VOID).eq(FinInvoice::getId, id)
-                .eq(FinInvoice::getStatus, VALID));
+        invoiceMapper.update(Wrappers.<FinInvoice>lambdaUpdate().set(FinInvoice::getStatus, InvoiceStatus.VOID).eq(FinInvoice::getId, id)
+                .eq(FinInvoice::getStatus, InvoiceStatus.VALID));
         for (FinInvoiceItem item : invoice.getItems()) {
             billMapper.addInvoiced(item.getBillId(), item.getAmount().negate());
         }
@@ -407,7 +399,7 @@ public class FinInvoiceService {
     @Transactional
     public void certify(List<Long> ids, Integer period) {
         for (FinInvoice invoice : invoiceMapper.selectByIds(ids)) {
-            if (!INPUT.equals(invoice.getKind()) || !VALID.equals(invoice.getStatus())) {
+            if (invoice.getKind() != InvoiceKind.INPUT || invoice.getStatus() != InvoiceStatus.VALID) {
                 throw new BizException("fin.error.onlyValidInputInvoicesCertified", invoice.getInvoiceNo());
             }
         }
@@ -415,17 +407,7 @@ public class FinInvoiceService {
     }
 
     /** 未开票（AR）/ 暂估（AP）：截至日期按往来单位汇总 */
-    public List<Map<String, Object>> uninvoiced(String kind, LocalDate asOf) {
-        return invoiceMapper.selectUninvoiced(billKind(kind), asOf == null ? LocalDate.now() : asOf);
-    }
-
-    private static String billKind(String kind) {
-        if (OUTPUT.equals(kind)) {
-            return FinConstants.BILL_AR;
-        }
-        if (INPUT.equals(kind)) {
-            return FinConstants.BILL_AP;
-        }
-        throw new BizException("fin.error.invalidInvoiceKind", kind);
+    public List<Map<String, Object>> uninvoiced(InvoiceKind kind, LocalDate asOf) {
+        return invoiceMapper.selectUninvoiced(kind.billKind(), asOf == null ? LocalDate.now() : asOf);
     }
 }

@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.controller;
 
+import com.lemon.erp.modules.fin.model.BillStatus;
+import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
@@ -43,19 +45,19 @@ public class FinBillController {
                                        @RequestParam(defaultValue = "1") long current,
                                        @RequestParam(defaultValue = "10") long size,
                                        @RequestParam(required = false) Long partnerId,
-                                       @RequestParam(required = false) String status,
+                                       @RequestParam(required = false) BillStatus status,
                                        @RequestParam(required = false) String keyword,
                                        @RequestParam(required = false) Boolean overdue,
                                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate beginDate,
                                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return R.ok(billService.page(current, size, new BillQuery(upper(kind), partnerId, status, keyword, overdue, beginDate, endDate)));
+        return R.ok(billService.page(current, size, new BillQuery(billKind(kind), partnerId, status, keyword, overdue, beginDate, endDate)));
     }
 
     /** 往来单位未核销的单据：收付款核销时选择 */
     @GetMapping("/unsettled")
     @PreAuthorize("@ss.hasAnyPerm('fin:' + #kind + ':list', 'fin:receipt:add', 'fin:payment:add')")
     public R<List<FinBill>> unsettled(@PathVariable String kind, @RequestParam Long partnerId) {
-        return R.ok(billService.unsettled(upper(kind), partnerId));
+        return R.ok(billService.unsettled(billKind(kind), partnerId));
     }
 
     /** 账龄分析 */
@@ -65,7 +67,7 @@ public class FinBillController {
                                          @RequestParam(defaultValue = "1") long current,
                                          @RequestParam(defaultValue = "10") long size,
                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate asOf) {
-        return R.ok(billService.aging(current, size, upper(kind), asOf));
+        return R.ok(billService.aging(current, size, billKind(kind), asOf));
     }
 
     /** 手工录入（期初余额等） */
@@ -73,7 +75,7 @@ public class FinBillController {
     @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':add')")
     @OperLog(title = "应收应付", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@PathVariable String kind, @Valid @RequestBody BillRequest req) {
-        if (!upper(kind).equals(req.kind())) {
+        if (billKind(kind) != req.kind()) {
             return R.fail(Messages.get("fin.text.documentKindDoesNotMatch"));
         }
         return R.ok(billService.create(req));
@@ -95,7 +97,8 @@ public class FinBillController {
         return R.ok(billService.generateVouchers(ids));
     }
 
-    private static String upper(String kind) {
-        return kind.toUpperCase(Locale.ROOT);
+    /** 路径中的种类 ar / ap */
+    private static BillKind billKind(String kind) {
+        return BillKind.valueOf(kind.toUpperCase(Locale.ROOT));
     }
 }

@@ -2,6 +2,7 @@ package com.lemon.erp.modules.wms.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.wms.model.SerialStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -23,6 +24,5 @@ public class WmsSerial extends BaseEntity {
 
     private String batchNo;
 
-    /** SerialStatus */
-    private String status;
+    private SerialStatus status;
 }

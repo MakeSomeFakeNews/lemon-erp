@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.wms.model.DocStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -25,8 +26,7 @@ public class WmsCheck extends BaseEntity {
 
     private LocalDate bizDate;
 
-    /** DocStatus */
-    private String status;
+    private DocStatus status;
 
     private String remark;
 

@@ -1,5 +1,8 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.lemon.erp.modules.fin.model.BillStatus;
+import com.lemon.erp.modules.fin.model.BillSource;
+import com.lemon.erp.modules.fin.model.BillKind;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -20,11 +23,11 @@ public class FinBill extends BaseEntity {
     private String billNo;
 
     /** AR / AP */
-    private String kind;
+    private BillKind kind;
 
     private Long partnerId;
 
-    private String sourceType;
+    private BillSource sourceType;
 
     private Long sourceId;
 
@@ -69,7 +72,7 @@ public class FinBill extends BaseEntity {
     private BigDecimal settledFc;
 
     /** UNSETTLED / PARTIAL / SETTLED */
-    private String status;
+    private BillStatus status;
 
     private Long voucherId;
 

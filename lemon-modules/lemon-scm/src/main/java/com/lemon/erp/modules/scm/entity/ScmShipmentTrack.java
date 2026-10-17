@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.scm.model.ShipmentStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -20,7 +21,7 @@ public class ScmShipmentTrack extends BaseEntity {
     private LocalDateTime trackTime;
 
     /** 记录时的发运状态 */
-    private String status;
+    private ShipmentStatus status;
 
     private String content;
 

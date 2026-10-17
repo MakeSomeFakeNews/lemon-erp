@@ -2,6 +2,7 @@ package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.message.MessageSender.Message;
 import com.lemon.erp.modules.fin.entity.FinNote;
@@ -56,13 +57,13 @@ public class FinNoteDueRemindJob implements JobHandler {
         List<FinNote> receivable = due.stream().filter(n -> n.getKind() == NoteKind.RECEIVABLE).toList();
         List<FinNote> payable = due.stream().filter(n -> n.getKind() == NoteKind.PAYABLE).toList();
         if (!receivable.isEmpty()) {
-            messageSender.sendToPermission("fin:note:edit", Message.of("REMIND",
+            messageSender.sendToPermission("fin:note:edit", Message.of(MessageCategory.REMIND,
                     receivable.size() + " 张应收票据 " + days + " 天内到期", // i18n-ignore
                     "票面合计 " + total(receivable) + "，请及时办理托收", "/fin/note") // i18n-ignore
                    .dedup("note-in-due:" + today));
         }
         if (!payable.isEmpty()) {
-            messageSender.sendToPermission("fin:note:edit", Message.of("ALERT",
+            messageSender.sendToPermission("fin:note:edit", Message.of(MessageCategory.ALERT,
                     payable.size() + " 张应付票据 " + days + " 天内到期", // i18n-ignore
                     "票面合计 " + total(payable) + "，请确保账户资金充足", "/fin/note") // i18n-ignore
                    .dedup("note-out-due:" + today));

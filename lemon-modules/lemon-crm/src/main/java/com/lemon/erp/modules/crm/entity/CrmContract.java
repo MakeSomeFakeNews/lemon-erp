@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.lemon.erp.modules.crm.model.SalesContractStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -42,7 +43,7 @@ public class CrmContract extends BaseEntity {
     private BigDecimal amount;
 
     /** DRAFT / APPROVING / ACTIVE / COMPLETED / TERMINATED */
-    private String status;
+    private SalesContractStatus status;
 
     private Long ownerId;
 

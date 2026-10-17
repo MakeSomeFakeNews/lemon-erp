@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.EmployeeStatus;
+import com.lemon.erp.modules.hr.model.LaborContractStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -33,7 +35,7 @@ public class HrContract extends BaseEntity {
     private Integer probationMonths;
 
     /** ACTIVE / EXPIRED / RENEWED / TERMINATED */
-    private String status;
+    private LaborContractStatus status;
 
     private Long prevContractId;
 
@@ -52,7 +54,7 @@ public class HrContract extends BaseEntity {
     @TableField(exist = false)
     private String deptName;
     @TableField(exist = false)
-    private String empStatus;
+    private EmployeeStatus empStatus;
     @TableField(exist = false)
     private Integer daysLeft;
 }

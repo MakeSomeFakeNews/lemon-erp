@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.CandidateStage;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -47,7 +48,7 @@ public class HrCandidate extends BaseEntity {
     private BigDecimal expectedSalary;
 
     /** 阶段(字典 hr_candidate_stage) NEW新简历 INTERVIEW面试中 OFFER已发offer HIRED已入职 REJECTED已淘汰 */
-    private String stage;
+    private CandidateStage stage;
 
     /** 简历摘要 */
     private String resume;

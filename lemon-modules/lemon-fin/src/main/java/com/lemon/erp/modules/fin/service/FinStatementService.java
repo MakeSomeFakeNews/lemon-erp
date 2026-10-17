@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.StatementRequests;
@@ -93,7 +94,7 @@ public class FinStatementService {
             throw new BizException("fin.error.statementHasAlreadySentConfirmed");
         }
         transit(id, st.getStatus(), StatementStatus.SENT);
-        portalNotifier.notify(st.getSupplierId(), "REMIND", "对账单待确认：" + st.getStatementNo(), // i18n-ignore
+        portalNotifier.notify(st.getSupplierId(), MessageCategory.REMIND, "对账单待确认：" + st.getStatementNo(), // i18n-ignore
                 st.getBeginDate() + " ~ " + st.getEndDate() + " 对账金额 " + st.getAmount().stripTrailingZeros().toPlainString(), // i18n-ignore
                 "/portal/statement");
     }
@@ -130,7 +131,7 @@ public class FinStatementService {
                 .eq(FinSupplierStatement::getId, id).eq(FinSupplierStatement::getStatus, StatementStatus.SENT)) == 0) {
             throw new BizException("fin.error.statementStatusHasChangedRefreshTry");
         }
-        messageSender.send(List.of(st.getCreateBy()), MessageSender.Message.of(agree ? "REMIND" : "ALERT",
+        messageSender.send(List.of(st.getCreateBy()), MessageSender.Message.of(agree ? MessageCategory.REMIND : MessageCategory.ALERT,
                 st.getSupplierName() + (agree ? " 已确认对账单 " : " 对对账单有异议 ") + st.getStatementNo(), // i18n-ignore
                 agree ? "对账金额 " + st.getAmount().stripTrailingZeros().toPlainString() : req.remark(), "/fin/statement")); // i18n-ignore
     }

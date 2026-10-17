@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.wms.dto;
 
+import com.lemon.erp.modules.wms.model.StockDocType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -30,5 +31,11 @@ public record StockDocRequest(
     public StockDocRequest(String bizType, Long warehouseId, Long toWarehouseId, LocalDate bizDate, String remark,
                            List<StockDocItemRequest> items) {
         this(bizType, warehouseId, toWarehouseId, bizDate, remark, items, null, null);
+    }
+
+    /** 业务单据生成出入库单时使用（非在途），业务类型取入库类型 / 出库类型枚举 */
+    public StockDocRequest(StockDocType bizType, Long warehouseId, Long toWarehouseId, LocalDate bizDate, String remark,
+                           List<StockDocItemRequest> items) {
+        this(bizType.name(), warehouseId, toWarehouseId, bizDate, remark, items, null, null);
     }
 }

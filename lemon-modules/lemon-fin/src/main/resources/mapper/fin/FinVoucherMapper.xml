@@ -14,8 +14,8 @@
         <include refid="viewSelect"/>
         <where>
             <if test="q.period != null">v.period = #{q.period}</if>
-            <if test="q.status != null and q.status != ''">AND v.status = #{q.status}</if>
-            <if test="q.sourceType != null and q.sourceType != ''">AND v.source_type = #{q.sourceType}</if>
+            <if test="q.status != null">AND v.status = #{q.status}</if>
+            <if test="q.sourceType != null">AND v.source_type = #{q.sourceType}</if>
             <if test="q.keyword != null and q.keyword != ''">
                 AND (v.voucher_no LIKE CONCAT('%', #{q.keyword}, '%') OR v.summary LIKE CONCAT('%', #{q.keyword}, '%')
                      OR v.source_no LIKE CONCAT('%', #{q.keyword}, '%'))

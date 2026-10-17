@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import tools.jackson.databind.exc.InvalidFormatException;
 
 import java.util.stream.Collectors;
 
@@ -50,6 +51,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public R<Void> handleNotReadable(HttpMessageNotReadableException e) {
         log.warn("请求体解析失败: {}", e.getMessage());
+        // 枚举、数字等字段取值不合法：提示字段和取值
+        for (Throwable t = e.getCause(); t != null; t = t.getCause()) {
+            if (t instanceof InvalidFormatException f && !f.getPath().isEmpty()) {
+                String field = f.getPath().get(f.getPath().size() - 1).getPropertyName();
+                if (field != null) {
+                    return R.fail(Messages.get("common.text.invalidFieldValue", field, f.getValue()));
+                }
+            }
+        }
         return R.fail(Messages.get("common.text.invalidRequestFormat"));
     }
 

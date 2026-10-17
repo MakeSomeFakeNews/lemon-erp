@@ -26,8 +26,20 @@ public class WmsPutawayService {
     public record Line(Long materialId, String batchNo) {
     }
 
-    /** @param reason DEFAULT 默认库位 / SAME_BATCH 同批次 / SAME_MATERIAL 同物料 / EMPTY 空库位，没有可推荐的库位时全部为空 */
-    public record Suggestion(Long locationId, String locationCode, String reason) {
+    /** 推荐库位的依据 */
+    public enum Reason {
+        /** 物料的默认库位 */
+        DEFAULT,
+        /** 已存放同批次的库位 */
+        SAME_BATCH,
+        /** 已存放同物料的库位 */
+        SAME_MATERIAL,
+        /** 空库位 */
+        EMPTY
+    }
+
+    /** @param reason 推荐依据，没有可推荐的库位时全部为空 */
+    public record Suggestion(Long locationId, String locationCode, Reason reason) {
     }
 
     public List<Suggestion> suggest(Long warehouseId, List<Line> lines) {
@@ -37,7 +49,7 @@ public class WmsPutawayService {
         Map<Long, List<Map<String, Object>>> stocked = new HashMap<>();
         if (!materialIds.isEmpty()) {
             putawayMapper.selectDefaultLocations(warehouseId, materialIds).forEach(r -> defaults.put(id(r, "materialId"),
-                    new Suggestion(id(r, "locationId"), (String) r.get("locationCode"), "DEFAULT")));
+                    new Suggestion(id(r, "locationId"), (String) r.get("locationCode"), Reason.DEFAULT)));
             putawayMapper.selectStockedLocations(warehouseId, materialIds).forEach(r ->
                     stocked.computeIfAbsent(id(r, "materialId"), k -> new ArrayList<>()).add(r));
         }
@@ -50,11 +62,11 @@ public class WmsPutawayService {
             String batch = line.batchNo() == null ? "" : line.batchNo().trim();
             if (s == null && !batch.isEmpty()) {
                 s = rows.stream().filter(r -> batch.equals(r.get("batchNo"))).findFirst()
-                        .map(r -> new Suggestion(id(r, "locationId"), (String) r.get("locationCode"), "SAME_BATCH")).orElse(null);
+                        .map(r -> new Suggestion(id(r, "locationId"), (String) r.get("locationCode"), Reason.SAME_BATCH)).orElse(null);
             }
             if (s == null && !rows.isEmpty()) {
                 Map<String, Object> r = rows.get(0);
-                s = new Suggestion(id(r, "locationId"), (String) r.get("locationCode"), "SAME_MATERIAL");
+                s = new Suggestion(id(r, "locationId"), (String) r.get("locationCode"), Reason.SAME_MATERIAL);
             }
             if (s == null) {
                 s = emptyByMaterial.get(line.materialId());
@@ -66,7 +78,7 @@ public class WmsPutawayService {
                     if (it.hasNext()) {
                         Map<String, Object> r = it.next();
                         it.remove();
-                        s = new Suggestion(id(r, "locationId"), (String) r.get("locationCode"), "EMPTY");
+                        s = new Suggestion(id(r, "locationId"), (String) r.get("locationCode"), Reason.EMPTY);
                         emptyByMaterial.put(line.materialId(), s);
                     }
                 }

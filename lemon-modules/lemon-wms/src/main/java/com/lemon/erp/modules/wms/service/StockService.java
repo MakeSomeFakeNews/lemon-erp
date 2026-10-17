@@ -104,10 +104,10 @@ public class StockService {
             if (!change.serialNos().isEmpty()) {
                 applySerials(change, material);
                 int direction = change.increase() ? 1 : -1;
-                change.serialNos().forEach(sn -> serialLogs.add(new SerialLog(change.materialId(), sn, bizType.name(), docId, docNo,
+                change.serialNos().forEach(sn -> serialLogs.add(new SerialLog(change.materialId(), sn, bizType, docId, docNo,
                         direction, change.warehouseId(), change.locationId(), change.batchNo(), userId, now)));
             }
-            flows.add(new StockFlow(bizType.name(), docId, docNo, change.warehouseId(), change.locationId(), change.materialId(),
+            flows.add(new StockFlow(bizType, docId, docNo, change.warehouseId(), change.locationId(), change.materialId(),
                     change.batchNo(), change.qty(), userId, now));
         }
         if (bizType != StockBizType.CHECK) {
@@ -129,7 +129,7 @@ public class StockService {
     /** 冻结仓库的盘点（未完成）期间，该仓库不能出入库、调拨 */
     private void checkNotFrozen(Set<Long> warehouseIds) {
         WmsCheck check = checkMapper.selectOne(Wrappers.<WmsCheck>lambdaQuery().in(WmsCheck::getWarehouseId, warehouseIds)
-                .eq(WmsCheck::getFreeze, 1).in(WmsCheck::getStatus, DocStatus.DRAFT.name(), DocStatus.APPROVING.name()).last("LIMIT 1"));
+                .eq(WmsCheck::getFreeze, 1).in(WmsCheck::getStatus, DocStatus.DRAFT, DocStatus.APPROVING).last("LIMIT 1"));
         if (check != null) {
             WmsWarehouse w = warehouseMapper.selectById(check.getWarehouseId());
             throw new BizException("wms.error.warehouseCountedNoInboundOutboundTransfer",
@@ -190,7 +190,7 @@ public class StockService {
                     s.setMaterialId(c.materialId());
                     s.setSerialNo(sn);
                     created.add(s);
-                } else if (SerialStatus.IN_STOCK.name().equals(serial.getStatus())) {
+                } else if (serial.getStatus() == SerialStatus.IN_STOCK) {
                     throw new BizException("wms.error.serialNoAlreadyStock", describe(material), sn);
                 } else {
                     returned.add(serial.getId());
@@ -201,12 +201,12 @@ public class StockService {
                     s.setWarehouseId(c.warehouseId());
                     s.setLocationId(c.locationId());
                     s.setBatchNo(c.batchNo());
-                    s.setStatus(SerialStatus.IN_STOCK.name());
+                    s.setStatus(SerialStatus.IN_STOCK);
                 });
                 serialMapper.insertBatch(created);
             }
             if (!returned.isEmpty()) {
-                serialMapper.updateSlot(returned, c.warehouseId(), c.locationId(), c.batchNo(), SerialStatus.IN_STOCK.name());
+                serialMapper.updateSlot(returned, c.warehouseId(), c.locationId(), c.batchNo(), SerialStatus.IN_STOCK);
             }
             return;
         }
@@ -215,7 +215,7 @@ public class StockService {
         for (String sn : c.serialNos()) {
             WmsSerial serial = existing.get(sn);
             boolean inSlot = serial != null
-                    && SerialStatus.IN_STOCK.name().equals(serial.getStatus())
+                    && serial.getStatus() == SerialStatus.IN_STOCK
                     && Objects.equals(serial.getWarehouseId(), c.warehouseId())
                     && serial.getLocationId() == c.locationId()
                     && Objects.equals(serial.getBatchNo(), c.batchNo());
@@ -224,7 +224,7 @@ public class StockService {
             }
             ids.add(serial.getId());
         }
-        serialMapper.updateSlot(ids, c.warehouseId(), c.locationId(), c.batchNo(), SerialStatus.OUT.name());
+        serialMapper.updateSlot(ids, c.warehouseId(), c.locationId(), c.batchNo(), SerialStatus.OUT);
     }
 
     /** 入库的批次如果还没有登记，登记批次（同一批次以第一行的生产日期、有效期为准） */

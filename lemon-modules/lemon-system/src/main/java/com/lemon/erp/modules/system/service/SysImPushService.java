@@ -49,7 +49,7 @@ public class SysImPushService {
                 }
             }
             if (StringUtils.hasText(c.getRobotWebhook()) && c.getRobotCategories() != null
-                    && Arrays.asList(c.getRobotCategories().split(",")).contains(e.message().category())) {
+                    && Arrays.asList(c.getRobotCategories().split(",")).contains(e.message().category().name())) {
                 try {
                     configService.client(p).robot(c.getRobotWebhook(), c.getRobotSecret(), card);
                 } catch (RuntimeException ex) {

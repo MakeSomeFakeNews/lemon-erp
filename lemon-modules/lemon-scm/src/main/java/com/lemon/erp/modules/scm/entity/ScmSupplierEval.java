@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.scm.model.SupplierLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -33,7 +34,7 @@ public class ScmSupplierEval extends BaseEntity {
     private BigDecimal totalScore;
 
     /** 评定等级，字典 scm_supplier_level */
-    private String grade;
+    private SupplierLevel grade;
 
     private String remark;
 

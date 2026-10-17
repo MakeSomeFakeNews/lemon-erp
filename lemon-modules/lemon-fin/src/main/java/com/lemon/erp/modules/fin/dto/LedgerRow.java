@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.dto;
 
+import com.lemon.erp.modules.fin.model.LedgerRowType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
@@ -13,7 +14,7 @@ import java.time.LocalDate;
 public class LedgerRow {
 
     /** OPEN 期初 / ENTRY 分录 / TOTAL 本期合计 */
-    private String type;
+    private LedgerRowType type;
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate entryDate;
     private Long voucherId;

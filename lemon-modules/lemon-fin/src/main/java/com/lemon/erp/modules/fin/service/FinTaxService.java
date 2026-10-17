@@ -48,7 +48,7 @@ public class FinTaxService {
 
     /** 本期是否已结转增值税 */
     public boolean transferred(int period) {
-        return voucherMapper.exists(Wrappers.<FinVoucher>lambdaQuery().eq(FinVoucher::getSourceType, VoucherSource.TAX.name())
+        return voucherMapper.exists(Wrappers.<FinVoucher>lambdaQuery().eq(FinVoucher::getSourceType, VoucherSource.TAX)
                 .eq(FinVoucher::getSourceNo, sourceNo(period)));
     }
 

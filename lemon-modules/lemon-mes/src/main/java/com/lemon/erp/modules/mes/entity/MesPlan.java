@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.mes.entity;
 
+import com.lemon.erp.modules.mes.model.PlanStatus;
+import com.lemon.erp.modules.mes.model.PlanSource;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -26,14 +28,14 @@ public class MesPlan extends BaseEntity {
     private LocalDate dueDate;
 
     /** MANUAL 手工 / SALES 销售订单 */
-    private String source;
+    private PlanSource source;
 
     private Long salesOrderId;
 
     private String salesOrderNo;
 
     /** PlanStatus */
-    private String status;
+    private PlanStatus status;
 
     private String remark;
 

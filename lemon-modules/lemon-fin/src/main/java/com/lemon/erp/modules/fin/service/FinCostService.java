@@ -20,6 +20,7 @@ import com.lemon.erp.modules.fin.mapper.FinMaterialCostMapper;
 import com.lemon.erp.modules.fin.mapper.FinVoucherEntryMapper;
 import com.lemon.erp.modules.fin.mapper.FinVoucherMapper;
 import com.lemon.erp.modules.fin.mapper.FinWoCostMapper;
+import com.lemon.erp.modules.fin.model.CostRunKind;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.fin.model.VoucherStatus;
@@ -27,6 +28,11 @@ import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.model.AssemblyKind;
 import com.lemon.erp.modules.wms.model.CostMethod;
 import com.lemon.erp.modules.wms.model.StockBizType;
+import com.lemon.erp.modules.wms.model.StockInType;
+import com.lemon.erp.modules.wms.model.StockOutType;
+import com.lemon.erp.modules.mes.model.WoDocKind;
+import com.lemon.erp.modules.mes.model.WorkOrderStatus;
+import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -39,6 +45,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -79,18 +86,11 @@ import static com.lemon.erp.modules.fin.model.FinConstants.previous;
 @RequiredArgsConstructor
 public class FinCostService {
 
-    static final String RUN = "RUN";
-    /** 存货期初：启用期间的上一期，保存期初数量、金额作为首期核算的期初 */
-    static final String OPENING = "OPENING";
     private static final int AMOUNT_SCALE = 2;
     private static final int UNIT_SCALE = 6;
-    /** 出入库类型（字典 wms_in_type / wms_out_type）：采购入库、采购退货 */
-    private static final String PURCHASE = "PURCHASE";
-    private static final String PURCHASE_RETURN = "PURCHASE_RETURN";
-    /** 退料、销售退货、委外收回：冲减对应的出库，不是其他入库 */
-    private static final Set<String> RETURN_TYPES = Set.of("PRODUCTION_RETURN", "SALES_RETURN", "OUTSOURCE_RETURN");
-    /** 组装拆卸单生成的出入库 */
-    private static final String ASSEMBLY = "ASSEMBLY";
+    /** 不计入其他入库的入库类型：退料、销售退货、委外收回冲减对应的出库；组装拆卸按子件成本计价 */
+    private static final Set<StockInType> NOT_OTHER_IN = EnumSet.of(StockInType.PRODUCTION_RETURN, StockInType.SALES_RETURN,
+            StockInType.OUTSOURCE_RETURN, StockInType.ASSEMBLY);
 
     private final FinCostRunMapper runMapper;
     private final FinMaterialCostMapper materialCostMapper;
@@ -130,7 +130,7 @@ public class FinCostService {
         periodService.checkOpen(period);
         FinCostRun old = runMapper.selectOne(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getPeriod, period));
         if (old != null) {
-            if (OPENING.equals(old.getKind())) {
+            if (old.getKind() == CostRunKind.OPENING) {
                 throw new BizException("fin.error.inventoryOpeningPeriodCannotCostedStart", period);
             }
             discard(old);
@@ -162,7 +162,7 @@ public class FinCostService {
         FinCostRun run = new FinCostRun();
         run.setPeriod(period);
         run.setCreateBy(SecurityUtils.getUserId());
-        run.setKind(RUN);
+        run.setKind(CostRunKind.RUN);
         List<VoucherLine> lines = calc.voucherLines();
         run.setOverheadVariance(calc.overheadVariance);
         if (!lines.isEmpty()) {
@@ -180,7 +180,7 @@ public class FinCostService {
         if (run == null) {
             throw new BizException("fin.error.noCostAccountingHasRunPeriod", period);
         }
-        if (OPENING.equals(run.getKind())) {
+        if (run.getKind() == CostRunKind.OPENING) {
             throw new BizException("fin.error.inventoryOpeningModifyOpeningBalances", period);
         }
         if (runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().gt(FinCostRun::getPeriod, period))) {
@@ -192,7 +192,7 @@ public class FinCostService {
     private void discard(FinCostRun run) {
         if (run.getVoucherId() != null) {
             FinVoucher v = voucherMapper.selectById(run.getVoucherId());
-            if (v != null && !VoucherStatus.DRAFT.name().equals(v.getStatus())) {
+            if (v != null && v.getStatus() != VoucherStatus.DRAFT) {
                 throw new BizException("fin.error.costTransferVoucherApprovedUnapproveBefore", v.getVoucherNo());
             }
             if (v != null) {
@@ -221,7 +221,7 @@ public class FinCostService {
         /** 物料 → [入库合计, 出库合计, 销售出库, 销售退货] */
         private final Map<Long, BigDecimal[]> stock = new HashMap<>();
         /** 物料 → 种类 → [数量, 不含税金额] */
-        private final Map<Long, Map<String, BigDecimal[]>> trade = new HashMap<>();
+        private final Map<Long, Map<TradeKind, BigDecimal[]>> trade = new HashMap<>();
         /** 工单 → 物料 → [领料, 退料, 完工] */
         private final Map<Long, Map<Long, BigDecimal[]>> woDocs = new HashMap<>();
         private final Map<Long, BigDecimal[]> woReports = new HashMap<>();
@@ -285,36 +285,36 @@ public class FinCostService {
                 v[0] = v[0].add(dec(row, "inQty"));
                 v[1] = v[1].add(dec(row, "outQty"));
                 // 销售按仓库出库类型统计（含不经过销售订单、直接在仓库做的销售出库）
-                if ("SALES".equals(row.get("bizType"))) {
+                if (bizTypeIs(row, StockOutType.SALES)) {
                     v[2] = v[2].add(dec(row, "outQty"));
-                } else if ("SALES_RETURN".equals(row.get("bizType"))) {
+                } else if (bizTypeIs(row, StockInType.SALES_RETURN)) {
                     v[3] = v[3].add(dec(row, "inQty"));
-                } else if (ASSEMBLY.equals(row.get("bizType"))) {
+                } else if (bizTypeIs(row, StockInType.ASSEMBLY)) {
                     assemblyIn.merge(id(row, "materialId"), dec(row, "inQty"), BigDecimal::add);
                     assemblyOut.merge(id(row, "materialId"), dec(row, "outQty"), BigDecimal::add);
-                } else if ("PROJECT".equals(row.get("bizType"))) {
+                } else if (bizTypeIs(row, StockOutType.PROJECT)) {
                     projectOut.merge(id(row, "materialId"), dec(row, "outQty").subtract(dec(row, "inQty")), BigDecimal::add);
-                } else if ("OUTSOURCE".equals(row.get("bizType")) || "OUTSOURCE_RETURN".equals(row.get("bizType"))) {
+                } else if (bizTypeIs(row, StockOutType.OUTSOURCE, StockInType.OUTSOURCE_RETURN)) {
                     // 委外发料计入委托加工物资，加工商退回（委外收回）冲减
                     outsourceOut.merge(id(row, "materialId"), dec(row, "outQty").subtract(dec(row, "inQty")), BigDecimal::add);
-                } else if ("SERVICE".equals(row.get("bizType"))) {
+                } else if (bizTypeIs(row, StockOutType.SERVICE)) {
                     serviceOut.merge(id(row, "materialId"), dec(row, "outQty").subtract(dec(row, "inQty")), BigDecimal::add);
                 }
             }
             consumeRows = consumableMapper.selectForCost(begin, end);
             for (Map<String, Object> row : sourceMapper.selectIoCategoryMovements(begin, end)) {
-                Map<Long, Map<String, BigDecimal>> target = StockBizType.IN.name().equals(row.get("kind")) ? categoryIn : categoryOut;
+                Map<Long, Map<String, BigDecimal>> target = enumOf(StockBizType.class, row.get("kind")) == StockBizType.IN ? categoryIn : categoryOut;
                 target.computeIfAbsent(id(row, "materialId"), k -> new HashMap<>())
                         .merge((String) row.get("ioCategory"), dec(row, "qty"), BigDecimal::add);
             }
             for (Map<String, Object> row : sourceMapper.selectTradeSums(begin, end)) {
                 trade.computeIfAbsent(id(row, "materialId"), k -> new HashMap<>())
-                        .put((String) row.get("kind"), new BigDecimal[]{dec(row, "qty"), dec(row, "net")});
+                        .put(enumOf(TradeKind.class, row.get("kind")), new BigDecimal[]{dec(row, "qty"), dec(row, "net")});
             }
             Map<String, Assembly> byNo = new LinkedHashMap<>();
             for (Map<String, Object> row : sourceMapper.selectAssemblies(begin, end)) {
                 Assembly a = byNo.computeIfAbsent((String) row.get("assemblyNo"), no -> new Assembly(no,
-                        AssemblyKind.ASSEMBLE.name().equals(row.get("kind")), id(row, "productId"), dec(row, "qty"), new LinkedHashMap<>()));
+                        enumOf(AssemblyKind.class, row.get("kind")) == AssemblyKind.ASSEMBLE, id(row, "productId"), dec(row, "qty"), new LinkedHashMap<>()));
                 a.parts().merge(id(row, "partId"), dec(row, "partQty"), BigDecimal::add);
             }
             assemblies.addAll(byNo.values());
@@ -324,14 +324,15 @@ public class FinCostService {
             }
             for (Map<String, Object> row : sourceMapper.selectWoDocSums(begin, end)) {
                 // 报废入库不是完工，按其他入库计价（贷记待处理财产损溢）
-                if ("SCRAP".equals(row.get("kind"))) {
+                WoDocKind docKind = enumOf(WoDocKind.class, row.get("kind"));
+                if (docKind == WoDocKind.SCRAP) {
                     continue;
                 }
                 BigDecimal[] v = woDocs.computeIfAbsent(id(row, "woId"), k -> new HashMap<>())
                         .computeIfAbsent(id(row, "materialId"), k -> zeros(3));
-                int idx = switch ((String) row.get("kind")) {
-                    case "ISSUE", "SUPPLEMENT" -> 0;
-                    case "RETURN" -> 1;
+                int idx = switch (docKind) {
+                    case ISSUE, SUPPLEMENT -> 0;
+                    case RETURN -> 1;
                     default -> 2;
                 };
                 v[idx] = v[idx].add(dec(row, "qty"));
@@ -448,7 +449,7 @@ public class FinCostService {
             c.setUnitCost(finished.signum() > 0 ? finishedAmount.divide(finished, UNIT_SCALE, RoundingMode.HALF_UP) : null);
             // 本期及之前关闭的工单不再生产，剩余在产品成本作为生产损失转出
             Object closeTime = wo.get("closeTime");
-            boolean closed = "CLOSED".equals(wo.get("status")) && closeTime != null
+            boolean closed = enumOf(WorkOrderStatus.class, wo.get("status")) == WorkOrderStatus.CLOSED && closeTime != null
                     && periodOf(toLocalDate(closeTime)) <= period;
             BigDecimal remaining = total.subtract(finishedAmount);
             c.setLossAmount(closed ? remaining : BigDecimal.ZERO);
@@ -464,9 +465,9 @@ public class FinCostService {
             c.setOpenQty(p != null ? p.getCloseQty() : openQtyFallback.getOrDefault(m, BigDecimal.ZERO));
             c.setOpenAmount(p != null ? p.getCloseAmount() : BigDecimal.ZERO);
 
-            Map<String, BigDecimal[]> t = trade.getOrDefault(m, Map.of());
-            BigDecimal[] pin = t.getOrDefault("PURCHASE_IN", zeros(2));
-            BigDecimal[] pret = t.getOrDefault("PURCHASE_RETURN", zeros(2));
+            Map<TradeKind, BigDecimal[]> t = trade.getOrDefault(m, Map.of());
+            BigDecimal[] pin = t.getOrDefault(TradeKind.PURCHASE_IN, zeros(2));
+            BigDecimal[] pret = t.getOrDefault(TradeKind.PURCHASE_RETURN, zeros(2));
 
             BigDecimal issue = BigDecimal.ZERO;
             BigDecimal issueReturn = BigDecimal.ZERO;
@@ -559,7 +560,7 @@ public class FinCostService {
                     : new MovingValuation(c.getOpenQty(), c.getOpenAmount(), lastUnitCost(m));
             List<Map<String, Object>> list = events.getOrDefault(m, List.of());
             // 委外件核销的子件成本按采购入库数量分摊到各次入库
-            BigDecimal purchaseQty = list.stream().filter(r -> PURCHASE.equals(r.get("bizType")) && r.get("tradeNet") != null)
+            BigDecimal purchaseQty = list.stream().filter(r -> bizTypeIs(r, StockInType.PURCHASE) && r.get("tradeNet") != null)
                     .map(r -> dec(r, "qty")).filter(q -> q.signum() > 0).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal consumedLeft = consumed;
             BigDecimal otherIn = BigDecimal.ZERO;
@@ -568,16 +569,15 @@ public class FinCostService {
                 if (qty.signum() == 0) {
                     continue;
                 }
-                String type = (String) row.get("bizType");
                 LocalDate date = toLocalDate(row.get("bizDate"));
-                if (PURCHASE.equals(type) && row.get("tradeNet") != null && qty.signum() > 0) {
+                if (bizTypeIs(row, StockInType.PURCHASE) && row.get("tradeNet") != null && qty.signum() > 0) {
                     BigDecimal share = purchaseQty.signum() > 0 ? money(consumed.multiply(qty).divide(purchaseQty, 10, RoundingMode.HALF_UP)) : BigDecimal.ZERO;
                     share = share.min(consumedLeft.max(BigDecimal.ZERO));
                     consumedLeft = consumedLeft.subtract(share);
                     v.in(date, qty, tradeAmount(row, qty).add(share));
-                } else if (PURCHASE_RETURN.equals(type) && row.get("tradeNet") != null && qty.signum() < 0) {
+                } else if (bizTypeIs(row, StockOutType.PURCHASE_RETURN) && row.get("tradeNet") != null && qty.signum() < 0) {
                     v.returnOut(qty.negate(), tradeAmount(row, qty.negate()));
-                } else if (ASSEMBLY.equals(type) && qty.signum() > 0 && row.get("sourceNo") != null) {
+                } else if (bizTypeIs(row, StockInType.ASSEMBLY) && qty.signum() > 0 && row.get("sourceNo") != null) {
                     v.in(date, qty, assemblyEventAmount((String) row.get("sourceNo"), m, qty));
                 } else if (row.get("woId") != null && qty.signum() > 0) {
                     FinWoCost w = woCosts.get(id(row, "woId"));
@@ -711,12 +711,11 @@ public class FinCostService {
 
         /** 其他入库：入库单（非采购、完工、退货）和盘盈；退料、销售退货冲减出库，不计入其他入库 */
         private boolean isOtherIn(Map<String, Object> row) {
-            String type = (String) row.get("bizType");
-            if (RETURN_TYPES.contains(type) || ASSEMBLY.equals(type)) {
+            if (bizTypeIs(row, NOT_OTHER_IN)) {
                 return false;
             }
-            Object kind = row.get("docKind");
-            return kind == null ? dec(row, "qty").signum() > 0 : StockBizType.IN.name().equals(kind);
+            StockBizType kind = enumOf(StockBizType.class, row.get("docKind"));
+            return kind == null ? dec(row, "qty").signum() > 0 : kind == StockBizType.IN;
         }
 
         /** 采购入库 / 退货单据中该物料的不含税金额（出入库数量与采购单据不同时按比例） */
@@ -980,6 +979,29 @@ public class FinCostService {
 
     private static BigDecimal money(BigDecimal v) {
         return v.setScale(AMOUNT_SCALE, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * 出入库流水的业务类型（入库单为入库类型、出库单为出库类型的名称，盘点为 CHECK）是否为其中之一。
+     * 同一流水查询中入库、出库类型混在一起（如生产领料与生产入库同名），只能按名称比较
+     */
+    private static boolean bizTypeIs(Map<String, Object> row, Enum<?>... types) {
+        return bizTypeIs(row, List.of(types));
+    }
+
+    private static boolean bizTypeIs(Map<String, Object> row, Collection<? extends Enum<?>> types) {
+        Object value = row.get("bizType");
+        for (Enum<?> type : types) {
+            if (type.name().equals(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 查询结果（Map）中的取值转为枚举，为空时返回 null */
+    private static <E extends Enum<E>> E enumOf(Class<E> type, Object value) {
+        return value == null ? null : Enum.valueOf(type, value.toString());
     }
 
     private static BigDecimal[] zeros(int n) {

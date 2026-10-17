@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.service;
 
+import com.lemon.erp.modules.pm.model.ProjectStatus;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.service.FinAccountRuleService;
 import com.lemon.erp.modules.fin.model.AccountRole;
@@ -97,7 +98,7 @@ public class PmCloseService {
         Long costOfSales = accountRules.accountId(AccountRole.COST_OF_SALES);
         for (Map<String, Object> row : closeMapper.selectRecognition(end)) {
             Long projectId = ((Number) row.get("projectId")).longValue();
-            BigDecimal rate = "FINISHED".equals(row.get("status")) || "CLOSED".equals(row.get("status"))
+            BigDecimal rate = ProjectStatus.valueOf((String) row.get("status")).isFinished()
                     ? HUNDRED : decimal(row.get("progress")).min(HUNDRED).max(BigDecimal.ZERO);
             BigDecimal taxRate = decimal(row.get("taxRate"));
             BigDecimal contractNet = decimal(row.get("contractAmount"))

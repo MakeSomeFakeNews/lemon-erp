@@ -1,11 +1,13 @@
 package com.lemon.erp.modules.mes.service;
 
+import com.lemon.erp.modules.wms.model.StockOutType;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.dict.DictLookup;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.workflow.FlowApi;
@@ -104,7 +106,7 @@ public class QmsNcrService {
         ncr.setDefectType(i.getDefectType());
         ncr.setDescription(StringUtils.hasText(i.getDefectDesc()) ? i.getDefectDesc() : "检验单 " + i.getInspNo() + " 判定不合格"); // i18n-ignore
         ncrMapper.insert(ncr);
-        messageSender.sendToPermission("qms:ncr:edit", MessageSender.Message.of("ALERT", "待评审的不合格品：" + ncr.getNcrNo(), // i18n-ignore
+        messageSender.sendToPermission("qms:ncr:edit", MessageSender.Message.of(MessageCategory.ALERT, "待评审的不合格品：" + ncr.getNcrNo(), // i18n-ignore
                 "检验单 " + i.getInspNo() + " 不合格，请评审处置", "/qms/ncr")); // i18n-ignore
         return ncr.getId();
     }
@@ -241,7 +243,7 @@ public class QmsNcrService {
             case REWORK -> rework(ncr, reworkWarehouseId);
             case RETURN -> {
                 WmsMaterial m = materialService.get(ncr.getMaterialId());
-                messageSender.sendToPermission("scm:purchaseReturn:add", MessageSender.Message.of("ALERT",
+                messageSender.sendToPermission("scm:purchaseReturn:add", MessageSender.Message.of(MessageCategory.ALERT,
                         "不合格品退货：" + m.getCode() + " " + m.getName(), // i18n-ignore
                         "采购入库单 " + ncr.getSourceNo() + " 的 " + m.getName() + " 评审为退货（" + ncr.getNcrNo() + "），请办理采购退货", // i18n-ignore
                         "/scm/purchase-return"));
@@ -283,7 +285,7 @@ public class QmsNcrService {
                     .map(h -> new StockDocItemRequest(h.getMaterialId(), h.getLocationId(), null, h.getBatchNo(), null, null,
                             h.getHoldQty(), null, ncr.getNcrNo()))
                     .toList();
-            Long docId = stockDocService.create(StockBizType.OUT, new StockDocRequest("SCRAP", e.getKey(), null, LocalDate.now(),
+            Long docId = stockDocService.create(StockBizType.OUT, new StockDocRequest(StockOutType.SCRAP, e.getKey(), null, LocalDate.now(),
                     "不合格品报废 " + ncr.getNcrNo(), items)); // i18n-ignore
             WmsStockDoc doc = stockDocService.detail(StockBizType.OUT, docId);
             docs.append(docs.isEmpty() ? "" : "、").append(doc.getDocNo());

@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.InterviewMethod;
+import com.lemon.erp.modules.hr.model.InterviewResult;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -31,13 +33,13 @@ public class HrInterview extends BaseEntity {
     private Long interviewerId;
 
     /** 方式 ONSITE现场 VIDEO视频 PHONE电话 */
-    private String method;
+    private InterviewMethod method;
 
     /** 评分（0-100） */
     private Integer score;
 
     /** 结果(字典 hr_interview_result) PENDING待面试 PASS通过 FAIL未通过 */
-    private String result;
+    private InterviewResult result;
 
     /** 面试评价 */
     private String feedback;

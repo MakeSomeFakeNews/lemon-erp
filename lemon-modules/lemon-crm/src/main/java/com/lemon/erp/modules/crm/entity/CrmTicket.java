@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.lemon.erp.modules.crm.model.TicketStatus;
+import com.lemon.erp.modules.crm.model.TicketPriority;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -30,7 +32,7 @@ public class CrmTicket extends BaseEntity {
     private String type;
 
     /** 优先级(字典 crm_ticket_priority) URGENT紧急 HIGH高 MEDIUM中 LOW低，决定处理时限 */
-    private String priority;
+    private TicketPriority priority;
 
     /** 受理渠道(字典 crm_ticket_channel) */
     private String channel;
@@ -51,7 +53,7 @@ public class CrmTicket extends BaseEntity {
     private Long assigneeId;
 
     /** 状态(字典 crm_ticket_status) OPEN待处理 PROCESSING处理中 RESOLVED已解决 CLOSED已关闭 */
-    private String status;
+    private TicketStatus status;
 
     /** 处理时限 = 受理时间 + 优先级时限 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

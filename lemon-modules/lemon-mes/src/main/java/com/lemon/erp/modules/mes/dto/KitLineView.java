@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.mes.dto;
 
+import com.lemon.erp.modules.mes.model.SupplyType;
+import com.lemon.erp.modules.mes.model.WorkOrderStatus;
 import com.lemon.erp.modules.mes.entity.MesMaterialSubstitute;
 import lombok.Data;
 
@@ -16,7 +18,7 @@ public class KitLineView {
     private Long woMaterialId;
     private Long woId;
     private String woNo;
-    private String woStatus;
+    private WorkOrderStatus woStatus;
     private BigDecimal woQty;
     private LocalDate planStart;
     private Long productId;
@@ -29,7 +31,7 @@ public class KitLineView {
     private String spec;
     private String unit;
     private Integer serialEnabled;
-    private String supplyType;
+    private SupplyType supplyType;
 
     private BigDecimal unitQty;
     private BigDecimal requiredQty;

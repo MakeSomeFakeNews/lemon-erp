@@ -3,6 +3,7 @@ package com.lemon.erp.modules.crm.service;
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
 import com.lemon.erp.framework.message.MessageSender.Message;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.modules.crm.mapper.CrmJobMapper;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +44,7 @@ public class CrmFollowRemindJob implements JobHandler {
         List<Map<String, Object>> rows = jobMapper.selectFollowDue(today.plusDays(1).atStartOfDay());
         for (Map<String, Object> r : rows) {
             Long owner = ((Number) r.get("ownerId")).longValue();
-            messageSender.send(List.of(owner), Message.of("REMIND", "今天需要跟进客户「" + r.get("name") + "」", // i18n-ignore 站内消息存库
+            messageSender.send(List.of(owner), Message.of(MessageCategory.REMIND, "今天需要跟进客户「" + r.get("name") + "」", // i18n-ignore 站内消息存库
                     "计划跟进时间 " + r.get("nextFollowTime"), "/crm/customer").dedup("crm-follow:" + r.get("customerId") + ":" + today)); // i18n-ignore 站内消息存库
         }
         return "提醒 " + rows.size() + " 个客户"; // i18n-ignore 任务日志存库

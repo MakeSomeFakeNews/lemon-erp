@@ -10,9 +10,13 @@ package com.lemon.erp.modules.mes.model;
  * </ul>
  */
 public enum SupplyType {
+    /** 自制 */
     MAKE,
+    /** 采购 */
     BUY,
+    /** 委外 */
     OUTSOURCE,
+    /** 虚拟件 */
     PHANTOM;
 
     /** 需要默认 BOM */
@@ -23,14 +27,5 @@ public enum SupplyType {
     /** 下达为采购订单 */
     public boolean purchased() {
         return this == BUY || this == OUTSOURCE;
-    }
-
-    public static SupplyType of(String value) {
-        for (SupplyType t : values()) {
-            if (t.name().equals(value)) {
-                return t;
-            }
-        }
-        return null;
     }
 }

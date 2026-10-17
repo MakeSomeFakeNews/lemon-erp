@@ -20,8 +20,10 @@ import com.lemon.erp.modules.scm.entity.ScmInquiryQuote;
 import com.lemon.erp.modules.scm.mapper.ScmInquiryItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmInquiryMapper;
 import com.lemon.erp.modules.scm.mapper.ScmInquiryQuoteMapper;
+import com.lemon.erp.modules.scm.model.InquiryStatus;
 import com.lemon.erp.modules.scm.model.OrderDeletedEvent;
 import com.lemon.erp.modules.scm.model.OrderKind;
+import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
@@ -60,7 +62,7 @@ public class ScmInquiryService {
     private final DocNoService docNoService;
 
     @DataPermission(table = "scm_inquiry", deptColumn = "dept_id", userColumn = "create_by")
-    public PageResult<ScmInquiry> page(long current, long size, String keyword, String status) {
+    public PageResult<ScmInquiry> page(long current, long size, String keyword, InquiryStatus status) {
         Page<ScmInquiry> page = Page.of(current, size);
         inquiryMapper.selectPageList(page, keyword, status);
         return PageResult.of(page);
@@ -78,11 +80,11 @@ public class ScmInquiryService {
     public Long create(InquiryRequest req) {
         LoginUser user = SecurityUtils.getLoginUser();
         ScmInquiry q = new ScmInquiry();
-        q.setInquiryNo(docNoService.next("XJ"));
+        q.setInquiryNo(docNoService.next(ScmDocNos.INQUIRY));
         q.setInquiryDate(req.inquiryDate());
         q.setDeadline(req.deadline());
         q.setRemark(req.remark());
-        q.setStatus("QUOTING");
+        q.setStatus(InquiryStatus.QUOTING);
         q.setDeptId(user.deptId());
         q.setCreateBy(user.userId());
         inquiryMapper.insert(q);
@@ -200,26 +202,26 @@ public class ScmInquiryService {
                     return new OrderItemRequest(i.getMaterialId(), i.getQty(), q.getPrice(), q.getTaxRate(), delivery, i.getRemark());
                 }).toList();
                 Long orderId = orderService.createDraft(OrderKind.PURCHASE, new OrderRequest(supplierId, LocalDate.now(), null,
-                        req.warehouseId(), "询价单 " + inquiry.getInquiryNo(), lines), "INQUIRY"); // i18n-ignore
+                        req.warehouseId(), "询价单 " + inquiry.getInquiryNo(), lines), OrderSource.INQUIRY); // i18n-ignore
                 itemMapper.update(Wrappers.<ScmInquiryItem>lambdaUpdate().set(ScmInquiryItem::getOrderId, orderId)
                         .in(ScmInquiryItem::getId, list.stream().map(ScmInquiryItem::getId).toList()));
                 orderIds.add(orderId);
             });
         }
-        transit(id, "FINISHED");
+        transit(id, InquiryStatus.FINISHED);
         return orderIds;
     }
 
     @Transactional
     public void close(Long id) {
         getQuoting(id);
-        transit(id, "CLOSED");
+        transit(id, InquiryStatus.CLOSED);
     }
 
     /** 生成的草稿采购订单删除后，明细恢复为未下单（询价单保持已完成，可在采购订单中重新下单） */
     @EventListener
     public void onOrderDeleted(OrderDeletedEvent e) {
-        if (!OrderKind.PURCHASE.name().equals(e.kind())) {
+        if (e.kind() != OrderKind.PURCHASE) {
             return;
         }
         itemMapper.update(Wrappers.<ScmInquiryItem>lambdaUpdate().set(ScmInquiryItem::getOrderId, null).in(ScmInquiryItem::getOrderId, e.orderIds()));
@@ -238,10 +240,10 @@ public class ScmInquiryService {
         }
     }
 
-    private void transit(Long id, String to) {
+    private void transit(Long id, InquiryStatus to) {
         int updated = inquiryMapper.update(Wrappers.<ScmInquiry>lambdaUpdate().set(ScmInquiry::getStatus, to)
                 .set(ScmInquiry::getUpdateTime, LocalDateTime.now())
-                .eq(ScmInquiry::getId, id).eq(ScmInquiry::getStatus, "QUOTING"));
+                .eq(ScmInquiry::getId, id).eq(ScmInquiry::getStatus, InquiryStatus.QUOTING));
         if (updated == 0) {
             throw new BizException("scm.error.rfqStatusHasChangedRefresh");
         }
@@ -249,7 +251,7 @@ public class ScmInquiryService {
 
     private ScmInquiry getQuoting(Long id) {
         ScmInquiry q = getAccessible(id);
-        if (!"QUOTING".equals(q.getStatus())) {
+        if (q.getStatus() != InquiryStatus.QUOTING) {
             throw new BizException("scm.error.rfqCompletedClosed");
         }
         return q;

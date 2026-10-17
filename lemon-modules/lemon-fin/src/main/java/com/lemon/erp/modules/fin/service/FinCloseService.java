@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.PeriodStatus;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
@@ -50,17 +51,17 @@ public class FinCloseService {
     @Transactional
     public void close(int period) {
         FinPeriod p = periodService.ensure(period);
-        if (FinPeriodService.CLOSED.equals(p.getStatus())) {
+        if (p.getStatus() == PeriodStatus.CLOSED) {
             throw new BizException("fin.error.periodHasClosed", period);
         }
         FinPeriod earlierOpen = periodMapper.selectOne(Wrappers.<FinPeriod>lambdaQuery()
-                .lt(FinPeriod::getPeriod, period).eq(FinPeriod::getStatus, FinPeriodService.OPEN)
+                .lt(FinPeriod::getPeriod, period).eq(FinPeriod::getStatus, PeriodStatus.OPEN)
                 .orderByAsc(FinPeriod::getPeriod).last("LIMIT 1"));
         if (earlierOpen != null) {
             throw new BizException("fin.error.closePeriodFirst", earlierOpen.getPeriod());
         }
         long unposted = voucherMapper.selectCount(Wrappers.<FinVoucher>lambdaQuery()
-                .eq(FinVoucher::getPeriod, period).ne(FinVoucher::getStatus, VoucherStatus.POSTED.name()));
+                .eq(FinVoucher::getPeriod, period).ne(FinVoucher::getStatus, VoucherStatus.POSTED));
         if (unposted > 0) {
             throw new BizException("fin.error.periodStillHasUnpostedVoucherS", period, unposted);
         }
@@ -69,11 +70,11 @@ public class FinCloseService {
             carryForwardYearProfit(period);
         }
         int updated = periodMapper.update(Wrappers.<FinPeriod>lambdaUpdate()
-                .set(FinPeriod::getStatus, FinPeriodService.CLOSED)
+                .set(FinPeriod::getStatus, PeriodStatus.CLOSED)
                 .set(FinPeriod::getCloseBy, SecurityUtils.getUserId())
                 .set(FinPeriod::getCloseTime, LocalDateTime.now())
                 .eq(FinPeriod::getPeriod, period)
-                .eq(FinPeriod::getStatus, FinPeriodService.OPEN));
+                .eq(FinPeriod::getStatus, PeriodStatus.OPEN));
         if (updated == 0) {
             throw new BizException("fin.error.periodStatusHasChangedRefresh");
         }
@@ -82,21 +83,21 @@ public class FinCloseService {
     @Transactional
     public void reopen(int period) {
         FinPeriod p = periodService.get(period);
-        if (p == null || !FinPeriodService.CLOSED.equals(p.getStatus())) {
+        if (p == null || p.getStatus() != PeriodStatus.CLOSED) {
             throw new BizException("fin.error.periodHasNotClosed", period);
         }
         if (periodMapper.exists(Wrappers.<FinPeriod>lambdaQuery()
-                .gt(FinPeriod::getPeriod, period).eq(FinPeriod::getStatus, FinPeriodService.CLOSED))) {
+                .gt(FinPeriod::getPeriod, period).eq(FinPeriod::getStatus, PeriodStatus.CLOSED))) {
             throw new BizException("fin.error.reopenLaterPeriodsFirst");
         }
         periodMapper.update(Wrappers.<FinPeriod>lambdaUpdate()
-                .set(FinPeriod::getStatus, FinPeriodService.OPEN)
+                .set(FinPeriod::getStatus, PeriodStatus.OPEN)
                 .set(FinPeriod::getCloseBy, null)
                 .set(FinPeriod::getCloseTime, null)
                 .eq(FinPeriod::getPeriod, period));
         List<Long> closeVouchers = voucherMapper.selectList(Wrappers.<FinVoucher>lambdaQuery()
                         .select(FinVoucher::getId)
-                        .eq(FinVoucher::getPeriod, period).eq(FinVoucher::getSourceType, VoucherSource.CLOSE.name()))
+                        .eq(FinVoucher::getPeriod, period).eq(FinVoucher::getSourceType, VoucherSource.CLOSE))
                 .stream().map(FinVoucher::getId).toList();
         if (!closeVouchers.isEmpty()) {
             entryMapper.delete(Wrappers.<FinVoucherEntry>lambdaQuery().in(FinVoucherEntry::getVoucherId, closeVouchers));
@@ -107,7 +108,7 @@ public class FinCloseService {
     /** 损益类末级科目的本期发生额结转到本年利润：收入借记、费用贷记，差额记本年利润 */
     private void carryForwardProfit(int period) {
         Map<Long, FinAccount> profitAccounts = accountService.listAll().stream()
-                .filter(a -> AccountCategory.PROFIT.name().equals(a.getCategory()))
+                .filter(a -> a.getCategory() == AccountCategory.PROFIT)
                 .collect(Collectors.toMap(FinAccount::getId, Function.identity()));
         String summary = "结转 " + period + " 期间损益"; // i18n-ignore
         List<VoucherLine> lines = new ArrayList<>();

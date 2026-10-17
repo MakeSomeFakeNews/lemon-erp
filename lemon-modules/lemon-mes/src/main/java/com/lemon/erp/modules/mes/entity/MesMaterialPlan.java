@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.entity;
 
+import com.lemon.erp.modules.mes.model.SupplyType;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
 import lombok.Data;
@@ -18,7 +19,7 @@ public class MesMaterialPlan extends BaseEntity {
     private Long materialId;
 
     /** SupplyType，为空时按有无默认 BOM 判断 */
-    private String supplyType;
+    private SupplyType supplyType;
 
     /** 提前期（天），为空时取 BOM / 供货价格的提前期 */
     private Integer leadDays;

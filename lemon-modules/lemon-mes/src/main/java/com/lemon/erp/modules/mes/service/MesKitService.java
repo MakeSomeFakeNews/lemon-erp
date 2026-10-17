@@ -1,5 +1,8 @@
 package com.lemon.erp.modules.mes.service;
 
+import com.lemon.erp.modules.scm.model.OrderSource;
+import com.lemon.erp.modules.mes.model.WorkOrderSource;
+import com.lemon.erp.modules.mes.model.KitStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -79,7 +82,7 @@ public class MesKitService {
     private final ScmOrderService orderService;
 
     /** 未结束工单的齐套情况（只返回有数据权限的工单） */
-    public List<WoKitView> orders(String woNo, String kitStatus) {
+    public List<WoKitView> orders(String woNo, KitStatus kitStatus) {
         List<KitLineView> lines = allocate(null);
         Set<Long> visible = visibleWoIds(lines.stream().map(KitLineView::getWoId).collect(Collectors.toSet()));
         Map<Long, List<KitLineView>> byWo = lines.stream().filter(l -> visible.contains(l.getWoId()))
@@ -94,7 +97,7 @@ public class MesKitService {
         byWo.forEach((woId, list) -> {
             WoKitView v = summarize(wos.get(woId), products.get(wos.get(woId).getMaterialId()), list);
             if ((!StringUtils.hasText(woNo) || v.getWoNo().contains(woNo.trim()))
-                    && (!StringUtils.hasText(kitStatus) || kitStatus.equals(v.getKitStatus()))) {
+                    && (kitStatus == null || kitStatus == v.getKitStatus())) {
                 result.add(v);
             }
         });
@@ -104,7 +107,7 @@ public class MesKitService {
     /** 某工单的用料齐套明细，缺料的行附带替代料 */
     public List<KitLineView> orderLines(Long woId) {
         MesWorkOrder wo = workOrderService.getAccessible(woId);
-        if (!WorkOrderStatus.OPEN.contains(wo.getStatus())) {
+        if (!wo.getStatus().isOpen()) {
             throw new BizException("mes.error.workOrderHasEnded", wo.getWoNo());
         }
         List<Long> materialIds = woMaterialMapper.selectByWo(woId).stream().map(MesWoMaterial::getMaterialId).toList();
@@ -157,11 +160,11 @@ public class MesKitService {
         List<String> docNos = new ArrayList<>();
         Map<Long, List<MaterialKitView>> bySupplier = new LinkedHashMap<>();
         for (MaterialKitView r : rows) {
-            SupplyType type = SupplyType.valueOf(r.getSupplyType());
+            SupplyType type = r.getSupplyType();
             if (type == SupplyType.MAKE) {
                 LocalDate due = r.getRequiredDate();
                 Long woId = workOrderService.createDraft(new WorkOrderRequest(r.getMaterialId(), null, r.getSuggestQty(),
-                        null, due, req.warehouseId(), "生产缺料"), "KIT", null); // i18n-ignore
+                        null, due, req.warehouseId(), "生产缺料"), WorkOrderSource.KIT, null); // i18n-ignore
                 docNos.add(workOrderMapper.selectById(woId).getWoNo());
             } else {
                 if (r.getSupplierId() == null) {
@@ -180,7 +183,7 @@ public class MesKitService {
                         p == null ? null : p.getTaxRate(), r.getRequiredDate(), null);
             }).toList();
             Long orderId = orderService.createDraft(OrderKind.PURCHASE,
-                    new OrderRequest(e.getKey(), LocalDate.now(), delivery, req.warehouseId(), "生产缺料", items), "KIT"); // i18n-ignore
+                    new OrderRequest(e.getKey(), LocalDate.now(), delivery, req.warehouseId(), "生产缺料", items), OrderSource.KIT); // i18n-ignore
             docNos.add(scmQueryService.orderNo(orderId));
         }
         return docNos;
@@ -190,7 +193,7 @@ public class MesKitService {
     @Transactional
     public void switchSubstitute(SubstituteSwitchRequest req) {
         MesWorkOrder wo = workOrderService.getAccessible(req.woId());
-        if (!WorkOrderStatus.OPEN.contains(wo.getStatus())) {
+        if (!wo.getStatus().isOpen()) {
             throw new BizException("mes.error.workOrderHasEnded", wo.getWoNo());
         }
         Map<Long, MesWoMaterial> lines = woMaterialMapper.selectByWo(wo.getId()).stream()
@@ -285,7 +288,7 @@ public class MesKitService {
             r.setSpec(first.getSpec());
             r.setUnit(first.getUnit());
             SupplyType type = types.get(id);
-            r.setSupplyType(type.name());
+            r.setSupplyType(type);
             r.setWoCount((int) list.stream().map(KitLineView::getWoId).distinct().count());
             r.setRequiredQty(sum(list, KitLineView::getRequiredQty));
             r.setSupplementQty(sum(list, KitLineView::getSupplementQty));
@@ -340,8 +343,8 @@ public class MesKitService {
         }
         v.setBuildableQty(buildable);
         boolean allIssued = lines.stream().allMatch(l -> l.getToIssueQty().signum() == 0);
-        v.setKitStatus(allIssued ? "ISSUED" : shortLines == 0 ? "COMPLETE"
-                : buildable.compareTo(wo.getFinishedQty()) > 0 ? "PARTIAL" : "SHORT");
+        v.setKitStatus(allIssued ? KitStatus.ISSUED : shortLines == 0 ? KitStatus.COMPLETE
+                : buildable.compareTo(wo.getFinishedQty()) > 0 ? KitStatus.PARTIAL : KitStatus.SHORT);
         return v;
     }
 

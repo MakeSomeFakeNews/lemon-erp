@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.hr.service;
 
 import com.lemon.erp.framework.workflow.FlowBusiness;
+import com.lemon.erp.modules.hr.model.LeaveKind;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -16,7 +17,7 @@ public class HrFlowBusinesses {
     public FlowBusiness leaveFlow() {
         return FlowBusiness.of("hr_leave", "hr.label.leaveOvertimeApproval",
                 dict("kind", "hr.label.requestKind", "hr_leave_kind"),
-                dict("type", "hr.label.leaveTypeOvertimeOvertime", "hr_leave_type", "OVERTIME"),
+                dict("type", "hr.label.leaveTypeOvertimeOvertime", "hr_leave_type", LeaveKind.OVERTIME.name()),
                 number("days", "hr.label.days"),
                 number("hours", "hr.label.hours"),
                 dict("compensation", "hr.label.overtimeCompensation", "hr_overtime_comp"));

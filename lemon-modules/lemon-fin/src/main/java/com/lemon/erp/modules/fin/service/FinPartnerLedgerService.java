@@ -3,7 +3,7 @@ package com.lemon.erp.modules.fin.service;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.modules.fin.mapper.FinPartnerLedgerMapper;
-import com.lemon.erp.modules.fin.model.FinConstants;
+import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.model.PartnerLedgerType;
 import com.lemon.erp.modules.fin.model.SettleKind;
 import lombok.RequiredArgsConstructor;
@@ -32,16 +32,16 @@ public class FinPartnerLedgerService {
      * @param kind AR 应收（客户）/ AP 应付（供应商）
      * @return {partnerName, opening, rows: [{bizDate, type, docNo, sourceType, sourceNo, increase, decrease, balance, remark}], increase, decrease, closing}
      */
-    public Map<String, Object> statement(String kind, Long partnerId, LocalDate begin, LocalDate end) {
+    public Map<String, Object> statement(BillKind kind, Long partnerId, LocalDate begin, LocalDate end) {
         FinBillService.checkKind(kind);
-        boolean ar = FinConstants.BILL_AR.equals(kind);
+        boolean ar = kind == BillKind.AR;
         if (!permissionService.hasPerm(ar ? "fin:ar:list" : "fin:ap:list")) {
             throw new BizException(ar ? "fin.error.noPermissionViewReceivables" : "fin.error.noPermissionViewPayables");
         }
         if (begin == null || end == null || end.isBefore(begin)) {
             throw new BizException("fin.error.invalidDateRange");
         }
-        String settleKind = (ar ? SettleKind.RECEIPT : SettleKind.PAYMENT).name();
+        SettleKind settleKind = kind.settleKind();
         BigDecimal opening = ledgerMapper.sumBillsBefore(kind, partnerId, begin)
                 .subtract(ledgerMapper.sumSettlementsBefore(settleKind, partnerId, begin))
                 .subtract(ledgerMapper.sumAdvancesBefore(settleKind, partnerId, begin));
@@ -51,7 +51,7 @@ public class FinPartnerLedgerService {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (Map<String, Object> r : ledgerMapper.selectRows(kind, settleKind, partnerId, begin, end)) {
             BigDecimal amount = new BigDecimal(r.get("amount").toString());
-            boolean bill = PartnerLedgerType.BILL.name().equals(r.get("type"));
+            boolean bill = PartnerLedgerType.valueOf((String) r.get("type")) == PartnerLedgerType.BILL;
             Map<String, Object> row = new LinkedHashMap<>(r);
             row.remove("amount");
             row.put("increase", bill ? amount : null);

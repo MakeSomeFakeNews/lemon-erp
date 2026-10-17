@@ -2,6 +2,7 @@ package com.lemon.erp.modules.scm.service;
 
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender.Message;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.modules.scm.dto.ReorderSuggestion;
@@ -44,7 +45,7 @@ public class ScmReorderJob implements JobHandler {
             return "没有需要补货的物料"; // i18n-ignore
         }
         String names = list.stream().limit(5).map(s -> s.code() + " " + s.name()).collect(Collectors.joining("、"));
-        messageSender.sendToPermission("scm:reorder:list", Message.of("ALERT", list.size() + " 个物料低于再订货点", // i18n-ignore
+        messageSender.sendToPermission("scm:reorder:list", Message.of(MessageCategory.ALERT, list.size() + " 个物料低于再订货点", // i18n-ignore
                 names + (list.size() > 5 ? " 等" : "") + "，请查看补货建议并生成请购单", "/scm/reorder") // i18n-ignore
                 .dedup("reorder:" + LocalDate.now()));
         return "需要补货 " + list.size() + " 个物料"; // i18n-ignore

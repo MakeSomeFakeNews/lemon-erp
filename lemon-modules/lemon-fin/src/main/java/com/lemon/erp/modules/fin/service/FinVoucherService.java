@@ -108,7 +108,7 @@ public class FinVoucherService {
     public void update(Long id, VoucherRequest req) {
         Object before = voucherMapper.selectById(id);
         FinVoucher old = getWithStatus(id, VoucherStatus.DRAFT);
-        if (!VoucherSource.MANUAL.name().equals(old.getSourceType())) {
+        if (old.getSourceType() != VoucherSource.MANUAL) {
             throw new BizException("fin.error.vouchersGeneratedBusinessDocumentsCannotModified");
         }
         List<VoucherLine> lines = toLines(req.entries());
@@ -123,7 +123,7 @@ public class FinVoucherService {
                 .set(FinVoucher::getTotalCredit, total(entries, false))
                 .set(FinVoucher::getUpdateTime, LocalDateTime.now())
                 .eq(FinVoucher::getId, id)
-                .eq(FinVoucher::getStatus, VoucherStatus.DRAFT.name());
+                .eq(FinVoucher::getStatus, VoucherStatus.DRAFT);
         periodService.checkOpen(old.getPeriod());
         if (period != old.getPeriod()) {
             int seq = periodService.nextVoucherSeq(period);
@@ -167,7 +167,7 @@ public class FinVoucherService {
         if (v == null) {
             return;
         }
-        if (!VoucherStatus.DRAFT.name().equals(v.getStatus())) {
+        if (v.getStatus() != VoucherStatus.DRAFT) {
             throw new BizException("fin.error.voucherApprovedUnapproveReverseFirst", v.getVoucherNo());
         }
         periodService.checkOpen(v.getPeriod());
@@ -176,19 +176,19 @@ public class FinVoucherService {
     }
 
     /** 预收预付、坏账、报销、借款生成的凭证与业务单据的金额联动，不能直接删除 */
-    private static final java.util.Set<String> UNDELETABLE_SOURCES = java.util.Set.of(VoucherSource.ADVANCE.name(),
-            VoucherSource.BAD_DEBT.name(), VoucherSource.CLAIM.name(), VoucherSource.LOAN.name(),
-            VoucherSource.NOTE.name(), VoucherSource.TRANSFER.name());
+    private static final java.util.Set<VoucherSource> UNDELETABLE_SOURCES = java.util.EnumSet.of(VoucherSource.ADVANCE,
+            VoucherSource.BAD_DEBT, VoucherSource.CLAIM, VoucherSource.LOAN,
+            VoucherSource.NOTE, VoucherSource.TRANSFER);
 
-    private static String sourceLabel(String source) {
+    private static String sourceLabel(VoucherSource source) {
         return switch (source) {
-            case "ADVANCE" -> "fin.label.advanceReceiptPayment";
-            case "BAD_DEBT" -> "fin.label.badDebtWriteOff";
-            case "CLAIM" -> "fin.label.expenseClaim";
-            case "LOAN" -> "fin.label.employeeLoan";
-            case "NOTE" -> "fin.label.note";
-            case "TRANSFER" -> "fin.label.fundTransfer";
-            default -> source;
+            case ADVANCE -> "fin.label.advanceReceiptPayment";
+            case BAD_DEBT -> "fin.label.badDebtWriteOff";
+            case CLAIM -> "fin.label.expenseClaim";
+            case LOAN -> "fin.label.employeeLoan";
+            case NOTE -> "fin.label.note";
+            case TRANSFER -> "fin.label.fundTransfer";
+            default -> source.name();
         };
     }
 
@@ -200,7 +200,7 @@ public class FinVoucherService {
     @Transactional
     public Long reverse(Long id, LocalDate date) {
         FinVoucher v = getWithStatus(id, VoucherStatus.POSTED, "fin.error.onlyPostedVouchersReversed");
-        if (VoucherSource.CLOSE.name().equals(v.getSourceType())) {
+        if (v.getSourceType() == VoucherSource.CLOSE) {
             throw new BizException("fin.error.profitLossClosingVouchersGeneratedPeriod");
         }
         if (v.getReversalOf() != null) {
@@ -242,15 +242,15 @@ public class FinVoucherService {
             FinVoucher v = getWithStatus(id, VoucherStatus.DRAFT, "fin.error.onlyUnapprovedVouchersSubmitted");
             periodService.checkOpen(v.getPeriod());
             int updated = voucherMapper.update(Wrappers.<FinVoucher>lambdaUpdate()
-                    .set(FinVoucher::getStatus, VoucherStatus.APPROVING.name())
-                    .eq(FinVoucher::getId, id).eq(FinVoucher::getStatus, VoucherStatus.DRAFT.name()));
+                    .set(FinVoucher::getStatus, VoucherStatus.APPROVING)
+                    .eq(FinVoucher::getId, id).eq(FinVoucher::getStatus, VoucherStatus.DRAFT));
             if (updated == 0) {
                 throw new BizException("fin.error.statusVoucherHasChangedRefresh", v.getVoucherNo());
             }
             String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of(
                     "amount", v.getTotalDebit() == null ? 0 : v.getTotalDebit().doubleValue(),
                     "voucherNo", v.getVoucherNo(),
-                    "sourceType", v.getSourceType() == null ? "" : v.getSourceType()));
+                    "sourceType", v.getSourceType() == null ? "" : v.getSourceType().name()));
             voucherMapper.update(Wrappers.<FinVoucher>lambdaUpdate().set(FinVoucher::getFlowInstanceId, instanceId).eq(FinVoucher::getId, id));
         }
     }
@@ -264,11 +264,11 @@ public class FinVoucherService {
         Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
         boolean approved = e.status() == FlowStatus.APPROVED;
         voucherMapper.update(Wrappers.<FinVoucher>lambdaUpdate()
-                .set(FinVoucher::getStatus, approved ? VoucherStatus.AUDITED.name() : VoucherStatus.DRAFT.name())
+                .set(FinVoucher::getStatus, approved ? VoucherStatus.AUDITED : VoucherStatus.DRAFT)
                 .set(approved, FinVoucher::getAuditBy, SecurityUtils.getUserIdOrNull())
                 .set(approved, FinVoucher::getAuditTime, LocalDateTime.now())
                 .eq(FinVoucher::getId, id)
-                .eq(FinVoucher::getStatus, VoucherStatus.APPROVING.name()));
+                .eq(FinVoucher::getStatus, VoucherStatus.APPROVING));
     }
 
     @Transactional
@@ -286,7 +286,7 @@ public class FinVoucherService {
     public void unpost(List<Long> ids) {
         for (Long id : ids) {
             FinVoucher v = voucherMapper.selectById(id);
-            if (v != null && VoucherSource.CLOSE.name().equals(v.getSourceType())) {
+            if (v != null && v.getSourceType() == VoucherSource.CLOSE) {
                 throw new BizException("fin.error.profitLossClosingVouchersGeneratedAutomatically");
             }
         }
@@ -334,8 +334,8 @@ public class FinVoucherService {
         v.setTotalDebit(total(entries, true));
         v.setTotalCredit(total(entries, false));
         v.setAttachmentCount(attachments == null ? 0 : attachments);
-        v.setStatus(status.name());
-        v.setSourceType(source.name());
+        v.setStatus(status);
+        v.setSourceType(source);
         v.setSourceNo(sourceNo);
         v.setReversed(0);
         v.setCreateBy(userId);
@@ -441,10 +441,10 @@ public class FinVoucherService {
                 throw new BizException("fin.error.preparedVoucherCannotApproveYourself", v.getVoucherNo());
             }
             LambdaUpdateWrapper<FinVoucher> update = Wrappers.<FinVoucher>lambdaUpdate()
-                    .set(FinVoucher::getStatus, to.name())
+                    .set(FinVoucher::getStatus, to)
                     .set(FinVoucher::getUpdateTime, now)
                     .eq(FinVoucher::getId, id)
-                    .eq(FinVoucher::getStatus, from.name());
+                    .eq(FinVoucher::getStatus, from);
             switch (to) {
                 case AUDITED -> {
                     if (from == VoucherStatus.DRAFT) {
@@ -471,7 +471,7 @@ public class FinVoucherService {
         if (v == null) {
             throw new BizException("fin.error.voucherNotFound");
         }
-        if (!status.name().equals(v.getStatus())) {
+        if (v.getStatus() != status) {
             // error 为消息键，按请求语言取消息后作为参数
             throw new BizException("fin.error.voucherStatusInvalid", v.getPeriod(), v.getVoucherNo(), Messages.get(error));
         }

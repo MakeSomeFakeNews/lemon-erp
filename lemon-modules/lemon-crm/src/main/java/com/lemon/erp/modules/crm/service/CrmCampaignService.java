@@ -10,12 +10,12 @@ import com.lemon.erp.modules.crm.entity.CrmOpportunity;
 import com.lemon.erp.modules.crm.mapper.CrmCampaignMapper;
 import com.lemon.erp.modules.crm.mapper.CrmLeadMapper;
 import com.lemon.erp.modules.crm.mapper.CrmOpportunityMapper;
+import com.lemon.erp.modules.crm.model.CampaignStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Set;
 
 /**
  * 市场活动：效果按关联的线索、商机统计，投入产出比 = 赢单金额 / 实际花费
@@ -23,8 +23,6 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class CrmCampaignService {
-
-    private static final Set<String> STATUSES = Set.of("PLANNED", "ACTIVE", "FINISHED", "CANCELED");
 
     private final CrmCampaignMapper campaignMapper;
     private final CrmLeadMapper leadMapper;
@@ -48,14 +46,14 @@ public class CrmCampaignService {
     public List<CrmCampaign> options() {
         return campaignMapper.selectList(Wrappers.<CrmCampaign>lambdaQuery()
                 .select(CrmCampaign::getId, CrmCampaign::getName, CrmCampaign::getType, CrmCampaign::getStatus)
-                .ne(CrmCampaign::getStatus, "CANCELED")
+                .ne(CrmCampaign::getStatus, CampaignStatus.CANCELED)
                 .orderByDesc(CrmCampaign::getStartDate));
     }
 
     public void create(CrmCampaign c) {
         check(c);
         c.setId(null);
-        if (c.getStatus() == null) c.setStatus("PLANNED");
+        if (c.getStatus() == null) c.setStatus(CampaignStatus.PLANNED);
         campaignMapper.insert(c);
     }
 
@@ -80,9 +78,6 @@ public class CrmCampaignService {
     private static void check(CrmCampaign c) {
         if (c.getEndDate().isBefore(c.getStartDate())) {
             throw new BizException("crm.error.endDateCannotEarlierStartDate");
-        }
-        if (c.getStatus() != null && !STATUSES.contains(c.getStatus())) {
-            throw new BizException("crm.error.invalidCampaignStatus");
         }
         if (c.getBudget() == null) c.setBudget(BigDecimal.ZERO);
         if (c.getActualCost() == null) c.setActualCost(BigDecimal.ZERO);

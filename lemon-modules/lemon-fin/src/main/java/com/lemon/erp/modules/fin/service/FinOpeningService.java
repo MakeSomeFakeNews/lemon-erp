@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.PeriodStatus;
+import com.lemon.erp.modules.fin.model.CostRunKind;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.modules.fin.model.FinConstants;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -93,7 +95,7 @@ public class FinOpeningService {
 
     @Transactional
     public void saveAccountOpenings(AccountOpeningRequest req) {
-        if (periodMapper.exists(Wrappers.<FinPeriod>lambdaQuery().eq(FinPeriod::getStatus, FinPeriodService.CLOSED))) {
+        if (periodMapper.exists(Wrappers.<FinPeriod>lambdaQuery().eq(FinPeriod::getStatus, PeriodStatus.CLOSED))) {
             throw new BizException("fin.error.somePeriodsClosedAccountOpeningBalances");
         }
         List<FinAccountOpening> list = new ArrayList<>();
@@ -140,7 +142,7 @@ public class FinOpeningService {
         Integer start = opening != null ? Integer.valueOf(next(opening.getPeriod())) : startPeriod;
         view.setStartPeriod(start);
         view.setLocked(opening != null && runMapper.exists(Wrappers.<FinCostRun>lambdaQuery()
-                .eq(FinCostRun::getKind, FinCostService.RUN)));
+                .eq(FinCostRun::getKind, CostRunKind.RUN)));
         if (start == null) {
             view.setRows(List.of());
             view.setChecks(List.of());
@@ -193,7 +195,7 @@ public class FinOpeningService {
     public void saveStockOpening(StockOpeningRequest req) {
         toYearMonth(req.startPeriod());
         int openPeriod = previous(req.startPeriod());
-        if (runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, FinCostService.RUN))) {
+        if (runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, CostRunKind.RUN))) {
             throw new BizException("fin.error.costsHaveCalculatedInventoryOpeningsNo");
         }
         FinCostRun old = openingRun();
@@ -240,7 +242,7 @@ public class FinOpeningService {
         materialService.mapByIds(seen);
         FinCostRun run = new FinCostRun();
         run.setPeriod(openPeriod);
-        run.setKind(FinCostService.OPENING);
+        run.setKind(CostRunKind.OPENING);
         run.setOverheadVariance(BigDecimal.ZERO);
         run.setCreateBy(SecurityUtils.getUserId());
         runMapper.insert(run);
@@ -252,7 +254,7 @@ public class FinOpeningService {
     // ---------------------------------------------------------------- 内部
 
     private FinCostRun openingRun() {
-        return runMapper.selectOne(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, FinCostService.OPENING));
+        return runMapper.selectOne(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, CostRunKind.OPENING));
     }
 
     /** 存货期初金额与原材料、库存商品科目期初余额（含下级）对比 */

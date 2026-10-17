@@ -2,6 +2,7 @@ package com.lemon.erp.modules.wms.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.wms.model.WarehouseType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -22,7 +23,7 @@ public class WmsWarehouse extends BaseEntity {
     private String name;
 
     /** 仓库类型，字典 wms_warehouse_type：NORMAL / RAW / FINISHED / DEFECT（不良品仓不计入可用库存） */
-    private String type;
+    private WarehouseType type;
 
     /** 寄售仓的客户 / 供应商 */
     private Long partnerId;

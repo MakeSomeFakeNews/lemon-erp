@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.mes.dto;
 
+import com.lemon.erp.modules.mes.model.WorkOrderStatus;
+import com.lemon.erp.modules.mes.model.WorkOrderType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.modules.mes.model.BoardLineState;
 import com.lemon.erp.modules.mes.model.BoardOpState;
@@ -56,7 +58,7 @@ public record BoardView(String workCenter, Kpi kpi, List<Line> lines, List<Order
      * @param progress       完成进度（%），按工时加权
      * @param currentOp      当前工序：第一道没完成的工序
      */
-    public record Order(Long id, String woNo, String woType, String status, BoardOrderState state, DeliveryRisk risk,
+    public record Order(Long id, String woNo, WorkOrderType woType, WorkOrderStatus status, BoardOrderState state, DeliveryRisk risk,
                         String product, String materialCode, String spec, String unit, BigDecimal qty, BigDecimal finishedQty,
                         String salesOrderNo, String customerName, LocalDate dueDate, LocalDate planEnd, LocalDate eta,
                         BigDecimal remainingHours, BigDecimal progress, int totalOps, int doneOps,

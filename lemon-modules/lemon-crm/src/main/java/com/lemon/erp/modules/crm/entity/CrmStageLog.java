@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.lemon.erp.modules.crm.model.OpportunityStage;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -18,10 +19,10 @@ public class CrmStageLog extends BaseEntity {
     private Long opportunityId;
 
     /** 原阶段，新建时为空 */
-    private String fromStage;
+    private OpportunityStage fromStage;
 
     /** 新阶段 */
-    private String toStage;
+    private OpportunityStage toStage;
 
     /** 操作人 */
     private Long userId;

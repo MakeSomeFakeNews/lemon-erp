@@ -14,12 +14,15 @@ import com.lemon.erp.modules.scm.entity.ScmSupplierPrice;
 import com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmPriceListMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
+import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.wms.dto.StockDocItemRequest;
 import com.lemon.erp.modules.wms.dto.StockDocRequest;
 import com.lemon.erp.modules.wms.entity.WmsStockDoc;
 import com.lemon.erp.modules.wms.entity.WmsWarehouse;
 import com.lemon.erp.modules.wms.model.StockBizType;
+import com.lemon.erp.modules.wms.model.StockOutType;
+import com.lemon.erp.modules.wms.model.WarehouseType;
 import com.lemon.erp.modules.wms.service.WmsStockDocService;
 import com.lemon.erp.modules.wms.service.WmsWarehouseService;
 import lombok.RequiredArgsConstructor;
@@ -56,7 +59,7 @@ public class ScmConsignService {
     /** @return {orderId, tradeDocId} */
     @Transactional
     public Map<String, Long> settleCustomer(ConsignSettleRequest req) {
-        WmsWarehouse w = consignWarehouse(req.warehouseId(), "CONSIGN_OUT", "scm.label.customerConsignmentWarehouse");
+        WmsWarehouse w = consignWarehouse(req.warehouseId(), WarehouseType.CONSIGN_OUT, "scm.label.customerConsignmentWarehouse");
         ScmCustomer customer = customerService.get(w.getPartnerId());
         List<OrderItemRequest> lines = new ArrayList<>();
         for (ConsignSettleRequest.Item i : req.items()) {
@@ -73,7 +76,7 @@ public class ScmConsignService {
             lines.add(new OrderItemRequest(i.materialId(), i.qty(), price, taxRate, req.bizDate(), null));
         }
         Long orderId = orderService.createDraft(OrderKind.SALES, new OrderRequest(customer.getId(), req.bizDate(), req.bizDate(), w.getId(),
-                "寄售结算 " + w.getName() + (req.remark() == null ? "" : " " + req.remark()), lines), "CONSIGN"); // i18n-ignore
+                "寄售结算 " + w.getName() + (req.remark() == null ? "" : " " + req.remark()), lines), OrderSource.CONSIGN); // i18n-ignore
         orderService.approveDirect(orderId);
         Long docId = tradeDocService.create(TradeKind.SALES_OUT, new TradeDocRequest(orderId, w.getId(), req.bizDate(), "寄售结算", // i18n-ignore
                 null, tradeItems(orderId, req)));
@@ -83,12 +86,12 @@ public class ScmConsignService {
     /** @return {orderId, tradeDocId, consumeDocId} */
     @Transactional
     public Map<String, Long> settleSupplier(ConsignSettleRequest req) {
-        WmsWarehouse w = consignWarehouse(req.warehouseId(), "CONSIGN_IN", "scm.label.supplierConsignmentWarehouse");
+        WmsWarehouse w = consignWarehouse(req.warehouseId(), WarehouseType.CONSIGN_IN, "scm.label.supplierConsignmentWarehouse");
         if (req.targetWarehouseId() == null) {
             throw new BizException("scm.error.selectOwnWarehouseTransfer");
         }
         WmsWarehouse target = warehouseService.get(req.targetWarehouseId());
-        if (target.getType() != null && target.getType().startsWith("CONSIGN")) {
+        if (target.getType() != null && target.getType().isConsign()) {
             throw new BizException("scm.error.targetWarehouseCannotConsignmentWarehouse");
         }
         List<OrderItemRequest> lines = new ArrayList<>();
@@ -106,11 +109,11 @@ public class ScmConsignService {
             lines.add(new OrderItemRequest(i.materialId(), i.qty(), price, taxRate, req.bizDate(), null));
         }
         Long orderId = orderService.createDraft(OrderKind.PURCHASE, new OrderRequest(w.getPartnerId(), req.bizDate(), req.bizDate(), target.getId(),
-                "寄售结算 " + w.getName() + (req.remark() == null ? "" : " " + req.remark()), lines), "CONSIGN"); // i18n-ignore
+                "寄售结算 " + w.getName() + (req.remark() == null ? "" : " " + req.remark()), lines), OrderSource.CONSIGN); // i18n-ignore
         orderService.approveDirect(orderId);
         // 先从寄售仓消耗出库（库位、批次、序列号按寄售仓的库存），再采购入库到自有仓库（同一批次）
         String orderNo = queryService.orderNo(orderId);
-        WmsStockDoc consume = stockDocService.createConfirmed(StockBizType.OUT, new StockDocRequest("CONSIGN", w.getId(), null, req.bizDate(),
+        WmsStockDoc consume = stockDocService.createConfirmed(StockBizType.OUT, new StockDocRequest(StockOutType.CONSIGN.name(), w.getId(), null, req.bizDate(),
                 "寄售消耗 " + orderNo, req.items().stream().map(i -> new StockDocItemRequest(i.materialId(), i.locationId(), null, i.batchNo(), // i18n-ignore
                         null, null, i.qty(), i.serialNos(), null)).toList()), orderNo);
         List<TradeDocItemRequest> inLines = tradeItems(orderId, req).stream().map(t -> new TradeDocItemRequest(t.orderItemId(), null,
@@ -131,9 +134,9 @@ public class ScmConsignService {
         return lines;
     }
 
-    private WmsWarehouse consignWarehouse(Long id, String type, String labelKey) {
+    private WmsWarehouse consignWarehouse(Long id, WarehouseType type, String labelKey) {
         WmsWarehouse w = warehouseService.get(id);
-        if (!type.equals(w.getType()) || w.getPartnerId() == null) {
+        if (type != w.getType() || w.getPartnerId() == null) {
             throw new BizException("scm.error.select", Messages.get(labelKey));
         }
         return w;

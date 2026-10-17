@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.dto;
 
+import com.lemon.erp.modules.mes.model.WorkOrderStatus;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
@@ -9,7 +10,7 @@ import java.time.LocalDate;
  * @param keyword   产品编码或名称
  * @param beginDate 计划开工日期范围
  */
-public record WorkOrderQuery(String woNo, String keyword, String status,
+public record WorkOrderQuery(String woNo, String keyword, WorkOrderStatus status,
                              @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate beginDate,
                              @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 }

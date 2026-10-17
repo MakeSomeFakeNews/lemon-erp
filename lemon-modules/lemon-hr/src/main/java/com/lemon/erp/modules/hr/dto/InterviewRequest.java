@@ -1,10 +1,11 @@
 package com.lemon.erp.modules.hr.dto;
 
+import com.lemon.erp.modules.hr.model.InterviewMethod;
+import com.lemon.erp.modules.hr.model.InterviewResult;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
@@ -17,8 +18,8 @@ import java.time.LocalDateTime;
 public record InterviewRequest(
         @NotNull(message = "{hr.valid.selectInterviewTime}") @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime interviewTime,
         Long interviewerId,
-        @Pattern(regexp = "ONSITE|VIDEO|PHONE", message = "{hr.valid.invalidInterviewMethod}") String method,
+        InterviewMethod method,
         @Min(value = 0, message = "{hr.valid.scoreMustBetween}") @Max(value = 100, message = "{hr.valid.scoreMustBetween}") Integer score,
-        @Pattern(regexp = "PENDING|PASS|FAIL", message = "{hr.valid.invalidInterviewResult}") String result,
+        InterviewResult result,
         @Size(max = 1000, message = "{hr.valid.interviewFeedbackCannotExceedCharacters}") String feedback) {
 }

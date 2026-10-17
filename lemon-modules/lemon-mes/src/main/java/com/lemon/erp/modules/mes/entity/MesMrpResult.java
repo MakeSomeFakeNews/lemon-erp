@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.mes.entity;
 
+import com.lemon.erp.modules.mes.model.MrpResultStatus;
+import com.lemon.erp.modules.mes.model.SupplyType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -25,7 +27,7 @@ public class MesMrpResult extends BaseEntity {
     private Integer levelNo;
 
     /** SupplyType：MAKE / BUY / OUTSOURCE / PHANTOM */
-    private String supplyType;
+    private SupplyType supplyType;
 
     private Long bomId;
 
@@ -51,8 +53,8 @@ public class MesMrpResult extends BaseEntity {
 
     private BigDecimal price;
 
-    /** NEW 待处理 / RELEASED 已下达 / NONE 无需处理 */
-    private String status;
+    /** 处理状态 */
+    private MrpResultStatus status;
 
     private String releaseNo;
 

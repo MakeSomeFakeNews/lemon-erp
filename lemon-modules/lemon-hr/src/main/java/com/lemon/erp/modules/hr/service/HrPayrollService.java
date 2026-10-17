@@ -32,6 +32,9 @@ import com.lemon.erp.modules.hr.mapper.HrPayrollMapper;
 import com.lemon.erp.modules.hr.mapper.HrPerfAppraisalMapper;
 import com.lemon.erp.modules.hr.mapper.HrSalaryMapper;
 import com.lemon.erp.modules.hr.model.HrConstants;
+import com.lemon.erp.modules.hr.model.HrDictValues;
+import com.lemon.erp.modules.hr.model.PayrollStatus;
+import com.lemon.erp.modules.hr.model.PerfGrade;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
@@ -114,14 +117,14 @@ public class HrPayrollService {
             throw new BizException("hr.error.cannotGeneratePayrollFutureMonth");
         }
         HrPayroll p = payrollMapper.selectOne(Wrappers.<HrPayroll>lambdaQuery().eq(HrPayroll::getPeriod, period));
-        if (p != null && !"DRAFT".equals(p.getStatus())) {
+        if (p != null && p.getStatus() != PayrollStatus.DRAFT) {
             throw new BizException("hr.error.payrollHasConfirmedCannotRegenerated", period);
         }
         if (p == null) {
             p = new HrPayroll();
-            p.setPayrollNo(docNoService.next("GZ"));
+            p.setPayrollNo(docNoService.next(HrDocNos.PAYROLL));
             p.setPeriod(period);
-            p.setStatus("DRAFT");
+            p.setStatus(PayrollStatus.DRAFT);
             p.setCreateBy(SecurityUtils.getUserId());
             payrollMapper.insert(p);
         } else {
@@ -135,7 +138,7 @@ public class HrPayrollService {
         if (payable.isEmpty()) {
             throw new BizException("hr.error.noActiveEmployeesHaveSalaryProfiles");
         }
-        Map<Long, String> grades = appraisalMapper.selectPayGrades(period).stream()
+        Map<Long, PerfGrade> grades = appraisalMapper.selectPayGrades(period).stream()
                 .collect(Collectors.toMap(HrPerfAppraisal::getEmployeeId, HrPerfAppraisal::getGrade, (a, b) -> b));
         Map<Long, BigDecimal> pieceWages = new HashMap<>();
         for (Map<String, Object> row : itemMapper.selectPieceWages(ym.atDay(1), ym.atEndOfMonth())) {
@@ -183,7 +186,7 @@ public class HrPayrollService {
         if (item == null) {
             throw new BizException("hr.error.payrollLineDoesNotExist");
         }
-        getWithStatus(item.getPayrollId(), "DRAFT");
+        getWithStatus(item.getPayrollId(), PayrollStatus.DRAFT);
         BigDecimal bonus = req.otherBonus() == null ? BigDecimal.ZERO : req.otherBonus();
         BigDecimal deduct = req.otherDeduct() == null ? BigDecimal.ZERO : req.otherDeduct();
         BigDecimal gross = item.getGrossPay().subtract(item.getOtherBonus()).add(bonus);
@@ -214,16 +217,16 @@ public class HrPayrollService {
      */
     @Transactional
     public boolean confirm(Long id) {
-        HrPayroll p = getWithStatus(id, "DRAFT");
+        HrPayroll p = getWithStatus(id, PayrollStatus.DRAFT);
         if (p.getHeadcount() == 0) {
             throw new BizException("hr.error.payrollHasNoLines");
         }
         if (!flowApi.isAvailable(PROCESS_KEY)) {
-            doConfirm(p, "DRAFT", SecurityUtils.getUserId());
+            doConfirm(p, PayrollStatus.DRAFT, SecurityUtils.getUserId());
             return false;
         }
         int updated = payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
-                .set(HrPayroll::getStatus, "APPROVING").eq(HrPayroll::getId, id).eq(HrPayroll::getStatus, "DRAFT"));
+                .set(HrPayroll::getStatus, PayrollStatus.APPROVING).eq(HrPayroll::getId, id).eq(HrPayroll::getStatus, PayrollStatus.DRAFT));
         if (updated == 0) {
             throw new BizException("hr.error.payrollStatusHasChangedRefresh");
         }
@@ -242,20 +245,20 @@ public class HrPayrollService {
             return;
         }
         HrPayroll p = payrollMapper.selectById(Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length())));
-        if (p == null || !"APPROVING".equals(p.getStatus())) {
+        if (p == null || p.getStatus() != PayrollStatus.APPROVING) {
             return;
         }
         if (e.status() == FlowStatus.APPROVED) {
-            doConfirm(p, "APPROVING", SecurityUtils.getUserIdOrNull());
+            doConfirm(p, PayrollStatus.APPROVING, SecurityUtils.getUserIdOrNull());
         } else {
             payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
-                    .set(HrPayroll::getStatus, "DRAFT").eq(HrPayroll::getId, p.getId()).eq(HrPayroll::getStatus, "APPROVING"));
+                    .set(HrPayroll::getStatus, PayrollStatus.DRAFT).eq(HrPayroll::getId, p.getId()).eq(HrPayroll::getStatus, PayrollStatus.APPROVING));
         }
     }
 
-    private void doConfirm(HrPayroll p, String fromStatus, Long confirmBy) {
+    private void doConfirm(HrPayroll p, PayrollStatus fromStatus, Long confirmBy) {
         int updated = payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
-                .set(HrPayroll::getStatus, "CONFIRMED")
+                .set(HrPayroll::getStatus, PayrollStatus.CONFIRMED)
                 .set(HrPayroll::getConfirmBy, confirmBy)
                 .set(HrPayroll::getConfirmTime, LocalDateTime.now())
                 .eq(HrPayroll::getId, p.getId())
@@ -270,7 +273,7 @@ public class HrPayrollService {
     @Transactional
     public void regenerateAccrual(Long id) {
         HrPayroll p = payrollMapper.selectById(id);
-        if (p == null || "DRAFT".equals(p.getStatus())) {
+        if (p == null || p.getStatus() == PayrollStatus.DRAFT) {
             throw new BizException("hr.error.accrualVoucherOnlyGeneratedAfterPayroll");
         }
         if (p.getAccrueVoucherId() != null) {
@@ -298,23 +301,23 @@ public class HrPayrollService {
     /** 取消确认：计提凭证未审核时删除凭证，工资表回到草稿 */
     @Transactional
     public void unconfirm(Long id) {
-        HrPayroll p = getWithStatus(id, "CONFIRMED");
+        HrPayroll p = getWithStatus(id, PayrollStatus.CONFIRMED);
         if (p.getAccrueVoucherId() != null) {
             voucherService.delete(List.of(p.getAccrueVoucherId()));
         }
         payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
-                .set(HrPayroll::getStatus, "DRAFT")
+                .set(HrPayroll::getStatus, PayrollStatus.DRAFT)
                 .set(HrPayroll::getConfirmBy, null)
                 .set(HrPayroll::getConfirmTime, null)
                 .set(HrPayroll::getAccrueVoucherId, null)
                 .eq(HrPayroll::getId, id)
-                .eq(HrPayroll::getStatus, "CONFIRMED"));
+                .eq(HrPayroll::getStatus, PayrollStatus.CONFIRMED));
     }
 
     /** 发放：生成发放凭证（未审核） */
     @Transactional
     public void pay(Long id, PayrollPayRequest req) {
-        HrPayroll p = getWithStatus(id, "CONFIRMED");
+        HrPayroll p = getWithStatus(id, PayrollStatus.CONFIRMED);
         if (req.payDate().isBefore(FinConstants.firstDay(p.getPeriod()))) {
             throw new BizException("hr.error.paymentDateCannotEarlierPayrollMonth");
         }
@@ -330,11 +333,11 @@ public class HrPayrollService {
         Long voucherId = voucherService.createGenerated(req.payDate(), VoucherSource.SALARY, p.getPayrollNo(),
                 lines.stream().filter(l -> !l.isZero()).toList());
         int updated = payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
-                .set(HrPayroll::getStatus, "PAID")
+                .set(HrPayroll::getStatus, PayrollStatus.PAID)
                 .set(HrPayroll::getPayDate, req.payDate())
                 .set(HrPayroll::getPayVoucherId, voucherId)
                 .eq(HrPayroll::getId, id)
-                .eq(HrPayroll::getStatus, "CONFIRMED"));
+                .eq(HrPayroll::getStatus, PayrollStatus.CONFIRMED));
         if (updated == 0) {
             throw new BizException("hr.error.payrollStatusHasChangedRefresh");
         }
@@ -342,7 +345,7 @@ public class HrPayrollService {
 
     @Transactional
     public void delete(Long id) {
-        getWithStatus(id, "DRAFT");
+        getWithStatus(id, PayrollStatus.DRAFT);
         itemMapper.delete(Wrappers.<HrPayrollItem>lambdaQuery().eq(HrPayrollItem::getPayrollId, id));
         payrollMapper.deleteById(id);
     }
@@ -357,7 +360,7 @@ public class HrPayrollService {
         payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
                 .set(HrPayroll::getPayVoucherId, null)
                 .set(HrPayroll::getPayDate, null)
-                .set(HrPayroll::getStatus, "CONFIRMED")
+                .set(HrPayroll::getStatus, PayrollStatus.CONFIRMED)
                 .in(HrPayroll::getPayVoucherId, e.voucherIds()));
         payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()
                 .set(HrPayroll::getAccrueVoucherId, null)
@@ -371,13 +374,13 @@ public class HrPayrollService {
      *
      * @param prior 本年此前的累计应纳税所得额、累计已扣税额
      */
-    static void calculate(HrPayrollItem item, HrSalary salary, AttendanceSummary s, String grade, HrSocialScheme scheme, BigDecimal[] prior) {
+    static void calculate(HrPayrollItem item, HrSalary salary, AttendanceSummary s, PerfGrade grade, HrSocialScheme scheme, BigDecimal[] prior) {
         BigDecimal ratio = s.monthDays() == 0 ? BigDecimal.ONE
                 : BigDecimal.valueOf(s.shouldDays()).divide(BigDecimal.valueOf(s.monthDays()), 6, RoundingMode.HALF_UP);
         BigDecimal daily = salary.getBaseSalary().add(salary.getPostAllowance()).divide(HrConstants.MONTH_PAY_DAYS, 6, RoundingMode.HALF_UP);
         BigDecimal hourly = daily.divide(HrConstants.DAY_HOURS, 6, RoundingMode.HALF_UP);
-        BigDecimal personal = s.leaveHoursOf(HrLeaveService.LEAVE_PERSONAL);
-        BigDecimal sick = s.leaveHoursOf(HrLeaveService.LEAVE_SICK);
+        BigDecimal personal = s.leaveHoursOf(HrDictValues.LEAVE_PERSONAL);
+        BigDecimal sick = s.leaveHoursOf(HrDictValues.LEAVE_SICK);
 
         item.setMonthDays(BigDecimal.valueOf(s.monthDays()));
         item.setShouldDays(BigDecimal.valueOf(s.shouldDays()));
@@ -390,7 +393,7 @@ public class HrPayrollService {
         item.setAllowance(money(salary.getPostAllowance().add(salary.getOtherAllowance()).multiply(ratio)));
         item.setOvertimePay(money(s.overtimeWeighted().multiply(hourly)));
         item.setPerfGrade(grade);
-        item.setPerfBonus(money(salary.getPerfBonusBase().multiply(HrConstants.bonusCoefficient(grade))));
+        item.setPerfBonus(money(salary.getPerfBonusBase().multiply(PerfGrade.coefficientOf(grade))));
         item.setAttendanceDeduct(money(daily.multiply(BigDecimal.valueOf(s.absentDays()))
                 .add(hourly.multiply(personal))
                 .add(hourly.multiply(sick).multiply(HrConstants.SICK_DEDUCT_RATE))
@@ -449,15 +452,15 @@ public class HrPayrollService {
         return new BigDecimal[]{cumTaxable.subtract(monthTaxable(item)), cumTax.subtract(item.getIncomeTax())};
     }
 
-    private HrPayroll getWithStatus(Long id, String status) {
+    private HrPayroll getWithStatus(Long id, PayrollStatus status) {
         HrPayroll p = payrollMapper.selectById(id);
         if (p == null) {
             throw new BizException("hr.error.payrollDoesNotExist");
         }
-        if (!status.equals(p.getStatus())) {
+        if (p.getStatus() != status) {
             throw new BizException(switch (status) {
-                case "DRAFT" -> "hr.error.onlyDraftPayrollsAdjustedConfirmedDeleted";
-                case "CONFIRMED" -> "hr.error.payrollNotConfirmed";
+                case DRAFT -> "hr.error.onlyDraftPayrollsAdjustedConfirmedDeleted";
+                case CONFIRMED -> "hr.error.payrollNotConfirmed";
                 default -> "hr.error.invalidPayrollStatus";
             });
         }

@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.BillSource;
+import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -106,7 +108,7 @@ public class FinAssetService {
                 throw new BizException("fin.error.openingAssetCannotHavePurchaseSupplier");
             }
             BigDecimal tax = req.taxAmount() == null ? BigDecimal.ZERO : req.taxAmount();
-            FinBill bill = billService.createFromSource("AP", req.supplierId(), "ASSET", asset.getId(), asset.getCode(), req.useDate(),
+            FinBill bill = billService.createFromSource(BillKind.AP, req.supplierId(), BillSource.ASSET, asset.getId(), asset.getCode(), req.useDate(),
                     req.originalValue().add(tax), tax, "购入固定资产 " + asset.getName(), null); // i18n-ignore
             billMapper.update(Wrappers.<FinBill>lambdaUpdate()
                     .set(FinBill::getExpenseAccountId, accountRules.accountId(AccountRole.FIXED_ASSET))

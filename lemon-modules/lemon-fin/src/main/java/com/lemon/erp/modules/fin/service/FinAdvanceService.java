@@ -1,5 +1,8 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.FinConstants;
+import com.lemon.erp.modules.fin.model.BillKind;
+import com.lemon.erp.modules.fin.model.SettleKind;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -49,7 +52,7 @@ public class FinAdvanceService {
     private final FinBizPeriodGuard periodGuard;
     private final DocNoService docNoService;
 
-    public PageResult<FinAdvance> page(long current, long size, String kind, Long partnerId, String keyword, boolean onlyOpen) {
+    public PageResult<FinAdvance> page(long current, long size, SettleKind kind, Long partnerId, String keyword, boolean onlyOpen) {
         Page<FinAdvance> page = Page.of(current, size);
         advanceMapper.selectPageList(page, kind, partnerId, keyword, onlyOpen);
         return PageResult.of(page);
@@ -66,12 +69,12 @@ public class FinAdvanceService {
 
     @Transactional
     public Long create(AdvanceRequest req) {
-        boolean receipt = "RECEIPT".equals(req.kind());
+        boolean receipt = req.kind() == SettleKind.RECEIPT;
         periodGuard.checkOpen(req.advanceDate(), receipt ? "fin.label.advanceReceipt" : "fin.label.advancePayment");
         accountService.requireCashAccount(req.accountId());
-        String partner = billService.partnerName(receipt ? "AR" : "AP", req.partnerId());
+        String partner = billService.partnerName(req.kind(), req.partnerId());
         FinAdvance a = new FinAdvance();
-        a.setAdvanceNo(docNoService.next(receipt ? "YSK" : "YFK"));
+        a.setAdvanceNo(docNoService.next(receipt ? FinDocNos.ADVANCE_RECEIPT : FinDocNos.ADVANCE_PAYMENT));
         a.setKind(req.kind());
         a.setPartnerId(req.partnerId());
         a.setAdvanceDate(req.advanceDate());
@@ -99,8 +102,8 @@ public class FinAdvanceService {
     @Transactional
     public void apply(Long id, LocalDate date, List<SettlementItemRequest> items) {
         FinAdvance a = detail(id);
-        boolean receipt = "RECEIPT".equals(a.getKind());
-        String billKind = receipt ? "AR" : "AP";
+        boolean receipt = a.getKind() == SettleKind.RECEIPT;
+        BillKind billKind = a.getKind().billKind();
         LocalDate d = date == null ? LocalDate.now() : date;
         periodGuard.checkOpen(d, "fin.label.advanceOffset");
         Map<Long, FinBill> bills = billMapper.selectByIds(items.stream().map(SettlementItemRequest::billId).toList()).stream()
@@ -110,10 +113,10 @@ public class FinAdvanceService {
         List<String> billNos = new ArrayList<>();
         for (SettlementItemRequest item : items) {
             FinBill bill = bills.get(item.billId());
-            if (bill == null || !bill.getKind().equals(billKind) || !bill.getPartnerId().equals(a.getPartnerId())) {
+            if (bill == null || bill.getKind() != billKind || !bill.getPartnerId().equals(a.getPartnerId())) {
                 throw receipt ? new BizException("fin.error.offsetDocumentDoesNotBelongCustomer") : new BizException("fin.error.offsetDocumentDoesNotBelongSupplier");
             }
-            if (bill.getCurrency() != null && !"CNY".equals(bill.getCurrency())) {
+            if (bill.getCurrency() != null && !FinConstants.BASE_CURRENCY.equals(bill.getCurrency())) {
                 throw new BizException("fin.error.foreignCurrencyDocumentWriteOffReceipt", bill.getBillNo());
             }
             if (!seen.add(bill.getId()) || item.amount().signum() <= 0 || bill.getAmount().signum() <= 0) {
@@ -170,7 +173,7 @@ public class FinAdvanceService {
 
     /** 往来单位未冲抵的预收（客户）余额，信用额度占用时扣减 */
     public BigDecimal unusedReceipt(Long customerId) {
-        BigDecimal v = advanceMapper.sumUnused("RECEIPT", customerId);
+        BigDecimal v = advanceMapper.sumUnused(SettleKind.RECEIPT, customerId);
         return v == null ? BigDecimal.ZERO : v;
     }
 }

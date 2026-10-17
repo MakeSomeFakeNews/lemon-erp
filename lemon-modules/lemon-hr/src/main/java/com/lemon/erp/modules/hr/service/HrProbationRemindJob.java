@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
 import com.lemon.erp.framework.message.MessageSender.Message;
@@ -46,7 +47,7 @@ public class HrProbationRemindJob implements JobHandler {
     public String run(JobParams params) {
         List<Map<String, Object>> rows = jobMapper.selectProbationDue(LocalDate.now().plusDays(params.getInt("days", 15)));
         for (Map<String, Object> r : rows) {
-            Message m = Message.of("REMIND", "员工「" + r.get("name") + "」试用期即将到期",  // i18n-ignore 站内消息存库
+            Message m = Message.of(MessageCategory.REMIND, "员工「" + r.get("name") + "」试用期即将到期",  // i18n-ignore 站内消息存库
                     "工号 " + r.get("empNo") + "，预计转正日期 " + r.get("regularDate") + "，请办理转正或延长试用", "/hr/employee")  // i18n-ignore 站内消息存库
                     .dedup("probation:" + r.get("id") + ":" + r.get("regularDate"));
             messageSender.sendToPermission("hr:employee:change", m);

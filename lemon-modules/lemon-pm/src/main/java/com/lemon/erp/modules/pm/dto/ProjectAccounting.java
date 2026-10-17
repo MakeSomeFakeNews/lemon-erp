@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.dto;
 
+import com.lemon.erp.modules.pm.model.ProjectStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -15,7 +16,7 @@ import java.time.LocalDate;
  * @param cpi          成本绩效指数 = EV / AC，小于 1 表示成本超支
  * @param eac          完工估算 = 成本预算 / CPI
  */
-public record ProjectAccounting(Long projectId, String code, String name, String status, String customerName, String managerName,
+public record ProjectAccounting(Long projectId, String code, String name, ProjectStatus status, String customerName, String managerName,
                                 LocalDate planStart, LocalDate planEnd, BigDecimal progress, BigDecimal plannedRate,
                                 BigDecimal contractAmount, BigDecimal contractNet, BigDecimal budget, BigDecimal laborCost,
                                 BigDecimal expenseCost, BigDecimal actualCost, BigDecimal revenue, BigDecimal grossProfit,

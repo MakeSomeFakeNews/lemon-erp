@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
@@ -115,7 +116,7 @@ public class FinCurrencyService implements ExchangeRateProvider {
     public Map<String, Object> revalue(int period) {
         periodService.checkOpen(period);
         String sourceNo = "FX-" + period;
-        if (voucherMapper.exists(Wrappers.<FinVoucher>lambdaQuery().eq(FinVoucher::getSourceType, VoucherSource.FX.name())
+        if (voucherMapper.exists(Wrappers.<FinVoucher>lambdaQuery().eq(FinVoucher::getSourceType, VoucherSource.FX)
                 .eq(FinVoucher::getSourceNo, sourceNo))) {
             throw new BizException("fin.error.hasAlreadyRevaluedDeleteRevaluationVoucher", period);
         }
@@ -139,7 +140,7 @@ public class FinCurrencyService implements ExchangeRateProvider {
             BigDecimal fc = new BigDecimal(b.get("remainingFc").toString());
             BigDecimal book = new BigDecimal(b.get("remainingBase").toString());
             BigDecimal diff = fc.multiply(rate).setScale(2, RoundingMode.HALF_UP).subtract(book);
-            String kind = (String) b.get("kind");
+            BillKind kind = BillKind.valueOf((String) b.get("kind"));
             BigDecimal[] sum = sums.computeIfAbsent(currency + "|" + kind, k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO});
             sum[0] = sum[0].add(fc);
             sum[1] = sum[1].add(book);
@@ -149,7 +150,7 @@ public class FinCurrencyService implements ExchangeRateProvider {
             }
             Long partnerId = ((Number) b.get("partnerId")).longValue();
             String summary = period + " 期末调汇 " + currency; // i18n-ignore
-            if ("AR".equals(kind)) {
+            if (kind == BillKind.AR) {
                 // 应收增值为收益：借 应收账款 / 贷 财务费用
                 lines.add(VoucherLine.debit(summary, receivable, null, diff).withCustomer(partnerId));
                 lines.add(VoucherLine.credit(summary, finance, null, diff));

@@ -65,7 +65,7 @@ public class ScmReorderService {
                 suggest = suggest.setScale(0, RoundingMode.CEILING);
             }
             return new ReorderSuggestion(id, (String) r.get("code"), (String) r.get("name"), (String) r.get("spec"), (String) r.get("unit"),
-                    supplyTypes.getOrDefault(id, "BUY"), r.get("safetyStock") == null ? null : safety, reorderPoint, reorderQty,
+                    supplyTypes.getOrDefault(id, AtpProvider.DEFAULT_SUPPLY_TYPE), r.get("safetyStock") == null ? null : safety, reorderPoint, reorderQty,
                     available, poOpen, soOpen, wo, projected, suggest,
                     price == null ? null : price.getSupplierId(), price == null ? null : price.getSupplierName(),
                     price == null ? null : queryService.effectivePrice(price, suggest));

@@ -16,7 +16,7 @@
             <if test="keyword != null and keyword != ''">
                 (l.loan_no LIKE CONCAT('%', #{keyword}, '%') OR u.nickname LIKE CONCAT('%', #{keyword}, '%'))
             </if>
-            <if test="status != null and status != ''">AND l.status = #{status}</if>
+            <if test="status != null">AND l.status = #{status}</if>
             <if test="userId != null">AND l.user_id = #{userId}</if>
         </where>
         ORDER BY l.id DESC

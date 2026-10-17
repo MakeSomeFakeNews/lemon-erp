@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.scm.model.OrderChangeAction;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -17,7 +18,7 @@ public class ScmOrderChangeItem extends BaseEntity {
     private Long changeId;
 
     /** ADD / MODIFY / REMOVE */
-    private String action;
+    private OrderChangeAction action;
 
     private Long orderItemId;
 

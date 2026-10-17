@@ -1,5 +1,8 @@
 package com.lemon.erp.modules.pm.entity;
 
+import com.lemon.erp.framework.workflow.ApproveStatus;
+import com.lemon.erp.modules.pm.model.CostSource;
+import com.lemon.erp.modules.pm.model.CostType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -21,7 +24,7 @@ public class PmCost extends BaseEntity {
     private Long projectId;
 
     /** 成本类型(字典 pm_cost_type)，人工成本来自工时，不在此录入 */
-    private String costType;
+    private CostType costType;
 
     /** 金额（不含税） */
     private BigDecimal amount;
@@ -33,10 +36,10 @@ public class PmCost extends BaseEntity {
     private String description;
 
     /** 来源 MANUAL手工 ISSUE项目领料 */
-    private String source;
+    private CostSource source;
 
     /** APPROVED 已生效 / APPROVING 审批中 / REJECTED 已拒绝；只有手工录入的费用会审批 */
-    private String status;
+    private ApproveStatus status;
 
     private String flowInstanceId;
 

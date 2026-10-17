@@ -3,6 +3,7 @@ package com.lemon.erp.modules.system.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
+import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.tenant.TenantContext;
 import com.lemon.erp.modules.system.entity.SysImConfig;
@@ -85,7 +86,7 @@ public class SysImConfigService {
         c.setLoginEnabled(true);
         c.setMessageEnabled(true);
         c.setSyncCreate(false);
-        c.setRobotCategories("ALERT");
+        c.setRobotCategories(MessageCategory.ALERT.name());
         return c;
     }
 

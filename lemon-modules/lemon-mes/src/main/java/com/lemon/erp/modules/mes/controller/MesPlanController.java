@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.controller;
 
+import com.lemon.erp.modules.mes.model.PlanStatus;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
@@ -35,7 +36,7 @@ public class MesPlanController {
     public R<PageResult<MesPlan>> page(@RequestParam(defaultValue = "1") long current,
                                        @RequestParam(defaultValue = "10") long size,
                                        @RequestParam(required = false) String keyword,
-                                       @RequestParam(required = false) String status) {
+                                       @RequestParam(required = false) PlanStatus status) {
         return R.ok(planService.page(current, size, keyword, status));
     }
 

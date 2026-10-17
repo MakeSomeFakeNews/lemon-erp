@@ -1,11 +1,12 @@
 package com.lemon.erp.modules.fin.dto;
 
+import com.lemon.erp.modules.fin.model.InvoiceType;
+import com.lemon.erp.modules.fin.model.InvoiceKind;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -16,9 +17,9 @@ import java.util.List;
  * 发票登记：勾稽的应收（销项）/ 应付（进项）单金额合计须等于发票价税合计
  */
 public record InvoiceRequest(
-        @NotBlank(message = "{fin.valid.selectInvoiceKind}") @Pattern(regexp = "^(OUTPUT|INPUT)$", message = "{fin.valid.invalidInvoiceKind}") String kind,
+        @NotNull(message = "{fin.valid.selectInvoiceKind}") InvoiceKind kind,
         @NotBlank(message = "{fin.valid.enterInvoiceNumber}") @Size(max = 32, message = "{fin.valid.invoiceNumberCannotExceedCharacters}") String invoiceNo,
-        @Pattern(regexp = "^(SPECIAL|NORMAL|E_SPECIAL|E_NORMAL)?$", message = "{fin.valid.invalidInvoiceType}") String invoiceType,
+        InvoiceType invoiceType,
         @NotNull(message = "{fin.valid.selectBusinessPartner}") Long partnerId,
         @NotNull(message = "{fin.valid.selectInvoiceDate}") LocalDate invoiceDate,
         @NotNull(message = "{fin.valid.enterTotalAmountIncludingTax}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount,

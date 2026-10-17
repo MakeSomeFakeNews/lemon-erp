@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.lemon.erp.modules.hr.model.LeaveKind;
+import com.lemon.erp.modules.hr.model.LeaveStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -25,7 +27,7 @@ public class HrLeave extends BaseEntity {
     private Long employeeId;
 
     /** 种类 LEAVE请假 OVERTIME加班 */
-    private String kind;
+    private LeaveKind kind;
 
     /** 假期类型(字典 hr_leave_type)，加班为空 */
     private String type;
@@ -45,7 +47,7 @@ public class HrLeave extends BaseEntity {
     private String reason;
 
     /** 状态(字典 hr_leave_status) APPROVING审批中 APPROVED已通过 REJECTED已拒绝 CANCELED已撤销 */
-    private String status;
+    private LeaveStatus status;
 
     /** 审批流程实例，为空时由人事审批 */
     private String flowInstanceId;

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.entity;
 
+import com.lemon.erp.modules.mes.model.WoDocKind;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -20,8 +21,8 @@ public class MesWoDoc extends BaseEntity {
 
     private String docNo;
 
-    /** WoDocKind：ISSUE / RETURN / FINISH / SUPPLEMENT */
-    private String kind;
+    /** 单据种类 */
+    private WoDocKind kind;
 
     private Long woId;
 

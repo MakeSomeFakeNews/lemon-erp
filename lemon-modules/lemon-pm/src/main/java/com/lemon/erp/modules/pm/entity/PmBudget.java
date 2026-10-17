@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.entity;
 
+import com.lemon.erp.modules.pm.model.CostType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
@@ -20,7 +21,7 @@ public class PmBudget extends BaseEntity {
     private Long projectId;
 
     /** 成本类型(字典 pm_cost_type) */
-    private String costType;
+    private CostType costType;
 
     /** 预算金额 */
     private BigDecimal amount;

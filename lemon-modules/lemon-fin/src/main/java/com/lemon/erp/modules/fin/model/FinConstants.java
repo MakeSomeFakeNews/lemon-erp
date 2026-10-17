@@ -12,18 +12,6 @@ public final class FinConstants {
 
     /** 本位币 */
     public static final String BASE_CURRENCY = "CNY";
-    /** 应收单 / 应付单种类（fin_bill.kind） */
-    public static final String BILL_AR = "AR";
-    public static final String BILL_AP = "AP";
-    /** 应收应付单来源（字典 fin_bill_source）：供应商质量索赔，红字应付单 */
-    public static final String BILL_SOURCE_QUALITY_CLAIM = "QUALITY_CLAIM";
-    /** 销售返利（红字应收单） */
-    public static final String BILL_SOURCE_REBATE = "REBATE";
-    /** 项目开票（计入合同负债） */
-    public static final String BILL_SOURCE_PROJECT = "PROJECT";
-    /** 服务工单收费（计入其他业务收入） */
-    public static final String BILL_SOURCE_TICKET = "TICKET";
-
     /** 库存现金、银行存款：收付款的结算科目必须在其下；现金流量表按此识别现金科目 */
     public static final String CASH = "1001";
     public static final String BANK = "1002";
@@ -37,6 +25,10 @@ public final class FinConstants {
     public static final String CATEGORY_FINISHED = "FINISHED";
     /** 物料分类：低值易耗品，存货科目为周转材料 */
     public static final String LOW_VALUE_CATEGORY = "LOW_VALUE";
+
+    /** 岗位类别（业务字典 hr_position_category）的内置取值：生产岗位、销售岗位，工资计提按此取费用科目 */
+    public static final String POSITION_PRODUCTION = "PRODUCTION";
+    public static final String POSITION_SALES = "SALES";
 
     private FinConstants() {
     }

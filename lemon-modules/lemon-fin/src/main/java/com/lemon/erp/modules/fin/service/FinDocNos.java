@@ -13,18 +13,32 @@ import static com.lemon.erp.framework.code.DocNoCatalog.Type.doc;
 @Configuration
 public class FinDocNos {
 
+    /** 应收单、应付单 */
+    public static final String RECEIVABLE = "YS";
+    public static final String PAYABLE = "YF";
+    /** 收款单、付款单 */
+    public static final String RECEIPT = "SK";
+    public static final String PAYMENT = "FK";
+    /** 预收单、预付单 */
+    public static final String ADVANCE_RECEIPT = "YSK";
+    public static final String ADVANCE_PAYMENT = "YFK";
+    /** 费用报销单 */
+    public static final String EXPENSE_CLAIM = "BX";
+    /** 员工借款单 */
+    public static final String LOAN = "JK";
+
     @Bean
     @Order(5)
     public DocNoCatalog finDocNoCatalog() {
         return DocNoCatalog.of("fin.label.financialManagement",
-                doc("YS", "fin.label.receivable"),
-                doc("YF", "fin.label.payable"),
-                doc("SK", "fin.label.receipt"),
-                doc("FK", "fin.label.payment"),
-                doc("YSK", "fin.label.advanceReceipt"),
-                doc("YFK", "fin.label.advancePayment"),
-                doc("BX", "fin.label.expenseClaim"),
-                doc("JK", "fin.label.employeeLoan"),
+                doc(RECEIVABLE, "fin.label.receivable"),
+                doc(PAYABLE, "fin.label.payable"),
+                doc(RECEIPT, "fin.label.receipt"),
+                doc(PAYMENT, "fin.label.payment"),
+                doc(ADVANCE_RECEIPT, "fin.label.advanceReceipt"),
+                doc(ADVANCE_PAYMENT, "fin.label.advancePayment"),
+                doc(EXPENSE_CLAIM, "fin.label.expenseClaim"),
+                doc(LOAN, "fin.label.employeeLoan"),
                 doc(FinFundService.TRANSFER_NO, "fin.label.fundTransfer"),
                 doc(FinStatementService.DOC_NO, "fin.label.supplierStatement"),
                 doc(FinAssetCheckService.DOC_NO, "fin.label.assetCount"),
