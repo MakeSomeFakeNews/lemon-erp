@@ -435,6 +435,24 @@
 
 ![自定义仪表盘](docs/screenshots/bi-board.jpg)
 
+### 数据大屏
+
+**生产车间**
+
+![生产车间](docs/screenshots/screen-factory.jpg)
+
+**仓储物流**
+
+![仓储物流](docs/screenshots/screen-warehouse.jpg)
+
+**销售经营**
+
+![销售经营](docs/screenshots/screen-sales.jpg)
+
+**质量管理**
+
+![质量管理](docs/screenshots/screen-quality.jpg)
+
 ### 流程中心
 
 **流程设计器**
