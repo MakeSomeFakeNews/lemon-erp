@@ -13,8 +13,8 @@ request.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
-  // 后端按此返回对应语言的提示
-  config.headers['X-Lang'] = currentLocale()
+  // 后端按标准请求头 Accept-Language 返回对应语言的提示（浏览器默认的值是系统语言，这里改为界面语言）
+  config.headers['Accept-Language'] = currentLocale()
   return config
 })
 

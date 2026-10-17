@@ -18,16 +18,16 @@ import java.util.List;
 @TableName("sys_tenant_package")
 public class SysTenantPackage extends BaseEntity {
 
-    @NotBlank(message = "套餐名称不能为空")
-    @Size(max = 64, message = "套餐名称不能超过64个字符")
+    @NotBlank(message = "{system.valid.planNameRequired}")
+    @Size(max = 64, message = "{system.valid.planNameCannotExceedCharacters}")
     private String name;
 
     /** 1 启用 0 停用（停用后不能用于新建租户，已有租户不受影响） */
-    @Min(value = 0, message = "状态只能是 0 或 1")
-    @Max(value = 1, message = "状态只能是 0 或 1")
+    @Min(value = 0, message = "{system.valid.statusMust}")
+    @Max(value = 1, message = "{system.valid.statusMust}")
     private Integer status;
 
-    @Size(max = 255, message = "备注不能超过255个字符")
+    @Size(max = 255, message = "{system.valid.remarkCannotExceedCharacters}")
     private String remark;
 
     /** 套餐包含的菜单（含目录和按钮） */

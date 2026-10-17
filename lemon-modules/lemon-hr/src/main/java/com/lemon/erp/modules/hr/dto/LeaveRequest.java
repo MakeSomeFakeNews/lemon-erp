@@ -19,11 +19,11 @@ import java.time.LocalDateTime;
  * @param hours 时长（小时，0.5 的倍数）
  */
 public record LeaveRequest(
-        @NotNull(message = "请选择申请种类") @Pattern(regexp = "LEAVE|OVERTIME", message = "申请种类不正确") String kind,
+        @NotNull(message = "{hr.valid.selectRequestKind}") @Pattern(regexp = "LEAVE|OVERTIME", message = "{hr.valid.invalidRequestKind}") String kind,
         String type,
-        @NotNull(message = "请选择开始时间") @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
-        @NotNull(message = "请选择结束时间") @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
-        @NotNull(message = "请填写时长") @DecimalMin(value = "0.5", message = "时长至少0.5小时")
-        @DecimalMax(value = "2000", message = "时长不能超过2000小时") @Digits(integer = 5, fraction = 1, message = "时长最多1位小数") BigDecimal hours,
-        @Size(max = 255, message = "事由不能超过255个字符") String reason) {
+        @NotNull(message = "{hr.valid.selectStartTime}") @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
+        @NotNull(message = "{hr.valid.selectEndTime}") @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
+        @NotNull(message = "{hr.valid.enterDuration}") @DecimalMin(value = "0.5", message = "{hr.valid.durationMustLeastHours}")
+        @DecimalMax(value = "2000", message = "{hr.valid.durationCannotExceedHours}") @Digits(integer = 5, fraction = 1, message = "{hr.valid.durationHaveMostDecimalPlace}") BigDecimal hours,
+        @Size(max = 255, message = "{hr.valid.reasonCannotExceedCharacters}") String reason) {
 }

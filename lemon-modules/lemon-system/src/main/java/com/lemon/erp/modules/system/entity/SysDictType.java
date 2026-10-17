@@ -13,12 +13,12 @@ import lombok.EqualsAndHashCode;
 @TableName("sys_dict_type")
 public class SysDictType extends BaseEntity {
 
-    @NotBlank(message = "字典名称不能为空")
-    @Size(max = 64, message = "字典名称不能超过64个字符")
+    @NotBlank(message = "{system.valid.dictionaryNameRequired}")
+    @Size(max = 64, message = "{system.valid.dictionaryNameCannotExceedCharacters}")
     private String name;
 
-    @NotBlank(message = "字典类型不能为空")
-    @Pattern(regexp = "^[a-z][a-z0-9_]{0,99}$", message = "字典类型只能包含小写字母、数字和下划线，且以字母开头")
+    @NotBlank(message = "{system.valid.dictionaryTypeRequired}")
+    @Pattern(regexp = "^[a-z][a-z0-9_]{0,99}$", message = "{system.valid.dictionaryTypeMayOnlyContainLowercase}")
     private String type;
 
     /** 1 启用 0 停用 */

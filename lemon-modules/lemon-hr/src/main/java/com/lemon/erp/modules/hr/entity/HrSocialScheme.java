@@ -19,18 +19,18 @@ import java.math.BigDecimal;
 @TableName("hr_social_scheme")
 public class HrSocialScheme extends BaseEntity {
 
-    @NotBlank(message = "请填写方案名称")
-    @Size(max = 64, message = "方案名称不能超过64个字符")
+    @NotBlank(message = "{hr.valid.enterSchemeName}")
+    @Size(max = 64, message = "{hr.valid.schemeNameCannotExceedCharacters}")
     private String name;
 
-    @Size(max = 32, message = "城市不能超过32个字符")
+    @Size(max = 32, message = "{hr.valid.cityCannotExceedCharacters}")
     private String city;
 
-    @DecimalMin(value = "0", message = "基数不能小于0")
+    @DecimalMin(value = "0", message = "{hr.valid.baseCannotLess}")
     private BigDecimal baseMin;
 
     /** 0 表示不限 */
-    @DecimalMin(value = "0", message = "基数不能小于0")
+    @DecimalMin(value = "0", message = "{hr.valid.baseCannotLess}")
     private BigDecimal baseMax;
 
     @DecimalMin("0") @DecimalMax("100")
@@ -48,16 +48,16 @@ public class HrSocialScheme extends BaseEntity {
     @DecimalMin("0") @DecimalMax("100")
     private BigDecimal injuryCompany;
 
-    @DecimalMin(value = "0", message = "基数不能小于0")
+    @DecimalMin(value = "0", message = "{hr.valid.baseCannotLess}")
     private BigDecimal housingMin;
 
     /** 0 表示不限 */
-    @DecimalMin(value = "0", message = "基数不能小于0")
+    @DecimalMin(value = "0", message = "{hr.valid.baseCannotLess}")
     private BigDecimal housingMax;
 
     private Integer status;
 
-    @Size(max = 255, message = "备注不能超过255个字符")
+    @Size(max = 255, message = "{hr.valid.remarkCannotExceedCharacters}")
     private String remark;
 
     /** 个人合计比例（%） */

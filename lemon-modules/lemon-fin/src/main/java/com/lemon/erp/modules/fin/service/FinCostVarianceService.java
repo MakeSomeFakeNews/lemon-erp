@@ -70,7 +70,7 @@ public class FinCostVarianceService {
         LocalDate next = FinConstants.firstDay(period).plusMonths(1);
         CostVariance wo = varianceMapper.selectOrders(period, FinConstants.firstDay(period), next, version.getId()).stream()
                 .filter(r -> r.getWoId().equals(woId)).findFirst()
-                .orElseThrow(() -> new BizException("工单不在该期间的差异分析中"));
+                .orElseThrow(() -> new BizException("fin.error.workOrderNotVarianceAnalysisPeriod"));
         Map<Long, BigDecimal> unitQty = new LinkedHashMap<>();
         varianceMapper.selectWoMaterials(woId).forEach(r -> unitQty.put(((Number) r.get("materialId")).longValue(), dec(r.get("unitQty"))));
         Map<Long, Map<String, Object>> issues = varianceMapper.selectIssues(woId, next).stream()
@@ -105,7 +105,7 @@ public class FinCostVarianceService {
         FinConstants.toYearMonth(period);
         FinStdCostVersion version = stdCostService.effective(period);
         if (version == null) {
-            throw new BizException("期间 {0} 没有生效的标准成本版本，请先在「标准成本」中发布", period);
+            throw new BizException("fin.error.periodHasNoEffectiveStandardCost", period);
         }
         return version;
     }

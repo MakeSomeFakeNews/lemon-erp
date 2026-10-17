@@ -1,6 +1,6 @@
 package com.lemon.erp.modules.bi.service;
 
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.bi.mapper.BiScreenMapper;
 import com.lemon.erp.modules.bi.model.ScreenKey;
 import com.lemon.erp.modules.mes.model.EquipmentStatus;
@@ -44,7 +44,7 @@ public class BiScreenService {
             case QUALITY -> quality(today);
         };
         data.put("key", key.name());
-        data.put("title", I18n.t(key.getLabel()));
+        data.put("title", Messages.get(key.getLabel()));
         data.put("time", LocalDateTime.now().withNano(0).toString());
         return data;
     }
@@ -129,7 +129,7 @@ public class BiScreenService {
         List<Map<String, Object>> docs = screenMapper.recentStockDocs(30);
         for (Map<String, Object> r : docs) {
             if (StockBizType.TRANSFER.name().equals(r.get("kind"))) {
-                r.put("typeLabel", I18n.t("调拨"));
+                r.put("typeLabel", Messages.get("bi.text.transfer"));
             }
         }
         data.put("docs", docs);
@@ -181,7 +181,7 @@ public class BiScreenService {
         data.put("topCustomers", screenMapper.topCustomers(yearBegin, today, 10));
         data.put("topProducts", screenMapper.topProducts(yearBegin, today, 10));
         List<Map<String, Object>> salesmen = screenMapper.salesmen(monthBegin, today, 8);
-        salesmen.forEach(r -> r.putIfAbsent("name", I18n.t("未指定")));
+        salesmen.forEach(r -> r.putIfAbsent("name", Messages.get("bi.text.unassigned")));
         data.put("salesmen", salesmen);
         data.put("orderStatus", screenMapper.openOrderStatus());
         data.put("orders", screenMapper.recentOrders(30));

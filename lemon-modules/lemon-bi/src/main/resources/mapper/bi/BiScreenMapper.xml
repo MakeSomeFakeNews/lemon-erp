@@ -213,7 +213,7 @@
 
     <select id="recentStockDocs" resultType="java.util.Map">
         SELECT d.doc_no AS "docNo", d.kind AS "kind",
-               COALESCE(dd.dict_label, CASE WHEN d.kind = 'TRANSFER' THEN '调拨' ELSE d.biz_type END) AS "typeLabel",
+               COALESCE(dd.dict_label, d.biz_type) AS "typeLabel",
                w.name AS "warehouse", d.total_qty AS "qty", d.confirm_time AS "time", d.biz_type AS "bizType"
         FROM wms_stock_doc d
         LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id

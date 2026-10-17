@@ -15,11 +15,11 @@ import java.time.LocalDateTime;
  * @param followTime 不填为当前时间
  */
 public record FollowupRequest(
-        @NotNull(message = "请选择跟进对象") @Pattern(regexp = "CUSTOMER|LEAD|OPPORTUNITY", message = "跟进对象不正确") String targetType,
-        @NotNull(message = "请选择跟进对象") Long targetId,
-        @NotBlank(message = "请选择跟进方式") String method,
-        @NotBlank(message = "请填写跟进内容") @Size(max = 1000, message = "跟进内容不能超过1000个字符") String content,
+        @NotNull(message = "{crm.valid.selectFollowUpTarget}") @Pattern(regexp = "CUSTOMER|LEAD|OPPORTUNITY", message = "{crm.valid.invalidFollowUpTarget}") String targetType,
+        @NotNull(message = "{crm.valid.selectFollowUpTarget}") Long targetId,
+        @NotBlank(message = "{crm.valid.selectFollowUpMethod}") String method,
+        @NotBlank(message = "{crm.valid.enterFollowUpContent}") @Size(max = 1000, message = "{crm.valid.followUpContentCannotExceedCharacters}") String content,
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime followTime,
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime nextTime,
-        @Size(max = 255, message = "下次跟进计划不能超过255个字符") String nextPlan) {
+        @Size(max = 255, message = "{crm.valid.nextFollowUpPlanCannotExceed}") String nextPlan) {
 }

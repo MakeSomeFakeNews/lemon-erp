@@ -16,20 +16,20 @@ import java.util.List;
  * 新增 / 修改销售报价单（草稿）
  */
 public record QuotationRequest(
-        @NotNull(message = "请选择客户") Long customerId,
+        @NotNull(message = "{scm.valid.selectCustomer}") Long customerId,
         Long opportunityId,
-        @NotNull(message = "请选择报价日期") LocalDate quoteDate,
+        @NotNull(message = "{scm.valid.selectQuotationDate}") LocalDate quoteDate,
         LocalDate validTo,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark,
-        @NotEmpty(message = "请添加明细") @Size(max = 200, message = "明细不能超过200行") List<@Valid @NotNull Item> items) {
+        @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}") String remark,
+        @NotEmpty(message = "{scm.valid.addLineItems}") @Size(max = 200, message = "{scm.valid.noMoreLines}") List<@Valid @NotNull Item> items) {
 
     public record Item(
-            @NotNull(message = "请选择物料") Long materialId,
-            @NotNull(message = "请填写数量") @DecimalMin(value = "0", inclusive = false, message = "数量必须大于0")
-            @Digits(integer = 14, fraction = 4, message = "数量最多4位小数") BigDecimal qty,
-            @NotNull(message = "请填写单价") @DecimalMin(value = "0", message = "单价不能小于0")
-            @Digits(integer = 14, fraction = 4, message = "单价最多4位小数") BigDecimal price,
-            @DecimalMin(value = "0", message = "税率不能小于0") @DecimalMax(value = "100", message = "税率不能大于100") BigDecimal taxRate,
-            @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+            @NotNull(message = "{scm.valid.selectMaterial}") Long materialId,
+            @NotNull(message = "{scm.valid.enterQuantity}") @DecimalMin(value = "0", inclusive = false, message = "{scm.valid.quantityMustGreater}")
+            @Digits(integer = 14, fraction = 4, message = "{scm.valid.quantityAllowsMostDecimalPlaces}") BigDecimal qty,
+            @NotNull(message = "{scm.valid.enterUnitPrice}") @DecimalMin(value = "0", message = "{scm.valid.unitPriceCannotLess}")
+            @Digits(integer = 14, fraction = 4, message = "{scm.valid.unitPriceAllowsMostDecimalPlaces}") BigDecimal price,
+            @DecimalMin(value = "0", message = "{scm.valid.taxRateCannotNegative}") @DecimalMax(value = "100", message = "{scm.valid.taxRateCannotExceed}") BigDecimal taxRate,
+            @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}") String remark) {
     }
 }

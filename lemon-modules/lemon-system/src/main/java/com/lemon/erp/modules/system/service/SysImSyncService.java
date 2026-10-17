@@ -191,7 +191,7 @@ public class SysImSyncService {
         return deptMapper.selectList(Wrappers.<SysDept>lambdaQuery().eq(SysDept::getParentId, 0L)).stream()
                 .min(Comparator.comparing(SysDept::getSort, Comparator.nullsLast(Comparator.naturalOrder())).thenComparing(SysDept::getId))
                 .map(SysDept::getId)
-                .orElseThrow(() -> new BizException("请先在部门管理中建立顶级部门"));
+                .orElseThrow(() -> new BizException("system.error.createTopLevelDepartmentDepartmentsFirst"));
     }
 
     /** 新账号的登录名：优先用手机号，已被占用时用「平台_成员 userid」 */
@@ -227,7 +227,7 @@ public class SysImSyncService {
 
     public PageResult<ImBindingRow> bindings(long current, long size, ImBindingQuery query) {
         if (query.platform() == null) {
-            throw new BizException("请选择平台");
+            throw new BizException("system.error.selectPlatform");
         }
         Page<ImBindingRow> page = Page.of(current, size);
         imUserMapper.selectBindingPage(page, query);
@@ -238,10 +238,10 @@ public class SysImSyncService {
     public void bind(Long userId, ImPlatform platform, String imUserId) {
         SysUser user = userMapper.selectById(userId);
         if (user == null || user.getSupplierId() != null || user.getCustomerId() != null) {
-            throw new BizException("用户不存在");
+            throw new BizException("system.error.userNotFound");
         }
         if (!StringUtils.hasText(imUserId) || imUserId.trim().length() > 64) {
-            throw new BizException("请填写成员的 userid（不超过64个字符）");
+            throw new BizException("system.error.enterMemberUseridUpCharacters");
         }
         configService.requireEnabled(platform);
         authService.bind(userId, platform, imUserId.trim(), null);

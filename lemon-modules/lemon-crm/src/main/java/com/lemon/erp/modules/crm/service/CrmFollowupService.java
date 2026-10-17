@@ -45,7 +45,7 @@ public class CrmFollowupService {
     public Long create(FollowupRequest req) {
         LocalDateTime time = req.followTime() != null ? req.followTime() : LocalDateTime.now().withNano(0);
         if (req.nextTime() != null && !req.nextTime().isAfter(time)) {
-            throw new BizException("下次跟进时间必须晚于本次跟进时间");
+            throw new BizException("crm.error.nextFollowUpTimeMustLater");
         }
         Long customerId = null;
         switch (req.targetType()) {
@@ -60,7 +60,7 @@ public class CrmFollowupService {
                 customerId = o.getCustomerId();
                 customerService.touchFollow(customerId, time, req.nextTime());
             }
-            default -> throw new BizException("跟进对象不正确");
+            default -> throw new BizException("crm.valid.invalidFollowUpTarget");
         }
         LoginUser user = SecurityUtils.getLoginUser();
         CrmFollowup f = new CrmFollowup();
@@ -86,7 +86,7 @@ public class CrmFollowupService {
             return;
         }
         if (!Objects.equals(f.getCreateBy(), SecurityUtils.getUserId()) && !permissionService.hasPerm("crm:followup:remove")) {
-            throw new BizException("只能删除自己的跟进记录");
+            throw new BizException("crm.error.onlyDeleteOwnFollowUps");
         }
         followupMapper.deleteById(id);
     }

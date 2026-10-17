@@ -11,6 +11,6 @@ import java.util.List;
  */
 public record WaveRequest(
         Long warehouseId,
-        @NotEmpty(message = "请选择发货通知") @Size(max = 100, message = "一个波次最多 100 张发货通知") List<@NotNull Long> deliveryIds,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+        @NotEmpty(message = "{scm.valid.selectDeliveryNotice}") @Size(max = 100, message = "{scm.valid.waveContainMostDeliveryNotices}") List<@NotNull Long> deliveryIds,
+        @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}") String remark) {
 }

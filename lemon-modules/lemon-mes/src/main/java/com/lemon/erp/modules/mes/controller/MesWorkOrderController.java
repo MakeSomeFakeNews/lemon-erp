@@ -59,14 +59,14 @@ public class MesWorkOrderController {
     /** @return 新工单 ID */
     @PostMapping
     @PreAuthorize("@ss.hasPerm('mes:wo:add')")
-    @OperLog(title = "生产工单", type = OperType.INSERT)
+    @OperLog(title = "生产工单", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody WorkOrderRequest req) {
         return R.ok(workOrderService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('mes:wo:edit')")
-    @OperLog(title = "生产工单", type = OperType.UPDATE)
+    @OperLog(title = "生产工单", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody WorkOrderRequest req) {
         workOrderService.update(id, req);
         return R.ok();
@@ -130,9 +130,9 @@ public class MesWorkOrderController {
         return R.ok(docService.detail(docId));
     }
 
-    public record QtyRequest(@jakarta.validation.constraints.NotNull(message = "请填写数量")
-                             @jakarta.validation.constraints.DecimalMin(value = "0", inclusive = false, message = "数量必须大于0")
-                             @jakarta.validation.constraints.Digits(integer = 14, fraction = 4, message = "数量最多4位小数")
+    public record QtyRequest(@jakarta.validation.constraints.NotNull(message = "{mes.valid.enterQuantity}")
+                             @jakarta.validation.constraints.DecimalMin(value = "0", inclusive = false, message = "{mes.valid.quantityMustGreater}")
+                             @jakarta.validation.constraints.Digits(integer = 14, fraction = 4, message = "{mes.valid.quantityAllowsMostDecimalPlaces}")
                              java.math.BigDecimal qty,
                              java.time.LocalDate planStart, java.time.LocalDate planEnd) {
     }
@@ -157,14 +157,14 @@ public class MesWorkOrderController {
     /** 新建返工工单（草稿），sourceWoId 为返工来源工单（选填） */
     @PostMapping("/rework")
     @PreAuthorize("@ss.hasPerm('mes:wo:add')")
-    @OperLog(title = "返工工单", type = OperType.INSERT)
+    @OperLog(title = "返工工单", type = OperType.INSERT) // i18n-ignore
     public R<Long> rework(@Valid @RequestBody WorkOrderRequest req, @RequestParam(required = false) Long sourceWoId) {
         return R.ok(workOrderService.createRework(req, sourceWoId));
     }
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('mes:wo:remove')")
-    @OperLog(title = "生产工单", type = OperType.DELETE)
+    @OperLog(title = "生产工单", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         workOrderService.delete(ids);
         return R.ok();

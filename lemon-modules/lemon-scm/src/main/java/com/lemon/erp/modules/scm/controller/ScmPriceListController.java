@@ -85,7 +85,7 @@ public class ScmPriceListController {
     @OperLog(title = "销售价目表", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody ScmPriceList req) {
         if (priceListMapper.selectById(id) == null) {
-            throw new BizException("价目不存在");
+            throw new BizException("scm.error.priceEntryDoesNotExist");
         }
         ScmPriceList p = normalize(req, id);
         priceListMapper.updateById(p);
@@ -162,7 +162,7 @@ public class ScmPriceListController {
     private ScmPriceList normalize(ScmPriceList p, Long id) {
         materialService.get(p.getMaterialId());
         if (p.getValidFrom() != null && p.getValidTo() != null && p.getValidTo().isBefore(p.getValidFrom())) {
-            throw new BizException("有效期止不能早于有效期起");
+            throw new BizException("scm.error.validDateCannotEarlierValidDate");
         }
         p.setId(id);
         p.setCustomerLevel(p.getCustomerLevel() == null || p.getCustomerLevel().isBlank() ? null : p.getCustomerLevel());

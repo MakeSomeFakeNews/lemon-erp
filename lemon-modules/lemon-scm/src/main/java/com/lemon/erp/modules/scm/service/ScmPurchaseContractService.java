@@ -3,7 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -123,7 +123,7 @@ public class ScmPurchaseContractService {
 
     @Transactional
     public void update(Long id, SrmRequests.Contract req) {
-        ScmPurchaseContract contract = requireStatus(id, ContractStatus.DRAFT, "修改");
+        ScmPurchaseContract contract = requireStatus(id, ContractStatus.DRAFT, "scm.label.edit");
         List<ScmPurchaseContractItem> items = validate(req);
         apply(contract, req);
         contractMapper.updateById(contract);
@@ -133,9 +133,9 @@ public class ScmPurchaseContractService {
 
     @Transactional
     public void delete(Long id) {
-        requireStatus(id, ContractStatus.DRAFT, "删除");
+        requireStatus(id, ContractStatus.DRAFT, "scm.label.delete");
         if (orderMapper.exists(Wrappers.<ScmOrder>lambdaQuery().eq(ScmOrder::getContractId, id))) {
-            throw new BizException("合同已被采购订单引用，不能删除");
+            throw new BizException("scm.error.contractReferencedPurchaseOrdersCannotDeleted");
         }
         itemMapper.delete(Wrappers.<ScmPurchaseContractItem>lambdaQuery().eq(ScmPurchaseContractItem::getContractId, id));
         contractMapper.deleteById(id);
@@ -148,7 +148,7 @@ public class ScmPurchaseContractService {
      */
     @Transactional
     public boolean submit(Long id) {
-        ScmPurchaseContract contract = requireStatus(id, ContractStatus.DRAFT, "提交");
+        ScmPurchaseContract contract = requireStatus(id, ContractStatus.DRAFT, "scm.label.submit");
         if (!flowApi.isAvailable(PROCESS_KEY)) {
             activate(id, ContractStatus.DRAFT);
             return false;
@@ -183,12 +183,12 @@ public class ScmPurchaseContractService {
     /** 关闭：不再允许新订单引用，已下单的订单不受影响 */
     @Transactional
     public void close(Long id, String reason) {
-        requireStatus(id, ContractStatus.ACTIVE, "关闭");
+        requireStatus(id, ContractStatus.ACTIVE, "scm.label.close");
         if (contractMapper.update(Wrappers.<ScmPurchaseContract>lambdaUpdate()
                 .set(ScmPurchaseContract::getStatus, ContractStatus.CLOSED)
                 .set(ScmPurchaseContract::getCloseReason, reason)
                 .eq(ScmPurchaseContract::getId, id).eq(ScmPurchaseContract::getStatus, ContractStatus.ACTIVE)) == 0) {
-            throw new BizException("合同状态已变化，请刷新后重试");
+            throw new BizException("scm.error.contractStatusHasChangedRefreshTry");
         }
     }
 
@@ -206,16 +206,16 @@ public class ScmPurchaseContractService {
     private List<ScmPurchaseContractItem> validate(SrmRequests.Contract req) {
         ScmSupplier supplier = supplierService.get(req.supplierId());
         if (!Integer.valueOf(1).equals(supplier.getStatus())) {
-            throw new BizException("供应商「{0}」已停用", supplier.getName());
+            throw new BizException("scm.error.supplierDisabled", supplier.getName());
         }
         if (req.endDate().isBefore(req.startDate())) {
-            throw new BizException("到期日期不能早于生效日期");
+            throw new BizException("scm.error.expiryDateCannotEarlierEffectiveDate");
         }
         if (req.items().stream().map(SrmRequests.ContractItem::materialId).distinct().count() < req.items().size()) {
-            throw new BizException("合同物料重复");
+            throw new BizException("scm.error.duplicateContractMaterial");
         }
         if (req.contractType() == ContractType.FIXED && req.items().stream().anyMatch(i -> i.qtyLimit() == null)) {
-            throw new BizException("固定数量合同请填写每个物料的数量");
+            throw new BizException("scm.error.fixedQuantityContractsRequireQuantityEach");
         }
         materialService.getEnabled(req.items().stream().map(SrmRequests.ContractItem::materialId).toList());
         return req.items().stream().map(r -> {
@@ -252,13 +252,13 @@ public class ScmPurchaseContractService {
                 .set(ScmPurchaseContract::getStatus, ContractStatus.ACTIVE)
                 .set(ScmPurchaseContract::getApproveTime, LocalDateTime.now())
                 .eq(ScmPurchaseContract::getId, id).eq(ScmPurchaseContract::getStatus, from)) == 0) {
-            throw new BizException("合同状态已变化，请刷新后重试");
+            throw new BizException("scm.error.contractStatusHasChangedRefreshTry");
         }
     }
 
     private void transit(Long id, ContractStatus from, ContractStatus to) {
         if (contractMapper.transit(id, from, to) == 0) {
-            throw new BizException("合同状态已变化，请刷新后重试");
+            throw new BizException("scm.error.contractStatusHasChangedRefreshTry");
         }
     }
 
@@ -266,15 +266,15 @@ public class ScmPurchaseContractService {
         Supplier<ScmPurchaseContract> loader = () -> contractMapper.selectById(id);
         ScmPurchaseContract contract = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(CONTRACT_RULE, loader);
         if (contract == null) {
-            throw new BizException("采购合同不存在或没有权限");
+            throw new BizException("scm.error.purchaseContractDoesNotExistAccess");
         }
         return contract;
     }
 
-    private ScmPurchaseContract requireStatus(Long id, ContractStatus status, String action) {
+    private ScmPurchaseContract requireStatus(Long id, ContractStatus status, String actionKey) {
         ScmPurchaseContract contract = getAccessible(id);
         if (contract.getStatus() != status) {
-            throw new BizException("合同当前状态不能{0}", I18n.t(action));
+            throw new BizException("scm.error.operationNotAllowedContractSCurrent", Messages.get(actionKey));
         }
         return contract;
     }

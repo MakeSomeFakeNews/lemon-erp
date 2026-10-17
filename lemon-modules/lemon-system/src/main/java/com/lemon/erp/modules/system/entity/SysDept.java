@@ -18,8 +18,8 @@ import lombok.EqualsAndHashCode;
 @TableName("sys_dept")
 public class SysDept extends TreeEntity<SysDept> {
 
-    @NotBlank(message = "部门名称不能为空")
-    @Size(max = 64, message = "部门名称不能超过64个字符")
+    @NotBlank(message = "{system.valid.departmentNameRequired}")
+    @Size(max = 64, message = "{system.valid.departmentNameCannotExceedCharacters}")
     private String name;
 
     /** 负责人（用户 ID），审批人「部门主管」据此计算；修改时总是更新，传 null 表示清空 */
@@ -31,14 +31,14 @@ public class SysDept extends TreeEntity<SysDept> {
     @TableField(exist = false)
     private String leaderName;
 
-    @Size(max = 32, message = "联系电话不能超过32个字符")
+    @Size(max = 32, message = "{system.valid.contactPhoneCannotExceedCharacters}")
     private String phone;
 
-    @Email(message = "邮箱格式不正确")
+    @Email(message = "{system.valid.invalidEmailFormat}")
     private String email;
 
     /** 1 启用 0 停用 */
-    @Min(value = 0, message = "状态只能是 0 或 1")
-    @Max(value = 1, message = "状态只能是 0 或 1")
+    @Min(value = 0, message = "{system.valid.statusMust}")
+    @Max(value = 1, message = "{system.valid.statusMust}")
     private Integer status;
 }

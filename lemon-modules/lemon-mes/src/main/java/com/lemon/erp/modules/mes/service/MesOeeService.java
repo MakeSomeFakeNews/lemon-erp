@@ -78,7 +78,7 @@ public class MesOeeService {
         checkRange(begin, end);
         MesEquipment e = equipmentMapper.selectById(equipmentId);
         if (e == null) {
-            throw new BizException("设备不存在");
+            throw new BizException("mes.error.equipmentDoesNotExist");
         }
         Calc calc = new Calc(begin, end, equipmentId);
         List<Oee> days = calc.days(e);
@@ -120,10 +120,10 @@ public class MesOeeService {
     private MesEquipmentStop manualStop(Long id) {
         MesEquipmentStop stop = id == null ? null : stopMapper.selectById(id);
         if (stop == null) {
-            throw new BizException("停机记录不存在");
+            throw new BizException("mes.error.downtimeRecordDoesNotExist");
         }
         if (stop.getMaintenanceId() != null) {
-            throw new BizException("维护单自动记录的停机不能修改或删除");
+            throw new BizException("mes.error.downtimeRecordedAutomaticallyMaintenanceOrdersCannot");
         }
         return stop;
     }
@@ -131,18 +131,18 @@ public class MesOeeService {
     private void fill(MesEquipmentStop stop, StopRequest req, Long excludeId) {
         MesEquipment e = equipmentMapper.selectById(req.equipmentId());
         if (e == null || e.getStatus() == EquipmentStatus.SCRAPPED) {
-            throw new BizException("设备不存在或已报废");
+            throw new BizException("mes.error.equipmentDoesNotExistHasScrapped");
         }
         if (!req.endTime().isAfter(req.startTime())) {
-            throw new BizException("结束时间必须晚于开始时间");
+            throw new BizException("mes.error.endTimeMustLaterStartTime");
         }
         if (Duration.between(req.startTime(), req.endTime()).toDays() > 31) {
-            throw new BizException("一次停机不能超过 31 天，请分段登记");
+            throw new BizException("mes.error.singleDowntimeCannotExceedDaysRecord");
         }
         boolean overlap = stopMapper.selectOverlapping(req.equipmentId(), req.startTime(), req.endTime()).stream()
                 .anyMatch(s -> !s.getId().equals(excludeId));
         if (overlap) {
-            throw new BizException("与该设备已有的停机记录时间重叠");
+            throw new BizException("mes.error.overlapsExistingDowntimeRecordEquipment");
         }
         stop.setEquipmentId(req.equipmentId());
         stop.setStartTime(req.startTime());
@@ -154,10 +154,10 @@ public class MesOeeService {
 
     private static void checkRange(LocalDate begin, LocalDate end) {
         if (end.isBefore(begin)) {
-            throw new BizException("结束日期不能早于开始日期");
+            throw new BizException("mes.error.endDateCannotEarlierStartDate");
         }
         if (ChronoUnit.DAYS.between(begin, end) >= MAX_DAYS) {
-            throw new BizException("统计范围不能超过 {0} 天", MAX_DAYS);
+            throw new BizException("mes.error.statisticsRangeCannotExceedDays", MAX_DAYS);
         }
     }
 

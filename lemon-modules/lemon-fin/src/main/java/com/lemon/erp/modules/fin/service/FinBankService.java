@@ -60,7 +60,7 @@ public class FinBankService {
         int count = 0;
         for (StatementRow r : rows) {
             if (r.txnDate() == null || r.amount() == null || r.amount().signum() == 0) {
-                throw new BizException("对账单每行都需要交易日期和非 0 金额");
+                throw new BizException("fin.error.eachStatementLineRequiresTransactionDate");
             }
             String ref = r.refNo() == null || r.refNo().isBlank() ? null : r.refNo().trim();
             if (ref != null && (!refs.add(ref) || statementMapper.exists(Wrappers.<FinBankStatement>lambdaQuery()
@@ -125,12 +125,12 @@ public class FinBankService {
         FinBankStatement s = get(statementId);
         Map<String, Object> entry = statementMapper.selectEntries(s.getAccountId(), null, null).stream()
                 .filter(e -> ((Number) e.get("entryId")).longValue() == entryId).findFirst()
-                .orElseThrow(() -> new BizException("凭证分录不是该银行科目的"));
+                .orElseThrow(() -> new BizException("fin.error.voucherEntryDoesNotBelongBank"));
         if (((Number) entry.get("matched")).intValue() == 1) {
-            throw new BizException("该凭证分录已勾对");
+            throw new BizException("fin.error.voucherEntryHasAlreadyMatched");
         }
         if (new BigDecimal(entry.get("amount").toString()).compareTo(s.getAmount()) != 0) {
-            throw new BizException("金额不一致：流水 {0}，分录 {1}", s.getAmount().toPlainString(), entry.get("amount"));
+            throw new BizException("fin.error.amountsDifferTransactionEntry", s.getAmount().toPlainString(), entry.get("amount"));
         }
         statementMapper.update(Wrappers.<FinBankStatement>lambdaUpdate().set(FinBankStatement::getEntryId, entryId).eq(FinBankStatement::getId, statementId));
     }
@@ -188,7 +188,7 @@ public class FinBankService {
     private FinBankStatement get(Long id) {
         FinBankStatement s = statementMapper.selectById(id);
         if (s == null) {
-            throw new BizException("对账单流水不存在");
+            throw new BizException("fin.error.bankStatementLineDoesNotExist");
         }
         return s;
     }
@@ -196,7 +196,7 @@ public class FinBankService {
     private void requireBank(Long accountId) {
         FinAccount account = accountService.requireCashAccount(accountId);
         if (!account.getCode().startsWith(FinConstants.BANK)) {
-            throw new BizException("请选择银行存款科目");
+            throw new BizException("fin.error.selectBankDepositAccount");
         }
     }
 

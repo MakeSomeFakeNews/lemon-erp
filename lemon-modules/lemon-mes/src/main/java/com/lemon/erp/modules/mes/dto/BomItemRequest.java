@@ -14,11 +14,11 @@ import java.math.BigDecimal;
  * @param refDes   位号，如 R1,R2 或区间 C1-C8，见 {@link com.lemon.erp.modules.mes.model.RefDes}
  */
 public record BomItemRequest(
-        @NotNull(message = "请选择子件") Long materialId,
-        @NotNull(message = "请填写用量")
-        @DecimalMin(value = "0", inclusive = false, message = "用量必须大于0")
-        @Digits(integer = 12, fraction = 6, message = "用量最多6位小数") BigDecimal qty,
-        @DecimalMin(value = "0", message = "损耗率不能小于0") @DecimalMax(value = "100", message = "损耗率不能大于100") BigDecimal lossRate,
-        @Size(max = 1000, message = "位号不能超过1000个字符") String refDes,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+        @NotNull(message = "{mes.valid.selectComponent}") Long materialId,
+        @NotNull(message = "{mes.valid.enterQuantity2}")
+        @DecimalMin(value = "0", inclusive = false, message = "{mes.valid.quantityMustGreater2}")
+        @Digits(integer = 12, fraction = 6, message = "{mes.valid.quantityAllowsMostDecimalPlaces2}") BigDecimal qty,
+        @DecimalMin(value = "0", message = "{mes.valid.lossRateCannotLess}") @DecimalMax(value = "100", message = "{mes.valid.lossRateCannotGreater}") BigDecimal lossRate,
+        @Size(max = 1000, message = "{mes.valid.referenceDesignatorsCannotExceedCharacters}") String refDes,
+        @Size(max = 255, message = "{mes.valid.remarkCannotExceedCharacters}") String remark) {
 }

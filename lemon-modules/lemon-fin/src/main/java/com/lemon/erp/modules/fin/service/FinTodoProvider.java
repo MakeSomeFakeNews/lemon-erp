@@ -19,9 +19,9 @@ import java.util.Map;
 public class FinTodoProvider implements TodoProvider {
 
     private static final List<Def> DEFS = List.of(
-            new Def("voucherToAudit", "fin:voucher:audit", "凭证待审核", "/fin/voucher", "info"),
-            new Def("voucherToPost", "fin:voucher:post", "凭证待记账", "/fin/voucher", "info"),
-            new Def("arOverdue", "fin:ar:list", "应收逾期", "/fin/ar", "danger")
+            new Def("voucherToAudit", "fin:voucher:audit", "fin.text.todoVoucherToAudit", "/fin/voucher", "info"),
+            new Def("voucherToPost", "fin:voucher:post", "fin.text.todoVoucherToPost", "/fin/voucher", "info"),
+            new Def("arOverdue", "fin:ar:list", "fin.text.todoArOverdue", "/fin/ar", "danger")
     );
 
     private final FinTodoMapper todoMapper;

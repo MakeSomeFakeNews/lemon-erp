@@ -10,20 +10,15 @@ import java.util.stream.Collectors;
  * 辅助核算项目：在科目上设置（可多选），手工凭证使用该科目时这些项目必填；分录上各项目可同时填写
  */
 public enum AuxItem {
-    DEPT("部门"),
-    CUSTOMER("客户"),
-    SUPPLIER("供应商"),
-    PROJECT("项目"),
-    MATERIAL("存货");
+    DEPT,
+    CUSTOMER,
+    SUPPLIER,
+    PROJECT,
+    MATERIAL;
 
-    private final String label;
-
-    AuxItem(String label) {
-        this.label = label;
-    }
-
-    public String label() {
-        return label;
+    /** 名称的消息键 */
+    public String labelKey() {
+        return "fin.enum.AuxItem." + name();
     }
 
     /** 科目上保存的辅助核算（逗号分隔的名称），忽略不认识的值 */

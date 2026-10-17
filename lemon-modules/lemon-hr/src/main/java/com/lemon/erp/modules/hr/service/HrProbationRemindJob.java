@@ -29,7 +29,7 @@ public class HrProbationRemindJob implements JobHandler {
 
     @Override
     public String name() {
-        return "试用期到期提醒";  // i18n-ignore 定时任务名称，任务管理处翻译
+        return "hr.label.probationExpiryReminder";
     }
 
     @Override

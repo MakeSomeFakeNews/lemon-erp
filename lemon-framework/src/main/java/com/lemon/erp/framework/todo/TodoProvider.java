@@ -11,6 +11,7 @@ public interface TodoProvider {
 
     /**
      * @param level info 一般 / warning 需要关注 / danger 已逾期或异常
+     * @param title 标题的消息键（参数已填入的文字也可以），首页汇总时 {@code Messages.get}
      * @param link  前端路由
      */
     record TodoItem(String module, String title, long count, String link, String level) {

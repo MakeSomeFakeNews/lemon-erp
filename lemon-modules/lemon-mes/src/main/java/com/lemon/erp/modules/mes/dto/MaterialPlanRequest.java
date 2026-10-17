@@ -20,15 +20,15 @@ import java.util.List;
  * @param fqcRequired 1 完工需成品检验
  */
 public record MaterialPlanRequest(
-        @Pattern(regexp = "^(MAKE|BUY|OUTSOURCE|PHANTOM)$", message = "物料属性不正确") String supplyType,
-        @Min(value = 0, message = "提前期不能小于0") @Max(value = 365, message = "提前期不能超过365天") Integer leadDays,
-        @DecimalMin(value = "0", inclusive = false, message = "最小批量必须大于0")
-        @Digits(integer = 14, fraction = 4, message = "最小批量最多4位小数") BigDecimal minLot,
-        @DecimalMin(value = "0", inclusive = false, message = "批量倍数必须大于0")
-        @Digits(integer = 14, fraction = 4, message = "批量倍数最多4位小数") BigDecimal lotMultiple,
-        @DecimalMin(value = "0", message = "允许超领比例不能小于0")
-        @DecimalMax(value = "100", message = "允许超领比例不能超过100%") BigDecimal overIssueRate,
-        @Size(max = 64, message = "计划员不能超过64个字符") String planner,
+        @Pattern(regexp = "^(MAKE|BUY|OUTSOURCE|PHANTOM)$", message = "{mes.valid.invalidMaterialType}") String supplyType,
+        @Min(value = 0, message = "{mes.valid.leadTimeCannotLess}") @Max(value = 365, message = "{mes.valid.leadTimeCannotExceedDays}") Integer leadDays,
+        @DecimalMin(value = "0", inclusive = false, message = "{mes.valid.minimumLotSizeMustGreater}")
+        @Digits(integer = 14, fraction = 4, message = "{mes.valid.minimumLotSizeAllowsMostDecimal}") BigDecimal minLot,
+        @DecimalMin(value = "0", inclusive = false, message = "{mes.valid.lotMultipleMustGreater}")
+        @Digits(integer = 14, fraction = 4, message = "{mes.valid.lotMultipleAllowsMostDecimalPlaces}") BigDecimal lotMultiple,
+        @DecimalMin(value = "0", message = "{mes.valid.overIssueAllowanceCannotLess}")
+        @DecimalMax(value = "100", message = "{mes.valid.overIssueAllowanceCannotExceed}") BigDecimal overIssueRate,
+        @Size(max = 64, message = "{mes.valid.plannerCannotExceedCharacters}") String planner,
         Integer fqcRequired,
-        @Size(max = 20, message = "替代料不能超过20个") List<@Valid @NotNull SubstituteRequest> substitutes) {
+        @Size(max = 20, message = "{mes.valid.mostSubstitutes}") List<@Valid @NotNull SubstituteRequest> substitutes) {
 }

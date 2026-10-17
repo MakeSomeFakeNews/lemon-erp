@@ -1,6 +1,6 @@
 package com.lemon.erp.modules.workflow.service;
 
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
@@ -54,7 +54,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
         getBaseMapper().selectPageList(page, name, category);
         page.getRecords().forEach(m -> {
             FlowBusiness b = business(m.getModelKey());
-            m.setBusinessName(b == null ? null : I18n.t(b.name()));
+            m.setBusinessName(b == null ? null : Messages.get(b.name()));
         });
         return PageResult.of(page);
     }
@@ -69,8 +69,8 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
         if (b == null) {
             return null;
         }
-        return new FlowBusiness(b.processKey(), I18n.t(b.name()), b.variables().stream()
-                .map(v -> new FlowBusiness.Variable(v.field(), I18n.t(v.label()), v.type(), v.dictType(), v.options()))
+        return new FlowBusiness(b.processKey(), Messages.get(b.name()), b.variables().stream()
+                .map(v -> new FlowBusiness.Variable(v.field(), Messages.get(v.label()), v.type(), v.dictType(), v.options()))
                 .toList());
     }
 
@@ -97,7 +97,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
     public void update(Long id, WfModel model) {
         WfModel old = getExisting(id);
         if (old.getVersion() != null && !old.getModelKey().equals(model.getModelKey())) {
-            throw new BizException("流程已发布，不能修改流程标识");
+            throw new BizException("workflow.error.processPublishedKeyCannotChanged");
         }
         checkKeyUnique(model.getModelKey(), id);
         WfModel entity = new WfModel();
@@ -140,7 +140,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
         } catch (FlowableException e) {
             // 设计已通过校验，这里一般不会失败；引擎的异常信息可能包含内部细节，只记录日志
             log.error("流程发布失败，modelKey={}", model.getModelKey(), e);
-            throw new BizException("流程发布失败，请检查流程设计");
+            throw new BizException("workflow.error.failedPublishProcessCheckDesign");
         }
         ProcessDefinition definition = repositoryService.createProcessDefinitionQuery()
                 .deploymentId(deployment.getId()).singleResult();
@@ -191,7 +191,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
     public WfModel getManualStartable(String modelKey) {
         FlowBusiness b = business(modelKey);
         if (b != null) {
-            throw new BizException("「{0}」请在对应的业务单据中提交审批", I18n.t(b.name()));
+            throw new BizException("workflow.error.mustSubmittedApprovalBusinessDocument", Messages.get(b.name()));
         }
         return getStartable(modelKey);
     }
@@ -204,10 +204,10 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
     public WfModel getStartable(String modelKey) {
         WfModel model = getOne(Wrappers.<WfModel>lambdaQuery().eq(WfModel::getModelKey, modelKey));
         if (model == null || model.getDefinitionId() == null) {
-            throw new BizException("流程不存在或未发布");
+            throw new BizException("workflow.error.processNotFoundNotPublished");
         }
         if (!Integer.valueOf(1).equals(model.getStatus())) {
-            throw new BizException("流程「{0}」已停用", model.getName());
+            throw new BizException("workflow.error.processDisabled", model.getName());
         }
         return model;
     }
@@ -235,7 +235,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
     private WfModel getExisting(Long id) {
         WfModel model = getById(id);
         if (model == null) {
-            throw new BizException("流程模型不存在");
+            throw new BizException("workflow.error.processModelNotFound");
         }
         return model;
     }
@@ -247,7 +247,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
     private void checkKeyUnique(String modelKey, Long id) {
         WfModel exist = getOne(Wrappers.<WfModel>lambdaQuery().eq(WfModel::getModelKey, modelKey));
         if (exist != null && !Objects.equals(exist.getId(), id)) {
-            throw new BizException("流程标识已存在");
+            throw new BizException("workflow.error.processKeyAlreadyExists");
         }
     }
 

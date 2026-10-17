@@ -29,7 +29,7 @@ public class ScmReorderJob implements JobHandler {
 
     @Override
     public String name() {
-        return "补货提醒";
+        return "scm.label.replenishmentReminder";
     }
 
     @Override

@@ -9,6 +9,7 @@ public interface JobHandler {
     /** 唯一标识，如 crm.followRemind */
     String key();
 
+    /** 名称的消息键（由声明的模块登记）；写入任务表时取默认语言（中文），页面按请求语言显示 */
     String name();
 
     /** 默认 Cron（Spring 6 段格式），首次启动时写入任务表，之后以页面设置为准 */

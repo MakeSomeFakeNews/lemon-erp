@@ -13,8 +13,8 @@ import java.util.List;
  * @param deptIds   自定义数据权限的部门，仅 dataScope = 自定义时有效
  */
 public record RoleDataScopeRequest(
-        @NotNull(message = "数据权限不能为空")
-        @Min(value = 1, message = "数据权限取值不正确")
-        @Max(value = 5, message = "数据权限取值不正确") Integer dataScope,
+        @NotNull(message = "{system.valid.dataPermissionRequired}")
+        @Min(value = 1, message = "{system.valid.invalidDataPermissionValue}")
+        @Max(value = 5, message = "{system.valid.invalidDataPermissionValue}") Integer dataScope,
         List<Long> deptIds) {
 }

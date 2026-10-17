@@ -19,8 +19,8 @@ import java.util.Map;
 public class HrTodoProvider implements TodoProvider {
 
     private static final List<Def> DEFS = List.of(
-            new Def("leaveToApprove", "hr:leave:approve", "请假加班待审批", "/hr/leave", "warning"),
-            new Def("probationDue", "hr:employee:list", "15 天内试用期到期", "/hr/employee", "warning")
+            new Def("leaveToApprove", "hr:leave:approve", "hr.text.todoLeaveToApprove", "/hr/leave", "warning"),
+            new Def("probationDue", "hr:employee:list", "hr.text.todoProbationDue", "/hr/employee", "warning")
     );
 
     private final HrTodoMapper todoMapper;

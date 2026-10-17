@@ -25,9 +25,9 @@ public class HrRecordTypes implements RecordTypeProvider {
     @Override
     public List<RecordType> recordTypes() {
         return List.of(
-                new RecordType("hr_employee", "员工档案", "hr:employee:list", "hr:employee:edit",
+                new RecordType("hr_employee", "hr.label.employeeProfile", "hr:employee:list", "hr:employee:edit",
                         EMPLOYEE_RULE, employeeMapper::selectById),
-                new RecordType("hr_candidate", "候选人", "hr:recruit:list", "hr:recruit:candidate",
+                new RecordType("hr_candidate", "hr.label.candidate", "hr:recruit:list", "hr:recruit:candidate",
                         null, candidateMapper::selectById));
     }
 }

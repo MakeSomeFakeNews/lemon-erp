@@ -71,7 +71,7 @@ public class HrRecruitService {
     public HrRecruit detail(Long id) {
         HrRecruit r = recruitMapper.selectDetail(id);
         if (r == null) {
-            throw new BizException("招聘需求不存在");
+            throw new BizException("hr.error.jobRequisitionDoesNotExist");
         }
         return r;
     }
@@ -145,7 +145,7 @@ public class HrRecruitService {
     public void withdraw(Long id) {
         HrRecruit r = detail(id);
         if (!"APPROVING".equals(r.getStatus())) {
-            throw new BizException("招聘需求不在审批中");
+            throw new BizException("hr.error.jobRequisitionNotUnderApproval");
         }
         if (r.getFlowInstanceId() != null && flowApi.getStatus(r.getFlowInstanceId()) == FlowStatus.RUNNING) {
             flowApi.cancel(r.getFlowInstanceId(), "撤回招聘需求");  // i18n-ignore 审批意见存库
@@ -183,7 +183,7 @@ public class HrRecruitService {
     public HrCandidate candidate(Long id) {
         HrCandidate c = id == null ? null : candidateMapper.selectById(id);
         if (c == null) {
-            throw new BizException("应聘者不存在");
+            throw new BizException("hr.error.candidateDoesNotExist");
         }
         return c;
     }
@@ -192,7 +192,7 @@ public class HrRecruitService {
     public Long createCandidate(CandidateRequest req) {
         HrRecruit r = detail(req.recruitId());
         if (!"OPEN".equals(r.getStatus())) {
-            throw new BizException("招聘需求不在招聘中");
+            throw new BizException("hr.error.jobRequisitionNotOpen");
         }
         HrCandidate c = new HrCandidate();
         fill(c, req);
@@ -206,7 +206,7 @@ public class HrRecruitService {
     public void updateCandidate(Long id, CandidateRequest req) {
         HrCandidate old = candidate(id);
         if ("HIRED".equals(old.getStage())) {
-            throw new BizException("已入职的应聘者不能修改");
+            throw new BizException("hr.error.hiredCandidatesCannotModified");
         }
         HrCandidate c = new HrCandidate();
         fill(c, req);
@@ -219,7 +219,7 @@ public class HrRecruitService {
     public void deleteCandidates(List<Long> ids) {
         for (HrCandidate c : candidateMapper.selectByIds(ids)) {
             if ("HIRED".equals(c.getStage())) {
-                throw new BizException("「{0}」已入职，不能删除", c.getName());
+                throw new BizException("hr.error.hasHiredCannotDeleted", c.getName());
             }
         }
         interviewMapper.delete(Wrappers.<HrInterview>lambdaQuery().in(HrInterview::getCandidateId, ids));
@@ -249,7 +249,7 @@ public class HrRecruitService {
     public void updateInterview(Long interviewId, InterviewRequest req) {
         HrInterview old = interviewMapper.selectById(interviewId);
         if (old == null) {
-            throw new BizException("面试记录不存在");
+            throw new BizException("hr.error.interviewRecordDoesNotExist");
         }
         activeCandidate(old.getCandidateId());
         HrInterview i = new HrInterview();
@@ -263,12 +263,12 @@ public class HrRecruitService {
     public void offer(Long candidateId) {
         HrCandidate c = activeCandidate(candidateId);
         if (!"INTERVIEW".equals(c.getStage())) {
-            throw new BizException("只能给面试中的应聘者发 Offer");
+            throw new BizException("hr.error.offersOnlySentCandidatesInterviewStage");
         }
         boolean passed = interviewMapper.exists(Wrappers.<HrInterview>lambdaQuery()
                 .eq(HrInterview::getCandidateId, candidateId).eq(HrInterview::getResult, "PASS"));
         if (!passed) {
-            throw new BizException("还没有通过的面试，不能发 Offer");
+            throw new BizException("hr.error.noPassedInterviewYetCannotSend");
         }
         changeStage(candidateId, "INTERVIEW", "OFFER");
     }
@@ -293,11 +293,11 @@ public class HrRecruitService {
     public Long hire(Long candidateId, HireRequest req) {
         HrCandidate c = candidate(candidateId);
         if (!"OFFER".equals(c.getStage())) {
-            throw new BizException("只能录用已发 Offer 的应聘者");
+            throw new BizException("hr.error.onlyCandidatesOfferHired");
         }
         HrRecruit r = detail(c.getRecruitId());
         if (recruitMapper.addHired(r.getId()) == 0) {
-            throw new BizException("招聘需求「{0}」不在招聘中，不能录用", r.getTitle());
+            throw new BizException("hr.error.jobRequisitionNotOpenCannotHire", r.getTitle());
         }
         Long userId = req.userId();
         if (userId == null && StringUtils.hasText(req.username())) {
@@ -337,7 +337,7 @@ public class HrRecruitService {
                         .ne(HrRecruit::getId, r.getId()))
                 .stream().mapToInt(x -> Math.max(x.getHeadcount() - x.getHiredCount(), 0)).sum();
         if (onJob + recruiting + r.getHeadcount() > position.getHeadcount()) {
-            throw new BizException("超出职位「{0}」的编制：编制 {1} 人，在职 {2} 人，其他招聘中 {3} 人，本次招聘 {4} 人",
+            throw new BizException("hr.error.exceedsHeadcountPositionHeadcountStaffOther",
                     position.getName(), position.getHeadcount(), onJob, recruiting, r.getHeadcount());
         }
     }
@@ -345,7 +345,7 @@ public class HrRecruitService {
     private HrRecruit getDraft(Long id) {
         HrRecruit r = detail(id);
         if (!"DRAFT".equals(r.getStatus())) {
-            throw new BizException("只能修改、删除、审核草稿状态的招聘需求");
+            throw new BizException("hr.error.onlyDraftJobRequisitionsModifiedDeleted");
         }
         return r;
     }
@@ -355,14 +355,14 @@ public class HrRecruitService {
                 .set(HrRecruit::getStatus, to).set(HrRecruit::getUpdateTime, LocalDateTime.now())
                 .eq(HrRecruit::getId, id).eq(HrRecruit::getStatus, from));
         if (updated == 0) {
-            throw new BizException("招聘需求状态已变化，请刷新");
+            throw new BizException("hr.error.jobRequisitionStatusHasChangedRefresh");
         }
     }
 
     private HrCandidate activeCandidate(Long id) {
         HrCandidate c = candidate(id);
         if (!ACTIVE_STAGES.contains(c.getStage())) {
-            throw new BizException("应聘者已入职或已淘汰");
+            throw new BizException("hr.error.candidateHasHiredRejected");
         }
         return c;
     }

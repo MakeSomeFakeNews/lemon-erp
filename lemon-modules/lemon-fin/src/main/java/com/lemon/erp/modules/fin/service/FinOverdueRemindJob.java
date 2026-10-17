@@ -28,7 +28,7 @@ public class FinOverdueRemindJob implements JobHandler {
 
     @Override
     public String name() {
-        return "应收逾期提醒";
+        return "fin.label.overdueReceivableReminder";
     }
 
     @Override

@@ -62,14 +62,14 @@ public class MesInspectionController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('mes:qc:add')")
-    @OperLog(title = "质量检验", type = OperType.INSERT)
+    @OperLog(title = "质量检验", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody InspectionRequest req) {
         return R.ok(inspectionService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('mes:qc:edit')")
-    @OperLog(title = "质量检验", type = OperType.UPDATE)
+    @OperLog(title = "质量检验", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody InspectionRequest req) {
         inspectionService.update(id, req);
         return R.ok();
@@ -86,7 +86,7 @@ public class MesInspectionController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('mes:qc:remove')")
-    @OperLog(title = "质量检验", type = OperType.DELETE)
+    @OperLog(title = "质量检验", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         inspectionService.delete(ids);
         return R.ok();

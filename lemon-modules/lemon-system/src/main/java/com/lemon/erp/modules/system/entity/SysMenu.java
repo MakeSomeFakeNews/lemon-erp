@@ -18,11 +18,11 @@ public class SysMenu extends TreeEntity<SysMenu> {
     public static final String TYPE_MENU = "C";
     public static final String TYPE_BUTTON = "F";
 
-    @NotBlank(message = "菜单名称不能为空")
+    @NotBlank(message = "{system.valid.menuNameRequired}")
     private String name;
 
     /** M 目录 C 菜单 F 按钮 */
-    @Pattern(regexp = "[MCF]", message = "菜单类型只能是 M/C/F")
+    @Pattern(regexp = "[MCF]", message = "{system.valid.menuTypeMustMCF}")
     private String type;
 
     private String path;
@@ -35,12 +35,12 @@ public class SysMenu extends TreeEntity<SysMenu> {
     private String icon;
 
     /** 1 显示 0 隐藏 */
-    @Min(value = 0, message = "是否显示只能是 0 或 1")
-    @Max(value = 1, message = "是否显示只能是 0 或 1")
+    @Min(value = 0, message = "{system.valid.visibleMust}")
+    @Max(value = 1, message = "{system.valid.visibleMust}")
     private Integer visible;
 
     /** 1 启用 0 停用 */
-    @Min(value = 0, message = "状态只能是 0 或 1")
-    @Max(value = 1, message = "状态只能是 0 或 1")
+    @Min(value = 0, message = "{system.valid.statusMust}")
+    @Max(value = 1, message = "{system.valid.statusMust}")
     private Integer status;
 }

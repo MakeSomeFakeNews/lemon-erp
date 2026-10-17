@@ -24,6 +24,6 @@ public class BiTodoProvider implements TodoProvider {
             return List.of();
         }
         long count = decisionService.alerts().stream().filter(a -> Boolean.TRUE.equals(a.get("triggered"))).count();
-        return count == 0 ? List.of() : List.of(new TodoItem("bi", "触发中的经营预警", count, "/bi/decision", "danger"));  // i18n-ignore 首页汇总处翻译
+        return count == 0 ? List.of() : List.of(new TodoItem("bi", "bi.text.todoAlertsTriggered", count, "/bi/decision", "danger"));
     }
 }

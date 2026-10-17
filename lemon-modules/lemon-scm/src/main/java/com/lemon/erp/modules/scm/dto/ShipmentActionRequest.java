@@ -13,6 +13,6 @@ import java.time.LocalDate;
  */
 public record ShipmentActionRequest(
         LocalDate date,
-        @Size(max = 64, message = "运单号不能超过64个字符") String trackingNo,
-        @Size(max = 255, message = "内容不能超过255个字符") String content) {
+        @Size(max = 64, message = "{scm.valid.trackingNoCannotExceedCharacters}") String trackingNo,
+        @Size(max = 255, message = "{scm.valid.contentCannotExceedCharacters}") String content) {
 }

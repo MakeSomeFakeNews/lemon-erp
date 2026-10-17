@@ -16,17 +16,17 @@ import java.util.List;
  * 发票登记：勾稽的应收（销项）/ 应付（进项）单金额合计须等于发票价税合计
  */
 public record InvoiceRequest(
-        @NotBlank(message = "请选择发票种类") @Pattern(regexp = "^(OUTPUT|INPUT)$", message = "发票种类不正确") String kind,
-        @NotBlank(message = "请填写发票号码") @Size(max = 32, message = "发票号码不能超过32个字符") String invoiceNo,
-        @Pattern(regexp = "^(SPECIAL|NORMAL|E_SPECIAL|E_NORMAL)?$", message = "发票类型不正确") String invoiceType,
-        @NotNull(message = "请选择往来单位") Long partnerId,
-        @NotNull(message = "请选择开票日期") LocalDate invoiceDate,
-        @NotNull(message = "请填写价税合计") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal amount,
-        @NotNull(message = "请填写税额") @Digits(integer = 16, fraction = 2, message = "税额最多2位小数") BigDecimal taxAmount,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark,
-        @NotEmpty(message = "请选择勾稽的单据") List<@Valid @NotNull Item> items) {
+        @NotBlank(message = "{fin.valid.selectInvoiceKind}") @Pattern(regexp = "^(OUTPUT|INPUT)$", message = "{fin.valid.invalidInvoiceKind}") String kind,
+        @NotBlank(message = "{fin.valid.enterInvoiceNumber}") @Size(max = 32, message = "{fin.valid.invoiceNumberCannotExceedCharacters}") String invoiceNo,
+        @Pattern(regexp = "^(SPECIAL|NORMAL|E_SPECIAL|E_NORMAL)?$", message = "{fin.valid.invalidInvoiceType}") String invoiceType,
+        @NotNull(message = "{fin.valid.selectBusinessPartner}") Long partnerId,
+        @NotNull(message = "{fin.valid.selectInvoiceDate}") LocalDate invoiceDate,
+        @NotNull(message = "{fin.valid.enterTotalAmountIncludingTax}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount,
+        @NotNull(message = "{fin.valid.enterTaxAmount}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.taxAmountAllowsMostDecimalPlaces}") BigDecimal taxAmount,
+        @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}") String remark,
+        @NotEmpty(message = "{fin.valid.selectDocumentsMatch}") List<@Valid @NotNull Item> items) {
 
-    public record Item(@NotNull(message = "请选择单据") Long billId,
-                       @NotNull(message = "请填写勾稽金额") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal amount) {
+    public record Item(@NotNull(message = "{fin.valid.selectDocument}") Long billId,
+                       @NotNull(message = "{fin.valid.enterMatchedAmount}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount) {
     }
 }

@@ -1,6 +1,6 @@
 package com.lemon.erp.modules.system.print;
 
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import net.sf.jasperreports.components.table.DesignCell;
 import net.sf.jasperreports.components.table.StandardColumn;
 import net.sf.jasperreports.components.table.StandardTable;
@@ -183,7 +183,7 @@ final class PrintDesigner {
                 PrintDoc.Column c = columns.get(i);
                 String value = "$P{" + P_TOTALS + "}.get(" + literal(c.getKey()) + ")";
                 // 第一列没有合计值时显示「合计」（按请求语言）
-                String expr = i == 0 ? "java.util.Objects.toString(" + value + ", " + literal(I18n.t("合计")) + ")" : value;
+                String expr = i == 0 ? "java.util.Objects.toString(" + value + ", " + literal(Messages.get("system.text.total")) + ")" : value;
                 JRDesignTextField t = cell(text(expr, x, 0, widths[i], h), c.isRight());
                 t.setBold(true);
                 band.addElement(t);
@@ -208,7 +208,7 @@ final class PrintDesigner {
         }
         if (has(doc.getNote())) {
             JRDesignBand band = band(SplitTypeEnum.STRETCH);
-            band.setHeight(add(band, text("\"" + I18n.t("备注：").replace("\"", "") + "\" + $P{" + P_NOTE + "}", 0, 4, width, line(fontSize)), 4));
+            band.setHeight(add(band, text("\"" + Messages.get("system.text.remark").replace("\"", "") + "\" + $P{" + P_NOTE + "}", 0, 4, width, line(fontSize)), 4));
             footer.addBand(band);
         }
         return group;
@@ -656,7 +656,7 @@ final class PrintDesigner {
 
     /** 名称加冒号的字面量（冒号按请求语言：中文为全角冒号，英文为「: 」） */
     private static String labelText(String label) {
-        return "\"" + PrintService.safeName(label) + I18n.t("：").replace("\"", "") + "\"";
+        return "\"" + PrintService.safeName(label) + Messages.get("system.text.colon").replace("\"", "") + "\"";
     }
 
     /** 一行文字的高度（pt） */
@@ -715,7 +715,7 @@ final class PrintDesigner {
      */
     /** 页码表达式：「第 x 页 / 共 y 页」按请求语言 */
     private static String pagesExpression() {
-        String[] parts = I18n.t("第 {0} 页 / 共 {1} 页").split("\\{[01]}", -1);
+        String[] parts = Messages.get("system.text.page").split("\\{[01]}", -1);
         if (parts.length != 3) {
             parts = new String[]{"", " / ", ""};
         }

@@ -56,7 +56,7 @@ public class MesForecastController {
     @Transactional
     public R<Long> save(@Valid @RequestBody MesForecast req) {
         if (req.getPeriod() % 100 < 1 || req.getPeriod() % 100 > 12) {
-            throw new BizException("月份不正确");
+            throw new BizException("mes.error.invalidMonth");
         }
         materialService.get(req.getMaterialId());
         MesForecast old = forecastMapper.selectOne(Wrappers.<MesForecast>lambdaQuery()

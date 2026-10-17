@@ -30,7 +30,7 @@ public class CrmPoolReclaimJob implements JobHandler {
 
     @Override
     public String name() {
-        return "客户公海回收"; // i18n-ignore 定时任务名称，任务管理处翻译
+        return "crm.label.customerPublicPoolReclaim";
     }
 
     @Override

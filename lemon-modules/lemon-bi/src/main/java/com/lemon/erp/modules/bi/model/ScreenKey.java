@@ -9,10 +9,11 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum ScreenKey {
-    FACTORY("生产车间"),  // i18n-ignore 输出处翻译
-    WAREHOUSE("仓储物流"),  // i18n-ignore 输出处翻译
-    SALES("销售经营"),  // i18n-ignore 输出处翻译
-    QUALITY("质量管理");  // i18n-ignore 输出处翻译
+    FACTORY("bi.label.factory"),
+    WAREHOUSE("bi.label.warehouse"),
+    SALES("bi.label.sales"),
+    QUALITY("bi.label.quality");
 
+    /** 名称的消息键 */
     private final String label;
 }

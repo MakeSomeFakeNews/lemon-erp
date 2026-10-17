@@ -47,7 +47,7 @@ public class QmsNcrController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('qms:ncr:add')")
-    @OperLog(title = "不合格品处理", type = OperType.INSERT)
+    @OperLog(title = "不合格品处理", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody QmsRequests.Ncr req) {
         return R.ok(ncrService.create(req));
     }
@@ -70,7 +70,7 @@ public class QmsNcrController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('qms:ncr:remove')")
-    @OperLog(title = "不合格品处理", type = OperType.DELETE)
+    @OperLog(title = "不合格品处理", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
         ncrService.delete(id);
         return R.ok();

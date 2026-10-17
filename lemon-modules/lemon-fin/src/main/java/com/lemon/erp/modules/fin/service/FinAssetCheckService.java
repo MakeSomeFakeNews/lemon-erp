@@ -51,7 +51,7 @@ public class FinAssetCheckService {
     public FinAssetCheck detail(Long id) {
         FinAssetCheck check = id == null ? null : checkMapper.selectDetail(id);
         if (check == null) {
-            throw new BizException("盘点单不存在");
+            throw new BizException("fin.error.assetCountDoesNotExist");
         }
         check.setItems(checkMapper.selectItems(id));
         return check;
@@ -62,7 +62,7 @@ public class FinAssetCheckService {
         String location = StringUtils.hasText(req.location()) ? req.location().trim() : null;
         List<FinAsset> assets = checkMapper.selectScope(req.deptId(), location);
         if (assets.isEmpty()) {
-            throw new BizException("盘点范围内没有资产");
+            throw new BizException("fin.error.noAssetsCountScope");
         }
         FinAssetCheck check = new FinAssetCheck();
         check.setCheckNo(docNoService.next(DOC_NO));
@@ -92,17 +92,17 @@ public class FinAssetCheckService {
         requireChecking(id);
         FinAssetCheckItem item = item(id, itemId);
         if (item.getAssetId() == null || req.result() == AssetCheckResult.GAIN) {
-            throw new BizException("盘盈明细请删除后重新登记");
+            throw new BizException("fin.error.deleteSurplusLineRegisterAgain");
         }
         boolean moved = req.result() == AssetCheckResult.MOVED;
         if (moved && req.actualDeptId() == null && req.actualUserId() == null && !StringUtils.hasText(req.actualLocation())) {
-            throw new BizException("请填写实际的部门、使用人或存放地点");
+            throw new BizException("fin.error.enterActualDepartmentCustodianLocation");
         }
         // 没有填写的项按账面不变：与账面完全一致时应选择「相符」，否则完成盘点时调拨会因没有变化而失败
         if (moved && (req.actualDeptId() == null || Objects.equals(req.actualDeptId(), item.getBookDeptId()))
                 && (req.actualUserId() == null || Objects.equals(req.actualUserId(), item.getBookUserId()))
                 && (!StringUtils.hasText(req.actualLocation()) || req.actualLocation().trim().equals(item.getBookLocation()))) {
-            throw new BizException("实际的部门、使用人、存放地点与账面相同，请选择「相符」");
+            throw new BizException("fin.error.actualDepartmentCustodianLocationMatchBook");
         }
         itemMapper.update(Wrappers.<FinAssetCheckItem>lambdaUpdate()
                 .set(FinAssetCheckItem::getResult, req.result())
@@ -135,7 +135,7 @@ public class FinAssetCheckService {
         requireChecking(id);
         FinAssetCheckItem item = item(id, itemId);
         if (item.getResult() != AssetCheckResult.GAIN) {
-            throw new BizException("只能删除盘盈明细");
+            throw new BizException("fin.error.onlySurplusLinesDeleted");
         }
         itemMapper.deleteById(itemId);
     }
@@ -151,7 +151,7 @@ public class FinAssetCheckService {
         List<FinAssetCheckItem> items = checkMapper.selectItems(id);
         long pending = items.stream().filter(i -> i.getResult() == AssetCheckResult.PENDING).count();
         if (pending > 0) {
-            throw new BizException("还有 {0} 项资产没有盘点", pending);
+            throw new BizException("fin.error.assetSHaveNotCountedYet", pending);
         }
         int disposed = 0;
         for (FinAssetCheckItem i : items) {
@@ -171,7 +171,7 @@ public class FinAssetCheckService {
                 .set(FinAssetCheck::getStatus, AssetCheckStatus.DONE)
                 .set(FinAssetCheck::getFinishTime, LocalDateTime.now())
                 .eq(FinAssetCheck::getId, id).eq(FinAssetCheck::getStatus, AssetCheckStatus.CHECKING)) == 0) {
-            throw new BizException("盘点单状态已变化，请刷新后重试");
+            throw new BizException("fin.error.assetCountStatusHasChangedRefresh");
         }
         return disposed;
     }
@@ -186,7 +186,7 @@ public class FinAssetCheckService {
     private FinAssetCheckItem item(Long checkId, Long itemId) {
         FinAssetCheckItem item = itemId == null ? null : itemMapper.selectById(itemId);
         if (item == null || !item.getCheckId().equals(checkId)) {
-            throw new BizException("盘点明细不存在");
+            throw new BizException("fin.error.assetCountLineDoesNotExist");
         }
         return item;
     }
@@ -194,10 +194,10 @@ public class FinAssetCheckService {
     private FinAssetCheck requireChecking(Long id) {
         FinAssetCheck check = id == null ? null : checkMapper.selectById(id);
         if (check == null) {
-            throw new BizException("盘点单不存在");
+            throw new BizException("fin.error.assetCountDoesNotExist");
         }
         if (check.getStatus() != AssetCheckStatus.CHECKING) {
-            throw new BizException("盘点已完成");
+            throw new BizException("fin.error.assetCountHasCompleted");
         }
         return check;
     }

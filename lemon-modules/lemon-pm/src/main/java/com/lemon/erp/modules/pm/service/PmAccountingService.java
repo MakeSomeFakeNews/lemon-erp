@@ -70,12 +70,12 @@ public class PmAccountingService {
     public void saveBilling(Long id, BillingRequest req) {
         PmProject p = projectService.get(req.projectId());
         if ("CLOSED".equals(p.getStatus())) {
-            throw new BizException("项目已关闭");
+            throw new BizException("pm.error.projectClosed");
         }
         if (req.taskId() != null) {
             PmTask t = taskMapper.selectById(req.taskId());
             if (t == null || !t.getProjectId().equals(req.projectId())) {
-                throw new BizException("里程碑不属于该项目");
+                throw new BizException("pm.error.milestoneDoesNotBelongProject");
             }
         }
         PmBilling b = new PmBilling();
@@ -111,12 +111,12 @@ public class PmAccountingService {
         PmBilling b = getPlanned(id);
         PmProject p = projectService.get(b.getProjectId());
         if (p.getCustomerId() == null) {
-            throw new BizException("项目没有客户，不能开票");
+            throw new BizException("pm.error.projectHasNoCustomerCannotInvoice");
         }
         if (b.getTaskId() != null) {
             PmTask milestone = taskMapper.selectById(b.getTaskId());
             if (milestone != null && !"DONE".equals(milestone.getStatus())) {
-                throw new BizException("关联的里程碑「{0}」尚未完成，不能开票", milestone.getName());
+                throw new BizException("pm.error.linkedMilestoneNotCompletedCannotInvoice", milestone.getName());
             }
         }
         LocalDate date = billDate == null ? LocalDate.now() : billDate;
@@ -130,7 +130,7 @@ public class PmAccountingService {
                 .set(PmBilling::getBillDate, date)
                 .eq(PmBilling::getId, id).eq(PmBilling::getStatus, "PLANNED"));
         if (updated == 0) {
-            throw new BizException("收款计划状态已变化，请刷新");
+            throw new BizException("pm.error.billingPlanStatusHasChangedRefresh");
         }
     }
 
@@ -139,7 +139,7 @@ public class PmAccountingService {
     public void unbill(Long id) {
         PmBilling b = billingMapper.selectById(id);
         if (b == null || !"BILLED".equals(b.getStatus())) {
-            throw new BizException("收款计划未开票");
+            throw new BizException("pm.error.billingPlanNotInvoiced");
         }
         billService.deleteSourceBill(b.getBillId());
         billingMapper.update(Wrappers.<PmBilling>lambdaUpdate()
@@ -151,10 +151,10 @@ public class PmAccountingService {
     private PmBilling getPlanned(Long id) {
         PmBilling b = billingMapper.selectById(id);
         if (b == null) {
-            throw new BizException("收款计划不存在");
+            throw new BizException("pm.error.billingPlanNotFound");
         }
         if (!"PLANNED".equals(b.getStatus())) {
-            throw new BizException("已开票的收款计划不能修改、删除，请先取消开票");
+            throw new BizException("pm.error.invoicedBillingPlansCannotModifiedDeleted");
         }
         return b;
     }

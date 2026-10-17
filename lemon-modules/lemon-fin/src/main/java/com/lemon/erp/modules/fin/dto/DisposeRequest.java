@@ -16,8 +16,8 @@ import java.time.LocalDate;
  */
 public record DisposeRequest(
         LocalDate date,
-        @DecimalMin(value = "0", message = "处置收入不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal income,
-        @DecimalMin(value = "0", message = "清理费用不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal expense,
+        @DecimalMin(value = "0", message = "{fin.valid.disposalProceedsCannotLess}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal income,
+        @DecimalMin(value = "0", message = "{fin.valid.disposalExpensesCannotLess}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal expense,
         Long settleAccountId,
-        @Size(max = 255, message = "说明不能超过255个字符") String remark) {
+        @Size(max = 255, message = "{fin.valid.descriptionCannotExceedCharacters}") String remark) {
 }

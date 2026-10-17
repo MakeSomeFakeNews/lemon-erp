@@ -63,7 +63,7 @@ public class ScmAsnService {
     public ScmAsn detail(Long id, Long supplierId) {
         ScmAsn asn = id == null ? null : asnMapper.selectDetail(id);
         if (asn == null || (supplierId != null && !supplierId.equals(asn.getSupplierId()))) {
-            throw new BizException("送货通知不存在");
+            throw new BizException("scm.error.asnDoesNotExist");
         }
         asn.setItems(asnMapper.selectItems(id));
         return asn;
@@ -84,7 +84,7 @@ public class ScmAsnService {
         Map<Long, BigDecimal> open = asnMapper.selectOpenLines(order.getId(), null).stream()
                 .collect(Collectors.toMap(SrmViews.AsnOpenLine::orderItemId, SrmViews.AsnOpenLine::openQty));
         if (req.items().stream().map(SrmRequests.AsnItem::orderItemId).distinct().count() < req.items().size()) {
-            throw new BizException("送货明细重复");
+            throw new BizException("scm.error.duplicateDeliveryLine");
         }
         ScmAsn asn = new ScmAsn();
         asn.setAsnNo(docNoService.next(DOC_NO));
@@ -101,11 +101,11 @@ public class ScmAsnService {
         asnMapper.insertItems(req.items().stream().map(r -> {
             ScmOrderItem oi = orderItems.get(r.orderItemId());
             if (oi == null) {
-                throw new BizException("送货明细不属于该订单");
+                throw new BizException("scm.error.deliveryLineDoesNotBelongOrder");
             }
             BigDecimal max = open.getOrDefault(r.orderItemId(), BigDecimal.ZERO);
             if (r.qty().compareTo(max) > 0) {
-                throw new BizException("送货数量超过未送货数量 {0}", max.stripTrailingZeros().toPlainString());
+                throw new BizException("scm.error.deliveryQuantityExceedsUndeliveredQuantity", max.stripTrailingZeros().toPlainString());
             }
             ScmAsnItem item = new ScmAsnItem();
             item.setAsnId(asn.getId());
@@ -127,7 +127,7 @@ public class ScmAsnService {
     public void cancel(Long id, Long supplierId) {
         detail(id, supplierId);
         if (asnMapper.transit(id, AsnStatus.SUBMITTED, AsnStatus.CANCELLED) == 0) {
-            throw new BizException("送货通知已收货或已取消");
+            throw new BizException("scm.error.asnHasReceivedCanceled");
         }
     }
 
@@ -136,11 +136,11 @@ public class ScmAsnService {
     public Long receive(Long id, SrmRequests.AsnReceive req) {
         ScmAsn asn = detail(id, null);
         if (asn.getStatus() != AsnStatus.SUBMITTED) {
-            throw new BizException("送货通知已收货或已取消");
+            throw new BizException("scm.error.asnHasReceivedCanceled");
         }
         Long warehouseId = req.warehouseId() != null ? req.warehouseId() : asn.getWarehouseId();
         if (warehouseId == null) {
-            throw new BizException("请选择收货仓库");
+            throw new BizException("scm.error.selectReceivingWarehouse");
         }
         Map<Long, SrmRequests.AsnReceiveLine> lines = req.lines() == null ? Map.of()
                 : req.lines().stream().collect(Collectors.toMap(SrmRequests.AsnReceiveLine::asnItemId, Function.identity(), (a, b) -> b));
@@ -148,13 +148,13 @@ public class ScmAsnService {
             SrmRequests.AsnReceiveLine line = lines.get(i.getId());
             BigDecimal qty = line != null ? line.qty() : i.getQty();
             if (qty.signum() > 0 && Integer.valueOf(1).equals(i.getSerialEnabled())) {
-                throw new BizException("物料「{0} {1}」需要录入序列号，请在采购入库中收货", i.getMaterialCode(), i.getMaterialName());
+                throw new BizException("scm.error.materialRequiresSerialNumbersReceivePurchase", i.getMaterialCode(), i.getMaterialName());
             }
             return qty.signum() == 0 ? null : new TradeDocItemRequest(i.getOrderItemId(), line != null ? line.locationId() : null,
                     i.getBatchNo(), null, null, qty, null, i.getRemark());
         }).filter(Objects::nonNull).toList();
         if (items.isEmpty()) {
-            throw new BizException("请填写实收数量");
+            throw new BizException("scm.error.enterReceivedQuantity");
         }
         Long docId = tradeDocService.create(TradeKind.PURCHASE_IN, new TradeDocRequest(asn.getOrderId(), warehouseId, req.bizDate(),
                 "送货通知 " + asn.getAsnNo(), false, items)); // i18n-ignore
@@ -163,7 +163,7 @@ public class ScmAsnService {
                 .set(ScmAsn::getTradeDocId, docId)
                 .set(ScmAsn::getReceivedTime, LocalDateTime.now())
                 .eq(ScmAsn::getId, id).eq(ScmAsn::getStatus, AsnStatus.SUBMITTED)) == 0) {
-            throw new BizException("送货通知状态已变化，请刷新后重试");
+            throw new BizException("scm.error.asnStatusHasChangedRefreshTry");
         }
         return docId;
     }
@@ -171,13 +171,13 @@ public class ScmAsnService {
     private ScmOrder requireOrder(Long orderId, Long supplierId) {
         ScmOrder order = orderId == null ? null : orderMapper.selectById(orderId);
         if (order == null || !OrderKind.PURCHASE.name().equals(order.getKind()) || !order.getPartnerId().equals(supplierId)) {
-            throw new BizException("采购订单不存在");
+            throw new BizException("scm.error.purchaseOrderDoesNotExist");
         }
         if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
-            throw new BizException("订单不是可收货状态（已审核、部分入库）");
+            throw new BizException("scm.error.orderNotReceivableStatusApprovedPartially");
         }
         if (order.getSupplierConfirm() == SupplierConfirm.REJECTED) {
-            throw new BizException("已拒绝的订单不能送货");
+            throw new BizException("scm.error.rejectedOrdersCannotDelivered");
         }
         return order;
     }

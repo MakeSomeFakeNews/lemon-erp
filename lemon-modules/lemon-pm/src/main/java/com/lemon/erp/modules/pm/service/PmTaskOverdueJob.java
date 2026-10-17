@@ -29,7 +29,7 @@ public class PmTaskOverdueJob implements JobHandler {
 
     @Override
     public String name() {
-        return "项目任务逾期提醒"; // i18n-ignore 定时任务名称存库
+        return "pm.label.projectTaskOverdueReminder";
     }
 
     @Override

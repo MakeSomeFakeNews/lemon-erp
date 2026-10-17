@@ -22,32 +22,32 @@ import java.time.LocalDate;
 @TableName("hr_training")
 public class HrTraining extends BaseEntity {
 
-    @NotBlank(message = "培训主题不能为空")
-    @Size(max = 128, message = "培训主题不能超过128个字符")
+    @NotBlank(message = "{hr.valid.trainingTopicCannotEmpty}")
+    @Size(max = 128, message = "{hr.valid.trainingTopicCannotExceedCharacters}")
     private String title;
 
     /** 类别(字典 hr_training_category) */
     private String category;
 
-    @Size(max = 64, message = "讲师不能超过64个字符")
+    @Size(max = 64, message = "{hr.valid.trainerCannotExceedCharacters}")
     private String trainer;
 
-    @NotNull(message = "请选择开始日期")
+    @NotNull(message = "{hr.valid.selectStartDate}")
     private LocalDate startDate;
 
-    @NotNull(message = "请选择结束日期")
+    @NotNull(message = "{hr.valid.selectEndDate}")
     private LocalDate endDate;
 
     /** 课时（小时） */
-    @DecimalMin(value = "0", message = "课时不能小于0")
-    @Digits(integer = 6, fraction = 1, message = "课时最多1位小数")
+    @DecimalMin(value = "0", message = "{hr.valid.hoursCannotLess}")
+    @Digits(integer = 6, fraction = 1, message = "{hr.valid.hoursHaveMostDecimalPlace}")
     private BigDecimal hours;
 
-    @Size(max = 128, message = "地点不能超过128个字符")
+    @Size(max = 128, message = "{hr.valid.locationCannotExceedCharacters}")
     private String location;
 
-    @DecimalMin(value = "0", message = "费用不能小于0")
-    @Digits(integer = 16, fraction = 2, message = "费用最多2位小数")
+    @DecimalMin(value = "0", message = "{hr.valid.costCannotLess}")
+    @Digits(integer = 16, fraction = 2, message = "{hr.valid.costHaveMostDecimalPlaces}")
     private BigDecimal cost;
 
     /** 培训费凭证（培训结束时生成） */
@@ -56,7 +56,7 @@ public class HrTraining extends BaseEntity {
     /** PLANNED / ONGOING / FINISHED / CANCELED */
     private String status;
 
-    @Size(max = 1000, message = "培训内容不能超过1000个字符")
+    @Size(max = 1000, message = "{hr.valid.trainingContentCannotExceedCharacters}")
     private String content;
 
     private Long createBy;

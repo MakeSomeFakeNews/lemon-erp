@@ -43,16 +43,16 @@ public class FileStorageService {
      */
     public String storeImage(MultipartFile file, String dir, long maxSize) {
         if (file == null || file.isEmpty()) {
-            throw new BizException("请选择文件");
+            throw new BizException("framework.error.selectFile");
         }
         if (file.getSize() > maxSize) {
-            throw new BizException("文件大小不能超过 {0}MB", maxSize / 1024 / 1024);
+            throw new BizException("framework.error.fileSizeCannotExceedMb", maxSize / 1024 / 1024);
         }
         String ext = StringUtils.getFilenameExtension(file.getOriginalFilename());
         ext = ext == null ? "" : ext.toLowerCase(Locale.ROOT);
         String contentType = file.getContentType();
         if (!IMAGE_EXTENSIONS.contains(ext) || contentType == null || !contentType.startsWith("image/")) {
-            throw new BizException("只支持 {0} 格式的图片", String.join("/", IMAGE_EXTENSIONS));
+            throw new BizException("framework.error.onlyImagesSupported", String.join("/", IMAGE_EXTENSIONS));
         }
         String relative = dir + "/" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM")) + "/"
                 + UUID.randomUUID().toString().replace("-", "") + "." + ext;
@@ -61,7 +61,7 @@ public class FileStorageService {
             Files.createDirectories(target.getParent());
             Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            throw new BizException("文件保存失败：{0}", e.getMessage());
+            throw new BizException("framework.error.failedSaveFile", e.getMessage());
         }
         return contextPath + WebMvcConfig.FILE_URL_PREFIX + relative;
     }
@@ -77,15 +77,15 @@ public class FileStorageService {
      */
     public String storeAttachment(MultipartFile file, long maxSize) {
         if (file == null || file.isEmpty()) {
-            throw new BizException("请选择文件");
+            throw new BizException("framework.error.selectFile");
         }
         if (file.getSize() > maxSize) {
-            throw new BizException("文件大小不能超过 {0}MB", maxSize / 1024 / 1024);
+            throw new BizException("framework.error.fileSizeCannotExceedMb", maxSize / 1024 / 1024);
         }
         String ext = StringUtils.getFilenameExtension(file.getOriginalFilename());
         ext = ext == null ? "" : ext.toLowerCase(Locale.ROOT);
         if (BLOCKED_EXTENSIONS.contains(ext) || !ext.matches("[a-z0-9]{0,10}")) {
-            throw new BizException("不支持上传该类型的文件");
+            throw new BizException("framework.error.fileTypeCannotUploaded");
         }
         String relative = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM")) + "/"
                 + UUID.randomUUID().toString().replace("-", "") + (ext.isEmpty() ? "" : "." + ext);
@@ -94,7 +94,7 @@ public class FileStorageService {
             Files.createDirectories(target.getParent());
             Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            throw new BizException("文件保存失败：{0}", e.getMessage());
+            throw new BizException("framework.error.failedSaveFile", e.getMessage());
         }
         return relative;
     }
@@ -104,7 +104,7 @@ public class FileStorageService {
         Path root = uploadProperties.attachmentRoot();
         Path target = root.resolve(relative).normalize();
         if (!target.startsWith(root)) {
-            throw new BizException("文件路径不正确");
+            throw new BizException("framework.error.invalidFilePath");
         }
         return target;
     }

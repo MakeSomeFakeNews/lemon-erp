@@ -10,6 +10,6 @@ import java.util.List;
  * 批量调整用户部门
  */
 public record UserDeptRequest(
-        @NotEmpty(message = "请选择用户") @Size(max = 500, message = "一次最多操作 500 个用户") List<Long> userIds,
-        @NotNull(message = "请选择部门") Long deptId) {
+        @NotEmpty(message = "{system.valid.selectUsers}") @Size(max = 500, message = "{system.valid.upUsersProcessedTime}") List<Long> userIds,
+        @NotNull(message = "{system.valid.selectDepartment}") Long deptId) {
 }

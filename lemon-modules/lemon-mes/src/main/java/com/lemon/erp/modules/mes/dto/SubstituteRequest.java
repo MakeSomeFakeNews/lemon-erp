@@ -12,10 +12,10 @@ import java.math.BigDecimal;
  * @param priority 越小越优先，默认 1
  */
 public record SubstituteRequest(
-        @NotNull(message = "请选择替代料") Long substituteId,
-        @NotNull(message = "请填写替代比例")
-        @DecimalMin(value = "0", inclusive = false, message = "替代比例必须大于0")
-        @Digits(integer = 12, fraction = 6, message = "替代比例最多6位小数") BigDecimal ratio,
+        @NotNull(message = "{mes.valid.selectSubstitute}") Long substituteId,
+        @NotNull(message = "{mes.valid.enterSubstitutionRatio}")
+        @DecimalMin(value = "0", inclusive = false, message = "{mes.valid.substitutionRatioMustGreater}")
+        @Digits(integer = 12, fraction = 6, message = "{mes.valid.substitutionRatioAllowsMostDecimalPlaces}") BigDecimal ratio,
         Integer priority,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+        @Size(max = 255, message = "{mes.valid.remarkCannotExceedCharacters}") String remark) {
 }

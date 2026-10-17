@@ -23,7 +23,7 @@ import java.time.LocalDate;
 @TableName("scm_price_list")
 public class ScmPriceList extends BaseEntity {
 
-    @NotNull(message = "请选择物料")
+    @NotNull(message = "{scm.valid.selectMaterial}")
     private Long materialId;
 
     /** 客户等级（字典 scm_customer_level），为空适用全部客户 */
@@ -33,23 +33,23 @@ public class ScmPriceList extends BaseEntity {
     private Long customerId;
 
     /** 起订数量（阶梯），默认 0 */
-    @DecimalMin(value = "0", message = "起订数量不能小于0")
+    @DecimalMin(value = "0", message = "{scm.valid.minimumQuantityCannotLess}")
     private BigDecimal minQty;
 
-    @NotNull(message = "请填写单价")
-    @DecimalMin(value = "0", message = "单价不能小于0")
-    @Digits(integer = 14, fraction = 4, message = "单价最多4位小数")
+    @NotNull(message = "{scm.valid.enterUnitPrice}")
+    @DecimalMin(value = "0", message = "{scm.valid.unitPriceCannotLess}")
+    @Digits(integer = 14, fraction = 4, message = "{scm.valid.unitPriceAllowsMostDecimalPlaces}")
     private BigDecimal price;
 
-    @DecimalMin(value = "0", message = "税率不能小于0")
-    @DecimalMax(value = "100", message = "税率不能大于100")
+    @DecimalMin(value = "0", message = "{scm.valid.taxRateCannotNegative}")
+    @DecimalMax(value = "100", message = "{scm.valid.taxRateCannotExceed}")
     private BigDecimal taxRate;
 
     private LocalDate validFrom;
 
     private LocalDate validTo;
 
-    @Size(max = 255, message = "备注不能超过255个字符")
+    @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}")
     private String remark;
 
     @TableField(exist = false)

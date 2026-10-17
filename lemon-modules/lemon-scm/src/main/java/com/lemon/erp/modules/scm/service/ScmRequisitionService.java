@@ -145,7 +145,7 @@ public class ScmRequisitionService {
     public List<Long> toOrders(Long id, Long warehouseId) {
         ScmRequisition r = getAccessible(id);
         if (!"APPROVED".equals(r.getStatus())) {
-            throw new BizException("请购单批准后才能生成采购订单");
+            throw new BizException("scm.error.requisitionMustApprovedBeforeGeneratingPurchase");
         }
         List<ScmRequisitionItem> items = itemMapper.selectList(Wrappers.<ScmRequisitionItem>lambdaQuery()
                 .eq(ScmRequisitionItem::getRequisitionId, id).isNull(ScmRequisitionItem::getOrderId));
@@ -155,7 +155,7 @@ public class ScmRequisitionService {
             Long supplier = i.getSupplierId() != null ? i.getSupplierId()
                     : defaults.containsKey(i.getMaterialId()) ? defaults.get(i.getMaterialId()).getSupplierId() : null;
             if (supplier == null) {
-                throw new BizException("物料「{0}」没有建议供应商和默认供应商，请先指定供应商", materialService.get(i.getMaterialId()).getName());
+                throw new BizException("scm.error.materialHasNoSuggestedDefaultSupplier", materialService.get(i.getMaterialId()).getName());
             }
             bySupplier.computeIfAbsent(supplier, k -> new ArrayList<>()).add(i);
         }
@@ -183,7 +183,7 @@ public class ScmRequisitionService {
     public void close(Long id) {
         ScmRequisition r = getAccessible(id);
         if (!"APPROVED".equals(r.getStatus()) && !"DRAFT".equals(r.getStatus())) {
-            throw new BizException("只能关闭草稿、已批准的请购单");
+            throw new BizException("scm.error.onlyDraftApprovedRequisitionsClosed");
         }
         transit(id, r.getStatus(), "CLOSED", false);
     }
@@ -225,14 +225,14 @@ public class ScmRequisitionService {
                 .set(ScmRequisition::getUpdateTime, LocalDateTime.now())
                 .eq(ScmRequisition::getId, id).eq(ScmRequisition::getStatus, from));
         if (updated == 0) {
-            throw new BizException("请购单状态已变化，请刷新");
+            throw new BizException("scm.error.requisitionStatusHasChangedRefresh");
         }
     }
 
     private ScmRequisition getDraft(Long id) {
         ScmRequisition r = getAccessible(id);
         if (!"DRAFT".equals(r.getStatus())) {
-            throw new BizException("只能修改、删除、提交草稿状态的请购单");
+            throw new BizException("scm.error.onlyDraftRequisitionsModifiedDeletedSubmitted");
         }
         return r;
     }
@@ -241,7 +241,7 @@ public class ScmRequisitionService {
         Supplier<ScmRequisition> loader = () -> requisitionMapper.selectById(id);
         ScmRequisition r = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(RULE, loader);
         if (r == null) {
-            throw new BizException("请购单不存在或没有权限");
+            throw new BizException("scm.error.requisitionDoesNotExistAccessDenied");
         }
         return r;
     }

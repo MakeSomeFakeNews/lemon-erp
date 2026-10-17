@@ -89,7 +89,7 @@ public class MesInspectionService {
     public MesInspection get(Long id) {
         MesInspection inspection = id == null ? null : inspectionMapper.selectById(id);
         if (inspection == null) {
-            throw new BizException("检验单不存在");
+            throw new BizException("mes.error.inspectionDoesNotExist");
         }
         return inspection;
     }
@@ -194,7 +194,7 @@ public class MesInspectionService {
     private MesInspection getDraft(Long id) {
         MesInspection i = get(id);
         if (i.getStatus() == InspectionStatus.CONFIRMED) {
-            throw new BizException("检验单 {0} 已确认，不能修改或删除", i.getInspNo());
+            throw new BizException("mes.error.inspectionConfirmedCannotModifiedDeleted", i.getInspNo());
         }
         return i;
     }
@@ -206,7 +206,7 @@ public class MesInspectionService {
         String sourceNo = StringUtils.hasText(req.sourceNo()) ? req.sourceNo().trim() : null;
         i.setSourceNo(sourceNo);
         if (req.type() == QcType.FAI && sourceNo == null) {
-            throw new BizException("首件检验请填写生产工单号");
+            throw new BizException("mes.error.enterWorkOrderNoFirstArticle");
         }
         // 先校验数量与判定，再校验来源单据
         List<QmsInspectionItem> items = req.planId() != null ? judgeByPlan(i, req) : judgeManually(i, req);
@@ -230,14 +230,14 @@ public class MesInspectionService {
     private void fillIqcSource(MesInspection i, String sourceNo, InspectionRequest req) {
         Long supplierId = scmQueryService.purchaseInSupplier(sourceNo);
         if (supplierId == null) {
-            throw new BizException("采购入库单 {0} 不存在", sourceNo);
+            throw new BizException("mes.error.purchaseReceiptDoesNotExist", sourceNo);
         }
         BigDecimal received = scmQueryService.purchaseInQty(sourceNo, req.materialId());
         if (received.signum() == 0) {
-            throw new BizException("采购入库单 {0} 中没有该物料", sourceNo);
+            throw new BizException("mes.error.purchaseReceiptDoesNotContainMaterial", sourceNo);
         }
         if (req.inspectQty().compareTo(received) > 0) {
-            throw new BizException("送检数量不能大于入库数量 {0}", received.stripTrailingZeros().toPlainString());
+            throw new BizException("mes.error.lotQuantityCannotExceedReceivedQuantity", received.stripTrailingZeros().toPlainString());
         }
         i.setSupplierId(supplierId);
     }
@@ -245,22 +245,22 @@ public class MesInspectionService {
     private void fillWoSource(MesInspection i, String sourceNo, InspectionRequest req) {
         MesWorkOrder wo = workOrderMapper.selectOne(Wrappers.<MesWorkOrder>lambdaQuery().eq(MesWorkOrder::getWoNo, sourceNo));
         if (wo == null) {
-            throw new BizException("生产工单 {0} 不存在", sourceNo);
+            throw new BizException("mes.error.workOrderDoesNotExist", sourceNo);
         }
         // 成品、首件检验：工单产品；过程检验：工单产品或工单用料
         boolean product = wo.getMaterialId().equals(req.materialId());
         if ((req.type() == QcType.FQC || req.type() == QcType.FAI) && !product) {
-            throw new BizException("成品检验、首件检验的物料必须是工单产品");
+            throw new BizException("mes.error.materialFinalFirstArticleInspectionsMust");
         }
         if (req.type() == QcType.IPQC && !product && !woMaterialMapper.exists(Wrappers.<MesWoMaterial>lambdaQuery()
                 .eq(MesWoMaterial::getWoId, wo.getId()).eq(MesWoMaterial::getMaterialId, req.materialId()))) {
-            throw new BizException("过程检验的物料必须是工单产品或工单用料");
+            throw new BizException("mes.error.materialProcessInspectionMustWorkOrder");
         }
         i.setWoId(wo.getId());
         if (req.type() == QcType.FAI) {
             MesWoOp op = req.woOpId() == null ? null : woOpMapper.selectById(req.woOpId());
             if (op == null || !op.getWoId().equals(wo.getId())) {
-                throw new BizException("请选择工单 {0} 的工序", sourceNo);
+                throw new BizException("mes.error.selectOperationWorkOrder", sourceNo);
             }
             i.setWoOpId(op.getId());
         }
@@ -269,17 +269,17 @@ public class MesInspectionService {
     /** 无检验方案：手工填写的抽检数量、不良数量、结论 */
     private List<QmsInspectionItem> judgeManually(MesInspection i, InspectionRequest req) {
         if (req.sampleQty() == null) {
-            throw new BizException("请填写抽检数量");
+            throw new BizException("mes.error.enterSampleQuantity");
         }
         if (req.result() == null) {
-            throw new BizException("请选择检验结论");
+            throw new BizException("mes.error.selectConclusion");
         }
         BigDecimal defect = req.defectQty() == null ? BigDecimal.ZERO : req.defectQty();
         if (req.sampleQty().compareTo(req.inspectQty()) > 0) {
-            throw new BizException("抽检数量不能大于送检数量");
+            throw new BizException("mes.error.sampleQuantityCannotExceedLotQuantity");
         }
         if (defect.compareTo(req.sampleQty()) > 0) {
-            throw new BizException("不良数量不能大于抽检数量");
+            throw new BizException("mes.error.defectQuantityCannotExceedSampleQuantity");
         }
         i.setSampleQty(req.sampleQty());
         i.setDefectQty(defect);
@@ -294,17 +294,17 @@ public class MesInspectionService {
     private List<QmsInspectionItem> judgeByPlan(MesInspection i, InspectionRequest req) {
         QmsInspectionPlan plan = planMapper.selectById(req.planId());
         if (plan == null) {
-            throw new BizException("检验方案不存在");
+            throw new BizException("mes.error.inspectionPlanDoesNotExist");
         }
         if (plan.getInspType() != req.type()) {
-            throw new BizException("检验方案「{0}」不是该检验类型的方案", plan.getName());
+            throw new BizException("mes.error.inspectionPlanNotInspectionType", plan.getName());
         }
         QmsViews.PlanMatch sampling = planService.sampling(plan, req.inspectQty());
         Map<Long, QmsInspectionPlanItem> planItems = planService.items(plan.getId()).stream()
                 .collect(Collectors.toMap(QmsInspectionPlanItem::getId, Function.identity()));
         List<InspectionItemRequest> reqs = req.items() == null ? List.of() : req.items();
         if (reqs.size() != planItems.size() || reqs.stream().anyMatch(r -> !planItems.containsKey(r.planItemId()))) {
-            throw new BizException("请按检验方案逐项填写检验结果");
+            throw new BizException("mes.error.enterResultsEachItemInspectionPlan");
         }
         int sample = sampling.sampleQty().intValue();
         List<QmsInspectionItem> items = new ArrayList<>();
@@ -316,14 +316,14 @@ public class MesInspectionService {
             if (p.getMethod() == ItemMethod.QUANTITATIVE) {
                 List<BigDecimal> values = r.measured() == null ? List.of() : r.measured().stream().filter(Objects::nonNull).toList();
                 if (values.isEmpty()) {
-                    throw new BizException("请填写「{0}」的实测值", p.getName());
+                    throw new BizException("mes.error.enterMeasuredValues", p.getName());
                 }
                 item.setMeasured(values.stream().map(BigDecimal::toPlainString).collect(Collectors.joining(",")));
                 item.setDefectCount((int) values.stream().filter(v -> outOfSpec(v, p)).count());
             } else {
                 int count = r.defectCount() == null ? 0 : r.defectCount();
                 if (count > sample) {
-                    throw new BizException("「{0}」的不合格数不能大于抽样数量 {1}", p.getName(), sample);
+                    throw new BizException("mes.error.defectCountCannotExceedSampleQuantity", p.getName(), sample);
                 }
                 item.setDefectCount(count);
             }

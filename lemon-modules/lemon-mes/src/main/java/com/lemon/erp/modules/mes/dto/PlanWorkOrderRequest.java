@@ -14,8 +14,8 @@ import java.time.LocalDate;
  * @param planEnd 为空时取计划的需求日期
  */
 public record PlanWorkOrderRequest(
-        @DecimalMin(value = "0", inclusive = false, message = "数量必须大于0")
-        @Digits(integer = 14, fraction = 4, message = "数量最多4位小数") BigDecimal qty,
+        @DecimalMin(value = "0", inclusive = false, message = "{mes.valid.quantityMustGreater}")
+        @Digits(integer = 14, fraction = 4, message = "{mes.valid.quantityAllowsMostDecimalPlaces}") BigDecimal qty,
         Long bomId,
         LocalDate planStart,
         LocalDate planEnd,

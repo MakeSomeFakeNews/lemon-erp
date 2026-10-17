@@ -14,11 +14,11 @@ import java.time.LocalDate;
  * @param fee 手续费，由转出账户承担
  */
 public record FundTransferRequest(
-        @NotNull(message = "请选择调拨日期") LocalDate transferDate,
-        @NotNull(message = "请选择转出账户") Long fromAccountId,
-        @NotNull(message = "请选择转入账户") Long toAccountId,
-        @NotNull(message = "请填写金额") @DecimalMin(value = "0", inclusive = false, message = "金额必须大于 0")
-        @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal amount,
-        @DecimalMin(value = "0", message = "手续费不能小于 0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal fee,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+        @NotNull(message = "{fin.valid.selectTransferDate}") LocalDate transferDate,
+        @NotNull(message = "{fin.valid.selectSourceAccount}") Long fromAccountId,
+        @NotNull(message = "{fin.valid.selectDestinationAccount}") Long toAccountId,
+        @NotNull(message = "{fin.valid.enterAmount}") @DecimalMin(value = "0", inclusive = false, message = "{fin.valid.amountMustGreater2}")
+        @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount,
+        @DecimalMin(value = "0", message = "{fin.valid.feeCannotLess}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal fee,
+        @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}") String remark) {
 }

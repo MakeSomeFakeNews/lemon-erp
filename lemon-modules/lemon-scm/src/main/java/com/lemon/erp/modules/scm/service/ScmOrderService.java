@@ -3,7 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.finance.ExchangeRateProvider;
 import com.lemon.erp.framework.finance.PartnerBalanceProvider;
@@ -227,10 +227,10 @@ public class ScmOrderService {
     public void deleteDealerDraft(Long customerId, Long id) {
         ScmOrder order = orderMapper.selectById(id);
         if (order == null || !OrderKind.SALES.name().equals(order.getKind()) || !customerId.equals(order.getPartnerId())) {
-            throw new BizException("订单不存在");
+            throw new BizException("scm.error.orderDoesNotExist");
         }
         if (!OrderStatus.DRAFT.name().equals(order.getStatus())) {
-            throw new BizException("订单已审核，不能撤销，请联系销售");
+            throw new BizException("scm.error.orderHasApprovedCannotCanceledContact");
         }
         itemMapper.delete(Wrappers.<ScmOrderItem>lambdaQuery().eq(ScmOrderItem::getOrderId, id));
         promotionService.deleteUsages(id);
@@ -287,7 +287,7 @@ public class ScmOrderService {
     public void withdraw(OrderKind kind, Long id) {
         ScmOrder order = getAccessible(kind, id);
         if (!OrderStatus.APPROVING.name().equals(order.getStatus())) {
-            throw new BizException("订单不在审批中");
+            throw new BizException("scm.error.orderNotUnderApproval");
         }
         if (order.getFlowInstanceId() != null && flowApi.getStatus(order.getFlowInstanceId()) == FlowStatus.RUNNING) {
             flowApi.cancel(order.getFlowInstanceId(), "撤回订单审批"); // i18n-ignore
@@ -304,7 +304,7 @@ public class ScmOrderService {
     public void unapprove(OrderKind kind, Long id) {
         ScmOrder order = getAccessible(kind, id);
         if (orderMapper.unapprove(id) == 0) {
-            throw new BizException("订单已有入库 / 出库或不是已审核状态，不能反审核");
+            throw new BizException("scm.error.orderHasReceiptsDeliveriesNotApproved");
         }
         // 下游（已生成的生产计划等）可以阻止反审核
         eventPublisher.publishEvent(new OrderStatusChangedEvent(kind.name(), id, order.getOrderNo(), OrderStatus.DRAFT.name()));
@@ -315,7 +315,7 @@ public class ScmOrderService {
     public void close(OrderKind kind, Long id) {
         ScmOrder order = getAccessible(kind, id);
         if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
-            throw new BizException("只能关闭已审核、部分完成的订单");
+            throw new BizException("scm.error.onlyApprovedPartiallyCompletedOrdersClosed");
         }
         int updated = orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
                 .set(ScmOrder::getStatus, OrderStatus.CLOSED.name())
@@ -323,7 +323,7 @@ public class ScmOrderService {
                 .eq(ScmOrder::getId, id)
                 .in(ScmOrder::getStatus, OrderStatus.EXECUTABLE));
         if (updated == 0) {
-            throw new BizException("订单状态已变化，请刷新");
+            throw new BizException("scm.error.orderStatusHasChangedRefresh");
         }
         // 下游联动关闭（未完成的生产计划等）
         eventPublisher.publishEvent(new OrderStatusChangedEvent(kind.name(), id, order.getOrderNo(), OrderStatus.CLOSED.name()));
@@ -369,7 +369,7 @@ public class ScmOrderService {
         Supplier<ScmOrder> loader = () -> orderMapper.selectById(id);
         ScmOrder order = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(ORDER_RULE, loader);
         if (order == null || !kind.name().equals(order.getKind())) {
-            throw new BizException("{0}不存在或没有权限", I18n.t(kind.getLabel()));
+            throw new BizException("scm.error.doesNotExistAccessDenied", Messages.get(kind.getLabelKey()));
         }
         return order;
     }
@@ -395,7 +395,7 @@ public class ScmOrderService {
     private ScmOrder getDraft(OrderKind kind, Long id) {
         ScmOrder order = getAccessible(kind, id);
         if (!OrderStatus.DRAFT.name().equals(order.getStatus())) {
-            throw new BizException("{0} {1} 不是草稿，不能修改、删除或审核", I18n.t(kind.getLabel()), order.getOrderNo());
+            throw new BizException("scm.error.notDraftCannotModifiedDeletedApproved", Messages.get(kind.getLabelKey()), order.getOrderNo());
         }
         return order;
     }
@@ -410,7 +410,7 @@ public class ScmOrderService {
             update.set(ScmOrder::getApproveBy, SecurityUtils.getUserId()).set(ScmOrder::getApproveTime, LocalDateTime.now());
         }
         if (orderMapper.update(update) == 0) {
-            throw new BizException("订单状态已变化，请刷新");
+            throw new BizException("scm.error.orderStatusHasChangedRefresh");
         }
     }
 
@@ -424,7 +424,7 @@ public class ScmOrderService {
         BigDecimal receivable = balanceProvider.receivableBalance(customer.getId());
         BigDecimal used = open.add(receivable).add(order.getTotalAmount().multiply(order.getExchangeRate() == null ? BigDecimal.ONE : order.getExchangeRate()));
         if (used.compareTo(customer.getCreditLimit()) > 0) {
-            throw new BizException("超出客户「{0}」的信用额度：额度 {1}，应收余额 {2}，未完成订单 {3}，本单 {4}",
+            throw new BizException("scm.error.exceedsCreditLimitCustomerLimitReceivable",
                     customer.getName(), plain(customer.getCreditLimit()), plain(receivable), plain(open), plain(order.getTotalAmount()));
         }
     }
@@ -440,7 +440,7 @@ public class ScmOrderService {
         BigDecimal open = orderMapper.selectOpenSalesAmount(customer.getId(), 0L, OPEN_STATUSES);
         BigDecimal receivable = balanceProvider.receivableBalance(customer.getId());
         if (open.add(receivable).compareTo(customer.getCreditLimit()) > 0) {
-            throw new BizException("客户「{0}」超出信用额度，暂停出库：额度 {1}，应收余额 {2}，未完成订单 {3}。请先收款或调整额度",
+            throw new BizException("scm.error.customerHasExceededCreditLimitDeliveries",
                     customer.getName(), plain(customer.getCreditLimit()), plain(receivable), plain(open));
         }
     }
@@ -459,7 +459,7 @@ public class ScmOrderService {
             return;
         }
         if (kind != OrderKind.PURCHASE) {
-            throw new BizException("只有采购订单可以引用采购合同");
+            throw new BizException("scm.error.onlyPurchaseOrdersReferencePurchaseContract");
         }
         contractUsage.apply(req.contractId(), req.partnerId(), req.orderDate(), req.currency(), items, orderId);
     }
@@ -477,25 +477,25 @@ public class ScmOrderService {
         if (kind == OrderKind.PURCHASE) {
             ScmSupplier supplier = supplierService.get(req.partnerId());
             if (!Integer.valueOf(1).equals(supplier.getStatus())) {
-                throw new BizException("供应商「{0}」已停用", supplier.getName());
+                throw new BizException("scm.error.supplierDisabled", supplier.getName());
             }
         } else {
             ScmCustomer customer = customerService.get(req.partnerId());
             if (!Integer.valueOf(1).equals(customer.getStatus())) {
-                throw new BizException("客户「{0}」已停用", customer.getName());
+                throw new BizException("scm.error.customerDisabled", customer.getName());
             }
         }
         if (req.warehouseId() != null) {
             WmsWarehouse warehouse = warehouseService.get(req.warehouseId());
             if (!Integer.valueOf(1).equals(warehouse.getStatus())) {
-                throw new BizException("仓库「{0}」已停用", warehouse.getName());
+                throw new BizException("scm.error.warehouseDisabled", warehouse.getName());
             }
         }
         Map<Long, WmsMaterial> materials = materialService.getEnabled(req.items().stream().map(OrderItemRequest::materialId).toList());
         return req.items().stream().map(r -> {
             WmsMaterial material = materials.get(r.materialId());
             if (material.isSerialManaged() && r.qty().stripTrailingZeros().scale() > 0) {
-                throw new BizException("物料「{0} {1}」启用了序列号管理，数量必须为整数", material.getCode(), material.getName());
+                throw new BizException("scm.error.materialSerialManagedQuantityMustInteger", material.getCode(), material.getName());
             }
             ScmOrderItem item = new ScmOrderItem();
             item.setMaterialId(r.materialId());
@@ -508,7 +508,7 @@ public class ScmOrderService {
             item.setRemark(r.remark());
             if (r.unitName() != null && !r.unitName().isBlank() && !r.unitName().equals(material.getUnit())) {
                 WmsMaterialUnit unit = materialService.units(material.getId()).stream().filter(u -> u.getUnit().equals(r.unitName()))
-                        .findFirst().orElseThrow(() -> new BizException("物料「{0} {1}」没有辅助单位「{2}」", material.getCode(),
+                        .findFirst().orElseThrow(() -> new BizException("scm.error.materialHasNoAlternateUnit", material.getCode(),
                                 material.getName(), r.unitName()));
                 item.setUnitName(unit.getUnit());
                 item.setUnitRatio(unit.getRatio());
@@ -523,7 +523,7 @@ public class ScmOrderService {
         if (!ExchangeRateProvider.BASE.equals(currency)) {
             rate = req.exchangeRate() != null ? req.exchangeRate() : rateProvider.rate(currency, req.orderDate());
             if (rate == null) {
-                throw new BizException("没有维护 {0} 的汇率，请在「币种汇率」中维护或手工填写汇率", currency);
+                throw new BizException("scm.error.noExchangeRateMaintainCurrencyRates", currency);
             }
         }
         order.setCurrency(currency);

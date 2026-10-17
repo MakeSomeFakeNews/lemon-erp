@@ -99,7 +99,7 @@ public class ScmChannelService {
     public ScmOrder order(Long customerId, Long id) {
         ScmOrder order = orderMapper.selectDetail(id);
         if (order == null || !OrderKind.SALES.name().equals(order.getKind()) || !customerId.equals(order.getPartnerId())) {
-            throw new BizException("订单不存在");
+            throw new BizException("scm.error.orderDoesNotExist");
         }
         order.setItems(itemMapper.selectByOrderId(id));
         return order;
@@ -115,7 +115,7 @@ public class ScmChannelService {
             ScmPriceList p = priceListMapper.selectQuote(l.materialId(), dealer.getId(), dealer.getLevel(), l.qty(), today);
             if (p == null) {
                 WmsMaterial m = materials.get(l.materialId());
-                throw new BizException("物料「{0} {1}」不在可订货清单中", m.getCode(), m.getName());
+                throw new BizException("scm.error.materialNotOrderableList", m.getCode(), m.getName());
             }
             return new OrderItemRequest(l.materialId(), l.qty(), p.getPrice(), p.getTaxRate(), null, null);
         }).toList();
@@ -154,7 +154,7 @@ public class ScmChannelService {
     public ScmChannelReport report(Long id, Long customerId) {
         ScmChannelReport r = id == null ? null : reportMapper.selectDetail(id);
         if (r == null || (customerId != null && !customerId.equals(r.getCustomerId()))) {
-            throw new BizException("上报记录不存在");
+            throw new BizException("scm.error.reportRecordDoesNotExist");
         }
         r.setItems(reportMapper.selectItems(id));
         return r;
@@ -166,10 +166,10 @@ public class ScmChannelService {
         requireDealer(customerId);
         int month = period % 100;
         if (month < 1 || month > 12 || period > LocalDate.now().getYear() * 100 + LocalDate.now().getMonthValue()) {
-            throw new BizException("上报期间不正确，不能上报以后的月份");
+            throw new BizException("scm.error.invalidReportingPeriodFutureMonthsCannot");
         }
         if (req.items().stream().map(ChannelRequests.ReportLine::materialId).distinct().count() != req.items().size()) {
-            throw new BizException("同一物料只能上报一行");
+            throw new BizException("scm.error.eachMaterialOnlyReportedOneLine");
         }
         materialService.mapByIds(req.items().stream().map(ChannelRequests.ReportLine::materialId).toList());
         ScmChannelReport r = reportMapper.selectOne(Wrappers.<ScmChannelReport>lambdaQuery()
@@ -201,7 +201,7 @@ public class ScmChannelService {
     private ScmCustomer requireDealer(Long customerId) {
         ScmCustomer c = customerService.get(customerId);
         if (c.getChannel() != SalesChannel.DEALER || !Integer.valueOf(1).equals(c.getStatus())) {
-            throw new BizException("客户「{0}」不是启用的经销商", c.getName());
+            throw new BizException("scm.error.customerNotEnabledDealer", c.getName());
         }
         return c;
     }

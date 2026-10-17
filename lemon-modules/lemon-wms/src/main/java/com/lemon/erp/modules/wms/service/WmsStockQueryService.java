@@ -122,10 +122,10 @@ public class WmsStockQueryService {
         LocalDate end = query.endDate() == null ? LocalDate.now() : query.endDate();
         LocalDate begin = query.beginDate() == null ? end.withDayOfMonth(1) : query.beginDate();
         if (end.isBefore(begin)) {
-            throw new BizException("结束日期不能早于开始日期");
+            throw new BizException("wms.error.endDateCannotEarlierStartDate");
         }
         if (begin.plusYears(1).isBefore(end)) {
-            throw new BizException("日期范围不能超过一年");
+            throw new BizException("wms.error.dateRangeCannotExceedOneYear");
         }
         Page<InOutRow> page = Page.of(current, size);
         inOutMapper.selectPage(page, new InOutQuery(begin, end, query.warehouseId(), query.category(), query.keyword()));
@@ -141,7 +141,7 @@ public class WmsStockQueryService {
     public BatchView batch(Long id) {
         BatchView batch = batchMapper.selectViewById(id);
         if (batch == null) {
-            throw new BizException("批次不存在");
+            throw new BizException("wms.error.batchDoesNotExist");
         }
         return batch;
     }
@@ -155,7 +155,7 @@ public class WmsStockQueryService {
     public SerialView serial(Long id) {
         SerialView serial = serialMapper.selectViewById(id);
         if (serial == null) {
-            throw new BizException("序列号不存在");
+            throw new BizException("wms.error.serialNoDoesNotExist");
         }
         return serial;
     }

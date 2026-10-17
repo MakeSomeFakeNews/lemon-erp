@@ -14,11 +14,11 @@ import java.math.BigDecimal;
  * @param period 考核期间，如 2026-Q3、2026-09
  */
 public record SupplierEvalRequest(
-        @NotNull(message = "请选择供应商") Long supplierId,
-        @NotBlank(message = "请填写考核期间") @Size(max = 16, message = "考核期间不能超过16个字符") String period,
-        @NotNull(message = "请填写质量得分") @DecimalMin("0") @DecimalMax("100") BigDecimal qualityScore,
-        @NotNull(message = "请填写交期得分") @DecimalMin("0") @DecimalMax("100") BigDecimal deliveryScore,
-        @NotNull(message = "请填写价格得分") @DecimalMin("0") @DecimalMax("100") BigDecimal priceScore,
-        @NotNull(message = "请填写服务得分") @DecimalMin("0") @DecimalMax("100") BigDecimal serviceScore,
-        @Size(max = 255, message = "评语不能超过255个字符") String remark) {
+        @NotNull(message = "{scm.valid.selectSupplier}") Long supplierId,
+        @NotBlank(message = "{scm.valid.enterEvaluationPeriod}") @Size(max = 16, message = "{scm.valid.evaluationPeriodCannotExceedCharacters}") String period,
+        @NotNull(message = "{scm.valid.enterQualityScore}") @DecimalMin("0") @DecimalMax("100") BigDecimal qualityScore,
+        @NotNull(message = "{scm.valid.enterDeliveryScore}") @DecimalMin("0") @DecimalMax("100") BigDecimal deliveryScore,
+        @NotNull(message = "{scm.valid.enterPriceScore}") @DecimalMin("0") @DecimalMax("100") BigDecimal priceScore,
+        @NotNull(message = "{scm.valid.enterServiceScore}") @DecimalMin("0") @DecimalMax("100") BigDecimal serviceScore,
+        @Size(max = 255, message = "{scm.valid.commentCannotExceedCharacters}") String remark) {
 }

@@ -46,11 +46,11 @@ public class SysTenantLookup {
             return TenantContext.PLATFORM_TENANT_ID;
         }
         if (!StringUtils.hasText(name)) {
-            throw new BizException("请输入租户名称");
+            throw new BizException("system.error.enterTenantName");
         }
         SysTenant tenant = tenantMapper.selectOne(Wrappers.<SysTenant>lambdaQuery().eq(SysTenant::getName, name.trim()));
         if (tenant == null) {
-            throw new BizException("租户不存在");
+            throw new BizException("system.error.tenantDoesNotExist");
         }
         String inactive = inactiveReason(tenant);
         if (inactive != null) {
@@ -112,7 +112,7 @@ public class SysTenantLookup {
         SysTenant tenant = tenantMapper.selectById(tenantId);
         if (tenant != null && tenant.getAccountLimit() != null
                 && userMapper.selectCount(Wrappers.emptyWrapper()) >= tenant.getAccountLimit()) {
-            throw new BizException("账号数量已达到租户上限（{0} 个），请联系平台扩容", tenant.getAccountLimit());
+            throw new BizException("system.error.tenantHasReachedAccountLimitContact", tenant.getAccountLimit());
         }
     }
 
@@ -124,12 +124,13 @@ public class SysTenantLookup {
     }
 
 
+    /** 租户不可用的原因（消息键），可用时返回 null */
     static String inactiveReason(SysTenant tenant) {
         if (!Integer.valueOf(1).equals(tenant.getStatus())) {
-            return "租户已停用";
+            return "system.error.tenantDisabled";
         }
         if (tenant.getExpireTime() != null && !tenant.getExpireTime().isAfter(LocalDateTime.now())) {
-            return "租户已过期，请联系平台续费";
+            return "system.error.tenantExpiredContactPlatformRenew";
         }
         return null;
     }

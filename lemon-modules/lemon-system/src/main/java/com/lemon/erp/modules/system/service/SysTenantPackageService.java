@@ -84,7 +84,7 @@ public class SysTenantPackageService extends ServiceImpl<SysTenantPackageMapper,
     public void delete(List<Long> ids) {
         for (Long id : ids) {
             if (tenantService.countByPackage(id) > 0) {
-                throw new BizException("套餐「{0}」正在被租户使用，不能删除", getExisting(id).getName());
+                throw new BizException("system.error.planUsedTenantsCannotDeleted", getExisting(id).getName());
             }
         }
         removeByIds(ids);
@@ -99,11 +99,11 @@ public class SysTenantPackageService extends ServiceImpl<SysTenantPackageMapper,
     private List<Long> checkMenus(List<Long> menuIds) {
         List<Long> distinct = menuIds == null ? List.of() : menuIds.stream().filter(Objects::nonNull).distinct().toList();
         if (distinct.isEmpty()) {
-            throw new BizException("请选择套餐包含的菜单");
+            throw new BizException("system.error.selectMenusIncludedPlan");
         }
         Set<Long> assignable = assignableMenus().stream().map(SysMenu::getId).collect(Collectors.toSet());
         if (!assignable.containsAll(distinct)) {
-            throw new BizException("菜单不存在或是平台专属功能，不能加入套餐");
+            throw new BizException("system.error.menuDoesNotExistPlatformOnly");
         }
         return distinct;
     }
@@ -116,14 +116,14 @@ public class SysTenantPackageService extends ServiceImpl<SysTenantPackageMapper,
     private void checkNameUnique(SysTenantPackage pkg) {
         SysTenantPackage exist = getOne(Wrappers.<SysTenantPackage>lambdaQuery().eq(SysTenantPackage::getName, pkg.getName()));
         if (exist != null && !Objects.equals(exist.getId(), pkg.getId())) {
-            throw new BizException("套餐名称已存在");
+            throw new BizException("system.error.planNameAlreadyExists");
         }
     }
 
     private SysTenantPackage getExisting(Long id) {
         SysTenantPackage pkg = getById(id);
         if (pkg == null) {
-            throw new BizException("套餐不存在");
+            throw new BizException("system.error.planDoesNotExist");
         }
         return pkg;
     }

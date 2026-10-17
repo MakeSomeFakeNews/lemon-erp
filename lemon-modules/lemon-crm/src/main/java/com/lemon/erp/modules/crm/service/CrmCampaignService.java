@@ -39,7 +39,7 @@ public class CrmCampaignService {
     public CrmCampaign detail(Long id) {
         CrmCampaign c = campaignMapper.selectDetail(id);
         if (c == null) {
-            throw new BizException("市场活动不存在");
+            throw new BizException("crm.error.campaignDoesNotExist");
         }
         return c;
     }
@@ -71,7 +71,7 @@ public class CrmCampaignService {
         for (Long id : ids) {
             if (leadMapper.exists(Wrappers.<CrmLead>lambdaQuery().eq(CrmLead::getCampaignId, id))
                     || opportunityMapper.exists(Wrappers.<CrmOpportunity>lambdaQuery().eq(CrmOpportunity::getCampaignId, id))) {
-                throw new BizException("活动「{0}」已有线索或商机，不能删除，可以改为已取消", detail(id).getName());
+                throw new BizException("crm.error.campaignAlreadyHasLeadsOpportunitiesCannot", detail(id).getName());
             }
         }
         campaignMapper.deleteByIds(ids);
@@ -79,10 +79,10 @@ public class CrmCampaignService {
 
     private static void check(CrmCampaign c) {
         if (c.getEndDate().isBefore(c.getStartDate())) {
-            throw new BizException("结束日期不能早于开始日期");
+            throw new BizException("crm.error.endDateCannotEarlierStartDate");
         }
         if (c.getStatus() != null && !STATUSES.contains(c.getStatus())) {
-            throw new BizException("活动状态不正确");
+            throw new BizException("crm.error.invalidCampaignStatus");
         }
         if (c.getBudget() == null) c.setBudget(BigDecimal.ZERO);
         if (c.getActualCost() == null) c.setActualCost(BigDecimal.ZERO);

@@ -16,11 +16,11 @@ import java.util.List;
  * @param auxItems  辅助核算项目，可多选；科目已使用时也可以修改（只影响之后录入的凭证）
  */
 public record AccountRequest(
-        @NotBlank(message = "请填写科目编码") @Pattern(regexp = "^\\d{4,20}$", message = "科目编码为 4-20 位数字") String code,
-        @NotBlank(message = "请填写科目名称") @Size(max = 64, message = "科目名称不能超过64个字符") String name,
+        @NotBlank(message = "{fin.valid.enterAccountCode}") @Pattern(regexp = "^\\d{4,20}$", message = "{fin.valid.accountCodeMustDigits}") String code,
+        @NotBlank(message = "{fin.valid.enterAccountName}") @Size(max = 64, message = "{fin.valid.accountNameCannotExceedCharacters}") String name,
         Long parentId,
         String category,
         String direction,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark,
+        @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}") String remark,
         List<AuxItem> auxItems) {
 }

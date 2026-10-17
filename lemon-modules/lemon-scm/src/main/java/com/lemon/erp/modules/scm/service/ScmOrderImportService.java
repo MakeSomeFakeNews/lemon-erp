@@ -2,7 +2,7 @@ package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.excel.ImportRequest;
 import com.lemon.erp.framework.excel.ImportResult;
 import com.lemon.erp.framework.excel.ImportRow;
@@ -99,7 +99,7 @@ public class ScmOrderImportService {
                         createOrder(g.getKey(), g.getValue(), customers, materials);
                         orders[0]++;
                     } catch (BizException e) {
-                        errors.add(new ImportResult.RowError(g.getValue().get(0).rowNum(), I18n.t("外部单号 {0}：{1}", g.getKey(), e.getLocalizedMessage())));
+                        errors.add(new ImportResult.RowError(g.getValue().get(0).rowNum(), Messages.get("scm.text.externalOrderNo", g.getKey(), e.getLocalizedMessage())));
                     }
                 }
                 if (!errors.isEmpty()) {
@@ -117,25 +117,25 @@ public class ScmOrderImportService {
         ChannelRequests.ImportRow first = rows.get(0).data();
         String customerCode = first.customerCode().trim();
         if (rows.stream().anyMatch(r -> !r.data().customerCode().trim().equals(customerCode) || !r.data().orderDate().equals(first.orderDate()))) {
-            throw new BizException("同一外部单号的客户、下单日期须一致");
+            throw new BizException("scm.error.ordersSameExternalOrderNoMust");
         }
         ScmCustomer customer = customers.get(customerCode);
         if (customer == null) {
-            throw new BizException("客户编码「{0}」不存在", customerCode);
+            throw new BizException("scm.error.customerCodeDoesNotExist", customerCode);
         }
         List<OrderItemRequest> items = new ArrayList<>();
         for (ImportRow<ChannelRequests.ImportRow> r : rows) {
             ChannelRequests.ImportRow d = r.data();
             WmsMaterial m = materials.get(d.materialCode().trim());
             if (m == null) {
-                throw new BizException("物料编码「{0}」不存在", d.materialCode());
+                throw new BizException("scm.error.materialCodeDoesNotExist", d.materialCode());
             }
             BigDecimal price = d.price();
             BigDecimal taxRate = DEFAULT_TAX_RATE;
             if (price == null) {
                 ScmPriceList p = priceListMapper.selectQuote(m.getId(), customer.getId(), customer.getLevel(), d.qty(), d.orderDate());
                 if (p == null) {
-                    throw new BizException("物料「{0}」没有价目表价格，请填写单价", m.getCode());
+                    throw new BizException("scm.error.materialHasNoPriceListPrice2", m.getCode());
                 }
                 price = p.getPrice();
                 taxRate = p.getTaxRate();

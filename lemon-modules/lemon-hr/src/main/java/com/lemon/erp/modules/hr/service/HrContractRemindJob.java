@@ -27,7 +27,7 @@ public class HrContractRemindJob implements JobHandler {
 
     @Override
     public String name() {
-        return "劳动合同到期提醒";  // i18n-ignore 定时任务名称，任务管理处翻译
+        return "hr.label.employmentContractExpiryReminder";
     }
 
     @Override

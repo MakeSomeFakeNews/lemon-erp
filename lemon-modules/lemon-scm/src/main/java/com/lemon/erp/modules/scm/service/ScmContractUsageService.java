@@ -41,13 +41,13 @@ public class ScmContractUsageService {
     public void apply(Long contractId, Long supplierId, LocalDate orderDate, String currency, List<ScmOrderItem> items, Long orderId) {
         ScmPurchaseContract contract = check(contractId, supplierId, orderDate);
         if (currency != null && !ExchangeRateProvider.BASE.equals(currency)) {
-            throw new BizException("引用采购合同的订单只能使用本位币");
+            throw new BizException("scm.error.ordersReferencingPurchaseContractOnlyUse");
         }
         Map<Long, ScmPurchaseContractItem> contractItems = contractItems(contractId);
         for (ScmOrderItem item : items) {
             ScmPurchaseContractItem ci = contractItems.get(item.getMaterialId());
             if (ci == null) {
-                throw new BizException("物料不在采购合同「{0}」中", contract.getContractNo());
+                throw new BizException("scm.error.materialNotPurchaseContract", contract.getContractNo());
             }
             item.setPrice(ci.getPrice());
             item.setTaxRate(ci.getTaxRate());
@@ -66,16 +66,16 @@ public class ScmContractUsageService {
     private ScmPurchaseContract check(Long contractId, Long supplierId, LocalDate orderDate) {
         ScmPurchaseContract contract = contractMapper.selectById(contractId);
         if (contract == null) {
-            throw new BizException("采购合同不存在");
+            throw new BizException("scm.error.purchaseContractDoesNotExist");
         }
         if (contract.getStatus() != ContractStatus.ACTIVE) {
-            throw new BizException("采购合同「{0}」未生效或已关闭", contract.getContractNo());
+            throw new BizException("scm.error.purchaseContractNotEffectiveClosed", contract.getContractNo());
         }
         if (!contract.getSupplierId().equals(supplierId)) {
-            throw new BizException("订单供应商与采购合同「{0}」的供应商不一致", contract.getContractNo());
+            throw new BizException("scm.error.orderSupplierDoesNotMatchSupplier", contract.getContractNo());
         }
         if (orderDate.isBefore(contract.getStartDate()) || orderDate.isAfter(contract.getEndDate())) {
-            throw new BizException("订单日期不在采购合同「{0}」的期限内（{1} ~ {2}）", contract.getContractNo(),
+            throw new BizException("scm.error.orderDateOutsideTermPurchaseContract", contract.getContractNo(),
                     contract.getStartDate(), contract.getEndDate());
         }
         return contract;
@@ -100,7 +100,7 @@ public class ScmContractUsageService {
             SrmViews.ContractUsage u = usage.get(e.getKey());
             BigDecimal used = u == null ? BigDecimal.ZERO : u.orderedQty();
             if (used.add(e.getValue()).compareTo(ci.getQtyLimit()) > 0) {
-                throw new BizException("物料「{0} {1}」超出合同数量上限 {2}（其他订单已下单 {3}）", ci.getMaterialCode(),
+                throw new BizException("scm.error.materialExceedsContractQuantityLimitAlready", ci.getMaterialCode(),
                         ci.getMaterialName(), plain(ci.getQtyLimit()), plain(used));
             }
         }
@@ -108,7 +108,7 @@ public class ScmContractUsageService {
             BigDecimal used = usage.values().stream().map(SrmViews.ContractUsage::orderedAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal amount = items.stream().map(ScmOrderItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
             if (used.add(amount).compareTo(contract.getAmountLimit()) > 0) {
-                throw new BizException("超出采购合同「{0}」的金额上限 {1}（其他订单已下单 {2}）", contract.getContractNo(),
+                throw new BizException("scm.error.exceedsAmountLimitPurchaseContractAlready", contract.getContractNo(),
                         plain(contract.getAmountLimit()), plain(used));
             }
         }

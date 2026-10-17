@@ -57,7 +57,7 @@ public final class AqlSampling {
 
     public static String codeLetter(long lotSize, InspectionLevel level) {
         if (lotSize < 2) {
-            throw new BizException("批量至少为 2");
+            throw new BizException("mes.error.lotSizeMustLeast");
         }
         int band = 0;
         while (lotSize > LOT_UPPER[band]) {
@@ -97,6 +97,6 @@ public final class AqlSampling {
                 return i;
             }
         }
-        throw new BizException("不支持的 AQL：{0}，可选 0.040 ~ 6.5", aql.stripTrailingZeros().toPlainString());
+        throw new BizException("mes.error.unsupportedAqlAvailable", aql.stripTrailingZeros().toPlainString());
     }
 }

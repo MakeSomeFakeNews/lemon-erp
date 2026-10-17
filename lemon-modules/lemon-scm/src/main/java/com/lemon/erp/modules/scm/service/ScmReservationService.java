@@ -49,11 +49,11 @@ public class ScmReservationService {
         for (ReserveRequest.Line l : req.lines()) {
             ScmOrderItem item = items.get(l.orderItemId());
             if (item == null) {
-                throw new BizException("订单明细不属于订单 {0}", order.getOrderNo());
+                throw new BizException("scm.error.orderLineDoesNotBelongOrder", order.getOrderNo());
             }
             BigDecimal max = item.remainingQty().subtract(reserved.getOrDefault(item.getId(), BigDecimal.ZERO));
             if (l.qty().compareTo(max) > 0) {
-                throw new BizException("{0} {1}：预留数量超过未出库且未预留的数量 {2}", item.getMaterialCode(), item.getMaterialName(),
+                throw new BizException("scm.error.reservedQuantityExceedsUndeliveredUnreservedQuantity", item.getMaterialCode(), item.getMaterialName(),
                         max.max(BigDecimal.ZERO).stripTrailingZeros().toPlainString());
             }
             reservationService.reserve(SOURCE_SALES, orderId, item.getId(), order.getOrderNo(), l.warehouseId(), item.getMaterialId(),
@@ -72,7 +72,7 @@ public class ScmReservationService {
         ScmOrder order = executable(orderId);
         Long wh = warehouseId != null ? warehouseId : order.getWarehouseId();
         if (wh == null) {
-            throw new BizException("请选择预留的仓库");
+            throw new BizException("scm.error.selectWarehouseReserve");
         }
         List<ScmOrderItem> items = orderItemMapper.selectByOrderId(orderId);
         Map<Long, BigDecimal> reserved = reservedByItem(orderId);
@@ -121,7 +121,7 @@ public class ScmReservationService {
     private ScmOrder executable(Long orderId) {
         ScmOrder order = orderService.getAccessible(OrderKind.SALES, orderId);
         if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
-            throw new BizException("只有已审核、部分出库的销售订单可以预留库存");
+            throw new BizException("scm.error.onlyApprovedPartiallyDeliveredSalesOrders");
         }
         return order;
     }

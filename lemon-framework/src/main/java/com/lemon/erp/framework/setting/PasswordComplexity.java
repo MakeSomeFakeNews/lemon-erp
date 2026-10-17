@@ -4,9 +4,9 @@ import java.util.regex.Pattern;
 
 /** 密码复杂度 */
 public enum PasswordComplexity implements OptionEnum {
-    LETTER_DIGIT("字母和数字", "同时包含字母和数字", "(?=.*[A-Za-z])(?=.*\\d)"),
-    MIXED_CASE_DIGIT("大小写字母和数字", "同时包含大写字母、小写字母和数字", "(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)"),
-    LETTER_DIGIT_SYMBOL("字母、数字和特殊字符", "同时包含字母、数字和特殊字符", "(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z\\d])");
+    LETTER_DIGIT("framework.enum.PasswordComplexity.letterDigit", "framework.enum.PasswordComplexity.letterDigit.requirement", "(?=.*[A-Za-z])(?=.*\\d)"),
+    MIXED_CASE_DIGIT("framework.enum.PasswordComplexity.mixedCaseDigit", "framework.enum.PasswordComplexity.mixedCaseDigit.requirement", "(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)"),
+    LETTER_DIGIT_SYMBOL("framework.enum.PasswordComplexity.letterDigitSymbol", "framework.enum.PasswordComplexity.letterDigitSymbol.requirement", "(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z\\d])");
 
     private final String label;
     private final String requirement;
@@ -23,7 +23,7 @@ public enum PasswordComplexity implements OptionEnum {
         return label;
     }
 
-    /** 提示文字，如「同时包含字母和数字」 */
+    /** 提示文字的消息键，如「同时包含字母和数字」 */
     public String requirement() {
         return requirement;
     }

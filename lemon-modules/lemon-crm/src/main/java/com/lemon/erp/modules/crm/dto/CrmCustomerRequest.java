@@ -9,15 +9,15 @@ import jakarta.validation.constraints.Size;
  * 新增时负责人为当前用户；填写了联系人时同时建立首要联系人
  */
 public record CrmCustomerRequest(
-        @Pattern(regexp = "^([A-Za-z0-9_-]{1,32})?$", message = "客户编码只能包含字母、数字、下划线和短横线，最多32个字符") String code,
-        @NotBlank(message = "客户名称不能为空") @Size(max = 128, message = "客户名称不能超过128个字符") String name,
+        @Pattern(regexp = "^([A-Za-z0-9_-]{1,32})?$", message = "{crm.valid.customerCodeMayContainOnlyLetters}") String code,
+        @NotBlank(message = "{crm.valid.customerNameRequired}") @Size(max = 128, message = "{crm.valid.customerNameCannotExceedCharacters}") String name,
         String level,
-        @Size(max = 64, message = "联系人不能超过64个字符") String contact,
-        @Size(max = 32, message = "联系电话不能超过32个字符") String phone,
-        @Size(max = 255, message = "地址不能超过255个字符") String address,
+        @Size(max = 64, message = "{crm.valid.contactCannotExceedCharacters}") String contact,
+        @Size(max = 32, message = "{crm.valid.contactPhoneCannotExceedCharacters}") String phone,
+        @Size(max = 255, message = "{crm.valid.addressCannotExceedCharacters}") String address,
         String industry,
         String source,
         String stage,
-        @Size(max = 64, message = "地区不能超过64个字符") String region,
-        @Size(max = 128, message = "网站不能超过128个字符") String website) {
+        @Size(max = 64, message = "{crm.valid.regionCannotExceedCharacters}") String region,
+        @Size(max = 128, message = "{crm.valid.websiteCannotExceedCharacters}") String website) {
 }

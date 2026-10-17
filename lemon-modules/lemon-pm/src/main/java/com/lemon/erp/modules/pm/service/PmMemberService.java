@@ -47,17 +47,17 @@ public class PmMemberService {
     @Transactional
     public void save(Long projectId, Long id, MemberRequest req) {
         if (!ROLES.contains(req.role())) {
-            throw new BizException("项目角色不正确");
+            throw new BizException("pm.error.invalidProjectRole");
         }
         if (userMapper.selectById(req.userId()) == null) {
-            throw new BizException("用户不存在");
+            throw new BizException("pm.error.userNotFound");
         }
         if (req.joinDate() != null && req.leaveDate() != null && req.leaveDate().isBefore(req.joinDate())) {
-            throw new BizException("退出日期不能早于加入日期");
+            throw new BizException("pm.error.leaveDateCannotEarlierJoinDate");
         }
         PmMember exist = find(projectId, req.userId());
         if (exist != null && !exist.getId().equals(id)) {
-            throw new BizException("该用户已是项目成员");
+            throw new BizException("pm.error.userAlreadyProjectMember");
         }
         PmMember m = new PmMember();
         m.setProjectId(projectId);
@@ -74,7 +74,7 @@ public class PmMemberService {
         } else {
             PmMember old = memberMapper.selectById(id);
             if (old == null || !old.getProjectId().equals(projectId)) {
-                throw new BizException("成员不存在");
+                throw new BizException("pm.error.memberNotFound");
             }
             m.setId(id);
             memberMapper.updateById(m);
@@ -92,7 +92,7 @@ public class PmMemberService {
         }
         if (timesheetMapper.exists(Wrappers.<PmTimesheet>lambdaQuery()
                 .eq(PmTimesheet::getProjectId, projectId).eq(PmTimesheet::getUserId, m.getUserId()))) {
-            throw new BizException("该成员已填报工时，不能移除，可以设置退出日期");
+            throw new BizException("pm.error.memberHasTimesheetsCannotRemovedSet");
         }
         memberMapper.deleteById(id);
     }

@@ -8,6 +8,6 @@ import jakarta.validation.constraints.Size;
  *
  * @param userId 转交给谁
  */
-public record TaskTransferRequest(@NotNull(message = "请选择转交人") Long userId,
-                                  @Size(max = 500, message = "转交说明不能超过500个字符") String comment) {
+public record TaskTransferRequest(@NotNull(message = "{workflow.valid.selectTransferee}") Long userId,
+                                  @Size(max = 500, message = "{workflow.valid.transferNoteCannotExceedCharacters}") String comment) {
 }

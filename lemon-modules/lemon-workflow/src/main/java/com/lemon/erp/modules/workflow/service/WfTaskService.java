@@ -110,7 +110,7 @@ public class WfTaskService {
     @Transactional
     public void reject(String taskId, String comment) {
         if (!StringUtils.hasText(comment)) {
-            throw new BizException("请填写拒绝理由");
+            throw new BizException("workflow.error.enterRejectionReason");
         }
         Task task = getMyTask(taskId);
         complete(task, ApprovalAction.REJECT, comment, Map.of(FlowVariables.REJECTED, true));
@@ -121,10 +121,10 @@ public class WfTaskService {
         Task task = getMyTask(taskId);
         Long userId = SecurityUtils.getUserId();
         if (userId.equals(targetUserId)) {
-            throw new BizException("不能转交给自己");
+            throw new BizException("workflow.error.cannotTransferYourself");
         }
         if (identityProvider.listEnabledUserIds(List.of(targetUserId)).isEmpty()) {
-            throw new BizException("转交人不存在或已停用");
+            throw new BizException("workflow.error.transfereeNotFoundDisabled");
         }
         String targetName = identityProvider.getUserNames(List.of(targetUserId)).get(targetUserId);
         String note = "转交给「" + targetName + "」" + (StringUtils.hasText(comment) ? "：" + comment : ""); // i18n-ignore 审批意见存库
@@ -147,13 +147,13 @@ public class WfTaskService {
     private Task getMyTask(String taskId) {
         Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
         if (task == null) {
-            throw new BizException("任务不存在或已处理");
+            throw new BizException("workflow.error.taskNotFoundAlreadyProcessed");
         }
         if (!currentUserId().equals(task.getAssignee())) {
-            throw new BizException("该任务不是您的待办");
+            throw new BizException("workflow.error.taskNotDoList");
         }
         if (task.isSuspended()) {
-            throw new BizException("流程已挂起，暂时不能处理");
+            throw new BizException("workflow.error.processSuspendedCannotProcessedNow");
         }
         return task;
     }

@@ -85,7 +85,7 @@ public class ScmDeliveryService {
     public Long create(DeliveryRequest req) {
         ScmOrder order = orderService.getAccessible(OrderKind.SALES, req.orderId());
         if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
-            throw new BizException("订单 {0} 不是已审核或部分出库状态，不能发货", order.getOrderNo());
+            throw new BizException("scm.error.orderNotApprovedPartiallyDeliveredCannot", order.getOrderNo());
         }
         warehouseService.get(req.warehouseId());
         Map<Long, ScmOrderItem> orderItems = orderItemMapper.selectByOrderId(order.getId()).stream()
@@ -110,11 +110,11 @@ public class ScmDeliveryService {
         for (DeliveryRequest.Item r : req.items()) {
             ScmOrderItem oi = orderItems.get(r.orderItemId());
             if (oi == null) {
-                throw new BizException("订单明细不属于订单 {0}", order.getOrderNo());
+                throw new BizException("scm.error.orderLineDoesNotBelongOrder", order.getOrderNo());
             }
             BigDecimal max = oi.remainingQty().subtract(noticed.getOrDefault(oi.getId(), BigDecimal.ZERO));
             if (r.qty().compareTo(max) > 0) {
-                throw new BizException("{0} {1}：通知数量超过未出库且未通知的数量 {2}", oi.getMaterialCode(), oi.getMaterialName(),
+                throw new BizException("scm.error.noticeQuantityExceedsUndeliveredUnNoticed", oi.getMaterialCode(), oi.getMaterialName(),
                         max.max(BigDecimal.ZERO).stripTrailingZeros().toPlainString());
             }
             noticed.merge(oi.getId(), r.qty(), BigDecimal::add);
@@ -148,7 +148,7 @@ public class ScmDeliveryService {
         for (PickRequest.Line l : req.picks()) {
             ScmDeliveryItem item = items.get(l.deliveryItemId());
             if (item == null) {
-                throw new BizException("拣货明细不属于该发货通知");
+                throw new BizException("scm.error.pickingLineDoesNotBelongDelivery");
             }
             picked.merge(item.getId(), l.qty(), BigDecimal::add);
             picks.add(pick(id, item, l.locationId(), batchOrNone(l.batchNo()), l.qty(), l.serialNos()));
@@ -156,7 +156,7 @@ public class ScmDeliveryService {
         for (ScmDeliveryItem item : items.values()) {
             if (picked.getOrDefault(item.getId(), BigDecimal.ZERO).compareTo(item.getQty()) != 0) {
                 ScmDeliveryItem view = deliveryMapper.selectItems(id).stream().filter(i -> i.getId().equals(item.getId())).findFirst().orElse(item);
-                throw new BizException("{0} {1}：拣货数量 {2} 与通知数量 {3} 不一致", view.getMaterialCode(), view.getMaterialName(),
+                throw new BizException("scm.error.pickedQuantityDoesNotMatchNotice", view.getMaterialCode(), view.getMaterialName(),
                         plain(picked.getOrDefault(item.getId(), BigDecimal.ZERO)), plain(item.getQty()));
             }
         }
@@ -237,7 +237,7 @@ public class ScmDeliveryService {
     private ScmDelivery getStatus(Long id, DeliveryStatus... statuses) {
         ScmDelivery d = getAccessible(id);
         if (!List.of(statuses).contains(d.getStatus())) {
-            throw new BizException("发货通知状态已变化，请刷新");
+            throw new BizException("scm.error.deliveryNoticeStatusHasChangedRefresh");
         }
         return d;
     }
@@ -246,7 +246,7 @@ public class ScmDeliveryService {
         Supplier<ScmDelivery> loader = () -> deliveryMapper.selectById(id);
         ScmDelivery d = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(RULE, loader);
         if (d == null) {
-            throw new BizException("发货通知不存在或没有权限");
+            throw new BizException("scm.error.deliveryNoticeDoesNotExistAccess");
         }
         return d;
     }

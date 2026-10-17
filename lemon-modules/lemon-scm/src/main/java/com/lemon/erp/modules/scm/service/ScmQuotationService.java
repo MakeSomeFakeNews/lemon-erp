@@ -162,10 +162,10 @@ public class ScmQuotationService {
     public Long toOrder(Long id, Long warehouseId, LocalDate deliveryDate) {
         ScmQuotation q = getAccessible(id);
         if (!"APPROVED".equals(q.getStatus())) {
-            throw new BizException("报价单批准后才能转为销售订单");
+            throw new BizException("scm.error.quotationMustApprovedBeforeConvertingSales");
         }
         if (q.getValidTo() != null && q.getValidTo().isBefore(LocalDate.now())) {
-            throw new BizException("报价已过有效期，请重新报价");
+            throw new BizException("scm.error.quotationHasExpiredQuoteAgain");
         }
         List<OrderItemRequest> lines = itemMapper.selectList(Wrappers.<ScmQuotationItem>lambdaQuery()
                         .eq(ScmQuotationItem::getQuotationId, id).orderByAsc(ScmQuotationItem::getId)).stream()
@@ -176,7 +176,7 @@ public class ScmQuotationService {
         int updated = quotationMapper.update(Wrappers.<ScmQuotation>lambdaUpdate().set(ScmQuotation::getStatus, "ORDERED")
                 .set(ScmQuotation::getOrderId, orderId).eq(ScmQuotation::getId, id).eq(ScmQuotation::getStatus, "APPROVED"));
         if (updated == 0) {
-            throw new BizException("报价单状态已变化，请刷新");
+            throw new BizException("scm.error.quotationStatusHasChangedRefresh");
         }
         return orderId;
     }
@@ -186,7 +186,7 @@ public class ScmQuotationService {
     public void lose(Long id, String reason) {
         ScmQuotation q = getAccessible(id);
         if (!"APPROVED".equals(q.getStatus()) && !"DRAFT".equals(q.getStatus())) {
-            throw new BizException("只能将草稿、已批准的报价单标记为失效");
+            throw new BizException("scm.error.onlyDraftApprovedQuotationsMarkedExpired");
         }
         quotationMapper.update(Wrappers.<ScmQuotation>lambdaUpdate().set(ScmQuotation::getStatus, "LOST")
                 .set(ScmQuotation::getLostReason, reason).eq(ScmQuotation::getId, id).eq(ScmQuotation::getStatus, q.getStatus()));
@@ -205,7 +205,7 @@ public class ScmQuotationService {
     private void fill(ScmQuotation q, QuotationRequest req) {
         customerService.get(req.customerId());
         if (req.validTo() != null && req.validTo().isBefore(req.quoteDate())) {
-            throw new BizException("有效期不能早于报价日期");
+            throw new BizException("scm.error.validUntilDateCannotEarlierQuotation");
         }
         q.setCustomerId(req.customerId());
         q.setOpportunityId(req.opportunityId());
@@ -257,14 +257,14 @@ public class ScmQuotationService {
                 .set(ScmQuotation::getUpdateTime, LocalDateTime.now())
                 .eq(ScmQuotation::getId, id).eq(ScmQuotation::getStatus, from));
         if (updated == 0) {
-            throw new BizException("报价单状态已变化，请刷新");
+            throw new BizException("scm.error.quotationStatusHasChangedRefresh");
         }
     }
 
     private ScmQuotation getDraft(Long id) {
         ScmQuotation q = getAccessible(id);
         if (!"DRAFT".equals(q.getStatus())) {
-            throw new BizException("只能修改、删除、提交草稿状态的报价单");
+            throw new BizException("scm.error.onlyDraftQuotationsModifiedDeletedSubmitted");
         }
         return q;
     }
@@ -273,7 +273,7 @@ public class ScmQuotationService {
         Supplier<ScmQuotation> loader = () -> quotationMapper.selectById(id);
         ScmQuotation q = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(RULE, loader);
         if (q == null) {
-            throw new BizException("报价单不存在或没有权限");
+            throw new BizException("scm.error.quotationDoesNotExistAccessDenied");
         }
         return q;
     }

@@ -30,15 +30,15 @@ public class ScmRecordTypes implements RecordTypeProvider {
     @Override
     public List<RecordType> recordTypes() {
         return List.of(
-                new RecordType("scm_purchase", "采购订单", "scm:purchase:list", "scm:purchase:edit",
+                new RecordType("scm_purchase", "scm.label.purchaseOrder", "scm:purchase:list", "scm:purchase:edit",
                         ScmConstants.ORDER_RULE, id -> order(id, "PURCHASE")),
-                new RecordType("scm_sales", "销售订单", "scm:sales:list", "scm:sales:edit",
+                new RecordType("scm_sales", "scm.label.salesOrder", "scm:sales:list", "scm:sales:edit",
                         ScmConstants.ORDER_RULE, id -> order(id, "SALES")),
-                new RecordType("scm_customer", "客户", "scm:customer:list", "scm:customer:edit", null, customerMapper::selectById),
-                new RecordType("scm_supplier", "供应商", "scm:supplier:list", "scm:supplier:edit", null, supplierMapper::selectById),
-                new RecordType("scm_contract", "采购合同", "scm:contract:list", "scm:contract:edit",
+                new RecordType("scm_customer", "scm.label.customer", "scm:customer:list", "scm:customer:edit", null, customerMapper::selectById),
+                new RecordType("scm_supplier", "scm.label.supplier", "scm:supplier:list", "scm:supplier:edit", null, supplierMapper::selectById),
+                new RecordType("scm_contract", "scm.label.purchaseContract", "scm:contract:list", "scm:contract:edit",
                         ScmConstants.CONTRACT_RULE, contractMapper::selectById),
-                new RecordType("scm_tender", "招标", "scm:tender:list", "scm:tender:edit", ScmConstants.TENDER_RULE, tenderMapper::selectById));
+                new RecordType("scm_tender", "scm.label.tender", "scm:tender:list", "scm:tender:edit", ScmConstants.TENDER_RULE, tenderMapper::selectById));
     }
 
     private ScmOrder order(long id, String kind) {

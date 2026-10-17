@@ -3,7 +3,7 @@ package com.lemon.erp.modules.wms.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.ref.RefType;
 import com.lemon.erp.framework.ref.ReferenceGuard;
@@ -50,7 +50,7 @@ public class WmsWarehouseService {
     public WmsWarehouse get(Long id) {
         WmsWarehouse warehouse = id == null ? null : warehouseMapper.selectById(id);
         if (warehouse == null) {
-            throw new BizException("仓库不存在");
+            throw new BizException("wms.error.warehouseDoesNotExist");
         }
         return warehouse;
     }
@@ -106,9 +106,9 @@ public class WmsWarehouseService {
                     .and(w -> w.eq(WmsStockDoc::getWarehouseId, id).or().eq(WmsStockDoc::getToWarehouseId, id)))
                     || checkMapper.exists(Wrappers.<WmsCheck>lambdaQuery().eq(WmsCheck::getWarehouseId, id));
             if (used) {
-                throw new BizException("仓库「{0}」已有库存或单据，不能删除，可以停用", warehouse.getName());
+                throw new BizException("wms.error.warehouseHasStockDocumentsCannotDeleted", warehouse.getName());
             }
-            referenceGuard.checkDeletable(RefType.WAREHOUSE, id, I18n.t("仓库「{0}」", warehouse.getName()));
+            referenceGuard.checkDeletable(RefType.WAREHOUSE, id, Messages.get("wms.text.warehouse", warehouse.getName()));
         }
         locationMapper.delete(Wrappers.<WmsLocation>lambdaQuery().in(WmsLocation::getWarehouseId, ids));
         warehouseMapper.deleteByIds(ids);
@@ -117,7 +117,7 @@ public class WmsWarehouseService {
     private void checkCodeUnique(String code, Long id) {
         WmsWarehouse exist = warehouseMapper.selectOne(Wrappers.<WmsWarehouse>lambdaQuery().eq(WmsWarehouse::getCode, code));
         if (exist != null && !Objects.equals(exist.getId(), id)) {
-            throw new BizException("仓库编码已存在");
+            throw new BizException("wms.error.warehouseCodeAlreadyExists");
         }
     }
 
@@ -128,7 +128,7 @@ public class WmsWarehouseService {
             return "NORMAL";
         }
         if (!TYPES.contains(type)) {
-            throw new BizException("仓库类型不正确：{0}", type);
+            throw new BizException("wms.error.invalidWarehouseType", type);
         }
         return type;
     }
@@ -138,9 +138,9 @@ public class WmsWarehouseService {
         if (w.getType().startsWith("CONSIGN")) {
             if (w.getPartnerId() == null) {
                 if ("CONSIGN_OUT".equals(w.getType())) {
-                    throw new BizException("客户寄售仓请选择客户");
+                    throw new BizException("wms.error.selectCustomerCustomerConsignmentWarehouse");
                 }
-                throw new BizException("供应商寄售仓请选择供应商");
+                throw new BizException("wms.error.selectSupplierSupplierConsignmentWarehouse");
             }
         } else {
             w.setPartnerId(null);

@@ -24,13 +24,13 @@ public class SysUser extends BaseEntity {
 
     private Long deptId;
 
-    @NotBlank(message = "用户名不能为空")
-    @Size(max = 64, message = "用户名不能超过64个字符")
+    @NotBlank(message = "{system.valid.usernameRequired}")
+    @Size(max = 64, message = "{system.valid.usernameCannotExceedCharacters}")
     private String username;
 
     /** 只允许写入，不会返回给前端；仅新增时必填，修改用户时忽略 */
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    @NotBlank(message = "密码不能为空", groups = Create.class)
+    @NotBlank(message = "{system.valid.passwordRequired}", groups = Create.class)
     private String password;
 
     /** 最近一次设置密码的时间（密码有效期） */
@@ -44,7 +44,7 @@ public class SysUser extends BaseEntity {
 
     private String nickname;
 
-    @Email(message = "邮箱格式不正确")
+    @Email(message = "{system.valid.invalidEmailFormat}")
     private String email;
 
     private String phone;
@@ -61,11 +61,11 @@ public class SysUser extends BaseEntity {
     private Long customerId;
 
     /** 1 启用 0 停用 */
-    @Min(value = 0, message = "状态只能是 0 或 1")
-    @Max(value = 1, message = "状态只能是 0 或 1")
+    @Min(value = 0, message = "{system.valid.statusMust}")
+    @Max(value = 1, message = "{system.valid.statusMust}")
     private Integer status;
 
-    @Size(max = 255, message = "备注不能超过255个字符")
+    @Size(max = 255, message = "{system.valid.remarkCannotExceedCharacters}")
     private String remark;
 
     @TableField(exist = false)

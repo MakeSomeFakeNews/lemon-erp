@@ -5,20 +5,20 @@
 
     <select id="findCustomer" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM pm_project WHERE customer_id = #{id}) THEN '项目'
+            WHEN EXISTS (SELECT 1 FROM pm_project WHERE customer_id = #{id}) THEN 'pm.label.project'
         END
     </select>
 
     <select id="findUser" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM pm_project WHERE manager_id = #{id}) THEN '项目经理'
-            WHEN EXISTS (SELECT 1 FROM pm_member WHERE user_id = #{id}) THEN '项目成员'
+            WHEN EXISTS (SELECT 1 FROM pm_project WHERE manager_id = #{id}) THEN 'pm.label.projectManager'
+            WHEN EXISTS (SELECT 1 FROM pm_member WHERE user_id = #{id}) THEN 'pm.label.projectMember'
         END
     </select>
 
     <select id="findDept" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM pm_project WHERE dept_id = #{id}) THEN '项目'
+            WHEN EXISTS (SELECT 1 FROM pm_project WHERE dept_id = #{id}) THEN 'pm.label.project'
         END
     </select>
 

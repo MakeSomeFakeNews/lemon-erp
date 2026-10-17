@@ -13,14 +13,15 @@ import java.util.Locale;
 @AllArgsConstructor
 public enum OrderKind {
 
-    PURCHASE("CG", "采购订单", "供应商", "scm_purchase_order"),
-    SALES("XS", "销售订单", "客户", "scm_sales_order");
+    PURCHASE("CG", "scm.label.purchaseOrder", "scm.label.supplier", "scm_purchase_order"),
+    SALES("XS", "scm.label.salesOrder", "scm.label.customer", "scm_sales_order");
 
     /** 单据号前缀 */
     private final String prefix;
-    private final String label;
-    /** 往来单位的名称：供应商 / 客户 */
-    private final String partnerLabel;
+    /** 名称的消息键 */
+    private final String labelKey;
+    /** 往来单位名称的消息键：供应商 / 客户 */
+    private final String partnerLabelKey;
     /** 审批流程标识：在流程中心发布同名流程后，订单审核改为走审批流程 */
     private final String processKey;
 
@@ -35,7 +36,7 @@ public enum OrderKind {
                 return kind;
             }
         }
-        throw new BizException("不支持的订单类型：{0}", path);
+        throw new BizException("scm.error.unsupportedOrderType", path);
     }
 
     public static OrderKind ofProcessKey(String processKey) {

@@ -1,6 +1,6 @@
 package com.lemon.erp.modules.bi.service;
 
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -49,14 +49,14 @@ public class BiDecisionService {
     /** 驾驶舱、决策分析汇总全公司数据（不按部门拆分），只对有「全部数据」权限的用户开放 */
     static void requireAllData() {
         if (!SecurityUtils.getDataScope().all()) {
-            throw new BizException("经营驾驶舱、决策分析汇总全公司数据，需要「全部数据」的数据权限");
+            throw new BizException("bi.error.cockpitDecisionAnalysisAggregateCompanyWide");
         }
     }
 
     public Map<String, Object> forecast(String category, int months) {
         requireAllData();
         if (months < 1 || months > 12) {
-            throw new BizException("预测月数为 1-12");
+            throw new BizException("bi.error.forecastMonthsMust");
         }
         YearMonth thisMonth = YearMonth.now();
         YearMonth start = thisMonth.minusMonths(23);
@@ -112,7 +112,7 @@ public class BiDecisionService {
         result.put("forecast", forecast);
         result.put("slope", BigDecimal.valueOf(b).setScale(2, RoundingMode.HALF_UP));
         result.put("seasonal", seasonal);
-        result.put("method", seasonal ? I18n.t("线性趋势 × 季节指数") : I18n.t("线性趋势（最近 {0} 个月）", n));
+        result.put("method", seasonal ? Messages.get("bi.text.linearTrendSeasonalIndex") : Messages.get("bi.text.linearTrendLastMonths", n));
         return result;
     }
 
@@ -155,7 +155,7 @@ public class BiDecisionService {
         List<Map<String, Object>> summary = new ArrayList<>();
         counts.forEach((c, cnt) -> summary.add(Map.of("class", c, "count", cnt[0], "value", values.get(c),
                 "share", total.signum() == 0 ? BigDecimal.ZERO : values.get(c).multiply(HUNDRED).divide(total, 1, RoundingMode.HALF_UP))));
-        return Map.of("rows", rows, "summary", summary, "basis", useCost ? I18n.t("销售成本") : I18n.t("销售额"), "total", total);
+        return Map.of("rows", rows, "summary", summary, "basis", useCost ? Messages.get("bi.text.costSales") : Messages.get("bi.text.sales"), "total", total);
     }
 
     /** 呆滞物料：有库存但超过 days 天没有出库 */
@@ -177,7 +177,7 @@ public class BiDecisionService {
     public List<Map<String, Object>> metrics() {
         List<Map<String, Object>> list = new ArrayList<>();
         for (BiAlertMetric m : BiAlertMetric.values()) {
-            list.add(Map.of("key", m.name(), "label", I18n.t(m.getLabel()), "unit", I18n.t(m.getUnit())));
+            list.add(Map.of("key", m.name(), "label", Messages.get(m.getLabel()), "unit", Messages.get(m.getUnit())));
         }
         return list;
     }
@@ -188,7 +188,7 @@ public class BiDecisionService {
 
     public void saveRule(Long id, BiAlertRule rule) {
         if (BiAlertMetric.of(rule.getMetric()) == null) {
-            throw new BizException("监控指标不正确");
+            throw new BizException("bi.error.invalidMetric");
         }
         if (rule.getEnabled() == null) rule.setEnabled(1);
         rule.setId(id);
@@ -196,7 +196,7 @@ public class BiDecisionService {
             ruleMapper.insert(rule);
         } else {
             if (ruleMapper.selectById(id) == null) {
-                throw new BizException("预警规则不存在");
+                throw new BizException("bi.error.alertRuleNotFound");
             }
             ruleMapper.updateById(rule);
         }
@@ -235,8 +235,8 @@ public class BiDecisionService {
             m.put("ruleId", rule.getId());
             m.put("name", rule.getName());
             m.put("metric", metric.name());
-            m.put("metricLabel", I18n.t(metric.getLabel()));
-            m.put("unit", I18n.t(metric.getUnit()));
+            m.put("metricLabel", Messages.get(metric.getLabel()));
+            m.put("unit", Messages.get(metric.getUnit()));
             m.put("operator", rule.getOperator());
             m.put("threshold", rule.getThreshold());
             m.put("level", rule.getLevel());

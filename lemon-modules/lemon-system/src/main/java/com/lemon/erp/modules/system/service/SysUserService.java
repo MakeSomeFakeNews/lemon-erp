@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.ref.RefType;
 import com.lemon.erp.framework.ref.ReferenceGuard;
@@ -86,7 +86,7 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         checkDataScope(List.of(id));
         SysUser user = getById(id);
         if (user == null) {
-            throw new BizException("用户不存在");
+            throw new BizException("system.error.userNotFound");
         }
         user.setRoleIds(userRoleMapper.selectList(Wrappers.<SysUserRole>lambdaQuery().eq(SysUserRole::getUserId, id))
                 .stream().map(SysUserRole::getRoleId).toList());
@@ -117,7 +117,7 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         checkUsernameUnique(user);
         SysUser old = getById(user.getId());
         if (old == null) {
-            throw new BizException("用户不存在");
+            throw new BizException("system.error.userNotFound");
         }
         if (user.getDeptId() != null && !Objects.equals(user.getDeptId(), old.getDeptId())) {
             checkDept(user.getDeptId());
@@ -154,15 +154,15 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
     @Transactional
     public void delete(List<Long> ids) {
         if (ids.contains(SUPER_ADMIN_ID)) {
-            throw new BizException("不允许删除超级管理员");
+            throw new BizException("system.error.superAdministratorCannotDeleted");
         }
         if (ids.contains(SecurityUtils.getUserId())) {
-            throw new BizException("不允许删除当前登录用户");
+            throw new BizException("system.error.cannotDeleteCurrentlySignedUser");
         }
         checkOperable(ids);
         // 有业务数据的用户只能停用：删除后单据上的制单人、负责人会失效
         for (SysUser user : listByIds(ids)) {
-            referenceGuard.checkDeletable(RefType.USER, user.getId(), I18n.t("用户「{0}」", user.getUsername()));
+            referenceGuard.checkDeletable(RefType.USER, user.getId(), Messages.get("system.text.user", user.getUsername()));
         }
         removeByIds(ids);
         userRoleMapper.delete(Wrappers.<SysUserRole>lambdaQuery().in(SysUserRole::getUserId, ids));
@@ -201,16 +201,16 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
     public void checkDataScope(Collection<Long> userIds) {
         List<Long> distinct = userIds.stream().filter(Objects::nonNull).distinct().toList();
         if (distinct.isEmpty()) {
-            throw new BizException("请选择用户");
+            throw new BizException("system.valid.selectUsers");
         }
         boolean all = SecurityUtils.getDataScope().all();
         Supplier<Long> counter = () -> count(Wrappers.<SysUser>lambdaQuery().in(SysUser::getId, distinct));
         long count = all ? counter.get() : DataPermissionContext.execute(DATA_RULE, counter);
         if (count < distinct.size()) {
             if (all) {
-                throw new BizException("用户不存在");
+                throw new BizException("system.error.userNotFound");
             }
-            throw new BizException("没有权限访问该用户数据");
+            throw new BizException("system.error.noPermissionAccessUserSData");
         }
     }
 
@@ -222,7 +222,7 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         checkDataScope(userIds);
         if (!SecurityUtils.getLoginUser().isAdmin()
                 && userRoleMapper.countByUserIdsAndRoleCode(userIds, PermissionService.ADMIN_ROLE) > 0) {
-            throw new BizException("不允许操作超级管理员账号");
+            throw new BizException("system.error.superAdministratorAccountCannotModified");
         }
     }
 
@@ -233,7 +233,7 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         }
         if (roleMapper.exists(Wrappers.<SysRole>lambdaQuery()
                 .in(SysRole::getId, roleIds).eq(SysRole::getCode, PermissionService.ADMIN_ROLE))) {
-            throw new BizException("不允许分配超级管理员角色");
+            throw new BizException("system.error.superAdministratorRoleCannotAssigned");
         }
     }
 
@@ -241,12 +241,12 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
     private void checkDept(Long deptId) {
         if (deptId == null) {
             if (!SecurityUtils.getDataScope().all()) {
-                throw new BizException("请选择所属部门");
+                throw new BizException("system.error.selectDepartment");
             }
             return;
         }
         if (deptService.getById(deptId) == null) {
-            throw new BizException("部门不存在");
+            throw new BizException("system.error.departmentDoesNotExist");
         }
         deptService.checkDataScope(deptId);
     }
@@ -263,17 +263,17 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
             return;
         }
         if (id == SUPER_ADMIN_ID) {
-            throw new BizException("不允许停用超级管理员");
+            throw new BizException("system.error.superAdministratorCannotDisabled");
         }
         if (id.equals(SecurityUtils.getUserId())) {
-            throw new BizException("不允许停用当前登录用户");
+            throw new BizException("system.error.cannotDisableCurrentlySignedUser");
         }
     }
 
     private void checkUsernameUnique(SysUser user) {
         SysUser exist = getOne(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getUsername, user.getUsername()));
         if (exist != null && !Objects.equals(exist.getId(), user.getId())) {
-            throw new BizException("用户名已存在");
+            throw new BizException("system.error.usernameAlreadyExists");
         }
     }
 

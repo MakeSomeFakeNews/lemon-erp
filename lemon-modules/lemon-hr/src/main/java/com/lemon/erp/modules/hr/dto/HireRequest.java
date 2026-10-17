@@ -19,13 +19,13 @@ import java.time.LocalDate;
  * @param username      为空且没有关联账号时不开通；填写时开通登录账号（初始密码见配置 lemon.user.initial-password）
  */
 public record HireRequest(
-        @NotBlank(message = "请填写工号")
-        @Pattern(regexp = "^[A-Za-z0-9_-]{1,32}$", message = "工号只能包含字母、数字、下划线和短横线，最多32个字符") String empNo,
-        @NotNull(message = "请选择入职日期") LocalDate entryDate,
+        @NotBlank(message = "{hr.valid.enterEmployeeNo}")
+        @Pattern(regexp = "^[A-Za-z0-9_-]{1,32}$", message = "{hr.valid.employeeNoMayOnlyContainLetters}") String empNo,
+        @NotNull(message = "{hr.valid.selectHireDate}") LocalDate entryDate,
         Long positionId,
         String empType,
         LocalDate regularDate,
-        @DecimalMin(value = "0", message = "基本工资不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal baseSalary,
+        @DecimalMin(value = "0", message = "{hr.valid.baseSalaryCannotLess}") @Digits(integer = 16, fraction = 2, message = "{hr.valid.amountAllowsMostDecimalPlaces}") BigDecimal baseSalary,
         Long userId,
-        @Pattern(regexp = "^[A-Za-z0-9_.-]{2,30}$", message = "登录名为2-30位字母、数字、下划线、点或短横线") String username) {
+        @Pattern(regexp = "^[A-Za-z0-9_.-]{2,30}$", message = "{hr.valid.loginNameMustLettersDigitsUnderscores}") String username) {
 }

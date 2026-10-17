@@ -80,7 +80,7 @@ public class ScmReorderService {
     @Transactional
     public Long toRequisition(List<RequisitionRequest.Item> items) {
         if (items == null || items.isEmpty()) {
-            throw new BizException("请选择要补货的物料");
+            throw new BizException("scm.valid.selectMaterialsReplenish");
         }
         return requisitionService.create(new RequisitionRequest(LocalDate.now(), "补货建议生成", items)); // i18n-ignore
     }

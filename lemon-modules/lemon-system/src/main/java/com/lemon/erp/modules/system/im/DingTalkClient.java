@@ -65,12 +65,12 @@ public class DingTalkClient implements ImClient {
                 Map.of("x-acs-dingtalk-access-token", t.path("accessToken").asString())));
         String unionId = ImHttp.text(me, "unionId");
         if (unionId == null) {
-            throw new BizException("钉钉未返回用户信息，请确认应用已开通「个人手机号信息」等权限");
+            throw new BizException("system.error.dingtalkReturnedNoUserInformationMake");
         }
         JsonNode r = check(http.post(P, oapi("/topapi/user/getbyunionid", config), Map.of(), Map.of("unionid", unionId)));
         String userId = ImHttp.text(r.path("result"), "userid");
         if (userId == null) {
-            throw new BizException("该钉钉账号不是本企业的成员");
+            throw new BizException("system.error.dingtalkAccountNotMemberOrganization");
         }
         return new ImIdentity(userId, ImHttp.text(me, "nick"));
     }

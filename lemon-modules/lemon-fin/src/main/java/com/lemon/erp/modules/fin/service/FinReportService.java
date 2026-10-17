@@ -1,7 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.dto.AccountSum;
 import com.lemon.erp.modules.fin.dto.AuxBalanceRow;
 import com.lemon.erp.modules.fin.dto.BalanceRow;
@@ -83,7 +83,7 @@ public class FinReportService {
     /** 辅助核算余额：按辅助核算项目 + 科目统计本期发生额和期末余额 */
     public List<AuxBalanceRow> auxBalance(AuxItem dimension, int begin, int end, Long accountId) {
         if (dimension == null) {
-            throw new BizException("请选择辅助核算类型");
+            throw new BizException("fin.error.selectAuxiliaryAccountingType");
         }
         return entryMapper.selectAuxBalance(dimension, begin, end, accountId);
     }
@@ -107,7 +107,7 @@ public class FinReportService {
         LedgerRow first = new LedgerRow();
         first.setType("OPEN");
         first.setEntryDate(toYearMonth(begin).atDay(1));
-        first.setSummary(I18n.t("期初余额"));
+        first.setSummary(Messages.get("fin.text.openingBalance"));
         first.setBalance(balance);
         first.setSide(side(balance, debitSide));
         rows.add(first);
@@ -124,7 +124,7 @@ public class FinReportService {
         LedgerRow total = new LedgerRow();
         total.setType("TOTAL");
         total.setEntryDate(toYearMonth(end).atEndOfMonth());
-        total.setSummary(I18n.t("本期合计"));
+        total.setSummary(Messages.get("fin.text.periodTotal"));
         total.setDebit(totalDebit);
         total.setCredit(totalCredit);
         total.setBalance(balance);
@@ -170,9 +170,9 @@ public class FinReportService {
 
     private static String side(BigDecimal balance, boolean debitSide) {
         if (balance.signum() == 0) {
-            return I18n.t("平");
+            return Messages.get("fin.text.bal");
         }
-        return I18n.t((balance.signum() > 0) == debitSide ? "借" : "贷");
+        return Messages.get((balance.signum() > 0) == debitSide ? "fin.label.dr" : "fin.label.cr");
     }
 
     private static Map<Long, AccountSum> toMap(List<AccountSum> list) {
@@ -189,7 +189,7 @@ public class FinReportService {
         toYearMonth(begin);
         toYearMonth(end);
         if (begin > end) {
-            throw new BizException("起始期间不能晚于截止期间");
+            throw new BizException("fin.error.startPeriodCannotLaterEndPeriod");
         }
     }
 }

@@ -19,16 +19,16 @@ import java.util.List;
  * @param tiers 阶梯：销售额达到 minAmount 时返利率为 rate%，取达到的最高一档
  */
 public record RebateRequest(
-        @NotNull(message = "请选择客户") Long customerId,
-        @NotNull(message = "请选择开始日期") LocalDate beginDate,
-        @NotNull(message = "请选择结束日期") LocalDate endDate,
-        @NotNull(message = "请选择兑付方式") RebateSettle settleMode,
-        @NotEmpty(message = "请添加返利阶梯") @Size(max = 20, message = "阶梯不能超过20档") List<@Valid @NotNull Tier> tiers,
-        @Size(max = 255, message = "说明不能超过255个字符") String remark) {
+        @NotNull(message = "{scm.valid.selectCustomer}") Long customerId,
+        @NotNull(message = "{scm.valid.selectStartDate}") LocalDate beginDate,
+        @NotNull(message = "{scm.valid.selectEndDate}") LocalDate endDate,
+        @NotNull(message = "{scm.valid.selectPayoutMethod}") RebateSettle settleMode,
+        @NotEmpty(message = "{scm.valid.addRebateTiers}") @Size(max = 20, message = "{scm.valid.rebateTiersCannotExceed}") List<@Valid @NotNull Tier> tiers,
+        @Size(max = 255, message = "{scm.valid.descriptionCannotExceedCharacters}") String remark) {
 
     public record Tier(
-            @NotNull(message = "请填写销售额") @DecimalMin(value = "0", message = "销售额不能为负数") @Digits(integer = 16, fraction = 2) BigDecimal minAmount,
-            @NotNull(message = "请填写返利率") @DecimalMin(value = "0", inclusive = false, message = "返利率须大于0")
-            @DecimalMax(value = "100", message = "返利率不能超过100") BigDecimal rate) {
+            @NotNull(message = "{scm.valid.enterSalesAmount}") @DecimalMin(value = "0", message = "{scm.valid.salesAmountCannotNegative}") @Digits(integer = 16, fraction = 2) BigDecimal minAmount,
+            @NotNull(message = "{scm.valid.enterRebateRate}") @DecimalMin(value = "0", inclusive = false, message = "{scm.valid.rebateRateMustGreater}")
+            @DecimalMax(value = "100", message = "{scm.valid.rebateRateCannotExceed}") BigDecimal rate) {
     }
 }

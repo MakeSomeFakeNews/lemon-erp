@@ -14,28 +14,28 @@ public class MesFlowBusinesses {
 
     @Bean
     public FlowBusiness supplementFlow() {
-        return FlowBusiness.of("mes_supplement", "补料申请审批",
-                dict("reason", "补料原因", "mes_supplement_reason"),
-                number("totalQty", "补料总数量"),
-                text("woNo", "工单号"));
+        return FlowBusiness.of("mes_supplement", "mes.label.supplementaryIssueApproval",
+                dict("reason", "mes.label.supplementaryIssueReason", "mes_supplement_reason"),
+                number("totalQty", "mes.label.totalSupplementaryQty"),
+                text("woNo", "mes.label.workOrderNo"));
     }
 
     /** 变量与 {@link MesEcnService#submit} 发起时传入的一致 */
     @Bean
     public FlowBusiness ecnFlow() {
-        return FlowBusiness.of(MesEcnService.PROCESS_KEY, "工程变更审批",
-                dict("reason", "变更原因", "mes_ecn_reason"),
-                text("materialCode", "产品编码"),
-                text("ecnNo", "变更单号"));
+        return FlowBusiness.of(MesEcnService.PROCESS_KEY, "mes.label.ecnApproval",
+                dict("reason", "mes.label.changeReason", "mes_ecn_reason"),
+                text("materialCode", "mes.label.productCode"),
+                text("ecnNo", "mes.label.ecnNo"));
     }
 
     /** 变量与 {@link QmsNcrService#review} 发起时传入的一致 */
     @Bean
     public FlowBusiness ncrFlow() {
-        return FlowBusiness.of(QmsNcrService.PROCESS_KEY, "不合格品处置审批",
-                number("qty", "不合格数量"),
-                dict("disposition", "处置方式", "qms_disposition"),
-                dict("responsibility", "责任方", "qms_responsibility"),
-                text("ncrNo", "处理单号"));
+        return FlowBusiness.of(QmsNcrService.PROCESS_KEY, "mes.label.nonconformanceDispositionApproval",
+                number("qty", "mes.label.nonconformingQty"),
+                dict("disposition", "mes.label.disposition", "qms_disposition"),
+                dict("responsibility", "mes.label.responsibility", "qms_responsibility"),
+                text("ncrNo", "mes.label.ncrNo"));
     }
 }

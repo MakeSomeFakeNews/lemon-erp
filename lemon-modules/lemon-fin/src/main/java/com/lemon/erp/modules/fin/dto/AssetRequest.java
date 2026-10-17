@@ -23,23 +23,23 @@ import java.time.LocalDate;
  * @param openingAccumulated 期初累计折旧，仅新增时有效
  */
 public record AssetRequest(
-        @NotBlank(message = "请填写资产编码") @Pattern(regexp = "^[A-Za-z0-9_-]{1,32}$", message = "资产编码只能包含字母、数字、下划线和短横线") String code,
-        @NotBlank(message = "请填写资产名称") @Size(max = 64) String name,
-        @NotBlank(message = "请选择类别") String category,
+        @NotBlank(message = "{fin.valid.enterAssetCode}") @Pattern(regexp = "^[A-Za-z0-9_-]{1,32}$", message = "{fin.valid.assetCodeOnlyContainLettersDigits}") String code,
+        @NotBlank(message = "{fin.valid.enterAssetName}") @Size(max = 64) String name,
+        @NotBlank(message = "{fin.valid.selectCategory}") String category,
         @Size(max = 64) String model,
         Long deptId,
         Long custodianId,
-        @Size(max = 128, message = "存放地点不能超过128个字符") String location,
-        @NotNull(message = "请选择开始使用日期") LocalDate useDate,
-        @NotNull(message = "请填写原值") @DecimalMin(value = "0", inclusive = false, message = "原值必须大于0")
+        @Size(max = 128, message = "{fin.valid.locationCannotExceedCharacters}") String location,
+        @NotNull(message = "{fin.valid.selectServiceDate}") LocalDate useDate,
+        @NotNull(message = "{fin.valid.enterOriginalValue}") @DecimalMin(value = "0", inclusive = false, message = "{fin.valid.originalValueMustGreater}")
         @Digits(integer = 16, fraction = 2) BigDecimal originalValue,
-        @DecimalMin(value = "0", message = "残值率不能小于0") @DecimalMax(value = "100", message = "残值率不能大于100") BigDecimal residualRate,
-        @NotNull(message = "请填写使用年限") @Min(value = 1, message = "使用年限至少1个月") @Max(value = 1200) Integer usefulMonths,
-        @NotNull(message = "请选择折旧费用科目") Long expenseAccountId,
+        @DecimalMin(value = "0", message = "{fin.valid.residualValueRateCannotLess}") @DecimalMax(value = "100", message = "{fin.valid.residualValueRateCannotExceed}") BigDecimal residualRate,
+        @NotNull(message = "{fin.valid.enterUsefulLife}") @Min(value = 1, message = "{fin.valid.usefulLifeMustLeastMonth}") @Max(value = 1200) Integer usefulMonths,
+        @NotNull(message = "{fin.valid.selectDepreciationExpenseAccount}") Long expenseAccountId,
         AssetStatus status,
         @Size(max = 255) String remark,
-        @Min(value = 0, message = "期初已计提月数不能小于0") Integer openingMonths,
-        @DecimalMin(value = "0", message = "期初累计折旧不能小于0") @Digits(integer = 16, fraction = 2) BigDecimal openingAccumulated,
+        @Min(value = 0, message = "{fin.valid.openingDepreciatedMonthsCannotLess}") Integer openingMonths,
+        @DecimalMin(value = "0", message = "{fin.valid.openingAccumulatedDepreciationCannotLess}") @Digits(integer = 16, fraction = 2) BigDecimal openingAccumulated,
         Long supplierId,
-        @DecimalMin(value = "0", message = "进项税额不能小于0") @Digits(integer = 16, fraction = 2) BigDecimal taxAmount) {
+        @DecimalMin(value = "0", message = "{fin.valid.inputVatCannotLess}") @Digits(integer = 16, fraction = 2) BigDecimal taxAmount) {
 }

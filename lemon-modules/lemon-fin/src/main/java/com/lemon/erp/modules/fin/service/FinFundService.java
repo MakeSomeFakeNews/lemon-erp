@@ -4,7 +4,7 @@ import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.FundPlan;
@@ -66,11 +66,11 @@ public class FinFundService {
     @Transactional
     public Long createTransfer(FundTransferRequest req) {
         if (req.fromAccountId().equals(req.toAccountId())) {
-            throw new BizException("转出、转入账户不能相同");
+            throw new BizException("fin.error.sourceTargetAccountsCannotSame");
         }
         accountService.requireCashAccount(req.fromAccountId());
         accountService.requireCashAccount(req.toAccountId());
-        periodGuard.checkOpen(req.transferDate(), "账户调拨");
+        periodGuard.checkOpen(req.transferDate(), "fin.label.fundTransfer");
         BigDecimal fee = req.fee() == null ? BigDecimal.ZERO : req.fee();
         FinFundTransfer t = new FinFundTransfer();
         t.setTransferNo(docNoService.next(TRANSFER_NO));
@@ -99,7 +99,7 @@ public class FinFundService {
     @Transactional
     public void deleteTransfers(List<Long> ids) {
         for (FinFundTransfer t : transferMapper.selectByIds(ids)) {
-            periodGuard.checkOpen(t.getTransferDate(), "账户调拨");
+            periodGuard.checkOpen(t.getTransferDate(), "fin.label.fundTransfer");
             if (t.getVoucherId() != null) {
                 voucherService.deleteOwned(t.getVoucherId());
             }
@@ -128,7 +128,7 @@ public class FinFundService {
         List<FundPlanEntry> entries = planMapper.selectEntries(horizon);
         BigDecimal balance = planMapper.selectCashBalance();
         FundPlan result = new FundPlan(balance, new ArrayList<>());
-        result.periods().add(period(I18n.t("已逾期"), null, today.minusDays(1), entries, balance));
+        result.periods().add(period(Messages.get("fin.text.overdue"), null, today.minusDays(1), entries, balance));
         balance = result.periods().get(0).closing();
         DateTimeFormatter md = DateTimeFormatter.ofPattern("M/d");
         for (LocalDate[] r : ranges) {
@@ -181,7 +181,7 @@ public class FinFundService {
             planMapper.insert(item);
         } else {
             if (planMapper.selectById(item.getId()) == null) {
-                throw new BizException("计划项不存在");
+                throw new BizException("fin.error.planItemNotFound");
             }
             item.setCreateBy(null);
             planMapper.updateById(item);

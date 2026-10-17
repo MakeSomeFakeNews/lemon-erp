@@ -130,17 +130,17 @@ public class FinCostService {
         FinCostRun old = runMapper.selectOne(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getPeriod, period));
         if (old != null) {
             if (OPENING.equals(old.getKind())) {
-                throw new BizException("{0} 是存货期初所在期间，不能核算，请从下一期间开始核算", period);
+                throw new BizException("fin.error.inventoryOpeningPeriodCannotCostedStart", period);
             }
             discard(old);
         }
         if (runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().gt(FinCostRun::getPeriod, period))) {
-            throw new BizException("之后的期间已核算成本，不能重新核算 {0}", period);
+            throw new BizException("fin.error.laterPeriodsHaveCostedCannotRecalculate", period);
         }
         // 已有更早的核算（或存货期初）时，必须逐月核算，否则期初金额会按 0 处理
         if (runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().lt(FinCostRun::getPeriod, period))
                 && !runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getPeriod, previous(period)))) {
-            throw new BizException("请先核算 {0} 期间的成本", previous(period));
+            throw new BizException("fin.error.runCostAccountingPeriodFirst", previous(period));
         }
 
         LocalDate begin = firstDay(period);
@@ -177,13 +177,13 @@ public class FinCostService {
         periodService.checkOpen(period);
         FinCostRun run = runMapper.selectOne(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getPeriod, period));
         if (run == null) {
-            throw new BizException("{0} 期间没有核算成本", period);
+            throw new BizException("fin.error.noCostAccountingHasRunPeriod", period);
         }
         if (OPENING.equals(run.getKind())) {
-            throw new BizException("{0} 是存货期初，请在「期初余额」中修改", period);
+            throw new BizException("fin.error.inventoryOpeningModifyOpeningBalances", period);
         }
         if (runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().gt(FinCostRun::getPeriod, period))) {
-            throw new BizException("请先撤销之后期间的成本核算");
+            throw new BizException("fin.error.undoCostAccountingLaterPeriodsFirst");
         }
         discard(run);
     }
@@ -192,7 +192,7 @@ public class FinCostService {
         if (run.getVoucherId() != null) {
             FinVoucher v = voucherMapper.selectById(run.getVoucherId());
             if (v != null && !VoucherStatus.DRAFT.name().equals(v.getStatus())) {
-                throw new BizException("成本结转凭证 {0} 已审核，请先反审核后再重新核算", v.getVoucherNo());
+                throw new BizException("fin.error.costTransferVoucherApprovedUnapproveBefore", v.getVoucherNo());
             }
             if (v != null) {
                 voucherService.delete(List.of(v.getId()));

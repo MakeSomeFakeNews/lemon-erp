@@ -23,29 +23,29 @@ import java.time.LocalDate;
 @TableName("crm_campaign")
 public class CrmCampaign extends BaseEntity {
 
-    @NotBlank(message = "活动名称不能为空")
-    @Size(max = 128, message = "活动名称不能超过128个字符")
+    @NotBlank(message = "{crm.valid.campaignNameRequired}")
+    @Size(max = 128, message = "{crm.valid.campaignNameCannotExceedCharacters}")
     private String name;
 
     /** 类型(字典 crm_campaign_type) */
-    @NotBlank(message = "请选择活动类型")
+    @NotBlank(message = "{crm.valid.selectCampaignType}")
     private String type;
 
-    @NotNull(message = "请选择开始日期")
+    @NotNull(message = "{crm.valid.selectStartDate}")
     private LocalDate startDate;
 
-    @NotNull(message = "请选择结束日期")
+    @NotNull(message = "{crm.valid.selectEndDate}")
     private LocalDate endDate;
 
-    @DecimalMin(value = "0", message = "预算不能小于0")
-    @Digits(integer = 16, fraction = 2, message = "金额最多2位小数")
+    @DecimalMin(value = "0", message = "{crm.valid.budgetCannotNegative}")
+    @Digits(integer = 16, fraction = 2, message = "{crm.valid.amountAllowsMostDecimalPlaces}")
     private BigDecimal budget;
 
-    @DecimalMin(value = "0", message = "实际花费不能小于0")
-    @Digits(integer = 16, fraction = 2, message = "金额最多2位小数")
+    @DecimalMin(value = "0", message = "{crm.valid.actualCostCannotLess}")
+    @Digits(integer = 16, fraction = 2, message = "{crm.valid.amountAllowsMostDecimalPlaces}")
     private BigDecimal actualCost;
 
-    @Min(value = 0, message = "目标线索数不能小于0")
+    @Min(value = 0, message = "{crm.valid.targetLeadsCannotLess}")
     private Integer targetLeads;
 
     /** PLANNED / ACTIVE / FINISHED / CANCELED */
@@ -53,7 +53,7 @@ public class CrmCampaign extends BaseEntity {
 
     private Long ownerId;
 
-    @Size(max = 1000, message = "活动说明不能超过1000个字符")
+    @Size(max = 1000, message = "{crm.valid.campaignDescriptionCannotExceedCharacters}")
     private String description;
 
     @TableField(exist = false)

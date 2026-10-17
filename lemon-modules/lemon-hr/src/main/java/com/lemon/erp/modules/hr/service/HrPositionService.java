@@ -38,7 +38,7 @@ public class HrPositionService {
     public HrPosition get(Long id) {
         HrPosition position = id == null ? null : positionMapper.selectById(id);
         if (position == null) {
-            throw new BizException("职位不存在");
+            throw new BizException("hr.error.positionDoesNotExist");
         }
         return position;
     }
@@ -71,7 +71,7 @@ public class HrPositionService {
     public void delete(List<Long> ids) {
         for (HrPosition p : positionMapper.selectByIds(ids)) {
             if (employeeMapper.exists(Wrappers.<HrEmployee>lambdaQuery().eq(HrEmployee::getPositionId, p.getId()))) {
-                throw new BizException("职位「{0}」已有员工，不能删除，可以停用", p.getName());
+                throw new BizException("hr.error.positionHasEmployeesCannotDeletedDisable", p.getName());
             }
         }
         positionMapper.deleteByIds(ids);
@@ -80,7 +80,7 @@ public class HrPositionService {
     private void checkCodeUnique(String code, Long id) {
         HrPosition exist = positionMapper.selectOne(Wrappers.<HrPosition>lambdaQuery().eq(HrPosition::getCode, code));
         if (exist != null && !Objects.equals(exist.getId(), id)) {
-            throw new BizException("职位编码已存在");
+            throw new BizException("hr.error.positionCodeAlreadyExists");
         }
     }
 }

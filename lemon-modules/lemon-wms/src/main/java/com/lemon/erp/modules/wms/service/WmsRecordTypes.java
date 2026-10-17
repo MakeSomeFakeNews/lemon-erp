@@ -19,7 +19,7 @@ public class WmsRecordTypes implements RecordTypeProvider {
 
     @Override
     public List<RecordType> recordTypes() {
-        return List.of(new RecordType("wms_material", "物料", "wms:material:list", "wms:material:edit",
+        return List.of(new RecordType("wms_material", "wms.label.material", "wms:material:list", "wms:material:edit",
                 null, materialMapper::selectById));
     }
 }

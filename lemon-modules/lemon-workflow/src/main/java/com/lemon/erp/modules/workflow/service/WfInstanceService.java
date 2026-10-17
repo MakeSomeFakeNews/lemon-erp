@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.workflow.service;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.workflow.FlowStatus;
@@ -84,7 +85,7 @@ public class WfInstanceService {
         WfModel model = modelService.getStartable(processKey);
         Map<String, Object> vars = variables == null ? Map.of() : variables;
         vars.keySet().stream().filter(FlowVariables::isReserved).findFirst().ifPresent(name -> {
-            throw new BizException("流程变量名「{0}」是系统保留字", name);
+            throw new BizException("workflow.error.processVariableNameReserved", name);
         });
         return start(model, businessKey, vars);
     }
@@ -137,7 +138,7 @@ public class WfInstanceService {
         Map<String, String> currentNodes = taskService.createTaskQuery().processInstanceIdIn(ids).list().stream()
                 .collect(Collectors.groupingBy(Task::getProcessInstanceId,
                         Collectors.mapping(Task::getName, Collectors.toCollection(LinkedHashSet::new))))
-                .entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> String.join("、", e.getValue())));
+                .entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> String.join(Messages.get("workflow.text.listSeparator"), e.getValue())));
         Map<String, String> categories = modelService.categoryMap(
                 list.stream().map(HistoricProcessInstance::getProcessDefinitionKey).collect(Collectors.toSet()));
         Map<Long, String> names = identityProvider.getUserNames(list.stream()
@@ -156,7 +157,7 @@ public class WfInstanceService {
     public void cancel(String processInstanceId, String reason) {
         HistoricProcessInstance instance = getRunning(processInstanceId);
         if (!String.valueOf(SecurityUtils.getUserId()).equals(instance.getStartUserId())) {
-            throw new BizException("只有发起人可以撤回");
+            throw new BizException("workflow.error.onlyInitiatorWithdraw");
         }
         end(instance, ApprovalAction.CANCEL, reason);
     }
@@ -195,10 +196,10 @@ public class WfInstanceService {
         HistoricProcessInstance instance = historyService.createHistoricProcessInstanceQuery()
                 .processInstanceId(processInstanceId).processInstanceTenantId(FlowTenant.current()).singleResult();
         if (instance == null) {
-            throw new BizException("流程不存在");
+            throw new BizException("workflow.error.processNotFound");
         }
         if (instance.getEndTime() != null) {
-            throw new BizException("流程已结束");
+            throw new BizException("workflow.error.processHasEnded");
         }
         return instance;
     }

@@ -51,11 +51,11 @@ public class ProfileService {
     public void changePassword(PasswordRequest req) {
         SysUser user = userMapper.selectById(SecurityUtils.getUserId());
         if (req.oldPassword() == null || !passwordEncoder.matches(req.oldPassword(), user.getPassword())) {
-            throw new BizException("原密码错误");
+            throw new BizException("system.error.currentPasswordIncorrect");
         }
         passwordPolicy.check(req.newPassword());
         if (passwordEncoder.matches(req.newPassword(), user.getPassword())) {
-            throw new BizException("新密码不能与原密码相同");
+            throw new BizException("system.error.newPasswordMustDifferCurrentPassword");
         }
         SysUser update = new SysUser();
         update.setId(user.getId());

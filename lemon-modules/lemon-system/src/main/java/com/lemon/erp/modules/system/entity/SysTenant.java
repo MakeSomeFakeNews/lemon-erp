@@ -24,17 +24,17 @@ import java.util.List;
 public class SysTenant extends BaseEntity {
 
     /** 租户名称，登录时填写，全局唯一 */
-    @NotBlank(message = "租户名称不能为空")
-    @Size(max = 64, message = "租户名称不能超过64个字符")
+    @NotBlank(message = "{system.valid.tenantNameRequired}")
+    @Size(max = 64, message = "{system.valid.tenantNameCannotExceedCharacters}")
     private String name;
 
     /** 套餐，平台租户为空（不受限） */
     private Long packageId;
 
-    @Size(max = 64, message = "联系人不能超过64个字符")
+    @Size(max = 64, message = "{system.valid.contactCannotExceedCharacters}")
     private String contactName;
 
-    @Size(max = 32, message = "联系电话不能超过32个字符")
+    @Size(max = 32, message = "{system.valid.contactPhoneCannotExceedCharacters}")
     private String contactPhone;
 
     /** 到期时间，为空不限；修改时总是更新，传 null 表示改为不限 */
@@ -43,7 +43,7 @@ public class SysTenant extends BaseEntity {
     private LocalDateTime expireTime;
 
     /** 账号数量上限，为空不限；修改时总是更新 */
-    @Min(value = 1, message = "账号数量上限至少为 1")
+    @Min(value = 1, message = "{system.valid.accountLimitMustLeast}")
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Integer accountLimit;
 
@@ -52,20 +52,20 @@ public class SysTenant extends BaseEntity {
     private Long adminUserId;
 
     /** 1 启用 0 停用 */
-    @Min(value = 0, message = "状态只能是 0 或 1")
-    @Max(value = 1, message = "状态只能是 0 或 1")
+    @Min(value = 0, message = "{system.valid.statusMust}")
+    @Max(value = 1, message = "{system.valid.statusMust}")
     private Integer status;
 
-    @Size(max = 255, message = "备注不能超过255个字符")
+    @Size(max = 255, message = "{system.valid.remarkCannotExceedCharacters}")
     private String remark;
 
     /** 新建租户时开通的管理员账号 */
-    @NotBlank(groups = Create.class, message = "管理员账号不能为空")
-    @Size(max = 64, message = "管理员账号不能超过64个字符")
+    @NotBlank(groups = Create.class, message = "{system.valid.adminAccountRequired}")
+    @Size(max = 64, message = "{system.valid.adminAccountCannotExceedCharacters}")
     @TableField(exist = false)
     private String adminUsername;
 
-    @NotBlank(groups = Create.class, message = "管理员密码不能为空")
+    @NotBlank(groups = Create.class, message = "{system.valid.adminPasswordRequired}")
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @TableField(exist = false)
     private String adminPassword;

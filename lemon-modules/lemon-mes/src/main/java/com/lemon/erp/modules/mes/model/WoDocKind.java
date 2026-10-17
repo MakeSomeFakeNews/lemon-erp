@@ -14,16 +14,17 @@ import java.util.Locale;
 @AllArgsConstructor
 public enum WoDocKind {
 
-    ISSUE("LL", "领料", StockBizType.OUT, "PRODUCTION"),
-    RETURN("TL", "退料", StockBizType.IN, "PRODUCTION_RETURN"),
-    FINISH("WG", "完工入库", StockBizType.IN, "PRODUCTION"),
+    ISSUE("LL", "mes.label.materialIssue", StockBizType.OUT, "PRODUCTION"),
+    RETURN("TL", "mes.label.materialReturn", StockBizType.IN, "PRODUCTION_RETURN"),
+    FINISH("WG", "mes.label.completionReceipt", StockBizType.IN, "PRODUCTION"),
     /** 补料：审批通过的补料申请发料，不受领料上限限制，计入工单已补料数量 */
-    SUPPLEMENT("BL", "补料", StockBizType.OUT, "PRODUCTION"),
+    SUPPLEMENT("BL", "mes.label.supplementaryIssue", StockBizType.OUT, "PRODUCTION"),
     /** 报废入库：报工报废的产品入不良品仓，不计入完工数量 */
-    SCRAP("BF", "报废入库", StockBizType.IN, "SCRAP_IN");
+    SCRAP("BF", "mes.label.scrapReceipt", StockBizType.IN, "SCRAP_IN");
 
     private final String prefix;
-    private final String label;
+    /** 单据名称的消息键（编码规则目录） */
+    private final String docName;
     /** 生成的仓库单据种类 */
     private final StockBizType stockKind;
     /** 仓库单据的入库类型（字典 wms_in_type）/ 出库类型（字典 wms_out_type） */
@@ -39,6 +40,6 @@ public enum WoDocKind {
                 return kind;
             }
         }
-        throw new BizException("不支持的单据类型：{0}", path);
+        throw new BizException("mes.error.unsupportedDocumentType", path);
     }
 }

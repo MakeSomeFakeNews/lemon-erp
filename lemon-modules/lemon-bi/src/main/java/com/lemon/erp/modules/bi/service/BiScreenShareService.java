@@ -1,6 +1,6 @@
 package com.lemon.erp.modules.bi.service;
 
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -78,7 +78,7 @@ public class BiScreenShareService {
             Map<String, Object> info = new LinkedHashMap<>();
             info.put("name", share.getName());
             info.put("company", screenMapper.tenantName(tenantOf(share)));
-            info.put("screens", keys(share).stream().map(k -> Map.of("key", k.name(), "label", I18n.t(k.getLabel()))).toList());
+            info.put("screens", keys(share).stream().map(k -> Map.of("key", k.name(), "label", Messages.get(k.getLabel()))).toList());
             info.put("intervalSeconds", share.getIntervalSeconds());
             info.put("workCenterId", share.getWorkCenterId());
             info.put("workCenterName", share.getWorkCenterId() == null ? null : screenMapper.workCenterName(share.getWorkCenterId()));
@@ -89,7 +89,7 @@ public class BiScreenShareService {
     public Map<String, Object> publicData(String token, ScreenKey key) {
         BiScreenShare share = resolve(token);
         if (!keys(share).contains(key)) {
-            throw new BizException("链接中没有该大屏");
+            throw new BizException("bi.error.screenNotIncludedLink");
         }
         return TenantContext.callAs(tenantOf(share), () -> screenService.data(key, key == ScreenKey.FACTORY ? share.getWorkCenterId() : null));
     }
@@ -100,7 +100,7 @@ public class BiScreenShareService {
                 : TenantContext.callIgnore(() -> shareMapper.selectOne(Wrappers.<BiScreenShare>lambdaQuery().eq(BiScreenShare::getToken, token)));
         LocalDateTime now = LocalDateTime.now();
         if (share == null || share.getStatus() != 1 || share.getExpireTime() != null && share.getExpireTime().isBefore(now)) {
-            throw new BizException("投屏链接无效、已停用或已过期");
+            throw new BizException("bi.error.shareLinkInvalidDisabledExpired");
         }
         if (share.getLastAccessTime() == null || share.getLastAccessTime().plusMinutes(ACCESS_UPDATE_MINUTES).isBefore(now)) {
             // 只更新访问时间（实体更新会把可清空的字段一并写成空）
@@ -115,7 +115,7 @@ public class BiScreenShareService {
     private BiScreenShare get(Long id) {
         BiScreenShare share = shareMapper.selectById(id);
         if (share == null) {
-            throw new BizException("投屏链接不存在");
+            throw new BizException("bi.error.shareLinkNotFound");
         }
         return share;
     }

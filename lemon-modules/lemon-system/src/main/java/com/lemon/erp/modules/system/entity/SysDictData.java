@@ -13,18 +13,18 @@ import lombok.EqualsAndHashCode;
 @TableName("sys_dict_data")
 public class SysDictData extends BaseEntity {
 
-    @NotBlank(message = "字典类型不能为空")
+    @NotBlank(message = "{system.valid.dictionaryTypeRequired}")
     private String dictType;
 
     /** 字段/列名避开 value 等数据库关键字，JSON 中仍为 label / value */
     @JsonProperty("label")
-    @NotBlank(message = "字典标签不能为空")
-    @Size(max = 100, message = "字典标签不能超过100个字符")
+    @NotBlank(message = "{system.valid.dictionaryLabelRequired}")
+    @Size(max = 100, message = "{system.valid.dictionaryLabelCannotExceedCharacters}")
     private String dictLabel;
 
     @JsonProperty("value")
-    @NotBlank(message = "字典键值不能为空")
-    @Size(max = 100, message = "字典键值不能超过100个字符")
+    @NotBlank(message = "{system.valid.dictionaryValueRequired}")
+    @Size(max = 100, message = "{system.valid.dictionaryValueCannotExceedCharacters}")
     private String dictValue;
 
     /** ant-design-vue Tag 的 color，如 green / red / blue，可空 */

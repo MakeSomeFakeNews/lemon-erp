@@ -47,7 +47,7 @@ public class SysDictService {
     public SysDictType getType(Long id) {
         SysDictType type = typeMapper.selectById(id);
         if (type == null) {
-            throw new BizException("字典类型不存在");
+            throw new BizException("system.error.dictionaryTypeDoesNotExist");
         }
         return type;
     }
@@ -87,7 +87,7 @@ public class SysDictService {
     private void checkTypeUnique(SysDictType type) {
         SysDictType exist = typeMapper.selectOne(Wrappers.<SysDictType>lambdaQuery().eq(SysDictType::getType, type.getType()));
         if (exist != null && !Objects.equals(exist.getId(), type.getId())) {
-            throw new BizException("字典类型已存在");
+            throw new BizException("system.error.dictionaryTypeAlreadyExists");
         }
     }
 
@@ -120,7 +120,7 @@ public class SysDictService {
 
     public void createData(SysDictData data) {
         if (!typeMapper.exists(Wrappers.<SysDictType>lambdaQuery().eq(SysDictType::getType, data.getDictType()))) {
-            throw new BizException("字典类型不存在");
+            throw new BizException("system.error.dictionaryTypeDoesNotExist");
         }
         checkValueUnique(data);
         data.setId(null);
@@ -133,7 +133,7 @@ public class SysDictService {
     public void updateData(SysDictData data) {
         SysDictData old = dataMapper.selectById(data.getId());
         if (old == null) {
-            throw new BizException("字典数据不存在");
+            throw new BizException("system.error.dictionaryDataDoesNotExist");
         }
         // 字典数据不允许跨类型移动
         data.setDictType(old.getDictType());
@@ -153,7 +153,7 @@ public class SysDictService {
                 .eq(SysDictData::getDictType, data.getDictType())
                 .eq(SysDictData::getDictValue, data.getDictValue()));
         if (exist != null && !Objects.equals(exist.getId(), data.getId())) {
-            throw new BizException("字典键值已存在");
+            throw new BizException("system.error.dictionaryValueAlreadyExists");
         }
     }
 

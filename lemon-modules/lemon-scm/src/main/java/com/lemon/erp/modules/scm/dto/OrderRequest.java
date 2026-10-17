@@ -17,16 +17,16 @@ import java.util.List;
  * @param rebateAmount 使用返利抵扣的金额（只用于手工销售订单），不超过客户的返利余额
  */
 public record OrderRequest(
-        @NotNull(message = "请选择往来单位") Long partnerId,
-        @NotNull(message = "请选择订单日期") LocalDate orderDate,
+        @NotNull(message = "{scm.valid.selectBusinessPartner}") Long partnerId,
+        @NotNull(message = "{scm.valid.selectOrderDate}") LocalDate orderDate,
         LocalDate deliveryDate,
         Long warehouseId,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark,
-        @NotEmpty(message = "请添加明细") @Size(max = 500, message = "明细不能超过500行") List<@Valid @NotNull OrderItemRequest> items,
+        @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}") String remark,
+        @NotEmpty(message = "{scm.valid.addLineItems}") @Size(max = 500, message = "{scm.valid.lineItemsCannotExceed}") List<@Valid @NotNull OrderItemRequest> items,
         @Size(max = 8) String currency,
-        @jakarta.validation.constraints.DecimalMin(value = "0", inclusive = false, message = "汇率必须大于0") java.math.BigDecimal exchangeRate,
+        @jakarta.validation.constraints.DecimalMin(value = "0", inclusive = false, message = "{scm.valid.exchangeRateMustGreater}") java.math.BigDecimal exchangeRate,
         Long contractId,
-        @jakarta.validation.constraints.DecimalMin(value = "0", message = "返利抵扣不能为负数") java.math.BigDecimal rebateAmount) {
+        @jakarta.validation.constraints.DecimalMin(value = "0", message = "{scm.valid.rebateDeductionCannotNegative}") java.math.BigDecimal rebateAmount) {
 
     /** 不使用返利抵扣 */
     public OrderRequest(Long partnerId, LocalDate orderDate, LocalDate deliveryDate, Long warehouseId, String remark,

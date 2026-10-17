@@ -1,7 +1,7 @@
 package com.lemon.erp.modules.system.im;
 
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.cache.CacheService;
 import com.lemon.erp.framework.tenant.TenantContext;
 import com.lemon.erp.modules.system.entity.SysImConfig;
@@ -88,14 +88,14 @@ public class ImHttp {
             String body = spec.exchange((req, res) -> StreamUtils.copyToString(res.getBody(), StandardCharsets.UTF_8));
             return objectMapper.readTree(body == null || body.isBlank() ? "{}" : body);
         } catch (RestClientException | JacksonException e) {
-            log.warn("{}接口调用失败", platform.label(), e);
-            throw new BizException("{0}接口调用失败，请检查网络：{1}", I18n.t(platform.label()), e.getMessage());
+            log.warn("{}接口调用失败", platform.defaultText(), e);
+            throw new BizException("system.error.apiCallFailedCheckNetwork", platform.text(), e.getMessage());
         }
     }
 
     /** 平台返回的错误 */
     public static BizException error(ImPlatform platform, Object code, String msg) {
-        return new BizException("{0}返回错误（{1}）：{2}", I18n.t(platform.label()), code, msg == null || msg.isBlank() ? I18n.t("未知错误") : msg);
+        return new BizException("system.error.returnedError", platform.text(), code, msg == null || msg.isBlank() ? Messages.get("system.text.unknownError") : msg);
     }
 
     /** 文本字段，不存在或为空时返回 null */

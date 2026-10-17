@@ -22,11 +22,11 @@ import java.math.BigDecimal;
 @TableName("fin_commission_rule")
 public class FinCommissionRule extends BaseEntity {
 
-    @NotBlank(message = "请填写规则名称")
-    @Size(max = 64, message = "规则名称不能超过64个字符")
+    @NotBlank(message = "{fin.valid.enterRuleName}")
+    @Size(max = 64, message = "{fin.valid.ruleNameCannotExceedCharacters}")
     private String name;
 
-    @NotNull(message = "请选择提成依据")
+    @NotNull(message = "{fin.valid.selectCommissionBasis}")
     private CommissionBasis basis;
 
     /** 适用业务员，为空适用全部 */
@@ -36,17 +36,17 @@ public class FinCommissionRule extends BaseEntity {
     private String materialCategory;
 
     /** 业绩门槛（阶梯提成） */
-    @DecimalMin(value = "0", message = "业绩门槛不能小于0")
+    @DecimalMin(value = "0", message = "{fin.valid.performanceThresholdCannotLess}")
     private BigDecimal threshold;
 
-    @NotNull(message = "请填写提成比例")
-    @DecimalMin(value = "0", message = "提成比例不能小于0")
-    @DecimalMax(value = "100", message = "提成比例不能大于100%")
+    @NotNull(message = "{fin.valid.enterCommissionRate}")
+    @DecimalMin(value = "0", message = "{fin.valid.commissionRateCannotLess}")
+    @DecimalMax(value = "100", message = "{fin.valid.commissionRateCannotExceed}")
     private BigDecimal rate;
 
     private Integer status;
 
-    @Size(max = 255, message = "备注不能超过255个字符")
+    @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}")
     private String remark;
 
     @TableField(exist = false)

@@ -3,7 +3,7 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -84,7 +84,7 @@ public class QmsNcrService {
     public QmsNcr detail(Long id) {
         QmsNcr ncr = id == null ? null : ncrMapper.selectDetail(id);
         if (ncr == null) {
-            throw new BizException("不合格品处理单不存在");
+            throw new BizException("mes.error.nonconformanceReportDoesNotExist");
         }
         return ncr;
     }
@@ -116,7 +116,7 @@ public class QmsNcrService {
         if (StringUtils.hasText(req.woNo())) {
             MesWorkOrder wo = workOrderMapper.selectOne(Wrappers.<MesWorkOrder>lambdaQuery().eq(MesWorkOrder::getWoNo, req.woNo().trim()));
             if (wo == null) {
-                throw new BizException("生产工单 {0} 不存在", req.woNo());
+                throw new BizException("mes.error.workOrderDoesNotExist", req.woNo());
             }
             ncr.setWoId(wo.getId());
             ncr.setSourceNo(wo.getWoNo());
@@ -134,7 +134,7 @@ public class QmsNcrService {
      */
     @Transactional
     public boolean review(Long id, QmsRequests.NcrReview req) {
-        QmsNcr ncr = requireStatus(id, NcrStatus.OPEN, "评审");
+        QmsNcr ncr = requireStatus(id, NcrStatus.OPEN, "mes.label.review");
         checkDisposition(ncr, req);
         ncrMapper.update(Wrappers.<QmsNcr>lambdaUpdate()
                 .set(QmsNcr::getDisposition, req.disposition())
@@ -177,7 +177,7 @@ public class QmsNcrService {
     /** 取消：只有待评审的可以取消（误登记） */
     @Transactional
     public void cancel(Long id) {
-        requireStatus(id, NcrStatus.OPEN, "取消");
+        requireStatus(id, NcrStatus.OPEN, "mes.label.cancel");
         transit(id, NcrStatus.OPEN, NcrStatus.CANCELLED);
     }
 
@@ -186,10 +186,10 @@ public class QmsNcrService {
     public void delete(Long id) {
         QmsNcr ncr = detail(id);
         if (ncr.getSource() == NcrSource.INSPECTION) {
-            throw new BizException("检验不合格生成的处理单不能删除，误判请取消");
+            throw new BizException("mes.error.ncrsGeneratedFailedInspectionsCannotDeleted");
         }
         if (ncr.getStatus() != NcrStatus.OPEN && ncr.getStatus() != NcrStatus.CANCELLED) {
-            throw new BizException("已提交评审的处理单不能删除");
+            throw new BizException("mes.error.ncrsSubmittedReviewCannotDeleted");
         }
         ncrMapper.deleteById(id);
     }
@@ -215,14 +215,14 @@ public class QmsNcrService {
     private void checkDisposition(QmsNcr ncr, QmsRequests.NcrReview req) {
         if (req.disposition() == Disposition.REWORK) {
             if (ncr.getWoId() == null) {
-                throw new BizException("返工只适用于生产工单的不合格品，请登记生产工单");
+                throw new BizException("mes.error.reworkOnlyAppliesNonconformingProductsWork");
             }
             if (req.reworkWarehouseId() == null) {
-                throw new BizException("请选择返工工单的完工入库仓库");
+                throw new BizException("mes.error.selectCompletionWarehouseReworkOrder");
             }
         }
         if (req.disposition() == Disposition.RETURN && !incoming(ncr)) {
-            throw new BizException("退货只适用于来料不合格");
+            throw new BizException("mes.error.returnOnlyAppliesNonconformingIncomingMaterials");
         }
     }
 
@@ -248,7 +248,7 @@ public class QmsNcrService {
                 .set(QmsNcr::getReworkWoId, ncr.getReworkWoId())
                 .set(QmsNcr::getDoneTime, LocalDateTime.now())
                 .eq(QmsNcr::getId, ncr.getId()).eq(QmsNcr::getStatus, from)) == 0) {
-            throw new BizException("处理单状态已变化，请刷新后重试");
+            throw new BizException("mes.error.ncrStatusHasChangedRefreshTry");
         }
     }
 
@@ -286,7 +286,7 @@ public class QmsNcrService {
 
     private String rework(QmsNcr ncr, Long warehouseId) {
         if (warehouseId == null) {
-            throw new BizException("审批通过但未指定返工入库仓库，请重新评审");
+            throw new BizException("mes.error.approvedWithoutReworkReceivingWarehouseReview");
         }
         Long woId = workOrderService.createRework(new WorkOrderRequest(ncr.getMaterialId(), null, ncr.getQty(), LocalDate.now(),
                 null, warehouseId, "不合格品返工 " + ncr.getNcrNo()), ncr.getWoId()); // i18n-ignore
@@ -296,14 +296,14 @@ public class QmsNcrService {
 
     private void transit(Long id, NcrStatus from, NcrStatus to) {
         if (ncrMapper.transit(id, from, to) == 0) {
-            throw new BizException("处理单状态已变化，请刷新后重试");
+            throw new BizException("mes.error.ncrStatusHasChangedRefreshTry");
         }
     }
 
     private QmsNcr requireStatus(Long id, NcrStatus status, String action) {
         QmsNcr ncr = detail(id);
         if (ncr.getStatus() != status) {
-            throw new BizException("处理单当前状态不能{0}", I18n.t(action));
+            throw new BizException("mes.error.currentNcrStatusDoesNotAllow", Messages.get(action));
         }
         return ncr;
     }

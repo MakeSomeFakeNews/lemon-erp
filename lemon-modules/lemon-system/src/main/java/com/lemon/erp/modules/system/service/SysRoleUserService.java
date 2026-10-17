@@ -68,7 +68,7 @@ public class SysRoleUserService {
         SysRole role = getRole(roleId);
         checkRoleAssignable(role);
         if (PermissionService.ADMIN_ROLE.equals(role.getCode()) && userIds.contains(SysUserService.SUPER_ADMIN_ID)) {
-            throw new BizException("不允许移除内置超级管理员的超级管理员角色");
+            throw new BizException("system.error.superAdministratorRoleCannotRemovedBuilt");
         }
         userService.checkOperable(userIds);
         userRoleMapper.delete(Wrappers.<SysUserRole>lambdaQuery()
@@ -79,7 +79,7 @@ public class SysRoleUserService {
     private SysRole getRole(Long roleId) {
         SysRole role = roleMapper.selectById(roleId);
         if (role == null) {
-            throw new BizException("角色不存在");
+            throw new BizException("system.error.roleDoesNotExist");
         }
         return role;
     }
@@ -87,7 +87,7 @@ public class SysRoleUserService {
     /** 只有超级管理员能增减超级管理员角色的成员 */
     private void checkRoleAssignable(SysRole role) {
         if (PermissionService.ADMIN_ROLE.equals(role.getCode()) && !SecurityUtils.getLoginUser().isAdmin()) {
-            throw new BizException("不允许分配超级管理员角色");
+            throw new BizException("system.error.superAdministratorRoleCannotAssigned");
         }
     }
 }

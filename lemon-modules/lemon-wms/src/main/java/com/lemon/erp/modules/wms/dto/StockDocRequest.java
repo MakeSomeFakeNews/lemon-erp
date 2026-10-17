@@ -17,11 +17,11 @@ import java.util.List;
  */
 public record StockDocRequest(
         String bizType,
-        @NotNull(message = "请选择仓库") Long warehouseId,
+        @NotNull(message = "{wms.valid.selectWarehouse}") Long warehouseId,
         Long toWarehouseId,
-        @NotNull(message = "请选择业务日期") LocalDate bizDate,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark,
-        @NotEmpty(message = "请添加明细") @Size(max = 500, message = "明细不能超过500行") List<@Valid @NotNull StockDocItemRequest> items,
+        @NotNull(message = "{wms.valid.selectBusinessDate}") LocalDate bizDate,
+        @Size(max = 255, message = "{wms.valid.remarkCannotExceedCharacters}") String remark,
+        @NotEmpty(message = "{wms.valid.addLineItems}") @Size(max = 500, message = "{wms.valid.lineItemsCannotExceed2}") List<@Valid @NotNull StockDocItemRequest> items,
         Boolean inTransit) {
 
     /** 业务单据生成出入库单时使用（非在途） */

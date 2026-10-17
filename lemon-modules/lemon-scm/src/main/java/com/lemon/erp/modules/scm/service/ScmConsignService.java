@@ -1,7 +1,7 @@
 package com.lemon.erp.modules.scm.service;
 
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.scm.dto.ConsignSettleRequest;
 import com.lemon.erp.modules.scm.dto.OrderItemRequest;
 import com.lemon.erp.modules.scm.dto.OrderRequest;
@@ -56,7 +56,7 @@ public class ScmConsignService {
     /** @return {orderId, tradeDocId} */
     @Transactional
     public Map<String, Long> settleCustomer(ConsignSettleRequest req) {
-        WmsWarehouse w = consignWarehouse(req.warehouseId(), "CONSIGN_OUT", "客户寄售仓");
+        WmsWarehouse w = consignWarehouse(req.warehouseId(), "CONSIGN_OUT", "scm.label.customerConsignmentWarehouse");
         ScmCustomer customer = customerService.get(w.getPartnerId());
         List<OrderItemRequest> lines = new ArrayList<>();
         for (ConsignSettleRequest.Item i : req.items()) {
@@ -65,7 +65,7 @@ public class ScmConsignService {
             if (price == null) {
                 ScmPriceList p = priceListMapper.selectQuote(i.materialId(), customer.getId(), customer.getLevel(), i.qty(), req.bizDate());
                 if (p == null) {
-                    throw new BizException("物料没有价目表价格，请填写结算单价");
+                    throw new BizException("scm.error.materialHasNoPriceListPrice");
                 }
                 price = p.getPrice();
                 taxRate = taxRate == null ? p.getTaxRate() : taxRate;
@@ -83,13 +83,13 @@ public class ScmConsignService {
     /** @return {orderId, tradeDocId, consumeDocId} */
     @Transactional
     public Map<String, Long> settleSupplier(ConsignSettleRequest req) {
-        WmsWarehouse w = consignWarehouse(req.warehouseId(), "CONSIGN_IN", "供应商寄售仓");
+        WmsWarehouse w = consignWarehouse(req.warehouseId(), "CONSIGN_IN", "scm.label.supplierConsignmentWarehouse");
         if (req.targetWarehouseId() == null) {
-            throw new BizException("请选择转入的自有仓库");
+            throw new BizException("scm.error.selectOwnWarehouseTransfer");
         }
         WmsWarehouse target = warehouseService.get(req.targetWarehouseId());
         if (target.getType() != null && target.getType().startsWith("CONSIGN")) {
-            throw new BizException("转入仓库不能是寄售仓");
+            throw new BizException("scm.error.targetWarehouseCannotConsignmentWarehouse");
         }
         List<OrderItemRequest> lines = new ArrayList<>();
         for (ConsignSettleRequest.Item i : req.items()) {
@@ -98,7 +98,7 @@ public class ScmConsignService {
             if (price == null) {
                 ScmSupplierPrice p = queryService.supplierPrice(w.getPartnerId(), i.materialId());
                 if (p == null) {
-                    throw new BizException("物料没有该供应商的供货价格，请填写结算单价");
+                    throw new BizException("scm.error.materialHasNoSupplyPriceSupplier");
                 }
                 price = queryService.effectivePrice(p, i.qty());
                 taxRate = taxRate == null ? p.getTaxRate() : taxRate;
@@ -131,10 +131,10 @@ public class ScmConsignService {
         return lines;
     }
 
-    private WmsWarehouse consignWarehouse(Long id, String type, String label) {
+    private WmsWarehouse consignWarehouse(Long id, String type, String labelKey) {
         WmsWarehouse w = warehouseService.get(id);
         if (!type.equals(w.getType()) || w.getPartnerId() == null) {
-            throw new BizException("请选择{0}", I18n.t(label));
+            throw new BizException("scm.error.select", Messages.get(labelKey));
         }
         return w;
     }

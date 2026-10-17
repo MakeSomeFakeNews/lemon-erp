@@ -1,51 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<!-- 主数据被引用检查（删除物料、仓库、客户、供应商、用户、部门前），见 ReferenceChecker -->
+<!-- 主数据被引用检查（删除物料、仓库、客户、供应商、用户、部门前），见 ReferenceChecker；返回引用处名称的消息键 -->
 <mapper namespace="com.lemon.erp.modules.scm.mapper.ScmRefMapper">
 
     <select id="findMaterial" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM scm_order_item WHERE material_id = #{id}) THEN '采购 / 销售订单'
-            WHEN EXISTS (SELECT 1 FROM scm_supplier_price WHERE material_id = #{id}) THEN '供货价格'
-            WHEN EXISTS (SELECT 1 FROM scm_requisition_item WHERE material_id = #{id}) THEN '请购单'
-            WHEN EXISTS (SELECT 1 FROM scm_inquiry_item WHERE material_id = #{id}) THEN '询价单'
-            WHEN EXISTS (SELECT 1 FROM scm_quotation_item WHERE material_id = #{id}) THEN '销售报价单'
-            WHEN EXISTS (SELECT 1 FROM scm_price_list WHERE material_id = #{id}) THEN '销售价目表'
+            WHEN EXISTS (SELECT 1 FROM scm_order_item WHERE material_id = #{id}) THEN 'scm.label.purchaseSalesOrder'
+            WHEN EXISTS (SELECT 1 FROM scm_supplier_price WHERE material_id = #{id}) THEN 'scm.label.supplyPrice'
+            WHEN EXISTS (SELECT 1 FROM scm_requisition_item WHERE material_id = #{id}) THEN 'scm.label.purchaseRequisition'
+            WHEN EXISTS (SELECT 1 FROM scm_inquiry_item WHERE material_id = #{id}) THEN 'scm.label.rfq'
+            WHEN EXISTS (SELECT 1 FROM scm_quotation_item WHERE material_id = #{id}) THEN 'scm.label.salesQuotation2'
+            WHEN EXISTS (SELECT 1 FROM scm_price_list WHERE material_id = #{id}) THEN 'scm.label.salesPriceList'
         END
     </select>
 
     <select id="findWarehouse" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM scm_order WHERE warehouse_id = #{id}) THEN '采购 / 销售订单'
-            WHEN EXISTS (SELECT 1 FROM scm_delivery WHERE warehouse_id = #{id}) THEN '发货通知'
+            WHEN EXISTS (SELECT 1 FROM scm_order WHERE warehouse_id = #{id}) THEN 'scm.label.purchaseSalesOrder'
+            WHEN EXISTS (SELECT 1 FROM scm_delivery WHERE warehouse_id = #{id}) THEN 'scm.label.deliveryNotice'
         END
     </select>
 
     <select id="findUser" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM scm_order WHERE create_by = #{id}) THEN '采购 / 销售订单'
-            WHEN EXISTS (SELECT 1 FROM scm_trade_doc WHERE create_by = #{id}) THEN '出入库单'
-            WHEN EXISTS (SELECT 1 FROM scm_requisition WHERE create_by = #{id}) THEN '请购单'
-            WHEN EXISTS (SELECT 1 FROM scm_quotation WHERE create_by = #{id}) THEN '销售报价单'
+            WHEN EXISTS (SELECT 1 FROM scm_order WHERE create_by = #{id}) THEN 'scm.label.purchaseSalesOrder'
+            WHEN EXISTS (SELECT 1 FROM scm_trade_doc WHERE create_by = #{id}) THEN 'scm.label.inboundOutboundDocument'
+            WHEN EXISTS (SELECT 1 FROM scm_requisition WHERE create_by = #{id}) THEN 'scm.label.purchaseRequisition'
+            WHEN EXISTS (SELECT 1 FROM scm_quotation WHERE create_by = #{id}) THEN 'scm.label.salesQuotation2'
         END
     </select>
 
     <select id="findCustomer" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM scm_quotation WHERE customer_id = #{id}) THEN '销售报价单'
+            WHEN EXISTS (SELECT 1 FROM scm_quotation WHERE customer_id = #{id}) THEN 'scm.label.salesQuotation2'
         END
     </select>
 
     <select id="findSupplier" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM scm_inquiry_quote WHERE supplier_id = #{id}) THEN '询价报价'
-            WHEN EXISTS (SELECT 1 FROM scm_requisition_item WHERE supplier_id = #{id}) THEN '请购单'
+            WHEN EXISTS (SELECT 1 FROM scm_inquiry_quote WHERE supplier_id = #{id}) THEN 'scm.label.rfqQuotation'
+            WHEN EXISTS (SELECT 1 FROM scm_requisition_item WHERE supplier_id = #{id}) THEN 'scm.label.purchaseRequisition'
         END
     </select>
 
     <select id="findDept" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM scm_order WHERE dept_id = #{id}) THEN '采购 / 销售订单'
+            WHEN EXISTS (SELECT 1 FROM scm_order WHERE dept_id = #{id}) THEN 'scm.label.purchaseSalesOrder'
         END
     </select>
 

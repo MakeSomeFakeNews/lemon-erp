@@ -39,7 +39,7 @@ public class BiReportService {
     public BiReport report(Long id) {
         BiReport r = id == null ? null : reportMapper.selectById(id);
         if (r == null || (!Objects.equals(r.getCreateBy(), SecurityUtils.getUserId()) && !Integer.valueOf(1).equals(r.getShared()))) {
-            throw new BizException("报表不存在或没有共享");
+            throw new BizException("bi.error.reportNotFoundNotShared");
         }
         r.setMine(Objects.equals(r.getCreateBy(), SecurityUtils.getUserId()));
         return r;
@@ -50,7 +50,7 @@ public class BiReportService {
         olapService.validate(req.config());
         String config = objectMapper.writeValueAsString(req.config());
         if (config.length() > CONFIG_MAX) {
-            throw new BizException("分析配置过长，请减少筛选条件");
+            throw new BizException("bi.error.analysisConfigurationTooLongReduceFilters");
         }
         BiReport r = new BiReport();
         r.setName(req.name().trim());
@@ -75,7 +75,7 @@ public class BiReportService {
         own(reportMapper.selectById(id));
         for (BiDashboard d : dashboardMapper.selectList(null)) {
             if (readWidgets(d).stream().anyMatch(w -> id.equals(w.reportId()))) {
-                throw new BizException("报表已被仪表盘「{0}」使用，不能删除", d.getName());
+                throw new BizException("bi.error.reportUsedDashboardCannotDeleted", d.getName());
             }
         }
         reportMapper.deleteById(id);
@@ -90,7 +90,7 @@ public class BiReportService {
     public BiDashboard dashboard(Long id) {
         BiDashboard d = id == null ? null : dashboardMapper.selectById(id);
         if (d == null || (!Objects.equals(d.getCreateBy(), SecurityUtils.getUserId()) && !Integer.valueOf(1).equals(d.getShared()))) {
-            throw new BizException("仪表盘不存在或没有共享");
+            throw new BizException("bi.error.dashboardNotFoundNotShared");
         }
         d.setMine(Objects.equals(d.getCreateBy(), SecurityUtils.getUserId()));
         return d;
@@ -105,7 +105,7 @@ public class BiReportService {
         d.setShared(Integer.valueOf(1).equals(req.shared()) ? 1 : 0);
         d.setRemark(req.remark());
         if (d.getWidgets().length() > CONFIG_MAX) {
-            throw new BizException("组件过多");
+            throw new BizException("bi.error.tooManyWidgets");
         }
         if (id == null) {
             d.setCreateBy(SecurityUtils.getUserId());
@@ -131,10 +131,10 @@ public class BiReportService {
     private static void own(Object entity) {
         Long createBy = entity instanceof BiReport r ? r.getCreateBy() : entity instanceof BiDashboard d ? d.getCreateBy() : null;
         if (entity == null) {
-            throw new BizException("记录不存在");
+            throw new BizException("bi.error.recordNotFound");
         }
         if (!Objects.equals(createBy, SecurityUtils.getUserId())) {
-            throw new BizException("只能修改、删除自己创建的");
+            throw new BizException("bi.error.onlyModifyDeleteItemsCreated");
         }
     }
 }

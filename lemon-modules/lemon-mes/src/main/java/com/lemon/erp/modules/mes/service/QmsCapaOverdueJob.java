@@ -29,7 +29,7 @@ public class QmsCapaOverdueJob implements JobHandler {
 
     @Override
     public String name() {
-        return "纠正预防逾期提醒";
+        return "mes.label.capaOverdueReminder";
     }
 
     @Override

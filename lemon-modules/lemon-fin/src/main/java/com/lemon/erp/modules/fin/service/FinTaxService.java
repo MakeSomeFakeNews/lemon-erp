@@ -63,7 +63,7 @@ public class FinTaxService {
     public VatResult transfer(int period, BigDecimal cityRate, BigDecimal eduRate, BigDecimal localRate) {
         periodService.checkOpen(period);
         if (transferred(period)) {
-            throw new BizException("{0} 期间已结转增值税，如需重新结转请先删除结转凭证", period);
+            throw new BizException("fin.error.vatPeriodHasAlreadyTransferredDelete", period);
         }
         Long inputId = accountRules.accountId(AccountRole.INPUT_VAT);
         Long outputId = accountRules.accountId(AccountRole.OUTPUT_VAT);
@@ -71,9 +71,9 @@ public class FinTaxService {
         BigDecimal output = entryMapper.sumBalanceUpTo(outputId, period).negate();
         if (output.signum() <= 0) {
             if (input.signum() > 0) {
-                throw new BizException("截至 {0} 没有销项税额，进项税额 {1} 留抵下期", period, input.toPlainString());
+                throw new BizException("fin.error.noOutputVatInputVatCarried", period, input.toPlainString());
             }
-            throw new BizException("截至 {0} 没有销项税额", period);
+            throw new BizException("fin.error.noOutputVat", period);
         }
         LocalDate date = toYearMonth(period).atEndOfMonth();
         String summary = "结转 " + period + " 增值税"; // i18n-ignore
@@ -104,7 +104,7 @@ public class FinTaxService {
     private static BigDecimal tax(BigDecimal base, BigDecimal rate, int defaultRate) {
         BigDecimal r = rate == null ? BigDecimal.valueOf(defaultRate) : rate;
         if (r.signum() < 0 || r.compareTo(HUNDRED) > 0) {
-            throw new BizException("税率必须在 0 ~ 100 之间");
+            throw new BizException("fin.error.taxRateMustBetween");
         }
         return base.multiply(r).divide(HUNDRED, 2, RoundingMode.HALF_UP);
     }

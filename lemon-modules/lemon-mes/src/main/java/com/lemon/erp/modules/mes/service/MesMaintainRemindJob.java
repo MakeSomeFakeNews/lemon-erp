@@ -29,7 +29,7 @@ public class MesMaintainRemindJob implements JobHandler {
 
     @Override
     public String name() {
-        return "设备保养提醒";
+        return "mes.label.equipmentMaintenanceReminder";
     }
 
     @Override

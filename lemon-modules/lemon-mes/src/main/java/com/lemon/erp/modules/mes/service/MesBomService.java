@@ -66,7 +66,7 @@ public class MesBomService {
     public MesBom detail(Long id) {
         MesBom bom = bomMapper.selectDetail(id);
         if (bom == null) {
-            throw new BizException("BOM 不存在");
+            throw new BizException("mes.error.bomDoesNotExist");
         }
         bom.setItems(itemMapper.selectByBomId(id));
         bom.setOps(opMapper.selectByBomId(id));
@@ -90,7 +90,7 @@ public class MesBomService {
         try {
             bomMapper.insert(bom);
         } catch (DuplicateKeyException e) {
-            throw new BizException("该产品已有版本 {0} 的 BOM", req.version().trim());
+            throw new BizException("mes.error.productAlreadyHasBomVersion", req.version().trim());
         }
         saveLines(bom.getId(), req);
         afterSave(bom);
@@ -115,7 +115,7 @@ public class MesBomService {
         try {
             bomMapper.updateById(bom);
         } catch (DuplicateKeyException e) {
-            throw new BizException("该产品已有版本 {0} 的 BOM", req.version().trim());
+            throw new BizException("mes.error.productAlreadyHasBomVersion", req.version().trim());
         }
         if (req.remark() == null && old.getRemark() != null) {
             bomMapper.update(Wrappers.<MesBom>lambdaUpdate().set(MesBom::getRemark, null).eq(MesBom::getId, id));
@@ -152,10 +152,10 @@ public class MesBomService {
     public void delete(List<Long> ids) {
         for (Long id : ids) {
             if (workOrderMapper.exists(Wrappers.<MesWorkOrder>lambdaQuery().eq(MesWorkOrder::getBomId, id))) {
-                throw new BizException("BOM 已被生产工单使用，不能删除，可以停用");
+                throw new BizException("mes.error.bomUsedWorkOrdersCannotDeleted");
             }
             if (ecnMapper.exists(Wrappers.<MesEcn>lambdaQuery().and(w -> w.eq(MesEcn::getFromBomId, id).or().eq(MesEcn::getToBomId, id)))) {
-                throw new BizException("BOM 有工程变更记录，不能删除，可以停用");
+                throw new BizException("mes.error.bomHasEcnRecordsCannotDeleted");
             }
         }
         itemMapper.delete(Wrappers.<MesBomItem>lambdaQuery().in(MesBomItem::getBomId, ids));
@@ -180,7 +180,7 @@ public class MesBomService {
         try {
             bomMapper.insert(bom);
         } catch (DuplicateKeyException e) {
-            throw new BizException("该产品已有版本 {0} 的 BOM", version.trim());
+            throw new BizException("mes.error.productAlreadyHasBomVersion", version.trim());
         }
         List<MesBomItem> items = itemMapper.selectByBomId(fromBomId);
         if (!items.isEmpty()) {
@@ -253,13 +253,13 @@ public class MesBomService {
         }
         MesEcn ecn = ecnMapper.selectById(bom.getEcnId());
         if (ecn != null && ecn.getStatus() != EcnStatus.DRAFT && ecn.getStatus() != EcnStatus.EFFECTIVE) {
-            throw new BizException("工程变更 {0} 已提交，变更后的 BOM 不能再修改", ecn.getEcnNo());
+            throw new BizException("mes.error.ecnHasSubmittedNewBomNo", ecn.getEcnNo());
         }
     }
 
     private void checkNotPending(MesBom bom) {
         if (isPending(bom)) {
-            throw new BizException("该版本由工程变更创建，变更生效后自动启用");
+            throw new BizException("mes.error.versionCreatedEcnEnabledAutomaticallyOnce");
         }
     }
 
@@ -268,7 +268,7 @@ public class MesBomService {
     MesBom getBom(Long id) {
         MesBom bom = id == null ? null : bomMapper.selectById(id);
         if (bom == null) {
-            throw new BizException("BOM 不存在");
+            throw new BizException("mes.error.bomDoesNotExist");
         }
         return bom;
     }
@@ -307,10 +307,10 @@ public class MesBomService {
         for (BomItemRequest item : req.items()) {
             WmsMaterial m = components.get(item.materialId());
             if (item.materialId().equals(req.materialId())) {
-                throw new BizException("子件不能是产品本身");
+                throw new BizException("mes.error.componentCannotProductItself");
             }
             if (!seen.add(item.materialId())) {
-                throw new BizException("子件重复：{0} {1}", m.getCode(), m.getName());
+                throw new BizException("mes.error.duplicateComponent", m.getCode(), m.getName());
             }
         }
         RefDes.checkUnique(req.items().stream().map(BomItemRequest::refDes).toList());
@@ -319,10 +319,10 @@ public class MesBomService {
             Set<Long> wcIds = ops.stream().map(BomOpRequest::workCenterId).collect(Collectors.toSet());
             List<MesWorkCenter> wcs = workCenterMapper.selectByIds(wcIds);
             if (wcs.size() < wcIds.size()) {
-                throw new BizException("工作中心不存在");
+                throw new BizException("mes.error.workCenterDoesNotExist");
             }
             if (ops.stream().map(BomOpRequest::seq).distinct().count() < ops.size()) {
-                throw new BizException("工序号重复");
+                throw new BizException("mes.error.duplicateOperationNo");
             }
         }
         checkCycle(product, seen);
@@ -340,7 +340,7 @@ public class MesBomService {
         while (!stack.isEmpty()) {
             Long m = stack.pop();
             if (m.equals(product.getId())) {
-                throw new BizException("BOM 存在循环引用：子件的下层用到了产品「{0} {1}」", product.getCode(), product.getName());
+                throw new BizException("mes.error.circularBomReferenceProductUsedLower", product.getCode(), product.getName());
             }
             if (visited.add(m)) {
                 stack.addAll(edges.getOrDefault(m, List.of()));

@@ -12,7 +12,7 @@ const screenHttp = axios.create({ baseURL: '/api', timeout: 20000 })
 async function get(url, { params, auth } = {}) {
   const token = auth ? getToken() : null
   try {
-    const { data } = await screenHttp.get(url, { params, headers: { 'X-Lang': currentLocale(), ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+    const { data } = await screenHttp.get(url, { params, headers: { 'Accept-Language': currentLocale(), ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
     if (data.code === 200) return data.data
     throw Object.assign(new Error(data.msg || t('layout.requestFailed')), { code: data.code })
   } catch (e) {

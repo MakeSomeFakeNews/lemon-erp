@@ -15,10 +15,10 @@ import java.util.List;
  * @param months 1-12 月预算，12 个
  */
 public record BudgetRequest(
-        @NotNull(message = "请选择年度") @Min(2000) @Max(2999) Integer budgetYear,
+        @NotNull(message = "{fin.valid.selectYear}") @Min(2000) @Max(2999) Integer budgetYear,
         Long deptId,
-        @NotNull(message = "请选择科目") Long accountId,
-        @NotNull(message = "请填写各月预算") @Size(min = 12, max = 12, message = "请填写 12 个月的预算") List<BigDecimal> months,
+        @NotNull(message = "{fin.valid.selectAccount}") Long accountId,
+        @NotNull(message = "{fin.valid.enterMonthlyBudgets}") @Size(min = 12, max = 12, message = "{fin.valid.enterBudgetMonths}") List<BigDecimal> months,
         @Size(max = 255) String remark,
-        @jakarta.validation.constraints.Pattern(regexp = "^(NONE|WARN|BLOCK)?$", message = "预算控制方式不正确") String controlMode) {
+        @jakarta.validation.constraints.Pattern(regexp = "^(NONE|WARN|BLOCK)?$", message = "{fin.valid.invalidBudgetControlMode}") String controlMode) {
 }

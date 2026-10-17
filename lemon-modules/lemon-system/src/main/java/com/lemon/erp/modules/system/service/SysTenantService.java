@@ -141,7 +141,7 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
         requireEnabled();
         SysTenant tenant = getExisting(id);
         if (tenant.isPlatform() && Integer.valueOf(0).equals(status)) {
-            throw new BizException("不允许停用平台租户");
+            throw new BizException("system.error.platformTenantCannotDisabled");
         }
         update(Wrappers.<SysTenant>lambdaUpdate().set(SysTenant::getStatus, status)
                 .set(SysTenant::getUpdateTime, LocalDateTime.now()).eq(SysTenant::getId, id));
@@ -155,11 +155,11 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
     public void delete(List<Long> ids) {
         requireEnabled();
         if (ids.contains(TenantContext.PLATFORM_TENANT_ID)) {
-            throw new BizException("不允许删除平台租户");
+            throw new BizException("system.error.platformTenantCannotDeleted");
         }
         List<SysTenant> tenants = listByIds(ids);
         if (tenants.stream().anyMatch(t -> !Integer.valueOf(0).equals(t.getStatus()))) {
-            throw new BizException("请先停用租户再删除");
+            throw new BizException("system.error.disableTenantBeforeDeleting");
         }
         removeByIds(ids);
         ids.forEach(tokenService::kickTenant);
@@ -286,14 +286,14 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
 
     private SysTenantPackage checkPackage(Long packageId) {
         if (packageId == null) {
-            throw new BizException("请选择套餐");
+            throw new BizException("system.error.selectPlan");
         }
         SysTenantPackage pkg = packageMapper.selectById(packageId);
         if (pkg == null) {
-            throw new BizException("套餐不存在");
+            throw new BizException("system.error.planDoesNotExist");
         }
         if (!Integer.valueOf(1).equals(pkg.getStatus())) {
-            throw new BizException("套餐「{0}」已停用", pkg.getName());
+            throw new BizException("system.error.planHasDisabled", pkg.getName());
         }
         return pkg;
     }
@@ -302,21 +302,21 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
         tenant.setName(tenant.getName().trim());
         SysTenant exist = getOne(Wrappers.<SysTenant>lambdaQuery().eq(SysTenant::getName, tenant.getName()));
         if (exist != null && !Objects.equals(exist.getId(), tenant.getId())) {
-            throw new BizException("租户名称已存在");
+            throw new BizException("system.error.tenantNameAlreadyExists");
         }
     }
 
     private SysTenant getExisting(Long id) {
         SysTenant tenant = getById(id);
         if (tenant == null) {
-            throw new BizException("租户不存在");
+            throw new BizException("system.error.tenantDoesNotExist");
         }
         return tenant;
     }
 
     private void requireEnabled() {
         if (!lookup.isEnabled()) {
-            throw new BizException("未开启 SaaS 模式（lemon.tenant.enabled）");
+            throw new BizException("system.error.saasModeNotEnabledLemonTenant");
         }
     }
 }

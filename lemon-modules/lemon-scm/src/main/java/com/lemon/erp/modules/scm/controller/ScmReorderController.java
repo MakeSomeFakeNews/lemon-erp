@@ -36,7 +36,7 @@ public class ScmReorderController {
         return R.ok(reorderService.suggestions(keyword, onlyNeeded));
     }
 
-    public record ToRequisitionRequest(@NotEmpty(message = "请选择要补货的物料") List<RequisitionRequest.@Valid Item> items) {
+    public record ToRequisitionRequest(@NotEmpty(message = "{scm.valid.selectMaterialsReplenish}") List<RequisitionRequest.@Valid Item> items) {
     }
 
     /** 选中的建议生成请购单（草稿），返回请购单 ID */

@@ -66,7 +66,7 @@ public class HrPerfService {
     public HrPerfPlan detail(Long id) {
         HrPerfPlan p = planMapper.selectDetail(id);
         if (p == null) {
-            throw new BizException("考核方案不存在");
+            throw new BizException("hr.error.appraisalPlanDoesNotExist");
         }
         p.setIndicators(indicators(id));
         return p;
@@ -115,7 +115,7 @@ public class HrPerfService {
     public void delete(Long id) {
         HrPerfPlan p = getPlan(id);
         if (!"DRAFT".equals(p.getStatus())) {
-            throw new BizException("只能删除草稿状态的考核方案");
+            throw new BizException("hr.error.onlyDraftAppraisalPlansDeleted");
         }
         indicatorMapper.delete(Wrappers.<HrPerfIndicator>lambdaQuery().eq(HrPerfIndicator::getPlanId, id));
         planMapper.deleteById(id);
@@ -131,7 +131,7 @@ public class HrPerfService {
     public int start(Long id, List<Long> deptIds) {
         HrPerfPlan p = getPlan(id);
         if (!"DRAFT".equals(p.getStatus())) {
-            throw new BizException("考核已发起");
+            throw new BizException("hr.error.appraisalAlreadyStarted");
         }
         Set<Long> scope = null;
         if (deptIds != null && !deptIds.isEmpty()) {
@@ -144,7 +144,7 @@ public class HrPerfService {
         List<HrEmployee> employees = employeeMapper.selectEmployedBetween(today, today, scope, null).stream()
                 .filter(e -> !HrEmployeeService.LEFT.equals(e.getStatus())).toList();
         if (employees.isEmpty()) {
-            throw new BizException("所选范围内没有在职员工");
+            throw new BizException("hr.error.noActiveEmployeesSelectedScope");
         }
         Map<Long, SysDept> depts = deptService.list().stream().collect(Collectors.toMap(SysDept::getId, Function.identity()));
         Long starter = SecurityUtils.getUserId();
@@ -174,12 +174,12 @@ public class HrPerfService {
     public void finish(Long id) {
         HrPerfPlan p = getPlan(id);
         if (!"SCORING".equals(p.getStatus())) {
-            throw new BizException("考核不在进行中");
+            throw new BizException("hr.error.appraisalNotProgress");
         }
         long pending = appraisalMapper.selectCount(Wrappers.<HrPerfAppraisal>lambdaQuery()
                 .eq(HrPerfAppraisal::getPlanId, id).ne(HrPerfAppraisal::getStatus, "DONE"));
         if (pending > 0) {
-            throw new BizException("还有 {0} 张考核表没有完成评分", pending);
+            throw new BizException("hr.error.appraisalFormSHaveNotScored", pending);
         }
         planMapper.update(Wrappers.<HrPerfPlan>lambdaUpdate().set(HrPerfPlan::getStatus, "FINISHED")
                 .eq(HrPerfPlan::getId, id).eq(HrPerfPlan::getStatus, "SCORING"));
@@ -198,12 +198,12 @@ public class HrPerfService {
     public HrPerfAppraisal appraisal(Long id) {
         HrPerfAppraisal a = appraisalMapper.selectDetail(id);
         if (a == null) {
-            throw new BizException("考核表不存在");
+            throw new BizException("hr.error.appraisalFormDoesNotExist");
         }
         Long me = SecurityUtils.getUserId();
         if (!Objects.equals(a.getEmployeeUserId(), me) && !Objects.equals(a.getReviewerId(), me)
                 && !permissionService.hasPerm("hr:perf:list")) {
-            throw new BizException("没有权限查看该考核表");
+            throw new BizException("hr.error.noPermissionViewAppraisalForm");
         }
         a.setScores(scoreMapper.selectByAppraisal(id));
         return a;
@@ -214,10 +214,10 @@ public class HrPerfService {
     public void selfEvaluate(Long id, PerfScoreRequest req) {
         HrPerfAppraisal a = appraisal(id);
         if (!Objects.equals(a.getEmployeeUserId(), SecurityUtils.getUserId())) {
-            throw new BizException("只能填写自己的自评");
+            throw new BizException("hr.error.onlyFillOwnSelfAssessment");
         }
         if (!"SELF".equals(a.getStatus()) || !"SCORING".equals(a.getPlanStatus())) {
-            throw new BizException("考核表不在自评阶段");
+            throw new BizException("hr.error.appraisalFormNotSelfAssessmentStage");
         }
         BigDecimal total = saveScores(a, req, true);
         appraisalMapper.update(Wrappers.<HrPerfAppraisal>lambdaUpdate()
@@ -232,13 +232,13 @@ public class HrPerfService {
     public void review(Long id, PerfScoreRequest req) {
         HrPerfAppraisal a = appraisal(id);
         if (!Objects.equals(a.getReviewerId(), SecurityUtils.getUserId()) && !permissionService.hasPerm("hr:perf:score")) {
-            throw new BizException("只有评分人可以评分");
+            throw new BizException("hr.error.onlyReviewerScore");
         }
         if (Objects.equals(a.getEmployeeUserId(), SecurityUtils.getUserId())) {
-            throw new BizException("不能给自己评分");
+            throw new BizException("hr.error.cannotScoreYourself");
         }
         if ("DONE".equals(a.getStatus()) || !"SCORING".equals(a.getPlanStatus())) {
-            throw new BizException("考核表已完成评分或考核已归档");
+            throw new BizException("hr.error.appraisalFormHasScoredAppraisalArchived");
         }
         BigDecimal total = saveScores(a, req, false);
         appraisalMapper.update(Wrappers.<HrPerfAppraisal>lambdaUpdate()
@@ -255,7 +255,7 @@ public class HrPerfService {
     public void reopen(Long id) {
         HrPerfAppraisal a = appraisal(id);
         if (!"DONE".equals(a.getStatus()) || !"SCORING".equals(a.getPlanStatus())) {
-            throw new BizException("只能退回考核中已完成评分的考核表");
+            throw new BizException("hr.error.onlyScoredFormsOngoingAppraisalReturned");
         }
         appraisalMapper.update(Wrappers.<HrPerfAppraisal>lambdaUpdate()
                 .set(HrPerfAppraisal::getStatus, "REVIEW").set(HrPerfAppraisal::getScore, null).set(HrPerfAppraisal::getGrade, null)
@@ -279,7 +279,7 @@ public class HrPerfService {
         Map<Long, BigDecimal> given = req.scores().stream()
                 .collect(Collectors.toMap(PerfScoreRequest.Item::indicatorId, PerfScoreRequest.Item::score, (x, y) -> y));
         if (!given.keySet().equals(scores.keySet())) {
-            throw new BizException("请为每个指标评分");
+            throw new BizException("hr.valid.scoreEveryIndicator");
         }
         BigDecimal total = BigDecimal.ZERO;
         for (HrPerfScore s : scores.values()) {
@@ -312,7 +312,7 @@ public class HrPerfService {
     private void saveIndicators(Long planId, List<PerfPlanRequest.Indicator> list) {
         BigDecimal sum = list.stream().map(PerfPlanRequest.Indicator::weight).reduce(BigDecimal.ZERO, BigDecimal::add);
         if (sum.compareTo(HUNDRED) != 0) {
-            throw new BizException("指标权重合计必须为 100%，当前为 {0}%", sum.stripTrailingZeros().toPlainString());
+            throw new BizException("hr.error.indicatorWeightsMustTotalCurrently", sum.stripTrailingZeros().toPlainString());
         }
         int sort = 0;
         for (PerfPlanRequest.Indicator i : list) {
@@ -329,14 +329,14 @@ public class HrPerfService {
     private HrPerfPlan getPlan(Long id) {
         HrPerfPlan p = id == null ? null : planMapper.selectById(id);
         if (p == null) {
-            throw new BizException("考核方案不存在");
+            throw new BizException("hr.error.appraisalPlanDoesNotExist");
         }
         return p;
     }
 
     private static void fill(HrPerfPlan p, PerfPlanRequest req) {
         if (req.endDate().isBefore(req.startDate())) {
-            throw new BizException("结束日期不能早于开始日期");
+            throw new BizException("hr.error.endDateCannotEarlierStartDate");
         }
         if (req.payPeriod() != null) {
             HrAttendanceService.toYearMonth(req.payPeriod());

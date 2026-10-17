@@ -83,7 +83,7 @@ public class FinCommissionController {
         return R.ok(commissionService.generate(period));
     }
 
-    public record AdjustRequest(BigDecimal adjustAmount, @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+    public record AdjustRequest(BigDecimal adjustAmount, @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}") String remark) {
     }
 
     @PutMapping("/line/{id}")

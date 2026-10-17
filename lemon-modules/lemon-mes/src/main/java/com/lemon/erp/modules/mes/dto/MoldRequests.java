@@ -28,27 +28,27 @@ public final class MoldRequests {
      * @param productIds 适用产品，为空时不限制
      */
     public record Save(
-            @NotBlank(message = "请填写编码") @Pattern(regexp = "^[A-Za-z0-9_-]{1,32}$", message = "编码只能包含字母、数字、下划线和短横线，最多32个字符")
+            @NotBlank(message = "{mes.valid.enterCode}") @Pattern(regexp = "^[A-Za-z0-9_-]{1,32}$", message = "{mes.valid.codeOnlyContainLettersDigitsUnderscores}")
             String code,
-            @NotBlank(message = "请填写名称") @Size(max = 64, message = "名称不能超过64个字符") String name,
-            @NotNull(message = "请选择类型") MoldType moldType,
-            @Size(max = 64, message = "规格不能超过64个字符") String spec,
-            @NotNull(message = "请填写模穴数") @Min(value = 1, message = "模穴数至少为1") Integer cavities,
-            @Min(value = 1, message = "设计寿命至少为1") Integer designLife,
-            @NotNull(message = "请填写预警比例") @DecimalMin(value = "1", message = "预警比例为1~100") @DecimalMax(value = "100", message = "预警比例为1~100")
+            @NotBlank(message = "{mes.valid.enterName}") @Size(max = 64, message = "{mes.valid.nameCannotExceedCharacters}") String name,
+            @NotNull(message = "{mes.valid.selectType}") MoldType moldType,
+            @Size(max = 64, message = "{mes.valid.specCannotExceedCharacters}") String spec,
+            @NotNull(message = "{mes.valid.enterNumberCavities}") @Min(value = 1, message = "{mes.valid.cavitiesMustLeast}") Integer cavities,
+            @Min(value = 1, message = "{mes.valid.designLifeMustLeast}") Integer designLife,
+            @NotNull(message = "{mes.valid.enterWarningRatio}") @DecimalMin(value = "1", message = "{mes.valid.warningRatioMust}") @DecimalMax(value = "100", message = "{mes.valid.warningRatioMust}")
             BigDecimal warnRatio,
-            @Min(value = 0, message = "已用模次不能为负数") Integer usedCount,
-            @Size(max = 64, message = "存放位置不能超过64个字符") String location,
-            @Size(max = 50, message = "适用产品不能超过50个") List<Long> productIds,
-            @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+            @Min(value = 0, message = "{mes.valid.usedShotsCannotNegative}") Integer usedCount,
+            @Size(max = 64, message = "{mes.valid.storageLocationCannotExceedCharacters}") String location,
+            @Size(max = 50, message = "{mes.valid.mostApplicableProducts}") List<Long> productIds,
+            @Size(max = 255, message = "{mes.valid.remarkCannotExceedCharacters}") String remark) {
     }
 
     /** 领用到工单（可指定安装的设备）、归还（可填写存放位置）、送修、修复、报废 */
     public record Action(
             Long woId,
             Long equipmentId,
-            @NotNull(message = "请选择日期") LocalDate date,
-            @Size(max = 64, message = "存放位置不能超过64个字符") String location,
-            @Size(max = 255, message = "说明不能超过255个字符") String remark) {
+            @NotNull(message = "{mes.valid.selectDate}") LocalDate date,
+            @Size(max = 64, message = "{mes.valid.storageLocationCannotExceedCharacters}") String location,
+            @Size(max = 255, message = "{mes.valid.descriptionCannotExceedCharacters}") String remark) {
     }
 }

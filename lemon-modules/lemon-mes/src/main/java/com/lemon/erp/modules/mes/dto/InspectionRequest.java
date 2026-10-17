@@ -23,20 +23,20 @@ import java.util.List;
  * @param defectType 主要不良类型，字典 mes_defect_type
  */
 public record InspectionRequest(
-        @NotNull(message = "请选择检验类型") QcType type,
+        @NotNull(message = "{mes.valid.selectInspectionType}") QcType type,
         @Size(max = 32) String sourceNo,
         Long woOpId,
-        @NotNull(message = "请选择物料") Long materialId,
-        @Size(max = 64, message = "批次号不能超过64个字符") String batchNo,
-        @NotNull(message = "请填写送检数量") @DecimalMin(value = "0", inclusive = false, message = "送检数量必须大于0")
+        @NotNull(message = "{mes.valid.selectMaterial}") Long materialId,
+        @Size(max = 64, message = "{mes.valid.batchNoCannotExceedCharacters}") String batchNo,
+        @NotNull(message = "{mes.valid.enterLotQuantity}") @DecimalMin(value = "0", inclusive = false, message = "{mes.valid.lotQuantityMustGreater}")
         @Digits(integer = 14, fraction = 4) BigDecimal inspectQty,
-        @DecimalMin(value = "0", inclusive = false, message = "抽检数量必须大于0") @Digits(integer = 14, fraction = 4) BigDecimal sampleQty,
-        @DecimalMin(value = "0", message = "不良数量不能小于0") @Digits(integer = 14, fraction = 4) BigDecimal defectQty,
+        @DecimalMin(value = "0", inclusive = false, message = "{mes.valid.sampleQuantityMustGreater}") @Digits(integer = 14, fraction = 4) BigDecimal sampleQty,
+        @DecimalMin(value = "0", message = "{mes.valid.defectQuantityCannotLess}") @Digits(integer = 14, fraction = 4) BigDecimal defectQty,
         QcResult result,
         Long planId,
-        @Size(max = 100, message = "检验项目不能超过100项") List<@Valid @NotNull InspectionItemRequest> items,
+        @Size(max = 100, message = "{mes.valid.inspectionItemsCannotExceed}") List<@Valid @NotNull InspectionItemRequest> items,
         @Size(max = 32) String defectType,
-        @Size(max = 255, message = "不良描述不能超过255个字符") String defectDesc,
-        @NotNull(message = "请选择检验日期") LocalDate inspectDate,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+        @Size(max = 255, message = "{mes.valid.defectDescriptionCannotExceedCharacters}") String defectDesc,
+        @NotNull(message = "{mes.valid.selectInspectionDate}") LocalDate inspectDate,
+        @Size(max = 255, message = "{mes.valid.remarkCannotExceedCharacters}") String remark) {
 }

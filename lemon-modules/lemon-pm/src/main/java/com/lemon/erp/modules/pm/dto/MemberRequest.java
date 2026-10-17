@@ -17,11 +17,11 @@ import java.time.LocalDate;
  * @param costRate 小时成本，不填时按员工薪资档案计算（月度人工成本 / 174 小时）
  */
 public record MemberRequest(
-        @NotNull(message = "请选择成员") Long userId,
-        @NotBlank(message = "请选择项目角色") String role,
-        @NotNull(message = "请填写投入比例") @Min(value = 1, message = "投入比例为1%-100%") @Max(value = 100, message = "投入比例为1%-100%") Integer allocation,
-        @DecimalMin(value = "0", message = "小时成本不能小于0") @Digits(integer = 8, fraction = 2, message = "金额最多2位小数") BigDecimal costRate,
+        @NotNull(message = "{pm.valid.selectMember}") Long userId,
+        @NotBlank(message = "{pm.valid.selectProjectRole}") String role,
+        @NotNull(message = "{pm.valid.enterAllocation}") @Min(value = 1, message = "{pm.valid.allocationMust}") @Max(value = 100, message = "{pm.valid.allocationMust}") Integer allocation,
+        @DecimalMin(value = "0", message = "{pm.valid.hourlyCostCannotNegative}") @Digits(integer = 8, fraction = 2, message = "{pm.valid.amountAllowsMostDecimalPlaces}") BigDecimal costRate,
         LocalDate joinDate,
         LocalDate leaveDate,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+        @Size(max = 255, message = "{pm.valid.remarkCannotExceedCharacters}") String remark) {
 }

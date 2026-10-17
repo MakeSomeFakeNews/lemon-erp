@@ -36,10 +36,10 @@ public class FinPartnerLedgerService {
         FinBillService.checkKind(kind);
         boolean ar = FinConstants.BILL_AR.equals(kind);
         if (!permissionService.hasPerm(ar ? "fin:ar:list" : "fin:ap:list")) {
-            throw new BizException(ar ? "没有权限查看应收" : "没有权限查看应付");
+            throw new BizException(ar ? "fin.error.noPermissionViewReceivables" : "fin.error.noPermissionViewPayables");
         }
         if (begin == null || end == null || end.isBefore(begin)) {
-            throw new BizException("日期范围不正确");
+            throw new BizException("fin.error.invalidDateRange");
         }
         String settleKind = (ar ? SettleKind.RECEIPT : SettleKind.PAYMENT).name();
         BigDecimal opening = ledgerMapper.sumBillsBefore(kind, partnerId, begin)

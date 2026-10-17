@@ -1,6 +1,6 @@
 package com.lemon.erp.modules.fin.controller;
 
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
@@ -54,7 +54,7 @@ public class FinSettlementController {
     @OperLog(title = "收付款", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@PathVariable String kind, @Valid @RequestBody SettlementRequest req) {
         if (!kind.toUpperCase(Locale.ROOT).equals(req.kind())) {
-            return R.fail(I18n.t("单据种类不匹配"));
+            return R.fail(Messages.get("fin.text.documentKindDoesNotMatch"));
         }
         return R.ok(settlementService.create(req));
     }

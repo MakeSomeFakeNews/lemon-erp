@@ -19,15 +19,15 @@ import java.time.LocalDate;
  * @param serialNos      序列号，逗号或换行分隔；启用序列号管理的物料，个数须与数量一致
  */
 public record StockDocItemRequest(
-        @NotNull(message = "请选择物料") Long materialId,
+        @NotNull(message = "{wms.valid.selectMaterial}") Long materialId,
         Long locationId,
         Long toLocationId,
-        @Size(max = 64, message = "批次号不能超过64个字符") String batchNo,
+        @Size(max = 64, message = "{wms.valid.batchNoCannotExceedCharacters}") String batchNo,
         LocalDate productionDate,
         LocalDate expiryDate,
-        @NotNull(message = "请填写数量")
-        @DecimalMin(value = "0", inclusive = false, message = "数量必须大于0")
-        @Digits(integer = 14, fraction = 4, message = "数量最多4位小数") BigDecimal qty,
+        @NotNull(message = "{wms.valid.enterQuantity}")
+        @DecimalMin(value = "0", inclusive = false, message = "{wms.valid.quantityMustGreater}")
+        @Digits(integer = 14, fraction = 4, message = "{wms.valid.quantityAllowsMostDecimalPlaces}") BigDecimal qty,
         String serialNos,
-        @Size(max = 255, message = "备注不能超过255个字符") String remark) {
+        @Size(max = 255, message = "{wms.valid.remarkCannotExceedCharacters}") String remark) {
 }

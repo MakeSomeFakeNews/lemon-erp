@@ -57,7 +57,7 @@ public class SysPrintTemplateService {
         clean.remove(JRXML_FLAG);
         String json = objectMapper.writeValueAsString(clean);
         if (json.length() > MAX_CONFIG_LENGTH) {
-            throw new BizException("模板配置过大");
+            throw new BizException("system.error.templateConfigurationTooLarge");
         }
         SysPrintTemplate t = find(key);
         if (t == null) {
@@ -134,10 +134,10 @@ public class SysPrintTemplateService {
         checkKey(key);
         if (dataUrl != null && !dataUrl.isBlank()) {
             if (!dataUrl.startsWith("data:image/png;base64,") && !dataUrl.startsWith("data:image/jpeg;base64,")) {
-                throw new BizException("底图只支持 PNG、JPG 图片");
+                throw new BizException("system.error.onlyPngJpgImagesSupportedBackground");
             }
             if (dataUrl.length() > MAX_BACKGROUND_LENGTH) {
-                throw new BizException("底图不能超过 2MB");
+                throw new BizException("system.error.backgroundImageCannotExceedMb");
             }
         }
         String value = dataUrl == null || dataUrl.isBlank() ? null : dataUrl;
@@ -168,7 +168,7 @@ public class SysPrintTemplateService {
 
     private static void checkKey(String key) {
         if (key == null || !validKey(key)) {
-            throw new BizException("模板标识不正确");
+            throw new BizException("system.error.invalidTemplateKey");
         }
     }
 }

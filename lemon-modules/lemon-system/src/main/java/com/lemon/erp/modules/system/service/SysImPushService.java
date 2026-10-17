@@ -44,7 +44,7 @@ public class SysImPushService {
                     try {
                         configService.client(p).send(c, members, card);
                     } catch (RuntimeException ex) {
-                        log.warn("推送{}消息失败：{}", p.label(), ex.getMessage());
+                        log.warn("推送{}消息失败：{}", p.defaultText(), ex.getMessage());
                     }
                 }
             }
@@ -53,7 +53,7 @@ public class SysImPushService {
                 try {
                     configService.client(p).robot(c.getRobotWebhook(), c.getRobotSecret(), card);
                 } catch (RuntimeException ex) {
-                    log.warn("推送{}群机器人失败：{}", p.label(), ex.getMessage());
+                    log.warn("推送{}群机器人失败：{}", p.defaultText(), ex.getMessage());
                 }
             }
         }

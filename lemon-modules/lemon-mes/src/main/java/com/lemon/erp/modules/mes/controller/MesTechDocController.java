@@ -68,14 +68,14 @@ public class MesTechDocController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('mes:doc:add')")
-    @OperLog(title = "技术文档", type = OperType.INSERT)
+    @OperLog(title = "技术文档", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody PlmRequests.Doc req) {
         return R.ok(docService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('mes:doc:edit')")
-    @OperLog(title = "技术文档", type = OperType.UPDATE)
+    @OperLog(title = "技术文档", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody PlmRequests.Doc req) {
         docService.update(id, req);
         return R.ok();
@@ -83,7 +83,7 @@ public class MesTechDocController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('mes:doc:remove')")
-    @OperLog(title = "技术文档", type = OperType.DELETE)
+    @OperLog(title = "技术文档", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
         docService.delete(id);
         return R.ok();

@@ -18,20 +18,20 @@ import java.util.List;
  * @param targetWarehouseId 供应商寄售结算时转入的自有仓库
  */
 public record ConsignSettleRequest(
-        @NotNull(message = "请选择寄售仓") Long warehouseId,
+        @NotNull(message = "{scm.valid.selectConsignmentWarehouse}") Long warehouseId,
         Long targetWarehouseId,
-        @NotNull(message = "请选择业务日期") LocalDate bizDate,
+        @NotNull(message = "{scm.valid.selectBusinessDate}") LocalDate bizDate,
         @Size(max = 255) String remark,
-        @NotEmpty(message = "请添加结算明细") @Size(max = 200) List<@Valid @NotNull Item> items) {
+        @NotEmpty(message = "{scm.valid.addSettlementLines}") @Size(max = 200) List<@Valid @NotNull Item> items) {
 
     /**
      * @param price 含税单价（原币），为空时客户寄售取价目表、供应商寄售取供货价格
      */
     public record Item(
-            @NotNull(message = "请选择物料") Long materialId,
-            @NotNull(message = "请填写数量") @DecimalMin(value = "0", inclusive = false, message = "数量必须大于0")
+            @NotNull(message = "{scm.valid.selectMaterial}") Long materialId,
+            @NotNull(message = "{scm.valid.enterQuantity}") @DecimalMin(value = "0", inclusive = false, message = "{scm.valid.quantityMustGreater}")
             @Digits(integer = 14, fraction = 4) BigDecimal qty,
-            @DecimalMin(value = "0", message = "单价不能小于0") BigDecimal price,
+            @DecimalMin(value = "0", message = "{scm.valid.unitPriceCannotLess}") BigDecimal price,
             BigDecimal taxRate,
             Long locationId,
             @Size(max = 64) String batchNo,

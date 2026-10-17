@@ -44,7 +44,7 @@ public class ScmCustomerPortalController {
     @OperLog(title = "经销商门户账号", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@PathVariable Long customerId, @Valid @RequestBody SrmRequests.PortalAccount req) {
         if (customerService.get(customerId).getChannel() != SalesChannel.DEALER) {
-            throw new BizException("只有渠道为「经销商」的客户才能开通经销商门户");
+            throw new BizException("scm.error.onlyCustomersDealerChannelHaveDealer");
         }
         return R.ok(portalAccounts.create(PortalKind.DEALER, customerId,
                 new PortalAccounts.NewAccount(req.username(), req.nickname(), req.phone(), req.password())));

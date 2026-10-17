@@ -7,7 +7,9 @@ import java.util.List;
  * 取号时 {@code DocNoService.next(key)} 按租户配置的规则生成编号，未配置时使用这里的默认规则。
  * Bean 上用 @Order 指定页面中的模块顺序
  *
- * @param module 模块名称，页面分组用
+ * 名称一律写消息键（由声明的模块在自己的资源包中登记），输出时 {@code Messages.get}
+ *
+ * @param module 模块名称（消息键），页面分组用
  */
 public record DocNoCatalog(String module, List<Type> types) {
 
@@ -17,7 +19,7 @@ public record DocNoCatalog(String module, List<Type> types) {
 
     /**
      * @param key         规则标识，也是默认前缀（如 CG）；调用 {@code DocNoService.next(key)} 时使用
-     * @param name        单据名称
+     * @param name        单据名称（消息键）
      * @param dateFormat  默认日期格式
      * @param seqLength   默认流水位数
      * @param resetCycle  默认流水重置周期

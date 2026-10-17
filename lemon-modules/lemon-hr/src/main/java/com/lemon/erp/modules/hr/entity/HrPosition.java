@@ -18,32 +18,32 @@ import lombok.EqualsAndHashCode;
 @TableName("hr_position")
 public class HrPosition extends BaseEntity {
 
-    @NotBlank(message = "职位编码不能为空")
-    @Pattern(regexp = "^[A-Za-z0-9_-]{1,32}$", message = "职位编码只能包含字母、数字、下划线和短横线，最多32个字符")
+    @NotBlank(message = "{hr.valid.positionCodeCannotEmpty}")
+    @Pattern(regexp = "^[A-Za-z0-9_-]{1,32}$", message = "{hr.valid.positionCodeMayOnlyContainLetters}")
     private String code;
 
-    @NotBlank(message = "职位名称不能为空")
-    @Size(max = 64, message = "职位名称不能超过64个字符")
+    @NotBlank(message = "{hr.valid.positionNameCannotEmpty}")
+    @Size(max = 64, message = "{hr.valid.positionNameCannotExceedCharacters}")
     private String name;
 
     /** 职位类别(字典 hr_position_category) */
     private String category;
 
     /** 职级，如 P5、M2 */
-    @Size(max = 16, message = "职级不能超过16个字符")
+    @Size(max = 16, message = "{hr.valid.jobGradeCannotExceedCharacters}")
     private String grade;
 
     private Integer sort;
 
     /** 编制人数，为空表示不限；招聘需求审核时校验 在职 + 招聘中 不超过编制 */
-    @Min(value = 0, message = "编制人数不能小于0")
+    @Min(value = 0, message = "{hr.valid.headcountCannotLess}")
     private Integer headcount;
 
     /** 1 启用 0 停用 */
     private Integer status;
 
     /** 职责说明 */
-    @Size(max = 255, message = "职责说明不能超过255个字符")
+    @Size(max = 255, message = "{hr.valid.responsibilitiesCannotExceedCharacters}")
     private String remark;
 
     /** 在职人数 */

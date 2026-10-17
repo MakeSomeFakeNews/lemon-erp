@@ -17,6 +17,6 @@ import java.util.Map;
  * @param filters  维度筛选：维度编码 → 取值列表
  * @param chart    图表类型：table、bar、line、pie（前端使用）
  */
-public record PivotRequest(@NotBlank(message = "请选择数据集") String cube, String row, String col, List<String> measures,
+public record PivotRequest(@NotBlank(message = "{bi.valid.selectDataset}") String cube, String row, String col, List<String> measures,
                            String range, LocalDate begin, LocalDate end, Map<String, List<String>> filters, String chart) {
 }

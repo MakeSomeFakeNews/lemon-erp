@@ -1,7 +1,7 @@
 package com.lemon.erp.modules.monitor.service;
 
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.cache.CacheService;
 import com.lemon.erp.framework.security.TokenService;
 import com.lemon.erp.modules.monitor.dto.CacheInfo;
@@ -37,17 +37,17 @@ import java.util.Properties;
 @RequiredArgsConstructor
 public class CacheMonitorService {
 
-    /** 应用使用的缓存，新增缓存类型时在这里登记即可出现在缓存列表中 */
+    /** 应用使用的缓存，新增缓存类型时在这里登记即可出现在缓存列表中（名称、说明写消息键，登记在 monitor 资源包） */
     private static final List<CacheName> CACHES = List.of(
-            new CacheName(TokenService.TOKEN_KEY, "登录会话", "在线用户的登录会话，清空后所有用户需重新登录", 0),
-            new CacheName(TokenService.PERMS_KEY, "用户权限", "登录用户的角色与权限，清空后下次请求自动重新加载", 0),
-            new CacheName(SysDictService.CACHE_KEY, "字典数据", "按字典类型缓存的字典数据", 0),
-            new CacheName(PasswordPolicy.FAIL_KEY, "登录失败", "按用户名记录的连续登录失败次数，达到上限时锁定账号；清空即解除锁定", 0),
-            new CacheName(CaptchaService.CACHE_KEY, "登录验证码", "验证码答案，2 分钟内有效，校验一次后作废", 0),
-            new CacheName(SysConfigService.CACHE_KEY, "系统参数", "参数设置中修改过的参数，保存时自动清理", 0),
-            new CacheName(SysBizRuleService.CACHE_KEY, "业务参数", "按租户缓存的业务参数（修改过的），保存时自动清理", 0),
-            new CacheName(ImHttp.TOKEN_KEY, "第三方集成令牌", "钉钉、企业微信、飞书应用的 access_token，按租户和平台缓存，修改集成配置时自动清理", 0),
-            new CacheName(SysImAuthService.STATE_KEY, "第三方授权", "钉钉、企业微信、飞书授权登录 / 绑定的 state，10 分钟内有效，使用一次后作废", 0));
+            new CacheName(TokenService.TOKEN_KEY, "monitor.label.loginSessions", "monitor.label.sessionsOnlineUsersAfterClearingAll", 0),
+            new CacheName(TokenService.PERMS_KEY, "monitor.label.userPermissions", "monitor.label.rolesPermissionsSignedUsersReloadedAutomatically", 0),
+            new CacheName(SysDictService.CACHE_KEY, "monitor.label.dictionaryData", "monitor.label.dictionaryDataCachedDictionaryType", 0),
+            new CacheName(PasswordPolicy.FAIL_KEY, "monitor.label.loginFailures", "monitor.label.consecutiveLoginFailuresPerUsernameAccount", 0),
+            new CacheName(CaptchaService.CACHE_KEY, "monitor.label.loginCaptcha", "monitor.label.captchaAnswersValidMinutesInvalidatedAfter", 0),
+            new CacheName(SysConfigService.CACHE_KEY, "monitor.label.systemSettings", "monitor.label.settingsChangedSettingsClearedAutomaticallySave", 0),
+            new CacheName(SysBizRuleService.CACHE_KEY, "monitor.label.businessRules", "monitor.label.changedBusinessRulesCachedPerTenant", 0),
+            new CacheName(ImHttp.TOKEN_KEY, "monitor.label.integrationTokens", "monitor.label.accessTokenDingtalkWecomFeishuApps", 0),
+            new CacheName(SysImAuthService.STATE_KEY, "monitor.label.thirdPartyAuthorization", "monitor.label.stateDingtalkWecomFeishuLoginBinding", 0));
     /** 单次最多返回的 key 数量，避免一次性返回过多 */
     private static final int MAX_KEYS = 1000;
 
@@ -71,7 +71,7 @@ public class CacheMonitorService {
 
     public List<CacheName> listNames() {
         return CACHES.stream()
-                .map(c -> new CacheName(c.prefix(), I18n.t(c.name()), I18n.t(c.remark()), cache.keys(c.prefix()).size()))
+                .map(c -> new CacheName(c.prefix(), Messages.get(c.name()), Messages.get(c.remark()), cache.keys(c.prefix()).size()))
                 .toList();
     }
 
@@ -84,7 +84,7 @@ public class CacheMonitorService {
         checkKey(key);
         String value = cache.getRaw(key);
         if (value == null) {
-            throw new BizException("缓存不存在或已过期");
+            throw new BizException("monitor.error.cacheEntryDoesNotExistHas");
         }
         return new CacheValue(key, value, cache.getExpire(key));
     }
@@ -105,13 +105,13 @@ public class CacheMonitorService {
 
     private void checkPrefix(String prefix) {
         if (CACHES.stream().noneMatch(c -> c.prefix().equals(prefix))) {
-            throw new BizException("不支持的缓存类型：{0}", prefix);
+            throw new BizException("monitor.error.unsupportedCacheType", prefix);
         }
     }
 
     private void checkKey(String key) {
         if (key == null || CACHES.stream().noneMatch(c -> key.startsWith(c.prefix()))) {
-            throw new BizException("不支持的缓存键：{0}", key);
+            throw new BizException("monitor.error.unsupportedCacheKey", key);
         }
     }
 

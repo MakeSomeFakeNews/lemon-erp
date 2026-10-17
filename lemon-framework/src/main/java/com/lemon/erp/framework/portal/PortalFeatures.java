@@ -1,6 +1,6 @@
 package com.lemon.erp.framework.portal;
 
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.security.LoginUser;
 
 /**
@@ -17,6 +17,6 @@ public final class PortalFeatures {
         if (kind == null || kind.allows(path)) {
             return null;
         }
-        return I18n.t("{0}账号只能使用{0}门户", I18n.t(kind.getLabel()));
+        return Messages.get("framework.text.accountsOnlyUsePortal", Messages.get(kind.getLabel()));
     }
 }

@@ -92,7 +92,7 @@ public class PmProjectService {
     public PmProject detail(Long id) {
         PmProject p = projectMapper.selectDetail(id, LocalDate.now());
         if (p == null) {
-            throw new BizException("项目不存在");
+            throw new BizException("pm.error.projectNotFound");
         }
         return p;
     }
@@ -100,7 +100,7 @@ public class PmProjectService {
     public PmProject get(Long id) {
         PmProject p = id == null ? null : projectMapper.selectById(id);
         if (p == null) {
-            throw new BizException("项目不存在");
+            throw new BizException("pm.error.projectNotFound");
         }
         return p;
     }
@@ -128,7 +128,7 @@ public class PmProjectService {
         Object before = projectMapper.selectById(id);
         PmProject old = get(id);
         if ("CLOSED".equals(old.getStatus())) {
-            throw new BizException("已关闭的项目不能修改");
+            throw new BizException("pm.error.closedProjectsCannotModified");
         }
         PmProject p = new PmProject();
         fill(p, req, id);
@@ -166,7 +166,7 @@ public class PmProjectService {
             int updated = projectMapper.update(Wrappers.<PmProject>lambdaUpdate()
                     .set(PmProject::getStatus, "APPROVING").eq(PmProject::getId, id).eq(PmProject::getStatus, "PLANNING"));
             if (updated == 0) {
-                throw new BizException("项目状态已变化，请刷新");
+                throw new BizException("pm.error.projectStatusHasChangedRefresh");
             }
             Map<String, Object> vars = new HashMap<>();
             vars.put("projectCode", p.getCode());
@@ -179,15 +179,15 @@ public class PmProjectService {
         }
         Set<String> from = TRANSITIONS.get(status);
         if (from == null || !from.contains(p.getStatus())) {
-            throw new BizException("项目当前状态不能执行该操作");
+            throw new BizException("pm.error.operationNotAllowedCurrentProjectStatus");
         }
         if (("FINISHED".equals(status) || "CLOSED".equals(status)) && timesheetMapper.exists(Wrappers.<PmTimesheet>lambdaQuery()
                 .eq(PmTimesheet::getProjectId, id).eq(PmTimesheet::getStatus, "SUBMITTED"))) {
-            throw new BizException("项目还有待审批的工时，请先审批或驳回");
+            throw new BizException("pm.error.projectHasTimesheetsPendingApprovalApprove");
         }
         if ("FINISHED".equals(status) && billingMapper.exists(Wrappers.<PmBilling>lambdaQuery()
                 .eq(PmBilling::getProjectId, id).eq(PmBilling::getStatus, "PLANNED"))) {
-            throw new BizException("项目还有未开票的收款计划，请先开票或删除");
+            throw new BizException("pm.error.projectHasUninvoicedBillingPlansInvoice");
         }
         projectMapper.update(Wrappers.<PmProject>lambdaUpdate()
                 .set(PmProject::getStatus, status)
@@ -221,12 +221,12 @@ public class PmProjectService {
         for (Long id : ids) {
             PmProject p = get(id);
             if (!"PLANNING".equals(p.getStatus())) {
-                throw new BizException("项目「{0}」已启动，不能删除", p.getName());
+                throw new BizException("pm.error.projectHasStartedCannotDeleted", p.getName());
             }
             if (timesheetMapper.exists(Wrappers.<PmTimesheet>lambdaQuery().eq(PmTimesheet::getProjectId, id))
                     || costMapper.exists(Wrappers.<PmCost>lambdaQuery().eq(PmCost::getProjectId, id))
                     || billingMapper.exists(Wrappers.<PmBilling>lambdaQuery().eq(PmBilling::getProjectId, id).eq(PmBilling::getStatus, "BILLED"))) {
-                throw new BizException("项目「{0}」已有工时、费用或开票，不能删除", p.getName());
+                throw new BizException("pm.error.projectHasTimesheetsExpensesInvoicesCannot", p.getName());
             }
         }
         taskMapper.delete(Wrappers.<PmTask>lambdaQuery().in(PmTask::getProjectId, ids));
@@ -240,7 +240,7 @@ public class PmProjectService {
     PmProject getOpen(Long id) {
         PmProject p = get(id);
         if ("FINISHED".equals(p.getStatus()) || "CLOSED".equals(p.getStatus())) {
-            throw new BizException("项目已完成或已关闭");
+            throw new BizException("pm.error.projectFinishedClosed");
         }
         return p;
     }
@@ -248,23 +248,23 @@ public class PmProjectService {
     private void fill(PmProject p, ProjectRequest req, Long selfId) {
         PmProject exist = projectMapper.selectOne(Wrappers.<PmProject>lambdaQuery().eq(PmProject::getCode, req.code()));
         if (exist != null && !Objects.equals(exist.getId(), selfId)) {
-            throw new BizException("项目编号已存在");
+            throw new BizException("pm.error.projectCodeAlreadyExists");
         }
         if (!TYPES.contains(req.type())) {
-            throw new BizException("项目类型不正确");
+            throw new BizException("pm.error.invalidProjectType");
         }
         if (req.planEnd().isBefore(req.planStart())) {
-            throw new BizException("计划完成日期不能早于计划开始日期");
+            throw new BizException("pm.error.plannedEndDateCannotEarlierPlanned");
         }
         Long customerId = req.customerId();
         if (req.salesOrderId() != null) {
             Map<String, Object> order = scmQueryService.salesOrder(req.salesOrderId());
             if (order == null) {
-                throw new BizException("销售订单不存在");
+                throw new BizException("pm.error.salesOrderNotFound");
             }
             if (projectMapper.exists(Wrappers.<PmProject>lambdaQuery().eq(PmProject::getSalesOrderId, req.salesOrderId())
                     .ne(selfId != null, PmProject::getId, selfId))) {
-                throw new BizException("销售订单 {0} 已关联项目", order.get("orderNo"));
+                throw new BizException("pm.error.salesOrderAlreadyLinkedProject", order.get("orderNo"));
             }
             customerId = ((Number) order.get("partnerId")).longValue();
         }
@@ -273,7 +273,7 @@ public class PmProjectService {
         }
         SysUser manager = userMapper.selectById(req.managerId() != null ? req.managerId() : SecurityUtils.getUserId());
         if (manager == null) {
-            throw new BizException("项目经理不存在");
+            throw new BizException("pm.error.projectManagerNotFound");
         }
         p.setCode(req.code());
         p.setName(req.name().trim());

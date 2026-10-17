@@ -56,7 +56,7 @@ public class MesScheduleService {
     public MesWorkOrder scheduleOne(Long woId) {
         MesWorkOrder wo = workOrderService.getAccessible(woId);
         if (!OPEN.contains(wo.getStatus())) {
-            throw new BizException("只能排程未结束的工单");
+            throw new BizException("mes.error.onlyUnfinishedWorkOrdersScheduled");
         }
         LocalDate today = LocalDate.now();
         schedule(wo, calendar(today), new HashMap<>(), today);
@@ -93,7 +93,7 @@ public class MesScheduleService {
             int guard = 0;
             while (need.signum() > 0) {
                 if (++guard > MAX_DAYS) {
-                    throw new BizException("工作中心「{0}」在 {1} 天内没有足够的产能，请检查工作日和每日工时", capacity.name(op.getWorkCenterId()), MAX_DAYS);
+                    throw new BizException("mes.error.workCenterLacksCapacityWithinDays", capacity.name(op.getWorkCenterId()), MAX_DAYS);
                 }
                 String key = op.getWorkCenterId() + "|" + d;
                 BigDecimal free = capacity.hours(op.getWorkCenterId(), d).subtract(used.getOrDefault(key, BigDecimal.ZERO));
@@ -128,7 +128,7 @@ public class MesScheduleService {
      */
     public List<Map<String, Object>> load(LocalDate from, LocalDate to, Long workCenterId) {
         if (to.isBefore(from) || ChronoUnit.DAYS.between(from, to) > 92) {
-            throw new BizException("查询区间不能超过 92 天");
+            throw new BizException("mes.error.queryRangeCannotExceedDays");
         }
         LocalDate today = LocalDate.now();
         WorkCalendar capacity = calendar(from.isBefore(today) ? from : today);
@@ -220,11 +220,11 @@ public class MesScheduleService {
     @Transactional
     public void saveCalendar(MesCalendar c) {
         if (c.getCalDate() == null || c.getHours() == null || c.getHours().signum() < 0 || c.getHours().compareTo(BigDecimal.valueOf(24)) > 0) {
-            throw new BizException("请填写日期和 0 ~ 24 的工时");
+            throw new BizException("mes.error.enterDateHoursBetween");
         }
         Long wc = c.getWorkCenterId() == null ? 0L : c.getWorkCenterId();
         if (wc != 0 && workCenterMapper.selectById(wc) == null) {
-            throw new BizException("工作中心不存在");
+            throw new BizException("mes.error.workCenterDoesNotExist");
         }
         calendarMapper.delete(Wrappers.<MesCalendar>lambdaQuery().eq(MesCalendar::getWorkCenterId, wc).eq(MesCalendar::getCalDate, c.getCalDate()));
         c.setId(null);

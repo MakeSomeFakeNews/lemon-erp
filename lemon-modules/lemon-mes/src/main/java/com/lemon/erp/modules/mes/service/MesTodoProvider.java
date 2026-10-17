@@ -19,12 +19,12 @@ import java.util.Map;
 public class MesTodoProvider implements TodoProvider {
 
     private static final List<Def> DEFS = List.of(
-            new Def("supplementToIssue", "mes:supplement:issue", "补料待发料", "/mes/supplement", "warning"),
-            new Def("woOverdue", "mes:wo:list", "工单逾期未完工", "/mes/wo", "danger"),
-            new Def("qcDraft", "mes:qc:edit", "检验单待确认", "/qms/inspection", "info"),
-            new Def("ncrOpen", "qms:ncr:edit", "不合格品待评审", "/qms/ncr", "warning"),
-            new Def("capaOverdue", "qms:capa:edit", "纠正预防逾期", "/qms/capa", "danger"),
-            new Def("maintainDue", "mes:maintain:handle", "设备保养到期", "/mes/maintenance", "warning")
+            new Def("supplementToIssue", "mes:supplement:issue", "mes.label.supplementPendingIssue", "/mes/supplement", "warning"),
+            new Def("woOverdue", "mes:wo:list", "mes.label.workOrderOverdue", "/mes/wo", "danger"),
+            new Def("qcDraft", "mes:qc:edit", "mes.label.inspectionPendingConfirm", "/qms/inspection", "info"),
+            new Def("ncrOpen", "qms:ncr:edit", "mes.label.ncrPendingReview", "/qms/ncr", "warning"),
+            new Def("capaOverdue", "qms:capa:edit", "mes.label.capaOverdue", "/qms/capa", "danger"),
+            new Def("maintainDue", "mes:maintain:handle", "mes.label.maintenanceDue", "/mes/maintenance", "warning")
     );
 
     private final MesTodoMapper todoMapper;

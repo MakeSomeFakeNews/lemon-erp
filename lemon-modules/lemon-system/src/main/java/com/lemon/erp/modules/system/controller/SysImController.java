@@ -84,7 +84,7 @@ public class SysImController {
         return R.ok(syncService.bindings(current, size, query));
     }
 
-    public record BindRequest(@NotNull(message = "用户不能为空") Long userId, @NotNull(message = "平台不能为空") ImPlatform platform,
+    public record BindRequest(@NotNull(message = "{system.valid.userRequired}") Long userId, @NotNull(message = "{system.valid.platformRequired}") ImPlatform platform,
                               String imUserId) {
     }
 

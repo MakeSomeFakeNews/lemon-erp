@@ -19,15 +19,15 @@ import java.time.LocalDate;
 @TableName("hr_holiday")
 public class HrHoliday extends BaseEntity {
 
-    @NotNull(message = "请选择日期")
+    @NotNull(message = "{hr.valid.selectDate}")
     private LocalDate holidayDate;
 
-    @NotBlank(message = "请填写名称")
-    @Size(max = 64, message = "名称不能超过64个字符")
+    @NotBlank(message = "{hr.valid.enterName}")
+    @Size(max = 64, message = "{hr.valid.nameCannotExceedCharacters2}")
     private String name;
 
     /** HOLIDAY 法定节假日 / WORKDAY 调休上班 */
-    @NotBlank(message = "请选择类型")
-    @Pattern(regexp = "HOLIDAY|WORKDAY", message = "类型不正确")
+    @NotBlank(message = "{hr.valid.selectType}")
+    @Pattern(regexp = "HOLIDAY|WORKDAY", message = "{hr.valid.invalidType}")
     private String type;
 }

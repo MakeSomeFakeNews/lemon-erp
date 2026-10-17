@@ -78,7 +78,7 @@ public class FinExtController {
 
     // ---------------------------------------------------------------- 坏账、红字冲销、结账
 
-    public record BadDebtRequest(@NotNull(message = "请填写核销金额") BigDecimal amount, LocalDate date, String reason) {
+    public record BadDebtRequest(@NotNull(message = "{fin.valid.enterWriteOffAmount}") BigDecimal amount, LocalDate date, String reason) {
     }
 
     /** 坏账核销，返回凭证 ID */
@@ -132,12 +132,12 @@ public class FinExtController {
     public R<FinInvoiceService.InvoiceImportResult> importInvoiceXml(@RequestParam String kind, @RequestParam("files") List<MultipartFile> files,
                                                                      @RequestParam(defaultValue = "true") boolean autoMatch) throws IOException {
         if (files.isEmpty() || files.size() > MAX_INVOICE_FILES) {
-            throw new BizException("一次导入 1 ~ {0} 个 XML 文件", MAX_INVOICE_FILES);
+            throw new BizException("fin.error.importXmlFilesTime", MAX_INVOICE_FILES);
         }
         Map<String, byte[]> contents = new LinkedHashMap<>();
         for (MultipartFile f : files) {
             if (f.getSize() > MAX_INVOICE_FILE_SIZE) {
-                throw new BizException("{0} 超过 1MB", f.getOriginalFilename());
+                throw new BizException("fin.error.exceedsMb", f.getOriginalFilename());
             }
             String name = f.getOriginalFilename() == null ? "file" + contents.size() : f.getOriginalFilename();
             contents.put(contents.containsKey(name) ? name + "#" + contents.size() : name, f.getBytes());
@@ -154,7 +154,7 @@ public class FinExtController {
         return R.ok(invoiceService.importRows(kind, req.rows(), autoMatch));
     }
 
-    public record MatchRequest(@NotEmpty(message = "请选择勾稽的单据") List<InvoiceRequest.@Valid @NotNull Item> items) {
+    public record MatchRequest(@NotEmpty(message = "{fin.valid.selectDocumentsMatch}") List<InvoiceRequest.@Valid @NotNull Item> items) {
     }
 
     @PostMapping("/invoice/{id}/match")
@@ -242,7 +242,7 @@ public class FinExtController {
         return R.ok(advanceService.create(req));
     }
 
-    public record ApplyRequest(LocalDate date, @NotEmpty(message = "请选择冲抵的单据") List<@Valid SettlementItemRequest> items) {
+    public record ApplyRequest(LocalDate date, @NotEmpty(message = "{fin.valid.selectDocumentsOffset}") List<@Valid SettlementItemRequest> items) {
     }
 
     @PostMapping("/advance/{id}/apply")

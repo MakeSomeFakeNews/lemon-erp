@@ -3,7 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.modules.scm.entity.ScmOrderItem;
 import com.lemon.erp.modules.scm.entity.ScmPriceControl;
@@ -55,7 +55,7 @@ public class ScmPriceControlService {
 
     public void save(ScmPriceControl c) {
         if (c.getMinSalePrice() == null && c.getMaxPurchasePrice() == null) {
-            throw new BizException("请至少填写最低销售价或最高采购价");
+            throw new BizException("scm.error.enterLeastMinimumSalesPriceMaximum");
         }
         if (c.getControlMode() == null) {
             c.setControlMode(PriceControlMode.WARN);
@@ -72,7 +72,7 @@ public class ScmPriceControlService {
                         .eq(ScmPriceControl::getId, c.getId()));
             }
         } catch (DuplicateKeyException e) {
-            throw new BizException("该物料已设置价格控制");
+            throw new BizException("scm.error.priceControlAlreadyExistsMaterial");
         }
     }
 
@@ -109,16 +109,16 @@ public class ScmPriceControlService {
             WmsMaterial m = materials.get(item.getMaterialId());
             String name = m == null ? String.valueOf(item.getMaterialId()) : m.getCode() + " " + m.getName();
             if (kind == OrderKind.SALES && c.getMinSalePrice() != null && price.compareTo(c.getMinSalePrice()) < 0) {
-                errors.add(I18n.t("「{0}」单价 {1} 低于最低销售价 {2}", name, price.stripTrailingZeros().toPlainString(),
+                errors.add(Messages.get("scm.text.unitPriceBelowMinimumSalesPrice", name, price.stripTrailingZeros().toPlainString(),
                         c.getMinSalePrice().stripTrailingZeros().toPlainString()));
             }
             if (kind == OrderKind.PURCHASE && c.getMaxPurchasePrice() != null && price.compareTo(c.getMaxPurchasePrice()) > 0) {
-                errors.add(I18n.t("「{0}」单价 {1} 高于最高采购价 {2}", name, price.stripTrailingZeros().toPlainString(),
+                errors.add(Messages.get("scm.text.unitPriceAboveMaximumPurchasePrice", name, price.stripTrailingZeros().toPlainString(),
                         c.getMaxPurchasePrice().stripTrailingZeros().toPlainString()));
             }
         }
         if (!errors.isEmpty()) {
-            throw new BizException("{0}", String.join(I18n.t("；"), errors));
+            throw new BizException("{0}", String.join(Messages.get("scm.label.message"), errors));
         }
     }
 }

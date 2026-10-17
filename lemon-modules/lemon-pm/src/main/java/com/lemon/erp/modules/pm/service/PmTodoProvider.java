@@ -19,8 +19,8 @@ import java.util.Map;
 public class PmTodoProvider implements TodoProvider {
 
     private static final List<Def> DEFS = List.of(
-            new Def("timesheetToApprove", "pm:timesheet:approve", "工时待审批", "/pm/timesheet", "warning"),  // i18n-ignore 首页汇总处翻译
-            new Def("taskOverdue", "pm:task:list", "我负责的任务已逾期", "/pm/plan", "danger")  // i18n-ignore 首页汇总处翻译
+            new Def("timesheetToApprove", "pm:timesheet:approve", "pm.text.todoTimesheetToApprove", "/pm/timesheet", "warning"),
+            new Def("taskOverdue", "pm:task:list", "pm.text.todoTaskOverdue", "/pm/plan", "danger")
     );
 
     private final PmTodoMapper todoMapper;

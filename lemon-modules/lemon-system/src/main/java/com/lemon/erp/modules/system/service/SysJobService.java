@@ -3,7 +3,7 @@ package com.lemon.erp.modules.system.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
@@ -69,7 +69,8 @@ public class SysJobService {
             if (!existing.containsKey(h.key())) {
                 SysJob job = new SysJob();
                 job.setJobKey(h.key());
-                job.setName(h.name());
+                // 任务表中的名称存默认语言（中文），页面按请求语言显示
+                job.setName(Messages.get(Messages.DEFAULT_LOCALE, h.name()));
                 job.setCron(h.defaultCron());
                 job.setParams(h.defaultParams());
                 job.setStatus(h.defaultEnabled() ? 1 : 0);
@@ -95,18 +96,18 @@ public class SysJobService {
     }
 
     public List<SysJob> list() {
-        Set<String> keys = handlers().keySet();
-        // 任务名称由各模块登记，按请求语言翻译
+        Map<String, JobHandler> handlers = handlers();
+        // 任务名称由各模块登记（消息键），按请求语言显示
         return jobMapper.selectList(Wrappers.<SysJob>lambdaQuery().orderByAsc(SysJob::getJobKey)).stream()
-                .filter(j -> keys.contains(j.getJobKey()))
-                .peek(j -> j.setName(I18n.t(j.getName())))
+                .filter(j -> handlers.containsKey(j.getJobKey()))
+                .peek(j -> j.setName(Messages.get(handlers.get(j.getJobKey()).name())))
                 .toList();
     }
 
     public void update(Long id, JobRequest req) {
         get(id);
         if (!CronExpression.isValidExpression(req.cron().trim())) {
-            throw new BizException("Cron 表达式不正确，格式为：秒 分 时 日 月 周，如 0 30 1 * * *");
+            throw new BizException("system.error.invalidCronExpressionFormatSecondMinute");
         }
         jobMapper.update(Wrappers.<SysJob>lambdaUpdate()
                 .set(SysJob::getCron, req.cron().trim())
@@ -139,7 +140,7 @@ public class SysJobService {
     private SysJob get(Long id) {
         SysJob job = id == null ? null : jobMapper.selectById(id);
         if (job == null) {
-            throw new BizException("定时任务不存在");
+            throw new BizException("system.error.scheduledJobDoesNotExist");
         }
         return job;
     }
@@ -165,10 +166,10 @@ public class SysJobService {
     private SysJobLog execute(SysJob job, String trigger, Long userId) {
         JobHandler handler = handlers().get(job.getJobKey());
         if (handler == null) {
-            throw new BizException("任务「{0}」已不存在", I18n.t(job.getName()));
+            throw new BizException("system.error.jobNoLongerExists", job.getName());
         }
         if (!running.add(job.getJobKey())) {
-            throw new BizException("任务「{0}」正在运行", I18n.t(job.getName()));
+            throw new BizException("system.error.jobRunning", Messages.get(handler.name()));
         }
         SysJobLog entry = new SysJobLog();
         entry.setJobKey(job.getJobKey());

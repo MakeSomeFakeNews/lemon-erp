@@ -5,14 +5,14 @@
 
     <select id="findUser" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM hr_employee WHERE user_id = #{id}) THEN '员工档案'
+            WHEN EXISTS (SELECT 1 FROM hr_employee WHERE user_id = #{id}) THEN 'hr.label.employeeProfile'
         END
     </select>
 
     <select id="findDept" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM hr_employee WHERE dept_id = #{id}) THEN '员工档案'
-            WHEN EXISTS (SELECT 1 FROM hr_recruit WHERE dept_id = #{id}) THEN '招聘需求'
+            WHEN EXISTS (SELECT 1 FROM hr_employee WHERE dept_id = #{id}) THEN 'hr.label.employeeProfile'
+            WHEN EXISTS (SELECT 1 FROM hr_recruit WHERE dept_id = #{id}) THEN 'hr.label.jobRequisition'
         END
     </select>
 

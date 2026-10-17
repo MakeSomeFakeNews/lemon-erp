@@ -19,11 +19,11 @@ import java.util.Map;
 public class WmsTodoProvider implements TodoProvider {
 
     private static final List<Def> DEFS = List.of(
-            new Def("docDraft", "wms:in:add", "出入库单待确认", "/wms/in", "info"),
-            new Def("belowSafety", "wms:stock:list", "库存低于安全库存", "/wms/stock", "warning"),
-            new Def("batchExpiring", "wms:trace:list", "批次 30 天内到期", "/wms/trace", "warning"),
-            new Def("holdPending", "mes:qc:add", "来料待检", "/qms/inspection", "info"),
-            new Def("holdRejected", "wms:hold:list", "来料不合格待退货", "/wms/hold", "danger")
+            new Def("docDraft", "wms:in:add", "wms.text.todoDocDraft", "/wms/in", "info"),
+            new Def("belowSafety", "wms:stock:list", "wms.text.todoBelowSafety", "/wms/stock", "warning"),
+            new Def("batchExpiring", "wms:trace:list", "wms.text.todoBatchExpiring", "/wms/trace", "warning"),
+            new Def("holdPending", "mes:qc:add", "wms.text.todoHoldPending", "/qms/inspection", "info"),
+            new Def("holdRejected", "wms:hold:list", "wms.text.todoHoldRejected", "/wms/hold", "danger")
     );
 
     private final WmsTodoMapper todoMapper;

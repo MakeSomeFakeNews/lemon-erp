@@ -16,8 +16,8 @@ import java.time.LocalDate;
 public record LoanRequest(
         Long userId,
         Long deptId,
-        @NotNull(message = "请选择借款日期") LocalDate loanDate,
-        @NotNull(message = "请填写金额") @DecimalMin(value = "0.01", message = "金额必须大于0")
-        @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal amount,
-        @Size(max = 255, message = "事由不能超过255个字符") String purpose) {
+        @NotNull(message = "{fin.valid.selectLoanDate}") LocalDate loanDate,
+        @NotNull(message = "{fin.valid.enterAmount}") @DecimalMin(value = "0.01", message = "{fin.valid.amountMustGreater}")
+        @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount,
+        @Size(max = 255, message = "{fin.valid.reasonCannotExceedCharacters}") String purpose) {
 }

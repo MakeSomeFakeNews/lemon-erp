@@ -4,17 +4,18 @@ import com.lemon.erp.framework.setting.OptionEnum;
 import com.lemon.erp.framework.setting.SettingType;
 
 /**
- * 业务参数定义：各业务模块通过 {@link BizRuleProvider} 登记，按租户保存（「系统管理 → 业务参数」修改），未修改的使用默认值
+ * 业务参数定义：各业务模块通过 {@link BizRuleProvider} 登记，按租户保存（「系统管理 → 业务参数」修改），未修改的使用默认值。
+ * 模块、名称、说明和选项的名称一律写消息键（由声明的模块登记），输出时 {@code Messages.get}
  *
  * @param key          参数标识，如 scm.purchaseIn.overRate
- * @param module       所属模块（页面分组），如 供应链
- * @param label        名称
+ * @param module       所属模块（页面分组，消息键），如 供应链
+ * @param label        名称（消息键）
  * @param type         类型：BOOL / NUMBER / SELECT（不支持 TEXT）
  * @param defaultValue 默认值
  * @param options      SELECT 的取值枚举
  * @param min          NUMBER 的最小值
  * @param max          NUMBER 的最大值
- * @param remark       说明
+ * @param remark       说明（消息键）
  */
 public record BizRule(String key, String module, String label, SettingType type, String defaultValue,
                       Class<? extends OptionEnum> options, int min, int max, String remark) {

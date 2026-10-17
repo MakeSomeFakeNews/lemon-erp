@@ -24,6 +24,6 @@ public class WfTodoProvider implements TodoProvider {
             return List.of();
         }
         long count = taskService.createTaskQuery().taskAssignee(String.valueOf(userId)).active().count();
-        return count == 0 ? List.of() : List.of(new TodoItem("workflow", "待我审批", count, "/workflow/todo", "warning"));  // i18n-ignore 首页汇总处翻译
+        return count == 0 ? List.of() : List.of(new TodoItem("workflow", "workflow.text.todoPendingApproval", count, "/workflow/todo", "warning"));
     }
 }

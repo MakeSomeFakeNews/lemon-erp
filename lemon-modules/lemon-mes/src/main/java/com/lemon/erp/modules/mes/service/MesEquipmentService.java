@@ -55,7 +55,7 @@ public class MesEquipmentService {
     public MesEquipment get(Long id) {
         MesEquipment equipment = id == null ? null : equipmentMapper.selectById(id);
         if (equipment == null) {
-            throw new BizException("设备不存在");
+            throw new BizException("mes.error.equipmentDoesNotExist");
         }
         return equipment;
     }
@@ -99,7 +99,7 @@ public class MesEquipmentService {
     public void delete(List<Long> ids) {
         for (MesEquipment e : equipmentMapper.selectByIds(ids)) {
             if (maintenanceMapper.exists(Wrappers.<MesMaintenance>lambdaQuery().eq(MesMaintenance::getEquipmentId, e.getId()))) {
-                throw new BizException("设备「{0}」已有维护记录，不能删除，可以改为报废", e.getName());
+                throw new BizException("mes.error.equipmentHasMaintenanceRecordsCannotDeleted", e.getName());
             }
         }
         equipmentMapper.deleteByIds(ids);
@@ -118,7 +118,7 @@ public class MesEquipmentService {
     public Long createMaintenance(MaintenanceRequest req) {
         MesEquipment equipment = get(req.equipmentId());
         if (equipment.getStatus() == EquipmentStatus.SCRAPPED) {
-            throw new BizException("设备已报废");
+            throw new BizException("mes.error.equipmentHasScrapped");
         }
         MesMaintenance m = new MesMaintenance();
         m.setOrderNo(docNoService.next("WX"));
@@ -146,7 +146,7 @@ public class MesEquipmentService {
                 .eq(MesMaintenance::getId, id)
                 .eq(MesMaintenance::getStatus, MaintenanceStatus.PENDING));
         if (updated == 0) {
-            throw new BizException("只能开始待处理的维护单");
+            throw new BizException("mes.error.onlyPendingMaintenanceOrdersStarted");
         }
         if (m.getType() == MaintenanceType.REPAIR) {
             setEquipmentStatus(m.getEquipmentId(), EquipmentStatus.REPAIR);
@@ -176,7 +176,7 @@ public class MesEquipmentService {
                 .eq(MesMaintenance::getId, id)
                 .eq(MesMaintenance::getStatus, MaintenanceStatus.IN_PROGRESS));
         if (updated == 0) {
-            throw new BizException("只能完成处理中的维护单");
+            throw new BizException("mes.error.onlyProgressMaintenanceOrdersFinished");
         }
         MesEquipment equipment = get(m.getEquipmentId());
         if (req.cost() != null && req.cost().signum() > 0) {
@@ -212,7 +212,7 @@ public class MesEquipmentService {
     public void deleteMaintenance(List<Long> ids) {
         for (Long id : ids) {
             if (getMaintenance(id).getStatus() != MaintenanceStatus.PENDING) {
-                throw new BizException("只能删除待处理的维护单");
+                throw new BizException("mes.error.onlyPendingMaintenanceOrdersDeleted");
             }
         }
         maintenanceMapper.deleteByIds(ids);
@@ -221,7 +221,7 @@ public class MesEquipmentService {
     private MesMaintenance getMaintenance(Long id) {
         MesMaintenance m = maintenanceMapper.selectById(id);
         if (m == null) {
-            throw new BizException("维护单不存在");
+            throw new BizException("mes.error.maintenanceOrderDoesNotExist");
         }
         return m;
     }
@@ -250,7 +250,7 @@ public class MesEquipmentService {
     private void checkCodeUnique(String code, Long id) {
         MesEquipment exist = equipmentMapper.selectOne(Wrappers.<MesEquipment>lambdaQuery().eq(MesEquipment::getCode, code));
         if (exist != null && !Objects.equals(exist.getId(), id)) {
-            throw new BizException("设备编码已存在");
+            throw new BizException("mes.error.equipmentCodeAlreadyExists");
         }
     }
 }

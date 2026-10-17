@@ -47,7 +47,7 @@ public class MesMrpController {
     /** @return 运算 ID */
     @PostMapping("/run")
     @PreAuthorize("@ss.hasPerm('mes:mrp:run')")
-    @OperLog(title = "MRP 运算", type = OperType.INSERT)
+    @OperLog(title = "MRP 运算", type = OperType.INSERT) // i18n-ignore
     public R<Long> run(@Valid @RequestBody MrpRunRequest req) {
         return R.ok(mrpService.run(req));
     }

@@ -2,7 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.tenant.TenantContext;
 import com.lemon.erp.modules.system.entity.SysImConfig;
@@ -98,7 +98,7 @@ public class SysImConfigService {
     public SysImConfig requireEnabled(ImPlatform platform) {
         SysImConfig c = find(platform);
         if (c == null || !Boolean.TRUE.equals(c.getEnabled())) {
-            throw new BizException("未启用{0}集成", I18n.t(platform.label()));
+            throw new BizException("system.error.integrationNotEnabled", platform.text());
         }
         return c;
     }
@@ -123,27 +123,28 @@ public class SysImConfigService {
         }
         input.setHomeUrl(home);
         if (home != null && !HOME_URL.matcher(home).matches()) {
-            throw new BizException("系统访问地址格式不正确，应为 http(s)://域名[:端口][/路径]");
+            throw new BizException("system.error.invalidSystemUrlShouldHttpS");
         }
         boolean secretSet = input.getAppSecret() != null || old != null && StringUtils.hasText(old.getAppSecret());
         if (Boolean.TRUE.equals(input.getEnabled())) {
             switch (p) {
-                case DINGTALK, FEISHU -> require(input.getAppKey(), p == ImPlatform.DINGTALK ? "Client ID（AppKey）" : "App ID");
-                case WECOM -> require(input.getCorpId(), "企业ID");
+                case DINGTALK, FEISHU -> require(input.getAppKey(), p == ImPlatform.DINGTALK ? "system.label.clientIdAppkey" : "system.label.appId");
+                case WECOM -> require(input.getCorpId(), "system.label.corpId");
             }
             if (!secretSet) {
-                throw new BizException("请填写{0}", I18n.t(p == ImPlatform.FEISHU ? "App Secret" : p == ImPlatform.WECOM ? "应用 Secret" : "Client Secret（AppSecret）"));
+                throw new BizException("system.error.enter", Messages.get(p == ImPlatform.FEISHU ? "system.label.appSecret"
+                        : p == ImPlatform.WECOM ? "system.label.appSecret2" : "system.label.clientSecretAppsecret"));
             }
             if (p != ImPlatform.FEISHU) {
-                require(input.getAgentId(), "AgentId");
+                require(input.getAgentId(), "system.label.agentid");
             }
-            require(home, "系统访问地址");
+            require(home, "system.label.systemUrl");
         }
         if (input.getAgentId() != null && !DIGITS.matcher(input.getAgentId()).matches()) {
-            throw new BizException("AgentId 应为数字");
+            throw new BizException("system.error.agentidMustNumber");
         }
         if (input.getRobotWebhook() != null && !input.getRobotWebhook().startsWith(client(p).robotPrefix())) {
-            throw new BizException("{0}群机器人的 Webhook 地址应以 {1} 开头", I18n.t(p.label()), client(p).robotPrefix());
+            throw new BizException("system.error.groupBotWebhookUrlMustStart", p.text(), client(p).robotPrefix());
         }
         input.setRobotCategories(normalizeCategories(input.getRobotCategories()));
         // 只更新可编辑的字段：同步结果、密钥为空时保留原值
@@ -188,18 +189,18 @@ public class SysImConfigService {
         SysImUser me = imUserMapper.selectOne(Wrappers.<SysImUser>lambdaQuery()
                 .eq(SysImUser::getUserId, SecurityUtils.getUserId()).eq(SysImUser::getPlatform, platform));
         if (me == null) {
-            return I18n.t("连接成功（你还没有绑定{0}账号，未发送测试消息）", I18n.t(platform.label()));
+            return Messages.get("system.text.connectedHaveNotBoundAccountSo", platform.text());
         }
-        client.send(c, List.of(me.getImUserId()), new ImCard(I18n.t("集成测试"), I18n.t("这是一条来自 ERP 的测试消息，收到说明消息推送配置正确。"), c.getHomeUrl()));
-        return I18n.t("连接成功，已向你的{0}发送一条测试消息", I18n.t(platform.label()));
+        client.send(c, List.of(me.getImUserId()), new ImCard(Messages.get("system.text.integrationTest"), Messages.get("system.text.testMessageErpIfReceivedMessage"), c.getHomeUrl()));
+        return Messages.get("system.text.connectedTestMessageHasSent", platform.text());
     }
 
     public void robotTest(ImPlatform platform) {
         SysImConfig c = requireEnabled(platform);
         if (!StringUtils.hasText(c.getRobotWebhook())) {
-            throw new BizException("请先填写并保存群机器人的 Webhook 地址");
+            throw new BizException("system.error.enterSaveGroupBotWebhookUrl");
         }
-        client(platform).robot(c.getRobotWebhook(), c.getRobotSecret(), new ImCard(I18n.t("群机器人测试"), I18n.t("这是一条来自 ERP 的测试消息。"), c.getHomeUrl()));
+        client(platform).robot(c.getRobotWebhook(), c.getRobotSecret(), new ImCard(Messages.get("system.text.groupBotTest"), Messages.get("system.text.testMessageErp"), c.getHomeUrl()));
     }
 
     void markSynced(Long id, String result) {
@@ -207,9 +208,10 @@ public class SysImConfigService {
                 .set(SysImConfig::getLastSyncResult, result.length() > 255 ? result.substring(0, 255) : result).eq(SysImConfig::getId, id));
     }
 
-    private static void require(String value, String label) {
+    /** @param labelKey 字段名称的消息键 */
+    private static void require(String value, String labelKey) {
         if (!StringUtils.hasText(value)) {
-            throw new BizException("请填写{0}", I18n.t(label));
+            throw new BizException("system.error.enter", Messages.get(labelKey));
         }
     }
 

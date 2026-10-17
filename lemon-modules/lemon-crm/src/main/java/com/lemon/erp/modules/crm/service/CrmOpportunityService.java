@@ -75,7 +75,7 @@ public class CrmOpportunityService {
     public CrmOpportunity get(Long id) {
         CrmOpportunity o = id == null ? null : opportunityMapper.selectById(id);
         if (o == null) {
-            throw new BizException("商机不存在");
+            throw new BizException("crm.error.opportunityDoesNotExist");
         }
         return o;
     }
@@ -83,7 +83,7 @@ public class CrmOpportunityService {
     public CrmOpportunity detail(Long id) {
         CrmOpportunity o = opportunityMapper.selectDetail(id);
         if (o == null) {
-            throw new BizException("商机不存在");
+            throw new BizException("crm.error.opportunityDoesNotExist");
         }
         o.setItems(itemMapper.selectByOpportunity(id));
         return o;
@@ -147,16 +147,16 @@ public class CrmOpportunityService {
         CrmOpportunity o = get(id);
         String to = req.stage();
         if (!CrmConstants.STAGES.contains(to)) {
-            throw new BizException("销售阶段不正确");
+            throw new BizException("crm.error.invalidSalesStage");
         }
         if (to.equals(o.getStage())) {
             return;
         }
         if ("WON".equals(o.getStage())) {
-            throw new BizException("已赢单的商机不能修改阶段");
+            throw new BizException("crm.error.stageWonOpportunityCannotChanged");
         }
         if ("LOST".equals(to) && !StringUtils.hasText(req.lostReason())) {
-            throw new BizException("请填写输单原因");
+            throw new BizException("crm.error.enterLostReason");
         }
         boolean closed = "WON".equals(to) || "LOST".equals(to);
         opportunityMapper.update(Wrappers.<CrmOpportunity>lambdaUpdate()
@@ -186,7 +186,7 @@ public class CrmOpportunityService {
     public void delete(List<Long> ids) {
         for (CrmOpportunity o : opportunityMapper.selectByIds(ids)) {
             if (o.getSalesOrderId() != null) {
-                throw new BizException("商机「{0}」已生成销售订单，不能删除", o.getName());
+                throw new BizException("crm.error.opportunityAlreadyHasSalesOrderCannot", o.getName());
             }
         }
         itemMapper.delete(Wrappers.<CrmOpportunityItem>lambdaQuery().in(CrmOpportunityItem::getOpportunityId, ids));
@@ -203,13 +203,13 @@ public class CrmOpportunityService {
     public Long createOrder(Long id, OppOrderRequest req) {
         CrmOpportunity o = detail(id);
         if (!"WON".equals(o.getStage())) {
-            throw new BizException("赢单后才能生成销售订单");
+            throw new BizException("crm.error.salesOrderOnlyCreatedAfterOpportunity");
         }
         if (o.getSalesOrderId() != null && orderMapper.selectById(o.getSalesOrderId()) != null) {
-            throw new BizException("已生成销售订单 {0}", o.getSalesOrderNo());
+            throw new BizException("crm.error.salesOrderHasAlreadyCreated", o.getSalesOrderNo());
         }
         if (o.getItems().isEmpty()) {
-            throw new BizException("商机没有产品明细，请先维护产品明细");
+            throw new BizException("crm.error.opportunityHasNoProductLinesAdd");
         }
         List<OrderItemRequest> items = o.getItems().stream()
                 .map(i -> new OrderItemRequest(i.getMaterialId(), i.getQty(), i.getPrice(), i.getTaxRate(), null, null))
@@ -230,7 +230,7 @@ public class CrmOpportunityService {
     private CrmOpportunity getOpen(Long id) {
         CrmOpportunity o = get(id);
         if ("WON".equals(o.getStage()) || "LOST".equals(o.getStage())) {
-            throw new BizException("已赢单或输单的商机不能修改");
+            throw new BizException("crm.error.wonLostOpportunitiesCannotModified");
         }
         return o;
     }
@@ -239,7 +239,7 @@ public class CrmOpportunityService {
         if (req.contactId() != null) {
             CrmContact contact = contactMapper.selectById(req.contactId());
             if (contact == null || !Objects.equals(contact.getCustomerId(), req.customerId())) {
-                throw new BizException("联系人不属于该客户");
+                throw new BizException("crm.error.contactDoesNotBelongCustomer");
             }
         }
         if (req.items() != null && !req.items().isEmpty()) {
@@ -271,7 +271,7 @@ public class CrmOpportunityService {
         } else {
             SysUser owner = userMapper.selectById(req.ownerId());
             if (owner == null) {
-                throw new BizException("负责人不存在");
+                throw new BizException("crm.error.ownerDoesNotExist");
             }
             o.setOwnerId(owner.getId());
             o.setDeptId(owner.getDeptId());

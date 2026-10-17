@@ -5,31 +5,31 @@
 
     <select id="findMaterial" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM crm_opportunity_item WHERE material_id = #{id}) THEN '商机产品'
-            WHEN EXISTS (SELECT 1 FROM crm_ticket WHERE material_id = #{id}) THEN '服务工单'
+            WHEN EXISTS (SELECT 1 FROM crm_opportunity_item WHERE material_id = #{id}) THEN 'crm.label.opportunityProduct'
+            WHEN EXISTS (SELECT 1 FROM crm_ticket WHERE material_id = #{id}) THEN 'crm.label.serviceTicket'
         END
     </select>
 
     <select id="findCustomer" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM crm_opportunity WHERE customer_id = #{id}) THEN '商机'
-            WHEN EXISTS (SELECT 1 FROM crm_ticket WHERE customer_id = #{id}) THEN '服务工单'
-            WHEN EXISTS (SELECT 1 FROM crm_followup WHERE customer_id = #{id}) THEN '跟进记录'
-            WHEN EXISTS (SELECT 1 FROM crm_contact WHERE customer_id = #{id}) THEN '联系人'
+            WHEN EXISTS (SELECT 1 FROM crm_opportunity WHERE customer_id = #{id}) THEN 'crm.label.opportunity2'
+            WHEN EXISTS (SELECT 1 FROM crm_ticket WHERE customer_id = #{id}) THEN 'crm.label.serviceTicket'
+            WHEN EXISTS (SELECT 1 FROM crm_followup WHERE customer_id = #{id}) THEN 'crm.label.followUp'
+            WHEN EXISTS (SELECT 1 FROM crm_contact WHERE customer_id = #{id}) THEN 'crm.label.contact'
         END
     </select>
 
     <select id="findUser" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM crm_customer WHERE owner_id = #{id}) THEN '客户负责人'
-            WHEN EXISTS (SELECT 1 FROM crm_opportunity WHERE owner_id = #{id}) THEN '商机'
-            WHEN EXISTS (SELECT 1 FROM crm_lead WHERE owner_id = #{id}) THEN '线索'
+            WHEN EXISTS (SELECT 1 FROM crm_customer WHERE owner_id = #{id}) THEN 'crm.label.customerOwner'
+            WHEN EXISTS (SELECT 1 FROM crm_opportunity WHERE owner_id = #{id}) THEN 'crm.label.opportunity2'
+            WHEN EXISTS (SELECT 1 FROM crm_lead WHERE owner_id = #{id}) THEN 'crm.label.lead'
         END
     </select>
 
     <select id="findDept" resultType="java.lang.String">
         SELECT CASE
-            WHEN EXISTS (SELECT 1 FROM crm_customer WHERE dept_id = #{id}) THEN '客户'
+            WHEN EXISTS (SELECT 1 FROM crm_customer WHERE dept_id = #{id}) THEN 'crm.label.customer'
         END
     </select>
 

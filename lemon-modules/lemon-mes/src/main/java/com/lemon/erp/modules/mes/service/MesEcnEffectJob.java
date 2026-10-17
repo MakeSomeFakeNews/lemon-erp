@@ -23,7 +23,7 @@ public class MesEcnEffectJob implements JobHandler {
 
     @Override
     public String name() {
-        return "工程变更生效";
+        return "mes.label.ecnTakesEffect";
     }
 
     @Override

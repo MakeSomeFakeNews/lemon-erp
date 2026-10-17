@@ -22,25 +22,25 @@ public class MesDocNos {
     @Order(3)
     public DocNoCatalog mesDocNoCatalog() {
         List<DocNoCatalog.Type> types = new ArrayList<>();
-        types.add(doc("JH", "生产计划"));
-        types.add(doc("MR", "MRP 运算"));
-        types.add(doc("SC", "生产工单"));
-        types.add(doc("FG", "返工工单"));
-        Arrays.stream(WoDocKind.values()).forEach(k -> types.add(doc(k.getPrefix(), k.getLabel() + "单"))); // i18n-ignore
-        types.add(doc("BS", "补料申请"));
-        types.add(doc("WX", "设备维修"));
-        types.add(doc(MesEcnService.DOC_NO, "工程变更"));
-        types.add(doc(MesTechDocService.DOC_NO, "技术文档"));
-        return new DocNoCatalog("生产制造", types);
+        types.add(doc("JH", "mes.label.productionPlan"));
+        types.add(doc("MR", "mes.label.mrpRun"));
+        types.add(doc("SC", "mes.label.workOrder"));
+        types.add(doc("FG", "mes.label.reworkOrder"));
+        Arrays.stream(WoDocKind.values()).forEach(k -> types.add(doc(k.getPrefix(), k.getDocName())));
+        types.add(doc("BS", "mes.label.supplementaryIssueRequest"));
+        types.add(doc("WX", "mes.label.equipmentMaintenance"));
+        types.add(doc(MesEcnService.DOC_NO, "mes.label.ecn"));
+        types.add(doc(MesTechDocService.DOC_NO, "mes.label.technicalDocument"));
+        return new DocNoCatalog("mes.label.manufacturing", types);
     }
 
     @Bean
     @Order(4)
     public DocNoCatalog qmsDocNoCatalog() {
-        return new DocNoCatalog("质量管理", List.of(
-                doc(MesInspectionService.DOC_NO, "质量检验"),
-                doc(QmsNcrService.DOC_NO, "不合格品处理"),
-                doc(QmsCapaService.DOC_NO, "纠正预防（8D）"),
-                doc(QmsClaimService.DOC_NO, "供应商质量索赔")));
+        return new DocNoCatalog("mes.label.qualityManagement", List.of(
+                doc(MesInspectionService.DOC_NO, "mes.label.qualityInspection"),
+                doc(QmsNcrService.DOC_NO, "mes.label.nonconformanceReport"),
+                doc(QmsCapaService.DOC_NO, "mes.label.capaD"),
+                doc(QmsClaimService.DOC_NO, "mes.label.supplierQualityClaim")));
     }
 }

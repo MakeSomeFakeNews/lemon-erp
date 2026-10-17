@@ -95,13 +95,13 @@ public class MesSupplementService {
         for (SupplementRequest.Item item : req.items()) {
             MesWoMaterial line = lines.get(item.materialId());
             if (line == null) {
-                throw new BizException("补料的物料必须是工单用料");
+                throw new BizException("mes.error.supplementaryIssueMaterialsMustWorkOrder");
             }
             if (!seen.add(item.materialId())) {
-                throw new BizException("物料「{0} {1}」重复", line.getMaterialCode(), line.getMaterialName());
+                throw new BizException("mes.error.duplicateMaterial", line.getMaterialCode(), line.getMaterialName());
             }
             if (Integer.valueOf(1).equals(line.getSerialEnabled()) && item.qty().stripTrailingZeros().scale() > 0) {
-                throw new BizException("物料「{0} {1}」启用了序列号管理，数量必须为整数", line.getMaterialCode(), line.getMaterialName());
+                throw new BizException("mes.error.materialSerialManagedQuantityMustInteger", line.getMaterialCode(), line.getMaterialName());
             }
         }
         LoginUser user = SecurityUtils.getLoginUser();
@@ -143,10 +143,10 @@ public class MesSupplementService {
     public void cancel(Long id) {
         MesWoSupplement s = getAccessible(id);
         if (!Objects.equals(s.getCreateBy(), SecurityUtils.getUserId())) {
-            throw new BizException("只能撤销自己的申请");
+            throw new BizException("mes.error.onlyCancelOwnRequests");
         }
         if (!"APPROVING".equals(s.getStatus()) && !"APPROVED".equals(s.getStatus())) {
-            throw new BizException("只能撤销审批中或待发料的申请");
+            throw new BizException("mes.error.onlyRequestsUnderApprovalAwaitingIssue");
         }
         if ("APPROVING".equals(s.getStatus()) && s.getFlowInstanceId() != null
                 && flowApi.getStatus(s.getFlowInstanceId()) == FlowStatus.RUNNING) {
@@ -165,10 +165,10 @@ public class MesSupplementService {
         // 发料由仓库人员操作，不按申请人部门做数据权限（接口已要求 mes:supplement:issue 权限）
         MesWoSupplement s = id == null ? null : suppMapper.selectById(id);
         if (s == null) {
-            throw new BizException("补料申请不存在");
+            throw new BizException("mes.error.supplementaryIssueRequestDoesNotExist");
         }
         if (!"APPROVED".equals(s.getStatus())) {
-            throw new BizException("只有待发料的申请可以发料");
+            throw new BizException("mes.error.onlyRequestsAwaitingIssueIssued");
         }
         Map<Long, MesWoSupplementItem> items = itemMapper.selectBySupp(id).stream()
                 .collect(Collectors.toMap(MesWoSupplementItem::getMaterialId, Function.identity()));
@@ -177,11 +177,11 @@ public class MesSupplementService {
         for (Map.Entry<Long, BigDecimal> e : qtyByMaterial.entrySet()) {
             MesWoSupplementItem item = items.get(e.getKey());
             if (item == null) {
-                throw new BizException("发料的物料不在补料申请中");
+                throw new BizException("mes.error.issuedMaterialNotSupplementaryIssueRequest");
             }
             BigDecimal left = item.getQty().subtract(item.getIssuedQty());
             if (e.getValue().compareTo(left) > 0) {
-                throw new BizException("物料「{0} {1}」发料数量超过未发数量 {2}", item.getMaterialCode(), item.getMaterialName(), left.stripTrailingZeros().toPlainString());
+                throw new BizException("mes.error.issuedQuantityMaterialExceedsUnissuedQuantity", item.getMaterialCode(), item.getMaterialName(), left.stripTrailingZeros().toPlainString());
             }
         }
         String remark = "补料申请 " + s.getSuppNo() + (req.remark() == null ? "" : " " + req.remark()); // i18n-ignore
@@ -196,7 +196,7 @@ public class MesSupplementService {
         qtyByMaterial.forEach((materialId, qty) -> {
             // 条件更新防止并发重复发料
             if (itemMapper.addIssued(items.get(materialId).getId(), qty) == 0) {
-                throw new BizException("补料申请已被其他人发料，请刷新");
+                throw new BizException("mes.error.supplementaryIssueRequestHasIssuedSomeone");
             }
         });
         boolean allIssued = itemMapper.selectBySupp(id).stream().allMatch(i -> i.getIssuedQty().compareTo(i.getQty()) >= 0);
@@ -247,7 +247,7 @@ public class MesSupplementService {
         Supplier<MesWoSupplement> loader = () -> id == null ? null : suppMapper.selectById(id);
         MesWoSupplement s = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(SUPPLEMENT_RULE, loader);
         if (s == null) {
-            throw new BizException("补料申请不存在或没有权限");
+            throw new BizException("mes.error.supplementaryIssueRequestDoesNotExist2");
         }
         return s;
     }
@@ -259,7 +259,7 @@ public class MesSupplementService {
                 .eq(MesWoSupplement::getId, id)
                 .in(MesWoSupplement::getStatus, from));
         if (updated == 0) {
-            throw new BizException("申请状态已变化，请刷新");
+            throw new BizException("mes.error.requestStatusHasChangedRefresh");
         }
     }
 }

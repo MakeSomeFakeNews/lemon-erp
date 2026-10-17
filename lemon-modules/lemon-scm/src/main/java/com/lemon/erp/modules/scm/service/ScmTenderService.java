@@ -3,7 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.i18n.I18n;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -104,7 +104,7 @@ public class ScmTenderService {
 
     @Transactional
     public void update(Long id, SrmRequests.Tender req) {
-        ScmTender tender = requireStatus(id, TenderStatus.DRAFT, "修改");
+        ScmTender tender = requireStatus(id, TenderStatus.DRAFT, "scm.label.edit");
         validate(req);
         apply(tender, req);
         tenderMapper.updateById(tender);
@@ -114,7 +114,7 @@ public class ScmTenderService {
 
     @Transactional
     public void delete(Long id) {
-        requireStatus(id, TenderStatus.DRAFT, "删除");
+        requireStatus(id, TenderStatus.DRAFT, "scm.label.delete");
         deleteLines(id);
         tenderMapper.deleteById(id);
     }
@@ -122,9 +122,9 @@ public class ScmTenderService {
     /** 发布：通知邀请的供应商在门户投标 */
     @Transactional
     public void publish(Long id) {
-        ScmTender tender = requireStatus(id, TenderStatus.DRAFT, "发布");
+        ScmTender tender = requireStatus(id, TenderStatus.DRAFT, "scm.label.publish");
         if (!tender.getDeadline().isAfter(LocalDateTime.now())) {
-            throw new BizException("投标截止时间已过，请修改后再发布");
+            throw new BizException("scm.error.bidDeadlineHasPassedModifyBefore");
         }
         transit(id, TenderStatus.DRAFT, TenderStatus.BIDDING);
         for (ScmTenderSupplier s : tenderMapper.selectSuppliers(id)) {
@@ -137,7 +137,7 @@ public class ScmTenderService {
     public void cancel(Long id) {
         ScmTender tender = getAccessible(id);
         if (tender.getStatus() == TenderStatus.AWARDED || tender.getStatus() == TenderStatus.CANCELLED) {
-            throw new BizException("招标已定标或已取消");
+            throw new BizException("scm.error.tenderHasAwardedCanceled");
         }
         transit(id, tender.getStatus(), TenderStatus.CANCELLED);
     }
@@ -151,19 +151,19 @@ public class ScmTenderService {
     public void saveBid(Long tenderId, Long supplierId, SrmRequests.Bid req) {
         ScmTender tender = tenderMapper.selectById(tenderId);
         if (tender == null || tender.getStatus() != TenderStatus.BIDDING) {
-            throw new BizException("招标不在投标中");
+            throw new BizException("scm.error.tenderNotOpenBidding");
         }
         if (!LocalDateTime.now().isBefore(tender.getDeadline())) {
-            throw new BizException("已过投标截止时间");
+            throw new BizException("scm.error.bidDeadlineHasPassed");
         }
         if (tenderMapper.selectSuppliers(tenderId).stream().noneMatch(s -> s.getSupplierId().equals(supplierId))) {
-            throw new BizException("该供应商没有被邀请参加此次招标");
+            throw new BizException("scm.error.supplierNotInvitedTender");
         }
         Map<Long, ScmTenderItem> items = tenderMapper.selectItems(tenderId).stream()
                 .collect(Collectors.toMap(ScmTenderItem::getId, Function.identity()));
         Set<Long> quoted = req.items().stream().map(SrmRequests.BidItem::tenderItemId).collect(Collectors.toSet());
         if (quoted.size() != req.items().size() || !quoted.equals(items.keySet())) {
-            throw new BizException("请为每个招标物料报价");
+            throw new BizException("scm.error.quoteEveryTenderMaterial");
         }
         BigDecimal total = req.items().stream().map(r -> amount(items.get(r.tenderItemId()).getQty(), r.price()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -199,25 +199,25 @@ public class ScmTenderService {
     /** 开标：截止后，或邀请的供应商都已投标时可以提前开标 */
     @Transactional
     public void open(Long id) {
-        ScmTender tender = requireStatus(id, TenderStatus.BIDDING, "开标");
+        ScmTender tender = requireStatus(id, TenderStatus.BIDDING, "scm.label.openBids");
         boolean allBid = tenderMapper.selectSuppliers(id).stream().allMatch(s -> Boolean.TRUE.equals(s.getBid()));
         if (LocalDateTime.now().isBefore(tender.getDeadline()) && !allBid) {
-            throw new BizException("投标截止前不能开标（邀请的供应商都已投标时可以提前开标）");
+            throw new BizException("scm.error.bidsCannotOpenedBeforeDeadlineThey");
         }
         if (tenderMapper.update(Wrappers.<ScmTender>lambdaUpdate()
                 .set(ScmTender::getStatus, TenderStatus.OPENED).set(ScmTender::getOpenTime, LocalDateTime.now())
                 .eq(ScmTender::getId, id).eq(ScmTender::getStatus, TenderStatus.BIDDING)) == 0) {
-            throw new BizException("招标状态已变化，请刷新后重试");
+            throw new BizException("scm.error.tenderStatusHasChangedRefreshTry");
         }
     }
 
     /** 定标：选择中标供应商，按其报价生成采购合同或采购订单（草稿） */
     @Transactional
     public void award(Long id, SrmRequests.Award req) {
-        ScmTender tender = requireStatus(id, TenderStatus.OPENED, "定标");
+        ScmTender tender = requireStatus(id, TenderStatus.OPENED, "scm.label.award");
         ScmBid bid = bidMapper.selectOne(Wrappers.<ScmBid>lambdaQuery().eq(ScmBid::getTenderId, id).eq(ScmBid::getSupplierId, req.supplierId()));
         if (bid == null) {
-            throw new BizException("该供应商没有投标");
+            throw new BizException("scm.error.supplierHasNotSubmittedBid");
         }
         attachItems(List.of(bid));
         Map<Long, ScmBidItem> prices = bid.getItems().stream().collect(Collectors.toMap(ScmBidItem::getTenderItemId, Function.identity()));
@@ -233,7 +233,7 @@ public class ScmTenderService {
                             prices.get(i.getId()).getTaxRate(), i.getQty(), i.getRemark())).toList()), id);
         } else if (req.target() == AwardTarget.ORDER) {
             if (req.warehouseId() == null) {
-                throw new BizException("请选择采购订单的收货仓库");
+                throw new BizException("scm.error.selectReceivingWarehousePurchaseOrder");
             }
             LocalDate leadDate = LocalDate.now().plusDays(bid.getDeliveryDays() == null ? 0 : bid.getDeliveryDays());
             orderId = orderService.createDraft(OrderKind.PURCHASE, new OrderRequest(req.supplierId(), LocalDate.now(), null, req.warehouseId(),
@@ -249,7 +249,7 @@ public class ScmTenderService {
                 .set(ScmTender::getContractId, contractId)
                 .set(ScmTender::getOrderId, orderId)
                 .eq(ScmTender::getId, id).eq(ScmTender::getStatus, TenderStatus.OPENED)) == 0) {
-            throw new BizException("招标状态已变化，请刷新后重试");
+            throw new BizException("scm.error.tenderStatusHasChangedRefreshTry");
         }
         portalNotifier.notify(req.supplierId(), "REMIND", "中标通知：" + tender.getTitle(), // i18n-ignore
                 "您在招标 " + tender.getTenderNo() + " 中中标，采购将与您签订合同或下达订单", "/portal/tender"); // i18n-ignore
@@ -268,7 +268,7 @@ public class ScmTenderService {
         ScmTender tender = tenderMapper.selectById(id);
         if (tender == null || tender.getStatus() == TenderStatus.DRAFT
                 || tenderMapper.selectSuppliers(id).stream().noneMatch(s -> s.getSupplierId().equals(supplierId))) {
-            throw new BizException("招标不存在");
+            throw new BizException("scm.error.tenderDoesNotExist");
         }
         ScmTender view = new ScmTender();
         view.setId(tender.getId());
@@ -305,19 +305,19 @@ public class ScmTenderService {
 
     private void validate(SrmRequests.Tender req) {
         if (!req.deadline().isAfter(LocalDateTime.now())) {
-            throw new BizException("投标截止时间须晚于当前时间");
+            throw new BizException("scm.error.bidDeadlineMustLaterCurrentTime");
         }
         if (req.items().stream().map(SrmRequests.TenderItem::materialId).distinct().count() < req.items().size()) {
-            throw new BizException("招标物料重复");
+            throw new BizException("scm.error.duplicateTenderMaterial");
         }
         materialService.getEnabled(req.items().stream().map(SrmRequests.TenderItem::materialId).toList());
         if (req.supplierIds().stream().distinct().count() < req.supplierIds().size()) {
-            throw new BizException("邀请的供应商重复");
+            throw new BizException("scm.error.duplicateInvitedSupplier");
         }
         for (Long supplierId : req.supplierIds()) {
             ScmSupplier supplier = supplierService.get(supplierId);
             if (!Integer.valueOf(1).equals(supplier.getStatus())) {
-                throw new BizException("供应商「{0}」已停用", supplier.getName());
+                throw new BizException("scm.error.supplierDisabled", supplier.getName());
             }
         }
     }
@@ -348,7 +348,7 @@ public class ScmTenderService {
 
     private void transit(Long id, TenderStatus from, TenderStatus to) {
         if (tenderMapper.transit(id, from, to) == 0) {
-            throw new BizException("招标状态已变化，请刷新后重试");
+            throw new BizException("scm.error.tenderStatusHasChangedRefreshTry");
         }
     }
 
@@ -356,15 +356,15 @@ public class ScmTenderService {
         Supplier<ScmTender> loader = () -> tenderMapper.selectById(id);
         ScmTender tender = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(TENDER_RULE, loader);
         if (tender == null) {
-            throw new BizException("招标不存在或没有权限");
+            throw new BizException("scm.error.tenderDoesNotExistAccessDenied");
         }
         return tender;
     }
 
-    private ScmTender requireStatus(Long id, TenderStatus status, String action) {
+    private ScmTender requireStatus(Long id, TenderStatus status, String actionKey) {
         ScmTender tender = getAccessible(id);
         if (tender.getStatus() != status) {
-            throw new BizException("招标当前状态不能{0}", I18n.t(action));
+            throw new BizException("scm.error.operationNotAllowedTenderSCurrent", Messages.get(actionKey));
         }
         return tender;
     }

@@ -92,7 +92,7 @@ public class ScmTenderController {
     @OperLog(title = "招标-代录投标", type = OperType.UPDATE) // i18n-ignore
     public R<Void> bid(@PathVariable Long id, @Valid @RequestBody SrmRequests.Bid req) {
         if (req.supplierId() == null) {
-            throw new BizException("请选择投标供应商");
+            throw new BizException("scm.error.selectBiddingSupplier");
         }
         tenderService.saveBid(id, req.supplierId(), req);
         return R.ok();

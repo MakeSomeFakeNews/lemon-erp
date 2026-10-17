@@ -54,7 +54,7 @@ public class ScmSupplierPriceService {
         try {
             priceMapper.insert(price);
         } catch (DuplicateKeyException e) {
-            throw new BizException("该供应商已有此物料的供货价格，请直接修改");
+            throw new BizException("scm.error.supplierAlreadyHasSupplyPriceMaterial");
         }
         saveTiers(price.getId(), req);
         if (Integer.valueOf(1).equals(price.getIsDefault())) {
@@ -132,12 +132,12 @@ public class ScmSupplierPriceService {
             return;
         }
         if (req.validFrom() != null && req.validTo() != null && req.validTo().isBefore(req.validFrom())) {
-            throw new BizException("有效期止不能早于有效期起");
+            throw new BizException("scm.error.validDateCannotEarlierValidDate");
         }
         java.util.Set<BigDecimal> seen = new java.util.HashSet<>();
         for (SupplierPriceRequest.Tier t : req.tiers()) {
             if (!seen.add(t.minQty().stripTrailingZeros())) {
-                throw new BizException("阶梯起订数量重复：{0}", t.minQty().stripTrailingZeros().toPlainString());
+                throw new BizException("scm.error.duplicateTierMinimumQuantity", t.minQty().stripTrailingZeros().toPlainString());
             }
             ScmSupplierPriceTier tier = new ScmSupplierPriceTier();
             tier.setPriceId(priceId);
@@ -150,7 +150,7 @@ public class ScmSupplierPriceService {
     private ScmSupplierPrice get(Long id) {
         ScmSupplierPrice price = priceMapper.selectById(id);
         if (price == null) {
-            throw new BizException("供货价格不存在");
+            throw new BizException("scm.error.supplyPriceDoesNotExist");
         }
         return price;
     }

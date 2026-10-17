@@ -49,7 +49,7 @@ public final class FinConstants {
     public static YearMonth toYearMonth(int period) {
         int month = period % 100;
         if (month < 1 || month > 12 || period < 190001 || period > 299912) {
-            throw new BizException("会计期间格式不正确：{0}", period);
+            throw new BizException("fin.error.invalidAccountingPeriodFormat", period);
         }
         return YearMonth.of(period / 100, month);
     }

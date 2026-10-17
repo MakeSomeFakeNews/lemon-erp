@@ -13,15 +13,16 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum TradeKind {
 
-    PURCHASE_IN("purchaseIn", "CR", "采购入库", OrderKind.PURCHASE, false, StockBizType.IN, "PURCHASE"),
-    PURCHASE_RETURN("purchaseReturn", "CT", "采购退货", OrderKind.PURCHASE, true, StockBizType.OUT, "PURCHASE_RETURN"),
-    SALES_OUT("salesOut", "XC", "销售出库", OrderKind.SALES, false, StockBizType.OUT, "SALES"),
-    SALES_RETURN("salesReturn", "XT", "销售退货", OrderKind.SALES, true, StockBizType.IN, "SALES_RETURN");
+    PURCHASE_IN("purchaseIn", "CR", "scm.label.purchaseReceipt", OrderKind.PURCHASE, false, StockBizType.IN, "PURCHASE"),
+    PURCHASE_RETURN("purchaseReturn", "CT", "scm.label.purchaseReturn", OrderKind.PURCHASE, true, StockBizType.OUT, "PURCHASE_RETURN"),
+    SALES_OUT("salesOut", "XC", "scm.label.salesDelivery", OrderKind.SALES, false, StockBizType.OUT, "SALES"),
+    SALES_RETURN("salesReturn", "XT", "scm.label.salesReturn", OrderKind.SALES, true, StockBizType.IN, "SALES_RETURN");
 
     /** 接口路径与权限标识中使用的名称 */
     private final String path;
     private final String prefix;
-    private final String label;
+    /** 名称的消息键 */
+    private final String labelKey;
     private final OrderKind orderKind;
     /** 是否退货：回写订单的已退货数量，否则回写已入库 / 已出库数量 */
     private final boolean returns;
@@ -45,6 +46,6 @@ public enum TradeKind {
                 return kind;
             }
         }
-        throw new BizException("不支持的单据类型：{0}", path);
+        throw new BizException("scm.error.unsupportedDocumentType", path);
     }
 }

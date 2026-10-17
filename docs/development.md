@@ -644,13 +644,15 @@ public void onOrderApproved(FlowFinishedEvent e) {
 - 打印：表头字段、明细列、签字栏的匹配键始终是中文名称（`printTemplates.js` 的 `PRINT_TYPES`，由 `locales/zh-CN/print.js` 生成），显示名称按界面语言翻译，已保存的打印模板和上传的 JRXML 在两种语言下都能匹配（调用约定见 `utils/print.js` 顶部注释）。
 - 检查：`npm run i18n:check [路径…]` 检查两种语言的键是否一致、代码中使用的键是否存在、代码中是否残留中文（注释和 console 除外；有意保留的中文在行内写 `i18n-ignore`）。
 
-**后端**（`common/i18n/I18n`）
-- 代码中直接写中文，中文就是翻译键；英文译文在各模块的 `src/main/resources/i18n/<模块>.en-US.json`（「中文模板 → 英文」，启动后合并所有模块的文件）。按请求头 `X-Lang` 选择语言；没有请求头、不在请求中（定时任务、异步线程）或没有译文时返回中文，测试默认中文。
-- 业务异常写模板和参数：`new BizException("登录名「{0}」已存在", username)`（不要用 `+` 拼接，参数中的固定中文先 `I18n.t()`），全局异常处理按请求语言翻译；校验注解的 `message` 登记译文即可。返回给前端显示的其他固定文字（枚举名称、报表行名、首页待办标题、参数设置和业务参数的说明、功能模块目录等）在输出处调用 `I18n.t("中文")`。
-- 存入数据库的内容不翻译（站内消息、操作日志标题、单据和凭证摘要、自动生成的业务数据、推送到钉钉等平台的消息），按写入时的中文显示。
-- 检查：`python3 scripts/check_i18n.py [模块目录…]` 列出缺少译文和拼接的消息（`--all` 再列出其他含中文的字符串字面量，供判断是否返回给前端；有意保留的在行内写 `// i18n-ignore`）。
+**后端**（Spring 标准国际化：`MessageSource` + 资源包 + `LocaleResolver`）
+- 消息在各模块的资源包 `src/main/resources/i18n/<模块>.properties`（默认，简体中文）和 `<模块>_en.properties`（英文），`common/i18n/Messages` 启动时自动发现 classpath 下全部资源包，同一实例注册为 Spring 的 `messageSource`。键为 `<模块>.<分类>.<名称>`，分类：`error` 业务异常、`valid` 校验、`text` 返回前端的文字、`label` 名称、`enum` 枚举名称。参数按 MessageFormat 写作 `{0}`，文字中的单引号写成两个；参数一律按字符串填入（数字不加千分位）。
+- 语言由标准请求头 `Accept-Language` 决定（`framework/config/I18nConfig` 的 `AcceptHeaderLocaleResolver`，支持 zh-CN、en，默认 zh-CN；安全过滤器等在 Spring MVC 之前输出的提示由同一配置中的过滤器提前设置语言）。没有请求头、不在请求中（定时任务、异步线程）时为中文，不按服务器的系统语言；测试默认中文。前端请求带界面语言的 `Accept-Language`。
+- 业务异常：`new BizException("system.error.usernameExists", username)`，全局异常处理按请求语言取消息，`getMessage()` 为中文（日志）。校验注解：`@NotBlank(message = "{system.valid.usernameRequired}")`，由 Bean Validation 通过 `messageSource` 按请求语言插值。其他返回前端的文字：`Messages.get(键, 参数…)`。
+- 跨模块的名称（编码规则目录、业务参数、记录类型、流程业务名称和变量、首页待办标题、定时任务名称、参数设置、引用检查名称、功能模块目录、枚举名称）：声明处写消息键（在声明模块的资源包中登记），输出处 `Messages.get(名称)`。
+- 存入数据库的内容不翻译（站内消息、操作日志标题、单据和凭证摘要、自动生成的业务数据、推送到钉钉等平台的消息）：保留中文，或用 `Messages.get(Messages.DEFAULT_LOCALE, 键)` 取中文，不能按当前请求的语言生成。
+- 检查：`python3 scripts/check_i18n.py [模块目录…]` 检查资源包（中英文键、占位符一致、英文中没有中文、单引号转义）、代码中使用的键是否存在、Java 代码中是否残留中文字符串（有意保留的在行内写 `// i18n-ignore`）。
 
-**新增一种语言**：`locales/index.js` 的 `LOCALES` 加一项并新建 `locales/<语言>/` 下全部文件（键与 zh-CN 一致）；后端 `I18n.LANGS` 加上该语言并为各模块新建 `<模块>.<语言>.json`；`App.vue` 中加上 Ant Design 和 dayjs 的语言包。
+**新增一种语言**：`locales/index.js` 的 `LOCALES` 加一项并新建 `locales/<语言>/` 下全部文件（键与 zh-CN 一致）；后端 `Messages.SUPPORTED_LOCALES` 加上该语言并为各模块新建 `<模块>_<语言>.properties`；`App.vue` 中加上 Ant Design 和 dayjs 的语言包。
 
 ## 数据校验与主数据保护
 

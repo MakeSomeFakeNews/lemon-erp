@@ -69,7 +69,7 @@ public class SysOperLogService {
     public SysOperLog detail(Long id) {
         SysOperLog log = operLogMapper.selectById(id);
         if (log == null) {
-            throw new BizException("日志不存在");
+            throw new BizException("monitor.error.logDoesNotExist");
         }
         return log;
     }

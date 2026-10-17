@@ -16,11 +16,11 @@ import java.math.BigDecimal;
  * @param accountId 末级科目
  */
 public record VoucherEntryRequest(
-        @NotBlank(message = "请填写摘要") @Size(max = 255, message = "摘要不能超过255个字符") String summary,
-        @NotNull(message = "请选择科目") Long accountId,
+        @NotBlank(message = "{fin.valid.enterSummary}") @Size(max = 255, message = "{fin.valid.summaryCannotExceedCharacters}") String summary,
+        @NotNull(message = "{fin.valid.selectAccount}") Long accountId,
         Long deptId,
-        @DecimalMin(value = "0", message = "金额不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal debit,
-        @DecimalMin(value = "0", message = "金额不能小于0") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal credit,
+        @DecimalMin(value = "0", message = "{fin.valid.amountCannotLess}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal debit,
+        @DecimalMin(value = "0", message = "{fin.valid.amountCannotLess}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal credit,
         Long projectId,
         Long customerId,
         Long supplierId,
