@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinStockAgeMapper">
+
+    <!-- 流水按单据业务日期；不按仓库统计时排除调拨（不改变总库存），供应商寄售仓的库存不属于本企业 -->
+    <sql id="flowScope">
+        FROM wms_stock_flow f
+        JOIN wms_warehouse wh ON wh.id = f.warehouse_id
+        LEFT JOIN wms_stock_doc d ON f.biz_type IN ('IN', 'OUT', 'TRANSFER') AND d.id = f.doc_id
+        LEFT JOIN wms_check c ON f.biz_type = 'CHECK' AND c.id = f.doc_id
+        WHERE wh.type &lt;&gt; 'CONSIGN_IN' AND COALESCE(d.biz_date, c.biz_date, CAST(f.create_time AS DATE)) &lt;= #{asOf}
+        <choose>
+            <when test="warehouseId != null">AND f.warehouse_id = #{warehouseId}</when>
+            <otherwise>AND f.biz_type &lt;&gt; 'TRANSFER'</otherwise>
+        </choose>
+    </sql>
+
+    <select id="selectBalances" resultType="java.util.Map">
+        SELECT m.id AS "materialId", m.code AS "code", m.name AS "name", m.spec AS "spec", m.unit AS "unit", m.category AS "category",
+               t.qty AS "qty"
+        FROM (
+            SELECT f.material_id, SUM(f.qty) AS qty
+            <include refid="flowScope"/>
+            GROUP BY f.material_id
+        ) t
+        JOIN wms_material m ON m.id = t.material_id
+        WHERE t.qty &gt; 0
+        <if test="category != null and category != ''">AND m.category = #{category}</if>
+        <if test="keyword != null and keyword != ''">AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))</if>
+        ORDER BY m.code
+    </select>
+
+    <select id="selectInflows" resultType="java.util.Map">
+        SELECT f.material_id AS "materialId", COALESCE(d.biz_date, c.biz_date, CAST(f.create_time AS DATE)) AS "bizDate", SUM(f.qty) AS "qty"
+        <include refid="flowScope"/>
+          AND f.qty &gt; 0
+          AND f.material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        GROUP BY f.material_id, COALESCE(d.biz_date, c.biz_date, CAST(f.create_time AS DATE))
+        ORDER BY f.material_id, COALESCE(d.biz_date, c.biz_date, CAST(f.create_time AS DATE)) DESC
+    </select>
+
+    <select id="selectUnitCosts" resultType="java.util.Map">
+        SELECT m.id AS "materialId",
+               COALESCE((SELECT c.unit_cost FROM fin_material_cost c WHERE c.material_id = m.id AND c.period &lt;= #{period}
+                         AND c.unit_cost &gt; 0 ORDER BY c.period DESC LIMIT 1), m.ref_cost, 0) AS "unitCost"
+        FROM wms_material m
+        WHERE m.id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+</mapper>

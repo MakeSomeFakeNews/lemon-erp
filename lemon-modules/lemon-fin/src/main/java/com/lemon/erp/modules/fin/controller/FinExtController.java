@@ -73,6 +73,7 @@ public class FinExtController {
     private final FinClaimService claimService;
     private final FinLoanService loanService;
     private final FinAnalysisService analysisService;
+    private final com.lemon.erp.modules.fin.service.FinStockAgeService stockAgeService;
 
     // ---------------------------------------------------------------- 坏账、红字冲销、结账
 
@@ -445,6 +446,17 @@ public class FinExtController {
                                               @RequestParam(defaultValue = "MATERIAL") String groupBy,
                                               @RequestParam(required = false) Long customerId) {
         return R.ok(analysisService.grossMargin(begin, end, groupBy, customerId));
+    }
+
+    /** 库龄分析：buckets 为分段上限（天，逗号分隔，递增），为空用默认 30,60,90,180,365 */
+    @GetMapping("/analysis/stock-age")
+    @PreAuthorize("@ss.hasPerm('fin:analysis:list')")
+    public R<Map<String, Object>> stockAge(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate asOf,
+                                           @RequestParam(required = false) Long warehouseId,
+                                           @RequestParam(required = false) String category,
+                                           @RequestParam(required = false) String keyword,
+                                           @RequestParam(required = false) List<Integer> buckets) {
+        return R.ok(stockAgeService.analyze(asOf, warehouseId, category, keyword, buckets));
     }
 
     @GetMapping("/analysis/inventory")
