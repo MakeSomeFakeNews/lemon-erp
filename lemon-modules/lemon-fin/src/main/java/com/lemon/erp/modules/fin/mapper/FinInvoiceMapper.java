@@ -13,7 +13,11 @@ import java.util.Map;
 public interface FinInvoiceMapper extends BaseMapper<FinInvoice> {
 
     Page<FinInvoice> selectPageList(Page<FinInvoice> page, @Param("kind") String kind, @Param("keyword") String keyword,
-                                    @Param("partnerId") Long partnerId, @Param("status") String status);
+                                    @Param("partnerId") Long partnerId, @Param("status") String status,
+                                    @Param("unmatched") boolean unmatched);
+
+    /** 增加勾稽金额，超过发票金额时返回 0 */
+    int addMatched(@Param("id") Long id, @Param("amount") java.math.BigDecimal amount);
 
     FinInvoice selectDetail(@Param("id") Long id);
 

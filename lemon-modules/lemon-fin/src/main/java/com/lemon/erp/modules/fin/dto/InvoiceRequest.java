@@ -18,7 +18,7 @@ import java.util.List;
 public record InvoiceRequest(
         @NotBlank(message = "请选择发票种类") @Pattern(regexp = "^(OUTPUT|INPUT)$", message = "发票种类不正确") String kind,
         @NotBlank(message = "请填写发票号码") @Size(max = 32, message = "发票号码不能超过32个字符") String invoiceNo,
-        @Pattern(regexp = "^(SPECIAL|NORMAL)?$", message = "发票类型不正确") String invoiceType,
+        @Pattern(regexp = "^(SPECIAL|NORMAL|E_SPECIAL|E_NORMAL)?$", message = "发票类型不正确") String invoiceType,
         @NotNull(message = "请选择往来单位") Long partnerId,
         @NotNull(message = "请选择开票日期") LocalDate invoiceDate,
         @NotNull(message = "请填写价税合计") @Digits(integer = 16, fraction = 2, message = "金额最多2位小数") BigDecimal amount,

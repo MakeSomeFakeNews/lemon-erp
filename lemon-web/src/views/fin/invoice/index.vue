@@ -9,6 +9,15 @@
                 <template #icon><SafetyCertificateOutlined /></template>认证（{{ certifiable.length }}）
               </a-button>
             </template>
+            <a-dropdown v-perm="'fin:invoice:edit'">
+              <a-button><template #icon><ImportOutlined /></template>导入</a-button>
+              <template #overlay>
+                <a-menu>
+                  <a-menu-item key="xml" @click="openXmlImport">数电票 XML 文件</a-menu-item>
+                  <a-menu-item key="excel" @click="excelImportOpen = true">发票清单（Excel）</a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
             <a-button v-perm="'fin:invoice:edit'" type="primary" @click="openCreate">
               <template #icon><PlusOutlined /></template>登记{{ conf.label }}
             </a-button>
@@ -20,6 +29,7 @@
             <PartnerSelect v-model:value="query.partnerId" :type="KINDS[k].partner" allow-clear :placeholder="`全部${KINDS[k].partnerLabel}`" class="filter" />
             <a-select v-model:value="query.status" placeholder="状态" allow-clear :options="STATUS_OPTIONS" class="filter-s" @change="search" />
             <a-input-search v-model:value="query.keyword" placeholder="发票号码或备注" allow-clear class="filter" @search="search" />
+            <a-checkbox v-model:checked="query.unmatched" @change="search">只看待勾稽</a-checkbox>
           </div>
           <div class="stats">
             <span>本页价税合计 <b>¥{{ formatMoney(pageTotal.amount) }}</b></span>
@@ -51,14 +61,22 @@
               <template v-else-if="column.key === 'status'">
                 <a-tag :color="record.status === 'VOID' ? 'default' : 'green'" :bordered="false">{{ record.status === 'VOID' ? '已作废' : '有效' }}</a-tag>
               </template>
+              <template v-else-if="column.key === 'matched'">
+                <span v-if="record.status === 'VOID'" class="sub-text">-</span>
+                <a-tag v-else-if="unmatchedAmount(record) === 0" color="green" :bordered="false">已勾稽</a-tag>
+                <a-tag v-else color="orange" :bordered="false">待勾稽 {{ formatMoney(unmatchedAmount(record)) }}</a-tag>
+              </template>
               <template v-else-if="column.key === 'certify'">
                 <a-tag v-if="record.certifyPeriod" color="blue" :bordered="false">{{ periodText(record.certifyPeriod) }}</a-tag>
-                <span v-else-if="record.status === 'VALID' && record.invoiceType === 'SPECIAL'" class="sub-text">未认证</span>
+                <span v-else-if="record.status === 'VALID' && SPECIAL_TYPES.includes(record.invoiceType)" class="sub-text">未认证</span>
                 <span v-else class="sub-text">-</span>
               </template>
               <template v-else-if="column.key === 'action'">
                 <span class="table-actions">
                   <a-button type="link" size="small" @click="openDetail(record)">查看</a-button>
+                  <a-button v-if="record.status === 'VALID' && unmatchedAmount(record) !== 0" v-perm="'fin:invoice:edit'" type="link" size="small" @click="openMatch(record)">
+                    勾稽
+                  </a-button>
                   <span v-if="record.status === 'VALID'" v-perm="'fin:invoice:edit'">
                     <a-popconfirm :title="`作废发票 ${record.invoiceNo}？作废后释放勾稽的单据开票金额。`" @confirm="cancel(record.id)">
                       <a-button type="link" danger size="small">作废</a-button>
@@ -210,16 +228,108 @@
           </a-descriptions-item>
           <a-descriptions-item v-if="detail.kind === 'INPUT'" label="认证期间">{{ detail.certifyPeriod ? periodText(detail.certifyPeriod) : '未认证' }}</a-descriptions-item>
           <a-descriptions-item label="登记人">{{ detail.createByName || '-' }} {{ detail.createTime || '' }}</a-descriptions-item>
+          <a-descriptions-item label="来源">{{ SOURCES[detail.source] || '手工登记' }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.sellerName || detail.sellerTaxNo" label="销售方">{{ detail.sellerName }} {{ detail.sellerTaxNo }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.buyerName || detail.buyerTaxNo" label="购买方">{{ detail.buyerName }} {{ detail.buyerTaxNo }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.remark" label="备注">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
-        <div class="section-title block-title">勾稽单据</div>
+        <template v-if="detail.lines?.length">
+          <div class="section-title block-title">发票明细</div>
+          <a-table row-key="id" size="small" :columns="lineColumns" :data-source="detail.lines" :pagination="false" :scroll="{ x: 760 }" class="block">
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'qty'">{{ record.qty != null ? Number(record.qty) : '' }} {{ record.unit || '' }}</template>
+              <template v-else-if="column.key === 'price'">{{ record.price != null ? Number(record.price) : '' }}</template>
+              <template v-else-if="column.key === 'taxRate'">{{ record.taxRate != null ? `${Math.round(Number(record.taxRate) * 10000) / 100}%` : '' }}</template>
+              <template v-else-if="['amount', 'taxAmount'].includes(column.key)">{{ formatMoney(record[column.key]) }}</template>
+            </template>
+          </a-table>
+        </template>
+        <div class="bills-head">
+          <span class="section-title">勾稽单据（已勾稽 ¥{{ formatMoney(detail.matchedAmount) }}）</span>
+          <a-popconfirm
+            v-if="detail.status === 'VALID' && detail.items?.length"
+            title="取消全部勾稽？单据的已开票金额会释放，之后可以重新勾稽。"
+            @confirm="unmatch(detail.id)"
+          >
+            <a-button v-perm="'fin:invoice:edit'" size="small">取消勾稽</a-button>
+          </a-popconfirm>
+        </div>
         <a-table row-key="id" size="small" :columns="itemColumns" :data-source="detail.items" :pagination="false">
           <template #bodyCell="{ column, record }">
             <template v-if="['billAmount', 'amount'].includes(column.key)">{{ formatMoney(record[column.key]) }}</template>
           </template>
         </a-table>
+        <div class="section-title block-title attach-title">版式文件（PDF / OFD / XML）</div>
+        <AttachmentPanel biz-type="fin_invoice" :biz-id="detail.id" :editable="userStore.hasPerm('fin:invoice:edit')" />
       </template>
     </SubPage>
+
+    <!-- 勾稽导入的发票 -->
+    <a-modal
+      v-model:open="matchOpen"
+      :title="matchInvoiceRow ? `勾稽发票 ${matchInvoiceRow.invoiceNo}` : ''"
+      width="min(900px, 100vw)"
+      :confirm-loading="matching"
+      ok-text="勾稽"
+      @ok="submitMatch"
+    >
+      <template v-if="matchInvoiceRow">
+        <p>
+          {{ matchInvoiceRow.partnerName }}，价税合计 ¥{{ formatMoney(matchInvoiceRow.amount) }}，待勾稽
+          <b>¥{{ formatMoney(unmatchedAmount(matchInvoiceRow)) }}</b>；本次勾稽合计 <b class="total">¥{{ formatMoney(itemTotal) }}</b>
+        </p>
+        <a-table
+          row-key="id"
+          size="small"
+          :columns="billColumns"
+          :data-source="bills"
+          :loading="billLoading"
+          :pagination="false"
+          :row-selection="{ selectedRowKeys: checkedBills, onChange: onCheckBills }"
+          :scroll="{ x: 860, y: 360 }"
+          :locale="{ emptyText: `没有未${conf.invoiceVerb}的单据` }"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'amount'">{{ formatMoney(record.amount) }}</template>
+            <template v-else-if="column.key === 'invoiced'">{{ formatMoney(record.invoicedAmount ?? 0) }}</template>
+            <template v-else-if="column.key === 'remaining'">{{ formatMoney(billRemaining(record)) }}</template>
+            <template v-else-if="column.key === 'apply'">
+              <a-input-number
+                v-model:value="record.apply"
+                :precision="2"
+                :min="Math.min(0, billRemaining(record))"
+                :max="Math.max(0, billRemaining(record))"
+                :disabled="!checkedBills.includes(record.id)"
+                class="full"
+              />
+            </template>
+          </template>
+        </a-table>
+      </template>
+    </a-modal>
+
+    <!-- 数电票 XML 导入 -->
+    <a-modal v-model:open="xmlOpen" :title="`导入数电票 XML（${conf.label}）`" :confirm-loading="xmlImporting" ok-text="导入" :ok-button-props="{ disabled: !xmlFiles.length }" @ok="submitXml">
+      <a-space direction="vertical" class="full">
+        <a-alert type="info" show-icon :message="xmlTip" />
+        <a-upload-dragger :file-list="[]" accept=".xml" multiple :before-upload="addXml">
+          <p class="ant-upload-text">点击或拖拽数电票 XML 文件到这里（可多选，最多 200 个）</p>
+          <p v-if="xmlFiles.length" class="ant-upload-hint">已选择 {{ xmlFiles.length }} 个文件</p>
+        </a-upload-dragger>
+        <a-checkbox v-model:checked="autoMatch">自动勾稽：往来单位只有一张未{{ conf.invoiceVerb }}金额与发票相等的单据时自动勾稽</a-checkbox>
+        <a-alert v-if="importResult && !importResult.errors.length" type="success" show-icon :message="importResultText" />
+        <a-table v-if="importResult?.errors.length" size="small" row-key="rowNum" :columns="errorColumns" :data-source="importResult.errors" :pagination="false" />
+      </a-space>
+    </a-modal>
+
+    <ImportModal
+      v-model:open="excelImportOpen"
+      :title="`${conf.label}清单`"
+      :columns="excelColumns"
+      :importer="importExcel"
+      :sample="{ invoiceNo: '25322000000123456789', invoiceDate: '2026-10-08', sellerTaxNo: '91320000MA1XXXXX0X', sellerName: '示例供应商有限公司', amount: 1130, taxAmount: 130 }"
+      @success="load"
+    />
 
     <!-- 进项认证 -->
     <a-modal v-model:open="certifyOpen" title="进项发票认证" :confirm-loading="certifying" ok-text="认证" @ok="certify(certifyPeriod)">
@@ -239,11 +349,26 @@
 import SubPage from '@/components/SubPage.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { PlusOutlined, SafetyCertificateOutlined } from '@ant-design/icons-vue'
+import { ImportOutlined, PlusOutlined, SafetyCertificateOutlined } from '@ant-design/icons-vue'
+import AttachmentPanel from '@/components/AttachmentPanel.vue'
+import ImportModal from '@/components/ImportModal.vue'
+import { useUserStore } from '@/store/user'
 import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
-import { addInvoice, cancelInvoice, certifyInvoice, getInvoice, invoiceOpenBills, pageInvoice, uninvoiced } from '@/api/fin'
+import {
+  addInvoice,
+  cancelInvoice,
+  certifyInvoice,
+  getInvoice,
+  importInvoiceRows,
+  importInvoiceXml,
+  invoiceOpenBills,
+  matchInvoice,
+  pageInvoice,
+  unmatchInvoice,
+  uninvoiced
+} from '@/api/fin'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -259,6 +384,11 @@ const STATUS_OPTIONS = [
   { value: 'VOID', label: '已作废' }
 ]
 const dict = useDict('fin_invoice_type')
+const userStore = useUserStore()
+/** 可认证抵扣的专票（含数电票专票） */
+const SPECIAL_TYPES = ['SPECIAL', 'E_SPECIAL']
+const SOURCES = { MANUAL: '手工登记', XML: '数电票 XML 导入', EXCEL: '发票清单导入' }
+const unmatchedAmount = (r) => round2(Number(r.amount) - Number(r.matchedAmount || 0))
 const tab = ref('OUTPUT')
 // 登记、列表使用的种类：报表页签时沿用上一个发票页签
 const kind = ref('OUTPUT')
@@ -273,12 +403,13 @@ const columns = computed(() => [
   { title: '价税合计', key: 'amount', width: 130, align: 'right' },
   { title: '税额', key: 'taxAmount', width: 110, align: 'right' },
   { title: '状态', key: 'status', width: 90 },
+  { title: '勾稽', key: 'matched', width: 150 },
   ...(kind.value === 'INPUT' ? [{ title: '认证期间', key: 'certify', width: 130 }] : []),
   { title: '备注', dataIndex: 'remark', ellipsis: true },
   { title: '登记人', dataIndex: 'createByName', width: 100 },
   { title: '操作', key: 'action', width: 120, fixed: 'right' }
 ])
-const query = reactive({ kind: 'OUTPUT', partnerId: undefined, status: undefined, keyword: undefined })
+const query = reactive({ kind: 'OUTPUT', partnerId: undefined, status: undefined, keyword: undefined, unmatched: false })
 const { list, loading, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable(pageInvoice, query)
 onMounted(load)
 watch(() => query.partnerId, () => search())
@@ -288,7 +419,7 @@ watch(tab, (t) => {
     return
   }
   kind.value = t
-  Object.assign(query, { kind: t, partnerId: undefined, status: undefined, keyword: undefined })
+  Object.assign(query, { kind: t, partnerId: undefined, status: undefined, keyword: undefined, unmatched: false })
   selectedKeys.value = []
   search()
 })
@@ -432,6 +563,120 @@ async function openDetail(record) {
   detail.value = await getInvoice(record.id)
 }
 
+const lineColumns = [
+  { title: '项目名称', dataIndex: 'itemName', width: 200, ellipsis: true },
+  { title: '规格型号', dataIndex: 'spec', width: 110, ellipsis: true },
+  { title: '数量', key: 'qty', width: 100, align: 'right' },
+  { title: '单价', key: 'price', width: 100, align: 'right' },
+  { title: '金额', key: 'amount', width: 110, align: 'right' },
+  { title: '税率', key: 'taxRate', width: 70, align: 'right' },
+  { title: '税额', key: 'taxAmount', width: 100, align: 'right' }
+]
+
+async function unmatch(id) {
+  await unmatchInvoice(id)
+  message.success('已取消勾稽')
+  detail.value = await getInvoice(id)
+  load()
+}
+
+// ---------------------------------------------------------------- 勾稽
+const matchOpen = ref(false)
+const matching = ref(false)
+const matchInvoiceRow = ref()
+async function openMatch(record) {
+  matchInvoiceRow.value = record
+  bills.value = []
+  checkedBills.value = []
+  matchOpen.value = true
+  billLoading.value = true
+  try {
+    const left = unmatchedAmount(record)
+    bills.value = (await invoiceOpenBills(record.kind, record.partnerId)).map((b) => ({ ...b, apply: billRemaining(b) }))
+    // 金额相等的单据默认勾选
+    const exact = bills.value.find((b) => billRemaining(b) === left)
+    if (exact) checkedBills.value = [exact.id]
+  } finally {
+    billLoading.value = false
+  }
+}
+async function submitMatch() {
+  const items = selectedBills.value.filter((b) => Number(b.apply)).map((b) => ({ billId: b.id, amount: b.apply }))
+  if (!items.length) {
+    message.warning('请勾选勾稽的单据并填写金额')
+    return
+  }
+  matching.value = true
+  try {
+    await matchInvoice(matchInvoiceRow.value.id, items)
+    message.success('已勾稽')
+    matchOpen.value = false
+    load()
+  } finally {
+    matching.value = false
+  }
+}
+
+// ---------------------------------------------------------------- 导入
+const autoMatch = ref(true)
+const importResult = ref()
+const errorColumns = [
+  { title: '序号', dataIndex: 'rowNum', width: 70 },
+  { title: '错误', dataIndex: 'message' }
+]
+const importResultText = computed(() => {
+  const r = importResult.value
+  return r ? `导入 ${r.imported} 张${r.skipped ? `，${r.skipped} 张已登记过跳过` : ''}${r.matched ? `，自动勾稽 ${r.matched} 张` : ''}` : ''
+})
+const xmlTip = computed(() =>
+  kind.value === 'INPUT'
+    ? '从税务数字账户下载的数电票 XML，按销售方纳税人识别号（没有时按名称）匹配供应商；已登记的发票号码自动跳过。导入后可在列表中勾稽应付单。'
+    : '在税务数字账户开具后下载的数电票 XML，按购买方纳税人识别号（没有时按名称）匹配客户；已登记的发票号码自动跳过。导入后可在列表中勾稽应收单。'
+)
+const xmlOpen = ref(false)
+const xmlImporting = ref(false)
+const xmlFiles = ref([])
+function openXmlImport() {
+  xmlFiles.value = []
+  importResult.value = undefined
+  xmlOpen.value = true
+}
+function addXml(file) {
+  if (!xmlFiles.value.some((f) => f.name === file.name && f.size === file.size)) xmlFiles.value.push(file)
+  return false
+}
+async function submitXml() {
+  xmlImporting.value = true
+  try {
+    importResult.value = await importInvoiceXml(kind.value, xmlFiles.value, autoMatch.value)
+    if (!importResult.value.errors.length) {
+      message.success(importResultText.value)
+      xmlFiles.value = []
+      load()
+    }
+  } finally {
+    xmlImporting.value = false
+  }
+}
+
+const excelImportOpen = ref(false)
+const excelColumns = [
+  { title: '发票号码', key: 'invoiceNo', required: true },
+  { title: '发票类型', key: 'invoiceType', dict: 'fin_invoice_type' },
+  { title: '开票日期', key: 'invoiceDate', type: 'date', required: true },
+  { title: '销方识别号', key: 'sellerTaxNo' },
+  { title: '销方名称', key: 'sellerName' },
+  { title: '购方识别号', key: 'buyerTaxNo' },
+  { title: '购方名称', key: 'buyerName' },
+  { title: '价税合计', key: 'amount', type: 'number', required: true },
+  { title: '税额', key: 'taxAmount', type: 'number', required: true }
+]
+async function importExcel(data) {
+  const r = await importInvoiceRows(kind.value, data, true)
+  if (!r.errors.length && (r.skipped || r.matched)) message.info(`${r.skipped ? `${r.skipped} 张已登记过跳过；` : ''}自动勾稽 ${r.matched} 张`)
+  return { total: r.total, imported: r.imported, errors: r.errors }
+}
+
 // ---------------------------------------------------------------- 未开票 / 暂估
 const reportKind = ref('OUTPUT')
 const asOf = ref(today())
@@ -522,5 +767,8 @@ async function loadReport() {
 }
 .block {
   margin-bottom: 16px;
+}
+.attach-title {
+  margin-top: 16px;
 }
 </style>
