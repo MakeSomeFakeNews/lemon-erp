@@ -4,10 +4,11 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
+import com.lemon.erp.framework.security.datascope.DataScopes;
 import com.lemon.erp.framework.security.datascope.DataPermissionRule;
 import com.lemon.erp.modules.wms.dto.AssemblyRequest;
 import com.lemon.erp.modules.wms.dto.DocQuery;
@@ -78,7 +79,6 @@ public class WmsAssemblyService {
         a.setAssemblyNo(docNoService.next(DOC_NO));
         a.setStatus(DocStatus.DRAFT);
         a.setDeptId(user.deptId());
-        a.setCreateBy(user.userId());
         assemblyMapper.insert(a);
         saveItems(a.getId(), req.items());
         return a.getId();
@@ -119,13 +119,11 @@ public class WmsAssemblyService {
         WmsAssembly a = getDraft(id);
         List<WmsAssemblyItem> items = itemMapper.selectList(Wrappers.<WmsAssemblyItem>lambdaQuery()
                 .eq(WmsAssemblyItem::getAssemblyId, id).orderByAsc(WmsAssemblyItem::getId));
-        if (assemblyMapper.update(Wrappers.<WmsAssembly>lambdaUpdate()
-                .set(WmsAssembly::getStatus, DocStatus.DONE)
-                .set(WmsAssembly::getConfirmBy, SecurityUtils.getUserId())
-                .set(WmsAssembly::getConfirmTime, LocalDateTime.now())
-                .eq(WmsAssembly::getId, id).eq(WmsAssembly::getStatus, DocStatus.DRAFT)) == 0) {
-            throw new BizException("wms.error.documentHasConfirmedRefresh");
-        }
+        StatusTransitions.change(assemblyMapper, WmsAssembly::getId, id, WmsAssembly::getStatus,
+                DocStatus.DRAFT, DocStatus.DONE, w -> w
+                        .set(WmsAssembly::getConfirmBy, SecurityUtils.getUserId())
+                        .set(WmsAssembly::getConfirmTime, LocalDateTime.now()),
+                "wms.error.documentHasConfirmedRefresh");
         List<StockDocItemRequest> parts = items.stream().map(i -> new StockDocItemRequest(i.getMaterialId(), i.getLocationId(), null,
                 i.getBatchNo(), i.getProductionDate(), i.getExpiryDate(), i.getQty(), i.getSerialNos(), i.getRemark())).toList();
         List<StockDocItemRequest> product = List.of(new StockDocItemRequest(a.getMaterialId(), a.getLocationId(), null, a.getBatchNo(),
@@ -200,11 +198,7 @@ public class WmsAssemblyService {
 
     /** 按数据权限读取 */
     private WmsAssembly getAccessible(Long id) {
-        WmsAssembly a = DataPermissionContext.execute(RULE, () -> assemblyMapper.selectById(id));
-        if (a == null) {
-            throw new BizException("wms.error.assemblyOrderDoesNotExist");
-        }
-        return a;
+        return DataScopes.require(RULE, () -> assemblyMapper.selectById(id), "wms.error.assemblyOrderDoesNotExist");
     }
 
     private WmsAssembly getDraft(Long id) {

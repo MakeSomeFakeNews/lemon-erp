@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -94,7 +95,6 @@ public class CrmTicketService {
         t.setStatus(TicketStatus.OPEN);
         t.setDueTime(LocalDateTime.now().withNano(0).plusHours(req.priority().getSlaHours()));
         t.setDeptId(user.deptId());
-        t.setCreateBy(user.userId());
         ticketMapper.insert(t);
         log(t.getId(), TicketAction.CREATE, req.title());
         if (req.assigneeId() != null) {
@@ -285,9 +285,8 @@ public class CrmTicketService {
         p.setDocNo(doc.getDocNo());
         p.setWarehouseId(req.warehouseId());
         p.setBizDate(req.bizDate());
-        p.setTotalQty(req.items().stream().map(StockDocItemRequest::qty).reduce(BigDecimal.ZERO, BigDecimal::add));
+        p.setTotalQty(Decimals.sum(req.items(), StockDocItemRequest::qty));
         p.setRemark(req.remark());
-        p.setCreateBy(SecurityUtils.getUserId());
         partMapper.insert(p);
         log(id, TicketAction.PROCESS, "领用备件，出库单 " + doc.getDocNo()); // i18n-ignore 存库的处理记录
         return p.getId();
@@ -301,7 +300,7 @@ public class CrmTicketService {
             throw new BizException("crm.error.ticketHasAlreadyCharged");
         }
         BigDecimal rate = req.taxRate() == null ? CrmConstants.SERVICE_TAX_RATE : req.taxRate();
-        BigDecimal tax = req.amount().multiply(rate).divide(BigDecimal.valueOf(100).add(rate), 2, RoundingMode.HALF_UP);
+        BigDecimal tax = req.amount().multiply(rate).divide(Decimals.HUNDRED.add(rate), 2, RoundingMode.HALF_UP);
         FinBill bill = billService.createFromSource(BillKind.AR, t.getCustomerId(), BillSource.TICKET, id, t.getTicketNo(), req.billDate(),
                 req.amount(), tax, req.remark() == null ? "服务费 " + t.getTitle() : req.remark(), null); // i18n-ignore 存库的单据摘要
         ticketMapper.update(Wrappers.<CrmTicket>lambdaUpdate().set(CrmTicket::getFeeAmount, req.amount())

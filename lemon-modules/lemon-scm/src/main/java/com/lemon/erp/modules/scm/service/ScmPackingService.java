@@ -2,7 +2,6 @@ package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.dto.PackageRequest;
 import com.lemon.erp.modules.scm.entity.ScmDelivery;
 import com.lemon.erp.modules.scm.entity.ScmDeliveryItem;
@@ -55,7 +54,6 @@ public class ScmPackingService {
         p.setWeight(req.weight());
         p.setVolume(req.volume());
         p.setRemark(req.remark());
-        p.setCreateBy(SecurityUtils.getUserId());
         packageMapper.insert(p);
         packageMapper.insertItems(p.getId(), items);
         return p.getId();

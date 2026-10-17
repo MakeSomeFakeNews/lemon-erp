@@ -5,6 +5,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.DetailLines;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.finance.ExchangeRateProvider;
 import com.lemon.erp.framework.finance.PartnerBalanceProvider;
 import com.lemon.erp.framework.message.MessageCategory;
@@ -13,8 +16,10 @@ import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.framework.rule.BizRules;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
+import com.lemon.erp.framework.security.datascope.DataScopes;
 import com.lemon.erp.modules.scm.model.CreditControl;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowApi;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
 import com.lemon.erp.framework.workflow.FlowStatus;
@@ -46,14 +51,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 
 import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.ORDER_RULE;
@@ -84,6 +87,7 @@ public class ScmOrderService {
     private final WmsWarehouseService warehouseService;
     private final DocNoService docNoService;
     private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
     private final PartnerBalanceProvider balanceProvider;
     private final ExchangeRateProvider rateProvider;
     private final ApplicationEventPublisher eventPublisher;
@@ -152,7 +156,6 @@ public class ScmOrderService {
         order.setStatus(OrderStatus.DRAFT);
         order.setVersion(1);
         order.setDeptId(user.deptId());
-        order.setCreateBy(user.userId());
         if (kind == OrderKind.SALES) {
             Long owner = customerService.get(req.partnerId()).getOwnerId();
             order.setSalesmanId(owner != null ? owner : user.userId());
@@ -193,7 +196,7 @@ public class ScmOrderService {
     }
 
     private static BigDecimal rebateOf(OrderRequest req) {
-        return req.rebateAmount() == null ? BigDecimal.ZERO : req.rebateAmount().setScale(2, RoundingMode.HALF_UP);
+        return Decimals.money(req.rebateAmount());
     }
 
     @Transactional
@@ -226,8 +229,7 @@ public class ScmOrderService {
                 .set(ScmOrder::getUpdateTime, LocalDateTime.now())
                 .eq(ScmOrder::getId, id)
                 .eq(ScmOrder::getStatus, OrderStatus.DRAFT));
-        itemMapper.delete(Wrappers.<ScmOrderItem>lambdaQuery().eq(ScmOrderItem::getOrderId, id));
-        saveItems(id, items);
+        DetailLines.replace(itemMapper, ScmOrderItem::getOrderId, id, items, ScmOrderItem::setOrderId, itemMapper::insertBatch);
         if (applied != null) {
             promotionService.saveUsages(id, applied.usages());
         }
@@ -280,18 +282,17 @@ public class ScmOrderService {
             contractUsage.checkOnApprove(order.getContractId(), order.getPartnerId(), order.getOrderDate(),
                     itemMapper.selectList(Wrappers.<ScmOrderItem>lambdaQuery().eq(ScmOrderItem::getOrderId, id)), id);
         }
-        if (!flowApi.isAvailable(kind.getProcessKey())) {
-            changeStatus(id, OrderStatus.DRAFT, OrderStatus.APPROVED, true);
-            notifySupplier(kind, order);
-            return false;
-        }
         // 先改状态再发起：流程没有审批节点时会在发起过程中直接结束并回调 onFlowFinished
-        changeStatus(id, OrderStatus.DRAFT, OrderStatus.APPROVING, false);
-        String instanceId = flowApi.start(kind.getProcessKey(), BUSINESS_KEY_PREFIX + id, Map.of(
-                "amount", order.getTotalAmount().doubleValue(),
-                "orderNo", order.getOrderNo()));
-        orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate().set(ScmOrder::getFlowInstanceId, instanceId).eq(ScmOrder::getId, id));
-        return true;
+        return approvalSupport.submit(flowOf(kind), id, Map.of(
+                        "amount", order.getTotalAmount().doubleValue(),
+                        "orderNo", order.getOrderNo()),
+                () -> {
+                    changeStatus(id, OrderStatus.DRAFT, OrderStatus.APPROVED, true);
+                    notifySupplier(kind, order);
+                },
+                () -> changeStatus(id, OrderStatus.DRAFT, OrderStatus.APPROVING, false),
+                instanceId -> orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
+                        .set(ScmOrder::getFlowInstanceId, instanceId).eq(ScmOrder::getId, id)));
     }
 
     /** 撤回审批：撤销流程，订单回到草稿 */
@@ -305,10 +306,7 @@ public class ScmOrderService {
             flowApi.cancel(order.getFlowInstanceId(), "撤回订单审批"); // i18n-ignore
         }
         // 流程撤销事件已把订单改回草稿时这里不再更新
-        orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
-                .set(ScmOrder::getStatus, OrderStatus.DRAFT)
-                .eq(ScmOrder::getId, id)
-                .eq(ScmOrder::getStatus, OrderStatus.APPROVING));
+        StatusTransitions.tryChange(orderMapper, ScmOrder::getId, id, ScmOrder::getStatus, OrderStatus.APPROVING, OrderStatus.DRAFT, null);
     }
 
     /** 反审核：已审核且还没有入库 / 出库的订单回到草稿 */
@@ -344,29 +342,30 @@ public class ScmOrderService {
     /** 审批结束：通过 → 已审核；拒绝、撤销 → 草稿。与审批操作在同一事务中 */
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (OrderKind.ofProcessKey(e.processKey()) == null || e.businessKey() == null
-                || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
+        OrderKind kind = OrderKind.ofProcessKey(e.processKey());
+        if (kind == null) {
             return;
         }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
         // 只处理仍在审批中的订单（已撤回、删除的忽略），不抛异常，避免回滚审批操作
-        if (e.status() == FlowStatus.APPROVED) {
-            int updated = orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
-                    .set(ScmOrder::getStatus, OrderStatus.APPROVED)
-                    .set(ScmOrder::getApproveBy, SecurityUtils.getUserIdOrNull())
-                    .set(ScmOrder::getApproveTime, LocalDateTime.now())
-                    .eq(ScmOrder::getId, id)
-                    .eq(ScmOrder::getStatus, OrderStatus.APPROVING));
-            if (updated > 0) {
-                ScmOrder order = orderMapper.selectById(id);
-                notifySupplier(order.getKind(), order);
+        flowOf(kind).onFinished(e, (id, approved) -> {
+            if (approved) {
+                boolean updated = StatusTransitions.tryChange(orderMapper, ScmOrder::getId, id, ScmOrder::getStatus,
+                        OrderStatus.APPROVING, OrderStatus.APPROVED, w -> w
+                                .set(ScmOrder::getApproveBy, SecurityUtils.getUserIdOrNull())
+                                .set(ScmOrder::getApproveTime, LocalDateTime.now()));
+                if (updated) {
+                    ScmOrder order = orderMapper.selectById(id);
+                    notifySupplier(order.getKind(), order);
+                }
+            } else {
+                StatusTransitions.tryChange(orderMapper, ScmOrder::getId, id, ScmOrder::getStatus, OrderStatus.APPROVING, OrderStatus.DRAFT, null);
             }
-        } else {
-            orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
-                    .set(ScmOrder::getStatus, OrderStatus.DRAFT)
-                    .eq(ScmOrder::getId, id)
-                    .eq(ScmOrder::getStatus, OrderStatus.APPROVING));
-        }
+        });
+    }
+
+    /** 订单的审批流程按订单种类区分，业务标识前缀相同 */
+    private static ApprovalFlow flowOf(OrderKind kind) {
+        return new ApprovalFlow(kind.getProcessKey(), BUSINESS_KEY_PREFIX);
     }
 
     /** 系统生成并直接审核的订单（寄售结算）：不走审批、不校验信用额度 */
@@ -378,8 +377,7 @@ public class ScmOrderService {
 
     /** 在数据权限范围内的订单 */
     ScmOrder getAccessible(OrderKind kind, Long id) {
-        Supplier<ScmOrder> loader = () -> orderMapper.selectById(id);
-        ScmOrder order = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(ORDER_RULE, loader);
+        ScmOrder order = DataScopes.load(ORDER_RULE, () -> orderMapper.selectById(id));
         if (order == null || order.getKind() != kind) {
             throw new BizException("scm.error.doesNotExistAccessDenied", Messages.get(kind.getLabelKey()));
         }
@@ -413,15 +411,13 @@ public class ScmOrderService {
     }
 
     private void changeStatus(Long id, OrderStatus from, OrderStatus to, boolean approved) {
-        var update = Wrappers.<ScmOrder>lambdaUpdate()
-                .set(ScmOrder::getStatus, to)
-                .set(ScmOrder::getUpdateTime, LocalDateTime.now())
-                .eq(ScmOrder::getId, id)
-                .eq(ScmOrder::getStatus, from);
-        if (approved) {
-            update.set(ScmOrder::getApproveBy, SecurityUtils.getUserId()).set(ScmOrder::getApproveTime, LocalDateTime.now());
-        }
-        if (orderMapper.update(update) == 0) {
+        boolean changed = StatusTransitions.tryChange(orderMapper, ScmOrder::getId, id, ScmOrder::getStatus, from, to, w -> {
+            w.set(ScmOrder::getUpdateTime, LocalDateTime.now());
+            if (approved) {
+                w.set(ScmOrder::getApproveBy, SecurityUtils.getUserId()).set(ScmOrder::getApproveTime, LocalDateTime.now());
+            }
+        });
+        if (!changed) {
             throw new BizException("scm.error.orderStatusHasChangedRefresh");
         }
     }
@@ -546,9 +542,9 @@ public class ScmOrderService {
         order.setWarehouseId(req.warehouseId());
         order.setContractId(req.contractId());
         order.setRemark(req.remark());
-        order.setTotalQty(items.stream().map(ScmOrderItem::getQty).reduce(BigDecimal.ZERO, BigDecimal::add));
-        order.setTotalAmount(items.stream().map(ScmOrderItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
-        order.setTaxAmount(items.stream().map(ScmOrderItem::getTaxAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
+        order.setTotalQty(Decimals.sum(items, ScmOrderItem::getQty));
+        order.setTotalAmount(Decimals.sum(items, ScmOrderItem::getAmount));
+        order.setTaxAmount(Decimals.sum(items, ScmOrderItem::getTaxAmount));
     }
 
     private void saveItems(Long orderId, List<ScmOrderItem> items) {

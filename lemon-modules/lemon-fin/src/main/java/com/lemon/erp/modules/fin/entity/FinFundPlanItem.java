@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.modules.fin.model.FundDirection;
@@ -37,5 +38,6 @@ public class FinFundPlanItem extends BaseEntity {
     @Size(max = 128, message = "{fin.valid.descriptionCannotExceedCharacters3}")
     private String description;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 }

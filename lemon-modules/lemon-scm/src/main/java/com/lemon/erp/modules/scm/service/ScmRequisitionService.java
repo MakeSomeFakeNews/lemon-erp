@@ -4,14 +4,15 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
 import com.lemon.erp.framework.security.datascope.DataPermissionRule;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.security.datascope.DataScopes;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.scm.dto.OrderItemRequest;
 import com.lemon.erp.modules.scm.dto.OrderRequest;
 import com.lemon.erp.modules.scm.dto.RequisitionRequest;
@@ -38,7 +39,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
 /**
  * 请购：部门提出采购需求，审批（发布了「请购」审批流程时）后由采购按建议供应商（为空取默认供应商）合并生成采购订单
@@ -48,7 +48,7 @@ import java.util.function.Supplier;
 public class ScmRequisitionService {
 
     public static final String PROCESS_KEY = "scm_requisition";
-    private static final String BUSINESS_KEY_PREFIX = "scm_requisition:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "scm_requisition:");
     private static final DataPermissionRule RULE = new DataPermissionRule("scm_requisition", "dept_id", "create_by");
 
     private final ScmRequisitionMapper requisitionMapper;
@@ -57,7 +57,7 @@ public class ScmRequisitionService {
     private final ScmQueryService queryService;
     private final WmsMaterialService materialService;
     private final DocNoService docNoService;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
 
     @DataPermission(table = "scm_requisition", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmRequisition> page(long current, long size, String keyword, RequisitionStatus status) {
@@ -82,7 +82,6 @@ public class ScmRequisitionService {
         r.setRemark(req.remark());
         r.setStatus(RequisitionStatus.DRAFT);
         r.setDeptId(user.deptId());
-        r.setCreateBy(user.userId());
         requisitionMapper.insert(r);
         saveItems(r.getId(), req);
         return r.getId();
@@ -113,29 +112,19 @@ public class ScmRequisitionService {
     @Transactional
     public boolean submit(Long id) {
         ScmRequisition r = getDraft(id);
-        if (!flowApi.isAvailable(PROCESS_KEY)) {
-            transit(id, RequisitionStatus.DRAFT, RequisitionStatus.APPROVED, true);
-            return false;
-        }
-        transit(id, RequisitionStatus.DRAFT, RequisitionStatus.APPROVING, false);
-        String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of("reqNo", r.getReqNo()));
-        requisitionMapper.update(Wrappers.<ScmRequisition>lambdaUpdate().set(ScmRequisition::getFlowInstanceId, instanceId)
-                .eq(ScmRequisition::getId, id));
-        return true;
+        return approvalSupport.submit(FLOW, id, Map.of("reqNo", r.getReqNo()),
+                () -> transit(id, RequisitionStatus.DRAFT, RequisitionStatus.APPROVED, true),
+                () -> transit(id, RequisitionStatus.DRAFT, RequisitionStatus.APPROVING, false),
+                instanceId -> requisitionMapper.update(Wrappers.<ScmRequisition>lambdaUpdate().set(ScmRequisition::getFlowInstanceId, instanceId)
+                        .eq(ScmRequisition::getId, id)));
     }
 
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        boolean approved = e.status() == FlowStatus.APPROVED;
-        requisitionMapper.update(Wrappers.<ScmRequisition>lambdaUpdate()
-                .set(ScmRequisition::getStatus, approved ? RequisitionStatus.APPROVED : RequisitionStatus.DRAFT)
-                .set(approved, ScmRequisition::getApproveBy, SecurityUtils.getUserIdOrNull())
-                .set(approved, ScmRequisition::getApproveTime, LocalDateTime.now())
-                .eq(ScmRequisition::getId, id).eq(ScmRequisition::getStatus, RequisitionStatus.APPROVING));
+        FLOW.onFinished(e, (id, approved) -> StatusTransitions.tryChange(requisitionMapper, ScmRequisition::getId, id,
+                ScmRequisition::getStatus, RequisitionStatus.APPROVING, approved ? RequisitionStatus.APPROVED : RequisitionStatus.DRAFT,
+                w -> w.set(approved, ScmRequisition::getApproveBy, SecurityUtils.getUserIdOrNull())
+                        .set(approved, ScmRequisition::getApproveTime, LocalDateTime.now())));
     }
 
     /**
@@ -220,13 +209,11 @@ public class ScmRequisitionService {
     }
 
     private void transit(Long id, RequisitionStatus from, RequisitionStatus to, boolean approve) {
-        int updated = requisitionMapper.update(Wrappers.<ScmRequisition>lambdaUpdate()
-                .set(ScmRequisition::getStatus, to)
-                .set(approve, ScmRequisition::getApproveBy, SecurityUtils.getUserIdOrNull())
-                .set(approve, ScmRequisition::getApproveTime, LocalDateTime.now())
-                .set(ScmRequisition::getUpdateTime, LocalDateTime.now())
-                .eq(ScmRequisition::getId, id).eq(ScmRequisition::getStatus, from));
-        if (updated == 0) {
+        boolean changed = StatusTransitions.tryChange(requisitionMapper, ScmRequisition::getId, id, ScmRequisition::getStatus, from, to,
+                w -> w.set(approve, ScmRequisition::getApproveBy, SecurityUtils.getUserIdOrNull())
+                        .set(approve, ScmRequisition::getApproveTime, LocalDateTime.now())
+                        .set(ScmRequisition::getUpdateTime, LocalDateTime.now()));
+        if (!changed) {
             throw new BizException("scm.error.requisitionStatusHasChangedRefresh");
         }
     }
@@ -240,11 +227,6 @@ public class ScmRequisitionService {
     }
 
     private ScmRequisition getAccessible(Long id) {
-        Supplier<ScmRequisition> loader = () -> requisitionMapper.selectById(id);
-        ScmRequisition r = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(RULE, loader);
-        if (r == null) {
-            throw new BizException("scm.error.requisitionDoesNotExistAccessDenied");
-        }
-        return r;
+        return DataScopes.require(RULE, () -> requisitionMapper.selectById(id), "scm.error.requisitionDoesNotExistAccessDenied");
     }
 }

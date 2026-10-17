@@ -11,6 +11,8 @@ import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 
+import static com.lemon.erp.common.util.Decimals.nz;
+
 /**
  * 社保方案：缴纳城市的社保、公积金基数上下限和各险种比例（%）
  */
@@ -74,9 +76,5 @@ public class HrSocialScheme extends BaseEntity {
     public static BigDecimal clamp(BigDecimal base, BigDecimal min, BigDecimal max) {
         BigDecimal v = nz(base).max(nz(min));
         return max != null && max.signum() > 0 ? v.min(max) : v;
-    }
-
-    private static BigDecimal nz(BigDecimal v) {
-        return v == null ? BigDecimal.ZERO : v;
     }
 }

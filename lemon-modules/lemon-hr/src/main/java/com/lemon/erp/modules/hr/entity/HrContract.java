@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.hr.model.EmployeeStatus;
 import com.lemon.erp.modules.hr.model.LaborContractStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -45,6 +46,7 @@ public class HrContract extends BaseEntity {
 
     private String remark;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

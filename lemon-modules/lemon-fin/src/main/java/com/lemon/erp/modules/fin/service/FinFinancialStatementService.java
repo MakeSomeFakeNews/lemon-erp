@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.dto.AccountSum;
 import com.lemon.erp.modules.fin.dto.FinancialStatement;
@@ -34,7 +35,6 @@ import static com.lemon.erp.modules.fin.model.FinConstants.toYearMonth;
 @RequiredArgsConstructor
 public class FinFinancialStatementService {
 
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private static final FinancialTemplate ASSETS = new FinancialTemplate().side(false)
             .title("fin.label.currentAssets")
@@ -223,7 +223,7 @@ public class FinFinancialStatementService {
         if (b.signum() == 0) {
             return null;
         }
-        return (percent ? a.multiply(HUNDRED) : a).divide(b, 2, RoundingMode.HALF_UP);
+        return (percent ? a.multiply(Decimals.HUNDRED) : a).divide(b, 2, RoundingMode.HALF_UP);
     }
 
     // ---------------------------------------------------------------- 工具

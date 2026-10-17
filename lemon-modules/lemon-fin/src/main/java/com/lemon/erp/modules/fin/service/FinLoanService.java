@@ -9,9 +9,10 @@ import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.data.StatusTransitions;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.fin.dto.LoanRequest;
 import com.lemon.erp.modules.fin.entity.FinLoan;
 import com.lemon.erp.modules.fin.entity.FinLoanRepay;
@@ -38,7 +39,7 @@ import java.util.Map;
 public class FinLoanService {
 
     public static final String PROCESS_KEY = "fin_loan";
-    private static final String BUSINESS_KEY_PREFIX = "fin_loan:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "fin_loan:");
 
     private final FinLoanMapper loanMapper;
     private final FinLoanRepayMapper repayMapper;
@@ -47,7 +48,7 @@ public class FinLoanService {
     private final FinAccountRuleService accountRules;
     private final FinBizPeriodGuard periodGuard;
     private final DocNoService docNoService;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
 
     public PageResult<FinLoan> page(long current, long size, String keyword, LoanStatus status, Long userId) {
         Page<FinLoan> page = Page.of(current, size);
@@ -76,7 +77,6 @@ public class FinLoanService {
         l.setRepaidAmount(BigDecimal.ZERO);
         l.setStatus(LoanStatus.DRAFT);
         l.setPurpose(req.purpose());
-        l.setCreateBy(user.userId());
         loanMapper.insert(l);
         return l.getId();
     }
@@ -91,24 +91,16 @@ public class FinLoanService {
     @Transactional
     public boolean submit(Long id) {
         FinLoan l = requireStatus(id, LoanStatus.DRAFT);
-        if (!flowApi.isAvailable(PROCESS_KEY)) {
-            transit(id, LoanStatus.DRAFT, LoanStatus.APPROVED);
-            return false;
-        }
-        transit(id, LoanStatus.DRAFT, LoanStatus.APPROVING);
-        String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of("loanNo", l.getLoanNo(), "amount", l.getAmount()));
-        loanMapper.update(Wrappers.<FinLoan>lambdaUpdate().set(FinLoan::getFlowInstanceId, instanceId).eq(FinLoan::getId, id));
-        return true;
+        return approvalSupport.submit(FLOW, id, Map.of("loanNo", l.getLoanNo(), "amount", l.getAmount()),
+                () -> transit(id, LoanStatus.DRAFT, LoanStatus.APPROVED),
+                () -> transit(id, LoanStatus.DRAFT, LoanStatus.APPROVING),
+                instanceId -> loanMapper.update(Wrappers.<FinLoan>lambdaUpdate().set(FinLoan::getFlowInstanceId, instanceId).eq(FinLoan::getId, id)));
     }
 
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        loanMapper.update(Wrappers.<FinLoan>lambdaUpdate().set(FinLoan::getStatus, e.status() == FlowStatus.APPROVED ? LoanStatus.APPROVED : LoanStatus.DRAFT)
-                .eq(FinLoan::getId, id).eq(FinLoan::getStatus, LoanStatus.APPROVING));
+        FLOW.onFinished(e, (id, approved) -> StatusTransitions.tryChange(loanMapper, FinLoan::getId, id, FinLoan::getStatus,
+                LoanStatus.APPROVING, approved ? LoanStatus.APPROVED : LoanStatus.DRAFT));
     }
 
     /** 付款：借 其他应收款 / 贷 结算账户 */
@@ -168,7 +160,6 @@ public class FinLoanService {
         r.setClaimId(claimId);
         r.setAccountId(accountId);
         r.setVoucherId(voucherId);
-        r.setCreateBy(SecurityUtils.getUserId());
         repayMapper.insert(r);
     }
 
@@ -181,9 +172,6 @@ public class FinLoanService {
     }
 
     private void transit(Long id, LoanStatus from, LoanStatus to) {
-        if (loanMapper.update(Wrappers.<FinLoan>lambdaUpdate().set(FinLoan::getStatus, to).eq(FinLoan::getId, id)
-                .eq(FinLoan::getStatus, from)) == 0) {
-            throw new BizException("fin.error.loanStatusHasChangedRefresh");
-        }
+        StatusTransitions.change(loanMapper, FinLoan::getId, id, FinLoan::getStatus, from, to, "fin.error.loanStatusHasChangedRefresh");
     }
 }

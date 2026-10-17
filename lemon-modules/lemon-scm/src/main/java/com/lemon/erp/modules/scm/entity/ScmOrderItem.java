@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.util.Decimals;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -87,7 +88,7 @@ public class ScmOrderItem extends BaseEntity {
 
     /** 未完成数量 = 订购数量 - 已入库 / 已出库 + 需要补发的退货数量，不小于 0；退款的退货不再补发 */
     public BigDecimal remainingQty() {
-        BigDecimal remaining = qty.subtract(doneQty).add(replenishQty == null ? BigDecimal.ZERO : replenishQty);
+        BigDecimal remaining = qty.subtract(doneQty).add(Decimals.nz(replenishQty));
         return remaining.signum() < 0 ? BigDecimal.ZERO : remaining;
     }
 }

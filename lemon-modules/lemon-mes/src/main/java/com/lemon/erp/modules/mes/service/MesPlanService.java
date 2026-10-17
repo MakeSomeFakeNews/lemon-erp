@@ -7,7 +7,7 @@ import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
+import com.lemon.erp.framework.security.datascope.DataScopes;
 import com.lemon.erp.modules.mes.dto.PlanRequest;
 import com.lemon.erp.modules.mes.dto.PlanWorkOrderRequest;
 import com.lemon.erp.modules.mes.dto.WorkOrderRequest;
@@ -39,7 +39,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
 import static com.lemon.erp.modules.mes.model.MesConstants.PLAN_RULE;
 
@@ -209,12 +208,7 @@ public class MesPlanService {
     }
 
     MesPlan getAccessible(Long id) {
-        Supplier<MesPlan> loader = () -> planMapper.selectById(id);
-        MesPlan plan = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(PLAN_RULE, loader);
-        if (plan == null) {
-            throw new BizException("mes.error.productionPlanDoesNotExistAccess");
-        }
-        return plan;
+        return DataScopes.require(PLAN_RULE, () -> planMapper.selectById(id), "mes.error.productionPlanDoesNotExistAccess");
     }
 
     // ---------------------------------------------------------------- 内部

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.fin.model.BudgetControl;
 import com.lemon.erp.modules.fin.model.AccountDirection;
 import com.lemon.erp.common.exception.BizException;
@@ -35,7 +36,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class FinBudgetService {
 
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     /** 超预算提示（异常消息模板，按请求语言翻译） */
     private static final String BUDGET_OVER = "fin.error.budgetExceeded";
 
@@ -113,7 +113,7 @@ public class FinBudgetService {
             List<BigDecimal> months = months(b);
             BigDecimal totalActual = Arrays.stream(actual).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal rate = b.getTotal().signum() == 0 ? null
-                    : totalActual.multiply(HUNDRED).divide(b.getTotal(), 1, RoundingMode.HALF_UP);
+                    : totalActual.multiply(Decimals.HUNDRED).divide(b.getTotal(), 1, RoundingMode.HALF_UP);
             result.add(new BudgetExecution(b.getId(), b.getBudgetYear(), b.getDeptId(), b.getDeptId() == 0 ? Messages.get("fin.text.companyWide") : b.getDeptName(),
                     b.getAccountId(), b.getAccountCode(), b.getAccountName(), months, List.of(actual), b.getTotal(), totalActual, rate));
         }
@@ -198,7 +198,7 @@ public class FinBudgetService {
         b.setM10(m.get(9));
         b.setM11(m.get(10));
         b.setM12(m.get(11));
-        b.setTotal(m.stream().reduce(BigDecimal.ZERO, BigDecimal::add));
+        b.setTotal(Decimals.sum(m));
         b.setRemark(req.remark());
         b.setControlMode(req.controlMode() == null ? BudgetControl.NONE : req.controlMode());
         return b;

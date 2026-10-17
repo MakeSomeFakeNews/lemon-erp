@@ -4,11 +4,12 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
 import com.lemon.erp.framework.security.datascope.DataPermissionRule;
+import com.lemon.erp.framework.security.datascope.DataScopes;
 import com.lemon.erp.modules.scm.dto.InquiryFinishRequest;
 import com.lemon.erp.modules.scm.dto.InquiryQuoteRequest;
 import com.lemon.erp.modules.scm.dto.InquiryRequest;
@@ -40,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -86,7 +86,6 @@ public class ScmInquiryService {
         q.setRemark(req.remark());
         q.setStatus(InquiryStatus.QUOTING);
         q.setDeptId(user.deptId());
-        q.setCreateBy(user.userId());
         inquiryMapper.insert(q);
         saveItems(q.getId(), req);
         return q.getId();
@@ -241,10 +240,8 @@ public class ScmInquiryService {
     }
 
     private void transit(Long id, InquiryStatus to) {
-        int updated = inquiryMapper.update(Wrappers.<ScmInquiry>lambdaUpdate().set(ScmInquiry::getStatus, to)
-                .set(ScmInquiry::getUpdateTime, LocalDateTime.now())
-                .eq(ScmInquiry::getId, id).eq(ScmInquiry::getStatus, InquiryStatus.QUOTING));
-        if (updated == 0) {
+        if (!StatusTransitions.tryChange(inquiryMapper, ScmInquiry::getId, id, ScmInquiry::getStatus, InquiryStatus.QUOTING, to,
+                w -> w.set(ScmInquiry::getUpdateTime, LocalDateTime.now()))) {
             throw new BizException("scm.error.rfqStatusHasChangedRefresh");
         }
     }
@@ -258,11 +255,6 @@ public class ScmInquiryService {
     }
 
     private ScmInquiry getAccessible(Long id) {
-        Supplier<ScmInquiry> loader = () -> inquiryMapper.selectById(id);
-        ScmInquiry q = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(RULE, loader);
-        if (q == null) {
-            throw new BizException("scm.error.rfqDoesNotExistAccessDenied");
-        }
-        return q;
+        return DataScopes.require(RULE, () -> inquiryMapper.selectById(id), "scm.error.rfqDoesNotExistAccessDenied");
     }
 }

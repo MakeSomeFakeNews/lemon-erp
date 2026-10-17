@@ -4,6 +4,7 @@ import com.lemon.erp.modules.pm.model.TaskStatus;
 import com.lemon.erp.modules.pm.model.ProjectStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.pm.dto.TaskRequest;
@@ -199,16 +200,16 @@ public class PmTaskService {
     private static BigDecimal weightOf(PmTask t, Map<Long, List<PmTask>> children) {
         List<PmTask> kids = children.get(t.getId());
         if (kids == null || kids.isEmpty()) {
-            return t.getPlanHours() == null ? BigDecimal.ZERO : t.getPlanHours();
+            return Decimals.nz(t.getPlanHours());
         }
-        return kids.stream().map(k -> weightOf(k, children)).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return Decimals.sum(kids, k -> weightOf(k, children));
     }
 
     private void aggregate(PmTask parent, List<PmTask> kids, BigDecimal progress) {
         LocalDate start = kids.stream().map(PmTask::getPlanStart).min(LocalDate::compareTo).orElse(parent.getPlanStart());
         LocalDate end = kids.stream().map(PmTask::getPlanEnd).max(LocalDate::compareTo).orElse(parent.getPlanEnd());
-        BigDecimal planHours = kids.stream().map(PmTask::getPlanHours).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal actualHours = kids.stream().map(PmTask::getActualHours).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal planHours = Decimals.sum(kids, PmTask::getPlanHours);
+        BigDecimal actualHours = Decimals.sum(kids, PmTask::getActualHours);
         int p = progress.setScale(0, RoundingMode.HALF_UP).intValue();
         if (p == TaskStatus.FULL_PROGRESS && kids.stream().anyMatch(k -> k.getStatus() != TaskStatus.DONE)) {
             p = TaskStatus.FULL_PROGRESS - 1;
@@ -273,7 +274,7 @@ public class PmTaskService {
         t.setAssigneeId(req.assigneeId());
         t.setPlanStart(req.planStart());
         t.setPlanEnd(req.planEnd());
-        t.setPlanHours(req.planHours() == null ? BigDecimal.ZERO : req.planHours());
+        t.setPlanHours(Decimals.nz(req.planHours()));
         t.setMilestone(Integer.valueOf(1).equals(req.milestone()) ? 1 : 0);
         t.setPredecessorId(req.predecessorId());
         t.setSort(req.sort() == null ? 0 : req.sort());

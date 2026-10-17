@@ -13,7 +13,7 @@ import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.TokenService;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
+import com.lemon.erp.framework.security.datascope.DataScopes;
 import com.lemon.erp.framework.security.datascope.DataPermissionRule;
 import com.lemon.erp.modules.system.dto.UserQuery;
 import com.lemon.erp.modules.system.entity.SysRole;
@@ -205,7 +205,7 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         }
         boolean all = SecurityUtils.getDataScope().all();
         Supplier<Long> counter = () -> count(Wrappers.<SysUser>lambdaQuery().in(SysUser::getId, distinct));
-        long count = all ? counter.get() : DataPermissionContext.execute(DATA_RULE, counter);
+        long count = DataScopes.load(DATA_RULE, counter);
         if (count < distinct.size()) {
             if (all) {
                 throw new BizException("system.error.userNotFound");

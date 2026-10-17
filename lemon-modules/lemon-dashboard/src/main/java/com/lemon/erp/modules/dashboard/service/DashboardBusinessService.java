@@ -3,7 +3,7 @@ package com.lemon.erp.modules.dashboard.service;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
+import com.lemon.erp.framework.security.datascope.DataScopes;
 import com.lemon.erp.framework.security.datascope.DataPermissionRule;
 import com.lemon.erp.modules.dashboard.mapper.DashboardMapper;
 import com.lemon.erp.modules.dashboard.model.DashboardBillKind;
@@ -81,6 +81,6 @@ public class DashboardBusinessService {
     }
 
     private static <T> T scoped(DataPermissionRule rule, Supplier<T> query) {
-        return SecurityUtils.getDataScope().all() ? query.get() : DataPermissionContext.execute(rule, query);
+        return DataScopes.load(rule, query);
     }
 }

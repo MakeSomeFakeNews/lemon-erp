@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
@@ -202,7 +204,7 @@ public class MesMoldService {
         if (life != null) {
             int before = mold.getUsedCount();
             int after = before + shots;
-            BigDecimal warnAt = BigDecimal.valueOf(life).multiply(mold.getWarnRatio()).divide(BigDecimal.valueOf(100), 0, RoundingMode.CEILING);
+            BigDecimal warnAt = BigDecimal.valueOf(life).multiply(mold.getWarnRatio()).divide(Decimals.HUNDRED, 0, RoundingMode.CEILING);
             String name = "「" + mold.getCode() + " " + mold.getName() + "」";
             if (after >= life && before < life) {
                 messageSender.sendToPermission("mes:mold:edit", MessageSender.Message.of(MessageCategory.ALERT, "模具" + name + "已达到设计寿命", // i18n-ignore
@@ -216,12 +218,10 @@ public class MesMoldService {
     }
 
     private void transit(Long id, MoldStatus from, MoldStatus to, Long woId, Long equipmentId, String location, String fromTextKey) {
-        int updated = moldMapper.update(Wrappers.<MesMold>lambdaUpdate()
-                .set(MesMold::getStatus, to).set(MesMold::getWoId, woId).set(MesMold::getEquipmentId, equipmentId)
-                .set(StringUtils.hasText(location), MesMold::getLocation, StringUtils.hasText(location) ? location.trim() : null)
-                .set(MesMold::getUpdateTime, LocalDateTime.now())
-                .eq(MesMold::getId, id).eq(MesMold::getStatus, from));
-        if (updated == 0) {
+        if (!StatusTransitions.tryChange(moldMapper, MesMold::getId, id, MesMold::getStatus, from, to,
+                w -> w.set(MesMold::getWoId, woId).set(MesMold::getEquipmentId, equipmentId)
+                        .set(StringUtils.hasText(location), MesMold::getLocation, StringUtils.hasText(location) ? location.trim() : null)
+                        .set(MesMold::getUpdateTime, LocalDateTime.now()))) {
             throw new BizException("mes.error.onlyMoldsOperated", Messages.get(fromTextKey));
         }
     }

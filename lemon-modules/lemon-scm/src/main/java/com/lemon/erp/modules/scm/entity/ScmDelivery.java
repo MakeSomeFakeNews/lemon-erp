@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -48,6 +49,7 @@ public class ScmDelivery extends BaseEntity {
 
     private Long deptId;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

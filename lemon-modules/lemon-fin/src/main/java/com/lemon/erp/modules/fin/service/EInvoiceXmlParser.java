@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.modules.fin.dto.InvoiceImport;
 import com.lemon.erp.modules.fin.model.InvoiceType;
@@ -44,7 +45,7 @@ final class EInvoiceXmlParser {
             if (net == null) {
                 throw new BizException("fin.error.eInvoiceHasNoAmount", invoiceNo);
             }
-            total = net.add(tax == null ? BigDecimal.ZERO : tax);
+            total = net.add(Decimals.nz(tax));
         }
         if (tax == null) {
             tax = net == null ? BigDecimal.ZERO : total.subtract(net);
@@ -67,8 +68,8 @@ final class EInvoiceXmlParser {
             BigDecimal amount = decimal(text(item, "Amount"));
             BigDecimal lineTax = decimal(text(item, "ComTaxAm"));
             lines.add(new InvoiceImport.Line(name, text(item, "SpecMod"), text(item, "MeaUnits"), decimal(text(item, "Quantity")),
-                    decimal(text(item, "UnPrice")), amount == null ? BigDecimal.ZERO : amount, rate(text(item, "TaxRate")),
-                    lineTax == null ? BigDecimal.ZERO : lineTax));
+                    decimal(text(item, "UnPrice")), Decimals.nz(amount), rate(text(item, "TaxRate")),
+                    Decimals.nz(lineTax)));
         }
         return new InvoiceImport(invoiceNo, type, LocalDate.parse(date.substring(0, 10)),
                 text(doc.getDocumentElement(), "SellerIdNum"), text(doc.getDocumentElement(), "SellerName"),
@@ -146,6 +147,6 @@ final class EInvoiceXmlParser {
         if (r == null) {
             return null;
         }
-        return r.compareTo(BigDecimal.ONE) > 0 || v.contains("%") ? r.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP) : r;
+        return r.compareTo(BigDecimal.ONE) > 0 || v.contains("%") ? r.divide(Decimals.HUNDRED, 4, RoundingMode.HALF_UP) : r;
     }
 }

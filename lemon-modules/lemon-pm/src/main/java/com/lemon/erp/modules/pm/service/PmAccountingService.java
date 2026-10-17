@@ -9,6 +9,8 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.modules.fin.entity.FinBill;
 import com.lemon.erp.modules.fin.service.FinBillService;
@@ -32,14 +34,14 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
+import static com.lemon.erp.common.util.Decimals.HUNDRED;
+
 /**
  * 项目核算：收款计划 → 开票（生成财务应收单，收款在财务核销）；收入按完工百分比法确认；挣值分析
  */
 @Service
 @RequiredArgsConstructor
 public class PmAccountingService {
-
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final PmProjectMapper projectMapper;
     private final PmBillingMapper billingMapper;
@@ -128,13 +130,10 @@ public class PmAccountingService {
         BigDecimal tax = b.getAmount().multiply(p.getTaxRate()).divide(HUNDRED.add(p.getTaxRate()), 2, RoundingMode.HALF_UP);
         FinBill bill = billService.createFromSource(BillKind.AR, p.getCustomerId(), BillSource.PROJECT, b.getId(), p.getCode(), date,
                 b.getAmount(), tax, p.getName() + " " + b.getName(), p.getId());
-        int updated = billingMapper.update(Wrappers.<PmBilling>lambdaUpdate()
-                .set(PmBilling::getStatus, BillingStatus.BILLED)
-                .set(PmBilling::getBillId, bill.getId())
-                .set(PmBilling::getBillNo, bill.getBillNo())
-                .set(PmBilling::getBillDate, date)
-                .eq(PmBilling::getId, id).eq(PmBilling::getStatus, BillingStatus.PLANNED));
-        if (updated == 0) {
+        boolean updated = StatusTransitions.tryChange(billingMapper, PmBilling::getId, id, PmBilling::getStatus,
+                BillingStatus.PLANNED, BillingStatus.BILLED, w -> w.set(PmBilling::getBillId, bill.getId())
+                        .set(PmBilling::getBillNo, bill.getBillNo()).set(PmBilling::getBillDate, date));
+        if (!updated) {
             throw new BizException("pm.error.billingPlanStatusHasChangedRefresh");
         }
     }
@@ -167,18 +166,18 @@ public class PmAccountingService {
     // ---------------------------------------------------------------- 核算
 
     static ProjectAccounting account(PmProject p) {
-        BigDecimal progress = p.getProgress() == null ? BigDecimal.ZERO : p.getProgress();
+        BigDecimal progress = Decimals.nz(p.getProgress());
         BigDecimal ratio = progress.divide(HUNDRED, 6, RoundingMode.HALF_UP);
         BigDecimal contractNet = p.getContractAmount().multiply(HUNDRED)
                 .divide(HUNDRED.add(p.getTaxRate()), 2, RoundingMode.HALF_UP);
-        BigDecimal labor = zero(p.getLaborCost());
-        BigDecimal expense = zero(p.getExpenseCost());
+        BigDecimal labor = Decimals.nz(p.getLaborCost());
+        BigDecimal expense = Decimals.nz(p.getExpenseCost());
         BigDecimal actual = labor.add(expense);
         BigDecimal revenue = contractNet.multiply(ratio).setScale(2, RoundingMode.HALF_UP);
         BigDecimal profit = revenue.subtract(actual);
-        BigDecimal margin = revenue.signum() == 0 ? null : profit.multiply(HUNDRED).divide(revenue, 1, RoundingMode.HALF_UP);
+        BigDecimal margin = Decimals.percent(profit, revenue, 1);
         BigDecimal planned = plannedRatio(p);
-        BigDecimal budget = zero(p.getBudgetAmount());
+        BigDecimal budget = Decimals.nz(p.getBudgetAmount());
         BigDecimal pv = budget.multiply(planned).setScale(2, RoundingMode.HALF_UP);
         BigDecimal ev = budget.multiply(ratio).setScale(2, RoundingMode.HALF_UP);
         BigDecimal spi = pv.signum() == 0 ? null : ev.divide(pv, 2, RoundingMode.HALF_UP);
@@ -187,7 +186,7 @@ public class PmAccountingService {
         return new ProjectAccounting(p.getId(), p.getCode(), p.getName(), p.getStatus(), p.getCustomerName(), p.getManagerName(),
                 p.getPlanStart(), p.getPlanEnd(), progress, planned.multiply(HUNDRED).setScale(1, RoundingMode.HALF_UP),
                 p.getContractAmount(), contractNet, budget, labor, expense, actual, revenue, profit, margin,
-                zero(p.getBilledAmount()), zero(p.getReceivedAmount()), pv, ev, spi, cpi, eac);
+                Decimals.nz(p.getBilledAmount()), Decimals.nz(p.getReceivedAmount()), pv, ev, spi, cpi, eac);
     }
 
     /** 计划进度 = 已过天数 / 计划工期，限制在 0-1；已完成的项目为 1 */
@@ -201,9 +200,5 @@ public class PmAccountingService {
             return BigDecimal.ZERO;
         }
         return BigDecimal.valueOf(Math.min(passed, total)).divide(BigDecimal.valueOf(total), 6, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal zero(BigDecimal v) {
-        return v == null ? BigDecimal.ZERO : v;
     }
 }

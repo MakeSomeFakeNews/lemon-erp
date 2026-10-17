@@ -1,10 +1,9 @@
 package com.lemon.erp.modules.fin.service;
 
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.ConsumableRequest;
 import com.lemon.erp.modules.fin.entity.FinConsumableUse;
 import com.lemon.erp.modules.fin.entity.FinConsumableUseItem;
@@ -73,7 +72,6 @@ public class FinConsumableService {
         use.setUseNo(docNoService.next(DOC_NO));
         apply(use, req);
         use.setStatus(ConsumableStatus.DRAFT);
-        use.setCreateBy(SecurityUtils.getUserId());
         useMapper.insert(use);
         saveItems(use.getId(), req);
         return use.getId();
@@ -106,12 +104,8 @@ public class FinConsumableService {
                 + (StringUtils.hasText(use.getRemark()) ? "：" + use.getRemark() : ""),
                 items.stream().map(i -> new StockDocItemRequest(i.getMaterialId(), i.getLocationId(), null, i.getBatchNo(), null, null,
                         i.getQty(), null, i.getRemark())).toList()), use.getUseNo());
-        if (useMapper.update(Wrappers.<FinConsumableUse>lambdaUpdate()
-                .set(FinConsumableUse::getStatus, ConsumableStatus.CONFIRMED)
-                .set(FinConsumableUse::getWmsDocId, doc.getId())
-                .eq(FinConsumableUse::getId, id).eq(FinConsumableUse::getStatus, ConsumableStatus.DRAFT)) == 0) {
-            throw new BizException("fin.error.requisitionStatusHasChangedRefreshTry");
-        }
+        StatusTransitions.change(useMapper, FinConsumableUse::getId, id, FinConsumableUse::getStatus,
+                ConsumableStatus.DRAFT, ConsumableStatus.CONFIRMED, w -> w.set(FinConsumableUse::getWmsDocId, doc.getId()), "fin.error.requisitionStatusHasChangedRefreshTry");
     }
 
     private void validate(ConsumableRequest req) {

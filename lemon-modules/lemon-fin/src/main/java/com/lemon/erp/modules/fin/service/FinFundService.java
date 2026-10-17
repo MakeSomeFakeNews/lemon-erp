@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -71,7 +72,7 @@ public class FinFundService {
         accountService.requireCashAccount(req.fromAccountId());
         accountService.requireCashAccount(req.toAccountId());
         periodGuard.checkOpen(req.transferDate(), "fin.label.fundTransfer");
-        BigDecimal fee = req.fee() == null ? BigDecimal.ZERO : req.fee();
+        BigDecimal fee = Decimals.nz(req.fee());
         FinFundTransfer t = new FinFundTransfer();
         t.setTransferNo(docNoService.next(TRANSFER_NO));
         t.setTransferDate(req.transferDate());
@@ -80,7 +81,6 @@ public class FinFundService {
         t.setAmount(req.amount());
         t.setFee(fee);
         t.setRemark(req.remark());
-        t.setCreateBy(SecurityUtils.getUserId());
         String summary = "账户调拨" + (req.remark() // i18n-ignore
                 == null || req.remark().isBlank() ? "" : " " + req.remark());
         List<VoucherLine> lines = new ArrayList<>();
@@ -160,8 +160,8 @@ public class FinFundService {
             }
             (e.direction() == FundDirection.IN ? in : out).merge(e.source(), e.amount(), BigDecimal::add);
         }
-        BigDecimal totalIn = in.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalOut = out.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalIn = Decimals.sum(in.values());
+        BigDecimal totalOut = Decimals.sum(out.values());
         BigDecimal closing = opening.add(totalIn).subtract(totalOut);
         return new FundPlan.Period(label, from, to, in, out, totalIn, totalOut, closing, closing.signum() < 0);
     }

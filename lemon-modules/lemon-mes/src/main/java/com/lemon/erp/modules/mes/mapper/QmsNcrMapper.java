@@ -11,7 +11,4 @@ public interface QmsNcrMapper extends BaseMapper<QmsNcr> {
     IPage<QmsNcr> selectPageList(IPage<QmsNcr> page, @Param("status") NcrStatus status, @Param("keyword") String keyword);
 
     QmsNcr selectDetail(@Param("id") Long id);
-
-    /** 状态变更（校验原状态），返回更新行数 */
-    int transit(@Param("id") Long id, @Param("from") NcrStatus from, @Param("to") NcrStatus to);
 }

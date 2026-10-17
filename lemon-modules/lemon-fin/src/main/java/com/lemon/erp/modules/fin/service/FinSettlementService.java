@@ -5,10 +5,11 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.fin.dto.SettlementItemRequest;
 import com.lemon.erp.modules.fin.dto.SettlementRequest;
 import com.lemon.erp.modules.fin.model.SettleMethods;
@@ -50,7 +51,8 @@ public class FinSettlementService {
 
     /** 付款审批流程标识（只有付款单走审批） */
     public static final String PAYMENT_PROCESS_KEY = "fin_payment";
-    private static final String BUSINESS_KEY_PREFIX = "fin_payment:";
+    /** 付款审批（票据背书、开票生成的付款单也按此回调，见 FinNoteService） */
+    static final ApprovalFlow PAYMENT_FLOW = new ApprovalFlow(PAYMENT_PROCESS_KEY, "fin_payment:");
 
     private final FinSettlementMapper settlementMapper;
     private final FinSettlementItemMapper itemMapper;
@@ -62,7 +64,7 @@ public class FinSettlementService {
     private final DocNoService docNoService;
     private final FinBizPeriodGuard periodGuard;
     private final com.lemon.erp.framework.finance.ExchangeRateProvider rateProvider;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
 
     public PageResult<FinSettlement> page(long current, long size, SettleKind kind, Long partnerId, String keyword) {
         checkKind(kind);
@@ -115,7 +117,7 @@ public class FinSettlementService {
         periodGuard.checkOpen(req.settleDate(), req.kind() == SettleKind.RECEIPT ? "fin.label.receipt" : "fin.label.payment");
         BillKind billKind = req.kind().billKind();
         // 付款发布了审批流程时先提交审批，审批通过后核销
-        boolean approval = req.kind() == SettleKind.PAYMENT && flowApi.isAvailable(PAYMENT_PROCESS_KEY);
+        boolean approval = req.kind() == SettleKind.PAYMENT && approvalSupport.isAvailable(PAYMENT_FLOW);
         Set<Long> seen = new HashSet<>();
         Map<Long, FinBill> bills = billMapper.selectByIds(req.items().stream().map(SettlementItemRequest::billId).toList())
                 .stream().collect(Collectors.toMap(FinBill::getId, Function.identity()));
@@ -169,13 +171,12 @@ public class FinSettlementService {
         s.setAccountId(req.accountId());
         s.setMethod(req.method());
         // 外币：实收实付本位币 = 原币 × 收付款汇率，与核销的记账本位币的差额在凭证中计入汇兑损益
-        s.setAmount(foreign ? totalFc.multiply(settleRate).setScale(2, java.math.RoundingMode.HALF_UP) : total);
+        s.setAmount(foreign ? Decimals.money(totalFc.multiply(settleRate)) : total);
         s.setCurrency(currency);
         s.setExchangeRate(settleRate);
         s.setAmountFc(totalFc);
         s.setRemark(req.remark());
         s.setStatus(approval ? ApproveStatus.APPROVING : ApproveStatus.APPROVED);
-        s.setCreateBy(SecurityUtils.getUserId());
         settlementMapper.insert(s);
         itemMapper.insertBatch(req.items().stream().map(i -> {
             FinSettlementItem item = new FinSettlementItem();
@@ -186,12 +187,15 @@ public class FinSettlementService {
             return item;
         }).toList());
         if (approval) {
-            String instanceId = flowApi.start(PAYMENT_PROCESS_KEY, BUSINESS_KEY_PREFIX + s.getId(), Map.of(
-                    "amount", total.doubleValue(),
-                    "settleNo", s.getSettleNo(),
-                    "partnerId", s.getPartnerId()));
-            settlementMapper.update(Wrappers.<FinSettlement>lambdaUpdate().set(FinSettlement::getFlowInstanceId, instanceId)
-                    .eq(FinSettlement::getId, s.getId()));
+            // 插入时已是审批中，直接发起流程
+            approvalSupport.start(PAYMENT_FLOW, s.getId(), Map.of(
+                            "amount", total.doubleValue(),
+                            "settleNo", s.getSettleNo(),
+                            "partnerId", s.getPartnerId()),
+                    () -> {
+                    },
+                    instanceId -> settlementMapper.update(Wrappers.<FinSettlement>lambdaUpdate().set(FinSettlement::getFlowInstanceId, instanceId)
+                            .eq(FinSettlement::getId, s.getId())));
         }
         return s.getId();
     }
@@ -199,14 +203,14 @@ public class FinSettlementService {
     /** 付款审批结束：通过 → 核销应付单（超过未核销金额时审批失败）；拒绝、撤销 → 已拒绝，可删除后重新录入 */
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        FinSettlement s = settlementMapper.selectById(Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length())));
+        PAYMENT_FLOW.onFinished(e, this::onPaymentFinished);
+    }
+
+    private void onPaymentFinished(Long id, boolean approved) {
+        FinSettlement s = settlementMapper.selectById(id);
         if (s == null || s.getStatus() != ApproveStatus.APPROVING) {
             return;
         }
-        boolean approved = e.status() == FlowStatus.APPROVED;
         if (approved) {
             periodGuard.checkOpen(s.getSettleDate(), "fin.label.payment");
             Map<Long, FinBill> bills = new HashMap<>();
@@ -221,10 +225,8 @@ public class FinSettlementService {
                 settle(bill, item.getAmount(), item.getAmountFc());
             }
         }
-        settlementMapper.update(Wrappers.<FinSettlement>lambdaUpdate()
-                .set(FinSettlement::getStatus, approved ? ApproveStatus.APPROVED : ApproveStatus.REJECTED)
-                .eq(FinSettlement::getId, s.getId())
-                .eq(FinSettlement::getStatus, ApproveStatus.APPROVING));
+        StatusTransitions.tryChange(settlementMapper, FinSettlement::getId, s.getId(), FinSettlement::getStatus,
+                ApproveStatus.APPROVING, approved ? ApproveStatus.APPROVED : ApproveStatus.REJECTED);
     }
 
     /** 核销：本位币按单据记账汇率（原币核销完时取剩余本位币，避免尾差），同时累加原币已核销 */
@@ -246,7 +248,7 @@ public class FinSettlementService {
         if (fc.compareTo(remainingFc) == 0) {
             return bill.getAmount().subtract(bill.getSettledAmount());
         }
-        return fc.multiply(bill.getExchangeRate()).setScale(2, java.math.RoundingMode.HALF_UP);
+        return Decimals.money(fc.multiply(bill.getExchangeRate()));
     }
 
     /** 删除（未生成凭证的），恢复单据的核销金额；票据结算的收付款单须在票据管理中删除 */
@@ -303,8 +305,8 @@ public class FinSettlementService {
             String summary = (receipt ? "收到 " : "支付 ") + billService.partnerName(s.getKind(), s.getPartnerId()) + " 货款"; // i18n-ignore
             Long partnerAccount = accountRules.accountId(receipt ? AccountRole.RECEIVABLE : AccountRole.PAYABLE);
             // 往来科目按核销的记账本位币，银行按实收实付本位币，外币差额计入财务费用（汇兑损益）
-            BigDecimal booked = itemMapper.selectList(Wrappers.<FinSettlementItem>lambdaQuery().eq(FinSettlementItem::getSettlementId, s.getId()))
-                    .stream().map(FinSettlementItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal booked = Decimals.sum(itemMapper.selectList(Wrappers.<FinSettlementItem>lambdaQuery()
+                    .eq(FinSettlementItem::getSettlementId, s.getId())), FinSettlementItem::getAmount);
             List<VoucherLine> lines = new java.util.ArrayList<>(receipt
                     ? List.of(VoucherLine.debit(summary, s.getAccountId(), null, s.getAmount()),
                     VoucherLine.credit(summary, partnerAccount, null, booked).withCustomer(s.getPartnerId()))

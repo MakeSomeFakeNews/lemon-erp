@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.DetailLines;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -141,8 +144,8 @@ public class MesInspectionService {
                 .set(MesInspection::getInspectDate, inspection.getInspectDate())
                 .set(MesInspection::getRemark, inspection.getRemark())
                 .eq(MesInspection::getId, id));
-        itemMapper.delete(Wrappers.<QmsInspectionItem>lambdaQuery().eq(QmsInspectionItem::getInspectionId, id));
-        saveItems(id, p.items());
+        DetailLines.replace(itemMapper, QmsInspectionItem::getInspectionId, id, p.items(), QmsInspectionItem::setInspectionId,
+                itemMapper::insertBatch);
     }
 
     @Transactional
@@ -159,11 +162,9 @@ public class MesInspectionService {
     @Transactional
     public void confirm(Long id) {
         MesInspection i = getDraft(id);
-        int updated = inspectionMapper.update(Wrappers.<MesInspection>lambdaUpdate()
-                .set(MesInspection::getStatus, InspectionStatus.CONFIRMED)
-                .set(MesInspection::getConfirmBy, SecurityUtils.getUserId()).set(MesInspection::getConfirmTime, LocalDateTime.now())
-                .eq(MesInspection::getId, id).eq(MesInspection::getStatus, InspectionStatus.DRAFT));
-        if (updated == 0) {
+        if (!StatusTransitions.tryChange(inspectionMapper, MesInspection::getId, id, MesInspection::getStatus, InspectionStatus.DRAFT,
+                InspectionStatus.CONFIRMED,
+                w -> w.set(MesInspection::getConfirmBy, SecurityUtils.getUserId()).set(MesInspection::getConfirmTime, LocalDateTime.now()))) {
             return;
         }
         boolean pass = i.getResult() != QcResult.FAIL;
@@ -275,7 +276,7 @@ public class MesInspectionService {
         if (req.result() == null) {
             throw new BizException("mes.error.selectConclusion");
         }
-        BigDecimal defect = req.defectQty() == null ? BigDecimal.ZERO : req.defectQty();
+        BigDecimal defect = Decimals.nz(req.defectQty());
         if (req.sampleQty().compareTo(req.inspectQty()) > 0) {
             throw new BizException("mes.error.sampleQuantityCannotExceedLotQuantity");
         }

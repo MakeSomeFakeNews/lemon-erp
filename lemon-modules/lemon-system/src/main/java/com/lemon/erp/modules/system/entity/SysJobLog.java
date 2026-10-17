@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.system.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
@@ -28,5 +29,6 @@ public class SysJobLog extends BaseEntity {
 
     private String message;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 }

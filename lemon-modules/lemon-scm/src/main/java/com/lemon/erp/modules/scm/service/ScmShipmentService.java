@@ -5,10 +5,12 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
+import com.lemon.erp.framework.security.datascope.DataScopes;
 import com.lemon.erp.modules.scm.dto.ShipmentActionRequest;
 import com.lemon.erp.modules.scm.dto.ShipmentQuery;
 import com.lemon.erp.modules.scm.dto.ShipmentRequest;
@@ -34,7 +36,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Supplier;
+import java.util.function.Consumer;
 
 import static com.lemon.erp.modules.scm.model.ScmConstants.SHIPMENT_RULE;
 import static com.lemon.erp.modules.scm.model.ShipmentStatus.EXCEPTION;
@@ -86,7 +88,6 @@ public class ScmShipmentService {
         fill(shipment, req);
         shipment.setStatus(PENDING);
         shipment.setDeptId(user.deptId());
-        shipment.setCreateBy(user.userId());
         shipmentMapper.insert(shipment);
         addTrack(shipment.getId(), PENDING, "创建发运单，出库单 " + doc.getDocNo()); // i18n-ignore
         return shipment.getId();
@@ -126,7 +127,7 @@ public class ScmShipmentService {
             throw new BizException("scm.error.enterTrackingNo");
         }
         LocalDate date = req.date() == null ? LocalDate.now() : req.date();
-        transit(shipment, Set.of(PENDING, EXCEPTION), SHIPPED, Wrappers.<ScmShipment>lambdaUpdate()
+        transit(shipment, Set.of(PENDING, EXCEPTION), SHIPPED, w -> w
                 .set(ScmShipment::getTrackingNo, trackingNo)
                 .set(ScmShipment::getShipDate, shipment.getStatus() == PENDING ? date : shipment.getShipDate()));
         addTrack(id, SHIPPED, StringUtils.hasText(req.content()) ? req.content()
@@ -158,7 +159,7 @@ public class ScmShipmentService {
         if (!StringUtils.hasText(req.content())) {
             throw new BizException("scm.error.enterExceptionDescription");
         }
-        transit(shipment, Set.of(SHIPPED), EXCEPTION, Wrappers.<ScmShipment>lambdaUpdate());
+        transit(shipment, Set.of(SHIPPED), EXCEPTION, w -> { });
         addTrack(id, EXCEPTION, req.content().trim());
     }
 
@@ -167,7 +168,7 @@ public class ScmShipmentService {
     public void sign(Long id, ShipmentActionRequest req) {
         ScmShipment shipment = getAccessible(id);
         LocalDate date = req.date() == null ? LocalDate.now() : req.date();
-        transit(shipment, ShipmentStatus.IN_TRANSIT, SIGNED, Wrappers.<ScmShipment>lambdaUpdate().set(ScmShipment::getSignDate, date));
+        transit(shipment, ShipmentStatus.IN_TRANSIT, SIGNED, w -> w.set(ScmShipment::getSignDate, date));
         addTrack(id, SIGNED, StringUtils.hasText(req.content()) ? req.content().trim() : "客户已签收"); // i18n-ignore
     }
 
@@ -192,25 +193,16 @@ public class ScmShipmentService {
     }
 
     private ScmShipment getAccessible(Long id) {
-        Supplier<ScmShipment> loader = () -> shipmentMapper.selectById(id);
-        ScmShipment shipment = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(SHIPMENT_RULE, loader);
-        if (shipment == null) {
-            throw new BizException("scm.error.shipmentDoesNotExistAccessDenied");
-        }
-        return shipment;
+        return DataScopes.require(SHIPMENT_RULE, () -> shipmentMapper.selectById(id), "scm.error.shipmentDoesNotExistAccessDenied");
     }
 
     private void transit(ScmShipment shipment, Set<ShipmentStatus> from, ShipmentStatus to,
-                         LambdaUpdateWrapper<ScmShipment> update) {
+                         Consumer<LambdaUpdateWrapper<ScmShipment>> extra) {
         if (!from.contains(shipment.getStatus())) {
             throw new BizException("scm.error.operationNotAllowedShipmentSCurrent");
         }
-        int updated = shipmentMapper.update(update
-                .set(ScmShipment::getStatus, to)
-                .set(ScmShipment::getUpdateTime, LocalDateTime.now())
-                .eq(ScmShipment::getId, shipment.getId())
-                .eq(ScmShipment::getStatus, shipment.getStatus()));
-        if (updated == 0) {
+        if (!StatusTransitions.tryChange(shipmentMapper, ScmShipment::getId, shipment.getId(), ScmShipment::getStatus,
+                shipment.getStatus(), to, w -> extra.accept(w.set(ScmShipment::getUpdateTime, LocalDateTime.now())))) {
             throw new BizException("scm.error.shipmentStatusHasChangedRefresh");
         }
     }
@@ -221,12 +213,11 @@ public class ScmShipmentService {
         track.setTrackTime(LocalDateTime.now());
         track.setStatus(status);
         track.setContent(content);
-        track.setCreateBy(SecurityUtils.getUserId());
         trackMapper.insert(track);
     }
 
     private static int compare(BigDecimal a, BigDecimal b) {
-        return (a == null ? BigDecimal.ZERO : a).compareTo(b == null ? BigDecimal.ZERO : b);
+        return Decimals.nz(a).compareTo(Decimals.nz(b));
     }
 
     private static void fill(ScmShipment shipment, ShipmentRequest req) {

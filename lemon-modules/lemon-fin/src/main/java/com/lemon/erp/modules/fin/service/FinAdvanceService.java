@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.model.SettleKind;
@@ -8,7 +9,6 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.AdvanceRequest;
 import com.lemon.erp.modules.fin.dto.SettlementItemRequest;
 import com.lemon.erp.modules.fin.entity.FinAdvance;
@@ -83,7 +83,6 @@ public class FinAdvanceService {
         a.setAmount(req.amount());
         a.setUsedAmount(BigDecimal.ZERO);
         a.setRemark(req.remark());
-        a.setCreateBy(SecurityUtils.getUserId());
         advanceMapper.insert(a);
         String summary = (receipt ? "预收 " : "预付 ") + partner + " 货款"; // i18n-ignore 凭证摘要
         List<VoucherLine> lines = receipt
@@ -153,7 +152,6 @@ public class FinAdvanceService {
             apply.setAmount(item.amount());
             apply.setApplyDate(d);
             apply.setVoucherId(voucherId);
-            apply.setCreateBy(SecurityUtils.getUserId());
             applyMapper.insert(apply);
         }
     }
@@ -174,6 +172,6 @@ public class FinAdvanceService {
     /** 往来单位未冲抵的预收（客户）余额，信用额度占用时扣减 */
     public BigDecimal unusedReceipt(Long customerId) {
         BigDecimal v = advanceMapper.sumUnused(SettleKind.RECEIPT, customerId);
-        return v == null ? BigDecimal.ZERO : v;
+        return Decimals.nz(v);
     }
 }

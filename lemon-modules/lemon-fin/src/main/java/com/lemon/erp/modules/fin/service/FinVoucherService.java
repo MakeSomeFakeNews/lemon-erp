@@ -6,12 +6,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.DetailLines;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.rule.BizRules;
 import com.lemon.erp.framework.security.SecurityUtils;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.fin.dto.VoucherEntryRequest;
 import com.lemon.erp.modules.fin.dto.VoucherQuery;
 import com.lemon.erp.modules.fin.dto.VoucherRequest;
@@ -63,7 +66,7 @@ public class FinVoucherService {
 
     /** 凭证审批流程标识 */
     public static final String PROCESS_KEY = "fin_voucher";
-    private static final String BUSINESS_KEY_PREFIX = "fin_voucher:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "fin_voucher:");
 
     private static final String WORD = "记"; // i18n-ignore
 
@@ -76,7 +79,7 @@ public class FinVoucherService {
     private final FinDepreciationMapper depreciationMapper;
     private final FinCostRunMapper costRunMapper;
     private final ApplicationEventPublisher eventPublisher;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
     private final ChangeLogger changeLogger;
     private final BizRules bizRules;
 
@@ -130,8 +133,7 @@ public class FinVoucherService {
             update.set(FinVoucher::getPeriod, period).set(FinVoucher::getVoucherSeq, seq).set(FinVoucher::getVoucherNo, voucherNo(seq));
         }
         voucherMapper.update(update);
-        entryMapper.delete(Wrappers.<FinVoucherEntry>lambdaQuery().eq(FinVoucherEntry::getVoucherId, id));
-        saveEntries(id, entries);
+        DetailLines.replace(entryMapper, FinVoucherEntry::getVoucherId, id, entries, FinVoucherEntry::setVoucherId, entryMapper::insertBatch);
         changeLogger.log("fin_voucher", id, before, voucherMapper.selectById(id), CHANGE_FIELDS);
     }
 
@@ -208,10 +210,8 @@ public class FinVoucherService {
         }
         LocalDate d = date == null ? LocalDate.now() : date;
         periodService.checkOpen(periodOf(d));
-        if (voucherMapper.update(Wrappers.<FinVoucher>lambdaUpdate().set(FinVoucher::getReversed, 1)
-                .eq(FinVoucher::getId, id).eq(FinVoucher::getReversed, 0)) == 0) {
-            throw new BizException("fin.error.voucherHasAlreadyReversed", v.getVoucherNo());
-        }
+        StatusTransitions.change(voucherMapper, FinVoucher::getId, id, FinVoucher::getReversed, 0, 1,
+                "fin.error.voucherHasAlreadyReversed", v.getVoucherNo());
         List<VoucherLine> lines = entryMapper.selectList(Wrappers.<FinVoucherEntry>lambdaQuery().eq(FinVoucherEntry::getVoucherId, id)
                         .orderByAsc(FinVoucherEntry::getSeq)).stream()
                 .map(e -> new VoucherLine("冲销 " + v.getPeriod() // i18n-ignore
@@ -226,7 +226,7 @@ public class FinVoucherService {
     /** 审核：未审核 → 已审核。发布了凭证审批流程时不能直接审核，由制单人提交审批 */
     @Transactional
     public void audit(List<Long> ids) {
-        if (flowApi.isAvailable(PROCESS_KEY)) {
+        if (approvalSupport.isAvailable(FLOW)) {
             throw new BizException("fin.error.voucherApprovalWorkflowEnabledSubmitApproval");
         }
         transit(ids, VoucherStatus.DRAFT, VoucherStatus.AUDITED, "fin.error.onlyUnapprovedVouchersApproved");
@@ -235,40 +235,29 @@ public class FinVoucherService {
     /** 提交审批（发布了凭证审批流程时）：未审核 → 审批中，每张凭证一个流程 */
     @Transactional
     public void submit(List<Long> ids) {
-        if (!flowApi.isAvailable(PROCESS_KEY)) {
+        if (!approvalSupport.isAvailable(FLOW)) {
             throw new BizException("fin.error.noVoucherApprovalWorkflowDeployedApprove");
         }
         for (Long id : ids) {
             FinVoucher v = getWithStatus(id, VoucherStatus.DRAFT, "fin.error.onlyUnapprovedVouchersSubmitted");
             periodService.checkOpen(v.getPeriod());
-            int updated = voucherMapper.update(Wrappers.<FinVoucher>lambdaUpdate()
-                    .set(FinVoucher::getStatus, VoucherStatus.APPROVING)
-                    .eq(FinVoucher::getId, id).eq(FinVoucher::getStatus, VoucherStatus.DRAFT));
-            if (updated == 0) {
-                throw new BizException("fin.error.statusVoucherHasChangedRefresh", v.getVoucherNo());
-            }
-            String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of(
-                    "amount", v.getTotalDebit() == null ? 0 : v.getTotalDebit().doubleValue(),
-                    "voucherNo", v.getVoucherNo(),
-                    "sourceType", v.getSourceType() == null ? "" : v.getSourceType().name()));
-            voucherMapper.update(Wrappers.<FinVoucher>lambdaUpdate().set(FinVoucher::getFlowInstanceId, instanceId).eq(FinVoucher::getId, id));
+            approvalSupport.start(FLOW, id, Map.of(
+                            "amount", v.getTotalDebit() == null ? 0 : v.getTotalDebit().doubleValue(),
+                            "voucherNo", v.getVoucherNo(),
+                            "sourceType", v.getSourceType() == null ? "" : v.getSourceType().name()),
+                    () -> StatusTransitions.change(voucherMapper, FinVoucher::getId, id, FinVoucher::getStatus,
+                            VoucherStatus.DRAFT, VoucherStatus.APPROVING, "fin.error.statusVoucherHasChangedRefresh", v.getVoucherNo()),
+                    instanceId -> voucherMapper.update(Wrappers.<FinVoucher>lambdaUpdate().set(FinVoucher::getFlowInstanceId, instanceId).eq(FinVoucher::getId, id)));
         }
     }
 
     /** 凭证审批结束：通过 → 已审核（审核人为最后审批人）；拒绝、撤销 → 未审核 */
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        boolean approved = e.status() == FlowStatus.APPROVED;
-        voucherMapper.update(Wrappers.<FinVoucher>lambdaUpdate()
-                .set(FinVoucher::getStatus, approved ? VoucherStatus.AUDITED : VoucherStatus.DRAFT)
-                .set(approved, FinVoucher::getAuditBy, SecurityUtils.getUserIdOrNull())
-                .set(approved, FinVoucher::getAuditTime, LocalDateTime.now())
-                .eq(FinVoucher::getId, id)
-                .eq(FinVoucher::getStatus, VoucherStatus.APPROVING));
+        FLOW.onFinished(e, (id, approved) -> StatusTransitions.tryChange(voucherMapper, FinVoucher::getId, id, FinVoucher::getStatus,
+                VoucherStatus.APPROVING, approved ? VoucherStatus.AUDITED : VoucherStatus.DRAFT,
+                w -> w.set(approved, FinVoucher::getAuditBy, SecurityUtils.getUserIdOrNull())
+                        .set(approved, FinVoucher::getAuditTime, LocalDateTime.now())));
     }
 
     @Transactional
@@ -338,7 +327,6 @@ public class FinVoucherService {
         v.setSourceType(source);
         v.setSourceNo(sourceNo);
         v.setReversed(0);
-        v.setCreateBy(userId);
         if (status == VoucherStatus.POSTED) {
             v.setAuditBy(userId);
             v.setAuditTime(now);
@@ -359,8 +347,8 @@ public class FinVoucherService {
         List<FinVoucherEntry> entries = new ArrayList<>(lines.size());
         for (int i = 0; i < lines.size(); i++) {
             VoucherLine l = lines.get(i);
-            BigDecimal debit = l.debit() == null ? BigDecimal.ZERO : l.debit();
-            BigDecimal credit = l.credit() == null ? BigDecimal.ZERO : l.credit();
+            BigDecimal debit = Decimals.nz(l.debit());
+            BigDecimal credit = Decimals.nz(l.credit());
             if ((debit.signum() == 0) == (credit.signum() == 0)) {
                 throw new BizException("fin.error.entryEnterExactlyOneDebitCredit", i + 1);
             }
@@ -373,8 +361,8 @@ public class FinVoucherService {
             e.setCustomerId(l.customerId());
             e.setSupplierId(l.supplierId());
             e.setMaterialId(l.materialId());
-            e.setDebit(debit.setScale(2, java.math.RoundingMode.HALF_UP));
-            e.setCredit(credit.setScale(2, java.math.RoundingMode.HALF_UP));
+            e.setDebit(Decimals.money(debit));
+            e.setCredit(Decimals.money(credit));
             entries.add(e);
         }
         BigDecimal debit = total(entries, true);
@@ -440,25 +428,20 @@ public class FinVoucherService {
                     && !SecurityUtils.getLoginUser().isAdmin() && !bizRules.bool(FinBizRules.VOUCHER_SELF_AUDIT)) {
                 throw new BizException("fin.error.preparedVoucherCannotApproveYourself", v.getVoucherNo());
             }
-            LambdaUpdateWrapper<FinVoucher> update = Wrappers.<FinVoucher>lambdaUpdate()
-                    .set(FinVoucher::getStatus, to)
-                    .set(FinVoucher::getUpdateTime, now)
-                    .eq(FinVoucher::getId, id)
-                    .eq(FinVoucher::getStatus, from);
-            switch (to) {
-                case AUDITED -> {
-                    if (from == VoucherStatus.DRAFT) {
-                        update.set(FinVoucher::getAuditBy, userId).set(FinVoucher::getAuditTime, now);
-                    } else {
-                        update.set(FinVoucher::getPostBy, null).set(FinVoucher::getPostTime, null);
+            StatusTransitions.change(voucherMapper, FinVoucher::getId, id, FinVoucher::getStatus, from, to, update -> {
+                update.set(FinVoucher::getUpdateTime, now);
+                switch (to) {
+                    case AUDITED -> {
+                        if (from == VoucherStatus.DRAFT) {
+                            update.set(FinVoucher::getAuditBy, userId).set(FinVoucher::getAuditTime, now);
+                        } else {
+                            update.set(FinVoucher::getPostBy, null).set(FinVoucher::getPostTime, null);
+                        }
                     }
+                    case POSTED -> update.set(FinVoucher::getPostBy, userId).set(FinVoucher::getPostTime, now);
+                    case DRAFT -> update.set(FinVoucher::getAuditBy, null).set(FinVoucher::getAuditTime, null);
                 }
-                case POSTED -> update.set(FinVoucher::getPostBy, userId).set(FinVoucher::getPostTime, now);
-                case DRAFT -> update.set(FinVoucher::getAuditBy, null).set(FinVoucher::getAuditTime, null);
-            }
-            if (voucherMapper.update(update) == 0) {
-                throw new BizException("fin.error.statusVoucherHasChangedRefresh", v.getVoucherNo());
-            }
+            }, "fin.error.statusVoucherHasChangedRefresh", v.getVoucherNo());
         }
     }
 
@@ -480,7 +463,7 @@ public class FinVoucherService {
 
     private static List<VoucherLine> toLines(List<VoucherEntryRequest> entries) {
         return entries.stream().map(e -> new VoucherLine(e.summary().trim(), e.accountId(), e.deptId(),
-                e.debit() == null ? BigDecimal.ZERO : e.debit(), e.credit() == null ? BigDecimal.ZERO : e.credit(),
+                Decimals.nz(e.debit()), Decimals.nz(e.credit()),
                 e.projectId(), e.customerId(), e.supplierId(), e.materialId())).toList();
     }
 
@@ -490,7 +473,7 @@ public class FinVoucherService {
     }
 
     private static BigDecimal total(List<FinVoucherEntry> entries, boolean debit) {
-        return entries.stream().map(debit ? FinVoucherEntry::getDebit : FinVoucherEntry::getCredit).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return Decimals.sum(entries, debit ? FinVoucherEntry::getDebit : FinVoucherEntry::getCredit);
     }
 
     private static String voucherNo(int seq) {

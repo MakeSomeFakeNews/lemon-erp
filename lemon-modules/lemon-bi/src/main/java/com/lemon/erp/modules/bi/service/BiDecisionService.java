@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.bi.service;
 
 import com.lemon.erp.common.i18n.Messages;
+import com.lemon.erp.common.util.Decimals;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -27,6 +28,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.lemon.erp.common.util.Decimals.HUNDRED;
+
 /**
  * 决策支持：销售预测（线性趋势 + 季节指数）、ABC 分类、呆滞物料、预警规则
  */
@@ -34,7 +37,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class BiDecisionService {
 
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     /** 呆滞判定：超过 90 天没有出库 */
     public static final int SLOW_DAYS = 90;
 
@@ -133,7 +135,7 @@ public class BiDecisionService {
             rows.add(m);
         }
         rows.sort(Comparator.comparing((Map<String, Object> r) -> (BigDecimal) r.get("value")).reversed());
-        BigDecimal total = rows.stream().map(r -> (BigDecimal) r.get("value")).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = Decimals.sum(rows, r -> (BigDecimal) r.get("value"));
         BigDecimal cum = BigDecimal.ZERO;
         Map<AbcClass, long[]> counts = new EnumMap<>(AbcClass.class);
         Map<AbcClass, BigDecimal> values = new EnumMap<>(AbcClass.class);

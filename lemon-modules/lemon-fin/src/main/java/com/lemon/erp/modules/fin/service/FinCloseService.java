@@ -4,6 +4,7 @@ import com.lemon.erp.modules.fin.model.PeriodStatus;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.AccountSum;
 import com.lemon.erp.modules.fin.entity.FinAccount;
@@ -69,15 +70,9 @@ public class FinCloseService {
         if (period % 100 == 12) {
             carryForwardYearProfit(period);
         }
-        int updated = periodMapper.update(Wrappers.<FinPeriod>lambdaUpdate()
-                .set(FinPeriod::getStatus, PeriodStatus.CLOSED)
-                .set(FinPeriod::getCloseBy, SecurityUtils.getUserId())
-                .set(FinPeriod::getCloseTime, LocalDateTime.now())
-                .eq(FinPeriod::getPeriod, period)
-                .eq(FinPeriod::getStatus, PeriodStatus.OPEN));
-        if (updated == 0) {
-            throw new BizException("fin.error.periodStatusHasChangedRefresh");
-        }
+        StatusTransitions.change(periodMapper, FinPeriod::getPeriod, period, FinPeriod::getStatus, PeriodStatus.OPEN, PeriodStatus.CLOSED,
+                w -> w.set(FinPeriod::getCloseBy, SecurityUtils.getUserId()).set(FinPeriod::getCloseTime, LocalDateTime.now()),
+                "fin.error.periodStatusHasChangedRefresh");
     }
 
     @Transactional

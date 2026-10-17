@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.scm.entity.ScmPriceList;
 import com.lemon.erp.modules.scm.mapper.ScmPriceListMapper;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
@@ -78,7 +79,7 @@ public class ScmPriceListService {
             customerService.get(p.getCustomerId());
             p.setCustomerLevel(null);
         }
-        p.setMinQty(p.getMinQty() == null ? BigDecimal.ZERO : p.getMinQty());
+        p.setMinQty(Decimals.nz(p.getMinQty()));
         p.setTaxRate(p.getTaxRate() == null ? DEFAULT_TAX_RATE : p.getTaxRate());
         return p;
     }

@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.bi.service;
 
 import com.lemon.erp.common.i18n.Messages;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.bi.mapper.BiScreenMapper;
 import com.lemon.erp.modules.bi.model.ScreenKey;
 import com.lemon.erp.modules.mes.dto.BoardView;
@@ -30,7 +31,6 @@ import java.util.Map;
 public class BiScreenService {
 
     private static final int TREND_DAYS = 14;
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final BiScreenMapper screenMapper;
     private final MesBoardService boardService;
@@ -309,7 +309,7 @@ public class BiScreenService {
     private static BigDecimal yieldRate(Map<String, Object> report) {
         BigDecimal good = dec(report.get("good"));
         BigDecimal all = good.add(dec(report.get("scrap")));
-        return all.signum() == 0 ? null : good.multiply(HUNDRED).divide(all, 1, RoundingMode.HALF_UP);
+        return Decimals.percent(good, all, 1);
     }
 
     private static BigDecimal rate(long part, long total) {

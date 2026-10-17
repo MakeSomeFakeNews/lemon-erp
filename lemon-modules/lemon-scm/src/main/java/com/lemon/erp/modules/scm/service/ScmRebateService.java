@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.dto.RebateRequest;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
@@ -40,7 +42,6 @@ public class ScmRebateService {
     /** 返利协议号的编码规则标识 */
     public static final String DOC_NO = "FL";
 
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final ScmRebateMapper rebateMapper;
     private final ScmCustomerService customerService;
@@ -73,7 +74,6 @@ public class ScmRebateService {
         r.setRebateNo(docNoService.next(DOC_NO));
         fill(r, req);
         r.setStatus(RebateStatus.ACTIVE);
-        r.setCreateBy(SecurityUtils.getUserId());
         rebateMapper.insert(r);
         rebateMapper.insertTiers(r.getId(), tiers(req));
         return r.getId();
@@ -115,12 +115,11 @@ public class ScmRebateService {
             throw new BizException("scm.error.periodSalesAmountDoesNotReach", plain(c.salesAmount()));
         }
         LocalDate date = settleDate != null ? settleDate : LocalDate.now();
-        if (rebateMapper.update(Wrappers.<ScmRebate>lambdaUpdate()
-                .set(ScmRebate::getStatus, RebateStatus.SETTLED).set(ScmRebate::getSalesAmount, c.salesAmount())
-                .set(ScmRebate::getRate, c.rate()).set(ScmRebate::getRebateAmount, c.rebateAmount())
-                .set(ScmRebate::getSettleDate, date).set(ScmRebate::getSettleBy, SecurityUtils.getUserId())
-                .set(ScmRebate::getUpdateTime, LocalDateTime.now())
-                .eq(ScmRebate::getId, id).eq(ScmRebate::getStatus, RebateStatus.ACTIVE)) == 0) {
+        if (!StatusTransitions.tryChange(rebateMapper, ScmRebate::getId, id, ScmRebate::getStatus, RebateStatus.ACTIVE, RebateStatus.SETTLED,
+                w -> w.set(ScmRebate::getSalesAmount, c.salesAmount())
+                        .set(ScmRebate::getRate, c.rate()).set(ScmRebate::getRebateAmount, c.rebateAmount())
+                        .set(ScmRebate::getSettleDate, date).set(ScmRebate::getSettleBy, SecurityUtils.getUserId())
+                        .set(ScmRebate::getUpdateTime, LocalDateTime.now()))) {
             throw new BizException("scm.error.rebateAgreementStatusHasChangedRefresh");
         }
         if (r.getSettleMode() == RebateSettle.CREDIT_NOTE) {
@@ -180,7 +179,7 @@ public class ScmRebateService {
         BigDecimal sales = rebateMapper.selectSalesAmount(r.getCustomerId(), r.getBeginDate(), end);
         BigDecimal rate = r.getTiers().stream().filter(t -> sales.compareTo(t.getMinAmount()) >= 0)
                 .max(Comparator.comparing(ScmRebateTier::getMinAmount)).map(ScmRebateTier::getRate).orElse(BigDecimal.ZERO);
-        return new Calc(sales, rate, sales.multiply(rate).divide(HUNDRED, 2, RoundingMode.HALF_UP));
+        return new Calc(sales, rate, sales.multiply(rate).divide(Decimals.HUNDRED, 2, RoundingMode.HALF_UP));
     }
 
     private ScmRebate requireActive(Long id) {

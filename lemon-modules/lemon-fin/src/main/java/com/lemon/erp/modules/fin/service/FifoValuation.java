@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -146,7 +147,7 @@ class FifoValuation implements Valuation {
 
     @Override
     public BigDecimal closeAmount() {
-        return layers.stream().map(l -> l.amount).reduce(BigDecimal.ZERO, BigDecimal::add).subtract(shortAmount);
+        return Decimals.sum(layers, l -> l.amount).subtract(shortAmount);
     }
 
     @Override

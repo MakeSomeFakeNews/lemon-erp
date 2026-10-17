@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -65,6 +66,7 @@ public class ScmPromotion extends BaseEntity {
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String remark;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

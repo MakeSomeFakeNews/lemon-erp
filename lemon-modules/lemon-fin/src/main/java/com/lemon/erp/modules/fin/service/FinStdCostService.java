@@ -3,8 +3,9 @@ package com.lemon.erp.modules.fin.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.framework.data.DetailLines;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.common.result.PageResult;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.StdCostRequests;
 import com.lemon.erp.modules.fin.entity.FinStdCost;
 import com.lemon.erp.modules.fin.entity.FinStdCostVersion;
@@ -77,7 +78,6 @@ public class FinStdCostService {
         v.setEffectivePeriod(req.effectivePeriod());
         v.setStatus(StdCostStatus.DRAFT);
         v.setRemark(req.remark());
-        v.setCreateBy(SecurityUtils.getUserId());
         versionMapper.insert(v);
         if (req.copyFromId() != null) {
             detail(req.copyFromId());
@@ -168,8 +168,7 @@ public class FinStdCostService {
                 .forEach(e -> r.result.put(e.getMaterialId(), purchased(id, e.getMaterialId(), e.getUnitCost())));
         existing.values().stream().filter(e -> e.getMake() == 0 && !r.result.containsKey(e.getMaterialId()))
                 .forEach(e -> r.result.put(e.getMaterialId(), e));
-        costMapper.delete(Wrappers.<FinStdCost>lambdaQuery().eq(FinStdCost::getVersionId, id));
-        insert(new ArrayList<>(r.result.values()));
+        DetailLines.replace(costMapper, FinStdCost::getVersionId, id, new ArrayList<>(r.result.values()), FinStdCost::setVersionId, this::insert);
         versionMapper.update(Wrappers.<FinStdCostVersion>lambdaUpdate()
                 .set(FinStdCostVersion::getRollupTime, LocalDateTime.now()).set(FinStdCostVersion::getUpdateTime, LocalDateTime.now())
                 .eq(FinStdCostVersion::getId, id));
@@ -248,12 +247,8 @@ public class FinStdCostService {
     }
 
     private void changeStatus(Long id, StdCostStatus from, StdCostStatus to, LocalDateTime releaseTime) {
-        if (versionMapper.update(Wrappers.<FinStdCostVersion>lambdaUpdate()
-                .set(FinStdCostVersion::getStatus, to).set(FinStdCostVersion::getReleaseTime, releaseTime)
-                .set(FinStdCostVersion::getUpdateTime, LocalDateTime.now())
-                .eq(FinStdCostVersion::getId, id).eq(FinStdCostVersion::getStatus, from)) == 0) {
-            throw new BizException("fin.error.versionStatusHasChangedRefreshTry");
-        }
+        StatusTransitions.change(versionMapper, FinStdCostVersion::getId, id, FinStdCostVersion::getStatus, from, to,
+                w -> w.set(FinStdCostVersion::getReleaseTime, releaseTime).set(FinStdCostVersion::getUpdateTime, LocalDateTime.now()), "fin.error.versionStatusHasChangedRefreshTry");
     }
 
     private FinStdCostVersion requireDraft(Long id) {

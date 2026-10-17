@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.DetailLines;
 import com.lemon.erp.framework.org.UserLookup;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -36,7 +38,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -110,7 +111,6 @@ public class CrmOpportunityService {
         o.setStage(stage);
         if (o.getProbability() == null) o.setProbability(stage.getProbability());
         o.setLeadId(leadId);
-        o.setCreateBy(SecurityUtils.getUserId());
         opportunityMapper.insert(o);
         saveItems(o.getId(), items);
         log(o.getId(), null, stage);
@@ -136,8 +136,8 @@ public class CrmOpportunityService {
                 .set(CrmOpportunity::getRemark, o.getRemark())
                 .set(CrmOpportunity::getUpdateTime, LocalDateTime.now())
                 .eq(CrmOpportunity::getId, id));
-        itemMapper.delete(Wrappers.<CrmOpportunityItem>lambdaQuery().eq(CrmOpportunityItem::getOpportunityId, id));
-        saveItems(id, items);
+        DetailLines.replace(itemMapper, CrmOpportunityItem::getOpportunityId, id, items,
+                CrmOpportunityItem::setOpportunityId, itemMapper::insertBatch);
     }
 
     /**
@@ -258,8 +258,7 @@ public class CrmOpportunityService {
         o.setName(req.name().trim());
         o.setCustomerId(req.customerId());
         o.setContactId(req.contactId());
-        o.setAmount(items.isEmpty() ? (req.amount() == null ? BigDecimal.ZERO : req.amount())
-                : items.stream().map(CrmOpportunityItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
+        o.setAmount(items.isEmpty() ? Decimals.nz(req.amount()) : Decimals.sum(items, CrmOpportunityItem::getAmount));
         o.setProbability(req.probability());
         o.setExpectedDate(req.expectedDate());
         o.setSource(req.source());

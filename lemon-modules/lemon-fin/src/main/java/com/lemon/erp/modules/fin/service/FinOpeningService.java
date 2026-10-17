@@ -1,12 +1,12 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.fin.model.PeriodStatus;
 import com.lemon.erp.modules.fin.model.CostRunKind;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.modules.fin.model.FinConstants;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.AccountOpeningRequest;
 import com.lemon.erp.modules.fin.dto.AccountOpeningRow;
 import com.lemon.erp.modules.fin.dto.StockOpeningRequest;
@@ -103,8 +103,8 @@ public class FinOpeningService {
         BigDecimal debit = BigDecimal.ZERO;
         BigDecimal credit = BigDecimal.ZERO;
         for (AccountOpeningRequest.Item item : req.items()) {
-            BigDecimal d = item.debit() == null ? BigDecimal.ZERO : item.debit();
-            BigDecimal c = item.credit() == null ? BigDecimal.ZERO : item.credit();
+            BigDecimal d = Decimals.nz(item.debit());
+            BigDecimal c = Decimals.nz(item.credit());
             if (d.signum() == 0 && c.signum() == 0) {
                 continue;
             }
@@ -244,7 +244,6 @@ public class FinOpeningService {
         run.setPeriod(openPeriod);
         run.setKind(CostRunKind.OPENING);
         run.setOverheadVariance(BigDecimal.ZERO);
-        run.setCreateBy(SecurityUtils.getUserId());
         runMapper.insert(run);
         if (!rows.isEmpty()) {
             materialCostMapper.insertBatch(rows);

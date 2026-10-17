@@ -12,7 +12,9 @@ import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.framework.workflow.ApproveStatus;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.data.StatusTransitions;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
 import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.hr.dto.EmployeeChangeRequest;
@@ -68,7 +70,7 @@ public class HrEmployeeService {
 
     /** 人事异动审批流程标识 */
     public static final String CHANGE_PROCESS_KEY = "hr_change";
-    private static final String CHANGE_KEY_PREFIX = "hr_change:";
+    private static final ApprovalFlow CHANGE_FLOW = new ApprovalFlow(CHANGE_PROCESS_KEY, "hr_change:");
     private static final int OPTION_LIMIT = 50;
 
     private final HrEmployeeMapper employeeMapper;
@@ -81,7 +83,7 @@ public class HrEmployeeService {
     private final PermissionService permissionService;
     private final ApplicationEventPublisher eventPublisher;
     private final HrSalaryHistoryMapper historyMapper;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
     private final ChangeLogger changeLogger;
     private final DictLookup dictLookup;
 
@@ -211,7 +213,7 @@ public class HrEmployeeService {
         HrEmployeeChange c = newChange(id, req.type(), req.changeDate(), req.reason());
         c.setHandoverUserId(req.handoverUserId());
         prepareChange(e, c, req);
-        if (!flowApi.isAvailable(CHANGE_PROCESS_KEY)) {
+        if (!approvalSupport.isAvailable(CHANGE_FLOW)) {
             applyChange(e, c);
             c.setStatus(ApproveStatus.DONE);
             changeMapper.insert(c);
@@ -229,37 +231,33 @@ public class HrEmployeeService {
             vars.put("salary", c.getToSalary().doubleValue());
             vars.put("salaryIncrease", c.getToSalary().subtract(c.getFromSalary()).doubleValue());
         }
-        String instanceId = flowApi.start(CHANGE_PROCESS_KEY, CHANGE_KEY_PREFIX + c.getId(), vars);
-        changeMapper.update(Wrappers.<HrEmployeeChange>lambdaUpdate()
-                .set(HrEmployeeChange::getFlowInstanceId, instanceId).eq(HrEmployeeChange::getId, c.getId()));
+        approvalSupport.start(CHANGE_FLOW, c.getId(), vars, () -> { },
+                instanceId -> changeMapper.update(Wrappers.<HrEmployeeChange>lambdaUpdate()
+                        .set(HrEmployeeChange::getFlowInstanceId, instanceId).eq(HrEmployeeChange::getId, c.getId())));
         return true;
     }
 
     /** 人事异动审批结束：通过 → 按申请内容生效（员工状态已变化导致不能生效时审批失败）；拒绝、撤销 → 作废 */
     @EventListener
     public void onChangeFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(CHANGE_KEY_PREFIX)) {
-            return;
-        }
-        HrEmployeeChange c = changeMapper.selectById(Long.valueOf(e.businessKey().substring(CHANGE_KEY_PREFIX.length())));
-        if (c == null || c.getStatus() != ApproveStatus.APPROVING) {
-            return;
-        }
-        if (e.status() == FlowStatus.APPROVED) {
-            HrEmployee emp = get(c.getEmployeeId());
-            checkChangeable(emp, c.getType());
-            applyChange(emp, c);
-        }
-        ApproveStatus status = switch (e.status()) {
-            case APPROVED -> ApproveStatus.DONE;
-            case REJECTED -> ApproveStatus.REJECTED;
-            default -> ApproveStatus.CANCELED;
-        };
-        changeMapper.update(Wrappers.<HrEmployeeChange>lambdaUpdate()
-                .set(HrEmployeeChange::getStatus, status)
-                .set(HrEmployeeChange::getUpdateTime, LocalDateTime.now())
-                .eq(HrEmployeeChange::getId, c.getId())
-                .eq(HrEmployeeChange::getStatus, ApproveStatus.APPROVING));
+        CHANGE_FLOW.onFinishedWithStatus(e, (id, flowStatus) -> {
+            HrEmployeeChange c = changeMapper.selectById(id);
+            if (c == null || c.getStatus() != ApproveStatus.APPROVING) {
+                return;
+            }
+            if (flowStatus == FlowStatus.APPROVED) {
+                HrEmployee emp = get(c.getEmployeeId());
+                checkChangeable(emp, c.getType());
+                applyChange(emp, c);
+            }
+            ApproveStatus status = switch (flowStatus) {
+                case APPROVED -> ApproveStatus.DONE;
+                case REJECTED -> ApproveStatus.REJECTED;
+                default -> ApproveStatus.CANCELED;
+            };
+            StatusTransitions.tryChange(changeMapper, HrEmployeeChange::getId, c.getId(), HrEmployeeChange::getStatus,
+                    ApproveStatus.APPROVING, status, w -> w.set(HrEmployeeChange::getUpdateTime, LocalDateTime.now()));
+        });
     }
 
     private static void checkChangeable(HrEmployee e, ChangeType type) {
@@ -419,7 +417,6 @@ public class HrEmployeeService {
         c.setType(type);
         c.setChangeDate(date);
         c.setReason(reason);
-        c.setCreateBy(SecurityUtils.getUserIdOrNull());
         return c;
     }
 

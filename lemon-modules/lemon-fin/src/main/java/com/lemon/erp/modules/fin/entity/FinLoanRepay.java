@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.fin.model.LoanRepayMethod;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -33,6 +34,7 @@ public class FinLoanRepay extends BaseEntity {
 
     private Long voucherId;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

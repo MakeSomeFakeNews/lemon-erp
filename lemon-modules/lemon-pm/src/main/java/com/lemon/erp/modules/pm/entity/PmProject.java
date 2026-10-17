@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.pm.model.ProjectStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -82,6 +83,7 @@ public class PmProject extends BaseEntity {
     private String flowInstanceId;
 
     /** 创建人 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

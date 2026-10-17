@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.dto;
 
+import com.lemon.erp.common.util.Decimals;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -38,6 +39,6 @@ public class QualitySummary {
         if (sampleQty == null || sampleQty.signum() == 0) {
             return null;
         }
-        return defectQty.multiply(BigDecimal.valueOf(100)).divide(sampleQty, 2, RoundingMode.HALF_UP);
+        return Decimals.percent(defectQty, sampleQty, 2);
     }
 }

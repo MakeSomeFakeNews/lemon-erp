@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.hr.model.PerfPeriodType;
 import com.lemon.erp.modules.hr.model.PerfStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -41,6 +42,7 @@ public class HrPerfPlan extends BaseEntity {
     private String remark;
 
     /** 创建人 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

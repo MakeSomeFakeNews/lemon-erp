@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
@@ -33,7 +34,6 @@ import static com.lemon.erp.modules.fin.model.FinConstants.toYearMonth;
 @RequiredArgsConstructor
 public class FinAnalysisService {
 
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private static final int MARGIN_DETAIL_LIMIT = 5000;
 
@@ -331,7 +331,7 @@ public class FinAnalysisService {
     }
 
     private static BigDecimal margin(BigDecimal revenue, BigDecimal cost) {
-        return revenue.signum() == 0 ? null : revenue.subtract(cost).multiply(HUNDRED).divide(revenue, 2, RoundingMode.HALF_UP);
+        return Decimals.percent(revenue.subtract(cost), revenue, 2);
     }
 
     private static BigDecimal dec(Object v) {

@@ -3,6 +3,7 @@ package com.lemon.erp.modules.hr.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.org.LaborCostProvider;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.modules.hr.dto.SalaryRequest;
@@ -27,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static com.lemon.erp.common.util.Decimals.nz;
 
 /**
  * 薪资档案：基本工资、津贴、绩效奖金基数、社保公积金基数、工资卡。修改基本工资时记录调薪异动
@@ -61,11 +64,11 @@ public class HrSalaryService implements LaborCostProvider {
         HrSalary s = new HrSalary();
         s.setEmployeeId(employeeId);
         s.setBaseSalary(req.baseSalary());
-        s.setPostAllowance(zero(req.postAllowance()));
-        s.setOtherAllowance(zero(req.otherAllowance()));
-        s.setPerfBonusBase(zero(req.perfBonusBase()));
+        s.setPostAllowance(nz(req.postAllowance()));
+        s.setOtherAllowance(nz(req.otherAllowance()));
+        s.setPerfBonusBase(nz(req.perfBonusBase()));
         // 社保公积金基数默认按基本工资 + 岗位津贴
-        BigDecimal defaultBase = req.baseSalary().add(zero(req.postAllowance()));
+        BigDecimal defaultBase = req.baseSalary().add(nz(req.postAllowance()));
         s.setSocialBase(req.socialBase() != null ? req.socialBase() : defaultBase);
         s.setHousingBase(req.housingBase() != null ? req.housingBase() : defaultBase);
         s.setHousingRate(req.housingRate() != null ? req.housingRate() : BigDecimal.valueOf(7));
@@ -154,7 +157,7 @@ public class HrSalaryService implements LaborCostProvider {
         }
         BigDecimal monthly = s.getBaseSalary().add(s.getPostAllowance()).add(s.getOtherAllowance())
                 .add(s.getSocialBase().multiply(HrConstants.SOCIAL_COMPANY_RATE))
-                .add(s.getHousingBase().multiply(s.getHousingRate()).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
+                .add(s.getHousingBase().multiply(s.getHousingRate()).divide(Decimals.HUNDRED, 2, RoundingMode.HALF_UP));
         return monthly.divide(HrConstants.MONTH_PAY_DAYS.multiply(HrConstants.DAY_HOURS), 2, RoundingMode.HALF_UP);
     }
 
@@ -169,13 +172,9 @@ public class HrSalaryService implements LaborCostProvider {
         for (HrSalary s : list) {
             total = total.add(s.getBaseSalary()).add(s.getPostAllowance()).add(s.getOtherAllowance())
                     .add(s.getSocialBase().multiply(HrConstants.SOCIAL_COMPANY_RATE))
-                    .add(s.getHousingBase().multiply(s.getHousingRate()).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
+                    .add(s.getHousingBase().multiply(s.getHousingRate()).divide(Decimals.HUNDRED, 2, RoundingMode.HALF_UP));
         }
         return total.divide(BigDecimal.valueOf(list.size()), 6, RoundingMode.HALF_UP)
                 .divide(HrConstants.MONTH_PAY_DAYS.multiply(HrConstants.DAY_HOURS), 2, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal zero(BigDecimal v) {
-        return v == null ? BigDecimal.ZERO : v;
     }
 }

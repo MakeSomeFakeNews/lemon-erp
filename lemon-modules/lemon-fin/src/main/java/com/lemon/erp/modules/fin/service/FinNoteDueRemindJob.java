@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
 import com.lemon.erp.framework.message.MessageCategory;
@@ -11,7 +12,6 @@ import com.lemon.erp.modules.fin.model.NoteKind;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -72,6 +72,6 @@ public class FinNoteDueRemindJob implements JobHandler {
     }
 
     private static String total(List<FinNote> notes) {
-        return notes.stream().map(FinNote::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add).toPlainString();
+        return Decimals.sum(notes, FinNote::getAmount).toPlainString();
     }
 }

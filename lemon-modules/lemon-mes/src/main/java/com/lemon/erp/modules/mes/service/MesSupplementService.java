@@ -5,11 +5,13 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
+import com.lemon.erp.framework.security.datascope.DataScopes;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
 import com.lemon.erp.framework.workflow.FlowApi;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
 import com.lemon.erp.framework.workflow.FlowStatus;
@@ -37,12 +39,10 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.lemon.erp.modules.mes.model.MesConstants.SUPPLEMENT_RULE;
@@ -58,7 +58,7 @@ import static com.lemon.erp.modules.mes.model.MesConstants.SUPPLEMENT_RULE;
 public class MesSupplementService {
 
     public static final String PROCESS_KEY = "mes_supplement";
-    private static final String BUSINESS_KEY_PREFIX = "mes_supplement:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "mes_supplement:");
 
     private final MesWoSupplementMapper suppMapper;
     private final MesWoSupplementItemMapper itemMapper;
@@ -106,8 +106,8 @@ public class MesSupplementService {
             }
         }
         LoginUser user = SecurityUtils.getLoginUser();
-        BigDecimal total = req.items().stream().map(SupplementRequest.Item::qty).reduce(BigDecimal.ZERO, BigDecimal::add);
-        boolean flow = flowApi.isAvailable(PROCESS_KEY);
+        BigDecimal total = Decimals.sum(req.items(), SupplementRequest.Item::qty);
+        boolean flow = flowApi.isAvailable(FLOW.processKey());
         MesWoSupplement s = new MesWoSupplement();
         s.setSuppNo(docNoService.next(MesDocNos.SUPPLEMENT));
         s.setWoId(wo.getId());
@@ -132,7 +132,7 @@ public class MesSupplementService {
             vars.put("reason", req.reason());
             vars.put("totalQty", total.doubleValue());
             vars.put("suppNo", s.getSuppNo());
-            String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + s.getId(), vars);
+            String instanceId = flowApi.start(FLOW.processKey(), FLOW.businessKey(s.getId()), vars);
             suppMapper.update(Wrappers.<MesWoSupplement>lambdaUpdate()
                     .set(MesWoSupplement::getFlowInstanceId, instanceId).eq(MesWoSupplement::getId, s.getId()));
         }
@@ -210,10 +210,10 @@ public class MesSupplementService {
     /** 审批流程结束：通过 → 待发料，拒绝 → 已拒绝，撤回 / 终止 → 已撤销；与审批操作同一事务 */
     @EventListener(condition = "#e.processKey == 'mes_supplement'")
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
+        Long id = FLOW.idOf(e);
+        if (id == null) {
             return;
         }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
         SupplementStatus status = switch (e.status()) {
             case APPROVED -> SupplementStatus.APPROVED;
             case REJECTED -> SupplementStatus.REJECTED;
@@ -245,12 +245,8 @@ public class MesSupplementService {
     // ---------------------------------------------------------------- 内部
 
     private MesWoSupplement getAccessible(Long id) {
-        Supplier<MesWoSupplement> loader = () -> id == null ? null : suppMapper.selectById(id);
-        MesWoSupplement s = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(SUPPLEMENT_RULE, loader);
-        if (s == null) {
-            throw new BizException("mes.error.supplementaryIssueRequestDoesNotExist2");
-        }
-        return s;
+        return DataScopes.require(SUPPLEMENT_RULE, () -> id == null ? null : suppMapper.selectById(id),
+                "mes.error.supplementaryIssueRequestDoesNotExist2");
     }
 
     private void transit(Long id, Set<SupplementStatus> from, SupplementStatus to) {

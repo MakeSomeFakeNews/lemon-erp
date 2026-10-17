@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.MaintenanceFinishRequest;
 import com.lemon.erp.modules.mes.dto.MaintenanceRequest;
@@ -138,14 +139,11 @@ public class MesEquipmentService {
     public void startMaintenance(Long id, String handler) {
         MesMaintenance m = getMaintenance(id);
         MesEquipment equipment = get(m.getEquipmentId());
-        int updated = maintenanceMapper.update(Wrappers.<MesMaintenance>lambdaUpdate()
-                .set(MesMaintenance::getStatus, MaintenanceStatus.IN_PROGRESS)
-                .set(MesMaintenance::getPrevStatus, equipment.getStatus())
-                .set(MesMaintenance::getStartTime, LocalDateTime.now())
-                .set(handler != null && !handler.isBlank(), MesMaintenance::getHandler, handler)
-                .eq(MesMaintenance::getId, id)
-                .eq(MesMaintenance::getStatus, MaintenanceStatus.PENDING));
-        if (updated == 0) {
+        if (!StatusTransitions.tryChange(maintenanceMapper, MesMaintenance::getId, id, MesMaintenance::getStatus,
+                MaintenanceStatus.PENDING, MaintenanceStatus.IN_PROGRESS,
+                w -> w.set(MesMaintenance::getPrevStatus, equipment.getStatus())
+                        .set(MesMaintenance::getStartTime, LocalDateTime.now())
+                        .set(handler != null && !handler.isBlank(), MesMaintenance::getHandler, handler))) {
             throw new BizException("mes.error.onlyPendingMaintenanceOrdersStarted");
         }
         if (m.getType() == MaintenanceType.REPAIR) {
@@ -161,21 +159,16 @@ public class MesEquipmentService {
     public void finishMaintenance(Long id, MaintenanceFinishRequest req) {
         MesMaintenance m = getMaintenance(id);
         LocalDateTime now = LocalDateTime.now();
-        BigDecimal downtime = null;
-        if (m.getType() == MaintenanceType.REPAIR && m.getStartTime() != null) {
-            downtime = BigDecimal.valueOf(Duration.between(m.getStartTime(), now).toMinutes())
-                    .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-        }
-        int updated = maintenanceMapper.update(Wrappers.<MesMaintenance>lambdaUpdate()
-                .set(MesMaintenance::getStatus, MaintenanceStatus.DONE)
-                .set(MesMaintenance::getFinishTime, now)
-                .set(MesMaintenance::getDowntime, downtime)
-                .set(MesMaintenance::getCost, req.cost())
-                .set(MesMaintenance::getResult, req.result().trim())
-                .set(req.handler() != null && !req.handler().isBlank(), MesMaintenance::getHandler, req.handler())
-                .eq(MesMaintenance::getId, id)
-                .eq(MesMaintenance::getStatus, MaintenanceStatus.IN_PROGRESS));
-        if (updated == 0) {
+        BigDecimal downtime = m.getType() == MaintenanceType.REPAIR && m.getStartTime() != null
+                ? BigDecimal.valueOf(Duration.between(m.getStartTime(), now).toMinutes()).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP)
+                : null;
+        if (!StatusTransitions.tryChange(maintenanceMapper, MesMaintenance::getId, id, MesMaintenance::getStatus,
+                MaintenanceStatus.IN_PROGRESS, MaintenanceStatus.DONE,
+                w -> w.set(MesMaintenance::getFinishTime, now)
+                        .set(MesMaintenance::getDowntime, downtime)
+                        .set(MesMaintenance::getCost, req.cost())
+                        .set(MesMaintenance::getResult, req.result().trim())
+                        .set(req.handler() != null && !req.handler().isBlank(), MesMaintenance::getHandler, req.handler()))) {
             throw new BizException("mes.error.onlyProgressMaintenanceOrdersFinished");
         }
         MesEquipment equipment = get(m.getEquipmentId());

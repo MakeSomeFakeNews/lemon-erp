@@ -4,11 +4,12 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.period.BizPeriodGuard;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
+import com.lemon.erp.framework.security.datascope.DataScopes;
 import com.lemon.erp.modules.mes.dto.ReportRequest;
 import com.lemon.erp.modules.mes.dto.WorkOrderQuery;
 import com.lemon.erp.modules.mes.dto.WorkOrderRequest;
@@ -58,7 +59,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 
 import static com.lemon.erp.modules.mes.model.MesConstants.WO_RULE;
 
@@ -71,7 +71,6 @@ import static com.lemon.erp.modules.mes.model.MesConstants.WO_RULE;
 @RequiredArgsConstructor
 public class MesWorkOrderService {
 
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     private static final int MAX_PHANTOM_DEPTH = 20;
 
     private final MesWorkOrderMapper workOrderMapper;
@@ -198,7 +197,7 @@ public class MesWorkOrderService {
         if (op == null || !op.getWoId().equals(id)) {
             throw new BizException("mes.error.operationDoesNotBelongWorkOrder");
         }
-        BigDecimal scrap = req.scrapQty() == null ? BigDecimal.ZERO : req.scrapQty();
+        BigDecimal scrap = Decimals.nz(req.scrapQty());
         if (req.goodQty().signum() == 0 && scrap.signum() == 0 && req.hours().signum() == 0) {
             throw new BizException("mes.error.enterReportedQuantityHours");
         }
@@ -375,12 +374,7 @@ public class MesWorkOrderService {
     // ---------------------------------------------------------------- 供领料、完工入库使用
 
     MesWorkOrder getAccessible(Long id) {
-        Supplier<MesWorkOrder> loader = () -> workOrderMapper.selectById(id);
-        MesWorkOrder wo = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(WO_RULE, loader);
-        if (wo == null) {
-            throw new BizException("mes.error.workOrderDoesNotExistAccess");
-        }
-        return wo;
+        return DataScopes.require(WO_RULE, () -> workOrderMapper.selectById(id), "mes.error.workOrderDoesNotExistAccess");
     }
 
     MesWorkOrder getExecutable(Long id) {
@@ -555,7 +549,7 @@ public class MesWorkOrderService {
 
     /** 含损耗的单位用量 = 用量 × (1 + 损耗率 / 100) */
     static BigDecimal unitQty(MesBomItem item) {
-        return item.getQty().multiply(BigDecimal.ONE.add(item.getLossRate().divide(HUNDRED, 6, RoundingMode.HALF_UP)))
+        return item.getQty().multiply(BigDecimal.ONE.add(item.getLossRate().divide(Decimals.HUNDRED, 6, RoundingMode.HALF_UP)))
                 .setScale(6, RoundingMode.HALF_UP);
     }
 }

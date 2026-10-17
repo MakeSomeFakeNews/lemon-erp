@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import static com.lemon.erp.framework.workflow.FlowBusiness.Variable.*;
 
 /**
- * 人力资源模块接入审批的流程及发起时传入的流程变量（流程设计器的条件分支可选），与各 Service 中 flowApi.start 传入的变量保持一致
+ * 人力资源模块接入审批的流程及发起时传入的流程变量（流程设计器的条件分支可选），与各 Service 发起审批时传入的变量保持一致
  */
 @Configuration
 public class HrFlowBusinesses {

@@ -2,6 +2,7 @@ package com.lemon.erp.modules.pm.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.org.UserLookup;
 import com.lemon.erp.modules.hr.service.HrSalaryService;
@@ -156,7 +157,6 @@ public class PmMemberService {
     }
 
     private BigDecimal defaultRate(Long userId) {
-        BigDecimal rate = salaryService.hourlyCost(userId);
-        return rate == null ? BigDecimal.ZERO : rate;
+        return Decimals.nz(salaryService.hourlyCost(userId));
     }
 }

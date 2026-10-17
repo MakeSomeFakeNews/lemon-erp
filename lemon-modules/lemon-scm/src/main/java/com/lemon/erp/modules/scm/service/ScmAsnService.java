@@ -4,9 +4,9 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.dto.SrmRequests;
 import com.lemon.erp.modules.scm.dto.SrmViews;
 import com.lemon.erp.modules.scm.dto.TradeDocItemRequest;
@@ -96,7 +96,6 @@ public class ScmAsnService {
         asn.setTrackingNo(req.trackingNo());
         asn.setRemark(req.remark());
         asn.setStatus(AsnStatus.SUBMITTED);
-        asn.setCreateBy(SecurityUtils.getUserId());
         asnMapper.insert(asn);
         asnMapper.insertItems(req.items().stream().map(r -> {
             ScmOrderItem oi = orderItems.get(r.orderItemId());
@@ -158,11 +157,8 @@ public class ScmAsnService {
         }
         Long docId = tradeDocService.create(TradeKind.PURCHASE_IN, new TradeDocRequest(asn.getOrderId(), warehouseId, req.bizDate(),
                 "送货通知 " + asn.getAsnNo(), false, items)); // i18n-ignore
-        if (asnMapper.update(Wrappers.<ScmAsn>lambdaUpdate()
-                .set(ScmAsn::getStatus, AsnStatus.RECEIVED)
-                .set(ScmAsn::getTradeDocId, docId)
-                .set(ScmAsn::getReceivedTime, LocalDateTime.now())
-                .eq(ScmAsn::getId, id).eq(ScmAsn::getStatus, AsnStatus.SUBMITTED)) == 0) {
+        if (!StatusTransitions.tryChange(asnMapper, ScmAsn::getId, id, ScmAsn::getStatus, AsnStatus.SUBMITTED, AsnStatus.RECEIVED,
+                w -> w.set(ScmAsn::getTradeDocId, docId).set(ScmAsn::getReceivedTime, LocalDateTime.now()))) {
             throw new BizException("scm.error.asnStatusHasChangedRefreshTry");
         }
         return docId;

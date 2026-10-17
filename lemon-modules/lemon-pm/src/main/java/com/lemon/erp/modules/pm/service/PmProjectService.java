@@ -4,14 +4,16 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.org.UserLookup;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.pm.dto.MemberRequest;
 import com.lemon.erp.modules.pm.dto.ProjectRequest;
 import com.lemon.erp.modules.pm.entity.PmBilling;
@@ -60,7 +62,7 @@ public class PmProjectService {
 
     /** 项目立项审批流程标识 */
     public static final String PROCESS_KEY = "pm_project";
-    private static final String BUSINESS_KEY_PREFIX = "pm_project:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "pm_project:");
 
     /** 默认优先级（业务字典 pm_priority 的内置值） */
     private static final String DEFAULT_PRIORITY = "MEDIUM";
@@ -77,7 +79,7 @@ public class PmProjectService {
     private final PmMemberService memberService;
     private final ScmCustomerService customerService;
     private final UserLookup userLookup;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
     private final ChangeLogger changeLogger;
     private final ScmQueryService scmQueryService;
     private final DictLookup dictLookup;
@@ -118,7 +120,6 @@ public class PmProjectService {
         p.setStatus(ProjectStatus.PLANNING);
         p.setBudgetAmount(BigDecimal.ZERO);
         p.setProgress(BigDecimal.ZERO);
-        p.setCreateBy(SecurityUtils.getUserId());
         projectMapper.insert(p);
         memberService.addManager(p.getId(), p.getManagerId(), p.getPlanStart());
         return p.getId();
@@ -163,19 +164,13 @@ public class PmProjectService {
     @Transactional
     public boolean changeStatus(Long id, ProjectStatus status) {
         PmProject p = get(id);
-        if (status == ProjectStatus.ACTIVE && p.getStatus() == ProjectStatus.PLANNING && flowApi.isAvailable(PROCESS_KEY)) {
-            int updated = projectMapper.update(Wrappers.<PmProject>lambdaUpdate()
-                    .set(PmProject::getStatus, ProjectStatus.APPROVING).eq(PmProject::getId, id).eq(PmProject::getStatus, ProjectStatus.PLANNING));
-            if (updated == 0) {
-                throw new BizException("pm.error.projectStatusHasChangedRefresh");
-            }
-            Map<String, Object> vars = new HashMap<>();
-            vars.put("projectCode", p.getCode());
-            vars.put("contractAmount", p.getContractAmount() == null ? 0 : p.getContractAmount().doubleValue());
-            vars.put("budgetAmount", p.getBudgetAmount() == null ? 0 : p.getBudgetAmount().doubleValue());
-            vars.put("type", p.getType() == null ? "" : p.getType());
-            String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, vars);
-            projectMapper.update(Wrappers.<PmProject>lambdaUpdate().set(PmProject::getFlowInstanceId, instanceId).eq(PmProject::getId, id));
+        // 流程未发布时（submit 返回 false）按普通状态流转直接启动
+        if (status == ProjectStatus.ACTIVE && p.getStatus() == ProjectStatus.PLANNING && approvalSupport.submit(FLOW, id, flowVariables(p),
+                () -> { },
+                () -> StatusTransitions.change(projectMapper, PmProject::getId, id, PmProject::getStatus,
+                        ProjectStatus.PLANNING, ProjectStatus.APPROVING, "pm.error.projectStatusHasChangedRefresh"),
+                instanceId -> projectMapper.update(Wrappers.<PmProject>lambdaUpdate()
+                        .set(PmProject::getFlowInstanceId, instanceId).eq(PmProject::getId, id)))) {
             return true;
         }
         if (status == null || !status.allowedFrom().contains(p.getStatus())) {
@@ -202,17 +197,19 @@ public class PmProjectService {
     /** 立项审批结束：通过 → 进行中；拒绝、撤销 → 规划中 */
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        boolean approved = e.status() == FlowStatus.APPROVED;
-        projectMapper.update(Wrappers.<PmProject>lambdaUpdate()
-                .set(PmProject::getStatus, approved ? ProjectStatus.ACTIVE : ProjectStatus.PLANNING)
-                .set(approved, PmProject::getActualStart, LocalDate.now())
-                .set(PmProject::getUpdateTime, LocalDateTime.now())
-                .eq(PmProject::getId, id)
-                .eq(PmProject::getStatus, ProjectStatus.APPROVING));
+        FLOW.onFinished(e, (id, approved) -> StatusTransitions.tryChange(projectMapper, PmProject::getId, id, PmProject::getStatus,
+                ProjectStatus.APPROVING, approved ? ProjectStatus.ACTIVE : ProjectStatus.PLANNING,
+                w -> w.set(approved, PmProject::getActualStart, LocalDate.now()).set(PmProject::getUpdateTime, LocalDateTime.now())));
+    }
+
+    /** 立项审批的流程变量（与 PmFlowBusinesses 声明一致） */
+    private static Map<String, Object> flowVariables(PmProject p) {
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("projectCode", p.getCode());
+        vars.put("contractAmount", p.getContractAmount() == null ? 0 : p.getContractAmount().doubleValue());
+        vars.put("budgetAmount", p.getBudgetAmount() == null ? 0 : p.getBudgetAmount().doubleValue());
+        vars.put("type", p.getType() == null ? "" : p.getType());
+        return vars;
     }
 
     /** 只能删除规划中、没有工时和费用的项目 */
@@ -284,7 +281,7 @@ public class PmProjectService {
         p.setPriority(req.priority() == null || req.priority().isBlank() ? DEFAULT_PRIORITY : req.priority());
         p.setPlanStart(req.planStart());
         p.setPlanEnd(req.planEnd());
-        p.setContractAmount(req.contractAmount() == null ? BigDecimal.ZERO : req.contractAmount());
+        p.setContractAmount(Decimals.nz(req.contractAmount()));
         p.setTaxRate(req.taxRate() == null ? DEFAULT_TAX_RATE : req.taxRate());
         p.setDescription(req.description());
     }

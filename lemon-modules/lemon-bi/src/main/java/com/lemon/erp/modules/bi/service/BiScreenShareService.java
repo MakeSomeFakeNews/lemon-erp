@@ -3,7 +3,6 @@ package com.lemon.erp.modules.bi.service;
 import com.lemon.erp.common.i18n.Messages;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.tenant.TenantContext;
 import com.lemon.erp.modules.bi.dto.ScreenShareRequest;
 import com.lemon.erp.modules.bi.entity.BiScreenShare;
@@ -46,7 +45,6 @@ public class BiScreenShareService {
         BiScreenShare share = new BiScreenShare();
         apply(share, req);
         share.setToken(newToken());
-        share.setCreateBy(SecurityUtils.getUserId());
         shareMapper.insert(share);
         return share.getId();
     }

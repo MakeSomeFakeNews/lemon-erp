@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.fin.model.VoucherStatus;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -56,6 +57,7 @@ public class FinVoucher extends BaseEntity {
     /** 已被红字冲销 1 */
     private Integer reversed;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     private Long auditBy;

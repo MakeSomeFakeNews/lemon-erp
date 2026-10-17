@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.crm.model.TicketStatus;
 import com.lemon.erp.modules.crm.model.TicketPriority;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -83,6 +84,7 @@ public class CrmTicket extends BaseEntity {
     private Long deptId;
 
     /** 受理人 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

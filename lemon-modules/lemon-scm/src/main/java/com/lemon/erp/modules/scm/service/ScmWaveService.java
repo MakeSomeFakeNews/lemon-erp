@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.dto.PickRequest;
@@ -98,7 +99,6 @@ public class ScmWaveService {
         w.setStatus(WaveStatus.PICKING);
         w.setRemark(req.remark());
         w.setDeptId(user.deptId());
-        w.setCreateBy(user.userId());
         waveMapper.insert(w);
         join(w.getId(), deliveries);
         return w.getId();
@@ -166,10 +166,9 @@ public class ScmWaveService {
                     .map(p -> new PickRequest.Line(p.getDeliveryItemId(), p.getLocationId(), p.getBatchNo(), p.getQty(), null)).toList();
             deliveryService.confirmPick(d.getId(), new PickRequest(picks));
         }
-        if (waveMapper.update(Wrappers.<ScmWave>lambdaUpdate().set(ScmWave::getStatus, WaveStatus.DONE)
-                .set(ScmWave::getPickBy, SecurityUtils.getUserIdOrNull()).set(ScmWave::getPickTime, LocalDateTime.now())
-                .set(ScmWave::getUpdateTime, LocalDateTime.now())
-                .eq(ScmWave::getId, id).eq(ScmWave::getStatus, WaveStatus.PICKING)) == 0) {
+        if (!StatusTransitions.tryChange(waveMapper, ScmWave::getId, id, ScmWave::getStatus, WaveStatus.PICKING, WaveStatus.DONE,
+                w -> w.set(ScmWave::getPickBy, SecurityUtils.getUserIdOrNull()).set(ScmWave::getPickTime, LocalDateTime.now())
+                        .set(ScmWave::getUpdateTime, LocalDateTime.now()))) {
             throw new BizException("scm.error.waveStatusHasChangedRefreshTry");
         }
         return new CompleteResult(ready.size(), shortage, serial);
@@ -234,8 +233,8 @@ public class ScmWaveService {
     }
 
     private void changeStatus(Long id, WaveStatus to) {
-        if (waveMapper.update(Wrappers.<ScmWave>lambdaUpdate().set(ScmWave::getStatus, to).set(ScmWave::getUpdateTime, LocalDateTime.now())
-                .eq(ScmWave::getId, id).eq(ScmWave::getStatus, WaveStatus.PICKING)) == 0) {
+        if (!StatusTransitions.tryChange(waveMapper, ScmWave::getId, id, ScmWave::getStatus, WaveStatus.PICKING, to,
+                w -> w.set(ScmWave::getUpdateTime, LocalDateTime.now()))) {
             throw new BizException("scm.error.waveStatusHasChangedRefreshTry");
         }
     }

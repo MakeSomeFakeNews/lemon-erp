@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.hr.model;
 
+import com.lemon.erp.common.util.Decimals;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -51,7 +53,7 @@ public final class HrConstants {
         }
         for (long[] row : ANNUAL_TAX_TABLE) {
             if (cumTaxable.compareTo(BigDecimal.valueOf(row[0])) <= 0) {
-                return cumTaxable.multiply(BigDecimal.valueOf(row[1])).divide(BigDecimal.valueOf(100))
+                return cumTaxable.multiply(BigDecimal.valueOf(row[1])).divide(Decimals.HUNDRED)
                         .subtract(BigDecimal.valueOf(row[2])).setScale(2, RoundingMode.HALF_UP);
             }
         }
@@ -65,7 +67,7 @@ public final class HrConstants {
         }
         for (long[] row : TAX_TABLE) {
             if (taxable.compareTo(BigDecimal.valueOf(row[0])) <= 0) {
-                return taxable.multiply(BigDecimal.valueOf(row[1])).divide(BigDecimal.valueOf(100))
+                return taxable.multiply(BigDecimal.valueOf(row[1])).divide(Decimals.HUNDRED)
                         .subtract(BigDecimal.valueOf(row[2])).setScale(2, RoundingMode.HALF_UP);
             }
         }
@@ -76,9 +78,5 @@ public final class HrConstants {
     public static int annualLeaveDays(LocalDate workStart, LocalDate asOf) {
         long years = ChronoUnit.YEARS.between(workStart, asOf);
         return years < 1 ? 0 : years < 10 ? 5 : years < 20 ? 10 : 15;
-    }
-
-    public static BigDecimal money(BigDecimal v) {
-        return v.setScale(2, RoundingMode.HALF_UP);
     }
 }

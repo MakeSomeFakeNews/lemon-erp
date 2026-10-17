@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.modules.fin.model.VoucherStatus;
 import com.lemon.erp.modules.fin.model.CostRunKind;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -28,6 +29,7 @@ public class FinCostRun extends BaseEntity {
     /** 本期转入主营业务成本的制造费用差异 */
     private BigDecimal overheadVariance;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
 
     @TableField(exist = false)

@@ -4,14 +4,16 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
 import com.lemon.erp.framework.security.datascope.DataPermissionRule;
-import com.lemon.erp.framework.workflow.FlowApi;
+import com.lemon.erp.framework.security.datascope.DataScopes;
+import com.lemon.erp.framework.workflow.ApprovalFlow;
+import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
-import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.scm.dto.OrderItemRequest;
 import com.lemon.erp.modules.scm.dto.OrderRequest;
 import com.lemon.erp.modules.scm.dto.QuotationRequest;
@@ -34,13 +36,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
 import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
@@ -55,9 +55,8 @@ import static com.lemon.erp.modules.scm.model.ScmConstants.tax;
 public class ScmQuotationService {
 
     public static final String PROCESS_KEY = "scm_quotation";
-    private static final String BUSINESS_KEY_PREFIX = "scm_quotation:";
+    private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "scm_quotation:");
     private static final DataPermissionRule RULE = new DataPermissionRule("scm_quotation", "dept_id", "create_by");
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final ScmQuotationMapper quotationMapper;
     private final ScmQuotationItemMapper itemMapper;
@@ -66,7 +65,7 @@ public class ScmQuotationService {
     private final ScmOrderService orderService;
     private final WmsMaterialService materialService;
     private final DocNoService docNoService;
-    private final FlowApi flowApi;
+    private final ApprovalSupport approvalSupport;
 
     @DataPermission(table = "scm_quotation", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmQuotation> page(long current, long size, String keyword, QuotationStatus status, Long customerId, Long opportunityId) {
@@ -99,7 +98,6 @@ public class ScmQuotationService {
         q.setQuoteNo(docNoService.next(ScmDocNos.QUOTATION));
         q.setStatus(QuotationStatus.DRAFT);
         q.setDeptId(user.deptId());
-        q.setCreateBy(user.userId());
         fill(q, req);
         quotationMapper.insert(q);
         saveItems(q.getId(), q, req);
@@ -140,33 +138,23 @@ public class ScmQuotationService {
     @Transactional
     public boolean submit(Long id) {
         ScmQuotation q = getDraft(id);
-        if (!flowApi.isAvailable(PROCESS_KEY)) {
-            transit(id, QuotationStatus.DRAFT, QuotationStatus.APPROVED, true);
-            return false;
-        }
-        transit(id, QuotationStatus.DRAFT, QuotationStatus.APPROVING, false);
         Map<String, Object> vars = new HashMap<>();
         vars.put("quoteNo", q.getQuoteNo());
         vars.put("totalAmount", q.getTotalAmount());
         vars.put("discountRate", minDiscountRate(id));
-        String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, vars);
-        quotationMapper.update(Wrappers.<ScmQuotation>lambdaUpdate().set(ScmQuotation::getFlowInstanceId, instanceId)
-                .eq(ScmQuotation::getId, id));
-        return true;
+        return approvalSupport.submit(FLOW, id, vars,
+                () -> transit(id, QuotationStatus.DRAFT, QuotationStatus.APPROVED, true),
+                () -> transit(id, QuotationStatus.DRAFT, QuotationStatus.APPROVING, false),
+                instanceId -> quotationMapper.update(Wrappers.<ScmQuotation>lambdaUpdate().set(ScmQuotation::getFlowInstanceId, instanceId)
+                        .eq(ScmQuotation::getId, id)));
     }
 
     @EventListener
     public void onFlowFinished(FlowFinishedEvent e) {
-        if (e.businessKey() == null || !e.businessKey().startsWith(BUSINESS_KEY_PREFIX)) {
-            return;
-        }
-        Long id = Long.valueOf(e.businessKey().substring(BUSINESS_KEY_PREFIX.length()));
-        boolean approved = e.status() == FlowStatus.APPROVED;
-        quotationMapper.update(Wrappers.<ScmQuotation>lambdaUpdate()
-                .set(ScmQuotation::getStatus, approved ? QuotationStatus.APPROVED : QuotationStatus.DRAFT)
-                .set(approved, ScmQuotation::getApproveBy, SecurityUtils.getUserIdOrNull())
-                .set(approved, ScmQuotation::getApproveTime, LocalDateTime.now())
-                .eq(ScmQuotation::getId, id).eq(ScmQuotation::getStatus, QuotationStatus.APPROVING));
+        FLOW.onFinished(e, (id, approved) -> StatusTransitions.tryChange(quotationMapper, ScmQuotation::getId, id,
+                ScmQuotation::getStatus, QuotationStatus.APPROVING, approved ? QuotationStatus.APPROVED : QuotationStatus.DRAFT,
+                w -> w.set(approved, ScmQuotation::getApproveBy, SecurityUtils.getUserIdOrNull())
+                        .set(approved, ScmQuotation::getApproveTime, LocalDateTime.now())));
     }
 
     /** 客户接受报价：生成草稿销售订单（来源 QUOTATION） */
@@ -185,9 +173,8 @@ public class ScmQuotationService {
                 .toList();
         Long orderId = orderService.createDraft(OrderKind.SALES, new OrderRequest(q.getCustomerId(), LocalDate.now(), deliveryDate,
                 warehouseId, "报价单 " + q.getQuoteNo(), lines), OrderSource.QUOTATION); // i18n-ignore
-        int updated = quotationMapper.update(Wrappers.<ScmQuotation>lambdaUpdate().set(ScmQuotation::getStatus, QuotationStatus.ORDERED)
-                .set(ScmQuotation::getOrderId, orderId).eq(ScmQuotation::getId, id).eq(ScmQuotation::getStatus, QuotationStatus.APPROVED));
-        if (updated == 0) {
+        if (!StatusTransitions.tryChange(quotationMapper, ScmQuotation::getId, id, ScmQuotation::getStatus,
+                QuotationStatus.APPROVED, QuotationStatus.ORDERED, w -> w.set(ScmQuotation::getOrderId, orderId))) {
             throw new BizException("scm.error.quotationStatusHasChangedRefresh");
         }
         return orderId;
@@ -200,8 +187,8 @@ public class ScmQuotationService {
         if (!q.getStatus().isLosable()) {
             throw new BizException("scm.error.onlyDraftApprovedQuotationsMarkedExpired");
         }
-        quotationMapper.update(Wrappers.<ScmQuotation>lambdaUpdate().set(ScmQuotation::getStatus, QuotationStatus.LOST)
-                .set(ScmQuotation::getLostReason, reason).eq(ScmQuotation::getId, id).eq(ScmQuotation::getStatus, q.getStatus()));
+        StatusTransitions.tryChange(quotationMapper, ScmQuotation::getId, id, ScmQuotation::getStatus, q.getStatus(), QuotationStatus.LOST,
+                w -> w.set(ScmQuotation::getLostReason, reason));
     }
 
     /** 草稿订单删除后报价恢复为已批准，可以重新转单 */
@@ -257,18 +244,16 @@ public class ScmQuotationService {
     private BigDecimal minDiscountRate(Long id) {
         return itemMapper.selectList(Wrappers.<ScmQuotationItem>lambdaQuery().eq(ScmQuotationItem::getQuotationId, id)).stream()
                 .filter(i -> i.getListPrice() != null && i.getListPrice().signum() > 0)
-                .map(i -> i.getPrice().multiply(HUNDRED).divide(i.getListPrice(), 2, RoundingMode.HALF_UP))
-                .min(BigDecimal::compareTo).orElse(HUNDRED);
+                .map(i -> Decimals.percent(i.getPrice(), i.getListPrice(), 2))
+                .min(BigDecimal::compareTo).orElse(Decimals.HUNDRED);
     }
 
     private void transit(Long id, QuotationStatus from, QuotationStatus to, boolean approve) {
-        int updated = quotationMapper.update(Wrappers.<ScmQuotation>lambdaUpdate()
-                .set(ScmQuotation::getStatus, to)
-                .set(approve, ScmQuotation::getApproveBy, SecurityUtils.getUserIdOrNull())
-                .set(approve, ScmQuotation::getApproveTime, LocalDateTime.now())
-                .set(ScmQuotation::getUpdateTime, LocalDateTime.now())
-                .eq(ScmQuotation::getId, id).eq(ScmQuotation::getStatus, from));
-        if (updated == 0) {
+        boolean changed = StatusTransitions.tryChange(quotationMapper, ScmQuotation::getId, id, ScmQuotation::getStatus, from, to,
+                w -> w.set(approve, ScmQuotation::getApproveBy, SecurityUtils.getUserIdOrNull())
+                        .set(approve, ScmQuotation::getApproveTime, LocalDateTime.now())
+                        .set(ScmQuotation::getUpdateTime, LocalDateTime.now()));
+        if (!changed) {
             throw new BizException("scm.error.quotationStatusHasChangedRefresh");
         }
     }
@@ -282,11 +267,6 @@ public class ScmQuotationService {
     }
 
     private ScmQuotation getAccessible(Long id) {
-        Supplier<ScmQuotation> loader = () -> quotationMapper.selectById(id);
-        ScmQuotation q = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(RULE, loader);
-        if (q == null) {
-            throw new BizException("scm.error.quotationDoesNotExistAccessDenied");
-        }
-        return q;
+        return DataScopes.require(RULE, () -> quotationMapper.selectById(id), "scm.error.quotationDoesNotExistAccessDenied");
     }
 }

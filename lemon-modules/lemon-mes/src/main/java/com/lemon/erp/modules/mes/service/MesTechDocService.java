@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.PlmRequests;
@@ -97,11 +98,8 @@ public class MesTechDocService {
         if (doc.getFileCount() == null || doc.getFileCount() == 0) {
             throw new BizException("mes.error.uploadDocumentFilesFirst");
         }
-        if (docMapper.update(Wrappers.<MesTechDoc>lambdaUpdate()
-                .set(MesTechDoc::getStatus, DocStatus.RELEASED)
-                .set(MesTechDoc::getReleaseBy, SecurityUtils.getUserId())
-                .set(MesTechDoc::getReleaseTime, LocalDateTime.now())
-                .eq(MesTechDoc::getId, id).eq(MesTechDoc::getStatus, DocStatus.DRAFT)) == 0) {
+        if (!StatusTransitions.tryChange(docMapper, MesTechDoc::getId, id, MesTechDoc::getStatus, DocStatus.DRAFT, DocStatus.RELEASED,
+                w -> w.set(MesTechDoc::getReleaseBy, SecurityUtils.getUserId()).set(MesTechDoc::getReleaseTime, LocalDateTime.now()))) {
             throw new BizException("mes.error.documentStatusHasChangedRefreshTry");
         }
         if (doc.getPrevId() != null) {

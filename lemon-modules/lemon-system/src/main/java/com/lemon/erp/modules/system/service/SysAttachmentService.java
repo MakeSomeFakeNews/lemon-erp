@@ -3,7 +3,6 @@ package com.lemon.erp.modules.system.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.file.FileStorageService;
-import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.setting.Setting;
 import com.lemon.erp.framework.setting.SettingService;
 import com.lemon.erp.modules.system.entity.SysAttachment;
@@ -70,7 +69,6 @@ public class SysAttachmentService {
         a.setFileSize(file.getSize());
         a.setContentType(file.getContentType());
         a.setStoragePath(path);
-        a.setCreateBy(SecurityUtils.getUserId());
         attachmentMapper.insert(a);
         return a;
     }

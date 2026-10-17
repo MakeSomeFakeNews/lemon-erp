@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.util.Decimals;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.modules.fin.dto.CostVariance;
@@ -90,13 +91,13 @@ public class FinCostVarianceService {
             BigDecimal sq = wo.getFinishedQty().multiply(uq);
             Map<String, Object> iss = issues.get(id);
             BigDecimal aq = iss == null ? BigDecimal.ZERO : dec(iss.get("qty"));
-            BigDecimal amount = iss == null ? BigDecimal.ZERO : money(dec(iss.get("amount")));
+            BigDecimal amount = iss == null ? BigDecimal.ZERO : Decimals.money(dec(iss.get("amount")));
             FinStdCost s = std.get(id);
             BigDecimal sp = s == null ? BigDecimal.ZERO : s.getUnitCost();
             WmsMaterial m = info.get(id);
             list.add(new Component(id, m == null ? null : m.getCode(), m == null ? null : m.getName(), m == null ? null : m.getUnit(),
                     uq, sq.setScale(4, RoundingMode.HALF_UP), aq, amount, sp, s != null,
-                    money(aq.subtract(sq).multiply(sp)), money(amount.subtract(aq.multiply(sp)))));
+                    Decimals.money(aq.subtract(sq).multiply(sp)), Decimals.money(amount.subtract(aq.multiply(sp)))));
         }
         return list;
     }
@@ -114,12 +115,12 @@ public class FinCostVarianceService {
         BigDecimal f = r.getFinishedQty();
         BigDecimal ah = r.getHours();
         r.setActualTotal(r.getActualMaterial().add(r.getActualLabor()).add(r.getActualOverhead()));
-        r.setStdMaterial(money(f.multiply(r.getStdUnitMaterial())));
-        r.setStdLabor(money(f.multiply(r.getStdUnitLabor())));
-        r.setStdOverhead(money(f.multiply(r.getStdUnitOverhead())));
+        r.setStdMaterial(Decimals.money(f.multiply(r.getStdUnitMaterial())));
+        r.setStdLabor(Decimals.money(f.multiply(r.getStdUnitLabor())));
+        r.setStdOverhead(Decimals.money(f.multiply(r.getStdUnitOverhead())));
         r.setStdTotal(r.getStdMaterial().add(r.getStdLabor()).add(r.getStdOverhead()));
         r.setStdHours(f.multiply(r.getStdUnitHours()).setScale(4, RoundingMode.HALF_UP));
-        BigDecimal issuedAtStd = money(r.getIssuedAtStd());
+        BigDecimal issuedAtStd = Decimals.money(r.getIssuedAtStd());
         r.setMaterialPrice(r.getActualMaterial().subtract(issuedAtStd));
         r.setMaterialUsage(issuedAtStd.subtract(r.getStdMaterial()));
         // 标准小时费率 = 单位标准人工（制造费用）/ 单位标准工时；没有标准工时的全部计入费率（耗费）差异
@@ -136,35 +137,27 @@ public class FinCostVarianceService {
         if (unitHours.signum() == 0) {
             return BigDecimal.ZERO;
         }
-        return money(actualHours.subtract(stdHours).multiply(unitCost).divide(unitHours, 10, RoundingMode.HALF_UP));
+        return Decimals.money(actualHours.subtract(stdHours).multiply(unitCost).divide(unitHours, 10, RoundingMode.HALF_UP));
     }
 
     private static CostVariance total(List<CostVariance> rows) {
         CostVariance t = new CostVariance();
-        t.setActualTotal(sum(rows, CostVariance::getActualTotal));
-        t.setStdTotal(sum(rows, CostVariance::getStdTotal));
-        t.setActualMaterial(sum(rows, CostVariance::getActualMaterial));
-        t.setActualLabor(sum(rows, CostVariance::getActualLabor));
-        t.setActualOverhead(sum(rows, CostVariance::getActualOverhead));
-        t.setStdMaterial(sum(rows, CostVariance::getStdMaterial));
-        t.setStdLabor(sum(rows, CostVariance::getStdLabor));
-        t.setStdOverhead(sum(rows, CostVariance::getStdOverhead));
-        t.setMaterialPrice(sum(rows, CostVariance::getMaterialPrice));
-        t.setMaterialUsage(sum(rows, CostVariance::getMaterialUsage));
-        t.setLaborRate(sum(rows, CostVariance::getLaborRate));
-        t.setLaborEfficiency(sum(rows, CostVariance::getLaborEfficiency));
-        t.setOverheadSpending(sum(rows, CostVariance::getOverheadSpending));
-        t.setOverheadEfficiency(sum(rows, CostVariance::getOverheadEfficiency));
-        t.setTotalVariance(sum(rows, CostVariance::getTotalVariance));
+        t.setActualTotal(Decimals.sum(rows, CostVariance::getActualTotal));
+        t.setStdTotal(Decimals.sum(rows, CostVariance::getStdTotal));
+        t.setActualMaterial(Decimals.sum(rows, CostVariance::getActualMaterial));
+        t.setActualLabor(Decimals.sum(rows, CostVariance::getActualLabor));
+        t.setActualOverhead(Decimals.sum(rows, CostVariance::getActualOverhead));
+        t.setStdMaterial(Decimals.sum(rows, CostVariance::getStdMaterial));
+        t.setStdLabor(Decimals.sum(rows, CostVariance::getStdLabor));
+        t.setStdOverhead(Decimals.sum(rows, CostVariance::getStdOverhead));
+        t.setMaterialPrice(Decimals.sum(rows, CostVariance::getMaterialPrice));
+        t.setMaterialUsage(Decimals.sum(rows, CostVariance::getMaterialUsage));
+        t.setLaborRate(Decimals.sum(rows, CostVariance::getLaborRate));
+        t.setLaborEfficiency(Decimals.sum(rows, CostVariance::getLaborEfficiency));
+        t.setOverheadSpending(Decimals.sum(rows, CostVariance::getOverheadSpending));
+        t.setOverheadEfficiency(Decimals.sum(rows, CostVariance::getOverheadEfficiency));
+        t.setTotalVariance(Decimals.sum(rows, CostVariance::getTotalVariance));
         return t;
-    }
-
-    private static BigDecimal sum(List<CostVariance> rows, Function<CostVariance, BigDecimal> f) {
-        return rows.stream().map(f).reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private static BigDecimal money(BigDecimal v) {
-        return v.setScale(2, RoundingMode.HALF_UP);
     }
 
     private static BigDecimal dec(Object v) {

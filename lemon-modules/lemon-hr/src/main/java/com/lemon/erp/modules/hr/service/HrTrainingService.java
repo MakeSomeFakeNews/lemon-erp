@@ -4,6 +4,7 @@ import com.lemon.erp.modules.hr.model.TrainingStatus;
 import com.lemon.erp.modules.fin.service.FinAccountRuleService;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
@@ -105,9 +106,8 @@ public class HrTrainingService {
         if (!t.getStatus().canChangeTo(status)) {
             throw new BizException("hr.error.operationNotAllowedCurrentTrainingStatus");
         }
-        trainingMapper.update(Wrappers.<HrTraining>lambdaUpdate().set(HrTraining::getStatus, status)
-                .set(HrTraining::getUpdateTime, LocalDateTime.now())
-                .eq(HrTraining::getId, id).eq(HrTraining::getStatus, t.getStatus()));
+        StatusTransitions.tryChange(trainingMapper, HrTraining::getId, id, HrTraining::getStatus, t.getStatus(), status,
+                w -> w.set(HrTraining::getUpdateTime, LocalDateTime.now()));
         // 培训结束：有费用时生成培训费凭证（借 管理费用-培训费 / 贷 其他应付款）
         if (status == TrainingStatus.FINISHED && t.getCost() != null && t.getCost().signum() > 0 && t.getVoucherId() == null) {
             String summary = "培训费 " + t.getTitle();  // i18n-ignore 凭证摘要存库

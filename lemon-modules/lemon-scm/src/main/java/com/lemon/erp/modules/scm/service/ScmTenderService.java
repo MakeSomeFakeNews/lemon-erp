@@ -5,11 +5,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
-import com.lemon.erp.framework.security.datascope.DataPermissionContext;
+import com.lemon.erp.framework.security.datascope.DataScopes;
 import com.lemon.erp.modules.scm.dto.OrderItemRequest;
 import com.lemon.erp.modules.scm.dto.OrderRequest;
 import com.lemon.erp.modules.scm.dto.SrmRequests;
@@ -39,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
@@ -98,7 +99,6 @@ public class ScmTenderService {
         apply(tender, req);
         tender.setStatus(TenderStatus.DRAFT);
         tender.setDeptId(user.deptId());
-        tender.setCreateBy(user.userId());
         tenderMapper.insert(tender);
         saveLines(tender.getId(), req);
         return tender.getId();
@@ -167,8 +167,7 @@ public class ScmTenderService {
         if (quoted.size() != req.items().size() || !quoted.equals(items.keySet())) {
             throw new BizException("scm.error.quoteEveryTenderMaterial");
         }
-        BigDecimal total = req.items().stream().map(r -> amount(items.get(r.tenderItemId()).getQty(), r.price()))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal total = Decimals.sum(req.items(), r -> amount(items.get(r.tenderItemId()).getQty(), r.price()));
         ScmBid bid = bidMapper.selectOne(Wrappers.<ScmBid>lambdaQuery().eq(ScmBid::getTenderId, tenderId).eq(ScmBid::getSupplierId, supplierId));
         if (bid == null) {
             bid = new ScmBid();
@@ -206,9 +205,8 @@ public class ScmTenderService {
         if (LocalDateTime.now().isBefore(tender.getDeadline()) && !allBid) {
             throw new BizException("scm.error.bidsCannotOpenedBeforeDeadlineThey");
         }
-        if (tenderMapper.update(Wrappers.<ScmTender>lambdaUpdate()
-                .set(ScmTender::getStatus, TenderStatus.OPENED).set(ScmTender::getOpenTime, LocalDateTime.now())
-                .eq(ScmTender::getId, id).eq(ScmTender::getStatus, TenderStatus.BIDDING)) == 0) {
+        if (!StatusTransitions.tryChange(tenderMapper, ScmTender::getId, id, ScmTender::getStatus, TenderStatus.BIDDING, TenderStatus.OPENED,
+                w -> w.set(ScmTender::getOpenTime, LocalDateTime.now()))) {
             throw new BizException("scm.error.tenderStatusHasChangedRefreshTry");
         }
     }
@@ -244,13 +242,13 @@ public class ScmTenderService {
                             prices.get(i.getId()).getTaxRate(), i.getRequiredDate() != null ? i.getRequiredDate() : leadDate, i.getRemark()))
                             .toList()), OrderSource.TENDER);
         }
-        if (tenderMapper.update(Wrappers.<ScmTender>lambdaUpdate()
-                .set(ScmTender::getStatus, TenderStatus.AWARDED)
-                .set(ScmTender::getAwardSupplierId, req.supplierId())
-                .set(ScmTender::getAwardReason, req.reason())
-                .set(ScmTender::getContractId, contractId)
-                .set(ScmTender::getOrderId, orderId)
-                .eq(ScmTender::getId, id).eq(ScmTender::getStatus, TenderStatus.OPENED)) == 0) {
+        Long awardContractId = contractId;
+        Long awardOrderId = orderId;
+        if (!StatusTransitions.tryChange(tenderMapper, ScmTender::getId, id, ScmTender::getStatus, TenderStatus.OPENED, TenderStatus.AWARDED,
+                w -> w.set(ScmTender::getAwardSupplierId, req.supplierId())
+                        .set(ScmTender::getAwardReason, req.reason())
+                        .set(ScmTender::getContractId, awardContractId)
+                        .set(ScmTender::getOrderId, awardOrderId))) {
             throw new BizException("scm.error.tenderStatusHasChangedRefreshTry");
         }
         portalNotifier.notify(req.supplierId(), MessageCategory.REMIND, "中标通知：" + tender.getTitle(), // i18n-ignore
@@ -355,12 +353,7 @@ public class ScmTenderService {
     }
 
     private ScmTender getAccessible(Long id) {
-        Supplier<ScmTender> loader = () -> tenderMapper.selectById(id);
-        ScmTender tender = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(TENDER_RULE, loader);
-        if (tender == null) {
-            throw new BizException("scm.error.tenderDoesNotExistAccessDenied");
-        }
-        return tender;
+        return DataScopes.require(TENDER_RULE, () -> tenderMapper.selectById(id), "scm.error.tenderDoesNotExistAccessDenied");
     }
 
     private ScmTender requireStatus(Long id, TenderStatus status, String actionKey) {
