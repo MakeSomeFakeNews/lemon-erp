@@ -1,0 +1,55 @@
+/* 数据大屏的通用布局：顶部指标卡一行，下面两行面板（左 / 中 / 右） */
+.screen-grid {
+  display: grid;
+  grid-template-rows: 118px 1fr 1fr;
+  gap: 16px;
+  height: 100%;
+}
+.screen-grid .kpis {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 14px;
+}
+.screen-grid .panels {
+  display: grid;
+  grid-template-columns: 520px 1fr 520px;
+  gap: 16px;
+  min-height: 0;
+}
+.screen-grid .num-cell {
+  font-family: 'DIN Alternate', 'Bahnschrift', 'Roboto Mono', 'SF Mono', Consolas, monospace;
+}
+.screen-tag {
+  display: inline-block;
+  padding: 0 8px;
+  line-height: 22px;
+  font-size: 13px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+}
+.screen-tag.green { color: #2fe6a5; }
+.screen-tag.orange { color: #ffb03a; }
+.screen-tag.red { color: #ff5b5b; }
+.screen-tag.cyan { color: #00e4ff; }
+.screen-tag.gray { color: rgba(160, 190, 230, 0.75); }
+.screen-bar {
+  position: relative;
+  height: 10px;
+  background: rgba(64, 158, 255, 0.15);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.screen-bar > i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #0a7cff, #00e4ff);
+}
+.screen-bar.warn > i {
+  background: linear-gradient(90deg, #ff8a00, #ffb03a);
+}
+.screen-bar.danger > i {
+  background: linear-gradient(90deg, #d4380d, #ff5b5b);
+}

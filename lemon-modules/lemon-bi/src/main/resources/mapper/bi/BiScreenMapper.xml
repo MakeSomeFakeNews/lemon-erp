@@ -1,0 +1,432 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.bi.mapper.BiScreenMapper">
+
+    <!-- ============================================================ 生产车间 -->
+
+    <select id="reportSum" resultType="java.util.Map">
+        SELECT COALESCE(SUM(r.good_qty), 0) AS "good", COALESCE(SUM(r.scrap_qty), 0) AS "scrap", COALESCE(SUM(r.hours), 0) AS "hours"
+        FROM mes_report r
+        JOIN mes_wo_op o ON o.id = r.op_id
+        WHERE r.report_date &gt;= #{begin} AND r.report_date &lt;= #{end}
+        <if test="wc != null">AND o.work_center_id = #{wc}</if>
+    </select>
+
+    <select id="reportTrend" resultType="java.util.Map">
+        SELECT r.report_date AS "day", SUM(r.good_qty) AS "good", SUM(r.scrap_qty) AS "scrap"
+        FROM mes_report r
+        JOIN mes_wo_op o ON o.id = r.op_id
+        WHERE r.report_date &gt;= #{begin} AND r.report_date &lt;= #{end}
+        <if test="wc != null">AND o.work_center_id = #{wc}</if>
+        GROUP BY r.report_date
+        ORDER BY r.report_date
+    </select>
+
+    <select id="workCenterLoad" resultType="java.util.Map">
+        SELECT c.name AS "name", c.daily_hours * c.resources AS "capacity",
+               COALESCE(t.hours, 0) AS "hours", COALESCE(t.good, 0) AS "good", COALESCE(t.scrap, 0) AS "scrap"
+        FROM mes_work_center c
+        LEFT JOIN (
+            SELECT o.work_center_id, SUM(r.hours) AS hours, SUM(r.good_qty) AS good, SUM(r.scrap_qty) AS scrap
+            FROM mes_report r
+            JOIN mes_wo_op o ON o.id = r.op_id
+            WHERE r.report_date = #{day}
+            GROUP BY o.work_center_id
+        ) t ON t.work_center_id = c.id
+        WHERE c.status = 1
+        <if test="wc != null">AND c.id = #{wc}</if>
+        ORDER BY c.code
+    </select>
+
+    <select id="equipments" resultType="java.util.Map">
+        SELECT e.code AS "code", e.name AS "name", e.status AS "status", COALESCE(dd.dict_label, e.status) AS "statusLabel",
+               c.name AS "workCenter", COALESCE(g.good, 0) AS "good", COALESCE(s.hours, 0) AS "stopHours"
+        FROM mes_equipment e
+        LEFT JOIN mes_work_center c ON c.id = e.work_center_id
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_equipment_status' AND dd.dict_value = e.status
+        LEFT JOIN (
+            SELECT equipment_id, SUM(good_qty) AS good FROM mes_report
+            WHERE report_date = #{day} AND equipment_id IS NOT NULL GROUP BY equipment_id
+        ) g ON g.equipment_id = e.id
+        LEFT JOIN (
+            SELECT equipment_id, SUM(hours) AS hours FROM mes_equipment_stop
+            WHERE start_time &gt;= #{monthBegin} GROUP BY equipment_id
+        ) s ON s.equipment_id = e.id
+        WHERE e.status &lt;&gt; 'SCRAPPED'
+        <if test="wc != null">AND e.work_center_id = #{wc}</if>
+        ORDER BY e.code
+    </select>
+
+    <select id="stopReasons" resultType="java.util.Map">
+        SELECT COALESCE(dd.dict_label, s.reason) AS "label", SUM(s.hours) AS "hours"
+        FROM mes_equipment_stop s
+        JOIN mes_equipment e ON e.id = s.equipment_id
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_stop_reason' AND dd.dict_value = s.reason
+        WHERE s.start_time &gt;= #{begin} AND s.start_time &lt; #{end}
+        <if test="wc != null">AND e.work_center_id = #{wc}</if>
+        GROUP BY s.reason, dd.dict_label
+        ORDER BY 2 DESC
+    </select>
+
+    <select id="activeWorkOrders" resultType="java.util.Map">
+        SELECT w.wo_no AS "woNo", m.name AS "product", w.qty AS "qty", w.finished_qty AS "finishedQty", w.plan_end AS "planEnd",
+               w.status AS "status",
+               (SELECT o.good_qty FROM mes_wo_op o WHERE o.wo_id = w.id ORDER BY o.seq DESC LIMIT 1) AS "doneQty",
+               (SELECT o.name FROM mes_wo_op o WHERE o.wo_id = w.id AND o.good_qty + o.scrap_qty &lt; w.qty ORDER BY o.seq LIMIT 1) AS "currentOp"
+        FROM mes_work_order w
+        JOIN wms_material m ON m.id = w.material_id
+        WHERE w.status IN ('RELEASED', 'STARTED')
+        <if test="wc != null">AND EXISTS (SELECT 1 FROM mes_wo_op o WHERE o.wo_id = w.id AND o.work_center_id = #{wc})</if>
+        ORDER BY CASE WHEN w.plan_end IS NULL THEN 1 ELSE 0 END, w.plan_end, w.id
+        LIMIT #{limit}
+    </select>
+
+    <select id="workOrderCounts" resultType="java.util.Map">
+        SELECT COALESCE(SUM(CASE WHEN w.status IN ('RELEASED', 'STARTED') THEN 1 ELSE 0 END), 0) AS "active",
+               COALESCE(SUM(CASE WHEN w.status IN ('RELEASED', 'STARTED') AND w.plan_end &lt; #{day} THEN 1 ELSE 0 END), 0) AS "overdue",
+               COALESCE(SUM(CASE WHEN w.finish_time &gt;= #{day} AND w.finish_time &lt; #{nextDay} THEN 1 ELSE 0 END), 0) AS "completed"
+        FROM mes_work_order w
+        WHERE w.status IN ('RELEASED', 'STARTED', 'COMPLETED')
+        <if test="wc != null">AND EXISTS (SELECT 1 FROM mes_wo_op o WHERE o.wo_id = w.id AND o.work_center_id = #{wc})</if>
+    </select>
+
+    <select id="recentReports" resultType="java.util.Map">
+        SELECT r.create_time AS "time", r.report_date AS "day", w.wo_no AS "woNo", o.name AS "op", u.nickname AS "operator",
+               e.name AS "equipment", r.good_qty AS "good", r.scrap_qty AS "scrap"
+        FROM mes_report r
+        JOIN mes_wo_op o ON o.id = r.op_id
+        JOIN mes_work_order w ON w.id = r.wo_id
+        LEFT JOIN sys_user u ON u.id = r.operator_id
+        LEFT JOIN mes_equipment e ON e.id = r.equipment_id
+        <where><if test="wc != null">o.work_center_id = #{wc}</if></where>
+        ORDER BY r.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="finishedInQty" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(total_qty), 0) FROM wms_stock_doc
+        WHERE kind = 'IN' AND biz_type = 'PRODUCTION' AND status = 'DONE' AND biz_date = #{day}
+    </select>
+
+    <!-- ============================================================ 仓储物流 -->
+
+    <select id="stockDocSum" resultType="java.util.Map">
+        SELECT kind AS "kind", COUNT(*) AS "docs", COALESCE(SUM(total_qty), 0) AS "qty"
+        FROM wms_stock_doc
+        WHERE status = 'DONE' AND kind IN ('IN', 'OUT') AND biz_date &gt;= #{begin} AND biz_date &lt;= #{end}
+        GROUP BY kind
+    </select>
+
+    <select id="stockDocTrend" resultType="java.util.Map">
+        SELECT biz_date AS "day", kind AS "kind", SUM(total_qty) AS "qty"
+        FROM wms_stock_doc
+        WHERE status = 'DONE' AND kind IN ('IN', 'OUT') AND biz_date &gt;= #{begin} AND biz_date &lt;= #{end}
+        GROUP BY biz_date, kind
+        ORDER BY biz_date
+    </select>
+
+    <select id="stockDocByType" resultType="java.util.Map">
+        SELECT d.kind AS "kind", COALESCE(dd.dict_label, d.biz_type) AS "label", SUM(d.total_qty) AS "qty"
+        FROM wms_stock_doc d
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = CASE WHEN d.kind = 'IN' THEN 'wms_in_type' ELSE 'wms_out_type' END AND dd.dict_value = d.biz_type
+        WHERE d.status = 'DONE' AND d.kind IN ('IN', 'OUT') AND d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}
+        GROUP BY d.kind, d.biz_type, dd.dict_label
+        ORDER BY 3 DESC
+    </select>
+
+    <select id="warehouseStock" resultType="java.util.Map">
+        SELECT w.name AS "name", COALESCE(SUM(s.qty), 0) AS "qty", COUNT(DISTINCT s.material_id) AS "skus"
+        FROM wms_warehouse w
+        LEFT JOIN wms_stock s ON s.warehouse_id = w.id AND s.qty &gt; 0
+        WHERE w.status = 1
+        GROUP BY w.id, w.name, w.sort
+        ORDER BY w.sort, w.id
+    </select>
+
+    <select id="stockOverview" resultType="java.util.Map">
+        SELECT COUNT(DISTINCT material_id) AS "skus", COALESCE(SUM(qty), 0) AS "qty" FROM wms_stock WHERE qty &gt; 0
+    </select>
+
+    <sql id="lowStockSource">
+        SELECT m.id, m.code, m.name, m.unit, m.safety_stock, COALESCE(SUM(s.qty), 0) AS qty
+        FROM wms_material m
+        LEFT JOIN wms_stock s ON s.material_id = m.id
+        WHERE m.safety_stock &gt; 0 AND m.status = 1
+        GROUP BY m.id, m.code, m.name, m.unit, m.safety_stock
+        HAVING COALESCE(SUM(s.qty), 0) &lt; m.safety_stock
+    </sql>
+
+    <select id="lowStock" resultType="java.util.Map">
+        SELECT t.code AS "code", t.name AS "name", t.unit AS "unit", t.qty AS "qty", t.safety_stock AS "safety"
+        FROM (<include refid="lowStockSource"/>) t
+        ORDER BY t.qty / t.safety_stock, t.code
+        LIMIT #{limit}
+    </select>
+
+    <select id="lowStockCount" resultType="int">
+        SELECT COUNT(*) FROM (<include refid="lowStockSource"/>) t
+    </select>
+
+    <sql id="expiringSource">
+        SELECT m.code, m.name, b.batch_no, b.expiry_date, SUM(s.qty) AS qty
+        FROM wms_batch b
+        JOIN wms_stock s ON s.material_id = b.material_id AND s.batch_no = b.batch_no AND s.qty &gt; 0
+        JOIN wms_material m ON m.id = b.material_id
+        WHERE b.expiry_date IS NOT NULL AND b.expiry_date &lt;= #{until}
+        GROUP BY m.code, m.name, b.batch_no, b.expiry_date
+    </sql>
+
+    <select id="expiringBatches" resultType="java.util.Map">
+        SELECT t.code AS "code", t.name AS "name", t.batch_no AS "batchNo", t.expiry_date AS "expiryDate", t.qty AS "qty"
+        FROM (<include refid="expiringSource"/>) t
+        ORDER BY t.expiry_date, t.code
+        LIMIT #{limit}
+    </select>
+
+    <select id="expiringBatchCount" resultType="int">
+        SELECT COUNT(*) FROM (<include refid="expiringSource"/>) t
+    </select>
+
+    <select id="pendingDeliveries" resultType="java.util.Map">
+        SELECT d.delivery_no AS "deliveryNo", c.name AS "customer", w.name AS "warehouse", d.ship_date AS "shipDate",
+               d.status AS "status", COALESCE(dd.dict_label, d.status) AS "statusLabel"
+        FROM scm_delivery d
+        LEFT JOIN scm_customer c ON c.id = d.customer_id
+        LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'scm_delivery_status' AND dd.dict_value = d.status
+        WHERE d.status IN ('PENDING', 'PICKED')
+        ORDER BY d.ship_date, d.id
+        LIMIT #{limit}
+    </select>
+
+    <select id="deliveryCounts" resultType="java.util.Map">
+        SELECT COALESCE(SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END), 0) AS "pending",
+               COALESCE(SUM(CASE WHEN status = 'PICKED' THEN 1 ELSE 0 END), 0) AS "picked",
+               COALESCE(SUM(CASE WHEN status = 'SHIPPED' AND ship_date = #{day} THEN 1 ELSE 0 END), 0) AS "shipped"
+        FROM scm_delivery
+        WHERE status IN ('PENDING', 'PICKED') OR (status = 'SHIPPED' AND ship_date = #{day})
+    </select>
+
+    <select id="transitCount" resultType="int">
+        SELECT COUNT(*) FROM wms_stock_doc WHERE status = 'TRANSIT'
+    </select>
+
+    <select id="recentStockDocs" resultType="java.util.Map">
+        SELECT d.doc_no AS "docNo", d.kind AS "kind",
+               COALESCE(dd.dict_label, CASE WHEN d.kind = 'TRANSFER' THEN '调拨' ELSE d.biz_type END) AS "typeLabel",
+               w.name AS "warehouse", d.total_qty AS "qty", d.confirm_time AS "time"
+        FROM wms_stock_doc d
+        LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = CASE WHEN d.kind = 'IN' THEN 'wms_in_type' ELSE 'wms_out_type' END AND dd.dict_value = d.biz_type
+        WHERE d.status IN ('DONE', 'TRANSIT') AND d.confirm_time IS NOT NULL
+        ORDER BY d.confirm_time DESC, d.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- ============================================================ 销售经营 -->
+
+    <select id="salesOrderSum" resultType="java.util.Map">
+        SELECT COALESCE(SUM(total_amount), 0) AS "amount", COUNT(*) AS "orders"
+        FROM scm_order
+        WHERE kind = 'SALES' AND status IN ('APPROVED', 'PARTIAL', 'COMPLETED') AND order_date &gt;= #{begin} AND order_date &lt;= #{end}
+    </select>
+
+    <select id="shippedAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(CASE WHEN kind = 'SALES_OUT' THEN total_amount ELSE -total_amount END), 0)
+        FROM scm_trade_doc
+        WHERE kind IN ('SALES_OUT', 'SALES_RETURN') AND biz_date &gt;= #{begin} AND biz_date &lt;= #{end}
+    </select>
+
+    <select id="receiptAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(t.amount), 0) FROM (
+            SELECT amount FROM fin_settlement
+            WHERE kind = 'RECEIPT' AND status = 'APPROVED' AND settle_date &gt;= #{begin} AND settle_date &lt;= #{end}
+            UNION ALL
+            SELECT amount FROM fin_advance
+            WHERE kind = 'RECEIPT' AND advance_date &gt;= #{begin} AND advance_date &lt;= #{end}
+        ) t
+    </select>
+
+    <select id="receivableBalance" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(amount - settled_amount), 0) FROM fin_bill WHERE kind = 'AR'
+    </select>
+
+    <select id="monthlyOrders" resultType="java.util.Map">
+        SELECT YEAR(order_date) * 100 + MONTH(order_date) AS "period", SUM(total_amount) AS "amount"
+        FROM scm_order
+        WHERE kind = 'SALES' AND status IN ('APPROVED', 'PARTIAL', 'COMPLETED') AND order_date &gt;= #{begin} AND order_date &lt;= #{end}
+        GROUP BY YEAR(order_date) * 100 + MONTH(order_date)
+    </select>
+
+    <select id="monthlyShipped" resultType="java.util.Map">
+        SELECT YEAR(biz_date) * 100 + MONTH(biz_date) AS "period",
+               SUM(CASE WHEN kind = 'SALES_OUT' THEN total_amount ELSE -total_amount END) AS "amount"
+        FROM scm_trade_doc
+        WHERE kind IN ('SALES_OUT', 'SALES_RETURN') AND biz_date &gt;= #{begin} AND biz_date &lt;= #{end}
+        GROUP BY YEAR(biz_date) * 100 + MONTH(biz_date)
+    </select>
+
+    <select id="topCustomers" resultType="java.util.Map">
+        SELECT c.name AS "name", t.amount AS "amount"
+        FROM (
+            SELECT partner_id, SUM(CASE WHEN kind = 'SALES_OUT' THEN total_amount ELSE -total_amount END) AS amount
+            FROM scm_trade_doc
+            WHERE kind IN ('SALES_OUT', 'SALES_RETURN') AND biz_date &gt;= #{begin} AND biz_date &lt;= #{end}
+            GROUP BY partner_id
+        ) t
+        JOIN scm_customer c ON c.id = t.partner_id
+        WHERE t.amount &gt; 0
+        ORDER BY t.amount DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="topProducts" resultType="java.util.Map">
+        SELECT m.name AS "name", t.amount AS "amount", t.qty AS "qty"
+        FROM (
+            SELECT i.material_id,
+                   SUM(CASE WHEN d.kind = 'SALES_OUT' THEN i.amount ELSE -i.amount END) AS amount,
+                   SUM(CASE WHEN d.kind = 'SALES_OUT' THEN i.qty ELSE -i.qty END) AS qty
+            FROM scm_trade_doc_item i
+            JOIN scm_trade_doc d ON d.id = i.doc_id
+            WHERE d.kind IN ('SALES_OUT', 'SALES_RETURN') AND d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}
+            GROUP BY i.material_id
+        ) t
+        JOIN wms_material m ON m.id = t.material_id
+        WHERE t.amount &gt; 0
+        ORDER BY t.amount DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="salesmen" resultType="java.util.Map">
+        SELECT COALESCE(u.nickname, '未指定') AS "name", t.amount AS "amount", t.orders AS "orders"
+        FROM (
+            SELECT salesman_id, SUM(total_amount) AS amount, COUNT(*) AS orders
+            FROM scm_order
+            WHERE kind = 'SALES' AND status IN ('APPROVED', 'PARTIAL', 'COMPLETED') AND order_date &gt;= #{begin} AND order_date &lt;= #{end}
+            GROUP BY salesman_id
+        ) t
+        LEFT JOIN sys_user u ON u.id = t.salesman_id
+        ORDER BY t.amount DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="openOrderStatus" resultType="java.util.Map">
+        SELECT o.status AS "status", COALESCE(dd.dict_label, o.status) AS "label", COUNT(*) AS "orders", SUM(o.total_amount) AS "amount"
+        FROM scm_order o
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'scm_order_status' AND dd.dict_value = o.status
+        WHERE o.kind = 'SALES' AND o.status IN ('DRAFT', 'APPROVING', 'APPROVED', 'PARTIAL')
+        GROUP BY o.status, dd.dict_label, dd.sort
+        ORDER BY dd.sort
+    </select>
+
+    <select id="overdueOrderCount" resultType="int">
+        SELECT COUNT(*) FROM scm_order
+        WHERE kind = 'SALES' AND status IN ('APPROVED', 'PARTIAL') AND delivery_date &lt; #{day}
+    </select>
+
+    <select id="newCustomerCount" resultType="int">
+        SELECT COUNT(*) FROM scm_customer WHERE create_time &gt;= #{begin}
+    </select>
+
+    <select id="recentOrders" resultType="java.util.Map">
+        SELECT o.order_no AS "orderNo", c.name AS "customer", o.total_amount AS "amount", o.status AS "status",
+               COALESCE(dd.dict_label, o.status) AS "statusLabel", o.order_date AS "orderDate"
+        FROM scm_order o
+        LEFT JOIN scm_customer c ON c.id = o.partner_id
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'scm_order_status' AND dd.dict_value = o.status
+        WHERE o.kind = 'SALES'
+        ORDER BY o.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- ============================================================ 质量管理 -->
+
+    <select id="inspectionByType" resultType="java.util.Map">
+        SELECT i.type AS "type", COALESCE(dd.dict_label, i.type) AS "label", COUNT(*) AS "total",
+               SUM(CASE WHEN i.result = 'PASS' THEN 1 ELSE 0 END) AS "pass",
+               SUM(CASE WHEN i.result = 'FAIL' THEN 1 ELSE 0 END) AS "fail",
+               SUM(CASE WHEN i.result = 'CONCESSION' THEN 1 ELSE 0 END) AS "concession"
+        FROM mes_inspection i
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_qc_type' AND dd.dict_value = i.type
+        WHERE i.status = 'CONFIRMED' AND i.inspect_date &gt;= #{begin} AND i.inspect_date &lt;= #{end}
+        GROUP BY i.type, dd.dict_label, dd.sort
+        ORDER BY dd.sort
+    </select>
+
+    <select id="inspectionTrend" resultType="java.util.Map">
+        SELECT inspect_date AS "day", COUNT(*) AS "total", SUM(CASE WHEN result = 'PASS' THEN 1 ELSE 0 END) AS "pass"
+        FROM mes_inspection
+        WHERE status = 'CONFIRMED' AND inspect_date &gt;= #{begin} AND inspect_date &lt;= #{end}
+        GROUP BY inspect_date
+        ORDER BY inspect_date
+    </select>
+
+    <select id="defectTypes" resultType="java.util.Map">
+        SELECT COALESCE(dd.dict_label, i.defect_type) AS "label", COUNT(*) AS "times", SUM(i.defect_qty) AS "qty"
+        FROM mes_inspection i
+        LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_defect_type' AND dd.dict_value = i.defect_type
+        WHERE i.status = 'CONFIRMED' AND i.result &lt;&gt; 'PASS' AND i.defect_type IS NOT NULL
+          AND i.inspect_date &gt;= #{begin} AND i.inspect_date &lt;= #{end}
+        GROUP BY i.defect_type, dd.dict_label
+        ORDER BY 2 DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="supplierQuality" resultType="java.util.Map">
+        SELECT s.name AS "name", t.total AS "total", t.fail AS "fail"
+        FROM (
+            SELECT supplier_id, COUNT(*) AS total, SUM(CASE WHEN result = 'PASS' THEN 0 ELSE 1 END) AS fail
+            FROM mes_inspection
+            WHERE status = 'CONFIRMED' AND type = 'IQC' AND supplier_id IS NOT NULL
+              AND inspect_date &gt;= #{begin} AND inspect_date &lt;= #{end}
+            GROUP BY supplier_id
+        ) t
+        JOIN scm_supplier s ON s.id = t.supplier_id
+        ORDER BY t.fail * 1.0 / t.total DESC, t.total DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="ncrCounts" resultType="java.util.Map">
+        SELECT COALESCE(SUM(CASE WHEN status IN ('OPEN', 'APPROVING') THEN 1 ELSE 0 END), 0) AS "open",
+               COALESCE(SUM(CASE WHEN create_time &gt;= #{begin} AND create_time &lt; #{nextDay} THEN 1 ELSE 0 END), 0) AS "created",
+               COALESCE(SUM(CASE WHEN status = 'DONE' AND done_time &gt;= #{begin} AND done_time &lt; #{nextDay} THEN 1 ELSE 0 END), 0) AS "done"
+        FROM qms_ncr
+        WHERE status IN ('OPEN', 'APPROVING') OR create_time &gt;= #{begin} OR done_time &gt;= #{begin}
+    </select>
+
+    <select id="openNcrs" resultType="java.util.Map">
+        SELECT n.ncr_no AS "ncrNo", m.name AS "material", n.qty AS "qty", COALESCE(ds.dict_label, n.source) AS "sourceLabel",
+               dt.dict_label AS "defectLabel", COALESCE(st.dict_label, n.status) AS "statusLabel", n.create_time AS "time"
+        FROM qms_ncr n
+        JOIN wms_material m ON m.id = n.material_id
+        LEFT JOIN sys_dict_data ds ON ds.dict_type = 'qms_ncr_source' AND ds.dict_value = n.source
+        LEFT JOIN sys_dict_data dt ON dt.dict_type = 'mes_defect_type' AND dt.dict_value = n.defect_type
+        LEFT JOIN sys_dict_data st ON st.dict_type = 'qms_ncr_status' AND st.dict_value = n.status
+        WHERE n.status IN ('OPEN', 'APPROVING')
+        ORDER BY n.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="recentInspections" resultType="java.util.Map">
+        SELECT i.insp_no AS "inspNo", COALESCE(dt.dict_label, i.type) AS "typeLabel", m.name AS "material", i.result AS "result",
+               COALESCE(dr.dict_label, i.result) AS "resultLabel", i.defect_qty AS "defectQty", i.inspect_date AS "date"
+        FROM mes_inspection i
+        JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN sys_dict_data dt ON dt.dict_type = 'mes_qc_type' AND dt.dict_value = i.type
+        LEFT JOIN sys_dict_data dr ON dr.dict_type = 'mes_qc_result' AND dr.dict_value = i.result
+        WHERE i.status = 'CONFIRMED'
+        ORDER BY i.confirm_time DESC, i.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- ============================================================ 通用 -->
+
+    <select id="tenantName" resultType="java.lang.String">
+        SELECT name FROM sys_tenant WHERE id = #{tenantId}
+    </select>
+
+    <select id="workCenterName" resultType="java.lang.String">
+        SELECT name FROM mes_work_center WHERE id = #{id}
+    </select>
+
+</mapper>
