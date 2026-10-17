@@ -6359,6 +6359,12 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 INSERT INTO sys_role_menu (role_id, menu_id) VALUES
 (2, 340), (9, 340), (9, 3400);
 
+-- 出纳管理：现金 / 银行日记账、资金日报
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(341, 933, '出纳管理', 'C', 'cashier', 'fin/cashier/index', 'fin:cashier:list', 'WalletOutlined', 0, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(2, 341), (3, 341), (9, 341), (10, 341);
+
 ALTER TABLE sys_dept AUTO_INCREMENT = 200;
 ALTER TABLE sys_user AUTO_INCREMENT = 100;
 ALTER TABLE sys_role AUTO_INCREMENT = 100;

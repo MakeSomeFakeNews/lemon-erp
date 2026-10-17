@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinCashierMapper">
+
+    <sql id="statusFilter">
+        <choose>
+            <when test="posted">AND v.status = 'POSTED'</when>
+            <otherwise>AND v.status IN ('DRAFT', 'APPROVING', 'AUDITED', 'POSTED')</otherwise>
+        </choose>
+    </sql>
+
+    <select id="sumBefore" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(t.amount), 0) FROM (
+            SELECT e.debit - e.credit AS amount
+            FROM fin_voucher_entry e
+            JOIN fin_voucher v ON v.id = e.voucher_id
+            WHERE v.voucher_date &lt; #{date} <include refid="statusFilter"/>
+              AND e.account_id IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+            UNION ALL
+            SELECT o.debit - o.credit FROM fin_account_opening o
+            WHERE o.account_id IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ) t
+    </select>
+
+    <select id="selectJournal" resultType="java.util.Map">
+        SELECT v.voucher_date AS "entryDate", v.id AS "voucherId", v.voucher_no AS "voucherNo", v.status AS "voucherStatus",
+               e.summary AS "summary", a.id AS "accountId", a.code AS "accountCode", a.name AS "accountName",
+               e.debit AS "debit", e.credit AS "credit"
+        FROM fin_voucher_entry e
+        JOIN fin_voucher v ON v.id = e.voucher_id
+        JOIN fin_account a ON a.id = e.account_id
+        WHERE v.voucher_date &gt;= #{begin} AND v.voucher_date &lt;= #{end} <include refid="statusFilter"/>
+          AND e.account_id IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY v.voucher_date, v.period, v.voucher_seq, e.seq
+    </select>
+
+    <select id="selectCounterAccounts" resultType="java.util.Map">
+        SELECT DISTINCT e.voucher_id AS "voucherId", a.name AS "accountName"
+        FROM fin_voucher_entry e
+        JOIN fin_account a ON a.id = e.account_id
+        WHERE e.voucher_id IN <foreach collection="voucherIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND e.account_id NOT IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="sumByAccount" resultType="java.util.Map">
+        SELECT e.account_id AS "accountId", SUM(e.debit) AS "debit", SUM(e.credit) AS "credit",
+               SUM(CASE WHEN e.debit &lt;&gt; 0 THEN 1 ELSE 0 END) AS "inCount",
+               SUM(CASE WHEN e.credit &lt;&gt; 0 THEN 1 ELSE 0 END) AS "outCount"
+        FROM fin_voucher_entry e
+        JOIN fin_voucher v ON v.id = e.voucher_id
+        WHERE v.voucher_date &gt;= #{begin} AND v.voucher_date &lt;= #{end} <include refid="statusFilter"/>
+          AND e.account_id IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        GROUP BY e.account_id
+    </select>
+
+    <select id="balanceBefore" resultType="java.util.Map">
+        SELECT t.account_id AS "accountId", SUM(t.amount) AS "balance" FROM (
+            SELECT e.account_id, e.debit - e.credit AS amount
+            FROM fin_voucher_entry e
+            JOIN fin_voucher v ON v.id = e.voucher_id
+            WHERE v.voucher_date &lt; #{date} <include refid="statusFilter"/>
+              AND e.account_id IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+            UNION ALL
+            SELECT o.account_id, o.debit - o.credit FROM fin_account_opening o
+            WHERE o.account_id IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ) t
+        GROUP BY t.account_id
+    </select>
+
+    <select id="selectUnvouchered" resultType="java.util.Map">
+        SELECT kind AS "kind", COUNT(*) AS "count", COALESCE(SUM(amount), 0) AS "amount"
+        FROM fin_settlement
+        WHERE voucher_id IS NULL AND status = 'APPROVED'
+        GROUP BY kind
+    </select>
+
+</mapper>
