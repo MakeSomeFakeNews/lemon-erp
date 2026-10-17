@@ -4,11 +4,9 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.util.TreeUtils;
-import com.lemon.erp.framework.tenant.PlatformFeatures;
 import com.lemon.erp.modules.system.entity.SysMenu;
 import com.lemon.erp.modules.system.entity.SysTenantPackage;
 import com.lemon.erp.modules.system.entity.SysTenantPackageMenu;
-import com.lemon.erp.modules.system.mapper.SysMenuMapper;
 import com.lemon.erp.modules.system.mapper.SysTenantPackageMapper;
 import com.lemon.erp.modules.system.mapper.SysTenantPackageMenuMapper;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +28,7 @@ import java.util.stream.Collectors;
 public class SysTenantPackageService extends ServiceImpl<SysTenantPackageMapper, SysTenantPackage> {
 
     private final SysTenantPackageMenuMapper packageMenuMapper;
-    private final SysMenuMapper menuMapper;
+    private final SysFeatureService featureService;
     private final SysTenantService tenantService;
     private final SysTenantLookup tenantLookup;
 
@@ -94,13 +92,7 @@ public class SysTenantPackageService extends ServiceImpl<SysTenantPackageMapper,
     }
 
     private List<SysMenu> assignableMenus() {
-        List<SysMenu> menus = menuMapper.selectList(Wrappers.<SysMenu>lambdaQuery().orderByAsc(SysMenu::getSort));
-        Set<Long> excluded = menus.stream().filter(m -> PlatformFeatures.isPlatformOnly(m.getPerms()))
-                .map(SysMenu::getId).collect(Collectors.toSet());
-        // 平台专属菜单的按钮一并排除
-        return menus.stream()
-                .filter(m -> !excluded.contains(m.getId()) && !excluded.contains(m.getParentId()))
-                .toList();
+        return featureService.assignableMenus();
     }
 
     /** 菜单必须存在且不是平台专属功能 */

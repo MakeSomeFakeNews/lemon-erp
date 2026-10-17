@@ -7,7 +7,9 @@ import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.system.entity.SysMenu;
 import com.lemon.erp.modules.system.entity.SysTenantPackage;
+import com.lemon.erp.modules.system.service.SysFeatureService;
 import com.lemon.erp.modules.system.service.SysTenantPackageService;
+import com.lemon.erp.modules.system.dto.FeatureCatalogView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -32,6 +34,7 @@ import java.util.List;
 public class SysTenantPackageController {
 
     private final SysTenantPackageService packageService;
+    private final SysFeatureService featureService;
 
     @GetMapping
     @PreAuthorize("@ss.hasPerm('sys:tenantPackage:list')")
@@ -51,6 +54,13 @@ public class SysTenantPackageController {
     @PreAuthorize("@ss.hasPerm('sys:tenantPackage:list')")
     public R<List<SysMenu>> menuTree() {
         return R.ok(packageService.menuTree());
+    }
+
+    /** 功能模块与行业模板：新建租户、编辑套餐时按模块勾选功能 */
+    @GetMapping("/features")
+    @PreAuthorize("@ss.hasAnyPerm('sys:tenantPackage:list', 'sys:tenant:add')")
+    public R<FeatureCatalogView> features() {
+        return R.ok(featureService.catalog());
     }
 
     @GetMapping("/{id}")
