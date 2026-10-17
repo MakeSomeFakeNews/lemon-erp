@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinPartnerLedgerMapper">
+
+    <select id="sumBillsBefore" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(amount), 0) FROM fin_bill
+        WHERE kind = #{billKind} AND partner_id = #{partnerId} AND bill_date &lt; #{date}
+    </select>
+
+    <select id="sumSettlementsBefore" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(amount), 0) FROM fin_settlement
+        WHERE kind = #{settleKind} AND partner_id = #{partnerId} AND status = 'APPROVED' AND settle_date &lt; #{date}
+    </select>
+
+    <select id="sumAdvancesBefore" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(amount), 0) FROM fin_advance
+        WHERE kind = #{settleKind} AND partner_id = #{partnerId} AND advance_date &lt; #{date}
+    </select>
+
+    <select id="selectRows" resultType="java.util.Map">
+        SELECT t.biz_date AS "bizDate", t.type AS "type", t.doc_no AS "docNo", t.source_type AS "sourceType",
+               t.source_no AS "sourceNo", t.amount AS "amount", t.remark AS "remark"
+        FROM (
+            SELECT b.bill_date AS biz_date, 'BILL' AS type, 1 AS seq, b.bill_no AS doc_no, b.source_type AS source_type,
+                   b.source_no AS source_no, b.amount AS amount, b.remark AS remark, b.id AS id
+            FROM fin_bill b
+            WHERE b.kind = #{billKind} AND b.partner_id = #{partnerId} AND b.bill_date &gt;= #{begin} AND b.bill_date &lt;= #{end}
+            UNION ALL
+            SELECT s.settle_date, 'SETTLEMENT', 2, s.settle_no, s.method, NULL, s.amount, s.remark, s.id
+            FROM fin_settlement s
+            WHERE s.kind = #{settleKind} AND s.partner_id = #{partnerId} AND s.status = 'APPROVED'
+              AND s.settle_date &gt;= #{begin} AND s.settle_date &lt;= #{end}
+            UNION ALL
+            SELECT a.advance_date, 'ADVANCE', 3, a.advance_no, a.method, NULL, a.amount, a.remark, a.id
+            FROM fin_advance a
+            WHERE a.kind = #{settleKind} AND a.partner_id = #{partnerId} AND a.advance_date &gt;= #{begin} AND a.advance_date &lt;= #{end}
+        ) t
+        ORDER BY t.biz_date, t.seq, t.id
+    </select>
+
+</mapper>

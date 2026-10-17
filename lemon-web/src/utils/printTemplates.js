@@ -100,6 +100,15 @@ export const PRINT_TYPES = [
     signs: ['制单', '审核', '记账', '财务主管']
   },
   {
+    key: 'fin.partnerStatement',
+    module: '财务',
+    name: '往来对账单',
+    fields: ['客户', '供应商', '对账期间', '期初余额', '期末余额'],
+    columns: ['日期', '类型', '单号', '来源 / 结算方式', num('增加金额'), num('减少金额'), num('余额'), '备注'],
+    signs: ['制表', '财务审核', '客户确认（盖章）', '供应商确认（盖章）'],
+    note: true
+  },
+  {
     key: 'mes.workOrder',
     module: '生产',
     name: '生产任务单',

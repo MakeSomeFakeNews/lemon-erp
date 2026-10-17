@@ -7,6 +7,7 @@ export const pageStockSummary = (params) => request.get('/wms/stock/summary', { 
 /** 某个库存位置上的在库序列号：{ warehouseId, locationId?, materialId, batchNo? } */
 export const availableSerials = (params) => request.get('/wms/stock/serials', { params })
 
+export const pageInOut = (params) => request.get('/wms/stock/in-out', { params })
 export const pageFlow = (params) => request.get('/wms/flow', { params })
 
 export const pageBatch = (params) => request.get('/wms/trace/batch', { params })

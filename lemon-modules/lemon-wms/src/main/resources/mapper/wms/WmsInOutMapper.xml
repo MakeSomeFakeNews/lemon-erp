@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsInOutMapper">
+
+    <!-- 流水按单据业务日期归属；不选仓库时排除调拨（不改变总库存），选仓库时调入 / 调出分别计入其他入库 / 出库；
+         入库单的红字冲销为负数入库，出库单的红字为负数出库；生产退料冲减生产领料 -->
+    <select id="selectPage" resultType="com.lemon.erp.modules.wms.dto.InOutRow">
+        SELECT m.id AS material_id, m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.category,
+               t.open_qty, t.purchase_in, t.production_in, t.sales_return, t.other_in,
+               t.sales_out, t.production_out, t.purchase_return, t.other_out,
+               t.open_qty + t.purchase_in + t.production_in + t.sales_return + t.other_in
+                   - t.sales_out - t.production_out - t.purchase_return - t.other_out AS close_qty
+        FROM (
+            SELECT x.material_id,
+                   SUM(CASE WHEN x.d &lt; #{q.beginDate} THEN x.qty ELSE 0 END) AS open_qty,
+                   SUM(CASE WHEN x.d &gt;= #{q.beginDate} AND x.kind = 'IN' AND x.biz_type = 'PURCHASE' THEN x.qty ELSE 0 END) AS purchase_in,
+                   SUM(CASE WHEN x.d &gt;= #{q.beginDate} AND x.kind = 'IN' AND x.biz_type = 'PRODUCTION' THEN x.qty ELSE 0 END) AS production_in,
+                   SUM(CASE WHEN x.d &gt;= #{q.beginDate} AND x.kind = 'IN' AND x.biz_type = 'SALES_RETURN' THEN x.qty ELSE 0 END) AS sales_return,
+                   SUM(CASE WHEN x.d &gt;= #{q.beginDate} AND ((x.kind = 'IN' AND x.biz_type NOT IN ('PURCHASE', 'PRODUCTION', 'SALES_RETURN', 'PRODUCTION_RETURN'))
+                            OR (x.kind NOT IN ('IN', 'OUT') AND x.qty &gt; 0)) THEN x.qty ELSE 0 END) AS other_in,
+                   SUM(CASE WHEN x.d &gt;= #{q.beginDate} AND x.kind = 'OUT' AND x.biz_type = 'SALES' THEN -x.qty ELSE 0 END) AS sales_out,
+                   SUM(CASE WHEN x.d &gt;= #{q.beginDate} AND ((x.kind = 'OUT' AND x.biz_type = 'PRODUCTION') OR (x.kind = 'IN' AND x.biz_type = 'PRODUCTION_RETURN'))
+                            THEN -x.qty ELSE 0 END) AS production_out,
+                   SUM(CASE WHEN x.d &gt;= #{q.beginDate} AND x.kind = 'OUT' AND x.biz_type = 'PURCHASE_RETURN' THEN -x.qty ELSE 0 END) AS purchase_return,
+                   SUM(CASE WHEN x.d &gt;= #{q.beginDate} AND ((x.kind = 'OUT' AND x.biz_type NOT IN ('SALES', 'PRODUCTION', 'PURCHASE_RETURN'))
+                            OR (x.kind NOT IN ('IN', 'OUT') AND x.qty &lt; 0)) THEN -x.qty ELSE 0 END) AS other_out
+            FROM (
+                SELECT f.material_id, f.qty, COALESCE(d.biz_date, c.biz_date, CAST(f.create_time AS DATE)) AS d, COALESCE(d.kind, f.biz_type) AS kind, COALESCE(d.biz_type, '') AS biz_type
+                FROM wms_stock_flow f
+                JOIN wms_warehouse wh ON wh.id = f.warehouse_id
+                LEFT JOIN wms_stock_doc d ON f.biz_type IN ('IN', 'OUT', 'TRANSFER') AND d.id = f.doc_id
+                LEFT JOIN wms_check c ON f.biz_type = 'CHECK' AND c.id = f.doc_id
+                WHERE COALESCE(d.biz_date, c.biz_date, CAST(f.create_time AS DATE)) &lt;= #{q.endDate}
+                <choose>
+                    <when test="q.warehouseId != null">AND f.warehouse_id = #{q.warehouseId}</when>
+                    <otherwise>AND f.biz_type &lt;&gt; 'TRANSFER'</otherwise>
+                </choose>
+            ) x
+            GROUP BY x.material_id
+        ) t
+        JOIN wms_material m ON m.id = t.material_id
+        WHERE (t.open_qty &lt;&gt; 0 OR t.purchase_in &lt;&gt; 0 OR t.production_in &lt;&gt; 0 OR t.sales_return &lt;&gt; 0 OR t.other_in &lt;&gt; 0
+               OR t.sales_out &lt;&gt; 0 OR t.production_out &lt;&gt; 0 OR t.purchase_return &lt;&gt; 0 OR t.other_out &lt;&gt; 0)
+        <if test="q.category != null and q.category != ''">AND m.category = #{q.category}</if>
+        <if test="q.keyword != null and q.keyword != ''">AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%'))</if>
+        ORDER BY m.code
+    </select>
+
+</mapper>

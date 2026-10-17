@@ -3,6 +3,8 @@ package com.lemon.erp.modules.wms.controller;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.modules.wms.dto.BatchQuery;
+import com.lemon.erp.modules.wms.dto.InOutQuery;
+import com.lemon.erp.modules.wms.dto.InOutRow;
 import com.lemon.erp.modules.wms.dto.BatchView;
 import com.lemon.erp.modules.wms.dto.FlowQuery;
 import com.lemon.erp.modules.wms.dto.SerialLogView;
@@ -55,6 +57,15 @@ public class WmsStockController {
                                                        @RequestParam(defaultValue = "10") long size,
                                                        StockQuery query) {
         return R.ok(queryService.summaryPage(current, size, query));
+    }
+
+    /** 收发存汇总 */
+    @GetMapping("/stock/in-out")
+    @PreAuthorize("@ss.hasPerm('wms:inout:list')")
+    public R<PageResult<InOutRow>> inOutPage(@RequestParam(defaultValue = "1") long current,
+                                             @RequestParam(defaultValue = "10") long size,
+                                             InOutQuery query) {
+        return R.ok(queryService.inOutPage(current, size, query));
     }
 
     /** 某个库存位置上的在库序列号 */
