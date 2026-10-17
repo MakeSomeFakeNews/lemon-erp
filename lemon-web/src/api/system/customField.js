@@ -14,3 +14,8 @@ export const customValues = (bizType, bizId) => request.get('/system/custom-fiel
 /** 多条记录的值：{ 记录ID: { 字段标识: 值 } } */
 export const batchCustomValues = (bizType, bizIds) => request.post('/system/custom-field/values/batch', bizIds, { params: { bizType } })
 export const saveCustomValues = (bizType, bizId, values) => request.put('/system/custom-field/values', values, { params: { bizType, bizId } })
+
+/** 业务参数（按租户）：[{ key, module, label, type, value, defaultValue, modified, options, min, max, remark }] */
+export const listBizRules = () => request.get('/system/biz-rule')
+/** 保存业务参数：{ 参数标识: 值 }，只包含要修改的 */
+export const saveBizRules = (data) => request.put('/system/biz-rule', data)

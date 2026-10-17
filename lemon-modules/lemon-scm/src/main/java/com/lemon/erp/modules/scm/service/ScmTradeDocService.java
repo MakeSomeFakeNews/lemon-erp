@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.rule.BizRules;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
@@ -19,6 +20,7 @@ import com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmTradeDocItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmTradeDocMapper;
 import com.lemon.erp.modules.scm.model.OrderStatus;
+import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.wms.dto.StockDocItemRequest;
 import com.lemon.erp.modules.wms.dto.StockDocRequest;
@@ -33,6 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +67,7 @@ public class ScmTradeDocService {
 
     private final ScmTradeDocMapper docMapper;
     private final ScmTradeDocItemMapper itemMapper;
+    private final BizRules bizRules;
     private final ScmOrderItemMapper orderItemMapper;
     private final ScmOrderService orderService;
     private final WmsStockDocService stockDocService;
@@ -108,6 +112,9 @@ public class ScmTradeDocService {
         String docNo = docNoService.next(kind.getPrefix());
 
         List<ScmTradeDocItem> items = new ArrayList<>(req.items().size());
+        // 业务参数：允许超收 / 超发的比例
+        BigDecimal overRate = kind.isReturns() ? BigDecimal.ZERO : BigDecimal.valueOf(bizRules.number(
+                kind.getOrderKind() == OrderKind.PURCHASE ? ScmBizRules.PURCHASE_OVER_RATE : ScmBizRules.SALES_OVER_RATE));
         for (int i = 0; i < req.items().size(); i++) {
             TradeDocItemRequest r = req.items().get(i);
             ScmOrderItem orderItem = orderItems.get(r.orderItemId());
@@ -115,13 +122,17 @@ public class ScmTradeDocService {
                 throw new BizException("第 " + (i + 1) + " 行：订单明细不属于订单 " + order.getOrderNo());
             }
             int updated = kind.isReturns() ? orderItemMapper.addReturn(orderItem.getId(), r.qty(), Boolean.TRUE.equals(req.replenish()))
-                    : orderItemMapper.addDone(orderItem.getId(), r.qty());
+                    : orderItemMapper.addDone(orderItem.getId(), r.qty(), overRate);
             if (updated == 0) {
                 // 重新读取最新数量提示
                 ScmOrderItem latest = orderItemMapper.selectById(orderItem.getId());
                 BigDecimal max = kind.isReturns() ? latest.netQty() : latest.remainingQty();
+                if (!kind.isReturns() && overRate.signum() > 0) {
+                    max = latest.getQty().multiply(BigDecimal.valueOf(100).add(overRate)).divide(BigDecimal.valueOf(100), 4, RoundingMode.DOWN)
+                            .subtract(latest.getDoneQty()).add(latest.getReplenishQty());
+                }
                 throw new BizException(String.format("第 %d 行（%s %s）：数量超出%s %s", i + 1, orderItem.getMaterialCode(),
-                        orderItem.getMaterialName(), kind.isReturns() ? "可退数量" : "未完成数量", plain(max)));
+                        orderItem.getMaterialName(), kind.isReturns() ? "可退数量" : overRate.signum() > 0 ? "允许超收 / 超发后的数量" : "未完成数量", plain(max)));
             }
             items.add(toItem(kind, r, orderItem, rate(order)));
         }

@@ -14,8 +14,12 @@ public interface ScmOrderItemMapper extends BaseMapper<ScmOrderItem> {
 
     void insertBatch(@Param("list") List<ScmOrderItem> list);
 
-    /** 回写已入库 / 已出库数量：不超过未完成数量（条件更新，并发安全），返回 0 表示超出 */
-    int addDone(@Param("id") Long id, @Param("qty") BigDecimal qty);
+    /**
+     * 回写已入库 / 已出库数量：不超过未完成数量（条件更新，并发安全），返回 0 表示超出
+     *
+     * @param overRate 允许超过订单数量的比例（%），0 为不允许
+     */
+    int addDone(@Param("id") Long id, @Param("qty") BigDecimal qty, @Param("overRate") BigDecimal overRate);
 
     /** 回写已退货数量：不超过实际完成数量 */
     int addReturn(@Param("id") Long id, @Param("qty") BigDecimal qty, @Param("replenish") boolean replenish);

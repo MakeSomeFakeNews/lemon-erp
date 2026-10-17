@@ -223,6 +223,7 @@ DROP TABLE IF EXISTS sys_user;
 DROP TABLE IF EXISTS sys_dept;
 DROP TABLE IF EXISTS sys_tenant;
 DROP TABLE IF EXISTS sys_code_rule;
+DROP TABLE IF EXISTS sys_biz_rule;
 DROP TABLE IF EXISTS sys_custom_value;
 DROP TABLE IF EXISTS sys_custom_field;
 DROP TABLE IF EXISTS sys_print_template;
@@ -306,6 +307,17 @@ CREATE TABLE sys_print_template (
     PRIMARY KEY (id),
     UNIQUE KEY uk_print_template (template_key, tenant_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '打印模板';
+
+CREATE TABLE sys_biz_rule (
+    id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID',
+    rule_key    VARCHAR(64)  NOT NULL COMMENT '参数标识，如 scm.purchaseIn.overRate',
+    rule_value  VARCHAR(255) NOT NULL COMMENT '参数值',
+    create_time DATETIME              DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME              DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_biz_rule (rule_key, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '业务参数（按租户）：各模块的业务控制规则，只保存修改过的';
 
 CREATE TABLE sys_custom_field (
     id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -6660,6 +6672,13 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('sys_custom_field_type', '日期', 'DATE', 'cyan', 4, 1, NOW(), NOW()),
 ('sys_custom_field_type', '下拉选择', 'SELECT', 'purple', 5, 1, NOW(), NOW()),
 ('sys_custom_field_type', '是否', 'BOOL', 'green', 6, 1, NOW(), NOW());
+
+-- 业务参数
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(346, 1, '业务参数', 'C', 'biz-rule', 'system/biz-rule/index', 'sys:bizRule:list', 'SlidersOutlined', 12, 1, 1, NOW(), NOW()),
+(3460, 346, '业务参数修改', 'F', NULL, NULL, 'sys:bizRule:edit', NULL, 1, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(2, 346);
 
 -- 凭证科目设置：自动凭证各用途使用的科目
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES

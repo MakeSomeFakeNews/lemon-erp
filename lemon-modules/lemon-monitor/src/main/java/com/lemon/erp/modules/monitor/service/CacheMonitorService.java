@@ -8,6 +8,7 @@ import com.lemon.erp.modules.monitor.dto.CacheName;
 import com.lemon.erp.modules.monitor.dto.CacheValue;
 import com.lemon.erp.modules.system.service.CaptchaService;
 import com.lemon.erp.modules.system.service.PasswordPolicy;
+import com.lemon.erp.modules.system.service.SysBizRuleService;
 import com.lemon.erp.modules.system.service.SysConfigService;
 import com.lemon.erp.modules.system.service.SysDictService;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +41,8 @@ public class CacheMonitorService {
             new CacheName(SysDictService.CACHE_KEY, "字典数据", "按字典类型缓存的字典数据", 0),
             new CacheName(PasswordPolicy.FAIL_KEY, "登录失败", "按用户名记录的连续登录失败次数，达到上限时锁定账号；清空即解除锁定", 0),
             new CacheName(CaptchaService.CACHE_KEY, "登录验证码", "验证码答案，2 分钟内有效，校验一次后作废", 0),
-            new CacheName(SysConfigService.CACHE_KEY, "系统参数", "参数设置中修改过的参数，保存时自动清理", 0));
+            new CacheName(SysConfigService.CACHE_KEY, "系统参数", "参数设置中修改过的参数，保存时自动清理", 0),
+            new CacheName(SysBizRuleService.CACHE_KEY, "业务参数", "按租户缓存的业务参数（修改过的），保存时自动清理", 0));
     /** 单次最多返回的 key 数量，避免一次性返回过多 */
     private static final int MAX_KEYS = 1000;
 

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.record.ChangeLogger;
+import com.lemon.erp.framework.rule.BizRules;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.workflow.FlowApi;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
@@ -76,6 +77,7 @@ public class FinVoucherService {
     private final ApplicationEventPublisher eventPublisher;
     private final FlowApi flowApi;
     private final ChangeLogger changeLogger;
+    private final BizRules bizRules;
 
     public PageResult<FinVoucher> page(long current, long size, VoucherQuery query) {
         Page<FinVoucher> page = Page.of(current, size);
@@ -433,7 +435,7 @@ public class FinVoucherService {
             periodService.checkOpen(v.getPeriod());
             // 不相容职务分离：制单人不能审核自己的凭证（超级管理员除外，便于单人体验）
             if (to == VoucherStatus.AUDITED && from == VoucherStatus.DRAFT && Objects.equals(v.getCreateBy(), userId)
-                    && !SecurityUtils.getLoginUser().isAdmin()) {
+                    && !SecurityUtils.getLoginUser().isAdmin() && !bizRules.bool(FinBizRules.VOUCHER_SELF_AUDIT)) {
                 throw new BizException("凭证 " + v.getVoucherNo() + " 是你制单的，不能自己审核");
             }
             LambdaUpdateWrapper<FinVoucher> update = Wrappers.<FinVoucher>lambdaUpdate()
