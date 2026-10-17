@@ -20,6 +20,15 @@ public interface FinAnalysisMapper {
     List<Map<String, Object>> selectGrossMargin(@Param("begin") LocalDate begin, @Param("end") LocalDate end,
                                                 @Param("groupBy") String groupBy, @Param("customerId") Long customerId);
 
+    /**
+     * 销售毛利明细：每条销售出库 / 退货明细的收入、成本（数量 × 当期加权平均单价，未核算时取参考成本价），退货为负
+     *
+     * @return [{docId, docNo, kind, bizDate, customerName, materialCode, materialName, spec, unit, qty, revenue, cost, costed}]
+     */
+    List<Map<String, Object>> selectMarginDetail(@Param("begin") LocalDate begin, @Param("end") LocalDate end,
+                                                 @Param("customerId") Long customerId, @Param("keyword") String keyword,
+                                                 @Param("limit") int limit);
+
     /** 成本核算的期末金额、数量按物料分类汇总：[{category, closeAmount}] */
     List<Map<String, Object>> selectCostCloseByCategory(@Param("period") int period);
 

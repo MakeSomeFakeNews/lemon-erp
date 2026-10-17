@@ -6693,6 +6693,14 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 INSERT INTO sys_role_menu (role_id, menu_id) VALUES
 (2, 341), (3, 341), (9, 341), (10, 341);
 
+-- 业务报表：收发存汇总（库存查询）、往来对账单（应收应付）
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(347, 912, '收发存汇总', 'C', 'in-out', 'wms/inout/index', 'wms:inout:list', 'SwapOutlined', 5, 1, 1, NOW(), NOW()),
+(348, 932, '往来对账单', 'C', 'partner-statement', 'fin/partner-statement/index', 'fin:partnerStatement:list', 'AuditOutlined', 8, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(2, 347), (3, 347), (4, 347), (6, 347), (9, 347),
+(2, 348), (3, 348), (9, 348), (10, 348);
+
 ALTER TABLE sys_dept AUTO_INCREMENT = 200;
 ALTER TABLE sys_user AUTO_INCREMENT = 100;
 ALTER TABLE sys_role AUTO_INCREMENT = 100;

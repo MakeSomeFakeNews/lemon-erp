@@ -74,6 +74,7 @@ public class FinExtController {
     private final FinLoanService loanService;
     private final FinAnalysisService analysisService;
     private final com.lemon.erp.modules.fin.service.FinStockAgeService stockAgeService;
+    private final com.lemon.erp.modules.fin.service.FinPartnerLedgerService partnerLedgerService;
 
     // ---------------------------------------------------------------- 坏账、红字冲销、结账
 
@@ -446,6 +447,25 @@ public class FinExtController {
                                               @RequestParam(defaultValue = "MATERIAL") String groupBy,
                                               @RequestParam(required = false) Long customerId) {
         return R.ok(analysisService.grossMargin(begin, end, groupBy, customerId));
+    }
+
+    /** 往来对账单：kind 为 AR（客户）/ AP（供应商） */
+    @GetMapping("/partner-statement")
+    @PreAuthorize("@ss.hasPerm('fin:partnerStatement:list')")
+    public R<Map<String, Object>> partnerStatement(@RequestParam String kind, @RequestParam Long partnerId,
+                                                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate begin,
+                                                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
+        return R.ok(partnerLedgerService.statement(kind, partnerId, begin, end));
+    }
+
+    /** 销售毛利明细（按单据明细） */
+    @GetMapping("/analysis/gross-margin/detail")
+    @PreAuthorize("@ss.hasPerm('fin:analysis:list')")
+    public R<Map<String, Object>> grossMarginDetail(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate begin,
+                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
+                                                    @RequestParam(required = false) Long customerId,
+                                                    @RequestParam(required = false) String keyword) {
+        return R.ok(analysisService.grossMarginDetail(begin, end, customerId, keyword));
     }
 
     /** 库龄分析：buckets 为分段上限（天，逗号分隔，递增），为空用默认 30,60,90,180,365 */

@@ -5,6 +5,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.modules.wms.dto.BatchQuery;
+import com.lemon.erp.modules.wms.dto.InOutQuery;
+import com.lemon.erp.modules.wms.dto.InOutRow;
+import com.lemon.erp.modules.wms.mapper.WmsInOutMapper;
 import com.lemon.erp.modules.wms.dto.BatchView;
 import com.lemon.erp.modules.wms.dto.FlowQuery;
 import com.lemon.erp.modules.wms.dto.SerialLogView;
@@ -25,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashMap;
@@ -45,6 +49,7 @@ public class WmsStockQueryService {
     private static final int SERIAL_OPTION_LIMIT = 500;
 
     private final WmsStockMapper stockMapper;
+    private final WmsInOutMapper inOutMapper;
     private final WmsStockFlowMapper flowMapper;
     private final WmsBatchMapper batchMapper;
     private final WmsSerialMapper serialMapper;
@@ -109,6 +114,21 @@ public class WmsStockQueryService {
         LocalDateTime end = query.endDate() == null ? null : query.endDate().plusDays(1).atStartOfDay();
         Page<StockFlowView> page = Page.of(current, size);
         flowMapper.selectPageList(page, query, begin, end);
+        return PageResult.of(page);
+    }
+
+    /** 收发存汇总：日期范围内各物料的期初、各类出入库和期末数量；开始日期默认本月 1 日，结束日期默认今天，跨度不超过一年 */
+    public PageResult<InOutRow> inOutPage(long current, long size, InOutQuery query) {
+        LocalDate end = query.endDate() == null ? LocalDate.now() : query.endDate();
+        LocalDate begin = query.beginDate() == null ? end.withDayOfMonth(1) : query.beginDate();
+        if (end.isBefore(begin)) {
+            throw new BizException("结束日期不能早于开始日期");
+        }
+        if (begin.plusYears(1).isBefore(end)) {
+            throw new BizException("日期范围不能超过一年");
+        }
+        Page<InOutRow> page = Page.of(current, size);
+        inOutMapper.selectPage(page, new InOutQuery(begin, end, query.warehouseId(), query.category(), query.keyword()));
         return PageResult.of(page);
     }
 

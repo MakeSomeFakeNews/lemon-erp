@@ -6,6 +6,7 @@ import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.mapper.FinAnalysisMapper;
 import com.lemon.erp.modules.fin.mapper.FinVoucherEntryMapper;
 import com.lemon.erp.modules.fin.model.FinConstants;
+import com.lemon.erp.modules.fin.model.MarginGroup;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +33,8 @@ public class FinAnalysisService {
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
+    private static final int MARGIN_DETAIL_LIMIT = 5000;
+
     private final FinAnalysisMapper analysisMapper;
     private final FinVoucherEntryMapper entryMapper;
     private final FinAccountService accountService;
@@ -42,7 +45,7 @@ public class FinAnalysisService {
         if (end.isBefore(begin)) {
             throw new BizException("结束日期不能早于开始日期");
         }
-        String g = "CUSTOMER".equals(groupBy) || "MONTH".equals(groupBy) ? groupBy : "MATERIAL";
+        String g = MarginGroup.of(groupBy).name();
         List<Map<String, Object>> rows = new ArrayList<>();
         BigDecimal revenue = BigDecimal.ZERO;
         BigDecimal cost = BigDecimal.ZERO;
@@ -64,6 +67,35 @@ public class FinAnalysisService {
         total.put("profit", revenue.subtract(cost));
         total.put("margin", margin(revenue, cost));
         return Map.of("rows", rows, "total", total);
+    }
+
+    /** 销售毛利明细：按销售出库 / 退货单据明细逐行计算，最多 5000 行，返回 {rows, total, truncated} */
+    public Map<String, Object> grossMarginDetail(LocalDate begin, LocalDate end, Long customerId, String keyword) {
+        if (end.isBefore(begin)) {
+            throw new BizException("结束日期不能早于开始日期");
+        }
+        List<Map<String, Object>> list = analysisMapper.selectMarginDetail(begin, end, customerId, keyword, MARGIN_DETAIL_LIMIT + 1);
+        List<Map<String, Object>> rows = new ArrayList<>();
+        BigDecimal revenue = BigDecimal.ZERO;
+        BigDecimal cost = BigDecimal.ZERO;
+        for (Map<String, Object> r : list.subList(0, Math.min(list.size(), MARGIN_DETAIL_LIMIT))) {
+            BigDecimal rev = dec(r.get("revenue")).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal c = dec(r.get("cost")).setScale(2, RoundingMode.HALF_UP);
+            Map<String, Object> row = new LinkedHashMap<>(r);
+            row.put("revenue", rev);
+            row.put("cost", c);
+            row.put("profit", rev.subtract(c));
+            row.put("margin", margin(rev, c));
+            rows.add(row);
+            revenue = revenue.add(rev);
+            cost = cost.add(c);
+        }
+        Map<String, Object> total = new LinkedHashMap<>();
+        total.put("revenue", revenue);
+        total.put("cost", cost);
+        total.put("profit", revenue.subtract(cost));
+        total.put("margin", margin(revenue, cost));
+        return Map.of("rows", rows, "total", total, "truncated", list.size() > MARGIN_DETAIL_LIMIT);
     }
 
     /**

@@ -215,6 +215,8 @@ export const repayLoan = (id, data) => request.post(`/fin/loan/${id}/repay`, dat
 export const grossMargin = (params) => request.get('/fin/analysis/gross-margin', { params })
 export const inventoryCheck = (period) => request.get('/fin/analysis/inventory', { params: { period } })
 /** 库龄分析：{ asOf, warehouseId, category, keyword, buckets: '30,60,90' } → { buckets, rows, total } */
+export const grossMarginDetail = (params) => request.get('/fin/analysis/gross-margin/detail', { params })
+export const partnerStatement = (params) => request.get('/fin/partner-statement', { params })
 export const stockAge = (params) => request.get('/fin/analysis/stock-age', { params })
 
 /** 币种与汇率 */

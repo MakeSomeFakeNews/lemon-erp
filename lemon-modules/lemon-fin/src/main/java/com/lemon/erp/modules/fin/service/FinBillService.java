@@ -1,6 +1,8 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.modules.fin.model.AccountRole;
+import com.lemon.erp.modules.fin.model.FinConstants;
+import com.lemon.erp.modules.fin.model.SettleKind;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -419,7 +421,7 @@ public class FinBillService {
     }
 
     String partnerName(String kind, Long partnerId) {
-        return "AR".equals(kind) || "RECEIPT".equals(kind) ? customerService.get(partnerId).getName() : supplierService.get(partnerId).getName();
+        return FinConstants.BILL_AR.equals(kind) || SettleKind.RECEIPT.name().equals(kind) ? customerService.get(partnerId).getName() : supplierService.get(partnerId).getName();
     }
 
     static void checkKind(String kind) {

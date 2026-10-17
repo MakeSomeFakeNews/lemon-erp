@@ -9,8 +9,10 @@
               <a-radio-button value="MATERIAL">按物料</a-radio-button>
               <a-radio-button value="CUSTOMER">按客户</a-radio-button>
               <a-radio-button value="MONTH">按月份</a-radio-button>
+              <a-radio-button value="DETAIL">单据明细</a-radio-button>
             </a-radio-group>
             <PartnerSelect v-model:value="customerId" type="customer" allow-clear placeholder="全部客户" class="filter" />
+            <a-input-search v-if="groupBy === 'DETAIL'" v-model:value="keyword" allow-clear placeholder="单据号、物料编码或名称" class="filter" @search="loadMargin" />
           </div>
           <a-alert
             type="info"
@@ -34,8 +36,9 @@
                 :suffix="margin.total?.margin == null ? '' : '%'" />
             </a-col>
           </a-row>
+          <a-alert v-if="margin.truncated" type="warning" show-icon class="tip" message="明细超过 5000 行，只显示前 5000 行（汇总卡片也只统计这些行），请缩小日期范围或按客户、物料筛选" />
           <a-table
-            :row-key="(r) => r.groupKey ?? r.groupName"
+            :row-key="(r) => (groupBy === 'DETAIL' ? `${r.docId}-${r.materialCode}-${r.qty}-${r.revenue}` : r.groupKey ?? r.groupName)"
             size="middle"
             :columns="marginColumns"
             :data-source="margin.rows"
@@ -44,12 +47,21 @@
             :scroll="{ x: 1000 }"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'group'">
+              <template v-if="column.key === 'docNo'">
+                {{ record.docNo }} <DictTag type="scm_trade_kind" :value="record.kind" />
+              </template>
+              <template v-else-if="column.key === 'material'">
+                {{ record.materialCode }} {{ record.materialName }}<span v-if="record.spec" class="sub-text"> {{ record.spec }}</span>
+              </template>
+              <template v-else-if="column.key === 'group'">
                 {{ groupBy === 'MONTH' ? periodText(record.groupKey) : record.groupName || '-' }}
               </template>
               <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }}</template>
               <template v-else-if="column.key === 'cost'">
                 {{ formatMoney(record.cost) }}
+                <a-tooltip v-if="groupBy === 'DETAIL' && !Number(record.costed)" title="出库所在期间还未核算成本，按物料的参考成本价计算">
+                  <a-tag color="orange" :bordered="false" class="hint">参考成本</a-tag>
+                </a-tooltip>
                 <a-tooltip v-if="Number(record.missingCost) > 0" :title="`${record.missingCost} 行出库所在期间还未核算成本，按物料的参考成本价计算`">
                   <a-tag color="orange" :bordered="false" class="hint">含参考成本</a-tag>
                 </a-tooltip>
@@ -177,15 +189,17 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
+import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
-import { grossMargin, inventoryCheck, stockAge } from '@/api/fin'
+import { grossMargin, grossMarginDetail, inventoryCheck, stockAge } from '@/api/fin'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { useDict } from '@/composables/useDict'
 import { toOptions } from '@/utils/dict'
 import { formatQty, today } from '@/components/wms/wms'
 import { currentPeriod, formatMoney, periodText } from '@/components/fin/fin'
 
+useDict('scm_trade_kind')
 const tab = ref('margin')
 
 // ---------------------------------------------------------------- 销售毛利
@@ -195,7 +209,20 @@ const customerId = ref()
 const margin = ref({ rows: [], total: {} })
 const marginLoading = ref(false)
 const GROUP_TITLES = { MATERIAL: '物料', CUSTOMER: '客户', MONTH: '月份' }
-const marginColumns = computed(() => [
+const keyword = ref('')
+const DETAIL_COLUMNS = [
+  { title: '日期', dataIndex: 'bizDate', width: 110 },
+  { title: '单据', key: 'docNo', width: 200 },
+  { title: '客户', dataIndex: 'customerName', width: 180, ellipsis: true },
+  { title: '物料', key: 'material', width: 260, ellipsis: true },
+  { title: '数量', key: 'qty', width: 100, align: 'right' },
+  { title: '单位', dataIndex: 'unit', width: 70 },
+  { title: '收入', key: 'revenue', width: 130, align: 'right' },
+  { title: '成本', key: 'cost', width: 180, align: 'right' },
+  { title: '毛利', key: 'profit', width: 130, align: 'right' },
+  { title: '毛利率', key: 'margin', width: 90, align: 'right' }
+]
+const marginColumns = computed(() => groupBy.value === 'DETAIL' ? DETAIL_COLUMNS : [
   { title: GROUP_TITLES[groupBy.value], key: 'group', width: 240 },
   ...(groupBy.value === 'MATERIAL' ? [{ title: '销量', key: 'qty', width: 110, align: 'right' }] : []),
   { title: '收入', key: 'revenue', width: 140, align: 'right' },
@@ -208,7 +235,10 @@ async function loadMargin() {
   const current = ++marginSeq
   marginLoading.value = true
   try {
-    const res = await grossMargin({ begin: range.value[0], end: range.value[1], groupBy: groupBy.value, customerId: customerId.value ?? undefined })
+    const params = { begin: range.value[0], end: range.value[1], customerId: customerId.value ?? undefined }
+    const res = groupBy.value === 'DETAIL'
+      ? await grossMarginDetail({ ...params, keyword: keyword.value || undefined })
+      : await grossMargin({ ...params, groupBy: groupBy.value })
     if (current === marginSeq) margin.value = res
   } finally {
     if (current === marginSeq) marginLoading.value = false

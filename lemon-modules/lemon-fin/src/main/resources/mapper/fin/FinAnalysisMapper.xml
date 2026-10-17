@@ -31,6 +31,27 @@
         ORDER BY 4 DESC
     </select>
 
+    <select id="selectMarginDetail" resultType="java.util.Map">
+        SELECT d.id AS "docId", d.doc_no AS "docNo", d.kind AS "kind", d.biz_date AS "bizDate", c.name AS "customerName",
+               m.code AS "materialCode", m.name AS "materialName", m.spec AS "spec", m.unit AS "unit",
+               CASE WHEN d.kind = 'SALES_OUT' THEN i.qty ELSE -i.qty END AS "qty",
+               CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * (i.amount - i.tax_amount) AS "revenue",
+               CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * i.qty * COALESCE(mc.unit_cost, m.ref_cost, 0) AS "cost",
+               CASE WHEN mc.unit_cost IS NULL THEN 0 ELSE 1 END AS "costed"
+        FROM scm_trade_doc_item i
+        JOIN scm_trade_doc d ON d.id = i.doc_id
+        JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN scm_customer c ON c.id = d.partner_id
+        LEFT JOIN fin_material_cost mc ON mc.material_id = i.material_id AND mc.period = YEAR(d.biz_date) * 100 + MONTH(d.biz_date)
+        WHERE d.kind IN ('SALES_OUT', 'SALES_RETURN') AND d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}
+        <if test="customerId != null">AND d.partner_id = #{customerId}</if>
+        <if test="keyword != null and keyword != ''">
+            AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%') OR d.doc_no LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY d.biz_date, d.id, i.id
+        LIMIT #{limit}
+    </select>
+
     <select id="selectCostCloseByCategory" resultType="java.util.Map">
         SELECT m.category AS "category", SUM(mc.close_amount) AS "closeAmount"
         FROM fin_material_cost mc
