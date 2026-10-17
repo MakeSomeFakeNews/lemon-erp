@@ -2575,7 +2575,7 @@ CREATE TABLE fin_invoice_line (
     qty         DECIMAL(18, 6)          DEFAULT NULL COMMENT '数量',
     price       DECIMAL(18, 8)          DEFAULT NULL COMMENT '单价（不含税）',
     amount      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '金额（不含税）',
-    tax_rate    DECIMAL(6, 4)           DEFAULT NULL COMMENT '税率，如 0.13',
+    tax_rate    DECIMAL(5, 2)           DEFAULT NULL COMMENT '税率（%），如 13',
     tax_amount  DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '税额',
     create_time DATETIME                DEFAULT NULL COMMENT '创建时间',
     update_time DATETIME                DEFAULT NULL COMMENT '更新时间',
