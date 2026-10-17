@@ -3,6 +3,7 @@ package com.lemon.erp.modules.fin.controller;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.fin.dto.FxRevaluation;
 import com.lemon.erp.modules.fin.entity.FinCurrency;
 import com.lemon.erp.modules.fin.entity.FinExchangeRate;
 import com.lemon.erp.modules.fin.service.FinCurrencyService;
@@ -21,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 币种、汇率与期末调汇
@@ -73,7 +73,7 @@ public class FinCurrencyController {
     @PostMapping("/revalue/{period}")
     @PreAuthorize("@ss.hasPerm('fin:currency:edit')")
     @OperLog(title = "期末调汇", type = OperType.INSERT) // i18n-ignore
-    public R<Map<String, Object>> revalue(@PathVariable int period) {
+    public R<FxRevaluation> revalue(@PathVariable int period) {
         return R.ok(currencyService.revalue(period));
     }
 }

@@ -7,6 +7,7 @@ import { findDict } from '@/utils/dict'
 import { shortMoney } from '@/components/charts/charts'
 import { t } from '@/locales'
 
+import { MeasureFormat } from '@/constants/enums'
 /** 数据集元数据（缓存 1 分钟） */
 export const loadCubes = () => cached('bi-cubes', olapCubes, 60000)
 
@@ -44,15 +45,15 @@ export function formatMeasure(v, format) {
   if (v === null || v === undefined || v === '') return '-'
   const n = Number(v)
   switch (format) {
-    case 'MONEY':
+    case MeasureFormat.MONEY:
       return formatMoney(n)
-    case 'QTY':
+    case MeasureFormat.QTY:
       return formatQty(n)
-    case 'COUNT':
+    case MeasureFormat.COUNT:
       return Math.round(n).toLocaleString('zh-CN')
-    case 'PERCENT':
+    case MeasureFormat.PERCENT:
       return `${n.toFixed(2)}%`
-    case 'PRICE':
+    case MeasureFormat.PRICE:
       return n.toLocaleString('zh-CN', { maximumFractionDigits: 4 })
     default:
       return String(v)
@@ -85,7 +86,7 @@ export function activeMeasures(cube, config) {
 export function chartMeasure(cube, config) {
   const list = activeMeasures(cube, config)
   if (config?.measures?.length) return list[0]
-  return list.find((m) => m.format === 'MONEY') || list[0]
+  return list.find((m) => m.format === MeasureFormat.MONEY) || list[0]
 }
 
 /**
@@ -99,8 +100,8 @@ export function pivotChartOption(cube, config, result, type = 'bar') {
   const rows = result.rowTotals || []
   const categories = rows.map((r) => rowLabel(r.r))
   const val = (x) => (x === null || x === undefined ? null : Number(x))
-  const percent = measure.format === 'PERCENT'
-  const fmt = (v) => (percent ? `${Number(v).toFixed(1)}%` : measure.format === 'MONEY' ? shortMoney(v) : Number(v).toLocaleString('zh-CN'))
+  const percent = measure.format === MeasureFormat.PERCENT
+  const fmt = (v) => (percent ? `${Number(v).toFixed(1)}%` : measure.format === MeasureFormat.MONEY ? shortMoney(v) : Number(v).toLocaleString('zh-CN'))
   if (type === 'pie') {
     return {
       tooltip: { trigger: 'item', valueFormatter: fmt },

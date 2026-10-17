@@ -43,14 +43,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static com.lemon.erp.modules.fin.model.FinConstants.INPUT_VAT;
-import static com.lemon.erp.modules.fin.model.FinConstants.OUTPUT_VAT;
 
 /**
  * 应收 / 应付单：
@@ -372,7 +368,7 @@ public class FinBillService {
         for (int i = 0; i < rows.size(); i++) {
             String category = (String) rows.get(i).get("category");
             BigDecimal amount = i == rows.size() - 1 ? net.subtract(allocated)
-                    : net.multiply(new BigDecimal(rows.get(i).get("net").toString())).divide(total, 2, RoundingMode.HALF_UP);
+                    : net.multiply(new BigDecimal(rows.get(i).get("net").toString())).divide(total, Decimals.MONEY_SCALE, Decimals.ROUNDING);
             result.merge(category, amount, BigDecimal::add);
             allocated = allocated.add(amount);
         }

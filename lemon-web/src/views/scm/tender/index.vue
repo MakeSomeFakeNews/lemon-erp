@@ -28,7 +28,7 @@
           </template>
           <template v-else-if="column.key === 'deadline'">
             <div>{{ record.deadline }}</div>
-            <div v-if="record.status === 'BIDDING'" :class="['sub-text', { danger: passed(record) }]">{{ passed(record) ? $t('scm.tender.closedCanOpen') : remain(record) }}</div>
+            <div v-if="record.status === TenderStatus.BIDDING" :class="['sub-text', { danger: passed(record) }]">{{ passed(record) ? $t('scm.tender.closedCanOpen') : remain(record) }}</div>
           </template>
           <template v-else-if="column.key === 'bids'">{{ $t('scm.tender.bidCount', { bids: record.bidCount, total: record.supplierCount }) }}</template>
           <template v-else-if="column.key === 'award'">
@@ -113,7 +113,7 @@
     <SubPage :open="detailOpen" :title="detail ? $t('scm.tender.detailTitle', { no: detail.tenderNo, title: detail.title }) : ''" width="min(1100px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <a-space>
-          <template v-if="detail.status === 'DRAFT'">
+          <template v-if="detail.status === TenderStatus.DRAFT">
             <a-button v-perm="'scm:tender:edit'" @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
             <span v-perm="'scm:tender:remove'">
               <a-popconfirm :title="$t('scm.tender.confirmDelete')" @confirm="remove"><a-button danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
@@ -122,7 +122,7 @@
               <a-popconfirm :title="$t('scm.tender.confirmPublish')" @confirm="publish"><a-button type="primary">{{ $t('scm.tender.publish') }}</a-button></a-popconfirm>
             </span>
           </template>
-          <template v-if="detail.status === 'BIDDING'">
+          <template v-if="detail.status === TenderStatus.BIDDING">
             <a-button v-perm="'scm:tender:edit'" @click="openBid">{{ $t('scm.tender.proxyBid') }}</a-button>
             <span v-perm="'scm:tender:award'">
               <a-popconfirm :title="$t('scm.tender.confirmOpen')" :disabled="!canOpen" @confirm="open">
@@ -132,8 +132,8 @@
               </a-popconfirm>
             </span>
           </template>
-          <a-button v-if="detail.status === 'OPENED' && detail.bids.length" v-perm="'scm:tender:award'" type="primary" @click="openAward()">{{ $t('scm.tender.award') }}</a-button>
-          <span v-if="['DRAFT', 'BIDDING', 'OPENED'].includes(detail.status)" v-perm="'scm:tender:edit'">
+          <a-button v-if="detail.status === TenderStatus.OPENED && detail.bids.length" v-perm="'scm:tender:award'" type="primary" @click="openAward()">{{ $t('scm.tender.award') }}</a-button>
+          <span v-if="[TenderStatus.DRAFT, TenderStatus.BIDDING, TenderStatus.OPENED].includes(detail.status)" v-perm="'scm:tender:edit'">
             <a-popconfirm :title="$t('scm.tender.confirmCancel')" @confirm="cancel"><a-button>{{ $t('scm.tender.cancelTender') }}</a-button></a-popconfirm>
           </span>
         </a-space>
@@ -180,7 +180,7 @@
                   <b :class="{ best: b.id === lowestBidId }">¥{{ formatMoney(b.totalAmount) }}</b>
                   <div class="sub-text">{{ b.deliveryDays != null ? $t('scm.tender.days', { n: b.deliveryDays }) : '-' }}{{ b.remark ? ' · ' + b.remark : '' }}</div>
                   <a-button
-                    v-if="detail.status === 'OPENED'"
+                    v-if="detail.status === TenderStatus.OPENED"
                     v-perm="'scm:tender:award'"
                     type="link"
                     size="small"
@@ -254,10 +254,10 @@
             <a-radio value="NONE">{{ $t('scm.tender.none') }}</a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item v-if="award.target === 'ORDER'" :label="$t('scm.tender.warehouse')" required>
+        <a-form-item v-if="award.target === AwardTarget.ORDER" :label="$t('scm.tender.warehouse')" required>
           <WarehouseSelect v-model:value="award.warehouseId" />
         </a-form-item>
-        <a-row v-if="award.target === 'CONTRACT'" :gutter="12">
+        <a-row v-if="award.target === AwardTarget.CONTRACT" :gutter="12">
           <a-col :span="12">
             <a-form-item :label="$t('scm.tender.contractStart')">
               <a-date-picker v-model:value="award.startDate" value-format="YYYY-MM-DD" class="full" />
@@ -301,6 +301,7 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
+import { AwardTarget, TenderStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 /** 招标采购：邀请供应商投标（门户或代录），截止后开标比价，定标生成采购合同或订单 */
@@ -402,7 +403,7 @@ async function openDetail(id) {
 async function refreshDetail() {
   if (detail.value) detail.value = await getTender(detail.value.id)
 }
-const opened = computed(() => ['OPENED', 'AWARDED'].includes(detail.value?.status))
+const opened = computed(() => [TenderStatus.OPENED, TenderStatus.AWARDED].includes(detail.value?.status))
 const canOpen = computed(() => detail.value && (passed(detail.value) || detail.value.suppliers.every((s) => s.bid)))
 const compareColumns = computed(() => [
   { title: t('scm.tender.material'), key: 'material', width: 240, fixed: 'left' },
@@ -487,14 +488,14 @@ function openAward(supplierId) {
   awardOpen.value = true
 }
 async function submitAward() {
-  if (award.value.target === 'ORDER' && !award.value.warehouseId) return message.warning(t('scm.tender.selectWarehouse'))
+  if (award.value.target === AwardTarget.ORDER && !award.value.warehouseId) return message.warning(t('scm.tender.selectWarehouse'))
   saving.value = true
   try {
     await awardTender(detail.value.id, award.value)
     message.success(
-      award.value.target === 'CONTRACT'
+      award.value.target === AwardTarget.CONTRACT
         ? t('scm.tender.awardedContract')
-        : award.value.target === 'ORDER'
+        : award.value.target === AwardTarget.ORDER
           ? t('scm.tender.awardedOrder')
           : t('scm.tender.awarded')
     )

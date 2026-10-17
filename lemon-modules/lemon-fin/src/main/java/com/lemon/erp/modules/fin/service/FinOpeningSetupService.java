@@ -10,6 +10,7 @@ import com.lemon.erp.framework.excel.ImportRequest;
 import com.lemon.erp.framework.excel.ImportResult;
 import com.lemon.erp.modules.fin.dto.BillRequest;
 import com.lemon.erp.modules.fin.dto.OpeningBillRow;
+import com.lemon.erp.modules.fin.dto.OpeningSummary;
 import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.entity.FinAccountOpening;
 import com.lemon.erp.modules.fin.entity.FinCostRun;
@@ -25,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,27 +60,24 @@ public class FinOpeningSetupService {
      * @return {accounts: {count, debit, credit}, stockDocs: [...], stock: {startPeriod, locked, count, amount},
      * bills: {AR: {count, amount, ledger}, AP: {...}}}
      */
-    public Map<String, Object> summary() {
-        Map<String, Object> result = new LinkedHashMap<>();
+    public OpeningSummary summary() {
         List<FinAccountOpening> openings = openingMapper.selectList(null);
         BigDecimal debit = Decimals.sum(openings, FinAccountOpening::getDebit);
         BigDecimal credit = Decimals.sum(openings, FinAccountOpening::getCredit);
-        result.put("accounts", Map.of("count", openings.size(), "debit", debit, "credit", credit));
-        result.put("stockDocs", queryMapper.selectOpeningStockDocs());
 
         FinCostRun opening = runMapper.selectOne(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, CostRunKind.OPENING));
-        Map<String, Object> stock = new LinkedHashMap<>();
-        stock.put("saved", opening != null);
-        stock.put("openingPeriod", opening == null ? null : opening.getPeriod());
-        stock.put("costed", runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, CostRunKind.RUN)));
-        result.put("stock", stock);
+        OpeningSummary.StockStatus stock = new OpeningSummary.StockStatus(opening != null, opening == null ? null : opening.getPeriod(),
+                runMapper.exists(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getKind, CostRunKind.RUN)));
 
+        Map<BillKind, OpeningSummary.ManualBillSum> manual = new EnumMap<>(BillKind.class);
+        for (OpeningSummary.ManualBillSum row : queryMapper.selectManualBillSums()) {
+            if (row.getKind() != null) {
+                manual.put(row.getKind(), row);
+            }
+        }
         List<FinAccount> accounts = accountService.listAll();
-        Map<String, Object> bills = new LinkedHashMap<>();
+        Map<BillKind, OpeningSummary.BillTotals> bills = new LinkedHashMap<>();
         for (BillKind kind : BillKind.values()) {
-            Map<String, Object> b = new LinkedHashMap<>();
-            b.put("count", 0);
-            b.put("amount", BigDecimal.ZERO);
             boolean ar = kind == BillKind.AR;
             String code = accountRules.code(ar ? AccountRole.RECEIVABLE : AccountRole.PAYABLE, null);
             BigDecimal ledger = BigDecimal.ZERO;
@@ -88,20 +87,12 @@ public class FinOpeningSetupService {
                     ledger = ledger.add(ar ? o.getDebit().subtract(o.getCredit()) : o.getCredit().subtract(o.getDebit()));
                 }
             }
-            b.put("accountCode", code);
-            b.put("ledger", ledger);
-            bills.put(kind.name(), b);
+            OpeningSummary.ManualBillSum m = manual.get(kind);
+            bills.put(kind, new OpeningSummary.BillTotals(m == null ? 0 : m.getCount().intValue(),
+                    m == null ? BigDecimal.ZERO : m.getAmount(), code, ledger));
         }
-        for (Map<String, Object> row : queryMapper.selectManualBillSums()) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> b = (Map<String, Object>) bills.get((String) row.get("kind"));
-            if (b != null) {
-                b.put("count", ((Number) row.get("count")).intValue());
-                b.put("amount", new BigDecimal(row.get("amount").toString()));
-            }
-        }
-        result.put("bills", bills);
-        return result;
+        return new OpeningSummary(new OpeningSummary.AccountTotals(openings.size(), debit, credit),
+                queryMapper.selectOpeningStockDocs(), stock, bills);
     }
 
     /** 期初库存导入：生成启用期间前一天的期初入库单 */

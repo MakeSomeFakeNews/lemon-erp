@@ -152,6 +152,7 @@ import { useTable } from '@/composables/useTable'
 import { useDictStore } from '@/store/dict'
 import { toOptions } from '@/utils/dict'
 
+import { DictKind } from '@/constants/enums'
 /**
  * 字典数据：系统字典只能改名称、颜色、排序、备注；业务字典可以新增取值，内置取值（程序依赖）不能删除、不能改键值。
  * biz 为「业务字典」页面（当前租户自己的取值，权限 sys:bizdict:*），否则为平台的「字典管理」
@@ -188,7 +189,7 @@ const COLORS = [
 ]
 const tagColor = (c) => (c && c !== 'default' ? c : undefined)
 
-const isSystem = computed(() => props.dictType?.kind === 'SYSTEM')
+const isSystem = computed(() => props.dictType?.kind === DictKind.SYSTEM)
 const perms = computed(() => (props.biz
   ? { add: 'sys:bizdict:edit', edit: 'sys:bizdict:edit', remove: 'sys:bizdict:edit' }
   : { add: 'sys:dict:add', edit: 'sys:dict:edit', remove: 'sys:dict:remove' }))

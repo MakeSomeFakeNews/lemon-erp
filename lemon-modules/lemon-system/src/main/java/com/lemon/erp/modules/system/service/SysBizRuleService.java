@@ -10,6 +10,8 @@ import com.lemon.erp.framework.rule.BizRules;
 import com.lemon.erp.framework.setting.OptionEnum;
 import com.lemon.erp.framework.setting.SettingType;
 import com.lemon.erp.framework.tenant.TenantContext;
+import com.lemon.erp.modules.system.dto.BizRuleItem;
+import com.lemon.erp.modules.system.dto.SettingItem;
 import com.lemon.erp.modules.system.entity.SysBizRule;
 import com.lemon.erp.modules.system.mapper.SysBizRuleMapper;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -36,12 +39,16 @@ public class SysBizRuleService implements BizRules {
     /** 缓存：按租户 */
     public static final String CACHE_KEY = "bizrule:";
     private static final Duration CACHE_TTL = Duration.ofHours(12);
+    /** 参数值的最大长度（sys_biz_rule.rule_value） */
+    private static final int MAX_VALUE_LENGTH = 255;
 
     private final SysBizRuleMapper ruleMapper;
     private final CacheService cache;
     private final List<BizRuleProvider> providers;
 
     private volatile Map<String, BizRule> definitions;
+    /** 参数标识 → 登记它的模块（保存时的额外校验） */
+    private volatile Map<String, BizRuleProvider> owners;
 
     @Override
     public String get(String key) {
@@ -50,26 +57,18 @@ public class SysBizRuleService implements BizRules {
         return value != null ? value : rule.defaultValue();
     }
 
-    /** 全部参数及当前值（页面使用）：[{key, module, label, type, value, defaultValue, modified, options, min, max, remark}] */
-    public List<Map<String, Object>> list() {
+    /** 全部参数及当前值（页面使用）：[{key, module, label, type, value, defaultValue, modified, options, min, max, scale, columns, remark}] */
+    public List<BizRuleItem> list() {
         Map<String, String> saved = saved();
         return definitions().values().stream().map(r -> {
-            Map<String, Object> m = new LinkedHashMap<>();
             String value = saved.getOrDefault(r.key(), r.defaultValue());
-            m.put("key", r.key());
             // 模块、名称、选项、说明由各模块登记（消息键），按请求语言取消息
-            m.put("module", Messages.get(r.module()));
-            m.put("label", Messages.get(r.label()));
-            m.put("type", r.type().name());
-            m.put("value", value);
-            m.put("defaultValue", r.defaultValue());
-            m.put("modified", !Objects.equals(value, r.defaultValue()));
-            m.put("options", r.options() == null ? null : Arrays.stream(r.options().getEnumConstants())
-                    .map(o -> Map.of("value", o.name(), "label", Messages.get(o.label()))).toList());
-            m.put("min", r.min());
-            m.put("max", r.max());
-            m.put("remark", Messages.get(r.remark()));
-            return m;
+            List<SettingItem.Option> options = r.options() == null ? null : Arrays.stream(r.options().getEnumConstants())
+                    .map(o -> new SettingItem.Option(o.name(), Messages.get(o.label()))).toList();
+            List<BizRuleItem.Column> columns = r.columns() == null ? null : r.columns().stream()
+                    .map(c -> new BizRuleItem.Column(Messages.get(c.label()), c.scale(), c.min(), c.max(), c.nullable())).toList();
+            return new BizRuleItem(r.key(), Messages.get(r.module()), Messages.get(r.label()), r.type().name(), value, r.defaultValue(),
+                    !Objects.equals(value, r.defaultValue()), options, r.min(), r.max(), r.scale(), columns, Messages.get(r.remark()));
         }).toList();
     }
 
@@ -80,7 +79,8 @@ public class SysBizRuleService implements BizRules {
             BizRule r = definition(key);
             String value = raw == null ? null : raw.trim();
             if (value != null && !value.isEmpty()) {
-                validate(r, value);
+                value = validate(r, value);
+                owners().get(key).validate(key, value);
             }
             boolean reset = value == null || value.isEmpty() || value.equals(r.defaultValue());
             SysBizRule row = ruleMapper.selectOne(Wrappers.<SysBizRule>lambdaQuery().eq(SysBizRule::getRuleKey, key));
@@ -113,10 +113,20 @@ public class SysBizRuleService implements BizRules {
     private Map<String, BizRule> definitions() {
         if (definitions == null) {
             Map<String, BizRule> map = new LinkedHashMap<>();
-            providers.forEach(p -> p.rules().forEach(r -> map.put(r.key(), r)));
+            Map<String, BizRuleProvider> owner = new HashMap<>();
+            providers.forEach(p -> p.rules().forEach(r -> {
+                map.put(r.key(), r);
+                owner.put(r.key(), p);
+            }));
+            owners = owner;
             definitions = map;
         }
         return definitions;
+    }
+
+    private Map<String, BizRuleProvider> owners() {
+        definitions();
+        return owners;
     }
 
     @SuppressWarnings("unchecked")
@@ -137,7 +147,8 @@ public class SysBizRuleService implements BizRules {
         return CACHE_KEY + (tenant == null ? TenantContext.PLATFORM_TENANT_ID : tenant);
     }
 
-    private static void validate(BizRule r, String value) {
+    /** 校验取值，返回规范化之后的值（DECIMAL、TABLE 去掉数字末尾的 0） */
+    private static String validate(BizRule r, String value) {
         String name = Messages.get(r.label());
         if (r.type() == SettingType.NUMBER) {
             int n;
@@ -157,8 +168,65 @@ public class SysBizRuleService implements BizRules {
             if (Arrays.stream(r.options().getEnumConstants()).map(OptionEnum::name).noneMatch(value::equals)) {
                 throw new BizException("system.error.invalidValue", name, value);
             }
+        } else if (r.type() == SettingType.DECIMAL) {
+            BigDecimal n = decimal(value, name);
+            if (n.compareTo(BigDecimal.valueOf(r.min())) < 0 || n.compareTo(BigDecimal.valueOf(r.max())) > 0) {
+                throw new BizException("system.error.mustBetween", name, r.min(), r.max());
+            }
+            if (n.stripTrailingZeros().scale() > r.scale()) {
+                throw new BizException("system.error.decimalPlaces", name, r.scale());
+            }
+            return BizRule.plain(n);
+        } else if (r.type() == SettingType.TABLE) {
+            return validateTable(r, value, name);
         } else {
             throw new BizException("system.error.typeNotSupported", name);
+        }
+        return value;
+    }
+
+    private static String validateTable(BizRule r, String value, String name) {
+        List<List<BigDecimal>> rows;
+        try {
+            rows = BizRule.parseTable(value);
+        } catch (NumberFormatException e) {
+            throw new BizException("system.error.mustNumber", name);
+        }
+        for (int i = 0; i < rows.size(); i++) {
+            List<BigDecimal> row = rows.get(i);
+            if (row.size() != r.columns().size()) {
+                throw new BizException("system.error.tableColumns", name, i + 1, r.columns().size());
+            }
+            for (int j = 0; j < row.size(); j++) {
+                BizRule.Column c = r.columns().get(j);
+                BigDecimal n = row.get(j);
+                String column = Messages.get(c.label());
+                if (n == null) {
+                    if (!c.nullable()) {
+                        throw new BizException("system.error.tableCellRequired", name, i + 1, column);
+                    }
+                    continue;
+                }
+                if (n.compareTo(BigDecimal.valueOf(c.min())) < 0 || n.compareTo(BigDecimal.valueOf(c.max())) > 0) {
+                    throw new BizException("system.error.tableCellBetween", name, i + 1, column, c.min(), c.max());
+                }
+                if (n.stripTrailingZeros().scale() > c.scale()) {
+                    throw new BizException("system.error.tableCellDecimalPlaces", name, i + 1, column, c.scale());
+                }
+            }
+        }
+        String normalized = BizRule.formatTable(rows);
+        if (normalized.length() > MAX_VALUE_LENGTH) {
+            throw new BizException("system.error.mustCharactersLong2", name, 1, MAX_VALUE_LENGTH);
+        }
+        return normalized;
+    }
+
+    private static BigDecimal decimal(String value, String name) {
+        try {
+            return new BigDecimal(value);
+        } catch (NumberFormatException e) {
+            throw new BizException("system.error.mustNumber", name);
         }
     }
 

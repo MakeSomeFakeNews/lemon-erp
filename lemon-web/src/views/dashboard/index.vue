@@ -150,9 +150,11 @@ import { pageTodoTask } from '@/api/workflow/task'
 import { currentLocale } from '@/locales'
 import { useUserStore } from '@/store/user'
 import { greeting } from '@/utils/format'
+import { money as formatMoney } from '@/utils/number'
 import { flattenPages } from '@/utils/menu'
 import { joinPath } from '@/utils/path'
 
+import { MenuType } from '@/constants/enums'
 const { t } = useI18n()
 
 /**
@@ -187,7 +189,7 @@ const statColumns = computed(() => {
   const max = Math.max(1, Math.floor((width.value + STAT_GAP) / (STAT_MIN_WIDTH + STAT_GAP)))
   return Math.ceil(n / Math.ceil(n / max))
 })
-const money = (v) => Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const money = (v) => formatMoney(v || 0)
 function trend(c) {
   const cur = Number(c.value || 0)
   const prev = Number(c.previous || 0)
@@ -213,7 +215,7 @@ const quickActions = computed(() =>
 const EXCLUDED = new Set(['/workflow', '/system', '/monitor'])
 const modules = computed(() =>
   (userStore.menus || [])
-    .filter((m) => m.type === 'M' && m.visible === 1 && !EXCLUDED.has(joinPath('', m.path)))
+    .filter((m) => m.type === MenuType.M && m.visible === 1 && !EXCLUDED.has(joinPath('', m.path)))
     .map((m) => ({
       path: joinPath('', m.path),
       title: m.name,

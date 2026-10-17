@@ -1,7 +1,9 @@
 package com.lemon.erp.modules.wms.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.framework.data.Queries;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.modules.wms.dto.VariantMatrix;
 import com.lemon.erp.modules.wms.entity.WmsAttribute;
 import com.lemon.erp.modules.wms.entity.WmsAttributeValue;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
@@ -146,7 +148,7 @@ public class WmsVariantService {
      *
      * @return {template, attributes: [{id, name, values: [...]}], variants: [{id, code, name, spec, variantText, status, valueIds}]}
      */
-    public Map<String, Object> matrix(Long templateId) {
+    public VariantMatrix matrix(Long templateId) {
         WmsMaterial template = requireTemplate(templateId, false);
         List<WmsMaterial> variants = materialMapper.selectList(Wrappers.<WmsMaterial>lambdaQuery()
                 .eq(WmsMaterial::getTemplateId, templateId).orderByAsc(WmsMaterial::getCode));
@@ -155,36 +157,20 @@ public class WmsVariantService {
         vvs.forEach(v -> valuesByMaterial.computeIfAbsent(v.getMaterialId(), k -> new HashMap<>()).put(v.getAttributeId(), v.getValueId()));
         Set<Long> usedAttrs = vvs.stream().map(WmsVariantValue::getAttributeId).collect(Collectors.toSet());
         Set<Long> usedValues = vvs.stream().map(WmsVariantValue::getValueId).collect(Collectors.toSet());
-        List<Map<String, Object>> attrs = new ArrayList<>();
+        List<VariantMatrix.Attribute> attrs = new ArrayList<>();
         for (WmsAttribute a : attributes()) {
             if (!usedAttrs.contains(a.getId())) {
                 continue;
             }
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id", a.getId());
-            m.put("name", a.getName());
-            m.put("values", a.getValues().stream().filter(v -> usedValues.contains(v.getId())).toList());
-            attrs.add(m);
+            attrs.add(new VariantMatrix.Attribute(a.getId(), a.getName(),
+                    a.getValues().stream().filter(v -> usedValues.contains(v.getId())).toList()));
         }
-        List<Map<String, Object>> rows = new ArrayList<>();
+        List<VariantMatrix.Variant> rows = new ArrayList<>();
         for (WmsMaterial v : variants) {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id", v.getId());
-            m.put("code", v.getCode());
-            m.put("name", v.getName());
-            m.put("spec", v.getSpec());
-            m.put("unit", v.getUnit());
-            m.put("serialEnabled", v.getSerialEnabled());
-            m.put("variantText", v.getVariantText());
-            m.put("status", v.getStatus());
-            m.put("values", valuesByMaterial.getOrDefault(v.getId(), Map.of()));
-            rows.add(m);
+            rows.add(new VariantMatrix.Variant(v.getId(), v.getCode(), v.getName(), v.getSpec(), v.getUnit(), v.getSerialEnabled(),
+                    v.getVariantText(), v.getStatus(), valuesByMaterial.getOrDefault(v.getId(), Map.of())));
         }
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("template", template);
-        result.put("attributes", attrs);
-        result.put("variants", rows);
-        return result;
+        return new VariantMatrix(template, attrs, rows);
     }
 
     /**
@@ -307,11 +293,11 @@ public class WmsVariantService {
 
     /** 款式（启用），按编码或名称搜索，订单按规格矩阵录入时选择 */
     public List<WmsMaterial> templateOptions(String keyword) {
-        return materialMapper.selectList(Wrappers.<WmsMaterial>lambdaQuery()
+        return Queries.limit(materialMapper, Wrappers.<WmsMaterial>lambdaQuery()
                 .select(WmsMaterial::getId, WmsMaterial::getCode, WmsMaterial::getName, WmsMaterial::getSpec, WmsMaterial::getUnit)
                 .eq(WmsMaterial::getIsTemplate, 1).eq(WmsMaterial::getStatus, 1)
                 .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword))
-                .orderByAsc(WmsMaterial::getCode).last("LIMIT 50"));
+                .orderByAsc(WmsMaterial::getCode), 50);
     }
 
     /**

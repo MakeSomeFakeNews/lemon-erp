@@ -72,7 +72,7 @@
             </a>
           </template>
           <template v-else-if="column.key === 'kind'">
-            <a-tag :color="record.kind === 'BUSINESS' ? 'green' : 'blue'" :bordered="false">{{ kindLabel(record.kind) }}</a-tag>
+            <a-tag :color="record.kind === DictKind.BUSINESS ? 'green' : 'blue'" :bordered="false">{{ kindLabel(record.kind) }}</a-tag>
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="sys_common_status" :value="record.status" />
@@ -85,7 +85,7 @@
               <a-button v-perm="'sys:dict:edit'" type="link" size="small" @click="openForm(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
-              <span v-if="record.kind === 'BUSINESS'" v-perm="'sys:dict:remove'">
+              <span v-if="record.kind === DictKind.BUSINESS" v-perm="'sys:dict:remove'">
                 <a-popconfirm :title="$t('system.dict.confirmDelete')" @confirm="remove([record.id])">
                   <a-button type="link" size="small" danger>
                     <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
@@ -168,6 +168,7 @@ import { useTable } from '@/composables/useTable'
 import { useDictStore } from '@/store/dict'
 import { toOptions } from '@/utils/dict'
 
+import { DictKind } from '@/constants/enums'
 const { t } = useI18n()
 const dictStore = useDictStore()
 const dict = useDict('sys_common_status')
@@ -211,7 +212,7 @@ function clearCache() {
 const formOpen = ref(false)
 const saving = ref(false)
 const formRef = ref()
-const emptyForm = () => ({ id: undefined, name: '', type: '', kind: 'BUSINESS', status: 1, remark: '' })
+const emptyForm = () => ({ id: undefined, name: '', type: '', kind: DictKind.BUSINESS, status: 1, remark: '' })
 const form = ref(emptyForm())
 let originalType = ''
 const rules = {

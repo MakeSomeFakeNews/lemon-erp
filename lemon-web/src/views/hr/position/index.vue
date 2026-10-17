@@ -105,7 +105,6 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -120,6 +119,7 @@ import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { t } from '@/locales'
+import { useAction } from '@/composables/useAction'
 
 const userStore = useUserStore()
 const dict = useDict('hr_position_category', 'sys_common_status')
@@ -162,11 +162,7 @@ const drawer = useFormDrawer({
 })
 const { formRef, form } = drawer
 
-async function remove(id) {
-  await deletePosition(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deletePosition, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

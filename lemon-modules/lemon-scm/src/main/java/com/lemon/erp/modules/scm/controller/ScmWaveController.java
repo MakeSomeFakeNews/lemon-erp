@@ -4,6 +4,7 @@ import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.scm.dto.WavePickList;
 import com.lemon.erp.modules.scm.dto.WaveRequest;
 import com.lemon.erp.modules.scm.entity.ScmWave;
 import com.lemon.erp.modules.scm.model.WaveStatus;
@@ -20,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
 
 /**
  * 波次拣货
@@ -51,7 +51,7 @@ public class ScmWaveController {
     /** 拣货单：lines（按库位路径汇总，含分拣）、shortages（库存不足） */
     @GetMapping("/{id}/pick-list")
     @PreAuthorize("@ss.hasPerm('scm:wave:list')")
-    public R<Map<String, Object>> pickList(@PathVariable Long id) {
+    public R<WavePickList> pickList(@PathVariable Long id) {
         return R.ok(waveService.pickList(id));
     }
 

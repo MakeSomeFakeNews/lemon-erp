@@ -1,6 +1,8 @@
 package com.lemon.erp.modules.fin.controller;
 
 import com.lemon.erp.common.result.R;
+import com.lemon.erp.modules.fin.dto.CashierViews;
+import com.lemon.erp.modules.fin.model.SettleKind;
 import com.lemon.erp.modules.fin.service.FinCashierService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -27,24 +29,24 @@ public class FinCashierController {
     /** @param posted 只统计已记账凭证，默认包含未记账的 */
     @GetMapping("/journal")
     @PreAuthorize("@ss.hasPerm('fin:cashier:list')")
-    public R<List<Map<String, Object>>> journal(@RequestParam(required = false) Long accountId,
-                                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate begin,
-                                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
-                                                @RequestParam(defaultValue = "false") boolean posted) {
+    public R<List<CashierViews.JournalRow>> journal(@RequestParam(required = false) Long accountId,
+                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate begin,
+                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
+                                                    @RequestParam(defaultValue = "false") boolean posted) {
         return R.ok(cashierService.journal(accountId, begin, end, posted));
     }
 
     @GetMapping("/daily")
     @PreAuthorize("@ss.hasPerm('fin:cashier:list')")
-    public R<Map<String, Object>> daily(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate begin,
-                                        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
-                                        @RequestParam(defaultValue = "false") boolean posted) {
+    public R<CashierViews.Daily> daily(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate begin,
+                                       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
+                                       @RequestParam(defaultValue = "false") boolean posted) {
         return R.ok(cashierService.daily(begin, end, posted));
     }
 
     @GetMapping("/unvouchered")
     @PreAuthorize("@ss.hasPerm('fin:cashier:list')")
-    public R<Map<String, Object>> unvouchered() {
+    public R<Map<SettleKind, CashierViews.CountAmount>> unvouchered() {
         return R.ok(cashierService.unvouchered());
     }
 }

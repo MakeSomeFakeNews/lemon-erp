@@ -13,7 +13,7 @@
         ORDER BY s.txn_date, s.id
     </select>
 
-    <select id="selectEntries" resultType="java.util.Map">
+    <select id="selectEntries" resultType="com.lemon.erp.modules.fin.dto.BankViews$BankEntry">
         SELECT e.id AS "entryId", v.id AS "voucherId", v.voucher_no AS "voucherNo", v.voucher_date AS "voucherDate",
                e.summary AS "summary", e.debit - e.credit AS "amount",
                CASE WHEN EXISTS (SELECT 1 FROM fin_bank_statement s WHERE s.entry_id = e.id) THEN 1 ELSE 0 END AS "matched"

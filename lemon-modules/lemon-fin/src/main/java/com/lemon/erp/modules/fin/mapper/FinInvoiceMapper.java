@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.mapper;
 
+import com.lemon.erp.modules.fin.dto.UninvoicedRow;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.model.InvoiceStatus;
 import com.lemon.erp.modules.fin.model.InvoiceKind;
@@ -11,7 +12,6 @@ import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 public interface FinInvoiceMapper extends BaseMapper<FinInvoice> {
 
@@ -34,5 +34,5 @@ public interface FinInvoiceMapper extends BaseMapper<FinInvoice> {
      *
      * @return [{partnerId, partnerName, billCount, amount, invoiced, uninvoiced}]
      */
-    List<Map<String, Object>> selectUninvoiced(@Param("billKind") BillKind billKind, @Param("asOf") LocalDate asOf);
+    List<UninvoicedRow> selectUninvoiced(@Param("billKind") BillKind billKind, @Param("asOf") LocalDate asOf);
 }

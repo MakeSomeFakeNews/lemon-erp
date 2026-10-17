@@ -17,7 +17,6 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -112,8 +111,8 @@ public class FinBudgetService {
             }
             List<BigDecimal> months = months(b);
             BigDecimal totalActual = Arrays.stream(actual).reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal rate = b.getTotal().signum() == 0 ? null
-                    : totalActual.multiply(Decimals.HUNDRED).divide(b.getTotal(), 1, RoundingMode.HALF_UP);
+            // 执行率（%）保留 1 位，预算为 0 时为空
+            BigDecimal rate = Decimals.percent(totalActual, b.getTotal(), 1);
             result.add(new BudgetExecution(b.getId(), b.getBudgetYear(), b.getDeptId(), b.getDeptId() == 0 ? Messages.get("fin.text.companyWide") : b.getDeptName(),
                     b.getAccountId(), b.getAccountCode(), b.getAccountName(), months, List.of(actual), b.getTotal(), totalActual, rate));
         }
@@ -173,7 +172,7 @@ public class FinBudgetService {
     }
 
     private static String plain(BigDecimal v) {
-        return v.setScale(2, RoundingMode.HALF_UP).toPlainString();
+        return Decimals.money(v).toPlainString();
     }
 
     private FinBudget toEntity(BudgetRequest req) {
@@ -182,7 +181,7 @@ public class FinBudgetService {
         b.setBudgetYear(req.budgetYear());
         b.setDeptId(req.deptId() == null ? 0L : req.deptId());
         b.setAccountId(req.accountId());
-        List<BigDecimal> m = req.months().stream().map(v -> v == null ? BigDecimal.ZERO : v.setScale(2, RoundingMode.HALF_UP)).toList();
+        List<BigDecimal> m = req.months().stream().map(v -> v == null ? BigDecimal.ZERO : Decimals.money(v)).toList();
         if (m.stream().anyMatch(v -> v.signum() < 0)) {
             throw new BizException("fin.error.budgetAmountsCannotLess");
         }

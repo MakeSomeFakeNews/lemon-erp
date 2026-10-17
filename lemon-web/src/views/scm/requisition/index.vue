@@ -43,7 +43,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== 'DRAFT' }) }"
+        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== RequisitionStatus.DRAFT }) }"
         :scroll="{ x: 1200, y: '100%' }"
         @change="onTableChange"
       >
@@ -59,10 +59,10 @@
               <a-button type="link" size="small" @click="openDetail(record)">
                 <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
-              <a-button v-if="record.status === 'DRAFT'" v-perm="'scm:requisition:edit'" type="link" size="small" @click="form.openEdit(record)">
+              <a-button v-if="record.status === RequisitionStatus.DRAFT" v-perm="'scm:requisition:edit'" type="link" size="small" @click="form.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
-              <span v-if="record.status === 'DRAFT'" v-perm="'scm:requisition:remove'">
+              <span v-if="record.status === RequisitionStatus.DRAFT" v-perm="'scm:requisition:remove'">
                 <a-popconfirm :title="$t('scm.requisition.confirmDelete')" @confirm="remove([record.id])">
                   <a-button type="link" danger size="small">
                     <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
@@ -97,6 +97,7 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+import { RequisitionStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 const dict = useDict('scm_requisition_status')

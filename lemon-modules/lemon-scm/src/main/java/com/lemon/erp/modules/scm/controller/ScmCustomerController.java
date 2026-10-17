@@ -15,7 +15,7 @@ import com.lemon.erp.modules.scm.dto.PartnerOption;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
 import com.lemon.erp.modules.scm.model.SalesChannel;
 import com.lemon.erp.modules.scm.service.ScmCustomerService;
-import com.lemon.erp.modules.scm.service.ScmOrderService;
+import com.lemon.erp.modules.scm.service.ScmOrderCreditChecker;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -38,7 +38,7 @@ import java.util.List;
 public class ScmCustomerController {
 
     private final ScmCustomerService customerService;
-    private final ScmOrderService orderService;
+    private final ScmOrderCreditChecker creditChecker;
     private final ImportExecutor importExecutor;
 
     @GetMapping
@@ -68,7 +68,7 @@ public class ScmCustomerController {
     @GetMapping("/{id}/credit")
     @PreAuthorize("@ss.hasAnyPerm('scm:customer:list', 'crm:customer:list')")
     public R<CreditUsage> credit(@PathVariable Long id) {
-        return R.ok(orderService.creditUsage(id));
+        return R.ok(creditChecker.usage(id));
     }
 
     @PostMapping

@@ -14,6 +14,8 @@ import com.lemon.erp.modules.mes.entity.MesWorkOrder;
 import com.lemon.erp.modules.mes.model.WoDocKind;
 import com.lemon.erp.modules.mes.service.MesWoDocService;
 import com.lemon.erp.modules.mes.service.MesWorkOrderService;
+import com.lemon.erp.modules.mes.service.WoChangeService;
+import com.lemon.erp.modules.mes.service.WoReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -41,6 +43,8 @@ public class MesWorkOrderController {
 
     private final MesWorkOrderService workOrderService;
     private final MesWoDocService docService;
+    private final WoReportService reportService;
+    private final WoChangeService changeService;
 
     @GetMapping
     @PreAuthorize("@ss.hasPerm('mes:wo:list')")
@@ -92,7 +96,7 @@ public class MesWorkOrderController {
     @PreAuthorize("@ss.hasPerm('mes:wo:report')")
     @OperLog(title = "生产工单-报工", type = OperType.INSERT) // i18n-ignore
     public R<Void> report(@PathVariable Long id, @Valid @RequestBody ReportRequest req) {
-        workOrderService.report(id, req);
+        reportService.report(id, req);
         return R.ok();
     }
 
@@ -104,7 +108,7 @@ public class MesWorkOrderController {
                                             @RequestParam(required = false) Long woId,
                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate beginDate,
                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return R.ok(workOrderService.reports(current, size, woId, beginDate, endDate));
+        return R.ok(reportService.reports(current, size, woId, beginDate, endDate));
     }
 
     /** 领料 issue / 退料 return（权限 mes:wo:issue）、完工入库 finish（权限 mes:wo:finish），返回单据 ID */
@@ -142,7 +146,7 @@ public class MesWorkOrderController {
     @PreAuthorize("@ss.hasPerm('mes:wo:change')")
     @OperLog(title = "生产工单改量", type = OperType.UPDATE) // i18n-ignore
     public R<Void> changeQty(@PathVariable Long id, @Valid @RequestBody QtyRequest req) {
-        workOrderService.changeQty(id, req.qty());
+        changeService.changeQty(id, req.qty());
         return R.ok();
     }
 
@@ -151,7 +155,7 @@ public class MesWorkOrderController {
     @PreAuthorize("@ss.hasPerm('mes:wo:change')")
     @OperLog(title = "生产工单拆分", type = OperType.INSERT) // i18n-ignore
     public R<Long> split(@PathVariable Long id, @Valid @RequestBody QtyRequest req) {
-        return R.ok(workOrderService.split(id, req.qty(), req.planStart(), req.planEnd()));
+        return R.ok(changeService.split(id, req.qty(), req.planStart(), req.planEnd()));
     }
 
     /** 新建返工工单（草稿），sourceWoId 为返工来源工单（选填） */

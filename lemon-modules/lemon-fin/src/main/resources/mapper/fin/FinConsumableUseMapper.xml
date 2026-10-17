@@ -65,7 +65,7 @@
         DELETE FROM fin_consumable_use_item WHERE use_id = #{useId}
     </delete>
 
-    <select id="selectLedger" resultType="java.util.Map">
+    <select id="selectLedger" resultType="com.lemon.erp.modules.fin.dto.ConsumableLedgerRow">
         SELECT t.dept_id AS "deptId", d.name AS "deptName", t.material_id AS "materialId", m.code AS "materialCode",
                m.name AS "materialName", m.unit AS "unit", t.qty AS "qty", t.ref_amount AS "refAmount"
         FROM (

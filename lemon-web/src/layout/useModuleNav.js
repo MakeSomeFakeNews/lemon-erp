@@ -4,6 +4,7 @@ import { useUserStore } from '@/store/user'
 import { flattenPages } from '@/utils/menu'
 import { joinPath } from '@/utils/path'
 
+import { MenuType } from '@/constants/enums'
 /**
  * 顶部模块导航：首页 + 一级目录（模块），侧边栏只显示当前模块的菜单。
  * 首页、个人中心等不属于任何模块的页面，侧边栏显示模块列表。
@@ -22,7 +23,7 @@ export function useModuleNav() {
       .filter((m) => m.visible === 1)
       .map((m) => {
         const path = joinPath('', m.path)
-        const pages = m.type === 'C' ? [{ path, title: m.name, icon: m.icon }] : flattenPages(m.children || [], path)
+        const pages = m.type === MenuType.C ? [{ path, title: m.name, icon: m.icon }] : flattenPages(m.children || [], path)
         return { key: path, menu: m, title: m.name, icon: m.icon, pages }
       })
       .filter((m) => m.pages.length)

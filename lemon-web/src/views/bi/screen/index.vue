@@ -127,6 +127,7 @@ import { SCREENS, WORK_CENTER_SCREENS, screenLabel } from '@/components/screen/s
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useUserStore } from '@/store/user'
 import { useI18n } from 'vue-i18n'
+import { useAction } from '@/composables/useAction'
 
 /** 数据大屏：打开 / 轮播大屏，管理投屏链接（电视免登录查看） */
 const { t } = useI18n()
@@ -186,16 +187,8 @@ async function copy(r) {
     message.info(linkOf(r))
   }
 }
-async function reset(r) {
-  await resetShare(r.id)
-  message.success(t('bi.screen.regenerated'))
-  load()
-}
-async function remove(r) {
-  await deleteShare(r.id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const reset = useAction((r) => resetShare(r.id), { successKey: 'bi.screen.regenerated', reload: () => load() })
+const remove = useAction((r) => deleteShare(r.id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 const rules = {
   name: [{ required: true, whitespace: true, message: t('common.rule.required', { name: t('common.field.name') }) }],

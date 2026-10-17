@@ -14,7 +14,6 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +23,9 @@ import java.util.List;
  * 不同版本的元素层级略有差异，按名称在整个文档中查找；禁用 DTD 和外部实体，防止 XXE
  */
 final class EInvoiceXmlParser {
+
+    /** 小数税率的位数 */
+    private static final int RATE_SCALE = 4;
 
     private EInvoiceXmlParser() {
     }
@@ -74,7 +76,7 @@ final class EInvoiceXmlParser {
         return new InvoiceImport(invoiceNo, type, LocalDate.parse(date.substring(0, 10)),
                 text(doc.getDocumentElement(), "SellerIdNum"), text(doc.getDocumentElement(), "SellerName"),
                 text(doc.getDocumentElement(), "BuyerIdNum"), text(doc.getDocumentElement(), "BuyerName"),
-                total.setScale(2, RoundingMode.HALF_UP), tax.setScale(2, RoundingMode.HALF_UP), lines);
+                Decimals.money(total), Decimals.money(tax), lines);
     }
 
     private static Document read(byte[] content) {
@@ -147,6 +149,7 @@ final class EInvoiceXmlParser {
         if (r == null) {
             return null;
         }
-        return r.compareTo(BigDecimal.ONE) > 0 || v.contains("%") ? r.divide(Decimals.HUNDRED, 4, RoundingMode.HALF_UP) : r;
+        // 发票明细的税率按小数存储（如 0.13，fin_invoice_line.tax_rate DECIMAL(6,4)），保留 4 位
+        return r.compareTo(BigDecimal.ONE) > 0 || v.contains("%") ? r.divide(Decimals.HUNDRED, RATE_SCALE, Decimals.ROUNDING) : r;
     }
 }

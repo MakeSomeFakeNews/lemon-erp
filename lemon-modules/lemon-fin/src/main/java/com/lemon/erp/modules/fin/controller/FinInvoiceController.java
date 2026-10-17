@@ -8,6 +8,7 @@ import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.fin.dto.InvoiceActionRequests;
 import com.lemon.erp.modules.fin.dto.InvoiceImport;
 import com.lemon.erp.modules.fin.dto.InvoiceRequest;
+import com.lemon.erp.modules.fin.dto.UninvoicedRow;
 import com.lemon.erp.modules.fin.entity.FinBill;
 import com.lemon.erp.modules.fin.entity.FinInvoice;
 import com.lemon.erp.modules.fin.model.InvoiceKind;
@@ -29,7 +30,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 发票：销项 / 进项发票登记、数电票导入、勾稽、作废、进项认证，未开票收入 / 暂估应付
@@ -99,8 +99,8 @@ public class FinInvoiceController {
     /** 未开票收入（OUTPUT）/ 暂估应付（INPUT） */
     @GetMapping("/invoice/uninvoiced")
     @PreAuthorize("@ss.hasPerm('fin:invoice:list')")
-    public R<List<Map<String, Object>>> uninvoiced(@RequestParam InvoiceKind kind,
-                                                   @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate asOf) {
+    public R<List<UninvoicedRow>> uninvoiced(@RequestParam InvoiceKind kind,
+                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate asOf) {
         return R.ok(invoiceService.uninvoiced(kind, asOf));
     }
 

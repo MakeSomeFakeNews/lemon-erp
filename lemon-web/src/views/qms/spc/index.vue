@@ -70,6 +70,7 @@ import { useI18n } from 'vue-i18n'
 import { specText } from '@/components/qms/qms'
 import { spcChart, spcItems } from '@/api/qms'
 
+import { SpcChart } from '@/constants/enums'
 /** SPC：定量检验项目的控制图（I-MR / X̄-R / X̄-S）与过程能力指数 */
 const { t } = useI18n()
 const CHARTS = {
@@ -128,7 +129,7 @@ function chartOption(field, center, ucl, lcl) {
       trigger: 'axis',
       formatter: (ps) => {
         const p = points[ps[0].dataIndex]
-        const label = field === 'mean' ? (spc.value.chart === 'I_MR' ? t('qms.spc.individual') : t('qms.spc.average')) : CHARTS[spc.value.chart][2]
+        const label = field === 'mean' ? (spc.value.chart === SpcChart.I_MR ? t('qms.spc.individual') : t('qms.spc.average')) : CHARTS[spc.value.chart][2]
         return `${p.inspNo}<br/>${p.date}<br/>${t('qms.spc.tooltip', { label, v: Number(p[field]) })}`
       }
     },

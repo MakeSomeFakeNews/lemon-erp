@@ -48,6 +48,7 @@ import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { t } from '@/locales'
 
+import { MenuType } from '@/constants/enums'
 /**
  * 按功能模块选择菜单：行业模板一键勾选，模块勾选 / 取消时同步菜单（v-model 为菜单 ID 列表）。
  * - catalog：/system/tenant-package/features 的结果 { features, industries }
@@ -131,7 +132,7 @@ function normalize(ids) {
   const result = new Set()
   for (const id of ids) {
     const node = nodes.value.get(id)
-    if (!node || node.type === 'M') continue
+    if (!node || node.type === MenuType.M) continue
     let cur = id
     while (cur != null && !result.has(cur)) {
       result.add(cur)

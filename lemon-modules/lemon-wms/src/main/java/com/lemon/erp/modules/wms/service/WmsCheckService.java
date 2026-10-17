@@ -336,7 +336,7 @@ public class WmsCheckService {
                     item.setSerialNos(null);
                     continue;
                 }
-                List<String> serials = WmsStockDocService.checkSerials(item.getSerialNos(), item.getActualQty(), material, true,
+                List<String> serials = StockDocRules.checkSerials(item.getSerialNos(), item.getActualQty(), material, true,
                         serialsByMaterial.computeIfAbsent(material.getId(), k -> new HashSet<>()));
                 item.setSerialNos(joinSerials(serials));
             } catch (BizException e) {

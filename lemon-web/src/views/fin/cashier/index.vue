@@ -12,7 +12,7 @@
 
         <a-tab-pane key="journal" :tab="$t('fin.cashier.journal')">
           <div class="filters">
-            <AccountSelect v-model:value="accountId" all :prefix="CASH_PREFIX" allow-clear :placeholder="$t('fin.cashier.allAccounts')" class="account" />
+            <AccountSelect v-model:value="accountId" all :roles="CASH_ROLES" allow-clear :placeholder="$t('fin.cashier.allAccounts')" class="account" />
             <a-button type="primary" @click="loadJournal">{{ $t('common.action.query') }}</a-button>
             <span class="sub-text">{{ $t('fin.cashier.journalTip') }}</span>
           </div>
@@ -24,14 +24,14 @@
             :data-source="journal"
             :loading="journalLoading"
             :pagination="false"
-            :row-class-name="(r) => (r.type !== 'ENTRY' ? 'total-row' : '')"
+            :row-class-name="(r) => (r.type !== LedgerRowType.ENTRY ? 'total-row' : '')"
             :scroll="{ x: 1200, y: '100%' }"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'voucherNo'">
                 <template v-if="record.voucherId">
                   <a @click="openVoucher(record.voucherId)">{{ record.voucherNo }}</a>
-                  <DictTag v-if="record.voucherStatus !== 'POSTED'" type="fin_voucher_status" :value="record.voucherStatus" class="ml" />
+                  <DictTag v-if="record.voucherStatus !== VoucherStatus.POSTED" type="fin_voucher_status" :value="record.voucherStatus" class="ml" />
                 </template>
               </template>
               <template v-else-if="column.key === 'account'">
@@ -102,10 +102,12 @@ import { cashDaily, cashJournal, cashUnvouchered } from '@/api/fin'
 import { formatMoney, moneyOrBlank } from '@/components/fin/fin'
 import { useDict } from '@/composables/useDict'
 
+import { LedgerRowType, VoucherStatus } from '@/constants/enums'
 /** 出纳管理：现金 / 银行日记账（逐笔收支、对方科目、每日小计）与资金日报（各账户期初、收入、支出、余额） */
 const { t } = useI18n()
 useDict('fin_voucher_status')
-const CASH_PREFIX = ['1001', '1002']
+/** 货币资金科目（库存现金、银行存款，按凭证科目设置） */
+const CASH_ROLES = ['CASH', 'BANK']
 const tab = ref('daily')
 const range = ref([dayjs().startOf('month').format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD')])
 const posted = ref(false)

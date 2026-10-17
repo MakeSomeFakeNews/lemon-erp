@@ -164,6 +164,7 @@ import { useUserStore } from '@/store/user'
 import { imPlatform } from '@/utils/im'
 import { load, remove, save } from '@/utils/storage'
 
+import { CaptchaMode } from '@/constants/enums'
 const REMEMBER_KEY = 'lemon_erp_remember_username'
 const REMEMBER_TENANT_KEY = 'lemon_erp_remember_tenant'
 
@@ -203,7 +204,7 @@ const tenantEnabled = computed(() => configStore.tenantEnabled)
 // ---------------------------------------------------------------- 验证码
 /** 「密码输错后」模式：本次登录失败过才显示验证码（后端按账号的失败记录判断，失败后要求验证码时同样显示） */
 const failed = ref(false)
-const needCaptcha = computed(() => configStore.captchaMode === 'ALWAYS' || (configStore.captchaMode === 'AFTER_FAILURE' && failed.value))
+const needCaptcha = computed(() => configStore.captchaMode === CaptchaMode.ALWAYS || (configStore.captchaMode === CaptchaMode.AFTER_FAILURE && failed.value))
 const captchaImage = ref('')
 async function refreshCaptcha() {
   const c = await getCaptcha()

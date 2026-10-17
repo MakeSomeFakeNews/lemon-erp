@@ -34,14 +34,14 @@
         </a-descriptions>
 
         <a-alert
-          v-if="detail.status === 'APPROVING'"
+          v-if="detail.status === QuotationStatus.APPROVING"
           type="info"
           show-icon
           class="doc-desc"
           :message="$t('scm.quotation.approvingTip')"
         />
         <a-alert
-          v-else-if="detail.status === 'APPROVED' && expired"
+          v-else-if="detail.status === QuotationStatus.APPROVED && expired"
           type="warning"
           show-icon
           class="doc-desc"
@@ -108,6 +108,7 @@ import { useUserStore } from '@/store/user'
 import { formatQty, today } from '@/components/wms/wms'
 import { formatMoney } from './scm'
 
+import { QuotationStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 /** 销售报价详情：提交审批、转销售订单、标记失效。触发 edit(record)、changed */
@@ -133,7 +134,7 @@ const detail = ref()
 const loading = ref(false)
 const expired = computed(() => {
   const d = detail.value
-  return !!d?.validTo && d.validTo < today() && ['DRAFT', 'APPROVING', 'APPROVED'].includes(d.status)
+  return !!d?.validTo && d.validTo < today() && [QuotationStatus.DRAFT, QuotationStatus.APPROVING, QuotationStatus.APPROVED].includes(d.status)
 })
 
 async function load() {
@@ -206,10 +207,10 @@ const actions = computed(() => {
   const d = detail.value
   if (!d) return []
   const list = []
-  if (d.status === 'DRAFT' && can('edit')) {
+  if (d.status === QuotationStatus.DRAFT && can('edit')) {
     list.push({ key: 'edit', label: t('common.action.edit'), icon: EditOutlined, run: () => emit('edit', d) })
   }
-  if (['DRAFT', 'APPROVED'].includes(d.status) && can('edit')) {
+  if ([QuotationStatus.DRAFT, QuotationStatus.APPROVED].includes(d.status) && can('edit')) {
     list.push({
       key: 'lose',
       label: t('scm.quotation.markLost'),
@@ -221,7 +222,7 @@ const actions = computed(() => {
       }
     })
   }
-  if (d.status === 'DRAFT' && can('edit')) {
+  if (d.status === QuotationStatus.DRAFT && can('edit')) {
     list.push({
       key: 'submit',
       label: t('common.action.submit'),
@@ -238,7 +239,7 @@ const actions = computed(() => {
         })
     })
   }
-  if (d.status === 'APPROVED' && !expired.value && can('order')) {
+  if (d.status === QuotationStatus.APPROVED && !expired.value && can('order')) {
     list.push({
       key: 'order',
       label: t('scm.quotation.toOrder'),

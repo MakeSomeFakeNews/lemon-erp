@@ -34,7 +34,7 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <template v-if="record.status === 'DRAFT'">
+              <template v-if="record.status === ClaimStatus.DRAFT">
                 <a-button v-perm="'qms:claim:add'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
                 <span v-perm="'qms:claim:confirm'">
                   <a-popconfirm :title="$t('qms.claim.confirmConfirm')" @confirm="confirm(record.id)">
@@ -47,7 +47,7 @@
                   </a-popconfirm>
                 </span>
               </template>
-              <span v-else-if="record.status === 'CONFIRMED'" v-perm="'qms:claim:confirm'">
+              <span v-else-if="record.status === ClaimStatus.CONFIRMED" v-perm="'qms:claim:confirm'">
                 <a-popconfirm :title="$t('qms.claim.cancelConfirm')" @confirm="cancel(record.id)">
                   <a-button type="link" danger size="small">{{ $t('common.action.cancel') }}</a-button>
                 </a-popconfirm>
@@ -100,7 +100,6 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -115,7 +114,9 @@ import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
+import { useAction } from '@/composables/useAction'
 
+import { ClaimStatus } from '@/constants/enums'
 /** 供应商质量索赔：确认后冲减应付 */
 const dict = useDict('qms_claim_status')
 const { t } = useI18n()
@@ -160,7 +161,7 @@ async function searchNcr(keyword) {
   const page = await pageNcr({ keyword: keyword || undefined, size: 20 })
   page.records.forEach((n) => ncrMap.set(n.id, n))
   ncrOptions.value = page.records
-    .filter((n) => n.supplierId && n.status !== 'CANCELLED')
+    .filter((n) => n.supplierId && n.status !== ClaimStatus.CANCELLED)
     .map((n) => ({ value: n.id, label: `${n.ncrNo} ${n.supplierName} ${n.materialName}` }))
 }
 function onNcrChange(id) {
@@ -183,21 +184,9 @@ onMounted(async () => {
   }
 })
 
-async function confirm(id) {
-  await confirmClaim(id)
-  message.success(t('qms.claim.confirmed'))
-  load()
-}
-async function cancel(id) {
-  await cancelClaim(id)
-  message.success(t('mes.ecn.cancelled'))
-  load()
-}
-async function remove(id) {
-  await deleteClaim(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const confirm = useAction(confirmClaim, { successKey: 'qms.claim.confirmed', reload: () => load() })
+const cancel = useAction(cancelClaim, { successKey: 'mes.ecn.cancelled', reload: () => load() })
+const remove = useAction(deleteClaim, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

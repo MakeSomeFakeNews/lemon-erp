@@ -280,7 +280,6 @@
 import SubPage from '@/components/SubPage.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
@@ -299,7 +298,9 @@ import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { formatQty, rowKey } from '@/components/wms/wms'
+import { useAction } from '@/composables/useAction'
 
+import { EcnStatus } from '@/constants/enums'
 const userStore = useUserStore()
 const { t } = useI18n()
 const dict = useDict('sys_common_status')
@@ -334,8 +335,8 @@ onMounted(() => {
 })
 
 /** 工程变更创建、还没有生效的版本：只在变更草稿时可以修改 */
-const pending = (bom) => !!bom?.ecnNo && bom.ecnStatus !== 'EFFECTIVE'
-const editable = (bom) => !pending(bom) || bom.ecnStatus === 'DRAFT'
+const pending = (bom) => !!bom?.ecnNo && bom.ecnStatus !== EcnStatus.EFFECTIVE
+const editable = (bom) => !pending(bom) || bom.ecnStatus === EcnStatus.DRAFT
 
 // ---------------------------------------------------------------- 表单
 const itemColumns = [
@@ -401,17 +402,9 @@ function addOp() {
   form.value.ops.push({ key: rowKey(), seq: next, name: '', workCenterId: undefined, stdHours: 0, firstArticle: false })
 }
 
-async function makeDefault(record) {
-  await setDefaultBom(record.id)
-  message.success(t('mes.bom.defaultSet'))
-  load()
-}
+const makeDefault = useAction((record) => setDefaultBom(record.id), { successKey: 'mes.bom.defaultSet', reload: () => load() })
 
-async function remove(id) {
-  await deleteBom(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteBom, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- 位号：R1,R2 或区间 C1-C8，与后端 RefDes 的规则一致
 const REF_TOKEN = /^([A-Z]+)(\d+)(?:-([A-Z]*)(\d+))?$/

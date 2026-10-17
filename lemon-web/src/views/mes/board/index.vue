@@ -84,7 +84,7 @@
       <div v-else class="lines">
         <div v-for="l in lines" :key="l.id" class="line" :style="{ '--c': LINE_STATE_COLORS[l.state] }">
           <div class="line-head">
-            <span class="line-name"><i :class="['dot', { pulse: l.state === 'RUNNING' }]" />{{ l.name }}</span>
+            <span class="line-name"><i :class="['dot', { pulse: l.state === BoardLineState.RUNNING }]" />{{ l.name }}</span>
             <span class="line-state">{{ lineStateLabel(l.state) }}</span>
           </div>
           <div class="line-stats">
@@ -162,7 +162,7 @@
             <div class="sub-text">{{ $t('mes.board.hoursN', { n: record.remainingHours }) }}</div>
           </template>
           <template v-else-if="column.key === 'eta'">
-            <div :style="{ color: record.risk === 'AT_RISK' || record.risk === 'OVERDUE' ? RISK_COLORS[record.risk] : undefined }" class="strong">
+            <div :style="{ color: record.risk === DeliveryRisk.AT_RISK || record.risk === DeliveryRisk.OVERDUE ? RISK_COLORS[record.risk] : undefined }" class="strong">
               {{ record.eta || '-' }}
             </div>
             <div class="sub-text">{{ etaText(record.eta) }}</div>
@@ -190,8 +190,8 @@
                 <span v-if="Number(op.scrapQty)" class="danger"> ({{ $t('mes.board.opScrap', { n: formatQty(op.scrapQty) }) }})</span>
               </template>
               <template v-else-if="column.key === 'today'">{{ Number(op.todayGood) ? formatQty(op.todayGood) : '-' }}</template>
-              <template v-else-if="column.key === 'hours'">{{ op.state === 'DONE' ? '-' : op.remainingHours }}</template>
-              <template v-else-if="column.key === 'eta'">{{ op.state === 'DONE' ? '-' : op.eta || $t('mes.board.etaUnknown') }}</template>
+              <template v-else-if="column.key === 'hours'">{{ op.state === BoardOpState.DONE ? '-' : op.remainingHours }}</template>
+              <template v-else-if="column.key === 'eta'">{{ op.state === BoardOpState.DONE ? '-' : op.eta || $t('mes.board.etaUnknown') }}</template>
               <template v-else>{{ op[column.dataIndex] || '-' }}</template>
             </template>
           </a-table>
@@ -211,6 +211,7 @@ import { LINE_STATE_COLORS, OP_STATE_COLORS, ORDER_STATE_COLORS, RISK_COLORS, et
 import { formatQty } from '@/components/wms/wms'
 import { t } from '@/locales'
 
+import { BoardLineState, BoardOpState, BoardOrderState, DeliveryRisk } from '@/constants/enums'
 /**
  * 生产看板：在制工单走到哪道工序、还剩几道、预计哪天完工，各产线今天的生产情况。
  * 每 30 秒自动刷新；全屏后可以放在车间的电脑上（电视免登录投屏用「数据大屏」的生产进度）
@@ -236,9 +237,9 @@ const riskCount = computed(() => (kpi.value.atRiskOrders || 0) + (kpi.value.over
 const filtered = computed(() => {
   const kw = keyword.value.trim().toLowerCase()
   return orders.value.filter((o) => {
-    if (filter.value === 'RUNNING' && o.state !== 'RUNNING') return false
-    if (filter.value === 'RISK' && o.risk !== 'AT_RISK' && o.risk !== 'OVERDUE') return false
-    if (filter.value === 'TO_STOCK' && o.state !== 'TO_STOCK') return false
+    if (filter.value === 'RUNNING' && o.state !== BoardOrderState.RUNNING) return false
+    if (filter.value === 'RISK' && o.risk !== DeliveryRisk.AT_RISK && o.risk !== DeliveryRisk.OVERDUE) return false
+    if (filter.value === 'TO_STOCK' && o.state !== BoardOrderState.TO_STOCK) return false
     if (!kw) return true
     return [o.woNo, o.product, o.materialCode, o.customerName, o.salesOrderNo].some((v) => v && String(v).toLowerCase().includes(kw))
   })

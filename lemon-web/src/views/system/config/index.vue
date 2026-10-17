@@ -15,12 +15,12 @@
                 <a-tag v-if="isDirty(item)" color="orange" :bordered="false" class="ml">{{ $t('system.config.unsaved') }}</a-tag>
               </div>
               <div class="config-control">
-                <a-switch v-if="item.type === 'BOOL'" :checked="edits[item.key] === 'true'" :disabled="!canEdit"
+                <a-switch v-if="item.type === SettingType.BOOL" :checked="edits[item.key] === 'true'" :disabled="!canEdit"
                   @change="(v) => (edits[item.key] = String(v))" />
-                <a-radio-group v-else-if="item.type === 'SELECT'" v-model:value="edits[item.key]" :disabled="!canEdit" button-style="solid">
+                <a-radio-group v-else-if="item.type === SettingType.SELECT" v-model:value="edits[item.key]" :disabled="!canEdit" button-style="solid">
                   <a-radio-button v-for="o in item.options" :key="o.value" :value="o.value">{{ o.label }}</a-radio-button>
                 </a-radio-group>
-                <a-input-number v-else-if="item.type === 'NUMBER'" :value="Number(edits[item.key])" :min="item.min" :max="item.max" :precision="0"
+                <a-input-number v-else-if="item.type === SettingType.NUMBER" :value="Number(edits[item.key])" :min="item.min" :max="item.max" :precision="0"
                   :disabled="!canEdit" class="number" @change="(v) => (edits[item.key] = v == null ? '' : String(v))" />
                 <a-input v-else v-model:value="edits[item.key]" :maxlength="item.max" :disabled="!canEdit" class="text" />
                 <a v-if="canEdit && edits[item.key] !== item.defaultValue" class="reset" @click="edits[item.key] = item.defaultValue">{{ $t('system.config.restoreDefault') }}</a>
@@ -48,6 +48,7 @@ import { listConfig, saveConfig } from '@/api/system/config'
 import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
 
+import { SettingType } from '@/constants/enums'
 /** 参数设置：按分组显示系统参数（平台级），只提交修改过的参数；值等于默认值时恢复默认 */
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -90,8 +91,8 @@ const isModified = (item) => item.modified
 const dirtyKeys = computed(() => items.value.filter(isDirty).map((i) => i.key))
 
 function display(item, value) {
-  if (item.type === 'BOOL') return value === 'true' ? t('system.config.on') : t('system.config.off')
-  if (item.type === 'SELECT') return item.options.find((o) => o.value === value)?.label || value
+  if (item.type === SettingType.BOOL) return value === 'true' ? t('system.config.on') : t('system.config.off')
+  if (item.type === SettingType.SELECT) return item.options.find((o) => o.value === value)?.label || value
   return value === '' || value == null ? t('system.config.empty') : value
 }
 

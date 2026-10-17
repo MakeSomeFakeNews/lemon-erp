@@ -6,6 +6,7 @@ import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.modules.fin.dto.InvoiceRequest;
+import com.lemon.erp.modules.fin.dto.UninvoicedRow;
 import com.lemon.erp.modules.fin.entity.FinBill;
 import com.lemon.erp.modules.fin.entity.FinInvoice;
 import com.lemon.erp.modules.fin.entity.FinInvoiceItem;
@@ -424,7 +425,7 @@ public class FinInvoiceService {
     }
 
     /** 未开票（AR）/ 暂估（AP）：截至日期按往来单位汇总 */
-    public List<Map<String, Object>> uninvoiced(InvoiceKind kind, LocalDate asOf) {
+    public List<UninvoicedRow> uninvoiced(InvoiceKind kind, LocalDate asOf) {
         return invoiceMapper.selectUninvoiced(kind.billKind(), asOf == null ? LocalDate.now() : asOf);
     }
 }

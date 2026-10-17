@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.modules.scm.dto.AtpResult;
+import com.lemon.erp.modules.scm.dto.BackorderRow;
 import com.lemon.erp.modules.scm.mapper.ScmPlanningMapper;
 import com.lemon.erp.modules.scm.model.AtpLine;
 import com.lemon.erp.modules.scm.model.AtpProvider;
@@ -98,9 +99,9 @@ public class ScmPlanningService {
 
     /** 欠交清单：销售订单为客户欠交，采购订单为供应商欠交 */
     @DataPermission(table = "scm_order", deptColumn = "dept_id", userColumn = "create_by")
-    public PageResult<Map<String, Object>> backorders(long current, long size, OrderKind kind, boolean overdueOnly, String keyword,
-                                                      Long partnerId) {
-        Page<Map<String, Object>> page = Page.of(current, size);
+    public PageResult<BackorderRow> backorders(long current, long size, OrderKind kind, boolean overdueOnly, String keyword,
+                                               Long partnerId) {
+        Page<BackorderRow> page = Page.of(current, size);
         planningMapper.selectBackorders(page, kind, overdueOnly, keyword, partnerId, LocalDate.now());
         return PageResult.of(page);
     }

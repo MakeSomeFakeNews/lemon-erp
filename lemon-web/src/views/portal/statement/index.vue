@@ -25,7 +25,7 @@
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="fin_statement_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === 'SENT' ? $t('portal.statement.confirmAction') : $t('common.action.view') }}</a-button>
+            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === StatementStatus.SENT ? $t('portal.statement.confirmAction') : $t('common.action.view') }}</a-button>
           </template>
         </template>
       </a-table>
@@ -34,11 +34,11 @@
     <SubPage :open="detailOpen" :title="detail ? $t('portal.statement.detailTitle', { no: detail.statementNo }) : ''" width="min(960px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <span v-perm="'portal:statement:confirm'">
-          <a-space v-if="detail.status === 'SENT'">
+          <a-space v-if="detail.status === StatementStatus.SENT">
             <a-button danger @click="openConfirm(false)">{{ $t('portal.statement.dispute') }}</a-button>
             <a-button type="primary" @click="openConfirm(true)">{{ $t('portal.statement.confirmStatement') }}</a-button>
           </a-space>
-          <a-button v-else-if="detail.status === 'CONFIRMED'" @click="openInvoice">{{ detail.invoiceNo ? $t('portal.statement.editInvoice') : $t('portal.statement.fillInvoice') }}</a-button>
+          <a-button v-else-if="detail.status === StatementStatus.CONFIRMED" @click="openInvoice">{{ detail.invoiceNo ? $t('portal.statement.editInvoice') : $t('portal.statement.fillInvoice') }}</a-button>
         </span>
       </template>
       <template v-if="detail">
@@ -107,12 +107,13 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
+import { StatementStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 /** 供应商门户 - 对账单：确认或提出异议，填写发票并上传扫描件 */
 const dict = useDict('fin_statement_status')
 const userStore = useUserStore()
-const statusOptions = computed(() => toOptions(dict.fin_statement_status).filter((o) => o.value !== 'DRAFT'))
+const statusOptions = computed(() => toOptions(dict.fin_statement_status).filter((o) => o.value !== StatementStatus.DRAFT))
 const columns = [
   { title: t('portal.statement.statementNo'), key: 'statementNo', width: 180 },
   { title: t('portal.statement.period'), key: 'period', width: 200 },

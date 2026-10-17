@@ -2,12 +2,12 @@ package com.lemon.erp.modules.scm.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.lemon.erp.modules.scm.dto.ScmPriceViews;
 import com.lemon.erp.modules.scm.entity.ScmSupplierPrice;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 public interface ScmSupplierPriceMapper extends BaseMapper<ScmSupplierPrice> {
 
@@ -25,5 +25,5 @@ public interface ScmSupplierPriceMapper extends BaseMapper<ScmSupplierPrice> {
      *
      * @return [{bizDate, docNo, supplierId, supplierName, materialId, qty, price, taxRate}]
      */
-    List<Map<String, Object>> selectPurchaseHistory(@Param("materialId") Long materialId, @Param("supplierId") Long supplierId);
+    List<ScmPriceViews.PurchaseHistory> selectPurchaseHistory(@Param("materialId") Long materialId, @Param("supplierId") Long supplierId);
 }

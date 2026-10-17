@@ -4,6 +4,7 @@ import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.fin.dto.BankStatementImport;
+import com.lemon.erp.modules.fin.dto.BankViews;
 import com.lemon.erp.modules.fin.entity.FinBankStatement;
 import com.lemon.erp.modules.fin.service.FinBankService;
 import jakarta.validation.Valid;
@@ -22,7 +23,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 银行对账：对账单导入、与日记账勾对、余额调节表
@@ -44,7 +44,7 @@ public class FinBankController {
 
     @GetMapping("/bank/entries")
     @PreAuthorize("@ss.hasPerm('fin:bank:list')")
-    public R<List<Map<String, Object>>> bankEntries(@RequestParam Long accountId,
+    public R<List<BankViews.BankEntry>> bankEntries(@RequestParam Long accountId,
                                                     @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate begin,
                                                     @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
         return R.ok(bankService.entries(accountId, begin, end));
@@ -89,9 +89,9 @@ public class FinBankController {
 
     @GetMapping("/bank/reconcile")
     @PreAuthorize("@ss.hasPerm('fin:bank:list')")
-    public R<Map<String, Object>> reconcile(@RequestParam Long accountId,
-                                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate asOf,
-                                            @RequestParam(required = false) BigDecimal bankBalance) {
+    public R<BankViews.Reconciliation> reconcile(@RequestParam Long accountId,
+                                                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate asOf,
+                                                 @RequestParam(required = false) BigDecimal bankBalance) {
         return R.ok(bankService.reconcile(accountId, asOf, bankBalance));
     }
 }

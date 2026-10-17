@@ -131,7 +131,6 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -154,6 +153,7 @@ import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { formatMoney } from '@/components/scm/scm'
 import { formatQty } from '@/components/wms/wms'
+import { useAction } from '@/composables/useAction'
 
 const userStore = useUserStore()
 const { t } = useI18n()
@@ -245,11 +245,7 @@ const drawer = useFormDrawer({
 })
 const { formRef, form } = drawer
 
-async function remove(id) {
-  await deleteWorkCenter(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteWorkCenter, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

@@ -5,6 +5,7 @@ import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.framework.security.SecurityUtils;
+import com.lemon.erp.modules.bi.dto.BiScreen;
 import com.lemon.erp.modules.bi.dto.ScreenShareRequest;
 import com.lemon.erp.modules.bi.entity.BiScreenShare;
 import com.lemon.erp.modules.bi.model.ScreenKey;
@@ -25,7 +26,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 /**
  * 数据大屏 /bi/screen：大屏数据、投屏链接管理。大屏汇总全公司数据，与经营驾驶舱一样只对有「全部数据」权限的用户开放；
@@ -85,7 +85,7 @@ public class BiScreenController {
     /** 大屏数据：key 为 factory / progress / warehouse / sales / quality */
     @GetMapping("/{key}")
     @PreAuthorize("@ss.hasPerm('bi:screen:list')")
-    public R<Map<String, Object>> data(@PathVariable String key, @RequestParam(required = false) Long workCenterId) {
+    public R<BiScreen.ScreenData> data(@PathVariable String key, @RequestParam(required = false) Long workCenterId) {
         requireAllData();
         ScreenKey screen = parse(key);
         return R.ok(screenService.data(screen, screen.isByWorkCenter() ? workCenterId : null));

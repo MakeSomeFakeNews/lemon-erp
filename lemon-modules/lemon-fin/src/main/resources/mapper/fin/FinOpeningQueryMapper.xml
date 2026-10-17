@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.lemon.erp.modules.fin.mapper.FinOpeningQueryMapper">
 
-    <select id="selectOpeningStockDocs" resultType="java.util.Map">
+    <select id="selectOpeningStockDocs" resultType="com.lemon.erp.modules.fin.dto.OpeningSummary$StockDoc">
         SELECT d.id AS "id", d.doc_no AS "docNo", d.biz_date AS "bizDate", w.name AS "warehouseName",
                d.total_qty AS "totalQty", d.reversed AS "reversed"
         FROM wms_stock_doc d
@@ -11,7 +11,7 @@
         ORDER BY d.id
     </select>
 
-    <select id="selectManualBillSums" resultType="java.util.Map">
+    <select id="selectManualBillSums" resultType="com.lemon.erp.modules.fin.dto.OpeningSummary$ManualBillSum">
         SELECT kind AS "kind", COUNT(*) AS "count", COALESCE(SUM(amount), 0) AS "amount"
         FROM fin_bill
         WHERE source_type = 'MANUAL'

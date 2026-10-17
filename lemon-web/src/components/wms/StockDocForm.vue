@@ -183,6 +183,7 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { toOptions } from '@/utils/dict'
 import { DOC_KINDS, availableQty, docTypeOptions, fillPutaway, formatQty, ioCategoryDict, locationText, rowKey, today } from './wms'
 
+import { StockInType } from '@/constants/enums'
 /**
  * 新增 / 编辑出入库单（草稿）。入库手工录入物料；出库、调拨从仓库现有库存中选择。
  * 通过 ref 调用 openCreate() / openEdit(record)，保存成功后触发 success
@@ -201,7 +202,7 @@ const dict = useDict('wms_in_type', 'wms_out_type', 'wms_in_category', 'wms_out_
  */
 const typeOptions = computed(() => docTypeOptions(props.kind, dict[conf.value.typeDict]))
 /** 寄售入库：供应商的货寄售入库到供应商寄售仓（不计存货成本），只能选供应商寄售仓；其他入库不能选供应商寄售仓 */
-const consignIn = computed(() => props.kind === 'in' && form.value.bizType === 'CONSIGN_IN')
+const consignIn = computed(() => props.kind === 'in' && form.value.bizType === StockInType.CONSIGN_IN)
 /** 收发类别：其他入库选入库类别，其他出库、报废出库选出库类别（业务字典，成本凭证按类别取对方科目） */
 const categoryDict = computed(() => ioCategoryDict(props.kind, form.value.bizType))
 const categoryLabel = computed(() => (props.kind === 'in' ? t('wms.doc.inCategory') : t('wms.doc.outCategory')))
@@ -346,7 +347,7 @@ function onBizTypeChange(type) {
   const prev = form.value.bizType
   form.value.bizType = type
   if (ioCategoryDict(props.kind, type) !== ioCategoryDict(props.kind, prev)) form.value.ioCategory = undefined
-  if (props.kind === 'in' && form.value.warehouseId && (type === 'CONSIGN_IN') !== (prev === 'CONSIGN_IN')) onWarehouseChange(null)
+  if (props.kind === 'in' && form.value.warehouseId && (type === StockInType.CONSIGN_IN) !== (prev === StockInType.CONSIGN_IN)) onWarehouseChange(null)
 }
 
 /** 出库、调拨的明细来自所选仓库的库存，换仓库后清空明细；入库清空库位 */

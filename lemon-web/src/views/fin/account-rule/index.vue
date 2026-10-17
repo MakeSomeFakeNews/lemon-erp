@@ -17,12 +17,14 @@
             <div class="rule-control">
               <AccountSelect
                 v-model:value="edits[role.role].accountId"
+                :all="role.scope"
                 allow-clear
                 :disabled="!canEdit"
                 :placeholder="rolePlaceholder(role)"
                 class="account"
               />
             </div>
+            <div v-if="role.scope" class="sub-text dim-tip">{{ $t('fin.accountRule.scopeTip') }}</div>
             <template v-if="role.dimension !== 'NONE'">
               <div class="sub-text dim-tip">
                 {{ $t('fin.accountRule.byDimension', { dim: $t(DIMENSION_LABELS[role.dimension]) }) }}
@@ -53,7 +55,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { accountOptions, accountRules, saveAccountRule } from '@/api/fin'
+import { accountOptions, accountRules, allAccounts, saveAccountRule } from '@/api/fin'
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
@@ -77,6 +79,8 @@ const DIMENSION_LABELS = {
 
 const roles = ref([])
 const accounts = ref([])
+/** 全部科目（含上级）：科目范围用途（库存现金、银行存款）可以设置上级科目 */
+const allList = ref([])
 const edits = reactive({})
 const loading = ref(false)
 const saving = ref(false)
@@ -92,10 +96,12 @@ const groups = computed(() => {
 })
 
 const accountByCode = computed(() => new Map(accounts.value.map((a) => [a.code, a])))
-const accountById = computed(() => new Map(accounts.value.map((a) => [a.id, a])))
+const accountById = computed(() => new Map(allList.value.map((a) => [a.id, a])))
+const anyByCode = computed(() => new Map(allList.value.map((a) => [a.code, a])))
 
-function accountText(code) {
-  const a = accountByCode.value.get(code)
+/** 预置科目的显示：一般用途要求末级科目，科目范围用途可以是上级科目 */
+function accountText(code, scope) {
+  const a = (scope ? anyByCode : accountByCode).value.get(code)
   return a ? `${a.code} ${a.name}` : t('fin.accountRule.invalidAccount', { code })
 }
 
@@ -111,14 +117,14 @@ function effectiveText(role) {
   const id = edits[role.role]?.accountId
   if (id) return idText(id)
   const fallback = role.fallback && roleByName.value.get(role.fallback)
-  return fallback ? effectiveText(fallback) : accountText(role.defaultCode)
+  return fallback ? effectiveText(fallback) : accountText(role.defaultCode, role.scope)
 }
 
 /** 用途未设置时的提示：有后备用途的显示「同 xx」，否则显示预置科目 */
 function rolePlaceholder(role) {
   const fallback = role.fallback && roleByName.value.get(role.fallback)
   if (fallback) return t('fin.accountRule.sameAsRole', { role: fallback.label, account: effectiveText(fallback) })
-  return t('fin.accountRule.preset', { account: accountText(role.defaultCode) })
+  return t('fin.accountRule.preset', { account: accountText(role.defaultCode, role.scope) })
 }
 
 /** 分类未设置时实际使用的科目：用途设置 → 后备用途 → 该分类的预置科目 */
@@ -132,9 +138,10 @@ function dimPlaceholder(role, value) {
 async function load() {
   loading.value = true
   try {
-    const [list, leaves] = await Promise.all([accountRules(), cached('accounts-leaf', accountOptions)])
+    const [list, leaves, all] = await Promise.all([accountRules(), cached('accounts-leaf', accountOptions), cached('accounts-all', allAccounts)])
     roles.value = list
     accounts.value = leaves
+    allList.value = all
     discard()
     group.value ??= list[0]?.group
   } finally {

@@ -50,14 +50,14 @@
           <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}</template>
           <template v-else-if="column.key === 'repaid'">
             <div>{{ formatMoney(record.repaidAmount) }}</div>
-            <div v-if="record.status === 'PAID'" class="sub-text">{{ $t('fin.loan.outstanding') }} <b class="warn">{{ formatMoney(outstanding(record)) }}</b></div>
+            <div v-if="record.status === LoanStatus.PAID" class="sub-text">{{ $t('fin.loan.outstanding') }} <b class="warn">{{ formatMoney(outstanding(record)) }}</b></div>
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="fin_loan_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <template v-if="record.status === 'DRAFT'">
+              <template v-if="record.status === LoanStatus.DRAFT">
                 <a-button v-perm="'fin:loan:add'" type="link" size="small" @click="submit(record)">{{ $t('common.action.submit') }}</a-button>
                 <span v-perm="'fin:loan:add'">
                   <a-popconfirm :title="$t('fin.loan.confirmDelete', { no: record.loanNo })" @confirm="remove(record.id)">
@@ -65,8 +65,8 @@
                   </a-popconfirm>
                 </span>
               </template>
-              <a-button v-if="record.status === 'APPROVED'" v-perm="'fin:loan:pay'" type="link" size="small" @click="openPay(record, 'pay')">{{ $t('fin.loan.pay') }}</a-button>
-              <a-button v-if="record.status === 'PAID'" v-perm="'fin:loan:pay'" type="link" size="small" @click="openPay(record, 'repay')">{{ $t('fin.loan.repay') }}</a-button>
+              <a-button v-if="record.status === LoanStatus.APPROVED" v-perm="'fin:loan:pay'" type="link" size="small" @click="openPay(record, 'pay')">{{ $t('fin.loan.pay') }}</a-button>
+              <a-button v-if="record.status === LoanStatus.PAID" v-perm="'fin:loan:pay'" type="link" size="small" @click="openPay(record, 'repay')">{{ $t('fin.loan.repay') }}</a-button>
             </span>
           </template>
         </template>
@@ -117,7 +117,7 @@
       </p>
       <a-form layout="vertical">
         <a-form-item :label="payMode === 'pay' ? $t('fin.loan.payAccount') : $t('fin.loan.receiveAccount')" required>
-          <AccountSelect v-model:value="payForm.accountId" :prefix="['1001', '1002']" :placeholder="$t('fin.loan.accountPlaceholder')" />
+          <AccountSelect v-model:value="payForm.accountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.loan.accountPlaceholder')" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col v-if="payMode === 'repay'" :span="12">
@@ -155,7 +155,7 @@
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'amount'">{{ formatMoney(record.amount) }}</template>
             <template v-else-if="column.key === 'method'">
-              <a-tag :color="record.method === 'CLAIM' ? 'blue' : 'green'" :bordered="false">{{ record.method === 'CLAIM' ? $t('fin.loan.claimOffset') : $t('fin.loan.cashRepay') }}</a-tag>
+              <a-tag :color="record.method === LoanRepayMethod.CLAIM ? 'blue' : 'green'" :bordered="false">{{ record.method === LoanRepayMethod.CLAIM ? $t('fin.loan.claimOffset') : $t('fin.loan.cashRepay') }}</a-tag>
               <span v-if="record.claimNo" class="sub-text">{{ record.claimNo }}</span>
             </template>
           </template>
@@ -184,7 +184,9 @@ import { toOptions } from '@/utils/dict'
 import { today } from '@/components/wms/wms'
 import { formatMoney } from '@/components/fin/fin'
 import { useI18n } from 'vue-i18n'
+import { useAction } from '@/composables/useAction'
 
+import { LoanRepayMethod, LoanStatus } from '@/constants/enums'
 const { t } = useI18n()
 const dict = useDict('fin_loan_status')
 const outstanding = (l) => Math.round((Number(l.amount || 0) - Number(l.repaidAmount || 0)) * 100) / 100
@@ -218,11 +220,7 @@ async function submit(record) {
   load()
 }
 
-async function remove(id) {
-  await deleteLoan(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteLoan, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- 新增
 const createOpen = ref(false)

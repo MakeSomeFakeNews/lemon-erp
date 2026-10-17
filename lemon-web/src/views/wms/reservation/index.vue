@@ -41,7 +41,7 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'sourceNo'">
-            <a v-if="record.sourceType === 'SALES'" @click="toOrder(record)">{{ record.sourceNo }}</a>
+            <a v-if="record.sourceType === ReservationSource.SALES" @click="toOrder(record)">{{ record.sourceNo }}</a>
             <span v-else>{{ record.sourceNo }}</span>
           </template>
           <template v-else-if="column.key === 'material'">
@@ -70,7 +70,6 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { message } from 'ant-design-vue'
 import { UnlockOutlined } from '@ant-design/icons-vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -79,7 +78,9 @@ import { pageReservation, releaseReservation } from '@/api/wms/reservation'
 import { formatQty } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
+import { useAction } from '@/composables/useAction'
 
+import { ReservationSource } from '@/constants/enums'
 const { t } = useI18n()
 
 const router = useRouter()
@@ -111,11 +112,7 @@ function resetQuery() {
 
 const toOrder = (record) => router.push({ path: '/scm/sales', query: { id: record.sourceId } })
 
-async function release(record) {
-  await releaseReservation(record.id)
-  message.success(t('wms.reservation.released'))
-  load()
-}
+const release = useAction((record) => releaseReservation(record.id), { successKey: 'wms.reservation.released', reload: () => load() })
 </script>
 
 <style scoped>

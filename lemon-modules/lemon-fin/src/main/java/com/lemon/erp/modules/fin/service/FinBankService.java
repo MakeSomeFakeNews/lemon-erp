@@ -5,8 +5,9 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.entity.FinBankStatement;
+import com.lemon.erp.modules.fin.dto.BankViews;
 import com.lemon.erp.modules.fin.mapper.FinBankStatementMapper;
-import com.lemon.erp.modules.fin.model.FinConstants;
+import com.lemon.erp.modules.fin.model.AccountRole;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,9 +19,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -43,7 +42,7 @@ public class FinBankService {
         return statementMapper.selectStatements(accountId, begin, end);
     }
 
-    public List<Map<String, Object>> entries(Long accountId, LocalDate begin, LocalDate end) {
+    public List<BankViews.BankEntry> entries(Long accountId, LocalDate begin, LocalDate end) {
         return statementMapper.selectEntries(accountId, begin, end);
     }
 
@@ -88,21 +87,21 @@ public class FinBankService {
     @Transactional
     public int autoMatch(Long accountId, LocalDate begin, LocalDate end) {
         requireBank(accountId);
-        List<Map<String, Object>> entries = new ArrayList<>(statementMapper.selectEntries(accountId,
+        List<BankViews.BankEntry> entries = new ArrayList<>(statementMapper.selectEntries(accountId,
                 begin == null ? null : begin.minusDays(MATCH_DAYS), end == null ? null : end.plusDays(MATCH_DAYS)).stream()
-                .filter(e -> ((Number) e.get("matched")).intValue() == 0).toList());
+                .filter(e -> e.getMatched() == 0).toList());
         int count = 0;
         for (FinBankStatement s : statementMapper.selectStatements(accountId, begin, end)) {
             if (s.getEntryId() != null) {
                 continue;
             }
-            Map<String, Object> best = null;
+            BankViews.BankEntry best = null;
             long bestDays = Long.MAX_VALUE;
-            for (Map<String, Object> e : entries) {
-                if (new BigDecimal(e.get("amount").toString()).compareTo(s.getAmount()) != 0) {
+            for (BankViews.BankEntry e : entries) {
+                if (e.getAmount().compareTo(s.getAmount()) != 0) {
                     continue;
                 }
-                long days = Math.abs(ChronoUnit.DAYS.between(s.getTxnDate(), toDate(e.get("voucherDate"))));
+                long days = Math.abs(ChronoUnit.DAYS.between(s.getTxnDate(), e.getVoucherDate()));
                 if (days <= MATCH_DAYS && days < bestDays) {
                     best = e;
                     bestDays = days;
@@ -110,7 +109,7 @@ public class FinBankService {
             }
             if (best != null) {
                 statementMapper.update(Wrappers.<FinBankStatement>lambdaUpdate()
-                        .set(FinBankStatement::getEntryId, ((Number) best.get("entryId")).longValue()).eq(FinBankStatement::getId, s.getId()));
+                        .set(FinBankStatement::getEntryId, best.getEntryId()).eq(FinBankStatement::getId, s.getId()));
                 entries.remove(best);
                 count++;
             }
@@ -122,14 +121,14 @@ public class FinBankService {
     @Transactional
     public void match(Long statementId, Long entryId) {
         FinBankStatement s = get(statementId);
-        Map<String, Object> entry = statementMapper.selectEntries(s.getAccountId(), null, null).stream()
-                .filter(e -> ((Number) e.get("entryId")).longValue() == entryId).findFirst()
+        BankViews.BankEntry entry = statementMapper.selectEntries(s.getAccountId(), null, null).stream()
+                .filter(e -> e.getEntryId().equals(entryId)).findFirst()
                 .orElseThrow(() -> new BizException("fin.error.voucherEntryDoesNotBelongBank"));
-        if (((Number) entry.get("matched")).intValue() == 1) {
+        if (entry.getMatched() == 1) {
             throw new BizException("fin.error.voucherEntryHasAlreadyMatched");
         }
-        if (new BigDecimal(entry.get("amount").toString()).compareTo(s.getAmount()) != 0) {
-            throw new BizException("fin.error.amountsDifferTransactionEntry", s.getAmount().toPlainString(), entry.get("amount"));
+        if (entry.getAmount().compareTo(s.getAmount()) != 0) {
+            throw new BizException("fin.error.amountsDifferTransactionEntry", s.getAmount().toPlainString(), entry.getAmount());
         }
         statementMapper.update(Wrappers.<FinBankStatement>lambdaUpdate().set(FinBankStatement::getEntryId, entryId).eq(FinBankStatement::getId, statementId));
     }
@@ -150,7 +149,7 @@ public class FinBankService {
      *
      * @param bankBalance 银行对账单余额，为空时按已导入流水合计
      */
-    public Map<String, Object> reconcile(Long accountId, LocalDate asOf, BigDecimal bankBalance) {
+    public BankViews.Reconciliation reconcile(Long accountId, LocalDate asOf, BigDecimal bankBalance) {
         requireBank(accountId);
         LocalDate d = asOf == null ? LocalDate.now() : asOf;
         BigDecimal book = statementMapper.sumBookBalance(accountId, d);
@@ -158,30 +157,18 @@ public class FinBankService {
         BigDecimal bank = bankBalance != null ? bankBalance
                 : Decimals.sum(statements, FinBankStatement::getAmount);
         List<FinBankStatement> bankOnly = statements.stream().filter(s -> s.getEntryId() == null).toList();
-        List<Map<String, Object>> bookOnly = statementMapper.selectEntries(accountId, null, d).stream()
-                .filter(e -> ((Number) e.get("matched")).intValue() == 0).toList();
+        List<BankViews.BankEntry> bookOnly = statementMapper.selectEntries(accountId, null, d).stream()
+                .filter(e -> e.getMatched() == 0).toList();
         BigDecimal bankIn = bankOnly.stream().map(FinBankStatement::getAmount).filter(a -> a.signum() > 0).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal bankOut = bankOnly.stream().map(FinBankStatement::getAmount).filter(a -> a.signum() < 0).reduce(BigDecimal.ZERO, BigDecimal::add).negate();
-        BigDecimal bookIn = bookOnly.stream().map(e -> new BigDecimal(e.get("amount").toString())).filter(a -> a.signum() > 0)
+        BigDecimal bookIn = bookOnly.stream().map(BankViews.BankEntry::getAmount).filter(a -> a.signum() > 0)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal bookOut = bookOnly.stream().map(e -> new BigDecimal(e.get("amount").toString())).filter(a -> a.signum() < 0)
+        BigDecimal bookOut = bookOnly.stream().map(BankViews.BankEntry::getAmount).filter(a -> a.signum() < 0)
                 .reduce(BigDecimal.ZERO, BigDecimal::add).negate();
         BigDecimal adjustedBook = book.add(bankIn).subtract(bankOut);
         BigDecimal adjustedBank = bank.add(bookIn).subtract(bookOut);
-        Map<String, Object> r = new LinkedHashMap<>();
-        r.put("asOf", d);
-        r.put("bookBalance", book);
-        r.put("bankBalance", bank);
-        r.put("bankIn", bankIn);
-        r.put("bankOut", bankOut);
-        r.put("bookIn", bookIn);
-        r.put("bookOut", bookOut);
-        r.put("adjustedBook", adjustedBook);
-        r.put("adjustedBank", adjustedBank);
-        r.put("balanced", adjustedBook.compareTo(adjustedBank) == 0);
-        r.put("bankOnly", bankOnly);
-        r.put("bookOnly", bookOnly);
-        return r;
+        return new BankViews.Reconciliation(d, book, bank, bankIn, bankOut, bookIn, bookOut, adjustedBook, adjustedBank,
+                adjustedBook.compareTo(adjustedBank) == 0, bankOnly, bookOnly);
     }
 
     private FinBankStatement get(Long id) {
@@ -194,18 +181,9 @@ public class FinBankService {
 
     private void requireBank(Long accountId) {
         FinAccount account = accountService.requireCashAccount(accountId);
-        if (!account.getCode().startsWith(FinConstants.BANK)) {
+        if (!account.getCode().startsWith(accountService.roleCode(AccountRole.BANK))) {
             throw new BizException("fin.error.selectBankDepositAccount");
         }
     }
 
-    private static LocalDate toDate(Object v) {
-        if (v instanceof LocalDate d) {
-            return d;
-        }
-        if (v instanceof java.sql.Date d) {
-            return d.toLocalDate();
-        }
-        return LocalDate.parse(v.toString().substring(0, 10));
-    }
 }

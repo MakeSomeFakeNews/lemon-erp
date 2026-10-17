@@ -9,7 +9,7 @@
             <a-button size="small" @click="openAction('process')">{{ $t('crm.common.action.process') }}</a-button>
             <a-button size="small" type="primary" @click="openAction('resolve')">{{ $t('crm.common.action.resolve') }}</a-button>
           </template>
-          <a-button v-if="detail.status === 'RESOLVED'" size="small" type="primary" @click="openAction('close')">{{ $t('crm.common.action.close') }}</a-button>
+          <a-button v-if="detail.status === TicketStatus.RESOLVED" size="small" type="primary" @click="openAction('close')">{{ $t('crm.common.action.close') }}</a-button>
           <a-button v-if="!active" size="small" @click="openAction('reopen')">{{ $t('crm.common.action.reopen') }}</a-button>
         </template>
       </a-space>
@@ -44,7 +44,7 @@
         <div class="title">
           {{ $t('crm.ticketDetail.partsAndFee') }}
           <span class="title-actions">
-            <a-button v-if="detail.status !== 'CLOSED'" v-perm="'crm:ticket:handle'" size="small" @click="openParts">{{ $t('crm.ticketDetail.issueParts') }}</a-button>
+            <a-button v-if="detail.status !== TicketStatus.CLOSED" v-perm="'crm:ticket:handle'" size="small" @click="openParts">{{ $t('crm.ticketDetail.issueParts') }}</a-button>
             <a-button v-if="!detail.feeBillId" v-perm="'crm:ticket:handle'" size="small" @click="openCharge">{{ $t('crm.ticketDetail.charge') }}</a-button>
           </span>
         </div>
@@ -140,6 +140,7 @@ import { availableQty, today } from '@/components/wms/wms'
 import { useUserStore } from '@/store/user'
 import { overdueText, remaining } from './crm'
 
+import { TicketStatus } from '@/constants/enums'
 /** 服务工单详情：处理时限、处理记录；指派、处理、解决、关闭、重新打开 */
 const props = defineProps({
   open: Boolean,
@@ -158,7 +159,7 @@ const CONTENT_LABELS = Object.fromEntries(ACTION_KEYS.map((k) => [k, t(`crm.comm
 const detail = ref(null)
 const logs = ref([])
 const loading = ref(false)
-const active = computed(() => detail.value && ['OPEN', 'PROCESSING'].includes(detail.value.status))
+const active = computed(() => detail.value && [TicketStatus.OPEN, TicketStatus.PROCESSING].includes(detail.value.status))
 
 async function load() {
   loading.value = true

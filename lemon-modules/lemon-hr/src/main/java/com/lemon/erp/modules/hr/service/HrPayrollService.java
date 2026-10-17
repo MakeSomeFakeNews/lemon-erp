@@ -33,7 +33,7 @@ import com.lemon.erp.modules.hr.mapper.HrPayrollItemMapper;
 import com.lemon.erp.modules.hr.mapper.HrPayrollMapper;
 import com.lemon.erp.modules.hr.mapper.HrPerfAppraisalMapper;
 import com.lemon.erp.modules.hr.mapper.HrSalaryMapper;
-import com.lemon.erp.modules.hr.model.HrConstants;
+import com.lemon.erp.modules.hr.model.HrRules;
 import com.lemon.erp.modules.hr.model.HrDictValues;
 import com.lemon.erp.modules.hr.model.PayrollStatus;
 import com.lemon.erp.modules.hr.model.PerfGrade;
@@ -60,13 +60,14 @@ import static com.lemon.erp.common.util.Decimals.money;
  * <pre>
  * 在职折算 = 本月在职工作日 / 本月工作日
  * 基本工资 = 基本工资 × 在职折算；津贴补贴 = (岗位津贴 + 其他补贴) × 在职折算
- * 日工资 = (基本工资 + 岗位津贴) / 21.75，小时工资 = 日工资 / 8
- * 加班费 = Σ 加班小时 × 小时工资 × 倍数（工作日 1.5、休息日 2、法定节假日 3）
+ * 日工资 = (基本工资 + 岗位津贴) / 月计薪天数（默认 21.75），小时工资 = 日工资 / 每日工时（默认 8）
+ * 加班费 = Σ 加班小时 × 小时工资 × 倍数（默认工作日 1.5、休息日 2、法定节假日 3）
  * 绩效奖金 = 绩效奖金基数 × 绩效系数（发放月份为本月的已归档考核）
- * 考勤扣款 = 旷工天数 × 日工资 + 事假小时 × 小时工资 + 病假小时 × 小时工资 × 40% + 迟到早退次数 × 50
+ * 考勤扣款 = 旷工天数 × 日工资 + 事假小时 × 小时工资 + 病假小时 × 小时工资 × 病假扣发比例（默认 40%）+ 迟到早退次数 × 每次扣款（默认 50）
  * 应发 = 基本工资 + 津贴 + 加班费 + 绩效奖金 + 其他奖金 - 考勤扣款
  * 实发 = 应发 - 个人社保 - 个人公积金 - 个税 - 其他扣款
  * </pre>
+ * 计薪天数、工时、比例、倍数、扣款、个税基本减除费用和预扣率表是按租户的业务参数（{@link HrRules}）。
  * 计提：借 管理费用-工资（按部门）贷 应付职工薪酬；发放：借 应付职工薪酬，贷 银行存款（实发）、应交个人所得税、其他应付款（社保公积金、其他扣款）
  */
 @Service
@@ -91,6 +92,7 @@ public class HrPayrollService {
     private final HrSalaryService salaryService;
     private final ApprovalSupport approvalSupport;
     private final HrSocialService socialService;
+    private final HrRuleService ruleService;
 
     public PageResult<HrPayroll> page(long current, long size, Integer year, String status) {
         Page<HrPayroll> page = Page.of(current, size);
@@ -158,8 +160,9 @@ public class HrPayrollService {
             prior.put(((Number) row.get("employeeId")).longValue(), new BigDecimal[]{
                     new BigDecimal(row.get("cumTaxable").toString()), new BigDecimal(row.get("cumTax").toString())});
         }
+        HrRules rules = ruleService.current();
         List<HrPayrollItem> items = new ArrayList<>();
-        for (AttendanceSummary s : attendanceService.summarize(payable, ym)) {
+        for (AttendanceSummary s : attendanceService.summarize(payable, ym, rules)) {
             HrPayrollItem item = new HrPayrollItem();
             item.setPayrollId(p.getId());
             item.setEmployeeId(s.employeeId());
@@ -172,7 +175,7 @@ public class HrPayrollService {
             HrSalary salary = salaries.get(s.employeeId());
             item.setSpecialDeduct(special.getOrDefault(s.employeeId(), BigDecimal.ZERO));
             calculate(item, salary, s, grades.get(s.employeeId()), salary.getSchemeId() == null ? null : schemes.get(salary.getSchemeId()),
-                    prior.getOrDefault(s.employeeId(), new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO}));
+                    prior.getOrDefault(s.employeeId(), new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO}), rules);
             items.add(item);
         }
         itemMapper.insertBatch(items);
@@ -191,11 +194,12 @@ public class HrPayrollService {
         BigDecimal bonus = Decimals.nz(req.otherBonus());
         BigDecimal deduct = Decimals.nz(req.otherDeduct());
         BigDecimal gross = item.getGrossPay().subtract(item.getOtherBonus()).add(bonus);
-        BigDecimal[] prior = prior(item);
+        HrRules rules = ruleService.current();
+        BigDecimal[] prior = prior(item, rules);
         item.setOtherBonus(bonus);
         item.setOtherDeduct(deduct);
         item.setGrossPay(gross.max(BigDecimal.ZERO));
-        settle(item, prior[0], prior[1]);
+        settle(item, prior[0], prior[1], rules);
         itemMapper.update(Wrappers.<HrPayrollItem>lambdaUpdate()
                 .set(HrPayrollItem::getOtherBonus, item.getOtherBonus())
                 .set(HrPayrollItem::getOtherDeduct, item.getOtherDeduct())
@@ -350,15 +354,17 @@ public class HrPayrollService {
     // ---------------------------------------------------------------- 计算
 
     /**
-     * 按薪资档案、考勤汇总、绩效等级计算一名员工的工资。有社保方案时按方案的基数上下限和各险种比例，否则按默认比例
+     * 按薪资档案、考勤汇总、绩效等级计算一名员工的工资。有社保方案时按方案的基数上下限和各险种比例，否则按业务参数中的默认比例
      *
      * @param prior 本年此前的累计应纳税所得额、累计已扣税额
+     * @param rules 当前租户的计算规则
      */
-    static void calculate(HrPayrollItem item, HrSalary salary, AttendanceSummary s, PerfGrade grade, HrSocialScheme scheme, BigDecimal[] prior) {
+    static void calculate(HrPayrollItem item, HrSalary salary, AttendanceSummary s, PerfGrade grade, HrSocialScheme scheme, BigDecimal[] prior,
+                          HrRules rules) {
         BigDecimal ratio = s.monthDays() == 0 ? BigDecimal.ONE
                 : BigDecimal.valueOf(s.shouldDays()).divide(BigDecimal.valueOf(s.monthDays()), 6, RoundingMode.HALF_UP);
-        BigDecimal daily = salary.getBaseSalary().add(salary.getPostAllowance()).divide(HrConstants.MONTH_PAY_DAYS, 6, RoundingMode.HALF_UP);
-        BigDecimal hourly = daily.divide(HrConstants.DAY_HOURS, 6, RoundingMode.HALF_UP);
+        BigDecimal daily = salary.getBaseSalary().add(salary.getPostAllowance()).divide(rules.monthPayDays(), 6, RoundingMode.HALF_UP);
+        BigDecimal hourly = daily.divide(rules.dayHours(), 6, RoundingMode.HALF_UP);
         BigDecimal personal = s.leaveHoursOf(HrDictValues.LEAVE_PERSONAL);
         BigDecimal sick = s.leaveHoursOf(HrDictValues.LEAVE_SICK);
 
@@ -376,8 +382,8 @@ public class HrPayrollService {
         item.setPerfBonus(money(salary.getPerfBonusBase().multiply(PerfGrade.coefficientOf(grade))));
         item.setAttendanceDeduct(money(daily.multiply(BigDecimal.valueOf(s.absentDays()))
                 .add(hourly.multiply(personal))
-                .add(hourly.multiply(sick).multiply(HrConstants.SICK_DEDUCT_RATE))
-                .add(HrConstants.LATE_FINE.multiply(BigDecimal.valueOf(s.lateCount() + s.earlyCount())))));
+                .add(hourly.multiply(sick).multiply(rules.sickDeductRate()))
+                .add(rules.lateFine().multiply(BigDecimal.valueOf(s.lateCount() + s.earlyCount())))));
         if (item.getPieceWage() == null) {
             item.setPieceWage(BigDecimal.ZERO);
         }
@@ -389,8 +395,8 @@ public class HrPayrollService {
         item.setGrossPay(gross.max(BigDecimal.ZERO));
         BigDecimal housingRate = salary.getHousingRate().divide(Decimals.HUNDRED, 4, RoundingMode.HALF_UP);
         if (scheme == null) {
-            item.setSocialPersonal(money(salary.getSocialBase().multiply(HrConstants.SOCIAL_PERSONAL_RATE)));
-            item.setSocialCompany(money(salary.getSocialBase().multiply(HrConstants.SOCIAL_COMPANY_RATE)));
+            item.setSocialPersonal(money(salary.getSocialBase().multiply(rules.socialPersonalRate())));
+            item.setSocialCompany(money(salary.getSocialBase().multiply(rules.socialCompanyRate())));
             item.setHousingPersonal(money(salary.getHousingBase().multiply(housingRate)));
         } else {
             BigDecimal base = HrSocialScheme.clamp(salary.getSocialBase(), scheme.getBaseMin(), scheme.getBaseMax());
@@ -403,16 +409,16 @@ public class HrPayrollService {
         if (item.getSpecialDeduct() == null) {
             item.setSpecialDeduct(BigDecimal.ZERO);
         }
-        settle(item, prior[0], prior[1]);
+        settle(item, prior[0], prior[1], rules);
     }
 
     /**
-     * 个税（累计预扣法）与实发：本年累计应纳税所得额 = 此前累计 + 本月（应发 − 个人社保公积金 − 专项附加扣除 − 5000），
+     * 个税（累计预扣法）与实发：本年累计应纳税所得额 = 此前累计 + 本月（应发 − 个人社保公积金 − 专项附加扣除 − 基本减除费用），
      * 本月个税 = 累计应纳税额 − 此前已扣（不小于 0）
      */
-    static void settle(HrPayrollItem item, BigDecimal priorTaxable, BigDecimal priorTax) {
-        BigDecimal cumTaxable = priorTaxable.add(monthTaxable(item));
-        BigDecimal tax = HrConstants.cumulativeTax(cumTaxable).subtract(priorTax).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+    static void settle(HrPayrollItem item, BigDecimal priorTaxable, BigDecimal priorTax, HrRules rules) {
+        BigDecimal cumTaxable = priorTaxable.add(monthTaxable(item, rules));
+        BigDecimal tax = rules.cumulativeTax(cumTaxable).subtract(priorTax).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
         item.setCumTaxable(cumTaxable.setScale(2, RoundingMode.HALF_UP));
         item.setCumTax(priorTax.add(tax));
         item.setIncomeTax(tax);
@@ -420,16 +426,16 @@ public class HrPayrollService {
                 .subtract(item.getIncomeTax()).subtract(item.getOtherDeduct()));
     }
 
-    private static BigDecimal monthTaxable(HrPayrollItem item) {
+    private static BigDecimal monthTaxable(HrPayrollItem item, HrRules rules) {
         return item.getGrossPay().subtract(item.getSocialPersonal()).subtract(item.getHousingPersonal())
-                .subtract(Decimals.nz(item.getSpecialDeduct())).subtract(HrConstants.TAX_THRESHOLD);
+                .subtract(Decimals.nz(item.getSpecialDeduct())).subtract(rules.taxThreshold());
     }
 
     /** 由明细反推此前的累计值（调整时重算个税） */
-    private static BigDecimal[] prior(HrPayrollItem item) {
+    private static BigDecimal[] prior(HrPayrollItem item, HrRules rules) {
         BigDecimal cumTaxable = Decimals.nz(item.getCumTaxable());
         BigDecimal cumTax = Decimals.nz(item.getCumTax());
-        return new BigDecimal[]{cumTaxable.subtract(monthTaxable(item)), cumTax.subtract(item.getIncomeTax())};
+        return new BigDecimal[]{cumTaxable.subtract(monthTaxable(item, rules)), cumTax.subtract(item.getIncomeTax())};
     }
 
     private HrPayroll getWithStatus(Long id, PayrollStatus status) {

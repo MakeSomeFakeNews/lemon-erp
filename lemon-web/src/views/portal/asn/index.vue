@@ -30,7 +30,7 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
-              <span v-if="record.status === 'SUBMITTED'" v-perm="'portal:asn:add'">
+              <span v-if="record.status === AsnStatus.SUBMITTED" v-perm="'portal:asn:add'">
                 <a-popconfirm :title="$t('portal.asn.confirmCancel')" @confirm="cancel(record.id)">
                   <a-button type="link" danger size="small">{{ $t('common.action.cancel') }}</a-button>
                 </a-popconfirm>
@@ -65,7 +65,6 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
 import { onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
 import DictTag from '@/components/DictTag.vue'
 import SubPage from '@/components/SubPage.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -75,7 +74,9 @@ import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
+import { useAction } from '@/composables/useAction'
 
+import { AsnStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 /** 供应商门户 - 送货通知 */
@@ -105,11 +106,7 @@ async function openDetail(id) {
   detail.value = await getPortalAsn(id)
   detailOpen.value = true
 }
-async function cancel(id) {
-  await cancelPortalAsn(id)
-  message.success(t('portal.asn.canceled'))
-  load()
-}
+const cancel = useAction(cancelPortalAsn, { successKey: 'portal.asn.canceled', reload: () => load() })
 </script>
 
 <style scoped>

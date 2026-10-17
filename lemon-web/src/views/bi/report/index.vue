@@ -108,6 +108,7 @@ import ReportView from '@/components/bi/ReportView.vue'
 import { deleteReport, listReports, updateReport } from '@/api/bi'
 import { CHART_TYPES, RANGES, loadCubes } from '@/components/bi/bi'
 import { t } from '@/locales'
+import { useAction } from '@/composables/useAction'
 
 const router = useRouter()
 const cubes = ref([])
@@ -203,11 +204,7 @@ async function saveEdit() {
   }
 }
 
-async function remove(r) {
-  await deleteReport(r.id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction((r) => deleteReport(r.id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 onMounted(async () => {
   cubes.value = await loadCubes()

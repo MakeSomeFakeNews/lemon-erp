@@ -1,7 +1,9 @@
 import dayjs from 'dayjs'
 import { suggestPutaway } from '@/api/wms/location'
 import { currentLocale, t } from '@/locales'
+import { qty } from '@/utils/number'
 
+import { StockInType, StockOutType, WmsDocStatus } from '@/constants/enums'
 /** 出入库单的种类（与后端 StockBizType 的路径一致） */
 export const DOC_KINDS = {
   in: {
@@ -56,8 +58,8 @@ export const AUTO_TYPE_SOURCES = {
 
 /** 收发类别字典（业务字典，可在「业务字典」中新增）：其他入库用入库类别，其他出库、报废出库用出库类别；其他类型为空 */
 export function ioCategoryDict(kind, bizType) {
-  if (kind === 'in' && bizType === 'OTHER') return 'wms_in_category'
-  if (kind === 'out' && (bizType === 'OTHER' || bizType === 'SCRAP')) return 'wms_out_category'
+  if (kind === 'in' && bizType === StockInType.OTHER) return 'wms_in_category'
+  if (kind === 'out' && (bizType === StockOutType.OTHER || bizType === StockOutType.SCRAP)) return 'wms_out_category'
   return undefined
 }
 
@@ -75,13 +77,10 @@ export function docTypeOptions(kind, list = []) {
 /** 可用数量：库存 - 冻结（待检、不合格） */
 export const availableQty = (s) => Number(s.qty || 0) - Number(s.frozenQty || 0)
 
-export function formatQty(n) {
-  if (n === null || n === undefined || n === '') return '-'
-  return Number(n).toLocaleString(currentLocale(), { maximumFractionDigits: 4 })
-}
+export const formatQty = (n) => qty(n, 4, currentLocale())
 
 /** 已完成、非业务单据生成、非红字、未冲销的单据可以冲销 */
-export const canReverse = (d) => d.status === 'DONE' && !d.sourceNo && !d.redOf && d.reversed !== 1
+export const canReverse = (d) => d.status === WmsDocStatus.DONE && !d.sourceNo && !d.redOf && d.reversed !== 1
 
 /** 负数（红字单据）标红 */
 export const negativeClass = (n) => (Number(n) < 0 ? 'qty-negative' : undefined)
@@ -111,8 +110,7 @@ export function expiryStatus(date) {
 export const today = () => dayjs().format('YYYY-MM-DD')
 
 /** 明细行的唯一 key（新增行没有 id） */
-let seq = 0
-export const rowKey = () => `row-${Date.now()}-${++seq}`
+export { rowKey } from '@/composables/useLineItems'
 
 /**
  * 上架推荐：为没有选库位的行按上架策略（默认库位 → 同批次 → 同物料 → 空库位）填入库位，返回填入的行数

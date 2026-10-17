@@ -3,11 +3,11 @@
     <template #extra>
       <a-space v-if="detail">
         <DictTag type="crm_opp_stage" :value="detail.stage" />
-        <template v-if="detail.stage !== 'WON'">
+        <template v-if="detail.stage !== OpportunityStage.WON">
           <a-button v-perm="'crm:opp:edit'" size="small" type="primary" @click="openStage">{{ $t('crm.common.advanceStage') }}</a-button>
         </template>
         <a-button
-          v-if="detail.stage === 'WON' && !detail.salesOrderId"
+          v-if="detail.stage === OpportunityStage.WON && !detail.salesOrderId"
           v-perm="'crm:opp:order'"
           size="small"
           type="primary"
@@ -15,16 +15,16 @@
         >
           {{ $t('crm.common.toOrder') }}
         </a-button>
-        <a-button v-if="detail.stage === 'WON'" v-perm="'pm:project:add'" size="small" @click="createProject">{{ $t('crm.common.createProject') }}</a-button>
+        <a-button v-if="detail.stage === OpportunityStage.WON" v-perm="'pm:project:add'" size="small" @click="createProject">{{ $t('crm.common.createProject') }}</a-button>
       </a-space>
     </template>
     <a-spin :spinning="loading">
       <template v-if="detail">
-        <a-steps :current="stepIndex" :status="detail.stage === 'LOST' ? 'error' : stepIndex === steps.length - 1 ? 'finish' : 'process'" size="small" class="block">
+        <a-steps :current="stepIndex" :status="detail.stage === OpportunityStage.LOST ? 'error' : stepIndex === steps.length - 1 ? 'finish' : 'process'" size="small" class="block">
           <a-step v-for="s in steps" :key="s.value" :title="s.label" :description="reachedAt(s.value)" />
         </a-steps>
 
-        <a-alert v-if="detail.stage === 'LOST'" type="error" show-icon class="block" :message="$t('crm.opportunityDetail.lostText', { reason: detail.lostReason || '-' })" />
+        <a-alert v-if="detail.stage === OpportunityStage.LOST" type="error" show-icon class="block" :message="$t('crm.opportunityDetail.lostText', { reason: detail.lostReason || '-' })" />
         <a-alert v-if="detail.salesOrderNo" type="success" show-icon class="block">
           <template #message>
             {{ $t('crm.opportunityDetail.orderCreated') }} <b>{{ detail.salesOrderNo }}</b>,
@@ -114,10 +114,10 @@
             <a-radio-button v-for="s in dict.crm_opp_stage" :key="s.value" :value="s.value">{{ s.label }}</a-radio-button>
           </a-radio-group>
         </a-form-item>
-        <a-form-item v-if="stageForm.stage === 'LOST'" :label="$t('crm.common.f.lostReason')" required>
+        <a-form-item v-if="stageForm.stage === OpportunityStage.LOST" :label="$t('crm.common.f.lostReason')" required>
           <a-textarea v-model:value="stageForm.lostReason" :rows="3" :maxlength="255" :placeholder="$t('crm.common.lostReasonPh')" />
         </a-form-item>
-        <a-alert v-if="stageForm.stage === 'WON'" type="success" show-icon :message="$t('crm.common.wonTip')" />
+        <a-alert v-if="stageForm.stage === OpportunityStage.WON" type="success" show-icon :message="$t('crm.common.wonTip')" />
       </a-form>
     </a-modal>
 
@@ -153,6 +153,7 @@ import { formatMoney } from '@/components/scm/scm'
 import { OPEN_STAGES } from './crm'
 import { useUserStore } from '@/store/user'
 
+import { OpportunityStage } from '@/constants/enums'
 /** 商机详情：阶段进度、产品明细、跟进；推进阶段、赢单后生成销售订单 */
 const props = defineProps({
   open: Boolean,
@@ -179,12 +180,12 @@ const loading = ref(false)
 
 const label = (v) => dict.crm_opp_stage.find((d) => d.value === v)?.label || v
 const steps = computed(() => {
-  const last = detail.value?.stage === 'LOST' ? 'LOST' : 'WON'
+  const last = detail.value?.stage === OpportunityStage.LOST ? 'LOST' : 'WON'
   return [...OPEN_STAGES, last].map((v) => ({ value: v, label: label(v) }))
 })
 const stepIndex = computed(() => {
   if (!detail.value) return 0
-  if (detail.value.stage === 'LOST') return steps.value.length - 1
+  if (detail.value.stage === OpportunityStage.LOST) return steps.value.length - 1
   return steps.value.findIndex((s) => s.value === detail.value.stage)
 })
 function reachedAt(stage) {
@@ -275,7 +276,7 @@ function openStage() {
   stageOpen.value = true
 }
 async function submitStage() {
-  if (stageForm.value.stage === 'LOST' && !stageForm.value.lostReason?.trim()) {
+  if (stageForm.value.stage === OpportunityStage.LOST && !stageForm.value.lostReason?.trim()) {
     message.warning(t('crm.common.lostReasonRequired'))
     return
   }

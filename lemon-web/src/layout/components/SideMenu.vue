@@ -31,6 +31,7 @@ import { useUserStore } from '@/store/user'
 import { joinPath } from '@/utils/path'
 import { HOME_PATH, useModuleNav } from '../useModuleNav'
 
+import { MenuType } from '@/constants/enums'
 /**
  * 桌面端只显示当前模块的菜单（模块在顶部切换）；移动端抽屉（full）显示完整菜单树。
  * 模块下的二级目录作为分组标题，不折叠。
@@ -51,7 +52,7 @@ function toItems(menus, parentPath = '', depth = 0) {
     .filter((m) => m.visible === 1)
     .map((m) => {
       const fullPath = joinPath(parentPath, m.path)
-      if (m.type !== 'M') return { key: fullPath, label: m.name, icon: icon(m.icon) }
+      if (m.type !== MenuType.M) return { key: fullPath, label: m.name, icon: icon(m.icon) }
       const children = toItems(m.children || [], fullPath, depth + 1)
       if (!children.length) return null
       // 模块内的目录作为分组；顶层目录（仅移动端完整菜单）作为可折叠的子菜单
@@ -68,7 +69,7 @@ const menuItems = computed(() => {
   const m = activeModule.value?.menu
   // 不在任何模块中（首页、个人中心等）：显示模块列表，点击进入模块
   if (!m) return modules.value.map((x) => ({ key: MODULE_PREFIX + x.key, label: x.title, icon: icon(x.icon) }))
-  const items = m.type === 'C' ? toItems([m]) : toItems(m.children || [], joinPath('', m.path), 1)
+  const items = m.type === MenuType.C ? toItems([m]) : toItems(m.children || [], joinPath('', m.path), 1)
   // 收起时放不下分组标题，改为分隔线
   return props.collapsed
     ? items.flatMap((i) => (i.type === 'group' ? [{ type: 'divider', key: `d-${i.key}` }, ...i.children] : [i]))

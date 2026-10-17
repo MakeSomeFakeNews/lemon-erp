@@ -72,10 +72,10 @@
               <a-button type="link" size="small" @click="openDetail(record)">
                 <template #icon><EyeOutlined /></template>{{ $t('common.action.detail') }}
               </a-button>
-              <a-button v-if="record.status === 'DRAFT'" v-perm="'crm:contract:edit'" type="link" size="small" @click="drawer.openEdit(record)">
+              <a-button v-if="record.status === SalesContractStatus.DRAFT" v-perm="'crm:contract:edit'" type="link" size="small" @click="drawer.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
-              <span v-if="record.status === 'DRAFT'" v-perm="'crm:contract:remove'">
+              <span v-if="record.status === SalesContractStatus.DRAFT" v-perm="'crm:contract:remove'">
                 <a-popconfirm :title="$t('crm.contract.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
@@ -202,7 +202,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
@@ -231,7 +230,9 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
+import { useAction } from '@/composables/useAction'
 
+import { QuotationStatus, SalesContractStatus } from '@/constants/enums'
 const dict = useDict('crm_contract_status', 'scm_quotation_status')
 const userStore = useUserStore()
 const route = useRoute()
@@ -385,7 +386,7 @@ async function loadRelated(customerId) {
     userStore.hasPerm('scm:quotation:list') ? pageQuotation({ customerId, current: 1, size: 100 }).catch(() => ({ records: [] })) : { records: [] }
   ])
   opps.value = o.records
-  quotes.value = q.records.filter((r) => r.status !== 'LOST')
+  quotes.value = q.records.filter((r) => r.status !== QuotationStatus.LOST)
 }
 function onCustomer(customerId) {
   Object.assign(form.value, { opportunityId: undefined, opportunityName: undefined, quotationId: undefined, quoteNo: undefined })
@@ -397,7 +398,7 @@ function onOpportunity(id) {
   if (!form.value.name) form.value.name = o.name
   if (form.value.amount == null) form.value.amount = Number(o.amount) || undefined
   // 商机下的报价单优先
-  const q = quotes.value.find((x) => x.opportunityId === id && ['APPROVED', 'ORDERED'].includes(x.status))
+  const q = quotes.value.find((x) => x.opportunityId === id && [QuotationStatus.APPROVED, QuotationStatus.ORDERED].includes(x.status))
   if (q && !form.value.quotationId) onQuotation((form.value.quotationId = q.id))
 }
 function onQuotation(id) {
@@ -405,11 +406,7 @@ function onQuotation(id) {
   if (q && form.value.amount == null) form.value.amount = Number(q.totalAmount)
 }
 
-async function remove(id) {
-  await deleteCrmContract(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteCrmContract, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 onMounted(async () => {
   load()
@@ -442,7 +439,7 @@ onMounted(async () => {
     }
     // 先加载客户的商机和报价单，商机下已批准的报价单默认关联
     await loadRelated(customerId)
-    const quote = opportunityId && quotes.value.find((x) => x.opportunityId === opportunityId && ['APPROVED', 'ORDERED'].includes(x.status))
+    const quote = opportunityId && quotes.value.find((x) => x.opportunityId === opportunityId && [QuotationStatus.APPROVED, QuotationStatus.ORDERED].includes(x.status))
     if (quote) Object.assign(defaults, { quotationId: quote.id, amount: Number(quote.totalAmount) })
     drawer.openCreate(defaults)
   }

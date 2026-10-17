@@ -3,6 +3,7 @@ package com.lemon.erp.modules.mes.controller;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.mes.dto.CapacityLoad;
 import com.lemon.erp.modules.mes.entity.MesCalendar;
 import com.lemon.erp.modules.mes.entity.MesWorkOrder;
 import com.lemon.erp.modules.mes.service.MesScheduleService;
@@ -20,7 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 产能与排程：工作中心负荷、工单排程、工厂日历
@@ -34,9 +34,9 @@ public class MesCapacityController {
 
     @GetMapping("/load")
     @PreAuthorize("@ss.hasPerm('mes:capacity:list')")
-    public R<List<Map<String, Object>>> load(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-                                             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-                                             @RequestParam(required = false) Long workCenterId) {
+    public R<List<CapacityLoad>> load(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                                      @RequestParam(required = false) Long workCenterId) {
         return R.ok(scheduleService.load(from, to, workCenterId));
     }
 

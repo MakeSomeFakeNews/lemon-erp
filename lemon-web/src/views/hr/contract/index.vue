@@ -59,7 +59,7 @@
             <div v-if="record.probationMonths" class="sub-text">{{ $t('hr.contract.probationN', { n: record.probationMonths }) }}</div>
           </template>
           <template v-else-if="column.key === 'daysLeft'">
-            <span v-if="record.daysLeft == null || record.status !== 'ACTIVE'" class="sub-text">-</span>
+            <span v-if="record.daysLeft == null || record.status !== LaborContractStatus.ACTIVE" class="sub-text">-</span>
             <span v-else :class="daysClass(record.daysLeft)">{{ daysText(record.daysLeft) }}</span>
           </template>
           <template v-else-if="column.key === 'status'">
@@ -73,15 +73,15 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-if="record.status === 'ACTIVE' || record.status === 'EXPIRED'" v-perm="'hr:contract:edit'" class="table-actions">
-              <a-button v-if="record.status === 'ACTIVE'" type="link" size="small" @click="drawer.openEdit(record)">
+            <span v-if="record.status === LaborContractStatus.ACTIVE || record.status === LaborContractStatus.EXPIRED" v-perm="'hr:contract:edit'" class="table-actions">
+              <a-button v-if="record.status === LaborContractStatus.ACTIVE" type="link" size="small" @click="drawer.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <a-button type="link" size="small" @click="openRenew(record)">
                 <template #icon><SyncOutlined /></template>{{ $t('hr.contract.renew') }}
               </a-button>
-              <a-button v-if="record.status === 'ACTIVE'" type="link" danger size="small" @click="openTerminate(record)">{{ $t('hr.contract.terminate') }}</a-button>
-              <a-popconfirm v-if="record.status === 'ACTIVE'" :title="$t('hr.contract.confirmDelete', { no: record.contractNo })" @confirm="remove(record.id)">
+              <a-button v-if="record.status === LaborContractStatus.ACTIVE" type="link" danger size="small" @click="openTerminate(record)">{{ $t('hr.contract.terminate') }}</a-button>
+              <a-popconfirm v-if="record.status === LaborContractStatus.ACTIVE" :title="$t('hr.contract.confirmDelete', { no: record.contractNo })" @confirm="remove(record.id)">
                 <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
               </a-popconfirm>
             </span>
@@ -179,7 +179,9 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { t } from '@/locales'
+import { useAction } from '@/composables/useAction'
 
+import { LaborContractStatus } from '@/constants/enums'
 const dict = useDict('hr_contract_type', 'hr_contract_status', 'hr_emp_status')
 const route = useRoute()
 
@@ -289,11 +291,7 @@ function onStartChange(start) {
   }
 }
 
-async function remove(id) {
-  await deleteContract(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteContract, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // 终止
 const saving = ref(false)

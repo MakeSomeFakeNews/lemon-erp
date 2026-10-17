@@ -69,7 +69,7 @@
                   <div class="guide-title">{{ $t('fin.opening.step5') }}</div>
                   <div class="sub-text">{{ $t('fin.opening.step5Tip') }}</div>
                   <div v-for="k in ['AR', 'AP']" :key="k" class="guide-check">
-                    {{ $t(k === 'AR' ? 'fin.opening.arCheck' : 'fin.opening.apCheck', { n: summary.bills[k].count, amount: money(summary.bills[k].amount) }) }}
+                    {{ $t(k === BillKind.AR ? 'fin.opening.arCheck' : 'fin.opening.apCheck', { n: summary.bills[k].count, amount: money(summary.bills[k].amount) }) }}
                     {{ $t('fin.opening.ledgerCheck', { code: summary.bills[k].accountCode, amount: money(summary.bills[k].ledger) }) }}
                     <a-tag v-if="Math.abs(summary.bills[k].amount - summary.bills[k].ledger) < 0.005" color="green" :bordered="false">{{ $t('fin.opening.match') }}</a-tag>
                     <a-tag v-else color="orange" :bordered="false">{{ $t('fin.opening.diff', { amount: money(summary.bills[k].amount - summary.bills[k].ledger) }) }}</a-tag>
@@ -117,7 +117,7 @@
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'category'"><DictTag type="fin_account_category" :value="record.category" /></template>
-              <template v-else-if="column.key === 'direction'">{{ record.direction === 'DEBIT' ? $t('fin.opening.dr') : $t('fin.opening.cr') }}</template>
+              <template v-else-if="column.key === 'direction'">{{ record.direction === AccountDirection.DEBIT ? $t('fin.opening.dr') : $t('fin.opening.cr') }}</template>
               <template v-else-if="column.key === 'debit' || column.key === 'credit'">
                 <a-input-number
                   v-model:value="record[column.key]"
@@ -233,10 +233,10 @@
     />
     <ImportModal
       v-model:open="billImportOpen"
-      :title="billImportKind === 'AR' ? $t('fin.opening.openingAr') : $t('fin.opening.openingAp')"
+      :title="billImportKind === BillKind.AR ? $t('fin.opening.openingAr') : $t('fin.opening.openingAp')"
       :columns="billImportColumns"
       :importer="(data) => importOpeningBills(billImportKind, data)"
-      :sample="{ partner: billImportKind === 'AR' ? 'C0001' : 'S0001', billDate: '2026-01-31', amount: 10000 }"
+      :sample="{ partner: billImportKind === BillKind.AR ? 'C0001' : 'S0001', billDate: '2026-01-31', amount: 10000 }"
       @success="loadSummary"
     />
     <ImportModal
@@ -265,6 +265,7 @@ import { formatQty, rowKey } from '@/components/wms/wms'
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
 
+import { AccountDirection, BillKind } from '@/constants/enums'
 useDict('fin_account_category')
 const { t } = useI18n()
 const userStore = useUserStore()

@@ -37,7 +37,7 @@
         ORDER BY id
     </select>
 
-    <select id="selectUsages" resultType="java.util.Map">
+    <select id="selectUsages" resultType="com.lemon.erp.modules.scm.dto.ScmPriceViews$PromotionUsage">
         SELECT u.order_id AS "orderId", o.order_no AS "orderNo", c.name AS "customerName", o.order_date AS "orderDate",
                o.status AS "status", u.discount_amount AS "discountAmount", u.gift_qty AS "giftQty"
         FROM scm_promotion_usage u

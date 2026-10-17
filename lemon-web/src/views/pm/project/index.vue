@@ -44,7 +44,7 @@
           <template v-else-if="column.key === 'customer'">{{ record.customerName || $t('pm.common.internal') }}</template>
           <template v-else-if="column.key === 'status'"><DictTag type="pm_project_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'progress'">
-            <a-progress :percent="Number(record.progress)" size="small" :status="record.status === 'FINISHED' ? 'success' : 'normal'" />
+            <a-progress :percent="Number(record.progress)" size="small" :status="record.status === ProjectStatus.FINISHED ? 'success' : 'normal'" />
           </template>
           <template v-else-if="column.key === 'dates'">
             <div>{{ record.planStart }} ~ {{ record.planEnd }}</div>
@@ -64,7 +64,7 @@
               <a-button type="link" size="small" @click="openDetail(record)">
                 <template #icon><EyeOutlined /></template>{{ $t('common.action.detail') }}
               </a-button>
-              <a-button v-if="record.status !== 'CLOSED'" v-perm="'pm:project:edit'" type="link" size="small" @click="drawer.openEdit(record)">
+              <a-button v-if="record.status !== ProjectStatus.CLOSED" v-perm="'pm:project:edit'" type="link" size="small" @click="drawer.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-for="a in STATUS_ACTIONS[record.status]" :key="a.status" v-perm="'pm:project:edit'">
@@ -72,7 +72,7 @@
                   <a-button type="link" size="small">{{ a.label }}</a-button>
                 </a-popconfirm>
               </span>
-              <span v-if="record.status === 'PLANNING'" v-perm="'pm:project:remove'">
+              <span v-if="record.status === ProjectStatus.PLANNING" v-perm="'pm:project:remove'">
                 <a-popconfirm :title="$t('pm.project.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
@@ -180,7 +180,9 @@ import { toOptions } from '@/utils/dict'
 import { formatMoney } from '@/components/scm/scm'
 import { STATUS_ACTIONS, actualCost, num } from '@/components/pm/pm'
 import { t } from '@/locales'
+import { useAction } from '@/composables/useAction'
 
+import { ProjectStatus } from '@/constants/enums'
 const dict = useDict('pm_project_status', 'pm_project_type', 'pm_priority')
 
 const columns = [
@@ -268,11 +270,7 @@ async function changeStatus(record, action) {
   load()
 }
 
-async function remove(id) {
-  await deleteProject(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteProject, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

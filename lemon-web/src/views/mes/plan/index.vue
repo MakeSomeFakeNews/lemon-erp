@@ -41,7 +41,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status === 'CLOSED' }) }"
+        :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status === PlanStatus.CLOSED }) }"
         :scroll="{ x: 1200, y: '100%' }"
         @change="onTableChange"
       >
@@ -59,7 +59,7 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'source'">
-            <span v-if="record.source === 'SALES'">{{ $t('mes.plan.salesOrderNo', { no: record.salesOrderNo }) }}</span>
+            <span v-if="record.source === PlanSource.SALES">{{ $t('mes.plan.salesOrderNo', { no: record.salesOrderNo }) }}</span>
             <span v-else class="sub-text">{{ $t('mes.plan.manual') }}</span>
           </template>
           <template v-else-if="column.key === 'status'">
@@ -67,7 +67,7 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <template v-if="record.status === 'DRAFT'">
+              <template v-if="record.status === PlanStatus.DRAFT">
                 <a-button v-perm="'mes:plan:edit'" type="link" size="small" @click="openForm(record)">{{ $t('common.action.edit') }}</a-button>
                 <a-button v-perm="'mes:plan:confirm'" type="link" size="small" @click="confirmOne(record)">{{ $t('mes.plan.confirm') }}</a-button>
                 <span v-perm="'mes:plan:remove'">
@@ -76,7 +76,7 @@
                   </a-popconfirm>
                 </span>
               </template>
-              <template v-else-if="record.status === 'CONFIRMED'">
+              <template v-else-if="record.status === PlanStatus.CONFIRMED">
                 <a-button
                   v-if="Number(record.woQty) < Number(record.qty)"
                   v-perm="'mes:wo:add'"
@@ -192,7 +192,9 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { formatQty, today } from '@/components/wms/wms'
+import { useAction } from '@/composables/useAction'
 
+import { OrderStatus, PlanSource, PlanStatus } from '@/constants/enums'
 const router = useRouter()
 const { t } = useI18n()
 const dict = useDict('mes_plan_status')
@@ -223,8 +225,8 @@ function resetQuery() {
 onMounted(load)
 
 const selectedRows = computed(() => list.value.filter((r) => selectedKeys.value.includes(r.id)))
-const draftSelected = computed(() => selectedRows.value.filter((r) => r.status === 'DRAFT').map((r) => r.id))
-const confirmedSelected = computed(() => selectedRows.value.filter((r) => r.status === 'CONFIRMED').map((r) => r.id))
+const draftSelected = computed(() => selectedRows.value.filter((r) => r.status === PlanStatus.DRAFT).map((r) => r.id))
+const confirmedSelected = computed(() => selectedRows.value.filter((r) => r.status === PlanStatus.CONFIRMED).map((r) => r.id))
 
 // ---------------------------------------------------------------- 转工单
 const toWoOpen = ref(false)
@@ -279,11 +281,7 @@ async function submit() {
   }
 }
 
-async function confirmOne(record) {
-  await confirmPlan(record.id)
-  message.success(t('mes.plan.confirmed'))
-  load()
-}
+const confirmOne = useAction((record) => confirmPlan(record.id), { successKey: 'mes.plan.confirmed', reload: () => load() })
 
 async function confirmSelected() {
   await confirmPlan(draftSelected.value)
@@ -291,17 +289,9 @@ async function confirmSelected() {
   load()
 }
 
-async function close(id) {
-  await closePlan(id)
-  message.success(t('mes.wo.closed'))
-  load()
-}
+const close = useAction(closePlan, { successKey: 'mes.wo.closed', reload: () => load() })
 
-async function remove(id) {
-  await deletePlan(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deletePlan, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- MRP
 const running = ref(false)
@@ -343,7 +333,7 @@ function searchSales(orderNo) {
   clearTimeout(timer)
   timer = setTimeout(async () => {
     const res = await pageOrder('sales', { orderNo: orderNo || undefined, current: 1, size: 100 })
-    salesOrders.value = res.records.filter((o) => ['APPROVED', 'PARTIAL'].includes(o.status))
+    salesOrders.value = res.records.filter((o) => [OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(o.status))
   }, 200)
 }
 async function fromSales() {

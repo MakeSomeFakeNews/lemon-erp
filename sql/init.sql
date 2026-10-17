@@ -5265,7 +5265,7 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 INSERT INTO sys_role_menu (role_id, menu_id) VALUES
 (2, 7), (2, 180), (2, 181), (2, 182), (2, 183), (2, 184), (2, 185), (2, 186), (2, 187), (2, 188), (2, 189), (2, 190), (2, 191);
 
--- 会计科目（企业会计准则常用科目）：自动生成凭证使用的科目见 FinConstants，需保持为末级科目
+-- 会计科目（企业会计准则常用科目）：自动生成凭证使用的科目见 AccountRole（可在「凭证科目设置」中修改），未设置时按编码取预置科目，需保持为末级科目
 INSERT INTO fin_account (id, code, name, parent_id, category, direction, status, create_time, update_time) VALUES
 (1,  '1001',   '库存现金',               0,  'ASSET',     'DEBIT',  1, NOW(), NOW()),
 (2,  '1002',   '银行存款',               0,  'ASSET',     'DEBIT',  1, NOW(), NOW()),

@@ -2,11 +2,11 @@ package com.lemon.erp.modules.hr.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.lemon.erp.modules.hr.dto.GradeStat;
 import com.lemon.erp.modules.hr.entity.HrPerfAppraisal;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
-import java.util.Map;
 
 public interface HrPerfAppraisalMapper extends BaseMapper<HrPerfAppraisal> {
 
@@ -28,5 +28,5 @@ public interface HrPerfAppraisalMapper extends BaseMapper<HrPerfAppraisal> {
     List<HrPerfAppraisal> selectPayGrades(@Param("period") int period);
 
     /** 等级分布 */
-    List<Map<String, Object>> selectGradeStats(@Param("planId") Long planId);
+    List<GradeStat> selectGradeStats(@Param("planId") Long planId);
 }

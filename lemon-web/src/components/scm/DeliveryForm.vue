@@ -105,6 +105,7 @@ import { formatQty, rowKey, today } from '@/components/wms/wms'
 import { formatMoney, openQty, qty4 } from './scm'
 import { useI18n } from 'vue-i18n'
 
+import { DeliveryStatus, OrderStatus } from '@/constants/enums'
 /**
  * 新增发货通知：选择销售订单，按未出库且未通知的数量带出明细，可减少数量或删除行。
  * 通过 ref 调用 openCreate(orderId?)：传入订单时订单不可更换；保存成功后触发 success(id)
@@ -175,7 +176,7 @@ function searchOrders(orderNo) {
     orderLoading.value = true
     try {
       const res = await pageOrder('sales', { orderNo: orderNo || undefined, current: 1, size: 100 })
-      orders.value = res.records.filter((o) => ['APPROVED', 'PARTIAL'].includes(o.status))
+      orders.value = res.records.filter((o) => [OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(o.status))
     } finally {
       orderLoading.value = false
     }
@@ -185,7 +186,7 @@ function searchOrders(orderNo) {
 /** 订单上待拣货、已拣货（未出库）的通知数量：orderItemId → 数量 */
 async function notifiedQty(orderId) {
   const res = await pageDelivery({ orderId, current: 1, size: 100 })
-  const active = res.records.filter((d) => ['PENDING', 'PICKED'].includes(d.status))
+  const active = res.records.filter((d) => [DeliveryStatus.PENDING, DeliveryStatus.PICKED].includes(d.status))
   const details = await Promise.all(active.map((d) => getDelivery(d.id)))
   const map = new Map()
   details.flatMap((d) => d.items || []).forEach((i) => map.set(i.orderItemId, (map.get(i.orderItemId) || 0) + Number(i.qty)))
@@ -232,7 +233,7 @@ async function openCreate(orderId) {
   orders.value = []
   if (!orderId) return drawer.openCreate()
   const { order, items } = await loadOrder(orderId)
-  if (!['APPROVED', 'PARTIAL'].includes(order.status)) {
+  if (![OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(order.status)) {
     message.warning(t('scm.delivery.orderNotShippable', { no: order.orderNo }))
     return
   }

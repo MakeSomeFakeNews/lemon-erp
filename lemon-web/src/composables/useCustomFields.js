@@ -3,6 +3,7 @@ import { message } from 'ant-design-vue'
 import { t } from '@/locales'
 import { batchCustomValues, customFields, customValues, saveCustomValues } from '@/api/system/customField'
 
+import { CustomFieldType } from '@/constants/enums'
 /** 业务类型启用的字段，同一页面共用一次请求 */
 const cache = new Map()
 function loadFields(bizType) {
@@ -20,7 +21,7 @@ export const optionsOf = (f) => (f.options || '').split(/[,，\n]/).map((s) => s
 /** 值的显示文本 */
 export function displayValue(f, v) {
   if (v === undefined || v === null || v === '') return ''
-  if (f.fieldType === 'BOOL') return v === 'true' ? t('common.status.yes') : t('common.status.no')
+  if (f.fieldType === CustomFieldType.BOOL) return v === 'true' ? t('common.status.yes') : t('common.status.no')
   return v
 }
 

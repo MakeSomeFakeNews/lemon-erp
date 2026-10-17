@@ -3,6 +3,7 @@ package com.lemon.erp.modules.wms.controller;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.wms.dto.VariantMatrix;
 import com.lemon.erp.modules.wms.entity.WmsAttribute;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.service.WmsVariantService;
@@ -71,7 +72,7 @@ public class WmsVariantController {
 
     /** 款式的规格矩阵：属性、属性值和已生成的 SKU（登录即可，订单录入使用） */
     @GetMapping("/material/{id}/variants")
-    public R<Map<String, Object>> variants(@PathVariable Long id) {
+    public R<VariantMatrix> variants(@PathVariable Long id) {
         return R.ok(variantService.matrix(id));
     }
 

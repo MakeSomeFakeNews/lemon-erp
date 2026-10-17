@@ -81,7 +81,7 @@
               <a-button v-perm="'scm:customer:edit'" type="link" size="small" @click="drawer.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
-              <a-button v-if="record.channel === 'DEALER'" v-perm="'scm:customer:portal'" type="link" size="small" @click="openPortal(record)">
+              <a-button v-if="record.channel === SalesChannel.DEALER" v-perm="'scm:customer:portal'" type="link" size="small" @click="openPortal(record)">
                 {{ $t('scm.customer.portal') }}
               </a-button>
               <span v-perm="'scm:customer:remove'">
@@ -127,7 +127,7 @@
               <IdentityUserSelect v-model:value="form.ownerId" :label="form.ownerName" />
             </a-form-item>
           </a-col>
-          <a-col v-if="form.channel === 'DEALER'" :span="24">
+          <a-col v-if="form.channel === SalesChannel.DEALER" :span="24">
             <a-form-item :label="$t('scm.customer.region')" name="region">
               <a-input v-model:value="form.region" :maxlength="128" :placeholder="$t('scm.customer.regionPlaceholder')" />
             </a-form-item>
@@ -193,7 +193,6 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -215,7 +214,9 @@ import { toOptions } from '@/utils/dict'
 import { formatMoney } from '@/components/scm/scm'
 import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
 import { useCustomColumns, useCustomFields } from '@/composables/useCustomFields'
+import { useAction } from '@/composables/useAction'
 
+import { SalesChannel } from '@/constants/enums'
 const { t } = useI18n()
 const userStore = useUserStore()
 const dict = useDict('sys_common_status', 'scm_customer_level', 'scm_channel')
@@ -306,11 +307,7 @@ const drawer = useFormDrawer(
 )
 const { formRef, form } = drawer
 
-async function remove(id) {
-  await deletePartner('customer', id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction((id) => deletePartner('customer', id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

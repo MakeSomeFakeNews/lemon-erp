@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.bi.service;
 
 import com.lemon.erp.framework.message.MessageCategory;
+import com.lemon.erp.modules.bi.dto.BiInsight;
 import com.lemon.erp.modules.bi.model.AlertLevel;
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
@@ -11,7 +12,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 经营预警推送：评估全部启用的预警规则，触发的推送给决策支持用户（bi:decision:list，每条规则每天一次）
@@ -41,13 +41,13 @@ public class BiAlertJob implements JobHandler {
     @Override
     public String run(JobParams params) {
         LocalDate today = LocalDate.now();
-        List<Map<String, Object>> triggered = decisionService.alerts().stream()
-                .filter(a -> Boolean.TRUE.equals(a.get("triggered"))).toList();
-        for (Map<String, Object> a : triggered) {
-            MessageCategory category = a.get("level") == AlertLevel.INFO ? MessageCategory.REMIND : MessageCategory.ALERT;
+        List<BiInsight.AlertResult> triggered = decisionService.alerts().stream()
+                .filter(BiInsight.AlertResult::triggered).toList();
+        for (BiInsight.AlertResult a : triggered) {
+            MessageCategory category = a.level() == AlertLevel.INFO ? MessageCategory.REMIND : MessageCategory.ALERT;
             messageSender.sendToPermission("bi:decision:list", Message.of(category,
-                    "经营预警：" + a.get("name"), "当前值 " + a.get("value") + (a.get("remark") == null ? "" : "，" + a.get("remark")),  // i18n-ignore 站内消息存库
-                    "/bi/decision").dedup("bi-alert:" + a.get("ruleId") + ":" + today));
+                    "经营预警：" + a.name(), "当前值 " + a.value() + (a.remark() == null ? "" : "，" + a.remark()),  // i18n-ignore 站内消息存库
+                    "/bi/decision").dedup("bi-alert:" + a.ruleId() + ":" + today));
         }
         return "触发 " + triggered.size() + " 条预警"; // i18n-ignore 任务日志存库
     }

@@ -5,6 +5,7 @@ import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.scm.dto.PromotionRequests;
+import com.lemon.erp.modules.scm.dto.ScmPriceViews;
 import com.lemon.erp.modules.scm.entity.ScmPromotion;
 import com.lemon.erp.modules.scm.model.PromoType;
 import com.lemon.erp.modules.scm.service.ScmCustomerService;
@@ -58,14 +59,14 @@ public class ScmPromotionController {
     /** 应用记录（订单） */
     @GetMapping("/{id}/usages")
     @PreAuthorize("@ss.hasPerm('scm:promotion:list')")
-    public R<List<Map<String, Object>>> usages(@PathVariable Long id) {
+    public R<List<ScmPriceViews.PromotionUsage>> usages(@PathVariable Long id) {
         return R.ok(promotionService.usages(id));
     }
 
     /** 下单前预览促销：lines、gifts、discountAmount、notes */
     @PostMapping("/preview")
     @PreAuthorize("@ss.hasPerm('scm:sales:add') or @ss.hasPerm('scm:sales:edit')")
-    public R<Map<String, Object>> preview(@Valid @RequestBody PromotionRequests.Preview req) {
+    public R<ScmPriceViews.PromotionPreview> preview(@Valid @RequestBody PromotionRequests.Preview req) {
         return R.ok(promotionService.preview(customerService.get(req.customerId()), req));
     }
 

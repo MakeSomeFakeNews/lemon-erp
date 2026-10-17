@@ -76,7 +76,6 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import CheckTree from '@/components/tree/CheckTree.vue'
@@ -95,6 +94,7 @@ import {
 import { useColumns } from '@/composables/useColumns'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { translateMenus } from '@/store/user'
+import { useAction } from '@/composables/useAction'
 
 const { t } = useI18n()
 const columns = [
@@ -142,11 +142,7 @@ const drawer = useFormDrawer({
 })
 const { formRef, form } = drawer
 
-async function remove(id) {
-  await deleteTenantPackage(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteTenantPackage, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

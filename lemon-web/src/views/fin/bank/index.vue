@@ -3,7 +3,7 @@
     <a-card :bordered="false" class="page-card">
       <div class="toolbar">
         <a-space wrap>
-          <AccountSelect v-model:value="accountId" :prefix="['1002']" :placeholder="$t('fin.bank.selectAccount')" class="account" />
+          <AccountSelect v-model:value="accountId" :roles="['BANK']" :placeholder="$t('fin.bank.selectAccount')" class="account" />
           <a-range-picker v-model:value="range" value-format="YYYY-MM-DD" :allow-clear="false" />
           <a-button :disabled="!accountId" @click="load"><template #icon><ReloadOutlined /></template>{{ $t('common.action.query') }}</a-button>
           <a-checkbox v-model:checked="onlyOpen">{{ $t('fin.bank.onlyOpen') }}</a-checkbox>
@@ -236,6 +236,8 @@ import {
 } from '@/api/fin'
 import { today } from '@/components/wms/wms'
 import { cached, formatMoney } from '@/components/fin/fin'
+import { round2 } from '@/utils/number'
+import { useAction } from '@/composables/useAction'
 
 const { t } = useI18n()
 const accountId = ref()
@@ -246,7 +248,6 @@ const statements = ref([])
 const entries = ref([])
 const stmtKeys = ref([])
 const entryKeys = ref([])
-const round2 = (n) => Math.round(n * 100) / 100
 
 const params = () => ({ accountId: accountId.value, begin: range.value?.[0], end: range.value?.[1] })
 const shownStatements = computed(() => (onlyOpen.value ? statements.value.filter((s) => !s.entryId) : statements.value))
@@ -314,11 +315,7 @@ async function manualMatch() {
   load()
 }
 
-async function unmatch(id) {
-  await unmatchBank(id)
-  message.success(t('fin.bank.unmatchedMsg'))
-  load()
-}
+const unmatch = useAction(unmatchBank, { successKey: 'fin.bank.unmatchedMsg', reload: () => load() })
 
 const matching = ref(false)
 async function autoMatch() {
@@ -332,11 +329,7 @@ async function autoMatch() {
   }
 }
 
-async function removeStatements() {
-  await deleteBankStatements(stmtKeys.value)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const removeStatements = useAction(() => deleteBankStatements(stmtKeys.value), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- 导入
 const importOpen = ref(false)

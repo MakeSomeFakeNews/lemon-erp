@@ -181,7 +181,6 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, DollarOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -202,6 +201,7 @@ import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
 import { useCustomColumns, useCustomFields } from '@/composables/useCustomFields'
+import { useAction } from '@/composables/useAction'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -285,11 +285,7 @@ const drawer = useFormDrawer(
 )
 const { formRef, form } = drawer
 
-async function remove(id) {
-  await deletePartner('supplier', id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction((id) => deletePartner('supplier', id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 const portalOpen = ref(false)
 const portalSupplier = ref()

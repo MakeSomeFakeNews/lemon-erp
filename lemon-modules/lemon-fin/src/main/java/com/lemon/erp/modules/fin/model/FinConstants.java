@@ -6,18 +6,13 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 
 /**
- * 财务模块的通用约定：单据种类与来源、物料分类、会计期间换算。自动生成凭证使用的科目见 {@link AccountRole}
+ * 财务模块的通用约定：本位币、物料分类、岗位类别、会计期间换算。
+ * 科目编码不在这里写死：自动生成凭证、结算科目（库存现金、银行存款）等使用的科目见 {@link AccountRole}，可在「凭证科目设置」中修改
  */
 public final class FinConstants {
 
     /** 本位币 */
     public static final String BASE_CURRENCY = "CNY";
-    /** 库存现金、银行存款：收付款的结算科目必须在其下；现金流量表按此识别现金科目 */
-    public static final String CASH = "1001";
-    public static final String BANK = "1002";
-    /** 进项税额、销项税额：现金流量表按此归类（自动凭证使用的科目见 AccountRole） */
-    public static final String INPUT_VAT = "222101";
-    public static final String OUTPUT_VAT = "222102";
 
     /** 物料分类：原材料、半成品、成品（字典 wms_material_category） */
     public static final String CATEGORY_RAW = "RAW";

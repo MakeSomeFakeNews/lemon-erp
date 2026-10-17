@@ -36,7 +36,7 @@
         WHERE v.id = #{id}
     </select>
 
-    <select id="selectPickLines" resultType="java.util.Map">
+    <select id="selectPickLines" resultType="com.lemon.erp.modules.scm.dto.WavePickList$PickRow">
         SELECT d.id AS "deliveryId", d.delivery_no AS "deliveryNo", c.name AS "customerName", p.delivery_item_id AS "deliveryItemId",
                p.material_id AS "materialId", m.code AS "materialCode", m.name AS "materialName", m.spec AS "spec", m.unit AS "unit",
                m.serial_enabled AS "serialEnabled", p.location_id AS "locationId", l.code AS "locationCode", l.zone AS "zone",
@@ -51,7 +51,7 @@
         ORDER BY CASE WHEN l.id IS NULL THEN 1 ELSE 0 END, l.zone, l.sort, l.code, m.code, p.batch_no, d.delivery_no
     </select>
 
-    <select id="selectShortages" resultType="java.util.Map">
+    <select id="selectShortages" resultType="com.lemon.erp.modules.scm.dto.WavePickList$Shortage">
         SELECT d.delivery_no AS "deliveryNo", m.code AS "materialCode", m.name AS "materialName", m.unit AS "unit",
                i.qty AS "qty", COALESCE(s.suggested, 0) AS "suggested"
         FROM scm_delivery d

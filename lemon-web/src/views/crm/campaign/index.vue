@@ -138,7 +138,6 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -155,7 +154,9 @@ import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { formatMoney } from '@/components/scm/scm'
 import { percent } from '@/components/charts/charts'
+import { useAction } from '@/composables/useAction'
 
+import { CampaignStatus } from '@/constants/enums'
 const userStore = useUserStore()
 const { t } = useI18n()
 const dict = useDict('crm_campaign_type', 'crm_campaign_status')
@@ -199,7 +200,7 @@ const rules = {
 }
 const FIELDS = ['name', 'type', 'status', 'startDate', 'endDate', 'budget', 'actualCost', 'targetLeads', 'ownerId', 'description']
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, ownerName: undefined, ...Object.fromEntries(FIELDS.map((f) => [f, undefined])), status: 'PLANNED' }),
+  emptyForm: () => ({ id: undefined, ownerName: undefined, ...Object.fromEntries(FIELDS.map((f) => [f, undefined])), status: CampaignStatus.PLANNED }),
   fetch: (record) => getCampaign(record.id),
   create: addCampaign,
   update: updateCampaign,
@@ -208,11 +209,7 @@ const drawer = useFormDrawer({
 })
 const { formRef, form } = drawer
 
-async function remove(id) {
-  await deleteCampaign(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteCampaign, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

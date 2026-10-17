@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.wms.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.framework.data.Queries;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
@@ -72,7 +73,7 @@ public class StockReservationService {
             throw new BizException("wms.error.reservedQuantityMustGreater");
         }
         // 锁定物料行，避免并发预留同一物料超出空闲库存
-        WmsMaterial material = materialMapper.selectOne(Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getId, materialId).last("FOR UPDATE"));
+        WmsMaterial material = materialMapper.selectForUpdate(materialId);
         BigDecimal free = free(warehouseId, List.of(materialId)).getOrDefault(materialId, BigDecimal.ZERO);
         if (free.compareTo(qty) < 0) {
             throw new BizException("wms.error.insufficientFreeStockReservableRequired", material.getCode(), material.getName(),
@@ -148,9 +149,9 @@ public class StockReservationService {
                 BigDecimal reserved = Decimals.sum(reservationMapper.selectList(Wrappers.<WmsReservation>lambdaQuery()
                         .eq(WmsReservation::getWarehouseId, warehouseId).eq(WmsReservation::getMaterialId, materialId)
                         .gt(WmsReservation::getQty, 0)), WmsReservation::getQty);
-                String sources = reservationMapper.selectList(Wrappers.<WmsReservation>lambdaQuery()
+                String sources = Queries.limit(reservationMapper, Wrappers.<WmsReservation>lambdaQuery()
                                 .eq(WmsReservation::getWarehouseId, warehouseId).eq(WmsReservation::getMaterialId, materialId)
-                                .gt(WmsReservation::getQty, 0).last("LIMIT 3")).stream().map(WmsReservation::getSourceNo)
+                                .gt(WmsReservation::getQty, 0), 3).stream().map(WmsReservation::getSourceNo)
                         .collect(Collectors.joining(Messages.get("wms.text.listSeparator")));
                 throw new BizException("wms.error.stockReservedTotalEtcAfterOutbound",
                         m.getCode(), m.getName(), plain(reserved), sources);

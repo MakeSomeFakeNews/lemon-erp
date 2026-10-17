@@ -3,6 +3,7 @@ package com.lemon.erp.modules.bi.service;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.todo.TodoProvider;
+import com.lemon.erp.modules.bi.dto.BiInsight;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -23,7 +24,7 @@ public class BiTodoProvider implements TodoProvider {
         if (!permissionService.hasPerm("bi:decision:list") || !SecurityUtils.getDataScope().all()) {
             return List.of();
         }
-        long count = decisionService.alerts().stream().filter(a -> Boolean.TRUE.equals(a.get("triggered"))).count();
+        long count = decisionService.alerts().stream().filter(BiInsight.AlertResult::triggered).count();
         return count == 0 ? List.of() : List.of(new TodoItem("bi", "bi.text.todoAlertsTriggered", count, "/bi/decision", "danger"));
     }
 }

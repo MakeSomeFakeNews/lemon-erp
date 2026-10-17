@@ -87,7 +87,7 @@
     </SubPage>
 
     <SubPage :open="detailOpen" :title="detail ? $t('dealer.order.detailTitle', { no: detail.orderNo }) : ''" width="min(900px, 100vw)" @close="detailOpen = false">
-      <template v-if="detail && detail.status === 'DRAFT'" #extra>
+      <template v-if="detail && detail.status === OrderStatus.DRAFT" #extra>
         <span v-perm="'dealer:order:add'">
           <a-popconfirm :title="$t('dealer.order.confirmCancel')" @confirm="cancel"><a-button danger>{{ $t('dealer.order.cancelOrder') }}</a-button></a-popconfirm>
         </span>
@@ -137,6 +137,7 @@ import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 
+import { OrderStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 /** 经销商门户：按价目表订货（提交后自动应用促销、可使用返利），查看订单进度 */

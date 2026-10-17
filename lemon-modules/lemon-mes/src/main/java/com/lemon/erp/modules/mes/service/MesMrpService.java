@@ -4,6 +4,7 @@ import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.mes.model.MrpResultStatus;
+import com.lemon.erp.modules.mes.service.MrpCalculator.Demand;
 import com.lemon.erp.modules.mes.model.WorkOrderSource;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -43,7 +44,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -77,9 +77,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MesMrpService {
 
-    /** BOM 最大层级，超过视为循环引用 */
-    private static final int MAX_LEVEL = 50;
-
     private final MesMrpRunMapper runMapper;
     private final MesMrpResultMapper resultMapper;
     private final MesWorkOrderMapper workOrderMapper;
@@ -105,7 +102,13 @@ public class MesMrpService {
         return resultMapper.selectByRun(runId);
     }
 
-    /** @return 运算 ID */
+    /**
+     * 运算：取需求和 BOM 结构、供需数据，由 {@link MrpCalculator} 计算净需求，保存结果。
+     * 整个运算在一个事务中：MySQL（可重复读）下所有读取共享同一快照，避免运算期间入库等操作使在库和在途被重复或遗漏计算；
+     * 读取阶段只有普通查询、不加锁，加锁的取号和写入集中在最后，缩小事务范围也不能减少锁的持有时间
+     *
+     * @return 运算 ID
+     */
     @Transactional
     public Long run(MrpRunRequest req) {
         List<MesPlan> plans = (req.planIds() == null ? List.<Long>of() : req.planIds()).stream().distinct()
@@ -115,10 +118,37 @@ public class MesMrpService {
                 throw new BizException("mes.error.planNotConfirmedCannotTakePart", plan.getPlanNo());
             }
         }
-        // 需求：生产计划 + 销售订单未计划部分 + 销售预测（扣减同月销售订单）
+        List<String> sources = new ArrayList<>();
+        List<Demand> demands = collectDemands(req, plans, sources);
+
+        // 1. 展开 BOM 结构；2. 低层码
+        BomStructure structure = loadBomStructure(demands);
+        Map<Long, Integer> levels = MrpCalculator.lowLevelCodes(demands, structure.children());
+
+        // 3. 供需数据
+        Set<Long> all = levels.keySet();
+        Map<Long, SupplyType> types = MrpCalculator.supplyTypes(all, structure.planAttrs(), structure.boms());
+        Set<Long> makeIds = all.stream().filter(id -> types.get(id) == SupplyType.MAKE).collect(Collectors.toSet());
+        Set<Long> buyIds = all.stream().filter(id -> types.get(id).purchased()).collect(Collectors.toSet());
+        Map<Long, WmsMaterial> materials = materialService.mapByIds(all);
+        Map<Long, BigDecimal> onHand = stockQueryService.onHand(all);
+        Map<Long, BigDecimal> scheduled = new HashMap<>(scmQueryService.openPurchaseQty(buyIds));
+        if (!makeIds.isEmpty()) {
+            scheduled.putAll(toQtyMap(workOrderMapper.selectOpenOutput(WorkOrderStatus.OPEN, makeIds)));
+        }
+        Map<Long, BigDecimal> allocated = toQtyMap(woMaterialMapper.selectOpenAllocated(WorkOrderStatus.OPEN, all));
+        Map<Long, ScmSupplierPrice> suppliers = scmQueryService.defaultSuppliers(buyIds);
+
+        // 4. 毛需求、5. 按低层码逐层计算
+        List<MesMrpResult> results = MrpCalculator.calculate(new MrpCalculator.Input(demands, structure.children(), structure.boms(),
+                structure.planAttrs(), levels, types, materials, onHand, scheduled, allocated, suppliers), scmQueryService::effectivePrice);
+        return saveRun(req, plans, sources, results);
+    }
+
+    /** 需求：生产计划 + 销售订单未计划部分 + 销售预测（扣减同月销售订单）；sources 中加入需求来源的名称 */
+    private List<Demand> collectDemands(MrpRunRequest req, List<MesPlan> plans, List<String> sources) {
         List<Demand> demands = new ArrayList<>();
         plans.forEach(p -> demands.add(new Demand(p.getMaterialId(), p.getQty(), p.getDueDate())));
-        List<String> sources = new ArrayList<>();
         if (!plans.isEmpty()) {
             sources.add("生产计划"); // i18n-ignore
         }
@@ -147,8 +177,14 @@ public class MesMrpService {
         if (demands.isEmpty()) {
             throw new BizException("mes.error.noDemandRunMrp");
         }
+        return demands;
+    }
 
-        // 1. 展开 BOM 结构：需要 BOM 的物料（自制、委外、虚拟件）→ 默认 BOM 及子件；设为采购的物料即使有 BOM 也不展开
+    private record BomStructure(Map<Long, MesBom> boms, Map<Long, MesMaterialPlan> planAttrs, Map<Long, List<MesBomItem>> children) {
+    }
+
+    /** 逐层取 BOM 结构：需要 BOM 的物料（自制、委外、虚拟件）→ 默认 BOM 及子件；设为采购的物料即使有 BOM 也不展开 */
+    private BomStructure loadBomStructure(List<Demand> demands) {
         Map<Long, MesBom> boms = new HashMap<>();
         Map<Long, MesMaterialPlan> planAttrs = new HashMap<>();
         Map<Long, List<MesBomItem>> children = new HashMap<>();
@@ -180,92 +216,11 @@ public class MesMrpService {
             });
             frontier = next;
         }
+        return new BomStructure(boms, planAttrs, children);
+    }
 
-        // 2. 低层码
-        Map<Long, Integer> levels = new HashMap<>();
-        demands.forEach(d -> assignLevel(d.materialId(), 0, levels, children));
-
-        // 3. 供需数据
-        Set<Long> all = levels.keySet();
-        Map<Long, SupplyType> types = new HashMap<>();
-        all.forEach(id -> types.put(id, MesMaterialService.supplyType(planAttrs.get(id), boms.containsKey(id))));
-        Set<Long> makeIds = all.stream().filter(id -> types.get(id) == SupplyType.MAKE).collect(Collectors.toSet());
-        Set<Long> buyIds = all.stream().filter(id -> types.get(id).purchased()).collect(Collectors.toSet());
-        Map<Long, WmsMaterial> materials = materialService.mapByIds(all);
-        Map<Long, BigDecimal> onHand = stockQueryService.onHand(all);
-        Map<Long, BigDecimal> scheduled = new HashMap<>(scmQueryService.openPurchaseQty(buyIds));
-        if (!makeIds.isEmpty()) {
-            scheduled.putAll(toQtyMap(workOrderMapper.selectOpenOutput(WorkOrderStatus.OPEN, makeIds)));
-        }
-        Map<Long, BigDecimal> allocated = toQtyMap(woMaterialMapper.selectOpenAllocated(WorkOrderStatus.OPEN, all));
-        Map<Long, ScmSupplierPrice> suppliers = scmQueryService.defaultSuppliers(buyIds);
-
-        // 4. 毛需求：各来源合并，取最早日期
-        Map<Long, BigDecimal> gross = new HashMap<>();
-        Map<Long, LocalDate> required = new HashMap<>();
-        demands.forEach(d -> addDemand(gross, required, d.materialId(), d.qty(), d.dueDate()));
-
-        // 5. 按低层码逐层计算
-        List<Long> ordered = all.stream()
-                .sorted(Comparator.comparing((Long id) -> levels.get(id)).thenComparing(id -> materials.get(id).getCode()))
-                .toList();
-        List<MesMrpResult> results = new ArrayList<>();
-        for (Long id : ordered) {
-            BigDecimal g = gross.get(id);
-            if (g == null || g.signum() <= 0) {
-                continue;
-            }
-            WmsMaterial material = materials.get(id);
-            MesMaterialPlan attr = planAttrs.get(id);
-            SupplyType type = types.get(id);
-            MesBom bom = boms.get(id);
-            ScmSupplierPrice price = type.purchased() ? suppliers.get(id) : null;
-            MesMrpResult r = new MesMrpResult();
-            r.setMaterialId(id);
-            r.setLevelNo(levels.get(id));
-            r.setSupplyType(type);
-            r.setBomId(bom == null ? null : bom.getId());
-            r.setGrossQty(g);
-            r.setRequiredDate(required.get(id));
-            if (type == SupplyType.PHANTOM) {
-                // 虚拟件不入库：不扣库存、不建议生产，需求原样传给子件
-                r.setOnHandQty(BigDecimal.ZERO);
-                r.setScheduledQty(BigDecimal.ZERO);
-                r.setAllocatedQty(BigDecimal.ZERO);
-                r.setSafetyQty(BigDecimal.ZERO);
-                r.setNetQty(g);
-                r.setSuggestQty(BigDecimal.ZERO);
-                r.setReleaseDate(r.getRequiredDate());
-                r.setStatus(MrpResultStatus.NONE);
-                results.add(r);
-                explode(children.getOrDefault(id, List.of()), g, r.getRequiredDate(), gross, required);
-                continue;
-            }
-            r.setOnHandQty(onHand.getOrDefault(id, BigDecimal.ZERO));
-            r.setScheduledQty(scheduled.getOrDefault(id, BigDecimal.ZERO));
-            r.setAllocatedQty(allocated.getOrDefault(id, BigDecimal.ZERO));
-            r.setSafetyQty(Decimals.nz(material.getSafetyStock()));
-            BigDecimal available = r.getOnHandQty().add(r.getScheduledQty()).subtract(r.getAllocatedQty()).subtract(r.getSafetyQty());
-            BigDecimal net = g.subtract(available).max(BigDecimal.ZERO);
-            r.setNetQty(net);
-            r.setSuggestQty(MesMaterialService.lotSize(net, attr, material.isSerialManaged(), price == null ? null : price.getMinQty()));
-            int leadDays = attr != null && attr.getLeadDays() != null ? attr.getLeadDays()
-                    : type.purchased() ? (price == null ? 0 : price.getLeadDays()) : bom.getLeadDays();
-            r.setReleaseDate(r.getRequiredDate().minusDays(leadDays));
-            if (price != null) {
-                r.setSupplierId(price.getSupplierId());
-                // 阶梯价：按建议数量
-                r.setPrice(scmQueryService.effectivePrice(price, r.getSuggestQty()));
-            }
-            r.setStatus(r.getSuggestQty().signum() > 0 ? MrpResultStatus.NEW : MrpResultStatus.NONE);
-            results.add(r);
-            // 自制件、委外件按建议数量展开为下层的毛需求（委外件的子件提供给加工商），需求日期为本层开工 / 下单日期
-            if (bom != null && r.getSuggestQty().signum() > 0) {
-                explode(children.getOrDefault(id, List.of()), r.getSuggestQty(), r.getReleaseDate(), gross, required);
-            }
-        }
-
-        // 新运算后，之前运算中未下达的建议作废，避免按过时的数据重复下单
+    /** 新运算后，之前运算中未下达的建议作废（避免按过时的数据重复下单），保存本次运算和结果 */
+    private Long saveRun(MrpRunRequest req, List<MesPlan> plans, List<String> sources, List<MesMrpResult> results) {
         resultMapper.update(Wrappers.<MesMrpResult>lambdaUpdate().set(MesMrpResult::getStatus, MrpResultStatus.EXPIRED)
                 .eq(MesMrpResult::getStatus, MrpResultStatus.NEW));
         MesMrpRun run = new MesMrpRun();
@@ -372,38 +327,6 @@ public class MesMrpService {
                 MrpResultStatus.RELEASED, w -> w.set(MesMrpResult::getReleaseNo, releaseNo))) {
             throw new BizException("mes.error.suggestionHasAlreadyReleasedRefresh");
         }
-    }
-
-    /** 低层码：物料在 BOM 树中出现的最深层级 */
-    private static void assignLevel(Long materialId, int level, Map<Long, Integer> levels, Map<Long, List<MesBomItem>> children) {
-        if (level > MAX_LEVEL) {
-            throw new BizException("mes.error.bomExceedsLevelsMayCircularReference", MAX_LEVEL);
-        }
-        Integer current = levels.get(materialId);
-        if (current != null && current >= level) {
-            return;
-        }
-        levels.put(materialId, level);
-        for (MesBomItem item : children.getOrDefault(materialId, List.of())) {
-            assignLevel(item.getMaterialId(), level + 1, levels, children);
-        }
-    }
-
-    private static void explode(List<MesBomItem> items, BigDecimal parentQty, LocalDate date,
-                                Map<Long, BigDecimal> gross, Map<Long, LocalDate> required) {
-        for (MesBomItem item : items) {
-            BigDecimal qty = parentQty.multiply(MesWorkOrderService.unitQty(item)).setScale(4, RoundingMode.HALF_UP);
-            addDemand(gross, required, item.getMaterialId(), qty, date);
-        }
-    }
-
-    private static void addDemand(Map<Long, BigDecimal> gross, Map<Long, LocalDate> required, Long materialId,
-                                  BigDecimal qty, LocalDate date) {
-        gross.merge(materialId, qty, BigDecimal::add);
-        required.merge(materialId, date, (a, b) -> a.isBefore(b) ? a : b);
-    }
-
-    private record Demand(Long materialId, BigDecimal qty, LocalDate dueDate) {
     }
 
     private static LocalDate toDate(Object v) {

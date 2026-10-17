@@ -57,7 +57,7 @@
     </update>
 
     <!-- 外币单据的未核销余额：[{id, kind, partnerId, currency, remainingFc, remainingBase}] -->
-    <select id="selectOpenForeign" resultType="java.util.Map">
+    <select id="selectOpenForeign" resultType="com.lemon.erp.modules.fin.dto.FxRevaluation$OpenBill">
         SELECT id AS "id", kind AS "kind", partner_id AS "partnerId", currency AS "currency",
                amount_fc - settled_fc AS "remainingFc", amount - settled_amount AS "remainingBase"
         FROM fin_bill

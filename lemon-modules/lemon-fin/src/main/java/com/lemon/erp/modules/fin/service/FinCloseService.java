@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.modules.fin.model.PeriodStatus;
+import com.lemon.erp.framework.data.Queries;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
@@ -55,9 +56,9 @@ public class FinCloseService {
         if (p.getStatus() == PeriodStatus.CLOSED) {
             throw new BizException("fin.error.periodHasClosed", period);
         }
-        FinPeriod earlierOpen = periodMapper.selectOne(Wrappers.<FinPeriod>lambdaQuery()
+        FinPeriod earlierOpen = Queries.first(periodMapper, Wrappers.<FinPeriod>lambdaQuery()
                 .lt(FinPeriod::getPeriod, period).eq(FinPeriod::getStatus, PeriodStatus.OPEN)
-                .orderByAsc(FinPeriod::getPeriod).last("LIMIT 1"));
+                .orderByAsc(FinPeriod::getPeriod));
         if (earlierOpen != null) {
             throw new BizException("fin.error.closePeriodFirst", earlierOpen.getPeriod());
         }

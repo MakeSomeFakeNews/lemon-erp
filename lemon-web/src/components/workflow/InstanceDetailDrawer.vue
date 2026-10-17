@@ -40,7 +40,7 @@
             <div class="section-title">{{ $t('workflow.detail.records') }}</div>
             <a-timeline class="record-timeline">
               <a-timeline-item v-for="(r, i) in detail.records" :key="i" :color="ACTIONS[r.action]?.color || 'gray'">
-                <template v-if="r.action === 'PENDING'" #dot><ClockCircleOutlined class="pending-dot" /></template>
+                <template v-if="r.action === ApprovalAction.PENDING" #dot><ClockCircleOutlined class="pending-dot" /></template>
                 <div class="record-head">
                   <span class="record-node">{{ r.nodeName }}</span>
                   <span class="record-time">{{ r.time || '' }}</span>
@@ -162,6 +162,7 @@ import { cancelInstance, getInstance } from '@/api/workflow/instance'
 import { approveTask, rejectTask, transferTask } from '@/api/workflow/task'
 import { useUserStore } from '@/store/user'
 
+import { ApprovalAction, FormFieldType } from '@/constants/enums'
 const { t } = useI18n()
 
 /**
@@ -263,7 +264,7 @@ watch(
   (list) => (list || []).forEach((b) => b.dictType && dictStore.load(b.dictType).catch(() => {}))
 )
 const formatBusinessValue = (b) =>
-  b.type === 'NUMBER' && typeof b.value === 'number' ? b.value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : b.value
+  b.type === FormFieldType.NUMBER && typeof b.value === 'number' ? b.value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : b.value
 </script>
 
 <style scoped>

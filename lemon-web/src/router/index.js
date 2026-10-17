@@ -7,6 +7,7 @@ import { t } from '@/locales'
 import { useAppStore } from '@/store/app'
 import BasicLayout from '@/layout/BasicLayout.vue'
 
+import { MenuType } from '@/constants/enums'
 export const LAYOUT_NAME = 'Layout'
 /** 移动作业（手机 / PDA）：模块路由 /m 下的页面不使用后台布局，在全屏的移动端布局中显示 */
 export const MOBILE_NAME = 'Mobile'
@@ -99,7 +100,7 @@ const viewModules = import.meta.glob('../views/**/*.vue')
 function menusToRoutes(menus, parentPath = '', routes = []) {
   for (const menu of menus) {
     const fullPath = joinPath(parentPath, menu.path)
-    if (menu.type === 'C' && menu.component) {
+    if (menu.type === MenuType.C && menu.component) {
       const component = viewModules[`../views/${menu.component}.vue`]
       if (!component) {
         console.warn(`[router] 未找到组件 src/views/${menu.component}.vue`)

@@ -18,7 +18,7 @@
             <a-col :xs="24" :sm="12">
               <a-input v-model:value="f.placeholder" :maxlength="64" :placeholder="$t('workflow.form.placeholderPh')" />
             </a-col>
-            <a-col v-if="f.type === 'SELECT'" :span="24">
+            <a-col v-if="f.type === FormFieldType.SELECT" :span="24">
               <a-select
                 v-model:value="f.options"
                 mode="tags"
@@ -64,6 +64,7 @@ import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from
 import FormRender from './FormRender.vue'
 import { FIELD_TYPES, createField } from './form'
 
+import { FormFieldType } from '@/constants/enums'
 /** 流程表单设计：fields 为 FormField[]，直接修改 */
 const props = defineProps({ fields: { type: Array, required: true } })
 

@@ -38,6 +38,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { activeMeasures, dimLabelFn, formatMeasure } from './bi'
 
+import { MeasureFormat } from '@/constants/enums'
 /**
  * 透视表：行为行维度的值，列为（列维度值 × 指标），有列维度时最后一组为行合计；底部为合计行。
  * - cube：数据集元数据；config：{ row, col, measures }；result：透视结果
@@ -65,7 +66,7 @@ const measureColumn = (prefix, m) => ({
   key: `${prefix}__${m.key}`,
   format: m.format,
   align: 'right',
-  width: m.format === 'MONEY' ? 130 : 100
+  width: m.format === MeasureFormat.MONEY ? 130 : 100
 })
 
 const columns = computed(() => {

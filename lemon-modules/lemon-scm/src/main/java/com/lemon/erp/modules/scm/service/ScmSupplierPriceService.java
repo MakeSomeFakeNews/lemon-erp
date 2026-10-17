@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.modules.scm.dto.ScmPriceViews;
 import com.lemon.erp.modules.scm.dto.SupplierPriceRequest;
 import com.lemon.erp.modules.scm.entity.ScmSupplierPrice;
 import com.lemon.erp.modules.scm.entity.ScmSupplierPriceTier;
@@ -123,7 +124,7 @@ public class ScmSupplierPriceService {
     }
 
     /** 采购价格历史：采购入库的单价 */
-    public List<java.util.Map<String, Object>> history(Long materialId, Long supplierId) {
+    public List<ScmPriceViews.PurchaseHistory> history(Long materialId, Long supplierId) {
         return priceMapper.selectPurchaseHistory(materialId, supplierId);
     }
 

@@ -35,7 +35,7 @@
 
         <a-alert v-if="editing" type="info" show-icon class="doc-desc" :message="editTip" />
         <a-alert
-          v-else-if="detail.status === 'PENDING'"
+          v-else-if="detail.status === DeliveryStatus.PENDING"
           type="info"
           show-icon
           class="doc-desc"
@@ -126,7 +126,7 @@
           </a-table>
         </div>
         <DeliveryPacking
-          v-if="!editing && ['PICKED', 'SHIPPED'].includes(detail.status)"
+          v-if="!editing && [DeliveryStatus.PICKED, DeliveryStatus.SHIPPED].includes(detail.status)"
           :delivery="detail"
           editable
         />
@@ -186,6 +186,7 @@ import { qty4 } from './scm'
 import { printDocs } from '@/utils/print'
 import { useI18n } from 'vue-i18n'
 
+import { DeliveryStatus } from '@/constants/enums'
 /** 发货通知详情：拣货建议、确认拣货、出库、取消、打印拣货单。触发 changed */
 const props = defineProps({
   open: Boolean,
@@ -387,7 +388,7 @@ const actions = computed(() => {
   const d = detail.value
   if (!d) return []
   const list = []
-  if (['PENDING', 'PICKED'].includes(d.status) && can('scm:delivery:add')) {
+  if ([DeliveryStatus.PENDING, DeliveryStatus.PICKED].includes(d.status) && can('scm:delivery:add')) {
     list.push({
       key: 'cancel',
       label: t('scm.delivery.cancelNotice'),
@@ -396,7 +397,7 @@ const actions = computed(() => {
       run: () => confirmAction(t('scm.delivery.cancelTitle'), t('scm.delivery.cancelContent'), cancelDelivery, t('scm.delivery.cancelled'))
     })
   }
-  if (d.status === 'PENDING' && can('scm:delivery:pick')) {
+  if (d.status === DeliveryStatus.PENDING && can('scm:delivery:pick')) {
     list.push({
       key: 'suggest',
       label: t('scm.delivery.resuggest'),
@@ -404,16 +405,16 @@ const actions = computed(() => {
       run: () => confirmAction(t('scm.delivery.resuggestTitle'), t('scm.delivery.resuggestContent'), suggestDelivery, t('scm.delivery.resuggested'))
     })
   }
-  if (['PENDING', 'PICKED'].includes(d.status) && can('scm:delivery:pick')) {
+  if ([DeliveryStatus.PENDING, DeliveryStatus.PICKED].includes(d.status) && can('scm:delivery:pick')) {
     list.push({
       key: 'pick',
-      label: d.status === 'PICKED' ? t('scm.delivery.editPick') : t('scm.delivery.confirmPick'),
+      label: d.status === DeliveryStatus.PICKED ? t('scm.delivery.editPick') : t('scm.delivery.confirmPick'),
       icon: UnorderedListOutlined,
-      primary: d.status === 'PENDING',
+      primary: d.status === DeliveryStatus.PENDING,
       run: startPick
     })
   }
-  if (d.status === 'PICKED' && can('scm:salesOut:add')) {
+  if (d.status === DeliveryStatus.PICKED && can('scm:salesOut:add')) {
     list.push({
       key: 'ship',
       label: t('scm.delivery.ship'),

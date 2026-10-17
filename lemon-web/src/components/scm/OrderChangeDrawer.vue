@@ -68,7 +68,7 @@
             <a-tooltip :title="removable(record) ? '' : $t('scm.orderChange.cannotRemove')">
               <a-checkbox v-model:checked="record.remove" :disabled="!removable(record)">{{ $t('common.action.delete') }}</a-checkbox>
             </a-tooltip>
-            <div><a-tag v-if="lineAction(record)" :color="lineAction(record) === 'REMOVE' ? 'red' : 'orange'" :bordered="false">{{ lineAction(record) === 'REMOVE' ? $t('common.action.delete') : $t('scm.orderChange.modified') }}</a-tag></div>
+            <div><a-tag v-if="lineAction(record)" :color="lineAction(record) === OrderChangeAction.REMOVE ? 'red' : 'orange'" :bordered="false">{{ lineAction(record) === OrderChangeAction.REMOVE ? $t('common.action.delete') : $t('scm.orderChange.modified') }}</a-tag></div>
           </template>
         </template>
       </a-table>
@@ -138,6 +138,7 @@ import { formatQty, rowKey } from '@/components/wms/wms'
 import { currencySymbol } from '@/components/fin/currency'
 import { ORDER_KINDS, formatMoney, lineAmount, qty4 } from './scm'
 
+import { OrderChangeAction, OrderChangeStatus } from '@/constants/enums'
 /**
  * 订单变更：已审核 / 部分完成的订单修改明细数量、单价、交货日期，删除未执行的明细，新增明细。
  * 只提交有变化的明细；数量、单价按基本单位。提交成功后触发 success
@@ -203,12 +204,12 @@ const removable = (i) => !Number(i.doneQty) && !Number(i.returnQty)
 
 /** 明细的变更动作：REMOVE / MODIFY / 无变化 */
 function lineAction(i) {
-  if (i.remove) return 'REMOVE'
+  if (i.remove) return OrderChangeAction.REMOVE
   if (
     Number(i.newQty) !== Number(i.qty) ||
     Number(i.newPrice) !== Number(i.price) ||
     (i.newDeliveryDate || null) !== (i.deliveryDate || null)
-  ) return 'MODIFY'
+  ) return OrderChangeAction.MODIFY
   return null
 }
 const changedCount = computed(() => lines.value.filter(lineAction).length)
@@ -240,13 +241,13 @@ async function submit() {
   for (const i of lines.value) {
     const action = lineAction(i)
     if (!action) continue
-    if (action === 'MODIFY') {
+    if (action === OrderChangeAction.MODIFY) {
       if (i.newQty == null || Number(i.newQty) <= 0) return message.warning(t('scm.orderChange.qtyPositive', { code: i.materialCode }))
       if (Number(i.newQty) < minQty(i)) return message.warning(t('scm.orderChange.qtyBelowDone', { code: i.materialCode, qty: formatQty(minQty(i)) }))
       if (i.newPrice == null) return message.warning(t('scm.orderChange.inputPrice', { code: i.materialCode }))
     }
     changed.push(
-      action === 'REMOVE'
+      action === OrderChangeAction.REMOVE
         ? { action, orderItemId: i.id }
         : {
             action,
@@ -283,7 +284,7 @@ async function submit() {
     const id = await changeOrder(props.kind, props.order.id, { reason: reason.value.trim(), lines: changed })
     const list = await orderChanges(props.kind, props.order.id).catch(() => [])
     const saved = list.find((c) => c.id === id)
-    message.success(saved?.status === 'APPROVING' ? t('scm.orderChange.submittedApproval') : t('scm.orderChange.effective'))
+    message.success(saved?.status === OrderChangeStatus.APPROVING ? t('scm.orderChange.submittedApproval') : t('scm.orderChange.effective'))
     close()
     emit('success')
   } finally {

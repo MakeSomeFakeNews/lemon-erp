@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.service;
 
+import com.lemon.erp.modules.crm.dto.CrmAnalysis;
 import com.lemon.erp.modules.crm.dto.RfmRow;
 import com.lemon.erp.modules.crm.mapper.CrmAnalysisMapper;
 import com.lemon.erp.modules.crm.model.OpportunityStage;
@@ -28,78 +29,68 @@ public class CrmAnalysisService {
 
     private final CrmAnalysisMapper analysisMapper;
 
-    public Map<String, Object> overview() {
+    public CrmAnalysis.Overview overview() {
         LocalDate today = LocalDate.now();
-        Map<String, Object> m = new LinkedHashMap<>(analysisMapper.selectOverview(today.withDayOfMonth(1).atStartOfDay(),
-                LocalDateTime.now()));
-        long won = num(m.get("wonTotal")).longValue();
-        long lost = num(m.get("lostTotal")).longValue();
-        m.put("winRate", won + lost == 0 ? null : BigDecimal.valueOf(won * 100).divide(BigDecimal.valueOf(won + lost), 1, RoundingMode.HALF_UP));
-        m.put("customerStages", analysisMapper.selectCustomerStages());
+        CrmAnalysis.Overview m = analysisMapper.selectOverview(today.withDayOfMonth(1).atStartOfDay(), LocalDateTime.now());
+        long won = num(m.getWonTotal()).longValue();
+        long lost = num(m.getLostTotal()).longValue();
+        m.setWinRate(won + lost == 0 ? null : BigDecimal.valueOf(won * 100).divide(BigDecimal.valueOf(won + lost), 1, RoundingMode.HALF_UP));
+        m.setCustomerStages(analysisMapper.selectCustomerStages());
         return m;
     }
 
     /**
      * 销售漏斗：各阶段当前的商机数和金额；阶段转化率 = 到达下一阶段的商机数 / 到达本阶段的商机数（按阶段日志）
      */
-    public List<Map<String, Object>> funnel() {
-        Map<String, Map<String, Object>> current = new HashMap<>();
-        analysisMapper.selectFunnel().forEach(r -> current.put((String) r.get("stage"), r));
+    public List<CrmAnalysis.FunnelRow> funnel() {
+        Map<String, CrmAnalysis.StageCount> current = new HashMap<>();
+        analysisMapper.selectFunnel().forEach(r -> current.put(r.getStage(), r));
         Map<String, Long> reached = new HashMap<>();
-        analysisMapper.selectStageReached().forEach(r -> reached.put((String) r.get("stage"), num(r.get("count")).longValue()));
+        analysisMapper.selectStageReached().forEach(r -> reached.put(r.getStage(), num(r.getCount()).longValue()));
         List<OpportunityStage> stages = new ArrayList<>(OpportunityStage.OPEN_STAGES);
         stages.add(OpportunityStage.WON);
-        List<Map<String, Object>> rows = new ArrayList<>();
+        long[] reach = new long[stages.size()];
+        for (int i = 0; i < stages.size(); i++) {
+            // 跳过中间阶段直接推进的商机也计入前面的阶段
+            for (int j = i; j < stages.size(); j++) {
+                reach[i] = Math.max(reach[i], reached.getOrDefault(stages.get(j).name(), 0L));
+            }
+        }
+        List<CrmAnalysis.FunnelRow> rows = new ArrayList<>();
         for (int i = 0; i < stages.size(); i++) {
             String stage = stages.get(i).name();
-            Map<String, Object> cur = current.getOrDefault(stage, Map.of());
-            // 跳过中间阶段直接推进的商机也计入前面的阶段
-            long reach = 0;
-            for (int j = i; j < stages.size(); j++) {
-                reach = Math.max(reach, reached.getOrDefault(stages.get(j).name(), 0L));
+            CrmAnalysis.StageCount cur = current.get(stage);
+            BigDecimal conversion = null;
+            if (i < stages.size() - 1 && reach[i] != 0) {
+                conversion = BigDecimal.valueOf(reach[i + 1] * 100).divide(BigDecimal.valueOf(reach[i]), 1, RoundingMode.HALF_UP);
             }
-            long reachedHere = reach;
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("stage", stage);
-            row.put("count", num(cur.get("count")));
-            row.put("amount", num(cur.get("amount")));
-            row.put("reached", reachedHere);
-            rows.add(row);
+            rows.add(new CrmAnalysis.FunnelRow(stage, count(cur), amount(cur), reach[i], conversion));
         }
-        for (int i = 0; i < rows.size() - 1; i++) {
-            long here = (long) rows.get(i).get("reached");
-            long next = (long) rows.get(i + 1).get("reached");
-            rows.get(i).put("conversion", here == 0 ? null : BigDecimal.valueOf(next * 100).divide(BigDecimal.valueOf(here), 1, RoundingMode.HALF_UP));
-        }
-        Map<String, Object> lost = current.getOrDefault(OpportunityStage.LOST.name(), Map.of());
-        Map<String, Object> lostRow = new LinkedHashMap<>();
-        lostRow.put("stage", OpportunityStage.LOST.name());
-        lostRow.put("count", num(lost.get("count")));
-        lostRow.put("amount", num(lost.get("amount")));
-        rows.add(lostRow);
+        CrmAnalysis.StageCount lost = current.get(OpportunityStage.LOST.name());
+        rows.add(new CrmAnalysis.FunnelRow(OpportunityStage.LOST.name(), count(lost), amount(lost), null, null));
         return rows;
     }
 
     /**
      * RFM 分析（近一年）：R、F、M 分别与平均值比较，R 天数不高于平均为「近」，F、M 不低于平均为「高」
      */
-    public Map<String, Object> rfm() {
+    public CrmAnalysis.Rfm rfm() {
         LocalDate today = LocalDate.now();
-        List<Map<String, Object>> src = analysisMapper.selectRfmSource(today.minusYears(1));
+        List<CrmAnalysis.RfmSource> src = analysisMapper.selectRfmSource(today.minusYears(1));
         if (src.isEmpty()) {
-            return Map.of("rows", List.of(), "segments", List.of());
+            return new CrmAnalysis.Rfm(List.of(), List.of(), null, null, null);
         }
         List<long[]> rf = new ArrayList<>();
         double sumR = 0, sumF = 0;
         BigDecimal sumM = BigDecimal.ZERO;
-        for (Map<String, Object> r : src) {
-            LocalDate last = LocalDate.parse(r.get("lastDate").toString().substring(0, 10));
+        for (CrmAnalysis.RfmSource r : src) {
+            LocalDate last = LocalDate.parse(r.getLastDate().substring(0, 10));
             long recency = ChronoUnit.DAYS.between(last, today);
-            long freq = num(r.get("frequency")).longValue();
+            long freq = num(r.getFrequency()).longValue();
             rf.add(new long[]{recency, freq});
             sumR += recency;
             sumF += freq;
-            sumM = sumM.add(num(r.get("monetary")));
+            sumM = sumM.add(num(r.getMonetary()));
         }
         double avgR = sumR / src.size();
         double avgF = sumF / src.size();
@@ -109,61 +100,62 @@ public class CrmAnalysisService {
         for (String s : SEGMENTS) segments.put(s, new long[]{0});
         Map<String, BigDecimal> segmentAmount = new HashMap<>();
         for (int i = 0; i < src.size(); i++) {
-            Map<String, Object> r = src.get(i);
-            BigDecimal m = num(r.get("monetary"));
+            CrmAnalysis.RfmSource r = src.get(i);
+            BigDecimal m = num(r.getMonetary());
             boolean recent = rf.get(i)[0] <= avgR;
             boolean frequent = rf.get(i)[1] >= avgF;
             boolean valuable = m.compareTo(avgM) >= 0;
             String segment = segment(recent, frequent, valuable);
             segments.get(segment)[0]++;
             segmentAmount.merge(segment, m, BigDecimal::add);
-            rows.add(new RfmRow(num(r.get("customerId")).longValue(), (String) r.get("code"), (String) r.get("name"),
-                    (String) r.get("ownerName"), (int) rf.get(i)[0], (int) rf.get(i)[1], m, recent, frequent, valuable, segment));
+            rows.add(new RfmRow(num(r.getCustomerId()).longValue(), r.getCode(), r.getName(),
+                    r.getOwnerName(), (int) rf.get(i)[0], (int) rf.get(i)[1], m, recent, frequent, valuable, segment));
         }
         rows.sort(Comparator.comparing(RfmRow::monetary).reversed());
-        List<Map<String, Object>> segmentRows = new ArrayList<>();
-        segments.forEach((name, count) -> segmentRows.add(Map.of("segment", name, "count", count[0],
-                "amount", segmentAmount.getOrDefault(name, BigDecimal.ZERO))));
-        return Map.of("rows", rows, "segments", segmentRows,
-                "avgRecency", BigDecimal.valueOf(avgR).setScale(1, RoundingMode.HALF_UP),
-                "avgFrequency", BigDecimal.valueOf(avgF).setScale(1, RoundingMode.HALF_UP), "avgMonetary", avgM);
+        List<CrmAnalysis.RfmSegment> segmentRows = new ArrayList<>();
+        segments.forEach((name, count) -> segmentRows.add(new CrmAnalysis.RfmSegment(name, count[0],
+                segmentAmount.getOrDefault(name, BigDecimal.ZERO))));
+        return new CrmAnalysis.Rfm(rows, segmentRows,
+                BigDecimal.valueOf(avgR).setScale(1, RoundingMode.HALF_UP),
+                BigDecimal.valueOf(avgF).setScale(1, RoundingMode.HALF_UP), avgM);
     }
 
     /** 近 12 个月的销售额、成交客户数、赢单金额 */
-    public List<Map<String, Object>> trend() {
+    public List<CrmAnalysis.TrendRow> trend() {
         YearMonth start = YearMonth.now().minusMonths(11);
-        Map<Integer, Map<String, Object>> sales = new HashMap<>();
-        analysisMapper.selectMonthlySales(start.atDay(1)).forEach(r -> sales.put(num(r.get("period")).intValue(), r));
-        Map<Integer, Map<String, Object>> won = new HashMap<>();
-        analysisMapper.selectMonthlyWon(start.atDay(1)).forEach(r -> won.put(num(r.get("period")).intValue(), r));
-        List<Map<String, Object>> rows = new ArrayList<>();
+        Map<Integer, CrmAnalysis.MonthlyRow> sales = new HashMap<>();
+        analysisMapper.selectMonthlySales(start.atDay(1)).forEach(r -> sales.put(num(r.getPeriod()).intValue(), r));
+        Map<Integer, CrmAnalysis.MonthlyRow> won = new HashMap<>();
+        analysisMapper.selectMonthlyWon(start.atDay(1)).forEach(r -> won.put(num(r.getPeriod()).intValue(), r));
+        CrmAnalysis.MonthlyRow none = new CrmAnalysis.MonthlyRow();
+        List<CrmAnalysis.TrendRow> rows = new ArrayList<>();
         for (int i = 0; i < 12; i++) {
             YearMonth ym = start.plusMonths(i);
             int period = ym.getYear() * 100 + ym.getMonthValue();
-            Map<String, Object> s = sales.getOrDefault(period, Map.of());
-            Map<String, Object> w = won.getOrDefault(period, Map.of());
-            rows.add(Map.of("period", period, "sales", num(s.get("amount")), "customers", num(s.get("customers")),
-                    "wonCount", num(w.get("count")), "wonAmount", num(w.get("amount"))));
+            CrmAnalysis.MonthlyRow s = sales.getOrDefault(period, none);
+            CrmAnalysis.MonthlyRow w = won.getOrDefault(period, none);
+            rows.add(new CrmAnalysis.TrendRow(period, num(s.getAmount()), num(s.getCustomers()).longValue(),
+                    num(w.getCount()).longValue(), num(w.getAmount())));
         }
         return rows;
     }
 
-    public List<Map<String, Object>> sources() {
+    public List<CrmAnalysis.SourceStat> sources() {
         return analysisMapper.selectSourceStats();
     }
 
-    public List<Map<String, Object>> owners() {
+    public List<CrmAnalysis.OwnerStat> owners() {
         LocalDate today = LocalDate.now();
-        List<Map<String, Object>> rows = new ArrayList<>(analysisMapper.selectOwnerStats(today.withDayOfYear(1), today.withDayOfMonth(1).atStartOfDay()));
-        rows.sort(Comparator.comparing((Map<String, Object> r) -> num(r.get("wonAmount"))).reversed());
+        List<CrmAnalysis.OwnerStat> rows = new ArrayList<>(analysisMapper.selectOwnerStats(today.withDayOfYear(1), today.withDayOfMonth(1).atStartOfDay()));
+        rows.sort(Comparator.comparing((CrmAnalysis.OwnerStat r) -> num(r.getWonAmount())).reversed());
         return rows;
     }
 
-    public List<Map<String, Object>> industries() {
+    public List<CrmAnalysis.IndustryStat> industries() {
         return analysisMapper.selectIndustryStats(LocalDate.now().minusYears(1));
     }
 
-    public List<Map<String, Object>> tickets() {
+    public List<CrmAnalysis.TicketStat> tickets() {
         return analysisMapper.selectTicketStats();
     }
 
@@ -176,6 +168,14 @@ public class CrmAnalysisService {
         String level = valuable ? "重要" : "一般"; // i18n-ignore
         String kind = recent ? (frequent ? "价值" : "发展") : (frequent ? "保持" : "挽留"); // i18n-ignore
         return level + kind + "客户"; // i18n-ignore 分层名称是标识，由前端按中文名翻译
+    }
+
+    private static long count(CrmAnalysis.StageCount r) {
+        return r == null || r.getCount() == null ? 0 : r.getCount();
+    }
+
+    private static BigDecimal amount(CrmAnalysis.StageCount r) {
+        return r == null ? BigDecimal.ZERO : num(r.getAmount());
     }
 
     private static BigDecimal num(Object v) {

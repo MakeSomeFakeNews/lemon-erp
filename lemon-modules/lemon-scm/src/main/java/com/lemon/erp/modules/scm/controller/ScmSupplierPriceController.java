@@ -4,6 +4,7 @@ import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.scm.dto.ScmPriceViews;
 import com.lemon.erp.modules.scm.dto.SupplierPriceRequest;
 import com.lemon.erp.modules.scm.entity.ScmSupplierPrice;
 import com.lemon.erp.modules.scm.entity.ScmSupplierPriceTier;
@@ -22,7 +23,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 供货价格：在供应商管理中维护
@@ -61,7 +61,7 @@ public class ScmSupplierPriceController {
     /** 采购价格历史（采购入库单价） */
     @GetMapping("/history")
     @PreAuthorize("@ss.hasAnyPerm('scm:supplier:list', 'scm:purchase:list')")
-    public R<List<Map<String, Object>>> history(@RequestParam Long materialId, @RequestParam(required = false) Long supplierId) {
+    public R<List<ScmPriceViews.PurchaseHistory>> history(@RequestParam Long materialId, @RequestParam(required = false) Long supplierId) {
         return R.ok(priceService.history(materialId, supplierId));
     }
 

@@ -10,8 +10,8 @@ import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.modules.hr.dto.DayWork;
-import com.lemon.erp.modules.hr.model.HrConstants;
 import com.lemon.erp.modules.hr.service.HrAttendanceService;
+import com.lemon.erp.modules.hr.service.HrRuleService;
 import com.lemon.erp.modules.pm.dto.ReviewRequest;
 import com.lemon.erp.modules.pm.dto.TimesheetRequest;
 import com.lemon.erp.modules.pm.dto.TimesheetSaved;
@@ -47,6 +47,7 @@ public class PmTimesheetService {
     private final PmMemberService memberService;
     private final PmTaskService taskService;
     private final HrAttendanceService attendanceService;
+    private final HrRuleService hrRuleService;
 
     /** 按项目的数据权限（项目部门、项目经理）过滤 */
     @DataPermission(table = "pm_project", deptColumn = "dept_id", userColumn = "manager_id")
@@ -88,7 +89,9 @@ public class PmTimesheetService {
         String warning = null;
         DayWork work = attendanceService.dayWork(userId, req.workDate());
         if (work != null) {
-            if (work.leaveHours().compareTo(HrConstants.DAY_HOURS) >= 0) {
+            // 每日工时：人力资源的业务参数（默认 8 小时）
+            BigDecimal dayHours = hrRuleService.current().dayHours();
+            if (work.leaveHours().compareTo(dayHours) >= 0) {
                 throw new BizException("pm.error.fullDayLeaveTimesheetsCannotSubmitted", req.workDate());
             }
             if (work.attendedHours() != null) {
@@ -96,7 +99,7 @@ public class PmTimesheetService {
                 if (day.compareTo(limit) > 0) {
                     warning = Messages.get("pm.text.attendedHoursInclOvertimeHoursReported", req.workDate(), plain(limit), plain(day));
                 }
-            } else if (work.leaveHours().signum() > 0 && day.add(work.leaveHours()).compareTo(HrConstants.DAY_HOURS) > 0) {
+            } else if (work.leaveHours().signum() > 0 && day.add(work.leaveHours()).compareTo(dayHours) > 0) {
                 warning = Messages.get("pm.text.hoursLeaveTimesheetPlusLeaveExceeds", req.workDate(), plain(work.leaveHours()));
             }
         }

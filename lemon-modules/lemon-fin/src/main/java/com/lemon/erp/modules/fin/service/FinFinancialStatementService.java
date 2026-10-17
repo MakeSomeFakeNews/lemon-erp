@@ -2,6 +2,7 @@ package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.common.i18n.Messages;
+import com.lemon.erp.modules.fin.dto.IncomeTrendRow;
 import com.lemon.erp.modules.fin.dto.AccountSum;
 import com.lemon.erp.modules.fin.dto.FinancialStatement;
 import com.lemon.erp.modules.fin.dto.FinancialMetric;
@@ -13,10 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,6 +34,8 @@ import static com.lemon.erp.modules.fin.model.FinConstants.toYearMonth;
 @RequiredArgsConstructor
 public class FinFinancialStatementService {
 
+    /** 财务指标（比率、百分比）保留 2 位 */
+    private static final int METRIC_SCALE = 2;
 
     private static final FinancialTemplate ASSETS = new FinancialTemplate().side(false)
             .title("fin.label.currentAssets")
@@ -164,7 +165,7 @@ public class FinFinancialStatementService {
     }
 
     /** 本年各月（截至 period）的营业收入、营业成本、营业利润、净利润 */
-    public List<Map<String, Object>> incomeTrend(int period) {
+    public List<IncomeTrendRow> incomeTrend(int period) {
         toYearMonth(period);
         int first = period / 100 * 100 + 1;
         Map<Integer, Map<Long, AccountSum>> byPeriod = new HashMap<>();
@@ -172,16 +173,10 @@ public class FinFinancialStatementService {
             byPeriod.computeIfAbsent(s.getPeriod(), k -> new HashMap<>()).put(s.getAccountId(), s);
         }
         List<FinAccount> leaves = profitLeaves();
-        List<Map<String, Object>> list = new ArrayList<>();
+        List<IncomeTrendRow> list = new ArrayList<>();
         for (int p = first; p <= period; p++) {
             FinancialTemplate.Result r = INCOME.evaluate(leaves, List.of(byPeriod.getOrDefault(p, Map.of())), 1);
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("period", p);
-            m.put("revenue", r.get("revenue", 0));
-            m.put("cost", r.get("cost", 0));
-            m.put("operating", r.get("operating", 0));
-            m.put("net", r.get("net", 0));
-            list.add(m);
+            list.add(new IncomeTrendRow(p, r.get("revenue", 0), r.get("cost", 0), r.get("operating", 0), r.get("net", 0)));
         }
         return list;
     }
@@ -223,7 +218,7 @@ public class FinFinancialStatementService {
         if (b.signum() == 0) {
             return null;
         }
-        return (percent ? a.multiply(Decimals.HUNDRED) : a).divide(b, 2, RoundingMode.HALF_UP);
+        return (percent ? a.multiply(Decimals.HUNDRED) : a).divide(b, METRIC_SCALE, Decimals.ROUNDING);
     }
 
     // ---------------------------------------------------------------- 工具

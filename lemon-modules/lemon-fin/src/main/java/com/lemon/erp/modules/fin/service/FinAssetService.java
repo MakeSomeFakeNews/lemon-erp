@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.Queries;
 import com.lemon.erp.modules.fin.model.BillSource;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.model.AccountRole;
@@ -32,7 +33,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -381,8 +381,8 @@ public class FinAssetService {
     /** 撤销最近一期折旧：凭证未审核时删除凭证并恢复资产的累计折旧 */
     @Transactional
     public void undoDepreciation(int period) {
-        FinDepreciation latest = depreciationMapper.selectOne(Wrappers.<FinDepreciation>lambdaQuery()
-                .orderByDesc(FinDepreciation::getPeriod).last("LIMIT 1"));
+        FinDepreciation latest = Queries.first(depreciationMapper, Wrappers.<FinDepreciation>lambdaQuery()
+                .orderByDesc(FinDepreciation::getPeriod));
         if (latest == null || latest.getPeriod() != period) {
             throw new BizException("fin.error.onlyLatestDepreciationUndone", latest == null ? Messages.get("fin.text.none") : latest.getPeriod());
         }
@@ -400,8 +400,7 @@ public class FinAssetService {
 
     /** 本月折旧额：最后一个月为剩余可折旧金额 */
     static BigDecimal depreciationOf(FinAsset a) {
-        BigDecimal depreciable = a.getOriginalValue().multiply(BigDecimal.ONE.subtract(a.getResidualRate().divide(Decimals.HUNDRED, 6, RoundingMode.HALF_UP)))
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal depreciable = Decimals.money(a.getOriginalValue().multiply(BigDecimal.ONE.subtract(residualRatio(a))));
         BigDecimal remaining = depreciable.subtract(a.getAccumulated());
         if (a.getDepreciatedMonths() + 1 >= a.getUsefulMonths()) {
             return remaining.max(BigDecimal.ZERO);
@@ -410,8 +409,13 @@ public class FinAssetService {
     }
 
     static BigDecimal monthly(FinAsset a) {
-        return a.getOriginalValue().multiply(BigDecimal.ONE.subtract(a.getResidualRate().divide(Decimals.HUNDRED, 6, RoundingMode.HALF_UP)))
-                .divide(BigDecimal.valueOf(a.getUsefulMonths()), 2, RoundingMode.HALF_UP);
+        return a.getOriginalValue().multiply(BigDecimal.ONE.subtract(residualRatio(a)))
+                .divide(BigDecimal.valueOf(a.getUsefulMonths()), Decimals.MONEY_SCALE, Decimals.ROUNDING);
+    }
+
+    /** 残值率按百分数存储（5 表示 5%），换算为小数保留 6 位 */
+    private static BigDecimal residualRatio(FinAsset a) {
+        return a.getResidualRate().divide(Decimals.HUNDRED, 6, Decimals.ROUNDING);
     }
 
     private static void fillComputed(FinAsset a) {

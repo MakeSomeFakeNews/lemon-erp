@@ -190,7 +190,7 @@ public class MesOutsourceService {
                 l.setOrderItemId(((Number) item.get("orderItemId")).longValue());
                 l.setProductId(productId);
                 l.setMaterialId(bi.getMaterialId());
-                BigDecimal unit = MesWorkOrderService.unitQty(bi);
+                BigDecimal unit = WoBomExpander.unitQty(bi);
                 l.setUnitQty(unit.setScale(6, RoundingMode.HALF_UP));
                 l.setRequiredQty(qty.multiply(unit).setScale(4, RoundingMode.HALF_UP));
                 lines.add(l);

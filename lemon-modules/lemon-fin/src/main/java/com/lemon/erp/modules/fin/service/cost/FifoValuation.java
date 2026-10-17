@@ -1,4 +1,4 @@
-package com.lemon.erp.modules.fin.service;
+package com.lemon.erp.modules.fin.service.cost;
 
 import com.lemon.erp.common.util.Decimals;
 import java.math.BigDecimal;
@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
-import static com.lemon.erp.modules.fin.service.Valuation.money;
-import static com.lemon.erp.modules.fin.service.Valuation.unitOf;
+import static com.lemon.erp.modules.fin.service.cost.Valuation.money;
+import static com.lemon.erp.modules.fin.service.cost.Valuation.unitOf;
 
 /**
  * 先进先出：每次入库形成一个批次，出库先消耗最早的批次；采购退货冲减最近的批次。

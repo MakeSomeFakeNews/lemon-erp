@@ -52,6 +52,10 @@ public class FinAccountRuleService {
     }
 
     public FinAccount account(AccountRole role, String dimValue) {
+        if (role.scope()) {
+            // 科目范围用途不用于生成凭证，按编码前缀使用 FinAccountService.roleCode
+            throw new IllegalArgumentException("scope role " + role);
+        }
         String dim = dimValue == null || role.dimension() == AccountRole.Dimension.NONE ? NO_DIM : dimValue;
         List<FinAccountRule> rules = ruleMapper.selectList(Wrappers.<FinAccountRule>lambdaQuery()
                 .eq(FinAccountRule::getRole, role)
@@ -84,7 +88,7 @@ public class FinAccountRuleService {
             rules.stream().filter(r -> !NO_DIM.equals(r.getDimValue())).forEach(r -> items.put(r.getDimValue(), r.getAccountId()));
             // 分组、用途名称返回给页面显示，按请求语言翻译
             views.add(new RoleView(role.name(), Messages.get(role.groupKey()), Messages.get(role.labelKey()), role.dimension().name(), role.dimension().dictType(),
-                    role.defaultCode(), role.dimensionDefaults(), role.fallback() == null ? null : role.fallback().name(), accountId, items));
+                    role.defaultCode(), role.dimensionDefaults(), role.fallback() == null ? null : role.fallback().name(), role.scope(), accountId, items));
         }
         return views;
     }
@@ -115,7 +119,13 @@ public class FinAccountRuleService {
         if (accountId != null) {
             ids.add(accountId);
         }
-        if (!ids.isEmpty()) {
+        if (role.scope() && accountId != null) {
+            // 科目范围用途可以设置上级科目，只要求启用
+            FinAccount account = accountService.get(accountId);
+            if (!Integer.valueOf(1).equals(account.getStatus())) {
+                throw new BizException("fin.error.accountDisabled2", account.getCode(), account.getName());
+            }
+        } else if (!ids.isEmpty()) {
             accountService.requireLeaves(ids);
         }
         ruleMapper.delete(Wrappers.<FinAccountRule>lambdaQuery().eq(FinAccountRule::getRole, role));
@@ -141,10 +151,11 @@ public class FinAccountRuleService {
      * @param defaultCode       预置科目编码
      * @param dimensionDefaults 维度取值 → 预置科目编码（没有的取 defaultCode）
      * @param fallback          没有设置时沿用的用途，没有为空
+     * @param scope             科目范围用途：设置的科目及其下级都属于该用途，可以选上级科目
      * @param accountId         设置的默认科目，未设置为空
      * @param items             维度取值 → 设置的科目
      */
     public record RoleView(String role, String group, String label, String dimension, String dictType, String defaultCode,
-                           Map<String, String> dimensionDefaults, String fallback, Long accountId, Map<String, Long> items) {
+                           Map<String, String> dimensionDefaults, String fallback, boolean scope, Long accountId, Map<String, Long> items) {
     }
 }

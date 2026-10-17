@@ -6,6 +6,7 @@ import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.pm.dto.BillingRequest;
+import com.lemon.erp.modules.pm.dto.MonthlyCost;
 import com.lemon.erp.modules.pm.dto.ProjectAccounting;
 import com.lemon.erp.modules.pm.entity.PmBilling;
 import com.lemon.erp.modules.pm.entity.PmRevenue;
@@ -56,7 +57,7 @@ public class PmAccountingController {
 
     @GetMapping("/accounting/{projectId}/monthly")
     @PreAuthorize("@ss.hasAnyPerm('pm:accounting:list', 'pm:cost:list')")
-    public R<List<Map<String, Object>>> monthly(@PathVariable Long projectId) {
+    public R<List<MonthlyCost>> monthly(@PathVariable Long projectId) {
         return R.ok(accountingService.monthly(projectId));
     }
 

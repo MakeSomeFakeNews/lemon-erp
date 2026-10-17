@@ -76,7 +76,7 @@
       <a-table row-key="id" size="small" :columns="itemColumns" :data-source="items.list" :loading="items.loading" :pagination="itemPagination" @change="onItemChange">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'direction'">
-            <a-tag :color="record.direction === 'IN' ? 'green' : 'red'" :bordered="false">{{ record.direction === 'IN' ? $t('fin.fundPlan.in') : $t('fin.fundPlan.out') }}</a-tag>
+            <a-tag :color="record.direction === FundDirection.IN ? 'green' : 'red'" :bordered="false">{{ record.direction === FundDirection.IN ? $t('fin.fundPlan.in') : $t('fin.fundPlan.out') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}</template>
           <template v-else-if="column.key === 'action'">
@@ -115,7 +115,7 @@
       <a-table row-key="key" size="small" :columns="entryColumns" :data-source="entries" :loading="entriesLoading" :pagination="false">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'direction'">
-            <a-tag :color="record.direction === 'IN' ? 'green' : 'red'" :bordered="false">{{ record.direction === 'IN' ? $t('fin.fundPlan.in') : $t('fin.fundPlan.out') }}</a-tag>
+            <a-tag :color="record.direction === FundDirection.IN ? 'green' : 'red'" :bordered="false">{{ record.direction === FundDirection.IN ? $t('fin.fundPlan.in') : $t('fin.fundPlan.out') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'source'">{{ SOURCE_LABELS[record.source] }}</template>
           <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}</template>
@@ -145,6 +145,7 @@ import { t } from '@/locales'
 import { today } from '@/components/wms/wms'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 
+import { FundDirection, FundSource, PlanUnit } from '@/constants/enums'
 /** 资金计划：按周 / 月预计资金流入流出与余额，标出资金缺口 */
 const UNIT_OPTIONS = [
   { label: t('fin.fundPlan.byWeek'), value: 'WEEK' },
@@ -159,16 +160,16 @@ const SOURCE_LABELS = {
   CLAIM: t('fin.fundPlan.source.CLAIM'),
   PLAN: t('fin.fundPlan.source.PLAN')
 }
-const IN_SOURCES = ['AR', 'NOTE_IN', 'PLAN']
-const OUT_SOURCES = ['AP', 'NOTE_OUT', 'CLAIM', 'PLAN']
+const IN_SOURCES = [FundSource.AR, FundSource.NOTE_IN, FundSource.PLAN]
+const OUT_SOURCES = [FundSource.AP, FundSource.NOTE_OUT, FundSource.CLAIM, FundSource.PLAN]
 
 const unit = ref('WEEK')
 const periods = ref(12)
 const periodOptions = computed(() =>
-  (unit.value === 'WEEK' ? [4, 8, 12, 26] : [3, 6, 12]).map((n) => ({ value: n, label: unit.value === 'WEEK' ? t('fin.fundPlan.nextWeeks', { n }) : t('fin.fundPlan.nextMonths', { n }) }))
+  (unit.value === PlanUnit.WEEK ? [4, 8, 12, 26] : [3, 6, 12]).map((n) => ({ value: n, label: unit.value === PlanUnit.WEEK ? t('fin.fundPlan.nextWeeks', { n }) : t('fin.fundPlan.nextMonths', { n }) }))
 )
 watch(unit, (u) => {
-  periods.value = u === 'WEEK' ? 12 : 6
+  periods.value = u === PlanUnit.WEEK ? 12 : 6
 })
 
 const plan = ref()

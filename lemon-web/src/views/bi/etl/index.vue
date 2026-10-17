@@ -52,8 +52,8 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'trigger'">
-            <a-tag :bordered="false" :color="record.triggerType === 'MANUAL' ? 'blue' : 'purple'">
-              {{ record.triggerType === 'MANUAL' ? $t('bi.etl.manual') : $t('bi.etl.schedule') }}
+            <a-tag :bordered="false" :color="record.triggerType === EtlTrigger.MANUAL ? 'blue' : 'purple'">
+              {{ record.triggerType === EtlTrigger.MANUAL ? $t('bi.etl.manual') : $t('bi.etl.schedule') }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="bi_etl_status" :value="record.status" /></template>
@@ -64,7 +64,7 @@
           <template v-else-if="column.key === 'message'">
             <span v-if="record.message" class="error">{{ record.message }}</span>
           </template>
-          <template v-else-if="column.key === 'user'">{{ record.createByName || (record.triggerType === 'SCHEDULE' ? $t('bi.etl.system') : '-') }}</template>
+          <template v-else-if="column.key === 'user'">{{ record.createByName || (record.triggerType === EtlTrigger.SCHEDULE ? $t('bi.etl.system') : '-') }}</template>
         </template>
       </a-table>
     </a-card>
@@ -84,6 +84,7 @@ import { toOptions } from '@/utils/dict'
 import { formatNumber } from '@/utils/format'
 import { t } from '@/locales'
 
+import { EtlTrigger } from '@/constants/enums'
 const FACTS = [
   { key: 'sales', name: t('bi.etl.fact.sales'), short: t('bi.etl.factShort.sales'), desc: t('bi.etl.factDesc.sales') },
   { key: 'purchase', name: t('bi.etl.fact.purchase'), short: t('bi.etl.factShort.purchase'), desc: t('bi.etl.factDesc.purchase') },

@@ -3,6 +3,7 @@ package com.lemon.erp.modules.system.controller;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.system.dto.BizRuleItem;
 import com.lemon.erp.modules.system.service.SysBizRuleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,7 +28,7 @@ public class SysBizRuleController {
 
     @GetMapping
     @PreAuthorize("@ss.hasPerm('sys:bizRule:list')")
-    public R<List<Map<String, Object>>> list() {
+    public R<List<BizRuleItem>> list() {
         return R.ok(ruleService.list());
     }
 

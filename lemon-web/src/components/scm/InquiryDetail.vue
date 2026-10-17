@@ -176,7 +176,9 @@ import PartnerSelect from './PartnerSelect.vue'
 import { closeInquiry, deleteInquiryQuote, finishInquiry, getInquiry, saveInquiryQuote } from '@/api/scm/sourcing'
 import { useUserStore } from '@/store/user'
 import { formatQty, today } from '@/components/wms/wms'
+import { price as formatPrice } from '@/utils/number'
 
+import { InquiryStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 /** 询价单详情：按供应商比价、录入报价、定标（更新供货价格、生成采购订单）、关闭。触发 edit(record)、changed */
@@ -190,11 +192,10 @@ const userStore = useUserStore()
 const can = (perm) => userStore.hasPerm(`scm:inquiry:${perm}`)
 const router = useRouter()
 
-const formatPrice = (n) => Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
 
 const detail = ref()
 const loading = ref(false)
-const quoting = computed(() => detail.value?.status === 'QUOTING')
+const quoting = computed(() => detail.value?.status === InquiryStatus.QUOTING)
 
 /** 报价过的供应商（按首次出现顺序） */
 const suppliers = computed(() => {

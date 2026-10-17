@@ -49,7 +49,7 @@
         ORDER BY b.bill_date, b.id
     </select>
 
-    <select id="selectUninvoiced" resultType="java.util.Map">
+    <select id="selectUninvoiced" resultType="com.lemon.erp.modules.fin.dto.UninvoicedRow">
         SELECT b.partner_id AS "partnerId", COALESCE(c.name, s.name) AS "partnerName", COUNT(*) AS "billCount",
                SUM(b.amount) AS "amount", SUM(b.invoiced_amount) AS "invoiced",
                SUM(b.amount - b.invoiced_amount) AS "uninvoiced",

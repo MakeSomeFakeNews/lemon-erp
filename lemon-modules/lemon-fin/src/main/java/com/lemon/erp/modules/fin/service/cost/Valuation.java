@@ -1,13 +1,17 @@
-package com.lemon.erp.modules.fin.service;
+package com.lemon.erp.modules.fin.service.cost;
+
+import com.lemon.erp.common.util.Decimals;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 
 /**
  * 成本核算中按发生顺序逐笔计价的存货（移动加权平均、先进先出），金额保留 2 位小数
  */
 interface Valuation {
+
+    /** 成本单价的小数位（比单据单价多保留 2 位，减少按单价计价的尾差） */
+    int UNIT_SCALE = 6;
 
     /** 按给定金额入库（采购入库、完工入库） */
     void in(LocalDate date, BigDecimal qty, BigDecimal amount);
@@ -31,10 +35,10 @@ interface Valuation {
     BigDecimal unit();
 
     static BigDecimal money(BigDecimal v) {
-        return v.setScale(2, RoundingMode.HALF_UP);
+        return v.setScale(Decimals.MONEY_SCALE, Decimals.ROUNDING);
     }
 
     static BigDecimal unitOf(BigDecimal amount, BigDecimal qty) {
-        return amount.divide(qty, 6, RoundingMode.HALF_UP);
+        return amount.divide(qty, UNIT_SCALE, Decimals.ROUNDING);
     }
 }

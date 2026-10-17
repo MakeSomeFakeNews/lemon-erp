@@ -21,8 +21,8 @@
             <a-tag :color="record.status === 1 ? 'green' : 'default'">{{ record.status === 1 ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'lastStatus'">
-            <a-tag v-if="record.lastStatus" :color="record.lastStatus === 'SUCCESS' ? 'green' : 'red'">
-              {{ record.lastStatus === 'SUCCESS' ? $t('monitor.job.success') : $t('monitor.job.fail') }}
+            <a-tag v-if="record.lastStatus" :color="record.lastStatus === JobRunStatus.SUCCESS ? 'green' : 'red'">
+              {{ record.lastStatus === JobRunStatus.SUCCESS ? $t('monitor.job.success') : $t('monitor.job.fail') }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
@@ -76,11 +76,11 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'triggerType'">
-            {{ record.triggerType === 'MANUAL' ? $t('monitor.job.manual') : $t('monitor.job.scheduled') }}
+            {{ record.triggerType === JobTrigger.MANUAL ? $t('monitor.job.manual') : $t('monitor.job.scheduled') }}
           </template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="record.status === 'SUCCESS' ? 'green' : 'red'">
-              {{ record.status === 'SUCCESS' ? $t('monitor.job.success') : $t('monitor.job.fail') }}
+            <a-tag :color="record.status === JobRunStatus.SUCCESS ? 'green' : 'red'">
+              {{ record.status === JobRunStatus.SUCCESS ? $t('monitor.job.success') : $t('monitor.job.fail') }}
             </a-tag>
           </template>
         </template>
@@ -100,6 +100,7 @@ import { listJob, pageJobLog, runJob, updateJob } from '@/api/monitor/job'
 import { useColumns } from '@/composables/useColumns'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 
+import { JobRunStatus, JobTrigger } from '@/constants/enums'
 const { t } = useI18n()
 const columns = [
   { title: t('monitor.job.name'), dataIndex: 'name', width: 180 },
@@ -132,7 +133,7 @@ async function run(record) {
   running.value = record.id
   try {
     const log = await runJob(record.id)
-    if (log.status === 'SUCCESS') message.success(log.message || t('monitor.job.runSuccess'))
+    if (log.status === JobRunStatus.SUCCESS) message.success(log.message || t('monitor.job.runSuccess'))
     else message.error(log.message || t('monitor.job.runFail'))
     load()
   } finally {

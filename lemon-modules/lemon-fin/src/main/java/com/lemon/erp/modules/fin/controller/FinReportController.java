@@ -2,6 +2,7 @@ package com.lemon.erp.modules.fin.controller;
 
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.modules.fin.dto.AuxBalanceRow;
+import com.lemon.erp.modules.fin.dto.IncomeTrendRow;
 import com.lemon.erp.modules.fin.dto.LedgerRow;
 import com.lemon.erp.modules.fin.dto.FinancialStatement;
 import com.lemon.erp.modules.fin.dto.TrialBalance;
@@ -16,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 账簿（科目余额表、明细账）与财务报表（资产负债表、利润表），期间格式 yyyyMM
@@ -65,7 +65,7 @@ public class FinReportController {
     /** 本年各月利润趋势（截至 period） */
     @GetMapping("/income/trend")
     @PreAuthorize("@ss.hasPerm('fin:report:list')")
-    public R<List<Map<String, Object>>> incomeTrend(@RequestParam int period) {
+    public R<List<IncomeTrendRow>> incomeTrend(@RequestParam int period) {
         return R.ok(financialService.incomeTrend(period));
     }
 }

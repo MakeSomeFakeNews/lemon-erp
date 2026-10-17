@@ -12,7 +12,7 @@
             />
           </a-form-item>
           <a-alert
-            v-if="kind === 'purchase' && partnerLevel === 'D'"
+            v-if="kind === 'purchase' && partnerLevel === SupplierLevel.D"
             type="warning"
             show-icon
             class="level-warning"
@@ -230,6 +230,7 @@ import { BASE_CURRENCY, currencyOptions, currencySymbol, fetchRate, isForeign, u
 import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
 import { useCustomFields } from '@/composables/useCustomFields'
 
+import { PriceControlMode, SupplierLevel } from '@/constants/enums'
 /**
  * 新增 / 编辑采购、销售订单（草稿）。采购订单选择供应商后，按供货价格自动带出单价、税率；
  * 销售订单选择客户和物料后按销售价目表带出单价、税率，手工改过的单价不再自动覆盖。
@@ -609,7 +610,7 @@ function priceWarning(row) {
   if (!c || row.unitPrice == null) return ''
   const rate = foreign.value ? Number(form.value.exchangeRate) || 1 : 1
   const price = (Number(row.unitPrice) / ratioOf(row)) * rate
-  const block = c.controlMode === 'BLOCK' ? t('scm.orderForm.cannotSave') : ''
+  const block = c.controlMode === PriceControlMode.BLOCK ? t('scm.orderForm.cannotSave') : ''
   if (props.kind === 'sales' && c.minSalePrice != null && price < Number(c.minSalePrice) - 0.00005) {
     return t('scm.orderForm.belowMinSale', { price: Number(c.minSalePrice) }) + block
   }

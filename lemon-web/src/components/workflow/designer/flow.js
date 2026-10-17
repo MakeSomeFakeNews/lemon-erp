@@ -1,5 +1,6 @@
 import { t } from '@/locales'
 
+import { ApproveMode, AssigneeType } from '@/constants/enums'
 /**
  * 流程设计器的数据结构与工具函数（与后端 FlowNode / FlowBranch 对应）
  *
@@ -98,12 +99,12 @@ export function createNode(type) {
       return {
         ...base,
         name: t('workflow.node.approver'),
-        assignee: { type: 'USER', ids: [], names: [] },
-        approveMode: 'OR',
+        assignee: { type: AssigneeType.USER, ids: [], names: [] },
+        approveMode: ApproveMode.OR,
         emptyAction: 'AUTO_PASS'
       }
     case NODE_TYPES.CC:
-      return { ...base, name: t('workflow.node.cc'), assignee: { type: 'USER', ids: [], names: [] } }
+      return { ...base, name: t('workflow.node.cc'), assignee: { type: AssigneeType.USER, ids: [], names: [] } }
     case NODE_TYPES.CONDITION:
       return { ...base, name: t('workflow.node.condition'), branches: [createBranch(t('workflow.node.conditionN', { n: 1 })), createBranch(DEFAULT_BRANCH_NAME, true)] }
     case NODE_TYPES.PARALLEL:
@@ -172,12 +173,12 @@ const isCompleteRule = (r) => r && r.field && r.operator && r.value !== undefine
 export function assigneeText(node) {
   const a = node.assignee
   if (!a) return ''
-  if (a.type === 'INITIATOR') return t('workflow.assignee.initiator')
-  if (a.type === 'DEPT_LEADER') return (a.level || 1) === 1 ? t('workflow.leader.direct') : t('workflow.leader.level', { n: a.level })
+  if (a.type === AssigneeType.INITIATOR) return t('workflow.assignee.initiator')
+  if (a.type === AssigneeType.DEPT_LEADER) return (a.level || 1) === 1 ? t('workflow.leader.direct') : t('workflow.leader.level', { n: a.level })
   if (!a.ids?.length) return ''
   const names = a.names?.length ? a.names : a.ids.map(String)
   const sep = t('workflow.text.listSep')
-  const prefix = a.type === 'ROLE' ? t('workflow.text.rolePrefix') : ''
+  const prefix = a.type === AssigneeType.ROLE ? t('workflow.text.rolePrefix') : ''
   return prefix + (names.length > 3 ? t('workflow.text.andMore', { names: names.slice(0, 3).join(sep), n: names.length }) : names.join(sep))
 }
 
@@ -185,7 +186,7 @@ export function nodeSummary(node) {
   if (node.type === NODE_TYPES.APPROVER) {
     const who = assigneeText(node)
     if (!who) return ''
-    const multi = !isSingleAssignee(node.assignee.type) && (node.assignee.type === 'ROLE' || node.assignee.ids.length > 1)
+    const multi = !isSingleAssignee(node.assignee.type) && (node.assignee.type === AssigneeType.ROLE || node.assignee.ids.length > 1)
     return multi ? t('workflow.text.withMode', { who, mode: labelOf(APPROVE_MODES, node.approveMode) }) : who
   }
   if (node.type === NODE_TYPES.CC) return assigneeText(node)
@@ -251,7 +252,7 @@ export function validateFlow(root, fields = []) {
       const a = node.assignee
       if (!a?.type) fail(node.id, node.type === NODE_TYPES.CC ? t('workflow.validate.noCc', { name }) : t('workflow.validate.noApprover', { name }))
       else if (requiresIds(a.type) && !a.ids?.length) {
-        fail(node.id, a.type === 'ROLE' ? t('workflow.validate.noRole', { name }) : t('workflow.validate.noUser', { name }))
+        fail(node.id, a.type === AssigneeType.ROLE ? t('workflow.validate.noRole', { name }) : t('workflow.validate.noUser', { name }))
       }
     }
 

@@ -120,6 +120,7 @@ import { consignCustomer, consignSupplier } from '@/api/scm/order'
 import { availableQty, formatQty, locationText, splitSerials, today } from '@/components/wms/wms'
 import { qty4 } from './scm'
 
+import { WarehouseType } from '@/constants/enums'
 /**
  * 寄售结算：mode = customer（客户寄售，售出后生成销售订单并从寄售仓出库）
  * | supplier（供应商寄售 / VMI，领用后生成采购订单、入库到自有仓库，寄售仓做寄售消耗出库）
@@ -131,7 +132,7 @@ const props = defineProps({
 const { t } = useI18n()
 const CONF = {
   customer: {
-    warehouseType: 'CONSIGN_OUT',
+    warehouseType: WarehouseType.CONSIGN_OUT,
     warehouseLabel: t('scm.consign.customerWarehouse'),
     qtyLabel: t('scm.consign.soldQty'),
     pricePlaceholder: t('scm.consign.pricePriceList'),
@@ -141,7 +142,7 @@ const CONF = {
     tip: t('scm.consign.customerTip')
   },
   supplier: {
-    warehouseType: 'CONSIGN_IN',
+    warehouseType: WarehouseType.CONSIGN_IN,
     warehouseLabel: t('scm.consign.supplierWarehouse'),
     qtyLabel: t('scm.consign.usedQty'),
     pricePlaceholder: t('scm.consign.priceSupply'),
@@ -153,7 +154,7 @@ const CONF = {
 }
 const conf = computed(() => CONF[props.mode])
 /** 自有仓库（不含寄售仓） */
-const OWN_TYPES = ['NORMAL', 'RAW', 'FINISHED', 'DEFECT']
+const OWN_TYPES = [WarehouseType.NORMAL, WarehouseType.RAW, WarehouseType.FINISHED, WarehouseType.DEFECT]
 
 const columns = [
   { title: t('scm.consign.material'), key: 'material', width: 220 },

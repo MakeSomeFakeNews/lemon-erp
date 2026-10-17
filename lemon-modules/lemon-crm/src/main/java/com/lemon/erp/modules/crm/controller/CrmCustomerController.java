@@ -5,6 +5,7 @@ import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.crm.dto.AssignRequest;
+import com.lemon.erp.modules.crm.dto.CrmAnalysis;
 import com.lemon.erp.modules.crm.dto.CrmCustomerRequest;
 import com.lemon.erp.modules.crm.entity.CrmContact;
 import com.lemon.erp.modules.crm.entity.CrmCustomer;
@@ -23,7 +24,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 客户管理 /crm/customer、联系人 /crm/contact
@@ -63,7 +63,7 @@ public class CrmCustomerController {
 
     @GetMapping("/customer/{customerId}/summary")
     @PreAuthorize("@ss.hasPerm('crm:customer:list')")
-    public R<Map<String, Object>> summary(@PathVariable Long customerId) {
+    public R<CrmAnalysis.CustomerSummary> summary(@PathVariable Long customerId) {
         return R.ok(customerService.summary(customerId));
     }
 

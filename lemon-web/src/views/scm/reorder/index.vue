@@ -67,7 +67,7 @@
             <span class="sub-text"> {{ record.unit }}</span>
           </template>
           <template v-else-if="column.key === 'orderQty'">
-            <span v-if="record.supplyType === 'MAKE'" class="sub-text">{{ $t('scm.reorder.makeTip') }}</span>
+            <span v-if="record.supplyType === SupplyType.MAKE" class="sub-text">{{ $t('scm.reorder.makeTip') }}</span>
             <a-input-number
               v-else-if="selectedKeys.includes(record.materialId)"
               v-model:value="record.orderQty"
@@ -117,6 +117,7 @@ import { useDict } from '@/composables/useDict'
 import { findDict } from '@/utils/dict'
 import { writeExcel } from '@/utils/excel'
 
+import { SupplyType } from '@/constants/enums'
 const { t } = useI18n()
 
 const router = useRouter()
@@ -125,7 +126,7 @@ const dict = useDict('mes_supply_type')
 /** 预计库存低于再订货点（未设置时取安全库存） */
 const isShort = (r) => Number(r.projected) < Number(Number(r.reorderPoint) > 0 ? r.reorderPoint : r.safetyStock || 0)
 /** 可以生成请购单：有建议数量且不是自制件 */
-const selectable = (r) => Number(r.suggestQty) > 0 && r.supplyType !== 'MAKE'
+const selectable = (r) => Number(r.suggestQty) > 0 && r.supplyType !== SupplyType.MAKE
 
 const columns = [
   { title: t('scm.reorder.material'), key: 'material', width: 240, exportValue: (r) => `${r.code} ${r.name}` },

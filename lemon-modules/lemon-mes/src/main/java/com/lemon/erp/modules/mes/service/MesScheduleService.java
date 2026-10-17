@@ -2,6 +2,7 @@ package com.lemon.erp.modules.mes.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.modules.mes.dto.CapacityLoad;
 import com.lemon.erp.modules.mes.entity.MesCalendar;
 import com.lemon.erp.modules.mes.entity.MesWoOp;
 import com.lemon.erp.modules.mes.entity.MesWorkCenter;
@@ -22,7 +23,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -124,7 +124,7 @@ public class MesScheduleService {
     /**
      * 工作中心负荷：[{workCenterId, code, name, capacity, load, days: [{date, capacity, load}], ops: [...]}]
      */
-    public List<Map<String, Object>> load(LocalDate from, LocalDate to, Long workCenterId) {
+    public List<CapacityLoad> load(LocalDate from, LocalDate to, Long workCenterId) {
         if (to.isBefore(from) || ChronoUnit.DAYS.between(from, to) > 92) {
             throw new BizException("mes.error.queryRangeCannotExceedDays");
         }
@@ -133,7 +133,7 @@ public class MesScheduleService {
         Map<Long, MesWorkOrder> wos = workOrderMapper.selectList(Wrappers.<MesWorkOrder>lambdaQuery().in(MesWorkOrder::getStatus, WorkOrderStatus.OPEN))
                 .stream().collect(Collectors.toMap(MesWorkOrder::getId, Function.identity()));
         Map<Long, Map<LocalDate, BigDecimal>> loads = new HashMap<>();
-        Map<Long, List<Map<String, Object>>> opRows = new HashMap<>();
+        Map<Long, List<CapacityLoad.Op>> opRows = new HashMap<>();
         if (!wos.isEmpty()) {
             for (MesWoOp op : woOpMapper.selectList(Wrappers.<MesWoOp>lambdaQuery().in(MesWoOp::getWoId, wos.keySet())
                     .eq(workCenterId != null, MesWoOp::getWorkCenterId, workCenterId))) {
@@ -162,25 +162,16 @@ public class MesScheduleService {
                 BigDecimal perDay = hours.divide(BigDecimal.valueOf(days.size()), 4, RoundingMode.HALF_UP);
                 Map<LocalDate, BigDecimal> wcLoad = loads.computeIfAbsent(op.getWorkCenterId(), k -> new HashMap<>());
                 days.forEach(d -> wcLoad.merge(d, perDay, BigDecimal::add));
-                Map<String, Object> row = new LinkedHashMap<>();
-                row.put("woId", wo.getId());
-                row.put("woNo", wo.getWoNo());
-                row.put("woStatus", wo.getStatus());
-                row.put("opId", op.getId());
-                row.put("seq", op.getSeq());
-                row.put("opName", op.getName());
-                row.put("planStart", s);
-                row.put("planEnd", e);
-                row.put("hours", hours);
-                opRows.computeIfAbsent(op.getWorkCenterId(), k -> new ArrayList<>()).add(row);
+                opRows.computeIfAbsent(op.getWorkCenterId(), k -> new ArrayList<>()).add(new CapacityLoad.Op(wo.getId(), wo.getWoNo(),
+                        wo.getStatus(), op.getId(), op.getSeq(), op.getName(), s, e, hours));
             }
         }
-        List<Map<String, Object>> result = new ArrayList<>();
+        List<CapacityLoad> result = new ArrayList<>();
         for (MesWorkCenter wc : capacity.centers()) {
             if (workCenterId != null && !workCenterId.equals(wc.getId()) || !Integer.valueOf(1).equals(wc.getStatus())) {
                 continue;
             }
-            List<Map<String, Object>> days = new ArrayList<>();
+            List<CapacityLoad.Day> days = new ArrayList<>();
             BigDecimal capTotal = BigDecimal.ZERO;
             BigDecimal loadTotal = BigDecimal.ZERO;
             Map<LocalDate, BigDecimal> wcLoad = loads.getOrDefault(wc.getId(), Map.of());
@@ -189,20 +180,12 @@ public class MesScheduleService {
                 BigDecimal l = wcLoad.getOrDefault(d, BigDecimal.ZERO);
                 capTotal = capTotal.add(cap);
                 loadTotal = loadTotal.add(l);
-                days.add(Map.of("date", d, "capacity", cap, "load", l.setScale(2, RoundingMode.HALF_UP)));
+                days.add(new CapacityLoad.Day(d, cap, l.setScale(2, RoundingMode.HALF_UP)));
             }
             loadTotal = loadTotal.setScale(2, RoundingMode.HALF_UP);
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("workCenterId", wc.getId());
-            row.put("code", wc.getCode());
-            row.put("name", wc.getName());
-            row.put("capacity", capTotal);
-            row.put("load", loadTotal);
-            row.put("days", days);
-            List<Map<String, Object>> ops = new ArrayList<>(opRows.getOrDefault(wc.getId(), List.of()));
-            ops.sort(Comparator.comparing(r -> (LocalDate) r.get("planStart")));
-            row.put("ops", ops);
-            result.add(row);
+            List<CapacityLoad.Op> ops = new ArrayList<>(opRows.getOrDefault(wc.getId(), List.of()));
+            ops.sort(Comparator.comparing(CapacityLoad.Op::planStart));
+            result.add(new CapacityLoad(wc.getId(), wc.getCode(), wc.getName(), capTotal, loadTotal, days, ops));
         }
         return result;
     }

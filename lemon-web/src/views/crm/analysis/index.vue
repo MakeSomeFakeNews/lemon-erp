@@ -128,6 +128,7 @@ import { useDict } from '@/composables/useDict'
 import { formatMoney } from '@/components/scm/scm'
 import { monthLabel, percent, shortMoney } from '@/components/charts/charts'
 
+import { OpportunityStage } from '@/constants/enums'
 const { t } = useI18n()
 const dict = useDict('crm_opp_stage', 'crm_customer_stage', 'crm_industry', 'crm_source', 'crm_ticket_type')
 const label = (type, v) => dict[type].find((d) => d.value === v)?.label || v
@@ -213,7 +214,7 @@ const funnelOption = computed(() => ({
       sort: 'none',
       minSize: '20%',
       label: { position: 'inside', formatter: '{b}  {c}' },
-      data: funnel.value.filter((r) => r.stage !== 'LOST').map((r) => ({ name: label('crm_opp_stage', r.stage), value: num(r.reached) }))
+      data: funnel.value.filter((r) => r.stage !== OpportunityStage.LOST).map((r) => ({ name: label('crm_opp_stage', r.stage), value: num(r.reached) }))
     }
   ]
 }))

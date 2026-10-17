@@ -65,7 +65,7 @@
               <a-button type="link" size="small" @click="openDetail(record)">
                 <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
-              <template v-if="record.status === 'DRAFT'">
+              <template v-if="record.status === WmsDocStatus.DRAFT">
                 <a-button v-perm="'wms:check:edit'" type="link" size="small" @click="form.openEdit(record)">
                   <template #icon><EditOutlined /></template>{{ $t('wms.check.count') }}
                 </a-button>
@@ -91,7 +91,6 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -104,7 +103,9 @@ import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
+import { useAction } from '@/composables/useAction'
 
+import { WmsDocStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 const dict = useDict('wms_doc_status')
@@ -152,11 +153,7 @@ function onEditFromDetail(record) {
   form.value.openEdit(record)
 }
 
-async function remove(id) {
-  await deleteCheck(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteCheck, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "i18n:check": "node scripts/check-i18n.mjs"
+    "i18n:check": "node scripts/check-i18n.mjs && node scripts/gen-enums.mjs --check",
+    "gen:enums": "node scripts/gen-enums.mjs"
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",

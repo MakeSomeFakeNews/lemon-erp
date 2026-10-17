@@ -70,10 +70,10 @@
               <a-button type="link" size="small" @click="openDetail(record)">
                 <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
-              <a-button v-if="record.status !== 'SIGNED'" v-perm="'scm:shipment:edit'" type="link" size="small" @click="drawer.openEdit(record)">
+              <a-button v-if="record.status !== ShipmentStatus.SIGNED" v-perm="'scm:shipment:edit'" type="link" size="small" @click="drawer.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
-              <span v-if="record.status === 'PENDING'" v-perm="'scm:shipment:remove'">
+              <span v-if="record.status === ShipmentStatus.PENDING" v-perm="'scm:shipment:remove'">
                 <a-popconfirm :title="$t('scm.shipment.confirmDelete', { no: record.shipNo })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small">
                     <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
@@ -187,18 +187,18 @@
           </a-timeline>
         </template>
       </a-spin>
-      <template v-if="detail && userStore.hasPerm('scm:shipment:track') && detail.status !== 'SIGNED'" #footer>
+      <template v-if="detail && userStore.hasPerm('scm:shipment:track') && detail.status !== ShipmentStatus.SIGNED" #footer>
         <div class="drawer-footer">
-          <a-button v-if="['SHIPPED', 'EXCEPTION'].includes(detail.status)" @click="openAction('track')">
+          <a-button v-if="[ShipmentStatus.SHIPPED, ShipmentStatus.EXCEPTION].includes(detail.status)" @click="openAction('track')">
             <template #icon><MessageOutlined /></template>{{ $t('scm.shipment.addTrack') }}
           </a-button>
-          <a-button v-if="detail.status === 'SHIPPED'" danger @click="openAction('exception')">
+          <a-button v-if="detail.status === ShipmentStatus.SHIPPED" danger @click="openAction('exception')">
             <template #icon><WarningOutlined /></template>{{ $t('scm.shipment.markException') }}
           </a-button>
-          <a-button v-if="['PENDING', 'EXCEPTION'].includes(detail.status)" type="primary" @click="openAction('ship')">
-            <template #icon><CarOutlined /></template>{{ detail.status === 'PENDING' ? $t('scm.shipment.ship') : $t('scm.shipment.continue') }}
+          <a-button v-if="[ShipmentStatus.PENDING, ShipmentStatus.EXCEPTION].includes(detail.status)" type="primary" @click="openAction('ship')">
+            <template #icon><CarOutlined /></template>{{ detail.status === ShipmentStatus.PENDING ? $t('scm.shipment.ship') : $t('scm.shipment.continue') }}
           </a-button>
-          <a-button v-if="['SHIPPED', 'EXCEPTION'].includes(detail.status)" type="primary" @click="openAction('sign')">
+          <a-button v-if="[ShipmentStatus.SHIPPED, ShipmentStatus.EXCEPTION].includes(detail.status)" type="primary" @click="openAction('sign')">
             <template #icon><CheckOutlined /></template>{{ $t('scm.shipment.sign') }}
           </a-button>
         </div>
@@ -253,7 +253,9 @@ import { toOptions } from '@/utils/dict'
 import { formatMoney } from '@/components/scm/scm'
 import { today } from '@/components/wms/wms'
 import { useI18n } from 'vue-i18n'
+import { useAction } from '@/composables/useAction'
 
+import { ShipmentStatus } from '@/constants/enums'
 const { t } = useI18n()
 const route = useRoute()
 const userStore = useUserStore()
@@ -362,11 +364,7 @@ onMounted(async () => {
   }
 })
 
-async function remove(id) {
-  await deleteShipment(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteShipment, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- 详情与跟踪
 const detailOpen = ref(false)

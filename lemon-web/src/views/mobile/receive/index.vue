@@ -64,6 +64,7 @@ import { openQty, qty4 } from '@/components/scm/scm'
 import { fillPutaway, formatQty, today } from '@/components/wms/wms'
 import { useDict } from '@/composables/useDict'
 
+import { OrderStatus } from '@/constants/enums'
 /**
  * 扫码收货：选择采购订单后逐个扫描物料条码累计数量（包装条码按换算比例），
  * 序列号物料选中后扫描序列号；没有指定库位的按上架策略推荐，生成采购入库单
@@ -85,7 +86,7 @@ async function searchOrders(orderNo) {
   loading.value = true
   try {
     const res = await pageOrder('purchase', { orderNo: orderNo || undefined, current: 1, size: 50 })
-    orders.value = res.records.filter((o) => ['APPROVED', 'PARTIAL'].includes(o.status))
+    orders.value = res.records.filter((o) => [OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(o.status))
     if (orderNo && orders.value.length === 1) selectOrder(orders.value[0].id)
   } finally {
     loading.value = false

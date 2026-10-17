@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.modules.scm.dto.ScmPriceViews;
 import com.lemon.erp.modules.scm.entity.ScmOrderItem;
 import com.lemon.erp.modules.scm.entity.ScmPriceControl;
 import com.lemon.erp.modules.scm.mapper.ScmPriceControlMapper;
@@ -95,7 +96,7 @@ public class ScmPriceControlService {
     }
 
     /** 往来单位某物料最近的成交价 */
-    public List<Map<String, Object>> history(OrderKind kind, Long partnerId, Long materialId, int limit) {
+    public List<ScmPriceViews.OrderPriceHistory> history(OrderKind kind, Long partnerId, Long materialId, int limit) {
         return controlMapper.selectHistory(kind, partnerId, materialId, Math.max(1, Math.min(limit, MAX_HISTORY)));
     }
 

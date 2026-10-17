@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.lemon.erp.modules.fin.dto.ConsumableLedgerRow;
 import com.lemon.erp.modules.fin.dto.ConsumableRequest;
 import com.lemon.erp.modules.fin.entity.FinConsumableUse;
 import com.lemon.erp.modules.fin.model.ConsumableStatus;
@@ -24,7 +25,6 @@ import com.lemon.erp.modules.fin.service.FinConsumableService;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 低值易耗品领用
@@ -49,7 +49,7 @@ public class FinConsumableController {
     /** 领用台账：按部门、物料汇总 */
     @GetMapping("/ledger")
     @PreAuthorize("@ss.hasPerm('fin:consumable:list')")
-    public R<List<Map<String, Object>>> ledger(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate beginDate,
+    public R<List<ConsumableLedgerRow>> ledger(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate beginDate,
                                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
                                                @RequestParam(required = false) Long deptId) {
         return R.ok(consumableService.ledger(beginDate, endDate, deptId));

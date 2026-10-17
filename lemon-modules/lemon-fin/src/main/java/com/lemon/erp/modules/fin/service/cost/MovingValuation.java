@@ -1,10 +1,10 @@
-package com.lemon.erp.modules.fin.service;
+package com.lemon.erp.modules.fin.service.cost;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-import static com.lemon.erp.modules.fin.service.Valuation.money;
-import static com.lemon.erp.modules.fin.service.Valuation.unitOf;
+import static com.lemon.erp.modules.fin.service.cost.Valuation.money;
+import static com.lemon.erp.modules.fin.service.cost.Valuation.unitOf;
 
 /**
  * 移动加权平均：每次入库后重算平均单价，出库按当时的平均单价计价；结存数量为 0 时出库全部结存金额。

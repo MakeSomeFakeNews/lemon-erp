@@ -56,7 +56,7 @@
         :data-source="results"
         :loading="resultLoading"
         :pagination="false"
-        :row-selection="runId ? { selectedRowKeys: selected, onChange: (k) => (selected = k), getCheckboxProps: (r) => ({ disabled: r.status !== 'NEW' }) } : undefined"
+        :row-selection="runId ? { selectedRowKeys: selected, onChange: (k) => (selected = k), getCheckboxProps: (r) => ({ disabled: r.status !== MrpResultStatus.NEW }) } : undefined"
         :scroll="{ x: 1500 }"
         :locale="{ emptyText: runId ? $t('mes.mrp.noDemand') : $t('mes.mrp.selectRun') }"
       >
@@ -78,7 +78,7 @@
           </template>
           <template v-else-if="column.key === 'suggestQty'">
             <a-input-number
-              v-if="record.status === 'NEW' && canRelease"
+              v-if="record.status === MrpResultStatus.NEW && canRelease"
               :value="Number(record.suggestQty)"
               :min="0"
               size="small"
@@ -90,12 +90,12 @@
           </template>
           <template v-else-if="column.key === 'dates'">
             <div>{{ $t('mes.mrp.required', { d: record.requiredDate }) }}</div>
-            <div class="sub-text">{{ record.supplyType === 'MAKE' ? $t('mes.mrp.start') : record.supplyType === 'PHANTOM' ? $t('mes.mrp.phantom') : $t('mes.mrp.order') }} {{ record.releaseDate }}</div>
+            <div class="sub-text">{{ record.supplyType === SupplyType.MAKE ? $t('mes.mrp.start') : record.supplyType === SupplyType.PHANTOM ? $t('mes.mrp.phantom') : $t('mes.mrp.order') }} {{ record.releaseDate }}</div>
           </template>
           <template v-else-if="column.key === 'supplier'">
-            <template v-if="['BUY', 'OUTSOURCE'].includes(record.supplyType)">
+            <template v-if="[SupplyType.BUY, SupplyType.OUTSOURCE].includes(record.supplyType)">
               <PartnerSelect
-                v-if="record.status === 'NEW' && canRelease"
+                v-if="record.status === MrpResultStatus.NEW && canRelease"
                 :value="record.supplierId"
                 :label="record.supplierName"
                 type="supplier"
@@ -109,12 +109,12 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'status'">
-            <a-tag v-if="record.status === 'NEW'" color="orange" :bordered="false">{{ $t('mes.mrp.status.NEW') }}</a-tag>
-            <template v-else-if="record.status === 'RELEASED'">
+            <a-tag v-if="record.status === MrpResultStatus.NEW" color="orange" :bordered="false">{{ $t('mes.mrp.status.NEW') }}</a-tag>
+            <template v-else-if="record.status === MrpResultStatus.RELEASED">
               <a-tag color="green" :bordered="false">{{ $t('mes.mrp.status.RELEASED') }}</a-tag>
               <div class="sub-text">{{ record.releaseNo }}</div>
             </template>
-            <a-tooltip v-else-if="record.status === 'EXPIRED'" :title="$t('mes.mrp.expiredTip')">
+            <a-tooltip v-else-if="record.status === MrpResultStatus.EXPIRED" :title="$t('mes.mrp.expiredTip')">
               <a-tag :bordered="false">{{ $t('mes.mrp.status.EXPIRED') }}</a-tag>
             </a-tooltip>
             <a-tag v-else :bordered="false">{{ $t('mes.mrp.status.NONE') }}</a-tag>
@@ -142,6 +142,7 @@ import { useUserStore } from '@/store/user'
 import { formatMoney } from '@/components/scm/scm'
 import { formatQty } from '@/components/wms/wms'
 
+import { MrpResultStatus, SupplyType } from '@/constants/enums'
 const route = useRoute()
 const userStore = useUserStore()
 const { t } = useI18n()

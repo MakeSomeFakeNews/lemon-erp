@@ -58,10 +58,10 @@
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="crm_lead_status" :value="record.status" />
-            <div v-if="record.status === 'CONVERTED'" class="sub-text">
+            <div v-if="record.status === LeadStatus.CONVERTED" class="sub-text">
               <router-link :to="{ path: '/crm/customer', query: { scope: 'team', customerId: record.customerId } }">{{ record.customerName }}</router-link>
             </div>
-            <div v-else-if="record.status === 'INVALID' && record.invalidReason" class="sub-text">{{ record.invalidReason }}</div>
+            <div v-else-if="record.status === LeadStatus.INVALID && record.invalidReason" class="sub-text">{{ record.invalidReason }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
             <span v-if="open(record)" class="table-actions">
@@ -82,7 +82,7 @@
                 </template>
               </a-dropdown>
             </span>
-            <span v-else-if="record.status === 'INVALID'" v-perm="'crm:lead:remove'">
+            <span v-else-if="record.status === LeadStatus.INVALID" v-perm="'crm:lead:remove'">
               <a-popconfirm :title="$t('crm.lead.confirmDelete', { name: record.company })" @confirm="remove(record.id)">
                 <a-button type="link" danger size="small"><template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}</a-button>
               </a-popconfirm>
@@ -204,7 +204,9 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
+import { useAction } from '@/composables/useAction'
 
+import { LeadStatus } from '@/constants/enums'
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
@@ -242,7 +244,7 @@ onMounted(async () => {
   campaignOpts.value = (await campaignOptions()).map((c) => ({ value: c.id, label: c.name }))
 })
 
-const open = (r) => r.status === 'NEW' || r.status === 'FOLLOWING'
+const open = (r) => r.status === LeadStatus.NEW || r.status === LeadStatus.FOLLOWING
 
 function onMore(key, record) {
   if (key === 'edit') drawer.openEdit(record)
@@ -269,11 +271,7 @@ const drawer = useFormDrawer({
 })
 const { formRef, form } = drawer
 
-async function remove(id) {
-  await deleteLead(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteLead, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- 转化
 

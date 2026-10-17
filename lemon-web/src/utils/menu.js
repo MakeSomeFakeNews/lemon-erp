@@ -1,5 +1,6 @@
 import { joinPath } from './path'
 
+import { MenuType } from '@/constants/enums'
 /**
  * 建立「完整路径 → 菜单层级标题」索引，用于面包屑
  */
@@ -7,7 +8,7 @@ export function buildBreadcrumbIndex(menus, parentPath = '', parents = [], index
   for (const m of menus) {
     const fullPath = joinPath(parentPath, m.path)
     const chain = [...parents, { title: m.name, icon: m.icon }]
-    if (m.type === 'C') index.set(fullPath, chain)
+    if (m.type === MenuType.C) index.set(fullPath, chain)
     if (m.children?.length) buildBreadcrumbIndex(m.children, fullPath, chain, index)
   }
   return index
@@ -17,7 +18,7 @@ export function buildBreadcrumbIndex(menus, parentPath = '', parents = [], index
 export function flattenPages(menus, parentPath = '', result = []) {
   for (const m of menus) {
     const fullPath = joinPath(parentPath, m.path)
-    if (m.type === 'C' && m.visible === 1) result.push({ path: fullPath, title: m.name, icon: m.icon })
+    if (m.type === MenuType.C && m.visible === 1) result.push({ path: fullPath, title: m.name, icon: m.icon })
     if (m.children?.length) flattenPages(m.children, fullPath, result)
   }
   return result

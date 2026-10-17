@@ -52,7 +52,7 @@
         ORDER BY p.end_date
     </select>
 
-    <select id="selectGradeStats" resultType="java.util.Map">
+    <select id="selectGradeStats" resultType="com.lemon.erp.modules.hr.dto.GradeStat">
         SELECT grade AS "grade", COUNT(*) AS "count", AVG(score) AS "avgScore"
         FROM hr_perf_appraisal
         WHERE plan_id = #{planId} AND status = 'DONE'

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.bi.service;
 
+import com.lemon.erp.modules.bi.dto.BiInsight;
 import com.lemon.erp.modules.bi.model.EtlTrigger;
 import com.lemon.erp.modules.bi.model.EtlStatus;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -112,10 +113,10 @@ public class BiEtlService {
     }
 
     /** 各事实表行数、最近一次成功同步 */
-    public Map<String, Object> status() {
-        Map<String, Object> m = new LinkedHashMap<>(etlMapper.countRows());
-        m.put("running", running.contains(TenantContext.require()));
-        m.put("lastSuccess", lastSuccess());
+    public BiInsight.EtlOverview status() {
+        BiInsight.EtlOverview m = etlMapper.countRows();
+        m.setRunning(running.contains(TenantContext.require()));
+        m.setLastSuccess(lastSuccess());
         return m;
     }
 

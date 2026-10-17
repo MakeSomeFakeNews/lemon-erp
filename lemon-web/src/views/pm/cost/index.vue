@@ -11,10 +11,10 @@
           </span>
         </template>
         <div class="actions">
-          <a-button v-if="project" v-perm="'pm:cost:budget'" :disabled="project.status === 'CLOSED'" @click="openBudget">
+          <a-button v-if="project" v-perm="'pm:cost:budget'" :disabled="project.status === ProjectStatus.CLOSED" @click="openBudget">
             <template #icon><EditOutlined /></template>{{ $t('pm.cost.editBudget') }}
           </a-button>
-          <a-button v-if="project" v-perm="'pm:cost:issue'" :disabled="project.status !== 'ACTIVE'" @click="issueOpen = true">
+          <a-button v-if="project" v-perm="'pm:cost:issue'" :disabled="project.status !== ProjectStatus.ACTIVE" @click="issueOpen = true">
             <template #icon><ExportOutlined /></template>{{ $t('pm.issue.title') }}
           </a-button>
           <a-button v-if="project" v-perm="'pm:cost:add'" type="primary" :disabled="!openProject" @click="openCost">
@@ -71,12 +71,12 @@
             <template v-if="column.key === 'costType'"><DictTag type="pm_cost_type" :value="record.costType" /></template>
             <template v-else-if="column.key === 'amount'">{{ formatMoney(record.amount) }}</template>
             <template v-else-if="column.key === 'source'">
-              <a-tag v-if="record.source === 'ISSUE'" color="cyan" :bordered="false">{{ $t('pm.cost.issue') }} {{ record.sourceNo }}</a-tag>
+              <a-tag v-if="record.source === CostSource.ISSUE" color="cyan" :bordered="false">{{ $t('pm.cost.issue') }} {{ record.sourceNo }}</a-tag>
               <span v-else class="sub-text">{{ $t('pm.cost.manual') }}</span>
-              <DictTag v-if="record.status && record.status !== 'APPROVED'" type="sys_approve_status" :value="record.status" />
+              <DictTag v-if="record.status && record.status !== ApproveStatus.APPROVED" type="sys_approve_status" :value="record.status" />
             </template>
             <template v-else-if="column.key === 'action'">
-              <span v-if="record.source === 'MANUAL'" v-perm="'pm:cost:remove'">
+              <span v-if="record.source === CostSource.MANUAL" v-perm="'pm:cost:remove'">
                 <a-popconfirm :title="$t('pm.cost.confirmDelete')" @confirm="removeCost(record.id)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
@@ -148,7 +148,9 @@ import { formatMoney } from '@/components/scm/scm'
 import { shortMoney, periodLabel } from '@/components/charts/charts'
 import { MANUAL_COST_TYPES, today } from '@/components/pm/pm'
 import { t } from '@/locales'
+import { useAction } from '@/composables/useAction'
 
+import { ApproveStatus, CostSource, CostType, ProjectStatus } from '@/constants/enums'
 const STORAGE_KEY = 'pm-plan-project'
 const dict = useDict('pm_cost_type', 'sys_approve_status')
 
@@ -158,7 +160,7 @@ const budgets = ref([])
 const monthly = ref([])
 const loading = ref(false)
 
-const openProject = computed(() => project.value && !['FINISHED', 'CLOSED'].includes(project.value.status))
+const openProject = computed(() => project.value && ![ProjectStatus.FINISHED, ProjectStatus.CLOSED].includes(project.value.status))
 const typeLabel = (v) => findDict(dict.pm_cost_type, v)?.label || v
 // 人工成本来自已审批的工时，不能手工录入：显示为禁用并说明原因
 const manualTypeOptions = computed(() =>
@@ -253,7 +255,7 @@ onMounted(async () => {
   // 没有记住的项目时默认选中第一个进行中的项目
   if (!projectId.value) {
     const list = await projectOptions().catch(() => [])
-    projectId.value = (list.find((p) => p.status === 'ACTIVE') || list[0])?.id
+    projectId.value = (list.find((p) => p.status === ProjectStatus.ACTIVE) || list[0])?.id
   }
   refresh()
 })
@@ -287,7 +289,7 @@ const costRef = ref()
 const costForm = ref({})
 
 function openCost() {
-  costForm.value = { costType: 'TRAVEL', costDate: today(), amount: undefined, description: undefined }
+  costForm.value = { costType: CostType.TRAVEL, costDate: today(), amount: undefined, description: undefined }
   costOpen.value = true
 }
 
@@ -308,11 +310,7 @@ async function saveCost() {
   }
 }
 
-async function removeCost(id) {
-  await deleteCost(id)
-  message.success(t('common.msg.deleteSuccess'))
-  refresh()
-}
+const removeCost = useAction(deleteCost, { successKey: 'common.msg.deleteSuccess', reload: () => refresh() })
 
 const issueOpen = ref(false)
 </script>

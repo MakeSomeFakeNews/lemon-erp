@@ -19,7 +19,7 @@
         ORDER BY 1
     </select>
 
-    <select id="selectBackorders" resultType="java.util.Map">
+    <select id="selectBackorders" resultType="com.lemon.erp.modules.scm.dto.BackorderRow">
         SELECT o.id AS "orderId", o.order_no AS "orderNo", o.kind AS "kind", o.order_date AS "orderDate",
                COALESCE(sp.name, cu.name) AS "partnerName", i.id AS "orderItemId", i.material_id AS "materialId", m.code AS "materialCode",
                m.name AS "materialName", m.spec AS "spec", m.unit AS "unit",

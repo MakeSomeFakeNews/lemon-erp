@@ -35,7 +35,7 @@
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="qms_capa_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === 'OPEN' ? $t('qms.capa.handle') : $t('common.action.view') }}</a-button>
+            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === CapaStatus.OPEN ? $t('qms.capa.handle') : $t('common.action.view') }}</a-button>
           </template>
         </template>
       </a-table>
@@ -46,7 +46,7 @@
         <a-form-item :label="$t('qms.capa.source')" name="source">
           <a-radio-group v-model:value="form.source" :options="toOptions(dict.qms_capa_source)" />
         </a-form-item>
-        <a-form-item v-if="form.source === 'NCR'" :label="$t('qms.capa.ncr')" name="ncrId">
+        <a-form-item v-if="form.source === CapaSource.NCR" :label="$t('qms.capa.ncr')" name="ncrId">
           <a-select
             v-model:value="form.ncrId"
             show-search
@@ -81,7 +81,7 @@
     <SubPage :open="detailOpen" :title="detail ? `8D ${detail.capaNo} ${detail.title}` : ''" width="min(980px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <a-space>
-          <template v-if="detail.status === 'OPEN'">
+          <template v-if="detail.status === CapaStatus.OPEN">
             <a-button v-perm="'qms:capa:add'" @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
             <span v-perm="'qms:capa:remove'">
               <a-popconfirm :title="$t('qms.capa.deleteConfirm')" @confirm="remove">
@@ -96,7 +96,7 @@
               </a-popconfirm>
             </span>
           </template>
-          <a-button v-if="detail.status === 'VERIFYING'" v-perm="'qms:capa:verify'" type="primary" @click="openVerify">{{ $t('qms.capa.verify') }}</a-button>
+          <a-button v-if="detail.status === CapaStatus.VERIFYING" v-perm="'qms:capa:verify'" type="primary" @click="openVerify">{{ $t('qms.capa.verify') }}</a-button>
         </a-space>
       </template>
       <template v-if="detail">
@@ -176,6 +176,7 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
+import { CapaSource, CapaStatus } from '@/constants/enums'
 /** 纠正预防（8D）：D1 ~ D8 逐步填写，全部完成后效果验证 */
 const dict = useDict('qms_capa_source', 'qms_capa_status')
 const route = useRoute()
@@ -210,7 +211,7 @@ const { checked, visibleColumns } = useColumns(columns, 'qms-capa')
 const query = reactive({ status: undefined, keyword: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageCapa, query)
 
-const overdue = (r) => r.status !== 'CLOSED' && dayjs(r.dueDate).isBefore(dayjs(), 'day')
+const overdue = (r) => r.status !== CapaStatus.CLOSED && dayjs(r.dueDate).isBefore(dayjs(), 'day')
 
 // ---------------------------------------------------------------- 新增 / 编辑
 const rules = {
@@ -234,7 +235,7 @@ const drawer = useFormDrawer({
   update: updateCapa,
   toPayload: (f) => ({
     source: f.source,
-    ncrId: f.source === 'NCR' ? f.ncrId : null,
+    ncrId: f.source === CapaSource.NCR ? f.ncrId : null,
     title: f.title,
     description: f.description || null,
     ownerId: f.ownerId,
@@ -266,7 +267,7 @@ onMounted(async () => {
 // ---------------------------------------------------------------- 详情与步骤
 const detailOpen = ref(false)
 const detail = ref()
-const editable = computed(() => detail.value?.status === 'OPEN')
+const editable = computed(() => detail.value?.status === CapaStatus.OPEN)
 const doneCount = computed(() => (detail.value?.steps || []).filter((s) => s.done === 1).length)
 const editing = reactive({})
 const stepSaving = ref(false)

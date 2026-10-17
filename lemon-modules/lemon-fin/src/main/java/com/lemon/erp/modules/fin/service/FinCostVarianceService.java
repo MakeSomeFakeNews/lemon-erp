@@ -17,7 +17,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -96,7 +95,7 @@ public class FinCostVarianceService {
             BigDecimal sp = s == null ? BigDecimal.ZERO : s.getUnitCost();
             WmsMaterial m = info.get(id);
             list.add(new Component(id, m == null ? null : m.getCode(), m == null ? null : m.getName(), m == null ? null : m.getUnit(),
-                    uq, sq.setScale(4, RoundingMode.HALF_UP), aq, amount, sp, s != null,
+                    uq, Decimals.qty(sq), aq, amount, sp, s != null,
                     Decimals.money(aq.subtract(sq).multiply(sp)), Decimals.money(amount.subtract(aq.multiply(sp)))));
         }
         return list;
@@ -119,7 +118,8 @@ public class FinCostVarianceService {
         r.setStdLabor(Decimals.money(f.multiply(r.getStdUnitLabor())));
         r.setStdOverhead(Decimals.money(f.multiply(r.getStdUnitOverhead())));
         r.setStdTotal(r.getStdMaterial().add(r.getStdLabor()).add(r.getStdOverhead()));
-        r.setStdHours(f.multiply(r.getStdUnitHours()).setScale(4, RoundingMode.HALF_UP));
+        // 工时与数量同为 4 位
+        r.setStdHours(Decimals.qty(f.multiply(r.getStdUnitHours())));
         BigDecimal issuedAtStd = Decimals.money(r.getIssuedAtStd());
         r.setMaterialPrice(r.getActualMaterial().subtract(issuedAtStd));
         r.setMaterialUsage(issuedAtStd.subtract(r.getStdMaterial()));
@@ -137,7 +137,8 @@ public class FinCostVarianceService {
         if (unitHours.signum() == 0) {
             return BigDecimal.ZERO;
         }
-        return Decimals.money(actualHours.subtract(stdHours).multiply(unitCost).divide(unitHours, 10, RoundingMode.HALF_UP));
+        // 中间结果保留 10 位，最后按金额舍入
+        return Decimals.money(actualHours.subtract(stdHours).multiply(unitCost).divide(unitHours, 10, Decimals.ROUNDING));
     }
 
     private static CostVariance total(List<CostVariance> rows) {

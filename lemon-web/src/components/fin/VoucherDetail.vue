@@ -87,6 +87,7 @@ import { printDocs } from '@/utils/print'
 import { useI18n } from 'vue-i18n'
 import { isZh } from '@/locales'
 
+import { VoucherSource, VoucherStatus } from '@/constants/enums'
 /** 凭证详情（凭证样式），按状态提供编辑、审核、记账等操作；触发 edit(voucher)、changed */
 const props = defineProps({
   open: Boolean,
@@ -164,7 +165,7 @@ const actions = computed(() => {
   if (!d) return []
   const can = (p) => userStore.hasPerm(`fin:voucher:${p}`)
   const list = []
-  if (d.status === 'DRAFT') {
+  if (d.status === VoucherStatus.DRAFT) {
     if (can('remove') && canDeleteVoucher(d))
       list.push({
         key: 'remove',
@@ -173,7 +174,7 @@ const actions = computed(() => {
         run: () =>
           Modal.confirm({
             title: t('fin.voucherDetail.confirmDelete', { no: d.voucherNo }),
-            content: d.sourceType !== 'MANUAL' ? t('fin.voucherDetail.deleteTip') : undefined,
+            content: d.sourceType !== VoucherSource.MANUAL ? t('fin.voucherDetail.deleteTip') : undefined,
             okType: 'danger',
             async onOk() {
               await deleteVoucher(d.id)
@@ -183,15 +184,15 @@ const actions = computed(() => {
             }
           })
       })
-    if (d.sourceType === 'MANUAL' && can('edit')) list.push({ key: 'edit', label: t('common.action.edit'), run: () => emit('edit', d) })
+    if (d.sourceType === VoucherSource.MANUAL && can('edit')) list.push({ key: 'edit', label: t('common.action.edit'), run: () => emit('edit', d) })
     if (can('add')) list.push({ key: 'submit', label: t('fin.voucherDetail.submit'), run: () => act('submit', t('fin.voucherDetail.submit')) })
     if (can('audit')) list.push({ key: 'audit', label: t('common.action.audit'), primary: true, run: () => act('audit', t('common.action.audit')) })
   }
-  if (d.status === 'AUDITED') {
+  if (d.status === VoucherStatus.AUDITED) {
     if (can('audit')) list.push({ key: 'unaudit', label: t('common.action.unaudit'), run: () => act('unaudit', t('common.action.unaudit')) })
     if (can('post')) list.push({ key: 'post', label: t('fin.voucherDetail.post'), primary: true, run: () => act('post', t('fin.voucherDetail.post')) })
   }
-  if (d.status === 'POSTED' && d.sourceType !== 'CLOSE' && can('post')) {
+  if (d.status === VoucherStatus.POSTED && d.sourceType !== VoucherSource.CLOSE && can('post')) {
     list.push({ key: 'unpost', label: t('fin.voucherDetail.unpost'), run: () => act('unpost', t('fin.voucherDetail.unpost')) })
   }
   if (canReverse(d) && can('reverse')) {

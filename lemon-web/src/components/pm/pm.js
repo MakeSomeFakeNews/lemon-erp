@@ -1,21 +1,22 @@
 import dayjs from 'dayjs'
 import { t } from '@/locales'
 
+import { CostType, ProjectStatus } from '@/constants/enums'
 /** 项目状态操作：当前状态 → 可执行的操作（与后端 PmProjectService 的状态流转一致） */
 export const STATUS_ACTIONS = {
-  PLANNING: [{ status: 'ACTIVE', label: t('pm.status.start'), confirm: t('pm.status.startTip') }],
+  PLANNING: [{ status: ProjectStatus.ACTIVE, label: t('pm.status.start'), confirm: t('pm.status.startTip') }],
   ACTIVE: [
-    { status: 'SUSPENDED', label: t('pm.status.suspend'), confirm: t('pm.status.suspendTip') },
-    { status: 'FINISHED', label: t('pm.status.finish'), confirm: t('pm.status.finishTip') }
+    { status: ProjectStatus.SUSPENDED, label: t('pm.status.suspend'), confirm: t('pm.status.suspendTip') },
+    { status: ProjectStatus.FINISHED, label: t('pm.status.finish'), confirm: t('pm.status.finishTip') }
   ],
-  SUSPENDED: [{ status: 'ACTIVE', label: t('pm.status.resume'), confirm: t('pm.status.resumeTip') }],
-  FINISHED: [{ status: 'CLOSED', label: t('pm.status.close'), confirm: t('pm.status.closeTip') }],
+  SUSPENDED: [{ status: ProjectStatus.ACTIVE, label: t('pm.status.resume'), confirm: t('pm.status.resumeTip') }],
+  FINISHED: [{ status: ProjectStatus.CLOSED, label: t('pm.status.close'), confirm: t('pm.status.closeTip') }],
   CLOSED: []
 }
 
 /** 成本类型（与后端 PmCostService.COST_TYPES 一致），人工成本来自工时 */
-export const COST_TYPES = ['LABOR', 'MATERIAL', 'TRAVEL', 'OUTSOURCE', 'EQUIPMENT', 'OTHER']
-export const MANUAL_COST_TYPES = COST_TYPES.filter((t) => t !== 'LABOR')
+export const COST_TYPES = [CostType.LABOR, CostType.MATERIAL, CostType.TRAVEL, CostType.OUTSOURCE, CostType.EQUIPMENT, CostType.OTHER]
+export const MANUAL_COST_TYPES = COST_TYPES.filter((t) => t !== CostType.LABOR)
 
 /** 绩效指数标签：≥ 1 绿色，< 1 红色 */
 export function indexTag(v) {

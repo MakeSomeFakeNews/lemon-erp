@@ -102,6 +102,7 @@ import { autoReserveOrder, orderReservations, releaseOrderReservations, reserveO
 import { freeStock } from '@/api/wms/reservation'
 import { formatQty, rowKey } from '@/components/wms/wms'
 import { openQty, qty4 } from './scm'
+import { useAction } from '@/composables/useAction'
 
 /** 销售订单的库存预留：查看、手工预留、一键预留、全部释放 */
 const props = defineProps({
@@ -228,11 +229,7 @@ async function submitAuto() {
   }
 }
 
-async function releaseAll() {
-  await releaseOrderReservations(props.order.id)
-  message.success(t('scm.reservation.released'))
-  load()
-}
+const releaseAll = useAction(() => releaseOrderReservations(props.order.id), { successKey: 'scm.reservation.released', reload: () => load() })
 
 defineExpose({ reload: load })
 </script>

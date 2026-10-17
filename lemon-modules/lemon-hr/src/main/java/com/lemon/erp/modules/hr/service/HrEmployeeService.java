@@ -37,7 +37,6 @@ import com.lemon.erp.modules.hr.mapper.HrSalaryHistoryMapper;
 import com.lemon.erp.modules.hr.mapper.HrSalaryMapper;
 import com.lemon.erp.modules.hr.model.ChangeType;
 import com.lemon.erp.modules.hr.model.EmployeeStatus;
-import com.lemon.erp.modules.hr.model.HrConstants;
 import com.lemon.erp.modules.hr.model.HrDictValues;
 import com.lemon.erp.modules.system.service.SysDeptService;
 import lombok.RequiredArgsConstructor;
@@ -86,6 +85,7 @@ public class HrEmployeeService {
     private final ApprovalSupport approvalSupport;
     private final ChangeLogger changeLogger;
     private final DictLookup dictLookup;
+    private final HrRuleService ruleService;
 
     /** @param deptId 部门（含下级部门） */
     @DataPermission(table = "hr_employee", deptColumn = "dept_id", userColumn = "user_id")
@@ -155,7 +155,7 @@ public class HrEmployeeService {
         e.setEntryDate(req.entryDate());
         e.setStatus(req.status() == EmployeeStatus.REGULAR ? EmployeeStatus.REGULAR : EmployeeStatus.PROBATION);
         e.setRegularDate(req.regularDate() != null ? req.regularDate()
-                : e.getStatus() == EmployeeStatus.PROBATION ? req.entryDate().plusMonths(HrConstants.PROBATION_MONTHS) : req.entryDate());
+                : e.getStatus() == EmployeeStatus.PROBATION ? req.entryDate().plusMonths(ruleService.current().probationMonths()) : req.entryDate());
         employeeMapper.insert(e);
         HrEmployeeChange c = newChange(e.getId(), ChangeType.ENTRY, req.entryDate(), "入职");  // i18n-ignore 异动原因存库
         c.setToDeptId(e.getDeptId());

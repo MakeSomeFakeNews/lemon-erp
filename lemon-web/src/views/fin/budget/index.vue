@@ -151,7 +151,9 @@ import { addBudget, budgetExecution, deleteBudget, listBudget, updateBudget } fr
 import { useDict } from '@/composables/useDict'
 import { toOptions } from '@/utils/dict'
 import { formatMoney } from '@/components/fin/fin'
+import { useAction } from '@/composables/useAction'
 
+import { BudgetControl } from '@/constants/enums'
 const { t } = useI18n()
 const dict = useDict('fin_budget_control')
 
@@ -211,7 +213,7 @@ function openForm(record) {
   form.value = record
     ? { id: record.id, budgetYear: record.budgetYear, deptId: record.deptId || undefined, accountId: record.accountId,
         months: MONTH_KEYS.map((k) => Number(record[k])), controlMode: record.controlMode || 'NONE', remark: record.remark }
-    : { budgetYear: year.value, deptId: deptId.value, accountId: undefined, months: Array(12).fill(0), controlMode: 'NONE', remark: '' }
+    : { budgetYear: year.value, deptId: deptId.value, accountId: undefined, months: Array(12).fill(0), controlMode: BudgetControl.NONE, remark: '' }
   spread.value = undefined
   formOpen.value = true
 }
@@ -235,11 +237,7 @@ async function submit() {
     saving.value = false
   }
 }
-async function remove(id) {
-  await deleteBudget(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteBudget, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

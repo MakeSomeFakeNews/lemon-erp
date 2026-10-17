@@ -31,7 +31,7 @@
             <div v-if="record.pickTime" class="sub-text">{{ record.pickByName }} {{ record.pickTime }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === 'PICKING' ? $t('scm.wave.pick') : $t('common.action.view') }}</a-button>
+            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === WaveStatus.PICKING ? $t('scm.wave.pick') : $t('common.action.view') }}</a-button>
           </template>
         </template>
       </a-table>
@@ -41,7 +41,7 @@
       <template v-if="detail" #extra>
         <a-space wrap>
           <a-button @click="print"><template #icon><PrinterOutlined /></template>{{ $t('scm.wave.printPickList') }}</a-button>
-          <template v-if="detail.status === 'PICKING'">
+          <template v-if="detail.status === WaveStatus.PICKING">
             <span v-perm="'scm:wave:add'">
               <a-popconfirm :title="$t('scm.wave.cancelConfirm')" @confirm="cancel"><a-button danger>{{ $t('scm.wave.cancelWave') }}</a-button></a-popconfirm>
             </span>
@@ -101,7 +101,7 @@
                 <template v-if="column.key === 'status'"><DictTag type="scm_delivery_status" :value="record.status" /></template>
                 <template v-else-if="column.key === 'qty'">{{ formatQty(record.totalQty) }}</template>
                 <template v-else-if="column.key === 'action'">
-                  <span v-if="detail.status === 'PICKING' && record.status === 'PENDING'" v-perm="'scm:wave:add'">
+                  <span v-if="detail.status === WaveStatus.PICKING && record.status === DeliveryStatus.PENDING" v-perm="'scm:wave:add'">
                     <a-popconfirm :title="$t('scm.wave.removeConfirm')" @confirm="remove(record.id)">
                       <a-button type="link" size="small" danger>{{ $t('scm.wave.remove') }}</a-button>
                     </a-popconfirm>
@@ -133,7 +133,9 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { printDocs } from '@/utils/print'
 import { useI18n } from 'vue-i18n'
+import { useAction } from '@/composables/useAction'
 
+import { DeliveryStatus, WaveStatus } from '@/constants/enums'
 /** 波次拣货：多张发货通知合并拣货，拣货单按库位路径汇总，再按单分拣 */
 const { t } = useI18n()
 const dict = useDict('scm_wave_status', 'scm_delivery_status')
@@ -186,11 +188,7 @@ const refresh = () => {
   openDetail(detail.value.id)
   load()
 }
-async function resuggest() {
-  await resuggestWave(detail.value.id)
-  message.success(t('scm.wave.resuggested'))
-  refresh()
-}
+const resuggest = useAction(() => resuggestWave(detail.value.id), { successKey: 'scm.wave.resuggested', reload: () => refresh() })
 const completeTip = computed(() => (pick.value.shortages.length
   ? t('scm.wave.completeTipShort')
   : t('scm.wave.completeTip')))
@@ -212,16 +210,8 @@ async function complete() {
   }
   refresh()
 }
-async function cancel() {
-  await cancelWave(detail.value.id)
-  message.success(t('scm.wave.cancelled'))
-  refresh()
-}
-async function remove(deliveryId) {
-  await removeWaveDelivery(detail.value.id, deliveryId)
-  message.success(t('scm.wave.removed'))
-  refresh()
-}
+const cancel = useAction(() => cancelWave(detail.value.id), { successKey: 'scm.wave.cancelled', reload: () => refresh() })
+const remove = useAction((deliveryId) => removeWaveDelivery(detail.value.id, deliveryId), { successKey: 'scm.wave.removed', reload: () => refresh() })
 
 function print() {
   const w = detail.value

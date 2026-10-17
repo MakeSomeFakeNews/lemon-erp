@@ -52,7 +52,7 @@
         <a-tabs v-model:active-key="tab">
           <a-tab-pane key="member" :tab="$t('pm.detail.membersTab', { n: members.length })">
             <div class="tab-toolbar">
-              <a-button v-perm="'pm:member:edit'" type="primary" size="small" :disabled="project.status === 'CLOSED'" @click="openMember()">
+              <a-button v-perm="'pm:member:edit'" type="primary" size="small" :disabled="project.status === ProjectStatus.CLOSED" @click="openMember()">
                 <template #icon><PlusOutlined /></template>{{ $t('pm.detail.addMember') }}
               </a-button>
             </div>
@@ -86,7 +86,7 @@
                      :pagination="timesheets.pagination" :scroll="{ x: 800 }" @change="(p) => loadTimesheets(p.current)">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'status'"><DictTag type="pm_timesheet_status" :value="record.status" /></template>
-                <template v-else-if="column.key === 'cost'">{{ record.status === 'APPROVED' ? formatMoney(record.cost) : '-' }}</template>
+                <template v-else-if="column.key === 'cost'">{{ record.status === ApproveStatus.APPROVED ? formatMoney(record.cost) : '-' }}</template>
               </template>
             </a-table>
           </a-tab-pane>
@@ -184,6 +184,7 @@ import { formatMoney } from '@/components/scm/scm'
 import { indexTag } from './pm'
 import { t } from '@/locales'
 
+import { ApproveStatus, ProjectStatus } from '@/constants/enums'
 /** 项目详情：基本信息、进度与成本概况、成员、计划（甘特图）、工时、费用、收款 */
 const props = defineProps({
   open: Boolean,

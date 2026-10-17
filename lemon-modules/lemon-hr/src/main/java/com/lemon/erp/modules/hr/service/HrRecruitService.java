@@ -2,7 +2,6 @@ package com.lemon.erp.modules.hr.service;
 
 import com.lemon.erp.modules.hr.model.CandidateStage;
 import com.lemon.erp.modules.hr.model.EmployeeStatus;
-import com.lemon.erp.modules.hr.model.HrConstants;
 import com.lemon.erp.modules.hr.model.HrDictValues;
 import com.lemon.erp.modules.hr.model.InterviewResult;
 import com.lemon.erp.modules.hr.model.RecruitStatus;
@@ -65,6 +64,7 @@ public class HrRecruitService {
     private final HrSalaryService salaryService;
     private final HrEmployeeMapper employeeMapper;
     private final HrPositionMapper positionMapper;
+    private final HrRuleService ruleService;
 
     public PageResult<HrRecruit> page(long current, long size, String keyword, String status, Long deptId) {
         Page<HrRecruit> page = Page.of(current, size);
@@ -298,7 +298,7 @@ public class HrRecruitService {
                 c.getPhone(), c.getEmail(), c.getEducation(), r.getDeptId(),
                 req.positionId() != null ? req.positionId() : r.getPositionId(), userId, null,
                 StringUtils.hasText(req.empType()) ? req.empType() : HrDictValues.EMP_TYPE_FULL_TIME, EmployeeStatus.PROBATION, req.entryDate(),
-                req.regularDate() != null ? req.regularDate() : req.entryDate().plusMonths(HrConstants.PROBATION_MONTHS), null, null, null,
+                req.regularDate() != null ? req.regularDate() : req.entryDate().plusMonths(ruleService.current().probationMonths()), null, null, null,
                 "招聘录用 " + r.getRecruitNo(), null));  // i18n-ignore 员工备注存库
         if (req.baseSalary() != null) {
             salaryService.save(employeeId, new SalaryRequest(req.baseSalary(), null, null, null, req.baseSalary(), req.baseSalary(),

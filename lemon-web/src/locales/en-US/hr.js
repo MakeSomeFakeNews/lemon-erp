@@ -398,7 +398,7 @@ export default {
     cancelled: 'Cancelled',
     annualOption: '{label} ({n} days left)',
     leaveHint: 'Calculated as 8 hours per working day and can be changed; enter 4 hours for half a day',
-    overtimeHint: 'Overtime pay: 1.5x on workdays, 2x on rest days, 3x on public holidays',
+    overtimeHint: 'Overtime pay: by default 1.5x on workdays, 2x on rest days, 3x on public holidays (change in System → Business Parameters)',
     submitted: 'Submitted, awaiting approval'
   },
   attendance: {
@@ -555,8 +555,8 @@ export default {
     payVoucher: '· Payment voucher: {no} ({date})',
     confirmedBy: '· Confirmed by {name} {time}',
     keywordPh: 'Employee no. or name',
-    dailyTip: 'Daily wage = (base salary + position allowance) / 21.75; attendance deductions cover absence, personal leave, 40% of sick leave, and CNY 50 per late arrival or early leave',
-    taxTip: 'Income tax uses cumulative withholding: YTD taxable income = cumulative (gross pay − employee social insurance & housing fund − special additional deductions − 5000); tax this month = cumulative tax payable − tax already withheld',
+    dailyTip: 'Daily wage = (base salary + position allowance) / monthly paid days (21.75 by default); attendance deductions cover absence, personal leave, sick leave (40% by default) and late arrival or early leave (CNY 50 each by default), configurable in System → Business Parameters',
+    taxTip: 'Income tax uses cumulative withholding: YTD taxable income = cumulative (gross pay − employee social insurance & housing fund − special additional deductions − basic deduction (5000 by default)); tax this month = cumulative tax payable − tax already withheld',
     deductTip: 'Absent {absent} days · Late/early {late} times · Personal leave {personal} h · Sick leave {sick} h',
     hoursN: '{n} h',
     adjust: 'Adjust',
@@ -708,7 +708,7 @@ export default {
     perfBonusBase: 'Performance Bonus Base',
     perfBonusBaseExtra: 'Actual = base × performance factor (S 1.5 / A 1.2 / B 1.0 / C 0.8 / D 0)',
     scheme: 'Social Insurance Scheme',
-    schemeExtra: 'Social insurance is calculated using the scheme rates and base limits; if none is selected, default rates apply (employee 10.5%, employer 26%)',
+    schemeExtra: 'Social insurance is calculated using the scheme rates and base limits; if none is selected, default rates apply (employee 10.5%, employer 26% by default, configurable in System → Business Parameters)',
     socialBase: 'Social Insurance Base',
     socialBaseExtra: 'Defaults to base salary + position allowance',
     housingBase: 'Housing Fund Base',
@@ -732,7 +732,7 @@ export default {
   },
   social: {
     add: 'Add Scheme',
-    tip: 'Select a social insurance scheme for employees in Salary Profiles; employees without a scheme use the default rates (employee 10.5%, employer 26%). The contribution base is capped by the scheme limits; an upper limit of 0 means no limit.',
+    tip: 'Select a social insurance scheme for employees in Salary Profiles; employees without a scheme use the default rates in Business Parameters (employee 10.5%, employer 26% by default). The contribution base is capped by the scheme limits; an upper limit of 0 means no limit.',
     confirmDelete: 'Delete social insurance scheme "{name}"?',
     createTitle: 'Add Social Insurance Scheme',
     editTitle: 'Edit Social Insurance Scheme',

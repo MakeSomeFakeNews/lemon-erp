@@ -51,21 +51,21 @@
               </template>
               <template v-else-if="column.key === 'action'">
                 <span class="table-actions">
-                  <template v-if="record.status !== 'DISPOSED'">
+                  <template v-if="record.status !== AssetStatus.DISPOSED">
                     <a-button v-perm="'fin:asset:edit'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
                     <a-dropdown v-perm="'fin:asset:move'">
                       <a-button type="link" size="small">{{ $t('fin.asset.move') }} <DownOutlined /></a-button>
                       <template #overlay>
                         <a-menu @click="({ key }) => openMove(record, key)">
-                          <a-menu-item v-if="record.status === 'IDLE'" key="ASSIGN">{{ $t('fin.asset.assign') }}</a-menu-item>
-                          <a-menu-item v-if="record.status === 'IN_USE'" key="RETURN">{{ $t('fin.asset.return') }}</a-menu-item>
+                          <a-menu-item v-if="record.status === AssetStatus.IDLE" key="ASSIGN">{{ $t('fin.asset.assign') }}</a-menu-item>
+                          <a-menu-item v-if="record.status === AssetStatus.IN_USE" key="RETURN">{{ $t('fin.asset.return') }}</a-menu-item>
                           <a-menu-item key="TRANSFER">{{ $t('fin.asset.transfer') }}</a-menu-item>
                         </a-menu>
                       </template>
                     </a-dropdown>
                   </template>
                   <a-button type="link" size="small" @click="openHistory(record)">{{ $t('fin.asset.history') }}</a-button>
-                  <template v-if="record.status !== 'DISPOSED'">
+                  <template v-if="record.status !== AssetStatus.DISPOSED">
                     <a-button v-perm="'fin:asset:edit'" type="link" size="small" @click="dispose(record)">{{ $t('fin.asset.dispose') }}</a-button>
                     <span v-if="record.depreciatedMonths === 0" v-perm="'fin:asset:remove'">
                       <a-popconfirm :title="$t('fin.asset.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
@@ -240,7 +240,7 @@
           </a-col>
           <a-col :span="12">
             <a-form-item :label="$t('fin.asset.settleAccount')" :extra="disposeForm.income || disposeForm.expense ? '' : $t('fin.asset.settleAccountExtra')">
-              <AccountSelect v-model:value="disposeForm.settleAccountId" :prefix="['1001', '1002']" :placeholder="$t('fin.asset.settleAccountPh')" />
+              <AccountSelect v-model:value="disposeForm.settleAccountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.asset.settleAccountPh')" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -272,9 +272,9 @@
               <a-date-picker v-model:value="moveForm.moveDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
-          <template v-if="moveForm.moveType !== 'RETURN'">
+          <template v-if="moveForm.moveType !== AssetMoveType.RETURN">
             <a-col :span="12">
-              <a-form-item :label="$t('fin.asset.useDept')" :required="moveForm.moveType === 'ASSIGN'">
+              <a-form-item :label="$t('fin.asset.useDept')" :required="moveForm.moveType === AssetMoveType.ASSIGN">
                 <DeptSelect v-model:value="moveForm.deptId" />
               </a-form-item>
             </a-col>
@@ -285,7 +285,7 @@
             </a-col>
           </template>
           <a-col :span="12">
-            <a-form-item :label="moveForm.moveType === 'RETURN' ? $t('fin.asset.returnLocation') : $t('fin.asset.location')">
+            <a-form-item :label="moveForm.moveType === AssetMoveType.RETURN ? $t('fin.asset.returnLocation') : $t('fin.asset.location')">
               <a-input v-model:value="moveForm.location" :maxlength="128" />
             </a-form-item>
           </a-col>
@@ -295,8 +295,8 @@
             </a-form-item>
           </a-col>
         </a-row>
-        <div v-if="moveForm.moveType === 'RETURN'" class="sub-text">{{ $t('fin.asset.returnHint') }}</div>
-        <div v-else-if="moveForm.moveType === 'ASSIGN'" class="sub-text">{{ $t('fin.asset.assignHint') }}</div>
+        <div v-if="moveForm.moveType === AssetMoveType.RETURN" class="sub-text">{{ $t('fin.asset.returnHint') }}</div>
+        <div v-else-if="moveForm.moveType === AssetMoveType.ASSIGN" class="sub-text">{{ $t('fin.asset.assignHint') }}</div>
       </a-form>
     </a-modal>
     <a-modal v-model:open="historyOpen" :title="$t('fin.asset.historyTitle', { code: historyTarget?.code || '', name: historyTarget?.name || '' })" width="min(1000px, 100vw)" :footer="null">
@@ -335,7 +335,9 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { today } from '@/components/wms/wms'
 import { currentPeriod, formatMoney } from '@/components/fin/fin'
+import { useAction } from '@/composables/useAction'
 
+import { AssetMoveType, AssetStatus } from '@/constants/enums'
 const { t } = useI18n()
 const dict = useDict('fin_asset_category', 'fin_asset_status', 'fin_asset_move_type')
 const tab = ref('cards')
@@ -369,7 +371,7 @@ const FIELDS = ['code', 'name', 'category', 'model', 'deptId', 'custodianId', 'l
   'openingMonths', 'openingAccumulated', 'supplierId', 'taxAmount']
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, code: '', name: '', category: 'ELECTRONIC', model: '', deptId: undefined, custodianId: undefined, location: '', useDate: today(), originalValue: undefined,
-    residualRate: 5, usefulMonths: 36, expenseAccountId: undefined, status: 'IN_USE', remark: '', depreciatedMonths: 0,
+    residualRate: 5, usefulMonths: 36, expenseAccountId: undefined, status: AssetStatus.IN_USE, remark: '', depreciatedMonths: 0,
     supplierId: undefined, taxAmount: undefined }),
   fetch: async (record) => {
     const a = await getAsset(record.id)
@@ -428,18 +430,18 @@ const MOVE_TITLES = { ASSIGN: t('fin.asset.assign'), RETURN: t('fin.asset.return
 const moveOpen = ref(false)
 const moving = ref(false)
 const moveTarget = ref()
-const moveForm = reactive({ moveType: 'TRANSFER', moveDate: undefined, deptId: undefined, userId: undefined, location: '', remark: '' })
+const moveForm = reactive({ moveType: AssetMoveType.TRANSFER, moveDate: undefined, deptId: undefined, userId: undefined, location: '', remark: '' })
 function openMove(record, type) {
   moveTarget.value = record
   // 调拨默认带出当前值，只改变化的部分；领用填写新的使用部门和使用人；归还清空使用人
-  const keep = type === 'TRANSFER'
-  Object.assign(moveForm, { moveType: type, moveDate: today(), deptId: keep || type === 'ASSIGN' ? record.deptId : undefined,
+  const keep = type === AssetMoveType.TRANSFER
+  Object.assign(moveForm, { moveType: type, moveDate: today(), deptId: keep || type === AssetMoveType.ASSIGN ? record.deptId : undefined,
     userId: keep ? record.custodianId : undefined, userName: keep ? record.custodianName : undefined,
-    location: type === 'RETURN' ? '' : record.location || '', remark: '' })
+    location: type === AssetMoveType.RETURN ? '' : record.location || '', remark: '' })
   moveOpen.value = true
 }
 async function submitMove() {
-  if (moveForm.moveType === 'ASSIGN' && !moveForm.deptId) return message.warning(t('common.rule.requiredSelect', { name: t('fin.asset.useDept') }))
+  if (moveForm.moveType === AssetMoveType.ASSIGN && !moveForm.deptId) return message.warning(t('common.rule.requiredSelect', { name: t('fin.asset.useDept') }))
   moving.value = true
   try {
     const { userName, ...data } = moveForm
@@ -470,11 +472,7 @@ async function openHistory(record) {
 }
 const arrow = (from, to) => (from === to ? from || '-' : `${from || '-'} → ${to || '-'}`)
 
-async function remove(id) {
-  await deleteAsset(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteAsset, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- 折旧
 const depPeriod = ref(currentPeriod())

@@ -147,6 +147,8 @@ import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { addPrice, deletePrice, pagePrice, priceHistory, priceTiers, updatePrice } from '@/api/scm/partner'
 import { useTable } from '@/composables/useTable'
 import { formatQty, rowKey, today } from '@/components/wms/wms'
+import { price as formatPrice } from '@/utils/number'
+import { useAction } from '@/composables/useAction'
 
 /** 供应商的供货价格：可供应的物料、含税单价、提前期、默认供应商 */
 const props = defineProps({
@@ -190,7 +192,6 @@ const rules = {
   price: [{ required: true, message: t('scm.supplierPrice.priceRequired') }]
 }
 
-const formatPrice = (n) => Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
 const tierText = (tiers) => tiers.map((t) => `≥ ${formatQty(t.minQty)}：¥${formatPrice(t.price)}`).join(t('scm.supplierPrice.sep'))
 const toTier = (t) => ({ key: rowKey(), minQty: t?.minQty != null ? Number(t.minQty) : undefined, price: t?.price != null ? Number(t.price) : undefined })
 
@@ -284,11 +285,7 @@ async function loadHistory() {
   }
 }
 
-async function remove(id) {
-  await deletePrice(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deletePrice, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

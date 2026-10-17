@@ -6,7 +6,7 @@
           <PartnerSelect
             :key="query.kind"
             v-model:value="query.partnerId"
-            :type="query.kind === 'SALES' ? 'customer' : 'supplier'"
+            :type="query.kind === OrderKind.SALES ? 'customer' : 'supplier'"
             :placeholder="$t('common.placeholder.all')"
             allow-clear
           />
@@ -22,7 +22,7 @@
         v-model:size="size"
         v-model:checked="checked"
         v-model:show-search="showSearch"
-        :exporter="(cols) => exportAll(cols, query.kind === 'SALES' ? $t('scm.backorder.sales') : $t('scm.backorder.purchase'))"
+        :exporter="(cols) => exportAll(cols, query.kind === OrderKind.SALES ? $t('scm.backorder.sales') : $t('scm.backorder.purchase'))"
         :columns="columns"
         @refresh="load"
       >
@@ -52,7 +52,7 @@
           </template>
           <template v-else-if="column.key === 'qty'">
             {{ formatQty(record.qty) }}
-            <div class="sub-text">{{ query.kind === 'SALES' ? $t('scm.backorder.shippedN', { qty: formatQty(record.doneQty) }) : $t('scm.backorder.receivedN', { qty: formatQty(record.doneQty) }) }}</div>
+            <div class="sub-text">{{ query.kind === OrderKind.SALES ? $t('scm.backorder.shippedN', { qty: formatQty(record.doneQty) }) : $t('scm.backorder.receivedN', { qty: formatQty(record.doneQty) }) }}</div>
           </template>
           <template v-else-if="column.key === 'openQty'">
             <b>{{ formatQty(record.openQty) }}</b> <span class="sub-text">{{ record.unit }}</span>
@@ -100,6 +100,7 @@ import { columnKey, useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 import { useI18n } from 'vue-i18n'
 
+import { OrderKind } from '@/constants/enums'
 const { t } = useI18n()
 const router = useRouter()
 
@@ -107,13 +108,13 @@ const overdueDays = (r) => (r.deliveryDate ? dayjs().startOf('day').diff(dayjs(r
 /** 销售欠交：可用库存不够发未预留的部分 */
 const shortage = (r) => Number(r.availableQty || 0) < Number(r.openQty || 0) - Number(r.reservedQty || 0)
 
-const emptyQuery = () => ({ kind: 'SALES', overdueOnly: false, keyword: undefined, partnerId: undefined })
+const emptyQuery = () => ({ kind: OrderKind.SALES, overdueOnly: false, keyword: undefined, partnerId: undefined })
 const query = reactive(emptyQuery())
-const partnerLabel = computed(() => (query.kind === 'SALES' ? t('scm.backorder.customer') : t('scm.backorder.supplier')))
+const partnerLabel = computed(() => (query.kind === OrderKind.SALES ? t('scm.backorder.customer') : t('scm.backorder.supplier')))
 
 /** 列按欠交类型生成：销售多出预留、可用库存和可承诺量 */
 function buildColumns(kind) {
-  const sales = kind === 'SALES'
+  const sales = kind === OrderKind.SALES
   return [
     { title: t('scm.backorder.orderNo'), key: 'orderNo', dataIndex: 'orderNo', width: 180 },
     { title: t('scm.backorder.orderDate'), dataIndex: 'orderDate', width: 120 },
@@ -153,7 +154,7 @@ function resetQuery() {
   search()
 }
 
-const toOrder = (r) => router.push({ path: r.kind === 'PURCHASE' || query.kind === 'PURCHASE' ? '/scm/purchase' : '/scm/sales', query: { id: r.orderId } })
+const toOrder = (r) => router.push({ path: r.kind === OrderKind.PURCHASE || query.kind === OrderKind.PURCHASE ? '/scm/purchase' : '/scm/sales', query: { id: r.orderId } })
 
 const atpOpen = ref(false)
 const atpRow = ref()

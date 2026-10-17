@@ -113,6 +113,7 @@ import { useUserStore } from '@/store/user'
 import { getToken } from '@/utils/auth'
 import { imPlatform } from '@/utils/im'
 import { passwordHint, passwordRules } from '@/utils/password'
+import { useAction } from '@/composables/useAction'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -148,11 +149,7 @@ async function bindIm(b) {
     imBinding.value = null
   }
 }
-async function unbindIm(b) {
-  await unbindMyIm(b.platform)
-  message.success(t('system.im.unboundOk'))
-  loadIm()
-}
+const unbindIm = useAction((b) => unbindMyIm(b.platform), { successKey: 'system.im.unboundOk', reload: () => loadIm() })
 
 // 头像上传
 const uploadHeaders = { Authorization: `Bearer ${getToken()}` }

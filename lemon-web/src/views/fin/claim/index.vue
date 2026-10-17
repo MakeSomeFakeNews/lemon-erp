@@ -70,7 +70,7 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <template v-if="record.status === 'DRAFT'">
+              <template v-if="record.status === ExpenseClaimStatus.DRAFT">
                 <a-button v-perm="'fin:claim:add'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
                 <a-button v-perm="'fin:claim:add'" type="link" size="small" @click="submit(record)">{{ $t('common.action.submit') }}</a-button>
                 <span v-perm="'fin:claim:add'">
@@ -79,7 +79,7 @@
                   </a-popconfirm>
                 </span>
               </template>
-              <a-button v-if="record.status === 'APPROVED'" v-perm="'fin:claim:pay'" type="link" size="small" @click="openPay(record)">{{ $t('fin.claim.pay') }}</a-button>
+              <a-button v-if="record.status === ExpenseClaimStatus.APPROVED" v-perm="'fin:claim:pay'" type="link" size="small" @click="openPay(record)">{{ $t('fin.claim.pay') }}</a-button>
             </span>
           </template>
         </template>
@@ -131,8 +131,8 @@
           <a-button size="small" @click="addItem"><template #icon><PlusOutlined /></template>{{ $t('common.action.addRow') }}</a-button>
         </a-space>
       </div>
-      <a-table row-key="key" size="small" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: 980 }">
-        <template #bodyCell="{ column, record, index }">
+      <LineItemsTable :items="form.items" :columns="itemColumns" :scroll-x="980" :min-rows="1">
+        <template #cell="{ column, record }">
           <template v-if="column.key === 'expenseDate'">
             <a-date-picker v-model:value="record.expenseDate" value-format="YYYY-MM-DD" class="full" />
           </template>
@@ -148,13 +148,8 @@
           <template v-else-if="column.key === 'remark'">
             <a-input v-model:value="record.remark" :maxlength="255" :placeholder="$t('fin.claim.itemRemarkPh')" />
           </template>
-          <template v-else-if="column.key === 'action'">
-            <a-button type="link" danger size="small" :disabled="form.items.length <= 1" @click="form.items.splice(index, 1)">
-              <template #icon><DeleteOutlined /></template>
-            </a-button>
-          </template>
         </template>
-      </a-table>
+      </LineItemsTable>
     </FormDrawer>
 
     <!-- 付款 -->
@@ -170,7 +165,7 @@
       <p v-if="payTarget">{{ $t('fin.claim.payLine', { name: payTarget.userName }) }} <b>¥{{ formatMoney(payTarget.amount) }}</b></p>
       <a-form layout="vertical">
         <a-form-item :label="$t('fin.claim.payAccount')" :required="!payTarget?.loanId" :extra="payTarget?.loanId ? $t('fin.claim.payAccountExtra') : ''">
-          <AccountSelect v-model:value="payForm.accountId" :prefix="['1001', '1002']" :placeholder="$t('fin.claim.payAccountPh')" />
+          <AccountSelect v-model:value="payForm.accountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.claim.payAccountPh')" />
         </a-form-item>
         <a-form-item :label="$t('fin.claim.payDate')" required>
           <a-date-picker v-model:value="payForm.date" value-format="YYYY-MM-DD" :allow-clear="false" class="full" />
@@ -213,9 +208,10 @@ import SubPage from '@/components/SubPage.vue'
 import { computed, h, onMounted, reactive, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
+import LineItemsTable from '@/components/common/LineItemsTable.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
@@ -232,7 +228,10 @@ import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { today } from '@/components/wms/wms'
 import { formatMoney } from '@/components/fin/fin'
+import { useAction } from '@/composables/useAction'
+import { rowKey, useLineItems } from '@/composables/useLineItems'
 
+import { ExpenseClaimStatus, LoanStatus } from '@/constants/enums'
 /** 费用科目：制造费用、销售费用、管理费用、财务费用下的末级科目 */
 const EXPENSE_PREFIX = ['5101', '6601', '6602', '6603']
 
@@ -277,15 +276,10 @@ async function submit(record) {
   load()
 }
 
-async function remove(id) {
-  await deleteClaim(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteClaim, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- 新增 / 编辑
-let seq = 0
-const emptyItem = (date) => ({ key: ++seq, expenseDate: date || today(), accountId: undefined, projectId: undefined, amount: undefined, remark: '' })
+const emptyItem = (date) => ({ key: rowKey(), expenseDate: date || today(), accountId: undefined, projectId: undefined, amount: undefined, remark: '' })
 const itemColumns = [
   { title: t('fin.claim.expenseDate'), key: 'expenseDate', width: 140 },
   { title: t('fin.claim.expenseAccount'), key: 'accountId', width: 220 },
@@ -308,7 +302,7 @@ const drawer = useFormDrawer({
       loanNo: c.loanNo,
       remark: c.remark || '',
       items: (c.items || []).map((i) => ({
-        key: ++seq,
+        key: rowKey(),
         expenseDate: i.expenseDate,
         accountId: i.accountId,
         projectId: i.projectId,
@@ -333,11 +327,9 @@ const drawer = useFormDrawer({
   successMessage: t('fin.claim.savedSubmit')
 })
 const { formRef, form } = drawer
-const itemTotal = computed(() => Math.round((form.value.items || []).reduce((s, i) => s + (Number(i.amount) || 0), 0) * 100) / 100)
-function addItem() {
-  const last = form.value.items[form.value.items.length - 1]
-  form.value.items.push(emptyItem(last?.expenseDate))
-}
+const lines = useLineItems(() => form.value.items, { newRow: (items) => emptyItem(items[items.length - 1]?.expenseDate) })
+const itemTotal = lines.total('amount')
+const addItem = () => lines.addRow()
 
 // 报销人未还清的借款
 const loans = ref([])
@@ -359,7 +351,7 @@ async function loadLoans() {
   if (!userId) return
   loanLoading.value = true
   try {
-    const res = await pageLoan({ current: 1, size: 100, status: 'PAID', userId })
+    const res = await pageLoan({ current: 1, size: 100, status: LoanStatus.PAID, userId })
     if (current === loanSeq) loans.value = res.records
   } finally {
     if (current === loanSeq) loanLoading.value = false

@@ -177,7 +177,7 @@
         </foreach>
     </insert>
 
-    <select id="countRows" resultType="java.util.Map">
+    <select id="countRows" resultType="com.lemon.erp.modules.bi.dto.BiInsight$EtlOverview">
         SELECT (SELECT COUNT(*) FROM bi_fact_sales) AS "sales",
                (SELECT COUNT(*) FROM bi_fact_purchase) AS "purchase",
                (SELECT COUNT(*) FROM bi_fact_inventory) AS "inventory",

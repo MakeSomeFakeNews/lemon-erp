@@ -58,11 +58,11 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button v-if="record.status === 'PENDING'" v-perm="'mes:maintain:handle'" type="link" size="small" @click="start(record)">{{ $t('mes.maintenance.start') }}</a-button>
-              <a-button v-if="record.status === 'IN_PROGRESS'" v-perm="'mes:maintain:handle'" type="link" size="small" @click="openFinish(record)">
+              <a-button v-if="record.status === MaintenanceStatus.PENDING" v-perm="'mes:maintain:handle'" type="link" size="small" @click="start(record)">{{ $t('mes.maintenance.start') }}</a-button>
+              <a-button v-if="record.status === MaintenanceStatus.IN_PROGRESS" v-perm="'mes:maintain:handle'" type="link" size="small" @click="openFinish(record)">
                 {{ $t('mes.maintenance.finish') }}
               </a-button>
-              <span v-if="record.status === 'PENDING'" v-perm="'mes:maintain:remove'">
+              <span v-if="record.status === MaintenanceStatus.PENDING" v-perm="'mes:maintain:remove'">
                 <a-popconfirm :title="$t('mes.maintenance.confirmDelete')" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
                 </a-popconfirm>
@@ -81,7 +81,7 @@
         <a-form-item :label="$t('common.field.type')" name="type">
           <a-radio-group v-model:value="createForm.type" :options="toOptions(dict.mes_maintain_type)" />
         </a-form-item>
-        <a-form-item :label="createForm.type === 'REPAIR' ? $t('mes.maintenance.symptom') : $t('mes.maintenance.maintainContent')" name="content">
+        <a-form-item :label="createForm.type === MaintenanceType.REPAIR ? $t('mes.maintenance.symptom') : $t('mes.maintenance.maintainContent')" name="content">
           <a-textarea v-model:value="createForm.content" :rows="3" :maxlength="255" />
         </a-form-item>
         <a-row :gutter="16">
@@ -137,7 +137,9 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { formatMoney } from '@/components/scm/scm'
 import { today } from '@/components/wms/wms'
+import { useAction } from '@/composables/useAction'
 
+import { MaintenanceStatus, MaintenanceType } from '@/constants/enums'
 const route = useRoute()
 const dict = useDict('mes_maintain_type', 'mes_maintain_status')
 const { t } = useI18n()
@@ -186,7 +188,7 @@ const createRules = {
   content: [{ required: true, whitespace: true, message: t('mes.maintenance.contentRequired') }]
 }
 function openCreate(equipmentId) {
-  createForm.value = { equipmentId, type: 'REPAIR', content: '', planDate: today(), handler: '' }
+  createForm.value = { equipmentId, type: MaintenanceType.REPAIR, content: '', planDate: today(), handler: '' }
   createOpen.value = true
 }
 async function submitCreate() {
@@ -206,7 +208,7 @@ async function submitCreate() {
 function start(record) {
   Modal.confirm({
     title: t('mes.maintenance.startConfirm', { no: record.orderNo }),
-    content: record.type === 'REPAIR' ? t('mes.maintenance.startRepairContent') : undefined,
+    content: record.type === MaintenanceType.REPAIR ? t('mes.maintenance.startRepairContent') : undefined,
     async onOk() {
       await startMaintenance(record.id, record.handler)
       message.success(t('mes.maintenance.startedMsg'))
@@ -235,11 +237,7 @@ async function submitFinish() {
   }
 }
 
-async function remove(id) {
-  await deleteMaintenance(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteMaintenance, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

@@ -49,7 +49,7 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
-              <a-button v-if="record.status === 'OPEN'" v-perm="'qms:ncr:edit'" type="link" size="small" @click="openReview(record)">{{ $t('qms.ncr.review') }}</a-button>
+              <a-button v-if="record.status === NcrStatus.OPEN" v-perm="'qms:ncr:edit'" type="link" size="small" @click="openReview(record)">{{ $t('qms.ncr.review') }}</a-button>
             </span>
           </template>
         </template>
@@ -109,7 +109,7 @@
             <a-radio-button v-for="d in dispositionOptions" :key="d.value" :value="d.value" :disabled="d.disabled">{{ d.label }}</a-radio-button>
           </a-radio-group>
         </a-form-item>
-        <a-form-item v-if="review.disposition === 'REWORK'" :label="$t('qms.ncr.reworkWarehouse')" required>
+        <a-form-item v-if="review.disposition === Disposition.REWORK" :label="$t('qms.ncr.reworkWarehouse')" required>
           <WarehouseSelect v-model:value="review.reworkWarehouseId" />
         </a-form-item>
         <a-form-item :label="$t('qms.ncr.responsibility')" required>
@@ -126,19 +126,19 @@
       <template v-if="detail" #extra>
         <a-space>
           <a-button v-if="detail.flowInstanceId" @click="flowOpen = true">{{ $t('mes.ecn.flowRecord') }}</a-button>
-          <a-button v-if="detail.status === 'DONE'" v-perm="'qms:capa:add'" @click="router.push({ path: '/qms/capa', query: { ncrId: detail.id } })">{{ $t('qms.ncr.start8d') }}</a-button>
-          <a-button v-if="detail.status === 'DONE' && detail.supplierId" v-perm="'qms:claim:add'" @click="router.push({ path: '/qms/claim', query: { ncrId: detail.id } })">
+          <a-button v-if="detail.status === NcrStatus.DONE" v-perm="'qms:capa:add'" @click="router.push({ path: '/qms/capa', query: { ncrId: detail.id } })">{{ $t('qms.ncr.start8d') }}</a-button>
+          <a-button v-if="detail.status === NcrStatus.DONE && detail.supplierId" v-perm="'qms:claim:add'" @click="router.push({ path: '/qms/claim', query: { ncrId: detail.id } })">
             {{ $t('qms.ncr.claim') }}
           </a-button>
-          <template v-if="detail.status === 'OPEN'">
+          <template v-if="detail.status === NcrStatus.OPEN">
             <a-button v-perm="'qms:ncr:edit'" type="primary" @click="openReview(detail)">{{ $t('qms.ncr.review') }}</a-button>
             <span v-perm="'qms:ncr:edit'">
-              <a-popconfirm v-if="detail.source === 'INSPECTION'" :title="$t('qms.ncr.cancelConfirm')" @confirm="cancel">
+              <a-popconfirm v-if="detail.source === NcrSource.INSPECTION" :title="$t('qms.ncr.cancelConfirm')" @confirm="cancel">
                 <a-button>{{ $t('common.action.cancel') }}</a-button>
               </a-popconfirm>
             </span>
           </template>
-          <span v-if="detail.source !== 'INSPECTION' && ['OPEN', 'CANCELLED'].includes(detail.status)" v-perm="'qms:ncr:remove'">
+          <span v-if="detail.source !== NcrSource.INSPECTION && [NcrStatus.OPEN, NcrStatus.CANCELLED].includes(detail.status)" v-perm="'qms:ncr:remove'">
             <a-popconfirm :title="$t('qms.ncr.deleteConfirm')" @confirm="remove">
               <a-button danger>{{ $t('common.action.delete') }}</a-button>
             </a-popconfirm>
@@ -166,7 +166,7 @@
             <a-descriptions-item :label="$t('qms.ncr.responsibility')"><DictTag type="qms_responsibility" :value="detail.responsibility" /></a-descriptions-item>
             <a-descriptions-item :label="$t('qms.ncr.opinion')" :span="2">{{ detail.reviewOpinion || '-' }}</a-descriptions-item>
             <a-descriptions-item :label="$t('qms.ncr.result')" :span="2">
-              {{ detail.resultNote || (detail.status === 'APPROVING' ? $t('qms.ncr.approving') : '-') }}
+              {{ detail.resultNote || (detail.status === NcrStatus.APPROVING ? $t('qms.ncr.approving') : '-') }}
               <span v-if="detail.reworkWoNo">{{ $t('qms.ncr.reworkWo', { no: detail.reworkWoNo }) }}</span>
             </a-descriptions-item>
           </a-descriptions>
@@ -200,6 +200,7 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+import { Disposition, NcrSource, NcrStatus } from '@/constants/enums'
 /** 不合格品处理（MRB）：检验不合格自动生成，也可手工登记；评审处置后联动库存与工单 */
 const dict = useDict('qms_ncr_source', 'qms_ncr_status', 'qms_disposition', 'qms_responsibility', 'mes_defect_type')
 const { t } = useI18n()
@@ -230,7 +231,7 @@ onMounted(load)
 // 手工登记不提供「检验不合格」来源
 // 检验来源由检验不合格自动生成，手工登记时显示为禁用并说明
 const sourceOptions = computed(() =>
-  toOptions(dict.qms_ncr_source).map((o) => (o.value !== 'INSPECTION' ? o : { ...o, label: t('qms.ncr.inspectionSourceHint', { label: o.label }), disabled: true }))
+  toOptions(dict.qms_ncr_source).map((o) => (o.value !== NcrSource.INSPECTION ? o : { ...o, label: t('qms.ncr.inspectionSourceHint', { label: o.label }), disabled: true }))
 )
 const rules = {
   source: [{ required: true, message: t('qms.capa.sourceRequired') }],
@@ -258,7 +259,7 @@ const dispositionOptions = computed(() => {
   const incoming = !!c?.supplierId && !!c?.sourceNo && !c?.woId
   return toOptions(dict.qms_disposition).map((o) => ({
     ...o,
-    disabled: (o.value === 'REWORK' && !c?.woId) || (o.value === 'RETURN' && !incoming)
+    disabled: (o.value === Disposition.REWORK && !c?.woId) || (o.value === Disposition.RETURN && !incoming)
   }))
 })
 function openReview(record) {

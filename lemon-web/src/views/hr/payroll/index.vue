@@ -41,7 +41,7 @@
               <a-button :disabled="!payroll.items?.length" @click="printSlips">
                 <template #icon><PrinterOutlined /></template>{{ $t('hr.payroll.printSlips') }}
               </a-button>
-              <template v-if="payroll.status === 'DRAFT'">
+              <template v-if="payroll.status === PayrollStatus.DRAFT">
                 <a-popconfirm v-if="userStore.hasPerm('hr:payroll:add')" :title="$t('hr.payroll.confirmRegenerate')" @confirm="regenerate">
                   <a-button>{{ $t('hr.payroll.regenerate') }}</a-button>
                 </a-popconfirm>
@@ -52,14 +52,14 @@
                   <a-button danger>{{ $t('common.action.delete') }}</a-button>
                 </a-popconfirm>
               </template>
-              <template v-else-if="payroll.status === 'CONFIRMED'">
+              <template v-else-if="payroll.status === PayrollStatus.CONFIRMED">
                 <a-button v-perm="'hr:payroll:pay'" type="primary" @click="openPay">{{ $t('hr.payroll.pay') }}</a-button>
                 <a-popconfirm v-if="userStore.hasPerm('hr:payroll:confirm')" :title="$t('hr.payroll.confirmUnconfirm')" @confirm="unconfirm">
                   <a-button>{{ $t('hr.payroll.unconfirm') }}</a-button>
                 </a-popconfirm>
               </template>
               <a-button
-                v-if="payroll.status !== 'DRAFT' && !payroll.accrueVoucherId"
+                v-if="payroll.status !== PayrollStatus.DRAFT && !payroll.accrueVoucherId"
                 v-perm="'hr:payroll:confirm'"
                 @click="regenerateAccrual"
               >
@@ -134,7 +134,7 @@
                 <span :class="{ strong: ['grossPay', 'netPay'].includes(column.key) }">{{ formatMoney(record[column.key]) }}</span>
               </template>
               <template v-else-if="column.key === 'action'">
-                <a-button v-if="payroll.status === 'DRAFT'" v-perm="'hr:payroll:edit'" type="link" size="small" @click="openAdjust(record)">{{ $t('hr.payroll.adjust') }}</a-button>
+                <a-button v-if="payroll.status === PayrollStatus.DRAFT" v-perm="'hr:payroll:edit'" type="link" size="small" @click="openAdjust(record)">{{ $t('hr.payroll.adjust') }}</a-button>
               </template>
             </template>
             <template #summary>
@@ -183,7 +183,7 @@
           <a-date-picker v-model:value="payForm.payDate" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
         <a-form-item :label="$t('hr.payroll.account')" name="accountId" :rules="[{ required: true, message: $t('hr.payroll.rule.account') }]">
-          <AccountSelect v-model:value="payForm.accountId" :prefix="['1001', '1002']" />
+          <AccountSelect v-model:value="payForm.accountId" :roles="['CASH', 'BANK']" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -215,7 +215,9 @@ import {
 } from '@/api/hr'
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
+import { useAction } from '@/composables/useAction'
 
+import { PayrollStatus } from '@/constants/enums'
 const { t } = useI18n()
 
 const userStore = useUserStore()
@@ -367,26 +369,14 @@ async function generate() {
     saving.value = false
   }
 }
-async function regenerate() {
-  await generatePayroll(payroll.value.period)
-  message.success(t('hr.payroll.regenerated'))
-  refresh()
-}
+const regenerate = useAction(() => generatePayroll(payroll.value.period), { successKey: 'hr.payroll.regenerated', reload: () => refresh() })
 async function confirm() {
   const submitted = await confirmPayroll(payroll.value.id)
   message.success(submitted ? t('hr.payroll.submitted') : t('hr.payroll.confirmed'))
   refresh()
 }
-async function unconfirm() {
-  await unconfirmPayroll(payroll.value.id)
-  message.success(t('hr.payroll.unconfirmed'))
-  refresh()
-}
-async function regenerateAccrual() {
-  await accruePayroll(payroll.value.id)
-  message.success(t('hr.payroll.accrued'))
-  refresh()
-}
+const unconfirm = useAction(() => unconfirmPayroll(payroll.value.id), { successKey: 'hr.payroll.unconfirmed', reload: () => refresh() })
+const regenerateAccrual = useAction(() => accruePayroll(payroll.value.id), { successKey: 'hr.payroll.accrued', reload: () => refresh() })
 async function remove() {
   await deletePayroll(payroll.value.id)
   message.success(t('common.msg.deleted'))

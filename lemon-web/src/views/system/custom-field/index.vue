@@ -61,7 +61,7 @@
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item v-if="form.fieldType === 'SELECT'" :label="$t('system.customField.options')" name="options" :extra="$t('system.customField.optionsTip')">
+        <a-form-item v-if="form.fieldType === CustomFieldType.SELECT" :label="$t('system.customField.options')" name="options" :extra="$t('system.customField.optionsTip')">
           <a-textarea v-model:value="form.options" :rows="3" :maxlength="1000" />
         </a-form-item>
         <a-space :size="24" class="flags">
@@ -90,6 +90,7 @@ import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { toOptions } from '@/utils/dict'
 
+import { CustomFieldType } from '@/constants/enums'
 /** 自定义字段：按业务类型维护扩展字段的定义 */
 const { t } = useI18n()
 const dict = useDict('sys_custom_field_type')
@@ -134,7 +135,7 @@ const rules = {
   fieldType: [{ required: true, message: t('system.customField.selectType') }]
 }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, bizType: undefined, fieldKey: '', label: '', fieldType: 'TEXT', options: '', required: 0, showInList: 0, sort: 0, status: 1, remark: '' }),
+  emptyForm: () => ({ id: undefined, bizType: undefined, fieldKey: '', label: '', fieldType: CustomFieldType.TEXT, options: '', required: 0, showInList: 0, sort: 0, status: 1, remark: '' }),
   create: addCustomField,
   update: updateCustomField,
   toPayload: ({ bizType: b, fieldKey, label, fieldType, options, required, showInList, sort, status, remark }) => ({
@@ -142,7 +143,7 @@ const drawer = useFormDrawer({
     fieldKey,
     label,
     fieldType,
-    options: fieldType === 'SELECT' ? options : null,
+    options: fieldType === CustomFieldType.SELECT ? options : null,
     required,
     showInList,
     sort,

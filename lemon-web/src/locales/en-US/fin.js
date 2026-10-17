@@ -1497,6 +1497,7 @@ export default {
     outCategory: 'outbound category',
     sameAsRole: 'Same as "{role}": {account}',
     saveN: 'Save ({n})',
+    scopeTip: 'The account and all its sub-accounts belong to this purpose, so a parent account can be selected; settlement accounts, bank reconciliation, the cash flow statement and the fund plan use it',
     invalidAccount: '{code} (account does not exist or is not a leaf account)'
   },
   partnerStatement: {

@@ -149,7 +149,6 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, InfoCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -165,7 +164,9 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
+import { useAction } from '@/composables/useAction'
 
+import { WarehouseType } from '@/constants/enums'
 const { t } = useI18n()
 
 const router = useRouter()
@@ -228,7 +229,7 @@ const rules = {
   partnerId: [{ required: true, message: t('wms.warehouse.selectPartner') }]
 }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, code: '', name: '', type: 'NORMAL', partnerId: undefined, contact: '', phone: '', address: '', sort: 0, remark: '' }),
+  emptyForm: () => ({ id: undefined, code: '', name: '', type: WarehouseType.NORMAL, partnerId: undefined, contact: '', phone: '', address: '', sort: 0, remark: '' }),
   fetch: (record) => getWarehouse(record.id),
   create: addWarehouse,
   update: updateWarehouse,
@@ -249,11 +250,7 @@ const { formRef, form } = drawer
 
 const toLocations = (record) => router.push({ path: '/wms/location', query: { warehouseId: record.id } })
 
-async function remove(id) {
-  await deleteWarehouse(id)
-  message.success(t('common.msg.deleteSuccess'))
-  load()
-}
+const remove = useAction(deleteWarehouse, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>
 
 <style scoped>

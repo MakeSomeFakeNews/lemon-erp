@@ -92,7 +92,7 @@
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">{{ $t('common.action.view') }}</a-button>
               <a-button
-                v-if="record.status === 'DRAFT' && record.sourceType === 'MANUAL'"
+                v-if="record.status === VoucherStatus.DRAFT && record.sourceType === VoucherSource.MANUAL"
                 v-perm="'fin:voucher:edit'"
                 type="link"
                 size="small"
@@ -117,7 +117,6 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { Modal, message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { DownOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -132,10 +131,12 @@ import { deleteVoucher, pageVoucher, voucherAction } from '@/api/fin'
 import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
+import { useAction } from '@/composables/useAction'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { canDeleteVoucher, canReverse, currentPeriod, formatMoney, periodText } from '@/components/fin/fin'
 
+import { VoucherSource, VoucherStatus } from '@/constants/enums'
 const { t } = useI18n()
 const userStore = useUserStore()
 const dict = useDict('fin_voucher_status', 'fin_voucher_source')
@@ -166,33 +167,24 @@ onMounted(load)
 
 const byStatus = (status) => list.value.filter((r) => selectedKeys.value.includes(r.id) && r.status === status).map((r) => r.id)
 
-function batch(action, label, ids) {
-  Modal.confirm({
-    title: t('fin.voucher.batchConfirm', { action: label, n: ids.length }),
-    async onOk() {
-      await voucherAction(action, ids)
-      message.success(t('fin.voucher.actionSuccess', { action: label }))
-      selectedKeys.value = []
-      load()
-    }
-  })
+const clearAndLoad = () => {
+  selectedKeys.value = []
+  load()
 }
+
+const batch = useAction((action, label, ids) => voucherAction(action, ids), {
+  confirm: (action, label, ids) => t('fin.voucher.batchConfirm', { action: label, n: ids.length }),
+  successKey: (res, action, label) => t('fin.voucher.actionSuccess', { action: label }),
+  reload: clearAndLoad
+})
 
 const deletable = computed(() => list.value.filter((r) => selectedKeys.value.includes(r.id) && canDeleteVoucher(r)).map((r) => r.id))
 
-function removeSelected() {
-  const ids = deletable.value
-  Modal.confirm({
-    title: t('fin.voucher.deleteConfirm', { n: ids.length }),
-    okType: 'danger',
-    async onOk() {
-      await deleteVoucher(ids)
-      message.success(t('common.msg.deleteSuccess'))
-      selectedKeys.value = []
-      load()
-    }
-  })
-}
+const removeSelected = useAction(() => deleteVoucher(deletable.value), {
+  confirm: () => ({ title: t('fin.voucher.deleteConfirm', { n: deletable.value.length }), okType: 'danger' }),
+  successKey: 'common.msg.deleteSuccess',
+  reload: clearAndLoad
+})
 
 const form = ref()
 const detailRef = ref()

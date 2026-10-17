@@ -2,16 +2,16 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.lemon.erp.modules.fin.mapper.FinFundPlanMapper">
 
-    <!-- 库存现金（1001）、银行存款（1002）及其下级科目：期初余额 + 全部凭证分录（含未审核、未记账） -->
+    <!-- 库存现金、银行存款（cashCodes，按凭证科目设置，默认 1001、1002）及其下级科目：期初余额 + 全部凭证分录（含未审核、未记账） -->
     <select id="selectCashBalance" resultType="java.math.BigDecimal">
         SELECT COALESCE((SELECT SUM(o.debit - o.credit)
                          FROM fin_account_opening o
                          JOIN fin_account a ON a.id = o.account_id
-                         WHERE a.code LIKE '1001%' OR a.code LIKE '1002%'), 0)
+                         WHERE <foreach collection="cashCodes" item="c" separator=" OR ">a.code LIKE CONCAT(#{c}, '%')</foreach>), 0)
              + COALESCE((SELECT SUM(e.debit - e.credit)
                          FROM fin_voucher_entry e
                          JOIN fin_account a ON a.id = e.account_id
-                         WHERE a.code LIKE '1001%' OR a.code LIKE '1002%'), 0)
+                         WHERE <foreach collection="cashCodes" item="c" separator=" OR ">a.code LIKE CONCAT(#{c}, '%')</foreach>), 0)
     </select>
 
     <!-- 预计收支：应收应付按未核销金额（坏账核销已计入已核销；红字单据为负数，冲减同方向）和到期日，

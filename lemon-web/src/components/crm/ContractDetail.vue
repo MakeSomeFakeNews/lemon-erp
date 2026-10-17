@@ -3,13 +3,13 @@
     <template #extra>
       <a-space v-if="detail" wrap>
         <DictTag type="crm_contract_status" :value="detail.status" />
-        <template v-if="detail.status === 'DRAFT' && userStore.hasPerm('crm:contract:edit')">
+        <template v-if="detail.status === SalesContractStatus.DRAFT && userStore.hasPerm('crm:contract:edit')">
           <a-button size="small" @click="emit('edit', detail)">{{ $t('common.action.edit') }}</a-button>
           <a-popconfirm :title="$t('crm.contractDetail.confirmSubmit')" @confirm="submit">
             <a-button size="small" type="primary">{{ $t('common.action.submit') }}</a-button>
           </a-popconfirm>
         </template>
-        <template v-if="detail.status === 'ACTIVE' && userStore.hasPerm('crm:contract:edit')">
+        <template v-if="detail.status === SalesContractStatus.ACTIVE && userStore.hasPerm('crm:contract:edit')">
           <template v-if="!detail.orderId">
             <a-button v-if="detail.quotationId && userStore.hasPerm('scm:sales:add')" size="small" type="primary" @click="openToOrder">{{ $t('crm.common.toOrder') }}</a-button>
             <a-button size="small" @click="openLink">{{ $t('crm.contractDetail.link') }}</a-button>
@@ -23,8 +23,8 @@
     </template>
     <a-spin :spinning="loading">
       <template v-if="detail">
-        <a-alert v-if="detail.status === 'APPROVING'" type="info" show-icon class="block" :message="$t('crm.contractDetail.approving')" />
-        <a-alert v-if="detail.status === 'TERMINATED'" type="error" show-icon class="block" :message="$t('crm.contractDetail.terminateReasonText', { reason: detail.terminateReason || '-' })" />
+        <a-alert v-if="detail.status === SalesContractStatus.APPROVING" type="info" show-icon class="block" :message="$t('crm.contractDetail.approving')" />
+        <a-alert v-if="detail.status === SalesContractStatus.TERMINATED" type="error" show-icon class="block" :message="$t('crm.contractDetail.terminateReasonText', { reason: detail.terminateReason || '-' })" />
 
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="block">
           <a-descriptions-item :label="$t('crm.common.f.customer')">{{ detail.customerName }}</a-descriptions-item>
@@ -104,7 +104,9 @@ import { completeCrmContract, contractToOrder, getCrmContract, linkContractOrder
 import { pageOrder } from '@/api/scm/order'
 import { useUserStore } from '@/store/user'
 import { COLLECT_STATUS } from './crm'
+import { useAction } from '@/composables/useAction'
 
+import { OrderStatus, SalesContractStatus } from '@/constants/enums'
 /** 销售合同详情：回款进度、回款计划；提交、关联 / 生成销售订单、完成、终止 */
 const props = defineProps({
   open: Boolean,
@@ -160,11 +162,7 @@ async function submit() {
   message.success(submitted ? t('crm.contractDetail.submittedApproval') : t('crm.contractDetail.activated'))
   changed()
 }
-async function complete() {
-  await completeCrmContract(detail.value.id)
-  message.success(t('crm.contractDetail.completed'))
-  changed()
-}
+const complete = useAction(() => completeCrmContract(detail.value.id), { successKey: 'crm.contractDetail.completed', reload: () => changed() })
 
 // 关联销售订单：同一客户已审核的订单
 const linkOpen = ref(false)
@@ -180,7 +178,7 @@ async function openLink() {
   orderLoading.value = true
   try {
     const res = await pageOrder('sales', { partnerId: detail.value.customerId, current: 1, size: 100 })
-    orders.value = res.records.filter((o) => ['APPROVED', 'PARTIAL', 'COMPLETED'].includes(o.status))
+    orders.value = res.records.filter((o) => [OrderStatus.APPROVED, OrderStatus.PARTIAL, OrderStatus.COMPLETED].includes(o.status))
   } finally {
     orderLoading.value = false
   }

@@ -74,6 +74,7 @@ import { addPackage, deletePackage, deliveryPackages, updatePackage } from '@/ap
 import { formatQty } from '@/components/wms/wms'
 import { printDocs } from '@/utils/print'
 import { useI18n } from 'vue-i18n'
+import { useAction } from '@/composables/useAction'
 
 /** 发货通知的装箱：已拣货后按箱录入箱内物料、毛重、体积，打印装箱单和箱标签 */
 const props = defineProps({
@@ -135,11 +136,7 @@ async function submit() {
     saving.value = false
   }
 }
-async function remove(record) {
-  await deletePackage(props.delivery.id, record.id)
-  message.success(t('common.msg.deleted'))
-  load()
-}
+const remove = useAction((record) => deletePackage(props.delivery.id, record.id), { successKey: 'common.msg.deleted', reload: () => load() })
 
 const boxLabels = computed(() => packages.value.map((p) => ({
   boxNo: p.boxNo, customer: props.delivery.customerName, deliveryNo: props.delivery.deliveryNo, seq: `${p.seq} / ${packages.value.length}`,

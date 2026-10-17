@@ -120,7 +120,7 @@
                 <span v-if="Number(record.suggestQty) > 0" class="strong">{{ formatQty(record.suggestQty) }} {{ record.unit }}</span>
                 <span v-else class="sub-text">-</span>
                 <div v-if="Number(record.suggestQty) > 0" class="sub-text">
-                  {{ record.supplyType === 'MAKE' ? $t('mes.kit.genWo') : record.supplierName || $t('mes.kit.noSupplier') }}
+                  {{ record.supplyType === SupplyType.MAKE ? $t('mes.kit.genWo') : record.supplierName || $t('mes.kit.noSupplier') }}
                 </div>
               </template>
               <template v-else-if="QTY_KEYS.includes(column.key)">{{ formatQty(record[column.key]) }}</template>
@@ -162,7 +162,7 @@
           <template v-if="column.key === 'material'">{{ record.materialCode }} {{ record.materialName }}</template>
           <template v-else-if="column.key === 'suggestQty'">{{ formatQty(record.suggestQty) }} {{ record.unit }}</template>
           <template v-else-if="column.key === 'to'">
-            {{ record.supplyType === 'MAKE' ? $t('mes.wo.wo') : record.supplierName || $t('mes.kit.noSupplier') }}
+            {{ record.supplyType === SupplyType.MAKE ? $t('mes.wo.wo') : record.supplierName || $t('mes.kit.noSupplier') }}
           </template>
         </template>
       </a-table>
@@ -221,11 +221,12 @@ import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
 import { findDict } from '@/utils/dict'
 
+import { KitStatus, SupplyType } from '@/constants/enums'
 const userStore = useUserStore()
 const dict = useDict('mes_kit_status', 'mes_wo_status', 'mes_supply_type')
 const { t } = useI18n()
 const dictLabel = (list, value) => findDict(list, value)?.label || value
-const KIT_STATUSES = ['SHORT', 'PARTIAL', 'COMPLETE', 'ISSUED']
+const KIT_STATUSES = [KitStatus.SHORT, KitStatus.PARTIAL, KitStatus.COMPLETE, KitStatus.ISSUED]
 const QTY_KEYS = ['requiredQty', 'supplementQty', 'issuedQty', 'toIssueQty', 'onHandQty', 'allocatedQty', 'onOrderQty', 'unitQty']
 const canSubstitute = computed(() => userStore.hasPerm('mes:kit:substitute'))
 const canRelease = computed(() => userStore.hasPerm('mes:kit:release'))

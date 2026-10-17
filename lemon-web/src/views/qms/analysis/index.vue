@@ -64,6 +64,7 @@ import { qualityPareto, qualityTrend, supplierQuality } from '@/api/qms'
 import { useDict } from '@/composables/useDict'
 import { findDict } from '@/utils/dict'
 
+import { QcType } from '@/constants/enums'
 /** 质量分析：合格率趋势、不良柏拉图、供应商排名 */
 const dict = useDict('mes_qc_type', 'mes_defect_type')
 const { t } = useI18n()
@@ -88,7 +89,7 @@ async function loadAll() {
 }
 onMounted(loadAll)
 
-const TYPES = ['IQC', 'IPQC', 'FQC', 'FAI']
+const TYPES = [QcType.IQC, QcType.IPQC, QcType.FQC, QcType.FAI]
 const rate = (pass, total) => (total ? Math.round((pass / total) * 1000) / 10 : null)
 const typeStats = computed(() =>
   TYPES.map((type) => {

@@ -15,7 +15,7 @@
         </choose>
     </sql>
 
-    <select id="selectBalances" resultType="java.util.Map">
+    <select id="selectBalances" resultType="com.lemon.erp.modules.fin.dto.FinAnalysis$StockAgeRow">
         SELECT m.id AS "materialId", m.code AS "code", m.name AS "name", m.spec AS "spec", m.unit AS "unit", m.category AS "category",
                t.qty AS "qty"
         FROM (
@@ -30,7 +30,7 @@
         ORDER BY m.code
     </select>
 
-    <select id="selectInflows" resultType="java.util.Map">
+    <select id="selectInflows" resultType="com.lemon.erp.modules.fin.dto.FinAnalysis$StockInflow">
         SELECT f.material_id AS "materialId", COALESCE(d.biz_date, c.biz_date, CAST(f.create_time AS DATE)) AS "bizDate", SUM(f.qty) AS "qty"
         <include refid="flowScope"/>
           AND f.qty &gt; 0
@@ -39,7 +39,7 @@
         ORDER BY f.material_id, COALESCE(d.biz_date, c.biz_date, CAST(f.create_time AS DATE)) DESC
     </select>
 
-    <select id="selectUnitCosts" resultType="java.util.Map">
+    <select id="selectUnitCosts" resultType="com.lemon.erp.modules.fin.dto.FinAnalysis$UnitCost">
         SELECT m.id AS "materialId",
                COALESCE((SELECT c.unit_cost FROM fin_material_cost c WHERE c.material_id = m.id AND c.period &lt;= #{period}
                          AND c.unit_cost &gt; 0 ORDER BY c.period DESC LIMIT 1), m.ref_cost, 0) AS "unitCost"
