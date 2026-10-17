@@ -93,8 +93,11 @@ public class PrintService {
                 docs.forEach(d -> rows.add(values(d.getFields())));
                 prints.add(fill(report, params, new JRMapCollectionDataSource(rows)));
             } else {
+                PrintOverlay overlay = jrxml == null ? checkOverlay(request.getOverlay()) : null;
                 for (PrintDoc doc : docs) {
-                    JasperReport report = jrxml != null ? custom(jrxml) : compile(design(request, doc));
+                    JasperReport report = jrxml != null ? custom(jrxml)
+                            : overlay != null ? compile(PrintDesigner.overlayDesign(reportName(request.getType()), doc, request.getLayout(), overlay))
+                            : compile(design(request, doc));
                     prints.add(fill(report, params(doc), dataSource(doc)));
                 }
             }
@@ -260,6 +263,39 @@ public class PrintService {
         request.setTitle(text(request.getTitle() == null ? "打印" : request.getTitle()));
         docs.forEach(PrintService::normalize);
         return docs;
+    }
+
+    /** 套打设置：位置在纸张范围内，最多 80 个定位字段、30 个明细列，字段名只保留安全字符 */
+    private static PrintOverlay checkOverlay(PrintOverlay o) {
+        if (o == null) {
+            return null;
+        }
+        if (o.getItems() == null) {
+            o.setItems(List.of());
+        }
+        if (o.getItems().size() > 80) {
+            throw new BizException("套打的定位字段过多");
+        }
+        if (Math.abs(o.getOffsetX()) > 50 || Math.abs(o.getOffsetY()) > 50) {
+            throw new BizException("套打偏移不能超过 50mm");
+        }
+        for (PrintOverlay.Item it : o.getItems()) {
+            if (it.getFontSize() != null && (it.getFontSize() < 6 || it.getFontSize() > 36)) {
+                it.setFontSize(null);
+            }
+            it.setWidth(Math.min(Math.max(it.getWidth(), 5), 500));
+        }
+        PrintOverlay.Detail d = o.getDetail();
+        if (d != null) {
+            if (d.getColumns() == null) {
+                d.setColumns(List.of());
+            }
+            if (d.getColumns().size() > 30 || d.getRows() > 100 || d.getRowHeight() < 3 || d.getRowHeight() > 50) {
+                throw new BizException("套打的明细区设置不正确");
+            }
+            d.getColumns().forEach(c -> c.setWidth(Math.min(Math.max(c.getWidth(), 5), 500)));
+        }
+        return o;
     }
 
     private static void checkLayout(PrintLayout l) {

@@ -39,6 +39,7 @@ import net.sf.jasperreports.engine.type.WhenNoDataTypeEnum;
 import java.awt.Color;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -281,6 +282,117 @@ final class PrintDesigner {
         band.addElement(pages);
         band.setHeight(y + h);
         return band;
+    }
+
+    // ---------------------------------------------------------------- 套打
+
+    /** 套打：页边距为 0，定位字段放在背景区（每页都打印），明细按行高逐行输出，每页行数满后换页 */
+    static JasperDesign overlayDesign(String name, PrintDoc doc, PrintLayout layout, PrintOverlay overlay) throws JRException {
+        PrintLayout noMargin = new PrintLayout();
+        noMargin.setWidth(layout.getWidth());
+        noMargin.setHeight(layout.getHeight());
+        noMargin.setMargin(0);
+        noMargin.setFontSize(layout.getFontSize());
+        return new PrintDesigner(noMargin).buildOverlay(name, doc, overlay);
+    }
+
+    private JasperDesign buildOverlay(String name, PrintDoc doc, PrintOverlay o) throws JRException {
+        JasperDesign d = base(name);
+        d.setWhenNoDataType(WhenNoDataTypeEnum.ALL_SECTIONS_NO_DETAIL);
+        addParameter(d, P_TITLE, String.class);
+        addParameter(d, P_NO, String.class);
+        addParameter(d, P_COMPANY, String.class);
+        addParameter(d, P_NOTE, String.class);
+        addMapParameter(d, P_FIELDS);
+        addMapParameter(d, P_SIGNS);
+        addMapParameter(d, P_TOTALS);
+        addParameter(d, P_SECTIONS, List.class);
+        int pageHeight = d.getPageHeight();
+        JRDesignBand background = new JRDesignBand();
+        background.setHeight(pageHeight);
+        for (PrintOverlay.Item it : o.getItems()) {
+            int size = it.getFontSize() == null ? fontSize : it.getFontSize();
+            JRDesignTextField t = fixed(overlayExpression(it.getKey()), ptd(it.getX() + o.getOffsetX()), ptd(it.getY() + o.getOffsetY()),
+                    Math.max(ptd(it.getWidth()), 10), line(size), size, it.getAlign(), pageHeight);
+            if (t != null) {
+                background.addElement(t);
+            }
+        }
+        d.setBackground(background);
+        PrintOverlay.Detail detail = o.getDetail();
+        Set<String> columnKeys = new java.util.HashSet<>();
+        doc.getColumns().forEach(c -> columnKeys.add(c.getKey()));
+        if (detail != null && !detail.getColumns().isEmpty() && detail.getRows() > 0) {
+            int top = Math.max(0, ptd(detail.getY() + o.getOffsetY()));
+            int rowHeight = Math.max(ptd(detail.getRowHeight()), line(fontSize - 2));
+            int area = rowHeight * detail.getRows();
+            if (top + area > pageHeight) {
+                area = (pageHeight - top) / rowHeight * rowHeight;
+            }
+            JRDesignBand header = new JRDesignBand();
+            header.setHeight(top);
+            d.setPageHeader(header);
+            JRDesignBand row = band(SplitTypeEnum.PREVENT);
+            row.setHeight(rowHeight);
+            for (PrintOverlay.Column c : detail.getColumns()) {
+                String key = PrintService.safeName(c.getKey());
+                if (!columnKeys.contains(key)) {
+                    continue;
+                }
+                addField(d, key);
+                JRDesignTextField t = fixed("$F{" + key + "}", ptd(c.getX() + o.getOffsetX()), 0, Math.max(ptd(c.getWidth()), 10), rowHeight,
+                        fontSize, c.getAlign(), rowHeight);
+                if (t != null) {
+                    row.addElement(t);
+                }
+            }
+            ((JRDesignSection) d.getDetailSection()).addBand(row);
+            JRDesignBand footer = new JRDesignBand();
+            footer.setHeight(Math.max(0, pageHeight - top - area));
+            d.setPageFooter(footer);
+        }
+        return d;
+    }
+
+    /** 定位字段的表达式；不认识的特殊标识返回 null */
+    private static String overlayExpression(String key) {
+        if (key == null) {
+            return null;
+        }
+        return switch (key) {
+            case "$title" -> "$P{" + P_TITLE + "}";
+            case "$no" -> "$P{" + P_NO + "}";
+            case "$company" -> "$P{" + P_COMPANY + "}";
+            case "$note" -> "$P{" + P_NOTE + "}";
+            default -> {
+                if (key.startsWith("$total:")) {
+                    yield "$P{" + P_TOTALS + "}.get(" + literal(key.substring(7)) + ")";
+                }
+                if (key.startsWith("$sign:")) {
+                    yield "$P{" + P_SIGNS + "}.get(" + literal(key.substring(6)) + ")";
+                }
+                yield key.startsWith("$") ? null : "$P{" + P_FIELDS + "}.get(" + literal(key) + ")";
+            }
+        };
+    }
+
+    /** 固定位置、不拉伸的文字（超出宽度截断）；超出带区的不输出 */
+    private JRDesignTextField fixed(String expression, int x, int y, int w, int h, int size, PrintOverlay.Align align, int bandHeight) {
+        if (expression == null || x < 0 || y < 0 || y + h > bandHeight) {
+            return null;
+        }
+        JRDesignTextField t = text(expression, x, y, w, h);
+        t.setTextAdjust(TextAdjustEnum.CUT_TEXT);
+        t.setPositionType(PositionTypeEnum.FIX_RELATIVE_TO_TOP);
+        t.setFontSize((float) size);
+        t.setHorizontalTextAlign(align == PrintOverlay.Align.RIGHT ? HorizontalTextAlignEnum.RIGHT
+                : align == PrintOverlay.Align.CENTER ? HorizontalTextAlignEnum.CENTER : HorizontalTextAlignEnum.LEFT);
+        return t;
+    }
+
+    /** mm（可有小数）→ pt */
+    private static int ptd(double mm) {
+        return (int) Math.round(mm * MM);
     }
 
     // ---------------------------------------------------------------- 工资条

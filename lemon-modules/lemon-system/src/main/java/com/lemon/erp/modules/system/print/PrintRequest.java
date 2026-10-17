@@ -19,5 +19,8 @@ public class PrintRequest {
 
     private PrintLayout layout = new PrintLayout();
 
+    /** 套打设置，为空时按默认版式（上传了 JRXML 时按 JRXML） */
+    private PrintOverlay overlay;
+
     private List<PrintDoc> docs = new ArrayList<>();
 }
