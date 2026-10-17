@@ -123,6 +123,12 @@ export const saveAccountOpenings = (items) => request.put('/fin/opening/accounts
 /** startPeriod：尚未保存存货期初时按该启用期间推算期初数量 */
 export const stockOpening = (startPeriod) => request.get('/fin/opening/stock', { params: { startPeriod } })
 export const saveStockOpening = (data) => request.put('/fin/opening/stock', data)
+/** 启用向导：各项期初数据的完成情况 */
+export const openingSummary = () => request.get('/fin/opening/summary')
+/** 期初库存导入：生成启用期间前一天的期初入库单 */
+export const importOpeningStock = (startPeriod, data) => request.post('/fin/opening/stock-in/import', data, { params: { startPeriod } })
+/** 期初往来导入：kind 为 AR / AP */
+export const importOpeningBills = (kind, data) => request.post(`/fin/opening/bills/${kind}/import`, data)
 
 /** 预算 */
 export const listBudget = (params) => request.get('/fin/budget', { params })

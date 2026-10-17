@@ -6348,6 +6348,10 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('wms_cost_method', '移动加权平均', 'MOVING', 'cyan', 2, 1, NOW(), NOW()),
 ('wms_cost_method', '先进先出', 'FIFO', 'purple', 3, 1, NOW(), NOW());
 
+-- 期初入库：系统启用时导入的期初库存
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('wms_in_type', '期初入库', 'OPENING', 'gold', 10, 1, NOW(), NOW());
+
 -- 凭证科目设置：自动凭证各用途使用的科目
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
 (340, 936, '凭证科目设置', 'C', 'account-rule', 'fin/account-rule/index', 'fin:accountRule:list', 'NodeIndexOutlined', 5, 1, 1, NOW(), NOW()),
