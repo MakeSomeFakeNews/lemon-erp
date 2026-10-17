@@ -3,13 +3,14 @@ package com.lemon.erp.modules.fin.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.wms.model.CostMethod;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 
 /**
- * 存货成本：月末一次加权平均单价 = (期初金额 + 采购金额 + 生产成本) / (期初数量 + 采购数量 + 生产数量)
+ * 存货成本：按物料的计价方法核算。月末一次加权平均单价 = (期初金额 + 采购金额 + 生产成本) / (期初数量 + 采购数量 + 生产数量)
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -52,7 +53,11 @@ public class FinMaterialCost extends BaseEntity {
 
     private BigDecimal closeAmount;
 
+    /** 本期出库单价：月末一次加权平均为加权平均单价，其他计价方法为本期出库的平均单价 */
     private BigDecimal unitCost;
+
+    /** 本期使用的计价方法 */
+    private CostMethod costMethod;
 
     @TableField(exist = false)
     private String materialCode;

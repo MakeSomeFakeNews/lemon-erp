@@ -185,6 +185,11 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
+            <a-form-item label="计价方法" name="costMethod" extra="月末成本核算时按此计算出库成本，修改后从下一次核算生效">
+              <a-select v-model:value="form.costMethod" :options="toOptions(dict.wms_cost_method)" :disabled="basicReadonly" />
+            </a-form-item>
+          </a-col>
+          <a-col :xs="24" :sm="colSpan">
             <a-form-item label="默认仓库" name="defaultWarehouseId">
               <WarehouseSelect v-model:value="form.defaultWarehouseId" placeholder="选填" :disabled="basicReadonly" @update:value="form.defaultLocationId = null" />
             </a-form-item>
@@ -433,7 +438,7 @@ const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPerm('wms:material:edit'))
 const canEditPlan = computed(() => userStore.hasPerm('mes:material:edit'))
 const canSeeKit = computed(() => userStore.hasPerm('mes:kit:list'))
-const dict = useDict('sys_common_status', 'wms_material_category', 'mes_supply_type', 'mes_wo_status')
+const dict = useDict('sys_common_status', 'wms_material_category', 'mes_supply_type', 'mes_wo_status', 'wms_cost_method')
 const UNITS = ['个', '件', '台', '箱', '包', '桶', '瓶', '袋', 'kg', 'g', 'L', 'm'].map((value) => ({ value }))
 const SUPPLY_HINTS = {
   AUTO: '有启用的默认 BOM 为自制，否则为采购',
@@ -563,6 +568,7 @@ const MATERIAL_FIELDS = [
   'defaultWarehouseId',
   'defaultLocationId',
   'refCost',
+  'costMethod',
   'remark'
 ]
 const num = (v) => (v == null ? null : Number(v))
@@ -585,6 +591,7 @@ const drawer = useFormDrawer({
     defaultWarehouseId: null,
     defaultLocationId: null,
     refCost: null,
+    costMethod: 'WEIGHTED',
     remark: '',
     supplyType: '',
     leadDays: null,

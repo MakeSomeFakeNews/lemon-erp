@@ -7,10 +7,12 @@ import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.CostRunResult;
+import com.lemon.erp.modules.fin.entity.FinCostLayer;
 import com.lemon.erp.modules.fin.entity.FinCostRun;
 import com.lemon.erp.modules.fin.entity.FinMaterialCost;
 import com.lemon.erp.modules.fin.entity.FinVoucher;
 import com.lemon.erp.modules.fin.entity.FinWoCost;
+import com.lemon.erp.modules.fin.mapper.FinCostLayerMapper;
 import com.lemon.erp.modules.fin.mapper.FinCostRunMapper;
 import com.lemon.erp.modules.fin.mapper.FinConsumableUseMapper;
 import com.lemon.erp.modules.fin.mapper.FinCostSourceMapper;
@@ -22,6 +24,8 @@ import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.fin.model.VoucherStatus;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
+import com.lemon.erp.modules.wms.model.CostMethod;
+import com.lemon.erp.modules.wms.model.StockBizType;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -50,7 +54,7 @@ import static com.lemon.erp.modules.fin.model.FinConstants.periodOf;
 import static com.lemon.erp.modules.fin.model.FinConstants.previous;
 
 /**
- * 成本核算（按期间）：月末一次加权平均法计算存货单价，工单归集料工费并结转完工产品成本。
+ * 成本核算（按期间）：按物料的计价方法（月末一次加权平均、移动加权平均、先进先出）计算存货成本，工单归集料工费并结转完工产品成本。
  * <ol>
  *   <li>数量取仓库流水（按单据业务日期归属期间，不含调拨），销售按仓库出库类型统计；采购金额取采购入库 / 退货的不含税金额，
  *       没有经过采购订单的入库计入其他入库</li>
@@ -60,6 +64,8 @@ import static com.lemon.erp.modules.fin.model.FinConstants.previous;
  *       完工产品成本按本期完工数量占剩余未完工数量的比例结转，工单全部完工时全部结转，其余为期末在产品</li>
  *   <li>加权平均单价 = (期初金额 + 采购金额 + 生产成本) / (期初数量 + 采购数量 + 生产数量)；
  *       领用、销售、其他出入库（盘盈盘亏等）按该单价计价</li>
+ *   <li>移动加权平均、先进先出的物料按出入库的发生顺序逐笔计价（{@link Valuation}）：采购入库按不含税金额、完工入库按工单单位成本入账，
+ *       其他入库按当时的成本；得到期末结存后，本期出库总成本按数量分摊到领用、销售、其他出库。先进先出的期末结存批次保存到 fin_cost_layer</li>
  * </ol>
  * 生成成本结转凭证（未审核）：领料 借 生产成本 / 贷 原材料、库存商品；人工、制造费用 借 生产成本 / 贷 制造费用
  * （生产岗位工资计提时计入制造费用）；制造费用差异（期末制造费用余额）转主营业务成本；关闭工单的剩余在产品转主营业务成本；
@@ -76,10 +82,16 @@ public class FinCostService {
     static final String OPENING = "OPENING";
     private static final int AMOUNT_SCALE = 2;
     private static final int UNIT_SCALE = 6;
+    /** 出入库类型（字典 wms_in_type / wms_out_type）：采购入库、采购退货 */
+    private static final String PURCHASE = "PURCHASE";
+    private static final String PURCHASE_RETURN = "PURCHASE_RETURN";
+    /** 退料、销售退货、委外收回：冲减对应的出库，不是其他入库 */
+    private static final Set<String> RETURN_TYPES = Set.of("PRODUCTION_RETURN", "SALES_RETURN", "OUTSOURCE_RETURN");
 
     private final FinCostRunMapper runMapper;
     private final FinMaterialCostMapper materialCostMapper;
     private final FinWoCostMapper woCostMapper;
+    private final FinCostLayerMapper layerMapper;
     private final FinCostSourceMapper sourceMapper;
     private final FinVoucherMapper voucherMapper;
     private final FinVoucherEntryMapper entryMapper;
@@ -140,6 +152,9 @@ public class FinCostService {
         if (!calc.woCosts.isEmpty()) {
             woCostMapper.insertBatch(new ArrayList<>(calc.woCosts.values()));
         }
+        if (!calc.closeLayers.isEmpty()) {
+            layerMapper.insertBatch(calc.closeLayers);
+        }
         FinCostRun run = new FinCostRun();
         run.setPeriod(period);
         run.setCreateBy(SecurityUtils.getUserId());
@@ -182,6 +197,7 @@ public class FinCostService {
         }
         materialCostMapper.delete(Wrappers.<FinMaterialCost>lambdaQuery().eq(FinMaterialCost::getPeriod, run.getPeriod()));
         woCostMapper.delete(Wrappers.<FinWoCost>lambdaQuery().eq(FinWoCost::getPeriod, run.getPeriod()));
+        layerMapper.delete(Wrappers.<FinCostLayer>lambdaQuery().eq(FinCostLayer::getPeriod, run.getPeriod()));
         runMapper.deleteById(run.getId());
     }
 
@@ -221,6 +237,12 @@ public class FinCostService {
         private Map<Long, WmsMaterial> materialInfo;
         /** 制造费用差异（实际发生 - 按费率分配），转入主营业务成本 */
         private BigDecimal overheadVariance = BigDecimal.ZERO;
+        /** 移动加权平均、先进先出的物料 → 本期出入库明细（按发生顺序） */
+        private final Map<Long, List<Map<String, Object>>> events = new HashMap<>();
+        /** 先进先出的物料 → 上期结存批次 */
+        private final Map<Long, List<FinCostLayer>> prevLayers = new HashMap<>();
+        /** 先进先出的本期结存批次 */
+        private final List<FinCostLayer> closeLayers = new ArrayList<>();
 
         Calc(int period) {
             this.period = period;
@@ -307,6 +329,17 @@ public class FinCostService {
                 all.addAll(parts.keySet());
             });
             materialInfo = materialService.mapByIds(all);
+            Set<Long> sequenced = materialInfo.values().stream()
+                    .filter(m -> m.getCostMethod() != null && m.getCostMethod() != CostMethod.WEIGHTED)
+                    .map(WmsMaterial::getId).collect(Collectors.toSet());
+            if (!sequenced.isEmpty()) {
+                for (Map<String, Object> row : sourceMapper.selectCostEvents(begin, end, sequenced)) {
+                    events.computeIfAbsent(id(row, "materialId"), k -> new ArrayList<>()).add(row);
+                }
+                layerMapper.selectList(Wrappers.<FinCostLayer>lambdaQuery().eq(FinCostLayer::getPeriod, prevPeriod)
+                                .in(FinCostLayer::getMaterialId, sequenced).orderByAsc(FinCostLayer::getSeq))
+                        .forEach(l -> prevLayers.computeIfAbsent(l.getMaterialId(), k -> new ArrayList<>()).add(l));
+            }
         }
 
         void compute() {
@@ -437,6 +470,22 @@ public class FinCostService {
 
             BigDecimal baseQty = c.getOpenQty().add(c.getPurchaseQty()).add(make);
             BigDecimal baseAmount = c.getOpenAmount().add(c.getPurchaseAmount()).add(makeAmount);
+            c.setCloseQty(baseQty.add(c.getOtherInQty()).subtract(c.getIssueQty()).subtract(c.getSalesQty()).subtract(c.getOtherOutQty()));
+            CostMethod method = method(m);
+            c.setCostMethod(method);
+            if (method == CostMethod.WEIGHTED) {
+                valueWeighted(c, m, baseQty, baseAmount);
+            } else {
+                valueSequenced(c, m, method, baseAmount, consumed);
+            }
+            if (isEmpty(c)) {
+                return;
+            }
+            materials.put(m, c);
+        }
+
+        /** 月末一次加权平均：出库、其他入库都按 (期初 + 采购 + 生产) 的平均单价计价 */
+        private void valueWeighted(FinMaterialCost c, Long m, BigDecimal baseQty, BigDecimal baseAmount) {
             BigDecimal unit = baseQty.signum() > 0 && baseAmount.signum() >= 0
                     ? baseAmount.divide(baseQty, UNIT_SCALE, RoundingMode.HALF_UP) : lastUnitCost(m);
             c.setUnitCost(unit);
@@ -444,25 +493,147 @@ public class FinCostService {
             c.setIssueAmount(money(c.getIssueQty().multiply(unit)));
             c.setSalesAmount(money(c.getSalesQty().multiply(unit)));
             c.setOtherOutAmount(money(c.getOtherOutQty().multiply(unit)));
-            c.setCloseQty(baseQty.add(c.getOtherInQty()).subtract(c.getIssueQty()).subtract(c.getSalesQty()).subtract(c.getOtherOutQty()));
             BigDecimal closeAmount = baseAmount.add(c.getOtherInAmount()).subtract(c.getIssueAmount())
                     .subtract(c.getSalesAmount()).subtract(c.getOtherOutAmount());
             // 期末数量为 0 时，尾差计入销售成本（或其他出库），避免留下金额
             if (c.getCloseQty().signum() == 0 && closeAmount.signum() != 0) {
-                if (c.getSalesQty().signum() > 0) {
-                    c.setSalesAmount(c.getSalesAmount().add(closeAmount));
-                } else if (c.getIssueQty().signum() > 0) {
-                    c.setIssueAmount(c.getIssueAmount().add(closeAmount));
-                } else {
-                    c.setOtherOutAmount(c.getOtherOutAmount().add(closeAmount));
-                }
+                addOutResidual(c, closeAmount);
                 closeAmount = BigDecimal.ZERO;
             }
             c.setCloseAmount(closeAmount);
-            if (isEmpty(c)) {
+        }
+
+        /**
+         * 移动加权平均、先进先出：按业务发生顺序逐笔计价，得到期末结存金额和其他入库金额；
+         * 本期出库总成本 = 期初 + 采购 + 生产 + 其他入库 − 期末结存，领用、销售、其他出库按数量分摊（出库单价为本期出库的平均单价）
+         */
+        private void valueSequenced(FinMaterialCost c, Long m, CostMethod method, BigDecimal baseAmount, BigDecimal consumed) {
+            Valuation v = method == CostMethod.FIFO ? new FifoValuation(openingLayers(m, c), lastUnitCost(m))
+                    : new MovingValuation(c.getOpenQty(), c.getOpenAmount(), lastUnitCost(m));
+            List<Map<String, Object>> list = events.getOrDefault(m, List.of());
+            // 委外件核销的子件成本按采购入库数量分摊到各次入库
+            BigDecimal purchaseQty = list.stream().filter(r -> PURCHASE.equals(r.get("bizType")) && r.get("tradeNet") != null)
+                    .map(r -> dec(r, "qty")).filter(q -> q.signum() > 0).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal consumedLeft = consumed;
+            BigDecimal otherIn = BigDecimal.ZERO;
+            for (Map<String, Object> row : list) {
+                BigDecimal qty = dec(row, "qty");
+                if (qty.signum() == 0) {
+                    continue;
+                }
+                String type = (String) row.get("bizType");
+                LocalDate date = toLocalDate(row.get("bizDate"));
+                if (PURCHASE.equals(type) && row.get("tradeNet") != null && qty.signum() > 0) {
+                    BigDecimal share = purchaseQty.signum() > 0 ? money(consumed.multiply(qty).divide(purchaseQty, 10, RoundingMode.HALF_UP)) : BigDecimal.ZERO;
+                    share = share.min(consumedLeft.max(BigDecimal.ZERO));
+                    consumedLeft = consumedLeft.subtract(share);
+                    v.in(date, qty, tradeAmount(row, qty).add(share));
+                } else if (PURCHASE_RETURN.equals(type) && row.get("tradeNet") != null && qty.signum() < 0) {
+                    v.returnOut(qty.negate(), tradeAmount(row, qty.negate()));
+                } else if (row.get("woId") != null && qty.signum() > 0) {
+                    FinWoCost w = woCosts.get(id(row, "woId"));
+                    BigDecimal unit = w != null && w.getUnitCost() != null ? w.getUnitCost() : v.unit();
+                    v.in(date, qty, money(qty.multiply(unit)));
+                } else if (qty.signum() > 0) {
+                    BigDecimal amount = v.inAtCost(date, qty);
+                    if (isOtherIn(row)) {
+                        otherIn = otherIn.add(amount);
+                    }
+                } else {
+                    BigDecimal cost = v.out(qty.negate());
+                    // 红字入库单冲减其他入库
+                    if (isOtherIn(row)) {
+                        otherIn = otherIn.subtract(cost);
+                    }
+                }
+            }
+            // 尾差（分摊委外子件成本的四舍五入）计入最后结存
+            if (consumedLeft.signum() != 0 && purchaseQty.signum() > 0) {
+                v.adjust(consumedLeft);
+            }
+            BigDecimal closeAmount = v.closeAmount();
+            c.setOtherInAmount(money(otherIn));
+            BigDecimal outQty = c.getIssueQty().add(c.getSalesQty()).add(c.getOtherOutQty());
+            BigDecimal outValue = baseAmount.add(c.getOtherInAmount()).subtract(closeAmount);
+            BigDecimal unit;
+            if (outQty.signum() > 0) {
+                unit = outValue.divide(outQty, UNIT_SCALE, RoundingMode.HALF_UP);
+            } else {
+                unit = c.getCloseQty().signum() > 0 ? closeAmount.divide(c.getCloseQty(), UNIT_SCALE, RoundingMode.HALF_UP) : v.unit();
+            }
+            c.setUnitCost(unit.signum() < 0 ? BigDecimal.ZERO : unit);
+            BigDecimal outUnit = outQty.signum() > 0 ? unit : BigDecimal.ZERO;
+            c.setIssueAmount(money(c.getIssueQty().multiply(outUnit)));
+            c.setSalesAmount(money(c.getSalesQty().multiply(outUnit)));
+            c.setOtherOutAmount(money(c.getOtherOutQty().multiply(outUnit)));
+            addOutResidual(c, outValue.subtract(c.getIssueAmount()).subtract(c.getSalesAmount()).subtract(c.getOtherOutAmount()));
+            c.setCloseAmount(closeAmount);
+            if (method == CostMethod.FIFO) {
+                int seq = 1;
+                for (FifoValuation.Layer l : ((FifoValuation) v).closingLayers()) {
+                    FinCostLayer layer = new FinCostLayer();
+                    layer.setPeriod(period);
+                    layer.setMaterialId(m);
+                    layer.setSeq(seq++);
+                    layer.setInDate(l.date);
+                    layer.setQty(l.qty);
+                    layer.setAmount(l.amount);
+                    closeLayers.add(layer);
+                }
+            }
+        }
+
+        /** 出库金额的尾差：依次计入销售成本、生产领用、其他出库 */
+        private void addOutResidual(FinMaterialCost c, BigDecimal residual) {
+            if (residual.signum() == 0) {
                 return;
             }
-            materials.put(m, c);
+            if (c.getSalesQty().signum() > 0) {
+                c.setSalesAmount(c.getSalesAmount().add(residual));
+            } else if (c.getIssueQty().signum() > 0) {
+                c.setIssueAmount(c.getIssueAmount().add(residual));
+            } else {
+                c.setOtherOutAmount(c.getOtherOutAmount().add(residual));
+            }
+        }
+
+        /** 其他入库：入库单（非采购、完工、退货）和盘盈；退料、销售退货冲减出库，不计入其他入库 */
+        private boolean isOtherIn(Map<String, Object> row) {
+            String type = (String) row.get("bizType");
+            if (RETURN_TYPES.contains(type)) {
+                return false;
+            }
+            Object kind = row.get("docKind");
+            return kind == null ? dec(row, "qty").signum() > 0 : StockBizType.IN.name().equals(kind);
+        }
+
+        /** 采购入库 / 退货单据中该物料的不含税金额（出入库数量与采购单据不同时按比例） */
+        private BigDecimal tradeAmount(Map<String, Object> row, BigDecimal qty) {
+            BigDecimal net = dec(row, "tradeNet");
+            BigDecimal tradeQty = dec(row, "tradeQty");
+            if (tradeQty.signum() == 0 || tradeQty.compareTo(qty) == 0) {
+                return money(net);
+            }
+            return money(net.multiply(qty).divide(tradeQty, 10, RoundingMode.HALF_UP));
+        }
+
+        /** 先进先出的期初批次：上期结存批次与上期期末一致时沿用，否则（首次使用先进先出等）以上期期末为一个批次 */
+        private List<FifoValuation.Layer> openingLayers(Long m, FinMaterialCost c) {
+            List<FinCostLayer> layers = prevLayers.getOrDefault(m, List.of());
+            BigDecimal qty = layers.stream().map(FinCostLayer::getQty).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal amount = layers.stream().map(FinCostLayer::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (!layers.isEmpty() && qty.compareTo(c.getOpenQty()) == 0 && amount.compareTo(c.getOpenAmount()) == 0) {
+                return layers.stream().map(l -> new FifoValuation.Layer(l.getInDate(), l.getQty(), l.getAmount())).toList();
+            }
+            if (c.getOpenQty().signum() == 0 && c.getOpenAmount().signum() == 0) {
+                return List.of();
+            }
+            return List.of(new FifoValuation.Layer(firstDay(period).minusDays(1), c.getOpenQty(), c.getOpenAmount()));
+        }
+
+        private CostMethod method(Long m) {
+            WmsMaterial info = materialInfo.get(m);
+            return info == null || info.getCostMethod() == null ? CostMethod.WEIGHTED : info.getCostMethod();
         }
 
         /** 成本结转凭证分录 */

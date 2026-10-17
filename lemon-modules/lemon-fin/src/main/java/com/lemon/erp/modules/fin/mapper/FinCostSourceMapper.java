@@ -3,6 +3,7 @@ package com.lemon.erp.modules.fin.mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -54,6 +55,14 @@ public interface FinCostSourceMapper {
      * @return [{productId, materialId, qty}]
      */
     List<Map<String, Object>> selectOutsourceConsumption(@Param("begin") LocalDate begin, @Param("end") LocalDate end);
+
+    /**
+     * 移动加权平均、先进先出物料的出入库明细，按业务日期、发生顺序排列
+     *
+     * @return [{materialId, bizDate, seq, bizType, docKind（IN / OUT，盘点为空）, qty（入库为正）, tradeQty, tradeNet（采购入库 / 退货的不含税金额）, woId（完工入库）}]
+     */
+    List<Map<String, Object>> selectCostEvents(@Param("begin") LocalDate begin, @Param("end") LocalDate end,
+                                               @Param("materialIds") Collection<Long> materialIds);
 
     /** 参考成本价大于 0 的物料：[{materialId, refCost}] */
     List<Map<String, Object>> selectRefCosts();

@@ -101,6 +101,7 @@ DROP TABLE IF EXISTS fin_note;
 DROP TABLE IF EXISTS fin_fund_transfer;
 DROP TABLE IF EXISTS fin_fund_plan_item;
 DROP TABLE IF EXISTS fin_wo_cost;
+DROP TABLE IF EXISTS fin_cost_layer;
 DROP TABLE IF EXISTS fin_material_cost;
 DROP TABLE IF EXISTS fin_cost_run;
 DROP TABLE IF EXISTS fin_depreciation;
@@ -630,6 +631,7 @@ CREATE TABLE wms_material (
     default_warehouse_id BIGINT       DEFAULT NULL COMMENT '默认仓库：录入出入库单、订单时默认带出',
     default_location_id  BIGINT       DEFAULT NULL COMMENT '默认库位（默认仓库中的）',
     ref_cost       DECIMAL(18, 4)         DEFAULT NULL COMMENT '参考成本价：没有核算单价时（首次核算的其他入库等）按此计价',
+    cost_method    VARCHAR(16)   NOT NULL DEFAULT 'WEIGHTED' COMMENT '存货计价方法(字典 wms_cost_method) WEIGHTED月末一次加权平均 MOVING移动加权平均 FIFO先进先出',
     status         TINYINT       NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
     remark         VARCHAR(255)           DEFAULT NULL COMMENT '备注',
     create_time    DATETIME               DEFAULT NULL COMMENT '创建时间',
@@ -3127,12 +3129,28 @@ CREATE TABLE fin_material_cost (
     other_out_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '其他出库金额',
     close_qty        DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '期末数量',
     close_amount     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '期末金额',
-    unit_cost        DECIMAL(18, 6) NOT NULL DEFAULT 0 COMMENT '本期加权平均单价',
+    unit_cost        DECIMAL(18, 6) NOT NULL DEFAULT 0 COMMENT '本期出库单价（月末一次加权平均为加权平均单价，其他计价方法为本期出库的平均单价）',
+    cost_method      VARCHAR(16)    NOT NULL DEFAULT 'WEIGHTED' COMMENT '本期使用的计价方法(字典 wms_cost_method)',
     create_time      DATETIME                DEFAULT NULL COMMENT '创建时间',
     update_time      DATETIME                DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_material_cost (period, material_id, tenant_id)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '存货成本（月末一次加权平均）';
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '存货成本（按物料的计价方法核算）';
+
+CREATE TABLE fin_cost_layer (
+    id          BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    period      INT            NOT NULL COMMENT '会计期间',
+    material_id BIGINT         NOT NULL COMMENT '物料',
+    seq         INT            NOT NULL COMMENT '批次顺序，越小入库越早',
+    in_date     DATE           NOT NULL COMMENT '入库日期',
+    qty         DECIMAL(18, 4) NOT NULL COMMENT '结存数量',
+    amount      DECIMAL(18, 2) NOT NULL COMMENT '结存金额',
+    create_time DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_cost_layer (period, material_id, seq)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '先进先出的期末结存批次：下一期核算的期初批次';
 
 CREATE TABLE fin_wo_cost (
     id              BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -6321,6 +6339,14 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 (2713, 271, '装箱', 'F', NULL, NULL, 'scm:delivery:pack', NULL, 3, 1, 1, NOW(), NOW());
 INSERT INTO sys_role_menu (role_id, menu_id) VALUES
 (6, 2713);
+
+-- 存货计价方法
+INSERT INTO sys_dict_type (id, name, type, status, remark, create_time, update_time) VALUES
+(155, '存货计价方法', 'wms_cost_method', 1, '物料的存货计价方法，月末成本核算时按此计算出库成本', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('wms_cost_method', '月末一次加权平均', 'WEIGHTED', 'blue', 1, 1, NOW(), NOW()),
+('wms_cost_method', '移动加权平均', 'MOVING', 'cyan', 2, 1, NOW(), NOW()),
+('wms_cost_method', '先进先出', 'FIFO', 'purple', 3, 1, NOW(), NOW());
 
 -- 凭证科目设置：自动凭证各用途使用的科目
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES

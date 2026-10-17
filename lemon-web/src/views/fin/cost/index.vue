@@ -55,7 +55,10 @@
                 <div>{{ record.materialCode }} {{ record.materialName }}</div>
                 <div class="sub-text">{{ record.spec }}</div>
               </template>
-              <template v-else-if="column.key === 'unitCost'">{{ fmt(record.unitCost, 4) }}</template>
+              <template v-else-if="column.key === 'unitCost'">
+                <div>{{ fmt(record.unitCost, 4) }}</div>
+                <div class="sub-text"><DictTag type="wms_cost_method" :value="record.costMethod" /></div>
+              </template>
               <template v-else-if="column.qty">
                 <div class="num">{{ formatQty(record[column.qty]) === '0' ? '' : formatQty(record[column.qty]) }}</div>
                 <div class="num sub-text">{{ moneyOrBlank(record[column.amount]) }}</div>
@@ -196,7 +199,7 @@ const materialColumns = [
   { title: '采购入库', key: 'purchase', qty: 'purchaseQty', amount: 'purchaseAmount', width: 120, align: 'right' },
   { title: '生产入库', key: 'make', qty: 'makeQty', amount: 'makeAmount', width: 120, align: 'right' },
   { title: '其他入库', key: 'otherIn', qty: 'otherInQty', amount: 'otherInAmount', width: 110, align: 'right' },
-  { title: '加权单价', key: 'unitCost', width: 110, align: 'right' },
+  { title: '出库单价', key: 'unitCost', width: 140, align: 'right' },
   { title: '生产领用', key: 'issue', qty: 'issueQty', amount: 'issueAmount', width: 120, align: 'right' },
   { title: '销售出库', key: 'sales', qty: 'salesQty', amount: 'salesAmount', width: 120, align: 'right' },
   { title: '其他出库', key: 'otherOut', qty: 'otherOutQty', amount: 'otherOutAmount', width: 110, align: 'right' },
