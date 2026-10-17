@@ -15,6 +15,7 @@ import com.lemon.erp.modules.system.im.ImPlatform;
 import com.lemon.erp.modules.system.mapper.SysImConfigMapper;
 import com.lemon.erp.modules.system.mapper.SysImUserMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.net.URLEncoder;
@@ -109,6 +110,7 @@ public class SysImConfigService {
         return configMapper.selectList(Wrappers.<SysImConfig>lambdaQuery().eq(SysImConfig::getEnabled, true));
     }
 
+    @Transactional
     public void save(SysImConfig input) {
         ImPlatform p = input.getPlatform();
         SysImConfig old = find(p);

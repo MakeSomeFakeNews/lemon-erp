@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.org.UserLookup;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
@@ -23,12 +24,9 @@ import com.lemon.erp.modules.crm.model.OpportunityStage;
 import com.lemon.erp.modules.scm.dto.OrderItemRequest;
 import com.lemon.erp.modules.scm.dto.OrderRequest;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
-import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.service.ScmOrderService;
-import com.lemon.erp.modules.system.entity.SysUser;
-import com.lemon.erp.modules.system.mapper.SysUserMapper;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
@@ -59,9 +57,8 @@ public class CrmOpportunityService {
     private final CrmContactMapper contactMapper;
     private final CrmCustomerService customerService;
     private final ScmOrderService orderService;
-    private final ScmOrderMapper orderMapper;
     private final WmsMaterialService materialService;
-    private final SysUserMapper userMapper;
+    private final UserLookup userLookup;
     private final DocNoService docNoService;
 
     @DataPermission(table = "crm_opportunity", deptColumn = "dept_id", userColumn = "owner_id")
@@ -209,7 +206,7 @@ public class CrmOpportunityService {
         if (o.getStage() != OpportunityStage.WON) {
             throw new BizException("crm.error.salesOrderOnlyCreatedAfterOpportunity");
         }
-        if (o.getSalesOrderId() != null && orderMapper.selectById(o.getSalesOrderId()) != null) {
+        if (o.getSalesOrderId() != null && orderService.find(o.getSalesOrderId()) != null) {
             throw new BizException("crm.error.salesOrderHasAlreadyCreated", o.getSalesOrderNo());
         }
         if (o.getItems().isEmpty()) {
@@ -221,7 +218,7 @@ public class CrmOpportunityService {
         Long orderId = orderService.createDraft(OrderKind.SALES, new OrderRequest(o.getCustomerId(), LocalDate.now(),
                 req.deliveryDate() != null ? req.deliveryDate() : o.getExpectedDate(), req.warehouseId(),
                 "商机 " + o.getOppNo() + " " + o.getName(), items), OrderSource.CRM); // i18n-ignore 存库的订单备注
-        ScmOrder order = orderMapper.selectById(orderId);
+        ScmOrder order = orderService.find(orderId);
         opportunityMapper.update(Wrappers.<CrmOpportunity>lambdaUpdate()
                 .set(CrmOpportunity::getSalesOrderId, orderId)
                 .set(CrmOpportunity::getSalesOrderNo, order.getOrderNo())
@@ -273,12 +270,9 @@ public class CrmOpportunityService {
             o.setOwnerId(user.userId());
             o.setDeptId(user.deptId());
         } else {
-            SysUser owner = userMapper.selectById(req.ownerId());
-            if (owner == null) {
-                throw new BizException("crm.error.ownerDoesNotExist");
-            }
-            o.setOwnerId(owner.getId());
-            o.setDeptId(owner.getDeptId());
+            UserLookup.UserBrief owner = userLookup.require(req.ownerId(), "crm.error.ownerDoesNotExist");
+            o.setOwnerId(owner.id());
+            o.setDeptId(owner.deptId());
         }
         return items;
     }

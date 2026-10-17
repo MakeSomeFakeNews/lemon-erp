@@ -15,6 +15,7 @@ import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -53,7 +54,20 @@ public class ScmPriceControlService {
         return controlMapper.selectList(Wrappers.<ScmPriceControl>lambdaQuery().in(ScmPriceControl::getMaterialId, materialIds));
     }
 
-    public void save(ScmPriceControl c) {
+    public void create(ScmPriceControl c) {
+        materialService.get(c.getMaterialId());
+        c.setId(null);
+        save(c);
+    }
+
+    @Transactional
+    public void update(Long id, ScmPriceControl c) {
+        materialService.get(c.getMaterialId());
+        c.setId(id);
+        save(c);
+    }
+
+    private void save(ScmPriceControl c) {
         if (c.getMinSalePrice() == null && c.getMaxPurchasePrice() == null) {
             throw new BizException("scm.error.enterLeastMinimumSalesPriceMaximum");
         }

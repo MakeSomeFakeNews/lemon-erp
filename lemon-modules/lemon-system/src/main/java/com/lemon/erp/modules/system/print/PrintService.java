@@ -24,9 +24,11 @@ import net.sf.jasperreports.export.SimpleOutputStreamExporterOutput;
 import net.sf.jasperreports.pdf.JRPdfExporter;
 import net.sf.jasperreports.pdf.SimplePdfExporterConfiguration;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -134,6 +136,17 @@ public class PrintService {
         } catch (JRException | RuntimeException e) {
             throw new BizException("system.error.templateCannotCompiledMustJaspersoftStudio", rootMessage(e));
         }
+    }
+
+    /** 上传 JRXML：校验文件大小、能编译通过后保存，之后该单据按 JRXML 打印 */
+    public void uploadJrxml(String key, MultipartFile file) throws IOException {
+        checkUploadAllowed();
+        if (file.getSize() > MAX_JRXML) {
+            throw new BizException("system.text.templateFileCannotExceedMb");
+        }
+        String jrxml = new String(file.getBytes(), StandardCharsets.UTF_8);
+        validateJrxml(jrxml);
+        templateService.saveJrxml(key, jrxml);
     }
 
     /** SaaS 模式下只有平台租户能上传 JRXML：其中的 Java 表达式在服务器上执行 */

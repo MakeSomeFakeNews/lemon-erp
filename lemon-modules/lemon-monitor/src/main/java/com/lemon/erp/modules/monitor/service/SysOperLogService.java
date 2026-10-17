@@ -66,6 +66,16 @@ public class SysOperLogService {
         return PageResult.of(page);
     }
 
+    /**
+     * 最近的操作日志（首页「最近操作」使用）：只查列表需要的列，按主键倒序取前 limit 条，不做 count
+     */
+    public List<SysOperLog> recent(int limit) {
+        return operLogMapper.selectPage(Page.of(1, limit, false), Wrappers.<SysOperLog>lambdaQuery()
+                .select(SysOperLog::getId, SysOperLog::getTitle, SysOperLog::getOperType, SysOperLog::getOperator,
+                        SysOperLog::getStatus, SysOperLog::getOperTime, SysOperLog::getCostTime)
+                .orderByDesc(SysOperLog::getId)).getRecords();
+    }
+
     public SysOperLog detail(Long id) {
         SysOperLog log = operLogMapper.selectById(id);
         if (log == null) {

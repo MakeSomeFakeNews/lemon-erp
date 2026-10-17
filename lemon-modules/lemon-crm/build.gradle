@@ -7,6 +7,5 @@ description = '客户关系：客户、线索商机、合同、服务工单、�
 dependencies {
     api project(':lemon-modules:lemon-fin')
     api project(':lemon-modules:lemon-scm')
-    api project(':lemon-modules:lemon-system')
     api project(':lemon-modules:lemon-wms')
 }

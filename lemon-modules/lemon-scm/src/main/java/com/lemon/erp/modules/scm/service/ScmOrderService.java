@@ -109,6 +109,16 @@ public class ScmOrderService {
         return order;
     }
 
+    /**
+     * 按 ID 读取订单主表，供其他模块（如客户关系的合同、商机）校验关联关系、读取单号。
+     * 不做当前用户的数据权限校验，不含明细
+     *
+     * @return 订单，不存在时返回 null
+     */
+    public ScmOrder find(Long id) {
+        return id == null ? null : orderMapper.selectById(id);
+    }
+
     /** 手工新建：销售订单自动应用促销，可使用返利抵扣 */
     @Transactional
     public Long create(OrderKind kind, OrderRequest req) {

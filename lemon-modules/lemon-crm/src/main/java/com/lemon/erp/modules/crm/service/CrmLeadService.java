@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.org.UserLookup;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
@@ -18,8 +19,6 @@ import com.lemon.erp.modules.crm.model.CrmConstants;
 import com.lemon.erp.modules.crm.model.CustomerStage;
 import com.lemon.erp.modules.crm.model.LeadStatus;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
-import com.lemon.erp.modules.system.entity.SysUser;
-import com.lemon.erp.modules.system.mapper.SysUserMapper;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -42,7 +41,7 @@ public class CrmLeadService {
     private final CrmLeadMapper leadMapper;
     private final CrmCustomerService customerService;
     private final CrmOpportunityService opportunityService;
-    private final SysUserMapper userMapper;
+    private final UserLookup userLookup;
     private final DocNoService docNoService;
 
     @DataPermission(table = "crm_lead", deptColumn = "dept_id", userColumn = "owner_id")
@@ -193,12 +192,9 @@ public class CrmLeadService {
             l.setOwnerId(user.userId());
             l.setDeptId(user.deptId());
         } else {
-            SysUser owner = userMapper.selectById(req.ownerId());
-            if (owner == null) {
-                throw new BizException("crm.error.ownerDoesNotExist");
-            }
-            l.setOwnerId(owner.getId());
-            l.setDeptId(owner.getDeptId());
+            UserLookup.UserBrief owner = userLookup.require(req.ownerId(), "crm.error.ownerDoesNotExist");
+            l.setOwnerId(owner.id());
+            l.setDeptId(owner.deptId());
         }
     }
 }

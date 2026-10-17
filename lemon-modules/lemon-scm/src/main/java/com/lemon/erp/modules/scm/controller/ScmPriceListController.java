@@ -1,21 +1,15 @@
 package com.lemon.erp.modules.scm.controller;
 
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
-import com.lemon.erp.modules.scm.entity.ScmCustomer;
 import com.lemon.erp.modules.scm.entity.ScmPriceControl;
 import com.lemon.erp.modules.scm.entity.ScmPriceList;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.service.ScmPriceControlService;
 import java.util.Map;
-import com.lemon.erp.modules.scm.mapper.ScmPriceListMapper;
-import com.lemon.erp.modules.scm.service.ScmCustomerService;
-import com.lemon.erp.modules.wms.service.WmsMaterialService;
+import com.lemon.erp.modules.scm.service.ScmPriceListService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -42,9 +36,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ScmPriceListController {
 
-    private final ScmPriceListMapper priceListMapper;
-    private final WmsMaterialService materialService;
-    private final ScmCustomerService customerService;
+    private final ScmPriceListService priceListService;
     private final ScmPriceControlService controlService;
 
     @GetMapping
@@ -53,9 +45,7 @@ public class ScmPriceListController {
                                             @RequestParam(defaultValue = "10") long size,
                                             @RequestParam(required = false) String keyword,
                                             @RequestParam(required = false) String level) {
-        Page<ScmPriceList> page = Page.of(current, size);
-        priceListMapper.selectPageList(page, keyword, level);
-        return R.ok(PageResult.of(page));
+        return R.ok(priceListService.page(current, size, keyword, level));
     }
 
     /** 取价：销售订单、报价单选择物料后带出单价；没有匹配的价格时返回空 */
@@ -64,19 +54,14 @@ public class ScmPriceListController {
     public R<ScmPriceList> quote(@RequestParam Long materialId, @RequestParam(required = false) Long customerId,
                                  @RequestParam(required = false) BigDecimal qty,
                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        String level = null;
-        if (customerId != null) {
-            ScmCustomer c = customerService.get(customerId);
-            level = c.getLevel();
-        }
-        return R.ok(priceListMapper.selectQuote(materialId, customerId, level, qty == null ? BigDecimal.ONE : qty, date == null ? LocalDate.now() : date));
+        return R.ok(priceListService.quote(materialId, customerId, qty, date));
     }
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:price:edit')")
     @OperLog(title = "销售价目表", type = OperType.INSERT) // i18n-ignore
     public R<Void> create(@Valid @RequestBody ScmPriceList req) {
-        priceListMapper.insert(normalize(req, null));
+        priceListService.create(req);
         return R.ok();
     }
 
@@ -84,19 +69,7 @@ public class ScmPriceListController {
     @PreAuthorize("@ss.hasPerm('scm:price:edit')")
     @OperLog(title = "销售价目表", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody ScmPriceList req) {
-        if (priceListMapper.selectById(id) == null) {
-            throw new BizException("scm.error.priceEntryDoesNotExist");
-        }
-        ScmPriceList p = normalize(req, id);
-        priceListMapper.updateById(p);
-        // 可为空的字段要能清空
-        priceListMapper.update(Wrappers.<ScmPriceList>lambdaUpdate()
-                .set(ScmPriceList::getCustomerLevel, p.getCustomerLevel())
-                .set(ScmPriceList::getCustomerId, p.getCustomerId())
-                .set(ScmPriceList::getValidFrom, p.getValidFrom())
-                .set(ScmPriceList::getValidTo, p.getValidTo())
-                .set(ScmPriceList::getRemark, p.getRemark())
-                .eq(ScmPriceList::getId, id));
+        priceListService.update(id, req);
         return R.ok();
     }
 
@@ -104,7 +77,7 @@ public class ScmPriceListController {
     @PreAuthorize("@ss.hasPerm('scm:price:edit')")
     @OperLog(title = "销售价目表", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
-        priceListMapper.deleteByIds(ids);
+        priceListService.delete(ids);
         return R.ok();
     }
 
@@ -127,9 +100,7 @@ public class ScmPriceListController {
     @PreAuthorize("@ss.hasPerm('scm:price:edit')")
     @OperLog(title = "价格控制", type = OperType.INSERT) // i18n-ignore
     public R<Void> createControl(@Valid @RequestBody ScmPriceControl req) {
-        materialService.get(req.getMaterialId());
-        req.setId(null);
-        controlService.save(req);
+        controlService.create(req);
         return R.ok();
     }
 
@@ -137,9 +108,7 @@ public class ScmPriceListController {
     @PreAuthorize("@ss.hasPerm('scm:price:edit')")
     @OperLog(title = "价格控制", type = OperType.UPDATE) // i18n-ignore
     public R<Void> updateControl(@PathVariable Long id, @Valid @RequestBody ScmPriceControl req) {
-        materialService.get(req.getMaterialId());
-        req.setId(id);
-        controlService.save(req);
+        controlService.update(id, req);
         return R.ok();
     }
 
@@ -157,22 +126,5 @@ public class ScmPriceListController {
     public R<List<Map<String, Object>>> history(@RequestParam String kind, @RequestParam Long partnerId, @RequestParam Long materialId,
                                                 @RequestParam(defaultValue = "5") int limit) {
         return R.ok(controlService.history(OrderKind.ofPath(kind), partnerId, materialId, limit));
-    }
-
-    private ScmPriceList normalize(ScmPriceList p, Long id) {
-        materialService.get(p.getMaterialId());
-        if (p.getValidFrom() != null && p.getValidTo() != null && p.getValidTo().isBefore(p.getValidFrom())) {
-            throw new BizException("scm.error.validDateCannotEarlierValidDate");
-        }
-        p.setId(id);
-        p.setCustomerLevel(p.getCustomerLevel() == null || p.getCustomerLevel().isBlank() ? null : p.getCustomerLevel());
-        // 客户专属价只看客户，不再区分等级
-        if (p.getCustomerId() != null) {
-            customerService.get(p.getCustomerId());
-            p.setCustomerLevel(null);
-        }
-        p.setMinQty(p.getMinQty() == null ? BigDecimal.ZERO : p.getMinQty());
-        p.setTaxRate(p.getTaxRate() == null ? BigDecimal.valueOf(13) : p.getTaxRate());
-        return p;
     }
 }

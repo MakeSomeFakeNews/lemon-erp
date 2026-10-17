@@ -183,6 +183,14 @@ public class ScmShipmentService {
         shipmentMapper.deleteByIds(ids);
     }
 
+    /**
+     * 记录发运单运费生成的承运商应付单。由财务模块在处理 {@link ShipmentShippedEvent} 时调用，与发货在同一事务
+     */
+    public void bindFreightBill(Long shipmentId, Long billId) {
+        shipmentMapper.update(Wrappers.<ScmShipment>lambdaUpdate().set(ScmShipment::getFreightBillId, billId)
+                .eq(ScmShipment::getId, shipmentId));
+    }
+
     private ScmShipment getAccessible(Long id) {
         Supplier<ScmShipment> loader = () -> shipmentMapper.selectById(id);
         ScmShipment shipment = SecurityUtils.getDataScope().all() ? loader.get() : DataPermissionContext.execute(SHIPMENT_RULE, loader);

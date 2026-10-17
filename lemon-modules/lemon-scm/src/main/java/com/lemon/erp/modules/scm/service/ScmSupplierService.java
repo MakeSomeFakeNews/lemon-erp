@@ -69,6 +69,42 @@ public class ScmSupplierService {
         return supplier;
     }
 
+    /**
+     * 按税号精确匹配供应商（不限状态），供财务模块的发票导入等识别往来单位
+     *
+     * @return 第一个匹配的供应商 ID，没有时返回 null
+     */
+    public Long findIdByTaxNo(String taxNo) {
+        return firstId(supplierMapper.selectList(Wrappers.<ScmSupplier>lambdaQuery().eq(ScmSupplier::getTaxNo, taxNo)));
+    }
+
+    /**
+     * 按名称精确匹配供应商（不限状态），供财务模块的发票导入等识别往来单位
+     *
+     * @return 第一个匹配的供应商 ID，没有时返回 null
+     */
+    public Long findIdByName(String name) {
+        return firstId(supplierMapper.selectList(Wrappers.<ScmSupplier>lambdaQuery().eq(ScmSupplier::getName, name)));
+    }
+
+    /**
+     * 按编码或名称精确匹配供应商（不限状态），供财务模块的期初导入等按文字识别往来单位。编码完全一致的优先
+     *
+     * @return 供应商 ID，没有时返回 null
+     */
+    public Long findIdByCodeOrName(String key) {
+        List<ScmSupplier> list = supplierMapper.selectList(Wrappers.<ScmSupplier>lambdaQuery()
+                .eq(ScmSupplier::getCode, key).or().eq(ScmSupplier::getName, key));
+        if (list.isEmpty()) {
+            return null;
+        }
+        return list.stream().filter(x -> key.equals(x.getCode())).findFirst().orElse(list.get(0)).getId();
+    }
+
+    private static Long firstId(List<ScmSupplier> list) {
+        return list.isEmpty() ? null : list.get(0).getId();
+    }
+
     /** 启用的供应商，按编码或名称搜索 */
     public List<PartnerOption> options(String keyword) {
         return supplierMapper.selectPage(Page.of(1, OPTION_LIMIT, false), Wrappers.<ScmSupplier>lambdaQuery()

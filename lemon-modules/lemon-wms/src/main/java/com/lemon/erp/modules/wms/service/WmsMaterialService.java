@@ -112,6 +112,19 @@ public class WmsMaterialService {
                 .collect(Collectors.toMap(WmsMaterial::getId, Function.identity()));
     }
 
+    /**
+     * 按编码批量加载物料（含停用的），编码 → 物料，供其他模块的导入功能按编码识别物料
+     *
+     * @param codes 物料编码（调用方去除空白），不存在的编码不出现在结果中
+     */
+    public Map<String, WmsMaterial> mapByCodes(Collection<String> codes) {
+        if (codes.isEmpty()) {
+            return Map.of();
+        }
+        return materialMapper.selectList(Wrappers.<WmsMaterial>lambdaQuery().in(WmsMaterial::getCode, codes)).stream()
+                .collect(Collectors.toMap(WmsMaterial::getCode, Function.identity()));
+    }
+
     /** 启用的物料，按编码或名称搜索，供单据明细选择 */
     public List<WmsMaterial> options(String keyword) {
         return materialMapper.selectPage(Page.of(1, OPTION_LIMIT, false), Wrappers.<WmsMaterial>lambdaQuery()
@@ -143,6 +156,7 @@ public class WmsMaterialService {
     }
 
     /** 已发生库存业务的物料，不能修改批次、序列号管理方式，否则已有库存与新规则不一致 */
+    @Transactional
     public void update(Long id, WmsMaterial material) {
         Object before = materialMapper.selectById(id);
         WmsMaterial old = get(id);

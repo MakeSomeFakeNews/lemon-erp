@@ -76,6 +76,7 @@ public class WmsWarehouseService {
         warehouseMapper.insert(warehouse);
     }
 
+    @Transactional
     public void update(Long id, WmsWarehouse warehouse) {
         get(id);
         checkCodeUnique(warehouse.getCode(), id);

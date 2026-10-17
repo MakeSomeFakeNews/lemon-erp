@@ -15,6 +15,8 @@ import com.lemon.erp.modules.system.mapper.SysBizRuleMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -96,7 +98,8 @@ public class SysBizRuleService implements BizRules {
                 ruleMapper.updateById(row);
             }
         });
-        cache.delete(cacheKey());
+        String key = cacheKey();
+        evictNowAndAfterCommit(() -> cache.delete(key));
     }
 
     private BizRule definition(String key) {
@@ -156,6 +159,19 @@ public class SysBizRuleService implements BizRules {
             }
         } else {
             throw new BizException("system.error.typeNotSupported", name);
+        }
+    }
+
+    /** 立即清理一次，有事务时提交后再清理一次，避免并发请求把未提交前的旧值重新加载进缓存 */
+    private static void evictNowAndAfterCommit(Runnable evict) {
+        evict.run();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    evict.run();
+                }
+            });
         }
     }
 }

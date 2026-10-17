@@ -16,10 +16,8 @@ import com.lemon.erp.modules.fin.mapper.FinAccountOpeningMapper;
 import com.lemon.erp.modules.fin.mapper.FinCostRunMapper;
 import com.lemon.erp.modules.fin.mapper.FinOpeningQueryMapper;
 import com.lemon.erp.modules.fin.model.AccountRole;
-import com.lemon.erp.modules.scm.entity.ScmCustomer;
-import com.lemon.erp.modules.scm.entity.ScmSupplier;
-import com.lemon.erp.modules.scm.mapper.ScmCustomerMapper;
-import com.lemon.erp.modules.scm.mapper.ScmSupplierMapper;
+import com.lemon.erp.modules.scm.service.ScmCustomerService;
+import com.lemon.erp.modules.scm.service.ScmSupplierService;
 import com.lemon.erp.modules.wms.dto.OpeningStockRow;
 import com.lemon.erp.modules.wms.service.WmsOpeningStockService;
 import lombok.RequiredArgsConstructor;
@@ -48,8 +46,8 @@ public class FinOpeningSetupService {
     private final FinAccountService accountService;
     private final FinAccountRuleService accountRules;
     private final FinBillService billService;
-    private final ScmCustomerMapper customerMapper;
-    private final ScmSupplierMapper supplierMapper;
+    private final ScmCustomerService customerService;
+    private final ScmSupplierService supplierService;
     private final WmsOpeningStockService openingStockService;
     private final ImportExecutor importExecutor;
 
@@ -127,20 +125,18 @@ public class FinOpeningSetupService {
     }
 
     private Long customerId(String key) {
-        List<ScmCustomer> list = customerMapper.selectList(Wrappers.<ScmCustomer>lambdaQuery()
-                .eq(ScmCustomer::getCode, key).or().eq(ScmCustomer::getName, key));
-        if (list.isEmpty()) {
+        Long id = customerService.findIdByCodeOrName(key);
+        if (id == null) {
             throw new BizException("fin.error.customerDoesNotExist", key);
         }
-        return list.stream().filter(c -> key.equals(c.getCode())).findFirst().orElse(list.get(0)).getId();
+        return id;
     }
 
     private Long supplierId(String key) {
-        List<ScmSupplier> list = supplierMapper.selectList(Wrappers.<ScmSupplier>lambdaQuery()
-                .eq(ScmSupplier::getCode, key).or().eq(ScmSupplier::getName, key));
-        if (list.isEmpty()) {
+        Long id = supplierService.findIdByCodeOrName(key);
+        if (id == null) {
             throw new BizException("fin.error.supplierDoesNotExist", key);
         }
-        return list.stream().filter(s -> key.equals(s.getCode())).findFirst().orElse(list.get(0)).getId();
+        return id;
     }
 }
