@@ -68,6 +68,9 @@ public class ScmOrderService {
     private static final String BUSINESS_KEY_PREFIX = "scm_order:";
     private static final BigDecimal DEFAULT_TAX_RATE = BigDecimal.valueOf(13);
 
+    /** 订单来源：手工录入（保存时校验价格控制） */
+    private static final String MANUAL = "MANUAL";
+
     private final ScmOrderMapper orderMapper;
     private final ScmOrderItemMapper itemMapper;
     private final ScmSupplierService supplierService;
@@ -84,6 +87,7 @@ public class ScmOrderService {
     private final ScmPortalNotifier portalNotifier;
     private final ScmPromotionService promotionService;
     private final ScmRebateService rebateService;
+    private final ScmPriceControlService priceControl;
 
     @DataPermission(table = "scm_order", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmOrder> page(OrderKind kind, long current, long size, OrderQuery query) {
@@ -102,7 +106,7 @@ public class ScmOrderService {
     /** 手工新建：销售订单自动应用促销，可使用返利抵扣 */
     @Transactional
     public Long create(OrderKind kind, OrderRequest req) {
-        return createDraft(kind, req, "MANUAL", kind == OrderKind.SALES);
+        return createDraft(kind, req, MANUAL, kind == OrderKind.SALES);
     }
 
     /**
@@ -138,6 +142,9 @@ public class ScmOrderService {
             order.setSalesmanId(owner != null ? owner : user.userId());
         }
         fillHeader(order, req, items);
+        if (MANUAL.equals(source)) {
+            priceControl.check(kind, items, order.getExchangeRate());
+        }
         if (applied != null) {
             order.setDiscountAmount(applied.discountAmount());
             order.setRebateAmount(rebateOf(req));
@@ -185,6 +192,7 @@ public class ScmOrderService {
         }
         ScmOrder order = new ScmOrder();
         fillHeader(order, req, items);
+        priceControl.check(kind, items, order.getExchangeRate());
         orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
                 .set(ScmOrder::getPartnerId, order.getPartnerId())
                 .set(ScmOrder::getOrderDate, order.getOrderDate())

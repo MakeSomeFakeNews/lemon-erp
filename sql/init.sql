@@ -172,6 +172,7 @@ DROP TABLE IF EXISTS scm_customer;
 DROP TABLE IF EXISTS scm_supplier_eval;
 DROP TABLE IF EXISTS scm_supplier_price_tier;
 DROP TABLE IF EXISTS scm_price_list;
+DROP TABLE IF EXISTS scm_price_control;
 DROP TABLE IF EXISTS scm_requisition;
 DROP TABLE IF EXISTS scm_requisition_item;
 DROP TABLE IF EXISTS scm_inquiry;
@@ -1053,6 +1054,7 @@ CREATE TABLE scm_price_list (
     id             BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id      BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     material_id    BIGINT         NOT NULL COMMENT '物料',
+    customer_id    BIGINT                  DEFAULT NULL COMMENT '客户专属价：指定客户时只适用该客户（优先于客户等级）',
     customer_level VARCHAR(16)             DEFAULT NULL COMMENT '客户等级(字典 scm_customer_level)，为空适用全部客户',
     min_qty        DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '起订数量',
     price          DECIMAL(18, 4) NOT NULL COMMENT '含税单价',
@@ -1064,7 +1066,21 @@ CREATE TABLE scm_price_list (
     update_time    DATETIME                DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
     KEY idx_price_list_material (material_id)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '销售价目表：取价时优先匹配客户等级，再取满足起订数量的最大一档';
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '销售价目表：取价时优先匹配客户专属价，其次客户等级，再取满足起订数量的最大一档';
+
+CREATE TABLE scm_price_control (
+    id                 BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id          BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    material_id        BIGINT         NOT NULL COMMENT '物料',
+    min_sale_price     DECIMAL(18, 4)          DEFAULT NULL COMMENT '最低销售价（含税，基本单位，本位币），为空不控制',
+    max_purchase_price DECIMAL(18, 4)          DEFAULT NULL COMMENT '最高采购价（含税，基本单位，本位币），为空不控制',
+    control_mode       VARCHAR(8)     NOT NULL DEFAULT 'WARN' COMMENT '控制方式(字典 scm_price_control_mode) WARN提示 BLOCK禁止保存',
+    remark             VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    create_time        DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time        DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_price_control (material_id, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '价格控制：销售订单单价不低于最低销售价，采购订单单价不高于最高采购价（手工录入的订单）';
 
 CREATE TABLE scm_requisition (
     id               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -6585,6 +6601,13 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('fin_commission_basis', '销售额', 'SALES', 'blue', 1, 1, NOW(), NOW()),
 ('fin_commission_basis', '毛利', 'PROFIT', 'green', 2, 1, NOW(), NOW()),
 ('fin_commission_basis', '回款', 'RECEIPT', 'gold', 3, 1, NOW(), NOW());
+
+-- 价格控制方式
+INSERT INTO sys_dict_type (id, name, type, status, remark, create_time, update_time) VALUES
+(158, '价格控制方式', 'scm_price_control_mode', 1, '超出最低销售价 / 最高采购价时的处理', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('scm_price_control_mode', '提示', 'WARN', 'orange', 1, 1, NOW(), NOW()),
+('scm_price_control_mode', '禁止保存', 'BLOCK', 'red', 2, 1, NOW(), NOW());
 
 -- 凭证科目设置：自动凭证各用途使用的科目
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES

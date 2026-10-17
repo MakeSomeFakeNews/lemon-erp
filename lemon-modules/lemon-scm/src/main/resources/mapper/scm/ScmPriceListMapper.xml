@@ -3,27 +3,29 @@
 <mapper namespace="com.lemon.erp.modules.scm.mapper.ScmPriceListMapper">
 
     <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmPriceList">
-        SELECT p.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit
+        SELECT p.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, c.name AS customer_name
         FROM scm_price_list p
         JOIN wms_material m ON m.id = p.material_id
+        LEFT JOIN scm_customer c ON c.id = p.customer_id
         <where>
             <if test="keyword != null and keyword != ''">
                 (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))
             </if>
             <if test="level != null and level != ''">AND p.customer_level = #{level}</if>
         </where>
-        ORDER BY m.code, p.customer_level, p.min_qty
+        ORDER BY m.code, p.customer_id, p.customer_level, p.min_qty
     </select>
 
     <select id="selectQuote" resultType="com.lemon.erp.modules.scm.entity.ScmPriceList">
         SELECT p.*
         FROM scm_price_list p
         WHERE p.material_id = #{materialId}
+          AND (p.customer_id IS NULL<if test="customerId != null"> OR p.customer_id = #{customerId}</if>)
           AND (p.customer_level IS NULL <if test="level != null and level != ''">OR p.customer_level = #{level}</if>)
           AND COALESCE(p.min_qty, 0) &lt;= #{qty}
           AND (p.valid_from IS NULL OR p.valid_from &lt;= #{date})
           AND (p.valid_to IS NULL OR p.valid_to &gt;= #{date})
-        ORDER BY CASE WHEN p.customer_level IS NULL THEN 1 ELSE 0 END, p.min_qty DESC, p.id DESC
+        ORDER BY CASE WHEN p.customer_id IS NULL THEN 1 ELSE 0 END, CASE WHEN p.customer_level IS NULL THEN 1 ELSE 0 END, p.min_qty DESC, p.id DESC
         LIMIT 1
     </select>
 

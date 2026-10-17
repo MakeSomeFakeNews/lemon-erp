@@ -227,7 +227,7 @@ public class ScmQuotationService {
         materialService.getEnabled(req.items().stream().map(QuotationRequest.Item::materialId).toList());
         ScmCustomer customer = customerService.get(q.getCustomerId());
         for (QuotationRequest.Item i : req.items()) {
-            ScmPriceList list = priceListMapper.selectQuote(i.materialId(), customer.getLevel(), i.qty(), q.getQuoteDate());
+            ScmPriceList list = priceListMapper.selectQuote(i.materialId(), customer.getId(), customer.getLevel(), i.qty(), q.getQuoteDate());
             ScmQuotationItem item = new ScmQuotationItem();
             item.setQuotationId(id);
             item.setMaterialId(i.materialId());

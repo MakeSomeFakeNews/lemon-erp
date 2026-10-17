@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmPriceControlMapper">
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmPriceControl">
+        SELECT p.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit
+        FROM scm_price_control p
+        JOIN wms_material m ON m.id = p.material_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+        </where>
+        ORDER BY m.code
+    </select>
+
+    <select id="selectHistory" resultType="java.util.Map">
+        SELECT o.id AS "orderId", o.order_no AS "orderNo", o.order_date AS "orderDate", COALESCE(i.orig_price, i.price) AS "price",
+               i.tax_rate AS "taxRate", i.qty AS "qty", o.currency AS "currency", o.exchange_rate AS "exchangeRate"
+        FROM scm_order_item i
+        JOIN scm_order o ON o.id = i.order_id
+        WHERE o.kind = #{kind} AND o.partner_id = #{partnerId} AND i.material_id = #{materialId}
+          AND o.status IN ('APPROVED', 'PARTIAL', 'DONE', 'CLOSED') AND COALESCE(i.gift, 0) = 0
+        ORDER BY o.order_date DESC, o.id DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>
