@@ -21,9 +21,11 @@ import com.lemon.erp.modules.mes.mapper.MesEcnMapper;
 import com.lemon.erp.modules.mes.model.EcnStatus;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -43,6 +45,7 @@ import java.util.stream.Collectors;
  * 到生效日期生效：新版本启用并接替默认，原版本停用，可选同步草稿工单的用料和工序。
  * 生效日期在今天及以前的批准后立即生效，之后的由「工程变更生效」定时任务处理
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MesEcnService {
@@ -58,6 +61,7 @@ public class MesEcnService {
     private final DocNoService docNoService;
     private final FlowApi flowApi;
     private final DictLookup dictLookup;
+    private final TransactionTemplate transactionTemplate;
 
     public PageResult<MesEcn> page(long current, long size, EcnStatus status, String keyword) {
         Page<MesEcn> page = Page.of(current, size);
@@ -190,12 +194,27 @@ public class MesEcnService {
         effect(ecn);
     }
 
-    /** 定时任务：到了生效日期的待生效变更 */
-    @Transactional
-    public int effectDue(LocalDate today) {
-        List<MesEcn> due = ecnMapper.selectDue(today);
-        due.forEach(this::effect);
-        return due.size();
+    /**
+     * 定时任务：到了生效日期的待生效变更。每张变更单独一个事务，一张失败（如状态已变化、BOM 不可用）不影响其他
+     *
+     * @return 生效的数量和失败的变更（单号：原因）
+     */
+    public DueResult effectDue(LocalDate today) {
+        int effected = 0;
+        List<String> failures = new ArrayList<>();
+        for (MesEcn ecn : ecnMapper.selectDue(today)) {
+            try {
+                transactionTemplate.executeWithoutResult(s -> effect(ecn));
+                effected++;
+            } catch (RuntimeException e) {
+                log.warn("工程变更 {} 到期生效失败", ecn.getEcnNo(), e);
+                failures.add(ecn.getEcnNo() + "：" + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+            }
+        }
+        return new DueResult(effected, failures);
+    }
+
+    public record DueResult(int effected, List<String> failures) {
     }
 
     // ---------------------------------------------------------------- 内部

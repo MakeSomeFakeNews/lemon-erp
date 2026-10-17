@@ -10,6 +10,7 @@ import com.lemon.erp.modules.hr.mapper.HrSocialSchemeMapper;
 import com.lemon.erp.modules.hr.mapper.HrTaxDeductionMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Collection;
@@ -76,6 +77,7 @@ public class HrSocialService {
         return com.lemon.erp.common.result.PageResult.of(page);
     }
 
+    @Transactional
     public void saveDeduction(Long id, HrTaxDeduction d) {
         employeeService.get(d.getEmployeeId());
         if (d.getType() == null || d.getMonthlyAmount() == null || d.getMonthlyAmount().signum() <= 0 || d.getStartPeriod() == null) {

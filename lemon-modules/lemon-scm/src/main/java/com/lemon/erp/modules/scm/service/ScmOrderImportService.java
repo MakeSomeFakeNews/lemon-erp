@@ -18,7 +18,7 @@ import com.lemon.erp.modules.scm.mapper.ScmPriceListMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
-import com.lemon.erp.modules.wms.mapper.WmsMaterialMapper;
+import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +50,7 @@ public class ScmOrderImportService {
     private final ScmOrderMapper orderMapper;
     private final ScmCustomerMapper customerMapper;
     private final ScmPriceListMapper priceListMapper;
-    private final WmsMaterialMapper materialMapper;
+    private final WmsMaterialService materialService;
     private final Validator validator;
     private final TransactionTemplate transactionTemplate;
 
@@ -86,9 +86,8 @@ public class ScmOrderImportService {
                 Map<String, ScmCustomer> customers = customerMapper.selectList(Wrappers.<ScmCustomer>lambdaQuery().in(ScmCustomer::getCode,
                                 groups.values().stream().flatMap(List::stream).map(r -> r.data().customerCode().trim()).distinct().toList()))
                         .stream().collect(Collectors.toMap(ScmCustomer::getCode, Function.identity()));
-                Map<String, WmsMaterial> materials = materialMapper.selectList(Wrappers.<WmsMaterial>lambdaQuery().in(WmsMaterial::getCode,
-                                groups.values().stream().flatMap(List::stream).map(r -> r.data().materialCode().trim()).distinct().toList()))
-                        .stream().collect(Collectors.toMap(WmsMaterial::getCode, Function.identity()));
+                Map<String, WmsMaterial> materials = materialService.mapByCodes(
+                        groups.values().stream().flatMap(List::stream).map(r -> r.data().materialCode().trim()).distinct().toList());
                 for (Map.Entry<String, List<ImportRow<ChannelRequests.ImportRow>>> g : groups.entrySet()) {
                     if (existing.contains(g.getKey())) {
                         skipped.add(g.getKey());

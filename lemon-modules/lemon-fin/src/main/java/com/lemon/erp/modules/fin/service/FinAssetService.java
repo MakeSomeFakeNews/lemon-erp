@@ -84,6 +84,7 @@ public class FinAssetService {
         return asset;
     }
 
+    @Transactional
     public void create(AssetRequest req) {
         accountService.requireLeaves(List.of(req.expenseAccountId()));
         FinAsset asset = new FinAsset();
@@ -93,6 +94,9 @@ public class FinAssetService {
         BigDecimal accumulated = req.openingAccumulated() == null ? BigDecimal.ZERO : req.openingAccumulated();
         if (months > req.usefulMonths() || accumulated.compareTo(req.originalValue()) > 0) {
             throw new BizException("fin.error.openingDepreciatedMonthsAccumulatedDepreciationCannot");
+        }
+        if (req.supplierId() != null && months > 0) {
+            throw new BizException("fin.error.openingAssetCannotHavePurchaseSupplier");
         }
         asset.setDepreciatedMonths(months);
         asset.setAccumulated(accumulated);
@@ -104,9 +108,6 @@ public class FinAssetService {
         }
         if (req.supplierId() != null) {
             // 采购新增：生成应付单（借 固定资产、进项税额 / 贷 应付账款），在应付管理中生成凭证、付款
-            if (months > 0) {
-                throw new BizException("fin.error.openingAssetCannotHavePurchaseSupplier");
-            }
             BigDecimal tax = req.taxAmount() == null ? BigDecimal.ZERO : req.taxAmount();
             FinBill bill = billService.createFromSource(BillKind.AP, req.supplierId(), BillSource.ASSET, asset.getId(), asset.getCode(), req.useDate(),
                     req.originalValue().add(tax), tax, "购入固定资产 " + asset.getName(), null); // i18n-ignore
@@ -117,6 +118,7 @@ public class FinAssetService {
     }
 
     /** 已计提折旧的资产不能修改原值、残值率、年限和开始使用日期 */
+    @Transactional
     public void update(Long id, AssetRequest req) {
         FinAsset old = get(id);
         if (old.getStatus() == AssetStatus.DISPOSED) {

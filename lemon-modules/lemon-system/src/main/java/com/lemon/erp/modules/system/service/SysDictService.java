@@ -15,6 +15,8 @@ import com.lemon.erp.modules.system.model.DictKind;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
@@ -100,7 +102,7 @@ public class SysDictService implements DictLookup {
         for (SysDictType t : types) {
             dataMapper.delete(Wrappers.<SysDictData>lambdaQuery().eq(SysDictData::getDictType, t.getType()));
         }
-        cache.deleteByPrefix(CACHE_KEY);
+        evictNowAndAfterCommit(() -> cache.deleteByPrefix(CACHE_KEY));
     }
 
     private void checkTypeUnique(SysDictType type) {
@@ -289,5 +291,18 @@ public class SysDictService implements DictLookup {
 
     private void evict(SysDictType type) {
         cache.delete(cacheKey(type, tenantOf(type)));
+    }
+
+    /** 立即清理一次，有事务时提交后再清理一次，避免并发请求把未提交前的旧值重新加载进缓存 */
+    private static void evictNowAndAfterCommit(Runnable evict) {
+        evict.run();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    evict.run();
+                }
+            });
+        }
     }
 }

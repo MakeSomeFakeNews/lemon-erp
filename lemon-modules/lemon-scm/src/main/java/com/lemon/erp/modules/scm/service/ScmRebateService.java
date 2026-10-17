@@ -150,6 +150,13 @@ public class ScmRebateService {
     }
 
     /**
+     * 记录返利结算（红字应收方式）生成的红字应收单。由财务模块在处理 {@link RebateSettledEvent} 时调用，与结算在同一事务
+     */
+    public void bindBill(Long rebateId, Long billId) {
+        rebateMapper.update(Wrappers.<ScmRebate>lambdaUpdate().set(ScmRebate::getBillId, billId).eq(ScmRebate::getId, rebateId));
+    }
+
+    /**
      * 客户可用的返利余额：已结算的「下次订单抵扣」返利 - 销售订单已抵扣
      *
      * @param excludeOrderId 修改订单时排除该订单已抵扣的金额

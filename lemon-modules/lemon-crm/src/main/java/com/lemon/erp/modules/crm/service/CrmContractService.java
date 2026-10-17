@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.org.UserLookup;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
@@ -23,13 +24,10 @@ import com.lemon.erp.modules.crm.model.CollectStatus;
 import com.lemon.erp.modules.crm.model.SalesContractStatus;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
 import com.lemon.erp.modules.scm.entity.ScmQuotation;
-import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
-import com.lemon.erp.modules.scm.mapper.ScmQuotationMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.service.ScmCustomerService;
+import com.lemon.erp.modules.scm.service.ScmOrderService;
 import com.lemon.erp.modules.scm.service.ScmQuotationService;
-import com.lemon.erp.modules.system.entity.SysUser;
-import com.lemon.erp.modules.system.mapper.SysUserMapper;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
@@ -60,10 +58,9 @@ public class CrmContractService {
     private final CrmCollectionPlanMapper planMapper;
     private final CrmOpportunityMapper opportunityMapper;
     private final ScmCustomerService customerService;
-    private final ScmQuotationMapper quotationMapper;
     private final ScmQuotationService quotationService;
-    private final ScmOrderMapper orderMapper;
-    private final SysUserMapper userMapper;
+    private final ScmOrderService orderService;
+    private final UserLookup userLookup;
     private final DocNoService docNoService;
     private final FlowApi flowApi;
 
@@ -149,7 +146,7 @@ public class CrmContractService {
     @Transactional
     public void linkOrder(Long id, Long orderId) {
         CrmContract c = requireStatus(id, SalesContractStatus.ACTIVE);
-        ScmOrder order = orderMapper.selectById(orderId);
+        ScmOrder order = orderService.find(orderId);
         if (order == null || order.getKind() != OrderKind.SALES || !order.getPartnerId().equals(c.getCustomerId())) {
             throw new BizException("crm.error.selectSalesOrderCustomer");
         }
@@ -237,7 +234,7 @@ public class CrmContractService {
             }
         }
         if (req.quotationId() != null) {
-            ScmQuotation q = quotationMapper.selectById(req.quotationId());
+            ScmQuotation q = quotationService.find(req.quotationId());
             if (q == null || !q.getCustomerId().equals(req.customerId())) {
                 throw new BizException("crm.error.quotationDoesNotBelongCustomer");
             }
@@ -262,12 +259,9 @@ public class CrmContractService {
             c.setOwnerId(user.userId());
             c.setDeptId(user.deptId());
         } else {
-            SysUser owner = userMapper.selectById(req.ownerId());
-            if (owner == null) {
-                throw new BizException("crm.error.ownerDoesNotExist");
-            }
-            c.setOwnerId(owner.getId());
-            c.setDeptId(owner.getDeptId());
+            UserLookup.UserBrief owner = userLookup.require(req.ownerId(), "crm.error.ownerDoesNotExist");
+            c.setOwnerId(owner.id());
+            c.setDeptId(owner.deptId());
         }
     }
 

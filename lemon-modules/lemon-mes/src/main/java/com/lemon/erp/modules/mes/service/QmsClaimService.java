@@ -108,6 +108,14 @@ public class QmsClaimService {
         eventPublisher.publishEvent(new SupplierClaimCancelledEvent(id, claim.getClaimNo(), claim.getBillId()));
     }
 
+    /**
+     * 记录质量索赔确认时生成的红字应付单。由财务模块在处理 {@link SupplierClaimConfirmedEvent} 时调用，与确认在同一事务
+     */
+    public void bindBill(Long claimId, Long billId) {
+        claimMapper.update(Wrappers.<QmsSupplierClaim>lambdaUpdate().set(QmsSupplierClaim::getBillId, billId)
+                .eq(QmsSupplierClaim::getId, claimId));
+    }
+
     // ---------------------------------------------------------------- 内部
 
     private void apply(QmsSupplierClaim claim, QmsRequests.Claim req) {

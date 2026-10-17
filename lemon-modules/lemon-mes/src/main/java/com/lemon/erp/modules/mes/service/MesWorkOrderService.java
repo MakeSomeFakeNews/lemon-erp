@@ -179,6 +179,7 @@ public class MesWorkOrderService {
     }
 
     /** 关闭：未完工的工单不再生产，已领未用的物料请先退料 */
+    @Transactional
     public void close(Long id) {
         MesWorkOrder wo = getAccessible(id);
         if (!wo.getStatus().isExecutable()) {

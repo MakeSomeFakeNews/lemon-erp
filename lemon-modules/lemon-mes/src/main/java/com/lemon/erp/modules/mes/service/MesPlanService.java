@@ -92,6 +92,7 @@ public class MesPlanService {
         planMapper.deleteByIds(ids);
     }
 
+    @Transactional
     public void confirm(List<Long> ids) {
         for (Long id : ids) {
             getDraft(id);

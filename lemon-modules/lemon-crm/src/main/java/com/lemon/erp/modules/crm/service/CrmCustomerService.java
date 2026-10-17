@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.org.UserLookup;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -16,8 +17,6 @@ import com.lemon.erp.modules.crm.mapper.CrmCustomerMapper;
 import com.lemon.erp.modules.crm.model.CustomerStage;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
 import com.lemon.erp.modules.scm.service.ScmCustomerService;
-import com.lemon.erp.modules.system.entity.SysUser;
-import com.lemon.erp.modules.system.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -42,7 +41,7 @@ public class CrmCustomerService {
     private final CrmCustomerMapper customerMapper;
     private final CrmContactMapper contactMapper;
     private final ScmCustomerService scmCustomerService;
-    private final SysUserMapper userMapper;
+    private final UserLookup userLookup;
     private final PermissionService permissionService;
 
     /**
@@ -132,11 +131,7 @@ public class CrmCustomerService {
     public void assign(List<Long> customerIds, Long ownerId) {
         Long deptId = null;
         if (ownerId != null) {
-            SysUser owner = userMapper.selectById(ownerId);
-            if (owner == null || !Integer.valueOf(1).equals(owner.getStatus())) {
-                throw new BizException("crm.error.ownerDoesNotExistDisabled");
-            }
-            deptId = owner.getDeptId();
+            deptId = userLookup.requireActive(ownerId, "crm.error.ownerDoesNotExistDisabled").deptId();
         }
         for (Long id : customerIds) {
             detail(id);

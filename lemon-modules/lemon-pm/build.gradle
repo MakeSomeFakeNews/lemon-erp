@@ -8,6 +8,5 @@ dependencies {
     api project(':lemon-modules:lemon-fin')
     api project(':lemon-modules:lemon-hr')
     api project(':lemon-modules:lemon-scm')
-    api project(':lemon-modules:lemon-system')
     api project(':lemon-modules:lemon-wms')
 }

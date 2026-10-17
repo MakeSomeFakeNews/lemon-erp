@@ -1,7 +1,5 @@
 package com.lemon.erp.modules.dashboard.service;
 
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.TokenService;
@@ -12,7 +10,7 @@ import com.lemon.erp.modules.dashboard.dto.DashboardStats;
 import com.lemon.erp.modules.dashboard.dto.LoginTrendRow;
 import com.lemon.erp.modules.dashboard.mapper.DashboardMapper;
 import com.lemon.erp.modules.monitor.entity.SysOperLog;
-import com.lemon.erp.modules.monitor.mapper.SysOperLogMapper;
+import com.lemon.erp.modules.monitor.service.SysOperLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -39,7 +37,7 @@ public class DashboardService {
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("MM-dd");
 
     private final DashboardMapper dashboardMapper;
-    private final SysOperLogMapper operLogMapper;
+    private final SysOperLogService operLogService;
     private final TokenService tokenService;
     private final ObjectProvider<TodoProvider> todoProviders;
 
@@ -90,11 +88,8 @@ public class DashboardService {
         return trend;
     }
 
-    /** 最近操作：只查列表需要的列，按主键倒序取前 N 条，不做 count */
+    /** 最近操作：前 N 条，只含列表需要的列 */
     private List<SysOperLog> recentOpers() {
-        return operLogMapper.selectPage(Page.of(1, RECENT_OPERS, false), Wrappers.<SysOperLog>lambdaQuery()
-                .select(SysOperLog::getId, SysOperLog::getTitle, SysOperLog::getOperType, SysOperLog::getOperator,
-                        SysOperLog::getStatus, SysOperLog::getOperTime, SysOperLog::getCostTime)
-                .orderByDesc(SysOperLog::getId)).getRecords();
+        return operLogService.recent(RECENT_OPERS);
     }
 }

@@ -82,6 +82,16 @@ public class ScmQuotationService {
         return q;
     }
 
+    /**
+     * 按 ID 读取报价单主表，供其他模块（如客户关系的合同）校验报价单归属客户。
+     * 不做当前用户的数据权限校验，不含明细
+     *
+     * @return 报价单，不存在时返回 null
+     */
+    public ScmQuotation find(Long id) {
+        return id == null ? null : quotationMapper.selectById(id);
+    }
+
     @Transactional
     public Long create(QuotationRequest req) {
         LoginUser user = SecurityUtils.getLoginUser();

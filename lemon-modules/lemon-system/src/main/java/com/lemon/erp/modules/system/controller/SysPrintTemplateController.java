@@ -1,9 +1,9 @@
 package com.lemon.erp.modules.system.controller;
 
-import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.system.dto.PrintBackgroundRequest;
 import com.lemon.erp.modules.system.print.PrintService;
 import com.lemon.erp.modules.system.service.SysPrintTemplateService;
 import lombok.RequiredArgsConstructor;
@@ -81,13 +81,7 @@ public class SysPrintTemplateController {
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
     @OperLog(title = "打印模板-上传 JRXML", type = OperType.UPDATE, saveParams = false) // i18n-ignore 操作日志存库
     public R<Void> uploadJrxml(@PathVariable String key, @RequestParam("file") MultipartFile file) throws IOException {
-        printService.checkUploadAllowed();
-        if (file.getSize() > 1024 * 1024) {
-            return R.fail(Messages.get("system.text.templateFileCannotExceedMb"));
-        }
-        String jrxml = new String(file.getBytes(), StandardCharsets.UTF_8);
-        printService.validateJrxml(jrxml);
-        templateService.saveJrxml(key, jrxml);
+        printService.uploadJrxml(key, file);
         return R.ok();
     }
 
@@ -98,14 +92,11 @@ public class SysPrintTemplateController {
         return R.ok(templateService.background(key));
     }
 
-    public record BackgroundRequest(String dataUrl) {
-    }
-
     /** 保存套打底图（为空时删除） */
     @PutMapping("/{key}/background")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
     @OperLog(title = "打印模板-套打底图", type = OperType.UPDATE, saveParams = false) // i18n-ignore 操作日志存库
-    public R<Void> saveBackground(@PathVariable String key, @RequestBody BackgroundRequest req) {
+    public R<Void> saveBackground(@PathVariable String key, @RequestBody PrintBackgroundRequest req) {
         templateService.saveBackground(key, req.dataUrl());
         return R.ok();
     }

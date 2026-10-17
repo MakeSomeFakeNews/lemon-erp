@@ -3,6 +3,7 @@ package com.lemon.erp.modules.pm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.dict.DictLookup;
+import com.lemon.erp.framework.org.UserLookup;
 import com.lemon.erp.modules.hr.service.HrSalaryService;
 import com.lemon.erp.modules.pm.dto.MemberRequest;
 import com.lemon.erp.modules.pm.dto.ResourceRow;
@@ -11,7 +12,6 @@ import com.lemon.erp.modules.pm.entity.PmTimesheet;
 import com.lemon.erp.modules.pm.mapper.PmMemberMapper;
 import com.lemon.erp.modules.pm.mapper.PmTaskMapper;
 import com.lemon.erp.modules.pm.mapper.PmTimesheetMapper;
-import com.lemon.erp.modules.system.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,7 +39,7 @@ public class PmMemberService {
     private final PmTaskMapper taskMapper;
     private final PmTimesheetMapper timesheetMapper;
     private final HrSalaryService salaryService;
-    private final SysUserMapper userMapper;
+    private final UserLookup userLookup;
     private final DictLookup dictLookup;
 
     public List<PmMember> list(Long projectId) {
@@ -49,9 +49,7 @@ public class PmMemberService {
     @Transactional
     public void save(Long projectId, Long id, MemberRequest req) {
         dictLookup.check("pm_member_role", req.role(), "pm.label.memberRole");
-        if (userMapper.selectById(req.userId()) == null) {
-            throw new BizException("pm.error.userNotFound");
-        }
+        userLookup.require(req.userId(), "pm.error.userNotFound");
         if (req.joinDate() != null && req.leaveDate() != null && req.leaveDate().isBefore(req.joinDate())) {
             throw new BizException("pm.error.leaveDateCannotEarlierJoinDate");
         }

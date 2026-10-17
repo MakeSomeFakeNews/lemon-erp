@@ -208,6 +208,25 @@ public class MesEquipmentService {
         }
     }
 
+    /**
+     * 记录维护单生成的费用凭证，由财务模块在收到 {@link MaintenanceFinishedEvent} 并生成凭证后调用
+     */
+    public void bindVoucher(Long maintenanceId, Long voucherId) {
+        maintenanceMapper.update(Wrappers.<MesMaintenance>lambdaUpdate().set(MesMaintenance::getVoucherId, voucherId)
+                .eq(MesMaintenance::getId, maintenanceId));
+    }
+
+    /**
+     * 凭证被删除时清除维护单上的凭证关联，由财务模块调用；ids 为空时不处理
+     */
+    public void unbindVouchers(List<Long> voucherIds) {
+        if (voucherIds == null || voucherIds.isEmpty()) {
+            return;
+        }
+        maintenanceMapper.update(Wrappers.<MesMaintenance>lambdaUpdate().set(MesMaintenance::getVoucherId, null)
+                .in(MesMaintenance::getVoucherId, voucherIds));
+    }
+
     /** 只能删除待处理的 */
     public void deleteMaintenance(List<Long> ids) {
         for (Long id : ids) {

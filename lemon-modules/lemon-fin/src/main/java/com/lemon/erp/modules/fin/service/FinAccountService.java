@@ -20,6 +20,7 @@ import com.lemon.erp.modules.fin.model.FinConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
@@ -104,6 +105,7 @@ public class FinAccountService {
     }
 
     /** 已使用的科目只能修改名称、备注、辅助核算 */
+    @Transactional
     public void update(Long id, AccountRequest req) {
         FinAccount old = get(id);
         if (used(id) || hasChildren(id)) {

@@ -67,6 +67,49 @@ public class ScmCustomerService {
         return customer;
     }
 
+    /** 校验客户的渠道为经销商（开通经销商门户账号前） */
+    public void requireDealer(Long id) {
+        if (get(id).getChannel() != SalesChannel.DEALER) {
+            throw new BizException("scm.error.onlyCustomersDealerChannelHaveDealer");
+        }
+    }
+
+    /**
+     * 按税号精确匹配客户（不限状态），供财务模块的发票导入等识别往来单位
+     *
+     * @return 第一个匹配的客户 ID，没有时返回 null
+     */
+    public Long findIdByTaxNo(String taxNo) {
+        return firstId(customerMapper.selectList(Wrappers.<ScmCustomer>lambdaQuery().eq(ScmCustomer::getTaxNo, taxNo)));
+    }
+
+    /**
+     * 按名称精确匹配客户（不限状态），供财务模块的发票导入等识别往来单位
+     *
+     * @return 第一个匹配的客户 ID，没有时返回 null
+     */
+    public Long findIdByName(String name) {
+        return firstId(customerMapper.selectList(Wrappers.<ScmCustomer>lambdaQuery().eq(ScmCustomer::getName, name)));
+    }
+
+    /**
+     * 按编码或名称精确匹配客户（不限状态），供财务模块的期初导入等按文字识别往来单位。编码完全一致的优先
+     *
+     * @return 客户 ID，没有时返回 null
+     */
+    public Long findIdByCodeOrName(String key) {
+        List<ScmCustomer> list = customerMapper.selectList(Wrappers.<ScmCustomer>lambdaQuery()
+                .eq(ScmCustomer::getCode, key).or().eq(ScmCustomer::getName, key));
+        if (list.isEmpty()) {
+            return null;
+        }
+        return list.stream().filter(x -> key.equals(x.getCode())).findFirst().orElse(list.get(0)).getId();
+    }
+
+    private static Long firstId(List<ScmCustomer> list) {
+        return list.isEmpty() ? null : list.get(0).getId();
+    }
+
     /** 启用的客户，按编码或名称搜索 */
     public List<PartnerOption> options(String keyword) {
         return customerMapper.selectPage(Page.of(1, OPTION_LIMIT, false), Wrappers.<ScmCustomer>lambdaQuery()
@@ -91,6 +134,7 @@ public class ScmCustomerService {
         customerMapper.insert(customer);
     }
 
+    @Transactional
     public void update(Long id, ScmCustomer customer) {
         Object before = customerMapper.selectById(id);
         ScmCustomer old = get(id);

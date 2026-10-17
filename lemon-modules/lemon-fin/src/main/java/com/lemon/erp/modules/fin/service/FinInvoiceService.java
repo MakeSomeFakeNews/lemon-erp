@@ -21,10 +21,8 @@ import com.lemon.erp.modules.fin.model.InvoiceKind;
 import com.lemon.erp.modules.fin.model.InvoiceSource;
 import com.lemon.erp.modules.fin.model.InvoiceStatus;
 import com.lemon.erp.modules.fin.model.InvoiceType;
-import com.lemon.erp.modules.scm.entity.ScmCustomer;
-import com.lemon.erp.modules.scm.entity.ScmSupplier;
-import com.lemon.erp.modules.scm.mapper.ScmCustomerMapper;
-import com.lemon.erp.modules.scm.mapper.ScmSupplierMapper;
+import com.lemon.erp.modules.scm.service.ScmCustomerService;
+import com.lemon.erp.modules.scm.service.ScmSupplierService;
 import com.lemon.erp.framework.excel.ImportResult;
 import com.lemon.erp.framework.excel.ImportRow;
 import jakarta.validation.Validator;
@@ -33,12 +31,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -58,8 +59,8 @@ public class FinInvoiceService {
     private final FinInvoiceItemMapper itemMapper;
     private final FinInvoiceLineMapper lineMapper;
     private final FinBillMapper billMapper;
-    private final ScmCustomerMapper customerMapper;
-    private final ScmSupplierMapper supplierMapper;
+    private final ScmCustomerService customerService;
+    private final ScmSupplierService supplierService;
     private final Validator validator;
     private final TransactionTemplate transactionTemplate;
 
@@ -150,6 +151,25 @@ public class FinInvoiceService {
         }
         itemMapper.delete(Wrappers.<FinInvoiceItem>lambdaQuery().eq(FinInvoiceItem::getInvoiceId, id));
         invoiceMapper.update(Wrappers.<FinInvoice>lambdaUpdate().set(FinInvoice::getMatchedAmount, BigDecimal.ZERO).eq(FinInvoice::getId, id));
+    }
+
+    private static final int MAX_XML_FILES = 200;
+    private static final long MAX_XML_FILE_SIZE = 1024 * 1024;
+
+    /** 导入上传的数电票 XML 文件：校验个数和大小，同名文件加序号区分 */
+    public InvoiceImportResult importXmlFiles(InvoiceKind kind, List<MultipartFile> files, boolean autoMatch) throws IOException {
+        if (files.isEmpty() || files.size() > MAX_XML_FILES) {
+            throw new BizException("fin.error.importXmlFilesTime", MAX_XML_FILES);
+        }
+        Map<String, byte[]> contents = new LinkedHashMap<>();
+        for (MultipartFile f : files) {
+            if (f.getSize() > MAX_XML_FILE_SIZE) {
+                throw new BizException("fin.error.exceedsMb", f.getOriginalFilename());
+            }
+            String name = f.getOriginalFilename() == null ? "file" + contents.size() : f.getOriginalFilename();
+            contents.put(contents.containsKey(name) ? name + "#" + contents.size() : name, f.getBytes());
+        }
+        return importXml(kind, contents, autoMatch);
     }
 
     /**
@@ -325,15 +345,15 @@ public class FinInvoiceService {
 
     private Long supplierId(String taxNo, String name) {
         if (taxNo != null && !taxNo.isBlank()) {
-            List<ScmSupplier> list = supplierMapper.selectList(Wrappers.<ScmSupplier>lambdaQuery().eq(ScmSupplier::getTaxNo, taxNo.trim()));
-            if (!list.isEmpty()) {
-                return list.get(0).getId();
+            Long id = supplierService.findIdByTaxNo(taxNo.trim());
+            if (id != null) {
+                return id;
             }
         }
         if (name != null && !name.isBlank()) {
-            List<ScmSupplier> list = supplierMapper.selectList(Wrappers.<ScmSupplier>lambdaQuery().eq(ScmSupplier::getName, name.trim()));
-            if (!list.isEmpty()) {
-                return list.get(0).getId();
+            Long id = supplierService.findIdByName(name.trim());
+            if (id != null) {
+                return id;
             }
         }
         return null;
@@ -341,15 +361,15 @@ public class FinInvoiceService {
 
     private Long customerId(String taxNo, String name) {
         if (taxNo != null && !taxNo.isBlank()) {
-            List<ScmCustomer> list = customerMapper.selectList(Wrappers.<ScmCustomer>lambdaQuery().eq(ScmCustomer::getTaxNo, taxNo.trim()));
-            if (!list.isEmpty()) {
-                return list.get(0).getId();
+            Long id = customerService.findIdByTaxNo(taxNo.trim());
+            if (id != null) {
+                return id;
             }
         }
         if (name != null && !name.isBlank()) {
-            List<ScmCustomer> list = customerMapper.selectList(Wrappers.<ScmCustomer>lambdaQuery().eq(ScmCustomer::getName, name.trim()));
-            if (!list.isEmpty()) {
-                return list.get(0).getId();
+            Long id = customerService.findIdByName(name.trim());
+            if (id != null) {
+                return id;
             }
         }
         return null;

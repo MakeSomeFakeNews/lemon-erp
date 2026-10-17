@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.dict.DictLookup;
+import com.lemon.erp.framework.org.UserLookup;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
@@ -32,8 +33,6 @@ import com.lemon.erp.modules.pm.model.ProjectStatus;
 import com.lemon.erp.modules.pm.model.TimesheetStatus;
 import com.lemon.erp.modules.scm.service.ScmCustomerService;
 import com.lemon.erp.modules.scm.service.ScmQueryService;
-import com.lemon.erp.modules.system.entity.SysUser;
-import com.lemon.erp.modules.system.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -77,7 +76,7 @@ public class PmProjectService {
     private final PmBillingMapper billingMapper;
     private final PmMemberService memberService;
     private final ScmCustomerService customerService;
-    private final SysUserMapper userMapper;
+    private final UserLookup userLookup;
     private final FlowApi flowApi;
     private final ChangeLogger changeLogger;
     private final ScmQueryService scmQueryService;
@@ -271,10 +270,8 @@ public class PmProjectService {
         if (customerId != null) {
             customerService.get(customerId);
         }
-        SysUser manager = userMapper.selectById(req.managerId() != null ? req.managerId() : SecurityUtils.getUserId());
-        if (manager == null) {
-            throw new BizException("pm.error.projectManagerNotFound");
-        }
+        UserLookup.UserBrief manager = userLookup.require(
+                req.managerId() != null ? req.managerId() : SecurityUtils.getUserId(), "pm.error.projectManagerNotFound");
         p.setCode(req.code());
         p.setName(req.name().trim());
         p.setType(req.type());
@@ -282,8 +279,8 @@ public class PmProjectService {
         p.setOpportunityId(req.opportunityId());
         p.setSalesOrderId(req.salesOrderId());
         p.setBudgetControl(Integer.valueOf(1).equals(req.budgetControl()) ? 1 : 0);
-        p.setManagerId(manager.getId());
-        p.setDeptId(manager.getDeptId());
+        p.setManagerId(manager.id());
+        p.setDeptId(manager.deptId());
         p.setPriority(req.priority() == null || req.priority().isBlank() ? DEFAULT_PRIORITY : req.priority());
         p.setPlanStart(req.planStart());
         p.setPlanEnd(req.planEnd());

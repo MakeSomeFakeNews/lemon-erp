@@ -735,6 +735,8 @@ lemon-erp
 
 模块依赖（只允许单向）：`lemon-admin → lemon-modules/* → lemon-framework → lemon-common`。业务模块之间按实际引用声明依赖：`wms ← scm ← mes ← fin ← hr / crm / pm / bi`，`system ← monitor ← dashboard`，`workflow` 只依赖 framework。
 
+跨模块访问数据：Java 代码只注入本模块的 Mapper，读写其他模块的表一律调用所属模块 Service 提供的方法（例如财务生成运费应付单后调用 `ScmShipmentService.bindFreightBill` 回写发运单），上游需要的能力由 framework 定义接口、所属模块实现（例如客户关系、项目校验负责人用 `framework/org/UserLookup`，由系统模块实现）。mapper XML 中跨模块的只读 JOIN（报表、商务智能、首页统计）允许保留，写操作必须经过所属模块的 Service。
+
 
 ## 新增一个业务模块
 

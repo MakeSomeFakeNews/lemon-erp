@@ -20,23 +20,20 @@ import com.lemon.erp.modules.fin.mapper.FinBillMapper;
 import com.lemon.erp.modules.fin.mapper.FinSettlementItemMapper;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
-import com.lemon.erp.modules.mes.entity.QmsSupplierClaim;
 import com.lemon.erp.modules.mes.event.SupplierClaimCancelledEvent;
 import com.lemon.erp.modules.mes.event.SupplierClaimConfirmedEvent;
-import com.lemon.erp.modules.mes.mapper.QmsSupplierClaimMapper;
-import com.lemon.erp.modules.scm.entity.ScmRebate;
+import com.lemon.erp.modules.mes.service.QmsClaimService;
 import com.lemon.erp.modules.scm.event.RebateSettledEvent;
 import com.lemon.erp.modules.scm.event.RebateUnsettledEvent;
-import com.lemon.erp.modules.scm.mapper.ScmRebateMapper;
 import com.lemon.erp.modules.scm.model.ScmConstants;
-import com.lemon.erp.modules.scm.entity.ScmShipment;
 import com.lemon.erp.modules.scm.event.ShipmentShippedEvent;
 import com.lemon.erp.modules.scm.event.TradeDocConfirmedEvent;
-import com.lemon.erp.modules.scm.mapper.ScmShipmentMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.scm.service.ScmCustomerService;
 import com.lemon.erp.modules.scm.service.ScmQueryService;
+import com.lemon.erp.modules.scm.service.ScmRebateService;
+import com.lemon.erp.modules.scm.service.ScmShipmentService;
 import com.lemon.erp.modules.scm.service.ScmSupplierService;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import lombok.RequiredArgsConstructor;
@@ -79,9 +76,9 @@ public class FinBillService {
     private final ScmSupplierService supplierService;
     private final DocNoService docNoService;
     private final FinBizPeriodGuard periodGuard;
-    private final ScmShipmentMapper shipmentMapper;
-    private final QmsSupplierClaimMapper claimMapper;
-    private final ScmRebateMapper rebateMapper;
+    private final ScmShipmentService shipmentService;
+    private final QmsClaimService claimService;
+    private final ScmRebateService rebateService;
     private final ScmQueryService scmQueryService;
 
     public PageResult<FinBill> page(long current, long size, BillQuery query) {
@@ -189,8 +186,7 @@ public class FinBillService {
         bill.setDeptId(e.deptId());
         bill.setRemark("发运单 " + e.shipNo() + " 运费"); // i18n-ignore
         billMapper.insert(bill);
-        shipmentMapper.update(Wrappers.<ScmShipment>lambdaUpdate().set(ScmShipment::getFreightBillId, bill.getId())
-                .eq(ScmShipment::getId, e.shipmentId()));
+        shipmentService.bindFreightBill(e.shipmentId(), bill.getId());
     }
 
     /** 供应商质量索赔确认：生成红字应付单冲减应付，与确认同一事务 */
@@ -198,8 +194,7 @@ public class FinBillService {
     public void onSupplierClaimConfirmed(SupplierClaimConfirmedEvent e) {
         FinBill bill = createFromSource(BillKind.AP, e.supplierId(), BillSource.QUALITY_CLAIM, e.claimId(), e.claimNo(), e.claimDate(),
                 e.amount().negate(), BigDecimal.ZERO, "质量索赔 " + e.claimNo() + "：" + e.reason(), null); // i18n-ignore
-        claimMapper.update(Wrappers.<QmsSupplierClaim>lambdaUpdate().set(QmsSupplierClaim::getBillId, bill.getId())
-                .eq(QmsSupplierClaim::getId, e.claimId()));
+        claimService.bindBill(e.claimId(), bill.getId());
     }
 
     /** 已确认的质量索赔取消：删除红字应付单（已核销、已生成凭证时抛异常，取消回滚） */
@@ -216,7 +211,7 @@ public class FinBillService {
         BigDecimal tax = ScmConstants.tax(e.amount(), REBATE_TAX_RATE);
         FinBill bill = createFromSource(BillKind.AR, e.customerId(), BillSource.REBATE, e.rebateId(), e.rebateNo(), e.settleDate(),
                 e.amount().negate(), tax.negate(), "销售返利 " + e.rebateNo(), null); // i18n-ignore
-        rebateMapper.update(Wrappers.<ScmRebate>lambdaUpdate().set(ScmRebate::getBillId, bill.getId()).eq(ScmRebate::getId, e.rebateId()));
+        rebateService.bindBill(e.rebateId(), bill.getId());
     }
 
     /** 撤销返利结算：删除红字应收单（已核销、已生成凭证时抛异常，撤销回滚） */

@@ -33,7 +33,12 @@ public class MesEcnEffectJob implements JobHandler {
 
     @Override
     public String run(JobParams params) {
-        int n = ecnService.effectDue(LocalDate.now());
-        return n == 0 ? "没有到期生效的工程变更" : "生效 " + n + " 项工程变更"; // i18n-ignore
+        MesEcnService.DueResult r = ecnService.effectDue(LocalDate.now());
+        // 每张变更单独提交：有失败时已生效的保留，抛出异常使本次执行记为失败（任务日志存库，不翻译）
+        if (!r.failures().isEmpty()) {
+            throw new IllegalStateException("生效 " + r.effected() + " 项，失败 " + r.failures().size() + " 项：" // i18n-ignore
+                    + String.join("；", r.failures()));
+        }
+        return r.effected() == 0 ? "没有到期生效的工程变更" : "生效 " + r.effected() + " 项工程变更"; // i18n-ignore
     }
 }
