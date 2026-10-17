@@ -24,6 +24,9 @@ public class SysPrintTemplateService {
     /** 单个模板配置的最大长度，防止异常数据 */
     private static final int MAX_CONFIG_LENGTH = 20_000;
 
+    /** 套打底图 data URL 的最大长度（约 2MB 图片 base64 后） */
+    private static final int MAX_BACKGROUND_LENGTH = 3 * 1024 * 1024;
+
     /** 只上传了 JRXML、没有修改过配置的模板 */
     private static final String EMPTY_CONFIG = "{}";
 
@@ -115,6 +118,44 @@ public class SysPrintTemplateService {
                     .set(SysPrintTemplate::getJrxml, null)
                     .eq(SysPrintTemplate::getId, t.getId()));
         }
+    }
+
+    /** 套打底图（data URL），没有时为 null */
+    public String background(String key) {
+        checkKey(key);
+        SysPrintTemplate t = templateMapper.selectOne(Wrappers.<SysPrintTemplate>lambdaQuery()
+                .select(SysPrintTemplate::getId, SysPrintTemplate::getBackground)
+                .eq(SysPrintTemplate::getTemplateKey, key));
+        return t == null ? null : t.getBackground();
+    }
+
+    /** 保存套打底图：PNG / JPEG 的 data URL，不超过 3MB；为空时删除 */
+    public void saveBackground(String key, String dataUrl) {
+        checkKey(key);
+        if (dataUrl != null && !dataUrl.isBlank()) {
+            if (!dataUrl.startsWith("data:image/png;base64,") && !dataUrl.startsWith("data:image/jpeg;base64,")) {
+                throw new BizException("底图只支持 PNG、JPG 图片");
+            }
+            if (dataUrl.length() > MAX_BACKGROUND_LENGTH) {
+                throw new BizException("底图不能超过 2MB");
+            }
+        }
+        String value = dataUrl == null || dataUrl.isBlank() ? null : dataUrl;
+        SysPrintTemplate t = find(key);
+        if (t == null) {
+            if (value == null) {
+                return;
+            }
+            t = new SysPrintTemplate();
+            t.setTemplateKey(key);
+            t.setConfig(EMPTY_CONFIG);
+            t.setBackground(value);
+            templateMapper.insert(t);
+            return;
+        }
+        templateMapper.update(null, Wrappers.<SysPrintTemplate>lambdaUpdate()
+                .set(SysPrintTemplate::getBackground, value)
+                .eq(SysPrintTemplate::getId, t.getId()));
     }
 
     private SysPrintTemplate find(String key) {

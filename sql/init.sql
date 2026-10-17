@@ -298,6 +298,7 @@ CREATE TABLE sys_print_template (
     template_key VARCHAR(64) NOT NULL COMMENT '模板标识，如 scm.purchaseOrder；_common 为通用设置',
     config       TEXT        NOT NULL COMMENT '模板配置 JSON',
     jrxml        MEDIUMTEXT COMMENT '自定义 JRXML（Jaspersoft Studio 7），为空时按配置生成默认版式',
+    background   MEDIUMTEXT COMMENT '套打底图（data URL）：设计套打位置时对照，不打印',
     create_time  DATETIME             DEFAULT NULL COMMENT '创建时间',
     update_time  DATETIME             DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),

@@ -23,4 +23,8 @@ public class SysPrintTemplate extends BaseEntity {
     /** 自定义 JRXML（Jaspersoft Studio 7），内容较大，列表查询不返回 */
     @TableField(select = false)
     private String jrxml;
+
+    /** 套打底图（data URL），只在设计时对照位置；列表查询不读取 */
+    @TableField(select = false)
+    private String background;
 }

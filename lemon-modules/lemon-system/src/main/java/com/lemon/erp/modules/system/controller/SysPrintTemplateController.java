@@ -90,6 +90,25 @@ public class SysPrintTemplateController {
         return R.ok();
     }
 
+    /** 套打底图（data URL），没有时为空 */
+    @GetMapping("/{key}/background")
+    @PreAuthorize("@ss.hasPerm('sys:printTemplate:list')")
+    public R<String> background(@PathVariable String key) {
+        return R.ok(templateService.background(key));
+    }
+
+    public record BackgroundRequest(String dataUrl) {
+    }
+
+    /** 保存套打底图（为空时删除） */
+    @PutMapping("/{key}/background")
+    @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
+    @OperLog(title = "打印模板-套打底图", type = OperType.UPDATE, saveParams = false)
+    public R<Void> saveBackground(@PathVariable String key, @RequestBody BackgroundRequest req) {
+        templateService.saveBackground(key, req.dataUrl());
+        return R.ok();
+    }
+
     /** 删除上传的 JRXML，改回按配置打印 */
     @DeleteMapping("/{key}/jrxml")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")

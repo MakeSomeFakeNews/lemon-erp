@@ -154,6 +154,37 @@
               </div>
             </div>
 
+            <div v-if="!type.slip" class="section-title">
+              套打
+              <span class="section-hint">在预印的单据纸上只打印数据：按位置输出字段和明细，不打印表格线</span>
+            </div>
+            <div v-if="!type.slip" class="jrxml">
+              <a-space wrap>
+                <a-switch
+                  :checked="!!config.overlay?.enabled"
+                  checked-children="已启用"
+                  un-checked-children="未启用"
+                  :disabled="custom"
+                  @change="toggleOverlay"
+                />
+                <a-button size="small" :disabled="custom" @click="overlayOpen = true">
+                  <template #icon><DragOutlined /></template>设计套打位置
+                </a-button>
+                <span v-if="config.overlay" class="section-hint">
+                  已定位 {{ config.overlay.items?.length || 0 }} 个字段{{ config.overlay.detail ? `、明细 ${config.overlay.detail.columns.length} 列` : '' }}
+                </span>
+              </a-space>
+              <div class="jrxml-hint">启用后按定位打印，纸张大小、方向、字号仍取上面的设置（页边距不生效）；上传了 JRXML 时以 JRXML 为准。</div>
+            </div>
+            <OverlayDesigner
+              v-model:open="overlayOpen"
+              :template-key="current"
+              :type="type"
+              :layout="overlayLayout"
+              :value="config.overlay"
+              @confirm="(o) => (config.overlay = o)"
+            />
+
             <a-alert v-if="custom" type="info" show-icon class="custom-tip" message="已上传 JRXML：标题、纸张、字段和列由 JRXML 决定，以下配置不生效" />
             <template v-for="sec in sections" :key="sec.key">
               <div class="section-title">
@@ -214,9 +245,11 @@ import {
   ExpandOutlined,
   FileTextOutlined,
   SettingOutlined,
+  DragOutlined,
   UndoOutlined,
   UploadOutlined
 } from '@ant-design/icons-vue'
+import OverlayDesigner from '@/components/print/OverlayDesigner.vue'
 import { defaultJrxml, printPdf } from '@/api/system/print'
 import { downloadJrxml, removeJrxml, resetPrintTemplate, savePrintTemplate, uploadJrxml } from '@/api/system/printTemplate'
 import LabelTemplateEditor from '@/components/label/LabelTemplateEditor.vue'
@@ -229,6 +262,7 @@ import {
   PAPERS,
   PRINT_TYPES,
   PRINT_TYPE_MAP,
+  layoutOf,
   loadTemplates,
   sampleDoc
 } from '@/utils/printTemplates'
@@ -280,7 +314,8 @@ function buildConfig(t, saved = {}) {
     showNote: saved.showNote !== false,
     fields: merge(t.fields, saved.fields, 'label'),
     columns: merge(t.columns.map((c) => c.title), saved.columns, 'title', { width: null }),
-    signs: merge(t.signs, saved.signs, 'label')
+    signs: merge(t.signs, saved.signs, 'label'),
+    overlay: saved.overlay || null
   }
 }
 
@@ -304,7 +339,8 @@ function toPayload(cfg) {
     showNote: cfg.showNote,
     fields: clean(cfg.fields, 'label'),
     columns: clean(cfg.columns, 'title'),
-    signs: clean(cfg.signs, 'label')
+    signs: clean(cfg.signs, 'label'),
+    ...(cfg.overlay ? { overlay: cfg.overlay } : {})
   }
 }
 
@@ -328,6 +364,17 @@ function select(key) {
     config.value = buildConfig(PRINT_TYPE_MAP[key], templates.value[key])
   }
   snapshot.value = JSON.stringify(currentPayload.value)
+}
+
+// ---------------------------------------------------------------- 套打
+const overlayOpen = ref(false)
+const overlayLayout = computed(() => layoutOf(toPayload(config.value)))
+function toggleOverlay(on) {
+  if (on && !config.value.overlay?.items?.length && !config.value.overlay?.detail) {
+    overlayOpen.value = true
+    return
+  }
+  config.value.overlay = { ...(config.value.overlay || { items: [], detail: null, offsetX: 0, offsetY: 0 }), enabled: on }
 }
 
 function move(key, i, delta) {

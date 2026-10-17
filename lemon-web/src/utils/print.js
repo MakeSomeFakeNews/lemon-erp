@@ -85,7 +85,9 @@ export function defaultCompanyName() {
  */
 export function buildPrintRequest(list, title, type, templates, tpl = type && templates[type]) {
   const docs = list.map((d) => applyTemplate({ ...d, companyName: d.companyName ?? defaultCompanyName() }, tpl, templates[COMMON_KEY]))
-  return { type, title, layout: layoutOf(tpl || {}), docs }
+  // 套打：按定位输出（上传了 JRXML 时以 JRXML 为准）
+  const overlay = tpl && !tpl.jrxml && tpl.overlay?.enabled ? tpl.overlay : undefined
+  return { type, title, layout: layoutOf(tpl || {}), docs, overlay }
 }
 
 /**
