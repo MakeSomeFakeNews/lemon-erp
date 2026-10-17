@@ -10,7 +10,9 @@ import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
+import com.lemon.erp.framework.rule.BizRules;
 import com.lemon.erp.framework.security.datascope.DataPermissionContext;
+import com.lemon.erp.modules.scm.model.CreditControl;
 import com.lemon.erp.framework.workflow.FlowApi;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
 import com.lemon.erp.framework.workflow.FlowStatus;
@@ -88,6 +90,7 @@ public class ScmOrderService {
     private final ScmPromotionService promotionService;
     private final ScmRebateService rebateService;
     private final ScmPriceControlService priceControl;
+    private final BizRules bizRules;
 
     @DataPermission(table = "scm_order", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmOrder> page(OrderKind kind, long current, long size, OrderQuery query) {
@@ -413,7 +416,7 @@ public class ScmOrderService {
     /** 客户信用额度：应收余额 + 其他未完成订单的未发货金额 + 本订单金额不能超过额度 */
     private void checkCredit(ScmOrder order) {
         ScmCustomer customer = customerService.get(order.getPartnerId());
-        if (customer.getCreditLimit() == null) {
+        if (customer.getCreditLimit() == null || bizRules.option(ScmBizRules.CREDIT_CONTROL, CreditControl.class) != CreditControl.ALL) {
             return;
         }
         BigDecimal open = orderMapper.selectOpenSalesAmount(customer.getId(), order.getId(), OPEN_STATUSES);
@@ -430,7 +433,7 @@ public class ScmOrderService {
      */
     void checkCreditBeforeShipment(ScmOrder order) {
         ScmCustomer customer = customerService.get(order.getPartnerId());
-        if (customer.getCreditLimit() == null) {
+        if (customer.getCreditLimit() == null || bizRules.option(ScmBizRules.CREDIT_CONTROL, CreditControl.class) == CreditControl.NONE) {
             return;
         }
         BigDecimal open = orderMapper.selectOpenSalesAmount(customer.getId(), 0L, OPEN_STATUSES);

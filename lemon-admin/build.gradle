@@ -37,3 +37,8 @@ tasks.named('bootJar') {
 tasks.named('jar') {
     enabled = false
 }
+
+// 集成测试中有多个使用独立内存库的应用上下文（成本核算等有期间顺序约束的测试），默认堆内存不够
+tasks.named('test') {
+    maxHeapSize = '2g'
+}

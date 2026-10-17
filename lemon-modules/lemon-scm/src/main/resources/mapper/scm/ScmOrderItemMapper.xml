@@ -23,7 +23,7 @@
 
     <update id="addDone">
         UPDATE scm_order_item SET done_qty = done_qty + #{qty}, update_time = NOW()
-        WHERE id = #{id} AND qty - done_qty + replenish_qty &gt;= #{qty}
+        WHERE id = #{id} AND qty * (100 + #{overRate}) / 100 - done_qty + replenish_qty &gt;= #{qty}
     </update>
 
     <update id="addReturn">
