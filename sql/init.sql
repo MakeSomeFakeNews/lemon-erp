@@ -4611,6 +4611,24 @@ CREATE TABLE bi_dashboard (
     KEY idx_dashboard_owner (create_by)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '自定义仪表盘';
 
+CREATE TABLE bi_screen_share (
+    id               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id        BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    name             VARCHAR(64)  NOT NULL COMMENT '名称，如 一车间电视',
+    token            CHAR(32)     NOT NULL COMMENT '访问令牌（128 位随机数），链接中使用',
+    screens          VARCHAR(128) NOT NULL COMMENT '大屏（逗号分隔） FACTORY生产车间 WAREHOUSE仓储物流 SALES销售经营 QUALITY质量管理，多个时轮播',
+    interval_seconds INT          NOT NULL DEFAULT 60 COMMENT '轮播间隔（秒）',
+    work_center_id   BIGINT                DEFAULT NULL COMMENT '生产车间大屏只显示该工作中心，为空显示全部',
+    expire_time      DATETIME              DEFAULT NULL COMMENT '有效期至，为空长期有效',
+    status           TINYINT      NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
+    last_access_time DATETIME              DEFAULT NULL COMMENT '最近访问时间',
+    create_by        BIGINT                DEFAULT NULL COMMENT '创建人',
+    create_time      DATETIME              DEFAULT NULL COMMENT '创建时间',
+    update_time      DATETIME              DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_screen_share_token (token)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '大屏投屏链接：车间、仓库的电视免登录查看指定的大屏（只读）';
+
 CREATE TABLE bi_alert_rule (
     id          BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
@@ -6700,6 +6718,13 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 INSERT INTO sys_role_menu (role_id, menu_id) VALUES
 (2, 347), (3, 347), (4, 347), (6, 347), (9, 347),
 (2, 348), (3, 348), (9, 348), (10, 348);
+
+-- 数据大屏：生产车间、仓储物流、销售经营、质量管理，投屏链接
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(349, 11, '数据大屏', 'C', 'screen', 'bi/screen/index', 'bi:screen:list', 'FundProjectionScreenOutlined', 0, 1, 1, NOW(), NOW()),
+(3490, 349, '投屏链接管理', 'F', NULL, NULL, 'bi:screen:share', NULL, 1, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(3, 349), (3, 3490), (6, 349);
 
 ALTER TABLE sys_dept AUTO_INCREMENT = 200;
 ALTER TABLE sys_user AUTO_INCREMENT = 100;

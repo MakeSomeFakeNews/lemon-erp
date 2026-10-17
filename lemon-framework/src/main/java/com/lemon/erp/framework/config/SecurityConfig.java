@@ -36,6 +36,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login", "/auth/config", "/auth/captcha", "/error").permitAll()
                         .requestMatchers(HttpMethod.GET, WebMvcConfig.FILE_URL_PREFIX + "**").permitAll()
+                        // 大屏投屏链接：免登录只读，按链接令牌校验
+                        .requestMatchers(HttpMethod.GET, "/screen-share/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, resp, ex) ->

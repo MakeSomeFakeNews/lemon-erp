@@ -53,6 +53,23 @@ constantRoutes.push({
   children: [{ path: '', name: 'MobileHome', component: () => import('@/views/mobile/home.vue'), meta: { title: '移动作业' } }]
 })
 
+/** 数据大屏：全屏显示，不使用后台布局；/screen-share 为投屏链接，免登录 */
+export const SCREEN_SHARE_PATH = '/screen-share/'
+constantRoutes.push(
+  {
+    path: '/screen/:key',
+    name: 'Screen',
+    component: () => import('@/views/screen/ScreenPage.vue'),
+    meta: { title: '数据大屏' }
+  },
+  {
+    path: `${SCREEN_SHARE_PATH}:token`,
+    name: 'ScreenShare',
+    component: () => import('@/views/screen/ShareScreenPage.vue'),
+    meta: { title: '数据大屏' }
+  }
+)
+
 const router = createRouter({
   history: createWebHistory(),
   routes: constantRoutes,
@@ -96,6 +113,10 @@ router.beforeEach(async (to) => {
   // 公开配置（系统名称、验证码等）加载失败不影响进入页面，使用默认值
   await useConfigStore().load().catch(() => {})
 
+  // 投屏链接免登录，不加载用户和菜单（电视上可能残留过期的登录令牌）
+  if (to.path.startsWith(SCREEN_SHARE_PATH)) {
+    return true
+  }
   if (!getToken()) {
     return WHITE_LIST.includes(to.path) ? true : { path: '/login', query: { redirect: to.fullPath } }
   }
