@@ -190,6 +190,9 @@ DROP TABLE IF EXISTS wms_reservation;
 DROP TABLE IF EXISTS wms_stock_hold;
 DROP TABLE IF EXISTS wms_stock;
 DROP TABLE IF EXISTS wms_batch;
+DROP TABLE IF EXISTS wms_variant_value;
+DROP TABLE IF EXISTS wms_attribute_value;
+DROP TABLE IF EXISTS wms_attribute;
 DROP TABLE IF EXISTS wms_material_unit;
 DROP TABLE IF EXISTS wms_material;
 DROP TABLE IF EXISTS wms_location;
@@ -633,14 +636,59 @@ CREATE TABLE wms_material (
     default_location_id  BIGINT       DEFAULT NULL COMMENT '默认库位（默认仓库中的）',
     ref_cost       DECIMAL(18, 4)         DEFAULT NULL COMMENT '参考成本价：没有核算单价时（首次核算的其他入库等）按此计价',
     cost_method    VARCHAR(16)   NOT NULL DEFAULT 'WEIGHTED' COMMENT '存货计价方法(字典 wms_cost_method) WEIGHTED月末一次加权平均 MOVING移动加权平均 FIFO先进先出',
+    is_template    TINYINT       NOT NULL DEFAULT 0 COMMENT '是否多规格款式 1是：按规格属性生成 SKU，款式本身不能出入库',
+    template_id    BIGINT                 DEFAULT NULL COMMENT 'SKU 所属的款式（物料）',
+    variant_text   VARCHAR(255)           DEFAULT NULL COMMENT 'SKU 的规格属性值，如 红色 / XL',
     status         TINYINT       NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
     remark         VARCHAR(255)           DEFAULT NULL COMMENT '备注',
     create_time    DATETIME               DEFAULT NULL COMMENT '创建时间',
     update_time    DATETIME               DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_material_code (code, tenant_id),
-    KEY idx_material_barcode (barcode)
+    KEY idx_material_barcode (barcode),
+    KEY idx_material_template (template_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '物料';
+
+CREATE TABLE wms_attribute (
+    id          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    name        VARCHAR(32) NOT NULL COMMENT '规格属性名称，如 颜色、尺码',
+    sort        INT         NOT NULL DEFAULT 0 COMMENT '排序',
+    status      TINYINT     NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
+    remark      VARCHAR(255)         DEFAULT NULL COMMENT '备注',
+    create_time DATETIME             DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME             DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_attribute_name (name, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '规格属性：多规格物料（款式）按属性值组合生成 SKU';
+
+CREATE TABLE wms_attribute_value (
+    id           BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id    BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    attribute_id BIGINT      NOT NULL COMMENT '规格属性',
+    attr_value   VARCHAR(32) NOT NULL COMMENT '属性值，如 红色、XL',
+    code         VARCHAR(16)          DEFAULT NULL COMMENT '编码，生成 SKU 编码时使用，为空用属性值',
+    sort         INT         NOT NULL DEFAULT 0 COMMENT '排序',
+    create_time  DATETIME             DEFAULT NULL COMMENT '创建时间',
+    update_time  DATETIME             DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_attribute_value (attribute_id, attr_value, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '规格属性值';
+
+CREATE TABLE wms_variant_value (
+    id           BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id    BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    template_id  BIGINT NOT NULL COMMENT '款式',
+    material_id  BIGINT NOT NULL COMMENT 'SKU',
+    attribute_id BIGINT NOT NULL COMMENT '规格属性',
+    value_id     BIGINT NOT NULL COMMENT '属性值',
+    create_time  DATETIME        DEFAULT NULL COMMENT '创建时间',
+    update_time  DATETIME        DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_variant_value (material_id, attribute_id, tenant_id),
+    KEY idx_variant_template (template_id),
+    KEY idx_variant_value (value_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = 'SKU 的规格属性值';
 
 CREATE TABLE wms_material_unit (
     id          BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -6380,6 +6428,26 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
 ('wms_in_type', '期初入库', 'OPENING', 'gold', 10, 1, NOW(), NOW());
 
+-- 规格属性（多规格物料）
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(342, 914, '规格属性', 'C', 'attribute', 'wms/attribute/index', 'wms:attribute:list', 'TagsOutlined', 4, 1, 1, NOW(), NOW()),
+(3420, 342, '规格属性维护', 'F', NULL, NULL, 'wms:attribute:edit', NULL, 1, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(2, 342), (3, 342), (4, 342), (6, 342), (6, 3420);
+INSERT INTO wms_attribute (id, name, sort, status, create_time, update_time) VALUES
+(1, '颜色', 1, 1, NOW(), NOW()),
+(2, '尺码', 2, 1, NOW(), NOW());
+INSERT INTO wms_attribute_value (attribute_id, attr_value, code, sort, create_time, update_time) VALUES
+(1, '黑色', 'BK', 1, NOW(), NOW()),
+(1, '白色', 'WH', 2, NOW(), NOW()),
+(1, '红色', 'RD', 3, NOW(), NOW()),
+(1, '蓝色', 'BL', 4, NOW(), NOW()),
+(2, 'S', 'S', 1, NOW(), NOW()),
+(2, 'M', 'M', 2, NOW(), NOW()),
+(2, 'L', 'L', 3, NOW(), NOW()),
+(2, 'XL', 'XL', 4, NOW(), NOW()),
+(2, 'XXL', 'XXL', 5, NOW(), NOW());
+
 -- 凭证科目设置：自动凭证各用途使用的科目
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
 (340, 936, '凭证科目设置', 'C', 'account-rule', 'fin/account-rule/index', 'fin:accountRule:list', 'NodeIndexOutlined', 5, 1, 1, NOW(), NOW()),
@@ -6399,6 +6467,7 @@ ALTER TABLE sys_role AUTO_INCREMENT = 100;
 ALTER TABLE sys_menu AUTO_INCREMENT = 10000;
 ALTER TABLE sys_dict_type AUTO_INCREMENT = 300;
 ALTER TABLE wms_warehouse AUTO_INCREMENT = 100;
+ALTER TABLE wms_attribute AUTO_INCREMENT = 100;
 ALTER TABLE scm_supplier AUTO_INCREMENT = 100;
 ALTER TABLE scm_customer AUTO_INCREMENT = 100;
 ALTER TABLE mes_work_center AUTO_INCREMENT = 100;

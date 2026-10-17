@@ -10,6 +10,8 @@ import com.lemon.erp.framework.ref.ReferenceGuard;
 import com.lemon.erp.modules.wms.entity.WmsCheckItem;
 import com.lemon.erp.modules.wms.entity.WmsLocation;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
+import com.lemon.erp.modules.wms.entity.WmsVariantValue;
+import com.lemon.erp.modules.wms.mapper.WmsVariantValueMapper;
 import com.lemon.erp.modules.wms.model.CostMethod;
 import com.lemon.erp.modules.wms.entity.WmsMaterialUnit;
 import com.lemon.erp.modules.wms.entity.WmsStockDocItem;
@@ -44,6 +46,7 @@ public class WmsMaterialService {
     private static final int OPTION_LIMIT = 50;
 
     private final WmsMaterialMapper materialMapper;
+    private final WmsVariantValueMapper variantValueMapper;
     private final WmsStockFlowMapper flowMapper;
     private final WmsStockDocItemMapper docItemMapper;
     private final WmsCheckItemMapper checkItemMapper;
@@ -54,11 +57,13 @@ public class WmsMaterialService {
     private final DocNoService docNoService;
 
     /** @param keyword 编码或名称，模糊匹配 */
-    public PageResult<WmsMaterial> page(long current, long size, String keyword, String category, Integer status) {
+    /** @param templateId 只看某个款式的 SKU */
+    public PageResult<WmsMaterial> page(long current, long size, String keyword, String category, Integer status, Long templateId) {
         Page<WmsMaterial> page = materialMapper.selectPage(Page.of(current, size), Wrappers.<WmsMaterial>lambdaQuery()
                 .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword))
                 .eq(StringUtils.hasText(category), WmsMaterial::getCategory, category)
                 .eq(status != null, WmsMaterial::getStatus, status)
+                .eq(templateId != null, WmsMaterial::getTemplateId, templateId)
                 .orderByDesc(WmsMaterial::getId));
         return PageResult.of(page);
     }
@@ -107,6 +112,8 @@ public class WmsMaterialService {
                         WmsMaterial::getUnit, WmsMaterial::getBatchEnabled, WmsMaterial::getSerialEnabled,
                         WmsMaterial::getBarcode, WmsMaterial::getDefaultWarehouseId, WmsMaterial::getDefaultLocationId)
                 .eq(WmsMaterial::getStatus, 1)
+                // 多规格款式不能直接用于单据，选择具体的 SKU
+                .eq(WmsMaterial::getIsTemplate, 0)
                 .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword))
                 .orderByAsc(WmsMaterial::getCode)).getRecords();
     }
@@ -118,6 +125,10 @@ public class WmsMaterialService {
         }
         checkCodeUnique(material.getCode(), null);
         material.setId(null);
+        // 款式、SKU 只能通过「多规格」生成
+        material.setIsTemplate(0);
+        material.setTemplateId(null);
+        material.setVariantText(null);
         normalize(material);
         checkExtras(material, null);
         if (material.getStatus() == null) material.setStatus(1);
@@ -138,6 +149,9 @@ public class WmsMaterialService {
         }
         material.setId(id);
         material.setStatus(null);
+        material.setIsTemplate(null);
+        material.setTemplateId(null);
+        material.setVariantText(null);
         materialMapper.updateById(material);
         // 可为空的字段：updateById 会跳过 null，单独更新以便清空
         materialMapper.update(Wrappers.<WmsMaterial>lambdaUpdate()
@@ -171,9 +185,13 @@ public class WmsMaterialService {
             if (used) {
                 throw new BizException("物料「" + material.getName() + "」已被单据使用，不能删除，可以停用");
             }
+            if (material.isTemplateMaterial() && materialMapper.exists(Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getTemplateId, id))) {
+                throw new BizException("款式「" + material.getName() + "」下还有 SKU，请先删除 SKU");
+            }
             referenceGuard.checkDeletable(RefType.MATERIAL, id, "物料「" + material.getCode() + " " + material.getName() + "」");
         }
         materialMapper.deleteByIds(ids);
+        variantValueMapper.delete(Wrappers.<WmsVariantValue>lambdaQuery().in(WmsVariantValue::getMaterialId, ids));
     }
 
     private static void normalize(WmsMaterial material) {
