@@ -5,10 +5,9 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.validation.Create;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -61,9 +60,7 @@ public class SysUser extends BaseEntity {
     private Long customerId;
 
     /** 1 启用 0 停用 */
-    @Min(value = 0, message = "{system.valid.statusMust}")
-    @Max(value = 1, message = "{system.valid.statusMust}")
-    private Integer status;
+    private EnableStatus status;
 
     @Size(max = 255, message = "{system.valid.remarkCannotExceedCharacters}")
     private String remark;

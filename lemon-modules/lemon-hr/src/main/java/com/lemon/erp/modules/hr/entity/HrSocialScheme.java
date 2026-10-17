@@ -2,6 +2,7 @@ package com.lemon.erp.modules.hr.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -57,7 +58,7 @@ public class HrSocialScheme extends BaseEntity {
     @DecimalMin(value = "0", message = "{hr.valid.baseCannotLess}")
     private BigDecimal housingMax;
 
-    private Integer status;
+    private EnableStatus status;
 
     @Size(max = 255, message = "{hr.valid.remarkCannotExceedCharacters}")
     private String remark;

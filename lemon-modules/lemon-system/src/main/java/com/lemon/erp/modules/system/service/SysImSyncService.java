@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.TokenService;
@@ -169,7 +170,7 @@ public class SysImSyncService {
                     dept.setParentId(parent);
                     dept.setName(name);
                     dept.setSort(d.sort());
-                    dept.setStatus(1);
+                    dept.setStatus(EnableStatus.ENABLED);
                     deptMapper.insert(dept);
                     deptId = dept.getId();
                     byParentAndName.put(parent + "/" + name, deptId);

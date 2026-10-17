@@ -2,6 +2,7 @@ package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
@@ -316,7 +317,7 @@ public class ScmTenderService {
         }
         for (Long supplierId : req.supplierIds()) {
             ScmSupplier supplier = supplierService.get(supplierId);
-            if (!Integer.valueOf(1).equals(supplier.getStatus())) {
+            if (supplier.getStatus() != EnableStatus.ENABLED) {
                 throw new BizException("scm.error.supplierDisabled", supplier.getName());
             }
         }

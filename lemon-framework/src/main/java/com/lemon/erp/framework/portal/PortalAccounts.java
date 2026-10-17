@@ -1,5 +1,7 @@
 package com.lemon.erp.framework.portal;
 
+import com.lemon.erp.common.enums.EnableStatus;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -17,14 +19,14 @@ public interface PortalAccounts {
     /** @return 用户 ID */
     Long create(PortalKind kind, Long partnerId, NewAccount account);
 
-    void changeStatus(PortalKind kind, Long partnerId, Long userId, Integer status);
+    void changeStatus(PortalKind kind, Long partnerId, Long userId, EnableStatus status);
 
     void resetPassword(PortalKind kind, Long partnerId, Long userId, String password);
 
     /** 往来单位的启用账号（发送门户消息） */
     List<Long> enabledUserIds(PortalKind kind, Long partnerId);
 
-    record Account(Long userId, String username, String nickname, String phone, Integer status, LocalDateTime createTime) {
+    record Account(Long userId, String username, String nickname, String phone, EnableStatus status, LocalDateTime createTime) {
     }
 
     record NewAccount(String username, String nickname, String phone, String password) {

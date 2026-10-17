@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.util.TreeUtils;
 import com.lemon.erp.framework.security.TokenService;
@@ -73,6 +74,6 @@ public class SysMenuService extends ServiceImpl<SysMenuMapper, SysMenu> {
         if (menu.getParentId() == null) menu.setParentId(SysMenu.ROOT_PARENT_ID);
         if (menu.getSort() == null) menu.setSort(0);
         if (menu.getVisible() == null) menu.setVisible(1);
-        if (menu.getStatus() == null) menu.setStatus(1);
+        if (menu.getStatus() == null) menu.setStatus(EnableStatus.ENABLED);
     }
 }

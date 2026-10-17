@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.util.Decimals;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
@@ -70,7 +71,7 @@ public class FinCommissionService {
         rule.setName(rule.getName().trim());
         rule.setMaterialCategory(StringUtils.hasText(rule.getMaterialCategory()) ? rule.getMaterialCategory() : null);
         rule.setThreshold(Decimals.nz(rule.getThreshold()));
-        rule.setStatus(rule.getStatus() == null ? 1 : rule.getStatus());
+        rule.setStatus(rule.getStatus() == null ? EnableStatus.ENABLED : rule.getStatus());
         if (rule.getId() == null) {
             ruleMapper.insert(rule);
         } else {
@@ -134,7 +135,7 @@ public class FinCommissionService {
             lineMapper.delete(Wrappers.<FinCommissionLine>lambdaQuery().eq(FinCommissionLine::getCommissionId, sheet.getId()));
         }
         List<Perf> perfs = performance(period);
-        List<FinCommissionRule> rules = ruleMapper.selectList(Wrappers.<FinCommissionRule>lambdaQuery().eq(FinCommissionRule::getStatus, 1));
+        List<FinCommissionRule> rules = ruleMapper.selectList(Wrappers.<FinCommissionRule>lambdaQuery().eq(FinCommissionRule::getStatus, EnableStatus.ENABLED));
         BigDecimal total = BigDecimal.ZERO;
         for (Perf perf : perfs) {
             List<Map<String, Object>> detail = new ArrayList<>();

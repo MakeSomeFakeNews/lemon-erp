@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.scm.model.PromoType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -61,7 +62,7 @@ public class ScmPromotion extends BaseEntity {
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private BigDecimal giftQty;
 
-    private Integer status;
+    private EnableStatus status;
 
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String remark;

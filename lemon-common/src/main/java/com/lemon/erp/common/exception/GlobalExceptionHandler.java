@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.exc.InvalidFormatException;
 
 import java.util.stream.Collectors;
@@ -52,12 +53,23 @@ public class GlobalExceptionHandler {
     public R<Void> handleNotReadable(HttpMessageNotReadableException e) {
         log.warn("请求体解析失败: {}", e.getMessage());
         // 枚举、数字等字段取值不合法：提示字段和取值
+        DatabindException withPath = null;
         for (Throwable t = e.getCause(); t != null; t = t.getCause()) {
-            if (t instanceof InvalidFormatException f && !f.getPath().isEmpty()) {
-                String field = f.getPath().get(f.getPath().size() - 1).getPropertyName();
-                if (field != null) {
-                    return R.fail(Messages.get("common.text.invalidFieldValue", field, f.getValue()));
-                }
+            if (t instanceof DatabindException d && !d.getPath().isEmpty()) {
+                withPath = d;
+            }
+            Object value;
+            if (t instanceof InvalidFormatException f) {
+                value = f.getValue();
+            } else if (t instanceof InvalidEnumValueException v) {
+                // 枚举的 @JsonCreator 抛出（如 EnableStatus 收到 1 / 0 以外的值），Jackson 包装后带字段路径
+                value = v.getValue();
+            } else {
+                continue;
+            }
+            String field = withPath == null ? null : withPath.getPath().get(withPath.getPath().size() - 1).getPropertyName();
+            if (field != null) {
+                return R.fail(Messages.get("common.text.invalidFieldValue", field, value));
             }
         }
         return R.fail(Messages.get("common.text.invalidRequestFormat"));

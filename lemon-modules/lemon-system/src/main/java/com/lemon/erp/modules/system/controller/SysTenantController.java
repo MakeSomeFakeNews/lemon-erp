@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.system.controller;
 
 import com.lemon.erp.common.dto.StatusRequest;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.common.validation.Create;
@@ -40,7 +41,7 @@ public class SysTenantController {
     public R<PageResult<SysTenant>> page(@RequestParam(defaultValue = "1") long current,
                                          @RequestParam(defaultValue = "10") long size,
                                          @RequestParam(required = false) String name,
-                                         @RequestParam(required = false) Integer status) {
+                                         @RequestParam(required = false) EnableStatus status) {
         return R.ok(tenantService.page(current, size, name, status));
     }
 

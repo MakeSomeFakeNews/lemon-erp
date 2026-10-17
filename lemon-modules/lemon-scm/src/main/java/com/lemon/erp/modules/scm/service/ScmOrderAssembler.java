@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.service;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.finance.ExchangeRateProvider;
@@ -49,18 +50,18 @@ public class ScmOrderAssembler {
     public List<ScmOrderItem> toItems(OrderKind kind, OrderRequest req) {
         if (kind == OrderKind.PURCHASE) {
             ScmSupplier supplier = supplierService.get(req.partnerId());
-            if (!Integer.valueOf(1).equals(supplier.getStatus())) {
+            if (supplier.getStatus() != EnableStatus.ENABLED) {
                 throw new BizException("scm.error.supplierDisabled", supplier.getName());
             }
         } else {
             ScmCustomer customer = customerService.get(req.partnerId());
-            if (!Integer.valueOf(1).equals(customer.getStatus())) {
+            if (customer.getStatus() != EnableStatus.ENABLED) {
                 throw new BizException("scm.error.customerDisabled", customer.getName());
             }
         }
         if (req.warehouseId() != null) {
             WmsWarehouse warehouse = warehouseService.get(req.warehouseId());
-            if (!Integer.valueOf(1).equals(warehouse.getStatus())) {
+            if (warehouse.getStatus() != EnableStatus.ENABLED) {
                 throw new BizException("scm.error.warehouseDisabled", warehouse.getName());
             }
         }

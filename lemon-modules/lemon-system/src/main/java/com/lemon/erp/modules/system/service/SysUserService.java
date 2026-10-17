@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
@@ -105,7 +106,7 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setPwdUpdateTime(LocalDateTime.now());
         user.setPwdReset(1);
-        if (user.getStatus() == null) user.setStatus(1);
+        if (user.getStatus() == null) user.setStatus(EnableStatus.ENABLED);
         save(user);
         saveRoles(user.getId(), user.getRoleIds());
     }
@@ -130,21 +131,21 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
             checkAssignableRoles(user.getRoleIds());
             saveRoles(user.getId(), user.getRoleIds());
         }
-        if (Integer.valueOf(0).equals(user.getStatus())) {
+        if (user.getStatus() == EnableStatus.DISABLED) {
             tokenService.kickUser(user.getId());
         } else {
             tokenService.evictLoginUser(user.getId());
         }
     }
 
-    public void changeStatus(Long id, Integer status) {
+    public void changeStatus(Long id, EnableStatus status) {
         checkOperable(List.of(id));
         checkCanDisable(id, status);
         SysUser update = new SysUser();
         update.setId(id);
         update.setStatus(status);
         updateById(update);
-        if (status == 0) {
+        if (status == EnableStatus.DISABLED) {
             tokenService.kickUser(id);
         } else {
             tokenService.evictLoginUser(id);
@@ -258,8 +259,8 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         users.forEach(u -> u.setDeptName(u.getDeptId() == null ? null : names.get(u.getDeptId())));
     }
 
-    private void checkCanDisable(Long id, Integer status) {
-        if (!Integer.valueOf(0).equals(status)) {
+    private void checkCanDisable(Long id, EnableStatus status) {
+        if (status != EnableStatus.DISABLED) {
             return;
         }
         if (id == SUPER_ADMIN_ID) {

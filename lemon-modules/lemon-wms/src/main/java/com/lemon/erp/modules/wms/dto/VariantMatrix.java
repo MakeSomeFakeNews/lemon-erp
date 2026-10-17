@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.wms.dto;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.wms.entity.WmsAttributeValue;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 
@@ -19,6 +20,6 @@ public record VariantMatrix(WmsMaterial template, List<Attribute> attributes, Li
      * @param values 属性 ID → 属性值 ID
      */
     public record Variant(Long id, String code, String name, String spec, String unit, Integer serialEnabled,
-                          String variantText, Integer status, Map<Long, Long> values) {
+                          String variantText, EnableStatus status, Map<Long, Long> values) {
     }
 }

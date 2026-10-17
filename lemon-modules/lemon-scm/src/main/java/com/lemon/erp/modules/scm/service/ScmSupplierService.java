@@ -2,6 +2,7 @@ package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
@@ -52,7 +53,7 @@ public class ScmSupplierService {
     private final SupplierQualityProvider qualityProvider;
 
     /** @param keyword 编码或名称，模糊匹配 */
-    public PageResult<ScmSupplier> page(long current, long size, String keyword, SupplierLevel level, Integer status) {
+    public PageResult<ScmSupplier> page(long current, long size, String keyword, SupplierLevel level, EnableStatus status) {
         Page<ScmSupplier> page = supplierMapper.selectPage(Page.of(current, size), Wrappers.<ScmSupplier>lambdaQuery()
                 .and(StringUtils.hasText(keyword), w -> w.like(ScmSupplier::getCode, keyword).or().like(ScmSupplier::getName, keyword))
                 .eq(level != null, ScmSupplier::getLevel, level)
@@ -108,7 +109,7 @@ public class ScmSupplierService {
     /** 启用的供应商，按编码或名称搜索 */
     public List<PartnerOption> options(String keyword) {
         return supplierMapper.selectPage(Page.of(1, OPTION_LIMIT, false), Wrappers.<ScmSupplier>lambdaQuery()
-                        .eq(ScmSupplier::getStatus, 1)
+                        .eq(ScmSupplier::getStatus, EnableStatus.ENABLED)
                         .and(StringUtils.hasText(keyword), w -> w.like(ScmSupplier::getCode, keyword).or().like(ScmSupplier::getName, keyword))
                         .orderByAsc(ScmSupplier::getCode))
                 .getRecords().stream()
@@ -124,7 +125,7 @@ public class ScmSupplierService {
         }
         checkCodeUnique(supplier.getCode(), null);
         supplier.setId(null);
-        if (supplier.getStatus() == null) supplier.setStatus(1);
+        if (supplier.getStatus() == null) supplier.setStatus(EnableStatus.ENABLED);
         if (supplier.getPaymentDays() == null) supplier.setPaymentDays(0);
         supplierMapper.insert(supplier);
     }
@@ -140,7 +141,7 @@ public class ScmSupplierService {
         changeLogger.log("scm_supplier", id, before, supplierMapper.selectById(id), CHANGE_FIELDS);
     }
 
-    public void changeStatus(Long id, Integer status) {
+    public void changeStatus(Long id, EnableStatus status) {
         get(id);
         ScmSupplier entity = new ScmSupplier();
         entity.setId(id);

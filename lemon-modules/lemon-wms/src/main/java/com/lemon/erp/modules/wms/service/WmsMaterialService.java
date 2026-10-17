@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.wms.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.framework.data.Queries;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -67,7 +68,7 @@ public class WmsMaterialService {
 
     /** @param keyword 编码或名称，模糊匹配 */
     /** @param templateId 只看某个款式的 SKU */
-    public PageResult<WmsMaterial> page(long current, long size, String keyword, String category, Integer status, Long templateId) {
+    public PageResult<WmsMaterial> page(long current, long size, String keyword, String category, EnableStatus status, Long templateId) {
         Page<WmsMaterial> page = materialMapper.selectPage(Page.of(current, size), Wrappers.<WmsMaterial>lambdaQuery()
                 .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword))
                 .eq(StringUtils.hasText(category), WmsMaterial::getCategory, category)
@@ -98,7 +99,7 @@ public class WmsMaterialService {
             if (material == null) {
                 throw new BizException("wms.error.materialNotFound2", id);
             }
-            if (!Integer.valueOf(1).equals(material.getStatus())) {
+            if (material.getStatus() != EnableStatus.ENABLED) {
                 throw new BizException("wms.error.materialDisabled", material.getCode(), material.getName());
             }
         }
@@ -133,7 +134,7 @@ public class WmsMaterialService {
                 .select(WmsMaterial::getId, WmsMaterial::getCode, WmsMaterial::getName, WmsMaterial::getSpec,
                         WmsMaterial::getUnit, WmsMaterial::getBatchEnabled, WmsMaterial::getSerialEnabled,
                         WmsMaterial::getBarcode, WmsMaterial::getDefaultWarehouseId, WmsMaterial::getDefaultLocationId)
-                .eq(WmsMaterial::getStatus, 1)
+                .eq(WmsMaterial::getStatus, EnableStatus.ENABLED)
                 // 多规格款式不能直接用于单据，选择具体的 SKU
                 .eq(WmsMaterial::getIsTemplate, 0)
                 .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword))
@@ -153,7 +154,7 @@ public class WmsMaterialService {
         material.setVariantText(null);
         normalize(material);
         checkExtras(material, null);
-        if (material.getStatus() == null) material.setStatus(1);
+        if (material.getStatus() == null) material.setStatus(EnableStatus.ENABLED);
         materialMapper.insert(material);
     }
 
@@ -189,7 +190,7 @@ public class WmsMaterialService {
         changeLogger.log("wms_material", id, before, materialMapper.selectById(id), CHANGE_FIELDS);
     }
 
-    public void changeStatus(Long id, Integer status) {
+    public void changeStatus(Long id, EnableStatus status) {
         get(id);
         WmsMaterial entity = new WmsMaterial();
         entity.setId(id);
@@ -300,7 +301,7 @@ public class WmsMaterialService {
             return null;
         }
         String c = code.trim();
-        WmsMaterial m = Queries.first(materialMapper, Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getStatus, 1)
+        WmsMaterial m = Queries.first(materialMapper, Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getStatus, EnableStatus.ENABLED)
                 .and(w -> w.eq(WmsMaterial::getBarcode, c).or().eq(WmsMaterial::getCode, c)));
         if (m != null) {
             return new BarcodeMatch(m, m.getUnit() == null ? "" : m.getUnit(), BigDecimal.ONE);
@@ -310,7 +311,7 @@ public class WmsMaterialService {
             return null;
         }
         m = materialMapper.selectById(u.getMaterialId());
-        if (m == null || !Integer.valueOf(1).equals(m.getStatus())) {
+        if (m == null || m.getStatus() != EnableStatus.ENABLED) {
             return null;
         }
         return new BarcodeMatch(m, u.getUnit(), u.getRatio());

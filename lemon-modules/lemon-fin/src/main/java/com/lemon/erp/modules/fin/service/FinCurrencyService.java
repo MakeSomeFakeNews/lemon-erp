@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.data.Queries;
 import com.lemon.erp.modules.fin.model.BillKind;
@@ -57,7 +58,7 @@ public class FinCurrencyService implements ExchangeRateProvider {
         FinCurrency old = currencyMapper.selectOne(Wrappers.<FinCurrency>lambdaQuery().eq(FinCurrency::getCode, c.getCode()));
         c.setIsBase(BASE.equals(c.getCode()) ? 1 : 0);
         if (c.getStatus() == null) {
-            c.setStatus(1);
+            c.setStatus(EnableStatus.ENABLED);
         }
         if (c.getSort() == null) {
             c.setSort(0);

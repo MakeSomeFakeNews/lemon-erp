@@ -2,6 +2,7 @@ package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
@@ -44,7 +45,7 @@ public class ScmCustomerService {
     private final FlowIdentityProvider identityProvider;
 
     /** @param keyword 编码或名称，模糊匹配 */
-    public PageResult<ScmCustomer> page(long current, long size, String keyword, String level, Integer status, SalesChannel channel) {
+    public PageResult<ScmCustomer> page(long current, long size, String keyword, String level, EnableStatus status, SalesChannel channel) {
         Page<ScmCustomer> page = customerMapper.selectPage(Page.of(current, size), Wrappers.<ScmCustomer>lambdaQuery()
                 .and(StringUtils.hasText(keyword), w -> w.like(ScmCustomer::getCode, keyword).or().like(ScmCustomer::getName, keyword))
                 .eq(StringUtils.hasText(level), ScmCustomer::getLevel, level)
@@ -113,7 +114,7 @@ public class ScmCustomerService {
     /** 启用的客户，按编码或名称搜索 */
     public List<PartnerOption> options(String keyword) {
         return customerMapper.selectPage(Page.of(1, OPTION_LIMIT, false), Wrappers.<ScmCustomer>lambdaQuery()
-                        .eq(ScmCustomer::getStatus, 1)
+                        .eq(ScmCustomer::getStatus, EnableStatus.ENABLED)
                         .and(StringUtils.hasText(keyword), w -> w.like(ScmCustomer::getCode, keyword).or().like(ScmCustomer::getName, keyword))
                         .orderByAsc(ScmCustomer::getCode))
                 .getRecords().stream()
@@ -128,7 +129,7 @@ public class ScmCustomerService {
         }
         checkCodeUnique(customer.getCode(), null);
         customer.setId(null);
-        if (customer.getStatus() == null) customer.setStatus(1);
+        if (customer.getStatus() == null) customer.setStatus(EnableStatus.ENABLED);
         if (customer.getPaymentDays() == null) customer.setPaymentDays(0);
         if (customer.getChannel() == null) customer.setChannel(SalesChannel.DIRECT);
         customerMapper.insert(customer);
@@ -151,7 +152,7 @@ public class ScmCustomerService {
         changeLogger.log("scm_customer", id, before, customerMapper.selectById(id), CHANGE_FIELDS);
     }
 
-    public void changeStatus(Long id, Integer status) {
+    public void changeStatus(Long id, EnableStatus status) {
         get(id);
         ScmCustomer entity = new ScmCustomer();
         entity.setId(id);

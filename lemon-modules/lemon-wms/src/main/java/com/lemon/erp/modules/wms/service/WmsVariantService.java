@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.wms.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.framework.data.Queries;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.modules.wms.dto.VariantMatrix;
@@ -85,7 +86,7 @@ public class WmsVariantService {
         }
         attr.setName(attr.getName().trim());
         if (attr.getStatus() == null) {
-            attr.setStatus(1);
+            attr.setStatus(EnableStatus.ENABLED);
         }
         if (attr.getSort() == null) {
             attr.setSort(0);
@@ -265,7 +266,7 @@ public class WmsVariantService {
             m.setIsTemplate(0);
             m.setTemplateId(templateId);
             m.setVariantText(text);
-            m.setStatus(1);
+            m.setStatus(EnableStatus.ENABLED);
             materialMapper.insert(m);
             for (WmsAttributeValue v : combo) {
                 WmsVariantValue vv = new WmsVariantValue();
@@ -295,7 +296,7 @@ public class WmsVariantService {
     public List<WmsMaterial> templateOptions(String keyword) {
         return Queries.limit(materialMapper, Wrappers.<WmsMaterial>lambdaQuery()
                 .select(WmsMaterial::getId, WmsMaterial::getCode, WmsMaterial::getName, WmsMaterial::getSpec, WmsMaterial::getUnit)
-                .eq(WmsMaterial::getIsTemplate, 1).eq(WmsMaterial::getStatus, 1)
+                .eq(WmsMaterial::getIsTemplate, 1).eq(WmsMaterial::getStatus, EnableStatus.ENABLED)
                 .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword))
                 .orderByAsc(WmsMaterial::getCode), 50);
     }

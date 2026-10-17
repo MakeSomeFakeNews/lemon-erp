@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.util.Decimals;
@@ -67,7 +68,7 @@ public class ScmPromotionService {
     public Long create(PromotionRequests.Save req) {
         ScmPromotion p = new ScmPromotion();
         fill(p, req);
-        p.setStatus(1);
+        p.setStatus(EnableStatus.ENABLED);
         promotionMapper.insert(p);
         return p.getId();
     }
@@ -89,9 +90,9 @@ public class ScmPromotionService {
         promotionMapper.deleteById(id);
     }
 
-    public void changeStatus(Long id, int status) {
+    public void changeStatus(Long id, EnableStatus status) {
         ScmPromotion p = detail(id);
-        p.setStatus(status == 1 ? 1 : 0);
+        p.setStatus(status);
         promotionMapper.updateById(p);
     }
 

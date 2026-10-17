@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.cache.CacheService;
@@ -48,7 +49,7 @@ public class SysDictService implements DictLookup {
 
     // ---------------- 字典类型 ----------------
 
-    public PageResult<SysDictType> pageType(long current, long size, String name, String type, Integer status, DictKind kind) {
+    public PageResult<SysDictType> pageType(long current, long size, String name, String type, EnableStatus status, DictKind kind) {
         Page<SysDictType> page = typeMapper.selectPage(Page.of(current, size), Wrappers.<SysDictType>lambdaQuery()
                 .like(StringUtils.hasText(name), SysDictType::getName, name)
                 .like(StringUtils.hasText(type), SysDictType::getType, type)
@@ -76,7 +77,7 @@ public class SysDictService implements DictLookup {
         checkTypeUnique(type);
         type.setId(null);
         if (type.getKind() == null) type.setKind(DictKind.BUSINESS);
-        if (type.getStatus() == null) type.setStatus(1);
+        if (type.getStatus() == null) type.setStatus(EnableStatus.ENABLED);
         typeMapper.insert(type);
     }
 
@@ -141,7 +142,7 @@ public class SysDictService implements DictLookup {
         List<SysDictData> list = dataMapper.selectList(Wrappers.<SysDictData>lambdaQuery()
                 .eq(SysDictData::getDictType, dictType)
                 .eq(SysDictData::getTenantId, tenantId)
-                .eq(SysDictData::getStatus, 1)
+                .eq(SysDictData::getStatus, EnableStatus.ENABLED)
                 .orderByAsc(SysDictData::getSort)
                 .orderByAsc(SysDictData::getId));
         cache.set(key, list, CACHE_TTL);
@@ -164,7 +165,7 @@ public class SysDictService implements DictLookup {
         data.setTenantId(tenantOf(type));
         data.setBuiltin(0);
         checkValueUnique(data);
-        if (data.getStatus() == null) data.setStatus(1);
+        if (data.getStatus() == null) data.setStatus(EnableStatus.ENABLED);
         if (data.getSort() == null) data.setSort(0);
         dataMapper.insert(data);
         evict(type);

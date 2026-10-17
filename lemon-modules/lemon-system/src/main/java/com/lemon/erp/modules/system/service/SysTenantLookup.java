@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.tenant.TenantContext;
 import com.lemon.erp.framework.tenant.TenantProperties;
@@ -77,7 +78,7 @@ public class SysTenantLookup {
             platform.setId(TenantContext.PLATFORM_TENANT_ID);
             return List.of(platform);
         }
-        return tenantMapper.selectList(Wrappers.<SysTenant>lambdaQuery().eq(SysTenant::getStatus, 1)
+        return tenantMapper.selectList(Wrappers.<SysTenant>lambdaQuery().eq(SysTenant::getStatus, EnableStatus.ENABLED)
                 .and(w -> w.isNull(SysTenant::getExpireTime).or().gt(SysTenant::getExpireTime, LocalDateTime.now()))
                 .orderByAsc(SysTenant::getId));
     }
@@ -126,7 +127,7 @@ public class SysTenantLookup {
 
     /** 租户不可用的原因（消息键），可用时返回 null */
     static String inactiveReason(SysTenant tenant) {
-        if (!Integer.valueOf(1).equals(tenant.getStatus())) {
+        if (tenant.getStatus() != EnableStatus.ENABLED) {
             return "system.error.tenantDisabled";
         }
         if (tenant.getExpireTime() != null && !tenant.getExpireTime().isAfter(LocalDateTime.now())) {

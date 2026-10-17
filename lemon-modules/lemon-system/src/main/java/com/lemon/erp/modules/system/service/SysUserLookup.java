@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.system.service;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.framework.org.UserLookup;
 import com.lemon.erp.modules.system.entity.SysUser;
 import com.lemon.erp.modules.system.mapper.SysUserMapper;
@@ -24,6 +25,6 @@ public class SysUserLookup implements UserLookup {
         }
         SysUser u = userMapper.selectById(userId);
         return Optional.ofNullable(u).map(x -> new UserBrief(x.getId(), x.getUsername(), x.getNickname(),
-                x.getDeptId(), Integer.valueOf(1).equals(x.getStatus())));
+                x.getDeptId(), x.getStatus() == EnableStatus.ENABLED));
     }
 }

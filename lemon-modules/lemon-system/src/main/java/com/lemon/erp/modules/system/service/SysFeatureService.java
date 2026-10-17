@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.tenant.PlatformFeatures;
@@ -81,7 +82,7 @@ public class SysFeatureService {
         packageMenuMapper.selectList(Wrappers.lambdaQuery())
                 .forEach(pm -> packageMenus.computeIfAbsent(pm.getPackageId(), k -> new HashSet<>()).add(pm.getMenuId()));
         for (SysTenantPackage pkg : packageMapper.selectList(Wrappers.<SysTenantPackage>lambdaQuery()
-                .eq(SysTenantPackage::getStatus, 1).orderByAsc(SysTenantPackage::getId))) {
+                .eq(SysTenantPackage::getStatus, EnableStatus.ENABLED).orderByAsc(SysTenantPackage::getId))) {
             if (menus.equals(packageMenus.get(pkg.getId()))) {
                 return pkg.getId();
             }
@@ -90,7 +91,7 @@ public class SysFeatureService {
         String packageName = uniqueName(base, tenantName);
         SysTenantPackage pkg = new SysTenantPackage();
         pkg.setName(packageName);
-        pkg.setStatus(1);
+        pkg.setStatus(EnableStatus.ENABLED);
         pkg.setRemark("新建租户「" + tenantName + "」时按功能模块创建"); // i18n-ignore 套餐备注存库
         packageMapper.insert(pkg);
         packageMenuMapper.insertBatch(pkg.getId(), menus);

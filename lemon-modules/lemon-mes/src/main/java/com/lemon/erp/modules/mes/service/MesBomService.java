@@ -2,6 +2,7 @@ package com.lemon.erp.modules.mes.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.util.Decimals;
@@ -57,7 +58,7 @@ public class MesBomService {
     private final WmsMaterialService materialService;
     private final MesEcnMapper ecnMapper;
 
-    public PageResult<MesBom> page(long current, long size, String keyword, Integer status) {
+    public PageResult<MesBom> page(long current, long size, String keyword, EnableStatus status) {
         Page<MesBom> page = Page.of(current, size);
         bomMapper.selectPageList(page, keyword, status);
         return PageResult.of(page);
@@ -77,7 +78,7 @@ public class MesBomService {
     public List<MesBom> listByMaterial(Long materialId) {
         return bomMapper.selectList(Wrappers.<MesBom>lambdaQuery()
                 .eq(MesBom::getMaterialId, materialId)
-                .eq(MesBom::getStatus, 1)
+                .eq(MesBom::getStatus, EnableStatus.ENABLED)
                 .orderByDesc(MesBom::getIsDefault).orderByAsc(MesBom::getVersion));
     }
 
@@ -86,7 +87,7 @@ public class MesBomService {
         validate(req);
         MesBom bom = new MesBom();
         fill(bom, req);
-        bom.setStatus(1);
+        bom.setStatus(EnableStatus.ENABLED);
         try {
             bomMapper.insert(bom);
         } catch (DuplicateKeyException e) {
@@ -129,7 +130,7 @@ public class MesBomService {
         }
     }
 
-    public void changeStatus(Long id, Integer status) {
+    public void changeStatus(Long id, EnableStatus status) {
         checkNotPending(getBom(id));
         MesBom entity = new MesBom();
         entity.setId(id);
@@ -176,7 +177,7 @@ public class MesBomService {
         bom.setLeadDays(from.getLeadDays());
         bom.setRemark(from.getRemark());
         bom.setEcnId(ecnId);
-        bom.setStatus(0);
+        bom.setStatus(EnableStatus.DISABLED);
         try {
             bomMapper.insert(bom);
         } catch (DuplicateKeyException e) {
@@ -218,13 +219,13 @@ public class MesBomService {
     public void activateForEcn(Long fromBomId, Long toBomId) {
         MesBom from = getBom(fromBomId);
         MesBom to = getBom(toBomId);
-        bomMapper.update(Wrappers.<MesBom>lambdaUpdate().set(MesBom::getStatus, 1).eq(MesBom::getId, toBomId));
+        bomMapper.update(Wrappers.<MesBom>lambdaUpdate().set(MesBom::getStatus, EnableStatus.ENABLED).eq(MesBom::getId, toBomId));
         if (Integer.valueOf(1).equals(from.getIsDefault())) {
             to.setIsDefault(1);
             bomMapper.update(Wrappers.<MesBom>lambdaUpdate().set(MesBom::getIsDefault, 1).eq(MesBom::getId, toBomId));
             afterSave(to);
         }
-        bomMapper.update(Wrappers.<MesBom>lambdaUpdate().set(MesBom::getStatus, 0).eq(MesBom::getId, fromBomId));
+        bomMapper.update(Wrappers.<MesBom>lambdaUpdate().set(MesBom::getStatus, EnableStatus.DISABLED).eq(MesBom::getId, fromBomId));
     }
 
     /** 删除取消的工程变更创建的版本（没有被工单使用时） */

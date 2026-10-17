@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
@@ -75,7 +76,7 @@ public class SysJobService {
                 job.setName(Messages.get(Messages.DEFAULT_LOCALE, h.name()));
                 job.setCron(h.defaultCron());
                 job.setParams(h.defaultParams());
-                job.setStatus(h.defaultEnabled() ? 1 : 0);
+                job.setStatus(EnableStatus.of(h.defaultEnabled()));
                 jobMapper.insert(job);
             }
         }
@@ -152,7 +153,7 @@ public class SysJobService {
         if (old != null) {
             old.cancel(false);
         }
-        if (scheduler == null || !Integer.valueOf(1).equals(job.getStatus()) || !handlers().containsKey(job.getJobKey())
+        if (scheduler == null || job.getStatus() != EnableStatus.ENABLED || !handlers().containsKey(job.getJobKey())
                 || !CronExpression.isValidExpression(job.getCron())) {
             return;
         }

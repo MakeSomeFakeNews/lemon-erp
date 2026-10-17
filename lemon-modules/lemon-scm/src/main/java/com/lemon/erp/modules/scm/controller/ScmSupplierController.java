@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.scm.controller;
 
 import com.lemon.erp.common.dto.StatusRequest;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.common.validation.Create;
@@ -47,7 +48,7 @@ public class ScmSupplierController {
                                        @RequestParam(defaultValue = "10") long size,
                                        @RequestParam(required = false) String keyword,
                                        @RequestParam(required = false) SupplierLevel level,
-                                       @RequestParam(required = false) Integer status) {
+                                       @RequestParam(required = false) EnableStatus status) {
         return R.ok(supplierService.page(current, size, keyword, level, status));
     }
 

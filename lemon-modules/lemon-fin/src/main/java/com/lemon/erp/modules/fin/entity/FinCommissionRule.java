@@ -3,6 +3,7 @@ package com.lemon.erp.modules.fin.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.fin.model.CommissionBasis;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -44,7 +45,7 @@ public class FinCommissionRule extends BaseEntity {
     @DecimalMax(value = "100", message = "{fin.valid.commissionRateCannotExceed}")
     private BigDecimal rate;
 
-    private Integer status;
+    private EnableStatus status;
 
     @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}")
     private String remark;

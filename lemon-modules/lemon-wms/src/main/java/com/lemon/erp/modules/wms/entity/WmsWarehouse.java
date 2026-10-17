@@ -2,6 +2,7 @@ package com.lemon.erp.modules.wms.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.wms.model.WarehouseType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -40,7 +41,7 @@ public class WmsWarehouse extends BaseEntity {
     private Integer sort;
 
     /** 1 启用 0 停用；停用后不能在新单据中使用 */
-    private Integer status;
+    private EnableStatus status;
 
     @Size(max = 255, message = "{wms.valid.remarkCannotExceedCharacters}")
     private String remark;

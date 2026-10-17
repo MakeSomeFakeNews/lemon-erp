@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.bi.dto;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.bi.model.ScreenKey;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -25,5 +26,5 @@ public record ScreenShareRequest(@NotBlank @Size(max = 64) String name,
                                  @NotNull @Min(10) @Max(3600) Integer intervalSeconds,
                                  Long workCenterId,
                                  LocalDateTime expireTime,
-                                 @NotNull @Min(0) @Max(1) Integer status) {
+                                 @NotNull EnableStatus status) {
 }

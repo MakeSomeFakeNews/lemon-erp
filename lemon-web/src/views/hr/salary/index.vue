@@ -49,7 +49,7 @@
           <template v-else-if="column.key === 'monthly'">
             <template v-if="record.id">
               <div>{{ formatMoney(monthlyCost(record)) }}</div>
-              <div class="sub-text">{{ $t('hr.salary.hourlyCost', { amount: formatMoney(monthlyCost(record) / 174) }) }}</div>
+              <div class="sub-text">{{ $t('hr.salary.hourlyCost', { amount: formatMoney(hourlyCost(monthlyCost(record))) }) }}</div>
             </template>
             <a-tag v-else color="orange" :bordered="false">{{ $t('hr.salary.notCreated') }}</a-tag>
           </template>
@@ -93,7 +93,7 @@
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item :label="$t('hr.salary.scheme')" name="schemeId" :extra="$t('hr.salary.schemeExtra')">
+            <a-form-item :label="$t('hr.salary.scheme')" name="schemeId" :extra="$t('hr.salary.schemeExtra', defaultRatesText)">
               <a-select v-model:value="form.schemeId" allow-clear :placeholder="$t('hr.salary.defaultRates')" :options="schemeOptions" />
             </a-form-item>
           </a-col>
@@ -157,7 +157,7 @@ import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
 import { formatMoney } from '@/components/scm/scm'
-import { listSocialScheme, pageSalary, saveSalary, salaryHistory } from '@/api/hr'
+import { listSocialScheme, pageSalary, saveSalary, salaryHistory, salaryRules } from '@/api/hr'
 import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
@@ -191,10 +191,19 @@ function resetQuery() {
 onMounted(() => {
   load()
   loadSchemes()
+  loadRules()
 })
 
-// 社保方案：未选择方案时按默认比例（个人 10.5%、单位 26%）
-const DEFAULT_RATES = { personal: 10.5, company: 26 }
+// 当前租户的计薪规则（业务参数）：未选择社保方案时的默认比例、月计薪小时（月计薪天数 × 每日工时）
+const payRules = ref({})
+async function loadRules() {
+  payRules.value = await salaryRules().catch(() => ({}))
+}
+const defaultRates = computed(() => ({ personal: Number(payRules.value.socialPersonal) || 0, company: Number(payRules.value.socialCompany) || 0 }))
+const pct = (v) => (v === undefined || v === null ? '-' : Number(v))
+const defaultRatesText = computed(() => ({ personal: pct(payRules.value.socialPersonal), company: pct(payRules.value.socialCompany) }))
+/** 小时人工成本 = 月度人工成本 / 月计薪小时（规则未取到时不显示） */
+const hourlyCost = (monthly) => (Number(payRules.value.monthPayHours) ? monthly / Number(payRules.value.monthPayHours) : null)
 const schemes = ref([])
 async function loadSchemes() {
   schemes.value = await listSocialScheme().catch(() => [])
@@ -213,7 +222,7 @@ const schemeOptions = computed(() =>
 )
 const schemeName = (r) => r.schemeName || schemes.value.find((s) => s.id === r.schemeId)?.name || t('hr.salary.schemeNo', { id: r.schemeId })
 function schemeRates(s) {
-  if (!s) return DEFAULT_RATES
+  if (!s) return defaultRates.value
   const n = (v) => Number(v) || 0
   return {
     personal: n(s.pensionPersonal) + n(s.medicalPersonal) + n(s.unemploymentPersonal),
@@ -222,7 +231,7 @@ function schemeRates(s) {
 }
 const ratesOf = (schemeId) => schemeRates(schemeId ? schemes.value.find((s) => s.id === schemeId) : null)
 
-/** 月度人工成本 = 基本工资 + 津贴 + 单位社保（按社保方案，默认 26%）+ 单位公积金 */
+/** 月度人工成本 = 基本工资 + 津贴 + 单位社保（按社保方案，未选择时按业务参数的默认单位比例）+ 单位公积金 */
 function monthlyCost(r) {
   const n = (v) => Number(v) || 0
   return n(r.baseSalary) + n(r.postAllowance) + n(r.otherAllowance) + (n(r.socialBase) * ratesOf(r.schemeId).company) / 100 +
@@ -269,7 +278,7 @@ const estimate = computed(() => {
   const housing = form.housingBase ?? base
   const personal = (social * ratesOf(form.schemeId).personal) / 100 + (housing * (form.housingRate || 7)) / 100
   const cost = monthlyCost({ ...form, socialBase: social, housingBase: housing })
-  return t('hr.salary.estimate', { personal: formatMoney(personal), cost: formatMoney(cost), hourly: formatMoney(cost / 174) })
+  return t('hr.salary.estimate', { personal: formatMoney(personal), cost: formatMoney(cost), hourly: formatMoney(hourlyCost(cost)) })
 })
 async function save() {
   await formRef.value.validate()

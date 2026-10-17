@@ -2,6 +2,7 @@ package com.lemon.erp.modules.mes.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.LoginUser;
@@ -263,7 +264,7 @@ public class MesWorkOrderService {
         }
         if (req.warehouseId() != null) {
             WmsWarehouse warehouse = warehouseService.get(req.warehouseId());
-            if (!Integer.valueOf(1).equals(warehouse.getStatus())) {
+            if (warehouse.getStatus() != EnableStatus.ENABLED) {
                 throw new BizException("mes.error.warehouseDisabled", warehouse.getName());
             }
         }
@@ -279,7 +280,7 @@ public class MesWorkOrderService {
                 throw new BizException("mes.error.productHasNoDefaultBom", product.getCode(), product.getName());
             }
         }
-        if (!Integer.valueOf(1).equals(bom.getStatus())) {
+        if (bom.getStatus() != EnableStatus.ENABLED) {
             throw new BizException("mes.error.bomDisabled", bom.getVersion());
         }
         return bom;

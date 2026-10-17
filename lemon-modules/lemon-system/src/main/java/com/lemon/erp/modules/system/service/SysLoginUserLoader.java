@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.system.service;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.framework.portal.PortalKind;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.LoginUserLoader;
@@ -38,7 +39,7 @@ public class SysLoginUserLoader implements LoginUserLoader {
         SysUser user = userMapper.selectById(userId);
         Long tenantId = TenantContext.require();
         // 租户停用、过期或删除后，已登录的会话在权限缓存过期时随之失效
-        if (user == null || !Integer.valueOf(1).equals(user.getStatus()) || !tenantLookup.isActive(tenantId)) {
+        if (user == null || user.getStatus() != EnableStatus.ENABLED || !tenantLookup.isActive(tenantId)) {
             return null;
         }
         List<SysRole> roles = roleMapper.selectEnabledRolesByUserId(userId);

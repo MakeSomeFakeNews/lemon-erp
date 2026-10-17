@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.service;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.mes.dto.BoardOrderRow;
 import com.lemon.erp.modules.mes.dto.BoardReportSum;
@@ -267,7 +268,7 @@ public class MesBoardService {
         List<BoardView.Line> lines = new ArrayList<>();
         for (MesWorkCenter wc : calendar.centers()) {
             Long id = wc.getId();
-            boolean enabled = Integer.valueOf(1).equals(wc.getStatus());
+            boolean enabled = wc.getStatus() == EnableStatus.ENABLED;
             if (workCenterId != null ? !workCenterId.equals(id) : !enabled && !queue.containsKey(id) && !todayByWc.containsKey(id)) {
                 continue;
             }

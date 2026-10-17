@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.system.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.lemon.erp.common.enums.EnableStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -13,7 +14,7 @@ public class ImBindingRow {
     private String nickname;
     private String phone;
     private String deptName;
-    private Integer status;
+    private EnableStatus status;
     private Long bindingId;
     private String imUserId;
     private String imName;

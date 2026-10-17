@@ -2,6 +2,7 @@ package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.message.MessageCategory;
@@ -190,7 +191,7 @@ public class ScmChannelService {
 
     private ScmCustomer requireDealer(Long customerId) {
         ScmCustomer c = customerService.get(customerId);
-        if (c.getChannel() != SalesChannel.DEALER || !Integer.valueOf(1).equals(c.getStatus())) {
+        if (c.getChannel() != SalesChannel.DEALER || c.getStatus() != EnableStatus.ENABLED) {
             throw new BizException("scm.error.customerNotEnabledDealer", c.getName());
         }
         return c;

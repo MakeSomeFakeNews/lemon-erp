@@ -5,8 +5,10 @@ import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.hr.dto.SalaryRequest;
+import com.lemon.erp.modules.hr.dto.SalaryRules;
 import com.lemon.erp.modules.hr.entity.HrSalary;
 import com.lemon.erp.modules.hr.entity.HrSalaryHistory;
+import com.lemon.erp.modules.hr.service.HrRuleService;
 import com.lemon.erp.modules.hr.service.HrSalaryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,14 @@ import java.util.List;
 public class HrSalaryController {
 
     private final HrSalaryService salaryService;
+    private final HrRuleService ruleService;
+
+    /** 当前租户的计薪规则（月计薪天数、每日工时、默认社保比例），页面估算人工成本用；不要求业务参数页面的权限 */
+    @GetMapping("/rules")
+    @PreAuthorize("@ss.hasPerm('hr:salary:list')")
+    public R<SalaryRules> rules() {
+        return R.ok(SalaryRules.of(ruleService.current()));
+    }
 
     /** @param missing true 只看没有薪资档案的在职员工 */
     @GetMapping

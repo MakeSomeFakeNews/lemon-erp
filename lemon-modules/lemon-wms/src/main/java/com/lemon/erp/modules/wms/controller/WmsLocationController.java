@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.wms.controller;
 
 import com.lemon.erp.common.dto.StatusRequest;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.common.validation.Create;
@@ -43,7 +44,7 @@ public class WmsLocationController {
                                            @RequestParam(defaultValue = "10") long size,
                                            @RequestParam(required = false) Long warehouseId,
                                            @RequestParam(required = false) String keyword,
-                                           @RequestParam(required = false) Integer status) {
+                                           @RequestParam(required = false) EnableStatus status) {
         return R.ok(locationService.page(current, size, warehouseId, keyword, status));
     }
 

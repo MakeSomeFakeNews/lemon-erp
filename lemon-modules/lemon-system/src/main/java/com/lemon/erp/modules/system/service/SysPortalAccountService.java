@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.portal.PortalAccounts;
@@ -67,7 +68,7 @@ public class SysPortalAccountService implements PortalAccounts {
         user.setPassword(passwordEncoder.encode(account.password()));
         user.setPwdUpdateTime(LocalDateTime.now());
         user.setPwdReset(1);
-        user.setStatus(1);
+        user.setStatus(EnableStatus.ENABLED);
         userMapper.insert(user);
         userRoleMapper.insertBatch(user.getId(), List.of(role.getId()));
         return user.getId();
@@ -75,10 +76,10 @@ public class SysPortalAccountService implements PortalAccounts {
 
     @Override
     @Transactional
-    public void changeStatus(PortalKind kind, Long partnerId, Long userId, Integer status) {
+    public void changeStatus(PortalKind kind, Long partnerId, Long userId, EnableStatus status) {
         require(kind, partnerId, userId);
         userMapper.update(Wrappers.<SysUser>lambdaUpdate().set(SysUser::getStatus, status).eq(SysUser::getId, userId));
-        if (Integer.valueOf(0).equals(status)) {
+        if (status == EnableStatus.DISABLED) {
             tokenService.kickUser(userId);
         }
     }
@@ -98,7 +99,7 @@ public class SysPortalAccountService implements PortalAccounts {
 
     @Override
     public List<Long> enabledUserIds(PortalKind kind, Long partnerId) {
-        return userMapper.selectList(partnerQuery(kind, partnerId).select(SysUser::getId).eq(SysUser::getStatus, 1))
+        return userMapper.selectList(partnerQuery(kind, partnerId).select(SysUser::getId).eq(SysUser::getStatus, EnableStatus.ENABLED))
                 .stream().map(SysUser::getId).toList();
     }
 
