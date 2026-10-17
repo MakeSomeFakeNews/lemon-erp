@@ -26,6 +26,7 @@ public class WmsDocNos {
                 doc(StockBizType.OUT.getPrefix(), StockBizType.OUT.getLabel()),
                 doc(StockBizType.TRANSFER.getPrefix(), StockBizType.TRANSFER.getLabel()),
                 doc(StockBizType.CHECK.getPrefix(), StockBizType.CHECK.getLabel()),
+                doc(WmsAssemblyService.DOC_NO, "组装拆卸单"),
                 master(MATERIAL, "物料编码"));
     }
 }

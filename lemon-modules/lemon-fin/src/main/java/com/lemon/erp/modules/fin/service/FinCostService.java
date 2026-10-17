@@ -24,6 +24,7 @@ import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.fin.model.VoucherStatus;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
+import com.lemon.erp.modules.wms.model.AssemblyKind;
 import com.lemon.erp.modules.wms.model.CostMethod;
 import com.lemon.erp.modules.wms.model.StockBizType;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
@@ -87,6 +88,8 @@ public class FinCostService {
     private static final String PURCHASE_RETURN = "PURCHASE_RETURN";
     /** 退料、销售退货、委外收回：冲减对应的出库，不是其他入库 */
     private static final Set<String> RETURN_TYPES = Set.of("PRODUCTION_RETURN", "SALES_RETURN", "OUTSOURCE_RETURN");
+    /** 组装拆卸单生成的出入库 */
+    private static final String ASSEMBLY = "ASSEMBLY";
 
     private final FinCostRunMapper runMapper;
     private final FinMaterialCostMapper materialCostMapper;
@@ -237,6 +240,13 @@ public class FinCostService {
         private Map<Long, WmsMaterial> materialInfo;
         /** 制造费用差异（实际发生 - 按费率分配），转入主营业务成本 */
         private BigDecimal overheadVariance = BigDecimal.ZERO;
+        /** 本期已完成的组装拆卸单 */
+        private final List<Assembly> assemblies = new ArrayList<>();
+        /** 物料 → 组装拆卸的入库数量（组装的成套件、拆卸的子件）、出库数量 */
+        private final Map<Long, BigDecimal> assemblyIn = new HashMap<>();
+        private final Map<Long, BigDecimal> assemblyOut = new HashMap<>();
+        /** 组装拆卸单号 → 入库物料 → 入库成本（按出库物料的成本计算） */
+        private final Map<String, Map<Long, BigDecimal>> assemblyAmounts = new HashMap<>();
         /** 移动加权平均、先进先出的物料 → 本期出入库明细（按发生顺序） */
         private final Map<Long, List<Map<String, Object>>> events = new HashMap<>();
         /** 先进先出的物料 → 上期结存批次 */
@@ -275,6 +285,9 @@ public class FinCostService {
                     v[2] = v[2].add(dec(row, "outQty"));
                 } else if ("SALES_RETURN".equals(row.get("bizType"))) {
                     v[3] = v[3].add(dec(row, "inQty"));
+                } else if (ASSEMBLY.equals(row.get("bizType"))) {
+                    assemblyIn.merge(id(row, "materialId"), dec(row, "inQty"), BigDecimal::add);
+                    assemblyOut.merge(id(row, "materialId"), dec(row, "outQty"), BigDecimal::add);
                 } else if ("PROJECT".equals(row.get("bizType"))) {
                     projectOut.merge(id(row, "materialId"), dec(row, "outQty").subtract(dec(row, "inQty")), BigDecimal::add);
                 } else if ("OUTSOURCE".equals(row.get("bizType")) || "OUTSOURCE_RETURN".equals(row.get("bizType"))) {
@@ -289,6 +302,13 @@ public class FinCostService {
                 trade.computeIfAbsent(id(row, "materialId"), k -> new HashMap<>())
                         .put((String) row.get("kind"), new BigDecimal[]{dec(row, "qty"), dec(row, "net")});
             }
+            Map<String, Assembly> byNo = new LinkedHashMap<>();
+            for (Map<String, Object> row : sourceMapper.selectAssemblies(begin, end)) {
+                Assembly a = byNo.computeIfAbsent((String) row.get("assemblyNo"), no -> new Assembly(no,
+                        AssemblyKind.ASSEMBLE.name().equals(row.get("kind")), id(row, "productId"), dec(row, "qty"), new LinkedHashMap<>()));
+                a.parts().merge(id(row, "partId"), dec(row, "partQty"), BigDecimal::add);
+            }
+            assemblies.addAll(byNo.values());
             for (Map<String, Object> row : sourceMapper.selectOutsourceConsumption(begin, end)) {
                 outsourceConsume.computeIfAbsent(id(row, "productId"), k -> new HashMap<>())
                         .merge(id(row, "materialId"), dec(row, "qty"), BigDecimal::add);
@@ -328,6 +348,10 @@ public class FinCostService {
                 all.add(product);
                 all.addAll(parts.keySet());
             });
+            assemblies.forEach(a -> {
+                all.add(a.product());
+                all.addAll(a.parts().keySet());
+            });
             materialInfo = materialService.mapByIds(all);
             Set<Long> sequenced = materialInfo.values().stream()
                     .filter(m -> m.getCostMethod() != null && m.getCostMethod() != CostMethod.WEIGHTED)
@@ -357,6 +381,14 @@ public class FinCostService {
             }
             // 委外件依赖核销的子件（先算子件单价）
             outsourceConsume.forEach((product, parts) -> deps.computeIfAbsent(product, k -> new HashSet<>()).addAll(parts.keySet()));
+            // 组装：成套件依赖子件；拆卸：子件依赖成套件
+            for (Assembly a : assemblies) {
+                if (a.assemble()) {
+                    deps.computeIfAbsent(a.product(), k -> new HashSet<>()).addAll(a.parts().keySet());
+                } else {
+                    a.parts().keySet().forEach(p -> deps.computeIfAbsent(p, k -> new HashSet<>()).add(a.product()));
+                }
+            }
             for (Long m : topoOrder(materialInfo.keySet(), deps)) {
                 for (Long woId : producers.getOrDefault(m, Set.of())) {
                     computeWo(woId);
@@ -442,6 +474,12 @@ public class FinCostService {
             }
             for (Long woId : producerWos) {
                 makeAmount = makeAmount.add(woCosts.get(woId).getFinishedAmount());
+            }
+            // 组装得到的成套件、拆卸得到的子件按生产入库计：成本取所耗物料的成本
+            BigDecimal assembled = assemblyIn.getOrDefault(m, BigDecimal.ZERO);
+            if (assembled.signum() != 0) {
+                make = make.add(assembled);
+                makeAmount = makeAmount.add(assemblyInAmount(m));
             }
             BigDecimal[] s = stock.getOrDefault(m, zeros(4));
             BigDecimal salesOut = s[2];
@@ -530,6 +568,8 @@ public class FinCostService {
                     v.in(date, qty, tradeAmount(row, qty).add(share));
                 } else if (PURCHASE_RETURN.equals(type) && row.get("tradeNet") != null && qty.signum() < 0) {
                     v.returnOut(qty.negate(), tradeAmount(row, qty.negate()));
+                } else if (ASSEMBLY.equals(type) && qty.signum() > 0 && row.get("sourceNo") != null) {
+                    v.in(date, qty, assemblyEventAmount((String) row.get("sourceNo"), m, qty));
                 } else if (row.get("woId") != null && qty.signum() > 0) {
                     FinWoCost w = woCosts.get(id(row, "woId"));
                     BigDecimal unit = w != null && w.getUnitCost() != null ? w.getUnitCost() : v.unit();
@@ -583,6 +623,69 @@ public class FinCostService {
             }
         }
 
+        /** 物料本期组装拆卸入库的成本合计 */
+        private BigDecimal assemblyInAmount(Long m) {
+            BigDecimal total = BigDecimal.ZERO;
+            for (Assembly a : assemblies) {
+                total = total.add(assemblyAmounts(a).getOrDefault(m, BigDecimal.ZERO));
+            }
+            return total;
+        }
+
+        /** 逐笔计价时一笔组装拆卸入库的金额：该单中此物料的入库成本（按数量比例） */
+        private BigDecimal assemblyEventAmount(String assemblyNo, Long m, BigDecimal qty) {
+            Assembly a = assemblies.stream().filter(x -> x.no().equals(assemblyNo)).findFirst().orElse(null);
+            if (a == null) {
+                return BigDecimal.ZERO;
+            }
+            BigDecimal amount = assemblyAmounts(a).getOrDefault(m, BigDecimal.ZERO);
+            BigDecimal docQty = a.assemble() ? a.qty() : a.parts().getOrDefault(m, BigDecimal.ZERO);
+            return docQty.signum() == 0 || docQty.compareTo(qty) == 0 ? amount : money(amount.multiply(qty).divide(docQty, 10, RoundingMode.HALF_UP));
+        }
+
+        /**
+         * 一张组装拆卸单的入库成本：组装的成套件 = Σ 子件数量 × 子件单价；拆卸时成套件成本（数量 × 单价）
+         * 按子件数量 × 参考单价（上期单价或参考成本价，都没有时按数量）分摊到各子件，尾差计入最后一个
+         */
+        private Map<Long, BigDecimal> assemblyAmounts(Assembly a) {
+            return assemblyAmounts.computeIfAbsent(a.no(), no -> {
+                Map<Long, BigDecimal> result = new LinkedHashMap<>();
+                if (a.assemble()) {
+                    BigDecimal total = BigDecimal.ZERO;
+                    for (Map.Entry<Long, BigDecimal> e : a.parts().entrySet()) {
+                        total = total.add(money(e.getValue().multiply(unitOf(e.getKey()))));
+                    }
+                    result.put(a.product(), total);
+                    return result;
+                }
+                BigDecimal total = money(a.qty().multiply(unitOf(a.product())));
+                Map<Long, BigDecimal> weights = new LinkedHashMap<>();
+                a.parts().forEach((p, q) -> weights.put(p, q.multiply(lastUnitCost(p))));
+                BigDecimal weightSum = weights.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+                if (weightSum.signum() == 0) {
+                    weights.clear();
+                    weights.putAll(a.parts());
+                    weightSum = weights.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+                }
+                BigDecimal allocated = BigDecimal.ZERO;
+                List<Long> parts = new ArrayList<>(weights.keySet());
+                for (int i = 0; i < parts.size(); i++) {
+                    Long p = parts.get(i);
+                    BigDecimal amount = i == parts.size() - 1 ? total.subtract(allocated)
+                            : weightSum.signum() == 0 ? BigDecimal.ZERO : money(total.multiply(weights.get(p)).divide(weightSum, 10, RoundingMode.HALF_UP));
+                    result.merge(p, amount, BigDecimal::add);
+                    allocated = allocated.add(amount);
+                }
+                return result;
+            });
+        }
+
+        /** 已核算物料的本期单价，尚未核算（有环）时取上期单价 */
+        private BigDecimal unitOf(Long m) {
+            FinMaterialCost c = materials.get(m);
+            return c != null ? c.getUnitCost() : lastUnitCost(m);
+        }
+
         /** 出库金额的尾差：依次计入销售成本、生产领用、其他出库 */
         private void addOutResidual(FinMaterialCost c, BigDecimal residual) {
             if (residual.signum() == 0) {
@@ -600,7 +703,7 @@ public class FinCostService {
         /** 其他入库：入库单（非采购、完工、退货）和盘盈；退料、销售退货冲减出库，不计入其他入库 */
         private boolean isOtherIn(Map<String, Object> row) {
             String type = (String) row.get("bizType");
-            if (RETURN_TYPES.contains(type)) {
+            if (RETURN_TYPES.contains(type) || ASSEMBLY.equals(type)) {
                 return false;
             }
             Object kind = row.get("docKind");
@@ -691,6 +794,7 @@ public class FinCostService {
             Map<Long, BigDecimal> projectByAccount = new HashMap<>();
             Map<Long, BigDecimal> outsourceByAccount = new HashMap<>();
             Map<Long, BigDecimal> serviceByAccount = new HashMap<>();
+            Map<Long, BigDecimal> assemblyOutByAccount = new HashMap<>();
             materials.values().forEach(c -> {
                 Long code = inventory.apply(category(c.getMaterialId()));
                 salesByAccount.merge(code, c.getSalesAmount(), BigDecimal::add);
@@ -699,11 +803,13 @@ public class FinCostService {
                 BigDecimal project = money(projectOut.getOrDefault(c.getMaterialId(), BigDecimal.ZERO).multiply(c.getUnitCost()));
                 BigDecimal outsource = money(outsourceOut.getOrDefault(c.getMaterialId(), BigDecimal.ZERO).multiply(c.getUnitCost()));
                 BigDecimal service = money(serviceOut.getOrDefault(c.getMaterialId(), BigDecimal.ZERO).multiply(c.getUnitCost()));
+                BigDecimal assemblyOutAmount = money(assemblyOut.getOrDefault(c.getMaterialId(), BigDecimal.ZERO).multiply(c.getUnitCost()));
+                assemblyOutByAccount.merge(code, assemblyOutAmount, BigDecimal::add);
                 projectByAccount.merge(code, project, BigDecimal::add);
                 outsourceByAccount.merge(code, outsource, BigDecimal::add);
                 serviceByAccount.merge(code, service, BigDecimal::add);
-                otherByAccount.merge(code, c.getOtherInAmount().subtract(c.getOtherOutAmount()).add(project).add(outsource).add(service),
-                        BigDecimal::add);
+                otherByAccount.merge(code, c.getOtherInAmount().subtract(c.getOtherOutAmount()).add(project).add(outsource).add(service)
+                        .add(assemblyOutAmount), BigDecimal::add);
             });
             BigDecimal project = projectByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
             lines.add(VoucherLine.debit(summary + "-项目领料", accountRules.accountId(AccountRole.CONTRACT_COST), null, project));
@@ -733,6 +839,16 @@ public class FinCostService {
                 lines.add(VoucherLine.credit(summary + "-低值易耗品领用", code, null, amount));
                 otherByAccount.merge(code, amount, BigDecimal::add);
             });
+            // 组装拆卸：借 入库物料（组装的成套件、拆卸的子件）的存货科目 / 贷 出库物料的存货科目，尾差计入待处理财产损溢
+            Map<Long, BigDecimal> assemblyInByAccount = new HashMap<>();
+            for (Assembly a : assemblies) {
+                assemblyAmounts(a).forEach((m, amount) -> assemblyInByAccount.merge(inventory.apply(category(m)), amount, BigDecimal::add));
+            }
+            assemblyInByAccount.forEach((code, amount) -> lines.add(VoucherLine.debit(summary + "-组装拆卸", code, null, amount)));
+            assemblyOutByAccount.forEach((code, amount) -> lines.add(VoucherLine.credit(summary + "-组装拆卸", code, null, amount)));
+            BigDecimal assemblyDiff = assemblyOutByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .subtract(assemblyInByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add));
+            lines.add(VoucherLine.debit(summary + "-组装拆卸尾差", accountRules.accountId(AccountRole.PENDING_LOSS), null, assemblyDiff));
             BigDecimal service = serviceByAccount.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
             lines.add(VoucherLine.debit(summary + "-售后备件", accountRules.accountId(AccountRole.SELLING_EXPENSE), null, service));
             serviceByAccount.forEach((code, amount) -> lines.add(VoucherLine.credit(summary + "-售后备件", code, null, amount)));
@@ -771,6 +887,10 @@ public class FinCostService {
             }
             return refCosts.getOrDefault(m, p != null ? p.getUnitCost() : BigDecimal.ZERO);
         }
+    }
+
+    /** 一张组装拆卸单：组装（assemble）时子件出库、成套件入库，拆卸相反 */
+    private record Assembly(String no, boolean assemble, Long product, BigDecimal qty, Map<Long, BigDecimal> parts) {
     }
 
     /** 拓扑排序：依赖（下层物料）在前；剩余（有环）按 ID 顺序追加 */

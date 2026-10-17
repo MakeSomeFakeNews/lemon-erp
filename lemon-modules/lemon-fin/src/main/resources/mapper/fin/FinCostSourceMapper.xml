@@ -19,6 +19,16 @@
         GROUP BY f.material_id, COALESCE(d.biz_type, f.biz_type)
     </select>
 
+    <!-- 已完成的组装拆卸单及其子件（按业务日期） -->
+    <select id="selectAssemblies" resultType="java.util.Map">
+        SELECT a.assembly_no AS "assemblyNo", a.kind AS "kind", a.material_id AS "productId", a.qty AS "qty",
+               i.material_id AS "partId", i.qty AS "partQty"
+        FROM wms_assembly a
+        JOIN wms_assembly_item i ON i.assembly_id = a.id
+        WHERE a.status = 'DONE' AND a.biz_date &gt;= #{begin} AND a.biz_date &lt;= #{end}
+        ORDER BY a.id, i.id
+    </select>
+
     <!-- 参考成本价：没有核算单价时使用 -->
     <select id="selectRefCosts" resultType="java.util.Map">
         SELECT id AS "materialId", ref_cost AS "refCost" FROM wms_material WHERE ref_cost &gt; 0
@@ -71,7 +81,7 @@
          qty 带正负号（入库为正、出库为负，红字单相反）；采购入库 / 退货带出不含税金额，完工入库带出工单 -->
     <select id="selectCostEvents" resultType="java.util.Map">
         SELECT f.material_id AS "materialId", COALESCE(d.biz_date, c.biz_date) AS "bizDate", MIN(f.id) AS "seq",
-               COALESCE(d.biz_type, f.biz_type) AS "bizType", MAX(d.kind) AS "docKind", SUM(f.qty) AS "qty",
+               COALESCE(d.biz_type, f.biz_type) AS "bizType", MAX(d.kind) AS "docKind", MAX(d.source_no) AS "sourceNo", SUM(f.qty) AS "qty",
                MAX(t.qty) AS "tradeQty", MAX(t.net) AS "tradeNet", MAX(w.wo_id) AS "woId"
         FROM wms_stock_flow f
         JOIN wms_warehouse wh ON wh.id = f.warehouse_id

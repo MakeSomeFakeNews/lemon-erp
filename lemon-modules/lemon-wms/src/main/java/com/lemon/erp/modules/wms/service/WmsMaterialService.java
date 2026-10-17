@@ -9,7 +9,11 @@ import com.lemon.erp.framework.ref.RefType;
 import com.lemon.erp.framework.ref.ReferenceGuard;
 import com.lemon.erp.modules.wms.entity.WmsCheckItem;
 import com.lemon.erp.modules.wms.entity.WmsLocation;
+import com.lemon.erp.modules.wms.entity.WmsAssembly;
+import com.lemon.erp.modules.wms.entity.WmsAssemblyItem;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
+import com.lemon.erp.modules.wms.mapper.WmsAssemblyItemMapper;
+import com.lemon.erp.modules.wms.mapper.WmsAssemblyMapper;
 import com.lemon.erp.modules.wms.entity.WmsVariantValue;
 import com.lemon.erp.modules.wms.mapper.WmsVariantValueMapper;
 import com.lemon.erp.modules.wms.model.CostMethod;
@@ -47,6 +51,8 @@ public class WmsMaterialService {
 
     private final WmsMaterialMapper materialMapper;
     private final WmsVariantValueMapper variantValueMapper;
+    private final WmsAssemblyMapper assemblyMapper;
+    private final WmsAssemblyItemMapper assemblyItemMapper;
     private final WmsStockFlowMapper flowMapper;
     private final WmsStockDocItemMapper docItemMapper;
     private final WmsCheckItemMapper checkItemMapper;
@@ -181,7 +187,9 @@ public class WmsMaterialService {
             Long id = material.getId();
             boolean used = flowMapper.existsByMaterialId(id)
                     || docItemMapper.exists(Wrappers.<WmsStockDocItem>lambdaQuery().eq(WmsStockDocItem::getMaterialId, id))
-                    || checkItemMapper.exists(Wrappers.<WmsCheckItem>lambdaQuery().eq(WmsCheckItem::getMaterialId, id));
+                    || checkItemMapper.exists(Wrappers.<WmsCheckItem>lambdaQuery().eq(WmsCheckItem::getMaterialId, id))
+                    || assemblyMapper.exists(Wrappers.<WmsAssembly>lambdaQuery().eq(WmsAssembly::getMaterialId, id))
+                    || assemblyItemMapper.exists(Wrappers.<WmsAssemblyItem>lambdaQuery().eq(WmsAssemblyItem::getMaterialId, id));
             if (used) {
                 throw new BizException("物料「" + material.getName() + "」已被单据使用，不能删除，可以停用");
             }
