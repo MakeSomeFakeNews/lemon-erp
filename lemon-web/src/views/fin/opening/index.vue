@@ -2,6 +2,88 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <a-tabs v-model:active-key="tab">
+        <!-- ---------------------------------------------------------------- 启用向导 -->
+        <a-tab-pane key="guide" tab="启用向导">
+          <a-alert
+            type="info"
+            show-icon
+            class="tip"
+            message="系统上线时按顺序准备期初数据：先确认会计科目和凭证科目设置，再录入科目期初、导入期初库存、录入存货期初金额、导入期初往来，最后核对往来与科目期初是否一致。"
+          />
+          <a-spin :spinning="loadingSummary">
+            <div v-if="summary" class="guide">
+              <div class="guide-step">
+                <div class="guide-no done">1</div>
+                <div class="guide-body">
+                  <div class="guide-title">会计科目与凭证科目</div>
+                  <div class="sub-text">在「会计科目」中按企业实际增加明细科目、设置辅助核算；在「凭证科目设置」中确认自动凭证使用的科目</div>
+                </div>
+              </div>
+              <div class="guide-step">
+                <div :class="['guide-no', { done: summary.accounts.count && accountsBalanced }]">2</div>
+                <div class="guide-body">
+                  <div class="guide-title">科目期初</div>
+                  <div class="sub-text">
+                    已录入 {{ summary.accounts.count }} 个科目，借方 {{ money(summary.accounts.debit) }}、贷方 {{ money(summary.accounts.credit) }}
+                    <span v-if="summary.accounts.count && !accountsBalanced" class="bad">（借贷不平衡）</span>
+                  </div>
+                </div>
+                <a-button @click="tab = 'account'">去录入</a-button>
+              </div>
+              <div class="guide-step">
+                <div :class="['guide-no', { done: summary.stockDocs.length }]">3</div>
+                <div class="guide-body">
+                  <div class="guide-title">期初库存</div>
+                  <div class="sub-text">
+                    按仓库、库位、批次、序列号导入启用时的结存数量，生成启用期间前一天的「期初入库」单。
+                    已导入 {{ summary.stockDocs.length }} 张，共 {{ formatQty(stockDocQty) }}
+                  </div>
+                  <div v-if="summary.stockDocs.length" class="guide-docs">
+                    <a-tag v-for="d in summary.stockDocs" :key="d.id" :bordered="false" :color="d.reversed ? 'default' : 'gold'">
+                      {{ d.docNo }} {{ d.warehouseName }} {{ formatQty(d.totalQty) }}{{ d.reversed ? '（已冲销）' : '' }}
+                    </a-tag>
+                  </div>
+                </div>
+                <a-space v-perm="'fin:opening:edit'">
+                  <span class="sub-text">启用期间</span>
+                  <PeriodPicker v-model:value="guideStart" :disabled="!!startPeriod && stock.locked" />
+                  <a-button :disabled="!guideStart" @click="stockInImportOpen = true">
+                    <template #icon><ImportOutlined /></template>导入期初库存
+                  </a-button>
+                </a-space>
+              </div>
+              <div class="guide-step">
+                <div :class="['guide-no', { done: summary.stock.saved }]">4</div>
+                <div class="guide-body">
+                  <div class="guide-title">存货期初</div>
+                  <div class="sub-text">
+                    数量按期初库存自动带出，录入或导入金额，作为启用期间成本核算的期初；应与原材料、库存商品的科目期初一致。
+                    {{ summary.stock.saved ? `已保存（${periodText(summary.stock.openingPeriod)} 结存）` : '未保存' }}
+                  </div>
+                </div>
+                <a-button @click="tab = 'stock'">去录入</a-button>
+              </div>
+              <div class="guide-step">
+                <div :class="['guide-no', { done: summary.bills.AR.count || summary.bills.AP.count }]">5</div>
+                <div class="guide-body">
+                  <div class="guide-title">期初往来</div>
+                  <div class="sub-text">按客户、供应商导入启用时未收、未付的余额（手工应收应付单），之后在收付款中核销</div>
+                  <div v-for="k in ['AR', 'AP']" :key="k" class="guide-check">
+                    {{ k === 'AR' ? '应收' : '应付' }} {{ summary.bills[k].count }} 张，合计 {{ money(summary.bills[k].amount) }}；
+                    科目 {{ summary.bills[k].accountCode }} 期初 {{ money(summary.bills[k].ledger) }}
+                    <a-tag v-if="Math.abs(summary.bills[k].amount - summary.bills[k].ledger) < 0.005" color="green" :bordered="false">一致</a-tag>
+                    <a-tag v-else color="orange" :bordered="false">相差 {{ money(summary.bills[k].amount - summary.bills[k].ledger) }}</a-tag>
+                  </div>
+                </div>
+                <a-space v-perm="'fin:opening:edit'" direction="vertical">
+                  <a-button @click="openBillImport('AR')"><template #icon><ImportOutlined /></template>导入期初应收</a-button>
+                  <a-button @click="openBillImport('AP')"><template #icon><ImportOutlined /></template>导入期初应付</a-button>
+                </a-space>
+              </div>
+            </div>
+          </a-spin>
+        </a-tab-pane>
+
         <!-- ---------------------------------------------------------------- 科目期初 -->
         <a-tab-pane key="account" tab="科目期初">
           <a-alert
@@ -143,6 +225,22 @@
       :sample="{ code: '1001', debit: 10000 }"
     />
     <ImportModal
+      v-model:open="stockInImportOpen"
+      title="期初库存"
+      :columns="stockInImportColumns"
+      :importer="(data) => importOpeningStock(guideStart, data)"
+      :sample="{ warehouse: '原料仓', materialCode: 'M0001', qty: 100 }"
+      @success="loadSummary(); loadStock(guideStart)"
+    />
+    <ImportModal
+      v-model:open="billImportOpen"
+      :title="billImportKind === 'AR' ? '期初应收' : '期初应付'"
+      :columns="billImportColumns"
+      :importer="(data) => importOpeningBills(billImportKind, data)"
+      :sample="{ partner: billImportKind === 'AR' ? 'C0001' : 'S0001', billDate: '2026-01-31', amount: 10000 }"
+      @success="loadSummary"
+    />
+    <ImportModal
       v-model:open="stockImportOpen"
       title="存货期初"
       :columns="stockImportColumns"
@@ -160,9 +258,9 @@ import DictTag from '@/components/DictTag.vue'
 import ImportModal from '@/components/ImportModal.vue'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
-import { accountOpenings, saveAccountOpenings, saveStockOpening, stockOpening } from '@/api/fin'
+import { accountOpenings, importOpeningBills, importOpeningStock, openingSummary, saveAccountOpenings, saveStockOpening, stockOpening } from '@/api/fin'
 import { materialOptions } from '@/api/wms/material'
-import { formatMoney } from '@/components/fin/fin'
+import { formatMoney, periodText } from '@/components/fin/fin'
 import { formatQty, rowKey } from '@/components/wms/wms'
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
@@ -171,7 +269,50 @@ useDict('fin_account_category')
 const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPerm('fin:opening:edit'))
 const money = (n) => formatMoney(Number(n) || 0)
-const tab = ref('account')
+const tab = ref('guide')
+
+// ---------------------------------------------------------------- 启用向导
+const summary = ref(null)
+const loadingSummary = ref(false)
+const guideStart = ref()
+const accountsBalanced = computed(() => Math.abs(Number(summary.value.accounts.debit) - Number(summary.value.accounts.credit)) < 0.005)
+const stockDocQty = computed(() => (summary.value?.stockDocs || []).filter((d) => !d.reversed).reduce((s, d) => s + Number(d.totalQty), 0))
+
+async function loadSummary() {
+  loadingSummary.value = true
+  try {
+    summary.value = await openingSummary()
+  } finally {
+    loadingSummary.value = false
+  }
+}
+
+const stockInImportOpen = ref(false)
+const stockInImportColumns = [
+  { title: '仓库', key: 'warehouse', required: true },
+  { title: '库位', key: 'location' },
+  { title: '物料编码', key: 'materialCode', required: true },
+  { title: '物料名称', key: 'materialName' },
+  { title: '批次号', key: 'batchNo' },
+  { title: '数量', key: 'qty', type: 'number', required: true },
+  { title: '序列号', key: 'serialNos' },
+  { title: '生产日期', key: 'productionDate', type: 'date' },
+  { title: '有效期至', key: 'expiryDate', type: 'date' }
+]
+
+const billImportOpen = ref(false)
+const billImportKind = ref('AR')
+const billImportColumns = [
+  { title: '往来单位（编码或名称）', key: 'partner', required: true },
+  { title: '单据日期', key: 'billDate', type: 'date', required: true },
+  { title: '到期日', key: 'dueDate', type: 'date' },
+  { title: '金额', key: 'amount', type: 'number', required: true },
+  { title: '备注', key: 'remark' }
+]
+function openBillImport(kind) {
+  billImportKind.value = kind
+  billImportOpen.value = true
+}
 
 // ---------------------------------------------------------------- 科目期初
 const accountColumns = [
@@ -269,6 +410,7 @@ async function loadStock(period) {
   try {
     stock.value = await stockOpening(period)
     startPeriod.value = stock.value.startPeriod ?? period
+    guideStart.value ??= startPeriod.value
     stockRows.value = stock.value.rows.map((r) => ({ ...r, key: rowKey(), qty: Number(r.qty), amount: Number(r.amount) }))
   } finally {
     loadingStock.value = false
@@ -345,10 +487,14 @@ async function submitStock() {
 }
 
 watch(tab, (t) => {
-  if (t === 'stock' && !stock.value.rows.length && startPeriod.value === undefined) loadStock()
+  if (t === 'guide') loadSummary()
 })
 
-onMounted(loadAccounts)
+onMounted(() => {
+  loadSummary()
+  loadAccounts()
+  loadStock()
+})
 </script>
 
 <style scoped>
@@ -385,5 +531,52 @@ onMounted(loadAccounts)
 .sub-text {
   color: var(--app-text-3);
   font-size: 12px;
+}
+.guide {
+  max-width: 980px;
+}
+.guide-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--app-border);
+}
+.guide-no {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  line-height: 26px;
+  text-align: center;
+  border-radius: 50%;
+  border: 1px solid var(--app-border);
+  color: var(--app-text-3);
+}
+.guide-no.done {
+  background: var(--app-primary);
+  border-color: transparent;
+  color: #fff;
+}
+.guide-body {
+  flex: 1;
+  min-width: 0;
+}
+.guide-title {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.guide-docs {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 0;
+}
+.guide-check {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--app-text-2);
+}
+.bad {
+  color: var(--status-critical);
 }
 </style>
