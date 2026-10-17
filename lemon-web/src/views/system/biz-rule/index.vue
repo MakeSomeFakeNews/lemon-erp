@@ -1,52 +1,51 @@
 <template>
-  <div class="config-page">
-    <a-card :bordered="false" class="page-card">
+  <div class="table-page">
+    <a-card :bordered="false" class="page-card table-card">
       <template #title>业务参数</template>
       <template #extra>
         <span class="sub-text">各模块的业务控制规则，只对当前企业（租户）生效；修改后立即生效</span>
       </template>
-      <a-spin :spinning="loading">
-        <a-tabs v-model:active-key="group">
-          <a-tab-pane v-for="g in groups" :key="g.key" :tab="g.key">
-            <div v-for="item in g.items" :key="item.key" class="config-item">
-              <div class="config-label">
-                {{ item.label }}
-                <a-tag v-if="item.modified" color="blue" :bordered="false" class="ml">已修改</a-tag>
-                <a-tag v-if="edits[item.key] !== item.value" color="orange" :bordered="false" class="ml">未保存</a-tag>
-              </div>
-              <div class="config-control">
-                <a-switch
-                  v-if="item.type === 'BOOL'"
-                  :checked="edits[item.key] === 'true'"
-                  :disabled="!canEdit"
-                  @change="(v) => (edits[item.key] = String(v))"
-                />
-                <a-radio-group v-else-if="item.type === 'SELECT'" v-model:value="edits[item.key]" :disabled="!canEdit" button-style="solid">
-                  <a-radio-button v-for="o in item.options" :key="o.value" :value="o.value">{{ o.label }}</a-radio-button>
-                </a-radio-group>
-                <a-input-number
-                  v-else
-                  :value="Number(edits[item.key])"
-                  :min="item.min"
-                  :max="item.max"
-                  :precision="0"
-                  :disabled="!canEdit"
-                  class="number"
-                  @change="(v) => (edits[item.key] = v == null ? '' : String(v))"
-                />
-                <a v-if="canEdit && edits[item.key] !== item.defaultValue" class="reset" @click="edits[item.key] = item.defaultValue">恢复默认</a>
-              </div>
-              <div class="sub-text">
-                <span v-if="item.remark">{{ item.remark }}。</span>默认：{{ display(item, item.defaultValue) }}
-              </div>
+      <div v-if="loading && !groups.length" class="page-spin"><a-spin /></div>
+      <a-tabs v-model:active-key="group">
+        <a-tab-pane v-for="g in groups" :key="g.key" :tab="g.key">
+          <div v-for="item in g.items" :key="item.key" class="config-item">
+            <div class="config-label">
+              {{ item.label }}
+              <a-tag v-if="item.modified" color="blue" :bordered="false" class="ml">已修改</a-tag>
+              <a-tag v-if="edits[item.key] !== item.value" color="orange" :bordered="false" class="ml">未保存</a-tag>
             </div>
-          </a-tab-pane>
-        </a-tabs>
-        <div v-if="canEdit" class="config-actions">
-          <a-button :disabled="!dirtyKeys.length" @click="discard">放弃修改</a-button>
-          <a-button type="primary" :loading="saving" :disabled="!dirtyKeys.length" @click="save">保存（{{ dirtyKeys.length }}）</a-button>
-        </div>
-      </a-spin>
+            <div class="config-control">
+              <a-switch
+                v-if="item.type === 'BOOL'"
+                :checked="edits[item.key] === 'true'"
+                :disabled="!canEdit"
+                @change="(v) => (edits[item.key] = String(v))"
+              />
+              <a-radio-group v-else-if="item.type === 'SELECT'" v-model:value="edits[item.key]" :disabled="!canEdit" button-style="solid">
+                <a-radio-button v-for="o in item.options" :key="o.value" :value="o.value">{{ o.label }}</a-radio-button>
+              </a-radio-group>
+              <a-input-number
+                v-else
+                :value="Number(edits[item.key])"
+                :min="item.min"
+                :max="item.max"
+                :precision="0"
+                :disabled="!canEdit"
+                class="number"
+                @change="(v) => (edits[item.key] = v == null ? '' : String(v))"
+              />
+              <a v-if="canEdit && edits[item.key] !== item.defaultValue" class="reset" @click="edits[item.key] = item.defaultValue">恢复默认</a>
+            </div>
+            <div class="sub-text">
+              <span v-if="item.remark">{{ item.remark }}。</span>默认：{{ display(item, item.defaultValue) }}
+            </div>
+          </div>
+        </a-tab-pane>
+      </a-tabs>
+      <div v-if="canEdit" class="config-actions">
+        <a-button :disabled="!dirtyKeys.length" @click="discard">放弃修改</a-button>
+        <a-button type="primary" :loading="saving" :disabled="!dirtyKeys.length" @click="save">保存（{{ dirtyKeys.length }}）</a-button>
+      </div>
     </a-card>
   </div>
 </template>
@@ -137,11 +136,16 @@ async function save() {
   margin-left: 6px;
 }
 .config-actions {
+  flex: none;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   max-width: 760px;
-  margin-top: 16px;
+  padding-top: 12px;
+}
+.page-spin {
+  padding: 48px 0;
+  text-align: center;
 }
 .sub-text {
   color: var(--app-text-3);
