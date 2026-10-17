@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.quality.SupplierQualityProvider;
 import com.lemon.erp.framework.record.ChangeLogger;
@@ -35,8 +36,8 @@ import java.util.Objects;
 public class ScmSupplierService {
 
     /** 记录变更历史的字段 */
-    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "供应商编码", "name", "供应商名称", "contact", "联系人", "phone", "联系电话", "email", "邮箱",
-            "address", "地址", "taxNo", "纳税人识别号", "bankName", "开户行", "bankAccount", "银行账号", "paymentDays", "账期", "remark", "备注");
+    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "供应商编码", "name", "供应商名称", "contact", "联系人", "phone", "联系电话", "email", "邮箱", // i18n-ignore
+            "address", "地址", "taxNo", "纳税人识别号", "bankName", "开户行", "bankAccount", "银行账号", "paymentDays", "账期", "remark", "备注"); // i18n-ignore
 
     private static final int OPTION_LIMIT = 50;
 
@@ -115,9 +116,9 @@ public class ScmSupplierService {
         for (ScmSupplier supplier : supplierMapper.selectByIds(ids)) {
             if (orderMapper.exists(Wrappers.<ScmOrder>lambdaQuery()
                     .eq(ScmOrder::getKind, OrderKind.PURCHASE.name()).eq(ScmOrder::getPartnerId, supplier.getId()))) {
-                throw new BizException("供应商「" + supplier.getName() + "」已有采购订单，不能删除，可以停用");
+                throw new BizException("供应商「{0}」已有采购订单，不能删除，可以停用", supplier.getName());
             }
-            referenceGuard.checkDeletable(RefType.SUPPLIER, supplier.getId(), "供应商「" + supplier.getName() + "」");
+            referenceGuard.checkDeletable(RefType.SUPPLIER, supplier.getId(), I18n.t("供应商「{0}」", supplier.getName()));
         }
         priceMapper.delete(Wrappers.<ScmSupplierPrice>lambdaQuery().in(ScmSupplierPrice::getSupplierId, ids));
         evalMapper.delete(Wrappers.<ScmSupplierEval>lambdaQuery().in(ScmSupplierEval::getSupplierId, ids));

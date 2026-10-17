@@ -1,10 +1,10 @@
 <template>
   <div class="dept-tree">
     <div class="dept-tree-head">
-      <a-input v-model:value="keyword" placeholder="搜索部门" allow-clear>
+      <a-input v-model:value="keyword" :placeholder="$t('components.tree.searchDept')" allow-clear>
         <template #prefix><SearchOutlined /></template>
       </a-input>
-      <a-tooltip :title="expandedKeys.length ? '折叠全部' : '展开全部'">
+      <a-tooltip :title="expandedKeys.length ? $t('system.menu.collapseAll') : $t('system.menu.expandAll')">
         <a-button @click="toggleExpand">
           <template #icon><NodeCollapseOutlined v-if="expandedKeys.length" /><NodeExpandOutlined v-else /></template>
         </a-button>
@@ -12,7 +12,7 @@
     </div>
     <div v-if="showAll" class="dept-tree-all" :class="{ active: modelValue == null }" @click="select(undefined)">
       <ApartmentOutlined />
-      <span>全部部门</span>
+      <span>{{ $t('components.tree.allDepts') }}</span>
     </div>
     <div class="dept-tree-body">
       <a-spin :spinning="loading">
@@ -28,14 +28,14 @@
           <template #title="node">
             <div class="dept-node">
               <HighlightText :text="node.name" :keyword="keyword" :class="['dept-node-name', { 'is-disabled': node.status === 0 }]" />
-              <a-tag v-if="node.status === 0" :bordered="false" class="dept-node-tag">停用</a-tag>
+              <a-tag v-if="node.status === 0" :bordered="false" class="dept-node-tag">{{ $t('common.status.disabled') }}</a-tag>
               <span v-if="$slots.actions" class="dept-node-actions" @click.stop>
                 <slot name="actions" :node="node.dataRef" />
               </span>
             </div>
           </template>
         </a-tree>
-        <a-empty v-else :image="Empty.PRESENTED_IMAGE_SIMPLE" :description="keyword ? '没有匹配的部门' : '暂无部门'" />
+        <a-empty v-else :image="Empty.PRESENTED_IMAGE_SIMPLE" :description="keyword ? $t('components.tree.noMatchDept') : $t('components.tree.noDept')" />
       </a-spin>
     </div>
   </div>

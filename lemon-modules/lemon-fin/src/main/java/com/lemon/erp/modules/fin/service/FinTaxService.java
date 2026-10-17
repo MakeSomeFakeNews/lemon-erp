@@ -63,17 +63,20 @@ public class FinTaxService {
     public VatResult transfer(int period, BigDecimal cityRate, BigDecimal eduRate, BigDecimal localRate) {
         periodService.checkOpen(period);
         if (transferred(period)) {
-            throw new BizException(period + " 期间已结转增值税，如需重新结转请先删除结转凭证");
+            throw new BizException("{0} 期间已结转增值税，如需重新结转请先删除结转凭证", period);
         }
         Long inputId = accountRules.accountId(AccountRole.INPUT_VAT);
         Long outputId = accountRules.accountId(AccountRole.OUTPUT_VAT);
         BigDecimal input = entryMapper.sumBalanceUpTo(inputId, period);
         BigDecimal output = entryMapper.sumBalanceUpTo(outputId, period).negate();
         if (output.signum() <= 0) {
-            throw new BizException("截至 " + period + " 没有销项税额" + (input.signum() > 0 ? "，进项税额 " + input.toPlainString() + " 留抵下期" : ""));
+            if (input.signum() > 0) {
+                throw new BizException("截至 {0} 没有销项税额，进项税额 {1} 留抵下期", period, input.toPlainString());
+            }
+            throw new BizException("截至 {0} 没有销项税额", period);
         }
         LocalDate date = toYearMonth(period).atEndOfMonth();
-        String summary = "结转 " + period + " 增值税";
+        String summary = "结转 " + period + " 增值税"; // i18n-ignore
         BigDecimal offset = input.signum() > 0 ? input.min(output) : BigDecimal.ZERO;
         BigDecimal payable = output.subtract(offset);
         List<VoucherLine> lines = new ArrayList<>();
@@ -82,7 +85,7 @@ public class FinTaxService {
         BigDecimal surcharge = BigDecimal.ZERO;
         if (payable.signum() > 0) {
             lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.UNPAID_VAT), null, payable));
-            String s2 = "计提 " + period + " 附加税费";
+            String s2 = "计提 " + period + " 附加税费"; // i18n-ignore
             BigDecimal city = tax(payable, cityRate, 7);
             BigDecimal edu = tax(payable, eduRate, 3);
             BigDecimal local = tax(payable, localRate, 2);

@@ -2,14 +2,14 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="关键字" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="通知单号、订单号或客户" allow-clear />
+        <a-form-item :label="$t('common.field.keyword')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('scm.delivery.keywordPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.scm_delivery_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.scm_delivery_status)" />
         </a-form-item>
-        <a-form-item label="仓库" name="warehouseId">
-          <WarehouseSelect v-model:value="query.warehouseId" placeholder="全部" />
+        <a-form-item :label="$t('scm.delivery.warehouse')" name="warehouseId">
+          <WarehouseSelect v-model:value="query.warehouseId" :placeholder="$t('common.placeholder.all')" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -24,10 +24,10 @@
         @refresh="load"
       >
         <a-button v-perm="'scm:delivery:add'" type="primary" @click="form.openCreate()">
-          <template #icon><PlusOutlined /></template>新增发货通知
+          <template #icon><PlusOutlined /></template>{{ $t('scm.delivery.addTitle') }}
         </a-button>
         <a-button v-perm="'scm:wave:add'" :disabled="!selectedKeys.length" @click="createWave">
-          <template #icon><MergeCellsOutlined /></template>生成波次{{ selectedKeys.length ? `（${selectedKeys.length}）` : '' }}
+          <template #icon><MergeCellsOutlined /></template>{{ $t('scm.delivery.createWave') }}{{ selectedKeys.length ? ` (${selectedKeys.length})` : '' }}
         </a-button>
       </TableToolbar>
 
@@ -52,7 +52,7 @@
           <template v-else-if="column.key === 'totalQty'">{{ formatQty(record.totalQty) }}</template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="scm_delivery_status" :value="record.status" />
-            <div v-if="record.waveNo" class="sub-text">波次 {{ record.waveNo }}</div>
+            <div v-if="record.waveNo" class="sub-text">{{ $t('scm.delivery.waveN', { no: record.waveNo }) }}</div>
           </template>
           <template v-else-if="column.key === 'pick'">
             <template v-if="record.pickTime">{{ record.pickByName || '-' }} {{ record.pickTime }}</template>
@@ -64,7 +64,7 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <a-button type="link" size="small" @click="openDetail(record)">
-              <template #icon><EyeOutlined /></template>查看
+              <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
             </a-button>
           </template>
         </template>
@@ -94,23 +94,25 @@ import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const dict = useDict('scm_delivery_status')
 
 const columns = [
-  { title: '通知单号', key: 'deliveryNo', dataIndex: 'deliveryNo', width: 180 },
-  { title: '销售订单', key: 'orderNo', dataIndex: 'orderNo', width: 180 },
-  { title: '客户', dataIndex: 'customerName', width: 180, ellipsis: true },
-  { title: '发货仓库', dataIndex: 'warehouseName', width: 130 },
-  { title: '发货日期', dataIndex: 'shipDate', width: 110 },
-  { title: '数量', key: 'totalQty', dataIndex: 'totalQty', width: 100, align: 'right' },
-  { title: '状态', key: 'status', dataIndex: 'status', width: 90, dict: 'scm_delivery_status' },
-  { title: '拣货', key: 'pick', width: 200, exportValue: (r) => (r.pickTime ? `${r.pickByName || ''} ${r.pickTime}` : '') },
-  { title: '销售出库单', key: 'tradeDocNo', dataIndex: 'tradeDocNo', width: 170 },
-  { title: '制单人', dataIndex: 'createByName', width: 100 },
-  { title: '备注', dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: '创建时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 90, fixed: 'right' }
+  { title: t('scm.delivery.deliveryNo'), key: 'deliveryNo', dataIndex: 'deliveryNo', width: 180 },
+  { title: t('scm.delivery.salesOrder'), key: 'orderNo', dataIndex: 'orderNo', width: 180 },
+  { title: t('scm.delivery.customer'), dataIndex: 'customerName', width: 180, ellipsis: true },
+  { title: t('scm.delivery.shipWarehouse'), dataIndex: 'warehouseName', width: 140 },
+  { title: t('scm.delivery.shipDate'), dataIndex: 'shipDate', width: 120 },
+  { title: t('common.field.quantity'), key: 'totalQty', dataIndex: 'totalQty', width: 100, align: 'right' },
+  { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'scm_delivery_status' },
+  { title: t('scm.delivery.picked'), key: 'pick', width: 200, exportValue: (r) => (r.pickTime ? `${r.pickByName || ''} ${r.pickTime}` : '') },
+  { title: t('scm.delivery.salesOutDoc'), key: 'tradeDocNo', dataIndex: 'tradeDocNo', width: 170 },
+  { title: t('scm.delivery.createBy'), dataIndex: 'createByName', width: 120 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'scm-delivery')
 const showSearch = ref(true)
@@ -122,7 +124,7 @@ const { list, loading, size, pagination, selectedKeys, rowSelection, load, searc
 /** 选中的待拣货通知（同一仓库）生成拣货波次 */
 async function createWave() {
   const id = await addWave({ deliveryIds: selectedKeys.value })
-  message.success('已生成波次')
+  message.success(t('scm.delivery.waveCreated'))
   selectedKeys.value = []
   router.push({ path: '/scm/wave', query: { id } })
 }

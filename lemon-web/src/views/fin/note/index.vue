@@ -3,9 +3,9 @@
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
         <a-segmented v-model:value="kind" :options="KIND_OPTIONS" />
-        <a-select v-model:value="query.status" placeholder="全部状态" allow-clear :options="statusOptions" class="filter" />
-        <a-input-search v-model:value="query.keyword" placeholder="票据号码、往来单位、承兑人" allow-clear class="filter-wide" @search="search" />
-        <a-checkbox v-model:checked="dueSoon">30 天内到期</a-checkbox>
+        <a-select v-model:value="query.status" :placeholder="$t('fin.note.allStatus')" allow-clear :options="statusOptions" class="filter" />
+        <a-input-search v-model:value="query.keyword" :placeholder="$t('fin.note.keywordPlaceholder')" allow-clear class="filter-wide" @search="search" />
+        <a-checkbox v-model:checked="dueSoon">{{ $t('fin.note.dueSoon') }}</a-checkbox>
         <template #extra>
           <a-button v-perm="'fin:note:edit'" type="primary" @click="openRegister">
             <template #icon><PlusOutlined /></template>{{ conf.registerLabel }}
@@ -26,7 +26,7 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'noteNo'">
             <a @click="openDetail(record.id)">{{ record.noteNo }}</a>
-            <div class="sub-text">{{ record.electronic ? '电子票据' : '纸质票据' }}</div>
+            <div class="sub-text">{{ record.electronic ? $t('fin.note.electronicNote') : $t('fin.note.paperNote') }}</div>
           </template>
           <template v-else-if="column.key === 'noteType'"><DictTag type="fin_note_type" :value="record.noteType" /></template>
           <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}</template>
@@ -37,10 +37,10 @@
           <template v-else-if="column.key === 'status'"><DictTag type="fin_note_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record.id)">查看</a-button>
+              <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
               <span v-if="actionsOf(record).length" v-perm="'fin:note:edit'">
                 <a-dropdown>
-                  <a-button type="link" size="small">办理 <DownOutlined /></a-button>
+                  <a-button type="link" size="small">{{ $t('fin.note.handle') }} <DownOutlined /></a-button>
                   <template #overlay>
                     <a-menu @click="({ key }) => openAction(record, key)">
                       <a-menu-item v-for="a in actionsOf(record)" :key="a.key">{{ a.label }}</a-menu-item>
@@ -60,17 +60,17 @@
       <a-form ref="registerRef" :model="reg" :rules="registerRules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="8">
-            <a-form-item label="票据类型" name="noteType">
+            <a-form-item :label="$t('fin.note.noteType')" name="noteType">
               <a-select v-model:value="reg.noteType" :options="toOptions(dict.fin_note_type)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="10">
-            <a-form-item label="票据号码" name="noteNo">
+            <a-form-item :label="$t('fin.note.noteNo')" name="noteNo">
               <a-input v-model:value="reg.noteNo" :maxlength="64" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="6">
-            <a-form-item label="电子票据" name="electronic">
+            <a-form-item :label="$t('fin.note.electronicNote')" name="electronic">
               <a-switch v-model:checked="reg.electronic" />
             </a-form-item>
           </a-col>
@@ -80,7 +80,7 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="票面金额" name="amount">
+            <a-form-item :label="$t('fin.note.faceAmount')" name="amount">
               <a-input-number v-model:value="reg.amount" :min="0.01" :precision="2" prefix="¥" class="full" />
             </a-form-item>
           </a-col>
@@ -90,27 +90,27 @@
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="8">
-            <a-form-item label="出票日期" name="issueDate">
+            <a-form-item :label="$t('fin.note.issueDate')" name="issueDate">
               <a-date-picker v-model:value="reg.issueDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="8">
-            <a-form-item label="到期日期" name="dueDate">
+            <a-form-item :label="$t('fin.note.dueDate')" name="dueDate">
               <a-date-picker v-model:value="reg.dueDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="承兑人" name="acceptor">
-              <a-input v-model:value="reg.acceptor" :maxlength="128" placeholder="承兑银行或企业" />
+            <a-form-item :label="$t('fin.note.acceptor')" name="acceptor">
+              <a-input v-model:value="reg.acceptor" :maxlength="128" :placeholder="$t('fin.note.acceptorPlaceholder')" />
             </a-form-item>
           </a-col>
           <a-col v-if="kind === 'RECEIVABLE'" :xs="24" :sm="8">
-            <a-form-item label="出票人" name="drawer">
+            <a-form-item :label="$t('fin.note.drawer')" name="drawer">
               <a-input v-model:value="reg.drawer" :maxlength="128" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="kind === 'RECEIVABLE' ? 16 : 24">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-input v-model:value="reg.remark" :maxlength="255" />
             </a-form-item>
           </a-col>
@@ -119,40 +119,40 @@
       <BillSettleTable v-model="reg.items" :kind="conf.billKind" :partner-id="reg.partnerId" :target="reg.amount" />
       <template #footer>
         <div class="drawer-footer">
-          <a-button @click="registerOpen = false">取消</a-button>
-          <a-button type="primary" :loading="saving" @click="submitRegister">确认{{ conf.registerLabel }}</a-button>
+          <a-button @click="registerOpen = false">{{ $t('common.action.cancel') }}</a-button>
+          <a-button type="primary" :loading="saving" @click="submitRegister">{{ conf.confirmLabel }}</a-button>
         </div>
       </template>
     </SubPage>
 
     <!-- 背书转让 -->
-    <SubPage :open="endorseOpen" :title="`背书转让 - ${current?.noteNo || ''}`" width="min(900px, 100vw)" destroy-on-close @close="endorseOpen = false">
-      <a-alert type="info" show-icon class="block" message="把持有的票据转给供应商支付货款：核销供应商的应付单，核销合计须等于票面金额。启用付款审批时需审批通过后生效。" />
+    <SubPage :open="endorseOpen" :title="$t('fin.note.endorseTitle', { no: current?.noteNo || '' })" width="min(900px, 100vw)" destroy-on-close @close="endorseOpen = false">
+      <a-alert type="info" show-icon class="block" :message="$t('fin.note.endorseTip')" />
       <a-form layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="供应商" required>
+            <a-form-item :label="$t('fin.note.supplier')" required>
               <PartnerSelect v-model:value="endorse.supplierId" type="supplier" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="6">
-            <a-form-item label="背书日期" required>
+            <a-form-item :label="$t('fin.note.endorseDate')" required>
               <a-date-picker v-model:value="endorse.actionDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="6">
-            <a-form-item label="票面金额"><b>¥{{ formatMoney(current?.amount) }}</b></a-form-item>
+            <a-form-item :label="$t('fin.note.faceAmount')"><b>¥{{ formatMoney(current?.amount) }}</b></a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注"><a-input v-model:value="endorse.remark" :maxlength="255" /></a-form-item>
+            <a-form-item :label="$t('common.field.remark')"><a-input v-model:value="endorse.remark" :maxlength="255" /></a-form-item>
           </a-col>
         </a-row>
       </a-form>
       <BillSettleTable v-model="endorse.items" kind="ap" :partner-id="endorse.supplierId" :target="Number(current?.amount)" />
       <template #footer>
         <div class="drawer-footer">
-          <a-button @click="endorseOpen = false">取消</a-button>
-          <a-button type="primary" :loading="saving" :disabled="!endorse.supplierId" @click="submitEndorse">确认背书</a-button>
+          <a-button @click="endorseOpen = false">{{ $t('common.action.cancel') }}</a-button>
+          <a-button type="primary" :loading="saving" :disabled="!endorse.supplierId" @click="submitEndorse">{{ $t('fin.note.confirmEndorse') }}</a-button>
         </div>
       </template>
     </SubPage>
@@ -161,73 +161,73 @@
     <a-modal v-model:open="settleOpen" :title="`${actionLabel} - ${current?.noteNo || ''}`" :confirm-loading="saving" @ok="submitSettle">
       <a-alert type="info" show-icon class="block" :message="SETTLE_TIPS[action]" />
       <a-form layout="vertical">
-        <a-form-item label="日期" required>
+        <a-form-item :label="$t('common.field.date')" required>
           <a-date-picker v-model:value="settle.actionDate" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
-        <a-form-item v-if="action !== 'dishonor'" :label="action === 'pay' ? '付款账户' : '入账账户'" required>
-          <AccountSelect v-model:value="settle.accountId" :prefix="['1001', '1002']" placeholder="银行存款" />
+        <a-form-item v-if="action !== 'dishonor'" :label="action === 'pay' ? $t('fin.note.payAccount') : $t('fin.note.inAccount')" required>
+          <AccountSelect v-model:value="settle.accountId" :prefix="['1001', '1002']" :placeholder="$t('fin.note.bankDeposit')" />
         </a-form-item>
         <template v-if="action === 'discount'">
           <a-row :gutter="12">
             <a-col :span="12">
-              <a-form-item label="年贴现率（%）" extra="按 360 天计息，可直接修改贴现息">
+              <a-form-item :label="$t('fin.note.discountRate')" :extra="$t('fin.note.discountRateExtra')">
                 <a-input-number v-model:value="discountRate" :min="0" :max="100" :precision="4" class="full" @change="calcInterest" />
               </a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item label="贴现息">
+              <a-form-item :label="$t('fin.note.interest')">
                 <a-input-number v-model:value="settle.interest" :min="0" :precision="2" prefix="¥" class="full" />
               </a-form-item>
             </a-col>
           </a-row>
-          <div class="sub-text discount-net">实收金额 ¥{{ formatMoney(Number(current?.amount || 0) - Number(settle.interest || 0)) }}，剩余 {{ discountDays }} 天到期</div>
+          <div class="sub-text discount-net">{{ $t('fin.note.discountNet', { amount: formatMoney(Number(current?.amount || 0) - Number(settle.interest || 0)), days: discountDays }) }}</div>
         </template>
-        <a-form-item label="备注">
+        <a-form-item :label="$t('common.field.remark')">
           <a-input v-model:value="settle.remark" :maxlength="255" />
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- 详情 -->
-    <SubPage :open="detailOpen" :title="detail ? `票据 ${detail.noteNo}` : ''" width="min(980px, 100vw)" @close="detailOpen = false">
+    <SubPage :open="detailOpen" :title="detail ? $t('fin.note.detailTitle', { no: detail.noteNo }) : ''" width="min(980px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <span v-perm="'fin:note:edit'">
           <a-space>
-            <a-popconfirm v-if="canUndo" title="撤销最近一次操作？生成的凭证（须未审核）一并删除" @confirm="undo">
-              <a-button><template #icon><UndoOutlined /></template>撤销{{ lastActionLabel }}</a-button>
+            <a-popconfirm v-if="canUndo" :title="$t('fin.note.confirmUndo')" @confirm="undo">
+              <a-button><template #icon><UndoOutlined /></template>{{ $t('fin.note.undoAction', { action: lastActionLabel }) }}</a-button>
             </a-popconfirm>
-            <a-popconfirm v-if="canDelete" title="删除票据？登记时生成的收付款单一并删除，往来单据恢复未核销" @confirm="remove">
-              <a-button danger><template #icon><DeleteOutlined /></template>删除</a-button>
+            <a-popconfirm v-if="canDelete" :title="$t('fin.note.confirmDelete')" @confirm="remove">
+              <a-button danger><template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}</a-button>
             </a-popconfirm>
           </a-space>
         </span>
       </template>
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" bordered class="block">
-          <a-descriptions-item label="票据号码">{{ detail.noteNo }}</a-descriptions-item>
-          <a-descriptions-item label="类型"><DictTag type="fin_note_type" :value="detail.noteType" /> {{ detail.electronic ? '电子' : '纸质' }}</a-descriptions-item>
-          <a-descriptions-item label="状态"><DictTag type="fin_note_status" :value="detail.status" /></a-descriptions-item>
-          <a-descriptions-item :label="detail.kind === 'RECEIVABLE' ? '收票客户' : '收款供应商'">{{ detail.partnerName }}</a-descriptions-item>
-          <a-descriptions-item label="票面金额"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
-          <a-descriptions-item label="承兑人">{{ detail.acceptor || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="出票日期">{{ detail.issueDate }}</a-descriptions-item>
-          <a-descriptions-item label="到期日期">{{ detail.dueDate }}</a-descriptions-item>
-          <a-descriptions-item label="出票人">{{ detail.drawer || '-' }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="备注" :span="3">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.note.noteNo')">{{ detail.noteNo }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.type')"><DictTag type="fin_note_type" :value="detail.noteType" /> {{ detail.electronic ? $t('fin.note.electronic') : $t('fin.note.paper') }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.status')"><DictTag type="fin_note_status" :value="detail.status" /></a-descriptions-item>
+          <a-descriptions-item :label="detail.kind === 'RECEIVABLE' ? $t('fin.note.fromCustomer') : $t('fin.note.toSupplier')">{{ detail.partnerName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.note.faceAmount')"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.note.acceptor')">{{ detail.acceptor || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.note.issueDate')">{{ detail.issueDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.note.dueDate')">{{ detail.dueDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.note.drawer')">{{ detail.drawer || '-' }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')" :span="3">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
-        <div class="section-title">流转记录</div>
+        <div class="section-title">{{ $t('fin.note.logs') }}</div>
         <a-table row-key="id" size="small" :columns="logColumns" :data-source="detail.logs" :pagination="false" :scroll="{ x: 900 }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'action'"><DictTag type="fin_note_action" :value="record.action" /></template>
             <template v-else-if="column.key === 'target'">{{ record.partnerName || record.accountName || '-' }}</template>
             <template v-else-if="column.key === 'amount'">
               ¥{{ formatMoney(record.amount) }}
-              <div v-if="Number(record.interest)" class="sub-text">贴现息 ¥{{ formatMoney(record.interest) }}</div>
+              <div v-if="Number(record.interest)" class="sub-text">{{ $t('fin.note.interest') }} ¥{{ formatMoney(record.interest) }}</div>
             </template>
             <template v-else-if="column.key === 'ref'">
-              <div v-if="record.settleNo">收付款单 {{ record.settleNo }}</div>
-              <a v-if="record.voucherId" @click="openVoucher(record.voucherId)">凭证 {{ record.voucherNo }}</a>
-              <div v-if="record.billNo" class="sub-text">转回应收单 {{ record.billNo }}</div>
+              <div v-if="record.settleNo">{{ $t('fin.note.settleNo', { no: record.settleNo }) }}</div>
+              <a v-if="record.voucherId" @click="openVoucher(record.voucherId)">{{ $t('fin.note.voucherNo', { no: record.voucherNo }) }}</a>
+              <div v-if="record.billNo" class="sub-text">{{ $t('fin.note.billBack', { no: record.billNo }) }}</div>
             </template>
           </template>
         </a-table>
@@ -241,6 +241,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
 import { DeleteOutlined, DownOutlined, PlusOutlined, UndoOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -260,38 +261,41 @@ import { toOptions } from '@/utils/dict'
 
 /** 票据管理：应收票据（收票 → 背书 / 贴现 / 托收 / 拒付）、应付票据（开票 → 兑付） */
 const dict = useDict('fin_note_type', 'fin_note_status', 'fin_note_action')
+const { t } = useI18n()
 
 const KIND_OPTIONS = [
-  { label: '应收票据', value: 'RECEIVABLE' },
-  { label: '应付票据', value: 'PAYABLE' }
+  { label: t('fin.note.receivable'), value: 'RECEIVABLE' },
+  { label: t('fin.note.payable'), value: 'PAYABLE' }
 ]
 const CONF = {
   RECEIVABLE: {
-    registerLabel: '收票', partner: 'customer', partnerLabel: '客户', billKind: 'ar', actionDateLabel: '收票日期',
-    registerTip: '客户以承兑汇票付款：登记票据并核销客户的应收单（核销合计须等于票面金额），生成的收款单可在收款单中生成凭证（借 应收票据 / 贷 应收账款）。',
+    registerLabel: t('fin.note.conf.RECEIVABLE.register'), confirmLabel: t('fin.note.conf.RECEIVABLE.confirm'), successMsg: t('fin.note.conf.RECEIVABLE.success'),
+    partner: 'customer', partnerLabel: t('fin.note.customer'), billKind: 'ar', actionDateLabel: t('fin.note.conf.RECEIVABLE.actionDate'),
+    registerTip: t('fin.note.conf.RECEIVABLE.tip'),
     statuses: ['HELD', 'ENDORSING', 'ENDORSED', 'DISCOUNTED', 'COLLECTED', 'DISHONORED']
   },
   PAYABLE: {
-    registerLabel: '开具票据', partner: 'supplier', partnerLabel: '供应商', billKind: 'ap', actionDateLabel: '开票日期',
-    registerTip: '以应付票据支付供应商：登记票据并核销供应商的应付单（核销合计须等于票面金额），启用付款审批时需审批通过后生效；生成的付款单可生成凭证（借 应付账款 / 贷 应付票据）。',
+    registerLabel: t('fin.note.conf.PAYABLE.register'), confirmLabel: t('fin.note.conf.PAYABLE.confirm'), successMsg: t('fin.note.conf.PAYABLE.success'),
+    partner: 'supplier', partnerLabel: t('fin.note.supplier'), billKind: 'ap', actionDateLabel: t('fin.note.conf.PAYABLE.actionDate'),
+    registerTip: t('fin.note.conf.PAYABLE.tip'),
     statuses: ['ISSUING', 'ISSUED', 'PAID', 'CANCELLED']
   }
 }
 /** 各状态可以办理的操作 */
 const ACTIONS = {
   HELD: [
-    { key: 'endorse', label: '背书转让' },
-    { key: 'discount', label: '贴现' },
-    { key: 'collect', label: '托收' },
-    { key: 'dishonor', label: '拒付' }
+    { key: 'endorse', label: t('fin.note.actions.endorse') },
+    { key: 'discount', label: t('fin.note.actions.discount') },
+    { key: 'collect', label: t('fin.note.actions.collect') },
+    { key: 'dishonor', label: t('fin.note.actions.dishonor') }
   ],
-  ISSUED: [{ key: 'pay', label: '到期兑付' }]
+  ISSUED: [{ key: 'pay', label: t('fin.note.actions.pay') }]
 }
 const SETTLE_TIPS = {
-  discount: '持票向银行贴现：借 银行存款（实收）、财务费用（贴现息），贷 应收票据',
-  collect: '票据到期托收：借 银行存款，贷 应收票据',
-  dishonor: '票据被拒付：转回应收账款并生成应收单，客户需重新付款。借 应收账款，贷 应收票据',
-  pay: '应付票据到期兑付：借 应付票据，贷 银行存款'
+  discount: t('fin.note.tips.discount'),
+  collect: t('fin.note.tips.collect'),
+  dishonor: t('fin.note.tips.dishonor'),
+  pay: t('fin.note.tips.pay')
 }
 
 const kind = ref('RECEIVABLE')
@@ -302,15 +306,15 @@ const statusOptions = computed(() =>
 const dueSoon = ref(false)
 
 const columns = [
-  { title: '票据号码', key: 'noteNo', width: 200 },
-  { title: '类型', key: 'noteType', width: 130 },
-  { title: '往来单位', dataIndex: 'partnerName', width: 200, ellipsis: true },
-  { title: '票面金额', key: 'amount', width: 140, align: 'right' },
-  { title: '出票日期', dataIndex: 'issueDate', width: 110 },
-  { title: '到期日期', key: 'dueDate', width: 120 },
-  { title: '承兑人', dataIndex: 'acceptor', width: 160, ellipsis: true },
-  { title: '状态', key: 'status', width: 110 },
-  { title: '操作', key: 'action', width: 150, fixed: 'right' }
+  { title: t('fin.note.noteNo'), key: 'noteNo', width: 200 },
+  { title: t('common.field.type'), key: 'noteType', width: 150 },
+  { title: t('fin.note.partner'), dataIndex: 'partnerName', width: 200, ellipsis: true },
+  { title: t('fin.note.faceAmount'), key: 'amount', width: 140, align: 'right' },
+  { title: t('fin.note.issueDate'), dataIndex: 'issueDate', width: 110 },
+  { title: t('fin.note.dueDate'), key: 'dueDate', width: 130 },
+  { title: t('fin.note.acceptor'), dataIndex: 'acceptor', width: 160, ellipsis: true },
+  { title: t('common.field.status'), key: 'status', width: 120 },
+  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'fin-note')
 const query = reactive({ kind: 'RECEIVABLE', status: undefined, keyword: undefined, dueWithin: undefined })
@@ -329,7 +333,8 @@ onMounted(load)
 
 const pending = (r) => r.status === 'HELD' || r.status === 'ISSUED'
 const daysLeft = (r) => dayjs(r.dueDate).diff(dayjs().startOf('day'), 'day')
-const dueText = (r) => (daysLeft(r) < 0 ? `已到期 ${-daysLeft(r)} 天` : daysLeft(r) === 0 ? '今天到期' : `${daysLeft(r)} 天后到期`)
+const dueText = (r) =>
+  daysLeft(r) < 0 ? t('fin.note.overdueDays', { n: -daysLeft(r) }) : daysLeft(r) === 0 ? t('fin.note.dueToday') : t('fin.note.dueInDays', { n: daysLeft(r) })
 const dueClass = (r) => (daysLeft(r) <= 0 ? 'danger' : daysLeft(r) <= 7 ? 'warn' : '')
 const actionsOf = (r) => ACTIONS[r.status] || []
 
@@ -339,13 +344,13 @@ const registerRef = ref()
 const reg = ref({})
 const saving = ref(false)
 const registerRules = {
-  noteType: [{ required: true, message: '请选择票据类型' }],
-  noteNo: [{ required: true, whitespace: true, message: '请填写票据号码' }],
-  partnerId: [{ required: true, message: '请选择往来单位' }],
-  amount: [{ required: true, message: '请填写票面金额' }],
-  actionDate: [{ required: true, message: '请选择日期' }],
-  issueDate: [{ required: true, message: '请选择出票日期' }],
-  dueDate: [{ required: true, message: '请选择到期日期' }]
+  noteType: [{ required: true, message: t('common.rule.requiredSelect', { name: t('fin.note.noteType') }) }],
+  noteNo: [{ required: true, whitespace: true, message: t('common.rule.required', { name: t('fin.note.noteNo') }) }],
+  partnerId: [{ required: true, message: t('common.rule.requiredSelect', { name: t('fin.note.partner') }) }],
+  amount: [{ required: true, message: t('common.rule.required', { name: t('fin.note.faceAmount') }) }],
+  actionDate: [{ required: true, message: t('common.rule.requiredSelect', { name: t('common.field.date') }) }],
+  issueDate: [{ required: true, message: t('common.rule.requiredSelect', { name: t('fin.note.issueDate') }) }],
+  dueDate: [{ required: true, message: t('common.rule.requiredSelect', { name: t('fin.note.dueDate') }) }]
 }
 function openRegister() {
   reg.value = {
@@ -360,11 +365,11 @@ async function submitRegister() {
   } catch {
     return
   }
-  if (!reg.value.items.length) return message.warning('请填写要核销的单据')
+  if (!reg.value.items.length) return message.warning(t('fin.note.fillBills'))
   saving.value = true
   try {
     await (kind.value === 'RECEIVABLE' ? receiveNote : issueNote)(reg.value)
-    message.success(`${conf.value.registerLabel}成功`)
+    message.success(conf.value.successMsg)
     registerOpen.value = false
     load()
   } finally {
@@ -400,11 +405,11 @@ function calcInterest() {
   settle.value.interest = Math.round(((amount * Number(discountRate.value || 0)) / 100) * (discountDays.value / 360) * 100) / 100
 }
 async function submitEndorse() {
-  if (!endorse.value.items.length) return message.warning('请填写要核销的应付单')
+  if (!endorse.value.items.length) return message.warning(t('fin.note.fillApBills'))
   saving.value = true
   try {
     await noteAction(current.value.id, 'endorse', endorse.value)
-    message.success('背书已提交')
+    message.success(t('fin.note.endorseSubmitted'))
     endorseOpen.value = false
     load()
   } finally {
@@ -415,7 +420,7 @@ async function submitSettle() {
   saving.value = true
   try {
     await noteAction(current.value.id, action.value, settle.value)
-    message.success(`${actionLabel.value}成功，凭证已生成（未审核）`)
+    message.success(t('fin.note.actionDone', { action: actionLabel.value }))
     settleOpen.value = false
     load()
     if (detailOpen.value) refreshDetail()
@@ -426,13 +431,13 @@ async function submitSettle() {
 
 // ---------------------------------------------------------------- 详情
 const logColumns = [
-  { title: '操作', key: 'action', width: 100 },
-  { title: '日期', dataIndex: 'actionDate', width: 110 },
-  { title: '往来单位 / 账户', key: 'target', width: 200 },
-  { title: '金额', key: 'amount', width: 150, align: 'right' },
-  { title: '单据', key: 'ref', width: 230 },
-  { title: '操作人', dataIndex: 'createByName', width: 90 },
-  { title: '备注', dataIndex: 'remark', ellipsis: true }
+  { title: t('common.action.operation'), key: 'action', width: 110 },
+  { title: t('common.field.date'), dataIndex: 'actionDate', width: 110 },
+  { title: t('fin.note.partnerOrAccount'), key: 'target', width: 200 },
+  { title: t('common.field.amount'), key: 'amount', width: 150, align: 'right' },
+  { title: t('fin.note.documents'), key: 'ref', width: 240 },
+  { title: t('fin.note.operator'), dataIndex: 'createByName', width: 100 },
+  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true }
 ]
 const detailOpen = ref(false)
 const detail = ref()
@@ -454,13 +459,13 @@ async function refreshDetail() {
 }
 async function undo() {
   await undoNote(detail.value.id)
-  message.success('已撤销')
+  message.success(t('fin.note.undone'))
   refreshDetail()
   load()
 }
 async function remove() {
   await deleteNote(detail.value.id)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   detailOpen.value = false
   load()
 }

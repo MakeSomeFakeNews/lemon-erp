@@ -3,11 +3,11 @@
     <a-card :bordered="false" class="page-card table-card">
       <div class="toolbar">
         <a-space wrap>
-          <a-input-search v-model:value="keyword" placeholder="科目编码或名称" allow-clear class="search" @search="load" />
-          <a-button @click="toggleExpand">{{ expandedKeys.length ? '全部折叠' : '全部展开' }}</a-button>
+          <a-input-search v-model:value="keyword" :placeholder="$t('fin.account.keywordPh')" allow-clear class="search" @search="load" />
+          <a-button @click="toggleExpand">{{ expandedKeys.length ? $t('fin.account.collapseAll') : $t('fin.account.expandAll') }}</a-button>
         </a-space>
         <a-button v-perm="'fin:account:add'" type="primary" @click="openForm()">
-          <template #icon><PlusOutlined /></template>新增一级科目
+          <template #icon><PlusOutlined /></template>{{ $t('fin.account.addTop') }}
         </a-button>
       </div>
       <a-table
@@ -23,12 +23,12 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
             {{ record.name }}
-            <a-tag v-if="!record.children" :bordered="false" class="leaf-tag">末级</a-tag>
+            <a-tag v-if="!record.children" :bordered="false" class="leaf-tag">{{ $t('fin.account.leaf') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'category'">
             <DictTag type="fin_account_category" :value="record.category" />
           </template>
-          <template v-else-if="column.key === 'direction'">{{ record.direction === 'DEBIT' ? '借' : '贷' }}</template>
+          <template v-else-if="column.key === 'direction'">{{ record.direction === 'DEBIT' ? $t('fin.account.dr') : $t('fin.account.cr') }}</template>
           <template v-else-if="column.key === 'auxItems'">
             <a-tag v-for="a in auxLabels(record)" :key="a" :bordered="false" class="aux-tag">{{ a }}</a-tag>
           </template>
@@ -43,11 +43,11 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button v-perm="'fin:account:add'" type="link" size="small" @click="openForm(null, record)">新增下级</a-button>
-              <a-button v-perm="'fin:account:edit'" type="link" size="small" @click="openForm(record)">编辑</a-button>
+              <a-button v-perm="'fin:account:add'" type="link" size="small" @click="openForm(null, record)">{{ $t('fin.account.addChild') }}</a-button>
+              <a-button v-perm="'fin:account:edit'" type="link" size="small" @click="openForm(record)">{{ $t('common.action.edit') }}</a-button>
               <span v-if="!record.children" v-perm="'fin:account:remove'">
-                <a-popconfirm :title="`确定删除科目「${record.code} ${record.name}」？`" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small">删除</a-button>
+                <a-popconfirm :title="$t('fin.account.confirmDelete', { name: `${record.code} ${record.name}` })" @confirm="remove(record.id)">
+                  <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
                 </a-popconfirm>
               </span>
             </span>
@@ -56,40 +56,40 @@
       </a-table>
     </a-card>
 
-    <a-modal v-model:open="formOpen" :title="form.id ? '编辑科目' : '新增科目'" :confirm-loading="saving" @ok="submit">
+    <a-modal v-model:open="formOpen" :title="form.id ? $t('fin.account.edit') : $t('fin.account.add')" :confirm-loading="saving" @ok="submit">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-form-item v-if="form.parent" label="上级科目">
+        <a-form-item v-if="form.parent" :label="$t('fin.account.parent')">
           <a-input :value="`${form.parent.code} ${form.parent.name}`" disabled />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="10">
-            <a-form-item label="科目编码" name="code" :extra="form.parent ? `上级编码 ${form.parent.code} 后加 2 位` : '一级科目 4 位'">
+            <a-form-item :label="$t('fin.account.code')" name="code" :extra="form.parent ? $t('fin.account.codeExtraChild', { code: form.parent.code }) : $t('fin.account.codeExtraTop')">
               <a-input v-model:value="form.code" :maxlength="20" />
             </a-form-item>
           </a-col>
           <a-col :span="14">
-            <a-form-item label="科目名称" name="name">
+            <a-form-item :label="$t('fin.account.name')" name="name">
               <a-input v-model:value="form.name" :maxlength="64" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="类别" name="category">
+            <a-form-item :label="$t('fin.account.category')" name="category">
               <a-select v-model:value="form.category" :options="toOptions(dict.fin_account_category)" :disabled="!!form.parent" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="余额方向" name="direction">
+            <a-form-item :label="$t('fin.account.direction')" name="direction">
               <a-radio-group v-model:value="form.direction">
-                <a-radio value="DEBIT">借</a-radio>
-                <a-radio value="CREDIT">贷</a-radio>
+                <a-radio value="DEBIT">{{ $t('fin.account.dr') }}</a-radio>
+                <a-radio value="CREDIT">{{ $t('fin.account.cr') }}</a-radio>
               </a-radio-group>
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="辅助核算" name="auxItems" extra="可多选。手工录入凭证使用该科目时这些项目必填；科目已使用后也可以修改，只影响之后录入的凭证">
+        <a-form-item :label="$t('fin.account.aux')" name="auxItems" :extra="$t('fin.account.auxExtra')">
           <a-checkbox-group v-model:value="form.auxItems" :options="AUX_ITEMS" />
         </a-form-item>
-        <a-form-item label="备注" name="remark">
+        <a-form-item :label="$t('common.field.remark')" name="remark">
           <a-input v-model:value="form.remark" :maxlength="255" />
         </a-form-item>
       </a-form>
@@ -100,6 +100,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import StatusSwitch from '@/components/StatusSwitch.vue'
@@ -109,19 +110,20 @@ import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { AUX_ITEMS, auxItemsOf } from '@/components/fin/fin'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const auxLabels = (record) => auxItemsOf(record).map((v) => AUX_ITEMS.find((a) => a.value === v)?.label).filter(Boolean)
 const dict = useDict('fin_account_category')
 
 const columns = [
-  { title: '科目编码', dataIndex: 'code', width: 180 },
-  { title: '科目名称', key: 'name', width: 240 },
-  { title: '类别', key: 'category', width: 110 },
-  { title: '余额方向', key: 'direction', width: 90 },
-  { title: '辅助核算', key: 'auxItems', width: 200 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '备注', dataIndex: 'remark', ellipsis: true },
-  { title: '操作', key: 'action', width: 210, fixed: 'right' }
+  { title: t('fin.account.code'), dataIndex: 'code', width: 180 },
+  { title: t('fin.account.name'), key: 'name', width: 240 },
+  { title: t('fin.account.category'), key: 'category', width: 120 },
+  { title: t('fin.account.direction'), key: 'direction', width: 130 },
+  { title: t('fin.account.aux'), key: 'auxItems', width: 200 },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
 ]
 
 const keyword = ref('')
@@ -151,12 +153,12 @@ const formRef = ref()
 const form = ref({})
 const rules = {
   code: [
-    { required: true, message: '请填写科目编码' },
-    { pattern: /^\d{4,20}$/, message: '科目编码为数字' }
+    { required: true, message: t('fin.account.codeRequired') },
+    { pattern: /^\d{4,20}$/, message: t('fin.account.codeDigits') }
   ],
-  name: [{ required: true, whitespace: true, message: '请填写科目名称' }],
-  category: [{ required: true, message: '请选择类别' }],
-  direction: [{ required: true, message: '请选择余额方向' }]
+  name: [{ required: true, whitespace: true, message: t('fin.account.nameRequired') }],
+  category: [{ required: true, message: t('fin.account.categoryRequired') }],
+  direction: [{ required: true, message: t('fin.account.directionRequired') }]
 }
 
 /** record：编辑；parent：新增下级 */
@@ -180,7 +182,7 @@ async function submit() {
     const { id, code, name, parentId, category, direction, remark, auxItems } = form.value
     const data = { code, name, parentId: parentId || null, category, direction, remark, auxItems }
     id ? await updateAccount(id, data) : await addAccount(data)
-    message.success('保存成功')
+    message.success(t('common.msg.saveSuccess'))
     formOpen.value = false
     load()
   } finally {
@@ -190,7 +192,7 @@ async function submit() {
 
 async function remove(id) {
   await deleteAccount(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 </script>

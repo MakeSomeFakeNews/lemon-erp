@@ -1,13 +1,13 @@
 <template>
   <div class="followups">
     <div class="bar">
-      <span class="sub-text">共 {{ total }} 条跟进</span>
+      <span class="sub-text">{{ $t('crm.followupTimeline.total', { n: total }) }}</span>
       <a-button v-perm="'crm:followup:add'" type="primary" size="small" @click="modalOpen = true">
-        <template #icon><PlusOutlined /></template>写跟进
+        <template #icon><PlusOutlined /></template>{{ $t('crm.common.writeFollowup') }}
       </a-button>
     </div>
     <a-spin :spinning="loading">
-      <a-empty v-if="!list.length" description="还没有跟进记录" />
+      <a-empty v-if="!list.length" :description="$t('crm.followupTimeline.empty')" />
       <a-timeline v-else>
         <a-timeline-item v-for="f in list" :key="f.id">
           <div class="head">
@@ -20,7 +20,7 @@
           </div>
           <div class="content">{{ f.content }}</div>
           <div v-if="f.nextTime" class="sub-text">
-            下次跟进：{{ f.nextTime }}<template v-if="f.nextPlan">，{{ f.nextPlan }}</template>
+            {{ $t('crm.followupTimeline.next', { time: f.nextTime }) }}<template v-if="f.nextPlan">{{ $t('crm.followupTimeline.nextPlan', { plan: f.nextPlan }) }}</template>
           </div>
         </a-timeline-item>
       </a-timeline>

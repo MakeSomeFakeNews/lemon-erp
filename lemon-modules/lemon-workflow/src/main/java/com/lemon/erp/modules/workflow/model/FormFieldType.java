@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.workflow.model;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.exception.BizException;
 
 import java.math.BigDecimal;
@@ -31,10 +32,10 @@ public enum FormFieldType {
             try {
                 number = new BigDecimal(raw.toString().trim());
             } catch (NumberFormatException e) {
-                throw invalid(field, "必须是数字");
+                throw invalid(field, I18n.t("必须是数字"));
             }
             if (number.abs().compareTo(MAX_NUMBER) > 0) {
-                throw invalid(field, "超出范围");
+                throw invalid(field, I18n.t("超出范围"));
             }
             BigDecimal stripped = number.stripTrailingZeros();
             return stripped.scale() <= 0 ? (Object) stripped.longValueExact() : (Object) number.doubleValue();
@@ -48,7 +49,7 @@ public enum FormFieldType {
             try {
                 LocalDate.parse(value);
             } catch (DateTimeParseException e) {
-                throw invalid(field, "日期格式不正确");
+                throw invalid(field, I18n.t("日期格式不正确"));
             }
             return value;
         }
@@ -58,7 +59,7 @@ public enum FormFieldType {
         Object convert(FormField field, Object raw) {
             String value = raw.toString();
             if (!field.options().contains(value)) {
-                throw invalid(field, "不是可选的值");
+                throw invalid(field, I18n.t("不是可选的值"));
             }
             return value;
         }
@@ -74,12 +75,12 @@ public enum FormFieldType {
     public Object parse(FormField field, Object raw) {
         if (raw == null || raw.toString().isBlank()) {
             if (field.isMandatory()) {
-                throw new BizException("请填写「" + field.label() + "」");
+                throw new BizException("请填写「{0}」", field.label());
             }
             return null;
         }
         if (!(raw instanceof String || raw instanceof Number)) {
-            throw invalid(field, "格式不正确");
+            throw invalid(field, I18n.t("格式不正确"));
         }
         return convert(field, raw);
     }
@@ -89,12 +90,12 @@ public enum FormFieldType {
     private static String text(FormField field, Object raw, int maxLength) {
         String value = raw.toString().trim();
         if (value.length() > maxLength) {
-            throw invalid(field, "不能超过 " + maxLength + " 个字符");
+            throw invalid(field, I18n.t("不能超过 {0} 个字符", maxLength));
         }
         return value;
     }
 
     private static BizException invalid(FormField field, String reason) {
-        return new BizException("「" + field.label() + "」" + reason);
+        return new BizException("「{0}」{1}", field.label(), reason);
     }
 }

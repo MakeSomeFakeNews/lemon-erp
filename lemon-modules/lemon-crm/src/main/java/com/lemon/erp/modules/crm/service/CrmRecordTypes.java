@@ -45,8 +45,8 @@ public class CrmRecordTypes implements RecordTypeProvider {
     public List<RecordType> recordTypes() {
         return List.of(
                 // 业务 ID 为客户主数据 ID（scm_customer），按客户经营信息的负责人、部门过滤
-                new RecordType("crm_customer", "客户", "crm:customer:list", "crm:customer:edit", null, this::customer),
-                new RecordType("crm_opp", "商机", "crm:opp:list", "crm:opp:edit",
+                new RecordType("crm_customer", "客户", "crm:customer:list", "crm:customer:edit", null, this::customer), // i18n-ignore 记录类型名称，输出处翻译
+                new RecordType("crm_opp", "商机", "crm:opp:list", "crm:opp:edit", // i18n-ignore 记录类型名称，输出处翻译
                         new DataPermissionRule("crm_opportunity", "dept_id", "owner_id"), opportunityMapper::selectById));
     }
 }

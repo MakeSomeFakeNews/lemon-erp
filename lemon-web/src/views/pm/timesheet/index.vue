@@ -3,14 +3,14 @@
     <a-card :bordered="false" class="page-card">
       <a-tabs v-model:active-key="tab">
         <!-- 我的工时 -->
-        <a-tab-pane key="mine" tab="我的工时">
+        <a-tab-pane key="mine" :tab="$t('pm.timesheet.mine')">
           <div class="filters">
             <a-button @click="shiftWeek(-1)"><LeftOutlined /></a-button>
             <a-date-picker v-model:value="weekDay" picker="week" value-format="YYYY-MM-DD" :allow-clear="false" @change="loadMine" />
             <a-button @click="shiftWeek(1)"><RightOutlined /></a-button>
-            <span class="sub-text">{{ week[0] }} ~ {{ week[1] }} · 合计 <b>{{ weekTotal }}</b> 小时</span>
+            <span class="sub-text">{{ week[0] }} ~ {{ week[1] }} · {{ $t('common.field.total') }} <b>{{ weekTotal }}</b> {{ $t('pm.common.hourUnit') }}</span>
             <a-button type="primary" class="push-right" @click="openEntry()">
-              <template #icon><PlusOutlined /></template>填报工时
+              <template #icon><PlusOutlined /></template>{{ $t('pm.timesheet.log') }}
             </a-button>
           </div>
           <div class="days">
@@ -34,7 +34,7 @@
               <template v-else-if="column.key === 'action'">
                 <span v-if="record.status !== 'APPROVED'" class="table-actions">
                   <a-button type="link" size="small" @click="openEntry(record)"><EditOutlined /></a-button>
-                  <a-popconfirm title="确定删除这条工时？" @confirm="removeEntry(record)">
+                  <a-popconfirm :title="$t('pm.timesheet.confirmDelete')" @confirm="removeEntry(record)">
                     <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                   </a-popconfirm>
                 </span>
@@ -42,7 +42,7 @@
             </template>
           </a-table>
 
-          <div class="section-title">我的任务</div>
+          <div class="section-title">{{ $t('pm.timesheet.myTasks') }}</div>
           <a-table row-key="id" size="small" :columns="taskColumns" :data-source="tasks" :loading="taskLoading" :pagination="false"
                    :scroll="{ x: 800 }">
             <template #bodyCell="{ column, record }">
@@ -52,49 +52,49 @@
               </template>
               <template v-else-if="column.key === 'dates'">
                 {{ record.planStart }} ~ {{ record.planEnd }}
-                <a-tag v-if="record.overdue" color="red" :bordered="false">逾期</a-tag>
+                <a-tag v-if="record.overdue" color="red" :bordered="false">{{ $t('pm.common.overdue') }}</a-tag>
               </template>
               <template v-else-if="column.key === 'progress'">
                 <a-progress :percent="record.progress" size="small" />
               </template>
               <template v-else-if="column.key === 'action'">
-                <a-popover trigger="click" title="更新进度" :open="progressFor === record.id" @open-change="(v) => togglePopover(v, record)">
+                <a-popover trigger="click" :title="$t('pm.plan.updateProgress')" :open="progressFor === record.id" @open-change="(v) => togglePopover(v, record)">
                   <template #content>
                     <div class="progress-pop">
                       <a-slider v-model:value="progressValue" :step="5" :marks="{ 0: '0', 50: '50', 100: '100' }" />
                       <div class="pop-actions">
-                        <a-button size="small" @click="progressFor = null">取消</a-button>
-                        <a-button size="small" type="primary" :loading="progressSaving" @click="saveProgress(record)">保存</a-button>
+                        <a-button size="small" @click="progressFor = null">{{ $t('common.action.cancel') }}</a-button>
+                        <a-button size="small" type="primary" :loading="progressSaving" @click="saveProgress(record)">{{ $t('common.action.save') }}</a-button>
                       </div>
                     </div>
                   </template>
-                  <a-button type="link" size="small">更新进度</a-button>
+                  <a-button type="link" size="small">{{ $t('pm.plan.updateProgress') }}</a-button>
                 </a-popover>
-                <a-button type="link" size="small" @click="openEntry(null, record)">填工时</a-button>
+                <a-button type="link" size="small" @click="openEntry(null, record)">{{ $t('pm.timesheet.logShort') }}</a-button>
               </template>
             </template>
           </a-table>
         </a-tab-pane>
 
         <!-- 工时审批 -->
-        <a-tab-pane v-if="userStore.hasPerm('pm:timesheet:list')" key="review" tab="工时审批">
+        <a-tab-pane v-if="userStore.hasPerm('pm:timesheet:list')" key="review" :tab="$t('pm.timesheet.review')">
           <div class="filters">
-            <ProjectSelect v-model:value="query.projectId" class="w220" placeholder="全部项目" />
-            <IdentityUserSelect v-model:value="query.userId" class="w180" placeholder="全部成员" />
-            <a-select v-model:value="query.status" class="w120" placeholder="全部状态" allow-clear :options="toOptions(dict.pm_timesheet_status)" />
+            <ProjectSelect v-model:value="query.projectId" class="w220" :placeholder="$t('pm.timesheet.allProjects')" />
+            <IdentityUserSelect v-model:value="query.userId" class="w180" :placeholder="$t('pm.timesheet.allMembers')" />
+            <a-select v-model:value="query.status" class="w140" :placeholder="$t('pm.timesheet.allStatus')" allow-clear :options="toOptions(dict.pm_timesheet_status)" />
             <a-range-picker v-model:value="query.range" value-format="YYYY-MM-DD" />
-            <a-button type="primary" @click="search"><template #icon><SearchOutlined /></template>查询</a-button>
+            <a-button type="primary" @click="search"><template #icon><SearchOutlined /></template>{{ $t('common.action.query') }}</a-button>
           </div>
           <div class="filters">
             <span v-perm="'pm:timesheet:approve'">
               <a-space>
-                <a-popconfirm :title="`确定通过选中的 ${selectedKeys.length} 条工时？`" :disabled="!selectedKeys.length" @confirm="approve">
-                  <a-button type="primary" :disabled="!selectedKeys.length"><template #icon><CheckOutlined /></template>批量通过</a-button>
+                <a-popconfirm :title="$t('pm.timesheet.confirmApprove', { n: selectedKeys.length })" :disabled="!selectedKeys.length" @confirm="approve">
+                  <a-button type="primary" :disabled="!selectedKeys.length"><template #icon><CheckOutlined /></template>{{ $t('pm.timesheet.batchApprove') }}</a-button>
                 </a-popconfirm>
-                <a-button danger :disabled="!selectedKeys.length" @click="rejectOpen = true"><template #icon><CloseOutlined /></template>批量驳回</a-button>
+                <a-button danger :disabled="!selectedKeys.length" @click="rejectOpen = true"><template #icon><CloseOutlined /></template>{{ $t('pm.timesheet.batchReject') }}</a-button>
               </a-space>
             </span>
-            <span v-if="selectedKeys.length" class="sub-text">已选 {{ selectedKeys.length }} 项，{{ selectedHours }} 小时</span>
+            <span v-if="selectedKeys.length" class="sub-text">{{ $t('pm.timesheet.selected', { n: selectedKeys.length, hours: selectedHours }) }}</span>
           </div>
           <a-table row-key="id" size="middle" :columns="reviewColumns" :data-source="list" :loading="loading" :pagination="pagination"
                    :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== 'SUBMITTED' }) }"
@@ -112,7 +112,7 @@
               <template v-else-if="column.key === 'cost'">
                 <template v-if="record.status === 'APPROVED'">
                   {{ formatMoney(record.cost) }}
-                  <div class="sub-text">{{ formatMoney(record.costRate) }} 元/小时</div>
+                  <div class="sub-text">{{ formatMoney(record.costRate) }} {{ $t('pm.common.yuanPerHour') }}</div>
                 </template>
                 <span v-else class="sub-text">-</span>
               </template>
@@ -129,36 +129,36 @@
     </a-card>
 
     <!-- 填报 -->
-    <a-modal v-model:open="entryOpen" :title="entry.id ? '修改工时' : '填报工时'" :confirm-loading="entrySaving" destroy-on-close @ok="saveEntry">
+    <a-modal v-model:open="entryOpen" :title="entry.id ? $t('pm.timesheet.edit') : $t('pm.timesheet.log')" :confirm-loading="entrySaving" destroy-on-close @ok="saveEntry">
       <a-form ref="entryRef" :model="entry" layout="vertical">
-        <a-form-item label="项目" name="projectId" :rules="[{ required: true, message: '请选择项目' }]" extra="只能选择你参与的、未完成的项目">
+        <a-form-item :label="$t('pm.common.project')" name="projectId" :rules="[{ required: true, message: $t('pm.common.pleaseSelectProject') }]" :extra="$t('pm.timesheet.projectTip')">
           <ProjectSelect v-model:value="entry.projectId" mine :allow-clear="false" @update:value="onEntryProject" />
         </a-form-item>
-        <a-form-item label="任务" name="taskId">
-          <a-select v-model:value="entry.taskId" allow-clear show-search option-filter-prop="label" :options="taskOptions" placeholder="选填" />
+        <a-form-item :label="$t('pm.common.task')" name="taskId">
+          <a-select v-model:value="entry.taskId" allow-clear show-search option-filter-prop="label" :options="taskOptions" :placeholder="$t('pm.common.optional')" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="日期" name="workDate" :rules="[{ required: true, message: '请选择日期' }]">
+            <a-form-item :label="$t('common.field.date')" name="workDate" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('common.field.date') }) }]">
               <a-date-picker v-model:value="entry.workDate" value-format="YYYY-MM-DD" :disabled-date="(d) => d.isAfter(dayjs(), 'day')"
                              class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="工时" name="hours" :rules="[{ required: true, message: '请填写工时' }]">
-              <a-input-number v-model:value="entry.hours" :min="0.5" :max="24" :step="0.5" :precision="1" addon-after="小时" class="full" />
+            <a-form-item :label="$t('pm.common.hours')" name="hours" :rules="[{ required: true, message: $t('common.rule.required', { name: $t('pm.common.hours') }) }]">
+              <a-input-number v-model:value="entry.hours" :min="0.5" :max="24" :step="0.5" :precision="1" :addon-after="$t('pm.common.hourUnit')" class="full" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="工作内容" name="content">
+        <a-form-item :label="$t('pm.common.workContent')" name="content">
           <a-textarea v-model:value="entry.content" :rows="3" :maxlength="255" />
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- 驳回 -->
-    <a-modal v-model:open="rejectOpen" title="驳回工时" :confirm-loading="rejecting" destroy-on-close @ok="reject">
-      <a-textarea v-model:value="rejectReason" :rows="3" :maxlength="255" placeholder="请填写驳回原因" />
+    <a-modal v-model:open="rejectOpen" :title="$t('pm.timesheet.rejectTitle')" :confirm-loading="rejecting" destroy-on-close @ok="reject">
+      <a-textarea v-model:value="rejectReason" :rows="3" :maxlength="255" :placeholder="$t('pm.timesheet.rejectReason')" />
     </a-modal>
   </div>
 </template>
@@ -182,6 +182,7 @@ import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { formatMoney } from '@/components/scm/scm'
 import { leafTasks, today, weekRange } from '@/components/pm/pm'
+import { t } from '@/locales'
 
 const dict = useDict('pm_timesheet_status')
 const userStore = useUserStore()
@@ -196,20 +197,20 @@ const mine = ref([])
 const mineLoading = ref(false)
 
 const mineColumns = [
-  { title: '日期', dataIndex: 'workDate', width: 110 },
-  { title: '项目 / 任务', key: 'project', width: 260 },
-  { title: '工时', key: 'hours', width: 80 },
-  { title: '工作内容', dataIndex: 'content', ellipsis: true },
-  { title: '状态', key: 'status', width: 150 },
+  { title: t('common.field.date'), dataIndex: 'workDate', width: 110 },
+  { title: t('pm.timesheet.projectTask'), key: 'project', width: 260 },
+  { title: t('pm.common.hours'), key: 'hours', width: 80 },
+  { title: t('pm.common.workContent'), dataIndex: 'content', ellipsis: true },
+  { title: t('common.field.status'), key: 'status', width: 150 },
   { title: '', key: 'action', width: 100, fixed: 'right' }
 ]
 
-const weekTotal = computed(() => mine.value.filter((t) => t.status !== 'REJECTED').reduce((s, t) => s + Number(t.hours), 0))
+const weekTotal = computed(() => mine.value.filter((r) => r.status !== 'REJECTED').reduce((s, r) => s + Number(r.hours), 0))
 const weekDays = computed(() => {
-  const names = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+  const names = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((d) => t(`pm.timesheet.week.${d}`))
   return names.map((n, i) => {
     const date = dayjs(week.value[0]).add(i, 'day').format('YYYY-MM-DD')
-    const hours = mine.value.filter((t) => t.workDate === date && t.status !== 'REJECTED').reduce((s, t) => s + Number(t.hours), 0)
+    const hours = mine.value.filter((r) => r.workDate === date && r.status !== 'REJECTED').reduce((s, r) => s + Number(r.hours), 0)
     return { date, label: `${n} ${date.slice(5)}`, hours }
   })
 })
@@ -232,11 +233,11 @@ function shiftWeek(n) {
 const tasks = ref([])
 const taskLoading = ref(false)
 const taskColumns = [
-  { title: '任务', key: 'task', width: 240 },
-  { title: '计划日期', key: 'dates', width: 230 },
-  { title: '计划工时', dataIndex: 'planHours', width: 90 },
-  { title: '进度', key: 'progress', width: 160 },
-  { title: '', key: 'action', width: 170, fixed: 'right' }
+  { title: t('pm.common.task'), key: 'task', width: 240 },
+  { title: t('pm.common.planDates'), key: 'dates', width: 230 },
+  { title: t('pm.plan.planHours'), dataIndex: 'planHours', width: 120 },
+  { title: t('pm.common.progress'), key: 'progress', width: 160 },
+  { title: '', key: 'action', width: 200, fixed: 'right' }
 ]
 
 async function loadTasks() {
@@ -261,7 +262,7 @@ async function saveProgress(record) {
   progressSaving.value = true
   try {
     await updateTaskProgress(record.id, progressValue.value)
-    message.success('进度已更新')
+    message.success(t('pm.plan.progressUpdated'))
     progressFor.value = null
     loadTasks()
   } finally {
@@ -280,7 +281,7 @@ async function onEntryProject(projectId) {
   taskOptions.value = []
   if (!projectId) return
   const tree = await taskTree(projectId)
-  taskOptions.value = leafTasks(tree).map((t) => ({ value: t.id, label: t.name }))
+  taskOptions.value = leafTasks(tree).map((task) => ({ value: task.id, label: task.name }))
   if (entry.value.taskId && !taskOptions.value.some((o) => o.value === entry.value.taskId)) entry.value.taskId = undefined
 }
 
@@ -305,8 +306,8 @@ async function saveEntry() {
     const { id, ...data } = entry.value
     const payload = { ...data, taskId: data.taskId || null, content: data.content || null }
     const res = id ? await updateTimesheet(id, payload) : await addTimesheet(payload)
-    if (res?.warning) message.warning(`已保存，但${res.warning}`, 5)
-    else message.success('保存成功')
+    if (res?.warning) message.warning(t('pm.timesheet.savedWithWarning', { warning: res.warning }), 5)
+    else message.success(t('common.msg.saveSuccess'))
     entryOpen.value = false
     loadMine()
   } finally {
@@ -316,7 +317,7 @@ async function saveEntry() {
 
 async function removeEntry(record) {
   await deleteTimesheet(record.id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   loadMine()
 }
 
@@ -328,23 +329,23 @@ const { list, loading, pagination, selectedKeys, rowSelection, load, search, onT
 })
 
 const reviewColumns = [
-  { title: '日期', dataIndex: 'workDate', width: 110 },
-  { title: '成员', dataIndex: 'userName', width: 100 },
-  { title: '项目 / 任务', key: 'project', width: 260 },
-  { title: '工时', key: 'hours', width: 70 },
-  { title: '工作内容', dataIndex: 'content', ellipsis: true },
-  { title: '状态', key: 'status', width: 150 },
-  { title: '人工成本', key: 'cost', width: 130, align: 'right' },
-  { title: '审批', key: 'approve', width: 160 }
+  { title: t('common.field.date'), dataIndex: 'workDate', width: 110 },
+  { title: t('pm.common.member'), dataIndex: 'userName', width: 100 },
+  { title: t('pm.timesheet.projectTask'), key: 'project', width: 260 },
+  { title: t('pm.common.hours'), key: 'hours', width: 70 },
+  { title: t('pm.common.workContent'), dataIndex: 'content', ellipsis: true },
+  { title: t('common.field.status'), key: 'status', width: 150 },
+  { title: t('pm.common.laborCost'), key: 'cost', width: 130, align: 'right' },
+  { title: t('pm.timesheet.approval'), key: 'approve', width: 160 }
 ]
 
 const selectedHours = computed(() =>
-  list.value.filter((t) => selectedKeys.value.includes(t.id)).reduce((s, t) => s + Number(t.hours), 0)
+  list.value.filter((r) => selectedKeys.value.includes(r.id)).reduce((s, r) => s + Number(r.hours), 0)
 )
 
 async function approve() {
   const count = await reviewTimesheet({ ids: selectedKeys.value, approved: true })
-  message.success(`已通过 ${count} 条`)
+  message.success(t('pm.timesheet.approvedN', { n: count }))
   selectedKeys.value = []
   load()
 }
@@ -355,13 +356,13 @@ const rejectReason = ref('')
 
 async function reject() {
   if (!rejectReason.value.trim()) {
-    message.warning('请填写驳回原因')
+    message.warning(t('pm.timesheet.rejectReason'))
     return
   }
   rejecting.value = true
   try {
     const count = await reviewTimesheet({ ids: selectedKeys.value, approved: false, reason: rejectReason.value })
-    message.success(`已驳回 ${count} 条`)
+    message.success(t('pm.timesheet.rejectedN', { n: count }))
     rejectOpen.value = false
     rejectReason.value = ''
     selectedKeys.value = []
@@ -395,8 +396,8 @@ onMounted(() => {
 .w180 {
   width: 180px;
 }
-.w120 {
-  width: 120px;
+.w140 {
+  width: 140px;
 }
 .days {
   display: grid;

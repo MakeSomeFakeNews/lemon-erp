@@ -9,11 +9,11 @@
       :disabled="!bizId"
     >
       <a-button size="small" :loading="uploading > 0">
-        <template #icon><UploadOutlined /></template>上传附件
+        <template #icon><UploadOutlined /></template>{{ $t('components.attachment.upload') }}
       </a-button>
-      <span class="hint">单个文件不超过 {{ configStore.attachmentMaxMb }}MB</span>
+      <span class="hint">{{ $t('components.attachment.maxSize', { n: configStore.attachmentMaxMb }) }}</span>
     </a-upload>
-    <a-list :data-source="list" :loading="loading" size="small" :locale="{ emptyText: '暂无附件' }">
+    <a-list :data-source="list" :loading="loading" size="small" :locale="{ emptyText: $t('components.attachment.empty') }">
       <template #renderItem="{ item }">
         <a-list-item>
           <a-list-item-meta>
@@ -26,7 +26,7 @@
           </a-list-item-meta>
           <template #actions>
             <a @click="download(item)"><DownloadOutlined /></a>
-            <a-popconfirm v-if="editable" title="确定删除该附件？" @confirm="remove(item)">
+            <a-popconfirm v-if="editable" :title="$t('components.attachment.confirmDelete')" @confirm="remove(item)">
               <a class="danger"><DeleteOutlined /></a>
             </a-popconfirm>
           </template>
@@ -39,6 +39,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, DownloadOutlined, PaperClipOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import { deleteAttachment, downloadAttachment, listAttachment, uploadAttachment } from '@/api/system/attachment'
 import { useConfigStore } from '@/store/config'
@@ -53,6 +54,7 @@ const props = defineProps({
   editable: Boolean
 })
 
+const { t } = useI18n()
 const configStore = useConfigStore()
 const list = ref([])
 const loading = ref(false)
@@ -74,7 +76,7 @@ watch(() => [props.bizType, props.bizId], load, { immediate: true })
 
 function check(file) {
   if (file.size > configStore.attachmentMaxMb * 1024 * 1024) {
-    message.warning(`${file.name} 超过 ${configStore.attachmentMaxMb}MB`)
+    message.warning(t('components.attachment.tooLarge', { name: file.name, n: configStore.attachmentMaxMb }))
     return false
   }
   return true
@@ -100,7 +102,7 @@ async function download(item) {
 async function remove(item) {
   await deleteAttachment(item.id)
   list.value = list.value.filter((a) => a.id !== item.id)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
 }
 
 function formatSize(n) {

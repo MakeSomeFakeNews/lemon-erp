@@ -122,7 +122,7 @@ public class HrContractService {
     @EventListener
     public void onEmployeeLeft(EmployeeLeftEvent e) {
         contractMapper.update(Wrappers.<HrContract>lambdaUpdate().set(HrContract::getStatus, "TERMINATED")
-                .set(HrContract::getTerminateDate, e.leaveDate()).set(HrContract::getTerminateReason, "员工离职")
+                .set(HrContract::getTerminateDate, e.leaveDate()).set(HrContract::getTerminateReason, "员工离职")  // i18n-ignore 终止原因存库
                 .eq(HrContract::getEmployeeId, e.employeeId()).eq(HrContract::getStatus, "ACTIVE"));
     }
 

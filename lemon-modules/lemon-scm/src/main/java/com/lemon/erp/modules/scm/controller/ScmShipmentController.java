@@ -51,14 +51,14 @@ public class ScmShipmentController {
     /** @return 新发运单 ID */
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:shipment:add')")
-    @OperLog(title = "物流发运", type = OperType.INSERT)
+    @OperLog(title = "物流发运", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody ShipmentRequest req) {
         return R.ok(shipmentService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:shipment:edit')")
-    @OperLog(title = "物流发运", type = OperType.UPDATE)
+    @OperLog(title = "物流发运", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody ShipmentRequest req) {
         shipmentService.update(id, req);
         return R.ok();
@@ -66,7 +66,7 @@ public class ScmShipmentController {
 
     @PostMapping("/{id}/ship")
     @PreAuthorize("@ss.hasPerm('scm:shipment:track')")
-    @OperLog(title = "物流发运-发货", type = OperType.UPDATE)
+    @OperLog(title = "物流发运-发货", type = OperType.UPDATE) // i18n-ignore
     public R<Void> ship(@PathVariable Long id, @Valid @RequestBody ShipmentActionRequest req) {
         shipmentService.ship(id, req);
         return R.ok();
@@ -74,7 +74,7 @@ public class ScmShipmentController {
 
     @PostMapping("/{id}/track")
     @PreAuthorize("@ss.hasPerm('scm:shipment:track')")
-    @OperLog(title = "物流发运-物流动态", type = OperType.UPDATE)
+    @OperLog(title = "物流发运-物流动态", type = OperType.UPDATE) // i18n-ignore
     public R<Void> track(@PathVariable Long id, @Valid @RequestBody ShipmentActionRequest req) {
         shipmentService.track(id, req);
         return R.ok();
@@ -82,7 +82,7 @@ public class ScmShipmentController {
 
     @PostMapping("/{id}/exception")
     @PreAuthorize("@ss.hasPerm('scm:shipment:track')")
-    @OperLog(title = "物流发运-异常", type = OperType.UPDATE)
+    @OperLog(title = "物流发运-异常", type = OperType.UPDATE) // i18n-ignore
     public R<Void> exception(@PathVariable Long id, @Valid @RequestBody ShipmentActionRequest req) {
         shipmentService.exception(id, req);
         return R.ok();
@@ -90,7 +90,7 @@ public class ScmShipmentController {
 
     @PostMapping("/{id}/sign")
     @PreAuthorize("@ss.hasPerm('scm:shipment:track')")
-    @OperLog(title = "物流发运-签收", type = OperType.UPDATE)
+    @OperLog(title = "物流发运-签收", type = OperType.UPDATE) // i18n-ignore
     public R<Void> sign(@PathVariable Long id, @Valid @RequestBody ShipmentActionRequest req) {
         shipmentService.sign(id, req);
         return R.ok();
@@ -98,7 +98,7 @@ public class ScmShipmentController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('scm:shipment:remove')")
-    @OperLog(title = "物流发运", type = OperType.DELETE)
+    @OperLog(title = "物流发运", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         shipmentService.delete(ids);
         return R.ok();

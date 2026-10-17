@@ -6,7 +6,7 @@
         <span v-if="level !== 'normal'" class="meter-state" :class="level">
           <WarningFilled v-if="level === 'warning'" />
           <CloseCircleFilled v-else />
-          {{ level === 'warning' ? '偏高' : '告警' }}
+          {{ level === 'warning' ? $t('monitor.server.levelHigh') : $t('monitor.server.levelCritical') }}
         </span>
         {{ value.toFixed(1) }}%
       </span>

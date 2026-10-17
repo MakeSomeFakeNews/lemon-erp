@@ -3,12 +3,12 @@
     <a-card :bordered="false" class="page-card table-card">
       <div class="toolbar">
         <a-radio-group v-model:value="query.unread" button-style="solid" size="small" @change="search">
-          <a-radio-button :value="undefined">全部</a-radio-button>
-          <a-radio-button :value="true">未读</a-radio-button>
+          <a-radio-button :value="undefined">{{ $t('common.status.all') }}</a-radio-button>
+          <a-radio-button :value="true">{{ $t('message.unread') }}</a-radio-button>
         </a-radio-group>
         <a-select
           v-model:value="query.category"
-          placeholder="全部类别"
+          :placeholder="$t('message.allCategories')"
           allow-clear
           size="small"
           class="category"
@@ -16,10 +16,10 @@
           @change="search"
         />
         <span class="spacer" />
-        <a-button size="small" :disabled="!selectedKeys.length" @click="read(selectedKeys)">标为已读</a-button>
-        <a-button size="small" @click="read([])">全部已读</a-button>
-        <a-popconfirm :title="`删除选中的 ${selectedKeys.length} 条消息？`" :disabled="!selectedKeys.length" @confirm="remove(selectedKeys)">
-          <a-button size="small" danger :disabled="!selectedKeys.length">删除</a-button>
+        <a-button size="small" :disabled="!selectedKeys.length" @click="read(selectedKeys)">{{ $t('message.markRead') }}</a-button>
+        <a-button size="small" @click="read([])">{{ $t('message.markAllRead') }}</a-button>
+        <a-popconfirm :title="$t('message.confirmDeleteN', { n: selectedKeys.length })" :disabled="!selectedKeys.length" @confirm="remove(selectedKeys)">
+          <a-button size="small" danger :disabled="!selectedKeys.length">{{ $t('common.action.delete') }}</a-button>
         </a-popconfirm>
       </div>
       <a-table
@@ -42,7 +42,7 @@
             <DictTag type="sys_message_category" :value="record.category" />
           </template>
           <template v-else-if="column.key === 'read'">
-            <a-badge :status="record.readFlag ? 'default' : 'processing'" :text="record.readFlag ? '已读' : '未读'" />
+            <a-badge :status="record.readFlag ? 'default' : 'processing'" :text="record.readFlag ? $t('message.read') : $t('message.unread')" />
           </template>
         </template>
       </a-table>
@@ -54,19 +54,21 @@
 import { onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import { deleteMessage, pageMessage, readMessage } from '@/api/system/message'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+const { t } = useI18n()
 const router = useRouter()
 const dict = useDict('sys_message_category')
 const columns = [
-  { title: '消息', key: 'title' },
-  { title: '类别', key: 'category', width: 90 },
-  { title: '状态', key: 'read', width: 80 },
-  { title: '时间', dataIndex: 'createTime', width: 170 }
+  { title: t('message.message'), key: 'title' },
+  { title: t('message.category'), key: 'category', width: 100 },
+  { title: t('common.field.status'), key: 'read', width: 90 },
+  { title: t('message.time'), dataIndex: 'createTime', width: 170 }
 ]
 const query = reactive({ unread: undefined, category: undefined })
 const { list, loading, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable(pageMessage, query)
@@ -80,14 +82,14 @@ async function open(record) {
 
 async function read(ids) {
   await readMessage(ids)
-  message.success('已标为已读')
+  message.success(t('message.markedRead'))
   selectedKeys.value = []
   load()
 }
 
 async function remove(ids) {
   await deleteMessage(ids)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   selectedKeys.value = []
   load()
 }

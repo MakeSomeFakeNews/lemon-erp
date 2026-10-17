@@ -105,7 +105,7 @@ public class MesKitService {
     public List<KitLineView> orderLines(Long woId) {
         MesWorkOrder wo = workOrderService.getAccessible(woId);
         if (!WorkOrderStatus.OPEN.contains(wo.getStatus())) {
-            throw new BizException("工单 " + wo.getWoNo() + " 已结束");
+            throw new BizException("工单 {0} 已结束", wo.getWoNo());
         }
         List<Long> materialIds = woMaterialMapper.selectByWo(woId).stream().map(MesWoMaterial::getMaterialId).toList();
         if (materialIds.isEmpty()) {
@@ -161,11 +161,11 @@ public class MesKitService {
             if (type == SupplyType.MAKE) {
                 LocalDate due = r.getRequiredDate();
                 Long woId = workOrderService.createDraft(new WorkOrderRequest(r.getMaterialId(), null, r.getSuggestQty(),
-                        null, due, req.warehouseId(), "生产缺料"), "KIT", null);
+                        null, due, req.warehouseId(), "生产缺料"), "KIT", null); // i18n-ignore
                 docNos.add(workOrderMapper.selectById(woId).getWoNo());
             } else {
                 if (r.getSupplierId() == null) {
-                    throw new BizException("请先为「" + r.getMaterialCode() + " " + r.getMaterialName() + "」设置默认供应商");
+                    throw new BizException("请先为「{0} {1}」设置默认供应商", r.getMaterialCode(), r.getMaterialName());
                 }
                 bySupplier.computeIfAbsent(r.getSupplierId(), k -> new ArrayList<>()).add(r);
             }
@@ -180,7 +180,7 @@ public class MesKitService {
                         p == null ? null : p.getTaxRate(), r.getRequiredDate(), null);
             }).toList();
             Long orderId = orderService.createDraft(OrderKind.PURCHASE,
-                    new OrderRequest(e.getKey(), LocalDate.now(), delivery, req.warehouseId(), "生产缺料", items), "KIT");
+                    new OrderRequest(e.getKey(), LocalDate.now(), delivery, req.warehouseId(), "生产缺料", items), "KIT"); // i18n-ignore
             docNos.add(scmQueryService.orderNo(orderId));
         }
         return docNos;
@@ -191,7 +191,7 @@ public class MesKitService {
     public void switchSubstitute(SubstituteSwitchRequest req) {
         MesWorkOrder wo = workOrderService.getAccessible(req.woId());
         if (!WorkOrderStatus.OPEN.contains(wo.getStatus())) {
-            throw new BizException("工单 " + wo.getWoNo() + " 已结束");
+            throw new BizException("工单 {0} 已结束", wo.getWoNo());
         }
         Map<Long, MesWoMaterial> lines = woMaterialMapper.selectByWo(wo.getId()).stream()
                 .collect(Collectors.toMap(MesWoMaterial::getMaterialId, Function.identity()));
@@ -201,11 +201,11 @@ public class MesKitService {
         }
         MesMaterialSubstitute sub = materialPlanService.substitutes(List.of(req.materialId())).getOrDefault(req.materialId(), List.of())
                 .stream().filter(s -> s.getSubstituteId().equals(req.substituteId())).findFirst()
-                .orElseThrow(() -> new BizException("「" + main.getMaterialCode() + " " + main.getMaterialName() + "」没有设置该替代料"));
+                .orElseThrow(() -> new BizException("「{0} {1}」没有设置该替代料", main.getMaterialCode(), main.getMaterialName()));
         WmsMaterial subMaterial = materialService.getEnabled(List.of(req.substituteId())).get(req.substituteId());
         BigDecimal toIssue = main.getRequiredQty().add(main.getSupplementQty()).subtract(main.getIssuedQty()).max(BigDecimal.ZERO);
         if (req.qty().compareTo(toIssue) > 0) {
-            throw new BizException("替代数量不能超过主料待领数量 " + toIssue.stripTrailingZeros().toPlainString());
+            throw new BizException("替代数量不能超过主料待领数量 {0}", toIssue.stripTrailingZeros().toPlainString());
         }
         if (Integer.valueOf(1).equals(main.getSerialEnabled()) && req.qty().stripTrailingZeros().scale() > 0) {
             throw new BizException("主料启用了序列号管理，替代数量必须为整数");

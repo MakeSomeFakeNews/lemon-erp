@@ -1,10 +1,10 @@
 <template>
   <a-modal :open="open" :title="title" :footer="null" width="min(820px, 100vw)" destroy-on-close @cancel="emit('update:open', false)">
     <a-tabs>
-      <a-tab-pane key="attachment" tab="附件">
+      <a-tab-pane key="attachment" :tab="$t('components.record.attachments')">
         <AttachmentPanel :biz-type="bizType" :biz-id="bizId" :editable="editable" />
       </a-tab-pane>
-      <a-tab-pane key="history" tab="变更记录">
+      <a-tab-pane key="history" :tab="$t('components.record.history')">
         <ChangeLogPanel :biz-type="bizType" :biz-id="bizId" />
       </a-tab-pane>
     </a-tabs>

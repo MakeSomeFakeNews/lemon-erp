@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.util.ServletUtils;
 import com.lemon.erp.common.util.TreeUtils;
 import com.lemon.erp.common.util.UserAgentUtils;
@@ -53,7 +54,7 @@ public class AuthService {
     private final DemoProperties demoProperties;
 
     public AuthConfig publicConfig() {
-        return new AuthConfig(tenantLookup.isEnabled(), settings.get(Setting.SYSTEM_NAME), settings.getBool(Setting.SHOW_DEMO_ACCOUNT),
+        return new AuthConfig(tenantLookup.isEnabled(), I18n.t(settings.get(Setting.SYSTEM_NAME)), settings.getBool(Setting.SHOW_DEMO_ACCOUNT),
                 settings.getBool(Setting.WATERMARK), settings.get(Setting.CAPTCHA_MODE), settings.getInt(Setting.PASSWORD_MIN_LENGTH),
                 settings.get(Setting.PASSWORD_COMPLEXITY), settings.getInt(Setting.ATTACHMENT_MAX_MB), demoProperties.isEnabled());
     }
@@ -65,7 +66,7 @@ public class AuthService {
         try {
             TenantContext.set(tenantLookup.resolveLoginTenant(req.tenantName()));
         } catch (BizException e) {
-            throw loginFailed(req.username(), request, e.getMessage());
+            throw loginFailed(req.username(), request, e.getTemplate(), e.getArgs());
         }
         try {
             passwordPolicy.checkLocked(req.username());
@@ -75,20 +76,23 @@ public class AuthService {
                 captchaService.verify(req.captchaId(), req.captchaCode());
             }
         } catch (BizException e) {
-            throw loginFailed(req.username(), request, e.getMessage());
+            throw loginFailed(req.username(), request, e.getTemplate(), e.getArgs());
         }
         SysUser user = userMapper.selectOne(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getUsername, req.username()));
         if (user == null || !passwordEncoder.matches(req.password(), user.getPassword())) {
             // 不存在的用户名同样计数，避免借此探测账号是否存在
             int left = passwordPolicy.recordFailure(req.username());
-            throw loginFailed(req.username(), request, left == 0 ? "用户名或密码错误，账号已锁定"
-                    : left <= 2 ? "用户名或密码错误，再错 " + left + " 次将锁定账号" : "用户名或密码错误");
+            if (left == 0) {
+                throw loginFailed(req.username(), request, "用户名或密码错误，账号已锁定");
+            }
+            throw left <= 2 ? loginFailed(req.username(), request, "用户名或密码错误，再错 {0} 次将锁定账号", left)
+                    : loginFailed(req.username(), request, "用户名或密码错误");
         }
         if (!Integer.valueOf(1).equals(user.getStatus())) {
             throw loginFailed(req.username(), request, "账号已停用");
         }
         passwordPolicy.clearFailures(req.username());
-        return issue(user, request, "登录成功");
+        return issue(user, request, "登录成功"); // i18n-ignore 登录日志
     }
 
     /**
@@ -102,9 +106,11 @@ public class AuthService {
             throw loginFailed(user.getUsername(), request, "账号已停用");
         }
         if (user.getSupplierId() != null || user.getCustomerId() != null) {
-            throw loginFailed(user.getUsername(), request, "门户账号不能使用" + via);
+            // 登录日志记中文，提示按请求语言
+            publishLoginLog(user.getUsername(), request, 0, "门户账号不能使用" + via); // i18n-ignore
+            throw new BizException("门户账号不能使用{0}", I18n.t(via));
         }
-        return issue(user, request, via + "成功");
+        return issue(user, request, via + "成功"); // i18n-ignore 登录日志
     }
 
     /** 第三方授权登录失败（如成员未绑定用户）记入登录日志 */
@@ -160,9 +166,10 @@ public class AuthService {
                 .toList());
     }
 
-    private BizException loginFailed(String username, HttpServletRequest request, String msg) {
-        publishLoginLog(username, request, 0, msg);
-        return new BizException(msg);
+    /** 登录失败：登录日志记中文，返回的异常按请求语言翻译 */
+    private BizException loginFailed(String username, HttpServletRequest request, String template, Object... args) {
+        publishLoginLog(username, request, 0, I18n.format(template, args));
+        return new BizException(template, args);
     }
 
     private void publishLoginLog(String username, HttpServletRequest request, int status, String msg) {

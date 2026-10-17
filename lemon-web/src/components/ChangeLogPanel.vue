@@ -6,14 +6,14 @@
     :data-source="list"
     :loading="loading"
     :pagination="total > size ? { current, pageSize: size, total, size: 'small', onChange: (p) => ((current = p), load()) } : false"
-    :locale="{ emptyText: '暂无变更记录' }"
+    :locale="{ emptyText: $t('components.record.noHistory') }"
   >
     <template #bodyCell="{ column, record }">
       <template v-if="column.key === 'field'">{{ record.fieldLabel || record.fieldName }}</template>
       <template v-else-if="column.key === 'change'">
-        <span class="old">{{ record.oldValue ?? '（空）' }}</span>
+        <span class="old">{{ record.oldValue ?? $t('components.record.empty') }}</span>
         <ArrowRightOutlined class="arrow" />
-        <span>{{ record.newValue ?? '（空）' }}</span>
+        <span>{{ record.newValue ?? $t('components.record.empty') }}</span>
       </template>
     </template>
   </a-table>
@@ -23,6 +23,7 @@
 import { ref, watch } from 'vue'
 import { ArrowRightOutlined } from '@ant-design/icons-vue'
 import { pageChangeLog } from '@/api/system/changeLog'
+import { t } from '@/locales'
 
 /**
  * 字段变更历史：bizType 为后端 RecordType.code（如 wms_material）
@@ -33,10 +34,10 @@ const props = defineProps({
 })
 
 const columns = [
-  { title: '时间', dataIndex: 'createTime', width: 170 },
-  { title: '修改人', dataIndex: 'createByName', width: 100 },
-  { title: '字段', key: 'field', width: 120 },
-  { title: '变更', key: 'change' }
+  { title: t('components.record.time'), dataIndex: 'createTime', width: 170 },
+  { title: t('components.record.changedBy'), dataIndex: 'createByName', width: 110 },
+  { title: t('components.record.field'), key: 'field', width: 120 },
+  { title: t('components.record.change'), key: 'change' }
 ]
 const list = ref([])
 const loading = ref(false)

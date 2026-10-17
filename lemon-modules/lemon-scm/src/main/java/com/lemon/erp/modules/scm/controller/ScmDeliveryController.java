@@ -59,7 +59,7 @@ public class ScmDeliveryController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:delivery:add')")
-    @OperLog(title = "发货通知", type = OperType.INSERT)
+    @OperLog(title = "发货通知", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody DeliveryRequest req) {
         return R.ok(deliveryService.create(req));
     }
@@ -73,7 +73,7 @@ public class ScmDeliveryController {
 
     @PostMapping("/{id}/pick")
     @PreAuthorize("@ss.hasPerm('scm:delivery:pick')")
-    @OperLog(title = "发货通知拣货", type = OperType.UPDATE)
+    @OperLog(title = "发货通知拣货", type = OperType.UPDATE) // i18n-ignore
     public R<Void> pick(@PathVariable Long id, @Valid @RequestBody PickRequest req) {
         deliveryService.confirmPick(id, req);
         return R.ok();
@@ -82,7 +82,7 @@ public class ScmDeliveryController {
     /** 按拣货生成销售出库单，返回出库单 ID */
     @PostMapping("/{id}/ship")
     @PreAuthorize("@ss.hasPerm('scm:salesOut:add')")
-    @OperLog(title = "发货通知出库", type = OperType.INSERT)
+    @OperLog(title = "发货通知出库", type = OperType.INSERT) // i18n-ignore
     public R<Long> ship(@PathVariable Long id, @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate bizDate) {
         return R.ok(deliveryService.ship(id, bizDate));
     }
@@ -96,14 +96,14 @@ public class ScmDeliveryController {
 
     @PostMapping("/{id}/packages")
     @PreAuthorize("@ss.hasPerm('scm:delivery:pack')")
-    @OperLog(title = "发货通知-装箱", type = OperType.INSERT)
+    @OperLog(title = "发货通知-装箱", type = OperType.INSERT) // i18n-ignore
     public R<Long> addPackage(@PathVariable Long id, @Valid @RequestBody PackageRequest req) {
         return R.ok(packingService.create(id, req));
     }
 
     @PutMapping("/{id}/packages/{packageId}")
     @PreAuthorize("@ss.hasPerm('scm:delivery:pack')")
-    @OperLog(title = "发货通知-装箱", type = OperType.UPDATE)
+    @OperLog(title = "发货通知-装箱", type = OperType.UPDATE) // i18n-ignore
     public R<Void> updatePackage(@PathVariable Long id, @PathVariable Long packageId, @Valid @RequestBody PackageRequest req) {
         packingService.update(id, packageId, req);
         return R.ok();
@@ -111,7 +111,7 @@ public class ScmDeliveryController {
 
     @DeleteMapping("/{id}/packages/{packageId}")
     @PreAuthorize("@ss.hasPerm('scm:delivery:pack')")
-    @OperLog(title = "发货通知-装箱", type = OperType.DELETE)
+    @OperLog(title = "发货通知-装箱", type = OperType.DELETE) // i18n-ignore
     public R<Void> deletePackage(@PathVariable Long id, @PathVariable Long packageId) {
         packingService.delete(id, packageId);
         return R.ok();
@@ -119,7 +119,7 @@ public class ScmDeliveryController {
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("@ss.hasPerm('scm:delivery:add')")
-    @OperLog(title = "发货通知", type = OperType.UPDATE)
+    @OperLog(title = "发货通知", type = OperType.UPDATE) // i18n-ignore
     public R<Void> cancel(@PathVariable Long id) {
         deliveryService.cancel(id);
         return R.ok();

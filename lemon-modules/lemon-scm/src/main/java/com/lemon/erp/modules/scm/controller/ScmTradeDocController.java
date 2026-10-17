@@ -53,7 +53,7 @@ public class ScmTradeDocController {
     /** @return 新单据 ID */
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:' + #kind + ':add')")
-    @OperLog(title = "采购销售出入库", type = OperType.INSERT)
+    @OperLog(title = "采购销售出入库", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@PathVariable String kind, @Valid @RequestBody TradeDocRequest req) {
         return R.ok(docService.create(TradeKind.ofPath(kind), req));
     }

@@ -2,6 +2,7 @@ package com.lemon.erp.modules.fin.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.entity.FinAccountRule;
 import com.lemon.erp.modules.fin.mapper.FinAccountRuleMapper;
@@ -63,7 +64,7 @@ public class FinAccountRuleService {
         try {
             return accountService.requireLeaves(List.of(rule.getAccountId())).get(rule.getAccountId());
         } catch (BizException e) {
-            throw new BizException("凭证科目设置「" + role.label() + "」：" + e.getMessage());
+            throw new BizException("凭证科目设置「{0}」：{1}", I18n.t(role.label()), e.getLocalizedMessage());
         }
     }
 
@@ -78,7 +79,8 @@ public class FinAccountRuleService {
                     .findFirst().orElse(null);
             Map<String, Long> items = new LinkedHashMap<>();
             rules.stream().filter(r -> !NO_DIM.equals(r.getDimValue())).forEach(r -> items.put(r.getDimValue(), r.getAccountId()));
-            views.add(new RoleView(role.name(), role.group(), role.label(), role.dimension().name(), role.dimension().dictType(),
+            // 分组、用途名称返回给页面显示，按请求语言翻译
+            views.add(new RoleView(role.name(), I18n.t(role.group()), I18n.t(role.label()), role.dimension().name(), role.dimension().dictType(),
                     role.defaultCode(), role.dimensionDefaults(), accountId, items));
         }
         return views;
@@ -101,7 +103,7 @@ public class FinAccountRuleService {
             });
         }
         if (!byDim.isEmpty() && role.dimension() == AccountRole.Dimension.NONE) {
-            throw new BizException("「" + role.label() + "」不能按维度分别设置科目");
+            throw new BizException("「{0}」不能按维度分别设置科目", I18n.t(role.label()));
         }
         if (byDim.keySet().stream().anyMatch(d -> d == null || d.isBlank() || d.length() > 32)) {
             throw new BizException("维度取值不正确");

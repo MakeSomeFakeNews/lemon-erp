@@ -35,7 +35,7 @@ public class SysConfigController {
     /** 参数标识 → 值；值为空时恢复默认 */
     @PutMapping
     @PreAuthorize("@ss.hasPerm('sys:config:edit')")
-    @OperLog(title = "参数设置", type = OperType.UPDATE)
+    @OperLog(title = "参数设置", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> save(@RequestBody Map<String, String> values) {
         configService.save(values);
         return R.ok();

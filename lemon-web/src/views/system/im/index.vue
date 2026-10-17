@@ -14,8 +14,8 @@
           <div class="platform-name">{{ p.label }}</div>
           <div class="sub-text">{{ summary(p.value) }}</div>
         </div>
-        <a-tag v-if="configOf(p.value)?.enabled" color="success" :bordered="false">已启用</a-tag>
-        <a-tag v-else :bordered="false">未启用</a-tag>
+        <a-tag v-if="configOf(p.value)?.enabled" color="success" :bordered="false">{{ $t('system.im.enabled') }}</a-tag>
+        <a-tag v-else :bordered="false">{{ $t('system.im.notEnabled') }}</a-tag>
       </div>
     </div>
 
@@ -23,127 +23,127 @@
       <div v-if="loading && !configs.length" class="page-spin"><a-spin /></div>
       <a-tabs v-else v-model:active-key="tab">
         <!-- 应用配置 -->
-        <a-tab-pane key="config" tab="应用配置">
+        <a-tab-pane key="config" :tab="$t('system.im.appConfig')">
           <div class="config-layout">
             <a-form :model="form" layout="vertical" class="config-form" :disabled="!canEdit">
               <a-form-item>
                 <a-switch v-model:checked="form.enabled" />
-                <span class="switch-label">启用{{ current.label }}集成</span>
+                <span class="switch-label">{{ $t('system.im.enableIntegration', { name: current.label }) }}</span>
               </a-form-item>
 
-              <div class="section-title">应用凭证</div>
+              <div class="section-title">{{ $t('system.im.credentials') }}</div>
               <a-row :gutter="16">
                 <a-col v-for="f in fields" :key="f.key" :xs="24" :sm="12">
                   <a-form-item :label="f.label" :required="form.enabled">
                     <a-input-password
                       v-if="f.secret"
                       v-model:value="form[f.key]"
-                      :placeholder="configOf(platform)?.appSecretSet ? '已设置，留空表示不修改' : '请输入'"
+                      :placeholder="configOf(platform)?.appSecretSet ? $t('system.im.secretSet') : $t('common.placeholder.input')"
                       autocomplete="new-password"
                     />
-                    <a-input v-else v-model:value="form[f.key]" placeholder="请输入" allow-clear />
+                    <a-input v-else v-model:value="form[f.key]" :placeholder="$t('common.placeholder.input')" allow-clear />
                   </a-form-item>
                 </a-col>
               </a-row>
-              <a-form-item label="系统访问地址" :required="form.enabled" extra="外网可访问的前端地址，登录回调和消息中的链接使用，如 https://erp.example.com">
+              <a-form-item :label="$t('system.im.homeUrl')" :required="form.enabled" :extra="$t('system.im.homeUrlTip')">
                 <a-input v-model:value="form.homeUrl" placeholder="https://" allow-clear />
               </a-form-item>
               <div v-if="saved.callbackUrl" class="urls">
                 <div class="url-row">
-                  <span class="url-label">回调地址</span>
+                  <span class="url-label">{{ $t('system.im.callbackUrl') }}</span>
                   <a-typography-text :copyable="{ text: saved.callbackUrl }" class="url">{{ saved.callbackUrl }}</a-typography-text>
                 </div>
                 <div class="url-row">
-                  <span class="url-label">应用首页</span>
+                  <span class="url-label">{{ $t('system.im.entryUrl') }}</span>
                   <a-typography-text :copyable="{ text: saved.entryUrl }" class="url">{{ saved.entryUrl }}</a-typography-text>
                 </div>
               </div>
 
-              <div class="section-title">功能</div>
+              <div class="section-title">{{ $t('system.im.features') }}</div>
               <div class="feature">
                 <a-switch v-model:checked="form.loginEnabled" size="small" />
                 <div>
-                  <div>扫码登录与免登</div>
-                  <div class="sub-text">登录页显示{{ current.label }}登录；从{{ current.label }}工作台、消息中打开系统时自动登录</div>
+                  <div>{{ $t('system.im.loginFeature') }}</div>
+                  <div class="sub-text">{{ $t('system.im.loginFeatureTip', { name: current.label }) }}</div>
                 </div>
               </div>
               <div class="feature">
                 <a-switch v-model:checked="form.messageEnabled" size="small" />
                 <div>
-                  <div>消息推送</div>
-                  <div class="sub-text">审批待办、到期提醒、预警等站内消息同时推送给已绑定的成员</div>
+                  <div>{{ $t('system.im.messagePush') }}</div>
+                  <div class="sub-text">{{ $t('system.im.messagePushTip') }}</div>
                 </div>
               </div>
               <div class="feature">
                 <a-switch v-model:checked="form.syncCreate" size="small" />
                 <div>
-                  <div>同步通讯录时自动创建部门和账号</div>
-                  <div class="sub-text">关闭时只按手机号绑定已有账号；开启后为没有账号的成员开通账号（登录名为手机号，初始密码见参数设置）</div>
+                  <div>{{ $t('system.im.syncCreate') }}</div>
+                  <div class="sub-text">{{ $t('system.im.syncCreateTip') }}</div>
                 </div>
               </div>
 
-              <div class="section-title">群机器人</div>
-              <a-form-item label="Webhook 地址" :extra="`以 ${ROBOT_PREFIX[platform]} 开头，留空不推送`">
-                <a-input-password v-model:value="form.robotWebhook" :visibility-toggle="true" placeholder="群设置 → 机器人 → 添加自定义机器人后复制" />
+              <div class="section-title">{{ $t('system.im.robot') }}</div>
+              <a-form-item :label="$t('system.im.webhook')" :extra="$t('system.im.webhookTip', { prefix: ROBOT_PREFIX[platform] })">
+                <a-input-password v-model:value="form.robotWebhook" :visibility-toggle="true" :placeholder="$t('system.im.webhookPlaceholder')" />
               </a-form-item>
-              <a-form-item v-if="platform !== 'WECOM'" label="加签密钥" extra="机器人安全设置选择「加签」时填写">
+              <a-form-item v-if="platform !== 'WECOM'" :label="$t('system.im.robotSecret')" :extra="$t('system.im.robotSecretTip')">
                 <div class="secret-row">
                   <a-input-password
                     v-model:value="form.robotSecret"
-                    :placeholder="configOf(platform)?.robotSecretSet ? '已设置，留空表示不修改' : '不加签可不填'"
+                    :placeholder="configOf(platform)?.robotSecretSet ? $t('system.im.secretSet') : $t('system.im.robotSecretOptional')"
                     autocomplete="new-password"
                   />
-                  <a-checkbox v-if="configOf(platform)?.robotSecretSet" v-model:checked="form.clearRobotSecret">清除</a-checkbox>
+                  <a-checkbox v-if="configOf(platform)?.robotSecretSet" v-model:checked="form.clearRobotSecret">{{ $t('system.im.clear') }}</a-checkbox>
                 </div>
               </a-form-item>
-              <a-form-item label="推送的消息类别">
+              <a-form-item :label="$t('system.im.categories')">
                 <a-checkbox-group v-model:value="form.categories" :options="dict.sys_message_category.map((d) => ({ label: d.label, value: d.value }))" />
               </a-form-item>
 
               <div v-if="canEdit" class="actions">
-                <a-button type="primary" :loading="saving" @click="save">保存</a-button>
-                <a-button :loading="verifying" :disabled="!saved.enabled" @click="verify">测试连接</a-button>
-                <a-button :loading="robotTesting" :disabled="!saved.enabled || !saved.robotWebhook" @click="robotTest">测试群机器人</a-button>
+                <a-button type="primary" :loading="saving" @click="save">{{ $t('common.action.save') }}</a-button>
+                <a-button :loading="verifying" :disabled="!saved.enabled" @click="verify">{{ $t('system.im.testConnection') }}</a-button>
+                <a-button :loading="robotTesting" :disabled="!saved.enabled || !saved.robotWebhook" @click="robotTest">{{ $t('system.im.testRobot') }}</a-button>
               </div>
             </a-form>
 
             <div class="guide">
-              <div class="guide-title"><BulbOutlined /> 接入步骤</div>
+              <div class="guide-title"><BulbOutlined /> {{ $t('system.im.guideTitle') }}</div>
               <ol>
                 <li v-for="(g, i) in GUIDES[platform]" :key="i">{{ g }}</li>
               </ol>
               <a-alert
                 type="info"
                 show-icon
-                message="登录前需要绑定账号"
-                description="成员用平台账号登录前，要先绑定系统用户：在「成员绑定」中同步通讯录（按手机号自动绑定），或由成员登录后在个人中心自行绑定。"
+                :message="$t('system.im.bindFirst')"
+                :description="$t('system.im.bindFirstTip')"
               />
             </div>
           </div>
         </a-tab-pane>
 
         <!-- 成员绑定 -->
-        <a-tab-pane key="members" tab="成员绑定">
+        <a-tab-pane key="members" :tab="$t('system.im.members')">
           <div class="member-bar">
             <a-space wrap>
               <a-popconfirm
                 v-if="canSync"
-                :title="`从${current.label}读取通讯录，按手机号绑定已有账号${saved.syncCreate ? '，并为没有账号的成员创建部门和账号' : ''}？`"
+                :title="saved.syncCreate ? $t('system.im.syncConfirmCreate', { name: current.label }) : $t('system.im.syncConfirm', { name: current.label })"
                 :disabled="!saved.enabled"
                 @confirm="sync"
               >
                 <a-button type="primary" :loading="syncing" :disabled="!saved.enabled">
-                  <template #icon><SyncOutlined /></template>同步通讯录
+                  <template #icon><SyncOutlined /></template>{{ $t('system.im.syncContacts') }}
                 </a-button>
               </a-popconfirm>
               <a-radio-group v-model:value="query.bound" button-style="solid" @change="search">
-                <a-radio-button :value="undefined">全部</a-radio-button>
-                <a-radio-button :value="true">已绑定</a-radio-button>
-                <a-radio-button :value="false">未绑定</a-radio-button>
+                <a-radio-button :value="undefined">{{ $t('common.status.all') }}</a-radio-button>
+                <a-radio-button :value="true">{{ $t('system.im.bound') }}</a-radio-button>
+                <a-radio-button :value="false">{{ $t('system.im.unbound') }}</a-radio-button>
               </a-radio-group>
-              <a-input-search v-model:value="query.keyword" placeholder="用户名、姓名、手机号、userid" allow-clear class="keyword" @search="search" />
+              <a-input-search v-model:value="query.keyword" :placeholder="$t('system.im.keywordPlaceholder')" allow-clear class="keyword" @search="search" />
             </a-space>
-            <span v-if="saved.lastSyncTime" class="sub-text">最近同步 {{ saved.lastSyncTime }}：{{ saved.lastSyncResult }}</span>
+            <span v-if="saved.lastSyncTime" class="sub-text">{{ $t('system.im.lastSync', { time: saved.lastSyncTime, result: saved.lastSyncResult }) }}</span>
           </div>
           <a-table
             row-key="userId"
@@ -162,20 +162,20 @@
               </template>
               <template v-else-if="column.key === 'member'">
                 <template v-if="record.bindingId">
-                  <a-tag color="success" :bordered="false">已绑定</a-tag>
+                  <a-tag color="success" :bordered="false">{{ $t('system.im.bound') }}</a-tag>
                   <span>{{ record.imName || '' }}</span>
                   <span class="sub-text member-id">{{ record.imUserId }}</span>
                 </template>
-                <a-tag v-else :bordered="false">未绑定</a-tag>
+                <a-tag v-else :bordered="false">{{ $t('system.im.unbound') }}</a-tag>
               </template>
               <template v-else-if="column.key === 'action'">
                 <template v-if="canSync">
-                  <a v-if="!record.bindingId" @click="openBind(record)">绑定</a>
+                  <a v-if="!record.bindingId" @click="openBind(record)">{{ $t('common.action.bind') }}</a>
                   <template v-else>
-                    <a @click="openBind(record)">修改</a>
+                    <a @click="openBind(record)">{{ $t('common.action.modify') }}</a>
                     <a-divider type="vertical" />
-                    <a-popconfirm title="确定解除绑定？解除后该成员不能再用平台账号登录，也收不到消息推送" @confirm="unbind(record)">
-                      <a class="danger">解除绑定</a>
+                    <a-popconfirm :title="$t('system.im.unbindConfirm')" @confirm="unbind(record)">
+                      <a class="danger">{{ $t('common.action.unbind') }}</a>
                     </a-popconfirm>
                   </template>
                 </template>
@@ -187,31 +187,31 @@
     </a-card>
 
     <!-- 手工绑定 -->
-    <a-modal v-model:open="bindOpen" :title="`绑定${current.label}成员`" :confirm-loading="binding" @ok="submitBind">
+    <a-modal v-model:open="bindOpen" :title="$t('system.im.bindTitle', { name: current.label })" :confirm-loading="binding" @ok="submitBind">
       <a-form layout="vertical">
-        <a-form-item label="用户">{{ bindTarget?.nickname || bindTarget?.username }}（{{ bindTarget?.username }}）</a-form-item>
-        <a-form-item label="成员 userid" required :extra="USERID_HELP[platform]">
-          <a-input v-model:value="bindUserId" placeholder="请输入" :maxlength="64" />
+        <a-form-item :label="$t('common.field.user')">{{ $t('system.im.bindUser', { name: bindTarget?.nickname || bindTarget?.username, username: bindTarget?.username }) }}</a-form-item>
+        <a-form-item :label="$t('system.im.memberUserId')" required :extra="USERID_HELP[platform]">
+          <a-input v-model:value="bindUserId" :placeholder="$t('common.placeholder.input')" :maxlength="64" />
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- 同步结果 -->
-    <a-modal v-model:open="resultOpen" title="同步完成" :footer="null" :width="520">
+    <a-modal v-model:open="resultOpen" :title="$t('system.im.syncDone')" :footer="null" :width="520">
       <template v-if="result">
         <div class="stats">
-          <div class="stat"><b>{{ result.memberTotal }}</b><span>通讯录成员</span></div>
-          <div class="stat"><b>{{ result.matched }}</b><span>按手机号绑定</span></div>
-          <div class="stat"><b>{{ result.created }}</b><span>新建账号</span></div>
-          <div class="stat"><b>{{ result.alreadyBound }}</b><span>之前已绑定</span></div>
+          <div class="stat"><b>{{ result.memberTotal }}</b><span>{{ $t('system.im.memberTotal') }}</span></div>
+          <div class="stat"><b>{{ result.matched }}</b><span>{{ $t('system.im.matched') }}</span></div>
+          <div class="stat"><b>{{ result.created }}</b><span>{{ $t('system.im.created') }}</span></div>
+          <div class="stat"><b>{{ result.alreadyBound }}</b><span>{{ $t('system.im.alreadyBound') }}</span></div>
         </div>
-        <p v-if="result.deptCreated" class="sub-text">新建部门 {{ result.deptCreated }} 个</p>
+        <p v-if="result.deptCreated" class="sub-text">{{ $t('system.im.deptCreated', { n: result.deptCreated }) }}</p>
         <a-alert v-if="result.warning" type="warning" show-icon :message="result.warning" class="mb" />
         <template v-if="result.unmatchedCount">
-          <div class="unmatched-title">未绑定 {{ result.unmatchedCount }} 人（手机号未匹配到账号或平台未返回手机号），可在列表中手工绑定：</div>
+          <div class="unmatched-title">{{ $t('system.im.unmatched', { n: result.unmatchedCount }) }}</div>
           <div class="unmatched">
             <a-tag v-for="n in result.unmatched" :key="n" :bordered="false">{{ n }}</a-tag>
-            <span v-if="result.unmatchedCount > result.unmatched.length" class="sub-text">等</span>
+            <span v-if="result.unmatchedCount > result.unmatched.length" class="sub-text">{{ $t('system.im.etc') }}</span>
           </div>
         </template>
       </template>
@@ -222,6 +222,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { BulbOutlined, SyncOutlined } from '@ant-design/icons-vue'
 import ImPlatformIcon from '@/components/im/ImPlatformIcon.vue'
 import { bindImUser, listImBindings, listImConfig, saveImConfig, syncImContacts, testImRobot, unbindImUser, verifyIm } from '@/api/system/im'
@@ -231,16 +232,17 @@ import { useUserStore } from '@/store/user'
 import { IM_PLATFORMS, imPlatform } from '@/utils/im'
 
 /** 第三方集成：每个租户分别接入自己的钉钉、企业微信、飞书应用 */
+const { t } = useI18n()
 const FIELDS = {
   DINGTALK: [
-    { key: 'appKey', label: 'Client ID（原 AppKey）' },
-    { key: 'appSecret', label: 'Client Secret（原 AppSecret）', secret: true },
+    { key: 'appKey', label: t('system.im.dingAppKey') },
+    { key: 'appSecret', label: t('system.im.dingAppSecret'), secret: true },
     { key: 'agentId', label: 'AgentId' }
   ],
   WECOM: [
-    { key: 'corpId', label: '企业ID（CorpID）' },
+    { key: 'corpId', label: t('system.im.corpId') },
     { key: 'agentId', label: 'AgentId' },
-    { key: 'appSecret', label: '应用 Secret', secret: true }
+    { key: 'appSecret', label: t('system.im.appSecret'), secret: true }
   ],
   FEISHU: [
     { key: 'appKey', label: 'App ID' },
@@ -253,31 +255,31 @@ const ROBOT_PREFIX = {
   FEISHU: 'https://open.feishu.cn/open-apis/bot/v2/hook/'
 }
 const USERID_HELP = {
-  DINGTALK: '钉钉管理后台「通讯录 → 成员管理」中成员详情的 userid',
-  WECOM: '企业微信管理后台「通讯录」中成员详情的「账号」',
-  FEISHU: '飞书管理后台「组织架构 → 成员与部门」中成员详情的「用户 ID」'
+  DINGTALK: t('system.im.userIdHelpDingtalk'),
+  WECOM: t('system.im.userIdHelpWecom'),
+  FEISHU: t('system.im.userIdHelpFeishu')
 }
 const GUIDES = {
   DINGTALK: [
-    '在钉钉开发者后台（open-dev.dingtalk.com）创建「企业内部应用」，在「凭证与基础信息」中复制 Client ID、Client Secret，在应用详情中查看 AgentId。',
-    '「权限管理」中开通：通讯录部门信息读权限、成员信息读权限、个人手机号信息、根据 unionId 获取成员 userId（通讯录个人信息读权限）。',
-    '「安全设置 → 重定向 URL」中填写下方的回调地址。',
-    '「网页应用」中把应用首页（PC 端和移动端）设为下方的应用首页地址，成员在工作台点开即自动登录。',
-    '发布应用并设置可见范围，再回到这里保存配置、测试连接。'
+    t('system.im.guide.DINGTALK1'),
+    t('system.im.guide.DINGTALK2'),
+    t('system.im.guide.DINGTALK3'),
+    t('system.im.guide.DINGTALK4'),
+    t('system.im.guide.DINGTALK5')
   ],
   WECOM: [
-    '在企业微信管理后台「应用管理 → 自建」中创建应用，复制 AgentId 和 Secret；在「我的企业」页面底部查看企业ID。',
-    '在应用中设置「网页授权及 JS-SDK → 可信域名」和「企业微信授权登录 → Web 网页 → 授权回调域」，均填写系统访问地址的域名。',
-    '「应用主页」设为下方的应用首页地址；「企业可信 IP」中加入服务器的出口 IP（调用接口需要）。',
-    '把成员加入应用的可见范围。2022 年 6 月后新建的应用读取通讯录不返回手机号，此时请在「成员绑定」中手工绑定，或让成员在个人中心自行绑定。',
-    '回到这里保存配置、测试连接。'
+    t('system.im.guide.WECOM1'),
+    t('system.im.guide.WECOM2'),
+    t('system.im.guide.WECOM3'),
+    t('system.im.guide.WECOM4'),
+    t('system.im.guide.WECOM5')
   ],
   FEISHU: [
-    '在飞书开放平台（open.feishu.cn）创建「企业自建应用」，复制 App ID 和 App Secret，并在「添加应用能力」中开启机器人。',
-    '「权限管理」中开通：获取用户 user ID、获取通讯录基本信息（以应用身份读取通讯录）、获取用户手机号、获取用户邮箱、以应用的身份发消息。',
-    '「安全设置 → 重定向 URL」中添加下方的回调地址。',
-    '「网页应用」中把桌面端和移动端主页设为下方的应用首页地址。',
-    '设置通讯录权限范围后创建版本并发布，再回到这里保存配置、测试连接。'
+    t('system.im.guide.FEISHU1'),
+    t('system.im.guide.FEISHU2'),
+    t('system.im.guide.FEISHU3'),
+    t('system.im.guide.FEISHU4'),
+    t('system.im.guide.FEISHU5')
   ]
 }
 
@@ -298,12 +300,12 @@ const form = reactive({})
 
 function summary(p) {
   const c = configOf(p)
-  if (!c?.enabled) return '未配置'
+  if (!c?.enabled) return t('system.im.notConfigured')
   const parts = []
-  if (c.loginEnabled) parts.push('登录')
-  if (c.messageEnabled) parts.push('消息推送')
-  if (c.robotWebhook) parts.push('群机器人')
-  return parts.length ? parts.join(' · ') : '已启用'
+  if (c.loginEnabled) parts.push(t('system.im.login'))
+  if (c.messageEnabled) parts.push(t('system.im.messagePush'))
+  if (c.robotWebhook) parts.push(t('system.im.robot'))
+  return parts.length ? parts.join(' · ') : t('system.im.enabled')
 }
 
 function resetForm() {
@@ -351,7 +353,7 @@ async function save() {
   saving.value = true
   try {
     await saveImConfig({ ...data, robotCategories: categories.join(',') })
-    message.success('已保存')
+    message.success(t('common.msg.saved'))
     await loadConfigs()
   } finally {
     saving.value = false
@@ -373,7 +375,7 @@ async function robotTest() {
   robotTesting.value = true
   try {
     await testImRobot(platform.value)
-    message.success('已发送，请到群里查看')
+    message.success(t('system.im.robotSent'))
   } finally {
     robotTesting.value = false
   }
@@ -383,12 +385,12 @@ async function robotTest() {
 const query = reactive({ platform: platform.value, bound: undefined, keyword: '' })
 const { list, loading: tableLoading, pagination, load, search, onTableChange } = useTable(listImBindings, query)
 const columns = [
-  { title: '用户', key: 'user', width: 180 },
-  { title: '部门', dataIndex: 'deptName', width: 160, ellipsis: true },
-  { title: '手机号', dataIndex: 'phone', width: 140 },
-  { title: '绑定成员', key: 'member', width: 260 },
-  { title: '绑定时间', dataIndex: 'bindTime', width: 170 },
-  { title: '操作', key: 'action', width: 140, fixed: 'right' }
+  { title: t('common.field.user'), key: 'user', width: 180 },
+  { title: t('common.field.dept'), dataIndex: 'deptName', width: 160, ellipsis: true },
+  { title: t('common.field.phone'), dataIndex: 'phone', width: 140 },
+  { title: t('system.im.boundMember'), key: 'member', width: 260 },
+  { title: t('system.im.bindTime'), dataIndex: 'bindTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
 ]
 
 const syncing = ref(false)
@@ -417,13 +419,13 @@ function openBind(record) {
 }
 async function submitBind() {
   if (!bindUserId.value.trim()) {
-    message.warning('请输入成员 userid')
+    message.warning(t('system.im.inputUserId'))
     return
   }
   binding.value = true
   try {
     await bindImUser({ userId: bindTarget.value.userId, platform: platform.value, imUserId: bindUserId.value.trim() })
-    message.success('已绑定')
+    message.success(t('system.im.boundOk'))
     bindOpen.value = false
     load()
   } finally {
@@ -432,7 +434,7 @@ async function submitBind() {
 }
 async function unbind(record) {
   await unbindImUser(record.bindingId)
-  message.success('已解除绑定')
+  message.success(t('system.im.unboundOk'))
   load()
 }
 

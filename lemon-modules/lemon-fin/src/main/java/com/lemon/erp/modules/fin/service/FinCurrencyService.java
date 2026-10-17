@@ -83,7 +83,7 @@ public class FinCurrencyService implements ExchangeRateProvider {
             throw new BizException("本位币不需要维护汇率");
         }
         if (!currencyMapper.exists(Wrappers.<FinCurrency>lambdaQuery().eq(FinCurrency::getCode, currency))) {
-            throw new BizException("币种不存在：" + currency);
+            throw new BizException("币种不存在：{0}", currency);
         }
         if (rate == null || rate.signum() <= 0) {
             throw new BizException("汇率必须大于 0");
@@ -117,7 +117,7 @@ public class FinCurrencyService implements ExchangeRateProvider {
         String sourceNo = "FX-" + period;
         if (voucherMapper.exists(Wrappers.<FinVoucher>lambdaQuery().eq(FinVoucher::getSourceType, VoucherSource.FX.name())
                 .eq(FinVoucher::getSourceNo, sourceNo))) {
-            throw new BizException(period + " 已调汇，如需重新调汇请先删除调汇凭证");
+            throw new BizException("{0} 已调汇，如需重新调汇请先删除调汇凭证", period);
         }
         LocalDate end = FinConstants.toYearMonth(period).atEndOfMonth();
         Map<String, BigDecimal> rates = new HashMap<>();
@@ -132,7 +132,7 @@ public class FinCurrencyService implements ExchangeRateProvider {
                 FinExchangeRate r = rateMapper.selectOne(Wrappers.<FinExchangeRate>lambdaQuery().eq(FinExchangeRate::getCurrency, c)
                         .eq(FinExchangeRate::getPeriod, period));
                 if (r == null) {
-                    throw new BizException("请先维护 " + c + " 在 " + period + " 的汇率");
+                    throw new BizException("请先维护 {0} 在 {1} 的汇率", c, period);
                 }
                 return r.getRate();
             });
@@ -148,7 +148,7 @@ public class FinCurrencyService implements ExchangeRateProvider {
                 continue;
             }
             Long partnerId = ((Number) b.get("partnerId")).longValue();
-            String summary = period + " 期末调汇 " + currency;
+            String summary = period + " 期末调汇 " + currency; // i18n-ignore
             if ("AR".equals(kind)) {
                 // 应收增值为收益：借 应收账款 / 贷 财务费用
                 lines.add(VoucherLine.debit(summary, receivable, null, diff).withCustomer(partnerId));
@@ -180,7 +180,8 @@ public class FinCurrencyService implements ExchangeRateProvider {
         }
         Long voucherId = voucherService.createGenerated(end, VoucherSource.FX, sourceNo, lines);
         List<VoucherLine> reverse = lines.stream()
-                .map(l -> l.withSummary("冲回 " + l.summary()).withAmounts(l.credit(), l.debit())).toList();
+                .map(l -> l.withSummary("冲回 " + l.summary()) // i18n-ignore
+                       .withAmounts(l.credit(), l.debit())).toList();
         Long reverseId = voucherService.createGenerated(end.plusDays(1), VoucherSource.FX, sourceNo + "-R", reverse);
         r.put("voucherId", voucherId);
         r.put("reverseVoucherId", reverseId);

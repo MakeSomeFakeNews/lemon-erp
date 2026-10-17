@@ -68,7 +68,7 @@ public class WmsLocationController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('wms:location:add')")
-    @OperLog(title = "库位管理", type = OperType.INSERT)
+    @OperLog(title = "库位管理", type = OperType.INSERT) // i18n-ignore
     public R<Void> create(@Validated(Create.class) @RequestBody WmsLocation location) {
         locationService.create(location);
         return R.ok();
@@ -76,7 +76,7 @@ public class WmsLocationController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('wms:location:edit')")
-    @OperLog(title = "库位管理", type = OperType.UPDATE)
+    @OperLog(title = "库位管理", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody WmsLocation location) {
         locationService.update(id, location);
         return R.ok();
@@ -84,7 +84,7 @@ public class WmsLocationController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('wms:location:edit')")
-    @OperLog(title = "库位管理-修改状态", type = OperType.UPDATE)
+    @OperLog(title = "库位管理-修改状态", type = OperType.UPDATE) // i18n-ignore
     public R<Void> changeStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
         locationService.changeStatus(id, req.status());
         return R.ok();
@@ -92,7 +92,7 @@ public class WmsLocationController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('wms:location:remove')")
-    @OperLog(title = "库位管理", type = OperType.DELETE)
+    @OperLog(title = "库位管理", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         locationService.delete(ids);
         return R.ok();

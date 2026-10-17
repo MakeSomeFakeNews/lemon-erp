@@ -4,11 +4,11 @@
       <div class="workspace-side-head">
         <a-select v-model:value="year" :options="years" class="year" @change="loadList" />
         <a-button v-perm="'hr:payroll:add'" type="primary" @click="openGenerate">
-          <template #icon><PlusOutlined /></template>生成
+          <template #icon><PlusOutlined /></template>{{ $t('hr.payroll.generate') }}
         </a-button>
       </div>
       <a-spin :spinning="listLoading">
-        <a-empty v-if="!payrolls.length" description="本年还没有工资表" />
+        <a-empty v-if="!payrolls.length" :description="$t('hr.payroll.emptyYear')" />
         <div
           v-for="p in payrolls"
           :key="p.id"
@@ -20,42 +20,42 @@
             <b>{{ periodText(p.period) }}</b>
             <DictTag type="hr_payroll_status" :value="p.status" />
           </div>
-          <div class="sub-text">{{ p.headcount }} 人 · 实发 {{ formatMoney(p.netTotal) }}</div>
+          <div class="sub-text">{{ $t('hr.payroll.itemSub', { n: p.headcount, amount: formatMoney(p.netTotal) }) }}</div>
         </div>
       </a-spin>
     </a-card>
 
     <div class="table-page workspace-main">
       <a-card v-if="!payroll" :bordered="false" class="page-card">
-        <a-empty description="选择左侧的工资表，或生成本月工资表" />
+        <a-empty :description="$t('hr.payroll.emptySelect')" />
       </a-card>
       <template v-else>
         <a-card :bordered="false" class="page-card">
           <div class="title-row">
             <div>
-              <span class="title">{{ periodText(payroll.period) }} 工资表</span>
+              <span class="title">{{ $t('hr.payroll.title', { period: periodText(payroll.period) }) }}</span>
               <DictTag type="hr_payroll_status" :value="payroll.status" />
-              <span class="sub-text">{{ payroll.payrollNo }} · 制表 {{ payroll.createByName || '-' }}</span>
+              <span class="sub-text">{{ payroll.payrollNo }} · {{ $t('hr.payroll.createdBy', { name: payroll.createByName || '-' }) }}</span>
             </div>
             <a-space wrap>
               <a-button :disabled="!payroll.items?.length" @click="printSlips">
-                <template #icon><PrinterOutlined /></template>打印工资条
+                <template #icon><PrinterOutlined /></template>{{ $t('hr.payroll.printSlips') }}
               </a-button>
               <template v-if="payroll.status === 'DRAFT'">
-                <a-popconfirm v-if="userStore.hasPerm('hr:payroll:add')" title="按最新的考勤、绩效、薪资档案重新计算？手工调整会丢失" @confirm="regenerate">
-                  <a-button>重新计算</a-button>
+                <a-popconfirm v-if="userStore.hasPerm('hr:payroll:add')" :title="$t('hr.payroll.confirmRegenerate')" @confirm="regenerate">
+                  <a-button>{{ $t('hr.payroll.regenerate') }}</a-button>
                 </a-popconfirm>
-                <a-popconfirm v-if="userStore.hasPerm('hr:payroll:confirm')" title="确认后员工可以查看工资条，并生成计提凭证，确定确认？" @confirm="confirm">
-                  <a-button type="primary">确认</a-button>
+                <a-popconfirm v-if="userStore.hasPerm('hr:payroll:confirm')" :title="$t('hr.payroll.confirmConfirm')" @confirm="confirm">
+                  <a-button type="primary">{{ $t('hr.payroll.confirm') }}</a-button>
                 </a-popconfirm>
-                <a-popconfirm v-if="userStore.hasPerm('hr:payroll:remove')" title="删除该工资表？" @confirm="remove">
-                  <a-button danger>删除</a-button>
+                <a-popconfirm v-if="userStore.hasPerm('hr:payroll:remove')" :title="$t('hr.payroll.confirmDelete')" @confirm="remove">
+                  <a-button danger>{{ $t('common.action.delete') }}</a-button>
                 </a-popconfirm>
               </template>
               <template v-else-if="payroll.status === 'CONFIRMED'">
-                <a-button v-perm="'hr:payroll:pay'" type="primary" @click="openPay">发放</a-button>
-                <a-popconfirm v-if="userStore.hasPerm('hr:payroll:confirm')" title="取消确认会删除未审核的计提凭证，确定取消？" @confirm="unconfirm">
-                  <a-button>取消确认</a-button>
+                <a-button v-perm="'hr:payroll:pay'" type="primary" @click="openPay">{{ $t('hr.payroll.pay') }}</a-button>
+                <a-popconfirm v-if="userStore.hasPerm('hr:payroll:confirm')" :title="$t('hr.payroll.confirmUnconfirm')" @confirm="unconfirm">
+                  <a-button>{{ $t('hr.payroll.unconfirm') }}</a-button>
                 </a-popconfirm>
               </template>
               <a-button
@@ -63,7 +63,7 @@
                 v-perm="'hr:payroll:confirm'"
                 @click="regenerateAccrual"
               >
-                生成计提凭证
+                {{ $t('hr.payroll.genAccrual') }}
               </a-button>
             </a-space>
           </div>
@@ -74,19 +74,17 @@
             </a-col>
           </a-row>
           <div class="vouchers sub-text">
-            计提凭证：{{ payroll.accrueVoucherNo || '-' }}
-            <span v-if="payroll.payVoucherNo">· 发放凭证：{{ payroll.payVoucherNo }}（{{ payroll.payDate }}）</span>
-            <span v-if="payroll.confirmByName">· 确认 {{ payroll.confirmByName }} {{ payroll.confirmTime }}</span>
+            {{ $t('hr.payroll.accrueVoucher', { no: payroll.accrueVoucherNo || '-' }) }}
+            <span v-if="payroll.payVoucherNo">{{ $t('hr.payroll.payVoucher', { no: payroll.payVoucherNo, date: payroll.payDate }) }}</span>
+            <span v-if="payroll.confirmByName">{{ $t('hr.payroll.confirmedBy', { name: payroll.confirmByName, time: payroll.confirmTime }) }}</span>
           </div>
         </a-card>
 
         <a-card :bordered="false" class="page-card table-card">
           <div class="table-head">
-            <a-input-search v-model:value="keyword" placeholder="工号或姓名" allow-clear class="w220" @search="loadDetail" />
-            <span class="sub-text">日工资 = (基本工资 + 岗位津贴) / 21.75；考勤扣款含旷工、事假、病假 40%、迟到早退每次 50 元</span>
-            <span class="sub-text">
-              个税按累计预扣法：本年累计应纳税所得额 = 累计（应发 − 个人社保公积金 − 专项附加扣除 − 5000），本月个税 = 累计应纳税额 − 已预扣
-            </span>
+            <a-input-search v-model:value="keyword" :placeholder="$t('hr.payroll.keywordPh')" allow-clear class="w220" @search="loadDetail" />
+            <span class="sub-text">{{ $t('hr.payroll.dailyTip') }}</span>
+            <span class="sub-text">{{ $t('hr.payroll.taxTip') }}</span>
           </div>
           <a-table
             row-key="id"
@@ -96,7 +94,7 @@
             :data-source="payroll.items"
             :loading="detailLoading"
             :pagination="false"
-            :scroll="{ x: 2400, y: '100%' }"
+            :scroll="{ x: 3000, y: '100%' }"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'employee'">
@@ -115,28 +113,34 @@
               <template v-else-if="column.key === 'deduct'">
                 <a-tooltip v-if="Number(record.attendanceDeduct)">
                   <template #title>
-                    旷工 {{ Number(record.absentDays) }} 天 · 迟到早退 {{ record.lateCount }} 次 · 事假 {{ Number(record.personalHours) }} 时 · 病假
-                    {{ Number(record.sickHours) }} 时
+                    {{
+                      $t('hr.payroll.deductTip', {
+                        absent: Number(record.absentDays),
+                        late: record.lateCount,
+                        personal: Number(record.personalHours),
+                        sick: Number(record.sickHours)
+                      })
+                    }}
                   </template>
                   <span class="danger">-{{ formatMoney(record.attendanceDeduct) }}</span>
                 </a-tooltip>
                 <span v-else class="sub-text">0.00</span>
               </template>
               <template v-else-if="column.key === 'overtime'">
-                <span v-if="Number(record.overtimePay)">{{ formatMoney(record.overtimePay) }}<div class="sub-text">{{ Number(record.overtimeHours) }} 小时</div></span>
+                <span v-if="Number(record.overtimePay)">{{ formatMoney(record.overtimePay) }}<div class="sub-text">{{ $t('hr.payroll.hoursN', { n: Number(record.overtimeHours) }) }}</div></span>
                 <span v-else class="sub-text">0.00</span>
               </template>
               <template v-else-if="MONEY_KEYS.includes(column.key)">
                 <span :class="{ strong: ['grossPay', 'netPay'].includes(column.key) }">{{ formatMoney(record[column.key]) }}</span>
               </template>
               <template v-else-if="column.key === 'action'">
-                <a-button v-if="payroll.status === 'DRAFT'" v-perm="'hr:payroll:edit'" type="link" size="small" @click="openAdjust(record)">调整</a-button>
+                <a-button v-if="payroll.status === 'DRAFT'" v-perm="'hr:payroll:edit'" type="link" size="small" @click="openAdjust(record)">{{ $t('hr.payroll.adjust') }}</a-button>
               </template>
             </template>
             <template #summary>
               <a-table-summary fixed>
                 <a-table-summary-row>
-                  <a-table-summary-cell :index="0" :col-span="2"><b>合计</b></a-table-summary-cell>
+                  <a-table-summary-cell :index="0" :col-span="2"><b>{{ $t('hr.payroll.total') }}</b></a-table-summary-cell>
                   <a-table-summary-cell v-for="(c, i) in itemColumns.slice(2)" :key="c.key" :index="i + 2" align="right">
                     <b v-if="SUM_KEYS.includes(c.key)">{{ formatMoney(sum(c.key)) }}</b>
                   </a-table-summary-cell>
@@ -148,37 +152,37 @@
       </template>
     </div>
 
-    <a-modal v-model:open="generateOpen" title="生成工资表" :confirm-loading="saving" @ok="generate">
-      <a-alert type="info" show-icon class="mb" message="按薪资档案、当月考勤汇总（旷工、请假、迟到早退、加班）和发放月份为该月的已归档绩效计算；已有草稿时重新计算。" />
+    <a-modal v-model:open="generateOpen" :title="$t('hr.payroll.genTitle')" :confirm-loading="saving" @ok="generate">
+      <a-alert type="info" show-icon class="mb" :message="$t('hr.payroll.genTip')" />
       <a-form layout="vertical">
-        <a-form-item label="工资月份"><PeriodPicker v-model:value="genPeriod" /></a-form-item>
+        <a-form-item :label="$t('hr.payroll.period')"><PeriodPicker v-model:value="genPeriod" /></a-form-item>
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="adjustOpen" :title="`调整：${adjusting?.employeeName || ''}`" :confirm-loading="saving" destroy-on-close @ok="saveAdjust">
+    <a-modal v-model:open="adjustOpen" :title="$t('hr.payroll.adjustTitle', { name: adjusting?.employeeName || '' })" :confirm-loading="saving" destroy-on-close @ok="saveAdjust">
       <a-form layout="vertical">
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="其他奖金"><a-input-number v-model:value="adjustForm.otherBonus" :min="0" :precision="2" class="full" /></a-form-item>
+            <a-form-item :label="$t('hr.payroll.otherBonus')"><a-input-number v-model:value="adjustForm.otherBonus" :min="0" :precision="2" class="full" /></a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="其他扣款"><a-input-number v-model:value="adjustForm.otherDeduct" :min="0" :precision="2" class="full" /></a-form-item>
+            <a-form-item :label="$t('hr.payroll.otherDeduct')"><a-input-number v-model:value="adjustForm.otherDeduct" :min="0" :precision="2" class="full" /></a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注"><a-input v-model:value="adjustForm.remark" :maxlength="255" /></a-form-item>
+            <a-form-item :label="$t('common.field.remark')"><a-input v-model:value="adjustForm.remark" :maxlength="255" /></a-form-item>
           </a-col>
         </a-row>
       </a-form>
-      <span class="sub-text">保存后重新计算个税和实发工资</span>
+      <span class="sub-text">{{ $t('hr.payroll.adjustTip') }}</span>
     </a-modal>
 
-    <a-modal v-model:open="payOpen" title="发放工资" :confirm-loading="saving" destroy-on-close @ok="pay">
-      <a-alert type="info" show-icon class="mb" :message="`实发 ${formatMoney(payroll?.netTotal)} 元，生成发放凭证：借 应付职工薪酬，贷 银行存款、应交个人所得税、其他应付款`" />
+    <a-modal v-model:open="payOpen" :title="$t('hr.payroll.payTitle')" :confirm-loading="saving" destroy-on-close @ok="pay">
+      <a-alert type="info" show-icon class="mb" :message="$t('hr.payroll.payTip', { amount: formatMoney(payroll?.netTotal) })" />
       <a-form ref="payRef" :model="payForm" layout="vertical">
-        <a-form-item label="发放日期" name="payDate" :rules="[{ required: true, message: '请选择发放日期' }]">
+        <a-form-item :label="$t('hr.payroll.payDate')" name="payDate" :rules="[{ required: true, message: $t('hr.payroll.rule.payDate') }]">
           <a-date-picker v-model:value="payForm.payDate" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
-        <a-form-item label="付款账户" name="accountId" :rules="[{ required: true, message: '请选择付款账户' }]">
+        <a-form-item :label="$t('hr.payroll.account')" name="accountId" :rules="[{ required: true, message: $t('hr.payroll.rule.account') }]">
           <AccountSelect v-model:value="payForm.accountId" :prefix="['1001', '1002']" />
         </a-form-item>
       </a-form>
@@ -187,6 +191,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { PlusOutlined, PrinterOutlined } from '@ant-design/icons-vue'
@@ -211,6 +216,8 @@ import {
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
 
+const { t } = useI18n()
+
 const userStore = useUserStore()
 useDict('hr_payroll_status', 'hr_perf_grade')
 const MONEY_KEYS = ['baseSalary', 'allowance', 'pieceWage', 'commission', 'otherBonus', 'grossPay', 'socialPersonal', 'housingPersonal', 'specialDeduct', 'incomeTax',
@@ -219,7 +226,7 @@ const SUM_KEYS = [...MONEY_KEYS.filter((k) => !['cumTaxable', 'cumTax'].includes
 
 const thisYear = dayjs().year()
 const years = [thisYear, thisYear - 1, thisYear - 2, thisYear - 3, thisYear - 4, thisYear - 5, thisYear - 6, thisYear - 7]
-  .map((y) => ({ value: y, label: `${y} 年` }))
+  .map((y) => ({ value: y, label: t('hr.payroll.yearOption', { year: y }) }))
 const year = ref(thisYear)
 const payrolls = ref([])
 const listLoading = ref(false)
@@ -266,72 +273,72 @@ onMounted(loadList)
 const totals = computed(() => {
   const p = payroll.value
   return [
-    { label: '人数', value: p.headcount },
-    { label: '应发合计', value: formatMoney(p.grossTotal) },
-    { label: '个人社保公积金', value: formatMoney(p.personalTotal) },
-    { label: '个人所得税', value: formatMoney(p.taxTotal) },
-    { label: '实发合计', value: formatMoney(p.netTotal), cls: 'net' },
-    { label: '单位社保公积金', value: formatMoney(p.companyTotal) }
+    { label: t('hr.payroll.tot.headcount'), value: p.headcount },
+    { label: t('hr.payroll.tot.gross'), value: formatMoney(p.grossTotal) },
+    { label: t('hr.payroll.tot.personal'), value: formatMoney(p.personalTotal) },
+    { label: t('hr.payroll.tot.tax'), value: formatMoney(p.taxTotal) },
+    { label: t('hr.payroll.tot.net'), value: formatMoney(p.netTotal), cls: 'net' },
+    { label: t('hr.payroll.tot.company'), value: formatMoney(p.companyTotal) }
   ]
 })
 
 const itemColumns = [
-  { title: '员工', key: 'employee', width: 170, fixed: 'left' },
-  { title: '出勤 / 工作日', key: 'days', width: 110, align: 'right' },
-  { title: '基本工资', key: 'baseSalary', width: 110, align: 'right' },
-  { title: '津贴补贴', key: 'allowance', width: 100, align: 'right' },
-  { title: '加班费', key: 'overtime', width: 110, align: 'right' },
-  { title: '计件工资', key: 'pieceWage', width: 100, align: 'right' },
-  { title: '销售提成', key: 'commission', width: 100, align: 'right' },
-  { title: '绩效奖金', key: 'perf', width: 140, align: 'right' },
-  { title: '其他奖金', key: 'otherBonus', width: 100, align: 'right' },
-  { title: '考勤扣款', key: 'deduct', width: 110, align: 'right' },
-  { title: '应发工资', key: 'grossPay', width: 120, align: 'right' },
-  { title: '个人社保', key: 'socialPersonal', width: 100, align: 'right' },
-  { title: '个人公积金', key: 'housingPersonal', width: 100, align: 'right' },
-  { title: '专项附加扣除', key: 'specialDeduct', width: 110, align: 'right' },
-  { title: '个税', key: 'incomeTax', width: 100, align: 'right' },
-  { title: '其他扣款', key: 'otherDeduct', width: 100, align: 'right' },
-  { title: '实发工资', key: 'netPay', width: 120, align: 'right' },
-  { title: '单位社保', key: 'socialCompany', width: 100, align: 'right' },
-  { title: '单位公积金', key: 'housingCompany', width: 100, align: 'right' },
-  { title: '累计应纳税所得额', key: 'cumTaxable', width: 140, align: 'right' },
-  { title: '累计已扣个税', key: 'cumTax', width: 120, align: 'right' },
-  { title: '备注', dataIndex: 'remark', width: 140, ellipsis: true },
+  { title: t('hr.payroll.col.employee'), key: 'employee', width: 170, fixed: 'left' },
+  { title: t('hr.payroll.col.days'), key: 'days', width: 150, align: 'right' },
+  { title: t('hr.payroll.col.baseSalary'), key: 'baseSalary', width: 110, align: 'right' },
+  { title: t('hr.payroll.col.allowance'), key: 'allowance', width: 110, align: 'right' },
+  { title: t('hr.payroll.col.overtime'), key: 'overtime', width: 120, align: 'right' },
+  { title: t('hr.payroll.col.pieceWage'), key: 'pieceWage', width: 110, align: 'right' },
+  { title: t('hr.payroll.col.commission'), key: 'commission', width: 140, align: 'right' },
+  { title: t('hr.payroll.col.perf'), key: 'perf', width: 160, align: 'right' },
+  { title: t('hr.payroll.otherBonus'), key: 'otherBonus', width: 120, align: 'right' },
+  { title: t('hr.payroll.col.deduct'), key: 'deduct', width: 170, align: 'right' },
+  { title: t('hr.payroll.col.grossPay'), key: 'grossPay', width: 120, align: 'right' },
+  { title: t('hr.payroll.col.socialPersonal'), key: 'socialPersonal', width: 150, align: 'right' },
+  { title: t('hr.payroll.col.housingPersonal'), key: 'housingPersonal', width: 170, align: 'right' },
+  { title: t('hr.payroll.col.specialDeduct'), key: 'specialDeduct', width: 200, align: 'right' },
+  { title: t('hr.payroll.col.incomeTax'), key: 'incomeTax', width: 100, align: 'right' },
+  { title: t('hr.payroll.otherDeduct'), key: 'otherDeduct', width: 140, align: 'right' },
+  { title: t('hr.payroll.col.netPay'), key: 'netPay', width: 120, align: 'right' },
+  { title: t('hr.payroll.col.socialCompany'), key: 'socialCompany', width: 150, align: 'right' },
+  { title: t('hr.payroll.col.housingCompany'), key: 'housingCompany', width: 170, align: 'right' },
+  { title: t('hr.payroll.col.cumTaxable'), key: 'cumTaxable', width: 160, align: 'right' },
+  { title: t('hr.payroll.col.cumTax'), key: 'cumTax', width: 150, align: 'right' },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true },
   { title: '', key: 'action', width: 70, fixed: 'right' }
 ]
-/** 工资条：当前列表（可先按工号或姓名筛选）每人一条 */
+/** 工资条：当前列表（可先按工号或姓名筛选）每人一条；打印字段名是模板匹配用的原始名称，保持中文 */
 function printSlips() {
   const p = payroll.value
   const m = (v) => formatMoney(Number(v || 0))
   printDocs(
     p.items.map((i) => ({
       slip: true,
-      title: `${periodText(p.period)} 工资条`,
+      title: `${periodText(p.period)} 工资条`, // i18n-ignore
       fields: [
-        ['姓名', i.employeeName],
-        ['工号', i.empNo],
-        ['部门', i.deptName],
-        ['出勤 / 工作日', `${Number(i.shouldDays)} / ${Number(i.monthDays)}`],
-        ['基本工资', m(i.baseSalary)],
-        ['津贴补贴', m(i.allowance)],
-        ['加班费', m(i.overtimePay)],
-        ['计件工资', m(i.pieceWage)],
-        ['销售提成', m(i.commission)],
-        ['绩效奖金', m(i.perfBonus)],
-        ['其他奖金', m(i.otherBonus)],
-        ['考勤扣款', m(i.attendanceDeduct)],
-        ['应发工资', m(i.grossPay)],
-        ['个人社保', m(i.socialPersonal)],
-        ['个人公积金', m(i.housingPersonal)],
-        ['专项附加扣除', m(i.specialDeduct)],
-        ['个税', m(i.incomeTax)],
-        ['其他扣款', m(i.otherDeduct)],
-        ['实发工资', m(i.netPay)],
-        ...(i.remark ? [['备注', i.remark, true]] : [])
+        ['姓名', i.employeeName], // i18n-ignore
+        ['工号', i.empNo], // i18n-ignore
+        ['部门', i.deptName], // i18n-ignore
+        ['出勤 / 工作日', `${Number(i.shouldDays)} / ${Number(i.monthDays)}`], // i18n-ignore
+        ['基本工资', m(i.baseSalary)], // i18n-ignore
+        ['津贴补贴', m(i.allowance)], // i18n-ignore
+        ['加班费', m(i.overtimePay)], // i18n-ignore
+        ['计件工资', m(i.pieceWage)], // i18n-ignore
+        ['销售提成', m(i.commission)], // i18n-ignore
+        ['绩效奖金', m(i.perfBonus)], // i18n-ignore
+        ['其他奖金', m(i.otherBonus)], // i18n-ignore
+        ['考勤扣款', m(i.attendanceDeduct)], // i18n-ignore
+        ['应发工资', m(i.grossPay)], // i18n-ignore
+        ['个人社保', m(i.socialPersonal)], // i18n-ignore
+        ['个人公积金', m(i.housingPersonal)], // i18n-ignore
+        ['专项附加扣除', m(i.specialDeduct)], // i18n-ignore
+        ['个税', m(i.incomeTax)], // i18n-ignore
+        ['其他扣款', m(i.otherDeduct)], // i18n-ignore
+        ['实发工资', m(i.netPay)], // i18n-ignore
+        ...(i.remark ? [['备注', i.remark, true]] : []) // i18n-ignore
       ]
     })),
-    `${periodText(p.period)} 工资条`,
+    `${periodText(p.period)} 工资条`, // i18n-ignore
     'hr.payslip'
   )
 }
@@ -352,7 +359,7 @@ async function generate() {
   saving.value = true
   try {
     currentId.value = await generatePayroll(genPeriod.value)
-    message.success('工资表已生成')
+    message.success(t('hr.payroll.generated'))
     generateOpen.value = false
     year.value = Math.floor(genPeriod.value / 100)
     await refresh()
@@ -362,27 +369,27 @@ async function generate() {
 }
 async function regenerate() {
   await generatePayroll(payroll.value.period)
-  message.success('已重新计算')
+  message.success(t('hr.payroll.regenerated'))
   refresh()
 }
 async function confirm() {
   const submitted = await confirmPayroll(payroll.value.id)
-  message.success(submitted ? '已提交审批，审批通过后确认并生成计提凭证' : '已确认，计提凭证已生成')
+  message.success(submitted ? t('hr.payroll.submitted') : t('hr.payroll.confirmed'))
   refresh()
 }
 async function unconfirm() {
   await unconfirmPayroll(payroll.value.id)
-  message.success('已取消确认')
+  message.success(t('hr.payroll.unconfirmed'))
   refresh()
 }
 async function regenerateAccrual() {
   await accruePayroll(payroll.value.id)
-  message.success('计提凭证已生成')
+  message.success(t('hr.payroll.accrued'))
   refresh()
 }
 async function remove() {
   await deletePayroll(payroll.value.id)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   currentId.value = undefined
   refresh()
 }
@@ -400,7 +407,7 @@ async function saveAdjust() {
   saving.value = true
   try {
     await adjustPayrollItem(adjusting.value.id, { ...adjustForm, remark: adjustForm.remark || null })
-    message.success('已调整')
+    message.success(t('hr.payroll.adjusted'))
     adjustOpen.value = false
     refresh()
   } finally {
@@ -421,7 +428,7 @@ async function pay() {
   saving.value = true
   try {
     await payPayroll(payroll.value.id, { ...payForm })
-    message.success('已发放，发放凭证已生成')
+    message.success(t('hr.payroll.paid'))
     payOpen.value = false
     refresh()
   } finally {

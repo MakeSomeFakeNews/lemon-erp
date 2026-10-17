@@ -3,8 +3,8 @@
     :checked="value === 1"
     :loading="loading"
     :disabled="disabled"
-    checked-children="启用"
-    un-checked-children="停用"
+    :checked-children="$t('common.status.enabled')"
+    :un-checked-children="$t('common.status.disabled')"
     @click="toggle"
   />
 </template>
@@ -12,6 +12,7 @@
 <script setup>
 import { ref } from 'vue'
 import { Modal, message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 
 /**
  * 表格内状态开关：切换前确认，调用 api(newStatus) 成功后通知父组件更新
@@ -23,20 +24,21 @@ const props = defineProps({
   disabled: Boolean
 })
 const emit = defineEmits(['changed'])
+const { t } = useI18n()
 const loading = ref(false)
 
 function toggle() {
   const next = props.value === 1 ? 0 : 1
-  const action = next === 1 ? '启用' : '停用'
+  const enable = next === 1
   Modal.confirm({
-    title: `确认${action}`,
-    content: `确定要${action}「${props.name}」吗？`,
+    title: enable ? t('components.status.confirmEnable') : t('components.status.confirmDisable'),
+    content: enable ? t('components.status.enableContent', { name: props.name }) : t('components.status.disableContent', { name: props.name }),
     okType: next === 1 ? 'primary' : 'danger',
     async onOk() {
       loading.value = true
       try {
         await props.api(next)
-        message.success(`已${action}`)
+        message.success(enable ? t('components.status.enabled') : t('components.status.disabled'))
         emit('changed', next)
       } finally {
         loading.value = false

@@ -14,6 +14,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { projectOptions } from '@/api/pm'
+import { t } from '@/locales'
 
 /**
  * 项目下拉：未完成的项目；mine 只列出我参与的项目（填报工时）
@@ -23,7 +24,7 @@ const props = defineProps({
   value: Number,
   mine: Boolean,
   allowClear: { type: Boolean, default: true },
-  placeholder: { type: String, default: '选择项目' }
+  placeholder: { type: String, default: () => t('pm.common.selectProject') }
 })
 const emit = defineEmits(['update:value', 'select'])
 

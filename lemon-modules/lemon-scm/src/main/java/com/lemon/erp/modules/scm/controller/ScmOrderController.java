@@ -59,14 +59,14 @@ public class ScmOrderController {
     /** @return 新订单 ID */
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:' + #kind + ':add')")
-    @OperLog(title = "订单", type = OperType.INSERT)
+    @OperLog(title = "订单", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@PathVariable String kind, @Valid @RequestBody OrderRequest req) {
         return R.ok(orderService.create(OrderKind.ofPath(kind), req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:' + #kind + ':edit')")
-    @OperLog(title = "订单", type = OperType.UPDATE)
+    @OperLog(title = "订单", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable String kind, @PathVariable Long id, @Valid @RequestBody OrderRequest req) {
         orderService.update(OrderKind.ofPath(kind), id, req);
         return R.ok();
@@ -75,14 +75,14 @@ public class ScmOrderController {
     /** @return true 已发起审批流程，false 已直接审核 */
     @PostMapping("/{id}/approve")
     @PreAuthorize("@ss.hasPerm('scm:' + #kind + ':approve')")
-    @OperLog(title = "订单-审核", type = OperType.UPDATE)
+    @OperLog(title = "订单-审核", type = OperType.UPDATE) // i18n-ignore
     public R<Boolean> approve(@PathVariable String kind, @PathVariable Long id) {
         return R.ok(orderService.approve(OrderKind.ofPath(kind), id));
     }
 
     @PostMapping("/{id}/withdraw")
     @PreAuthorize("@ss.hasPerm('scm:' + #kind + ':approve')")
-    @OperLog(title = "订单-撤回审批", type = OperType.UPDATE)
+    @OperLog(title = "订单-撤回审批", type = OperType.UPDATE) // i18n-ignore
     public R<Void> withdraw(@PathVariable String kind, @PathVariable Long id) {
         orderService.withdraw(OrderKind.ofPath(kind), id);
         return R.ok();
@@ -90,7 +90,7 @@ public class ScmOrderController {
 
     @PostMapping("/{id}/unapprove")
     @PreAuthorize("@ss.hasPerm('scm:' + #kind + ':approve')")
-    @OperLog(title = "订单-反审核", type = OperType.UPDATE)
+    @OperLog(title = "订单-反审核", type = OperType.UPDATE) // i18n-ignore
     public R<Void> unapprove(@PathVariable String kind, @PathVariable Long id) {
         orderService.unapprove(OrderKind.ofPath(kind), id);
         return R.ok();
@@ -98,7 +98,7 @@ public class ScmOrderController {
 
     @PostMapping("/{id}/close")
     @PreAuthorize("@ss.hasPerm('scm:' + #kind + ':close')")
-    @OperLog(title = "订单-关闭", type = OperType.UPDATE)
+    @OperLog(title = "订单-关闭", type = OperType.UPDATE) // i18n-ignore
     public R<Void> close(@PathVariable String kind, @PathVariable Long id) {
         orderService.close(OrderKind.ofPath(kind), id);
         return R.ok();
@@ -110,7 +110,7 @@ public class ScmOrderController {
     /** 修改销售订单的业务员 */
     @PutMapping("/{id}/salesman")
     @PreAuthorize("@ss.hasPerm('scm:sales:edit')")
-    @OperLog(title = "订单-业务员", type = OperType.UPDATE)
+    @OperLog(title = "订单-业务员", type = OperType.UPDATE) // i18n-ignore
     public R<Void> changeSalesman(@PathVariable String kind, @PathVariable Long id, @RequestBody SalesmanRequest req) {
         OrderKind.ofPath(kind);
         orderService.changeSalesman(id, req.salesmanId());
@@ -119,7 +119,7 @@ public class ScmOrderController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('scm:' + #kind + ':remove')")
-    @OperLog(title = "订单", type = OperType.DELETE)
+    @OperLog(title = "订单", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable String kind, @PathVariable List<Long> ids) {
         orderService.delete(OrderKind.ofPath(kind), ids);
         return R.ok();
@@ -135,7 +135,7 @@ public class ScmOrderController {
     /** 提交变更单：发布了「订单变更审批」时审批后生效，否则立即生效。返回变更单 ID */
     @PostMapping("/{id}/change")
     @PreAuthorize("@ss.hasPerm('scm:' + #kind + ':change')")
-    @OperLog(title = "订单变更", type = OperType.UPDATE)
+    @OperLog(title = "订单变更", type = OperType.UPDATE) // i18n-ignore
     public R<Long> change(@PathVariable String kind, @PathVariable Long id,
                           @jakarta.validation.Valid @RequestBody com.lemon.erp.modules.scm.dto.OrderChangeRequest req) {
         return R.ok(changeService.create(OrderKind.ofPath(kind), id, req));

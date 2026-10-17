@@ -35,14 +35,14 @@ final class EInvoiceXmlParser {
         }
         String date = text(doc.getDocumentElement(), "IssueTime", "RequestTime");
         if (date == null || date.length() < 10) {
-            throw new BizException("数电票 " + invoiceNo + " 没有开票日期");
+            throw new BizException("数电票 {0} 没有开票日期", invoiceNo);
         }
         BigDecimal net = decimal(text(doc.getDocumentElement(), "TotalAmWithoutTax"));
         BigDecimal tax = decimal(text(doc.getDocumentElement(), "TotalTaxAm"));
         BigDecimal total = decimal(text(doc.getDocumentElement(), "TotalTax-includedAmount"));
         if (total == null) {
             if (net == null) {
-                throw new BizException("数电票 " + invoiceNo + " 没有金额");
+                throw new BizException("数电票 {0} 没有金额", invoiceNo);
             }
             total = net.add(tax == null ? BigDecimal.ZERO : tax);
         }
@@ -51,7 +51,8 @@ final class EInvoiceXmlParser {
         }
         Element typeEl = first(doc.getDocumentElement(), "EInvoiceType");
         String typeName = typeEl == null ? null : text(typeEl, "LabelName");
-        String type = (typeName != null && typeName.contains("普通") ? InvoiceType.E_NORMAL : InvoiceType.E_SPECIAL).name();
+        // 按 XML 中的发票类型名称识别
+        String type = (typeName != null && typeName.contains("普通") ? InvoiceType.E_NORMAL : InvoiceType.E_SPECIAL).name(); // i18n-ignore
         List<InvoiceImport.Line> lines = new ArrayList<>();
         NodeList items = doc.getElementsByTagNameNS("*", "IssuItemInformation");
         if (items.getLength() == 0) {
@@ -88,7 +89,7 @@ final class EInvoiceXmlParser {
             DocumentBuilder builder = f.newDocumentBuilder();
             return builder.parse(new ByteArrayInputStream(content));
         } catch (Exception e) {
-            throw new BizException("XML 文件解析失败：" + e.getMessage());
+            throw new BizException("XML 文件解析失败：{0}", e.getMessage());
         }
     }
 

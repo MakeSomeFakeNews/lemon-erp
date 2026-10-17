@@ -84,7 +84,7 @@ public class WfInstanceService {
         WfModel model = modelService.getStartable(processKey);
         Map<String, Object> vars = variables == null ? Map.of() : variables;
         vars.keySet().stream().filter(FlowVariables::isReserved).findFirst().ifPresent(name -> {
-            throw new BizException("流程变量名「" + name + "」是系统保留字");
+            throw new BizException("流程变量名「{0}」是系统保留字", name);
         });
         return start(model, businessKey, vars);
     }
@@ -97,7 +97,7 @@ public class WfInstanceService {
         return FlowableUserContext.callAs(userId, () -> runtimeService.createProcessInstanceBuilder()
                 .processDefinitionId(model.getDefinitionId())
                 .businessKey(businessKey)
-                .name(userName + "的" + model.getName())
+                .name(userName + "的" + model.getName()) // i18n-ignore 流程实例名称存库
                 .businessStatus(FlowStatus.RUNNING.name())
                 .variables(vars)
                 .start()

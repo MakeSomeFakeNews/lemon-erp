@@ -68,21 +68,21 @@ public class FinFundController {
 
     @PostMapping("/note/receive")
     @PreAuthorize("@ss.hasPerm('fin:note:edit')")
-    @OperLog(title = "票据-收票", type = OperType.INSERT)
+    @OperLog(title = "票据-收票", type = OperType.INSERT) // i18n-ignore
     public R<Long> receive(@Valid @RequestBody NoteRequests.Register req) {
         return R.ok(noteService.receive(req));
     }
 
     @PostMapping("/note/issue")
     @PreAuthorize("@ss.hasPerm('fin:note:edit')")
-    @OperLog(title = "票据-开具应付票据", type = OperType.INSERT)
+    @OperLog(title = "票据-开具应付票据", type = OperType.INSERT) // i18n-ignore
     public R<Long> issue(@Valid @RequestBody NoteRequests.Register req) {
         return R.ok(noteService.issue(req));
     }
 
     @PostMapping("/note/{id}/endorse")
     @PreAuthorize("@ss.hasPerm('fin:note:edit')")
-    @OperLog(title = "票据-背书转让", type = OperType.UPDATE)
+    @OperLog(title = "票据-背书转让", type = OperType.UPDATE) // i18n-ignore
     public R<Void> endorse(@PathVariable Long id, @Valid @RequestBody NoteRequests.Endorse req) {
         noteService.endorse(id, req);
         return R.ok();
@@ -90,7 +90,7 @@ public class FinFundController {
 
     @PostMapping("/note/{id}/discount")
     @PreAuthorize("@ss.hasPerm('fin:note:edit')")
-    @OperLog(title = "票据-贴现", type = OperType.UPDATE)
+    @OperLog(title = "票据-贴现", type = OperType.UPDATE) // i18n-ignore
     public R<Void> discount(@PathVariable Long id, @Valid @RequestBody NoteRequests.Settle req) {
         noteService.discount(id, req);
         return R.ok();
@@ -98,7 +98,7 @@ public class FinFundController {
 
     @PostMapping("/note/{id}/collect")
     @PreAuthorize("@ss.hasPerm('fin:note:edit')")
-    @OperLog(title = "票据-托收", type = OperType.UPDATE)
+    @OperLog(title = "票据-托收", type = OperType.UPDATE) // i18n-ignore
     public R<Void> collect(@PathVariable Long id, @Valid @RequestBody NoteRequests.Settle req) {
         noteService.collect(id, req);
         return R.ok();
@@ -106,7 +106,7 @@ public class FinFundController {
 
     @PostMapping("/note/{id}/dishonor")
     @PreAuthorize("@ss.hasPerm('fin:note:edit')")
-    @OperLog(title = "票据-拒付", type = OperType.UPDATE)
+    @OperLog(title = "票据-拒付", type = OperType.UPDATE) // i18n-ignore
     public R<Void> dishonor(@PathVariable Long id, @Valid @RequestBody NoteRequests.Settle req) {
         noteService.dishonor(id, req);
         return R.ok();
@@ -114,7 +114,7 @@ public class FinFundController {
 
     @PostMapping("/note/{id}/pay")
     @PreAuthorize("@ss.hasPerm('fin:note:edit')")
-    @OperLog(title = "票据-兑付", type = OperType.UPDATE)
+    @OperLog(title = "票据-兑付", type = OperType.UPDATE) // i18n-ignore
     public R<Void> pay(@PathVariable Long id, @Valid @RequestBody NoteRequests.Settle req) {
         noteService.pay(id, req);
         return R.ok();
@@ -123,7 +123,7 @@ public class FinFundController {
     /** 撤销最近一次贴现、托收、拒付、兑付 */
     @PostMapping("/note/{id}/undo")
     @PreAuthorize("@ss.hasPerm('fin:note:edit')")
-    @OperLog(title = "票据-撤销", type = OperType.UPDATE)
+    @OperLog(title = "票据-撤销", type = OperType.UPDATE) // i18n-ignore
     public R<Void> undo(@PathVariable Long id) {
         noteService.undo(id);
         return R.ok();
@@ -131,7 +131,7 @@ public class FinFundController {
 
     @DeleteMapping("/note/{id}")
     @PreAuthorize("@ss.hasPerm('fin:note:edit')")
-    @OperLog(title = "票据", type = OperType.DELETE)
+    @OperLog(title = "票据", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteNote(@PathVariable Long id) {
         noteService.delete(id);
         return R.ok();
@@ -151,14 +151,14 @@ public class FinFundController {
 
     @PostMapping("/fund-transfer")
     @PreAuthorize("@ss.hasPerm('fin:transfer:edit')")
-    @OperLog(title = "账户调拨", type = OperType.INSERT)
+    @OperLog(title = "账户调拨", type = OperType.INSERT) // i18n-ignore
     public R<Long> createTransfer(@Valid @RequestBody FundTransferRequest req) {
         return R.ok(fundService.createTransfer(req));
     }
 
     @DeleteMapping("/fund-transfer/{ids}")
     @PreAuthorize("@ss.hasPerm('fin:transfer:edit')")
-    @OperLog(title = "账户调拨", type = OperType.DELETE)
+    @OperLog(title = "账户调拨", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteTransfers(@PathVariable List<Long> ids) {
         fundService.deleteTransfers(ids);
         return R.ok();
@@ -191,7 +191,7 @@ public class FinFundController {
 
     @PostMapping("/fund-plan/items")
     @PreAuthorize("@ss.hasPerm('fin:fundPlan:edit')")
-    @OperLog(title = "资金计划项", type = OperType.INSERT)
+    @OperLog(title = "资金计划项", type = OperType.INSERT) // i18n-ignore
     public R<Void> createItem(@Validated(Create.class) @RequestBody FinFundPlanItem item) {
         item.setId(null);
         fundService.saveItem(item);
@@ -200,7 +200,7 @@ public class FinFundController {
 
     @PutMapping("/fund-plan/items/{id}")
     @PreAuthorize("@ss.hasPerm('fin:fundPlan:edit')")
-    @OperLog(title = "资金计划项", type = OperType.UPDATE)
+    @OperLog(title = "资金计划项", type = OperType.UPDATE) // i18n-ignore
     public R<Void> updateItem(@PathVariable Long id, @Valid @RequestBody FinFundPlanItem item) {
         item.setId(id);
         fundService.saveItem(item);
@@ -209,7 +209,7 @@ public class FinFundController {
 
     @DeleteMapping("/fund-plan/items/{ids}")
     @PreAuthorize("@ss.hasPerm('fin:fundPlan:edit')")
-    @OperLog(title = "资金计划项", type = OperType.DELETE)
+    @OperLog(title = "资金计划项", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteItems(@PathVariable List<Long> ids) {
         fundService.deleteItems(ids);
         return R.ok();

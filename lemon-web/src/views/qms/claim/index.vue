@@ -2,12 +2,12 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
-        <a-select v-model:value="query.status" placeholder="全部状态" allow-clear :options="toOptions(dict.qms_claim_status)" class="filter" @change="search" />
-        <PartnerSelect v-model:value="query.supplierId" type="supplier" allow-clear placeholder="供应商" class="filter-wide" @update:value="search" />
-        <a-input-search v-model:value="query.keyword" placeholder="索赔单号、供应商" allow-clear class="filter-wide" @search="search" />
+        <a-select v-model:value="query.status" :placeholder="$t('mes.doc.allStatus')" allow-clear :options="toOptions(dict.qms_claim_status)" class="filter" @change="search" />
+        <PartnerSelect v-model:value="query.supplierId" type="supplier" allow-clear :placeholder="$t('mes.mrp.supplier')" class="filter-wide" @update:value="search" />
+        <a-input-search v-model:value="query.keyword" :placeholder="$t('qms.claim.keywordPh')" allow-clear class="filter-wide" @search="search" />
         <template #extra>
           <a-button v-perm="'qms:claim:add'" type="primary" @click="drawer.openCreate()">
-            <template #icon><PlusOutlined /></template>新增索赔
+            <template #icon><PlusOutlined /></template>{{ $t('qms.claim.add') }}
           </a-button>
         </template>
       </TableToolbar>
@@ -25,31 +25,31 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'claimNo'">
             {{ record.claimNo }}
-            <div v-if="record.ncrNo" class="sub-text">不合格品 {{ record.ncrNo }}</div>
+            <div v-if="record.ncrNo" class="sub-text">{{ $t('qms.claim.ncrNo', { no: record.ncrNo }) }}</div>
           </template>
           <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}</template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="qms_claim_status" :value="record.status" />
-            <div v-if="record.billNo" class="sub-text">应付单 {{ record.billNo }}</div>
+            <div v-if="record.billNo" class="sub-text">{{ $t('qms.claim.billNo', { no: record.billNo }) }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <template v-if="record.status === 'DRAFT'">
-                <a-button v-perm="'qms:claim:add'" type="link" size="small" @click="drawer.openEdit(record)">编辑</a-button>
+                <a-button v-perm="'qms:claim:add'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
                 <span v-perm="'qms:claim:confirm'">
-                  <a-popconfirm title="确认索赔？将生成红字应付单冲减该供应商的应付款" @confirm="confirm(record.id)">
-                    <a-button type="link" size="small">确认</a-button>
+                  <a-popconfirm :title="$t('qms.claim.confirmConfirm')" @confirm="confirm(record.id)">
+                    <a-button type="link" size="small">{{ $t('mes.plan.confirm') }}</a-button>
                   </a-popconfirm>
                 </span>
                 <span v-perm="'qms:claim:remove'">
-                  <a-popconfirm title="删除该索赔单？" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small">删除</a-button>
+                  <a-popconfirm :title="$t('qms.claim.deleteConfirm')" @confirm="remove(record.id)">
+                    <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
                   </a-popconfirm>
                 </span>
               </template>
               <span v-else-if="record.status === 'CONFIRMED'" v-perm="'qms:claim:confirm'">
-                <a-popconfirm title="取消索赔？红字应付单一并删除（已核销或已生成凭证的不能取消）" @confirm="cancel(record.id)">
-                  <a-button type="link" danger size="small">取消</a-button>
+                <a-popconfirm :title="$t('qms.claim.cancelConfirm')" @confirm="cancel(record.id)">
+                  <a-button type="link" danger size="small">{{ $t('common.action.cancel') }}</a-button>
                 </a-popconfirm>
               </span>
             </span>
@@ -58,20 +58,20 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增供应商索赔" edit-title="编辑供应商索赔">
-      <a-alert type="info" show-icon class="block" message="确认后生成红字应付单冲减应付款，财务可生成凭证：借 应付账款，贷 营业外收入。" />
+    <FormDrawer :drawer="drawer" :create-title="$t('qms.claim.addTitle')" :edit-title="$t('qms.claim.editTitle')">
+      <a-alert type="info" show-icon class="block" :message="$t('qms.claim.tip')" />
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-form-item label="供应商" name="supplierId">
+        <a-form-item :label="$t('mes.mrp.supplier')" name="supplierId">
           <PartnerSelect v-model:value="form.supplierId" type="supplier" :label="form.supplierName" />
         </a-form-item>
-        <a-form-item label="关联不合格品处理单" name="ncrId">
+        <a-form-item :label="$t('qms.claim.ncr')" name="ncrId">
           <a-select
             v-model:value="form.ncrId"
             show-search
             allow-clear
             :filter-option="false"
             :options="ncrOptions"
-            placeholder="选填，搜索处理单号、供应商"
+            :placeholder="$t('qms.claim.ncrPh')"
             @search="searchNcr"
             @focus="searchNcr('')"
             @change="onNcrChange"
@@ -79,18 +79,18 @@
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="索赔日期" name="claimDate">
+            <a-form-item :label="$t('qms.claim.claimDate')" name="claimDate">
               <a-date-picker v-model:value="form.claimDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="索赔金额" name="amount">
+            <a-form-item :label="$t('qms.claim.amount')" name="amount">
               <a-input-number v-model:value="form.amount" :min="0.01" :precision="2" prefix="¥" class="full" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="索赔原因" name="reason">
-          <a-textarea v-model:value="form.reason" :rows="3" :maxlength="500" placeholder="如：来料尺寸超差报废，按合同索赔材料费与停线损失" />
+        <a-form-item :label="$t('qms.claim.reason')" name="reason">
+          <a-textarea v-model:value="form.reason" :rows="3" :maxlength="500" :placeholder="$t('qms.claim.reasonPh')" />
         </a-form-item>
       </a-form>
     </FormDrawer>
@@ -101,6 +101,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -117,26 +118,27 @@ import { toOptions } from '@/utils/dict'
 
 /** 供应商质量索赔：确认后冲减应付 */
 const dict = useDict('qms_claim_status')
+const { t } = useI18n()
 const route = useRoute()
 
 const columns = [
-  { title: '索赔单号', key: 'claimNo', width: 190 },
-  { title: '供应商', dataIndex: 'supplierName', width: 180, ellipsis: true },
-  { title: '索赔日期', dataIndex: 'claimDate', width: 110 },
-  { title: '索赔金额', key: 'amount', width: 130, align: 'right' },
-  { title: '索赔原因', dataIndex: 'reason', width: 220, ellipsis: true },
-  { title: '状态 / 冲减应付', key: 'status', width: 150 },
-  { title: '操作', key: 'action', width: 170, fixed: 'right' }
+  { title: t('qms.claim.claimNo'), key: 'claimNo', width: 190 },
+  { title: t('mes.mrp.supplier'), dataIndex: 'supplierName', width: 180, ellipsis: true },
+  { title: t('qms.claim.claimDate'), dataIndex: 'claimDate', width: 110 },
+  { title: t('qms.claim.amount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('qms.claim.reason'), dataIndex: 'reason', width: 220, ellipsis: true },
+  { title: t('qms.claim.statusOffset'), key: 'status', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'qms-claim')
 const query = reactive({ status: undefined, supplierId: undefined, keyword: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageClaim, query)
 
 const rules = {
-  supplierId: [{ required: true, message: '请选择供应商' }],
-  claimDate: [{ required: true, message: '请选择索赔日期' }],
-  amount: [{ required: true, message: '请填写索赔金额' }],
-  reason: [{ required: true, whitespace: true, message: '请填写索赔原因' }]
+  supplierId: [{ required: true, message: t('qms.claim.supplierRequired') }],
+  claimDate: [{ required: true, message: t('qms.claim.claimDateRequired') }],
+  amount: [{ required: true, message: t('qms.claim.amountRequired') }],
+  reason: [{ required: true, whitespace: true, message: t('qms.claim.reasonRequired') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, supplierId: undefined, ncrId: undefined, claimDate: today(), amount: undefined, reason: '' }),
@@ -183,17 +185,17 @@ onMounted(async () => {
 
 async function confirm(id) {
   await confirmClaim(id)
-  message.success('已确认，已生成红字应付单')
+  message.success(t('qms.claim.confirmed'))
   load()
 }
 async function cancel(id) {
   await cancelClaim(id)
-  message.success('已取消')
+  message.success(t('mes.ecn.cancelled'))
   load()
 }
 async function remove(id) {
   await deleteClaim(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 </script>

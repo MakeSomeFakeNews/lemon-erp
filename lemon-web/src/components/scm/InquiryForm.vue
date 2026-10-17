@@ -1,28 +1,28 @@
 <template>
-  <FormDrawer page :drawer="drawer" create-title="新增询价单" edit-title="编辑询价单" width="min(1000px, 100vw)">
+  <FormDrawer page :drawer="drawer" :create-title="$t('scm.inquiry.createTitle')" :edit-title="$t('scm.inquiry.editTitle')" width="min(1000px, 100vw)">
     <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="24" :sm="12" :lg="6">
-          <a-form-item label="询价日期" name="inquiryDate">
+          <a-form-item :label="$t('scm.inquiry.inquiryDate')" name="inquiryDate">
             <a-date-picker v-model:value="form.inquiryDate" value-format="YYYY-MM-DD" class="full" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="6">
-          <a-form-item label="报价截止" name="deadline">
-            <a-date-picker v-model:value="form.deadline" value-format="YYYY-MM-DD" placeholder="选填" class="full" />
+          <a-form-item :label="$t('scm.inquiry.deadline')" name="deadline">
+            <a-date-picker v-model:value="form.deadline" value-format="YYYY-MM-DD" :placeholder="$t('scm.inquiry.optional')" class="full" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :lg="12">
-          <a-form-item label="说明" name="remark">
-            <a-input v-model:value="form.remark" :maxlength="255" placeholder="选填" />
+          <a-form-item :label="$t('scm.inquiry.remark')" name="remark">
+            <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('scm.inquiry.optional')" />
           </a-form-item>
         </a-col>
       </a-row>
 
       <div class="items-head">
-        <span class="section-title">询价物料（{{ form.items.length }} 行）</span>
+        <span class="section-title">{{ $t('scm.inquiry.itemsTitle', { n: form.items.length }) }}</span>
         <a-button type="primary" ghost @click="addRow">
-          <template #icon><PlusOutlined /></template>添加物料
+          <template #icon><PlusOutlined /></template>{{ $t('scm.inquiry.addMaterial') }}
         </a-button>
       </div>
 
@@ -34,21 +34,21 @@
         :data-source="form.items"
         :pagination="false"
         :scroll="{ x: 800 }"
-        :locale="{ emptyText: '点击「添加物料」录入明细' }"
+        :locale="{ emptyText: $t('scm.inquiry.emptyItems') }"
       >
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
-            <a-form-item :name="['items', index, 'materialId']" :rules="requiredRule('请选择物料')" class="cell-item">
+            <a-form-item :name="['items', index, 'materialId']" :rules="requiredRule($t('scm.inquiry.selectMaterial'))" class="cell-item">
               <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
             </a-form-item>
           </template>
           <template v-else-if="column.key === 'qty'">
-            <a-form-item :name="['items', index, 'qty']" :rules="requiredRule('请填写数量')" class="cell-item">
+            <a-form-item :name="['items', index, 'qty']" :rules="requiredRule($t('scm.inquiry.inputQty'))" class="cell-item">
               <a-input-number v-model:value="record.qty" :min="0" :precision="4" :addon-after="record.unit || undefined" class="full" />
             </a-form-item>
           </template>
           <template v-else-if="column.key === 'requiredDate'">
-            <a-date-picker v-model:value="record.requiredDate" value-format="YYYY-MM-DD" placeholder="需求日期" class="full" />
+            <a-date-picker v-model:value="record.requiredDate" value-format="YYYY-MM-DD" :placeholder="$t('scm.inquiry.requiredDate')" class="full" />
           </template>
           <template v-else-if="column.key === 'remark'">
             <a-input v-model:value="record.remark" :maxlength="255" />
@@ -65,12 +65,15 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { addInquiry, getInquiry, updateInquiry } from '@/api/scm/sourcing'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { rowKey, today } from '@/components/wms/wms'
+
+const { t } = useI18n()
 
 /**
  * 新增 / 编辑询价单（还没有报价时可以修改）
@@ -79,15 +82,15 @@ import { rowKey, today } from '@/components/wms/wms'
 const emit = defineEmits(['success'])
 
 const columns = [
-  { title: '物料', key: 'material', width: 280 },
-  { title: '数量', key: 'qty', width: 150 },
-  { title: '需求日期', key: 'requiredDate', width: 140 },
-  { title: '备注', key: 'remark', width: 160 },
+  { title: t('scm.inquiry.material'), key: 'material', width: 280 },
+  { title: t('common.field.quantity'), key: 'qty', width: 150 },
+  { title: t('scm.inquiry.requiredDate'), key: 'requiredDate', width: 140 },
+  { title: t('common.field.remark'), key: 'remark', width: 160 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
-const rules = { inquiryDate: requiredRule('请选择询价日期') }
+const rules = { inquiryDate: requiredRule(t('scm.inquiry.selectInquiryDate')) }
 
 const emptyForm = () => ({ id: undefined, inquiryDate: today(), deadline: undefined, remark: '', items: [] })
 

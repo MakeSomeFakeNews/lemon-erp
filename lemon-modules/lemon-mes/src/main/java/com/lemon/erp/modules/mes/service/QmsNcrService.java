@@ -3,6 +3,7 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -99,10 +100,10 @@ public class QmsNcrService {
         ncr.setWoId(i.getWoId());
         ncr.setSourceNo(i.getSourceNo());
         ncr.setDefectType(i.getDefectType());
-        ncr.setDescription(StringUtils.hasText(i.getDefectDesc()) ? i.getDefectDesc() : "检验单 " + i.getInspNo() + " 判定不合格");
+        ncr.setDescription(StringUtils.hasText(i.getDefectDesc()) ? i.getDefectDesc() : "检验单 " + i.getInspNo() + " 判定不合格"); // i18n-ignore
         ncrMapper.insert(ncr);
-        messageSender.sendToPermission("qms:ncr:edit", MessageSender.Message.of("ALERT", "待评审的不合格品：" + ncr.getNcrNo(),
-                "检验单 " + i.getInspNo() + " 不合格，请评审处置", "/qms/ncr"));
+        messageSender.sendToPermission("qms:ncr:edit", MessageSender.Message.of("ALERT", "待评审的不合格品：" + ncr.getNcrNo(), // i18n-ignore
+                "检验单 " + i.getInspNo() + " 不合格，请评审处置", "/qms/ncr")); // i18n-ignore
         return ncr.getId();
     }
 
@@ -115,7 +116,7 @@ public class QmsNcrService {
         if (StringUtils.hasText(req.woNo())) {
             MesWorkOrder wo = workOrderMapper.selectOne(Wrappers.<MesWorkOrder>lambdaQuery().eq(MesWorkOrder::getWoNo, req.woNo().trim()));
             if (wo == null) {
-                throw new BizException("生产工单 " + req.woNo() + " 不存在");
+                throw new BizException("生产工单 {0} 不存在", req.woNo());
             }
             ncr.setWoId(wo.getId());
             ncr.setSourceNo(wo.getWoNo());
@@ -228,18 +229,18 @@ public class QmsNcrService {
     /** 执行处置并标记已处置 */
     private void execute(QmsNcr ncr, Long reworkWarehouseId, NcrStatus from) {
         String note = switch (ncr.getDisposition()) {
-            case CONCESSION -> incoming(ncr) ? releaseIncoming(ncr, "让步接收") : "让步接收";
-            case SCRAP -> incoming(ncr) ? scrapIncoming(ncr) : "已判定报废";
+            case CONCESSION -> incoming(ncr) ? releaseIncoming(ncr, "让步接收") : "让步接收"; // i18n-ignore
+            case SCRAP -> incoming(ncr) ? scrapIncoming(ncr) : "已判定报废"; // i18n-ignore
             case REWORK -> rework(ncr, reworkWarehouseId);
             case RETURN -> {
                 WmsMaterial m = materialService.get(ncr.getMaterialId());
                 messageSender.sendToPermission("scm:purchaseReturn:add", MessageSender.Message.of("ALERT",
-                        "不合格品退货：" + m.getCode() + " " + m.getName(),
-                        "采购入库单 " + ncr.getSourceNo() + " 的 " + m.getName() + " 评审为退货（" + ncr.getNcrNo() + "），请办理采购退货",
+                        "不合格品退货：" + m.getCode() + " " + m.getName(), // i18n-ignore
+                        "采购入库单 " + ncr.getSourceNo() + " 的 " + m.getName() + " 评审为退货（" + ncr.getNcrNo() + "），请办理采购退货", // i18n-ignore
                         "/scm/purchase-return"));
-                yield "冻结库存保持冻结，已通知采购办理退货";
+                yield "冻结库存保持冻结，已通知采购办理退货"; // i18n-ignore
             }
-            case SORT -> "挑选处理";
+            case SORT -> "挑选处理"; // i18n-ignore
         };
         if (ncrMapper.update(Wrappers.<QmsNcr>lambdaUpdate()
                 .set(QmsNcr::getStatus, NcrStatus.DONE)
@@ -254,19 +255,19 @@ public class QmsNcrService {
     private String releaseIncoming(QmsNcr ncr, String action) {
         List<WmsStockHold> holds = holdService.releaseBySource(ncr.getSourceNo(), ncr.getMaterialId(), ncr.getBatchNo(),
                 action + " " + ncr.getNcrNo());
-        return holds.isEmpty() ? action + "（没有冻结库存）" : action + "，已放行冻结库存 " + holds.size() + " 条";
+        return holds.isEmpty() ? action + "（没有冻结库存）" : action + "，已放行冻结库存 " + holds.size() + " 条"; // i18n-ignore
     }
 
     /** 来料报废：放行冻结库存后生成报废出库单草稿（序列号物料需在出库单中补填序列号） */
     private String scrapIncoming(QmsNcr ncr) {
         List<WmsStockHold> holds = holdService.releaseBySource(ncr.getSourceNo(), ncr.getMaterialId(), ncr.getBatchNo(),
-                "报废 " + ncr.getNcrNo());
+                "报废 " + ncr.getNcrNo()); // i18n-ignore
         if (holds.isEmpty()) {
-            return "报废（没有冻结库存）";
+            return "报废（没有冻结库存）"; // i18n-ignore
         }
         WmsMaterial m = materialService.get(ncr.getMaterialId());
         if (m.isSerialManaged()) {
-            return "已放行冻结库存，序列号物料请手工办理报废出库";
+            return "已放行冻结库存，序列号物料请手工办理报废出库"; // i18n-ignore
         }
         Map<Long, List<WmsStockHold>> byWarehouse = holds.stream().collect(Collectors.groupingBy(WmsStockHold::getWarehouseId));
         StringBuilder docs = new StringBuilder();
@@ -276,11 +277,11 @@ public class QmsNcrService {
                             h.getHoldQty(), null, ncr.getNcrNo()))
                     .toList();
             Long docId = stockDocService.create(StockBizType.OUT, new StockDocRequest("SCRAP", e.getKey(), null, LocalDate.now(),
-                    "不合格品报废 " + ncr.getNcrNo(), items));
+                    "不合格品报废 " + ncr.getNcrNo(), items)); // i18n-ignore
             WmsStockDoc doc = stockDocService.detail(StockBizType.OUT, docId);
             docs.append(docs.isEmpty() ? "" : "、").append(doc.getDocNo());
         }
-        return "已放行冻结库存，报废出库单 " + docs + "（草稿，请仓库确认）";
+        return "已放行冻结库存，报废出库单 " + docs + "（草稿，请仓库确认）"; // i18n-ignore
     }
 
     private String rework(QmsNcr ncr, Long warehouseId) {
@@ -288,9 +289,9 @@ public class QmsNcrService {
             throw new BizException("审批通过但未指定返工入库仓库，请重新评审");
         }
         Long woId = workOrderService.createRework(new WorkOrderRequest(ncr.getMaterialId(), null, ncr.getQty(), LocalDate.now(),
-                null, warehouseId, "不合格品返工 " + ncr.getNcrNo()), ncr.getWoId());
+                null, warehouseId, "不合格品返工 " + ncr.getNcrNo()), ncr.getWoId()); // i18n-ignore
         ncr.setReworkWoId(woId);
-        return "已生成返工工单（草稿）";
+        return "已生成返工工单（草稿）"; // i18n-ignore
     }
 
     private void transit(Long id, NcrStatus from, NcrStatus to) {
@@ -302,7 +303,7 @@ public class QmsNcrService {
     private QmsNcr requireStatus(Long id, NcrStatus status, String action) {
         QmsNcr ncr = detail(id);
         if (ncr.getStatus() != status) {
-            throw new BizException("处理单当前状态不能" + action);
+            throw new BizException("处理单当前状态不能{0}", I18n.t(action));
         }
         return ncr;
     }

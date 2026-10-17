@@ -3,6 +3,7 @@ package com.lemon.erp.modules.system.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.job.JobHandler;
 import com.lemon.erp.framework.job.JobParams;
@@ -95,8 +96,11 @@ public class SysJobService {
 
     public List<SysJob> list() {
         Set<String> keys = handlers().keySet();
+        // 任务名称由各模块登记，按请求语言翻译
         return jobMapper.selectList(Wrappers.<SysJob>lambdaQuery().orderByAsc(SysJob::getJobKey)).stream()
-                .filter(j -> keys.contains(j.getJobKey())).toList();
+                .filter(j -> keys.contains(j.getJobKey()))
+                .peek(j -> j.setName(I18n.t(j.getName())))
+                .toList();
     }
 
     public void update(Long id, JobRequest req) {
@@ -161,10 +165,10 @@ public class SysJobService {
     private SysJobLog execute(SysJob job, String trigger, Long userId) {
         JobHandler handler = handlers().get(job.getJobKey());
         if (handler == null) {
-            throw new BizException("任务「" + job.getName() + "」已不存在");
+            throw new BizException("任务「{0}」已不存在", I18n.t(job.getName()));
         }
         if (!running.add(job.getJobKey())) {
-            throw new BizException("任务「" + job.getName() + "」正在运行");
+            throw new BizException("任务「{0}」正在运行", I18n.t(job.getName()));
         }
         SysJobLog entry = new SysJobLog();
         entry.setJobKey(job.getJobKey());
@@ -208,7 +212,7 @@ public class SysJobService {
             } catch (RuntimeException e) {
                 log.warn("定时任务 {} 在租户 {} 执行失败", handler.key(), tenant.getId(), e);
                 failed = true;
-                messages.add(tenant.getName() + "：失败 " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+                messages.add(tenant.getName() + "：失败 " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage())); // i18n-ignore 存入执行日志
             }
         }
         return new TenantRun(failed, String.join("；", messages));

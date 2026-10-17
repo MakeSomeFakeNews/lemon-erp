@@ -2,11 +2,11 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
-        <a-select v-model:value="query.status" placeholder="全部状态" allow-clear :options="toOptions(dict.qms_ncr_status)" class="filter" @change="search" />
-        <a-input-search v-model:value="query.keyword" placeholder="单号、来源单号、物料、供应商" allow-clear class="filter-wide" @search="search" />
+        <a-select v-model:value="query.status" :placeholder="$t('mes.doc.allStatus')" allow-clear :options="toOptions(dict.qms_ncr_status)" class="filter" @change="search" />
+        <a-input-search v-model:value="query.keyword" :placeholder="$t('qms.ncr.keywordPh')" allow-clear class="filter-wide" @search="search" />
         <template #extra>
           <a-button v-perm="'qms:ncr:add'" type="primary" @click="drawer.openCreate()">
-            <template #icon><PlusOutlined /></template>登记不合格
+            <template #icon><PlusOutlined /></template>{{ $t('qms.ncr.add') }}
           </a-button>
         </template>
       </TableToolbar>
@@ -28,11 +28,11 @@
           </template>
           <template v-else-if="column.key === 'source'">
             <div>{{ record.sourceNo || '-' }}</div>
-            <div class="sub-text">{{ record.supplierName || (record.woNo ? '工单 ' + record.woNo : '') }}</div>
+            <div class="sub-text">{{ record.supplierName || (record.woNo ? $t('mes.wo.detailTitle', { no: record.woNo }) : '') }}</div>
           </template>
           <template v-else-if="column.key === 'material'">
             <div>{{ record.materialCode }} {{ record.materialName }}</div>
-            <div class="sub-text">{{ formatQty(record.qty) }} {{ record.unit }}{{ record.batchNo ? ' · 批次 ' + record.batchNo : '' }}</div>
+            <div class="sub-text">{{ formatQty(record.qty) }} {{ record.unit }}{{ record.batchNo ? ' · ' + $t('mes.inspection.batchNo', { no: record.batchNo }) : '' }}</div>
           </template>
           <template v-else-if="column.key === 'description'">
             <DictTag v-if="record.defectType" type="mes_defect_type" :value="record.defectType" />
@@ -43,13 +43,13 @@
               <DictTag type="qms_disposition" :value="record.disposition" />
               <div class="sub-text"><DictTag type="qms_responsibility" :value="record.responsibility" /></div>
             </template>
-            <span v-else class="sub-text">待评审</span>
+            <span v-else class="sub-text">{{ $t('qms.ncr.pendingReview') }}</span>
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="qms_ncr_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record.id)">查看</a-button>
-              <a-button v-if="record.status === 'OPEN'" v-perm="'qms:ncr:edit'" type="link" size="small" @click="openReview(record)">评审处置</a-button>
+              <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
+              <a-button v-if="record.status === 'OPEN'" v-perm="'qms:ncr:edit'" type="link" size="small" @click="openReview(record)">{{ $t('qms.ncr.review') }}</a-button>
             </span>
           </template>
         </template>
@@ -57,117 +57,117 @@
     </a-card>
 
     <!-- 手工登记 -->
-    <FormDrawer :drawer="drawer" create-title="登记不合格品" edit-title="登记不合格品">
+    <FormDrawer :drawer="drawer" :create-title="$t('qms.ncr.addTitle')" :edit-title="$t('qms.ncr.addTitle')">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-form-item label="来源" name="source">
+        <a-form-item :label="$t('qms.capa.source')" name="source">
           <a-radio-group v-model:value="form.source" :options="sourceOptions" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="16">
-            <a-form-item label="物料" name="materialId">
+            <a-form-item :label="$t('mes.wo.material')" name="materialId">
               <MaterialSelect v-model:value="form.materialId" />
             </a-form-item>
           </a-col>
           <a-col :span="8">
-            <a-form-item label="数量" name="qty">
+            <a-form-item :label="$t('common.field.quantity')" name="qty">
               <a-input-number v-model:value="form.qty" :min="0" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="生产工单号" name="woNo" extra="返工处置需要关联工单">
+            <a-form-item :label="$t('mes.inspection.woNo')" name="woNo" :extra="$t('qms.ncr.woExtra')">
               <a-input v-model:value="form.woNo" :maxlength="32" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="批次号" name="batchNo">
+            <a-form-item :label="$t('mes.woDocForm.batchNo')" name="batchNo">
               <a-input v-model:value="form.batchNo" :maxlength="64" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="供应商" name="supplierId" extra="供应商原因时填写，便于索赔">
+            <a-form-item :label="$t('mes.mrp.supplier')" name="supplierId" :extra="$t('qms.ncr.supplierExtra')">
               <PartnerSelect v-model:value="form.supplierId" type="supplier" allow-clear />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="不良类型" name="defectType">
+            <a-form-item :label="$t('qms.ncr.defectType')" name="defectType">
               <a-select v-model:value="form.defectType" allow-clear :options="toOptions(dict.mes_defect_type)" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="不合格描述" name="description">
+        <a-form-item :label="$t('qms.ncr.description')" name="description">
           <a-textarea v-model:value="form.description" :rows="3" :maxlength="500" show-count />
         </a-form-item>
       </a-form>
     </FormDrawer>
 
     <!-- 评审处置 -->
-    <a-modal v-model:open="reviewOpen" :title="`评审处置 - ${current?.ncrNo || ''}`" :confirm-loading="saving" width="560px" @ok="submitReview">
-      <a-alert type="info" show-icon class="block" :message="DISPOSITION_TIPS[review.disposition] || '选择处置方式，启用「不合格品处置审批」时审批通过后执行'" />
+    <a-modal v-model:open="reviewOpen" :title="$t('qms.ncr.reviewTitle', { no: current?.ncrNo || '' })" :confirm-loading="saving" width="600px" @ok="submitReview">
+      <a-alert type="info" show-icon class="block" :message="DISPOSITION_TIPS[review.disposition] || $t('qms.ncr.reviewTip')" />
       <a-form layout="vertical">
-        <a-form-item label="处置方式" required>
+        <a-form-item :label="$t('qms.ncr.disposition')" required>
           <a-radio-group v-model:value="review.disposition">
             <a-radio-button v-for="d in dispositionOptions" :key="d.value" :value="d.value" :disabled="d.disabled">{{ d.label }}</a-radio-button>
           </a-radio-group>
         </a-form-item>
-        <a-form-item v-if="review.disposition === 'REWORK'" label="返工完工入库仓库" required>
+        <a-form-item v-if="review.disposition === 'REWORK'" :label="$t('qms.ncr.reworkWarehouse')" required>
           <WarehouseSelect v-model:value="review.reworkWarehouseId" />
         </a-form-item>
-        <a-form-item label="责任方" required>
+        <a-form-item :label="$t('qms.ncr.responsibility')" required>
           <a-radio-group v-model:value="review.responsibility" :options="toOptions(dict.qms_responsibility)" />
         </a-form-item>
-        <a-form-item label="评审意见">
+        <a-form-item :label="$t('qms.ncr.opinion')">
           <a-textarea v-model:value="review.reviewOpinion" :rows="3" :maxlength="500" />
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- 详情 -->
-    <SubPage :open="detailOpen" :title="detail ? `不合格品处理 ${detail.ncrNo}` : ''" width="min(900px, 100vw)" @close="detailOpen = false">
+    <SubPage :open="detailOpen" :title="detail ? $t('qms.ncr.detailTitle', { no: detail.ncrNo }) : ''" width="min(900px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <a-space>
-          <a-button v-if="detail.flowInstanceId" @click="flowOpen = true">审批记录</a-button>
-          <a-button v-if="detail.status === 'DONE'" v-perm="'qms:capa:add'" @click="router.push({ path: '/qms/capa', query: { ncrId: detail.id } })">发起 8D</a-button>
+          <a-button v-if="detail.flowInstanceId" @click="flowOpen = true">{{ $t('mes.ecn.flowRecord') }}</a-button>
+          <a-button v-if="detail.status === 'DONE'" v-perm="'qms:capa:add'" @click="router.push({ path: '/qms/capa', query: { ncrId: detail.id } })">{{ $t('qms.ncr.start8d') }}</a-button>
           <a-button v-if="detail.status === 'DONE' && detail.supplierId" v-perm="'qms:claim:add'" @click="router.push({ path: '/qms/claim', query: { ncrId: detail.id } })">
-            供应商索赔
+            {{ $t('qms.ncr.claim') }}
           </a-button>
           <template v-if="detail.status === 'OPEN'">
-            <a-button v-perm="'qms:ncr:edit'" type="primary" @click="openReview(detail)">评审处置</a-button>
+            <a-button v-perm="'qms:ncr:edit'" type="primary" @click="openReview(detail)">{{ $t('qms.ncr.review') }}</a-button>
             <span v-perm="'qms:ncr:edit'">
-              <a-popconfirm v-if="detail.source === 'INSPECTION'" title="取消该处理单？检验误判时使用" @confirm="cancel">
-                <a-button>取消</a-button>
+              <a-popconfirm v-if="detail.source === 'INSPECTION'" :title="$t('qms.ncr.cancelConfirm')" @confirm="cancel">
+                <a-button>{{ $t('common.action.cancel') }}</a-button>
               </a-popconfirm>
             </span>
           </template>
           <span v-if="detail.source !== 'INSPECTION' && ['OPEN', 'CANCELLED'].includes(detail.status)" v-perm="'qms:ncr:remove'">
-            <a-popconfirm title="删除该处理单？" @confirm="remove">
-              <a-button danger>删除</a-button>
+            <a-popconfirm :title="$t('qms.ncr.deleteConfirm')" @confirm="remove">
+              <a-button danger>{{ $t('common.action.delete') }}</a-button>
             </a-popconfirm>
           </span>
         </a-space>
       </template>
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2 }" size="small" bordered class="block">
-          <a-descriptions-item label="来源"><DictTag type="qms_ncr_source" :value="detail.source" /> {{ detail.inspNo ? '检验单 ' + detail.inspNo : '' }}</a-descriptions-item>
-          <a-descriptions-item label="状态"><DictTag type="qms_ncr_status" :value="detail.status" /></a-descriptions-item>
-          <a-descriptions-item label="物料">{{ detail.materialCode }} {{ detail.materialName }} {{ detail.spec || '' }}</a-descriptions-item>
-          <a-descriptions-item label="数量">{{ formatQty(detail.qty) }} {{ detail.unit }}{{ detail.batchNo ? ' · 批次 ' + detail.batchNo : '' }}</a-descriptions-item>
-          <a-descriptions-item label="来源单据">{{ detail.sourceNo || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="供应商 / 工单">{{ detail.supplierName || detail.woNo || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="不合格描述" :span="2">
+          <a-descriptions-item :label="$t('qms.capa.source')"><DictTag type="qms_ncr_source" :value="detail.source" /> {{ detail.inspNo ? $t('mes.inspection.detailTitle', { no: detail.inspNo }) : '' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.status')"><DictTag type="qms_ncr_status" :value="detail.status" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('mes.wo.material')">{{ detail.materialCode }} {{ detail.materialName }} {{ detail.spec || '' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.quantity')">{{ formatQty(detail.qty) }} {{ detail.unit }}{{ detail.batchNo ? ' · ' + $t('mes.inspection.batchNo', { no: detail.batchNo }) : '' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('qms.ncr.sourceDoc')">{{ detail.sourceNo || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('qms.ncr.supplierWo')">{{ detail.supplierName || detail.woNo || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('qms.ncr.description')" :span="2">
             <DictTag v-if="detail.defectType" type="mes_defect_type" :value="detail.defectType" /> {{ detail.description }}
           </a-descriptions-item>
-          <a-descriptions-item label="登记">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item label="处置完成">{{ detail.doneTime || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('qms.capa.registered')">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('qms.ncr.doneTime')">{{ detail.doneTime || '-' }}</a-descriptions-item>
         </a-descriptions>
         <template v-if="detail.disposition">
-          <div class="section-title">评审处置</div>
+          <div class="section-title">{{ $t('qms.ncr.review') }}</div>
           <a-descriptions :column="{ xs: 1, sm: 2 }" size="small" bordered>
-            <a-descriptions-item label="处置方式"><DictTag type="qms_disposition" :value="detail.disposition" /></a-descriptions-item>
-            <a-descriptions-item label="责任方"><DictTag type="qms_responsibility" :value="detail.responsibility" /></a-descriptions-item>
-            <a-descriptions-item label="评审意见" :span="2">{{ detail.reviewOpinion || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="处置结果" :span="2">
-              {{ detail.resultNote || (detail.status === 'APPROVING' ? '审批中，通过后执行' : '-') }}
-              <span v-if="detail.reworkWoNo">（返工工单 {{ detail.reworkWoNo }}）</span>
+            <a-descriptions-item :label="$t('qms.ncr.disposition')"><DictTag type="qms_disposition" :value="detail.disposition" /></a-descriptions-item>
+            <a-descriptions-item :label="$t('qms.ncr.responsibility')"><DictTag type="qms_responsibility" :value="detail.responsibility" /></a-descriptions-item>
+            <a-descriptions-item :label="$t('qms.ncr.opinion')" :span="2">{{ detail.reviewOpinion || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('qms.ncr.result')" :span="2">
+              {{ detail.resultNote || (detail.status === 'APPROVING' ? $t('qms.ncr.approving') : '-') }}
+              <span v-if="detail.reworkWoNo">{{ $t('qms.ncr.reworkWo', { no: detail.reworkWoNo }) }}</span>
             </a-descriptions-item>
           </a-descriptions>
         </template>
@@ -182,6 +182,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -201,24 +202,25 @@ import { toOptions } from '@/utils/dict'
 
 /** 不合格品处理（MRB）：检验不合格自动生成，也可手工登记；评审处置后联动库存与工单 */
 const dict = useDict('qms_ncr_source', 'qms_ncr_status', 'qms_disposition', 'qms_responsibility', 'mes_defect_type')
+const { t } = useI18n()
 const router = useRouter()
 
 const DISPOSITION_TIPS = {
-  RETURN: '退货：来料保持冻结，通知采购办理采购退货',
-  REWORK: '返工：按工单产品生成返工工单（草稿），返工完成后入库',
-  SCRAP: '报废：来料放行冻结库存并生成报废出库单（草稿，仓库确认后出库）',
-  CONCESSION: '让步接收：来料放行冻结库存，可正常使用',
-  SORT: '挑选：全检挑出不良品后，合格品按让步或重新检验处理'
+  RETURN: t('qms.ncr.tips.RETURN'),
+  REWORK: t('qms.ncr.tips.REWORK'),
+  SCRAP: t('qms.ncr.tips.SCRAP'),
+  CONCESSION: t('qms.ncr.tips.CONCESSION'),
+  SORT: t('qms.ncr.tips.SORT')
 }
 
 const columns = [
-  { title: '处理单号', key: 'ncrNo', width: 170 },
-  { title: '来源单据', key: 'source', width: 180 },
-  { title: '物料', key: 'material', width: 230 },
-  { title: '不合格描述', key: 'description', width: 200, ellipsis: true },
-  { title: '处置 / 责任', key: 'disposition', width: 120 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '操作', key: 'action', width: 150, fixed: 'right' }
+  { title: t('qms.ncr.no'), key: 'ncrNo', width: 170 },
+  { title: t('qms.ncr.sourceDoc'), key: 'source', width: 180 },
+  { title: t('mes.wo.material'), key: 'material', width: 230 },
+  { title: t('qms.ncr.description'), key: 'description', width: 200, ellipsis: true },
+  { title: t('qms.ncr.dispResp'), key: 'disposition', width: 150 },
+  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'qms-ncr')
 const query = reactive({ status: undefined, keyword: undefined })
@@ -228,10 +230,10 @@ onMounted(load)
 // 手工登记不提供「检验不合格」来源
 const sourceOptions = computed(() => toOptions(dict.qms_ncr_source).filter((o) => o.value !== 'INSPECTION'))
 const rules = {
-  source: [{ required: true, message: '请选择来源' }],
-  materialId: [{ required: true, message: '请选择物料' }],
-  qty: [{ required: true, message: '请填写数量' }],
-  description: [{ required: true, whitespace: true, message: '请填写不合格描述' }]
+  source: [{ required: true, message: t('qms.capa.sourceRequired') }],
+  materialId: [{ required: true, message: t('mes.supplementForm.materialRequired') }],
+  qty: [{ required: true, message: t('mes.wo.qtyRequired') }],
+  description: [{ required: true, whitespace: true, message: t('qms.ncr.descriptionRequired') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ source: 'PRODUCTION', materialId: undefined, qty: undefined, woNo: '', batchNo: '', supplierId: undefined, defectType: undefined, description: '' }),
@@ -262,11 +264,11 @@ function openReview(record) {
   reviewOpen.value = true
 }
 async function submitReview() {
-  if (!review.value.disposition || !review.value.responsibility) return message.warning('请选择处置方式和责任方')
+  if (!review.value.disposition || !review.value.responsibility) return message.warning(t('qms.ncr.reviewRequired'))
   saving.value = true
   try {
     const approving = await reviewNcr(current.value.id, review.value)
-    message.success(approving ? '已提交审批，通过后执行处置' : '处置已执行')
+    message.success(approving ? t('qms.ncr.submittedApproval') : t('qms.ncr.executed'))
     reviewOpen.value = false
     load()
     if (detailOpen.value) refreshDetail()
@@ -288,13 +290,13 @@ async function refreshDetail() {
 }
 async function cancel() {
   await cancelNcr(detail.value.id)
-  message.success('已取消')
+  message.success(t('mes.ecn.cancelled'))
   refreshDetail()
   load()
 }
 async function remove() {
   await deleteNcr(detail.value.id)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   detailOpen.value = false
   load()
 }

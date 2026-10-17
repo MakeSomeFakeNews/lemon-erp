@@ -36,7 +36,7 @@ public class WfInstanceController {
     /** @return 流程实例 ID */
     @PostMapping
     @PreAuthorize("@ss.hasPerm('wf:start:list')")
-    @OperLog(title = "发起流程", type = OperType.INSERT)
+    @OperLog(title = "发起流程", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<String> start(@Valid @RequestBody StartRequest req) {
         return R.ok(instanceService.startByForm(req.modelKey(), req.formData()));
     }
@@ -64,7 +64,7 @@ public class WfInstanceController {
     }
 
     @PostMapping("/{id}/cancel")
-    @OperLog(title = "撤回流程", type = OperType.UPDATE)
+    @OperLog(title = "撤回流程", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> cancel(@PathVariable String id, @Valid @RequestBody ReasonRequest req) {
         instanceService.cancel(id, req.reason());
         return R.ok();
@@ -72,7 +72,7 @@ public class WfInstanceController {
 
     @PostMapping("/{id}/terminate")
     @PreAuthorize("@ss.hasPerm('wf:instance:cancel')")
-    @OperLog(title = "终止流程", type = OperType.FORCE)
+    @OperLog(title = "终止流程", type = OperType.FORCE)  // i18n-ignore 操作日志存库
     public R<Void> terminate(@PathVariable String id, @Valid @RequestBody ReasonRequest req) {
         instanceService.terminate(id, req.reason());
         return R.ok();

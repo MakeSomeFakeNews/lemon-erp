@@ -67,7 +67,7 @@ public class FinAdvanceService {
     @Transactional
     public Long create(AdvanceRequest req) {
         boolean receipt = "RECEIPT".equals(req.kind());
-        periodGuard.checkOpen(req.advanceDate(), receipt ? "预收款" : "预付款");
+        periodGuard.checkOpen(req.advanceDate(), receipt ? "预收款" : "预付款"); // i18n-ignore 在 FinBizPeriodGuard 输出处翻译
         accountService.requireCashAccount(req.accountId());
         String partner = billService.partnerName(receipt ? "AR" : "AP", req.partnerId());
         FinAdvance a = new FinAdvance();
@@ -82,7 +82,7 @@ public class FinAdvanceService {
         a.setRemark(req.remark());
         a.setCreateBy(SecurityUtils.getUserId());
         advanceMapper.insert(a);
-        String summary = (receipt ? "预收 " : "预付 ") + partner + " 货款";
+        String summary = (receipt ? "预收 " : "预付 ") + partner + " 货款"; // i18n-ignore 凭证摘要
         List<VoucherLine> lines = receipt
                 ? List.of(VoucherLine.debit(summary, req.accountId(), null, req.amount()),
                 VoucherLine.credit(summary, accountRules.accountId(AccountRole.ADVANCE_RECEIVED), null, req.amount())
@@ -102,7 +102,7 @@ public class FinAdvanceService {
         boolean receipt = "RECEIPT".equals(a.getKind());
         String billKind = receipt ? "AR" : "AP";
         LocalDate d = date == null ? LocalDate.now() : date;
-        periodGuard.checkOpen(d, "预收预付冲抵");
+        periodGuard.checkOpen(d, "预收预付冲抵"); // i18n-ignore 在 FinBizPeriodGuard 输出处翻译
         Map<Long, FinBill> bills = billMapper.selectByIds(items.stream().map(SettlementItemRequest::billId).toList()).stream()
                 .collect(Collectors.toMap(FinBill::getId, Function.identity()));
         Set<Long> seen = new HashSet<>();
@@ -111,25 +111,25 @@ public class FinAdvanceService {
         for (SettlementItemRequest item : items) {
             FinBill bill = bills.get(item.billId());
             if (bill == null || !bill.getKind().equals(billKind) || !bill.getPartnerId().equals(a.getPartnerId())) {
-                throw new BizException("冲抵的单据不属于该" + (receipt ? "客户" : "供应商"));
+                throw receipt ? new BizException("冲抵的单据不属于该客户") : new BizException("冲抵的单据不属于该供应商");
             }
             if (bill.getCurrency() != null && !"CNY".equals(bill.getCurrency())) {
-                throw new BizException(bill.getBillNo() + " 为外币单据，请用收付款核销");
+                throw new BizException("{0} 为外币单据，请用收付款核销", bill.getBillNo());
             }
             if (!seen.add(bill.getId()) || item.amount().signum() <= 0 || bill.getAmount().signum() <= 0) {
-                throw new BizException(bill.getBillNo() + "：冲抵金额必须大于 0，且单据不能重复、不能是红字单据");
+                throw new BizException("{0}：冲抵金额必须大于 0，且单据不能重复、不能是红字单据", bill.getBillNo());
             }
             if (billMapper.addSettled(bill.getId(), item.amount()) == 0) {
-                throw new BizException(bill.getBillNo() + "：冲抵金额超过未核销金额 " + bill.getAmount().subtract(bill.getSettledAmount()).toPlainString());
+                throw new BizException("{0}：冲抵金额超过未核销金额 {1}", bill.getBillNo(), bill.getAmount().subtract(bill.getSettledAmount()).toPlainString());
             }
             billMapper.addSettledFc(bill.getId(), item.amount());
             total = total.add(item.amount());
             billNos.add(bill.getBillNo());
         }
         if (total.signum() <= 0 || advanceMapper.addUsed(id, total) == 0) {
-            throw new BizException("冲抵金额合计超过预收预付余额 " + a.getAmount().subtract(a.getUsedAmount()).toPlainString());
+            throw new BizException("冲抵金额合计超过预收预付余额 {0}", a.getAmount().subtract(a.getUsedAmount()).toPlainString());
         }
-        String summary = (receipt ? "预收款冲抵应收 " : "预付款冲抵应付 ") + a.getAdvanceNo() + " " + String.join("、", billNos);
+        String summary = (receipt ? "预收款冲抵应收 " : "预付款冲抵应付 ") + a.getAdvanceNo() + " " + String.join("、", billNos); // i18n-ignore 凭证摘要
         if (summary.length() > 200) {
             summary = summary.substring(0, 200);
         }

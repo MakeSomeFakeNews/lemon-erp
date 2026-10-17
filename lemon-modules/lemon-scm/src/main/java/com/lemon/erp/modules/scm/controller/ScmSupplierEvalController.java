@@ -42,7 +42,7 @@ public class ScmSupplierEvalController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:eval:add')")
-    @OperLog(title = "供应商评估", type = OperType.INSERT)
+    @OperLog(title = "供应商评估", type = OperType.INSERT) // i18n-ignore
     public R<Void> create(@Valid @RequestBody SupplierEvalRequest req) {
         evalService.create(req);
         return R.ok();
@@ -50,7 +50,7 @@ public class ScmSupplierEvalController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('scm:eval:remove')")
-    @OperLog(title = "供应商评估", type = OperType.DELETE)
+    @OperLog(title = "供应商评估", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         evalService.delete(ids);
         return R.ok();

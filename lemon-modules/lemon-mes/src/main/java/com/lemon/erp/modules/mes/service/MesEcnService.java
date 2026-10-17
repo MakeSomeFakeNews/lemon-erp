@@ -3,6 +3,7 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -136,7 +137,7 @@ public class MesEcnService {
         MesEcn ecn = requireStatus(id, EcnStatus.DRAFT, "提交");
         EcnDiff diff = diff(id);
         if (diff.items().isEmpty() && diff.ops().isEmpty()) {
-            throw new BizException("变更后的 BOM 与变更前相同，请先在物料清单中修改版本 " + ecn.getToVersion());
+            throw new BizException("变更后的 BOM 与变更前相同，请先在物料清单中修改版本 {0}", ecn.getToVersion());
         }
         if (!flowApi.isAvailable(PROCESS_KEY)) {
             approve(id, EcnStatus.DRAFT);
@@ -213,7 +214,7 @@ public class MesEcnService {
     private void effect(MesEcn ecn) {
         bomService.activateForEcn(ecn.getFromBomId(), ecn.getToBomId());
         int synced = Integer.valueOf(1).equals(ecn.getSyncDraftWo()) ? workOrderService.switchDraftBom(ecn.getFromBomId(), ecn.getToBomId()) : 0;
-        String note = "新版本已启用" + (synced > 0 ? "，同步草稿工单 " + synced + " 张" : "");
+        String note = "新版本已启用" + (synced > 0 ? "，同步草稿工单 " + synced + " 张" : ""); // i18n-ignore
         if (ecnMapper.update(Wrappers.<MesEcn>lambdaUpdate()
                 .set(MesEcn::getStatus, EcnStatus.EFFECTIVE)
                 .set(MesEcn::getEffectTime, LocalDateTime.now())
@@ -240,7 +241,7 @@ public class MesEcnService {
     private MesEcn requireStatus(Long id, EcnStatus status, String action) {
         MesEcn ecn = detail(id);
         if (ecn.getStatus() != status) {
-            throw new BizException("变更当前状态不能" + action);
+            throw new BizException("变更当前状态不能{0}", I18n.t(action));
         }
         return ecn;
     }

@@ -78,7 +78,7 @@ public class MesInspectionController {
     /** 确认后不能修改、删除 */
     @PostMapping("/{id}/confirm")
     @PreAuthorize("@ss.hasPerm('mes:qc:edit')")
-    @OperLog(title = "质量检验-确认", type = OperType.UPDATE)
+    @OperLog(title = "质量检验-确认", type = OperType.UPDATE) // i18n-ignore
     public R<Void> confirm(@PathVariable Long id) {
         inspectionService.confirm(id);
         return R.ok();

@@ -1,8 +1,8 @@
 <template>
   <div class="panel-actions">
-    <span v-if="dirty" class="panel-dirty"><ExclamationCircleOutlined /> 有未保存的修改</span>
-    <a-button :disabled="!dirty || saving" @click="emit('reset')">撤销修改</a-button>
-    <a-button type="primary" :disabled="!dirty" :loading="saving" @click="emit('save')">保存</a-button>
+    <span v-if="dirty" class="panel-dirty"><ExclamationCircleOutlined /> {{ $t('system.role.unsaved') }}</span>
+    <a-button :disabled="!dirty || saving" @click="emit('reset')">{{ $t('system.role.undo') }}</a-button>
+    <a-button type="primary" :disabled="!dirty" :loading="saving" @click="emit('save')">{{ $t('common.action.save') }}</a-button>
   </div>
 </template>
 

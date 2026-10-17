@@ -60,14 +60,14 @@ public class QmsPlanController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('qms:plan:add')")
-    @OperLog(title = "检验方案", type = OperType.INSERT)
+    @OperLog(title = "检验方案", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody QmsRequests.Plan req) {
         return R.ok(planService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('qms:plan:edit')")
-    @OperLog(title = "检验方案", type = OperType.UPDATE)
+    @OperLog(title = "检验方案", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody QmsRequests.Plan req) {
         planService.update(id, req);
         return R.ok();
@@ -75,7 +75,7 @@ public class QmsPlanController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('qms:plan:remove')")
-    @OperLog(title = "检验方案", type = OperType.DELETE)
+    @OperLog(title = "检验方案", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         planService.delete(ids);
         return R.ok();

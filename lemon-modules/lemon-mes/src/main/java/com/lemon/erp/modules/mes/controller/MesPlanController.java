@@ -49,7 +49,7 @@ public class MesPlanController {
     /** 由销售订单生成计划，返回生成的计划数 */
     @PostMapping("/from-sales/{orderId}")
     @PreAuthorize("@ss.hasPerm('mes:plan:add')")
-    @OperLog(title = "生产计划-由销售订单生成", type = OperType.INSERT)
+    @OperLog(title = "生产计划-由销售订单生成", type = OperType.INSERT) // i18n-ignore
     public R<Integer> fromSales(@PathVariable Long orderId) {
         return R.ok(planService.fromSalesOrder(orderId));
     }
@@ -65,14 +65,14 @@ public class MesPlanController {
     /** 计划转工单，返回草稿工单 ID */
     @PostMapping("/{id}/to-wo")
     @PreAuthorize("@ss.hasPerm('mes:wo:add')")
-    @OperLog(title = "生产计划-转工单", type = OperType.INSERT)
+    @OperLog(title = "生产计划-转工单", type = OperType.INSERT) // i18n-ignore
     public R<Long> toWorkOrder(@PathVariable Long id, @Valid @RequestBody PlanWorkOrderRequest req) {
         return R.ok(planService.toWorkOrder(id, req));
     }
 
     @PostMapping("/confirm/{ids}")
     @PreAuthorize("@ss.hasPerm('mes:plan:confirm')")
-    @OperLog(title = "生产计划-确认", type = OperType.UPDATE)
+    @OperLog(title = "生产计划-确认", type = OperType.UPDATE) // i18n-ignore
     public R<Void> confirm(@PathVariable List<Long> ids) {
         planService.confirm(ids);
         return R.ok();
@@ -80,7 +80,7 @@ public class MesPlanController {
 
     @PostMapping("/{id}/close")
     @PreAuthorize("@ss.hasPerm('mes:plan:confirm')")
-    @OperLog(title = "生产计划-关闭", type = OperType.UPDATE)
+    @OperLog(title = "生产计划-关闭", type = OperType.UPDATE) // i18n-ignore
     public R<Void> close(@PathVariable Long id) {
         planService.close(id);
         return R.ok();

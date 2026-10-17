@@ -1,5 +1,5 @@
 <template>
-  <span role="img" class="anticon theme-icon" :aria-label="dark ? '亮色' : '暗色'">
+  <span role="img" class="anticon theme-icon" :aria-label="dark ? $t('components.theme.light') : $t('components.theme.dark')">
     <!-- 暗色模式下显示太阳（点击切到亮色），亮色模式下显示月亮 -->
     <svg v-if="dark" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
       <circle cx="12" cy="12" r="4.5" />

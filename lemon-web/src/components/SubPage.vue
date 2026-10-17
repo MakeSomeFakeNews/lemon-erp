@@ -4,7 +4,7 @@
       <header class="sub-page-header">
         <a-button type="text" class="back-btn" @click="close">
           <template #icon><ArrowLeftOutlined /></template>
-          返回
+          {{ $t('common.action.back') }}
         </a-button>
         <a-divider type="vertical" />
         <div class="sub-page-title">

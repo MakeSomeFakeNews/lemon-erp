@@ -2,8 +2,8 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="流程名称" name="name">
-          <a-input v-model:value="query.name" placeholder="请输入流程名称" allow-clear />
+        <a-form-item :label="$t('workflow.list.processName')" name="name">
+          <a-input v-model:value="query.name" :placeholder="$t('workflow.list.processNamePh')" allow-clear />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -39,7 +39,7 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><component :is="actionIcon" /></template>{{ actionText }}
+                <template #icon><component :is="actionIcon" /></template>{{ actionText || $t('common.action.view') }}
               </a-button>
             </span>
           </template>
@@ -73,7 +73,7 @@ const props = defineProps({
   storageKey: { type: String, required: true },
   rowKey: { type: String, default: 'taskId' },
   scrollX: { type: Number, default: 900 },
-  actionText: { type: String, default: '查看' },
+  actionText: { type: String, default: '' },
   // 组件是函数，Object 类型的默认值要用工厂函数返回，否则会被当作工厂调用
   actionIcon: { type: [Object, Function], default: () => EyeOutlined }
 })

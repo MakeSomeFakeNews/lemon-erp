@@ -2,19 +2,19 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="单据号" name="docNo">
-          <a-input v-model:value="query.docNo" placeholder="请输入单据号" allow-clear />
+        <a-form-item :label="$t('wms.common.docNo')" name="docNo">
+          <a-input v-model:value="query.docNo" :placeholder="$t('common.placeholder.input')" allow-clear />
         </a-form-item>
         <a-form-item v-if="conf.typeDict" :label="conf.typeLabel" name="bizType">
-          <a-select v-model:value="query.bizType" placeholder="全部" allow-clear :options="toOptions(dict[conf.typeDict])" />
+          <a-select v-model:value="query.bizType" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict[conf.typeDict])" />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.wms_doc_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_doc_status)" />
         </a-form-item>
-        <a-form-item label="仓库" name="warehouseId">
-          <WarehouseSelect v-model:value="query.warehouseId" placeholder="全部" />
+        <a-form-item :label="$t('wms.common.warehouse')" name="warehouseId">
+          <WarehouseSelect v-model:value="query.warehouseId" :placeholder="$t('common.placeholder.all')" />
         </a-form-item>
-        <a-form-item label="业务日期" name="range">
+        <a-form-item :label="$t('wms.common.bizDate')" name="range">
           <a-range-picker v-model:value="query.range" value-format="YYYY-MM-DD" style="width: 100%" />
         </a-form-item>
       </SearchForm>
@@ -29,16 +29,16 @@
         @refresh="load"
       >
         <a-button v-perm="`wms:${kind}:add`" type="primary" @click="form.openCreate()">
-          <template #icon><PlusOutlined /></template>新增{{ conf.label }}
+          <template #icon><PlusOutlined /></template>{{ $t('wms.doc.createTitle', { kind: conf.label }) }}
         </a-button>
         <span v-perm="`wms:${kind}:remove`">
           <a-popconfirm
-            :title="`确定删除选中的 ${selectedKeys.length} 张草稿？`"
+            :title="$t('wms.doc.confirmDeleteDrafts', { n: selectedKeys.length })"
             :disabled="!selectedKeys.length"
             @confirm="remove(selectedKeys)"
           >
             <a-button danger :disabled="!selectedKeys.length">
-              <template #icon><DeleteOutlined /></template>批量删除
+              <template #icon><DeleteOutlined /></template>{{ $t('common.action.batchDelete') }}
             </a-button>
           </a-popconfirm>
         </span>
@@ -58,10 +58,10 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'docNo'">
             <a @click="openDetail(record)">{{ record.docNo }}</a>
-            <a-tag v-if="record.redOf" color="red" :bordered="false" class="doc-tag">红字</a-tag>
-            <a-tag v-if="record.reversed === 1" :bordered="false" class="doc-tag">已冲销</a-tag>
-            <div v-if="record.sourceNo" class="sub-text">来源 {{ record.sourceNo }}</div>
-            <div v-if="record.redOf" class="sub-text">冲销 {{ record.redOfNo || record.redOf }}</div>
+            <a-tag v-if="record.redOf" color="red" :bordered="false" class="doc-tag">{{ $t('wms.common.red') }}</a-tag>
+            <a-tag v-if="record.reversed === 1" :bordered="false" class="doc-tag">{{ $t('wms.common.reversed') }}</a-tag>
+            <div v-if="record.sourceNo" class="sub-text">{{ $t('wms.doc.sourceN', { no: record.sourceNo }) }}</div>
+            <div v-if="record.redOf" class="sub-text">{{ $t('wms.doc.reverseOfN', { no: record.redOfNo || record.redOf }) }}</div>
           </template>
           <template v-else-if="column.key === 'bizType'">
             <DictTag :type="conf.typeDict" :value="record.bizType" />
@@ -69,7 +69,7 @@
           <template v-else-if="column.key === 'warehouse'">
             <span v-if="kind === 'transfer'">{{ record.warehouseName }} <ArrowRightOutlined class="arrow" /> {{ record.toWarehouseName }}</span>
             <span v-else>{{ record.warehouseName }}</span>
-            <div v-if="kind === 'transfer' && isTrue(record.inTransit)" class="sub-text">在途调拨</div>
+            <div v-if="kind === 'transfer' && isTrue(record.inTransit)" class="sub-text">{{ $t('wms.doc.inTransitTransfer') }}</div>
           </template>
           <template v-else-if="column.key === 'totalQty'">
             <span :class="negativeClass(record.totalQty)">{{ formatQty(record.totalQty) }}</span>
@@ -87,14 +87,14 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>查看
+                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
               <template v-if="record.status === 'DRAFT'">
                 <a-button v-perm="`wms:${kind}:edit`" type="link" size="small" @click="form.openEdit(record)">
-                  <template #icon><EditOutlined /></template>编辑
+                  <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
                 </a-button>
                 <a-dropdown v-if="moreActions.length">
-                  <a-button type="link" size="small">更多<DownOutlined /></a-button>
+                  <a-button type="link" size="small">{{ $t('common.action.more') }}<DownOutlined /></a-button>
                   <template #overlay>
                     <a-menu @click="({ key }) => onMoreAction(key, record)">
                       <a-menu-item v-for="a in moreActions" :key="a.key" :danger="a.danger">
@@ -106,24 +106,24 @@
               </template>
               <span v-if="kind === 'transfer' && record.status === 'TRANSIT'" v-perm="'wms:transfer:receive'">
                 <a-popconfirm
-                  :title="`确认调入仓库「${record.toWarehouseName}」已收货？`"
-                  description="收货后按明细增加调入仓库的库存"
+                  :title="$t('wms.doc.confirmReceive', { name: record.toWarehouseName })"
+                  :description="$t('wms.doc.receiveTip')"
                   @confirm="receive(record)"
                 >
                   <a-button type="link" size="small">
-                    <template #icon><InboxOutlined /></template>收货
+                    <template #icon><InboxOutlined /></template>{{ $t('wms.common.receive') }}
                   </a-button>
                 </a-popconfirm>
               </span>
               <span v-if="canReverse(record)" v-perm="`wms:${kind}:reverse`">
                 <a-popconfirm
-                  :title="`确定冲销${conf.label} ${record.docNo}？`"
-                  description="生成红字单据，库存反向变动"
+                  :title="$t('wms.doc.confirmReverse', { kind: conf.label, no: record.docNo })"
+                  :description="$t('wms.doc.reverseTip')"
                   ok-type="danger"
                   @confirm="reverse(record)"
                 >
                   <a-button type="link" danger size="small">
-                    <template #icon><RollbackOutlined /></template>冲销
+                    <template #icon><RollbackOutlined /></template>{{ $t('wms.common.reverse') }}
                   </a-button>
                 </a-popconfirm>
               </span>
@@ -140,6 +140,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Modal, message } from 'ant-design-vue'
 import {
   ArrowRightOutlined,
@@ -173,22 +174,23 @@ const props = defineProps({
   kind: { type: String, required: true }
 })
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const conf = DOC_KINDS[props.kind]
 const dict = useDict('wms_doc_status', ...(conf.typeDict ? [conf.typeDict] : []))
 
 const columns = [
-  { title: '单据号', key: 'docNo', width: 170 },
-  conf.typeDict ? { title: conf.typeLabel, key: 'bizType', width: 110 } : null,
-  { title: props.kind === 'transfer' ? '调出 → 调入' : '仓库', key: 'warehouse', width: props.kind === 'transfer' ? 240 : 140 },
-  { title: '业务日期', dataIndex: 'bizDate', width: 110 },
-  { title: '合计数量', key: 'totalQty', width: 110, align: 'right' },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '制单人', dataIndex: 'createByName', width: 100 },
-  { title: '确认', key: 'confirm', width: 160 },
-  { title: '备注', dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: '创建时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 260, fixed: 'right' }
+  { title: t('wms.common.docNo'), key: 'docNo', width: 170 },
+  conf.typeDict ? { title: conf.typeLabel, key: 'bizType', width: 120 } : null,
+  { title: props.kind === 'transfer' ? t('wms.doc.fromTo') : t('wms.common.warehouse'), key: 'warehouse', width: props.kind === 'transfer' ? 240 : 140 },
+  { title: t('wms.common.bizDate'), dataIndex: 'bizDate', width: 120 },
+  { title: t('wms.common.totalQty'), key: 'totalQty', width: 110, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 110 },
+  { title: t('wms.doc.confirmed'), key: 'confirm', width: 160 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 280, fixed: 'right' }
 ].filter(Boolean)
 const { checked, visibleColumns } = useColumns(columns, `wms-${props.kind}`)
 const showSearch = ref(true)
@@ -228,26 +230,26 @@ function onEditFromDetail(record) {
 
 const moreActions = computed(() => {
   const actions = []
-  if (userStore.hasPerm(`wms:${props.kind}:confirm`)) actions.push({ key: 'confirm', label: '确认', icon: CheckOutlined })
-  if (userStore.hasPerm(`wms:${props.kind}:remove`)) actions.push({ key: 'remove', label: '删除', icon: DeleteOutlined, danger: true })
+  if (userStore.hasPerm(`wms:${props.kind}:confirm`)) actions.push({ key: 'confirm', label: t('wms.doc.confirm'), icon: CheckOutlined })
+  if (userStore.hasPerm(`wms:${props.kind}:remove`)) actions.push({ key: 'remove', label: t('common.action.delete'), icon: DeleteOutlined, danger: true })
   return actions
 })
 
 function onMoreAction(key, record) {
   if (key === 'confirm') {
     Modal.confirm({
-      title: `确认${conf.label} ${record.docNo}？`,
-      content: '确认后按明细更新库存，单据不能再修改；发布了出入库审批流程时先提交审批。',
+      title: t('wms.doc.confirmDoc', { kind: conf.label, no: record.docNo }),
+      content: t('wms.doc.confirmContent'),
       async onOk() {
         const flow = await confirmDoc(props.kind, record.id)
-        message.success(flow ? '已提交出入库审批，审批通过后更新库存' : '确认成功')
+        message.success(flow ? t('wms.doc.submittedApproval') : t('wms.doc.confirmOk'))
         load()
       }
     })
   }
   if (key === 'remove') {
     Modal.confirm({
-      title: `确定删除${conf.label} ${record.docNo}？`,
+      title: t('wms.doc.confirmDeleteDoc', { kind: conf.label, no: record.docNo }),
       okType: 'danger',
       onOk: () => remove([record.id])
     })
@@ -258,19 +260,19 @@ const isTrue = (v) => v === true || v === 1
 
 async function receive(record) {
   await receiveTransfer(record.id)
-  message.success('收货成功')
+  message.success(t('wms.doc.receiveSuccess'))
   load()
 }
 
 async function reverse(record) {
   await reverseDoc(props.kind, record.id)
-  message.success('冲销成功，已生成红字单据')
+  message.success(t('wms.doc.reverseSuccess'))
   load()
 }
 
 async function remove(ids) {
   await deleteDoc(props.kind, ids)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   selectedKeys.value = selectedKeys.value.filter((k) => !ids.includes(k))
   load()
 }

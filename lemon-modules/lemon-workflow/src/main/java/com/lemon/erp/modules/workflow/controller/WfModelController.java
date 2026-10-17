@@ -51,14 +51,14 @@ public class WfModelController {
     /** @return 新模型 ID，前端据此直接进入设计 */
     @PostMapping
     @PreAuthorize("@ss.hasPerm('wf:model:add')")
-    @OperLog(title = "流程模型", type = OperType.INSERT)
+    @OperLog(title = "流程模型", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> create(@Valid @RequestBody WfModel model) {
         return R.ok(modelService.create(model));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('wf:model:edit')")
-    @OperLog(title = "流程模型", type = OperType.UPDATE)
+    @OperLog(title = "流程模型", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody WfModel model) {
         modelService.update(id, model);
         return R.ok();
@@ -67,7 +67,7 @@ public class WfModelController {
     @PutMapping("/{id}/design")
     @PreAuthorize("@ss.hasPerm('wf:model:edit')")
     // 设计 JSON 可能很大，不记录请求参数
-    @OperLog(title = "流程模型-保存设计", type = OperType.UPDATE, saveParams = false)
+    @OperLog(title = "流程模型-保存设计", type = OperType.UPDATE, saveParams = false)  // i18n-ignore 操作日志存库
     public R<Void> saveDesign(@PathVariable Long id, @RequestBody FlowDesign design) {
         modelService.saveDesign(id, design);
         return R.ok();
@@ -76,14 +76,14 @@ public class WfModelController {
     /** @return 发布后的版本号 */
     @PostMapping("/{id}/deploy")
     @PreAuthorize("@ss.hasPerm('wf:model:deploy')")
-    @OperLog(title = "流程模型-发布", type = OperType.UPDATE)
+    @OperLog(title = "流程模型-发布", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Integer> deploy(@PathVariable Long id) {
         return R.ok(modelService.deploy(id));
     }
 
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('wf:model:edit')")
-    @OperLog(title = "流程模型-修改状态", type = OperType.UPDATE)
+    @OperLog(title = "流程模型-修改状态", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> changeStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
         modelService.changeStatus(id, req.status());
         return R.ok();
@@ -91,7 +91,7 @@ public class WfModelController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('wf:model:remove')")
-    @OperLog(title = "流程模型", type = OperType.DELETE)
+    @OperLog(title = "流程模型", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         modelService.delete(ids);
         return R.ok();

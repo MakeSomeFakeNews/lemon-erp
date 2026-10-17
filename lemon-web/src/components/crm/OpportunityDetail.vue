@@ -1,10 +1,10 @@
 <template>
-  <SubPage :open="open" :title="detail ? `${detail.oppNo} ${detail.name}` : '商机详情'" width="min(1000px, 100vw)" destroy-on-close @close="emit('update:open', false)">
+  <SubPage :open="open" :title="detail ? `${detail.oppNo} ${detail.name}` : $t('crm.opportunityDetail.title')" width="min(1000px, 100vw)" destroy-on-close @close="emit('update:open', false)">
     <template #extra>
       <a-space v-if="detail">
         <DictTag type="crm_opp_stage" :value="detail.stage" />
         <template v-if="detail.stage !== 'WON'">
-          <a-button v-perm="'crm:opp:edit'" size="small" type="primary" @click="openStage">推进阶段</a-button>
+          <a-button v-perm="'crm:opp:edit'" size="small" type="primary" @click="openStage">{{ $t('crm.common.advanceStage') }}</a-button>
         </template>
         <a-button
           v-if="detail.stage === 'WON' && !detail.salesOrderId"
@@ -13,9 +13,9 @@
           type="primary"
           @click="openOrder"
         >
-          生成销售订单
+          {{ $t('crm.common.toOrder') }}
         </a-button>
-        <a-button v-if="detail.stage === 'WON'" v-perm="'pm:project:add'" size="small" @click="createProject">创建项目</a-button>
+        <a-button v-if="detail.stage === 'WON'" v-perm="'pm:project:add'" size="small" @click="createProject">{{ $t('crm.common.createProject') }}</a-button>
       </a-space>
     </template>
     <a-spin :spinning="loading">
@@ -24,32 +24,32 @@
           <a-step v-for="s in steps" :key="s.value" :title="s.label" :description="reachedAt(s.value)" />
         </a-steps>
 
-        <a-alert v-if="detail.stage === 'LOST'" type="error" show-icon class="block" :message="`输单原因：${detail.lostReason || '-'}`" />
+        <a-alert v-if="detail.stage === 'LOST'" type="error" show-icon class="block" :message="$t('crm.opportunityDetail.lostText', { reason: detail.lostReason || '-' })" />
         <a-alert v-if="detail.salesOrderNo" type="success" show-icon class="block">
           <template #message>
-            已生成销售订单 <b>{{ detail.salesOrderNo }}</b>，
-            <router-link to="/scm/sales">到「销售订单」中审核</router-link>
+            {{ $t('crm.opportunityDetail.orderCreated') }} <b>{{ detail.salesOrderNo }}</b>,
+            <router-link to="/scm/sales">{{ $t('crm.opportunityDetail.toAudit') }}</router-link>
           </template>
         </a-alert>
 
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="block">
-          <a-descriptions-item label="客户">{{ detail.customerName }}</a-descriptions-item>
-          <a-descriptions-item label="联系人">{{ detail.contactName || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="负责人">{{ detail.ownerName || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="预计金额"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
-          <a-descriptions-item label="赢单概率">{{ detail.probability }}%</a-descriptions-item>
-          <a-descriptions-item label="预计成交">{{ detail.expectedDate || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="来源">
+          <a-descriptions-item :label="$t('crm.common.f.customer')">{{ detail.customerName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.contact')">{{ detail.contactName || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.owner')">{{ detail.ownerName || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.amountExpected')"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.probability')">{{ detail.probability }}%</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.expectedDate')">{{ detail.expectedDate || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.source')">
             <DictTag v-if="detail.source" type="crm_source" :value="detail.source" /><span v-else>-</span>
             <span v-if="detail.campaignName" class="sub-text"> · {{ detail.campaignName }}</span>
           </a-descriptions-item>
-          <a-descriptions-item label="成交 / 输单日期">{{ detail.closeDate || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="创建时间">{{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="备注" :span="3">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.closeDate')">{{ detail.closeDate || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.createTime')">{{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')" :span="3">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
 
         <a-tabs size="small">
-          <a-tab-pane key="items" tab="产品明细">
+          <a-tab-pane key="items" :tab="$t('crm.opportunityDetail.tab.items')">
             <a-table row-key="id" size="small" :columns="itemColumns" :data-source="detail.items" :pagination="false" :scroll="{ x: 700 }">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'material'">{{ record.materialCode }} {{ record.materialName }}</template>
@@ -59,14 +59,14 @@
                 <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}</template>
               </template>
             </a-table>
-            <div v-if="!detail.items.length" class="sub-text empty">没有产品明细；赢单后生成销售订单需要先维护产品明细</div>
+            <div v-if="!detail.items.length" class="sub-text empty">{{ $t('crm.opportunityDetail.noItems') }}</div>
           </a-tab-pane>
-          <a-tab-pane v-if="canQuote" key="quotation" :tab="`报价单${quotations.length ? `（${quotations.length}）` : ''}`">
+          <a-tab-pane v-if="canQuote" key="quotation" :tab="quotations.length ? $t('crm.opportunityDetail.tab.quotationN', { n: quotations.length }) : $t('crm.opportunityDetail.tab.quotation')">
             <div class="tab-toolbar">
               <a-button v-perm="'scm:quotation:add'" size="small" type="primary" @click="createQuotation">
-                <template #icon><PlusOutlined /></template>新建报价
+                <template #icon><PlusOutlined /></template>{{ $t('crm.opportunityDetail.newQuotation') }}
               </a-button>
-              <router-link to="/scm/quotation" class="sub-text">到「销售报价」中审批、生成订单</router-link>
+              <router-link to="/scm/quotation" class="sub-text">{{ $t('crm.opportunityDetail.toQuotation') }}</router-link>
             </div>
             <a-table row-key="id" size="small" :columns="quotationColumns" :data-source="quotations" :loading="relatedLoading" :pagination="false" :scroll="{ x: 640 }">
               <template #bodyCell="{ column, record }">
@@ -79,10 +79,10 @@
               </template>
             </a-table>
           </a-tab-pane>
-          <a-tab-pane v-if="canContract" key="contract" :tab="`合同${contracts.length ? `（${contracts.length}）` : ''}`">
+          <a-tab-pane v-if="canContract" key="contract" :tab="contracts.length ? $t('crm.opportunityDetail.tab.contractN', { n: contracts.length }) : $t('crm.opportunityDetail.tab.contract')">
             <div class="tab-toolbar">
               <a-button v-perm="'crm:contract:add'" size="small" type="primary" @click="createContract">
-                <template #icon><PlusOutlined /></template>新建合同
+                <template #icon><PlusOutlined /></template>{{ $t('crm.opportunityDetail.newContract') }}
               </a-button>
             </div>
             <a-table row-key="id" size="small" :columns="contractColumns" :data-source="contracts" :loading="relatedLoading" :pagination="false" :scroll="{ x: 640 }">
@@ -97,37 +97,37 @@
               </template>
             </a-table>
           </a-tab-pane>
-          <a-tab-pane key="followup" tab="跟进记录">
+          <a-tab-pane key="followup" :tab="$t('crm.opportunityDetail.tab.followup')">
             <FollowupTimeline target-type-value="OPPORTUNITY" :target-id="detail.id" @saved="emit('changed')" />
           </a-tab-pane>
-          <a-tab-pane key="attachment" tab="附件">
+          <a-tab-pane key="attachment" :tab="$t('crm.opportunityDetail.tab.attachment')">
             <AttachmentPanel biz-type="crm_opp" :biz-id="opportunityId" :editable="userStore.hasPerm('crm:opp:edit')" />
           </a-tab-pane>
         </a-tabs>
       </template>
     </a-spin>
 
-    <a-modal v-model:open="stageOpen" title="推进销售阶段" :confirm-loading="saving" destroy-on-close @ok="submitStage">
+    <a-modal v-model:open="stageOpen" :title="$t('crm.common.advanceStageTitle')" :confirm-loading="saving" destroy-on-close @ok="submitStage">
       <a-form layout="vertical">
-        <a-form-item label="销售阶段">
+        <a-form-item :label="$t('crm.common.f.salesStage')">
           <a-radio-group v-model:value="stageForm.stage" button-style="solid">
             <a-radio-button v-for="s in dict.crm_opp_stage" :key="s.value" :value="s.value">{{ s.label }}</a-radio-button>
           </a-radio-group>
         </a-form-item>
-        <a-form-item v-if="stageForm.stage === 'LOST'" label="输单原因" required>
-          <a-textarea v-model:value="stageForm.lostReason" :rows="3" :maxlength="255" placeholder="如：价格过高、选择了竞品" />
+        <a-form-item v-if="stageForm.stage === 'LOST'" :label="$t('crm.common.f.lostReason')" required>
+          <a-textarea v-model:value="stageForm.lostReason" :rows="3" :maxlength="255" :placeholder="$t('crm.common.lostReasonPh')" />
         </a-form-item>
-        <a-alert v-if="stageForm.stage === 'WON'" type="success" show-icon message="赢单后客户变为成交客户，可以按产品明细生成销售订单" />
+        <a-alert v-if="stageForm.stage === 'WON'" type="success" show-icon :message="$t('crm.common.wonTip')" />
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="orderOpen" title="生成销售订单" :confirm-loading="saving" destroy-on-close @ok="submitOrder">
-      <a-alert type="info" show-icon class="block" message="按商机的产品明细生成销售订单（草稿，来源「商机」），审核后即可出库" />
+    <a-modal v-model:open="orderOpen" :title="$t('crm.common.toOrder')" :confirm-loading="saving" destroy-on-close @ok="submitOrder">
+      <a-alert type="info" show-icon class="block" :message="$t('crm.common.orderTip')" />
       <a-form layout="vertical">
-        <a-form-item label="发货仓库">
+        <a-form-item :label="$t('crm.common.f.warehouse')">
           <WarehouseSelect v-model:value="orderForm.warehouseId" />
         </a-form-item>
-        <a-form-item label="交货日期" extra="不填取商机的预计成交日期">
+        <a-form-item :label="$t('crm.common.f.deliveryDate')" :extra="$t('crm.common.deliveryExtra')">
           <a-date-picker v-model:value="orderForm.deliveryDate" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
       </a-form>
@@ -140,6 +140,7 @@ import SubPage from '@/components/SubPage.vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
@@ -159,6 +160,7 @@ const props = defineProps({
 })
 const userStore = useUserStore()
 const router = useRouter()
+const { t } = useI18n()
 
 /** 赢单后一键建项目：带入客户、商机、金额 */
 function createProject() {
@@ -191,11 +193,11 @@ function reachedAt(stage) {
 }
 
 const itemColumns = [
-  { title: '产品', key: 'material', width: 240 },
-  { title: '数量', key: 'qty', width: 110, align: 'right' },
-  { title: '含税单价', key: 'price', width: 120, align: 'right' },
-  { title: '税率', key: 'taxRate', width: 80, align: 'right' },
-  { title: '金额', key: 'amount', width: 130, align: 'right' }
+  { title: t('crm.common.f.material'), key: 'material', width: 240 },
+  { title: t('common.field.quantity'), key: 'qty', width: 110, align: 'right' },
+  { title: t('crm.common.f.priceTax'), key: 'price', width: 150, align: 'right' },
+  { title: t('crm.common.f.taxRate'), key: 'taxRate', width: 90, align: 'right' },
+  { title: t('common.field.amount'), key: 'amount', width: 130, align: 'right' }
 ]
 
 async function load() {
@@ -217,19 +219,19 @@ const quotations = ref([])
 const contracts = ref([])
 const relatedLoading = ref(false)
 const quotationColumns = [
-  { title: '报价单号', dataIndex: 'quoteNo', width: 170 },
-  { title: '报价日期', dataIndex: 'quoteDate', width: 110 },
-  { title: '有效期至', dataIndex: 'validTo', width: 110 },
-  { title: '价税合计', key: 'totalAmount', width: 130, align: 'right' },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '销售订单', key: 'orderNo', width: 160 }
+  { title: t('crm.opportunityDetail.col.quoteNo'), dataIndex: 'quoteNo', width: 170 },
+  { title: t('crm.opportunityDetail.col.quoteDate'), dataIndex: 'quoteDate', width: 110 },
+  { title: t('crm.opportunityDetail.col.validTo'), dataIndex: 'validTo', width: 110 },
+  { title: t('crm.opportunityDetail.col.total'), key: 'totalAmount', width: 140, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 110 },
+  { title: t('crm.common.f.salesOrder'), key: 'orderNo', width: 160 }
 ]
 const contractColumns = [
-  { title: '合同', key: 'name', width: 220 },
-  { title: '签订日期', dataIndex: 'signDate', width: 110 },
-  { title: '合同金额', key: 'amount', width: 130, align: 'right' },
-  { title: '已回款', key: 'received', width: 130, align: 'right' },
-  { title: '状态', key: 'status', width: 90 }
+  { title: t('crm.common.f.contract'), key: 'name', width: 220 },
+  { title: t('crm.common.f.signDate'), dataIndex: 'signDate', width: 110 },
+  { title: t('crm.common.f.contractAmount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('crm.common.f.received'), key: 'received', width: 130, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 110 }
 ]
 async function loadRelated() {
   const params = { opportunityId: props.opportunityId, current: 1, size: 100 }
@@ -274,13 +276,13 @@ function openStage() {
 }
 async function submitStage() {
   if (stageForm.value.stage === 'LOST' && !stageForm.value.lostReason?.trim()) {
-    message.warning('请填写输单原因')
+    message.warning(t('crm.common.lostReasonRequired'))
     return
   }
   saving.value = true
   try {
     await changeOpportunityStage(detail.value.id, stageForm.value)
-    message.success('阶段已更新')
+    message.success(t('crm.common.stageUpdated'))
     stageOpen.value = false
     load()
     emit('changed')
@@ -299,7 +301,7 @@ async function submitOrder() {
   saving.value = true
   try {
     await opportunityToOrder(detail.value.id, orderForm.value)
-    message.success('已生成销售订单')
+    message.success(t('crm.common.orderCreated'))
     orderOpen.value = false
     load()
     emit('changed')

@@ -84,7 +84,7 @@ public class FinExtController {
     /** 坏账核销，返回凭证 ID */
     @PostMapping("/bill/ar/{id}/bad-debt")
     @PreAuthorize("@ss.hasPerm('fin:ar:baddebt')")
-    @OperLog(title = "坏账核销", type = OperType.UPDATE)
+    @OperLog(title = "坏账核销", type = OperType.UPDATE) // i18n-ignore
     public R<Long> badDebt(@PathVariable Long id, @Valid @RequestBody BadDebtRequest req) {
         return R.ok(billService.writeOffBadDebt(id, req.amount(), req.date(), req.reason()));
     }
@@ -92,7 +92,7 @@ public class FinExtController {
     /** 红字冲销，返回红字凭证 ID */
     @PostMapping("/voucher/{id}/reverse")
     @PreAuthorize("@ss.hasPerm('fin:voucher:reverse')")
-    @OperLog(title = "凭证红字冲销", type = OperType.INSERT)
+    @OperLog(title = "凭证红字冲销", type = OperType.INSERT) // i18n-ignore
     public R<Long> reverse(@PathVariable Long id, @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return R.ok(voucherService.reverse(id, date));
     }
@@ -108,7 +108,7 @@ public class FinExtController {
 
     @PostMapping("/period/{period}/vat")
     @PreAuthorize("@ss.hasPerm('fin:period:tax')")
-    @OperLog(title = "增值税结转", type = OperType.INSERT)
+    @OperLog(title = "增值税结转", type = OperType.INSERT) // i18n-ignore
     public R<FinTaxService.VatResult> transferVat(@PathVariable int period, @RequestBody(required = false) VatRequest req) {
         VatRequest r = req == null ? new VatRequest(null, null, null) : req;
         return R.ok(taxService.transfer(period, r.cityRate(), r.eduRate(), r.localRate()));
@@ -128,16 +128,16 @@ public class FinExtController {
     /** 导入数电票 XML 文件（可多个）：kind 为 INPUT 进项 / OUTPUT 销项，autoMatch 自动勾稽金额唯一相等的单据 */
     @PostMapping("/invoice/import-xml")
     @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
-    @OperLog(title = "数电票导入", type = OperType.IMPORT)
+    @OperLog(title = "数电票导入", type = OperType.IMPORT) // i18n-ignore
     public R<FinInvoiceService.InvoiceImportResult> importInvoiceXml(@RequestParam String kind, @RequestParam("files") List<MultipartFile> files,
                                                                      @RequestParam(defaultValue = "true") boolean autoMatch) throws IOException {
         if (files.isEmpty() || files.size() > MAX_INVOICE_FILES) {
-            throw new BizException("一次导入 1 ~ " + MAX_INVOICE_FILES + " 个 XML 文件");
+            throw new BizException("一次导入 1 ~ {0} 个 XML 文件", MAX_INVOICE_FILES);
         }
         Map<String, byte[]> contents = new LinkedHashMap<>();
         for (MultipartFile f : files) {
             if (f.getSize() > MAX_INVOICE_FILE_SIZE) {
-                throw new BizException(f.getOriginalFilename() + " 超过 1MB");
+                throw new BizException("{0} 超过 1MB", f.getOriginalFilename());
             }
             String name = f.getOriginalFilename() == null ? "file" + contents.size() : f.getOriginalFilename();
             contents.put(contents.containsKey(name) ? name + "#" + contents.size() : name, f.getBytes());
@@ -148,7 +148,7 @@ public class FinExtController {
     /** 导入发票清单（税务数字账户导出的 Excel，前端解析后按行提交） */
     @PostMapping("/invoice/import")
     @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
-    @OperLog(title = "发票清单导入", type = OperType.IMPORT)
+    @OperLog(title = "发票清单导入", type = OperType.IMPORT) // i18n-ignore
     public R<FinInvoiceService.InvoiceImportResult> importInvoices(@RequestParam String kind, @RequestParam(defaultValue = "true") boolean autoMatch,
                                                                    @Valid @RequestBody ImportRequest<InvoiceImport> req) {
         return R.ok(invoiceService.importRows(kind, req.rows(), autoMatch));
@@ -159,7 +159,7 @@ public class FinExtController {
 
     @PostMapping("/invoice/{id}/match")
     @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
-    @OperLog(title = "发票勾稽", type = OperType.UPDATE)
+    @OperLog(title = "发票勾稽", type = OperType.UPDATE) // i18n-ignore
     public R<Void> matchInvoice(@PathVariable Long id, @Valid @RequestBody MatchRequest req) {
         invoiceService.match(id, req.items());
         return R.ok();
@@ -167,7 +167,7 @@ public class FinExtController {
 
     @PostMapping("/invoice/{id}/unmatch")
     @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
-    @OperLog(title = "取消发票勾稽", type = OperType.UPDATE)
+    @OperLog(title = "取消发票勾稽", type = OperType.UPDATE) // i18n-ignore
     public R<Void> unmatchInvoice(@PathVariable Long id) {
         invoiceService.unmatch(id);
         return R.ok();
@@ -195,14 +195,14 @@ public class FinExtController {
 
     @PostMapping("/invoice")
     @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
-    @OperLog(title = "发票登记", type = OperType.INSERT)
+    @OperLog(title = "发票登记", type = OperType.INSERT) // i18n-ignore
     public R<Long> createInvoice(@Valid @RequestBody InvoiceRequest req) {
         return R.ok(invoiceService.create(req));
     }
 
     @PostMapping("/invoice/{id}/cancel")
     @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
-    @OperLog(title = "发票作废", type = OperType.UPDATE)
+    @OperLog(title = "发票作废", type = OperType.UPDATE) // i18n-ignore
     public R<Void> cancelInvoice(@PathVariable Long id) {
         invoiceService.cancel(id);
         return R.ok();
@@ -213,7 +213,7 @@ public class FinExtController {
 
     @PostMapping("/invoice/certify")
     @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
-    @OperLog(title = "进项发票认证", type = OperType.UPDATE)
+    @OperLog(title = "进项发票认证", type = OperType.UPDATE) // i18n-ignore
     public R<Void> certify(@Valid @RequestBody CertifyRequest req) {
         invoiceService.certify(req.ids(), req.period());
         return R.ok();
@@ -237,7 +237,7 @@ public class FinExtController {
 
     @PostMapping("/advance")
     @PreAuthorize("@ss.hasPerm('fin:advance:add')")
-    @OperLog(title = "预收预付", type = OperType.INSERT)
+    @OperLog(title = "预收预付", type = OperType.INSERT) // i18n-ignore
     public R<Long> createAdvance(@Valid @RequestBody AdvanceRequest req) {
         return R.ok(advanceService.create(req));
     }
@@ -247,7 +247,7 @@ public class FinExtController {
 
     @PostMapping("/advance/{id}/apply")
     @PreAuthorize("@ss.hasPerm('fin:advance:add')")
-    @OperLog(title = "预收预付冲抵", type = OperType.UPDATE)
+    @OperLog(title = "预收预付冲抵", type = OperType.UPDATE) // i18n-ignore
     public R<Void> applyAdvance(@PathVariable Long id, @Valid @RequestBody ApplyRequest req) {
         advanceService.apply(id, req.date(), req.items());
         return R.ok();
@@ -255,7 +255,7 @@ public class FinExtController {
 
     @DeleteMapping("/advance/{id}")
     @PreAuthorize("@ss.hasPerm('fin:advance:add')")
-    @OperLog(title = "预收预付", type = OperType.DELETE)
+    @OperLog(title = "预收预付", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteAdvance(@PathVariable Long id) {
         advanceService.delete(id);
         return R.ok();
@@ -284,7 +284,7 @@ public class FinExtController {
 
     @PostMapping("/bank/statement/import")
     @PreAuthorize("@ss.hasPerm('fin:bank:edit')")
-    @OperLog(title = "导入银行对账单", type = OperType.IMPORT)
+    @OperLog(title = "导入银行对账单", type = OperType.IMPORT) // i18n-ignore
     public R<Integer> importStatements(@Valid @RequestBody StatementImport req) {
         return R.ok(bankService.importRows(req.accountId(), req.rows()));
     }
@@ -313,7 +313,7 @@ public class FinExtController {
 
     @DeleteMapping("/bank/statement/{ids}")
     @PreAuthorize("@ss.hasPerm('fin:bank:edit')")
-    @OperLog(title = "银行对账单", type = OperType.DELETE)
+    @OperLog(title = "银行对账单", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteStatements(@PathVariable List<Long> ids) {
         bankService.delete(ids);
         return R.ok();
@@ -345,14 +345,14 @@ public class FinExtController {
 
     @PostMapping("/claim")
     @PreAuthorize("@ss.hasPerm('fin:claim:add')")
-    @OperLog(title = "费用报销", type = OperType.INSERT)
+    @OperLog(title = "费用报销", type = OperType.INSERT) // i18n-ignore
     public R<Long> createClaim(@Valid @RequestBody ClaimRequest req) {
         return R.ok(claimService.create(req));
     }
 
     @PutMapping("/claim/{id}")
     @PreAuthorize("@ss.hasPerm('fin:claim:add')")
-    @OperLog(title = "费用报销", type = OperType.UPDATE)
+    @OperLog(title = "费用报销", type = OperType.UPDATE) // i18n-ignore
     public R<Void> updateClaim(@PathVariable Long id, @Valid @RequestBody ClaimRequest req) {
         claimService.update(id, req);
         return R.ok();
@@ -360,7 +360,7 @@ public class FinExtController {
 
     @DeleteMapping("/claim/{id}")
     @PreAuthorize("@ss.hasPerm('fin:claim:add')")
-    @OperLog(title = "费用报销", type = OperType.DELETE)
+    @OperLog(title = "费用报销", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteClaim(@PathVariable Long id) {
         claimService.delete(id);
         return R.ok();
@@ -368,7 +368,7 @@ public class FinExtController {
 
     @PostMapping("/claim/{id}/submit")
     @PreAuthorize("@ss.hasPerm('fin:claim:add')")
-    @OperLog(title = "费用报销提交", type = OperType.UPDATE)
+    @OperLog(title = "费用报销提交", type = OperType.UPDATE) // i18n-ignore
     public R<FinClaimService.SubmitResult> submitClaim(@PathVariable Long id) {
         return R.ok(claimService.submit(id));
     }
@@ -378,7 +378,7 @@ public class FinExtController {
 
     @PostMapping("/claim/{id}/pay")
     @PreAuthorize("@ss.hasPerm('fin:claim:pay')")
-    @OperLog(title = "报销付款", type = OperType.UPDATE)
+    @OperLog(title = "报销付款", type = OperType.UPDATE) // i18n-ignore
     public R<Void> payClaim(@PathVariable Long id, @RequestBody PayRequest req) {
         claimService.pay(id, req.accountId(), req.date());
         return R.ok();
@@ -402,14 +402,14 @@ public class FinExtController {
 
     @PostMapping("/loan")
     @PreAuthorize("@ss.hasPerm('fin:loan:add')")
-    @OperLog(title = "员工借款", type = OperType.INSERT)
+    @OperLog(title = "员工借款", type = OperType.INSERT) // i18n-ignore
     public R<Long> createLoan(@Valid @RequestBody LoanRequest req) {
         return R.ok(loanService.create(req));
     }
 
     @DeleteMapping("/loan/{id}")
     @PreAuthorize("@ss.hasPerm('fin:loan:add')")
-    @OperLog(title = "员工借款", type = OperType.DELETE)
+    @OperLog(title = "员工借款", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteLoan(@PathVariable Long id) {
         loanService.delete(id);
         return R.ok();
@@ -417,14 +417,14 @@ public class FinExtController {
 
     @PostMapping("/loan/{id}/submit")
     @PreAuthorize("@ss.hasPerm('fin:loan:add')")
-    @OperLog(title = "员工借款提交", type = OperType.UPDATE)
+    @OperLog(title = "员工借款提交", type = OperType.UPDATE) // i18n-ignore
     public R<Boolean> submitLoan(@PathVariable Long id) {
         return R.ok(loanService.submit(id));
     }
 
     @PostMapping("/loan/{id}/pay")
     @PreAuthorize("@ss.hasPerm('fin:loan:pay')")
-    @OperLog(title = "借款付款", type = OperType.UPDATE)
+    @OperLog(title = "借款付款", type = OperType.UPDATE) // i18n-ignore
     public R<Void> payLoan(@PathVariable Long id, @RequestBody PayRequest req) {
         loanService.pay(id, req.accountId(), req.date());
         return R.ok();
@@ -432,7 +432,7 @@ public class FinExtController {
 
     @PostMapping("/loan/{id}/repay")
     @PreAuthorize("@ss.hasPerm('fin:loan:pay')")
-    @OperLog(title = "借款还款", type = OperType.UPDATE)
+    @OperLog(title = "借款还款", type = OperType.UPDATE) // i18n-ignore
     public R<Void> repayLoan(@PathVariable Long id, @RequestBody PayRequest req) {
         loanService.repay(id, req.accountId(), req.amount(), req.date());
         return R.ok();

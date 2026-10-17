@@ -48,7 +48,7 @@ public class WmsReservationController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('wms:reservation:release')")
-    @OperLog(title = "释放库存预留", type = OperType.DELETE)
+    @OperLog(title = "释放库存预留", type = OperType.DELETE) // i18n-ignore
     public R<Void> release(@PathVariable Long id) {
         reservationService.releaseById(id);
         return R.ok();

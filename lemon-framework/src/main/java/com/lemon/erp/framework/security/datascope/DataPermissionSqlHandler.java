@@ -34,7 +34,7 @@ public class DataPermissionSqlHandler implements MultiDataPermissionHandler {
         try {
             return CCJSqlParserUtil.parseCondExpression(condition);
         } catch (JSQLParserException e) {
-            throw new IllegalStateException("数据权限条件解析失败: " + condition, e);
+            throw new IllegalStateException("数据权限条件解析失败: " + condition, e); // i18n-ignore 内部错误
         }
     }
 

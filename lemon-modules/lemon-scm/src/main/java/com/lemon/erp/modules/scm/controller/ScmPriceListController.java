@@ -74,7 +74,7 @@ public class ScmPriceListController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:price:edit')")
-    @OperLog(title = "销售价目表", type = OperType.INSERT)
+    @OperLog(title = "销售价目表", type = OperType.INSERT) // i18n-ignore
     public R<Void> create(@Valid @RequestBody ScmPriceList req) {
         priceListMapper.insert(normalize(req, null));
         return R.ok();
@@ -82,7 +82,7 @@ public class ScmPriceListController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:price:edit')")
-    @OperLog(title = "销售价目表", type = OperType.UPDATE)
+    @OperLog(title = "销售价目表", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody ScmPriceList req) {
         if (priceListMapper.selectById(id) == null) {
             throw new BizException("价目不存在");
@@ -102,7 +102,7 @@ public class ScmPriceListController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('scm:price:edit')")
-    @OperLog(title = "销售价目表", type = OperType.DELETE)
+    @OperLog(title = "销售价目表", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         priceListMapper.deleteByIds(ids);
         return R.ok();
@@ -125,7 +125,7 @@ public class ScmPriceListController {
 
     @PostMapping("/control")
     @PreAuthorize("@ss.hasPerm('scm:price:edit')")
-    @OperLog(title = "价格控制", type = OperType.INSERT)
+    @OperLog(title = "价格控制", type = OperType.INSERT) // i18n-ignore
     public R<Void> createControl(@Valid @RequestBody ScmPriceControl req) {
         materialService.get(req.getMaterialId());
         req.setId(null);
@@ -135,7 +135,7 @@ public class ScmPriceListController {
 
     @PutMapping("/control/{id}")
     @PreAuthorize("@ss.hasPerm('scm:price:edit')")
-    @OperLog(title = "价格控制", type = OperType.UPDATE)
+    @OperLog(title = "价格控制", type = OperType.UPDATE) // i18n-ignore
     public R<Void> updateControl(@PathVariable Long id, @Valid @RequestBody ScmPriceControl req) {
         materialService.get(req.getMaterialId());
         req.setId(id);
@@ -145,7 +145,7 @@ public class ScmPriceListController {
 
     @DeleteMapping("/control/{ids}")
     @PreAuthorize("@ss.hasPerm('scm:price:edit')")
-    @OperLog(title = "价格控制", type = OperType.DELETE)
+    @OperLog(title = "价格控制", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteControl(@PathVariable List<Long> ids) {
         controlService.delete(ids);
         return R.ok();

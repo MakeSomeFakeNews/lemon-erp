@@ -142,14 +142,14 @@ public class FinClaimService {
     public void pay(Long id, Long accountId, LocalDate date) {
         FinExpenseClaim c = requireStatus(id, "APPROVED");
         LocalDate d = date == null ? LocalDate.now() : date;
-        periodGuard.checkOpen(d, "报销付款");
+        periodGuard.checkOpen(d, "报销付款"); // i18n-ignore 在 FinBizPeriodGuard 输出处翻译
         BigDecimal offset = c.getLoanId() == null ? BigDecimal.ZERO : loanService.outstanding(c.getLoanId()).min(c.getAmount());
         BigDecimal cash = c.getAmount().subtract(offset);
         if (cash.signum() > 0) {
             accountService.requireCashAccount(accountId);
         }
         transit(id, "APPROVED", "PAID");
-        String summary = "报销 " + c.getClaimNo() + " " + c.getUserName() + (c.getRemark() == null ? "" : " " + c.getRemark());
+        String summary = "报销 " + c.getClaimNo() + " " + c.getUserName() + (c.getRemark() == null ? "" : " " + c.getRemark()); // i18n-ignore
         List<VoucherLine> lines = new ArrayList<>();
         for (FinExpenseClaimItem i : c.getItems()) {
             lines.add(VoucherLine.debit(summary, i.getAccountId(), c.getDeptId(), i.getAmount()).withProject(i.getProjectId()));
@@ -200,7 +200,7 @@ public class FinClaimService {
         for (ClaimRequest.Item i : req.items()) {
             FinAccount a = accounts.get(i.accountId());
             if (!AccountCategory.PROFIT.name().equals(a.getCategory()) && !AccountCategory.COST.name().equals(a.getCategory())) {
-                throw new BizException("费用科目须为损益类或成本类科目：" + a.getCode() + " " + a.getName());
+                throw new BizException("费用科目须为损益类或成本类科目：{0} {1}", a.getCode(), a.getName());
             }
             FinExpenseClaimItem item = new FinExpenseClaimItem();
             item.setClaimId(claimId);
@@ -216,7 +216,7 @@ public class FinClaimService {
     private FinExpenseClaim requireStatus(Long id, String status) {
         FinExpenseClaim c = detail(id);
         if (!status.equals(c.getStatus())) {
-            throw new BizException("报销单 " + c.getClaimNo() + " 状态不正确，请刷新");
+            throw new BizException("报销单 {0} 状态不正确，请刷新", c.getClaimNo());
         }
         return c;
     }

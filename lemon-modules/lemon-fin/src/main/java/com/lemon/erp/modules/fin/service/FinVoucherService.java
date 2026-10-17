@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.rule.BizRules;
@@ -58,13 +59,13 @@ import static com.lemon.erp.modules.fin.model.FinConstants.periodOf;
 public class FinVoucherService {
 
     /** 记录变更历史的字段 */
-    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("voucherDate", "凭证日期", "voucherNo", "凭证号", "summary", "摘要", "totalDebit", "借方合计", "attachmentCount", "附单据数");
+    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("voucherDate", "凭证日期", "voucherNo", "凭证号", "summary", "摘要", "totalDebit", "借方合计", "attachmentCount", "附单据数"); // i18n-ignore
 
     /** 凭证审批流程标识 */
     public static final String PROCESS_KEY = "fin_voucher";
     private static final String BUSINESS_KEY_PREFIX = "fin_voucher:";
 
-    private static final String WORD = "记";
+    private static final String WORD = "记"; // i18n-ignore
 
     private final FinVoucherMapper voucherMapper;
     private final FinVoucherEntryMapper entryMapper;
@@ -141,8 +142,8 @@ public class FinVoucherService {
             FinVoucher v = getWithStatus(id, VoucherStatus.DRAFT);
             periodService.checkOpen(v.getPeriod());
             if (UNDELETABLE_SOURCES.contains(v.getSourceType())) {
-                throw new BizException("凭证 " + v.getVoucherNo() + " 由" + sourceLabel(v.getSourceType()) + "（" + v.getSourceNo()
-                        + "）生成，不能删除，请在业务单据中撤销或做红字冲销");
+                throw new BizException("凭证 {0} 由{1}（{2}）生成，不能删除，请在业务单据中撤销或做红字冲销",
+                        v.getVoucherNo(), I18n.t(sourceLabel(v.getSourceType())), v.getSourceNo());
             }
         }
         // 删除红字冲销凭证后，原凭证可以重新冲销
@@ -167,7 +168,7 @@ public class FinVoucherService {
             return;
         }
         if (!VoucherStatus.DRAFT.name().equals(v.getStatus())) {
-            throw new BizException("凭证 " + v.getVoucherNo() + " 已审核，请先反审核或做红字冲销");
+            throw new BizException("凭证 {0} 已审核，请先反审核或做红字冲销", v.getVoucherNo());
         }
         periodService.checkOpen(v.getPeriod());
         entryMapper.delete(Wrappers.<FinVoucherEntry>lambdaQuery().eq(FinVoucherEntry::getVoucherId, id));
@@ -209,11 +210,12 @@ public class FinVoucherService {
         periodService.checkOpen(periodOf(d));
         if (voucherMapper.update(Wrappers.<FinVoucher>lambdaUpdate().set(FinVoucher::getReversed, 1)
                 .eq(FinVoucher::getId, id).eq(FinVoucher::getReversed, 0)) == 0) {
-            throw new BizException("凭证 " + v.getVoucherNo() + " 已冲销");
+            throw new BizException("凭证 {0} 已冲销", v.getVoucherNo());
         }
         List<VoucherLine> lines = entryMapper.selectList(Wrappers.<FinVoucherEntry>lambdaQuery().eq(FinVoucherEntry::getVoucherId, id)
                         .orderByAsc(FinVoucherEntry::getSeq)).stream()
-                .map(e -> new VoucherLine("冲销 " + v.getPeriod() + " " + v.getVoucherNo() + " " + e.getSummary(), e.getAccountId(), e.getDeptId(),
+                .map(e -> new VoucherLine("冲销 " + v.getPeriod() // i18n-ignore
+                         + " " + v.getVoucherNo() + " " + e.getSummary(), e.getAccountId(), e.getDeptId(),
                         e.getDebit().negate(), e.getCredit().negate(), e.getProjectId(), e.getCustomerId(), e.getSupplierId(), e.getMaterialId()))
                 .toList();
         Long redId = insert(d, 0, lines, VoucherSource.REVERSAL, v.getVoucherNo(), VoucherStatus.DRAFT);
@@ -243,7 +245,7 @@ public class FinVoucherService {
                     .set(FinVoucher::getStatus, VoucherStatus.APPROVING.name())
                     .eq(FinVoucher::getId, id).eq(FinVoucher::getStatus, VoucherStatus.DRAFT.name()));
             if (updated == 0) {
-                throw new BizException("凭证 " + v.getVoucherNo() + " 状态已变化，请刷新");
+                throw new BizException("凭证 {0} 状态已变化，请刷新", v.getVoucherNo());
             }
             String instanceId = flowApi.start(PROCESS_KEY, BUSINESS_KEY_PREFIX + id, Map.of(
                     "amount", v.getTotalDebit() == null ? 0 : v.getTotalDebit().doubleValue(),
@@ -360,7 +362,7 @@ public class FinVoucherService {
             BigDecimal debit = l.debit() == null ? BigDecimal.ZERO : l.debit();
             BigDecimal credit = l.credit() == null ? BigDecimal.ZERO : l.credit();
             if ((debit.signum() == 0) == (credit.signum() == 0)) {
-                throw new BizException("第 " + (i + 1) + " 条分录：借方、贷方金额必须且只能填一个");
+                throw new BizException("第 {0} 条分录：借方、贷方金额必须且只能填一个", i + 1);
             }
             FinVoucherEntry e = new FinVoucherEntry();
             e.setSeq(i + 1);
@@ -378,7 +380,7 @@ public class FinVoucherService {
         BigDecimal debit = total(entries, true);
         BigDecimal credit = total(entries, false);
         if (debit.compareTo(credit) != 0) {
-            throw new BizException("借贷不平衡：借方合计 " + debit.toPlainString() + "，贷方合计 " + credit.toPlainString());
+            throw new BizException("借贷不平衡：借方合计 {0}，贷方合计 {1}", debit.toPlainString(), credit.toPlainString());
         }
         return entries;
     }
@@ -394,7 +396,7 @@ public class FinVoucherService {
             FinAccount a = accounts.get(l.accountId());
             for (AuxItem item : AuxItem.parse(a.getAuxItems())) {
                 if (!l.has(item)) {
-                    throw new BizException("第 " + (i + 1) + " 条分录：科目「" + a.getCode() + " " + a.getName() + "」需要填写" + item.label());
+                    throw new BizException("第 {0} 条分录：科目「{1} {2}」需要填写{3}", i + 1, a.getCode(), a.getName(), I18n.t(item.label()));
                 }
             }
         }
@@ -436,7 +438,7 @@ public class FinVoucherService {
             // 不相容职务分离：制单人不能审核自己的凭证（超级管理员除外，便于单人体验）
             if (to == VoucherStatus.AUDITED && from == VoucherStatus.DRAFT && Objects.equals(v.getCreateBy(), userId)
                     && !SecurityUtils.getLoginUser().isAdmin() && !bizRules.bool(FinBizRules.VOUCHER_SELF_AUDIT)) {
-                throw new BizException("凭证 " + v.getVoucherNo() + " 是你制单的，不能自己审核");
+                throw new BizException("凭证 {0} 是你制单的，不能自己审核", v.getVoucherNo());
             }
             LambdaUpdateWrapper<FinVoucher> update = Wrappers.<FinVoucher>lambdaUpdate()
                     .set(FinVoucher::getStatus, to.name())
@@ -455,13 +457,13 @@ public class FinVoucherService {
                 case DRAFT -> update.set(FinVoucher::getAuditBy, null).set(FinVoucher::getAuditTime, null);
             }
             if (voucherMapper.update(update) == 0) {
-                throw new BizException("凭证 " + v.getVoucherNo() + " 状态已变化，请刷新");
+                throw new BizException("凭证 {0} 状态已变化，请刷新", v.getVoucherNo());
             }
         }
     }
 
     private FinVoucher getWithStatus(Long id, VoucherStatus status) {
-        return getWithStatus(id, status, "凭证不是" + (status == VoucherStatus.DRAFT ? "未审核" : status == VoucherStatus.AUDITED ? "已审核" : "已记账") + "状态");
+        return getWithStatus(id, status, status == VoucherStatus.DRAFT ? "凭证不是未审核状态" : status == VoucherStatus.AUDITED ? "凭证不是已审核状态" : "凭证不是已记账状态");
     }
 
     private FinVoucher getWithStatus(Long id, VoucherStatus status, String error) {
@@ -470,7 +472,8 @@ public class FinVoucherService {
             throw new BizException("凭证不存在");
         }
         if (!status.name().equals(v.getStatus())) {
-            throw new BizException(v.getPeriod() + " " + v.getVoucherNo() + "：" + error);
+            // error 为中文模板，按请求语言翻译后作为参数
+            throw new BizException("{0} {1}：{2}", v.getPeriod(), v.getVoucherNo(), I18n.t(error));
         }
         return v;
     }

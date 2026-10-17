@@ -1,4 +1,6 @@
 import { listPrintTemplates } from '@/api/system/printTemplate'
+import { isZh, t } from '@/locales'
+import zhPrint from '@/locales/zh-CN/print'
 
 /**
  * 打印模板：可配置的单据（目录）、已保存的模板配置，以及把模板套用到单据上。
@@ -19,137 +21,156 @@ import { listPrintTemplates } from '@/api/system/printTemplate'
  *   signs:   [{ label, alias, hidden }]
  * }
  * 通用设置（模板标识 _common）：{ companyName }
+ *
+ * 多语言：字段、列、签字栏的「中文名称」是匹配键（模板配置、上传的 JRXML 都按它匹配），不随界面语言变化；
+ * 显示时用 printLabel 翻译（译文在 locales/<语言>/print.js 的 name 中，这里按中文语言包取中文名称）
  */
 export const COMMON_KEY = '_common'
 
-const MATERIAL_COLUMNS = ['序号', '物料编码', '物料名称', '规格型号', '单位']
+/** 打印名称（中文），即匹配键 */
+const n = zhPrint.name
+const NAME_IDS = Object.fromEntries(Object.entries(n).map(([id, name]) => [name, id]))
+
+/** 打印名称（中文匹配键）在当前语言下的显示文字；不是登记的名称时原样返回 */
+export function printLabel(name) {
+  const id = NAME_IDS[name]
+  return id && !isZh() ? t(`print.name.${id}`) : name
+}
+
+/** 已登记的打印名称：中文 → 名称标识 */
+export const printNameId = (name) => NAME_IDS[name]
+
+/** 名称标识对应的中文名称（匹配键） */
+export const printName = (id) => n[id]
+
+const MATERIAL_COLUMNS = [n.index, n.materialCode, n.materialName, n.spec, n.unit]
 const num = (title) => ({ title, align: 'right' })
 
-const order = (key, name, partner, warehouse) => ({
+const order = (key, name, partner, warehouse, confirm) => ({
   key,
-  module: '供应链',
+  module: n.modScm,
   name,
-  fields: [partner, '订单日期', '交货日期', warehouse, '价税合计', '税额', '币种 / 汇率', '版本'],
-  columns: [...MATERIAL_COLUMNS, num('数量'), num('含税单价'), num('税率'), num('价税合计'), '交货日期'],
-  signs: ['制单', '审核', `${partner}确认`],
+  fields: [partner, n.orderDate, n.deliveryDate, warehouse, n.totalAmount, n.taxAmount, n.currencyRate, n.version],
+  columns: [...MATERIAL_COLUMNS, num(n.quantity), num(n.taxPrice), num(n.taxRate), num(n.totalAmount), n.deliveryDate],
+  signs: [n.prepared, n.approved, confirm],
   note: true
 })
-const trade = (key, name, partner) => ({
+const trade = (key, name, partner, sign) => ({
   key,
-  module: '供应链',
+  module: n.modScm,
   name,
-  fields: ['订单号', partner, '仓库', '业务日期', '仓库单据', '价税合计', '原币'],
-  columns: [...MATERIAL_COLUMNS, '库位', '批次', num('数量'), num('含税单价'), num('价税合计'), '序列号'],
-  signs: ['制单', '仓管', `${partner}签收`],
+  fields: [n.orderNo, partner, n.warehouse, n.bizDate, n.wmsDocNo, n.totalAmount, n.originalCurrency],
+  columns: [...MATERIAL_COLUMNS, n.location, n.batch, num(n.quantity), num(n.taxPrice), num(n.totalAmount), n.serialNo],
+  signs: [n.prepared, n.storekeeper, sign],
   note: true
 })
 const stock = (key, name, warehouse, transfer) => ({
   key,
-  module: '仓库',
+  module: n.warehouse,
   name,
-  fields: [warehouse, ...(transfer ? ['调入仓库'] : []), '业务日期', '来源单号', '合计数量'],
-  columns: [...MATERIAL_COLUMNS, transfer ? '调出库位' : '库位', ...(transfer ? ['调入库位'] : []), '批次', num('数量'), '序列号'],
-  signs: ['制单', '确认', '经手人'],
+  fields: [warehouse, ...(transfer ? [n.inWarehouse] : []), n.bizDate, n.sourceNo, n.totalQty],
+  columns: [...MATERIAL_COLUMNS, transfer ? n.outLocation : n.location, ...(transfer ? [n.inLocation] : []), n.batch, num(n.quantity), n.serialNo],
+  signs: [n.prepared, n.confirmed, n.handler],
   note: true
 })
 
 /** 可配置打印模板的单据：名称、表头字段、明细列、签字栏与各页面打印时一致 */
 export const PRINT_TYPES = [
-  order('scm.purchaseOrder', '采购订单', '供应商', '收货仓库'),
-  order('scm.salesOrder', '销售订单', '客户', '发货仓库'),
-  trade('scm.purchaseIn', '采购入库单', '供应商'),
-  trade('scm.purchaseReturn', '采购退货单', '供应商'),
-  trade('scm.salesOut', '销售出库单', '客户'),
-  trade('scm.salesReturn', '销售退货单', '客户'),
+  order('scm.purchaseOrder', n.purchaseOrder, n.supplier, n.receiveWarehouse, n.supplierConfirm),
+  order('scm.salesOrder', n.salesOrder, n.customer, n.shipWarehouse, n.customerConfirm),
+  trade('scm.purchaseIn', n.purchaseIn, n.supplier, n.supplierSign),
+  trade('scm.purchaseReturn', n.purchaseReturn, n.supplier, n.supplierSign),
+  trade('scm.salesOut', n.salesOut, n.customer, n.customerSign),
+  trade('scm.salesReturn', n.salesReturn, n.customer, n.customerSign),
   {
     key: 'scm.pickList',
-    module: '供应链',
-    name: '拣货单',
-    fields: ['销售订单', '客户', '发货仓库', '发货日期', '制单', '状态'],
-    columns: ['序号', '物料', '库位', '批次', '有效期', num('数量'), '序列号'],
-    signs: ['制单', '拣货', '复核'],
+    module: n.modScm,
+    name: n.pickList,
+    fields: [n.salesOrder, n.customer, n.shipWarehouse, n.shipDate, n.prepared, n.status],
+    columns: [n.index, n.material, n.location, n.batch, n.expiryDate, num(n.quantity), n.serialNo],
+    signs: [n.prepared, n.picker, n.reviewer],
     note: true
   },
   {
     key: 'scm.wavePick',
-    module: '供应链',
-    name: '波次拣货单',
-    fields: ['仓库', '发货通知', '制单', '状态'],
-    columns: ['序号', '库位', '物料', '批次', '有效期', num('数量'), '分拣'],
-    signs: ['制单', '拣货', '复核'],
+    module: n.modScm,
+    name: n.wavePick,
+    fields: [n.warehouse, n.deliveryNotice, n.prepared, n.status],
+    columns: [n.index, n.location, n.material, n.batch, n.expiryDate, num(n.quantity), n.sorting],
+    signs: [n.prepared, n.picker, n.reviewer],
     note: true
   },
   {
     key: 'scm.packingList',
-    module: '供应链',
-    name: '装箱单',
-    fields: ['销售订单', '客户', '发货仓库', '发货日期', '箱数', '总毛重', '总体积'],
-    columns: ['箱号', '物料', num('数量'), num('毛重'), num('体积')],
-    signs: ['装箱', '复核', '客户签收'],
+    module: n.modScm,
+    name: n.packingList,
+    fields: [n.salesOrder, n.customer, n.shipWarehouse, n.shipDate, n.boxCount, n.totalGrossWeight, n.totalVolume],
+    columns: [n.boxNo, n.material, num(n.quantity), num(n.grossWeight), num(n.volume)],
+    signs: [n.packer, n.reviewer, n.customerSign],
     note: true
   },
-  stock('wms.in', '入库单', '入库仓库'),
-  stock('wms.out', '出库单', '出库仓库'),
-  stock('wms.transfer', '调拨单', '调出仓库', true),
+  stock('wms.in', n.wmsIn, n.inboundWarehouse),
+  stock('wms.out', n.wmsOut, n.outboundWarehouse),
+  stock('wms.transfer', n.transfer, n.outWarehouse, true),
   {
     key: 'fin.voucher',
-    module: '财务',
-    name: '记账凭证',
-    fields: ['日期', '期间', '附单据'],
-    columns: ['摘要', '会计科目', '部门 / 辅助', num('借方金额'), num('贷方金额')],
-    signs: ['制单', '审核', '记账', '财务主管']
+    module: n.modFin,
+    name: n.voucher,
+    fields: [n.date, n.period, n.attachments],
+    columns: [n.summary, n.account, n.deptAux, num(n.debit), num(n.credit)],
+    signs: [n.prepared, n.approved, n.posted, n.finManager]
   },
   {
     key: 'fin.balanceSheet',
-    module: '财务',
-    name: '资产负债表',
-    fields: ['编制单位', '期间', '单位'],
-    columns: ['资产', '行次', num('期末余额'), num('年初余额'), '负债和所有者权益', '行次（右）', num('期末余额（右）'), num('年初余额（右）')],
-    signs: ['单位负责人', '会计主管', '制表']
+    module: n.modFin,
+    name: n.balanceSheet,
+    fields: [n.preparer, n.period, n.unit],
+    columns: [n.assets, n.lineNo, num(n.endBalance), num(n.beginYearBalance), n.liabilitiesEquity, n.lineNoRight, num(n.endBalanceRight), num(n.beginYearBalanceRight)],
+    signs: [n.entityHead, n.accountingManager, n.tabulator]
   },
   {
     key: 'fin.incomeStatement',
-    module: '财务',
-    name: '利润表',
-    fields: ['编制单位', '期间', '单位'],
-    columns: ['项目', '行次', num('本月金额'), num('本年累计金额'), num('上年同期累计')],
-    signs: ['单位负责人', '会计主管', '制表']
+    module: n.modFin,
+    name: n.incomeStatement,
+    fields: [n.preparer, n.period, n.unit],
+    columns: [n.item, n.lineNo, num(n.monthAmount), num(n.yearAmount), num(n.lastYearAmount)],
+    signs: [n.entityHead, n.accountingManager, n.tabulator]
   },
   {
     key: 'fin.cashFlow',
-    module: '财务',
-    name: '现金流量表',
-    fields: ['编制单位', '期间', '单位'],
-    columns: ['项目', '行次', num('金额')],
-    signs: ['单位负责人', '会计主管', '制表']
+    module: n.modFin,
+    name: n.cashFlow,
+    fields: [n.preparer, n.period, n.unit],
+    columns: [n.item, n.lineNo, num(n.amount)],
+    signs: [n.entityHead, n.accountingManager, n.tabulator]
   },
   {
     key: 'fin.partnerStatement',
-    module: '财务',
-    name: '往来对账单',
-    fields: ['客户', '供应商', '对账期间', '期初余额', '期末余额'],
-    columns: ['日期', '类型', '单号', '来源 / 结算方式', num('增加金额'), num('减少金额'), num('余额'), '备注'],
-    signs: ['制表', '财务审核', '客户确认（盖章）', '供应商确认（盖章）'],
+    module: n.modFin,
+    name: n.partnerStatement,
+    fields: [n.customer, n.supplier, n.statementPeriod, n.beginBalance, n.endBalance],
+    columns: [n.date, n.type, n.docNo, n.sourceSettle, num(n.increase), num(n.decrease), num(n.balance), n.remark],
+    signs: [n.tabulator, n.finReview, n.customerSeal, n.supplierSeal],
     note: true
   },
   {
     key: 'mes.workOrder',
-    module: '生产',
-    name: '生产任务单',
-    fields: ['产品', 'BOM 版本', '计划数量', '计划开工', '计划完工', '完工入库仓库'],
-    columns: [...MATERIAL_COLUMNS, num('单位用量'), num('需求数量'), num('补料'), num('已领')],
-    signs: ['制单', '生产主管', '仓库'],
+    module: n.modMes,
+    name: n.workOrder,
+    fields: [n.product, n.bomVersion, n.planQty, n.planStart, n.planFinish, n.finishWarehouse],
+    columns: [...MATERIAL_COLUMNS, num(n.unitUsage), num(n.requiredQty), num(n.supplement), num(n.issued)],
+    signs: [n.prepared, n.productionManager, n.warehouse],
     note: true
   },
   {
     key: 'hr.payslip',
-    module: '人力',
-    name: '工资条',
+    module: n.modHr,
+    name: n.payslip,
     slip: true,
-    fields: ['姓名', '工号', '部门', '出勤 / 工作日', '基本工资', '津贴补贴', '加班费', '计件工资', '绩效奖金', '其他奖金',
-      '考勤扣款', '应发工资', '个人社保', '个人公积金', '专项附加扣除', '个税', '其他扣款', '实发工资', '备注']
+    fields: [n.empName, n.empNo, n.dept, n.attendance, n.baseSalary, n.allowance, n.overtimePay, n.pieceWage, n.performanceBonus, n.otherBonus,
+      n.attendanceDeduction, n.grossPay, n.socialInsurance, n.housingFund, n.specialDeduction, n.incomeTax, n.otherDeduction, n.netPay, n.remark]
   }
-].map((t) => ({ ...t, columns: (t.columns || []).map((c) => (typeof c === 'string' ? { title: c } : c)), signs: t.signs || [] }))
+].map((tp) => ({ ...tp, columns: (tp.columns || []).map((c) => (typeof c === 'string' ? { title: c } : c)), signs: tp.signs || [] }))
 
 export const PRINT_TYPE_MAP = Object.fromEntries(PRINT_TYPES.map((t) => [t.key, t]))
 
@@ -171,13 +192,13 @@ export function setTemplates(templates) {
 
 /** 纸张（mm，纵向的宽 × 高）；连续纸用于针式打印机，241 × 140 也是常用的凭证纸 */
 export const PAPERS = [
-  { value: 'A4', label: 'A4（210 × 297）', width: 210, height: 297 },
-  { value: 'A5', label: 'A5（148 × 210）', width: 148, height: 210 },
-  { value: 'B5', label: 'B5（176 × 250）', width: 176, height: 250 },
-  { value: '241x280', label: '连续纸一等分（241 × 280）', width: 241, height: 280 },
-  { value: '241x140', label: '连续纸二等分 / 凭证纸（241 × 140）', width: 241, height: 140 },
-  { value: '241x93', label: '连续纸三等分（241 × 93）', width: 241, height: 93 },
-  { value: 'custom', label: '自定义' }
+  { value: 'A4', label: t('print.paper.size', { name: 'A4', size: '210 × 297' }), width: 210, height: 297 },
+  { value: 'A5', label: t('print.paper.size', { name: 'A5', size: '148 × 210' }), width: 148, height: 210 },
+  { value: 'B5', label: t('print.paper.size', { name: 'B5', size: '176 × 250' }), width: 176, height: 250 },
+  { value: '241x280', label: t('print.paper.size', { name: t('print.paper.continuous1'), size: '241 × 280' }), width: 241, height: 280 },
+  { value: '241x140', label: t('print.paper.size', { name: t('print.paper.continuous2'), size: '241 × 140' }), width: 241, height: 140 },
+  { value: '241x93', label: t('print.paper.size', { name: t('print.paper.continuous3'), size: '241 × 93' }), width: 241, height: 93 },
+  { value: 'custom', label: t('print.paper.custom') }
 ]
 const PAPER_MAP = Object.fromEntries(PAPERS.map((p) => [p.value, p]))
 
@@ -239,16 +260,18 @@ export function applyTemplate(doc, tpl, common) {
 
 /** 预览用的示例单据（规范化后的结构）：按目录生成表头、3 行明细和签字栏 */
 export function sampleDoc(type) {
-  const sample = (title, i) => (title === '序号' ? String(i + 1) : /数量|金额|单价|用量|已领|补料|税率/.test(title) ? '100.00' : `示例${title}`)
-  const item = (name, value) => ({ key: name, label: name, value })
+  // 按中文名称判断数值项，示例为金额，其他为「示例 + 名称」
+  const numeric = /数量|金额|单价|用量|已领|补料|税率/ // i18n-ignore 按中文匹配键判断
+  const sample = (name, i) => (name === n.index ? String(i + 1) : numeric.test(name) ? '100.00' : t('print.sample.value', { name: printLabel(name) }))
+  const item = (name, value) => ({ key: name, label: printLabel(name), value })
   return {
-    title: type.name,
+    title: printLabel(type.name),
     no: 'NO202601010001',
     slip: !!type.slip,
-    fields: type.fields.map((f) => item(f, `示例${f}`)),
-    columns: type.columns.map((c) => ({ key: c.title, title: c.title, right: c.align === 'right' })),
+    fields: type.fields.map((f) => item(f, t('print.sample.value', { name: printLabel(f) }))),
+    columns: type.columns.map((c) => ({ key: c.title, title: printLabel(c.title), right: c.align === 'right' })),
     rows: type.columns.length ? [0, 1, 2].map((i) => Object.fromEntries(type.columns.map((c) => [c.title, sample(c.title, i)]))) : [],
-    note: type.note ? '示例备注' : undefined,
-    signs: type.signs.map((s) => item(s, '张三'))
+    note: type.note ? t('print.sample.note') : undefined,
+    signs: type.signs.map((s) => item(s, t('print.sample.person')))
   }
 }

@@ -116,7 +116,7 @@ public class FinStdCostService {
             throw new BizException("物料不存在");
         }
         if (defaultBoms().containsKey(req.materialId())) {
-            throw new BizException("物料「" + m.getCode() + " " + m.getName() + "」有默认 BOM，是自制件，标准成本由卷算得出");
+            throw new BizException("物料「{0} {1}」有默认 BOM，是自制件，标准成本由卷算得出", m.getCode(), m.getName());
         }
         BigDecimal price = req.price().setScale(SCALE, RoundingMode.HALF_UP);
         FinStdCost row = costMapper.selectOne(Wrappers.<FinStdCost>lambdaQuery()
@@ -228,7 +228,7 @@ public class FinStdCostService {
         boolean clash = versionMapper.exists(Wrappers.<FinStdCostVersion>lambdaQuery()
                 .eq(FinStdCostVersion::getStatus, StdCostStatus.RELEASED).eq(FinStdCostVersion::getEffectivePeriod, v.getEffectivePeriod()));
         if (clash) {
-            throw new BizException("期间 " + v.getEffectivePeriod() + " 已有发布的标准成本版本，请先取消发布");
+            throw new BizException("期间 {0} 已有发布的标准成本版本，请先取消发布", v.getEffectivePeriod());
         }
         changeStatus(id, StdCostStatus.DRAFT, StdCostStatus.RELEASED, LocalDateTime.now());
     }
@@ -267,7 +267,7 @@ public class FinStdCostService {
     private void checkName(String name, Long excludeId) {
         if (versionMapper.exists(Wrappers.<FinStdCostVersion>lambdaQuery().eq(FinStdCostVersion::getName, name)
                 .ne(excludeId != null, FinStdCostVersion::getId, excludeId))) {
-            throw new BizException("版本名称「" + name + "」已存在");
+            throw new BizException("版本名称「{0}」已存在", name);
         }
     }
 
@@ -367,7 +367,7 @@ public class FinStdCostService {
             }
             if (path.containsKey(m)) {
                 Map<Long, WmsMaterial> info = materialService.mapByIds(path.keySet());
-                throw new BizException("BOM 存在循环引用：" + path.keySet().stream().map(id -> info.get(id) == null ? String.valueOf(id)
+                throw new BizException("BOM 存在循环引用：{0}", path.keySet().stream().map(id -> info.get(id) == null ? String.valueOf(id)
                         : info.get(id).getCode()).collect(Collectors.joining(" → ")));
             }
             path.put(m, Boolean.TRUE);

@@ -1,80 +1,81 @@
 <template>
   <a-drawer :open="open" :title="title" width="min(560px, 100vw)" destroy-on-close @close="emit('update:open', false)">
     <a-form v-if="draft" layout="vertical">
-      <a-form-item :label="isBranch ? '分支名称' : '节点名称'" required>
-        <a-input v-model:value="draft.name" :maxlength="32" placeholder="请输入名称" />
+      <a-form-item :label="isBranch ? $t('workflow.config.branchName') : $t('workflow.config.nodeName')" required>
+        <a-input v-model:value="draft.name" :maxlength="32" :placeholder="$t('workflow.config.inputName')" />
       </a-form-item>
 
       <!-- 审批人 / 抄送人 -->
       <template v-if="isAssigneeNode">
-        <a-form-item :label="isCc ? '抄送人' : '审批人'" required>
+        <a-form-item :label="isCc ? $t('workflow.node.cc') : $t('workflow.node.approver')" required>
           <a-radio-group v-model:value="draft.assignee.type" :options="assigneeTypeOptions" @change="onTypeChange" />
         </a-form-item>
-        <a-form-item v-if="draft.assignee.type === 'USER'" label="选择成员">
+        <a-form-item v-if="draft.assignee.type === 'USER'" :label="$t('workflow.config.selectUser')">
           <div class="user-tags">
             <a-tag v-for="(id, i) in draft.assignee.ids" :key="id" closable @close.prevent="removeUser(i)">
               {{ draft.assignee.names[i] || id }}
             </a-tag>
             <a-button size="small" type="dashed" @click="pickerOpen = true">
-              <template #icon><PlusOutlined /></template>选择成员
+              <template #icon><PlusOutlined /></template>{{ $t('workflow.config.selectUser') }}
             </a-button>
           </div>
         </a-form-item>
-        <a-form-item v-else-if="draft.assignee.type === 'ROLE'" label="选择角色" :extra="isCc ? '' : '拥有该角色的所有启用用户'">
+        <a-form-item v-else-if="draft.assignee.type === 'ROLE'" :label="$t('workflow.config.selectRole')" :extra="isCc ? '' : $t('workflow.config.roleExtra')">
           <a-select
             v-model:value="draft.assignee.ids"
             mode="multiple"
-            placeholder="请选择角色"
+            :placeholder="$t('workflow.config.selectRolePh')"
             :options="roleOptions"
             option-filter-prop="label"
           />
         </a-form-item>
         <template v-else-if="draft.assignee.type === 'DEPT_LEADER'">
-          <a-form-item label="主管级别" extra="部门负责人在「部门管理」中设置；该级部门没有负责人或负责人是发起人自己时，自动向上一级查找">
+          <a-form-item :label="$t('workflow.config.leaderLevel')" :extra="$t('workflow.config.leaderExtra')">
             <a-select v-model:value="draft.assignee.level" :options="LEADER_LEVELS" />
           </a-form-item>
         </template>
-        <a-alert v-else type="info" show-icon :message="isCc ? '抄送给发起人自己' : '由发起人自己审批（常用于确认、补充信息）'" />
+        <a-alert v-else type="info" show-icon :message="isCc ? $t('workflow.config.ccSelf') : $t('workflow.config.approveSelf')" />
 
         <template v-if="!isCc">
-          <a-form-item v-if="!isSingleAssignee(draft.assignee.type)" label="多人审批方式">
+          <a-form-item v-if="!isSingleAssignee(draft.assignee.type)" :label="$t('workflow.config.approveMode')">
             <a-radio-group v-model:value="draft.approveMode" class="vertical-radio">
               <a-radio v-for="m in APPROVE_MODES" :key="m.value" :value="m.value">
-                {{ m.label }}<span class="radio-desc">（{{ m.desc }}）</span>
+                {{ m.label }}<span class="radio-desc">{{ $t('workflow.config.paren', { text: m.desc }) }}</span>
               </a-radio>
             </a-radio-group>
           </a-form-item>
-          <a-form-item label="审批人为空时">
+          <a-form-item :label="$t('workflow.config.emptyAction')">
             <a-radio-group v-model:value="draft.emptyAction" :options="EMPTY_ACTIONS" />
           </a-form-item>
         </template>
       </template>
 
       <!-- 条件分支 -->
-      <a-form-item v-if="isConditionBranch" label="条件" required>
+      <a-form-item v-if="isConditionBranch" :label="$t('workflow.config.condition')" required>
         <ConditionEditor :groups="draft.conditions" :fields="fields" />
       </a-form-item>
     </a-form>
 
     <template #footer>
       <div class="drawer-footer">
-        <a-button @click="emit('update:open', false)">取消</a-button>
-        <a-button type="primary" @click="confirm">确定</a-button>
+        <a-button @click="emit('update:open', false)">{{ $t('common.action.cancel') }}</a-button>
+        <a-button type="primary" @click="confirm">{{ $t('common.action.confirm') }}</a-button>
       </div>
     </template>
 
     <UserPicker
       v-model:open="pickerOpen"
-      title="选择成员"
+      :title="$t('workflow.config.selectUser')"
       :fetcher="pageIdentityUsers"
       :disabled-row="(r) => draft.assignee.ids.includes(r.id)"
-      disabled-text="已选择"
+      :disabled-text="$t('workflow.config.selected')"
       :submit="addUsers"
     />
   </a-drawer>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
@@ -91,6 +92,8 @@ import {
   isSingleAssignee,
   requiresIds
 } from './flow'
+
+const { t } = useI18n()
 
 /**
  * 节点 / 分支配置。target：{ node, branch? }，编辑副本，确定后通过 ok 事件交给设计器写回
@@ -113,9 +116,9 @@ const isAssigneeNode = computed(
   () => !isBranch.value && [NODE_TYPES.APPROVER, NODE_TYPES.CC].includes(props.target?.node.type)
 )
 const title = computed(() => {
-  if (isConditionBranch.value) return '条件设置'
-  if (isBranch.value) return '分支设置'
-  return isCc.value ? '抄送人设置' : '审批人设置'
+  if (isConditionBranch.value) return t('workflow.config.conditionTitle')
+  if (isBranch.value) return t('workflow.config.branchTitle')
+  return isCc.value ? t('workflow.config.ccTitle') : t('workflow.config.approverTitle')
 })
 const assigneeTypeOptions = ASSIGNEE_TYPES.map(({ label, value }) => ({ label, value }))
 const roleOptions = computed(() => props.roles.map((r) => ({ label: r.name, value: r.id })))
@@ -155,7 +158,7 @@ function addUsers(ids, rows) {
 
 function confirm() {
   const d = draft.value
-  if (!d.name?.trim()) return message.warning('请输入名称')
+  if (!d.name?.trim()) return message.warning(t('workflow.config.inputName'))
   d.name = d.name.trim()
   if (isAssigneeNode.value && d.assignee.type === 'ROLE') {
     d.assignee.names = d.assignee.ids.map((id) => props.roles.find((r) => r.id === id)?.name || String(id))

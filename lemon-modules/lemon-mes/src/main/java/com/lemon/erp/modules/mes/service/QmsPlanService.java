@@ -157,10 +157,10 @@ public class QmsPlanService {
         for (QmsRequests.PlanItem r : reqs) {
             boolean quantitative = r.method() == ItemMethod.QUANTITATIVE;
             if (quantitative && r.lowerLimit() == null && r.upperLimit() == null) {
-                throw new BizException("定量项目「" + r.name() + "」请填写上限或下限");
+                throw new BizException("定量项目「{0}」请填写上限或下限", r.name());
             }
             if (quantitative && r.lowerLimit() != null && r.upperLimit() != null && r.lowerLimit().compareTo(r.upperLimit()) > 0) {
-                throw new BizException("项目「" + r.name() + "」的下限不能大于上限");
+                throw new BizException("项目「{0}」的下限不能大于上限", r.name());
             }
             QmsInspectionPlanItem item = new QmsInspectionPlanItem();
             item.setPlanId(planId);

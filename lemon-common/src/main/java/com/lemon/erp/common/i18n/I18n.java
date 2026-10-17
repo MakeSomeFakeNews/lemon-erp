@@ -76,10 +76,11 @@ public final class I18n {
 
     /** 按当前请求的语言翻译中文模板并填入参数 */
     public static String t(String template, Object... args) {
-        return t(lang(), template, args);
+        return translate(lang(), template, args);
     }
 
-    public static String t(String lang, String template, Object... args) {
+    /** 按指定语言翻译（与 t(模板, 参数…) 分开命名，避免只有一个字符串参数时重载歧义） */
+    public static String translate(String lang, String template, Object... args) {
         if (template == null) {
             return null;
         }

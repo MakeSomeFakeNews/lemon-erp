@@ -1,13 +1,13 @@
 <template>
   <div class="gantt" :style="{ maxHeight }">
-    <a-empty v-if="!rows.length" description="还没有任务" class="empty" />
+    <a-empty v-if="!rows.length" :description="$t('pm.gantt.empty')" class="empty" />
     <div v-else class="gantt-body">
       <!-- 左侧：任务、负责人、进度 -->
       <div class="left">
         <div class="head left-head">
-          <span class="col-name">任务</span>
-          <span class="col-user">负责人</span>
-          <span class="col-progress">进度</span>
+          <span class="col-name">{{ $t('pm.common.task') }}</span>
+          <span class="col-user">{{ $t('pm.common.assignee') }}</span>
+          <span class="col-progress">{{ $t('pm.common.progress') }}</span>
         </div>
         <div v-for="t in rows" :key="t.id" class="row left-row" :class="{ parent: t.parent }">
           <span class="col-name" :style="{ paddingLeft: `${8 + t.level * 16}px` }" :title="t.name">
@@ -63,12 +63,12 @@
       </div>
     </div>
     <div v-if="rows.length" class="legend">
-      <span><i class="lg bar-sample" />计划</span>
-      <span><i class="lg fill-sample" />已完成</span>
-      <span><i class="lg late-sample" />逾期</span>
-      <span><i class="lg parent-sample" />汇总任务</span>
-      <span><i class="lg diamond-sample" />里程碑</span>
-      <span><i class="lg today-sample" />今天</span>
+      <span><i class="lg bar-sample" />{{ $t('pm.gantt.plan') }}</span>
+      <span><i class="lg fill-sample" />{{ $t('pm.gantt.done') }}</span>
+      <span><i class="lg late-sample" />{{ $t('pm.common.overdue') }}</span>
+      <span><i class="lg parent-sample" />{{ $t('pm.gantt.summary') }}</span>
+      <span><i class="lg diamond-sample" />{{ $t('pm.common.milestone') }}</span>
+      <span><i class="lg today-sample" />{{ $t('pm.gantt.today') }}</span>
     </div>
   </div>
 </template>
@@ -78,6 +78,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { FlagFilled } from '@ant-design/icons-vue'
 import { flattenTasks } from './pm'
+import { t as $t } from '@/locales'
 
 /**
  * 甘特图（只读）：左侧任务树，右侧按天的时间轴；上级任务显示为汇总条，里程碑显示为菱形，逾期任务为红色，竖线为今天
@@ -120,7 +121,7 @@ const months = computed(() => {
     const key = d.key.slice(0, 7)
     const last = list[list.length - 1]
     if (last && last.key === key) last.days++
-    else list.push({ key, label: dayjs(d.key).format('YYYY 年 M 月'), days: 1 })
+    else list.push({ key, label: dayjs(d.key).format($t('pm.gantt.monthFormat')), days: 1 })
   })
   return list
 })
@@ -135,7 +136,9 @@ function barStyle(t) {
 }
 
 function tip(t) {
-  return `${t.name}：${t.planStart} ~ ${t.planEnd}，进度 ${t.progress}%${t.overdue ? '（逾期）' : ''}${t.predecessorName ? `，前置：${t.predecessorName}` : ''}`
+  return $t('pm.gantt.tip', { name: t.name, start: t.planStart, end: t.planEnd, progress: t.progress }) +
+    (t.overdue ? $t('pm.gantt.tipOverdue') : '') +
+    (t.predecessorName ? $t('pm.gantt.tipPredecessor', { name: t.predecessorName }) : '')
 }
 
 // 打开时滚动到今天附近
@@ -202,14 +205,14 @@ watch(
   padding-left: 8px;
 }
 .col-user {
-  width: 80px;
+  width: 84px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--app-text-2);
 }
 .col-progress {
-  width: 52px;
+  width: 64px;
   text-align: right;
   padding-right: 8px;
   color: var(--app-text-2);

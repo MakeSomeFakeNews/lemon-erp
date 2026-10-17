@@ -1,7 +1,7 @@
 <template>
   <SubPage
     :open="open"
-    :title="detail ? `发货通知 ${detail.deliveryNo}` : '发货通知'"
+    :title="detail ? `${$t('scm.delivery.title')} ${detail.deliveryNo}` : $t('scm.delivery.title')"
     width="min(1100px, 100vw)"
     destroy-on-close
     @close="close"
@@ -9,7 +9,7 @@
     <template #extra>
       <a-space>
         <a-button v-if="detail" size="small" :disabled="!detail.picks?.length" @click="print">
-          <template #icon><PrinterOutlined /></template>打印拣货单
+          <template #icon><PrinterOutlined /></template>{{ $t('scm.delivery.printPickList') }}
         </a-button>
         <DictTag v-if="detail" type="scm_delivery_status" :value="detail.status" />
       </a-space>
@@ -18,19 +18,19 @@
     <a-spin :spinning="loading">
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="doc-desc">
-          <a-descriptions-item label="通知单号">{{ detail.deliveryNo }}</a-descriptions-item>
-          <a-descriptions-item label="销售订单">
+          <a-descriptions-item :label="$t('scm.delivery.deliveryNo')">{{ detail.deliveryNo }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.delivery.salesOrder')">
             <a @click="toOrder">{{ detail.orderNo }}</a>
           </a-descriptions-item>
-          <a-descriptions-item label="客户">{{ detail.customerName || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="发货仓库">{{ detail.warehouseName || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="发货日期">{{ detail.shipDate || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="制单">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.pickTime" label="拣货">{{ detail.pickByName || '-' }} {{ detail.pickTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.tradeDocId" label="销售出库单">
+          <a-descriptions-item :label="$t('scm.delivery.customer')">{{ detail.customerName || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.delivery.shipWarehouse')">{{ detail.warehouseName || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.delivery.shipDate')">{{ detail.shipDate || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.delivery.prepared')">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.pickTime" :label="$t('scm.delivery.picked')">{{ detail.pickByName || '-' }} {{ detail.pickTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.tradeDocId" :label="$t('scm.delivery.salesOutDoc')">
             <a @click="toTradeDoc(detail.tradeDocId)">{{ detail.tradeDocNo }}</a>
           </a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="备注">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
 
         <a-alert v-if="editing" type="info" show-icon class="doc-desc" :message="editTip" />
@@ -39,7 +39,7 @@
           type="info"
           show-icon
           class="doc-desc"
-          message="已按先到期先出生成拣货建议（库存不足的部分没有建议），请按实际拣货调整后确认拣货；确认后才能出库。"
+          :message="$t('scm.delivery.pendingTip')"
         />
 
         <div v-for="item in detail.items" :key="item.id" class="pick-block">
@@ -47,16 +47,16 @@
             <div>
               <b>{{ item.materialCode }} {{ item.materialName }}</b>
               <span class="sub-text"> {{ item.spec }}</span>
-              <a-tag v-if="item.batchEnabled === 1" color="blue" :bordered="false" class="head-tag">批次</a-tag>
-              <a-tag v-if="item.serialEnabled === 1" color="purple" :bordered="false" class="head-tag">序列号</a-tag>
+              <a-tag v-if="item.batchEnabled === 1" color="blue" :bordered="false" class="head-tag">{{ $t('scm.delivery.batch') }}</a-tag>
+              <a-tag v-if="item.serialEnabled === 1" color="purple" :bordered="false" class="head-tag">{{ $t('scm.delivery.serialNo') }}</a-tag>
             </div>
             <a-space>
               <span>
-                通知 {{ formatQty(item.qty) }} {{ item.unit }}，已拣
+                {{ $t('scm.delivery.noticedPicked', { qty: formatQty(item.qty), unit: item.unit || '' }) }}
                 <b :class="{ mismatch: pickedQty(item) !== Number(item.qty) }">{{ formatQty(pickedQty(item)) }}</b>
               </span>
               <a-button v-if="editing" size="small" @click="addRow(item)">
-                <template #icon><PlusOutlined /></template>添加库位
+                <template #icon><PlusOutlined /></template>{{ $t('scm.delivery.addLocation') }}
               </a-button>
             </a-space>
           </div>
@@ -68,7 +68,7 @@
             :data-source="rowsOf(item)"
             :pagination="false"
             :scroll="{ x: editing ? 820 : 700 }"
-            :locale="{ emptyText: editing ? '点击「添加库位」选择从哪里拣货' : '没有拣货明细（库存不足）' }"
+            :locale="{ emptyText: editing ? $t('scm.delivery.emptyEdit') : $t('scm.delivery.emptyView') }"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'slot'">
@@ -80,11 +80,11 @@
                     :material-id="item.materialId"
                     @select="(s) => applySlot(record, s)"
                   />
-                  <div v-if="record.available != null" class="sub-text">可用 {{ formatQty(record.available) }}</div>
+                  <div v-if="record.available != null" class="sub-text">{{ $t('scm.delivery.availableN', { qty: formatQty(record.available) }) }}</div>
                 </template>
                 <template v-else>
                   {{ locationText(record.locationCode) }}
-                  <span v-if="record.batchNo" class="sub-text"> · 批次 {{ record.batchNo }}</span>
+                  <span v-if="record.batchNo" class="sub-text"> · {{ $t('scm.delivery.batchN', { batch: record.batchNo }) }}</span>
                 </template>
               </template>
               <template v-else-if="column.key === 'expiryDate'">
@@ -111,7 +111,7 @@
                     v-model:value="record.serialNos"
                     :expected="record.qty ?? 0"
                     :source="serialSource(record, item)"
-                    placeholder="选择或扫码"
+                    :placeholder="$t('scm.delivery.selectOrScan')"
                   />
                   <span v-else>{{ record.serialNos || '-' }}</span>
                 </template>
@@ -136,9 +136,9 @@
     <template v-if="detail && (actions.length || editing)" #footer>
       <div class="drawer-footer">
         <template v-if="editing">
-          <a-button @click="editing = false">取消</a-button>
+          <a-button @click="editing = false">{{ $t('common.action.cancel') }}</a-button>
           <a-button type="primary" :loading="saving" @click="submitPick">
-            <template #icon><CheckOutlined /></template>确认拣货
+            <template #icon><CheckOutlined /></template>{{ $t('scm.delivery.confirmPick') }}
           </a-button>
         </template>
         <template v-else>
@@ -149,10 +149,10 @@
       </div>
     </template>
 
-    <a-modal v-model:open="shipOpen" title="出库" :confirm-loading="shipping" @ok="submitShip">
-      <p>按拣货明细生成销售出库单并扣减库存，同时生成应收单，出库后不能修改。</p>
+    <a-modal v-model:open="shipOpen" :title="$t('scm.delivery.ship')" :confirm-loading="shipping" @ok="submitShip">
+      <p>{{ $t('scm.delivery.shipTip') }}</p>
       <a-form layout="vertical">
-        <a-form-item label="业务日期" required>
+        <a-form-item :label="$t('scm.delivery.bizDate')" required>
           <a-date-picker v-model:value="bizDate" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
       </a-form>
@@ -184,6 +184,7 @@ import { useUserStore } from '@/store/user'
 import { expiryStatus, formatQty, locationText, rowKey, splitSerials, today } from '@/components/wms/wms'
 import { qty4 } from './scm'
 import { printDocs } from '@/utils/print'
+import { useI18n } from 'vue-i18n'
 
 /** 发货通知详情：拣货建议、确认拣货、出库、取消、打印拣货单。触发 changed */
 const props = defineProps({
@@ -191,21 +192,22 @@ const props = defineProps({
   deliveryId: Number
 })
 const emit = defineEmits(['update:open', 'changed'])
+const { t } = useI18n()
 
 const userStore = useUserStore()
 const can = (perm) => userStore.hasPerm(perm)
 const router = useRouter()
 
 const viewColumns = [
-  { title: '库位 / 批次', key: 'slot', width: 240 },
-  { title: '有效期', key: 'expiryDate', width: 180 },
-  { title: '数量', key: 'qty', width: 130, align: 'right' },
-  { title: '序列号', key: 'serialNos', ellipsis: true }
+  { title: t('scm.delivery.locationBatch'), key: 'slot', width: 240 },
+  { title: t('scm.delivery.expiryDate'), key: 'expiryDate', width: 180 },
+  { title: t('common.field.quantity'), key: 'qty', width: 130, align: 'right' },
+  { title: t('scm.delivery.serialNo'), key: 'serialNos', ellipsis: true }
 ]
 const editColumns = [
-  { title: '库位 / 批次', key: 'slot', width: 280 },
-  { title: '数量', key: 'qty', width: 160 },
-  { title: '序列号', key: 'serialNos', width: 300 },
+  { title: t('scm.delivery.locationBatch'), key: 'slot', width: 280 },
+  { title: t('common.field.quantity'), key: 'qty', width: 160 },
+  { title: t('scm.delivery.serialNo'), key: 'serialNos', width: 300 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
 
@@ -215,7 +217,7 @@ const editing = ref(false)
 /** 当前显示的拣货行：查看时为已保存的拣货，编辑时为可修改的副本 */
 const rows = ref([])
 
-const editTip = '每个物料的拣货数量合计须等于通知数量；同一物料可从多个库位、批次拣货，序列号管理的物料需选择序列号。'
+const editTip = t('scm.delivery.editTip')
 
 const toRow = (p) => ({
   ...p,
@@ -249,10 +251,10 @@ watch(
 function close() {
   if (!editing.value) return emit('update:open', false)
   Modal.confirm({
-    title: '放弃未确认的拣货？',
-    okText: '放弃',
+    title: t('scm.delivery.discardTitle'),
+    okText: t('scm.delivery.discard'),
     okType: 'danger',
-    cancelText: '继续拣货',
+    cancelText: t('scm.delivery.continuePick'),
     onOk: () => emit('update:open', false)
   })
 }
@@ -312,14 +314,14 @@ async function submitPick() {
   for (const item of detail.value.items) {
     const name = `${item.materialCode} ${item.materialName}`
     const list = rowsOf(item)
-    if (list.some((r) => !r.slot)) return message.warning(`${name}：请选择库位 / 批次`)
-    if (list.some((r) => !r.qty || r.qty <= 0)) return message.warning(`${name}：请填写拣货数量`)
+    if (list.some((r) => !r.slot)) return message.warning(t('scm.delivery.errSlot', { name }))
+    if (list.some((r) => !r.qty || r.qty <= 0)) return message.warning(t('scm.delivery.errQty', { name }))
     if (pickedQty(item) !== qty4(Number(item.qty))) {
-      return message.warning(`${name}：拣货数量 ${formatQty(pickedQty(item))} 与通知数量 ${formatQty(item.qty)} 不一致`)
+      return message.warning(t('scm.delivery.errMismatch', { name, picked: formatQty(pickedQty(item)), qty: formatQty(item.qty) }))
     }
     if (item.serialEnabled === 1) {
       const bad = list.find((r) => splitSerials(r.serialNos).length !== Number(r.qty))
-      if (bad) return message.warning(`${name}：序列号个数与拣货数量不一致`)
+      if (bad) return message.warning(t('scm.delivery.errSerial', { name }))
     }
   }
   saving.value = true
@@ -333,7 +335,7 @@ async function submitPick() {
         serialNos: r.serialNos || null
       }))
     })
-    message.success('已确认拣货，可以出库')
+    message.success(t('scm.delivery.pickConfirmed'))
     await load()
     emit('changed')
   } finally {
@@ -346,7 +348,7 @@ const shipOpen = ref(false)
 const shipping = ref(false)
 const bizDate = ref(today())
 async function submitShip() {
-  if (!bizDate.value) return message.warning('请选择业务日期')
+  if (!bizDate.value) return message.warning(t('scm.delivery.selectBizDate'))
   shipping.value = true
   try {
     const docId = await shipDelivery(props.deliveryId, bizDate.value)
@@ -354,10 +356,10 @@ async function submitShip() {
     await load()
     emit('changed')
     Modal.confirm({
-      title: '已出库',
-      content: '已生成销售出库单并扣减库存。',
-      okText: '查看出库单',
-      cancelText: '关闭',
+      title: t('scm.delivery.shipped'),
+      content: t('scm.delivery.shippedContent'),
+      okText: t('scm.delivery.viewOutDoc'),
+      cancelText: t('common.action.close'),
       onOk: () => toTradeDoc(docId)
     })
   } finally {
@@ -388,24 +390,24 @@ const actions = computed(() => {
   if (['PENDING', 'PICKED'].includes(d.status) && can('scm:delivery:add')) {
     list.push({
       key: 'cancel',
-      label: '取消通知',
+      label: t('scm.delivery.cancelNotice'),
       icon: StopOutlined,
       danger: true,
-      run: () => confirmAction('取消发货通知？', '取消后不能恢复，订单的未出库数量可以重新通知。', cancelDelivery, '已取消')
+      run: () => confirmAction(t('scm.delivery.cancelTitle'), t('scm.delivery.cancelContent'), cancelDelivery, t('scm.delivery.cancelled'))
     })
   }
   if (d.status === 'PENDING' && can('scm:delivery:pick')) {
     list.push({
       key: 'suggest',
-      label: '重新建议',
+      label: t('scm.delivery.resuggest'),
       icon: SyncOutlined,
-      run: () => confirmAction('重新生成拣货建议？', '按当前库存以先到期先出重新分配，覆盖现有的拣货明细。', suggestDelivery, '已重新生成拣货建议')
+      run: () => confirmAction(t('scm.delivery.resuggestTitle'), t('scm.delivery.resuggestContent'), suggestDelivery, t('scm.delivery.resuggested'))
     })
   }
   if (['PENDING', 'PICKED'].includes(d.status) && can('scm:delivery:pick')) {
     list.push({
       key: 'pick',
-      label: d.status === 'PICKED' ? '修改拣货' : '确认拣货',
+      label: d.status === 'PICKED' ? t('scm.delivery.editPick') : t('scm.delivery.confirmPick'),
       icon: UnorderedListOutlined,
       primary: d.status === 'PENDING',
       run: startPick
@@ -414,7 +416,7 @@ const actions = computed(() => {
   if (d.status === 'PICKED' && can('scm:salesOut:add')) {
     list.push({
       key: 'ship',
-      label: '出库',
+      label: t('scm.delivery.ship'),
       icon: ExportOutlined,
       primary: true,
       run: () => {
@@ -434,30 +436,30 @@ function print() {
   )
   printDocs(
     {
-      title: '拣货单',
+      title: t('scm.delivery.pickList'),
       no: d.deliveryNo,
       fields: [
-        ['销售订单', d.orderNo],
-        ['客户', d.customerName],
-        ['发货仓库', d.warehouseName],
-        ['发货日期', d.shipDate],
-        ['制单', d.createByName],
-        ['状态', { PENDING: '待拣货', PICKED: '已拣货', SHIPPED: '已出库', CANCELLED: '已取消' }[d.status] || d.status]
+        [t('scm.delivery.salesOrder'), d.orderNo],
+        [t('scm.delivery.customer'), d.customerName],
+        [t('scm.delivery.shipWarehouse'), d.warehouseName],
+        [t('scm.delivery.shipDate'), d.shipDate],
+        [t('scm.delivery.prepared'), d.createByName],
+        [t('common.field.status'), { PENDING: t('scm.delivery.status.PENDING'), PICKED: t('scm.delivery.status.PICKED'), SHIPPED: t('scm.delivery.status.SHIPPED'), CANCELLED: t('scm.delivery.status.CANCELLED') }[d.status] || d.status]
       ],
       columns: [
-        { title: '序号', value: (r, i) => i + 1 },
-        { title: '物料', value: (r) => `${r.materialCode} ${r.materialName}${items.get(r.deliveryItemId)?.spec ? ' ' + items.get(r.deliveryItemId).spec : ''}` },
-        { title: '库位', value: (r) => locationText(r.locationCode) },
-        { title: '批次', value: (r) => r.batchNo || '' },
-        { title: '有效期', value: (r) => r.expiryDate || '' },
-        { title: '数量', key: 'qty', value: (r) => `${formatQty(r.qty)} ${r.unit || ''}`, align: 'right' },
-        { title: '序列号', value: (r) => r.serialNos || '' }
+        { title: t('common.table.index'), value: (r, i) => i + 1 },
+        { title: t('scm.delivery.material'), value: (r) => `${r.materialCode} ${r.materialName}${items.get(r.deliveryItemId)?.spec ? ' ' + items.get(r.deliveryItemId).spec : ''}` },
+        { title: t('scm.delivery.location'), value: (r) => locationText(r.locationCode) },
+        { title: t('scm.delivery.batch'), value: (r) => r.batchNo || '' },
+        { title: t('scm.delivery.expiryDate'), value: (r) => r.expiryDate || '' },
+        { title: t('common.field.quantity'), key: 'qty', value: (r) => `${formatQty(r.qty)} ${r.unit || ''}`, align: 'right' },
+        { title: t('scm.delivery.serialNo'), value: (r) => r.serialNos || '' }
       ],
       rows: picks,
       note: d.remark,
-      signs: [['制单', d.createByName], '拣货', '复核']
+      signs: [[t('scm.delivery.prepared'), d.createByName], t('scm.delivery.picker'), t('scm.delivery.reviewer')]
     },
-    `拣货单 ${d.deliveryNo}`,
+    `${t('scm.delivery.pickList')} ${d.deliveryNo}`,
     'scm.pickList'
   )
 }

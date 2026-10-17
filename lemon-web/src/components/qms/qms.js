@@ -1,4 +1,5 @@
 /** 质量管理的常量与工具 */
+import { t } from '@/locales'
 
 /** GB/T 2828.1 检验水平：特殊检验水平 S-1 ~ S-4（小样本、破坏性检验），一般检验水平 I ~ III（通常用 II） */
 export const INSPECTION_LEVELS = [
@@ -7,7 +8,7 @@ export const INSPECTION_LEVELS = [
   { value: 'S3', label: 'S-3' },
   { value: 'S4', label: 'S-4' },
   { value: 'I', label: 'I' },
-  { value: 'II', label: 'II（一般）' },
+  { value: 'II', label: t('qms.common.levelII') },
   { value: 'III', label: 'III' }
 ]
 
@@ -20,9 +21,9 @@ export const levelLabel = (v) => INSPECTION_LEVELS.find((l) => l.value === v)?.l
 /** 方案的抽样说明 */
 export function samplingText(plan) {
   if (!plan) return ''
-  if (plan.samplingMode === 'FULL') return '全检'
-  if (plan.samplingMode === 'FIXED') return `固定抽 ${Number(plan.fixedQty)} 件，允收 ${plan.acceptQty ?? 0}`
-  return `AQL ${Number(plan.aql)} · 检验水平 ${levelLabel(plan.inspectionLevel)}`
+  if (plan.samplingMode === 'FULL') return t('qms.common.full')
+  if (plan.samplingMode === 'FIXED') return t('qms.common.fixed', { qty: Number(plan.fixedQty), ac: plan.acceptQty ?? 0 })
+  return t('qms.common.aql', { aql: Number(plan.aql), level: levelLabel(plan.inspectionLevel) })
 }
 
 /** 实测值文本（逗号、空格、换行分隔）解析为数字 */

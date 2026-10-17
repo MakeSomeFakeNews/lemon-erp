@@ -41,7 +41,7 @@ public class ScmCustomerPortalController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:customer:portal')")
-    @OperLog(title = "经销商门户账号", type = OperType.INSERT)
+    @OperLog(title = "经销商门户账号", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@PathVariable Long customerId, @Valid @RequestBody SrmRequests.PortalAccount req) {
         if (customerService.get(customerId).getChannel() != SalesChannel.DEALER) {
             throw new BizException("只有渠道为「经销商」的客户才能开通经销商门户");
@@ -52,7 +52,7 @@ public class ScmCustomerPortalController {
 
     @PutMapping("/{userId}/status")
     @PreAuthorize("@ss.hasPerm('scm:customer:portal')")
-    @OperLog(title = "经销商门户账号-状态", type = OperType.UPDATE)
+    @OperLog(title = "经销商门户账号-状态", type = OperType.UPDATE) // i18n-ignore
     public R<Void> status(@PathVariable Long customerId, @PathVariable Long userId, @Valid @RequestBody SrmRequests.Status req) {
         portalAccounts.changeStatus(PortalKind.DEALER, customerId, userId, req.status());
         return R.ok();
@@ -60,7 +60,7 @@ public class ScmCustomerPortalController {
 
     @PutMapping("/{userId}/password")
     @PreAuthorize("@ss.hasPerm('scm:customer:portal')")
-    @OperLog(title = "经销商门户账号-重置密码", type = OperType.UPDATE)
+    @OperLog(title = "经销商门户账号-重置密码", type = OperType.UPDATE) // i18n-ignore
     public R<Void> password(@PathVariable Long customerId, @PathVariable Long userId, @Valid @RequestBody SrmRequests.Password req) {
         portalAccounts.resetPassword(PortalKind.DEALER, customerId, userId, req.password());
         return R.ok();

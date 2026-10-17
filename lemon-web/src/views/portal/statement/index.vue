@@ -2,7 +2,7 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
-        <a-select v-model:value="query.status" placeholder="全部状态" allow-clear :options="statusOptions" class="filter" @change="search" />
+        <a-select v-model:value="query.status" :placeholder="$t('portal.statement.allStatus')" allow-clear :options="statusOptions" class="filter" @change="search" />
       </TableToolbar>
 
       <a-table
@@ -18,78 +18,79 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'statementNo'"><a @click="openDetail(record.id)">{{ record.statementNo }}</a></template>
           <template v-else-if="column.key === 'period'">{{ record.beginDate }} ~ {{ record.endDate }}</template>
-          <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}<div class="sub-text">{{ record.billCount }} 笔</div></template>
+          <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}<div class="sub-text">{{ $t('portal.statement.billCount', { n: record.billCount }) }}</div></template>
           <template v-else-if="column.key === 'invoice'">
             <span v-if="record.invoiceNo">{{ record.invoiceNo }}</span>
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="fin_statement_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === 'SENT' ? '确认' : '查看' }}</a-button>
+            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === 'SENT' ? $t('portal.statement.confirmAction') : $t('common.action.view') }}</a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <SubPage :open="detailOpen" :title="detail ? `对账单 ${detail.statementNo}` : ''" width="min(960px, 100vw)" @close="detailOpen = false">
+    <SubPage :open="detailOpen" :title="detail ? $t('portal.statement.detailTitle', { no: detail.statementNo }) : ''" width="min(960px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <span v-perm="'portal:statement:confirm'">
           <a-space v-if="detail.status === 'SENT'">
-            <a-button danger @click="openConfirm(false)">有异议</a-button>
-            <a-button type="primary" @click="openConfirm(true)">确认对账</a-button>
+            <a-button danger @click="openConfirm(false)">{{ $t('portal.statement.dispute') }}</a-button>
+            <a-button type="primary" @click="openConfirm(true)">{{ $t('portal.statement.confirmStatement') }}</a-button>
           </a-space>
-          <a-button v-else-if="detail.status === 'CONFIRMED'" @click="openInvoice">{{ detail.invoiceNo ? '修改发票' : '填写发票' }}</a-button>
+          <a-button v-else-if="detail.status === 'CONFIRMED'" @click="openInvoice">{{ detail.invoiceNo ? $t('portal.statement.editInvoice') : $t('portal.statement.fillInvoice') }}</a-button>
         </span>
       </template>
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" bordered class="block">
-          <a-descriptions-item label="对账期间">{{ detail.beginDate }} ~ {{ detail.endDate }}</a-descriptions-item>
-          <a-descriptions-item label="对账金额"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
-          <a-descriptions-item label="状态"><DictTag type="fin_statement_status" :value="detail.status" /></a-descriptions-item>
-          <a-descriptions-item label="发票" :span="2">
+          <a-descriptions-item :label="$t('portal.statement.period')">{{ detail.beginDate }} ~ {{ detail.endDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('portal.statement.amount')"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.status')"><DictTag type="fin_statement_status" :value="detail.status" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('portal.statement.invoice')" :span="2">
             <template v-if="detail.invoiceNo">{{ detail.invoiceNo }} ¥{{ formatMoney(detail.invoiceAmount) }} {{ detail.invoiceDate }}</template>
             <span v-else>-</span>
           </a-descriptions-item>
-          <a-descriptions-item label="确认时间">{{ detail.confirmTime || '-' }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.supplierRemark" label="我方意见" :span="3">{{ detail.supplierRemark }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('portal.statement.confirmTime')">{{ detail.confirmTime || '-' }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.supplierRemark" :label="$t('portal.statement.ourRemark')" :span="3">{{ detail.supplierRemark }}</a-descriptions-item>
         </a-descriptions>
         <StatementLines :lines="detail.lines" />
-        <div class="section-title">发票及附件（可上传发票扫描件）</div>
+        <div class="section-title">{{ $t('portal.statement.attachments') }}</div>
         <AttachmentPanel biz-type="fin_statement" :biz-id="detail.id" :editable="userStore.hasPerm('portal:statement:confirm')" />
       </template>
     </SubPage>
 
-    <a-modal v-model:open="confirmOpen" :title="confirm.agree ? '确认对账' : '提出异议'" :confirm-loading="saving" @ok="submitConfirm">
+    <a-modal v-model:open="confirmOpen" :title="confirm.agree ? $t('portal.statement.confirmStatement') : $t('portal.statement.raiseDispute')" :confirm-loading="saving" @ok="submitConfirm">
       <a-form layout="vertical">
         <template v-if="confirm.agree">
-          <a-alert type="info" show-icon class="block" message="确认对账金额无误，可同时填写发票信息（也可确认后再填写）" />
+          <a-alert type="info" show-icon class="block" :message="$t('portal.statement.confirmTip')" />
           <a-row :gutter="12">
-            <a-col :span="12"><a-form-item label="发票号码"><a-input v-model:value="confirm.invoiceNo" :maxlength="64" /></a-form-item></a-col>
+            <a-col :span="12"><a-form-item :label="$t('portal.statement.invoiceNo')"><a-input v-model:value="confirm.invoiceNo" :maxlength="64" /></a-form-item></a-col>
             <a-col :span="12">
-              <a-form-item label="发票金额"><a-input-number v-model:value="confirm.invoiceAmount" :min="0" :precision="2" prefix="¥" class="full" /></a-form-item>
+              <a-form-item :label="$t('portal.statement.invoiceAmount')"><a-input-number v-model:value="confirm.invoiceAmount" :min="0" :precision="2" prefix="¥" class="full" /></a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item label="开票日期"><a-date-picker v-model:value="confirm.invoiceDate" value-format="YYYY-MM-DD" class="full" /></a-form-item>
+              <a-form-item :label="$t('portal.statement.invoiceDate')"><a-date-picker v-model:value="confirm.invoiceDate" value-format="YYYY-MM-DD" class="full" /></a-form-item>
             </a-col>
           </a-row>
         </template>
-        <a-form-item :label="confirm.agree ? '说明' : '异议说明'" :required="!confirm.agree">
+        <a-form-item :label="confirm.agree ? $t('common.field.description') : $t('portal.statement.disputeRemark')" :required="!confirm.agree">
           <a-textarea v-model:value="confirm.remark" :rows="3" :maxlength="500" />
         </a-form-item>
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="invoiceOpen" title="发票信息" :confirm-loading="saving" @ok="submitInvoice">
+    <a-modal v-model:open="invoiceOpen" :title="$t('portal.statement.invoiceInfo')" :confirm-loading="saving" @ok="submitInvoice">
       <a-form layout="vertical">
-        <a-form-item label="发票号码" required><a-input v-model:value="invoice.invoiceNo" :maxlength="64" /></a-form-item>
-        <a-form-item label="发票金额" required><a-input-number v-model:value="invoice.invoiceAmount" :min="0" :precision="2" prefix="¥" class="full" /></a-form-item>
-        <a-form-item label="开票日期" required><a-date-picker v-model:value="invoice.invoiceDate" value-format="YYYY-MM-DD" class="full" /></a-form-item>
+        <a-form-item :label="$t('portal.statement.invoiceNo')" required><a-input v-model:value="invoice.invoiceNo" :maxlength="64" /></a-form-item>
+        <a-form-item :label="$t('portal.statement.invoiceAmount')" required><a-input-number v-model:value="invoice.invoiceAmount" :min="0" :precision="2" prefix="¥" class="full" /></a-form-item>
+        <a-form-item :label="$t('portal.statement.invoiceDate')" required><a-date-picker v-model:value="invoice.invoiceDate" value-format="YYYY-MM-DD" class="full" /></a-form-item>
       </a-form>
     </a-modal>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
@@ -106,17 +107,19 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
+const { t } = useI18n()
+
 /** 供应商门户 - 对账单：确认或提出异议，填写发票并上传扫描件 */
 const dict = useDict('fin_statement_status')
 const userStore = useUserStore()
 const statusOptions = computed(() => toOptions(dict.fin_statement_status).filter((o) => o.value !== 'DRAFT'))
 const columns = [
-  { title: '对账单号', key: 'statementNo', width: 180 },
-  { title: '对账期间', key: 'period', width: 200 },
-  { title: '对账金额', key: 'amount', width: 150, align: 'right' },
-  { title: '发票', key: 'invoice', width: 150 },
-  { title: '状态', key: 'status', width: 100 },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' }
+  { title: t('portal.statement.statementNo'), key: 'statementNo', width: 180 },
+  { title: t('portal.statement.period'), key: 'period', width: 200 },
+  { title: t('portal.statement.amount'), key: 'amount', width: 160, align: 'right' },
+  { title: t('portal.statement.invoice'), key: 'invoice', width: 150 },
+  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'portal-statement')
 const query = reactive({ status: undefined })
@@ -142,13 +145,13 @@ function openConfirm(agree) {
   confirmOpen.value = true
 }
 async function submitConfirm() {
-  if (!confirm.value.agree && !confirm.value.remark?.trim()) return message.warning('请说明异议')
+  if (!confirm.value.agree && !confirm.value.remark?.trim()) return message.warning(t('portal.statement.msgDispute'))
   const data = { ...confirm.value }
   if (!data.agree || !data.invoiceNo) Object.assign(data, { invoiceNo: null, invoiceAmount: null, invoiceDate: null })
   saving.value = true
   try {
     await confirmPortalStatement(detail.value.id, data)
-    message.success(data.agree ? '已确认对账' : '已提交异议')
+    message.success(data.agree ? t('portal.statement.confirmed') : t('portal.statement.disputed'))
     confirmOpen.value = false
     refresh()
   } finally {
@@ -166,11 +169,11 @@ function openInvoice() {
   invoiceOpen.value = true
 }
 async function submitInvoice() {
-  if (!invoice.value.invoiceNo || invoice.value.invoiceAmount == null || !invoice.value.invoiceDate) return message.warning('请填写完整的发票信息')
+  if (!invoice.value.invoiceNo || invoice.value.invoiceAmount == null || !invoice.value.invoiceDate) return message.warning(t('portal.statement.msgInvoice'))
   saving.value = true
   try {
     await savePortalInvoice(detail.value.id, invoice.value)
-    message.success('已保存')
+    message.success(t('common.msg.saved'))
     invoiceOpen.value = false
     refresh()
   } finally {

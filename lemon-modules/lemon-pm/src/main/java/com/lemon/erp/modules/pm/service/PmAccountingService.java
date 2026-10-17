@@ -116,7 +116,7 @@ public class PmAccountingService {
         if (b.getTaskId() != null) {
             PmTask milestone = taskMapper.selectById(b.getTaskId());
             if (milestone != null && !"DONE".equals(milestone.getStatus())) {
-                throw new BizException("关联的里程碑「" + milestone.getName() + "」尚未完成，不能开票");
+                throw new BizException("关联的里程碑「{0}」尚未完成，不能开票", milestone.getName());
             }
         }
         LocalDate date = billDate == null ? LocalDate.now() : billDate;

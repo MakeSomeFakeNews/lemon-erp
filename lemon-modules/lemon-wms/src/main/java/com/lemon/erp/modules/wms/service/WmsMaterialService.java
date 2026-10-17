@@ -3,6 +3,7 @@ package com.lemon.erp.modules.wms.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.ref.RefType;
@@ -43,8 +44,8 @@ import java.util.stream.Collectors;
 public class WmsMaterialService {
 
     /** 记录变更历史的字段 */
-    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "物料编码", "name", "物料名称", "spec", "规格型号", "unit", "计量单位", "category", "分类",
-            "batchEnabled", "批次管理", "serialEnabled", "序列号管理", "iqcRequired", "来料检验", "safetyStock", "安全库存", "reorderPoint", "再订货点", "reorderQty", "再订货量", "barcode", "条码", "defaultWarehouseId", "默认仓库", "refCost", "参考成本价", "costMethod", "计价方法", "remark", "备注");
+    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "物料编码", "name", "物料名称", "spec", "规格型号", "unit", "计量单位", "category", "分类", // i18n-ignore 字段名写入变更记录
+            "batchEnabled", "批次管理", "serialEnabled", "序列号管理", "iqcRequired", "来料检验", "safetyStock", "安全库存", "reorderPoint", "再订货点", "reorderQty", "再订货量", "barcode", "条码", "defaultWarehouseId", "默认仓库", "refCost", "参考成本价", "costMethod", "计价方法", "remark", "备注"); // i18n-ignore
 
     /** 下拉搜索最多返回的条数 */
     private static final int OPTION_LIMIT = 50;
@@ -93,10 +94,10 @@ public class WmsMaterialService {
         for (Long id : ids) {
             WmsMaterial material = map.get(id);
             if (material == null) {
-                throw new BizException("物料不存在：" + id);
+                throw new BizException("物料不存在：{0}", id);
             }
             if (!Integer.valueOf(1).equals(material.getStatus())) {
-                throw new BizException("物料「" + material.getCode() + " " + material.getName() + "」已停用");
+                throw new BizException("物料「{0} {1}」已停用", material.getCode(), material.getName());
             }
         }
         return map;
@@ -191,12 +192,12 @@ public class WmsMaterialService {
                     || assemblyMapper.exists(Wrappers.<WmsAssembly>lambdaQuery().eq(WmsAssembly::getMaterialId, id))
                     || assemblyItemMapper.exists(Wrappers.<WmsAssemblyItem>lambdaQuery().eq(WmsAssemblyItem::getMaterialId, id));
             if (used) {
-                throw new BizException("物料「" + material.getName() + "」已被单据使用，不能删除，可以停用");
+                throw new BizException("物料「{0}」已被单据使用，不能删除，可以停用", material.getName());
             }
             if (material.isTemplateMaterial() && materialMapper.exists(Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getTemplateId, id))) {
-                throw new BizException("款式「" + material.getName() + "」下还有 SKU，请先删除 SKU");
+                throw new BizException("款式「{0}」下还有 SKU，请先删除 SKU", material.getName());
             }
-            referenceGuard.checkDeletable(RefType.MATERIAL, id, "物料「" + material.getCode() + " " + material.getName() + "」");
+            referenceGuard.checkDeletable(RefType.MATERIAL, id, I18n.t("物料「{0} {1}」", material.getCode(), material.getName()));
         }
         materialMapper.deleteByIds(ids);
         variantValueMapper.delete(Wrappers.<WmsVariantValue>lambdaQuery().in(WmsVariantValue::getMaterialId, ids));
@@ -219,7 +220,7 @@ public class WmsMaterialService {
                     .last("LIMIT 1"));
             boolean usedByUnit = unitMapper.exists(Wrappers.<WmsMaterialUnit>lambdaQuery().eq(WmsMaterialUnit::getBarcode, material.getBarcode()));
             if ((exist != null && !Objects.equals(exist.getId(), id)) || usedByUnit) {
-                throw new BizException("条码已被其他物料或包装单位使用：" + material.getBarcode());
+                throw new BizException("条码已被其他物料或包装单位使用：{0}", material.getBarcode());
             }
         }
         if (material.getDefaultWarehouseId() == null) {
@@ -250,10 +251,10 @@ public class WmsMaterialService {
             }
             u.setUnit(u.getUnit().trim());
             if (u.getUnit().equals(material.getUnit()) || !names.add(u.getUnit())) {
-                throw new BizException("辅助单位重复：" + u.getUnit());
+                throw new BizException("辅助单位重复：{0}", u.getUnit());
             }
             if (u.getRatio() == null || u.getRatio().signum() <= 0) {
-                throw new BizException("换算率必须大于0：" + u.getUnit());
+                throw new BizException("换算率必须大于0：{0}", u.getUnit());
             }
             u.setBarcode(StringUtils.hasText(u.getBarcode()) ? u.getBarcode().trim() : null);
             if (u.getBarcode() != null) {
@@ -261,7 +262,7 @@ public class WmsMaterialService {
                         || unitMapper.exists(Wrappers.<WmsMaterialUnit>lambdaQuery().eq(WmsMaterialUnit::getBarcode, u.getBarcode())
                         .ne(WmsMaterialUnit::getMaterialId, materialId));
                 if (used || units.stream().filter(o -> u.getBarcode().equals(o.getBarcode())).count() > 1) {
-                    throw new BizException("条码已被使用：" + u.getBarcode());
+                    throw new BizException("条码已被使用：{0}", u.getBarcode());
                 }
             }
         }

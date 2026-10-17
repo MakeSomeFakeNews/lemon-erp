@@ -41,7 +41,7 @@ public class WmsVariantController {
 
     @PostMapping("/attribute")
     @PreAuthorize("@ss.hasPerm('wms:attribute:edit')")
-    @OperLog(title = "规格属性", type = OperType.INSERT)
+    @OperLog(title = "规格属性", type = OperType.INSERT) // i18n-ignore
     public R<Long> createAttribute(@Valid @RequestBody WmsAttribute attr) {
         attr.setId(null);
         return R.ok(variantService.saveAttribute(attr));
@@ -49,7 +49,7 @@ public class WmsVariantController {
 
     @PutMapping("/attribute/{id}")
     @PreAuthorize("@ss.hasPerm('wms:attribute:edit')")
-    @OperLog(title = "规格属性", type = OperType.UPDATE)
+    @OperLog(title = "规格属性", type = OperType.UPDATE) // i18n-ignore
     public R<Long> updateAttribute(@PathVariable Long id, @Valid @RequestBody WmsAttribute attr) {
         attr.setId(id);
         return R.ok(variantService.saveAttribute(attr));
@@ -57,7 +57,7 @@ public class WmsVariantController {
 
     @DeleteMapping("/attribute/{id}")
     @PreAuthorize("@ss.hasPerm('wms:attribute:edit')")
-    @OperLog(title = "规格属性", type = OperType.DELETE)
+    @OperLog(title = "规格属性", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteAttribute(@PathVariable Long id) {
         variantService.deleteAttribute(id);
         return R.ok();
@@ -87,7 +87,7 @@ public class WmsVariantController {
 
     @PostMapping("/material/{id}/variants")
     @PreAuthorize("@ss.hasPerm('wms:material:add')")
-    @OperLog(title = "生成 SKU", type = OperType.INSERT)
+    @OperLog(title = "生成 SKU", type = OperType.INSERT) // i18n-ignore
     public R<Integer> generate(@PathVariable Long id, @RequestBody GenerateRequest req) {
         return R.ok(variantService.generate(id, req.valueIds()));
     }

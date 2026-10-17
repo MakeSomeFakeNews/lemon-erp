@@ -30,7 +30,7 @@ public class CrmPoolReclaimJob implements JobHandler {
 
     @Override
     public String name() {
-        return "客户公海回收";
+        return "客户公海回收"; // i18n-ignore 定时任务名称，任务管理处翻译
     }
 
     @Override
@@ -48,13 +48,13 @@ public class CrmPoolReclaimJob implements JobHandler {
         int days = params.getInt("days", 30);
         List<Map<String, Object>> rows = jobMapper.selectIdle(LocalDateTime.now().minusDays(days));
         if (rows.isEmpty()) {
-            return "没有需要回收的客户";
+            return "没有需要回收的客户"; // i18n-ignore 任务日志存库
         }
         jobMapper.releaseToPool(rows.stream().map(r -> ((Number) r.get("id")).longValue()).toList());
         for (Map<String, Object> r : rows) {
             messageSender.send(List.of(((Number) r.get("ownerId")).longValue()), Message.of("REMIND",
-                    "客户「" + r.get("name") + "」已退回公海", "超过 " + days + " 天没有跟进，已自动退回公海", "/crm/customer"));
+                    "客户「" + r.get("name") + "」已退回公海", "超过 " + days + " 天没有跟进，已自动退回公海", "/crm/customer")); // i18n-ignore 站内消息存库
         }
-        return "回收 " + rows.size() + " 个客户";
+        return "回收 " + rows.size() + " 个客户"; // i18n-ignore 任务日志存库
     }
 }

@@ -53,7 +53,7 @@ public class FinAccountController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('fin:account:add')")
-    @OperLog(title = "会计科目", type = OperType.INSERT)
+    @OperLog(title = "会计科目", type = OperType.INSERT) // i18n-ignore
     public R<Void> create(@Valid @RequestBody AccountRequest req) {
         accountService.create(req);
         return R.ok();
@@ -61,7 +61,7 @@ public class FinAccountController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('fin:account:edit')")
-    @OperLog(title = "会计科目", type = OperType.UPDATE)
+    @OperLog(title = "会计科目", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody AccountRequest req) {
         accountService.update(id, req);
         return R.ok();
@@ -69,7 +69,7 @@ public class FinAccountController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('fin:account:edit')")
-    @OperLog(title = "会计科目-修改状态", type = OperType.UPDATE)
+    @OperLog(title = "会计科目-修改状态", type = OperType.UPDATE) // i18n-ignore
     public R<Void> changeStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
         accountService.changeStatus(id, req.status());
         return R.ok();
@@ -77,7 +77,7 @@ public class FinAccountController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('fin:account:remove')")
-    @OperLog(title = "会计科目", type = OperType.DELETE)
+    @OperLog(title = "会计科目", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         accountService.delete(ids);
         return R.ok();

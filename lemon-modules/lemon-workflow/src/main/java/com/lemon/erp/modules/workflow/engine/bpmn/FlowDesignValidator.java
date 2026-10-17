@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.workflow.engine.bpmn;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.modules.workflow.engine.FlowVariables;
 import com.lemon.erp.modules.workflow.model.AssigneeConfig;
 import com.lemon.erp.modules.workflow.model.AssigneeType;
@@ -42,28 +43,27 @@ public class FlowDesignValidator {
 
     private void validateForm(List<FormField> fields) {
         if (fields.size() > MAX_FORM_FIELDS) {
-            throw new BizException("表单字段不能超过 " + MAX_FORM_FIELDS + " 个");
+            throw new BizException("表单字段不能超过 {0} 个", MAX_FORM_FIELDS);
         }
         Set<String> keys = new HashSet<>();
         for (FormField field : fields) {
             if (!StringUtils.hasText(field.label())) {
                 throw new BizException("表单字段名称不能为空");
             }
-            String label = "表单字段「" + field.label() + "」";
             if (field.field() == null || !FIELD_KEY.matcher(field.field()).matches()) {
-                throw new BizException(label + "的标识只能包含字母、数字、下划线，且以字母开头");
+                throw new BizException("表单字段「{0}」的标识只能包含字母、数字、下划线，且以字母开头", field.label());
             }
             if (FlowVariables.isReserved(field.field())) {
-                throw new BizException(label + "的标识「" + field.field() + "」是系统保留字");
+                throw new BizException("表单字段「{0}」的标识「{1}」是系统保留字", field.label(), field.field());
             }
             if (!keys.add(field.field())) {
-                throw new BizException(label + "的标识「" + field.field() + "」重复");
+                throw new BizException("表单字段「{0}」的标识「{1}」重复", field.label(), field.field());
             }
             if (field.type() == null) {
-                throw new BizException(label + "未选择类型");
+                throw new BizException("表单字段「{0}」未选择类型", field.label());
             }
             if (field.type() == FormFieldType.SELECT && field.options().stream().noneMatch(StringUtils::hasText)) {
-                throw new BizException(label + "至少需要一个选项");
+                throw new BizException("表单字段「{0}」至少需要一个选项", field.label());
             }
         }
     }
@@ -77,10 +77,10 @@ public class FlowDesignValidator {
         FlowTree.walk(root, node -> {
             checkId(node.id(), name(node), ids);
             if (++counts[0] > MAX_NODES) {
-                throw new BizException("流程节点不能超过 " + MAX_NODES + " 个");
+                throw new BizException("流程节点不能超过 {0} 个", MAX_NODES);
             }
             if (node.type() == null) {
-                throw new BizException("节点「" + name(node) + "」类型不能为空");
+                throw new BizException("节点「{0}」类型不能为空", name(node));
             }
             if (node.type() == NodeType.START && node != root) {
                 throw new BizException("发起人节点只能有一个");
@@ -89,7 +89,7 @@ public class FlowDesignValidator {
                 counts[1]++;
             }
             validateNode(node);
-        }, branch -> checkId(branch.id(), "分支「" + branch.name() + "」", ids));
+        }, branch -> checkId(branch.id(), I18n.t("分支「{0}」", branch.name()), ids));
         if (counts[1] == 0) {
             throw new BizException("流程至少需要一个审批人节点");
         }
@@ -101,7 +101,7 @@ public class FlowDesignValidator {
             case CONDITION -> validateConditionBranches(node);
             case PARALLEL -> {
                 if (node.branches().size() < 2) {
-                    throw new BizException("并行分支「" + name(node) + "」至少需要两个分支");
+                    throw new BizException("并行分支「{0}」至少需要两个分支", name(node));
                 }
             }
             default -> {
@@ -111,27 +111,27 @@ public class FlowDesignValidator {
 
     private void validateAssignee(FlowNode node) {
         AssigneeConfig assignee = node.assignee();
-        String role = node.type() == NodeType.APPROVER ? "审批人" : "抄送人";
+        boolean approver = node.type() == NodeType.APPROVER;
         if (assignee == null || assignee.type() == null) {
-            throw new BizException("请设置「" + name(node) + "」的" + role);
+            throw approver ? new BizException("请设置「{0}」的审批人", name(node)) : new BizException("请设置「{0}」的抄送人", name(node));
         }
         if (assignee.type().isRequiresIds() && assignee.ids().isEmpty()) {
-            throw new BizException("请选择「" + name(node) + "」的" + role);
+            throw approver ? new BizException("请选择「{0}」的审批人", name(node)) : new BizException("请选择「{0}」的抄送人", name(node));
         }
         if (assignee.type() == AssigneeType.DEPT_LEADER
                 && (assignee.levelOrDefault() < 1 || assignee.levelOrDefault() > AssigneeConfig.MAX_LEVEL)) {
-            throw new BizException("「" + name(node) + "」的主管级别只能是 1 - " + AssigneeConfig.MAX_LEVEL);
+            throw new BizException("「{0}」的主管级别只能是 1 - {1}", name(node), AssigneeConfig.MAX_LEVEL);
         }
     }
 
     private void validateConditionBranches(FlowNode node) {
         List<FlowBranch> branches = node.branches();
         if (branches.size() < 2) {
-            throw new BizException("条件分支「" + name(node) + "」至少需要两个分支");
+            throw new BizException("条件分支「{0}」至少需要两个分支", name(node));
         }
         long defaults = branches.stream().filter(FlowBranch::isDefaultPath).count();
         if (defaults != 1 || !branches.get(branches.size() - 1).isDefaultPath()) {
-            throw new BizException("条件分支「" + name(node) + "」必须有且只有一个默认分支，并放在最后");
+            throw new BizException("条件分支「{0}」必须有且只有一个默认分支，并放在最后", name(node));
         }
         for (FlowBranch branch : branches) {
             if (branch.isDefaultPath()) {
@@ -139,13 +139,13 @@ public class FlowDesignValidator {
             }
             List<List<ConditionRule>> groups = branch.conditions();
             if (groups.isEmpty() || groups.stream().anyMatch(g -> g == null || g.isEmpty())) {
-                throw new BizException("请设置分支「" + branch.name() + "」的条件");
+                throw new BizException("请设置分支「{0}」的条件", branch.name());
             }
             for (List<ConditionRule> group : groups) {
                 for (ConditionRule rule : group) {
                     if (rule == null || !StringUtils.hasText(rule.field()) || rule.operator() == null
                             || !StringUtils.hasText(rule.value())) {
-                        throw new BizException("分支「" + branch.name() + "」的条件不完整");
+                        throw new BizException("分支「{0}」的条件不完整", branch.name());
                     }
                 }
             }
@@ -154,10 +154,10 @@ public class FlowDesignValidator {
 
     private static void checkId(String id, String label, Set<String> ids) {
         if (id == null || !ELEMENT_ID.matcher(id).matches() || id.contains("__")) {
-            throw new BizException(label + "的 ID 不合法");
+            throw new BizException("{0}的 ID 不合法", label);
         }
         if (!ids.add(id)) {
-            throw new BizException(label + "的 ID「" + id + "」重复");
+            throw new BizException("{0}的 ID「{1}」重复", label, id);
         }
     }
 

@@ -42,7 +42,7 @@ public class MesCapacityController {
 
     @PostMapping("/schedule/{woId}")
     @PreAuthorize("@ss.hasAnyPerm('mes:capacity:edit', 'mes:wo:edit')")
-    @OperLog(title = "工单排程", type = OperType.UPDATE)
+    @OperLog(title = "工单排程", type = OperType.UPDATE) // i18n-ignore
     public R<MesWorkOrder> scheduleOne(@PathVariable Long woId) {
         return R.ok(scheduleService.scheduleOne(woId));
     }
@@ -50,7 +50,7 @@ public class MesCapacityController {
     /** 全部未结束的工单按有限产能重新排程，返回工单数 */
     @PostMapping("/schedule-all")
     @PreAuthorize("@ss.hasPerm('mes:capacity:edit')")
-    @OperLog(title = "全部排程", type = OperType.UPDATE)
+    @OperLog(title = "全部排程", type = OperType.UPDATE) // i18n-ignore
     public R<Integer> scheduleAll() {
         return R.ok(scheduleService.scheduleAll());
     }
@@ -65,7 +65,7 @@ public class MesCapacityController {
 
     @PostMapping("/calendar")
     @PreAuthorize("@ss.hasPerm('mes:capacity:edit')")
-    @OperLog(title = "工厂日历", type = OperType.UPDATE)
+    @OperLog(title = "工厂日历", type = OperType.UPDATE) // i18n-ignore
     public R<Void> saveCalendar(@RequestBody MesCalendar calendar) {
         scheduleService.saveCalendar(calendar);
         return R.ok();
@@ -73,7 +73,7 @@ public class MesCapacityController {
 
     @DeleteMapping("/calendar/{id}")
     @PreAuthorize("@ss.hasPerm('mes:capacity:edit')")
-    @OperLog(title = "工厂日历", type = OperType.DELETE)
+    @OperLog(title = "工厂日历", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteCalendar(@PathVariable Long id) {
         scheduleService.deleteCalendar(id);
         return R.ok();

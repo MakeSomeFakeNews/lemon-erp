@@ -108,11 +108,11 @@ public class ScmRebateService {
     public Calc settle(Long id, LocalDate settleDate) {
         ScmRebate r = requireActive(id);
         if (!r.getEndDate().isBefore(LocalDate.now())) {
-            throw new BizException("返利期间 " + r.getEndDate() + " 还没有结束，不能结算");
+            throw new BizException("返利期间 {0} 还没有结束，不能结算", r.getEndDate());
         }
         Calc c = calc(r, r.getEndDate());
         if (c.rebateAmount().signum() <= 0) {
-            throw new BizException("期间销售额 " + plain(c.salesAmount()) + " 没有达到返利阶梯");
+            throw new BizException("期间销售额 {0} 没有达到返利阶梯", plain(c.salesAmount()));
         }
         LocalDate date = settleDate != null ? settleDate : LocalDate.now();
         if (rebateMapper.update(Wrappers.<ScmRebate>lambdaUpdate()
@@ -165,7 +165,7 @@ public class ScmRebateService {
         }
         BigDecimal balance = balance(customerId, excludeOrderId);
         if (amount.compareTo(balance) > 0) {
-            throw new BizException("返利抵扣 " + plain(amount) + " 超过客户的返利余额 " + plain(balance));
+            throw new BizException("返利抵扣 {0} 超过客户的返利余额 {1}", plain(amount), plain(balance));
         }
     }
 
@@ -194,7 +194,7 @@ public class ScmRebateService {
         }
         ScmCustomer customer = customerService.get(req.customerId());
         if (!Integer.valueOf(1).equals(customer.getStatus())) {
-            throw new BizException("客户「" + customer.getName() + "」已停用");
+            throw new BizException("客户「{0}」已停用", customer.getName());
         }
     }
 

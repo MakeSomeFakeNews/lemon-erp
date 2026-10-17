@@ -37,7 +37,7 @@ public final class FlowDefinitionMeta {
     public FlowNode node(String nodeId) {
         FlowNode node = nodes.get(nodeId);
         if (node == null) {
-            throw new FlowableException("流程定义 " + processDefinitionId + " 中不存在节点 " + nodeId);
+            throw new FlowableException("流程定义 " + processDefinitionId + " 中不存在节点 " + nodeId);  // i18n-ignore 存库或内部异常
         }
         return node;
     }
@@ -45,7 +45,7 @@ public final class FlowDefinitionMeta {
     public FlowBranch branch(String branchId) {
         FlowBranch branch = branches.get(branchId);
         if (branch == null) {
-            throw new FlowableException("流程定义 " + processDefinitionId + " 中不存在分支 " + branchId);
+            throw new FlowableException("流程定义 " + processDefinitionId + " 中不存在分支 " + branchId);  // i18n-ignore 存库或内部异常
         }
         return branch;
     }

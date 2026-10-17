@@ -40,7 +40,7 @@ public class FinCommissionController {
 
     @PostMapping("/rule")
     @PreAuthorize("@ss.hasPerm('fin:commission:rule')")
-    @OperLog(title = "提成规则", type = OperType.INSERT)
+    @OperLog(title = "提成规则", type = OperType.INSERT) // i18n-ignore
     public R<Long> createRule(@Valid @RequestBody FinCommissionRule rule) {
         rule.setId(null);
         return R.ok(commissionService.saveRule(rule));
@@ -48,7 +48,7 @@ public class FinCommissionController {
 
     @PutMapping("/rule/{id}")
     @PreAuthorize("@ss.hasPerm('fin:commission:rule')")
-    @OperLog(title = "提成规则", type = OperType.UPDATE)
+    @OperLog(title = "提成规则", type = OperType.UPDATE) // i18n-ignore
     public R<Long> updateRule(@PathVariable Long id, @Valid @RequestBody FinCommissionRule rule) {
         rule.setId(id);
         return R.ok(commissionService.saveRule(rule));
@@ -56,7 +56,7 @@ public class FinCommissionController {
 
     @DeleteMapping("/rule/{id}")
     @PreAuthorize("@ss.hasPerm('fin:commission:rule')")
-    @OperLog(title = "提成规则", type = OperType.DELETE)
+    @OperLog(title = "提成规则", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteRule(@PathVariable Long id) {
         commissionService.deleteRule(id);
         return R.ok();
@@ -78,7 +78,7 @@ public class FinCommissionController {
 
     @PostMapping("/{period}/generate")
     @PreAuthorize("@ss.hasPerm('fin:commission:edit')")
-    @OperLog(title = "计算销售提成", type = OperType.INSERT)
+    @OperLog(title = "计算销售提成", type = OperType.INSERT) // i18n-ignore
     public R<Long> generate(@PathVariable int period) {
         return R.ok(commissionService.generate(period));
     }
@@ -88,7 +88,7 @@ public class FinCommissionController {
 
     @PutMapping("/line/{id}")
     @PreAuthorize("@ss.hasPerm('fin:commission:edit')")
-    @OperLog(title = "调整销售提成", type = OperType.UPDATE)
+    @OperLog(title = "调整销售提成", type = OperType.UPDATE) // i18n-ignore
     public R<Void> adjust(@PathVariable Long id, @Valid @RequestBody AdjustRequest req) {
         commissionService.adjust(id, req.adjustAmount(), req.remark());
         return R.ok();
@@ -96,7 +96,7 @@ public class FinCommissionController {
 
     @PostMapping("/{period}/confirm")
     @PreAuthorize("@ss.hasPerm('fin:commission:edit')")
-    @OperLog(title = "确认销售提成", type = OperType.UPDATE)
+    @OperLog(title = "确认销售提成", type = OperType.UPDATE) // i18n-ignore
     public R<Void> confirm(@PathVariable int period) {
         commissionService.confirm(period);
         return R.ok();
@@ -104,7 +104,7 @@ public class FinCommissionController {
 
     @PostMapping("/{period}/unconfirm")
     @PreAuthorize("@ss.hasPerm('fin:commission:edit')")
-    @OperLog(title = "取消确认销售提成", type = OperType.UPDATE)
+    @OperLog(title = "取消确认销售提成", type = OperType.UPDATE) // i18n-ignore
     public R<Void> unconfirm(@PathVariable int period) {
         commissionService.unconfirm(period);
         return R.ok();

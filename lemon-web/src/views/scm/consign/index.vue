@@ -6,13 +6,13 @@
         type="warning"
         show-icon
         class="tip"
-        message="没有寄售结算权限（scm:consign:settle），只能查看寄售仓库存"
+        :message="$t('scm.consign.noPerm')"
       />
       <a-tabs v-model:active-key="tab" destroy-inactive-tab-pane>
-        <a-tab-pane key="customer" tab="客户寄售结算">
+        <a-tab-pane key="customer" :tab="$t('scm.consign.customerTab')">
           <ConsignSettlePanel mode="customer" />
         </a-tab-pane>
-        <a-tab-pane key="supplier" tab="供应商寄售结算（VMI）">
+        <a-tab-pane key="supplier" :tab="$t('scm.consign.supplierTab')">
           <ConsignSettlePanel mode="supplier" />
         </a-tab-pane>
       </a-tabs>

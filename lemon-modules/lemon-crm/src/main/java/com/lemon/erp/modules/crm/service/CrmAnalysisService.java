@@ -169,12 +169,12 @@ public class CrmAnalysisService {
 
     // ---------------------------------------------------------------- 内部
 
-    private static final List<String> SEGMENTS = List.of("重要价值客户", "重要发展客户", "重要保持客户", "重要挽留客户",
-            "一般价值客户", "一般发展客户", "一般保持客户", "一般挽留客户");
+    private static final List<String> SEGMENTS = List.of("重要价值客户", "重要发展客户", "重要保持客户", "重要挽留客户", // i18n-ignore 分层名称由前端按中文名翻译
+            "一般价值客户", "一般发展客户", "一般保持客户", "一般挽留客户"); // i18n-ignore
 
     static String segment(boolean recent, boolean frequent, boolean valuable) {
-        String level = valuable ? "重要" : "一般";
-        String kind = recent ? (frequent ? "价值" : "发展") : (frequent ? "保持" : "挽留");
+        String level = valuable ? "重要" : "一般"; // i18n-ignore
+        String kind = recent ? (frequent ? "价值" : "发展") : (frequent ? "保持" : "挽留"); // i18n-ignore
         return level + kind + "客户";
     }
 

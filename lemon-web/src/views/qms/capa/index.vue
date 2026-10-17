@@ -2,11 +2,11 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
-        <a-select v-model:value="query.status" placeholder="全部状态" allow-clear :options="toOptions(dict.qms_capa_status)" class="filter" @change="search" />
-        <a-input-search v-model:value="query.keyword" placeholder="单号、标题" allow-clear class="filter-wide" @search="search" />
+        <a-select v-model:value="query.status" :placeholder="$t('mes.doc.allStatus')" allow-clear :options="toOptions(dict.qms_capa_status)" class="filter" @change="search" />
+        <a-input-search v-model:value="query.keyword" :placeholder="$t('qms.capa.keywordPh')" allow-clear class="filter-wide" @search="search" />
         <template #extra>
           <a-button v-perm="'qms:capa:add'" type="primary" @click="drawer.openCreate()">
-            <template #icon><PlusOutlined /></template>新增 8D
+            <template #icon><PlusOutlined /></template>{{ $t('qms.capa.add') }}
           </a-button>
         </template>
       </TableToolbar>
@@ -31,46 +31,46 @@
           </template>
           <template v-else-if="column.key === 'dueDate'">
             <div :class="{ danger: overdue(record) }">{{ record.dueDate }}</div>
-            <div v-if="overdue(record)" class="sub-text danger">已逾期</div>
+            <div v-if="overdue(record)" class="sub-text danger">{{ $t('qms.capa.overdue') }}</div>
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="qms_capa_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === 'OPEN' ? '处理' : '查看' }}</a-button>
+            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === 'OPEN' ? $t('qms.capa.handle') : $t('common.action.view') }}</a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增纠正预防（8D）" edit-title="编辑纠正预防">
+    <FormDrawer :drawer="drawer" :create-title="$t('qms.capa.addTitle')" :edit-title="$t('qms.capa.editTitle')">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-form-item label="来源" name="source">
+        <a-form-item :label="$t('qms.capa.source')" name="source">
           <a-radio-group v-model:value="form.source" :options="toOptions(dict.qms_capa_source)" />
         </a-form-item>
-        <a-form-item v-if="form.source === 'NCR'" label="不合格品处理单" name="ncrId">
+        <a-form-item v-if="form.source === 'NCR'" :label="$t('qms.capa.ncr')" name="ncrId">
           <a-select
             v-model:value="form.ncrId"
             show-search
             :filter-option="false"
             :options="ncrOptions"
-            placeholder="搜索处理单号、物料"
+            :placeholder="$t('qms.capa.ncrSearchPh')"
             @search="searchNcr"
             @focus="searchNcr('')"
           />
         </a-form-item>
-        <a-form-item label="问题标题" name="title">
+        <a-form-item :label="$t('qms.capa.title')" name="title">
           <a-input v-model:value="form.title" :maxlength="128" />
         </a-form-item>
-        <a-form-item label="问题描述" name="description">
+        <a-form-item :label="$t('qms.capa.description')" name="description">
           <a-textarea v-model:value="form.description" :rows="3" :maxlength="1000" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="负责人" name="ownerId" extra="默认为各步骤的负责人">
+            <a-form-item :label="$t('qms.capa.owner')" name="ownerId" :extra="$t('qms.capa.ownerExtra')">
               <IdentityUserSelect v-model:value="form.ownerId" :label="form.ownerName" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="要求完成日期" name="dueDate">
+            <a-form-item :label="$t('qms.capa.dueDate')" name="dueDate">
               <a-date-picker v-model:value="form.dueDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
@@ -82,35 +82,35 @@
       <template v-if="detail" #extra>
         <a-space>
           <template v-if="detail.status === 'OPEN'">
-            <a-button v-perm="'qms:capa:add'" @click="drawer.openEdit(detail)">编辑</a-button>
+            <a-button v-perm="'qms:capa:add'" @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
             <span v-perm="'qms:capa:remove'">
-              <a-popconfirm title="删除该纠正预防单？" @confirm="remove">
-                <a-button danger>删除</a-button>
+              <a-popconfirm :title="$t('qms.capa.deleteConfirm')" @confirm="remove">
+                <a-button danger>{{ $t('common.action.delete') }}</a-button>
               </a-popconfirm>
             </span>
             <span v-perm="'qms:capa:edit'">
-              <a-popconfirm title="D1 ~ D8 已全部完成，提交效果验证？" :disabled="doneCount < 8" @confirm="submit">
-                <a-tooltip :title="doneCount < 8 ? `还有 ${8 - doneCount} 个步骤未完成` : ''">
-                  <a-button type="primary" :disabled="doneCount < 8">提交验证</a-button>
+              <a-popconfirm :title="$t('qms.capa.submitConfirm')" :disabled="doneCount < 8" @confirm="submit">
+                <a-tooltip :title="doneCount < 8 ? $t('qms.capa.stepsLeft', { n: 8 - doneCount }) : ''">
+                  <a-button type="primary" :disabled="doneCount < 8">{{ $t('qms.capa.submitVerify') }}</a-button>
                 </a-tooltip>
               </a-popconfirm>
             </span>
           </template>
-          <a-button v-if="detail.status === 'VERIFYING'" v-perm="'qms:capa:verify'" type="primary" @click="openVerify">效果验证</a-button>
+          <a-button v-if="detail.status === 'VERIFYING'" v-perm="'qms:capa:verify'" type="primary" @click="openVerify">{{ $t('qms.capa.verify') }}</a-button>
         </a-space>
       </template>
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" bordered class="block">
-          <a-descriptions-item label="来源"><DictTag type="qms_capa_source" :value="detail.source" /> {{ detail.ncrNo || '' }}</a-descriptions-item>
-          <a-descriptions-item label="负责人">{{ detail.ownerName }}</a-descriptions-item>
-          <a-descriptions-item label="要求完成">
+          <a-descriptions-item :label="$t('qms.capa.source')"><DictTag type="qms_capa_source" :value="detail.source" /> {{ detail.ncrNo || '' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('qms.capa.owner')">{{ detail.ownerName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('qms.capa.due')">
             <span :class="{ danger: overdue(detail) }">{{ detail.dueDate }}</span>
           </a-descriptions-item>
-          <a-descriptions-item label="状态"><DictTag type="qms_capa_status" :value="detail.status" /></a-descriptions-item>
-          <a-descriptions-item label="登记">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item label="进度">{{ doneCount }} / 8</a-descriptions-item>
-          <a-descriptions-item v-if="detail.description" label="问题描述" :span="3">{{ detail.description }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.verifyResult" label="效果验证" :span="3">
+          <a-descriptions-item :label="$t('common.field.status')"><DictTag type="qms_capa_status" :value="detail.status" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('qms.capa.registered')">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('mes.wo.opProgress')">{{ doneCount }} / 8</a-descriptions-item>
+          <a-descriptions-item v-if="detail.description" :label="$t('qms.capa.description')" :span="3">{{ detail.description }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.verifyResult" :label="$t('qms.capa.verify')" :span="3">
             {{ detail.verifyResult }} <span class="sub-text">{{ detail.verifiedByName }} {{ detail.verifyTime }}</span>
           </a-descriptions-item>
         </a-descriptions>
@@ -119,37 +119,37 @@
           <a-timeline-item v-for="s in detail.steps" :key="s.id" :color="s.done === 1 ? 'green' : 'gray'" class="step">
             <div>
               <span class="step-title">{{ s.step }} {{ STEP_NAMES[s.step] }}</span>
-              <span class="sub-text step-meta">{{ s.ownerName || '' }}{{ s.doneDate ? ` · ${s.doneDate} 完成` : '' }}</span>
+              <span class="sub-text step-meta">{{ s.ownerName || '' }}{{ s.doneDate ? $t('qms.capa.doneOn', { d: s.doneDate }) : '' }}</span>
             </div>
             <div class="step-hint sub-text">{{ STEP_HINTS[s.step] }}</div>
             <template v-if="editable && editing[s.id]">
               <a-textarea v-model:value="editing[s.id].content" :rows="3" :maxlength="2000" class="step-input" />
               <div class="step-actions">
                 <IdentityUserSelect v-model:value="editing[s.id].ownerId" :label="s.ownerName" class="owner" />
-                <a-checkbox v-model:checked="editing[s.id].done">已完成</a-checkbox>
-                <a-button size="small" @click="delete editing[s.id]">取消</a-button>
-                <a-button size="small" type="primary" :loading="stepSaving" @click="saveStep(s)">保存</a-button>
+                <a-checkbox v-model:checked="editing[s.id].done">{{ $t('qms.capa.done') }}</a-checkbox>
+                <a-button size="small" @click="delete editing[s.id]">{{ $t('common.action.cancel') }}</a-button>
+                <a-button size="small" type="primary" :loading="stepSaving" @click="saveStep(s)">{{ $t('common.action.save') }}</a-button>
               </div>
             </template>
             <template v-else>
-              <div class="step-content">{{ s.content || '未填写' }}</div>
-              <a-button v-if="editable" v-perm="'qms:capa:edit'" type="link" size="small" class="edit-link" @click="editStep(s)">填写</a-button>
+              <div class="step-content">{{ s.content || $t('qms.capa.notFilled') }}</div>
+              <a-button v-if="editable" v-perm="'qms:capa:edit'" type="link" size="small" class="edit-link" @click="editStep(s)">{{ $t('qms.capa.fill') }}</a-button>
             </template>
           </a-timeline-item>
         </a-timeline>
       </template>
     </SubPage>
 
-    <a-modal v-model:open="verifyOpen" title="效果验证" :confirm-loading="saving" @ok="submitVerify">
+    <a-modal v-model:open="verifyOpen" :title="$t('qms.capa.verify')" :confirm-loading="saving" @ok="submitVerify">
       <a-form layout="vertical">
-        <a-form-item label="验证结论" required>
+        <a-form-item :label="$t('qms.capa.verifyConclusion')" required>
           <a-radio-group v-model:value="verify.effective">
-            <a-radio :value="true">有效，关闭</a-radio>
-            <a-radio :value="false">无效，退回继续处理</a-radio>
+            <a-radio :value="true">{{ $t('qms.capa.effective') }}</a-radio>
+            <a-radio :value="false">{{ $t('qms.capa.ineffective') }}</a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item label="验证说明" required>
-          <a-textarea v-model:value="verify.verifyResult" :rows="3" :maxlength="500" placeholder="如：连续 3 批来料检验无同类不良" />
+        <a-form-item :label="$t('qms.capa.verifyDesc')" required>
+          <a-textarea v-model:value="verify.verifyResult" :rows="3" :maxlength="500" :placeholder="$t('qms.capa.verifyPh')" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -162,6 +162,7 @@ import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { PlusOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SubPage from '@/components/SubPage.vue'
@@ -179,30 +180,31 @@ import { useUserStore } from '@/store/user'
 const dict = useDict('qms_capa_source', 'qms_capa_status')
 const route = useRoute()
 const userStore = useUserStore()
+const { t } = useI18n()
 
 const STEP_NAMES = {
-  D1: '组建团队', D2: '问题描述', D3: '临时措施', D4: '根本原因', D5: '永久措施', D6: '实施验证', D7: '预防再发', D8: '总结表彰'
+  D1: t('qms.capa.step.D1'), D2: t('qms.capa.step.D2'), D3: t('qms.capa.step.D3'), D4: t('qms.capa.step.D4'), D5: t('qms.capa.step.D5'), D6: t('qms.capa.step.D6'), D7: t('qms.capa.step.D7'), D8: t('qms.capa.step.D8')
 }
 const STEP_HINTS = {
-  D1: '成立跨部门小组，明确组长与成员分工',
-  D2: '用 5W2H 描述问题：什么产品、什么不良、数量、何时何地发现',
-  D3: '围堵措施：隔离、挑选在库与在途产品，防止不良流出',
-  D4: '用鱼骨图、5Why 分析产生原因与流出原因，并验证',
-  D5: '针对根本原因制定永久纠正措施，评估风险',
-  D6: '实施永久措施并跟踪效果，撤销临时措施',
-  D7: '更新作业指导书、FMEA、控制计划，横向展开到类似产品与工序',
-  D8: '总结经验，认可团队贡献，关闭问题'
+  D1: t('qms.capa.hint.D1'),
+  D2: t('qms.capa.hint.D2'),
+  D3: t('qms.capa.hint.D3'),
+  D4: t('qms.capa.hint.D4'),
+  D5: t('qms.capa.hint.D5'),
+  D6: t('qms.capa.hint.D6'),
+  D7: t('qms.capa.hint.D7'),
+  D8: t('qms.capa.hint.D8')
 }
 
 const columns = [
-  { title: '单号', key: 'capaNo', width: 170 },
-  { title: '问题标题', dataIndex: 'title', width: 260, ellipsis: true },
-  { title: '负责人', dataIndex: 'ownerName', width: 100 },
-  { title: '进度', key: 'progress', width: 160 },
-  { title: '要求完成', key: 'dueDate', width: 110 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '登记时间', dataIndex: 'createTime', width: 160 },
-  { title: '操作', key: 'action', width: 90, fixed: 'right' }
+  { title: t('qms.capa.no'), key: 'capaNo', width: 170 },
+  { title: t('qms.capa.title'), dataIndex: 'title', width: 260, ellipsis: true },
+  { title: t('qms.capa.owner'), dataIndex: 'ownerName', width: 100 },
+  { title: t('mes.wo.opProgress'), key: 'progress', width: 160 },
+  { title: t('qms.capa.due'), key: 'dueDate', width: 110 },
+  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('qms.capa.registerTime'), dataIndex: 'createTime', width: 160 },
+  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'qms-capa')
 const query = reactive({ status: undefined, keyword: undefined })
@@ -212,11 +214,11 @@ const overdue = (r) => r.status !== 'CLOSED' && dayjs(r.dueDate).isBefore(dayjs(
 
 // ---------------------------------------------------------------- 新增 / 编辑
 const rules = {
-  source: [{ required: true, message: '请选择来源' }],
-  ncrId: [{ required: true, message: '请选择不合格品处理单' }],
-  title: [{ required: true, whitespace: true, message: '请填写问题标题' }],
-  ownerId: [{ required: true, message: '请选择负责人' }],
-  dueDate: [{ required: true, message: '请选择要求完成日期' }]
+  source: [{ required: true, message: t('qms.capa.sourceRequired') }],
+  ncrId: [{ required: true, message: t('qms.capa.ncrRequired') }],
+  title: [{ required: true, whitespace: true, message: t('qms.capa.titleRequired') }],
+  ownerId: [{ required: true, message: t('qms.capa.ownerRequired') }],
+  dueDate: [{ required: true, message: t('qms.capa.dueDateRequired') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({
@@ -284,7 +286,7 @@ async function saveStep(s) {
   try {
     await saveCapaStep(detail.value.id, s.id, editing[s.id])
     delete editing[s.id]
-    message.success('已保存')
+    message.success(t('common.msg.saved'))
     await refreshDetail()
     load()
   } finally {
@@ -293,13 +295,13 @@ async function saveStep(s) {
 }
 async function submit() {
   await submitCapa(detail.value.id)
-  message.success('已提交效果验证')
+  message.success(t('qms.capa.submitted'))
   refreshDetail()
   load()
 }
 async function remove() {
   await deleteCapa(detail.value.id)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   detailOpen.value = false
   load()
 }
@@ -312,11 +314,11 @@ function openVerify() {
   verifyOpen.value = true
 }
 async function submitVerify() {
-  if (!verify.value.verifyResult?.trim()) return message.warning('请填写验证说明')
+  if (!verify.value.verifyResult?.trim()) return message.warning(t('qms.capa.verifyDescRequired'))
   saving.value = true
   try {
     await verifyCapa(detail.value.id, verify.value)
-    message.success(verify.value.effective ? '已关闭' : '已退回继续处理')
+    message.success(verify.value.effective ? t('mes.wo.closed') : t('qms.capa.returned'))
     verifyOpen.value = false
     refreshDetail()
     load()

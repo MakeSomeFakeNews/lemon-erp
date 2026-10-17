@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.framework.cache.CacheService;
 import com.lemon.erp.framework.setting.OptionEnum;
 import com.lemon.erp.framework.setting.PasswordComplexity;
@@ -56,9 +57,10 @@ public class SysConfigService implements SettingService {
             String def = defaultValue(s);
             String value = saved.getOrDefault(s.key(), def);
             List<SettingItem.Option> options = s.options() == null ? null : Arrays.stream(s.options().getEnumConstants())
-                    .map(o -> new SettingItem.Option(o.name(), o.label())).toList();
-            return new SettingItem(s.key(), s.group().name(), s.group().label(), s.label(), s.type().name(), value, def,
-                    !Objects.equals(value, def), options, s.min(), s.max(), s.remark());
+                    .map(o -> new SettingItem.Option(o.name(), I18n.t(o.label()))).toList();
+            // 分组、名称、选项、说明按请求语言翻译
+            return new SettingItem(s.key(), s.group().name(), I18n.t(s.group().label()), I18n.t(s.label()), s.type().name(), value, def,
+                    !Objects.equals(value, def), options, s.min(), s.max(), I18n.t(s.remark()));
         }).toList();
     }
 
@@ -73,7 +75,7 @@ public class SysConfigService implements SettingService {
         values.forEach((key, raw) -> {
             Setting s = Setting.ofKey(key);
             if (s == null) {
-                throw new BizException("参数不存在：" + key);
+                throw new BizException("参数不存在：{0}", key);
             }
             String value = raw == null ? null : raw.trim();
             if (value != null && !value.isEmpty()) {
@@ -114,27 +116,27 @@ public class SysConfigService implements SettingService {
     }
 
     private static void validate(Setting s, String value) {
-        String name = "「" + s.label() + "」";
+        String name = I18n.t(s.label());
         if (s.type() == SettingType.NUMBER) {
             int n;
             try {
                 n = Integer.parseInt(value);
             } catch (NumberFormatException e) {
-                throw new BizException(name + "必须是整数");
+                throw new BizException("「{0}」必须是整数", name);
             }
             if (n < s.min() || n > s.max()) {
-                throw new BizException(name + "的范围是 " + s.min() + " - " + s.max());
+                throw new BizException("「{0}」的范围是 {1} - {2}", name, s.min(), s.max());
             }
         } else if (s.type() == SettingType.BOOL) {
             if (!Boolean.TRUE.toString().equals(value) && !Boolean.FALSE.toString().equals(value)) {
-                throw new BizException(name + "只能是 true 或 false");
+                throw new BizException("「{0}」只能是 true 或 false", name);
             }
         } else if (s.type() == SettingType.SELECT) {
             if (Arrays.stream(s.options().getEnumConstants()).map(OptionEnum::name).noneMatch(value::equals)) {
-                throw new BizException(name + "的取值无效：" + value);
+                throw new BizException("「{0}」的取值无效：{1}", name, value);
             }
         } else if (value.length() < s.min() || value.length() > s.max()) {
-            throw new BizException(name + "的长度为 " + s.min() + " - " + s.max() + " 个字符");
+            throw new BizException("「{0}」的长度为 {1} - {2} 个字符", name, s.min(), s.max());
         }
     }
 

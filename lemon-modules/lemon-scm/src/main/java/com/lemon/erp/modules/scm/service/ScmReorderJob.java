@@ -41,12 +41,12 @@ public class ScmReorderJob implements JobHandler {
     public String run(JobParams params) {
         List<ReorderSuggestion> list = reorderService.suggestions(null, true);
         if (list.isEmpty()) {
-            return "没有需要补货的物料";
+            return "没有需要补货的物料"; // i18n-ignore
         }
         String names = list.stream().limit(5).map(s -> s.code() + " " + s.name()).collect(Collectors.joining("、"));
-        messageSender.sendToPermission("scm:reorder:list", Message.of("ALERT", list.size() + " 个物料低于再订货点",
-                names + (list.size() > 5 ? " 等" : "") + "，请查看补货建议并生成请购单", "/scm/reorder")
+        messageSender.sendToPermission("scm:reorder:list", Message.of("ALERT", list.size() + " 个物料低于再订货点", // i18n-ignore
+                names + (list.size() > 5 ? " 等" : "") + "，请查看补货建议并生成请购单", "/scm/reorder") // i18n-ignore
                 .dedup("reorder:" + LocalDate.now()));
-        return "需要补货 " + list.size() + " 个物料";
+        return "需要补货 " + list.size() + " 个物料"; // i18n-ignore
     }
 }

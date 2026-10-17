@@ -87,7 +87,7 @@ public class FeishuClient implements ImClient {
         elements.add(Map.of("tag", "div", "text", Map.of("tag", "lark_md", "content", card.content() == null ? "" : card.content())));
         if (card.url() != null) {
             elements.add(Map.of("tag", "action", "actions", List.of(Map.of("tag", "button", "type", "primary",
-                    "text", Map.of("tag", "plain_text", "content", "查看详情"), "url", card.url()))));
+                    "text", Map.of("tag", "plain_text", "content", "查看详情"), "url", card.url())))); // i18n-ignore 推送到平台的消息
         }
         return Map.of("config", Map.of("wide_screen_mode", true),
                 "header", Map.of("template", "blue", "title", Map.of("tag", "plain_text", "content", card.title())),

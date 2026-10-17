@@ -5,40 +5,40 @@
     </div>
     <div class="toolbar-right">
       <slot name="extra" />
-      <a-tooltip v-if="exporter" title="导出 Excel（当前查询条件）">
+      <a-tooltip v-if="exporter" :title="$t('components.toolbar.export')">
         <a-button type="text" :loading="exporting" @click="doExport">
           <template #icon><DownloadOutlined /></template>
         </a-button>
       </a-tooltip>
-      <a-tooltip v-if="showSearch !== undefined" :title="showSearch ? '隐藏搜索' : '显示搜索'">
+      <a-tooltip v-if="showSearch !== undefined" :title="showSearch ? $t('common.table.hideSearch') : $t('common.table.showSearch')">
         <a-button type="text" @click="emit('update:showSearch', !showSearch)">
           <template #icon><SearchOutlined /></template>
         </a-button>
       </a-tooltip>
-      <a-tooltip title="刷新">
+      <a-tooltip :title="$t('common.action.refresh')">
         <a-button type="text" @click="emit('refresh')">
           <template #icon><ReloadOutlined /></template>
         </a-button>
       </a-tooltip>
       <a-dropdown v-if="size" trigger="click">
-        <a-tooltip title="密度">
+        <a-tooltip :title="$t('common.table.density')">
           <a-button type="text">
             <template #icon><ColumnHeightOutlined /></template>
           </a-button>
         </a-tooltip>
         <template #overlay>
           <a-menu :selected-keys="[size]" @click="({ key }) => emit('update:size', key)">
-            <a-menu-item key="large">宽松</a-menu-item>
-            <a-menu-item key="middle">默认</a-menu-item>
-            <a-menu-item key="small">紧凑</a-menu-item>
+            <a-menu-item key="large">{{ $t('components.toolbar.large') }}</a-menu-item>
+            <a-menu-item key="middle">{{ $t('components.toolbar.middle') }}</a-menu-item>
+            <a-menu-item key="small">{{ $t('components.toolbar.small') }}</a-menu-item>
           </a-menu>
         </template>
       </a-dropdown>
       <a-popover v-if="columns" trigger="click" placement="bottomRight">
         <template #title>
           <div class="column-title">
-            <a-checkbox :checked="allChecked" :indeterminate="indeterminate" @change="toggleAll">列展示</a-checkbox>
-            <a @click="reset">重置</a>
+            <a-checkbox :checked="allChecked" :indeterminate="indeterminate" @change="toggleAll">{{ $t('components.toolbar.columns') }}</a-checkbox>
+            <a @click="reset">{{ $t('common.action.reset') }}</a>
           </div>
         </template>
         <template #content>
@@ -46,7 +46,7 @@
             <a-checkbox v-for="c in columns" :key="columnKey(c)" :value="columnKey(c)">{{ c.title }}</a-checkbox>
           </a-checkbox-group>
         </template>
-        <a-tooltip title="列设置">
+        <a-tooltip :title="$t('common.table.columns')">
           <a-button type="text">
             <template #icon><SettingOutlined /></template>
           </a-button>

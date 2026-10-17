@@ -172,7 +172,7 @@ public class ScmQuotationService {
                 .map(i -> new OrderItemRequest(i.getMaterialId(), i.getQty(), i.getPrice(), i.getTaxRate(), deliveryDate, i.getRemark()))
                 .toList();
         Long orderId = orderService.createDraft(OrderKind.SALES, new OrderRequest(q.getCustomerId(), LocalDate.now(), deliveryDate,
-                warehouseId, "报价单 " + q.getQuoteNo(), lines), "QUOTATION");
+                warehouseId, "报价单 " + q.getQuoteNo(), lines), "QUOTATION"); // i18n-ignore
         int updated = quotationMapper.update(Wrappers.<ScmQuotation>lambdaUpdate().set(ScmQuotation::getStatus, "ORDERED")
                 .set(ScmQuotation::getOrderId, orderId).eq(ScmQuotation::getId, id).eq(ScmQuotation::getStatus, "APPROVED"));
         if (updated == 0) {

@@ -1,14 +1,15 @@
 import dayjs from 'dayjs'
+import { t } from '@/locales'
 
 /** 项目状态操作：当前状态 → 可执行的操作（与后端 PmProjectService 的状态流转一致） */
 export const STATUS_ACTIONS = {
-  PLANNING: [{ status: 'ACTIVE', label: '启动', confirm: '启动后开始记录实际开始日期，成员可以更新进度、填报工时' }],
+  PLANNING: [{ status: 'ACTIVE', label: t('pm.status.start'), confirm: t('pm.status.startTip') }],
   ACTIVE: [
-    { status: 'SUSPENDED', label: '暂停', confirm: '暂停后不能更新任务进度和领料' },
-    { status: 'FINISHED', label: '完成', confirm: '完成后不能再填报工时、录入费用和领料' }
+    { status: 'SUSPENDED', label: t('pm.status.suspend'), confirm: t('pm.status.suspendTip') },
+    { status: 'FINISHED', label: t('pm.status.finish'), confirm: t('pm.status.finishTip') }
   ],
-  SUSPENDED: [{ status: 'ACTIVE', label: '恢复', confirm: '恢复项目为进行中' }],
-  FINISHED: [{ status: 'CLOSED', label: '关闭', confirm: '关闭后项目不能再修改' }],
+  SUSPENDED: [{ status: 'ACTIVE', label: t('pm.status.resume'), confirm: t('pm.status.resumeTip') }],
+  FINISHED: [{ status: 'CLOSED', label: t('pm.status.close'), confirm: t('pm.status.closeTip') }],
   CLOSED: []
 }
 

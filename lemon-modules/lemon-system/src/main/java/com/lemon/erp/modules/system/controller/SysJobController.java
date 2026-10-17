@@ -40,7 +40,7 @@ public class SysJobController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('monitor:job:edit')")
-    @OperLog(title = "定时任务", type = OperType.UPDATE)
+    @OperLog(title = "定时任务", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody JobRequest req) {
         jobService.update(id, req);
         return R.ok();
@@ -48,7 +48,7 @@ public class SysJobController {
 
     @PostMapping("/{id}/run")
     @PreAuthorize("@ss.hasPerm('monitor:job:run')")
-    @OperLog(title = "定时任务-立即执行", type = OperType.OTHER)
+    @OperLog(title = "定时任务-立即执行", type = OperType.OTHER) // i18n-ignore 操作日志存库
     public R<SysJobLog> run(@PathVariable Long id) {
         return R.ok(jobService.runNow(id));
     }

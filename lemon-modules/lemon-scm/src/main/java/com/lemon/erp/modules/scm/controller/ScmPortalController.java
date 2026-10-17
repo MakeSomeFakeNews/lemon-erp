@@ -56,7 +56,7 @@ public class ScmPortalController {
 
     @PostMapping("/order/{id}/confirm")
     @PreAuthorize("@ss.hasPerm('portal:order:confirm')")
-    @OperLog(title = "门户-订单确认", type = OperType.UPDATE)
+    @OperLog(title = "门户-订单确认", type = OperType.UPDATE) // i18n-ignore
     public R<Void> confirm(@PathVariable Long id, @Valid @RequestBody SrmRequests.OrderConfirm req) {
         orderService.confirm(id, SecurityUtils.requireSupplierId(), req);
         return R.ok();
@@ -86,14 +86,14 @@ public class ScmPortalController {
 
     @PostMapping("/asn")
     @PreAuthorize("@ss.hasPerm('portal:asn:add')")
-    @OperLog(title = "门户-送货通知", type = OperType.INSERT)
+    @OperLog(title = "门户-送货通知", type = OperType.INSERT) // i18n-ignore
     public R<Long> createAsn(@Valid @RequestBody SrmRequests.Asn req) {
         return R.ok(asnService.create(SecurityUtils.requireSupplierId(), req));
     }
 
     @PostMapping("/asn/{id}/cancel")
     @PreAuthorize("@ss.hasPerm('portal:asn:add')")
-    @OperLog(title = "门户-取消送货通知", type = OperType.UPDATE)
+    @OperLog(title = "门户-取消送货通知", type = OperType.UPDATE) // i18n-ignore
     public R<Void> cancelAsn(@PathVariable Long id) {
         asnService.cancel(id, SecurityUtils.requireSupplierId());
         return R.ok();
@@ -114,7 +114,7 @@ public class ScmPortalController {
 
     @PostMapping("/tender/{id}/bid")
     @PreAuthorize("@ss.hasPerm('portal:tender:bid')")
-    @OperLog(title = "门户-投标", type = OperType.UPDATE)
+    @OperLog(title = "门户-投标", type = OperType.UPDATE) // i18n-ignore
     public R<Void> bid(@PathVariable Long id, @Valid @RequestBody SrmRequests.Bid req) {
         tenderService.saveBid(id, SecurityUtils.requireSupplierId(), req);
         return R.ok();

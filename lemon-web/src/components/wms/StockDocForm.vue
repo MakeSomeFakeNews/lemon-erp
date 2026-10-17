@@ -1,12 +1,12 @@
 <template>
-  <FormDrawer page :drawer="drawer" :create-title="`新增${conf.label}`" :edit-title="`编辑${conf.label}`" width="min(1280px, 100vw)">
+  <FormDrawer page :drawer="drawer" :create-title="$t('wms.doc.createTitle', { kind: conf.label })" :edit-title="$t('wms.doc.editTitle', { kind: conf.label })" width="min(1280px, 100vw)">
     <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
       <a-row :gutter="16">
         <a-col v-if="conf.typeDict" :xs="24" :sm="12" :lg="6">
           <a-form-item :label="conf.typeLabel" name="bizType">
             <a-select
               :value="form.bizType"
-              :placeholder="`请选择${conf.typeLabel}`"
+              :placeholder="$t('common.placeholder.selectName', { name: conf.typeLabel })"
               :options="manualTypeOptions"
               @change="onBizTypeChange"
             />
@@ -18,44 +18,44 @@
               :value="form.warehouseId"
               :allow-clear="false"
               :types="consignIn ? ['CONSIGN_IN'] : undefined"
-              :placeholder="consignIn ? '请选择供应商寄售仓' : '请选择仓库'"
+              :placeholder="consignIn ? $t('wms.doc.selectConsignWarehouse') : $t('wms.common.selectWarehouse')"
               @update:value="onWarehouseChange"
             />
           </a-form-item>
         </a-col>
         <a-col v-if="kind === 'transfer'" :xs="24" :sm="12" :lg="6">
-          <a-form-item label="调入仓库" name="toWarehouseId">
+          <a-form-item :label="$t('wms.doc.toWarehouse')" name="toWarehouseId">
             <WarehouseSelect :value="form.toWarehouseId" :allow-clear="false" @update:value="onToWarehouseChange" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="6">
-          <a-form-item label="业务日期" name="bizDate">
+          <a-form-item :label="$t('wms.common.bizDate')" name="bizDate">
             <a-date-picker v-model:value="form.bizDate" value-format="YYYY-MM-DD" class="full" />
           </a-form-item>
         </a-col>
         <a-col v-if="kind === 'transfer'" :xs="24" :sm="12" :lg="6">
-          <a-form-item label="在途调拨" name="inTransit" extra="确认时只调出，调入仓库收货后才入库">
-            <a-switch v-model:checked="form.inTransit" checked-children="在途" un-checked-children="直接调拨" />
+          <a-form-item :label="$t('wms.doc.inTransitTransfer')" name="inTransit" :extra="$t('wms.doc.inTransitTip')">
+            <a-switch v-model:checked="form.inTransit" :checked-children="$t('wms.doc.inTransit')" :un-checked-children="$t('wms.doc.directTransfer')" />
           </a-form-item>
         </a-col>
         <a-col :span="24">
-          <a-form-item label="备注" name="remark">
-            <a-input v-model:value="form.remark" :maxlength="255" placeholder="选填" />
+          <a-form-item :label="$t('common.field.remark')" name="remark">
+            <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('wms.common.optional')" />
           </a-form-item>
         </a-col>
       </a-row>
 
       <div class="items-head">
-        <span class="section-title">明细（{{ form.items.length }} 行，合计 {{ formatQty(totalQty) }}）</span>
+        <span class="section-title">{{ $t('wms.doc.itemsTitle', { n: form.items.length, total: formatQty(totalQty) }) }}</span>
         <a-space>
           <a-button v-if="kind !== 'out'" :disabled="!(kind === 'in' ? form.warehouseId : form.toWarehouseId)" @click="putaway">
-            推荐库位
+            {{ $t('wms.doc.suggestLocation') }}
           </a-button>
           <a-button v-if="kind === 'in'" type="primary" ghost @click="addRow">
-            <template #icon><PlusOutlined /></template>添加物料
+            <template #icon><PlusOutlined /></template>{{ $t('wms.doc.addMaterial') }}
           </a-button>
           <a-button v-else type="primary" ghost :disabled="!form.warehouseId" @click="pickerOpen = true">
-            <template #icon><PlusOutlined /></template>从库存选择
+            <template #icon><PlusOutlined /></template>{{ $t('wms.doc.pickFromStock') }}
           </a-button>
         </a-space>
       </div>
@@ -68,11 +68,11 @@
         :data-source="form.items"
         :pagination="false"
         :scroll="{ x: scrollX }"
-        :locale="{ emptyText: kind === 'in' ? '点击「添加物料」录入明细' : '选择仓库后点击「从库存选择」' }"
+        :locale="{ emptyText: kind === 'in' ? $t('wms.doc.emptyIn') : $t('wms.doc.emptyOut') }"
       >
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
-            <a-form-item v-if="kind === 'in'" :name="['items', index, 'materialId']" :rules="requiredRule('请选择物料')" class="cell-item">
+            <a-form-item v-if="kind === 'in'" :name="['items', index, 'materialId']" :rules="requiredRule($t('wms.common.selectMaterial'))" class="cell-item">
               <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
             </a-form-item>
             <template v-else>
@@ -80,8 +80,8 @@
               <div class="sub-text">{{ record.spec }}</div>
             </template>
             <div class="row-tags">
-              <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">批次</a-tag>
-              <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">序列号</a-tag>
+              <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">{{ $t('wms.common.batch') }}</a-tag>
+              <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">{{ $t('wms.common.serialNo') }}</a-tag>
             </div>
           </template>
           <template v-else-if="column.key === 'location'">
@@ -95,10 +95,10 @@
             <a-form-item
               v-if="kind === 'in'"
               :name="['items', index, 'batchNo']"
-              :rules="record.batchEnabled === 1 ? requiredRule('请填写批次号') : []"
+              :rules="record.batchEnabled === 1 ? requiredRule($t('wms.common.inputBatchNo')) : []"
               class="cell-item"
             >
-              <a-input v-model:value="record.batchNo" :maxlength="64" :disabled="record.batchEnabled !== 1" placeholder="批次号" />
+              <a-input v-model:value="record.batchNo" :maxlength="64" :disabled="record.batchEnabled !== 1" :placeholder="$t('wms.common.batchNo')" />
             </a-form-item>
             <span v-else>{{ record.batchNo || '-' }}</span>
           </template>
@@ -109,7 +109,7 @@
             <a-date-picker v-model:value="record.expiryDate" value-format="YYYY-MM-DD" :disabled="record.batchEnabled !== 1" class="full" />
           </template>
           <template v-else-if="column.key === 'qty'">
-            <a-form-item :name="['items', index, 'qty']" :rules="requiredRule('请填写数量')" class="cell-item">
+            <a-form-item :name="['items', index, 'qty']" :rules="requiredRule($t('wms.common.inputQty'))" class="cell-item">
               <a-input-number
                 v-model:value="record.qty"
                 :min="0"
@@ -118,7 +118,7 @@
                 class="full"
               />
             </a-form-item>
-            <div v-if="record.available != null" class="sub-text">可用 {{ formatQty(record.available) }}</div>
+            <div v-if="record.available != null" class="sub-text">{{ $t('wms.common.availableN', { n: formatQty(record.available) }) }}</div>
           </template>
           <template v-else-if="column.key === 'serialNos'">
             <SerialInput
@@ -126,7 +126,7 @@
               v-model:value="record.serialNos"
               :expected="record.qty ?? 0"
               :source="kind === 'in' ? undefined : serialSource(record)"
-              :placeholder="kind === 'in' ? '扫码或输入序列号' : '选择或扫码'"
+              :placeholder="kind === 'in' ? $t('wms.doc.serialInputTip') : $t('wms.doc.serialPickTip')"
             />
             <span v-else class="sub-text">-</span>
           </template>
@@ -148,6 +148,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -170,6 +171,7 @@ const props = defineProps({
   kind: { type: String, required: true }
 })
 const emit = defineEmits(['success'])
+const { t } = useI18n()
 
 const conf = computed(() => DOC_KINDS[props.kind])
 const dict = useDict('wms_in_type', 'wms_out_type')
@@ -183,31 +185,31 @@ const manualTypeOptions = computed(() =>
 
 const COLUMNS = {
   in: [
-    { title: '物料', key: 'material', width: 260 },
-    { title: '库位', key: 'location', width: 150 },
-    { title: '批次号', key: 'batchNo', width: 150 },
-    { title: '生产日期', key: 'productionDate', width: 140 },
-    { title: '有效期至', key: 'expiryDate', width: 140 },
-    { title: '数量', key: 'qty', width: 150 },
-    { title: '序列号', key: 'serialNos', width: 260 },
-    { title: '备注', key: 'remark', width: 150 }
+    { title: t('wms.common.material'), key: 'material', width: 260 },
+    { title: t('wms.common.location'), key: 'location', width: 150 },
+    { title: t('wms.common.batchNo'), key: 'batchNo', width: 150 },
+    { title: t('wms.common.productionDate'), key: 'productionDate', width: 140 },
+    { title: t('wms.common.expiryDate'), key: 'expiryDate', width: 140 },
+    { title: t('common.field.quantity'), key: 'qty', width: 150 },
+    { title: t('wms.common.serialNo'), key: 'serialNos', width: 260 },
+    { title: t('common.field.remark'), key: 'remark', width: 150 }
   ],
   out: [
-    { title: '物料', key: 'material', width: 240 },
-    { title: '库位', key: 'location', width: 110 },
-    { title: '批次', key: 'batchNo', width: 130 },
-    { title: '数量', key: 'qty', width: 160 },
-    { title: '序列号', key: 'serialNos', width: 300 },
-    { title: '备注', key: 'remark', width: 160 }
+    { title: t('wms.common.material'), key: 'material', width: 240 },
+    { title: t('wms.common.location'), key: 'location', width: 110 },
+    { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
+    { title: t('common.field.quantity'), key: 'qty', width: 160 },
+    { title: t('wms.common.serialNo'), key: 'serialNos', width: 300 },
+    { title: t('common.field.remark'), key: 'remark', width: 160 }
   ],
   transfer: [
-    { title: '物料', key: 'material', width: 240 },
-    { title: '调出库位', key: 'location', width: 110 },
-    { title: '批次', key: 'batchNo', width: 130 },
-    { title: '调入库位', key: 'toLocation', width: 160 },
-    { title: '数量', key: 'qty', width: 160 },
-    { title: '序列号', key: 'serialNos', width: 280 },
-    { title: '备注', key: 'remark', width: 150 }
+    { title: t('wms.common.material'), key: 'material', width: 240 },
+    { title: t('wms.doc.fromLocation'), key: 'location', width: 120 },
+    { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
+    { title: t('wms.doc.toLocation'), key: 'toLocation', width: 160 },
+    { title: t('common.field.quantity'), key: 'qty', width: 160 },
+    { title: t('wms.common.serialNo'), key: 'serialNos', width: 280 },
+    { title: t('common.field.remark'), key: 'remark', width: 150 }
   ]
 }
 const columns = computed(() => [...COLUMNS[props.kind], { title: '', key: 'action', width: 50, fixed: 'right' }])
@@ -215,10 +217,10 @@ const scrollX = computed(() => columns.value.reduce((sum, c) => sum + c.width, 0
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
 const rules = computed(() => ({
-  bizType: requiredRule(`请选择${conf.value.typeLabel}`),
-  warehouseId: requiredRule('请选择仓库'),
-  toWarehouseId: requiredRule('请选择调入仓库'),
-  bizDate: requiredRule('请选择业务日期')
+  bizType: requiredRule(t('common.rule.requiredSelect', { name: conf.value.typeLabel })),
+  warehouseId: requiredRule(t('wms.common.selectWarehouse')),
+  toWarehouseId: requiredRule(t('wms.doc.selectToWarehouse')),
+  bizDate: requiredRule(t('wms.doc.selectBizDate'))
 }))
 
 const emptyForm = () => ({
@@ -311,7 +313,7 @@ function applyDefaultLocation(row) {
 async function putaway() {
   const transfer = props.kind === 'transfer'
   const n = await fillPutaway(transfer ? form.value.toWarehouseId : form.value.warehouseId, form.value.items, transfer ? 'toLocationId' : 'locationId')
-  message.info(n ? `已为 ${n} 行推荐库位` : '没有可推荐的库位（已选库位的行不变）')
+  message.info(n ? t('wms.doc.suggested', { n }) : t('wms.doc.noSuggestion'))
 }
 
 /** 切换寄售入库与其他入库时仓库类型不同，清空已选仓库 */
@@ -332,7 +334,7 @@ function onWarehouseChange(id) {
     })
   } else if (form.value.items.length) {
     form.value.items = []
-    message.info('仓库已变更，已清空明细，请重新选择库存')
+    message.info(t('wms.doc.warehouseChanged'))
   }
 }
 
@@ -376,7 +378,7 @@ function onPick(stocks) {
       })
     )
   }
-  if (skipped) message.info(`${skipped} 项已在明细中，已跳过`)
+  if (skipped) message.info(t('wms.doc.skipped', { n: skipped }))
 }
 
 defineExpose({ openCreate: drawer.openCreate, openEdit: drawer.openEdit })

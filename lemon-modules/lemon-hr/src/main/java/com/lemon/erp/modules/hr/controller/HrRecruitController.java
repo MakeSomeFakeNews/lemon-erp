@@ -62,14 +62,14 @@ public class HrRecruitController {
 
     @PostMapping("/recruit")
     @PreAuthorize("@ss.hasPerm('hr:recruit:add')")
-    @OperLog(title = "招聘需求", type = OperType.INSERT)
+    @OperLog(title = "招聘需求", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> create(@Valid @RequestBody RecruitRequest req) {
         return R.ok(recruitService.create(req));
     }
 
     @PutMapping("/recruit/{id}")
     @PreAuthorize("@ss.hasPerm('hr:recruit:edit')")
-    @OperLog(title = "招聘需求", type = OperType.UPDATE)
+    @OperLog(title = "招聘需求", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody RecruitRequest req) {
         recruitService.update(id, req);
         return R.ok();
@@ -77,7 +77,7 @@ public class HrRecruitController {
 
     @DeleteMapping("/recruit/{ids}")
     @PreAuthorize("@ss.hasPerm('hr:recruit:remove')")
-    @OperLog(title = "招聘需求", type = OperType.DELETE)
+    @OperLog(title = "招聘需求", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         recruitService.delete(ids);
         return R.ok();
@@ -86,14 +86,14 @@ public class HrRecruitController {
     /** 审核：返回 true 表示已发起审批流程 */
     @PostMapping("/recruit/{id}/approve")
     @PreAuthorize("@ss.hasPerm('hr:recruit:approve')")
-    @OperLog(title = "招聘需求-审核", type = OperType.UPDATE)
+    @OperLog(title = "招聘需求-审核", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Boolean> approve(@PathVariable Long id) {
         return R.ok(recruitService.approve(id));
     }
 
     @PostMapping("/recruit/{id}/withdraw")
     @PreAuthorize("@ss.hasPerm('hr:recruit:approve')")
-    @OperLog(title = "招聘需求-撤回", type = OperType.UPDATE)
+    @OperLog(title = "招聘需求-撤回", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> withdraw(@PathVariable Long id) {
         recruitService.withdraw(id);
         return R.ok();
@@ -101,7 +101,7 @@ public class HrRecruitController {
 
     @PostMapping("/recruit/{id}/close")
     @PreAuthorize("@ss.hasPerm('hr:recruit:edit')")
-    @OperLog(title = "招聘需求-关闭", type = OperType.UPDATE)
+    @OperLog(title = "招聘需求-关闭", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> close(@PathVariable Long id) {
         recruitService.close(id);
         return R.ok();
@@ -127,14 +127,14 @@ public class HrRecruitController {
 
     @PostMapping("/candidate")
     @PreAuthorize("@ss.hasPerm('hr:recruit:candidate')")
-    @OperLog(title = "应聘者", type = OperType.INSERT)
+    @OperLog(title = "应聘者", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> createCandidate(@Valid @RequestBody CandidateRequest req) {
         return R.ok(recruitService.createCandidate(req));
     }
 
     @PutMapping("/candidate/{id}")
     @PreAuthorize("@ss.hasPerm('hr:recruit:candidate')")
-    @OperLog(title = "应聘者", type = OperType.UPDATE)
+    @OperLog(title = "应聘者", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> updateCandidate(@PathVariable Long id, @Valid @RequestBody CandidateRequest req) {
         recruitService.updateCandidate(id, req);
         return R.ok();
@@ -142,7 +142,7 @@ public class HrRecruitController {
 
     @DeleteMapping("/candidate/{ids}")
     @PreAuthorize("@ss.hasPerm('hr:recruit:candidate')")
-    @OperLog(title = "应聘者", type = OperType.DELETE)
+    @OperLog(title = "应聘者", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> deleteCandidates(@PathVariable List<Long> ids) {
         recruitService.deleteCandidates(ids);
         return R.ok();
@@ -156,14 +156,14 @@ public class HrRecruitController {
 
     @PostMapping("/candidate/{id}/interview")
     @PreAuthorize("@ss.hasPerm('hr:recruit:candidate')")
-    @OperLog(title = "应聘者-安排面试", type = OperType.INSERT)
+    @OperLog(title = "应聘者-安排面试", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> addInterview(@PathVariable Long id, @Valid @RequestBody InterviewRequest req) {
         return R.ok(recruitService.addInterview(id, req));
     }
 
     @PutMapping("/interview/{id}")
     @PreAuthorize("@ss.hasPerm('hr:recruit:candidate')")
-    @OperLog(title = "应聘者-面试结果", type = OperType.UPDATE)
+    @OperLog(title = "应聘者-面试结果", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> updateInterview(@PathVariable Long id, @Valid @RequestBody InterviewRequest req) {
         recruitService.updateInterview(id, req);
         return R.ok();
@@ -171,7 +171,7 @@ public class HrRecruitController {
 
     @PostMapping("/candidate/{id}/offer")
     @PreAuthorize("@ss.hasPerm('hr:recruit:candidate')")
-    @OperLog(title = "应聘者-发Offer", type = OperType.UPDATE)
+    @OperLog(title = "应聘者-发Offer", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> offer(@PathVariable Long id) {
         recruitService.offer(id);
         return R.ok();
@@ -180,7 +180,7 @@ public class HrRecruitController {
     /** 淘汰，body：{ reason } */
     @PostMapping("/candidate/{id}/reject")
     @PreAuthorize("@ss.hasPerm('hr:recruit:candidate')")
-    @OperLog(title = "应聘者-淘汰", type = OperType.UPDATE)
+    @OperLog(title = "应聘者-淘汰", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> reject(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         recruitService.reject(id, body == null ? null : body.get("reason"));
         return R.ok();
@@ -189,7 +189,7 @@ public class HrRecruitController {
     /** 录用入职，返回新员工 ID */
     @PostMapping("/candidate/{id}/hire")
     @PreAuthorize("@ss.hasPerm('hr:recruit:hire')")
-    @OperLog(title = "应聘者-录用入职", type = OperType.INSERT)
+    @OperLog(title = "应聘者-录用入职", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> hire(@PathVariable Long id, @Valid @RequestBody HireRequest req) {
         return R.ok(recruitService.hire(id, req));
     }

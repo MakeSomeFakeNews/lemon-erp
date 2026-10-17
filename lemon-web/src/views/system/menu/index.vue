@@ -2,13 +2,13 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="filter" @reset="resetQuery">
-        <a-form-item label="菜单名称" name="name">
-          <a-input v-model:value="query.name" placeholder="请输入菜单名称" allow-clear />
+        <a-form-item :label="$t('system.menu.name')" name="name">
+          <a-input v-model:value="query.name" :placeholder="$t('system.menu.inputName')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
+        <a-form-item :label="$t('common.field.status')" name="status">
           <a-select
             v-model:value="query.status"
-            placeholder="全部"
+            :placeholder="$t('common.placeholder.all')"
             allow-clear
             :options="toOptions(dict.sys_common_status, true)"
           />
@@ -25,11 +25,11 @@
         @refresh="load"
       >
         <a-button v-perm="'sys:menu:add'" type="primary" @click="openCreate()">
-          <template #icon><PlusOutlined /></template>新增菜单
+          <template #icon><PlusOutlined /></template>{{ $t('system.menu.addMenu') }}
         </a-button>
         <a-button @click="toggleExpand">
           <template #icon><NodeExpandOutlined v-if="!expandedKeys.length" /><NodeCollapseOutlined v-else /></template>
-          {{ expandedKeys.length ? '折叠全部' : '展开全部' }}
+          {{ expandedKeys.length ? $t('system.menu.collapseAll') : $t('system.menu.expandAll') }}
         </a-button>
       </TableToolbar>
 
@@ -69,15 +69,15 @@
                 size="small"
                 @click="openCreate(record)"
               >
-                <template #icon><PlusOutlined /></template>新增
+                <template #icon><PlusOutlined /></template>{{ $t('common.action.add') }}
               </a-button>
               <a-button v-perm="'sys:menu:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-perm="'sys:menu:remove'">
-                <a-popconfirm :title="`确定删除菜单「${record.name}」？`" @confirm="remove(record.id)">
+                <a-popconfirm :title="$t('system.menu.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                   <a-button type="link" size="small" danger :disabled="!!record.children?.length">
-                    <template #icon><DeleteOutlined /></template>删除
+                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
                   </a-button>
                 </a-popconfirm>
               </span>
@@ -87,11 +87,11 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增菜单" edit-title="编辑菜单" width="min(680px, 100vw)">
+    <FormDrawer :drawer="drawer" :create-title="$t('system.menu.addMenu')" :edit-title="$t('system.menu.editMenu')" width="min(680px, 100vw)">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :span="24">
-            <a-form-item label="上级菜单" name="parentId">
+            <a-form-item :label="$t('system.menu.parent')" name="parentId">
               <a-tree-select
                 v-model:value="form.parentId"
                 :tree-data="parentOptions"
@@ -103,7 +103,7 @@
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="菜单类型" name="type">
+            <a-form-item :label="$t('system.menu.type')" name="type">
               <a-radio-group v-model:value="form.type" button-style="solid">
                 <a-radio-button v-for="o in dict.sys_menu_type" :key="o.value" :value="o.value">
                   {{ o.label }}
@@ -112,26 +112,26 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="菜单名称" name="name">
+            <a-form-item :label="$t('system.menu.name')" name="name">
               <a-input v-model:value="form.name" :maxlength="64" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="排序" name="sort">
+            <a-form-item :label="$t('common.field.sort')" name="sort">
               <a-input-number v-model:value="form.sort" :min="0" style="width: 100%" />
             </a-form-item>
           </a-col>
           <template v-if="form.type !== 'F'">
             <a-col :xs="24" :sm="12">
-              <a-form-item label="图标" name="icon">
+              <a-form-item :label="$t('system.menu.icon')" name="icon">
                 <IconPicker v-model="form.icon" />
               </a-form-item>
             </a-col>
             <a-col :xs="24" :sm="12">
               <a-form-item name="path">
                 <template #label>
-                  <a-tooltip title="一级目录以 / 开头；二级目录作为侧边栏分组，可不填；菜单可写相对路径，会拼接在上级目录之后">
-                    路由地址 <QuestionCircleOutlined />
+                  <a-tooltip :title="$t('system.menu.pathTip')">
+                    {{ $t('system.menu.path') }} <QuestionCircleOutlined />
                   </a-tooltip>
                 </template>
                 <a-input v-model:value="form.path" :placeholder="form.type === 'M' ? '/system' : 'user'" />
@@ -141,25 +141,25 @@
           <a-col v-if="form.type === 'C'" :xs="24" :sm="12">
             <a-form-item name="component">
               <template #label>
-                <a-tooltip title="相对 src/views，不含 .vue">
-                  组件路径 <QuestionCircleOutlined />
+                <a-tooltip :title="$t('system.menu.componentTip')">
+                  {{ $t('system.menu.component') }} <QuestionCircleOutlined />
                 </a-tooltip>
               </template>
               <a-input v-model:value="form.component" placeholder="system/user/index" />
             </a-form-item>
           </a-col>
           <a-col v-if="form.type !== 'M'" :xs="24" :sm="12">
-            <a-form-item label="权限标识" name="perms">
+            <a-form-item :label="$t('system.menu.perms')" name="perms">
               <a-input v-model:value="form.perms" placeholder="sys:user:list" />
             </a-form-item>
           </a-col>
           <a-col v-if="form.type !== 'F'" :xs="24" :sm="12">
-            <a-form-item label="是否显示" name="visible">
+            <a-form-item :label="$t('system.menu.visible')" name="visible">
               <a-radio-group v-model:value="form.visible" :options="toOptions(dict.sys_show_hide, true)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="状态" name="status">
+            <a-form-item :label="$t('common.field.status')" name="status">
               <a-radio-group v-model:value="form.status" :options="toOptions(dict.sys_common_status, true)" />
             </a-form-item>
           </a-col>
@@ -172,6 +172,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import {
   DeleteOutlined,
   EditOutlined,
@@ -194,17 +195,18 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { toOptions } from '@/utils/dict'
 import { allIds, filterTree, mapTree } from '@/utils/tree'
 
+const { t } = useI18n()
 const dict = useDict('sys_menu_type', 'sys_common_status', 'sys_show_hide')
 
 const columns = [
-  { title: '菜单名称', key: 'name', width: 220 },
-  { title: '类型', key: 'type', width: 80 },
-  { title: '路由地址', dataIndex: 'path', ellipsis: true },
-  { title: '组件路径', dataIndex: 'component', ellipsis: true },
-  { title: '权限标识', key: 'perms', width: 200 },
-  { title: '排序', dataIndex: 'sort', width: 70 },
-  { title: '状态', key: 'status', width: 130 },
-  { title: '操作', key: 'action', width: 220, fixed: 'right' }
+  { title: t('system.menu.name'), key: 'name', width: 220 },
+  { title: t('common.field.type'), key: 'type', width: 90 },
+  { title: t('system.menu.path'), dataIndex: 'path', ellipsis: true },
+  { title: t('system.menu.component'), dataIndex: 'component', ellipsis: true },
+  { title: t('system.menu.perms'), key: 'perms', width: 200 },
+  { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
+  { title: t('common.field.status'), key: 'status', width: 140 },
+  { title: t('common.action.operation'), key: 'action', width: 230, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'system-menu')
 const showSearch = ref(true)
@@ -267,7 +269,7 @@ const drawer = useFormDrawer({
   }),
   create: addMenu,
   update: updateMenu,
-  successMessage: '保存成功，刷新页面后左侧菜单生效',
+  successMessage: t('system.menu.savedTip'),
   onSuccess: load
 })
 const { form, formRef } = drawer
@@ -287,7 +289,7 @@ const withoutButtons = (nodes) =>
 const parentOptions = computed(() => [
   {
     id: 0,
-    name: '顶级菜单',
+    name: t('system.menu.root'),
     children: mapTree(withoutButtons(list.value), (n, parent) => ({
       id: n.id,
       name: n.name,
@@ -297,15 +299,15 @@ const parentOptions = computed(() => [
 ])
 // 模块下的二级目录只作为分组，可以不填路由地址
 const rules = computed(() => ({
-  name: [{ required: true, message: '请输入菜单名称' }],
+  name: [{ required: true, message: t('system.menu.inputName') }],
   type: [{ required: true }],
-  path: [{ required: form.value.type === 'C' || !form.value.parentId, message: '请输入路由地址' }],
-  component: [{ required: true, message: '请输入组件路径' }]
+  path: [{ required: form.value.type === 'C' || !form.value.parentId, message: t('system.menu.inputPath') }],
+  component: [{ required: true, message: t('system.menu.inputComponent') }]
 }))
 
 async function remove(id) {
   await deleteMenu(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 </script>

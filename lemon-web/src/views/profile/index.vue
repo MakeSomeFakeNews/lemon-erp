@@ -13,7 +13,7 @@
             :before-upload="beforeUpload"
             @change="onUploadChange"
           >
-            <div class="avatar-wrap" title="点击更换头像">
+            <div class="avatar-wrap" :title="$t('profile.changeAvatar')">
               <UserAvatar :src="user.avatar" :name="userStore.displayName" :size="96" />
               <div class="avatar-mask">
                 <LoadingOutlined v-if="uploading" />
@@ -29,10 +29,10 @@
         </div>
         <a-divider />
         <ul class="info-list">
-          <li><ApartmentOutlined /><span>部门</span><b>{{ deptName || '未分配' }}</b></li>
-          <li><MailOutlined /><span>邮箱</span><b>{{ user.email || '未设置' }}</b></li>
-          <li><PhoneOutlined /><span>手机</span><b>{{ user.phone || '未设置' }}</b></li>
-          <li><CalendarOutlined /><span>注册时间</span><b>{{ user.createTime || '-' }}</b></li>
+          <li><ApartmentOutlined /><span>{{ $t('common.field.dept') }}</span><b>{{ deptName || $t('system.user.unassigned') }}</b></li>
+          <li><MailOutlined /><span>{{ $t('common.field.email') }}</span><b>{{ user.email || $t('common.status.unset') }}</b></li>
+          <li><PhoneOutlined /><span>{{ $t('profile.mobile') }}</span><b>{{ user.phone || $t('common.status.unset') }}</b></li>
+          <li><CalendarOutlined /><span>{{ $t('profile.registerTime') }}</span><b>{{ user.createTime || '-' }}</b></li>
         </ul>
       </a-card>
     </a-col>
@@ -41,48 +41,48 @@
     <a-col :xs="24" :lg="16" :xl="17">
       <a-card :bordered="false" class="page-card">
         <a-tabs v-model:active-key="activeTab">
-          <a-tab-pane key="info" tab="基本资料">
+          <a-tab-pane key="info" :tab="$t('profile.basicInfo')">
             <a-form ref="infoRef" :model="info" :rules="infoRules" layout="vertical" class="tab-form">
-              <a-form-item label="昵称" name="nickname">
-                <a-input v-model:value="info.nickname" placeholder="请输入昵称" :maxlength="64" />
+              <a-form-item :label="$t('profile.nickname')" name="nickname">
+                <a-input v-model:value="info.nickname" :placeholder="$t('common.placeholder.inputName', { name: $t('profile.nickname') })" :maxlength="64" />
               </a-form-item>
-              <a-form-item label="邮箱" name="email">
-                <a-input v-model:value="info.email" placeholder="请输入邮箱" />
+              <a-form-item :label="$t('common.field.email')" name="email">
+                <a-input v-model:value="info.email" :placeholder="$t('common.placeholder.inputName', { name: $t('common.field.email') })" />
               </a-form-item>
-              <a-form-item label="手机号" name="phone">
-                <a-input v-model:value="info.phone" placeholder="请输入手机号" />
+              <a-form-item :label="$t('common.field.phone')" name="phone">
+                <a-input v-model:value="info.phone" :placeholder="$t('common.placeholder.inputName', { name: $t('common.field.phone') })" />
               </a-form-item>
-              <a-button type="primary" :loading="savingInfo" @click="saveInfo">保存资料</a-button>
+              <a-button type="primary" :loading="savingInfo" @click="saveInfo">{{ $t('profile.saveInfo') }}</a-button>
             </a-form>
           </a-tab-pane>
-          <a-tab-pane key="password" tab="修改密码">
+          <a-tab-pane key="password" :tab="$t('profile.changePassword')">
             <a-form ref="pwdRef" :model="pwd" :rules="pwdRules" layout="vertical" class="tab-form">
-              <a-form-item label="原密码" name="oldPassword">
+              <a-form-item :label="$t('profile.oldPassword')" name="oldPassword">
                 <a-input-password v-model:value="pwd.oldPassword" autocomplete="current-password" />
               </a-form-item>
-              <a-form-item label="新密码" name="newPassword">
+              <a-form-item :label="$t('system.user.newPassword')" name="newPassword">
                 <a-input-password v-model:value="pwd.newPassword" :placeholder="passwordHint()" autocomplete="new-password" />
               </a-form-item>
-              <a-form-item label="确认新密码" name="confirm">
+              <a-form-item :label="$t('profile.confirmPassword')" name="confirm">
                 <a-input-password v-model:value="pwd.confirm" autocomplete="new-password" />
               </a-form-item>
-              <a-button type="primary" :loading="savingPwd" @click="savePassword">修改密码</a-button>
+              <a-button type="primary" :loading="savingPwd" @click="savePassword">{{ $t('profile.changePassword') }}</a-button>
             </a-form>
           </a-tab-pane>
-          <a-tab-pane v-if="imList.length" key="im" tab="第三方账号">
+          <a-tab-pane v-if="imList.length" key="im" :tab="$t('profile.imAccounts')">
             <div class="tab-form im-list">
-              <p class="im-tip">绑定后可以用对应平台扫码登录、在平台中免登打开系统，并接收审批待办等消息</p>
+              <p class="im-tip">{{ $t('profile.imTip') }}</p>
               <div v-for="b in imList" :key="b.platform" class="im-item">
                 <ImPlatformIcon :platform="b.platform" :size="40" />
                 <div class="im-main">
-                  <div class="im-name">{{ b.label }}</div>
-                  <div v-if="b.bound" class="im-sub">已绑定 {{ b.imName || b.imUserId }} · {{ b.bindTime }}</div>
-                  <div v-else class="im-sub">未绑定</div>
+                  <div class="im-name">{{ imPlatform(b.platform).label }}</div>
+                  <div v-if="b.bound" class="im-sub">{{ $t('profile.imBound', { name: b.imName || b.imUserId, time: b.bindTime }) }}</div>
+                  <div v-else class="im-sub">{{ $t('system.im.unbound') }}</div>
                 </div>
-                <a-popconfirm v-if="b.bound" :title="`确定解除${b.label}绑定？`" @confirm="unbindIm(b)">
-                  <a-button>解除绑定</a-button>
+                <a-popconfirm v-if="b.bound" :title="$t('profile.confirmUnbind', { name: imPlatform(b.platform).label })" @confirm="unbindIm(b)">
+                  <a-button>{{ $t('common.action.unbind') }}</a-button>
                 </a-popconfirm>
-                <a-button v-else type="primary" ghost :loading="imBinding === b.platform" @click="bindIm(b)">绑定</a-button>
+                <a-button v-else type="primary" ghost :loading="imBinding === b.platform" @click="bindIm(b)">{{ $t('common.action.bind') }}</a-button>
               </div>
             </div>
           </a-tab-pane>
@@ -95,6 +95,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import {
   ApartmentOutlined,
   CalendarOutlined,
@@ -110,8 +111,10 @@ import { AVATAR_UPLOAD_URL, getProfile, updatePassword, updateProfile } from '@/
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { getToken } from '@/utils/auth'
+import { imPlatform } from '@/utils/im'
 import { passwordHint, passwordRules } from '@/utils/password'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const user = ref({})
 const roleNames = ref([])
@@ -147,7 +150,7 @@ async function bindIm(b) {
 }
 async function unbindIm(b) {
   await unbindMyIm(b.platform)
-  message.success('已解除绑定')
+  message.success(t('system.im.unboundOk'))
   loadIm()
 }
 
@@ -157,11 +160,11 @@ const uploading = ref(false)
 
 function beforeUpload(file) {
   if (!file.type.startsWith('image/')) {
-    message.error('只能上传图片')
+    message.error(t('profile.imageOnly'))
     return false
   }
   if (file.size > 2 * 1024 * 1024) {
-    message.error('图片不能超过 2MB')
+    message.error(t('profile.imageTooLarge'))
     return false
   }
   return true
@@ -178,12 +181,12 @@ function onUploadChange({ file }) {
     if (res?.code === 200) {
       user.value.avatar = res.data
       if (userStore.user) userStore.user.avatar = res.data
-      message.success('头像已更新')
+      message.success(t('profile.avatarUpdated'))
     } else {
-      message.error(res?.msg || '上传失败')
+      message.error(res?.msg || t('profile.uploadFailed'))
     }
   } else if (file.status === 'error') {
-    message.error(file.response?.msg || '上传失败')
+    message.error(file.response?.msg || t('profile.uploadFailed'))
   }
 }
 
@@ -192,8 +195,8 @@ const infoRef = ref()
 const savingInfo = ref(false)
 const info = reactive({ nickname: '', email: '', phone: '' })
 const infoRules = {
-  email: [{ type: 'email', message: '邮箱格式不正确' }],
-  phone: [{ pattern: /^[0-9+\-\s]{0,20}$/, message: '手机号格式不正确' }]
+  email: [{ type: 'email', message: t('common.rule.email') }],
+  phone: [{ pattern: /^[0-9+\-\s]{0,20}$/, message: t('common.rule.phone') }]
 }
 
 async function saveInfo() {
@@ -203,7 +206,7 @@ async function saveInfo() {
     await updateProfile({ ...info })
     Object.assign(user.value, info)
     if (userStore.user) Object.assign(userStore.user, info)
-    message.success('资料已保存')
+    message.success(t('profile.infoSaved'))
   } finally {
     savingInfo.value = false
   }
@@ -214,11 +217,11 @@ const pwdRef = ref()
 const savingPwd = ref(false)
 const pwd = reactive({ oldPassword: '', newPassword: '', confirm: '' })
 const pwdRules = {
-  oldPassword: [{ required: true, message: '请输入原密码' }],
+  oldPassword: [{ required: true, message: t('profile.inputOldPassword') }],
   newPassword: passwordRules(),
   confirm: [
-    { required: true, message: '请再次输入新密码' },
-    { validator: (_, v) => (v === pwd.newPassword ? Promise.resolve() : Promise.reject('两次输入的密码不一致')) }
+    { required: true, message: t('profile.inputConfirm') },
+    { validator: (_, v) => (v === pwd.newPassword ? Promise.resolve() : Promise.reject(t('profile.mismatch'))) }
   ]
 }
 
@@ -227,7 +230,7 @@ async function savePassword() {
   savingPwd.value = true
   try {
     await updatePassword({ oldPassword: pwd.oldPassword, newPassword: pwd.newPassword })
-    message.success('密码已修改')
+    message.success(t('profile.passwordChanged'))
     pwdRef.value.resetFields()
   } finally {
     savingPwd.value = false

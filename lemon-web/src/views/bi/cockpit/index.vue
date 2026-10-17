@@ -2,25 +2,25 @@
   <div class="cockpit">
     <div class="page-card header">
       <div>
-        <div class="title">经营驾驶舱</div>
+        <div class="title">{{ $t('bi.cockpit.title') }}</div>
         <div class="sub-text">
-          趋势、排行来自数据仓库<template v-if="data.lastSync">（数据更新于 {{ dayjs(data.lastSync).format('YYYY-MM-DD HH:mm') }}）</template>；应收应付、在途订单、生产、项目、客户服务为实时数据
+          {{ data.lastSync ? $t('bi.cockpit.subSynced', { time: dayjs(data.lastSync).format('YYYY-MM-DD HH:mm') }) : $t('bi.cockpit.sub') }}
         </div>
       </div>
       <a-space>
         <a-button v-perm="'bi:etl:run'" :loading="syncing" @click="sync">
-          <template #icon><SyncOutlined /></template>立即同步
+          <template #icon><SyncOutlined /></template>{{ $t('bi.etl.syncNow') }}
         </a-button>
         <a-button :loading="loading" @click="load">
-          <template #icon><ReloadOutlined /></template>刷新
+          <template #icon><ReloadOutlined /></template>{{ $t('common.action.refresh') }}
         </a-button>
       </a-space>
     </div>
 
-    <a-alert v-if="!loading && !data.lastSync" type="warning" show-icon class="alert" message="数据仓库尚未同步">
+    <a-alert v-if="!loading && !data.lastSync" type="warning" show-icon class="alert" :message="$t('bi.cockpit.notSynced')">
       <template #description>
-        销售、采购、利润趋势读取数据仓库，请先同步一次（之后每天凌晨自动同步）。
-        <a-button v-perm="'bi:etl:run'" size="small" type="primary" :loading="syncing" class="inline-btn" @click="sync">立即同步</a-button>
+        {{ $t('bi.cockpit.notSyncedDesc') }}
+        <a-button v-perm="'bi:etl:run'" size="small" type="primary" :loading="syncing" class="inline-btn" @click="sync">{{ $t('bi.etl.syncNow') }}</a-button>
       </template>
     </a-alert>
 
@@ -44,49 +44,49 @@
 
     <a-row :gutter="[16, 16]">
       <a-col :xs="24" :xl="16">
-        <a-card :bordered="false" class="page-card" title="近 12 个月销售额与毛利">
+        <a-card :bordered="false" class="page-card" :title="$t('bi.cockpit.salesTrend')">
           <EChart :option="salesOption" height="300px" />
         </a-card>
       </a-col>
       <a-col :xs="24" :xl="8">
-        <a-card :bordered="false" class="page-card" title="预警">
-          <template #extra><router-link to="/bi/decision">决策支持</router-link></template>
-          <a-empty v-if="!triggered.length" :image="simpleImage" description="当前没有触发的预警" />
+        <a-card :bordered="false" class="page-card" :title="$t('bi.cockpit.alerts')">
+          <template #extra><router-link to="/bi/decision">{{ $t('bi.cockpit.decision') }}</router-link></template>
+          <a-empty v-if="!triggered.length" :image="simpleImage" :description="$t('bi.cockpit.noAlert')" />
           <div v-else class="alerts">
             <div v-for="a in triggered" :key="a.ruleId" class="alert-item">
               <DictTag type="bi_alert_level" :value="a.level" />
               <div class="alert-body">
                 <div>{{ a.name }}</div>
-                <div class="sub-text">当前 {{ fmtValue(a.value, a.unit) }}{{ a.unit }}，{{ a.remark || a.metricLabel }}</div>
+                <div class="sub-text">{{ $t('bi.cockpit.alertCurrent', { value: fmtValue(a.value, a.unit), unit: a.unit, remark: a.remark || a.metricLabel }) }}</div>
               </div>
             </div>
           </div>
         </a-card>
       </a-col>
       <a-col :xs="24" :xl="12">
-        <a-card :bordered="false" class="page-card" title="收入、费用与净利润（已记账凭证）">
+        <a-card :bordered="false" class="page-card" :title="$t('bi.cockpit.profit')">
           <EChart :option="profitOption" height="280px" />
         </a-card>
       </a-col>
       <a-col :xs="24" :xl="12">
-        <a-card :bordered="false" class="page-card" title="采购额">
+        <a-card :bordered="false" class="page-card" :title="$t('bi.cockpit.purchase')">
           <EChart :option="purchaseOption" height="280px" />
         </a-card>
       </a-col>
       <a-col :xs="24" :lg="12" :xl="8">
-        <a-card :bordered="false" class="page-card" title="本年客户 Top 5">
+        <a-card :bordered="false" class="page-card" :title="$t('bi.cockpit.topCustomers')">
           <EChart :option="rankOption(data.topCustomers, 'amount')" height="260px" />
         </a-card>
       </a-col>
       <a-col :xs="24" :lg="12" :xl="8">
-        <a-card :bordered="false" class="page-card" title="本年产品 Top 5">
+        <a-card :bordered="false" class="page-card" :title="$t('bi.cockpit.topProducts')">
           <EChart :option="rankOption(data.topMaterials, 'amount')" height="260px" />
         </a-card>
       </a-col>
       <a-col :xs="24" :xl="8">
-        <a-card :bordered="false" class="page-card" title="库存金额（按物料分类）">
+        <a-card :bordered="false" class="page-card" :title="$t('bi.cockpit.inventory')">
           <template #extra>
-            <span v-if="data.inventory?.[0]?.snapDate" class="sub-text">快照 {{ data.inventory[0].snapDate }}</span>
+            <span v-if="data.inventory?.[0]?.snapDate" class="sub-text">{{ $t('bi.cockpit.snapshot', { date: data.inventory[0].snapDate }) }}</span>
           </template>
           <EChart :option="inventoryOption" height="260px" />
         </a-card>
@@ -107,6 +107,7 @@ import { alerts as loadAlerts, cockpit, runEtl } from '@/api/bi'
 import { growthTag, monthLabel, percent, shortMoney } from '@/components/charts/charts'
 import { useDict } from '@/composables/useDict'
 import { findDict } from '@/utils/dict'
+import { t } from '@/locales'
 
 const router = useRouter()
 const dict = useDict('wms_material_category', 'bi_alert_level')
@@ -118,7 +119,7 @@ const syncing = ref(false)
 
 const num = (v) => Number(v || 0)
 const money = (v) => `¥ ${shortMoney(v)}`
-const fmtValue = (v, unit) => (v === null || v === undefined ? '-' : unit === '元' ? shortMoney(v) : Number(v).toLocaleString('zh-CN'))
+const fmtValue = (v, unit) => (v === null || v === undefined ? '-' : unit === t('bi.common.yuanUnit') ? shortMoney(v) : Number(v).toLocaleString('zh-CN'))
 const triggered = computed(() => alertList.value.filter((a) => a.triggered))
 
 const kpis = computed(() => {
@@ -127,23 +128,23 @@ const kpis = computed(() => {
   const yoy = growthTag(k.monthSalesYoy)
   const yyoy = growthTag(k.yearSalesYoy)
   return [
-    { key: 'monthSales', label: '本月销售额', value: money(k.monthSales), to: '/bi/olap',
-      tags: [{ label: '环比', text: mom.text, color: mom.color }, { label: '同比', text: yoy.text, color: yoy.color }] },
-    { key: 'monthProfit', label: '本月毛利', value: money(k.monthProfit), tags: [{ label: '毛利率', text: percent(k.monthMargin) }] },
-    { key: 'yearSales', label: '本年销售额', value: money(k.yearSales),
-      tags: [{ label: '同比', text: yyoy.text, color: yyoy.color }, { label: '毛利率', text: percent(k.yearMargin) }] },
-    { key: 'ar', label: '应收余额', value: money(k.arBalance), to: '/fin/ar',
-      tags: [{ label: '已逾期', text: money(k.arOverdue), color: num(k.arOverdue) > 0 ? 'red' : '' }] },
-    { key: 'ap', label: '应付余额', value: money(k.apBalance), to: '/fin/ap', tags: [{ label: '本月采购', text: money(k.monthPurchase) }] },
-    { key: 'openSales', label: '在途销售订单', value: money(k.openSalesAmount), to: '/scm/sales', tags: [{ label: '未出库金额', text: '' }] },
-    { key: 'wo', label: '在制工单', value: `${num(k.openWorkOrders)} 张`, to: '/mes/wo',
-      tags: [{ label: '延期', text: `${num(k.lateWorkOrders)} 张`, color: num(k.lateWorkOrders) > 0 ? 'red' : '' }] },
-    { key: 'projects', label: '进行中项目', value: `${num(k.activeProjects)} 个`, to: '/pm/project',
-      tags: [{ label: '平均进度', text: percent(k.projectProgress) }] },
-    { key: 'headcount', label: '在职人数', value: `${num(k.headcount)} 人`, to: '/hr/employee', tags: [] },
-    { key: 'pipeline', label: '商机储备', value: money(k.pipeline), to: '/crm/opportunity', tags: [{ label: '进行中商机金额', text: '' }] },
-    { key: 'tickets', label: '服务工单', value: `${num(k.openTickets)} 张`, to: '/crm/ticket',
-      tags: [{ label: '超时', text: `${num(k.overdueTickets)} 张`, color: num(k.overdueTickets) > 0 ? 'red' : '' }] }
+    { key: 'monthSales', label: t('bi.cockpit.monthSales'), value: money(k.monthSales), to: '/bi/olap',
+      tags: [{ label: t('bi.cockpit.mom'), text: mom.text, color: mom.color }, { label: t('bi.cockpit.yoy'), text: yoy.text, color: yoy.color }] },
+    { key: 'monthProfit', label: t('bi.cockpit.monthProfit'), value: money(k.monthProfit), tags: [{ label: t('bi.cockpit.margin'), text: percent(k.monthMargin) }] },
+    { key: 'yearSales', label: t('bi.cockpit.yearSales'), value: money(k.yearSales),
+      tags: [{ label: t('bi.cockpit.yoy'), text: yyoy.text, color: yyoy.color }, { label: t('bi.cockpit.margin'), text: percent(k.yearMargin) }] },
+    { key: 'ar', label: t('bi.cockpit.arBalance'), value: money(k.arBalance), to: '/fin/ar',
+      tags: [{ label: t('bi.cockpit.overdue'), text: money(k.arOverdue), color: num(k.arOverdue) > 0 ? 'red' : '' }] },
+    { key: 'ap', label: t('bi.cockpit.apBalance'), value: money(k.apBalance), to: '/fin/ap', tags: [{ label: t('bi.cockpit.monthPurchase'), text: money(k.monthPurchase) }] },
+    { key: 'openSales', label: t('bi.cockpit.openSales'), value: money(k.openSalesAmount), to: '/scm/sales', tags: [{ label: t('bi.cockpit.unshippedAmount'), text: '' }] },
+    { key: 'wo', label: t('bi.cockpit.openWo'), value: t('bi.cockpit.countN', { n: num(k.openWorkOrders) }), to: '/mes/wo',
+      tags: [{ label: t('bi.cockpit.late'), text: t('bi.cockpit.countN', { n: num(k.lateWorkOrders) }), color: num(k.lateWorkOrders) > 0 ? 'red' : '' }] },
+    { key: 'projects', label: t('bi.cockpit.activeProjects'), value: t('bi.cockpit.countN', { n: num(k.activeProjects) }), to: '/pm/project',
+      tags: [{ label: t('bi.cockpit.avgProgress'), text: percent(k.projectProgress) }] },
+    { key: 'headcount', label: t('bi.cockpit.headcount'), value: t('bi.cockpit.peopleN', { n: num(k.headcount) }), to: '/hr/employee', tags: [] },
+    { key: 'pipeline', label: t('bi.cockpit.pipeline'), value: money(k.pipeline), to: '/crm/opportunity', tags: [{ label: t('bi.cockpit.pipelineAmount'), text: '' }] },
+    { key: 'tickets', label: t('bi.cockpit.tickets'), value: t('bi.cockpit.countN', { n: num(k.openTickets) }), to: '/crm/ticket',
+      tags: [{ label: t('bi.cockpit.overtime'), text: t('bi.cockpit.countN', { n: num(k.overdueTickets) }), color: num(k.overdueTickets) > 0 ? 'red' : '' }] }
   ]
 })
 
@@ -157,8 +158,8 @@ const salesOption = computed(() => ({
   xAxis: { type: 'category', data: months.value },
   yAxis: axis(),
   series: [
-    { name: '销售额', type: 'bar', barMaxWidth: 28, data: data.value.trend.map((t) => num(t.sales)) },
-    { name: '毛利', type: 'line', smooth: true, data: data.value.trend.map((t) => num(t.profit)) }
+    { name: t('bi.cockpit.sales'), type: 'bar', barMaxWidth: 28, data: data.value.trend.map((t) => num(t.sales)) },
+    { name: t('bi.cockpit.profitName'), type: 'line', smooth: true, data: data.value.trend.map((t) => num(t.profit)) }
   ]
 }))
 
@@ -169,9 +170,9 @@ const profitOption = computed(() => ({
   xAxis: { type: 'category', data: months.value },
   yAxis: axis(),
   series: [
-    { name: '收入', type: 'line', smooth: true, data: data.value.trend.map((t) => num(t.revenue)) },
-    { name: '费用', type: 'line', smooth: true, data: data.value.trend.map((t) => num(t.expense)) },
-    { name: '净利润', type: 'bar', barMaxWidth: 24, data: data.value.trend.map((t) => num(t.netProfit)) }
+    { name: t('bi.cockpit.revenue'), type: 'line', smooth: true, data: data.value.trend.map((t) => num(t.revenue)) },
+    { name: t('bi.cockpit.expense'), type: 'line', smooth: true, data: data.value.trend.map((t) => num(t.expense)) },
+    { name: t('bi.cockpit.netProfit'), type: 'bar', barMaxWidth: 24, data: data.value.trend.map((t) => num(t.netProfit)) }
   ]
 }))
 
@@ -180,7 +181,7 @@ const purchaseOption = computed(() => ({
   grid: { left: 16, right: 16, top: 16, bottom: 8, containLabel: true },
   xAxis: { type: 'category', data: months.value },
   yAxis: axis(),
-  series: [{ name: '采购额', type: 'bar', barMaxWidth: 28, itemStyle: { color: '#13c2c2' }, data: data.value.trend.map((t) => num(t.purchase)) }]
+  series: [{ name: t('bi.cockpit.purchase'), type: 'bar', barMaxWidth: 28, itemStyle: { color: '#13c2c2' }, data: data.value.trend.map((t) => num(t.purchase)) }]
 }))
 
 function rankOption(list = [], key) {
@@ -200,7 +201,7 @@ const inventoryOption = computed(() => ({
   series: [{
     type: 'pie', radius: ['40%', '66%'], center: ['50%', '44%'],
     data: (data.value.inventory || []).map((r) => ({
-      name: findDict(dict.wms_material_category, r.category)?.label || r.category || '未分类',
+      name: findDict(dict.wms_material_category, r.category)?.label || r.category || t('bi.cockpit.uncategorized'),
       value: num(r.amount)
     }))
   }]
@@ -221,7 +222,7 @@ async function sync() {
   syncing.value = true
   try {
     const log = await runEtl()
-    message.success(`同步完成：${log.rowCounts || ''}`)
+    message.success(t('bi.etl.done', { detail: log.rowCounts || '' }))
     await load()
   } finally {
     syncing.value = false

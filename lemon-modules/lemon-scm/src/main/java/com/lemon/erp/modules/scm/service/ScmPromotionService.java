@@ -2,6 +2,7 @@ package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.scm.dto.PromotionRequests;
@@ -95,7 +96,7 @@ public class ScmPromotionService {
     public void delete(Long id) {
         ScmPromotion p = detail(id);
         if (p.getOrderCount() != null && p.getOrderCount() > 0) {
-            throw new BizException("促销「" + p.getName() + "」已应用到订单，不能删除，可以停用");
+            throw new BizException("促销「{0}」已应用到订单，不能删除，可以停用", p.getName());
         }
         promotionMapper.deleteById(id);
     }
@@ -201,7 +202,7 @@ public class ScmPromotionService {
         if (bestReduce != null) {
             BigDecimal off = allocate(reduceLines, bestReduce.getReduceAmount());
             usage(usages, bestReduce, off, BigDecimal.ZERO);
-            notes.add("满 " + plain(bestReduce.getThresholdAmount()) + " 减 " + plain(bestReduce.getReduceAmount()) + "（" + bestReduce.getName() + "）");
+            notes.add(I18n.t("满 {0} 减 {1}（{2}）", plain(bestReduce.getThresholdAmount()), plain(bestReduce.getReduceAmount()), bestReduce.getName()));
         }
         // 买赠：每买 buyQty 个适用物料赠送 giftQty 个赠品
         for (ScmPromotion p : promos) {
@@ -223,19 +224,19 @@ public class ScmPromotionService {
             g.setGift(1);
             g.setPromotionId(p.getId());
             g.setDeliveryDate(items.get(0).getDeliveryDate());
-            g.setRemark("赠品：" + p.getName());
+            g.setRemark("赠品：" + p.getName()); // i18n-ignore
             result.add(g);
             usage(usages, p, BigDecimal.ZERO, g.getQty());
-            notes.add("赠 " + gift.getName() + " × " + plain(g.getQty()) + "（" + p.getName() + "）");
+            notes.add(I18n.t("赠 {0} × {1}（{2}）", gift.getName(), plain(g.getQty()), p.getName()));
         }
         BigDecimal discount = usages.values().stream().map(Usage::discountAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         // 返利抵扣：按非赠品行金额分摊
         if (rebate != null && rebate.signum() > 0) {
             if (rebate.compareTo(sum(items)) > 0) {
-                throw new BizException("返利抵扣金额不能超过订单金额 " + plain(sum(items)));
+                throw new BizException("返利抵扣金额不能超过订单金额 {0}", plain(sum(items)));
             }
             allocate(items, rebate);
-            notes.add("返利抵扣 " + plain(rebate));
+            notes.add(I18n.t("返利抵扣 {0}", plain(rebate)));
         }
         items.forEach(i -> i.setOrigPrice(i.getPrice().compareTo(origPrices.get(i)) == 0 ? null : origPrices.get(i)));
         return new Applied(result, discount, new ArrayList<>(usages.values()), notes);

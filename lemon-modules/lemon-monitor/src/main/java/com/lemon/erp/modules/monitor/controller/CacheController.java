@@ -51,7 +51,7 @@ public class CacheController {
 
     @DeleteMapping("/names")
     @PreAuthorize("@ss.hasPerm('monitor:cache:remove')")
-    @OperLog(title = "缓存监控-清空缓存", type = OperType.CLEAN)
+    @OperLog(title = "缓存监控-清空缓存", type = OperType.CLEAN) // i18n-ignore 操作日志存库
     public R<Void> clear(@RequestParam String prefix) {
         cacheMonitorService.clearByPrefix(prefix);
         return R.ok();
@@ -59,7 +59,7 @@ public class CacheController {
 
     @DeleteMapping("/keys")
     @PreAuthorize("@ss.hasPerm('monitor:cache:remove')")
-    @OperLog(title = "缓存监控-删除缓存", type = OperType.DELETE)
+    @OperLog(title = "缓存监控-删除缓存", type = OperType.DELETE) // i18n-ignore 操作日志存库
     public R<Void> deleteKey(@RequestParam String key) {
         cacheMonitorService.deleteKey(key);
         return R.ok();

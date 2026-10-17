@@ -2,16 +2,16 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="字典名称" name="name">
-          <a-input v-model:value="query.name" placeholder="请输入字典名称" allow-clear />
+        <a-form-item :label="$t('system.dict.name')" name="name">
+          <a-input v-model:value="query.name" :placeholder="$t('system.dict.inputName')" allow-clear />
         </a-form-item>
-        <a-form-item label="字典类型" name="type">
-          <a-input v-model:value="query.type" placeholder="请输入字典类型" allow-clear />
+        <a-form-item :label="$t('system.dict.type')" name="type">
+          <a-input v-model:value="query.type" :placeholder="$t('system.dict.inputType')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
+        <a-form-item :label="$t('common.field.status')" name="status">
           <a-select
             v-model:value="query.status"
-            placeholder="全部"
+            :placeholder="$t('common.placeholder.all')"
             allow-clear
             :options="toOptions(dict.sys_common_status, true)"
           />
@@ -29,21 +29,21 @@
         @refresh="load"
       >
         <a-button v-perm="'sys:dict:add'" type="primary" @click="openForm()">
-          <template #icon><PlusOutlined /></template>新增字典
+          <template #icon><PlusOutlined /></template>{{ $t('system.dict.addDict') }}
         </a-button>
         <span v-perm="'sys:dict:remove'">
           <a-popconfirm
-            :title="`确定删除选中的 ${selectedKeys.length} 个字典？字典数据会一并删除`"
+            :title="$t('system.dict.confirmDeleteN', { n: selectedKeys.length })"
             :disabled="!selectedKeys.length"
             @confirm="remove(selectedKeys)"
           >
             <a-button danger :disabled="!selectedKeys.length">
-              <template #icon><DeleteOutlined /></template>批量删除
+              <template #icon><DeleteOutlined /></template>{{ $t('common.action.batchDelete') }}
             </a-button>
           </a-popconfirm>
         </span>
         <template #extra>
-          <a-tooltip title="清理前端字典缓存">
+          <a-tooltip :title="$t('system.dict.clearCache')">
             <a-button type="text" @click="clearCache">
               <template #icon><ClearOutlined /></template>
             </a-button>
@@ -74,15 +74,15 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openData(record)">
-                <template #icon><UnorderedListOutlined /></template>数据
+                <template #icon><UnorderedListOutlined /></template>{{ $t('system.dict.data') }}
               </a-button>
               <a-button v-perm="'sys:dict:edit'" type="link" size="small" @click="openForm(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-perm="'sys:dict:remove'">
-                <a-popconfirm title="确定删除该字典？字典数据会一并删除" @confirm="remove([record.id])">
+                <a-popconfirm :title="$t('system.dict.confirmDelete')" @confirm="remove([record.id])">
                   <a-button type="link" size="small" danger>
-                    <template #icon><DeleteOutlined /></template>删除
+                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
                   </a-button>
                 </a-popconfirm>
               </span>
@@ -95,29 +95,29 @@
     <!-- 字典类型表单 -->
     <a-drawer
       v-model:open="formOpen"
-      :title="form.id ? '编辑字典' : '新增字典'"
+      :title="form.id ? $t('system.dict.editDict') : $t('system.dict.addDict')"
       width="min(560px, 100vw)"
       destroy-on-close
     >
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="字典名称" name="name">
-              <a-input v-model:value="form.name" placeholder="如 用户性别" :maxlength="64" />
+            <a-form-item :label="$t('system.dict.name')" name="name">
+              <a-input v-model:value="form.name" :placeholder="$t('system.dict.namePlaceholder')" :maxlength="64" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="字典类型" name="type">
-              <a-input v-model:value="form.type" placeholder="如 sys_user_sex" :maxlength="100" />
+            <a-form-item :label="$t('system.dict.type')" name="type">
+              <a-input v-model:value="form.type" :placeholder="$t('system.dict.typePlaceholder')" :maxlength="100" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="状态" name="status">
+            <a-form-item :label="$t('common.field.status')" name="status">
               <a-radio-group v-model:value="form.status" :options="toOptions(dict.sys_common_status, true)" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-textarea v-model:value="form.remark" :rows="3" :maxlength="255" show-count />
             </a-form-item>
           </a-col>
@@ -125,8 +125,8 @@
       </a-form>
       <template #footer>
         <div class="drawer-footer">
-          <a-button @click="formOpen = false">取消</a-button>
-          <a-button type="primary" :loading="saving" @click="submit">保存</a-button>
+          <a-button @click="formOpen = false">{{ $t('common.action.cancel') }}</a-button>
+          <a-button type="primary" :loading="saving" @click="submit">{{ $t('common.action.save') }}</a-button>
         </div>
       </template>
     </a-drawer>
@@ -138,6 +138,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import {
   ClearOutlined,
   DeleteOutlined,
@@ -156,16 +157,17 @@ import { useTable } from '@/composables/useTable'
 import { useDictStore } from '@/store/dict'
 import { toOptions } from '@/utils/dict'
 
+const { t } = useI18n()
 const dictStore = useDictStore()
 const dict = useDict('sys_common_status')
 
 const columns = [
-  { title: '字典名称', dataIndex: 'name', width: 180 },
-  { title: '字典类型', key: 'type', width: 220 },
-  { title: '状态', key: 'status', width: 90, dict: 'sys_common_status' },
-  { title: '备注', dataIndex: 'remark', ellipsis: true },
-  { title: '创建时间', dataIndex: 'createTime', width: 180 },
-  { title: '操作', key: 'action', width: 230, fixed: 'right' }
+  { title: t('system.dict.name'), dataIndex: 'name', width: 180 },
+  { title: t('system.dict.type'), key: 'type', width: 220 },
+  { title: t('common.field.status'), key: 'status', width: 90, dict: 'sys_common_status' },
+  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 180 },
+  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns)
 const showSearch = ref(true)
@@ -184,7 +186,7 @@ function resetQuery() {
 
 function clearCache() {
   dictStore.clear()
-  message.success('字典缓存已清理')
+  message.success(t('system.dict.cacheCleared'))
 }
 
 // 表单
@@ -195,10 +197,10 @@ const emptyForm = () => ({ id: undefined, name: '', type: '', status: 1, remark:
 const form = ref(emptyForm())
 let originalType = ''
 const rules = {
-  name: [{ required: true, message: '请输入字典名称' }],
+  name: [{ required: true, message: t('system.dict.inputName') }],
   type: [
-    { required: true, message: '请输入字典类型' },
-    { pattern: /^[a-z][a-z0-9_]*$/, message: '小写字母开头，仅包含小写字母、数字、下划线' }
+    { required: true, message: t('system.dict.inputType') },
+    { pattern: /^[a-z][a-z0-9_]*$/, message: t('system.dict.typePattern') }
   ]
 }
 
@@ -217,7 +219,7 @@ async function submit() {
     // 类型编码或状态变化都会影响字典数据，清掉新旧两个类型的缓存
     dictStore.clear(originalType)
     dictStore.clear(data.type)
-    message.success('保存成功')
+    message.success(t('common.msg.saveSuccess'))
     formOpen.value = false
     load()
   } finally {
@@ -228,7 +230,7 @@ async function submit() {
 async function remove(ids) {
   await deleteDictType(ids)
   dictStore.clear()
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   selectedKeys.value = []
   load()
 }

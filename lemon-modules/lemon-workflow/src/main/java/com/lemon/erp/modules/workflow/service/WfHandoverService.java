@@ -26,7 +26,7 @@ public class WfHandoverService {
         String to = String.valueOf(e.handoverUserId());
         for (Task task : taskService.createTaskQuery().taskAssignee(String.valueOf(e.userId())).list()) {
             FlowableUserContext.runAs(e.handoverUserId(), () -> {
-                taskService.addComment(task.getId(), task.getProcessInstanceId(), ApprovalAction.TRANSFER.name(), "离职交接，转交给新的负责人");
+                taskService.addComment(task.getId(), task.getProcessInstanceId(), ApprovalAction.TRANSFER.name(), "离职交接，转交给新的负责人");  // i18n-ignore 存库或内部异常
                 taskService.setAssignee(task.getId(), to);
             });
         }

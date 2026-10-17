@@ -6,15 +6,15 @@
         <template #rightExtra>
           <a-space>
             <a-range-picker v-model:value="range" :allow-clear="false" value-format="YYYY-MM-DD" />
-            <a-checkbox v-model:checked="posted">只看已记账</a-checkbox>
+            <a-checkbox v-model:checked="posted">{{ $t('fin.cashier.postedOnly') }}</a-checkbox>
           </a-space>
         </template>
 
-        <a-tab-pane key="journal" tab="日记账">
+        <a-tab-pane key="journal" :tab="$t('fin.cashier.journal')">
           <div class="filters">
-            <AccountSelect v-model:value="accountId" all :prefix="CASH_PREFIX" allow-clear placeholder="全部现金、银行账户" class="account" />
-            <a-button type="primary" @click="loadJournal">查询</a-button>
-            <span class="sub-text">数据来自凭证，默认包含未审核、未记账的凭证；收入为借方、支出为贷方</span>
+            <AccountSelect v-model:value="accountId" all :prefix="CASH_PREFIX" allow-clear :placeholder="$t('fin.cashier.allAccounts')" class="account" />
+            <a-button type="primary" @click="loadJournal">{{ $t('common.action.query') }}</a-button>
+            <span class="sub-text">{{ $t('fin.cashier.journalTip') }}</span>
           </div>
           <a-table
             row-key="key"
@@ -47,10 +47,10 @@
           </a-table>
         </a-tab-pane>
 
-        <a-tab-pane key="daily" tab="资金日报">
+        <a-tab-pane key="daily" :tab="$t('fin.cashier.daily')">
           <div class="filters">
-            <a-button type="primary" @click="loadDaily">查询</a-button>
-            <span class="sub-text">各现金、银行账户在所选日期范围内的期初、收入、支出和余额</span>
+            <a-button type="primary" @click="loadDaily">{{ $t('common.action.query') }}</a-button>
+            <span class="sub-text">{{ $t('fin.cashier.dailyTip') }}</span>
           </div>
           <a-table
             row-key="accountId"
@@ -73,7 +73,7 @@
             <template v-if="daily.rows.length" #summary>
               <a-table-summary fixed>
                 <a-table-summary-row class="total-row">
-                  <a-table-summary-cell>合计</a-table-summary-cell>
+                  <a-table-summary-cell>{{ $t('common.field.total') }}</a-table-summary-cell>
                   <a-table-summary-cell align="right">{{ formatMoney(daily.total.open) }}</a-table-summary-cell>
                   <a-table-summary-cell align="right">{{ formatMoney(daily.total.debit) }}</a-table-summary-cell>
                   <a-table-summary-cell align="right">{{ daily.total.inCount }}</a-table-summary-cell>
@@ -94,6 +94,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import dayjs from 'dayjs'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
@@ -102,6 +103,7 @@ import { formatMoney, moneyOrBlank } from '@/components/fin/fin'
 import { useDict } from '@/composables/useDict'
 
 /** 出纳管理：现金 / 银行日记账（逐笔收支、对方科目、每日小计）与资金日报（各账户期初、收入、支出、余额） */
+const { t } = useI18n()
 useDict('fin_voucher_status')
 const CASH_PREFIX = ['1001', '1002']
 const tab = ref('daily')
@@ -111,14 +113,14 @@ const params = () => ({ begin: range.value[0], end: range.value[1], posted: post
 
 // ---------------------------------------------------------------- 日记账
 const journalColumns = [
-  { title: '日期', dataIndex: 'entryDate', width: 110 },
-  { title: '凭证号', key: 'voucherNo', width: 150 },
-  { title: '摘要', dataIndex: 'summary', width: 240, ellipsis: true },
-  { title: '账户', key: 'account', width: 180 },
-  { title: '对方科目', dataIndex: 'counterAccounts', width: 180, ellipsis: true },
-  { title: '收入', key: 'debit', width: 130, align: 'right' },
-  { title: '支出', key: 'credit', width: 130, align: 'right' },
-  { title: '余额', key: 'balance', width: 140, align: 'right' }
+  { title: t('common.field.date'), dataIndex: 'entryDate', width: 110 },
+  { title: t('fin.cashier.voucherNo'), key: 'voucherNo', width: 150 },
+  { title: t('fin.cashier.summary'), dataIndex: 'summary', width: 240, ellipsis: true },
+  { title: t('fin.cashier.account'), key: 'account', width: 180 },
+  { title: t('fin.cashier.counterAccounts'), dataIndex: 'counterAccounts', width: 180, ellipsis: true },
+  { title: t('fin.cashier.income'), key: 'debit', width: 130, align: 'right' },
+  { title: t('fin.cashier.expense'), key: 'credit', width: 130, align: 'right' },
+  { title: t('fin.cashier.balance'), key: 'balance', width: 140, align: 'right' }
 ]
 const accountId = ref()
 const journal = ref([])
@@ -140,13 +142,13 @@ function openJournal(id) {
 
 // ---------------------------------------------------------------- 资金日报
 const dailyColumns = [
-  { title: '账户', key: 'account', width: 240 },
-  { title: '期初余额', key: 'open', width: 140, align: 'right' },
-  { title: '收入', key: 'debit', width: 140, align: 'right' },
-  { title: '收入笔数', dataIndex: 'inCount', width: 90, align: 'right' },
-  { title: '支出', key: 'credit', width: 140, align: 'right' },
-  { title: '支出笔数', dataIndex: 'outCount', width: 90, align: 'right' },
-  { title: '期末余额', key: 'close', width: 140, align: 'right' }
+  { title: t('fin.cashier.account'), key: 'account', width: 240 },
+  { title: t('fin.cashier.openBalance'), key: 'open', width: 140, align: 'right' },
+  { title: t('fin.cashier.income'), key: 'debit', width: 140, align: 'right' },
+  { title: t('fin.cashier.inCount'), dataIndex: 'inCount', width: 110, align: 'right' },
+  { title: t('fin.cashier.expense'), key: 'credit', width: 140, align: 'right' },
+  { title: t('fin.cashier.outCount'), dataIndex: 'outCount', width: 110, align: 'right' },
+  { title: t('fin.cashier.closeBalance'), key: 'close', width: 140, align: 'right' }
 ]
 const daily = ref({ rows: [], total: {} })
 const dailyLoading = ref(false)
@@ -160,18 +162,18 @@ async function loadDaily() {
 }
 
 watch([range, posted], () => (tab.value === 'daily' ? loadDaily() : loadJournal()))
-watch(tab, (t) => (t === 'daily' ? loadDaily() : loadJournal()))
+watch(tab, (v) => (v === 'daily' ? loadDaily() : loadJournal()))
 
 // ---------------------------------------------------------------- 未生成凭证的收付款
 const unvouchered = ref({})
 const unvoucheredText = computed(() => {
   const parts = [
-    ['RECEIPT', '收款'],
-    ['PAYMENT', '付款']
+    ['RECEIPT', t('fin.cashier.receipt')],
+    ['PAYMENT', t('fin.cashier.payment')]
   ]
     .filter(([k]) => unvouchered.value[k]?.count)
-    .map(([k, label]) => `${label}单 ${unvouchered.value[k].count} 张（${formatMoney(unvouchered.value[k].amount)}）`)
-  return parts.length ? `还有${parts.join('、')}没有生成凭证，不在日记账中；请在收款单、付款单中生成凭证` : ''
+    .map(([k, label]) => t('fin.cashier.unvoucheredPart', { type: label, n: unvouchered.value[k].count, amount: formatMoney(unvouchered.value[k].amount) }))
+  return parts.length ? t('fin.cashier.unvouchered', { parts: parts.join(t('fin.cashier.sep')) }) : ''
 })
 
 const voucherOpen = ref(false)

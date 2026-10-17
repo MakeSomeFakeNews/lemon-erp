@@ -15,11 +15,12 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { warehouseOptions } from '@/api/wms/warehouse'
+import { t } from '@/locales'
 
 /** 仓库下拉：启用的仓库，同一页面内只请求一次；types 限定仓库类型（如 ['DEFECT'] 只显示不良品仓） */
 const props = defineProps({
   value: Number,
-  placeholder: { type: String, default: '请选择仓库' },
+  placeholder: { type: String, default: () => t('wms.common.selectWarehouse') },
   allowClear: { type: Boolean, default: true },
   disabled: Boolean,
   types: Array

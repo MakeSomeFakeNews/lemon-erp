@@ -1,9 +1,9 @@
 <template>
   <div class="config-page">
     <a-card :bordered="false" class="page-card">
-      <template #title>参数设置</template>
+      <template #title>{{ $t('system.config.title') }}</template>
       <template #extra>
-        <span class="sub-text">所有租户共用；修改后立即生效</span>
+        <span class="sub-text">{{ $t('system.config.subtitle') }}</span>
       </template>
       <a-spin :spinning="loading">
         <a-tabs v-model:active-key="group">
@@ -11,8 +11,8 @@
             <div v-for="item in g.items" :key="item.key" class="config-item">
               <div class="config-label">
                 {{ item.label }}
-                <a-tag v-if="isModified(item)" color="blue" :bordered="false" class="ml">已修改</a-tag>
-                <a-tag v-if="isDirty(item)" color="orange" :bordered="false" class="ml">未保存</a-tag>
+                <a-tag v-if="isModified(item)" color="blue" :bordered="false" class="ml">{{ $t('system.config.modified') }}</a-tag>
+                <a-tag v-if="isDirty(item)" color="orange" :bordered="false" class="ml">{{ $t('system.config.unsaved') }}</a-tag>
               </div>
               <div class="config-control">
                 <a-switch v-if="item.type === 'BOOL'" :checked="edits[item.key] === 'true'" :disabled="!canEdit"
@@ -23,17 +23,17 @@
                 <a-input-number v-else-if="item.type === 'NUMBER'" :value="Number(edits[item.key])" :min="item.min" :max="item.max" :precision="0"
                   :disabled="!canEdit" class="number" @change="(v) => (edits[item.key] = v == null ? '' : String(v))" />
                 <a-input v-else v-model:value="edits[item.key]" :maxlength="item.max" :disabled="!canEdit" class="text" />
-                <a v-if="canEdit && edits[item.key] !== item.defaultValue" class="reset" @click="edits[item.key] = item.defaultValue">恢复默认</a>
+                <a v-if="canEdit && edits[item.key] !== item.defaultValue" class="reset" @click="edits[item.key] = item.defaultValue">{{ $t('system.config.restoreDefault') }}</a>
               </div>
               <div class="sub-text">
-                <span v-if="item.remark">{{ item.remark }}。</span>默认：{{ display(item, item.defaultValue) }}
+                <span v-if="item.remark">{{ $t('system.config.remark', { remark: item.remark }) }}</span>{{ $t('system.config.default', { value: display(item, item.defaultValue) }) }}
               </div>
             </div>
           </a-tab-pane>
         </a-tabs>
         <div v-if="canEdit" class="config-actions">
-          <a-button :disabled="!dirtyKeys.length" @click="discard">放弃修改</a-button>
-          <a-button type="primary" :loading="saving" :disabled="!dirtyKeys.length" @click="save">保存（{{ dirtyKeys.length }}）</a-button>
+          <a-button :disabled="!dirtyKeys.length" @click="discard">{{ $t('common.action.discard') }}</a-button>
+          <a-button type="primary" :loading="saving" :disabled="!dirtyKeys.length" @click="save">{{ $t('system.config.saveN', { n: dirtyKeys.length }) }}</a-button>
         </div>
       </a-spin>
     </a-card>
@@ -43,11 +43,13 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { listConfig, saveConfig } from '@/api/system/config'
 import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
 
 /** 参数设置：按分组显示系统参数（平台级），只提交修改过的参数；值等于默认值时恢复默认 */
+const { t } = useI18n()
 const userStore = useUserStore()
 const configStore = useConfigStore()
 const canEdit = computed(() => userStore.hasPerm('sys:config:edit'))
@@ -88,9 +90,9 @@ const isModified = (item) => item.modified
 const dirtyKeys = computed(() => items.value.filter(isDirty).map((i) => i.key))
 
 function display(item, value) {
-  if (item.type === 'BOOL') return value === 'true' ? '开启' : '关闭'
+  if (item.type === 'BOOL') return value === 'true' ? t('system.config.on') : t('system.config.off')
   if (item.type === 'SELECT') return item.options.find((o) => o.value === value)?.label || value
-  return value === '' || value == null ? '（空）' : value
+  return value === '' || value == null ? t('system.config.empty') : value
 }
 
 async function save() {
@@ -99,7 +101,7 @@ async function save() {
   saving.value = true
   try {
     await saveConfig(data)
-    message.success('已保存')
+    message.success(t('common.msg.saved'))
     await Promise.all([load(), configStore.load(true)])
   } finally {
     saving.value = false

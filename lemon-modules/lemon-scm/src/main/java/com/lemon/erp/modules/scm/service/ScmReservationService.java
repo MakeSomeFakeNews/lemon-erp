@@ -49,12 +49,12 @@ public class ScmReservationService {
         for (ReserveRequest.Line l : req.lines()) {
             ScmOrderItem item = items.get(l.orderItemId());
             if (item == null) {
-                throw new BizException("订单明细不属于订单 " + order.getOrderNo());
+                throw new BizException("订单明细不属于订单 {0}", order.getOrderNo());
             }
             BigDecimal max = item.remainingQty().subtract(reserved.getOrDefault(item.getId(), BigDecimal.ZERO));
             if (l.qty().compareTo(max) > 0) {
-                throw new BizException(String.format("%s %s：预留数量超过未出库且未预留的数量 %s", item.getMaterialCode(), item.getMaterialName(),
-                        max.max(BigDecimal.ZERO).stripTrailingZeros().toPlainString()));
+                throw new BizException("{0} {1}：预留数量超过未出库且未预留的数量 {2}", item.getMaterialCode(), item.getMaterialName(),
+                        max.max(BigDecimal.ZERO).stripTrailingZeros().toPlainString());
             }
             reservationService.reserve(SOURCE_SALES, orderId, item.getId(), order.getOrderNo(), l.warehouseId(), item.getMaterialId(),
                     l.qty(), null);
@@ -82,7 +82,7 @@ public class ScmReservationService {
             BigDecimal need = item.remainingQty().subtract(reserved.getOrDefault(item.getId(), BigDecimal.ZERO));
             BigDecimal qty = need.min(free.getOrDefault(item.getMaterialId(), BigDecimal.ZERO));
             if (qty.signum() > 0) {
-                reservationService.reserve(SOURCE_SALES, orderId, item.getId(), order.getOrderNo(), wh, item.getMaterialId(), qty, "一键预留");
+                reservationService.reserve(SOURCE_SALES, orderId, item.getId(), order.getOrderNo(), wh, item.getMaterialId(), qty, "一键预留"); // i18n-ignore
                 free.merge(item.getMaterialId(), qty.negate(), BigDecimal::add);
                 count++;
             }

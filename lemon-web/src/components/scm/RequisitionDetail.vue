@@ -1,7 +1,7 @@
 <template>
   <SubPage
     :open="open"
-    :title="detail ? `请购单 ${detail.reqNo}` : '请购单'"
+    :title="detail ? $t('scm.requisition.titleNo', { no: detail.reqNo }) : $t('scm.requisition.title')"
     width="min(1000px, 100vw)"
     destroy-on-close
     @close="emit('update:open', false)"
@@ -13,12 +13,12 @@
     <a-spin :spinning="loading">
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="doc-desc">
-          <a-descriptions-item label="请购单号">{{ detail.reqNo }}</a-descriptions-item>
-          <a-descriptions-item label="请购日期">{{ detail.reqDate }}</a-descriptions-item>
-          <a-descriptions-item label="请购部门">{{ detail.deptName || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="制单">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.approveTime" label="批准时间">{{ detail.approveTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="说明">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.requisition.reqNo')">{{ detail.reqNo }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.requisition.reqDate')">{{ detail.reqDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.requisition.dept')">{{ detail.deptName || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.requisition.creator')">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.approveTime" :label="$t('scm.requisition.approveTime')">{{ detail.approveTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('scm.requisition.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
 
         <a-alert
@@ -26,14 +26,14 @@
           type="info"
           show-icon
           class="doc-desc"
-          message="请购单审批中，可在「流程中心 → 我的申请」查看审批进度，审批通过后自动变为已批准"
+          :message="$t('scm.requisition.approvingTip')"
         />
         <a-alert
           v-else-if="detail.status === 'APPROVED'"
           type="info"
           show-icon
           class="doc-desc"
-          message="生成采购订单时按建议供应商拆分，未指定建议供应商的明细使用物料的默认供应商"
+          :message="$t('scm.requisition.splitTip')"
         />
 
         <a-table row-key="id" size="small" :columns="itemColumns" :data-source="detail.items" :pagination="false" :scroll="{ x: 900 }">
@@ -61,11 +61,11 @@
       </div>
     </template>
 
-    <a-modal v-model:open="orderOpen" title="生成采购订单" :confirm-loading="ordering" @ok="submitOrder">
-      <p>按供应商拆分生成草稿采购订单，单价按供货价格带出，生成后请到采购订单审核。</p>
+    <a-modal v-model:open="orderOpen" :title="$t('scm.requisition.toOrder')" :confirm-loading="ordering" @ok="submitOrder">
+      <p>{{ $t('scm.requisition.toOrderTip') }}</p>
       <a-form layout="vertical">
-        <a-form-item label="收货仓库">
-          <WarehouseSelect v-model:value="warehouseId" placeholder="选填，入库时默认" />
+        <a-form-item :label="$t('scm.requisition.warehouse')">
+          <WarehouseSelect v-model:value="warehouseId" :placeholder="$t('scm.requisition.warehousePh')" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -73,6 +73,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import SubPage from '@/components/SubPage.vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -83,6 +84,8 @@ import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { closeRequisition, getRequisition, requisitionToOrder, submitRequisition } from '@/api/scm/sourcing'
 import { useUserStore } from '@/store/user'
 import { formatQty } from '@/components/wms/wms'
+
+const { t } = useI18n()
 
 /** 请购单详情：提交审批、生成采购订单、关闭。触发 edit(record)、changed */
 const props = defineProps({
@@ -96,12 +99,12 @@ const can = (perm) => userStore.hasPerm(`scm:requisition:${perm}`)
 const router = useRouter()
 
 const itemColumns = [
-  { title: '物料', key: 'material', width: 240 },
-  { title: '数量', key: 'qty', width: 120, align: 'right' },
-  { title: '需求日期', dataIndex: 'requiredDate', width: 110 },
-  { title: '建议供应商', key: 'supplier', width: 180, ellipsis: true },
-  { title: '采购订单', key: 'order', width: 170 },
-  { title: '备注', dataIndex: 'remark', width: 140, ellipsis: true }
+  { title: t('scm.requisition.material'), key: 'material', width: 240 },
+  { title: t('common.field.quantity'), key: 'qty', width: 120, align: 'right' },
+  { title: t('scm.requisition.requiredDate'), dataIndex: 'requiredDate', width: 110 },
+  { title: t('scm.requisition.suggestSupplier'), key: 'supplier', width: 180, ellipsis: true },
+  { title: t('scm.requisition.purchaseOrder'), key: 'order', width: 170 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true }
 ]
 
 const detail = ref()
@@ -148,7 +151,7 @@ async function submitOrder() {
   ordering.value = true
   try {
     const ids = await requisitionToOrder(props.reqId, warehouseId.value || undefined)
-    message.success(`已生成 ${ids.length} 张采购订单`)
+    message.success(t('scm.requisition.ordersCreated', { n: ids.length }))
     orderOpen.value = false
     await load()
     emit('changed')
@@ -162,33 +165,33 @@ const actions = computed(() => {
   if (!d) return []
   const list = []
   if (d.status === 'DRAFT' && can('edit')) {
-    list.push({ key: 'edit', label: '编辑', icon: EditOutlined, run: () => emit('edit', d) })
+    list.push({ key: 'edit', label: t('common.action.edit'), icon: EditOutlined, run: () => emit('edit', d) })
   }
   if (['DRAFT', 'APPROVED'].includes(d.status) && can('edit')) {
     list.push({
       key: 'close',
-      label: '关闭',
+      label: t('scm.requisition.close'),
       icon: StopOutlined,
       danger: true,
-      run: () => confirmAction('关闭请购单？', '关闭后不能再生成采购订单。', closeRequisition, '已关闭')
+      run: () => confirmAction(t('scm.requisition.confirmClose'), t('scm.requisition.confirmCloseTip'), closeRequisition, t('scm.requisition.closed'))
     })
   }
   if (d.status === 'DRAFT' && can('edit')) {
     list.push({
       key: 'submit',
-      label: '提交',
+      label: t('common.action.submit'),
       icon: SendOutlined,
       primary: true,
       run: () =>
-        confirmAction('提交请购单？', '发布了审批流程时将发起审批，否则直接批准。', submitRequisition, (flow) =>
-          flow ? '已提交审批' : '已批准'
+        confirmAction(t('scm.requisition.confirmSubmit'), t('scm.requisition.confirmSubmitTip'), submitRequisition, (flow) =>
+          flow ? t('scm.requisition.submittedFlow') : t('scm.requisition.approved')
         )
     })
   }
   if (d.status === 'APPROVED' && can('order')) {
     list.push({
       key: 'order',
-      label: '生成采购订单',
+      label: t('scm.requisition.toOrder'),
       icon: ShoppingCartOutlined,
       primary: true,
       run: () => {

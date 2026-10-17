@@ -4,7 +4,7 @@
       <span :class="{ multiline: item.multiline }">{{ display(item.value) }}</span>
     </a-descriptions-item>
   </a-descriptions>
-  <a-empty v-else :image="Empty.PRESENTED_IMAGE_SIMPLE" description="无表单数据" />
+  <a-empty v-else :image="Empty.PRESENTED_IMAGE_SIMPLE" :description="$t('workflow.form.noData')" />
 </template>
 
 <script setup>

@@ -27,7 +27,7 @@ public class CrmCollectionRemindJob implements JobHandler {
 
     @Override
     public String name() {
-        return "合同回款提醒";
+        return "合同回款提醒"; // i18n-ignore 定时任务名称，任务管理处翻译
     }
 
     @Override
@@ -42,10 +42,10 @@ public class CrmCollectionRemindJob implements JobHandler {
             if (p.getOwnerId() == null) {
                 continue;
             }
-            messageSender.send(List.of(p.getOwnerId()), Message.of("REMIND", "合同回款逾期：" + p.getContractNo() + " 第 " + p.getSeq() + " 期",
-                    p.getCustomerName() + " 计划 " + p.getPlanDate() + " 回款 " + p.getAmount().toPlainString() + "，已回 "
+            messageSender.send(List.of(p.getOwnerId()), Message.of("REMIND", "合同回款逾期：" + p.getContractNo() + " 第 " + p.getSeq() + " 期", // i18n-ignore 站内消息存库
+                    p.getCustomerName() + " 计划 " + p.getPlanDate() + " 回款 " + p.getAmount().toPlainString() + "，已回 " // i18n-ignore 站内消息存库
                             + p.getReceivedAmount().toPlainString(), "/crm/contract").dedup("collection-overdue:" + p.getId()));
         }
-        return "逾期 " + list.size() + " 期";
+        return "逾期 " + list.size() + " 期"; // i18n-ignore 任务日志存库
     }
 }

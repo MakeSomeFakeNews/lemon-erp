@@ -3,15 +3,15 @@
     <a-card :bordered="false" class="page-card table-card">
       <a-tabs v-model:active-key="tab" class="kit-tabs">
         <!-- ---------------------------------------------------------------- 按工单 -->
-        <a-tab-pane key="orders" tab="工单齐套">
+        <a-tab-pane key="orders" :tab="$t('mes.kit.ordersTab')">
           <div class="toolbar">
-            <a-input-search v-model:value="orderQuery.woNo" placeholder="工单号" allow-clear class="search" @search="loadOrders" />
+            <a-input-search v-model:value="orderQuery.woNo" :placeholder="$t('mes.wo.woNo')" allow-clear class="search" @search="loadOrders" />
             <a-radio-group v-model:value="orderQuery.kitStatus" button-style="solid" size="small">
-              <a-radio-button value="">全部 {{ orders.length }}</a-radio-button>
+              <a-radio-button value="">{{ $t('common.status.all') }} {{ orders.length }}</a-radio-button>
               <a-radio-button v-for="s in KIT_STATUSES" :key="s" :value="s">{{ dictLabel(dict.mes_kit_status, s) }} {{ countOf(s) }}</a-radio-button>
             </a-radio-group>
             <span class="spacer" />
-            <span class="sub-text">库存按优先级分配：已下达 / 生产中的在前，草稿在后，再按计划开工日期</span>
+            <span class="sub-text">{{ $t('mes.kit.priorityTip') }}</span>
             <a-button @click="loadOrders"><template #icon><ReloadOutlined /></template></a-button>
           </div>
           <a-table
@@ -20,7 +20,7 @@
             :columns="orderColumns"
             :data-source="filteredOrders"
             :loading="ordersLoading"
-            :pagination="{ pageSize: 20, showSizeChanger: false, showTotal: (t) => `共 ${t} 个工单` }"
+            :pagination="{ pageSize: 20, showSizeChanger: false, showTotal: (n) => $t('mes.kit.totalWo', { n }) }"
             :scroll="{ x: 1150 }"
             :expanded-row-keys="expandedOrders"
             @expand="onExpandOrder"
@@ -32,11 +32,11 @@
               </template>
               <template v-else-if="column.key === 'product'">
                 <div>{{ record.productCode }} {{ record.productName }}</div>
-                <div class="sub-text">完工 {{ formatQty(record.finishedQty) }} / {{ formatQty(record.qty) }} {{ record.unit }}</div>
+                <div class="sub-text">{{ $t('mes.kit.finished', { done: formatQty(record.finishedQty), qty: formatQty(record.qty), unit: record.unit || '' }) }}</div>
               </template>
               <template v-else-if="column.key === 'kitRate'">
                 <a-progress :percent="Number(record.kitRate)" size="small" :status="Number(record.kitRate) >= 100 ? 'success' : 'exception'" />
-                <div class="sub-text">缺料 {{ record.shortLineCount }} / {{ record.lineCount }} 项</div>
+                <div class="sub-text">{{ $t('mes.kit.shortLines', { short: record.shortLineCount, total: record.lineCount }) }}</div>
               </template>
               <template v-else-if="column.key === 'buildableQty'">
                 {{ formatQty(record.buildableQty) }} <span class="sub-text">/ {{ formatQty(record.qty) }}</span>
@@ -71,9 +71,9 @@
                       size="small"
                       @click="openSubstitute(record, line)"
                     >
-                      替代料（{{ line.substitutes.length }}）
+                      {{ $t('mes.kit.substitutesN', { n: line.substitutes.length }) }}
                     </a-button>
-                    <span v-else-if="Number(line.shortageQty) > 0 && line.substitutes?.length" class="sub-text">有替代料</span>
+                    <span v-else-if="Number(line.shortageQty) > 0 && line.substitutes?.length" class="sub-text">{{ $t('mes.kit.hasSubstitute') }}</span>
                   </template>
                 </template>
               </a-table>
@@ -82,13 +82,13 @@
         </a-tab-pane>
 
         <!-- ---------------------------------------------------------------- 按物料 -->
-        <a-tab-pane key="materials" tab="生产用料汇总">
+        <a-tab-pane key="materials" :tab="$t('mes.kit.materialsTab')">
           <div class="toolbar">
-            <a-input-search v-model:value="materialQuery.keyword" placeholder="物料编码或名称" allow-clear class="search" @search="loadMaterials" />
-            <a-checkbox v-model:checked="materialQuery.onlyShort" @change="loadMaterials">只看缺料</a-checkbox>
+            <a-input-search v-model:value="materialQuery.keyword" :placeholder="$t('mes.bom.materialKeyword')" allow-clear class="search" @search="loadMaterials" />
+            <a-checkbox v-model:checked="materialQuery.onlyShort" @change="loadMaterials">{{ $t('mes.kit.onlyShort') }}</a-checkbox>
             <span class="spacer" />
             <a-button v-perm="'mes:kit:release'" type="primary" :disabled="!selectedMaterials.length" @click="releaseOpen = true">
-              <template #icon><ShoppingCartOutlined /></template>缺料下单（{{ selectedMaterials.length }}）
+              <template #icon><ShoppingCartOutlined /></template>{{ $t('mes.kit.releaseN', { n: selectedMaterials.length }) }}
             </a-button>
             <a-button @click="loadMaterials"><template #icon><ReloadOutlined /></template></a-button>
           </div>
@@ -98,7 +98,7 @@
             :columns="materialColumns"
             :data-source="materials"
             :loading="materialsLoading"
-            :pagination="{ pageSize: 20, showSizeChanger: false, showTotal: (t) => `共 ${t} 个物料` }"
+            :pagination="{ pageSize: 20, showSizeChanger: false, showTotal: (n) => $t('mes.kit.totalMaterial', { n }) }"
             :scroll="{ x: 1110 }"
             :row-selection="canRelease ? materialSelection : undefined"
             :expanded-row-keys="expandedMaterials"
@@ -114,13 +114,13 @@
               </template>
               <template v-else-if="column.key === 'shortageQty'">
                 <span :class="{ danger: Number(record.shortageQty) > 0 }">{{ formatQty(record.shortageQty) }}</span>
-                <div v-if="record.requiredDate && Number(record.shortageQty) > 0" class="sub-text">最早 {{ record.requiredDate }}</div>
+                <div v-if="record.requiredDate && Number(record.shortageQty) > 0" class="sub-text">{{ $t('mes.kit.earliest', { d: record.requiredDate }) }}</div>
               </template>
               <template v-else-if="column.key === 'suggestQty'">
                 <span v-if="Number(record.suggestQty) > 0" class="strong">{{ formatQty(record.suggestQty) }} {{ record.unit }}</span>
                 <span v-else class="sub-text">-</span>
                 <div v-if="Number(record.suggestQty) > 0" class="sub-text">
-                  {{ record.supplyType === 'MAKE' ? '生成工单' : record.supplierName || '未设置默认供应商' }}
+                  {{ record.supplyType === 'MAKE' ? $t('mes.kit.genWo') : record.supplierName || $t('mes.kit.noSupplier') }}
                 </div>
               </template>
               <template v-else-if="QTY_KEYS.includes(column.key)">{{ formatQty(record[column.key]) }}</template>
@@ -153,46 +153,46 @@
     </a-card>
 
     <!-- 缺料下单 -->
-    <a-modal v-model:open="releaseOpen" title="缺料下单" :confirm-loading="releasing" ok-text="生成单据" @ok="submitRelease">
+    <a-modal v-model:open="releaseOpen" :title="$t('mes.kit.release')" :confirm-loading="releasing" :ok-text="$t('mes.kit.genDocs')" @ok="submitRelease">
       <p class="sub-text">
-        按建议数量（缺料 - 在途，按批量规则取整）生成草稿单据：采购 / 委外件按默认供应商合并为采购订单，自制件生成工单。生成后到对应页面确认、审核。
+        {{ $t('mes.kit.releaseTip') }}
       </p>
       <a-table row-key="materialId" size="small" :columns="releaseColumns" :data-source="selectedMaterials" :pagination="false">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'material'">{{ record.materialCode }} {{ record.materialName }}</template>
           <template v-else-if="column.key === 'suggestQty'">{{ formatQty(record.suggestQty) }} {{ record.unit }}</template>
           <template v-else-if="column.key === 'to'">
-            {{ record.supplyType === 'MAKE' ? '工单' : record.supplierName || '未设置默认供应商' }}
+            {{ record.supplyType === 'MAKE' ? $t('mes.wo.wo') : record.supplierName || $t('mes.kit.noSupplier') }}
           </template>
         </template>
       </a-table>
       <a-form layout="vertical" class="release-form">
-        <a-form-item label="收货 / 入库仓库" required>
+        <a-form-item :label="$t('mes.kit.warehouse')" required>
           <WarehouseSelect v-model:value="releaseWarehouse" :allow-clear="false" />
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- 替代料 -->
-    <a-modal v-model:open="subOpen" title="替代料切换" :confirm-loading="switching" ok-text="切换" @ok="submitSubstitute">
+    <a-modal v-model:open="subOpen" :title="$t('mes.kit.subTitle')" :confirm-loading="switching" :ok-text="$t('mes.kit.switch')" @ok="submitSubstitute">
       <template v-if="subLine">
         <a-descriptions :column="1" size="small" class="block">
-          <a-descriptions-item label="工单">{{ subWo.woNo }} {{ subWo.productCode }} {{ subWo.productName }}</a-descriptions-item>
-          <a-descriptions-item label="主料">{{ subLine.materialCode }} {{ subLine.materialName }}</a-descriptions-item>
-          <a-descriptions-item label="待领 / 缺料">
+          <a-descriptions-item :label="$t('mes.wo.wo')">{{ subWo.woNo }} {{ subWo.productCode }} {{ subWo.productName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('mes.kit.mainMaterial')">{{ subLine.materialCode }} {{ subLine.materialName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('mes.kit.toIssueShort')">
             <span>{{ formatQty(subLine.toIssueQty) }} / <span class="danger">{{ formatQty(subLine.shortageQty) }}</span> {{ subLine.unit }}</span>
           </a-descriptions-item>
         </a-descriptions>
         <a-form layout="vertical">
-          <a-form-item label="替代料" required>
+          <a-form-item :label="$t('mes.kit.substitute')" required>
             <a-radio-group v-model:value="subForm.substituteId" class="sub-options" @change="suggestSubQty">
               <a-radio v-for="s in subLine.substitutes" :key="s.substituteId" :value="s.substituteId">
                 {{ s.substituteCode }} {{ s.substituteName }}
-                <span class="sub-text">1 : {{ formatQty(s.ratio) }}，库存 {{ formatQty(s.onHandQty) }} {{ s.unit }}</span>
+                <span class="sub-text">{{ $t('mes.kit.ratioStock', { ratio: formatQty(s.ratio), stock: formatQty(s.onHandQty), unit: s.unit || '' }) }}</span>
               </a-radio>
             </a-radio-group>
           </a-form-item>
-          <a-form-item label="替代的主料数量" required :extra="subPreview">
+          <a-form-item :label="$t('mes.kit.subQty')" required :extra="subPreview">
             <a-input-number
               v-model:value="subForm.qty"
               :min="0"
@@ -212,6 +212,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
 import { ReloadOutlined, ShoppingCartOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { kitMaterialLines, kitMaterials, kitOrderLines, kitOrders, kitRelease, switchSubstitute } from '@/api/mes/base'
@@ -222,6 +223,7 @@ import { findDict } from '@/utils/dict'
 
 const userStore = useUserStore()
 const dict = useDict('mes_kit_status', 'mes_wo_status', 'mes_supply_type')
+const { t } = useI18n()
 const dictLabel = (list, value) => findDict(list, value)?.label || value
 const KIT_STATUSES = ['SHORT', 'PARTIAL', 'COMPLETE', 'ISSUED']
 const QTY_KEYS = ['requiredQty', 'supplementQty', 'issuedQty', 'toIssueQty', 'onHandQty', 'allocatedQty', 'onOrderQty', 'unitQty']
@@ -232,23 +234,23 @@ const tab = ref('orders')
 
 // ---------------------------------------------------------------- 工单齐套
 const orderColumns = [
-  { title: '工单', key: 'wo', width: 180 },
-  { title: '产品', key: 'product', width: 260 },
-  { title: '计划开工', dataIndex: 'planStart', width: 110 },
-  { title: '齐套率', key: 'kitRate', width: 200 },
-  { title: '可生产数量', key: 'buildableQty', width: 130, align: 'right' },
-  { title: '齐套状态', key: 'kitStatus', width: 110 }
+  { title: t('mes.wo.wo'), key: 'wo', width: 180 },
+  { title: t('mes.bom.product'), key: 'product', width: 260 },
+  { title: t('mes.wo.planStart'), dataIndex: 'planStart', width: 120 },
+  { title: t('mes.kit.kitRate'), key: 'kitRate', width: 200 },
+  { title: t('mes.kit.buildable'), key: 'buildableQty', width: 140, align: 'right' },
+  { title: t('mes.kit.kitStatus'), key: 'kitStatus', width: 110 }
 ]
 const lineColumns = [
-  { title: '物料', key: 'material', width: 220 },
-  { title: '需求', key: 'requiredQty', width: 80, align: 'right' },
-  { title: '已领', key: 'issuedQty', width: 80, align: 'right' },
-  { title: '待领', key: 'toIssueQty', width: 80, align: 'right' },
-  { title: '库存', key: 'onHandQty', width: 80, align: 'right' },
-  { title: '分配', key: 'allocatedQty', width: 80, align: 'right' },
-  { title: '缺料', key: 'shortageQty', width: 80, align: 'right' },
-  { title: '在途', key: 'onOrderQty', width: 80, align: 'right' },
-  { title: '单位', dataIndex: 'unit', width: 60 },
+  { title: t('mes.wo.material'), key: 'material', width: 220 },
+  { title: t('mes.kit.required'), key: 'requiredQty', width: 80, align: 'right' },
+  { title: t('mes.kit.issued'), key: 'issuedQty', width: 80, align: 'right' },
+  { title: t('mes.kit.toIssue'), key: 'toIssueQty', width: 80, align: 'right' },
+  { title: t('mes.mrp.onHand'), key: 'onHandQty', width: 80, align: 'right' },
+  { title: t('mes.kit.allocated'), key: 'allocatedQty', width: 90, align: 'right' },
+  { title: t('mes.kit.shortage'), key: 'shortageQty', width: 90, align: 'right' },
+  { title: t('mes.mrp.scheduled'), key: 'onOrderQty', width: 90, align: 'right' },
+  { title: t('common.field.unit'), dataIndex: 'unit', width: 60 },
   { title: '', key: 'action', width: 120 }
 ]
 const orderQuery = reactive({ woNo: '', kitStatus: '' })
@@ -283,24 +285,24 @@ function onExpandOrder(expanded, record) {
 
 // ---------------------------------------------------------------- 生产用料汇总
 const materialColumns = [
-  { title: '物料', key: 'material', width: 210 },
-  { title: '属性', key: 'supplyType', width: 72 },
-  { title: '工单数', dataIndex: 'woCount', width: 66, align: 'right' },
-  { title: '需求', key: 'requiredQty', width: 80, align: 'right' },
-  { title: '已领', key: 'issuedQty', width: 80, align: 'right' },
-  { title: '待领', key: 'toIssueQty', width: 80, align: 'right' },
-  { title: '库存', key: 'onHandQty', width: 80, align: 'right' },
-  { title: '缺料', key: 'shortageQty', width: 110, align: 'right' },
-  { title: '在途', key: 'onOrderQty', width: 80, align: 'right' },
-  { title: '建议下单', key: 'suggestQty', width: 150, align: 'right' }
+  { title: t('mes.wo.material'), key: 'material', width: 210 },
+  { title: t('mes.kit.supplyType'), key: 'supplyType', width: 90 },
+  { title: t('mes.kit.woCount'), dataIndex: 'woCount', width: 80, align: 'right' },
+  { title: t('mes.kit.required'), key: 'requiredQty', width: 80, align: 'right' },
+  { title: t('mes.kit.issued'), key: 'issuedQty', width: 80, align: 'right' },
+  { title: t('mes.kit.toIssue'), key: 'toIssueQty', width: 80, align: 'right' },
+  { title: t('mes.mrp.onHand'), key: 'onHandQty', width: 80, align: 'right' },
+  { title: t('mes.kit.shortage'), key: 'shortageQty', width: 110, align: 'right' },
+  { title: t('mes.mrp.scheduled'), key: 'onOrderQty', width: 90, align: 'right' },
+  { title: t('mes.kit.suggest'), key: 'suggestQty', width: 150, align: 'right' }
 ]
 const materialLineColumns = [
-  { title: '工单', key: 'wo', width: 200 },
-  { title: '产品', key: 'product', width: 220 },
-  { title: '计划开工', dataIndex: 'planStart', width: 110 },
-  { title: '待领', key: 'toIssueQty', width: 90, align: 'right' },
-  { title: '分配', key: 'allocatedQty', width: 90, align: 'right' },
-  { title: '缺料', key: 'shortageQty', width: 90, align: 'right' }
+  { title: t('mes.wo.wo'), key: 'wo', width: 200 },
+  { title: t('mes.bom.product'), key: 'product', width: 220 },
+  { title: t('mes.wo.planStart'), dataIndex: 'planStart', width: 120 },
+  { title: t('mes.kit.toIssue'), key: 'toIssueQty', width: 90, align: 'right' },
+  { title: t('mes.kit.allocated'), key: 'allocatedQty', width: 90, align: 'right' },
+  { title: t('mes.kit.shortage'), key: 'shortageQty', width: 90, align: 'right' }
 ]
 const materialQuery = reactive({ keyword: '', onlyShort: true })
 const materials = ref([])
@@ -337,8 +339,8 @@ async function onExpandMaterial(expanded, record) {
   }
 }
 
-watch(tab, (t) => {
-  if (t === 'materials' && !materials.value.length) loadMaterials()
+watch(tab, (v) => {
+  if (v === 'materials' && !materials.value.length) loadMaterials()
 })
 
 onMounted(loadOrders)
@@ -348,21 +350,21 @@ const releaseOpen = ref(false)
 const releasing = ref(false)
 const releaseWarehouse = ref()
 const releaseColumns = [
-  { title: '物料', key: 'material' },
-  { title: '建议数量', key: 'suggestQty', width: 120, align: 'right' },
-  { title: '生成', key: 'to', width: 160 }
+  { title: t('mes.wo.material'), key: 'material' },
+  { title: t('mes.mrp.suggest'), key: 'suggestQty', width: 120, align: 'right' },
+  { title: t('mes.kit.generate'), key: 'to', width: 160 }
 ]
 
 async function submitRelease() {
   if (!releaseWarehouse.value) {
-    message.warning('请选择收货 / 入库仓库')
+    message.warning(t('mes.kit.warehouseRequired'))
     return
   }
   releasing.value = true
   try {
     const docNos = await kitRelease({ materialIds: selectedKeys.value, warehouseId: releaseWarehouse.value })
     releaseOpen.value = false
-    Modal.success({ title: '已生成草稿单据', content: docNos.join('、') })
+    Modal.success({ title: t('mes.kit.generated'), content: docNos.join(t('mes.workCenter.sep')) })
     loadMaterials()
     loadOrders()
   } finally {
@@ -379,8 +381,8 @@ const subForm = reactive({ substituteId: undefined, qty: undefined })
 const currentSub = computed(() => subLine.value?.substitutes.find((s) => s.substituteId === subForm.substituteId))
 const subPreview = computed(() =>
   currentSub.value && subForm.qty
-    ? `需要替代料 ${formatQty(subForm.qty * Number(currentSub.value.ratio))} ${currentSub.value.unit || ''}`
-    : '主料需求相应减少，替代料按比例加入工单用料'
+    ? t('mes.kit.subNeed', { qty: formatQty(subForm.qty * Number(currentSub.value.ratio)), unit: currentSub.value.unit || '' })
+    : t('mes.kit.subPreviewDefault')
 )
 
 function openSubstitute(wo, line) {
@@ -402,13 +404,13 @@ function suggestSubQty() {
 
 async function submitSubstitute() {
   if (!subForm.substituteId || !(subForm.qty > 0)) {
-    message.warning('请选择替代料并填写数量')
+    message.warning(t('mes.kit.subRequired'))
     return
   }
   switching.value = true
   try {
     await switchSubstitute({ woId: subWo.value.woId, materialId: subLine.value.materialId, substituteId: subForm.substituteId, qty: subForm.qty })
-    message.success('已切换替代料')
+    message.success(t('mes.kit.switched'))
     subOpen.value = false
     await loadOrders()
   } finally {

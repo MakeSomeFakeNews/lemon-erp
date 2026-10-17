@@ -49,14 +49,14 @@ public class QmsClaimController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('qms:claim:add')")
-    @OperLog(title = "供应商索赔", type = OperType.INSERT)
+    @OperLog(title = "供应商索赔", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody QmsRequests.Claim req) {
         return R.ok(claimService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('qms:claim:add')")
-    @OperLog(title = "供应商索赔", type = OperType.UPDATE)
+    @OperLog(title = "供应商索赔", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody QmsRequests.Claim req) {
         claimService.update(id, req);
         return R.ok();
@@ -65,7 +65,7 @@ public class QmsClaimController {
     /** 确认：生成红字应付单冲减应付 */
     @PostMapping("/{id}/confirm")
     @PreAuthorize("@ss.hasPerm('qms:claim:confirm')")
-    @OperLog(title = "供应商索赔-确认", type = OperType.UPDATE)
+    @OperLog(title = "供应商索赔-确认", type = OperType.UPDATE) // i18n-ignore
     public R<Void> confirm(@PathVariable Long id) {
         claimService.confirm(id);
         return R.ok();
@@ -73,7 +73,7 @@ public class QmsClaimController {
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("@ss.hasPerm('qms:claim:confirm')")
-    @OperLog(title = "供应商索赔-取消", type = OperType.UPDATE)
+    @OperLog(title = "供应商索赔-取消", type = OperType.UPDATE) // i18n-ignore
     public R<Void> cancel(@PathVariable Long id) {
         claimService.cancel(id);
         return R.ok();
@@ -81,7 +81,7 @@ public class QmsClaimController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('qms:claim:remove')")
-    @OperLog(title = "供应商索赔", type = OperType.DELETE)
+    @OperLog(title = "供应商索赔", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
         claimService.delete(id);
         return R.ok();

@@ -3,6 +3,7 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.PlmRequests;
@@ -78,7 +79,7 @@ public class MesTechDocService {
         try {
             docMapper.updateById(doc);
         } catch (DuplicateKeyException e) {
-            throw new BizException("文档已有版本 " + req.version().trim());
+            throw new BizException("文档已有版本 {0}", req.version().trim());
         }
     }
 
@@ -146,14 +147,14 @@ public class MesTechDocService {
         try {
             docMapper.insert(doc);
         } catch (DuplicateKeyException e) {
-            throw new BizException("文档已有版本 " + doc.getVersion());
+            throw new BizException("文档已有版本 {0}", doc.getVersion());
         }
     }
 
     private MesTechDoc requireStatus(Long id, DocStatus status, String action) {
         MesTechDoc doc = detail(id);
         if (doc.getStatus() != status) {
-            throw new BizException("文档当前状态不能" + action);
+            throw new BizException("文档当前状态不能{0}", I18n.t(action));
         }
         return doc;
     }

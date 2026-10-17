@@ -89,7 +89,7 @@ public class MesWorkOrderService {
     private final com.lemon.erp.framework.record.ChangeLogger changeLogger;
 
     private static final Map<String, String> CHANGE_FIELDS = com.lemon.erp.framework.record.ChangeLogger.fields("qty", "数量",
-            "planStart", "计划开工", "planEnd", "计划完工");
+            "planStart", "计划开工", "planEnd", "计划完工"); // i18n-ignore
 
     @DataPermission(table = "mes_work_order", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<MesWorkOrder> page(long current, long size, WorkOrderQuery query) {
@@ -202,14 +202,13 @@ public class MesWorkOrderService {
         MesWoOp prev = woOpMapper.selectByWo(id).stream().filter(o -> o.getSeq() < op.getSeq())
                 .max(Comparator.comparing(MesWoOp::getSeq)).orElse(null);
         if (prev != null && op.getGoodQty().add(op.getScrapQty()).add(req.goodQty()).add(scrap).compareTo(prev.getGoodQty()) > 0) {
-            throw new BizException("工序 " + op.getSeq() + " " + op.getName() + " 的合格 + 报废累计不能超过上道工序 " + prev.getSeq() + " "
-                    + prev.getName() + " 的合格数 " + prev.getGoodQty().stripTrailingZeros().toPlainString());
+            throw new BizException("工序 {0} {1} 的合格 + 报废累计不能超过上道工序 {2} {3} 的合格数 {4}", op.getSeq(), op.getName(), prev.getSeq(), prev.getName(), prev.getGoodQty().stripTrailingZeros().toPlainString());
         }
         // 首件检验：首件检验合格前，该工序累计只能报工 1 件
         if (Integer.valueOf(1).equals(op.getFirstArticle())
                 && op.getGoodQty().add(op.getScrapQty()).add(req.goodQty()).add(scrap).compareTo(BigDecimal.ONE) > 0
                 && !firstArticlePassed(op.getId())) {
-            throw new BizException("工序 " + op.getSeq() + " " + op.getName() + " 需首件检验合格后才能继续报工，请先报工 1 件并提交首件检验");
+            throw new BizException("工序 {0} {1} 需首件检验合格后才能继续报工，请先报工 1 件并提交首件检验", op.getSeq(), op.getName());
         }
         if (req.equipmentId() != null) {
             MesEquipment equipment = equipmentMapper.selectById(req.equipmentId());
@@ -218,7 +217,7 @@ public class MesWorkOrderService {
             }
         }
         if (woOpMapper.addReport(op.getId(), req.goodQty(), scrap, req.hours(), wo.getQty()) == 0) {
-            throw new BizException("工序 " + op.getSeq() + " " + op.getName() + " 的合格、报废数量累计超过工单数量");
+            throw new BizException("工序 {0} {1} 的合格、报废数量累计超过工单数量", op.getSeq(), op.getName());
         }
         MesReport report = new MesReport();
         report.setWoId(id);
@@ -255,7 +254,7 @@ public class MesWorkOrderService {
         }
         BigDecimal min = startedQty(wo);
         if (qty.compareTo(min) < 0 || qty.signum() <= 0) {
-            throw new BizException("数量不能少于已完工 / 已报工的数量 " + min.stripTrailingZeros().toPlainString());
+            throw new BizException("数量不能少于已完工 / 已报工的数量 {0}", min.stripTrailingZeros().toPlainString());
         }
         Object before = workOrderMapper.selectById(id);
         workOrderMapper.update(Wrappers.<MesWorkOrder>lambdaUpdate().set(MesWorkOrder::getQty, qty)
@@ -288,11 +287,11 @@ public class MesWorkOrderService {
         }
         BigDecimal free = wo.getQty().subtract(startedQty(wo));
         if (qty.signum() <= 0 || qty.compareTo(free) > 0 || qty.compareTo(wo.getQty()) >= 0) {
-            throw new BizException("拆分数量须大于 0、小于工单数量，且不超过未开工的数量 " + free.stripTrailingZeros().toPlainString());
+            throw new BizException("拆分数量须大于 0、小于工单数量，且不超过未开工的数量 {0}", free.stripTrailingZeros().toPlainString());
         }
         Long newId = createDraft(new WorkOrderRequest(wo.getMaterialId(), wo.getBomId(), qty,
                 planStart != null ? planStart : wo.getPlanStart(), planEnd != null ? planEnd : wo.getPlanEnd(), wo.getWarehouseId(),
-                "拆分自 " + wo.getWoNo()), "SPLIT", wo.getPlanId());
+                "拆分自 " + wo.getWoNo()), "SPLIT", wo.getPlanId()); // i18n-ignore
         workOrderMapper.update(Wrappers.<MesWorkOrder>lambdaUpdate().set(MesWorkOrder::getSourceWoId, id).eq(MesWorkOrder::getId, newId));
         BigDecimal left = wo.getQty().subtract(qty);
         if (draft) {
@@ -383,7 +382,7 @@ public class MesWorkOrderService {
     MesWorkOrder getExecutable(Long id) {
         MesWorkOrder wo = getAccessible(id);
         if (!WorkOrderStatus.EXECUTABLE.contains(wo.getStatus())) {
-            throw new BizException("工单 " + wo.getWoNo() + " 不是已下达或生产中状态");
+            throw new BizException("工单 {0} 不是已下达或生产中状态", wo.getWoNo());
         }
         return wo;
     }
@@ -419,7 +418,7 @@ public class MesWorkOrderService {
     private MesWorkOrder getDraft(Long id) {
         MesWorkOrder wo = getAccessible(id);
         if (!WorkOrderStatus.DRAFT.name().equals(wo.getStatus())) {
-            throw new BizException("工单 " + wo.getWoNo() + " 已下达，不能修改或删除");
+            throw new BizException("工单 {0} 已下达，不能修改或删除", wo.getWoNo());
         }
         return wo;
     }
@@ -453,7 +452,7 @@ public class MesWorkOrderService {
         if (req.warehouseId() != null) {
             WmsWarehouse warehouse = warehouseService.get(req.warehouseId());
             if (!Integer.valueOf(1).equals(warehouse.getStatus())) {
-                throw new BizException("仓库「" + warehouse.getName() + "」已停用");
+                throw new BizException("仓库「{0}」已停用", warehouse.getName());
             }
         }
         MesBom bom;
@@ -465,11 +464,11 @@ public class MesWorkOrderService {
         } else {
             bom = bomService.defaultBoms(List.of(req.materialId())).get(req.materialId());
             if (bom == null) {
-                throw new BizException("产品「" + product.getCode() + " " + product.getName() + "」没有默认 BOM");
+                throw new BizException("产品「{0} {1}」没有默认 BOM", product.getCode(), product.getName());
             }
         }
         if (!Integer.valueOf(1).equals(bom.getStatus())) {
-            throw new BizException("BOM " + bom.getVersion() + " 已停用");
+            throw new BizException("BOM {0} 已停用", bom.getVersion());
         }
         return bom;
     }
@@ -532,7 +531,7 @@ public class MesWorkOrderService {
     /** 子件为虚拟件（且有默认 BOM）时用它的子件代替，用量相乘 */
     private void expandPhantoms(List<MesBomItem> items, BigDecimal factor, Map<Long, BigDecimal> unitQtys, int depth) {
         if (depth > MAX_PHANTOM_DEPTH) {
-            throw new BizException("虚拟件层级超过 " + MAX_PHANTOM_DEPTH + " 层，可能存在循环引用");
+            throw new BizException("虚拟件层级超过 {0} 层，可能存在循环引用", MAX_PHANTOM_DEPTH);
         }
         List<Long> ids = items.stream().map(MesBomItem::getMaterialId).toList();
         Map<Long, MesMaterialPlan> plans = materialPlanService.plans(ids);

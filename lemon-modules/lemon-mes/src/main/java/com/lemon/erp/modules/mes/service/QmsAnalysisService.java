@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.mes.service;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.modules.mes.dto.QmsViews;
 import com.lemon.erp.modules.mes.entity.QmsInspectionItem;
 import com.lemon.erp.modules.mes.mapper.QmsAnalysisMapper;
@@ -95,7 +96,7 @@ public class QmsAnalysisService {
         }
         if (points.size() < 2 || spreads.isEmpty()) {
             return new QmsViews.Spc(spec.getName(), spec.getUnit(), spec.getLowerLimit(), spec.getUpperLimit(), n, chart, points,
-                    null, null, null, null, null, null, null, null, null, List.of("数据不足：至少需要 2 个相同大小的子组"));
+                    null, null, null, null, null, null, null, null, null, List.of(I18n.t("数据不足：至少需要 2 个相同大小的子组")));
         }
         double center = means.stream().mapToDouble(Double::doubleValue).average().orElse(0);
         double spreadCenter = spreads.stream().mapToDouble(Double::doubleValue).average().orElse(0);
@@ -139,18 +140,19 @@ public class QmsAnalysisService {
             }
         }
         String spreadName = switch (chart) {
-            case I_MR -> "移动极差";
-            case XBAR_R -> "极差";
-            case XBAR_S -> "标准差";
+            case I_MR -> I18n.t("移动极差");
+            case XBAR_R -> I18n.t("极差");
+            case XBAR_S -> I18n.t("标准差");
         };
         List<String> signals = new ArrayList<>();
         for (QmsViews.SpcPoint p : points) {
             double m = p.mean().doubleValue();
             if (m > meanUcl || m < meanLcl) {
-                signals.add(p.inspNo() + " " + (chart == SpcChart.I_MR ? "单值 " : "均值 ") + p.mean().stripTrailingZeros().toPlainString() + " 超出控制限");
+                String value = p.mean().stripTrailingZeros().toPlainString();
+                signals.add(chart == SpcChart.I_MR ? I18n.t("{0} 单值 {1} 超出控制限", p.inspNo(), value) : I18n.t("{0} 均值 {1} 超出控制限", p.inspNo(), value));
             }
             if (p.spread() != null && (p.spread().doubleValue() > spreadUcl || p.spread().doubleValue() < spreadLcl)) {
-                signals.add(p.inspNo() + " " + spreadName + " " + p.spread().stripTrailingZeros().toPlainString() + " 超出控制限");
+                signals.add(I18n.t("{0} {1} {2} 超出控制限", p.inspNo(), spreadName, p.spread().stripTrailingZeros().toPlainString()));
             }
         }
         return new QmsViews.Spc(spec.getName(), spec.getUnit(), spec.getLowerLimit(), spec.getUpperLimit(), n, chart, points,

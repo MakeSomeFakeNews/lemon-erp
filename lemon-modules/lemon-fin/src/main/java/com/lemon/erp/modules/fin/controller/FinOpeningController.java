@@ -49,7 +49,7 @@ public class FinOpeningController {
     /** 期初库存导入：按仓库生成启用期间前一天的期初入库单 */
     @PostMapping("/stock-in/import")
     @PreAuthorize("@ss.hasPerm('fin:opening:edit')")
-    @OperLog(title = "期初库存导入", type = OperType.IMPORT)
+    @OperLog(title = "期初库存导入", type = OperType.IMPORT) // i18n-ignore
     public R<ImportResult> importStock(@RequestParam int startPeriod, @Valid @RequestBody ImportRequest<OpeningStockRow> req) {
         return R.ok(setupService.importStock(startPeriod, req));
     }
@@ -57,7 +57,7 @@ public class FinOpeningController {
     /** 期初往来导入：kind 为 AR / AP */
     @PostMapping("/bills/{kind}/import")
     @PreAuthorize("@ss.hasPerm('fin:opening:edit')")
-    @OperLog(title = "期初往来导入", type = OperType.IMPORT)
+    @OperLog(title = "期初往来导入", type = OperType.IMPORT) // i18n-ignore
     public R<ImportResult> importBills(@PathVariable String kind, @Valid @RequestBody ImportRequest<OpeningBillRow> req) {
         return R.ok(setupService.importBills(kind, req));
     }
@@ -70,7 +70,7 @@ public class FinOpeningController {
 
     @PutMapping("/accounts")
     @PreAuthorize("@ss.hasPerm('fin:opening:edit')")
-    @OperLog(title = "科目期初余额", type = OperType.UPDATE)
+    @OperLog(title = "科目期初余额", type = OperType.UPDATE) // i18n-ignore
     public R<Void> saveAccounts(@Valid @RequestBody AccountOpeningRequest req) {
         openingService.saveAccountOpenings(req);
         return R.ok();
@@ -85,7 +85,7 @@ public class FinOpeningController {
 
     @PutMapping("/stock")
     @PreAuthorize("@ss.hasPerm('fin:opening:edit')")
-    @OperLog(title = "存货期初", type = OperType.UPDATE)
+    @OperLog(title = "存货期初", type = OperType.UPDATE) // i18n-ignore
     public R<Void> saveStock(@Valid @RequestBody StockOpeningRequest req) {
         openingService.saveStockOpening(req);
         return R.ok();

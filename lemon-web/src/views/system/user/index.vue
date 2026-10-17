@@ -8,16 +8,16 @@
     <div class="table-page workspace-main">
       <a-card v-show="showSearch" :bordered="false" class="page-card">
         <SearchForm :model="query" @search="search" @reset="resetQuery">
-          <a-form-item label="用户" name="username">
-            <a-input v-model:value="query.username" placeholder="用户名或昵称" allow-clear />
+          <a-form-item :label="$t('common.field.user')" name="username">
+            <a-input v-model:value="query.username" :placeholder="$t('system.user.usernameOrNickname')" allow-clear />
           </a-form-item>
-          <a-form-item label="手机号" name="phone">
-            <a-input v-model:value="query.phone" placeholder="请输入手机号" allow-clear />
+          <a-form-item :label="$t('common.field.phone')" name="phone">
+            <a-input v-model:value="query.phone" :placeholder="$t('common.placeholder.inputName', { name: $t('common.field.phone') })" allow-clear />
           </a-form-item>
-          <a-form-item label="状态" name="status">
+          <a-form-item :label="$t('common.field.status')" name="status">
             <a-select
               v-model:value="query.status"
-              placeholder="全部"
+              :placeholder="$t('common.placeholder.all')"
               allow-clear
               :options="toOptions(dict.sys_common_status, true)"
             />
@@ -35,27 +35,27 @@
           @refresh="load"
         >
           <a-button v-perm="'sys:user:add'" type="primary" @click="openCreate">
-            <template #icon><PlusOutlined /></template>新增用户
+            <template #icon><PlusOutlined /></template>{{ $t('system.user.addUser') }}
           </a-button>
           <a-button v-perm="'sys:user:edit'" :disabled="!selectedKeys.length" @click="openMove(selectedKeys)">
-            <template #icon><SwapOutlined /></template>调整部门
+            <template #icon><SwapOutlined /></template>{{ $t('system.user.moveDept') }}
           </a-button>
           <span v-perm="'sys:user:remove'">
             <a-popconfirm
-              :title="`确定删除选中的 ${selectedKeys.length} 个用户？`"
+              :title="$t('system.user.confirmDeleteN', { n: selectedKeys.length })"
               :disabled="!selectedKeys.length"
               @confirm="remove(selectedKeys)"
             >
               <a-button danger :disabled="!selectedKeys.length">
-                <template #icon><DeleteOutlined /></template>批量删除
+                <template #icon><DeleteOutlined /></template>{{ $t('common.action.batchDelete') }}
               </a-button>
             </a-popconfirm>
           </span>
           <span v-if="selectedKeys.length" class="selected-tip">
-            已选 {{ selectedKeys.length }} 项 <a @click="selectedKeys = []">清空</a>
+            {{ $t('common.table.selected', { n: selectedKeys.length }) }} <a @click="selectedKeys = []">{{ $t('common.action.clear') }}</a>
           </span>
           <template #extra>
-            <a-tooltip :title="showDept ? '隐藏部门' : '显示部门'">
+            <a-tooltip :title="showDept ? $t('system.user.hideDept') : $t('system.user.showDept')">
               <a-button type="text" @click="showDept = !showDept">
                 <template #icon><MenuFoldOutlined v-if="showDept" /><MenuUnfoldOutlined v-else /></template>
               </a-button>
@@ -82,7 +82,7 @@
               <a-tooltip v-if="record.deptId" :title="namePath(deptList, record.deptId)">
                 <span>{{ record.deptName || '-' }}</span>
               </a-tooltip>
-              <span v-else class="sub-text">未分配</span>
+              <span v-else class="sub-text">{{ $t('system.user.unassigned') }}</span>
             </template>
             <template v-else-if="column.key === 'status'">
               <StatusSwitch
@@ -96,10 +96,10 @@
             <template v-else-if="column.key === 'action'">
               <span class="table-actions">
                 <a-button v-perm="'sys:user:edit'" type="link" size="small" @click="userForm.openEdit(record)">
-                  <template #icon><EditOutlined /></template>编辑
+                  <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
                 </a-button>
                 <a-dropdown v-if="moreActions(record).length">
-                  <a-button type="link" size="small">更多<DownOutlined /></a-button>
+                  <a-button type="link" size="small">{{ $t('common.action.more') }}<DownOutlined /></a-button>
                   <template #overlay>
                     <a-menu @click="({ key }) => onMoreAction(key, record)">
                       <a-menu-item v-for="a in moreActions(record)" :key="a.key" :danger="a.danger" :disabled="a.disabled">
@@ -128,16 +128,16 @@
     <!-- 重置密码 -->
     <a-modal
       v-model:open="resetOpen"
-      :title="`重置密码：${resetTarget?.username}`"
+      :title="$t('system.user.resetPwdTitle', { name: resetTarget?.username })"
       :confirm-loading="resetting"
       destroy-on-close
       @ok="submitReset"
     >
       <a-form ref="resetRef" :model="resetForm" layout="vertical">
-        <a-form-item label="新密码" name="password" :rules="passwordRules('请输入新密码')">
+        <a-form-item :label="$t('system.user.newPassword')" name="password" :rules="passwordRules($t('system.user.inputNewPassword'))">
           <a-input-group compact class="password-group">
             <a-input-password v-model:value="resetForm.password" :placeholder="passwordHint()" autocomplete="new-password" />
-            <a-tooltip title="随机生成并复制">
+            <a-tooltip :title="$t('system.user.generatePassword')">
               <a-button @click="fillResetPassword">
                 <template #icon><ThunderboltOutlined /></template>
               </a-button>
@@ -145,13 +145,14 @@
           </a-input-group>
         </a-form-item>
       </a-form>
-      <a-alert type="warning" show-icon message="重置后该用户的所有登录会话将失效，需要使用新密码重新登录。" />
+      <a-alert type="warning" show-icon :message="$t('system.user.resetPwdTip')" />
     </a-modal>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Modal, message } from 'ant-design-vue'
 import {
   DeleteOutlined,
@@ -183,18 +184,19 @@ import { generateAndCopyPassword, passwordHint, passwordRules } from '@/utils/pa
 import { load as loadPref, save as savePref } from '@/utils/storage'
 import { namePath } from '@/utils/tree'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPerm('sys:user:edit'))
 const dict = useDict('sys_common_status')
 
 const columns = [
-  { title: '用户', key: 'username', width: 180 },
-  { title: '部门', key: 'dept', width: 120, ellipsis: true },
-  { title: '手机号', dataIndex: 'phone', width: 130 },
-  { title: '邮箱', dataIndex: 'email', width: 180, ellipsis: true },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '创建时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 150, fixed: 'right' }
+  { title: t('common.field.user'), key: 'username', width: 180 },
+  { title: t('common.field.dept'), key: 'dept', width: 120, ellipsis: true },
+  { title: t('common.field.phone'), dataIndex: 'phone', width: 130 },
+  { title: t('common.field.email'), dataIndex: 'email', width: 180, ellipsis: true },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'system-user')
 const showSearch = ref(true)
@@ -235,10 +237,10 @@ const isProtected = (record) => record.id === SUPER_ADMIN_ID || record.id === us
 
 function moreActions(record) {
   const actions = []
-  if (userStore.hasPerm('sys:user:edit')) actions.push({ key: 'move', label: '调整部门', icon: SwapOutlined })
-  if (userStore.hasPerm('sys:user:resetPwd')) actions.push({ key: 'resetPwd', label: '重置密码', icon: KeyOutlined })
+  if (userStore.hasPerm('sys:user:edit')) actions.push({ key: 'move', label: t('system.user.moveDept'), icon: SwapOutlined })
+  if (userStore.hasPerm('sys:user:resetPwd')) actions.push({ key: 'resetPwd', label: t('system.user.resetPwd'), icon: KeyOutlined })
   if (userStore.hasPerm('sys:user:remove')) {
-    actions.push({ key: 'remove', label: '删除', icon: DeleteOutlined, danger: true, disabled: isProtected(record) })
+    actions.push({ key: 'remove', label: t('common.action.delete'), icon: DeleteOutlined, danger: true, disabled: isProtected(record) })
   }
   return actions
 }
@@ -248,8 +250,8 @@ function onMoreAction(key, record) {
   if (key === 'resetPwd') openReset(record)
   if (key === 'remove') {
     Modal.confirm({
-      title: `确定删除用户「${record.username}」？`,
-      content: '删除后该用户的所有登录会话将立即失效。',
+      title: t('system.user.confirmDelete', { name: record.username }),
+      content: t('system.user.deleteTip'),
       okType: 'danger',
       onOk: () => remove([record.id])
     })
@@ -258,7 +260,7 @@ function onMoreAction(key, record) {
 
 async function remove(ids) {
   await deleteUser(ids)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   selectedKeys.value = selectedKeys.value.filter((k) => !ids.includes(k))
   load()
 }
@@ -302,7 +304,7 @@ async function submitReset() {
   resetting.value = true
   try {
     await resetUserPassword(resetTarget.value.id, resetForm.password)
-    message.success('密码已重置')
+    message.success(t('system.user.pwdReset'))
     resetOpen.value = false
   } finally {
     resetting.value = false

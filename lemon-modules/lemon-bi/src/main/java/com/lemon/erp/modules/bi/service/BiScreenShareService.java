@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.bi.service;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -77,7 +78,7 @@ public class BiScreenShareService {
             Map<String, Object> info = new LinkedHashMap<>();
             info.put("name", share.getName());
             info.put("company", screenMapper.tenantName(tenantOf(share)));
-            info.put("screens", keys(share).stream().map(k -> Map.of("key", k.name(), "label", k.getLabel())).toList());
+            info.put("screens", keys(share).stream().map(k -> Map.of("key", k.name(), "label", I18n.t(k.getLabel()))).toList());
             info.put("intervalSeconds", share.getIntervalSeconds());
             info.put("workCenterId", share.getWorkCenterId());
             info.put("workCenterName", share.getWorkCenterId() == null ? null : screenMapper.workCenterName(share.getWorkCenterId()));

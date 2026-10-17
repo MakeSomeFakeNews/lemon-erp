@@ -80,7 +80,7 @@ public class DingTalkClient implements ImClient {
         Map<String, Object> msg = card.url() == null
                 ? Map.of("msgtype", "markdown", "markdown", Map.of("title", card.title(), "text", markdown(card)))
                 : Map.of("msgtype", "action_card", "action_card", Map.of("title", card.title(), "markdown", markdown(card),
-                        "single_title", "查看详情", "single_url", card.url()));
+                        "single_title", "查看详情", "single_url", card.url())); // i18n-ignore 推送到平台的消息
         for (int i = 0; i < userIds.size(); i += SEND_BATCH) {
             List<String> batch = userIds.subList(i, Math.min(i + SEND_BATCH, userIds.size()));
             check(http.post(P, oapi("/topapi/message/corpconversation/asyncsend_v2", config), Map.of(), Map.of(
@@ -134,7 +134,7 @@ public class DingTalkClient implements ImClient {
             String sign = ImHttp.hmacBase64(secret.getBytes(StandardCharsets.UTF_8), (ts + "\n" + secret).getBytes(StandardCharsets.UTF_8));
             url += (url.contains("?") ? "&" : "?") + "timestamp=" + ts + "&sign=" + URLEncoder.encode(sign, StandardCharsets.UTF_8);
         }
-        String text = markdown(card) + (card.url() == null ? "" : "\n\n[查看详情](" + card.url() + ")");
+        String text = markdown(card) + (card.url() == null ? "" : "\n\n[查看详情](" + card.url() + ")"); // i18n-ignore 推送到平台的消息
         check(http.post(P, URI.create(url), Map.of(), Map.of("msgtype", "markdown", "markdown", Map.of("title", card.title(), "text", text))));
     }
 

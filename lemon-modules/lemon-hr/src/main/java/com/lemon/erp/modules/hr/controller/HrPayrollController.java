@@ -52,14 +52,14 @@ public class HrPayrollController {
     /** 生成 / 重新生成工资表，body：{ period: yyyyMM } */
     @PostMapping("/generate")
     @PreAuthorize("@ss.hasPerm('hr:payroll:add')")
-    @OperLog(title = "薪酬核算-生成工资表", type = OperType.INSERT)
+    @OperLog(title = "薪酬核算-生成工资表", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> generate(@RequestBody Map<String, Integer> body) {
         return R.ok(payrollService.generate(body.get("period")));
     }
 
     @PutMapping("/item/{itemId}")
     @PreAuthorize("@ss.hasPerm('hr:payroll:edit')")
-    @OperLog(title = "薪酬核算-调整", type = OperType.UPDATE)
+    @OperLog(title = "薪酬核算-调整", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> adjust(@PathVariable Long itemId, @Valid @RequestBody PayrollAdjustRequest req) {
         payrollService.adjust(itemId, req);
         return R.ok();
@@ -67,14 +67,14 @@ public class HrPayrollController {
 
     @PostMapping("/{id}/confirm")
     @PreAuthorize("@ss.hasPerm('hr:payroll:confirm')")
-    @OperLog(title = "薪酬核算-确认", type = OperType.UPDATE)
+    @OperLog(title = "薪酬核算-确认", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Boolean> confirm(@PathVariable Long id) {
         return R.ok(payrollService.confirm(id));
     }
 
     @PostMapping("/{id}/unconfirm")
     @PreAuthorize("@ss.hasPerm('hr:payroll:confirm')")
-    @OperLog(title = "薪酬核算-取消确认", type = OperType.UPDATE)
+    @OperLog(title = "薪酬核算-取消确认", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> unconfirm(@PathVariable Long id) {
         payrollService.unconfirm(id);
         return R.ok();
@@ -82,7 +82,7 @@ public class HrPayrollController {
 
     @PostMapping("/{id}/accrual")
     @PreAuthorize("@ss.hasPerm('hr:payroll:confirm')")
-    @OperLog(title = "薪酬核算-生成计提凭证", type = OperType.INSERT)
+    @OperLog(title = "薪酬核算-生成计提凭证", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Void> accrual(@PathVariable Long id) {
         payrollService.regenerateAccrual(id);
         return R.ok();
@@ -90,7 +90,7 @@ public class HrPayrollController {
 
     @PostMapping("/{id}/pay")
     @PreAuthorize("@ss.hasPerm('hr:payroll:pay')")
-    @OperLog(title = "薪酬核算-发放", type = OperType.UPDATE)
+    @OperLog(title = "薪酬核算-发放", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> pay(@PathVariable Long id, @Valid @RequestBody PayrollPayRequest req) {
         payrollService.pay(id, req);
         return R.ok();
@@ -98,7 +98,7 @@ public class HrPayrollController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('hr:payroll:remove')")
-    @OperLog(title = "薪酬核算", type = OperType.DELETE)
+    @OperLog(title = "薪酬核算", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable Long id) {
         payrollService.delete(id);
         return R.ok();

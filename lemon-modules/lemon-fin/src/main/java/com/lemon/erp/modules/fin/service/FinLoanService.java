@@ -117,7 +117,8 @@ public class FinLoanService {
         periodGuard.checkOpen(d, "借款付款");
         accountService.requireCashAccount(accountId);
         transit(id, "APPROVED", "PAID");
-        String summary = "员工借款 " + l.getLoanNo() + " " + l.getUserName() + (l.getPurpose() == null ? "" : " " + l.getPurpose());
+        String summary = "员工借款 " + l.getLoanNo() // i18n-ignore
+                + " " + l.getUserName() + (l.getPurpose() == null ? "" : " " + l.getPurpose());
         Long voucherId = voucherService.createGenerated(d, VoucherSource.LOAN, l.getLoanNo(), List.of(
                 VoucherLine.debit(summary, accountRules.accountId(AccountRole.OTHER_RECEIVABLE), l.getDeptId(), l.getAmount()),
                 VoucherLine.credit(summary, accountId, null, l.getAmount())));
@@ -135,7 +136,7 @@ public class FinLoanService {
         if (amount == null || amount.signum() <= 0) {
             throw new BizException("还款金额必须大于 0");
         }
-        String summary = "归还借款 " + l.getLoanNo() + " " + l.getUserName();
+        String summary = "归还借款 " + l.getLoanNo() + " " + l.getUserName(); // i18n-ignore
         Long voucherId = voucherService.createGenerated(d, VoucherSource.LOAN, l.getLoanNo(), List.of(
                 VoucherLine.debit(summary, accountId, null, amount),
                 VoucherLine.credit(summary, accountRules.accountId(AccountRole.OTHER_RECEIVABLE), l.getDeptId(), amount)));
@@ -155,7 +156,7 @@ public class FinLoanService {
 
     private void addRepay(FinLoan l, BigDecimal amount, LocalDate date, String method, Long claimId, Long accountId, Long voucherId) {
         if (loanMapper.addRepaid(l.getId(), amount) == 0) {
-            throw new BizException("还款金额超过未还金额 " + l.getAmount().subtract(l.getRepaidAmount()).toPlainString());
+            throw new BizException("还款金额超过未还金额 {0}", l.getAmount().subtract(l.getRepaidAmount()).toPlainString());
         }
         FinLoanRepay r = new FinLoanRepay();
         r.setLoanId(l.getId());
@@ -172,7 +173,7 @@ public class FinLoanService {
     private FinLoan requireStatus(Long id, String status) {
         FinLoan l = detail(id);
         if (!status.equals(l.getStatus())) {
-            throw new BizException("借款单 " + l.getLoanNo() + " 状态不正确，请刷新");
+            throw new BizException("借款单 {0} 状态不正确，请刷新", l.getLoanNo());
         }
         return l;
     }

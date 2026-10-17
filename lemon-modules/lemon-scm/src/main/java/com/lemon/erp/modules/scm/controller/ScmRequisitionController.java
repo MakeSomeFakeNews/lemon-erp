@@ -49,14 +49,14 @@ public class ScmRequisitionController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:requisition:add')")
-    @OperLog(title = "请购单", type = OperType.INSERT)
+    @OperLog(title = "请购单", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody RequisitionRequest req) {
         return R.ok(requisitionService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:requisition:edit')")
-    @OperLog(title = "请购单", type = OperType.UPDATE)
+    @OperLog(title = "请购单", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody RequisitionRequest req) {
         requisitionService.update(id, req);
         return R.ok();
@@ -64,7 +64,7 @@ public class ScmRequisitionController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('scm:requisition:remove')")
-    @OperLog(title = "请购单", type = OperType.DELETE)
+    @OperLog(title = "请购单", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         requisitionService.delete(ids);
         return R.ok();
@@ -73,21 +73,21 @@ public class ScmRequisitionController {
     /** 提交：返回 true 表示已发起审批，false 表示直接批准 */
     @PostMapping("/{id}/submit")
     @PreAuthorize("@ss.hasPerm('scm:requisition:edit')")
-    @OperLog(title = "请购单", type = OperType.UPDATE)
+    @OperLog(title = "请购单", type = OperType.UPDATE) // i18n-ignore
     public R<Boolean> submit(@PathVariable Long id) {
         return R.ok(requisitionService.submit(id));
     }
 
     @PostMapping("/{id}/to-order")
     @PreAuthorize("@ss.hasPerm('scm:requisition:order')")
-    @OperLog(title = "请购单生成采购订单", type = OperType.INSERT)
+    @OperLog(title = "请购单生成采购订单", type = OperType.INSERT) // i18n-ignore
     public R<List<Long>> toOrders(@PathVariable Long id, @RequestParam(required = false) Long warehouseId) {
         return R.ok(requisitionService.toOrders(id, warehouseId));
     }
 
     @PostMapping("/{id}/close")
     @PreAuthorize("@ss.hasPerm('scm:requisition:edit')")
-    @OperLog(title = "请购单", type = OperType.UPDATE)
+    @OperLog(title = "请购单", type = OperType.UPDATE) // i18n-ignore
     public R<Void> close(@PathVariable Long id) {
         requisitionService.close(id);
         return R.ok();

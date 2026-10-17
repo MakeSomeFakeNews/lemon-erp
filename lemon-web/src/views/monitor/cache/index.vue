@@ -2,14 +2,14 @@
   <div class="cache-page">
     <div class="page-card page-head">
       <div>
-        <h3>缓存监控</h3>
+        <h3>{{ $t('monitor.cache.title') }}</h3>
         <span class="sub">
-          {{ isRedis ? `Redis ${redis.redis_version || ''} · ${redis.redis_mode || 'standalone'}` : '内存缓存' }}
-          <template v-if="updatedAt"> · 更新于 {{ updatedAt }}</template>
+          {{ isRedis ? `Redis ${redis.redis_version || ''} · ${redis.redis_mode || 'standalone'}` : $t('monitor.cache.memoryCache') }}
+          <template v-if="updatedAt"> · {{ $t('monitor.server.updatedAt', { time: updatedAt }) }}</template>
         </span>
       </div>
       <a-button :loading="loading" @click="loadAll">
-        <template #icon><ReloadOutlined /></template>刷新
+        <template #icon><ReloadOutlined /></template>{{ $t('common.action.refresh') }}
       </a-button>
     </div>
 
@@ -18,8 +18,8 @@
       type="info"
       show-icon
       class="mode-alert"
-      message="当前使用内存缓存（lemon.cache.type = memory），Redis 运行指标不可用"
-      description="内存缓存仅适用于本地体验与测试。生产环境请使用 Redis，下方的缓存管理在两种模式下都可以使用。"
+      :message="$t('monitor.cache.memoryTip')"
+      :description="$t('monitor.cache.memoryTipDesc')"
     />
 
     <!-- 指标 -->
@@ -35,37 +35,37 @@
 
     <a-row v-if="isRedis" :gutter="[16, 16]" class="section">
       <a-col :xs="24" :xl="12">
-        <a-card :bordered="false" class="page-card full" title="基本信息">
+        <a-card :bordered="false" class="page-card full" :title="$t('monitor.cache.basicInfo')">
           <a-descriptions :column="{ xs: 1, sm: 2 }" size="small" bordered :label-style="{ width: '96px', whiteSpace: 'nowrap' }">
-            <a-descriptions-item label="版本">{{ redis.redis_version }}</a-descriptions-item>
-            <a-descriptions-item label="运行模式">{{ redis.redis_mode }}</a-descriptions-item>
-            <a-descriptions-item label="端口">{{ redis.tcp_port }}</a-descriptions-item>
-            <a-descriptions-item label="角色">{{ redis.role }}</a-descriptions-item>
-            <a-descriptions-item label="操作系统">{{ redis.os }}</a-descriptions-item>
-            <a-descriptions-item label="运行时长">{{ formatDuration(Number(redis.uptime_in_seconds)) }}</a-descriptions-item>
-            <a-descriptions-item label="已用内存">{{ redis.used_memory_human }}</a-descriptions-item>
-            <a-descriptions-item label="内存峰值">{{ redis.used_memory_peak_human }}</a-descriptions-item>
-            <a-descriptions-item label="内存上限">
-              {{ redis.maxmemory_human === '0B' ? '不限制' : redis.maxmemory_human }}
+            <a-descriptions-item :label="$t('monitor.server.version')">{{ redis.redis_version }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.cache.mode')">{{ redis.redis_mode }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.cache.port')">{{ redis.tcp_port }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.cache.role')">{{ redis.role }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.server.os')">{{ redis.os }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.server.uptime')">{{ formatDuration(Number(redis.uptime_in_seconds)) }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.cache.usedMemory')">{{ redis.used_memory_human }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.cache.peakMemory')">{{ redis.used_memory_peak_human }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.cache.maxMemory')">
+              {{ redis.maxmemory_human === '0B' ? $t('monitor.cache.unlimited') : redis.maxmemory_human }}
             </a-descriptions-item>
-            <a-descriptions-item label="碎片率">{{ redis.mem_fragmentation_ratio }}</a-descriptions-item>
-            <a-descriptions-item label="淘汰策略">{{ redis.maxmemory_policy }}</a-descriptions-item>
-            <a-descriptions-item label="AOF">{{ redis.aof_enabled === '1' ? '开启' : '关闭' }}</a-descriptions-item>
-            <a-descriptions-item label="RDB 最近保存">{{ redis.rdb_last_bgsave_status }}</a-descriptions-item>
-            <a-descriptions-item label="网络流量">
-              入 {{ formatBytes(Number(redis.total_net_input_bytes)) }} / 出 {{ formatBytes(Number(redis.total_net_output_bytes)) }}
+            <a-descriptions-item :label="$t('monitor.cache.fragmentation')">{{ redis.mem_fragmentation_ratio }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.cache.evictionPolicy')">{{ redis.maxmemory_policy }}</a-descriptions-item>
+            <a-descriptions-item label="AOF">{{ redis.aof_enabled === '1' ? $t('system.config.on') : $t('system.config.off') }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.cache.rdbLastSave')">{{ redis.rdb_last_bgsave_status }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.cache.network')">
+              {{ $t('monitor.cache.networkValue', { in: formatBytes(Number(redis.total_net_input_bytes)), out: formatBytes(Number(redis.total_net_output_bytes)) }) }}
             </a-descriptions-item>
-            <a-descriptions-item label="过期 Key">{{ formatNumber(Number(redis.expired_keys)) }}</a-descriptions-item>
-            <a-descriptions-item label="淘汰 Key">{{ formatNumber(Number(redis.evicted_keys)) }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.cache.expiredKeys')">{{ formatNumber(Number(redis.expired_keys)) }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('monitor.cache.evictedKeys')">{{ formatNumber(Number(redis.evicted_keys)) }}</a-descriptions-item>
           </a-descriptions>
         </a-card>
       </a-col>
       <a-col :xs="24" :xl="12">
-        <a-card :bordered="false" class="page-card full" title="命令统计">
+        <a-card :bordered="false" class="page-card full" :title="$t('monitor.cache.commandStats')">
           <template #extra>
-            <a-segmented v-model:value="cmdView" :options="['图表', '表格']" size="small" />
+            <a-segmented v-model:value="cmdView" :options="[{ label: $t('monitor.cache.chart'), value: 'chart' }, { label: $t('monitor.cache.table'), value: 'table' }]" size="small" />
           </template>
-          <CommandStatsChart v-if="cmdView === '图表'" :data="info.commandStats" />
+          <CommandStatsChart v-if="cmdView === 'chart'" :data="info.commandStats" />
           <a-table
             v-else
             size="small"
@@ -81,7 +81,7 @@
     <!-- 缓存管理 -->
     <a-row :gutter="[16, 16]" class="section">
       <a-col :xs="24" :lg="7">
-        <a-card :bordered="false" class="page-card manage-card" title="缓存列表">
+        <a-card :bordered="false" class="page-card manage-card" :title="$t('monitor.cache.cacheList')">
           <div class="list">
             <div
               v-for="c in names"
@@ -101,8 +101,8 @@
                 <div class="item-sub">{{ c.remark }}</div>
               </div>
               <span v-perm="'monitor:cache:remove'" @click.stop>
-                <a-popconfirm :title="`确定清空「${c.name}」的全部缓存？`" @confirm="clear(c)">
-                  <a-tooltip title="清空">
+                <a-popconfirm :title="$t('monitor.cache.confirmClear', { name: c.name })" @confirm="clear(c)">
+                  <a-tooltip :title="$t('common.action.clear')">
                     <a-button type="text" size="small" danger><template #icon><ClearOutlined /></template></a-button>
                   </a-tooltip>
                 </a-popconfirm>
@@ -113,9 +113,9 @@
       </a-col>
 
       <a-col :xs="24" :lg="7">
-        <a-card :bordered="false" class="page-card manage-card" :title="`键名列表${keys.length ? `（${keys.length}）` : ''}`">
+        <a-card :bordered="false" class="page-card manage-card" :title="keys.length ? $t('monitor.cache.keyListN', { n: keys.length }) : $t('monitor.cache.keyList')">
           <template #extra>
-            <a-tooltip title="刷新">
+            <a-tooltip :title="$t('common.action.refresh')">
               <a-button type="text" size="small" :disabled="!currentPrefix" @click="loadKeys">
                 <template #icon><ReloadOutlined /></template>
               </a-button>
@@ -124,12 +124,12 @@
           <a-input
             v-if="keys.length"
             v-model:value="keyFilter"
-            placeholder="筛选键名"
+            :placeholder="$t('monitor.cache.filterKeys')"
             allow-clear
             size="small"
             class="key-filter"
           />
-          <a-empty v-if="!filteredKeys.length" :image="simpleImage" :description="currentPrefix ? '没有缓存' : '请选择左侧缓存'" />
+          <a-empty v-if="!filteredKeys.length" :image="simpleImage" :description="currentPrefix ? $t('monitor.cache.noCache') : $t('monitor.cache.selectCache')" />
           <div v-else class="list">
             <div
               v-for="k in filteredKeys"
@@ -142,7 +142,7 @@
             >
               <span class="key-text" :title="k">{{ k.slice(currentPrefix.length) || k }}</span>
               <span v-perm="'monitor:cache:remove'" @click.stop>
-                <a-popconfirm title="确定删除该缓存？" @confirm="removeKey(k)">
+                <a-popconfirm :title="$t('monitor.cache.confirmDelete')" @confirm="removeKey(k)">
                   <a-button type="text" size="small" danger><template #icon><DeleteOutlined /></template></a-button>
                 </a-popconfirm>
               </span>
@@ -152,15 +152,15 @@
       </a-col>
 
       <a-col :xs="24" :lg="10">
-        <a-card :bordered="false" class="page-card manage-card" title="缓存内容">
-          <a-empty v-if="!value" :image="simpleImage" description="请选择键名查看内容" />
+        <a-card :bordered="false" class="page-card manage-card" :title="$t('monitor.cache.content')">
+          <a-empty v-if="!value" :image="simpleImage" :description="$t('monitor.cache.selectKey')" />
           <template v-else>
             <a-descriptions :column="1" size="small" class="value-desc">
-              <a-descriptions-item label="键名">
+              <a-descriptions-item :label="$t('monitor.cache.key')">
                 <a-typography-text copyable :content="value.key" code />
               </a-descriptions-item>
-              <a-descriptions-item label="过期时间">
-                {{ value.ttl < 0 ? '永不过期' : `${formatDuration(value.ttl)}后过期` }}
+              <a-descriptions-item :label="$t('monitor.cache.ttl')">
+                {{ value.ttl < 0 ? $t('monitor.cache.neverExpire') : $t('monitor.cache.expireIn', { time: formatDuration(value.ttl) }) }}
               </a-descriptions-item>
             </a-descriptions>
             <pre class="code-block value-json">{{ prettyJson(value.value) }}</pre>
@@ -174,6 +174,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import dayjs from 'dayjs'
+import { useI18n } from 'vue-i18n'
 import { Empty, message } from 'ant-design-vue'
 import { ClearOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import CommandStatsChart from '@/components/monitor/CommandStatsChart.vue'
@@ -187,12 +188,13 @@ import {
 } from '@/api/monitor/cache'
 import { formatBytes, formatDuration, formatNumber, prettyJson } from '@/utils/format'
 
+const { t } = useI18n()
 const simpleImage = Empty.PRESENTED_IMAGE_SIMPLE
 
 const info = ref(null)
 const loading = ref(false)
 const updatedAt = ref('')
-const cmdView = ref('图表')
+const cmdView = ref('chart')
 
 const isRedis = computed(() => info.value?.type === 'redis')
 const redis = computed(() => info.value?.info || {})
@@ -203,20 +205,20 @@ const stats = computed(() => {
   const misses = Number(r.keyspace_misses || 0)
   const hitRate = hits + misses ? ((hits / (hits + misses)) * 100).toFixed(1) + '%' : '-'
   return [
-    { label: 'Key 总数', value: formatNumber(info.value.dbSize), sub: `过期 ${formatNumber(Number(r.expired_keys || 0))}` },
-    { label: '已用内存', value: r.used_memory_human, sub: `峰值 ${r.used_memory_peak_human}` },
-    { label: '客户端连接', value: formatNumber(Number(r.connected_clients || 0)), sub: `拒绝 ${formatNumber(Number(r.rejected_connections || 0))}` },
-    { label: '每秒操作', value: formatNumber(Number(r.instantaneous_ops_per_sec || 0)), sub: `累计 ${formatNumber(Number(r.total_commands_processed || 0))}` },
-    { label: '命中率', value: hitRate, sub: `命中 ${formatNumber(hits)} / 未命中 ${formatNumber(misses)}` },
-    { label: '运行时长', value: formatDuration(Number(r.uptime_in_seconds)).replace(/ \d+ 分$/, ''), sub: `端口 ${r.tcp_port}` }
+    { label: t('monitor.cache.keyTotal'), value: formatNumber(info.value.dbSize), sub: t('monitor.cache.expiredN', { n: formatNumber(Number(r.expired_keys || 0)) }) },
+    { label: t('monitor.cache.usedMemory'), value: r.used_memory_human, sub: t('monitor.cache.peakN', { n: r.used_memory_peak_human }) },
+    { label: t('monitor.cache.clients'), value: formatNumber(Number(r.connected_clients || 0)), sub: t('monitor.cache.rejectedN', { n: formatNumber(Number(r.rejected_connections || 0)) }) },
+    { label: t('monitor.cache.opsPerSec'), value: formatNumber(Number(r.instantaneous_ops_per_sec || 0)), sub: t('monitor.cache.totalN', { n: formatNumber(Number(r.total_commands_processed || 0)) }) },
+    { label: t('monitor.cache.hitRate'), value: hitRate, sub: t('monitor.cache.hitsMisses', { hits: formatNumber(hits), misses: formatNumber(misses) }) },
+    { label: t('monitor.server.uptime'), value: formatDuration(Number(r.uptime_in_seconds), true), sub: t('monitor.cache.portN', { n: r.tcp_port }) }
   ]
 })
 
 const cmdColumns = [
-  { title: '命令', dataIndex: 'name' },
-  { title: '调用次数', dataIndex: 'calls', align: 'right', customRender: ({ text }) => formatNumber(text) },
-  { title: '累计耗时 (μs)', dataIndex: 'usec', align: 'right', customRender: ({ text }) => formatNumber(text) },
-  { title: '平均耗时 (μs)', dataIndex: 'usecPerCall', align: 'right', customRender: ({ text }) => text.toFixed(2) }
+  { title: t('monitor.cache.command'), dataIndex: 'name' },
+  { title: t('monitor.cache.calls'), dataIndex: 'calls', align: 'right', customRender: ({ text }) => formatNumber(text) },
+  { title: t('monitor.cache.usec'), dataIndex: 'usec', align: 'right', customRender: ({ text }) => formatNumber(text) },
+  { title: t('monitor.cache.usecPerCall'), dataIndex: 'usecPerCall', align: 'right', customRender: ({ text }) => text.toFixed(2) }
 ]
 
 // 缓存管理
@@ -267,14 +269,14 @@ async function selectKey(key) {
 
 async function clear(c) {
   await clearCache(c.prefix)
-  message.success(`已清空「${c.name}」`)
+  message.success(t('monitor.cache.cleared', { name: c.name }))
   if (c.prefix === currentPrefix.value) value.value = null
   await loadAll()
 }
 
 async function removeKey(key) {
   await deleteCacheKey(key)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   if (key === currentKey.value) value.value = null
   keys.value = keys.value.filter((k) => k !== key)
   names.value = await listCacheNames()

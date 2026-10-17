@@ -1,7 +1,7 @@
 <template>
   <SubPage
     :open="open"
-    :title="detail ? `询价单 ${detail.inquiryNo}` : '询价单'"
+    :title="detail ? $t('scm.inquiry.titleNo', { no: detail.inquiryNo }) : $t('scm.inquiry.title')"
     width="min(1200px, 100vw)"
     destroy-on-close
     @close="emit('update:open', false)"
@@ -13,21 +13,21 @@
     <a-spin :spinning="loading">
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="doc-desc">
-          <a-descriptions-item label="询价单号">{{ detail.inquiryNo }}</a-descriptions-item>
-          <a-descriptions-item label="询价日期">{{ detail.inquiryDate }}</a-descriptions-item>
-          <a-descriptions-item label="报价截止">
+          <a-descriptions-item :label="$t('scm.inquiry.inquiryNo')">{{ detail.inquiryNo }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.inquiry.inquiryDate')">{{ detail.inquiryDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.inquiry.deadline')">
             {{ detail.deadline || '-' }}
-            <a-tag v-if="quoting && detail.deadline && detail.deadline < today()" color="orange" :bordered="false" class="tag-gap">已过截止日</a-tag>
+            <a-tag v-if="quoting && detail.deadline && detail.deadline < today()" color="orange" :bordered="false" class="tag-gap">{{ $t('scm.inquiry.pastDeadline') }}</a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="制单">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item label="报价供应商">{{ suppliers.length }} 家</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="说明">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.inquiry.creator')">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.inquiry.quoteSuppliers')">{{ $t('scm.inquiry.supplierCount', { n: suppliers.length }) }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('scm.inquiry.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
 
         <div class="section-head">
-          <span class="section-title">比价</span>
+          <span class="section-title">{{ $t('scm.inquiry.compare') }}</span>
           <span class="sub-text">
-            每格为含税单价 / 交期，绿色为该物料的最低价{{ quoting ? '；选中的报价为中标报价，默认选最低价' : '' }}
+            {{ quoting ? $t('scm.inquiry.compareTipQuoting') : $t('scm.inquiry.compareTip') }}
           </span>
         </div>
         <a-table
@@ -47,12 +47,12 @@
                   <DictTag v-if="column.supplier.supplierLevel" type="scm_supplier_level" :value="column.supplier.supplierLevel" />
                 </span>
                 <span v-if="quoting && can('edit')" class="head-actions">
-                  <a-tooltip title="修改报价">
+                  <a-tooltip :title="$t('scm.inquiry.editQuote')">
                     <a-button type="link" size="small" @click="openQuote(column.supplier)">
                       <template #icon><EditOutlined /></template>
                     </a-button>
                   </a-tooltip>
-                  <a-popconfirm title="删除该供应商的全部报价？" @confirm="removeQuote(column.supplier.supplierId)">
+                  <a-popconfirm :title="$t('scm.inquiry.confirmDeleteQuote')" @confirm="removeQuote(column.supplier.supplierId)">
                     <a-button type="link" danger size="small">
                       <template #icon><DeleteOutlined /></template>
                     </a-button>
@@ -68,7 +68,7 @@
             </template>
             <template v-else-if="column.key === 'qty'">
               <div>{{ formatQty(record.qty) }} {{ record.unit }}</div>
-              <div v-if="record.requiredDate" class="sub-text">需 {{ record.requiredDate }}</div>
+              <div v-if="record.requiredDate" class="sub-text">{{ $t('scm.inquiry.need', { date: record.requiredDate }) }}</div>
             </template>
             <template v-else-if="column.supplier">
               <template v-if="quoteOf(record.id, column.supplier.supplierId)">
@@ -80,9 +80,9 @@
                   <CheckCircleFilled v-else-if="record.selectedQuoteId === quoteOf(record.id, column.supplier.supplierId).id" class="won" />
                   <span>
                     <b>¥{{ formatPrice(quoteOf(record.id, column.supplier.supplierId).price) }}</b>
-                    <span class="sub-text"> / {{ quoteOf(record.id, column.supplier.supplierId).leadDays ?? '-' }} 天</span>
+                    <span class="sub-text"> / {{ $t('scm.inquiry.days', { n: quoteOf(record.id, column.supplier.supplierId).leadDays ?? '-' }) }}</span>
                     <div class="sub-text">
-                      税率 {{ Number(quoteOf(record.id, column.supplier.supplierId).taxRate || 0) }}%
+                      {{ $t('scm.inquiry.taxRateVal', { n: Number(quoteOf(record.id, column.supplier.supplierId).taxRate || 0) }) }}
                       <template v-if="quoteOf(record.id, column.supplier.supplierId).remark">
                         · {{ quoteOf(record.id, column.supplier.supplierId).remark }}
                       </template>
@@ -90,7 +90,7 @@
                   </span>
                 </div>
               </template>
-              <span v-else class="sub-text">未报价</span>
+              <span v-else class="sub-text">{{ $t('scm.inquiry.notQuoted') }}</span>
             </template>
             <template v-else-if="column.key === 'order'">
               <a v-if="record.orderId" @click="toOrder(record.orderId)">{{ record.orderNo }}</a>
@@ -98,7 +98,7 @@
             </template>
           </template>
         </a-table>
-        <a-empty v-if="!suppliers.length" class="empty" description="还没有供应商报价，点击「录入报价」添加" />
+        <a-empty v-if="!suppliers.length" class="empty" :description="$t('scm.inquiry.emptyQuotes')" />
       </template>
     </a-spin>
 
@@ -110,9 +110,9 @@
       </div>
     </template>
 
-    <a-modal v-model:open="quoteOpen" title="录入报价" width="min(900px, 100vw)" :confirm-loading="saving" @ok="submitQuote">
+    <a-modal v-model:open="quoteOpen" :title="$t('scm.inquiry.enterQuote')" width="min(900px, 100vw)" :confirm-loading="saving" @ok="submitQuote">
       <a-form layout="vertical">
-        <a-form-item label="供应商" required>
+        <a-form-item :label="$t('scm.inquiry.supplier')" required>
           <PartnerSelect
             v-model:value="quoteForm.supplierId"
             type="supplier"
@@ -129,13 +129,13 @@
             <div class="sub-text">{{ formatQty(record.qty) }} {{ record.unit }}</div>
           </template>
           <template v-else-if="column.key === 'price'">
-            <a-input-number v-model:value="record.price" :min="0" :precision="4" prefix="¥" placeholder="不报价留空" class="full" />
+            <a-input-number v-model:value="record.price" :min="0" :precision="4" prefix="¥" :placeholder="$t('scm.inquiry.noQuotePh')" class="full" />
           </template>
           <template v-else-if="column.key === 'taxRate'">
             <a-input-number v-model:value="record.taxRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" />
           </template>
           <template v-else-if="column.key === 'leadDays'">
-            <a-input-number v-model:value="record.leadDays" :min="0" :max="365" addon-after="天" class="full" />
+            <a-input-number v-model:value="record.leadDays" :min="0" :max="365" :addon-after="$t('scm.inquiry.daysUnit')" class="full" />
           </template>
           <template v-else-if="column.key === 'remark'">
             <a-input v-model:value="record.remark" :maxlength="255" />
@@ -144,19 +144,19 @@
       </a-table>
     </a-modal>
 
-    <a-modal v-model:open="finishOpen" title="定标完成" :confirm-loading="saving" @ok="submitFinish">
+    <a-modal v-model:open="finishOpen" :title="$t('scm.inquiry.finish')" :confirm-loading="saving" @ok="submitFinish">
       <p>
-        已选择 {{ selectedCount }} / {{ detail?.items.length || 0 }} 行的中标报价，未选择的明细不定标。定标后询价单不能再修改报价。
+        {{ $t('scm.inquiry.finishTip', { selected: selectedCount, total: detail?.items.length || 0 }) }}
       </p>
       <a-form layout="vertical">
         <a-form-item>
-          <a-checkbox v-model:checked="finishForm.updatePrice">用中标价更新供应商的供货价格</a-checkbox>
+          <a-checkbox v-model:checked="finishForm.updatePrice">{{ $t('scm.inquiry.updatePrice') }}</a-checkbox>
         </a-form-item>
         <a-form-item>
-          <a-checkbox v-model:checked="finishForm.createOrder">按中标供应商生成草稿采购订单</a-checkbox>
+          <a-checkbox v-model:checked="finishForm.createOrder">{{ $t('scm.inquiry.createOrder') }}</a-checkbox>
         </a-form-item>
-        <a-form-item v-if="finishForm.createOrder" label="收货仓库">
-          <WarehouseSelect v-model:value="finishForm.warehouseId" placeholder="选填，入库时默认" />
+        <a-form-item v-if="finishForm.createOrder" :label="$t('scm.inquiry.warehouse')">
+          <WarehouseSelect v-model:value="finishForm.warehouseId" :placeholder="$t('scm.inquiry.warehousePh')" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -164,6 +164,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import SubPage from '@/components/SubPage.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -175,6 +176,8 @@ import PartnerSelect from './PartnerSelect.vue'
 import { closeInquiry, deleteInquiryQuote, finishInquiry, getInquiry, saveInquiryQuote } from '@/api/scm/sourcing'
 import { useUserStore } from '@/store/user'
 import { formatQty, today } from '@/components/wms/wms'
+
+const { t } = useI18n()
 
 /** 询价单详情：按供应商比价、录入报价、定标（更新供货价格、生成采购订单）、关闭。触发 edit(record)、changed */
 const props = defineProps({
@@ -228,18 +231,18 @@ const lowestMap = computed(() => {
 const isLowest = (itemId, quote) => Number(lowestMap.value.get(itemId)?.price) === Number(quote.price)
 
 const matrixColumns = computed(() => [
-  { title: '物料', key: 'material', width: 220, fixed: 'left' },
-  { title: '数量', key: 'qty', width: 120, align: 'right' },
+  { title: t('scm.inquiry.material'), key: 'material', width: 220, fixed: 'left' },
+  { title: t('common.field.quantity'), key: 'qty', width: 120, align: 'right' },
   ...suppliers.value.map((s) => ({ key: `s-${s.supplierId}`, supplier: s, width: 170 })),
-  { title: '采购订单', key: 'order', width: 170 }
+  { title: t('scm.inquiry.purchaseOrder'), key: 'order', width: 170 }
 ])
 
 const quoteColumns = [
-  { title: '物料', key: 'material', width: 220 },
-  { title: '含税单价', key: 'price', width: 150 },
-  { title: '税率', key: 'taxRate', width: 110 },
-  { title: '交期', key: 'leadDays', width: 110 },
-  { title: '备注', key: 'remark', width: 160 }
+  { title: t('scm.inquiry.material'), key: 'material', width: 220 },
+  { title: t('scm.inquiry.taxPrice'), key: 'price', width: 150 },
+  { title: t('scm.inquiry.taxRate'), key: 'taxRate', width: 110 },
+  { title: t('scm.inquiry.leadDays'), key: 'leadDays', width: 120 },
+  { title: t('common.field.remark'), key: 'remark', width: 160 }
 ]
 
 // 中标选择：itemId → quoteId
@@ -322,16 +325,16 @@ function onSupplierSelect(partner) {
 }
 
 async function submitQuote() {
-  if (!quoteForm.supplierId) return message.warning('请选择供应商')
+  if (!quoteForm.supplierId) return message.warning(t('scm.inquiry.selectSupplier'))
   const lines = quoteForm.lines
     .filter((l) => l.price != null)
     .map((l) => ({ itemId: l.itemId, price: l.price, taxRate: l.taxRate ?? 0, leadDays: l.leadDays ?? null, remark: l.remark || null }))
-  if (!lines.length) return message.warning('请至少填写一行报价')
+  if (!lines.length) return message.warning(t('scm.inquiry.atLeastOneQuote'))
   saving.value = true
   try {
     await saveInquiryQuote(props.inquiryId, { supplierId: quoteForm.supplierId, lines })
     quoteOpen.value = false
-    await afterChange('报价已保存')
+    await afterChange(t('scm.inquiry.quoteSaved'))
   } finally {
     saving.value = false
   }
@@ -339,7 +342,7 @@ async function submitQuote() {
 
 async function removeQuote(supplierId) {
   await deleteInquiryQuote(props.inquiryId, supplierId)
-  await afterChange('已删除报价')
+  await afterChange(t('scm.inquiry.quoteDeleted'))
 }
 
 // 定标
@@ -347,7 +350,7 @@ const finishOpen = ref(false)
 const finishForm = reactive({ updatePrice: true, createOrder: true, warehouseId: undefined })
 
 function openFinish() {
-  if (!selectedCount.value) return message.warning('请在比价表中选择中标报价')
+  if (!selectedCount.value) return message.warning(t('scm.inquiry.selectWinning'))
   Object.assign(finishForm, { updatePrice: true, createOrder: true, warehouseId: undefined })
   finishOpen.value = true
 }
@@ -363,7 +366,7 @@ async function submitFinish() {
       warehouseId: finishForm.createOrder ? finishForm.warehouseId || null : null
     })
     finishOpen.value = false
-    await afterChange(orderIds?.length ? `已定标，生成 ${orderIds.length} 张采购订单` : '已定标')
+    await afterChange(orderIds?.length ? t('scm.inquiry.awardedN', { n: orderIds.length }) : t('scm.inquiry.awarded'))
   } finally {
     saving.value = false
   }
@@ -373,24 +376,24 @@ const actions = computed(() => {
   const d = detail.value
   if (!d || !quoting.value || !can('edit')) return []
   const list = []
-  if (!d.quotes?.length) list.push({ key: 'edit', label: '编辑', icon: EditOutlined, run: () => emit('edit', d) })
+  if (!d.quotes?.length) list.push({ key: 'edit', label: t('common.action.edit'), icon: EditOutlined, run: () => emit('edit', d) })
   list.push({
     key: 'close',
-    label: '关闭',
+    label: t('scm.inquiry.close'),
     icon: StopOutlined,
     danger: true,
     run: () =>
       Modal.confirm({
-        title: '关闭询价单？',
-        content: '关闭后不能再录入报价和定标。',
+        title: t('scm.inquiry.confirmClose'),
+        content: t('scm.inquiry.confirmCloseTip'),
         async onOk() {
           await closeInquiry(props.inquiryId)
-          await afterChange('已关闭')
+          await afterChange(t('scm.inquiry.closed'))
         }
       })
   })
-  list.push({ key: 'quote', label: '录入报价', icon: FormOutlined, run: () => openQuote() })
-  if (d.quotes?.length) list.push({ key: 'finish', label: '定标完成', icon: TrophyOutlined, primary: true, run: openFinish })
+  list.push({ key: 'quote', label: t('scm.inquiry.enterQuote'), icon: FormOutlined, run: () => openQuote() })
+  if (d.quotes?.length) list.push({ key: 'finish', label: t('scm.inquiry.finish'), icon: TrophyOutlined, primary: true, run: openFinish })
   return list
 })
 

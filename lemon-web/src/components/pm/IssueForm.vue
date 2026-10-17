@@ -1,45 +1,45 @@
 <template>
-  <SubPage :open="open" :title="project ? `项目领料 - ${project.code} ${project.name}` : '项目领料'" width="min(1100px, 100vw)"
+  <SubPage :open="open" :title="project ? $t('pm.issue.titleWith', { code: project.code, name: project.name }) : $t('pm.issue.title')" width="min(1100px, 100vw)"
             destroy-on-close @close="emit('update:open', false)">
     <a-alert type="info" show-icon class="tip"
-             message="从仓库现有库存中选择库位、批次领用，保存后生成「项目领料」出库单并扣减库存，按物料单位成本（最近一期成本核算单价，没有时取采购均价）计入项目材料成本。" />
+             :message="$t('pm.issue.tip')" />
     <a-form ref="formRef" :model="form" layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="24" :sm="8">
-          <a-form-item label="仓库" name="warehouseId" :rules="[{ required: true, message: '请选择仓库' }]">
+          <a-form-item :label="$t('pm.issue.warehouse')" name="warehouseId" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('pm.issue.warehouse') }) }]">
             <WarehouseSelect :value="form.warehouseId" :allow-clear="false" @update:value="onWarehouseChange" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="6">
-          <a-form-item label="业务日期" name="bizDate" :rules="[{ required: true, message: '请选择业务日期' }]">
+          <a-form-item :label="$t('pm.issue.bizDate')" name="bizDate" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('pm.issue.bizDate') }) }]">
             <a-date-picker v-model:value="form.bizDate" value-format="YYYY-MM-DD" class="full" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="10">
-          <a-form-item label="备注" name="remark">
-            <a-input v-model:value="form.remark" :maxlength="255" placeholder="选填" />
+          <a-form-item :label="$t('common.field.remark')" name="remark">
+            <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('pm.common.optional')" />
           </a-form-item>
         </a-col>
       </a-row>
 
       <div class="items-head">
-        <span class="section-title">领料明细</span>
-        <a-button type="primary" ghost size="small" @click="addRow"><template #icon><PlusOutlined /></template>添加物料</a-button>
+        <span class="section-title">{{ $t('pm.issue.items') }}</span>
+        <a-button type="primary" ghost size="small" @click="addRow"><template #icon><PlusOutlined /></template>{{ $t('pm.issue.addMaterial') }}</a-button>
       </div>
       <a-table row-key="key" size="small" class="items-table" :columns="columns" :data-source="form.items" :pagination="false"
                :scroll="{ x: 1000 }">
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
-            <a-form-item :name="['items', index, 'materialId']" :rules="[{ required: true, message: '请选择物料' }]" class="cell-item">
+            <a-form-item :name="['items', index, 'materialId']" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('pm.issue.material') }) }]" class="cell-item">
               <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => onMaterial(record, m)" />
             </a-form-item>
             <div class="row-tags">
-              <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">批次</a-tag>
-              <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">序列号</a-tag>
+              <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">{{ $t('pm.issue.batch') }}</a-tag>
+              <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">{{ $t('pm.issue.serialNo') }}</a-tag>
             </div>
           </template>
           <template v-else-if="column.key === 'slot'">
-            <a-form-item :name="['items', index, 'slot']" :rules="[{ required: true, message: '请选择库位 / 批次' }]" class="cell-item">
+            <a-form-item :name="['items', index, 'slot']" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('pm.issue.slot') }) }]" class="cell-item">
               <StockSlotSelect
                 v-model:value="record.slot"
                 :label="record.slotLabel"
@@ -49,7 +49,7 @@
                 @select="(s) => Object.assign(record, { locationId: s.locationId, batchNo: s.batchNo, slotLabel: s.label, available: Number(s.qty), serialNos: undefined })"
               />
             </a-form-item>
-            <div v-if="record.available != null" class="sub-text">可用 {{ formatQty(record.available) }}</div>
+            <div v-if="record.available != null" class="sub-text">{{ $t('pm.issue.available') }} {{ formatQty(record.available) }}</div>
           </template>
           <template v-else-if="column.key === 'qty'">
             <a-form-item :name="['items', index, 'qty']" :rules="qtyRules(record)" class="cell-item">
@@ -74,8 +74,8 @@
     </a-form>
     <template #footer>
       <div class="drawer-footer">
-        <a-button @click="emit('update:open', false)">取消</a-button>
-        <a-button type="primary" :loading="saving" :disabled="!form.items.length" @click="submit">确认领料</a-button>
+        <a-button @click="emit('update:open', false)">{{ $t('common.action.cancel') }}</a-button>
+        <a-button type="primary" :loading="saving" :disabled="!form.items.length" @click="submit">{{ $t('pm.issue.confirm') }}</a-button>
       </div>
     </template>
   </SubPage>
@@ -92,6 +92,7 @@ import SerialInput from '@/components/wms/SerialInput.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { issueMaterial } from '@/api/pm'
 import { formatQty, rowKey, today } from '@/components/wms/wms'
+import { t } from '@/locales'
 
 /** 项目领料：生成「项目领料」出库单并直接确认，计入项目材料成本 */
 const props = defineProps({
@@ -101,10 +102,10 @@ const props = defineProps({
 const emit = defineEmits(['update:open', 'success'])
 
 const columns = [
-  { title: '物料', key: 'material', width: 260 },
-  { title: '库位 / 批次', key: 'slot', width: 260 },
-  { title: '数量', key: 'qty', width: 150 },
-  { title: '序列号', key: 'serialNos', width: 240 },
+  { title: t('pm.issue.material'), key: 'material', width: 260 },
+  { title: t('pm.issue.slot'), key: 'slot', width: 260 },
+  { title: t('common.field.quantity'), key: 'qty', width: 150 },
+  { title: t('pm.issue.serialNo'), key: 'serialNos', width: 240 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
 
@@ -140,11 +141,11 @@ function onWarehouseChange(id) {
 }
 
 const qtyRules = (record) => [
-  { required: true, message: '请填写数量' },
+  { required: true, message: t('common.rule.required', { name: t('common.field.quantity') }) },
   {
     validator: (_, v) => {
-      if (v != null && v <= 0) return Promise.reject(new Error('数量必须大于 0'))
-      if (v != null && record.available != null && v > record.available) return Promise.reject(new Error('超过可用库存'))
+      if (v != null && v <= 0) return Promise.reject(new Error(t('pm.issue.qtyPositive')))
+      if (v != null && record.available != null && v > record.available) return Promise.reject(new Error(t('pm.issue.exceedAvailable')))
       return Promise.resolve()
     }
   }
@@ -170,7 +171,7 @@ async function submit() {
         serialNos: i.serialNos || null
       }))
     })
-    message.success('领料成功，已计入项目材料成本')
+    message.success(t('pm.issue.success'))
     emit('update:open', false)
     emit('success')
   } finally {

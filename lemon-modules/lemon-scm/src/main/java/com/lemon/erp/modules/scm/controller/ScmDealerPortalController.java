@@ -58,7 +58,7 @@ public class ScmDealerPortalController {
     /** 下单，返回订单 ID */
     @PostMapping("/order")
     @PreAuthorize("@ss.hasPerm('dealer:order:add')")
-    @OperLog(title = "经销商门户-订货", type = OperType.INSERT)
+    @OperLog(title = "经销商门户-订货", type = OperType.INSERT) // i18n-ignore
     public R<Long> placeOrder(@Valid @RequestBody ChannelRequests.DealerOrder req) {
         return R.ok(channelService.placeOrder(SecurityUtils.requireCustomerId(), req));
     }
@@ -66,7 +66,7 @@ public class ScmDealerPortalController {
     /** 撤销还没有审核的订单 */
     @DeleteMapping("/order/{id}")
     @PreAuthorize("@ss.hasPerm('dealer:order:add')")
-    @OperLog(title = "经销商门户-撤销订单", type = OperType.DELETE)
+    @OperLog(title = "经销商门户-撤销订单", type = OperType.DELETE) // i18n-ignore
     public R<Void> cancelOrder(@PathVariable Long id) {
         channelService.cancelOrder(SecurityUtils.requireCustomerId(), id);
         return R.ok();
@@ -94,7 +94,7 @@ public class ScmDealerPortalController {
     /** 上报某月（yyyyMM）的库存和销量，重复上报覆盖 */
     @PutMapping("/report/{period}")
     @PreAuthorize("@ss.hasPerm('dealer:report:edit')")
-    @OperLog(title = "经销商门户-渠道上报", type = OperType.UPDATE)
+    @OperLog(title = "经销商门户-渠道上报", type = OperType.UPDATE) // i18n-ignore
     public R<Long> saveReport(@PathVariable int period, @Valid @RequestBody ChannelRequests.Report req) {
         return R.ok(channelService.saveReport(SecurityUtils.requireCustomerId(), period, req));
     }

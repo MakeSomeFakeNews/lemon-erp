@@ -46,13 +46,13 @@ public class FileStorageService {
             throw new BizException("请选择文件");
         }
         if (file.getSize() > maxSize) {
-            throw new BizException("文件大小不能超过 " + maxSize / 1024 / 1024 + "MB");
+            throw new BizException("文件大小不能超过 {0}MB", maxSize / 1024 / 1024);
         }
         String ext = StringUtils.getFilenameExtension(file.getOriginalFilename());
         ext = ext == null ? "" : ext.toLowerCase(Locale.ROOT);
         String contentType = file.getContentType();
         if (!IMAGE_EXTENSIONS.contains(ext) || contentType == null || !contentType.startsWith("image/")) {
-            throw new BizException("只支持 " + String.join("/", IMAGE_EXTENSIONS) + " 格式的图片");
+            throw new BizException("只支持 {0} 格式的图片", String.join("/", IMAGE_EXTENSIONS));
         }
         String relative = dir + "/" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM")) + "/"
                 + UUID.randomUUID().toString().replace("-", "") + "." + ext;
@@ -61,7 +61,7 @@ public class FileStorageService {
             Files.createDirectories(target.getParent());
             Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            throw new BizException("文件保存失败：" + e.getMessage());
+            throw new BizException("文件保存失败：{0}", e.getMessage());
         }
         return contextPath + WebMvcConfig.FILE_URL_PREFIX + relative;
     }
@@ -80,7 +80,7 @@ public class FileStorageService {
             throw new BizException("请选择文件");
         }
         if (file.getSize() > maxSize) {
-            throw new BizException("文件大小不能超过 " + maxSize / 1024 / 1024 + "MB");
+            throw new BizException("文件大小不能超过 {0}MB", maxSize / 1024 / 1024);
         }
         String ext = StringUtils.getFilenameExtension(file.getOriginalFilename());
         ext = ext == null ? "" : ext.toLowerCase(Locale.ROOT);
@@ -94,7 +94,7 @@ public class FileStorageService {
             Files.createDirectories(target.getParent());
             Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            throw new BizException("文件保存失败：" + e.getMessage());
+            throw new BizException("文件保存失败：{0}", e.getMessage());
         }
         return relative;
     }

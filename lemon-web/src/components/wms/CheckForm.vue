@@ -1,25 +1,25 @@
 <template>
-  <FormDrawer page :drawer="drawer" create-title="新增盘点单" edit-title="编辑盘点单" width="min(1280px, 100vw)">
+  <FormDrawer page :drawer="drawer" :create-title="$t('wms.checkDoc.createTitle')" :edit-title="$t('wms.checkDoc.editTitle')" width="min(1280px, 100vw)">
     <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="24" :sm="12" :lg="6">
-          <a-form-item label="盘点仓库" name="warehouseId">
+          <a-form-item :label="$t('wms.checkDoc.warehouse')" name="warehouseId">
             <WarehouseSelect :value="form.warehouseId" :allow-clear="false" @update:value="onWarehouseChange" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="6">
-          <a-form-item label="盘点日期" name="bizDate">
+          <a-form-item :label="$t('wms.checkDoc.date')" name="bizDate">
             <a-date-picker v-model:value="form.bizDate" value-format="YYYY-MM-DD" class="full" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="6">
-          <a-form-item label="冻结仓库" name="freeze" extra="盘点完成前该仓库不能出入库、调拨">
-            <a-switch v-model:checked="form.freeze" checked-children="冻结" un-checked-children="不冻结" />
+          <a-form-item :label="$t('wms.checkDoc.freeze')" name="freeze" :extra="$t('wms.checkDoc.freezeTip')">
+            <a-switch v-model:checked="form.freeze" :checked-children="$t('wms.checkDoc.frozen')" :un-checked-children="$t('wms.checkDoc.notFrozen')" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :lg="6">
-          <a-form-item label="备注" name="remark">
-            <a-input v-model:value="form.remark" :maxlength="255" placeholder="选填" />
+          <a-form-item :label="$t('common.field.remark')" name="remark">
+            <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('wms.common.optional')" />
           </a-form-item>
         </a-col>
       </a-row>
@@ -28,24 +28,24 @@
         type="info"
         show-icon
         class="check-tip"
-        message="确认盘点时以当时的库存为账面数量，库存调整为实盘数量；序列号物料按实盘序列号盘点，多出的盘盈入库、缺少的盘亏出库。"
+        :message="$t('wms.checkDoc.tip')"
       />
 
       <div class="items-head">
         <span class="section-title">
-          盘点明细（{{ form.items.length }} 行，已录入 {{ stats.counted }}，有差异 {{ stats.diff }}）
+          {{ $t('wms.checkDoc.itemsTitle', { n: form.items.length, counted: stats.counted, diff: stats.diff }) }}
         </span>
         <a-space wrap>
-          <LocationSelect v-model:value="gen.locationId" :warehouse-id="form.warehouseId" placeholder="全部库位" class="gen-input" />
-          <a-input v-model:value="gen.keyword" placeholder="物料编码或名称" allow-clear class="gen-input" />
+          <LocationSelect v-model:value="gen.locationId" :warehouse-id="form.warehouseId" :placeholder="$t('wms.checkDoc.allLocations')" class="gen-input" />
+          <a-input v-model:value="gen.keyword" :placeholder="$t('wms.common.materialKeyword')" allow-clear class="gen-input" />
           <a-button type="primary" ghost :loading="generating" :disabled="!form.warehouseId" @click="generate">
-            <template #icon><ThunderboltOutlined /></template>按库存生成
+            <template #icon><ThunderboltOutlined /></template>{{ $t('wms.checkDoc.generate') }}
           </a-button>
           <a-button :disabled="!form.warehouseId" @click="addRow">
-            <template #icon><PlusOutlined /></template>添加物料
+            <template #icon><PlusOutlined /></template>{{ $t('wms.doc.addMaterial') }}
           </a-button>
-          <a-tooltip title="未录入实盘数量的行，实盘数量 = 账面数量">
-            <a-button :disabled="!form.items.length" @click="fillBook">账实相符</a-button>
+          <a-tooltip :title="$t('wms.checkDoc.fillBookTip')">
+            <a-button :disabled="!form.items.length" @click="fillBook">{{ $t('wms.checkDoc.fillBook') }}</a-button>
           </a-tooltip>
         </a-space>
       </div>
@@ -58,11 +58,11 @@
         :data-source="form.items"
         :pagination="form.items.length > 50 ? { pageSize: 50, showSizeChanger: false } : false"
         :scroll="{ x: 1260 }"
-        :locale="{ emptyText: '选择仓库后点击「按库存生成」，或手工添加盘盈的物料' }"
+        :locale="{ emptyText: $t('wms.checkDoc.empty') }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'material'">
-            <a-form-item v-if="record.manual" :name="itemName(record, 'materialId')" :rules="requiredRule('请选择物料')" class="cell-item">
+            <a-form-item v-if="record.manual" :name="itemName(record, 'materialId')" :rules="requiredRule($t('wms.common.selectMaterial'))" class="cell-item">
               <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
             </a-form-item>
             <template v-else>
@@ -78,10 +78,10 @@
             <a-form-item
               v-if="record.manual"
               :name="itemName(record, 'batchNo')"
-              :rules="record.batchEnabled === 1 ? requiredRule('请填写批次号') : []"
+              :rules="record.batchEnabled === 1 ? requiredRule($t('wms.common.inputBatchNo')) : []"
               class="cell-item"
             >
-              <a-input v-model:value="record.batchNo" :maxlength="64" :disabled="record.batchEnabled !== 1" placeholder="批次号" />
+              <a-input v-model:value="record.batchNo" :maxlength="64" :disabled="record.batchEnabled !== 1" :placeholder="$t('wms.common.batchNo')" />
             </a-form-item>
             <span v-else>{{ record.batchNo || '-' }}</span>
           </template>
@@ -95,10 +95,10 @@
               :min="0"
               :precision="4"
               :addon-after="record.unit || undefined"
-              placeholder="未录入"
+              :placeholder="$t('wms.checkDoc.notCounted')"
               class="full"
             />
-            <span v-else>{{ record.actualQty == null ? '未录入' : formatQty(record.actualQty) }}</span>
+            <span v-else>{{ record.actualQty == null ? $t('wms.checkDoc.notCounted') : formatQty(record.actualQty) }}</span>
           </template>
           <template v-else-if="column.key === 'diff'">
             <QtyDiff :value="diffOf(record)" />
@@ -107,7 +107,7 @@
             <SerialInput
               v-if="record.serialEnabled === 1"
               :value="record.serialNos"
-              placeholder="扫码录入实盘序列号"
+              :placeholder="$t('wms.checkDoc.scanSerials')"
               @update:value="(v) => setSerials(record, v)"
             />
             <span v-else class="sub-text">-</span>
@@ -128,6 +128,7 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Modal, message } from 'ant-design-vue'
 import { DeleteOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -145,23 +146,24 @@ import { formatQty, locationText, rowKey, splitSerials, today } from './wms'
  * 通过 ref 调用 openCreate() / openEdit(record)
  */
 const emit = defineEmits(['success'])
+const { t } = useI18n()
 
 const columns = [
-  { title: '物料', key: 'material', width: 250 },
-  { title: '库位', key: 'location', width: 140 },
-  { title: '批次', key: 'batchNo', width: 140 },
-  { title: '账面数量', key: 'bookQty', width: 100, align: 'right' },
-  { title: '实盘数量', key: 'actualQty', width: 160 },
-  { title: '差异', key: 'diff', width: 90, align: 'right' },
-  { title: '实盘序列号', key: 'serialNos', width: 260 },
-  { title: '备注', key: 'remark', width: 140 },
+  { title: t('wms.common.material'), key: 'material', width: 250 },
+  { title: t('wms.common.location'), key: 'location', width: 140 },
+  { title: t('wms.common.batch'), key: 'batchNo', width: 140 },
+  { title: t('wms.checkDoc.bookQty'), key: 'bookQty', width: 110, align: 'right' },
+  { title: t('wms.checkDoc.actualQty'), key: 'actualQty', width: 160 },
+  { title: t('wms.checkDoc.diff'), key: 'diff', width: 100, align: 'right' },
+  { title: t('wms.checkDoc.actualSerials'), key: 'serialNos', width: 260 },
+  { title: t('common.field.remark'), key: 'remark', width: 140 },
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ]
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
 const rules = {
-  warehouseId: requiredRule('请选择盘点仓库'),
-  bizDate: requiredRule('请选择盘点日期')
+  warehouseId: requiredRule(t('wms.checkDoc.selectWarehouse')),
+  bizDate: requiredRule(t('wms.checkDoc.selectDate'))
 }
 
 const toRow = (item) => ({
@@ -214,7 +216,7 @@ function onWarehouseChange(id) {
   gen.locationId = undefined
   if (form.value.items.length) {
     form.value.items = []
-    message.info('仓库已变更，已清空盘点明细')
+    message.info(t('wms.checkDoc.warehouseChanged'))
   }
 }
 
@@ -228,7 +230,7 @@ async function generate() {
     const exists = new Set(form.value.items.map(slotKey))
     const added = rows.filter((r) => !exists.has(slotKey(r))).map(toRow)
     form.value.items.push(...added)
-    message.success(added.length ? `已添加 ${added.length} 行` : '没有新的库存需要盘点')
+    message.success(added.length ? t('wms.checkDoc.added', { n: added.length }) : t('wms.checkDoc.nothingNew'))
   } finally {
     generating.value = false
   }
@@ -267,13 +269,13 @@ function fillBook() {
       n++
     }
   })
-  message.success(n ? `已填写 ${n} 行` : '没有需要填写的行（序列号物料请扫码录入）')
+  message.success(n ? t('wms.checkDoc.filled', { n }) : t('wms.checkDoc.nothingToFill'))
 }
 
 function removeRow(record) {
   const remove = () => form.value.items.splice(form.value.items.indexOf(record), 1)
   if (record.actualQty == null) return remove()
-  Modal.confirm({ title: '删除该行已录入的盘点数据？', okType: 'danger', onOk: remove })
+  Modal.confirm({ title: t('wms.checkDoc.confirmRemoveRow'), okType: 'danger', onOk: remove })
 }
 
 defineExpose({ openCreate: drawer.openCreate, openEdit: drawer.openEdit })

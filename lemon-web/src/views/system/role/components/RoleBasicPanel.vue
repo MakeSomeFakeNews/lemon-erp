@@ -2,22 +2,22 @@
   <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" :disabled="readonly" class="basic-form">
     <a-row :gutter="16">
       <a-col :xs="24" :md="12">
-        <a-form-item label="角色名称" name="name">
+        <a-form-item :label="$t('system.role.name')" name="name">
           <a-input v-model:value="form.name" :maxlength="64" />
         </a-form-item>
       </a-col>
       <a-col :xs="24" :md="12">
-        <a-form-item label="角色编码" name="code">
+        <a-form-item :label="$t('system.role.code')" name="code">
           <a-input v-model:value="form.code" :disabled="isAdminRole" :maxlength="64" />
         </a-form-item>
       </a-col>
       <a-col :xs="24" :md="12">
-        <a-form-item label="排序" name="sort">
+        <a-form-item :label="$t('common.field.sort')" name="sort">
           <a-input-number v-model:value="form.sort" :min="0" style="width: 100%" />
         </a-form-item>
       </a-col>
       <a-col :xs="24" :md="12">
-        <a-form-item label="状态" name="status">
+        <a-form-item :label="$t('common.field.status')" name="status">
           <a-radio-group
             v-model:value="form.status"
             :options="toOptions(dict.sys_common_status, true)"
@@ -26,7 +26,7 @@
         </a-form-item>
       </a-col>
       <a-col :span="24">
-        <a-form-item label="备注" name="remark">
+        <a-form-item :label="$t('common.field.remark')" name="remark">
           <a-textarea v-model:value="form.remark" :rows="3" :maxlength="255" show-count />
         </a-form-item>
       </a-col>
@@ -38,6 +38,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import PanelActions from './PanelActions.vue'
 import { updateRole } from '@/api/system/role'
 import { useDict } from '@/composables/useDict'
@@ -50,6 +51,7 @@ const props = defineProps({
   readonly: Boolean
 })
 const emit = defineEmits(['saved', 'update:dirty'])
+const { t } = useI18n()
 const dict = useDict('sys_common_status')
 
 const formRef = ref()
@@ -57,7 +59,7 @@ const form = ref({})
 const saving = ref(false)
 const isAdminRole = computed(() => props.detail.code === ADMIN_ROLE)
 const rules = {
-  name: [{ required: true, message: '请输入角色名称' }],
+  name: [{ required: true, message: t('system.role.inputName') }],
   code: ROLE_CODE_RULES
 }
 
@@ -73,7 +75,7 @@ async function save() {
   try {
     // 不传 menuIds，后端保持菜单权限不变
     await updateRole(props.detail.id, { ...form.value })
-    message.success('基本信息已保存')
+    message.success(t('system.role.basicSaved'))
     emit('saved')
   } finally {
     saving.value = false

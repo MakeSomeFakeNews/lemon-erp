@@ -42,7 +42,7 @@ public class FinAccountRuleController {
 
     @PutMapping("/{role}")
     @PreAuthorize("@ss.hasPerm('fin:accountRule:edit')")
-    @OperLog(title = "凭证科目设置", type = OperType.UPDATE)
+    @OperLog(title = "凭证科目设置", type = OperType.UPDATE) // i18n-ignore
     public R<Void> save(@PathVariable AccountRole role, @RequestBody RuleRequest req) {
         ruleService.save(role, req.accountId(), req.items());
         return R.ok();

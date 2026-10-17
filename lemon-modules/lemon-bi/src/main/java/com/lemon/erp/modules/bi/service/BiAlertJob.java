@@ -28,7 +28,7 @@ public class BiAlertJob implements JobHandler {
 
     @Override
     public String name() {
-        return "经营预警推送";
+        return "经营预警推送"; // i18n-ignore 定时任务名称，任务管理处翻译
     }
 
     @Override
@@ -44,9 +44,9 @@ public class BiAlertJob implements JobHandler {
         for (Map<String, Object> a : triggered) {
             String level = String.valueOf(a.get("level"));
             messageSender.sendToPermission("bi:decision:list", Message.of("INFO".equals(level) ? "REMIND" : "ALERT",
-                    "经营预警：" + a.get("name"), "当前值 " + a.get("value") + (a.get("remark") == null ? "" : "，" + a.get("remark")),
+                    "经营预警：" + a.get("name"), "当前值 " + a.get("value") + (a.get("remark") == null ? "" : "，" + a.get("remark")),  // i18n-ignore 站内消息存库
                     "/bi/decision").dedup("bi-alert:" + a.get("ruleId") + ":" + today));
         }
-        return "触发 " + triggered.size() + " 条预警";
+        return "触发 " + triggered.size() + " 条预警"; // i18n-ignore 任务日志存库
     }
 }

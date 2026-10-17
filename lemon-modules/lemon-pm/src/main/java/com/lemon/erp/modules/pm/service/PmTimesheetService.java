@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.pm.service;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -79,22 +80,22 @@ public class PmTimesheetService {
         }
         BigDecimal day = timesheetMapper.sumDay(userId, req.workDate(), id).add(req.hours());
         if (day.compareTo(BigDecimal.valueOf(24)) > 0) {
-            throw new BizException(req.workDate() + " 的工时合计不能超过 24 小时");
+            throw new BizException("{0} 的工时合计不能超过 24 小时", req.workDate());
         }
         // 考勤校验：全天请假不能填报；超出当天出勤（含加班）时提示
         String warning = null;
         DayWork work = attendanceService.dayWork(userId, req.workDate());
         if (work != null) {
             if (work.leaveHours().compareTo(HrConstants.DAY_HOURS) >= 0) {
-                throw new BizException(req.workDate() + " 全天请假，不能填报工时");
+                throw new BizException("{0} 全天请假，不能填报工时", req.workDate());
             }
             if (work.attendedHours() != null) {
                 BigDecimal limit = work.attendedHours().add(work.overtimeHours());
                 if (day.compareTo(limit) > 0) {
-                    warning = req.workDate() + " 出勤 " + plain(limit) + " 小时（含加班），已填报 " + plain(day) + " 小时，超出出勤";
+                    warning = I18n.t("{0} 出勤 {1} 小时（含加班），已填报 {2} 小时，超出出勤", req.workDate(), plain(limit), plain(day));
                 }
             } else if (work.leaveHours().signum() > 0 && day.add(work.leaveHours()).compareTo(HrConstants.DAY_HOURS) > 0) {
-                warning = req.workDate() + " 请假 " + plain(work.leaveHours()) + " 小时，工时与请假合计超过 8 小时";
+                warning = I18n.t("{0} 请假 {1} 小时，工时与请假合计超过 8 小时", req.workDate(), plain(work.leaveHours()));
             }
         }
         PmTimesheet ts = new PmTimesheet();
@@ -157,10 +158,10 @@ public class PmTimesheetService {
             }
             PmProject project = projectService.get(ts.getProjectId());
             if (!Objects.equals(project.getManagerId(), me) && !SecurityUtils.getDataScope().all()) {
-                throw new BizException("只有项目经理可以审批项目「" + project.getName() + "」的工时");
+                throw new BizException("只有项目经理可以审批项目「{0}」的工时", project.getName());
             }
             if ("CLOSED".equals(project.getStatus())) {
-                throw new BizException("项目「" + project.getName() + "」已关闭，不能再审批工时");
+                throw new BizException("项目「{0}」已关闭，不能再审批工时", project.getName());
             }
             BigDecimal rate = null;
             BigDecimal cost = BigDecimal.ZERO;

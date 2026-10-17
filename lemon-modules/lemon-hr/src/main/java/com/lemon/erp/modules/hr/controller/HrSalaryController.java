@@ -57,7 +57,7 @@ public class HrSalaryController {
 
     @PutMapping("/{employeeId}")
     @PreAuthorize("@ss.hasPerm('hr:salary:edit')")
-    @OperLog(title = "薪资档案", type = OperType.UPDATE)
+    @OperLog(title = "薪资档案", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> save(@PathVariable Long employeeId, @Valid @RequestBody SalaryRequest req) {
         salaryService.save(employeeId, req);
         return R.ok();

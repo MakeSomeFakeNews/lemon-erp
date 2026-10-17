@@ -93,8 +93,8 @@ public class FinStatementService {
             throw new BizException("对账单已发送或已确认");
         }
         transit(id, st.getStatus(), StatementStatus.SENT);
-        portalNotifier.notify(st.getSupplierId(), "REMIND", "对账单待确认：" + st.getStatementNo(),
-                st.getBeginDate() + " ~ " + st.getEndDate() + " 对账金额 " + st.getAmount().stripTrailingZeros().toPlainString(),
+        portalNotifier.notify(st.getSupplierId(), "REMIND", "对账单待确认：" + st.getStatementNo(), // i18n-ignore
+                st.getBeginDate() + " ~ " + st.getEndDate() + " 对账金额 " + st.getAmount().stripTrailingZeros().toPlainString(), // i18n-ignore
                 "/portal/statement");
     }
 
@@ -131,8 +131,8 @@ public class FinStatementService {
             throw new BizException("对账单状态已变化，请刷新后重试");
         }
         messageSender.send(List.of(st.getCreateBy()), MessageSender.Message.of(agree ? "REMIND" : "ALERT",
-                st.getSupplierName() + (agree ? " 已确认对账单 " : " 对对账单有异议 ") + st.getStatementNo(),
-                agree ? "对账金额 " + st.getAmount().stripTrailingZeros().toPlainString() : req.remark(), "/fin/statement"));
+                st.getSupplierName() + (agree ? " 已确认对账单 " : " 对对账单有异议 ") + st.getStatementNo(), // i18n-ignore
+                agree ? "对账金额 " + st.getAmount().stripTrailingZeros().toPlainString() : req.remark(), "/fin/statement")); // i18n-ignore
     }
 
     /** 供应商补填发票信息（已确认的对账单） */

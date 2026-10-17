@@ -2,11 +2,11 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.wms_hold_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_hold_status)" />
         </a-form-item>
-        <a-form-item label="关键字" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="物料编码、名称或入库单号" allow-clear />
+        <a-form-item :label="$t('common.field.keyword')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('wms.hold.keywordPh')" allow-clear />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -23,7 +23,7 @@
         <a-alert
           type="info"
           show-icon
-          message="需要来料检验的物料采购入库后冻结为待检；来料检验合格或让步接收后自动放行，不合格的保持冻结，采购退货时优先退冻结的库存。"
+          :message="$t('wms.hold.tip')"
         />
       </TableToolbar>
       <a-table
@@ -43,7 +43,7 @@
           </template>
           <template v-else-if="column.key === 'slot'">
             {{ record.warehouseName }} · {{ locationText(record.locationCode) }}
-            <div v-if="record.batchNo" class="sub-text">批次 {{ record.batchNo }}</div>
+            <div v-if="record.batchNo" class="sub-text">{{ $t('wms.hold.batchN', { no: record.batchNo }) }}</div>
           </template>
           <template v-else-if="column.key === 'qty'">
             <b v-if="Number(record.qty)">{{ formatQty(record.qty) }}</b>
@@ -65,25 +65,26 @@
               size="small"
               @click="openRelease(record)"
             >
-              <template #icon><UnlockOutlined /></template>放行
+              <template #icon><UnlockOutlined /></template>{{ $t('wms.hold.release') }}
             </a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <a-modal v-model:open="releaseOpen" title="放行冻结库存" :confirm-loading="releasing" @ok="submitRelease">
+    <a-modal v-model:open="releaseOpen" :title="$t('wms.hold.releaseTitle')" :confirm-loading="releasing" @ok="submitRelease">
       <p v-if="current">
         {{ current.materialCode }} {{ current.materialName }}：{{ formatQty(current.qty) }} {{ current.unit }}，
         <DictTag type="wms_hold_status" :value="current.status" />
       </p>
-      <a-textarea v-model:value="releaseRemark" :rows="3" :maxlength="255" placeholder="放行原因，如：让步接收、复检合格" />
+      <a-textarea v-model:value="releaseRemark" :rows="3" :maxlength="255" :placeholder="$t('wms.hold.reasonPh')" />
     </a-modal>
   </div>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import { UnlockOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -96,19 +97,21 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
+const { t } = useI18n()
+
 const dict = useDict('wms_hold_status')
 
 const columns = [
-  { title: '采购入库单', dataIndex: 'sourceNo', width: 170 },
-  { title: '供应商', dataIndex: 'partnerName', width: 160, ellipsis: true },
-  { title: '物料', key: 'material', width: 220 },
-  { title: '仓库 / 库位', key: 'slot', width: 180 },
-  { title: '冻结 / 入库', key: 'qty', width: 150, align: 'right' },
-  { title: '状态', key: 'status', width: 110, dict: 'wms_hold_status' },
-  { title: '检验单', dataIndex: 'inspNo', width: 150 },
-  { title: '放行', key: 'release', width: 200 },
-  { title: '说明', dataIndex: 'remark', ellipsis: true },
-  { title: '操作', key: 'action', width: 90, fixed: 'right' }
+  { title: t('wms.hold.purchaseIn'), dataIndex: 'sourceNo', width: 170 },
+  { title: t('wms.hold.supplier'), dataIndex: 'partnerName', width: 160, ellipsis: true },
+  { title: t('wms.common.material'), key: 'material', width: 220 },
+  { title: t('wms.hold.slot'), key: 'slot', width: 190 },
+  { title: t('wms.hold.qty'), key: 'qty', width: 150, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 110, dict: 'wms_hold_status' },
+  { title: t('wms.hold.inspNo'), dataIndex: 'inspNo', width: 150 },
+  { title: t('wms.hold.release'), key: 'release', width: 200 },
+  { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns)
 const showSearch = ref(true)
@@ -129,14 +132,14 @@ const releaseRemark = ref('')
 const current = ref()
 function openRelease(record) {
   current.value = record
-  releaseRemark.value = record.status === 'REJECTED' ? '让步接收' : ''
+  releaseRemark.value = record.status === 'REJECTED' ? t('wms.hold.concession') : ''
   releaseOpen.value = true
 }
 async function submitRelease() {
   releasing.value = true
   try {
     await releaseHold(current.value.id, releaseRemark.value || null)
-    message.success('已放行，库存可以出库')
+    message.success(t('wms.hold.released'))
     releaseOpen.value = false
     load()
   } finally {

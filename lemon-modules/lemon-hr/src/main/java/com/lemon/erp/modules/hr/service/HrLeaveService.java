@@ -96,9 +96,9 @@ public class HrLeaveService {
         }
         // 加班的补偿方式：加班费（默认）或转调休
         String overtimeType = OVERTIME_TO_LEAVE.equals(req.type()) ? OVERTIME_TO_LEAVE : OVERTIME_PAY;
-        payrollLock.checkOpen(req.startTime().toLocalDate(), "提交该月的" + (leave ? "请假" : "加班") + "申请");
+        payrollLock.checkOpen(req.startTime().toLocalDate(), leave ? "提交该月的请假申请" : "提交该月的加班申请");
         if (leaveMapper.countOverlapping(e.getId(), req.kind(), null, req.startTime(), req.endTime()) > 0) {
-            throw new BizException("该时间段已有" + (leave ? "请假" : "加班") + "申请");
+            throw new BizException(leave ? "该时间段已有请假申请" : "该时间段已有加班申请");
         }
         if (leave && "ANNUAL".equals(req.type())) {
             checkAnnualBalance(e, req);
@@ -106,7 +106,7 @@ public class HrLeaveService {
         if (leave && "COMPENSATORY".equals(req.type())) {
             BigDecimal balance = compensatoryBalance(e.getId());
             if (req.hours().compareTo(balance) > 0) {
-                throw new BizException("调休余额不足：可调休 " + balance.stripTrailingZeros().toPlainString() + " 小时（来自已批准的转调休加班）");
+                throw new BizException("调休余额不足：可调休 {0} 小时（来自已批准的转调休加班）", balance.stripTrailingZeros().toPlainString());
             }
         }
         HrLeave l = new HrLeave();
@@ -150,7 +150,7 @@ public class HrLeaveService {
         }
         payrollLock.checkOpen(l.getStartTime().toLocalDate(), "撤销该月的申请");
         if (approving && l.getFlowInstanceId() != null && flowApi.getStatus(l.getFlowInstanceId()) == FlowStatus.RUNNING) {
-            flowApi.cancel(l.getFlowInstanceId(), "撤销申请");
+            flowApi.cancel(l.getFlowInstanceId(), "撤销申请");  // i18n-ignore 审批意见存库
         }
         leaveMapper.update(Wrappers.<HrLeave>lambdaUpdate()
                 .set(HrLeave::getStatus, "CANCELED")
@@ -230,7 +230,7 @@ public class HrLeaveService {
                 HrConstants.annualLeaveDays(e.getWorkStartDate() != null ? e.getWorkStartDate() : e.getEntryDate(), LocalDate.of(year, 12, 31))));
         BigDecimal left = quota.subtract(annualUsedHours(e.getId(), year));
         if (req.hours().compareTo(left) > 0) {
-            throw new BizException("年假余额不足：剩余 " + left.stripTrailingZeros().toPlainString() + " 小时");
+            throw new BizException("年假余额不足：剩余 {0} 小时", left.stripTrailingZeros().toPlainString());
         }
     }
 }

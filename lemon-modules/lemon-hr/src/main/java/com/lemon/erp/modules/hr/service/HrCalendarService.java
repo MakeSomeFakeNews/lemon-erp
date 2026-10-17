@@ -2,6 +2,7 @@ package com.lemon.erp.modules.hr.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.modules.hr.entity.HrEmployee;
 import com.lemon.erp.modules.hr.entity.HrHoliday;
 import com.lemon.erp.modules.hr.entity.HrShift;
@@ -80,7 +81,7 @@ public class HrCalendarService {
             throw new BizException("默认班次不能删除，请先把其他班次设为默认");
         }
         if (employeeMapper.exists(Wrappers.<HrEmployee>lambdaQuery().eq(HrEmployee::getShiftId, id))) {
-            throw new BizException("班次「" + shift.getName() + "」已分配给员工，不能删除");
+            throw new BizException("班次「{0}」已分配给员工，不能删除", shift.getName());
         }
         shiftMapper.deleteById(id);
     }
@@ -90,7 +91,7 @@ public class HrCalendarService {
         HrShift shift = shiftMapper.selectList(Wrappers.<HrShift>lambdaQuery().eq(HrShift::getIsDefault, 1)).stream().findFirst().orElse(null);
         if (shift == null) {
             shift = new HrShift();
-            shift.setName("标准班");
+            shift.setName(I18n.t("标准班"));
             shift.setStartTime(LocalTime.of(9, 0));
             shift.setEndTime(LocalTime.of(18, 0));
             shift.setFlexMinutes(0);
@@ -121,7 +122,7 @@ public class HrCalendarService {
     public void saveHoliday(Long id, HrHoliday holiday) {
         HrHoliday exist = holidayMapper.selectOne(Wrappers.<HrHoliday>lambdaQuery().eq(HrHoliday::getHolidayDate, holiday.getHolidayDate()));
         if (exist != null && !Objects.equals(exist.getId(), id)) {
-            throw new BizException(holiday.getHolidayDate() + " 已设置为「" + exist.getName() + "」");
+            throw new BizException("{0} 已设置为「{1}」", holiday.getHolidayDate(), exist.getName());
         }
         holiday.setId(id);
         if (id == null) {

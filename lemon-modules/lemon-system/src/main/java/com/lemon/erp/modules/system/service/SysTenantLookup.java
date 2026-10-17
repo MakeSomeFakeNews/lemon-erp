@@ -112,7 +112,7 @@ public class SysTenantLookup {
         SysTenant tenant = tenantMapper.selectById(tenantId);
         if (tenant != null && tenant.getAccountLimit() != null
                 && userMapper.selectCount(Wrappers.emptyWrapper()) >= tenant.getAccountLimit()) {
-            throw new BizException("账号数量已达到租户上限（" + tenant.getAccountLimit() + " 个），请联系平台扩容");
+            throw new BizException("账号数量已达到租户上限（{0} 个），请联系平台扩容", tenant.getAccountLimit());
         }
     }
 

@@ -57,7 +57,7 @@ public class CrmCampaignController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('crm:campaign:add')")
-    @OperLog(title = "市场活动", type = OperType.INSERT)
+    @OperLog(title = "市场活动", type = OperType.INSERT) // i18n-ignore 操作日志标题存库
     public R<Void> create(@Validated(Create.class) @RequestBody CrmCampaign campaign) {
         campaignService.create(campaign);
         return R.ok();
@@ -65,7 +65,7 @@ public class CrmCampaignController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('crm:campaign:edit')")
-    @OperLog(title = "市场活动", type = OperType.UPDATE)
+    @OperLog(title = "市场活动", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody CrmCampaign campaign) {
         campaignService.update(id, campaign);
         return R.ok();
@@ -73,7 +73,7 @@ public class CrmCampaignController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('crm:campaign:remove')")
-    @OperLog(title = "市场活动", type = OperType.DELETE)
+    @OperLog(title = "市场活动", type = OperType.DELETE) // i18n-ignore 操作日志标题存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         campaignService.delete(ids);
         return R.ok();

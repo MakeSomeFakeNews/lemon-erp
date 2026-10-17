@@ -88,7 +88,7 @@ public class HrEmployeeController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('hr:employee:add')")
-    @OperLog(title = "员工档案", type = OperType.INSERT)
+    @OperLog(title = "员工档案", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> create(@Valid @RequestBody EmployeeRequest req) {
         return R.ok(employeeService.create(req));
     }
@@ -97,13 +97,13 @@ public class HrEmployeeController {
     /** Excel 导入：逐行按新增校验，任何一行出错整批不导入 */
     @PostMapping("/import")
     @PreAuthorize("@ss.hasPerm('hr:employee:add')")
-    @OperLog(title = "员工档案-导入", type = OperType.IMPORT)
+    @OperLog(title = "员工档案-导入", type = OperType.IMPORT)  // i18n-ignore 操作日志存库
     public R<ImportResult> importRows(@Valid @RequestBody ImportRequest<EmployeeRequest> req) {
         return R.ok(importExecutor.run(req, employeeService::create));
     }
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('hr:employee:edit')")
-    @OperLog(title = "员工档案", type = OperType.UPDATE)
+    @OperLog(title = "员工档案", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody EmployeeRequest req) {
         employeeService.update(id, req);
         return R.ok();
@@ -112,14 +112,14 @@ public class HrEmployeeController {
     /** 人事异动：转正、调岗、调薪、离职。返回 true 表示已提交审批 */
     @PostMapping("/{id}/change")
     @PreAuthorize("@ss.hasPerm('hr:employee:change')")
-    @OperLog(title = "人事异动", type = OperType.UPDATE)
+    @OperLog(title = "人事异动", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Boolean> change(@PathVariable Long id, @Valid @RequestBody EmployeeChangeRequest req) {
         return R.ok(employeeService.change(id, req));
     }
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('hr:employee:remove')")
-    @OperLog(title = "员工档案", type = OperType.DELETE)
+    @OperLog(title = "员工档案", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         employeeService.delete(ids);
         return R.ok();

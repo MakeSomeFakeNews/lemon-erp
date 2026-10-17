@@ -24,6 +24,7 @@ import { pageBill, pageSettlement } from '@/api/fin'
 import { pageProject } from '@/api/pm'
 import { pageCrmContract } from '@/api/crm'
 import { formatMoney } from '@/components/scm/scm'
+import { t } from '@/locales'
 
 /**
  * 客户 360：按客户查询合同、销售订单、发运、应收、收款、项目（复用各模块的列表接口，按各自的权限和数据权限返回）
@@ -37,66 +38,66 @@ const CONF = {
   contracts: {
     fetch: (p) => pageCrmContract({ ...p, customerId: props.customerId }),
     columns: [
-      { title: '合同编号', dataIndex: 'contractNo', width: 150 },
-      { title: '合同名称', dataIndex: 'name', width: 180, ellipsis: true },
-      { title: '签订日期', dataIndex: 'signDate', width: 110 },
-      { title: '合同金额', dataIndex: 'amount', width: 130, align: 'right', money: true },
-      { title: '已回款', dataIndex: 'receivedAmount', width: 130, align: 'right', money: true },
-      { title: '销售订单', dataIndex: 'orderNo', width: 150 },
-      { title: '状态', dataIndex: 'status', width: 90, dict: 'crm_contract_status' }
+      { title: t('crm.common.f.contractNo'), dataIndex: 'contractNo', width: 150 },
+      { title: t('crm.common.f.contractName'), dataIndex: 'name', width: 180, ellipsis: true },
+      { title: t('crm.common.f.signDate'), dataIndex: 'signDate', width: 110 },
+      { title: t('crm.common.f.contractAmount'), dataIndex: 'amount', width: 130, align: 'right', money: true },
+      { title: t('crm.common.f.received'), dataIndex: 'receivedAmount', width: 130, align: 'right', money: true },
+      { title: t('crm.common.f.salesOrder'), dataIndex: 'orderNo', width: 150 },
+      { title: t('common.field.status'), dataIndex: 'status', width: 90, dict: 'crm_contract_status' }
     ]
   },
   orders: {
     fetch: (p) => pageOrder('sales', { ...p, partnerId: props.customerId }),
     columns: [
-      { title: '订单号', dataIndex: 'orderNo', width: 160 },
-      { title: '订单日期', dataIndex: 'orderDate', width: 110 },
-      { title: '交货日期', dataIndex: 'deliveryDate', width: 110 },
-      { title: '价税合计', dataIndex: 'totalAmount', width: 130, align: 'right', money: true },
-      { title: '状态', dataIndex: 'status', width: 100, dict: 'scm_order_status' }
+      { title: t('crm.customerTrade.orderNo'), dataIndex: 'orderNo', width: 160 },
+      { title: t('crm.customerTrade.orderDate'), dataIndex: 'orderDate', width: 110 },
+      { title: t('crm.customerTrade.deliveryDate'), dataIndex: 'deliveryDate', width: 110 },
+      { title: t('crm.customerTrade.totalAmount'), dataIndex: 'totalAmount', width: 130, align: 'right', money: true },
+      { title: t('common.field.status'), dataIndex: 'status', width: 100, dict: 'scm_order_status' }
     ]
   },
   shipments: {
     fetch: (p) => pageShipment({ ...p, customerId: props.customerId }),
     columns: [
-      { title: '发运单', dataIndex: 'shipNo', width: 160 },
-      { title: '出库单', dataIndex: 'tradeDocNo', width: 160 },
-      { title: '承运商', dataIndex: 'carrier', width: 100, dict: 'scm_carrier' },
-      { title: '运单号', dataIndex: 'trackingNo', width: 150 },
-      { title: '发货日期', dataIndex: 'shipDate', width: 110 },
-      { title: '状态', dataIndex: 'status', width: 90, dict: 'scm_shipment_status' }
+      { title: t('crm.customerTrade.shipNo'), dataIndex: 'shipNo', width: 160 },
+      { title: t('crm.customerTrade.outboundNo'), dataIndex: 'tradeDocNo', width: 160 },
+      { title: t('crm.customerTrade.carrier'), dataIndex: 'carrier', width: 100, dict: 'scm_carrier' },
+      { title: t('crm.customerTrade.trackingNo'), dataIndex: 'trackingNo', width: 150 },
+      { title: t('crm.customerTrade.shipDate'), dataIndex: 'shipDate', width: 110 },
+      { title: t('common.field.status'), dataIndex: 'status', width: 90, dict: 'scm_shipment_status' }
     ]
   },
   bills: {
     fetch: (p) => pageBill('ar', { ...p, partnerId: props.customerId }),
     columns: [
-      { title: '应收单', dataIndex: 'billNo', width: 150 },
-      { title: '来源', dataIndex: 'sourceNo', width: 150 },
-      { title: '单据日期', dataIndex: 'billDate', width: 110 },
-      { title: '到期日', dataIndex: 'dueDate', width: 110 },
-      { title: '金额', dataIndex: 'amount', width: 120, align: 'right', money: true },
-      { title: '已收', dataIndex: 'settledAmount', width: 120, align: 'right', money: true },
-      { title: '状态', dataIndex: 'status', width: 90, dict: 'fin_bill_status' }
+      { title: t('crm.customerTrade.billNo'), dataIndex: 'billNo', width: 150 },
+      { title: t('crm.customerTrade.sourceNo'), dataIndex: 'sourceNo', width: 150 },
+      { title: t('crm.customerTrade.billDate'), dataIndex: 'billDate', width: 110 },
+      { title: t('crm.customerTrade.dueDate'), dataIndex: 'dueDate', width: 110 },
+      { title: t('common.field.amount'), dataIndex: 'amount', width: 120, align: 'right', money: true },
+      { title: t('crm.customerTrade.settled'), dataIndex: 'settledAmount', width: 120, align: 'right', money: true },
+      { title: t('common.field.status'), dataIndex: 'status', width: 90, dict: 'fin_bill_status' }
     ]
   },
   receipts: {
     fetch: (p) => pageSettlement('receipt', { ...p, partnerId: props.customerId }),
     columns: [
-      { title: '收款单', dataIndex: 'settleNo', width: 160 },
-      { title: '收款日期', dataIndex: 'settleDate', width: 110 },
-      { title: '金额', dataIndex: 'amount', width: 130, align: 'right', money: true },
-      { title: '结算账户', dataIndex: 'accountName', width: 130 },
-      { title: '方式', dataIndex: 'method', width: 100, dict: 'fin_settle_method' }
+      { title: t('crm.customerTrade.receiptNo'), dataIndex: 'settleNo', width: 160 },
+      { title: t('crm.customerTrade.receiptDate'), dataIndex: 'settleDate', width: 110 },
+      { title: t('common.field.amount'), dataIndex: 'amount', width: 130, align: 'right', money: true },
+      { title: t('crm.customerTrade.account'), dataIndex: 'accountName', width: 130 },
+      { title: t('crm.customerTrade.method'), dataIndex: 'method', width: 100, dict: 'fin_settle_method' }
     ]
   },
   projects: {
     fetch: (p) => pageProject({ ...p, customerId: props.customerId }),
     columns: [
-      { title: '项目编号', dataIndex: 'code', width: 140 },
-      { title: '项目名称', dataIndex: 'name', width: 200 },
-      { title: '项目经理', dataIndex: 'managerName', width: 100 },
-      { title: '合同金额', dataIndex: 'contractAmount', width: 130, align: 'right', money: true },
-      { title: '状态', dataIndex: 'status', width: 100, dict: 'pm_project_status' }
+      { title: t('crm.customerTrade.projectCode'), dataIndex: 'code', width: 140 },
+      { title: t('crm.customerTrade.projectName'), dataIndex: 'name', width: 200 },
+      { title: t('crm.customerTrade.manager'), dataIndex: 'managerName', width: 100 },
+      { title: t('crm.common.f.contractAmount'), dataIndex: 'contractAmount', width: 130, align: 'right', money: true },
+      { title: t('common.field.status'), dataIndex: 'status', width: 100, dict: 'pm_project_status' }
     ]
   }
 }

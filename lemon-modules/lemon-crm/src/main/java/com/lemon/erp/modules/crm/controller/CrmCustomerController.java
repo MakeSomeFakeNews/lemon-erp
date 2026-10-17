@@ -69,7 +69,7 @@ public class CrmCustomerController {
 
     @PostMapping("/customer")
     @PreAuthorize("@ss.hasPerm('crm:customer:add')")
-    @OperLog(title = "客户管理", type = OperType.INSERT)
+    @OperLog(title = "客户管理", type = OperType.INSERT) // i18n-ignore 操作日志标题存库
     public R<Long> create(@Valid @RequestBody CrmCustomerRequest req) {
         return R.ok(customerService.create(req));
     }
@@ -77,7 +77,7 @@ public class CrmCustomerController {
     /** 负责人本人或有修改权限 */
     @PutMapping("/customer/{customerId}")
     @PreAuthorize("@ss.hasPerm('crm:customer:list')")
-    @OperLog(title = "客户管理", type = OperType.UPDATE)
+    @OperLog(title = "客户管理", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> update(@PathVariable Long customerId, @Valid @RequestBody CrmCustomerRequest req) {
         customerService.update(customerId, req);
         return R.ok();
@@ -85,7 +85,7 @@ public class CrmCustomerController {
 
     @PostMapping("/customer/assign")
     @PreAuthorize("@ss.hasPerm('crm:customer:assign')")
-    @OperLog(title = "客户管理-分配", type = OperType.UPDATE)
+    @OperLog(title = "客户管理-分配", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> assign(@Valid @RequestBody AssignRequest req) {
         customerService.assign(req.customerIds(), req.ownerId());
         return R.ok();
@@ -94,7 +94,7 @@ public class CrmCustomerController {
     /** 领取公海客户，返回领取成功的数量 */
     @PostMapping("/customer/claim")
     @PreAuthorize("@ss.hasPerm('crm:customer:claim')")
-    @OperLog(title = "客户管理-领取", type = OperType.UPDATE)
+    @OperLog(title = "客户管理-领取", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Integer> claim(@RequestBody List<Long> customerIds) {
         return R.ok(customerService.claim(customerIds));
     }
@@ -102,7 +102,7 @@ public class CrmCustomerController {
     /** 放回公海：负责人本人或有分配权限 */
     @PostMapping("/customer/release")
     @PreAuthorize("@ss.hasPerm('crm:customer:list')")
-    @OperLog(title = "客户管理-放回公海", type = OperType.UPDATE)
+    @OperLog(title = "客户管理-放回公海", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> release(@RequestBody List<Long> customerIds) {
         customerService.release(customerIds);
         return R.ok();
@@ -118,7 +118,7 @@ public class CrmCustomerController {
 
     @PostMapping("/contact")
     @PreAuthorize("@ss.hasPerm('crm:customer:list')")
-    @OperLog(title = "联系人", type = OperType.INSERT)
+    @OperLog(title = "联系人", type = OperType.INSERT) // i18n-ignore 操作日志标题存库
     public R<Void> createContact(@Valid @RequestBody CrmContact contact) {
         customerService.saveContact(null, contact);
         return R.ok();
@@ -126,7 +126,7 @@ public class CrmCustomerController {
 
     @PutMapping("/contact/{id}")
     @PreAuthorize("@ss.hasPerm('crm:customer:list')")
-    @OperLog(title = "联系人", type = OperType.UPDATE)
+    @OperLog(title = "联系人", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> updateContact(@PathVariable Long id, @Valid @RequestBody CrmContact contact) {
         customerService.saveContact(id, contact);
         return R.ok();
@@ -134,7 +134,7 @@ public class CrmCustomerController {
 
     @DeleteMapping("/contact/{id}")
     @PreAuthorize("@ss.hasPerm('crm:customer:list')")
-    @OperLog(title = "联系人", type = OperType.DELETE)
+    @OperLog(title = "联系人", type = OperType.DELETE) // i18n-ignore 操作日志标题存库
     public R<Void> deleteContact(@PathVariable Long id) {
         customerService.deleteContact(id);
         return R.ok();

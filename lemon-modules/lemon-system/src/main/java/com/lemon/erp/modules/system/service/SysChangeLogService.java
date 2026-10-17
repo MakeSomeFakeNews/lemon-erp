@@ -72,10 +72,10 @@ public class SysChangeLogService implements ChangeLogger {
             } catch (NoSuchMethodException ignored) {
                 // 尝试下一种
             } catch (ReflectiveOperationException e) {
-                throw new IllegalStateException("读取字段失败：" + field, e);
+                throw new IllegalStateException("读取字段失败：" + field, e); // i18n-ignore 内部错误
             }
         }
-        throw new IllegalArgumentException(bean.getClass().getSimpleName() + " 没有字段 " + field);
+        throw new IllegalArgumentException(bean.getClass().getSimpleName() + " 没有字段 " + field); // i18n-ignore 内部错误
     }
 
     /** 统一格式：空串视为空，金额去掉末尾的 0 */

@@ -1,6 +1,6 @@
 <template>
   <a-spin :spinning="loading">
-    <a-empty v-if="!loading && !list.length" description="没有变更记录" />
+    <a-empty v-if="!loading && !list.length" :description="$t('scm.orderChange.noRecords')" />
     <div v-for="c in list" :key="c.id" class="change">
       <div class="change-head">
         <a-space wrap>
@@ -8,17 +8,17 @@
           <a-tag v-if="c.version" color="blue" :bordered="false">V{{ c.version }}</a-tag>
           <DictTag type="scm_change_status" :value="c.status" />
           <span>
-            价税合计 {{ symbol }}{{ formatMoney(c.oldAmount) }}
+            {{ $t('scm.order.totalAmount') }} {{ symbol }}{{ formatMoney(c.oldAmount) }}
             <ArrowRightOutlined class="arrow" />
             <b>{{ symbol }}{{ formatMoney(c.newAmount) }}</b>
           </span>
         </a-space>
         <span class="sub-text">
           {{ c.createByName || '-' }} {{ c.createTime }}
-          <template v-if="c.approveTime">，{{ c.status === 'REJECTED' ? '驳回' : '生效' }} {{ c.approveTime }}</template>
+          <template v-if="c.approveTime">{{ $t(c.status === 'REJECTED' ? 'scm.orderChange.rejectedAt' : 'scm.orderChange.effectiveAt', { time: c.approveTime }) }}</template>
         </span>
       </div>
-      <div class="reason">变更原因：{{ c.reason || '-' }}</div>
+      <div class="reason">{{ $t('scm.orderChange.reasonValue', { reason: c.reason || '-' }) }}</div>
       <a-table row-key="key" size="small" :columns="columns" :data-source="rows(c)" :pagination="false" :scroll="{ x: 860 }">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'action'">
@@ -44,6 +44,7 @@
 
 <script setup>
 import { computed, h, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ArrowRightOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import { orderChanges } from '@/api/scm/order'
@@ -58,17 +59,18 @@ const props = defineProps({
   currency: String
 })
 
+const { t } = useI18n()
 const ACTIONS = {
-  MODIFY: { label: '修改', color: 'orange' },
-  REMOVE: { label: '删除', color: 'red' },
-  ADD: { label: '新增', color: 'green' }
+  MODIFY: { label: t('common.action.modify'), color: 'orange' },
+  REMOVE: { label: t('common.action.delete'), color: 'red' },
+  ADD: { label: t('common.action.add'), color: 'green' }
 }
 const columns = [
-  { title: '动作', key: 'action', width: 70 },
-  { title: '物料', key: 'material', width: 220 },
-  { title: '数量', key: 'qty', width: 200 },
-  { title: '含税单价', key: 'price', width: 200 },
-  { title: '交货日期', key: 'deliveryDate', width: 200 }
+  { title: t('scm.orderChange.action'), key: 'action', width: 80 },
+  { title: t('scm.order.material'), key: 'material', width: 220 },
+  { title: t('common.field.quantity'), key: 'qty', width: 200 },
+  { title: t('scm.order.taxPrice'), key: 'price', width: 200 },
+  { title: t('scm.order.deliveryDate'), key: 'deliveryDate', width: 200 }
 ]
 
 /** 旧值 → 新值；相同时只显示一个，空值显示 - */

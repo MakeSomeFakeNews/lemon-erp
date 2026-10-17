@@ -47,7 +47,7 @@ public class ScmContractUsageService {
         for (ScmOrderItem item : items) {
             ScmPurchaseContractItem ci = contractItems.get(item.getMaterialId());
             if (ci == null) {
-                throw new BizException("物料不在采购合同「" + contract.getContractNo() + "」中");
+                throw new BizException("物料不在采购合同「{0}」中", contract.getContractNo());
             }
             item.setPrice(ci.getPrice());
             item.setTaxRate(ci.getTaxRate());
@@ -69,14 +69,14 @@ public class ScmContractUsageService {
             throw new BizException("采购合同不存在");
         }
         if (contract.getStatus() != ContractStatus.ACTIVE) {
-            throw new BizException("采购合同「" + contract.getContractNo() + "」未生效或已关闭");
+            throw new BizException("采购合同「{0}」未生效或已关闭", contract.getContractNo());
         }
         if (!contract.getSupplierId().equals(supplierId)) {
-            throw new BizException("订单供应商与采购合同「" + contract.getContractNo() + "」的供应商不一致");
+            throw new BizException("订单供应商与采购合同「{0}」的供应商不一致", contract.getContractNo());
         }
         if (orderDate.isBefore(contract.getStartDate()) || orderDate.isAfter(contract.getEndDate())) {
-            throw new BizException("订单日期不在采购合同「" + contract.getContractNo() + "」的期限内（" + contract.getStartDate() + " ~ "
-                    + contract.getEndDate() + "）");
+            throw new BizException("订单日期不在采购合同「{0}」的期限内（{1} ~ {2}）", contract.getContractNo(),
+                    contract.getStartDate(), contract.getEndDate());
         }
         return contract;
     }
@@ -100,16 +100,16 @@ public class ScmContractUsageService {
             SrmViews.ContractUsage u = usage.get(e.getKey());
             BigDecimal used = u == null ? BigDecimal.ZERO : u.orderedQty();
             if (used.add(e.getValue()).compareTo(ci.getQtyLimit()) > 0) {
-                throw new BizException("物料「" + ci.getMaterialCode() + " " + ci.getMaterialName() + "」超出合同数量上限 "
-                        + plain(ci.getQtyLimit()) + "（其他订单已下单 " + plain(used) + "）");
+                throw new BizException("物料「{0} {1}」超出合同数量上限 {2}（其他订单已下单 {3}）", ci.getMaterialCode(),
+                        ci.getMaterialName(), plain(ci.getQtyLimit()), plain(used));
             }
         }
         if (contract.getAmountLimit() != null) {
             BigDecimal used = usage.values().stream().map(SrmViews.ContractUsage::orderedAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal amount = items.stream().map(ScmOrderItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
             if (used.add(amount).compareTo(contract.getAmountLimit()) > 0) {
-                throw new BizException("超出采购合同「" + contract.getContractNo() + "」的金额上限 " + plain(contract.getAmountLimit())
-                        + "（其他订单已下单 " + plain(used) + "）");
+                throw new BizException("超出采购合同「{0}」的金额上限 {1}（其他订单已下单 {2}）", contract.getContractNo(),
+                        plain(contract.getAmountLimit()), plain(used));
             }
         }
     }

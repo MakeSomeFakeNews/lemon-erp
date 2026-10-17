@@ -78,7 +78,7 @@ public class MesWorkCenterService {
         for (MesWorkCenter wc : workCenterMapper.selectByIds(ids)) {
             if (bomOpMapper.exists(Wrappers.<MesBomOp>lambdaQuery().eq(MesBomOp::getWorkCenterId, wc.getId()))
                     || equipmentMapper.exists(Wrappers.<MesEquipment>lambdaQuery().eq(MesEquipment::getWorkCenterId, wc.getId()))) {
-                throw new BizException("工作中心「" + wc.getName() + "」已被工艺路线或设备使用，不能删除，可以停用");
+                throw new BizException("工作中心「{0}」已被工艺路线或设备使用，不能删除，可以停用", wc.getName());
             }
         }
         workCenterMapper.deleteByIds(ids);

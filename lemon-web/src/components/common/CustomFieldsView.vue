@@ -6,10 +6,11 @@
 
 <script setup>
 import { watch } from 'vue'
+import { t } from '@/locales'
 import { displayValue, useCustomFields } from '@/composables/useCustomFields'
 
 /** 详情中只读显示自定义字段 */
-const props = defineProps({ bizType: { type: String, required: true }, bizId: [Number, String], title: { type: String, default: '扩展信息' } })
+const props = defineProps({ bizType: { type: String, required: true }, bizId: [Number, String], title: { type: String, default: () => t('components.customFields.title') } })
 const { fields, values, load } = useCustomFields(props.bizType)
 watch(
   () => props.bizId,

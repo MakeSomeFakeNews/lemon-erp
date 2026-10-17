@@ -55,14 +55,14 @@ public class HrContractController {
 
     @PostMapping("/contract")
     @PreAuthorize("@ss.hasPerm('hr:contract:edit')")
-    @OperLog(title = "劳动合同", type = OperType.INSERT)
+    @OperLog(title = "劳动合同", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> createContract(@RequestBody HrContract req) {
         return R.ok(contractService.create(req));
     }
 
     @PutMapping("/contract/{id}")
     @PreAuthorize("@ss.hasPerm('hr:contract:edit')")
-    @OperLog(title = "劳动合同", type = OperType.UPDATE)
+    @OperLog(title = "劳动合同", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> updateContract(@PathVariable Long id, @RequestBody HrContract req) {
         contractService.update(id, req);
         return R.ok();
@@ -70,14 +70,14 @@ public class HrContractController {
 
     @PostMapping("/contract/{id}/renew")
     @PreAuthorize("@ss.hasPerm('hr:contract:edit')")
-    @OperLog(title = "劳动合同续签", type = OperType.INSERT)
+    @OperLog(title = "劳动合同续签", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> renew(@PathVariable Long id, @RequestBody HrContract req) {
         return R.ok(contractService.renew(id, req));
     }
 
     @PostMapping("/contract/{id}/terminate")
     @PreAuthorize("@ss.hasPerm('hr:contract:edit')")
-    @OperLog(title = "劳动合同终止", type = OperType.UPDATE)
+    @OperLog(title = "劳动合同终止", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> terminate(@PathVariable Long id, @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                              @RequestParam(required = false) String reason) {
         contractService.terminate(id, date, reason);
@@ -86,7 +86,7 @@ public class HrContractController {
 
     @DeleteMapping("/contract/{id}")
     @PreAuthorize("@ss.hasPerm('hr:contract:edit')")
-    @OperLog(title = "劳动合同", type = OperType.DELETE)
+    @OperLog(title = "劳动合同", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> deleteContract(@PathVariable Long id) {
         contractService.delete(id);
         return R.ok();
@@ -103,7 +103,7 @@ public class HrContractController {
 
     @PostMapping("/social-scheme")
     @PreAuthorize("@ss.hasPerm('hr:social:edit')")
-    @OperLog(title = "社保方案", type = OperType.INSERT)
+    @OperLog(title = "社保方案", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Void> createScheme(@Valid @RequestBody HrSocialScheme scheme) {
         socialService.saveScheme(null, scheme);
         return R.ok();
@@ -111,7 +111,7 @@ public class HrContractController {
 
     @PutMapping("/social-scheme/{id}")
     @PreAuthorize("@ss.hasPerm('hr:social:edit')")
-    @OperLog(title = "社保方案", type = OperType.UPDATE)
+    @OperLog(title = "社保方案", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> updateScheme(@PathVariable Long id, @Valid @RequestBody HrSocialScheme scheme) {
         socialService.saveScheme(id, scheme);
         return R.ok();
@@ -119,7 +119,7 @@ public class HrContractController {
 
     @DeleteMapping("/social-scheme/{id}")
     @PreAuthorize("@ss.hasPerm('hr:social:edit')")
-    @OperLog(title = "社保方案", type = OperType.DELETE)
+    @OperLog(title = "社保方案", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> deleteScheme(@PathVariable Long id) {
         socialService.deleteScheme(id);
         return R.ok();
@@ -137,7 +137,7 @@ public class HrContractController {
 
     @PostMapping("/tax-deduction")
     @PreAuthorize("@ss.hasPerm('hr:deduction:edit')")
-    @OperLog(title = "专项附加扣除", type = OperType.INSERT)
+    @OperLog(title = "专项附加扣除", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Void> createDeduction(@RequestBody HrTaxDeduction d) {
         socialService.saveDeduction(null, d);
         return R.ok();
@@ -145,7 +145,7 @@ public class HrContractController {
 
     @PutMapping("/tax-deduction/{id}")
     @PreAuthorize("@ss.hasPerm('hr:deduction:edit')")
-    @OperLog(title = "专项附加扣除", type = OperType.UPDATE)
+    @OperLog(title = "专项附加扣除", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> updateDeduction(@PathVariable Long id, @RequestBody HrTaxDeduction d) {
         socialService.saveDeduction(id, d);
         return R.ok();
@@ -153,7 +153,7 @@ public class HrContractController {
 
     @DeleteMapping("/tax-deduction/{ids}")
     @PreAuthorize("@ss.hasPerm('hr:deduction:edit')")
-    @OperLog(title = "专项附加扣除", type = OperType.DELETE)
+    @OperLog(title = "专项附加扣除", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> deleteDeduction(@PathVariable List<Long> ids) {
         socialService.deleteDeduction(ids);
         return R.ok();

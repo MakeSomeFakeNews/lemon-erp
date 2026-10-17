@@ -3,11 +3,11 @@
     :fetcher="pageTodoTask"
     :columns="columns"
     storage-key="workflow-todo"
-    action-text="审批"
+    :action-text="$t('workflow.todo.approve')"
     :action-icon="AuditOutlined"
   >
     <template #title="{ total }">
-      <span class="toolbar-title">待我审批 <a-badge :count="total" :overflow-count="999" /></span>
+      <span class="toolbar-title">{{ $t('workflow.todo.title') }} <a-badge :count="total" :overflow-count="999" /></span>
     </template>
     <template #cell="{ column, record }">
       <a-tag v-if="column.key === 'taskName'" color="orange" :bordered="false">{{ record.taskName }}</a-tag>
@@ -16,17 +16,20 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { AuditOutlined } from '@ant-design/icons-vue'
 import TaskListPage from '@/components/workflow/TaskListPage.vue'
 import { pageTodoTask } from '@/api/workflow/task'
 
+const { t } = useI18n()
+
 const columns = [
-  { title: '流程名称', key: 'processName', dataIndex: 'processName', width: 200, ellipsis: true },
-  { title: '当前节点', key: 'taskName', width: 140 },
-  { title: '发起人', dataIndex: 'startUserName', width: 120 },
-  { title: '发起时间', dataIndex: 'startTime', width: 170 },
-  { title: '到达时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 100, fixed: 'right' }
+  { title: t('workflow.list.processName'), key: 'processName', dataIndex: 'processName', width: 200, ellipsis: true },
+  { title: t('workflow.list.currentNode'), key: 'taskName', width: 140 },
+  { title: t('workflow.list.initiator'), dataIndex: 'startUserName', width: 120 },
+  { title: t('workflow.list.startTime'), dataIndex: 'startTime', width: 170 },
+  { title: t('workflow.todo.arriveTime'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 110, fixed: 'right' }
 ]
 </script>
 

@@ -4,29 +4,29 @@
       <a-button size="small" :disabled="zoom <= MIN_ZOOM" @click="setZoom(zoom - 10)">
         <template #icon><MinusOutlined /></template>
       </a-button>
-      <span class="flow-zoom-value" title="重置缩放" @click="setZoom(100)">{{ zoom }}%</span>
+      <span class="flow-zoom-value" :title="$t('workflow.designer.resetZoom')" @click="setZoom(100)">{{ zoom }}%</span>
       <a-button size="small" :disabled="zoom >= MAX_ZOOM" @click="setZoom(zoom + 10)">
         <template #icon><PlusOutlined /></template>
       </a-button>
     </div>
     <div v-if="hasStatus" class="flow-legend">
-      <span><i class="legend-dot done" />已完成</span>
-      <span><i class="legend-dot running" />进行中</span>
-      <span><i class="legend-dot rejected" />已拒绝</span>
-      <span><i class="legend-dot pending" />未开始</span>
+      <span><i class="legend-dot done" />{{ $t('workflow.status.done') }}</span>
+      <span><i class="legend-dot running" />{{ $t('workflow.status.running') }}</span>
+      <span><i class="legend-dot rejected" />{{ $t('workflow.status.rejected') }}</span>
+      <span><i class="legend-dot pending" />{{ $t('workflow.status.pending') }}</span>
     </div>
 
     <div class="flow-scroll">
       <div v-if="modelValue" class="flow-canvas" :style="{ zoom: zoom / 100 }">
         <div class="node-card start" :class="statusClass(modelValue.id)">
-          <div class="node-head"><UserOutlined /><span>{{ modelValue.name || '发起人' }}</span></div>
-          <div class="node-body">所有人可发起</div>
+          <div class="node-head"><UserOutlined /><span>{{ modelValue.name || $t('workflow.node.start') }}</span></div>
+          <div class="node-body">{{ $t('workflow.designer.anyoneCanStart') }}</div>
         </div>
         <AddNodeButton :holder="modelValue" />
         <FlowNodeChain :holder="modelValue" />
         <div class="flow-end">
           <span class="flow-end-dot" />
-          <span>流程结束</span>
+          <span>{{ $t('workflow.designer.end') }}</span>
         </div>
       </div>
     </div>

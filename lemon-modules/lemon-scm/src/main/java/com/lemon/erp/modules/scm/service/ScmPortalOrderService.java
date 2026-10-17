@@ -70,8 +70,8 @@ public class ScmPortalOrderService {
                 .set(ScmOrder::getConfirmRemark, req.remark())
                 .set(ScmOrder::getConfirmTime, LocalDateTime.now())
                 .eq(ScmOrder::getId, id));
-        String result = accept ? "已接受，承诺交期 " + req.promisedDate() : "已拒绝：" + req.remark();
+        String result = accept ? "已接受，承诺交期 " + req.promisedDate() : "已拒绝：" + req.remark(); // i18n-ignore
         messageSender.send(List.of(order.getCreateBy()), MessageSender.Message.of(accept ? "REMIND" : "ALERT",
-                "供应商" + (accept ? "接受" : "拒绝") + "了采购订单 " + order.getOrderNo(), order.getPartnerName() + " " + result, "/scm/purchase"));
+                "供应商" + (accept ? "接受" : "拒绝") + "了采购订单 " + order.getOrderNo(), order.getPartnerName() + " " + result, "/scm/purchase")); // i18n-ignore
     }
 }

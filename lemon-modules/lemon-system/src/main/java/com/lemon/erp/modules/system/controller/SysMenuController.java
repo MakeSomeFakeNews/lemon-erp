@@ -37,7 +37,7 @@ public class SysMenuController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:menu:add')")
-    @OperLog(title = "菜单管理", type = OperType.INSERT)
+    @OperLog(title = "菜单管理", type = OperType.INSERT) // i18n-ignore 操作日志存库
     public R<Void> create(@Validated(Create.class) @RequestBody SysMenu menu) {
         menuService.create(menu);
         return R.ok();
@@ -45,7 +45,7 @@ public class SysMenuController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('sys:menu:edit')")
-    @OperLog(title = "菜单管理", type = OperType.UPDATE)
+    @OperLog(title = "菜单管理", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody SysMenu menu) {
         menu.setId(id);
         menuService.update(menu);
@@ -54,7 +54,7 @@ public class SysMenuController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('sys:menu:remove')")
-    @OperLog(title = "菜单管理", type = OperType.DELETE)
+    @OperLog(title = "菜单管理", type = OperType.DELETE) // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable Long id) {
         menuService.delete(id);
         return R.ok();

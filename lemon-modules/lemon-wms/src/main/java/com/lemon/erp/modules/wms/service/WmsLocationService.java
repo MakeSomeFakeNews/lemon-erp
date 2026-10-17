@@ -89,7 +89,7 @@ public class WmsLocationService {
             if (stockMapper.exists(Wrappers.<WmsStock>lambdaQuery()
                     .eq(WmsStock::getWarehouseId, location.getWarehouseId())
                     .eq(WmsStock::getLocationId, location.getId()))) {
-                throw new BizException("库位「" + location.getCode() + "」已有库存记录，不能删除，可以停用");
+                throw new BizException("库位「{0}」已有库存记录，不能删除，可以停用", location.getCode());
             }
         }
         locationMapper.deleteByIds(ids);

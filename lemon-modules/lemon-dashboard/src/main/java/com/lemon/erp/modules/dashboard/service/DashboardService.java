@@ -2,6 +2,7 @@ package com.lemon.erp.modules.dashboard.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.TokenService;
 import com.lemon.erp.framework.todo.TodoProvider;
@@ -48,7 +49,10 @@ public class DashboardService {
         List<TodoProvider.TodoItem> items = new ArrayList<>();
         for (TodoProvider provider : todoProviders) {
             try {
-                items.addAll(provider.todos(userId));
+                // 各模块待办标题是中文，在此按请求语言统一翻译（译文登记在 dashboard.en-US.json）
+                for (TodoProvider.TodoItem t : provider.todos(userId)) {
+                    items.add(new TodoProvider.TodoItem(t.module(), I18n.t(t.title()), t.count(), t.link(), t.level()));
+                }
             } catch (RuntimeException e) {
                 log.warn("待办统计失败：{}", provider.getClass().getSimpleName(), e);
             }

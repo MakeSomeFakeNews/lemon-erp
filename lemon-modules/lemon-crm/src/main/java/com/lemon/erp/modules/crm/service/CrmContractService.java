@@ -164,7 +164,7 @@ public class CrmContractService {
     public Long toOrder(Long id, Long warehouseId) {
         CrmContract c = requireStatus(id, "ACTIVE");
         if (c.getOrderId() != null) {
-            throw new BizException("合同已关联销售订单 " + c.getOrderNo());
+            throw new BizException("合同已关联销售订单 {0}", c.getOrderNo());
         }
         if (c.getQuotationId() == null) {
             throw new BizException("合同没有关联报价单，请关联已有的销售订单");
@@ -242,7 +242,7 @@ public class CrmContractService {
         if (req.plans() != null) {
             BigDecimal total = req.plans().stream().map(ContractRequest.Plan::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
             if (total.compareTo(req.amount()) > 0) {
-                throw new BizException("回款计划合计 " + total.toPlainString() + " 超过合同金额");
+                throw new BizException("回款计划合计 {0} 超过合同金额", total.toPlainString());
             }
         }
         c.setName(req.name().trim());
@@ -288,7 +288,7 @@ public class CrmContractService {
         getAccessible(id);
         CrmContract c = contractMapper.selectDetail(id);
         if (!status.equals(c.getStatus())) {
-            throw new BizException("合同 " + c.getContractNo() + " 状态不正确，请刷新");
+            throw new BizException("合同 {0} 状态不正确，请刷新", c.getContractNo());
         }
         return c;
     }

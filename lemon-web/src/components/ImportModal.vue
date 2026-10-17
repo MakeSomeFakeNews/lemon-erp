@@ -1,10 +1,10 @@
 <template>
   <a-modal
     :open="open"
-    :title="`导入${title}`"
+    :title="$t('components.import.title', { name: title })"
     width="min(640px, 100vw)"
     :confirm-loading="importing"
-    ok-text="导入"
+    :ok-text="$t('common.action.import')"
     :ok-button-props="{ disabled: !rows.length || !!errors.length }"
     @ok="doImport"
     @cancel="close"
@@ -12,19 +12,19 @@
     <a-space direction="vertical" style="width: 100%">
       <a-alert type="info" show-icon>
         <template #message>
-          先
-          <a @click="downloadTemplate(title, columns, sample)">下载导入模板</a>
-          ，按模板填写后上传；带 * 的列必填，任何一行有错误时整批不导入。
+          {{ $t('components.import.tipBefore') }}
+          <a @click="downloadTemplate(title, columns, sample)">{{ $t('components.import.downloadTemplate') }}</a>
+          {{ $t('components.import.tipAfter') }}
         </template>
       </a-alert>
       <a-upload-dragger :file-list="[]" accept=".xlsx" :before-upload="onFile" :disabled="parsing || importing">
         <p class="ant-upload-drag-icon"><InboxOutlined /></p>
-        <p class="ant-upload-text">{{ fileName || '点击或拖拽 .xlsx 文件到这里' }}</p>
+        <p class="ant-upload-text">{{ fileName || $t('components.import.dropHint') }}</p>
         <p v-if="rows.length || errors.length" class="ant-upload-hint">
-          共 {{ rows.length }} 行<span v-if="errors.length">，{{ errors.length }} 行有错误</span>
+          {{ errors.length ? $t('components.import.rowsWithErrors', { n: rows.length, e: errors.length }) : $t('components.import.rows', { n: rows.length }) }}
         </p>
       </a-upload-dragger>
-      <a-alert v-if="result && !result.errors.length" type="success" show-icon :message="`成功导入 ${result.imported} 行`" />
+      <a-alert v-if="result && !result.errors.length" type="success" show-icon :message="$t('components.import.success', { n: result.imported })" />
       <a-table
         v-if="errors.length"
         size="small"
@@ -40,6 +40,7 @@
 <script setup>
 import { ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { useDictStore } from '@/store/dict'
 import { downloadTemplate, readExcel } from '@/utils/excel'
@@ -60,10 +61,11 @@ const props = defineProps({
   sample: Object
 })
 const emit = defineEmits(['update:open', 'success'])
+const { t } = useI18n()
 
 const errorColumns = [
-  { title: '行号', dataIndex: 'rowNum', width: 80 },
-  { title: '错误', dataIndex: 'message' }
+  { title: t('components.import.rowNum'), dataIndex: 'rowNum', width: 80 },
+  { title: t('components.import.error'), dataIndex: 'message' }
 ]
 const fileName = ref('')
 const rows = ref([])
@@ -84,10 +86,15 @@ function close() {
   emit('update:open', false)
 }
 
-const BOOL = { 是: 1, 否: 0, Y: 1, N: 0, '1': 1, '0': 0, 启用: 1, 停用: 0 }
+// 中英文的「是 / 否」都可以，英文不区分大小写
+const BOOL = { 是: 1, 否: 0, y: 1, n: 0, '1': 1, '0': 0, 启用: 1, 停用: 0, yes: 1, no: 0, true: 1, false: 0, enabled: 1, disabled: 0 } // i18n-ignore
+function boolOf(v) {
+  const k = String(v).trim().toLowerCase()
+  return Object.hasOwn(BOOL, k) ? BOOL[k] : undefined
+}
 
 function normalizeDate(s) {
-  const m = /^(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})日?$/.exec(s)
+  const m = /^(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})日?$/.exec(s) // i18n-ignore 兼容「2026年1月2日」
   if (!m) return null
   return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
 }
@@ -107,33 +114,33 @@ async function convert(list) {
     for (const c of props.columns) {
       const v = r[c.key]
       if (v === undefined) {
-        if (c.required) rowErrs.push(`${c.title}不能为空`)
+        if (c.required) rowErrs.push(t('components.import.required', { name: c.title }))
         continue
       }
       if (c.dict) {
         const d = dicts[c.dict].find((x) => x.label === v || x.value === v)
         if (d) data[c.key] = d.value
-        else rowErrs.push(`${c.title}「${v}」不存在`)
+        else rowErrs.push(t('components.import.notFound', { name: c.title, value: v }))
       } else if (c.lookup) {
         const id = lookups[c.key].get(v)
         if (id !== undefined) data[c.key] = id
-        else rowErrs.push(`${c.title}「${v}」不存在`)
+        else rowErrs.push(t('components.import.notFound', { name: c.title, value: v }))
       } else if (c.type === 'number' || c.type === 'int') {
         const n = Number(v.replace(/,/g, ''))
-        if (Number.isNaN(n) || (c.type === 'int' && !Number.isInteger(n))) rowErrs.push(`${c.title}「${v}」不是有效的数字`)
+        if (Number.isNaN(n) || (c.type === 'int' && !Number.isInteger(n))) rowErrs.push(t('components.import.invalidNumber', { name: c.title, value: v }))
         else data[c.key] = n
       } else if (c.type === 'date') {
         const d = normalizeDate(v)
         if (d) data[c.key] = d
-        else rowErrs.push(`${c.title}「${v}」不是有效的日期`)
+        else rowErrs.push(t('components.import.invalidDate', { name: c.title, value: v }))
       } else if (c.type === 'bool') {
-        if (v in BOOL) data[c.key] = BOOL[v]
-        else rowErrs.push(`${c.title}请填写 是 或 否`)
+        if (boolOf(v) !== undefined) data[c.key] = boolOf(v)
+        else rowErrs.push(t('components.import.invalidBool', { name: c.title }))
       } else {
         data[c.key] = v
       }
     }
-    if (rowErrs.length) errs.push({ key: r.rowNum, rowNum: r.rowNum, message: rowErrs.join('；') })
+    if (rowErrs.length) errs.push({ key: r.rowNum, rowNum: r.rowNum, message: rowErrs.join(t('components.import.sep')) })
     return { rowNum: r.rowNum, data }
   })
   return { out, errs }
@@ -146,14 +153,14 @@ async function onFile(file) {
   try {
     const list = await readExcel(file, props.columns)
     if (!list.length) {
-      message.warning('文件中没有数据')
+      message.warning(t('components.import.noData'))
       return false
     }
     const { out, errs } = await convert(list)
     rows.value = out
     errors.value = errs
   } catch (e) {
-    message.error(e.message || '文件解析失败，请使用导入模板')
+    message.error(e.message || t('components.import.parseFailed'))
   } finally {
     parsing.value = false
   }
@@ -167,7 +174,7 @@ async function doImport() {
     result.value = res
     errors.value = res.errors.map((e, i) => ({ key: i, ...e }))
     if (!res.errors.length) {
-      message.success(`成功导入 ${res.imported} 行`)
+      message.success(t('components.import.success', { n: res.imported }))
       rows.value = []
       emit('success', res)
     }

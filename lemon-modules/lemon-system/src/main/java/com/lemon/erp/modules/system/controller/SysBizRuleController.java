@@ -34,7 +34,7 @@ public class SysBizRuleController {
     /** @param values 参数标识 → 值，只包含要修改的参数 */
     @PutMapping
     @PreAuthorize("@ss.hasPerm('sys:bizRule:edit')")
-    @OperLog(title = "业务参数", type = OperType.UPDATE)
+    @OperLog(title = "业务参数", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> save(@RequestBody Map<String, String> values) {
         ruleService.save(values);
         return R.ok();

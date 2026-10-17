@@ -2,6 +2,7 @@ package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.framework.excel.ImportRequest;
 import com.lemon.erp.framework.excel.ImportResult;
 import com.lemon.erp.framework.excel.ImportRow;
@@ -98,7 +99,7 @@ public class ScmOrderImportService {
                         createOrder(g.getKey(), g.getValue(), customers, materials);
                         orders[0]++;
                     } catch (BizException e) {
-                        errors.add(new ImportResult.RowError(g.getValue().get(0).rowNum(), "外部单号 " + g.getKey() + "：" + e.getMessage()));
+                        errors.add(new ImportResult.RowError(g.getValue().get(0).rowNum(), I18n.t("外部单号 {0}：{1}", g.getKey(), e.getLocalizedMessage())));
                     }
                 }
                 if (!errors.isEmpty()) {
@@ -120,21 +121,21 @@ public class ScmOrderImportService {
         }
         ScmCustomer customer = customers.get(customerCode);
         if (customer == null) {
-            throw new BizException("客户编码「" + customerCode + "」不存在");
+            throw new BizException("客户编码「{0}」不存在", customerCode);
         }
         List<OrderItemRequest> items = new ArrayList<>();
         for (ImportRow<ChannelRequests.ImportRow> r : rows) {
             ChannelRequests.ImportRow d = r.data();
             WmsMaterial m = materials.get(d.materialCode().trim());
             if (m == null) {
-                throw new BizException("物料编码「" + d.materialCode() + "」不存在");
+                throw new BizException("物料编码「{0}」不存在", d.materialCode());
             }
             BigDecimal price = d.price();
             BigDecimal taxRate = DEFAULT_TAX_RATE;
             if (price == null) {
                 ScmPriceList p = priceListMapper.selectQuote(m.getId(), customer.getId(), customer.getLevel(), d.qty(), d.orderDate());
                 if (p == null) {
-                    throw new BizException("物料「" + m.getCode() + "」没有价目表价格，请填写单价");
+                    throw new BizException("物料「{0}」没有价目表价格，请填写单价", m.getCode());
                 }
                 price = p.getPrice();
                 taxRate = p.getTaxRate();
@@ -142,7 +143,7 @@ public class ScmOrderImportService {
             items.add(new OrderItemRequest(m.getId(), d.qty(), price, taxRate, d.deliveryDate(), d.remark()));
         }
         Long id = orderService.createDraft(OrderKind.SALES, new OrderRequest(customer.getId(), first.orderDate(), first.deliveryDate(), null,
-                "外部单号 " + externalNo, items), SOURCE_IMPORT);
+                "外部单号 " + externalNo, items), SOURCE_IMPORT); // i18n-ignore
         orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate().set(ScmOrder::getExternalNo, externalNo).eq(ScmOrder::getId, id));
     }
 

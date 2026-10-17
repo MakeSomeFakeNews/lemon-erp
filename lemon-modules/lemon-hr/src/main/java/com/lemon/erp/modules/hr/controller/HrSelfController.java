@@ -57,7 +57,7 @@ public class HrSelfController {
 
     /** 打卡：当天第一次为上班卡，之后为下班卡 */
     @PostMapping("/clock")
-    @OperLog(title = "员工自助-打卡", type = OperType.INSERT)
+    @OperLog(title = "员工自助-打卡", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<HrAttendance> clock() {
         return R.ok(attendanceService.clock());
     }
@@ -78,13 +78,13 @@ public class HrSelfController {
     }
 
     @PostMapping("/leave")
-    @OperLog(title = "员工自助-假勤申请", type = OperType.INSERT)
+    @OperLog(title = "员工自助-假勤申请", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> apply(@Valid @RequestBody LeaveRequest req) {
         return R.ok(leaveService.apply(req));
     }
 
     @PostMapping("/leave/{id}/cancel")
-    @OperLog(title = "员工自助-撤销假勤申请", type = OperType.UPDATE)
+    @OperLog(title = "员工自助-撤销假勤申请", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> cancel(@PathVariable Long id) {
         leaveService.cancel(id);
         return R.ok();
@@ -116,7 +116,7 @@ public class HrSelfController {
     }
 
     @PostMapping("/appraisal/{id}/self")
-    @OperLog(title = "员工自助-自评", type = OperType.UPDATE)
+    @OperLog(title = "员工自助-自评", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> selfEvaluate(@PathVariable Long id, @Valid @RequestBody PerfScoreRequest req) {
         perfService.selfEvaluate(id, req);
         return R.ok();

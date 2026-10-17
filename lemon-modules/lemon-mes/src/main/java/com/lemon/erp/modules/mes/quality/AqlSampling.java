@@ -97,6 +97,6 @@ public final class AqlSampling {
                 return i;
             }
         }
-        throw new BizException("不支持的 AQL：" + aql.stripTrailingZeros().toPlainString() + "，可选 0.040 ~ 6.5");
+        throw new BizException("不支持的 AQL：{0}，可选 0.040 ~ 6.5", aql.stripTrailingZeros().toPlainString());
     }
 }

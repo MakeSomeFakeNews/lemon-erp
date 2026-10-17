@@ -48,7 +48,7 @@ public class CrmFollowupController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('crm:followup:add')")
-    @OperLog(title = "跟进记录", type = OperType.INSERT)
+    @OperLog(title = "跟进记录", type = OperType.INSERT) // i18n-ignore 操作日志标题存库
     public R<Long> create(@Valid @RequestBody FollowupRequest req) {
         return R.ok(followupService.create(req));
     }
@@ -56,7 +56,7 @@ public class CrmFollowupController {
     /** 本人的跟进或有删除权限 */
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('crm:followup:list')")
-    @OperLog(title = "跟进记录", type = OperType.DELETE)
+    @OperLog(title = "跟进记录", type = OperType.DELETE) // i18n-ignore 操作日志标题存库
     public R<Void> delete(@PathVariable Long id) {
         followupService.delete(id);
         return R.ok();

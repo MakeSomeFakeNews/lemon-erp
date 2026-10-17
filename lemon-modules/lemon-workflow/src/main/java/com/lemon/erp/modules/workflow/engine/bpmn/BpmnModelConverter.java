@@ -59,9 +59,9 @@ public class BpmnModelConverter {
         process.addFlowElement(start);
 
         Exit last = builder.chain(root.next(), new Exit(start.getId()));
-        builder.connect(last, builder.endEvent(APPROVED_END_ID, "审批通过", false).getId());
+        builder.connect(last, builder.endEvent(APPROVED_END_ID, "审批通过", false).getId());  // i18n-ignore 存库或内部异常
         if (builder.rejectable) {
-            builder.endEvent(REJECTED_END_ID, "审批拒绝", true);
+            builder.endEvent(REJECTED_END_ID, "审批拒绝", true);  // i18n-ignore 存库或内部异常
         }
 
         BpmnModel model = new BpmnModel();
@@ -105,7 +105,7 @@ public class BpmnModelConverter {
                 case CC -> cc(node, entry);
                 case CONDITION -> branches(node, entry, new ExclusiveGateway(), new ExclusiveGateway(), true);
                 case PARALLEL -> branches(node, entry, new ParallelGateway(), new ParallelGateway(), false);
-                case START -> throw new IllegalArgumentException("发起人节点只能是根节点");
+                case START -> throw new IllegalArgumentException("发起人节点只能是根节点");  // i18n-ignore 存库或内部异常
             };
         }
 

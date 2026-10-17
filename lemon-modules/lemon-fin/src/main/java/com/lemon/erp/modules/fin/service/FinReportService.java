@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.modules.fin.dto.AccountSum;
 import com.lemon.erp.modules.fin.dto.AuxBalanceRow;
 import com.lemon.erp.modules.fin.dto.BalanceRow;
@@ -106,7 +107,7 @@ public class FinReportService {
         LedgerRow first = new LedgerRow();
         first.setType("OPEN");
         first.setEntryDate(toYearMonth(begin).atDay(1));
-        first.setSummary("期初余额");
+        first.setSummary(I18n.t("期初余额"));
         first.setBalance(balance);
         first.setSide(side(balance, debitSide));
         rows.add(first);
@@ -123,7 +124,7 @@ public class FinReportService {
         LedgerRow total = new LedgerRow();
         total.setType("TOTAL");
         total.setEntryDate(toYearMonth(end).atEndOfMonth());
-        total.setSummary("本期合计");
+        total.setSummary(I18n.t("本期合计"));
         total.setDebit(totalDebit);
         total.setCredit(totalCredit);
         total.setBalance(balance);
@@ -169,9 +170,9 @@ public class FinReportService {
 
     private static String side(BigDecimal balance, boolean debitSide) {
         if (balance.signum() == 0) {
-            return "平";
+            return I18n.t("平");
         }
-        return (balance.signum() > 0) == debitSide ? "借" : "贷";
+        return I18n.t((balance.signum() > 0) == debitSide ? "借" : "贷");
     }
 
     private static Map<Long, AccountSum> toMap(List<AccountSum> list) {

@@ -1,11 +1,11 @@
 <template>
-  <a-alert v-if="isAdminRole" type="info" show-icon message="管理员角色拥有全部可用菜单和按钮权限（SaaS 模式下以租户套餐为准），无需分配" />
+  <a-alert v-if="isAdminRole" type="info" show-icon :message="$t('system.role.adminAllMenu')" />
   <template v-else>
     <a-alert
       type="info"
       show-icon
       class="panel-tip"
-      message="勾选按钮时会自动勾选所在的菜单和目录；保存后，拥有该角色的用户刷新页面即可看到新的菜单。"
+      :message="$t('system.role.menuTip')"
     />
     <CheckTree v-model="checked" :tree="menuTree" :disabled="readonly" check-ancestors height="calc(100vh - 480px)">
       <template #extra="{ type }">
@@ -19,6 +19,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import CheckTree from '@/components/tree/CheckTree.vue'
 import PanelActions from './PanelActions.vue'
@@ -33,6 +34,7 @@ const props = defineProps({
   readonly: Boolean
 })
 const emit = defineEmits(['saved', 'update:dirty'])
+const { t } = useI18n()
 useDict('sys_menu_type')
 
 const checked = ref([])
@@ -49,7 +51,7 @@ async function save() {
   saving.value = true
   try {
     await updateRole(props.detail.id, { ...pick(props.detail, BASIC_FIELDS), menuIds: [...checked.value] })
-    message.success('菜单权限已保存，立即生效')
+    message.success(t('system.role.menuSaved'))
     emit('saved')
   } finally {
     saving.value = false

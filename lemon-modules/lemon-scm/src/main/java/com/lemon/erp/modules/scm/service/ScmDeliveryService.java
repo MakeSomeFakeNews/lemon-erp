@@ -85,7 +85,7 @@ public class ScmDeliveryService {
     public Long create(DeliveryRequest req) {
         ScmOrder order = orderService.getAccessible(OrderKind.SALES, req.orderId());
         if (!OrderStatus.EXECUTABLE.contains(order.getStatus())) {
-            throw new BizException("订单 " + order.getOrderNo() + " 不是已审核或部分出库状态，不能发货");
+            throw new BizException("订单 {0} 不是已审核或部分出库状态，不能发货", order.getOrderNo());
         }
         warehouseService.get(req.warehouseId());
         Map<Long, ScmOrderItem> orderItems = orderItemMapper.selectByOrderId(order.getId()).stream()
@@ -110,12 +110,12 @@ public class ScmDeliveryService {
         for (DeliveryRequest.Item r : req.items()) {
             ScmOrderItem oi = orderItems.get(r.orderItemId());
             if (oi == null) {
-                throw new BizException("订单明细不属于订单 " + order.getOrderNo());
+                throw new BizException("订单明细不属于订单 {0}", order.getOrderNo());
             }
             BigDecimal max = oi.remainingQty().subtract(noticed.getOrDefault(oi.getId(), BigDecimal.ZERO));
             if (r.qty().compareTo(max) > 0) {
-                throw new BizException(String.format("%s %s：通知数量超过未出库且未通知的数量 %s", oi.getMaterialCode(), oi.getMaterialName(),
-                        max.max(BigDecimal.ZERO).stripTrailingZeros().toPlainString()));
+                throw new BizException("{0} {1}：通知数量超过未出库且未通知的数量 {2}", oi.getMaterialCode(), oi.getMaterialName(),
+                        max.max(BigDecimal.ZERO).stripTrailingZeros().toPlainString());
             }
             noticed.merge(oi.getId(), r.qty(), BigDecimal::add);
             ScmDeliveryItem item = new ScmDeliveryItem();
@@ -156,8 +156,8 @@ public class ScmDeliveryService {
         for (ScmDeliveryItem item : items.values()) {
             if (picked.getOrDefault(item.getId(), BigDecimal.ZERO).compareTo(item.getQty()) != 0) {
                 ScmDeliveryItem view = deliveryMapper.selectItems(id).stream().filter(i -> i.getId().equals(item.getId())).findFirst().orElse(item);
-                throw new BizException(String.format("%s %s：拣货数量 %s 与通知数量 %s 不一致", view.getMaterialCode(), view.getMaterialName(),
-                        plain(picked.getOrDefault(item.getId(), BigDecimal.ZERO)), plain(item.getQty())));
+                throw new BizException("{0} {1}：拣货数量 {2} 与通知数量 {3} 不一致", view.getMaterialCode(), view.getMaterialName(),
+                        plain(picked.getOrDefault(item.getId(), BigDecimal.ZERO)), plain(item.getQty()));
             }
         }
         pickMapper.delete(Wrappers.<ScmDeliveryPick>lambdaQuery().eq(ScmDeliveryPick::getDeliveryId, id));
@@ -183,7 +183,7 @@ public class ScmDeliveryService {
                         null, null, p.getQty(), p.getSerialNos(), null))
                 .toList();
         Long docId = tradeDocService.create(TradeKind.SALES_OUT, new TradeDocRequest(d.getOrderId(), d.getWarehouseId(),
-                bizDate == null ? LocalDate.now() : bizDate, "发货通知 " + d.getDeliveryNo(), null, lines));
+                bizDate == null ? LocalDate.now() : bizDate, "发货通知 " + d.getDeliveryNo(), null, lines)); // i18n-ignore
         deliveryMapper.update(Wrappers.<ScmDelivery>lambdaUpdate().set(ScmDelivery::getStatus, DeliveryStatus.SHIPPED)
                 .set(ScmDelivery::getTradeDocId, docId).eq(ScmDelivery::getId, id).eq(ScmDelivery::getStatus, DeliveryStatus.PICKED));
         return docId;

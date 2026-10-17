@@ -49,7 +49,7 @@ public class SysImController {
 
     @PutMapping("/config")
     @PreAuthorize("@ss.hasPerm('sys:im:edit')")
-    @OperLog(title = "第三方集成", type = OperType.UPDATE)
+    @OperLog(title = "第三方集成", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> save(@Valid @RequestBody SysImConfig config) {
         configService.save(config);
         return R.ok();
@@ -71,7 +71,7 @@ public class SysImController {
 
     @PostMapping("/{platform}/sync")
     @PreAuthorize("@ss.hasPerm('sys:im:sync')")
-    @OperLog(title = "同步通讯录", type = OperType.IMPORT)
+    @OperLog(title = "同步通讯录", type = OperType.IMPORT) // i18n-ignore 操作日志存库
     public R<ImSyncResult> sync(@PathVariable ImPlatform platform) {
         return R.ok(syncService.sync(platform));
     }
@@ -90,7 +90,7 @@ public class SysImController {
 
     @PostMapping("/bindings")
     @PreAuthorize("@ss.hasPerm('sys:im:sync')")
-    @OperLog(title = "成员绑定", type = OperType.INSERT)
+    @OperLog(title = "成员绑定", type = OperType.INSERT) // i18n-ignore 操作日志存库
     public R<Void> bind(@Valid @RequestBody BindRequest req) {
         syncService.bind(req.userId(), req.platform(), req.imUserId());
         return R.ok();
@@ -98,7 +98,7 @@ public class SysImController {
 
     @DeleteMapping("/bindings/{id}")
     @PreAuthorize("@ss.hasPerm('sys:im:sync')")
-    @OperLog(title = "成员绑定", type = OperType.DELETE)
+    @OperLog(title = "成员绑定", type = OperType.DELETE) // i18n-ignore 操作日志存库
     public R<Void> unbind(@PathVariable Long id) {
         syncService.unbind(id);
         return R.ok();

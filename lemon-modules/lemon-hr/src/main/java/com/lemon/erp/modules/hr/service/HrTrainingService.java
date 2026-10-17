@@ -95,7 +95,7 @@ public class HrTrainingService {
     public void delete(List<Long> ids) {
         for (HrTraining t : trainingMapper.selectByIds(ids)) {
             if (!"PLANNED".equals(t.getStatus()) && !"CANCELED".equals(t.getStatus())) {
-                throw new BizException("培训「" + t.getTitle() + "」已开始，不能删除");
+                throw new BizException("培训「{0}」已开始，不能删除", t.getTitle());
             }
         }
         recordMapper.delete(Wrappers.<HrTrainingRecord>lambdaQuery().in(HrTrainingRecord::getTrainingId, ids));
@@ -115,7 +115,7 @@ public class HrTrainingService {
                 .eq(HrTraining::getId, id).eq(HrTraining::getStatus, t.getStatus()));
         // 培训结束：有费用时生成培训费凭证（借 管理费用-培训费 / 贷 其他应付款）
         if ("FINISHED".equals(status) && t.getCost() != null && t.getCost().signum() > 0 && t.getVoucherId() == null) {
-            String summary = "培训费 " + t.getTitle();
+            String summary = "培训费 " + t.getTitle();  // i18n-ignore 凭证摘要存库
             LocalDate date = t.getEndDate() != null ? t.getEndDate() : LocalDate.now();
             Long voucherId = voucherService.createGenerated(date, VoucherSource.EXPENSE, null, List.of(
                     VoucherLine.debit(summary, accountRules.accountId(AccountRole.TRAINING_EXPENSE), null, t.getCost()),

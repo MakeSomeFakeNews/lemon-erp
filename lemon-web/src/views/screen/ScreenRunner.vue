@@ -5,7 +5,7 @@
     :company="company"
     :updated-at="updatedAt"
     :error="error"
-    :screens="screens"
+    :screens="namedScreens"
     :current="index"
     :playing="playing"
     :closable="closable"
@@ -14,13 +14,15 @@
     @close="emit('close')"
   >
     <component :is="COMPONENTS[current?.key]" v-if="current && data[current.key]" :data="data[current.key]" />
-    <div v-else class="loading">{{ error || '正在加载…' }}</div>
+    <div v-else class="loading">{{ error || $t('screen.runner.loading') }}</div>
   </ScreenShell>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
+import { useI18n } from 'vue-i18n'
+import { SCREENS } from '@/components/screen/screen'
 import ScreenShell from '@/components/screen/ScreenShell.vue'
 import FactoryScreen from './FactoryScreen.vue'
 import QualityScreen from './QualityScreen.vue'
@@ -42,6 +44,7 @@ const props = defineProps({
   closable: Boolean
 })
 const emit = defineEmits(['close'])
+const { t } = useI18n()
 
 const COMPONENTS = { FACTORY: FactoryScreen, WAREHOUSE: WarehouseScreen, SALES: SalesScreen, QUALITY: QualityScreen }
 const REFRESH_MS = 30000
@@ -52,8 +55,11 @@ const data = reactive({})
 const loadedAt = reactive({})
 const error = ref('')
 const current = computed(() => props.screens[index.value])
-const title = computed(() => `${current.value?.label || ''}${current.value?.key === 'FACTORY' && props.titleSuffix ? ` · ${props.titleSuffix}` : ''}`)
-const subtitle = computed(() => (current.value?.key === 'FACTORY' && props.titleSuffix ? '' : '实时数据'))
+/** 大屏名称优先用前端的译文 */
+const screenName = (s) => (s ? SCREENS.find((x) => x.key === s.key)?.label || s.label || '' : '')
+const namedScreens = computed(() => props.screens.map((s) => ({ ...s, label: screenName(s) })))
+const title = computed(() => `${screenName(current.value)}${current.value?.key === 'FACTORY' && props.titleSuffix ? ` · ${props.titleSuffix}` : ''}`)
+const subtitle = computed(() => (current.value?.key === 'FACTORY' && props.titleSuffix ? '' : t('screen.runner.realtime')))
 const updatedAt = computed(() => (current.value && loadedAt[current.value.key] ? dayjs(loadedAt[current.value.key]).format('HH:mm:ss') : ''))
 
 async function load(force = false) {
@@ -65,7 +71,7 @@ async function load(force = false) {
     loadedAt[key] = Date.now()
     error.value = ''
   } catch (e) {
-    error.value = loadedAt[key] ? `${e.message}，显示的是 ${dayjs(loadedAt[key]).format('HH:mm')} 的数据` : e.message
+    error.value = loadedAt[key] ? t('screen.runner.offline', { msg: e.message, time: dayjs(loadedAt[key]).format('HH:mm') }) : e.message
   }
 }
 

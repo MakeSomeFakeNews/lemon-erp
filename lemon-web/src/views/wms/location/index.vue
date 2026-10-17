@@ -2,14 +2,14 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="仓库" name="warehouseId">
-          <WarehouseSelect v-model:value="query.warehouseId" placeholder="全部" @update:value="search" />
+        <a-form-item :label="$t('wms.common.warehouse')" name="warehouseId">
+          <WarehouseSelect v-model:value="query.warehouseId" :placeholder="$t('common.placeholder.all')" @update:value="search" />
         </a-form-item>
-        <a-form-item label="库位" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="编码或名称" allow-clear />
+        <a-form-item :label="$t('wms.common.location')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('wms.flow.codeOrName')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.sys_common_status, true)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -24,21 +24,21 @@
         @refresh="load"
       >
         <a-button v-perm="'wms:location:add'" type="primary" @click="drawer.openCreate({ warehouseId: query.warehouseId })">
-          <template #icon><PlusOutlined /></template>新增库位
+          <template #icon><PlusOutlined /></template>{{ $t('wms.location.createTitle') }}
         </a-button>
         <span v-perm="'wms:location:remove'">
           <a-popconfirm
-            :title="`确定删除选中的 ${selectedKeys.length} 个库位？`"
+            :title="$t('wms.location.confirmDeleteN', { n: selectedKeys.length })"
             :disabled="!selectedKeys.length"
             @confirm="remove(selectedKeys)"
           >
             <a-button danger :disabled="!selectedKeys.length">
-              <template #icon><DeleteOutlined /></template>批量删除
+              <template #icon><DeleteOutlined /></template>{{ $t('common.action.batchDelete') }}
             </a-button>
           </a-popconfirm>
         </span>
         <a-button :disabled="!selectedKeys.length" @click="openLabels">
-          <template #icon><BarcodeOutlined /></template>打印库位标签{{ selectedKeys.length ? `（${selectedKeys.length}）` : '' }}
+          <template #icon><BarcodeOutlined /></template>{{ $t('wms.location.printLabel') }}{{ selectedKeys.length ? ` (${selectedKeys.length})` : '' }}
         </a-button>
       </TableToolbar>
 
@@ -69,12 +69,12 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button v-perm="'wms:location:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-perm="'wms:location:remove'">
-                <a-popconfirm :title="`确定删除库位「${record.code}」？`" @confirm="remove([record.id])">
+                <a-popconfirm :title="$t('wms.location.confirmDelete', { code: record.code })" @confirm="remove([record.id])">
                   <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>删除
+                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
                   </a-button>
                 </a-popconfirm>
               </span>
@@ -84,41 +84,41 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增库位" edit-title="编辑库位">
+    <FormDrawer :drawer="drawer" :create-title="$t('wms.location.createTitle')" :edit-title="$t('wms.location.editTitle')">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :span="24">
-            <a-form-item label="所属仓库" name="warehouseId" :extra="drawer.isEdit.value ? '库位所属仓库不能修改' : ''">
+            <a-form-item :label="$t('wms.location.warehouse')" name="warehouseId" :extra="drawer.isEdit.value ? $t('wms.location.warehouseFixed') : ''">
               <WarehouseSelect v-model:value="form.warehouseId" :allow-clear="false" :disabled="drawer.isEdit.value" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="库位编码" name="code">
-              <a-input v-model:value="form.code" :maxlength="32" placeholder="如：A-01-02（区-排-层）" />
+            <a-form-item :label="$t('wms.location.code')" name="code">
+              <a-input v-model:value="form.code" :maxlength="32" :placeholder="$t('wms.location.codePh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="库位名称" name="name">
-              <a-input v-model:value="form.name" :maxlength="64" placeholder="选填" />
+            <a-form-item :label="$t('wms.location.name')" name="name">
+              <a-input v-model:value="form.name" :maxlength="64" :placeholder="$t('wms.common.optional')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="类型" name="locType" extra="上架推荐空库位只用存储位、拣货位；不良品位的库存不参与拣货建议">
+            <a-form-item :label="$t('common.field.type')" name="locType" :extra="$t('wms.location.typeTip')">
               <a-select v-model:value="form.locType" :options="toOptions(dict.wms_location_type)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="区域" name="zone">
-              <a-input v-model:value="form.zone" :maxlength="32" placeholder="如 A 区、冷藏区" />
+            <a-form-item :label="$t('wms.location.zone')" name="zone">
+              <a-input v-model:value="form.zone" :maxlength="32" :placeholder="$t('wms.location.zonePh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="排序" name="sort" extra="拣货路径按 区域 → 排序 → 编码">
+            <a-form-item :label="$t('common.field.sort')" name="sort" :extra="$t('wms.location.sortTip')">
               <a-input-number v-model:value="form.sort" :min="0" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-textarea v-model:value="form.remark" :rows="3" :maxlength="255" show-count />
             </a-form-item>
           </a-col>
@@ -131,6 +131,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { BarcodeOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
@@ -149,20 +150,22 @@ import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 
+const { t } = useI18n()
+
 const route = useRoute()
 const userStore = useUserStore()
 const dict = useDict('sys_common_status', 'wms_location_type')
 
 const columns = [
-  { title: '仓库', dataIndex: 'warehouseName', width: 160 },
-  { title: '库位编码', dataIndex: 'code', width: 140 },
-  { title: '库位名称', dataIndex: 'name', width: 160 },
-  { title: '区域', dataIndex: 'zone', width: 100 },
-  { title: '类型', key: 'type', width: 100 },
-  { title: '排序', dataIndex: 'sort', width: 70 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '备注', dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: '操作', key: 'action', width: 150, fixed: 'right' }
+  { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 160 },
+  { title: t('wms.location.code'), dataIndex: 'code', width: 140 },
+  { title: t('wms.location.name'), dataIndex: 'name', width: 160 },
+  { title: t('wms.location.zone'), dataIndex: 'zone', width: 100 },
+  { title: t('common.field.type'), key: 'type', width: 100 },
+  { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'wms-location')
 const showSearch = ref(true)
@@ -180,10 +183,10 @@ function resetQuery() {
 onMounted(load)
 
 const rules = {
-  warehouseId: [{ required: true, message: '请选择所属仓库' }],
+  warehouseId: [{ required: true, message: t('wms.location.selectWarehouse') }],
   code: [
-    { required: true, message: '请输入库位编码' },
-    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: '只能包含字母、数字、下划线和短横线' }
+    { required: true, message: t('wms.location.inputCode') },
+    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: t('wms.location.codeRule') }
   ]
 }
 const drawer = useFormDrawer({
@@ -198,7 +201,7 @@ const { formRef, form } = drawer
 
 async function remove(ids) {
   await deleteLocation(ids)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   selectedKeys.value = selectedKeys.value.filter((k) => !ids.includes(k))
   load()
 }

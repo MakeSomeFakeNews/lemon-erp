@@ -3,6 +3,7 @@ package com.lemon.erp.modules.system.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.framework.portal.PortalAccounts;
 import com.lemon.erp.framework.portal.PortalKind;
 import com.lemon.erp.framework.security.TokenService;
@@ -51,7 +52,7 @@ public class SysPortalAccountService implements PortalAccounts {
         }
         SysRole role = roleMapper.selectOne(Wrappers.<SysRole>lambdaQuery().eq(SysRole::getCode, kind.getRole()));
         if (role == null) {
-            throw new BizException("缺少内置的「" + kind.getLabel() + "」角色（编码 " + kind.getRole() + "），请在角色管理中创建");
+            throw new BizException("缺少内置的「{0}」角色（编码 {1}），请在角色管理中创建", I18n.t(kind.getLabel()), kind.getRole());
         }
         passwordPolicy.check(account.password());
         SysUser user = new SysUser();

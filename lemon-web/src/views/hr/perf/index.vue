@@ -2,11 +2,11 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="考核" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="考核名称" allow-clear />
+        <a-form-item :label="$t('hr.perf.plan')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('hr.perf.namePh0')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.hr_perf_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.hr_perf_status)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -14,7 +14,7 @@
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" v-model:show-search="showSearch" :columns="columns" @refresh="load">
         <a-button v-perm="'hr:perf:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新建考核
+          <template #icon><PlusOutlined /></template>{{ $t('hr.perf.add') }}
         </a-button>
       </TableToolbar>
       <a-table
@@ -33,7 +33,7 @@
             <div class="sub-text">{{ periodTypeText(record.periodType) }} · {{ record.startDate }} ~ {{ record.endDate }}</div>
           </template>
           <template v-else-if="column.key === 'payPeriod'">
-            {{ record.payPeriod ? periodText(record.payPeriod) : '不发放' }}
+            {{ record.payPeriod ? periodText(record.payPeriod) : $t('hr.perf.noPay') }}
           </template>
           <template v-else-if="column.key === 'progress'">
             <a-progress
@@ -42,23 +42,23 @@
               size="small"
               :format="() => `${record.doneCount}/${record.total}`"
             />
-            <span v-else class="sub-text">未发起</span>
+            <span v-else class="sub-text">{{ $t('hr.perf.notStarted') }}</span>
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="hr_perf_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button v-if="record.status !== 'DRAFT'" type="link" size="small" @click="openResult(record)">考核结果</a-button>
-              <a-button v-if="record.status === 'DRAFT'" v-perm="'hr:perf:edit'" type="link" size="small" @click="openStart(record)">发起</a-button>
+              <a-button v-if="record.status !== 'DRAFT'" type="link" size="small" @click="openResult(record)">{{ $t('hr.perf.result') }}</a-button>
+              <a-button v-if="record.status === 'DRAFT'" v-perm="'hr:perf:edit'" type="link" size="small" @click="openStart(record)">{{ $t('hr.perf.start') }}</a-button>
               <span v-if="record.status === 'SCORING'" v-perm="'hr:perf:edit'">
-                <a-popconfirm title="归档后不能再评分，绩效奖金按发放月份计入工资，确定归档？" @confirm="finish(record.id)">
-                  <a-button type="link" size="small">归档</a-button>
+                <a-popconfirm :title="$t('hr.perf.confirmFinish')" @confirm="finish(record.id)">
+                  <a-button type="link" size="small">{{ $t('hr.perf.archive') }}</a-button>
                 </a-popconfirm>
               </span>
-              <a-button v-if="record.status !== 'FINISHED'" v-perm="'hr:perf:edit'" type="link" size="small" @click="drawer.openEdit(record)">编辑</a-button>
+              <a-button v-if="record.status !== 'FINISHED'" v-perm="'hr:perf:edit'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
               <span v-if="record.status === 'DRAFT'" v-perm="'hr:perf:remove'">
-                <a-popconfirm :title="`确定删除「${record.name}」？`" @confirm="remove(record.id)">
+                <a-popconfirm :title="$t('hr.perf.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
               </span>
@@ -69,53 +69,53 @@
     </a-card>
 
     <!-- 考核方案 -->
-    <FormDrawer :drawer="drawer" create-title="新建考核" edit-title="编辑考核" width="min(760px, 100vw)">
+    <FormDrawer :drawer="drawer" :create-title="$t('hr.perf.add')" :edit-title="$t('hr.perf.edit')" width="min(760px, 100vw)">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-alert v-if="isEdit && form.status !== 'DRAFT'" type="info" show-icon class="mb" message="考核已发起，只能修改名称、说明和奖金发放月份。" />
+        <a-alert v-if="isEdit && form.status !== 'DRAFT'" type="info" show-icon class="mb" :message="$t('hr.perf.lockedTip')" />
         <a-row :gutter="16">
           <a-col :span="24">
-            <a-form-item label="考核名称" name="name"><a-input v-model:value="form.name" :maxlength="128" placeholder="如：2026 年第三季度绩效考核" /></a-form-item>
+            <a-form-item :label="$t('hr.perf.name')" name="name"><a-input v-model:value="form.name" :maxlength="128" :placeholder="$t('hr.perf.namePh')" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="考核周期" name="periodType">
+            <a-form-item :label="$t('hr.perf.periodType')" name="periodType">
               <a-select v-model:value="form.periodType" :options="PERIOD_TYPES" :disabled="locked" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="开始日期" name="startDate">
+            <a-form-item :label="$t('common.field.beginDate')" name="startDate">
               <a-date-picker v-model:value="form.startDate" value-format="YYYY-MM-DD" class="full" :disabled="locked" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="结束日期" name="endDate">
+            <a-form-item :label="$t('common.field.endDate')" name="endDate">
               <a-date-picker v-model:value="form.endDate" value-format="YYYY-MM-DD" class="full" :disabled="locked" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="奖金发放月份" name="payPeriod" extra="归档后绩效奖金计入该月工资，不选不发放">
-              <PeriodPicker v-model:value="form.payPeriod" placeholder="不发放" />
+            <a-form-item :label="$t('hr.perf.payPeriod')" name="payPeriod" :extra="$t('hr.perf.payPeriodExtra')">
+              <PeriodPicker v-model:value="form.payPeriod" :placeholder="$t('hr.perf.noPay')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="说明" name="remark"><a-input v-model:value="form.remark" :maxlength="255" /></a-form-item>
+            <a-form-item :label="$t('hr.perf.description')" name="remark"><a-input v-model:value="form.remark" :maxlength="255" /></a-form-item>
           </a-col>
         </a-row>
         <div class="indicator-head">
-          <span>考核指标 <span :class="['sub-text', { danger: weightSum !== 100 }]">权重合计 {{ weightSum }}%</span></span>
+          <span>{{ $t('hr.perf.indicators') }} <span :class="['sub-text', { danger: weightSum !== 100 }]">{{ $t('hr.perf.weightSum', { n: weightSum }) }}</span></span>
           <a-button v-if="!locked" size="small" @click="form.indicators.push({ name: '', weight: undefined, description: '' })">
-            <template #icon><PlusOutlined /></template>添加指标
+            <template #icon><PlusOutlined /></template>{{ $t('hr.perf.addIndicator') }}
           </a-button>
         </div>
         <a-table row-key="key" size="small" :columns="indicatorColumns" :data-source="indicatorRows" :pagination="false">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'name'">
-              <a-input v-model:value="form.indicators[index].name" :maxlength="64" :disabled="locked" placeholder="如：工作业绩" />
+              <a-input v-model:value="form.indicators[index].name" :maxlength="64" :disabled="locked" :placeholder="$t('hr.perf.indicatorPh')" />
             </template>
             <template v-else-if="column.key === 'weight'">
               <a-input-number v-model:value="form.indicators[index].weight" :min="1" :max="100" addon-after="%" class="full" :disabled="locked" />
             </template>
             <template v-else-if="column.key === 'description'">
-              <a-input v-model:value="form.indicators[index].description" :maxlength="255" :disabled="locked" placeholder="评分标准" />
+              <a-input v-model:value="form.indicators[index].description" :maxlength="255" :disabled="locked" :placeholder="$t('hr.perf.criteria')" />
             </template>
             <template v-else-if="column.key === 'action'">
               <a-button v-if="!locked" type="link" danger size="small" @click="form.indicators.splice(index, 1)"><DeleteOutlined /></a-button>
@@ -126,15 +126,15 @@
     </FormDrawer>
 
     <!-- 发起考核 -->
-    <a-modal v-model:open="startOpen" :title="`发起考核：${startTarget?.name || ''}`" :confirm-loading="saving" @ok="start">
+    <a-modal v-model:open="startOpen" :title="$t('hr.perf.startTitle', { name: startTarget?.name || '' })" :confirm-loading="saving" @ok="start">
       <a-alert
         type="info"
         show-icon
         class="mb"
-        message="为所选部门（含下级）的在职员工生成考核表，评分人为员工所在部门的负责人；关联了登录账号的员工先自评。"
+        :message="$t('hr.perf.startTip')"
       />
       <a-form layout="vertical">
-        <a-form-item label="考核范围" extra="不选为全部在职员工">
+        <a-form-item :label="$t('hr.perf.scope')" :extra="$t('hr.perf.scopeExtra')">
           <a-tree-select
             v-model:value="startDepts"
             multiple
@@ -142,34 +142,34 @@
             tree-default-expand-all
             :tree-data="deptList"
             :field-names="{ label: 'name', value: 'id', children: 'children' }"
-            placeholder="全部部门"
+            :placeholder="$t('hr.perf.allDepts')"
           />
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- 考核结果 -->
-    <SubPage v-model:open="resultOpen" :title="`考核结果 - ${resultPlan?.name || ''}`" width="min(1000px, 100vw)" destroy-on-close>
+    <SubPage v-model:open="resultOpen" :title="$t('hr.perf.resultTitle', { name: resultPlan?.name || '' })" width="min(1000px, 100vw)" destroy-on-close>
       <template v-if="resultPlan">
         <a-row :gutter="16" class="mb">
           <a-col :xs="24" :md="10">
             <EChart v-if="gradeOption" :option="gradeOption" height="220px" />
-            <a-empty v-else description="还没有完成评分的考核表" />
+            <a-empty v-else :description="$t('hr.perf.noResult')" />
           </a-col>
           <a-col :xs="24" :md="14">
             <a-descriptions size="small" :column="1" bordered>
-              <a-descriptions-item label="状态"><DictTag type="hr_perf_status" :value="resultPlan.status" /></a-descriptions-item>
-              <a-descriptions-item label="完成进度">{{ resultPlan.doneCount }} / {{ resultPlan.total }}</a-descriptions-item>
-              <a-descriptions-item label="指标">
+              <a-descriptions-item :label="$t('common.field.status')"><DictTag type="hr_perf_status" :value="resultPlan.status" /></a-descriptions-item>
+              <a-descriptions-item :label="$t('hr.perf.progress')">{{ resultPlan.doneCount }} / {{ resultPlan.total }}</a-descriptions-item>
+              <a-descriptions-item :label="$t('hr.perf.indicator')">
                 <span v-for="i in resultPlan.indicators || []" :key="i.id" class="indicator">{{ i.name }} {{ Number(i.weight) }}%</span>
               </a-descriptions-item>
-              <a-descriptions-item label="奖金发放">{{ resultPlan.payPeriod ? periodText(resultPlan.payPeriod) : '不发放' }}</a-descriptions-item>
+              <a-descriptions-item :label="$t('hr.perf.bonus')">{{ resultPlan.payPeriod ? periodText(resultPlan.payPeriod) : $t('hr.perf.noPay') }}</a-descriptions-item>
             </a-descriptions>
           </a-col>
         </a-row>
         <div class="result-filter">
-          <a-select v-model:value="aq.status" placeholder="全部状态" allow-clear class="w140" :options="toOptions(dict.hr_appraisal_status)" @change="aSearch" />
-          <a-input-search v-model:value="aq.keyword" placeholder="工号或姓名" allow-clear class="w200" @search="aSearch" />
+          <a-select v-model:value="aq.status" :placeholder="$t('hr.perf.allStatus')" allow-clear class="w140" :options="toOptions(dict.hr_appraisal_status)" @change="aSearch" />
+          <a-input-search v-model:value="aq.keyword" :placeholder="$t('hr.perf.keywordPh')" allow-clear class="w200" @search="aSearch" />
         </div>
         <a-table
           row-key="id"
@@ -189,7 +189,7 @@
             <template v-else-if="column.key === 'grade'"><DictTag type="hr_perf_grade" :value="record.grade" /></template>
             <template v-else-if="column.key === 'comment'">
               <div v-if="record.reviewComment">{{ record.reviewComment }}</div>
-              <div v-if="record.selfComment" class="sub-text">自评：{{ record.selfComment }}</div>
+              <div v-if="record.selfComment" class="sub-text">{{ $t('hr.perf.selfComment', { text: record.selfComment }) }}</div>
             </template>
             <template v-else-if="column.key === 'action'">
               <span v-if="resultPlan.status === 'SCORING'" class="table-actions">
@@ -199,10 +199,10 @@
                   size="small"
                   @click="openScore(record)"
                 >
-                  评分
+                  {{ $t('hr.perf.score') }}
                 </a-button>
-                <a-popconfirm v-if="record.status === 'DONE' && userStore.hasPerm('hr:perf:score')" title="退回重新评分？" @confirm="reopen(record.id)">
-                  <a-button type="link" size="small">退回重评</a-button>
+                <a-popconfirm v-if="record.status === 'DONE' && userStore.hasPerm('hr:perf:score')" :title="$t('hr.perf.confirmReopen')" @confirm="reopen(record.id)">
+                  <a-button type="link" size="small">{{ $t('hr.perf.reopen') }}</a-button>
                 </a-popconfirm>
               </span>
             </template>
@@ -216,6 +216,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import SubPage from '@/components/SubPage.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
@@ -238,18 +239,20 @@ import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { findDict, toOptions } from '@/utils/dict'
 
+const { t } = useI18n()
+
 const userStore = useUserStore()
 const dict = useDict('hr_perf_status', 'hr_appraisal_status', 'hr_perf_grade')
 const periodTypeText = (t) => PERIOD_TYPES.find((p) => p.value === t)?.label || t
 const showSearch = ref(true)
 
 const columns = [
-  { title: '考核', key: 'name', width: 280 },
-  { title: '奖金发放月份', key: 'payPeriod', width: 130 },
-  { title: '评分进度', key: 'progress', width: 180 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '创建人', dataIndex: 'createByName', width: 100 },
-  { title: '操作', key: 'action', width: 240, fixed: 'right' }
+  { title: t('hr.perf.plan'), key: 'name', width: 280 },
+  { title: t('hr.perf.payPeriod'), key: 'payPeriod', width: 160 },
+  { title: t('hr.perf.col.scoreProgress'), key: 'progress', width: 180 },
+  { title: t('common.field.status'), key: 'status', width: 110 },
+  { title: t('common.field.createBy'), dataIndex: 'createByName', width: 100 },
+  { title: t('common.action.operation'), key: 'action', width: 260, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'hr-perf')
 const emptyQuery = () => ({ keyword: undefined, status: undefined })
@@ -267,15 +270,15 @@ onMounted(async () => {
 
 // 考核方案
 const DEFAULT_INDICATORS = () => [
-  { name: '工作业绩', weight: 60, description: '目标完成情况、工作质量与效率' },
-  { name: '工作能力', weight: 20, description: '专业技能、解决问题的能力' },
-  { name: '工作态度', weight: 20, description: '责任心、协作与纪律' }
+  { name: t('hr.perf.ind.result'), weight: 60, description: t('hr.perf.ind.resultDesc') },
+  { name: t('hr.perf.ind.ability'), weight: 20, description: t('hr.perf.ind.abilityDesc') },
+  { name: t('hr.perf.ind.attitude'), weight: 20, description: t('hr.perf.ind.attitudeDesc') }
 ]
 const rules = {
-  name: [{ required: true, whitespace: true, message: '请输入考核名称' }],
-  periodType: [{ required: true, message: '请选择考核周期' }],
-  startDate: [{ required: true, message: '请选择开始日期' }],
-  endDate: [{ required: true, message: '请选择结束日期' }]
+  name: [{ required: true, whitespace: true, message: t('hr.perf.rule.name') }],
+  periodType: [{ required: true, message: t('hr.perf.rule.periodType') }],
+  startDate: [{ required: true, message: t('hr.perf.rule.startDate') }],
+  endDate: [{ required: true, message: t('hr.perf.rule.endDate') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, name: '', periodType: 'QUARTER', startDate: dayjs().startOf('quarter').format('YYYY-MM-DD'),
@@ -292,20 +295,20 @@ const locked = computed(() => isEdit.value && form.value.status !== 'DRAFT')
 const weightSum = computed(() => (form.value.indicators || []).reduce((s, i) => s + (Number(i.weight) || 0), 0))
 const indicatorRows = computed(() => (form.value.indicators || []).map((i, idx) => ({ ...i, key: idx })))
 const indicatorColumns = [
-  { title: '指标', key: 'name', width: 200 },
-  { title: '权重', key: 'weight', width: 130 },
-  { title: '评分标准', key: 'description' },
+  { title: t('hr.perf.indicator'), key: 'name', width: 200 },
+  { title: t('hr.perf.col.weight'), key: 'weight', width: 130 },
+  { title: t('hr.perf.criteria'), key: 'description' },
   { title: '', key: 'action', width: 50 }
 ]
 
 async function remove(id) {
   await deletePerf(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 async function finish(id) {
   await finishPerf(id)
-  message.success('已归档')
+  message.success(t('hr.perf.archived'))
   load()
 }
 
@@ -323,7 +326,7 @@ async function start() {
   saving.value = true
   try {
     const n = await startPerf(startTarget.value.id, startDepts.value)
-    message.success(`已发起，生成 ${n} 张考核表`)
+    message.success(t('hr.perf.started', { n }))
     startOpen.value = false
     load()
   } finally {
@@ -338,20 +341,20 @@ const grades = ref([])
 const aq = reactive({ planId: undefined, status: undefined, keyword: undefined })
 const { list: aList, loading: aLoading, pagination: aPagination, load: aLoad, search: aSearch, onTableChange: aChange } = useTable(pageAppraisal, aq)
 const appraisalColumns = [
-  { title: '员工', key: 'employee', width: 170 },
-  { title: '评分人', dataIndex: 'reviewerName', width: 100 },
-  { title: '自评', dataIndex: 'selfScore', width: 70 },
-  { title: '得分', dataIndex: 'score', width: 70 },
-  { title: '等级', key: 'grade', width: 90 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '评语', key: 'comment' },
+  { title: t('hr.perf.col.employee'), key: 'employee', width: 170 },
+  { title: t('hr.perf.col.reviewer'), dataIndex: 'reviewerName', width: 100 },
+  { title: t('hr.perf.col.self'), dataIndex: 'selfScore', width: 70 },
+  { title: t('hr.perf.col.score'), dataIndex: 'score', width: 70 },
+  { title: t('hr.perf.col.grade'), key: 'grade', width: 90 },
+  { title: t('common.field.status'), key: 'status', width: 110 },
+  { title: t('hr.perf.col.comment'), key: 'comment' },
   { title: '', key: 'action', width: 100 }
 ]
 const GRADE_COLORS = { S: '#faad14', A: '#52c41a', B: '#1677ff', C: '#fa8c16', D: '#f5222d' }
 const gradeOption = computed(() => {
   if (!grades.value.length) return null
   return {
-    tooltip: { trigger: 'item', formatter: '{b}：{c} 人（{d}%）' },
+    tooltip: { trigger: 'item', formatter: (p) => t('hr.perf.gradeTip', { name: p.name, value: p.value, percent: p.percent }) },
     series: [{
       type: 'pie',
       radius: ['45%', '72%'],
@@ -386,7 +389,7 @@ async function afterScore() {
 }
 async function reopen(id) {
   await reopenAppraisal(id)
-  message.success('已退回')
+  message.success(t('hr.perf.reopened'))
   afterScore()
 }
 </script>

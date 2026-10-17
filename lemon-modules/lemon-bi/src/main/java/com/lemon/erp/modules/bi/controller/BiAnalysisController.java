@@ -69,21 +69,21 @@ public class BiAnalysisController {
 
     @PostMapping("/report")
     @PreAuthorize("@ss.hasPerm('bi:report:add')")
-    @OperLog(title = "自定义报表", type = OperType.INSERT)
+    @OperLog(title = "自定义报表", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> createReport(@Valid @RequestBody ReportRequest req) {
         return R.ok(reportService.saveReport(null, req));
     }
 
     @PutMapping("/report/{id}")
     @PreAuthorize("@ss.hasPerm('bi:report:edit')")
-    @OperLog(title = "自定义报表", type = OperType.UPDATE)
+    @OperLog(title = "自定义报表", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Long> updateReport(@PathVariable Long id, @Valid @RequestBody ReportRequest req) {
         return R.ok(reportService.saveReport(id, req));
     }
 
     @DeleteMapping("/report/{id}")
     @PreAuthorize("@ss.hasPerm('bi:report:remove')")
-    @OperLog(title = "自定义报表", type = OperType.DELETE)
+    @OperLog(title = "自定义报表", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> deleteReport(@PathVariable Long id) {
         reportService.deleteReport(id);
         return R.ok();
@@ -105,21 +105,21 @@ public class BiAnalysisController {
 
     @PostMapping("/board")
     @PreAuthorize("@ss.hasPerm('bi:board:add')")
-    @OperLog(title = "自定义仪表盘", type = OperType.INSERT)
+    @OperLog(title = "自定义仪表盘", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> createBoard(@Valid @RequestBody BoardRequest req) {
         return R.ok(reportService.saveDashboard(null, req));
     }
 
     @PutMapping("/board/{id}")
     @PreAuthorize("@ss.hasPerm('bi:board:edit')")
-    @OperLog(title = "自定义仪表盘", type = OperType.UPDATE)
+    @OperLog(title = "自定义仪表盘", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Long> updateBoard(@PathVariable Long id, @Valid @RequestBody BoardRequest req) {
         return R.ok(reportService.saveDashboard(id, req));
     }
 
     @DeleteMapping("/board/{id}")
     @PreAuthorize("@ss.hasPerm('bi:board:remove')")
-    @OperLog(title = "自定义仪表盘", type = OperType.DELETE)
+    @OperLog(title = "自定义仪表盘", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> deleteBoard(@PathVariable Long id) {
         reportService.deleteDashboard(id);
         return R.ok();

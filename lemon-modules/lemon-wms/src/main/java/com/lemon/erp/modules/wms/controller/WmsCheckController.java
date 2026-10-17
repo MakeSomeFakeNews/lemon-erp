@@ -58,14 +58,14 @@ public class WmsCheckController {
     /** @return 新盘点单 ID */
     @PostMapping
     @PreAuthorize("@ss.hasPerm('wms:check:add')")
-    @OperLog(title = "盘点单", type = OperType.INSERT)
+    @OperLog(title = "盘点单", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody CheckRequest req) {
         return R.ok(checkService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('wms:check:edit')")
-    @OperLog(title = "盘点单", type = OperType.UPDATE)
+    @OperLog(title = "盘点单", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody CheckRequest req) {
         checkService.update(id, req);
         return R.ok();
@@ -73,14 +73,14 @@ public class WmsCheckController {
 
     @PostMapping("/{id}/confirm")
     @PreAuthorize("@ss.hasPerm('wms:check:confirm')")
-    @OperLog(title = "盘点单-确认", type = OperType.UPDATE)
+    @OperLog(title = "盘点单-确认", type = OperType.UPDATE) // i18n-ignore
     public R<Boolean> confirm(@PathVariable Long id) {
         return R.ok(checkService.confirm(id));
     }
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('wms:check:remove')")
-    @OperLog(title = "盘点单", type = OperType.DELETE)
+    @OperLog(title = "盘点单", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         checkService.delete(ids);
         return R.ok();

@@ -58,7 +58,7 @@
     </select>
 
     <select id="stopReasons" resultType="java.util.Map">
-        SELECT COALESCE(dd.dict_label, s.reason) AS "label", SUM(s.hours) AS "hours"
+        SELECT COALESCE(dd.dict_label, s.reason) AS "label", SUM(s.hours) AS "hours", s.reason AS "value"
         FROM mes_equipment_stop s
         JOIN mes_equipment e ON e.id = s.equipment_id
         LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_stop_reason' AND dd.dict_value = s.reason
@@ -126,7 +126,7 @@
     </select>
 
     <select id="stockDocByType" resultType="java.util.Map">
-        SELECT d.kind AS "kind", COALESCE(dd.dict_label, d.biz_type) AS "label", SUM(d.total_qty) AS "qty"
+        SELECT d.kind AS "kind", COALESCE(dd.dict_label, d.biz_type) AS "label", SUM(d.total_qty) AS "qty", d.biz_type AS "value"
         FROM wms_stock_doc d
         LEFT JOIN sys_dict_data dd ON dd.dict_type = CASE WHEN d.kind = 'IN' THEN 'wms_in_type' ELSE 'wms_out_type' END AND dd.dict_value = d.biz_type
         WHERE d.status = 'DONE' AND d.kind IN ('IN', 'OUT') AND d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}
@@ -214,7 +214,7 @@
     <select id="recentStockDocs" resultType="java.util.Map">
         SELECT d.doc_no AS "docNo", d.kind AS "kind",
                COALESCE(dd.dict_label, CASE WHEN d.kind = 'TRANSFER' THEN '调拨' ELSE d.biz_type END) AS "typeLabel",
-               w.name AS "warehouse", d.total_qty AS "qty", d.confirm_time AS "time"
+               w.name AS "warehouse", d.total_qty AS "qty", d.confirm_time AS "time", d.biz_type AS "bizType"
         FROM wms_stock_doc d
         LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id
         LEFT JOIN sys_dict_data dd ON dd.dict_type = CASE WHEN d.kind = 'IN' THEN 'wms_in_type' ELSE 'wms_out_type' END AND dd.dict_value = d.biz_type
@@ -298,7 +298,7 @@
     </select>
 
     <select id="salesmen" resultType="java.util.Map">
-        SELECT COALESCE(u.nickname, '未指定') AS "name", t.amount AS "amount", t.orders AS "orders"
+        SELECT u.nickname AS "name", t.amount AS "amount", t.orders AS "orders"
         FROM (
             SELECT salesman_id, SUM(total_amount) AS amount, COUNT(*) AS orders
             FROM scm_order
@@ -362,7 +362,7 @@
     </select>
 
     <select id="defectTypes" resultType="java.util.Map">
-        SELECT COALESCE(dd.dict_label, i.defect_type) AS "label", COUNT(*) AS "times", SUM(i.defect_qty) AS "qty"
+        SELECT COALESCE(dd.dict_label, i.defect_type) AS "label", COUNT(*) AS "times", SUM(i.defect_qty) AS "qty", i.defect_type AS "value"
         FROM mes_inspection i
         LEFT JOIN sys_dict_data dd ON dd.dict_type = 'mes_defect_type' AND dd.dict_value = i.defect_type
         WHERE i.status = 'CONFIRMED' AND i.result &lt;&gt; 'PASS' AND i.defect_type IS NOT NULL
@@ -396,7 +396,8 @@
 
     <select id="openNcrs" resultType="java.util.Map">
         SELECT n.ncr_no AS "ncrNo", m.name AS "material", n.qty AS "qty", COALESCE(ds.dict_label, n.source) AS "sourceLabel",
-               dt.dict_label AS "defectLabel", COALESCE(st.dict_label, n.status) AS "statusLabel", n.create_time AS "time"
+               dt.dict_label AS "defectLabel", COALESCE(st.dict_label, n.status) AS "statusLabel", n.create_time AS "time",
+               n.source AS "source", n.defect_type AS "defectType", n.status AS "status"
         FROM qms_ncr n
         JOIN wms_material m ON m.id = n.material_id
         LEFT JOIN sys_dict_data ds ON ds.dict_type = 'qms_ncr_source' AND ds.dict_value = n.source
@@ -409,7 +410,7 @@
 
     <select id="recentInspections" resultType="java.util.Map">
         SELECT i.insp_no AS "inspNo", COALESCE(dt.dict_label, i.type) AS "typeLabel", m.name AS "material", i.result AS "result",
-               COALESCE(dr.dict_label, i.result) AS "resultLabel", i.defect_qty AS "defectQty", i.inspect_date AS "date"
+               COALESCE(dr.dict_label, i.result) AS "resultLabel", i.defect_qty AS "defectQty", i.inspect_date AS "date", i.type AS "type"
         FROM mes_inspection i
         JOIN wms_material m ON m.id = i.material_id
         LEFT JOIN sys_dict_data dt ON dt.dict_type = 'mes_qc_type' AND dt.dict_value = i.type

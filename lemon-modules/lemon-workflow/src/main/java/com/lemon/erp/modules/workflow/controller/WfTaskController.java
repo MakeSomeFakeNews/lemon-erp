@@ -50,7 +50,7 @@ public class WfTaskController {
     // 会签等多人同时处理同一流程时，引擎以乐观锁检测冲突；控制器不在事务中，重试时审批整体在新事务中重做
     @PostMapping("/{taskId}/approve")
     @PreAuthorize("@ss.hasPerm('wf:task:todo')")
-    @OperLog(title = "审批-同意", type = OperType.UPDATE)
+    @OperLog(title = "审批-同意", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     @Retryable(includes = FlowableOptimisticLockingException.class, maxRetries = 2, delay = 50)
     public R<Void> approve(@PathVariable String taskId, @Valid @RequestBody TaskCommentRequest req) {
         taskService.approve(taskId, req.comment());
@@ -59,7 +59,7 @@ public class WfTaskController {
 
     @PostMapping("/{taskId}/reject")
     @PreAuthorize("@ss.hasPerm('wf:task:todo')")
-    @OperLog(title = "审批-拒绝", type = OperType.UPDATE)
+    @OperLog(title = "审批-拒绝", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     @Retryable(includes = FlowableOptimisticLockingException.class, maxRetries = 2, delay = 50)
     public R<Void> reject(@PathVariable String taskId, @Valid @RequestBody TaskCommentRequest req) {
         taskService.reject(taskId, req.comment());
@@ -68,7 +68,7 @@ public class WfTaskController {
 
     @PostMapping("/{taskId}/transfer")
     @PreAuthorize("@ss.hasPerm('wf:task:todo')")
-    @OperLog(title = "审批-转交", type = OperType.UPDATE)
+    @OperLog(title = "审批-转交", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> transfer(@PathVariable String taskId, @Valid @RequestBody TaskTransferRequest req) {
         taskService.transfer(taskId, req.userId(), req.comment());
         return R.ok();

@@ -3,7 +3,7 @@
     :open="open"
     :title="title"
     width="min(760px, 100vw)"
-    :ok-text="multiple && selectedKeys.length ? `确定（${selectedKeys.length}）` : '确定'"
+    :ok-text="multiple && selectedKeys.length ? $t('components.user.confirmN', { n: selectedKeys.length }) : $t('common.action.confirm')"
     :ok-button-props="{ disabled: !selectedKeys.length }"
     :confirm-loading="submitting"
     destroy-on-close
@@ -13,14 +13,14 @@
     <div class="picker-toolbar">
       <a-input-search
         v-model:value="query.username"
-        placeholder="搜索用户名或昵称"
+        :placeholder="$t('components.user.searchPlaceholder')"
         allow-clear
         class="picker-search"
         @search="search"
       />
       <span v-if="selectedKeys.length" class="picker-selected">
-        {{ multiple ? `已选 ${selectedKeys.length} 人` : `已选 ${selectedRows[0]?.nickname || selectedRows[0]?.username || ''}` }}
-        <a @click="selectedKeys = []">清空</a>
+        {{ multiple ? $t('components.user.selectedN', { n: selectedKeys.length }) : $t('components.user.selectedOne', { name: selectedRows[0]?.nickname || selectedRows[0]?.username || '' }) }}
+        <a @click="selectedKeys = []">{{ $t('common.action.clear') }}</a>
       </span>
     </div>
     <a-table
@@ -54,6 +54,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import DictTag from '@/components/DictTag.vue'
+import { t } from '@/locales'
 import UserCell from './UserCell.vue'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
@@ -67,10 +68,10 @@ import { useTable } from '@/composables/useTable'
  */
 const props = defineProps({
   open: Boolean,
-  title: { type: String, default: '选择用户' },
+  title: { type: String, default: () => t('components.user.pickTitle') },
   fetcher: { type: Function, required: true },
   disabledRow: Function,
-  disabledText: { type: String, default: '已添加' },
+  disabledText: { type: String, default: () => t('components.user.added') },
   submit: { type: Function, required: true },
   multiple: { type: Boolean, default: true }
 })
@@ -78,9 +79,9 @@ const emit = defineEmits(['update:open'])
 useDict('sys_common_status')
 
 const columns = [
-  { title: '用户', key: 'username' },
-  { title: '部门', key: 'dept', width: 200 },
-  { title: '状态', key: 'status', width: 90 }
+  { title: t('common.field.user'), key: 'username' },
+  { title: t('common.field.dept'), key: 'dept', width: 200 },
+  { title: t('common.field.status'), key: 'status', width: 90 }
 ]
 
 const query = reactive({ username: undefined })

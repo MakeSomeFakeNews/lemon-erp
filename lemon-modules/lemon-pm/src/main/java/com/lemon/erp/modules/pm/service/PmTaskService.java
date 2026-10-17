@@ -128,7 +128,7 @@ public class PmTaskService {
         if (progress > 0 && t.getPredecessorId() != null) {
             PmTask pre = taskMapper.selectById(t.getPredecessorId());
             if (pre != null && !"DONE".equals(pre.getStatus())) {
-                throw new BizException("前置任务「" + pre.getName() + "」还没有完成");
+                throw new BizException("前置任务「{0}」还没有完成", pre.getName());
             }
         }
         String status = progress == 0 ? "TODO" : progress == 100 ? "DONE" : "DOING";
@@ -250,7 +250,7 @@ public class PmTaskService {
                 throw new BizException("上级任务不能是自己或自己的下级");
             }
             if (timesheetMapper.exists(Wrappers.<PmTimesheet>lambdaQuery().eq(PmTimesheet::getTaskId, parentId))) {
-                throw new BizException("上级任务「" + parent.getName() + "」已有工时，不能再拆分下级任务");
+                throw new BizException("上级任务「{0}」已有工时，不能再拆分下级任务", parent.getName());
             }
         }
         if (req.predecessorId() != null) {
@@ -262,7 +262,7 @@ public class PmTaskService {
                 throw new BizException("前置任务不能是自己、自己的下级，也不能形成循环依赖");
             }
             if (req.planStart().isBefore(pre.getPlanEnd())) {
-                throw new BizException("计划开始日期不能早于前置任务「" + pre.getName() + "」的计划完成日期 " + pre.getPlanEnd());
+                throw new BizException("计划开始日期不能早于前置任务「{0}」的计划完成日期 {1}", pre.getName(), pre.getPlanEnd());
             }
         }
         t.setProjectId(req.projectId());

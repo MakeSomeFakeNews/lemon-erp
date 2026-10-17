@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.system.print;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.framework.tenant.TenantContext;
 import com.lemon.erp.framework.tenant.TenantProperties;
 import com.lemon.erp.modules.system.service.SysPrintTemplateService;
@@ -104,7 +105,7 @@ public class PrintService {
             return export(prints, request.getTitle());
         } catch (JRException e) {
             log.warn("打印失败：{}", e.getMessage(), e);
-            throw new BizException("打印失败：" + e.getMessage());
+            throw new BizException("打印失败：{0}", e.getMessage());
         }
     }
 
@@ -115,7 +116,7 @@ public class PrintService {
             JasperDesign design = docs.get(0).isSlip() ? slipDesign(request, docs) : design(request, docs.get(0));
             return JRXmlWriter.writeReport(design, StandardCharsets.UTF_8.name());
         } catch (JRException e) {
-            throw new BizException("生成模板失败：" + e.getMessage());
+            throw new BizException("生成模板失败：{0}", e.getMessage());
         }
     }
 
@@ -131,7 +132,7 @@ public class PrintService {
         try {
             custom(jrxml);
         } catch (JRException | RuntimeException e) {
-            throw new BizException("模板无法编译（需为 Jaspersoft Studio 7 的 JRXML）：" + rootMessage(e));
+            throw new BizException("模板无法编译（需为 Jaspersoft Studio 7 的 JRXML）：{0}", rootMessage(e));
         }
     }
 
@@ -253,14 +254,14 @@ public class PrintService {
             throw new BizException("没有要打印的单据");
         }
         if (docs.size() > MAX_DOCS) {
-            throw new BizException("一次最多打印 " + MAX_DOCS + " 张单据");
+            throw new BizException("一次最多打印 {0} 张单据", MAX_DOCS);
         }
         int rows = docs.stream().mapToInt(d -> d.getRows() == null ? 0 : d.getRows().size()).sum();
         if (rows > MAX_ROWS) {
-            throw new BizException("一次最多打印 " + MAX_ROWS + " 行明细");
+            throw new BizException("一次最多打印 {0} 行明细", MAX_ROWS);
         }
         checkLayout(request.getLayout());
-        request.setTitle(text(request.getTitle() == null ? "打印" : request.getTitle()));
+        request.setTitle(text(request.getTitle() == null ? I18n.t("打印") : request.getTitle()));
         docs.forEach(PrintService::normalize);
         return docs;
     }
@@ -318,9 +319,10 @@ public class PrintService {
         doc.setNo(text(doc.getNo()));
         doc.setCompanyName(text(doc.getCompanyName()));
         doc.setNote(text(doc.getNote()));
-        doc.setFields(items(doc.getFields(), "字段"));
-        doc.setSigns(items(doc.getSigns(), "签字"));
-        Map<String, String> keys = columns(doc.getColumns(), "列");
+        // 名称为空时的匹配键（如「字段1」），与模板中的名称一致，保持中文
+        doc.setFields(items(doc.getFields(), "字段")); // i18n-ignore
+        doc.setSigns(items(doc.getSigns(), "签字")); // i18n-ignore
+        Map<String, String> keys = columns(doc.getColumns(), "列"); // i18n-ignore
         doc.setRows(rows(doc.getRows(), keys));
         doc.setTotals(doc.getTotals() == null ? Map.of() : rows(List.of(doc.getTotals()), keys).get(0));
         if (doc.getSections() == null) {
@@ -331,7 +333,7 @@ public class PrintService {
         }
         for (PrintDoc.Section s : doc.getSections()) {
             s.setTitle(safeName(s.getTitle()));
-            Map<String, String> sectionKeys = columns(s.getColumns(), "列");
+            Map<String, String> sectionKeys = columns(s.getColumns(), "列"); // i18n-ignore
             s.setRows(rows(s.getRows(), sectionKeys));
         }
     }
@@ -356,8 +358,11 @@ public class PrintService {
 
     /** 明细列：规范化 key，返回 原 key → 新 key */
     private static Map<String, String> columns(List<PrintDoc.Column> columns, String fallback) {
-        if (columns == null || columns.size() > MAX_ITEMS) {
-            throw new BizException(columns == null ? "明细列不正确" : "明细列过多");
+        if (columns == null) {
+            throw new BizException("明细列不正确");
+        }
+        if (columns.size() > MAX_ITEMS) {
+            throw new BizException("明细列过多");
         }
         Map<String, String> keys = new HashMap<>();
         Set<String> used = new HashSet<>();

@@ -2,6 +2,7 @@ package com.lemon.erp.modules.wms.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.framework.code.DocNoCatalog;
 import com.lemon.erp.framework.code.DocNoCatalog.DateFormat;
 import com.lemon.erp.framework.code.DocNoCatalog.ResetCycle;
@@ -57,7 +58,7 @@ public class CodeRuleService {
         return catalogs.stream().flatMap(c -> c.types().stream().map(t -> {
             CodeRule r = custom.get(t.key());
             Rule rule = r == null ? defaultRule(t) : toRule(r);
-            return new CodeRuleView(t.key(), t.name(), c.module(), rule.prefix(), rule.dateFormat(), rule.seqLength(),
+            return new CodeRuleView(t.key(), I18n.t(t.name()), I18n.t(c.module()), rule.prefix(), rule.dateFormat(), rule.seqLength(),
                     rule.resetCycle(), r != null, rule.format(LocalDate.now(), 1));
         })).toList();
     }
@@ -76,14 +77,14 @@ public class CodeRuleService {
     public void update(String key, CodeRuleRequest req) {
         DocNoCatalog.Type type = requireType(key);
         if (!req.dateFormat().supports(req.resetCycle())) {
-            throw new BizException("日期部分不够精确：流水按「" + cycleLabel(req.resetCycle()) + "」重置时，日期格式至少要精确到"
-                    + cycleLabel(req.resetCycle()).replace("每", "") + "，否则编号会重复");
+            throw new BizException("日期部分不够精确：流水按「{0}」重置时，日期格式至少要精确到{1}，否则编号会重复",
+                    I18n.t(cycleLabel(req.resetCycle())), I18n.t(cycleUnit(req.resetCycle())));
         }
         list().stream()
                 .filter(v -> !v.key().equals(key) && v.prefix().equals(req.prefix()))
                 .findFirst()
                 .ifPresent(v -> {
-                    throw new BizException("前缀「" + req.prefix() + "」已被「" + v.name() + "」使用");
+                    throw new BizException("前缀「{0}」已被「{1}」使用", req.prefix(), v.name());
                 });
         CodeRule rule = ruleMapper.selectOne(Wrappers.<CodeRule>lambdaQuery().eq(CodeRule::getRuleKey, key));
         if (rule == null) {
@@ -139,6 +140,16 @@ public class CodeRuleService {
             case DAY -> "每天";
             case MONTH -> "每月";
             case YEAR -> "每年";
+            case NEVER -> "不重置";
+        };
+    }
+
+    /** 重置周期对应的日期精度（提示用） */
+    private static String cycleUnit(ResetCycle cycle) {
+        return switch (cycle) {
+            case DAY -> "天";
+            case MONTH -> "月";
+            case YEAR -> "年";
             case NEVER -> "不重置";
         };
     }

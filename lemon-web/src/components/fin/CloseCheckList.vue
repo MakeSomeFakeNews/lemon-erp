@@ -9,7 +9,7 @@
         <div v-if="item.message" class="message">{{ item.message }}</div>
       </div>
     </div>
-    <a-empty v-if="!items.length" :image="simpleImage" description="没有检查项" />
+    <a-empty v-if="!items.length" :image="simpleImage" :description="$t('fin.closeCheckList.empty')" />
   </div>
 </template>
 

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.bi.service;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermissionContext;
@@ -44,10 +45,12 @@ public class BiOlapService {
         for (BiCube cube : BiCube.values()) {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("key", cube.name());
-            m.put("label", cube.getLabel());
+            m.put("label", I18n.t(cube.getLabel()));
             m.put("dateFilter", cube.getDateFilter());
-            m.put("dims", cube.getDims());
-            m.put("measures", cube.getMeasures());
+            m.put("dims", cube.getDims().stream()
+                    .map(d -> new BiCube.BiDim(d.key(), I18n.t(d.label()), d.labelSource(), d.dictType())).toList());
+            m.put("measures", cube.getMeasures().stream()
+                    .map(x -> new BiCube.BiMeasure(x.key(), I18n.t(x.label()), x.format(), x.numerator(), x.denominator())).toList());
             list.add(m);
         }
         return list;
@@ -110,7 +113,7 @@ public class BiOlapService {
         try {
             return BiCube.valueOf(key);
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw new BizException("数据集不正确：" + key);
+            throw new BizException("数据集不正确：{0}", key);
         }
     }
 
@@ -119,7 +122,7 @@ public class BiOlapService {
             return null;
         }
         if (cube.dim(key) == null) {
-            throw new BizException(cube.getLabel() + "没有维度：" + key);
+            throw new BizException("{0}没有维度：{1}", I18n.t(cube.getLabel()), key);
         }
         return key;
     }
@@ -159,7 +162,7 @@ public class BiOlapService {
             case "THIS_YEAR" -> new LocalDate[]{today.withDayOfYear(1), today};
             case "LAST_12M" -> new LocalDate[]{YearMonth.from(today).minusMonths(11).atDay(1), today};
             case "ALL" -> new LocalDate[]{null, null};
-            default -> throw new BizException("日期范围不正确：" + req.range());
+            default -> throw new BizException("日期范围不正确：{0}", req.range());
         };
     }
 

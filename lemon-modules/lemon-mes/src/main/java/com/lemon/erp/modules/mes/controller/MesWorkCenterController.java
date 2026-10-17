@@ -65,7 +65,7 @@ public class MesWorkCenterController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('mes:wc:add')")
-    @OperLog(title = "工作中心", type = OperType.INSERT)
+    @OperLog(title = "工作中心", type = OperType.INSERT) // i18n-ignore
     public R<Void> create(@Validated(Create.class) @RequestBody MesWorkCenter wc) {
         workCenterService.create(wc);
         return R.ok();
@@ -73,7 +73,7 @@ public class MesWorkCenterController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('mes:wc:edit')")
-    @OperLog(title = "工作中心", type = OperType.UPDATE)
+    @OperLog(title = "工作中心", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody MesWorkCenter wc) {
         workCenterService.update(id, wc);
         return R.ok();
@@ -81,7 +81,7 @@ public class MesWorkCenterController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('mes:wc:edit')")
-    @OperLog(title = "工作中心-修改状态", type = OperType.UPDATE)
+    @OperLog(title = "工作中心-修改状态", type = OperType.UPDATE) // i18n-ignore
     public R<Void> changeStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
         workCenterService.changeStatus(id, req.status());
         return R.ok();
@@ -89,7 +89,7 @@ public class MesWorkCenterController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('mes:wc:remove')")
-    @OperLog(title = "工作中心", type = OperType.DELETE)
+    @OperLog(title = "工作中心", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         workCenterService.delete(ids);
         return R.ok();

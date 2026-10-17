@@ -11,11 +11,11 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum AssigneeType {
 
-    USER("指定成员", true),
-    ROLE("指定角色", true),
+    USER("指定成员", true),  // i18n-ignore 未输出给前端，前端常量 ASSIGNEE_TYPES 翻译
+    ROLE("指定角色", true),  // i18n-ignore 未输出给前端，前端常量 ASSIGNEE_TYPES 翻译
     /** 发起人的部门主管，按 AssigneeConfig.level 指定级别 */
-    DEPT_LEADER("部门主管", false),
-    INITIATOR("发起人自己", false);
+    DEPT_LEADER("部门主管", false),  // i18n-ignore 未输出给前端，前端常量 ASSIGNEE_TYPES 翻译
+    INITIATOR("发起人自己", false);  // i18n-ignore 未输出给前端，前端常量 ASSIGNEE_TYPES 翻译
 
     private final String label;
 

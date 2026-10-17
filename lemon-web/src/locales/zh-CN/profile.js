@@ -1,0 +1,25 @@
+/** 个人中心 */
+export default {
+  changeAvatar: '点击更换头像',
+  mobile: '手机',
+  registerTime: '注册时间',
+  basicInfo: '基本资料',
+  nickname: '昵称',
+  saveInfo: '保存资料',
+  changePassword: '修改密码',
+  oldPassword: '原密码',
+  confirmPassword: '确认新密码',
+  imAccounts: '第三方账号',
+  imTip: '绑定后可以用对应平台扫码登录、在平台中免登打开系统，并接收审批待办等消息',
+  imBound: '已绑定 {name} · {time}',
+  confirmUnbind: '确定解除{name}绑定？',
+  imageOnly: '只能上传图片',
+  imageTooLarge: '图片不能超过 2MB',
+  avatarUpdated: '头像已更新',
+  uploadFailed: '上传失败',
+  infoSaved: '资料已保存',
+  inputOldPassword: '请输入原密码',
+  inputConfirm: '请再次输入新密码',
+  mismatch: '两次输入的密码不一致',
+  passwordChanged: '密码已修改'
+}

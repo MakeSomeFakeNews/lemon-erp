@@ -65,7 +65,7 @@ public class SysRoleController {
 
     @PostMapping("/{id}/users")
     @PreAuthorize("@ss.hasPerm('sys:role:assignUser')")
-    @OperLog(title = "角色管理-分配用户", type = OperType.GRANT)
+    @OperLog(title = "角色管理-分配用户", type = OperType.GRANT) // i18n-ignore 操作日志存库
     public R<Void> addUsers(@PathVariable Long id, @Valid @RequestBody UserIdsRequest req) {
         roleUserService.addUsers(id, req.userIds());
         return R.ok();
@@ -73,7 +73,7 @@ public class SysRoleController {
 
     @DeleteMapping("/{id}/users/{userIds}")
     @PreAuthorize("@ss.hasPerm('sys:role:assignUser')")
-    @OperLog(title = "角色管理-移除用户", type = OperType.GRANT)
+    @OperLog(title = "角色管理-移除用户", type = OperType.GRANT) // i18n-ignore 操作日志存库
     public R<Void> removeUsers(@PathVariable Long id, @PathVariable List<Long> userIds) {
         roleUserService.removeUsers(id, userIds);
         return R.ok();
@@ -94,7 +94,7 @@ public class SysRoleController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:role:add')")
-    @OperLog(title = "角色管理", type = OperType.INSERT)
+    @OperLog(title = "角色管理", type = OperType.INSERT) // i18n-ignore 操作日志存库
     public R<Void> create(@Validated(Create.class) @RequestBody SysRole role) {
         roleService.create(role);
         return R.ok();
@@ -102,7 +102,7 @@ public class SysRoleController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('sys:role:edit')")
-    @OperLog(title = "角色管理", type = OperType.GRANT)
+    @OperLog(title = "角色管理", type = OperType.GRANT) // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Validated(Update.class) @RequestBody SysRole role) {
         role.setId(id);
         roleService.update(role);
@@ -111,7 +111,7 @@ public class SysRoleController {
 
     @PutMapping("/{id}/data-scope")
     @PreAuthorize("@ss.hasPerm('sys:role:dataScope')")
-    @OperLog(title = "角色管理-数据权限", type = OperType.GRANT)
+    @OperLog(title = "角色管理-数据权限", type = OperType.GRANT) // i18n-ignore 操作日志存库
     public R<Void> assignDataScope(@PathVariable Long id, @Valid @RequestBody RoleDataScopeRequest req) {
         roleService.assignDataScope(id, req);
         return R.ok();
@@ -119,7 +119,7 @@ public class SysRoleController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('sys:role:edit')")
-    @OperLog(title = "角色管理-修改状态", type = OperType.UPDATE)
+    @OperLog(title = "角色管理-修改状态", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> changeStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
         roleService.changeStatus(id, req.status());
         return R.ok();
@@ -127,7 +127,7 @@ public class SysRoleController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('sys:role:remove')")
-    @OperLog(title = "角色管理", type = OperType.DELETE)
+    @OperLog(title = "角色管理", type = OperType.DELETE) // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         roleService.delete(ids);
         return R.ok();

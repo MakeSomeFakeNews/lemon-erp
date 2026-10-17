@@ -3,6 +3,7 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.message.MessageSender;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -111,7 +112,7 @@ public class MesMoldService {
         MesMold mold = detail(id);
         if (mold.getStatus() == MoldStatus.IN_USE
                 || logMapper.exists(Wrappers.<MesMoldLog>lambdaQuery().eq(MesMoldLog::getMoldId, id).eq(MesMoldLog::getAction, MoldAction.USE))) {
-            throw new BizException("模具「" + mold.getCode() + "」已有使用记录或正在使用，不能删除，可以报废");
+            throw new BizException("模具「{0}」已有使用记录或正在使用，不能删除，可以报废", mold.getCode());
         }
         moldMapper.deleteProducts(id);
         logMapper.delete(Wrappers.<MesMoldLog>lambdaQuery().eq(MesMoldLog::getMoldId, id));
@@ -130,10 +131,10 @@ public class MesMoldService {
             throw new BizException("只能领用到已下达、生产中的工单");
         }
         if (mold.getProductIds() != null && !mold.getProductIds().isEmpty() && !mold.getProductIds().contains(wo.getMaterialId())) {
-            throw new BizException("模具「" + mold.getCode() + "」不适用于工单 " + wo.getWoNo() + " 的产品");
+            throw new BizException("模具「{0}」不适用于工单 {1} 的产品", mold.getCode(), wo.getWoNo());
         }
         if (mold.getDesignLife() != null && mold.getUsedCount() >= mold.getDesignLife()) {
-            throw new BizException("模具「" + mold.getCode() + "」已达到设计寿命 " + mold.getDesignLife() + " 模次，不能再领用");
+            throw new BizException("模具「{0}」已达到设计寿命 {1} 模次，不能再领用", mold.getCode(), mold.getDesignLife());
         }
         if (req.equipmentId() != null) {
             MesEquipment e = equipmentMapper.selectById(req.equipmentId());
@@ -170,7 +171,10 @@ public class MesMoldService {
     public void scrap(Long id, MoldRequests.Action req) {
         MesMold mold = detail(id);
         if (mold.getStatus() == MoldStatus.IN_USE || mold.getStatus() == MoldStatus.SCRAPPED) {
-            throw new BizException(mold.getStatus() == MoldStatus.IN_USE ? "模具正在使用，请先归还" : "模具已报废");
+            if (mold.getStatus() == MoldStatus.IN_USE) {
+                throw new BizException("模具正在使用，请先归还");
+            }
+            throw new BizException("模具已报废");
         }
         transit(id, mold.getStatus(), MoldStatus.SCRAPPED, null, null, null, "在库或维修中");
         log(id, MoldAction.SCRAP, req.date(), null, null, null, null, req.remark());
@@ -185,7 +189,7 @@ public class MesMoldService {
     public int use(Long moldId, Long woId, Long equipmentId, Long reportId, LocalDate date, BigDecimal qty) {
         MesMold mold = detail(moldId);
         if (mold.getStatus() != MoldStatus.IN_USE || !woId.equals(mold.getWoId())) {
-            throw new BizException("模具「" + mold.getCode() + "」没有领用到该工单");
+            throw new BizException("模具「{0}」没有领用到该工单", mold.getCode());
         }
         int shots = qty.divide(BigDecimal.valueOf(mold.getCavities()), 0, RoundingMode.CEILING).intValueExact();
         if (shots <= 0) {
@@ -200,11 +204,11 @@ public class MesMoldService {
             BigDecimal warnAt = BigDecimal.valueOf(life).multiply(mold.getWarnRatio()).divide(BigDecimal.valueOf(100), 0, RoundingMode.CEILING);
             String name = "「" + mold.getCode() + " " + mold.getName() + "」";
             if (after >= life && before < life) {
-                messageSender.sendToPermission("mes:mold:edit", MessageSender.Message.of("ALERT", "模具" + name + "已达到设计寿命",
-                        "累计 " + after + " / " + life + " 模次，归还后不能再领用，请安排维修或报废", "/mes/mold").dedup("mold-life:" + moldId + ":" + life));
+                messageSender.sendToPermission("mes:mold:edit", MessageSender.Message.of("ALERT", "模具" + name + "已达到设计寿命", // i18n-ignore
+                        "累计 " + after + " / " + life + " 模次，归还后不能再领用，请安排维修或报废", "/mes/mold").dedup("mold-life:" + moldId + ":" + life)); // i18n-ignore
             } else if (after < life && BigDecimal.valueOf(after).compareTo(warnAt) >= 0 && BigDecimal.valueOf(before).compareTo(warnAt) < 0) {
-                messageSender.sendToPermission("mes:mold:edit", MessageSender.Message.of("REMIND", "模具" + name + "即将到达寿命",
-                        "累计 " + after + " / " + life + " 模次", "/mes/mold").dedup("mold-warn:" + moldId + ":" + life));
+                messageSender.sendToPermission("mes:mold:edit", MessageSender.Message.of("REMIND", "模具" + name + "即将到达寿命", // i18n-ignore
+                        "累计 " + after + " / " + life + " 模次", "/mes/mold").dedup("mold-warn:" + moldId + ":" + life)); // i18n-ignore
             }
         }
         return shots;
@@ -217,7 +221,7 @@ public class MesMoldService {
                 .set(MesMold::getUpdateTime, LocalDateTime.now())
                 .eq(MesMold::getId, id).eq(MesMold::getStatus, from));
         if (updated == 0) {
-            throw new BizException("只能操作" + fromText + "的模具");
+            throw new BizException("只能操作{0}的模具", I18n.t(fromText));
         }
     }
 
@@ -256,7 +260,7 @@ public class MesMoldService {
 
     private void checkCode(String code, Long id) {
         if (moldMapper.exists(Wrappers.<MesMold>lambdaQuery().eq(MesMold::getCode, code.trim()).ne(id != null, MesMold::getId, id))) {
-            throw new BizException("编码「" + code + "」已存在");
+            throw new BizException("编码「{0}」已存在", code);
         }
     }
 

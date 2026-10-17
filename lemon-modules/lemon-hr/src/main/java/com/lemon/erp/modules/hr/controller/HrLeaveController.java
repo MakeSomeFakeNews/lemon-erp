@@ -48,7 +48,7 @@ public class HrLeaveController {
 
     @PostMapping("/{id}/approve")
     @PreAuthorize("@ss.hasPerm('hr:leave:approve')")
-    @OperLog(title = "假勤审批", type = OperType.UPDATE)
+    @OperLog(title = "假勤审批", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> approve(@PathVariable Long id, @Valid @RequestBody ApproveRequest req) {
         leaveService.approve(id, req);
         return R.ok();

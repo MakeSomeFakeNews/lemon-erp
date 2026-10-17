@@ -1,12 +1,12 @@
 <template>
-  <a-modal :open="open" :title="`打印${type?.name || '标签'}`" ok-text="打印" :confirm-loading="printing" @ok="print" @cancel="emit('update:open', false)">
+  <a-modal :open="open" :title="$t('wms.label.printTitle', { name: type?.name || $t('wms.label.title') })" :ok-text="$t('common.action.print')" :confirm-loading="printing" @ok="print" @cancel="emit('update:open', false)">
     <a-form layout="inline" class="block">
-      <a-form-item label="每个打印">
-        <a-input-number v-model:value="copies" :min="1" :max="100" addon-after="张" />
+      <a-form-item :label="$t('wms.label.copiesEach')">
+        <a-input-number v-model:value="copies" :min="1" :max="100" :addon-after="$t('wms.label.sheets')" />
       </a-form-item>
     </a-form>
-    <div class="sub-text block">共 {{ items.length }} 个，打印 {{ items.length * (copies || 1) }} 张。标签纸尺寸、条码类型、显示字段在「系统管理 - 打印模板 - 标签」中设置</div>
-    <iframe v-if="previewHtml" class="preview" :srcdoc="previewHtml" title="标签预览" />
+    <div class="sub-text block">{{ $t('wms.label.summary', { n: items.length, total: items.length * (copies || 1) }) }}</div>
+    <iframe v-if="previewHtml" class="preview" :srcdoc="previewHtml" :title="$t('wms.label.previewTitle')" />
   </a-modal>
 </template>
 

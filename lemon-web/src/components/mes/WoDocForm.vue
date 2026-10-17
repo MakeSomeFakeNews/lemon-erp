@@ -4,25 +4,25 @@
     <a-form ref="formRef" :model="form" layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="24" :sm="8">
-          <a-form-item label="仓库" name="warehouseId" :rules="[{ required: true, message: '请选择仓库' }]">
+          <a-form-item :label="$t('mes.woDocForm.warehouse')" name="warehouseId" :rules="[{ required: true, message: $t('mes.woDocForm.warehouseRequired') }]">
             <WarehouseSelect
               :value="form.warehouseId"
               :allow-clear="false"
-              :placeholder="kind === 'scrap' ? '请选择不良品仓' : '请选择仓库'"
+              :placeholder="kind === 'scrap' ? $t('mes.woDocForm.scrapWarehousePh') : $t('mes.woDocForm.warehouseRequired')"
               :types="kind === 'scrap' ? ['DEFECT'] : undefined"
               @update:value="onWarehouseChange"
             />
-            <div v-if="kind === 'scrap'" class="sub-text">只能选择仓库类型为「不良品仓」的仓库</div>
+            <div v-if="kind === 'scrap'" class="sub-text">{{ $t('mes.woDocForm.scrapWarehouseTip') }}</div>
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="6">
-          <a-form-item label="业务日期" name="bizDate" :rules="[{ required: true, message: '请选择业务日期' }]">
+          <a-form-item :label="$t('mes.woDocForm.bizDate')" name="bizDate" :rules="[{ required: true, message: $t('mes.woDocForm.bizDateRequired') }]">
             <a-date-picker v-model:value="form.bizDate" value-format="YYYY-MM-DD" class="full" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="10">
-          <a-form-item label="备注" name="remark">
-            <a-input v-model:value="form.remark" :maxlength="200" placeholder="选填" />
+          <a-form-item :label="$t('common.field.remark')" name="remark">
+            <a-input v-model:value="form.remark" :maxlength="200" :placeholder="$t('mes.woDocForm.optional')" />
           </a-form-item>
         </a-col>
       </a-row>
@@ -32,8 +32,8 @@
           <template v-if="column.key === 'material'">
             <div>{{ record.materialCode }} {{ record.materialName }}</div>
             <div class="row-tags">
-              <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">批次</a-tag>
-              <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">序列号</a-tag>
+              <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">{{ $t('mes.woDocForm.batch') }}</a-tag>
+              <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">{{ $t('mes.woDocForm.serialNo') }}</a-tag>
             </div>
           </template>
           <template v-else-if="column.key === 'limit'">
@@ -41,7 +41,7 @@
             <div v-if="record.hint" class="sub-text">{{ record.hint }}</div>
           </template>
           <template v-else-if="column.key === 'slot'">
-            <a-form-item :name="['items', index, 'slot']" :rules="[{ required: true, message: '请选择库位 / 批次' }]" class="cell-item">
+            <a-form-item :name="['items', index, 'slot']" :rules="[{ required: true, message: $t('mes.woDocForm.slotRequired') }]" class="cell-item">
               <StockSlotSelect
                 v-model:value="record.slot"
                 :label="record.slotLabel"
@@ -50,7 +50,7 @@
                 @select="(s) => Object.assign(record, { locationId: s.locationId, batchNo: s.batchNo, slotLabel: s.label, available: Number(s.qty), serialNos: undefined })"
               />
             </a-form-item>
-            <div v-if="record.available != null" class="sub-text">可用 {{ formatQty(record.available) }}</div>
+            <div v-if="record.available != null" class="sub-text">{{ $t('mes.woDocForm.available', { v: formatQty(record.available) }) }}</div>
           </template>
           <template v-else-if="column.key === 'location'">
             <LocationSelect v-model:value="record.locationId" :warehouse-id="form.warehouseId" />
@@ -58,18 +58,18 @@
           <template v-else-if="column.key === 'batchNo'">
             <a-form-item
               :name="['items', index, 'batchNo']"
-              :rules="record.batchEnabled === 1 ? [{ required: true, message: '请填写批次号' }] : []"
+              :rules="record.batchEnabled === 1 ? [{ required: true, message: $t('mes.woDocForm.batchNoRequired') }] : []"
               class="cell-item"
             >
-              <a-input v-model:value="record.batchNo" :disabled="record.batchEnabled !== 1" :maxlength="64" placeholder="批次号" />
+              <a-input v-model:value="record.batchNo" :disabled="record.batchEnabled !== 1" :maxlength="64" :placeholder="$t('mes.woDocForm.batchNo')" />
             </a-form-item>
             <template v-if="(kind === 'finish' || kind === 'scrap') && record.batchEnabled === 1">
-              <a-date-picker v-model:value="record.productionDate" value-format="YYYY-MM-DD" placeholder="生产日期" class="full date-row" />
-              <a-date-picker v-model:value="record.expiryDate" value-format="YYYY-MM-DD" placeholder="有效期至" class="full date-row" />
+              <a-date-picker v-model:value="record.productionDate" value-format="YYYY-MM-DD" :placeholder="$t('mes.woDocForm.productionDate')" class="full date-row" />
+              <a-date-picker v-model:value="record.expiryDate" value-format="YYYY-MM-DD" :placeholder="$t('mes.woDocForm.expiryDate')" class="full date-row" />
             </template>
           </template>
           <template v-else-if="column.key === 'qty'">
-            <a-form-item :name="['items', index, 'qty']" :rules="[{ required: true, message: '请填写数量' }]" class="cell-item">
+            <a-form-item :name="['items', index, 'qty']" :rules="[{ required: true, message: $t('mes.woDocForm.qtyRequired') }]" class="cell-item">
               <a-input-number
                 v-model:value="record.qty"
                 :min="0"
@@ -89,7 +89,7 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" title="拆分到多个库位 / 批次" @click="split(index)"><SplitCellsOutlined /></a-button>
+            <a-button type="link" size="small" :title="$t('mes.woDocForm.split')" @click="split(index)"><SplitCellsOutlined /></a-button>
             <a-button type="link" danger size="small" @click="form.items.splice(index, 1)"><DeleteOutlined /></a-button>
           </template>
         </template>
@@ -97,8 +97,8 @@
     </a-form>
     <template #footer>
       <div class="drawer-footer">
-        <a-button @click="emit('update:open', false)">取消</a-button>
-        <a-button type="primary" :loading="saving" :disabled="!form.items.length" @click="submit">确认{{ KINDS[kind].label }}</a-button>
+        <a-button @click="emit('update:open', false)">{{ $t('common.action.cancel') }}</a-button>
+        <a-button type="primary" :loading="saving" :disabled="!form.items.length" @click="submit">{{ $t('mes.woDocForm.confirmKind', { label: KINDS[kind].label }) }}</a-button>
       </div>
     </template>
   </SubPage>
@@ -109,6 +109,7 @@ import SubPage from '@/components/SubPage.vue'
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, SplitCellsOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import StockSlotSelect from '@/components/scm/StockSlotSelect.vue'
 import LocationSelect from '@/components/wms/LocationSelect.vue'
 import SerialInput from '@/components/wms/SerialInput.vue'
@@ -132,33 +133,34 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:open', 'success'])
 
+const { t } = useI18n()
 const KINDS = {
-  issue: { label: '领料', tip: '从仓库现有库存中选择库位、批次领用，默认数量为未领数量；生成「生产领料」出库单。' },
-  return: { label: '退料', tip: '把多领、未用完的物料退回仓库，数量不超过已领数量；生成「生产退料」入库单。' },
-  finish: { label: '完工入库', tip: '产成品入库，累计不超过工单数量，满数量后工单自动完工；生成「生产入库」入库单。' },
-  scrap: { label: '报废入库', tip: '报工时报废的产品入不良品仓，累计不超过各工序报工报废数合计；生成「报废入库」入库单，不计入完工数量。' },
-  supplement: { label: '补料发料', tip: '按审批通过的补料申请发料，各物料不超过未发数量，可以分次发料；生成「补料」单据和「生产领料」出库单，计入工单的已补料。' }
+  issue: { label: t('mes.woDocForm.kind.issue'), tip: t('mes.woDocForm.tip.issue') },
+  return: { label: t('mes.woDocForm.kind.return'), tip: t('mes.woDocForm.tip.return') },
+  finish: { label: t('mes.woDocForm.kind.finish'), tip: t('mes.woDocForm.tip.finish') },
+  scrap: { label: t('mes.woDocForm.kind.scrap'), tip: t('mes.woDocForm.tip.scrap') },
+  supplement: { label: t('mes.woDocForm.kind.supplement'), tip: t('mes.woDocForm.tip.supplement') }
 }
 /** 从仓库现有库存中选择库位 / 批次 */
 const outbound = computed(() => props.kind === 'issue' || props.kind === 'supplement')
 const title = computed(() => {
   const label = KINDS[props.kind].label
-  if (props.kind === 'supplement') return props.supplement ? `${label} - ${props.supplement.suppNo}（工单 ${props.supplement.woNo}）` : label
-  return props.wo ? `${label} - 工单 ${props.wo.woNo}` : label
+  if (props.kind === 'supplement') return props.supplement ? t('mes.woDocForm.supplementTitle', { label, no: props.supplement.suppNo, wo: props.supplement.woNo }) : label
+  return props.wo ? t('mes.woDocForm.woTitle', { label, wo: props.wo.woNo }) : label
 })
 const tip = computed(() => KINDS[props.kind].tip)
 
 const columns = computed(() => [
-  { title: props.kind === 'finish' || props.kind === 'scrap' ? '产品' : '物料', key: 'material', width: 220 },
-  { title: { issue: '未领数量', return: '已领数量', finish: '未完工数量', scrap: '可报废入库', supplement: '未发数量' }[props.kind], key: 'limit', width: 130 },
+  { title: props.kind === 'finish' || props.kind === 'scrap' ? t('mes.woDocForm.product') : t('mes.woDocForm.material'), key: 'material', width: 220 },
+  { title: t('mes.woDocForm.limit.' + props.kind), key: 'limit', width: 150 },
   ...(outbound.value
-    ? [{ title: '库位 / 批次', key: 'slot', width: 230 }]
+    ? [{ title: t('mes.woDocForm.slot'), key: 'slot', width: 230 }]
     : [
-        { title: '库位', key: 'location', width: 150 },
-        { title: '批次号', key: 'batchNo', width: 160 }
+        { title: t('mes.woDocForm.location'), key: 'location', width: 150 },
+        { title: t('mes.woDocForm.batchNo'), key: 'batchNo', width: 160 }
       ]),
-  { title: '数量', key: 'qty', width: 150 },
-  { title: '序列号', key: 'serialNos', width: 240 },
+  { title: t('common.field.quantity'), key: 'qty', width: 150 },
+  { title: t('mes.woDocForm.serialNo'), key: 'serialNos', width: 240 },
   { title: '', key: 'action', width: 80, fixed: 'right' }
 ])
 
@@ -202,7 +204,7 @@ function buildRows() {
             batchEnabled: wo.batchEnabled,
             serialEnabled: wo.serialEnabled,
             limit: remaining,
-            hint: props.kind === 'scrap' ? `报工报废 ${formatQty(scrapped)}，已入库 ${formatQty(props.scrapIn || 0)}` : undefined,
+            hint: props.kind === 'scrap' ? t('mes.woDocForm.scrapHint', { scrapped: formatQty(scrapped), stored: formatQty(props.scrapIn || 0) }) : undefined,
             qty: remaining
           }
         ]
@@ -223,7 +225,7 @@ function buildRows() {
         batchEnabled: m.batchEnabled,
         serialEnabled: m.serialEnabled,
         limit,
-        hint: props.kind === 'issue' ? `需求 ${formatQty(m.requiredQty)}${supplement ? `，补料 ${formatQty(supplement)}` : ''}，已领 ${formatQty(issued)}` : undefined,
+        hint: props.kind === 'issue' ? (supplement ? t('mes.woDocForm.issueHintSupp', { req: formatQty(m.requiredQty), supp: formatQty(supplement), issued: formatQty(issued) }) : t('mes.woDocForm.issueHint', { req: formatQty(m.requiredQty), issued: formatQty(issued) })) : undefined,
         qty: props.kind === 'issue' && limit > 0 ? limit : undefined,
         slot: undefined,
         slotLabel: undefined,
@@ -283,10 +285,10 @@ async function submit() {
     }
     if (props.kind === 'supplement') {
       const docNo = await issueSupplement(props.supplement.id, payload)
-      message.success(`发料成功，补料单 ${docNo}`)
+      message.success(t('mes.woDocForm.issuedSupp', { no: docNo }))
     } else {
       await addWoDoc(props.wo.id, props.kind, payload)
-      message.success(`${KINDS[props.kind].label}成功`)
+      message.success(t('mes.woDocForm.kindSuccess', { label: KINDS[props.kind].label }))
     }
     emit('update:open', false)
     emit('success')

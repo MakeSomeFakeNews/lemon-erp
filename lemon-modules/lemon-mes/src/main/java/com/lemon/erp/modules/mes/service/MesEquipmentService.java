@@ -99,7 +99,7 @@ public class MesEquipmentService {
     public void delete(List<Long> ids) {
         for (MesEquipment e : equipmentMapper.selectByIds(ids)) {
             if (maintenanceMapper.exists(Wrappers.<MesMaintenance>lambdaQuery().eq(MesMaintenance::getEquipmentId, e.getId()))) {
-                throw new BizException("设备「" + e.getName() + "」已有维护记录，不能删除，可以改为报废");
+                throw new BizException("设备「{0}」已有维护记录，不能删除，可以改为报废", e.getName());
             }
         }
         equipmentMapper.deleteByIds(ids);

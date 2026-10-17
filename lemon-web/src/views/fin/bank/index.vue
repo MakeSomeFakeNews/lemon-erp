@@ -3,28 +3,28 @@
     <a-card :bordered="false" class="page-card">
       <div class="toolbar">
         <a-space wrap>
-          <AccountSelect v-model:value="accountId" :prefix="['1002']" placeholder="选择银行账户" class="account" />
+          <AccountSelect v-model:value="accountId" :prefix="['1002']" :placeholder="$t('fin.bank.selectAccount')" class="account" />
           <a-range-picker v-model:value="range" value-format="YYYY-MM-DD" :allow-clear="false" />
-          <a-button :disabled="!accountId" @click="load"><template #icon><ReloadOutlined /></template>查询</a-button>
-          <a-checkbox v-model:checked="onlyOpen">只看未勾对</a-checkbox>
+          <a-button :disabled="!accountId" @click="load"><template #icon><ReloadOutlined /></template>{{ $t('common.action.query') }}</a-button>
+          <a-checkbox v-model:checked="onlyOpen">{{ $t('fin.bank.onlyOpen') }}</a-checkbox>
         </a-space>
         <a-space wrap>
           <a-button v-perm="'fin:bank:edit'" :disabled="!accountId" @click="importOpen = true">
-            <template #icon><UploadOutlined /></template>导入对账单
+            <template #icon><UploadOutlined /></template>{{ $t('fin.bank.importStatement') }}
           </a-button>
           <a-button v-perm="'fin:bank:edit'" :disabled="!accountId" :loading="matching" @click="autoMatch">
-            <template #icon><ThunderboltOutlined /></template>自动勾对
+            <template #icon><ThunderboltOutlined /></template>{{ $t('fin.bank.autoMatch') }}
           </a-button>
           <a-button v-perm="'fin:bank:edit'" type="primary" :disabled="!canMatch" @click="manualMatch">
-            <template #icon><LinkOutlined /></template>手工勾对
+            <template #icon><LinkOutlined /></template>{{ $t('fin.bank.manualMatch') }}
           </a-button>
           <a-button :disabled="!accountId" @click="openReconcile">
-            <template #icon><FileTextOutlined /></template>余额调节表
+            <template #icon><FileTextOutlined /></template>{{ $t('fin.bank.reconcile') }}
           </a-button>
         </a-space>
       </div>
       <div class="sub-text">
-        自动勾对按金额相同、日期相差不超过 5 天匹配；手工勾对时在左右两边各选一条未勾对的记录。银行流水收入为正、支出为负，企业分录借方为正、贷方为负；导入时可以只填「金额」一列代替收入、支出两列，流水号重复的自动跳过。
+        {{ $t('fin.bank.hint') }}
       </div>
     </a-card>
 
@@ -32,15 +32,15 @@
       <a-col :xs="24" :xl="12">
         <a-card :bordered="false" class="page-card side-card">
           <div class="side-head">
-            <span class="section-title">银行流水</span>
+            <span class="section-title">{{ $t('fin.bank.statements') }}</span>
             <a-space>
               <span class="sub-text">
-                {{ statements.length }} 条，未勾对 {{ statements.filter((s) => !s.entryId).length }} 条，
-                净额 <span :class="{ neg: stmtTotal < 0 }">{{ formatMoney(stmtTotal) }}</span>
+                {{ $t('fin.bank.countText', { total: statements.length, open: statements.filter((s) => !s.entryId).length }) }}
+                {{ $t('fin.bank.net') }} <span :class="{ neg: stmtTotal < 0 }">{{ formatMoney(stmtTotal) }}</span>
               </span>
               <span v-if="stmtKeys.length" v-perm="'fin:bank:edit'">
-                <a-popconfirm :title="`删除选中的 ${stmtKeys.length} 条银行流水？`" @confirm="removeStatements">
-                  <a-button size="small" danger>删除（{{ stmtKeys.length }}）</a-button>
+                <a-popconfirm :title="$t('fin.bank.confirmDelete', { n: stmtKeys.length })" @confirm="removeStatements">
+                  <a-button size="small" danger>{{ $t('fin.bank.deleteN', { n: stmtKeys.length }) }}</a-button>
                 </a-popconfirm>
               </span>
             </a-space>
@@ -55,7 +55,7 @@
             :row-selection="{ selectedRowKeys: stmtKeys, onChange: (k) => (stmtKeys = k) }"
             :row-class-name="(r) => (r.entryId ? 'matched-row' : '')"
             :scroll="{ x: 640, y: 520 }"
-            :locale="{ emptyText: accountId ? '没有银行流水，请导入对账单' : '请先选择银行账户' }"
+            :locale="{ emptyText: accountId ? $t('fin.bank.emptyStatements') : $t('fin.bank.selectAccountFirst') }"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'amount'">
@@ -67,15 +67,15 @@
               </template>
               <template v-else-if="column.key === 'match'">
                 <template v-if="record.entryId">
-                  <a-tag color="green" :bordered="false">已勾对</a-tag>
+                  <a-tag color="green" :bordered="false">{{ $t('fin.bank.matched') }}</a-tag>
                   <div class="sub-text">{{ record.voucherNo }} {{ record.voucherDate }}</div>
                   <span v-perm="'fin:bank:edit'">
-                    <a-popconfirm title="取消勾对？" @confirm="unmatch(record.id)">
-                      <a class="small-link">取消勾对</a>
+                    <a-popconfirm :title="$t('fin.bank.confirmUnmatch')" @confirm="unmatch(record.id)">
+                      <a class="small-link">{{ $t('fin.bank.unmatch') }}</a>
                     </a-popconfirm>
                   </span>
                 </template>
-                <a-tag v-else :bordered="false">未勾对</a-tag>
+                <a-tag v-else :bordered="false">{{ $t('fin.bank.unmatched') }}</a-tag>
               </template>
             </template>
           </a-table>
@@ -84,10 +84,10 @@
       <a-col :xs="24" :xl="12">
         <a-card :bordered="false" class="page-card side-card">
           <div class="side-head">
-            <span class="section-title">企业账面分录</span>
+            <span class="section-title">{{ $t('fin.bank.bookEntries') }}</span>
             <span class="sub-text">
-              {{ entries.length }} 条，未勾对 {{ entries.filter((e) => !e.matched).length }} 条，
-              净额 <span :class="{ neg: entryTotal < 0 }">{{ formatMoney(entryTotal) }}</span>
+              {{ $t('fin.bank.countText', { total: entries.length, open: entries.filter((e) => !e.matched).length }) }}
+              {{ $t('fin.bank.net') }} <span :class="{ neg: entryTotal < 0 }">{{ formatMoney(entryTotal) }}</span>
             </span>
           </div>
           <a-table
@@ -100,7 +100,7 @@
             :row-selection="{ type: 'radio', selectedRowKeys: entryKeys, onChange: (k) => (entryKeys = k), getCheckboxProps: (r) => ({ disabled: !!r.matched }) }"
             :row-class-name="(r) => (r.matched ? 'matched-row' : '')"
             :scroll="{ x: 600, y: 520 }"
-            :locale="{ emptyText: accountId ? '期间内没有该账户的分录' : '请先选择银行账户' }"
+            :locale="{ emptyText: accountId ? $t('fin.bank.emptyEntries') : $t('fin.bank.selectAccountFirst') }"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'voucher'">
@@ -111,7 +111,7 @@
                 <span :class="['num', { neg: Number(record.amount) < 0 }]">{{ formatMoney(record.amount) }}</span>
               </template>
               <template v-else-if="column.key === 'match'">
-                <a-tag :color="record.matched ? 'green' : undefined" :bordered="false">{{ record.matched ? '已勾对' : '未勾对' }}</a-tag>
+                <a-tag :color="record.matched ? 'green' : undefined" :bordered="false">{{ record.matched ? $t('fin.bank.matched') : $t('fin.bank.unmatched') }}</a-tag>
               </template>
             </template>
           </a-table>
@@ -121,7 +121,7 @@
 
     <ImportModal
       v-model:open="importOpen"
-      title="银行对账单"
+      :title="$t('fin.bank.statementTitle')"
       :columns="importColumns"
       :sample="importSample"
       :importer="importRows"
@@ -129,64 +129,64 @@
     />
 
     <!-- 余额调节表 -->
-    <a-modal v-model:open="reconcileOpen" title="银行存款余额调节表" width="min(900px, 100vw)" :footer="null">
+    <a-modal v-model:open="reconcileOpen" :title="$t('fin.bank.reconcileTitle')" width="min(900px, 100vw)" :footer="null">
       <div class="filters">
-        <span>截止日期</span>
+        <span>{{ $t('fin.bank.asOf') }}</span>
         <a-date-picker v-model:value="asOf" value-format="YYYY-MM-DD" :allow-clear="false" />
-        <span>银行对账单余额</span>
-        <a-input-number v-model:value="bankBalance" :precision="2" placeholder="不填按导入的流水累计" class="balance" />
-        <a-button type="primary" :loading="reconciling" @click="loadReconcile">计算</a-button>
+        <span>{{ $t('fin.bank.bankBalance') }}</span>
+        <a-input-number v-model:value="bankBalance" :precision="2" :placeholder="$t('fin.bank.bankBalancePh')" class="balance" />
+        <a-button type="primary" :loading="reconciling" @click="loadReconcile">{{ $t('fin.bank.calculate') }}</a-button>
       </div>
       <a-spin :spinning="reconciling">
         <template v-if="rec">
-          <div class="report-title">银行存款余额调节表</div>
+          <div class="report-title">{{ $t('fin.bank.reconcileTitle') }}</div>
           <div class="report-sub">
-            {{ accountName }} · 截至 {{ rec.asOf }} · 单位：元
+            {{ $t('fin.bank.reportSub', { account: accountName, date: rec.asOf }) }}
             <a-tag :color="rec.balanced ? 'green' : 'red'" :bordered="false" class="check">
-              {{ rec.balanced ? '调节后余额相等' : '调节后余额不相等，请检查未勾对的记录' }}
+              {{ rec.balanced ? $t('fin.bank.balanced') : $t('fin.bank.unbalanced') }}
             </a-tag>
           </div>
           <table class="rec-table">
             <thead>
               <tr>
-                <th>企业账面</th>
-                <th class="num">金额</th>
-                <th>银行对账单</th>
-                <th class="num">金额</th>
+                <th>{{ $t('fin.bank.book') }}</th>
+                <th class="num">{{ $t('common.field.amount') }}</th>
+                <th>{{ $t('fin.bank.statementTitle') }}</th>
+                <th class="num">{{ $t('common.field.amount') }}</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>银行存款日记账余额</td>
+                <td>{{ $t('fin.bank.bookBalance') }}</td>
                 <td class="num">{{ formatMoney(rec.bookBalance) }}</td>
-                <td>银行对账单余额</td>
+                <td>{{ $t('fin.bank.bankBalance') }}</td>
                 <td class="num">{{ formatMoney(rec.bankBalance) }}</td>
               </tr>
               <tr>
-                <td>加：银行已收、企业未收</td>
+                <td>{{ $t('fin.bank.bankIn') }}</td>
                 <td class="num">{{ formatMoney(rec.bankIn) }}</td>
-                <td>加：企业已收、银行未收</td>
+                <td>{{ $t('fin.bank.bookIn') }}</td>
                 <td class="num">{{ formatMoney(rec.bookIn) }}</td>
               </tr>
               <tr>
-                <td>减：银行已付、企业未付</td>
+                <td>{{ $t('fin.bank.bankOut') }}</td>
                 <td class="num">{{ formatMoney(rec.bankOut) }}</td>
-                <td>减：企业已付、银行未付</td>
+                <td>{{ $t('fin.bank.bookOut') }}</td>
                 <td class="num">{{ formatMoney(rec.bookOut) }}</td>
               </tr>
             </tbody>
             <tfoot>
               <tr>
-                <td>调节后余额</td>
+                <td>{{ $t('fin.bank.adjusted') }}</td>
                 <td :class="['num', { neg: !rec.balanced }]">{{ formatMoney(rec.adjustedBook) }}</td>
-                <td>调节后余额</td>
+                <td>{{ $t('fin.bank.adjusted') }}</td>
                 <td :class="['num', { neg: !rec.balanced }]">{{ formatMoney(rec.adjustedBank) }}</td>
               </tr>
             </tfoot>
           </table>
           <a-row :gutter="12" class="rec-detail">
             <a-col :xs="24" :md="12">
-              <div class="section-title">银行已记、企业未记（{{ rec.bankOnly.length }}）</div>
+              <div class="section-title">{{ $t('fin.bank.bankOnly', { n: rec.bankOnly.length }) }}</div>
               <a-table row-key="id" size="small" :columns="bankOnlyColumns" :data-source="rec.bankOnly" :pagination="false" :scroll="{ y: 240 }">
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'amount'">
@@ -196,7 +196,7 @@
               </a-table>
             </a-col>
             <a-col :xs="24" :md="12">
-              <div class="section-title">企业已记、银行未记（{{ rec.bookOnly.length }}）</div>
+              <div class="section-title">{{ $t('fin.bank.bookOnly', { n: rec.bookOnly.length }) }}</div>
               <a-table row-key="entryId" size="small" :columns="bookOnlyColumns" :data-source="rec.bookOnly" :pagination="false" :scroll="{ y: 240 }">
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'amount'">
@@ -218,6 +218,7 @@
 import { computed, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { FileTextOutlined, LinkOutlined, ReloadOutlined, ThunderboltOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import ImportModal from '@/components/ImportModal.vue'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
@@ -236,6 +237,7 @@ import {
 import { today } from '@/components/wms/wms'
 import { cached, formatMoney } from '@/components/fin/fin'
 
+const { t } = useI18n()
 const accountId = ref()
 const range = ref([dayjs().startOf('month').format('YYYY-MM-DD'), today()])
 const onlyOpen = ref(false)
@@ -280,16 +282,16 @@ watch(accountId, () => {
 watch(range, load)
 
 const stmtColumns = [
-  { title: '交易日期', dataIndex: 'txnDate', width: 105 },
-  { title: '金额', key: 'amount', width: 120, align: 'right' },
-  { title: '摘要 / 流水号', key: 'summary', ellipsis: true },
-  { title: '勾对', key: 'match', width: 150 }
+  { title: t('fin.bank.txnDate'), dataIndex: 'txnDate', width: 110 },
+  { title: t('common.field.amount'), key: 'amount', width: 120, align: 'right' },
+  { title: t('fin.bank.summaryRef'), key: 'summary', ellipsis: true },
+  { title: t('fin.bank.match'), key: 'match', width: 150 }
 ]
 const entryColumns = [
-  { title: '凭证', key: 'voucher', width: 120 },
-  { title: '金额', key: 'amount', width: 120, align: 'right' },
-  { title: '摘要', dataIndex: 'summary', ellipsis: true },
-  { title: '勾对', key: 'match', width: 90 }
+  { title: t('fin.bank.voucher'), key: 'voucher', width: 120 },
+  { title: t('common.field.amount'), key: 'amount', width: 120, align: 'right' },
+  { title: t('fin.bank.summary'), dataIndex: 'summary', ellipsis: true },
+  { title: t('fin.bank.match'), key: 'match', width: 110 }
 ]
 
 // ---------------------------------------------------------------- 勾对
@@ -304,17 +306,17 @@ async function manualMatch() {
   const s = selectedStatement.value
   const e = selectedEntry.value
   if (Math.abs(Number(s.amount) - Number(e.amount)) >= 0.005) {
-    message.warning(`金额不一致：银行流水 ${formatMoney(s.amount)}，账面分录 ${formatMoney(e.amount)}`)
+    message.warning(t('fin.bank.amountMismatch', { bank: formatMoney(s.amount), book: formatMoney(e.amount) }))
     return
   }
   await matchBank(s.id, e.entryId)
-  message.success('已勾对')
+  message.success(t('fin.bank.matched'))
   load()
 }
 
 async function unmatch(id) {
   await unmatchBank(id)
-  message.success('已取消勾对')
+  message.success(t('fin.bank.unmatchedMsg'))
   load()
 }
 
@@ -323,7 +325,7 @@ async function autoMatch() {
   matching.value = true
   try {
     const count = await autoMatchBank(params())
-    message.success(count ? `自动勾对 ${count} 条` : '没有可以自动勾对的记录')
+    message.success(count ? t('fin.bank.autoMatched', { count }) : t('fin.bank.nothingToMatch'))
     load()
   } finally {
     matching.value = false
@@ -332,21 +334,21 @@ async function autoMatch() {
 
 async function removeStatements() {
   await deleteBankStatements(stmtKeys.value)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 
 // ---------------------------------------------------------------- 导入
 const importOpen = ref(false)
 const importColumns = [
-  { title: '交易日期', key: 'txnDate', required: true, type: 'date', width: 14 },
-  { title: '收入', key: 'income', type: 'number', width: 14 },
-  { title: '支出', key: 'expense', type: 'number', width: 14 },
-  { title: '金额', key: 'amount', type: 'number', width: 14 },
-  { title: '摘要', key: 'summary', width: 30 },
-  { title: '流水号', key: 'refNo', width: 24 }
+  { title: t('fin.bank.txnDate'), key: 'txnDate', required: true, type: 'date', width: 14 },
+  { title: t('fin.bank.income'), key: 'income', type: 'number', width: 14 },
+  { title: t('fin.bank.expense'), key: 'expense', type: 'number', width: 14 },
+  { title: t('common.field.amount'), key: 'amount', type: 'number', width: 14 },
+  { title: t('fin.bank.summary'), key: 'summary', width: 30 },
+  { title: t('fin.bank.refNo'), key: 'refNo', width: 24 }
 ]
-const importSample = { txnDate: '2026-10-08', income: '10000.00', expense: '', amount: '', summary: '收到货款', refNo: 'B202610080001' }
+const importSample = { txnDate: '2026-10-08', income: '10000.00', expense: '', amount: '', summary: t('fin.bank.sampleSummary'), refNo: 'B202610080001' }
 
 async function importRows({ rows }) {
   const errors = []
@@ -354,14 +356,14 @@ async function importRows({ rows }) {
   rows.forEach(({ rowNum, data: d }) => {
     const amount = d.amount !== undefined ? d.amount : round2((d.income || 0) - (d.expense || 0))
     if (!amount) {
-      errors.push({ rowNum, message: '请填写收入、支出或金额' })
+      errors.push({ rowNum, message: t('fin.bank.needAmount') })
       return
     }
     data.push({ txnDate: d.txnDate, amount, summary: d.summary || null, refNo: d.refNo || null })
   })
   if (errors.length) return { total: rows.length, imported: 0, errors }
   const imported = await importBankStatements({ accountId: accountId.value, rows: data })
-  if (imported < rows.length) message.info(`${rows.length - imported} 条流水号重复，已跳过`)
+  if (imported < rows.length) message.info(t('fin.bank.skipped', { n: rows.length - imported }))
   return { total: rows.length, imported, errors: [] }
 }
 
@@ -372,14 +374,14 @@ const asOf = ref(today())
 const bankBalance = ref()
 const rec = ref()
 const bankOnlyColumns = [
-  { title: '日期', dataIndex: 'txnDate', width: 100 },
-  { title: '金额', key: 'amount', width: 110, align: 'right' },
-  { title: '摘要', dataIndex: 'summary', ellipsis: true }
+  { title: t('common.field.date'), dataIndex: 'txnDate', width: 100 },
+  { title: t('common.field.amount'), key: 'amount', width: 110, align: 'right' },
+  { title: t('fin.bank.summary'), dataIndex: 'summary', ellipsis: true }
 ]
 const bookOnlyColumns = [
-  { title: '凭证', dataIndex: 'voucherNo', width: 100 },
-  { title: '金额', key: 'amount', width: 110, align: 'right' },
-  { title: '摘要', dataIndex: 'summary', ellipsis: true }
+  { title: t('fin.bank.voucher'), dataIndex: 'voucherNo', width: 100 },
+  { title: t('common.field.amount'), key: 'amount', width: 110, align: 'right' },
+  { title: t('fin.bank.summary'), dataIndex: 'summary', ellipsis: true }
 ]
 function openReconcile() {
   asOf.value = range.value?.[1] || today()

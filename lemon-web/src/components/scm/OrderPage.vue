@@ -2,19 +2,19 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="订单号" name="orderNo">
-          <a-input v-model:value="query.orderNo" placeholder="请输入订单号" allow-clear />
+        <a-form-item :label="$t('scm.order.orderNo')" name="orderNo">
+          <a-input v-model:value="query.orderNo" :placeholder="$t('common.placeholder.inputName', { name: $t('scm.order.orderNo') })" allow-clear />
         </a-form-item>
         <a-form-item :label="conf.partnerLabel" name="partnerId">
-          <PartnerSelect v-model:value="query.partnerId" :type="conf.partner" placeholder="全部" allow-clear />
+          <PartnerSelect v-model:value="query.partnerId" :type="conf.partner" :placeholder="$t('common.placeholder.all')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.scm_order_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.scm_order_status)" />
         </a-form-item>
-        <a-form-item label="物料" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="物料编码或名称" allow-clear />
+        <a-form-item :label="$t('scm.order.material')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('scm.order.materialKeyword')" allow-clear />
         </a-form-item>
-        <a-form-item label="订单日期" name="range">
+        <a-form-item :label="$t('scm.order.orderDate')" name="range">
           <a-range-picker v-model:value="query.range" value-format="YYYY-MM-DD" style="width: 100%" />
         </a-form-item>
       </SearchForm>
@@ -29,19 +29,19 @@
         @refresh="load"
       >
         <a-button v-perm="`scm:${kind}:add`" type="primary" @click="form.openCreate()">
-          <template #icon><PlusOutlined /></template>新增{{ conf.label }}
+          <template #icon><PlusOutlined /></template>{{ $t('scm.order.addOrder', { kind: conf.label }) }}
         </a-button>
         <a-button v-if="kind === 'sales'" v-perm="'scm:sales:add'" @click="importOpen = true">
-          <template #icon><ImportOutlined /></template>导入外部订单
+          <template #icon><ImportOutlined /></template>{{ $t('scm.order.importExternal') }}
         </a-button>
         <span v-perm="`scm:${kind}:remove`">
           <a-popconfirm
-            :title="`确定删除选中的 ${selectedKeys.length} 张草稿？`"
+            :title="$t('scm.order.confirmDeleteDrafts', { n: selectedKeys.length })"
             :disabled="!selectedKeys.length"
             @confirm="remove(selectedKeys)"
           >
             <a-button danger :disabled="!selectedKeys.length">
-              <template #icon><DeleteOutlined /></template>批量删除
+              <template #icon><DeleteOutlined /></template>{{ $t('common.action.batchDelete') }}
             </a-button>
           </a-popconfirm>
         </span>
@@ -63,10 +63,10 @@
             <a @click="openDetail(record)">{{ record.orderNo }}</a>
             <a-tag v-if="record.version > 1" color="blue" :bordered="false" class="source-tag">V{{ record.version }}</a-tag>
             <a-tag v-if="record.source === 'MRP'" color="purple" :bordered="false" class="source-tag">MRP</a-tag>
-            <a-tag v-else-if="record.source === 'CONSIGN'" color="cyan" :bordered="false" class="source-tag">寄售</a-tag>
-            <a-tag v-else-if="record.source === 'DEALER'" color="purple" :bordered="false" class="source-tag">经销商</a-tag>
-            <a-tag v-else-if="record.source === 'IMPORT'" color="lime" :bordered="false" class="source-tag">导入</a-tag>
-            <div v-if="record.externalNo" class="sub-text">外部单号 {{ record.externalNo }}</div>
+            <a-tag v-else-if="record.source === 'CONSIGN'" color="cyan" :bordered="false" class="source-tag">{{ $t('scm.order.sourceConsign') }}</a-tag>
+            <a-tag v-else-if="record.source === 'DEALER'" color="purple" :bordered="false" class="source-tag">{{ $t('scm.order.sourceDealer') }}</a-tag>
+            <a-tag v-else-if="record.source === 'IMPORT'" color="lime" :bordered="false" class="source-tag">{{ $t('scm.order.sourceImport') }}</a-tag>
+            <div v-if="record.externalNo" class="sub-text">{{ $t('scm.order.externalNoValue', { no: record.externalNo }) }}</div>
           </template>
           <template v-else-if="column.key === 'partner'">
             <div>{{ record.partnerName }}</div>
@@ -74,7 +74,7 @@
           </template>
           <template v-else-if="column.key === 'dates'">
             <div>{{ record.orderDate }}</div>
-            <div class="sub-text">交货 {{ record.deliveryDate || '-' }}</div>
+            <div class="sub-text">{{ $t('scm.order.deliveryValue', { date: record.deliveryDate || '-' }) }}</div>
           </template>
           <template v-else-if="column.key === 'totalAmount'">
             {{ currencySymbol(record.currency) }}{{ formatMoney(record.totalAmount) }}
@@ -90,10 +90,10 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>查看
+                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
               <a-button v-if="record.status === 'DRAFT'" v-perm="`scm:${kind}:edit`" type="link" size="small" @click="form.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <a-button
                 v-else-if="['APPROVED', 'PARTIAL'].includes(record.status)"
@@ -103,7 +103,7 @@
                 @click="openTrade(conf.trades[0], record)"
               >
                 <template #icon><component :is="kind === 'purchase' ? ImportOutlined : ExportOutlined" /></template>
-                {{ kind === 'purchase' ? '入库' : '出库' }}
+                {{ kind === 'purchase' ? $t('scm.order.inbound') : $t('scm.order.outbound') }}
               </a-button>
             </span>
           </template>
@@ -115,7 +115,7 @@
     <ImportModal
       v-if="kind === 'sales'"
       v-model:open="importOpen"
-      title="外部订单"
+      :title="$t('scm.order.externalOrder')"
       :columns="importColumns"
       :importer="importOrders"
       :sample="{ externalNo: 'TB20261015001', customerCode: 'C001', orderDate: '2026-10-15', materialCode: 'M0001', qty: 2, price: 99 }"
@@ -137,6 +137,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, ExportOutlined, EyeOutlined, ImportOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -164,24 +165,29 @@ const props = defineProps({
   kind: { type: String, required: true }
 })
 
+const { t } = useI18n()
 const conf = ORDER_KINDS[props.kind]
 
 // 外部订单导入（电商 / 门店）：同一外部单号的多行为一张订单，单价为空按价目表，已导入的外部单号跳过
 const importOpen = ref(false)
 const importColumns = [
-  { title: '外部单号', key: 'externalNo', required: true },
-  { title: '客户编码', key: 'customerCode', required: true },
-  { title: '下单日期', key: 'orderDate', type: 'date', required: true },
-  { title: '交货日期', key: 'deliveryDate', type: 'date' },
-  { title: '物料编码', key: 'materialCode', required: true },
-  { title: '数量', key: 'qty', type: 'number', required: true },
-  { title: '含税单价', key: 'price', type: 'number' },
-  { title: '备注', key: 'remark' }
+  { title: t('scm.order.externalNo'), key: 'externalNo', required: true },
+  { title: t('scm.order.customerCode'), key: 'customerCode', required: true },
+  { title: t('scm.order.placedDate'), key: 'orderDate', type: 'date', required: true },
+  { title: t('scm.order.deliveryDate'), key: 'deliveryDate', type: 'date' },
+  { title: t('scm.order.materialCode'), key: 'materialCode', required: true },
+  { title: t('common.field.quantity'), key: 'qty', type: 'number', required: true },
+  { title: t('scm.order.taxPrice'), key: 'price', type: 'number' },
+  { title: t('common.field.remark'), key: 'remark' }
 ]
 async function importOrders(req) {
   const res = await importSalesOrders(req)
   if (!res.errors.length) {
-    message.success(`生成 ${res.orders} 张销售订单（草稿）${res.skipped.length ? `，跳过已导入的 ${res.skipped.length} 张：${res.skipped.join('、')}` : ''}`)
+    message.success(
+      res.skipped.length
+        ? t('scm.order.importDoneSkipped', { n: res.orders, skipped: res.skipped.length, list: res.skipped.join(t('scm.order.listSep')) })
+        : t('scm.order.importDone', { n: res.orders })
+    )
   }
   return res
 }
@@ -189,17 +195,17 @@ const dict = useDict('scm_order_status')
 useCurrencies()
 
 const columns = [
-  { title: '订单号', key: 'orderNo', width: 190 },
+  { title: t('scm.order.orderNo'), key: 'orderNo', width: 190 },
   { title: conf.partnerLabel, key: 'partner', width: 200 },
-  { title: '订单 / 交货日期', key: 'dates', width: 120 },
-  { title: '价税合计', key: 'totalAmount', width: 120, align: 'right' },
-  { title: '状态', key: 'status', width: 90 },
-  { title: props.kind === 'purchase' ? '入库进度' : '出库进度', key: 'progress', width: 190 },
+  { title: t('scm.order.orderDeliveryDate'), key: 'dates', width: 140 },
+  { title: t('scm.order.totalAmount'), key: 'totalAmount', width: 130, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: props.kind === 'purchase' ? t('scm.order.inProgress') : t('scm.order.outProgress'), key: 'progress', width: 190 },
   { title: conf.warehouseLabel, dataIndex: 'warehouseName', width: 120 },
-  { title: '制单人', dataIndex: 'createByName', width: 100 },
-  { title: '备注', dataIndex: 'remark', width: 150, ellipsis: true },
-  { title: '创建时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 160, fixed: 'right' }
+  { title: t('scm.order.preparedBy'), dataIndex: 'createByName', width: 110 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, `scm-${props.kind}`)
 const showSearch = ref(true)
@@ -265,7 +271,7 @@ function onTradeSaved() {
 
 async function remove(ids) {
   await deleteOrder(props.kind, ids)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   selectedKeys.value = selectedKeys.value.filter((k) => !ids.includes(k))
   load()
 }

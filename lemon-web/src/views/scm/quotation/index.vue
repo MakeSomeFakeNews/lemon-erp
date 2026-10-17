@@ -2,14 +2,14 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="关键字" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="报价单号或备注" allow-clear />
+        <a-form-item :label="$t('common.field.keyword')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('scm.quotation.keywordPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="客户" name="customerId">
-          <PartnerSelect v-model:value="query.customerId" type="customer" placeholder="全部" allow-clear />
+        <a-form-item :label="$t('scm.quotation.customer')" name="customerId">
+          <PartnerSelect v-model:value="query.customerId" type="customer" :placeholder="$t('common.placeholder.all')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.scm_quotation_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.scm_quotation_status)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -24,16 +24,16 @@
         @refresh="load"
       >
         <a-button v-perm="'scm:quotation:add'" type="primary" @click="form.openCreate()">
-          <template #icon><PlusOutlined /></template>新增报价单
+          <template #icon><PlusOutlined /></template>{{ $t('scm.quotation.add') }}
         </a-button>
         <span v-perm="'scm:quotation:remove'">
           <a-popconfirm
-            :title="`确定删除选中的 ${selectedKeys.length} 张草稿？`"
+            :title="$t('scm.quotation.confirmBatchDelete', { n: selectedKeys.length })"
             :disabled="!selectedKeys.length"
             @confirm="remove(selectedKeys)"
           >
             <a-button danger :disabled="!selectedKeys.length">
-              <template #icon><DeleteOutlined /></template>批量删除
+              <template #icon><DeleteOutlined /></template>{{ $t('common.action.batchDelete') }}
             </a-button>
           </a-popconfirm>
         </span>
@@ -55,8 +55,8 @@
             <a @click="openDetail(record)">{{ record.quoteNo }}</a>
           </template>
           <template v-else-if="column.key === 'validTo'">
-            {{ record.validTo || '不限' }}
-            <a-tag v-if="isExpired(record)" color="red" :bordered="false" class="tag-gap">已过期</a-tag>
+            {{ record.validTo || $t('scm.quotation.unlimited') }}
+            <a-tag v-if="isExpired(record)" color="red" :bordered="false" class="tag-gap">{{ $t('scm.quotation.expired') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'totalAmount'">¥{{ formatMoney(record.totalAmount) }}</template>
           <template v-else-if="column.key === 'orderNo'">
@@ -70,15 +70,15 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>查看
+                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
               </a-button>
               <a-button v-if="record.status === 'DRAFT'" v-perm="'scm:quotation:edit'" type="link" size="small" @click="form.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-if="record.status === 'DRAFT'" v-perm="'scm:quotation:remove'">
-                <a-popconfirm title="确定删除该报价单？" @confirm="remove([record.id])">
+                <a-popconfirm :title="$t('scm.quotation.confirmDelete')" @confirm="remove([record.id])">
                   <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>删除
+                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
                   </a-button>
                 </a-popconfirm>
               </span>
@@ -94,6 +94,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
@@ -112,20 +113,22 @@ import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import { formatMoney } from '@/components/scm/scm'
 import { today } from '@/components/wms/wms'
 
+const { t } = useI18n()
+
 const dict = useDict('scm_quotation_status')
 
 const columns = [
-  { title: '报价单号', key: 'quoteNo', dataIndex: 'quoteNo', width: 180 },
-  { title: '客户', dataIndex: 'customerName', width: 180, ellipsis: true },
-  { title: '报价日期', dataIndex: 'quoteDate', width: 110 },
-  { title: '有效期至', key: 'validTo', dataIndex: 'validTo', width: 160 },
-  { title: '状态', key: 'status', dataIndex: 'status', width: 100, dict: 'scm_quotation_status' },
-  { title: '价税合计', key: 'totalAmount', dataIndex: 'totalAmount', width: 130, align: 'right' },
-  { title: '销售订单 / 失效原因', key: 'orderNo', dataIndex: 'orderNo', width: 180, ellipsis: true },
-  { title: '制单人', dataIndex: 'createByName', width: 100 },
-  { title: '备注', dataIndex: 'remark', width: 180, ellipsis: true },
-  { title: '创建时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 200, fixed: 'right' }
+  { title: t('scm.quotation.quoteNo'), key: 'quoteNo', dataIndex: 'quoteNo', width: 180 },
+  { title: t('scm.quotation.customer'), dataIndex: 'customerName', width: 180, ellipsis: true },
+  { title: t('scm.quotation.quoteDate'), dataIndex: 'quoteDate', width: 110 },
+  { title: t('scm.quotation.validTo'), key: 'validTo', dataIndex: 'validTo', width: 160 },
+  { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'scm_quotation_status' },
+  { title: t('scm.quotation.amount'), key: 'totalAmount', dataIndex: 'totalAmount', width: 130, align: 'right' },
+  { title: t('scm.quotation.orderOrLost'), key: 'orderNo', dataIndex: 'orderNo', width: 200, ellipsis: true },
+  { title: t('scm.quotation.preparedBy'), dataIndex: 'createByName', width: 110 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 200, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'scm-quotation')
 const showSearch = ref(true)
@@ -184,7 +187,7 @@ function onSaved(id) {
 
 async function remove(ids) {
   await deleteQuotation(ids)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   selectedKeys.value = selectedKeys.value.filter((k) => !ids.includes(k))
   load()
 }

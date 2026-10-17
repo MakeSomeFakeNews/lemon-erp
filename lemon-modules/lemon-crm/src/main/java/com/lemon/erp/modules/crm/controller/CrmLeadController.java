@@ -56,14 +56,14 @@ public class CrmLeadController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('crm:lead:add')")
-    @OperLog(title = "线索管理", type = OperType.INSERT)
+    @OperLog(title = "线索管理", type = OperType.INSERT) // i18n-ignore 操作日志标题存库
     public R<Long> create(@Valid @RequestBody LeadRequest req) {
         return R.ok(leadService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('crm:lead:edit')")
-    @OperLog(title = "线索管理", type = OperType.UPDATE)
+    @OperLog(title = "线索管理", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody LeadRequest req) {
         leadService.update(id, req);
         return R.ok();
@@ -71,7 +71,7 @@ public class CrmLeadController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('crm:lead:remove')")
-    @OperLog(title = "线索管理", type = OperType.DELETE)
+    @OperLog(title = "线索管理", type = OperType.DELETE) // i18n-ignore 操作日志标题存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         leadService.delete(ids);
         return R.ok();
@@ -80,7 +80,7 @@ public class CrmLeadController {
     /** 标记无效，body：{ reason } */
     @PostMapping("/{id}/invalid")
     @PreAuthorize("@ss.hasPerm('crm:lead:edit')")
-    @OperLog(title = "线索管理-无效", type = OperType.UPDATE)
+    @OperLog(title = "线索管理-无效", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> invalidate(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         leadService.invalidate(id, body == null ? null : body.get("reason"));
         return R.ok();
@@ -89,7 +89,7 @@ public class CrmLeadController {
     /** 转化为客户（可同时生成商机），返回 { customerId, opportunityId } */
     @PostMapping("/{id}/convert")
     @PreAuthorize("@ss.hasPerm('crm:lead:convert')")
-    @OperLog(title = "线索管理-转化", type = OperType.INSERT)
+    @OperLog(title = "线索管理-转化", type = OperType.INSERT) // i18n-ignore 操作日志标题存库
     public R<Map<String, Long>> convert(@PathVariable Long id, @Valid @RequestBody LeadConvertRequest req) {
         return R.ok(leadService.convert(id, req));
     }

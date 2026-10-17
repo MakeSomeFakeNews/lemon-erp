@@ -67,14 +67,14 @@ public class ScmRebateController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:rebate:add')")
-    @OperLog(title = "销售返利", type = OperType.INSERT)
+    @OperLog(title = "销售返利", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody RebateRequest req) {
         return R.ok(rebateService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:rebate:add')")
-    @OperLog(title = "销售返利", type = OperType.UPDATE)
+    @OperLog(title = "销售返利", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody RebateRequest req) {
         rebateService.update(id, req);
         return R.ok();
@@ -82,7 +82,7 @@ public class ScmRebateController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:rebate:add')")
-    @OperLog(title = "销售返利", type = OperType.DELETE)
+    @OperLog(title = "销售返利", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
         rebateService.delete(id);
         return R.ok();
@@ -91,7 +91,7 @@ public class ScmRebateController {
     /** 结算，body：{ settleDate }（不填为今天） */
     @PostMapping("/{id}/settle")
     @PreAuthorize("@ss.hasPerm('scm:rebate:settle')")
-    @OperLog(title = "销售返利-结算", type = OperType.UPDATE)
+    @OperLog(title = "销售返利-结算", type = OperType.UPDATE) // i18n-ignore
     public R<ScmRebateService.Calc> settle(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         String date = body == null ? null : body.get("settleDate");
         return R.ok(rebateService.settle(id, date == null || date.isBlank() ? null : LocalDate.parse(date)));
@@ -99,7 +99,7 @@ public class ScmRebateController {
 
     @PostMapping("/{id}/unsettle")
     @PreAuthorize("@ss.hasPerm('scm:rebate:settle')")
-    @OperLog(title = "销售返利-撤销结算", type = OperType.UPDATE)
+    @OperLog(title = "销售返利-撤销结算", type = OperType.UPDATE) // i18n-ignore
     public R<Void> unsettle(@PathVariable Long id) {
         rebateService.unsettle(id);
         return R.ok();

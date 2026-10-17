@@ -7,21 +7,24 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import TaskListPage from '@/components/workflow/TaskListPage.vue'
 import { pageDoneTask } from '@/api/workflow/task'
 import { useDict } from '@/composables/useDict'
 
+const { t } = useI18n()
+
 useDict('wf_task_action')
 
 const columns = [
-  { title: '流程名称', key: 'processName', dataIndex: 'processName', width: 200, ellipsis: true },
-  { title: '审批节点', dataIndex: 'taskName', width: 140 },
-  { title: '处理结果', key: 'result', width: 100 },
-  { title: '流程状态', key: 'status', width: 100 },
-  { title: '发起人', dataIndex: 'startUserName', width: 120 },
-  { title: '发起时间', dataIndex: 'startTime', width: 170 },
-  { title: '处理时间', dataIndex: 'endTime', width: 170 },
-  { title: '操作', key: 'action', width: 100, fixed: 'right' }
+  { title: t('workflow.list.processName'), key: 'processName', dataIndex: 'processName', width: 200, ellipsis: true },
+  { title: t('workflow.done.taskNode'), dataIndex: 'taskName', width: 140 },
+  { title: t('workflow.done.result'), key: 'result', width: 110 },
+  { title: t('workflow.done.processStatus'), key: 'status', width: 120 },
+  { title: t('workflow.list.initiator'), dataIndex: 'startUserName', width: 120 },
+  { title: t('workflow.list.startTime'), dataIndex: 'startTime', width: 170 },
+  { title: t('workflow.done.handleTime'), dataIndex: 'endTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 110, fixed: 'right' }
 ]
 </script>

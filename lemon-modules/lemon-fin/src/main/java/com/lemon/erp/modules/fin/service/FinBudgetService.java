@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.modules.fin.dto.AccountSum;
 import com.lemon.erp.modules.fin.dto.BudgetExecution;
 import com.lemon.erp.modules.fin.dto.BudgetRequest;
@@ -33,6 +34,8 @@ import java.util.Set;
 public class FinBudgetService {
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+    /** 超预算提示（异常消息模板，按请求语言翻译） */
+    private static final String BUDGET_OVER = "{0}「{1} {2}」{3} 年预算 {4}，已执行 {5}，在途 {6}，本次 {7}，超出 {8}";
 
     private final FinBudgetMapper budgetMapper;
     private final FinVoucherEntryMapper entryMapper;
@@ -109,7 +112,7 @@ public class FinBudgetService {
             BigDecimal totalActual = Arrays.stream(actual).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal rate = b.getTotal().signum() == 0 ? null
                     : totalActual.multiply(HUNDRED).divide(b.getTotal(), 1, RoundingMode.HALF_UP);
-            result.add(new BudgetExecution(b.getId(), b.getBudgetYear(), b.getDeptId(), b.getDeptId() == 0 ? "全公司" : b.getDeptName(),
+            result.add(new BudgetExecution(b.getId(), b.getBudgetYear(), b.getDeptId(), b.getDeptId() == 0 ? I18n.t("全公司") : b.getDeptName(),
                     b.getAccountId(), b.getAccountCode(), b.getAccountName(), months, List.of(actual), b.getTotal(), totalActual, rate));
         }
         return result;
@@ -145,12 +148,12 @@ public class FinBudgetService {
             BigDecimal actual = e == null ? BigDecimal.ZERO : e.totalActual();
             BigDecimal over = actual.add(pending).add(request).subtract(b.getTotal());
             if (over.signum() > 0) {
-                String msg = String.format("%s「%s %s」%d 年预算 %s，已执行 %s，在途 %s，本次 %s，超出 %s", b.getDeptId() == 0 ? "全公司" : b.getDeptName(),
-                        b.getAccountCode(), b.getAccountName(), year, plain(b.getTotal()), plain(actual), plain(pending), plain(request), plain(over));
+                Object[] args = {b.getDeptId() == 0 ? I18n.t("全公司") : b.getDeptName(), b.getAccountCode(), b.getAccountName(), year,
+                        plain(b.getTotal()), plain(actual), plain(pending), plain(request), plain(over)};
                 if ("BLOCK".equals(b.getControlMode())) {
-                    throw new BizException(msg);
+                    throw new BizException(BUDGET_OVER, args);
                 }
-                warnings.add(msg);
+                warnings.add(I18n.t(BUDGET_OVER, args));
             }
         }
         return warnings;

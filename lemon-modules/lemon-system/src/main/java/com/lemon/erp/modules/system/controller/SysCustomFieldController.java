@@ -52,7 +52,7 @@ public class SysCustomFieldController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:customField:edit')")
-    @OperLog(title = "自定义字段", type = OperType.INSERT)
+    @OperLog(title = "自定义字段", type = OperType.INSERT) // i18n-ignore 操作日志存库
     public R<Long> create(@Valid @RequestBody SysCustomField field) {
         field.setId(null);
         return R.ok(fieldService.save(field));
@@ -60,7 +60,7 @@ public class SysCustomFieldController {
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('sys:customField:edit')")
-    @OperLog(title = "自定义字段", type = OperType.UPDATE)
+    @OperLog(title = "自定义字段", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Long> update(@PathVariable Long id, @Valid @RequestBody SysCustomField field) {
         field.setId(id);
         return R.ok(fieldService.save(field));
@@ -68,7 +68,7 @@ public class SysCustomFieldController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('sys:customField:edit')")
-    @OperLog(title = "自定义字段", type = OperType.DELETE)
+    @OperLog(title = "自定义字段", type = OperType.DELETE) // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable Long id) {
         fieldService.delete(id);
         return R.ok();
@@ -88,7 +88,7 @@ public class SysCustomFieldController {
 
     /** 保存一条记录的值（按业务类型的修改权限和数据权限） */
     @PutMapping("/values")
-    @OperLog(title = "自定义字段值", type = OperType.UPDATE)
+    @OperLog(title = "自定义字段值", type = OperType.UPDATE) // i18n-ignore 操作日志存库
     public R<Void> saveValues(@RequestParam String bizType, @RequestParam Long bizId, @RequestBody Map<String, String> values) {
         fieldService.saveValues(bizType, bizId, values);
         return R.ok();

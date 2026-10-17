@@ -119,7 +119,7 @@ public class FinCommissionService {
         toYearMonth(period);
         FinCommission sheet = commissionMapper.selectOne(Wrappers.<FinCommission>lambdaQuery().eq(FinCommission::getPeriod, period));
         if (sheet != null && sheet.getStatus() != CommissionStatus.DRAFT) {
-            throw new BizException(period + " 的提成表已确认，请先取消确认");
+            throw new BizException("{0} 的提成表已确认，请先取消确认", period);
         }
         Map<Long, FinCommissionLine> oldLines = new HashMap<>();
         if (sheet == null) {
@@ -281,7 +281,7 @@ public class FinCommissionService {
     private FinCommission requireSheet(int period) {
         FinCommission sheet = commissionMapper.selectOne(Wrappers.<FinCommission>lambdaQuery().eq(FinCommission::getPeriod, period));
         if (sheet == null) {
-            throw new BizException(period + " 还没有计算提成");
+            throw new BizException("{0} 还没有计算提成", period);
         }
         return sheet;
     }

@@ -3,6 +3,7 @@ package com.lemon.erp.modules.wms.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.ref.RefType;
 import com.lemon.erp.framework.ref.ReferenceGuard;
@@ -105,9 +106,9 @@ public class WmsWarehouseService {
                     .and(w -> w.eq(WmsStockDoc::getWarehouseId, id).or().eq(WmsStockDoc::getToWarehouseId, id)))
                     || checkMapper.exists(Wrappers.<WmsCheck>lambdaQuery().eq(WmsCheck::getWarehouseId, id));
             if (used) {
-                throw new BizException("仓库「" + warehouse.getName() + "」已有库存或单据，不能删除，可以停用");
+                throw new BizException("仓库「{0}」已有库存或单据，不能删除，可以停用", warehouse.getName());
             }
-            referenceGuard.checkDeletable(RefType.WAREHOUSE, id, "仓库「" + warehouse.getName() + "」");
+            referenceGuard.checkDeletable(RefType.WAREHOUSE, id, I18n.t("仓库「{0}」", warehouse.getName()));
         }
         locationMapper.delete(Wrappers.<WmsLocation>lambdaQuery().in(WmsLocation::getWarehouseId, ids));
         warehouseMapper.deleteByIds(ids);
@@ -127,7 +128,7 @@ public class WmsWarehouseService {
             return "NORMAL";
         }
         if (!TYPES.contains(type)) {
-            throw new BizException("仓库类型不正确：" + type);
+            throw new BizException("仓库类型不正确：{0}", type);
         }
         return type;
     }
@@ -136,7 +137,10 @@ public class WmsWarehouseService {
     private static void checkPartner(WmsWarehouse w) {
         if (w.getType().startsWith("CONSIGN")) {
             if (w.getPartnerId() == null) {
-                throw new BizException("CONSIGN_OUT".equals(w.getType()) ? "客户寄售仓请选择客户" : "供应商寄售仓请选择供应商");
+                if ("CONSIGN_OUT".equals(w.getType())) {
+                    throw new BizException("客户寄售仓请选择客户");
+                }
+                throw new BizException("供应商寄售仓请选择供应商");
             }
         } else {
             w.setPartnerId(null);

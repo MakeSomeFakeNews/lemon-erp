@@ -2,8 +2,8 @@
   <div class="resource-page">
     <a-card :bordered="false" class="page-card">
       <div class="filters">
-        <DeptSelect v-model:value="deptId" placeholder="全部部门" class="dept" @update:value="load" />
-        <span class="sub-text">统计规划中、进行中项目的成员投入比例（已退出的不计），合计超过 100% 为超负荷；剩余工时 = 未完成任务的计划工时 × (1 - 进度)</span>
+        <DeptSelect v-model:value="deptId" :placeholder="$t('pm.resource.allDepts')" class="dept" @update:value="load" />
+        <span class="sub-text">{{ $t('pm.resource.tip') }}</span>
         <a-button type="text" class="refresh" @click="load"><template #icon><ReloadOutlined /></template></a-button>
       </div>
       <EChart v-if="rows.length" :option="chartOption" :height="`${Math.max(220, rows.length * 32 + 60)}px`" />
@@ -20,9 +20,9 @@
           <template v-else-if="column.key === 'allocation'">
             <a-progress :percent="Math.min(record.allocation, 100)" size="small" :status="record.allocation > 100 ? 'exception' : 'normal'"
                         :format="() => `${record.allocation}%`" class="alloc" />
-            <a-tag v-if="record.allocation > 100" color="red" :bordered="false">超负荷</a-tag>
+            <a-tag v-if="record.allocation > 100" color="red" :bordered="false">{{ $t('pm.resource.overloaded') }}</a-tag>
           </template>
-          <template v-else-if="column.key === 'hours'">{{ Number(record.openTaskHours) }} 小时</template>
+          <template v-else-if="column.key === 'hours'">{{ $t('pm.common.nHours', { n: Number(record.openTaskHours) }) }}</template>
           <template v-else-if="column.key === 'projects'">
             <a-tag v-for="m in record.projects" :key="m.id" :bordered="false" class="project-tag"
                    :class="{ left: m.leaveDate && m.leaveDate < todayStr }">
@@ -44,6 +44,7 @@ import { listResources } from '@/api/pm'
 import { useDict } from '@/composables/useDict'
 import { findDict } from '@/utils/dict'
 import { today } from '@/components/pm/pm'
+import { t } from '@/locales'
 
 const dict = useDict('pm_member_role')
 const deptId = ref()
@@ -52,10 +53,10 @@ const loading = ref(false)
 const todayStr = today()
 
 const columns = [
-  { title: '成员', key: 'user', width: 160, fixed: 'left' },
-  { title: '投入比例', key: 'allocation', width: 240 },
-  { title: '剩余任务工时', key: 'hours', width: 130 },
-  { title: '参与项目', key: 'projects' }
+  { title: t('pm.common.member'), key: 'user', width: 160, fixed: 'left' },
+  { title: t('pm.detail.allocation'), key: 'allocation', width: 240 },
+  { title: t('pm.resource.remainingHours'), key: 'hours', width: 170 },
+  { title: t('pm.resource.projects'), key: 'projects' }
 ]
 
 const roleLabel = (v) => findDict(dict.pm_member_role, v)?.label || v
@@ -80,7 +81,7 @@ const chartOption = computed(() => {
     series: [
       {
         type: 'bar',
-        name: '投入比例',
+        name: t('pm.detail.allocation'),
         barMaxWidth: 18,
         data: list.map((r) => ({ value: r.allocation, itemStyle: { color: r.allocation > 100 ? '#f5222d' : '#1677ff' } })),
         label: { show: true, position: 'right', formatter: '{c}%' },

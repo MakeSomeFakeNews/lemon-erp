@@ -41,7 +41,7 @@ public class WmsStockHoldController {
     /** 放行：body { remark } */
     @PostMapping("/{id}/release")
     @PreAuthorize("@ss.hasPerm('wms:hold:release')")
-    @OperLog(title = "库存冻结-放行", type = OperType.UPDATE)
+    @OperLog(title = "库存冻结-放行", type = OperType.UPDATE) // i18n-ignore
     public R<Void> release(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         holdService.release(id, body == null ? null : body.get("remark"));
         return R.ok();

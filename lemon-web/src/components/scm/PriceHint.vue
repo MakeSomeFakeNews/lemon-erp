@@ -1,7 +1,7 @@
 <template>
   <div v-if="listPrice != null" class="price-hint">
-    <span class="sub-text">价目价 {{ symbol }}{{ formatPrice(listPrice) }}</span>
-    <a-tag v-if="discount > 0" color="warning" :bordered="false" class="discount">折扣 {{ discount }}%</a-tag>
+    <span class="sub-text">{{ $t('scm.priceHint.listPrice', { price: symbol + formatPrice(listPrice) }) }}</span>
+    <a-tag v-if="discount > 0" color="warning" :bordered="false" class="discount">{{ $t('scm.priceHint.discount', { n: discount }) }}</a-tag>
   </div>
 </template>
 

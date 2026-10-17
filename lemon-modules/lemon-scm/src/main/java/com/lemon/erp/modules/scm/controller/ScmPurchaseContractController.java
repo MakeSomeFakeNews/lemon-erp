@@ -68,14 +68,14 @@ public class ScmPurchaseContractController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:contract:add')")
-    @OperLog(title = "采购合同", type = OperType.INSERT)
+    @OperLog(title = "采购合同", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody SrmRequests.Contract req) {
         return R.ok(contractService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:contract:edit')")
-    @OperLog(title = "采购合同", type = OperType.UPDATE)
+    @OperLog(title = "采购合同", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody SrmRequests.Contract req) {
         contractService.update(id, req);
         return R.ok();
@@ -83,7 +83,7 @@ public class ScmPurchaseContractController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:contract:remove')")
-    @OperLog(title = "采购合同", type = OperType.DELETE)
+    @OperLog(title = "采购合同", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
         contractService.delete(id);
         return R.ok();
@@ -92,14 +92,14 @@ public class ScmPurchaseContractController {
     /** 提交：data 为 true 表示已进入审批 */
     @PostMapping("/{id}/submit")
     @PreAuthorize("@ss.hasPerm('scm:contract:approve')")
-    @OperLog(title = "采购合同-提交", type = OperType.UPDATE)
+    @OperLog(title = "采购合同-提交", type = OperType.UPDATE) // i18n-ignore
     public R<Boolean> submit(@PathVariable Long id) {
         return R.ok(contractService.submit(id));
     }
 
     @PostMapping("/{id}/close")
     @PreAuthorize("@ss.hasPerm('scm:contract:close')")
-    @OperLog(title = "采购合同-关闭", type = OperType.UPDATE)
+    @OperLog(title = "采购合同-关闭", type = OperType.UPDATE) // i18n-ignore
     public R<Void> close(@PathVariable Long id, @Valid @RequestBody SrmRequests.Close req) {
         contractService.close(id, req.reason());
         return R.ok();

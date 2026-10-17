@@ -74,8 +74,8 @@ public class StockReservationService {
         WmsMaterial material = materialMapper.selectOne(Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getId, materialId).last("FOR UPDATE"));
         BigDecimal free = free(warehouseId, List.of(materialId)).getOrDefault(materialId, BigDecimal.ZERO);
         if (free.compareTo(qty) < 0) {
-            throw new BizException(String.format("%s %s 空闲库存不足：可预留 %s，需要 %s", material.getCode(), material.getName(),
-                    plain(free.max(BigDecimal.ZERO)), plain(qty)));
+            throw new BizException("{0} {1} 空闲库存不足：可预留 {2}，需要 {3}", material.getCode(), material.getName(),
+                    plain(free.max(BigDecimal.ZERO)), plain(qty));
         }
         WmsReservation r = new WmsReservation();
         r.setWarehouseId(warehouseId);
@@ -153,8 +153,8 @@ public class StockReservationService {
                                 .eq(WmsReservation::getWarehouseId, warehouseId).eq(WmsReservation::getMaterialId, materialId)
                                 .gt(WmsReservation::getQty, 0).last("LIMIT 3")).stream().map(WmsReservation::getSourceNo)
                         .collect(Collectors.joining("、"));
-                throw new BizException(String.format("%s %s 的库存已被预留（共 %s，%s 等），出库后不足以满足预留，请先释放预留",
-                        m.getCode(), m.getName(), plain(reserved), sources));
+                throw new BizException("{0} {1} 的库存已被预留（共 {2}，{3} 等），出库后不足以满足预留，请先释放预留",
+                        m.getCode(), m.getName(), plain(reserved), sources);
             }
         }));
     }

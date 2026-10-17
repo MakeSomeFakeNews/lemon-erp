@@ -2,14 +2,14 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="关键字" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="维护单号、设备编码或名称" allow-clear />
+        <a-form-item :label="$t('common.field.keyword')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('mes.maintenance.keywordPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="类型" name="type">
-          <a-select v-model:value="query.type" placeholder="全部" allow-clear :options="toOptions(dict.mes_maintain_type)" />
+        <a-form-item :label="$t('common.field.type')" name="type">
+          <a-select v-model:value="query.type" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.mes_maintain_type)" />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.mes_maintain_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.mes_maintain_status)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -24,7 +24,7 @@
         @refresh="load"
       >
         <a-button v-perm="'mes:maintain:add'" type="primary" @click="openCreate()">
-          <template #icon><PlusOutlined /></template>报修 / 保养
+          <template #icon><PlusOutlined /></template>{{ $t('mes.maintenance.add') }}
         </a-button>
       </TableToolbar>
 
@@ -46,25 +46,25 @@
           <template v-else-if="column.key === 'type'"><DictTag type="mes_maintain_type" :value="record.type" /></template>
           <template v-else-if="column.key === 'status'"><DictTag type="mes_maintain_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'time'">
-            <div>开始 {{ record.startTime || '-' }}</div>
-            <div class="sub-text">完成 {{ record.finishTime || '-' }}</div>
+            <div>{{ $t('mes.maintenance.started', { t: record.startTime || '-' }) }}</div>
+            <div class="sub-text">{{ $t('mes.maintenance.finished', { t: record.finishTime || '-' }) }}</div>
           </template>
           <template v-else-if="column.key === 'result'">
             <div>{{ record.result || '-' }}</div>
             <div class="sub-text">
-              <span v-if="record.downtime != null">停机 {{ record.downtime }} 小时</span>
-              <span v-if="record.cost != null"> · 费用 ¥{{ formatMoney(record.cost) }}</span>
+              <span v-if="record.downtime != null">{{ $t('mes.maintenance.downtime', { n: record.downtime }) }}</span>
+              <span v-if="record.cost != null">{{ $t('mes.maintenance.cost', { v: formatMoney(record.cost) }) }}</span>
             </div>
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button v-if="record.status === 'PENDING'" v-perm="'mes:maintain:handle'" type="link" size="small" @click="start(record)">开始</a-button>
+              <a-button v-if="record.status === 'PENDING'" v-perm="'mes:maintain:handle'" type="link" size="small" @click="start(record)">{{ $t('mes.maintenance.start') }}</a-button>
               <a-button v-if="record.status === 'IN_PROGRESS'" v-perm="'mes:maintain:handle'" type="link" size="small" @click="openFinish(record)">
-                完成
+                {{ $t('mes.maintenance.finish') }}
               </a-button>
               <span v-if="record.status === 'PENDING'" v-perm="'mes:maintain:remove'">
-                <a-popconfirm title="确定删除该维护单？" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small">删除</a-button>
+                <a-popconfirm :title="$t('mes.maintenance.confirmDelete')" @confirm="remove(record.id)">
+                  <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
                 </a-popconfirm>
               </span>
             </span>
@@ -73,25 +73,25 @@
       </a-table>
     </a-card>
 
-    <a-modal v-model:open="createOpen" title="报修 / 保养" :confirm-loading="saving" @ok="submitCreate">
+    <a-modal v-model:open="createOpen" :title="$t('mes.maintenance.add')" :confirm-loading="saving" @ok="submitCreate">
       <a-form ref="createRef" :model="createForm" :rules="createRules" layout="vertical">
-        <a-form-item label="设备" name="equipmentId">
+        <a-form-item :label="$t('mes.oee.equipment')" name="equipmentId">
           <a-select v-model:value="createForm.equipmentId" show-search option-filter-prop="label" :options="equipmentOptionList" />
         </a-form-item>
-        <a-form-item label="类型" name="type">
+        <a-form-item :label="$t('common.field.type')" name="type">
           <a-radio-group v-model:value="createForm.type" :options="toOptions(dict.mes_maintain_type)" />
         </a-form-item>
-        <a-form-item :label="createForm.type === 'REPAIR' ? '故障现象' : '保养内容'" name="content">
+        <a-form-item :label="createForm.type === 'REPAIR' ? $t('mes.maintenance.symptom') : $t('mes.maintenance.maintainContent')" name="content">
           <a-textarea v-model:value="createForm.content" :rows="3" :maxlength="255" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="计划日期" name="planDate">
+            <a-form-item :label="$t('mes.wo.planDate')" name="planDate">
               <a-date-picker v-model:value="createForm.planDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="处理人" name="handler">
+            <a-form-item :label="$t('mes.maintenance.handler')" name="handler">
               <a-input v-model:value="createForm.handler" :maxlength="64" />
             </a-form-item>
           </a-col>
@@ -99,19 +99,19 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="finishOpen" title="完成维护" :confirm-loading="saving" @ok="submitFinish">
+    <a-modal v-model:open="finishOpen" :title="$t('mes.maintenance.finishTitle')" :confirm-loading="saving" @ok="submitFinish">
       <a-form layout="vertical">
-        <a-form-item label="处理结果" required>
+        <a-form-item :label="$t('mes.maintenance.result')" required>
           <a-textarea v-model:value="finishForm.result" :rows="3" :maxlength="255" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="费用">
+            <a-form-item :label="$t('mes.maintenance.costLabel')">
               <a-input-number v-model:value="finishForm.cost" :min="0" :precision="2" prefix="¥" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="处理人">
+            <a-form-item :label="$t('mes.maintenance.handler')">
               <a-input v-model:value="finishForm.handler" :maxlength="64" />
             </a-form-item>
           </a-col>
@@ -125,6 +125,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -139,18 +140,19 @@ import { today } from '@/components/wms/wms'
 
 const route = useRoute()
 const dict = useDict('mes_maintain_type', 'mes_maintain_status')
+const { t } = useI18n()
 
 const columns = [
-  { title: '维护单号', dataIndex: 'orderNo', width: 170 },
-  { title: '设备', key: 'equipment', width: 180 },
-  { title: '类型', key: 'type', width: 100, dict: 'mes_maintain_type' },
-  { title: '内容', dataIndex: 'content', width: 220, ellipsis: true },
-  { title: '计划日期', dataIndex: 'planDate', width: 110 },
-  { title: '状态', key: 'status', width: 90, dict: 'mes_maintain_status' },
-  { title: '处理人', dataIndex: 'handler', width: 100 },
-  { title: '处理时间', key: 'time', width: 200 },
-  { title: '处理结果', key: 'result', width: 220 },
-  { title: '操作', key: 'action', width: 130, fixed: 'right' }
+  { title: t('mes.maintenance.orderNo'), dataIndex: 'orderNo', width: 170 },
+  { title: t('mes.oee.equipment'), key: 'equipment', width: 180 },
+  { title: t('common.field.type'), key: 'type', width: 110, dict: 'mes_maintain_type' },
+  { title: t('mes.maintenance.content'), dataIndex: 'content', width: 220, ellipsis: true },
+  { title: t('mes.wo.planDate'), dataIndex: 'planDate', width: 120 },
+  { title: t('common.field.status'), key: 'status', width: 100, dict: 'mes_maintain_status' },
+  { title: t('mes.maintenance.handler'), dataIndex: 'handler', width: 100 },
+  { title: t('mes.maintenance.handleTime'), key: 'time', width: 200 },
+  { title: t('mes.maintenance.result'), key: 'result', width: 220 },
+  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'mes-maintenance')
 const showSearch = ref(true)
@@ -179,9 +181,9 @@ const createOpen = ref(false)
 const createRef = ref()
 const createForm = ref({})
 const createRules = {
-  equipmentId: [{ required: true, message: '请选择设备' }],
-  type: [{ required: true, message: '请选择类型' }],
-  content: [{ required: true, whitespace: true, message: '请填写内容' }]
+  equipmentId: [{ required: true, message: t('mes.maintenance.equipmentRequired') }],
+  type: [{ required: true, message: t('mes.doc.typeRequired') }],
+  content: [{ required: true, whitespace: true, message: t('mes.maintenance.contentRequired') }]
 }
 function openCreate(equipmentId) {
   createForm.value = { equipmentId, type: 'REPAIR', content: '', planDate: today(), handler: '' }
@@ -192,7 +194,7 @@ async function submitCreate() {
   saving.value = true
   try {
     await addMaintenance(createForm.value)
-    message.success('已创建维护单')
+    message.success(t('mes.maintenance.created'))
     createOpen.value = false
     load()
   } finally {
@@ -203,11 +205,11 @@ async function submitCreate() {
 // ---------------------------------------------------------------- 处理
 function start(record) {
   Modal.confirm({
-    title: `开始处理 ${record.orderNo}？`,
-    content: record.type === 'REPAIR' ? '故障维修开始后，设备状态变为「维修中」。' : undefined,
+    title: t('mes.maintenance.startConfirm', { no: record.orderNo }),
+    content: record.type === 'REPAIR' ? t('mes.maintenance.startRepairContent') : undefined,
     async onOk() {
       await startMaintenance(record.id, record.handler)
-      message.success('已开始')
+      message.success(t('mes.maintenance.startedMsg'))
       load()
     }
   })
@@ -220,12 +222,12 @@ function openFinish(record) {
   finishOpen.value = true
 }
 async function submitFinish() {
-  if (!finishForm.result.trim()) return message.warning('请填写处理结果')
+  if (!finishForm.result.trim()) return message.warning(t('mes.maintenance.resultRequired'))
   saving.value = true
   try {
     const { id, ...data } = finishForm
     await finishMaintenance(id, data)
-    message.success('已完成')
+    message.success(t('mes.maintenance.finishedMsg'))
     finishOpen.value = false
     load()
   } finally {
@@ -235,7 +237,7 @@ async function submitFinish() {
 
 async function remove(id) {
   await deleteMaintenance(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 </script>

@@ -3,7 +3,7 @@
     :value="value || undefined"
     show-search
     allow-clear
-    :placeholder="warehouseId ? placeholder : '请先选择仓库'"
+    :placeholder="warehouseId ? placeholder : $t('wms.common.selectWarehouseFirst')"
     :options="options"
     :loading="loading"
     :disabled="disabled || !warehouseId"
@@ -15,6 +15,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { locationOptions } from '@/api/wms/location'
+import { t } from '@/locales'
 
 /**
  * 库位下拉：仓库下启用的库位，不选为「未指定」。
@@ -23,7 +24,7 @@ import { locationOptions } from '@/api/wms/location'
 const props = defineProps({
   value: Number,
   warehouseId: Number,
-  placeholder: { type: String, default: '未指定' },
+  placeholder: { type: String, default: () => t('wms.common.unspecified') },
   disabled: Boolean
 })
 const emit = defineEmits(['update:value'])

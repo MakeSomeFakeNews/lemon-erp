@@ -1,15 +1,15 @@
 <template>
   <div class="packing">
     <div class="packing-head">
-      <span class="section-title">装箱（{{ packages.length }} 箱{{ totalWeight ? `，毛重 ${formatQty(totalWeight)} kg` : '' }}）</span>
+      <span class="section-title">{{ totalWeight ? $t('scm.deliveryPacking.headWeight', { n: packages.length, weight: formatQty(totalWeight) }) : $t('scm.deliveryPacking.head', { n: packages.length }) }}</span>
       <a-space wrap>
         <span v-for="s in summary" :key="s.id" :class="['sub-text', { warn: s.packed < s.qty }]">
-          {{ s.materialCode }} 已装 {{ formatQty(s.packed) }} / {{ formatQty(s.qty) }}
+          {{ $t('scm.deliveryPacking.packedOf', { code: s.materialCode, packed: formatQty(s.packed), qty: formatQty(s.qty) }) }}
         </span>
-        <a-button size="small" :disabled="!packages.length" @click="printList"><template #icon><PrinterOutlined /></template>装箱单</a-button>
-        <a-button size="small" :disabled="!packages.length" @click="labelOpen = true"><template #icon><BarcodeOutlined /></template>箱标签</a-button>
+        <a-button size="small" :disabled="!packages.length" @click="printList"><template #icon><PrinterOutlined /></template>{{ $t('scm.deliveryPacking.packingList') }}</a-button>
+        <a-button size="small" :disabled="!packages.length" @click="labelOpen = true"><template #icon><BarcodeOutlined /></template>{{ $t('scm.deliveryPacking.boxLabel') }}</a-button>
         <a-button v-if="editable" v-perm="'scm:delivery:pack'" size="small" type="primary" ghost :disabled="!remainingLines.length" @click="openBox()">
-          <template #icon><PlusOutlined /></template>装一箱
+          <template #icon><PlusOutlined /></template>{{ $t('scm.deliveryPacking.packBox') }}
         </a-button>
       </a-space>
     </div>
@@ -25,15 +25,15 @@
         </template>
         <template v-else-if="column.key === 'action'">
           <span v-if="editable" v-perm="'scm:delivery:pack'" class="table-actions">
-            <a-button type="link" size="small" @click="openBox(record)">编辑</a-button>
-            <a-popconfirm title="删除该箱？" @confirm="remove(record)"><a-button type="link" size="small" danger>删除</a-button></a-popconfirm>
+            <a-button type="link" size="small" @click="openBox(record)">{{ $t('common.action.edit') }}</a-button>
+            <a-popconfirm :title="$t('scm.deliveryPacking.confirmDelete')" @confirm="remove(record)"><a-button type="link" size="small" danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
           </span>
         </template>
       </template>
     </a-table>
-    <div v-else class="sub-text">还没有装箱{{ editable ? '，点「装一箱」录入箱内物料、重量和体积' : '' }}</div>
+    <div v-else class="sub-text">{{ editable ? $t('scm.deliveryPacking.emptyEditable') : $t('scm.deliveryPacking.empty') }}</div>
 
-    <a-modal v-model:open="boxOpen" :title="box.id ? `编辑 ${box.boxNo}` : '装一箱'" :confirm-loading="saving" @ok="submit">
+    <a-modal v-model:open="boxOpen" :title="box.id ? $t('scm.deliveryPacking.editBox', { no: box.boxNo }) : $t('scm.deliveryPacking.packBox')" :confirm-loading="saving" @ok="submit">
       <a-table row-key="deliveryItemId" size="small" :columns="lineColumns" :data-source="box.lines" :pagination="false">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'material'">{{ record.materialCode }} {{ record.materialName }}</template>
@@ -45,17 +45,17 @@
       </a-table>
       <a-row :gutter="12" class="box-form">
         <a-col :span="8">
-          <a-form-item label="毛重">
+          <a-form-item :label="$t('scm.deliveryPacking.grossWeight')">
             <a-input-number v-model:value="box.weight" :min="0" :precision="3" addon-after="kg" class="full" />
           </a-form-item>
         </a-col>
         <a-col :span="8">
-          <a-form-item label="体积">
+          <a-form-item :label="$t('scm.deliveryPacking.volume')">
             <a-input-number v-model:value="box.volume" :min="0" :precision="4" addon-after="m³" class="full" />
           </a-form-item>
         </a-col>
         <a-col :span="8">
-          <a-form-item label="备注">
+          <a-form-item :label="$t('common.field.remark')">
             <a-input v-model:value="box.remark" :maxlength="255" />
           </a-form-item>
         </a-col>
@@ -73,23 +73,25 @@ import LabelPrintModal from '@/components/label/LabelPrintModal.vue'
 import { addPackage, deletePackage, deliveryPackages, updatePackage } from '@/api/scm/planning'
 import { formatQty } from '@/components/wms/wms'
 import { printDocs } from '@/utils/print'
+import { useI18n } from 'vue-i18n'
 
 /** 发货通知的装箱：已拣货后按箱录入箱内物料、毛重、体积，打印装箱单和箱标签 */
 const props = defineProps({
   delivery: { type: Object, required: true },
   editable: Boolean
 })
+const { t } = useI18n()
 
 const columns = [
-  { title: '箱号', key: 'box', width: 200 },
-  { title: '箱内物料', key: 'items' },
-  { title: '毛重 / 体积', key: 'size', width: 130 },
+  { title: t('scm.deliveryPacking.boxNo'), key: 'box', width: 200 },
+  { title: t('scm.deliveryPacking.boxItems'), key: 'items' },
+  { title: t('scm.deliveryPacking.weightVolume'), key: 'size', width: 160 },
   { title: '', key: 'action', width: 110 }
 ]
 const lineColumns = [
-  { title: '物料', key: 'material' },
-  { title: '可装', key: 'left', width: 100 },
-  { title: '装入数量', key: 'qty', width: 140 }
+  { title: t('scm.deliveryPacking.material'), key: 'material' },
+  { title: t('scm.deliveryPacking.left'), key: 'left', width: 110 },
+  { title: t('scm.deliveryPacking.packQty'), key: 'qty', width: 140 }
 ]
 const packages = ref([])
 async function load() {
@@ -120,13 +122,13 @@ function openBox(record) {
 }
 async function submit() {
   const items = box.value.lines.filter((l) => Number(l.qty) > 0).map((l) => ({ deliveryItemId: l.deliveryItemId, qty: l.qty }))
-  if (!items.length) return message.warning('请填写装入数量')
+  if (!items.length) return message.warning(t('scm.deliveryPacking.inputPackQty'))
   saving.value = true
   try {
     const data = { weight: box.value.weight ?? null, volume: box.value.volume ?? null, remark: box.value.remark || null, items }
     if (box.value.id) await updatePackage(props.delivery.id, box.value.id, data)
     else await addPackage(props.delivery.id, data)
-    message.success('已保存')
+    message.success(t('common.msg.saved'))
     boxOpen.value = false
     load()
   } finally {
@@ -135,7 +137,7 @@ async function submit() {
 }
 async function remove(record) {
   await deletePackage(props.delivery.id, record.id)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   load()
 }
 
@@ -152,29 +154,29 @@ function printList() {
   const totalVolume = packages.value.reduce((s, p) => s + Number(p.volume || 0), 0)
   printDocs(
     {
-      title: '装箱单',
+      title: t('scm.deliveryPacking.packingList'),
       no: d.deliveryNo,
       fields: [
-        ['销售订单', d.orderNo],
-        ['客户', d.customerName],
-        ['发货仓库', d.warehouseName],
-        ['发货日期', d.shipDate],
-        ['箱数', String(packages.value.length)],
-        ['总毛重', totalWeight.value ? `${formatQty(totalWeight.value)} kg` : '-'],
-        ['总体积', totalVolume ? `${formatQty(totalVolume)} m³` : '-']
+        [t('scm.deliveryPacking.salesOrder'), d.orderNo],
+        [t('scm.deliveryPacking.customer'), d.customerName],
+        [t('scm.deliveryPacking.shipWarehouse'), d.warehouseName],
+        [t('scm.deliveryPacking.shipDate'), d.shipDate],
+        [t('scm.deliveryPacking.boxCount'), String(packages.value.length)],
+        [t('scm.deliveryPacking.totalWeight'), totalWeight.value ? `${formatQty(totalWeight.value)} kg` : '-'],
+        [t('scm.deliveryPacking.totalVolume'), totalVolume ? `${formatQty(totalVolume)} m³` : '-']
       ],
       columns: [
-        { title: '箱号', value: (r) => r.boxNo },
-        { title: '物料', value: (r) => `${r.materialCode} ${r.materialName}${r.spec ? ' ' + r.spec : ''}` },
-        { title: '数量', value: (r) => `${formatQty(r.qty)} ${r.unit || ''}`, align: 'right' },
-        { title: '毛重', value: (r) => (r.weight != null ? `${formatQty(r.weight)} kg` : ''), align: 'right' },
-        { title: '体积', value: (r) => (r.volume != null ? `${formatQty(r.volume)} m³` : ''), align: 'right' }
+        { title: t('scm.deliveryPacking.boxNo'), value: (r) => r.boxNo },
+        { title: t('scm.deliveryPacking.material'), value: (r) => `${r.materialCode} ${r.materialName}${r.spec ? ' ' + r.spec : ''}` },
+        { title: t('common.field.quantity'), value: (r) => `${formatQty(r.qty)} ${r.unit || ''}`, align: 'right' },
+        { title: t('scm.deliveryPacking.grossWeight'), value: (r) => (r.weight != null ? `${formatQty(r.weight)} kg` : ''), align: 'right' },
+        { title: t('scm.deliveryPacking.volume'), value: (r) => (r.volume != null ? `${formatQty(r.volume)} m³` : ''), align: 'right' }
       ],
       rows,
       note: d.remark,
-      signs: ['装箱', '复核', '客户签收']
+      signs: [t('scm.deliveryPacking.packer'), t('scm.deliveryPacking.reviewer'), t('scm.deliveryPacking.customerSign')]
     },
-    `装箱单 ${d.deliveryNo}`,
+    `${t('scm.deliveryPacking.packingList')} ${d.deliveryNo}`,
     'scm.packingList'
   )
 }

@@ -2,14 +2,14 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="职位" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="编码或名称" allow-clear />
+        <a-form-item :label="$t('hr.position.position')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('hr.position.keywordPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="类别" name="category">
-          <a-select v-model:value="query.category" placeholder="全部" allow-clear :options="toOptions(dict.hr_position_category)" />
+        <a-form-item :label="$t('hr.position.category')" name="category">
+          <a-select v-model:value="query.category" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.hr_position_category)" />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.sys_common_status, true)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -18,7 +18,7 @@
       <TableToolbar
         :exporter="exportAll" v-model:size="size" v-model:checked="checked" v-model:show-search="showSearch" :columns="columns" @refresh="load">
         <a-button v-perm="'hr:position:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新增职位
+          <template #icon><PlusOutlined /></template>{{ $t('hr.position.add') }}
         </a-button>
       </TableToolbar>
 
@@ -39,7 +39,7 @@
           </template>
           <template v-else-if="column.key === 'headcount'">
             <span :class="{ over: record.headcount != null && record.employeeCount > record.headcount }">{{ record.employeeCount }}</span>
-            <span class="sub-text"> / {{ record.headcount ?? '不限' }}</span>
+            <span class="sub-text"> / {{ record.headcount ?? $t('hr.position.unlimited') }}</span>
           </template>
           <template v-else-if="column.key === 'category'">
             <DictTag type="hr_position_category" :value="record.category" />
@@ -56,10 +56,10 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button v-perm="'hr:position:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-perm="'hr:position:remove'">
-                <a-popconfirm :title="`确定删除职位「${record.name}」？`" @confirm="remove(record.id)">
+                <a-popconfirm :title="$t('hr.position.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
               </span>
@@ -69,33 +69,33 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增职位" edit-title="编辑职位">
+    <FormDrawer :drawer="drawer" :create-title="$t('hr.position.add')" :edit-title="$t('hr.position.edit')">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="职位编码" name="code"><a-input v-model:value="form.code" :maxlength="32" placeholder="如：RD-ENG" /></a-form-item>
+            <a-form-item :label="$t('hr.position.code')" name="code"><a-input v-model:value="form.code" :maxlength="32" :placeholder="$t('hr.position.codePh')" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="职位名称" name="name"><a-input v-model:value="form.name" :maxlength="64" /></a-form-item>
+            <a-form-item :label="$t('hr.position.name')" name="name"><a-input v-model:value="form.name" :maxlength="64" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="类别" name="category">
+            <a-form-item :label="$t('hr.position.category')" name="category">
               <a-select v-model:value="form.category" allow-clear :options="toOptions(dict.hr_position_category)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="6">
-            <a-form-item label="职级" name="grade"><a-input v-model:value="form.grade" :maxlength="16" placeholder="如：P5" /></a-form-item>
+            <a-form-item :label="$t('hr.position.grade')" name="grade"><a-input v-model:value="form.grade" :maxlength="16" :placeholder="$t('hr.position.gradePh')" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="6">
-            <a-form-item label="排序" name="sort"><a-input-number v-model:value="form.sort" :min="0" class="full" /></a-form-item>
+            <a-form-item :label="$t('common.field.sort')" name="sort"><a-input-number v-model:value="form.sort" :min="0" class="full" /></a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="编制人数" name="headcount" extra="为空不限；招聘需求审核时校验">
-              <a-input-number v-model:value="form.headcount" :min="0" class="full" placeholder="不限" />
+            <a-form-item :label="$t('hr.position.headcount')" name="headcount" :extra="$t('hr.position.headcountExtra')">
+              <a-input-number v-model:value="form.headcount" :min="0" class="full" :placeholder="$t('hr.position.unlimited')" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="职责说明" name="remark"><a-textarea v-model:value="form.remark" :rows="3" :maxlength="255" /></a-form-item>
+            <a-form-item :label="$t('hr.position.duty')" name="remark"><a-textarea v-model:value="form.remark" :rows="3" :maxlength="255" /></a-form-item>
           </a-col>
         </a-row>
       </a-form>
@@ -119,20 +119,21 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
+import { t } from '@/locales'
 
 const userStore = useUserStore()
 const dict = useDict('hr_position_category', 'sys_common_status')
 const showSearch = ref(true)
 
 const columns = [
-  { title: '职位', key: 'name', width: 200 },
-  { title: '类别', key: 'category', width: 100, dict: 'hr_position_category' },
-  { title: '职级', dataIndex: 'grade', width: 80 },
-  { title: '在职 / 编制', key: 'headcount', width: 110, align: 'right' },
-  { title: '职责说明', dataIndex: 'remark', ellipsis: true },
-  { title: '排序', dataIndex: 'sort', width: 70 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '操作', key: 'action', width: 150, fixed: 'right' }
+  { title: t('hr.position.position'), key: 'name', width: 200 },
+  { title: t('hr.position.category'), key: 'category', width: 110, dict: 'hr_position_category' },
+  { title: t('hr.position.grade'), dataIndex: 'grade', width: 100 },
+  { title: t('hr.position.activeHeadcount'), key: 'headcount', width: 150, align: 'right' },
+  { title: t('hr.position.duty'), dataIndex: 'remark', ellipsis: true },
+  { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'hr-position')
 
@@ -147,10 +148,10 @@ onMounted(load)
 
 const rules = {
   code: [
-    { required: true, message: '请输入职位编码' },
-    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: '只能包含字母、数字、下划线和短横线' }
+    { required: true, message: t('hr.position.codeRequired') },
+    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: t('hr.position.codePattern') }
   ],
-  name: [{ required: true, whitespace: true, message: '请输入职位名称' }]
+  name: [{ required: true, whitespace: true, message: t('hr.position.nameRequired') }]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, code: '', name: '', category: undefined, grade: '', sort: 0, headcount: null, remark: '' }),
@@ -163,7 +164,7 @@ const { formRef, form } = drawer
 
 async function remove(id) {
   await deletePosition(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 </script>

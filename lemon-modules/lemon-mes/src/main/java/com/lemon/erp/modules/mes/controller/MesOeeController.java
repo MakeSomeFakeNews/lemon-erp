@@ -66,14 +66,14 @@ public class MesOeeController {
 
     @PostMapping("/equipment-stop")
     @PreAuthorize("@ss.hasPerm('mes:equipment:stop')")
-    @OperLog(title = "设备停机", type = OperType.INSERT)
+    @OperLog(title = "设备停机", type = OperType.INSERT) // i18n-ignore
     public R<Long> createStop(@Valid @RequestBody StopRequest req) {
         return R.ok(oeeService.createStop(req));
     }
 
     @PutMapping("/equipment-stop/{id}")
     @PreAuthorize("@ss.hasPerm('mes:equipment:stop')")
-    @OperLog(title = "设备停机", type = OperType.UPDATE)
+    @OperLog(title = "设备停机", type = OperType.UPDATE) // i18n-ignore
     public R<Void> updateStop(@PathVariable Long id, @Valid @RequestBody StopRequest req) {
         oeeService.updateStop(id, req);
         return R.ok();
@@ -81,7 +81,7 @@ public class MesOeeController {
 
     @DeleteMapping("/equipment-stop/{id}")
     @PreAuthorize("@ss.hasPerm('mes:equipment:stop')")
-    @OperLog(title = "设备停机", type = OperType.DELETE)
+    @OperLog(title = "设备停机", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteStop(@PathVariable Long id) {
         oeeService.deleteStop(id);
         return R.ok();

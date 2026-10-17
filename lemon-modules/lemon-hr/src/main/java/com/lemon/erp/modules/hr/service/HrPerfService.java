@@ -179,7 +179,7 @@ public class HrPerfService {
         long pending = appraisalMapper.selectCount(Wrappers.<HrPerfAppraisal>lambdaQuery()
                 .eq(HrPerfAppraisal::getPlanId, id).ne(HrPerfAppraisal::getStatus, "DONE"));
         if (pending > 0) {
-            throw new BizException("还有 " + pending + " 张考核表没有完成评分");
+            throw new BizException("还有 {0} 张考核表没有完成评分", pending);
         }
         planMapper.update(Wrappers.<HrPerfPlan>lambdaUpdate().set(HrPerfPlan::getStatus, "FINISHED")
                 .eq(HrPerfPlan::getId, id).eq(HrPerfPlan::getStatus, "SCORING"));
@@ -312,7 +312,7 @@ public class HrPerfService {
     private void saveIndicators(Long planId, List<PerfPlanRequest.Indicator> list) {
         BigDecimal sum = list.stream().map(PerfPlanRequest.Indicator::weight).reduce(BigDecimal.ZERO, BigDecimal::add);
         if (sum.compareTo(HUNDRED) != 0) {
-            throw new BizException("指标权重合计必须为 100%，当前为 " + sum.stripTrailingZeros().toPlainString() + "%");
+            throw new BizException("指标权重合计必须为 100%，当前为 {0}%", sum.stripTrailingZeros().toPlainString());
         }
         int sort = 0;
         for (PerfPlanRequest.Indicator i : list) {

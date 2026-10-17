@@ -200,7 +200,7 @@ public class ScmInquiryService {
                     return new OrderItemRequest(i.getMaterialId(), i.getQty(), q.getPrice(), q.getTaxRate(), delivery, i.getRemark());
                 }).toList();
                 Long orderId = orderService.createDraft(OrderKind.PURCHASE, new OrderRequest(supplierId, LocalDate.now(), null,
-                        req.warehouseId(), "询价单 " + inquiry.getInquiryNo(), lines), "INQUIRY");
+                        req.warehouseId(), "询价单 " + inquiry.getInquiryNo(), lines), "INQUIRY"); // i18n-ignore
                 itemMapper.update(Wrappers.<ScmInquiryItem>lambdaUpdate().set(ScmInquiryItem::getOrderId, orderId)
                         .in(ScmInquiryItem::getId, list.stream().map(ScmInquiryItem::getId).toList()));
                 orderIds.add(orderId);

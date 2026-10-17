@@ -2,19 +2,19 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="申请" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="单号、工号或姓名" allow-clear />
+        <a-form-item :label="$t('hr.leave.apply')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('hr.leave.keywordPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="种类" name="kind">
-          <a-select v-model:value="query.kind" placeholder="全部" allow-clear :options="toOptions(dict.hr_leave_kind)" />
+        <a-form-item :label="$t('hr.leave.kind')" name="kind">
+          <a-select v-model:value="query.kind" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.hr_leave_kind)" />
         </a-form-item>
-        <a-form-item label="假期类型" name="type">
-          <a-select v-model:value="query.type" placeholder="全部" allow-clear :options="toOptions(dict.hr_leave_type)" />
+        <a-form-item :label="$t('hr.leave.leaveType')" name="type">
+          <a-select v-model:value="query.type" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.hr_leave_type)" />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.hr_leave_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.hr_leave_status)" />
         </a-form-item>
-        <a-form-item label="开始日期" name="range">
+        <a-form-item :label="$t('common.field.beginDate')" name="range">
           <a-range-picker v-model:value="query.range" value-format="YYYY-MM-DD" />
         </a-form-item>
       </SearchForm>
@@ -27,7 +27,7 @@
           type="info"
           show-icon
           class="tip"
-          message="员工在「员工自助」中提交请假、加班；在流程中心发布了 hr_leave 流程时走审批流程，否则在这里由人事审批。"
+          :message="$t('hr.leave.tip')"
         />
       </TableToolbar>
       <a-table
@@ -51,16 +51,16 @@
           </template>
           <template v-else-if="column.key === 'time'">
             <div>{{ fmt(record.startTime) }}</div>
-            <div class="sub-text">至 {{ fmt(record.endTime) }}</div>
+            <div class="sub-text">{{ $t('hr.leave.to') }} {{ fmt(record.endTime) }}</div>
           </template>
           <template v-else-if="column.key === 'hours'">{{ hoursText(record.hours) }}</template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="hr_leave_status" :value="record.status" />
-            <div v-if="record.status === 'APPROVING' && record.flowInstanceId" class="sub-text">审批流程中</div>
+            <div v-if="record.status === 'APPROVING' && record.flowInstanceId" class="sub-text">{{ $t('hr.leave.inFlow') }}</div>
           </template>
           <template v-else-if="column.key === 'approve'">
             <template v-if="record.approveTime">
-              <div>{{ record.approveByName || '流程' }} {{ fmt(record.approveTime) }}</div>
+              <div>{{ record.approveByName || $t('hr.leave.flow') }} {{ fmt(record.approveTime) }}</div>
               <div v-if="record.approveComment" class="sub-text">{{ record.approveComment }}</div>
             </template>
             <span v-else class="sub-text">-</span>
@@ -73,28 +73,28 @@
               size="small"
               @click="openApprove(record)"
             >
-              审批
+              {{ $t('hr.leave.approve') }}
             </a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <a-modal v-model:open="approveOpen" :title="`审批：${current?.employeeName || ''} ${current?.leaveNo || ''}`" :confirm-loading="saving" destroy-on-close @ok="submit">
+    <a-modal v-model:open="approveOpen" :title="$t('hr.leave.approveTitle', { name: current?.employeeName || '', no: current?.leaveNo || '' })" :confirm-loading="saving" destroy-on-close @ok="submit">
       <a-descriptions v-if="current" size="small" :column="1" bordered class="mb">
-        <a-descriptions-item label="种类">
+        <a-descriptions-item :label="$t('hr.leave.kind')">
           {{ dictLabel(dict.hr_leave_kind, current.kind) }}
           {{ dictLabel(current.kind === 'OVERTIME' ? dict.hr_overtime_comp : dict.hr_leave_type, current.type) }}
         </a-descriptions-item>
-        <a-descriptions-item label="时间">{{ fmt(current.startTime) }} 至 {{ fmt(current.endTime) }}</a-descriptions-item>
-        <a-descriptions-item label="时长">{{ hoursText(current.hours) }}</a-descriptions-item>
-        <a-descriptions-item label="事由">{{ current.reason || '-' }}</a-descriptions-item>
+        <a-descriptions-item :label="$t('hr.leave.time')">{{ fmt(current.startTime) }} {{ $t('hr.leave.to') }} {{ fmt(current.endTime) }}</a-descriptions-item>
+        <a-descriptions-item :label="$t('hr.leave.hours')">{{ hoursText(current.hours) }}</a-descriptions-item>
+        <a-descriptions-item :label="$t('hr.leave.reason')">{{ current.reason || '-' }}</a-descriptions-item>
       </a-descriptions>
       <a-radio-group v-model:value="approved" class="mb">
-        <a-radio-button :value="true">同意</a-radio-button>
-        <a-radio-button :value="false">拒绝</a-radio-button>
+        <a-radio-button :value="true">{{ $t('common.action.approve') }}</a-radio-button>
+        <a-radio-button :value="false">{{ $t('common.action.reject') }}</a-radio-button>
       </a-radio-group>
-      <a-textarea v-model:value="comment" :rows="2" :maxlength="255" placeholder="审批意见（选填）" />
+      <a-textarea v-model:value="comment" :rows="2" :maxlength="255" :placeholder="$t('hr.leave.commentPh')" />
     </a-modal>
   </div>
 </template>
@@ -103,6 +103,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -113,21 +114,22 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { findDict, toOptions } from '@/utils/dict'
 
+const { t } = useI18n()
 const dict = useDict('hr_leave_kind', 'hr_leave_type', 'hr_leave_status', 'hr_overtime_comp')
 const dictLabel = (list, v) => findDict(list, v)?.label || ''
 const fmt = (t) => (t ? dayjs(t).format('YYYY-MM-DD HH:mm') : '')
 const showSearch = ref(true)
 
 const columns = [
-  { title: '单号', dataIndex: 'leaveNo', width: 150 },
-  { title: '员工', key: 'employee', width: 170 },
-  { title: '种类', key: 'kind', width: 140, dict: 'hr_leave_kind' },
-  { title: '时间', key: 'time', width: 170 },
-  { title: '时长', key: 'hours', width: 140 },
-  { title: '事由', dataIndex: 'reason', ellipsis: true },
-  { title: '状态', key: 'status', width: 100, dict: 'hr_leave_status' },
-  { title: '审批', key: 'approve', width: 200 },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' }
+  { title: t('hr.leave.no'), dataIndex: 'leaveNo', width: 150 },
+  { title: t('hr.leave.employee'), key: 'employee', width: 170 },
+  { title: t('hr.leave.kind'), key: 'kind', width: 140, dict: 'hr_leave_kind' },
+  { title: t('hr.leave.time'), key: 'time', width: 170 },
+  { title: t('hr.leave.hours'), key: 'hours', width: 140 },
+  { title: t('hr.leave.reason'), dataIndex: 'reason', ellipsis: true },
+  { title: t('common.field.status'), key: 'status', width: 100, dict: 'hr_leave_status' },
+  { title: t('hr.leave.approve'), key: 'approve', width: 200 },
+  { title: t('common.action.operation'), key: 'action', width: 80, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'hr-leave')
 
@@ -157,7 +159,7 @@ async function submit() {
   saving.value = true
   try {
     await approveLeave(current.value.id, { approved: approved.value, comment: comment.value || null })
-    message.success(approved.value ? '已同意' : '已拒绝')
+    message.success(approved.value ? t('hr.leave.approved') : t('hr.leave.rejected'))
     approveOpen.value = false
     load()
   } finally {

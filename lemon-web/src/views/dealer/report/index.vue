@@ -2,10 +2,10 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
-        <span class="sub-text">每月上报各产品的当月销量（卖给终端客户）和月末库存，同一月份重复上报会覆盖</span>
+        <span class="sub-text">{{ $t('dealer.report.tip') }}</span>
         <template #extra>
           <a-button v-perm="'dealer:report:edit'" type="primary" @click="openForm()">
-            <template #icon><PlusOutlined /></template>上报
+            <template #icon><PlusOutlined /></template>{{ $t('dealer.report.report') }}
           </a-button>
         </template>
       </TableToolbar>
@@ -31,15 +31,15 @@
       </a-table>
     </a-card>
 
-    <SubPage :open="formOpen" :title="`库存销量上报 ${periodText(period)}`" width="min(900px, 100vw)" @close="formOpen = false">
+    <SubPage :open="formOpen" :title="$t('dealer.report.formTitle', { period: periodText(period) })" width="min(900px, 100vw)" @close="formOpen = false">
       <template #extra>
-        <a-button v-perm="'dealer:report:edit'" type="primary" :loading="saving" @click="submit">提交上报</a-button>
+        <a-button v-perm="'dealer:report:edit'" type="primary" :loading="saving" @click="submit">{{ $t('dealer.report.submit') }}</a-button>
       </template>
       <a-form layout="inline" class="block">
-        <a-form-item label="月份">
+        <a-form-item :label="$t('dealer.report.month')">
           <PeriodPicker v-model:value="period" :disabled-date="(d) => d.isAfter(dayjs(), 'month')" @update:value="loadPeriod" />
         </a-form-item>
-        <a-form-item label="说明">
+        <a-form-item :label="$t('common.field.description')">
           <a-input v-model:value="remark" :maxlength="255" class="remark" />
         </a-form-item>
       </a-form>
@@ -57,12 +57,13 @@
           </template>
         </template>
       </a-table>
-      <div class="sub-text tip">只上报填写了销量或库存的产品；产品清单为可订货的产品</div>
+      <div class="sub-text tip">{{ $t('dealer.report.formTip') }}</div>
     </SubPage>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { onMounted, reactive, ref } from 'vue'
 import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'
@@ -76,23 +77,25 @@ import { formatQty } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 
+const { t } = useI18n()
+
 /** 经销商门户：按月上报渠道库存和销量 */
 const columns = [
-  { title: '月份', key: 'period', width: 140 },
-  { title: '产品数', dataIndex: 'itemCount', width: 100, align: 'right' },
-  { title: '当月销量', key: 'sell', width: 120, align: 'right' },
-  { title: '月末库存', key: 'stock', width: 120, align: 'right' },
-  { title: '说明', dataIndex: 'remark', ellipsis: true },
-  { title: '上报', key: 'time', width: 180 }
+  { title: t('dealer.report.month'), key: 'period', width: 140 },
+  { title: t('dealer.report.itemCount'), dataIndex: 'itemCount', width: 100, align: 'right' },
+  { title: t('dealer.report.monthSales'), key: 'sell', width: 130, align: 'right' },
+  { title: t('dealer.report.monthEndStock'), key: 'stock', width: 140, align: 'right' },
+  { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true },
+  { title: t('dealer.report.reported'), key: 'time', width: 180 }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'dealer-report')
 const { list, loading, size, pagination, load, onTableChange } = useTable(pageDealerReport, reactive({}))
 onMounted(load)
 
 const lineColumns = [
-  { title: '产品', key: 'material' },
-  { title: '当月销量', key: 'sell', width: 200 },
-  { title: '月末库存', key: 'stock', width: 200 }
+  { title: t('dealer.report.product'), key: 'material' },
+  { title: t('dealer.report.monthSales'), key: 'sell', width: 200 },
+  { title: t('dealer.report.monthEndStock'), key: 'stock', width: 200 }
 ]
 const formOpen = ref(false)
 const formLoading = ref(false)
@@ -135,11 +138,11 @@ async function openForm(record) {
 async function submit() {
   const items = lines.value.filter((l) => l.sellQty != null || l.stockQty != null)
     .map((l) => ({ materialId: l.materialId, sellQty: l.sellQty || 0, stockQty: l.stockQty || 0 }))
-  if (!items.length) return message.warning('请填写至少一个产品的销量或库存')
+  if (!items.length) return message.warning(t('dealer.report.msgEmpty'))
   saving.value = true
   try {
     await saveDealerReport(period.value, { remark: remark.value || null, items })
-    message.success('已上报')
+    message.success(t('dealer.report.done'))
     formOpen.value = false
     load()
   } finally {

@@ -1,4 +1,5 @@
 /** 数据大屏的通用工具：设计尺寸、配色、数字格式、图表基础配置 */
+import { t, tt } from '@/locales'
 
 /** 设计稿尺寸，页面按比例缩放铺满屏幕 */
 export const DESIGN_WIDTH = 1920
@@ -17,11 +18,15 @@ export const COLORS = {
 export const PALETTE = [COLORS.cyan, COLORS.green, COLORS.orange, COLORS.purple, COLORS.blue, COLORS.red, '#ff7ad9', '#7cf06b']
 
 export const SCREENS = [
-  { key: 'FACTORY', label: '生产车间', desc: '今日产量与良品率、在制工单进度、设备状态、工作中心负荷、实时报工、停机原因' },
-  { key: 'WAREHOUSE', label: '仓储物流', desc: '今日出入库、待拣货与待发货、出入库趋势、各仓库库存、库存预警与临期批次、实时出入库' },
-  { key: 'SALES', label: '销售经营', desc: '订单与出库金额、回款与应收、月度趋势与同比、客户和产品排行、业务员排行、实时订单' },
-  { key: 'QUALITY', label: '质量管理', desc: '检验合格率与趋势、来料与过程质量、不良类型柏拉图、供应商质量排名、待处置不合格品' }
+  { key: 'FACTORY', label: t('screen.screens.factory'), desc: t('screen.screens.factoryDesc') },
+  { key: 'WAREHOUSE', label: t('screen.screens.warehouse'), desc: t('screen.screens.warehouseDesc') },
+  { key: 'SALES', label: t('screen.screens.sales'), desc: t('screen.screens.salesDesc') },
+  { key: 'QUALITY', label: t('screen.screens.quality'), desc: t('screen.screens.qualityDesc') }
 ]
+/** 后端按字典关联出的中文名称：按原始值取界面语言的字典译文，没有值或译文时用原名称 */
+export const dictLabel = (type, value, label) => (value === null || value === undefined || value === '' ? label : tt(`dict.${type}.${value}`, label))
+/** 列表中某个字段按字典翻译：rows 中 labelKey ← valueKey */
+export const withDictLabel = (rows, type, valueKey, labelKey) => (rows || []).map((r) => ({ ...r, [labelKey]: dictLabel(typeof type === 'function' ? type(r) : type, r[valueKey], r[labelKey]) }))
 export const screenLabel = (key) => SCREENS.find((s) => s.key === key)?.label || key
 
 /** 数量：千分位，最多 digits 位小数 */
@@ -36,8 +41,8 @@ export function fmtNum(v, digits = 0) {
 export function fmtMoney(v) {
   if (v === null || v === undefined) return { value: '-', unit: '' }
   const n = Number(v)
-  if (Math.abs(n) >= 10000) return { value: (n / 10000).toLocaleString('zh-CN', { maximumFractionDigits: 2 }), unit: '万元' }
-  return { value: n.toLocaleString('zh-CN', { maximumFractionDigits: 2 }), unit: '元' }
+  if (Math.abs(n) >= 10000) return { value: (n / 10000).toLocaleString('zh-CN', { maximumFractionDigits: 2 }), unit: t('screen.unit.tenKYuan') }
+  return { value: n.toLocaleString('zh-CN', { maximumFractionDigits: 2 }), unit: t('screen.unit.yuan') }
 }
 
 export const fmtRate = (v) => (v === null || v === undefined ? '-' : `${Number(v).toFixed(1)}`)

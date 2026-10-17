@@ -42,7 +42,7 @@ public class ScmReorderController {
     /** 选中的建议生成请购单（草稿），返回请购单 ID */
     @PostMapping("/requisition")
     @PreAuthorize("@ss.hasPerm('scm:requisition:add')")
-    @OperLog(title = "补货建议生成请购单", type = OperType.INSERT)
+    @OperLog(title = "补货建议生成请购单", type = OperType.INSERT) // i18n-ignore
     public R<Long> toRequisition(@Valid @RequestBody ToRequisitionRequest req) {
         return R.ok(reorderService.toRequisition(req.items()));
     }

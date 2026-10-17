@@ -47,7 +47,7 @@ public class ScmAsnController {
     /** 收货：生成采购入库单，返回入库单 ID */
     @PostMapping("/{id}/receive")
     @PreAuthorize("@ss.hasPerm('scm:asn:receive')")
-    @OperLog(title = "送货通知-收货", type = OperType.INSERT)
+    @OperLog(title = "送货通知-收货", type = OperType.INSERT) // i18n-ignore
     public R<Long> receive(@PathVariable Long id, @Valid @RequestBody SrmRequests.AsnReceive req) {
         return R.ok(asnService.receive(id, req));
     }

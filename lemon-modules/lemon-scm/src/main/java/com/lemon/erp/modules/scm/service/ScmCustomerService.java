@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.ref.RefType;
@@ -30,8 +31,8 @@ import java.util.Objects;
 public class ScmCustomerService {
 
     /** 记录变更历史的字段 */
-    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "客户编码", "name", "客户名称", "level", "客户等级", "contact", "联系人", "phone", "联系电话",
-            "address", "收货地址", "taxNo", "纳税人识别号", "creditLimit", "信用额度", "paymentDays", "账期", "remark", "备注");
+    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "客户编码", "name", "客户名称", "level", "客户等级", "contact", "联系人", "phone", "联系电话", // i18n-ignore
+            "address", "收货地址", "taxNo", "纳税人识别号", "creditLimit", "信用额度", "paymentDays", "账期", "remark", "备注"); // i18n-ignore
 
     private static final int OPTION_LIMIT = 50;
 
@@ -119,9 +120,9 @@ public class ScmCustomerService {
         for (ScmCustomer customer : customerMapper.selectByIds(ids)) {
             if (orderMapper.exists(Wrappers.<ScmOrder>lambdaQuery()
                     .eq(ScmOrder::getKind, OrderKind.SALES.name()).eq(ScmOrder::getPartnerId, customer.getId()))) {
-                throw new BizException("客户「" + customer.getName() + "」已有销售订单，不能删除，可以停用");
+                throw new BizException("客户「{0}」已有销售订单，不能删除，可以停用", customer.getName());
             }
-            referenceGuard.checkDeletable(RefType.CUSTOMER, customer.getId(), "客户「" + customer.getName() + "」");
+            referenceGuard.checkDeletable(RefType.CUSTOMER, customer.getId(), I18n.t("客户「{0}」", customer.getName()));
         }
         customerMapper.deleteByIds(ids);
     }

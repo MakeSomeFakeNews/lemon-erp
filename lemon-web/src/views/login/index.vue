@@ -25,13 +25,16 @@
       </svg>
     </div>
 
-    <a-tooltip :title="appStore.dark ? '切换到亮色' : '切换到暗色'">
-      <a-button type="text" shape="circle" class="theme-btn" @click="appStore.toggleDark()">
-        <template #icon>
-          <ThemeIcon :dark="appStore.dark" />
-        </template>
-      </a-button>
-    </a-tooltip>
+    <div class="top-actions">
+      <LangSwitch btn-class="top-btn" show-label />
+      <a-tooltip :title="appStore.dark ? $t('layout.toLight') : $t('layout.toDark')">
+        <a-button type="text" shape="circle" class="top-btn" @click="appStore.toggleDark()">
+          <template #icon>
+            <ThemeIcon :dark="appStore.dark" />
+          </template>
+        </a-button>
+      </a-tooltip>
+    </div>
 
     <main class="container">
       <!-- 品牌区（窄屏隐藏） -->
@@ -43,8 +46,8 @@
             <div class="brand-en">LEMON ERP</div>
           </div>
         </div>
-        <h1 class="brand-title">让企业经营<br />像柠檬一样<span class="highlight">清新高效</span></h1>
-        <p class="brand-desc">从采购、生产、仓储到财务、人力、客户与项目，一套系统打通业务全流程，数据实时联动、账实一致。</p>
+        <h1 class="brand-title">{{ $t('login.brandLine1') }}<br />{{ $t('login.brandLine2') }}<span class="highlight">{{ $t('login.brandHighlight') }}</span></h1>
+        <p class="brand-desc">{{ $t('login.brandDesc') }}</p>
         <div class="modules">
           <div v-for="m in modules" :key="m.name" class="module">
             <span class="module-icon" :style="{ color: m.color, background: `${m.color}1a` }"><component :is="m.icon" /></span>
@@ -52,11 +55,11 @@
           </div>
         </div>
         <div class="brand-tags">
-          <span>审批流程</span>
-          <span>数据权限</span>
-          <span>多币种</span>
-          <span>成本核算</span>
-          <span>经营分析</span>
+          <span>{{ $t('login.tagWorkflow') }}</span>
+          <span>{{ $t('login.tagDataPerm') }}</span>
+          <span>{{ $t('login.tagCurrency') }}</span>
+          <span>{{ $t('login.tagCost') }}</span>
+          <span>{{ $t('login.tagAnalytics') }}</span>
         </div>
       </section>
 
@@ -66,49 +69,49 @@
           <AppLogo :size="36" />
           <span>{{ configStore.systemName }}</span>
         </div>
-        <h2 class="form-title">欢迎回来 <span class="wave">👋</span></h2>
-        <p class="form-subtitle">登录{{ configStore.systemName }}，开始今天的工作</p>
+        <h2 class="form-title">{{ $t('login.welcome') }} <span class="wave">👋</span></h2>
+        <p class="form-subtitle">{{ $t('login.subtitle', { name: configStore.systemName }) }}</p>
 
         <a-form :model="form" :rules="rules" layout="vertical" size="large" @finish="handleLogin">
-          <a-form-item v-if="tenantEnabled" label="租户" name="tenantName">
-            <a-input v-model:value="form.tenantName" placeholder="请输入租户名称" autocomplete="organization">
+          <a-form-item v-if="tenantEnabled" :label="$t('login.tenant')" name="tenantName">
+            <a-input v-model:value="form.tenantName" :placeholder="$t('login.inputTenant')" autocomplete="organization">
               <template #prefix><ShopOutlined class="input-icon" /></template>
             </a-input>
           </a-form-item>
-          <a-form-item label="用户名" name="username">
-            <a-input v-model:value="form.username" placeholder="请输入用户名" autocomplete="username">
+          <a-form-item :label="$t('login.username')" name="username">
+            <a-input v-model:value="form.username" :placeholder="$t('login.inputUsername')" autocomplete="username">
               <template #prefix><UserOutlined class="input-icon" /></template>
             </a-input>
           </a-form-item>
-          <a-form-item label="密码" name="password">
-            <a-input-password v-model:value="form.password" placeholder="请输入密码" autocomplete="current-password">
+          <a-form-item :label="$t('login.password')" name="password">
+            <a-input-password v-model:value="form.password" :placeholder="$t('login.inputPassword')" autocomplete="current-password">
               <template #prefix><LockOutlined class="input-icon" /></template>
             </a-input-password>
           </a-form-item>
-          <a-form-item v-if="needCaptcha" label="验证码" name="captchaCode">
+          <a-form-item v-if="needCaptcha" :label="$t('login.captcha')" name="captchaCode">
             <div class="captcha-row">
-              <a-input v-model:value="form.captchaCode" placeholder="请输入验证码" autocomplete="off" :maxlength="8">
+              <a-input v-model:value="form.captchaCode" :placeholder="$t('login.inputCaptcha')" autocomplete="off" :maxlength="8">
                 <template #prefix><SafetyOutlined class="input-icon" /></template>
               </a-input>
-              <img v-if="captchaImage" :src="captchaImage" class="captcha-img" alt="验证码" title="看不清？点击换一张" @click="refreshCaptcha" />
+              <img v-if="captchaImage" :src="captchaImage" class="captcha-img" :alt="$t('login.captcha')" :title="$t('login.refreshCaptcha')" @click="refreshCaptcha" />
             </div>
           </a-form-item>
           <div class="form-row">
-            <a-checkbox v-model:checked="remember">{{ tenantEnabled ? '记住租户和用户名' : '记住用户名' }}</a-checkbox>
+            <a-checkbox v-model:checked="remember">{{ tenantEnabled ? $t('login.rememberTenant') : $t('login.rememberUsername') }}</a-checkbox>
           </div>
           <a-button type="primary" html-type="submit" block :loading="loading" class="submit-btn">
-            {{ loading ? '登录中…' : '登 录' }}
+            {{ loading ? $t('login.loggingIn') : $t('login.login') }}
           </a-button>
         </a-form>
 
         <template v-if="imProviders.length">
-          <div class="im-divider"><span>其他登录方式</span></div>
+          <div class="im-divider"><span>{{ $t('login.otherMethods') }}</span></div>
           <div class="im-logins">
-            <a-tooltip v-for="p in imProviders" :key="p.platform" :title="`${p.label}登录`">
+            <a-tooltip v-for="p in imProviders" :key="p.platform" :title="$t('login.imLogin', { name: imPlatform(p.platform).label })">
               <button type="button" class="im-login" :disabled="!!imLoading" @click="imLogin(p.platform)">
                 <a-spin v-if="imLoading === p.platform" size="small" />
                 <ImPlatformIcon v-else :platform="p.platform" :size="34" />
-                <span>{{ p.label }}</span>
+                <span>{{ imPlatform(p.platform).label }}</span>
               </button>
             </a-tooltip>
           </div>
@@ -116,12 +119,12 @@
 
         <div v-if="configStore.showDemoAccount" class="tip">
           <span class="tip-dot" />
-          演示账号<template v-if="tenantEnabled">（租户 <b>柠檬科技</b>）</template>
-          <a class="demo-account" @click="fillDemo('admin')"><b>admin</b> / <b>admin123</b></a>（超级管理员）、<a class="demo-account" @click="fillDemo('test')"><b>test</b> / <b>admin123</b></a>（只读）
+          {{ $t('login.demoAccount') }}<template v-if="tenantEnabled">{{ $t('login.demoTenantPrefix') }}<b>{{ DEMO_TENANT }}</b>{{ $t('login.demoTenantSuffix') }}</template>
+          <a class="demo-account" @click="fillDemo('admin')"><b>admin</b> / <b>admin123</b></a>{{ $t('login.demoAdmin') }}<a class="demo-account" @click="fillDemo('test')"><b>test</b> / <b>admin123</b></a>{{ $t('login.demoReadonly') }}
         </div>
         <div v-if="configStore.demoMode" class="tip">
           <span class="tip-dot" />
-          当前为演示环境，只能查看，不能新增、修改、删除数据
+          {{ $t('layout.demoTip') }}
         </div>
       </section>
     </main>
@@ -134,6 +137,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import {
   AccountBookOutlined,
   ApartmentOutlined,
@@ -152,15 +156,18 @@ import { getCaptcha } from '@/api/auth'
 import { getImAuthorizeUrl, listImProviders } from '@/api/system/im'
 import AppLogo from '@/components/AppLogo.vue'
 import ImPlatformIcon from '@/components/im/ImPlatformIcon.vue'
+import LangSwitch from '@/components/LangSwitch.vue'
 import ThemeIcon from '@/components/ThemeIcon.vue'
 import { useAppStore } from '@/store/app'
 import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
+import { imPlatform } from '@/utils/im'
 import { load, remove, save } from '@/utils/storage'
 
 const REMEMBER_KEY = 'lemon_erp_remember_username'
 const REMEMBER_TENANT_KEY = 'lemon_erp_remember_tenant'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const appStore = useAppStore()
@@ -168,14 +175,14 @@ const userStore = useUserStore()
 const year = new Date().getFullYear()
 
 const modules = [
-  { icon: ShoppingCartOutlined, name: '供应链', color: '#1677ff' },
-  { icon: ApartmentOutlined, name: '生产制造', color: '#fa8c16' },
-  { icon: DatabaseOutlined, name: '仓库管理', color: '#13c2c2' },
-  { icon: AccountBookOutlined, name: '财务管理', color: '#faad14' },
-  { icon: IdcardOutlined, name: '人力资源', color: '#eb2f96' },
-  { icon: HeartOutlined, name: '客户关系', color: '#f5222d' },
-  { icon: ProjectOutlined, name: '项目管理', color: '#722ed1' },
-  { icon: BarChartOutlined, name: '商务智能', color: '#52c41a' }
+  { icon: ShoppingCartOutlined, name: t('login.modScm'), color: '#1677ff' },
+  { icon: ApartmentOutlined, name: t('login.modMes'), color: '#fa8c16' },
+  { icon: DatabaseOutlined, name: t('login.modWms'), color: '#13c2c2' },
+  { icon: AccountBookOutlined, name: t('login.modFin'), color: '#faad14' },
+  { icon: IdcardOutlined, name: t('login.modHr'), color: '#eb2f96' },
+  { icon: HeartOutlined, name: t('login.modCrm'), color: '#f5222d' },
+  { icon: ProjectOutlined, name: t('login.modPm'), color: '#722ed1' },
+  { icon: BarChartOutlined, name: t('login.modBi'), color: '#52c41a' }
 ]
 
 const rememberedName = load(REMEMBER_KEY, '')
@@ -183,10 +190,10 @@ const remember = ref(!!rememberedName)
 const loading = ref(false)
 const form = reactive({ tenantName: load(REMEMBER_TENANT_KEY, ''), username: rememberedName, password: '', captchaId: undefined, captchaCode: '' })
 const rules = {
-  tenantName: [{ required: true, whitespace: true, message: '请输入租户名称' }],
-  username: [{ required: true, message: '请输入用户名' }],
-  password: [{ required: true, message: '请输入密码' }],
-  captchaCode: [{ required: true, whitespace: true, message: '请输入验证码' }]
+  tenantName: [{ required: true, whitespace: true, message: t('login.inputTenant') }],
+  username: [{ required: true, message: t('login.inputUsername') }],
+  password: [{ required: true, message: t('login.inputPassword') }],
+  captchaCode: [{ required: true, whitespace: true, message: t('login.inputCaptcha') }]
 }
 
 const configStore = useConfigStore()
@@ -205,7 +212,7 @@ async function refreshCaptcha() {
   captchaImage.value = c.image
 }
 // ---------------------------------------------------------------- 演示账号
-const DEMO_TENANT = '柠檬科技'
+const DEMO_TENANT = '柠檬科技' // i18n-ignore 内置演示租户的名称（数据）
 const DEMO_PASSWORD = 'admin123'
 /** 点击演示账号填入表单；演示模式下默认填好超级管理员，直接点登录即可 */
 function fillDemo(username) {
@@ -269,10 +276,10 @@ async function handleLogin() {
       remove(REMEMBER_TENANT_KEY)
     }
     if (mustChange) {
-      message.warning('当前密码为管理员设置的初始密码或已过期，请先修改密码', 4)
+      message.warning(t('login.mustChange'), 4)
       router.replace({ path: '/profile', query: { tab: 'password' } })
     } else {
-      message.success('登录成功')
+      message.success(t('login.success'))
       router.replace(route.query.redirect || '/')
     }
   } catch (e) {
@@ -352,11 +359,14 @@ async function handleLogin() {
   transform: rotate(-20deg);
 }
 
-.theme-btn {
+.top-actions {
   position: absolute;
   top: 20px;
   right: 20px;
   z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .container {

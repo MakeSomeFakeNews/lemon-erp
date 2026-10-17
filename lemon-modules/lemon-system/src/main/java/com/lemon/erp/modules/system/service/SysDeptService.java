@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.lemon.erp.common.base.TreeEntity;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.util.TreeUtils;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.TokenService;
@@ -91,7 +92,7 @@ public class SysDeptService extends ServiceImpl<SysDeptMapper, SysDept> {
         if (userMapper.exists(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getDeptId, id))) {
             throw new BizException("部门下存在用户，不允许删除");
         }
-        referenceGuard.checkDeletable(RefType.DEPT, id, "部门");
+        referenceGuard.checkDeletable(RefType.DEPT, id, I18n.t("部门"));
         removeById(id);
         roleDeptMapper.delete(Wrappers.<SysRoleDept>lambdaQuery().eq(SysRoleDept::getDeptId, id));
         tokenService.evictAllLoginUsers();

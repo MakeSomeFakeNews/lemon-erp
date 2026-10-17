@@ -54,7 +54,7 @@ public class MesSupplementController {
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("@ss.hasPerm('mes:supplement:add')")
-    @OperLog(title = "补料申请-撤销", type = OperType.UPDATE)
+    @OperLog(title = "补料申请-撤销", type = OperType.UPDATE) // i18n-ignore
     public R<Void> cancel(@PathVariable Long id) {
         supplementService.cancel(id);
         return R.ok();
@@ -63,7 +63,7 @@ public class MesSupplementController {
     /** @return 补料单号 */
     @PostMapping("/{id}/issue")
     @PreAuthorize("@ss.hasPerm('mes:supplement:issue')")
-    @OperLog(title = "补料申请-发料", type = OperType.INSERT)
+    @OperLog(title = "补料申请-发料", type = OperType.INSERT) // i18n-ignore
     public R<String> issue(@PathVariable Long id, @Valid @RequestBody WoDocRequest req) {
         return R.ok(supplementService.issue(id, req));
     }

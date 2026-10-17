@@ -53,8 +53,8 @@ import java.util.Set;
 public class PmProjectService {
 
     /** 记录变更历史的字段 */
-    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("name", "项目名称", "type", "项目类型", "customerId", "客户ID", "managerId", "项目经理ID", "priority", "优先级",
-            "planStart", "计划开始", "planEnd", "计划结束", "contractAmount", "合同金额", "taxRate", "税率", "budgetAmount", "成本预算");
+    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("name", "项目名称", "type", "项目类型", "customerId", "客户ID", "managerId", "项目经理ID", "priority", "优先级",  // i18n-ignore 变更历史存库
+            "planStart", "计划开始", "planEnd", "计划结束", "contractAmount", "合同金额", "taxRate", "税率", "budgetAmount", "成本预算");  // i18n-ignore
 
     /** 项目立项审批流程标识 */
     public static final String PROCESS_KEY = "pm_project";
@@ -221,12 +221,12 @@ public class PmProjectService {
         for (Long id : ids) {
             PmProject p = get(id);
             if (!"PLANNING".equals(p.getStatus())) {
-                throw new BizException("项目「" + p.getName() + "」已启动，不能删除");
+                throw new BizException("项目「{0}」已启动，不能删除", p.getName());
             }
             if (timesheetMapper.exists(Wrappers.<PmTimesheet>lambdaQuery().eq(PmTimesheet::getProjectId, id))
                     || costMapper.exists(Wrappers.<PmCost>lambdaQuery().eq(PmCost::getProjectId, id))
                     || billingMapper.exists(Wrappers.<PmBilling>lambdaQuery().eq(PmBilling::getProjectId, id).eq(PmBilling::getStatus, "BILLED"))) {
-                throw new BizException("项目「" + p.getName() + "」已有工时、费用或开票，不能删除");
+                throw new BizException("项目「{0}」已有工时、费用或开票，不能删除", p.getName());
             }
         }
         taskMapper.delete(Wrappers.<PmTask>lambdaQuery().in(PmTask::getProjectId, ids));
@@ -264,7 +264,7 @@ public class PmProjectService {
             }
             if (projectMapper.exists(Wrappers.<PmProject>lambdaQuery().eq(PmProject::getSalesOrderId, req.salesOrderId())
                     .ne(selfId != null, PmProject::getId, selfId))) {
-                throw new BizException("销售订单 " + order.get("orderNo") + " 已关联项目");
+                throw new BizException("销售订单 {0} 已关联项目", order.get("orderNo"));
             }
             customerId = ((Number) order.get("partnerId")).longValue();
         }

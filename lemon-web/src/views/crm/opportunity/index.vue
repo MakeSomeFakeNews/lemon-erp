@@ -2,17 +2,17 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="reload" @reset="resetQuery">
-        <a-form-item label="商机" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="编号、名称或客户" allow-clear />
+        <a-form-item :label="$t('crm.common.f.opportunity')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('crm.opportunity.kwPh')" allow-clear />
         </a-form-item>
-        <a-form-item v-if="view === 'list'" label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="STATUS_OPTIONS" />
+        <a-form-item v-if="view === 'list'" :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('crm.common.all')" allow-clear :options="STATUS_OPTIONS" />
         </a-form-item>
-        <a-form-item v-if="view === 'list'" label="阶段" name="stage">
-          <a-select v-model:value="query.stage" placeholder="全部" allow-clear :options="toOptions(dict.crm_opp_stage)" />
+        <a-form-item v-if="view === 'list'" :label="$t('crm.common.f.stage')" name="stage">
+          <a-select v-model:value="query.stage" :placeholder="$t('crm.common.all')" allow-clear :options="toOptions(dict.crm_opp_stage)" />
         </a-form-item>
-        <a-form-item label="负责人" name="mine">
-          <a-checkbox v-model:checked="query.mine">只看我的</a-checkbox>
+        <a-form-item :label="$t('crm.common.f.owner')" name="mine">
+          <a-checkbox v-model:checked="query.mine">{{ $t('crm.common.onlyMine') }}</a-checkbox>
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -21,11 +21,11 @@
       <TableToolbar
         :exporter="exportAll" v-model:size="size" v-model:checked="checked" v-model:show-search="showSearch" :columns="view === 'list' ? columns : undefined" @refresh="reload">
         <a-radio-group v-model:value="view" button-style="solid" @change="reload">
-          <a-radio-button value="board"><AppstoreOutlined /> 看板</a-radio-button>
-          <a-radio-button value="list"><UnorderedListOutlined /> 列表</a-radio-button>
+          <a-radio-button value="board"><AppstoreOutlined /> {{ $t('crm.opportunity.board') }}</a-radio-button>
+          <a-radio-button value="list"><UnorderedListOutlined /> {{ $t('crm.opportunity.list') }}</a-radio-button>
         </a-radio-group>
         <a-button v-perm="'crm:opp:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新增商机
+          <template #icon><PlusOutlined /></template>{{ $t('crm.opportunity.add') }}
         </a-button>
       </TableToolbar>
 
@@ -33,15 +33,15 @@
       <div v-if="view === 'board'" class="board-wrap">
         <a-spin :spinning="boardLoading">
           <div class="board-summary">
-            <span>进行中 <b>{{ boardList.length }}</b> 个，金额 <b>¥{{ formatMoney(sum(boardList, 'amount')) }}</b></span>
-            <span>加权金额 <b>¥{{ formatMoney(weighted) }}</b></span>
-            <span class="sub-text">赢单、输单的商机在「列表」中查看</span>
+            <span>{{ $t('crm.opportunity.summaryOpen', { n: boardList.length, amount: '¥' + formatMoney(sum(boardList, 'amount')) }) }}</span>
+            <span>{{ $t('crm.opportunity.weighted') }} <b>¥{{ formatMoney(weighted) }}</b></span>
+            <span class="sub-text">{{ $t('crm.opportunity.closedTip') }}</span>
           </div>
           <div class="board">
             <div v-for="stage in OPEN_STAGES" :key="stage" class="column">
               <div class="column-head">
                 <DictTag type="crm_opp_stage" :value="stage" />
-                <span class="sub-text">{{ byStage(stage).length }} 个 · ¥{{ formatMoney(sum(byStage(stage), 'amount')) }}</span>
+                <span class="sub-text">{{ $t('crm.opportunity.columnSummary', { n: byStage(stage).length, amount: formatMoney(sum(byStage(stage), 'amount')) }) }}</span>
               </div>
               <div class="column-body">
                 <div v-for="o in byStage(stage)" :key="o.id" class="opp-card" @click="openDetail(o)">
@@ -49,11 +49,11 @@
                   <div class="sub-text">{{ o.customerName }}</div>
                   <div class="opp-amount">¥{{ formatMoney(o.amount) }}</div>
                   <div class="opp-foot">
-                    <span :class="{ danger: isOverdue(o) }">{{ o.expectedDate ? `预计 ${o.expectedDate}` : '未定成交日期' }}</span>
+                    <span :class="{ danger: isOverdue(o) }">{{ o.expectedDate ? $t('crm.opportunity.expected', { date: o.expectedDate }) : $t('crm.opportunity.noExpected') }}</span>
                     <span>{{ o.ownerName }} · {{ o.probability }}%</span>
                   </div>
                 </div>
-                <a-empty v-if="!byStage(stage).length" :image="simpleImage" description="暂无商机" />
+                <a-empty v-if="!byStage(stage).length" :image="simpleImage" :description="$t('crm.opportunity.empty')" />
               </div>
             </div>
           </div>
@@ -87,7 +87,7 @@
           <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}</template>
           <template v-else-if="column.key === 'expectedDate'">
             <span :class="{ danger: isOverdue(record) }">{{ record.expectedDate || '-' }}</span>
-            <div v-if="record.closeDate" class="sub-text">成交 / 输单 {{ record.closeDate }}</div>
+            <div v-if="record.closeDate" class="sub-text">{{ $t('crm.opportunity.closeText', { date: record.closeDate }) }}</div>
           </template>
           <template v-else-if="column.key === 'source'">
             <DictTag v-if="record.source" type="crm_source" :value="record.source" />
@@ -100,13 +100,13 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>详情
+                <template #icon><EyeOutlined /></template>{{ $t('common.action.detail') }}
               </a-button>
               <a-button v-if="isOpen(record)" v-perm="'crm:opp:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-if="!record.salesOrderId" v-perm="'crm:opp:remove'">
-                <a-popconfirm :title="`确定删除商机「${record.name}」？`" @confirm="remove(record.id)">
+                <a-popconfirm :title="$t('crm.opportunity.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
               </span>
@@ -116,46 +116,46 @@
       </a-table>
     </a-card>
 
-    <FormDrawer page :drawer="drawer" create-title="新增商机" edit-title="编辑商机" width="min(960px, 100vw)">
+    <FormDrawer page :drawer="drawer" :create-title="$t('crm.opportunity.add')" :edit-title="$t('crm.opportunity.editTitle')" width="min(960px, 100vw)">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="商机名称" name="name">
+            <a-form-item :label="$t('crm.opportunity.name')" name="name">
               <a-input v-model:value="form.name" :maxlength="128" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="客户" name="customerId">
+            <a-form-item :label="$t('crm.common.f.customer')" name="customerId">
               <PartnerSelect v-model:value="form.customerId" type="customer" :label="form.customerName" @update:value="onCustomer" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="联系人" name="contactId">
-              <a-select v-model:value="form.contactId" allow-clear :options="contactOpts" placeholder="先选择客户" />
+            <a-form-item :label="$t('crm.common.f.contact')" name="contactId">
+              <a-select v-model:value="form.contactId" allow-clear :options="contactOpts" :placeholder="$t('crm.opportunity.contactPh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="负责人" name="ownerId" extra="不选择时为你本人">
+            <a-form-item :label="$t('crm.common.f.owner')" name="ownerId" :extra="$t('crm.opportunity.ownerExtra')">
               <IdentityUserSelect v-model:value="form.ownerId" :label="form.ownerName" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="预计成交日期" name="expectedDate">
+            <a-form-item :label="$t('crm.opportunity.expectedDate')" name="expectedDate">
               <a-date-picker v-model:value="form.expectedDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col v-if="!drawer.isEdit.value" :xs="24" :sm="8">
-            <a-form-item label="销售阶段" name="stage">
+            <a-form-item :label="$t('crm.common.f.salesStage')" name="stage">
               <a-select v-model:value="form.stage" :options="openStageOptions" @change="(s) => (form.probability = STAGE_PROBABILITY[s])" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="赢单概率" name="probability">
+            <a-form-item :label="$t('crm.common.f.probability')" name="probability">
               <a-input-number v-model:value="form.probability" :min="0" :max="100" addon-after="%" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="预计金额" name="amount" :extra="form.items.length ? '按产品明细自动合计' : ''">
+            <a-form-item :label="$t('crm.common.f.amountExpected')" name="amount" :extra="form.items.length ? $t('crm.opportunity.amountExtra') : ''">
               <a-input-number
                 :value="form.items.length ? itemsTotal : form.amount"
                 :disabled="form.items.length > 0"
@@ -168,35 +168,35 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="来源" name="source">
+            <a-form-item :label="$t('crm.common.f.source')" name="source">
               <a-select v-model:value="form.source" allow-clear :options="toOptions(dict.crm_source)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="市场活动" name="campaignId">
+            <a-form-item :label="$t('crm.opportunity.campaign')" name="campaignId">
               <a-select v-model:value="form.campaignId" allow-clear show-search option-filter-prop="label" :options="campaignOpts" />
             </a-form-item>
           </a-col>
         </a-row>
 
         <div class="items-head">
-          <span>产品明细</span>
-          <a-button size="small" @click="addItem"><template #icon><PlusOutlined /></template>添加产品</a-button>
+          <span>{{ $t('crm.opportunity.items') }}</span>
+          <a-button size="small" @click="addItem"><template #icon><PlusOutlined /></template>{{ $t('crm.opportunity.addItem') }}</a-button>
         </div>
         <a-table row-key="key" size="small" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: 800 }" class="items">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'material'">
-              <a-form-item :name="['items', index, 'materialId']" :rules="[{ required: true, message: '请选择产品' }]" class="cell">
+              <a-form-item :name="['items', index, 'materialId']" :rules="[{ required: true, message: $t('crm.common.materialRequired') }]" class="cell">
                 <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" />
               </a-form-item>
             </template>
             <template v-else-if="column.key === 'qty'">
-              <a-form-item :name="['items', index, 'qty']" :rules="[{ required: true, message: '请填写数量' }]" class="cell">
+              <a-form-item :name="['items', index, 'qty']" :rules="[{ required: true, message: $t('crm.common.qtyRequired') }]" class="cell">
                 <a-input-number v-model:value="record.qty" :min="0.0001" :precision="4" class="full" />
               </a-form-item>
             </template>
             <template v-else-if="column.key === 'price'">
-              <a-form-item :name="['items', index, 'price']" :rules="[{ required: true, message: '请填写单价' }]" class="cell">
+              <a-form-item :name="['items', index, 'price']" :rules="[{ required: true, message: $t('crm.common.priceRequired') }]" class="cell">
                 <a-input-number v-model:value="record.price" :min="0" :precision="4" prefix="¥" class="full" />
               </a-form-item>
             </template>
@@ -210,7 +210,7 @@
           </template>
         </a-table>
 
-        <a-form-item label="备注" name="remark" class="remark">
+        <a-form-item :label="$t('common.field.remark')" name="remark" class="remark">
           <a-textarea v-model:value="form.remark" :rows="2" :maxlength="500" show-count />
         </a-form-item>
       </a-form>
@@ -224,6 +224,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import dayjs from 'dayjs'
 import { Empty, message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { AppstoreOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -243,25 +244,26 @@ import { formatMoney, lineAmount } from '@/components/scm/scm'
 import { rowKey } from '@/components/wms/wms'
 import { OPEN_STAGES, STAGE_PROBABILITY, sum } from '@/components/crm/crm'
 
+const { t } = useI18n()
 const simpleImage = Empty.PRESENTED_IMAGE_SIMPLE
 const dict = useDict('crm_opp_stage', 'crm_source')
 const STATUS_OPTIONS = [
-  { value: 'OPEN', label: '进行中' },
-  { value: 'WON', label: '赢单' },
-  { value: 'LOST', label: '输单' }
+  { value: 'OPEN', label: t('crm.common.status.open') },
+  { value: 'WON', label: t('crm.common.status.won') },
+  { value: 'LOST', label: t('crm.common.status.lost') }
 ]
 const openStageOptions = computed(() => toOptions(dict.crm_opp_stage).filter((o) => OPEN_STAGES.includes(o.value)))
 
 const columns = [
-  { title: '商机', key: 'name', width: 220 },
-  { title: '客户', key: 'customer', width: 200 },
-  { title: '阶段', key: 'stage', width: 110, dict: 'crm_opp_stage' },
-  { title: '预计金额', key: 'amount', width: 140, align: 'right' },
-  { title: '预计成交', key: 'expectedDate', width: 160 },
-  { title: '负责人', dataIndex: 'ownerName', width: 100 },
-  { title: '来源', key: 'source', width: 140, dict: 'crm_source' },
-  { title: '销售订单', key: 'order', width: 150 },
-  { title: '操作', key: 'action', width: 190, fixed: 'right' }
+  { title: t('crm.common.f.opportunity'), key: 'name', width: 220 },
+  { title: t('crm.common.f.customer'), key: 'customer', width: 200 },
+  { title: t('crm.common.f.stage'), key: 'stage', width: 110, dict: 'crm_opp_stage' },
+  { title: t('crm.common.f.amountExpected'), key: 'amount', width: 140, align: 'right' },
+  { title: t('crm.common.f.expectedDate'), key: 'expectedDate', width: 160 },
+  { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 100 },
+  { title: t('crm.common.f.source'), key: 'source', width: 140, dict: 'crm_source' },
+  { title: t('crm.common.f.salesOrder'), key: 'order', width: 150 },
+  { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'crm-opportunity')
 const showSearch = ref(true)
@@ -321,17 +323,17 @@ function addItem() {
 const itemsTotal = computed(() => form.value.items.reduce((s, i) => s + lineAmount(i.qty, i.price), 0))
 
 const itemColumns = [
-  { title: '产品', key: 'material', width: 260 },
-  { title: '数量', key: 'qty', width: 120 },
-  { title: '含税单价', key: 'price', width: 140 },
-  { title: '税率', key: 'taxRate', width: 110 },
-  { title: '金额', key: 'amount', width: 120, align: 'right' },
+  { title: t('crm.common.f.material'), key: 'material', width: 260 },
+  { title: t('common.field.quantity'), key: 'qty', width: 120 },
+  { title: t('crm.common.f.priceTax'), key: 'price', width: 160 },
+  { title: t('crm.common.f.taxRate'), key: 'taxRate', width: 110 },
+  { title: t('common.field.amount'), key: 'amount', width: 120, align: 'right' },
   { title: '', key: 'action', width: 50 }
 ]
 
 const rules = {
-  name: [{ required: true, whitespace: true, message: '请输入商机名称' }],
-  customerId: [{ required: true, message: '请选择客户' }]
+  name: [{ required: true, whitespace: true, message: t('crm.opportunity.nameRequired') }],
+  customerId: [{ required: true, message: t('crm.common.customerRequired') }]
 }
 const FIELDS = ['name', 'customerId', 'contactId', 'amount', 'stage', 'probability', 'expectedDate', 'source', 'campaignId', 'ownerId', 'remark']
 const drawer = useFormDrawer({
@@ -374,7 +376,7 @@ const { formRef, form } = drawer
 
 async function remove(id) {
   await deleteOpportunity(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   reload()
 }
 

@@ -1,7 +1,7 @@
 <template>
   <SubPage
     :open="open"
-    :title="detail?.name || '流程详情'"
+    :title="detail?.name || $t('workflow.detail.title')"
     width="min(860px, 100vw)"
     destroy-on-close
     class="instance-drawer"
@@ -15,16 +15,16 @@
       <template v-if="detail">
         <div class="instance-meta">
           <span><UserOutlined /> {{ detail.startUserName }}</span>
-          <span>流程：{{ detail.processName }}</span>
-          <span>发起：{{ detail.startTime }}</span>
-          <span v-if="detail.endTime">结束：{{ detail.endTime }}</span>
+          <span>{{ $t('workflow.detail.process', { name: detail.processName }) }}</span>
+          <span>{{ $t('workflow.detail.started', { time: detail.startTime }) }}</span>
+          <span v-if="detail.endTime">{{ $t('workflow.detail.ended', { time: detail.endTime }) }}</span>
         </div>
 
         <a-tabs v-model:active-key="activeTab">
-          <a-tab-pane key="detail" tab="审批详情">
+          <a-tab-pane key="detail" :tab="$t('workflow.detail.approvalTab')">
             <template v-if="detail.business?.length">
               <!-- 业务单据发起的流程：展示发起时的业务信息（金额、天数等），字典值显示为标签 -->
-              <div class="section-title">业务信息</div>
+              <div class="section-title">{{ $t('workflow.detail.business') }}</div>
               <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" bordered size="small">
                 <a-descriptions-item v-for="b in detail.business" :key="b.field" :label="b.label">
                   <DictTag v-if="b.dictType" :type="b.dictType" :value="String(b.value)" />
@@ -33,11 +33,11 @@
               </a-descriptions>
             </template>
             <template v-else>
-              <div class="section-title">表单信息</div>
+              <div class="section-title">{{ $t('workflow.detail.form') }}</div>
               <FormView :fields="detail.form || []" :data="detail.formData || {}" />
             </template>
 
-            <div class="section-title">审批记录</div>
+            <div class="section-title">{{ $t('workflow.detail.records') }}</div>
             <a-timeline class="record-timeline">
               <a-timeline-item v-for="(r, i) in detail.records" :key="i" :color="ACTIONS[r.action]?.color || 'gray'">
                 <template v-if="r.action === 'PENDING'" #dot><ClockCircleOutlined class="pending-dot" /></template>
@@ -53,7 +53,7 @@
               </a-timeline-item>
             </a-timeline>
           </a-tab-pane>
-          <a-tab-pane key="flow" tab="流程图">
+          <a-tab-pane key="flow" :tab="$t('workflow.detail.flowTab')">
             <div class="flow-box">
               <FlowDesigner
                 v-if="detail.flow"
@@ -62,7 +62,7 @@
                 :node-status="detail.nodeStatus || {}"
                 readonly
               />
-              <a-empty v-else description="无流程图" />
+              <a-empty v-else :description="$t('workflow.detail.noFlow')" />
             </div>
           </a-tab-pane>
         </a-tabs>
@@ -72,17 +72,17 @@
     <template v-if="detail && (canHandle || detail.cancelable)" #footer>
       <div class="drawer-footer">
         <a-button v-if="detail.cancelable" danger @click="openAction('cancel')">
-          <template #icon><RollbackOutlined /></template>撤回
+          <template #icon><RollbackOutlined /></template>{{ $t('workflow.action.cancel') }}
         </a-button>
         <template v-if="canHandle">
           <a-button @click="openAction('transfer')">
-            <template #icon><SwapOutlined /></template>转交
+            <template #icon><SwapOutlined /></template>{{ $t('workflow.action.transfer') }}
           </a-button>
           <a-button danger @click="openAction('reject')">
-            <template #icon><CloseOutlined /></template>拒绝
+            <template #icon><CloseOutlined /></template>{{ $t('common.action.reject') }}
           </a-button>
           <a-button type="primary" @click="openAction('approve')">
-            <template #icon><CheckOutlined /></template>同意
+            <template #icon><CheckOutlined /></template>{{ $t('common.action.approve') }}
           </a-button>
         </template>
       </div>
@@ -101,20 +101,20 @@
       <a-form ref="actionRef" :model="actionForm" layout="vertical">
         <a-form-item
           v-if="action === 'transfer'"
-          label="转交给"
+          :label="$t('workflow.action.transferTo')"
           name="user"
-          :rules="[{ required: true, message: '请选择转交人' }]"
+          :rules="[{ required: true, message: $t('workflow.action.selectTransferee') }]"
         >
           <div class="transfer-user">
             <span v-if="actionForm.user">{{ actionForm.user.nickname || actionForm.user.username }}</span>
-            <span v-else class="sub-text">未选择</span>
-            <a-button size="small" @click="pickerOpen = true">选择</a-button>
+            <span v-else class="sub-text">{{ $t('workflow.action.notSelected') }}</span>
+            <a-button size="small" @click="pickerOpen = true">{{ $t('common.action.select') }}</a-button>
           </div>
         </a-form-item>
         <a-form-item
           :label="ACTION_FORMS[action]?.label"
           name="comment"
-          :rules="action === 'reject' ? [{ required: true, whitespace: true, message: '请填写拒绝理由' }] : []"
+          :rules="action === 'reject' ? [{ required: true, whitespace: true, message: $t('workflow.action.rejectReasonPh') }] : []"
         >
           <a-textarea
             v-model:value="actionForm.comment"
@@ -129,17 +129,18 @@
 
     <UserPicker
       v-model:open="pickerOpen"
-      title="选择转交人"
+      :title="$t('workflow.action.selectTransferee')"
       :multiple="false"
       :fetcher="pageIdentityUsers"
       :disabled-row="(r) => r.id === userStore.user?.id"
-      disabled-text="自己"
+      :disabled-text="$t('workflow.action.self')"
       :submit="(ids, rows) => (actionForm.user = rows[0])"
     />
   </SubPage>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import SubPage from '@/components/SubPage.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
@@ -161,6 +162,8 @@ import { cancelInstance, getInstance } from '@/api/workflow/instance'
 import { approveTask, rejectTask, transferTask } from '@/api/workflow/task'
 import { useUserStore } from '@/store/user'
 
+const { t } = useI18n()
+
 /**
  * 流程实例详情：表单、审批记录、流程进度；当前用户有待办时可同意 / 拒绝 / 转交，发起人可撤回
  */
@@ -172,21 +175,21 @@ const emit = defineEmits(['update:open', 'changed'])
 const userStore = useUserStore()
 
 const ACTIONS = {
-  START: { label: '发起', color: 'blue', tag: 'blue' },
-  APPROVE: { label: '同意', color: 'green', tag: 'green' },
-  REJECT: { label: '拒绝', color: 'red', tag: 'red' },
-  TRANSFER: { label: '转交', color: 'blue', tag: 'blue' },
-  CANCEL: { label: '撤回', color: 'gray', tag: 'default' },
-  TERMINATE: { label: '终止', color: 'red', tag: 'red' },
-  CC: { label: '抄送', color: 'purple', tag: 'purple' },
-  PENDING: { label: '待审批', color: 'gray', tag: 'orange' }
+  START: { label: t('workflow.record.start'), color: 'blue', tag: 'blue' },
+  APPROVE: { label: t('common.action.approve'), color: 'green', tag: 'green' },
+  REJECT: { label: t('common.action.reject'), color: 'red', tag: 'red' },
+  TRANSFER: { label: t('workflow.action.transfer'), color: 'blue', tag: 'blue' },
+  CANCEL: { label: t('workflow.action.cancel'), color: 'gray', tag: 'default' },
+  TERMINATE: { label: t('workflow.list.terminate'), color: 'red', tag: 'red' },
+  CC: { label: t('workflow.record.cc'), color: 'purple', tag: 'purple' },
+  PENDING: { label: t('workflow.record.pending'), color: 'gray', tag: 'orange' }
 }
 
 const ACTION_FORMS = {
-  approve: { title: '同意', okText: '同意', label: '审批意见', placeholder: '选填' },
-  reject: { title: '拒绝', okText: '拒绝', label: '拒绝理由', placeholder: '请填写拒绝理由' },
-  transfer: { title: '转交', okText: '转交', label: '转交说明', placeholder: '选填' },
-  cancel: { title: '撤回申请', okText: '撤回', label: '撤回原因', placeholder: '选填，撤回后流程结束' }
+  approve: { title: t('common.action.approve'), okText: t('common.action.approve'), done: t('workflow.action.approved'), label: t('workflow.action.comment'), placeholder: t('workflow.action.optional') },
+  reject: { title: t('common.action.reject'), okText: t('common.action.reject'), done: t('workflow.action.rejected'), label: t('workflow.action.rejectReason'), placeholder: t('workflow.action.rejectReasonPh') },
+  transfer: { title: t('workflow.action.transfer'), okText: t('workflow.action.transfer'), done: t('workflow.action.transferred'), label: t('workflow.action.transferNote'), placeholder: t('workflow.action.optional') },
+  cancel: { title: t('workflow.action.cancelTitle'), okText: t('workflow.action.cancel'), done: t('workflow.action.cancelled'), label: t('workflow.action.cancelReason'), placeholder: t('workflow.action.cancelPh') }
 }
 
 const loading = ref(false)
@@ -243,7 +246,7 @@ async function submitAction() {
     if (action.value === 'reject') await rejectTask(taskId, comment)
     if (action.value === 'transfer') await transferTask(taskId, actionForm.user.id, comment)
     if (action.value === 'cancel') await cancelInstance(detail.value.id, comment)
-    message.success(`已${ACTION_FORMS[action.value].okText}`)
+    message.success(ACTION_FORMS[action.value].done)
     actionOpen.value = false
     emit('changed')
     // 处理完成后流程可能已结束或流转给他人，重新加载展示最新进度
@@ -260,7 +263,7 @@ watch(
   (list) => (list || []).forEach((b) => b.dictType && dictStore.load(b.dictType).catch(() => {}))
 )
 const formatBusinessValue = (b) =>
-  b.type === 'NUMBER' && typeof b.value === 'number' ? b.value.toLocaleString('zh-CN', { maximumFractionDigits: 2 }) : b.value
+  b.type === 'NUMBER' && typeof b.value === 'number' ? b.value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : b.value
 </script>
 
 <style scoped>

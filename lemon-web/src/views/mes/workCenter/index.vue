@@ -2,11 +2,11 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="工作中心" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="编码或名称" allow-clear />
+        <a-form-item :label="$t('mes.workCenter.title')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('mes.workCenter.codeOrName')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.sys_common_status, true)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -21,7 +21,7 @@
         @refresh="load"
       >
         <a-button v-perm="'mes:wc:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>新增工作中心
+          <template #icon><PlusOutlined /></template>{{ $t('mes.workCenter.add') }}
         </a-button>
       </TableToolbar>
 
@@ -40,11 +40,11 @@
             <div>{{ record.name }}</div>
             <div class="sub-text">{{ record.code }}</div>
           </template>
-          <template v-else-if="column.key === 'laborRate'">¥{{ formatMoney(record.laborRate) }} / 工时</template>
-          <template v-else-if="column.key === 'overheadRate'">¥{{ formatMoney(record.overheadRate) }} / 工时</template>
+          <template v-else-if="column.key === 'laborRate'">{{ $t('mes.workCenter.perHour', { v: formatMoney(record.laborRate) }) }}</template>
+          <template v-else-if="column.key === 'overheadRate'">{{ $t('mes.workCenter.perHour', { v: formatMoney(record.overheadRate) }) }}</template>
           <template v-else-if="column.key === 'capacity'">
-            <div>{{ formatQty(dailyCapacity(record)) }} 工时 / 天</div>
-            <div class="sub-text">{{ formatQty(record.dailyHours ?? 8) }} 工时 × {{ record.resources ?? 1 }} 个资源</div>
+            <div>{{ $t('mes.workCenter.hoursPerDay', { v: formatQty(dailyCapacity(record)) }) }}</div>
+            <div class="sub-text">{{ $t('mes.workCenter.hoursXResources', { h: formatQty(record.dailyHours ?? 8), n: record.resources ?? 1 }) }}</div>
           </template>
           <template v-else-if="column.key === 'workDays'">{{ workDaysText(record.workDays) }}</template>
           <template v-else-if="column.key === 'status'">
@@ -59,12 +59,12 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button v-perm="'mes:wc:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-perm="'mes:wc:remove'">
-                <a-popconfirm :title="`确定删除工作中心「${record.name}」？`" @confirm="remove(record.id)">
+                <a-popconfirm :title="$t('mes.workCenter.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>删除
+                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
                   </a-button>
                 </a-popconfirm>
               </span>
@@ -74,51 +74,51 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增工作中心" edit-title="编辑工作中心">
-      <a-alert type="info" show-icon class="tip" message="成本核算按报工工时 × 费率计算工单的直接人工和制造费用" />
+    <FormDrawer :drawer="drawer" :create-title="$t('mes.workCenter.add')" :edit-title="$t('mes.workCenter.edit')">
+      <a-alert type="info" show-icon class="tip" :message="$t('mes.workCenter.costTip')" />
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="编码" name="code">
-              <a-input v-model:value="form.code" :maxlength="32" placeholder="如：WC01" />
+            <a-form-item :label="$t('common.field.code')" name="code">
+              <a-input v-model:value="form.code" :maxlength="32" :placeholder="$t('mes.workCenter.codePh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="名称" name="name">
-              <a-input v-model:value="form.name" :maxlength="64" placeholder="如：SMT 贴片线" />
+            <a-form-item :label="$t('common.field.name')" name="name">
+              <a-input v-model:value="form.name" :maxlength="64" :placeholder="$t('mes.workCenter.namePh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="人工费率" name="laborRate">
+            <a-form-item :label="$t('mes.workCenter.laborRate')" name="laborRate">
               <template v-if="referenceRate != null" #extra>
-                参考：生产岗位平均人工成本 ¥{{ formatMoney(referenceRate) }} / 小时
-                <a @click="form.laborRate = Number(referenceRate)">使用</a>
+                {{ $t('mes.workCenter.reference', { v: formatMoney(referenceRate) }) }}
+                <a @click="form.laborRate = Number(referenceRate)">{{ $t('mes.workCenter.use') }}</a>
               </template>
-              <a-input-number v-model:value="form.laborRate" :min="0" :precision="2" prefix="¥" addon-after="/ 工时" class="full" />
+              <a-input-number v-model:value="form.laborRate" :min="0" :precision="2" prefix="¥" :addon-after="$t('mes.workCenter.perHourUnit')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="制造费用率" name="overheadRate">
-              <a-input-number v-model:value="form.overheadRate" :min="0" :precision="2" prefix="¥" addon-after="/ 工时" class="full" />
+            <a-form-item :label="$t('mes.workCenter.overheadRate')" name="overheadRate">
+              <a-input-number v-model:value="form.overheadRate" :min="0" :precision="2" prefix="¥" :addon-after="$t('mes.workCenter.perHourUnit')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="每资源每日工时" name="dailyHours">
-              <a-input-number v-model:value="form.dailyHours" :min="0" :max="24" :precision="2" addon-after="小时" class="full" />
+            <a-form-item :label="$t('mes.workCenter.dailyHours')" name="dailyHours">
+              <a-input-number v-model:value="form.dailyHours" :min="0" :max="24" :precision="2" :addon-after="$t('mes.workCenter.hours')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="资源数" name="resources" extra="设备台数或班组人数">
+            <a-form-item :label="$t('mes.workCenter.resources')" name="resources" :extra="$t('mes.workCenter.resourcesExtra')">
               <a-input-number v-model:value="form.resources" :min="1" :precision="0" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="工作日" name="workDays" :extra="`日产能 ${formatQty(dailyCapacity(form))} 工时；节假日、加班可在「产能排程 - 工厂日历」中单独设置`">
+            <a-form-item :label="$t('mes.workCenter.workDays')" name="workDays" :extra="$t('mes.workCenter.workDaysExtra', { v: formatQty(dailyCapacity(form)) })">
               <a-checkbox-group v-model:value="form.workDays" :options="WEEK_DAYS" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" />
             </a-form-item>
           </a-col>
@@ -130,6 +130,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -155,23 +156,24 @@ import { formatMoney } from '@/components/scm/scm'
 import { formatQty } from '@/components/wms/wms'
 
 const userStore = useUserStore()
+const { t } = useI18n()
 const dict = useDict('sys_common_status')
 
 const columns = [
-  { title: '工作中心', key: 'name', width: 200 },
-  { title: '人工费率', key: 'laborRate', width: 150 },
-  { title: '制造费用率', key: 'overheadRate', width: 150 },
-  { title: '日产能', key: 'capacity', width: 170, exportValue: (r) => dailyCapacity(r) },
-  { title: '工作日', key: 'workDays', width: 150, exportValue: (r) => workDaysText(r.workDays) },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '备注', dataIndex: 'remark', width: 180, ellipsis: true },
-  { title: '操作', key: 'action', width: 160, fixed: 'right' }
+  { title: t('mes.workCenter.title'), key: 'name', width: 200 },
+  { title: t('mes.workCenter.laborRate'), key: 'laborRate', width: 150 },
+  { title: t('mes.workCenter.overheadRate'), key: 'overheadRate', width: 160 },
+  { title: t('mes.workCenter.dailyCapacity'), key: 'capacity', width: 190, exportValue: (r) => dailyCapacity(r) },
+  { title: t('mes.workCenter.workDays'), key: 'workDays', width: 150, exportValue: (r) => workDaysText(r.workDays) },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
 ]
-const WEEK_DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((label, i) => ({ label, value: i + 1 }))
+const WEEK_DAYS = t('mes.workCenter.weekDays').split(',').map((label, i) => ({ label, value: i + 1 }))
 const parseWorkDays = (v) => (v || '').split(',').filter(Boolean).map(Number)
 const workDaysText = (v) => {
   const days = parseWorkDays(v)
-  return days.length ? days.map((d) => WEEK_DAYS[d - 1]?.label).join('、') : '-'
+  return days.length ? days.map((d) => WEEK_DAYS[d - 1]?.label).join(t('mes.workCenter.sep')) : '-'
 }
 /** 日产能 = 每资源每日工时 × 资源数 */
 const dailyCapacity = (r) => Math.round(Number(r.dailyHours ?? 8) * Number(r.resources ?? 1) * 100) / 100
@@ -191,15 +193,15 @@ onMounted(load)
 
 const rules = {
   code: [
-    { required: true, message: '请输入编码' },
-    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: '只能包含字母、数字、下划线和短横线' }
+    { required: true, message: t('common.rule.required', { name: t('common.field.code') }) },
+    { pattern: /^[A-Za-z0-9_-]{1,32}$/, message: t('mes.workCenter.codeRule') }
   ],
-  name: [{ required: true, whitespace: true, message: '请输入名称' }],
-  laborRate: [{ required: true, message: '请填写人工费率' }],
-  overheadRate: [{ required: true, message: '请填写制造费用率' }],
-  dailyHours: [{ required: true, message: '请填写每日工时' }],
-  resources: [{ required: true, message: '请填写资源数' }],
-  workDays: [{ required: true, type: 'array', min: 1, message: '请选择工作日' }]
+  name: [{ required: true, whitespace: true, message: t('common.rule.required', { name: t('common.field.name') }) }],
+  laborRate: [{ required: true, message: t('mes.workCenter.laborRateRequired') }],
+  overheadRate: [{ required: true, message: t('mes.workCenter.overheadRateRequired') }],
+  dailyHours: [{ required: true, message: t('mes.workCenter.dailyHoursRequired') }],
+  resources: [{ required: true, message: t('mes.workCenter.resourcesRequired') }],
+  workDays: [{ required: true, type: 'array', min: 1, message: t('mes.workCenter.workDaysRequired') }]
 }
 const referenceRate = ref(null)
 const drawer = useFormDrawer({
@@ -245,7 +247,7 @@ const { formRef, form } = drawer
 
 async function remove(id) {
   await deleteWorkCenter(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 </script>

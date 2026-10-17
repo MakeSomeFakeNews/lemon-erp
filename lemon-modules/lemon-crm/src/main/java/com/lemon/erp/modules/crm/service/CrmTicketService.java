@@ -171,7 +171,7 @@ public class CrmTicketService {
                 .set(CrmTicket::getSatisfaction, req.satisfaction())
                 .set(CrmTicket::getClosedTime, LocalDateTime.now())
                 .eq(CrmTicket::getId, id).eq(CrmTicket::getStatus, "RESOLVED"));
-        log(id, "CLOSE", req.satisfaction() == null ? req.content() : "满意度 " + req.satisfaction() + (req.content() == null ? "" : "：" + req.content()));
+        log(id, "CLOSE", req.satisfaction() == null ? req.content() : "满意度 " + req.satisfaction() + (req.content() == null ? "" : "：" + req.content())); // i18n-ignore 存库的处理记录
     }
 
     /** 重新打开：客户反馈问题未解决 */
@@ -196,7 +196,7 @@ public class CrmTicketService {
     public void delete(List<Long> ids) {
         for (CrmTicket t : ticketMapper.selectByIds(ids)) {
             if (!"OPEN".equals(t.getStatus())) {
-                throw new BizException("工单 " + t.getTicketNo() + " 已开始处理，不能删除");
+                throw new BizException("工单 {0} 已开始处理，不能删除", t.getTicketNo());
             }
         }
         logMapper.delete(Wrappers.<CrmTicketLog>lambdaQuery().in(CrmTicketLog::getTicketId, ids));
@@ -278,7 +278,7 @@ public class CrmTicketService {
             throw new BizException("工单已关闭，不能领用备件");
         }
         WmsStockDoc doc = stockDocService.createConfirmed(StockBizType.OUT, new StockDocRequest("SERVICE", req.warehouseId(), null,
-                req.bizDate(), req.remark() == null ? "服务工单 " + t.getTicketNo() + " 领用备件" : req.remark(), req.items()), t.getTicketNo());
+                req.bizDate(), req.remark() == null ? "服务工单 " + t.getTicketNo() + " 领用备件" : req.remark(), req.items()), t.getTicketNo()); // i18n-ignore 存库的单据备注
         CrmTicketPart p = new CrmTicketPart();
         p.setTicketId(id);
         p.setWmsDocId(doc.getId());
@@ -289,7 +289,7 @@ public class CrmTicketService {
         p.setRemark(req.remark());
         p.setCreateBy(SecurityUtils.getUserId());
         partMapper.insert(p);
-        log(id, "PROCESS", "领用备件，出库单 " + doc.getDocNo());
+        log(id, "PROCESS", "领用备件，出库单 " + doc.getDocNo()); // i18n-ignore 存库的处理记录
         return p.getId();
     }
 
@@ -303,10 +303,10 @@ public class CrmTicketService {
         BigDecimal rate = req.taxRate() == null ? BigDecimal.valueOf(6) : req.taxRate();
         BigDecimal tax = req.amount().multiply(rate).divide(BigDecimal.valueOf(100).add(rate), 2, RoundingMode.HALF_UP);
         FinBill bill = billService.createFromSource("AR", t.getCustomerId(), "TICKET", id, t.getTicketNo(), req.billDate(),
-                req.amount(), tax, req.remark() == null ? "服务费 " + t.getTitle() : req.remark(), null);
+                req.amount(), tax, req.remark() == null ? "服务费 " + t.getTitle() : req.remark(), null); // i18n-ignore 存库的单据摘要
         ticketMapper.update(Wrappers.<CrmTicket>lambdaUpdate().set(CrmTicket::getFeeAmount, req.amount())
                 .set(CrmTicket::getFeeBillId, bill.getId()).eq(CrmTicket::getId, id));
-        log(id, "PROCESS", "服务收费 ¥" + req.amount().stripTrailingZeros().toPlainString() + "，应收单 " + bill.getBillNo());
+        log(id, "PROCESS", "服务收费 ¥" + req.amount().stripTrailingZeros().toPlainString() + "，应收单 " + bill.getBillNo()); // i18n-ignore 存库的处理记录
     }
 
     private void log(Long ticketId, String action, String content) {

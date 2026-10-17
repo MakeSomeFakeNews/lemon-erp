@@ -1,22 +1,22 @@
 <template>
-  <a-modal :open="open" title="套打设计" width="min(1280px, 100vw)" :mask-closable="false" ok-text="确定" @ok="confirm" @cancel="emit('update:open', false)">
+  <a-modal :open="open" :title="$t('print.overlay.title')" width="min(1280px, 100vw)" :mask-closable="false" :ok-text="$t('common.action.confirm')" @ok="confirm" @cancel="emit('update:open', false)">
     <div class="designer">
       <!-- 左侧：可放置的内容 -->
       <div class="palette scroll-hover">
-        <div class="group-title">基本</div>
+        <div class="group-title">{{ $t('print.overlay.basic') }}</div>
         <a v-for="k in BASIC" :key="k.key" :class="['chip', { used: used(k.key) }]" @click="add(k.key)">{{ k.label }}</a>
-        <div class="group-title">表头字段</div>
-        <a v-for="f in type.fields" :key="f" :class="['chip', { used: used(f) }]" @click="add(f)">{{ f }}</a>
+        <div class="group-title">{{ $t('print.overlay.fields') }}</div>
+        <a v-for="f in type.fields" :key="f" :class="['chip', { used: used(f) }]" @click="add(f)">{{ printLabel(f) }}</a>
         <template v-if="totalColumns.length">
-          <div class="group-title">合计</div>
-          <a v-for="c in totalColumns" :key="c" :class="['chip', { used: used(`$total:${c}`) }]" @click="add(`$total:${c}`)">{{ c }}合计</a>
+          <div class="group-title">{{ $t('print.overlay.totals') }}</div>
+          <a v-for="c in totalColumns" :key="c" :class="['chip', { used: used(`$total:${c}`) }]" @click="add(`$total:${c}`)">{{ $t('print.overlay.totalOf', { name: printLabel(c) }) }}</a>
         </template>
         <template v-if="type.signs.length">
-          <div class="group-title">签字栏</div>
-          <a v-for="s in type.signs" :key="s" :class="['chip', { used: used(`$sign:${s}`) }]" @click="add(`$sign:${s}`)">{{ s }}</a>
+          <div class="group-title">{{ $t('print.overlay.signs') }}</div>
+          <a v-for="s in type.signs" :key="s" :class="['chip', { used: used(`$sign:${s}`) }]" @click="add(`$sign:${s}`)">{{ printLabel(s) }}</a>
         </template>
         <template v-if="type.columns.length">
-          <div class="group-title">明细列（在明细区按列定位）</div>
+          <div class="group-title">{{ $t('print.overlay.columns') }}</div>
           <a-checkbox
             v-for="c in type.columns"
             :key="c.title"
@@ -24,7 +24,7 @@
             class="col-check"
             @update:checked="(v) => toggleColumn(c.title, v)"
           >
-            {{ c.title }}
+            {{ printLabel(c.title) }}
           </a-checkbox>
         </template>
       </div>
@@ -33,10 +33,10 @@
       <div class="canvas-wrap scroll-hover">
         <div class="toolbar">
           <a-upload accept="image/png,image/jpeg" :show-upload-list="false" :before-upload="uploadBackground">
-            <a-button size="small" :loading="uploading"><template #icon><PictureOutlined /></template>上传底图</a-button>
+            <a-button size="small" :loading="uploading"><template #icon><PictureOutlined /></template>{{ $t('print.overlay.uploadBg') }}</a-button>
           </a-upload>
-          <a-button v-if="background" size="small" @click="removeBackground">删除底图</a-button>
-          <span class="hint">底图为扫描的空白单据，只用于对位，不打印；拖动字段到对应位置</span>
+          <a-button v-if="background" size="small" @click="removeBackground">{{ $t('print.overlay.removeBg') }}</a-button>
+          <span class="hint">{{ $t('print.overlay.bgHint') }}</span>
         </div>
         <div
           ref="pageRef"
@@ -54,7 +54,7 @@
               :style="{ left: px(c.x), top: px(detail.y), width: px(c.width), height: px(detail.rowHeight) }"
               @pointerdown.stop="startDrag($event, `col:${i}`)"
             >
-              {{ c.key }}
+              {{ printLabel(c.key) }}
             </div>
           </template>
           <div
@@ -71,45 +71,45 @@
 
       <!-- 右侧：属性 -->
       <div class="props scroll-hover">
-        <div class="group-title">整体偏移（校准打印机）</div>
+        <div class="group-title">{{ $t('print.overlay.offset') }}</div>
         <a-row :gutter="8">
           <a-col :span="12"><a-input-number v-model:value="offsetX" :min="-50" :max="50" :step="0.5" addon-before="X" addon-after="mm" size="small" class="full" /></a-col>
           <a-col :span="12"><a-input-number v-model:value="offsetY" :min="-50" :max="50" :step="0.5" addon-before="Y" addon-after="mm" size="small" class="full" /></a-col>
         </a-row>
         <template v-if="current">
-          <div class="group-title">{{ current.kind === 'item' ? labelOf(current.obj.key) : `明细列：${current.obj.key}` }}</div>
+          <div class="group-title">{{ current.kind === 'item' ? labelOf(current.obj.key) : $t('print.overlay.columnOf', { name: printLabel(current.obj.key) }) }}</div>
           <a-form layout="vertical" size="small">
             <a-row :gutter="8">
               <a-col :span="12"><a-form-item label="X（mm）"><a-input-number v-model:value="current.obj.x" :min="0" :max="layout.width" :step="0.5" class="full" /></a-form-item></a-col>
               <a-col v-if="current.kind === 'item'" :span="12">
                 <a-form-item label="Y（mm）"><a-input-number v-model:value="current.obj.y" :min="0" :max="layout.height" :step="0.5" class="full" /></a-form-item>
               </a-col>
-              <a-col :span="12"><a-form-item label="宽度（mm）"><a-input-number v-model:value="current.obj.width" :min="5" :max="500" :step="1" class="full" /></a-form-item></a-col>
+              <a-col :span="12"><a-form-item :label="$t('print.overlay.width')"><a-input-number v-model:value="current.obj.width" :min="5" :max="500" :step="1" class="full" /></a-form-item></a-col>
               <a-col v-if="current.kind === 'item'" :span="12">
-                <a-form-item label="字号（pt）"><a-input-number v-model:value="current.obj.fontSize" :min="6" :max="36" :placeholder="String(fontSize)" class="full" /></a-form-item>
+                <a-form-item :label="$t('print.overlay.fontSize')"><a-input-number v-model:value="current.obj.fontSize" :min="6" :max="36" :placeholder="String(fontSize)" class="full" /></a-form-item>
               </a-col>
             </a-row>
-            <a-form-item label="对齐">
+            <a-form-item :label="$t('print.overlay.align')">
               <a-radio-group v-model:value="current.obj.align" button-style="solid" size="small">
-                <a-radio-button value="LEFT">左</a-radio-button>
-                <a-radio-button value="CENTER">中</a-radio-button>
-                <a-radio-button value="RIGHT">右</a-radio-button>
+                <a-radio-button value="LEFT">{{ $t('print.overlay.left') }}</a-radio-button>
+                <a-radio-button value="CENTER">{{ $t('print.overlay.center') }}</a-radio-button>
+                <a-radio-button value="RIGHT">{{ $t('print.overlay.right') }}</a-radio-button>
               </a-radio-group>
             </a-form-item>
-            <a-button danger size="small" @click="removeSelected">移除</a-button>
+            <a-button danger size="small" @click="removeSelected">{{ $t('print.overlay.remove') }}</a-button>
           </a-form>
         </template>
         <template v-if="detail.columns.length">
-          <div class="group-title">明细区</div>
+          <div class="group-title">{{ $t('print.overlay.detail') }}</div>
           <a-form layout="vertical" size="small">
             <a-row :gutter="8">
-              <a-col :span="12"><a-form-item label="首行顶部（mm）"><a-input-number v-model:value="detail.y" :min="0" :max="layout.height" :step="0.5" class="full" /></a-form-item></a-col>
-              <a-col :span="12"><a-form-item label="行高（mm）"><a-input-number v-model:value="detail.rowHeight" :min="3" :max="50" :step="0.5" class="full" /></a-form-item></a-col>
-              <a-col :span="12"><a-form-item label="每页行数"><a-input-number v-model:value="detail.rows" :min="1" :max="100" :precision="0" class="full" /></a-form-item></a-col>
+              <a-col :span="12"><a-form-item :label="$t('print.overlay.detailTop')"><a-input-number v-model:value="detail.y" :min="0" :max="layout.height" :step="0.5" class="full" /></a-form-item></a-col>
+              <a-col :span="12"><a-form-item :label="$t('print.overlay.rowHeight')"><a-input-number v-model:value="detail.rowHeight" :min="3" :max="50" :step="0.5" class="full" /></a-form-item></a-col>
+              <a-col :span="12"><a-form-item :label="$t('print.overlay.rowsPerPage')"><a-input-number v-model:value="detail.rows" :min="1" :max="100" :precision="0" class="full" /></a-form-item></a-col>
             </a-row>
           </a-form>
         </template>
-        <div class="tip">超过每页行数时换页，每页都会打印定位的字段；合计、签字栏按定位输出在每一页。</div>
+        <div class="tip">{{ $t('print.overlay.tip') }}</div>
       </div>
     </div>
   </a-modal>
@@ -118,8 +118,10 @@
 <script setup>
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { PictureOutlined } from '@ant-design/icons-vue'
 import request from '@/utils/request'
+import { printLabel } from '@/utils/printTemplates'
 
 /**
  * 套打设计：在纸张（可上传扫描的空白单据作底图）上拖放字段，设置明细区的位置、行高和每页行数。
@@ -138,12 +140,13 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:open', 'confirm'])
 
+const { t } = useI18n()
 const SCALE = 3
 const BASIC = [
-  { key: '$title', label: '标题' },
-  { key: '$no', label: '单号' },
-  { key: '$company', label: '公司名称' },
-  { key: '$note', label: '备注' }
+  { key: '$title', label: t('print.overlay.docTitle') },
+  { key: '$no', label: t('print.name.docNo') },
+  { key: '$company', label: t('print.overlay.company') },
+  { key: '$note', label: t('print.name.remark') }
 ]
 const px = (mm) => `${(Number(mm) || 0) * SCALE}px`
 const fontSize = computed(() => props.layout.fontSize || 10)
@@ -161,9 +164,9 @@ const pageRef = ref()
 function labelOf(key) {
   const basic = BASIC.find((b) => b.key === key)
   if (basic) return basic.label
-  if (key.startsWith('$total:')) return `${key.slice(7)}合计`
-  if (key.startsWith('$sign:')) return key.slice(6)
-  return key
+  if (key.startsWith('$total:')) return t('print.overlay.totalOf', { name: printLabel(key.slice(7)) })
+  if (key.startsWith('$sign:')) return printLabel(key.slice(6))
+  return printLabel(key)
 }
 const used = (key) => items.value.some((it) => it.key === key)
 const hasColumn = (key) => detail.columns.some((c) => c.key === key)
@@ -239,7 +242,7 @@ async function loadBackground() {
 }
 function uploadBackground(file) {
   if (file.size > 2 * 1024 * 1024) {
-    message.warning('底图不能超过 2MB')
+    message.warning(t('print.overlay.bgTooLarge'))
     return false
   }
   const reader = new FileReader()
@@ -248,7 +251,7 @@ function uploadBackground(file) {
     try {
       await request.put(`/system/print-template/${props.templateKey}/background`, { dataUrl: reader.result })
       background.value = reader.result
-      message.success('底图已上传')
+      message.success(t('print.overlay.bgUploaded'))
     } finally {
       uploading.value = false
     }

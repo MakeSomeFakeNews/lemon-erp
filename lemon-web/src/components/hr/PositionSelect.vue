@@ -14,17 +14,18 @@
 import { onMounted, ref } from 'vue'
 import { positionOptions } from '@/api/hr'
 import { cached } from '@/utils/cache'
+import { t } from '@/locales'
 
 /** 职位下拉（启用的职位） */
 defineProps({
   value: Number,
-  placeholder: { type: String, default: '选择职位' }
+  placeholder: { type: String, default: () => t('hr.positionSelect.placeholder') }
 })
 const emit = defineEmits(['update:value'])
 
 const options = ref([])
 onMounted(async () => {
   const list = await cached('hr-positions', positionOptions)
-  options.value = list.map((p) => ({ value: p.id, label: p.grade ? `${p.name}（${p.grade}）` : p.name }))
+  options.value = list.map((p) => ({ value: p.id, label: p.grade ? t('hr.positionSelect.nameGrade', { name: p.name, grade: p.grade }) : p.name }))
 })
 </script>

@@ -1,12 +1,12 @@
 <template>
   <a-modal
     :open="open"
-    :title="material ? `辅助单位 - ${material.code} ${material.name}` : '辅助单位'"
+    :title="material ? `${$t('wms.units.title')} - ${material.code} ${material.name}` : $t('wms.units.title')"
     width="min(640px, 100vw)"
     destroy-on-close
     :confirm-loading="saving"
     :ok-button-props="{ disabled: !editable || loading }"
-    ok-text="保存"
+    :ok-text="$t('common.action.save')"
     @ok="save"
     @cancel="emit('update:open', false)"
   >
@@ -14,19 +14,19 @@
       type="info"
       show-icon
       class="tip"
-      :message="`1 辅助单位 = 换算率 × 基本单位（${material?.unit || '-'}）；库存、成本都按基本单位核算，下单时可按辅助单位录入`"
+      :message="$t('wms.units.tip', { unit: material?.unit || '-' })"
     />
     <a-spin :spinning="loading">
       <a-form ref="formRef" :model="form">
-        <a-table row-key="key" size="small" :columns="columns" :data-source="form.rows" :pagination="false" :locale="{ emptyText: '没有辅助单位' }">
+        <a-table row-key="key" size="small" :columns="columns" :data-source="form.rows" :pagination="false" :locale="{ emptyText: $t('wms.units.empty') }">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'unit'">
               <a-form-item :name="['rows', index, 'unit']" :rules="unitRules" class="cell-item">
-                <a-input v-model:value="record.unit" :maxlength="16" placeholder="如：箱" :disabled="!editable" />
+                <a-input v-model:value="record.unit" :maxlength="16" :placeholder="$t('wms.units.unitPlaceholder')" :disabled="!editable" />
               </a-form-item>
             </template>
             <template v-else-if="column.key === 'ratio'">
-              <a-form-item :name="['rows', index, 'ratio']" :rules="[{ required: true, message: '请填写换算率' }]" class="cell-item">
+              <a-form-item :name="['rows', index, 'ratio']" :rules="[{ required: true, message: $t('wms.units.inputRatio') }]" class="cell-item">
                 <a-input-number
                   v-model:value="record.ratio"
                   :min="0.0001"
@@ -38,7 +38,7 @@
               </a-form-item>
             </template>
             <template v-else-if="column.key === 'barcode'">
-              <a-input v-model:value="record.barcode" :maxlength="64" placeholder="选填" :disabled="!editable" />
+              <a-input v-model:value="record.barcode" :maxlength="64" :placeholder="$t('wms.common.optional')" :disabled="!editable" />
             </template>
             <template v-else-if="column.key === 'action'">
               <a-button v-if="editable" type="link" danger size="small" @click="form.rows.splice(index, 1)"><DeleteOutlined /></a-button>
@@ -47,7 +47,7 @@
         </a-table>
       </a-form>
       <a-button v-if="editable" type="dashed" block class="add-row" @click="addRow">
-        <template #icon><PlusOutlined /></template>添加辅助单位
+        <template #icon><PlusOutlined /></template>{{ $t('wms.units.add') }}
       </a-button>
     </a-spin>
   </a-modal>
@@ -59,6 +59,7 @@ import { message } from 'ant-design-vue'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { materialUnits, saveMaterialUnits } from '@/api/wms/material'
 import { rowKey } from '@/components/wms/wms'
+import { t } from '@/locales'
 
 /** 物料的辅助单位维护：整体保存 */
 const props = defineProps({
@@ -70,19 +71,19 @@ const props = defineProps({
 const emit = defineEmits(['update:open', 'saved'])
 
 const columns = [
-  { title: '辅助单位', key: 'unit', width: 140 },
-  { title: '换算率', key: 'ratio', width: 180 },
-  { title: '条码', key: 'barcode' },
+  { title: t('wms.units.unit'), key: 'unit', width: 140 },
+  { title: t('wms.units.ratio'), key: 'ratio', width: 180 },
+  { title: t('wms.units.barcode'), key: 'barcode' },
   { title: '', key: 'action', width: 50 }
 ]
 const unitRules = [
-  { required: true, whitespace: true, message: '请填写单位' },
+  { required: true, whitespace: true, message: t('wms.units.inputUnit') },
   {
     validator: (_, v) => {
       const name = v?.trim()
       if (!name) return Promise.resolve()
-      if (name === props.material?.unit) return Promise.reject('不能与基本单位相同')
-      if (form.rows.filter((r) => r.unit?.trim() === name).length > 1) return Promise.reject('单位重复')
+      if (name === props.material?.unit) return Promise.reject(t('wms.units.sameAsBase'))
+      if (form.rows.filter((r) => r.unit?.trim() === name).length > 1) return Promise.reject(t('wms.units.duplicate'))
       return Promise.resolve()
     }
   }
@@ -124,7 +125,7 @@ async function save() {
       props.material.id,
       form.rows.map((r) => ({ unit: r.unit.trim(), ratio: r.ratio, barcode: r.barcode?.trim() || null }))
     )
-    message.success('保存成功')
+    message.success(t('common.msg.saveSuccess'))
     emit('update:open', false)
     emit('saved')
   } finally {

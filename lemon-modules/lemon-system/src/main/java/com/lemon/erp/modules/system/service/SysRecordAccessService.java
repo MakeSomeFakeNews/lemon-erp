@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.system.service;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.framework.record.RecordType;
 import com.lemon.erp.framework.record.RecordTypeProvider;
 import com.lemon.erp.framework.security.PermissionService;
@@ -59,13 +60,16 @@ public class SysRecordAccessService {
         }
         String perm = write ? type.editPerm() : type.viewPerm();
         if (Arrays.stream(perm.split(",")).map(String::trim).noneMatch(permissionService::hasPerm)) {
-            throw new BizException("没有权限" + (write ? "修改" : "查看") + type.name() + "的" + what);
+            if (write) {
+                throw new BizException("没有权限修改{0}的{1}", I18n.t(type.name()), I18n.t(what));
+            }
+            throw new BizException("没有权限查看{0}的{1}", I18n.t(type.name()), I18n.t(what));
         }
         Supplier<Object> loader = () -> type.loader().apply(bizId);
         Object record = type.rule() == null || SecurityUtils.getDataScope().all()
                 ? loader.get() : DataPermissionContext.execute(type.rule(), loader);
         if (record == null) {
-            throw new BizException(type.name() + "不存在或没有权限");
+            throw new BizException("{0}不存在或没有权限", I18n.t(type.name()));
         }
     }
 }

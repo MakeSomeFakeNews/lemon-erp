@@ -51,14 +51,14 @@ public class ScmInquiryController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:inquiry:add')")
-    @OperLog(title = "询价单", type = OperType.INSERT)
+    @OperLog(title = "询价单", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody InquiryRequest req) {
         return R.ok(inquiryService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:inquiry:edit')")
-    @OperLog(title = "询价单", type = OperType.UPDATE)
+    @OperLog(title = "询价单", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody InquiryRequest req) {
         inquiryService.update(id, req);
         return R.ok();
@@ -66,7 +66,7 @@ public class ScmInquiryController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('scm:inquiry:remove')")
-    @OperLog(title = "询价单", type = OperType.DELETE)
+    @OperLog(title = "询价单", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         inquiryService.delete(ids);
         return R.ok();
@@ -74,7 +74,7 @@ public class ScmInquiryController {
 
     @PostMapping("/{id}/quote")
     @PreAuthorize("@ss.hasPerm('scm:inquiry:edit')")
-    @OperLog(title = "询价单报价", type = OperType.UPDATE)
+    @OperLog(title = "询价单报价", type = OperType.UPDATE) // i18n-ignore
     public R<Void> saveQuote(@PathVariable Long id, @Valid @RequestBody InquiryQuoteRequest req) {
         inquiryService.saveQuote(id, req);
         return R.ok();
@@ -82,7 +82,7 @@ public class ScmInquiryController {
 
     @DeleteMapping("/{id}/quote/{supplierId}")
     @PreAuthorize("@ss.hasPerm('scm:inquiry:edit')")
-    @OperLog(title = "询价单报价", type = OperType.DELETE)
+    @OperLog(title = "询价单报价", type = OperType.DELETE) // i18n-ignore
     public R<Void> deleteQuote(@PathVariable Long id, @PathVariable Long supplierId) {
         inquiryService.deleteQuote(id, supplierId);
         return R.ok();
@@ -91,14 +91,14 @@ public class ScmInquiryController {
     /** 定标完成，返回生成的采购订单 ID */
     @PostMapping("/{id}/finish")
     @PreAuthorize("@ss.hasPerm('scm:inquiry:edit')")
-    @OperLog(title = "询价定标", type = OperType.UPDATE)
+    @OperLog(title = "询价定标", type = OperType.UPDATE) // i18n-ignore
     public R<List<Long>> finish(@PathVariable Long id, @RequestBody InquiryFinishRequest req) {
         return R.ok(inquiryService.finish(id, req));
     }
 
     @PostMapping("/{id}/close")
     @PreAuthorize("@ss.hasPerm('scm:inquiry:edit')")
-    @OperLog(title = "询价单", type = OperType.UPDATE)
+    @OperLog(title = "询价单", type = OperType.UPDATE) // i18n-ignore
     public R<Void> close(@PathVariable Long id) {
         inquiryService.close(id);
         return R.ok();

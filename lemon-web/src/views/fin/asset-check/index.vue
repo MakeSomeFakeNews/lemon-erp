@@ -2,10 +2,10 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
-        <a-select v-model:value="query.status" placeholder="全部状态" allow-clear :options="toOptions(dict.fin_asset_check_status)" class="filter" @change="search" />
+        <a-select v-model:value="query.status" :placeholder="$t('fin.assetCheck.allStatus')" allow-clear :options="toOptions(dict.fin_asset_check_status)" class="filter" @change="search" />
         <template #extra>
           <a-button v-perm="'fin:assetCheck:add'" type="primary" @click="openCreate">
-            <template #icon><PlusOutlined /></template>新建盘点
+            <template #icon><PlusOutlined /></template>{{ $t('fin.assetCheck.newCheck') }}
           </a-button>
         </template>
       </TableToolbar>
@@ -32,9 +32,9 @@
           </template>
           <template v-else-if="column.key === 'diff'">
             <a-space :size="4" wrap>
-              <a-tag v-if="record.movedCount" color="orange">位置变化 {{ record.movedCount }}</a-tag>
-              <a-tag v-if="record.lossCount" color="red">盘亏 {{ record.lossCount }}</a-tag>
-              <a-tag v-if="record.gainCount" color="purple">盘盈 {{ record.gainCount }}</a-tag>
+              <a-tag v-if="record.movedCount" color="orange">{{ $t('fin.assetCheck.movedN', { n: record.movedCount }) }}</a-tag>
+              <a-tag v-if="record.lossCount" color="red">{{ $t('fin.assetCheck.lossN', { n: record.lossCount }) }}</a-tag>
+              <a-tag v-if="record.gainCount" color="purple">{{ $t('fin.assetCheck.gainN', { n: record.gainCount }) }}</a-tag>
               <span v-if="!record.movedCount && !record.lossCount && !record.gainCount" class="sub-text">-</span>
             </a-space>
           </template>
@@ -43,33 +43,33 @@
             <div v-if="record.finishTime" class="sub-text">{{ record.finishTime }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === 'CHECKING' ? '盘点' : '查看' }}</a-button>
+            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === 'CHECKING' ? $t('fin.assetCheck.check') : $t('common.action.view') }}</a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <a-modal v-model:open="createOpen" title="新建资产盘点" :confirm-loading="saving" @ok="submitCreate">
-      <a-alert type="info" show-icon class="block" message="按使用部门、存放地点生成盘点清单（包含所有未处置的资产），都不填时盘点全部资产" />
+    <a-modal v-model:open="createOpen" :title="$t('fin.assetCheck.createTitle')" :confirm-loading="saving" @ok="submitCreate">
+      <a-alert type="info" show-icon class="block" :message="$t('fin.assetCheck.createTip')" />
       <a-form layout="vertical">
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="盘点日期" required>
+            <a-form-item :label="$t('fin.assetCheck.checkDate')" required>
               <a-date-picker v-model:value="createForm.checkDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="使用部门">
+            <a-form-item :label="$t('fin.assetCheck.useDept')">
               <DeptSelect v-model:value="createForm.deptId" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="存放地点" extra="模糊匹配，如「3 楼」">
+            <a-form-item :label="$t('fin.assetCheck.location')" :extra="$t('fin.assetCheck.locationExtra')">
               <a-input v-model:value="createForm.location" :maxlength="128" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注">
+            <a-form-item :label="$t('common.field.remark')">
               <a-input v-model:value="createForm.remark" :maxlength="255" />
             </a-form-item>
           </a-col>
@@ -77,38 +77,38 @@
       </a-form>
     </a-modal>
 
-    <SubPage :open="detailOpen" :title="detail ? `资产盘点 ${detail.checkNo}` : ''" width="min(1100px, 100vw)" @close="detailOpen = false">
+    <SubPage :open="detailOpen" :title="detail ? $t('fin.assetCheck.detailTitle', { no: detail.checkNo }) : ''" width="min(1100px, 100vw)" @close="detailOpen = false">
       <template v-if="detail && checking" #extra>
         <a-space>
           <span v-perm="'fin:assetCheck:remove'">
-            <a-popconfirm title="删除该盘点单？" @confirm="remove"><a-button danger>删除</a-button></a-popconfirm>
+            <a-popconfirm :title="$t('fin.assetCheck.confirmDelete')" @confirm="remove"><a-button danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
           </span>
-          <a-button v-perm="'fin:assetCheck:edit'" @click="openGain">登记盘盈</a-button>
+          <a-button v-perm="'fin:assetCheck:edit'" @click="openGain">{{ $t('fin.assetCheck.registerGain') }}</a-button>
           <span v-perm="'fin:assetCheck:edit'">
             <a-popconfirm :title="finishTip" @confirm="finish">
-              <a-button type="primary">完成盘点</a-button>
+              <a-button type="primary">{{ $t('fin.assetCheck.finish') }}</a-button>
             </a-popconfirm>
           </span>
         </a-space>
       </template>
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" bordered class="block">
-          <a-descriptions-item label="盘点日期">{{ detail.checkDate }}</a-descriptions-item>
-          <a-descriptions-item label="范围">{{ scopeText(detail) }}</a-descriptions-item>
-          <a-descriptions-item label="状态"><DictTag type="fin_asset_check_status" :value="detail.status" /></a-descriptions-item>
-          <a-descriptions-item label="进度">{{ detail.checked }} / {{ detail.total }}</a-descriptions-item>
-          <a-descriptions-item label="差异">
-            位置变化 {{ detail.movedCount }}，盘亏 {{ detail.lossCount }}，盘盈 {{ detail.gainCount }}
+          <a-descriptions-item :label="$t('fin.assetCheck.checkDate')">{{ detail.checkDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.assetCheck.scope')">{{ scopeText(detail) }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.status')"><DictTag type="fin_asset_check_status" :value="detail.status" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.assetCheck.progress')">{{ detail.checked }} / {{ detail.total }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.assetCheck.diff')">
+            {{ $t('fin.assetCheck.diffSummary', { moved: detail.movedCount, loss: detail.lossCount, gain: detail.gainCount }) }}
           </a-descriptions-item>
-          <a-descriptions-item label="创建">{{ detail.createByName }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="备注" :span="3">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.assetCheck.createdBy')">{{ detail.createByName }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')" :span="3">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
         <div class="toolbar">
           <a-radio-group v-model:value="filter" button-style="solid" size="small">
-            <a-radio-button value="">全部</a-radio-button>
+            <a-radio-button value="">{{ $t('common.status.all') }}</a-radio-button>
             <a-radio-button v-for="o in dict.fin_asset_check_result" :key="o.value" :value="o.value">{{ o.label }}</a-radio-button>
           </a-radio-group>
-          <span v-if="checking" class="sub-text">盘亏的资产在完成盘点时按净值处置；位置变化的资产更新为实际的部门、使用人和存放地点</span>
+          <span v-if="checking" class="sub-text">{{ $t('fin.assetCheck.checkingHint') }}</span>
         </div>
         <a-table row-key="id" size="small" :columns="itemColumns" :data-source="items" :pagination="false" :scroll="{ x: 1050 }">
           <template #bodyCell="{ column, record }">
@@ -117,7 +117,7 @@
                 {{ record.assetName }}
                 <div class="sub-text">{{ record.assetCode }} {{ record.model }}</div>
               </template>
-              <template v-else>{{ record.gainName }}<div class="sub-text">账外资产</div></template>
+              <template v-else>{{ record.gainName }}<div class="sub-text">{{ $t('fin.assetCheck.offBook') }}</div></template>
             </template>
             <template v-else-if="column.key === 'book'">
               <template v-if="record.assetId">
@@ -139,12 +139,12 @@
             <template v-else-if="column.key === 'action'">
               <span v-if="checking" v-perm="'fin:assetCheck:edit'" class="table-actions">
                 <template v-if="record.assetId">
-                  <a-button type="link" size="small" :disabled="record.result === 'NORMAL'" @click="mark(record, 'NORMAL')">相符</a-button>
-                  <a-button type="link" size="small" @click="openRecord(record, 'MOVED')">位置变化</a-button>
-                  <a-button type="link" size="small" danger @click="openRecord(record, 'LOSS')">盘亏</a-button>
+                  <a-button type="link" size="small" :disabled="record.result === 'NORMAL'" @click="mark(record, 'NORMAL')">{{ $t('fin.assetCheck.normal') }}</a-button>
+                  <a-button type="link" size="small" @click="openRecord(record, 'MOVED')">{{ $t('fin.assetCheck.moved') }}</a-button>
+                  <a-button type="link" size="small" danger @click="openRecord(record, 'LOSS')">{{ $t('fin.assetCheck.loss') }}</a-button>
                 </template>
-                <a-popconfirm v-else title="删除该盘盈记录？" @confirm="removeGain(record)">
-                  <a-button type="link" size="small" danger>删除</a-button>
+                <a-popconfirm v-else :title="$t('fin.assetCheck.confirmDeleteGain')" @confirm="removeGain(record)">
+                  <a-button type="link" size="small" danger>{{ $t('common.action.delete') }}</a-button>
                 </a-popconfirm>
               </span>
             </template>
@@ -153,41 +153,41 @@
       </template>
     </SubPage>
 
-    <a-modal v-model:open="recordOpen" :title="`${recordForm.result === 'MOVED' ? '位置变化' : '盘亏'} - ${recordTarget?.assetName || ''}`" @ok="submitRecord">
+    <a-modal v-model:open="recordOpen" :title="`${recordForm.result === 'MOVED' ? $t('fin.assetCheck.moved') : $t('fin.assetCheck.loss')} - ${recordTarget?.assetName || ''}`" @ok="submitRecord">
       <a-form layout="vertical">
         <a-row v-if="recordForm.result === 'MOVED'" :gutter="16">
           <a-col :span="12">
-            <a-form-item label="实际使用部门">
+            <a-form-item :label="$t('fin.assetCheck.actualDept')">
               <DeptSelect v-model:value="recordForm.actualDeptId" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="实际使用人">
+            <a-form-item :label="$t('fin.assetCheck.actualUser')">
               <IdentityUserSelect v-model:value="recordForm.actualUserId" :label="recordForm.actualUserName" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="实际存放地点">
+            <a-form-item :label="$t('fin.assetCheck.actualLocation')">
               <a-input v-model:value="recordForm.actualLocation" :maxlength="128" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="说明">
-          <a-input v-model:value="recordForm.remark" :maxlength="255" :placeholder="recordForm.result === 'LOSS' ? '如：未找到、已损坏丢弃' : ''" />
+        <a-form-item :label="$t('common.field.description')">
+          <a-input v-model:value="recordForm.remark" :maxlength="255" :placeholder="recordForm.result === 'LOSS' ? $t('fin.assetCheck.lossPlaceholder') : ''" />
         </a-form-item>
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="gainOpen" title="登记盘盈" @ok="submitGain">
-      <a-alert type="info" show-icon class="block" message="账外资产：完成盘点后在「固定资产」中登记资产卡片" />
+    <a-modal v-model:open="gainOpen" :title="$t('fin.assetCheck.registerGain')" @ok="submitGain">
+      <a-alert type="info" show-icon class="block" :message="$t('fin.assetCheck.gainTip')" />
       <a-form layout="vertical">
-        <a-form-item label="资产名称" required>
+        <a-form-item :label="$t('fin.assetCheck.assetName')" required>
           <a-input v-model:value="gainForm.name" :maxlength="64" />
         </a-form-item>
-        <a-form-item label="存放地点">
+        <a-form-item :label="$t('fin.assetCheck.location')">
           <a-input v-model:value="gainForm.location" :maxlength="128" />
         </a-form-item>
-        <a-form-item label="说明">
+        <a-form-item :label="$t('common.field.description')">
           <a-input v-model:value="gainForm.remark" :maxlength="255" />
         </a-form-item>
       </a-form>
@@ -210,24 +210,28 @@ import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
+import { useI18n } from 'vue-i18n'
 
 /** 资产盘点：按部门、存放地点生成清单，逐项录入结果；完成时更新位置变化的资产、处置盘亏的资产 */
+const { t } = useI18n()
 const dict = useDict('fin_asset_check_status', 'fin_asset_check_result')
 
 const columns = [
-  { title: '盘点单号', key: 'checkNo', width: 180 },
-  { title: '范围', key: 'scope', width: 220 },
-  { title: '进度', key: 'progress', width: 160 },
-  { title: '差异', key: 'diff', width: 240 },
-  { title: '状态', key: 'status', width: 160 },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' }
+  { title: t('fin.assetCheck.checkNo'), key: 'checkNo', width: 180 },
+  { title: t('fin.assetCheck.scope'), key: 'scope', width: 220 },
+  { title: t('fin.assetCheck.progress'), key: 'progress', width: 160 },
+  { title: t('fin.assetCheck.diff'), key: 'diff', width: 240 },
+  { title: t('common.field.status'), key: 'status', width: 160 },
+  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'fin-asset-check')
 const query = reactive({ status: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageAssetCheck, query)
 onMounted(load)
 
-const scopeText = (c) => [c.deptName, c.location && `地点含「${c.location}」`].filter(Boolean).join('，') || '全部资产'
+const scopeText = (c) =>
+  [c.deptName, c.location && t('fin.assetCheck.locationContains', { location: c.location })].filter(Boolean).join(t('fin.assetCheck.sep')) ||
+  t('fin.assetCheck.allAssets')
 
 const createOpen = ref(false)
 const saving = ref(false)
@@ -237,7 +241,7 @@ function openCreate() {
   createOpen.value = true
 }
 async function submitCreate() {
-  if (!createForm.checkDate) return message.warning('请选择盘点日期')
+  if (!createForm.checkDate) return message.warning(t('fin.assetCheck.checkDateRequired'))
   saving.value = true
   try {
     const id = await addAssetCheck({ ...createForm, location: createForm.location || null, remark: createForm.remark || null })
@@ -250,12 +254,12 @@ async function submitCreate() {
 }
 
 const itemColumns = [
-  { title: '资产', key: 'asset', width: 220 },
-  { title: '账面部门 / 人 / 地点', key: 'book', width: 220 },
-  { title: '盘点结果', key: 'result', width: 100 },
-  { title: '实际', key: 'actual', width: 220 },
-  { title: '盘点人', dataIndex: 'checkByName', width: 100 },
-  { title: '操作', key: 'action', width: 200, fixed: 'right' }
+  { title: t('fin.assetCheck.asset'), key: 'asset', width: 220 },
+  { title: t('fin.assetCheck.bookInfo'), key: 'book', width: 220 },
+  { title: t('fin.assetCheck.result'), key: 'result', width: 120 },
+  { title: t('fin.assetCheck.actual'), key: 'actual', width: 220 },
+  { title: t('fin.assetCheck.checkBy'), dataIndex: 'checkByName', width: 110 },
+  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
 ]
 const detailOpen = ref(false)
 const detail = ref()
@@ -265,7 +269,7 @@ const items = computed(() => (detail.value?.items || []).filter((i) => !filter.v
 const finishTip = computed(() => {
   const d = detail.value
   if (!d) return ''
-  return d.lossCount ? `完成后 ${d.lossCount} 项盘亏资产将按净值处置（生成处置凭证），确定？` : '完成后不能再修改，确定？'
+  return d.lossCount ? t('fin.assetCheck.finishLossTip', { n: d.lossCount }) : t('fin.assetCheck.finishTip')
 })
 async function openDetail(id) {
   detail.value = await getAssetCheck(id)
@@ -311,7 +315,7 @@ function openGain() {
   gainOpen.value = true
 }
 async function submitGain() {
-  if (!gainForm.name.trim()) return message.warning('请填写资产名称')
+  if (!gainForm.name.trim()) return message.warning(t('fin.assetCheck.assetNameRequired'))
   await addAssetGain(detail.value.id, { ...gainForm, location: gainForm.location || null, remark: gainForm.remark || null })
   gainOpen.value = false
   refresh()
@@ -323,12 +327,12 @@ async function removeGain(item) {
 
 async function finish() {
   const disposed = await finishAssetCheck(detail.value.id)
-  message.success(disposed ? `盘点完成，已处置 ${disposed} 项盘亏资产` : '盘点完成')
+  message.success(disposed ? t('fin.assetCheck.finishedDisposed', { n: disposed }) : t('fin.assetCheck.finished'))
   refresh()
 }
 async function remove() {
   await deleteAssetCheck(detail.value.id)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   detailOpen.value = false
   load()
 }
@@ -336,7 +340,7 @@ async function remove() {
 
 <style scoped>
 .filter {
-  width: 140px;
+  width: 160px;
 }
 .full {
   width: 100%;

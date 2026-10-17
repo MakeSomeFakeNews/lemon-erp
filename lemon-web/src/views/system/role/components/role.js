@@ -1,5 +1,7 @@
 /** 角色管理各面板共用的常量与工具 */
 
+import { t } from '@/locales'
+
 export { ADMIN_ROLE } from '@/utils/constants'
 
 export const DATA_SCOPE_CUSTOM = 2
@@ -8,17 +10,17 @@ export const DATA_SCOPE_CUSTOM = 2
 export const BASIC_FIELDS = ['name', 'code', 'sort', 'status', 'remark']
 
 export const ROLE_CODE_RULES = [
-  { required: true, message: '请输入角色编码' },
-  { pattern: /^[A-Za-z][\w-]*$/, message: '以字母开头，仅包含字母、数字、下划线、横线' }
+  { required: true, message: t('system.role.inputCode') },
+  { pattern: /^[A-Za-z][\w-]*$/, message: t('system.role.codePattern') }
 ]
 
 /** 各数据权限的说明，取值与字典 sys_data_scope 一致 */
 export const DATA_SCOPE_DESC = {
-  1: '可以查看和操作所有部门的数据',
-  2: '只能访问勾选的部门的数据',
-  3: '只能访问用户所在部门的数据',
-  4: '可以访问用户所在部门及其全部下级部门的数据',
-  5: '只能访问用户本人的数据'
+  1: t('system.role.scopeDesc1'),
+  2: t('system.role.scopeDesc2'),
+  3: t('system.role.scopeDesc3'),
+  4: t('system.role.scopeDesc4'),
+  5: t('system.role.scopeDesc5')
 }
 
 export const pick = (obj, keys) => Object.fromEntries(keys.map((k) => [k, obj?.[k]]))

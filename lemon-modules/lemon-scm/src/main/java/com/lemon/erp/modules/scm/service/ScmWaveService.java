@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -157,7 +158,7 @@ public class ScmWaveService {
                 .map(r -> (String) r.get("deliveryNo")).filter(no -> !shortage.contains(no)).distinct().toList();
         List<ScmDelivery> ready = pending.stream().filter(d -> !shortage.contains(d.getDeliveryNo()) && !serial.contains(d.getDeliveryNo())).toList();
         if (ready.isEmpty()) {
-            throw new BizException("没有可以完成拣货的发货通知：" + reason(shortage, serial));
+            throw new BizException("没有可以完成拣货的发货通知：{0}", reason(shortage, serial));
         }
         for (ScmDelivery d : ready) {
             List<PickRequest.Line> picks = pickMapper.selectList(Wrappers.<ScmDeliveryPick>lambdaQuery().eq(ScmDeliveryPick::getDeliveryId, d.getId())
@@ -177,12 +178,12 @@ public class ScmWaveService {
     private static String reason(List<String> shortage, List<String> serial) {
         List<String> parts = new ArrayList<>();
         if (!shortage.isEmpty()) {
-            parts.add(String.join("、", shortage) + " 库存不足");
+            parts.add(I18n.t("{0} 库存不足", String.join(I18n.t("、"), shortage)));
         }
         if (!serial.isEmpty()) {
-            parts.add(String.join("、", serial) + " 有序列号物料，须在发货通知中录入序列号拣货");
+            parts.add(I18n.t("{0} 有序列号物料，须在发货通知中录入序列号拣货", String.join(I18n.t("、"), serial)));
         }
-        return String.join("；", parts);
+        return String.join(I18n.t("；"), parts);
     }
 
     /** 库存变化后重新生成波次中各通知的拣货建议 */
@@ -200,7 +201,7 @@ public class ScmWaveService {
                     .eq(ScmDelivery::getId, d.getId()).eq(ScmDelivery::getStatus, DeliveryStatus.PENDING)
                     .isNull(d.getWaveId() == null, ScmDelivery::getWaveId)
                     .eq(d.getWaveId() != null, ScmDelivery::getWaveId, d.getWaveId())) == 0) {
-                throw new BizException("发货通知 " + d.getDeliveryNo() + " 已在其他波次中或状态已变化");
+                throw new BizException("发货通知 {0} 已在其他波次中或状态已变化", d.getDeliveryNo());
             }
             // 按当前库存重新生成拣货建议
             deliveryService.resuggest(d.getId());
@@ -214,11 +215,11 @@ public class ScmWaveService {
         }
         for (ScmDelivery d : deliveries) {
             if (d.getStatus() != DeliveryStatus.PENDING) {
-                throw new BizException("发货通知 " + d.getDeliveryNo() + " 不是待拣货状态");
+                throw new BizException("发货通知 {0} 不是待拣货状态", d.getDeliveryNo());
             }
             if (d.getWaveId() != null && waveMapper.exists(Wrappers.<ScmWave>lambdaQuery().eq(ScmWave::getId, d.getWaveId())
                     .eq(ScmWave::getStatus, WaveStatus.PICKING))) {
-                throw new BizException("发货通知 " + d.getDeliveryNo() + " 已在其他波次中");
+                throw new BizException("发货通知 {0} 已在其他波次中", d.getDeliveryNo());
             }
         }
         return deliveries;

@@ -71,7 +71,7 @@ public class MesBomController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('mes:bom:edit')")
-    @OperLog(title = "BOM-修改状态", type = OperType.UPDATE)
+    @OperLog(title = "BOM-修改状态", type = OperType.UPDATE) // i18n-ignore
     public R<Void> changeStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
         bomService.changeStatus(id, req.status());
         return R.ok();
@@ -79,7 +79,7 @@ public class MesBomController {
 
     @PutMapping("/{id}/default")
     @PreAuthorize("@ss.hasPerm('mes:bom:edit')")
-    @OperLog(title = "BOM-设为默认", type = OperType.UPDATE)
+    @OperLog(title = "BOM-设为默认", type = OperType.UPDATE) // i18n-ignore
     public R<Void> setDefault(@PathVariable Long id) {
         bomService.setDefault(id);
         return R.ok();

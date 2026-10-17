@@ -2,14 +2,14 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="关键字" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="合同编号、工号或姓名" allow-clear />
+        <a-form-item :label="$t('common.field.keyword')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('hr.contract.keywordPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.hr_contract_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.hr_contract_status)" />
         </a-form-item>
-        <a-form-item label="合同类型" name="contractType">
-          <a-select v-model:value="query.contractType" placeholder="全部" allow-clear :options="toOptions(dict.hr_contract_type)" />
+        <a-form-item :label="$t('hr.contract.contractType')" name="contractType">
+          <a-select v-model:value="query.contractType" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.hr_contract_type)" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -24,16 +24,16 @@
         @refresh="load"
       >
         <a-button v-perm="'hr:contract:edit'" type="primary" @click="openCreate">
-          <template #icon><PlusOutlined /></template>新签合同
+          <template #icon><PlusOutlined /></template>{{ $t('hr.contract.newContract') }}
         </a-button>
         <a-radio-group :value="query.expireDays === 30 ? 'expiring' : 'all'" button-style="solid" @change="onQuickFilter">
-          <a-radio-button value="all">全部</a-radio-button>
-          <a-radio-button value="expiring">即将到期（30 天内）</a-radio-button>
+          <a-radio-button value="all">{{ $t('common.status.all') }}</a-radio-button>
+          <a-radio-button value="expiring">{{ $t('hr.contract.expiring') }}</a-radio-button>
         </a-radio-group>
         <a-alert
           type="info"
           show-icon
-          message="员工离职时，生效中的劳动合同自动终止；定时任务「劳动合同到期提醒」每天提醒人事处理即将到期的合同。"
+          :message="$t('hr.contract.tip')"
         />
       </TableToolbar>
       <a-table
@@ -55,8 +55,8 @@
             <DictTag type="hr_contract_type" :value="record.contractType" />
           </template>
           <template v-else-if="column.key === 'term'">
-            {{ record.startDate }} ~ {{ record.endDate || '无固定期限' }}
-            <div v-if="record.probationMonths" class="sub-text">试用期 {{ record.probationMonths }} 个月</div>
+            {{ record.startDate }} ~ {{ record.endDate || $t('hr.contract.openEnded') }}
+            <div v-if="record.probationMonths" class="sub-text">{{ $t('hr.contract.probationN', { n: record.probationMonths }) }}</div>
           </template>
           <template v-else-if="column.key === 'daysLeft'">
             <span v-if="record.daysLeft == null || record.status !== 'ACTIVE'" class="sub-text">-</span>
@@ -75,13 +75,13 @@
           <template v-else-if="column.key === 'action'">
             <span v-if="record.status === 'ACTIVE' || record.status === 'EXPIRED'" v-perm="'hr:contract:edit'" class="table-actions">
               <a-button v-if="record.status === 'ACTIVE'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <a-button type="link" size="small" @click="openRenew(record)">
-                <template #icon><SyncOutlined /></template>续签
+                <template #icon><SyncOutlined /></template>{{ $t('hr.contract.renew') }}
               </a-button>
-              <a-button v-if="record.status === 'ACTIVE'" type="link" danger size="small" @click="openTerminate(record)">终止</a-button>
-              <a-popconfirm v-if="record.status === 'ACTIVE'" :title="`确定删除合同「${record.contractNo}」？`" @confirm="remove(record.id)">
+              <a-button v-if="record.status === 'ACTIVE'" type="link" danger size="small" @click="openTerminate(record)">{{ $t('hr.contract.terminate') }}</a-button>
+              <a-popconfirm v-if="record.status === 'ACTIVE'" :title="$t('hr.contract.confirmDelete', { no: record.contractNo })" @confirm="remove(record.id)">
                 <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
               </a-popconfirm>
             </span>
@@ -90,43 +90,43 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" :create-title="renewFrom ? '续签劳动合同' : '新签劳动合同'" edit-title="编辑劳动合同" width="min(680px, 100vw)">
+    <FormDrawer :drawer="drawer" :create-title="renewFrom ? $t('hr.contract.renewTitle') : $t('hr.contract.createTitle')" :edit-title="$t('hr.contract.editTitle')" width="min(680px, 100vw)">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-alert
           v-if="renewFrom"
           type="info"
           show-icon
           class="mb"
-          :message="`续签 ${renewFrom.contractNo}（${renewFrom.startDate} ~ ${renewFrom.endDate || '无固定期限'}），续签后原合同变为「已续签」`"
+          :message="$t('hr.contract.renewTip', { no: renewFrom.contractNo, start: renewFrom.startDate, end: renewFrom.endDate || $t('hr.contract.openEnded') })"
         />
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="员工" name="employeeId">
+            <a-form-item :label="$t('hr.contract.employee')" name="employeeId">
               <EmployeeSelect v-model:value="form.employeeId" :label="form.employeeLabel" :disabled="isEdit || !!renewFrom" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="合同编号" name="contractNo" extra="不填自动生成">
+            <a-form-item :label="$t('hr.contract.contractNo')" name="contractNo" :extra="$t('hr.contract.autoNo')">
               <a-input v-model:value="form.contractNo" :maxlength="32" :disabled="isEdit" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="合同类型" name="contractType">
+            <a-form-item :label="$t('hr.contract.contractType')" name="contractType">
               <a-select v-model:value="form.contractType" :options="toOptions(dict.hr_contract_type)" @change="onTypeChange" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="签订日期" name="signDate">
+            <a-form-item :label="$t('hr.contract.signDate')" name="signDate">
               <a-date-picker v-model:value="form.signDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="开始日期" name="startDate">
+            <a-form-item :label="$t('common.field.beginDate')" name="startDate">
               <a-date-picker v-model:value="form.startDate" value-format="YYYY-MM-DD" class="full" @change="onStartChange" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="结束日期" name="endDate" :extra="form.contractType === 'OPEN' ? '无固定期限合同没有结束日期' : undefined">
+            <a-form-item :label="$t('common.field.endDate')" name="endDate" :extra="form.contractType === 'OPEN' ? $t('hr.contract.openNoEnd') : undefined">
               <a-date-picker
                 v-model:value="form.endDate"
                 value-format="YYYY-MM-DD"
@@ -137,24 +137,24 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="试用期" name="probationMonths" extra="依法最长 6 个月，续签一般不再约定试用期">
-              <a-input-number v-model:value="form.probationMonths" :min="0" :max="6" :precision="0" addon-after="个月" class="full" />
+            <a-form-item :label="$t('hr.contract.probation')" name="probationMonths" :extra="$t('hr.contract.probationExtra')">
+              <a-input-number v-model:value="form.probationMonths" :min="0" :max="6" :precision="0" :addon-after="$t('hr.contract.months')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark"><a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" /></a-form-item>
+            <a-form-item :label="$t('common.field.remark')" name="remark"><a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" /></a-form-item>
           </a-col>
         </a-row>
       </a-form>
     </FormDrawer>
 
-    <a-modal v-model:open="terminateOpen" :title="`终止合同：${terminating?.contractNo || ''}`" :confirm-loading="saving" destroy-on-close @ok="submitTerminate">
+    <a-modal v-model:open="terminateOpen" :title="$t('hr.contract.terminateTitle', { no: terminating?.contractNo || '' })" :confirm-loading="saving" destroy-on-close @ok="submitTerminate">
       <a-form ref="terminateRef" :model="terminateForm" layout="vertical">
-        <a-form-item label="终止日期" name="date" :rules="[{ required: true, message: '请选择终止日期' }]">
+        <a-form-item :label="$t('hr.contract.terminateDate')" name="date" :rules="[{ required: true, message: $t('hr.contract.terminateDateRequired') }]">
           <a-date-picker v-model:value="terminateForm.date" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
-        <a-form-item label="终止原因" name="reason" :rules="[{ required: true, whitespace: true, message: '请填写终止原因' }]">
-          <a-textarea v-model:value="terminateForm.reason" :rows="3" :maxlength="255" placeholder="如：协商一致解除、员工主动辞职" />
+        <a-form-item :label="$t('hr.contract.terminateReason')" name="reason" :rules="[{ required: true, whitespace: true, message: $t('hr.contract.terminateReasonRequired') }]">
+          <a-textarea v-model:value="terminateForm.reason" :rows="3" :maxlength="255" :placeholder="$t('hr.contract.terminateReasonPh')" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -178,21 +178,22 @@ import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
+import { t } from '@/locales'
 
 const dict = useDict('hr_contract_type', 'hr_contract_status', 'hr_emp_status')
 const route = useRoute()
 
 const columns = [
-  { title: '合同编号', dataIndex: 'contractNo', width: 160, fixed: 'left' },
-  { title: '员工', key: 'employee', width: 210, exportValue: (r) => `${r.empNo} ${r.employeeName}` },
-  { title: '合同类型', key: 'contractType', dataIndex: 'contractType', width: 150, dict: 'hr_contract_type' },
-  { title: '签订日期', dataIndex: 'signDate', width: 110 },
-  { title: '合同期限', key: 'term', width: 230, exportValue: (r) => `${r.startDate} ~ ${r.endDate || '无固定期限'}` },
-  { title: '剩余天数', key: 'daysLeft', dataIndex: 'daysLeft', width: 110, align: 'right' },
-  { title: '状态', key: 'status', dataIndex: 'status', width: 100, dict: 'hr_contract_status' },
-  { title: '终止', key: 'terminate', width: 180, exportValue: (r) => (r.terminateDate ? `${r.terminateDate} ${r.terminateReason || ''}` : '') },
-  { title: '备注', dataIndex: 'remark', width: 180, ellipsis: true },
-  { title: '操作', key: 'action', width: 230, fixed: 'right' }
+  { title: t('hr.contract.contractNo'), dataIndex: 'contractNo', width: 160, fixed: 'left' },
+  { title: t('hr.contract.employee'), key: 'employee', width: 210, exportValue: (r) => `${r.empNo} ${r.employeeName}` },
+  { title: t('hr.contract.contractType'), key: 'contractType', dataIndex: 'contractType', width: 150, dict: 'hr_contract_type' },
+  { title: t('hr.contract.signDate'), dataIndex: 'signDate', width: 110 },
+  { title: t('hr.contract.term'), key: 'term', width: 230, exportValue: (r) => `${r.startDate} ~ ${r.endDate || t('hr.contract.openEnded')}` },
+  { title: t('hr.contract.daysLeft'), key: 'daysLeft', dataIndex: 'daysLeft', width: 110, align: 'right' },
+  { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'hr_contract_status' },
+  { title: t('hr.contract.terminate'), key: 'terminate', width: 180, exportValue: (r) => (r.terminateDate ? `${r.terminateDate} ${r.terminateReason || ''}` : '') },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 260, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'hr-contract')
 const showSearch = ref(true)
@@ -216,20 +217,20 @@ function onQuickFilter(e) {
   search()
 }
 
-const daysText = (d) => (d < 0 ? `已过期 ${-d} 天` : d === 0 ? '今天到期' : `${d} 天`)
+const daysText = (d) => (d < 0 ? t('hr.contract.overdueDays', { n: -d }) : d === 0 ? t('hr.contract.dueToday') : t('hr.contract.daysN', { n: d }))
 const daysClass = (d) => (d < 0 ? 'danger' : d <= 30 ? 'warn' : '')
 
 // 新签 / 编辑 / 续签
 const FIELDS = ['employeeId', 'contractNo', 'contractType', 'signDate', 'startDate', 'endDate', 'probationMonths', 'remark']
 const renewFrom = ref(null)
 const rules = {
-  employeeId: [{ required: true, message: '请选择员工' }],
-  contractType: [{ required: true, message: '请选择合同类型' }],
-  signDate: [{ required: true, message: '请选择签订日期' }],
-  startDate: [{ required: true, message: '请选择开始日期' }],
+  employeeId: [{ required: true, message: t('hr.contract.employeeRequired') }],
+  contractType: [{ required: true, message: t('hr.contract.contractTypeRequired') }],
+  signDate: [{ required: true, message: t('hr.contract.signDateRequired') }],
+  startDate: [{ required: true, message: t('hr.contract.startDateRequired') }],
   endDate: [
     {
-      validator: (_, v) => (drawer.form.value.contractType !== 'OPEN' && !v ? Promise.reject(new Error('请选择结束日期')) : Promise.resolve())
+      validator: (_, v) => (drawer.form.value.contractType !== 'OPEN' && !v ? Promise.reject(new Error(t('hr.contract.endDateRequired'))) : Promise.resolve())
     }
   ]
 }
@@ -290,7 +291,7 @@ function onStartChange(start) {
 
 async function remove(id) {
   await deleteContract(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 
@@ -310,7 +311,7 @@ async function submitTerminate() {
   saving.value = true
   try {
     await terminateContract(terminating.value.id, terminateForm.date, terminateForm.reason)
-    message.success('合同已终止')
+    message.success(t('hr.contract.terminated'))
     terminateOpen.value = false
     load()
   } finally {

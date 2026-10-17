@@ -63,7 +63,7 @@ public class PmAccountingController {
     /** 项目月结：人工、费用入合同履约成本，按完工百分比确认收入并结转成本；body { period: yyyyMM }，返回生成的凭证数 */
     @PostMapping("/accounting/close")
     @PreAuthorize("@ss.hasPerm('pm:accounting:close')")
-    @OperLog(title = "项目核算-项目月结", type = OperType.INSERT)
+    @OperLog(title = "项目核算-项目月结", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Integer> close(@RequestBody Map<String, Integer> body) {
         Integer period = body.get("period");
         if (period == null || period < 200001 || period % 100 < 1 || period % 100 > 12) {
@@ -87,7 +87,7 @@ public class PmAccountingController {
 
     @PostMapping("/billing")
     @PreAuthorize("@ss.hasPerm('pm:billing:edit')")
-    @OperLog(title = "收款计划", type = OperType.INSERT)
+    @OperLog(title = "收款计划", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Void> create(@Valid @RequestBody BillingRequest req) {
         accountingService.saveBilling(null, req);
         return R.ok();
@@ -95,7 +95,7 @@ public class PmAccountingController {
 
     @PutMapping("/billing/{id}")
     @PreAuthorize("@ss.hasPerm('pm:billing:edit')")
-    @OperLog(title = "收款计划", type = OperType.UPDATE)
+    @OperLog(title = "收款计划", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody BillingRequest req) {
         accountingService.saveBilling(id, req);
         return R.ok();
@@ -103,7 +103,7 @@ public class PmAccountingController {
 
     @DeleteMapping("/billing/{id}")
     @PreAuthorize("@ss.hasPerm('pm:billing:edit')")
-    @OperLog(title = "收款计划", type = OperType.DELETE)
+    @OperLog(title = "收款计划", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable Long id) {
         accountingService.deleteBilling(id);
         return R.ok();
@@ -112,7 +112,7 @@ public class PmAccountingController {
     /** 开票：生成应收单，body：{ billDate } */
     @PostMapping("/billing/{id}/bill")
     @PreAuthorize("@ss.hasPerm('pm:billing:bill')")
-    @OperLog(title = "收款计划-开票", type = OperType.INSERT)
+    @OperLog(title = "收款计划-开票", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Void> bill(@PathVariable Long id, @RequestBody(required = false) Map<String, LocalDate> body) {
         accountingService.bill(id, body == null ? null : body.get("billDate"));
         return R.ok();
@@ -120,7 +120,7 @@ public class PmAccountingController {
 
     @PostMapping("/billing/{id}/unbill")
     @PreAuthorize("@ss.hasPerm('pm:billing:bill')")
-    @OperLog(title = "收款计划-取消开票", type = OperType.DELETE)
+    @OperLog(title = "收款计划-取消开票", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> unbill(@PathVariable Long id) {
         accountingService.unbill(id);
         return R.ok();

@@ -98,7 +98,7 @@ public class CrmLeadService {
     public void delete(List<Long> ids) {
         for (CrmLead l : leadMapper.selectByIds(ids)) {
             if ("CONVERTED".equals(l.getStatus())) {
-                throw new BizException("线索「" + l.getCompany() + "」已转化为客户，不能删除");
+                throw new BizException("线索「{0}」已转化为客户，不能删除", l.getCompany());
             }
         }
         leadMapper.deleteByIds(ids);
@@ -152,7 +152,7 @@ public class CrmLeadService {
         Map<String, Long> result = new LinkedHashMap<>();
         result.put("customerId", customerId);
         if (Boolean.TRUE.equals(req.createOpportunity())) {
-            String name = StringUtils.hasText(req.opportunityName()) ? req.opportunityName().trim() : l.getCompany() + " 商机";
+            String name = StringUtils.hasText(req.opportunityName()) ? req.opportunityName().trim() : l.getCompany() + " 商机"; // i18n-ignore 存库的默认商机名称
             Long oppId = opportunityService.create(new OpportunityRequest(name, customerId, null, req.amount(), null, null,
                     req.expectedDate(), l.getSource(), l.getCampaignId(), l.getOwnerId(), l.getRequirement(), null), id);
             result.put("opportunityId", oppId);

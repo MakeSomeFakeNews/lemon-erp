@@ -65,14 +65,14 @@ public class CrmOpportunityController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('crm:opp:add')")
-    @OperLog(title = "销售机会", type = OperType.INSERT)
+    @OperLog(title = "销售机会", type = OperType.INSERT) // i18n-ignore 操作日志标题存库
     public R<Long> create(@Valid @RequestBody OpportunityRequest req) {
         return R.ok(opportunityService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('crm:opp:edit')")
-    @OperLog(title = "销售机会", type = OperType.UPDATE)
+    @OperLog(title = "销售机会", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody OpportunityRequest req) {
         opportunityService.update(id, req);
         return R.ok();
@@ -80,7 +80,7 @@ public class CrmOpportunityController {
 
     @PutMapping("/{id}/stage")
     @PreAuthorize("@ss.hasPerm('crm:opp:edit')")
-    @OperLog(title = "销售机会-推进阶段", type = OperType.UPDATE)
+    @OperLog(title = "销售机会-推进阶段", type = OperType.UPDATE) // i18n-ignore 操作日志标题存库
     public R<Void> changeStage(@PathVariable Long id, @Valid @RequestBody StageRequest req) {
         opportunityService.changeStage(id, req);
         return R.ok();
@@ -88,7 +88,7 @@ public class CrmOpportunityController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('crm:opp:remove')")
-    @OperLog(title = "销售机会", type = OperType.DELETE)
+    @OperLog(title = "销售机会", type = OperType.DELETE) // i18n-ignore 操作日志标题存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         opportunityService.delete(ids);
         return R.ok();
@@ -97,7 +97,7 @@ public class CrmOpportunityController {
     /** 赢单商机生成销售订单（草稿），返回订单 ID */
     @PostMapping("/{id}/order")
     @PreAuthorize("@ss.hasPerm('crm:opp:order')")
-    @OperLog(title = "销售机会-生成销售订单", type = OperType.INSERT)
+    @OperLog(title = "销售机会-生成销售订单", type = OperType.INSERT) // i18n-ignore 操作日志标题存库
     public R<Long> createOrder(@PathVariable Long id, @RequestBody OppOrderRequest req) {
         return R.ok(opportunityService.createOrder(id, req));
     }

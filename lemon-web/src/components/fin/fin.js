@@ -1,4 +1,5 @@
 import dayjs from 'dayjs'
+import { t } from '@/locales'
 
 export { formatMoney } from '@/components/scm/scm'
 
@@ -9,7 +10,8 @@ export const toPeriod = (d) => Number(dayjs(d).format('YYYYMM'))
 export const periodValue = (p) => (p ? `${String(p).slice(0, 4)}-${String(p).slice(4)}` : undefined)
 
 /** 会计期间显示：2026 年 10 月 */
-export const periodText = (p) => (p ? `${String(p).slice(0, 4)} 年 ${Number(String(p).slice(4))} 月` : '-')
+export const periodText = (p) =>
+  p ? t('fin.finUtil.periodText', { year: String(p).slice(0, 4), month: Number(String(p).slice(4)), mm: String(p).slice(4) }) : '-'
 
 export const currentPeriod = () => toPeriod(dayjs())
 
@@ -26,11 +28,11 @@ export { cached } from '@/utils/cache'
  * 科目上设置的项目在手工凭证中必填，各项目可同时填写
  */
 export const AUX_ITEMS = [
-  { value: 'DEPT', label: '部门', key: 'deptId', name: 'deptName' },
-  { value: 'CUSTOMER', label: '客户', key: 'customerId', name: 'customerName' },
-  { value: 'SUPPLIER', label: '供应商', key: 'supplierId', name: 'supplierName' },
-  { value: 'PROJECT', label: '项目', key: 'projectId', name: 'projectName' },
-  { value: 'MATERIAL', label: '存货', key: 'materialId', name: 'materialName' }
+  { value: 'DEPT', label: t('fin.finUtil.aux.dept'), key: 'deptId', name: 'deptName' },
+  { value: 'CUSTOMER', label: t('fin.finUtil.aux.customer'), key: 'customerId', name: 'customerName' },
+  { value: 'SUPPLIER', label: t('fin.finUtil.aux.supplier'), key: 'supplierId', name: 'supplierName' },
+  { value: 'PROJECT', label: t('fin.finUtil.aux.project'), key: 'projectId', name: 'projectName' },
+  { value: 'MATERIAL', label: t('fin.finUtil.aux.material'), key: 'materialId', name: 'materialName' }
 ]
 
 /** 科目上保存的辅助核算（逗号分隔）→ 数组 */
@@ -42,10 +44,10 @@ export const auxText = (entry) => AUX_ITEMS.map((a) => entry[a.name]).filter(Boo
 /** 金额大写，如 1234.5 → 壹仟贰佰叁拾肆元伍角整 */
 export function moneyUpper(n) {
   const num = Math.round(Math.abs(Number(n) || 0) * 100)
-  if (num === 0) return '零元整'
-  const digits = '零壹贰叁肆伍陆柒捌玖'
-  const units = ['', '拾', '佰', '仟']
-  const groups = ['', '万', '亿', '万亿']
+  if (num === 0) return '零元整' // i18n-ignore
+  const digits = '零壹贰叁肆伍陆柒捌玖' // i18n-ignore
+  const units = ['', '拾', '佰', '仟'] // i18n-ignore
+  const groups = ['', '万', '亿', '万亿'] // i18n-ignore
   const yuan = Math.floor(num / 100)
   const jiao = Math.floor(num / 10) % 10
   const fen = num % 10
@@ -59,22 +61,22 @@ export function moneyUpper(n) {
       if (d === 0) {
         zero = true
       } else {
-        if (zero) text += '零'
+        if (zero) text += '零' // i18n-ignore
         zero = false
         text += digits[d] + units[pos % 4]
       }
       if (pos % 4 === 0 && pos > 0) {
-        if (!text.endsWith('亿') && !text.endsWith('万')) text += groups[pos / 4]
+        if (!text.endsWith('亿') && !text.endsWith('万')) text += groups[pos / 4] // i18n-ignore
         zero = false
       }
     }
-    text += '元'
+    text += '元' // i18n-ignore
   }
-  if (jiao === 0 && fen === 0) return (Number(n) < 0 ? '负' : '') + text + '整'
-  if (jiao > 0) text += digits[jiao] + '角'
-  else if (yuan > 0) text += '零'
-  if (fen > 0) text += digits[fen] + '分'
-  return (Number(n) < 0 ? '负' : '') + text
+  if (jiao === 0 && fen === 0) return (Number(n) < 0 ? '负' : '') + text + '整' // i18n-ignore
+  if (jiao > 0) text += digits[jiao] + '角' // i18n-ignore
+  else if (yuan > 0) text += '零' // i18n-ignore
+  if (fen > 0) text += digits[fen] + '分' // i18n-ignore
+  return (Number(n) < 0 ? '负' : '') + text // i18n-ignore
 }
 
 /** 与业务单据金额联动的凭证来源，不能直接删除（在业务单据中撤销或做红字冲销） */

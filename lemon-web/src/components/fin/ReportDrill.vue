@@ -2,15 +2,15 @@
   <a-drawer :open="open" :title="row?.name" width="min(860px, 100vw)" destroy-on-close @close="emit('update:open', false)">
     <template v-if="row">
       <a-descriptions :column="1" size="small" bordered class="block">
-        <a-descriptions-item v-if="row.lineNo" label="行次">{{ row.lineNo }}</a-descriptions-item>
-        <a-descriptions-item label="取数">{{ row.formula || '-' }}</a-descriptions-item>
+        <a-descriptions-item v-if="row.lineNo" :label="$t('fin.reportDrill.lineNo')">{{ row.lineNo }}</a-descriptions-item>
+        <a-descriptions-item :label="$t('fin.reportDrill.formula')">{{ row.formula || '-' }}</a-descriptions-item>
         <a-descriptions-item v-for="(c, i) in columns" :key="c" :label="c">
           <span class="num bold">{{ formatMoney(row.values?.[i]) }}</span>
         </a-descriptions-item>
       </a-descriptions>
 
       <template v-if="row.accounts">
-        <div class="section-title">构成科目 <span class="sub-text">点击科目查看明细账（{{ rangeText }}）</span></div>
+        <div class="section-title">{{ $t('fin.reportDrill.accounts') }} <span class="sub-text">{{ $t('fin.reportDrill.accountsTip', { range: rangeText }) }}</span></div>
         <a-table
           row-key="accountId"
           size="small"
@@ -18,7 +18,7 @@
           :columns="accountColumns"
           :data-source="row.accounts"
           :pagination="false"
-          :locale="{ emptyText: '没有余额或发生额的科目' }"
+          :locale="{ emptyText: $t('fin.reportDrill.noAccounts') }"
           :row-class-name="(r) => (r.accountId === ledgerAccount?.accountId ? 'selected-row' : '')"
           class="block"
         >
@@ -34,7 +34,7 @@
       </template>
 
       <template v-if="ledgerAccount">
-        <div class="section-title">明细账：{{ ledgerAccount.code }} {{ ledgerAccount.name }}</div>
+        <div class="section-title">{{ $t('fin.reportDrill.ledger', { account: `${ledgerAccount.code} ${ledgerAccount.name}` }) }}</div>
         <a-table
           :row-key="(r, i) => i"
           size="small"
@@ -69,6 +69,7 @@ import { computed, ref, watch } from 'vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import { ledger } from '@/api/fin'
 import { formatMoney, moneyOrBlank, periodText } from '@/components/fin/fin'
+import { t } from '@/locales'
 
 /**
  * 报表数字追溯：报表行的取数公式、构成科目（各列金额），点击科目查看明细账，再点凭证号查看凭证
@@ -85,19 +86,19 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:open'])
 
-const rangeText = computed(() => (props.begin === props.end ? periodText(props.end) : `${periodText(props.begin)} 至 ${periodText(props.end)}`))
+const rangeText = computed(() => (props.begin === props.end ? periodText(props.end) : t('fin.reportDrill.range', { begin: periodText(props.begin), end: periodText(props.end) })))
 const accountColumns = computed(() => [
-  { title: '科目', key: 'account' },
+  { title: t('fin.reportDrill.account'), key: 'account' },
   ...props.columns.map((c, i) => ({ title: c, key: `v${i}`, index: i, width: 150, align: 'right' }))
 ])
 const ledgerColumns = [
-  { title: '日期', dataIndex: 'entryDate', width: 110 },
-  { title: '凭证号', key: 'voucherNo', width: 140 },
-  { title: '摘要', dataIndex: 'summary', ellipsis: true },
-  { title: '借方', key: 'debit', width: 120, align: 'right' },
-  { title: '贷方', key: 'credit', width: 120, align: 'right' },
-  { title: '方向', dataIndex: 'side', width: 60, align: 'center' },
-  { title: '余额', key: 'balance', width: 130, align: 'right' }
+  { title: t('common.field.date'), dataIndex: 'entryDate', width: 110 },
+  { title: t('fin.reportDrill.voucherNo'), key: 'voucherNo', width: 140 },
+  { title: t('fin.reportDrill.summary'), dataIndex: 'summary', ellipsis: true },
+  { title: t('fin.reportDrill.debit'), key: 'debit', width: 120, align: 'right' },
+  { title: t('fin.reportDrill.credit'), key: 'credit', width: 120, align: 'right' },
+  { title: t('fin.reportDrill.side'), dataIndex: 'side', width: 80, align: 'center' },
+  { title: t('fin.reportDrill.balance'), key: 'balance', width: 130, align: 'right' }
 ]
 
 const ledgerAccount = ref()

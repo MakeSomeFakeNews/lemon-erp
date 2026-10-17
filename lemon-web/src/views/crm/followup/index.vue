@@ -2,17 +2,17 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="跟进对象" name="targetType">
-          <a-select v-model:value="query.targetType" placeholder="全部" allow-clear :options="TARGET_TYPES" />
+        <a-form-item :label="$t('crm.followup.target')" name="targetType">
+          <a-select v-model:value="query.targetType" :placeholder="$t('crm.common.all')" allow-clear :options="TARGET_TYPES" />
         </a-form-item>
-        <a-form-item label="跟进方式" name="method">
-          <a-select v-model:value="query.method" placeholder="全部" allow-clear :options="toOptions(dict.crm_follow_method)" />
+        <a-form-item :label="$t('crm.followupModal.method')" name="method">
+          <a-select v-model:value="query.method" :placeholder="$t('crm.common.all')" allow-clear :options="toOptions(dict.crm_follow_method)" />
         </a-form-item>
-        <a-form-item label="跟进时间" name="dateRange">
+        <a-form-item :label="$t('crm.followupModal.followTime')" name="dateRange">
           <a-range-picker v-model:value="query.dateRange" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
-        <a-form-item label="跟进人" name="mine">
-          <a-checkbox v-model:checked="query.mine">只看我的</a-checkbox>
+        <a-form-item :label="$t('crm.followup.followBy')" name="mine">
+          <a-checkbox v-model:checked="query.mine">{{ $t('crm.common.onlyMine') }}</a-checkbox>
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -20,7 +20,7 @@
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar
         :exporter="exportAll" v-model:size="size" v-model:checked="checked" v-model:show-search="showSearch" :columns="columns" @refresh="load">
-        <span class="sub-text">在客户、线索、商机中写跟进；这里汇总查看全部跟进记录</span>
+        <span class="sub-text">{{ $t('crm.followup.tip') }}</span>
       </TableToolbar>
 
       <a-table
@@ -55,8 +55,8 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <span v-if="record.createBy === userStore.user?.id || userStore.hasPerm('crm:followup:remove')">
-              <a-popconfirm title="确定删除这条跟进记录？" @confirm="remove(record.id)">
-                <a-button type="link" danger size="small"><template #icon><DeleteOutlined /></template>删除</a-button>
+              <a-popconfirm :title="$t('crm.followup.confirmDelete')" @confirm="remove(record.id)">
+                <a-button type="link" danger size="small"><template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}</a-button>
               </a-popconfirm>
             </span>
           </template>
@@ -69,6 +69,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { DeleteOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -82,17 +83,18 @@ import { toOptions } from '@/utils/dict'
 import { TARGET_TYPES, targetType } from '@/components/crm/crm'
 
 const userStore = useUserStore()
+const { t } = useI18n()
 const dict = useDict('crm_follow_method')
 
 const columns = [
-  { title: '跟进时间', dataIndex: 'followTime', width: 160 },
-  { title: '跟进对象', key: 'target', width: 240 },
-  { title: '客户', dataIndex: 'customerName', width: 180, ellipsis: true },
-  { title: '方式', key: 'method', width: 80, dict: 'crm_follow_method' },
-  { title: '内容', key: 'content', width: 300 },
-  { title: '下次跟进', key: 'next', width: 200 },
-  { title: '跟进人', dataIndex: 'createByName', width: 100 },
-  { title: '操作', key: 'action', width: 90, fixed: 'right' }
+  { title: t('crm.followupModal.followTime'), dataIndex: 'followTime', width: 160 },
+  { title: t('crm.followup.target'), key: 'target', width: 240 },
+  { title: t('crm.common.f.customer'), dataIndex: 'customerName', width: 180, ellipsis: true },
+  { title: t('crm.followup.method'), key: 'method', width: 90, dict: 'crm_follow_method' },
+  { title: t('crm.followup.content'), key: 'content', width: 300 },
+  { title: t('crm.common.f.nextFollow'), key: 'next', width: 200 },
+  { title: t('crm.followup.followBy'), dataIndex: 'createByName', width: 100 },
+  { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'crm-followup')
 const showSearch = ref(true)
@@ -112,7 +114,7 @@ onMounted(load)
 
 async function remove(id) {
   await deleteFollowup(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 </script>

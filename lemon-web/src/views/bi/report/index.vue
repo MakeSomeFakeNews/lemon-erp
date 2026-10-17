@@ -2,11 +2,11 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card">
       <SearchForm :model="query" @search="load" @reset="resetQuery">
-        <a-form-item label="报表" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="报表名称" allow-clear />
+        <a-form-item :label="$t('bi.report.report')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('bi.report.reportName')" allow-clear />
         </a-form-item>
-        <a-form-item label="数据集" name="cube">
-          <a-select v-model:value="query.cube" placeholder="全部" allow-clear :options="cubeOptions" />
+        <a-form-item :label="$t('bi.common.cube')" name="cube">
+          <a-select v-model:value="query.cube" :placeholder="$t('common.status.all')" allow-clear :options="cubeOptions" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -14,9 +14,9 @@
     <a-card :bordered="false" class="page-card table-card">
       <div class="toolbar">
         <a-button v-perm="'bi:report:add'" type="primary" @click="router.push('/bi/olap')">
-          <template #icon><PlusOutlined /></template>在多维分析中新建
+          <template #icon><PlusOutlined /></template>{{ $t('bi.report.createInOlap') }}
         </a-button>
-        <span class="sub-text">可以查看本人创建的和他人共享的报表；报表可组合到「自定义仪表盘」</span>
+        <span class="sub-text">{{ $t('bi.report.hint') }}</span>
       </div>
       <a-table
         row-key="id"
@@ -28,8 +28,8 @@
         :scroll="{ x: 1000 }"
       >
         <template #emptyText>
-          <a-empty description="还没有报表">
-            <a-button type="primary" @click="router.push('/bi/olap')">去多维分析创建</a-button>
+          <a-empty :description="$t('bi.report.empty')">
+            <a-button type="primary" @click="router.push('/bi/olap')">{{ $t('bi.report.goCreate') }}</a-button>
           </a-empty>
         </template>
         <template #bodyCell="{ column, record }">
@@ -42,23 +42,23 @@
             <span class="sub-text">{{ describe(record) }}</span>
           </template>
           <template v-else-if="column.key === 'shared'">
-            <a-tag v-if="record.shared === 1" color="blue" :bordered="false">已共享</a-tag>
-            <a-tag v-else :bordered="false">仅自己</a-tag>
+            <a-tag v-if="record.shared === 1" color="blue" :bordered="false">{{ $t('bi.common.shared') }}</a-tag>
+            <a-tag v-else :bordered="false">{{ $t('bi.common.private') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'owner'">
-            {{ record.mine ? '我' : record.createByName }}
+            {{ record.mine ? $t('bi.common.me') : record.createByName }}
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button type="link" size="small" @click="preview(record)"><EyeOutlined />预览</a-button>
+              <a-button type="link" size="small" @click="preview(record)"><EyeOutlined />{{ $t('common.action.preview') }}</a-button>
               <a-button type="link" size="small" @click="router.push({ path: '/bi/olap', query: { report: record.id } })">
-                <AppstoreOutlined />分析
+                <AppstoreOutlined />{{ $t('bi.board.analyze') }}
               </a-button>
               <a-button v-if="record.mine" v-perm="'bi:report:edit'" type="link" size="small" @click="openEdit(record)">
-                <EditOutlined />编辑
+                <EditOutlined />{{ $t('common.action.edit') }}
               </a-button>
               <span v-if="record.mine" v-perm="'bi:report:remove'">
-                <a-popconfirm :title="`确定删除报表「${record.name}」？`" @confirm="remove(record)">
+                <a-popconfirm :title="$t('bi.report.confirmDelete', { name: record.name })" @confirm="remove(record)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
               </span>
@@ -78,18 +78,18 @@
       </template>
     </SubPage>
 
-    <a-modal v-model:open="editOpen" title="编辑报表" :confirm-loading="saving" @ok="saveEdit">
+    <a-modal v-model:open="editOpen" :title="$t('bi.report.edit')" :confirm-loading="saving" @ok="saveEdit">
       <a-form layout="vertical">
-        <a-form-item label="报表名称" required>
+        <a-form-item :label="$t('bi.report.reportName')" required>
           <a-input v-model:value="editForm.name" :maxlength="64" />
         </a-form-item>
-        <a-form-item label="默认图表">
+        <a-form-item :label="$t('bi.common.defaultChart')">
           <a-radio-group v-model:value="editForm.chart" :options="CHART_TYPES" />
         </a-form-item>
-        <a-form-item label="共享给所有人">
+        <a-form-item :label="$t('bi.common.shareAll')">
           <a-switch v-model:checked="editForm.shared" />
         </a-form-item>
-        <a-form-item label="说明">
+        <a-form-item :label="$t('common.field.description')">
           <a-textarea v-model:value="editForm.remark" :rows="2" :maxlength="255" />
         </a-form-item>
       </a-form>
@@ -107,6 +107,7 @@ import SearchForm from '@/components/SearchForm.vue'
 import ReportView from '@/components/bi/ReportView.vue'
 import { deleteReport, listReports, updateReport } from '@/api/bi'
 import { CHART_TYPES, RANGES, loadCubes } from '@/components/bi/bi'
+import { t } from '@/locales'
 
 const router = useRouter()
 const cubes = ref([])
@@ -118,13 +119,13 @@ const cubeOptions = computed(() => cubes.value.map((c) => ({ value: c.key, label
 const cubeLabel = (k) => cubes.value.find((c) => c.key === k)?.label || k
 
 const columns = [
-  { title: '报表', key: 'name', width: 240 },
-  { title: '数据集', key: 'cube', width: 100 },
-  { title: '分析配置', key: 'config', width: 300 },
-  { title: '共享', key: 'shared', width: 90 },
-  { title: '创建人', key: 'owner', width: 100 },
-  { title: '更新时间', dataIndex: 'updateTime', width: 170 },
-  { title: '操作', key: 'action', width: 250, fixed: 'right' }
+  { title: t('bi.report.report'), key: 'name', width: 240 },
+  { title: t('bi.common.cube'), key: 'cube', width: 110 },
+  { title: t('bi.report.config'), key: 'config', width: 300 },
+  { title: t('bi.report.share'), key: 'shared', width: 90 },
+  { title: t('common.field.createBy'), key: 'owner', width: 110 },
+  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 270, fixed: 'right' }
 ]
 
 const parse = (r) => {
@@ -140,10 +141,10 @@ function describe(r) {
   const cfg = parse(r)
   const cube = cubes.value.find((c) => c.key === cfg.cube)
   const dim = (k) => cube?.dims.find((d) => d.key === k)?.label || k
-  const range = cfg.range ? RANGES.find((x) => x.value === cfg.range)?.label : cfg.begin || cfg.end ? `${cfg.begin || ''} ~ ${cfg.end || ''}` : '全部'
-  const chart = CHART_TYPES.find((c) => c.value === cfg.chart)?.label || '柱状图'
+  const range = cfg.range ? RANGES.find((x) => x.value === cfg.range)?.label : cfg.begin || cfg.end ? `${cfg.begin || ''} ~ ${cfg.end || ''}` : t('common.status.all')
+  const chart = CHART_TYPES.find((c) => c.value === cfg.chart)?.label || t('bi.chart.bar')
   const filters = Object.keys(cfg.filters || {}).length
-  return [`按${dim(cfg.row)}${cfg.col ? ` × ${dim(cfg.col)}` : ''}`, range, chart, filters ? `${filters} 个筛选` : null].filter(Boolean).join(' · ')
+  return [cfg.col ? t('bi.report.byRowCol', { row: dim(cfg.row), col: dim(cfg.col) }) : t('bi.report.byRow', { row: dim(cfg.row) }), range, chart, filters ? t('bi.report.filtersN', { n: filters }) : null].filter(Boolean).join(' · ')
 }
 
 async function load() {
@@ -183,7 +184,7 @@ function openEdit(r) {
 
 async function saveEdit() {
   if (!editForm.name.trim()) {
-    message.warning('请输入报表名称')
+    message.warning(t('common.rule.required', { name: t('bi.report.reportName') }))
     return
   }
   saving.value = true
@@ -194,7 +195,7 @@ async function saveEdit() {
       shared: editForm.shared ? 1 : 0,
       remark: editForm.remark || null
     })
-    message.success('保存成功')
+    message.success(t('common.msg.saveSuccess'))
     editOpen.value = false
     load()
   } finally {
@@ -204,7 +205,7 @@ async function saveEdit() {
 
 async function remove(r) {
   await deleteReport(r.id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 

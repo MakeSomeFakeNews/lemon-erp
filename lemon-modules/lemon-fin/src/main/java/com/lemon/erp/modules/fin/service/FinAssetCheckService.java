@@ -151,7 +151,7 @@ public class FinAssetCheckService {
         List<FinAssetCheckItem> items = checkMapper.selectItems(id);
         long pending = items.stream().filter(i -> i.getResult() == AssetCheckResult.PENDING).count();
         if (pending > 0) {
-            throw new BizException("还有 " + pending + " 项资产没有盘点");
+            throw new BizException("还有 {0} 项资产没有盘点", pending);
         }
         int disposed = 0;
         for (FinAssetCheckItem i : items) {
@@ -160,10 +160,10 @@ public class FinAssetCheckService {
                 assetService.move(asset.getId(), new AssetMoveRequest(AssetMoveType.TRANSFER, check.getCheckDate(),
                         i.getActualDeptId() != null ? i.getActualDeptId() : asset.getDeptId(),
                         i.getActualUserId() != null ? i.getActualUserId() : asset.getCustodianId(),
-                        i.getActualLocation(), "盘点 " + check.getCheckNo() + " 位置变化"));
+                        i.getActualLocation(), "盘点 " + check.getCheckNo() + " 位置变化")); // i18n-ignore 存库的变动备注
             } else if (i.getResult() == AssetCheckResult.LOSS) {
                 assetService.dispose(i.getAssetId(), new DisposeRequest(check.getCheckDate(), null, null, null,
-                        "盘点 " + check.getCheckNo() + " 盘亏"));
+                        "盘点 " + check.getCheckNo() + " 盘亏")); // i18n-ignore 存库的处置备注
                 disposed++;
             }
         }

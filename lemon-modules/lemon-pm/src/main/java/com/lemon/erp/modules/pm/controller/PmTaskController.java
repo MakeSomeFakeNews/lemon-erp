@@ -40,14 +40,14 @@ public class PmTaskController {
 
     @PostMapping("/task")
     @PreAuthorize("@ss.hasPerm('pm:task:edit')")
-    @OperLog(title = "项目任务", type = OperType.INSERT)
+    @OperLog(title = "项目任务", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Long> create(@Valid @RequestBody TaskRequest req) {
         return R.ok(taskService.create(req));
     }
 
     @PutMapping("/task/{id}")
     @PreAuthorize("@ss.hasPerm('pm:task:edit')")
-    @OperLog(title = "项目任务", type = OperType.UPDATE)
+    @OperLog(title = "项目任务", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody TaskRequest req) {
         taskService.update(id, req);
         return R.ok();
@@ -55,7 +55,7 @@ public class PmTaskController {
 
     @DeleteMapping("/task/{id}")
     @PreAuthorize("@ss.hasPerm('pm:task:edit')")
-    @OperLog(title = "项目任务", type = OperType.DELETE)
+    @OperLog(title = "项目任务", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable Long id) {
         taskService.delete(id);
         return R.ok();
@@ -63,7 +63,7 @@ public class PmTaskController {
 
     /** 登录即可访问：任务负责人更新进度（或有任务维护权限），body：{ progress } */
     @PutMapping("/task/{id}/progress")
-    @OperLog(title = "项目任务-进度", type = OperType.UPDATE)
+    @OperLog(title = "项目任务-进度", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> progress(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
         taskService.updateProgress(id, body.getOrDefault("progress", 0));
         return R.ok();

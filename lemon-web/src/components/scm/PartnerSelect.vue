@@ -3,7 +3,7 @@
     :value="value ?? undefined"
     show-search
     :allow-clear="allowClear"
-    :placeholder="placeholder || `搜索${type === 'supplier' ? '供应商' : '客户'}编码或名称`"
+    :placeholder="placeholder || $t(type === 'supplier' ? 'scm.partnerSelect.searchSupplier' : 'scm.partnerSelect.searchCustomer')"
     :filter-option="false"
     :options="options"
     :loading="loading"

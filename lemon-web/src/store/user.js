@@ -62,6 +62,6 @@ export const useUserStore = defineStore('user', {
 })
 
 /** 菜单名称按界面语言翻译（locales/<语言>/menu.js 按菜单 ID，没有译文时用数据库中的名称） */
-function translateMenus(menus) {
+export function translateMenus(menus) {
   return (menus || []).map((m) => ({ ...m, name: tt(`menu.${m.id}`, m.name), children: m.children && translateMenus(m.children) }))
 }

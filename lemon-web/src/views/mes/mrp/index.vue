@@ -2,8 +2,8 @@
   <div class="mrp-page">
     <a-card :bordered="false" class="page-card">
       <div class="head">
-        <span class="section-title">运算记录</span>
-        <span class="sub-text">在「生产计划」中发起 MRP 运算：勾选已确认的计划，或计入销售订单的未计划需求、销售预测</span>
+        <span class="section-title">{{ $t('mes.mrp.runs') }}</span>
+        <span class="sub-text">{{ $t('mes.mrp.runsTip') }}</span>
       </div>
       <a-table
         row-key="id"
@@ -26,7 +26,7 @@
           </template>
           <template v-else-if="column.key === 'pending'">
             <a-badge v-if="record.pendingCount" :count="record.pendingCount" :number-style="{ backgroundColor: '#faad14' }" />
-            <span v-else class="sub-text">无</span>
+            <span v-else class="sub-text">{{ $t('common.status.none') }}</span>
           </template>
         </template>
       </a-table>
@@ -34,11 +34,11 @@
 
     <a-card :bordered="false" class="page-card">
       <div class="head">
-        <span class="section-title">运算结果 {{ currentRun ? currentRun.runNo : '' }}</span>
+        <span class="section-title">{{ $t('mes.mrp.results', { no: currentRun ? currentRun.runNo : '' }) }}</span>
         <a-space v-if="runId" wrap>
-          <WarehouseSelect v-model:value="warehouseId" placeholder="工单完工 / 采购收货仓库（选填）" class="warehouse" />
+          <WarehouseSelect v-model:value="warehouseId" :placeholder="$t('mes.mrp.warehousePh')" class="warehouse" />
           <a-button v-perm="'mes:mrp:release'" type="primary" :disabled="!selected.length" :loading="releasing" @click="release">
-            <template #icon><SendOutlined /></template>下达所选（{{ selected.length }}）
+            <template #icon><SendOutlined /></template>{{ $t('mes.mrp.releaseSelected', { n: selected.length }) }}
           </a-button>
         </a-space>
       </div>
@@ -47,7 +47,7 @@
         type="info"
         show-icon
         class="tip"
-        message="净需求 = 毛需求 - (库存 + 在途 - 已分配 - 安全库存)。自制件下达为草稿工单，采购件按供应商合并为草稿采购订单；下达前可调整数量和供应商"
+        :message="$t('mes.mrp.tip')"
       />
       <a-table
         row-key="id"
@@ -58,7 +58,7 @@
         :pagination="false"
         :row-selection="runId ? { selectedRowKeys: selected, onChange: (k) => (selected = k), getCheckboxProps: (r) => ({ disabled: r.status !== 'NEW' }) } : undefined"
         :scroll="{ x: 1500 }"
-        :locale="{ emptyText: runId ? '没有物料需求' : '请选择一条运算记录' }"
+        :locale="{ emptyText: runId ? $t('mes.mrp.noDemand') : $t('mes.mrp.selectRun') }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'material'">
@@ -89,8 +89,8 @@
             <span class="sub-text"> {{ record.unit }}</span>
           </template>
           <template v-else-if="column.key === 'dates'">
-            <div>需 {{ record.requiredDate }}</div>
-            <div class="sub-text">{{ record.supplyType === 'MAKE' ? '开工' : record.supplyType === 'PHANTOM' ? '虚拟件' : '下单' }} {{ record.releaseDate }}</div>
+            <div>{{ $t('mes.mrp.required', { d: record.requiredDate }) }}</div>
+            <div class="sub-text">{{ record.supplyType === 'MAKE' ? $t('mes.mrp.start') : record.supplyType === 'PHANTOM' ? $t('mes.mrp.phantom') : $t('mes.mrp.order') }} {{ record.releaseDate }}</div>
           </template>
           <template v-else-if="column.key === 'supplier'">
             <template v-if="['BUY', 'OUTSOURCE'].includes(record.supplyType)">
@@ -99,7 +99,7 @@
                 :value="record.supplierId"
                 :label="record.supplierName"
                 type="supplier"
-                placeholder="选择供应商"
+                :placeholder="$t('mes.mrp.selectSupplier')"
                 size="small"
                 @update:value="(v) => save(record, { supplierId: v, price: null })"
               />
@@ -109,15 +109,15 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'status'">
-            <a-tag v-if="record.status === 'NEW'" color="orange" :bordered="false">待下达</a-tag>
+            <a-tag v-if="record.status === 'NEW'" color="orange" :bordered="false">{{ $t('mes.mrp.status.NEW') }}</a-tag>
             <template v-else-if="record.status === 'RELEASED'">
-              <a-tag color="green" :bordered="false">已下达</a-tag>
+              <a-tag color="green" :bordered="false">{{ $t('mes.mrp.status.RELEASED') }}</a-tag>
               <div class="sub-text">{{ record.releaseNo }}</div>
             </template>
-            <a-tooltip v-else-if="record.status === 'EXPIRED'" title="之后又运行了 MRP，本次未下达的建议已作废">
-              <a-tag :bordered="false">已作废</a-tag>
+            <a-tooltip v-else-if="record.status === 'EXPIRED'" :title="$t('mes.mrp.expiredTip')">
+              <a-tag :bordered="false">{{ $t('mes.mrp.status.EXPIRED') }}</a-tag>
             </a-tooltip>
-            <a-tag v-else :bordered="false">无需处理</a-tag>
+            <a-tag v-else :bordered="false">{{ $t('mes.mrp.status.NONE') }}</a-tag>
           </template>
         </template>
       </a-table>
@@ -131,6 +131,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
 import { SendOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import ForecastPanel from '@/components/mes/ForecastPanel.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
@@ -143,32 +144,33 @@ import { formatQty } from '@/components/wms/wms'
 
 const route = useRoute()
 const userStore = useUserStore()
+const { t } = useI18n()
 const canRelease = computed(() => userStore.hasPerm('mes:mrp:release'))
 
 const runColumns = [
-  { title: '运算号', key: 'runNo', width: 170 },
-  { title: '参与计划', key: 'planNos', ellipsis: true },
-  { title: '结果行数', dataIndex: 'resultCount', width: 90, align: 'right' },
-  { title: '待下达', key: 'pending', width: 80 },
-  { title: '运算人', dataIndex: 'createByName', width: 100 },
-  { title: '运算时间', dataIndex: 'createTime', width: 170 }
+  { title: t('mes.mrp.runNo'), key: 'runNo', width: 170 },
+  { title: t('mes.mrp.planNos'), key: 'planNos', ellipsis: true },
+  { title: t('mes.mrp.resultCount'), dataIndex: 'resultCount', width: 100, align: 'right' },
+  { title: t('mes.mrp.status.NEW'), key: 'pending', width: 100 },
+  { title: t('mes.mrp.runBy'), dataIndex: 'createByName', width: 100 },
+  { title: t('mes.mrp.runTime'), dataIndex: 'createTime', width: 170 }
 ]
 const runs = useTable(pageMrpRun, reactive({}))
 runs.pagination.pageSize = 5
 
 const resultColumns = [
-  { title: '物料（低层码）', key: 'material', width: 280, fixed: 'left' },
-  { title: '方式', key: 'supplyType', width: 70 },
-  { title: '毛需求', key: 'grossQty', width: 90, align: 'right' },
-  { title: '库存', key: 'onHandQty', width: 80, align: 'right' },
-  { title: '在途', key: 'scheduledQty', width: 80, align: 'right' },
-  { title: '已分配', key: 'allocatedQty', width: 80, align: 'right' },
-  { title: '安全库存', key: 'safetyQty', width: 90, align: 'right' },
-  { title: '净需求', key: 'netQty', width: 90, align: 'right' },
-  { title: '建议数量', key: 'suggestQty', width: 150 },
-  { title: '日期', key: 'dates', width: 140 },
-  { title: '供应商', key: 'supplier', width: 220 },
-  { title: '状态', key: 'status', width: 150 }
+  { title: t('mes.mrp.material'), key: 'material', width: 280, fixed: 'left' },
+  { title: t('mes.mrp.supplyType'), key: 'supplyType', width: 90 },
+  { title: t('mes.mrp.gross'), key: 'grossQty', width: 100, align: 'right' },
+  { title: t('mes.mrp.onHand'), key: 'onHandQty', width: 90, align: 'right' },
+  { title: t('mes.mrp.scheduled'), key: 'scheduledQty', width: 90, align: 'right' },
+  { title: t('mes.mrp.allocated'), key: 'allocatedQty', width: 90, align: 'right' },
+  { title: t('mes.mrp.safety'), key: 'safetyQty', width: 100, align: 'right' },
+  { title: t('mes.mrp.net'), key: 'netQty', width: 90, align: 'right' },
+  { title: t('mes.mrp.suggest'), key: 'suggestQty', width: 150 },
+  { title: t('common.field.date'), key: 'dates', width: 150 },
+  { title: t('mes.mrp.supplier'), key: 'supplier', width: 220 },
+  { title: t('common.field.status'), key: 'status', width: 150 }
 ]
 
 const runId = ref()
@@ -218,13 +220,13 @@ async function save(record, patch) {
 const releasing = ref(false)
 function release() {
   Modal.confirm({
-    title: `下达 ${selected.value.length} 条建议？`,
-    content: '自制件生成草稿工单，采购件按供应商合并生成草稿采购订单。',
+    title: t('mes.mrp.releaseConfirm', { n: selected.value.length }),
+    content: t('mes.mrp.releaseContent'),
     async onOk() {
       releasing.value = true
       try {
         const nos = await releaseMrp({ resultIds: selected.value, warehouseId: warehouseId.value })
-        message.success(`已生成：${nos.join('、')}`)
+        message.success(t('mes.mrp.generated', { nos: nos.join(t('mes.workCenter.sep')) }))
         await Promise.all([loadResults(), runs.load()])
       } finally {
         releasing.value = false

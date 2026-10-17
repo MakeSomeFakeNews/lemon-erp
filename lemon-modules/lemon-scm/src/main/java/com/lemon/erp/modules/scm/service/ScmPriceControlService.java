@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.modules.scm.entity.ScmOrderItem;
 import com.lemon.erp.modules.scm.entity.ScmPriceControl;
@@ -108,16 +109,16 @@ public class ScmPriceControlService {
             WmsMaterial m = materials.get(item.getMaterialId());
             String name = m == null ? String.valueOf(item.getMaterialId()) : m.getCode() + " " + m.getName();
             if (kind == OrderKind.SALES && c.getMinSalePrice() != null && price.compareTo(c.getMinSalePrice()) < 0) {
-                errors.add("「" + name + "」单价 " + price.stripTrailingZeros().toPlainString() + " 低于最低销售价 "
-                        + c.getMinSalePrice().stripTrailingZeros().toPlainString());
+                errors.add(I18n.t("「{0}」单价 {1} 低于最低销售价 {2}", name, price.stripTrailingZeros().toPlainString(),
+                        c.getMinSalePrice().stripTrailingZeros().toPlainString()));
             }
             if (kind == OrderKind.PURCHASE && c.getMaxPurchasePrice() != null && price.compareTo(c.getMaxPurchasePrice()) > 0) {
-                errors.add("「" + name + "」单价 " + price.stripTrailingZeros().toPlainString() + " 高于最高采购价 "
-                        + c.getMaxPurchasePrice().stripTrailingZeros().toPlainString());
+                errors.add(I18n.t("「{0}」单价 {1} 高于最高采购价 {2}", name, price.stripTrailingZeros().toPlainString(),
+                        c.getMaxPurchasePrice().stripTrailingZeros().toPlainString()));
             }
         }
         if (!errors.isEmpty()) {
-            throw new BizException(String.join("；", errors));
+            throw new BizException("{0}", String.join(I18n.t("；"), errors));
         }
     }
 }

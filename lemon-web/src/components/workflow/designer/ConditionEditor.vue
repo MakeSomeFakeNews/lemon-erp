@@ -4,31 +4,31 @@
       v-if="!fields.length"
       type="info"
       show-icon
-      message="表单中还没有字段，可直接填写流程变量名（业务单据发起流程时传入的变量）"
+      :message="$t('workflow.condition.noFieldTip')"
       class="condition-tip"
     />
     <template v-for="(group, gi) in groups" :key="gi">
-      <div v-if="gi > 0" class="group-or">或</div>
+      <div v-if="gi > 0" class="group-or">{{ $t('workflow.condition.or') }}</div>
       <div class="group">
         <div class="group-head">
-          <span>条件组 {{ gi + 1 }}<span class="group-hint">（组内条件需同时满足）</span></span>
-          <a v-if="groups.length > 1" class="danger-link" @click="groups.splice(gi, 1)">删除条件组</a>
+          <span>{{ $t('workflow.condition.group', { n: gi + 1 }) }}<span class="group-hint">{{ $t('workflow.condition.groupHint') }}</span></span>
+          <a v-if="groups.length > 1" class="danger-link" @click="groups.splice(gi, 1)">{{ $t('workflow.condition.removeGroup') }}</a>
         </div>
         <div v-for="(rule, ri) in group" :key="ri" class="rule">
           <a-select
             v-if="fields.length"
             v-model:value="rule.field"
-            placeholder="字段"
+            :placeholder="$t('workflow.condition.field')"
             class="rule-field"
             :options="fieldOptions"
             @change="onFieldChange(rule)"
           />
-          <a-input v-else v-model:value="rule.field" placeholder="变量名" class="rule-field" />
+          <a-input v-else v-model:value="rule.field" :placeholder="$t('workflow.condition.variable')" class="rule-field" />
           <a-select v-model:value="rule.operator" class="rule-op" :options="operatorOptions(fieldOf(rule)?.type)" />
           <a-select
             v-if="fieldOf(rule)?.type === 'SELECT' && rule.operator !== 'IN'"
             v-model:value="rule.value"
-            placeholder="值"
+            :placeholder="$t('workflow.condition.value')"
             class="rule-value"
             :options="toSelectOptions(fieldOf(rule).options)"
           />
@@ -36,13 +36,13 @@
             v-else-if="fieldOf(rule)?.type === 'DATE'"
             v-model:value="rule.value"
             value-format="YYYY-MM-DD"
-            placeholder="日期"
+            :placeholder="$t('common.field.date')"
             class="rule-value"
           />
           <a-input
             v-else
             v-model:value="rule.value"
-            :placeholder="rule.operator === 'IN' ? '多个值用逗号分隔' : '值'"
+            :placeholder="rule.operator === 'IN' ? $t('workflow.condition.multiValue') : $t('workflow.condition.value')"
             class="rule-value"
           />
           <a-button type="text" size="small" danger :disabled="group.length === 1 && groups.length === 1" @click="removeRule(gi, ri)">
@@ -50,12 +50,12 @@
           </a-button>
         </div>
         <a-button type="dashed" size="small" block @click="group.push(emptyRule())">
-          <template #icon><PlusOutlined /></template>添加条件（且）
+          <template #icon><PlusOutlined /></template>{{ $t('workflow.condition.addRule') }}
         </a-button>
       </div>
     </template>
     <a-button type="link" class="add-group" @click="groups.push([emptyRule()])">
-      <template #icon><PlusOutlined /></template>添加条件组（或）
+      <template #icon><PlusOutlined /></template>{{ $t('workflow.condition.addGroup') }}
     </a-button>
   </div>
 </template>
@@ -71,7 +71,7 @@ const props = defineProps({
   fields: { type: Array, default: () => [] }
 })
 
-const fieldOptions = computed(() => props.fields.map((f) => ({ label: `${f.label}（${f.field}）`, value: f.field })))
+const fieldOptions = computed(() => props.fields.map((f) => ({ label: `${f.label} (${f.field})`, value: f.field })))
 const fieldOf = (rule) => props.fields.find((f) => f.field === rule.field)
 
 function onFieldChange(rule) {
@@ -128,7 +128,7 @@ function removeRule(gi, ri) {
   min-width: 0;
 }
 .rule-op {
-  width: 104px;
+  width: 140px;
   flex: none;
 }
 .rule-value {

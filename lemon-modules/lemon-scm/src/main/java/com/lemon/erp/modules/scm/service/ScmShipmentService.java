@@ -76,7 +76,7 @@ public class ScmShipmentService {
         // 按出库单的数据权限读取
         ScmTradeDoc doc = tradeDocService.detail(TradeKind.SALES_OUT, req.tradeDocId());
         if (shipmentMapper.exists(Wrappers.<ScmShipment>lambdaQuery().eq(ScmShipment::getTradeDocId, doc.getId()))) {
-            throw new BizException("出库单 " + doc.getDocNo() + " 已创建发运单");
+            throw new BizException("出库单 {0} 已创建发运单", doc.getDocNo());
         }
         LoginUser user = SecurityUtils.getLoginUser();
         ScmShipment shipment = new ScmShipment();
@@ -88,7 +88,7 @@ public class ScmShipmentService {
         shipment.setDeptId(user.deptId());
         shipment.setCreateBy(user.userId());
         shipmentMapper.insert(shipment);
-        addTrack(shipment.getId(), PENDING, "创建发运单，出库单 " + doc.getDocNo());
+        addTrack(shipment.getId(), PENDING, "创建发运单，出库单 " + doc.getDocNo()); // i18n-ignore
         return shipment.getId();
     }
 
@@ -130,7 +130,7 @@ public class ScmShipmentService {
                 .set(ScmShipment::getTrackingNo, trackingNo)
                 .set(ScmShipment::getShipDate, PENDING.name().equals(shipment.getStatus()) ? date : shipment.getShipDate()));
         addTrack(id, SHIPPED, StringUtils.hasText(req.content()) ? req.content()
-                : (PENDING.name().equals(shipment.getStatus()) ? "已发货" : "异常已处理，继续运输") + "，运单号 " + trackingNo);
+                : (PENDING.name().equals(shipment.getStatus()) ? "已发货" : "异常已处理，继续运输") + "，运单号 " + trackingNo); // i18n-ignore
         // 首次发货：运费生成承运商应付单
         if (PENDING.name().equals(shipment.getStatus()) && shipment.getCarrierSupplierId() != null
                 && shipment.getFreight() != null && shipment.getFreight().signum() > 0) {
@@ -168,7 +168,7 @@ public class ScmShipmentService {
         ScmShipment shipment = getAccessible(id);
         LocalDate date = req.date() == null ? LocalDate.now() : req.date();
         transit(shipment, Set.of(SHIPPED, EXCEPTION), SIGNED, Wrappers.<ScmShipment>lambdaUpdate().set(ScmShipment::getSignDate, date));
-        addTrack(id, SIGNED, StringUtils.hasText(req.content()) ? req.content().trim() : "客户已签收");
+        addTrack(id, SIGNED, StringUtils.hasText(req.content()) ? req.content().trim() : "客户已签收"); // i18n-ignore
     }
 
     /** 只能删除待发运的 */

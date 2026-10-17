@@ -52,7 +52,7 @@ public class MesForecastController {
     /** 保存：同一物料、月份已有预测时覆盖数量 */
     @PostMapping
     @PreAuthorize("@ss.hasPerm('mes:mrp:run')")
-    @OperLog(title = "销售预测", type = OperType.INSERT)
+    @OperLog(title = "销售预测", type = OperType.INSERT) // i18n-ignore
     @Transactional
     public R<Long> save(@Valid @RequestBody MesForecast req) {
         if (req.getPeriod() % 100 < 1 || req.getPeriod() % 100 > 12) {
@@ -74,7 +74,7 @@ public class MesForecastController {
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('mes:mrp:run')")
-    @OperLog(title = "销售预测", type = OperType.DELETE)
+    @OperLog(title = "销售预测", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         forecastMapper.deleteByIds(ids);
         return R.ok();

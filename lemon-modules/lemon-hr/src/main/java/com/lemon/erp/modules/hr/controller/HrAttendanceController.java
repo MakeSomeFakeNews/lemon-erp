@@ -61,7 +61,7 @@ public class HrAttendanceController {
 
     @PostMapping("/attendance")
     @PreAuthorize("@ss.hasPerm('hr:attendance:edit')")
-    @OperLog(title = "考勤补录", type = OperType.UPDATE)
+    @OperLog(title = "考勤补录", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> manual(@Valid @RequestBody AttendanceRequest req) {
         attendanceService.manual(req);
         return R.ok();
@@ -69,7 +69,7 @@ public class HrAttendanceController {
 
     @DeleteMapping("/attendance/{ids}")
     @PreAuthorize("@ss.hasPerm('hr:attendance:edit')")
-    @OperLog(title = "考勤记录", type = OperType.DELETE)
+    @OperLog(title = "考勤记录", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> delete(@PathVariable List<Long> ids) {
         attendanceService.delete(ids);
         return R.ok();
@@ -85,7 +85,7 @@ public class HrAttendanceController {
 
     @PostMapping("/shift")
     @PreAuthorize("@ss.hasPerm('hr:attendance:config')")
-    @OperLog(title = "班次设置", type = OperType.INSERT)
+    @OperLog(title = "班次设置", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Void> createShift(@Valid @RequestBody HrShift shift) {
         calendarService.saveShift(null, shift);
         return R.ok();
@@ -93,7 +93,7 @@ public class HrAttendanceController {
 
     @PutMapping("/shift/{id}")
     @PreAuthorize("@ss.hasPerm('hr:attendance:config')")
-    @OperLog(title = "班次设置", type = OperType.UPDATE)
+    @OperLog(title = "班次设置", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> updateShift(@PathVariable Long id, @Valid @RequestBody HrShift shift) {
         calendarService.saveShift(id, shift);
         return R.ok();
@@ -101,7 +101,7 @@ public class HrAttendanceController {
 
     @DeleteMapping("/shift/{id}")
     @PreAuthorize("@ss.hasPerm('hr:attendance:config')")
-    @OperLog(title = "班次设置", type = OperType.DELETE)
+    @OperLog(title = "班次设置", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> deleteShift(@PathVariable Long id) {
         calendarService.deleteShift(id);
         return R.ok();
@@ -115,7 +115,7 @@ public class HrAttendanceController {
 
     @PostMapping("/holiday")
     @PreAuthorize("@ss.hasPerm('hr:attendance:config')")
-    @OperLog(title = "节假日设置", type = OperType.INSERT)
+    @OperLog(title = "节假日设置", type = OperType.INSERT)  // i18n-ignore 操作日志存库
     public R<Void> createHoliday(@Valid @RequestBody HrHoliday holiday) {
         calendarService.saveHoliday(null, holiday);
         return R.ok();
@@ -123,7 +123,7 @@ public class HrAttendanceController {
 
     @PutMapping("/holiday/{id}")
     @PreAuthorize("@ss.hasPerm('hr:attendance:config')")
-    @OperLog(title = "节假日设置", type = OperType.UPDATE)
+    @OperLog(title = "节假日设置", type = OperType.UPDATE)  // i18n-ignore 操作日志存库
     public R<Void> updateHoliday(@PathVariable Long id, @Valid @RequestBody HrHoliday holiday) {
         calendarService.saveHoliday(id, holiday);
         return R.ok();
@@ -131,7 +131,7 @@ public class HrAttendanceController {
 
     @DeleteMapping("/holiday/{ids}")
     @PreAuthorize("@ss.hasPerm('hr:attendance:config')")
-    @OperLog(title = "节假日设置", type = OperType.DELETE)
+    @OperLog(title = "节假日设置", type = OperType.DELETE)  // i18n-ignore 操作日志存库
     public R<Void> deleteHoliday(@PathVariable List<Long> ids) {
         calendarService.deleteHoliday(ids);
         return R.ok();

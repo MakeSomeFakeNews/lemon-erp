@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.controller;
 
+import com.lemon.erp.common.i18n.I18n;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
@@ -50,17 +51,17 @@ public class FinSettlementController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':add')")
-    @OperLog(title = "收付款", type = OperType.INSERT)
+    @OperLog(title = "收付款", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@PathVariable String kind, @Valid @RequestBody SettlementRequest req) {
         if (!kind.toUpperCase(Locale.ROOT).equals(req.kind())) {
-            return R.fail("单据种类不匹配");
+            return R.fail(I18n.t("单据种类不匹配"));
         }
         return R.ok(settlementService.create(req));
     }
 
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':remove')")
-    @OperLog(title = "收付款", type = OperType.DELETE)
+    @OperLog(title = "收付款", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable String kind, @PathVariable List<Long> ids) {
         settlementService.delete(ids);
         return R.ok();
@@ -68,7 +69,7 @@ public class FinSettlementController {
 
     @PostMapping("/voucher/{ids}")
     @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':voucher')")
-    @OperLog(title = "收付款-生成凭证", type = OperType.INSERT)
+    @OperLog(title = "收付款-生成凭证", type = OperType.INSERT) // i18n-ignore
     public R<Integer> voucher(@PathVariable String kind, @PathVariable List<Long> ids) {
         return R.ok(settlementService.generateVouchers(ids));
     }

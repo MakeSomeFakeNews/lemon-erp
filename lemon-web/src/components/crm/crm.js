@@ -1,4 +1,5 @@
 import dayjs from 'dayjs'
+import { t } from '@/locales'
 
 /** 进行中的销售阶段（看板列），与后端 CrmConstants.OPEN_STAGES 一致 */
 export const OPEN_STAGES = ['INITIAL', 'NEEDS', 'PROPOSAL', 'NEGOTIATION']
@@ -7,11 +8,11 @@ export const ALL_STAGES = [...OPEN_STAGES, 'WON', 'LOST']
 export const STAGE_PROBABILITY = { INITIAL: 10, NEEDS: 30, PROPOSAL: 50, NEGOTIATION: 80, WON: 100, LOST: 0 }
 
 export const TARGET_TYPES = [
-  { value: 'CUSTOMER', label: '客户', color: 'blue' },
-  { value: 'LEAD', label: '线索', color: 'orange' },
-  { value: 'OPPORTUNITY', label: '商机', color: 'purple' }
+  { value: 'CUSTOMER', label: t('crm.common.target.customer'), color: 'blue' },
+  { value: 'LEAD', label: t('crm.common.target.lead'), color: 'orange' },
+  { value: 'OPPORTUNITY', label: t('crm.common.target.opportunity'), color: 'purple' }
 ]
-export const targetType = (v) => TARGET_TYPES.find((t) => t.value === v) || { label: v, color: 'default' }
+export const targetType = (v) => TARGET_TYPES.find((x) => x.value === v) || { label: v, color: 'default' }
 
 export const now = () => dayjs().format('YYYY-MM-DD HH:mm:ss')
 
@@ -25,8 +26,8 @@ export function remaining(t) {
   if (minutes < 0) return null
   const d = Math.floor(minutes / 1440)
   const h = Math.floor((minutes % 1440) / 60)
-  if (d) return `${d} 天 ${h} 小时`
-  return `${h} 小时 ${minutes % 60} 分`
+  if (d) return t('crm.common.remainDH', { d, h })
+  return t('crm.common.remainHM', { h, m: minutes % 60 })
 }
 
 /** 超时时长 */
@@ -34,7 +35,7 @@ export function overdueText(t) {
   const minutes = dayjs().diff(dayjs(t), 'minute')
   const d = Math.floor(minutes / 1440)
   const h = Math.floor((minutes % 1440) / 60)
-  return d ? `超时 ${d} 天 ${h} 小时` : `超时 ${h} 小时 ${minutes % 60} 分`
+  return d ? t('crm.common.overdueDH', { d, h }) : t('crm.common.overdueHM', { h, m: minutes % 60 })
 }
 
 /** 金额列表求和 */
@@ -42,8 +43,8 @@ export const sum = (list, key) => list.reduce((s, r) => s + (Number(r[key]) || 0
 
 /** 合同回款计划的回款状态 */
 export const COLLECT_STATUS = {
-  RECEIVED: { label: '已回款', color: 'green' },
-  PARTIAL: { label: '部分回款', color: 'blue' },
-  OVERDUE: { label: '逾期', color: 'red' },
-  PENDING: { label: '未到期', color: 'default' }
+  RECEIVED: { label: t('crm.common.collect.received'), color: 'green' },
+  PARTIAL: { label: t('crm.common.collect.partial'), color: 'blue' },
+  OVERDUE: { label: t('crm.common.collect.overdue'), color: 'red' },
+  PENDING: { label: t('crm.common.collect.pending'), color: 'default' }
 }

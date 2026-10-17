@@ -74,7 +74,7 @@ public class MesWorkOrderController {
 
     @PostMapping("/{id}/release")
     @PreAuthorize("@ss.hasPerm('mes:wo:release')")
-    @OperLog(title = "生产工单-下达", type = OperType.UPDATE)
+    @OperLog(title = "生产工单-下达", type = OperType.UPDATE) // i18n-ignore
     public R<Void> release(@PathVariable Long id) {
         workOrderService.release(id);
         return R.ok();
@@ -82,7 +82,7 @@ public class MesWorkOrderController {
 
     @PostMapping("/{id}/close")
     @PreAuthorize("@ss.hasPerm('mes:wo:release')")
-    @OperLog(title = "生产工单-关闭", type = OperType.UPDATE)
+    @OperLog(title = "生产工单-关闭", type = OperType.UPDATE) // i18n-ignore
     public R<Void> close(@PathVariable Long id) {
         workOrderService.close(id);
         return R.ok();
@@ -90,7 +90,7 @@ public class MesWorkOrderController {
 
     @PostMapping("/{id}/report")
     @PreAuthorize("@ss.hasPerm('mes:wo:report')")
-    @OperLog(title = "生产工单-报工", type = OperType.INSERT)
+    @OperLog(title = "生产工单-报工", type = OperType.INSERT) // i18n-ignore
     public R<Void> report(@PathVariable Long id, @Valid @RequestBody ReportRequest req) {
         workOrderService.report(id, req);
         return R.ok();
@@ -110,7 +110,7 @@ public class MesWorkOrderController {
     /** 领料 issue / 退料 return（权限 mes:wo:issue）、完工入库 finish（权限 mes:wo:finish），返回单据 ID */
     @PostMapping("/{id}/{kind:issue|return|finish|scrap}")
     @PreAuthorize("@ss.hasPerm(#kind == 'finish' || #kind == 'scrap' ? 'mes:wo:finish' : 'mes:wo:issue')")
-    @OperLog(title = "生产工单-领料退料完工", type = OperType.INSERT)
+    @OperLog(title = "生产工单-领料退料完工", type = OperType.INSERT) // i18n-ignore
     public R<Long> createDoc(@PathVariable Long id, @PathVariable String kind, @Valid @RequestBody WoDocRequest req) {
         return R.ok(docService.create(id, WoDocKind.ofPath(kind), req));
     }
@@ -140,7 +140,7 @@ public class MesWorkOrderController {
     /** 修改已下达工单的数量 */
     @PutMapping("/{id}/qty")
     @PreAuthorize("@ss.hasPerm('mes:wo:change')")
-    @OperLog(title = "生产工单改量", type = OperType.UPDATE)
+    @OperLog(title = "生产工单改量", type = OperType.UPDATE) // i18n-ignore
     public R<Void> changeQty(@PathVariable Long id, @Valid @RequestBody QtyRequest req) {
         workOrderService.changeQty(id, req.qty());
         return R.ok();
@@ -149,7 +149,7 @@ public class MesWorkOrderController {
     /** 拆分工单，返回新工单 ID */
     @PostMapping("/{id}/split")
     @PreAuthorize("@ss.hasPerm('mes:wo:change')")
-    @OperLog(title = "生产工单拆分", type = OperType.INSERT)
+    @OperLog(title = "生产工单拆分", type = OperType.INSERT) // i18n-ignore
     public R<Long> split(@PathVariable Long id, @Valid @RequestBody QtyRequest req) {
         return R.ok(workOrderService.split(id, req.qty(), req.planStart(), req.planEnd()));
     }

@@ -94,8 +94,8 @@ public class ScmPackingService {
             }
             BigDecimal total = packed.getOrDefault(item.getId(), BigDecimal.ZERO).add(thisBox.merge(item.getId(), l.qty(), BigDecimal::add));
             if (total.compareTo(item.getQty()) > 0) {
-                throw new BizException(String.format("%s %s：装箱数量合计 %s 超过通知数量 %s", item.getMaterialCode(), item.getMaterialName(),
-                        plain(total), plain(item.getQty())));
+                throw new BizException("{0} {1}：装箱数量合计 {2} 超过通知数量 {3}", item.getMaterialCode(), item.getMaterialName(),
+                        plain(total), plain(item.getQty()));
             }
             ScmDeliveryPackageItem i = new ScmDeliveryPackageItem();
             i.setDeliveryItemId(item.getId());

@@ -3,15 +3,18 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import TaskListPage from '@/components/workflow/TaskListPage.vue'
 import { pageCopy } from '@/api/workflow/copy'
 
+const { t } = useI18n()
+
 const columns = [
-  { title: '流程名称', key: 'processName', dataIndex: 'processName', width: 200, ellipsis: true },
-  { title: '抄送节点', dataIndex: 'nodeName', width: 140 },
-  { title: '发起人', dataIndex: 'startUserName', width: 120 },
-  { title: '流程状态', key: 'status', width: 100 },
-  { title: '抄送时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 100, fixed: 'right' }
+  { title: t('workflow.list.processName'), key: 'processName', dataIndex: 'processName', width: 200, ellipsis: true },
+  { title: t('workflow.copy.node'), dataIndex: 'nodeName', width: 140 },
+  { title: t('workflow.list.initiator'), dataIndex: 'startUserName', width: 120 },
+  { title: t('workflow.done.processStatus'), key: 'status', width: 120 },
+  { title: t('workflow.copy.time'), dataIndex: 'createTime', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 110, fixed: 'right' }
 ]
 </script>

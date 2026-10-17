@@ -2,12 +2,12 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
-        <a-select v-model:value="query.status" placeholder="全部状态" allow-clear :options="toOptions(dict.scm_contract_status)" class="filter" @change="search" />
-        <PartnerSelect v-model:value="query.supplierId" type="supplier" allow-clear placeholder="供应商" class="filter-wide" @update:value="search" />
-        <a-input-search v-model:value="query.keyword" placeholder="合同编号、名称、供应商" allow-clear class="filter-wide" @search="search" />
+        <a-select v-model:value="query.status" :placeholder="$t('scm.contract.allStatus')" allow-clear :options="toOptions(dict.scm_contract_status)" class="filter" @change="search" />
+        <PartnerSelect v-model:value="query.supplierId" type="supplier" allow-clear :placeholder="$t('scm.contract.supplier')" class="filter-wide" @update:value="search" />
+        <a-input-search v-model:value="query.keyword" :placeholder="$t('scm.contract.keyword')" allow-clear class="filter-wide" @search="search" />
         <template #extra>
           <a-button v-perm="'scm:contract:add'" type="primary" @click="drawer.openCreate()">
-            <template #icon><PlusOutlined /></template>新增合同
+            <template #icon><PlusOutlined /></template>{{ $t('scm.contract.add') }}
           </a-button>
         </template>
       </TableToolbar>
@@ -19,7 +19,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1150, y: '100%' }"
+        :scroll="{ x: 1220, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -30,90 +30,90 @@
           <template v-else-if="column.key === 'type'"><DictTag type="scm_contract_type" :value="record.contractType" /></template>
           <template v-else-if="column.key === 'period'">
             <div>{{ record.startDate }} ~ {{ record.endDate }}</div>
-            <div v-if="record.status === 'ACTIVE' && expired(record)" class="sub-text danger">已到期</div>
+            <div v-if="record.status === 'ACTIVE' && expired(record)" class="sub-text danger">{{ $t('scm.contract.expired') }}</div>
           </template>
           <template v-else-if="column.key === 'amount'">
-            <div>已下单 ¥{{ formatMoney(record.orderedAmount) }}</div>
-            <div class="sub-text">{{ record.amountLimit != null ? `上限 ¥${formatMoney(record.amountLimit)}` : '金额不限' }}</div>
+            <div>{{ $t('scm.contract.orderedAmount', { amount: formatMoney(record.orderedAmount) }) }}</div>
+            <div class="sub-text">{{ record.amountLimit != null ? $t('scm.contract.limitAmount', { amount: formatMoney(record.amountLimit) }) : $t('scm.contract.amountUnlimited') }}</div>
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="scm_contract_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">查看</a-button>
+            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增采购合同" edit-title="编辑采购合同" width="min(1100px, 100vw)" page>
+    <FormDrawer :drawer="drawer" :create-title="$t('scm.contract.createTitle')" :edit-title="$t('scm.contract.editTitle')" width="min(1100px, 100vw)" page>
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="合同名称" name="name">
-              <a-input v-model:value="form.name" :maxlength="128" placeholder="如：2026 年度包装材料框架协议" />
+            <a-form-item :label="$t('scm.contract.name')" name="name">
+              <a-input v-model:value="form.name" :maxlength="128" :placeholder="$t('scm.contract.namePlaceholder')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="供应商" name="supplierId">
+            <a-form-item :label="$t('scm.contract.supplier')" name="supplierId">
               <PartnerSelect v-model:value="form.supplierId" type="supplier" :label="form.supplierName" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="合同类型" name="contractType" :extra="TYPE_TIPS[form.contractType]">
+            <a-form-item :label="$t('scm.contract.contractType')" name="contractType" :extra="TYPE_TIPS[form.contractType]">
               <a-radio-group v-model:value="form.contractType" :options="toOptions(dict.scm_contract_type)" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="6">
-            <a-form-item label="签订日期" name="signDate">
+            <a-form-item :label="$t('scm.contract.signDate')" name="signDate">
               <a-date-picker v-model:value="form.signDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="6">
-            <a-form-item label="金额上限" name="amountLimit" extra="价税合计，为空不限">
+            <a-form-item :label="$t('scm.contract.amountLimit')" name="amountLimit" :extra="$t('scm.contract.amountLimitTip')">
               <a-input-number v-model:value="form.amountLimit" :min="0.01" :precision="2" prefix="¥" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="6">
-            <a-form-item label="生效日期" name="startDate">
+            <a-form-item :label="$t('scm.contract.startDate')" name="startDate">
               <a-date-picker v-model:value="form.startDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="6">
-            <a-form-item label="到期日期" name="endDate">
+            <a-form-item :label="$t('scm.contract.endDate')" name="endDate">
               <a-date-picker v-model:value="form.endDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="4">
-            <a-form-item label="付款天数" name="paymentDays" extra="应付单按此计算到期日">
-              <a-input-number v-model:value="form.paymentDays" :min="0" :precision="0" addon-after="天" class="full" />
+            <a-form-item :label="$t('scm.contract.paymentDays')" name="paymentDays" :extra="$t('scm.contract.paymentDaysTip')">
+              <a-input-number v-model:value="form.paymentDays" :min="0" :precision="0" :addon-after="$t('scm.contract.day')" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="12" :sm="8">
-            <a-form-item label="付款条款" name="paymentTerms">
-              <a-input v-model:value="form.paymentTerms" :maxlength="255" placeholder="如：月结 30 天，承兑汇票" />
+            <a-form-item :label="$t('scm.contract.paymentTerms')" name="paymentTerms">
+              <a-input v-model:value="form.paymentTerms" :maxlength="255" :placeholder="$t('scm.contract.paymentTermsPlaceholder')" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="备注" name="remark">
+            <a-form-item :label="$t('common.field.remark')" name="remark">
               <a-input v-model:value="form.remark" :maxlength="500" />
             </a-form-item>
           </a-col>
         </a-row>
 
         <div class="items-head">
-          <span class="section-title">合同物料（采购订单引用合同时按合同价下单）</span>
+          <span class="section-title">{{ $t('scm.contract.itemsTitle') }}</span>
           <a-button type="primary" ghost size="small" @click="addItem">
-            <template #icon><PlusOutlined /></template>添加物料
+            <template #icon><PlusOutlined /></template>{{ $t('scm.contract.addMaterial') }}
           </a-button>
         </div>
         <a-table row-key="key" size="small" :columns="itemColumns" :data-source="form.items" :pagination="false" :scroll="{ x: 900 }">
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'material'">
-              <a-form-item :name="['items', index, 'materialId']" :rules="[{ required: true, message: '请选择物料' }]" class="cell-item">
+              <a-form-item :name="['items', index, 'materialId']" :rules="[{ required: true, message: $t('scm.contract.materialRequired') }]" class="cell-item">
                 <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" />
               </a-form-item>
             </template>
             <template v-else-if="column.key === 'price'">
-              <a-form-item :name="['items', index, 'price']" :rules="[{ required: true, message: '请填写单价' }]" class="cell-item">
+              <a-form-item :name="['items', index, 'price']" :rules="[{ required: true, message: $t('scm.contract.priceRequired') }]" class="cell-item">
                 <a-input-number v-model:value="record.price" :min="0" :precision="4" prefix="¥" class="full" />
               </a-form-item>
             </template>
@@ -123,10 +123,10 @@
             <template v-else-if="column.key === 'qtyLimit'">
               <a-form-item
                 :name="['items', index, 'qtyLimit']"
-                :rules="form.contractType === 'FIXED' ? [{ required: true, message: '请填写数量' }] : []"
+                :rules="form.contractType === 'FIXED' ? [{ required: true, message: $t('scm.contract.qtyRequired') }] : []"
                 class="cell-item"
               >
-                <a-input-number v-model:value="record.qtyLimit" :min="0" :placeholder="form.contractType === 'FIXED' ? '' : '不限'" class="full" />
+                <a-input-number v-model:value="record.qtyLimit" :min="0" :placeholder="form.contractType === 'FIXED' ? '' : $t('scm.contract.unlimited')" class="full" />
               </a-form-item>
             </template>
             <template v-else-if="column.key === 'remark'">
@@ -140,68 +140,68 @@
       </a-form>
     </FormDrawer>
 
-    <SubPage :open="detailOpen" :title="detail ? `采购合同 ${detail.contractNo}` : ''" width="min(1000px, 100vw)" @close="detailOpen = false">
+    <SubPage :open="detailOpen" :title="detail ? $t('scm.contract.detailTitle', { no: detail.contractNo }) : ''" width="min(1000px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <a-space>
-          <a-button v-if="detail.flowInstanceId" @click="flowOpen = true">审批记录</a-button>
+          <a-button v-if="detail.flowInstanceId" @click="flowOpen = true">{{ $t('scm.contract.flowRecord') }}</a-button>
           <template v-if="detail.status === 'DRAFT'">
-            <a-button v-perm="'scm:contract:edit'" @click="drawer.openEdit(detail)">编辑</a-button>
+            <a-button v-perm="'scm:contract:edit'" @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
             <span v-perm="'scm:contract:remove'">
-              <a-popconfirm title="删除该合同？" @confirm="remove">
-                <a-button danger>删除</a-button>
+              <a-popconfirm :title="$t('scm.contract.confirmDelete')" @confirm="remove">
+                <a-button danger>{{ $t('common.action.delete') }}</a-button>
               </a-popconfirm>
             </span>
             <span v-perm="'scm:contract:approve'">
-              <a-popconfirm title="提交合同？发布了审批流程时进入审批，否则直接生效" @confirm="submit">
-                <a-button type="primary">提交</a-button>
+              <a-popconfirm :title="$t('scm.contract.confirmSubmit')" @confirm="submit">
+                <a-button type="primary">{{ $t('common.action.submit') }}</a-button>
               </a-popconfirm>
             </span>
           </template>
-          <a-button v-if="detail.status === 'ACTIVE'" v-perm="'scm:contract:close'" @click="openClose">关闭合同</a-button>
+          <a-button v-if="detail.status === 'ACTIVE'" v-perm="'scm:contract:close'" @click="openClose">{{ $t('scm.contract.closeContract') }}</a-button>
         </a-space>
       </template>
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" bordered class="block">
-          <a-descriptions-item label="合同名称" :span="2">{{ detail.name }}</a-descriptions-item>
-          <a-descriptions-item label="状态">
+          <a-descriptions-item :label="$t('scm.contract.name')" :span="2">{{ detail.name }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.status')">
             <DictTag type="scm_contract_status" :value="detail.status" />
-            <span v-if="detail.status === 'ACTIVE' && expired(detail)" class="danger">已到期</span>
+            <span v-if="detail.status === 'ACTIVE' && expired(detail)" class="danger">{{ $t('scm.contract.expired') }}</span>
           </a-descriptions-item>
-          <a-descriptions-item label="供应商">{{ detail.supplierCode }} {{ detail.supplierName }}</a-descriptions-item>
-          <a-descriptions-item label="类型"><DictTag type="scm_contract_type" :value="detail.contractType" /></a-descriptions-item>
-          <a-descriptions-item label="签订日期">{{ detail.signDate }}</a-descriptions-item>
-          <a-descriptions-item label="期限">{{ detail.startDate }} ~ {{ detail.endDate }}</a-descriptions-item>
-          <a-descriptions-item label="金额">
-            已下单 ¥{{ formatMoney(detail.orderedAmount) }}
-            <span class="sub-text">{{ detail.amountLimit != null ? ` / 上限 ¥${formatMoney(detail.amountLimit)}` : '（不限）' }}</span>
+          <a-descriptions-item :label="$t('scm.contract.supplier')">{{ detail.supplierCode }} {{ detail.supplierName }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.contract.type')"><DictTag type="scm_contract_type" :value="detail.contractType" /></a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.contract.signDate')">{{ detail.signDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.contract.period')">{{ detail.startDate }} ~ {{ detail.endDate }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.amount')">
+            {{ $t('scm.contract.orderedAmount', { amount: formatMoney(detail.orderedAmount) }) }}
+            <span class="sub-text">{{ detail.amountLimit != null ? ' / ' + $t('scm.contract.limitAmount', { amount: formatMoney(detail.amountLimit) }) : $t('scm.contract.unlimitedParen') }}</span>
           </a-descriptions-item>
-          <a-descriptions-item label="付款">{{ detail.paymentDays != null ? `${detail.paymentDays} 天` : '按供应商账期' }} {{ detail.paymentTerms || '' }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.tenderNo" label="来源招标">{{ detail.tenderNo }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.closeReason" label="关闭原因">{{ detail.closeReason }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.remark" label="备注" :span="3">{{ detail.remark }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.contract.payment')">{{ detail.paymentDays != null ? $t('scm.contract.days', { n: detail.paymentDays }) : $t('scm.contract.supplierTerms') }} {{ detail.paymentTerms || '' }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.tenderNo" :label="$t('scm.contract.sourceTender')">{{ detail.tenderNo }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.closeReason" :label="$t('scm.contract.closeReason')">{{ detail.closeReason }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')" :span="3">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
         <a-tabs>
-          <a-tab-pane key="items" tab="物料与执行">
+          <a-tab-pane key="items" :tab="$t('scm.contract.itemsTab')">
             <a-table row-key="id" size="small" :columns="usageColumns" :data-source="detail.items" :pagination="false" :scroll="{ x: 860 }">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'material'">
                   {{ record.materialCode }} {{ record.materialName }}
                   <div class="sub-text">{{ record.spec }}</div>
                 </template>
-                <template v-else-if="column.key === 'price'">¥{{ Number(record.price) }}<div class="sub-text">税率 {{ Number(record.taxRate) }}%</div></template>
+                <template v-else-if="column.key === 'price'">¥{{ Number(record.price) }}<div class="sub-text">{{ $t('scm.contract.taxRateOf', { rate: Number(record.taxRate) }) }}</div></template>
                 <template v-else-if="column.key === 'progress'">
                   <template v-if="record.qtyLimit != null">
                     <a-progress :percent="pct(record.orderedQty, record.qtyLimit)" size="small" />
-                    <div class="sub-text">已下单 {{ formatQty(record.orderedQty) }} / {{ formatQty(record.qtyLimit) }} {{ record.unit }}</div>
+                    <div class="sub-text">{{ $t('scm.contract.orderedOfLimit', { qty: formatQty(record.orderedQty), limit: formatQty(record.qtyLimit), unit: record.unit || '' }) }}</div>
                   </template>
-                  <span v-else>已下单 {{ formatQty(record.orderedQty) }} {{ record.unit }}<span class="sub-text">（不限）</span></span>
+                  <span v-else>{{ $t('scm.contract.orderedQty', { qty: formatQty(record.orderedQty), unit: record.unit || '' }) }}<span class="sub-text">{{ $t('scm.contract.unlimitedParen') }}</span></span>
                 </template>
                 <template v-else-if="column.key === 'received'">{{ formatQty(record.receivedQty) }}</template>
                 <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.orderedAmount) }}</template>
               </template>
             </a-table>
           </a-tab-pane>
-          <a-tab-pane key="orders" :tab="`采购订单（${orders.length}）`">
+          <a-tab-pane key="orders" :tab="$t('scm.contract.ordersTab', { n: orders.length })">
             <a-table row-key="id" size="small" :columns="orderColumns" :data-source="orders" :pagination="false">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'status'"><DictTag type="scm_order_status" :value="record.status" /></template>
@@ -214,16 +214,16 @@
               </template>
             </a-table>
           </a-tab-pane>
-          <a-tab-pane key="files" tab="附件">
+          <a-tab-pane key="files" :tab="$t('scm.contract.attachments')">
             <AttachmentPanel biz-type="scm_contract" :biz-id="detail.id" :editable="userStore.hasPerm('scm:contract:edit')" />
           </a-tab-pane>
         </a-tabs>
       </template>
     </SubPage>
 
-    <a-modal v-model:open="closeOpen" title="关闭合同" @ok="submitClose">
-      <a-alert type="info" show-icon class="block" message="关闭后采购订单不能再引用该合同，已下单的订单不受影响" />
-      <a-textarea v-model:value="closeReason" :rows="3" :maxlength="255" placeholder="关闭原因" />
+    <a-modal v-model:open="closeOpen" :title="$t('scm.contract.closeContract')" @ok="submitClose">
+      <a-alert type="info" show-icon class="block" :message="$t('scm.contract.closeTip')" />
+      <a-textarea v-model:value="closeReason" :rows="3" :maxlength="255" :placeholder="$t('scm.contract.closeReason')" />
     </a-modal>
 
     <InstanceDetailDrawer v-model:open="flowOpen" :instance-id="detail?.flowInstanceId" />
@@ -233,6 +233,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
@@ -254,21 +255,22 @@ import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
 /** 采购合同 / 框架协议：生效后采购订单可引用，按合同价下单并校验数量、金额上限 */
+const { t } = useI18n()
 const dict = useDict('scm_contract_type', 'scm_contract_status')
 const userStore = useUserStore()
 const TYPE_TIPS = {
-  FRAMEWORK: '约定价格与期限，数量按订单执行（可设数量上限、金额上限）',
-  FIXED: '每个物料约定数量，订单累计不超过合同数量'
+  FRAMEWORK: t('scm.contract.frameworkTip'),
+  FIXED: t('scm.contract.fixedTip')
 }
 
 const columns = [
-  { title: '合同编号 / 名称', key: 'contractNo', width: 240 },
-  { title: '供应商', dataIndex: 'supplierName', width: 200, ellipsis: true },
-  { title: '类型', key: 'type', width: 120 },
-  { title: '期限', key: 'period', width: 200 },
-  { title: '执行金额', key: 'amount', width: 170 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' }
+  { title: t('scm.contract.noName'), key: 'contractNo', width: 240 },
+  { title: t('scm.contract.supplier'), dataIndex: 'supplierName', width: 200, ellipsis: true },
+  { title: t('scm.contract.type'), key: 'type', width: 130 },
+  { title: t('scm.contract.period'), key: 'period', width: 200 },
+  { title: t('scm.contract.execAmount'), key: 'amount', width: 190 },
+  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'scm-contract')
 const query = reactive({ status: undefined, supplierId: undefined, keyword: undefined })
@@ -281,12 +283,12 @@ const pct = (a, b) => (Number(b) ? Math.min(100, Math.round((Number(a) / Number(
 // ---------------------------------------------------------------- 表单
 const newItem = () => ({ key: rowKey(), materialId: undefined, price: undefined, taxRate: 13, qtyLimit: undefined, remark: '' })
 const rules = {
-  name: [{ required: true, whitespace: true, message: '请填写合同名称' }],
-  supplierId: [{ required: true, message: '请选择供应商' }],
-  contractType: [{ required: true, message: '请选择合同类型' }],
-  signDate: [{ required: true, message: '请选择签订日期' }],
-  startDate: [{ required: true, message: '请选择生效日期' }],
-  endDate: [{ required: true, message: '请选择到期日期' }]
+  name: [{ required: true, whitespace: true, message: t('scm.contract.nameRequired') }],
+  supplierId: [{ required: true, message: t('scm.contract.supplierRequired') }],
+  contractType: [{ required: true, message: t('scm.contract.typeRequired') }],
+  signDate: [{ required: true, message: t('scm.contract.signDateRequired') }],
+  startDate: [{ required: true, message: t('scm.contract.startDateRequired') }],
+  endDate: [{ required: true, message: t('scm.contract.endDateRequired') }]
 }
 const num = (v) => (v == null ? undefined : Number(v))
 const drawer = useFormDrawer({
@@ -323,29 +325,29 @@ const { formRef, form } = drawer
 const addItem = () => form.value.items.push(newItem())
 
 const itemColumns = [
-  { title: '物料', key: 'material', width: 280 },
-  { title: '合同单价（含税）', key: 'price', width: 170 },
-  { title: '税率', key: 'taxRate', width: 110 },
-  { title: '数量上限', key: 'qtyLimit', width: 140 },
-  { title: '备注', key: 'remark', width: 160 },
+  { title: t('scm.contract.material'), key: 'material', width: 280 },
+  { title: t('scm.contract.contractPrice'), key: 'price', width: 190 },
+  { title: t('scm.contract.taxRate'), key: 'taxRate', width: 110 },
+  { title: t('scm.contract.qtyLimit'), key: 'qtyLimit', width: 140 },
+  { title: t('common.field.remark'), key: 'remark', width: 160 },
   { title: '', key: 'action', width: 50 }
 ]
 
 // ---------------------------------------------------------------- 详情
 const usageColumns = [
-  { title: '物料', key: 'material', width: 240 },
-  { title: '合同价', key: 'price', width: 130 },
-  { title: '执行进度', key: 'progress', width: 240 },
-  { title: '已入库', key: 'received', width: 100, align: 'right' },
-  { title: '已下单金额', key: 'amount', width: 130, align: 'right' }
+  { title: t('scm.contract.material'), key: 'material', width: 240 },
+  { title: t('scm.contract.contractPriceShort'), key: 'price', width: 130 },
+  { title: t('scm.contract.progress'), key: 'progress', width: 260 },
+  { title: t('scm.contract.received'), key: 'received', width: 110, align: 'right' },
+  { title: t('scm.contract.orderedAmountCol'), key: 'amount', width: 140, align: 'right' }
 ]
 const orderColumns = [
-  { title: '订单号', dataIndex: 'orderNo', width: 170 },
-  { title: '订单日期', dataIndex: 'orderDate', width: 110 },
-  { title: '金额', key: 'amount', width: 130, align: 'right' },
-  { title: '入库 / 订单数量', key: 'qty', width: 150 },
-  { title: '供应商确认', key: 'confirm', width: 110 },
-  { title: '状态', key: 'status', width: 100 }
+  { title: t('scm.contract.orderNo'), dataIndex: 'orderNo', width: 170 },
+  { title: t('scm.contract.orderDate'), dataIndex: 'orderDate', width: 110 },
+  { title: t('common.field.amount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('scm.contract.receivedOfOrdered'), key: 'qty', width: 170 },
+  { title: t('scm.contract.supplierConfirm'), key: 'confirm', width: 140 },
+  { title: t('common.field.status'), key: 'status', width: 100 }
 ]
 const detailOpen = ref(false)
 const detail = ref()
@@ -362,13 +364,13 @@ async function refreshDetail() {
 }
 async function submit() {
   const approving = await submitContract(detail.value.id)
-  message.success(approving ? '已提交审批' : '合同已生效')
+  message.success(approving ? t('scm.contract.submitted') : t('scm.contract.activated'))
   refreshDetail()
   load()
 }
 async function remove() {
   await deleteContract(detail.value.id)
-  message.success('已删除')
+  message.success(t('common.msg.deleted'))
   detailOpen.value = false
   load()
 }
@@ -379,9 +381,9 @@ function openClose() {
   closeOpen.value = true
 }
 async function submitClose() {
-  if (!closeReason.value.trim()) return message.warning('请填写关闭原因')
+  if (!closeReason.value.trim()) return message.warning(t('scm.contract.closeReasonRequired'))
   await closeContract(detail.value.id, closeReason.value)
-  message.success('已关闭')
+  message.success(t('scm.contract.closed'))
   closeOpen.value = false
   refreshDetail()
   load()

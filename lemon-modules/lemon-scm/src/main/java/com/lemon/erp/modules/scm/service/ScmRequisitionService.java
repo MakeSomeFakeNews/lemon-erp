@@ -155,7 +155,7 @@ public class ScmRequisitionService {
             Long supplier = i.getSupplierId() != null ? i.getSupplierId()
                     : defaults.containsKey(i.getMaterialId()) ? defaults.get(i.getMaterialId()).getSupplierId() : null;
             if (supplier == null) {
-                throw new BizException("物料「" + materialService.get(i.getMaterialId()).getName() + "」没有建议供应商和默认供应商，请先指定供应商");
+                throw new BizException("物料「{0}」没有建议供应商和默认供应商，请先指定供应商", materialService.get(i.getMaterialId()).getName());
             }
             bySupplier.computeIfAbsent(supplier, k -> new ArrayList<>()).add(i);
         }
@@ -170,7 +170,7 @@ public class ScmRequisitionService {
             LocalDate delivery = list.stream().map(ScmRequisitionItem::getRequiredDate).filter(java.util.Objects::nonNull)
                     .min(LocalDate::compareTo).orElse(null);
             Long orderId = orderService.createDraft(OrderKind.PURCHASE, new OrderRequest(supplierId, LocalDate.now(), delivery, warehouseId,
-                    "请购单 " + r.getReqNo(), lines), "REQUISITION");
+                    "请购单 " + r.getReqNo(), lines), "REQUISITION"); // i18n-ignore
             itemMapper.update(Wrappers.<ScmRequisitionItem>lambdaUpdate().set(ScmRequisitionItem::getOrderId, orderId)
                     .in(ScmRequisitionItem::getId, list.stream().map(ScmRequisitionItem::getId).toList()));
             orderIds.add(orderId);

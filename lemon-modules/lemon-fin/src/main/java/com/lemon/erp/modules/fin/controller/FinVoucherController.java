@@ -54,14 +54,14 @@ public class FinVoucherController {
 
     @PostMapping("/voucher")
     @PreAuthorize("@ss.hasPerm('fin:voucher:add')")
-    @OperLog(title = "凭证", type = OperType.INSERT)
+    @OperLog(title = "凭证", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody VoucherRequest req) {
         return R.ok(voucherService.create(req));
     }
 
     @PutMapping("/voucher/{id}")
     @PreAuthorize("@ss.hasPerm('fin:voucher:edit')")
-    @OperLog(title = "凭证", type = OperType.UPDATE)
+    @OperLog(title = "凭证", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody VoucherRequest req) {
         voucherService.update(id, req);
         return R.ok();
@@ -69,7 +69,7 @@ public class FinVoucherController {
 
     @DeleteMapping("/voucher/{ids}")
     @PreAuthorize("@ss.hasPerm('fin:voucher:remove')")
-    @OperLog(title = "凭证", type = OperType.DELETE)
+    @OperLog(title = "凭证", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable List<Long> ids) {
         voucherService.delete(ids);
         return R.ok();
@@ -78,7 +78,7 @@ public class FinVoucherController {
     /** 提交审批（发布了凭证审批流程时，权限 fin:voucher:add） */
     @PostMapping("/voucher/submit/{ids}")
     @PreAuthorize("@ss.hasPerm('fin:voucher:add')")
-    @OperLog(title = "凭证-提交审批", type = OperType.UPDATE)
+    @OperLog(title = "凭证-提交审批", type = OperType.UPDATE) // i18n-ignore
     public R<Void> submit(@PathVariable List<Long> ids) {
         voucherService.submit(ids);
         return R.ok();
@@ -87,7 +87,7 @@ public class FinVoucherController {
     /** 审核 audit / 反审核 unaudit（权限 fin:voucher:audit），记账 post / 反记账 unpost（权限 fin:voucher:post） */
     @PostMapping("/voucher/{action:audit|unaudit|post|unpost}/{ids}")
     @PreAuthorize("@ss.hasPerm(#action.endsWith('audit') ? 'fin:voucher:audit' : 'fin:voucher:post')")
-    @OperLog(title = "凭证-审核记账", type = OperType.UPDATE)
+    @OperLog(title = "凭证-审核记账", type = OperType.UPDATE) // i18n-ignore
     public R<Void> transit(@PathVariable String action, @PathVariable List<Long> ids) {
         switch (action) {
             case "audit" -> voucherService.audit(ids);
@@ -110,7 +110,7 @@ public class FinVoucherController {
     /** 结账：本期凭证必须全部记账，自动结转损益 */
     @PostMapping("/period/{period}/close")
     @PreAuthorize("@ss.hasPerm('fin:period:close')")
-    @OperLog(title = "会计期间-结账", type = OperType.UPDATE)
+    @OperLog(title = "会计期间-结账", type = OperType.UPDATE) // i18n-ignore
     public R<Void> close(@PathVariable int period) {
         closeService.close(period);
         return R.ok();
@@ -118,7 +118,7 @@ public class FinVoucherController {
 
     @PostMapping("/period/{period}/reopen")
     @PreAuthorize("@ss.hasPerm('fin:period:close')")
-    @OperLog(title = "会计期间-反结账", type = OperType.UPDATE)
+    @OperLog(title = "会计期间-反结账", type = OperType.UPDATE) // i18n-ignore
     public R<Void> reopen(@PathVariable int period) {
         closeService.reopen(period);
         return R.ok();

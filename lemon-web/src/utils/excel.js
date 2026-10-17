@@ -1,6 +1,8 @@
 /**
  * Excel 导入导出（exceljs 按需加载，不进入首屏包）
  */
+import { t } from '@/locales'
+
 const loadExcel = () => import('exceljs').then((m) => m.default || m)
 
 /** 浏览器下载 Blob */
@@ -67,15 +69,15 @@ export async function readExcel(file, columns) {
   const wb = new ExcelJS.Workbook()
   await wb.xlsx.load(await file.arrayBuffer())
   const ws = wb.worksheets[0]
-  if (!ws) throw new Error('文件中没有工作表')
+  if (!ws) throw new Error(t('components.excel.noSheet'))
   const header = {}
   ws.getRow(1).eachCell((cell, col) => {
-    const t = cellText(cell.value)
+    const txt = cellText(cell.value)
     // 表头可能带「*」表示必填
-    if (t) header[t.replace(/^\*/, '').trim()] = col
+    if (txt) header[txt.replace(/^\*/, '').trim()] = col
   })
   const missing = columns.filter((c) => c.required && !header[c.title]).map((c) => c.title)
-  if (missing.length) throw new Error(`缺少列：${missing.join('、')}，请使用导入模板`)
+  if (missing.length) throw new Error(t('components.excel.missingColumns', { columns: missing.join(t('components.excel.listSep')) }))
   const rows = []
   ws.eachRow((row, rowNum) => {
     if (rowNum === 1) return
@@ -97,7 +99,7 @@ export async function readExcel(file, columns) {
 /** 下载导入模板：必填列表头加「*」，可附一行示例 */
 export function downloadTemplate(name, columns, sample) {
   return writeExcel(
-    `${name}导入模板`,
+    t('components.excel.templateName', { name }),
     columns.map((c) => ({ title: (c.required ? '*' : '') + c.title, width: c.width })),
     sample ? [columns.map((c) => sample[c.key] ?? '')] : [],
     { withStamp: false }

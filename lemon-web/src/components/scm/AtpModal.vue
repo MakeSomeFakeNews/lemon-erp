@@ -1,19 +1,19 @@
 <template>
-  <a-modal :open="open" title="可承诺量（ATP）" width="min(860px, 100vw)" :footer="null" @cancel="emit('update:open', false)">
+  <a-modal :open="open" :title="$t('scm.atp.title')" width="min(860px, 100vw)" :footer="null" @cancel="emit('update:open', false)">
     <a-spin :spinning="loading">
       <div class="atp-head">
         <span>{{ materialLabel || '-' }}</span>
         <span class="sub-text">
-          {{ warehouseId ? '指定仓库' : '全部仓库' }}<template v-if="qty">，需求 {{ formatQty(qty) }}</template>
+          {{ warehouseId ? $t('scm.atp.oneWarehouse') : $t('scm.atp.allWarehouses') }}<template v-if="qty">{{ $t('scm.atp.demand', { qty: formatQty(qty) }) }}</template>
         </span>
       </div>
       <template v-if="data">
         <a-row :gutter="16" class="atp-stats">
-          <a-col :xs="12" :sm="6"><a-statistic title="可用库存" :value="fmt(data.available)" /></a-col>
-          <a-col :xs="12" :sm="6"><a-statistic title="已预留" :value="fmt(data.reserved)" /></a-col>
-          <a-col :xs="12" :sm="6"><a-statistic title="空闲库存" :value="fmt(data.free)" /></a-col>
+          <a-col :xs="12" :sm="6"><a-statistic :title="$t('scm.atp.available')" :value="fmt(data.available)" /></a-col>
+          <a-col :xs="12" :sm="6"><a-statistic :title="$t('scm.atp.reserved')" :value="fmt(data.reserved)" /></a-col>
+          <a-col :xs="12" :sm="6"><a-statistic :title="$t('scm.atp.free')" :value="fmt(data.free)" /></a-col>
           <a-col :xs="12" :sm="6">
-            <a-statistic title="可承诺量" :value="fmt(data.atp)" :value-style="{ color: '#1677ff' }" />
+            <a-statistic :title="$t('scm.atp.atp')" :value="fmt(data.atp)" :value-style="{ color: '#1677ff' }" />
           </a-col>
         </a-row>
         <a-alert
@@ -21,7 +21,7 @@
           :type="data.promiseDate ? 'success' : 'warning'"
           show-icon
           class="atp-alert"
-          :message="data.promiseDate ? `最早可承诺日期：${data.promiseDate}` : '按现有库存和在途供应无法满足该数量'"
+          :message="data.promiseDate ? $t('scm.atp.promiseDate', { date: data.promiseDate }) : $t('scm.atp.cannotMeet')"
         />
         <a-table
           row-key="key"
@@ -30,7 +30,7 @@
           :data-source="lines"
           :pagination="false"
           :scroll="{ x: 640, y: 320 }"
-          :locale="{ emptyText: '没有在途供应和待发需求' }"
+          :locale="{ emptyText: $t('scm.atp.empty') }"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'type'">
@@ -44,7 +44,7 @@
             </template>
           </template>
         </a-table>
-        <div class="sub-text atp-note">结余 = 空闲库存按日期累加供应（+）和需求（−）；可承诺量取今天及之后各日结余的最小值，承诺后不影响已有订单。结余为负说明届时供应不足。</div>
+        <div class="sub-text atp-note">{{ $t('scm.atp.note') }}</div>
       </template>
     </a-spin>
   </a-modal>
@@ -52,6 +52,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { atp } from '@/api/scm/planning'
 import { formatQty } from '@/components/wms/wms'
 
@@ -65,19 +66,20 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:open'])
 
+const { t } = useI18n()
 const TYPES = {
-  PO: { label: '采购在途', color: 'blue' },
-  WO: { label: '生产在制', color: 'cyan' },
-  SO: { label: '销售待发', color: 'orange' },
-  WM: { label: '工单待领料', color: 'purple' }
+  PO: { label: t('scm.atp.typePO'), color: 'blue' },
+  WO: { label: t('scm.atp.typeWO'), color: 'cyan' },
+  SO: { label: t('scm.atp.typeSO'), color: 'orange' },
+  WM: { label: t('scm.atp.typeWM'), color: 'purple' }
 }
 
 const columns = [
-  { title: '日期', dataIndex: 'date', width: 110 },
-  { title: '类型', key: 'type', width: 110 },
-  { title: '单据号', dataIndex: 'docNo', width: 180 },
-  { title: '数量', key: 'qty', width: 110, align: 'right' },
-  { title: '结余', key: 'balance', width: 110, align: 'right' }
+  { title: t('common.field.date'), dataIndex: 'date', width: 110 },
+  { title: t('common.field.type'), key: 'type', width: 140 },
+  { title: t('scm.order.docNo'), dataIndex: 'docNo', width: 180 },
+  { title: t('common.field.quantity'), key: 'qty', width: 110, align: 'right' },
+  { title: t('scm.atp.balance'), key: 'balance', width: 110, align: 'right' }
 ]
 
 const data = ref()

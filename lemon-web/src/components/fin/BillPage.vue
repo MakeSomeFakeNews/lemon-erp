@@ -5,26 +5,26 @@
         <template #rightExtra>
           <a-space v-if="tab === 'bills'">
             <a-button v-perm="`fin:${kind}:voucher`" :disabled="!selectedKeys.length" @click="generate">
-              <template #icon><FileAddOutlined /></template>生成凭证（{{ selectedKeys.length }}）
+              <template #icon><FileAddOutlined /></template>{{ $t('fin.billPage.generateN', { n: selectedKeys.length }) }}
             </a-button>
             <a-button v-perm="`fin:${kind}:add`" type="primary" @click="openCreate">
-              <template #icon><PlusOutlined /></template>期初 / 手工录入
+              <template #icon><PlusOutlined /></template>{{ $t('fin.billPage.manualEntry') }}
             </a-button>
           </a-space>
         </template>
 
-        <a-tab-pane key="bills" :tab="`${conf.label}单`">
+        <a-tab-pane key="bills" :tab="conf.billTab">
           <div class="filters">
-            <PartnerSelect v-model:value="query.partnerId" :type="conf.partner" allow-clear :placeholder="`全部${conf.partnerLabel}`" class="filter" />
-            <a-select v-model:value="query.status" placeholder="核销状态" allow-clear :options="toOptions(dict.fin_bill_status)" class="filter-s" @change="search" />
-            <a-input-search v-model:value="query.keyword" placeholder="单号或来源单号" allow-clear class="filter" @search="search" />
-            <a-checkbox v-model:checked="query.overdue" @change="search">只看逾期</a-checkbox>
+            <PartnerSelect v-model:value="query.partnerId" :type="conf.partner" allow-clear :placeholder="conf.allPartners" class="filter" />
+            <a-select v-model:value="query.status" :placeholder="$t('fin.billPage.settleStatus')" allow-clear :options="toOptions(dict.fin_bill_status)" class="filter-s" @change="search" />
+            <a-input-search v-model:value="query.keyword" :placeholder="$t('fin.billPage.keywordPlaceholder')" allow-clear class="filter" @search="search" />
+            <a-checkbox v-model:checked="query.overdue" @change="search">{{ $t('fin.billPage.overdueOnly') }}</a-checkbox>
           </div>
           <div class="stats">
-            <span v-if="list.some((b) => isForeign(b.currency))" class="sub-text">外币单据的金额为按记账汇率折算的人民币</span>
-            <span>本页合计 <b>¥{{ formatMoney(pageTotal.amount) }}</b></span>
-            <span>已核销 ¥{{ formatMoney(pageTotal.settled) }}</span>
-            <span>未核销 <b class="warn">¥{{ formatMoney(pageTotal.amount - pageTotal.settled) }}</b></span>
+            <span v-if="list.some((b) => isForeign(b.currency))" class="sub-text">{{ $t('fin.billPage.foreignTip') }}</span>
+            <span>{{ $t('fin.billPage.pageTotal') }} <b>¥{{ formatMoney(pageTotal.amount) }}</b></span>
+            <span>{{ $t('fin.billPage.settled') }} ¥{{ formatMoney(pageTotal.settled) }}</span>
+            <span>{{ $t('fin.billPage.unsettled') }} <b class="warn">¥{{ formatMoney(pageTotal.amount - pageTotal.settled) }}</b></span>
           </div>
           <a-table
             row-key="id"
@@ -34,7 +34,7 @@
             :loading="loading"
             :pagination="pagination"
             :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: !!r.voucherId || r.sourceType === 'MANUAL' }) }"
-            :scroll="{ x: 1480 }"
+            :scroll="{ x: 1560 }"
             @change="onTableChange"
           >
             <template #bodyCell="{ column, record }">
@@ -48,8 +48,8 @@
               </template>
               <template v-else-if="column.key === 'amount'">
                 <span :class="{ neg: Number(record.amount) < 0 }">¥{{ formatMoney(record.amount) }}</span>
-                <div class="sub-text">税额 {{ formatMoney(record.taxAmount) }}</div>
-                <div v-if="isForeign(record.currency)" class="sub-text">原币 {{ record.currency }} {{ formatMoney(record.amountFc) }}</div>
+                <div class="sub-text">{{ $t('fin.billPage.taxN', { amount: formatMoney(record.taxAmount) }) }}</div>
+                <div v-if="isForeign(record.currency)" class="sub-text">{{ $t('fin.billPage.originalN', { amount: `${record.currency} ${formatMoney(record.amountFc)}` }) }}</div>
               </template>
               <template v-else-if="column.key === 'currency'">
                 <template v-if="isForeign(record.currency)">
@@ -60,28 +60,28 @@
               </template>
               <template v-else-if="column.key === 'settled'">
                 <div>¥{{ formatMoney(record.settledAmount) }}</div>
-                <div class="sub-text">余 {{ formatMoney(remaining(record)) }}</div>
+                <div class="sub-text">{{ $t('fin.billPage.remainingN', { amount: formatMoney(remaining(record)) }) }}</div>
                 <div v-if="isForeign(record.currency)" class="sub-text">
-                  原币 {{ formatMoney(record.settledFc) }}，余 {{ formatMoney(Number(record.amountFc || 0) - Number(record.settledFc || 0)) }}
+                  {{ $t('fin.billPage.originalSettled', { settled: formatMoney(record.settledFc), remaining: formatMoney(Number(record.amountFc || 0) - Number(record.settledFc || 0)) }) }}
                 </div>
-                <div v-if="Number(record.badDebtAmount)" class="sub-text neg">坏账 {{ formatMoney(record.badDebtAmount) }}</div>
+                <div v-if="Number(record.badDebtAmount)" class="sub-text neg">{{ $t('fin.billPage.badDebtN', { amount: formatMoney(record.badDebtAmount) }) }}</div>
               </template>
               <template v-else-if="column.key === 'invoiced'">
                 <div>¥{{ formatMoney(record.invoicedAmount ?? 0) }}</div>
                 <div v-if="Number(record.amount) > 0" class="sub-text">
-                  {{ Number(record.invoicedAmount) >= Number(record.amount) ? `全部${conf.invoiceLabel}` : `未${conf.invoiceLabel.slice(1)} ${formatMoney(Number(record.amount) - Number(record.invoicedAmount || 0))}` }}
+                  {{ Number(record.invoicedAmount) >= Number(record.amount) ? conf.invoicedAll : conf.notInvoiced(formatMoney(Number(record.amount) - Number(record.invoicedAmount || 0))) }}
                 </div>
               </template>
               <template v-else-if="column.key === 'dueDate'">
                 <div>{{ record.billDate }}</div>
                 <div :class="['sub-text', { neg: overdue(record) }]">
-                  {{ overdue(record) ? `逾期 ${overdue(record)} 天` : `到期 ${record.dueDate}` }}
+                  {{ overdue(record) ? $t('fin.billPage.overdueDays', { n: overdue(record) }) : $t('fin.billPage.dueOn', { date: record.dueDate }) }}
                 </div>
               </template>
               <template v-else-if="column.key === 'status'"><DictTag type="fin_bill_status" :value="record.status" /></template>
               <template v-else-if="column.key === 'voucher'">
                 <a v-if="record.voucherId" @click="openVoucher(record.voucherId)">{{ record.voucherNo }}</a>
-                <span v-else class="sub-text">{{ record.sourceType === 'MANUAL' ? '期初不生成' : '未生成' }}</span>
+                <span v-else class="sub-text">{{ record.sourceType === 'MANUAL' ? $t('fin.billPage.noVoucherOpening') : $t('fin.billPage.notGenerated') }}</span>
               </template>
               <template v-else-if="column.key === 'action'">
                 <span class="table-actions">
@@ -92,11 +92,11 @@
                     size="small"
                     @click="openBadDebt(record)"
                   >
-                    坏账核销
+                    {{ $t('fin.billPage.badDebt') }}
                   </a-button>
                   <span v-if="record.sourceType === 'MANUAL' && Number(record.settledAmount) === 0" v-perm="`fin:${kind}:remove`">
-                    <a-popconfirm title="确定删除该单据？" @confirm="remove(record.id)">
-                      <a-button type="link" danger size="small">删除</a-button>
+                    <a-popconfirm :title="$t('fin.billPage.confirmDelete')" @confirm="remove(record.id)">
+                      <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
                     </a-popconfirm>
                   </span>
                 </span>
@@ -105,11 +105,11 @@
           </a-table>
         </a-tab-pane>
 
-        <a-tab-pane key="aging" tab="账龄分析">
+        <a-tab-pane key="aging" :tab="$t('fin.billPage.aging')">
           <div class="filters">
-            <span>截止日期</span>
+            <span>{{ $t('fin.billPage.asOf') }}</span>
             <a-date-picker v-model:value="asOf" value-format="YYYY-MM-DD" :allow-clear="false" @change="aging.search" />
-            <span class="sub-text">按到期日计算逾期天数，只统计未核销余额</span>
+            <span class="sub-text">{{ $t('fin.billPage.agingTip') }}</span>
           </div>
           <a-table
             row-key="partnerId"
@@ -133,43 +133,43 @@
       </a-tabs>
     </a-card>
 
-    <a-modal v-model:open="createOpen" :title="`录入${conf.label}单（期初余额等）`" :confirm-loading="saving" @ok="submit">
+    <a-modal v-model:open="createOpen" :title="conf.createTitle" :confirm-loading="saving" @ok="submit">
       <a-form ref="formRef" :model="form" layout="vertical">
-        <a-form-item :label="conf.partnerLabel" name="partnerId" :rules="[{ required: true, message: `请选择${conf.partnerLabel}` }]">
+        <a-form-item :label="conf.partnerLabel" name="partnerId" :rules="[{ required: true, message: $t('common.placeholder.selectName', { name: conf.partnerLabel }) }]">
           <PartnerSelect v-model:value="form.partnerId" :type="conf.partner" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="单据日期" name="billDate" :rules="[{ required: true, message: '请选择日期' }]">
+            <a-form-item :label="$t('fin.billPage.billDate')" name="billDate" :rules="[{ required: true, message: $t('fin.billPage.dateRequired') }]">
               <a-date-picker v-model:value="form.billDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="到期日" name="dueDate" extra="不填按账期计算">
+            <a-form-item :label="$t('fin.billPage.dueDate')" name="dueDate" :extra="$t('fin.billPage.dueDateExtra')">
               <a-date-picker v-model:value="form.dueDate" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="金额" name="amount" :rules="[{ required: true, message: '请填写金额' }]" extra="负数为红字（冲减）">
+        <a-form-item :label="$t('common.field.amount')" name="amount" :rules="[{ required: true, message: $t('fin.billPage.amountRequired') }]" :extra="$t('fin.billPage.amountExtra')">
           <a-input-number v-model:value="form.amount" :precision="2" prefix="¥" class="full" />
         </a-form-item>
-        <a-form-item label="备注" name="remark">
-          <a-input v-model:value="form.remark" :maxlength="255" placeholder="如：2025 年末余额" />
+        <a-form-item :label="$t('common.field.remark')" name="remark">
+          <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('fin.billPage.remarkPlaceholder')" />
         </a-form-item>
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="badDebtOpen" :title="`坏账核销 ${badDebtTarget?.billNo || ''}`" :confirm-loading="badDebtSaving" @ok="submitBadDebt">
+    <a-modal v-model:open="badDebtOpen" :title="$t('fin.billPage.badDebtTitle', { no: badDebtTarget?.billNo || '' })" :confirm-loading="badDebtSaving" @ok="submitBadDebt">
       <a-alert
         type="info"
         show-icon
         class="tip"
-        message="直接转销法：确认无法收回的应收款计入已核销，生成凭证 借 营业外支出 / 贷 应收账款。业务单据须先生成应收凭证。"
+        :message="$t('fin.billPage.badDebtTip')"
       />
       <a-form layout="vertical">
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="核销金额" required :extra="badDebtTarget ? `未核销余额 ${formatMoney(remaining(badDebtTarget))}` : ''">
+            <a-form-item :label="$t('fin.billPage.badDebtAmount')" required :extra="badDebtTarget ? $t('fin.billPage.unsettledBalanceN', { amount: formatMoney(remaining(badDebtTarget)) }) : ''">
               <a-input-number
                 v-model:value="badDebtForm.amount"
                 :min="0.01"
@@ -181,13 +181,13 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="核销日期" required>
+            <a-form-item :label="$t('fin.billPage.badDebtDate')" required>
               <a-date-picker v-model:value="badDebtForm.date" value-format="YYYY-MM-DD" class="full" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="核销原因">
-          <a-textarea v-model:value="badDebtForm.reason" :rows="2" :maxlength="255" placeholder="如：客户破产清算，确认无法收回" />
+        <a-form-item :label="$t('fin.billPage.badDebtReason')">
+          <a-textarea v-model:value="badDebtForm.reason" :rows="2" :maxlength="255" :placeholder="$t('fin.billPage.badDebtReasonPlaceholder')" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -211,6 +211,7 @@ import { toOptions } from '@/utils/dict'
 import { today } from '@/components/wms/wms'
 import { formatMoney, moneyOrBlank } from './fin'
 import { isForeign } from './currency'
+import { t } from '@/locales'
 
 /** 应收管理 / 应付管理，kind = ar | ap */
 const props = defineProps({
@@ -218,25 +219,43 @@ const props = defineProps({
 })
 
 const CONF = {
-  ar: { label: '应收', partner: 'customer', partnerLabel: '客户', invoiceLabel: '已开票' },
-  ap: { label: '应付', partner: 'supplier', partnerLabel: '供应商', invoiceLabel: '已收票' }
+  ar: {
+    partner: 'customer',
+    billTab: t('fin.billPage.ar.billTab'),
+    partnerLabel: t('fin.billPage.ar.partner'),
+    allPartners: t('fin.billPage.ar.allPartners'),
+    invoiceLabel: t('fin.billPage.ar.invoiced'),
+    invoicedAll: t('fin.billPage.ar.invoicedAll'),
+    notInvoiced: (amount) => t('fin.billPage.ar.notInvoiced', { amount }),
+    createTitle: t('fin.billPage.ar.createTitle')
+  },
+  ap: {
+    partner: 'supplier',
+    billTab: t('fin.billPage.ap.billTab'),
+    partnerLabel: t('fin.billPage.ap.partner'),
+    allPartners: t('fin.billPage.ap.allPartners'),
+    invoiceLabel: t('fin.billPage.ap.invoiced'),
+    invoicedAll: t('fin.billPage.ap.invoicedAll'),
+    notInvoiced: (amount) => t('fin.billPage.ap.notInvoiced', { amount }),
+    createTitle: t('fin.billPage.ap.createTitle')
+  }
 }
 const conf = CONF[props.kind]
 const dict = useDict('fin_bill_status', 'fin_bill_source')
 const tab = ref('bills')
 
 const columns = [
-  { title: '单号', dataIndex: 'billNo', width: 160 },
+  { title: t('fin.billPage.billNo'), dataIndex: 'billNo', width: 160 },
   { title: conf.partnerLabel, key: 'partner', width: 200 },
-  { title: '来源', key: 'source', width: 160 },
-  { title: '金额', key: 'amount', width: 150, align: 'right' },
-  { title: '币种', key: 'currency', width: 80 },
-  { title: '已核销', key: 'settled', width: 160, align: 'right' },
-  { title: conf.invoiceLabel, key: 'invoiced', width: 130, align: 'right' },
-  { title: '日期 / 到期日', key: 'dueDate', width: 120 },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '凭证', key: 'voucher', width: 100 },
-  { title: '操作', key: 'action', width: props.kind === 'ar' ? 130 : 70 }
+  { title: t('fin.billPage.source'), key: 'source', width: 160 },
+  { title: t('common.field.amount'), key: 'amount', width: 150, align: 'right' },
+  { title: t('fin.billPage.currency'), key: 'currency', width: 90 },
+  { title: t('fin.billPage.settled'), key: 'settled', width: 170, align: 'right' },
+  { title: conf.invoiceLabel, key: 'invoiced', width: 150, align: 'right' },
+  { title: t('fin.billPage.dateDue'), key: 'dueDate', width: 130 },
+  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('fin.billPage.voucher'), key: 'voucher', width: 120 },
+  { title: t('common.action.operation'), key: 'action', width: props.kind === 'ar' ? 150 : 80 }
 ]
 const query = reactive({ partnerId: undefined, status: undefined, keyword: undefined, overdue: false })
 const { list, loading, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable((p) => pageBill(props.kind, p), query)
@@ -251,11 +270,11 @@ const overdue = (b) => (b.status === 'SETTLED' ? 0 : Math.max(dayjs().startOf('d
 
 function generate() {
   Modal.confirm({
-    title: `为 ${selectedKeys.value.length} 张单据生成凭证？`,
-    content: props.kind === 'ar' ? '借 应收账款 / 贷 主营业务收入、应交增值税（销项税额）' : '借 原材料 / 库存商品、应交增值税（进项税额） / 贷 应付账款',
+    title: t('fin.billPage.generateConfirm', { n: selectedKeys.value.length }),
+    content: props.kind === 'ar' ? t('fin.billPage.generateArTip') : t('fin.billPage.generateApTip'),
     async onOk() {
       const count = await billVoucher(props.kind, selectedKeys.value)
-      message.success(`已生成 ${count} 张凭证（未审核）`)
+      message.success(t('fin.billPage.generated', { n: count }))
       selectedKeys.value = []
       load()
     }
@@ -276,7 +295,7 @@ async function submit() {
   saving.value = true
   try {
     await addBill(props.kind, { kind: props.kind.toUpperCase(), ...form.value, dueDate: form.value.dueDate || null })
-    message.success('保存成功')
+    message.success(t('common.msg.saveSuccess'))
     createOpen.value = false
     load()
   } finally {
@@ -286,7 +305,7 @@ async function submit() {
 
 async function remove(id) {
   await deleteBill(props.kind, id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 
@@ -302,13 +321,13 @@ function openBadDebt(record) {
 }
 async function submitBadDebt() {
   if (!badDebtForm.amount || badDebtForm.amount <= 0) {
-    message.warning('请填写核销金额')
+    message.warning(t('fin.billPage.badDebtAmountRequired'))
     return
   }
   badDebtSaving.value = true
   try {
     const id = await badDebt(badDebtTarget.value.id, { ...badDebtForm, reason: badDebtForm.reason || null })
-    message.success('坏账已核销，凭证已生成')
+    message.success(t('fin.billPage.badDebtDone'))
     badDebtOpen.value = false
     load()
     if (id) openVoucher(id)
@@ -321,12 +340,12 @@ async function submitBadDebt() {
 const asOf = ref(today())
 const agingColumns = [
   { title: conf.partnerLabel, key: 'partner', width: 240 },
-  { title: '未核销余额', key: 'balance', width: 140, align: 'right' },
-  { title: '未到期', key: 'notDue', width: 130, align: 'right' },
-  { title: '逾期 1-30 天', key: 'd30', width: 130, align: 'right' },
-  { title: '31-60 天', key: 'd60', width: 130, align: 'right' },
-  { title: '61-90 天', key: 'd90', width: 130, align: 'right' },
-  { title: '90 天以上', key: 'over90', width: 130, align: 'right' }
+  { title: t('fin.billPage.unsettledBalance'), key: 'balance', width: 150, align: 'right' },
+  { title: t('fin.billPage.notDue'), key: 'notDue', width: 130, align: 'right' },
+  { title: t('fin.billPage.d30'), key: 'd30', width: 150, align: 'right' },
+  { title: t('fin.billPage.d60'), key: 'd60', width: 130, align: 'right' },
+  { title: t('fin.billPage.d90'), key: 'd90', width: 130, align: 'right' },
+  { title: t('fin.billPage.over90'), key: 'over90', width: 130, align: 'right' }
 ]
 const aging = useTable((p) => billAging(props.kind, { ...p, asOf: asOf.value }), reactive({}))
 watch(tab, (t) => t === 'aging' && aging.load())

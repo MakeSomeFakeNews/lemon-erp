@@ -2,22 +2,22 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item label="工单" name="keyword">
-          <a-input v-model:value="query.keyword" placeholder="工单号、标题、客户或序列号" allow-clear />
+        <a-form-item :label="$t('crm.common.f.ticket')" name="keyword">
+          <a-input v-model:value="query.keyword" :placeholder="$t('crm.ticket.kwPh')" allow-clear />
         </a-form-item>
-        <a-form-item label="类型" name="type">
-          <a-select v-model:value="query.type" placeholder="全部" allow-clear :options="toOptions(dict.crm_ticket_type)" />
+        <a-form-item :label="$t('common.field.type')" name="type">
+          <a-select v-model:value="query.type" :placeholder="$t('crm.common.all')" allow-clear :options="toOptions(dict.crm_ticket_type)" />
         </a-form-item>
-        <a-form-item label="优先级" name="priority">
-          <a-select v-model:value="query.priority" placeholder="全部" allow-clear :options="toOptions(dict.crm_ticket_priority)" />
+        <a-form-item :label="$t('crm.common.f.priority')" name="priority">
+          <a-select v-model:value="query.priority" :placeholder="$t('crm.common.all')" allow-clear :options="toOptions(dict.crm_ticket_priority)" />
         </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="query.status" placeholder="全部" allow-clear :options="toOptions(dict.crm_ticket_status)" />
+        <a-form-item :label="$t('common.field.status')" name="status">
+          <a-select v-model:value="query.status" :placeholder="$t('crm.common.all')" allow-clear :options="toOptions(dict.crm_ticket_status)" />
         </a-form-item>
-        <a-form-item label="筛选" name="mine">
+        <a-form-item :label="$t('crm.ticket.filter')" name="mine">
           <a-space>
-            <a-checkbox v-model:checked="query.mine">指派给我</a-checkbox>
-            <a-checkbox v-model:checked="query.overdue">已超时</a-checkbox>
+            <a-checkbox v-model:checked="query.mine">{{ $t('crm.ticket.assignedToMe') }}</a-checkbox>
+            <a-checkbox v-model:checked="query.overdue">{{ $t('crm.ticket.overdue') }}</a-checkbox>
           </a-space>
         </a-form-item>
       </SearchForm>
@@ -27,7 +27,7 @@
       <TableToolbar
         :exporter="exportAll" v-model:size="size" v-model:checked="checked" v-model:show-search="showSearch" :columns="columns" @refresh="load">
         <a-button v-perm="'crm:ticket:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>受理工单
+          <template #icon><PlusOutlined /></template>{{ $t('crm.ticket.add') }}
         </a-button>
       </TableToolbar>
 
@@ -58,17 +58,17 @@
           </template>
           <template v-else-if="column.key === 'assignee'">
             <span v-if="record.assigneeName">{{ record.assigneeName }}</span>
-            <span v-else class="sub-text">未指派</span>
+            <span v-else class="sub-text">{{ $t('crm.common.unassigned') }}</span>
           </template>
           <template v-else-if="column.key === 'due'">
             <template v-if="['OPEN', 'PROCESSING'].includes(record.status)">
               <div v-if="record.overdue" class="danger">{{ overdueText(record.dueTime) }}</div>
-              <div v-else>剩余 {{ remaining(record.dueTime) }}</div>
+              <div v-else>{{ $t('crm.ticket.remain', { time: remaining(record.dueTime) }) }}</div>
               <div class="sub-text">{{ record.dueTime }}</div>
             </template>
             <template v-else>
               <div :class="record.resolvedTime && record.resolvedTime <= record.dueTime ? 'good' : 'sub-text'">
-                {{ record.resolvedTime ? (record.resolvedTime <= record.dueTime ? '按时解决' : '超时解决') : '-' }}
+                {{ record.resolvedTime ? (record.resolvedTime <= record.dueTime ? $t('crm.ticket.onTime') : $t('crm.ticket.late')) : '-' }}
               </div>
               <div class="sub-text">{{ record.resolvedTime }}</div>
             </template>
@@ -76,13 +76,13 @@
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>处理
+                <template #icon><EyeOutlined /></template>{{ $t('crm.ticket.handle') }}
               </a-button>
               <a-button v-if="['OPEN', 'PROCESSING'].includes(record.status)" v-perm="'crm:ticket:handle'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>编辑
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <span v-if="record.status === 'OPEN'" v-perm="'crm:ticket:remove'">
-                <a-popconfirm :title="`确定删除工单 ${record.ticketNo}？`" @confirm="remove(record.id)">
+                <a-popconfirm :title="$t('crm.ticket.confirmDelete', { no: record.ticketNo })" @confirm="remove(record.id)">
                   <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
                 </a-popconfirm>
               </span>
@@ -92,64 +92,63 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="受理工单" edit-title="编辑工单" width="min(720px, 100vw)">
+    <FormDrawer :drawer="drawer" :create-title="$t('crm.ticket.add')" :edit-title="$t('crm.ticket.editTitle')" width="min(720px, 100vw)">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
-            <a-form-item label="客户" name="customerId">
+            <a-form-item :label="$t('crm.common.f.customer')" name="customerId">
               <PartnerSelect v-model:value="form.customerId" type="customer" :label="form.customerName" @update:value="onCustomer" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="联系人" name="contactId">
-              <a-select v-model:value="form.contactId" allow-clear :options="contactOpts" placeholder="先选择客户" />
+            <a-form-item :label="$t('crm.common.f.contact')" name="contactId">
+              <a-select v-model:value="form.contactId" allow-clear :options="contactOpts" :placeholder="$t('crm.opportunity.contactPh')" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="类型" name="type">
+            <a-form-item :label="$t('common.field.type')" name="type">
               <a-select v-model:value="form.type" :options="toOptions(dict.crm_ticket_type)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="优先级" name="priority" :extra="priorityHint">
+            <a-form-item :label="$t('crm.common.f.priority')" name="priority" :extra="priorityHint">
               <a-select v-model:value="form.priority" :options="toOptions(dict.crm_ticket_priority)" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
-            <a-form-item label="受理渠道" name="channel">
+            <a-form-item :label="$t('crm.common.f.channel')" name="channel">
               <a-select v-model:value="form.channel" allow-clear :options="toOptions(dict.crm_ticket_channel)" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="标题" name="title"><a-input v-model:value="form.title" :maxlength="128" /></a-form-item>
+            <a-form-item :label="$t('crm.ticket.title')" name="title"><a-input v-model:value="form.title" :maxlength="128" /></a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="问题描述" name="description">
+            <a-form-item :label="$t('crm.common.f.description')" name="description">
               <a-textarea v-model:value="form.description" :rows="4" :maxlength="2000" show-count />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="相关产品" name="materialId">
+            <a-form-item :label="$t('crm.common.f.product')" name="materialId">
               <MaterialSelect v-model:value="form.materialId" :label="form.materialLabel" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="产品序列号" name="serialNo">
-              <a-input-search v-model:value="form.serialNo" :maxlength="64" enter-button="查询保修" :loading="warrantyLoading" @search="checkWarranty" />
+            <a-form-item :label="$t('crm.ticket.serialNo')" name="serialNo">
+              <a-input-search v-model:value="form.serialNo" :maxlength="64" :enter-button="$t('crm.ticket.checkWarranty')" :loading="warrantyLoading" @search="checkWarranty" />
             </a-form-item>
           </a-col>
           <a-col v-if="warranty !== undefined" :span="24">
-            <a-alert v-if="warranty === null" type="warning" show-icon class="tip" message="没有找到该序列号的销售出库记录" />
+            <a-alert v-if="warranty === null" type="warning" show-icon class="tip" :message="$t('crm.ticket.noWarranty')" />
             <a-alert v-else :type="warranty.inWarranty ? 'success' : 'warning'" show-icon class="tip">
               <template #message>
-                {{ warranty.inWarranty ? '在保修期内' : '已过保修期' }}：{{ warranty.materialCode }} {{ warranty.materialName }}，
-                {{ warranty.salesDate }} 由 {{ warranty.docNo }} 销售给 {{ warranty.customerName }}，保修至 {{ warranty.warrantyEnd }}
-                <a v-if="!form.materialId || !form.customerId" @click="applyWarranty">带入客户和产品</a>
+                {{ $t('crm.ticket.warrantyInfo', { status: warranty.inWarranty ? $t('crm.ticket.inWarranty') : $t('crm.ticket.outWarranty'), material: `${warranty.materialCode} ${warranty.materialName}`, date: warranty.salesDate, docNo: warranty.docNo, customer: warranty.customerName, end: warranty.warrantyEnd }) }}
+                <a v-if="!form.materialId || !form.customerId" @click="applyWarranty">{{ $t('crm.ticket.applyWarranty') }}</a>
               </template>
             </a-alert>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item label="处理人" name="assigneeId">
+            <a-form-item :label="$t('crm.common.f.assignee')" name="assigneeId">
               <IdentityUserSelect v-model:value="form.assigneeId" :label="form.assigneeName" />
             </a-form-item>
           </a-col>
@@ -164,6 +163,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -181,18 +181,19 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { overdueText, remaining } from '@/components/crm/crm'
 
+const { t } = useI18n()
 const dict = useDict('crm_ticket_type', 'crm_ticket_priority', 'crm_ticket_status', 'crm_ticket_channel')
 
 const columns = [
-  { title: '工单', key: 'title', width: 240 },
-  { title: '客户', key: 'customer', width: 200 },
-  { title: '类型', key: 'type', width: 90, dict: 'crm_ticket_type' },
-  { title: '优先级', key: 'priority', width: 80, dict: 'crm_ticket_priority' },
-  { title: '状态', key: 'status', width: 140, dict: 'crm_ticket_status' },
-  { title: '处理人', key: 'assignee', width: 100 },
-  { title: '处理时限', key: 'due', width: 170 },
-  { title: '受理时间', dataIndex: 'createTime', width: 160 },
-  { title: '操作', key: 'action', width: 180, fixed: 'right' }
+  { title: t('crm.common.f.ticket'), key: 'title', width: 240 },
+  { title: t('crm.common.f.customer'), key: 'customer', width: 200 },
+  { title: t('common.field.type'), key: 'type', width: 100, dict: 'crm_ticket_type' },
+  { title: t('crm.common.f.priority'), key: 'priority', width: 90, dict: 'crm_ticket_priority' },
+  { title: t('common.field.status'), key: 'status', width: 140, dict: 'crm_ticket_status' },
+  { title: t('crm.common.f.assignee'), key: 'assignee', width: 110 },
+  { title: t('crm.ticket.col.due'), key: 'due', width: 170 },
+  { title: t('crm.common.f.acceptTime'), dataIndex: 'createTime', width: 160 },
+  { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'crm-ticket')
 const showSearch = ref(true)
@@ -223,10 +224,10 @@ function onCustomer(id) {
 const priorityHint = computed(() => dict.crm_ticket_priority.find((d) => d.value === form.value.priority)?.remark || '')
 
 const rules = {
-  customerId: [{ required: true, message: '请选择客户' }],
-  type: [{ required: true, message: '请选择类型' }],
-  priority: [{ required: true, message: '请选择优先级' }],
-  title: [{ required: true, whitespace: true, message: '请输入标题' }]
+  customerId: [{ required: true, message: t('crm.common.customerRequired') }],
+  type: [{ required: true, message: t('crm.ticket.typeRequired') }],
+  priority: [{ required: true, message: t('crm.ticket.priorityRequired') }],
+  title: [{ required: true, whitespace: true, message: t('crm.ticket.titleRequired') }]
 }
 const FIELDS = ['customerId', 'contactId', 'type', 'priority', 'channel', 'title', 'description', 'materialId', 'serialNo', 'assigneeId']
 const drawer = useFormDrawer({
@@ -258,7 +259,7 @@ const warranty = ref(undefined)
 const warrantyLoading = ref(false)
 async function checkWarranty() {
   if (!form.value.serialNo?.trim()) {
-    message.warning('请输入序列号')
+    message.warning(t('crm.ticket.serialRequired'))
     return
   }
   warrantyLoading.value = true
@@ -283,7 +284,7 @@ function applyWarranty() {
 
 async function remove(id) {
   await deleteTicket(id)
-  message.success('删除成功')
+  message.success(t('common.msg.deleteSuccess'))
   load()
 }
 

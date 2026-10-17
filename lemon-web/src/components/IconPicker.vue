@@ -3,7 +3,7 @@
     <template #content>
       <!-- 弹层内的搜索框不参与外层表单项的值收集 -->
       <a-form-item-rest>
-        <a-input v-model:value="keyword" placeholder="搜索图标，如 user" allow-clear class="icon-search">
+        <a-input v-model:value="keyword" :placeholder="$t('components.icon.search')" allow-clear class="icon-search">
           <template #prefix><MenuIcon name="SearchOutlined" /></template>
         </a-input>
       </a-form-item-rest>
@@ -18,11 +18,11 @@
           >
             <component :is="iconModule[name]" />
           </div>
-          <a-empty v-if="iconModule && !filtered.length" :image="simpleImage" description="没有匹配的图标" />
+          <a-empty v-if="iconModule && !filtered.length" :image="simpleImage" :description="$t('components.icon.noMatch')" />
         </div>
       </a-spin>
     </template>
-    <a-input :value="modelValue" placeholder="点击选择图标" readonly allow-clear class="icon-trigger" @change="clear">
+    <a-input :value="modelValue" :placeholder="$t('components.icon.select')" readonly allow-clear class="icon-trigger" @change="clear">
       <template #prefix>
         <span class="icon-preview"><MenuIcon v-if="modelValue" :name="modelValue" /></span>
       </template>

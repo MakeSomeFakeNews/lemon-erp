@@ -71,14 +71,14 @@ public class ScmPromotionController {
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:promotion:edit')")
-    @OperLog(title = "促销活动", type = OperType.INSERT)
+    @OperLog(title = "促销活动", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody PromotionRequests.Save req) {
         return R.ok(promotionService.create(req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:promotion:edit')")
-    @OperLog(title = "促销活动", type = OperType.UPDATE)
+    @OperLog(title = "促销活动", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody PromotionRequests.Save req) {
         promotionService.update(id, req);
         return R.ok();
@@ -87,7 +87,7 @@ public class ScmPromotionController {
     /** body：{ status: 1 启用 / 0 停用 } */
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('scm:promotion:edit')")
-    @OperLog(title = "促销活动-启停", type = OperType.UPDATE)
+    @OperLog(title = "促销活动-启停", type = OperType.UPDATE) // i18n-ignore
     public R<Void> status(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
         promotionService.changeStatus(id, body.getOrDefault("status", 0));
         return R.ok();
@@ -95,7 +95,7 @@ public class ScmPromotionController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:promotion:edit')")
-    @OperLog(title = "促销活动", type = OperType.DELETE)
+    @OperLog(title = "促销活动", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
         promotionService.delete(id);
         return R.ok();
