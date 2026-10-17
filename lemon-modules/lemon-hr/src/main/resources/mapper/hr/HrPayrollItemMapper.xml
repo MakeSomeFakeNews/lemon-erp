@@ -37,12 +37,12 @@
 
     <insert id="insertBatch">
         INSERT INTO hr_payroll_item (payroll_id, employee_id, dept_id, should_days, month_days, absent_days, late_count,
-            personal_hours, sick_hours, overtime_hours, base_salary, allowance, overtime_pay, piece_wage, perf_grade, perf_bonus,
+            personal_hours, sick_hours, overtime_hours, base_salary, allowance, overtime_pay, piece_wage, commission, perf_grade, perf_bonus,
             other_bonus, attendance_deduct, gross_pay, social_personal, housing_personal, special_deduct, income_tax, cum_taxable,
             cum_tax, other_deduct, net_pay, social_company, housing_company, remark, create_time, update_time) VALUES
         <foreach collection="items" item="i" separator=",">
             (#{i.payrollId}, #{i.employeeId}, #{i.deptId}, #{i.shouldDays}, #{i.monthDays}, #{i.absentDays}, #{i.lateCount},
-             #{i.personalHours}, #{i.sickHours}, #{i.overtimeHours}, #{i.baseSalary}, #{i.allowance}, #{i.overtimePay}, #{i.pieceWage},
+             #{i.personalHours}, #{i.sickHours}, #{i.overtimeHours}, #{i.baseSalary}, #{i.allowance}, #{i.overtimePay}, #{i.pieceWage}, #{i.commission},
              #{i.perfGrade}, #{i.perfBonus}, #{i.otherBonus}, #{i.attendanceDeduct}, #{i.grossPay}, #{i.socialPersonal},
              #{i.housingPersonal}, #{i.specialDeduct}, #{i.incomeTax}, #{i.cumTaxable}, #{i.cumTax}, #{i.otherDeduct}, #{i.netPay},
              #{i.socialCompany}, #{i.housingCompany},

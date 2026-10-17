@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinCommissionQueryMapper">
+
+    <select id="selectSales" resultType="java.util.Map">
+        SELECT o.salesman_id AS "salesmanId", i.material_id AS "materialId", m.category AS "category",
+               SUM(CASE WHEN d.kind = 'SALES_RETURN' THEN -i.qty ELSE i.qty END) AS "qty",
+               SUM(CASE WHEN d.kind = 'SALES_RETURN' THEN -(i.amount - i.tax_amount) ELSE i.amount - i.tax_amount END) AS "net"
+        FROM scm_trade_doc d
+        JOIN scm_trade_doc_item i ON i.doc_id = d.id
+        JOIN scm_order o ON o.id = d.order_id
+        JOIN wms_material m ON m.id = i.material_id
+        WHERE d.kind IN ('SALES_OUT', 'SALES_RETURN') AND d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}
+          AND o.salesman_id IS NOT NULL
+        GROUP BY o.salesman_id, i.material_id, m.category
+    </select>
+
+    <select id="selectUnitCosts" resultType="java.util.Map">
+        SELECT m.id AS "materialId", COALESCE(c.unit_cost, m.ref_cost, 0) AS "unitCost"
+        FROM wms_material m
+        LEFT JOIN fin_material_cost c ON c.material_id = m.id AND c.period = #{period}
+        WHERE m.id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectReceipts" resultType="java.util.Map">
+        SELECT o.salesman_id AS "salesmanId", SUM(si.amount) AS "amount"
+        FROM fin_settlement s
+        JOIN fin_settlement_item si ON si.settlement_id = s.id
+        JOIN fin_bill b ON b.id = si.bill_id
+        JOIN scm_trade_doc d ON d.id = b.source_id
+        JOIN scm_order o ON o.id = d.order_id
+        WHERE s.kind = 'RECEIPT' AND s.status = 'APPROVED' AND s.settle_date &gt;= #{begin} AND s.settle_date &lt;= #{end}
+          AND b.source_type IN ('SALES_OUT', 'SALES_RETURN') AND o.salesman_id IS NOT NULL
+        GROUP BY o.salesman_id
+    </select>
+
+    <select id="selectLines" resultType="com.lemon.erp.modules.fin.entity.FinCommissionLine">
+        SELECT l.*, u.nickname AS salesman_name
+        FROM fin_commission_line l
+        LEFT JOIN sys_user u ON u.id = l.salesman_id
+        WHERE l.commission_id = #{commissionId}
+        ORDER BY l.final_amount DESC, l.id
+    </select>
+
+    <select id="selectRules" resultType="com.lemon.erp.modules.fin.entity.FinCommissionRule">
+        SELECT r.*, u.nickname AS salesman_name
+        FROM fin_commission_rule r
+        LEFT JOIN sys_user u ON u.id = r.salesman_id
+        ORDER BY r.basis, r.salesman_id, r.material_category, r.threshold
+    </select>
+
+</mapper>

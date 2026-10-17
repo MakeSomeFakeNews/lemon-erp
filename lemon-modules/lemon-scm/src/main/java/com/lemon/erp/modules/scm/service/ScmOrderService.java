@@ -133,6 +133,10 @@ public class ScmOrderService {
         order.setVersion(1);
         order.setDeptId(user.deptId());
         order.setCreateBy(user.userId());
+        if (kind == OrderKind.SALES) {
+            Long owner = customerService.get(req.partnerId()).getOwnerId();
+            order.setSalesmanId(owner != null ? owner : user.userId());
+        }
         fillHeader(order, req, items);
         if (applied != null) {
             order.setDiscountAmount(applied.discountAmount());
@@ -144,6 +148,13 @@ public class ScmOrderService {
             promotionService.saveUsages(order.getId(), applied.usages());
         }
         return order.getId();
+    }
+
+    /** 修改销售订单的业务员（影响之后计算的销售提成） */
+    @Transactional
+    public void changeSalesman(Long id, Long salesmanId) {
+        getAccessible(OrderKind.SALES, id);
+        orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate().set(ScmOrder::getSalesmanId, salesmanId).eq(ScmOrder::getId, id));
     }
 
     /** 应用促销、返利抵扣，并按调整后的单价重算金额 */

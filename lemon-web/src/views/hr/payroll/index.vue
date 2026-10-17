@@ -213,7 +213,7 @@ import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
 useDict('hr_payroll_status', 'hr_perf_grade')
-const MONEY_KEYS = ['baseSalary', 'allowance', 'pieceWage', 'otherBonus', 'grossPay', 'socialPersonal', 'housingPersonal', 'specialDeduct', 'incomeTax',
+const MONEY_KEYS = ['baseSalary', 'allowance', 'pieceWage', 'commission', 'otherBonus', 'grossPay', 'socialPersonal', 'housingPersonal', 'specialDeduct', 'incomeTax',
   'otherDeduct', 'netPay', 'socialCompany', 'housingCompany', 'cumTaxable', 'cumTax']
 const SUM_KEYS = [...MONEY_KEYS.filter((k) => !['cumTaxable', 'cumTax'].includes(k)), 'attendanceDeduct', 'overtime', 'perf']
 
@@ -282,6 +282,7 @@ const itemColumns = [
   { title: '津贴补贴', key: 'allowance', width: 100, align: 'right' },
   { title: '加班费', key: 'overtime', width: 110, align: 'right' },
   { title: '计件工资', key: 'pieceWage', width: 100, align: 'right' },
+  { title: '销售提成', key: 'commission', width: 100, align: 'right' },
   { title: '绩效奖金', key: 'perf', width: 140, align: 'right' },
   { title: '其他奖金', key: 'otherBonus', width: 100, align: 'right' },
   { title: '考勤扣款', key: 'deduct', width: 110, align: 'right' },
@@ -316,6 +317,7 @@ function printSlips() {
         ['津贴补贴', m(i.allowance)],
         ['加班费', m(i.overtimePay)],
         ['计件工资', m(i.pieceWage)],
+        ['销售提成', m(i.commission)],
         ['绩效奖金', m(i.perfBonus)],
         ['其他奖金', m(i.otherBonus)],
         ['考勤扣款', m(i.attendanceDeduct)],

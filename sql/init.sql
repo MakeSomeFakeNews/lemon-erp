@@ -58,6 +58,9 @@ DROP TABLE IF EXISTS hr_contract;
 DROP TABLE IF EXISTS hr_employee_change;
 DROP TABLE IF EXISTS hr_employee;
 DROP TABLE IF EXISTS hr_position;
+DROP TABLE IF EXISTS fin_commission_line;
+DROP TABLE IF EXISTS fin_commission;
+DROP TABLE IF EXISTS fin_commission_rule;
 DROP TABLE IF EXISTS fin_account_rule;
 DROP TABLE IF EXISTS fin_budget;
 DROP TABLE IF EXISTS fin_note_log;
@@ -1266,6 +1269,7 @@ CREATE TABLE scm_order (
     version          INT            NOT NULL DEFAULT 1 COMMENT '版本：每次变更单生效后加 1',
     currency         VARCHAR(8)     NOT NULL DEFAULT 'CNY' COMMENT '币种：订单单价、金额按此币种',
     exchange_rate    DECIMAL(18, 6) NOT NULL DEFAULT 1 COMMENT '汇率（1 外币 = 汇率 × 本位币），出入库、应收应付按此折算本位币',
+    salesman_id      BIGINT                  DEFAULT NULL COMMENT '业务员（销售订单，计算销售提成）：默认客户的负责销售，没有时为制单人',
     dept_id          BIGINT                  DEFAULT NULL COMMENT '制单人部门（数据权限）',
     create_by        BIGINT                  DEFAULT NULL COMMENT '制单人',
     approve_by       BIGINT                  DEFAULT NULL COMMENT '审核人',
@@ -3364,6 +3368,57 @@ CREATE TABLE fin_budget (
     UNIQUE KEY uk_budget (budget_year, dept_id, account_id, tenant_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '预算';
 
+CREATE TABLE fin_commission_rule (
+    id                BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id         BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    name              VARCHAR(64)    NOT NULL COMMENT '规则名称',
+    basis             VARCHAR(16)    NOT NULL COMMENT '提成依据(字典 fin_commission_basis) SALES销售额（不含税） PROFIT毛利 RECEIPT回款',
+    salesman_id       BIGINT                  DEFAULT NULL COMMENT '适用业务员，为空适用全部',
+    material_category VARCHAR(32)             DEFAULT NULL COMMENT '适用物料分类(字典 wms_material_category)，为空适用全部；回款不区分分类',
+    threshold         DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '业绩门槛：业务员当月该依据的业绩达到此金额时适用（阶梯提成）',
+    rate              DECIMAL(6, 3)  NOT NULL COMMENT '提成比例（%）',
+    status            TINYINT        NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
+    remark            VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    create_time       DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time       DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '销售提成规则：同一业务员、分类、依据取最具体（指定业务员 > 指定分类）且门槛最高的已达成规则';
+
+CREATE TABLE fin_commission (
+    id           BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id    BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    period       INT            NOT NULL COMMENT '期间 yyyyMM',
+    status       VARCHAR(16)    NOT NULL DEFAULT 'DRAFT' COMMENT '状态 DRAFT草稿 CONFIRMED已确认（计入工资表）',
+    total_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '提成合计（含调整）',
+    remark       VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    create_by    BIGINT                  DEFAULT NULL COMMENT '计算人',
+    confirm_by   BIGINT                  DEFAULT NULL COMMENT '确认人',
+    confirm_time DATETIME                DEFAULT NULL COMMENT '确认时间',
+    create_time  DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time  DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_commission_period (period, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '销售提成表：按期间计算各业务员的业绩和提成';
+
+CREATE TABLE fin_commission_line (
+    id                BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id         BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    commission_id     BIGINT         NOT NULL COMMENT '提成表',
+    salesman_id       BIGINT         NOT NULL COMMENT '业务员',
+    sales_amount      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '销售额（不含税，扣除退货）',
+    profit_amount     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '毛利（销售额 - 成本）',
+    receipt_amount    DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '回款',
+    commission_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '按规则计算的提成',
+    adjust_amount     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '手工调整',
+    final_amount      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '应发提成 = 提成 + 调整',
+    detail            TEXT COMMENT '计算明细（JSON）：依据、分类、业绩、规则、比例、提成',
+    remark            VARCHAR(255)            DEFAULT NULL COMMENT '备注（调整原因）',
+    create_time       DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time       DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_commission_line (commission_id, salesman_id, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '销售提成表明细：每个业务员一行';
+
 CREATE TABLE fin_account_rule (
     id          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
@@ -3774,6 +3829,7 @@ CREATE TABLE hr_payroll_item (
     allowance         DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '津贴补贴',
     overtime_pay      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '加班费',
     piece_wage        DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '计件工资',
+    commission        DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '销售提成（取已确认的销售提成表）',
     perf_grade        VARCHAR(4)              DEFAULT NULL COMMENT '绩效等级',
     perf_bonus        DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '绩效奖金',
     other_bonus       DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '其他奖金（手工调整）',
@@ -6515,6 +6571,20 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('wms_assembly_kind', '拆卸', 'DISASSEMBLE', 'orange', 2, 1, NOW(), NOW()),
 ('wms_in_type', '组装拆卸', 'ASSEMBLY', 'cyan', 11, 1, NOW(), NOW()),
 ('wms_out_type', '组装拆卸', 'ASSEMBLY', 'cyan', 11, 1, NOW(), NOW());
+
+-- 销售提成：规则与按月计算（销售 → 销售提成）
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(344, 902, '销售提成', 'C', 'commission', 'fin/commission/index', 'fin:commission:list', 'PercentageOutlined', 20, 1, 1, NOW(), NOW()),
+(3440, 344, '提成规则维护', 'F', NULL, NULL, 'fin:commission:rule', NULL, 1, 1, 1, NOW(), NOW()),
+(3441, 344, '提成计算与确认', 'F', NULL, NULL, 'fin:commission:edit', NULL, 2, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(2, 344), (3, 344), (9, 344), (9, 3440), (9, 3441), (11, 344);
+INSERT INTO sys_dict_type (id, name, type, status, remark, create_time, update_time) VALUES
+(157, '提成依据', 'fin_commission_basis', 1, '销售提成的计算依据', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('fin_commission_basis', '销售额', 'SALES', 'blue', 1, 1, NOW(), NOW()),
+('fin_commission_basis', '毛利', 'PROFIT', 'green', 2, 1, NOW(), NOW()),
+('fin_commission_basis', '回款', 'RECEIPT', 'gold', 3, 1, NOW(), NOW());
 
 -- 凭证科目设置：自动凭证各用途使用的科目
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
