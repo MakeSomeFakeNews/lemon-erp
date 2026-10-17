@@ -22,11 +22,13 @@ public final class WmsConstants {
     /**
      * 入库类型（字典 wms_in_type）：采购入库、生产入库、销售退货、生产退料、委外收回由业务单据生成；手工只能做其他入库
      */
-    public static final Set<String> IN_TYPES = Set.of("PURCHASE", "PRODUCTION", "SALES_RETURN", "PRODUCTION_RETURN", "OUTSOURCE_RETURN", "SCRAP_IN", "CONSIGN_IN", "OPENING", "OTHER");
+    public static final Set<String> IN_TYPES = Set.of("PURCHASE", "PRODUCTION", "SALES_RETURN", "PRODUCTION_RETURN", "OUTSOURCE_RETURN", "SCRAP_IN", "CONSIGN_IN", "OPENING", "ASSEMBLY", "OTHER");
     /** 期初入库：系统启用时导入的期初库存，日期为启用期间的前一天 */
     public static final String OPENING = "OPENING";
+    /** 组装拆卸：组装拆卸单生成的出库、入库单 */
+    public static final String ASSEMBLY = "ASSEMBLY";
     /** 出库类型（字典 wms_out_type）：销售出库、生产领料、采购退货、项目领料、委外发料、服务领用、部门领用（低值易耗品）由业务单据生成；手工只能做其他出库 */
-    public static final Set<String> OUT_TYPES = Set.of("SALES", "PRODUCTION", "PURCHASE_RETURN", "PROJECT", "OUTSOURCE", "SERVICE", "SCRAP", "CONSIGN", "CONSUME", "OTHER");
+    public static final Set<String> OUT_TYPES = Set.of("SALES", "PRODUCTION", "PURCHASE_RETURN", "PROJECT", "OUTSOURCE", "SERVICE", "SCRAP", "CONSIGN", "CONSUME", "ASSEMBLY", "OTHER");
     /** 手工出入库允许的类型：其余类型会绕过供应链、生产的应收应付和成本归集 */
     public static final Set<String> MANUAL_TYPES = Set.of("OTHER", "SCRAP", "CONSIGN_IN");
     /** 不计入可用库存的仓库类型：不良品仓、客户寄售仓、供应商寄售仓 */

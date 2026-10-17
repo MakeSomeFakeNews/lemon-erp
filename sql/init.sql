@@ -181,6 +181,8 @@ DROP TABLE IF EXISTS scm_supplier;
 DROP TABLE IF EXISTS wms_doc_sequence;
 DROP TABLE IF EXISTS wms_check_item;
 DROP TABLE IF EXISTS wms_check;
+DROP TABLE IF EXISTS wms_assembly_item;
+DROP TABLE IF EXISTS wms_assembly;
 DROP TABLE IF EXISTS wms_stock_doc_item;
 DROP TABLE IF EXISTS wms_stock_doc;
 DROP TABLE IF EXISTS wms_serial_log;
@@ -890,6 +892,57 @@ CREATE TABLE wms_stock_doc_item (
     -- 删除物料前检查是否被单据引用
     KEY idx_stock_doc_item_material (material_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '出入库单明细';
+
+CREATE TABLE wms_assembly (
+    id              BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id       BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    assembly_no     VARCHAR(32)    NOT NULL COMMENT '单据号',
+    kind            VARCHAR(16)    NOT NULL COMMENT '种类(字典 wms_assembly_kind) ASSEMBLE组装 DISASSEMBLE拆卸',
+    warehouse_id    BIGINT         NOT NULL COMMENT '仓库',
+    biz_date        DATE           NOT NULL COMMENT '业务日期',
+    material_id     BIGINT         NOT NULL COMMENT '成套件（组装得到 / 拆卸的物料）',
+    location_id     BIGINT         NOT NULL DEFAULT 0 COMMENT '成套件库位，0 为未指定',
+    batch_no        VARCHAR(64)    NOT NULL DEFAULT '' COMMENT '成套件批次号',
+    production_date DATE                    DEFAULT NULL COMMENT '成套件生产日期（组装入库新批次）',
+    expiry_date     DATE                    DEFAULT NULL COMMENT '成套件有效期至（组装入库新批次）',
+    serial_nos      TEXT COMMENT '成套件序列号，逗号分隔',
+    qty             DECIMAL(18, 4) NOT NULL COMMENT '成套件数量',
+    status          VARCHAR(16)    NOT NULL DEFAULT 'DRAFT' COMMENT '状态 DRAFT草稿 DONE已完成',
+    out_doc_id      BIGINT                  DEFAULT NULL COMMENT '生成的出库单（组装为子件出库，拆卸为成套件出库）',
+    out_doc_no      VARCHAR(32)             DEFAULT NULL COMMENT '生成的出库单号',
+    in_doc_id       BIGINT                  DEFAULT NULL COMMENT '生成的入库单（组装为成套件入库，拆卸为子件入库）',
+    in_doc_no       VARCHAR(32)             DEFAULT NULL COMMENT '生成的入库单号',
+    remark          VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    dept_id         BIGINT                  DEFAULT NULL COMMENT '制单人部门（数据权限）',
+    create_by       BIGINT                  DEFAULT NULL COMMENT '制单人',
+    confirm_by      BIGINT                  DEFAULT NULL COMMENT '确认人',
+    confirm_time    DATETIME                DEFAULT NULL COMMENT '确认时间',
+    create_time     DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time     DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_assembly_no (assembly_no, tenant_id),
+    KEY idx_assembly_date (biz_date),
+    KEY idx_assembly_material (material_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '组装拆卸单：组装消耗子件得到成套件，拆卸相反；确认后生成出库、入库单（类型 ASSEMBLY），成本核算按子件成本计算成套件成本';
+
+CREATE TABLE wms_assembly_item (
+    id              BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id       BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    assembly_id     BIGINT         NOT NULL COMMENT '组装拆卸单',
+    material_id     BIGINT         NOT NULL COMMENT '子件',
+    location_id     BIGINT         NOT NULL DEFAULT 0 COMMENT '库位，0 为未指定',
+    batch_no        VARCHAR(64)    NOT NULL DEFAULT '' COMMENT '批次号',
+    production_date DATE                    DEFAULT NULL COMMENT '生产日期（拆卸入库新批次）',
+    expiry_date     DATE                    DEFAULT NULL COMMENT '有效期至（拆卸入库新批次）',
+    qty             DECIMAL(18, 4) NOT NULL COMMENT '数量',
+    serial_nos      TEXT COMMENT '序列号，逗号分隔',
+    remark          VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    create_time     DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time     DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_assembly_item_assembly (assembly_id),
+    KEY idx_assembly_item_material (material_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '组装拆卸单的子件';
 
 CREATE TABLE wms_check (
     id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -6447,6 +6500,21 @@ INSERT INTO wms_attribute_value (attribute_id, attr_value, code, sort, create_ti
 (2, 'L', 'L', 3, NOW(), NOW()),
 (2, 'XL', 'XL', 4, NOW(), NOW()),
 (2, 'XXL', 'XXL', 5, NOW(), NOW());
+
+-- 组装拆卸单
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(343, 911, '组装拆卸', 'C', 'assembly', 'wms/assembly/index', 'wms:assembly:list', 'BuildOutlined', 5, 1, 1, NOW(), NOW()),
+(3430, 343, '组装拆卸维护', 'F', NULL, NULL, 'wms:assembly:add', NULL, 1, 1, 1, NOW(), NOW()),
+(3431, 343, '组装拆卸确认', 'F', NULL, NULL, 'wms:assembly:confirm', NULL, 2, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(2, 343), (3, 343), (6, 343), (6, 3430), (6, 3431), (9, 343);
+INSERT INTO sys_dict_type (id, name, type, status, remark, create_time, update_time) VALUES
+(156, '组装拆卸种类', 'wms_assembly_kind', 1, '组装、拆卸', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('wms_assembly_kind', '组装', 'ASSEMBLE', 'blue', 1, 1, NOW(), NOW()),
+('wms_assembly_kind', '拆卸', 'DISASSEMBLE', 'orange', 2, 1, NOW(), NOW()),
+('wms_in_type', '组装拆卸', 'ASSEMBLY', 'cyan', 11, 1, NOW(), NOW()),
+('wms_out_type', '组装拆卸', 'ASSEMBLY', 'cyan', 11, 1, NOW(), NOW());
 
 -- 凭证科目设置：自动凭证各用途使用的科目
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES

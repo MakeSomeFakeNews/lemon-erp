@@ -64,6 +64,13 @@ public interface FinCostSourceMapper {
     List<Map<String, Object>> selectCostEvents(@Param("begin") LocalDate begin, @Param("end") LocalDate end,
                                                @Param("materialIds") Collection<Long> materialIds);
 
+    /**
+     * 已完成的组装拆卸单及其子件
+     *
+     * @return [{assemblyNo, kind, productId, qty, partId, partQty}]
+     */
+    List<Map<String, Object>> selectAssemblies(@Param("begin") LocalDate begin, @Param("end") LocalDate end);
+
     /** 参考成本价大于 0 的物料：[{materialId, refCost}] */
     List<Map<String, Object>> selectRefCosts();
 }
