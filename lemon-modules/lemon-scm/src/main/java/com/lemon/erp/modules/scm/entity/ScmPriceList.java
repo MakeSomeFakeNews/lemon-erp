@@ -29,6 +29,9 @@ public class ScmPriceList extends BaseEntity {
     /** 客户等级（字典 scm_customer_level），为空适用全部客户 */
     private String customerLevel;
 
+    /** 客户专属价：指定客户时只适用该客户，优先于客户等级 */
+    private Long customerId;
+
     /** 起订数量（阶梯），默认 0 */
     @DecimalMin(value = "0", message = "起订数量不能小于0")
     private BigDecimal minQty;
@@ -49,6 +52,8 @@ public class ScmPriceList extends BaseEntity {
     @Size(max = 255, message = "备注不能超过255个字符")
     private String remark;
 
+    @TableField(exist = false)
+    private String customerName;
     @TableField(exist = false)
     private String materialCode;
     @TableField(exist = false)

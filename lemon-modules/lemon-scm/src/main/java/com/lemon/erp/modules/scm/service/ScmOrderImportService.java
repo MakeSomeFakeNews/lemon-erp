@@ -132,7 +132,7 @@ public class ScmOrderImportService {
             BigDecimal price = d.price();
             BigDecimal taxRate = DEFAULT_TAX_RATE;
             if (price == null) {
-                ScmPriceList p = priceListMapper.selectQuote(m.getId(), customer.getLevel(), d.qty(), d.orderDate());
+                ScmPriceList p = priceListMapper.selectQuote(m.getId(), customer.getId(), customer.getLevel(), d.qty(), d.orderDate());
                 if (p == null) {
                     throw new BizException("物料「" + m.getCode() + "」没有价目表价格，请填写单价");
                 }

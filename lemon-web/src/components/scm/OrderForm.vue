@@ -154,6 +154,11 @@
               />
             </a-form-item>
             <div v-if="contractPrices.has(record.materialId)" class="sub-text">合同价</div>
+            <div v-if="record.lastPrice" class="sub-text">
+              上次 <a @click="useLastPrice(record)">{{ currencySymbol(record.lastPrice.currency) }}{{ formatQty(Number(record.lastPrice.price) * ratioOf(record)) }}</a>
+              （{{ record.lastPrice.orderDate }}）
+            </div>
+            <div v-if="priceWarning(record)" class="warn-text">{{ priceWarning(record) }}</div>
             <div v-else-if="form.contractId && record.materialId" class="warn-text">不在合同中</div>
             <div v-if="record.unitName" class="sub-text">每{{ record.unitName }}</div>
             <PriceHint
@@ -214,7 +219,7 @@ import PriceHint from './PriceHint.vue'
 import { addOrder, getOrder, updateOrder } from '@/api/scm/order'
 import { materialUnits } from '@/api/wms/material'
 import { supplierPrices } from '@/api/scm/partner'
-import { previewPromotion, quotePrice, rebateBalance as fetchRebateBalance } from '@/api/scm/sourcing'
+import { previewPromotion, priceControlsOf, priceHistory, quotePrice, rebateBalance as fetchRebateBalance } from '@/api/scm/sourcing'
 import { activeContracts } from '@/api/scm/srm'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { formatQty, rowKey, today } from '@/components/wms/wms'
@@ -550,6 +555,51 @@ function fillPrice(row, overwrite) {
   row.minQty = p.minQty ? Number(p.minQty) : undefined
 }
 
+// ---------------------------------------------------------------- 历史成交价、价格控制
+/** 往来单位该物料最近一次成交价（基本单位、订单币种）；没有价目 / 供货价时默认带出 */
+async function loadLastPrice(row) {
+  row.lastPrice = undefined
+  if (!row.materialId || !form.value.partnerId) return
+  const materialId = row.materialId
+  const list = await priceHistory({ kind: props.kind, partnerId: form.value.partnerId, materialId, limit: 1 }).catch(() => [])
+  if (row.materialId !== materialId || !list.length) return
+  row.lastPrice = list[0]
+  const sameCurrency = (list[0].currency || BASE_CURRENCY) === (form.value.currency || BASE_CURRENCY)
+  if (row.unitPrice == null && sameCurrency) {
+    row.unitPrice = qty4(Number(list[0].price) * ratioOf(row))
+    if (list[0].taxRate != null) row.taxRate = Number(list[0].taxRate)
+  }
+}
+function useLastPrice(row) {
+  row.unitPrice = qty4(Number(row.lastPrice.price) * ratioOf(row))
+  row.priceAuto = false
+}
+
+const priceControls = ref(new Map())
+let controlTimer
+watch(
+  () => form.value.items?.map((i) => i.materialId).filter(Boolean).join(','),
+  (ids) => {
+    clearTimeout(controlTimer)
+    if (!ids) return
+    controlTimer = setTimeout(async () => {
+      const list = await priceControlsOf(ids.split(',').map(Number)).catch(() => [])
+      priceControls.value = new Map(list.map((c) => [c.materialId, c]))
+    }, 300)
+  }
+)
+/** 单价（含税、基本单位、折算本位币）超出价格控制时的提示 */
+function priceWarning(row) {
+  const c = priceControls.value.get(row.materialId)
+  if (!c || row.unitPrice == null) return ''
+  const rate = foreign.value ? Number(form.value.exchangeRate) || 1 : 1
+  const price = (Number(row.unitPrice) / ratioOf(row)) * rate
+  const block = c.controlMode === 'BLOCK' ? '，不能保存' : ''
+  if (props.kind === 'sales' && c.minSalePrice != null && price < Number(c.minSalePrice) - 0.00005) return `低于最低销售价 ¥${Number(c.minSalePrice)}${block}`
+  if (props.kind === 'purchase' && c.maxPurchasePrice != null && price > Number(c.maxPurchasePrice) + 0.00005) return `高于最高采购价 ¥${Number(c.maxPurchasePrice)}${block}`
+  return ''
+}
+
 function applyMaterial(row, material) {
   Object.assign(row, {
     materialLabel: material.label,
@@ -566,10 +616,11 @@ function applyMaterial(row, material) {
   if (props.kind === 'sales') {
     row.listPrice = undefined
     row.priceAuto = true
-    fetchSalesPrice(row)
+    fetchSalesPrice(row).then(() => loadLastPrice(row))
     return
   }
   fillPrice(row, true)
+  loadLastPrice(row)
 }
 
 // ---------------------------------------------------------------- 促销预览、返利抵扣

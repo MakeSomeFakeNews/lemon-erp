@@ -112,7 +112,7 @@ public class ScmChannelService {
         LocalDate today = LocalDate.now();
         Map<Long, WmsMaterial> materials = materialService.getEnabled(req.items().stream().map(ChannelRequests.Line::materialId).toList());
         List<OrderItemRequest> items = req.items().stream().map(l -> {
-            ScmPriceList p = priceListMapper.selectQuote(l.materialId(), dealer.getLevel(), l.qty(), today);
+            ScmPriceList p = priceListMapper.selectQuote(l.materialId(), dealer.getId(), dealer.getLevel(), l.qty(), today);
             if (p == null) {
                 WmsMaterial m = materials.get(l.materialId());
                 throw new BizException("物料「" + m.getCode() + " " + m.getName() + "」不在可订货清单中");

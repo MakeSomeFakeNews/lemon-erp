@@ -62,7 +62,7 @@ public class ScmConsignService {
             BigDecimal price = i.price();
             BigDecimal taxRate = i.taxRate();
             if (price == null) {
-                ScmPriceList p = priceListMapper.selectQuote(i.materialId(), customer.getLevel(), i.qty(), req.bizDate());
+                ScmPriceList p = priceListMapper.selectQuote(i.materialId(), customer.getId(), customer.getLevel(), i.qty(), req.bizDate());
                 if (p == null) {
                     throw new BizException("物料没有价目表价格，请填写结算单价");
                 }

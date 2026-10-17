@@ -8,7 +8,11 @@ import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
+import com.lemon.erp.modules.scm.entity.ScmPriceControl;
 import com.lemon.erp.modules.scm.entity.ScmPriceList;
+import com.lemon.erp.modules.scm.model.OrderKind;
+import com.lemon.erp.modules.scm.service.ScmPriceControlService;
+import java.util.Map;
 import com.lemon.erp.modules.scm.mapper.ScmPriceListMapper;
 import com.lemon.erp.modules.scm.service.ScmCustomerService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
@@ -41,6 +45,7 @@ public class ScmPriceListController {
     private final ScmPriceListMapper priceListMapper;
     private final WmsMaterialService materialService;
     private final ScmCustomerService customerService;
+    private final ScmPriceControlService controlService;
 
     @GetMapping
     @PreAuthorize("@ss.hasPerm('scm:price:list')")
@@ -64,7 +69,7 @@ public class ScmPriceListController {
             ScmCustomer c = customerService.get(customerId);
             level = c.getLevel();
         }
-        return R.ok(priceListMapper.selectQuote(materialId, level, qty == null ? BigDecimal.ONE : qty, date == null ? LocalDate.now() : date));
+        return R.ok(priceListMapper.selectQuote(materialId, customerId, level, qty == null ? BigDecimal.ONE : qty, date == null ? LocalDate.now() : date));
     }
 
     @PostMapping
@@ -87,6 +92,7 @@ public class ScmPriceListController {
         // 可为空的字段要能清空
         priceListMapper.update(Wrappers.<ScmPriceList>lambdaUpdate()
                 .set(ScmPriceList::getCustomerLevel, p.getCustomerLevel())
+                .set(ScmPriceList::getCustomerId, p.getCustomerId())
                 .set(ScmPriceList::getValidFrom, p.getValidFrom())
                 .set(ScmPriceList::getValidTo, p.getValidTo())
                 .set(ScmPriceList::getRemark, p.getRemark())
@@ -102,6 +108,57 @@ public class ScmPriceListController {
         return R.ok();
     }
 
+    // ---------------------------------------------------------------- 价格控制、历史成交价
+
+    @GetMapping("/control")
+    @PreAuthorize("@ss.hasPerm('scm:price:list')")
+    public R<PageResult<ScmPriceControl>> controls(@RequestParam(defaultValue = "1") long current, @RequestParam(defaultValue = "10") long size,
+                                                   @RequestParam(required = false) String keyword) {
+        return R.ok(controlService.page(current, size, keyword));
+    }
+
+    /** 物料的价格控制：订单页面提示（登录即可） */
+    @GetMapping("/control/of")
+    public R<List<ScmPriceControl>> controlsOf(@RequestParam List<Long> materialIds) {
+        return R.ok(controlService.ofMaterials(materialIds));
+    }
+
+    @PostMapping("/control")
+    @PreAuthorize("@ss.hasPerm('scm:price:edit')")
+    @OperLog(title = "价格控制", type = OperType.INSERT)
+    public R<Void> createControl(@Valid @RequestBody ScmPriceControl req) {
+        materialService.get(req.getMaterialId());
+        req.setId(null);
+        controlService.save(req);
+        return R.ok();
+    }
+
+    @PutMapping("/control/{id}")
+    @PreAuthorize("@ss.hasPerm('scm:price:edit')")
+    @OperLog(title = "价格控制", type = OperType.UPDATE)
+    public R<Void> updateControl(@PathVariable Long id, @Valid @RequestBody ScmPriceControl req) {
+        materialService.get(req.getMaterialId());
+        req.setId(id);
+        controlService.save(req);
+        return R.ok();
+    }
+
+    @DeleteMapping("/control/{ids}")
+    @PreAuthorize("@ss.hasPerm('scm:price:edit')")
+    @OperLog(title = "价格控制", type = OperType.DELETE)
+    public R<Void> deleteControl(@PathVariable List<Long> ids) {
+        controlService.delete(ids);
+        return R.ok();
+    }
+
+    /** 往来单位某物料的历史成交价（kind 为 sales / purchase），订单录入时参考 */
+    @GetMapping("/history")
+    @PreAuthorize("@ss.hasAnyPerm('scm:price:list', 'scm:sales:list', 'scm:purchase:list')")
+    public R<List<Map<String, Object>>> history(@RequestParam String kind, @RequestParam Long partnerId, @RequestParam Long materialId,
+                                                @RequestParam(defaultValue = "5") int limit) {
+        return R.ok(controlService.history(OrderKind.ofPath(kind), partnerId, materialId, limit));
+    }
+
     private ScmPriceList normalize(ScmPriceList p, Long id) {
         materialService.get(p.getMaterialId());
         if (p.getValidFrom() != null && p.getValidTo() != null && p.getValidTo().isBefore(p.getValidFrom())) {
@@ -109,6 +166,11 @@ public class ScmPriceListController {
         }
         p.setId(id);
         p.setCustomerLevel(p.getCustomerLevel() == null || p.getCustomerLevel().isBlank() ? null : p.getCustomerLevel());
+        // 客户专属价只看客户，不再区分等级
+        if (p.getCustomerId() != null) {
+            customerService.get(p.getCustomerId());
+            p.setCustomerLevel(null);
+        }
         p.setMinQty(p.getMinQty() == null ? BigDecimal.ZERO : p.getMinQty());
         p.setTaxRate(p.getTaxRate() == null ? BigDecimal.valueOf(13) : p.getTaxRate());
         return p;
