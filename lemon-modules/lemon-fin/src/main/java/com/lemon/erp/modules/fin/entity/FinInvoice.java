@@ -23,7 +23,7 @@ public class FinInvoice extends BaseEntity {
 
     private String invoiceNo;
 
-    /** SPECIAL 专票 / NORMAL 普票 */
+    /** 字典 fin_invoice_type：SPECIAL 专票 / NORMAL 普票 / E_SPECIAL 数电票（专票）/ E_NORMAL 数电票（普票） */
     private String invoiceType;
 
     private Long partnerId;
@@ -34,6 +34,20 @@ public class FinInvoice extends BaseEntity {
     private BigDecimal amount;
 
     private BigDecimal taxAmount;
+
+    /** 已勾稽应收应付单的金额 */
+    private BigDecimal matchedAmount;
+
+    private String sellerTaxNo;
+
+    private String sellerName;
+
+    private String buyerTaxNo;
+
+    private String buyerName;
+
+    /** MANUAL 手工登记 / XML 数电票文件导入 / EXCEL 发票清单导入 */
+    private String source;
 
     /** VALID / VOID */
     private String status;
@@ -51,4 +65,7 @@ public class FinInvoice extends BaseEntity {
     private String createByName;
     @TableField(exist = false)
     private List<FinInvoiceItem> items;
+    /** 发票明细行（导入的数电票） */
+    @TableField(exist = false)
+    private List<FinInvoiceLine> lines;
 }

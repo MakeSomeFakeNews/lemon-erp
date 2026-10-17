@@ -155,6 +155,17 @@ export const getInvoice = (id) => request.get(`/fin/invoice/${id}`)
 export const invoiceOpenBills = (kind, partnerId) => request.get('/fin/invoice/open-bills', { params: { kind, partnerId } })
 export const addInvoice = (data) => request.post('/fin/invoice', data)
 export const cancelInvoice = (id) => request.post(`/fin/invoice/${id}/cancel`)
+/** 导入数电票 XML 文件（可多个）→ { total, imported, skipped, matched, errors } */
+export const importInvoiceXml = (kind, files, autoMatch = true) => {
+  const data = new FormData()
+  files.forEach((f) => data.append('files', f))
+  return request.post('/fin/invoice/import-xml', data, { params: { kind, autoMatch }, timeout: 120000 })
+}
+/** 导入发票清单（Excel 解析后的行） */
+export const importInvoiceRows = (kind, data, autoMatch = true) => request.post('/fin/invoice/import', data, { params: { kind, autoMatch } })
+/** 勾稽：items [{ billId, amount }] */
+export const matchInvoice = (id, items) => request.post(`/fin/invoice/${id}/match`, { items })
+export const unmatchInvoice = (id) => request.post(`/fin/invoice/${id}/unmatch`)
 /** 进项认证：period 为空时取消认证 */
 export const certifyInvoice = (ids, period) => request.post('/fin/invoice/certify', { ids, period })
 /** 未开票收入（OUTPUT）/ 暂估应付（INPUT） */

@@ -19,6 +19,7 @@
         </if>
         <if test="partnerId != null">AND i.partner_id = #{partnerId}</if>
         <if test="status != null and status != ''">AND i.status = #{status}</if>
+        <if test="unmatched">AND i.status = 'VALID' AND i.matched_amount &lt;&gt; i.amount</if>
         ORDER BY i.invoice_date DESC, i.id DESC
     </select>
 
@@ -34,6 +35,13 @@
         WHERE t.invoice_id = #{invoiceId}
         ORDER BY t.id
     </select>
+
+    <!-- 勾稽金额累计不超过发票金额（与发票同号） -->
+    <update id="addMatched">
+        UPDATE fin_invoice SET matched_amount = matched_amount + #{amount}, update_time = NOW()
+        WHERE id = #{id} AND status = 'VALID' AND ABS(matched_amount + #{amount}) &lt;= ABS(amount)
+          AND (matched_amount + #{amount}) * amount &gt;= 0
+    </update>
 
     <select id="selectOpenBills" resultType="com.lemon.erp.modules.fin.entity.FinBill">
         SELECT b.* FROM fin_bill b

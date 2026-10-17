@@ -107,6 +107,7 @@ DROP TABLE IF EXISTS fin_cost_run;
 DROP TABLE IF EXISTS fin_depreciation;
 DROP TABLE IF EXISTS fin_asset;
 DROP TABLE IF EXISTS fin_invoice;
+DROP TABLE IF EXISTS fin_invoice_line;
 DROP TABLE IF EXISTS fin_invoice_item;
 DROP TABLE IF EXISTS fin_advance;
 DROP TABLE IF EXISTS fin_advance_apply;
@@ -2302,11 +2303,17 @@ CREATE TABLE fin_invoice (
     tenant_id      BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     kind           VARCHAR(8)     NOT NULL COMMENT '种类 OUTPUT销项（开给客户） INPUT进项（供应商开来）',
     invoice_no     VARCHAR(32)    NOT NULL COMMENT '发票号码',
-    invoice_type   VARCHAR(16)    NOT NULL DEFAULT 'SPECIAL' COMMENT '发票类型(字典 fin_invoice_type) SPECIAL增值税专用发票 NORMAL普通发票',
+    invoice_type   VARCHAR(16)    NOT NULL DEFAULT 'SPECIAL' COMMENT '发票类型(字典 fin_invoice_type) SPECIAL增值税专用发票 NORMAL普通发票 E_SPECIAL数电票（专票） E_NORMAL数电票（普票）',
     partner_id     BIGINT         NOT NULL COMMENT '客户 / 供应商',
     invoice_date   DATE           NOT NULL COMMENT '开票日期',
     amount         DECIMAL(18, 2) NOT NULL COMMENT '价税合计（红字发票为负数）',
     tax_amount     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '税额',
+    matched_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '已勾稽应收应付单的金额，导入的发票可以之后再勾稽',
+    seller_tax_no  VARCHAR(32)             DEFAULT NULL COMMENT '销售方纳税人识别号',
+    seller_name    VARCHAR(128)            DEFAULT NULL COMMENT '销售方名称',
+    buyer_tax_no   VARCHAR(32)             DEFAULT NULL COMMENT '购买方纳税人识别号',
+    buyer_name     VARCHAR(128)            DEFAULT NULL COMMENT '购买方名称',
+    source         VARCHAR(16)    NOT NULL DEFAULT 'MANUAL' COMMENT '来源 MANUAL手工登记 XML数电票文件导入 EXCEL发票清单导入',
     status         VARCHAR(16)    NOT NULL DEFAULT 'VALID' COMMENT '状态 VALID有效 VOID已作废',
     certify_period INT                     DEFAULT NULL COMMENT '进项发票认证（勾选抵扣）期间 yyyyMM',
     remark         VARCHAR(255)            DEFAULT NULL COMMENT '备注',
@@ -2330,6 +2337,25 @@ CREATE TABLE fin_invoice_item (
     KEY idx_invoice_item_invoice (invoice_id),
     KEY idx_invoice_item_bill (bill_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '发票勾稽的应收应付单';
+
+CREATE TABLE fin_invoice_line (
+    id          BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    invoice_id  BIGINT         NOT NULL COMMENT '发票',
+    seq         INT            NOT NULL COMMENT '行号',
+    item_name   VARCHAR(200)   NOT NULL COMMENT '项目名称（含税收分类简称）',
+    spec        VARCHAR(128)            DEFAULT NULL COMMENT '规格型号',
+    unit        VARCHAR(32)             DEFAULT NULL COMMENT '单位',
+    qty         DECIMAL(18, 6)          DEFAULT NULL COMMENT '数量',
+    price       DECIMAL(18, 8)          DEFAULT NULL COMMENT '单价（不含税）',
+    amount      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '金额（不含税）',
+    tax_rate    DECIMAL(6, 4)           DEFAULT NULL COMMENT '税率，如 0.13',
+    tax_amount  DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '税额',
+    create_time DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_invoice_line_invoice (invoice_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '发票明细行：导入数电票时保存';
 
 CREATE TABLE fin_advance (
     id           BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -5628,6 +5654,8 @@ INSERT INTO sys_dict_type (id, name, type, status, remark, create_time, update_t
 INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
 ('fin_invoice_type', '增值税专用发票', 'SPECIAL', 'red', 1, 1, NOW(), NOW()),
 ('fin_invoice_type', '普通发票', 'NORMAL', 'blue', 2, 1, NOW(), NOW()),
+('fin_invoice_type', '数电票（专票）', 'E_SPECIAL', 'volcano', 3, 1, NOW(), NOW()),
+('fin_invoice_type', '数电票（普票）', 'E_NORMAL', 'geekblue', 4, 1, NOW(), NOW()),
 ('fin_claim_status', '草稿', 'DRAFT', 'default', 1, 1, NOW(), NOW()),
 ('fin_claim_status', '审批中', 'APPROVING', 'processing', 2, 1, NOW(), NOW()),
 ('fin_claim_status', '待付款', 'APPROVED', 'orange', 3, 1, NOW(), NOW()),

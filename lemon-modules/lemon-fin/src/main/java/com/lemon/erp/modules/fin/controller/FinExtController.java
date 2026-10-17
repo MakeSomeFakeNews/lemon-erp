@@ -7,7 +7,13 @@ import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.AdvanceRequest;
 import com.lemon.erp.modules.fin.dto.ClaimRequest;
+import com.lemon.erp.modules.fin.dto.InvoiceImport;
 import com.lemon.erp.modules.fin.dto.InvoiceRequest;
+import com.lemon.erp.framework.excel.ImportRequest;
+import com.lemon.erp.common.exception.BizException;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
+import java.util.LinkedHashMap;
 import com.lemon.erp.modules.fin.dto.LoanRequest;
 import com.lemon.erp.modules.fin.dto.SettlementItemRequest;
 import com.lemon.erp.modules.fin.entity.FinAdvance;
@@ -60,6 +66,8 @@ public class FinExtController {
     private final FinCloseCheckService closeCheckService;
     private final FinTaxService taxService;
     private final FinInvoiceService invoiceService;
+    private static final int MAX_INVOICE_FILES = 200;
+    private static final long MAX_INVOICE_FILE_SIZE = 1024 * 1024;
     private final FinAdvanceService advanceService;
     private final FinBankService bankService;
     private final FinClaimService claimService;
@@ -110,8 +118,57 @@ public class FinExtController {
     @PreAuthorize("@ss.hasPerm('fin:invoice:list')")
     public R<PageResult<FinInvoice>> invoices(@RequestParam(defaultValue = "1") long current, @RequestParam(defaultValue = "10") long size,
                                               @RequestParam String kind, @RequestParam(required = false) String keyword,
-                                              @RequestParam(required = false) Long partnerId, @RequestParam(required = false) String status) {
-        return R.ok(invoiceService.page(current, size, kind, keyword, partnerId, status));
+                                              @RequestParam(required = false) Long partnerId, @RequestParam(required = false) String status,
+                                              @RequestParam(defaultValue = "false") boolean unmatched) {
+        return R.ok(invoiceService.page(current, size, kind, keyword, partnerId, status, unmatched));
+    }
+
+    /** 导入数电票 XML 文件（可多个）：kind 为 INPUT 进项 / OUTPUT 销项，autoMatch 自动勾稽金额唯一相等的单据 */
+    @PostMapping("/invoice/import-xml")
+    @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
+    @OperLog(title = "数电票导入", type = OperType.IMPORT)
+    public R<FinInvoiceService.InvoiceImportResult> importInvoiceXml(@RequestParam String kind, @RequestParam("files") List<MultipartFile> files,
+                                                                     @RequestParam(defaultValue = "true") boolean autoMatch) throws IOException {
+        if (files.isEmpty() || files.size() > MAX_INVOICE_FILES) {
+            throw new BizException("一次导入 1 ~ " + MAX_INVOICE_FILES + " 个 XML 文件");
+        }
+        Map<String, byte[]> contents = new LinkedHashMap<>();
+        for (MultipartFile f : files) {
+            if (f.getSize() > MAX_INVOICE_FILE_SIZE) {
+                throw new BizException(f.getOriginalFilename() + " 超过 1MB");
+            }
+            String name = f.getOriginalFilename() == null ? "file" + contents.size() : f.getOriginalFilename();
+            contents.put(contents.containsKey(name) ? name + "#" + contents.size() : name, f.getBytes());
+        }
+        return R.ok(invoiceService.importXml(kind, contents, autoMatch));
+    }
+
+    /** 导入发票清单（税务数字账户导出的 Excel，前端解析后按行提交） */
+    @PostMapping("/invoice/import")
+    @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
+    @OperLog(title = "发票清单导入", type = OperType.IMPORT)
+    public R<FinInvoiceService.InvoiceImportResult> importInvoices(@RequestParam String kind, @RequestParam(defaultValue = "true") boolean autoMatch,
+                                                                   @Valid @RequestBody ImportRequest<InvoiceImport> req) {
+        return R.ok(invoiceService.importRows(kind, req.rows(), autoMatch));
+    }
+
+    public record MatchRequest(@NotEmpty(message = "请选择勾稽的单据") List<InvoiceRequest.@Valid @NotNull Item> items) {
+    }
+
+    @PostMapping("/invoice/{id}/match")
+    @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
+    @OperLog(title = "发票勾稽", type = OperType.UPDATE)
+    public R<Void> matchInvoice(@PathVariable Long id, @Valid @RequestBody MatchRequest req) {
+        invoiceService.match(id, req.items());
+        return R.ok();
+    }
+
+    @PostMapping("/invoice/{id}/unmatch")
+    @PreAuthorize("@ss.hasPerm('fin:invoice:edit')")
+    @OperLog(title = "取消发票勾稽", type = OperType.UPDATE)
+    public R<Void> unmatchInvoice(@PathVariable Long id) {
+        invoiceService.unmatch(id);
+        return R.ok();
     }
 
     @GetMapping("/invoice/{id}")
