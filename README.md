@@ -205,7 +205,7 @@
 | --- | --- |
 | 系统管理 | 用户、部门（组织架构树）、角色（菜单 / 数据权限）、菜单、字典、租户、租户套餐、编码规则、打印模板、参数设置 |
 | 系统监控 | 在线用户（强制下线）、操作日志、登录日志（IP 归属地）、服务监控、缓存监控、定时任务 |
-| 平台功能 | 站内消息、Excel 导入导出、单据附件、字段变更历史 |
+| 平台功能 | 站内消息、Excel 导入导出、单据附件、字段变更历史、自定义字段（不改表结构扩展单据和主数据的字段） |
 
 > 每个功能的详细操作说明请阅读 [用户手册](https://makesomefakenews.github.io/lemon-erp-website/manual/guide/)，二次开发请阅读 [开发文档](https://makesomefakenews.github.io/lemon-erp-website/dev/start/)。
 

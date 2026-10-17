@@ -48,7 +48,7 @@
       <a-table
         row-key="id"
         :size="size"
-        :columns="visibleColumns"
+        :columns="tableColumns"
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
@@ -97,6 +97,7 @@
               @changed="(s) => (record.status = s)"
             />
           </template>
+          <template v-else-if="column.custom">{{ cfCell(record, column) }}</template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openExtras(record)">
@@ -312,6 +313,7 @@
             <template #icon><PlusOutlined /></template>添加替代料
           </a-button>
         </template>
+        <CustomFieldsForm :fields="cfFields" :values="form.cf || {}" title="扩展信息" />
       </a-form>
     </FormDrawer>
     <VariantDrawer v-model:open="variantOpen" :material="variantMaterial" @generated="load" />
@@ -438,6 +440,8 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
+import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
+import { useCustomColumns, useCustomFields } from '@/composables/useCustomFields'
 
 /**
  * 物料管理：物料主数据只有这一份，仓库、采购、销售、生产共用。
@@ -544,6 +548,15 @@ async function fetchPage(params) {
 
 const query = reactive({ keyword: undefined, category: undefined, status: undefined })
 const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange, exportAll } = useTable(fetchPage, query)
+// 自定义字段：表单中填写，勾选「列表显示」的作为列
+const cf = useCustomFields('wms_material')
+const cfFields = cf.fields
+const { columns: cfColumns, cell: cfCell } = useCustomColumns('wms_material', list)
+const tableColumns = computed(() => {
+  const cols = visibleColumns.value
+  const action = cols.findIndex((c) => c.key === 'action')
+  return action < 0 ? [...cols, ...cfColumns.value] : [...cols.slice(0, action), ...cfColumns.value, ...cols.slice(action)]
+})
 
 function resetQuery() {
   Object.assign(query, { keyword: undefined, category: undefined, status: undefined })
@@ -590,97 +603,100 @@ const MATERIAL_FIELDS = [
 ]
 const num = (v) => (v == null ? null : Number(v))
 
-const drawer = useFormDrawer({
-  emptyForm: () => ({
-    id: undefined,
-    code: '',
-    name: '',
-    spec: '',
-    unit: undefined,
-    category: undefined,
-    batchEnabled: 0,
-    serialEnabled: 0,
-    iqcRequired: 0,
-    safetyStock: null,
-    reorderPoint: null,
-    reorderQty: null,
-    barcode: '',
-    defaultWarehouseId: null,
-    defaultLocationId: null,
-    refCost: null,
-    costMethod: 'WEIGHTED',
-    remark: '',
-    supplyType: '',
-    leadDays: null,
-    minLot: null,
-    lotMultiple: null,
-    overIssueRate: 0,
-    fqcRequired: 0,
-    planner: '',
-    substitutes: []
-  }),
-  fetch: async (record) => {
-    const [m, p] = await Promise.all([getMaterial(record.id), canEditPlan.value ? getMaterialPlan(record.id) : null])
-    const form = { ...m, safetyStock: num(m.safetyStock), reorderPoint: num(m.reorderPoint), reorderQty: num(m.reorderQty), refCost: num(m.refCost), barcode: m.barcode || '' }
-    if (p) {
-      Object.assign(form, {
-        supplyType: p.supplyType || '',
-        leadDays: p.leadDays,
-        minLot: num(p.minLot),
-        lotMultiple: num(p.lotMultiple),
-        overIssueRate: Number(p.overIssueRate),
-        fqcRequired: p.fqcRequired || 0,
-        planner: p.planner || '',
-        substitutes: p.substitutes.map((s) => ({
-          key: rowKey(),
-          substituteId: s.substituteId,
-          label: `${s.substituteCode} ${s.substituteName}`,
-          ratio: Number(s.ratio),
-          priority: s.priority,
-          remark: s.remark || ''
-        }))
-      })
-    }
-    return form
-  },
-  create: async ({ material, plan }) => {
-    const id = await addMaterial(material)
-    if (plan) await saveMaterialPlan(id, plan)
-  },
-  update: async (id, { material, plan }) => {
-    if (canEdit.value) await updateMaterial(id, material)
-    if (plan) await saveMaterialPlan(id, plan)
-  },
-  toPayload: (f) => ({
-    material: {
-      ...Object.fromEntries(MATERIAL_FIELDS.map((k) => [k, f[k]])),
-      reorderPoint: f.reorderPoint ?? null,
-      reorderQty: f.reorderQty ?? null,
-      refCost: f.refCost ?? null,
-      barcode: f.barcode?.trim() || null,
-      defaultLocationId: f.defaultWarehouseId ? f.defaultLocationId || null : null
+const drawer = useFormDrawer(
+  cf.wrap({
+    emptyForm: () => ({
+      id: undefined,
+      code: '',
+      name: '',
+      spec: '',
+      unit: undefined,
+      category: undefined,
+      batchEnabled: 0,
+      serialEnabled: 0,
+      iqcRequired: 0,
+      safetyStock: null,
+      reorderPoint: null,
+      reorderQty: null,
+      barcode: '',
+      defaultWarehouseId: null,
+      defaultLocationId: null,
+      refCost: null,
+      costMethod: 'WEIGHTED',
+      remark: '',
+      supplyType: '',
+      leadDays: null,
+      minLot: null,
+      lotMultiple: null,
+      overIssueRate: 0,
+      fqcRequired: 0,
+      planner: '',
+      substitutes: []
+    }),
+    fetch: async (record) => {
+      const [m, p] = await Promise.all([getMaterial(record.id), canEditPlan.value ? getMaterialPlan(record.id) : null])
+      const form = { ...m, safetyStock: num(m.safetyStock), reorderPoint: num(m.reorderPoint), reorderQty: num(m.reorderQty), refCost: num(m.refCost), barcode: m.barcode || '' }
+      if (p) {
+        Object.assign(form, {
+          supplyType: p.supplyType || '',
+          leadDays: p.leadDays,
+          minLot: num(p.minLot),
+          lotMultiple: num(p.lotMultiple),
+          overIssueRate: Number(p.overIssueRate),
+          fqcRequired: p.fqcRequired || 0,
+          planner: p.planner || '',
+          substitutes: p.substitutes.map((s) => ({
+            key: rowKey(),
+            substituteId: s.substituteId,
+            label: `${s.substituteCode} ${s.substituteName}`,
+            ratio: Number(s.ratio),
+            priority: s.priority,
+            remark: s.remark || ''
+          }))
+        })
+      }
+      return form
     },
-    plan: canEditPlan.value
-      ? {
-          supplyType: f.supplyType || null,
-          leadDays: f.leadDays ?? null,
-          minLot: f.minLot || null,
-          lotMultiple: f.lotMultiple || null,
-          overIssueRate: f.overIssueRate ?? 0,
-          fqcRequired: f.fqcRequired || 0,
-          planner: f.planner || null,
-          substitutes:
-            f.supplyType === 'PHANTOM'
-              ? []
-              : f.substitutes.map(({ substituteId, ratio, priority, remark }) => ({ substituteId, ratio, priority, remark: remark || null }))
-        }
-      : null
-  }),
-  onSuccess: () => {
-    load()
-    if (detailOpen.value && detail.value) openDetail(detail.value.id)
-  }
-})
+    create: async ({ material, plan }) => {
+      const id = await addMaterial(material)
+      if (plan) await saveMaterialPlan(id, plan)
+      return id
+    },
+    update: async (id, { material, plan }) => {
+      if (canEdit.value) await updateMaterial(id, material)
+      if (plan) await saveMaterialPlan(id, plan)
+    },
+    toPayload: (f) => ({
+      material: {
+        ...Object.fromEntries(MATERIAL_FIELDS.map((k) => [k, f[k]])),
+        reorderPoint: f.reorderPoint ?? null,
+        reorderQty: f.reorderQty ?? null,
+        refCost: f.refCost ?? null,
+        barcode: f.barcode?.trim() || null,
+        defaultLocationId: f.defaultWarehouseId ? f.defaultLocationId || null : null
+      },
+      plan: canEditPlan.value
+        ? {
+            supplyType: f.supplyType || null,
+            leadDays: f.leadDays ?? null,
+            minLot: f.minLot || null,
+            lotMultiple: f.lotMultiple || null,
+            overIssueRate: f.overIssueRate ?? 0,
+            fqcRequired: f.fqcRequired || 0,
+            planner: f.planner || null,
+            substitutes:
+              f.supplyType === 'PHANTOM'
+                ? []
+                : f.substitutes.map(({ substituteId, ratio, priority, remark }) => ({ substituteId, ratio, priority, remark: remark || null }))
+          }
+        : null
+    }),
+    onSuccess: () => {
+      load()
+      if (detailOpen.value && detail.value) openDetail(detail.value.id)
+    }
+  })
+)
 const { formRef, form } = drawer
 
 function addSubstitute() {

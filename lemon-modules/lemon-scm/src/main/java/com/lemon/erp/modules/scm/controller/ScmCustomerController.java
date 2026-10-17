@@ -74,9 +74,9 @@ public class ScmCustomerController {
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:customer:add')")
     @OperLog(title = "客户管理", type = OperType.INSERT)
-    public R<Void> create(@Validated(Create.class) @RequestBody ScmCustomer customer) {
+    public R<Long> create(@Validated(Create.class) @RequestBody ScmCustomer customer) {
         customerService.create(customer);
-        return R.ok();
+        return R.ok(customer.getId());
     }
 
 
