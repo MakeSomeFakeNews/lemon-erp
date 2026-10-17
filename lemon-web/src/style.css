@@ -358,6 +358,11 @@ body {
 }
 
 /* 折叠时只剩图标：当前所在模块的图标用主色浅底标出 */
+/* 收起时图标居中：菜单项左右外边距改成了 8px，内边距也按 8px 计算（Ant Design 默认按 4px） */
+.app-sider .ant-menu-inline-collapsed > .ant-menu-item,
+.app-sider .ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title {
+  padding-inline: calc(50% - 8px - 8px) !important;
+}
 .app-sider .ant-menu-inline-collapsed > .ant-menu-submenu-selected > .ant-menu-submenu-title,
 .app-sider .ant-menu-inline-collapsed > .ant-menu-item-selected {
   background: var(--app-primary-bg) !important;

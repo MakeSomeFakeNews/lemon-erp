@@ -1,7 +1,7 @@
 <template>
   <div class="side-menu">
     <router-link to="/" class="logo">
-      <AppLogo :size="30" />
+      <AppLogo :size="28" class="logo-icon" />
       <transition name="logo-fade">
         <span v-show="!collapsed" class="logo-title">{{ configStore.systemName }}</span>
       </transition>
@@ -113,13 +113,17 @@ function onClick({ key }) {
   align-items: center;
   justify-content: flex-start;
   gap: 10px;
-  /* 固定左边距：收起（64px）时图标居中，展开时与图标左对齐，切换时不跳动 */
-  padding: 0 17px;
+  /* 固定左边距：收起（64px）时 Logo 与菜单图标居中对齐，展开时位置不变，切换时不跳动 */
+  padding: 0 17.5px;
   overflow: hidden;
+}
+.logo-icon {
+  flex: none;
 }
 .logo-title {
   color: var(--app-text);
-  font-size: 19px;
+  font-size: 18px;
+  line-height: 28px;
   font-weight: 600;
   letter-spacing: 0.5px;
   white-space: nowrap;
