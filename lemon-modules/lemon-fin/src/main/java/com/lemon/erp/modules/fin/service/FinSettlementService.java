@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -10,7 +11,6 @@ import com.lemon.erp.framework.workflow.FlowFinishedEvent;
 import com.lemon.erp.framework.workflow.FlowStatus;
 import com.lemon.erp.modules.fin.dto.SettlementItemRequest;
 import com.lemon.erp.modules.fin.dto.SettlementRequest;
-import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.model.SettleMethod;
 import com.lemon.erp.modules.fin.entity.FinBill;
 import com.lemon.erp.modules.fin.entity.FinSettlement;
@@ -35,9 +35,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.lemon.erp.modules.fin.model.FinConstants.FINANCE_EXPENSE;
-import static com.lemon.erp.modules.fin.model.FinConstants.PAYABLE;
-import static com.lemon.erp.modules.fin.model.FinConstants.RECEIVABLE;
 
 /**
  * 收款 / 付款：核销同一往来单位的应收 / 应付单（可同时核销红字退货单冲抵），金额为核销合计且必须大于 0。
@@ -59,6 +56,7 @@ public class FinSettlementService {
     private final FinBillMapper billMapper;
     private final FinBillService billService;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final FinVoucherService voucherService;
     private final DocNoService docNoService;
     private final FinBizPeriodGuard periodGuard;
@@ -91,13 +89,12 @@ public class FinSettlementService {
     /**
      * 以票据结算（收票、背书转让、开具应付票据）：结算科目为应收票据或应付票据，其余与收付款相同（核销往来、付款审批、生成凭证）
      *
-     * @param noteAccountCode 应收票据 / 应付票据科目编码
+     * @param noteAccount 应收票据 / 应付票据
      * @return 新单据 ID
      */
     @Transactional
-    public Long createForNote(SettlementRequest req, String noteAccountCode) {
-        FinAccount account = accountService.leafByCode(noteAccountCode);
-        if (!account.getId().equals(req.accountId())) {
+    public Long createForNote(SettlementRequest req, AccountRole noteAccount) {
+        if (!accountRules.accountId(noteAccount).equals(req.accountId())) {
             throw new BizException("票据结算科目不正确");
         }
         return doCreate(req);
@@ -299,7 +296,7 @@ public class FinSettlementService {
             }
             boolean receipt = "RECEIPT".equals(s.getKind());
             String summary = (receipt ? "收到 " : "支付 ") + billService.partnerName(s.getKind(), s.getPartnerId()) + " 货款";
-            Long partnerAccount = accountService.leafByCode(receipt ? RECEIVABLE : PAYABLE).getId();
+            Long partnerAccount = accountRules.accountId(receipt ? AccountRole.RECEIVABLE : AccountRole.PAYABLE);
             // 往来科目按核销的记账本位币，银行按实收实付本位币，外币差额计入财务费用（汇兑损益）
             BigDecimal booked = itemMapper.selectList(Wrappers.<FinSettlementItem>lambdaQuery().eq(FinSettlementItem::getSettlementId, s.getId()))
                     .stream().map(FinSettlementItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -311,7 +308,7 @@ public class FinSettlementService {
             BigDecimal diff = receipt ? s.getAmount().subtract(booked) : booked.subtract(s.getAmount());
             if (diff.signum() != 0) {
                 // 收款多收 / 付款少付为汇兑收益，冲减财务费用
-                lines.add(VoucherLine.credit(summary + " 汇兑损益", accountService.leafByCode(FINANCE_EXPENSE).getId(), null, diff));
+                lines.add(VoucherLine.credit(summary + " 汇兑损益", accountRules.accountId(AccountRole.FINANCE_EXPENSE), null, diff));
             }
             Long voucherId = voucherService.createGenerated(s.getSettleDate(), receipt ? VoucherSource.RECEIPT : VoucherSource.PAYMENT,
                     s.getSettleNo(), lines);

@@ -1,12 +1,13 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.modules.fin.service.FinAccountRuleService;
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.event.VoucherDeletedEvent;
-import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.fin.service.FinAccountService;
@@ -47,6 +48,7 @@ public class HrTrainingService {
     private final HrTrainingRecordMapper recordMapper;
     private final FinVoucherService voucherService;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
 
     public PageResult<HrTraining> page(long current, long size, String keyword, String category, String status, Integer year) {
         Page<HrTraining> page = Page.of(current, size);
@@ -116,8 +118,8 @@ public class HrTrainingService {
             String summary = "培训费 " + t.getTitle();
             LocalDate date = t.getEndDate() != null ? t.getEndDate() : LocalDate.now();
             Long voucherId = voucherService.createGenerated(date, VoucherSource.EXPENSE, null, List.of(
-                    VoucherLine.debit(summary, accountService.leafByCode(FinConstants.TRAINING_EXPENSE).getId(), null, t.getCost()),
-                    VoucherLine.credit(summary, accountService.leafByCode(FinConstants.OTHER_PAYABLE).getId(), null, t.getCost())));
+                    VoucherLine.debit(summary, accountRules.accountId(AccountRole.TRAINING_EXPENSE), null, t.getCost()),
+                    VoucherLine.credit(summary, accountRules.accountId(AccountRole.OTHER_PAYABLE), null, t.getCost())));
             trainingMapper.update(Wrappers.<HrTraining>lambdaUpdate().set(HrTraining::getVoucherId, voucherId).eq(HrTraining::getId, id));
         }
     }

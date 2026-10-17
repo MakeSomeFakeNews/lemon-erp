@@ -239,3 +239,8 @@ export const getStatement = (id) => request.get(`/fin/statement/${id}`)
 export const generateStatement = (data) => request.post('/fin/statement', data)
 export const sendStatement = (id) => request.post(`/fin/statement/${id}/send`)
 export const deleteStatement = (id) => request.delete(`/fin/statement/${id}`)
+
+/** 凭证科目设置：[{ role, group, label, dimension, dictType, defaultCode, dimensionDefaults, accountId, items }] */
+export const accountRules = () => request.get('/fin/account-rule')
+/** 保存一个用途的设置：{ accountId, items: { 维度取值: 科目ID } }，为空的使用预置科目 */
+export const saveAccountRule = (role, data) => request.put(`/fin/account-rule/${role}`, data)

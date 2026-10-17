@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
+import com.lemon.erp.modules.fin.model.FinConstants;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -36,9 +38,6 @@ import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.lemon.erp.modules.fin.model.FinConstants.GOODS;
-import static com.lemon.erp.modules.fin.model.FinConstants.RAW_MATERIAL;
-import static com.lemon.erp.modules.fin.model.FinConstants.inventoryAccount;
 import static com.lemon.erp.modules.fin.model.FinConstants.lastDay;
 import static com.lemon.erp.modules.fin.model.FinConstants.previous;
 import static com.lemon.erp.modules.fin.model.FinConstants.toYearMonth;
@@ -58,6 +57,7 @@ public class FinOpeningService {
 
     private final FinAccountOpeningMapper openingMapper;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final FinPeriodMapper periodMapper;
     private final FinCostRunMapper runMapper;
     private final FinMaterialCostMapper materialCostMapper;
@@ -159,8 +159,8 @@ public class FinOpeningService {
         Map<Long, WmsMaterial> materials = materialService.mapByIds(ids);
         List<StockOpeningView.Row> rows = new ArrayList<>();
         Map<String, BigDecimal> byAccount = new LinkedHashMap<>();
-        byAccount.put(RAW_MATERIAL, BigDecimal.ZERO);
-        byAccount.put(GOODS, BigDecimal.ZERO);
+        byAccount.put(accountRules.code(AccountRole.INVENTORY, FinConstants.CATEGORY_RAW), BigDecimal.ZERO);
+        byAccount.put(accountRules.code(AccountRole.INVENTORY, FinConstants.CATEGORY_FINISHED), BigDecimal.ZERO);
         for (Long id : ids.stream().sorted((a, b) -> code(materials, a).compareTo(code(materials, b))).toList()) {
             BigDecimal bookQty = book.getOrDefault(id, BigDecimal.ZERO);
             FinMaterialCost s = saved.get(id);
@@ -180,7 +180,7 @@ public class FinOpeningService {
             r.setBookQty(bookQty);
             r.setQty(s != null ? s.getCloseQty() : bookQty);
             r.setAmount(s != null ? s.getCloseAmount() : BigDecimal.ZERO);
-            byAccount.merge(inventoryAccount(r.getCategory()), r.getAmount(), BigDecimal::add);
+            byAccount.merge(accountRules.code(AccountRole.INVENTORY, r.getCategory()), r.getAmount(), BigDecimal::add);
             rows.add(r);
         }
         view.setRows(rows);

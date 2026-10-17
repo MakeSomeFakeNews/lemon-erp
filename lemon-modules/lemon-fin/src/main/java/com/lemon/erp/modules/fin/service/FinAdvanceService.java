@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -13,7 +14,6 @@ import com.lemon.erp.modules.fin.entity.FinBill;
 import com.lemon.erp.modules.fin.mapper.FinAdvanceApplyMapper;
 import com.lemon.erp.modules.fin.mapper.FinAdvanceMapper;
 import com.lemon.erp.modules.fin.mapper.FinBillMapper;
-import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.wms.service.DocNoService;
@@ -45,6 +45,7 @@ public class FinAdvanceService {
     private final FinBillService billService;
     private final FinVoucherService voucherService;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final FinBizPeriodGuard periodGuard;
     private final DocNoService docNoService;
 
@@ -84,9 +85,9 @@ public class FinAdvanceService {
         String summary = (receipt ? "预收 " : "预付 ") + partner + " 货款";
         List<VoucherLine> lines = receipt
                 ? List.of(VoucherLine.debit(summary, req.accountId(), null, req.amount()),
-                VoucherLine.credit(summary, accountService.leafByCode(FinConstants.ADVANCE_RECEIVED).getId(), null, req.amount())
+                VoucherLine.credit(summary, accountRules.accountId(AccountRole.ADVANCE_RECEIVED), null, req.amount())
                         .withCustomer(req.partnerId()))
-                : List.of(VoucherLine.debit(summary, accountService.leafByCode(FinConstants.PREPAYMENT).getId(), null, req.amount())
+                : List.of(VoucherLine.debit(summary, accountRules.accountId(AccountRole.PREPAYMENT), null, req.amount())
                         .withSupplier(req.partnerId()),
                 VoucherLine.credit(summary, req.accountId(), null, req.amount()));
         Long voucherId = voucherService.createGenerated(req.advanceDate(), VoucherSource.ADVANCE, a.getAdvanceNo(), lines);
@@ -133,13 +134,13 @@ public class FinAdvanceService {
             summary = summary.substring(0, 200);
         }
         List<VoucherLine> lines = receipt
-                ? List.of(VoucherLine.debit(summary, accountService.leafByCode(FinConstants.ADVANCE_RECEIVED).getId(), null, total)
+                ? List.of(VoucherLine.debit(summary, accountRules.accountId(AccountRole.ADVANCE_RECEIVED), null, total)
                         .withCustomer(a.getPartnerId()),
-                VoucherLine.credit(summary, accountService.leafByCode(FinConstants.RECEIVABLE).getId(), null, total)
+                VoucherLine.credit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, total)
                         .withCustomer(a.getPartnerId()))
-                : List.of(VoucherLine.debit(summary, accountService.leafByCode(FinConstants.PAYABLE).getId(), null, total)
+                : List.of(VoucherLine.debit(summary, accountRules.accountId(AccountRole.PAYABLE), null, total)
                         .withSupplier(a.getPartnerId()),
-                VoucherLine.credit(summary, accountService.leafByCode(FinConstants.PREPAYMENT).getId(), null, total)
+                VoucherLine.credit(summary, accountRules.accountId(AccountRole.PREPAYMENT), null, total)
                         .withSupplier(a.getPartnerId()));
         Long voucherId = voucherService.createGenerated(d, VoucherSource.ADVANCE, a.getAdvanceNo(), lines);
         for (SettlementItemRequest item : items) {

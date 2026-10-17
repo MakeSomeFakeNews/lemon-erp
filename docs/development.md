@@ -486,6 +486,7 @@ public void onOrderApproved(FlowFinishedEvent e) {
 | --- | --- |
 | 会计科目 | `init.sql` 预置企业会计准则常用科目。一级 4 位，下级在上级编码后加 2 位，类别、方向继承上级；凭证只能用末级科目；已使用的科目不能删除，也不能再增加下级 |
 | 凭证 | 未审核 → 已审核 → 已记账，制单人不能审核自己的凭证（超级管理员除外），只有已记账的进入账簿和报表。至少两条分录、每条只填借或贷、借贷平衡；分录可带部门（预算按部门统计）。凭证号按期间连续编号（记-0001），由 `fin_period.voucher_seq` 分配 |
+| 凭证科目设置 | 「期末与设置 → 凭证科目设置」按用途分组（往来、存货与成本、收入与费用、税费、资产、薪酬、期末）列出自动凭证使用的科目，未设置的显示预置科目；存货、收入、成本可按物料分类，工资费用可按职位类别分别设置。只影响之后生成的凭证。权限 `fin:accountRule:list/edit` |
 | 期末结账 | 本期凭证必须全部记账、之前的期间必须已结账；结账时自动生成并记账「结转损益」凭证（损益类余额转入本年利润），12 月结账时再把本年利润的累计余额转入利润分配，之后本期不能再录入修改凭证。反结账从最后一个已结账期间开始，并删除结转凭证 |
 | 期间锁 | 业务单据也受期间约束（`framework/period/BizPeriodGuard`，由 `FinBizPeriodGuard` 实现）：业务日期所在期间已结账时，不能再确认出入库、盘点、报工，不能新增删除收付款、应收应付；期间已核算成本（或为存货期初所在期间）时，不能再发生库存变动和报工，需要先撤销成本核算。调拨不影响成本，只受结账限制 |
 | 期初余额 | 科目期初：录入末级科目的借方 / 贷方余额，借贷必须平衡，合并到余额表、明细账、资产负债表的期初；已有结账期间后不能修改。存货期初：选择启用期间，数量按之前的库存流水推算，录入金额（或单价），保存为启用期间上一期的成本结果，启用期间核算时作为期初；页面对比存货期初金额与原材料、库存商品的科目期初。核算过成本后不能修改 |
@@ -515,7 +516,7 @@ public void onOrderApproved(FlowFinishedEvent e) {
 | 资产采购 | 新增固定资产时填写供应商、进项税额，生成应付单（借 固定资产、进项税额 / 贷 应付账款） |
 | 现金流量表、经营分析 | 现金流量表（直接法）：已记账凭证中现金、银行科目的发生额按对方科目归类（一张凭证多个对方科目时按金额比例分摊，现金科目间划转不计）。经营分析：销售毛利按物料 / 客户 / 月份（成本 = 数量 × 当期加权平均单价）；存货对账比较原材料、库存商品的总账余额与成本核算期末金额，以及成本核算期末数量与库存流水不一致的物料 |
 
-自动生成凭证用到的科目编码见 `FinConstants`（1002、1122、1403、1405、1408、1411、2202、2211、222101、222102、4103、5001、5101、5401、6001、6401 等），这些科目需要保持为末级科目。工资计提按员工岗位类别选择科目：生产 → 制造费用 5101，销售 → 销售费用 6601，其余 → 管理费用-工资 660201。
+自动生成凭证用到的科目由「凭证科目设置」（`fin_account_rule`，用途见 `fin/model/AccountRole`）决定：业务代码一律通过 `FinAccountRuleService.accountId(AccountRole.X[, 维度取值])` 取科目，不再写科目编码。取科目的优先级为 用途 + 维度取值的设置 → 用途的设置 → 预置科目编码（`AccountRole` 中的默认值，如半成品、成品的存货为库存商品 1405，低值易耗品为周转材料 1411；工资费用按职位类别：生产 → 制造费用 5101，销售 → 销售费用 6601，其余 → 管理费用-工资 660201）。存货、主营业务收入（销售出库 / 退货按物料分类分摊不含税金额）、主营业务成本按物料分类，工资费用按职位类别可以分别设置；设置的科目必须是启用的末级科目，被设置引用的科目视为已使用（不能删除、不能增加下级）。新增自动凭证的用途时在 `AccountRole` 中登记。`FinConstants` 中只保留现金流量表、结算账户校验按编码识别的科目（1001、1002、222101、222102）。
 
 权限：`fin:voucher:list/add/edit/remove/audit/post`、`fin:book:list`（科目余额表、明细账）、`fin:report:list`、`fin:{ar,ap}:list/add/remove/voucher`、`fin:{receipt,payment}:list/add/remove/voucher`、`fin:asset:list/add/edit/remove/depreciate/move`、`fin:assetCheck:list/add/edit/remove`、`fin:consumable:list/add/confirm/remove`、`fin:cost:list/run`、`fin:opening:list/edit`、`fin:budget:list/edit`、`fin:account:list/add/edit/remove`、`fin:period:list/close/tax`（增值税结转）、`fin:ar:baddebt`、`fin:voucher:reverse`、`fin:invoice:list/edit`、`fin:advance:list/add`、`fin:bank:list/edit`、`fin:claim:list/add/pay`、`fin:loan:list/add/pay`、`fin:analysis:list`、币种汇率与期末调汇 `fin:currency:list/edit`。
 

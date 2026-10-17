@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -12,7 +13,6 @@ import com.lemon.erp.modules.fin.entity.FinFundPlanItem;
 import com.lemon.erp.modules.fin.entity.FinFundTransfer;
 import com.lemon.erp.modules.fin.mapper.FinFundPlanMapper;
 import com.lemon.erp.modules.fin.mapper.FinFundTransferMapper;
-import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.FundDirection;
 import com.lemon.erp.modules.fin.model.FundSource;
 import com.lemon.erp.modules.fin.model.PlanUnit;
@@ -48,6 +48,7 @@ public class FinFundService {
     private final FinFundTransferMapper transferMapper;
     private final FinFundPlanMapper planMapper;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final FinVoucherService voucherService;
     private final FinBizPeriodGuard periodGuard;
     private final DocNoService docNoService;
@@ -83,7 +84,7 @@ public class FinFundService {
         List<VoucherLine> lines = new ArrayList<>();
         lines.add(VoucherLine.debit(summary, req.toAccountId(), null, req.amount()));
         if (fee.signum() > 0) {
-            lines.add(VoucherLine.debit(summary + "-手续费", accountService.leafByCode(FinConstants.FINANCE_EXPENSE).getId(), null, fee));
+            lines.add(VoucherLine.debit(summary + "-手续费", accountRules.accountId(AccountRole.FINANCE_EXPENSE), null, fee));
         }
         lines.add(VoucherLine.credit(summary, req.fromAccountId(), null, req.amount().add(fee)));
         t.setVoucherId(voucherService.createGenerated(req.transferDate(), VoucherSource.TRANSFER, t.getTransferNo(), lines));

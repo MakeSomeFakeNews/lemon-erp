@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -18,7 +19,6 @@ import com.lemon.erp.modules.fin.mapper.FinExpenseClaimItemMapper;
 import com.lemon.erp.modules.fin.mapper.FinExpenseClaimMapper;
 import com.lemon.erp.modules.fin.mapper.FinLoanMapper;
 import com.lemon.erp.modules.fin.model.AccountCategory;
-import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.wms.service.DocNoService;
@@ -52,6 +52,7 @@ public class FinClaimService {
     private final FinBudgetService budgetService;
     private final FinVoucherService voucherService;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final FinBizPeriodGuard periodGuard;
     private final DocNoService docNoService;
     private final FlowApi flowApi;
@@ -154,7 +155,7 @@ public class FinClaimService {
             lines.add(VoucherLine.debit(summary, i.getAccountId(), c.getDeptId(), i.getAmount()).withProject(i.getProjectId()));
         }
         if (offset.signum() > 0) {
-            lines.add(VoucherLine.credit(summary, accountService.leafByCode(FinConstants.OTHER_RECEIVABLE).getId(), c.getDeptId(), offset));
+            lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.OTHER_RECEIVABLE), c.getDeptId(), offset));
         }
         if (cash.signum() > 0) {
             lines.add(VoucherLine.credit(summary, accountId, null, cash));

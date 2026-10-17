@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -18,7 +19,6 @@ import com.lemon.erp.modules.fin.mapper.FinAssetMoveMapper;
 import com.lemon.erp.modules.fin.mapper.FinDepreciationMapper;
 import com.lemon.erp.modules.fin.model.AssetMoveType;
 import com.lemon.erp.modules.fin.model.AssetStatus;
-import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import lombok.RequiredArgsConstructor;
@@ -36,11 +36,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import static com.lemon.erp.modules.fin.model.FinConstants.ASSET_DISPOSAL;
-import static com.lemon.erp.modules.fin.model.FinConstants.DEPRECIATION;
-import static com.lemon.erp.modules.fin.model.FinConstants.FIXED_ASSET;
-import static com.lemon.erp.modules.fin.model.FinConstants.NON_OPERATING_EXPENSE;
-import static com.lemon.erp.modules.fin.model.FinConstants.NON_OPERATING_INCOME;
 import static com.lemon.erp.modules.fin.model.FinConstants.firstDay;
 import static com.lemon.erp.modules.fin.model.FinConstants.lastDay;
 import static com.lemon.erp.modules.fin.model.FinConstants.periodOf;
@@ -64,6 +59,7 @@ public class FinAssetService {
     private final FinDepreciationMapper depreciationMapper;
     private final FinAssetMoveMapper moveMapper;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final FinVoucherService voucherService;
     private final FinPeriodService periodService;
     private final FinBillService billService;
@@ -112,7 +108,7 @@ public class FinAssetService {
             FinBill bill = billService.createFromSource("AP", req.supplierId(), "ASSET", asset.getId(), asset.getCode(), req.useDate(),
                     req.originalValue().add(tax), tax, "购入固定资产 " + asset.getName(), null);
             billMapper.update(Wrappers.<FinBill>lambdaUpdate()
-                    .set(FinBill::getExpenseAccountId, accountService.leafByCode(FinConstants.FIXED_ASSET).getId())
+                    .set(FinBill::getExpenseAccountId, accountRules.accountId(AccountRole.FIXED_ASSET))
                     .set(FinBill::getDeptId, asset.getDeptId()).eq(FinBill::getId, bill.getId()));
         }
     }
@@ -187,12 +183,12 @@ public class FinAssetService {
             throw new BizException("有处置收入或清理费用时请选择收付款账户");
         }
         String summary = "处置固定资产 " + asset.getCode() + " " + asset.getName();
-        Long disposal = accountService.leafByCode(ASSET_DISPOSAL).getId();
+        Long disposal = accountRules.accountId(AccountRole.ASSET_DISPOSAL);
         BigDecimal net = asset.getOriginalValue().subtract(asset.getAccumulated());
         List<VoucherLine> lines = new ArrayList<>(List.of(
-                VoucherLine.debit(summary, accountService.leafByCode(DEPRECIATION).getId(), null, asset.getAccumulated()),
+                VoucherLine.debit(summary, accountRules.accountId(AccountRole.DEPRECIATION), null, asset.getAccumulated()),
                 VoucherLine.debit(summary, disposal, null, net),
-                VoucherLine.credit(summary, accountService.leafByCode(FIXED_ASSET).getId(), null, asset.getOriginalValue())));
+                VoucherLine.credit(summary, accountRules.accountId(AccountRole.FIXED_ASSET), null, asset.getOriginalValue())));
         if (income.signum() > 0) {
             Long bank = accountService.requireCashAccount(req.settleAccountId()).getId();
             lines.add(VoucherLine.debit(summary + "-处置收入", bank, null, income));
@@ -206,11 +202,11 @@ public class FinAssetService {
         // 固定资产清理余额（借方为损失）转营业外收支
         BigDecimal loss = net.add(expense).subtract(income);
         if (loss.signum() > 0) {
-            lines.add(VoucherLine.debit(summary + "-净损失", accountService.leafByCode(NON_OPERATING_EXPENSE).getId(), null, loss));
+            lines.add(VoucherLine.debit(summary + "-净损失", accountRules.accountId(AccountRole.NON_OPERATING_EXPENSE), null, loss));
             lines.add(VoucherLine.credit(summary + "-净损失", disposal, null, loss));
         } else if (loss.signum() < 0) {
             lines.add(VoucherLine.debit(summary + "-净收益", disposal, null, loss.negate()));
-            lines.add(VoucherLine.credit(summary + "-净收益", accountService.leafByCode(NON_OPERATING_INCOME).getId(), null, loss.negate()));
+            lines.add(VoucherLine.credit(summary + "-净收益", accountRules.accountId(AccountRole.NON_OPERATING_INCOME), null, loss.negate()));
         }
         Long voucherId = voucherService.createGenerated(disposeDate, VoucherSource.ASSET, asset.getCode(), lines);
         assetMapper.update(Wrappers.<FinAsset>lambdaUpdate()
@@ -342,7 +338,7 @@ public class FinAssetService {
         }
         Long userId = SecurityUtils.getUserId();
         String summary = "计提 " + period + " 期间折旧";
-        Long credit = accountService.leafByCode(DEPRECIATION).getId();
+        Long credit = accountRules.accountId(AccountRole.DEPRECIATION);
         List<FinDepreciation> records = new ArrayList<>();
         List<VoucherLine> lines = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;

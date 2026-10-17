@@ -4,11 +4,13 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.modules.fin.dto.AccountRequest;
 import com.lemon.erp.modules.fin.entity.FinAccount;
+import com.lemon.erp.modules.fin.entity.FinAccountRule;
 import com.lemon.erp.modules.fin.entity.FinAsset;
 import com.lemon.erp.modules.fin.entity.FinBudget;
 import com.lemon.erp.modules.fin.entity.FinSettlement;
 import com.lemon.erp.modules.fin.entity.FinVoucherEntry;
 import com.lemon.erp.modules.fin.mapper.FinAccountMapper;
+import com.lemon.erp.modules.fin.mapper.FinAccountRuleMapper;
 import com.lemon.erp.modules.fin.mapper.FinAssetMapper;
 import com.lemon.erp.modules.fin.mapper.FinBudgetMapper;
 import com.lemon.erp.modules.fin.mapper.FinSettlementMapper;
@@ -46,6 +48,7 @@ public class FinAccountService {
     private final FinSettlementMapper settlementMapper;
     private final FinAssetMapper assetMapper;
     private final FinBudgetMapper budgetMapper;
+    private final FinAccountRuleMapper ruleMapper;
 
     /** 科目树，按编码排序 */
     public List<FinAccount> tree(String keyword) {
@@ -253,9 +256,10 @@ public class FinAccountService {
         return accountMapper.exists(Wrappers.<FinAccount>lambdaQuery().eq(FinAccount::getParentId, id));
     }
 
-    /** 被凭证分录、收付款、固定资产使用（这些地方只能用末级科目） */
+    /** 被凭证分录、收付款、固定资产、凭证科目设置使用（这些地方只能用末级科目） */
     private boolean usedInBooks(Long id) {
         return entryMapper.exists(Wrappers.<FinVoucherEntry>lambdaQuery().eq(FinVoucherEntry::getAccountId, id))
+                || ruleMapper.exists(Wrappers.<FinAccountRule>lambdaQuery().eq(FinAccountRule::getAccountId, id))
                 || settlementMapper.exists(Wrappers.<FinSettlement>lambdaQuery().eq(FinSettlement::getAccountId, id))
                 || assetMapper.exists(Wrappers.<FinAsset>lambdaQuery().eq(FinAsset::getExpenseAccountId, id));
     }

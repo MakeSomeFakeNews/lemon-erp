@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -12,7 +13,6 @@ import com.lemon.erp.modules.fin.entity.FinBill;
 import com.lemon.erp.modules.fin.entity.FinSettlementItem;
 import com.lemon.erp.modules.fin.mapper.FinBillMapper;
 import com.lemon.erp.modules.fin.mapper.FinSettlementItemMapper;
-import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.mes.entity.QmsSupplierClaim;
@@ -41,24 +41,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.lemon.erp.modules.fin.model.FinConstants.CONTRACT_LIABILITY;
 import static com.lemon.erp.modules.fin.model.FinConstants.BILL_AP;
 import static com.lemon.erp.modules.fin.model.FinConstants.BILL_AR;
+import static com.lemon.erp.modules.fin.model.FinConstants.BILL_SOURCE_PROJECT;
 import static com.lemon.erp.modules.fin.model.FinConstants.BILL_SOURCE_QUALITY_CLAIM;
+import static com.lemon.erp.modules.fin.model.FinConstants.BILL_SOURCE_TICKET;
 import static com.lemon.erp.modules.fin.model.FinConstants.BILL_SOURCE_REBATE;
 import static com.lemon.erp.modules.fin.model.FinConstants.INPUT_VAT;
-import static com.lemon.erp.modules.fin.model.FinConstants.NON_OPERATING_INCOME;
 import static com.lemon.erp.modules.fin.model.FinConstants.OUTPUT_VAT;
-import static com.lemon.erp.modules.fin.model.FinConstants.PAYABLE;
-import static com.lemon.erp.modules.fin.model.FinConstants.RECEIVABLE;
-import static com.lemon.erp.modules.fin.model.FinConstants.REVENUE;
-import static com.lemon.erp.modules.fin.model.FinConstants.SELLING_EXPENSE;
-import static com.lemon.erp.modules.fin.model.FinConstants.inventoryAccount;
 
 /**
  * 应收 / 应付单：
@@ -80,6 +78,7 @@ public class FinBillService {
     private final FinSettlementItemMapper settlementItemMapper;
     private final FinVoucherService voucherService;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final ScmCustomerService customerService;
     private final ScmSupplierService supplierService;
     private final DocNoService docNoService;
@@ -190,7 +189,7 @@ public class FinBillService {
     public void onShipmentShipped(ShipmentShippedEvent e) {
         FinBill bill = newBill("AP", e.carrierId(), "SHIPMENT", e.shipmentId(), e.shipNo(), e.shipDate(),
                 e.shipDate().plusDays(paymentDays("AP", e.carrierId())), e.freight(), BigDecimal.ZERO);
-        bill.setExpenseAccountId(accountService.leafByCode(SELLING_EXPENSE).getId());
+        bill.setExpenseAccountId(accountRules.accountId(AccountRole.SELLING_EXPENSE));
         bill.setDeptId(e.deptId());
         bill.setRemark("发运单 " + e.shipNo() + " 运费");
         billMapper.insert(bill);
@@ -300,8 +299,8 @@ public class FinBillService {
         String summary = "坏账核销 " + bill.getBillNo() + " " + partnerName("AR", bill.getPartnerId())
                 + (reason == null || reason.isBlank() ? "" : " " + reason);
         return voucherService.createGenerated(d, VoucherSource.BAD_DEBT, bill.getBillNo(), List.of(
-                VoucherLine.debit(summary, accountService.leafByCode(FinConstants.NON_OPERATING_EXPENSE).getId(), null, amount),
-                VoucherLine.credit(summary, accountService.leafByCode(RECEIVABLE).getId(), null, amount)
+                VoucherLine.debit(summary, accountRules.accountId(AccountRole.NON_OPERATING_EXPENSE), null, amount),
+                VoucherLine.credit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, amount)
                         .withCustomer(bill.getPartnerId()).withProject(bill.getProjectId())));
     }
 
@@ -313,28 +312,35 @@ public class FinBillService {
         List<VoucherLine> lines = new ArrayList<>();
         BigDecimal sign = BigDecimal.valueOf(bill.getAmount().signum() < 0 ? -1 : 1);
         if ("AR".equals(bill.getKind())) {
-            String summary = ("PROJECT".equals(bill.getSourceType()) ? "项目开票 " : "TICKET".equals(bill.getSourceType()) ? "服务收费 "
+            String summary = (BILL_SOURCE_PROJECT.equals(bill.getSourceType()) ? "项目开票 " : BILL_SOURCE_TICKET.equals(bill.getSourceType()) ? "服务收费 "
                     : BILL_SOURCE_REBATE.equals(bill.getSourceType()) ? "销售返利 " : sign.signum() < 0 ? "销售退货 " : "销售出库 ")
                     + bill.getSourceNo() + " " + partner;
             BigDecimal net = bill.getAmount().subtract(bill.getTaxAmount());
-            boolean project = "PROJECT".equals(bill.getSourceType());
-            lines.add(VoucherLine.debit(summary, accountService.leafByCode(RECEIVABLE).getId(), null, bill.getAmount())
+            boolean project = BILL_SOURCE_PROJECT.equals(bill.getSourceType());
+            lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, bill.getAmount())
                     .withCustomer(bill.getPartnerId()).withProject(bill.getProjectId()));
-            // 项目开票计入合同负债，按完工百分比确认收入时再转入主营业务收入（项目月结）
-            // 服务工单收费计入其他业务收入
-            String revenue = project ? CONTRACT_LIABILITY : "TICKET".equals(bill.getSourceType()) ? FinConstants.OTHER_REVENUE : REVENUE;
-            lines.add(VoucherLine.credit(summary, accountService.leafByCode(revenue).getId(), null, net)
-                    .withProject(bill.getProjectId()));
-            lines.add(VoucherLine.credit(summary, accountService.leafByCode(OUTPUT_VAT).getId(), null, bill.getTaxAmount()));
+            if (isTradeDoc(bill)) {
+                // 销售出库 / 退货：主营业务收入按物料分类取科目
+                revenueByCategory(bill, net).forEach((category, amount) -> lines.add(
+                        VoucherLine.credit(summary, accountRules.accountId(AccountRole.REVENUE, category), null, amount)));
+            } else {
+                // 项目开票计入合同负债，按完工百分比确认收入时再转入主营业务收入（项目月结）
+                // 服务工单收费计入其他业务收入
+                AccountRole revenue = project ? AccountRole.CONTRACT_LIABILITY
+                        : BILL_SOURCE_TICKET.equals(bill.getSourceType()) ? AccountRole.OTHER_REVENUE : AccountRole.REVENUE;
+                lines.add(VoucherLine.credit(summary, accountRules.accountId(revenue), null, net)
+                        .withProject(bill.getProjectId()));
+            }
+            lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.OUTPUT_VAT), null, bill.getTaxAmount()));
             return lines;
         }
         if (BILL_SOURCE_QUALITY_CLAIM.equals(bill.getSourceType())) {
             // 质量索赔（红字应付单）：借 应付账款 / 贷 营业外收入
             String summary = "质量索赔 " + bill.getSourceNo() + " " + partner;
             BigDecimal amount = bill.getAmount().negate();
-            lines.add(VoucherLine.debit(summary, accountService.leafByCode(PAYABLE).getId(), null, amount)
+            lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.PAYABLE), null, amount)
                     .withSupplier(bill.getPartnerId()));
-            lines.add(VoucherLine.credit(summary, accountService.leafByCode(NON_OPERATING_INCOME).getId(), null, amount));
+            lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.NON_OPERATING_INCOME), null, amount));
             return lines;
         }
         if (bill.getExpenseAccountId() != null) {
@@ -342,20 +348,44 @@ public class FinBillService {
             String summary = "SHIPMENT".equals(bill.getSourceType()) ? "运费 " + bill.getSourceNo() + " " + partner
                     : bill.getSourceNo() + " " + partner;
             lines.add(VoucherLine.debit(summary, bill.getExpenseAccountId(), bill.getDeptId(), bill.getAmount().subtract(bill.getTaxAmount())));
-            lines.add(VoucherLine.debit(summary, accountService.leafByCode(INPUT_VAT).getId(), null, bill.getTaxAmount()));
-            lines.add(VoucherLine.credit(summary, accountService.leafByCode(PAYABLE).getId(), null, bill.getAmount())
+            lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INPUT_VAT), null, bill.getTaxAmount()));
+            lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.PAYABLE), null, bill.getAmount())
                     .withSupplier(bill.getPartnerId()));
             return lines;
         }
         String summary = (sign.signum() < 0 ? "采购退货 " : "采购入库 ") + bill.getSourceNo() + " " + partner;
         for (Map<String, Object> row : billMapper.selectSourceByCategory(bill.getSourceId())) {
             BigDecimal net = new BigDecimal(row.get("net").toString()).multiply(sign);
-            lines.add(VoucherLine.debit(summary, accountService.leafByCode(inventoryAccount((String) row.get("category"))).getId(), null, net));
+            lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INVENTORY, (String) row.get("category")), null, net));
         }
-        lines.add(VoucherLine.debit(summary, accountService.leafByCode(INPUT_VAT).getId(), null, bill.getTaxAmount()));
-        lines.add(VoucherLine.credit(summary, accountService.leafByCode(PAYABLE).getId(), null, bill.getAmount())
+        lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INPUT_VAT), null, bill.getTaxAmount()));
+        lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.PAYABLE), null, bill.getAmount())
                 .withSupplier(bill.getPartnerId()));
         return lines;
+    }
+
+    private static boolean isTradeDoc(FinBill bill) {
+        return Arrays.stream(TradeKind.values()).anyMatch(k -> k.name().equals(bill.getSourceType()));
+    }
+
+    /** 不含税收入按出库单各物料分类的金额比例分摊，尾差计入最后一类 */
+    private Map<String, BigDecimal> revenueByCategory(FinBill bill, BigDecimal net) {
+        List<Map<String, Object>> rows = billMapper.selectSourceByCategory(bill.getSourceId());
+        BigDecimal total = rows.stream().map(r -> new BigDecimal(r.get("net").toString())).reduce(BigDecimal.ZERO, BigDecimal::add);
+        Map<String, BigDecimal> result = new LinkedHashMap<>();
+        if (rows.isEmpty() || total.signum() == 0) {
+            result.put(null, net);
+            return result;
+        }
+        BigDecimal allocated = BigDecimal.ZERO;
+        for (int i = 0; i < rows.size(); i++) {
+            String category = (String) rows.get(i).get("category");
+            BigDecimal amount = i == rows.size() - 1 ? net.subtract(allocated)
+                    : net.multiply(new BigDecimal(rows.get(i).get("net").toString())).divide(total, 2, RoundingMode.HALF_UP);
+            result.merge(category, amount, BigDecimal::add);
+            allocated = allocated.add(amount);
+        }
+        return result;
     }
 
     private FinBill newBill(String kind, Long partnerId, String sourceType, Long sourceId, String sourceNo, LocalDate billDate,

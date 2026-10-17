@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.mapper.FinAnalysisMapper;
@@ -16,6 +17,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import static com.lemon.erp.modules.fin.model.FinConstants.previous;
 import static com.lemon.erp.modules.fin.model.FinConstants.toYearMonth;
@@ -32,6 +35,7 @@ public class FinAnalysisService {
     private final FinAnalysisMapper analysisMapper;
     private final FinVoucherEntryMapper entryMapper;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
 
     /** 销售毛利：按物料、客户或月份汇总，返回 {rows, total} */
     public Map<String, Object> grossMargin(LocalDate begin, LocalDate end, String groupBy, Long customerId) {
@@ -69,11 +73,16 @@ public class FinAnalysisService {
         toYearMonth(period);
         Map<String, BigDecimal> costByAccount = new HashMap<>();
         for (Map<String, Object> r : analysisMapper.selectCostCloseByCategory(period)) {
-            costByAccount.merge(FinConstants.inventoryAccount((String) r.get("category")), dec(r.get("closeAmount")), BigDecimal::add);
+            costByAccount.merge(accountRules.code(AccountRole.INVENTORY, (String) r.get("category")), dec(r.get("closeAmount")), BigDecimal::add);
         }
+        String outsource = accountRules.code(AccountRole.OUTSOURCE_MATERIAL, null);
+        Set<String> codes = new TreeSet<>(costByAccount.keySet());
+        codes.add(accountRules.code(AccountRole.INVENTORY, FinConstants.CATEGORY_RAW));
+        codes.add(accountRules.code(AccountRole.INVENTORY, FinConstants.CATEGORY_FINISHED));
+        codes.add(outsource);
         List<FinAccount> all = accountService.listAll();
         List<Map<String, Object>> accounts = new ArrayList<>();
-        for (String code : List.of(FinConstants.RAW_MATERIAL, FinConstants.GOODS, FinConstants.OUTSOURCE_MATERIAL)) {
+        for (String code : codes) {
             FinAccount parent = all.stream().filter(a -> a.getCode().equals(code)).findFirst().orElse(null);
             if (parent == null) {
                 continue;
@@ -88,7 +97,7 @@ public class FinAnalysisService {
             row.put("code", code);
             row.put("name", parent.getName());
             row.put("glBalance", gl);
-            BigDecimal costAmount = FinConstants.OUTSOURCE_MATERIAL.equals(code) ? null : costByAccount.getOrDefault(code, BigDecimal.ZERO);
+            BigDecimal costAmount = outsource.equals(code) ? null : costByAccount.getOrDefault(code, BigDecimal.ZERO);
             row.put("costAmount", costAmount);
             row.put("diff", costAmount == null ? null : gl.subtract(costAmount));
             accounts.add(row);

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -28,8 +29,6 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.lemon.erp.modules.fin.model.FinConstants.PROFIT_DISTRIBUTION;
-import static com.lemon.erp.modules.fin.model.FinConstants.PROFIT_THIS_YEAR;
 import static com.lemon.erp.modules.fin.model.FinConstants.lastDay;
 
 /**
@@ -46,6 +45,7 @@ public class FinCloseService {
     private final FinVoucherEntryMapper entryMapper;
     private final FinVoucherService voucherService;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
 
     @Transactional
     public void close(int period) {
@@ -129,7 +129,7 @@ public class FinCloseService {
         if (lines.isEmpty()) {
             return;
         }
-        Long thisYear = accountService.leafByCode(PROFIT_THIS_YEAR).getId();
+        Long thisYear = accountRules.accountId(AccountRole.PROFIT_THIS_YEAR);
         lines.add(profit.signum() >= 0 ? VoucherLine.credit(summary, thisYear, null, profit)
                 : VoucherLine.debit(summary, thisYear, null, profit.negate()));
         voucherService.createPosted(lastDay(period), VoucherSource.CLOSE, String.valueOf(period), lines);
@@ -137,7 +137,7 @@ public class FinCloseService {
 
     /** 年末（12 月结账）：本年利润的累计余额转入利润分配-未分配利润 */
     private void carryForwardYearProfit(int period) {
-        Long thisYear = accountService.leafByCode(PROFIT_THIS_YEAR).getId();
+        Long thisYear = accountRules.accountId(AccountRole.PROFIT_THIS_YEAR);
         AccountSum sum = entryMapper.sumByAccount(null, period, false).stream()
                 .filter(s -> s.getAccountId().equals(thisYear)).findFirst().orElse(null);
         BigDecimal credit = sum == null ? BigDecimal.ZERO : sum.getCredit().subtract(sum.getDebit());
@@ -145,7 +145,7 @@ public class FinCloseService {
             return;
         }
         String summary = "结转 " + period / 100 + " 年度利润";
-        Long distribution = accountService.leafByCode(PROFIT_DISTRIBUTION).getId();
+        Long distribution = accountRules.accountId(AccountRole.PROFIT_DISTRIBUTION);
         // 盈利：借 本年利润 / 贷 利润分配；亏损相反
         voucherService.createPosted(lastDay(period), VoucherSource.CLOSE, String.valueOf(period), List.of(
                 VoucherLine.debit(summary, thisYear, null, credit),
