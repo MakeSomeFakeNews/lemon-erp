@@ -25,12 +25,15 @@ export function showPdf(blob, title) {
 
 const text = (v) => (v === undefined || v === null ? null : String(v))
 
+/** 列的匹配标识：默认为标题；同一张单据中有同名列（如资产负债表左右两栏的行次）时用 id 区分 */
+const columnId = (c) => c.id || c.title
+
 function toColumns(columns) {
-  return (columns || []).map((c) => ({ key: c.title, title: c.title, right: c.align === 'right', ...(c.width ? { width: c.width } : {}) }))
+  return (columns || []).map((c) => ({ key: columnId(c), title: c.title, right: c.align === 'right', ...(c.width ? { width: c.width } : {}) }))
 }
 
 function toRows(columns, rows) {
-  return (rows || []).map((r, i) => Object.fromEntries((columns || []).map((c) => [c.title, text(c.value ? c.value(r, i) : r[c.key])])))
+  return (rows || []).map((r, i) => Object.fromEntries((columns || []).map((c) => [columnId(c), text(c.value ? c.value(r, i) : r[c.key])])))
 }
 
 /**
@@ -41,7 +44,7 @@ function toRows(columns, rows) {
  * @param {string} doc.title   单据名称，如 采购订单
  * @param {string} [doc.no]    单号
  * @param {[string, any, boolean?][]} [doc.fields] 表头字段 [标签, 值, 是否整行]
- * @param {{title: string, key?: string, value?: Function, align?: 'right'}[]} [doc.columns] 明细列
+ * @param {{title: string, id?: string, key?: string, value?: Function, align?: 'right', width?: number}[]} [doc.columns] 明细列（id 为打印模板匹配用的标识，默认同标题；width 单位 mm）
  * @param {object[]} [doc.rows] 明细行
  * @param {object} [doc.totals] 合计行 { 列 key: 值 }，第一列没有值时显示「合计」
  * @param {(string | [string, any])[]} [doc.signs] 签字栏，如 ['审核', ['制单', '张三']]
@@ -52,7 +55,7 @@ function toRows(columns, rows) {
 export function toPrintDoc(doc) {
   const columns = doc.columns || []
   const totals = doc.totals
-    ? Object.fromEntries(columns.filter((c) => c.key && doc.totals[c.key] != null).map((c) => [c.title, text(doc.totals[c.key])]))
+    ? Object.fromEntries(columns.filter((c) => c.key && doc.totals[c.key] != null).map((c) => [columnId(c), text(doc.totals[c.key])]))
     : {}
   return {
     title: doc.title,

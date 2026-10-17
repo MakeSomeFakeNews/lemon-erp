@@ -34,6 +34,7 @@ export const ledger = (params) => request.get('/fin/report/ledger', { params })
 export const auxBalance = (params) => request.get('/fin/report/aux', { params })
 export const balanceSheet = (period) => request.get('/fin/report/balance-sheet', { params: { period } })
 export const incomeStatement = (period) => request.get('/fin/report/income', { params: { period } })
+export const incomeTrend = (period) => request.get('/fin/report/income/trend', { params: { period } })
 
 /** 应收 / 应付：kind = ar | ap */
 export const pageBill = (kind, params) => request.get(`/fin/bill/${kind}`, { params })

@@ -100,6 +100,30 @@ export const PRINT_TYPES = [
     signs: ['制单', '审核', '记账', '财务主管']
   },
   {
+    key: 'fin.balanceSheet',
+    module: '财务',
+    name: '资产负债表',
+    fields: ['编制单位', '期间', '单位'],
+    columns: ['资产', '行次', num('期末余额'), num('年初余额'), '负债和所有者权益', '行次（右）', num('期末余额（右）'), num('年初余额（右）')],
+    signs: ['单位负责人', '会计主管', '制表']
+  },
+  {
+    key: 'fin.incomeStatement',
+    module: '财务',
+    name: '利润表',
+    fields: ['编制单位', '期间', '单位'],
+    columns: ['项目', '行次', num('本月金额'), num('本年累计金额'), num('上年同期累计')],
+    signs: ['单位负责人', '会计主管', '制表']
+  },
+  {
+    key: 'fin.cashFlow',
+    module: '财务',
+    name: '现金流量表',
+    fields: ['编制单位', '期间', '单位'],
+    columns: ['项目', '行次', num('金额')],
+    signs: ['单位负责人', '会计主管', '制表']
+  },
+  {
     key: 'fin.partnerStatement',
     module: '财务',
     name: '往来对账单',

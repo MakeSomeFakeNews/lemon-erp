@@ -3,10 +3,11 @@ package com.lemon.erp.modules.fin.controller;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.modules.fin.dto.AuxBalanceRow;
 import com.lemon.erp.modules.fin.dto.LedgerRow;
-import com.lemon.erp.modules.fin.dto.ReportLine;
+import com.lemon.erp.modules.fin.dto.FinancialStatement;
 import com.lemon.erp.modules.fin.dto.TrialBalance;
 import com.lemon.erp.modules.fin.model.AuxItem;
 import com.lemon.erp.modules.fin.service.FinReportService;
+import com.lemon.erp.modules.fin.service.FinFinancialStatementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 账簿（科目余额表、明细账）与财务报表（资产负债表、利润表），期间格式 yyyyMM
@@ -25,6 +27,7 @@ import java.util.List;
 public class FinReportController {
 
     private final FinReportService reportService;
+    private final FinFinancialStatementService financialService;
 
     @GetMapping("/trial-balance")
     @PreAuthorize("@ss.hasPerm('fin:book:list')")
@@ -49,13 +52,20 @@ public class FinReportController {
 
     @GetMapping("/balance-sheet")
     @PreAuthorize("@ss.hasPerm('fin:report:list')")
-    public R<List<ReportLine>> balanceSheet(@RequestParam int period) {
-        return R.ok(reportService.balanceSheet(period));
+    public R<FinancialStatement> balanceSheet(@RequestParam int period) {
+        return R.ok(financialService.balanceSheet(period));
     }
 
     @GetMapping("/income")
     @PreAuthorize("@ss.hasPerm('fin:report:list')")
-    public R<List<ReportLine>> income(@RequestParam int period) {
-        return R.ok(reportService.incomeStatement(period));
+    public R<FinancialStatement> income(@RequestParam int period) {
+        return R.ok(financialService.incomeStatement(period));
+    }
+
+    /** 本年各月利润趋势（截至 period） */
+    @GetMapping("/income/trend")
+    @PreAuthorize("@ss.hasPerm('fin:report:list')")
+    public R<List<Map<String, Object>>> incomeTrend(@RequestParam int period) {
+        return R.ok(financialService.incomeTrend(period));
     }
 }
