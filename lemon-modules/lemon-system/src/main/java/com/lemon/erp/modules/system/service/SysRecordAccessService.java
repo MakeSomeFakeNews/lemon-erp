@@ -28,16 +28,25 @@ public class SysRecordAccessService {
     private volatile Map<String, RecordType> types;
 
     public RecordType type(String code) {
+        RecordType type = code == null ? null : typeMap().get(code);
+        if (type == null) {
+            throw new BizException("不支持的业务类型");
+        }
+        return type;
+    }
+
+    /** 全部业务类型（登记顺序） */
+    public List<RecordType> types() {
+        return List.copyOf(typeMap().values());
+    }
+
+    private Map<String, RecordType> typeMap() {
         if (types == null) {
             Map<String, RecordType> map = new LinkedHashMap<>();
             providers.forEach(p -> p.recordTypes().forEach(t -> map.put(t.code(), t)));
             types = map;
         }
-        RecordType type = code == null ? null : types.get(code);
-        if (type == null) {
-            throw new BizException("不支持的业务类型");
-        }
-        return type;
+        return types;
     }
 
     /**

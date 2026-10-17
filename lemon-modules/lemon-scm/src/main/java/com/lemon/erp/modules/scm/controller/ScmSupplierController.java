@@ -76,9 +76,9 @@ public class ScmSupplierController {
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:supplier:add')")
     @OperLog(title = "供应商管理", type = OperType.INSERT)
-    public R<Void> create(@Validated(Create.class) @RequestBody ScmSupplier supplier) {
+    public R<Long> create(@Validated(Create.class) @RequestBody ScmSupplier supplier) {
         supplierService.create(supplier);
-        return R.ok();
+        return R.ok(supplier.getId());
     }
 
 

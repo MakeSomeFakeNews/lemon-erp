@@ -223,6 +223,8 @@ DROP TABLE IF EXISTS sys_user;
 DROP TABLE IF EXISTS sys_dept;
 DROP TABLE IF EXISTS sys_tenant;
 DROP TABLE IF EXISTS sys_code_rule;
+DROP TABLE IF EXISTS sys_custom_value;
+DROP TABLE IF EXISTS sys_custom_field;
 DROP TABLE IF EXISTS sys_print_template;
 DROP TABLE IF EXISTS sys_config;
 DROP TABLE IF EXISTS sys_tenant_package_menu;
@@ -304,6 +306,39 @@ CREATE TABLE sys_print_template (
     PRIMARY KEY (id),
     UNIQUE KEY uk_print_template (template_key, tenant_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '打印模板';
+
+CREATE TABLE sys_custom_field (
+    id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id    BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID',
+    biz_type     VARCHAR(32)  NOT NULL COMMENT '业务类型（与附件相同的业务记录类型，如 scm_customer、wms_material）',
+    field_key    VARCHAR(32)  NOT NULL COMMENT '字段标识，字母开头的字母、数字、下划线',
+    label        VARCHAR(32)  NOT NULL COMMENT '显示名称',
+    field_type   VARCHAR(16)  NOT NULL DEFAULT 'TEXT' COMMENT '类型(字典 sys_custom_field_type) TEXT文本 TEXTAREA多行文本 NUMBER数字 DATE日期 SELECT下拉 BOOL是否',
+    options      VARCHAR(1000)         DEFAULT NULL COMMENT '下拉选项，逗号或换行分隔',
+    required     TINYINT      NOT NULL DEFAULT 0 COMMENT '是否必填',
+    show_in_list TINYINT      NOT NULL DEFAULT 0 COMMENT '是否在列表中显示',
+    sort         INT          NOT NULL DEFAULT 0 COMMENT '排序',
+    status       TINYINT      NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
+    remark       VARCHAR(255)          DEFAULT NULL COMMENT '说明（显示为输入提示）',
+    create_time  DATETIME              DEFAULT NULL COMMENT '创建时间',
+    update_time  DATETIME              DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_custom_field (biz_type, field_key, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '自定义字段：为单据、主数据扩展字段，不改表结构';
+
+CREATE TABLE sys_custom_value (
+    id          BIGINT        NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT        NOT NULL DEFAULT 1 COMMENT '租户ID',
+    biz_type    VARCHAR(32)   NOT NULL COMMENT '业务类型',
+    biz_id      BIGINT        NOT NULL COMMENT '业务记录ID',
+    field_key   VARCHAR(32)   NOT NULL COMMENT '字段标识',
+    field_value VARCHAR(1000) NOT NULL COMMENT '值（文本；数字、日期、是否按约定格式）',
+    create_time DATETIME               DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME               DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_custom_value (biz_type, biz_id, field_key, tenant_id),
+    KEY idx_custom_value_field (biz_type, field_key)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '自定义字段的值';
 
 CREATE TABLE sys_dept (
     id          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -6609,6 +6644,22 @@ INSERT INTO sys_dict_type (id, name, type, status, remark, create_time, update_t
 INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
 ('scm_price_control_mode', '提示', 'WARN', 'orange', 1, 1, NOW(), NOW()),
 ('scm_price_control_mode', '禁止保存', 'BLOCK', 'red', 2, 1, NOW(), NOW());
+
+-- 自定义字段
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(345, 1, '自定义字段', 'C', 'custom-field', 'system/custom-field/index', 'sys:customField:list', 'FormOutlined', 11, 1, 1, NOW(), NOW()),
+(3450, 345, '自定义字段维护', 'F', NULL, NULL, 'sys:customField:edit', NULL, 1, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(2, 345);
+INSERT INTO sys_dict_type (id, name, type, status, remark, create_time, update_time) VALUES
+(159, '自定义字段类型', 'sys_custom_field_type', 1, '自定义字段的输入类型', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('sys_custom_field_type', '文本', 'TEXT', 'default', 1, 1, NOW(), NOW()),
+('sys_custom_field_type', '多行文本', 'TEXTAREA', 'default', 2, 1, NOW(), NOW()),
+('sys_custom_field_type', '数字', 'NUMBER', 'blue', 3, 1, NOW(), NOW()),
+('sys_custom_field_type', '日期', 'DATE', 'cyan', 4, 1, NOW(), NOW()),
+('sys_custom_field_type', '下拉选择', 'SELECT', 'purple', 5, 1, NOW(), NOW()),
+('sys_custom_field_type', '是否', 'BOOL', 'green', 6, 1, NOW(), NOW());
 
 -- 凭证科目设置：自动凭证各用途使用的科目
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES

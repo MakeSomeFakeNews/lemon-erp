@@ -64,6 +64,7 @@
           </a-descriptions-item>
           <a-descriptions-item v-if="detail.remark" label="备注">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
+        <CustomFieldsView :key="detail.id" :biz-type="kind === 'sales' ? 'scm_sales' : 'scm_purchase'" :biz-id="detail.id" class="cf-view" />
 
         <a-alert
           v-if="detail.status === 'APPROVING'"
@@ -195,6 +196,7 @@ import OrderChangeList from './OrderChangeList.vue'
 import { currencySymbol, isForeign } from '@/components/fin/currency'
 import { approveOrder, changeSalesman, closeOrder, getOrder, unapproveOrder, withdrawOrder } from '@/api/scm/order'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
+import CustomFieldsView from '@/components/common/CustomFieldsView.vue'
 import { pageTrade } from '@/api/scm/trade'
 import { pageDelivery } from '@/api/scm/planning'
 import { useUserStore } from '@/store/user'

@@ -192,6 +192,7 @@
           </template>
         </template>
       </a-table>
+      <CustomFieldsForm :fields="cfFields" :values="form.cf || {}" title="扩展信息" :span="8" />
     </a-form>
     <VariantMatrixModal v-model:open="matrixOpen" @confirm="addVariantRows" />
     <AtpModal
@@ -225,6 +226,8 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { formatQty, rowKey, today } from '@/components/wms/wms'
 import { ORDER_KINDS, formatMoney, lineAmount, lineTax, qty4 } from './scm'
 import { BASE_CURRENCY, currencyOptions, currencySymbol, fetchRate, isForeign, useCurrencies } from '@/components/fin/currency'
+import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
+import { useCustomFields } from '@/composables/useCustomFields'
 
 /**
  * 新增 / 编辑采购、销售订单（草稿）。采购订单选择供应商后，按供货价格自动带出单价、税率；
@@ -370,57 +373,66 @@ async function loadPrices(supplierId) {
   prices.value = new Map(list.map((p) => [p.materialId, p]))
 }
 
-const drawer = useFormDrawer({
-  emptyForm,
-  fetch: async (record) => {
-    const order = await getOrder(props.kind, record.id)
-    await Promise.all([loadPrices(order.partnerId), loadContracts(order.partnerId, order.orderDate, order), loadRebate(order.partnerId, order.id)])
-    // 销售订单：赠品行由促销自动生成，单价按原价编辑（保存时重新应用促销）
-    const items = order.items.filter((i) => !i.gift).map((i) => toRow(i.origPrice != null ? { ...i, price: i.origPrice } : i))
-    await Promise.all(items.map(attachUnits))
-    return {
-      ...order,
-      currency: order.currency || BASE_CURRENCY,
-      exchangeRate: order.exchangeRate != null ? Number(order.exchangeRate) : 1,
-      rebateAmount: Number(order.rebateAmount) || undefined,
-      items
-    }
-  },
-  beforeOpen: (record) => {
-    unitCache.clear()
-    if (!record) {
-      prices.value = new Map()
-      contracts.value = []
-      rebateBalance.value = 0
-    }
-    promo.value = undefined
-  },
-  create: async (data) => emit('success', await addOrder(props.kind, data)),
-  update: async (id, data) => {
-    await updateOrder(props.kind, id, data)
-    emit('success', id)
-  },
-  toPayload: (f) => ({
-    partnerId: f.partnerId,
-    orderDate: f.orderDate,
-    deliveryDate: f.deliveryDate || null,
-    warehouseId: f.warehouseId || null,
-    currency: f.currency || BASE_CURRENCY,
-    exchangeRate: isForeign(f.currency) ? f.exchangeRate : 1,
-    contractId: f.contractId || null,
-    rebateAmount: props.kind === 'sales' && f.rebateAmount ? f.rebateAmount : null,
-    remark: f.remark,
-    items: f.items.map((i) => ({
-      materialId: i.materialId,
-      qty: baseQty(i),
-      price: basePrice(i),
-      unitName: i.unitName || null,
-      taxRate: i.taxRate ?? 0,
-      deliveryDate: i.deliveryDate || null,
-      remark: i.remark || null
-    }))
+// 自定义字段（采购订单 scm_purchase / 销售订单 scm_sales）
+const cf = useCustomFields(props.kind === 'sales' ? 'scm_sales' : 'scm_purchase')
+const cfFields = cf.fields
+const drawer = useFormDrawer(
+  cf.wrap({
+    emptyForm,
+    fetch: async (record) => {
+      const order = await getOrder(props.kind, record.id)
+      await Promise.all([loadPrices(order.partnerId), loadContracts(order.partnerId, order.orderDate, order), loadRebate(order.partnerId, order.id)])
+      // 销售订单：赠品行由促销自动生成，单价按原价编辑（保存时重新应用促销）
+      const items = order.items.filter((i) => !i.gift).map((i) => toRow(i.origPrice != null ? { ...i, price: i.origPrice } : i))
+      await Promise.all(items.map(attachUnits))
+      return {
+        ...order,
+        currency: order.currency || BASE_CURRENCY,
+        exchangeRate: order.exchangeRate != null ? Number(order.exchangeRate) : 1,
+        rebateAmount: Number(order.rebateAmount) || undefined,
+        items
+      }
+    },
+    beforeOpen: (record) => {
+      unitCache.clear()
+      if (!record) {
+        prices.value = new Map()
+        contracts.value = []
+        rebateBalance.value = 0
+      }
+      promo.value = undefined
+    },
+    create: async (data) => {
+      const id = await addOrder(props.kind, data)
+      emit('success', id)
+      return id
+    },
+    update: async (id, data) => {
+      await updateOrder(props.kind, id, data)
+      emit('success', id)
+    },
+    toPayload: (f) => ({
+      partnerId: f.partnerId,
+      orderDate: f.orderDate,
+      deliveryDate: f.deliveryDate || null,
+      warehouseId: f.warehouseId || null,
+      currency: f.currency || BASE_CURRENCY,
+      exchangeRate: isForeign(f.currency) ? f.exchangeRate : 1,
+      contractId: f.contractId || null,
+      rebateAmount: props.kind === 'sales' && f.rebateAmount ? f.rebateAmount : null,
+      remark: f.remark,
+      items: f.items.map((i) => ({
+        materialId: i.materialId,
+        qty: baseQty(i),
+        price: basePrice(i),
+        unitName: i.unitName || null,
+        taxRate: i.taxRate ?? 0,
+        deliveryDate: i.deliveryDate || null,
+        remark: i.remark || null
+      }))
+    })
   })
-})
+)
 const { form, formRef } = drawer
 
 // ---------------------------------------------------------------- 币种、汇率

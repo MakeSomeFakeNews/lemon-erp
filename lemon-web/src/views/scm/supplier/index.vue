@@ -34,7 +34,7 @@
       <a-table
         row-key="id"
         :size="size"
-        :columns="visibleColumns"
+        :columns="tableColumns"
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
@@ -63,6 +63,7 @@
               @changed="(s) => (record.status = s)"
             />
           </template>
+          <template v-else-if="column.custom">{{ cfCell(record, column) }}</template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openExtras(record)">
@@ -154,6 +155,7 @@
             </a-form-item>
           </a-col>
         </a-row>
+        <CustomFieldsForm :fields="cfFields" :values="form.cf || {}" title="扩展信息" />
       </a-form>
     </FormDrawer>
 
@@ -178,7 +180,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, DollarOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -197,6 +199,8 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
+import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
+import { useCustomColumns, useCustomFields } from '@/composables/useCustomFields'
 
 const userStore = useUserStore()
 const dict = useDict('sys_common_status', 'scm_supplier_level')
@@ -241,6 +245,15 @@ const showSearch = ref(true)
 
 const query = reactive({ keyword: undefined, level: undefined, status: undefined })
 const { list, loading, size, pagination, load, search, onTableChange, exportAll } = useTable((p) => pagePartner('supplier', p), query)
+// 自定义字段：表单中填写，勾选「列表显示」的作为列
+const cf = useCustomFields('scm_supplier')
+const cfFields = cf.fields
+const { columns: cfColumns, cell: cfCell } = useCustomColumns('scm_supplier', list)
+const tableColumns = computed(() => {
+  const cols = visibleColumns.value
+  const action = cols.findIndex((c) => c.key === 'action')
+  return action < 0 ? [...cols, ...cfColumns.value] : [...cols.slice(0, action), ...cfColumns.value, ...cols.slice(action)]
+})
 
 function resetQuery() {
   Object.assign(query, { keyword: undefined, level: undefined, status: undefined })
@@ -258,14 +271,16 @@ const rules = {
   email: [{ type: 'email', message: '邮箱格式不正确' }]
 }
 const FIELDS = ['code', 'name', 'level', 'contact', 'phone', 'email', 'address', 'taxNo', 'bankName', 'bankAccount', 'paymentDays', 'remark']
-const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, ...Object.fromEntries(FIELDS.map((f) => [f, undefined])), paymentDays: 30 }),
-  fetch: (record) => getPartner('supplier', record.id),
-  create: (data) => addPartner('supplier', data),
-  update: (id, data) => updatePartner('supplier', id, data),
-  toPayload: (f) => Object.fromEntries(FIELDS.map((k) => [k, f[k] === '' ? null : f[k]])),
-  onSuccess: load
-})
+const drawer = useFormDrawer(
+  cf.wrap({
+    emptyForm: () => ({ id: undefined, ...Object.fromEntries(FIELDS.map((f) => [f, undefined])), paymentDays: 30 }),
+    fetch: (record) => getPartner('supplier', record.id),
+    create: (data) => addPartner('supplier', data),
+    update: (id, data) => updatePartner('supplier', id, data),
+    toPayload: (f) => Object.fromEntries(FIELDS.map((k) => [k, f[k] === '' ? null : f[k]])),
+    onSuccess: load
+  })
+)
 const { formRef, form } = drawer
 
 async function remove(id) {
