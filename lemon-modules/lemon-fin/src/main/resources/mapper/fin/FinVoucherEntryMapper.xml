@@ -56,6 +56,15 @@
         ) t
     </select>
 
+    <select id="sumByAccountPeriod" resultType="com.lemon.erp.modules.fin.dto.AccountSum">
+        SELECT e.account_id, v.period, SUM(e.debit) AS debit, SUM(e.credit) AS credit
+        FROM fin_voucher_entry e
+        JOIN fin_voucher v ON v.id = e.voucher_id
+        WHERE v.status = 'POSTED' AND v.source_type &lt;&gt; 'CLOSE'
+          AND v.period &gt;= #{begin} AND v.period &lt;= #{end}
+        GROUP BY e.account_id, v.period
+    </select>
+
     <select id="sumByPeriodDept" resultType="com.lemon.erp.modules.fin.dto.AccountSum">
         SELECT e.account_id, v.period, e.dept_id, SUM(e.debit) AS debit, SUM(e.credit) AS credit
         FROM fin_voucher_entry e

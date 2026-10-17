@@ -29,6 +29,9 @@ public interface FinVoucherEntryMapper extends BaseMapper<FinVoucherEntry> {
     List<AccountSum> sumByAccount(@Param("begin") Integer begin, @Param("end") Integer end,
                                   @Param("excludeClose") boolean excludeClose);
 
+    /** 按科目、期间汇总已记账凭证（利润趋势），排除结转损益凭证 */
+    List<AccountSum> sumByAccountPeriod(@Param("begin") int begin, @Param("end") int end);
+
     /** 按科目、期间、部门汇总（预算执行），排除结转损益凭证 */
     List<AccountSum> sumByPeriodDept(@Param("begin") int begin, @Param("end") int end,
                                      @Param("accountIds") Collection<Long> accountIds);
