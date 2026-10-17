@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.modules.fin.service.FinAccountRuleService;
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -43,7 +45,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.lemon.erp.modules.hr.model.HrConstants.money;
@@ -70,19 +71,6 @@ public class HrPayrollService {
     public static final String PROCESS_KEY = "hr_payroll";
     private static final String BUSINESS_KEY_PREFIX = "hr_payroll:";
 
-    /** 计提科目：生产岗位计入制造费用（成本核算时按工时分配到工单），销售岗位计入销售费用，其余计入管理费用-工资 */
-    private static final String SALARY_EXPENSE = "660201";
-    private static final String SALES_SALARY_EXPENSE = "6601";
-
-    public static String expenseAccount(String positionCategory) {
-        if ("PRODUCTION".equals(positionCategory)) {
-            return FinConstants.MANUFACTURING_OVERHEAD;
-        }
-        return "SALES".equals(positionCategory) ? SALES_SALARY_EXPENSE : SALARY_EXPENSE;
-    }
-    private static final String INCOME_TAX = "222103";
-    private static final String OTHER_PAYABLE = "2241";
-
     private final HrPayrollMapper payrollMapper;
     private final HrPayrollItemMapper itemMapper;
     private final HrEmployeeMapper employeeMapper;
@@ -91,6 +79,7 @@ public class HrPayrollService {
     private final HrAttendanceService attendanceService;
     private final FinVoucherService voucherService;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final DocNoService docNoService;
     private final HrSalaryService salaryService;
     private final FlowApi flowApi;
@@ -289,11 +278,11 @@ public class HrPayrollService {
         for (Map<String, Object> row : itemMapper.selectCostByDept(p.getId())) {
             BigDecimal amount = new BigDecimal(row.get("amount").toString());
             Long deptId = row.get("deptId") == null ? null : ((Number) row.get("deptId")).longValue();
-            Long expense = accountService.leafByCode(expenseAccount((String) row.get("category"))).getId();
+            Long expense = accountRules.accountId(AccountRole.SALARY_EXPENSE, (String) row.get("category"));
             lines.add(VoucherLine.debit(summary, expense, deptId, amount));
             total = total.add(amount);
         }
-        lines.add(VoucherLine.credit(summary, accountService.leafByCode(FinConstants.SALARY).getId(), null, total));
+        lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.SALARY), null, total));
         Long voucherId = voucherService.createGenerated(FinConstants.lastDay(p.getPeriod()), VoucherSource.SALARY, p.getPayrollNo(), lines);
         payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate().set(HrPayroll::getAccrueVoucherId, voucherId).eq(HrPayroll::getId, p.getId()));
     }
@@ -326,10 +315,10 @@ public class HrPayrollService {
         BigDecimal otherDeduct = itemMapper.sumOtherDeduct(id);
         BigDecimal withheld = p.getPersonalTotal().add(p.getCompanyTotal()).add(otherDeduct);
         List<VoucherLine> lines = List.of(
-                VoucherLine.debit(summary, accountService.leafByCode(FinConstants.SALARY).getId(), null, p.getGrossTotal().add(p.getCompanyTotal())),
+                VoucherLine.debit(summary, accountRules.accountId(AccountRole.SALARY), null, p.getGrossTotal().add(p.getCompanyTotal())),
                 VoucherLine.credit(summary, bank, null, p.getNetTotal()),
-                VoucherLine.credit(summary, accountService.leafByCode(INCOME_TAX).getId(), null, p.getTaxTotal()),
-                VoucherLine.credit(summary, accountService.leafByCode(OTHER_PAYABLE).getId(), null, withheld));
+                VoucherLine.credit(summary, accountRules.accountId(AccountRole.INCOME_TAX), null, p.getTaxTotal()),
+                VoucherLine.credit(summary, accountRules.accountId(AccountRole.OTHER_PAYABLE), null, withheld));
         Long voucherId = voucherService.createGenerated(req.payDate(), VoucherSource.SALARY, p.getPayrollNo(),
                 lines.stream().filter(l -> !l.isZero()).toList());
         int updated = payrollMapper.update(Wrappers.<HrPayroll>lambdaUpdate()

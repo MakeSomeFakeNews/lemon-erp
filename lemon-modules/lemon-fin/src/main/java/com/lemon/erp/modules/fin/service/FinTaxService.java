@@ -1,11 +1,11 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.modules.fin.entity.FinVoucher;
 import com.lemon.erp.modules.fin.mapper.FinVoucherEntryMapper;
 import com.lemon.erp.modules.fin.mapper.FinVoucherMapper;
-import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +34,7 @@ public class FinTaxService {
     private final FinVoucherMapper voucherMapper;
     private final FinVoucherEntryMapper entryMapper;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final FinPeriodService periodService;
 
     /**
@@ -64,8 +65,8 @@ public class FinTaxService {
         if (transferred(period)) {
             throw new BizException(period + " 期间已结转增值税，如需重新结转请先删除结转凭证");
         }
-        Long inputId = accountService.leafByCode(FinConstants.INPUT_VAT).getId();
-        Long outputId = accountService.leafByCode(FinConstants.OUTPUT_VAT).getId();
+        Long inputId = accountRules.accountId(AccountRole.INPUT_VAT);
+        Long outputId = accountRules.accountId(AccountRole.OUTPUT_VAT);
         BigDecimal input = entryMapper.sumBalanceUpTo(inputId, period);
         BigDecimal output = entryMapper.sumBalanceUpTo(outputId, period).negate();
         if (output.signum() <= 0) {
@@ -80,17 +81,17 @@ public class FinTaxService {
         lines.add(VoucherLine.credit(summary, inputId, null, offset));
         BigDecimal surcharge = BigDecimal.ZERO;
         if (payable.signum() > 0) {
-            lines.add(VoucherLine.credit(summary, accountService.leafByCode(FinConstants.UNPAID_VAT).getId(), null, payable));
+            lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.UNPAID_VAT), null, payable));
             String s2 = "计提 " + period + " 附加税费";
             BigDecimal city = tax(payable, cityRate, 7);
             BigDecimal edu = tax(payable, eduRate, 3);
             BigDecimal local = tax(payable, localRate, 2);
             surcharge = city.add(edu).add(local);
             if (surcharge.signum() > 0) {
-                lines.add(VoucherLine.debit(s2, accountService.leafByCode(FinConstants.TAX_SURCHARGE).getId(), null, surcharge));
-                lines.add(VoucherLine.credit(s2, accountService.leafByCode(FinConstants.CITY_TAX).getId(), null, city));
-                lines.add(VoucherLine.credit(s2, accountService.leafByCode(FinConstants.EDU_SURCHARGE).getId(), null, edu));
-                lines.add(VoucherLine.credit(s2, accountService.leafByCode(FinConstants.LOCAL_EDU_SURCHARGE).getId(), null, local));
+                lines.add(VoucherLine.debit(s2, accountRules.accountId(AccountRole.TAX_SURCHARGE), null, surcharge));
+                lines.add(VoucherLine.credit(s2, accountRules.accountId(AccountRole.CITY_TAX), null, city));
+                lines.add(VoucherLine.credit(s2, accountRules.accountId(AccountRole.EDU_SURCHARGE), null, edu));
+                lines.add(VoucherLine.credit(s2, accountRules.accountId(AccountRole.LOCAL_EDU_SURCHARGE), null, local));
             }
         }
         Long voucherId = voucherService.createGenerated(date, VoucherSource.TAX, sourceNo(period), lines);

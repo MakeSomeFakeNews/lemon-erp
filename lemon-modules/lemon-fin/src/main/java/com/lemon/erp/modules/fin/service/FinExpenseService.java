@@ -1,8 +1,8 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.modules.fin.event.VoucherDeletedEvent;
-import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.mes.entity.MesMaintenance;
@@ -23,14 +23,15 @@ public class FinExpenseService {
 
     private final FinVoucherService voucherService;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final MesMaintenanceMapper maintenanceMapper;
 
     @EventListener
     public void onMaintenanceFinished(MaintenanceFinishedEvent e) {
         String summary = "设备维护费 " + e.orderNo() + " " + e.equipmentName();
         Long voucherId = voucherService.createGenerated(e.date(), VoucherSource.EXPENSE, e.orderNo(), List.of(
-                VoucherLine.debit(summary, accountService.leafByCode(FinConstants.MANUFACTURING_OVERHEAD).getId(), null, e.cost()),
-                VoucherLine.credit(summary, accountService.leafByCode(FinConstants.OTHER_PAYABLE).getId(), null, e.cost())));
+                VoucherLine.debit(summary, accountRules.accountId(AccountRole.MANUFACTURING_OVERHEAD), null, e.cost()),
+                VoucherLine.credit(summary, accountRules.accountId(AccountRole.OTHER_PAYABLE), null, e.cost())));
         maintenanceMapper.update(Wrappers.<MesMaintenance>lambdaUpdate().set(MesMaintenance::getVoucherId, voucherId)
                 .eq(MesMaintenance::getId, e.maintenanceId()));
     }

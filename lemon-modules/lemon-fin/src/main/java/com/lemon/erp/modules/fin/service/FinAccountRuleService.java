@@ -1,0 +1,144 @@
+package com.lemon.erp.modules.fin.service;
+
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.modules.fin.entity.FinAccount;
+import com.lemon.erp.modules.fin.entity.FinAccountRule;
+import com.lemon.erp.modules.fin.mapper.FinAccountRuleMapper;
+import com.lemon.erp.modules.fin.model.AccountRole;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * 凭证科目设置：业务单据自动生成凭证时，按用途（{@link AccountRole}）取科目。
+ * 优先级：用途 + 维度取值的设置 → 用途的默认设置 → 预置科目编码（按维度取值区分，如半成品、成品为库存商品）
+ */
+@Service
+@RequiredArgsConstructor
+public class FinAccountRuleService {
+
+    private static final String NO_DIM = "";
+
+    private final FinAccountRuleMapper ruleMapper;
+    private final FinAccountService accountService;
+
+    /** 用途使用的末级科目 ID */
+    public Long accountId(AccountRole role) {
+        return account(role, null).getId();
+    }
+
+    /**
+     * 用途在某个维度取值下使用的末级科目 ID
+     *
+     * @param dimValue 物料分类 / 职位类别，可为空
+     */
+    public Long accountId(AccountRole role, String dimValue) {
+        return account(role, dimValue).getId();
+    }
+
+    /** 用途在某个维度取值下使用的科目编码（存货对账等按编码比较的场景） */
+    public String code(AccountRole role, String dimValue) {
+        return account(role, dimValue).getCode();
+    }
+
+    public FinAccount account(AccountRole role, String dimValue) {
+        String dim = dimValue == null || role.dimension() == AccountRole.Dimension.NONE ? NO_DIM : dimValue;
+        List<FinAccountRule> rules = ruleMapper.selectList(Wrappers.<FinAccountRule>lambdaQuery()
+                .eq(FinAccountRule::getRole, role)
+                .in(FinAccountRule::getDimValue, dim.isEmpty() ? List.of(NO_DIM) : List.of(dim, NO_DIM)));
+        FinAccountRule rule = rules.stream().filter(r -> dim.equals(r.getDimValue())).findFirst()
+                .orElseGet(() -> rules.stream().filter(r -> NO_DIM.equals(r.getDimValue())).findFirst().orElse(null));
+        if (rule == null) {
+            return accountService.leafByCode(role.defaultCode(dim.isEmpty() ? null : dim));
+        }
+        try {
+            return accountService.requireLeaves(List.of(rule.getAccountId())).get(rule.getAccountId());
+        } catch (BizException e) {
+            throw new BizException("凭证科目设置「" + role.label() + "」：" + e.getMessage());
+        }
+    }
+
+    /** 全部用途及其设置，供「凭证科目设置」页面展示 */
+    public List<RoleView> list() {
+        Map<AccountRole, List<FinAccountRule>> byRole = ruleMapper.selectList(null).stream()
+                .collect(Collectors.groupingBy(FinAccountRule::getRole));
+        List<RoleView> views = new ArrayList<>();
+        for (AccountRole role : AccountRole.values()) {
+            List<FinAccountRule> rules = byRole.getOrDefault(role, List.of());
+            Long accountId = rules.stream().filter(r -> NO_DIM.equals(r.getDimValue())).map(FinAccountRule::getAccountId)
+                    .findFirst().orElse(null);
+            Map<String, Long> items = new LinkedHashMap<>();
+            rules.stream().filter(r -> !NO_DIM.equals(r.getDimValue())).forEach(r -> items.put(r.getDimValue(), r.getAccountId()));
+            views.add(new RoleView(role.name(), role.group(), role.label(), role.dimension().name(), role.dimension().dictType(),
+                    role.defaultCode(), role.dimensionDefaults(), accountId, items));
+        }
+        return views;
+    }
+
+    /**
+     * 保存一个用途的设置（整体替换）：未填写的使用预置科目
+     *
+     * @param accountId 用途的默认科目，可为空
+     * @param items     维度取值 → 科目，只有带维度的用途可以填写
+     */
+    @Transactional
+    public void save(AccountRole role, Long accountId, Map<String, Long> items) {
+        Map<String, Long> byDim = new LinkedHashMap<>();
+        if (items != null) {
+            items.forEach((dim, id) -> {
+                if (id != null) {
+                    byDim.put(dim, id);
+                }
+            });
+        }
+        if (!byDim.isEmpty() && role.dimension() == AccountRole.Dimension.NONE) {
+            throw new BizException("「" + role.label() + "」不能按维度分别设置科目");
+        }
+        if (byDim.keySet().stream().anyMatch(d -> d == null || d.isBlank() || d.length() > 32)) {
+            throw new BizException("维度取值不正确");
+        }
+        Set<Long> ids = new HashSet<>(byDim.values());
+        if (accountId != null) {
+            ids.add(accountId);
+        }
+        if (!ids.isEmpty()) {
+            accountService.requireLeaves(ids);
+        }
+        ruleMapper.delete(Wrappers.<FinAccountRule>lambdaQuery().eq(FinAccountRule::getRole, role));
+        if (accountId != null) {
+            insert(role, NO_DIM, accountId);
+        }
+        byDim.forEach((dim, id) -> insert(role, dim, id));
+    }
+
+    private void insert(AccountRole role, String dim, Long accountId) {
+        FinAccountRule rule = new FinAccountRule();
+        rule.setRole(role);
+        rule.setDimValue(dim);
+        rule.setAccountId(accountId);
+        ruleMapper.insert(rule);
+    }
+
+    /**
+     * 一个用途的设置
+     *
+     * @param dimension         维度（NONE、MATERIAL_CATEGORY、POSITION_CATEGORY）
+     * @param dictType          维度取值所在的字典
+     * @param defaultCode       预置科目编码
+     * @param dimensionDefaults 维度取值 → 预置科目编码（没有的取 defaultCode）
+     * @param accountId         设置的默认科目，未设置为空
+     * @param items             维度取值 → 设置的科目
+     */
+    public record RoleView(String role, String group, String label, String dimension, String dictType, String defaultCode,
+                           Map<String, String> dimensionDefaults, Long accountId, Map<String, Long> items) {
+    }
+}

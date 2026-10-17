@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.finance.ExchangeRateProvider;
@@ -39,6 +40,7 @@ public class FinCurrencyService implements ExchangeRateProvider {
     private final FinVoucherMapper voucherMapper;
     private final FinVoucherService voucherService;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final FinPeriodService periodService;
 
     public List<FinCurrency> currencies() {
@@ -121,9 +123,9 @@ public class FinCurrencyService implements ExchangeRateProvider {
         Map<String, BigDecimal> rates = new HashMap<>();
         Map<String, BigDecimal[]> sums = new LinkedHashMap<>();
         List<VoucherLine> lines = new ArrayList<>();
-        Long receivable = accountService.leafByCode(FinConstants.RECEIVABLE).getId();
-        Long payable = accountService.leafByCode(FinConstants.PAYABLE).getId();
-        Long finance = accountService.leafByCode(FinConstants.FINANCE_EXPENSE).getId();
+        Long receivable = accountRules.accountId(AccountRole.RECEIVABLE);
+        Long payable = accountRules.accountId(AccountRole.PAYABLE);
+        Long finance = accountRules.accountId(AccountRole.FINANCE_EXPENSE);
         for (Map<String, Object> b : billMapper.selectOpenForeign(end)) {
             String currency = (String) b.get("currency");
             BigDecimal rate = rates.computeIfAbsent(currency, c -> {

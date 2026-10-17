@@ -58,6 +58,7 @@ DROP TABLE IF EXISTS hr_contract;
 DROP TABLE IF EXISTS hr_employee_change;
 DROP TABLE IF EXISTS hr_employee;
 DROP TABLE IF EXISTS hr_position;
+DROP TABLE IF EXISTS fin_account_rule;
 DROP TABLE IF EXISTS fin_budget;
 DROP TABLE IF EXISTS fin_note_log;
 DROP TABLE IF EXISTS scm_delivery_package_item;
@@ -3218,6 +3219,19 @@ CREATE TABLE fin_budget (
     UNIQUE KEY uk_budget (budget_year, dept_id, account_id, tenant_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '预算';
 
+CREATE TABLE fin_account_rule (
+    id          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    role        VARCHAR(32) NOT NULL COMMENT '用途（AccountRole），如 RECEIVABLE 应收账款、INVENTORY 存货',
+    dim_value   VARCHAR(32) NOT NULL DEFAULT '' COMMENT '维度取值：物料分类 / 职位类别，空串为该用途的默认科目',
+    account_id  BIGINT      NOT NULL COMMENT '科目（末级）',
+    create_time DATETIME             DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME             DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_account_rule (role, dim_value, tenant_id),
+    KEY idx_account_rule_account (account_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '凭证科目设置：业务单据自动生成凭证时各用途使用的科目，没有设置的用途取预置科目';
+
 -- ---------------------------------------------------------------- 人力资源
 
 CREATE TABLE hr_position (
@@ -6307,6 +6321,13 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 (2713, 271, '装箱', 'F', NULL, NULL, 'scm:delivery:pack', NULL, 3, 1, 1, NOW(), NOW());
 INSERT INTO sys_role_menu (role_id, menu_id) VALUES
 (6, 2713);
+
+-- 凭证科目设置：自动凭证各用途使用的科目
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(340, 936, '凭证科目设置', 'C', 'account-rule', 'fin/account-rule/index', 'fin:accountRule:list', 'NodeIndexOutlined', 5, 1, 1, NOW(), NOW()),
+(3400, 340, '科目设置修改', 'F', NULL, NULL, 'fin:accountRule:edit', NULL, 1, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(2, 340), (9, 340), (9, 3400);
 
 ALTER TABLE sys_dept AUTO_INCREMENT = 200;
 ALTER TABLE sys_user AUTO_INCREMENT = 100;

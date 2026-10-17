@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -57,6 +58,7 @@ public class FinNoteService {
     private final FinBillMapper billMapper;
     private final FinBillService billService;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final FinVoucherService voucherService;
     private final FinBizPeriodGuard periodGuard;
 
@@ -100,10 +102,10 @@ public class FinNoteService {
         if (noteMapper.exists(Wrappers.<FinNote>lambdaQuery().eq(FinNote::getKind, kind).eq(FinNote::getNoteNo, noteNo))) {
             throw new BizException("票据号码 " + noteNo + " 已登记");
         }
-        String accountCode = receivable ? FinConstants.NOTES_RECEIVABLE : FinConstants.NOTES_PAYABLE;
+        AccountRole noteAccount = receivable ? AccountRole.NOTES_RECEIVABLE : AccountRole.NOTES_PAYABLE;
         Long settlementId = settlementService.createForNote(new SettlementRequest(receivable ? SettleKind.RECEIPT.name() : SettleKind.PAYMENT.name(),
-                req.partnerId(), req.actionDate(), accountService.leafByCode(accountCode).getId(), SettleMethod.NOTE.name(),
-                (receivable ? "收票 " : "开具票据 ") + noteNo, req.items()), accountCode);
+                req.partnerId(), req.actionDate(), accountRules.accountId(noteAccount), SettleMethod.NOTE.name(),
+                (receivable ? "收票 " : "开具票据 ") + noteNo, req.items()), noteAccount);
         FinSettlement settlement = requireCnySettlement(settlementId);
         FinNote note = new FinNote();
         note.setKind(kind);
@@ -133,8 +135,8 @@ public class FinNoteService {
         FinNote note = requireStatus(id, NoteKind.RECEIVABLE, NoteStatus.HELD, "背书");
         checkTotal(req.items(), note.getAmount());
         Long settlementId = settlementService.createForNote(new SettlementRequest(SettleKind.PAYMENT.name(), req.supplierId(), req.actionDate(),
-                accountService.leafByCode(FinConstants.NOTES_RECEIVABLE).getId(), SettleMethod.NOTE.name(), "背书转让票据 " + note.getNoteNo(),
-                req.items()), FinConstants.NOTES_RECEIVABLE);
+                accountRules.accountId(AccountRole.NOTES_RECEIVABLE), SettleMethod.NOTE.name(), "背书转让票据 " + note.getNoteNo(),
+                req.items()), AccountRole.NOTES_RECEIVABLE);
         FinSettlement settlement = requireCnySettlement(settlementId);
         transit(note, NoteStatus.HELD, FinSettlementService.isApproving(settlement) ? NoteStatus.ENDORSING : NoteStatus.ENDORSED);
         FinNoteLog log = newLog(note, NoteAction.ENDORSE, req.actionDate(), req.remark());
@@ -156,7 +158,7 @@ public class FinNoteService {
         List<VoucherLine> lines = new ArrayList<>();
         lines.add(VoucherLine.debit(summary, bank, null, note.getAmount().subtract(interest)));
         if (interest.signum() > 0) {
-            lines.add(VoucherLine.debit(summary, accountService.leafByCode(FinConstants.FINANCE_EXPENSE).getId(), null, interest));
+            lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.FINANCE_EXPENSE), null, interest));
         }
         lines.add(VoucherLine.credit(summary, notesReceivable(), null, note.getAmount()));
         settle(note, NoteStatus.HELD, NoteStatus.DISCOUNTED, NoteAction.DISCOUNT, req, bank, interest, lines);
@@ -179,7 +181,7 @@ public class FinNoteService {
         FinNote note = requireStatus(id, NoteKind.RECEIVABLE, NoteStatus.HELD, "拒付");
         String summary = "票据拒付 " + note.getNoteNo();
         FinNoteLog log = settle(note, NoteStatus.HELD, NoteStatus.DISHONORED, NoteAction.DISHONOR, req, null, BigDecimal.ZERO, List.of(
-                VoucherLine.debit(summary, accountService.leafByCode(FinConstants.RECEIVABLE).getId(), null, note.getAmount())
+                VoucherLine.debit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, note.getAmount())
                         .withCustomer(note.getPartnerId()),
                 VoucherLine.credit(summary, notesReceivable(), null, note.getAmount())));
         FinBill bill = billService.createFromSource(FinConstants.BILL_AR, note.getPartnerId(), BILL_SOURCE_NOTE, note.getId(), note.getNoteNo(),
@@ -195,7 +197,7 @@ public class FinNoteService {
         Long bank = requireBank(req.accountId());
         String summary = "应付票据兑付 " + note.getNoteNo();
         settle(note, NoteStatus.ISSUED, NoteStatus.PAID, NoteAction.PAY, req, bank, BigDecimal.ZERO, List.of(
-                VoucherLine.debit(summary, accountService.leafByCode(FinConstants.NOTES_PAYABLE).getId(), null, note.getAmount()),
+                VoucherLine.debit(summary, accountRules.accountId(AccountRole.NOTES_PAYABLE), null, note.getAmount()),
                 VoucherLine.credit(summary, bank, null, note.getAmount())));
     }
 
@@ -335,7 +337,7 @@ public class FinNoteService {
     }
 
     private Long notesReceivable() {
-        return accountService.leafByCode(FinConstants.NOTES_RECEIVABLE).getId();
+        return accountRules.accountId(AccountRole.NOTES_RECEIVABLE);
     }
 
 }

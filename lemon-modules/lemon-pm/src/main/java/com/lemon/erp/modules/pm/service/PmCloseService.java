@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.pm.service;
 
+import com.lemon.erp.modules.fin.service.FinAccountRuleService;
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.period.BizPeriodGuard;
@@ -8,9 +10,7 @@ import com.lemon.erp.modules.fin.event.VoucherDeletedEvent;
 import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
-import com.lemon.erp.modules.fin.service.FinAccountService;
 import com.lemon.erp.modules.fin.service.FinVoucherService;
-import com.lemon.erp.modules.hr.service.HrPayrollService;
 import com.lemon.erp.modules.pm.entity.PmCost;
 import com.lemon.erp.modules.pm.entity.PmProject;
 import com.lemon.erp.modules.pm.entity.PmRevenue;
@@ -54,7 +54,7 @@ public class PmCloseService {
     private final PmTimesheetMapper timesheetMapper;
     private final PmCostMapper costMapper;
     private final FinVoucherService voucherService;
-    private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final BizPeriodGuard periodGuard;
 
     /** @return 生成的凭证数 */
@@ -63,7 +63,7 @@ public class PmCloseService {
         LocalDate begin = FinConstants.firstDay(period);
         LocalDate end = FinConstants.lastDay(period);
         periodGuard.checkOpen(end, "项目月结");
-        Long contractCost = accountService.leafByCode(FinConstants.CONTRACT_COST).getId();
+        Long contractCost = accountRules.accountId(AccountRole.CONTRACT_COST);
 
         // 按项目汇总本期的分录
         Map<Long, List<VoucherLine>> lines = new LinkedHashMap<>();
@@ -71,14 +71,14 @@ public class PmCloseService {
         for (Map<String, Object> row : closeMapper.selectUnpostedLabor(begin, end)) {
             Long projectId = ((Number) row.get("projectId")).longValue();
             BigDecimal amount = decimal(row.get("amount"));
-            Long expense = accountService.leafByCode(HrPayrollService.expenseAccount((String) row.get("category"))).getId();
+            Long expense = accountRules.accountId(AccountRole.SALARY_EXPENSE, (String) row.get("category"));
             String summary = "项目人工成本 " + period;
             List<VoucherLine> list = lines.computeIfAbsent(projectId, k -> new ArrayList<>());
             list.add(VoucherLine.debit(summary, contractCost, null, amount).withProject(projectId));
             list.add(VoucherLine.credit(summary, expense, null, amount).withProject(projectId));
             amounts.computeIfAbsent(projectId, k -> zeros())[0] = amounts.get(projectId)[0].add(amount);
         }
-        Long otherPayable = accountService.leafByCode(FinConstants.OTHER_PAYABLE).getId();
+        Long otherPayable = accountRules.accountId(AccountRole.OTHER_PAYABLE);
         for (Map<String, Object> row : closeMapper.selectUnpostedExpense(begin, end)) {
             Long projectId = ((Number) row.get("projectId")).longValue();
             BigDecimal amount = decimal(row.get("amount"));
@@ -91,9 +91,9 @@ public class PmCloseService {
 
         // 完工百分比确认收入、结转成本
         Map<Long, PmRevenue> revenues = new HashMap<>();
-        Long liability = accountService.leafByCode(FinConstants.CONTRACT_LIABILITY).getId();
-        Long revenueAccount = accountService.leafByCode(FinConstants.REVENUE).getId();
-        Long costOfSales = accountService.leafByCode(FinConstants.COST_OF_SALES).getId();
+        Long liability = accountRules.accountId(AccountRole.CONTRACT_LIABILITY);
+        Long revenueAccount = accountRules.accountId(AccountRole.REVENUE);
+        Long costOfSales = accountRules.accountId(AccountRole.COST_OF_SALES);
         for (Map<String, Object> row : closeMapper.selectRecognition(end)) {
             Long projectId = ((Number) row.get("projectId")).longValue();
             BigDecimal rate = "FINISHED".equals(row.get("status")) || "CLOSED".equals(row.get("status"))

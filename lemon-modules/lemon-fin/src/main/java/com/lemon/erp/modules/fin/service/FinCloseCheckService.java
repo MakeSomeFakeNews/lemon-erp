@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.modules.fin.entity.FinAsset;
 import com.lemon.erp.modules.fin.model.AssetStatus;
@@ -47,6 +48,7 @@ public class FinCloseCheckService {
     private final FinBankStatementMapper statementMapper;
     private final FinTaxService taxService;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final FinReportService reportService;
 
     /** @param level OK 通过 / WARN 提示 / ERROR 不能结账 */
@@ -86,7 +88,7 @@ public class FinCloseCheckService {
         boolean depreciated = depreciationMapper.exists(Wrappers.<FinDepreciation>lambdaQuery().eq(FinDepreciation::getPeriod, period));
         items.add(!hasAssets || depreciated ? ok("计提折旧") : warn("计提折旧", "本期还没有计提折旧"));
 
-        boolean output = entryMapper.sumBalanceUpTo(accountService.leafByCode(FinConstants.OUTPUT_VAT).getId(), period).signum() < 0;
+        boolean output = entryMapper.sumBalanceUpTo(accountRules.accountId(AccountRole.OUTPUT_VAT), period).signum() < 0;
         items.add(!output || taxService.transferred(period) ? ok("增值税结转") : warn("增值税结转", "销项税额还未结转，未计提附加税费"));
 
         long unmatched = statementMapper.selectCount(Wrappers.<FinBankStatement>lambdaQuery().between(FinBankStatement::getTxnDate, begin, end)

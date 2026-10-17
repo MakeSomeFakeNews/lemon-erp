@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -14,7 +15,6 @@ import com.lemon.erp.modules.fin.entity.FinLoan;
 import com.lemon.erp.modules.fin.entity.FinLoanRepay;
 import com.lemon.erp.modules.fin.mapper.FinLoanMapper;
 import com.lemon.erp.modules.fin.mapper.FinLoanRepayMapper;
-import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.wms.service.DocNoService;
@@ -42,6 +42,7 @@ public class FinLoanService {
     private final FinLoanRepayMapper repayMapper;
     private final FinVoucherService voucherService;
     private final FinAccountService accountService;
+    private final FinAccountRuleService accountRules;
     private final FinBizPeriodGuard periodGuard;
     private final DocNoService docNoService;
     private final FlowApi flowApi;
@@ -118,7 +119,7 @@ public class FinLoanService {
         transit(id, "APPROVED", "PAID");
         String summary = "员工借款 " + l.getLoanNo() + " " + l.getUserName() + (l.getPurpose() == null ? "" : " " + l.getPurpose());
         Long voucherId = voucherService.createGenerated(d, VoucherSource.LOAN, l.getLoanNo(), List.of(
-                VoucherLine.debit(summary, accountService.leafByCode(FinConstants.OTHER_RECEIVABLE).getId(), l.getDeptId(), l.getAmount()),
+                VoucherLine.debit(summary, accountRules.accountId(AccountRole.OTHER_RECEIVABLE), l.getDeptId(), l.getAmount()),
                 VoucherLine.credit(summary, accountId, null, l.getAmount())));
         loanMapper.update(Wrappers.<FinLoan>lambdaUpdate().set(FinLoan::getPayAccountId, accountId).set(FinLoan::getVoucherId, voucherId)
                 .eq(FinLoan::getId, id));
@@ -137,7 +138,7 @@ public class FinLoanService {
         String summary = "归还借款 " + l.getLoanNo() + " " + l.getUserName();
         Long voucherId = voucherService.createGenerated(d, VoucherSource.LOAN, l.getLoanNo(), List.of(
                 VoucherLine.debit(summary, accountId, null, amount),
-                VoucherLine.credit(summary, accountService.leafByCode(FinConstants.OTHER_RECEIVABLE).getId(), l.getDeptId(), amount)));
+                VoucherLine.credit(summary, accountRules.accountId(AccountRole.OTHER_RECEIVABLE), l.getDeptId(), amount)));
         addRepay(l, amount, d, "CASH", null, accountId, voucherId);
     }
 
