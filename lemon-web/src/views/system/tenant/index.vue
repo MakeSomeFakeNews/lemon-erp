@@ -76,7 +76,7 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增租户" edit-title="编辑租户">
+    <FormDrawer :drawer="drawer" create-title="新增租户" edit-title="编辑租户" :width="form.id ? undefined : 'min(880px, 100vw)'">
       <a-alert
         v-if="!form.id"
         type="info"
@@ -92,9 +92,24 @@
               <a-input v-model:value="form.name" :maxlength="64" />
             </a-form-item>
           </a-col>
-          <a-col :xs="24" :sm="12">
+          <a-col v-if="!form.id" :xs="24" :sm="12">
+            <a-form-item label="开通方式" name="mode" extra="按行业选择功能模块，或使用已有套餐">
+              <a-radio-group v-model:value="form.mode" button-style="solid">
+                <a-radio-button value="template">按行业模板</a-radio-button>
+                <a-radio-button value="package">选择已有套餐</a-radio-button>
+              </a-radio-group>
+            </a-form-item>
+          </a-col>
+          <a-col v-if="form.id || form.mode === 'package'" :xs="24" :sm="12">
             <a-form-item label="套餐" name="packageId" extra="决定租户可用的菜单和功能">
               <a-select v-model:value="form.packageId" :options="packageOptions" :disabled="form.platform" :placeholder="form.platform ? '不限' : '请选择'" />
+            </a-form-item>
+          </a-col>
+          <a-col v-if="!form.id && form.mode === 'template'" :span="24">
+            <a-form-item name="menuIds" extra="保存时使用功能完全相同的已有套餐；没有时按行业名称新建套餐，之后可在「租户套餐」中调整">
+              <a-form-item-rest>
+                <FeaturePicker v-if="catalog" v-model="form.menuIds" :catalog="catalog" @industry="(i) => (form.templateName = i?.name || '')" />
+              </a-form-item-rest>
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
@@ -151,6 +166,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
+import FeaturePicker from '@/components/system/FeaturePicker.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import StatusSwitch from '@/components/StatusSwitch.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -160,6 +176,7 @@ import {
   deleteTenant,
   getTenant,
   pageTenant,
+  tenantFeatures,
   tenantPackageOptions,
   updateTenant
 } from '@/api/system/tenant'
@@ -199,13 +216,17 @@ onMounted(load)
 const isExpired = (record) => record.expireTime && new Date(record.expireTime.replace(' ', 'T')) <= new Date()
 
 const packageOptions = ref([])
+const catalog = ref()
 async function loadPackages() {
-  packageOptions.value = (await tenantPackageOptions()).map((p) => ({ label: p.name, value: p.id }))
+  const [packages, features] = await Promise.all([tenantPackageOptions(), catalog.value || tenantFeatures()])
+  packageOptions.value = packages.map((p) => ({ label: p.name, value: p.id }))
+  catalog.value = features
 }
 
 const rules = {
   name: [{ required: true, whitespace: true, message: '请输入租户名称' }],
-  packageId: [{ validator: (_, v) => (form.value.platform || v ? Promise.resolve() : Promise.reject('请选择套餐')) }],
+  packageId: [{ validator: (_, v) => (form.value.platform || form.value.mode === 'template' || v ? Promise.resolve() : Promise.reject('请选择套餐')) }],
+  menuIds: [{ validator: (_, v) => (form.value.mode !== 'template' || v?.length ? Promise.resolve() : Promise.reject('请选择行业模板或功能模块')) }],
   adminUsername: [{ required: true, whitespace: true, message: '请输入管理员账号' }],
   adminPassword: [{ required: true, message: '请输入管理员密码' }]
 }
@@ -222,14 +243,21 @@ const drawer = useFormDrawer({
     adminPassword: '',
     status: 1,
     remark: '',
-    platform: false
+    platform: false,
+    mode: 'template',
+    menuIds: [],
+    templateName: ''
   }),
   beforeOpen: loadPackages,
   fetch: (record) => getTenant(record.id),
   create: addTenant,
   update: updateTenant,
-  toPayload: ({ id, platform, packageName, accountCount, adminUserId, adminUsername, adminPassword, ...rest }) =>
-    id ? rest : { ...rest, adminUsername, adminPassword },
+  toPayload: ({ id, platform, packageName, accountCount, adminUserId, adminUsername, adminPassword, mode, menuIds, templateName, ...rest }) => {
+    if (id) return rest
+    const payload = { ...rest, adminUsername, adminPassword }
+    // 按行业模板：不传套餐，后端按菜单匹配或新建套餐
+    return mode === 'template' ? { ...payload, packageId: null, menuIds, templateName: templateName || '自定义' } : payload
+  },
   onSuccess: load
 })
 const { formRef, form } = drawer

@@ -37,7 +37,7 @@
       </a-table>
     </a-card>
 
-    <FormDrawer :drawer="drawer" create-title="新增套餐" edit-title="编辑套餐" width="min(760px, 100vw)">
+    <FormDrawer :drawer="drawer" create-title="新增套餐" edit-title="编辑套餐" width="min(880px, 100vw)">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
@@ -62,7 +62,9 @@
             >
               <!-- 树中的搜索框、勾选框不作为表单字段收集，校验仍按 menuIds -->
               <a-form-item-rest>
-                <CheckTree v-model="form.menuIds" :tree="menuTree" check-ancestors height="calc(100vh - 460px)" />
+                <FeaturePicker v-if="catalog" v-model="form.menuIds" :catalog="catalog" :tree="menuTree" class="picker" />
+                <div class="tree-label">菜单明细 <span class="sub-text">按模块勾选后可在这里单独增减页面和按钮</span></div>
+                <CheckTree v-model="form.menuIds" :tree="menuTree" check-ancestors height="420px" />
               </a-form-item-rest>
             </a-form-item>
           </a-col>
@@ -77,6 +79,7 @@ import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import CheckTree from '@/components/tree/CheckTree.vue'
+import FeaturePicker from '@/components/system/FeaturePicker.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import {
@@ -84,6 +87,7 @@ import {
   deleteTenantPackage,
   getTenantPackage,
   listTenantPackage,
+  tenantFeatures,
   tenantPackageMenuTree,
   updateTenantPackage
 } from '@/api/system/tenant'
@@ -115,8 +119,9 @@ async function load() {
 onMounted(load)
 
 const menuTree = ref([])
+const catalog = ref()
 async function loadMenuTree() {
-  if (!menuTree.value.length) menuTree.value = await tenantPackageMenuTree()
+  if (!menuTree.value.length) [menuTree.value, catalog.value] = await Promise.all([tenantPackageMenuTree(), tenantFeatures()])
 }
 
 const rules = {
@@ -144,5 +149,18 @@ async function remove(id) {
 <style scoped>
 .search {
   width: 200px;
+}
+.picker {
+  margin-bottom: 16px;
+}
+.tree-label {
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.sub-text {
+  margin-left: 6px;
+  color: var(--app-text-3);
+  font-size: 12px;
+  font-weight: 400;
 }
 </style>

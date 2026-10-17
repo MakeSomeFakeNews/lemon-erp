@@ -11,6 +11,8 @@ export const deleteTenant = (ids) => request.delete(`/system/tenant/${[].concat(
 // 租户套餐
 export const listTenantPackage = (params) => request.get('/system/tenant-package', { params })
 export const tenantPackageOptions = () => request.get('/system/tenant-package/options')
+/** 功能模块与行业模板 */
+export const tenantFeatures = () => request.get('/system/tenant-package/features')
 export const tenantPackageMenuTree = () => request.get('/system/tenant-package/menu-tree')
 export const getTenantPackage = (id) => request.get(`/system/tenant-package/${id}`)
 export const addTenantPackage = (data) => request.post('/system/tenant-package', data)

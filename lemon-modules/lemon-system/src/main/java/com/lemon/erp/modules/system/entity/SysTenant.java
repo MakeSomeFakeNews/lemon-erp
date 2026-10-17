@@ -16,6 +16,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -72,6 +73,14 @@ public class SysTenant extends BaseEntity {
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     @TableField(exist = false)
     private String packageName;
+
+    /** 新建时按功能模块开通：不选套餐时按这些菜单匹配或新建套餐 */
+    @TableField(exist = false)
+    private List<Long> menuIds;
+
+    /** 新建套餐时的名称，一般为行业模板名称 */
+    @TableField(exist = false)
+    private String templateName;
 
     /** 已开通的账号数 */
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)

@@ -54,6 +54,7 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
             "dealer");
 
     private final SysTenantLookup lookup;
+    private final SysFeatureService featureService;
     private final SysTenantPackageMapper packageMapper;
     private final SysDeptMapper deptMapper;
     private final SysRoleMapper roleMapper;
@@ -90,6 +91,10 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
     public void create(SysTenant tenant) {
         requireEnabled();
         checkNameUnique(tenant);
+        // 按功能模块开通：匹配菜单相同的套餐，没有时新建
+        if (tenant.getPackageId() == null && tenant.getMenuIds() != null && !tenant.getMenuIds().isEmpty()) {
+            tenant.setPackageId(featureService.resolvePackage(tenant.getTemplateName(), tenant.getName(), tenant.getMenuIds()));
+        }
         Set<Long> menuIds = lookup.packageMenuIds(checkPackage(tenant.getPackageId()).getId());
         passwordPolicy.check(tenant.getAdminPassword());
         tenant.setId(null);
