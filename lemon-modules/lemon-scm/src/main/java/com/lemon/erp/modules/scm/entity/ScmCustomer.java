@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.validation.Update;
 import com.lemon.erp.modules.scm.model.SalesChannel;
 import jakarta.validation.constraints.DecimalMin;
@@ -56,7 +57,7 @@ public class ScmCustomer extends BaseEntity {
     private Integer paymentDays;
 
     /** 1 启用 0 停用 */
-    private Integer status;
+    private EnableStatus status;
 
     @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}")
     private String remark;

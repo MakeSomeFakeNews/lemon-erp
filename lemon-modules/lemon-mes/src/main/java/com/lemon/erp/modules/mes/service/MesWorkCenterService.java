@@ -2,6 +2,7 @@ package com.lemon.erp.modules.mes.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.modules.mes.entity.MesBomOp;
@@ -26,7 +27,7 @@ public class MesWorkCenterService {
     private final MesBomOpMapper bomOpMapper;
     private final MesEquipmentMapper equipmentMapper;
 
-    public PageResult<MesWorkCenter> page(long current, long size, String keyword, Integer status) {
+    public PageResult<MesWorkCenter> page(long current, long size, String keyword, EnableStatus status) {
         Page<MesWorkCenter> page = workCenterMapper.selectPage(Page.of(current, size), Wrappers.<MesWorkCenter>lambdaQuery()
                 .and(StringUtils.hasText(keyword), w -> w.like(MesWorkCenter::getCode, keyword).or().like(MesWorkCenter::getName, keyword))
                 .eq(status != null, MesWorkCenter::getStatus, status)
@@ -45,14 +46,14 @@ public class MesWorkCenterService {
     /** 启用的工作中心 */
     public List<MesWorkCenter> options() {
         return workCenterMapper.selectList(Wrappers.<MesWorkCenter>lambdaQuery()
-                .eq(MesWorkCenter::getStatus, 1).orderByAsc(MesWorkCenter::getCode));
+                .eq(MesWorkCenter::getStatus, EnableStatus.ENABLED).orderByAsc(MesWorkCenter::getCode));
     }
 
     public void create(MesWorkCenter wc) {
         checkCodeUnique(wc.getCode(), null);
         wc.setId(null);
         normalize(wc);
-        if (wc.getStatus() == null) wc.setStatus(1);
+        if (wc.getStatus() == null) wc.setStatus(EnableStatus.ENABLED);
         workCenterMapper.insert(wc);
     }
 
@@ -65,7 +66,7 @@ public class MesWorkCenterService {
         workCenterMapper.updateById(wc);
     }
 
-    public void changeStatus(Long id, Integer status) {
+    public void changeStatus(Long id, EnableStatus status) {
         get(id);
         MesWorkCenter entity = new MesWorkCenter();
         entity.setId(id);

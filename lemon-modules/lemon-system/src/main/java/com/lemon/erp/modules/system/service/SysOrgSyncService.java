@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.org.EmployeeDeptChangedEvent;
 import com.lemon.erp.framework.org.EmployeeLeftEvent;
@@ -47,7 +48,7 @@ public class SysOrgSyncService implements UserAccountProvisioner {
         user.setPassword(passwordEncoder.encode(settings.get(Setting.USER_INITIAL_PASSWORD)));
         user.setPwdUpdateTime(java.time.LocalDateTime.now());
         user.setPwdReset(1);
-        user.setStatus(1);
+        user.setStatus(EnableStatus.ENABLED);
         userMapper.insert(user);
         return user.getId();
     }
@@ -57,7 +58,7 @@ public class SysOrgSyncService implements UserAccountProvisioner {
         if (e.userId() == null || e.userId() == SysUserService.SUPER_ADMIN_ID) {
             return;
         }
-        userMapper.update(Wrappers.<SysUser>lambdaUpdate().set(SysUser::getStatus, 0)
+        userMapper.update(Wrappers.<SysUser>lambdaUpdate().set(SysUser::getStatus, EnableStatus.DISABLED)
                 .set(SysUser::getUpdateTime, LocalDateTime.now()).eq(SysUser::getId, e.userId()));
         tokenService.kickUser(e.userId());
     }

@@ -1,5 +1,8 @@
 package com.lemon.erp.modules.system.dto;
 
+import com.lemon.erp.common.enums.EnableStatus;
+
+
 /**
  * 用户列表查询条件
  *
@@ -8,7 +11,7 @@ package com.lemon.erp.modules.system.dto;
  * @param deptId   所属部门
  * @param includeChildren 按部门筛选时是否包含下级部门的用户，默认包含
  */
-public record UserQuery(String username, String phone, Integer status, Long deptId, Boolean includeChildren) {
+public record UserQuery(String username, String phone, EnableStatus status, Long deptId, Boolean includeChildren) {
 
     public boolean includeChildDepts() {
         return !Boolean.FALSE.equals(includeChildren);

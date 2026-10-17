@@ -31,7 +31,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -51,9 +50,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class HrAttendanceService {
-
-    /** 出勤超过 5 小时扣除 1 小时午休 */
-    private static final long LUNCH_THRESHOLD_MINUTES = 300;
 
     private final HrAttendanceMapper attendanceMapper;
     private final HrEmployeeMapper employeeMapper;
@@ -89,7 +85,7 @@ public class HrAttendanceService {
             a.setWorkDate(today);
             a.setCheckIn(now);
             a.setSource(AttendanceSource.CLOCK);
-            evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(today));
+            evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(today), ruleService.current());
             try {
                 attendanceMapper.insert(a);
                 return a;
@@ -99,7 +95,7 @@ public class HrAttendanceService {
             }
         }
         a.setCheckOut(now);
-        evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(today));
+        evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(today), ruleService.current());
         saveTimes(a);
         return a;
     }
@@ -134,7 +130,7 @@ public class HrAttendanceService {
         a.setCheckOut(req.checkOut());
         a.setSource(AttendanceSource.MANUAL);
         a.setRemark(req.remark());
-        evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(req.workDate()));
+        evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(req.workDate()), ruleService.current());
         if (insert) {
             attendanceMapper.insert(a);
         } else {
@@ -297,8 +293,8 @@ public class HrAttendanceService {
 
     // ---------------------------------------------------------------- 内部
 
-    /** 按班次计算迟到、早退、缺卡、出勤时长；非工作日打卡（加班）不计迟到早退 */
-    static void evaluate(HrAttendance a, HrShift shift, boolean workday) {
+    /** 按班次计算迟到、早退、缺卡，出勤时长按规则扣除午休（业务参数）；非工作日打卡（加班）不计迟到早退 */
+    static void evaluate(HrAttendance a, HrShift shift, boolean workday, HrRules rules) {
         int late = 0, early = 0;
         if (workday) {
             LocalTime lateAfter = shift.getStartTime().plusMinutes(shift.getFlexMinutes());
@@ -318,11 +314,7 @@ public class HrAttendanceService {
             return;
         }
         a.setStatus(AttendanceStatus.of(late, early));
-        long minutes = Duration.between(a.getCheckIn(), a.getCheckOut()).toMinutes();
-        if (minutes > LUNCH_THRESHOLD_MINUTES) {
-            minutes -= 60;
-        }
-        a.setWorkHours(BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP));
+        a.setWorkHours(rules.workHours(Duration.between(a.getCheckIn(), a.getCheckOut()).toMinutes()));
     }
 
     /** 加班倍数（业务参数，默认工作日 1.5、休息日 2、法定节假日 3） */

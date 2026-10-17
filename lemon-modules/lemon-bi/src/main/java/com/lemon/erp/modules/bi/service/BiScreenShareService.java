@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.bi.service;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.i18n.Messages;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
@@ -92,7 +93,7 @@ public class BiScreenShareService {
         BiScreenShare share = token == null || token.length() != 32 ? null
                 : TenantContext.callIgnore(() -> shareMapper.selectOne(Wrappers.<BiScreenShare>lambdaQuery().eq(BiScreenShare::getToken, token)));
         LocalDateTime now = LocalDateTime.now();
-        if (share == null || share.getStatus() != 1 || share.getExpireTime() != null && share.getExpireTime().isBefore(now)) {
+        if (share == null || share.getStatus() != EnableStatus.ENABLED || share.getExpireTime() != null && share.getExpireTime().isBefore(now)) {
             throw new BizException("bi.error.shareLinkInvalidDisabledExpired");
         }
         if (share.getLastAccessTime() == null || share.getLastAccessTime().plusMinutes(ACCESS_UPDATE_MINUTES).isBefore(now)) {

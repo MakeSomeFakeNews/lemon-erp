@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.wms.controller;
 
 import com.lemon.erp.common.dto.StatusRequest;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.common.validation.Create;
@@ -39,7 +40,7 @@ public class WmsWarehouseController {
     public R<PageResult<WmsWarehouse>> page(@RequestParam(defaultValue = "1") long current,
                                             @RequestParam(defaultValue = "10") long size,
                                             @RequestParam(required = false) String keyword,
-                                            @RequestParam(required = false) Integer status) {
+                                            @RequestParam(required = false) EnableStatus status) {
         return R.ok(warehouseService.page(current, size, keyword, status));
     }
 

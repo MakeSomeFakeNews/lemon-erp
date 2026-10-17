@@ -26,6 +26,8 @@ public class HrBizRules implements BizRuleProvider {
                 decimal(HrRules.SOCIAL_PERSONAL, "hr.label.rule.socialPersonal", 2, 0, 100, "hr.label.rule.socialPersonalRemark"),
                 decimal(HrRules.SOCIAL_COMPANY, "hr.label.rule.socialCompany", 2, 0, 100, "hr.label.rule.socialCompanyRemark"),
                 decimal(HrRules.LATE_FINE, "hr.label.rule.lateFine", 2, 0, 10000, "hr.label.rule.lateFineRemark"),
+                decimal(HrRules.LUNCH_THRESHOLD, "hr.label.rule.lunchThreshold", 2, 0, 24, "hr.label.rule.lunchThresholdRemark"),
+                decimal(HrRules.LUNCH_BREAK, "hr.label.rule.lunchBreak", 2, 0, 24, "hr.label.rule.lunchBreakRemark"),
                 decimal(HrRules.SICK_DEDUCT, "hr.label.rule.sickDeduct", 2, 0, 100, "hr.label.rule.sickDeductRemark"),
                 decimal(HrRules.OVERTIME_WORKDAY, "hr.label.rule.overtimeWorkday", 2, 0, 10, "hr.label.rule.overtimeRemark"),
                 decimal(HrRules.OVERTIME_RESTDAY, "hr.label.rule.overtimeRestday", 2, 0, 10, "hr.label.rule.overtimeRemark"),

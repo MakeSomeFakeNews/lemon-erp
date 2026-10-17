@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.modules.fin.dto.AccountRequest;
 import com.lemon.erp.modules.fin.entity.FinAccount;
@@ -85,7 +86,7 @@ public class FinAccountService {
 
     /** 启用的末级科目，凭证录入、结算账户、折旧科目选择 */
     public List<FinAccount> leafOptions() {
-        return listAll().stream().filter(a -> a.getLeaf() && Integer.valueOf(1).equals(a.getStatus())).toList();
+        return listAll().stream().filter(a -> a.getLeaf() && a.getStatus() == EnableStatus.ENABLED).toList();
     }
 
     public FinAccount get(Long id) {
@@ -99,7 +100,7 @@ public class FinAccountService {
     public void create(AccountRequest req) {
         FinAccount account = new FinAccount();
         fill(account, req, null);
-        account.setStatus(1);
+        account.setStatus(EnableStatus.ENABLED);
         try {
             accountMapper.insert(account);
         } catch (DuplicateKeyException e) {
@@ -136,7 +137,7 @@ public class FinAccountService {
         }
     }
 
-    public void changeStatus(Long id, Integer status) {
+    public void changeStatus(Long id, EnableStatus status) {
         get(id);
         accountMapper.update(Wrappers.<FinAccount>lambdaUpdate().set(FinAccount::getStatus, status).eq(FinAccount::getId, id));
     }
@@ -164,7 +165,7 @@ public class FinAccountService {
         if (hasChildren(account.getId())) {
             throw new BizException("fin.error.accountHasSubAccountsGeneratedVouchers", code, account.getName());
         }
-        if (!Integer.valueOf(1).equals(account.getStatus())) {
+        if (account.getStatus() != EnableStatus.ENABLED) {
             throw new BizException("fin.error.accountDisabled", code, account.getName());
         }
         return account;
@@ -185,7 +186,7 @@ public class FinAccountService {
             if (parents.contains(id)) {
                 throw new BizException("fin.error.accountNotLeafAccount", a.getCode(), a.getName());
             }
-            if (!Integer.valueOf(1).equals(a.getStatus())) {
+            if (a.getStatus() != EnableStatus.ENABLED) {
                 throw new BizException("fin.error.accountDisabled2", a.getCode(), a.getName());
             }
         }

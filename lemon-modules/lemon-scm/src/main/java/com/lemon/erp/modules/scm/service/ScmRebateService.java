@@ -2,6 +2,7 @@ package com.lemon.erp.modules.scm.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.util.Decimals;
@@ -199,7 +200,7 @@ public class ScmRebateService {
             throw new BizException("scm.error.rebateTierSalesAmountsCannotDuplicated");
         }
         ScmCustomer customer = customerService.get(req.customerId());
-        if (!Integer.valueOf(1).equals(customer.getStatus())) {
+        if (customer.getStatus() != EnableStatus.ENABLED) {
             throw new BizException("scm.error.customerDisabled", customer.getName());
         }
     }

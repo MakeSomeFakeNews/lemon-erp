@@ -3,6 +3,7 @@ package com.lemon.erp.modules.system.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.PermissionService;
@@ -66,7 +67,7 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
     private final TokenService tokenService;
     private final ObjectProvider<TenantInitializer> initializers;
 
-    public PageResult<SysTenant> page(long current, long size, String name, Integer status) {
+    public PageResult<SysTenant> page(long current, long size, String name, EnableStatus status) {
         requireEnabled();
         Page<SysTenant> page = page(Page.of(current, size), Wrappers.<SysTenant>lambdaQuery()
                 .like(StringUtils.hasText(name), SysTenant::getName, name)
@@ -99,7 +100,7 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
         passwordPolicy.check(tenant.getAdminPassword());
         tenant.setId(null);
         tenant.setAdminUserId(null);
-        if (tenant.getStatus() == null) tenant.setStatus(1);
+        if (tenant.getStatus() == null) tenant.setStatus(EnableStatus.ENABLED);
         save(tenant);
         TenantContext.runAs(tenant.getId(), () -> {
             Map<Long, Long> roleIdMap = new HashMap<>();
@@ -122,7 +123,7 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
             tenant.setPackageId(null);
             tenant.setExpireTime(null);
             tenant.setAccountLimit(null);
-            tenant.setStatus(1);
+            tenant.setStatus(EnableStatus.ENABLED);
         } else {
             checkPackage(tenant.getPackageId());
         }
@@ -132,20 +133,20 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
             syncMenus(tenant.getId(), lookup.packageMenuIds(tenant.getPackageId()));
             tokenService.evictAllLoginUsers();
         }
-        if (Integer.valueOf(0).equals(tenant.getStatus()) && !Integer.valueOf(0).equals(old.getStatus())) {
+        if (tenant.getStatus() == EnableStatus.DISABLED && old.getStatus() != EnableStatus.DISABLED) {
             tokenService.kickTenant(tenant.getId());
         }
     }
 
-    public void changeStatus(Long id, Integer status) {
+    public void changeStatus(Long id, EnableStatus status) {
         requireEnabled();
         SysTenant tenant = getExisting(id);
-        if (tenant.isPlatform() && Integer.valueOf(0).equals(status)) {
+        if (tenant.isPlatform() && status == EnableStatus.DISABLED) {
             throw new BizException("system.error.platformTenantCannotDisabled");
         }
         update(Wrappers.<SysTenant>lambdaUpdate().set(SysTenant::getStatus, status)
                 .set(SysTenant::getUpdateTime, LocalDateTime.now()).eq(SysTenant::getId, id));
-        if (Integer.valueOf(0).equals(status)) {
+        if (status == EnableStatus.DISABLED) {
             tokenService.kickTenant(id);
         }
     }
@@ -158,7 +159,7 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
             throw new BizException("system.error.platformTenantCannotDeleted");
         }
         List<SysTenant> tenants = listByIds(ids);
-        if (tenants.stream().anyMatch(t -> !Integer.valueOf(0).equals(t.getStatus()))) {
+        if (tenants.stream().anyMatch(t -> t.getStatus() != EnableStatus.DISABLED)) {
             throw new BizException("system.error.disableTenantBeforeDeleting");
         }
         removeByIds(ids);
@@ -207,7 +208,7 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
         dept.setParentId(0L);
         dept.setName(tenant.getName());
         dept.setSort(1);
-        dept.setStatus(1);
+        dept.setStatus(EnableStatus.ENABLED);
         deptMapper.insert(dept);
 
         SysRole adminRole = new SysRole();
@@ -215,7 +216,7 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
         adminRole.setCode(PermissionService.ADMIN_ROLE);
         adminRole.setSort(1);
         adminRole.setDataScope(DataScopeType.ALL.code());
-        adminRole.setStatus(1);
+        adminRole.setStatus(EnableStatus.ENABLED);
         adminRole.setRemark("拥有套餐内的全部权限，菜单随套餐自动调整"); // i18n-ignore 新租户的数据
         roleMapper.insert(adminRole);
         if (!menuIds.isEmpty()) {
@@ -229,7 +230,7 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
         admin.setPassword(passwordEncoder.encode(tenant.getAdminPassword()));
         admin.setPwdUpdateTime(LocalDateTime.now());
         admin.setPwdReset(1);
-        admin.setStatus(1);
+        admin.setStatus(EnableStatus.ENABLED);
         admin.setPhone(tenant.getContactPhone());
         userMapper.insert(admin);
         userRoleMapper.insertBatch(admin.getId(), List.of(adminRole.getId()));
@@ -292,7 +293,7 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
         if (pkg == null) {
             throw new BizException("system.error.planDoesNotExist");
         }
-        if (!Integer.valueOf(1).equals(pkg.getStatus())) {
+        if (pkg.getStatus() != EnableStatus.ENABLED) {
             throw new BizException("system.error.planHasDisabled", pkg.getName());
         }
         return pkg;

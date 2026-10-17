@@ -708,7 +708,7 @@ export default {
     perfBonusBase: 'Performance Bonus Base',
     perfBonusBaseExtra: 'Actual = base × performance factor (S 1.5 / A 1.2 / B 1.0 / C 0.8 / D 0)',
     scheme: 'Social Insurance Scheme',
-    schemeExtra: 'Social insurance is calculated using the scheme rates and base limits; if none is selected, default rates apply (employee 10.5%, employer 26% by default, configurable in System → Business Parameters)',
+    schemeExtra: 'Social insurance is calculated using the scheme rates and base limits; if none is selected, default rates apply (currently employee {personal}%, employer {company}%, configurable in System → Business Parameters)',
     socialBase: 'Social Insurance Base',
     socialBaseExtra: 'Defaults to base salary + position allowance',
     housingBase: 'Housing Fund Base',

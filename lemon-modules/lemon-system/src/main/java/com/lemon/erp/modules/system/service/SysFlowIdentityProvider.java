@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.workflow.identity.FlowDept;
 import com.lemon.erp.framework.workflow.identity.FlowIdentityProvider;
@@ -45,7 +46,7 @@ public class SysFlowIdentityProvider implements FlowIdentityProvider {
         Set<Long> enabled = userMapper.selectList(Wrappers.<SysUser>lambdaQuery()
                         .select(SysUser::getId)
                         .in(SysUser::getId, userIds)
-                        .eq(SysUser::getStatus, 1))
+                        .eq(SysUser::getStatus, EnableStatus.ENABLED))
                 .stream().map(SysUser::getId).collect(Collectors.toCollection(HashSet::new));
         return userIds.stream().filter(enabled::contains).distinct().toList();
     }
@@ -88,7 +89,7 @@ public class SysFlowIdentityProvider implements FlowIdentityProvider {
         Page<SysUser> page = userMapper.selectPage(Page.of(current, size), Wrappers.<SysUser>lambdaQuery()
                 .select(SysUser::getId, SysUser::getUsername, SysUser::getNickname, SysUser::getDeptId,
                         SysUser::getAvatar, SysUser::getStatus)
-                .eq(SysUser::getStatus, 1)
+                .eq(SysUser::getStatus, EnableStatus.ENABLED)
                 .and(StringUtils.hasText(keyword), w -> w.like(SysUser::getUsername, keyword)
                         .or().like(SysUser::getNickname, keyword))
                 .orderByAsc(SysUser::getId));

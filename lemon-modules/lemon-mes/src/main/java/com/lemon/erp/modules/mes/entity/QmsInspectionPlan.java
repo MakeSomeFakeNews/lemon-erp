@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.mes.model.InspectionLevel;
 import com.lemon.erp.modules.mes.model.QcType;
 import com.lemon.erp.modules.mes.model.SamplingMode;
@@ -46,7 +47,7 @@ public class QmsInspectionPlan extends BaseEntity {
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private InspectionLevel inspectionLevel;
 
-    private Integer status;
+    private EnableStatus status;
 
     private String remark;
 

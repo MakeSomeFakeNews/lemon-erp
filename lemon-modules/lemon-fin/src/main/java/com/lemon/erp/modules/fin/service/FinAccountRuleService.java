@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.entity.FinAccount;
@@ -122,7 +123,7 @@ public class FinAccountRuleService {
         if (role.scope() && accountId != null) {
             // 科目范围用途可以设置上级科目，只要求启用
             FinAccount account = accountService.get(accountId);
-            if (!Integer.valueOf(1).equals(account.getStatus())) {
+            if (account.getStatus() != EnableStatus.ENABLED) {
                 throw new BizException("fin.error.accountDisabled2", account.getCode(), account.getName());
             }
         } else if (!ids.isEmpty()) {

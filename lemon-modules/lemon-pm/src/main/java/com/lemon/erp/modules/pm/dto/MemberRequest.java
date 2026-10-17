@@ -14,7 +14,7 @@ import java.time.LocalDate;
 /**
  * 项目成员
  *
- * @param costRate 小时成本，不填时按员工薪资档案计算（月度人工成本 / 174 小时）
+ * @param costRate 小时成本，不填时按员工薪资档案计算（月度人工成本 / 月计薪小时，业务参数，默认 21.75 × 8 = 174）
  */
 public record MemberRequest(
         @NotNull(message = "{pm.valid.selectMember}") Long userId,

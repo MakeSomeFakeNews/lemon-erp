@@ -2,6 +2,7 @@ package com.lemon.erp.modules.wms.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.validation.Update;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -83,7 +84,7 @@ public class WmsMaterial extends BaseEntity {
     private String variantText;
 
     /** 1 启用 0 停用 */
-    private Integer status;
+    private EnableStatus status;
 
     @Size(max = 255, message = "{wms.valid.remarkCannotExceedCharacters}")
     private String remark;

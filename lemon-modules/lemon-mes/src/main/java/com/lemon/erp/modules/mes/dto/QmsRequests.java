@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.dto;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.mes.model.CapaSource;
 import com.lemon.erp.modules.mes.model.Disposition;
 import com.lemon.erp.modules.mes.model.InspectionLevel;
@@ -45,7 +46,7 @@ public final class QmsRequests {
             @Min(value = 0, message = "{mes.valid.acceptanceNumberCannotLess}") Integer acceptQty,
             BigDecimal aql,
             InspectionLevel inspectionLevel,
-            Integer status,
+            EnableStatus status,
             @Size(max = 255) String remark,
             @NotEmpty(message = "{mes.valid.addInspectionItems}") @Size(max = 100, message = "{mes.valid.inspectionItemsCannotExceed}") List<@Valid @NotNull PlanItem> items) {
     }

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.mes.dto;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.mes.model.SupplyType;
 import com.lemon.erp.modules.mes.entity.MesMaterialSubstitute;
 import lombok.Data;
@@ -21,7 +22,7 @@ public class MaterialPlanView {
     private Integer batchEnabled;
     private Integer serialEnabled;
     private BigDecimal safetyStock;
-    private Integer status;
+    private EnableStatus status;
     private String remark;
 
     /** 设置的物料属性，为空表示自动 */
@@ -55,7 +56,7 @@ public class MaterialPlanView {
         private Long bomId;
         private String version;
         private Integer isDefault;
-        private Integer bomStatus;
+        private EnableStatus bomStatus;
         private Long productId;
         private String productCode;
         private String productName;

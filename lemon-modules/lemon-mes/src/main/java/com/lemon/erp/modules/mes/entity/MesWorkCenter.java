@@ -2,6 +2,7 @@ package com.lemon.erp.modules.mes.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -49,7 +50,7 @@ public class MesWorkCenter extends BaseEntity {
     private String workDays;
 
     /** 1 启用 0 停用 */
-    private Integer status;
+    private EnableStatus status;
 
     @Size(max = 255, message = "{mes.valid.remarkCannotExceedCharacters}")
     private String remark;

@@ -6,6 +6,8 @@
  *
  * 扫描范围：lemon-common、lemon-framework、lemon-modules 下 src/main/java 中「文件名与枚举同名」的顶层枚举
  * （类内部的私有 / 嵌套枚举不导出）。每个枚举导出一个冻结对象，键和值都是常量名（与 JSON / 数据库中的取值一致）。
+ * 用 @JsonValue 自定义 JSON 取值的枚举（如 EnableStatus 输出数字 1 / 0）不按名字生成，跳过；
+ * 启用 / 停用在前端用 utils/constants.js 中的 STATUS_ENABLED / STATUS_DISABLED。
  * 命名：使用 Java 简单类名；多个模块有同名枚举时全部加模块前缀（如 WmsDocStatus、MesDocStatus），
  * lemon-common / lemon-framework 的前缀为 Common / Framework。输出按导出名排序，保证结果稳定。
  */
@@ -115,6 +117,8 @@ export function collect() {
       const raw = readFileSync(file, 'utf8')
       if (!new RegExp(`\\benum\\s+${simple}\\b`).test(raw)) continue
       const code = stripComments(raw)
+      // JSON 取值不是常量名（@JsonValue），按名字生成会与接口数据不一致
+      if (/@JsonValue\b/.test(code)) continue
       const m = new RegExp(`\\benum\\s+${simple}\\b[^{]*\\{`).exec(code)
       if (!m) continue
       const pkg = /package\s+([\w.]+)\s*;/.exec(code)?.[1]

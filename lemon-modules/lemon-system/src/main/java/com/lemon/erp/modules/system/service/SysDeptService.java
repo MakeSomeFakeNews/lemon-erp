@@ -3,6 +3,7 @@ package com.lemon.erp.modules.system.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.lemon.erp.common.base.TreeEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.util.TreeUtils;
@@ -75,8 +76,8 @@ public class SysDeptService extends ServiceImpl<SysDeptMapper, SysDept> {
             }
         }
         checkParent(dept, parentChanged);
-        if (dept.getStatus() == 0 && exists(Wrappers.<SysDept>lambdaQuery()
-                .eq(SysDept::getParentId, dept.getId()).eq(SysDept::getStatus, 1))) {
+        if (dept.getStatus() == EnableStatus.DISABLED && exists(Wrappers.<SysDept>lambdaQuery()
+                .eq(SysDept::getParentId, dept.getId()).eq(SysDept::getStatus, EnableStatus.ENABLED))) {
             throw new BizException("system.error.departmentHasEnabledSubDepartmentsCannot");
         }
         updateById(dept);
@@ -150,7 +151,7 @@ public class SysDeptService extends ServiceImpl<SysDeptMapper, SysDept> {
         if (checkScope) {
             checkDataScope(parent.getId());
         }
-        if (parent.getStatus() == 0 && dept.getStatus() == 1) {
+        if (parent.getStatus() == EnableStatus.DISABLED && dept.getStatus() == EnableStatus.ENABLED) {
             throw new BizException("system.error.parentDepartmentDisabledSubDepartmentsCannot");
         }
     }
@@ -158,7 +159,7 @@ public class SysDeptService extends ServiceImpl<SysDeptMapper, SysDept> {
     /** 负责人必须是存在且启用的用户 */
     private void checkLeader(Long leaderUserId) {
         if (leaderUserId != null && !userMapper.exists(Wrappers.<SysUser>lambdaQuery()
-                .eq(SysUser::getId, leaderUserId).eq(SysUser::getStatus, 1))) {
+                .eq(SysUser::getId, leaderUserId).eq(SysUser::getStatus, EnableStatus.ENABLED))) {
             throw new BizException("system.error.ownerDoesNotExistDisabled");
         }
     }
@@ -176,6 +177,6 @@ public class SysDeptService extends ServiceImpl<SysDeptMapper, SysDept> {
     private void normalize(SysDept dept) {
         if (dept.getParentId() == null) dept.setParentId(TreeEntity.ROOT_PARENT_ID);
         if (dept.getSort() == null) dept.setSort(0);
-        if (dept.getStatus() == null) dept.setStatus(1);
+        if (dept.getStatus() == null) dept.setStatus(EnableStatus.ENABLED);
     }
 }

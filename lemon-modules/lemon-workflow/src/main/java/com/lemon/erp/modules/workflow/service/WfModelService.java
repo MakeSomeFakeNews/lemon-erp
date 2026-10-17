@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.workflow.service;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.i18n.Messages;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -89,7 +90,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
         checkKeyUnique(model.getModelKey(), null);
         WfModel entity = new WfModel();
         copyBasic(model, entity);
-        entity.setStatus(1);
+        entity.setStatus(EnableStatus.ENABLED);
         save(entity);
         return entity.getId();
     }
@@ -153,7 +154,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
         return definition.getVersion();
     }
 
-    public void changeStatus(Long id, Integer status) {
+    public void changeStatus(Long id, EnableStatus status) {
         getExisting(id);
         WfModel entity = new WfModel();
         entity.setId(id);
@@ -173,7 +174,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
         return list(Wrappers.<WfModel>lambdaQuery()
                 .select(WfModel::getId, WfModel::getModelKey, WfModel::getName, WfModel::getCategory, WfModel::getIcon,
                         WfModel::getRemark)
-                .eq(WfModel::getStatus, 1)
+                .eq(WfModel::getStatus, EnableStatus.ENABLED)
                 .isNotNull(WfModel::getDefinitionId)
                 .orderByAsc(WfModel::getSort).orderByAsc(WfModel::getId))
                 .stream().filter(m -> business(m.getModelKey()) == null).toList();
@@ -206,7 +207,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
         if (model == null || model.getDefinitionId() == null) {
             throw new BizException("workflow.error.processNotFoundNotPublished");
         }
-        if (!Integer.valueOf(1).equals(model.getStatus())) {
+        if (model.getStatus() != EnableStatus.ENABLED) {
             throw new BizException("workflow.error.processDisabled", model.getName());
         }
         return model;
@@ -216,7 +217,7 @@ public class WfModelService extends ServiceImpl<WfModelMapper, WfModel> {
     public boolean isStartable(String modelKey) {
         return baseMapper.exists(Wrappers.<WfModel>lambdaQuery()
                 .eq(WfModel::getModelKey, modelKey)
-                .eq(WfModel::getStatus, 1)
+                .eq(WfModel::getStatus, EnableStatus.ENABLED)
                 .isNotNull(WfModel::getDefinitionId));
     }
 

@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.util.ServletUtils;
@@ -94,7 +95,7 @@ public class AuthService {
             throw left <= 2 ? loginFailed(req.username(), request, "system.error.wrongUsernamePasswordAccountWillLocked", left)
                     : loginFailed(req.username(), request, "system.error.wrongUsernamePassword");
         }
-        if (!Integer.valueOf(1).equals(user.getStatus())) {
+        if (user.getStatus() != EnableStatus.ENABLED) {
             throw loginFailed(req.username(), request, "system.error.accountDisabled");
         }
         passwordPolicy.clearFailures(req.username());
@@ -108,7 +109,7 @@ public class AuthService {
      */
     public LoginResponse loginAs(SysUser user, String viaKey) {
         HttpServletRequest request = ServletUtils.getRequest();
-        if (!Integer.valueOf(1).equals(user.getStatus())) {
+        if (user.getStatus() != EnableStatus.ENABLED) {
             throw loginFailed(user.getUsername(), request, "system.error.accountDisabled");
         }
         if (user.getSupplierId() != null || user.getCustomerId() != null) {
@@ -151,7 +152,7 @@ public class AuthService {
         List<SysMenu> menus = loginUser.isAdmin()
                 ? menuMapper.selectList(Wrappers.<SysMenu>lambdaQuery()
                         .in(SysMenu::getType, MenuType.M, MenuType.C)
-                        .eq(SysMenu::getStatus, 1)
+                        .eq(SysMenu::getStatus, EnableStatus.ENABLED)
                         .orderByAsc(SysMenu::getSort))
                 : menuMapper.selectRouterMenusByUserId(loginUser.userId(), tenantLookup.currentPackageId());
         boolean platform = TenantContext.isPlatform();

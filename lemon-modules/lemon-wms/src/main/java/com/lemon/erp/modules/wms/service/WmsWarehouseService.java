@@ -2,6 +2,7 @@ package com.lemon.erp.modules.wms.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
@@ -39,7 +40,7 @@ public class WmsWarehouseService {
     private final ReferenceGuard referenceGuard;
 
     /** @param keyword 编码或名称，模糊匹配 */
-    public PageResult<WmsWarehouse> page(long current, long size, String keyword, Integer status) {
+    public PageResult<WmsWarehouse> page(long current, long size, String keyword, EnableStatus status) {
         Page<WmsWarehouse> page = warehouseMapper.selectPage(Page.of(current, size), Wrappers.<WmsWarehouse>lambdaQuery()
                 .and(StringUtils.hasText(keyword), w -> w.like(WmsWarehouse::getCode, keyword).or().like(WmsWarehouse::getName, keyword))
                 .eq(status != null, WmsWarehouse::getStatus, status)
@@ -60,7 +61,7 @@ public class WmsWarehouseService {
     public List<OptionItem> options() {
         return warehouseMapper.selectList(Wrappers.<WmsWarehouse>lambdaQuery()
                         .select(WmsWarehouse::getId, WmsWarehouse::getCode, WmsWarehouse::getName, WmsWarehouse::getType)
-                        .eq(WmsWarehouse::getStatus, 1)
+                        .eq(WmsWarehouse::getStatus, EnableStatus.ENABLED)
                         .orderByAsc(WmsWarehouse::getSort)
                         .orderByAsc(WmsWarehouse::getId))
                 .stream().map(w -> new OptionItem(w.getId(), w.getCode(), w.getName(), w.getType() == null ? null : w.getType().name())).toList();
@@ -71,7 +72,7 @@ public class WmsWarehouseService {
         warehouse.setId(null);
         warehouse.setType(normalizeType(warehouse.getType()));
         checkPartner(warehouse);
-        if (warehouse.getStatus() == null) warehouse.setStatus(1);
+        if (warehouse.getStatus() == null) warehouse.setStatus(EnableStatus.ENABLED);
         if (warehouse.getSort() == null) warehouse.setSort(0);
         warehouseMapper.insert(warehouse);
     }
@@ -90,7 +91,7 @@ public class WmsWarehouseService {
                 .eq(WmsWarehouse::getId, id));
     }
 
-    public void changeStatus(Long id, Integer status) {
+    public void changeStatus(Long id, EnableStatus status) {
         get(id);
         WmsWarehouse entity = new WmsWarehouse();
         entity.setId(id);

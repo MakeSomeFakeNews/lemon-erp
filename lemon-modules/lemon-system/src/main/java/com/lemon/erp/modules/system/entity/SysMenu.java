@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.TreeEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.system.model.MenuType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -34,7 +35,5 @@ public class SysMenu extends TreeEntity<SysMenu> {
     private Integer visible;
 
     /** 1 启用 0 停用 */
-    @Min(value = 0, message = "{system.valid.statusMust}")
-    @Max(value = 1, message = "{system.valid.statusMust}")
-    private Integer status;
+    private EnableStatus status;
 }

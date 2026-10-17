@@ -14,7 +14,7 @@ import java.util.function.Function;
 
 /**
  * 人力资源的计算规则（按租户的业务参数，「系统管理 → 业务参数 → 人力资源」修改）：计薪天数、每日工时、默认社保比例、
- * 考勤扣款、加班倍数、个税减除费用与累计预扣率表、试用期。比例类参数按百分数保存（10.5 表示 10.5%）。
+ * 考勤扣款、午休扣除、加班倍数、个税减除费用与累计预扣率表、试用期。比例类参数按百分数保存（10.5 表示 10.5%）。
  * 未修改的参数使用 {@link #DEFAULTS}（即 {@link #DEFAULT}）
  *
  * @param monthPayDays    月计薪天数：日工资 = (基本工资 + 岗位津贴) / 月计薪天数
@@ -29,10 +29,13 @@ import java.util.function.Function;
  * @param taxThreshold    个税基本减除费用（月）
  * @param taxBrackets     累计预扣率表，按上限从小到大，最后一档不限
  * @param probationMonths 默认试用期（月）
+ * @param lunchThreshold  出勤超过该小时数时扣除午休（不含等于）
+ * @param lunchBreak      扣除的午休小时数
  */
 public record HrRules(BigDecimal monthPayDays, BigDecimal dayHours, BigDecimal socialPersonal, BigDecimal socialCompany,
                       BigDecimal lateFine, BigDecimal sickDeduct, BigDecimal overtimeWorkday, BigDecimal overtimeRestday,
-                      BigDecimal overtimeHoliday, BigDecimal taxThreshold, List<TaxBracket> taxBrackets, int probationMonths) {
+                      BigDecimal overtimeHoliday, BigDecimal taxThreshold, List<TaxBracket> taxBrackets, int probationMonths,
+                      BigDecimal lunchThreshold, BigDecimal lunchBreak) {
 
     public static final String MONTH_PAY_DAYS = "hr.pay.monthDays";
     public static final String DAY_HOURS = "hr.pay.dayHours";
@@ -46,6 +49,8 @@ public record HrRules(BigDecimal monthPayDays, BigDecimal dayHours, BigDecimal s
     public static final String TAX_THRESHOLD = "hr.tax.threshold";
     public static final String TAX_TABLE = "hr.tax.table";
     public static final String PROBATION_MONTHS = "hr.employee.probationMonths";
+    public static final String LUNCH_THRESHOLD = "hr.attendance.lunchThresholdHours";
+    public static final String LUNCH_BREAK = "hr.attendance.lunchBreakHours";
 
     /** 默认值（规范写法，业务参数的默认值）：与此前写死的规则一致 */
     public static final Map<String, String> DEFAULTS;
@@ -67,10 +72,15 @@ public record HrRules(BigDecimal monthPayDays, BigDecimal dayHours, BigDecimal s
         // 综合所得个人所得税预扣率表（居民个人工资薪金累计预扣法）：累计预扣预缴应纳税所得额上限、预扣率（%）、速算扣除数
         m.put(TAX_TABLE, "36000,3,0;144000,10,2520;300000,20,16920;420000,25,31920;660000,30,52920;960000,35,85920;,45,181920");
         m.put(PROBATION_MONTHS, "3");
+        // 出勤超过 5 小时扣除 1 小时午休
+        m.put(LUNCH_THRESHOLD, "5");
+        m.put(LUNCH_BREAK, "1");
         DEFAULTS = Collections.unmodifiableMap(m);
     }
 
     public static final HrRules DEFAULT = of(DEFAULTS::get);
+
+    private static final BigDecimal SIXTY = BigDecimal.valueOf(60);
 
     /**
      * 预扣率表的一档
@@ -87,7 +97,7 @@ public record HrRules(BigDecimal monthPayDays, BigDecimal dayHours, BigDecimal s
         return new HrRules(dec(values, MONTH_PAY_DAYS), dec(values, DAY_HOURS), dec(values, SOCIAL_PERSONAL), dec(values, SOCIAL_COMPANY),
                 dec(values, LATE_FINE), dec(values, SICK_DEDUCT), dec(values, OVERTIME_WORKDAY), dec(values, OVERTIME_RESTDAY),
                 dec(values, OVERTIME_HOLIDAY), dec(values, TAX_THRESHOLD), brackets(values.apply(TAX_TABLE)),
-                Integer.parseInt(values.apply(PROBATION_MONTHS)));
+                Integer.parseInt(values.apply(PROBATION_MONTHS)), dec(values, LUNCH_THRESHOLD), dec(values, LUNCH_BREAK));
     }
 
     /** 解析预扣率表：每行 上限,预扣率,速算扣除数，最后一行上限留空 */
@@ -121,6 +131,19 @@ public record HrRules(BigDecimal monthPayDays, BigDecimal dayHours, BigDecimal s
     /** 月计薪小时数 = 月计薪天数 × 每日工时（默认 174） */
     public BigDecimal monthPayHours() {
         return monthPayDays.multiply(dayHours);
+    }
+
+    /**
+     * 出勤时长（小时，两位小数）：打卡间隔超过午休扣除阈值（默认 5 小时）时扣除午休（默认 1 小时），不小于 0
+     *
+     * @param minutes 上下班打卡间隔（分钟）
+     */
+    public BigDecimal workHours(long minutes) {
+        BigDecimal net = BigDecimal.valueOf(minutes);
+        if (net.compareTo(lunchThreshold.multiply(SIXTY)) > 0) {
+            net = net.subtract(lunchBreak.multiply(SIXTY)).max(BigDecimal.ZERO);
+        }
+        return net.divide(SIXTY, 2, RoundingMode.HALF_UP);
     }
 
     /** 累计预扣的个税（本年累计应纳税额）= 累计应纳税所得额 × 预扣率 − 速算扣除数，累计应纳税所得额不大于 0 时为 0 */

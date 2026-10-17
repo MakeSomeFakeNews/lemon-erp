@@ -3,6 +3,7 @@ package com.lemon.erp.modules.mes.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.mes.model.EcnStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -32,7 +33,7 @@ public class MesBom extends BaseEntity {
     private Long ecnId;
 
     /** 1 启用 0 停用 */
-    private Integer status;
+    private EnableStatus status;
 
     private String remark;
 

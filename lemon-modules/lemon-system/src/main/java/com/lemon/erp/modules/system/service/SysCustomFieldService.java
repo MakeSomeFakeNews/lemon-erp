@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.framework.record.RecordType;
@@ -60,7 +61,7 @@ public class SysCustomFieldService {
     public List<SysCustomField> enabled(String bizType) {
         recordAccess.type(bizType);
         return fieldMapper.selectList(Wrappers.<SysCustomField>lambdaQuery()
-                .eq(SysCustomField::getBizType, bizType).eq(SysCustomField::getStatus, 1)
+                .eq(SysCustomField::getBizType, bizType).eq(SysCustomField::getStatus, EnableStatus.ENABLED)
                 .orderByAsc(SysCustomField::getSort).orderByAsc(SysCustomField::getId));
     }
 
@@ -72,7 +73,7 @@ public class SysCustomFieldService {
         f.setLabel(f.getLabel().trim());
         f.setRequired(Integer.valueOf(1).equals(f.getRequired()) ? 1 : 0);
         f.setShowInList(Integer.valueOf(1).equals(f.getShowInList()) ? 1 : 0);
-        f.setStatus(f.getStatus() == null ? 1 : f.getStatus());
+        f.setStatus(f.getStatus() == null ? EnableStatus.ENABLED : f.getStatus());
         f.setSort(f.getSort() == null ? 0 : f.getSort());
         try {
             if (f.getId() == null) {

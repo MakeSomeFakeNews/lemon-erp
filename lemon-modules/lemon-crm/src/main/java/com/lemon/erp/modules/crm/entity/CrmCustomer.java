@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.crm.entity;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.crm.model.CustomerStage;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -73,7 +74,7 @@ public class CrmCustomer extends BaseEntity {
     @TableField(exist = false)
     private Integer paymentDays;
     @TableField(exist = false)
-    private Integer status;
+    private EnableStatus status;
     @TableField(exist = false)
     private String ownerName;
     @TableField(exist = false)

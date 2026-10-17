@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.mes.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.modules.mes.dto.CapacityLoad;
 import com.lemon.erp.modules.mes.entity.MesCalendar;
@@ -168,7 +169,7 @@ public class MesScheduleService {
         }
         List<CapacityLoad> result = new ArrayList<>();
         for (MesWorkCenter wc : capacity.centers()) {
-            if (workCenterId != null && !workCenterId.equals(wc.getId()) || !Integer.valueOf(1).equals(wc.getStatus())) {
+            if (workCenterId != null && !workCenterId.equals(wc.getId()) || wc.getStatus() != EnableStatus.ENABLED) {
                 continue;
             }
             List<CapacityLoad.Day> days = new ArrayList<>();

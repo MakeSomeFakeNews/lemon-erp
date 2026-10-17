@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.hr.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.modules.hr.entity.HrSalary;
 import com.lemon.erp.modules.hr.entity.HrSocialScheme;
@@ -49,7 +50,7 @@ public class HrSocialService {
         }
         scheme.setId(id);
         if (scheme.getStatus() == null) {
-            scheme.setStatus(1);
+            scheme.setStatus(EnableStatus.ENABLED);
         }
         if (id == null) {
             schemeMapper.insert(scheme);

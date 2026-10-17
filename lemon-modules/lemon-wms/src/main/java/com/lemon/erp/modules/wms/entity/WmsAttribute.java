@@ -3,6 +3,7 @@ package com.lemon.erp.modules.wms.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -25,7 +26,7 @@ public class WmsAttribute extends BaseEntity {
     private Integer sort;
 
     /** 1 启用 0 停用 */
-    private Integer status;
+    private EnableStatus status;
 
     @Size(max = 255, message = "{wms.valid.remarkCannotExceedCharacters}")
     private String remark;

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.controller;
 
+import com.lemon.erp.common.dto.StatusRequest;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
@@ -26,7 +27,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 促销活动
@@ -89,8 +89,8 @@ public class ScmPromotionController {
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('scm:promotion:edit')")
     @OperLog(title = "促销活动-启停", type = OperType.UPDATE) // i18n-ignore
-    public R<Void> status(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
-        promotionService.changeStatus(id, body.getOrDefault("status", 0));
+    public R<Void> status(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
+        promotionService.changeStatus(id, req.status());
         return R.ok();
     }
 

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.wms.service;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.wms.entity.WmsLocation;
@@ -41,7 +42,7 @@ class WmsReferenceLoader {
         if (warehouse == null) {
             throw new BizException("wms.error.doesNotExist", Messages.get(label));
         }
-        if (requireEnabled && !Integer.valueOf(1).equals(warehouse.getStatus())) {
+        if (requireEnabled && warehouse.getStatus() != EnableStatus.ENABLED) {
             throw new BizException("wms.error.disabled", Messages.get(label), warehouse.getName());
         }
         return warehouse;
@@ -60,7 +61,7 @@ class WmsReferenceLoader {
             if (material == null) {
                 throw new BizException("wms.error.materialNotFound2", id);
             }
-            if (requireEnabled && !Integer.valueOf(1).equals(material.getStatus())) {
+            if (requireEnabled && material.getStatus() != EnableStatus.ENABLED) {
                 throw new BizException("wms.error.materialDisabled", material.getCode(), material.getName());
             }
         }
@@ -94,7 +95,7 @@ class WmsReferenceLoader {
         if (location == null || !Objects.equals(location.getWarehouseId(), warehouse.getId())) {
             throw new BizException("wms.error.locationDoesNotBelongWarehouse", warehouse.getName());
         }
-        if (requireEnabled && !Integer.valueOf(1).equals(location.getStatus())) {
+        if (requireEnabled && location.getStatus() != EnableStatus.ENABLED) {
             throw new BizException("wms.error.locationDisabled", location.getCode());
         }
     }

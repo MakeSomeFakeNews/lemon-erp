@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -38,7 +39,7 @@ public class SysDictData extends BaseEntity {
     private Integer sort;
 
     /** 1 启用 0 停用 */
-    private Integer status;
+    private EnableStatus status;
 
     /** 内置取值（1 是）：程序依赖该取值，不能删除、不能改键值；只读 */
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)

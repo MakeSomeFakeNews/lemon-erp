@@ -3,6 +3,7 @@ package com.lemon.erp.modules.system.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.LoginUser;
@@ -68,7 +69,7 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
     }
 
     public List<SysRole> listEnabled() {
-        return list(Wrappers.<SysRole>lambdaQuery().eq(SysRole::getStatus, 1).orderByAsc(SysRole::getSort));
+        return list(Wrappers.<SysRole>lambdaQuery().eq(SysRole::getStatus, EnableStatus.ENABLED).orderByAsc(SysRole::getSort));
     }
 
     public SysRole detail(Long id) {
@@ -86,7 +87,7 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
         checkGrantableMenus(role.getMenuIds());
         role.setId(null);
         role.setDataScope(DEFAULT_DATA_SCOPE.code());
-        if (role.getStatus() == null) role.setStatus(1);
+        if (role.getStatus() == null) role.setStatus(EnableStatus.ENABLED);
         if (role.getSort() == null) role.setSort(0);
         save(role);
         saveMenus(role.getId(), role.getMenuIds());
@@ -149,9 +150,9 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
         tokenService.evictAllLoginUsers();
     }
 
-    public void changeStatus(Long id, Integer status) {
+    public void changeStatus(Long id, EnableStatus status) {
         SysRole role = getExisting(id);
-        if (isAdminRole(role) && status == 0) {
+        if (isAdminRole(role) && status == EnableStatus.DISABLED) {
             throw new BizException("system.error.superAdministratorRoleCannotDisabled");
         }
         checkNotAdminRole(role);

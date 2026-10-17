@@ -2,6 +2,7 @@ package com.lemon.erp.modules.mes.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.data.DetailLines;
@@ -146,7 +147,7 @@ public class QmsPlanService {
             plan.setAql(req.aql());
             plan.setInspectionLevel(req.inspectionLevel());
         }
-        plan.setStatus(req.status() == null ? 1 : req.status());
+        plan.setStatus(req.status() == null ? EnableStatus.ENABLED : req.status());
         plan.setRemark(req.remark());
         return plan;
     }

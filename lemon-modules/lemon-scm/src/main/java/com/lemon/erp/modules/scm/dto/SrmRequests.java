@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.dto;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.scm.model.AwardTarget;
 import com.lemon.erp.modules.scm.model.ContractType;
 import jakarta.validation.Valid;
@@ -161,6 +162,6 @@ public final class SrmRequests {
     public record Password(@NotBlank(message = "{scm.valid.enterNewPassword}") @Size(max = 64) String password) {
     }
 
-    public record Status(@NotNull @Min(0) @Max(1) Integer status) {
+    public record Status(@NotNull EnableStatus status) {
     }
 }

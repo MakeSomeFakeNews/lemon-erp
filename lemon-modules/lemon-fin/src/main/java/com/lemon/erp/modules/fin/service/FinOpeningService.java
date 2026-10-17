@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.service;
 
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.modules.fin.model.PeriodStatus;
 import com.lemon.erp.modules.fin.model.CostRunKind;
@@ -78,7 +79,7 @@ public class FinOpeningService {
         Set<Long> parents = all.stream().map(FinAccount::getParentId).collect(Collectors.toSet());
         List<AccountOpeningRow> rows = new ArrayList<>();
         for (FinAccount a : all) {
-            if (parents.contains(a.getId()) || (!Integer.valueOf(1).equals(a.getStatus()) && !saved.containsKey(a.getId()))) {
+            if (parents.contains(a.getId()) || (a.getStatus() != EnableStatus.ENABLED && !saved.containsKey(a.getId()))) {
                 continue;
             }
             FinAccountOpening o = saved.get(a.getId());

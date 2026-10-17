@@ -2,6 +2,7 @@ package com.lemon.erp.modules.mes.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.mes.entity.MesBom;
 import org.apache.ibatis.annotations.Param;
 
@@ -12,7 +13,7 @@ import java.util.Map;
 public interface MesBomMapper extends BaseMapper<MesBom> {
 
     /** @param keyword 产品编码或名称 */
-    IPage<MesBom> selectPageList(IPage<MesBom> page, @Param("keyword") String keyword, @Param("status") Integer status);
+    IPage<MesBom> selectPageList(IPage<MesBom> page, @Param("keyword") String keyword, @Param("status") EnableStatus status);
 
     MesBom selectDetail(@Param("id") Long id);
 

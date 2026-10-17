@@ -2,6 +2,7 @@ package com.lemon.erp.modules.wms.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.modules.wms.dto.OptionItem;
@@ -25,7 +26,7 @@ public class WmsLocationService {
     private final WmsStockMapper stockMapper;
     private final WmsWarehouseService warehouseService;
 
-    public PageResult<WmsLocation> page(long current, long size, Long warehouseId, String keyword, Integer status) {
+    public PageResult<WmsLocation> page(long current, long size, Long warehouseId, String keyword, EnableStatus status) {
         Page<WmsLocation> page = Page.of(current, size);
         locationMapper.selectPageList(page, warehouseId, keyword, status);
         return PageResult.of(page);
@@ -44,7 +45,7 @@ public class WmsLocationService {
         return locationMapper.selectList(Wrappers.<WmsLocation>lambdaQuery()
                         .select(WmsLocation::getId, WmsLocation::getCode, WmsLocation::getName)
                         .eq(WmsLocation::getWarehouseId, warehouseId)
-                        .eq(WmsLocation::getStatus, 1)
+                        .eq(WmsLocation::getStatus, EnableStatus.ENABLED)
                         .orderByAsc(WmsLocation::getSort)
                         .orderByAsc(WmsLocation::getCode))
                 .stream().map(l -> new OptionItem(l.getId(), l.getCode(), l.getName())).toList();
@@ -54,7 +55,7 @@ public class WmsLocationService {
         warehouseService.get(location.getWarehouseId());
         checkCodeUnique(location.getWarehouseId(), location.getCode(), null);
         location.setId(null);
-        if (location.getStatus() == null) location.setStatus(1);
+        if (location.getStatus() == null) location.setStatus(EnableStatus.ENABLED);
         if (location.getSort() == null) location.setSort(0);
         if (location.getLocType() == null) location.setLocType(LocationType.STORAGE);
         locationMapper.insert(location);
@@ -74,7 +75,7 @@ public class WmsLocationService {
         locationMapper.updateById(location);
     }
 
-    public void changeStatus(Long id, Integer status) {
+    public void changeStatus(Long id, EnableStatus status) {
         get(id);
         WmsLocation entity = new WmsLocation();
         entity.setId(id);

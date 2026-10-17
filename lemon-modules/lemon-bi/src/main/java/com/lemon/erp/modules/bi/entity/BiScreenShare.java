@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.enums.EnableStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -44,7 +45,7 @@ public class BiScreenShare extends BaseEntity {
     private LocalDateTime expireTime;
 
     /** 状态 1启用 0停用 */
-    private Integer status;
+    private EnableStatus status;
 
     /** 最近访问时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

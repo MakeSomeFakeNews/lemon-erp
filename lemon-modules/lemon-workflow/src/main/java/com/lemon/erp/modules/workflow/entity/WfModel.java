@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.workflow.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.framework.workflow.FlowBusiness;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -44,7 +45,7 @@ public class WfModel extends BaseEntity {
 
     /** 1 启用（可以发起）0 停用 */
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    private Integer status;
+    private EnableStatus status;
 
     /** 最新发布的版本号，null 表示未发布 */
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)

@@ -708,7 +708,7 @@ export default {
     perfBonusBase: '绩效奖金基数',
     perfBonusBaseExtra: '实发 = 基数 × 绩效系数（S 1.5 / A 1.2 / B 1.0 / C 0.8 / D 0）',
     scheme: '社保方案',
-    schemeExtra: '按方案的缴费比例和基数上下限计算社保；不选按默认比例（默认个人 10.5%、单位 26%，在系统管理 → 业务参数中修改）',
+    schemeExtra: '按方案的缴费比例和基数上下限计算社保；不选按默认比例（当前个人 {personal}%、单位 {company}%，在系统管理 → 业务参数中修改）',
     socialBase: '社保基数',
     socialBaseExtra: '不填按基本工资 + 岗位津贴',
     housingBase: '公积金基数',

@@ -2,6 +2,7 @@ package com.lemon.erp.modules.system.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.util.TreeUtils;
 import com.lemon.erp.modules.system.entity.SysMenu;
@@ -45,7 +46,7 @@ public class SysTenantPackageService extends ServiceImpl<SysTenantPackageMapper,
     public List<SysTenantPackage> listEnabled() {
         return list(Wrappers.<SysTenantPackage>lambdaQuery()
                 .select(SysTenantPackage::getId, SysTenantPackage::getName)
-                .eq(SysTenantPackage::getStatus, 1)
+                .eq(SysTenantPackage::getStatus, EnableStatus.ENABLED)
                 .orderByAsc(SysTenantPackage::getId));
     }
 
@@ -65,7 +66,7 @@ public class SysTenantPackageService extends ServiceImpl<SysTenantPackageMapper,
         checkNameUnique(pkg);
         List<Long> menuIds = checkMenus(pkg.getMenuIds());
         pkg.setId(null);
-        if (pkg.getStatus() == null) pkg.setStatus(1);
+        if (pkg.getStatus() == null) pkg.setStatus(EnableStatus.ENABLED);
         save(pkg);
         saveMenus(pkg.getId(), menuIds);
     }
