@@ -25,6 +25,7 @@ import java.util.Set;
 /**
  * 站内消息：业务模块通过 {@link MessageSender} 发送，用户在顶栏铃铛和「我的消息」中查看；
  * 写入后发布 {@link MessageSentEvent}，事务提交后同步推送到已接入的钉钉、企业微信、飞书（{@code SysImPushService}）
+ * 和微信小程序订阅消息（{@code SysMiniappPushService}）
  */
 @Service
 @RequiredArgsConstructor

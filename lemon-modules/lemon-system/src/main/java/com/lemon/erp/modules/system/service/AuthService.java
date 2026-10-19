@@ -67,6 +67,13 @@ public class AuthService {
     }
 
     public LoginResponse login(LoginRequest req) {
+        return issue(authenticate(req), ServletUtils.getRequest(), "登录成功"); // i18n-ignore 登录日志
+    }
+
+    /**
+     * 校验租户、验证码和账号密码（失败计数、锁定、记录登录日志），返回用户但不签发令牌；之后的租户上下文为登录的租户
+     */
+    public SysUser authenticate(LoginRequest req) {
         HttpServletRequest request = ServletUtils.getRequest();
         // 先确定租户，之后的查询（用户、登录日志）都在该租户下
         TenantContext.set(TenantContext.PLATFORM_TENANT_ID);
@@ -99,7 +106,7 @@ public class AuthService {
             throw loginFailed(req.username(), request, "system.error.accountDisabled");
         }
         passwordPolicy.clearFailures(req.username());
-        return issue(user, request, "登录成功"); // i18n-ignore 登录日志
+        return user;
     }
 
     /**

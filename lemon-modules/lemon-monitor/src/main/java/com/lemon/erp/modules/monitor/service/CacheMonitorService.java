@@ -8,12 +8,14 @@ import com.lemon.erp.modules.monitor.dto.CacheInfo;
 import com.lemon.erp.modules.monitor.dto.CacheName;
 import com.lemon.erp.modules.monitor.dto.CacheValue;
 import com.lemon.erp.modules.system.im.ImHttp;
+import com.lemon.erp.modules.system.miniapp.WeChatMiniClient;
 import com.lemon.erp.modules.system.service.CaptchaService;
 import com.lemon.erp.modules.system.service.PasswordPolicy;
 import com.lemon.erp.modules.system.service.SysBizRuleService;
 import com.lemon.erp.modules.system.service.SysConfigService;
 import com.lemon.erp.modules.system.service.SysDictService;
 import com.lemon.erp.modules.system.service.SysImAuthService;
+import com.lemon.erp.modules.system.service.SysMiniappAuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,7 +49,9 @@ public class CacheMonitorService {
             new CacheName(SysConfigService.CACHE_KEY, "monitor.label.systemSettings", "monitor.label.settingsChangedSettingsClearedAutomaticallySave", 0),
             new CacheName(SysBizRuleService.CACHE_KEY, "monitor.label.businessRules", "monitor.label.changedBusinessRulesCachedPerTenant", 0),
             new CacheName(ImHttp.TOKEN_KEY, "monitor.label.integrationTokens", "monitor.label.accessTokenDingtalkWecomFeishuApps", 0),
-            new CacheName(SysImAuthService.STATE_KEY, "monitor.label.thirdPartyAuthorization", "monitor.label.stateDingtalkWecomFeishuLoginBinding", 0));
+            new CacheName(SysImAuthService.STATE_KEY, "monitor.label.thirdPartyAuthorization", "monitor.label.stateDingtalkWecomFeishuLoginBinding", 0),
+            new CacheName(WeChatMiniClient.TOKEN_KEY, "monitor.label.miniappToken", "monitor.label.miniappTokenDesc", 0),
+            new CacheName(SysMiniappAuthService.SESSION_KEY, "monitor.label.miniappSession", "monitor.label.miniappSessionDesc", 0));
     /** 单次最多返回的 key 数量，避免一次性返回过多 */
     private static final int MAX_KEYS = 1000;
 

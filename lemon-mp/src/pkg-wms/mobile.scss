@@ -1,0 +1,111 @@
+/* 扫码作业页面的公共样式 */
+.m-card {
+  margin: 20rpx 24rpx;
+  padding: 24rpx 28rpx;
+  background: #fff;
+  border-radius: $l-radius;
+  border: 4rpx solid transparent;
+  &--active {
+    border-color: $l-primary;
+  }
+}
+.m-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
+}
+.m-title {
+  flex: 1;
+  font-size: 30rpx;
+  font-weight: 600;
+  word-break: break-all;
+}
+.m-sub {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: $l-text-3;
+}
+.m-link {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  color: $l-primary;
+}
+.m-tip {
+  margin: -8rpx 24rpx 8rpx;
+  font-size: 26rpx;
+  color: $l-success;
+  &--fail {
+    color: $l-danger;
+  }
+}
+.m-current {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin: 0 24rpx 8rpx;
+  font-size: 26rpx;
+  color: $l-text-2;
+}
+.m-input {
+  display: flex;
+  align-items: center;
+  margin-top: 16rpx;
+  padding: 0 20rpx;
+  height: 72rpx;
+  border: 1rpx solid #d9d9d9;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  &__label {
+    flex-shrink: 0;
+    margin-right: 16rpx;
+    color: $l-text-3;
+  }
+  input,
+  .m-input__value {
+    flex: 1;
+    font-size: 28rpx;
+  }
+  &--disabled {
+    background: #fafafa;
+  }
+}
+.m-serials {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: $l-text-3;
+}
+.m-serial {
+  padding: 4rpx 16rpx;
+  border-radius: 8rpx;
+  background: #f5f5f5;
+  color: $l-text;
+  font-size: 24rpx;
+  &::after {
+    content: ' ×';
+    color: $l-text-3;
+  }
+}
+.m-footer-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 26rpx;
+  color: $l-text-2;
+  .m-strong {
+    margin: 0 8rpx;
+    font-size: 32rpx;
+    color: $l-text;
+  }
+}
+.qty-done {
+  color: $l-success;
+  font-weight: 600;
+}
+.qty-short {
+  color: #fa8c16;
+}

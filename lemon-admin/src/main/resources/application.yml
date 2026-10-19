@@ -74,6 +74,16 @@ lemon:
   user:
     # 录用时开通的登录账号的初始密码
     initial-password: Lemon@123
+  # 微信小程序（lemon-mp）：所有租户共用一个小程序，AppID / AppSecret 在这里配置；为空时小程序不能用微信登录
+  miniapp:
+    app-id: ${LEMON_MINIAPP_APP_ID:}
+    app-secret: ${LEMON_MINIAPP_APP_SECRET:}
+    # 审批提醒推送为订阅消息：在公众平台「订阅消息」中选用模板（如「待办审批提醒」），填写模板 ID 和标题、内容、时间对应的字段名
+    subscribe:
+      template-id: ${LEMON_MINIAPP_SUBSCRIBE_TEMPLATE_ID:}
+      # title-field: thing1
+      # content-field: thing2
+      # time-field: time3
   # 钉钉、企业微信、飞书开放平台的接口地址（默认为官方地址，一般不用配置）；应用在「系统管理 - 第三方集成」中按租户配置
   # im:
   #   feishu:

@@ -21,6 +21,8 @@ public class DemoProperties {
      * 以及用 POST 传参但不修改数据的查询（多维分析、促销预览、上架建议、单据打印）
      */
     private List<String> allowedPaths = new ArrayList<>(List.of(
-            "/auth/login", "/auth/logout", "/auth/im/callback", "/system/message/read",
-            "/bi/olap/pivot", "/scm/promotion/preview", "/wms/location/putaway", "/system/print/pdf", "/system/print/jrxml"));
+            "/auth/login", "/auth/logout", "/auth/im/callback",
+            "/auth/miniapp/login", "/auth/miniapp/choose", "/auth/miniapp/bind", "/system/message/read",
+            "/bi/olap/pivot", "/scm/promotion/preview", "/wms/location/putaway", "/system/print/pdf", "/system/print/jrxml",
+            "/system/attachment/batch"));
 }

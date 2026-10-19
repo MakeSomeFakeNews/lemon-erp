@@ -507,6 +507,7 @@
 | 前端框架 | Vue 3.5、Vite 7、Pinia 3、Vue Router 4 |
 | UI 组件 | Ant Design Vue 4.2 |
 | 图表 | ECharts 5 |
+| 小程序 | uni-app（Vue 3），微信小程序 |
 
 ## 环境要求
 
@@ -613,6 +614,7 @@ lemon-erp
 │   └── lemon-mes       生产制造 + 质量管理
 ├── lemon-admin         启动模块：组装全部业务模块，打包为可执行 jar
 ├── lemon-web           前端（Vite + Vue 3 + Ant Design Vue）
+├── lemon-mp            微信小程序（uni-app + Vue 3）：审批、员工自助、销售外勤、扫码作业
 ├── sql/init.sql        建表与初始数据
 ├── docker              Dockerfile、docker-compose 一键部署与镜像构建脚本
 └── docs                开发文档与截图

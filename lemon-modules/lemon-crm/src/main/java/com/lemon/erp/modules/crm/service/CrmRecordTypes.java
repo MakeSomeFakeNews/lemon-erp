@@ -8,6 +8,7 @@ import com.lemon.erp.framework.security.datascope.DataPermissionContext;
 import com.lemon.erp.framework.security.datascope.DataPermissionRule;
 import com.lemon.erp.modules.crm.entity.CrmCustomer;
 import com.lemon.erp.modules.crm.mapper.CrmCustomerMapper;
+import com.lemon.erp.modules.crm.mapper.CrmFollowupMapper;
 import com.lemon.erp.modules.crm.mapper.CrmOpportunityMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * 客户关系可挂附件、记录变更历史的记录：客户、商机（方案、报价单）
+ * 客户关系可挂附件、记录变更历史的记录：客户、商机（方案、报价单）、跟进记录（现场照片）
  */
 @Component
 @RequiredArgsConstructor
@@ -25,6 +26,7 @@ public class CrmRecordTypes implements RecordTypeProvider {
 
     private final CrmCustomerMapper customerMapper;
     private final CrmOpportunityMapper opportunityMapper;
+    private final CrmFollowupMapper followupMapper;
 
     /** 业务 ID 为客户主数据 ID：公海客户（没有负责人）所有人可见，有负责人的按数据权限过滤 */
     private Object customer(long customerId) {
@@ -47,6 +49,9 @@ public class CrmRecordTypes implements RecordTypeProvider {
                 // 业务 ID 为客户主数据 ID（scm_customer），按客户经营信息的负责人、部门过滤
                 new RecordType("crm_customer", "crm.label.customer", "crm:customer:list", "crm:customer:edit", null, this::customer),
                 new RecordType("crm_opp", "crm.label.opportunity2", "crm:opp:list", "crm:opp:edit",
-                        new DataPermissionRule("crm_opportunity", "dept_id", "owner_id"), opportunityMapper::selectById));
+                        new DataPermissionRule("crm_opportunity", "dept_id", "owner_id"), opportunityMapper::selectById),
+                // 查看权限与跟进记录列表一致；上传照片要有写跟进的权限，按跟进人、部门过滤
+                new RecordType("crm_followup", "crm.label.followUp", "crm:followup:list, crm:customer:list, crm:lead:list, crm:opp:list",
+                        "crm:followup:add", new DataPermissionRule("crm_followup", "dept_id", "create_by"), followupMapper::selectById));
     }
 }

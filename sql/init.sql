@@ -227,6 +227,7 @@ DROP TABLE IF EXISTS sys_biz_rule;
 DROP TABLE IF EXISTS sys_im_config;
 DROP TABLE IF EXISTS sys_im_user;
 DROP TABLE IF EXISTS sys_im_dept;
+DROP TABLE IF EXISTS sys_miniapp_user;
 DROP TABLE IF EXISTS sys_custom_value;
 DROP TABLE IF EXISTS sys_custom_field;
 DROP TABLE IF EXISTS sys_print_template;
@@ -371,6 +372,18 @@ CREATE TABLE sys_im_dept (
     PRIMARY KEY (id),
     UNIQUE KEY uk_im_dept (platform, im_dept_id, tenant_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '同步通讯录时系统部门与平台部门的对应关系';
+
+CREATE TABLE sys_miniapp_user (
+    id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID',
+    user_id     BIGINT       NOT NULL COMMENT '系统用户',
+    openid      VARCHAR(64)  NOT NULL COMMENT '微信小程序 openid',
+    create_time DATETIME              DEFAULT NULL COMMENT '绑定时间',
+    update_time DATETIME              DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_miniapp_user_openid (openid, tenant_id),
+    UNIQUE KEY uk_miniapp_user_user (user_id, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '系统用户与微信小程序的绑定（登录时按 openid 跨租户查询）';
 
 CREATE TABLE sys_custom_field (
     id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
