@@ -4,3 +4,4 @@ unpackage/
 .env
 .env.local
 .env.*.local
+.vite/
