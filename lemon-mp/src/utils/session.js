@@ -1,5 +1,5 @@
 import { getToken, setToken } from './auth'
-import { loadUser, userState } from '@/store/user'
+import { ensureUser, loadUser, userState } from '@/store/user'
 
 /** 登录成功：保存令牌、加载用户；密码需要修改时进入修改密码页，否则回到工作台 */
 export async function afterLogin(res) {
@@ -15,12 +15,6 @@ export async function ensureLogin() {
     uni.reLaunch({ url: '/pages/login/index' })
     return false
   }
-  if (!userState.loaded) {
-    try {
-      await loadUser()
-    } catch {
-      return false
-    }
-  }
-  return true
+  await ensureUser()
+  return userState.loaded
 }

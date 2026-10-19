@@ -78,6 +78,7 @@ export default {
     scrapped: '设备已报废'
   },
   inspection: {
+    draftOnly: '只看待确认',
     searchPh: '检验单号、来源单号、物料',
     add: '新增检验',
     addTitle: '新增检验',

@@ -55,13 +55,13 @@ import { usePaged } from '@/composables/usePaged'
 import { useTitle } from '@/composables/useTitle'
 import FollowupPhotos from '../components/FollowupPhotos.vue'
 import { dictColor, dictText, useDict } from '@/store/dict'
-import { hasPerm } from '@/store/user'
+import { ensureUser, hasPerm } from '@/store/user'
 import { shortTime } from '@/utils/format'
 
 const { t } = useI18n()
 useTitle('crm.followup.title')
 const dict = useDict('crm_follow_method')
-const canAdd = hasPerm('crm:followup:add')
+const canAdd = computed(() => hasPerm('crm:followup:add'))
 // 今日待跟进按客户查询，需要客户列表权限
 const tabs = computed(() =>
   [hasPerm('crm:customer:list') && { label: t('crm.followup.today'), value: 'today' }, { label: t('crm.followup.mine'), value: 'mine' }].filter(Boolean)
@@ -72,7 +72,11 @@ const mine = usePaged((p) => pageFollowups({ ...p, mine: true }))
 const current = computed(() => (tab.value === 'today' ? today : mine))
 let shown = false
 
-onLoad(() => current.value.refresh())
+onLoad(async () => {
+  await ensureUser()
+  tab.value = tabs.value[0].value
+  current.value.refresh()
+})
 // 写完跟进返回时刷新
 onShow(() => {
   if (shown) current.value.refresh()

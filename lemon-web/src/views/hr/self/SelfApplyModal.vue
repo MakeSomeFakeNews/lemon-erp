@@ -36,7 +36,7 @@
 import { computed, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { applyLeave } from '@/api/hr'
+import { applyLeave, leaveRules } from '@/api/hr'
 import { useDict } from '@/composables/useDict'
 import { toOptions } from '@/utils/dict'
 import { t } from '@/locales'
@@ -57,7 +57,13 @@ const applyForm = reactive({ kind: LeaveKind.LEAVE, type: undefined, range: unde
 const leaveTypeOptions = computed(() => toOptions(dict.hr_leave_type).map((o) => ({
   ...o, label: o.value === 'ANNUAL' && props.profile ? t('hr.self.annualOption', { label: o.label, n: props.annualLeft }) : o.label
 })))
-const hoursHint = computed(() => (applyForm.kind === LeaveKind.LEAVE ? t('hr.self.leaveHint') : t('hr.self.overtimeHint')))
+/** 请假估算规则：默认值与后端业务参数的默认值一致，打开时按当前租户的业务参数更新 */
+const rules = reactive({ dayHours: 8, lunchThreshold: 5, lunchBreak: 1 })
+const hoursHint = computed(() =>
+  applyForm.kind === LeaveKind.LEAVE
+    ? t('hr.self.leaveHint', { day: rules.dayHours, half: rules.dayHours / 2, threshold: rules.lunchThreshold, lunch: rules.lunchBreak })
+    : t('hr.self.overtimeHint')
+)
 function open(kind) {
   const start = dayjs().add(1, 'day').hour(kind === LeaveKind.LEAVE ? 9 : 18).minute(kind === LeaveKind.LEAVE ? 0 : 30).second(0)
   const end = kind === LeaveKind.LEAVE ? start.hour(18) : start.add(2, 'hour')
@@ -65,8 +71,17 @@ function open(kind) {
     range: [start.format('YYYY-MM-DD HH:mm:ss'), end.format('YYYY-MM-DD HH:mm:ss')], hours: undefined, reason: '' })
   suggestHours()
   visible.value = true
+  leaveRules()
+    .then((r) => {
+      Object.assign(rules, { dayHours: Number(r.dayHours), lunchThreshold: Number(r.lunchThreshold), lunchBreak: Number(r.lunchBreak) })
+      suggestHours()
+    })
+    .catch(() => {})
 }
-/** 请假：按日期内的工作日（周一至周五）× 8 小时估算；加班：按起止时间差 */
+/**
+ * 请假：同一天按时间差估算（超过午休扣除阈值时扣午休，最多一天的工时），跨天按日期内的工作日（周一至周五）× 每日工时；
+ * 加班：按起止时间差。每日工时、午休扣除取租户的业务参数（与考勤计算一致）
+ */
 function suggestHours() {
   const [s, e] = applyForm.range || []
   if (!s || !e) return
@@ -78,15 +93,16 @@ function suggestHours() {
     return
   }
   if (start.isSame(end, 'day')) {
-    const minutes = end.diff(start, 'minute') - (start.hour() < 13 && end.hour() >= 13 ? 60 : 0)
-    applyForm.hours = Math.min(8, Math.max(0.5, Math.round((minutes / 60) * 2) / 2))
+    const span = end.diff(start, 'minute') / 60
+    const hours = span > rules.lunchThreshold ? span - rules.lunchBreak : span
+    applyForm.hours = Math.min(rules.dayHours, Math.max(0.5, Math.round(hours * 2) / 2))
     return
   }
   let days = 0
   for (let d = start.startOf('day'); !d.isAfter(end, 'day'); d = d.add(1, 'day')) {
     if (d.day() !== 0 && d.day() !== 6) days++
   }
-  applyForm.hours = days * 8
+  applyForm.hours = days * rules.dayHours
 }
 async function apply() {
   await applyRef.value.validate()

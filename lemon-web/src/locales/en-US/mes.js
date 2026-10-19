@@ -317,6 +317,7 @@ export default {
     inspectSampleDefect: 'Lot {inspect} · Sample {sample} · Defects {defect}',
     defectN: 'Defects {n}',
     draft: 'Draft',
+    confirmed: 'Confirmed',
     confirmDelete: 'Delete this inspection?',
     receiptNo: 'Purchase Receipt No.',
     woNo: 'Work Order No.',

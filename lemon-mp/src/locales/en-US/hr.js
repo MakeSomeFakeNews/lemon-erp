@@ -81,7 +81,7 @@ export default {
     durationPh: 'Multiple of 0.5',
     reason: 'Reason',
     reasonPh: 'Optional, up to 255 characters',
-    leaveHint: 'Calculated as 8 hours per working day and can be changed; enter 4 hours for half a day',
+    leaveHint: 'Calculated as {day} hours per working day ({lunch} h lunch break deducted when over {threshold} h in a day) and can be changed; enter {half} hours for half a day',
     overtimeHint: 'Overtime pay is 1.5x on workdays, 2x on rest days and 3x on public holidays by default',
     compLeft: 'Comp time balance: {n} h',
     endBeforeStart: 'The end time must be later than the start time',

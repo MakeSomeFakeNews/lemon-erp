@@ -25,7 +25,7 @@ npm run dev:h5             # 浏览器调试（没有微信登录，直接用账
 npm run i18n:check         # 多语言检查
 ```
 
-- 接口地址：复制 `.env.example` 为 `.env`，设置 `VITE_API_BASE`（含 `/api`）。正式版必须是在微信公众平台「开发管理 - 服务器域名」中配置的 HTTPS 域名；开发时可在开发者工具中勾选「不校验合法域名」。H5 调试时设为 `/api`，开发服务器代理到 `VITE_PROXY_TARGET`（默认 `http://localhost:8080`）。
+- 接口地址：复制 `.env.example` 为 `.env`，设置 `VITE_API_BASE`（含 `/api`）。正式版必须是在微信公众平台「开发管理 - 服务器域名」中配置的 HTTPS 域名；开发时可在开发者工具中勾选「不校验合法域名」。H5 调试时设为 `/api`，开发服务器代理到 `VITE_PROXY_TARGET`（默认 `http://localhost:8080`，写在 `.env` 或命令行中都可以，命令行优先）。
 - AppID：填写 `src/manifest.json` 的 `mp-weixin.appid`；后端设置同一个小程序的 `LEMON_MINIAPP_APP_ID` / `LEMON_MINIAPP_APP_SECRET`（`lemon.miniapp.*`）。
 
 ## 登录
@@ -42,7 +42,7 @@ npm run i18n:check         # 多语言检查
 
 ## 约定
 
-- 目录：`pages` 是主包（底部导航四个页面、登录、修改密码），功能区放在分包 `pkg-approval`、`pkg-hr`、`pkg-pm`、`pkg-crm`、`pkg-wms`、`pkg-mes`，每个分包有自己的 `api/<区>.js`、`locales/<语言>/<区>.js`、`config/entries/<区>.js`。
+- 目录：`pages` 是主包（底部导航四个页面、登录、修改密码），功能区的页面放在分包 `pkg-approval`、`pkg-hr`、`pkg-pm`、`pkg-crm`、`pkg-wms`、`pkg-mes`（分包内可以有只给本区用的组件和工具函数，如 `pkg-crm/photos.js`）；接口、语言包、工作台入口按功能区分文件，但统一放在 `src` 下：`src/api/<区>.js`、`src/locales/<语言>/<区>.js`、`src/config/entries/<区>.js`。
 - 新功能入口在 `src/config/entries/<区>.js` 登记：`perm`（任一权限，空为登录即可）、`permAll`（还必须同时具备的权限）、`links`（对应的 Web 端路由前缀）。
 - 通用组件 `components/l-*`（easycom 自动引入）：`l-card`、`l-cell`、`l-field`、`l-tag`、`l-empty`、`l-load-more`、`l-segmented`、`l-scan-input`；组合函数 `usePaged`（下拉刷新 + 触底加载）、`runAction`（确认 → 调接口 → 提示 → 回调）、`useTitle`（按语言设置标题）、`scanCode` / `vibrate`。
 - 多语言：小程序不能运行 vue-i18n 的消息编译，用 `src/locales/index.js` 中的最小实现（`t('a.b', { n })`）；代码中不写中文；字典英文译文、后端枚举常量与 Web 端共用（`@web/locales/en-US/dict.js`、`@web/constants/enums`）。`pages.json` 只能写中文，页面标题和底部导航运行时按语言设置。

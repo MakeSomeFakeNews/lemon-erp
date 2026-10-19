@@ -8,6 +8,7 @@ import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.hr.dto.AttendanceSummary;
 import com.lemon.erp.modules.hr.dto.CalendarDay;
 import com.lemon.erp.modules.hr.dto.LeaveRequest;
+import com.lemon.erp.modules.hr.dto.LeaveRules;
 import com.lemon.erp.modules.hr.dto.PerfScoreRequest;
 import com.lemon.erp.modules.hr.dto.SelfProfile;
 import com.lemon.erp.modules.hr.entity.HrAttendance;
@@ -20,6 +21,7 @@ import com.lemon.erp.modules.hr.service.HrEmployeeService;
 import com.lemon.erp.modules.hr.service.HrLeaveService;
 import com.lemon.erp.modules.hr.service.HrPayrollService;
 import com.lemon.erp.modules.hr.service.HrPerfService;
+import com.lemon.erp.modules.hr.service.HrRuleService;
 import com.lemon.erp.modules.hr.service.HrSelfService;
 import com.lemon.erp.modules.hr.service.HrTrainingService;
 import jakarta.validation.Valid;
@@ -49,6 +51,7 @@ public class HrSelfController {
     private final HrPayrollService payrollService;
     private final HrTrainingService trainingService;
     private final HrPerfService perfService;
+    private final HrRuleService ruleService;
 
     @GetMapping("/profile")
     public R<SelfProfile> profile() {
@@ -70,6 +73,12 @@ public class HrSelfController {
     @GetMapping("/summary")
     public R<AttendanceSummary> summary(@RequestParam int period) {
         return R.ok(selfService.summary(period));
+    }
+
+    /** 申请请假时估算时长用的规则（每日工时、午休扣除），按当前租户的业务参数 */
+    @GetMapping("/leave-rules")
+    public R<LeaveRules> leaveRules() {
+        return R.ok(LeaveRules.of(ruleService.current()));
     }
 
     @GetMapping("/leave")

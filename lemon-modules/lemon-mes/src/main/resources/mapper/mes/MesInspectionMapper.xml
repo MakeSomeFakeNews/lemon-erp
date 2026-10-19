@@ -15,6 +15,7 @@
         <where>
             <if test="q.type != null">i.type = #{q.type}</if>
             <if test="q.result != null">AND i.result = #{q.result}</if>
+            <if test="q.status != null">AND i.status = #{q.status}</if>
             <if test="q.supplierId != null">AND i.supplier_id = #{q.supplierId}</if>
             <if test="q.keyword != null and q.keyword != ''">
                 AND (i.insp_no LIKE CONCAT('%', #{q.keyword}, '%') OR i.source_no LIKE CONCAT('%', #{q.keyword}, '%')

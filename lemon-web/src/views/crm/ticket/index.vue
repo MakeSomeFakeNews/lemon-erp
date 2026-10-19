@@ -162,6 +162,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
@@ -200,6 +201,7 @@ const columns = [
 const { checked, visibleColumns } = useColumns(columns, 'crm-ticket')
 const showSearch = ref(true)
 
+const route = useRoute()
 const emptyQuery = () => ({ keyword: undefined, type: undefined, priority: undefined, status: undefined, mine: false, overdue: false })
 const query = reactive(emptyQuery())
 const { list, loading, size, pagination, load, search, onTableChange, exportAll } = useTable(pageTicket, query, {
@@ -210,7 +212,11 @@ function resetQuery() {
   Object.assign(query, emptyQuery())
   search()
 }
-onMounted(load)
+onMounted(() => {
+  // 首页待办「我负责的服务工单」链接带 mine=1
+  if (route.query.mine === '1') query.mine = true
+  load()
+})
 
 // ---------------------------------------------------------------- 受理 / 编辑
 

@@ -10,6 +10,8 @@ export const selfClock = () => post('/hr/self/clock')
 export const selfCalendar = (period) => get('/hr/self/calendar', { period })
 export const selfSummary = (period) => get('/hr/self/summary', { period })
 /** 我的请假 / 加班申请 */
+/** 请假估算规则 { dayHours, lunchThreshold, lunchBreak }（当前租户的业务参数） */
+export const leaveRules = () => get('/hr/self/leave-rules', null, { silent: true })
 export const selfLeaves = () => get('/hr/self/leave')
 /** { kind, type, startTime, endTime, hours, reason }，时间格式 yyyy-MM-dd HH:mm:ss */
 export const applyLeave = (data) => post('/hr/self/leave', data)

@@ -90,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useI18n } from '@/locales'
 import { FollowupTarget } from '@web/constants/enums'
@@ -98,7 +98,7 @@ import { customerSummary, getCustomer, listContacts, pageFollowups, pageOpportun
 import { useTitle } from '@/composables/useTitle'
 import FollowupPhotos from '../components/FollowupPhotos.vue'
 import { dictColor, dictText, useDict } from '@/store/dict'
-import { hasPerm } from '@/store/user'
+import { ensureUser, hasPerm } from '@/store/user'
 import { money, shortMoney, shortTime } from '@/utils/format'
 
 const { t } = useI18n()
@@ -110,8 +110,8 @@ const summary = ref(null)
 const contacts = ref([])
 const followups = ref([])
 const opportunities = ref([])
-const canFollow = hasPerm('crm:followup:add')
-const canOrders = hasPerm('scm:sales:list')
+const canFollow = computed(() => hasPerm('crm:followup:add'))
+const canOrders = computed(() => hasPerm('scm:sales:list'))
 let loaded = false
 
 onLoad((q) => {
@@ -124,6 +124,7 @@ onShow(() => {
 })
 
 async function load() {
+  await ensureUser()
   const id = customerId.value
   if (!loaded) uni.showLoading({ mask: true })
   try {

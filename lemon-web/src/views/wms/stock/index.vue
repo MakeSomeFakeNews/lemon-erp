@@ -101,6 +101,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { BarcodeOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
@@ -142,6 +143,7 @@ const SUMMARY_COLUMNS = [
   { title: t('wms.stock.frozen'), key: 'frozenQty', width: 100, align: 'right' }
 ]
 
+const route = useRoute()
 const mode = ref('detail')
 const detailCols = useColumns(DETAIL_COLUMNS, 'wms-stock')
 const summaryCols = useColumns(SUMMARY_COLUMNS, 'wms-stock-summary')
@@ -183,7 +185,14 @@ function switchMode() {
   search()
 }
 
-onMounted(load)
+onMounted(() => {
+  // 首页待办「库存低于安全库存」链接带 lowStock=1：按物料汇总并只看低于安全库存的
+  if (route.query.lowStock === '1') {
+    mode.value = 'summary'
+    query.lowStock = true
+  }
+  load()
+})
 
 const isLow = (r) => mode.value === 'summary' && r.safetyStock != null && Number(r.qty) < Number(r.safetyStock)
 

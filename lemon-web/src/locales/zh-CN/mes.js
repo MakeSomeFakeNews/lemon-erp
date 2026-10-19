@@ -317,6 +317,7 @@ export default {
     inspectSampleDefect: '送检 {inspect} · 抽检 {sample} · 不良 {defect}',
     defectN: '不良 {n}',
     draft: '草稿',
+    confirmed: '已确认',
     confirmDelete: '确定删除该检验单？',
     receiptNo: '采购入库单号',
     woNo: '生产工单号',

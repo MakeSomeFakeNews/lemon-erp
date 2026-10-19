@@ -83,7 +83,8 @@ const available = (s) => availableQty(s)
 const isLow = (s) => Number(s.safetyStock) > 0 && Number(s.qty) < Number(s.safetyStock)
 
 onLoad((q) => {
-  lowStock.value = q?.low === '1'
+  // 首页待办「库存低于安全库存」带 lowStock=1（与 Web 端参数相同）
+  lowStock.value = q?.lowStock === '1'
   paged.refresh()
 })
 onPullDownRefresh(() => reload())

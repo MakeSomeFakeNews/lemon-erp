@@ -40,7 +40,7 @@ import { shortTime } from '@/utils/format'
 const { t } = useI18n()
 useTitle('crm.lead.title')
 const dict = useDict('crm_lead_status', 'crm_source')
-const canAdd = hasPerm('crm:lead:add')
+const canAdd = computed(() => hasPerm('crm:lead:add'))
 const scope = ref('mine')
 const scopes = computed(() => [
   { label: t('crm.scope.mine'), value: 'mine' },
