@@ -437,6 +437,12 @@
 
 ![自定义仪表盘](docs/screenshots/bi-board.jpg)
 
+### 微信小程序
+
+**工作台、审批、打卡、库存查询、客户**
+
+![微信小程序](docs/screenshots/miniapp.jpg)
+
 ### 数据大屏
 
 **生产车间**
