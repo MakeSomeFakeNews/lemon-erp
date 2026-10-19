@@ -28,6 +28,7 @@
 
 <p align="center">
   <a href="#项目简介">项目简介</a> ·
+  <a href="#english">English</a> ·
   <a href="#在线演示">在线演示</a> ·
   <a href="#核心亮点">核心亮点</a> ·
   <a href="#功能模块">功能模块</a> ·
@@ -42,7 +43,7 @@
 
 ## 项目简介
 
-柠檬ERP 是一套面向中小制造、商贸企业的**全功能开源 ERP**，前后端分离，开箱即用。
+柠檬ERP（Lemon ERP）是一套面向中小制造、商贸企业的**全功能开源 ERP 系统**，涵盖进销存、生产制造（MES）、仓储管理（WMS）、质量管理（QMS）、财务、客户关系（CRM）、人力资源（HR）、项目管理与商务智能（BI），前后端分离，开箱即用，可作为 ERP 软件直接使用，也适合作为 Java 企业级项目二次开发的基础。
 
 - **业务全覆盖**：13 大模块、150+ 功能页面，从请购到收款、从 BOM 到完工入库、从凭证到报表，一套系统闭环
 - **单据自动联动**：出入库自动更新库存、生成应收应付，业务单据一键生成会计凭证，账实一致
@@ -52,6 +53,17 @@
 **开发初衷**：为中小企业提供开源、好用、完整的 ERP，降低企业信息化成本；让开发者和软件公司可以基于柠檬ERP 快速交付项目；也为初学者提供一个学习企业级 Java 开发的完整范例。
 
 > 如果这个项目对你有帮助，请点一下右上角的 **Star**，这是对我们最大的鼓励！
+
+## English
+
+**Lemon ERP** is a full-featured, open-source **ERP system** for small and medium-sized manufacturers and distributors, built with **Spring Boot 4 + Vue 3 + Ant Design Vue 4**. It covers purchasing, sales, inventory and warehouse management (**WMS**), manufacturing execution (**MES**: BOM, MRP, work orders, shop-floor reporting), quality management (**QMS**), accounting and finance, **CRM**, human resources (**HRM**, payroll, attendance), project management and business intelligence (**BI**). Documents flow between modules automatically: stock movements update inventory and generate receivables/payables, and business documents generate accounting vouchers.
+
+- Visual approval workflow (Flowable), SaaS multi-tenancy, menu / button / API permissions and department-level data permissions
+- WeChat mini program, mobile / PDA barcode scanning, DingTalk / WeCom / Feishu login and notifications
+- Chinese and English UI, demo mode, Docker one-click deployment
+- Apache-2.0 licensed, free for commercial use
+
+Online demo: https://erp.dqq.me (tenant「柠檬科技」, `admin` / `admin123`) · Documentation: https://makesomefakenews.github.io/lemon-erp-website/
 
 ## 在线演示
 
