@@ -32,6 +32,10 @@
             AND (o.order_no LIKE CONCAT('%', #{q.orderNo}, '%') OR o.external_no LIKE CONCAT('%', #{q.orderNo}, '%'))
         </if>
         <if test="q.partnerId != null">AND o.partner_id = #{q.partnerId}</if>
+        <if test="q.partnerName != null and q.partnerName != ''">
+            AND (sp.name LIKE CONCAT('%', #{q.partnerName}, '%') OR sp.code LIKE CONCAT('%', #{q.partnerName}, '%')
+                 OR cu.name LIKE CONCAT('%', #{q.partnerName}, '%') OR cu.code LIKE CONCAT('%', #{q.partnerName}, '%'))
+        </if>
         <if test="q.status != null">AND o.status = #{q.status}</if>
         <if test="q.beginDate != null">AND o.order_date &gt;= #{q.beginDate}</if>
         <if test="q.endDate != null">AND o.order_date &lt;= #{q.endDate}</if>

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 业务附件：权限按业务类型和业务记录在服务中校验
@@ -37,6 +39,12 @@ public class SysAttachmentController {
     @GetMapping
     public R<List<SysAttachment>> list(@RequestParam String bizType, @RequestParam Long bizId) {
         return R.ok(attachmentService.list(bizType, bizId));
+    }
+
+    /** 多条记录的附件，按记录 ID 分组（列表显示缩略图），body 为记录 ID 列表 */
+    @PostMapping("/batch")
+    public R<Map<Long, List<SysAttachment>>> batch(@RequestParam String bizType, @RequestBody List<Long> bizIds) {
+        return R.ok(attachmentService.batchList(bizType, bizIds));
     }
 
     @PostMapping

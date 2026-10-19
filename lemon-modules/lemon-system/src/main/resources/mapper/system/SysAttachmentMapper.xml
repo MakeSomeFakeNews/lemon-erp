@@ -11,4 +11,12 @@
         ORDER BY a.id
     </select>
 
+    <select id="selectByBizIds" resultType="com.lemon.erp.modules.system.entity.SysAttachment">
+        SELECT a.id, a.biz_type, a.biz_id, a.file_name, a.file_size, a.content_type, a.create_by, a.create_time, a.update_time
+        FROM sys_attachment a
+        WHERE a.biz_type = #{bizType}
+          AND a.biz_id IN <foreach collection="bizIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY a.biz_id, a.id
+    </select>
+
 </mapper>

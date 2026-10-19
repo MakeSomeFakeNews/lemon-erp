@@ -41,6 +41,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/screen-share/**").permitAll()
                         // 钉钉、企业微信、飞书授权登录：授权页地址和回调
                         .requestMatchers("/auth/im/**").permitAll()
+                        // 微信小程序登录（解除绑定需要登录）
+                        .requestMatchers("/auth/miniapp/config", "/auth/miniapp/login", "/auth/miniapp/choose", "/auth/miniapp/bind").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, resp, ex) ->

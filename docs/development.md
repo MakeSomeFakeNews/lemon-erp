@@ -6,6 +6,7 @@
 | --- | --- |
 | 后端 | Java 17、Spring Boot 4.1、Spring Security + JWT、MyBatis-Plus 3.5、Redis、Flowable 8（工作流） |
 | 前端 | Vite、Vue 3、Ant Design Vue 4、Vue Router 4、Pinia、Axios、ECharts 5 |
+| 小程序 | uni-app（Vue 3），编译为微信小程序（`lemon-mp`，见「小程序」） |
 
 ## 功能
 
@@ -32,6 +33,7 @@
 - **权限**：接口级 `@PreAuthorize`、按钮级 `v-perm`、菜单动态路由；修改角色/菜单后立即生效
 - **登录会话**：JWT + 服务端会话，退出登录、强制下线、停用用户、重置密码后 token 立即失效
 - **多语言**：简体中文 / 英文，界面、菜单、字典、后端提示、打印按语言显示，一键切换（见「多语言」）
+- **小程序**：微信小程序（`lemon-mp`）——审批、消息、工作台、员工自助、销售外勤、扫码作业与报工，微信绑定已有账号后免密登录（见「小程序」）
 - **界面**：多标签页、面包屑、暗色主题、全屏、固定页头且只有表格滚动、表格列设置/密度、字典标签、图标选择器
 
 ## 快速开始
@@ -635,6 +637,30 @@ public void onOrderApproved(FlowFinishedEvent e) {
 | 参数设置 | 「系统管理 → 参数设置」（平台专属，所有租户共用，修改后立即生效）。**基本设置**：系统名称（登录页、侧边栏、浏览器标题）、登录页是否显示演示账号、页面水印（平铺当前用户姓名、账号和日期）。**登录与会话**：登录验证码（关闭 / 每次登录 / 密码输错后，算术题或 4 位字母数字，2 分钟有效、校验一次作废，验证码错误不计入锁定次数）、密码错误锁定次数和时长、登录有效期、同一账号只允许一处登录（新登录让之前的会话下线）。**密码策略**：最小长度、复杂度（字母和数字 / 大小写字母和数字 / 字母数字和特殊字符，前端校验与随机密码同步）、有效期（过期后登录要求修改）、自动开通账号的初始密码（须符合密码策略）。**文件上传**：附件大小上限 | 参数定义在 `framework/setting/Setting`（分组、类型、范围、默认值），只保存修改过的参数（`sys_config`，缓存 `settings:all`），业务代码通过 `SettingService` 读取；默认值优先取配置文件（`lemon.security.*`、`lemon.jwt.expire-hours`、`lemon.user.initial-password`）。前端公开配置 `/auth/config` 在进入页面前加载（`store/config`），新增参数时在 `Setting` 中声明即可出现在页面 |
 | 登录安全 | 连续登录失败锁定账号（不存在的用户名同样计数，管理员重置密码或在缓存监控中清除「登录失败」后解锁）；管理员新建、重置的密码和过期的密码在登录后提示本人修改；验证码、锁定次数、密码策略见「参数设置」 | `PasswordPolicy`、`CaptchaService` |
 
+## 小程序
+
+`lemon-mp` 是 uni-app（Vue 3）项目，编译为微信小程序，只放随时随地、操作轻、能用上手机能力（扫码、拨号、振动）的功能，接口与 Web 端共用。功能取舍、开发命令和前端约定见 [lemon-mp/README.md](../lemon-mp/README.md)。
+
+| 功能区 | 页面 | 后端接口 | 入口权限 |
+| --- | --- | --- | --- |
+| 审批 | 底部导航「审批」：待办 / 已办 / 我发起的 / 抄送我的；详情（业务信息或表单字段、审批记录），同意、拒绝、转交、撤回；发起申请（按设计器表单渲染，支持全部字段类型） | `/workflow/task/*`、`/workflow/instance/*`、`/workflow/copy`、`/workflow/start/*`、`/workflow/identity/users` | `wf:task:todo` / `wf:task:done` / `wf:instance:mine` / `wf:copy:list`；发起 `wf:start:list` |
+| 工作台、消息 | 经营概览、首页待办（点击按链接转到小程序页面）、功能入口；站内消息与未读数 | `/dashboard/business`、`/dashboard/todos`、`/system/message/*` | 登录即可 |
+| 员工自助 | 打卡、考勤日历与汇总、假期余额、请假加班申请与撤销、工资条、绩效自评与评分 | `/hr/self/*`、`/hr/perf/appraisal/{id}` | 登录即可（需关联员工档案） |
+| 项目工时 | 按周填报、修改、删除本人工时；批量审核 | `/pm/my/timesheet`、`/pm/my/tasks`、`/pm/timesheet`、`/pm/timesheet/review` | 填报登录即可（须为项目成员）；审核 `pm:timesheet:list` |
+| 销售与服务 | 客户（我的 / 团队）、联系人拨号、写跟进（最多 9 张照片）、今日待跟进；线索录入、跟进、转化；商机推进阶段；服务工单受理、处理、解决、关闭；销售订单进度（按订单号或客户） | `/crm/*`、`/scm/sales/order`、`/bi/trace/order/sales/{id}`、`/system/attachment/*` | `crm:customer:list`、`crm:followup:list`、`crm:lead:list`、`crm:opp:list`、`crm:ticket:list`、`scm:sales:list` |
+| 扫码作业 | 库存查询、扫码收货、上架、拣货、盘点（与 Web 端移动作业 `/m` 逻辑一致）、生产报工 | `/wms/*`、`/scm/purchaseIn`、`/scm/delivery/*`、`/mes/wo/*` | `wms:stock:list`、`scm:purchaseIn:add`、`wms:transfer:add`、`scm:delivery:pick`、`wms:check:edit`、`mes:wo:report` + `mes:wo:list` |
+| 设备与质量 | 设备台账（扫码）、保养维修登记与开始 / 完成；检验单录入（按方案逐项、自动判定）与确认；不合格品登记 | `/mes/equipment`、`/mes/maintenance/*`、`/mes/inspection/*`、`/qms/plan/match`、`/qms/ncr` | `mes:equipment:list`、`mes:maintain:list`、`mes:qc:list`、`qms:ncr:list` |
+
+为小程序补充的后端：跟进记录登记为可挂附件的业务类型 `crm_followup`（`CrmRecordTypes`，现场照片；查看权限与跟进列表一致，上传需要 `crm:followup:add`）；`POST /system/attachment/batch?bizType=`（body 为记录 ID 列表，按记录分组返回附件信息，与自定义字段的批量取值一样只校验业务类型的查看权限，下载时仍按记录的数据权限校验），用于列表中的缩略图；销售 / 采购订单查询参数 `partnerName`（往来单位名称或编码）。
+
+**登录与绑定**：一个小程序只有一个 AppID，SaaS 模式下所有租户共用，AppID / AppSecret 是平台级配置 `lemon.miniapp.app-id` / `app-secret`（环境变量 `LEMON_MINIAPP_APP_ID` / `LEMON_MINIAPP_APP_SECRET`，为空时不能用微信登录），不放在「第三方集成」中按租户配置。绑定关系存 `sys_miniapp_user`（租户 + 用户 + openid，每个租户中一个微信绑定一个用户、一个用户绑定一个微信）；登录时还没有租户，`SysMiniappUserMapper.selectByOpenid` 跨租户查询（`@InterceptorIgnore`）。`POST /auth/miniapp/login` 用 `wx.login` 的 code 调用 code2Session 换取 openid：只有一个可登录的绑定（租户可用、用户启用、不是门户账号）时直接签发令牌（`AuthService.loginAs`，登录日志记「微信小程序登录」）；否则返回会话标识（openid 缓存在 `mp:session:` 下 10 分钟，不返回前端）和可选租户，前端再调用 `/auth/miniapp/choose` 选择租户，或 `/auth/miniapp/bind` 用账号密码登录（与 `/auth/login` 相同的校验，`AuthService.authenticate`）并绑定当前微信（替换该微信在本租户的绑定和该用户原来的绑定）。`switchAccount` 为真时不自动登录，用于绑定另一个账号；`/auth/miniapp/unbind` 解除当前用户的绑定。
+
+**审批提醒（订阅消息）**：在公众平台「订阅消息」中选用一个模板（如「待办审批提醒」），配置 `lemon.miniapp.subscribe.template-id`（环境变量 `LEMON_MINIAPP_SUBSCRIBE_TEMPLATE_ID`）和模板中标题、内容、时间对应的字段名（`title-field` / `content-field` / `time-field`，默认 thing1 / thing2 / time3），`categories` 为推送的消息类别（默认审批）。`SysMiniappPushService` 监听 `MessageSentEvent`，事务提交后异步给绑定了微信的接收人发送订阅消息（thing 字段截断为 20 个字符，点击打开审批页）；用户没有授权时微信返回 43101，跳过；失败只记日志。access_token 由 `WeChatMiniClient` 获取并缓存（`mp:token`，所有租户共用，令牌失效时重取一次）。小程序在用户点击时申请授权，见 lemon-mp/README.md。
+
+测试 `MiniappAuthTests` 用本地 HTTP 服务模拟 code2Session、access_token 和订阅消息，`MiniappSupportTests` 覆盖订单按客户搜索、跟进照片与批量取附件。
+
+**暂未提供**：打卡定位校验；Web 端跟进记录显示照片；工单指派、配件领用；不合格品照片（`qms_ncr` 未登记附件类型）；抄送已读状态。
+
 ## 多语言
 
 界面和后端提示支持简体中文（默认）和英文，顶栏和登录页右上角切换语言（保存在浏览器中，切换后刷新页面；没有选择过时英文浏览器显示英文）。
@@ -736,6 +762,7 @@ lemon-erp
 │                   src/main/resources/mapper/<模块>/*.xml）
 ├── lemon-admin                 启动模块：组装全部业务模块，打包为 lemon-erp.jar
 │   └── src/main                LemonErpApplication、application.yml / -dev / -prod
+├── lemon-mp                    微信小程序（uni-app + Vue 3），见「小程序」与 lemon-mp/README.md
 ├── lemon-web                   前端（Vite + Vue 3 + Ant Design Vue）
 │   └── src
 │       ├── api/<模块>/*.js              接口

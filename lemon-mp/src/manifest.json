@@ -1,0 +1,28 @@
+{
+  "name": "柠檬ERP",
+  "appid": "",
+  "description": "柠檬ERP 移动端：审批、员工自助、销售外勤、扫码作业",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "locale": "zh-Hans",
+  "vueVersion": "3",
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "minified": true
+    },
+    "usingComponents": true,
+    "lazyCodeLoading": "requiredComponents",
+    "optimization": {
+      "subPackages": true
+    }
+  },
+  "h5": {
+    "title": "Lemon ERP",
+    "router": {
+      "mode": "hash"
+    }
+  }
+}

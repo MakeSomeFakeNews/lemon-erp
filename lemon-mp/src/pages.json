@@ -1,0 +1,113 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^l-(.*)": "@/components/l-$1/l-$1.vue"
+    }
+  },
+  "pages": [
+    { "path": "pages/index/index", "style": { "navigationBarTitleText": "工作台", "enablePullDownRefresh": true } },
+    { "path": "pages/approval/index", "style": { "navigationBarTitleText": "审批", "enablePullDownRefresh": true } },
+    { "path": "pages/message/index", "style": { "navigationBarTitleText": "消息", "enablePullDownRefresh": true } },
+    { "path": "pages/mine/index", "style": { "navigationBarTitleText": "我的", "enablePullDownRefresh": true, "navigationBarBackgroundColor": "#1677FF", "navigationBarTextStyle": "white", "backgroundColorTop": "#1677FF" } },
+    { "path": "pages/login/index", "style": { "navigationBarTitleText": "登录", "navigationStyle": "custom" } },
+    { "path": "pages/mine/password", "style": { "navigationBarTitleText": "修改密码" } }
+  ],
+  "subPackages": [
+    {
+      "root": "pkg-approval",
+      "pages": [
+        { "path": "detail", "style": { "navigationBarTitleText": "审批详情" } },
+        { "path": "start/index", "style": { "navigationBarTitleText": "发起申请", "enablePullDownRefresh": true } },
+        { "path": "start/form", "style": { "navigationBarTitleText": "填写申请" } }
+      ]
+    },
+    {
+      "root": "pkg-hr",
+      "pages": [
+        { "path": "clock/index", "style": { "navigationBarTitleText": "打卡" } },
+        { "path": "attendance/index", "style": { "navigationBarTitleText": "考勤" } },
+        { "path": "leave/index", "style": { "navigationBarTitleText": "请假加班", "enablePullDownRefresh": true } },
+        { "path": "leave/apply", "style": { "navigationBarTitleText": "申请" } },
+        { "path": "payslip/index", "style": { "navigationBarTitleText": "工资条" } },
+        { "path": "appraisal/index", "style": { "navigationBarTitleText": "绩效考核", "enablePullDownRefresh": true } },
+        { "path": "appraisal/score", "style": { "navigationBarTitleText": "绩效评分" } }
+      ]
+    },
+    {
+      "root": "pkg-crm",
+      "pages": [
+        { "path": "customer/index", "style": { "navigationBarTitleText": "客户", "enablePullDownRefresh": true } },
+        { "path": "customer/detail", "style": { "navigationBarTitleText": "客户详情" } },
+        { "path": "followup/index", "style": { "navigationBarTitleText": "跟进", "enablePullDownRefresh": true } },
+        { "path": "followup/edit", "style": { "navigationBarTitleText": "写跟进" } },
+        { "path": "opportunity/index", "style": { "navigationBarTitleText": "商机", "enablePullDownRefresh": true } },
+        { "path": "order/index", "style": { "navigationBarTitleText": "销售订单", "enablePullDownRefresh": true } },
+        { "path": "order/detail", "style": { "navigationBarTitleText": "订单详情" } },
+        { "path": "lead/index", "style": { "navigationBarTitleText": "线索", "enablePullDownRefresh": true } },
+        { "path": "lead/detail", "style": { "navigationBarTitleText": "线索详情" } },
+        { "path": "lead/edit", "style": { "navigationBarTitleText": "新增线索" } },
+        { "path": "lead/convert", "style": { "navigationBarTitleText": "转化线索" } },
+        { "path": "ticket/index", "style": { "navigationBarTitleText": "服务工单", "enablePullDownRefresh": true } },
+        { "path": "ticket/detail", "style": { "navigationBarTitleText": "工单详情" } },
+        { "path": "ticket/edit", "style": { "navigationBarTitleText": "受理工单" } },
+        { "path": "ticket/action", "style": { "navigationBarTitleText": "处理工单" } }
+      ]
+    },
+    {
+      "root": "pkg-wms",
+      "pages": [
+        { "path": "stock/index", "style": { "navigationBarTitleText": "库存查询" } },
+        { "path": "receive/index", "style": { "navigationBarTitleText": "扫码收货" } },
+        { "path": "putaway/index", "style": { "navigationBarTitleText": "上架" } },
+        { "path": "pick/index", "style": { "navigationBarTitleText": "拣货" } },
+        { "path": "check/index", "style": { "navigationBarTitleText": "盘点" } },
+        { "path": "report/index", "style": { "navigationBarTitleText": "报工" } }
+      ]
+    },
+    {
+      "root": "pkg-pm",
+      "pages": [
+        { "path": "timesheet/index", "style": { "navigationBarTitleText": "我的工时" } },
+        { "path": "timesheet/edit", "style": { "navigationBarTitleText": "填报工时" } },
+        { "path": "review/index", "style": { "navigationBarTitleText": "工时审核", "enablePullDownRefresh": true } }
+      ]
+    },
+    {
+      "root": "pkg-mes",
+      "pages": [
+        { "path": "equipment/index", "style": { "navigationBarTitleText": "设备", "enablePullDownRefresh": true } },
+        { "path": "equipment/detail", "style": { "navigationBarTitleText": "设备详情" } },
+        { "path": "maintenance/index", "style": { "navigationBarTitleText": "保养维修", "enablePullDownRefresh": true } },
+        { "path": "maintenance/detail", "style": { "navigationBarTitleText": "维护单" } },
+        { "path": "maintenance/add", "style": { "navigationBarTitleText": "报修 / 保养" } },
+        { "path": "inspection/index", "style": { "navigationBarTitleText": "质量检验", "enablePullDownRefresh": true } },
+        { "path": "inspection/edit", "style": { "navigationBarTitleText": "检验录入" } },
+        { "path": "ncr/index", "style": { "navigationBarTitleText": "不合格品", "enablePullDownRefresh": true } },
+        { "path": "ncr/add", "style": { "navigationBarTitleText": "登记不合格品" } },
+        { "path": "ncr/detail", "style": { "navigationBarTitleText": "不合格品" } }
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/approval/index": { "network": "all", "packages": ["pkg-approval"] }
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "柠檬ERP",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F5F6F8"
+  },
+  "tabBar": {
+    "color": "#8C8C8C",
+    "selectedColor": "#1677FF",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "工作台", "iconPath": "static/tab/workbench.png", "selectedIconPath": "static/tab/workbench-active.png" },
+      { "pagePath": "pages/approval/index", "text": "审批", "iconPath": "static/tab/approval.png", "selectedIconPath": "static/tab/approval-active.png" },
+      { "pagePath": "pages/message/index", "text": "消息", "iconPath": "static/tab/message.png", "selectedIconPath": "static/tab/message-active.png" },
+      { "pagePath": "pages/mine/index", "text": "我的", "iconPath": "static/tab/mine.png", "selectedIconPath": "static/tab/mine-active.png" }
+    ]
+  }
+}
