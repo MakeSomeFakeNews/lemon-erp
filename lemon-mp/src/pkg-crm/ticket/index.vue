@@ -51,7 +51,7 @@ import { shortTime } from '@/utils/format'
 const { t } = useI18n()
 useTitle('crm.ticket.title')
 const dict = useDict('crm_ticket_status', 'crm_ticket_priority', 'crm_ticket_type')
-const canAdd = hasPerm('crm:ticket:add')
+const canAdd = computed(() => hasPerm('crm:ticket:add'))
 // 默认看待处理的；「只看我的」为处理人是我
 const status = ref(TicketStatus.OPEN)
 const statuses = computed(() => [
@@ -63,7 +63,11 @@ const keyword = ref('')
 const paged = usePaged((p) => pageTickets({ ...p, status: status.value || undefined, mine: mine.value, keyword: keyword.value.trim() }))
 let shown = false
 
-onLoad(() => paged.refresh())
+onLoad((q) => {
+  // 首页待办「我负责的服务工单」带 mine=1
+  if (q?.mine === '1') mine.value = true
+  paged.refresh()
+})
 onShow(() => {
   if (shown) paged.refresh()
   shown = true

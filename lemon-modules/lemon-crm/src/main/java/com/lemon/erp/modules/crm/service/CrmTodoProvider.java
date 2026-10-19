@@ -20,7 +20,7 @@ public class CrmTodoProvider implements TodoProvider {
 
     private static final List<Def> DEFS = List.of(
             new Def("followDue", "crm:customer:list", "crm.label.customersFollowUpToday", "/crm/customer", "warning"),
-            new Def("ticketMine", "crm:ticket:list", "crm.label.myServiceTicketsProgress", "/crm/ticket", "info")
+            new Def("ticketMine", "crm:ticket:list", "crm.label.myServiceTicketsProgress", "/crm/ticket?mine=1", "info")
     );
 
     private final CrmTodoMapper todoMapper;

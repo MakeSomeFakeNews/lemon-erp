@@ -21,7 +21,7 @@ public class MesTodoProvider implements TodoProvider {
     private static final List<Def> DEFS = List.of(
             new Def("supplementToIssue", "mes:supplement:issue", "mes.label.supplementPendingIssue", "/mes/supplement", "warning"),
             new Def("woOverdue", "mes:wo:list", "mes.label.workOrderOverdue", "/mes/wo", "danger"),
-            new Def("qcDraft", "mes:qc:edit", "mes.label.inspectionPendingConfirm", "/qms/inspection", "info"),
+            new Def("qcDraft", "mes:qc:edit", "mes.label.inspectionPendingConfirm", "/qms/inspection?status=DRAFT", "info"),
             new Def("ncrOpen", "qms:ncr:edit", "mes.label.ncrPendingReview", "/qms/ncr", "warning"),
             new Def("capaOverdue", "qms:capa:edit", "mes.label.capaOverdue", "/qms/capa", "danger"),
             new Def("maintainDue", "mes:maintain:handle", "mes.label.maintenanceDue", "/mes/maintenance", "warning")

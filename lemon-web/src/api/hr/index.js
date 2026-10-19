@@ -131,6 +131,8 @@ export const selfProfile = () => request.get('/hr/self/profile')
 export const selfClock = () => request.post('/hr/self/clock')
 export const selfCalendar = (period) => request.get('/hr/self/calendar', { params: { period } })
 export const selfSummary = (period) => request.get('/hr/self/summary', { params: { period } })
+/** 请假估算规则 { dayHours, lunchThreshold, lunchBreak }（当前租户的业务参数） */
+export const leaveRules = () => request.get('/hr/self/leave-rules')
 export const selfLeaves = () => request.get('/hr/self/leave')
 export const applyLeave = (data) => request.post('/hr/self/leave', data)
 export const cancelLeave = (id) => request.post(`/hr/self/leave/${id}/cancel`)

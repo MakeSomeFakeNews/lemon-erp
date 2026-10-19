@@ -2,10 +2,13 @@
 import { onLaunch } from '@dcloudio/uni-app'
 import { applyTabBar } from '@/utils/tabbar'
 import { loadSubscribeConfig } from '@/utils/subscribe'
+import { ensureUser } from '@/store/user'
 
 onLaunch(() => {
   applyTabBar()
   loadSubscribeConfig()
+  // 尽早加载当前用户：直接打开子页面（分享、消息链接）时按钮权限依赖它
+  ensureUser()
 })
 </script>
 

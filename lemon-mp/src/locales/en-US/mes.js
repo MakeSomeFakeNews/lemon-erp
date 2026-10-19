@@ -78,6 +78,7 @@ export default {
     scrapped: 'Equipment scrapped'
   },
   inspection: {
+    draftOnly: 'Drafts only',
     searchPh: 'Inspection no., source no., material',
     add: 'New inspection',
     addTitle: 'New inspection',

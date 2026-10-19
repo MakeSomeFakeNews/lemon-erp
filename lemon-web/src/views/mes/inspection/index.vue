@@ -4,6 +4,7 @@
       <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
         <a-select v-model:value="query.type" :placeholder="$t('mes.inspection.type')" allow-clear :options="toOptions(dict.mes_qc_type)" class="filter" @change="search" />
         <a-select v-model:value="query.result" :placeholder="$t('mes.inspection.result')" allow-clear :options="toOptions(dict.mes_qc_result)" class="filter" @change="search" />
+        <a-select v-model:value="query.status" :placeholder="$t('common.field.status')" allow-clear :options="statusOptions" class="filter" @change="search" />
         <a-input-search v-model:value="query.keyword" :placeholder="$t('mes.inspection.keywordPh')" allow-clear class="filter-wide" @search="search" />
         <a-range-picker v-model:value="query.range" value-format="YYYY-MM-DD" @change="search" />
         <template #extra>
@@ -239,6 +240,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
@@ -273,11 +275,20 @@ const columns = [
   { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'mes-inspection')
-const query = reactive({ type: undefined, result: undefined, keyword: undefined, range: undefined })
+const statusOptions = [
+  { value: InspectionStatus.DRAFT, label: t('mes.inspection.draft') },
+  { value: InspectionStatus.CONFIRMED, label: t('mes.inspection.confirmed') }
+]
+const route = useRoute()
+const query = reactive({ type: undefined, result: undefined, status: undefined, keyword: undefined, range: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageInspection, query, {
   params: ({ range, ...rest }) => ({ ...rest, beginDate: range?.[0], endDate: range?.[1] })
 })
-onMounted(load)
+onMounted(() => {
+  // 首页待办「检验单待确认」链接带 status=DRAFT
+  if (route.query.status) query.status = route.query.status
+  load()
+})
 
 const confirmTitle = (r) =>
   r.result === QcResult.FAIL ? t('mes.inspection.confirmFail') : t('mes.inspection.confirmPass')

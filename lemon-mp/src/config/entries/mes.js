@@ -25,7 +25,7 @@ export default [
     color: '#52c41a',
     url: '/pkg-mes/inspection/index',
     perm: 'mes:qc:list',
-    links: ['/mes/inspection']
+    links: ['/qms/inspection']
   },
   {
     key: 'qms-ncr',

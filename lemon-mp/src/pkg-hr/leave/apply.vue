@@ -42,7 +42,7 @@
       </l-field>
       <l-field :label="t('hr.leave.duration')" required>
         <input v-model="form.hours" class="l-input" type="digit" :placeholder="t('hr.leave.durationPh')" placeholder-class="l-placeholder" />
-        <view class="apply__hint">{{ isLeave ? t('hr.leave.leaveHint') : t('hr.leave.overtimeHint') }}</view>
+        <view class="apply__hint">{{ isLeave ? t('hr.leave.leaveHint', { day: rules.dayHours, half: rules.dayHours / 2, threshold: rules.lunchThreshold, lunch: rules.lunchBreak }) : t('hr.leave.overtimeHint') }}</view>
       </l-field>
       <l-field :label="t('hr.leave.reason')">
         <textarea v-model="form.reason" class="l-textarea" maxlength="255" :placeholder="t('hr.leave.reasonPh')" placeholder-class="l-placeholder" />
@@ -60,7 +60,7 @@ import { computed, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from '@/locales'
 import { LeaveKind, OvertimeComp } from '@web/constants/enums'
-import { applyLeave, selfProfile } from '@/api/hr'
+import { applyLeave, leaveRules, selfProfile } from '@/api/hr'
 import { useDict } from '@/store/dict'
 import { today } from '@/utils/format'
 
@@ -96,10 +96,20 @@ onLoad((q) => {
   uni.setNavigationBarTitle({ title: t(isLeave.value ? 'hr.title.applyLeave' : 'hr.title.applyOvertime') })
   if (!isLeave.value) Object.assign(form, { type: OvertimeComp.PAY, startClock: '18:30', endClock: '20:30' })
   suggestHours()
+  // 按租户的业务参数（每日工时、午休扣除）估算，取到后重新估算一次
+  leaveRules()
+    .then((r) => {
+      if (r) Object.assign(rules, { dayHours: Number(r.dayHours), lunchThreshold: Number(r.lunchThreshold), lunchBreak: Number(r.lunchBreak) })
+      suggestHours()
+    })
+    .catch(() => {})
   selfProfile()
     .then((p) => (profile.value = p))
     .catch(() => {})
 })
+
+/** 请假估算规则：默认值与后端业务参数的默认值一致 */
+const rules = reactive({ dayHours: 8, lunchThreshold: 5, lunchBreak: 1 })
 
 const toDate = (d, c) => new Date(`${d.replace(/-/g, '/')} ${c}:00`)
 
@@ -109,7 +119,10 @@ function change(field, value) {
   suggestHours()
 }
 
-/** 请假：同一天按时间差（跨午休扣 1 小时，最多 8 小时），跨天按工作日 × 8 小时估算；加班：按起止时间差 */
+/**
+ * 请假：同一天按时间差估算（超过午休扣除阈值时扣午休，最多一天的工时），跨天按工作日 × 每日工时；加班：按起止时间差。
+ * 每日工时、午休扣除取租户的业务参数（与考勤计算一致），取到之前用默认值
+ */
 function suggestHours() {
   const start = toDate(form.startDate, form.startClock)
   const end = toDate(form.endDate, form.endClock)
@@ -120,8 +133,8 @@ function suggestHours() {
     return
   }
   if (form.startDate === form.endDate) {
-    const lunch = start.getHours() < 13 && end.getHours() >= 13 ? 60 : 0
-    form.hours = String(Math.min(8, Math.max(0.5, Math.round(((minutes - lunch) / 60) * 2) / 2)))
+    const hours = minutes / 60 > rules.lunchThreshold ? minutes / 60 - rules.lunchBreak : minutes / 60
+    form.hours = String(Math.min(rules.dayHours, Math.max(0.5, Math.round(hours * 2) / 2)))
     return
   }
   let days = 0
@@ -130,7 +143,7 @@ function suggestHours() {
   for (; d <= last; d.setDate(d.getDate() + 1)) {
     if (d.getDay() !== 0 && d.getDay() !== 6) days++
   }
-  form.hours = String(days * 8)
+  form.hours = String(days * rules.dayHours)
 }
 
 async function submit() {

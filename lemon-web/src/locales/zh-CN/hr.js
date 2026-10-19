@@ -397,7 +397,7 @@ export default {
     kind: '种类',
     cancelled: '已撤销',
     annualOption: '{label}（余 {n} 天）',
-    leaveHint: '按工作日每天 8 小时自动计算，可以修改；请半天填 4 小时',
+    leaveHint: '按工作日每天 {day} 小时自动计算（同一天超过 {threshold} 小时扣午休 {lunch} 小时），可以修改；请半天填 {half} 小时',
     overtimeHint: '加班费：默认工作日 1.5 倍、休息日 2 倍、法定节假日 3 倍（系统管理 → 业务参数中修改）',
     submitted: '已提交，等待审批'
   },

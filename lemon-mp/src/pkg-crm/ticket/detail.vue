@@ -76,7 +76,7 @@ const dict = useDict('crm_ticket_status', 'crm_ticket_priority', 'crm_ticket_typ
 const id = ref(null)
 const k = ref(null)
 const logs = ref([])
-const canCustomer = hasPerm('crm:customer:list')
+const canCustomer = computed(() => hasPerm('crm:customer:list'))
 let loaded = false
 
 /** 待处理、处理中：添加处理记录、解决；已解决：关闭（满意度）、重新打开；已关闭：重新打开。指派在电脑端 */
@@ -120,7 +120,7 @@ function call() {
 }
 
 function openCustomer() {
-  if (canCustomer && k.value.customerId) uni.navigateTo({ url: `/pkg-crm/customer/detail?customerId=${k.value.customerId}` })
+  if (canCustomer.value && k.value.customerId) uni.navigateTo({ url: `/pkg-crm/customer/detail?customerId=${k.value.customerId}` })
 }
 </script>
 

@@ -80,7 +80,7 @@ const isOpen = computed(() => lead.value && (lead.value.status === LeadStatus.NE
 const canFollow = computed(() => isOpen.value && hasPerm('crm:followup:add'))
 const canConvert = computed(() => isOpen.value && hasPerm('crm:lead:convert'))
 const canEditAny = computed(() => isOpen.value && hasPerm('crm:lead:edit'))
-const canCustomer = hasPerm('crm:customer:list')
+const canCustomer = computed(() => hasPerm('crm:customer:list'))
 const actions = computed(() => [canFollow.value, canConvert.value, canEditAny.value].filter(Boolean))
 
 onLoad((q) => {
@@ -113,7 +113,7 @@ function call() {
 }
 
 function openCustomer() {
-  if (canCustomer) uni.navigateTo({ url: `/pkg-crm/customer/detail?customerId=${lead.value.customerId}` })
+  if (canCustomer.value) uni.navigateTo({ url: `/pkg-crm/customer/detail?customerId=${lead.value.customerId}` })
 }
 
 function writeFollowup() {

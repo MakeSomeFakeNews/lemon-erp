@@ -6,6 +6,10 @@
       <text>{{ keyword }}</text>
       <text class="iq__clear" @click="clearKeyword">×</text>
     </view>
+    <view v-if="draftOnly" class="iq__keyword">
+      <text>{{ t('mes.inspection.draftOnly') }}</text>
+      <text class="iq__clear" @click="clearDraft">×</text>
+    </view>
     <view v-for="r in paged.list" :key="r.id" class="l-item" @click="open(r)">
       <view class="l-item__head">
         <text class="l-item__title">{{ r.materialName }}</text>
@@ -32,7 +36,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
+import { onLoad, onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
 import { useI18n } from '@/locales'
 import { InspectionStatus } from '@web/constants/enums'
 import { pageInspection } from '@/api/mes'
@@ -49,10 +53,15 @@ const dict = useDict('mes_qc_type', 'mes_qc_result')
 const ALL = ''
 const type = ref(ALL)
 const keyword = ref('')
+/** 只看草稿（待确认）：首页待办「检验单待确认」带 status=DRAFT */
+const draftOnly = ref(false)
 const canAdd = computed(() => hasPerm('mes:qc:add'))
 const tabs = computed(() => [{ value: ALL, label: t('common.all') }, ...dict.mes_qc_type.map((d) => ({ value: d.value, label: d.label }))])
-const paged = usePaged((p) => pageInspection({ ...p, type: type.value || undefined, keyword: keyword.value }))
+const paged = usePaged((p) => pageInspection({ ...p, type: type.value || undefined, status: draftOnly.value ? InspectionStatus.DRAFT : undefined, keyword: keyword.value }))
 
+onLoad((q) => {
+  draftOnly.value = q?.status === InspectionStatus.DRAFT
+})
 // 录入、确认后返回时刷新
 onShow(() => paged.refresh())
 onPullDownRefresh(() => paged.refresh())
@@ -60,6 +69,11 @@ onReachBottom(() => paged.more())
 
 function onScan(code) {
   keyword.value = code
+  paged.refresh()
+}
+
+function clearDraft() {
+  draftOnly.value = false
   paged.refresh()
 }
 

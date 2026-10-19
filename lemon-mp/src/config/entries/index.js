@@ -34,12 +34,18 @@ export function entryOfLink(link) {
 /** 底部导航页不能带参数：从链接进入时把链接暂存，由页面在 onShow 中用 takeTabLink 取出（如审批页按链接切换分段） */
 let tabLink = null
 
-/** @param link 从首页待办、消息进入时的 Web 端链接 */
+/**
+ * @param link 从首页待办、消息进入时的 Web 端链接；其中的查询参数（筛选条件，如库存的 lowStock=1）原样带给小程序页面，
+ *             页面在 onLoad 中按与 Web 端相同的参数名读取
+ */
 export function openEntry(entry, link) {
   if (entry.tab) {
     tabLink = link ? { url: entry.url, link } : null
     uni.switchTab({ url: entry.url })
-  } else uni.navigateTo({ url: entry.url })
+    return
+  }
+  const query = link && link.includes('?') ? link.slice(link.indexOf('?') + 1) : ''
+  uni.navigateTo({ url: query ? `${entry.url}${entry.url.includes('?') ? '&' : '?'}${query}` : entry.url })
 }
 
 /** 取出并清除进入该底部导航页时的链接 */

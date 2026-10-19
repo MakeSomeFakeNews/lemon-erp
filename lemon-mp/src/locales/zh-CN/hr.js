@@ -81,7 +81,7 @@ export default {
     durationPh: '0.5 的倍数',
     reason: '事由',
     reasonPh: '选填，最多 255 字',
-    leaveHint: '按工作日每天 8 小时自动计算，可以修改；请半天填 4 小时',
+    leaveHint: '按工作日每天 {day} 小时自动计算（同一天超过 {threshold} 小时扣午休 {lunch} 小时），可以修改；请半天填 {half} 小时',
     overtimeHint: '加班费默认工作日 1.5 倍、休息日 2 倍、法定节假日 3 倍',
     compLeft: '调休余额 {n} 小时',
     endBeforeStart: '结束时间要晚于开始时间',
