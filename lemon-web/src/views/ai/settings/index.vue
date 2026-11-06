@@ -79,7 +79,6 @@
             <div>
               <div class="feature-name">
                 {{ $t(`ai.feature.${f.feature}`) }}
-                <a-tag v-if="f.phase2" :bordered="false" class="phase">{{ $t('ai.settings.phase2') }}</a-tag>
               </div>
               <div class="sub-text">{{ $t(`ai.featureDesc.${f.feature}`) }}</div>
             </div>
@@ -197,12 +196,16 @@ function toggle(field, value) {
     form[field] = false
     return
   }
-  const feature = field === 'enabled' ? t('ai.settings.enabled') : t(`ai.feature.${FEATURES.find((f) => f.field === field).feature}`)
+  const provider = t(`ai.provider.${form.provider}`)
+  const content =
+    field === 'enabled'
+      ? t('ai.settings.confirmContentAll', { provider })
+      : t('ai.settings.confirmContent', { feature: t(`ai.feature.${FEATURES.find((f) => f.field === field).feature}`), provider })
   Modal.confirm({
     title: t('ai.settings.confirmTitle'),
     content: h('div', [
       h('p', { class: 'confirm-warn' }, t('ai.settings.dataNotice')),
-      h('p', t('ai.settings.confirmContent', { feature, provider: t(`ai.provider.${form.provider}`) }))
+      h('p', content)
     ]),
     okText: t('ai.settings.confirmOk'),
     okType: 'danger',
@@ -294,10 +297,6 @@ onMounted(load)
 }
 .feature-name {
   font-weight: 500;
-}
-.phase {
-  margin-left: 6px;
-  font-weight: normal;
 }
 .sub-text {
   color: var(--app-text-3);

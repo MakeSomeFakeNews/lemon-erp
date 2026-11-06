@@ -60,6 +60,7 @@ import { InboxOutlined, RobotOutlined } from '@ant-design/icons-vue'
 import { useDictStore } from '@/store/dict'
 import { downloadTemplate, readExcel, readExcelHeaders } from '@/utils/excel'
 import { getAiStatus } from '@/api/ai/config'
+import { useUserStore } from '@/store/user'
 import AiImportMapper from '@/components/ai/AiImportMapper.vue'
 
 /**
@@ -113,7 +114,8 @@ let aiChecked = false
 watch(
   () => props.open,
   (v) => {
-    if (v && !aiChecked) {
+    // 「AI 对应字段」需要数据整理的查看权限，并且数据整理功能已开启（用量记在数据整理下）
+    if (v && !aiChecked && useUserStore().hasPerm('ai:cleanse:list')) {
       aiChecked = true
       getAiStatus()
         .then((s) => (aiEnabled.value = !!s.features?.CLEANSE))

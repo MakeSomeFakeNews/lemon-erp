@@ -1,4 +1,4 @@
-/** 智能（AI）：AI 设置、AI 问数 */
+/** 智能（AI）：AI 设置、AI 问数、智能录入、数据整理、智能报告 */
 export default {
   provider: {
     DEEPSEEK: 'DeepSeek',
@@ -49,9 +49,9 @@ export default {
     enabled: '启用 AI',
     enabledTip: '总开关，关闭后所有 AI 功能不可用',
     featureOffWhenDisabled: '先打开「启用 AI」',
-    phase2: '即将推出',
     confirmTitle: '确认开启？',
-    confirmContent: '开启后，{feature}所需的业务数据会发送给 {provider} 的模型服务处理。请确认已了解并符合公司的数据安全要求。',
+    confirmContentAll: '开启后，各项 AI 功能所需的业务数据会发送给 {provider} 的模型服务处理。请确认已了解并符合公司的数据安全要求。',
+    confirmContent: '开启「{feature}」后，该功能所需的业务数据会发送给 {provider} 的模型服务处理。请确认已了解并符合公司的数据安全要求。',
     confirmOk: '确认开启',
     testConnection: '测试连接',
     testing: '正在连接…',

@@ -23,8 +23,9 @@ import java.util.regex.Pattern;
  *
  * <pre>{@code
  * AiPrefillBuilder b = new AiPrefillBuilder();
- * Long supplierId = b.match("partnerId", "partnerName", AiPrefillBuilder.str(extracted, "supplierName"),
- *         Messages.get("scm.label.supplier"), exact, search, s -> s.getCode() + " " + s.getName(), ScmSupplier::getId);
+ * ScmSupplier supplier = b.match("partnerId", "partnerName", AiPrefillBuilder.str(extracted, "supplierName"),
+ *         Messages.get("scm.label.supplier"), exact, search, s -> s.getCode() + " " + s.getName());
+ * b.put("partnerId", supplier == null ? null : supplier.getId());
  * b.put("orderDate", b.date("orderDate", AiPrefillBuilder.str(extracted, "orderDate")));
  * return b.build();
  * }</pre>
