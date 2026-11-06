@@ -89,7 +89,11 @@ public class AiChatStreamService {
     public SseEmitter send(Long conversationId, String content) {
         AiConversation conversation = chatService.requireOwn(conversationId);
         modelService.requireAvailable(AiFeature.CHAT);
-        chatService.addUserMessage(conversation, content.trim());
+        // 先判断是否还能排队，避免保存了提问却没有回答
+        if (isFull()) {
+            throw new BizException("ai.error.busy");
+        }
+        AiMessage question = chatService.addUserMessage(conversation, content.trim());
         SseEmitter emitter = new SseEmitter(props.getStreamTimeout().toMillis());
         Run run = new Run(conversation.getId(), emitter);
         emitter.onCompletion(run::cancel);
@@ -98,9 +102,16 @@ public class AiChatStreamService {
         try {
             executor.execute(AiAsyncContext.capture().wrap(run));
         } catch (RejectedExecutionException e) {
+            // 判断后到提交前的瞬间被占满：删除刚保存的提问
+            chatService.removeMessage(question.getId());
             throw new BizException("ai.error.busy");
         }
         return emitter;
+    }
+
+    /** 线程都在忙且排队已满 */
+    private boolean isFull() {
+        return executor.getActiveCount() >= executor.getMaximumPoolSize() && executor.getQueue().remainingCapacity() == 0;
     }
 
     /** 一次提问的回答过程 */

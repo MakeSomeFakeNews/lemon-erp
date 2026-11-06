@@ -4727,7 +4727,7 @@ CREATE TABLE ai_config (
     tenant_id           BIGINT        NOT NULL DEFAULT 1 COMMENT '租户ID',
     provider            VARCHAR(16)   NOT NULL COMMENT '服务商 DEEPSEEK QWEN ZHIPU MOONSHOT DOUBAO CUSTOM（AiProvider）',
     base_url            VARCHAR(255)           DEFAULT NULL COMMENT '接口地址（不含 /chat/completions），为空时用服务商的默认地址',
-    api_key             VARCHAR(255)           DEFAULT NULL COMMENT 'API Key，不返回前端',
+    api_key             VARCHAR(512)           DEFAULT NULL COMMENT 'API Key（AES-GCM 加密，enc: 开头），不返回前端',
     chat_model          VARCHAR(64)            DEFAULT NULL COMMENT '对话 / 工具调用模型',
     vision_model        VARCHAR(64)            DEFAULT NULL COMMENT '识图模型，为空时智能录入只支持 PDF、Excel、文本',
     enabled             TINYINT       NOT NULL DEFAULT 0 COMMENT '总开关 1启用 0停用',

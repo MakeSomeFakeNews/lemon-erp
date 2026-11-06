@@ -12,6 +12,12 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "lemon.ai")
 public class AiProperties {
 
+    /**
+     * 加密保存「AI 设置」中 API Key 的密钥（环境变量 LEMON_AI_SECRET_KEY），为空时使用 lemon.jwt.secret。
+     * 更换后已保存的 API Key 无法解密，需要在页面重新填写
+     */
+    private String secretKey;
+
     /** 连接超时 */
     private Duration connectTimeout = Duration.ofSeconds(10);
 

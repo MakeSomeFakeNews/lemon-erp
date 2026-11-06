@@ -151,6 +151,11 @@ public class AiChatService {
         return m;
     }
 
+    /** 删除一条消息（提问保存后无法开始回答时撤回） */
+    public void removeMessage(Long messageId) {
+        messageMapper.deleteById(messageId);
+    }
+
     /** 保存模型回答；toolCalls 不为空时是请求调用工具的中间步骤 */
     public AiMessage addAssistantMessage(Long conversationId, String content, List<LlmToolCall> toolCalls, Integer tokens) {
         AiMessage m = new AiMessage();

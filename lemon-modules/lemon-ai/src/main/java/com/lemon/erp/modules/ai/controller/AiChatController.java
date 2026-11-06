@@ -8,6 +8,7 @@ import com.lemon.erp.modules.ai.dto.AiToolData;
 import com.lemon.erp.modules.ai.entity.AiConversation;
 import com.lemon.erp.modules.ai.service.AiChatService;
 import com.lemon.erp.modules.ai.service.AiChatStreamService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -69,9 +70,14 @@ public class AiChatController {
         return R.ok(chatService.toolData(id));
     }
 
-    /** 发送提问，返回 text/event-stream；校验失败时返回普通 JSON 错误 */
+    /**
+     * 发送提问，返回 text/event-stream；校验失败时返回普通 JSON 错误。
+     * X-Accel-Buffering: no 让 Nginx 等反向代理不缓冲这个响应，回答逐字显示（否则会攒到最后一次性出现）
+     */
     @PostMapping(value = "/conversations/{id}/send", produces = {MediaType.TEXT_EVENT_STREAM_VALUE, MediaType.APPLICATION_JSON_VALUE})
-    public SseEmitter send(@PathVariable Long id, @Valid @RequestBody AiSendRequest req) {
+    public SseEmitter send(@PathVariable Long id, @Valid @RequestBody AiSendRequest req, HttpServletResponse response) {
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache");
         return streamService.send(id, req.content());
     }
 }

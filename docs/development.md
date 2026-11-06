@@ -649,7 +649,7 @@ modules/ai
 
 ### AI 设置（按租户）
 
-表 `ai_config`（每个租户一条，`uk_ai_config (tenant_id)`）：服务商（`AiProvider`，内置默认接口地址，模型名称不写死在代码里，页面按服务商给出常见示例作占位提示）、接口地址（为空用默认地址，粘贴了完整的 `/chat/completions` 地址会自动去掉）、API Key（**只写不读**：查询只返回 `apiKeySet` 和脱敏的 `apiKeyMask`，保存时为空表示不修改，实体字段 `WRITE_ONLY`，操作日志的 `OperLogAspect` 也隐藏 `apiKey`）、对话模型、识图模型（为空时智能录入只支持 PDF / Excel / 文本）、总开关、每月 token 上限（为空不限）、四个功能开关（问数、录入、整理、报告，默认关闭）、温度、单次最大输出 token。
+表 `ai_config`（每个租户一条，`uk_ai_config (tenant_id)`）：服务商（`AiProvider`，内置默认接口地址，模型名称不写死在代码里，页面按服务商给出常见示例作占位提示）、接口地址（为空用默认地址，粘贴了完整的 `/chat/completions` 地址会自动去掉）、API Key（**只写不读**：查询只返回 `apiKeySet` 和脱敏的 `apiKeyMask`，保存时为空表示不修改，实体字段 `WRITE_ONLY`，操作日志的 `OperLogAspect` 也隐藏 `apiKey`；库中由 `AiKeyCipher` 用 AES-256-GCM 加密保存为 `enc:` 开头的密文，密钥取 `lemon.ai.secret-key`（环境变量 `LEMON_AI_SECRET_KEY`），为空时取 `lemon.jwt.secret`，更换后已保存的 Key 无法解密、视为未配置，需要重新填写；升级前的明文 Key 由 `AiConfigService.find()` 读取时改写为密文）、对话模型、识图模型（为空时智能录入只支持 PDF / Excel / 文本）、总开关、每月 token 上限（为空不限）、四个功能开关（问数、录入、整理、报告，默认关闭）、温度、单次最大输出 token。
 
 页面「AI 设置」顶部醒目提示「业务数据会发送给所配置的第三方模型服务」，打开总开关或任一功能时再弹出确认；「测试连接」用表单中的配置（API Key 留空时用已保存的）发一个极短的请求，显示模型回复、耗时、用量或失败原因；右侧显示本月用量（合计 / 上限、按功能、按人员）。
 

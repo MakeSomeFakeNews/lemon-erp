@@ -49,13 +49,28 @@ public class AiConfigService {
     private final AiUsageService usageService;
     private final LlmClient client;
     private final AiProperties props;
+    private final AiKeyCipher keyCipher;
 
     @Value("${lemon.tenant.enabled:false}")
     private boolean tenantEnabled;
 
-    /** 已保存的配置（含 API Key），没有时为 null */
+    /**
+     * 已保存的配置（API Key 已解密），没有时为 null。升级前保存的明文 API Key 在这里改写为密文；
+     * 无法解密（加密密钥已更换）时 API Key 为空，视为未配置
+     */
     public AiConfig find() {
-        return configMapper.selectOne(Wrappers.lambdaQuery());
+        AiConfig c = configMapper.selectOne(Wrappers.lambdaQuery());
+        if (c == null || c.getApiKey() == null) {
+            return c;
+        }
+        if (!keyCipher.isEncrypted(c.getApiKey())) {
+            // 只更新 api_key（实体中有总是更新的字段，不能用 updateById 部分更新）
+            configMapper.update(null, Wrappers.<AiConfig>lambdaUpdate()
+                    .set(AiConfig::getApiKey, keyCipher.encrypt(c.getApiKey())).eq(AiConfig::getId, c.getId()));
+            return c;
+        }
+        c.setApiKey(keyCipher.decrypt(c.getApiKey()));
+        return c;
     }
 
     /** 页面显示的配置：未保存过时返回默认值；API Key 不返回，只给出是否已设置和脱敏提示 */
@@ -120,6 +135,8 @@ public class AiConfigService {
         if (old != null && key != null && key.equals(old.getApiKey())) {
             input.setApiKey(null);
         }
+        // 加密保存；为 null（未修改）时 updateById 保留原值
+        input.setApiKey(keyCipher.encrypt(input.getApiKey()));
         if (old == null) {
             input.setId(null);
             configMapper.insert(input);

@@ -21,7 +21,7 @@
       </div>
     </template>
     <a-descriptions v-else-if="pairs" size="small" bordered :column="1">
-      <a-descriptions-item v-for="p in pairs" :key="p.key" :label="p.key">{{ format(p.value) }}</a-descriptions-item>
+      <a-descriptions-item v-for="p in pairs" :key="p.key" :label="columnTitle(p.key)">{{ format(p.value) }}</a-descriptions-item>
     </a-descriptions>
     <pre v-else class="raw">{{ format(data) }}</pre>
   </div>
@@ -29,10 +29,12 @@
 
 <script setup>
 import { computed } from 'vue'
+import { tt } from '@/locales'
 import { num } from '@/utils/number'
 
 /**
- * 工具返回数据的表格：对象数组按字段生成列（字段名即列名），单个对象显示为键值对，其他直接显示 JSON
+ * 工具返回数据的表格：对象数组按字段生成列，单个对象显示为键值对，其他直接显示 JSON。
+ * 列名取语言包 aiColumn 中字段名对应的译文（新增查询工具返回新字段时在 aiColumn.js 中补充），没有时显示字段名
  */
 const props = defineProps({
   data: { type: [Array, Object, String, Number, Boolean], default: null },
@@ -49,10 +51,12 @@ const columns = computed(() => {
   for (const row of (rows.value || []).slice(0, 50)) {
     for (const k of Object.keys(row)) if (!keys.includes(k)) keys.push(k)
   }
-  return keys.map((k) => ({ title: k, dataIndex: k, ellipsis: true }))
+  return keys.map((k) => ({ title: columnTitle(k), dataIndex: k, ellipsis: true }))
 })
 const pairs = computed(() => (isObject(props.data) ? Object.entries(props.data).map(([key, value]) => ({ key, value })) : null))
 
+/** 列名：字段名的译文，没有登记时显示字段名 */
+const columnTitle = (key) => tt(`aiColumn.${key}`, key)
 const isNumber = (v) => typeof v === 'number'
 function format(v) {
   if (v === null || v === undefined) return '-'

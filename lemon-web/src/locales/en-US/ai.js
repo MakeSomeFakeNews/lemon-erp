@@ -1,4 +1,4 @@
-/** AI: AI Settings, AI Q&A */
+/** AI: AI Settings, AI Q&A, Smart Entry, Data Cleansing, Smart Reports */
 export default {
   provider: {
     DEEPSEEK: 'DeepSeek',
@@ -49,8 +49,8 @@ export default {
     enabled: 'Enable AI',
     enabledTip: 'Master switch. All AI features are unavailable when off',
     featureOffWhenDisabled: 'Turn on "Enable AI" first',
-    phase2: 'Coming soon',
     confirmTitle: 'Turn it on?',
+    confirmContentAll: 'Once on, the business data needed by the AI features will be sent to the model service of {provider}. Please confirm you understand and this meets your company\'s data security requirements.',
     confirmContent: 'Once on, the business data needed by {feature} will be sent to the model service of {provider}. Please confirm you understand and this meets your company\'s data security requirements.',
     confirmOk: 'Turn On',
     testConnection: 'Test Connection',

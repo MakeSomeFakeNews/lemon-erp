@@ -40,7 +40,9 @@ export async function streamSse(url, body, { onEvent }, signal) {
       location.href = `/login?redirect=${encodeURIComponent(location.pathname + location.search)}`
       return
     }
-    if (res.status === 403 || data.code === 403) return fail(t('layout.forbidden'))
+    // 与 utils/request.js 一致：HTTP 403 是没有接口权限；业务码 403（如演示模式、功能未开放）显示后端的提示
+    if (res.status === 403) return fail(t('layout.forbidden'))
+    if (data.code === 403) return fail(data.msg || t('layout.forbidden'))
     return fail(data.msg || t('layout.serverError', { status: res.status }))
   }
   const reader = res.body.getReader()
