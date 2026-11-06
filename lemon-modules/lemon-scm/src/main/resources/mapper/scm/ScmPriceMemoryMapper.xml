@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmPriceMemoryMapper">
+
+    <!-- 赋值顺序：先按原日期 / 原价判断价格和日期，再改判断所依据的列（MySQL 按顺序求值，H2 取原值，两者结果一致） -->
+    <insert id="upsert">
+        INSERT INTO scm_price_memory (kind, partner_id, material_id, last_date, last_price, min_date, min_price, max_date, max_price,
+                                      create_time, update_time)
+        VALUES (#{kind}, #{partnerId}, #{materialId}, #{date}, #{lastPrice}, #{date}, #{minPrice}, #{date}, #{maxPrice}, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+            last_price = CASE WHEN #{date} &gt;= last_date THEN #{lastPrice} ELSE last_price END,
+            last_date = CASE WHEN #{date} &gt;= last_date THEN #{date} ELSE last_date END,
+            min_date = CASE WHEN #{minPrice} &lt; min_price THEN #{date} ELSE min_date END,
+            min_price = CASE WHEN #{minPrice} &lt; min_price THEN #{minPrice} ELSE min_price END,
+            max_date = CASE WHEN #{maxPrice} &gt; max_price THEN #{date} ELSE max_date END,
+            max_price = CASE WHEN #{maxPrice} &gt; max_price THEN #{maxPrice} ELSE max_price END,
+            update_time = NOW()
+    </insert>
+
+    <select id="selectCompare" resultType="com.lemon.erp.modules.scm.dto.PricingViews$MemoryRow">
+        SELECT p.id AS partner_id, p.code AS partner_code, p.name AS partner_name, m.last_date, m.last_price,
+               m.min_date, m.min_price, m.max_date, m.max_price
+        FROM scm_price_memory m
+        <choose>
+            <when test="kind.name() == 'SALES'">JOIN scm_customer p ON p.id = m.partner_id</when>
+            <otherwise>JOIN scm_supplier p ON p.id = m.partner_id</otherwise>
+        </choose>
+        WHERE m.kind = #{kind} AND m.material_id = #{q.materialId}
+        <if test="q.partnerId != null">AND p.id = #{q.partnerId}</if>
+        <if test="q.keyword != null and q.keyword != ''">AND (p.code LIKE CONCAT('%', #{q.keyword}, '%') OR p.name LIKE CONCAT('%', #{q.keyword}, '%'))</if>
+        <if test="q.start != null">AND m.last_date &gt;= #{q.start}</if>
+        <if test="q.end != null">AND m.last_date &lt;= #{q.end}</if>
+        ORDER BY m.last_date DESC, m.id DESC
+        LIMIT #{q.limit}
+    </select>
+
+</mapper>

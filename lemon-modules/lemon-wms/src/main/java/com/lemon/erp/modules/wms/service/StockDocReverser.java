@@ -83,6 +83,7 @@ public class StockDocReverser {
     private static WmsStockDocItem redItem(WmsStockDocItem i) {
         WmsStockDocItem r = new WmsStockDocItem();
         r.setMaterialId(i.getMaterialId());
+        r.setWarehouseId(i.getWarehouseId());
         r.setLocationId(i.getLocationId());
         r.setToLocationId(i.getToLocationId());
         r.setBatchNo(i.getBatchNo());

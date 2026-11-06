@@ -5,7 +5,7 @@
     <sql id="viewColumns">
         d.id, d.doc_no, d.kind, d.order_id, d.partner_id, d.warehouse_id, d.biz_date, d.total_qty, d.total_amount,
         d.tax_amount, d.wms_doc_id, d.wms_doc_no, d.remark, d.replenish, d.dept_id, d.create_by, d.create_time, d.update_time,
-        o.order_no, COALESCE(sp.code, cu.code) AS partner_code, COALESCE(sp.name, cu.name) AS partner_name,
+        o.order_no, o.source AS order_source, COALESCE(sp.code, cu.code) AS partner_code, COALESCE(sp.name, cu.name) AS partner_name,
         w.name AS warehouse_name, u.nickname AS create_by_name
     </sql>
 
@@ -26,7 +26,8 @@
         <if test="q.orderNo != null and q.orderNo != ''">AND o.order_no LIKE CONCAT('%', #{q.orderNo}, '%')</if>
         <if test="q.orderId != null">AND d.order_id = #{q.orderId}</if>
         <if test="q.partnerId != null">AND d.partner_id = #{q.partnerId}</if>
-        <if test="q.warehouseId != null">AND d.warehouse_id = #{q.warehouseId}</if>
+        <if test="q.warehouseId != null">AND (d.warehouse_id = #{q.warehouseId}
+            OR EXISTS (SELECT 1 FROM scm_trade_doc_item ti WHERE ti.doc_id = d.id AND ti.warehouse_id = #{q.warehouseId}))</if>
         <if test="q.beginDate != null">AND d.biz_date &gt;= #{q.beginDate}</if>
         <if test="q.endDate != null">AND d.biz_date &lt;= #{q.endDate}</if>
         ORDER BY d.id DESC

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * 新租户复制平台的规格属性及属性值（颜色、尺码）
+ * 新租户复制平台的规格属性及属性值（颜色、尺码），按默认设置初始化价格列
  */
 @Component
 @RequiredArgsConstructor
@@ -21,9 +21,11 @@ public class WmsTenantInitializer implements TenantInitializer {
 
     private final WmsAttributeMapper attributeMapper;
     private final WmsAttributeValueMapper valueMapper;
+    private final WmsPriceLevelService priceLevelService;
 
     @Override
     public void initialize(Context context) {
+        priceLevelService.initDefaults();
         List<WmsAttribute> attrs = TenantContext.callAs(TenantContext.PLATFORM_TENANT_ID, () -> attributeMapper.selectList(Wrappers.emptyWrapper()));
         List<WmsAttributeValue> values = TenantContext.callAs(TenantContext.PLATFORM_TENANT_ID, () -> valueMapper.selectList(Wrappers.emptyWrapper()));
         for (WmsAttribute a : attrs) {

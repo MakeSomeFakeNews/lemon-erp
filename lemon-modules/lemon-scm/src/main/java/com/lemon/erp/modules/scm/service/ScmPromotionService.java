@@ -40,6 +40,12 @@ public class ScmPromotionService {
 
     /** 应用结果：明细（含赠品行，单价已调整、金额未重算）、促销优惠合计、各促销的应用记录、说明 */
     public record Applied(List<ScmOrderItem> items, BigDecimal discountAmount, List<Usage> usages, List<String> notes) {
+
+        /** 去掉买赠（赠品行和买赠促销的应用记录），只保留折扣、满减：直接开单时赠品不会自动出库 */
+        public Applied withoutGifts() {
+            return new Applied(items.stream().filter(i -> !Integer.valueOf(1).equals(i.getGift())).toList(), discountAmount,
+                    usages.stream().filter(u -> u.giftQty() == null || u.giftQty().signum() == 0).toList(), notes);
+        }
     }
 
     public record Usage(Long promotionId, String name, BigDecimal discountAmount, BigDecimal giftQty) {

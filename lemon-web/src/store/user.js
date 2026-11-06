@@ -4,6 +4,7 @@ import { getToken, setToken, removeToken } from '@/utils/auth'
 import { tt } from '@/locales'
 import { useAppStore } from './app'
 import { useDictStore } from './dict'
+import { clearBizRules } from '@/composables/useBizRules'
 
 const ALL_PERMISSION = '*:*:*'
 
@@ -50,6 +51,7 @@ export const useUserStore = defineStore('user', {
     reset() {
       removeToken()
       useDictStore().clear()
+      clearBizRules()
       this.$reset()
       this.token = null
     },

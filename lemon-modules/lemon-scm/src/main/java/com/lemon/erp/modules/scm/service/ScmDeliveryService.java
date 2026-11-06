@@ -83,6 +83,7 @@ public class ScmDeliveryService {
     @Transactional
     public Long create(DeliveryRequest req) {
         ScmOrder order = orderService.getAccessible(OrderKind.SALES, req.orderId());
+        ScmOrderService.checkNotDirect(order);
         if (!order.getStatus().isExecutable()) {
             throw new BizException("scm.error.orderNotApprovedPartiallyDeliveredCannot", order.getOrderNo());
         }

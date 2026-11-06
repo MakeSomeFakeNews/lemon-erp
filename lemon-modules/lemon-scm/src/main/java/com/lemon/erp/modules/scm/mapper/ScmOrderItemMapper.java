@@ -23,4 +23,7 @@ public interface ScmOrderItemMapper extends BaseMapper<ScmOrderItem> {
 
     /** 回写已退货数量：不超过实际完成数量 */
     int addReturn(@Param("id") Long id, @Param("qty") BigDecimal qty, @Param("replenish") boolean replenish);
+
+    /** 直接退货生成的隐式订单：视为已全部出入库（只用于回写退货数量） */
+    void markAllDone(@Param("orderId") Long orderId);
 }

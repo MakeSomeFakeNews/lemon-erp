@@ -25,5 +25,7 @@ public enum OrderSource {
     /** 经销商订货 */
     DEALER,
     /** 外部导入 */
-    IMPORT
+    IMPORT,
+    /** 直接开单：不选订单直接开销售出库 / 采购入库（或退货）时系统生成并直接审核的隐式订单，不能修改、变更 */
+    DIRECT
 }

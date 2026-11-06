@@ -23,11 +23,14 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * 业务参数：各模块登记的控制规则（如超收比例、信用控制方式），按租户保存修改过的值，读取时按租户缓存
@@ -49,6 +52,8 @@ public class SysBizRuleService implements BizRules {
     private volatile Map<String, BizRule> definitions;
     /** 参数标识 → 登记它的模块（保存时的额外校验） */
     private volatile Map<String, BizRuleProvider> owners;
+    /** 前端可读的参数标识 */
+    private volatile Set<String> publicKeys;
 
     @Override
     public String get(String key) {
@@ -70,6 +75,23 @@ public class SysBizRuleService implements BizRules {
             return new BizRuleItem(r.key(), Messages.get(r.module()), Messages.get(r.label()), r.type().name(), value, r.defaultValue(),
                     !Objects.equals(value, r.defaultValue()), options, r.min(), r.max(), r.scale(), columns, Messages.get(r.remark()));
         }).toList();
+    }
+
+    /** 声明为前端可读的参数的当前值，未声明或不存在的标识忽略 */
+    public Map<String, String> publicValues(Collection<String> keys) {
+        Set<String> allowed = publicKeys();
+        Map<String, String> values = new LinkedHashMap<>();
+        keys.stream().filter(allowed::contains).forEach(k -> values.put(k, get(k)));
+        return values;
+    }
+
+    private Set<String> publicKeys() {
+        if (publicKeys == null) {
+            Set<String> keys = new HashSet<>();
+            providers.forEach(p -> keys.addAll(p.publicKeys()));
+            publicKeys = Set.copyOf(keys);
+        }
+        return publicKeys;
     }
 
     /** 保存（只包含要修改的参数），值为空或等于默认值时恢复默认 */

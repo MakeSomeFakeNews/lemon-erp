@@ -79,6 +79,7 @@ public class ScmOrderChangeService {
     @Transactional
     public Long create(OrderKind kind, Long orderId, OrderChangeRequest req) {
         ScmOrder order = orderService.getAccessible(kind, orderId);
+        ScmOrderService.checkNotDirect(order);
         if (!order.getStatus().isExecutable()) {
             throw new BizException("scm.error.onlyApprovedPartiallyCompletedOrdersChanged");
         }

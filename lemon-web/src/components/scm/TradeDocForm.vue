@@ -1,28 +1,22 @@
 <template>
-  <FormDrawer page :drawer="drawer" :create-title="$t('scm.trade.addKind', { kind: conf.label })" width="min(1280px, 100vw)">
-    <a-alert type="info" show-icon class="tip" :message="tip" />
+  <FormDrawer page :drawer="drawer" :create-title="$t('scm.trade.addKind', { kind: conf.label })" width="min(1320px, 100vw)">
     <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
       <a-row :gutter="16">
-        <a-col :xs="24" :sm="12" :lg="8">
-          <a-form-item :label="ORDER_KINDS[conf.orderKind].label" name="orderId">
-            <a-select
-              :value="form.orderId"
-              show-search
-              :filter-option="false"
-              :options="orderOptions"
-              :loading="orderLoading"
-              :disabled="fixedOrder"
-              :placeholder="$t('scm.trade.searchOrderNo')"
-              :not-found-content="orderLoading ? $t('common.msg.loading') : $t('scm.trade.noOrder', { action: conf.action })"
-              @search="searchOrders"
-              @focus="() => !orders.length && searchOrders('')"
-              @change="selectOrder"
+        <a-col :xs="24" :sm="12" :lg="6">
+          <a-form-item :label="orderConf.partnerLabel" name="partnerId">
+            <PartnerSelect
+              v-model:value="form.partnerId"
+              :label="form.partnerLabel"
+              :type="orderConf.partner"
+              :disabled="!!form.orderId"
+              :placeholder="$t('scm.trade.selectPartner', { partner: orderConf.partnerLabel })"
+              @select="(p) => (form.partnerLabel = `${p.code} ${p.name}`)"
             />
           </a-form-item>
         </a-col>
-        <a-col :xs="24" :sm="12" :lg="6">
+        <a-col :xs="24" :sm="12" :lg="5">
           <a-form-item :label="$t('scm.trade.warehouse')" name="warehouseId">
-            <WarehouseSelect :value="form.warehouseId" :allow-clear="false" @update:value="onWarehouseChange" />
+            <WarehouseSelect v-model:value="form.warehouseId" :allow-clear="false" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="4">
@@ -30,116 +24,49 @@
             <a-date-picker v-model:value="form.bizDate" value-format="YYYY-MM-DD" class="full" />
           </a-form-item>
         </a-col>
-        <a-col :xs="24" :sm="12" :lg="6">
+        <a-col v-if="kind === 'salesOut' && direct" :xs="24" :sm="12" :lg="4">
+          <a-form-item :label="$t('scm.trade.salesman')" name="salesmanId">
+            <IdentityUserSelect v-model:value="form.salesmanId" :placeholder="$t('scm.trade.salesmanDefault')" />
+          </a-form-item>
+        </a-col>
+        <a-col :xs="24" :sm="12" :lg="kind === 'salesOut' && direct ? 5 : 9">
           <a-form-item :label="$t('common.field.remark')" name="remark">
             <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('scm.trade.optional')" />
           </a-form-item>
         </a-col>
-        <a-col v-if="isReturn" :span="24">
-          <a-form-item name="replenish" class="replenish">
-            <a-checkbox v-model:checked="form.replenish">
-              {{ conf.orderKind === 'sales' ? $t('scm.trade.replenishSales') : $t('scm.trade.replenishPurchase') }}
-              <span class="sub-text">{{ conf.orderKind === 'sales' ? $t('scm.trade.replenishSalesHint') : $t('scm.trade.replenishPurchaseHint') }}</span>
-            </a-checkbox>
-          </a-form-item>
-        </a-col>
       </a-row>
 
-      <div class="items-head">
-        <span class="section-title">
-          {{ $t('scm.trade.itemsSummary', { rows: form.items.length, qty: formatQty(totalQty), amount: formatMoney(totalAmount) }) }}
-        </span>
-        <a-space>
-          <span v-if="partnerName" class="sub-text">{{ $t('scm.trade.labelValue', { label: ORDER_KINDS[conf.orderKind].partnerLabel, value: partnerName }) }}</span>
-          <a-button v-if="inbound" size="small" :disabled="!form.warehouseId || !form.items.length" @click="putaway">{{ $t('scm.trade.suggestLocation') }}</a-button>
-        </a-space>
-      </div>
+      <a-form-item name="orderId" class="source-item" :rules="allowDirect ? [] : [{ required: true, message: sourceRequired }]">
+        <div class="source-bar">
+          <span class="source-label">{{ sourceByDoc ? $t('scm.trade.sourceDoc', { kind: sourceConf.label }) : $t('scm.trade.refOrder') }}</span>
+          <a-select
+            :value="sourceByDoc ? form.sourceDocId : form.orderId"
+            show-search
+            allow-clear
+            class="source-select"
+            :filter-option="false"
+            :options="sourceOptions"
+            :loading="sourceLoading"
+            :disabled="fixedOrder"
+            :placeholder="sourceByDoc ? $t('scm.trade.searchSourceDoc') : $t('scm.trade.searchOrderNo')"
+            :not-found-content="sourceLoading ? $t('common.msg.loading') : $t('scm.trade.noSource')"
+            @search="searchSources"
+            @focus="() => !sources.length && searchSources('')"
+            @change="selectSource"
+          />
+          <span class="sub-text">{{ allowDirect ? (form.orderId ? $t('scm.trade.orderModeHint') : $t('scm.trade.directModeHint')) : $t('scm.trade.orderRequiredHint') }}</span>
+        </div>
+      </a-form-item>
 
-      <a-table
-        row-key="key"
-        size="small"
-        class="items-table"
-        :columns="columns"
-        :data-source="form.items"
-        :pagination="false"
-        :scroll="{ x: scrollX }"
-        :locale="{ emptyText: form.orderId ? $t('scm.trade.noItems', { action: conf.action }) : $t('scm.trade.selectOrderFirst') }"
-      >
-        <template #bodyCell="{ column, record, index }">
-          <template v-if="column.key === 'material'">
-            <div>{{ record.materialCode }} {{ record.materialName }}</div>
-            <div class="sub-text">{{ record.spec }}</div>
-            <div class="row-tags">
-              <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">{{ $t('scm.trade.batch') }}</a-tag>
-              <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">{{ $t('scm.trade.serialNo') }}</a-tag>
-            </div>
-          </template>
-          <template v-else-if="column.key === 'limit'">
-            <div>{{ formatQty(record.limit) }} {{ record.unit }}</div>
-            <div class="sub-text">¥{{ formatMoney(record.price) }} / {{ record.unit || $t('common.field.unit') }}</div>
-          </template>
-          <template v-else-if="column.key === 'slot'">
-            <a-form-item :name="['items', index, 'slot']" :rules="requiredRule($t('scm.trade.selectSlot'))" class="cell-item">
-              <StockSlotSelect
-                v-model:value="record.slot"
-                :label="record.slotLabel"
-                :warehouse-id="form.warehouseId"
-                :material-id="record.materialId"
-                :include-frozen="kind === 'purchaseReturn'"
-                @select="(s) => applySlot(record, s)"
-              />
-            </a-form-item>
-            <div v-if="record.available != null" class="sub-text">{{ $t('scm.trade.availableN', { qty: formatQty(record.available) }) }}</div>
-          </template>
-          <template v-else-if="column.key === 'location'">
-            <LocationSelect v-model:value="record.locationId" :warehouse-id="form.warehouseId" />
-          </template>
-          <template v-else-if="column.key === 'batchNo'">
-            <a-form-item
-              :name="['items', index, 'batchNo']"
-              :rules="record.batchEnabled === 1 ? requiredRule($t('scm.trade.inputBatchNo')) : []"
-              class="cell-item"
-            >
-              <a-input v-model:value="record.batchNo" :maxlength="64" :disabled="record.batchEnabled !== 1" :placeholder="$t('scm.trade.batchNo')" />
-            </a-form-item>
-            <template v-if="kind === 'purchaseIn' && record.batchEnabled === 1">
-              <a-date-picker v-model:value="record.productionDate" value-format="YYYY-MM-DD" :placeholder="$t('scm.trade.productionDate')" class="full date-row" />
-              <a-date-picker v-model:value="record.expiryDate" value-format="YYYY-MM-DD" :placeholder="$t('scm.trade.expiryDate')" class="full date-row" />
-            </template>
-          </template>
-          <template v-else-if="column.key === 'qty'">
-            <a-form-item :name="['items', index, 'qty']" :rules="requiredRule($t('scm.trade.inputQty'))" class="cell-item">
-              <a-input-number
-                v-model:value="record.qty"
-                :min="0"
-                :precision="record.serialEnabled === 1 ? 0 : 4"
-                :addon-after="record.unit || undefined"
-                class="full"
-              />
-            </a-form-item>
-          </template>
-          <template v-else-if="column.key === 'serialNos'">
-            <SerialInput
-              v-if="record.serialEnabled === 1"
-              v-model:value="record.serialNos"
-              :expected="record.qty ?? 0"
-              :source="conf.fromStock ? serialSource(record) : undefined"
-              :placeholder="conf.fromStock ? $t('scm.trade.selectOrScan') : $t('scm.trade.scanOrInputSerial')"
-            />
-            <span v-else class="sub-text">-</span>
-          </template>
-          <template v-else-if="column.key === 'action'">
-            <a-tooltip :title="$t('scm.trade.splitTip')">
-              <a-button type="link" size="small" @click="splitRow(index)">
-                <template #icon><SplitCellsOutlined /></template>
-              </a-button>
-            </a-tooltip>
-            <a-button type="link" danger size="small" @click="form.items.splice(index, 1)">
-              <template #icon><DeleteOutlined /></template>
-            </a-button>
-          </template>
-        </template>
-      </a-table>
+      <a-form-item v-if="isReturn && form.orderId && !directOrder" name="replenish" class="replenish">
+        <a-checkbox v-model:checked="form.replenish">
+          {{ conf.orderKind === 'sales' ? $t('scm.trade.replenishSales') : $t('scm.trade.replenishPurchase') }}
+          <span class="sub-text">{{ conf.orderKind === 'sales' ? $t('scm.trade.replenishSalesHint') : $t('scm.trade.replenishPurchaseHint') }}</span>
+        </a-checkbox>
+      </a-form-item>
+
+      <TradeDocItems :kind="kind" :form="form" :direct="direct" :line-warehouse="lineWarehouse" />
+      <div class="tip sub-text">{{ tip }}</div>
     </a-form>
   </FormDrawer>
 </template>
@@ -147,21 +74,24 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, SplitCellsOutlined } from '@ant-design/icons-vue'
-import FormDrawer from '@/components/FormDrawer.vue'
-import LocationSelect from '@/components/wms/LocationSelect.vue'
-import SerialInput from '@/components/wms/SerialInput.vue'
-import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
-import StockSlotSelect from './StockSlotSelect.vue'
-import { getOrder, pageOrder } from '@/api/scm/order'
-import { addTrade } from '@/api/scm/trade'
-import { useFormDrawer } from '@/composables/useFormDrawer'
-import { fillPutaway, formatQty, rowKey, today } from '@/components/wms/wms'
-import { ORDER_KINDS, TRADE_KINDS, formatMoney, lineAmount, netQty, remainingQty } from './scm'
 import { useI18n } from 'vue-i18n'
+import FormDrawer from '@/components/FormDrawer.vue'
+import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
+import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
+import PartnerSelect from './PartnerSelect.vue'
+import TradeDocItems from './TradeDocItems.vue'
+import { getOrder, pageOrder } from '@/api/scm/order'
+import { addTrade, getTrade, pageTrade } from '@/api/scm/trade'
+import { useFormDrawer } from '@/composables/useFormDrawer'
+import { useBizRules } from '@/composables/useBizRules'
+import { rowKey, today } from '@/components/wms/wms'
+import { ORDER_KINDS, TRADE_KINDS, formatMoney, netQty, newTradeRow, remainingQty } from './scm'
+import { OrderSource, OrderStatus } from '@/constants/enums'
 
 /**
- * 采购入库 / 采购退货 / 销售出库 / 销售退货：选择订单后按订单明细录入，保存即确认（更新库存）。
+ * 采购入库 / 采购退货 / 销售出库 / 销售退货，保存即确认（更新库存）。
+ * 默认直接开单（业务参数 scm.directDoc.enabled）：选往来单位、仓库，明细直接选商品、数量、单价；
+ * 也可引用订单（退货为引用原出入库单），按订单明细录入。参数关闭时必须引用。
  * 通过 ref 调用 openCreate(order?)：传入订单时订单不可更换；保存成功后触发 success
  */
 const props = defineProps({
@@ -171,175 +101,172 @@ const emit = defineEmits(['success'])
 const { t } = useI18n()
 
 const conf = computed(() => TRADE_KINDS[props.kind])
+const orderConf = computed(() => ORDER_KINDS[conf.value.orderKind])
 const tip = computed(() => t(`scm.trade.tip.${props.kind}`))
+const isReturn = computed(() => conf.value.returns)
 
-const columns = computed(() => {
-  const c = conf.value
-  const list = [
-    { title: t('scm.trade.material'), key: 'material', width: 230 },
-    { title: c.returns ? t('scm.trade.returnableQty') : t('scm.trade.openQty'), key: 'limit', width: 140 },
-    ...(c.fromStock
-      ? [{ title: t('scm.trade.locationBatch'), key: 'slot', width: 230 }]
-      : [
-          { title: t('scm.trade.location'), key: 'location', width: 200 },
-          { title: t('scm.trade.batchNo'), key: 'batchNo', width: 160 }
-        ]),
-    { title: t('common.field.quantity'), key: 'qty', width: 150 },
-    { title: t('scm.trade.serialNo'), key: 'serialNos', width: 260 },
-    { title: '', key: 'action', width: 80, fixed: 'right' }
-  ]
-  return list
-})
-const scrollX = computed(() => columns.value.reduce((sum, c) => sum + c.width, 0))
+const { rules: bizRules, ready: rulesReady } = useBizRules({ 'scm.directDoc.enabled': true, 'scm.salesOut.lineWarehouse': true })
+const allowDirect = computed(() => bizRules['scm.directDoc.enabled'] === true)
+const lineWarehouse = computed(() => props.kind === 'salesOut' && bizRules['scm.salesOut.lineWarehouse'] === true)
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
-const rules = {
-  orderId: requiredRule(t('scm.trade.selectOrder')),
+const rules = computed(() => ({
+  partnerId: direct.value ? requiredRule(t('scm.trade.selectPartner', { partner: orderConf.value.partnerLabel })) : [],
   warehouseId: requiredRule(t('scm.trade.selectWarehouse')),
   bizDate: requiredRule(t('scm.trade.selectBizDate'))
-}
+}))
 
-const emptyForm = () => ({ id: undefined, orderId: undefined, warehouseId: undefined, bizDate: today(), remark: '', replenish: false, items: [] })
-const isReturn = computed(() => props.kind === 'purchaseReturn' || props.kind === 'salesReturn')
-/** 入库类单据（采购入库、销售退货）可按上架策略推荐库位 */
-const inbound = computed(() => props.kind === 'purchaseIn' || props.kind === 'salesReturn')
-async function putaway() {
-  const n = await fillPutaway(form.value.warehouseId, form.value.items)
-  message.info(n ? t('scm.trade.suggestedN', { n }) : t('scm.trade.noSuggestion'))
-}
+const emptyForm = () => ({
+  id: undefined, orderId: undefined, sourceDocId: undefined, partnerId: undefined, partnerLabel: undefined, salesmanId: undefined,
+  warehouseId: undefined, bizDate: today(), remark: '', replenish: false, items: []
+})
 
 const drawer = useFormDrawer({
   emptyForm,
   create: async (data) => emit('success', await addTrade(props.kind, data)),
   update: () => Promise.reject(new Error(t('scm.trade.cannotModify'))),
   successMessage: t('scm.trade.kindSuccess', { kind: TRADE_KINDS[props.kind].label }),
-  toPayload: (f) => ({
-    orderId: f.orderId,
-    warehouseId: f.warehouseId,
-    bizDate: f.bizDate,
-    remark: f.remark,
-    replenish: isReturn.value ? f.replenish : null,
-    items: f.items.map((i) => ({
-      orderItemId: i.orderItemId,
-      locationId: i.locationId || null,
-      batchNo: i.batchNo || null,
-      productionDate: i.productionDate || null,
-      expiryDate: i.expiryDate || null,
-      qty: i.qty,
-      serialNos: i.serialNos || null
-    }))
-  })
+  toPayload: (f) => {
+    const byOrder = !!f.orderId
+    return {
+      orderId: f.orderId || null,
+      partnerId: byOrder ? null : f.partnerId,
+      salesmanId: !byOrder && props.kind === 'salesOut' ? f.salesmanId || null : null,
+      warehouseId: f.warehouseId,
+      bizDate: f.bizDate,
+      remark: f.remark,
+      replenish: isReturn.value && byOrder ? f.replenish : null,
+      items: f.items.map((i) => ({
+        orderItemId: byOrder ? i.orderItemId : null,
+        materialId: byOrder ? null : i.materialId,
+        price: byOrder ? null : i.price,
+        taxRate: byOrder ? null : i.taxRate,
+        warehouseId: lineWarehouse.value ? i.warehouseId || null : null,
+        locationId: i.locationId || null,
+        batchNo: i.batchNo || null,
+        productionDate: i.productionDate || null,
+        expiryDate: i.expiryDate || null,
+        qty: i.qty,
+        serialNos: i.serialNos || null
+      }))
+    }
+  }
 })
 const { form, formRef } = drawer
 
-const totalQty = computed(() => form.value.items.reduce((sum, i) => sum + (Number(i.qty) || 0), 0))
-const totalAmount = computed(() => form.value.items.reduce((sum, i) => sum + lineAmount(i.qty, i.price), 0))
+/** 直接开单：参数开启且没有引用订单 */
+const direct = computed(() => allowDirect.value && !form.value.orderId)
 
-// ---------------------------------------------------------------- 订单
+// ---------------------------------------------------------------- 引用订单 / 原单
 const fixedOrder = ref(false)
-const partnerName = ref('')
-const orders = ref([])
-const orderLoading = ref(false)
-const allowedStatus = computed(() => (conf.value.returns ? ['PARTIAL', 'COMPLETED', 'CLOSED'] : ['APPROVED', 'PARTIAL']))
-const orderOptions = computed(() =>
-  orders.value.map((o) => ({ value: o.id, label: `${o.orderNo}　${o.partnerName}　¥${formatMoney(o.totalAmount)}` }))
+/** 当前引用的订单（判断是否为直接开单生成的订单） */
+const currentOrder = ref()
+const directOrder = computed(() => currentOrder.value?.source === OrderSource.DIRECT)
+/** 退货引用原出入库单（采购退货 ← 采购入库，销售退货 ← 销售出库）；从订单详情进入时引用订单 */
+const sourceByDoc = computed(() => isReturn.value && !fixedOrder.value)
+const sourceKind = computed(() => (props.kind === 'purchaseReturn' ? 'purchaseIn' : 'salesOut'))
+const sourceConf = computed(() => TRADE_KINDS[sourceKind.value])
+const sourceRequired = computed(() => (sourceByDoc.value ? t('scm.trade.selectSourceDoc') : t('scm.trade.selectOrder')))
+
+const sources = ref([])
+const sourceLoading = ref(false)
+const executable = [OrderStatus.APPROVED, OrderStatus.PARTIAL]
+const sourceOptions = computed(() =>
+  sources.value.map((s) =>
+    sourceByDoc.value
+      ? { value: s.id, label: `${s.docNo}　${s.partnerName}　${s.bizDate}　¥${formatMoney(s.totalAmount)}` }
+      : { value: s.id, label: `${s.orderNo}　${s.partnerName}　¥${formatMoney(s.totalAmount)}` }
+  )
 )
 let timer
-function searchOrders(orderNo) {
+function searchSources(keyword) {
   clearTimeout(timer)
   timer = setTimeout(async () => {
-    orderLoading.value = true
+    sourceLoading.value = true
     try {
-      const res = await pageOrder(conf.value.orderKind, { orderNo: orderNo || undefined, current: 1, size: 100 })
-      orders.value = res.records.filter((o) => allowedStatus.value.includes(o.status))
+      const partnerId = form.value.partnerId || undefined
+      if (sourceByDoc.value) {
+        const res = await pageTrade(sourceKind.value, { docNo: keyword || undefined, partnerId, current: 1, size: 50 })
+        sources.value = res.records
+      } else {
+        const res = await pageOrder(conf.value.orderKind, { orderNo: keyword || undefined, partnerId, current: 1, size: 100 })
+        // 直接开单生成的订单已全部完成，不会出现在可出入库的订单中
+        sources.value = res.records.filter((o) => executable.includes(o.status) && o.source !== OrderSource.DIRECT)
+      }
     } finally {
-      orderLoading.value = false
+      sourceLoading.value = false
     }
   }, 200)
 }
 
-/** 订单明细 → 表单行：入库 / 出库默认数量为未完成数量；退货默认不填 */
-function toRows(order) {
+/** 订单明细 → 表单行：入库 / 出库默认数量为未完成数量；退货默认不填。doc 为原出入库单时按其明细（批次、库位、序列号）带出 */
+function orderRows(order, doc) {
+  const items = new Map(order.items.map((i) => [i.id, i]))
+  const base = (i) => ({
+    key: rowKey(), orderItemId: i.id, materialId: i.materialId, materialCode: i.materialCode, materialName: i.materialName,
+    spec: i.spec, unit: i.unit, batchEnabled: i.batchEnabled, serialEnabled: i.serialEnabled, price: Number(i.price),
+    warehouseId: null, locationId: null, batchNo: undefined, slot: undefined, slotLabel: undefined, available: undefined, serialNos: undefined
+  })
+  if (doc) {
+    return doc.items
+      .map((d) => ({ d, i: items.get(d.orderItemId) }))
+      .filter(({ i }) => i && netQty(i) > 0)
+      .map(({ d, i }) => ({ ...base(i), price: Number(d.price), limit: netQty(i), qty: undefined, batchNo: d.batchNo || undefined }))
+  }
   return order.items
-    .map((i) => ({ i, limit: conf.value.returns ? netQty(i) : remainingQty(i) }))
+    .map((i) => ({ i, limit: isReturn.value ? netQty(i) : remainingQty(i) }))
     .filter(({ limit }) => limit > 0)
-    .map(({ i, limit }) => ({
-      key: rowKey(),
-      orderItemId: i.id,
-      materialId: i.materialId,
-      materialCode: i.materialCode,
-      materialName: i.materialName,
-      spec: i.spec,
-      unit: i.unit,
-      batchEnabled: i.batchEnabled,
-      serialEnabled: i.serialEnabled,
-      price: Number(i.price),
-      limit,
-      qty: conf.value.returns ? undefined : limit,
-      locationId: null,
-      batchNo: undefined,
-      slot: undefined,
-      slotLabel: undefined,
-      available: undefined,
-      serialNos: undefined
-    }))
+    .map(({ i, limit }) => ({ ...base(i), limit, qty: isReturn.value ? undefined : limit }))
 }
 
-async function loadOrder(orderId) {
-  const order = await getOrder(conf.value.orderKind, orderId)
-  partnerName.value = `${order.partnerCode} ${order.partnerName}`
-  if (!orders.value.some((o) => o.id === order.id)) orders.value = [order, ...orders.value]
-  return order
+function useOrder(order, doc) {
+  currentOrder.value = order
+  form.value.orderId = order.id
+  form.value.partnerId = order.partnerId
+  form.value.partnerLabel = `${order.partnerCode} ${order.partnerName}`
+  if (directOrder.value) form.value.replenish = false
+  const warehouseId = doc?.warehouseId || order.warehouseId
+  if (warehouseId && !form.value.warehouseId) form.value.warehouseId = warehouseId
+  form.value.items = orderRows(order, doc)
 }
 
-async function selectOrder(orderId) {
-  const order = await loadOrder(orderId)
-  form.value.orderId = orderId
-  if (order.warehouseId && !form.value.warehouseId) form.value.warehouseId = order.warehouseId
-  form.value.items = toRows(order)
+async function selectSource(id) {
+  if (!id) return clearSource()
+  if (sourceByDoc.value) {
+    const doc = await getTrade(sourceKind.value, id)
+    const order = await getOrder(conf.value.orderKind, doc.orderId)
+    form.value.sourceDocId = id
+    useOrder(order, doc)
+  } else {
+    useOrder(await getOrder(conf.value.orderKind, id))
+  }
+  if (!form.value.items.length) message.warning(t('scm.trade.noItems', { action: conf.value.action }))
+}
+
+/** 取消引用：回到直接开单 */
+function clearSource() {
+  currentOrder.value = undefined
+  Object.assign(form.value, { orderId: undefined, sourceDocId: undefined, replenish: false })
+  form.value.items = allowDirect.value ? [{ ...newTradeRow(), key: rowKey() }] : []
 }
 
 async function openCreate(order) {
   fixedOrder.value = !!order
-  partnerName.value = ''
-  orders.value = []
-  if (!order) return drawer.openCreate()
-  const full = await loadOrder(order.id)
-  const items = toRows(full)
+  currentOrder.value = undefined
+  sources.value = []
+  await rulesReady
+  if (!order) return drawer.openCreate(allowDirect.value ? { items: [{ ...newTradeRow(), key: rowKey() }] } : {})
+  const full = await getOrder(conf.value.orderKind, order.id)
+  const items = orderRows(full)
   if (!items.length) {
     message.warning(t('scm.trade.noItems', { action: conf.value.action }))
     return
   }
-  return drawer.openCreate({ orderId: full.id, warehouseId: full.warehouseId || undefined, items })
-}
-
-// ---------------------------------------------------------------- 明细
-function onWarehouseChange(id) {
-  if (id === form.value.warehouseId) return
-  form.value.warehouseId = id
-  form.value.items.forEach((i) => Object.assign(i, { locationId: null, slot: undefined, available: undefined, serialNos: undefined }))
-}
-
-function applySlot(row, slot) {
-  Object.assign(row, { locationId: slot.locationId, batchNo: slot.batchNo, slotLabel: slot.label, available: Number(slot.qty), serialNos: undefined })
-}
-
-const serialSource = (row) =>
-  row.slot
-    ? { warehouseId: form.value.warehouseId, locationId: row.locationId || undefined, materialId: row.materialId, batchNo: row.batchNo || undefined }
-    : undefined
-
-function splitRow(index) {
-  const row = form.value.items[index]
-  form.value.items.splice(index + 1, 0, {
-    ...row,
-    key: rowKey(),
-    qty: undefined,
-    slot: undefined,
-    locationId: null,
-    batchNo: undefined,
-    available: undefined,
-    serialNos: undefined
+  currentOrder.value = full
+  sources.value = [full]
+  return drawer.openCreate({
+    orderId: full.id, partnerId: full.partnerId, partnerLabel: `${full.partnerCode} ${full.partnerName}`,
+    warehouseId: full.warehouseId || undefined, items
   })
 }
 
@@ -348,34 +275,28 @@ defineExpose({ openCreate })
 
 <style scoped>
 .tip {
-  margin-bottom: 16px;
+  margin-top: 12px;
 }
 .full {
   width: 100%;
 }
-.date-row {
-  margin-top: 4px;
+.source-item {
+  margin-bottom: 8px;
 }
-.items-head {
+.source-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  margin: 8px 0 12px;
+  gap: 8px 12px;
 }
-.section-title {
+.source-label {
   font-weight: 500;
 }
-.items-table :deep(.ant-table-cell) {
-  vertical-align: top;
+.source-select {
+  width: min(420px, 100%);
 }
-.cell-item {
-  margin-bottom: 0;
-}
-.row-tags {
-  margin-top: 4px;
-}
-.row-tags:empty {
-  display: none;
+.replenish {
+  margin-bottom: 8px;
 }
 .sub-text {
   color: var(--app-text-3);

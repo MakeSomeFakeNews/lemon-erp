@@ -55,12 +55,13 @@ const order = (key, name, partner, warehouse, confirm) => ({
   signs: [n.prepared, n.approved, confirm],
   note: true
 })
-const trade = (key, name, partner, sign) => ({
+/** lineWarehouse：明细可选仓库（销售出库），明细多一列仓库 */
+const trade = (key, name, partner, sign, lineWarehouse = false) => ({
   key,
   module: n.modScm,
   name,
   fields: [n.orderNo, partner, n.warehouse, n.bizDate, n.wmsDocNo, n.totalAmount, n.originalCurrency],
-  columns: [...MATERIAL_COLUMNS, n.location, n.batch, num(n.quantity), num(n.taxPrice), num(n.totalAmount), n.serialNo],
+  columns: [...MATERIAL_COLUMNS, ...(lineWarehouse ? [n.warehouse] : []), n.location, n.batch, num(n.quantity), num(n.taxPrice), num(n.totalAmount), n.serialNo],
   signs: [n.prepared, n.storekeeper, sign],
   note: true
 })
@@ -69,7 +70,7 @@ const stock = (key, name, warehouse, transfer, type, category) => ({
   module: n.warehouse,
   name,
   fields: [...(type ? [type, category] : []), warehouse, ...(transfer ? [n.inWarehouse] : []), n.bizDate, n.sourceNo, n.totalQty],
-  columns: [...MATERIAL_COLUMNS, transfer ? n.outLocation : n.location, ...(transfer ? [n.inLocation] : []), n.batch, num(n.quantity), n.serialNo],
+  columns: [...MATERIAL_COLUMNS, ...(transfer ? [] : [n.warehouse]), transfer ? n.outLocation : n.location, ...(transfer ? [n.inLocation] : []), n.batch, num(n.quantity), n.serialNo],
   signs: [n.prepared, n.confirmed, n.handler],
   note: true
 })
@@ -80,7 +81,7 @@ export const PRINT_TYPES = [
   order('scm.salesOrder', n.salesOrder, n.customer, n.shipWarehouse, n.customerConfirm),
   trade('scm.purchaseIn', n.purchaseIn, n.supplier, n.supplierSign),
   trade('scm.purchaseReturn', n.purchaseReturn, n.supplier, n.supplierSign),
-  trade('scm.salesOut', n.salesOut, n.customer, n.customerSign),
+  trade('scm.salesOut', n.salesOut, n.customer, n.customerSign, true),
   trade('scm.salesReturn', n.salesReturn, n.customer, n.customerSign),
   {
     key: 'scm.pickList',

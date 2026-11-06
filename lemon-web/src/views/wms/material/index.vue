@@ -8,6 +8,9 @@
         <a-form-item :label="$t('wms.inout.category')" name="category">
           <a-select v-model:value="query.category" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_material_category)" />
         </a-form-item>
+        <a-form-item :label="$t('pricing.goods.brand')" name="brand">
+          <a-select v-model:value="query.brand" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_material_brand)" />
+        </a-form-item>
         <a-form-item :label="$t('common.field.status')" name="status">
           <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
         </a-form-item>
@@ -20,7 +23,7 @@
         v-model:size="size"
         v-model:checked="checked"
         v-model:show-search="showSearch"
-        :columns="columns"
+        :columns="toolbarColumns"
         @refresh="load"
       >
         <a-button v-perm="'wms:material:add'" type="primary" @click="drawer.openCreate()">
@@ -41,6 +44,9 @@
             </a-button>
           </a-popconfirm>
         </span>
+        <a-button v-perm="'wms:material:priceLevel'" @click="priceLevelRef.open()">
+          <template #icon><DollarOutlined /></template>{{ $t('pricing.level.title') }}
+        </a-button>
         <a-button :disabled="!selectedKeys.length" @click="openLabels">
           <template #icon><BarcodeOutlined /></template>{{ $t('wms.material.printLabel') }}{{ selectedKeys.length ? ` (${selectedKeys.length})` : '' }}
         </a-button>
@@ -54,7 +60,7 @@
         :loading="loading"
         :pagination="pagination"
         :row-selection="rowSelection"
-        :scroll="{ x: 1580, y: '100%' }"
+        :scroll="{ x: 1580 + enabledLevels.length * 100, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -69,6 +75,10 @@
           <template v-else-if="column.key === 'category'">
             <DictTag type="wms_material_category" :value="record.category" />
           </template>
+          <template v-else-if="column.key === 'brand'">
+            <DictTag type="wms_material_brand" :value="record.brand" />
+          </template>
+          <template v-else-if="column.priceLevel != null">{{ record[column.key] == null ? '-' : price(record[column.key]) }}</template>
           <template v-else-if="column.key === 'tracking'">
             <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">{{ $t('wms.common.batch') }}</a-tag>
             <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">{{ $t('wms.common.serialNo') }}</a-tag>
@@ -164,6 +174,19 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
+            <a-form-item :label="$t('pricing.goods.brand')" name="brand">
+              <a-select
+                v-model:value="form.brand"
+                :placeholder="$t('wms.common.optional')"
+                allow-clear
+                show-search
+                option-filter-prop="label"
+                :options="toOptions(dict.wms_material_brand)"
+                :disabled="basicReadonly"
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :xs="24" :sm="colSpan">
             <a-form-item :label="$t('wms.stock.safetyStock')" name="safetyStock" :extra="$t('wms.material.safetyTip')">
               <a-input-number v-model:value="form.safetyStock" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.noAlert')" :disabled="basicReadonly" />
             </a-form-item>
@@ -208,6 +231,16 @@
             <a-form-item :label="$t('wms.material.defaultLocation')" name="defaultLocationId" :extra="$t('wms.material.defaultLocationTip')">
               <LocationSelect v-model:value="form.defaultLocationId" :warehouse-id="form.defaultWarehouseId" :disabled="basicReadonly" />
             </a-form-item>
+          </a-col>
+          <a-col v-if="enabledLevels.length" :span="24">
+            <div class="sub-title">{{ $t('pricing.level.prices') }}</div>
+            <a-row :gutter="16">
+              <a-col v-for="l in enabledLevels" :key="l.level" :xs="12" :sm="6">
+                <a-form-item :label="l.name" :name="l.field">
+                  <a-input-number v-model:value="form[l.field]" :min="0" :precision="4" class="full" :disabled="basicReadonly" />
+                </a-form-item>
+              </a-col>
+            </a-row>
           </a-col>
           <a-col :span="24">
             <a-form-item :label="$t('wms.material.tracking')" :extra="$t('wms.material.trackingTip')">
@@ -412,6 +445,7 @@
       :editable="userStore.hasPerm('wms:material:edit')"
     />
     <LabelPrintModal v-model:open="labelOpen" type-key="label.material" :items="labelItems" />
+    <PriceLevelModal ref="priceLevelRef" @saved="load" />
   </div>
 </template>
 
@@ -421,7 +455,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { isZh } from '@/locales'
 import { message } from 'ant-design-vue'
-import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, QuestionCircleOutlined, SwapOutlined } from '@ant-design/icons-vue'
+import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, DollarOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, QuestionCircleOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -446,6 +480,9 @@ import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
 import { useCustomColumns, useCustomFields } from '@/composables/useCustomFields'
+import { PRICE_FIELDS, usePriceLevels } from '@/components/wms/priceLevels'
+import { price } from '@/utils/number'
+import PriceLevelModal from './PriceLevelModal.vue'
 
 import { CostMethod, SupplyType } from '@/constants/enums'
 import AiExtractButton from '@/components/ai/AiExtractButton.vue'
@@ -461,7 +498,7 @@ const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPerm('wms:material:edit'))
 const canEditPlan = computed(() => userStore.hasPerm('mes:material:edit'))
 const canSeeKit = computed(() => userStore.hasPerm('mes:kit:list'))
-const dict = useDict('sys_common_status', 'wms_material_category', 'mes_supply_type', 'mes_wo_status', 'wms_cost_method')
+const dict = useDict('sys_common_status', 'wms_material_category', 'wms_material_brand', 'mes_supply_type', 'mes_wo_status', 'wms_cost_method')
 const UNITS = (isZh() ? ['个', '件', '台', '箱', '包', '桶', '瓶', '袋', 'kg', 'g', 'L', 'm'] : ['pcs', 'set', 'box', 'pack', 'bag', 'bottle', 'drum', 'kg', 'g', 'L', 'm']).map((value) => ({ value })) // i18n-ignore
 const SUPPLY_HINTS = {
   AUTO: t('wms.material.supplyHint.AUTO'),
@@ -491,6 +528,9 @@ const planRule = (p) =>
   ].filter(Boolean)
 
 const importOpen = ref(false)
+// 价格列：停用的列在表单、列表、导入导出中隐藏
+const { enabledLevels } = usePriceLevels()
+const priceLevelRef = ref()
 // 辅助单位
 const unitsOpen = ref(false)
 const unitsMaterial = ref()
@@ -515,18 +555,20 @@ function openExtras(record) {
   extrasTitle.value = `${record.code} ${record.name}`
   extrasOpen.value = true
 }
-const importColumns = [
+const importColumns = computed(() => [
   { title: t('wms.material.code'), key: 'code', required: true },
   { title: t('wms.material.name'), key: 'name', required: true },
   { title: t('wms.inout.spec'), key: 'spec' },
   { title: t('wms.material.unit'), key: 'unit' },
   { title: t('wms.inout.category'), key: 'category', dict: 'wms_material_category' },
+  { title: t('pricing.goods.brand'), key: 'brand', dict: 'wms_material_brand' },
   { title: t('wms.material.batchManaged'), key: 'batchEnabled', type: 'bool' },
   { title: t('wms.material.serialManaged'), key: 'serialEnabled', type: 'bool' },
   { title: t('wms.material.iqc'), key: 'iqcRequired', type: 'bool' },
   { title: t('wms.stock.safetyStock'), key: 'safetyStock', type: 'number' },
+  ...enabledLevels.value.map((l) => ({ title: l.name, key: l.field, type: 'number' })),
   { title: t('common.field.remark'), key: 'remark' }
-]
+])
 
 const columns = [
   { title: t('wms.common.material'), key: 'name', width: 200 },
@@ -534,6 +576,8 @@ const columns = [
   { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
   { title: t('wms.units.barcode'), key: 'barcode', width: 140, ellipsis: true },
   { title: t('wms.inout.category'), key: 'category', width: 100, dict: 'wms_material_category' },
+  { title: t('pricing.goods.brand'), key: 'brand', width: 100, dict: 'wms_material_brand' },
+  ...PRICE_FIELDS.map((key, level) => ({ title: key, key, dataIndex: key, priceLevel: level, width: 100, align: 'right' })),
   { title: t('wms.material.tracking'), key: 'tracking', width: 120 },
   { title: t('wms.material.supplyType'), key: 'supplyType', width: 110 },
   { title: t('wms.material.planParams'), key: 'planRule', width: 150 },
@@ -542,7 +586,14 @@ const columns = [
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 270, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'wms-material')
+const { checked } = useColumns(columns, 'wms-material')
+/** 列设置、导出用的列：只有启用的价格列，标题为价格列名称 */
+const toolbarColumns = computed(() => {
+  const enabled = new Map(enabledLevels.value.map((l) => [l.level, l.name]))
+  return columns.filter((c) => c.priceLevel == null || enabled.has(c.priceLevel))
+    .map((c) => (c.priceLevel == null ? c : { ...c, title: enabled.get(c.priceLevel) }))
+})
+const visibleColumns = computed(() => toolbarColumns.value.filter((c) => checked.value.includes(c.key || c.dataIndex)))
 const showSearch = ref(true)
 
 /** 分页后再查一次本页物料的计划属性 */
@@ -556,7 +607,7 @@ async function fetchPage(params) {
   return page
 }
 
-const query = reactive({ keyword: undefined, category: undefined, status: undefined })
+const query = reactive({ keyword: undefined, category: undefined, brand: undefined, status: undefined })
 const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange, exportAll } = useTable(fetchPage, query)
 // 自定义字段：表单中填写，勾选「列表显示」的作为列
 const cf = useCustomFields('wms_material')
@@ -569,7 +620,7 @@ const tableColumns = computed(() => {
 })
 
 function resetQuery() {
-  Object.assign(query, { keyword: undefined, category: undefined, status: undefined })
+  Object.assign(query, { keyword: undefined, category: undefined, brand: undefined, status: undefined })
   search()
 }
 
@@ -599,6 +650,8 @@ const MATERIAL_FIELDS = [
   'spec',
   'unit',
   'category',
+  'brand',
+  ...PRICE_FIELDS,
   'batchEnabled',
   'serialEnabled',
   'iqcRequired',
@@ -623,6 +676,8 @@ const drawer = useFormDrawer(
       spec: '',
       unit: undefined,
       category: undefined,
+      brand: undefined,
+      ...Object.fromEntries(PRICE_FIELDS.map((k) => [k, null])),
       batchEnabled: 0,
       serialEnabled: 0,
       iqcRequired: 0,
@@ -647,6 +702,7 @@ const drawer = useFormDrawer(
     fetch: async (record) => {
       const [m, p] = await Promise.all([getMaterial(record.id), canEditPlan.value ? getMaterialPlan(record.id) : null])
       const form = { ...m, safetyStock: num(m.safetyStock), reorderPoint: num(m.reorderPoint), reorderQty: num(m.reorderQty), refCost: num(m.refCost), barcode: m.barcode || '' }
+      PRICE_FIELDS.forEach((k) => (form[k] = num(m[k])))
       if (p) {
         Object.assign(form, {
           supplyType: p.supplyType || '',
@@ -683,6 +739,8 @@ const drawer = useFormDrawer(
         reorderPoint: f.reorderPoint ?? null,
         reorderQty: f.reorderQty ?? null,
         refCost: f.refCost ?? null,
+        ...Object.fromEntries(PRICE_FIELDS.map((k) => [k, f[k] ?? null])),
+        brand: f.brand || null,
         barcode: f.barcode?.trim() || null,
         defaultLocationId: f.defaultWarehouseId ? f.defaultLocationId || null : null
       },

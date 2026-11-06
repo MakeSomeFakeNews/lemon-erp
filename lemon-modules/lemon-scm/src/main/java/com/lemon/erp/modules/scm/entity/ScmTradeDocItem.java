@@ -20,6 +20,9 @@ public class ScmTradeDocItem extends BaseEntity {
 
     private Long materialId;
 
+    /** 本行的仓库（仅销售出库可选），为空表示表头仓库 */
+    private Long warehouseId;
+
     /** 库位，0 为未指定 */
     private Long locationId;
 
@@ -59,4 +62,8 @@ public class ScmTradeDocItem extends BaseEntity {
 
     @TableField(exist = false)
     private String locationCode;
+
+    /** 实际仓库的名称（明细仓库，为空时为表头仓库） */
+    @TableField(exist = false)
+    private String warehouseName;
 }

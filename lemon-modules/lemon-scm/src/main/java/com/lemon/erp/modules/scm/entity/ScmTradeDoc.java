@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -64,6 +65,10 @@ public class ScmTradeDoc extends BaseEntity {
 
     @TableField(exist = false)
     private String orderNo;
+
+    /** 订单来源：DIRECT 为直接开单生成的隐式订单 */
+    @TableField(exist = false)
+    private OrderSource orderSource;
 
     @TableField(exist = false)
     private String partnerCode;

@@ -74,13 +74,21 @@ public class StockDocValidator {
         Map<Long, WmsLocation> locations = refs.locations(items.stream()
                 .flatMap(i -> Stream.of(i.getLocationId(), i.getToLocationId())).toList());
         Map<Long, Set<String>> serialsByMaterial = new HashMap<>();
+        Map<Long, WmsWarehouse> lineWarehouses = new HashMap<>();
 
         for (int i = 0; i < items.size(); i++) {
             WmsStockDocItem item = items.get(i);
             WmsMaterial material = materials.get(item.getMaterialId());
             try {
-                // 入库、调入要求库位启用；出库、调出允许从停用的库位取出
-                WmsReferenceLoader.checkLocation(locations, item.getLocationId(), warehouse, kind == IN);
+                // 明细仓库（与表头不同时）：同样校验启用状态、寄售仓
+                WmsWarehouse lineWarehouse = item.getWarehouseId() == null ? warehouse
+                        : lineWarehouses.computeIfAbsent(item.getWarehouseId(), id -> {
+                            WmsWarehouse w = refs.warehouse(id, "wms.label.warehouse", kind == IN);
+                            StockDocRules.checkConsignWarehouse(kind, bizType, w.getType());
+                            return w;
+                        });
+                // 入库、调入要求库位启用；出库、调出允许从停用的库位取出；库位必须属于本行的仓库
+                WmsReferenceLoader.checkLocation(locations, item.getLocationId(), lineWarehouse, kind == IN);
                 if (kind == TRANSFER) {
                     WmsReferenceLoader.checkLocation(locations, item.getToLocationId(), toWarehouse, true);
                     StockDocRules.checkTransferTarget(warehouse.getId(), toWarehouse.getId(), item);

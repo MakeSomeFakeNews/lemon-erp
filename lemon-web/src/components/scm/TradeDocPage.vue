@@ -47,6 +47,10 @@
           <template v-if="column.key === 'docNo'">
             <a @click="openDetail(record)">{{ record.docNo }}</a>
           </template>
+          <template v-else-if="column.key === 'orderNo'">
+            <a-tag v-if="record.orderSource === OrderSource.DIRECT" color="blue" :bordered="false">{{ $t('scm.trade.direct') }}</a-tag>
+            <span v-else>{{ record.orderNo }}</span>
+          </template>
           <template v-else-if="column.key === 'partner'">
             <div>{{ record.partnerName }}</div>
             <div class="sub-text">{{ record.partnerCode }}</div>
@@ -88,6 +92,7 @@ import { useTable } from '@/composables/useTable'
 import { formatQty } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney } from './scm'
 import { useI18n } from 'vue-i18n'
+import { OrderSource } from '@/constants/enums'
 
 /**
  * 采购入库 / 采购退货 / 销售出库 / 销售退货列表页，四个页面共用
@@ -104,7 +109,7 @@ const orderConf = ORDER_KINDS[conf.orderKind]
 
 const columns = [
   { title: t('scm.trade.docNo'), key: 'docNo', width: 170 },
-  { title: t('scm.trade.orderNo'), dataIndex: 'orderNo', width: 170 },
+  { title: t('scm.trade.orderNo'), key: 'orderNo', width: 170 },
   { title: orderConf.partnerLabel, key: 'partner', width: 200 },
   { title: t('scm.trade.warehouse'), dataIndex: 'warehouseName', width: 130 },
   { title: t('scm.trade.bizDate'), dataIndex: 'bizDate', width: 120 },

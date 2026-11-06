@@ -180,6 +180,8 @@ DROP TABLE IF EXISTS scm_supplier_eval;
 DROP TABLE IF EXISTS scm_supplier_price_tier;
 DROP TABLE IF EXISTS scm_price_list;
 DROP TABLE IF EXISTS scm_price_control;
+DROP TABLE IF EXISTS scm_customer_price;
+DROP TABLE IF EXISTS scm_price_memory;
 DROP TABLE IF EXISTS scm_requisition;
 DROP TABLE IF EXISTS scm_requisition_item;
 DROP TABLE IF EXISTS scm_inquiry;
@@ -207,6 +209,7 @@ DROP TABLE IF EXISTS wms_variant_value;
 DROP TABLE IF EXISTS wms_attribute_value;
 DROP TABLE IF EXISTS wms_attribute;
 DROP TABLE IF EXISTS wms_material_unit;
+DROP TABLE IF EXISTS wms_price_level;
 DROP TABLE IF EXISTS wms_material;
 DROP TABLE IF EXISTS wms_location;
 DROP TABLE IF EXISTS wms_warehouse;
@@ -756,6 +759,7 @@ CREATE TABLE wms_material (
     unit           VARCHAR(16)            DEFAULT NULL COMMENT '计量单位',
     barcode        VARCHAR(64)            DEFAULT NULL COMMENT '条码（基本单位），扫码录入物料',
     category       VARCHAR(64)            DEFAULT NULL COMMENT '分类(字典 wms_material_category)',
+    brand          VARCHAR(64)            DEFAULT NULL COMMENT '品牌(业务字典 wms_material_brand)',
     batch_enabled  TINYINT       NOT NULL DEFAULT 0 COMMENT '是否启用批次管理 1是 0否',
     serial_enabled TINYINT       NOT NULL DEFAULT 0 COMMENT '是否启用序列号管理 1是 0否',
     iqc_required   TINYINT        NOT NULL DEFAULT 0 COMMENT '来料检验 1是：采购入库后冻结为待检，检验合格后放行',
@@ -765,6 +769,15 @@ CREATE TABLE wms_material (
     default_warehouse_id BIGINT       DEFAULT NULL COMMENT '默认仓库：录入出入库单、订单时默认带出',
     default_location_id  BIGINT       DEFAULT NULL COMMENT '默认库位（默认仓库中的）',
     ref_cost       DECIMAL(18, 4)         DEFAULT NULL COMMENT '参考成本价：没有核算单价时（首次核算的其他入库等）按此计价',
+    retail_price      DECIMAL(18, 4)      DEFAULT NULL COMMENT '零售价（含税，基本单位，本位币）：价格列 0',
+    wholesale_price1  DECIMAL(18, 4)      DEFAULT NULL COMMENT '批发价1（含税）：价格列 1，名称在价格列设置中修改',
+    wholesale_price2  DECIMAL(18, 4)      DEFAULT NULL COMMENT '批发价2（含税）',
+    wholesale_price3  DECIMAL(18, 4)      DEFAULT NULL COMMENT '批发价3（含税）',
+    wholesale_price4  DECIMAL(18, 4)      DEFAULT NULL COMMENT '批发价4（含税）',
+    wholesale_price5  DECIMAL(18, 4)      DEFAULT NULL COMMENT '批发价5（含税）',
+    wholesale_price6  DECIMAL(18, 4)      DEFAULT NULL COMMENT '批发价6（含税）',
+    wholesale_price7  DECIMAL(18, 4)      DEFAULT NULL COMMENT '批发价7（含税）',
+    wholesale_price8  DECIMAL(18, 4)      DEFAULT NULL COMMENT '批发价8（含税）',
     cost_method    VARCHAR(16)   NOT NULL DEFAULT 'WEIGHTED' COMMENT '存货计价方法(字典 wms_cost_method) WEIGHTED月末一次加权平均 MOVING移动加权平均 FIFO先进先出',
     is_template    TINYINT       NOT NULL DEFAULT 0 COMMENT '是否多规格款式 1是：按规格属性生成 SKU，款式本身不能出入库',
     template_id    BIGINT                 DEFAULT NULL COMMENT 'SKU 所属的款式（物料）',
@@ -778,6 +791,18 @@ CREATE TABLE wms_material (
     KEY idx_material_barcode (barcode),
     KEY idx_material_template (template_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '物料';
+
+CREATE TABLE wms_price_level (
+    id          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    level       INT         NOT NULL COMMENT '价格列 0零售价 1-8批发价1-8（对应 wms_material.retail_price / wholesale_price1-8）',
+    name        VARCHAR(32) NOT NULL COMMENT '显示名称',
+    status      TINYINT     NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用：停用的列在物料表单、列表、导入导出和价格选择中隐藏',
+    create_time DATETIME             DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME             DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_price_level (level, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '价格列设置：物料的零售价、批发价1-8的名称和是否启用（按租户）';
 
 CREATE TABLE wms_attribute (
     id          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -1006,6 +1031,7 @@ CREATE TABLE wms_stock_doc_item (
     tenant_id       BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     doc_id          BIGINT         NOT NULL COMMENT '单据ID',
     material_id     BIGINT         NOT NULL COMMENT '物料',
+    warehouse_id    BIGINT                  DEFAULT NULL COMMENT '本行仓库（入库、出库），为空取表头仓库；调拨不用',
     location_id     BIGINT         NOT NULL DEFAULT 0 COMMENT '库位；调拨为调出库位，0 为未指定',
     to_location_id  BIGINT         NOT NULL DEFAULT 0 COMMENT '调入库位，仅调拨',
     batch_no        VARCHAR(64)    NOT NULL DEFAULT '' COMMENT '批次号',
@@ -1207,6 +1233,40 @@ CREATE TABLE scm_price_control (
     UNIQUE KEY uk_price_control (material_id, tenant_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '价格控制：销售订单单价不低于最低销售价，采购订单单价不高于最高采购价（手工录入的订单）';
 
+CREATE TABLE scm_customer_price (
+    id          BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    customer_id BIGINT         NOT NULL COMMENT '客户',
+    material_id BIGINT         NOT NULL COMMENT '物料',
+    price       DECIMAL(18, 4) NOT NULL COMMENT '执行价（含税，基本单位，本位币）',
+    tax_rate    DECIMAL(5, 2)           DEFAULT NULL COMMENT '税率（%），为空时开单不改税率',
+    remark      VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    create_time DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_customer_price (customer_id, material_id, tenant_id),
+    KEY idx_customer_price_material (material_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '客户执行价：开单默认价最优先';
+
+CREATE TABLE scm_price_memory (
+    id          BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    kind        VARCHAR(16)    NOT NULL COMMENT '种类 SALES销售（销售出库） PURCHASE采购（采购入库）',
+    partner_id  BIGINT         NOT NULL COMMENT '客户 / 供应商',
+    material_id BIGINT         NOT NULL COMMENT '物料',
+    last_date   DATE           NOT NULL COMMENT '最新日期',
+    last_price  DECIMAL(18, 4) NOT NULL COMMENT '最新价格（含税，基本单位，本位币）',
+    min_date    DATE           NOT NULL COMMENT '最低价日期',
+    min_price   DECIMAL(18, 4) NOT NULL COMMENT '最低价格',
+    max_date    DATE           NOT NULL COMMENT '最高价日期',
+    max_price   DECIMAL(18, 4) NOT NULL COMMENT '最高价格',
+    create_time DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_price_memory (kind, partner_id, material_id, tenant_id),
+    KEY idx_price_memory_material (material_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '价格记忆：销售出库、采购入库确认后登记往来单位 × 物料的最新 / 最低 / 最高价';
+
 CREATE TABLE scm_requisition (
     id               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id        BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
@@ -1366,6 +1426,7 @@ CREATE TABLE scm_customer (
     code         VARCHAR(32)    NOT NULL COMMENT '客户编码',
     name         VARCHAR(128)   NOT NULL COMMENT '客户名称',
     level        VARCHAR(16)             DEFAULT NULL COMMENT '客户等级(字典 scm_customer_level)',
+    price_level  INT            NOT NULL DEFAULT 0 COMMENT '价格等级：开单默认价取物料的价格列 0零售价 1-8批发价1-8',
     contact      VARCHAR(64)             DEFAULT NULL COMMENT '联系人',
     phone        VARCHAR(32)             DEFAULT NULL COMMENT '联系电话',
     address      VARCHAR(255)            DEFAULT NULL COMMENT '收货地址',
@@ -1396,7 +1457,7 @@ CREATE TABLE scm_order (
     total_qty        DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '合计数量',
     total_amount     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '价税合计',
     tax_amount       DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '税额',
-    source           VARCHAR(16)    NOT NULL DEFAULT 'MANUAL' COMMENT '来源(字典 scm_order_source) MANUAL手工 MRP物料需求计划 CRM商机 KIT生产缺料',
+    source           VARCHAR(16)    NOT NULL DEFAULT 'MANUAL' COMMENT '来源(字典 scm_order_source) MANUAL手工 MRP物料需求计划 CRM商机 KIT生产缺料 DIRECT直接开单（隐式订单）',
     flow_instance_id VARCHAR(64)             DEFAULT NULL COMMENT '审批流程实例ID',
     contract_id      BIGINT                  DEFAULT NULL COMMENT '引用的采购合同（按合同价下单）',
     supplier_confirm VARCHAR(16)             DEFAULT NULL COMMENT '供应商确认(字典 scm_supplier_confirm) ACCEPTED已接受 REJECTED已拒绝，为空未确认',
@@ -1630,8 +1691,9 @@ CREATE TABLE scm_trade_doc_item (
     id              BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id       BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     doc_id          BIGINT         NOT NULL COMMENT '单据ID',
-    order_item_id   BIGINT         NOT NULL COMMENT '订单明细ID',
+    order_item_id   BIGINT         NOT NULL COMMENT '订单明细ID（直接开单为隐式订单的明细）',
     material_id     BIGINT         NOT NULL COMMENT '物料',
+    warehouse_id    BIGINT                  DEFAULT NULL COMMENT '本行仓库（仅销售出库可选），为空取表头仓库',
     location_id     BIGINT         NOT NULL DEFAULT 0 COMMENT '库位，0 为未指定',
     batch_no        VARCHAR(64)    NOT NULL DEFAULT '' COMMENT '批次号',
     production_date DATE                    DEFAULT NULL COMMENT '生产日期，仅采购入库',
@@ -6762,7 +6824,8 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('scm_channel', '直销', 'DIRECT', 'default', 1, 1, NOW(), NOW()),
 ('scm_channel', '经销商', 'DEALER', 'purple', 2, 1, NOW(), NOW()),
 ('scm_order_source', '经销商订货', 'DEALER', 'purple', 8, 1, NOW(), NOW()),
-('scm_order_source', '外部导入', 'IMPORT', 'lime', 9, 1, NOW(), NOW());
+('scm_order_source', '外部导入', 'IMPORT', 'lime', 9, 1, NOW(), NOW()),
+('scm_order_source', '直接开单', 'DIRECT', 'blue', 10, 1, NOW(), NOW());
 
 -- 销售：销售返利之后为渠道库存；客户资料中开通经销商门户账号；经销商门户（订货、渠道上报）
 UPDATE sys_menu SET sort = sort + 1 WHERE parent_id = 902 AND sort >= 5;
@@ -7015,6 +7078,47 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.id, m.menu_id FROM sys_role r JOIN (SELECT 16 AS menu_id UNION ALL SELECT 364 UNION ALL SELECT 3640) m ON 1 = 1
 WHERE r.id IN (3) AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = r.id AND x.menu_id = m.menu_id);
+
+-- 价格体系：品牌、价格列（零售价、批发价1-8）、客户价格等级与执行价、价格记忆与价格参考
+INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
+(175, '商品品牌', 'wms_material_brand', 'BUSINESS', 1, '物料的品牌，进销存报表可按品牌汇总', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('wms_material_brand', '自有品牌', 'OWN', 'blue', 1, 1, NOW(), NOW()),
+('wms_material_brand', '其他', 'OTHER', 'default', 9, 1, NOW(), NOW());
+INSERT INTO wms_price_level (level, name, status, create_time, update_time) VALUES
+(0, '零售价', 1, NOW(), NOW()), (1, '批发价1', 1, NOW(), NOW()), (2, '批发价2', 1, NOW(), NOW()), (3, '批发价3', 1, NOW(), NOW()),
+(4, '批发价4', 0, NOW(), NOW()), (5, '批发价5', 0, NOW(), NOW()), (6, '批发价6', 0, NOW(), NOW()), (7, '批发价7', 0, NOW(), NOW()),
+(8, '批发价8', 0, NOW(), NOW());
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(365, 902, '商品价格', 'C', 'goods-price', 'scm/goodsPrice/index', 'scm:goodsPrice:list', 'DollarOutlined', 3, 1, 1, NOW(), NOW()),
+(3650, 365, '商品价格维护', 'F', NULL, NULL, 'scm:goodsPrice:edit', NULL, 1, 1, 1, NOW(), NOW()),
+(3651, 137, '价格列设置', 'F', NULL, NULL, 'wms:material:priceLevel', NULL, 5, 1, 1, NOW(), NOW());
+-- 普通用户、总经理、销售员只读
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT r.id, m.menu_id FROM sys_role r JOIN (SELECT 5 AS menu_id UNION ALL SELECT 902 UNION ALL SELECT 365) m ON 1 = 1
+WHERE r.id IN (2, 3, 5) AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = r.id AND x.menu_id = m.menu_id);
+
+-- 进销存报表（供应链下的分组，代码在 bi 模块）：实时汇总出入库单，汇总 → 明细 → 单据穿透；资产状况汇总全公司数据（需要「全部数据」权限）
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(966, 5, '进销存报表', 'M', NULL, NULL, NULL, 'BarChartOutlined', 5, 1, 1, NOW(), NOW()),
+(370, 966, '销售报表', 'C', 'jxc-sales', 'jxc/sales/index', 'bi:jxc:sales', 'RiseOutlined', 1, 1, 1, NOW(), NOW()),
+(371, 966, '进货报表', 'C', 'jxc-purchase', 'jxc/purchase/index', 'bi:jxc:purchase', 'ShoppingCartOutlined', 2, 1, 1, NOW(), NOW()),
+(372, 966, '经营状况', 'C', 'jxc-business', 'jxc/business/index', 'bi:jxc:business', 'LineChartOutlined', 3, 1, 1, NOW(), NOW()),
+(373, 966, '资产状况', 'C', 'jxc-assets', 'jxc/assets/index', 'bi:jxc:asset', 'AccountBookOutlined', 4, 1, 1, NOW(), NOW()),
+(374, 966, '商品分析', 'C', 'jxc-goods', 'jxc/goods/index', 'bi:jxc:goods', 'AppstoreOutlined', 5, 1, 1, NOW(), NOW()),
+(375, 966, '客户分析', 'C', 'jxc-rfm', 'jxc/rfm/index', 'bi:jxc:rfm', 'TeamOutlined', 6, 1, 1, NOW(), NOW());
+-- 普通用户（除资产状况）、总经理、会计全部；采购员进货报表和商品分析；销售员销售报表和客户分析；仓库管理员商品分析；出纳资产状况（连同分组和供应链模块）
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT g.role_id, g.menu_id FROM (
+    SELECT 2 AS role_id, 370 AS menu_id UNION ALL SELECT 2, 371 UNION ALL SELECT 2, 372 UNION ALL SELECT 2, 374 UNION ALL SELECT 2, 375
+    UNION ALL SELECT 3, 370 UNION ALL SELECT 3, 371 UNION ALL SELECT 3, 372 UNION ALL SELECT 3, 373 UNION ALL SELECT 3, 374 UNION ALL SELECT 3, 375
+    UNION ALL SELECT 9, 370 UNION ALL SELECT 9, 371 UNION ALL SELECT 9, 372 UNION ALL SELECT 9, 373 UNION ALL SELECT 9, 374 UNION ALL SELECT 9, 375
+    UNION ALL SELECT 4, 371 UNION ALL SELECT 4, 374 UNION ALL SELECT 5, 370 UNION ALL SELECT 5, 375 UNION ALL SELECT 6, 374 UNION ALL SELECT 10, 373
+    UNION ALL SELECT r.id, 966 FROM sys_role r WHERE r.id IN (2, 3, 4, 5, 6, 9, 10)
+    UNION ALL SELECT r.id, 5 FROM sys_role r WHERE r.id IN (2, 3, 4, 5, 6, 9, 10)
+) g
+WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);
 
 ALTER TABLE sys_dept AUTO_INCREMENT = 200;
 ALTER TABLE sys_user AUTO_INCREMENT = 100;

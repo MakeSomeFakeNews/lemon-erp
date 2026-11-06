@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -30,6 +31,17 @@ public class SysBizRuleController {
     @PreAuthorize("@ss.hasPerm('sys:bizRule:list')")
     public R<List<BizRuleItem>> list() {
         return R.ok(ruleService.list());
+    }
+
+    /**
+     * 登录即可访问：读取声明为前端可读的参数（{@code BizRuleProvider.publicKeys}），未声明的标识忽略
+     *
+     * @param keys 参数标识，逗号分隔
+     * @return 参数标识 → 当前值
+     */
+    @GetMapping("/values")
+    public R<Map<String, String>> values(@RequestParam List<String> keys) {
+        return R.ok(ruleService.publicValues(keys));
     }
 
     /** @param values 参数标识 → 值，只包含要修改的参数 */

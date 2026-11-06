@@ -717,6 +717,13 @@ export const FundSource = Object.freeze({
   PLAN: 'PLAN', // 手工计划项
 })
 
+/** com.lemon.erp.modules.bi.model.GoodsRankBy */
+export const GoodsRankBy = Object.freeze({
+  QTY: 'QTY', // 净销量
+  AMOUNT: 'AMOUNT', // 净销售额
+  PROFIT: 'PROFIT', // 毛利
+})
+
 /** com.lemon.erp.modules.wms.model.HoldStatus（字典 wms_hold_status） */
 export const HoldStatus = Object.freeze({
   PENDING: 'PENDING', // 待检
@@ -819,6 +826,19 @@ export const JobRunStatus = Object.freeze({
 export const JobTrigger = Object.freeze({
   SCHEDULE: 'SCHEDULE', // 按 Cron 表达式定时触发
   MANUAL: 'MANUAL', // 手动立即执行
+})
+
+/** com.lemon.erp.modules.bi.model.JxcDimension */
+export const JxcDimension = Object.freeze({
+  CATEGORY: 'CATEGORY', // 物料分类
+  BRAND: 'BRAND', // 品牌
+  REGION: 'REGION', // 客户区域
+  CUSTOMER: 'CUSTOMER', // 客户
+  SALESMAN: 'SALESMAN', // 业务员
+  SUPPLIER: 'SUPPLIER', // 供应商
+  MATERIAL: 'MATERIAL', // 商品
+  DAY: 'DAY', // 日
+  MONTH: 'MONTH', // 月
 })
 
 /** com.lemon.erp.modules.mes.model.KitStatus（字典 mes_kit_status） */
@@ -1093,6 +1113,7 @@ export const OrderSource = Object.freeze({
   TENDER: 'TENDER', // 招标
   DEALER: 'DEALER', // 经销商订货
   IMPORT: 'IMPORT', // 外部导入
+  DIRECT: 'DIRECT', // 直接开单
 })
 
 /** com.lemon.erp.modules.scm.model.OrderStatus（字典 scm_order_status） */
@@ -1193,6 +1214,18 @@ export const PriceControlMode = Object.freeze({
   BLOCK: 'BLOCK', // 禁止保存
 })
 
+/** com.lemon.erp.modules.scm.model.PriceSource */
+export const PriceSource = Object.freeze({
+  CUSTOMER_PRICE: 'CUSTOMER_PRICE',
+  PRICE_LIST: 'PRICE_LIST',
+  PRICE_LEVEL: 'PRICE_LEVEL',
+  RETAIL: 'RETAIL',
+  CONTRACT_PRICE: 'CONTRACT_PRICE',
+  SUPPLIER_PRICE: 'SUPPLIER_PRICE',
+  LAST_PRICE: 'LAST_PRICE',
+  REF_COST: 'REF_COST',
+})
+
 /** com.lemon.erp.modules.pm.model.ProjectStatus（字典 pm_project_status） */
 export const ProjectStatus = Object.freeze({
   PLANNING: 'PLANNING', // 规划中
@@ -1282,6 +1315,18 @@ export const RequisitionStatus = Object.freeze({
 /** com.lemon.erp.modules.wms.model.ReservationSource */
 export const ReservationSource = Object.freeze({
   SALES: 'SALES', // 销售订单
+})
+
+/** com.lemon.erp.modules.bi.model.RfmSegment */
+export const RfmSegment = Object.freeze({
+  IMPORTANT_VALUE: 'IMPORTANT_VALUE', // 重要价值
+  IMPORTANT_DEVELOP: 'IMPORTANT_DEVELOP', // 重要发展
+  IMPORTANT_KEEP: 'IMPORTANT_KEEP', // 重要保持
+  IMPORTANT_RETAIN: 'IMPORTANT_RETAIN', // 重要挽留
+  GENERAL_VALUE: 'GENERAL_VALUE', // 一般价值
+  GENERAL_DEVELOP: 'GENERAL_DEVELOP', // 一般发展
+  GENERAL_KEEP: 'GENERAL_KEEP', // 一般保持
+  GENERAL_RETAIN: 'GENERAL_RETAIN', // 一般挽留
 })
 
 /** com.lemon.erp.modules.scm.model.SalesChannel（字典 scm_channel） */

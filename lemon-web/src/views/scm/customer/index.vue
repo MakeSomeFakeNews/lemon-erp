@@ -42,7 +42,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1590, y: '100%' }"
+        :scroll="{ x: 1690, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -53,6 +53,7 @@
           <template v-else-if="column.key === 'level'">
             <DictTag type="scm_customer_level" :value="record.level" />
           </template>
+          <template v-else-if="column.key === 'priceLevel'">{{ levelName(record.priceLevel ?? 0) || '-' }}</template>
           <template v-else-if="column.key === 'channel'">
             <DictTag type="scm_channel" :value="record.channel || 'DIRECT'" />
             <div v-if="record.region" class="sub-text">{{ record.region }}</div>
@@ -81,6 +82,9 @@
               </a-button>
               <a-button v-perm="'scm:customer:edit'" type="link" size="small" @click="drawer.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
+              </a-button>
+              <a-button type="link" size="small" @click="customerPriceRef.open(record)">
+                <template #icon><DollarOutlined /></template>{{ $t('pricing.customerPrice.open') }}
               </a-button>
               <a-button v-if="record.channel === SalesChannel.DEALER" v-perm="'scm:customer:portal'" type="link" size="small" @click="openPortal(record)">
                 {{ $t('scm.customer.portal') }}
@@ -115,6 +119,11 @@
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('scm.customer.level')" name="level">
               <a-select v-model:value="form.level" allow-clear :options="toOptions(dict.scm_customer_level)" />
+            </a-form-item>
+          </a-col>
+          <a-col :xs="24" :sm="12">
+            <a-form-item :label="$t('pricing.level.priceLevel')" name="priceLevel" :extra="$t('pricing.level.priceLevelExtra')">
+              <a-select v-model:value="form.priceLevel" :options="priceLevelOptions" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
@@ -190,13 +199,14 @@
       :editable="userStore.hasPerm('scm:customer:edit')"
     />
     <PortalAccountDrawer v-model:open="portalOpen" kind="customer" :partner="portalCustomer" />
+    <CustomerPriceDrawer ref="customerPriceRef" />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, DollarOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -206,6 +216,8 @@ import StatusSwitch from '@/components/StatusSwitch.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import PortalAccountDrawer from '@/components/scm/PortalAccountDrawer.vue'
+import CustomerPriceDrawer from '@/components/scm/CustomerPriceDrawer.vue'
+import { usePriceLevels } from '@/components/wms/priceLevels'
 import { addPartner, changePartnerStatus, deletePartner, getPartner, pagePartner, updatePartner, importPartner } from '@/api/scm/partner'
 import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
@@ -222,6 +234,7 @@ import AiPrefillAlert from '@/components/ai/AiPrefillAlert.vue'
 import { useAiPrefill } from '@/composables/useAiPrefill'
 
 import { SalesChannel } from '@/constants/enums'
+import { STATUS_ENABLED } from '@/utils/constants'
 const { t } = useI18n()
 const userStore = useUserStore()
 const dict = useDict('sys_common_status', 'scm_customer_level', 'scm_channel')
@@ -233,6 +246,13 @@ function openPortal(record) {
   portalCustomer.value = record
   portalOpen.value = true
 }
+
+// 价格等级（启用的价格列；当前值所在的列已停用时仍列出）与客户执行价
+const { levels, levelName } = usePriceLevels()
+const priceLevelOptions = computed(() =>
+  levels.value.filter((l) => l.status === STATUS_ENABLED || l.level === (form.value.priceLevel ?? 0)).map((l) => ({ value: l.level, label: l.name }))
+)
+const customerPriceRef = ref()
 
 const importOpen = ref(false)
 // 附件、变更记录
@@ -254,12 +274,14 @@ const importColumns = [
   { title: t('scm.customer.taxNo'), key: 'taxNo' },
   { title: t('scm.customer.creditLimit'), key: 'creditLimit', type: 'number' },
   { title: t('scm.customer.paymentDaysCol'), key: 'paymentDays', type: 'int' },
+  { title: t('pricing.level.priceLevelImport'), key: 'priceLevel', type: 'int' },
   { title: t('common.field.remark'), key: 'remark' }
 ]
 
 const columns = [
   { title: t('scm.customer.customer'), key: 'name', width: 240 },
   { title: t('scm.customer.level'), key: 'level', width: 100, dict: 'scm_customer_level' },
+  { title: t('pricing.level.priceLevel'), key: 'priceLevel', width: 100, exportValue: (r) => levelName(r.priceLevel ?? 0) },
   { title: t('scm.customer.channel'), key: 'channel', width: 150, dict: 'scm_channel' },
   { title: t('scm.customer.contact'), key: 'contact', width: 150 },
   { title: t('scm.customer.creditLimit'), key: 'creditLimit', width: 130, align: 'right' },
@@ -267,7 +289,7 @@ const columns = [
   { title: t('scm.customer.address'), dataIndex: 'address', width: 220, ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 100 },
   { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 340, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: 400, fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'scm-customer')
 const showSearch = ref(true)
@@ -298,11 +320,11 @@ const rules = {
   ],
   name: [{ required: true, whitespace: true, message: t('scm.customer.nameRequired') }]
 }
-const FIELDS = ['code', 'name', 'level', 'contact', 'phone', 'address', 'taxNo', 'creditLimit', 'paymentDays', 'remark', 'channel', 'region',
+const FIELDS = ['code', 'name', 'level', 'priceLevel', 'contact', 'phone', 'address', 'taxNo', 'creditLimit', 'paymentDays', 'remark', 'channel', 'region',
   'ownerId']
 const drawer = useFormDrawer(
   cf.wrap({
-    emptyForm: () => ({ id: undefined, ...Object.fromEntries(FIELDS.map((f) => [f, undefined])), paymentDays: 30, channel: 'DIRECT' }),
+    emptyForm: () => ({ id: undefined, ...Object.fromEntries(FIELDS.map((f) => [f, undefined])), paymentDays: 30, channel: 'DIRECT', priceLevel: 0 }),
     fetch: async (record) => ({ ...(await getPartner('customer', record.id)), ownerName: record.ownerName }),
     create: (data) => addPartner('customer', data),
     update: (id, data) => updatePartner('customer', id, data),

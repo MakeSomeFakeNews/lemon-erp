@@ -11,6 +11,7 @@
             WHEN EXISTS (SELECT 1 FROM scm_inquiry_item WHERE material_id = #{id}) THEN 'scm.label.rfq'
             WHEN EXISTS (SELECT 1 FROM scm_quotation_item WHERE material_id = #{id}) THEN 'scm.label.salesQuotation2'
             WHEN EXISTS (SELECT 1 FROM scm_price_list WHERE material_id = #{id}) THEN 'scm.label.salesPriceList'
+            WHEN EXISTS (SELECT 1 FROM scm_customer_price WHERE material_id = #{id}) THEN 'scm.label.customerPrice'
         END
     </select>
 
@@ -33,6 +34,7 @@
     <select id="findCustomer" resultType="java.lang.String">
         SELECT CASE
             WHEN EXISTS (SELECT 1 FROM scm_quotation WHERE customer_id = #{id}) THEN 'scm.label.salesQuotation2'
+            WHEN EXISTS (SELECT 1 FROM scm_customer_price WHERE customer_id = #{id}) THEN 'scm.label.customerPrice'
         END
     </select>
 

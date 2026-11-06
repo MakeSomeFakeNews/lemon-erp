@@ -34,4 +34,8 @@
         WHERE id = #{id} AND done_qty - return_qty &gt;= #{qty}
     </update>
 
+    <update id="markAllDone">
+        UPDATE scm_order_item SET done_qty = qty, update_time = NOW() WHERE order_id = #{orderId}
+    </update>
+
 </mapper>
