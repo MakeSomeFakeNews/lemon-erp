@@ -1,6 +1,6 @@
 # 发布新版本：在 GitHub 上发布 Release（标签 vX.Y.Z）后自动执行
 #   1. 构建后端、前端镜像（linux/amd64、linux/arm64）推送到 GitHub Packages（ghcr.io）
-#   2. 构建后端 jar、前端静态文件，连同初始化脚本、Docker 部署文件上传到 Release
+#   2. 构建后端 jar、前端静态文件，连同初始化脚本、升级脚本、Docker 部署文件上传到 Release
 name: 发布版本
 
 on:
@@ -95,9 +95,11 @@ jobs:
           cp lemon-admin/build/libs/lemon-erp.jar "dist/lemon-erp-${VERSION}.jar"
           (cd lemon-web/dist && zip -qr "../../dist/lemon-web-${VERSION}.zip" .)
           cp sql/init.sql dist/init.sql
+          (cd sql && zip -qr "../dist/upgrade-sql-${VERSION}.zip" upgrade)
           # Docker 部署包：使用 ghcr.io 上的镜像，解压后进入 docker 目录执行 docker compose up -d
           mkdir -p "pkg/lemon-erp-docker-${VERSION}/docker" "pkg/lemon-erp-docker-${VERSION}/sql"
           cp sql/init.sql "pkg/lemon-erp-docker-${VERSION}/sql/"
+          cp -r sql/upgrade "pkg/lemon-erp-docker-${VERSION}/sql/upgrade"
           # 去掉 build 配置，直接拉取镜像
           sed -e '/^    build:/,/^    image:/{/^    image:/!d;}' -e 's#docker compose up -d --build#docker compose up -d#' \
               docker/docker-compose.yml > "pkg/lemon-erp-docker-${VERSION}/docker/docker-compose.yml"

@@ -324,6 +324,8 @@ docker compose up -d
 
 Releases 中还提供后端 jar、前端静态文件和 `init.sql`，可用于不使用 Docker 的传统部署。
 
+已经部署的系统升级到新版本时，备份数据库后执行 [sql/upgrade](sql/upgrade) 中部署之后新增的升级脚本（可重复执行），步骤见其中的 README。
+
 ### 方式二：源码运行
 
 ```bash
