@@ -25,4 +25,19 @@
         WHERE t.id = #{id}
     </select>
 
+    <select id="selectPartnerSummary" resultType="com.lemon.erp.modules.fin.dto.PartnerAmountRow">
+        SELECT t.partner_id, COALESCE(c.code, s.code) AS partner_code, COALESCE(c.name, s.name) AS partner_name,
+               COUNT(*) AS settle_count, SUM(t.amount) AS amount
+        FROM fin_settlement t
+        LEFT JOIN scm_customer c ON t.kind = 'RECEIPT' AND c.id = t.partner_id
+        LEFT JOIN scm_supplier s ON t.kind = 'PAYMENT' AND s.id = t.partner_id
+        WHERE t.kind = #{kind} AND t.status = 'APPROVED' AND t.settle_date BETWEEN #{begin} AND #{end}
+        <if test="keyword != null and keyword != ''">
+            AND (c.code LIKE CONCAT('%', #{keyword}, '%') OR c.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR s.code LIKE CONCAT('%', #{keyword}, '%') OR s.name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        GROUP BY t.partner_id, c.code, s.code, c.name, s.name
+        ORDER BY SUM(t.amount) DESC
+    </select>
+
 </mapper>

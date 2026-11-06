@@ -141,6 +141,37 @@ public class WmsMaterialService {
                 .orderByAsc(WmsMaterial::getCode)).getRecords();
     }
 
+    /**
+     * 数据整理的候选物料：启用的物料（不含多规格的 SKU，SKU 由款式生成、名称相同），按 ID 升序分页，只查分析需要的列
+     *
+     * @param keyword 编码或名称，模糊匹配
+     */
+    public PageResult<WmsMaterial> pageForCleanse(long current, long size, String keyword) {
+        Page<WmsMaterial> page = materialMapper.selectPage(Page.of(current, size), Wrappers.<WmsMaterial>lambdaQuery()
+                .select(WmsMaterial::getId, WmsMaterial::getCode, WmsMaterial::getName, WmsMaterial::getSpec,
+                        WmsMaterial::getCategory, WmsMaterial::getUnit, WmsMaterial::getBarcode)
+                .eq(WmsMaterial::getStatus, EnableStatus.ENABLED)
+                .isNull(WmsMaterial::getTemplateId)
+                .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword))
+                .orderByAsc(WmsMaterial::getId));
+        return PageResult.of(page);
+    }
+
+    /** 是否有其他启用的物料名称和规格都相同（规格为空视为相同的空规格） */
+    public boolean existsSameNameSpec(String name, String spec, Long excludeId) {
+        return materialMapper.exists(Wrappers.<WmsMaterial>lambdaQuery()
+                .eq(WmsMaterial::getName, name)
+                .and(w -> {
+                    if (StringUtils.hasText(spec)) {
+                        w.eq(WmsMaterial::getSpec, spec);
+                    } else {
+                        w.isNull(WmsMaterial::getSpec).or().eq(WmsMaterial::getSpec, "");
+                    }
+                })
+                .eq(WmsMaterial::getStatus, EnableStatus.ENABLED)
+                .ne(excludeId != null, WmsMaterial::getId, excludeId));
+    }
+
     @Transactional
     public void create(WmsMaterial material) {
         if (!StringUtils.hasText(material.getCode())) {

@@ -122,6 +122,28 @@ public class ScmCustomerService {
                 .toList();
     }
 
+    /**
+     * 数据整理的候选记录：启用的客户，按 ID 升序分页，只查分析需要的列（不含电话、银行账号等）
+     *
+     * @param keyword 编码或名称，模糊匹配
+     */
+    public PageResult<ScmCustomer> pageForCleanse(long current, long size, String keyword) {
+        Page<ScmCustomer> page = customerMapper.selectPage(Page.of(current, size), Wrappers.<ScmCustomer>lambdaQuery()
+                .select(ScmCustomer::getId, ScmCustomer::getCode, ScmCustomer::getName, ScmCustomer::getContact, ScmCustomer::getAddress, ScmCustomer::getTaxNo)
+                .eq(ScmCustomer::getStatus, EnableStatus.ENABLED)
+                .and(StringUtils.hasText(keyword), w -> w.like(ScmCustomer::getCode, keyword).or().like(ScmCustomer::getName, keyword))
+                .orderByAsc(ScmCustomer::getId));
+        return PageResult.of(page);
+    }
+
+    /** 是否有其他启用的客户使用该名称 */
+    public boolean existsEnabledName(String name, Long excludeId) {
+        return customerMapper.exists(Wrappers.<ScmCustomer>lambdaQuery()
+                .eq(ScmCustomer::getName, name)
+                .eq(ScmCustomer::getStatus, EnableStatus.ENABLED)
+                .ne(excludeId != null, ScmCustomer::getId, excludeId));
+    }
+
     @Transactional
     public void create(ScmCustomer customer) {
         if (!StringUtils.hasText(customer.getCode())) {

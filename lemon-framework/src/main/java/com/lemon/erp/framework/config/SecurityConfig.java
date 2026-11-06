@@ -17,6 +17,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import tools.jackson.databind.ObjectMapper;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
@@ -35,6 +36,8 @@ public class SecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // 异步请求（SSE 流式输出）结束时的 ASYNC 分派：原请求已鉴权，JWT 过滤器不再执行，这里放行
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers("/auth/login", "/auth/config", "/auth/captcha", "/error").permitAll()
                         .requestMatchers(HttpMethod.GET, WebMvcConfig.FILE_URL_PREFIX + "**").permitAll()
                         // 大屏投屏链接：免登录只读，按链接令牌校验

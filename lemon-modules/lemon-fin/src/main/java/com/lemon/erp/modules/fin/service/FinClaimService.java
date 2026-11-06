@@ -15,6 +15,7 @@ import com.lemon.erp.framework.workflow.ApprovalFlow;
 import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
 import com.lemon.erp.modules.fin.dto.ClaimRequest;
+import com.lemon.erp.modules.fin.dto.ClaimSummaryRow;
 import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.entity.FinExpenseClaim;
 import com.lemon.erp.modules.fin.entity.FinExpenseClaimItem;
@@ -69,6 +70,21 @@ public class FinClaimService {
         Page<FinExpenseClaim> page = Page.of(current, size);
         claimMapper.selectPageList(page, keyword, status, userId);
         return PageResult.of(page);
+    }
+
+    /** 报销汇总计入的状态：已审批（待付款）、已付款 */
+    public static final List<ExpenseClaimStatus> SUMMARY_STATUSES = List.of(ExpenseClaimStatus.APPROVED, ExpenseClaimStatus.PAID);
+
+    /**
+     * 费用报销汇总（报销日期范围内已审批、已付款的报销单）
+     *
+     * @param byAccount true 按费用科目汇总，false 按部门汇总
+     */
+    public List<ClaimSummaryRow> summary(LocalDate begin, LocalDate end, boolean byAccount) {
+        if (end.isBefore(begin)) {
+            throw new BizException("fin.error.endDateCannotEarlierStartDate");
+        }
+        return claimMapper.selectSummary(begin, end, byAccount, SUMMARY_STATUSES);
     }
 
     public FinExpenseClaim detail(Long id) {

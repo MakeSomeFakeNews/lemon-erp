@@ -18,6 +18,7 @@
 - **客户关系**：客户（我的 / 团队 / 公海，领取、分配、放回）与联系人；线索 → 转化为客户和商机；销售机会（阶段漏斗、赢单生成销售订单）、跟进记录；市场活动（成本、线索、ROI）；服务工单（处理时限、序列号保修判断、满意度）；客户分析（漏斗、RFM、趋势、来源、销售排行）（见「客户关系」）
 - **项目管理**：项目、成员与投入比例；计划进度（WBS 任务树、前置任务、进度汇总、甘特图）；资源负荷；工时填报与审批；成本预算、费用录入、项目领料；项目核算（收款计划、开票生成应收、完工百分比确认收入、挣值分析）（见「项目管理」）
 - **商务智能**：数据仓库（销售 / 采购 / 库存快照 / 生产 / 财务事实表，定时与手动同步）；多维分析（行列维度透视、筛选、下钻、图表）；自定义报表与仪表盘（可共享）；经营驾驶舱；数据大屏（生产车间、生产进度、仓储物流、销售经营、质量管理，投屏链接免登录）；决策支持（销售预测、ABC 分析、呆滞物料、预警规则）（见「商务智能」）
+- **智能（AI）**：接入国产大模型（DeepSeek、通义千问、智谱 GLM、Kimi、豆包等 OpenAI 兼容服务），按租户配置模型、功能开关与每月用量上限；AI 问数（自然语言提问，在提问人的权限范围内调用查询工具回答，流式输出）；业务模块通过 `framework/ai` 契约提供查询工具、录入目标、整理来源、报告来源（见「智能（AI）」）
 - **仓库管理**：仓库、库位、物料（批次 / 序列号管理、安全库存）；入库单、出库单、调拨单、盘点单（草稿 → 确认后更新库存）；库存查询（明细 / 按物料汇总、低于安全库存预警、临期提示）、收发存汇总、库存流水、批次与序列号追踪；库位区域与上架策略、波次拣货、装箱、条码标签，手机 / PDA 移动作业（扫码收货、上架、拣货、盘点）（见「仓库管理」）
 - **系统管理**：用户、部门（树形）、角色、菜单（目录/菜单/按钮三级权限）、字典（系统字典 / 业务字典，见「SaaS 多租户」）
   - 部门管理：左侧组织架构树，右侧部门信息与成员，可直接新增成员、添加已有用户、批量调整部门；部门负责人关联用户，即审批流程中的「部门主管」
@@ -618,6 +619,228 @@ public void onOrderApproved(FlowFinishedEvent e) {
 
 权限：`bi:cockpit:list`、`bi:olap:list`、`bi:report:list/add/edit/remove`、`bi:board:list/add/edit/remove`、`bi:decision:list`、`bi:alert:edit`（预警规则）、`bi:etl:list/run`。
 
+## 智能（AI）
+
+代码在 `modules/ai`（Gradle 模块 `lemon-modules/lemon-ai`，**只依赖 lemon-framework**），业务模块向 AI 提供能力的契约在 `framework/ai`；前端 `views/ai`、`api/ai`、`utils/sse.js`（POST + SSE 读取）、`utils/markdown.js`（marked + DOMPurify）。顶部模块「智能」（`/ai`，菜单 ID 16）：AI 问数（`ai:chat:use`）、AI 设置（`ai:config:list` / `ai:config:edit`）。第二期的智能录入、数据整理、智能报告页面也放在这个模块下。
+
+只接国产大模型：DeepSeek、通义千问（阿里云百炼兼容模式）、智谱 GLM、Kimi、豆包（火山方舟），以及其他兼容 OpenAI 协议的服务（私有化部署等，服务商选「其他」）。它们都兼容 **OpenAI Chat Completions 协议**，项目没有引入任何官方 SDK，由 `OpenAiCompatibleClient`（JDK HttpClient + Jackson）实现用到的部分。
+
+### 架构
+
+```
+framework/ai                     业务模块向 AI 提供能力的契约（不依赖 ai 模块）
+├── AiTool                       AI 问数可调用的查询（函数调用）
+├── AiExtractTarget / AiPrefill  智能录入的目标单据与预填结果
+├── AiCleanseSource / AiCleanseRecord / AiCleanseChange / AiCleanseField   数据整理的主数据来源
+├── AiReportSource / AiReportPeriod                                         智能报告的数据来源
+└── AiSchema / AiToolArgs / AiToolResult                                    JSON Schema 构造、工具参数、工具结果（行数上限）
+
+modules/ai
+├── client     LlmClient 接口 + OpenAiCompatibleClient；LlmRequest / LlmMessage / LlmResponse / LlmUsage 等；JsonSchemaValidator
+├── registry   AiToolRegistry、AiExtractRegistry、AiCleanseRegistry、AiReportRegistry：收集契约 Bean，检查标识，按当前用户权限过滤
+├── service    AiModelService（业务功能调用模型的入口）、AiConfigService（AI 设置）、AiUsageService（用量与上限）、
+│              AiChatService / AiChatStreamService（AI 问数的会话与流式回答）、AiPrompts（系统提示）、AiAsyncContext
+└── controller / entity / mapper / dto / model（AiProvider、AiFeature、AiMessageRole）
+```
+
+**调用模型统一经过 `AiModelService`**：读取当前租户的「AI 设置」，检查已配置、已启用、该功能的开关已打开、本月用量未超上限；请求中带图片时用识图模型（未配置时提示），否则用对话模型；成功或失败（已有消耗时）都记录用量。方法：`chat`（普通对话 / 带工具的对话，返回 `toolCalls`）、`stream`（流式，逐段回调文字，内部累积流式的 tool_calls 增量）、`chatJson`（`response_format = json_object`，提示词中给出 schema，返回后按 schema 校验，不通过时把错误告诉模型重试一次）、`endpoint` / `requireAvailable`。图片用 `LlmMessage.user(文字, List<LlmImage>)`，按 OpenAI 协议以 base64 data URL 放在 `image_url` 中。
+
+`OpenAiCompatibleClient` 的约定：连接超时 `lemon.ai.connect-timeout`（10 秒），等待响应 `lemon.ai.read-timeout`（120 秒）；429（额度不足的 429 除外）、5xx、连接失败按指数退避重试（`lemon.ai.max-retries` 默认 2 次，`retry-backoff` 1 秒起翻倍，参考 `Retry-After`），流式请求只在收到数据前重试；错误分类为 `LlmException`（`BizException`）并给出可读提示：API Key 无效、余额或额度不足、限流、模型不存在、接口地址不正确、超时、无法连接等（消息键 `ai.error.*`）；服务商没有返回用量时按字符数估算（`LlmUsage.estimated`）。**不要在数据库事务中调用模型**。
+
+### AI 设置（按租户）
+
+表 `ai_config`（每个租户一条，`uk_ai_config (tenant_id)`）：服务商（`AiProvider`，内置默认接口地址，模型名称不写死在代码里，页面按服务商给出常见示例作占位提示）、接口地址（为空用默认地址，粘贴了完整的 `/chat/completions` 地址会自动去掉）、API Key（**只写不读**：查询只返回 `apiKeySet` 和脱敏的 `apiKeyMask`，保存时为空表示不修改，实体字段 `WRITE_ONLY`，操作日志的 `OperLogAspect` 也隐藏 `apiKey`）、对话模型、识图模型（为空时智能录入只支持 PDF / Excel / 文本）、总开关、每月 token 上限（为空不限）、四个功能开关（问数、录入、整理、报告，默认关闭）、温度、单次最大输出 token。
+
+页面「AI 设置」顶部醒目提示「业务数据会发送给所配置的第三方模型服务」，打开总开关或任一功能时再弹出确认；「测试连接」用表单中的配置（API Key 留空时用已保存的）发一个极短的请求，显示模型回复、耗时、用量或失败原因；右侧显示本月用量（合计 / 上限、按功能、按人员）。
+
+接口：`GET/PUT /ai/config`、`GET /ai/config/providers`、`POST /ai/config/test`、`GET /ai/config/usage`；`GET /ai/config/status`（登录即可，返回各功能是否可用，不含配置内容，业务页面据此显示引导）。
+
+用量表 `ai_usage`（用户、功能 `AiFeature`：CHAT / EXTRACT / CLEANSE / REPORT / TEST、模型、输入 / 输出 token、时间），每次调用一条；调用前按本月合计检查上限。
+
+### AI 问数
+
+表 `ai_conversation`（用户、标题、时间）、`ai_message`（会话、角色 USER / ASSISTANT / TOOL、文字、工具调用 ID / 名称、`tool_calls`、`tool_result`、token）。**只能访问自己的会话**（按 `user_id` 过滤，别人的会话视为不存在，管理员也一样）；消息历史接口不返回 `tool_calls` / `tool_result` 大字段，工具结果用 `GET /ai/chat/messages/{id}/data` 按需读取。
+
+接口：`GET/POST /ai/chat/conversations`、`PUT/DELETE /ai/chat/conversations/{id}`、`GET /ai/chat/conversations/{id}/messages`、`GET /ai/chat/messages/{id}/data`、`POST /ai/chat/conversations/{id}/send`（返回 `text/event-stream`；会话不存在、AI 不可用、超过上限时直接返回普通 JSON 错误）。
+
+`AiChatStreamService`：在请求线程中校验并保存提问，之后在独立线程池（`lemon.ai.stream-threads`）中进行「模型 → 工具 → 模型」循环。异步线程通过 `AiAsyncContext` 带上**租户、登录用户（SecurityContext）、语言**，所以工具在提问人的权限和数据权限下执行、提示按用户语言生成；SSE 结束时的 ASYNC 分派在 `SecurityConfig` 中放行（原请求已鉴权）。事件：
+
+| 事件 | 数据 | 说明 |
+| --- | --- | --- |
+| `status` | `{text, tool}` | 如「正在查询：销售订单汇总」 |
+| `delta` | `{text}` | 回答文字的增量 |
+| `data` | `{messageId, tool, label, arguments, data, total, truncated, error}` | 工具返回的数据，前端显示为表格 |
+| `done` | `{messageId, usage: {promptTokens, completionTokens, estimated}, cancelled}` | 结束 |
+| `error` | `{message}` | 失败原因（可读提示） |
+
+工具循环：只把当前用户有权限的 `AiTool` 提供给模型；模型请求调用时再次检查权限、按 JSON Schema 校验参数，一轮中的多个调用依次执行后一次性回传；参数错误、业务异常、没有权限都作为工具结果回传给模型（不中断对话）；最多 `lemon.ai.max-tool-rounds`（6）轮，最后一轮不再提供工具、要求直接回答。系统提示（`ai.prompt.chatSystem`）说明身份、只能基于工具结果回答、不知道就说不知道、不编造数字、金额带单位、今天日期与当前公司 / 用户、按用户语言回答；只带最近 `lemon.ai.history-messages`（20）条历史，并去掉没有完整工具结果的工具调用。前端停止生成时中止请求，服务端检测到连接断开后停止读取，已生成的部分照常保存。
+
+页面「AI 问数」：左侧会话列表（新建、重命名、删除），右侧对话；回答用 Markdown 渲染（`utils/markdown.js`，marked 解析后经 DOMPurify 清理，禁止图片、样式和表单），查询过程可折叠，工具数据以表格显示；Enter 发送、Shift + Enter 换行、停止生成；未配置或未开启时引导到「AI 设置」。
+
+### 为业务模块添加 AI 能力
+
+在业务模块中实现 `framework/ai` 的契约并注册为 Spring Bean（放在本模块的 `ai` 包下），AI 模块启动时收集，标识格式不对或重复时启动失败。说明文字一律写消息键（本模块资源包，给模型看的提示词也要中英文），参数说明用 `AiSchema` 在每次调用时构造。
+
+| 契约 | 要点 |
+| --- | --- |
+| `AiTool` | `name()`（小写字母、数字、下划线，全局唯一）、`labelKey()`（「正在查询：xxx」的名称）、`descriptionKey()`（给模型看的说明）、`parameters()`（JSON Schema）、`permission()`（hasPerm 语义，没有权限的用户看不到）、`execute(AiToolArgs)`。只查询、调用本模块 Service（数据权限自动生效）；返回 record / List，或 `AiToolResult.rows(行, 总数)`；列表最多 `AiTool.MAX_ROWS`（200）行，超出由 AI 模块截断并告诉模型；不返回密码、证件号、薪资明细等敏感字段 |
+| `AiExtractTarget` | `key()`（`模块.名称`，如 `scm.purchase-order`）、`labelKey()`、`permission()`（一般是单据的新增权限）、`schema()`（模型输出的结构，只描述单据上能看到的信息）、`instructionKey()`（可选补充说明）、`prefill(抽取结果)`（只查询：名称匹配成 ID，匹配不上保留原文并返回 `AiPrefill.Warning`）、`route()` / `form()`（前端打开的页面和表单标识，用户核对后自己保存） |
+| `AiCleanseSource` | `key()`、`labelKey()`、`viewPermission()` / `applyPermission()`（查看与应用分开）、`editableFields()`、`page(页码, 条数, 关键字)`（返回 `AiCleanseRecord`：ID、编码、名称、规格、分类、单位、少量其他字段）、`apply(AiCleanseChange)`（调用本模块 Service 的修改方法，与手工修改相同的校验和变更历史）。`AiCleanseRegistry.apply` 会先检查应用权限和可修改字段。可选：`get(id)`（当前值，采纳前检查建议是否过期）、`categoryOptions()`（分类的取值 → 名称）、`supportsDisable()` / `disable(id)`（疑似重复的记录停用）；公共方法在 `AiCleanseSupport`（按实体注解校验、构造 extra），见下文「数据整理」 |
+| `AiReportSource` | `key()`、`labelKey()`、`permission()`、`requiresAllData()`（汇总全公司数据、底层查询不按数据权限过滤的来源返回 true，没有「全部数据」权限的用户不提供，与驾驶舱一致）、`order()`（报告中板块的顺序）、`snapshot(AiReportPeriod)`：返回期间内的指标快照 record（汇总值和少量排行，金额单位元），环比 / 同比用 `period.previous()` 自己查询放进快照，增长率、占比用 `AiReportMetrics` 算好（模型不做计算） |
+| `AiAlertSource` | 经营预警的 AI 分析材料（商务智能实现，只有一个）：`permissions()`（查看预警的权限，满足其一）、`alert(规则 ID)` 返回 `AiAlert`（当前值、阈值、级别、近期趋势、相关明细、相关的报告来源标识） |
+
+示例实现见测试 `lemon-admin/src/test/.../modules/ai/AiDemoContracts.java`。
+
+#### 问数工具：仓库、供应链、生产与质量
+
+代码在各模块的 `ai` 包（`wms/ai/WmsStockAiTools`、`scm/ai/ScmOrderAiTools`、`scm/ai/ScmSupplierAiTools`、`mes/ai/MesProductionAiTools`、`mes/ai/QmsAiTools`，每个工具是一个嵌套的 `@Component`），消息键 `<模块>.ai.tool.*`（名称与 `.desc` 说明）、`<模块>.ai.param.*`（参数说明）。公共部分在 `wms/ai/AiQuerySupport`（供应链、生产依赖仓库模块，可直接使用）：通用参数 `startDate` / `endDate` / `limit`（默认 50，最大 200）的 Schema 与取值、日期范围的默认值与校验（跨度不超过一年）、`pick`（模型给出的编码或名称匹配基础资料：完全一致优先，唯一的包含匹配次之，没有或有多个时抛出 BizException 列出候选，模型据此请用户确认）、`fetch`（分页读完再在 Java 中排序）、`plain`（去掉数量末尾的 0）。`WmsAiLookup`（仓库、物料）、`ScmAiLookup`（客户、供应商）按文字匹配 ID。
+
+| 工具 | 权限 | 数据来源 | 说明 |
+| --- | --- | --- | --- |
+| `wms_stock` | `wms:stock:list` | `WmsStockQueryService.summaryPage / stockPage` | 按物料汇总（可用 = 库存 - 冻结，是否低于安全库存）；`detail` 按仓库、库位、批次；`lowStockOnly` 低于安全库存 |
+| `wms_expiring_batches` | `wms:trace:list` | `batchPage` | 指定天数内到期（含已过期）的在库批次，`daysLeft` |
+| `wms_stock_age` | `wms:stock:list` | `batchPage` | 批次库龄（首次入库日期起），区间 0-30 / 31-90 / 91-180 / 181-365 / 365+；只含批次管理的物料 |
+| `wms_in_out_summary` | `wms:inout:list` | `inOutPage` | 收发存，默认本月 |
+| `wms_stock_flow` | `wms:flow:list` | `flowPage` | 出入库流水，默认最近 30 天 |
+| `scm_sales_orders` / `scm_purchase_orders` | `scm:sales:list` / `scm:purchase:list` | `ScmOrderService.page` | 订单清单（数据权限） |
+| `scm_sales_summary` / `scm_purchase_summary` | 同上 | `ScmOrderStatsService`（新增，`ScmOrderStatsMapper.xml`） | 已审核及以后的订单明细按客户 / 供应商、业务员、物料、月份汇总，本位币金额排名、占比，末行合计（数据权限） |
+| `scm_backorders` | `scm:backorder:list` | `ScmPlanningService.backorders` | 销售未发货 / 采购未到货，逾期天数 |
+| `scm_sales_out_docs` / `scm_purchase_in_docs` | `scm:salesOut:list` / `scm:purchaseIn:list` | `ScmTradeDocService.page` | 出入库单与退货单（查退货时另需退货单的查看权限），末行合计 |
+| `scm_purchase_price_history` | `scm:purchase:list` | `ScmSupplierPriceService.history` | 采购入库成交价 |
+| `scm_supplier_performance` | `scm:supplier:list` | `ScmSupplierService.kpi` | 供应商绩效，可按采购额、准时率、来料合格率、退货率排行 |
+| `mes_production_board` | `mes:board:list` | `MesBoardService.board` | 工单进度与交期风险（默认）、汇总指标、产线负荷 |
+| `mes_work_orders` | `mes:wo:list` | `MesWorkOrderService.page` | 工单清单，`overdueOnly` 逾期（`WorkOrderQuery.overdueAt`）（数据权限） |
+| `mes_kitting` | `mes:kit:list` | `MesKitService.orders / materials` | 工单齐套、按物料汇总缺料（数据权限） |
+| `mes_equipment` / `mes_equipment_oee` | `mes:equipment:list` / `mes:oee:list` | `MesEquipmentService.page`、`MesOeeService.summary` | 设备状态与保养到期、期间 OEE（百分数） |
+| `qms_inspection_pass_rate` / `qms_nonconformities` | `mes:qc:list` / `qms:ncr:list` | `MesInspectionService.summary`、`QmsNcrService.page` | 按检验类型 / 供应商的批次合格率、不合格品报告 |
+
+约定：结果为精简的 record（编码、名称、数量、金额、日期、状态），状态 / 类型返回枚举名称并在说明中写明含义；金额字段 `amount` 在说明中注明是订单币种还是本位币；列表用 `AiToolResult.rows(行, 总数)`，需要合计的汇总在最后一行放「合计」。测试 `AiQueryToolTests`：每个工具直接调用验证结果，`MockLlmServer` 模拟模型依次调用订单查询与销售汇总，验证只提供有权限的工具、本部门数据权限生效、无权限的调用被拒绝。
+
+#### 问数工具：财务、人事、客户、项目、BI
+
+代码在 `fin/ai`、`hr/ai`、`crm/ai`、`pm/ai`、`bi/ai`（成对的工具写成一个类中的嵌套 `@Component`，如 `FinAgingTools.Receivable / Payable`），消息键 `<模块>.ai.tool.*`、`<模块>.ai.param.*`；各模块的 `XxxAiSupport` 放通用参数（`startDate` / `endDate` 默认本月 1 日至今天，`period` 为 yyyyMM，`top` 行数）。这一组的汇总结果**第一行是「合计」**（`AiToolResult.rows(行, 总数)`，总数含合计行），驾驶舱、漏斗、ABC、预测等结构化结果用 `AiToolResult.of`。金额单位元，比率为百分数（字段名带 `Percent`）。
+
+| 工具 | 权限 | 数据来源 | 说明 |
+| --- | --- | --- | --- |
+| `fin_receivable_aging` / `fin_payable_aging` | `fin:ar:list` / `fin:ap:list` | `FinBillService.aging` | 按客户 / 供应商的余额、未到期、逾期合计与 1-30 / 31-60 / 61-90 / 90+ 天；`asOf`、`keyword`、`overdueOnly`（按逾期额排序） |
+| `fin_receipt_summary` / `fin_payment_summary` | `fin:receipt:list` / `fin:payment:list` | `FinSettlementService.partnerSummary`（新增，`selectPartnerSummary`） | 期间内已生效的收付款按往来单位汇总 |
+| `fin_financial_statement` | `fin:report:list` | `FinFinancialStatementService.incomeStatement / balanceSheet` | `report` = INCOME / BALANCE；每行「项目 + 报表各列」，最后是指标（毛利率、净利率、资产负债率、流动比率等） |
+| `fin_gross_margin` | `fin:analysis:list` | `FinAnalysisService.grossMargin` | 按物料 / 客户 / 月份，可按收入、毛利、毛利率排序 |
+| `fin_fund_balance` | `fin:cashier:list` | `FinCashierService.daily` | 各现金、银行账户的期初、收入、支出、期末 |
+| `fin_budget_execution` | `fin:budget:list` | `FinBudgetService.execution` | 全年与截至本月的累计预算、执行数、执行率 |
+| `fin_expense_claim_summary` | `fin:claim:list` | `FinClaimService.summary`（新增） | 已审批、已付款的报销按部门或费用科目汇总，不含报销人 |
+| `hr_headcount` | `hr:employee:list` | `HrEmployeeService.headcount`（新增，数据权限） | 按部门 / 职位 / 用工类型 / 学历的在职、试用期人数和期间入职、离职人数；只有人数 |
+| `hr_attendance_exceptions` | `hr:attendance:list` | `HrAttendanceService.summaryPage`（数据权限） | 某月迟到、早退、缺卡、旷工，按部门汇总或列出有异常的员工 |
+| `hr_leave_summary` | `hr:leave:list` | `HrLeaveService.summary`（新增，数据权限） | 已通过的请假（按假期类型）/ 加班（按补偿方式）或按部门汇总 |
+| `hr_payroll_dept_summary` | `hr:payroll:list` | `HrPayrollService.deptSummary`（新增） | 工资表按部门汇总，**不提供个人工资**：人数少于 3 的部门合并（合并后仍不足再并入人数最少的部门，防止用合计减其他部门推算），总人数不足 3 时不给金额 |
+| `crm_sales_funnel` | `crm:analysis:list` | `CrmAnalysisService.overview / funnel / owners` | 经营概览、各阶段商机与转化率、销售人员的客户 / 商机 / 赢单 / 跟进（与「客户分析」页面一样是全公司口径） |
+| `crm_service_tickets` | `crm:ticket:list` | `CrmTicketService.page`、`CrmAnalysisService.tickets` | 按条件列出工单（`overdueOnly` 超时）或按类型统计；不返回联系人电话、问题描述 |
+| `crm_contract_collection` | `crm:contract:list` | `CrmContractService.page / visibleOverduePlans`（新增，数据权限） | 合同金额、已回款、未回款，或执行中合同的逾期回款计划 |
+| `pm_project_overview` | `pm:project:list` | `PmProjectService.page`（数据权限） | 状态、进度、任务完成与逾期、预算、人工成本 + 费用、预算使用率、合同额、回款 |
+| `pm_timesheet_summary` | `pm:timesheet:list` | `PmTimesheetService.summary`（新增，数据权限） | 按项目或成员汇总已通过、待审批工时；只给小时数，不给人工成本（由薪资推算） |
+| `bi_cockpit` | `bi:cockpit:list` | `BiCockpitService.cockpit`、`BiDecisionService.alerts` | 关键指标、近 6 个月趋势、本年前 5 客户、触发中的预警 |
+| `bi_abc_analysis` / `bi_slow_moving` / `bi_sales_forecast` | `bi:decision:list` | `BiDecisionService.abc / slowMoving / forecast` | ABC 分类、呆滞物料（默认 90 天）、销售预测 |
+
+BI 的四个工具与驾驶舱、决策分析页面一样**需要全部数据权限**（`BiAiSupport.requireAllData`，呆滞物料的 Service 本身不检查，在工具中补上）。新增的查询都写在 XML 中（`FinSettlementMapper.selectPartnerSummary`、`FinExpenseClaimMapper.selectSummary`、`HrEmployeeMapper.selectHeadcount`、`HrLeaveMapper.selectSummary`、`HrPayrollItemMapper.selectDeptSummary`、`PmTimesheetMapper.selectSummary`），业务字典取值（用工类型、学历、假期类型）JOIN `sys_dict_data` 返回名称。测试 `AiToolsBTests`：每个工具（含各参数分支）直接调用，检查结果中没有证件号、电话、基本工资、小时成本等字段；应收账龄与回款汇总的金额、人员结构按部门数据权限过滤、项目列表的数据权限、工资只给部门汇总（小部门合并）、无权限时不提供与拒绝调用、BI 工具没有全部数据权限时拒绝；`MockLlmServer` 模拟模型一次调用应收账龄与人员结构，以及只有 AI 问数权限的用户请求工资汇总被拒绝。
+
+### 智能录入
+
+上传单据图片 / PDF / Excel 或粘贴文字，AI 识别成结构化数据，打开对应业务页面的**新增表单并预填**，用户核对后由原表单保存（走原有的权限、数据权限和校验）。**AI 不保存任何单据**，也不保存上传的文件。页面「智能录入」（菜单 362，`ai:extract:use`，内置给总经理、采购员、销售员、会计）；接口另外要求目标自身的权限（一般是单据的新增权限），没有时目标不出现在列表中、调用返回 403。
+
+| 目标（`AiExtractTarget`） | 类 | 权限 | 预填 |
+| --- | --- | --- | --- |
+| `scm.purchase-order` / `scm.sales-order` | `scm/ai/ScmPurchaseOrderExtractTarget`、`ScmSalesOrderExtractTarget`（公共部分 `ScmExtractSupport`） | `scm:purchase:add` / `scm:sales:add` | 供应商 / 客户（税号 → 编码 / 名称精确 → 名称模糊 → 去掉「（地区）有限公司」等后缀再模糊）、仓库、物料（编码 → 名称 + 规格 → 模糊）、币种（外币须有汇率）；单据单位是物料的辅助单位时换算为基本单位并带上 `unitName` / `unitRatio`，不是时提示；单价为含税单价，没有单价时按金额 ÷ 数量；金额与数量 × 单价、合计与明细之和不一致时提示；对方单号写入备注 |
+| `scm.supplier` / `scm.customer` | `ScmSupplierExtractTarget`、`ScmCustomerExtractTarget` | `scm:supplier:add` / `scm:customer:add` | 名片、营业执照、开票信息；已有相同税号或名称时提示可能重复；邮箱格式检查（客户没有邮箱字段，写入备注） |
+| `wms.material` | `wms/ai/WmsMaterialExtractTarget` | `wms:material:add` | 分类按业务字典 `wms_material_category` 的名称（作为枚举给模型）匹配键值；编码已被使用、名称和规格相同的物料已存在时提示 |
+| `fin.expense-claim` | `fin/ai/FinExpenseClaimExtractTarget` | `fin:claim:add` | 发票、车票等每张票据一行；费用科目只能从启用的末级费用科目（5101 / 6601 / 6602 / 6603 下，与报销页面一致）中选，科目列表作为枚举给模型；金额为价税合计；发票号码、销售方写入明细说明 |
+
+**后端**（`modules/ai`）：`AiExtractController`（`GET /ai/extract/targets`、`POST /ai/extract/detect`、`POST /ai/extract`，multipart：`target`、`text`、`files`）→ `AiExtractService` → `AiDocumentReader` 读取输入 → `AiModelService.chatJson`（功能 EXTRACT：开关、月度上限、用量；带图片时用识图模型，未配置时提示）→ 目标的 `prefill`，返回 `{target, label, route, form, data, warnings, extracted, source, truncated, promptTokens, completionTokens}`。提示词 `ai.prompt.extractSystem`（只提取看得到的信息、看不清填 null、数字不带单位、日期格式、名称照抄、明细逐行）+ 目标的 `instructionKey`，schema 由 `chatJson` 放进系统提示并校验（不通过重试一次）。不选目标时 `detect` 把当前用户可用的目标列表（标识 + 名称）和内容前 3000 字交给模型，返回最多 3 个候选（可能性、依据），由用户确认后再识别；只有一个可用目标时不调用模型。
+
+`AiDocumentReader`：图片按文件头识别 jpg / png / webp（最多 5 张、每张 5MB）；PDF 用 openpdf 提取文字（10MB、前 20 页），**扫描件提取不到文字时提示截图后以图片上传**——服务端不渲染 PDF 页面：openpdf 不支持渲染，引入 PDFBox 等渲染库体积和内存开销较大，而截图上传的效果相同；txt / csv 按 UTF-8 解码，不合法时按 GB18030；Excel 由前端用 exceljs 解析成制表符分隔的文字后作为文本提交（最多 3 个工作表、每个 300 行）；文字合计超过 20000 字时截断并提示。全部在内存中处理，请求结束即丢弃。
+
+`framework/ai/AiPrefillBuilder`：业务模块写 `prefill` 的辅助类——读取模型输出（容忍「1,200 元」这类字符串数字、2026年1月5日这类日期）、`match`（精确 → 模糊 → 去后缀再模糊，唯一的模糊结果采用并提示确认，多个或没有时不填 ID、保留原文并提示）、`qty` / `price` / `total` / `taxRate`（0.13 换算为 13）/ `date`（距今超过一年提示）检查，提示文字在 framework 资源包 `framework.ai.warn.*`。提示的 `field` 是表单字段路径（`partnerId`、`items[2].materialId`），前端据此高亮。
+
+**前端**：`views/ai/extract/index.vue`（选择目标或自动识别、拖拽 / 粘贴截图 / 粘贴文字、识别进度、结果预览、「生成表单」）；`components/ai/` 下 `AiExtractInput`（输入）、`AiExtractPreview`（字段与提示）、`AiExtractProgress`、`AiExtractButton`（业务页面工具栏的「AI 识别」，有 `ai:extract:use`、目标的新增权限且租户开启了智能录入时显示，在当前页面识别后直接打开表单）、`AiPrefillAlert`（表单顶部的提示列表，有提示的字段加 `ai-warn` 黄色边框）；`composables/useAiPrefill.js`：「生成表单」时识别结果**只保存在内存中**（不写 sessionStorage / localStorage，刷新即丢弃，10 分钟内有效、只用一次），跳转到 `route?ai=form`，业务页面挂载时取出并打开新增表单。业务页面接入只需几行：
+
+```js
+const ai = useAiPrefill('supplier', (data) => drawer.openCreate(data), () => drawer.open.value)
+// <AiExtractButton target="scm.supplier" perm="scm:supplier:add" @result="ai.apply" />
+// <AiPrefillAlert :ai="ai" />，<a-form-item :class="ai.cls('name')">
+```
+
+已接入：采购 / 销售订单（`components/scm/OrderPage.vue`、`OrderForm.vue`：匹配不上的往来单位、物料在选择框下显示识别出的原文）、供应商、客户、物料、费用报销。新增目标时：业务模块实现 `AiExtractTarget`（用 `AiPrefillBuilder`），`data` 的字段与前端新增表单一致，页面按上面接入；`ai.extract.field.*` 补充预览用的字段名称。测试 `AiExtractTests`（各目标的预填、图片走识图模型、PDF 文字提取与扫描件提示、自动判断、目标权限、功能关闭、用量）与 `AiPrefillBuilderTests`（纯计算）。升级脚本 `sql/upgrade/20261105_ai_extract.sql`。
+
+### 数据整理
+
+页面「数据整理」（菜单 363，`ai:cleanse:list`；采纳 / 忽略按钮 3630，`ai:cleanse:apply`；内置给采购员、仓库管理员）：选择数据类型（可加编码或名称关键字限定范围）发起整理任务，后台执行并显示进度，结果分「疑似重复」「规范化建议」两个标签页（原值 → 建议值、理由、置信度，按状态 / 字段 / 置信度 / 记录筛选），逐条或批量采纳、忽略。**AI 只生成建议，采纳前不修改任何数据**；采纳调用业务模块的 Service（与手工修改相同的校验、变更历史），疑似重复**只建议停用、不自动合并**（合并涉及大量业务引用）。
+
+| 数据类型（`AiCleanseSource`） | 类 | 查看 / 应用权限 | 可修改字段 | 发给模型的字段 |
+| --- | --- | --- | --- | --- |
+| `wms.material` | `wms/ai/WmsMaterialCleanseSource` | `wms:material:list` / `wms:material:edit` | 名称、规格、分类（业务字典 `wms_material_category`，按当前租户校验）、计量单位 | 编码、名称、规格、分类、单位、条码（启用的物料，不含多规格的 SKU） |
+| `scm.customer` / `scm.supplier` | `scm/ai/ScmCustomerCleanseSource`、`ScmSupplierCleanseSource` | `scm:customer:list` / `edit`，`scm:supplier:list` / `edit` | 名称、联系人、地址 | 编码、名称、联系人、地址、税号（只用于查重；不含电话、邮箱、银行账号、信用额度） |
+
+采纳时来源先按实体注解校验（`AiCleanseSupport.validate`，业务 Service 的修改方法本身不做 Bean Validation），不允许改成与其他启用记录重名（物料为名称 + 规格，`WmsMaterialService.existsSameNameSpec`；客户 / 供应商为名称，`existsEnabledName`），再调用 `update`；停用调用 `changeStatus`。业务模块为此新增的只读查询：`pageForCleanse`（启用的记录、按 ID 升序、只查需要的列）。`DictLookup` 新增 `options(字典)`（值 → 名称）。
+
+**执行过程**（`AiCleanseRunner`，独立线程池 `lemon.ai.cleanse-threads`，通过 `AiAsyncContext` 带上发起人的租户、登录用户和语言，模型调用不在事务中）：
+
+1. 读取候选记录（`source.page`，每页 500 条，最多 `lemon.ai.cleanse-max-records` 2000 条，超出时任务标记 `truncated`，页面提示按关键字分批整理）。
+2. **疑似重复先由程序分组**（`AiDuplicateFinder`，纯计算，单元测试 `AiDuplicateFinderTest`）：NFKC（全角转半角）、小写、乘号（× * ✕）统一为 x、常见单位中文转英文（毫米 → mm）、去掉空格括号等符号、去掉公司后缀（有限公司、Co., Ltd.）；名称和规格拆成词排序（名称 / 规格的拆分和词序不同也相同）。规范化后相同的、税号相同的归为一组；其余要求其中的数字完全相同（M6x20 与 M6x25 不是候选），去掉数字后字符二元组 Dice 相似度 ≥ 0.8 的归为一组（倒排索引只比较有共同二元组的记录，过于常见的二元组不用于比较）；每组最多 20 条，最多 `cleanse-max-groups` 100 组。每次 `cleanse-groups-per-call` 10 组交给模型（`ai.prompt.cleanseDuplicate`）判断是否真的重复、保留哪条、理由、置信度。
+3. **规范化建议**：记录按规范化后的名称排序（相近的在同一批），每批 `cleanse-batch-size` 40 条交给模型（`ai.prompt.cleanseNormalize`，附分类的可选值和常用计量单位的出现次数），返回 `{suggestions: [{id, field, value, reason, confidence}]}`。可修改的分类、单位、联系人、地址为空且模型没有给出建议的，生成「缺失字段」提示（只能忽略，到资料页面补充）。
+4. 模型输出先按 JSON Schema 校验（`chatJson`，不通过重试一次），再逐条校验：记录在本批 / 本组中、字段可修改、值非空且不超过列宽、与原值不同、分类必须是可选值（给出名称时换成取值）、同一记录同一字段只取一条，不合格的丢弃并计入 `discardedCount`。某一步输出始终不合格时跳过该步（`failedSteps`）；额度、连接等错误任务失败（原因以消息键 + 参数保存，按查看人的语言显示），已生成的建议保留。每步之前检查任务是否已取消，取消后不再保存建议。
+
+**任务**：表 `ai_cleanse_task`（数据类型、关键字、状态 `AiCleanseTaskStatus`、阶段 `AiCleansePhase`、进度与各类计数、token、失败原因、发起人）。**同一数据类型同一时间只能有一个进行中的任务**：进行中时 `running_key` = 数据类型，唯一约束 `(running_key, tenant_id)`，结束时清空；超过 `cleanse-stale-after`（30 分钟）没有进展且不在本实例执行的任务（服务重启等）在下次发起时自动结束。建议表 `ai_cleanse_suggestion`（种类 `AiCleanseKind`：DUPLICATE / NORMALIZE / MISSING；疑似重复每条待停用的记录一行，同组共用组号并记录建议保留的记录；规范化每个字段一行；原值、建议值、理由、置信度 0～100、状态 `AiSuggestionStatus`、处理人和时间）。
+
+**采纳**：每条建议一个事务（`TransactionTemplate`），一条失败不影响其他，逐条返回结果和失败原因；检查数据类型的应用权限（`AiCleanseRegistry.canApply`）、建议待处理；规范化建议先比较记录的当前值与生成建议时的原值，**记录已被修改的建议过期**、不再采纳；成功后按原状态更新为已采纳（并发采纳只有一个成功）。忽略只改变建议状态，同样需要应用权限。
+
+接口（`AiCleanseController`，`ai:cleanse:list` + 数据类型的查看权限，看不到的数据类型的任务视为不存在）：`GET /ai/cleanse/sources`、`GET/POST /ai/cleanse/tasks`、`GET /ai/cleanse/tasks/{id}`（任务与按种类、状态的建议数）、`POST /ai/cleanse/tasks/{id}/cancel`、`GET /ai/cleanse/tasks/{id}/suggestions`（`kinds`、`status`、`field`、`minConfidence`、`keyword`）、`POST /ai/cleanse/suggestions/apply` / `ignore`（`ai:cleanse:apply`，操作日志）。用量记在功能 CLEANSE 下。
+
+**导入字段对应助手**：Excel 导入（`ImportModal`）上传的表头与模板不一致（有模板中没有的列、且有模板字段找不到对应列）时，显示「AI 对应字段」（**归属「数据整理」功能**：该功能开启时显示，用量记在 CLEANSE 下；开关归属整理而不是录入，因为导入的主要是物料、客户、供应商等主数据，与整理同属主数据质量，且不涉及识图）。`POST /ai/import/mapping`（`AiImportController`，登录即可调用，导入本身仍由各业务接口校验权限）：请求为模板字段、表头和前几行样例（每格最多 50 字、最多 3 行发给模型），表头（去掉表示必填的「*」）与模板名称规范化后相同的直接对应，全部对应上时不调用模型；模型返回的对应逐条校验（表头存在、字段存在、每个字段 / 每列只对应一次）。返回 `{mappings: [{header, key, reason}], unmatched, missing}`；前端 `components/ai/AiImportMapper.vue` 显示对应关系供用户调整（不导入、必填字段缺失、重复对应时提示），应用后 `readExcel(file, columns, 字段 → 表头)` 按对应关系重新读取，继续原有的转换与导入流程。
+
+前端：`views/ai/cleanse/index.vue`（左侧任务列表；发起；进度条、阶段与计数，进行中每 2 秒刷新；取消）、`SuggestionTable.vue`（两个标签页共用：疑似重复按组显示，采纳即停用；规范化显示原值 → 建议值，分类显示名称）；`api/ai/cleanse.js`；`utils/excel.js` 的 `readExcelHeaders`。测试 `AiCleanseTests`（`MockLlmServer`）：任务执行流程与发给模型的数据范围、建议的校验与丢弃计数、缺失字段提示、采纳后业务数据确实修改、业务校验失败（同名同规格）时提示且不影响同批其他建议、记录被修改后建议过期、停用重复记录、忽略、已处理 / 缺失提示不能采纳、权限（无 `ai:cleanse:apply`、无业务修改权限、看不到数据类型）、并发任务限制与取消、模型失败时任务失败、功能关闭、导入字段对应。升级脚本 `sql/upgrade/20261105_ai_cleanse.sql`。
+
+### 智能报告
+
+页面「智能报告」（菜单 364，`ai:report:list`；生成按钮 3640，`ai:report:generate`；内置给总经理）：按周（周一至周日）/ 按月汇总当前用户有权限的业务数据，由 AI 撰写 Markdown 经营报告（概览、各板块要点、异常与风险、建议）。**AI 只读数据、撰写文字，不修改任何业务数据。**
+
+**数据来源**（`AiReportSource`，复用各模块已有的统计，快照只含汇总值和前 5 名排行，含本期、上期、去年同期及算好的环比 / 同比）：
+
+| 来源 | 类 | 权限 | 全部数据 | 数据来自 |
+| --- | --- | --- | --- | --- |
+| `bi.sales` 销售 | `bi/ai/BiSalesReportSource` | `bi:olap:list` | 否（按数据权限，快照标记 `dataScope: LIMITED`，报告中注明非全公司口径） | 多维分析 `BiOlapService.pivot`（销售出库事实表）：销售额、成本、毛利、毛利率、出库单数、客户数，客户、物料分类排行 |
+| `bi.purchase` 采购 | `BiPurchaseReportSource` | `bi:olap:list` | 是 | 多维分析（采购入库）：采购额、供应商与分类排行 |
+| `bi.inventory` 库存 | `BiInventoryReportSource` | `bi:olap:list` | 是 | 期间内最后一次库存快照与上期末对比、分类排行；当前低于安全库存数（`BiDecisionService.currentValue`）、呆滞物料（`slowMoving`） |
+| `mes.production` 生产 | `mes/ai/MesProductionReportSource` | `mes:wo:list` | 是 | `MesProductionSummaryService`（新增，`MesProductionSummaryMapper.xml`）：下达 / 完工 / 按期完工率、报工合格与报废、工时，当前在制与延期工单 |
+| `mes.quality` 质量 | `mes/ai/QmsQualityReportSource` | `qms:analysis:list` | 是 | 质量分析 `QmsAnalysisService.trend / pareto`：检验批数、合格率（总计与按检验类型）、不良类型排行 |
+| `fin.finance` 财务 | `fin/ai/FinFinanceReportSource` | `fin:report:list` | 是 | 利润表趋势 `incomeTrend`（只有整月期间：本月、上月、去年同月的收入、成本、营业利润、净利润）、资金日报 `FinCashierService.daily`（期初、收入、支出、期末）、账龄分析 `FinBillService.aging`（应收 / 应付余额、逾期、90 天以上、余额前 5） |
+| `hr.workforce` 人事 | `hr/ai/HrWorkforceReportSource` | `hr:employee:list` | 是 | `HrWorkforceSummaryService`（新增，`HrWorkforceMapper.xml`）：期初 / 期末在职、入职、离职、离职率，员工概况（试用期、按部门人数）；**只有人数，不含薪资** |
+
+基于数据仓库的来源带 `dataSyncedAt`（最近同步时间），早于期间结束时提示词要求模型说明数据可能不完整。质量分析的趋势 SQL 原先用 `month` 作列别名，在 H2 中是关键字（`bootTestRun` 下质量分析页面报错），已改为 `ym` 并以带引号的 `"month"` 输出。
+
+**生成**（`AiReportService`）：选择后台生成而不是流式输出——报告较长（几十秒到两分钟），后台生成不占用连接，关闭页面不会中断，与定时生成走同一条路径；页面每几秒轮询状态。请求线程中检查 AI 可用（功能 REPORT 的开关、月度上限）、期间不在未来、同一用户同一期间没有正在生成的，用 `AiReportCollector` 在当前用户的权限、数据权限、语言下收集有权限的来源（`AiReportRegistry` 按权限和 `requiresAllData` 过滤；一个来源失败只在该板块写 `error`），快照 JSON 存入 `ai_report.snapshot` 后返回报告 ID；后台线程池（带上租户、登录用户、语言，`AiAsyncContext`）调用模型（流式读取，避免长回答超过等待时间），完成后保存正文、用量，失败保存可读原因；超过 30 分钟仍在生成中的显示为已中断。提示词（`AiReportPrompts`，`ai.prompt.reportSystem` / `reportData`）给出期间、对比期间、公司、结构和语言，**明确要求所有数字只能来自快照、不得编造或自行计算**（增长率等已在快照中算好，为空表示不适用），`LIMITED` 来源要注明口径。用量记在 REPORT 下。
+
+**定时生成**（`AiReportJobs`：`ai.weeklyReport` 每周一 7:00 生成上周周报，`ai.monthlyReport` 每月 1 日 7:30 生成上月月报；JobHandler 首次启动时自动登记到「定时任务」，按租户逐个执行）：只对「AI 设置」中开启了智能报告的租户生成，已生成过的不重复；没有登录用户，以「全部数据」的系统身份（全部权限、用户 ID 为空）收集全部来源，按默认语言撰写，成功后站内消息（提醒）通知有 `ai:report:list` 权限的用户（没有时发给超级管理员），点击打开 `/ai/report?id=`。
+
+**查看权限**：手动生成的报告按生成人的权限取数，**只有生成人能看**（管理员也一样）；定时生成的报告包含全公司各板块数据（含财务、人事），**只有 `ai:report:list` 且数据权限为「全部数据」的用户能看**，其他人列表中看不到、详情视为不存在。因此「智能报告」菜单只应授给管理层角色（内置只给总经理）；站内消息发给全部有该权限的用户，但消息本身不含数据。删除：本人生成的、或能看到的自动报告（需要 `ai:report:generate`）。
+
+表 `ai_report`（期间类型 `AiReportPeriodType`、期间起止、标题（默认语言）、正文、生成人（自动为空）、来源标识、快照（大字段）、状态 `AiReportStatus`、失败原因、输入 / 输出 token）。接口：`GET /ai/report`（`periodType`，不含正文和快照）、`GET /ai/report/sources`、`GET /ai/report/{id}`（含正文）、`GET /ai/report/{id}/snapshot`、`POST /ai/report`（`{periodType, date}`，期间内任一天）、`DELETE /ai/report/{id}`。
+
+**预警的 AI 分析**（`AiAlertAnalysisService`，`POST /ai/report/alerts/{ruleId}/analysis`，需要查看预警的权限 `bi:decision:list` 或 `bi:cockpit:list`，属于智能报告功能）：`bi/ai/BiAlertAiSource` 给出规则的当前值（与「决策支持 → 预警」相同的计算）、近 6 个月毛利率趋势（毛利率指标）、相关明细（呆滞物料前 10、超支的预算科目前 10）和相关的报告来源（如应收逾期 → 财务、销售；工单延期 → 生产、质量），AI 模块再取当前用户有权限的相关来源**近 30 天与前 30 天**的快照，交给模型（`ai.prompt.alertSystem`）给出结论、可能原因（注明依据）、建议措施、需要核实的方向。**结果不入库也不缓存**：依据的数据随查看人的权限和实时数据变化，服务端缓存要按人区分、收益不大；前端在页面打开期间保留上次结果，可「重新分析」。
+
+前端：`views/ai/report/index.vue`（列表，周报 / 月报筛选，有生成中的报告时定时刷新）、`GenerateModal.vue`（类型、周 / 月选择，显示将包含的数据来源和按数据权限的来源）、`ReportDetail.vue`（子页：Markdown 渲染 `components/ai/MarkdownView.vue`（`utils/markdown.js` 安全渲染）、复制 Markdown、下载 .md、打印、数据快照）；`views/bi/decision/AlertAnalysisModal.vue`（预警卡片上的「AI 分析」，租户开启了智能报告时显示）；`api/ai/report.js`。测试 `AiReportTests`（`MockLlmServer`）：七个来源的快照与已有统计一致（多维分析总计、预警指标、报工记录、质量分析、资金日报、账龄、利润表、员工概况）、按权限和数据权限过滤来源、手动生成（后台撰写、提示词包含快照与禁止编造的要求、列表不返回正文、用量）、没有财务权限的人生成的报告不含财务、模型失败、定时任务以系统身份生成并发站内消息且不重复、自动报告的可见范围、预警分析、功能关闭时不可用；单元测试 `AiReportMetricsTest`、`AiReportPeriodTypeTest`、`QmsQualityReportSourceTest`。升级脚本 `sql/upgrade/20261105_ai_report.sql`。
+
+### 数据安全
+
+- AI 功能默认关闭，由管理员在「AI 设置」中配置并逐项开启，页面明确提示数据会发送给第三方模型服务；只向需要的角色分配 AI 菜单（内置：AI 问数给总经理，AI 设置只给超级管理员，租户管理员按套餐获得）。
+- 发送给模型的业务数据只来自用户自己有权限、经数据权限过滤的查询结果；工具结果有行数上限，契约要求不返回敏感字段。
+- API Key 只写不读，不在日志中出现；SaaS 模式下非平台租户的接口地址不能指向内网 / 本机地址（`lemon.ai.allow-private-network` 可放开，平台租户和单租户部署不受限制，可接入私有化部署的模型）。
+- 回答中的 Markdown 经 DOMPurify 清理后才渲染，不渲染图片（避免借图片地址向外发送数据）。
+- 每月 token 上限防止费用失控；用量按功能、按人统计。
+- 智能报告的快照只含汇总值和少量排行，不含个人薪资等敏感数据；汇总全公司数据的来源要求「全部数据」权限，自动生成的报告只对有「全部数据」权限的用户可见。
+
+### 测试
+
+`AiTests` 用本地 HTTP 服务（`MockLlmServer`）模拟 OpenAI 兼容接口，**不调用任何真实模型**：配置保存与密钥脱敏、测试连接、普通对话、流式对话（SSE 事件顺序）、工具循环（流式 tool_calls 增量 → 执行示例工具 → 回传 → 最终回答）、无权限的工具不提供给模型、轮数上限与结果截断、JSON 输出校验与重试、图片输入的请求格式、用量记录与月度上限、只能访问自己的会话、错误分类与重试（401 / 429 / 额度不足 / 5xx / 模型不存在 / 超时 / 连接失败），以及四个契约的注册表。第二期的功能测试同样用 `MockLlmServer` 按顺序排好模型的响应。
+
 ## 平台功能
 
 | 功能 | 说明 | 扩展方式 |
@@ -744,7 +967,7 @@ lemon-erp
 │       ├── config              MyBatis-Plus、Security、JWT、异步 / 定时 / 重试、上传、静态资源
 │       ├── security            JWT 过滤器、会话 TokenService、@ss 权限判断；datascope 数据权限
 │       ├── log / file / excel / ip / job / message / todo ...
-│       └── workflow / org / finance / ref ...   业务模块之间的契约接口与事件（见「工作流」「业务联动」）
+│       └── workflow / org / finance / ref / ai ...   业务模块之间的契约接口与事件（见「工作流」「业务联动」「智能（AI）」）
 ├── lemon-modules               业务模块，每个模块包含自己的 Java 代码和 mapper XML
 │   ├── lemon-system            系统管理：登录、用户、部门、角色、菜单、字典、个人中心
 │   ├── lemon-monitor           系统监控：在线用户、操作/登录日志、服务监控、缓存监控、定时任务
@@ -757,7 +980,8 @@ lemon-erp
 │   ├── lemon-hr                人力资源：员工、招聘、培训、考勤、请假、薪酬、绩效、员工自助
 │   ├── lemon-crm               客户关系：客户、线索、商机、跟进、合同、市场活动、服务工单
 │   ├── lemon-pm                项目管理：项目、成员、WBS 计划、工时、成本、项目核算
-│   └── lemon-bi                商务智能：数据仓库 ETL、多维分析、报表与仪表盘、驾驶舱、决策支持
+│   ├── lemon-bi                商务智能：数据仓库 ETL、多维分析、报表与仪表盘、驾驶舱、决策支持
+│   └── lemon-ai                智能：大模型客户端（OpenAI 兼容）、AI 设置与用量、AI 问数、AI 能力注册表（只依赖 framework）
 │       （每个模块：src/main/java/.../modules/<模块>/{controller,service,mapper,entity,dto}
 │                   src/main/resources/mapper/<模块>/*.xml）
 ├── lemon-admin                 启动模块：组装全部业务模块，打包为 lemon-erp.jar
@@ -775,7 +999,7 @@ lemon-erp
     └── init.sql                建表 + 初始数据（MySQL）
 ```
 
-模块依赖（只允许单向）：`lemon-admin → lemon-modules/* → lemon-framework → lemon-common`。业务模块之间按实际引用声明依赖：`wms ← scm ← mes ← fin ← hr / crm / pm / bi`，`system ← monitor ← dashboard`，`workflow` 只依赖 framework。
+模块依赖（只允许单向）：`lemon-admin → lemon-modules/* → lemon-framework → lemon-common`。业务模块之间按实际引用声明依赖：`wms ← scm ← mes ← fin ← hr / crm / pm / bi`，`system ← monitor ← dashboard`，`workflow`、`ai` 只依赖 framework。
 
 跨模块访问数据：Java 代码只注入本模块的 Mapper，读写其他模块的表一律调用所属模块 Service 提供的方法（例如财务生成运费应付单后调用 `ScmShipmentService.bindFreightBill` 回写发运单），上游需要的能力由 framework 定义接口、所属模块实现（例如客户关系、项目校验负责人用 `framework/org/UserLookup`，由系统模块实现）。mapper XML 中跨模块的只读 JOIN（报表、商务智能、首页统计）允许保留，写操作必须经过所属模块的 Service。
 

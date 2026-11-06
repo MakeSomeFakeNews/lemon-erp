@@ -65,7 +65,9 @@ final class SysFeatureCatalog {
         /** 商业智能 */
         BI,
         /** 数据大屏 */
-        SCREEN
+        SCREEN,
+        /** 智能（AI） */
+        AI
     }
 
     /**
@@ -132,7 +134,8 @@ final class SysFeatureCatalog {
             // 分析
             f(Key.BI, "system.label.businessIntelligence", "system.label.analytics", "system.label.businessCockpitPivotAnalysisCustomReports",
                     List.of(260L, 261L, 262L, 263L, 264L, 265L)),
-            f(Key.SCREEN, "system.label.dataScreens", "system.label.analytics", "system.label.dataScreensShopFloorWarehousingLogistics", List.of(349L)));
+            f(Key.SCREEN, "system.label.dataScreens", "system.label.analytics", "system.label.dataScreensShopFloorWarehousingLogistics", List.of(349L)),
+            f(Key.AI, "system.label.aiFeature", "system.label.analytics", "system.label.aiFeatureDesc", List.of(16L)));
 
     static final List<Industry> INDUSTRIES = List.of(
             new Industry("DISCRETE", "system.label.discreteManufacturing", "system.label.machineryElectronicsEquipmentAssemblyOtherMake",

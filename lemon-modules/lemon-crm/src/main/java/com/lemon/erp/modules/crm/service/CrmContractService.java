@@ -210,6 +210,12 @@ public class CrmContractService {
         return result;
     }
 
+    /** 当前用户可见（按数据权限）的执行中合同的逾期回款计划（AI 问数等查询使用） */
+    @DataPermission(table = "crm_contract", deptColumn = "dept_id", userColumn = "owner_id")
+    public List<CrmCollectionPlan> visibleOverduePlans() {
+        return overduePlans();
+    }
+
     private void activate(Long id, SalesContractStatus from) {
         if (!StatusTransitions.tryChange(contractMapper, CrmContract::getId, id, CrmContract::getStatus, from, SalesContractStatus.ACTIVE,
                 w -> w.set(CrmContract::getApproveTime, LocalDateTime.now()))) {

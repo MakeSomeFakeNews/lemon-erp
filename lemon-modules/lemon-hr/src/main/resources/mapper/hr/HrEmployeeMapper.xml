@@ -95,4 +95,35 @@
         ORDER BY COUNT(*) DESC
     </select>
 
+    <select id="selectHeadcount" resultType="com.lemon.erp.modules.hr.dto.HeadcountRow">
+        <bind name="dictTenant" value="@com.lemon.erp.framework.tenant.TenantContext@currentOrPlatform()"/>
+        SELECT
+        <choose>
+            <when test="groupBy == 'POSITION'">COALESCE(p.name, '-')</when>
+            <when test="groupBy == 'EMP_TYPE'">COALESCE(dd.dict_label, e.emp_type, '-')</when>
+            <when test="groupBy == 'EDUCATION'">COALESCE(dd.dict_label, e.education, '-')</when>
+            <otherwise>COALESCE(d.name, '-')</otherwise>
+        </choose> AS group_name,
+               SUM(CASE WHEN e.status &lt;&gt; 'LEFT' THEN 1 ELSE 0 END) AS active,
+               SUM(CASE WHEN e.status = 'PROBATION' THEN 1 ELSE 0 END) AS probation,
+               SUM(CASE WHEN e.entry_date BETWEEN #{begin} AND #{end} THEN 1 ELSE 0 END) AS joined,
+               SUM(CASE WHEN e.status = 'LEFT' AND e.leave_date BETWEEN #{begin} AND #{end} THEN 1 ELSE 0 END) AS lefted
+        FROM hr_employee e
+        <choose>
+            <when test="groupBy == 'POSITION'">LEFT JOIN hr_position p ON p.id = e.position_id</when>
+            <when test="groupBy == 'EMP_TYPE'">LEFT JOIN sys_dict_data dd ON dd.dict_type = 'hr_emp_type' AND dd.dict_value = e.emp_type AND dd.tenant_id = #{dictTenant}</when>
+            <when test="groupBy == 'EDUCATION'">LEFT JOIN sys_dict_data dd ON dd.dict_type = 'hr_education' AND dd.dict_value = e.education AND dd.tenant_id = #{dictTenant}</when>
+            <otherwise>LEFT JOIN sys_dept d ON d.id = e.dept_id</otherwise>
+        </choose>
+        WHERE (e.status &lt;&gt; 'LEFT' OR e.leave_date &gt;= #{begin} OR e.entry_date &gt;= #{begin})
+        GROUP BY
+        <choose>
+            <when test="groupBy == 'POSITION'">e.position_id, p.name</when>
+            <when test="groupBy == 'EMP_TYPE'">e.emp_type, dd.dict_label</when>
+            <when test="groupBy == 'EDUCATION'">e.education, dd.dict_label</when>
+            <otherwise>e.dept_id, d.name</otherwise>
+        </choose>
+        ORDER BY SUM(CASE WHEN e.status &lt;&gt; 'LEFT' THEN 1 ELSE 0 END) DESC
+    </select>
+
 </mapper>

@@ -62,9 +62,10 @@ const cellText = (v) => {
  * 读取 xlsx 第一个工作表：第一行为表头，按表头名称对应字段
  * @param {File} file
  * @param {{title: string, key: string}[]} columns
+ * @param {Record<string, string>} [headerMap] 字段 → Excel 表头（表头与模板不一致时按此对应，见 AI 对应字段；不在其中的字段不读取）
  * @returns {Promise<{rowNum: number, [key: string]: string}[]>} 值均为去掉首尾空格的字符串，rowNum 为 Excel 行号
  */
-export async function readExcel(file, columns) {
+export async function readExcel(file, columns, headerMap) {
   const ExcelJS = await loadExcel()
   const wb = new ExcelJS.Workbook()
   await wb.xlsx.load(await file.arrayBuffer())
@@ -76,7 +77,8 @@ export async function readExcel(file, columns) {
     // 表头可能带「*」表示必填
     if (txt) header[txt.replace(/^\*/, '').trim()] = col
   })
-  const missing = columns.filter((c) => c.required && !header[c.title]).map((c) => c.title)
+  const titleOf = (c) => (headerMap ? headerMap[c.key] : c.title)
+  const missing = columns.filter((c) => c.required && !header[titleOf(c)]).map((c) => c.title)
   if (missing.length) throw new Error(t('components.excel.missingColumns', { columns: missing.join(t('components.excel.listSep')) }))
   const rows = []
   ws.eachRow((row, rowNum) => {
@@ -84,7 +86,7 @@ export async function readExcel(file, columns) {
     const item = { rowNum }
     let empty = true
     columns.forEach((c) => {
-      const col = header[c.title]
+      const col = titleOf(c) ? header[titleOf(c)] : undefined
       const v = col ? cellText(row.getCell(col).value) : undefined
       if (v !== undefined) {
         item[c.key] = v
@@ -94,6 +96,34 @@ export async function readExcel(file, columns) {
     if (!empty) rows.push(item)
   })
   return rows
+}
+
+/**
+ * 读取 xlsx 第一个工作表的表头（去掉表示必填的「*」）和前几行数据（按列顺序的文字），用于表头与模板不一致时对应字段
+ * @returns {Promise<{headers: string[], samples: string[][]}>}
+ */
+export async function readExcelHeaders(file, sampleRows = 3) {
+  const ExcelJS = await loadExcel()
+  const wb = new ExcelJS.Workbook()
+  await wb.xlsx.load(await file.arrayBuffer())
+  const ws = wb.worksheets[0]
+  if (!ws) throw new Error(t('components.excel.noSheet'))
+  const cols = []
+  const headers = []
+  ws.getRow(1).eachCell((cell, col) => {
+    const txt = cellText(cell.value)
+    if (txt) {
+      cols.push(col)
+      headers.push(txt.replace(/^\*/, '').trim())
+    }
+  })
+  const samples = []
+  for (let r = 2; r <= ws.rowCount && samples.length < sampleRows; r++) {
+    const row = ws.getRow(r)
+    const values = cols.map((col) => cellText(row.getCell(col).value) ?? '')
+    if (values.some((v) => v !== '')) samples.push(values)
+  }
+  return { headers, samples }
 }
 
 /** 下载导入模板：必填列表头加「*」，可附一行示例 */

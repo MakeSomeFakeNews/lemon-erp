@@ -31,6 +31,7 @@
         <a-button v-perm="`scm:${kind}:add`" type="primary" @click="form.openCreate()">
           <template #icon><PlusOutlined /></template>{{ $t('scm.order.addOrder', { kind: conf.label }) }}
         </a-button>
+        <AiExtractButton :target="`scm.${kind}-order`" :perm="`scm:${kind}:add`" :title="conf.label" @result="ai.apply" />
         <a-button v-if="kind === 'sales'" v-perm="'scm:sales:add'" @click="importOpen = true">
           <template #icon><ImportOutlined /></template>{{ $t('scm.order.importExternal') }}
         </a-button>
@@ -111,7 +112,7 @@
       </a-table>
     </a-card>
 
-    <OrderForm ref="form" :kind="kind" @success="onSaved" />
+    <OrderForm ref="form" :kind="kind" :ai="ai" @success="onSaved" />
     <ImportModal
       v-if="kind === 'sales'"
       v-model:open="importOpen"
@@ -148,6 +149,8 @@ import OrderDetail from './OrderDetail.vue'
 import OrderForm from './OrderForm.vue'
 import PartnerSelect from './PartnerSelect.vue'
 import TradeDocForm from './TradeDocForm.vue'
+import AiExtractButton from '@/components/ai/AiExtractButton.vue'
+import { useAiPrefill } from '@/composables/useAiPrefill'
 import { deleteOrder, pageOrder } from '@/api/scm/order'
 import { importSalesOrders } from '@/api/scm/dealer'
 import { useColumns } from '@/composables/useColumns'
@@ -239,6 +242,8 @@ onMounted(() => {
 const progress = (r) => (Number(r.totalQty) ? Math.min(Math.round((Number(r.doneQty) / Number(r.totalQty)) * 100), 100) : 0)
 
 const form = ref()
+// 智能录入：识别结果打开新增订单并预填（从「智能录入」页面跳转，或工具栏的「AI 识别」）
+const ai = useAiPrefill(`${props.kind}-order`, (data) => form.value.openCreate(data))
 const detailRef = ref()
 const detailOpen = ref(false)
 const detailId = ref()

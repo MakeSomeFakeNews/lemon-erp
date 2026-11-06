@@ -47,4 +47,26 @@
         GROUP BY i.account_id
     </select>
 
+    <select id="selectSummary" resultType="com.lemon.erp.modules.fin.dto.ClaimSummaryRow">
+        <choose>
+            <when test="byAccount">
+                SELECT CONCAT(a.code, ' ', a.name) AS group_name, COUNT(DISTINCT c.id) AS claim_count, SUM(i.amount) AS amount
+                FROM fin_expense_claim c
+                JOIN fin_expense_claim_item i ON i.claim_id = c.id
+                JOIN fin_account a ON a.id = i.account_id
+            </when>
+            <otherwise>
+                SELECT COALESCE(d.name, '-') AS group_name, COUNT(*) AS claim_count, SUM(c.amount) AS amount
+                FROM fin_expense_claim c
+                LEFT JOIN sys_dept d ON d.id = c.dept_id
+            </otherwise>
+        </choose>
+        WHERE c.claim_date BETWEEN #{begin} AND #{end}
+          AND c.status IN <foreach collection="statuses" item="st" open="(" separator="," close=")">#{st}</foreach>
+        <choose>
+            <when test="byAccount">GROUP BY a.code, a.name ORDER BY SUM(i.amount) DESC</when>
+            <otherwise>GROUP BY c.dept_id, d.name ORDER BY SUM(c.amount) DESC</otherwise>
+        </choose>
+    </select>
+
 </mapper>

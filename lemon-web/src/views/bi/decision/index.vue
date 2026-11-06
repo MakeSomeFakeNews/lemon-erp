@@ -133,6 +133,7 @@
               <div class="alert-value">{{ fmtValue(a.value, a.unit) }} <small>{{ a.unit }}</small></div>
               <div class="sub-text">{{ $t('bi.decision.alertWhen', { metric: a.metricLabel, op: OPERATORS[a.operator], value: fmtValue(a.threshold, a.unit), unit: a.unit }) }}</div>
               <div v-if="a.triggered && a.remark" class="alert-remark">{{ a.remark }}</div>
+              <a v-if="aiReport" class="alert-ai" @click="analysisRef.open(a)"><RobotOutlined /> {{ $t('ai.report.alertAnalyze') }}</a>
             </div>
           </a-col>
         </a-row>
@@ -201,6 +202,7 @@
         </a-form-item>
       </a-form>
     </a-modal>
+    <AlertAnalysisModal ref="analysisRef" />
   </a-card>
 </template>
 
@@ -208,7 +210,9 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, RobotOutlined } from '@ant-design/icons-vue'
+import AlertAnalysisModal from './AlertAnalysisModal.vue'
+import { getAiStatus } from '@/api/ai/config'
 import DictTag from '@/components/DictTag.vue'
 import EChart from '@/components/charts/EChart.vue'
 import {
@@ -364,7 +368,12 @@ async function loadAlerts() {
   } finally {
     al.loading = false
   }
+  // 开启了智能报告时显示「AI 分析」
+  getAiStatus().then((s) => (aiReport.value = !!s.features?.REPORT))
 }
+
+const aiReport = ref(false)
+const analysisRef = ref()
 
 const ruleOpen = ref(false)
 const ruleSaving = ref(false)
@@ -498,6 +507,11 @@ onMounted(() => {
   font-size: 12px;
   font-weight: normal;
   color: var(--app-text-3);
+}
+.alert-ai {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
 }
 .alert-remark {
   margin-top: 6px;

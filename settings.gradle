@@ -21,5 +21,6 @@ include 'lemon-framework'
     'crm',        // 客户关系
     'pm',         // 项目管理
     'bi',         // 商务智能
+    'ai',         // 智能：大模型客户端、模型配置与用量、AI 问数（只依赖 framework）
 ].each { include "lemon-modules:lemon-${it}" }
 include 'lemon-admin'

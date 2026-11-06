@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.ai.mapper.AiCleanseSuggestionMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO ai_cleanse_suggestion (task_id, kind, group_no, record_id, record_code, record_name, field, old_value, new_value,
+            keep_record_id, keep_code, keep_name, reason, confidence, status, create_time) VALUES
+        <foreach collection="list" item="s" separator=",">
+            (#{s.taskId}, #{s.kind}, #{s.groupNo}, #{s.recordId}, #{s.recordCode}, #{s.recordName}, #{s.field}, #{s.oldValue}, #{s.newValue},
+             #{s.keepRecordId}, #{s.keepCode}, #{s.keepName}, #{s.reason}, #{s.confidence}, #{s.status}, #{s.createTime})
+        </foreach>
+    </insert>
+
+    <!-- 跨模块只读关联 sys_user 取处理人姓名 -->
+    <select id="selectSuggestionPage" resultType="com.lemon.erp.modules.ai.entity.AiCleanseSuggestion">
+        SELECT s.*, COALESCE(u.nickname, u.username) AS handled_by_name
+        FROM ai_cleanse_suggestion s
+        LEFT JOIN sys_user u ON u.id = s.handled_by
+        WHERE s.task_id = #{q.taskId}
+        <if test="q.kinds != null and q.kinds.size() > 0">
+            AND s.kind IN
+            <foreach collection="q.kinds" item="k" open="(" separator="," close=")">#{k}</foreach>
+        </if>
+        <if test="q.status != null">AND s.status = #{q.status}</if>
+        <if test="q.field != null">AND s.field = #{q.field}</if>
+        <if test="q.minConfidence != null">AND s.confidence &gt;= #{q.minConfidence}</if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND (s.record_code LIKE CONCAT('%', #{q.keyword}, '%') OR s.record_name LIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+        ORDER BY s.group_no, s.id
+    </select>
+
+    <select id="countByKindStatus" resultType="com.lemon.erp.modules.ai.dto.AiCleanseStat">
+        SELECT kind, status, COUNT(*) AS cnt
+        FROM ai_cleanse_suggestion
+        WHERE task_id = #{taskId}
+        GROUP BY kind, status
+    </select>
+
+</mapper>

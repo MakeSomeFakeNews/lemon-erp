@@ -74,6 +74,85 @@ export const AccountRole = Object.freeze({
   PROFIT_DISTRIBUTION: 'PROFIT_DISTRIBUTION',
 })
 
+/** com.lemon.erp.framework.ai.AiCleanseField */
+export const AiCleanseField = Object.freeze({
+  NAME: 'NAME', // 名称
+  SPEC: 'SPEC', // 规格型号
+  CATEGORY: 'CATEGORY', // 分类
+  UNIT: 'UNIT', // 计量单位
+  CONTACT: 'CONTACT', // 联系人
+  ADDRESS: 'ADDRESS', // 地址
+})
+
+/** com.lemon.erp.modules.ai.model.AiCleanseKind */
+export const AiCleanseKind = Object.freeze({
+  DUPLICATE: 'DUPLICATE', // 疑似重复
+  NORMALIZE: 'NORMALIZE', // 规范化
+  MISSING: 'MISSING', // 缺失字段提示
+})
+
+/** com.lemon.erp.modules.ai.model.AiCleansePhase */
+export const AiCleansePhase = Object.freeze({
+  LOADING: 'LOADING', // 读取记录、程序分组
+  DUPLICATE: 'DUPLICATE', // 模型判断疑似重复
+  NORMALIZE: 'NORMALIZE', // 模型给出规范化建议
+  DONE: 'DONE', // 结束
+})
+
+/** com.lemon.erp.modules.ai.model.AiCleanseTaskStatus */
+export const AiCleanseTaskStatus = Object.freeze({
+  RUNNING: 'RUNNING', // 进行中
+  COMPLETED: 'COMPLETED', // 已完成
+  FAILED: 'FAILED', // 失败
+  CANCELLED: 'CANCELLED', // 已取消
+})
+
+/** com.lemon.erp.modules.ai.model.AiFeature */
+export const AiFeature = Object.freeze({
+  CHAT: 'CHAT', // AI 问数
+  EXTRACT: 'EXTRACT', // 智能录入
+  CLEANSE: 'CLEANSE', // 数据整理
+  REPORT: 'REPORT', // 智能报告
+  TEST: 'TEST', // 「AI 设置」中的测试连接
+})
+
+/** com.lemon.erp.modules.ai.model.AiMessageRole */
+export const AiMessageRole = Object.freeze({
+  USER: 'USER', // 用户的提问
+  ASSISTANT: 'ASSISTANT', // 模型的回答
+  TOOL: 'TOOL', // 工具的返回结果
+})
+
+/** com.lemon.erp.modules.ai.model.AiProvider */
+export const AiProvider = Object.freeze({
+  DEEPSEEK: 'DEEPSEEK', // DeepSeek
+  QWEN: 'QWEN', // 通义千问
+  ZHIPU: 'ZHIPU', // 智谱 GLM
+  MOONSHOT: 'MOONSHOT', // Kimi
+  DOUBAO: 'DOUBAO', // 豆包
+  CUSTOM: 'CUSTOM', // 其他兼容 OpenAI 协议的服务
+})
+
+/** com.lemon.erp.modules.ai.model.AiReportPeriodType */
+export const AiReportPeriodType = Object.freeze({
+  WEEK: 'WEEK',
+  MONTH: 'MONTH',
+})
+
+/** com.lemon.erp.modules.ai.model.AiReportStatus */
+export const AiReportStatus = Object.freeze({
+  GENERATING: 'GENERATING', // 正在生成
+  DONE: 'DONE', // 已完成
+  FAILED: 'FAILED', // 生成失败
+})
+
+/** com.lemon.erp.modules.ai.model.AiSuggestionStatus */
+export const AiSuggestionStatus = Object.freeze({
+  PENDING: 'PENDING', // 待处理
+  APPLIED: 'APPLIED', // 已采纳
+  IGNORED: 'IGNORED', // 已忽略
+})
+
 /** com.lemon.erp.modules.bi.model.AlertLevel（字典 bi_alert_level） */
 export const AlertLevel = Object.freeze({
   INFO: 'INFO', // 提示

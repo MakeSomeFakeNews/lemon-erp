@@ -2,6 +2,13 @@
 -- 默认账号：admin / admin123（超级管理员）、test / admin123（普通用户，只有查看权限，数据权限为本部门及以下）
 -- 工作流引擎的 ACT_ 开头的表由 Flowable 启动时自动创建，不在本脚本中
 
+DROP TABLE IF EXISTS ai_report;
+DROP TABLE IF EXISTS ai_cleanse_suggestion;
+DROP TABLE IF EXISTS ai_cleanse_task;
+DROP TABLE IF EXISTS ai_message;
+DROP TABLE IF EXISTS ai_conversation;
+DROP TABLE IF EXISTS ai_usage;
+DROP TABLE IF EXISTS ai_config;
 DROP TABLE IF EXISTS bi_alert_rule;
 DROP TABLE IF EXISTS bi_dashboard;
 DROP TABLE IF EXISTS bi_report;
@@ -4714,6 +4721,146 @@ CREATE TABLE bi_alert_rule (
     PRIMARY KEY (id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '预警规则';
 
+-- ---------------------------------------------------------------- 智能（AI）：模型配置、用量、AI 问数的会话与消息
+CREATE TABLE ai_config (
+    id                  BIGINT        NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id           BIGINT        NOT NULL DEFAULT 1 COMMENT '租户ID',
+    provider            VARCHAR(16)   NOT NULL COMMENT '服务商 DEEPSEEK QWEN ZHIPU MOONSHOT DOUBAO CUSTOM（AiProvider）',
+    base_url            VARCHAR(255)           DEFAULT NULL COMMENT '接口地址（不含 /chat/completions），为空时用服务商的默认地址',
+    api_key             VARCHAR(255)           DEFAULT NULL COMMENT 'API Key，不返回前端',
+    chat_model          VARCHAR(64)            DEFAULT NULL COMMENT '对话 / 工具调用模型',
+    vision_model        VARCHAR(64)            DEFAULT NULL COMMENT '识图模型，为空时智能录入只支持 PDF、Excel、文本',
+    enabled             TINYINT       NOT NULL DEFAULT 0 COMMENT '总开关 1启用 0停用',
+    monthly_token_limit BIGINT                 DEFAULT NULL COMMENT '每月 token 上限（输入 + 输出），为空不限',
+    chat_enabled        TINYINT       NOT NULL DEFAULT 0 COMMENT 'AI 问数 1开启 0关闭',
+    extract_enabled     TINYINT       NOT NULL DEFAULT 0 COMMENT '智能录入 1开启 0关闭',
+    cleanse_enabled     TINYINT       NOT NULL DEFAULT 0 COMMENT '数据整理 1开启 0关闭',
+    report_enabled      TINYINT       NOT NULL DEFAULT 0 COMMENT '智能报告 1开启 0关闭',
+    temperature         DECIMAL(3, 2) NOT NULL DEFAULT 0.30 COMMENT '温度',
+    max_tokens          INT                    DEFAULT NULL COMMENT '单次回答的最大 token 数，为空由服务商决定',
+    create_time         DATETIME               DEFAULT NULL COMMENT '创建时间',
+    update_time         DATETIME               DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_ai_config (tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '大模型配置（国产模型，OpenAI 兼容协议），每个租户一条';
+
+CREATE TABLE ai_usage (
+    id                BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id         BIGINT      NOT NULL DEFAULT 1 COMMENT '租户ID',
+    user_id           BIGINT               DEFAULT NULL COMMENT '调用人，没有登录用户时为空',
+    feature           VARCHAR(16) NOT NULL COMMENT '功能 CHAT问数 EXTRACT录入 CLEANSE整理 REPORT报告 TEST测试连接（AiFeature）',
+    model             VARCHAR(64)          DEFAULT NULL COMMENT '模型',
+    prompt_tokens     INT         NOT NULL DEFAULT 0 COMMENT '输入 token',
+    completion_tokens INT         NOT NULL DEFAULT 0 COMMENT '输出 token',
+    create_time       DATETIME             DEFAULT NULL COMMENT '调用时间',
+    PRIMARY KEY (id),
+    KEY idx_ai_usage_time (tenant_id, create_time)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '大模型调用的 token 用量';
+
+CREATE TABLE ai_conversation (
+    id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID',
+    user_id     BIGINT       NOT NULL COMMENT '所属用户（只有本人能访问）',
+    title       VARCHAR(100)          DEFAULT NULL COMMENT '标题（默认为第一条提问）',
+    create_time DATETIME              DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME              DEFAULT NULL COMMENT '最近提问时间',
+    PRIMARY KEY (id),
+    KEY idx_ai_conversation_user (user_id, update_time)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = 'AI 问数的会话';
+
+CREATE TABLE ai_message (
+    id              BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id       BIGINT      NOT NULL DEFAULT 1 COMMENT '租户ID',
+    conversation_id BIGINT      NOT NULL COMMENT '会话',
+    role            VARCHAR(16) NOT NULL COMMENT '角色 USER提问 ASSISTANT回答 TOOL工具结果（AiMessageRole）',
+    content         TEXT COMMENT '提问 / 回答的文字；工具消息为调用参数',
+    tool_call_id    VARCHAR(64)          DEFAULT NULL COMMENT '工具消息：对应的工具调用 ID',
+    tool_name       VARCHAR(64)          DEFAULT NULL COMMENT '工具消息：工具名称',
+    tool_calls      TEXT COMMENT '回答：请求调用的工具（JSON），列表不返回',
+    tool_result     MEDIUMTEXT COMMENT '工具消息：回传给模型的结果（JSON），列表不返回',
+    tokens          INT                  DEFAULT NULL COMMENT '回答消耗的 token',
+    create_time     DATETIME             DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_ai_message_conversation (conversation_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = 'AI 问数的消息';
+
+CREATE TABLE ai_cleanse_task (
+    id              BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id       BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID',
+    source_key      VARCHAR(64)  NOT NULL COMMENT '数据类型（AiCleanseSource.key，如 wms.material）',
+    keyword         VARCHAR(64)           DEFAULT NULL COMMENT '编码或名称关键字（整理范围），为空表示全部',
+    status          VARCHAR(16)  NOT NULL COMMENT '状态 RUNNING进行中 COMPLETED已完成 FAILED失败 CANCELLED已取消（AiCleanseTaskStatus）',
+    phase           VARCHAR(16)  NOT NULL COMMENT '阶段 LOADING读取 DUPLICATE查重 NORMALIZE规范化 DONE结束（AiCleansePhase）',
+    running_key     VARCHAR(64)           DEFAULT NULL COMMENT '进行中时为数据类型，结束后清空（唯一约束：同一数据类型同时只有一个进行中的任务）',
+    record_count    INT          NOT NULL DEFAULT 0 COMMENT '读取的记录数',
+    truncated       TINYINT      NOT NULL DEFAULT 0 COMMENT '记录超过上限，只分析了一部分 1是 0否',
+    group_count     INT          NOT NULL DEFAULT 0 COMMENT '疑似重复候选组数',
+    total_steps     INT          NOT NULL DEFAULT 0 COMMENT '模型调用总步数',
+    done_steps      INT          NOT NULL DEFAULT 0 COMMENT '已完成步数',
+    failed_steps    INT          NOT NULL DEFAULT 0 COMMENT '模型输出不合格而跳过的步数',
+    duplicate_count INT          NOT NULL DEFAULT 0 COMMENT '疑似重复建议数（待停用的记录）',
+    normalize_count INT          NOT NULL DEFAULT 0 COMMENT '规范化建议数',
+    missing_count   INT          NOT NULL DEFAULT 0 COMMENT '缺失字段提示数',
+    discarded_count INT          NOT NULL DEFAULT 0 COMMENT '校验不通过而丢弃的建议数',
+    tokens          INT          NOT NULL DEFAULT 0 COMMENT '消耗的 token',
+    error_key       VARCHAR(100)          DEFAULT NULL COMMENT '失败原因的消息键',
+    error_args      VARCHAR(1000)         DEFAULT NULL COMMENT '失败原因的参数（JSON 数组）',
+    create_by       BIGINT                DEFAULT NULL COMMENT '发起人',
+    create_time     DATETIME              DEFAULT NULL COMMENT '发起时间',
+    update_time     DATETIME              DEFAULT NULL COMMENT '最近进展时间',
+    finish_time     DATETIME              DEFAULT NULL COMMENT '结束时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_ai_cleanse_task_running (running_key, tenant_id),
+    KEY idx_ai_cleanse_task_source (tenant_id, source_key)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '数据整理任务（主数据查重与规范化）';
+
+CREATE TABLE ai_cleanse_suggestion (
+    id             BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id      BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID',
+    task_id        BIGINT       NOT NULL COMMENT '整理任务',
+    kind           VARCHAR(16)  NOT NULL COMMENT '种类 DUPLICATE疑似重复 NORMALIZE规范化 MISSING缺失字段（AiCleanseKind）',
+    group_no       INT                   DEFAULT NULL COMMENT '疑似重复的组号',
+    record_id      BIGINT       NOT NULL COMMENT '记录ID',
+    record_code    VARCHAR(64)           DEFAULT NULL COMMENT '记录编码',
+    record_name    VARCHAR(255)          DEFAULT NULL COMMENT '记录名称',
+    field          VARCHAR(16)           DEFAULT NULL COMMENT '字段 NAME SPEC CATEGORY UNIT CONTACT ADDRESS（AiCleanseField），疑似重复为空',
+    old_value      VARCHAR(255)          DEFAULT NULL COMMENT '生成建议时的原值',
+    new_value      VARCHAR(255)          DEFAULT NULL COMMENT '建议值',
+    keep_record_id BIGINT                DEFAULT NULL COMMENT '疑似重复：建议保留的记录',
+    keep_code      VARCHAR(64)           DEFAULT NULL COMMENT '保留记录的编码',
+    keep_name      VARCHAR(255)          DEFAULT NULL COMMENT '保留记录的名称',
+    reason         VARCHAR(500)          DEFAULT NULL COMMENT '理由（模型给出）',
+    confidence     INT                   DEFAULT NULL COMMENT '置信度 0～100',
+    status         VARCHAR(16)  NOT NULL COMMENT '状态 PENDING待处理 APPLIED已采纳 IGNORED已忽略（AiSuggestionStatus）',
+    handled_by     BIGINT                DEFAULT NULL COMMENT '采纳 / 忽略人',
+    handled_time   DATETIME              DEFAULT NULL COMMENT '采纳 / 忽略时间',
+    create_time    DATETIME              DEFAULT NULL COMMENT '生成时间',
+    PRIMARY KEY (id),
+    KEY idx_ai_cleanse_suggestion_task (task_id, kind, status)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '数据整理建议';
+
+CREATE TABLE ai_report (
+    id                BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id         BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID',
+    period_type       VARCHAR(8)   NOT NULL COMMENT '期间类型 WEEK周报 MONTH月报（AiReportPeriodType）',
+    period_start      DATE         NOT NULL COMMENT '期间开始',
+    period_end        DATE         NOT NULL COMMENT '期间结束（含）',
+    title             VARCHAR(100) NOT NULL COMMENT '标题',
+    content           MEDIUMTEXT COMMENT '报告正文（Markdown），列表不返回',
+    user_id           BIGINT                DEFAULT NULL COMMENT '生成人，定时任务自动生成时为空（自动报告只有全部数据权限的用户能看）',
+    sources           VARCHAR(500)          DEFAULT NULL COMMENT '包含的数据来源标识，逗号分隔',
+    snapshot          MEDIUMTEXT COMMENT '交给模型的数据快照（JSON），列表不返回',
+    status            VARCHAR(16)  NOT NULL COMMENT '状态 GENERATING生成中 DONE已完成 FAILED失败（AiReportStatus）',
+    error             VARCHAR(500)          DEFAULT NULL COMMENT '失败原因',
+    prompt_tokens     INT                   DEFAULT NULL COMMENT '输入 token',
+    completion_tokens INT                   DEFAULT NULL COMMENT '输出 token',
+    create_time       DATETIME              DEFAULT NULL COMMENT '生成时间',
+    update_time       DATETIME              DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_ai_report_period (tenant_id, period_type, period_start),
+    KEY idx_ai_report_user (user_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '智能报告（周报 / 月报）';
+
 INSERT INTO sys_tenant (id, name, admin_user_id, status, remark, create_time, update_time) VALUES
 (1, '柠檬科技', 1, 1, '平台租户（运营方），不受套餐限制', NOW(), NOW());
 
@@ -6833,6 +6980,41 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 (3490, 349, '投屏链接管理', 'F', NULL, NULL, 'bi:screen:share', NULL, 1, 1, 1, NOW(), NOW());
 INSERT INTO sys_role_menu (role_id, menu_id) VALUES
 (3, 349), (3, 3490), (6, 349);
+
+-- 智能（AI）：AI 问数、AI 设置（国产大模型，按租户配置；第二期的智能录入、数据整理、智能报告页面放在本模块下）
+-- 顶部导航排在商务智能之后
+UPDATE sys_menu SET sort = sort + 1 WHERE parent_id = 0 AND sort >= 10;
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(16, 0, '智能', 'M', '/ai', NULL, NULL, 'RobotOutlined', 10, 1, 1, NOW(), NOW()),
+(360, 16, 'AI 问数', 'C', 'chat', 'ai/chat/index', 'ai:chat:use', 'MessageOutlined', 1, 1, 1, NOW(), NOW()),
+(361, 16, 'AI 设置', 'C', 'settings', 'ai/settings/index', 'ai:config:list', 'SettingOutlined', 99, 1, 1, NOW(), NOW()),
+(3610, 361, 'AI 设置修改', 'F', NULL, NULL, 'ai:config:edit', NULL, 1, 1, 1, NOW(), NOW());
+-- AI 问数给总经理（工具按用户自己的权限和数据权限查询）；AI 设置只给超级管理员，租户管理员按套餐获得
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(3, 16), (3, 360);
+-- 智能录入：上传单据图片 / PDF / 表格识别成单据草稿，在业务页面核对后保存（还需要目标单据的新增权限）
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(362, 16, '智能录入', 'C', 'extract', 'ai/extract/index', 'ai:extract:use', 'ScanOutlined', 2, 1, 1, NOW(), NOW());
+-- 给总经理、采购员、销售员、会计（各自只能生成有新增权限的单据）；其他 AI 页面也会给这些角色加「智能」模块，用 NOT EXISTS 避免重复
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT r.id, m.menu_id FROM sys_role r JOIN (SELECT 16 AS menu_id UNION ALL SELECT 362) m ON 1 = 1
+WHERE r.id IN (3, 4, 5, 9) AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = r.id AND x.menu_id = m.menu_id);
+-- 数据整理：物料、客户、供应商的查重与规范化建议，采纳后调用业务模块的修改 / 停用（还需要对应资料的查看、修改权限）
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(363, 16, '数据整理', 'C', 'cleanse', 'ai/cleanse/index', 'ai:cleanse:list', 'ClearOutlined', 3, 1, 1, NOW(), NOW()),
+(3630, 363, '采纳整理建议', 'F', NULL, NULL, 'ai:cleanse:apply', NULL, 1, 1, 1, NOW(), NOW());
+-- 给采购员（供应商）、仓库管理员（物料）
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT r.id, m.menu_id FROM sys_role r JOIN (SELECT 16 AS menu_id UNION ALL SELECT 363 UNION ALL SELECT 3630) m ON 1 = 1
+WHERE r.id IN (4, 6) AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = r.id AND x.menu_id = m.menu_id);
+-- 智能报告：按周 / 月汇总有权限的业务数据，由 AI 撰写经营报告（手动生成或定时任务自动生成）；BI 预警的 AI 分析
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(364, 16, '智能报告', 'C', 'report', 'ai/report/index', 'ai:report:list', 'FileTextOutlined', 4, 1, 1, NOW(), NOW()),
+(3640, 364, '生成报告', 'F', NULL, NULL, 'ai:report:generate', NULL, 1, 1, 1, NOW(), NOW());
+-- 给总经理（数据权限为全部数据，能看自动生成的全公司报告）
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT r.id, m.menu_id FROM sys_role r JOIN (SELECT 16 AS menu_id UNION ALL SELECT 364 UNION ALL SELECT 3640) m ON 1 = 1
+WHERE r.id IN (3) AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = r.id AND x.menu_id = m.menu_id);
 
 ALTER TABLE sys_dept AUTO_INCREMENT = 200;
 ALTER TABLE sys_user AUTO_INCREMENT = 100;

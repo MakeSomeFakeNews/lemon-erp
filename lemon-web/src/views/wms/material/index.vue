@@ -26,6 +26,7 @@
         <a-button v-perm="'wms:material:add'" type="primary" @click="drawer.openCreate()">
           <template #icon><PlusOutlined /></template>{{ $t('wms.material.createTitle') }}
         </a-button>
+        <AiExtractButton target="wms.material" perm="wms:material:add" :title="$t('wms.material.createTitle')" @result="ai.apply" />
         <a-button v-perm="'wms:material:add'" @click="importOpen = true">
           <template #icon><ImportOutlined /></template>{{ $t('common.action.import') }}
         </a-button>
@@ -126,17 +127,18 @@
     </a-card>
 
     <FormDrawer page :drawer="drawer" :create-title="$t('wms.material.createTitle')" :edit-title="$t('wms.material.editTitle')" :width="canEditPlan ? 'min(860px, 100vw)' : undefined">
+      <AiPrefillAlert :ai="ai" />
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <div v-if="canEditPlan" class="section-title">{{ $t('wms.material.basic') }}</div>
         <a-alert v-if="!canEdit && form.id" type="info" show-icon class="tip" :message="$t('wms.material.planOnly')" />
         <a-row :gutter="16">
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.material.code')" name="code">
+            <a-form-item :label="$t('wms.material.code')" name="code" :class="ai.cls('code')">
               <a-input v-model:value="form.code" :maxlength="64" :placeholder="$t('wms.material.codePh')" :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.material.name')" name="name">
+            <a-form-item :label="$t('wms.material.name')" name="name" :class="ai.cls('name')">
               <a-input v-model:value="form.name" :maxlength="128" :disabled="basicReadonly" />
             </a-form-item>
           </a-col>
@@ -151,7 +153,7 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.inout.category')" name="category">
+            <a-form-item :label="$t('wms.inout.category')" name="category" :class="ai.cls('category')">
               <a-select
                 v-model:value="form.category"
                 :placeholder="$t('common.placeholder.select')"
@@ -446,6 +448,9 @@ import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
 import { useCustomColumns, useCustomFields } from '@/composables/useCustomFields'
 
 import { CostMethod, SupplyType } from '@/constants/enums'
+import AiExtractButton from '@/components/ai/AiExtractButton.vue'
+import AiPrefillAlert from '@/components/ai/AiPrefillAlert.vue'
+import { useAiPrefill } from '@/composables/useAiPrefill'
 const { t } = useI18n()
 
 /**
@@ -704,6 +709,8 @@ const drawer = useFormDrawer(
   })
 )
 const { formRef, form } = drawer
+// 智能录入：规格书、商品标签等识别结果打开新增物料并预填
+const ai = useAiPrefill('material', (data) => drawer.openCreate(data), () => drawer.open.value)
 
 function addSubstitute() {
   form.value.substitutes.push({ key: rowKey(), substituteId: undefined, label: undefined, ratio: 1, priority: form.value.substitutes.length + 1, remark: '' })

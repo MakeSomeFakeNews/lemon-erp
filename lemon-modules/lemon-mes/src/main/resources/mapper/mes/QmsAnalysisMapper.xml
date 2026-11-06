@@ -3,15 +3,16 @@
 <mapper namespace="com.lemon.erp.modules.mes.mapper.QmsAnalysisMapper">
 
     <select id="selectTrend" resultType="com.lemon.erp.modules.mes.dto.QmsViews$TrendRow">
-        SELECT t.month, t.type, COUNT(*) AS total, SUM(CASE WHEN t.result &lt;&gt; 'FAIL' THEN 1 ELSE 0 END) AS pass,
+        <!-- month 在 H2 中是关键字，子查询中用 ym，结果列加引号 -->
+        SELECT t.ym AS "month", t.type, COUNT(*) AS total, SUM(CASE WHEN t.result &lt;&gt; 'FAIL' THEN 1 ELSE 0 END) AS pass,
                SUM(CASE WHEN t.result = 'FAIL' THEN 1 ELSE 0 END) AS fail
         FROM (
-            SELECT CONCAT(YEAR(i.inspect_date), '-', LPAD(MONTH(i.inspect_date), 2, '0')) AS month, i.type, i.result
+            SELECT CONCAT(YEAR(i.inspect_date), '-', LPAD(MONTH(i.inspect_date), 2, '0')) AS ym, i.type, i.result
             FROM mes_inspection i
             WHERE i.status = 'CONFIRMED' AND i.inspect_date &gt;= #{begin} AND i.inspect_date &lt;= #{end}
         ) t
-        GROUP BY t.month, t.type
-        ORDER BY t.month, t.type
+        GROUP BY t.ym, t.type
+        ORDER BY t.ym, t.type
     </select>
 
     <select id="selectPareto" resultType="com.lemon.erp.modules.mes.dto.QmsViews$ParetoRow">

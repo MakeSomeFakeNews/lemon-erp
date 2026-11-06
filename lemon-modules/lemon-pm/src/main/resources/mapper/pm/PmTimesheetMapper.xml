@@ -41,4 +41,21 @@
         <if test="excludeId != null">AND id &lt;&gt; #{excludeId}</if>
     </select>
 
+    <select id="selectSummary" resultType="com.lemon.erp.modules.pm.dto.TimesheetSummaryRow">
+        SELECT <choose>
+                   <when test="byUser">u.nickname AS group_name,</when>
+                   <otherwise>p.code AS group_code, p.name AS group_name,</otherwise>
+               </choose>
+               SUM(CASE WHEN ts.status = 'APPROVED' THEN ts.hours ELSE 0 END) AS approved_hours,
+               SUM(CASE WHEN ts.status = 'SUBMITTED' THEN ts.hours ELSE 0 END) AS pending_hours,
+               COUNT(DISTINCT ts.user_id) AS people_count, COUNT(DISTINCT ts.project_id) AS project_count
+        FROM pm_timesheet ts
+        JOIN pm_project p ON p.id = ts.project_id
+        LEFT JOIN sys_user u ON u.id = ts.user_id
+        WHERE ts.status &lt;&gt; 'REJECTED' AND ts.work_date BETWEEN #{beginDate} AND #{endDate}
+        <if test="projectId != null">AND ts.project_id = #{projectId}</if>
+        GROUP BY <choose><when test="byUser">ts.user_id, u.nickname</when><otherwise>ts.project_id, p.code, p.name</otherwise></choose>
+        ORDER BY SUM(ts.hours) DESC
+    </select>
+
 </mapper>
