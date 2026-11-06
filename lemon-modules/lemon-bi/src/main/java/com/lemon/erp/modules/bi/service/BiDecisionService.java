@@ -216,8 +216,7 @@ public class BiDecisionService {
             if (metric == null) {
                 continue;
             }
-            BigDecimal value = cache.computeIfAbsent(metric, m -> m == BiAlertMetric.BUDGET_OVERRUN ? budgetOverrun(today)
-                    : insightMapper.selectMetric(m.name(), today, now, period, now.minusDays(SLOW_DAYS)));
+            BigDecimal value = cache.computeIfAbsent(metric, m -> metricValue(m, today, now, period));
             boolean triggered = value != null && rule.getOperator().test(value, rule.getThreshold());
             result.add(new BiInsight.AlertResult(rule.getId(), rule.getName(), metric.name(), Messages.get(metric.getLabel()),
                     Messages.get(metric.getUnit()), rule.getOperator(), rule.getThreshold(), rule.getLevel(),
@@ -226,22 +225,43 @@ public class BiDecisionService {
         return result;
     }
 
-    /** 本年累计（截至本月）执行数超过累计预算的预算科目数 */
-    private BigDecimal budgetOverrun(LocalDate today) {
+    /** 预警指标的当前值（智能报告的库存快照等也使用） */
+    public BigDecimal currentValue(BiAlertMetric metric) {
+        LocalDate today = LocalDate.now();
+        return metricValue(metric, today, LocalDateTime.now(), today.getYear() * 100 + today.getMonthValue());
+    }
+
+    private BigDecimal metricValue(BiAlertMetric m, LocalDate today, LocalDateTime now, int period) {
+        return m == BiAlertMetric.BUDGET_OVERRUN ? budgetOverrun()
+                : insightMapper.selectMetric(m.name(), today, now, period, now.minusDays(SLOW_DAYS));
+    }
+
+    /** 本年累计（截至本月）执行数超过累计预算的预算科目，按超支金额降序（智能报告的预警分析使用） */
+    public List<BudgetExecution> overBudget() {
+        LocalDate today = LocalDate.now();
         int month = today.getMonthValue();
-        long count = 0;
+        List<BudgetExecution> list = new ArrayList<>();
         for (BudgetExecution e : budgetService.execution(today.getYear(), null)) {
-            BigDecimal budget = BigDecimal.ZERO;
-            BigDecimal actual = BigDecimal.ZERO;
-            for (int i = 0; i < month; i++) {
-                budget = budget.add(e.budgets().get(i));
-                actual = actual.add(e.actuals().get(i));
-            }
-            if (budget.signum() > 0 && actual.compareTo(budget) > 0) {
-                count++;
+            if (ytd(e.budgets(), month).signum() > 0 && ytd(e.actuals(), month).compareTo(ytd(e.budgets(), month)) > 0) {
+                list.add(e);
             }
         }
-        return BigDecimal.valueOf(count);
+        list.sort(Comparator.comparing((BudgetExecution e) -> ytd(e.actuals(), month).subtract(ytd(e.budgets(), month))).reversed());
+        return list;
+    }
+
+    /** 前 month 个月的累计 */
+    public static BigDecimal ytd(List<BigDecimal> values, int month) {
+        BigDecimal sum = BigDecimal.ZERO;
+        for (int i = 0; i < month && i < values.size(); i++) {
+            sum = sum.add(values.get(i) == null ? BigDecimal.ZERO : values.get(i));
+        }
+        return sum;
+    }
+
+    /** 本年累计（截至本月）执行数超过累计预算的预算科目数 */
+    private BigDecimal budgetOverrun() {
+        return BigDecimal.valueOf(overBudget().size());
     }
 
     private static BigDecimal dec(Object v) {

@@ -5,7 +5,7 @@
     width="min(640px, 100vw)"
     :confirm-loading="importing"
     :ok-text="$t('common.action.import')"
-    :ok-button-props="{ disabled: !rows.length || !!errors.length }"
+    :ok-button-props="{ disabled: !rows.length || !!errors.length || !!mapper }"
     @ok="doImport"
     @cancel="close"
   >
@@ -17,7 +17,22 @@
           {{ $t('components.import.tipAfter') }}
         </template>
       </a-alert>
-      <a-upload-dragger :file-list="[]" accept=".xlsx" :before-upload="onFile" :disabled="parsing || importing">
+      <!-- 表头与模板不一致：AI 对应字段（数据整理功能开启时） -->
+      <AiImportMapper
+        v-if="mapper"
+        :columns="columns"
+        :headers="mapper.headers"
+        :samples="mapper.samples"
+        @apply="applyMapping"
+        @cancel="mapper = null"
+      />
+      <a-alert v-else-if="mismatch && aiEnabled" type="warning" show-icon>
+        <template #message>
+          {{ $t('ai.importMap.mismatch') }}
+          <a-button type="link" size="small" class="ai-map-btn" @click="openMapper"><RobotOutlined />{{ $t('ai.importMap.button') }}</a-button>
+        </template>
+      </a-alert>
+      <a-upload-dragger v-show="!mapper" :file-list="[]" accept=".xlsx" :before-upload="onFile" :disabled="parsing || importing">
         <p class="ant-upload-drag-icon"><InboxOutlined /></p>
         <p class="ant-upload-text">{{ fileName || $t('components.import.dropHint') }}</p>
         <p v-if="rows.length || errors.length" class="ant-upload-hint">
@@ -38,12 +53,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { InboxOutlined } from '@ant-design/icons-vue'
+import { InboxOutlined, RobotOutlined } from '@ant-design/icons-vue'
 import { useDictStore } from '@/store/dict'
-import { downloadTemplate, readExcel } from '@/utils/excel'
+import { downloadTemplate, readExcel, readExcelHeaders } from '@/utils/excel'
+import { getAiStatus } from '@/api/ai/config'
+import AiImportMapper from '@/components/ai/AiImportMapper.vue'
 
 /**
  * Excel 导入弹窗。columns 每列：
@@ -52,6 +69,7 @@ import { downloadTemplate, readExcel } from '@/utils/excel'
  * - dict：字典类型，按标签或值转换为值
  * - lookup：async () => Map(名称或编码 → ID)，用于部门、职位等
  * importer：({ rows: [{ rowNum, data }] }) => Promise<{ total, imported, errors }>
+ * 上传的表头与模板不一致且「数据整理」功能开启时，提供「AI 对应字段」：AI 给出 Excel 列 → 模板字段，用户核对后按此读取
  */
 const props = defineProps({
   open: Boolean,
@@ -73,12 +91,75 @@ const errors = ref([])
 const result = ref(null)
 const parsing = ref(false)
 const importing = ref(false)
+/** 当前文件（按 AI 对应关系重新读取） */
+let currentFile = null
+/** 表头与模板不一致：{ headers, samples } */
+const mismatch = ref(null)
+const mapper = ref(null)
+const aiEnabled = ref(false)
 
 function reset() {
   fileName.value = ''
   rows.value = []
   errors.value = []
   result.value = null
+  mismatch.value = null
+  mapper.value = null
+  currentFile = null
+}
+
+// 只在弹窗打开时查询一次 AI 是否可用（登录即可调用，不含配置内容）
+let aiChecked = false
+watch(
+  () => props.open,
+  (v) => {
+    if (v && !aiChecked) {
+      aiChecked = true
+      getAiStatus()
+        .then((s) => (aiEnabled.value = !!s.features?.CLEANSE))
+        .catch(() => {})
+    }
+  },
+  { immediate: true }
+)
+
+/** 有模板中没有的表头，且有模板字段在表头中找不到 */
+async function detectMismatch(file) {
+  try {
+    const { headers, samples } = await readExcelHeaders(file)
+    const titles = new Set(props.columns.map((c) => c.title))
+    const unknown = headers.some((h) => !titles.has(h))
+    const absent = props.columns.some((c) => !headers.includes(c.title))
+    mismatch.value = unknown && absent ? { headers, samples } : null
+  } catch {
+    mismatch.value = null
+  }
+}
+
+function openMapper() {
+  mapper.value = mismatch.value
+}
+
+/** 按对应关系（字段 → 表头）重新读取 */
+async function applyMapping(headerMap) {
+  mapper.value = null
+  parsing.value = true
+  try {
+    const list = await readExcel(currentFile, props.columns, headerMap)
+    if (!list.length) {
+      message.warning(t('components.import.noData'))
+      return
+    }
+    const { out, errs } = await convert(list)
+    rows.value = out
+    errors.value = errs
+    mismatch.value = null
+    message.success(t('ai.importMap.applied'))
+  } catch (e) {
+    message.error(e.message || t('components.import.parseFailed'))
+  } finally {
+    parsing.value = false
+  }
 }
 
 function close() {
@@ -149,7 +230,9 @@ async function convert(list) {
 async function onFile(file) {
   reset()
   fileName.value = file.name
+  currentFile = file
   parsing.value = true
+  await detectMismatch(file)
   try {
     const list = await readExcel(file, props.columns)
     if (!list.length) {
@@ -160,7 +243,8 @@ async function onFile(file) {
     rows.value = out
     errors.value = errs
   } catch (e) {
-    message.error(e.message || t('components.import.parseFailed'))
+    // 表头与模板不一致且可以用 AI 对应字段时，由上方的提示引导，不再弹出缺少列的错误
+    if (!(mismatch.value && aiEnabled.value)) message.error(e.message || t('components.import.parseFailed'))
   } finally {
     parsing.value = false
   }
@@ -183,3 +267,9 @@ async function doImport() {
   }
 }
 </script>
+
+<style scoped>
+.ai-map-btn {
+  padding: 0 4px;
+}
+</style>

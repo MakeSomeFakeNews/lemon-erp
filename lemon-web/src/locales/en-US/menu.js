@@ -15,6 +15,7 @@ export default {
   13: 'Supplier Portal', // 供应商门户
   14: 'Dealer Portal', // 经销商门户
   15: 'Mobile', // 移动作业
+  16: 'AI', // 智能
   100: 'Users', // 用户管理
   101: 'Roles', // 角色管理
   102: 'Menus', // 菜单管理
@@ -547,4 +548,12 @@ export default {
   3500: 'Edit Integration Settings', // 集成配置修改
   3501: 'Sync & Bind Contacts', // 通讯录同步与绑定
   3520: 'Maintain Business Dictionaries', // 业务字典维护
+  360: 'AI Q&A', // AI 问数
+  361: 'AI Settings', // AI 设置
+  3610: 'Edit AI Settings', // AI 设置修改
+  362: 'Smart Entry', // 智能录入
+  363: 'Data Cleansing', // 数据整理
+  3630: 'Apply Cleansing Suggestions', // 采纳整理建议
+  364: 'AI Reports', // 智能报告
+  3640: 'Generate Reports', // 生成报告
 }

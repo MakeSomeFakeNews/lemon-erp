@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.modules.hr.dto.HeadcountRow;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -94,6 +95,22 @@ public class HrEmployeeService {
         employeeMapper.selectPageList(page, new EmployeeQuery(keyword, deptId == null ? null : deptService.selfAndDescendantIds(deptId),
                 status, positionId, empType));
         return PageResult.of(page);
+    }
+
+    /** 人员结构的汇总维度：部门、职位、用工类型、学历 */
+    public enum HeadcountGroup {
+        DEPT, POSITION, EMP_TYPE, EDUCATION
+    }
+
+    /**
+     * 人员结构（按数据权限）：按维度汇总当前在职、试用期人数和 [begin, end] 内的入职、离职人数
+     */
+    @DataPermission(table = "hr_employee", deptColumn = "dept_id", userColumn = "user_id")
+    public List<HeadcountRow> headcount(HeadcountGroup group, LocalDate begin, LocalDate end) {
+        if (end.isBefore(begin)) {
+            throw new BizException("hr.error.endDateCannotEarlierStartDate");
+        }
+        return employeeMapper.selectHeadcount(group.name(), begin, end);
     }
 
     /** 详情：没有修改权限的用户看到的身份证号脱敏 */

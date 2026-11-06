@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesProductionSummaryMapper">
+
+    <select id="selectOrderCounts" resultType="com.lemon.erp.modules.mes.service.MesProductionSummaryService$OrderCounts">
+        SELECT COALESCE(SUM(CASE WHEN release_time &gt;= #{begin} AND release_time &lt; #{endBefore} THEN 1 ELSE 0 END), 0) AS released,
+               COALESCE(SUM(CASE WHEN status = 'COMPLETED' AND finish_time &gt;= #{begin} AND finish_time &lt; #{endBefore} THEN 1 ELSE 0 END), 0) AS completed,
+               COALESCE(SUM(CASE WHEN status = 'COMPLETED' AND finish_time &gt;= #{begin} AND finish_time &lt; #{endBefore}
+                                      AND plan_end IS NOT NULL AND CAST(finish_time AS DATE) &lt;= plan_end THEN 1 ELSE 0 END), 0) AS completed_on_time,
+               COALESCE(SUM(CASE WHEN status = 'COMPLETED' AND finish_time &gt;= #{begin} AND finish_time &lt; #{endBefore} THEN qty ELSE 0 END), 0) AS completed_plan_qty,
+               COALESCE(SUM(CASE WHEN status = 'COMPLETED' AND finish_time &gt;= #{begin} AND finish_time &lt; #{endBefore} THEN finished_qty ELSE 0 END), 0) AS completed_finished_qty
+        FROM mes_work_order
+        WHERE (release_time &gt;= #{begin} AND release_time &lt; #{endBefore})
+           OR (finish_time &gt;= #{begin} AND finish_time &lt; #{endBefore})
+    </select>
+
+    <select id="selectReportTotals" resultType="com.lemon.erp.modules.mes.service.MesProductionSummaryService$ReportTotals">
+        SELECT COUNT(*) AS reports, COALESCE(SUM(good_qty), 0) AS good_qty, COALESCE(SUM(scrap_qty), 0) AS scrap_qty,
+               COALESCE(SUM(hours), 0) AS hours
+        FROM mes_report
+        WHERE report_date &gt;= #{begin} AND report_date &lt;= #{end}
+    </select>
+
+    <select id="selectOpenOrders" resultType="long">
+        SELECT COUNT(*) FROM mes_work_order WHERE status IN ('RELEASED', 'STARTED')
+    </select>
+
+    <select id="selectLateOrders" resultType="long">
+        SELECT COUNT(*) FROM mes_work_order WHERE status IN ('RELEASED', 'STARTED') AND plan_end &lt; #{today}
+    </select>
+</mapper>

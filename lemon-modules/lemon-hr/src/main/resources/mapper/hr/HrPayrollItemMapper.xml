@@ -74,4 +74,15 @@
         GROUP BY e.id
     </select>
 
+    <select id="selectDeptSummary" resultType="com.lemon.erp.modules.hr.dto.PayrollDeptRow">
+        SELECT i.dept_id, COALESCE(d.name, '-') AS dept_name, COUNT(*) AS headcount, SUM(i.gross_pay) AS gross_pay, SUM(i.net_pay) AS net_pay,
+               SUM(COALESCE(i.social_personal, 0) + COALESCE(i.housing_personal, 0)) AS personal_deduct, SUM(i.income_tax) AS income_tax,
+               SUM(COALESCE(i.social_company, 0) + COALESCE(i.housing_company, 0)) AS company_cost
+        FROM hr_payroll_item i
+        LEFT JOIN sys_dept d ON d.id = i.dept_id
+        WHERE i.payroll_id = #{payrollId}
+        GROUP BY i.dept_id, d.name
+        ORDER BY SUM(i.gross_pay) DESC
+    </select>
+
 </mapper>

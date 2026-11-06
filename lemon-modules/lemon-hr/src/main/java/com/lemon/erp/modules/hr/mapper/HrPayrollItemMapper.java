@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.mapper;
 
+import com.lemon.erp.modules.hr.dto.PayrollDeptRow;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.lemon.erp.modules.hr.entity.HrPayrollItem;
 import org.apache.ibatis.annotations.Param;
@@ -35,4 +36,7 @@ public interface HrPayrollItemMapper extends BaseMapper<HrPayrollItem> {
      * @return [{employeeId, amount}]
      */
     List<Map<String, Object>> selectPieceWages(@Param("begin") LocalDate begin, @Param("end") LocalDate end);
+
+    /** 工资表按部门汇总：人数、应发、实发、个人社保公积金、个税、单位社保公积金（不含个人明细） */
+    List<PayrollDeptRow> selectDeptSummary(@Param("payrollId") Long payrollId);
 }

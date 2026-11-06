@@ -118,6 +118,28 @@ public class ScmSupplierService {
                 .toList();
     }
 
+    /**
+     * 数据整理的候选记录：启用的供应商，按 ID 升序分页，只查分析需要的列（不含电话、银行账号等）
+     *
+     * @param keyword 编码或名称，模糊匹配
+     */
+    public PageResult<ScmSupplier> pageForCleanse(long current, long size, String keyword) {
+        Page<ScmSupplier> page = supplierMapper.selectPage(Page.of(current, size), Wrappers.<ScmSupplier>lambdaQuery()
+                .select(ScmSupplier::getId, ScmSupplier::getCode, ScmSupplier::getName, ScmSupplier::getContact, ScmSupplier::getAddress, ScmSupplier::getTaxNo)
+                .eq(ScmSupplier::getStatus, EnableStatus.ENABLED)
+                .and(StringUtils.hasText(keyword), w -> w.like(ScmSupplier::getCode, keyword).or().like(ScmSupplier::getName, keyword))
+                .orderByAsc(ScmSupplier::getId));
+        return PageResult.of(page);
+    }
+
+    /** 是否有其他启用的供应商使用该名称 */
+    public boolean existsEnabledName(String name, Long excludeId) {
+        return supplierMapper.exists(Wrappers.<ScmSupplier>lambdaQuery()
+                .eq(ScmSupplier::getName, name)
+                .eq(ScmSupplier::getStatus, EnableStatus.ENABLED)
+                .ne(excludeId != null, ScmSupplier::getId, excludeId));
+    }
+
     @Transactional
     public void create(ScmSupplier supplier) {
         if (!StringUtils.hasText(supplier.getCode())) {

@@ -10,6 +10,7 @@ import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.modules.hr.dto.DayWork;
+import com.lemon.erp.modules.pm.dto.TimesheetSummaryRow;
 import com.lemon.erp.modules.hr.service.HrAttendanceService;
 import com.lemon.erp.modules.hr.service.HrRuleService;
 import com.lemon.erp.modules.pm.dto.ReviewRequest;
@@ -56,6 +57,19 @@ public class PmTimesheetService {
         Page<PmTimesheet> page = Page.of(current, size);
         timesheetMapper.selectPageList(page, projectId, userId, status, beginDate, endDate);
         return PageResult.of(page);
+    }
+
+    /**
+     * 工时汇总（按数据权限，不含驳回的）：按项目或成员汇总已通过、待审批的小时数
+     *
+     * @param byUser true 按成员，false 按项目
+     */
+    @DataPermission(table = "pm_project", deptColumn = "dept_id", userColumn = "manager_id")
+    public List<TimesheetSummaryRow> summary(boolean byUser, Long projectId, LocalDate beginDate, LocalDate endDate) {
+        if (endDate.isBefore(beginDate)) {
+            throw new BizException("pm.error.endDateCannotEarlierStartDate");
+        }
+        return timesheetMapper.selectSummary(byUser, projectId, beginDate, endDate);
     }
 
     public List<PmTimesheet> mine(LocalDate beginDate, LocalDate endDate) {

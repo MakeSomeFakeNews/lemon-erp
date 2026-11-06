@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.mapper;
 
+import com.lemon.erp.modules.hr.dto.HeadcountRow;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.lemon.erp.modules.hr.dto.EmployeeOption;
@@ -36,4 +37,11 @@ public interface HrEmployeeMapper extends BaseMapper<HrEmployee> {
     List<Map<String, Object>> selectCountByDept();
 
     List<Map<String, Object>> selectCountByEducation();
+
+    /**
+     * 人员结构：按维度汇总当前在职、试用期人数和 [begin, end] 内的入职、离职人数（AI 问数，调用方加数据权限）
+     *
+     * @param groupBy DEPT 部门 / POSITION 职位 / EMP_TYPE 用工类型 / EDUCATION 学历
+     */
+    List<HeadcountRow> selectHeadcount(@Param("groupBy") String groupBy, @Param("begin") LocalDate begin, @Param("end") LocalDate end);
 }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.hr.mapper.HrWorkforceMapper">
+
+    <!-- 某天在职：入职日期不晚于当天，且未离职或离职日期在当天之后 -->
+    <select id="selectCounts" resultType="com.lemon.erp.modules.hr.service.HrWorkforceSummaryService$Counts">
+        SELECT COALESCE(SUM(CASE WHEN entry_date &lt; #{begin} AND (status &lt;&gt; 'LEFT' OR leave_date IS NULL OR leave_date &gt;= #{begin})
+                                 THEN 1 ELSE 0 END), 0) AS headcount_start,
+               COALESCE(SUM(CASE WHEN entry_date &lt;= #{end} AND (status &lt;&gt; 'LEFT' OR leave_date IS NULL OR leave_date &gt; #{end})
+                                 THEN 1 ELSE 0 END), 0) AS headcount_end,
+               COALESCE(SUM(CASE WHEN entry_date &gt;= #{begin} AND entry_date &lt;= #{end} THEN 1 ELSE 0 END), 0) AS hires,
+               COALESCE(SUM(CASE WHEN status = 'LEFT' AND leave_date &gt;= #{begin} AND leave_date &lt;= #{end} THEN 1 ELSE 0 END), 0) AS leaves
+        FROM hr_employee
+    </select>
+</mapper>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.ai.mapper.AiReportMapper">
+
+    <sql id="viewColumns">
+        r.id, r.period_type, r.period_start, r.period_end, r.title, r.user_id, u.nickname AS user_name, r.sources, r.status,
+        r.error, r.prompt_tokens, r.completion_tokens, r.create_time, r.update_time
+    </sql>
+
+    <!-- 列表不返回正文和快照；生成人的昵称只读关联 sys_user -->
+    <select id="selectVisible" resultType="com.lemon.erp.modules.ai.dto.AiReportView">
+        SELECT <include refid="viewColumns"/>
+        FROM ai_report r
+        LEFT JOIN sys_user u ON u.id = r.user_id
+        <where>
+            <choose>
+                <when test="allData">(r.user_id = #{userId} OR r.user_id IS NULL)</when>
+                <otherwise>r.user_id = #{userId}</otherwise>
+            </choose>
+            <if test="periodType != null">AND r.period_type = #{periodType}</if>
+        </where>
+        ORDER BY r.period_start DESC, r.id DESC
+    </select>
+
+    <select id="selectView" resultType="com.lemon.erp.modules.ai.dto.AiReportView">
+        SELECT <include refid="viewColumns"/>
+        FROM ai_report r
+        LEFT JOIN sys_user u ON u.id = r.user_id
+        WHERE r.id = #{id}
+    </select>
+
+    <select id="selectContent" resultType="string">
+        SELECT content FROM ai_report WHERE id = #{id}
+    </select>
+
+    <select id="selectSnapshot" resultType="string">
+        SELECT snapshot FROM ai_report WHERE id = #{id}
+    </select>
+</mapper>

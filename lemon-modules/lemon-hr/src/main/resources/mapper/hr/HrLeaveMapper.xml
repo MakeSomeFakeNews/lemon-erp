@@ -49,4 +49,21 @@
           AND start_time &gt;= #{from} AND start_time &lt; #{to}
     </select>
 
+    <select id="selectSummary" resultType="com.lemon.erp.modules.hr.dto.LeaveSummaryRow">
+        <bind name="dictTenant" value="@com.lemon.erp.framework.tenant.TenantContext@currentOrPlatform()"/>
+        SELECT <choose><when test="byDept">COALESCE(d.name, '-')</when><otherwise>COALESCE(dd.dict_label, l.type, '-')</otherwise></choose> AS group_name,
+               COUNT(*) AS apply_count, COUNT(DISTINCT l.employee_id) AS employee_count, SUM(l.hours) AS hours
+        FROM hr_leave l
+        <choose>
+            <when test="byDept">LEFT JOIN sys_dept d ON d.id = l.dept_id</when>
+            <otherwise>
+                LEFT JOIN sys_dict_data dd ON dd.dict_type = CASE WHEN l.kind = 'OVERTIME' THEN 'hr_overtime_comp' ELSE 'hr_leave_type' END
+                    AND dd.dict_value = l.type AND dd.tenant_id = #{dictTenant}
+            </otherwise>
+        </choose>
+        WHERE l.kind = #{kind} AND l.status = 'APPROVED' AND l.start_time &gt;= #{from} AND l.start_time &lt; #{to}
+        GROUP BY <choose><when test="byDept">l.dept_id, d.name</when><otherwise>l.type, dd.dict_label</otherwise></choose>
+        ORDER BY SUM(l.hours) DESC
+    </select>
+
 </mapper>

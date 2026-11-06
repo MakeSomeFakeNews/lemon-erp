@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.ai.mapper.AiCleanseTaskMapper">
+
+    <!-- 跨模块只读关联 sys_user 取发起人姓名 -->
+    <select id="selectTaskPage" resultType="com.lemon.erp.modules.ai.entity.AiCleanseTask">
+        SELECT t.*, COALESCE(u.nickname, u.username) AS create_by_name
+        FROM ai_cleanse_task t
+        LEFT JOIN sys_user u ON u.id = t.create_by
+        WHERE t.source_key IN
+        <foreach collection="sourceKeys" item="k" open="(" separator="," close=")">#{k}</foreach>
+        ORDER BY t.id DESC
+    </select>
+
+</mapper>

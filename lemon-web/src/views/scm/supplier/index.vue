@@ -26,6 +26,7 @@
         <a-button v-perm="'scm:supplier:add'" type="primary" @click="drawer.openCreate()">
           <template #icon><PlusOutlined /></template>{{ $t('scm.supplier.add') }}
         </a-button>
+        <AiExtractButton target="scm.supplier" perm="scm:supplier:add" :title="$t('scm.supplier.supplier')" @result="ai.apply" />
         <a-button v-perm="'scm:supplier:add'" @click="importOpen = true">
           <template #icon><ImportOutlined /></template>{{ $t('common.action.import') }}
         </a-button>
@@ -92,6 +93,7 @@
     </a-card>
 
     <FormDrawer :drawer="drawer" :create-title="$t('scm.supplier.add')" :edit-title="$t('scm.supplier.edit')">
+      <AiPrefillAlert :ai="ai" />
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
@@ -100,7 +102,7 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item :label="$t('scm.supplier.name')" name="name">
+            <a-form-item :label="$t('scm.supplier.name')" name="name" :class="ai.cls('name')">
               <a-input v-model:value="form.name" :maxlength="128" />
             </a-form-item>
           </a-col>
@@ -125,12 +127,12 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item :label="$t('common.field.email')" name="email">
+            <a-form-item :label="$t('common.field.email')" name="email" :class="ai.cls('email')">
               <a-input v-model:value="form.email" :maxlength="128" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item :label="$t('scm.supplier.taxNo')" name="taxNo">
+            <a-form-item :label="$t('scm.supplier.taxNo')" name="taxNo" :class="ai.cls('taxNo')">
               <a-input v-model:value="form.taxNo" :maxlength="32" />
             </a-form-item>
           </a-col>
@@ -202,6 +204,9 @@ import { toOptions } from '@/utils/dict'
 import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
 import { useCustomColumns, useCustomFields } from '@/composables/useCustomFields'
 import { useAction } from '@/composables/useAction'
+import AiExtractButton from '@/components/ai/AiExtractButton.vue'
+import AiPrefillAlert from '@/components/ai/AiPrefillAlert.vue'
+import { useAiPrefill } from '@/composables/useAiPrefill'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -284,6 +289,8 @@ const drawer = useFormDrawer(
   })
 )
 const { formRef, form } = drawer
+// 智能录入：名片、营业执照等识别结果打开新增表单并预填
+const ai = useAiPrefill('supplier', (data) => drawer.openCreate(data), () => drawer.open.value)
 
 const remove = useAction((id) => deletePartner('supplier', id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 

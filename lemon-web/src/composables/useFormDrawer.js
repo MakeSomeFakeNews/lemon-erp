@@ -7,11 +7,25 @@ const READONLY_FIELDS = ['createTime', 'updateTime', 'children']
 
 const omit = (obj, keys) => Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k)))
 
+let prefilling = false
+/**
+ * 在 fn 中（同步部分）打开的表单视为已修改：数据不是用户在表单里录入的，而是预先填入的（如智能录入的识别结果），
+ * 直接关闭也要二次确认，避免丢失。fn 必须同步调用 openCreate（之前不能有 await）
+ */
+export function asPrefilled(fn) {
+  prefilling = true
+  try {
+    return fn()
+  } finally {
+    prefilling = false
+  }
+}
+
 /**
  * 新增 / 编辑抽屉表单的通用逻辑，配合 FormDrawer 组件使用：
  * - openCreate / openEdit 打开表单，编辑时可通过 fetch 加载详情
  * - submit 校验并保存，根据是否有 id 调用 create / update
- * - 有未保存的修改时关闭会二次确认；Ctrl / ⌘ + Enter 快捷保存
+ * - 有未保存的修改时关闭会二次确认（asPrefilled 中打开的表单始终视为已修改）；Ctrl / ⌘ + Enter 快捷保存
  *
  * @param {object}   options
  * @param {Function} options.emptyForm  返回空表单
@@ -36,9 +50,12 @@ export function useFormDrawer(options) {
   const dirty = computed(() => open.value && !loading.value && JSON.stringify(form.value) !== snapshot.value)
 
   const markClean = () => (snapshot.value = JSON.stringify(form.value))
+  // 快照置空：表单内容总与之不同，打开期间始终为已修改
+  const markPrefilled = () => (snapshot.value = '')
 
   /** 打开抽屉并在 loading 状态下准备表单数据；失败时关闭抽屉（错误提示由请求拦截器统一处理） */
   async function show(initial, prepare) {
+    const prefilled = prefilling
     form.value = initial
     open.value = true
     loading.value = true
@@ -50,7 +67,7 @@ export function useFormDrawer(options) {
     } finally {
       loading.value = false
     }
-    markClean()
+    prefilled ? markPrefilled() : markClean()
   }
 
   function openCreate(defaults = {}) {

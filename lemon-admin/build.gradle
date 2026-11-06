@@ -18,6 +18,7 @@ dependencies {
     implementation project(':lemon-modules:lemon-crm')
     implementation project(':lemon-modules:lemon-pm')
     implementation project(':lemon-modules:lemon-bi')
+    implementation project(':lemon-modules:lemon-ai')
     runtimeOnly libs.mysql.connector
 
     testImplementation libs.spring.boot.starter.webmvc.test
@@ -41,4 +42,6 @@ tasks.named('jar') {
 // 集成测试中有多个使用独立内存库的应用上下文（成本核算等有期间顺序约束的测试），默认堆内存不够
 tasks.named('test') {
     maxHeapSize = '2g'
+    // 测试用的 AI 示例工具 / 来源（AiDemoContracts）只在测试中加载，bootTestRun 体验时不出现
+    systemProperty 'lemon.ai.demo-contracts', 'true'
 }

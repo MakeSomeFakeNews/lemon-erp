@@ -202,6 +202,7 @@ export default {
     atp: 'ATP',
     contractPrice: 'Contract price',
     lastPrice: 'Last',
+    supplyPrice: 'Supply price',
     paren: '({text})',
     notInContract: 'Not in contract',
     perUnit: 'Per {unit}',

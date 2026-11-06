@@ -22,6 +22,7 @@
             <if test="q.status != null">AND o.status = #{q.status}</if>
             <if test="q.beginDate != null">AND o.plan_start &gt;= #{q.beginDate}</if>
             <if test="q.endDate != null">AND o.plan_start &lt;= #{q.endDate}</if>
+            <if test="q.overdueAt != null">AND o.status IN ('RELEASED', 'STARTED') AND o.plan_end &lt; #{q.overdueAt}</if>
         </where>
         ORDER BY o.id DESC
     </select>

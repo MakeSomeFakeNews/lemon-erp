@@ -22,7 +22,9 @@ import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -152,6 +154,13 @@ public class SysDictService implements DictLookup {
     @Override
     public boolean contains(String dictType, String value) {
         return listDataByType(dictType).stream().anyMatch(d -> d.getDictValue().equals(value));
+    }
+
+    @Override
+    public Map<String, String> options(String dictType) {
+        Map<String, String> map = new LinkedHashMap<>();
+        listDataByType(dictType).forEach(d -> map.put(d.getDictValue(), d.getDictLabel()));
+        return map;
     }
 
     /** 只有业务字典可以新增取值 */

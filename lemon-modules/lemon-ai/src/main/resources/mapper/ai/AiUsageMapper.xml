@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.ai.mapper.AiUsageMapper">
+
+    <select id="sumTokensSince" resultType="long">
+        SELECT COALESCE(SUM(prompt_tokens + completion_tokens), 0) FROM ai_usage WHERE create_time &gt;= #{since}
+    </select>
+
+    <select id="sumByFeature" resultType="com.lemon.erp.modules.ai.dto.AiUsageStat">
+        SELECT feature AS `key`, NULL AS name, COUNT(*) AS calls,
+               COALESCE(SUM(prompt_tokens), 0) AS promptTokens, COALESCE(SUM(completion_tokens), 0) AS completionTokens
+        FROM ai_usage
+        WHERE create_time &gt;= #{since}
+        GROUP BY feature
+        ORDER BY feature
+    </select>
+
+    <!-- 跨模块只读关联 sys_user 取姓名 -->
+    <select id="sumByUser" resultType="com.lemon.erp.modules.ai.dto.AiUsageStat">
+        SELECT CAST(t.user_id AS CHAR) AS `key`, COALESCE(u.nickname, u.username) AS name, t.calls, t.promptTokens, t.completionTokens
+        FROM (
+            SELECT user_id, COUNT(*) AS calls, COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+                   COALESCE(SUM(completion_tokens), 0) AS completionTokens
+            FROM ai_usage
+            WHERE create_time &gt;= #{since} AND user_id IS NOT NULL
+            GROUP BY user_id
+        ) t
+        LEFT JOIN sys_user u ON u.id = t.user_id
+        ORDER BY t.promptTokens + t.completionTokens DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

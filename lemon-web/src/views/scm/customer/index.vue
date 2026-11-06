@@ -29,6 +29,7 @@
         <a-button v-perm="'scm:customer:add'" type="primary" @click="drawer.openCreate()">
           <template #icon><PlusOutlined /></template>{{ $t('scm.customer.add') }}
         </a-button>
+        <AiExtractButton target="scm.customer" perm="scm:customer:add" :title="$t('scm.customer.customer')" @result="ai.apply" />
         <a-button v-perm="'scm:customer:add'" @click="importOpen = true">
           <template #icon><ImportOutlined /></template>{{ $t('common.action.import') }}
         </a-button>
@@ -98,6 +99,7 @@
     </a-card>
 
     <FormDrawer :drawer="drawer" :create-title="$t('scm.customer.add')" :edit-title="$t('scm.customer.edit')">
+      <AiPrefillAlert :ai="ai" />
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="12">
@@ -106,7 +108,7 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item :label="$t('scm.customer.name')" name="name">
+            <a-form-item :label="$t('scm.customer.name')" name="name" :class="ai.cls('name')">
               <a-input v-model:value="form.name" :maxlength="128" />
             </a-form-item>
           </a-col>
@@ -153,7 +155,7 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item :label="$t('scm.customer.taxNo')" name="taxNo">
+            <a-form-item :label="$t('scm.customer.taxNo')" name="taxNo" :class="ai.cls('taxNo')">
               <a-input v-model:value="form.taxNo" :maxlength="32" />
             </a-form-item>
           </a-col>
@@ -215,6 +217,9 @@ import { formatMoney } from '@/components/scm/scm'
 import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
 import { useCustomColumns, useCustomFields } from '@/composables/useCustomFields'
 import { useAction } from '@/composables/useAction'
+import AiExtractButton from '@/components/ai/AiExtractButton.vue'
+import AiPrefillAlert from '@/components/ai/AiPrefillAlert.vue'
+import { useAiPrefill } from '@/composables/useAiPrefill'
 
 import { SalesChannel } from '@/constants/enums'
 const { t } = useI18n()
@@ -306,6 +311,8 @@ const drawer = useFormDrawer(
   })
 )
 const { formRef, form } = drawer
+// 智能录入：名片、营业执照等识别结果打开新增表单并预填
+const ai = useAiPrefill('customer', (data) => drawer.openCreate(data), () => drawer.open.value)
 
 const remove = useAction((id) => deletePartner('customer', id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 </script>

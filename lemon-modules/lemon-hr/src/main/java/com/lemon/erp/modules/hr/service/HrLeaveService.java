@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.modules.hr.dto.LeaveSummaryRow;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
@@ -69,6 +70,17 @@ public class HrLeaveService {
     }
 
     /** 员工本人的申请，最近的在前 */
+    /**
+     * 已通过的请假 / 加班汇总（开始日期在 [begin, end] 内），按假期类型（加班为补偿方式）或部门汇总，按数据权限
+     */
+    @DataPermission(table = "hr_leave", deptColumn = "dept_id", userColumn = "create_by")
+    public List<LeaveSummaryRow> summary(LeaveKind kind, boolean byDept, LocalDate begin, LocalDate end) {
+        if (end.isBefore(begin)) {
+            throw new BizException("hr.error.endDateCannotEarlierStartDate");
+        }
+        return leaveMapper.selectSummary(kind, byDept, begin.atStartOfDay(), end.plusDays(1).atStartOfDay());
+    }
+
     public List<HrLeave> mine(Long employeeId) {
         return leaveMapper.selectPage(Page.of(1, 100, false), Wrappers.<HrLeave>lambdaQuery()
                 .eq(HrLeave::getEmployeeId, employeeId).orderByDesc(HrLeave::getId)).getRecords();

@@ -10,6 +10,7 @@ import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.workflow.ApprovalFlow;
 import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
+import com.lemon.erp.modules.fin.dto.PartnerAmountRow;
 import com.lemon.erp.modules.fin.dto.SettlementItemRequest;
 import com.lemon.erp.modules.fin.dto.SettlementRequest;
 import com.lemon.erp.modules.fin.model.SettleMethods;
@@ -32,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -71,6 +73,14 @@ public class FinSettlementService {
         Page<FinSettlement> page = Page.of(current, size);
         settlementMapper.selectPageList(page, kind, partnerId, keyword);
         return PageResult.of(page);
+    }
+
+    /** 已生效的收款 / 付款按往来单位汇总（日期范围），金额降序 */
+    public List<PartnerAmountRow> partnerSummary(SettleKind kind, LocalDate begin, LocalDate end, String keyword) {
+        if (end.isBefore(begin)) {
+            throw new BizException("fin.error.endDateCannotEarlierStartDate");
+        }
+        return settlementMapper.selectPartnerSummary(kind, begin, end, keyword);
     }
 
     public FinSettlement detail(Long id) {

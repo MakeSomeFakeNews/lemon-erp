@@ -1,0 +1,11 @@
+plugins {
+    id 'lemon.java-conventions'
+}
+
+description = '智能：国产大模型（OpenAI 兼容协议）客户端、按租户的模型配置与用量、AI 问数对话，以及业务模块 AI 能力（framework/ai）的注册表'
+
+dependencies {
+    api project(':lemon-framework')
+    // 智能录入：提取 PDF 中的文字（与 system 模块的打印使用同一版本）
+    implementation libs.openpdf
+}

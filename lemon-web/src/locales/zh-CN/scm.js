@@ -202,6 +202,7 @@ export default {
     atp: '可承诺量',
     contractPrice: '合同价',
     lastPrice: '上次',
+    supplyPrice: '供货价',
     paren: '（{text}）',
     notInContract: '不在合同中',
     perUnit: '每{unit}',

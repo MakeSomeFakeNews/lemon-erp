@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.service;
 
+import com.lemon.erp.modules.hr.dto.PayrollDeptSummary;
 import com.lemon.erp.modules.fin.service.FinAccountRuleService;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -107,6 +108,19 @@ public class HrPayrollService {
         }
         p.setItems(itemMapper.selectByPayroll(id, keyword));
         return p;
+    }
+
+    /**
+     * 某月工资表按部门汇总（人数、应发、实发、扣款、单位社保公积金），不含个人明细
+     *
+     * @param period yyyyMM
+     */
+    public PayrollDeptSummary deptSummary(int period) {
+        HrPayroll p = payrollMapper.selectOne(Wrappers.<HrPayroll>lambdaQuery().eq(HrPayroll::getPeriod, period));
+        if (p == null) {
+            throw new BizException("hr.error.payrollOfPeriodNotFound", String.valueOf(period));
+        }
+        return new PayrollDeptSummary(period, p.getStatus(), itemMapper.selectDeptSummary(p.getId()));
     }
 
     /**

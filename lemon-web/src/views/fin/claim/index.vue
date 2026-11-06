@@ -23,6 +23,7 @@
         :columns="columns"
         @refresh="load"
       >
+        <AiExtractButton target="fin.expense-claim" perm="fin:claim:add" :title="$t('fin.claim.add')" @result="ai.apply" />
         <a-button v-perm="'fin:claim:add'" type="primary" @click="drawer.openCreate()">
           <template #icon><PlusOutlined /></template>{{ $t('fin.claim.add') }}
         </a-button>
@@ -88,6 +89,7 @@
 
     <!-- 新增 / 编辑 -->
     <FormDrawer page :drawer="drawer" :create-title="$t('fin.claim.add')" :edit-title="$t('fin.claim.edit')" width="min(1080px, 100vw)">
+      <AiPrefillAlert :ai="ai" />
       <a-form ref="formRef" :model="form" layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :sm="6">
@@ -132,18 +134,25 @@
         </a-space>
       </div>
       <LineItemsTable :items="form.items" :columns="itemColumns" :scroll-x="980" :min-rows="1">
-        <template #cell="{ column, record }">
+        <template #cell="{ column, record, index }">
           <template v-if="column.key === 'expenseDate'">
-            <a-date-picker v-model:value="record.expenseDate" value-format="YYYY-MM-DD" class="full" />
+            <div :class="ai.cls(`items[${index}].expenseDate`)">
+              <a-date-picker v-model:value="record.expenseDate" value-format="YYYY-MM-DD" class="full" />
+            </div>
           </template>
           <template v-else-if="column.key === 'accountId'">
-            <AccountSelect v-model:value="record.accountId" :prefix="EXPENSE_PREFIX" :placeholder="$t('fin.claim.expenseAccount')" />
+            <div :class="ai.cls(`items[${index}].accountId`)">
+              <AccountSelect v-model:value="record.accountId" :prefix="EXPENSE_PREFIX" :placeholder="$t('fin.claim.expenseAccount')" />
+            </div>
+            <div v-if="!record.accountId && record.aiText" class="ai-warn-text">{{ $t('ai.extract.aiText', { text: record.aiText }) }}</div>
           </template>
           <template v-else-if="column.key === 'projectId'">
             <ProjectSelect v-model:value="record.projectId" :placeholder="$t('fin.claim.noProject')" />
           </template>
           <template v-else-if="column.key === 'amount'">
-            <a-input-number v-model:value="record.amount" :min="0.01" :precision="2" class="full" />
+            <div :class="ai.cls(`items[${index}].amount`)">
+              <a-input-number v-model:value="record.amount" :min="0.01" :precision="2" class="full" />
+            </div>
           </template>
           <template v-else-if="column.key === 'remark'">
             <a-input v-model:value="record.remark" :maxlength="255" :placeholder="$t('fin.claim.itemRemarkPh')" />
@@ -232,6 +241,9 @@ import { useAction } from '@/composables/useAction'
 import { rowKey, useLineItems } from '@/composables/useLineItems'
 
 import { ExpenseClaimStatus, LoanStatus } from '@/constants/enums'
+import AiExtractButton from '@/components/ai/AiExtractButton.vue'
+import AiPrefillAlert from '@/components/ai/AiPrefillAlert.vue'
+import { useAiPrefill } from '@/composables/useAiPrefill'
 /** 费用科目：制造费用、销售费用、管理费用、财务费用下的末级科目 */
 const EXPENSE_PREFIX = ['5101', '6601', '6602', '6603']
 
@@ -327,6 +339,18 @@ const drawer = useFormDrawer({
   successMessage: t('fin.claim.savedSubmit')
 })
 const { formRef, form } = drawer
+// 智能录入：发票、车票等票据识别为报销明细（每张票据一行），打开新增报销单并预填
+const ai = useAiPrefill(
+  'expense-claim',
+  (data) =>
+    drawer.openCreate({
+      remark: data.remark || '',
+      items: data.items?.length
+        ? data.items.map((i) => ({ ...emptyItem(i.expenseDate), accountId: i.accountId, amount: i.amount != null ? Number(i.amount) : undefined, remark: i.remark || '', aiText: i.aiText }))
+        : [emptyItem()]
+    }),
+  () => drawer.open.value
+)
 const lines = useLineItems(() => form.value.items, { newRow: (items) => emptyItem(items[items.length - 1]?.expenseDate) })
 const itemTotal = lines.total('amount')
 const addItem = () => lines.addRow()

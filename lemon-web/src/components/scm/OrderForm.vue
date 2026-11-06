@@ -1,15 +1,17 @@
 <template>
   <FormDrawer page :drawer="drawer" :create-title="$t('scm.orderForm.createTitle', { kind: conf.label })" :edit-title="$t('scm.orderForm.editTitle', { kind: conf.label })" width="min(1200px, 100vw)">
+    <AiPrefillAlert v-if="ai" :ai="ai" />
     <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="24" :sm="12" :lg="8">
-          <a-form-item :label="conf.partnerLabel" name="partnerId">
+          <a-form-item :label="conf.partnerLabel" name="partnerId" :class="ai?.cls('partnerId')">
             <PartnerSelect
               v-model:value="form.partnerId"
               :type="conf.partner"
               :label="form.partnerName"
               @select="onPartnerSelect"
             />
+            <div v-if="ai?.source && !form.partnerId && form.partnerName" class="ai-warn-text">{{ $t('ai.extract.aiText', { text: form.partnerName }) }}</div>
           </a-form-item>
           <a-alert
             v-if="kind === 'purchase' && partnerLevel === SupplierLevel.D"
@@ -20,17 +22,17 @@
           />
         </a-col>
         <a-col :xs="24" :sm="12" :lg="4">
-          <a-form-item :label="$t('scm.order.orderDate')" name="orderDate">
+          <a-form-item :label="$t('scm.order.orderDate')" name="orderDate" :class="ai?.cls('orderDate')">
             <a-date-picker v-model:value="form.orderDate" value-format="YYYY-MM-DD" class="full" @change="refreshRate" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="4">
-          <a-form-item :label="$t('scm.order.deliveryDate')" name="deliveryDate">
+          <a-form-item :label="$t('scm.order.deliveryDate')" name="deliveryDate" :class="ai?.cls('deliveryDate')">
             <a-date-picker v-model:value="form.deliveryDate" value-format="YYYY-MM-DD" class="full" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12" :lg="8">
-          <a-form-item :label="conf.warehouseLabel" name="warehouseId">
+          <a-form-item :label="conf.warehouseLabel" name="warehouseId" :class="ai?.cls('warehouseId')">
             <WarehouseSelect v-model:value="form.warehouseId" :placeholder="$t('scm.orderForm.warehousePlaceholder')" />
           </a-form-item>
         </a-col>
@@ -46,7 +48,7 @@
           </a-form-item>
         </a-col>
         <a-col :xs="12" :sm="6" :lg="4">
-          <a-form-item :label="$t('scm.orderForm.currency')" name="currency">
+          <a-form-item :label="$t('scm.orderForm.currency')" name="currency" :class="ai?.cls('currency')">
             <a-select :value="form.currency" :options="currencyOptions(currencyList)" :disabled="!!form.contractId" @change="onCurrencyChange" />
           </a-form-item>
         </a-col>
@@ -110,12 +112,13 @@
       >
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
-            <a-form-item :name="['items', index, 'materialId']" :rules="requiredRule($t('scm.orderForm.selectMaterial'))" class="cell-item">
+            <a-form-item :name="['items', index, 'materialId']" :rules="requiredRule($t('scm.orderForm.selectMaterial'))" class="cell-item" :class="ai?.cls(`items[${index}].materialId`)">
               <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
             </a-form-item>
+            <div v-if="!record.materialId && record.aiText" class="ai-warn-text">{{ $t('ai.extract.aiText', { text: record.aiText }) }}</div>
           </template>
           <template v-else-if="column.key === 'qty'">
-            <a-form-item :name="['items', index, 'unitQty']" :rules="requiredRule($t('scm.orderForm.inputQty'))" class="cell-item">
+            <a-form-item :name="['items', index, 'unitQty']" :rules="requiredRule($t('scm.orderForm.inputQty'))" class="cell-item" :class="ai?.cls(`items[${index}].qty`)">
               <a-input-number
                 v-model:value="record.unitQty"
                 :min="0"
@@ -142,7 +145,7 @@
             <a v-if="kind === 'sales' && record.materialId" class="atp-link" @click="openAtp(record)">{{ $t('scm.orderForm.atp') }}</a>
           </template>
           <template v-else-if="column.key === 'price'">
-            <a-form-item :name="['items', index, 'unitPrice']" :rules="requiredRule($t('scm.orderForm.inputPrice'))" class="cell-item">
+            <a-form-item :name="['items', index, 'unitPrice']" :rules="requiredRule($t('scm.orderForm.inputPrice'))" class="cell-item" :class="ai?.cls(`items[${index}].price`)">
               <a-input-number
                 v-model:value="record.unitPrice"
                 :min="0"
@@ -154,6 +157,9 @@
               />
             </a-form-item>
             <div v-if="contractPrices.has(record.materialId)" class="sub-text">{{ $t('scm.orderForm.contractPrice') }}</div>
+            <div v-if="supplyPriceDiff(record) != null" class="sub-text">
+              {{ $t('scm.orderForm.supplyPrice') }} <a @click="useSupplyPrice(record)">{{ symbol }}{{ formatQty(supplyPriceDiff(record)) }}</a>
+            </div>
             <div v-if="record.lastPrice" class="sub-text">
               {{ $t('scm.orderForm.lastPrice') }} <a @click="useLastPrice(record)">{{ currencySymbol(record.lastPrice.currency) }}{{ formatQty(Number(record.lastPrice.price) * ratioOf(record)) }}</a>
               {{ $t('scm.orderForm.paren', { text: record.lastPrice.orderDate }) }}
@@ -173,7 +179,9 @@
             </div>
           </template>
           <template v-else-if="column.key === 'taxRate'">
-            <a-input-number v-model:value="record.taxRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" />
+            <div :class="ai?.cls(`items[${index}].taxRate`)">
+              <a-input-number v-model:value="record.taxRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" />
+            </div>
           </template>
           <template v-else-if="column.key === 'amount'">
             <div class="amount">{{ symbol }}{{ formatMoney(lineAmount(record.unitQty, record.unitPrice)) }}</div>
@@ -220,7 +228,7 @@ import AtpModal from './AtpModal.vue'
 import PriceHint from './PriceHint.vue'
 import { addOrder, getOrder, updateOrder } from '@/api/scm/order'
 import { materialUnits } from '@/api/wms/material'
-import { supplierPrices } from '@/api/scm/partner'
+import { partnerOptions, supplierPrices } from '@/api/scm/partner'
 import { previewPromotion, priceControlsOf, priceHistory, quotePrice, rebateBalance as fetchRebateBalance } from '@/api/scm/sourcing'
 import { activeContracts } from '@/api/scm/srm'
 import { useFormDrawer } from '@/composables/useFormDrawer'
@@ -228,6 +236,7 @@ import { formatQty, rowKey, today } from '@/components/wms/wms'
 import { ORDER_KINDS, formatMoney, lineAmount, lineTax, qty4 } from './scm'
 import { BASE_CURRENCY, currencyOptions, currencySymbol, fetchRate, isForeign, useCurrencies } from '@/components/fin/currency'
 import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
+import AiPrefillAlert from '@/components/ai/AiPrefillAlert.vue'
 import { useCustomFields } from '@/composables/useCustomFields'
 
 import { PriceControlMode, SupplierLevel } from '@/constants/enums'
@@ -240,7 +249,9 @@ import { PriceControlMode, SupplierLevel } from '@/constants/enums'
  * 通过 ref 调用 openCreate(defaults) / openEdit(record)，保存成功后触发 success(id)
  */
 const props = defineProps({
-  kind: { type: String, required: true }
+  kind: { type: String, required: true },
+  /** 智能录入的预填（useAiPrefill 的返回值）：表单顶部列出需要核对的提示，有提示的字段高亮 */
+  ai: Object
 })
 const emit = defineEmits(['success'])
 
@@ -405,6 +416,7 @@ const drawer = useFormDrawer(
         rebateBalance.value = 0
       }
       promo.value = undefined
+      partnerLevel.value = undefined
     },
     create: async (data) => {
       const id = await addOrder(props.kind, data)
@@ -438,6 +450,8 @@ const drawer = useFormDrawer(
   })
 )
 const { form, formRef } = drawer
+// 关闭表单时清除智能录入的提示
+watch(drawer.open, (v) => !v && props.ai?.clear())
 
 // ---------------------------------------------------------------- 币种、汇率
 const currencyList = useCurrencies()
@@ -515,20 +529,35 @@ function addRow() {
 }
 
 const partnerLevel = ref()
-async function onPartnerSelect(partner) {
-  partnerLevel.value = partner.level
+function onPartnerSelect(partner) {
   form.value.partnerName = `${partner.code} ${partner.name}`
+  return loadPartnerData(partner)
+}
+
+/**
+ * 选定往来单位后加载相关数据：销售订单按客户重新取价、加载返利余额；采购订单加载供应商的供货价格、生效合同。
+ * keepPrices（打开时已带入明细，如智能录入的预填）：保留已有的单价，只补全空的单价、税率；
+ * 否则（手工换了往来单位）自动带出的单价按新单位更新
+ */
+async function loadPartnerData(partner, keepPrices = false) {
+  partnerLevel.value = partner.level
   if (props.kind === 'sales') {
-    // 换了客户：按客户等级重新取价，更新自动带出的单价；返利余额按客户
-    form.value.items.forEach((row) => fetchSalesPrice(row))
-    form.value.rebateAmount = undefined
+    if (!keepPrices) form.value.rebateAmount = undefined
     loadRebate(partner.id, form.value.id)
+    // 手工改过（含预填）的单价不覆盖，只更新价目价
+    await Promise.all(form.value.items.map((row) => fetchSalesPrice(row).catch(() => {})))
     return
   }
   form.value.contractId = undefined
   await Promise.all([loadPrices(partner.id), loadContracts(partner.id, form.value.orderDate)])
-  // 换了供应商：按新供应商的价格更新已录入的明细
-  form.value.items.forEach((row) => fillPrice(row, true))
+  form.value.items.forEach((row) => fillPrice(row, !keepPrices))
+}
+
+/** 按 ID 查往来单位（取供应商等级）；label 为「编码 名称」，按编码搜索，查不到时只用 ID */
+async function findPartner(id, label) {
+  const code = label?.split(' ')[0]
+  const list = code ? await partnerOptions(conf.value.partner, code).catch(() => []) : []
+  return list.find((p) => p.id === id) || { id }
 }
 
 /** 销售订单按价目表取价：更新价目价；单价为空或是自动带出的，同时更新单价、税率 */
@@ -585,6 +614,18 @@ async function loadLastPrice(row) {
     row.unitPrice = qty4(Number(list[0].price) * ratioOf(row))
     if (list[0].taxRate != null) row.taxRate = Number(list[0].taxRate)
   }
+}
+/** 采购订单：单价与供应商供货价不一致时返回供货价（订单单位、订单币种），用于提示；引用合同时不提示 */
+function supplyPriceDiff(row) {
+  if (props.kind !== 'purchase' || form.value.contractId || row.unitPrice == null) return null
+  const p = prices.value.get(row.materialId)
+  if (!p) return null
+  const price = qty4(fromBase(Number(p.price) * ratioOf(row)))
+  return Math.abs(price - Number(row.unitPrice)) > 0.00005 ? price : null
+}
+function useSupplyPrice(row) {
+  row.unitPrice = supplyPriceDiff(row)
+  row.priceAuto = true
 }
 function useLastPrice(row) {
   row.unitPrice = qty4(Number(row.lastPrice.price) * ratioOf(row))
@@ -692,11 +733,29 @@ function openAtp(row) {
   atpOpen.value = true
 }
 
-/** 传入的明细（基本单位）转为表单行 */
+/**
+ * 传入的明细（基本单位）转为表单行。带了往来单位（如智能录入的预填）时与手工选择一样加载供货价格、合同、返利等，
+ * 但保留传入的单价：只补全空的单价，税率为空时按供货价 / 价目表带出（都没有时默认 13%）
+ */
 async function openCreate(defaults = {}) {
-  if (!defaults.items?.length) return drawer.openCreate(defaults)
-  await drawer.openCreate({ ...defaults, items: defaults.items.map(toRow) })
-  form.value.items.forEach(attachUnits)
+  // 同步调用 drawer.openCreate，之前不能有 await（asPrefilled 依赖这一点）
+  await drawer.openCreate(defaults.items?.length ? { ...defaults, items: defaults.items.map(toRow) } : defaults)
+  const noTax = new Set()
+  form.value.items.forEach((row, i) => {
+    if (defaults.items?.[i]?.taxRate == null) {
+      noTax.add(row)
+      row.taxRate = null
+    }
+    attachUnits(row)
+  })
+  if (defaults.partnerId) {
+    const partner = await findPartner(defaults.partnerId, defaults.partnerName)
+    if (form.value.partnerId === defaults.partnerId) {
+      await loadPartnerData(partner, true).catch(() => {})
+      form.value.items.forEach((row) => row.materialId && loadLastPrice(row))
+    }
+  }
+  noTax.forEach((row) => row.taxRate == null && (row.taxRate = 13))
 }
 
 defineExpose({ openCreate, openEdit: drawer.openEdit })

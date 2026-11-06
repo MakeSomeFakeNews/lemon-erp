@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.hr.mapper;
 
+import com.lemon.erp.modules.hr.dto.LeaveSummaryRow;
 import com.lemon.erp.modules.hr.model.LeaveKind;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -30,4 +31,12 @@ public interface HrLeaveMapper extends BaseMapper<HrLeave> {
 
     /** 调休余额：已批准的转调休加班 - 审批中、已通过的调休 */
     BigDecimal compensatoryBalance(@Param("employeeId") Long employeeId);
+
+    /**
+     * 已通过的请假 / 加班汇总：开始时间在 [from, to) 内，按假期类型（加班为补偿方式）或部门汇总（AI 问数，调用方加数据权限）
+     *
+     * @param byDept true 按部门，false 按类型
+     */
+    List<LeaveSummaryRow> selectSummary(@Param("kind") LeaveKind kind, @Param("byDept") boolean byDept,
+                                        @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }
