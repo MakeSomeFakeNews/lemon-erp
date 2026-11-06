@@ -2,7 +2,7 @@
 #   docker build -f docker/web.Dockerfile -t lemon-erp-web .
 
 # ---------- 构建 ----------
-FROM node:22-alpine AS build
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 # 国内网络可以指定 npm 镜像：--build-arg NPM_REGISTRY=https://registry.npmmirror.com
 ARG NPM_REGISTRY=
 WORKDIR /web

@@ -10,6 +10,8 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/MakeSomeFakeNews/lemon-erp/actions/workflows/ci.yml"><img src="https://github.com/MakeSomeFakeNews/lemon-erp/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/MakeSomeFakeNews/lemon-erp/releases/latest"><img src="https://img.shields.io/github/v/release/MakeSomeFakeNews/lemon-erp" alt="release" /></a>
   <a href="https://github.com/MakeSomeFakeNews/lemon-erp/stargazers"><img src="https://img.shields.io/github/stars/MakeSomeFakeNews/lemon-erp?style=flat&logo=github" alt="stars" /></a>
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="license" />
   <img src="https://img.shields.io/badge/Java-17-orange.svg" alt="java" />
@@ -311,6 +313,16 @@ docker compose up -d --build
 ```
 
 启动完成后访问 http://localhost（端口见 `.env` 中的 `WEB_PORT`）。构建、推送镜像使用 `./docker/build.sh`，详见 [Docker 部署](https://makesomefakenews.github.io/lemon-erp-website/dev/deploy/docker)。
+
+不想在服务器上编译时，可以直接使用 [GitHub Packages](https://github.com/MakeSomeFakeNews?tab=packages&repo_name=lemon-erp) 中已构建好的镜像（支持 x86 和 ARM）：从 [Releases](https://github.com/MakeSomeFakeNews/lemon-erp/releases/latest) 下载 `lemon-erp-docker-<版本>.zip`，解压后：
+
+```bash
+cd docker
+cp .env.example .env        # 已填好镜像地址 ghcr.io/makesomefakenews/lemon-erp，修改密码和 JWT_SECRET 即可
+docker compose up -d
+```
+
+Releases 中还提供后端 jar、前端静态文件和 `init.sql`，可用于不使用 Docker 的传统部署。
 
 ### 方式二：源码运行
 

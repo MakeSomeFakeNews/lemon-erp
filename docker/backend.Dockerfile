@@ -2,7 +2,7 @@
 #   docker build -f docker/backend.Dockerfile -t lemon-erp-backend .
 
 # ---------- 构建 ----------
-FROM eclipse-temurin:17-jdk AS build
+FROM --platform=$BUILDPLATFORM eclipse-temurin:17-jdk AS build
 WORKDIR /src
 # Gradle 依赖缓存在 BuildKit 缓存中，重复构建不会重新下载
 COPY . .

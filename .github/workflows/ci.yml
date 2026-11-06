@@ -1,0 +1,89 @@
+# 持续集成：推送到 main 或提交 Pull Request 时检查后端编译、前端与小程序构建、多语言与枚举一致性
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: 后端
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: 编译并打包
+        run: ./gradlew --no-daemon build
+      - name: 后端多语言检查
+        run: python3 scripts/check_i18n.py
+
+  web:
+    name: 前端
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lemon-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: lemon-web/package-lock.json
+      - run: npm ci
+      - name: 多语言与枚举检查
+        run: npm run i18n:check
+      - name: 构建
+        run: npm run build
+
+  miniapp:
+    name: 微信小程序
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lemon-mp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: lemon-mp/package-lock.json
+      - run: npm ci
+      - name: 多语言检查
+        run: npm run i18n:check
+      - name: 构建
+        run: npm run build:mp-weixin
+
+  docker:
+    name: Docker 镜像
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: 构建后端镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/backend.Dockerfile
+          cache-from: type=gha,scope=backend
+      - name: 构建前端镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/web.Dockerfile
+          cache-from: type=gha,scope=web
