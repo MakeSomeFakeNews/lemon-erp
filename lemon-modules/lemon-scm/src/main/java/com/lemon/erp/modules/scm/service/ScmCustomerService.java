@@ -32,7 +32,7 @@ import java.util.Objects;
 public class ScmCustomerService {
 
     /** 记录变更历史的字段 */
-    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "客户编码", "name", "客户名称", "level", "客户等级", "contact", "联系人", "phone", "联系电话", // i18n-ignore
+    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "客户编码", "name", "客户名称", "level", "客户等级", "priceLevel", "价格等级", "contact", "联系人", "phone", "联系电话", // i18n-ignore
             "address", "收货地址", "taxNo", "纳税人识别号", "creditLimit", "信用额度", "paymentDays", "账期", "remark", "备注"); // i18n-ignore
 
     private static final int OPTION_LIMIT = 50;
@@ -154,6 +154,7 @@ public class ScmCustomerService {
         if (customer.getStatus() == null) customer.setStatus(EnableStatus.ENABLED);
         if (customer.getPaymentDays() == null) customer.setPaymentDays(0);
         if (customer.getChannel() == null) customer.setChannel(SalesChannel.DIRECT);
+        if (customer.getPriceLevel() == null) customer.setPriceLevel(0);
         customerMapper.insert(customer);
     }
 

@@ -13,7 +13,10 @@
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="doc-desc">
           <a-descriptions-item :label="$t('scm.trade.docNo')">{{ detail.docNo }}</a-descriptions-item>
-          <a-descriptions-item :label="$t('scm.trade.orderNo')">{{ detail.orderNo }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.trade.orderNo')">
+            {{ detail.orderNo }}
+            <a-tag v-if="detail.orderSource === OrderSource.DIRECT" color="blue" :bordered="false" class="direct-tag">{{ $t('scm.trade.direct') }}</a-tag>
+          </a-descriptions-item>
           <a-descriptions-item :label="ORDER_KINDS[conf.orderKind].partnerLabel">{{ detail.partnerName }}</a-descriptions-item>
           <a-descriptions-item :label="$t('scm.trade.warehouse')">{{ detail.warehouseName }}</a-descriptions-item>
           <a-descriptions-item :label="$t('scm.trade.bizDate')">{{ detail.bizDate }}</a-descriptions-item>
@@ -70,6 +73,7 @@ import { ORDER_KINDS, TRADE_KINDS, formatMoney } from './scm'
 import { fcText, isForeign } from '@/components/fin/currency'
 import { materialColumns, printDocs } from '@/utils/print'
 import { useI18n } from 'vue-i18n'
+import { OrderSource } from '@/constants/enums'
 
 const props = defineProps({
   open: Boolean,
@@ -80,15 +84,18 @@ const emit = defineEmits(['update:open'])
 const { t } = useI18n()
 
 const conf = computed(() => TRADE_KINDS[props.kind])
-const columns = [
+/** 明细带仓库（销售出库从多个仓库出库）时显示仓库列 */
+const lineWarehouse = computed(() => (detail.value?.items || []).some((i) => i.warehouseId))
+const columns = computed(() => [
   { title: t('scm.trade.material'), key: 'material', width: 220 },
+  ...(lineWarehouse.value ? [{ title: t('scm.trade.warehouse'), dataIndex: 'warehouseName', width: 120 }] : []),
   { title: t('scm.trade.location'), key: 'location', width: 100 },
   { title: t('scm.trade.batch'), key: 'batchNo', width: 160 },
   { title: t('common.field.quantity'), key: 'qty', width: 100, align: 'right' },
   { title: t('scm.trade.taxPrice'), key: 'price', width: 130, align: 'right' },
   { title: t('scm.trade.totalAmount'), key: 'amount', width: 130, align: 'right' },
   { title: t('scm.trade.serialNo'), key: 'serialNos', width: 240 }
-]
+])
 
 const detail = ref()
 
@@ -100,7 +107,7 @@ function print() {
     title: t('scm.trade.printTitle', { kind: c.label }),
     no: d.docNo,
     fields: [
-      [t('scm.trade.orderNo'), d.orderNo],
+      [t('scm.trade.orderNo'), d.orderSource === OrderSource.DIRECT ? `${d.orderNo} (${t('scm.trade.direct')})` : d.orderNo],
       [partnerLabel, d.partnerName],
       [t('scm.trade.warehouse'), d.warehouseName],
       [t('scm.trade.bizDate'), d.bizDate],
@@ -110,6 +117,7 @@ function print() {
     ],
     columns: [
       ...materialColumns(),
+      ...(lineWarehouse.value ? [{ title: t('scm.trade.warehouse'), key: 'warehouseName' }] : []),
       { title: t('scm.trade.location'), value: (r) => locationText(r.locationCode) },
       { title: t('scm.trade.batch'), key: 'batchNo' },
       { title: t('common.field.quantity'), value: (r) => formatQty(r.qty), align: 'right' },
@@ -147,6 +155,9 @@ watch(
 .sub-text {
   color: var(--app-text-3);
   font-size: 12px;
+}
+.direct-tag {
+  margin-left: 6px;
 }
 .serial-tag {
   margin: 2px 4px 2px 0;

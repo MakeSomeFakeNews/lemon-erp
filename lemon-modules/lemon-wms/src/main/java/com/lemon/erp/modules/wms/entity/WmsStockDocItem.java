@@ -18,6 +18,9 @@ public class WmsStockDocItem extends BaseEntity {
 
     private Long materialId;
 
+    /** 本行的仓库（入库、出库），为空表示表头仓库；实际仓库用 {@link #warehouseOr} */
+    private Long warehouseId;
+
     /** 库位；调拨为调出库位，0 为未指定 */
     private Long locationId;
 
@@ -60,4 +63,13 @@ public class WmsStockDocItem extends BaseEntity {
 
     @TableField(exist = false)
     private String toLocationCode;
+
+    /** 实际仓库的名称（明细仓库，为空时为表头仓库） */
+    @TableField(exist = false)
+    private String warehouseName;
+
+    /** 本行实际的仓库：明细仓库，为空时为表头仓库 */
+    public Long warehouseOr(Long headerWarehouseId) {
+        return warehouseId != null ? warehouseId : headerWarehouseId;
+    }
 }

@@ -157,6 +157,7 @@
               />
             </a-form-item>
             <div v-if="contractPrices.has(record.materialId)" class="sub-text">{{ $t('scm.orderForm.contractPrice') }}</div>
+            <div v-else-if="record.priceSource && record.priceAuto" class="sub-text">{{ $t(`pricing.source.${record.priceSource}`) }}</div>
             <div v-if="supplyPriceDiff(record) != null" class="sub-text">
               {{ $t('scm.orderForm.supplyPrice') }} <a @click="useSupplyPrice(record)">{{ symbol }}{{ formatQty(supplyPriceDiff(record)) }}</a>
             </div>
@@ -167,6 +168,9 @@
             <div v-if="priceWarning(record)" class="warn-text">{{ priceWarning(record) }}</div>
             <div v-else-if="form.contractId && record.materialId" class="warn-text">{{ $t('scm.orderForm.notInContract') }}</div>
             <div v-if="record.unitName" class="sub-text">{{ $t('scm.orderForm.perUnit', { unit: record.unitName }) }}</div>
+            <a v-if="record.materialId && canReference" class="atp-link" @click="openReference(record)">
+              <HistoryOutlined /> {{ $t('pricing.reference.open') }}
+            </a>
             <PriceHint
               v-if="kind === 'sales'"
               :price="record.unitPrice"
@@ -203,6 +207,7 @@
       <CustomFieldsForm :fields="cfFields" :values="form.cf || {}" :title="$t('scm.orderForm.extInfo')" :span="8" />
     </a-form>
     <VariantMatrixModal v-model:open="matrixOpen" @confirm="addVariantRows" />
+    <PriceReference ref="referenceRef" pickable @pick="onReferencePick" />
     <AtpModal
       v-if="kind === 'sales'"
       v-model:open="atpOpen"
@@ -218,7 +223,7 @@
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, PlusOutlined, TableOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, HistoryOutlined, PlusOutlined, TableOutlined } from '@ant-design/icons-vue'
 import VariantMatrixModal from '@/components/wms/VariantMatrixModal.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
@@ -226,10 +231,13 @@ import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import PartnerSelect from './PartnerSelect.vue'
 import AtpModal from './AtpModal.vue'
 import PriceHint from './PriceHint.vue'
+import PriceReference from './PriceReference.vue'
+import { defaultPrices } from '@/api/scm/pricing'
+import { useUserStore } from '@/store/user'
 import { addOrder, getOrder, updateOrder } from '@/api/scm/order'
 import { materialUnits } from '@/api/wms/material'
 import { partnerOptions, supplierPrices } from '@/api/scm/partner'
-import { previewPromotion, priceControlsOf, priceHistory, quotePrice, rebateBalance as fetchRebateBalance } from '@/api/scm/sourcing'
+import { previewPromotion, priceControlsOf, priceHistory, rebateBalance as fetchRebateBalance } from '@/api/scm/sourcing'
 import { activeContracts } from '@/api/scm/srm'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { formatQty, rowKey, today } from '@/components/wms/wms'
@@ -239,10 +247,11 @@ import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
 import AiPrefillAlert from '@/components/ai/AiPrefillAlert.vue'
 import { useCustomFields } from '@/composables/useCustomFields'
 
-import { PriceControlMode, SupplierLevel } from '@/constants/enums'
+import { OrderKind, PriceControlMode, PriceSource, SupplierLevel } from '@/constants/enums'
 /**
  * 新增 / 编辑采购、销售订单（草稿）。采购订单选择供应商后，按供货价格自动带出单价、税率；
- * 销售订单选择客户和物料后按销售价目表带出单价、税率，手工改过的单价不再自动覆盖。
+ * 销售订单选择客户和物料后按开单默认价（客户执行价 → 价目表 → 价格等级价 → 零售价 → 最近售价，/scm/pricing/default）
+ * 带出单价、税率，手工改过的单价不再自动覆盖。单价下方可打开「价格参考」查看历史价格并点选使用。
  * 物料有辅助单位时可按辅助单位录入：表单中 unitQty / unitPrice 为所选单位的数量、单价，
  * 提交时折算为基本单位的 qty / price（qty = unitQty × 换算率，price = unitPrice ÷ 换算率），并带上 unitName
  * 外币订单：单价、金额为订单币种的原币，按人民币维护的供货价格 / 价目价自动带出时除以汇率
@@ -466,10 +475,11 @@ const fromBase = (price) => {
 
 /** 自动带出的单价按新的币种 / 汇率重新折算 */
 function refillAutoPrices() {
-  form.value.items.forEach((row) => {
-    if (props.kind === 'sales') fetchSalesPrice(row)
-    else if (row.priceAuto) fillPrice(row, true)
-  })
+  if (props.kind === 'sales') {
+    fetchSalesPrices(form.value.items).catch(() => {})
+    return
+  }
+  form.value.items.forEach((row) => row.priceAuto && fillPrice(row, true))
 }
 
 let rateSeq = 0
@@ -544,8 +554,8 @@ async function loadPartnerData(partner, keepPrices = false) {
   if (props.kind === 'sales') {
     if (!keepPrices) form.value.rebateAmount = undefined
     loadRebate(partner.id, form.value.id)
-    // 手工改过（含预填）的单价不覆盖，只更新价目价
-    await Promise.all(form.value.items.map((row) => fetchSalesPrice(row).catch(() => {})))
+    // 手工改过（含预填）的单价不覆盖，只更新价目价；所有行一次取价
+    await fetchSalesPrices(form.value.items).catch(() => {})
     return
   }
   form.value.contractId = undefined
@@ -560,24 +570,38 @@ async function findPartner(id, label) {
   return list.find((p) => p.id === id) || { id }
 }
 
-/** 销售订单按价目表取价：更新价目价；单价为空或是自动带出的，同时更新单价、税率 */
-async function fetchSalesPrice(row) {
-  if (props.kind !== 'sales' || !row.materialId || !form.value.partnerId) return
-  const seq = (row.priceSeq = (row.priceSeq || 0) + 1)
-  const res = await quotePrice({
-    materialId: row.materialId,
-    customerId: form.value.partnerId,
-    qty: baseQty(row) || undefined,
+/** 销售订单取单行的开单默认价 */
+const fetchSalesPrice = (row) => fetchSalesPrices([row])
+
+/**
+ * 销售订单按开单默认价取价（多行一次请求）：来源为价目表时更新价目价（用于折扣提示）；
+ * 单价为空或是自动带出的，同时更新单价（有税率时更新税率）
+ */
+async function fetchSalesPrices(rows) {
+  const list = rows.filter((row) => row.materialId)
+  if (props.kind !== 'sales' || !list.length || !form.value.partnerId) return
+  const seqs = list.map((row) => (row.priceSeq = (row.priceSeq || 0) + 1))
+  const res = await defaultPrices({
+    kind: OrderKind.SALES,
+    partnerId: form.value.partnerId,
+    materialIds: list.map((row) => row.materialId),
+    qtys: list.map((row) => baseQty(row) || 1),
     date: form.value.orderDate || undefined
   })
-  if (seq !== row.priceSeq) return
-  // 价目价按基本单位
-  row.listPrice = res ? Number(res.price) : undefined
-  if (res && (row.priceAuto || row.unitPrice == null)) {
-    row.unitPrice = qty4(fromBase(Number(res.price) * ratioOf(row)))
-    if (res.taxRate != null) row.taxRate = Number(res.taxRate)
-    row.priceAuto = true
-  }
+  const byMaterial = new Map(res.map((p) => [p.materialId, p]))
+  list.forEach((row, i) => {
+    if (seqs[i] !== row.priceSeq) return
+    // 默认价按基本单位、本位币
+    const p = byMaterial.get(row.materialId)
+    const found = p && p.price != null
+    row.listPrice = found && p.source === PriceSource.PRICE_LIST ? Number(p.price) : undefined
+    if (found && (row.priceAuto || row.unitPrice == null)) {
+      row.unitPrice = qty4(fromBase(Number(p.price) * ratioOf(row)))
+      if (p.taxRate != null) row.taxRate = Number(p.taxRate)
+      row.priceAuto = true
+      row.priceSource = p.source
+    }
+  })
 }
 
 function fillPrice(row, overwrite) {
@@ -676,8 +700,9 @@ function applyMaterial(row, material) {
   attachUnits(row)
   if (props.kind === 'sales') {
     row.listPrice = undefined
+    row.priceSource = undefined
     row.priceAuto = true
-    fetchSalesPrice(row).then(() => loadLastPrice(row))
+    fetchSalesPrice(row).catch(() => {}).then(() => loadLastPrice(row))
     return
   }
   fillPrice(row, true)
@@ -724,6 +749,28 @@ const promoLine = (index) => {
   return line && line.origPrice != null ? line : null
 }
 const promoTotal = computed(() => (promo.value?.lines || []).reduce((sum, l, i) => sum + Number(l.price) * baseQty(form.value.items[i] || {}), 0))
+
+// 价格参考：点选的历史价格（基本单位、本位币）按当前单位、币种填入单价
+const userStore = useUserStore()
+const canReference = computed(() =>
+  userStore.hasPerm(['scm:sales:list', 'scm:salesOut:list', 'scm:quotation:list', 'scm:purchase:list', 'scm:purchaseIn:list'])
+)
+const referenceRef = ref()
+let referenceRow
+function openReference(row) {
+  referenceRow = row
+  referenceRef.value.open({
+    materialId: row.materialId,
+    materialName: row.materialLabel,
+    partnerId: form.value.partnerId,
+    kind: props.kind === 'purchase' ? OrderKind.PURCHASE : OrderKind.SALES
+  })
+}
+function onReferencePick(price) {
+  if (!referenceRow || contractPrices.value.has(referenceRow.materialId)) return
+  referenceRow.unitPrice = qty4(fromBase(price * ratioOf(referenceRow)))
+  referenceRow.priceAuto = false
+}
 
 // 可承诺量
 const atpOpen = ref(false)

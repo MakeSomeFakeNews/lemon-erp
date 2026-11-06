@@ -121,6 +121,7 @@ public class ScmReservationService {
 
     private ScmOrder executable(Long orderId) {
         ScmOrder order = orderService.getAccessible(OrderKind.SALES, orderId);
+        ScmOrderService.checkNotDirect(order);
         if (!order.getStatus().isExecutable()) {
             throw new BizException("scm.error.onlyApprovedPartiallyDeliveredSalesOrders");
         }

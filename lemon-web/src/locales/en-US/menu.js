@@ -209,6 +209,13 @@ export default {
   963: 'Inspection', // 检验管理
   964: 'Nonconformance', // 不良处理
   965: 'Quality Analysis', // 质量分析
+  966: 'Sales & Purchase Reports', // 进销存报表
+  370: 'Sales Report', // 销售报表
+  371: 'Purchase Report', // 进货报表
+  372: 'Business Overview', // 经营状况
+  373: 'Asset Overview', // 资产状况
+  374: 'Product Analysis', // 商品分析
+  375: 'Customer Analysis', // 客户分析
   1000: 'Add User', // 用户新增
   1001: 'Edit User', // 用户修改
   1002: 'Delete User', // 用户删除
@@ -556,4 +563,7 @@ export default {
   3630: 'Apply Cleansing Suggestions', // 采纳整理建议
   364: 'AI Reports', // 智能报告
   3640: 'Generate Reports', // 生成报告
+  365: 'Item Prices', // 商品价格
+  3650: 'Maintain Item Prices', // 商品价格维护
+  3651: 'Price Columns', // 价格列设置
 }

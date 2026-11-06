@@ -3,6 +3,8 @@ package com.lemon.erp.modules.wms.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.framework.data.Queries;
+import com.lemon.erp.framework.dict.DictLookup;
+import com.lemon.erp.modules.wms.model.PriceLevels;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
@@ -47,8 +49,14 @@ import java.util.stream.Collectors;
 public class WmsMaterialService {
 
     /** 记录变更历史的字段 */
-    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "物料编码", "name", "物料名称", "spec", "规格型号", "unit", "计量单位", "category", "分类", // i18n-ignore 字段名写入变更记录
-            "batchEnabled", "批次管理", "serialEnabled", "序列号管理", "iqcRequired", "来料检验", "safetyStock", "安全库存", "reorderPoint", "再订货点", "reorderQty", "再订货量", "barcode", "条码", "defaultWarehouseId", "默认仓库", "refCost", "参考成本价", "costMethod", "计价方法", "remark", "备注"); // i18n-ignore
+    private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "物料编码", "name", "物料名称", "spec", "规格型号", "unit", "计量单位", "category", "分类", "brand", "品牌", // i18n-ignore 字段名写入变更记录
+            "batchEnabled", "批次管理", "serialEnabled", "序列号管理", "iqcRequired", "来料检验", "safetyStock", "安全库存", "reorderPoint", "再订货点", "reorderQty", "再订货量", "barcode", "条码", "defaultWarehouseId", "默认仓库", "refCost", "参考成本价", "costMethod", "计价方法", "remark", "备注", // i18n-ignore
+            "retailPrice", "零售价", "wholesalePrice1", "批发价1", "wholesalePrice2", "批发价2", "wholesalePrice3", "批发价3", // i18n-ignore
+            "wholesalePrice4", "批发价4", "wholesalePrice5", "批发价5", "wholesalePrice6", "批发价6", "wholesalePrice7", "批发价7", // i18n-ignore
+            "wholesalePrice8", "批发价8"); // i18n-ignore
+
+    /** 品牌字典（业务字典） */
+    public static final String BRAND_DICT = "wms_material_brand";
 
     /** 下拉搜索最多返回的条数 */
     private static final int OPTION_LIMIT = 50;
@@ -65,13 +73,21 @@ public class WmsMaterialService {
     private final WmsMaterialUnitMapper unitMapper;
     private final WmsLocationMapper locationMapper;
     private final DocNoService docNoService;
+    private final DictLookup dictLookup;
+    private final WmsPriceLevelService priceLevelService;
 
     /** @param keyword 编码或名称，模糊匹配 */
     /** @param templateId 只看某个款式的 SKU */
     public PageResult<WmsMaterial> page(long current, long size, String keyword, String category, EnableStatus status, Long templateId) {
+        return page(current, size, keyword, category, null, status, templateId);
+    }
+
+    /** @param brand 品牌，为空不限 */
+    public PageResult<WmsMaterial> page(long current, long size, String keyword, String category, String brand, EnableStatus status, Long templateId) {
         Page<WmsMaterial> page = materialMapper.selectPage(Page.of(current, size), Wrappers.<WmsMaterial>lambdaQuery()
                 .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword))
                 .eq(StringUtils.hasText(category), WmsMaterial::getCategory, category)
+                .eq(StringUtils.hasText(brand), WmsMaterial::getBrand, brand)
                 .eq(status != null, WmsMaterial::getStatus, status)
                 .eq(templateId != null, WmsMaterial::getTemplateId, templateId)
                 .orderByDesc(WmsMaterial::getId));
@@ -202,6 +218,13 @@ public class WmsMaterialService {
         if (trackingChanged && flowMapper.existsByMaterialId(id)) {
             throw new BizException("wms.error.materialHasStockTransactionsBatchSerial");
         }
+        // 停用的价格列在表单中隐藏，保留原值
+        java.util.Set<Integer> enabledLevels = priceLevelService.enabledLevels();
+        for (int level = PriceLevels.RETAIL; level <= PriceLevels.MAX; level++) {
+            if (!enabledLevels.contains(level)) {
+                PriceLevels.setPrice(material, level, PriceLevels.price(old, level));
+            }
+        }
         material.setId(id);
         material.setStatus(null);
         material.setIsTemplate(null);
@@ -217,6 +240,16 @@ public class WmsMaterialService {
                 .set(WmsMaterial::getDefaultWarehouseId, material.getDefaultWarehouseId())
                 .set(WmsMaterial::getDefaultLocationId, material.getDefaultLocationId())
                 .set(WmsMaterial::getRefCost, material.getRefCost())
+                .set(WmsMaterial::getBrand, material.getBrand())
+                .set(WmsMaterial::getRetailPrice, material.getRetailPrice())
+                .set(WmsMaterial::getWholesalePrice1, material.getWholesalePrice1())
+                .set(WmsMaterial::getWholesalePrice2, material.getWholesalePrice2())
+                .set(WmsMaterial::getWholesalePrice3, material.getWholesalePrice3())
+                .set(WmsMaterial::getWholesalePrice4, material.getWholesalePrice4())
+                .set(WmsMaterial::getWholesalePrice5, material.getWholesalePrice5())
+                .set(WmsMaterial::getWholesalePrice6, material.getWholesalePrice6())
+                .set(WmsMaterial::getWholesalePrice7, material.getWholesalePrice7())
+                .set(WmsMaterial::getWholesalePrice8, material.getWholesalePrice8())
                 .eq(WmsMaterial::getId, id));
         changeLogger.log("wms_material", id, before, materialMapper.selectById(id), CHANGE_FIELDS);
     }
@@ -260,8 +293,10 @@ public class WmsMaterialService {
         }
     }
 
-    /** 条码不能与其他物料（含辅助单位的包装条码）重复；默认库位须属于默认仓库 */
+    /** 条码不能与其他物料（含辅助单位的包装条码）重复；默认库位须属于默认仓库；品牌须为业务字典中的值 */
     private void checkExtras(WmsMaterial material, Long id) {
+        material.setBrand(StringUtils.hasText(material.getBrand()) ? material.getBrand().trim() : null);
+        dictLookup.check(BRAND_DICT, material.getBrand(), "wms.label.brand");
         material.setBarcode(StringUtils.hasText(material.getBarcode()) ? material.getBarcode().trim() : null);
         if (material.getBarcode() != null) {
             WmsMaterial exist = Queries.first(materialMapper, Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getBarcode, material.getBarcode())
@@ -280,6 +315,81 @@ public class WmsMaterialService {
             }
         }
     }
+
+    // ---------------------------------------------------------------- 商品价格批量维护
+
+    /**
+     * 商品价格列表：可用于单据的物料（不含多规格款式）及各价格列，按编码排序
+     *
+     * @param keyword 编码、名称或条码，模糊匹配
+     */
+    public PageResult<WmsMaterial> pagePrices(long current, long size, String keyword, String category, String brand, EnableStatus status) {
+        Page<WmsMaterial> page = materialMapper.selectPage(Page.of(current, size), Wrappers.<WmsMaterial>lambdaQuery()
+                .select(WmsMaterial::getId, WmsMaterial::getCode, WmsMaterial::getName, WmsMaterial::getSpec, WmsMaterial::getUnit,
+                        WmsMaterial::getCategory, WmsMaterial::getBrand, WmsMaterial::getRefCost, WmsMaterial::getStatus,
+                        WmsMaterial::getRetailPrice, WmsMaterial::getWholesalePrice1, WmsMaterial::getWholesalePrice2,
+                        WmsMaterial::getWholesalePrice3, WmsMaterial::getWholesalePrice4, WmsMaterial::getWholesalePrice5,
+                        WmsMaterial::getWholesalePrice6, WmsMaterial::getWholesalePrice7, WmsMaterial::getWholesalePrice8)
+                .eq(WmsMaterial::getIsTemplate, 0)
+                .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword)
+                        .or().eq(WmsMaterial::getBarcode, keyword))
+                .eq(StringUtils.hasText(category), WmsMaterial::getCategory, category)
+                .eq(StringUtils.hasText(brand), WmsMaterial::getBrand, brand)
+                .eq(status != null, WmsMaterial::getStatus, status)
+                .orderByAsc(WmsMaterial::getCode));
+        return PageResult.of(page);
+    }
+
+    /**
+     * 批量保存商品价格：每行物料 ID + 各价格列（为空表示清空），只更新启用的价格列
+     *
+     * @return 更新的物料数
+     */
+    @Transactional
+    public int savePrices(List<WmsMaterial> rows) {
+        if (rows.isEmpty()) {
+            return 0;
+        }
+        java.util.Set<Integer> enabledLevels = priceLevelService.enabledLevels();
+        Map<Long, WmsMaterial> exists = mapByIds(rows.stream().map(WmsMaterial::getId).filter(Objects::nonNull).toList());
+        int count = 0;
+        for (WmsMaterial row : rows) {
+            WmsMaterial old = exists.get(row.getId());
+            if (old == null) {
+                throw new BizException("wms.error.materialNotFound2", row.getId());
+            }
+            var update = Wrappers.<WmsMaterial>lambdaUpdate().eq(WmsMaterial::getId, row.getId())
+                    .set(WmsMaterial::getUpdateTime, java.time.LocalDateTime.now());
+            boolean changed = false;
+            for (int level = PriceLevels.RETAIL; level <= PriceLevels.MAX; level++) {
+                if (!enabledLevels.contains(level)) {
+                    continue;
+                }
+                BigDecimal price = PriceLevels.price(row, level);
+                if (price != null && price.signum() < 0) {
+                    throw new BizException("wms.error.priceNegative", old.getCode());
+                }
+                price = price == null ? null : price.setScale(4, java.math.RoundingMode.HALF_UP);
+                BigDecimal before = PriceLevels.price(old, level);
+                if (before == null ? price == null : price != null && before.compareTo(price) == 0) {
+                    continue;
+                }
+                changed = true;
+                update.set(PRICE_COLUMNS.get(level), price);
+            }
+            if (changed) {
+                materialMapper.update(update);
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /** 价格列 → 物料字段 */
+    private static final List<com.baomidou.mybatisplus.core.toolkit.support.SFunction<WmsMaterial, ?>> PRICE_COLUMNS = List.of(
+            WmsMaterial::getRetailPrice, WmsMaterial::getWholesalePrice1, WmsMaterial::getWholesalePrice2, WmsMaterial::getWholesalePrice3,
+            WmsMaterial::getWholesalePrice4, WmsMaterial::getWholesalePrice5, WmsMaterial::getWholesalePrice6, WmsMaterial::getWholesalePrice7,
+            WmsMaterial::getWholesalePrice8);
 
     // ---------------------------------------------------------------- 辅助单位、条码
 

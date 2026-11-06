@@ -11,6 +11,8 @@ import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.framework.security.datascope.DataScopes;
+import com.lemon.erp.modules.scm.dto.OrderItemRequest;
+import com.lemon.erp.modules.scm.dto.OrderRequest;
 import com.lemon.erp.modules.scm.dto.TradeDocItemRequest;
 import com.lemon.erp.modules.scm.dto.TradeDocQuery;
 import com.lemon.erp.modules.scm.dto.TradeDocRequest;
@@ -24,6 +26,7 @@ import com.lemon.erp.modules.scm.mapper.ScmTradeDocItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmTradeDocMapper;
 import com.lemon.erp.modules.scm.model.OrderStatus;
 import com.lemon.erp.modules.scm.model.OrderKind;
+import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.wms.dto.StockDocItemRequest;
 import com.lemon.erp.modules.wms.dto.StockDocRequest;
@@ -56,13 +59,13 @@ import static com.lemon.erp.modules.wms.model.WmsConstants.locationOrNone;
 import static com.lemon.erp.modules.wms.model.WmsConstants.splitSerials;
 
 /**
- * 采购入库 / 采购退货 / 销售出库 / 销售退货：按订单明细录入，保存即确认。
+ * 采购入库 / 采购退货 / 销售出库 / 销售退货：按订单明细录入，或直接开单（生成隐式订单，见 {@link #create}），保存即确认。
  * <ol>
  *   <li>回写订单明细的已完成 / 已退货数量（条件更新，不超过可入库 / 可退数量）</li>
  *   <li>生成并确认仓库的出入库单，更新库存、批次、序列号（库存不足等错误整单回滚）</li>
  *   <li>重新计算订单状态，发布 {@link TradeDocConfirmedEvent}，财务据此生成应收 / 应付单</li>
  * </ol>
- * 单价、税率取订单明细，不能修改。单据确认后不能修改、删除，错误的入库 / 出库通过退货冲回。
+ * 单价、税率取订单明细，不能修改；销售出库的明细可另选仓库（业务参数 scm.salesOut.lineWarehouse）。单据确认后不能修改、删除，错误的入库 / 出库通过退货冲回。
  */
 @Service
 @RequiredArgsConstructor
@@ -97,10 +100,59 @@ public class ScmTradeDocService {
         return detail;
     }
 
-    /** @return 新单据 ID */
+    /**
+     * 新增出入库单：引用订单，或（业务参数 scm.directDoc.enabled 开启时）不选订单直接开单
+     *
+     * @return 新单据 ID
+     */
     @Transactional
     public Long create(TradeKind kind, TradeDocRequest req) {
-        ScmOrder order = orderService.getAccessible(kind.getOrderKind(), req.orderId());
+        if (req.direct()) {
+            return createDirect(kind, req);
+        }
+        return create(kind, req, orderService.getAccessible(kind.getOrderKind(), req.orderId()));
+    }
+
+    /**
+     * 直接开单：按明细生成并直接审核隐式订单（来源 DIRECT，一行明细对应一行订单明细），再按订单出入库，
+     * 信用额度、限价、促销、超发、序列号批次、应收应付、成本、提成、追溯都与引用订单相同。
+     * 退货不引用原单时隐式订单视为已全部出入库，库存按退货入库 / 出库，应收应付按退货金额冲减
+     */
+    private Long createDirect(TradeKind kind, TradeDocRequest req) {
+        if (!bizRules.bool(ScmBizRules.DIRECT_DOC)) {
+            throw new BizException("scm.error.directDocDisabled", Messages.get(kind.getLabelKey()));
+        }
+        if (req.partnerId() == null) {
+            throw new BizException(kind.getOrderKind() == OrderKind.PURCHASE ? "scm.error.directDocSelectSupplier" : "scm.error.directDocSelectCustomer");
+        }
+        if (kind.isReturns() && Boolean.TRUE.equals(req.replenish())) {
+            throw new BizException("scm.error.directOrderNoReplenish");
+        }
+        List<OrderItemRequest> lines = new ArrayList<>(req.items().size());
+        for (int i = 0; i < req.items().size(); i++) {
+            TradeDocItemRequest r = req.items().get(i);
+            if (r.materialId() == null) {
+                throw new BizException("scm.error.directDocRowSelectMaterial", i + 1);
+            }
+            if (r.price() == null) {
+                throw new BizException("scm.error.directDocRowEnterPrice", i + 1);
+            }
+            lines.add(new OrderItemRequest(r.materialId(), r.qty(), r.price(), r.taxRate(), req.bizDate(), r.remark()));
+        }
+        ScmOrder order = orderService.createDirect(kind.getOrderKind(), new OrderRequest(req.partnerId(), req.bizDate(), req.bizDate(),
+                req.warehouseId(), req.remark(), lines), req.salesmanId(), kind.isReturns());
+        // 订单明细按插入顺序与请求明细一一对应
+        List<ScmOrderItem> orderItems = orderItemMapper.selectByOrderId(order.getId());
+        List<TradeDocItemRequest> items = new ArrayList<>(req.items().size());
+        for (int i = 0; i < req.items().size(); i++) {
+            TradeDocItemRequest r = req.items().get(i);
+            items.add(new TradeDocItemRequest(orderItems.get(i).getId(), r.locationId(), r.batchNo(), r.productionDate(), r.expiryDate(),
+                    r.qty(), r.serialNos(), r.remark(), null, null, null, r.warehouseId()));
+        }
+        return create(kind, new TradeDocRequest(order.getId(), req.warehouseId(), req.bizDate(), req.remark(), false, items), order);
+    }
+
+    private Long create(TradeKind kind, TradeDocRequest req, ScmOrder order) {
         Set<OrderStatus> allowed = kind.isReturns() ? OrderStatus.RETURNABLE : OrderStatus.EXECUTABLE;
         if (!allowed.contains(order.getStatus())) {
             if (!kind.isReturns()) {
@@ -111,9 +163,14 @@ public class ScmTradeDocService {
             }
             throw new BizException("scm.error.orderHasNoReceiptsYetCannot", order.getOrderNo());
         }
+        if (kind.isReturns() && Boolean.TRUE.equals(req.replenish()) && order.getSource() == OrderSource.DIRECT) {
+            throw new BizException("scm.error.directOrderNoReplenish");
+        }
         if (kind == TradeKind.SALES_OUT) {
             creditChecker.checkBeforeShipment(order);
         }
+        // 业务参数：销售出库的明细可以各自选择仓库
+        boolean lineWarehouse = kind == TradeKind.SALES_OUT && bizRules.bool(ScmBizRules.SALES_OUT_LINE_WAREHOUSE);
         Map<Long, ScmOrderItem> orderItems = orderItemMapper.selectByOrderId(order.getId()).stream()
                 .collect(Collectors.toMap(ScmOrderItem::getId, Function.identity()));
         String docNo = docNoService.next(kind.getPrefix());
@@ -141,7 +198,11 @@ public class ScmTradeDocService {
                 throw new BizException("scm.error.rowQuantityExceeds", i + 1, orderItem.getMaterialCode(), orderItem.getMaterialName(),
                         Messages.get(kind.isReturns() ? "scm.label.returnableQuantity" : overRate.signum() > 0 ? "scm.label.quantityAllowedOverReceiptOverDelivery" : "scm.label.openQuantity"), plain(max));
             }
-            items.add(toItem(kind, r, orderItem, rate(order)));
+            ScmTradeDocItem item = toItem(kind, r, orderItem, rate(order));
+            if (lineWarehouse && r.warehouseId() != null && !r.warehouseId().equals(req.warehouseId())) {
+                item.setWarehouseId(r.warehouseId());
+            }
+            items.add(item);
         }
 
         StockDocRequest stockReq = new StockDocRequest(kind.getStockBizType().name(), req.warehouseId(), null, req.bizDate(),
@@ -153,7 +214,7 @@ public class ScmTradeDocService {
         }
         if (kind == TradeKind.SALES_OUT) {
             // 先核销本订单的预留，出库不受自己的预留限制
-            items.forEach(i -> reservationService.consume(i.getOrderItemId(), req.warehouseId(), i.getQty()));
+            items.forEach(i -> reservationService.consume(i.getOrderItemId(), warehouseOf(i, req.warehouseId()), i.getQty()));
         }
         WmsStockDoc stockDoc = stockDocService.createConfirmed(kind.getStockKind(), stockReq, docNo);
         if (kind == TradeKind.PURCHASE_IN) {
@@ -226,6 +287,11 @@ public class ScmTradeDocService {
         return item;
     }
 
+    /** 明细的实际仓库：明细仓库，为空取表头仓库 */
+    private static Long warehouseOf(ScmTradeDocItem item, Long headerWarehouseId) {
+        return item.getWarehouseId() != null ? item.getWarehouseId() : headerWarehouseId;
+    }
+
     private static List<HoldLine> holdLines(Long warehouseId, List<ScmTradeDocItem> items) {
         return items.stream().map(i -> new HoldLine(warehouseId, i.getLocationId() == null ? 0L : i.getLocationId(),
                 i.getMaterialId(), i.getBatchNo() == null ? "" : i.getBatchNo(), i.getQty())).toList();
@@ -233,7 +299,7 @@ public class ScmTradeDocService {
 
     private static StockDocItemRequest toStockItem(ScmTradeDocItem i) {
         return new StockDocItemRequest(i.getMaterialId(), i.getLocationId(), null, i.getBatchNo(), i.getProductionDate(),
-                i.getExpiryDate(), i.getQty(), i.getSerialNos(), i.getRemark());
+                i.getExpiryDate(), i.getQty(), i.getSerialNos(), i.getRemark(), i.getWarehouseId());
     }
 
     private static String plain(BigDecimal v) {

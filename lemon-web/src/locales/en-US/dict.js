@@ -67,6 +67,11 @@ export default {
     'REJECT': 'Reject', // 拒绝
     'TRANSFER': 'Transfer', // 转交
   },
+  // 商品品牌
+  wms_material_brand: {
+    'OWN': 'Own Brand', // 自有品牌
+    'OTHER': 'Other', // 其他
+  },
   // 物料分类
   wms_material_category: {
     'RAW': 'Raw Material', // 原材料
@@ -195,6 +200,7 @@ export default {
     'TENDER': 'Tender', // 招标
     'DEALER': 'Dealer Order', // 经销商订货
     'IMPORT': 'External Import', // 外部导入
+    'DIRECT': 'Direct Document', // 直接开单
   },
   // 生产计划状态
   mes_plan_status: {

@@ -48,3 +48,6 @@ lemon-web/.vite/
 
 ### Docker ###
 docker/.env
+
+### 宣传视频 ###
+/docs/video/

@@ -19,7 +19,7 @@
     <select id="selectSales" resultType="java.util.Map">
         SELECT d.biz_date AS biz_date, YEAR(d.biz_date) * 100 + MONTH(d.biz_date) AS period, d.doc_no AS doc_no,
                d.partner_id AS customer_id, x.owner_id AS owner_id, i.material_id AS material_id, m.category AS category,
-               d.warehouse_id AS warehouse_id, d.dept_id AS dept_id,
+               COALESCE(i.warehouse_id, d.warehouse_id) AS warehouse_id, d.dept_id AS dept_id,
                CASE WHEN d.kind = 'SALES_OUT' THEN i.qty ELSE -i.qty END AS qty,
                CASE WHEN d.kind = 'SALES_OUT' THEN i.amount - i.tax_amount ELSE i.tax_amount - i.amount END AS amount,
                0 AS cost, 0 AS profit
@@ -43,7 +43,7 @@
 
     <select id="selectPurchase" resultType="java.util.Map">
         SELECT d.biz_date AS biz_date, YEAR(d.biz_date) * 100 + MONTH(d.biz_date) AS period, d.doc_no AS doc_no,
-               d.partner_id AS supplier_id, i.material_id AS material_id, m.category AS category, d.warehouse_id AS warehouse_id,
+               d.partner_id AS supplier_id, i.material_id AS material_id, m.category AS category, COALESCE(i.warehouse_id, d.warehouse_id) AS warehouse_id,
                CASE WHEN d.kind = 'PURCHASE_IN' THEN i.qty ELSE -i.qty END AS qty,
                CASE WHEN d.kind = 'PURCHASE_IN' THEN i.amount - i.tax_amount ELSE i.tax_amount - i.amount END AS amount
         FROM scm_trade_doc d

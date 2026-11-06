@@ -17,6 +17,7 @@ import java.time.LocalDate;
  * @param productionDate 生产日期，仅入库
  * @param expiryDate     有效期至，仅入库
  * @param serialNos      序列号，逗号或换行分隔；启用序列号管理的物料，个数须与数量一致
+ * @param warehouseId    本行的仓库（入库、出库），为空取表头仓库；调拨忽略。目前只有销售出库（明细可选仓库）使用
  */
 public record StockDocItemRequest(
         @NotNull(message = "{wms.valid.selectMaterial}") Long materialId,
@@ -29,5 +30,12 @@ public record StockDocItemRequest(
         @DecimalMin(value = "0", inclusive = false, message = "{wms.valid.quantityMustGreater}")
         @Digits(integer = 14, fraction = 4, message = "{wms.valid.quantityAllowsMostDecimalPlaces}") BigDecimal qty,
         String serialNos,
-        @Size(max = 255, message = "{wms.valid.remarkCannotExceedCharacters}") String remark) {
+        @Size(max = 255, message = "{wms.valid.remarkCannotExceedCharacters}") String remark,
+        Long warehouseId) {
+
+    /** 使用表头仓库 */
+    public StockDocItemRequest(Long materialId, Long locationId, Long toLocationId, String batchNo, LocalDate productionDate,
+                               LocalDate expiryDate, BigDecimal qty, String serialNos, String remark) {
+        this(materialId, locationId, toLocationId, batchNo, productionDate, expiryDate, qty, serialNos, remark, null);
+    }
 }

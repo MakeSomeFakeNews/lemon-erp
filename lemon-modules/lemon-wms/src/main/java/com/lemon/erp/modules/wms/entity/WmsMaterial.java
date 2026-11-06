@@ -41,6 +41,10 @@ public class WmsMaterial extends BaseEntity {
     /** 分类，字典 wms_material_category */
     private String category;
 
+    /** 品牌，业务字典 wms_material_brand */
+    @Size(max = 64, message = "{wms.valid.brandTooLong}")
+    private String brand;
+
     /** 是否启用批次管理：出入库必须填写批次号。产生库存业务后不能修改 */
     private Integer batchEnabled;
 
@@ -70,6 +74,34 @@ public class WmsMaterial extends BaseEntity {
     /** 参考成本价：没有核算单价时按此计价 */
     @DecimalMin(value = "0", message = "{wms.valid.referenceCostCannotLess}")
     private BigDecimal refCost;
+
+    /** 零售价、批发价1-8（含税、基本单位、本位币）：价格列，名称和是否启用见价格列设置 */
+    @DecimalMin(value = "0", message = "{wms.valid.priceCannotLess}")
+    private BigDecimal retailPrice;
+
+    @DecimalMin(value = "0", message = "{wms.valid.priceCannotLess}")
+    private BigDecimal wholesalePrice1;
+
+    @DecimalMin(value = "0", message = "{wms.valid.priceCannotLess}")
+    private BigDecimal wholesalePrice2;
+
+    @DecimalMin(value = "0", message = "{wms.valid.priceCannotLess}")
+    private BigDecimal wholesalePrice3;
+
+    @DecimalMin(value = "0", message = "{wms.valid.priceCannotLess}")
+    private BigDecimal wholesalePrice4;
+
+    @DecimalMin(value = "0", message = "{wms.valid.priceCannotLess}")
+    private BigDecimal wholesalePrice5;
+
+    @DecimalMin(value = "0", message = "{wms.valid.priceCannotLess}")
+    private BigDecimal wholesalePrice6;
+
+    @DecimalMin(value = "0", message = "{wms.valid.priceCannotLess}")
+    private BigDecimal wholesalePrice7;
+
+    @DecimalMin(value = "0", message = "{wms.valid.priceCannotLess}")
+    private BigDecimal wholesalePrice8;
 
     /** 存货计价方法，默认月末一次加权平均；修改后从下一次成本核算开始生效 */
     private CostMethod costMethod;

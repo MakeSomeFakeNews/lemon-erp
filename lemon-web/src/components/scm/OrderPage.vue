@@ -67,6 +67,7 @@
             <a-tag v-else-if="record.source === OrderSource.CONSIGN" color="cyan" :bordered="false" class="source-tag">{{ $t('scm.order.sourceConsign') }}</a-tag>
             <a-tag v-else-if="record.source === OrderSource.DEALER" color="purple" :bordered="false" class="source-tag">{{ $t('scm.order.sourceDealer') }}</a-tag>
             <a-tag v-else-if="record.source === OrderSource.IMPORT" color="lime" :bordered="false" class="source-tag">{{ $t('scm.order.sourceImport') }}</a-tag>
+            <a-tag v-else-if="record.source === OrderSource.DIRECT" color="blue" :bordered="false" class="source-tag">{{ $t('scm.order.sourceDirect') }}</a-tag>
             <div v-if="record.externalNo" class="sub-text">{{ $t('scm.order.externalNoValue', { no: record.externalNo }) }}</div>
           </template>
           <template v-else-if="column.key === 'partner'">

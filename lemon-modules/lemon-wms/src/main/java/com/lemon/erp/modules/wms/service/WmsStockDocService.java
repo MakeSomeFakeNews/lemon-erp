@@ -104,7 +104,7 @@ public class WmsStockDocService {
     }
 
     private WmsStockDoc insert(StockBizType kind, StockDocRequest req, String sourceNo) {
-        List<WmsStockDocItem> items = toItems(kind, req.items());
+        List<WmsStockDocItem> items = toItems(kind, req.warehouseId(), req.items());
         validator.validate(kind, req.bizType(), req.warehouseId(), req.toWarehouseId(), items, false);
         LoginUser user = SecurityUtils.getLoginUser();
         WmsStockDoc doc = new WmsStockDoc();
@@ -134,7 +134,7 @@ public class WmsStockDocService {
         if (draft.getSourceNo() == null) {
             StockDocRules.checkManualType(kind, req.bizType());
         }
-        List<WmsStockDocItem> items = toItems(kind, req.items());
+        List<WmsStockDocItem> items = toItems(kind, req.warehouseId(), req.items());
         validator.validate(kind, req.bizType(), req.warehouseId(), req.toWarehouseId(), items, false);
         docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate()
                 .set(WmsStockDoc::getBizType, kind == TRANSFER ? null : req.bizType())
@@ -279,11 +279,12 @@ public class WmsStockDocService {
         return doc;
     }
 
-    /** 请求明细转为实体，统一库位、批次、序列号的表示方式；与单据种类无关的字段清空 */
-    private static List<WmsStockDocItem> toItems(StockBizType kind, List<StockDocItemRequest> requests) {
+    /** 请求明细转为实体，统一库位、批次、序列号的表示方式；与单据种类无关的字段清空，明细仓库与表头相同时不保存 */
+    private static List<WmsStockDocItem> toItems(StockBizType kind, Long warehouseId, List<StockDocItemRequest> requests) {
         return requests.stream().map(r -> {
             WmsStockDocItem item = new WmsStockDocItem();
             item.setMaterialId(r.materialId());
+            item.setWarehouseId(kind == TRANSFER || r.warehouseId() == null || r.warehouseId().equals(warehouseId) ? null : r.warehouseId());
             item.setLocationId(locationOrNone(r.locationId()));
             item.setToLocationId(kind == TRANSFER ? locationOrNone(r.toLocationId()) : NO_LOCATION);
             item.setBatchNo(batchOrNone(r.batchNo()));

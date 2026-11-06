@@ -27,7 +27,8 @@
         <if test="q.docNo != null and q.docNo != ''">AND d.doc_no LIKE CONCAT('%', #{q.docNo}, '%')</if>
         <if test="q.bizType != null and q.bizType != ''">AND d.biz_type = #{q.bizType}</if>
         <if test="q.ioCategory != null and q.ioCategory != ''">AND d.io_category = #{q.ioCategory}</if>
-        <if test="q.warehouseId != null">AND (d.warehouse_id = #{q.warehouseId} OR d.to_warehouse_id = #{q.warehouseId})</if>
+        <if test="q.warehouseId != null">AND (d.warehouse_id = #{q.warehouseId} OR d.to_warehouse_id = #{q.warehouseId}
+            OR EXISTS (SELECT 1 FROM wms_stock_doc_item wi WHERE wi.doc_id = d.id AND wi.warehouse_id = #{q.warehouseId}))</if>
         <if test="q.status != null and q.status != ''">AND d.status = #{q.status}</if>
         <if test="q.beginDate != null">AND d.biz_date &gt;= #{q.beginDate}</if>
         <if test="q.endDate != null">AND d.biz_date &lt;= #{q.endDate}</if>

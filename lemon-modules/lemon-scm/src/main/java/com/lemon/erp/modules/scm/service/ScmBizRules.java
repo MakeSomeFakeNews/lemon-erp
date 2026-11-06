@@ -6,6 +6,7 @@ import com.lemon.erp.modules.scm.model.CreditControl;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 供应链的业务参数（模块、名称、说明为消息键）
@@ -21,6 +22,10 @@ public class ScmBizRules implements BizRuleProvider {
     public static final String SALES_OVER_RATE = "scm.salesOut.overRate";
     /** 信用额度控制方式 */
     public static final String CREDIT_CONTROL = "scm.credit.control";
+    /** 销售出库、采购入库（及退货）可以不选订单直接开单，系统生成隐式订单（来源 DIRECT） */
+    public static final String DIRECT_DOC = "scm.directDoc.enabled";
+    /** 销售出库的明细行可以各自选择仓库 */
+    public static final String SALES_OUT_LINE_WAREHOUSE = "scm.salesOut.lineWarehouse";
 
     @Override
     public List<BizRule> rules() {
@@ -30,6 +35,14 @@ public class ScmBizRules implements BizRuleProvider {
                 BizRule.number(SALES_OVER_RATE, MODULE, "scm.label.salesOverDeliveryRate", 0, 0, 100,
                         "scm.label.ratioWhichSalesDeliveryQuantityMay"),
                 BizRule.select(CREDIT_CONTROL, MODULE, "scm.label.customerCreditLimitControl", CreditControl.ALL, CreditControl.class,
-                        "scm.label.customersCreditLimitWhetherApprovingSales"));
+                        "scm.label.customersCreditLimitWhetherApprovingSales"),
+                BizRule.bool(DIRECT_DOC, MODULE, "scm.label.directDocEnabled", true, "scm.label.directDocEnabledRemark"),
+                BizRule.bool(SALES_OUT_LINE_WAREHOUSE, MODULE, "scm.label.salesOutLineWarehouse", true,
+                        "scm.label.salesOutLineWarehouseRemark"));
+    }
+
+    @Override
+    public Set<String> publicKeys() {
+        return Set.of(DIRECT_DOC, SALES_OUT_LINE_WAREHOUSE);
     }
 }

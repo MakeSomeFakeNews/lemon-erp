@@ -30,6 +30,8 @@ final class SysFeatureCatalog {
         CHANNEL,
         /** 销售提成 */
         COMMISSION,
+        /** 进销存报表 */
+        JXC_REPORT,
         /** 库存 */
         INVENTORY,
         /** 仓储作业 */
@@ -106,9 +108,10 @@ final class SysFeatureCatalog {
             f(Key.SOURCING, "system.label.sourcing", "system.label.supplyChain", "system.label.rfqsPriceComparisonTenderingPurchaseContracts", List.of(904L), Key.PURCHASE),
             f(Key.SUPPLIER_PORTAL, "system.label.supplierPortal", "system.label.supplyChain", "system.label.suppliersConfirmOrdersShipReconcileBid", List.of(13L), Key.PURCHASE),
             f(Key.SALES, "system.label.sales", "system.label.supplyChain", "system.label.quotationsPriceListsSalesOrdersDelivery",
-                    List.of(269L, 270L, 143L, 271L, 315L, 144L, 145L, 146L, 272L), Key.INVENTORY),
+                    List.of(269L, 270L, 365L, 143L, 271L, 315L, 144L, 145L, 146L, 272L), Key.INVENTORY),
             f(Key.CHANNEL, "system.label.channelDistribution", "system.label.supplyChain", "system.label.promotionsRebatesChannelInventoryConsignmentSettlement", List.of(312L, 313L, 314L, 287L, 14L), Key.SALES),
             f(Key.COMMISSION, "system.label.salesCommission", "system.label.supplyChain", "system.label.calculateSalespersonCommissionSalesGrossProfit", List.of(344L), Key.SALES),
+            f(Key.JXC_REPORT, "system.label.jxcReport", "system.label.supplyChain", "system.label.jxcReportDesc", List.of(966L), Key.SALES, Key.PURCHASE),
             // 仓储
             f(Key.INVENTORY, "system.label.inventory", "system.label.warehousing", "system.label.inboundOutboundTransfersStockCountsAssembly", List.of(911L, 912L)),
             f(Key.WAREHOUSE_OPS, "system.label.warehouseOperations", "system.label.warehousing", "system.label.stockReservationFreezingMobilePdaScanning", List.of(913L, 15L), Key.INVENTORY),
@@ -147,10 +150,10 @@ final class SysFeatureCatalog {
                             Key.QUALITY, Key.GL, Key.ARAP, Key.FUND, Key.ASSET, Key.COST, Key.BUDGET, Key.HR, Key.PAYROLL,
                             Key.BI, Key.SCREEN)),
             new Industry("TRADING", "system.label.tradingWholesale", "system.label.mainlyPurchasingWarehousingDistributionWithoutProduction",
-                    names(Key.PURCHASE, Key.SOURCING, Key.SALES, Key.CHANNEL, Key.COMMISSION, Key.INVENTORY,
+                    names(Key.PURCHASE, Key.SOURCING, Key.SALES, Key.CHANNEL, Key.COMMISSION, Key.JXC_REPORT, Key.INVENTORY,
                             Key.WAREHOUSE_OPS, Key.GL, Key.ARAP, Key.FUND, Key.BUDGET, Key.CRM, Key.BI, Key.SCREEN)),
             new Industry("RETAIL", "system.label.eCommerceRetail", "system.label.mainlyMultiChannelOrdersWarehousingShipping",
-                    names(Key.PURCHASE, Key.SALES, Key.CHANNEL, Key.INVENTORY, Key.WAREHOUSE_OPS, Key.GL, Key.ARAP, Key.FUND,
+                    names(Key.PURCHASE, Key.SALES, Key.CHANNEL, Key.JXC_REPORT, Key.INVENTORY, Key.WAREHOUSE_OPS, Key.GL, Key.ARAP, Key.FUND,
                             Key.BI, Key.SCREEN)),
             new Industry("PROJECT", "system.label.engineeringProjects", "system.label.constructionInstallationSystemIntegrationOtherProject",
                     names(Key.PURCHASE, Key.SALES, Key.INVENTORY, Key.PROJECT, Key.CRM, Key.GL, Key.ARAP, Key.FUND,

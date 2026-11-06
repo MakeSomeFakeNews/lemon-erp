@@ -35,6 +35,11 @@ public class ScmCustomer extends BaseEntity {
     /** 客户等级，字典 scm_customer_level */
     private String level;
 
+    /** 价格等级：开单默认价取物料的价格列，0 零售价，1-8 批发价1-8 */
+    @Min(value = 0, message = "{scm.valid.priceLevelInvalid}")
+    @Max(value = 8, message = "{scm.valid.priceLevelInvalid}")
+    private Integer priceLevel;
+
     @Size(max = 64, message = "{scm.valid.contactCannotExceedCharacters}")
     private String contact;
 

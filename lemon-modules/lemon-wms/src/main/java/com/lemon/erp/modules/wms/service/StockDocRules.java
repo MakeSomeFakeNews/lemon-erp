@@ -149,15 +149,15 @@ public final class StockDocRules {
         }
     }
 
-    /** 明细对应的库存变动：入库增加、出库减少，调拨先从调出库位减少再在调入库位增加 */
+    /** 明细对应的库存变动：入库增加、出库减少（仓库取明细仓库，为空取表头仓库），调拨先从调出库位减少再在调入库位增加 */
     public static List<StockChange> toChanges(StockBizType kind, WmsStockDoc doc, List<WmsStockDocItem> items) {
         List<StockChange> changes = new ArrayList<>();
         for (WmsStockDocItem item : items) {
             List<String> serials = splitSerials(item.getSerialNos());
             switch (kind) {
-                case IN -> changes.add(new StockChange(doc.getWarehouseId(), item.getLocationId(), item.getMaterialId(),
+                case IN -> changes.add(new StockChange(item.warehouseOr(doc.getWarehouseId()), item.getLocationId(), item.getMaterialId(),
                         item.getBatchNo(), item.getQty(), serials, item.getProductionDate(), item.getExpiryDate()));
-                case OUT -> changes.add(StockChange.of(doc.getWarehouseId(), item.getLocationId(), item.getMaterialId(),
+                case OUT -> changes.add(StockChange.of(item.warehouseOr(doc.getWarehouseId()), item.getLocationId(), item.getMaterialId(),
                         item.getBatchNo(), item.getQty().negate(), serials));
                 case TRANSFER -> {
                     changes.add(StockChange.of(doc.getWarehouseId(), item.getLocationId(), item.getMaterialId(),

@@ -15,6 +15,7 @@
 
     <a-spin :spinning="loading">
       <template v-if="detail">
+        <a-alert v-if="detail.source === OrderSource.DIRECT" type="info" show-icon class="direct-alert" :message="$t('scm.order.directHint')" />
         <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="doc-desc">
           <a-descriptions-item :label="$t('scm.order.orderNo')">
             {{ detail.orderNo }}
@@ -205,7 +206,7 @@ import { formatQty } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney, netQty } from './scm'
 import { materialColumns, printDocs } from '@/utils/print'
 
-import { OrderStatus } from '@/constants/enums'
+import { OrderSource, OrderStatus } from '@/constants/enums'
 /**
  * 订单详情：明细执行进度、入库 / 出库与退货记录，按状态提供审核、撤回、反审核、关闭、入库 / 出库、退货等操作。
  * 触发 edit(order)、trade(tradeKind, order)、changed
@@ -370,6 +371,8 @@ const actions = computed(() => {
   const k = props.kind
   const [doTrade, returnTrade] = conf.value.trades
   const list = []
+  // 直接开单生成的订单只能退货（及查看），不能反审核、关闭、变更、发货通知
+  const direct = d.source === OrderSource.DIRECT
   if (d.status === OrderStatus.DRAFT) {
     if (can(`${k}:edit`)) list.push({ key: 'edit', label: t('common.action.edit'), icon: EditOutlined, run: () => emit('edit', d) })
     if (can(`${k}:approve`))
@@ -392,7 +395,7 @@ const actions = computed(() => {
       run: () => confirmAction(t('scm.order.withdrawTitle'), t('scm.order.withdrawContent'), withdrawOrder, t('scm.order.withdrawn'))
     })
   }
-  if (d.status === OrderStatus.APPROVED && can(`${k}:approve`)) {
+  if (!direct && d.status === OrderStatus.APPROVED && can(`${k}:approve`)) {
     list.push({
       key: 'unapprove',
       label: t('common.action.unaudit'),
@@ -400,7 +403,7 @@ const actions = computed(() => {
       run: () => confirmAction(t('scm.order.unapproveTitle'), t('scm.order.unapproveContent'), unapproveOrder, t('scm.order.unapproved'))
     })
   }
-  if ([OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(d.status) && can(`${k}:close`)) {
+  if (!direct && [OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(d.status) && can(`${k}:close`)) {
     list.push({
       key: 'close',
       label: t('common.action.close'),
@@ -414,7 +417,7 @@ const actions = computed(() => {
         )
     })
   }
-  if ([OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(d.status) && can(`${k}:change`)) {
+  if (!direct && [OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(d.status) && can(`${k}:change`)) {
     list.push({ key: 'change', label: t('scm.order.change'), icon: DiffOutlined, run: () => (changeOpen.value = true) })
   }
   if ([OrderStatus.PARTIAL, OrderStatus.COMPLETED, OrderStatus.CLOSED].includes(d.status) && can(`${returnTrade}:add`)) {
@@ -429,7 +432,7 @@ const actions = computed(() => {
       run: () => emit('trade', doTrade, d)
     })
   }
-  if (k === 'sales' && [OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(d.status) && can('delivery:add')) {
+  if (!direct && k === 'sales' && [OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(d.status) && can('delivery:add')) {
     list.push({
       key: 'delivery',
       label: t('scm.order.tabDelivery'),
@@ -469,6 +472,9 @@ defineExpose({ reload: load })
 }
 .salesman-select {
   width: 200px;
+}
+.direct-alert {
+  margin-bottom: 12px;
 }
 .doc-desc {
   margin-bottom: 16px;

@@ -86,6 +86,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { listBizRules, saveBizRules } from '@/api/system/customField'
+import { clearBizRules } from '@/composables/useBizRules'
 import { useUserStore } from '@/store/user'
 
 import { SettingType } from '@/constants/enums'
@@ -158,6 +159,7 @@ async function save() {
   saving.value = true
   try {
     await saveBizRules(data)
+    clearBizRules()
     message.success(t('common.msg.saved'))
     load()
   } finally {

@@ -33,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -115,9 +116,39 @@ public class ScmOrderService {
     /** @param promote 应用促销和返利抵扣（销售订单） */
     @Transactional
     public Long createDraft(OrderKind kind, OrderRequest req, OrderSource source, boolean promote) {
+        return insertDraft(kind, req, source, promote, source == OrderSource.MANUAL, null).getId();
+    }
+
+    /**
+     * 直接开单：生成隐式订单（来源 DIRECT）并直接审核（不走审批），在出入库单的事务中执行。
+     * 出库 / 入库时与手工订单一样校验限价；销售出库应用折扣、满减促销（买赠的赠品不会随单出库，不应用），按业务参数校验信用额度。
+     * 退货的隐式订单视为已全部出入库，只用于回写退货数量
+     *
+     * @param salesmanId 销售业务员，为空时取客户负责人，没有时为制单人
+     * @param returns    是否退货
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public ScmOrder createDirect(OrderKind kind, OrderRequest req, Long salesmanId, boolean returns) {
+        ScmOrder order = insertDraft(kind, req, OrderSource.DIRECT, kind == OrderKind.SALES && !returns, !returns, salesmanId);
+        if (kind == OrderKind.SALES && !returns) {
+            creditChecker.checkOnApprove(order);
+        }
+        approveDirect(order.getId());
+        if (returns) {
+            itemMapper.markAllDone(order.getId());
+            refreshStatus(order.getId());
+        }
+        return orderMapper.selectById(order.getId());
+    }
+
+    private ScmOrder insertDraft(OrderKind kind, OrderRequest req, OrderSource source, boolean promote, boolean checkPrice,
+                                 Long salesmanId) {
         List<ScmOrderItem> items = assembler.toItems(kind, req);
         pricing.applyContract(kind, req, items, null);
         ScmPromotionService.Applied applied = promote ? pricing.promote(req, items, null) : null;
+        if (applied != null && source == OrderSource.DIRECT) {
+            applied = applied.withoutGifts();
+        }
         if (applied != null) {
             items = applied.items();
         }
@@ -130,10 +161,10 @@ public class ScmOrderService {
         order.setVersion(1);
         order.setDeptId(user.deptId());
         if (kind == OrderKind.SALES) {
-            order.setSalesmanId(assembler.salesmanOf(req.partnerId(), user.userId()));
+            order.setSalesmanId(salesmanId != null ? salesmanId : assembler.salesmanOf(req.partnerId(), user.userId()));
         }
         assembler.fillHeader(order, req, items);
-        if (source == OrderSource.MANUAL) {
+        if (checkPrice) {
             pricing.checkPriceLimit(kind, items, order.getExchangeRate());
         }
         if (applied != null) {
@@ -145,7 +176,7 @@ public class ScmOrderService {
         if (applied != null) {
             pricing.saveUsages(order.getId(), applied);
         }
-        return order.getId();
+        return order;
     }
 
     /** 修改销售订单的业务员（影响之后计算的销售提成） */
@@ -263,6 +294,7 @@ public class ScmOrderService {
     @Transactional
     public void unapprove(OrderKind kind, Long id) {
         ScmOrder order = getAccessible(kind, id);
+        checkNotDirect(order);
         if (orderMapper.unapprove(id) == 0) {
             throw new BizException("scm.error.orderHasReceiptsDeliveriesNotApproved");
         }
@@ -274,6 +306,7 @@ public class ScmOrderService {
     @Transactional
     public void close(OrderKind kind, Long id) {
         ScmOrder order = getAccessible(kind, id);
+        checkNotDirect(order);
         if (!order.getStatus().isExecutable()) {
             throw new BizException("scm.error.onlyApprovedPartiallyCompletedOrdersClosed");
         }
@@ -324,6 +357,13 @@ public class ScmOrderService {
     }
 
     // ---------------------------------------------------------------- 供入库 / 出库使用
+
+    /** 直接开单生成的隐式订单随出入库单生成，不能反审核、关闭、变更、预留或发货通知，错误通过退货冲回 */
+    public static void checkNotDirect(ScmOrder order) {
+        if (order.getSource() == OrderSource.DIRECT) {
+            throw new BizException("scm.error.directOrderReadOnly", order.getOrderNo());
+        }
+    }
 
     /** 在数据权限范围内的订单 */
     ScmOrder getAccessible(OrderKind kind, Long id) {

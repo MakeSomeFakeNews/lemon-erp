@@ -166,9 +166,12 @@ const showFooter = computed(
   () => !!detail.value && ((detail.value.status === WmsDocStatus.DRAFT && (canEdit.value || canConfirm.value)) || showReceive.value || showReverse.value)
 )
 
+/** 明细带仓库（如销售出库从多个仓库出库）时显示仓库列 */
+const lineWarehouse = computed(() => (detail.value?.items || []).some((i) => i.warehouseId))
 const columns = computed(() =>
   [
     { title: t('wms.common.material'), key: 'material', width: 240 },
+    lineWarehouse.value ? { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 130 } : null,
     { title: props.kind === 'transfer' ? t('wms.doc.fromLocation') : t('wms.common.location'), key: 'location', width: 120 },
     props.kind === 'transfer' ? { title: t('wms.doc.toLocation'), key: 'toLocation', width: 120 } : null,
     { title: t('wms.common.batch'), key: 'batchNo', width: 180 },
@@ -203,6 +206,7 @@ function print() {
     // 明细列的 id 是打印模板匹配用的原名称
     columns: [
       ...materialColumns(),
+      ...(lineWarehouse.value ? [{ id: '仓库', title: t('wms.common.warehouse'), key: 'warehouseName' }] : []), // i18n-ignore
       { id: transfer ? '调出库位' : '库位', title: transfer ? t('wms.doc.fromLocation') : t('wms.common.location'), value: (r) => locationText(r.locationCode) }, // i18n-ignore
       ...(transfer ? [{ id: '调入库位', title: t('wms.doc.toLocation'), value: (r) => locationText(r.toLocationCode) }] : []), // i18n-ignore
       { id: '批次', title: t('wms.common.batch'), key: 'batchNo' }, // i18n-ignore
