@@ -5,8 +5,8 @@
 <h1 align="center">柠檬ERP · Lemon ERP</h1>
 
 <p align="center">
-  <b>让企业经营像柠檬一样清新高效</b><br />
-  开源 ERP 系统：进销存、生产、仓储、质量、财务、人力、客户、项目、商务智能与 AI，一套系统全部打通
+  <b>真正 100% 开源、无功能限制的 ERP 系统</b><br />
+  让企业经营像柠檬一样清新高效：进销存、生产、仓储、质量、财务、人力、客户、项目、商务智能与 AI，一套系统全部打通
 </p>
 
 <p align="center">
@@ -34,13 +34,13 @@
 
 ## 项目简介
 
-柠檬ERP（Lemon ERP）是一套面向中小制造、商贸企业的**全功能开源 ERP 系统**，前后端分离，开箱即用；既可以直接作为企业的 ERP 软件使用，也适合作为 Java 企业级项目二次开发的基础。
+柠檬ERP（Lemon ERP）是一套面向中小制造、商贸企业的**真正 100% 开源、无功能限制的全功能 ERP 系统**，前后端分离，开箱即用；既可以直接作为企业的 ERP 软件使用，也适合作为 Java 企业级项目二次开发的基础。
 
 - **业务全覆盖**：13 大模块、150+ 功能页面，从请购到收款、从 BOM 到完工入库、从凭证到报表，一套系统闭环
 - **单据自动联动**：出入库自动更新库存、生成应收应付，业务单据一键生成会计凭证，账实一致
 - **多端使用**：电脑浏览器、微信小程序、手机 / PDA 扫码作业、数据大屏投屏，支持中英文界面
 - **技术栈新**：Spring Boot 4 + Vue 3 + Ant Design Vue 4，Gradle 多模块、单向依赖，代码结构清晰
-- **完全开源**：Apache-2.0 协议，个人与企业均可免费商用
+- **真正 100% 开源**：全部功能、全部源码开放，没有商业版、没有隐藏模块、没有授权码，个人与企业均可免费商用
 
 > 如果这个项目对你有帮助，请点一下右上角的 **Star**，这是对我们最大的鼓励！
 
@@ -410,20 +410,26 @@ lemon-erp
 
 也欢迎在 [Issues](https://github.com/MakeSomeFakeNews/lemon-erp/issues) 中反馈问题和建议，或提交 Pull Request 一起完善。
 
-## 开源协议
+## 真正 100% 开源
 
-- 本系统 **100% 开源**，遵守 [Apache-2.0](LICENSE) 协议，个人与企业均可免费商用
-- 使用时请保留原作者版权声明与许可证文件
-- 如果觉得柠檬ERP 不错，请点一个 **Star**，也欢迎推荐给身边做生意、办工厂、做软件的朋友
+柠檬ERP 不是「开源版 + 商业版」的模式，演示环境和文档中看到的全部功能，都在本仓库中完整开源：
+
+- **全部功能开源**：供应链、仓储、生产、质量、财务、人力、客户、项目、商务智能、AI，没有任何模块收费或闭源
+- **没有功能限制**：没有授权码和激活，系统本身不限制用户数、租户数和单据量，也没有隐藏的高级功能
+- **免费商用**：遵守 [Apache-2.0](LICENSE) 协议，个人与企业都可以免费使用、修改、二次开发和商业部署，使用时保留原作者版权声明与许可证文件即可
+- **文档同样开放**：200 多页 [用户手册](https://makesomefakenews.github.io/lemon-erp-website/manual/guide/) 和 [开发文档](https://makesomefakenews.github.io/lemon-erp-website/dev/start/)、Docker 一键部署脚本全部公开
+
+如果觉得柠檬ERP 不错，请点一个 **Star**，也欢迎推荐给身边做生意、办工厂、做软件的朋友。
 
 ## English
 
-**Lemon ERP** is a full-featured, open-source **ERP system** for small and medium-sized manufacturers and distributors, built with **Spring Boot 4 + Vue 3 + Ant Design Vue 4**. It covers purchasing, sales, inventory and warehouse management (**WMS**), manufacturing execution (**MES**: BOM, MRP, work orders, shop-floor reporting), quality management (**QMS**), accounting and finance, **CRM**, human resources (**HRM**, payroll, attendance), project management, business intelligence (**BI**) and **AI** assistants. Documents flow between modules automatically: stock movements update inventory and generate receivables/payables, and business documents generate accounting vouchers.
+**Lemon ERP** is a truly 100% open-source, full-featured **ERP system** with no paid edition and no feature restrictions, for small and medium-sized manufacturers and distributors, built with **Spring Boot 4 + Vue 3 + Ant Design Vue 4**. It covers purchasing, sales, inventory and warehouse management (**WMS**), manufacturing execution (**MES**: BOM, MRP, work orders, shop-floor reporting), quality management (**QMS**), accounting and finance, **CRM**, human resources (**HRM**, payroll, attendance), project management, business intelligence (**BI**) and **AI** assistants. Documents flow between modules automatically: stock movements update inventory and generate receivables/payables, and business documents generate accounting vouchers.
 
 - Visual approval workflow (Flowable), SaaS multi-tenancy, menu / button / API permissions and department-level data permissions
 - AI assistants with DeepSeek, Qwen, GLM, Kimi or Doubao: natural-language data queries, document recognition, data cleansing and business reports
 - WeChat mini program, mobile / PDA barcode scanning, data screens, DingTalk / WeCom / Feishu login and notifications
-- Chinese and English UI, demo mode, Docker one-click deployment; Apache-2.0 licensed, free for commercial use
+- Chinese and English UI, demo mode, Docker one-click deployment
+- Every feature and every line of source code is open: no paid edition, no hidden modules, no license keys; Apache-2.0 licensed, free for commercial use
 
 Online demo: https://erp.dqq.me (tenant「柠檬科技」, `admin` / `admin123`) · Documentation: https://makesomefakenews.github.io/lemon-erp-website/ · Contact: zmissu@163.com
 
