@@ -794,7 +794,9 @@ export default {
       },
       breakdown: 'Material ¥{m}, labor ¥{l}, overhead ¥{o}',
       returnAdjust: 'Product cost reduced by ¥{v}',
-      returnAdjustStock: '¥{v} from inventory, the rest relates to products already shipped'
+      returnAdjustStock: '¥{v} from inventory, the rest relates to products already shipped',
+      estimated: 'Approx.',
+      estimatedTip: 'Finished before real-time inventory costing was enabled: the cost was backfilled from the product stock flow at that time (all treated as material) and is approximate'
     },
     closed: 'Closed',
     scheduleConfirm: 'Schedule work order {no}?',

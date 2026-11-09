@@ -141,7 +141,7 @@
             <div v-if="record.available != null" class="sub-text">{{ $t('wms.common.availableN', { n: formatQty(record.available) }) }}</div>
           </template>
           <template v-else-if="column.key === 'costPrice'">
-            <a-input-number v-model:value="record.costPrice" :min="0" :max="999999999999" class="full" :placeholder="$t('wms.doc.costPricePh')" />
+            <a-input-number v-model:value="record.costPrice" :min="0" :max="999999999999" :precision="4" class="full" :placeholder="$t('wms.doc.costPricePh')" />
           </template>
           <template v-else-if="column.key === 'serialNos'">
             <SerialInput
@@ -184,6 +184,7 @@ import { addDoc, getDoc, updateDoc } from '@/api/wms/doc'
 import { unitCosts } from '@/api/wms/stock'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
+import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { DOC_KINDS, availableQty, docTypeOptions, fillPutaway, formatQty, ioCategoryDict, locationText, rowKey, today } from './wms'
 
@@ -197,6 +198,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['success'])
 const { t } = useI18n()
+const userStore = useUserStore()
 
 const conf = computed(() => DOC_KINDS[props.kind])
 const dict = useDict('wms_in_type', 'wms_out_type', 'wms_in_category', 'wms_out_category')
@@ -355,9 +357,9 @@ function applyMaterial(row, material) {
   if (material.batchEnabled !== 1) Object.assign(row, { batchNo: undefined, productionDate: null, expiryDate: null })
   if (material.serialEnabled !== 1) row.serialNos = undefined
   applyDefaultLocation(row)
-  // 成本价默认当前均价（可修改）
-  if (showCost.value) {
-    row.costPrice = null
+  // 成本价默认当前均价（可修改）；均价只给有「查看成本金额」权限的人，其他人不填时按确认时的均价
+  if (showCost.value) row.costPrice = null
+  if (showCost.value && userStore.hasPerm('wms:stock:cost')) {
     unitCosts([material.id]).then((m) => {
       if (row.materialId === material.id && row.costPrice == null && m[material.id] != null) row.costPrice = Number(m[material.id])
     })

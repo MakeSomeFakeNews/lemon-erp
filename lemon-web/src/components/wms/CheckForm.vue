@@ -107,6 +107,7 @@
               v-model:value="record.costPrice"
               :min="0"
               :max="999999999999"
+              :precision="4"
               :placeholder="record.avgCost == null ? $t('wms.checkDoc.costPriceDefault') : $t('wms.checkDoc.costPricePh', { v: price(record.avgCost) })"
               class="full"
             />
@@ -273,7 +274,8 @@ function applyMaterial(row, m) {
     avgCost: null
   })
   if (m.batchEnabled !== 1) row.batchNo = undefined
-  if (showCost.value) {
+  // 当前均价只给有「查看成本金额」权限的人，其他人不填时按确认时的均价
+  if (userStore.hasPerm('wms:stock:cost')) {
     unitCosts([m.id]).then((costs) => {
       if (row.materialId === m.id && costs[m.id] != null) row.avgCost = Number(costs[m.id])
     })

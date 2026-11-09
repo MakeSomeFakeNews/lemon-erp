@@ -139,7 +139,7 @@
       {{ $t('scm.trade.promoTotal', { amount: formatMoney(promo.discountAmount) }) }}
     </div>
     <WholeDiscountBar v-if="direct && form.items.length" v-model:value="form.wholeDiscount" :total="discountBase" />
-    <PriceReference ref="referenceRef" @pick="pickPrice" />
+    <PriceReference ref="referenceRef" pickable @pick="pickPrice" />
   </div>
 </template>
 

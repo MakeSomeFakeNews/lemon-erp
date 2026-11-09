@@ -82,13 +82,16 @@ public class FinOffsetService {
 
     /** 修改（待复核） */
     public void update(Long id, OffsetRequests.Save req) {
-        detail(id);
+        FinOffset old = detail(id);
         validate(req);
+        // 经办人不填时与新增一致：保留原经办人，原来也没有时为当前用户
+        Long handlerId = req.handlerId() != null ? req.handlerId()
+                : old.getHandlerId() != null ? old.getHandlerId() : SecurityUtils.getUserIdOrNull();
         int n = offsetMapper.update(Wrappers.<FinOffset>lambdaUpdate()
                 .set(FinOffset::getKind, req.kind())
                 .set(FinOffset::getPartnerId, req.partnerId())
                 .set(FinOffset::getOffsetDate, req.offsetDate())
-                .set(FinOffset::getHandlerId, req.handlerId())
+                .set(FinOffset::getHandlerId, handlerId)
                 .set(FinOffset::getItem, req.item())
                 .set(FinOffset::getAmount, req.amount())
                 .set(FinOffset::getBeginDate, req.beginDate())
