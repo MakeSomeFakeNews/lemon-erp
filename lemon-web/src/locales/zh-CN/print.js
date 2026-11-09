@@ -26,6 +26,7 @@ export default {
     bizDate: '业务日期',
     wmsDocNo: '仓库单据',
     originalCurrency: '原币',
+    wholeDiscount: '整单优惠',
     location: '库位',
     batch: '批次',
     serialNo: '序列号',

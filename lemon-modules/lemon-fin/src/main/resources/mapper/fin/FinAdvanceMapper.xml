@@ -38,8 +38,9 @@
     </select>
 
     <update id="addUsed">
-        UPDATE fin_advance SET used_amount = used_amount + #{amount}, update_time = NOW()
+        UPDATE fin_advance SET used_amount = used_amount + #{amount}, used_fc = used_fc + #{fc}, update_time = NOW()
         WHERE id = #{id} AND used_amount + #{amount} &lt;= amount AND used_amount + #{amount} &gt;= 0
+          AND used_fc + #{fc} &lt;= amount_fc
     </update>
 
     <select id="sumUnused" resultType="java.math.BigDecimal">

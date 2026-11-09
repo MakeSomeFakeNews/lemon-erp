@@ -2,6 +2,7 @@ import { reactive } from 'vue'
 import { getInfo } from '@/api/auth'
 import { getToken, removeToken } from '@/utils/auth'
 import { clearDict } from './dict'
+import { clearBizRules } from './bizRules'
 
 const ALL_PERMISSION = '*:*:*'
 
@@ -38,6 +39,7 @@ export async function loadUser() {
 export function resetUser() {
   removeToken()
   clearDict()
+  clearBizRules()
   Object.assign(userState, { loaded: false, user: null, roles: [], perms: [], tenantName: null })
 }
 

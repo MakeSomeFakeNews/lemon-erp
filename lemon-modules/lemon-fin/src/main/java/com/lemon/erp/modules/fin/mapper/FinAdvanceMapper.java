@@ -19,8 +19,8 @@ public interface FinAdvanceMapper extends BaseMapper<FinAdvance> {
 
     List<FinAdvanceApply> selectApplies(@Param("advanceId") Long advanceId);
 
-    /** 冲抵：已冲抵累计不超过金额；返回 0 表示超出 */
-    int addUsed(@Param("id") Long id, @Param("amount") BigDecimal amount);
+    /** 冲抵：已冲抵累计（本位币、原币）不超过金额；返回 0 表示超出 */
+    int addUsed(@Param("id") Long id, @Param("amount") BigDecimal amount, @Param("fc") BigDecimal fc);
 
     /** 往来单位未冲抵的预收 / 预付余额 */
     BigDecimal sumUnused(@Param("kind") SettleKind kind, @Param("partnerId") Long partnerId);

@@ -56,4 +56,41 @@
         LIMIT #{q.limit}
     </select>
 
+    <!-- 供商 / 客户对比（没有「全部数据」权限时）：按看得到的销售出库 / 采购入库计算，口径同价格记忆（scm_price_memory）：
+         单价大于 0 的行，最新价取业务日期最晚的单据（同日取后确认的）的最后一行，最低 / 最高价日期取最早出现的日期。
+         数据权限条件加在子查询的 scm_trade_doc 上 -->
+    <select id="selectTradeCompare" resultType="com.lemon.erp.modules.scm.dto.PricingViews$MemoryRow">
+        SELECT p.id AS partner_id, p.code AS partner_code, p.name AS partner_name, g.last_date, g.last_price,
+               g.min_date, g.min_price, g.max_date, g.max_price
+        FROM (
+            SELECT x.partner_id,
+                   MAX(CASE WHEN x.rn_last = 1 THEN x.biz_date END) AS last_date,
+                   MAX(CASE WHEN x.rn_last = 1 THEN x.price END) AS last_price,
+                   MAX(CASE WHEN x.rn_min = 1 THEN x.biz_date END) AS min_date,
+                   MIN(x.price) AS min_price,
+                   MAX(CASE WHEN x.rn_max = 1 THEN x.biz_date END) AS max_date,
+                   MAX(x.price) AS max_price
+            FROM (
+                SELECT d.partner_id, d.biz_date, i.price,
+                       ROW_NUMBER() OVER (PARTITION BY d.partner_id ORDER BY d.biz_date DESC, d.id DESC, i.id DESC) AS rn_last,
+                       ROW_NUMBER() OVER (PARTITION BY d.partner_id ORDER BY i.price, d.biz_date, d.id) AS rn_min,
+                       ROW_NUMBER() OVER (PARTITION BY d.partner_id ORDER BY i.price DESC, d.biz_date, d.id) AS rn_max
+                FROM scm_trade_doc_item i
+                JOIN scm_trade_doc d ON d.id = i.doc_id
+                WHERE d.kind = #{kind} AND i.material_id = #{q.materialId} AND i.price &gt; 0
+            ) x
+            GROUP BY x.partner_id
+        ) g
+        <choose>
+            <when test="sales">JOIN scm_customer p ON p.id = g.partner_id</when>
+            <otherwise>JOIN scm_supplier p ON p.id = g.partner_id</otherwise>
+        </choose>
+        WHERE 1 = 1
+        <include refid="partnerFilter"/>
+        <if test="q.start != null">AND g.last_date &gt;= #{q.start}</if>
+        <if test="q.end != null">AND g.last_date &lt;= #{q.end}</if>
+        ORDER BY g.last_date DESC, p.id DESC
+        LIMIT #{q.limit}
+    </select>
+
 </mapper>

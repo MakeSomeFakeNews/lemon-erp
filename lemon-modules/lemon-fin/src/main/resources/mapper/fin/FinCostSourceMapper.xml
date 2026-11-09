@@ -54,6 +54,16 @@
         GROUP BY i.material_id, d.kind
     </select>
 
+    <!-- 采购订单关闭的尾差调整：按应付调整单的日期归属期间，不含税金额按订单明细记录的本位币金额 -->
+    <select id="selectPurchaseAdjusts" resultType="java.util.Map">
+        SELECT i.material_id AS "materialId", SUM(i.close_adjust_net) AS "net"
+        FROM fin_bill b
+        JOIN scm_order_item i ON i.order_id = b.source_id AND i.close_adjust_net &lt;&gt; 0
+        WHERE b.source_type = 'ORDER_ADJUST' AND b.kind = 'AP'
+          AND b.bill_date &gt;= #{begin} AND b.bill_date &lt;= #{end}
+        GROUP BY i.material_id
+    </select>
+
     <!-- 委外收货核销的用料：委外件、子件、数量 -->
     <select id="selectOutsourceConsumption" resultType="java.util.Map">
         SELECT product_id AS "productId", material_id AS "materialId", SUM(qty) AS "qty"

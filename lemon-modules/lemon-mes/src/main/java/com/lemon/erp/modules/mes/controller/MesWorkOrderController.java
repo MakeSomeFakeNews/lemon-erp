@@ -5,6 +5,7 @@ import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.mes.dto.ReportRequest;
+import com.lemon.erp.modules.mes.dto.WoCloseCostView;
 import com.lemon.erp.modules.mes.dto.WoDocRequest;
 import com.lemon.erp.modules.mes.dto.WorkOrderQuery;
 import com.lemon.erp.modules.mes.dto.WorkOrderRequest;
@@ -82,6 +83,13 @@ public class MesWorkOrderController {
     public R<Void> release(@PathVariable Long id) {
         workOrderService.release(id);
         return R.ok();
+    }
+
+    /** 关闭前预览尚未转入产品的实时成本（追加到已完工产品 / 在制品损失） */
+    @GetMapping("/{id}/close-cost")
+    @PreAuthorize("@ss.hasPerm('mes:wo:release')")
+    public R<WoCloseCostView> closeCost(@PathVariable Long id) {
+        return R.ok(workOrderService.closeCost(id));
     }
 
     @PostMapping("/{id}/close")

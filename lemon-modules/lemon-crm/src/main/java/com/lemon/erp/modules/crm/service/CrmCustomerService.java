@@ -91,6 +91,7 @@ public class CrmCustomerService {
         scmCustomerService.create(sc);
         LoginUser user = SecurityUtils.getLoginUser();
         CrmCustomer x = newExt(sc.getId(), req);
+        x.setRegion(scmCustomerService.normalizeRegion(x.getRegion(), null));
         x.setOwnerId(user.userId());
         x.setDeptId(user.deptId());
         x.setClaimTime(LocalDateTime.now());
@@ -116,6 +117,7 @@ public class CrmCustomerService {
         scmCustomerService.update(customerId, sc);
         CrmCustomer x = ensure(customerId);
         CrmCustomer ext = newExt(customerId, req);
+        ext.setRegion(scmCustomerService.normalizeRegion(ext.getRegion(), c.getRegion()));
         customerMapper.update(Wrappers.<CrmCustomer>lambdaUpdate()
                 .set(CrmCustomer::getIndustry, ext.getIndustry())
                 .set(CrmCustomer::getSource, ext.getSource())

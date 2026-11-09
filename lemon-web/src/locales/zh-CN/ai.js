@@ -280,6 +280,7 @@ export default {
       deliveryDate: '交货日期',
       warehouse: '仓库',
       currency: '币种',
+      wholeDiscount: '整单优惠',
       totalAmount: '合计金额',
       remark: '备注',
       items: '明细',

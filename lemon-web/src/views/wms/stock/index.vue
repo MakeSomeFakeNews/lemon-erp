@@ -37,6 +37,10 @@
           {{ $t('wms.stock.lowOnly') }}
         </a-checkbox>
         <a-checkbox v-model:checked="query.showZero" class="toolbar-check" @change="search">{{ $t('wms.stock.showZero') }}</a-checkbox>
+        <span v-if="total" class="toolbar-total">
+          {{ $t('wms.stock.totalQty', { n: formatQty(total.qty) }) }}
+          <template v-if="canCost && total.amount != null">{{ $t('wms.stock.totalAmount', { n: money(total.amount) }) }}</template>
+        </span>
       </TableToolbar>
 
       <a-table
@@ -46,7 +50,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: mode === 'detail' ? 1250 : 900, y: '100%' }"
+        :scroll="{ x: mode === 'detail' ? 1470 + (canCost ? 240 : 0) : 1090 + (canCost ? 240 : 0), y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -79,10 +83,17 @@
             <span :class="{ low: isLow(record) }">{{ formatQty(record.qty) }}</span>
             <a-tag v-if="isLow(record)" color="red" :bordered="false" class="low-tag">{{ $t('wms.stock.low') }}</a-tag>
           </template>
+          <template v-else-if="column.key === 'unitCost'">{{ record.unitCost == null ? '-' : price(record.unitCost) }}</template>
+          <template v-else-if="column.key === 'amount'">{{ record.amount == null ? '-' : money(record.amount) }}</template>
           <template v-else-if="column.key === 'action'">
-            <a-button v-if="record.serialEnabled === 1" type="link" size="small" @click="showSerials(record)">
-              <template #icon><BarcodeOutlined /></template>{{ $t('wms.common.serialNo') }}
-            </a-button>
+            <span class="table-actions">
+              <a-button type="link" size="small" @click="showHistory(record)">
+                <template #icon><HistoryOutlined /></template>{{ $t('wms.history.action') }}
+              </a-button>
+              <a-button v-if="record.serialEnabled === 1" type="link" size="small" @click="showSerials(record)">
+                <template #icon><BarcodeOutlined /></template>{{ $t('wms.common.serialNo') }}
+              </a-button>
+            </span>
           </template>
         </template>
       </a-table>
@@ -96,29 +107,42 @@
         </div>
       </a-spin>
     </a-modal>
+
+    <StockHistory ref="historyRef" />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { BarcodeOutlined } from '@ant-design/icons-vue'
+import { BarcodeOutlined, HistoryOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import LocationSelect from '@/components/wms/LocationSelect.vue'
+import StockHistory from '@/components/wms/StockHistory.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
-import { availableSerials, pageStock, pageStockSummary } from '@/api/wms/stock'
+import { availableSerials, pageStock, pageStockSummary, stockTotal } from '@/api/wms/stock'
 import { expiryStatus, formatQty, locationText } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
+import { money, price } from '@/utils/number'
+import { useUserStore } from '@/store/user'
 
 const { t } = useI18n()
 
 const dict = useDict('wms_material_category')
+/** 查看成本金额：均价、库存金额（实时移动加权平均，供应商寄售仓不计价） */
+const canCost = useUserStore().hasPerm('wms:stock:cost')
+const COST_COLUMNS = canCost
+  ? [
+      { title: t('wms.stock.unitCost'), key: 'unitCost', width: 110, align: 'right' },
+      { title: t('wms.stock.amount'), key: 'amount', width: 130, align: 'right' }
+    ]
+  : []
 
 const DETAIL_COLUMNS = [
   { title: t('wms.common.material'), key: 'material', width: 200 },
@@ -129,9 +153,10 @@ const DETAIL_COLUMNS = [
   { title: t('common.field.quantity'), key: 'qty', width: 110, align: 'right' },
   { title: t('wms.stock.frozen'), key: 'frozenQty', width: 90, align: 'right' },
   { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
+  ...COST_COLUMNS,
   { title: t('wms.common.productionDate'), dataIndex: 'productionDate', width: 110 },
   { title: t('wms.common.expiryDate'), key: 'expiryDate', width: 190 },
-  { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
 ]
 const SUMMARY_COLUMNS = [
   { title: t('wms.common.material'), key: 'material', width: 220 },
@@ -140,7 +165,9 @@ const SUMMARY_COLUMNS = [
   { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
   { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 120, align: 'right' },
   { title: t('wms.stock.qty'), key: 'qty', width: 200, align: 'right' },
-  { title: t('wms.stock.frozen'), key: 'frozenQty', width: 100, align: 'right' }
+  { title: t('wms.stock.frozen'), key: 'frozenQty', width: 100, align: 'right' },
+  ...COST_COLUMNS,
+  { title: t('common.action.operation'), key: 'action', width: 120, fixed: 'right' }
 ]
 
 const route = useRoute()
@@ -175,6 +202,14 @@ const { list, loading, size, pagination, load, search, onTableChange, exportAll 
   }
 )
 
+// 合计（全部页）：列表刷新后按相同条件查询
+const total = ref(null)
+watch(list, async () => {
+  const { locationId, batchNo, lowStock, ...rest } = query
+  const summary = mode.value !== 'detail'
+  total.value = await stockTotal(summary ? { ...rest, lowStock, summary } : { ...rest, locationId, batchNo })
+})
+
 function resetQuery() {
   Object.assign(query, emptyQuery())
   search()
@@ -182,7 +217,19 @@ function resetQuery() {
 
 function switchMode() {
   list.value = []
+  total.value = null
   search()
+}
+
+// 经营历史：库存明细带出所在仓库
+const historyRef = ref()
+function showHistory(record) {
+  historyRef.value.open({
+    materialId: record.materialId,
+    materialCode: record.materialCode,
+    materialName: record.materialName,
+    warehouseId: mode.value === 'detail' ? record.warehouseId : undefined
+  })
 }
 
 onMounted(() => {
@@ -227,6 +274,11 @@ async function showSerials(record) {
 .toolbar-check {
   align-self: center;
   margin-left: 8px;
+}
+.toolbar-total {
+  align-self: center;
+  margin-left: 12px;
+  color: var(--app-text-2);
 }
 .low {
   color: #ff4d4f;

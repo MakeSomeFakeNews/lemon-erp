@@ -38,7 +38,7 @@
                    SUM(CASE WHEN b.due_date &lt; #{d90} THEN b.amount - COALESCE(st.settled, 0) ELSE 0 END) AS over90
             FROM fin_bill b
             <!-- 截至查询日期的核销金额：之后的收付款不扣减，查历史日期的账龄也准确 -->
-            LEFT JOIN (SELECT si.bill_id, SUM(si.amount) AS settled
+            LEFT JOIN (SELECT si.bill_id, SUM(si.amount + si.discount) AS settled
                        FROM fin_settlement_item si JOIN fin_settlement s ON s.id = si.settlement_id
                        WHERE s.settle_date &lt;= #{asOf} AND s.status = 'APPROVED'
                        GROUP BY si.bill_id) st ON st.bill_id = b.id
@@ -64,6 +64,10 @@
         WHERE currency &lt;&gt; 'CNY' AND amount_fc &lt;&gt; settled_fc AND bill_date &lt;= #{asOf}
     </select>
 
+    <update id="addDiscount">
+        UPDATE fin_bill SET discount_amount = discount_amount + #{amount}, update_time = NOW() WHERE id = #{id}
+    </update>
+
     <update id="addBadDebt">
         UPDATE fin_bill SET bad_debt_amount = bad_debt_amount + #{amount}, update_time = NOW() WHERE id = #{id}
     </update>
@@ -84,6 +88,14 @@
           AND ((amount &gt;= 0 AND settled_amount + #{amount} &gt;= 0 AND settled_amount + #{amount} &lt;= amount)
             OR (amount &lt; 0 AND settled_amount + #{amount} &lt;= 0 AND settled_amount + #{amount} &gt;= amount))
     </update>
+
+    <select id="selectOrderAdjustByCategory" resultType="java.util.Map">
+        SELECT m.category AS "category", SUM(i.close_adjust_net) AS "net"
+        FROM scm_order_item i
+        JOIN wms_material m ON m.id = i.material_id
+        WHERE i.order_id = #{orderId} AND i.close_adjust_net &lt;&gt; 0
+        GROUP BY m.category
+    </select>
 
     <select id="selectSourceByCategory" resultType="java.util.Map">
         SELECT m.category AS "category", SUM(i.amount - i.tax_amount) AS "net", SUM(i.tax_amount) AS "tax"

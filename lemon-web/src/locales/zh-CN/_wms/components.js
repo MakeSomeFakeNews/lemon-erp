@@ -1,6 +1,7 @@
 /** 仓库管理公共组件（components/wms）与模块通用词 */
 export default {
   common: {
+    multiWarehouse: '多仓（{n}）',
     material: '物料',
     location: '库位',
     warehouse: '仓库',
@@ -32,6 +33,10 @@ export default {
     selectWarehouseFirst: '请先选择仓库'
   },
   doc: {
+    costPrice: '成本价',
+    costPricePh: '默认当前均价',
+    zeroCostTitle: '成本价为 0',
+    zeroCostContent: '有 {n} 行成本价为 0，将按零成本入库（如赠品）。确定保存吗？',
     kind: {
       in: '入库单',
       inType: '入库类型',
@@ -156,7 +161,14 @@ export default {
     confirmTitle: '确认盘点？',
     confirmContent: '将以当前库存为账面数量计算差异，盘盈入库、盘亏出库，库存调整为实盘数量。确认后不能修改。',
     submittedApproval: '已提交盘点差异审批，审批通过后调整库存',
-    confirmed: '盘点已确认，库存已调整'
+    confirmed: '盘点已确认，库存已调整',
+    costPrice: '盘盈成本价',
+    costPriceTip: '盘盈按填写的成本价入库，不填按确认时的当前均价；盘亏按当前均价出库',
+    costPricePh: '均价 {v}',
+    costPriceDefault: '默认当前均价',
+    avgCostTag: '均价 {v}',
+    diffAmount: '差异金额',
+    diffAmountEstimated: '按当前均价估算，确认时以实际计价为准'
   },
   picker: {
     title: '选择库存',

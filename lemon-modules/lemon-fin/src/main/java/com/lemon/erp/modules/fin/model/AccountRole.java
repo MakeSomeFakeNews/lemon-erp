@@ -45,6 +45,14 @@ public enum AccountRole {
     FINANCE_EXPENSE("fin.label.revenueExpenses", "fin.label.financialExpensesFeesDiscountsFxGains", "6603"),
     NON_OPERATING_INCOME("fin.label.revenueExpenses", "fin.label.nonOperatingIncome", "6301"),
     NON_OPERATING_EXPENSE("fin.label.revenueExpenses", "fin.label.nonOperatingExpenses", "6711"),
+    /** 收款折让 / 抹零：借 该科目（默认财务费用，可改为销售费用、主营业务收入的折让明细科目等） */
+    RECEIPT_DISCOUNT("fin.label.revenueExpenses", "fin.label.receiptDiscount", "6603"),
+    /** 付款折让 / 抹零：贷 该科目（默认财务费用） */
+    PAYMENT_DISCOUNT("fin.label.revenueExpenses", "fin.label.paymentDiscount", "6603"),
+    /** 应收冲账（垫付运费、销售返利、三包赔偿等抵扣客户欠款）：借 该科目 / 贷 应收账款，冲账单上可另选科目 */
+    OFFSET_AR("fin.label.revenueExpenses", "fin.label.offsetArAccount", "6601"),
+    /** 应付冲账（供应商返利、赔偿等抵扣欠供应商的款）：借 应付账款 / 贷 该科目（默认冲减主营业务成本），冲账单上可另选科目 */
+    OFFSET_AP("fin.label.revenueExpenses", "fin.label.offsetApAccount", "6401"),
 
     INPUT_VAT("fin.label.taxes", "fin.label.inputVat", "222101"),
     OUTPUT_VAT("fin.label.taxes", "fin.label.outputVat", "222102"),

@@ -70,6 +70,9 @@ public class StockDocValidator {
         WmsWarehouse warehouse = refs.warehouse(warehouseId, kind == TRANSFER ? "wms.label.sourceWarehouse" : "wms.label.warehouse", kind == IN);
         WmsWarehouse toWarehouse = kind == TRANSFER ? refs.warehouse(toWarehouseId, "wms.label.destinationWarehouse") : null;
         StockDocRules.checkConsignWarehouse(kind, bizType, warehouse.getType());
+        if (toWarehouse != null) {
+            StockDocRules.checkConsignTransfer(warehouse, toWarehouse);
+        }
         Map<Long, WmsMaterial> materials = refs.materials(items.stream().map(WmsStockDocItem::getMaterialId).toList(), kind == IN);
         Map<Long, WmsLocation> locations = refs.locations(items.stream()
                 .flatMap(i -> Stream.of(i.getLocationId(), i.getToLocationId())).toList());

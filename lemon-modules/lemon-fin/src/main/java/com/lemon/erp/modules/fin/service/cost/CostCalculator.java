@@ -224,7 +224,9 @@ public final class CostCalculator {
         if (consumed.signum() != 0) {
             outsourceConsumedAmount.put(m, consumed);
         }
-        c.setPurchaseAmount(money(pin.amount().subtract(pret.amount())).add(consumed));
+        // 采购订单关闭的尾差调整（应付调整单）计入采购金额，与总账存货一致
+        BigDecimal adjust = src.getPurchaseAdjust().getOrDefault(m, BigDecimal.ZERO);
+        c.setPurchaseAmount(money(pin.amount().subtract(pret.amount())).add(consumed).add(adjust));
         c.setMakeQty(make);
         c.setMakeAmount(makeAmount);
         // 其他出入库 = 库存流水合计 - 已归类的业务
@@ -241,7 +243,7 @@ public final class CostCalculator {
         if (method == CostMethod.WEIGHTED) {
             valueWeighted(c, m, baseQty, baseAmount);
         } else {
-            valueSequenced(c, m, method, baseAmount, consumed);
+            valueSequenced(c, m, method, baseAmount, consumed, adjust);
         }
         if (isEmpty(c)) {
             return;
@@ -272,7 +274,8 @@ public final class CostCalculator {
      * 移动加权平均、先进先出：按业务发生顺序逐笔计价，得到期末结存金额和其他入库金额；
      * 本期出库总成本 = 期初 + 采购 + 生产 + 其他入库 − 期末结存，领用、销售、其他出库按数量分摊（出库单价为本期出库的平均单价）
      */
-    private void valueSequenced(FinMaterialCost c, Long m, CostMethod method, BigDecimal baseAmount, BigDecimal consumed) {
+    private void valueSequenced(FinMaterialCost c, Long m, CostMethod method, BigDecimal baseAmount, BigDecimal consumed,
+                                BigDecimal purchaseAdjust) {
         Valuation v = method == CostMethod.FIFO ? new FifoValuation(openingLayers(m, c), lastUnitCost(m))
                 : new MovingValuation(c.getOpenQty(), c.getOpenAmount(), lastUnitCost(m));
         List<CostEvent> list = src.getEvents().getOrDefault(m, List.of());
@@ -317,6 +320,10 @@ public final class CostCalculator {
         // 尾差（分摊委外子件成本的四舍五入）计入最后结存
         if (consumedLeft.signum() != 0 && purchaseQty.signum() > 0) {
             v.adjust(consumedLeft);
+        }
+        // 采购尾差调整计入期末结存；期末没有结存时随出库成本转出（outValue 按含调整的采购金额计算）
+        if (purchaseAdjust.signum() != 0 && c.getCloseQty().signum() > 0) {
+            v.adjust(purchaseAdjust);
         }
         BigDecimal closeAmount = v.closeAmount();
         c.setOtherInAmount(money(otherIn));

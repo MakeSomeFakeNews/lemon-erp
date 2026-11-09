@@ -35,6 +35,9 @@ public interface FinBillMapper extends BaseMapper<FinBill> {
     /** 截至日期的外币单据未核销余额（期末调汇） */
     java.util.List<FxRevaluation.OpenBill> selectOpenForeign(@Param("asOf") java.time.LocalDate asOf);
 
+    /** 累加收付款折让金额 */
+    int addDiscount(@Param("id") Long id, @Param("amount") BigDecimal amount);
+
     /** 累加坏账核销金额 */
     int addBadDebt(@Param("id") Long id, @Param("amount") BigDecimal amount);
 
@@ -46,6 +49,9 @@ public interface FinBillMapper extends BaseMapper<FinBill> {
      *
      * @return [{category, net, tax}]
      */
+    /** 订单关闭尾差调整的不含税金额（本位币）按物料分类汇总：[{category, net}]，合计等于调整单的不含税金额 */
+    List<Map<String, Object>> selectOrderAdjustByCategory(@Param("orderId") Long orderId);
+
     List<Map<String, Object>> selectSourceByCategory(@Param("tradeDocId") Long tradeDocId);
 
     /** 往来单位未核销金额合计 */

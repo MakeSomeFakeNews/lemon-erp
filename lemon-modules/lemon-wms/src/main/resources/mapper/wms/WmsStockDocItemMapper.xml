@@ -4,7 +4,7 @@
 
     <select id="selectByDocId" resultType="com.lemon.erp.modules.wms.entity.WmsStockDocItem">
         SELECT i.id, i.doc_id, i.material_id, i.warehouse_id, w.name AS warehouse_name, i.location_id, i.to_location_id, i.batch_no, i.production_date, i.expiry_date,
-               i.qty, i.serial_nos, i.remark, m.code AS material_code, m.name AS material_name, m.spec, m.unit,
+               i.qty, i.cost_price, i.biz_price, i.serial_nos, i.remark, m.code AS material_code, m.name AS material_name, m.spec, m.unit,
                m.batch_enabled, m.serial_enabled, l.code AS location_code, tl.code AS to_location_code
         FROM wms_stock_doc_item i
         JOIN wms_stock_doc d ON d.id = i.doc_id
@@ -18,11 +18,15 @@
 
     <insert id="insertBatch">
         INSERT INTO wms_stock_doc_item (doc_id, material_id, warehouse_id, location_id, to_location_id, batch_no, production_date,
-                                        expiry_date, qty, serial_nos, remark, create_time, update_time) VALUES
+                                        expiry_date, qty, cost_price, biz_price, serial_nos, remark, create_time, update_time) VALUES
         <foreach collection="list" item="i" separator=",">
             (#{i.docId}, #{i.materialId}, #{i.warehouseId}, #{i.locationId}, #{i.toLocationId}, #{i.batchNo}, #{i.productionDate},
-             #{i.expiryDate}, #{i.qty}, #{i.serialNos}, #{i.remark}, NOW(), NOW())
+             #{i.expiryDate}, #{i.qty}, #{i.costPrice}, #{i.bizPrice}, #{i.serialNos}, #{i.remark}, NOW(), NOW())
         </foreach>
     </insert>
+
+    <update id="updateCostPrice">
+        UPDATE wms_stock_doc_item SET cost_price = #{costPrice} WHERE doc_id = #{docId} AND material_id = #{materialId}
+    </update>
 
 </mapper>

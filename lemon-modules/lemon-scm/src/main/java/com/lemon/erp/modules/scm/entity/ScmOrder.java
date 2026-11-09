@@ -77,6 +77,12 @@ public class ScmOrder extends BaseEntity {
     /** 使用返利抵扣的金额 */
     private BigDecimal rebateAmount;
 
+    /** 整单优惠（含税，含抹零）：按行金额分摊到各行，已从金额中扣除 */
+    private BigDecimal wholeDiscount;
+
+    /** 关闭时的尾差调整合计（订单币种）：部分出入库的行按 行金额 × 已出入库数量 / 订单数量 调整，生成应收 / 应付调整单 */
+    private BigDecimal closeAdjust;
+
     /** 外部单号（电商 / 门店订单导入） */
     private String externalNo;
 

@@ -17,6 +17,7 @@ public class ScmFlowBusinesses {
     public FlowBusiness purchaseOrderFlow() {
         return FlowBusiness.of("scm_purchase_order", "scm.label.purchaseOrderApproval",
                 number("amount", "scm.label.orderAmount"),
+                number("wholeDiscount", "scm.label.flowWholeDiscount"),
                 text("orderNo", "scm.label.orderNo"));
     }
 
@@ -33,6 +34,7 @@ public class ScmFlowBusinesses {
     public FlowBusiness salesOrderFlow() {
         return FlowBusiness.of("scm_sales_order", "scm.label.salesOrderApproval",
                 number("amount", "scm.label.orderAmount"),
+                number("wholeDiscount", "scm.label.flowWholeDiscount"),
                 text("orderNo", "scm.label.orderNo"));
     }
 
@@ -47,6 +49,8 @@ public class ScmFlowBusinesses {
         return FlowBusiness.of("scm_quotation", "scm.label.salesQuotationApproval",
                 number("totalAmount", "scm.label.quotationAmount"),
                 number("discountRate", "scm.label.lowestDiscountRateEGMeans"),
+                number("wholeDiscount", "scm.label.flowWholeDiscount"),
+                number("wholeDiscountRate", "scm.label.flowWholeDiscountRate"),
                 text("quoteNo", "scm.label.quotationNo"));
     }
 
@@ -55,6 +59,8 @@ public class ScmFlowBusinesses {
         return FlowBusiness.of("scm_order_change", "scm.label.orderChangeApproval",
                 select("kind", "scm.label.orderType", OrderKind.values()),
                 number("amountDelta", "scm.label.changeAmountDifferencePositiveIncrease"),
+                number("wholeDiscount", "scm.label.flowWholeDiscountAfterChange"),
+                number("wholeDiscountDelta", "scm.label.flowWholeDiscountDelta"),
                 text("orderNo", "scm.label.orderNo"));
     }
 }

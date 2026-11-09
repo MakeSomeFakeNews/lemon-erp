@@ -49,8 +49,9 @@ public class ScmCustomerController {
                                        @RequestParam(required = false) String keyword,
                                        @RequestParam(required = false) String level,
                                        @RequestParam(required = false) EnableStatus status,
-                                       @RequestParam(required = false) SalesChannel channel) {
-        return R.ok(customerService.page(current, size, keyword, level, status, channel));
+                                       @RequestParam(required = false) SalesChannel channel,
+                                       @RequestParam(required = false) String region) {
+        return R.ok(customerService.page(current, size, keyword, level, status, channel, region));
     }
 
     /** 登录即可访问：订单等页面按编码或名称搜索 */

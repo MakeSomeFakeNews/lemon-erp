@@ -35,6 +35,7 @@
             <span :class="negativeClass(detail.totalQty)">{{ formatQty(detail.totalQty) }}</span>
           </a-descriptions-item>
           <a-descriptions-item v-if="detail.sourceNo" :label="$t('wms.common.sourceNo')">{{ detail.sourceNo }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.partnerName" :label="$t('wms.flow.partner')">{{ detail.partnerName }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.redOf" :label="$t('wms.doc.reversedDoc')">{{ detail.redOfNo || detail.redOf }}</a-descriptions-item>
           <a-descriptions-item :label="$t('wms.doc.prepared')">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.confirmTime" :label="$t('wms.doc.confirmed')">
@@ -78,6 +79,7 @@
             <template v-else-if="column.key === 'qty'">
               <span :class="negativeClass(record.qty)">{{ formatQty(record.qty) }}</span> {{ record.unit }}
             </template>
+            <template v-else-if="column.key === 'costPrice'">{{ record.costPrice == null ? '-' : price(record.costPrice) }}</template>
             <template v-else-if="column.key === 'serialNos'">
               <template v-if="record.serialNos">
                 <a-tag v-for="sn in splitSerials(record.serialNos)" :key="sn" class="serial-tag">{{ sn }}</a-tag>
@@ -139,6 +141,7 @@ import { materialColumns, printDocs } from '@/utils/print'
 import { printName } from '@/utils/printTemplates'
 import { useDict } from '@/composables/useDict'
 import { findDict } from '@/utils/dict'
+import { price } from '@/utils/number'
 
 import { WmsDocStatus } from '@/constants/enums'
 /**
@@ -166,6 +169,7 @@ const showFooter = computed(
   () => !!detail.value && ((detail.value.status === WmsDocStatus.DRAFT && (canEdit.value || canConfirm.value)) || showReceive.value || showReverse.value)
 )
 
+const hasCost = computed(() => (detail.value?.items || []).some((i) => i.costPrice != null))
 /** 明细带仓库（如销售出库从多个仓库出库）时显示仓库列 */
 const lineWarehouse = computed(() => (detail.value?.items || []).some((i) => i.warehouseId))
 const columns = computed(() =>
@@ -176,6 +180,8 @@ const columns = computed(() =>
     props.kind === 'transfer' ? { title: t('wms.doc.toLocation'), key: 'toLocation', width: 120 } : null,
     { title: t('wms.common.batch'), key: 'batchNo', width: 180 },
     { title: t('common.field.quantity'), key: 'qty', width: 120, align: 'right' },
+    // 成本价：入库填写或业务单据传入的入库成本（有权限时后端才返回）
+    hasCost.value ? { title: t('wms.doc.costPrice'), key: 'costPrice', width: 110, align: 'right' } : null,
     { title: t('wms.common.serialNo'), key: 'serialNos', width: 260 },
     { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true }
   ].filter(Boolean)

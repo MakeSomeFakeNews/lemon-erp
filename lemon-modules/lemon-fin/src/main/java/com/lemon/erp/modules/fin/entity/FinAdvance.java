@@ -34,10 +34,20 @@ public class FinAdvance extends BaseEntity {
 
     private String method;
 
+    /** 金额（本位币） */
     private BigDecimal amount;
 
-    /** 已冲抵 */
+    /** 已冲抵（本位币） */
     private BigDecimal usedAmount;
+
+    /** 币种、汇率（金额 = 原币金额 × 汇率），原币金额、原币已冲抵；本位币的原币与本位币相同 */
+    private String currency;
+
+    private BigDecimal exchangeRate;
+
+    private BigDecimal amountFc;
+
+    private BigDecimal usedFc;
 
     private Long voucherId;
 

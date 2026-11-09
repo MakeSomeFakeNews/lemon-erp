@@ -58,6 +58,8 @@ public final class CostSource {
     private final Map<Long, StockSums> stock = new HashMap<>();
     /** 物料 → 种类 → 数量、不含税金额 */
     private final Map<Long, Map<TradeKind, QtyAmount>> trade = new HashMap<>();
+    /** 采购订单关闭的尾差调整（不含税、本位币），计入采购金额，不影响数量 */
+    private final Map<Long, BigDecimal> purchaseAdjust = new HashMap<>();
     /** 工单 → 物料 → 领料、退料、完工 */
     private final Map<Long, Map<Long, WoDocQty>> woDocs = new HashMap<>();
     private final Map<Long, WoReport> woReports = new HashMap<>();
@@ -153,6 +155,10 @@ public final class CostSource {
         trade.computeIfAbsent(row.materialId(), k -> new HashMap<>()).put(row.kind(), new QtyAmount(row.qty(), row.net()));
     }
 
+    public void addPurchaseAdjust(Long materialId, BigDecimal net) {
+        purchaseAdjust.merge(materialId, net, BigDecimal::add);
+    }
+
     public void addAssembly(AssemblyRow row) {
         Assembly a = assemblies.computeIfAbsent(row.assemblyNo(), no -> new Assembly(no, row.kind() == AssemblyKind.ASSEMBLE,
                 row.productId(), row.qty(), new LinkedHashMap<>()));
@@ -213,6 +219,7 @@ public final class CostSource {
         all.addAll(openQtyFallback.keySet());
         all.addAll(stock.keySet());
         all.addAll(trade.keySet());
+        all.addAll(purchaseAdjust.keySet());
         workOrders.values().forEach(w -> all.add(w.materialId()));
         woDocs.values().forEach(m -> all.addAll(m.keySet()));
         outsourceConsume.forEach((product, parts) -> {

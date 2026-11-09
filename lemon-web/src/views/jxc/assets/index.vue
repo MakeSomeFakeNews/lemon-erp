@@ -1,13 +1,21 @@
 <template>
   <div class="jxc-assets">
     <div class="page-card header">
-      <div>
-        <div class="sub-text">{{ data.asOf ? $t('jxc.assets.asOf', { date: data.asOf }) : '' }}</div>
+      <div class="header-text">
+        <div class="sub-text">{{ data.asOf ? $t(data.live ? 'jxc.assets.asOf' : 'jxc.assets.asOfPast', { date: data.asOf }) : '' }}</div>
         <div class="sub-text">{{ $t('jxc.assets.tip') }}</div>
+        <a-alert v-if="data.inventoryEstimated" class="estimated" type="warning" show-icon :message="$t('jxc.assets.estimated')" />
+        <a-alert v-if="unvouchered.count" class="estimated" type="info" show-icon
+                 :message="$t('jxc.assets.unvouchered', { n: unvouchered.count, receipt: money(unvouchered.receipt), payment: money(unvouchered.payment) })" />
       </div>
-      <a-button :loading="loading" @click="load">
-        <template #icon><ReloadOutlined /></template>{{ $t('common.action.refresh') }}
-      </a-button>
+      <a-space wrap>
+        <span class="sub-text">{{ $t('jxc.assets.asOfLabel') }}</span>
+        <a-date-picker v-model:value="asOf" value-format="YYYY-MM-DD" :allow-clear="false" :disabled-date="disabledDate"
+                       :presets="presets" @change="load" />
+        <a-button :loading="loading" @click="load">
+          <template #icon><ReloadOutlined /></template>{{ $t('common.action.refresh') }}
+        </a-button>
+      </a-space>
     </div>
 
     <a-spin :spinning="loading">
@@ -70,6 +78,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import dayjs from 'dayjs'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import EChart from '@/components/charts/EChart.vue'
 import { jxcAssets } from '@/api/bi/jxc'
@@ -82,6 +91,13 @@ import { t } from '@/locales'
 const dict = useDict('wms_material_category')
 const data = ref({ funds: [], inventoryByWarehouse: [], inventoryByCategory: [], balances: {}, topReceivables: [], topPayables: [] })
 const loading = ref(false)
+const asOf = ref(dayjs().format('YYYY-MM-DD'))
+const disabledDate = (d) => d.isAfter(dayjs(), 'day')
+const presets = [
+  { label: t('jxc.assets.today'), value: dayjs() },
+  { label: t('jxc.assets.lastMonthEnd'), value: dayjs().subtract(1, 'month').endOf('month') },
+  { label: t('jxc.assets.lastYearEnd'), value: dayjs().subtract(1, 'year').endOf('year') }
+]
 const num = (v) => Number(v || 0)
 
 const kpis = computed(() => {
@@ -93,12 +109,15 @@ const kpis = computed(() => {
     { key: 'inventory', label: t('jxc.assets.inventory'), value: d.inventoryAmount },
     { key: 'ar', label: t('jxc.assets.receivable'), value: b.arBalance,
       extra: num(b.arOverdue) ? t('jxc.assets.overdue', { v: money(b.arOverdue) }) : '' },
+    { key: 'notesIn', label: t('jxc.assets.notesReceivable'), value: b.notesReceivable, optional: true },
     { key: 'prepaid', label: t('jxc.assets.prepaid'), value: b.advancePaid },
     { key: 'ap', label: t('jxc.assets.payable'), value: b.apBalance },
+    { key: 'notesOut', label: t('jxc.assets.notesPayable'), value: b.notesPayable, optional: true },
     { key: 'advance', label: t('jxc.assets.advance'), value: b.advanceReceived },
     { key: 'net', label: t('jxc.assets.netAssets'), value: d.netAssets, main: true, neg: num(d.netAssets) < 0 }
-  ]
+  ].filter((k) => !k.optional || num(k.value) !== 0)
 })
+const unvouchered = computed(() => data.value.unvouchered || {})
 
 const fundColumns = [
   { title: t('jxc.assets.account'), key: 'account', ellipsis: true },
@@ -123,7 +142,7 @@ function pie(list = [], name) {
 async function load() {
   loading.value = true
   try {
-    data.value = await jxcAssets()
+    data.value = await jxcAssets({ asOf: asOf.value })
   } finally {
     loading.value = false
   }
@@ -141,6 +160,13 @@ onMounted(load)
   gap: 12px;
   padding: 12px 16px;
   margin-bottom: 16px;
+}
+.header-text {
+  flex: 1;
+  min-width: 280px;
+}
+.estimated {
+  margin-top: 6px;
 }
 .kpi {
   padding: 14px 16px;

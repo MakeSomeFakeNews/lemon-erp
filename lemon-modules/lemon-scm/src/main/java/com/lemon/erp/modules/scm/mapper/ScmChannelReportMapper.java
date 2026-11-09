@@ -12,9 +12,13 @@ import java.util.List;
 
 public interface ScmChannelReportMapper extends BaseMapper<ScmChannelReport> {
 
-    /** @param customerId 为空时全部经销商 */
+    /**
+     * @param customerId 为空时全部经销商
+     * @param keyword    经销商名称
+     * @param regions    名称包含关键字的区域（字典 scm_region 的值）
+     */
     IPage<ScmChannelReport> selectPageList(IPage<ScmChannelReport> page, @Param("customerId") Long customerId, @Param("period") Integer period,
-                                           @Param("keyword") String keyword);
+                                           @Param("keyword") String keyword, @Param("regions") List<String> regions);
 
     ScmChannelReport selectDetail(@Param("id") Long id);
 

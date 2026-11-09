@@ -20,7 +20,12 @@
         <where>
             <if test="customerId != null">r.customer_id = #{customerId}</if>
             <if test="period != null">AND r.period = #{period}</if>
-            <if test="keyword != null and keyword != ''">AND (c.name LIKE CONCAT('%', #{keyword}, '%') OR c.region LIKE CONCAT('%', #{keyword}, '%'))</if>
+            <if test="keyword != null and keyword != ''">
+                AND (c.name LIKE CONCAT('%', #{keyword}, '%')
+                <if test="regions != null and regions.size() > 0">
+                    OR c.region IN <foreach collection="regions" item="r" open="(" separator="," close=")">#{r}</foreach>
+                </if>)
+            </if>
         </where>
         ORDER BY r.period DESC, c.name
     </select>

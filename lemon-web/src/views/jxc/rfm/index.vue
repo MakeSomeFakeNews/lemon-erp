@@ -3,7 +3,8 @@
     <a-card :bordered="false" class="page-card">
       <div class="filters">
         <a-range-picker v-model:value="range" value-format="YYYY-MM-DD" :allow-clear="false" :presets="presets" @change="load" />
-        <a-input v-model:value="region" allow-clear :placeholder="$t('jxc.common.region')" class="filter-s" @press-enter="load" />
+        <a-select v-model:value="region" :options="toOptions(dict.scm_region)" allow-clear show-search option-filter-prop="label"
+          :placeholder="$t('jxc.common.allRegions')" class="filter-s" @change="load" />
         <a-input v-model:value="keyword" allow-clear :placeholder="$t('jxc.common.customerKeyword')" class="filter" @press-enter="load" />
         <a-button type="primary" :loading="loading" @click="load">{{ $t('common.action.query') }}</a-button>
         <span v-if="data.rows.length" class="sub-text">{{ $t('jxc.rfm.avg', { r: data.avgR, f: data.avgF, m: data.avgM }) }}</span>
@@ -66,6 +67,8 @@ import JxcDetail from '@/components/bi/jxc/JxcDetail.vue'
 import { jxcRfm } from '@/api/bi/jxc'
 import { last12Months, rangePresets } from '@/components/bi/jxc/jxc'
 import { useUserStore } from '@/store/user'
+import { useDict } from '@/composables/useDict'
+import { toOptions } from '@/utils/dict'
 import { money } from '@/utils/number'
 import { writeExcel } from '@/utils/excel'
 import { JxcDimension, RfmSegment } from '@/constants/enums'
@@ -86,7 +89,8 @@ const canDrill = useUserStore().hasPerm('bi:jxc:sales')
 const presets = rangePresets()
 /** RFM 需要一段较长的历史，默认近 12 个月 */
 const range = ref(last12Months())
-const region = ref('')
+const region = ref()
+const dict = useDict('scm_region')
 const keyword = ref('')
 const segment = ref()
 const data = ref({ rows: [], segments: [] })
@@ -106,7 +110,7 @@ const columns = [
 async function load() {
   loading.value = true
   try {
-    const p = { begin: range.value[0], end: range.value[1], region: region.value?.trim() || undefined, keyword: keyword.value?.trim() || undefined }
+    const p = { begin: range.value[0], end: range.value[1], region: region.value || undefined, keyword: keyword.value?.trim() || undefined }
     data.value = await jxcRfm(p)
     segment.value = undefined
   } finally {

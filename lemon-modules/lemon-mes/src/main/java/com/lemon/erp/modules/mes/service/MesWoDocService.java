@@ -6,6 +6,7 @@ import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.WoDocItemRequest;
 import com.lemon.erp.modules.mes.dto.WoDocRequest;
@@ -37,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +77,8 @@ public class MesWoDocService {
     private final MesWoOpMapper woOpMapper;
     private final MesInspectionMapper inspectionMapper;
     private final com.lemon.erp.modules.wms.service.WmsWarehouseService warehouseService;
+    private final MesStockCosts stockCosts;
+    private final PermissionService permissionService;
 
     public PageResult<MesWoDoc> page(long current, long size, Long woId, WoDocKind kind) {
         if (woId != null) {
@@ -82,6 +86,7 @@ public class MesWoDocService {
         }
         Page<MesWoDoc> page = Page.of(current, size);
         docMapper.selectPageList(page, woId, kind);
+        hideCost(page.getRecords());
         return PageResult.of(page);
     }
 
@@ -91,6 +96,7 @@ public class MesWoDocService {
             throw new BizException("mes.error.documentDoesNotExist");
         }
         workOrderService.getAccessible(doc.getWoId());
+        hideCost(List.of(doc));
         doc.setItems(itemMapper.selectByDocId(id));
         return doc;
     }
@@ -159,10 +165,20 @@ public class MesWoDocService {
 
         String docNo = docNoService.next(kind.getPrefix());
         List<MesWoDocItem> items = req.items().stream().map(r -> toItem(kind, r, materials.get(r.materialId()))).toList();
+        // 实时库存成本：完工入库按标准成本或工单实际成本（净领料 + 工费），退料按该工单的领料成本，
+        // 报废入库按填写的成本价（如残值，需要「查看成本金额」权限），其余按当前均价
+        MesStockCosts.FinishCost finishCost = kind == WoDocKind.FINISH ? stockCosts.finishCost(wo, req.bizDate(), total) : null;
+        Map<Long, BigDecimal> costs = switch (kind) {
+            case FINISH -> finishCost.unitCost() == null ? Map.of() : Map.of(wo.getMaterialId(), finishCost.unitCost());
+            case RETURN -> stockCosts.returnUnitCosts(woId);
+            case SCRAP -> scrapCosts(req);
+            default -> Map.of();
+        };
         StockDocRequest stockReq = new StockDocRequest(kind.getStockBizType(), req.warehouseId(), null, req.bizDate(),
                 truncate(req.remark() == null ? "工单 " + wo.getWoNo() : "工单 " + wo.getWoNo() + " " + req.remark()), // i18n-ignore
                 items.stream().map(i -> new StockDocItemRequest(i.getMaterialId(), i.getLocationId(), null, i.getBatchNo(),
-                        i.getProductionDate(), i.getExpiryDate(), i.getQty(), i.getSerialNos(), null)).toList());
+                        i.getProductionDate(), i.getExpiryDate(), i.getQty(), i.getSerialNos(), null)
+                        .withCost(costs.get(i.getMaterialId()), null)).toList());
         WmsStockDoc stockDoc = stockDocService.createConfirmed(kind.getStockKind(), stockReq, docNo);
 
         MesWoDoc doc = new MesWoDoc();
@@ -176,15 +192,52 @@ public class MesWoDocService {
         doc.setWmsDocNo(stockDoc.getDocNo());
         doc.setRemark(req.remark());
         doc.setCreateBy(SecurityUtils.getUserId());
+        if (finishCost != null) {
+            doc.setCostBasis(finishCost.basis());
+            doc.setMaterialCost(finishCost.material() == null ? stockCosts.docAmount(stockDoc.getId()) : finishCost.material());
+            doc.setLaborCost(finishCost.labor());
+            doc.setOverheadCost(finishCost.overhead());
+        }
         docMapper.insert(doc);
         items.forEach(i -> i.setDocId(doc.getId()));
         itemMapper.insertBatch(items);
+        if (kind == WoDocKind.RETURN) {
+            // 完工后退料：冲减已完工产品的成本
+            BigDecimal[] adjust = stockCosts.afterReturn(wo);
+            if (adjust != null) {
+                docMapper.update(Wrappers.<MesWoDoc>lambdaUpdate().set(MesWoDoc::getMaterialCost, adjust[0])
+                        .set(MesWoDoc::getStockCostAdjust, adjust[1]).eq(MesWoDoc::getId, doc.getId()));
+            }
+        }
 
         workOrderService.markStarted(woId);
         if (kind == WoDocKind.FINISH) {
             workOrderService.markCompleted(woId);
         }
         return doc.getId();
+    }
+
+    /** 报废入库填写的成本单价（同一产品多行时取第一行填写的），没有「查看成本金额」权限时忽略 */
+    private Map<Long, BigDecimal> scrapCosts(WoDocRequest req) {
+        if (!permissionService.hasPerm(WmsStockDocService.COST_PERM)) {
+            return Map.of();
+        }
+        Map<Long, BigDecimal> map = new HashMap<>();
+        req.items().stream().filter(i -> i.costPrice() != null).forEach(i -> map.putIfAbsent(i.materialId(), i.costPrice()));
+        return map;
+    }
+
+    /** 没有「查看成本金额」权限时不返回成本 */
+    private List<MesWoDoc> hideCost(List<MesWoDoc> docs) {
+        if (!permissionService.hasPerm(WmsStockDocService.COST_PERM)) {
+            docs.forEach(d -> {
+                d.setMaterialCost(null);
+                d.setLaborCost(null);
+                d.setOverheadCost(null);
+                d.setStockCostAdjust(null);
+            });
+        }
+        return docs;
     }
 
     /**

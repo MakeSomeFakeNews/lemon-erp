@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.bi.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.security.datascope.DataPermission;
@@ -26,7 +27,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * 进销存报表：资产状况（时点）、商品分析（畅销、滞销、积压、缺货、周转）、客户 RFM 分析
+ * 进销存报表：资产状况（截至某日）、商品分析（畅销、滞销、积压、缺货、周转）、客户 RFM 分析
  */
 @Service
 @RequiredArgsConstructor
@@ -47,24 +48,40 @@ public class BiJxcAnalysisService {
     // ---------------------------------------------------------------- 资产状况
 
     /**
-     * 当前的资产状况：资金（现金、银行科目的余额，含未记账凭证）、库存金额（最新成本单价，没有核算时取参考成本价）、
-     * 应收应付余额、预收预付余额。汇总全公司数据，需要「全部数据」的数据权限
+     * 截至某日（含，不传为今天）的资产状况，汇总全公司数据，需要「全部数据」的数据权限：
+     * <ul>
+     *   <li>资金：现金、银行科目截至该日的凭证余额（含未记账凭证，与资金日报一致）</li>
+     *   <li>库存金额：截至该日的库存流水成本累计（以当前库存 × 最新单位成本为基准，减去业务日期在该日之后的流水），
+     *       不含供应商寄售仓；用到升级前回填的近似成本流水时 {@code inventoryEstimated} 为 true</li>
+     *   <li>应收应付：单据日期不晚于该日的单据金额 − 该日（含）之前的核销（收付款核销、折让、预收预付冲抵、坏账，
+     *       退货、冲账单等红字单据直接计入余额）；逾期 = 到期日早于该日</li>
+     *   <li>预收预付：该日之前收付的金额 − 该日之前的冲抵</li>
+     *   <li>应收票据：该日持有的（已收票，未贴现、托收、拒付、背书）；应付票据：已开出未兑付的</li>
+     *   <li>已生效还没有生成凭证的收付款不在资金余额中，单独返回提示</li>
+     * </ul>
+     * 截至今天时与各模块的当前余额一致（业务日期晚于今天的单据不计入）
      */
-    public JxcViews.Assets assets() {
+    public JxcViews.Assets assets(LocalDate asOf) {
         BiDecisionService.requireAllData();
         LocalDate today = LocalDate.now();
+        if (asOf != null && asOf.isAfter(today)) {
+            throw new BizException("bi.error.jxcAsOfAfterToday");
+        }
+        LocalDate date = asOf == null ? today : asOf;
 
-        CashierViews.Daily daily = cashierService.daily(today, today, false);
+        CashierViews.Daily daily = cashierService.daily(date, date, false);
         List<JxcViews.FundRow> funds = daily.rows().stream()
                 .map(r -> new JxcViews.FundRow(r.accountId(), r.code(), r.name(), Decimals.money(r.close()))).toList();
         BigDecimal cash = Decimals.sum(funds.stream().filter(f -> f.code().startsWith(CASH_CODE)).toList(), JxcViews.FundRow::balance);
         BigDecimal bank = Decimals.sum(funds, JxcViews.FundRow::balance).subtract(cash);
 
-        List<JxcViews.InventoryRow> inventory = jxcMapper.selectInventory();
+        List<JxcViews.InventoryRow> inventory = jxcMapper.selectInventory(date);
         Map<String, JxcViews.NameAmount> byWarehouse = new LinkedHashMap<>();
         Map<String, JxcViews.NameAmount> byCategory = new LinkedHashMap<>();
+        boolean estimated = false;
         for (JxcViews.InventoryRow r : inventory) {
             BigDecimal amount = Decimals.money(r.getAmount());
+            estimated |= r.getEstimated() != null && r.getEstimated() > 0;
             String wh = String.valueOf(r.getWarehouseId());
             byWarehouse.merge(wh, new JxcViews.NameAmount(wh, r.getWarehouseName(), amount),
                     (a, b) -> new JxcViews.NameAmount(a.key(), a.name(), a.amount().add(b.amount())));
@@ -77,7 +94,7 @@ public class BiJxcAnalysisService {
         List<JxcViews.NameAmount> categories = byCategory.values().stream().sorted(desc).toList();
         BigDecimal inventoryAmount = Decimals.sum(warehouses, JxcViews.NameAmount::amount);
 
-        JxcViews.Balances b = jxcMapper.selectBalances(today);
+        JxcViews.Balances b = jxcMapper.selectBalances(date);
         if (b == null) {
             b = new JxcViews.Balances();
         }
@@ -86,11 +103,21 @@ public class BiJxcAnalysisService {
         b.setApBalance(Decimals.money(b.getApBalance()));
         b.setAdvanceReceived(Decimals.money(b.getAdvanceReceived()));
         b.setAdvancePaid(Decimals.money(b.getAdvancePaid()));
+        b.setNotesReceivable(Decimals.money(b.getNotesReceivable()));
+        b.setNotesPayable(Decimals.money(b.getNotesPayable()));
+        JxcViews.Unvouchered unvouchered = jxcMapper.selectUnvouchered(date);
+        if (unvouchered == null) {
+            unvouchered = new JxcViews.Unvouchered();
+        }
+        unvouchered.setCount(unvouchered.getCount() == null ? 0L : unvouchered.getCount());
+        unvouchered.setReceipt(Decimals.money(unvouchered.getReceipt()));
+        unvouchered.setPayment(Decimals.money(unvouchered.getPayment()));
 
-        BigDecimal net = cash.add(bank).add(inventoryAmount).add(b.getArBalance()).add(b.getAdvancePaid())
-                .subtract(b.getApBalance()).subtract(b.getAdvanceReceived());
-        return new JxcViews.Assets(today, cash, bank, funds, inventoryAmount, warehouses, categories, b,
-                jxcMapper.selectTopBalances("AR", TOP_BALANCES), jxcMapper.selectTopBalances("AP", TOP_BALANCES), net);
+        BigDecimal net = cash.add(bank).add(inventoryAmount).add(b.getArBalance()).add(b.getNotesReceivable()).add(b.getAdvancePaid())
+                .subtract(b.getApBalance()).subtract(b.getNotesPayable()).subtract(b.getAdvanceReceived());
+        return new JxcViews.Assets(date, date.equals(today), cash, bank, funds, inventoryAmount, estimated, warehouses, categories, b,
+                jxcMapper.selectTopBalances("AR", date, TOP_BALANCES), jxcMapper.selectTopBalances("AP", date, TOP_BALANCES),
+                unvouchered, net);
     }
 
     // ---------------------------------------------------------------- 商品分析

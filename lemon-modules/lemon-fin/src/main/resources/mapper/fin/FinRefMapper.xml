@@ -8,6 +8,7 @@
             WHEN EXISTS (SELECT 1 FROM fin_bill WHERE partner_id = #{id} AND kind = 'AR') THEN '应收单'
             WHEN EXISTS (SELECT 1 FROM fin_invoice WHERE partner_id = #{id} AND kind = 'OUTPUT') THEN '销项发票'
             WHEN EXISTS (SELECT 1 FROM fin_advance WHERE partner_id = #{id} AND kind = 'RECEIPT') THEN '预收款'
+            WHEN EXISTS (SELECT 1 FROM fin_offset WHERE partner_id = #{id} AND kind = 'AR') THEN '冲账单'
         END
     </select>
 
@@ -16,6 +17,7 @@
             WHEN EXISTS (SELECT 1 FROM fin_bill WHERE partner_id = #{id} AND kind = 'AP') THEN '应付单'
             WHEN EXISTS (SELECT 1 FROM fin_invoice WHERE partner_id = #{id} AND kind = 'INPUT') THEN '进项发票'
             WHEN EXISTS (SELECT 1 FROM fin_advance WHERE partner_id = #{id} AND kind = 'PAYMENT') THEN '预付款'
+            WHEN EXISTS (SELECT 1 FROM fin_offset WHERE partner_id = #{id} AND kind = 'AP') THEN '冲账单'
         END
     </select>
 

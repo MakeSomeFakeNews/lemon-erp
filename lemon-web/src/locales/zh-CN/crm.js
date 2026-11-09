@@ -327,7 +327,7 @@ export default {
     name: '客户名称',
     stage: '客户阶段',
     contactPhone: '联系电话',
-    regionPh: '如：上海',
+    regionPh: '请选择地区（字典「客户区域」）',
     assignTitle: '分配客户',
     assignTo: '将选中的 {n} 个客户分配给：',
     assignPh: '不选择则放回公海',

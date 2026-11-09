@@ -1,6 +1,7 @@
 /** 仓库管理公共组件（components/wms）与模块通用词 */
 export default {
   common: {
+    multiWarehouse: 'Multiple ({n})',
     material: 'Material',
     location: 'Location',
     warehouse: 'Warehouse',
@@ -32,6 +33,10 @@ export default {
     selectWarehouseFirst: 'Select a warehouse first'
   },
   doc: {
+    costPrice: 'Cost Price',
+    costPricePh: 'Default: current average',
+    zeroCostTitle: 'Zero cost price',
+    zeroCostContent: '{n} rows have a cost price of 0 and will be received at zero cost (e.g. free goods). Save anyway?',
     kind: {
       in: 'Inbound Order',
       inType: 'Inbound Type',
@@ -156,7 +161,14 @@ export default {
     confirmTitle: 'Confirm the stock count?',
     confirmContent: 'Differences are calculated against the current stock; gains are stocked in, losses issued, and stock is adjusted to the counted quantity. It cannot be modified after confirmation.',
     submittedApproval: 'Count differences submitted for approval; stock will be adjusted after approval',
-    confirmed: 'Count confirmed and stock adjusted'
+    confirmed: 'Count confirmed and stock adjusted',
+    costPrice: 'Surplus Cost',
+    costPriceTip: 'Surplus is received at the entered cost price (current average if blank); shortages are issued at the current average',
+    costPricePh: 'Avg {v}',
+    costPriceDefault: 'Default: current average',
+    avgCostTag: 'Avg {v}',
+    diffAmount: 'Variance Amount',
+    diffAmountEstimated: 'Estimated at the current average; the actual cost is applied on confirmation'
   },
   picker: {
     title: 'Select Stock',

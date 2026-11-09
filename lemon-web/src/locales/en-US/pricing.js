@@ -8,6 +8,7 @@ export default {
     empty: 'No records',
     usePrice: 'Use this price',
     note: 'Prices are tax-inclusive unit prices (base unit, base currency); up to 200 rows per section',
+    compareScope: 'Without the "All data" scope, customer / supplier comparison only counts the stock documents you are allowed to view (and lists only their partners), the same as the quotation, sales and purchase history',
     customer: 'Customer',
     supplier: 'Supplier',
     date: 'Date',
@@ -92,6 +93,19 @@ export default {
     selectMaterial: 'Please select a material',
     inputPrice: 'Please enter the price',
     saved: 'Customer prices saved',
-    empty: 'No customer prices'
+    empty: 'No customer prices',
+    batch: 'Customer prices',
+    importAll: 'Import customer prices',
+    exportAll: 'Export customer prices',
+    importTitle: 'Customer prices',
+    customerCode: 'Customer code',
+    customerName: 'Customer name',
+    materialCode: 'Material code',
+    materialName: 'Material name',
+    spec: 'Spec',
+    unit: 'Unit',
+    taxRateCol: 'Tax rate (%)',
+    exportName: 'Customer prices',
+    exportOneName: 'Customer prices_{name}'
   }
 }

@@ -42,9 +42,11 @@
     </select>
 
     <select id="selectTradeItems" resultType="java.util.Map">
-        SELECT d.order_id AS "orderId", i.order_item_id AS "orderItemId", i.material_id AS "materialId", i.qty AS "qty"
+        SELECT d.order_id AS "orderId", i.order_item_id AS "orderItemId", i.material_id AS "materialId", i.qty AS "qty",
+               d.wms_doc_id AS "wmsDocId", o.order_no AS "orderNo"
         FROM scm_trade_doc_item i
         JOIN scm_trade_doc d ON d.id = i.doc_id
+        LEFT JOIN scm_order o ON o.id = d.order_id
         WHERE d.id = #{docId}
     </select>
 

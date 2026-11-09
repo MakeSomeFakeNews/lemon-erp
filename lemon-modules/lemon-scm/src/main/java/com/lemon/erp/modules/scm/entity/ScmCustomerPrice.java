@@ -27,6 +27,14 @@ public class ScmCustomerPrice extends BaseEntity {
 
     private String remark;
 
+    /** 导出时填写 */
+    @TableField(exist = false)
+    private String customerCode;
+
+    /** 导出时填写 */
+    @TableField(exist = false)
+    private String customerName;
+
     @TableField(exist = false)
     private String materialCode;
 

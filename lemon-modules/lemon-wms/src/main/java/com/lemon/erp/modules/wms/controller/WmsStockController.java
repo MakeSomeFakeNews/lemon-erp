@@ -11,6 +11,8 @@ import com.lemon.erp.modules.wms.dto.SerialLogView;
 import com.lemon.erp.modules.wms.dto.SerialQuery;
 import com.lemon.erp.modules.wms.dto.SerialView;
 import com.lemon.erp.modules.wms.dto.StockFlowView;
+import com.lemon.erp.modules.wms.dto.StockHistoryQuery;
+import com.lemon.erp.modules.wms.dto.StockHistoryView;
 import com.lemon.erp.modules.wms.dto.StockQuery;
 import com.lemon.erp.modules.wms.dto.StockSummaryView;
 import com.lemon.erp.modules.wms.dto.StockView;
@@ -23,7 +25,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 库存查询、库存流水、批次与序列号追踪
@@ -57,6 +61,27 @@ public class WmsStockController {
                                                        @RequestParam(defaultValue = "10") long size,
                                                        StockQuery query) {
         return R.ok(queryService.summaryPage(current, size, query));
+    }
+
+    /** 库存查询的合计（全部页）：{qty, amount}，金额需要「查看成本金额」权限 */
+    @GetMapping("/stock/total")
+    @PreAuthorize("@ss.hasPerm('wms:stock:list')")
+    public R<Map<String, BigDecimal>> stockTotal(@RequestParam(defaultValue = "false") boolean summary, StockQuery query) {
+        return R.ok(queryService.stockTotal(query, summary));
+    }
+
+    /** 物料的当前均价：{物料 ID: 均价}，其他入库录入成本价、盘点单录入盘盈成本价时默认带出 */
+    @GetMapping("/stock/unit-cost")
+    @PreAuthorize("@ss.hasAnyPerm('wms:stock:cost', 'wms:in:add', 'wms:in:edit', 'wms:check:add', 'wms:check:edit')")
+    public R<Map<Long, BigDecimal>> unitCosts(@RequestParam List<Long> materialIds) {
+        return R.ok(queryService.unitCosts(materialIds));
+    }
+
+    /** 经营历史：物料的期初余额与每条流水（单价、金额需要「查看成本金额」权限），可从库存查询、物料资料进入 */
+    @GetMapping("/stock/history")
+    @PreAuthorize("@ss.hasAnyPerm('wms:stock:list', 'wms:material:list')")
+    public R<StockHistoryView> history(StockHistoryQuery query) {
+        return R.ok(queryService.history(query));
     }
 
     /** 收发存汇总 */

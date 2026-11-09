@@ -162,6 +162,12 @@ public class FinVoucherService {
         eventPublisher.publishEvent(new VoucherDeletedEvent(ids));
     }
 
+    /** 凭证状态，凭证不存在时为 null */
+    public VoucherStatus statusOf(Long id) {
+        FinVoucher v = voucherMapper.selectById(id);
+        return v == null ? null : v.getStatus();
+    }
+
     /** 业务单据撤销时删除其生成的凭证（只能是未审核的），不受来源限制 */
     @Transactional
     public void deleteOwned(Long id) {

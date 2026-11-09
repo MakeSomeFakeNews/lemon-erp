@@ -39,7 +39,7 @@ import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 
 /**
  * 外部订单导入（电商 / 门店）：统一格式按行提交（Excel 解析后或接口直接调用），同一外部单号的多行生成一张销售订单草稿（来源「外部导入」），
- * 单价为空时按价目表取价。外部单号已导入过的整单跳过（防重）；其他错误整批不导入
+ * 单价为空时按价目表取价，可带整单优惠（同一外部单号各行相同或只填一行，按行金额分摊）。外部单号已导入过的整单跳过（防重）；其他错误整批不导入
  */
 @Service
 @RequiredArgsConstructor
@@ -141,8 +141,24 @@ public class ScmOrderImportService {
             items.add(new OrderItemRequest(m.getId(), d.qty(), price, taxRate, d.deliveryDate(), d.remark()));
         }
         Long id = orderService.createDraft(OrderKind.SALES, new OrderRequest(customer.getId(), first.orderDate(), first.deliveryDate(), null,
-                "外部单号 " + externalNo, items), OrderSource.IMPORT); // i18n-ignore
+                "外部单号 " + externalNo, items, null, null, null, null, wholeDiscount(rows)), OrderSource.IMPORT); // i18n-ignore
         orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate().set(ScmOrder::getExternalNo, externalNo).eq(ScmOrder::getId, id));
+    }
+
+    /** 整单优惠：同一外部单号的各行相同，或只在其中一行填写 */
+    private static BigDecimal wholeDiscount(List<ImportRow<ChannelRequests.ImportRow>> rows) {
+        BigDecimal discount = null;
+        for (ImportRow<ChannelRequests.ImportRow> r : rows) {
+            BigDecimal d = r.data().wholeDiscount();
+            if (d == null) {
+                continue;
+            }
+            if (discount != null && discount.compareTo(d) != 0) {
+                throw new BizException("scm.error.importWholeDiscountMismatch");
+            }
+            discount = d;
+        }
+        return discount;
     }
 
     private String validate(ChannelRequests.ImportRow data) {

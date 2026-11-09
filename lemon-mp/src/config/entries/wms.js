@@ -1,6 +1,16 @@
 /** 工作台入口（见 index.js）：扫码作业与查询，权限与 Web 端移动作业、对应接口一致 */
 export default [
   {
+    // 快速开单：销售出库直接开单（不引用订单），参数关闭时不显示
+    key: 'wms-quick-sale',
+    group: 'sales',
+    title: 'wms.entry.quickSale',
+    color: '#f5222d',
+    url: '/pkg-wms/sale/index',
+    perm: 'scm:salesOut:add',
+    rule: 'scm.directDoc.enabled'
+  },
+  {
     key: 'wms-stock',
     group: 'warehouse',
     title: 'wms.entry.stock',

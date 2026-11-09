@@ -67,4 +67,8 @@ public class WmsCheck extends BaseEntity {
     /** 明细，仅详情返回 */
     @TableField(exist = false)
     private List<WmsCheckItem> items;
+
+    /** 是否返回了成本价、当前均价、差异金额（有「查看成本金额」或盘点单新增 / 修改权限） */
+    @TableField(exist = false)
+    private Boolean costVisible;
 }

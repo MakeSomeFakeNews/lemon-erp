@@ -36,6 +36,12 @@ public class ScmOrderChange extends BaseEntity {
 
     private BigDecimal newAmount;
 
+    /** 变更前的整单优惠 */
+    private BigDecimal oldWholeDiscount;
+
+    /** 变更后的整单优惠：按变更后的明细重新分摊到未出入库的部分 */
+    private BigDecimal newWholeDiscount;
+
     private String flowInstanceId;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

@@ -41,6 +41,9 @@ public class ScmQuotation extends BaseEntity {
 
     private BigDecimal taxAmount;
 
+    /** 整单优惠（含税，含抹零），已从价税合计中扣除；转销售订单时按行金额分摊到订单各行 */
+    private BigDecimal wholeDiscount;
+
     private String remark;
 
     private String lostReason;

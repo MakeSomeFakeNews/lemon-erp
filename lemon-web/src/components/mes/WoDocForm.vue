@@ -79,6 +79,9 @@
               />
             </a-form-item>
           </template>
+          <template v-else-if="column.key === 'costPrice'">
+            <a-input-number v-model:value="record.costPrice" :min="0" :precision="4" prefix="¥" class="full" />
+          </template>
           <template v-else-if="column.key === 'serialNos'">
             <SerialInput
               v-if="record.serialEnabled === 1"
@@ -115,6 +118,8 @@ import LocationSelect from '@/components/wms/LocationSelect.vue'
 import SerialInput from '@/components/wms/SerialInput.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { addWoDoc, issueSupplement } from '@/api/mes/wo'
+import { unitCosts } from '@/api/wms/stock'
+import { useUserStore } from '@/store/user'
 import { formatQty, rowKey, today } from '@/components/wms/wms'
 import { qty4 } from '@/components/scm/scm'
 
@@ -148,7 +153,10 @@ const title = computed(() => {
   if (props.kind === 'supplement') return props.supplement ? t('mes.woDocForm.supplementTitle', { label, no: props.supplement.suppNo, wo: props.supplement.woNo }) : label
   return props.wo ? t('mes.woDocForm.woTitle', { label, wo: props.wo.woNo }) : label
 })
-const tip = computed(() => KINDS[props.kind].tip)
+const tip = computed(() => (costEditable.value ? `${KINDS[props.kind].tip}${t('mes.woDocForm.costPriceTip')}` : KINDS[props.kind].tip))
+/** 报废入库可填写成本价（如残值，默认产品的当前均价），需要「查看成本金额」权限 */
+const userStore = useUserStore()
+const costEditable = computed(() => props.kind === 'scrap' && userStore.hasPerm('wms:stock:cost'))
 
 const columns = computed(() => [
   { title: props.kind === 'finish' || props.kind === 'scrap' ? t('mes.woDocForm.product') : t('mes.woDocForm.material'), key: 'material', width: 220 },
@@ -160,6 +168,7 @@ const columns = computed(() => [
         { title: t('mes.woDocForm.batchNo'), key: 'batchNo', width: 160 }
       ]),
   { title: t('common.field.quantity'), key: 'qty', width: 150 },
+  ...(costEditable.value ? [{ title: t('mes.woDocForm.costPrice'), key: 'costPrice', width: 140 }] : []),
   { title: t('mes.woDocForm.serialNo'), key: 'serialNos', width: 240 },
   { title: '', key: 'action', width: 80, fixed: 'right' }
 ])
@@ -249,6 +258,10 @@ watch(
       remark: '',
       items: buildRows()
     }
+    if (costEditable.value && form.value.items.length) {
+      const ids = [...new Set(form.value.items.map((i) => i.materialId))]
+      unitCosts(ids).then((costs) => form.value.items.forEach((i) => (i.costPrice ??= costs[i.materialId] == null ? undefined : Number(costs[i.materialId]))))
+    }
   }
 )
 
@@ -281,7 +294,8 @@ async function submit() {
         productionDate: i.productionDate || null,
         expiryDate: i.expiryDate || null,
         qty: i.qty,
-        serialNos: i.serialNos || null
+        serialNos: i.serialNos || null,
+        costPrice: costEditable.value && i.costPrice != null ? i.costPrice : null
       }))
     }
     if (props.kind === 'supplement') {

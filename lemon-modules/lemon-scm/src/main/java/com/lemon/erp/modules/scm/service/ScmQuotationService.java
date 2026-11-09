@@ -119,6 +119,7 @@ public class ScmQuotationService {
                 .set(ScmQuotation::getRemark, q.getRemark())
                 .set(ScmQuotation::getTotalAmount, q.getTotalAmount())
                 .set(ScmQuotation::getTaxAmount, q.getTaxAmount())
+                .set(ScmQuotation::getWholeDiscount, q.getWholeDiscount())
                 .set(ScmQuotation::getUpdateTime, LocalDateTime.now())
                 .eq(ScmQuotation::getId, id).eq(ScmQuotation::getStatus, QuotationStatus.DRAFT));
     }
@@ -141,7 +142,11 @@ public class ScmQuotationService {
         Map<String, Object> vars = new HashMap<>();
         vars.put("quoteNo", q.getQuoteNo());
         vars.put("totalAmount", q.getTotalAmount());
-        vars.put("discountRate", minDiscountRate(id));
+        vars.put("discountRate", minDiscountRate(q));
+        BigDecimal wholeDiscount = Decimals.money(q.getWholeDiscount());
+        vars.put("wholeDiscount", wholeDiscount);
+        BigDecimal gross = q.getTotalAmount().add(wholeDiscount);
+        vars.put("wholeDiscountRate", gross.signum() == 0 ? BigDecimal.ZERO : Decimals.percent(wholeDiscount, gross, 2));
         return approvalSupport.submit(FLOW, id, vars,
                 () -> transit(id, QuotationStatus.DRAFT, QuotationStatus.APPROVED, true),
                 () -> transit(id, QuotationStatus.DRAFT, QuotationStatus.APPROVING, false),
@@ -172,7 +177,7 @@ public class ScmQuotationService {
                 .map(i -> new OrderItemRequest(i.getMaterialId(), i.getQty(), i.getPrice(), i.getTaxRate(), deliveryDate, i.getRemark()))
                 .toList();
         Long orderId = orderService.createDraft(OrderKind.SALES, new OrderRequest(q.getCustomerId(), LocalDate.now(), deliveryDate,
-                warehouseId, "报价单 " + q.getQuoteNo(), lines), OrderSource.QUOTATION); // i18n-ignore
+                warehouseId, "报价单 " + q.getQuoteNo(), lines, null, null, null, null, q.getWholeDiscount()), OrderSource.QUOTATION); // i18n-ignore
         if (!StatusTransitions.tryChange(quotationMapper, ScmQuotation::getId, id, ScmQuotation::getStatus,
                 QuotationStatus.APPROVED, QuotationStatus.ORDERED, w -> w.set(ScmQuotation::getOrderId, orderId))) {
             throw new BizException("scm.error.quotationStatusHasChangedRefresh");
@@ -211,15 +216,17 @@ public class ScmQuotationService {
         q.setQuoteDate(req.quoteDate());
         q.setValidTo(req.validTo());
         q.setRemark(req.remark());
-        BigDecimal total = BigDecimal.ZERO;
+        // 整单优惠按行金额分摊后计算税额（与转成订单后的分摊一致），明细单价不变
+        List<BigDecimal> amounts = WholeDiscounts.allocate(req.items().stream().map(i -> amount(i.qty(), i.price())).toList(),
+                req.wholeDiscount());
         BigDecimal taxTotal = BigDecimal.ZERO;
-        for (QuotationRequest.Item i : req.items()) {
-            BigDecimal a = amount(i.qty(), i.price());
-            total = total.add(a);
-            taxTotal = taxTotal.add(tax(a, i.taxRate() == null ? DEFAULT_TAX_RATE : i.taxRate()));
+        for (int k = 0; k < amounts.size(); k++) {
+            QuotationRequest.Item i = req.items().get(k);
+            taxTotal = taxTotal.add(tax(amounts.get(k), i.taxRate() == null ? DEFAULT_TAX_RATE : i.taxRate()));
         }
-        q.setTotalAmount(total);
+        q.setTotalAmount(Decimals.sum(amounts, a -> a));
         q.setTaxAmount(taxTotal);
+        q.setWholeDiscount(Decimals.money(req.wholeDiscount()));
     }
 
     private void saveItems(Long id, ScmQuotation q, QuotationRequest req) {
@@ -241,11 +248,24 @@ public class ScmQuotationService {
     }
 
     /** 最低折扣率（报价 / 价目价 × 100），没有价目价的明细不参与，全部没有时为 100 */
-    private BigDecimal minDiscountRate(Long id) {
-        return itemMapper.selectList(Wrappers.<ScmQuotationItem>lambdaQuery().eq(ScmQuotationItem::getQuotationId, id)).stream()
-                .filter(i -> i.getListPrice() != null && i.getListPrice().signum() > 0)
-                .map(i -> Decimals.percent(i.getPrice(), i.getListPrice(), 2))
-                .min(BigDecimal::compareTo).orElse(Decimals.HUNDRED);
+    /**
+     * 最低折扣率（%）：各行成交单价 / 目录价，成交单价含整单优惠的分摊（分摊后行金额 / 数量，与转成订单后一致）
+     */
+    private BigDecimal minDiscountRate(ScmQuotation q) {
+        List<ScmQuotationItem> items = itemMapper.selectList(Wrappers.<ScmQuotationItem>lambdaQuery()
+                .eq(ScmQuotationItem::getQuotationId, q.getId()).orderByAsc(ScmQuotationItem::getId));
+        List<BigDecimal> amounts = WholeDiscounts.allocate(items.stream().map(i -> amount(i.getQty(), i.getPrice())).toList(),
+                q.getWholeDiscount());
+        BigDecimal min = Decimals.HUNDRED;
+        for (int k = 0; k < items.size(); k++) {
+            ScmQuotationItem i = items.get(k);
+            if (i.getListPrice() == null || i.getListPrice().signum() <= 0 || i.getQty().signum() == 0) {
+                continue;
+            }
+            BigDecimal rate = Decimals.percent(amounts.get(k), i.getListPrice().multiply(i.getQty()), 2);
+            min = min.min(rate);
+        }
+        return min;
     }
 
     private void transit(Long id, QuotationStatus from, QuotationStatus to, boolean approve) {

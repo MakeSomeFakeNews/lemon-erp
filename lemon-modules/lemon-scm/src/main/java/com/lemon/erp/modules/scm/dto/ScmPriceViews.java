@@ -65,9 +65,18 @@ public final class ScmPriceViews {
     public record PreviewLine(Long materialId, BigDecimal price, BigDecimal origPrice, String promotionName) {
     }
 
-    /** 赠品行 */
+    /**
+     * 赠品行
+     *
+     * @param materialName  物料编码 + 名称
+     * @param qty           赠品数量（基本单位）
+     * @param promotionId   买赠促销
+     * @param batchEnabled  批次管理（1 是），直接开单出库时需要选批次
+     * @param serialEnabled 序列号管理（1 是），直接开单出库时需要填写序列号
+     */
     public record PreviewGift(Long materialId, BigDecimal price, BigDecimal origPrice, String promotionName, String materialName,
-                              BigDecimal qty) {
+                              BigDecimal qty, Long promotionId, String materialCode, String spec, String unit, Integer batchEnabled,
+                              Integer serialEnabled) {
     }
 
     /** 经销商订货目录：物料、基础价格、税率、起订数量阶梯价 */

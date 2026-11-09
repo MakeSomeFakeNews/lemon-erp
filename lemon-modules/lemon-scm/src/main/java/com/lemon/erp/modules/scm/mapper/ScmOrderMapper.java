@@ -23,6 +23,9 @@ public interface ScmOrderMapper extends BaseMapper<ScmOrder> {
     /** 反审核：已审核且没有入库 / 出库过的订单回到草稿，返回 0 表示不满足条件 */
     int unapprove(@Param("id") Long id);
 
+    /** 出入库、关闭前锁定订单行（SELECT ... FOR UPDATE），返回最新状态（枚举名）；同一订单的出入库与关闭串行执行 */
+    String selectStatusForUpdate(@Param("id") Long id);
+
     /** 客户未完成订单（未发货部分）的金额，排除指定订单 */
     BigDecimal selectOpenSalesAmount(@Param("customerId") Long customerId, @Param("excludeId") Long excludeId,
                                      @Param("statuses") Collection<OrderStatus> statuses);

@@ -10,6 +10,15 @@
         ORDER BY o.seq, o.id
     </select>
 
+    <select id="selectCostOps" resultType="com.lemon.erp.modules.mes.entity.MesWoOp">
+        SELECT o.id, o.seq, o.std_hours, o.good_qty, o.hours,
+               COALESCE(w.labor_rate, 0) AS labor_rate, COALESCE(w.overhead_rate, 0) AS overhead_rate
+        FROM mes_wo_op o
+        LEFT JOIN mes_work_center w ON w.id = o.work_center_id
+        WHERE o.wo_id = #{woId}
+        ORDER BY o.seq, o.id
+    </select>
+
     <insert id="insertBatch">
         INSERT INTO mes_wo_op (wo_id, seq, name, work_center_id, std_hours, piece_rate, first_article, good_qty, scrap_qty, hours, create_time, update_time) VALUES
         <foreach collection="list" item="i" separator=",">

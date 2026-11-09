@@ -19,6 +19,7 @@ import com.lemon.erp.modules.crm.model.CrmConstants;
 import com.lemon.erp.modules.crm.model.CustomerStage;
 import com.lemon.erp.modules.crm.model.LeadStatus;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
+import com.lemon.erp.modules.scm.service.ScmCustomerService;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,7 @@ public class CrmLeadService {
     private final CrmOpportunityService opportunityService;
     private final UserLookup userLookup;
     private final DocNoService docNoService;
+    private final ScmCustomerService scmCustomerService;
 
     @DataPermission(table = "crm_lead", deptColumn = "dept_id", userColumn = "owner_id")
     public PageResult<CrmLead> page(long current, long size, String keyword, String status, String source, Long campaignId, Long ownerId) {
@@ -63,6 +65,7 @@ public class CrmLeadService {
     public Long create(LeadRequest req) {
         CrmLead l = new CrmLead();
         fill(l, req);
+        l.setRegion(scmCustomerService.normalizeRegion(l.getRegion(), null));
         l.setLeadNo(docNoService.next(CrmDocNos.LEAD));
         l.setStatus(LeadStatus.NEW);
         leadMapper.insert(l);
@@ -74,6 +77,7 @@ public class CrmLeadService {
         CrmLead old = getOpen(id);
         CrmLead l = new CrmLead();
         fill(l, req);
+        l.setRegion(scmCustomerService.normalizeRegion(l.getRegion(), old.getRegion()));
         leadMapper.update(Wrappers.<CrmLead>lambdaUpdate()
                 .set(CrmLead::getCompany, l.getCompany())
                 .set(CrmLead::getContactName, l.getContactName())

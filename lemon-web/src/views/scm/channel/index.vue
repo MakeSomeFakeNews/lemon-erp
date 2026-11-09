@@ -19,7 +19,7 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'dealer'">
             <a @click="openDetail(record.id)">{{ record.customerName }}</a>
-            <div class="sub-text">{{ record.region || '-' }}</div>
+            <div class="sub-text">{{ regionName(record.region) }}</div>
           </template>
           <template v-else-if="column.key === 'period'">{{ periodText(record.period) }}</template>
           <template v-else-if="column.key === 'sell'">{{ formatQty(record.sellTotal) }}</template>
@@ -40,7 +40,7 @@
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" bordered class="block">
           <a-descriptions-item :label="$t('scm.channel.dealer')">{{ detail.customerName }}</a-descriptions-item>
-          <a-descriptions-item :label="$t('scm.channel.region')">{{ detail.region || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.channel.region')">{{ regionName(detail.region) }}</a-descriptions-item>
           <a-descriptions-item :label="$t('scm.channel.reported')">{{ detail.reportTime }} {{ detail.reportByName }}</a-descriptions-item>
           <a-descriptions-item :label="$t('scm.channel.monthSales')">{{ formatQty(detail.sellTotal) }}</a-descriptions-item>
           <a-descriptions-item :label="$t('scm.channel.monthEndStock')">{{ formatQty(detail.stockTotal) }}</a-descriptions-item>
@@ -73,8 +73,13 @@ import { periodText } from '@/components/fin/fin'
 import { formatQty } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
+import { useDict } from '@/composables/useDict'
+import { findDict } from '@/utils/dict'
 
 const { t } = useI18n()
+// 区域（业务字典）显示名称
+const dict = useDict('scm_region')
+const regionName = (v) => (v ? findDict(dict.scm_region, v)?.label || v : '-')
 
 /** 渠道库存：经销商按月上报的销量和库存，库存可售月数 = 月末库存 / 当月销量 */
 const columns = [

@@ -58,7 +58,10 @@
             {{ record.validTo || $t('scm.quotation.unlimited') }}
             <a-tag v-if="isExpired(record)" color="red" :bordered="false" class="tag-gap">{{ $t('scm.quotation.expired') }}</a-tag>
           </template>
-          <template v-else-if="column.key === 'totalAmount'">¥{{ formatMoney(record.totalAmount) }}</template>
+          <template v-else-if="column.key === 'totalAmount'">
+            ¥{{ formatMoney(record.totalAmount) }}
+            <div v-if="Number(record.wholeDiscount)" class="sub-text">{{ $t('scm.wholeDiscount.value', { amount: '¥' + formatMoney(record.wholeDiscount) }) }}</div>
+          </template>
           <template v-else-if="column.key === 'orderNo'">
             <a v-if="record.orderId" @click="router.push({ path: '/scm/sales', query: { id: record.orderId } })">{{ record.orderNo }}</a>
             <span v-else-if="record.lostReason" class="sub-text">{{ record.lostReason }}</span>

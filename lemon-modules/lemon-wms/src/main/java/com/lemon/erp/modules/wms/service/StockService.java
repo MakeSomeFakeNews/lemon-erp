@@ -75,6 +75,7 @@ public class StockService {
     private final StockReservationService reservationService;
     private final WmsCheckMapper checkMapper;
     private final WmsWarehouseMapper warehouseMapper;
+    private final StockCostService costService;
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void apply(StockBizType bizType, Long docId, String docNo, List<StockChange> changes) {
@@ -94,8 +95,12 @@ public class StockService {
         LocalDateTime now = LocalDateTime.now();
         List<StockFlow> flows = new ArrayList<>(sorted.size());
         List<SerialLog> serialLogs = new ArrayList<>();
+        // 先计价（按物料 ID 顺序锁定成本记录，初始化取变动前的库存），再更新库存
+        List<StockCostService.Priced> prices = costService.price(bizType, sorted, materials);
 
-        for (StockChange change : sorted) {
+        for (int i = 0; i < sorted.size(); i++) {
+            StockChange change = sorted.get(i);
+            StockCostService.Priced price = prices.get(i);
             WmsMaterial material = materials.get(change.materialId());
             if (change.increase()) {
                 increase(change);
@@ -109,7 +114,8 @@ public class StockService {
                         direction, change.warehouseId(), change.locationId(), change.batchNo(), userId, now)));
             }
             flows.add(new StockFlow(bizType, docId, docNo, change.warehouseId(), change.locationId(), change.materialId(),
-                    change.batchNo(), change.qty(), userId, now));
+                    change.batchNo(), change.qty(), change.bizPrice(), price.unitCost(), price.amount(),
+                    change.partnerId(), change.partnerName(), userId, now));
         }
         if (bizType != StockBizType.CHECK) {
             // 盘亏是实物事实，不受预留限制；其余扣减不能占用已预留的库存

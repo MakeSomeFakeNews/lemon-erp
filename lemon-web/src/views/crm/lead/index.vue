@@ -128,7 +128,16 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item :label="$t('crm.common.f.region')" name="region"><a-input v-model:value="form.region" :maxlength="64" /></a-form-item>
+            <a-form-item :label="$t('crm.common.f.region')" name="region">
+              <a-select
+                v-model:value="form.region"
+                allow-clear
+                show-search
+                option-filter-prop="label"
+                :placeholder="$t('crm.customer.regionPh')"
+                :options="optionsWithCurrent(dict.scm_region, form.region)"
+              />
+            </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('crm.common.f.owner')" name="ownerId" :extra="$t('crm.common.ownerExtra')">
@@ -203,7 +212,7 @@ import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
-import { toOptions } from '@/utils/dict'
+import { optionsWithCurrent, toOptions } from '@/utils/dict'
 import { useAction } from '@/composables/useAction'
 
 import { LeadStatus } from '@/constants/enums'
@@ -211,7 +220,7 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const { t } = useI18n()
-const dict = useDict('crm_lead_status', 'crm_source', 'crm_industry')
+const dict = useDict('crm_lead_status', 'crm_source', 'crm_industry', 'scm_region')
 
 const columns = [
   { title: t('crm.lead.col.company'), key: 'company', width: 220 },

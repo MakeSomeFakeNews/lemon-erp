@@ -28,7 +28,7 @@
         type="info"
         show-icon
         class="check-tip"
-        :message="$t('wms.checkDoc.tip')"
+        :message="showCost ? `${$t('wms.checkDoc.tip')}${$t('wms.checkDoc.costPriceTip')}` : $t('wms.checkDoc.tip')"
       />
 
       <div class="items-head">
@@ -101,6 +101,17 @@
           <template v-else-if="column.key === 'diff'">
             <QtyDiff :value="diffOf(record)" />
           </template>
+          <template v-else-if="column.key === 'costPrice'">
+            <a-input-number
+              v-if="(diffOf(record) ?? 0) > 0"
+              v-model:value="record.costPrice"
+              :min="0"
+              :max="999999999999"
+              :placeholder="record.avgCost == null ? $t('wms.checkDoc.costPriceDefault') : $t('wms.checkDoc.costPricePh', { v: price(record.avgCost) })"
+              class="full"
+            />
+            <span v-else class="sub-text">-</span>
+          </template>
           <template v-else-if="column.key === 'serialNos'">
             <SerialInput
               v-if="record.serialEnabled === 1"
@@ -132,6 +143,9 @@ import QtyDiff from './QtyDiff.vue'
 import SerialInput from './SerialInput.vue'
 import WarehouseSelect from './WarehouseSelect.vue'
 import { addCheck, checkSnapshot, getCheck, updateCheck } from '@/api/wms/check'
+import { unitCosts } from '@/api/wms/stock'
+import { useUserStore } from '@/store/user'
+import { price } from '@/utils/number'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { lineKey, useLineItems } from '@/composables/useLineItems'
 import { formatQty, locationText, splitSerials, today } from './wms'
@@ -143,17 +157,24 @@ import { formatQty, locationText, splitSerials, today } from './wms'
 const emit = defineEmits(['success'])
 const { t } = useI18n()
 
-const columns = [
-  { title: t('wms.common.material'), key: 'material', width: 290 },
-  { title: t('wms.common.location'), key: 'location', width: 200 },
-  { title: t('wms.common.batch'), key: 'batchNo', width: 140 },
-  { title: t('wms.checkDoc.bookQty'), key: 'bookQty', width: 110, align: 'right' },
-  { title: t('wms.checkDoc.actualQty'), key: 'actualQty', width: 160 },
-  { title: t('wms.checkDoc.diff'), key: 'diff', width: 100, align: 'right' },
-  { title: t('wms.checkDoc.actualSerials'), key: 'serialNos', width: 260 },
-  { title: t('common.field.remark'), key: 'remark', width: 140 },
-  { title: '', key: 'action', width: 50, fixed: 'right' }
-]
+const userStore = useUserStore()
+/** 盘盈成本价：有「查看成本金额」或盘点单新增 / 修改权限时显示（默认当前均价） */
+const showCost = computed(() => userStore.hasPerm(['wms:stock:cost', 'wms:check:add', 'wms:check:edit']))
+
+const columns = computed(() =>
+  [
+    { title: t('wms.common.material'), key: 'material', width: 290 },
+    { title: t('wms.common.location'), key: 'location', width: 200 },
+    { title: t('wms.common.batch'), key: 'batchNo', width: 140 },
+    { title: t('wms.checkDoc.bookQty'), key: 'bookQty', width: 110, align: 'right' },
+    { title: t('wms.checkDoc.actualQty'), key: 'actualQty', width: 160 },
+    { title: t('wms.checkDoc.diff'), key: 'diff', width: 100, align: 'right' },
+    showCost.value ? { title: t('wms.checkDoc.costPrice'), key: 'costPrice', width: 150 } : null,
+    { title: t('wms.checkDoc.actualSerials'), key: 'serialNos', width: 260 },
+    { title: t('common.field.remark'), key: 'remark', width: 140 },
+    { title: '', key: 'action', width: 50, fixed: 'right' }
+  ].filter(Boolean)
+)
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
 const rules = {
@@ -187,7 +208,8 @@ const drawer = useFormDrawer({
       batchNo: i.batchNo || null,
       actualQty: i.actualQty ?? null,
       serialNos: i.serialNos || null,
-      remark: i.remark || null
+      remark: i.remark || null,
+      costPrice: showCost.value && i.costPrice != null && i.costPrice !== '' ? i.costPrice : null
     }))
   }),
   onSuccess: () => emit('success')
@@ -246,9 +268,16 @@ function applyMaterial(row, m) {
     batchEnabled: m.batchEnabled,
     serialEnabled: m.serialEnabled,
     serialNos: undefined,
-    actualQty: null
+    actualQty: null,
+    costPrice: null,
+    avgCost: null
   })
   if (m.batchEnabled !== 1) row.batchNo = undefined
+  if (showCost.value) {
+    unitCosts([m.id]).then((costs) => {
+      if (row.materialId === m.id && costs[m.id] != null) row.avgCost = Number(costs[m.id])
+    })
+  }
 }
 
 /** 序列号物料的实盘数量 = 实盘序列号个数 */

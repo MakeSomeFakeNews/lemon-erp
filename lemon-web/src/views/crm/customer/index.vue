@@ -70,6 +70,10 @@
             <DictTag v-if="record.industry" type="crm_industry" :value="record.industry" />
             <span v-else class="sub-text">-</span>
           </template>
+          <template v-else-if="column.key === 'region'">
+            <DictTag v-if="record.region" type="scm_region" :value="record.region" />
+            <span v-else class="sub-text">-</span>
+          </template>
           <template v-else-if="column.key === 'owner'">
             <span v-if="record.ownerName">{{ record.ownerName }}</span>
             <span v-else class="sub-text">{{ $t('crm.common.publicPool') }}</span>
@@ -162,7 +166,14 @@
           </a-col>
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('crm.common.f.region')" name="region">
-              <a-input v-model:value="form.region" :maxlength="64" :placeholder="$t('crm.customer.regionPh')" />
+              <a-select
+                v-model:value="form.region"
+                allow-clear
+                show-search
+                option-filter-prop="label"
+                :placeholder="$t('crm.customer.regionPh')"
+                :options="optionsWithCurrent(dict.scm_region, form.region)"
+              />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
@@ -209,14 +220,14 @@ import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
-import { toOptions } from '@/utils/dict'
+import { optionsWithCurrent, toOptions } from '@/utils/dict'
 import { formatMoney } from '@/components/scm/scm'
 import { isPast } from '@/components/crm/crm'
 
 const route = useRoute()
 const userStore = useUserStore()
 const { t } = useI18n()
-const dict = useDict('scm_customer_level', 'crm_customer_stage', 'crm_industry', 'crm_source')
+const dict = useDict('scm_customer_level', 'crm_customer_stage', 'crm_industry', 'crm_source', 'scm_region')
 
 const columns = [
   { title: t('crm.common.f.customer'), key: 'name', width: 240 },
@@ -225,7 +236,7 @@ const columns = [
   { title: t('crm.common.f.owner'), key: 'owner', width: 110 },
   { title: t('crm.common.f.contact'), key: 'contact', width: 150 },
   { title: t('crm.customer.col.openOpp'), key: 'opp', width: 150, align: 'right' },
-  { title: t('crm.common.f.region'), dataIndex: 'region', width: 100, ellipsis: true },
+  { title: t('crm.common.f.region'), key: 'region', width: 110, dict: 'scm_region' },
   { title: t('crm.customer.col.follow'), key: 'follow', width: 220 },
   { title: t('common.action.operation'), key: 'action', width: 260, fixed: 'right' }
 ]

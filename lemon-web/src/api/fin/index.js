@@ -53,6 +53,8 @@ export const getSettlement = (kind, id) => request.get(`/fin/settlement/${kind}/
 export const addSettlement = (kind, data) => request.post(`/fin/settlement/${kind}`, data)
 export const deleteSettlement = (kind, id) => request.delete(`/fin/settlement/${kind}/${ids(id)}`)
 export const settlementVoucher = (kind, id) => request.post(`/fin/settlement/${kind}/voucher/${ids(id)}`)
+/** 折让记录：已生效收付款中有折让的核销明细 */
+export const pageSettlementDiscounts = (kind, params) => request.get(`/fin/settlement/${kind}/discounts`, { params })
 
 /** 固定资产 */
 export const pageAsset = (params) => request.get('/fin/asset', { params })
@@ -141,7 +143,7 @@ export const updateBudget = (id, data) => request.put(`/fin/budget/${id}`, data)
 export const deleteBudget = (id) => request.delete(`/fin/budget/${ids(id)}`)
 
 /** 坏账核销：data { amount, date, reason }，返回凭证 ID */
-export const badDebt = (id, data) => request.post(`/fin/bill/ar/${id}/bad-debt`, data)
+export const badDebt = (kind, id, data) => request.post(`/fin/bill/${kind}/${id}/bad-debt`, data)
 /** 红字冲销：返回红字凭证 ID */
 export const reverseVoucher = (id, date) => request.post(`/fin/voucher/${id}/reverse`, null, { params: { date } })
 
@@ -287,3 +289,12 @@ export const generateCommission = (period) => request.post(`/fin/commission/${pe
 export const adjustCommission = (lineId, data) => request.put(`/fin/commission/line/${lineId}`, data)
 export const confirmCommission = (period) => request.post(`/fin/commission/${period}/confirm`)
 export const unconfirmCommission = (period) => request.post(`/fin/commission/${period}/unconfirm`)
+
+// 冲账单
+export const pageOffset = (params) => request.get('/fin/offset', { params })
+export const getOffset = (id) => request.get(`/fin/offset/${id}`)
+export const addOffset = (data) => request.post('/fin/offset', data)
+export const updateOffset = (id, data) => request.put(`/fin/offset/${id}`, data)
+export const deleteOffset = (id) => request.delete(`/fin/offset/${ids(id)}`)
+export const reviewOffset = (id) => request.post(`/fin/offset/${id}/review`)
+export const cancelReviewOffset = (id) => request.post(`/fin/offset/${id}/cancel-review`)

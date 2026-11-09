@@ -36,6 +36,13 @@ public interface FinCostSourceMapper {
     List<Map<String, Object>> selectTradeSums(@Param("begin") LocalDate begin, @Param("end") LocalDate end);
 
     /**
+     * 采购订单关闭的尾差调整（应付调整单 ORDER_ADJUST 的日期在期间内），按物料汇总不含税金额（本位币），计入采购金额
+     *
+     * @return [{materialId, net}]
+     */
+    List<Map<String, Object>> selectPurchaseAdjusts(@Param("begin") LocalDate begin, @Param("end") LocalDate end);
+
+    /**
      * 工单领料 / 退料 / 完工入库，按工单、物料、种类汇总数量
      *
      * @return [{woId, materialId, kind, qty}]

@@ -12,6 +12,8 @@
       <l-cell :label="t('crm.order.salesman')" :value="o.salesmanName" />
       <l-cell :label="t('crm.order.warehouse')" :value="o.warehouseName" />
       <l-cell :label="t('crm.order.totalAmount')" :value="money(o.totalAmount)" />
+      <!-- 整单优惠（含抹零）：已按行金额分摊，订单金额是优惠后的 -->
+      <l-cell v-if="Number(o.wholeDiscount) > 0" :label="t('crm.order.wholeDiscount')" :value="money(o.wholeDiscount)" />
       <l-cell :label="t('crm.order.taxAmount')" :value="money(o.taxAmount)" />
       <l-cell :label="t('crm.order.progress')" :value="t('crm.order.shipped', { done: qty(shippedQty), total: qty(o.totalQty) })" />
       <l-cell v-if="o.remark" :label="t('crm.order.remark')" :value="o.remark" />

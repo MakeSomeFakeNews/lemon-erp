@@ -22,6 +22,7 @@ import com.lemon.erp.modules.scm.service.ScmOrderService;
 import com.lemon.erp.modules.wms.dto.StockDocItemRequest;
 import com.lemon.erp.modules.wms.dto.StockDocRequest;
 import com.lemon.erp.modules.wms.model.StockBizType;
+import com.lemon.erp.modules.wms.service.StockCostService;
 import com.lemon.erp.modules.wms.service.WmsStockDocService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +52,8 @@ public class MesOutsourceService {
     private final MesMaterialService materialPlanService;
     private final ScmOrderService orderService;
     private final WmsStockDocService stockDocService;
+    private final MesStockCosts stockCosts;
+    private final StockCostService costService;
 
     /** 委外用料（第一次查询时按订单的委外件生成） */
     @Transactional
@@ -74,8 +78,11 @@ public class MesOutsourceService {
         ScmOrder order = orderService.detail(OrderKind.PURCHASE, orderId);
         List<MesOutsourceMaterial> lines = ensureLines(orderId);
         Map<MesOutsourceMaterial, BigDecimal> alloc = allocate(lines, req.items(), MesOutsourceService::atSupplier, "mes.label.return");
+        // 委外收回按该订单该子件的发料平均成本入库
+        Map<Long, BigDecimal> costs = stockCosts.outsourceIssueUnitCosts(order.getOrderNo());
+        List<StockDocItemRequest> items = req.items().stream().map(i -> i.withCost(costs.get(i.materialId()), null)).toList();
         stockDocService.createConfirmed(StockBizType.IN, new StockDocRequest(StockInType.OUTSOURCE_RETURN, req.warehouseId(), null,
-                req.bizDate(), req.remark() == null ? "委外退料 " + order.getOrderNo() : req.remark(), req.items()), order.getOrderNo()); // i18n-ignore
+                req.bizDate(), req.remark() == null ? "委外退料 " + order.getOrderNo() : req.remark(), items), order.getOrderNo()); // i18n-ignore
         alloc.forEach((line, qty) -> {
             if (materialMapper.addReturned(line.getId(), qty) == 0) {
                 throw new BizException("mes.error.returnQuantityExceedsBalanceSubcontractor");
@@ -83,7 +90,7 @@ public class MesOutsourceService {
         });
     }
 
-    /** 委外件收货 / 退货：按单位用量核销（退货冲回）用料，与入库同一事务 */
+    /** 委外件收货 / 退货：按单位用量核销（退货冲回）用料，并把核销的子件成本追加到委外件的实时库存成本，与入库同一事务 */
     @EventListener
     public void onTradeDocConfirmed(TradeDocConfirmedEvent e) {
         boolean in = e.kind() == TradeKind.PURCHASE_IN;
@@ -99,6 +106,9 @@ public class MesOutsourceService {
         if (lines.isEmpty()) {
             return;
         }
+        // 委外件的实时成本 = 加工费（采购入库已按不含税单价计价）+ 核销的子件成本（按该订单的发料平均成本），退货反向冲回
+        Map<Long, BigDecimal> issueCosts = stockCosts.outsourceIssueUnitCosts((String) items.get(0).get("orderNo"));
+        Map<Long, BigDecimal> extra = new HashMap<>();
         for (Map<String, Object> item : items) {
             Long orderItemId = ((Number) item.get("orderItemId")).longValue();
             BigDecimal qty = new BigDecimal(item.get("qty").toString());
@@ -111,6 +121,10 @@ public class MesOutsourceService {
                     consume = consume.negate();
                 }
                 materialMapper.addConsumed(line.getId(), consume);
+                BigDecimal unit = issueCosts.get(line.getMaterialId());
+                if (unit != null) {
+                    extra.merge(line.getProductId(), consume.multiply(unit), BigDecimal::add);
+                }
                 MesOutsourceConsume c = new MesOutsourceConsume();
                 c.setOrderId(orderId);
                 c.setTradeDocId(e.docId());
@@ -120,6 +134,10 @@ public class MesOutsourceService {
                 c.setBizDate(e.bizDate());
                 consumeMapper.insert(c);
             }
+        }
+        Object wmsDocId = items.get(0).get("wmsDocId");
+        if (wmsDocId != null) {
+            costService.addCost(in ? StockBizType.IN : StockBizType.OUT, ((Number) wmsDocId).longValue(), extra);
         }
     }
 

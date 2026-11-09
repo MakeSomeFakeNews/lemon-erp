@@ -48,6 +48,10 @@ public class ScmTradeDocItem extends BaseEntity {
 
     private String remark;
 
+    /** 1 买赠的赠品（订单明细 gift） */
+    @TableField(exist = false)
+    private Integer gift;
+
     @TableField(exist = false)
     private String materialCode;
 

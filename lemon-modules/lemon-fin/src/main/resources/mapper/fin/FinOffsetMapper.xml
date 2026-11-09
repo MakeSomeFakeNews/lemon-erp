@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinOffsetMapper">
+
+    <!-- 往来单位按方向分别关联客户 / 供应商 -->
+    <sql id="viewSelect">
+        SELECT t.*, COALESCE(c.code, s.code) AS partner_code, COALESCE(c.name, s.name) AS partner_name,
+               h.nickname AS handler_name, cu.nickname AS create_by_name, ru.nickname AS review_by_name, a.name AS account_name,
+               b.bill_no, b.settled_amount AS bill_settled_amount, b.voucher_id, v.voucher_no, v.status AS voucher_status
+        FROM fin_offset t
+        LEFT JOIN scm_customer c ON t.kind = 'AR' AND c.id = t.partner_id
+        LEFT JOIN scm_supplier s ON t.kind = 'AP' AND s.id = t.partner_id
+        LEFT JOIN sys_user h ON h.id = t.handler_id
+        LEFT JOIN sys_user cu ON cu.id = t.create_by
+        LEFT JOIN sys_user ru ON ru.id = t.review_by
+        LEFT JOIN fin_account a ON a.id = t.account_id
+        LEFT JOIN fin_bill b ON b.id = t.bill_id
+        LEFT JOIN fin_voucher v ON v.id = b.voucher_id
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinOffset">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="q.kind != null">AND t.kind = #{q.kind}</if>
+            <if test="q.partnerId != null">AND t.partner_id = #{q.partnerId}</if>
+            <if test="q.status != null">AND t.status = #{q.status}</if>
+            <if test="q.item != null and q.item != ''">AND t.item = #{q.item}</if>
+            <if test="q.keyword != null and q.keyword != ''">
+                AND (t.offset_no LIKE CONCAT('%', #{q.keyword}, '%') OR t.ticket_no LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+            <if test="q.beginDate != null">AND t.offset_date &gt;= #{q.beginDate}</if>
+            <if test="q.endDate != null">AND t.offset_date &lt;= #{q.endDate}</if>
+        </where>
+        ORDER BY t.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinOffset">
+        <include refid="viewSelect"/>
+        WHERE t.id = #{id}
+    </select>
+
+</mapper>

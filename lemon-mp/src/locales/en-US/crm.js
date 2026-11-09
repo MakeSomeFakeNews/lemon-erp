@@ -195,6 +195,7 @@ export default {
     salesman: 'Salesperson',
     warehouse: 'Warehouse',
     totalAmount: 'Amount',
+    wholeDiscount: 'Order discount',
     taxAmount: 'Tax',
     remark: 'Remark',
     progress: 'Shipping progress',

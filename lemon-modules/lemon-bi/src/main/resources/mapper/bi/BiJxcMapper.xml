@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <!-- 进销存报表：实时汇总业务表（只读）。金额为本位币，销售额 / 进货额为不含税（价税合计 - 税额），退货按负数计入净额；
-     销售成本与财务「毛利分析」一致：数量 × 单据所在期间的成本核算单价，没有核算时取物料的参考成本价。
+     销售成本取实时库存成本：数量 × 该单据仓库出入库的实际成本单价（库存流水上的移动加权平均成本，销售出库按出库时的均价、
+     销售退货按原出库成本）；没有成本的历史单据取单据所在期间的成本核算单价，再没有取物料的参考成本价。
+     财务「毛利分析」仍按月末成本核算的单价（用于记账），两者可能不同。
      明细行的仓库为空时取单据表头的仓库。数据权限（scm_trade_doc 的制单人部门 + 制单人）由 Service 启用 -->
 <mapper namespace="com.lemon.erp.modules.bi.mapper.BiJxcMapper">
 
@@ -10,6 +12,19 @@
     <sql id="fwdKind"><choose><when test="sales">'SALES_OUT'</when><otherwise>'PURCHASE_IN'</otherwise></choose></sql>
 
     <sql id="sign">CASE WHEN d.kind = <include refid="fwdKind"/> THEN 1 ELSE -1 END</sql>
+
+    <!-- 期间内销售出库 / 退货对应的仓库出入库单上，各物料的实际成本金额与数量（库存流水，实时移动加权平均） -->
+    <sql id="flowCost">
+        LEFT JOIN (SELECT f.doc_id, f.material_id, SUM(f.cost_amount) AS amount, SUM(f.qty) AS qty
+                   FROM wms_stock_flow f
+                   WHERE f.biz_type IN ('IN', 'OUT') AND f.cost_amount IS NOT NULL
+                     AND f.doc_id IN (SELECT fd.wms_doc_id FROM scm_trade_doc fd
+                                      WHERE fd.kind IN ('SALES_OUT', 'SALES_RETURN') AND fd.biz_date &gt;= #{q.begin} AND fd.biz_date &lt;= #{q.end})
+                   GROUP BY f.doc_id, f.material_id) fc ON fc.doc_id = d.wms_doc_id AND fc.material_id = i.material_id
+    </sql>
+
+    <!-- 销售成本单价：实时出库成本 → 期间核算单价 → 参考成本价 -->
+    <sql id="saleUnitCost">COALESCE(fc.amount / NULLIF(fc.qty, 0), mc.unit_cost, m.ref_cost, 0)</sql>
 
     <sql id="tradeFrom">
         FROM scm_trade_doc_item i
@@ -20,6 +35,7 @@
             <when test="sales">
                 LEFT JOIN scm_customer p ON p.id = d.partner_id
                 LEFT JOIN fin_material_cost mc ON mc.material_id = i.material_id AND mc.period = YEAR(d.biz_date) * 100 + MONTH(d.biz_date)
+                <include refid="flowCost"/>
             </when>
             <otherwise>LEFT JOIN scm_supplier p ON p.id = d.partner_id</otherwise>
         </choose>
@@ -54,8 +70,8 @@
         SUM(<include refid="sign"/> * i.amount) AS "taxedAmount",
         <choose>
             <when test="sales">
-                SUM(<include refid="sign"/> * i.qty * COALESCE(mc.unit_cost, m.ref_cost, 0)) AS "cost",
-                SUM(CASE WHEN mc.unit_cost IS NULL THEN 1 ELSE 0 END) AS "missingCost",
+                SUM(<include refid="sign"/> * i.qty * <include refid="saleUnitCost"/>) AS "cost",
+                SUM(CASE WHEN fc.amount IS NULL AND mc.unit_cost IS NULL THEN 1 ELSE 0 END) AS "missingCost",
             </when>
             <otherwise>0 AS "cost", 0 AS "missingCost",</otherwise>
         </choose>
@@ -115,8 +131,8 @@
                <include refid="sign"/> * (i.amount - i.tax_amount) AS "amount",
                <include refid="sign"/> * i.amount AS "taxedAmount",
                <if test="sales">
-                   <include refid="sign"/> * i.qty * COALESCE(mc.unit_cost, m.ref_cost, 0) AS "cost",
-                   CASE WHEN mc.unit_cost IS NULL THEN 0 ELSE 1 END AS "costed",
+                   <include refid="sign"/> * i.qty * <include refid="saleUnitCost"/> AS "cost",
+                   CASE WHEN fc.amount IS NULL AND mc.unit_cost IS NULL THEN 0 ELSE 1 END AS "costed",
                </if>
                i.remark AS "remark"
         <include refid="tradeFrom"/>
@@ -143,7 +159,18 @@
                SUM(CASE WHEN kind = 'PAYMENT' THEN amount ELSE 0 END) AS "payment"
         FROM fin_settlement
         WHERE status = 'APPROVED' AND settle_date &gt;= #{begin} AND settle_date &lt;= #{end}
+          AND NOT EXISTS (SELECT 1 FROM fin_note_log l WHERE l.settlement_id = fin_settlement.id)
         GROUP BY YEAR(settle_date) * 100 + MONTH(settle_date)
+    </select>
+
+    <!-- 票据的资金收付：收票、背书、开票不是现金（上面的收付款不含票据业务生成的），托收、贴现（扣除贴现息）计收款，应付票据兑付计付款 -->
+    <select id="selectNoteCashByMonth" resultType="com.lemon.erp.modules.bi.dto.JxcViews$CashRow">
+        SELECT YEAR(action_date) * 100 + MONTH(action_date) AS "period",
+               SUM(CASE WHEN action IN ('COLLECT', 'DISCOUNT') THEN amount - interest ELSE 0 END) AS "receipt",
+               SUM(CASE WHEN action = 'PAY' THEN amount ELSE 0 END) AS "payment"
+        FROM fin_note_log
+        WHERE action IN ('COLLECT', 'DISCOUNT', 'PAY') AND action_date &gt;= #{begin} AND action_date &lt;= #{end}
+        GROUP BY YEAR(action_date) * 100 + MONTH(action_date)
     </select>
 
     <select id="selectAdvanceByMonth" resultType="com.lemon.erp.modules.bi.dto.JxcViews$CashRow">
@@ -157,50 +184,124 @@
 
     <!-- ============================================================ 资产状况 -->
 
-    <!-- 物料的最新单位成本：最近一期成本核算的单价，没有时取参考成本价 -->
+    <!-- 物料的最新单位成本：实时移动加权均价（wms_material_cost），没有时取最近一期成本核算的单价，再没有取参考成本价 -->
     <sql id="latestCost">
-        COALESCE((SELECT lc.unit_cost FROM fin_material_cost lc
+        COALESCE((SELECT rc.unit_cost FROM wms_material_cost rc WHERE rc.material_id = m.id),
+                 (SELECT lc.unit_cost FROM fin_material_cost lc
                   WHERE lc.material_id = m.id AND lc.unit_cost &gt; 0
                   ORDER BY lc.period DESC LIMIT 1), m.ref_cost, 0)
     </sql>
 
-    <!-- 供应商寄售仓的货物不属于本公司存货 -->
+    <!-- 截至日的库存金额 = 库存流水成本累计。以当前库存（当前库存 × 最新单位成本，与库存查询一致）为基准，减去业务日期晚于
+         截至日的流水（数量、成本金额；没有成本金额的按最新单位成本），流水完整时与从头累计相同，又能避免物料实时成本初始化
+         （升级、首次变动）与历史流水之间的差额，截至今天时与当前结果一致。流水日期取单据业务日期（与经营历史相同）。
+         estimated = 1 表示用到了升级前回填的近似成本流水。供应商寄售仓的货物不属于本公司存货 -->
     <select id="selectInventory" resultType="com.lemon.erp.modules.bi.dto.JxcViews$InventoryRow">
         SELECT x.warehouse_id AS "warehouseId", w.name AS "warehouseName", x.category AS "category",
-               SUM(x.qty) AS "qty", SUM(x.amount) AS "amount"
+               SUM(x.qty) AS "qty", SUM(x.amount) AS "amount", MAX(x.estimated) AS "estimated"
         FROM (
-            SELECT t.warehouse_id, m.category, t.qty, t.qty * <include refid="latestCost"/> AS amount
-            FROM (SELECT s.warehouse_id, s.material_id, SUM(s.qty) AS qty FROM wms_stock s
-                  GROUP BY s.warehouse_id, s.material_id) t
+            SELECT t.warehouse_id, m.category, t.qty - t.later_qty AS qty,
+                   (t.qty - t.later_unpriced) * <include refid="latestCost"/> - t.later_amount AS amount, t.estimated
+            FROM (SELECT u.warehouse_id, u.material_id, SUM(u.qty) AS qty, SUM(u.later_qty) AS later_qty,
+                         SUM(u.later_amount) AS later_amount, SUM(u.later_unpriced) AS later_unpriced, MAX(u.estimated) AS estimated
+                  FROM (SELECT s.warehouse_id, s.material_id, s.qty, 0 AS later_qty, 0 AS later_amount, 0 AS later_unpriced, 0 AS estimated
+                        FROM wms_stock s
+                        UNION ALL
+                        SELECT f.warehouse_id, f.material_id, 0, f.qty, COALESCE(f.cost_amount, 0),
+                               CASE WHEN f.cost_amount IS NULL THEN f.qty ELSE 0 END, f.cost_estimated
+                        FROM wms_stock_flow f
+                        LEFT JOIN wms_stock_doc sd ON f.biz_type IN ('IN', 'OUT', 'TRANSFER') AND sd.id = f.doc_id
+                        LEFT JOIN wms_check ck ON f.biz_type = 'CHECK' AND ck.id = f.doc_id
+                        WHERE COALESCE(sd.biz_date, ck.biz_date, CAST(f.create_time AS DATE)) &gt; #{asOf}) u
+                  GROUP BY u.warehouse_id, u.material_id) t
             JOIN wms_material m ON m.id = t.material_id
-            WHERE t.qty &lt;&gt; 0
+            WHERE t.qty - t.later_qty &lt;&gt; 0 OR t.later_amount &lt;&gt; 0
         ) x
         JOIN wms_warehouse w ON w.id = x.warehouse_id
         WHERE w.type &lt;&gt; 'CONSIGN_IN'
         GROUP BY x.warehouse_id, w.name, x.category
     </select>
 
+    <!-- 各应收应付单截至日的未核销金额 = 当前未核销 + 截至日之后的核销（已生效收付款的核销金额 + 折让、预收预付冲抵、坏账核销），
+         只取单据日期不晚于截至日的单据（含退货、冲账单等红字单据）。预收预付冲抵取单据一方的本位币（bill_amount，
+         与单据的已核销一致，外币单据可能与预收预付一方的 amount 不同）；坏账核销的日期、金额取其凭证 -->
+    <sql id="billOpen">
+        SELECT b.id, b.kind, b.partner_id, b.due_date,
+               b.amount - b.settled_amount + COALESCE(si.amount, 0) + COALESCE(bd.amount, 0)
+                   + COALESCE(aa.amount, 0) AS open_amount
+        FROM fin_bill b
+        LEFT JOIN (SELECT i.bill_id, SUM(i.amount + i.discount) AS amount
+                   FROM fin_settlement_item i JOIN fin_settlement s ON s.id = i.settlement_id
+                   WHERE s.status = 'APPROVED' AND s.settle_date &gt; #{asOf}
+                   GROUP BY i.bill_id) si ON si.bill_id = b.id
+        LEFT JOIN (SELECT p.bill_id, SUM(p.bill_amount) AS amount
+                   FROM fin_advance_apply p
+                   WHERE p.apply_date &gt; #{asOf}
+                   GROUP BY p.bill_id) aa ON aa.bill_id = b.id
+        LEFT JOIN (SELECT v.source_no, SUM(v.total_debit) AS amount
+                   FROM fin_voucher v
+                   WHERE v.source_type = 'BAD_DEBT' AND v.reversal_of IS NULL AND v.voucher_date &gt; #{asOf}
+                   GROUP BY v.source_no) bd ON bd.source_no = b.bill_no
+        WHERE b.bill_date &lt;= #{asOf}
+    </sql>
+
+    <!-- 预收预付截至日的余额 = 当前余额 + 截至日之后的冲抵，只取收付日期不晚于截至日的 -->
+    <sql id="advanceOpen">
+        SELECT a.kind, a.amount - a.used_amount + COALESCE(aa.amount, 0) AS open_amount
+        FROM fin_advance a
+        LEFT JOIN (SELECT p.advance_id, SUM(p.amount) AS amount
+                   FROM fin_advance_apply p
+                   WHERE p.apply_date &gt; #{asOf}
+                   GROUP BY p.advance_id) aa ON aa.advance_id = a.id
+        WHERE a.advance_date &lt;= #{asOf}
+    </sql>
+
     <select id="selectBalances" resultType="com.lemon.erp.modules.bi.dto.JxcViews$Balances">
         SELECT
-            (SELECT COALESCE(SUM(amount - settled_amount), 0) FROM fin_bill WHERE kind = 'AR' AND status &lt;&gt; 'SETTLED') AS "arBalance",
-            (SELECT COALESCE(SUM(amount - settled_amount), 0) FROM fin_bill
-             WHERE kind = 'AR' AND status &lt;&gt; 'SETTLED' AND due_date &lt; #{today}) AS "arOverdue",
-            (SELECT COALESCE(SUM(amount - settled_amount), 0) FROM fin_bill WHERE kind = 'AP' AND status &lt;&gt; 'SETTLED') AS "apBalance",
-            (SELECT COALESCE(SUM(amount - used_amount), 0) FROM fin_advance WHERE kind = 'RECEIPT') AS "advanceReceived",
-            (SELECT COALESCE(SUM(amount - used_amount), 0) FROM fin_advance WHERE kind = 'PAYMENT') AS "advancePaid"
+            (SELECT COALESCE(SUM(o.open_amount), 0) FROM (<include refid="billOpen"/>) o WHERE o.kind = 'AR') AS "arBalance",
+            (SELECT COALESCE(SUM(o.open_amount), 0) FROM (<include refid="billOpen"/>) o
+             WHERE o.kind = 'AR' AND o.due_date &lt; #{asOf}) AS "arOverdue",
+            (SELECT COALESCE(SUM(o.open_amount), 0) FROM (<include refid="billOpen"/>) o WHERE o.kind = 'AP') AS "apBalance",
+            (SELECT COALESCE(SUM(o.open_amount), 0) FROM (<include refid="advanceOpen"/>) o WHERE o.kind = 'RECEIPT') AS "advanceReceived",
+            (SELECT COALESCE(SUM(o.open_amount), 0) FROM (<include refid="advanceOpen"/>) o WHERE o.kind = 'PAYMENT') AS "advancePaid",
+            <!-- 截至日持有的应收票据：已收票，且没有在截至日之前贴现、托收、拒付或背书（背书的付款已生效） -->
+            (SELECT COALESCE(SUM(n.amount), 0) FROM fin_note n
+             WHERE n.kind = 'RECEIVABLE'
+               AND EXISTS (SELECT 1 FROM fin_note_log l WHERE l.note_id = n.id AND l.action = 'RECEIVE' AND l.action_date &lt;= #{asOf})
+               AND NOT EXISTS (SELECT 1 FROM fin_note_log l LEFT JOIN fin_settlement s ON s.id = l.settlement_id
+                               WHERE l.note_id = n.id AND l.action_date &lt;= #{asOf}
+                                 AND (l.action IN ('DISCOUNT', 'COLLECT', 'DISHONOR') OR (l.action = 'ENDORSE' AND s.status = 'APPROVED')))
+            ) AS "notesReceivable",
+            <!-- 截至日未兑付的应付票据：已开出（付款已生效），且没有在截至日之前兑付 -->
+            (SELECT COALESCE(SUM(n.amount), 0) FROM fin_note n
+             WHERE n.kind = 'PAYABLE'
+               AND EXISTS (SELECT 1 FROM fin_note_log l JOIN fin_settlement s ON s.id = l.settlement_id
+                           WHERE l.note_id = n.id AND l.action = 'ISSUE' AND l.action_date &lt;= #{asOf} AND s.status = 'APPROVED')
+               AND NOT EXISTS (SELECT 1 FROM fin_note_log l WHERE l.note_id = n.id AND l.action = 'PAY' AND l.action_date &lt;= #{asOf})
+            ) AS "notesPayable"
+    </select>
+
+    <!-- 截至日已生效、还没有生成凭证的收付款（不含票据业务生成的，票据单独计入应收应付票据）：资金余额取自凭证，不含这些收付款 -->
+    <select id="selectUnvouchered" resultType="com.lemon.erp.modules.bi.dto.JxcViews$Unvouchered">
+        SELECT COUNT(*) AS "count",
+               COALESCE(SUM(CASE WHEN s.kind = 'RECEIPT' THEN s.amount ELSE 0 END), 0) AS "receipt",
+               COALESCE(SUM(CASE WHEN s.kind = 'PAYMENT' THEN s.amount ELSE 0 END), 0) AS "payment"
+        FROM fin_settlement s
+        WHERE s.status = 'APPROVED' AND s.voucher_id IS NULL AND s.settle_date &lt;= #{asOf}
+          AND NOT EXISTS (SELECT 1 FROM fin_note_log l WHERE l.settlement_id = s.id)
     </select>
 
     <select id="selectTopBalances" resultType="com.lemon.erp.modules.bi.dto.JxcViews$PartnerBalance">
-        SELECT b.partner_id AS "partnerId", p.name AS "partnerName", SUM(b.amount - b.settled_amount) AS "amount"
-        FROM fin_bill b
+        SELECT o.partner_id AS "partnerId", p.name AS "partnerName", SUM(o.open_amount) AS "amount"
+        FROM (<include refid="billOpen"/>) o
         <choose>
-            <when test="kind == 'AR'">LEFT JOIN scm_customer p ON p.id = b.partner_id</when>
-            <otherwise>LEFT JOIN scm_supplier p ON p.id = b.partner_id</otherwise>
+            <when test="kind == 'AR'">LEFT JOIN scm_customer p ON p.id = o.partner_id</when>
+            <otherwise>LEFT JOIN scm_supplier p ON p.id = o.partner_id</otherwise>
         </choose>
-        WHERE b.kind = #{kind} AND b.status &lt;&gt; 'SETTLED'
-        GROUP BY b.partner_id, p.name
-        HAVING SUM(b.amount - b.settled_amount) &gt; 0
-        ORDER BY SUM(b.amount - b.settled_amount) DESC, b.partner_id
+        WHERE o.kind = #{kind}
+        GROUP BY o.partner_id, p.name
+        HAVING SUM(o.open_amount) &gt; 0
+        ORDER BY SUM(o.open_amount) DESC, o.partner_id
         LIMIT #{limit}
     </select>
 
@@ -211,11 +312,12 @@
         SELECT i.material_id,
                SUM(CASE WHEN d.kind = 'SALES_OUT' THEN i.qty ELSE -i.qty END) AS qty,
                SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * (i.amount - i.tax_amount)) AS amount,
-               SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * i.qty * COALESCE(mc.unit_cost, sm.ref_cost, 0)) AS cost
+               SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * i.qty * COALESCE(fc.amount / NULLIF(fc.qty, 0), mc.unit_cost, sm.ref_cost, 0)) AS cost
         FROM scm_trade_doc_item i
         JOIN scm_trade_doc d ON d.id = i.doc_id
         JOIN wms_material sm ON sm.id = i.material_id
         LEFT JOIN fin_material_cost mc ON mc.material_id = i.material_id AND mc.period = YEAR(d.biz_date) * 100 + MONTH(d.biz_date)
+        <include refid="flowCost"/>
         WHERE d.kind IN ('SALES_OUT', 'SALES_RETURN') AND d.biz_date &gt;= #{q.begin} AND d.biz_date &lt;= #{q.end}
         <if test="q.warehouseId != null">AND COALESCE(i.warehouse_id, d.warehouse_id) = #{q.warehouseId}</if>
         GROUP BY i.material_id

@@ -34,10 +34,18 @@
             {{ detail.currency }} @{{ Number(detail.exchangeRate) }}
             <span class="sub-text">（≈ ¥{{ formatMoney(Number(detail.totalAmount) * Number(detail.exchangeRate || 0)) }}）</span>
           </a-descriptions-item>
-          <a-descriptions-item v-if="Number(detail.discountAmount) || Number(detail.rebateAmount)" :label="$t('scm.order.discount')">
+          <a-descriptions-item v-if="Number(detail.discountAmount) || Number(detail.rebateAmount) || Number(detail.wholeDiscount)" :label="$t('scm.order.discount')">
             <span v-if="Number(detail.discountAmount)">{{ $t('scm.order.promotionAmount', { amount: symbol + formatMoney(detail.discountAmount) }) }}</span>
             <span v-if="Number(detail.discountAmount) && Number(detail.rebateAmount)">{{ $t('scm.order.comma') }}</span>
             <span v-if="Number(detail.rebateAmount)">{{ $t('scm.order.rebateAmount', { amount: symbol + formatMoney(detail.rebateAmount) }) }}</span>
+            <span v-if="Number(detail.wholeDiscount) && (Number(detail.discountAmount) || Number(detail.rebateAmount))">{{ $t('scm.order.comma') }}</span>
+            <span v-if="Number(detail.wholeDiscount)">{{ $t('scm.wholeDiscount.value', { amount: symbol + formatMoney(detail.wholeDiscount) }) }}</span>
+          </a-descriptions-item>
+          <a-descriptions-item v-if="Number(detail.closeAdjust)" :label="$t('scm.order.closeAdjust')">
+            <div>
+              <span class="nowrap">{{ symbol }}{{ formatMoney(detail.closeAdjust) }}</span>
+              <div class="sub-text">{{ $t('scm.order.closeAdjustHint') }}</div>
+            </div>
           </a-descriptions-item>
           <a-descriptions-item v-if="detail.contractNo" :label="$t('scm.order.contract')">{{ detail.contractNo }}</a-descriptions-item>
           <a-descriptions-item v-if="kind === 'purchase' && detail.approveTime" :label="$t('scm.order.supplierConfirm')">
@@ -269,6 +277,7 @@ function print() {
       [t('scm.order.deliveryDate'), d.deliveryDate],
       [c.warehouseLabel, d.warehouseName],
       [t('scm.order.totalAmount'), `${currencySymbol(d.currency)}${formatMoney(d.totalAmount)}`],
+      ...(Number(d.wholeDiscount) ? [[t('scm.wholeDiscount.label'), `${currencySymbol(d.currency)}${formatMoney(d.wholeDiscount)}`]] : []),
       [t('scm.order.taxAmount'), `${currencySymbol(d.currency)}${formatMoney(d.taxAmount)}`],
       ...(isForeign(d.currency) ? [[t('scm.order.currencyRate'), `${d.currency} @${Number(d.exchangeRate)}`]] : []),
       ...(d.version > 1 ? [[t('scm.order.version'), `V${d.version}`]] : [])
@@ -467,6 +476,9 @@ defineExpose({ reload: load })
 </script>
 
 <style scoped>
+.nowrap {
+  white-space: nowrap;
+}
 .ml {
   margin-left: 6px;
 }

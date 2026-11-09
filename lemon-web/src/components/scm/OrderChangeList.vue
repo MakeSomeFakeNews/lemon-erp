@@ -12,6 +12,11 @@
             <ArrowRightOutlined class="arrow" />
             <b>{{ symbol }}{{ formatMoney(c.newAmount) }}</b>
           </span>
+          <span v-if="c.newWholeDiscount != null && Number(c.newWholeDiscount) !== Number(c.oldWholeDiscount || 0)">
+            {{ $t('scm.orderChange.wholeDiscount') }} {{ symbol }}{{ formatMoney(c.oldWholeDiscount || 0) }}
+            <ArrowRightOutlined class="arrow" />
+            <b>{{ symbol }}{{ formatMoney(c.newWholeDiscount) }}</b>
+          </span>
         </a-space>
         <span class="sub-text">
           {{ c.createByName || '-' }} {{ c.createTime }}

@@ -10,6 +10,7 @@ import com.lemon.erp.framework.data.DetailLines;
 import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.period.BizPeriodGuard;
 import com.lemon.erp.framework.security.LoginUser;
+import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.framework.security.datascope.DataScopes;
@@ -24,8 +25,10 @@ import com.lemon.erp.modules.wms.entity.WmsStockDocItem;
 import com.lemon.erp.modules.wms.mapper.WmsStockDocItemMapper;
 import com.lemon.erp.modules.wms.mapper.WmsStockDocMapper;
 import com.lemon.erp.modules.wms.model.DocStatus;
+import com.lemon.erp.modules.wms.model.LineWarehouses;
 import com.lemon.erp.modules.wms.model.StockBizType;
 import com.lemon.erp.modules.wms.model.StockChange;
+import com.lemon.erp.modules.wms.model.StockInType;
 import com.lemon.erp.modules.wms.model.StockOutType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
@@ -66,21 +69,39 @@ public class WmsStockDocService {
     private final ApprovalSupport approvalSupport;
     private final StockDocValidator validator;
     private final StockDocReverser reverser;
+    private final PermissionService permissionService;
 
     public static final String PROCESS_KEY = "wms_stock_doc";
+    /** 查看成本金额（均价、库存金额、流水和单据的单价金额） */
+    public static final String COST_PERM = "wms:stock:cost";
     private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "wms_stock_doc:");
 
     @DataPermission(table = "wms_stock_doc", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<WmsStockDoc> page(StockBizType kind, long current, long size, DocQuery query) {
         Page<WmsStockDoc> page = Page.of(current, size);
         docMapper.selectPageList(page, kind, query);
+        List<WmsStockDoc> docs = page.getRecords();
+        if (!docs.isEmpty()) {
+            Map<Long, String> headers = new java.util.HashMap<>();
+            docs.forEach(d -> headers.put(d.getId(), d.getWarehouseName()));
+            Map<Long, List<String>> names = LineWarehouses.names(docMapper.selectItemWarehouses(headers.keySet()), headers);
+            docs.forEach(d -> d.setWarehouseNames(names.get(d.getId())));
+        }
         return PageResult.of(page);
     }
 
     public WmsStockDoc detail(StockBizType kind, Long id) {
         getAccessible(kind, id);
         WmsStockDoc doc = docMapper.selectDetail(id);
-        doc.setItems(itemMapper.selectByDocId(id));
+        List<WmsStockDocItem> items = itemMapper.selectByDocId(id);
+        // 成本单价、业务单价：有「查看成本金额」权限，或能编辑入库单（填写其他入库的成本价）时返回
+        if (!permissionService.hasAnyPerm(COST_PERM, "wms:in:add", "wms:in:edit")) {
+            items.forEach(i -> {
+                i.setCostPrice(null);
+                i.setBizPrice(null);
+            });
+        }
+        doc.setItems(items);
         return doc;
     }
 
@@ -104,7 +125,8 @@ public class WmsStockDocService {
     }
 
     private WmsStockDoc insert(StockBizType kind, StockDocRequest req, String sourceNo) {
-        List<WmsStockDocItem> items = toItems(kind, req.warehouseId(), req.items());
+        boolean manual = !generated(sourceNo, req);
+        List<WmsStockDocItem> items = toItems(kind, req, manual);
         validator.validate(kind, req.bizType(), req.warehouseId(), req.toWarehouseId(), items, false);
         LoginUser user = SecurityUtils.getLoginUser();
         WmsStockDoc doc = new WmsStockDoc();
@@ -119,6 +141,10 @@ public class WmsStockDocService {
         doc.setSourceNo(sourceNo);
         doc.setInTransit(kind == TRANSFER && Boolean.TRUE.equals(req.inTransit()) ? 1 : 0);
         doc.setReversed(0);
+        if (!manual) {
+            doc.setPartnerId(req.partnerId());
+            doc.setPartnerName(req.partnerName() == null || req.partnerName().length() <= 128 ? req.partnerName() : req.partnerName().substring(0, 128));
+        }
         doc.setTotalQty(totalQty(items));
         doc.setStatus(DocStatus.DRAFT);
         doc.setDeptId(user.deptId());
@@ -134,7 +160,7 @@ public class WmsStockDocService {
         if (draft.getSourceNo() == null) {
             StockDocRules.checkManualType(kind, req.bizType());
         }
-        List<WmsStockDocItem> items = toItems(kind, req.warehouseId(), req.items());
+        List<WmsStockDocItem> items = toItems(kind, req, draft.getSourceNo() == null);
         validator.validate(kind, req.bizType(), req.warehouseId(), req.toWarehouseId(), items, false);
         docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate()
                 .set(WmsStockDoc::getBizType, kind == TRANSFER ? null : req.bizType())
@@ -279,9 +305,21 @@ public class WmsStockDocService {
         return doc;
     }
 
-    /** 请求明细转为实体，统一库位、批次、序列号的表示方式；与单据种类无关的字段清空，明细仓库与表头相同时不保存 */
-    private static List<WmsStockDocItem> toItems(StockBizType kind, Long warehouseId, List<StockDocItemRequest> requests) {
-        return requests.stream().map(r -> {
+    /**
+     * 业务单据生成（有来源单号），或期初入库导入（由程序生成，没有来源单号）：保留传入的成本单价、业务单价和往来单位
+     */
+    private static boolean generated(String sourceNo, StockDocRequest req) {
+        return sourceNo != null || StockInType.OPENING.matches(req.bizType());
+    }
+
+    /**
+     * 请求明细转为实体，统一库位、批次、序列号的表示方式；与单据种类无关的字段清空，明细仓库与表头相同时不保存。
+     * 手工单据只有入库（寄售入库除外）可以填写成本单价，业务单价只由业务单据传入
+     */
+    private static List<WmsStockDocItem> toItems(StockBizType kind, StockDocRequest req, boolean manual) {
+        Long warehouseId = req.warehouseId();
+        boolean manualCost = kind == IN && !StockInType.CONSIGN_IN.matches(req.bizType());
+        return req.items().stream().map(r -> {
             WmsStockDocItem item = new WmsStockDocItem();
             item.setMaterialId(r.materialId());
             item.setWarehouseId(kind == TRANSFER || r.warehouseId() == null || r.warehouseId().equals(warehouseId) ? null : r.warehouseId());
@@ -293,6 +331,10 @@ public class WmsStockDocService {
                 item.setExpiryDate(r.expiryDate());
             }
             item.setQty(r.qty());
+            if (kind != TRANSFER && (!manual || manualCost)) {
+                item.setCostPrice(r.costPrice());
+            }
+            item.setBizPrice(manual ? null : r.bizPrice());
             item.setSerialNos(joinSerials(splitSerials(r.serialNos())));
             item.setRemark(r.remark());
             return item;

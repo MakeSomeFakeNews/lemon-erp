@@ -8,11 +8,14 @@ import com.lemon.erp.modules.bi.model.JxcDimension;
 import com.lemon.erp.modules.bi.service.BiJxcAnalysisService;
 import com.lemon.erp.modules.bi.service.BiJxcService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
 
 /**
  * 进销存报表 /bi/jxc：销售报表、进货报表（汇总 → 明细 → 单据）、经营状况、资产状况、商品分析、客户 RFM。
@@ -76,10 +79,11 @@ public class BiJxcController {
         return R.ok(jxcService.business(q));
     }
 
+    /** 资产状况，asOf 为截至日期（含），不传为今天 */
     @GetMapping("/assets")
     @PreAuthorize("@ss.hasPerm('bi:jxc:asset')")
-    public R<JxcViews.Assets> assets() {
-        return R.ok(analysisService.assets());
+    public R<JxcViews.Assets> assets(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate asOf) {
+        return R.ok(analysisService.assets(asOf));
     }
 
     // ---------------------------------------------------------------- 商品分析

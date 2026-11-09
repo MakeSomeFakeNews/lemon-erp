@@ -30,7 +30,11 @@ public enum BillSource {
     /** 质量索赔 */
     QUALITY_CLAIM,
     /** 销售返利 */
-    REBATE;
+    REBATE,
+    /** 冲账单（垫付运费、返利、三包赔偿等抵扣往来款，红字） */
+    OFFSET,
+    /** 订单尾差调整：部分出入库的订单关闭时，已出入库金额与订单口径的差额（蓝字或红字） */
+    ORDER_ADJUST;
 
     /** 供应链出入库生成的单据（与 scm TradeKind 同名） */
     public static final Set<BillSource> TRADE = EnumSet.of(SALES_OUT, SALES_RETURN, PURCHASE_IN, PURCHASE_RETURN);

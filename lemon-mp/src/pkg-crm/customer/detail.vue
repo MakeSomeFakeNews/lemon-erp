@@ -31,7 +31,7 @@
       <l-cell :label="t('crm.customer.code')" :value="c.code" />
       <l-cell :label="t('crm.customer.owner')" :value="c.ownerName" />
       <l-cell :label="t('crm.customer.industry')" :value="dictText(dict.crm_industry, c.industry)" />
-      <l-cell :label="t('crm.customer.region')" :value="c.region" />
+      <l-cell :label="t('crm.customer.region')" :value="dictText(dict.scm_region, c.region)" />
       <l-cell :label="t('crm.customer.address')" :value="c.address" />
       <l-cell :label="t('crm.customer.lastFollow')" :value="shortTime(c.lastFollowTime)" />
       <l-cell :label="t('crm.customer.nextFollow')" :value="shortTime(c.nextFollowTime)" />
@@ -103,7 +103,7 @@ import { money, shortMoney, shortTime } from '@/utils/format'
 
 const { t } = useI18n()
 useTitle('crm.customer.detailTitle')
-const dict = useDict('crm_customer_stage', 'scm_customer_level', 'crm_industry', 'crm_follow_method', 'crm_opp_stage')
+const dict = useDict('crm_customer_stage', 'scm_customer_level', 'crm_industry', 'crm_follow_method', 'crm_opp_stage', 'scm_region')
 const customerId = ref(null)
 const c = ref(null)
 const summary = ref(null)

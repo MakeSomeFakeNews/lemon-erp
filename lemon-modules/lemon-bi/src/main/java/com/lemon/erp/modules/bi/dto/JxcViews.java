@@ -89,7 +89,7 @@ public final class JxcViews {
 
     // ---------------------------------------------------------------- 经营状况
 
-    /** 资金流：收款（收款单 + 预收款）、付款（付款单 + 预付款） */
+    /** 资金流：收款（收款单 + 预收款 + 票据托收、贴现）、付款（付款单 + 预付款 + 应付票据兑付）；票据业务生成的收付款单不是现金收付，不计入 */
     @Data
     public static class CashRow {
         private Integer period;
@@ -119,6 +119,8 @@ public final class JxcViews {
         private String category;
         private BigDecimal qty;
         private BigDecimal amount;
+        /** 1 用到了升级前回填的近似成本流水 */
+        private Integer estimated;
     }
 
     /** 名称 + 金额 */
@@ -133,6 +135,17 @@ public final class JxcViews {
         private BigDecimal apBalance;
         private BigDecimal advanceReceived;
         private BigDecimal advancePaid;
+        /** 持有的应收票据、未兑付的应付票据（票面金额） */
+        private BigDecimal notesReceivable;
+        private BigDecimal notesPayable;
+    }
+
+    /** 已生效、还没有生成凭证的收付款（资金余额取自凭证，不含它们） */
+    @Data
+    public static class Unvouchered {
+        private Long count;
+        private BigDecimal receipt;
+        private BigDecimal payment;
     }
 
     /** 往来单位余额排行（数据库查询结果） */
@@ -148,12 +161,16 @@ public final class JxcViews {
     }
 
     /**
-     * 资产状况（当前时点）。净资产 = 资金 + 库存 + 应收 + 预付 − 应付 − 预收
+     * 资产状况（截至某日，默认今天）。净资产 = 资金 + 库存 + 应收 + 应收票据 + 预付 − 应付 − 应付票据 − 预收
+     *
+     * @param live               截至今天（实时）
+     * @param inventoryEstimated 库存金额用到了升级前回填的近似成本流水（截至日早于实时成本上线时）
+     * @param unvouchered        截至日已生效、还没有生成凭证的收付款（不在资金余额中），没有时 count 为 0
      */
-    public record Assets(LocalDate asOf, BigDecimal cashBalance, BigDecimal bankBalance, List<FundRow> funds,
-                         BigDecimal inventoryAmount, List<NameAmount> inventoryByWarehouse, List<NameAmount> inventoryByCategory,
-                         Balances balances, List<PartnerBalance> topReceivables, List<PartnerBalance> topPayables,
-                         BigDecimal netAssets) {
+    public record Assets(LocalDate asOf, boolean live, BigDecimal cashBalance, BigDecimal bankBalance, List<FundRow> funds,
+                         BigDecimal inventoryAmount, boolean inventoryEstimated, List<NameAmount> inventoryByWarehouse,
+                         List<NameAmount> inventoryByCategory, Balances balances, List<PartnerBalance> topReceivables,
+                         List<PartnerBalance> topPayables, Unvouchered unvouchered, BigDecimal netAssets) {
     }
 
     // ---------------------------------------------------------------- 商品分析

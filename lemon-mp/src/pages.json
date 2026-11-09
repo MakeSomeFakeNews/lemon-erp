@@ -58,6 +58,8 @@
       "root": "pkg-wms",
       "pages": [
         { "path": "stock/index", "style": { "navigationBarTitleText": "库存查询" } },
+        { "path": "stock/history", "style": { "navigationBarTitleText": "经营历史" } },
+        { "path": "sale/index", "style": { "navigationBarTitleText": "快速开单" } },
         { "path": "receive/index", "style": { "navigationBarTitleText": "扫码收货" } },
         { "path": "putaway/index", "style": { "navigationBarTitleText": "上架" } },
         { "path": "pick/index", "style": { "navigationBarTitleText": "拣货" } },

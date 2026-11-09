@@ -57,6 +57,10 @@ export const AccountRole = Object.freeze({
   FINANCE_EXPENSE: 'FINANCE_EXPENSE',
   NON_OPERATING_INCOME: 'NON_OPERATING_INCOME',
   NON_OPERATING_EXPENSE: 'NON_OPERATING_EXPENSE',
+  RECEIPT_DISCOUNT: 'RECEIPT_DISCOUNT', // 收款折让 / 抹零
+  PAYMENT_DISCOUNT: 'PAYMENT_DISCOUNT', // 付款折让 / 抹零
+  OFFSET_AR: 'OFFSET_AR', // 应收冲账
+  OFFSET_AP: 'OFFSET_AP', // 应付冲账
   INPUT_VAT: 'INPUT_VAT',
   OUTPUT_VAT: 'OUTPUT_VAT',
   UNPAID_VAT: 'UNPAID_VAT',
@@ -328,6 +332,8 @@ export const BillSource = Object.freeze({
   NOTE: 'NOTE', // 票据拒付
   QUALITY_CLAIM: 'QUALITY_CLAIM', // 质量索赔
   REBATE: 'REBATE', // 销售返利
+  OFFSET: 'OFFSET', // 冲账单
+  ORDER_ADJUST: 'ORDER_ADJUST', // 订单尾差调整
 })
 
 /** com.lemon.erp.modules.fin.model.BillStatus（字典 fin_bill_status） */
@@ -675,6 +681,13 @@ export const ExpenseClaimStatus = Object.freeze({
   APPROVING: 'APPROVING', // 审批中
   APPROVED: 'APPROVED', // 待付款
   PAID: 'PAID', // 已付款
+})
+
+/** com.lemon.erp.modules.mes.model.FinishCostBasis */
+export const FinishCostBasis = Object.freeze({
+  STANDARD: 'STANDARD', // 标准成本
+  ACTUAL: 'ACTUAL', // 工单实际成本
+  AVERAGE: 'AVERAGE', // 当前均价
 })
 
 /** com.lemon.erp.framework.workflow.FlowStatus（字典 wf_status） */
@@ -1055,6 +1068,12 @@ export const NoteStatus = Object.freeze({
 export const NoteType = Object.freeze({
   BANK: 'BANK', // 银行承兑汇票
   COMMERCIAL: 'COMMERCIAL', // 商业承兑汇票
+})
+
+/** com.lemon.erp.modules.fin.model.OffsetStatus（字典 fin_offset_status） */
+export const OffsetStatus = Object.freeze({
+  DRAFT: 'DRAFT', // 待复核
+  REVIEWED: 'REVIEWED', // 已复核
 })
 
 /** com.lemon.erp.framework.log.OperType（字典 sys_oper_type） */

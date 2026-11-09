@@ -70,6 +70,10 @@ public class ScmTradeDoc extends BaseEntity {
     @TableField(exist = false)
     private OrderSource orderSource;
 
+    /** 直接开单的整单优惠（隐式订单上记录，已分摊到各行金额），引用订单时为空 */
+    @TableField(exist = false)
+    private BigDecimal wholeDiscount;
+
     @TableField(exist = false)
     private String partnerCode;
 
@@ -78,6 +82,10 @@ public class ScmTradeDoc extends BaseEntity {
 
     @TableField(exist = false)
     private String warehouseName;
+
+    /** 列表：明细实际涉及的仓库（表头仓库在前），多于一个时显示「多仓」 */
+    @TableField(exist = false)
+    private List<String> warehouseNames;
 
     @TableField(exist = false)
     private String createByName;

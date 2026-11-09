@@ -32,6 +32,7 @@ import com.lemon.erp.modules.wms.dto.StockDocItemRequest;
 import com.lemon.erp.modules.wms.dto.StockDocRequest;
 import com.lemon.erp.modules.wms.entity.WmsStockDoc;
 import com.lemon.erp.modules.wms.model.HoldLine;
+import com.lemon.erp.modules.wms.model.LineWarehouses;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import com.lemon.erp.modules.wms.service.StockHoldService;
 import com.lemon.erp.modules.wms.service.WmsStockDocService;
@@ -50,7 +51,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.lemon.erp.modules.scm.model.ScmConstants.TRADE_RULE;
-import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
 import static com.lemon.erp.modules.scm.model.ScmConstants.tax;
 import static com.lemon.erp.modules.wms.model.WmsConstants.NO_BATCH;
 import static com.lemon.erp.modules.wms.model.WmsConstants.batchOrNone;
@@ -82,11 +82,20 @@ public class ScmTradeDocService {
     private final ApplicationEventPublisher eventPublisher;
     private final StockHoldService holdService;
     private final ScmReservationService reservationService;
+    private final ScmStockCosts stockCosts;
+    private final DirectGifts directGifts;
 
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmTradeDoc> page(TradeKind kind, long current, long size, TradeDocQuery query) {
         Page<ScmTradeDoc> page = Page.of(current, size);
         docMapper.selectPageList(page, kind, query);
+        List<ScmTradeDoc> docs = page.getRecords();
+        if (!docs.isEmpty()) {
+            Map<Long, String> headers = new java.util.HashMap<>();
+            docs.forEach(d -> headers.put(d.getId(), d.getWarehouseName()));
+            Map<Long, List<String>> names = LineWarehouses.names(docMapper.selectItemWarehouses(headers.keySet()), headers);
+            docs.forEach(d -> d.setWarehouseNames(names.get(d.getId())));
+        }
         return PageResult.of(page);
     }
 
@@ -116,6 +125,7 @@ public class ScmTradeDocService {
     /**
      * 直接开单：按明细生成并直接审核隐式订单（来源 DIRECT，一行明细对应一行订单明细），再按订单出入库，
      * 信用额度、限价、促销、超发、序列号批次、应收应付、成本、提成、追溯都与引用订单相同。
+     * 销售出库的买赠赠品随单出库（见 {@link DirectGifts}），单价为 0，不计应收，成本照常结转。
      * 退货不引用原单时隐式订单视为已全部出入库，库存按退货入库 / 出库，应收应付按退货金额冲减
      */
     private Long createDirect(TradeKind kind, TradeDocRequest req) {
@@ -128,33 +138,47 @@ public class ScmTradeDocService {
         if (kind.isReturns() && Boolean.TRUE.equals(req.replenish())) {
             throw new BizException("scm.error.directOrderNoReplenish");
         }
-        List<OrderItemRequest> lines = new ArrayList<>(req.items().size());
-        for (int i = 0; i < req.items().size(); i++) {
-            TradeDocItemRequest r = req.items().get(i);
+        // 买赠的赠品行只用于销售出库：数量由促销规则决定，请求中的赠品行只指定库位、批次、仓库、序列号
+        List<TradeDocItemRequest> normal = req.items().stream().filter(r -> !r.isGift()).toList();
+        List<TradeDocItemRequest> giftReqs = req.items().stream().filter(TradeDocItemRequest::isGift).toList();
+        if (!giftReqs.isEmpty() && kind != TradeKind.SALES_OUT) {
+            throw new BizException("scm.error.giftOnlySalesOut");
+        }
+        if (normal.isEmpty()) {
+            throw new BizException("scm.error.directDocNeedsGoods");
+        }
+        List<OrderItemRequest> lines = new ArrayList<>(normal.size());
+        for (int i = 0; i < normal.size(); i++) {
+            TradeDocItemRequest r = normal.get(i);
             if (r.materialId() == null) {
                 throw new BizException("scm.error.directDocRowSelectMaterial", i + 1);
             }
             if (r.price() == null) {
                 throw new BizException("scm.error.directDocRowEnterPrice", i + 1);
             }
-            lines.add(new OrderItemRequest(r.materialId(), r.qty(), r.price(), r.taxRate(), req.bizDate(), r.remark()));
+            lines.add(new OrderItemRequest(r.materialId(), r.qty(), r.price(), r.taxRate(), req.bizDate(), r.remark(), r.unitName()));
         }
         ScmOrder order = orderService.createDirect(kind.getOrderKind(), new OrderRequest(req.partnerId(), req.bizDate(), req.bizDate(),
-                req.warehouseId(), req.remark(), lines), req.salesmanId(), kind.isReturns());
-        // 订单明细按插入顺序与请求明细一一对应
+                req.warehouseId(), req.remark(), lines, null, null, null, null, req.wholeDiscount()), req.salesmanId(), kind.isReturns());
+        // 订单明细按插入顺序与请求的普通明细一一对应，买赠促销生成的赠品行在其后
         List<ScmOrderItem> orderItems = orderItemMapper.selectByOrderId(order.getId());
         List<TradeDocItemRequest> items = new ArrayList<>(req.items().size());
-        for (int i = 0; i < req.items().size(); i++) {
-            TradeDocItemRequest r = req.items().get(i);
+        for (int i = 0; i < normal.size(); i++) {
+            TradeDocItemRequest r = normal.get(i);
             items.add(new TradeDocItemRequest(orderItems.get(i).getId(), r.locationId(), r.batchNo(), r.productionDate(), r.expiryDate(),
                     r.qty(), r.serialNos(), r.remark(), null, null, null, r.warehouseId()));
         }
+        List<ScmOrderItem> giftItems = orderItems.subList(normal.size(), orderItems.size()).stream()
+                .filter(i -> Integer.valueOf(1).equals(i.getGift())).toList();
+        items.addAll(directGifts.lines(giftItems, giftReqs, req.warehouseId()));
         return create(kind, new TradeDocRequest(order.getId(), req.warehouseId(), req.bizDate(), req.remark(), false, items), order);
     }
 
     private Long create(TradeKind kind, TradeDocRequest req, ScmOrder order) {
         Set<OrderStatus> allowed = kind.isReturns() ? OrderStatus.RETURNABLE : OrderStatus.EXECUTABLE;
-        if (!allowed.contains(order.getStatus())) {
+        // 锁定订单后按最新状态校验：与关闭串行，关闭计算尾差时不会有进行中的出入库
+        OrderStatus status = orderService.lockStatus(order.getId());
+        if (!allowed.contains(status)) {
             if (!kind.isReturns()) {
                 throw new BizException("scm.error.orderNotApprovedPartiallyCompletedNot", order.getOrderNo(), Messages.get(kind.getLabelKey()));
             }
@@ -166,6 +190,10 @@ public class ScmTradeDocService {
         if (kind.isReturns() && Boolean.TRUE.equals(req.replenish()) && order.getSource() == OrderSource.DIRECT) {
             throw new BizException("scm.error.directOrderNoReplenish");
         }
+        // 已关闭的订单不再出入库，退货只能退款（补发的数量无法再出入库，关闭时的尾差也已按已出入库数量结算）
+        if (kind.isReturns() && Boolean.TRUE.equals(req.replenish()) && status == OrderStatus.CLOSED) {
+            throw new BizException("scm.error.closedOrderNoReplenish", order.getOrderNo());
+        }
         if (kind == TradeKind.SALES_OUT) {
             creditChecker.checkBeforeShipment(order);
         }
@@ -176,6 +204,7 @@ public class ScmTradeDocService {
         String docNo = docNoService.next(kind.getPrefix());
 
         List<ScmTradeDocItem> items = new ArrayList<>(req.items().size());
+        List<BigDecimal> amountsFc = new ArrayList<>(req.items().size());
         // 业务参数：允许超收 / 超发的比例
         BigDecimal overRate = kind.isReturns() ? BigDecimal.ZERO : BigDecimal.valueOf(bizRules.number(
                 kind.getOrderKind() == OrderKind.PURCHASE ? ScmBizRules.PURCHASE_OVER_RATE : ScmBizRules.SALES_OVER_RATE));
@@ -198,16 +227,26 @@ public class ScmTradeDocService {
                 throw new BizException("scm.error.rowQuantityExceeds", i + 1, orderItem.getMaterialCode(), orderItem.getMaterialName(),
                         Messages.get(kind.isReturns() ? "scm.label.returnableQuantity" : overRate.signum() > 0 ? "scm.label.quantityAllowedOverReceiptOverDelivery" : "scm.label.openQuantity"), plain(max));
             }
-            ScmTradeDocItem item = toItem(kind, r, orderItem, rate(order));
+            // 本行金额（订单币种）：最后一批取 订单行金额 − 已出入库金额，累计金额精确等于订单行金额
+            ScmOrderItem current = orderItemMapper.selectById(orderItem.getId());
+            BigDecimal amountFc = kind.isReturns() ? OrderLineAmounts.returned(current, r.qty()) : OrderLineAmounts.outbound(current, r.qty());
+            boolean replenish = kind.isReturns() && Boolean.TRUE.equals(req.replenish());
+            BigDecimal share = !kind.isReturns() ? OrderLineAmounts.outboundShare(current, r.qty())
+                    : replenish ? OrderLineAmounts.replenishShare(current, r.qty()) : BigDecimal.ZERO;
+            orderItemMapper.addAmounts(orderItem.getId(), !kind.isReturns() ? amountFc : replenish ? amountFc.negate() : BigDecimal.ZERO,
+                    kind.isReturns() && !replenish ? amountFc : BigDecimal.ZERO, share);
+            amountsFc.add(amountFc);
+            ScmTradeDocItem item = toItem(kind, r, orderItem, rate(order), amountFc);
             if (lineWarehouse && r.warehouseId() != null && !r.warehouseId().equals(req.warehouseId())) {
                 item.setWarehouseId(r.warehouseId());
             }
             items.add(item);
         }
 
-        StockDocRequest stockReq = new StockDocRequest(kind.getStockBizType().name(), req.warehouseId(), null, req.bizDate(),
-                req.remark(),
-                items.stream().map(ScmTradeDocService::toStockItem).toList());
+        // 实时库存成本：带上成本单价、业务单价（不含税）和往来单位
+        StockDocRequest stockReq = stockCosts.enrich(kind, order, items, new StockDocRequest(kind.getStockBizType().name(),
+                req.warehouseId(), null, req.bizDate(), req.remark(),
+                items.stream().map(ScmTradeDocService::toStockItem).toList()));
         if (kind == TradeKind.PURCHASE_RETURN) {
             // 退货先解冻该订单的不合格、待检库存
             holdService.releaseForReturn(order.getId(), holdLines(req.warehouseId(), items));
@@ -235,7 +274,7 @@ public class ScmTradeDocService {
         doc.setTaxAmount(Decimals.sum(items, ScmTradeDocItem::getTaxAmount));
         doc.setCurrency(order.getCurrency() == null ? ExchangeRateProvider.BASE : order.getCurrency());
         doc.setExchangeRate(rate(order));
-        doc.setAmountFc(Decimals.sum(req.items(), r -> amount(r.qty(), orderItems.get(r.orderItemId()).getPrice())));
+        doc.setAmountFc(Decimals.sum(amountsFc, a -> a));
         doc.setWmsDocId(stockDoc.getId());
         doc.setWmsDocNo(stockDoc.getDocNo());
         doc.setRemark(req.remark());
@@ -261,8 +300,12 @@ public class ScmTradeDocService {
         return order.getExchangeRate() == null ? BigDecimal.ONE : order.getExchangeRate();
     }
 
-    /** 单价、金额按订单汇率折算为本位币 */
-    private static ScmTradeDocItem toItem(TradeKind kind, TradeDocItemRequest r, ScmOrderItem orderItem, BigDecimal rate) {
+    /**
+     * 单价、金额按订单汇率折算为本位币
+     *
+     * @param amountFc 本行金额（订单币种），见 {@link OrderLineAmounts}
+     */
+    private static ScmTradeDocItem toItem(TradeKind kind, TradeDocItemRequest r, ScmOrderItem orderItem, BigDecimal rate, BigDecimal amountFc) {
         ScmTradeDocItem item = new ScmTradeDocItem();
         item.setOrderItemId(orderItem.getId());
         item.setMaterialId(orderItem.getMaterialId());
@@ -279,8 +322,7 @@ public class ScmTradeDocService {
                 : orderItem.getPrice().multiply(rate).setScale(4, java.math.RoundingMode.HALF_UP);
         item.setPrice(price);
         item.setTaxRate(orderItem.getTaxRate());
-        item.setAmount(rate.compareTo(BigDecimal.ONE) == 0 ? amount(r.qty(), orderItem.getPrice())
-                : amount(r.qty(), orderItem.getPrice()).multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP));
+        item.setAmount(rate.compareTo(BigDecimal.ONE) == 0 ? amountFc : amountFc.multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP));
         item.setTaxAmount(tax(item.getAmount(), item.getTaxRate()));
         item.setSerialNos(Integer.valueOf(1).equals(orderItem.getSerialEnabled()) ? joinSerials(splitSerials(r.serialNos())) : null);
         item.setRemark(r.remark());

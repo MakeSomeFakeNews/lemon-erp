@@ -12,9 +12,13 @@ import java.util.List;
 
 public interface FinSettlementMapper extends BaseMapper<FinSettlement> {
 
-    /** @param keyword 单号 */
+    /**
+     * @param keyword      单号
+     * @param discountOnly 只查有折让的收付款（折让记录）
+     */
     IPage<FinSettlement> selectPageList(IPage<FinSettlement> page, @Param("kind") SettleKind kind,
-                                        @Param("partnerId") Long partnerId, @Param("keyword") String keyword);
+                                        @Param("partnerId") Long partnerId, @Param("keyword") String keyword,
+                                        @Param("discountOnly") boolean discountOnly);
 
     FinSettlement selectDetail(@Param("id") Long id);
 

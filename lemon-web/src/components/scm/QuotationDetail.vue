@@ -24,6 +24,7 @@
             <b>¥{{ formatMoney(detail.totalAmount) }}</b>
             <span class="sub-text">{{ $t('scm.quotation.taxAmountParen', { amount: formatMoney(detail.taxAmount) }) }}</span>
           </a-descriptions-item>
+          <a-descriptions-item v-if="Number(detail.wholeDiscount)" :label="$t('scm.wholeDiscount.label')">¥{{ formatMoney(detail.wholeDiscount) }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.opportunityId" :label="$t('scm.quotation.opportunity')">#{{ detail.opportunityId }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.orderId" :label="$t('scm.quotation.salesOrder')">
             <a @click="toOrder(detail.orderId)">{{ detail.orderNo }}</a>

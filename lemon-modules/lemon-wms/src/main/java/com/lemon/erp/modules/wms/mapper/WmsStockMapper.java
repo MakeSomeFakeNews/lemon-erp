@@ -40,6 +40,14 @@ public interface WmsStockMapper extends BaseMapper<WmsStock> {
     IPage<StockSummaryView> selectSummary(IPage<StockSummaryView> page, @Param("q") StockQuery query);
 
     /**
+     * 库存查询的合计（全部页）
+     *
+     * @param summary true 按物料汇总的条件，false 库存明细的条件
+     * @return {qty, amount}
+     */
+    Map<String, Object> selectTotal(@Param("q") StockQuery query, @Param("summary") boolean summary);
+
+    /**
      * 各物料在全部仓库（不含不良品仓）的库存合计
      *
      * @return [{materialId, qty, frozenQty}]

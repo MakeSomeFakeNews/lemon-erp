@@ -36,6 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +57,7 @@ public class ScmOrderService {
 
     /** 记录变更历史的字段 */
     private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("partnerId", "往来单位ID", "orderDate", "订单日期", "deliveryDate", "交货日期", "warehouseId", "仓库ID", // i18n-ignore
-            "totalQty", "合计数量", "totalAmount", "价税合计", "remark", "备注"); // i18n-ignore
+            "totalQty", "合计数量", "totalAmount", "价税合计", "wholeDiscount", "整单优惠", "remark", "备注"); // i18n-ignore
 
     /** 审批流程的业务标识前缀，businessKey = scm_order:订单ID */
     private static final String BUSINESS_KEY_PREFIX = "scm_order:";
@@ -72,6 +73,7 @@ public class ScmOrderService {
     private final ScmOrderPricingService pricing;
     private final ScmOrderCreditChecker creditChecker;
     private final ScmOrderNotifier notifier;
+    private final ScmOrderCloseAdjuster closeAdjuster;
 
     @DataPermission(table = "scm_order", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmOrder> page(OrderKind kind, long current, long size, OrderQuery query) {
@@ -97,7 +99,7 @@ public class ScmOrderService {
         return id == null ? null : orderMapper.selectById(id);
     }
 
-    /** 手工新建：销售订单自动应用促销，可使用返利抵扣 */
+    /** 手工新建：销售订单自动应用促销，可使用返利抵扣；采购、销售订单都可以填写整单优惠 */
     @Transactional
     public Long create(OrderKind kind, OrderRequest req) {
         return createDraft(kind, req, OrderSource.MANUAL, kind == OrderKind.SALES);
@@ -121,7 +123,7 @@ public class ScmOrderService {
 
     /**
      * 直接开单：生成隐式订单（来源 DIRECT）并直接审核（不走审批），在出入库单的事务中执行。
-     * 出库 / 入库时与手工订单一样校验限价；销售出库应用折扣、满减促销（买赠的赠品不会随单出库，不应用），按业务参数校验信用额度。
+     * 出库 / 入库时与手工订单一样校验限价；销售出库应用折扣、满减、买赠促销（赠品行追加在明细之后，随单出库），按业务参数校验信用额度。
      * 退货的隐式订单视为已全部出入库，只用于回写退货数量
      *
      * @param salesmanId 销售业务员，为空时取客户负责人，没有时为制单人
@@ -146,12 +148,10 @@ public class ScmOrderService {
         List<ScmOrderItem> items = assembler.toItems(kind, req);
         pricing.applyContract(kind, req, items, null);
         ScmPromotionService.Applied applied = promote ? pricing.promote(req, items, null) : null;
-        if (applied != null && source == OrderSource.DIRECT) {
-            applied = applied.withoutGifts();
-        }
         if (applied != null) {
             items = applied.items();
         }
+        BigDecimal wholeDiscount = ScmOrderPricingService.applyWholeDiscount(req, items);
         LoginUser user = SecurityUtils.getLoginUser();
         ScmOrder order = new ScmOrder();
         order.setOrderNo(docNoService.next(kind.getPrefix()));
@@ -171,6 +171,7 @@ public class ScmOrderService {
             order.setDiscountAmount(applied.discountAmount());
             order.setRebateAmount(ScmOrderPricingService.rebateOf(req));
         }
+        order.setWholeDiscount(wholeDiscount);
         orderMapper.insert(order);
         saveItems(order.getId(), items);
         if (applied != null) {
@@ -196,6 +197,7 @@ public class ScmOrderService {
         if (applied != null) {
             items = applied.items();
         }
+        BigDecimal wholeDiscount = ScmOrderPricingService.applyWholeDiscount(req, items);
         ScmOrder order = new ScmOrder();
         assembler.fillHeader(order, req, items);
         pricing.checkPriceLimit(kind, items, order.getExchangeRate());
@@ -213,6 +215,7 @@ public class ScmOrderService {
                 .set(ScmOrder::getContractId, order.getContractId())
                 .set(applied != null, ScmOrder::getDiscountAmount, applied == null ? null : applied.discountAmount())
                 .set(applied != null, ScmOrder::getRebateAmount, ScmOrderPricingService.rebateOf(req))
+                .set(ScmOrder::getWholeDiscount, wholeDiscount)
                 .set(ScmOrder::getUpdateTime, LocalDateTime.now())
                 .eq(ScmOrder::getId, id)
                 .eq(ScmOrder::getStatus, OrderStatus.DRAFT));
@@ -266,6 +269,7 @@ public class ScmOrderService {
         // 先改状态再发起：流程没有审批节点时会在发起过程中直接结束并回调 onFlowFinished
         return approvalSupport.submit(flowOf(kind), id, Map.of(
                         "amount", order.getTotalAmount().doubleValue(),
+                        "wholeDiscount", order.getWholeDiscount() == null ? 0d : order.getWholeDiscount().doubleValue(),
                         "orderNo", order.getOrderNo()),
                 () -> {
                     changeStatus(id, OrderStatus.DRAFT, OrderStatus.APPROVED, true);
@@ -302,12 +306,15 @@ public class ScmOrderService {
         eventPublisher.publishEvent(new OrderStatusChangedEvent(kind, id, order.getOrderNo(), OrderStatus.DRAFT));
     }
 
-    /** 关闭：不再入库 / 出库（如供应商无法继续供货），已完成部分不受影响 */
+    /**
+     * 关闭：不再入库 / 出库（如供应商无法继续供货），已完成部分不受影响。
+     * 先锁定订单（与进行中的出入库串行），部分出入库的行按订单口径调整尾差并生成应收 / 应付调整单（{@link ScmOrderCloseAdjuster}）
+     */
     @Transactional
     public void close(OrderKind kind, Long id) {
         ScmOrder order = getAccessible(kind, id);
         checkNotDirect(order);
-        if (!order.getStatus().isExecutable()) {
+        if (!lockStatus(id).isExecutable()) {
             throw new BizException("scm.error.onlyApprovedPartiallyCompletedOrdersClosed");
         }
         int updated = orderMapper.update(Wrappers.<ScmOrder>lambdaUpdate()
@@ -318,6 +325,7 @@ public class ScmOrderService {
         if (updated == 0) {
             throw new BizException("scm.error.orderStatusHasChangedRefresh");
         }
+        closeAdjuster.adjust(order);
         // 下游联动关闭（未完成的生产计划等）
         eventPublisher.publishEvent(new OrderStatusChangedEvent(kind, id, order.getOrderNo(), OrderStatus.CLOSED));
     }
@@ -363,6 +371,15 @@ public class ScmOrderService {
         if (order.getSource() == OrderSource.DIRECT) {
             throw new BizException("scm.error.directOrderReadOnly", order.getOrderNo());
         }
+    }
+
+    /** 锁定订单行并返回最新状态：出入库、关闭在同一订单上串行执行（关闭后不会再有进行中的出入库回写数量、金额） */
+    OrderStatus lockStatus(Long id) {
+        String status = orderMapper.selectStatusForUpdate(id);
+        if (status == null) {
+            throw new BizException("scm.error.orderDoesNotExist");
+        }
+        return OrderStatus.valueOf(status);
     }
 
     /** 在数据权限范围内的订单 */

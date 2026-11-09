@@ -11,7 +11,8 @@ export const jxcExport = (report, params) => request.get(`/bi/jxc/${report}/expo
 
 /** 经营状况、资产状况 */
 export const jxcBusiness = (params) => request.get('/bi/jxc/business', { params })
-export const jxcAssets = () => request.get('/bi/jxc/assets')
+/** 资产状况：params.asOf 为截至日期（YYYY-MM-DD），不传为今天 */
+export const jxcAssets = (params) => request.get('/bi/jxc/assets', { params })
 
 /** 商品分析：type = top | slow | overstock | shortage | turnover */
 export const jxcGoods = (type, params) => request.get(`/bi/jxc/goods/${type}`, { params })

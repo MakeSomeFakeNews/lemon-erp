@@ -45,6 +45,17 @@ public class FinSettlement extends BaseEntity {
 
     private BigDecimal amountFc;
 
+    /** 折让 / 抹零合计（不含在金额中，单据的已核销 = 金额 + 折让） */
+    private BigDecimal discountAmount;
+
+    /** 折让合计（原币；本位币单据与折让合计相同） */
+    private BigDecimal discountFc;
+
+    /** 多收 / 多付转为预收 / 预付的金额（原币，不含在金额中，另生成同币种的预收预付单），及生成的预收预付单 */
+    private BigDecimal advanceAmount;
+
+    private Long advanceId;
+
     private Long voucherId;
 
     /** APPROVED 已生效（已核销）/ APPROVING 审批中 / REJECTED 已拒绝；只有付款单会审批 */
@@ -65,6 +76,9 @@ public class FinSettlement extends BaseEntity {
 
     @TableField(exist = false)
     private String voucherNo;
+
+    @TableField(exist = false)
+    private String advanceNo;
 
     @TableField(exist = false)
     private String createByName;

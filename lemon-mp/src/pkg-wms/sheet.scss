@@ -1,0 +1,62 @@
+/* 底部弹层（components/SearchSheet、PriceRefSheet 共用）：小程序组件样式隔离，各组件分别引入 */
+.ss-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.45);
+}
+.ss-panel {
+  width: 100%;
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: $l-bg;
+  border-radius: 24rpx 24rpx 0 0;
+  overflow: hidden;
+}
+.ss-title {
+  padding: 28rpx 32rpx 0;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.ss-btn {
+  flex-shrink: 0;
+  padding-left: 20rpx;
+  color: $l-primary;
+}
+.ss-list {
+  flex: 1;
+  height: 0;
+}
+.ss-row {
+  display: flex;
+  flex-direction: column;
+  margin: 0 24rpx 16rpx;
+  padding: 20rpx 24rpx;
+  background: #fff;
+  border-radius: $l-radius;
+}
+.ss-name {
+  font-size: 28rpx;
+}
+.ss-sub {
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  color: $l-text-3;
+}
+.ss-loading {
+  padding: 24rpx;
+  text-align: center;
+  font-size: 26rpx;
+}
+.ss-cancel {
+  padding: 28rpx 0 calc(28rpx + env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: 30rpx;
+  background: #fff;
+}

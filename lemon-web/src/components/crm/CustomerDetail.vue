@@ -16,7 +16,7 @@
           <a-descriptions-item :label="$t('crm.common.f.owner')">{{ detail.ownerName || $t('crm.common.publicPool') }}</a-descriptions-item>
           <a-descriptions-item :label="$t('crm.common.f.industry')"><DictTag type="crm_industry" :value="detail.industry" /><span v-if="!detail.industry">-</span></a-descriptions-item>
           <a-descriptions-item :label="$t('crm.common.f.source')"><DictTag type="crm_source" :value="detail.source" /><span v-if="!detail.source">-</span></a-descriptions-item>
-          <a-descriptions-item :label="$t('crm.common.f.region')">{{ detail.region || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('crm.common.f.region')"><DictTag v-if="detail.region" type="scm_region" :value="detail.region" /><span v-else>-</span></a-descriptions-item>
           <a-descriptions-item :label="$t('crm.common.f.contact')">{{ detail.contact || '-' }} {{ detail.phone || '' }}</a-descriptions-item>
           <a-descriptions-item :label="$t('crm.common.f.website')">{{ detail.website || '-' }}</a-descriptions-item>
           <a-descriptions-item :label="$t('crm.common.f.address')">{{ detail.address || '-' }}</a-descriptions-item>

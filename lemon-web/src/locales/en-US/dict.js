@@ -72,6 +72,17 @@ export default {
     'OWN': 'Own Brand', // 自有品牌
     'OTHER': 'Other', // 其他
   },
+  // 客户区域
+  scm_region: {
+    'EAST': 'East China', // 华东
+    'SOUTH': 'South China', // 华南
+    'NORTH': 'North China', // 华北
+    'CENTRAL': 'Central China', // 华中
+    'SOUTHWEST': 'Southwest China', // 西南
+    'NORTHWEST': 'Northwest China', // 西北
+    'NORTHEAST': 'Northeast China', // 东北
+    'OVERSEAS': 'Overseas', // 海外
+  },
   // 物料分类
   wms_material_category: {
     'RAW': 'Raw Material', // 原材料
@@ -352,6 +363,20 @@ export default {
     'NOTE': 'Dishonored Note', // 票据拒付
     'QUALITY_CLAIM': 'Quality Claim', // 质量索赔
     'REBATE': 'Sales Rebate', // 销售返利
+    'OFFSET': 'Offset', // 冲账单
+    'ORDER_ADJUST': 'Order Rounding Adjustment', // 订单尾差调整
+  },
+  // 冲账项目
+  fin_offset_item: {
+    'FREIGHT': 'Freight Paid on Behalf', // 垫付运费
+    'REBATE': 'Sales Rebate', // 销售返利
+    'WARRANTY': 'Warranty Compensation', // 三包赔偿
+    'OTHER': 'Other', // 其他
+  },
+  // 冲账单状态
+  fin_offset_status: {
+    'DRAFT': 'Pending Review', // 待复核
+    'REVIEWED': 'Reviewed', // 已复核
   },
   // 结算方式
   fin_settle_method: {

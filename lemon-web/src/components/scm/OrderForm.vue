@@ -204,6 +204,7 @@
           </template>
         </template>
       </a-table>
+      <WholeDiscountBar v-if="form.items.length" v-model:value="form.wholeDiscount" :total="discountBase" :symbol="symbol" />
       <CustomFieldsForm :fields="cfFields" :values="form.cf || {}" :title="$t('scm.orderForm.extInfo')" :span="8" />
     </a-form>
     <VariantMatrixModal v-model:open="matrixOpen" @confirm="addVariantRows" />
@@ -232,6 +233,7 @@ import PartnerSelect from './PartnerSelect.vue'
 import AtpModal from './AtpModal.vue'
 import PriceHint from './PriceHint.vue'
 import PriceReference from './PriceReference.vue'
+import WholeDiscountBar from './WholeDiscountBar.vue'
 import { defaultPrices } from '@/api/scm/pricing'
 import { useUserStore } from '@/store/user'
 import { addOrder, getOrder, updateOrder } from '@/api/scm/order'
@@ -246,6 +248,7 @@ import { BASE_CURRENCY, currencyOptions, currencySymbol, fetchRate, isForeign, u
 import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
 import AiPrefillAlert from '@/components/ai/AiPrefillAlert.vue'
 import { useCustomFields } from '@/composables/useCustomFields'
+import { round2 } from '@/utils/number'
 
 import { OrderKind, PriceControlMode, PriceSource, SupplierLevel } from '@/constants/enums'
 /**
@@ -255,6 +258,7 @@ import { OrderKind, PriceControlMode, PriceSource, SupplierLevel } from '@/const
  * 物料有辅助单位时可按辅助单位录入：表单中 unitQty / unitPrice 为所选单位的数量、单价，
  * 提交时折算为基本单位的 qty / price（qty = unitQty × 换算率，price = unitPrice ÷ 换算率），并带上 unitName
  * 外币订单：单价、金额为订单币种的原币，按人民币维护的供货价格 / 价目价自动带出时除以汇率
+ * 整单优惠（含抹零）：保存时在促销、返利之后按行金额分摊到各行；编辑时单价按原价（origPrice）录入，保存时重新分摊
  * 通过 ref 调用 openCreate(defaults) / openEdit(record)，保存成功后触发 success(id)
  */
 const props = defineProps({
@@ -297,6 +301,7 @@ const emptyForm = () => ({
   exchangeRate: 1,
   contractId: undefined,
   rebateAmount: undefined,
+  wholeDiscount: undefined,
   remark: '',
   items: []
 })
@@ -414,6 +419,7 @@ const drawer = useFormDrawer(
         currency: order.currency || BASE_CURRENCY,
         exchangeRate: order.exchangeRate != null ? Number(order.exchangeRate) : 1,
         rebateAmount: Number(order.rebateAmount) || undefined,
+        wholeDiscount: Number(order.wholeDiscount) || undefined,
         items
       }
     },
@@ -445,6 +451,7 @@ const drawer = useFormDrawer(
       exchangeRate: isForeign(f.currency) ? f.exchangeRate : 1,
       contractId: f.contractId || null,
       rebateAmount: props.kind === 'sales' && f.rebateAmount ? f.rebateAmount : null,
+      wholeDiscount: f.wholeDiscount || null,
       remark: f.remark,
       items: f.items.map((i) => ({
         materialId: i.materialId,
@@ -588,11 +595,10 @@ async function fetchSalesPrices(rows) {
     qtys: list.map((row) => baseQty(row) || 1),
     date: form.value.orderDate || undefined
   })
-  const byMaterial = new Map(res.map((p) => [p.materialId, p]))
   list.forEach((row, i) => {
     if (seqs[i] !== row.priceSeq) return
-    // 默认价按基本单位、本位币
-    const p = byMaterial.get(row.materialId)
+    // 默认价按行返回（与请求的物料一一对应），按基本单位、本位币
+    const p = res[i]?.materialId === row.materialId ? res[i] : undefined
     const found = p && p.price != null
     row.listPrice = found && p.source === PriceSource.PRICE_LIST ? Number(p.price) : undefined
     if (found && (row.priceAuto || row.unitPrice == null)) {
@@ -748,6 +754,12 @@ const promoLine = (index) => {
   const line = promo.value?.lines?.[index]
   return line && line.origPrice != null ? line : null
 }
+/** 整单优惠的基数：销售订单有促销预览时为促销、返利后的成交价合计（与后端一致，按行舍入后求和） */
+const discountBase = computed(() =>
+  round2(promo.value
+    ? (promo.value.lines || []).reduce((sum, l, i) => sum + lineAmount(baseQty(form.value.items[i] || {}), l.price), 0)
+    : totalAmount.value)
+)
 const promoTotal = computed(() => (promo.value?.lines || []).reduce((sum, l, i) => sum + Number(l.price) * baseQty(form.value.items[i] || {}), 0))
 
 // 价格参考：点选的历史价格（基本单位、本位币）按当前单位、币种填入单价

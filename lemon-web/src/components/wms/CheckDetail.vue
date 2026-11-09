@@ -37,7 +37,7 @@
           <span v-if="detail.status === WmsDocStatus.DRAFT" class="sub-text">{{ $t('wms.checkDoc.draftBookTip') }}</span>
         </div>
 
-        <a-table row-key="id" size="small" :columns="columns" :data-source="rows" :pagination="{ pageSize: 50 }" :scroll="{ x: 960 }">
+        <a-table row-key="id" size="small" :columns="columns" :data-source="rows" :pagination="{ pageSize: 50 }" :scroll="{ x: scrollX }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'material'">
               <div>{{ record.materialCode }} {{ record.materialName }}</div>
@@ -51,6 +51,21 @@
               <span v-else>{{ formatQty(record.actualQty) }} {{ record.unit }}</span>
             </template>
             <template v-else-if="column.key === 'diff'"><QtyDiff :value="diffOf(record)" /></template>
+            <template v-else-if="column.key === 'costPrice'">
+              <template v-if="(diffOf(record) ?? 0) > 0">
+                <span v-if="record.costPrice != null">{{ price(record.costPrice) }}</span>
+                <span v-else-if="record.avgCost != null" class="sub-text">{{ $t('wms.checkDoc.avgCostTag', { v: price(record.avgCost) }) }}</span>
+                <span v-else class="sub-text">{{ $t('wms.checkDoc.costPriceDefault') }}</span>
+              </template>
+              <span v-else class="sub-text">-</span>
+            </template>
+            <template v-else-if="column.key === 'diffAmount'">
+              <span v-if="record.diffAmount != null" :class="{ negative: record.diffAmount < 0 }">{{ money(record.diffAmount) }}</span>
+              <a-tooltip v-else-if="estimateOf(record) != null" :title="$t('wms.checkDoc.diffAmountEstimated')">
+                <span class="sub-text">≈ {{ money(estimateOf(record)) }}</span>
+              </a-tooltip>
+              <span v-else class="sub-text">-</span>
+            </template>
             <template v-else-if="column.key === 'serialNos'">
               <template v-if="record.serialNos">
                 <a-tag v-for="sn in splitSerials(record.serialNos)" :key="sn" class="serial-tag">{{ sn }}</a-tag>
@@ -85,6 +100,7 @@ import DictTag from '@/components/DictTag.vue'
 import QtyDiff from './QtyDiff.vue'
 import { confirmCheck, getCheck } from '@/api/wms/check'
 import { useUserStore } from '@/store/user'
+import { money, price, round2 } from '@/utils/number'
 import { formatQty, locationText, splitSerials } from './wms'
 
 import { WmsDocStatus } from '@/constants/enums'
@@ -99,22 +115,35 @@ const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPerm('wms:check:edit'))
 const canConfirm = computed(() => userStore.hasPerm('wms:check:confirm'))
 
-const columns = [
-  { title: t('wms.common.material'), key: 'material', width: 240 },
-  { title: t('wms.common.location'), key: 'location', width: 110 },
-  { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
-  { title: t('wms.checkDoc.bookQty'), key: 'bookQty', width: 110, align: 'right' },
-  { title: t('wms.checkDoc.actualQty'), key: 'actualQty', width: 120, align: 'right' },
-  { title: t('wms.checkDoc.diff'), key: 'diff', width: 100, align: 'right' },
-  { title: t('wms.checkDoc.actualSerials'), key: 'serialNos', width: 240 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true }
-]
+/** 盘盈成本价、差异金额：后端按权限返回（costVisible） */
+const columns = computed(() =>
+  [
+    { title: t('wms.common.material'), key: 'material', width: 240 },
+    { title: t('wms.common.location'), key: 'location', width: 110 },
+    { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
+    { title: t('wms.checkDoc.bookQty'), key: 'bookQty', width: 110, align: 'right' },
+    { title: t('wms.checkDoc.actualQty'), key: 'actualQty', width: 120, align: 'right' },
+    { title: t('wms.checkDoc.diff'), key: 'diff', width: 100, align: 'right' },
+    detail.value?.costVisible ? { title: t('wms.checkDoc.costPrice'), key: 'costPrice', width: 120, align: 'right' } : null,
+    detail.value?.costVisible ? { title: t('wms.checkDoc.diffAmount'), key: 'diffAmount', width: 120, align: 'right' } : null,
+    { title: t('wms.checkDoc.actualSerials'), key: 'serialNos', width: 240 },
+    { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true }
+  ].filter(Boolean)
+)
+const scrollX = computed(() => columns.value.reduce((sum, c) => sum + c.width, 0))
 
 const detail = ref()
 const loading = ref(false)
 const filter = ref('all')
 
 const diffOf = (r) => (r.actualQty == null ? null : Number(r.actualQty) - Number(r.bookQty))
+/** 未确认时估算差异金额：盘盈按填写的成本价（默认均价），盘亏按均价 */
+function estimateOf(r) {
+  const diff = diffOf(r)
+  if (!diff || r.avgCost == null) return null
+  const unit = diff > 0 && r.costPrice != null ? Number(r.costPrice) : Number(r.avgCost)
+  return round2(diff * unit)
+}
 const diffRows = computed(() => (detail.value?.items || []).filter((r) => (diffOf(r) ?? 0) !== 0))
 const rows = computed(() => {
   const items = detail.value?.items || []
@@ -177,6 +206,9 @@ defineExpose({ reload: load })
 .sub-text {
   color: var(--app-text-3);
   font-size: 12px;
+}
+.negative {
+  color: #cf1322;
 }
 .serial-tag {
   margin: 2px 4px 2px 0;

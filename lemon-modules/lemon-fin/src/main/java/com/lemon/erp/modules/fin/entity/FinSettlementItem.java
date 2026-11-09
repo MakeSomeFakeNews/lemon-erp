@@ -23,8 +23,17 @@ public class FinSettlementItem extends BaseEntity {
     /** 核销原币金额 */
     private BigDecimal amountFc;
 
+    /** 折让 / 抹零的本位币金额（与单据同号），单据的已核销 = 核销金额 + 折让 */
+    private BigDecimal discount;
+
+    /** 折让原币金额（外币单据按原币录入，折让 = 原币 × 单据记账汇率；本位币单据与折让相同） */
+    private BigDecimal discountFc;
+
     @TableField(exist = false)
     private String billNo;
+
+    @TableField(exist = false)
+    private com.lemon.erp.modules.fin.model.BillSource sourceType;
 
     @TableField(exist = false)
     private String sourceNo;

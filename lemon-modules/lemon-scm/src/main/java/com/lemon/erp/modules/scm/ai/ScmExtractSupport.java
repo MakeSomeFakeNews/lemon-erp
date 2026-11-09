@@ -81,6 +81,7 @@ public class ScmExtractSupport {
                 .prop("deliveryDate", AiSchema.date("scm.ai.extractDeliveryDate"), false)
                 .prop("warehouse", AiSchema.string("scm.ai.extractWarehouse").maxLength(64), false)
                 .prop("currency", AiSchema.string("scm.ai.extractCurrency").maxLength(8), false)
+                .prop("wholeDiscount", AiSchema.number("scm.ai.extractWholeDiscount"), false)
                 .prop("totalAmount", AiSchema.number("scm.ai.extractTotalAmount"), false)
                 .prop("remark", AiSchema.string("scm.ai.extractRemark").maxLength(255), false)
                 .prop("items", AiSchema.array("scm.ai.extractItems", item).maxItems(MAX_ITEMS), true)
@@ -89,7 +90,7 @@ public class ScmExtractSupport {
 
     /**
      * 订单的预填数据，字段与前端 OrderForm.openCreate 一致：数量、单价按物料的基本单位（单据用的是辅助单位时换算，并带上 unitName / unitRatio），
-     * 单价为订单币种的含税单价
+     * 单价为订单币种的含税单价；单据上的整单优惠 / 抹零 / 折让填入 wholeDiscount
      *
      * @param purchase true 采购订单（往来单位为供应商），false 销售订单（客户）
      */
@@ -162,6 +163,13 @@ public class ScmExtractSupport {
             item.put("remark", cut(AiPrefillBuilder.str(row, "remark"), 255));
             item.values().removeIf(Objects::isNull);
             items.add(item);
+        }
+        // 整单优惠（抹零、折让）：表单按行金额比例分摊；单据合计为优惠后的金额
+        BigDecimal wholeDiscount = b.nonNegative("wholeDiscount", AiPrefillBuilder.dec(ex, "wholeDiscount"));
+        if (wholeDiscount != null && wholeDiscount.signum() > 0) {
+            wholeDiscount = AiPrefillBuilder.plain(wholeDiscount.setScale(2, RoundingMode.HALF_UP));
+            b.put("wholeDiscount", wholeDiscount);
+            linesTotal = linesTotal.subtract(wholeDiscount);
         }
         b.total("totalAmount", AiPrefillBuilder.dec(ex, "totalAmount"), linesTotal);
         b.put("items", items);

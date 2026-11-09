@@ -216,6 +216,11 @@ export default {
   373: 'Asset Overview', // 资产状况
   374: 'Product Analysis', // 商品分析
   375: 'Customer Analysis', // 客户分析
+  377: 'Offsets', // 冲账单
+  3770: 'Add Offset', // 冲账单新增
+  3771: 'Edit Offset', // 冲账单修改
+  3772: 'Delete Offset', // 冲账单删除
+  3773: 'Review Offset', // 冲账单复核
   1000: 'Add User', // 用户新增
   1001: 'Edit User', // 用户修改
   1002: 'Delete User', // 用户删除
@@ -358,6 +363,7 @@ export default {
   1831: 'Delete Receivable', // 应收单删除
   1832: 'Generate AR Voucher', // 应收生成凭证
   1834: 'Write Off Bad Debt', // 坏账核销
+  1843: 'Write Off Payable', // 应付坏账
   1840: 'Add Payable', // 应付单新增
   1841: 'Delete Payable', // 应付单删除
   1842: 'Generate AP Voucher', // 应付生成凭证
@@ -566,4 +572,5 @@ export default {
   365: 'Item Prices', // 商品价格
   3650: 'Maintain Item Prices', // 商品价格维护
   3651: 'Price Columns', // 价格列设置
+  3652: 'View Cost Amounts', // 查看成本金额
 }

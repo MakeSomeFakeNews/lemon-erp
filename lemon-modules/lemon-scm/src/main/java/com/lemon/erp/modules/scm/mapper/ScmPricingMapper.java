@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 价格参考的查询：报价历史、出入库历史、按供应商汇总的进货数量
+ * 价格参考的查询：报价历史、出入库历史、按供应商汇总的进货数量、按出入库单计算的供商 / 客户对比
  */
 @Mapper
 public interface ScmPricingMapper {
@@ -23,4 +23,13 @@ public interface ScmPricingMapper {
                                                      @Param("q") PricingViews.ReferenceQuery q);
 
     List<PricingViews.PartnerQtyRow> selectPurchaseQty(@Param("q") PricingViews.ReferenceQuery q);
+
+    /**
+     * 供商 / 客户对比：按出入库单计算的最新 / 最低 / 最高价（口径同价格记忆），在数据权限规则下调用
+     *
+     * @param kind  销售出库或采购入库
+     * @param sales 是否销售（往来单位为客户）
+     */
+    List<PricingViews.MemoryRow> selectTradeCompare(@Param("kind") TradeKind kind, @Param("sales") boolean sales,
+                                                    @Param("q") PricingViews.ReferenceQuery q);
 }

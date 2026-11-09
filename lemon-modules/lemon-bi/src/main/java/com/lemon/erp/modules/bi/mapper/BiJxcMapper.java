@@ -25,18 +25,26 @@ public interface BiJxcMapper {
 
     List<JxcViews.DetailRow> selectDetailList(@Param("sales") boolean sales, @Param("q") JxcQuery q, @Param("limit") int limit);
 
-    /** 收款单 / 付款单（已生效）按月 */
+    /** 收款单 / 付款单（已生效，不含票据业务生成的）按月 */
     List<JxcViews.CashRow> selectSettlementByMonth(@Param("begin") LocalDate begin, @Param("end") LocalDate end);
 
     /** 预收 / 预付款按月 */
     List<JxcViews.CashRow> selectAdvanceByMonth(@Param("begin") LocalDate begin, @Param("end") LocalDate end);
 
-    List<JxcViews.InventoryRow> selectInventory();
+    /** 票据托收、贴现（收款）与应付票据兑付（付款）按月 */
+    List<JxcViews.CashRow> selectNoteCashByMonth(@Param("begin") LocalDate begin, @Param("end") LocalDate end);
 
-    JxcViews.Balances selectBalances(@Param("today") LocalDate today);
+    /** 截至 asOf（含）的库存数量与金额，按仓库、物料分类 */
+    List<JxcViews.InventoryRow> selectInventory(@Param("asOf") LocalDate asOf);
 
-    /** kind = AR（客户）/ AP（供应商） */
-    List<JxcViews.PartnerBalance> selectTopBalances(@Param("kind") String kind, @Param("limit") int limit);
+    /** 截至 asOf（含）的应收应付未核销余额（逾期 = 到期日早于 asOf）、预收预付余额、应收应付票据 */
+    JxcViews.Balances selectBalances(@Param("asOf") LocalDate asOf);
+
+    /** 截至 asOf 已生效、还没有生成凭证的收付款（不含票据业务） */
+    JxcViews.Unvouchered selectUnvouchered(@Param("asOf") LocalDate asOf);
+
+    /** 截至 asOf 的往来余额排行，kind = AR（客户）/ AP（供应商） */
+    List<JxcViews.PartnerBalance> selectTopBalances(@Param("kind") String kind, @Param("asOf") LocalDate asOf, @Param("limit") int limit);
 
     Page<JxcViews.GoodsRow> selectGoodsTop(Page<JxcViews.GoodsRow> page, @Param("q") JxcQuery q);
 

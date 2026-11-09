@@ -26,6 +26,7 @@ export default {
     bizDate: 'Business Date',
     wmsDocNo: 'Warehouse Doc',
     originalCurrency: 'Original Currency',
+    wholeDiscount: 'Order Discount',
     location: 'Location',
     batch: 'Batch',
     serialNo: 'Serial No.',

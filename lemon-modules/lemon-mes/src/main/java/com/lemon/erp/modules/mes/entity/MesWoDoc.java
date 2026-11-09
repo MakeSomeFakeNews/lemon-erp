@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.mes.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.lemon.erp.modules.mes.model.FinishCostBasis;
 import com.lemon.erp.modules.mes.model.WoDocKind;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -36,6 +37,21 @@ public class MesWoDoc extends BaseEntity {
     private Long wmsDocId;
 
     private String wmsDocNo;
+
+    /** 完工入库的实时成本口径 */
+    private FinishCostBasis costBasis;
+
+    /** 转入产品的材料成本：完工入库为本次分摊的净领料成本；退料为冲减已完工产品的成本（负数）。没有「查看成本金额」权限时不返回 */
+    private BigDecimal materialCost;
+
+    /** 完工入库的直接人工 */
+    private BigDecimal laborCost;
+
+    /** 完工入库的制造费用 */
+    private BigDecimal overheadCost;
+
+    /** 退料冲减已完工产品成本中计入库存的部分（负数），其余对应已出库的产品 */
+    private BigDecimal stockCostAdjust;
 
     private String remark;
 

@@ -13,7 +13,32 @@ export default {
     fullBatchNo: 'Full batch No.',
     time: 'Time',
     changeQty: 'Change Qty',
-    operator: 'Operator'
+    operator: 'Operator',
+    bizPrice: 'Doc. Price',
+    costPrice: 'Cost Price',
+    costAmount: 'Cost Amount',
+    partner: 'Partner'
+  },
+  history: {
+    action: 'History',
+    title: 'Stock History: {name}',
+    allWarehouses: 'All warehouses',
+    dateRange: 'Date Range',
+    allTip: 'All warehouses: company-wide movements and balances, excluding transfers between warehouses and supplier consignment warehouses; dates are document business dates',
+    warehouseTip: 'Movements and balances of the selected warehouse (including transfers); dates are document business dates',
+    opening: 'Opening Balance',
+    bizType: 'Business Type',
+    partner: 'Partner',
+    bizPrice: 'Doc. Price',
+    costPrice: 'Cost Price',
+    inQty: 'In Qty',
+    outQty: 'Out Qty',
+    balanceQty: 'Balance Qty',
+    costAmount: 'Amount',
+    balanceAmount: 'Balance Amount',
+    estimated: 'Approx.',
+    estimatedTip: 'Movement recorded before real-time stock costing was enabled; its cost was backfilled from the costing unit price or reference cost of that time and is approximate',
+    openingEstimated: 'The opening amount includes approximate costs backfilled before the upgrade'
   },
   hold: {
     keywordPh: 'Material code, name or inbound No.',
@@ -100,7 +125,11 @@ export default {
     frozen: 'Frozen',
     safetyStock: 'Safety Stock',
     qty: 'Stock Qty',
-    serialTitle: 'Serial Numbers in Stock: {name} ({slot})'
+    serialTitle: 'Serial Numbers in Stock: {name} ({slot})',
+    unitCost: 'Avg. Cost',
+    amount: 'Stock Value',
+    totalQty: 'Total qty {n}',
+    totalAmount: ', stock value {n}'
   },
   warehouse: {
     createTitle: 'New Warehouse',

@@ -7,7 +7,7 @@
         o.id, o.order_no, o.kind, o.partner_id, o.order_date, o.delivery_date, o.warehouse_id, o.status, o.total_qty,
         o.total_amount, o.tax_amount, o.source, o.flow_instance_id, o.remark, o.version, o.currency, o.exchange_rate, o.dept_id, o.create_by, o.approve_by,
         o.approve_time, o.create_time, o.update_time, o.contract_id, o.supplier_confirm, o.promised_date, o.confirm_remark, o.confirm_time,
-        o.discount_amount, o.rebate_amount, o.external_no, o.salesman_id, su.nickname AS salesman_name,
+        o.discount_amount, o.rebate_amount, o.whole_discount, o.close_adjust, o.external_no, o.salesman_id, su.nickname AS salesman_name,
         pc.contract_no, COALESCE(sp.code, cu.code) AS partner_code, COALESCE(sp.name, cu.name) AS partner_name,
         w.name AS warehouse_name, u.nickname AS create_by_name, au.nickname AS approve_by_name,
         (SELECT COALESCE(SUM(i.done_qty - i.return_qty), 0) FROM scm_order_item i WHERE i.order_id = o.id) AS done_qty
@@ -65,6 +65,10 @@
                               AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))))
         </if>
         ORDER BY o.id DESC
+    </select>
+
+    <select id="selectStatusForUpdate" resultType="java.lang.String">
+        SELECT status FROM scm_order WHERE id = #{id} FOR UPDATE
     </select>
 
     <update id="unapprove">

@@ -126,6 +126,7 @@ DROP TABLE IF EXISTS fin_expense_claim;
 DROP TABLE IF EXISTS fin_expense_claim_item;
 DROP TABLE IF EXISTS fin_loan;
 DROP TABLE IF EXISTS fin_loan_repay;
+DROP TABLE IF EXISTS fin_offset;
 DROP TABLE IF EXISTS fin_settlement_item;
 DROP TABLE IF EXISTS fin_settlement;
 DROP TABLE IF EXISTS fin_bill;
@@ -965,6 +966,12 @@ CREATE TABLE wms_stock_flow (
     material_id  BIGINT         NOT NULL COMMENT '物料',
     batch_no     VARCHAR(64)    NOT NULL DEFAULT '' COMMENT '批次号',
     qty          DECIMAL(18, 4) NOT NULL COMMENT '变动数量，正数增加、负数减少',
+    biz_price    DECIMAL(18, 6)          DEFAULT NULL COMMENT '业务单价（不含税，本位币）：采购入库、销售出库等来源单据的单价，没有为空',
+    cost_price   DECIMAL(18, 6)          DEFAULT NULL COMMENT '成本单价（实时移动加权平均），供应商寄售仓的库存不计价为空',
+    cost_amount  DECIMAL(18, 2)          DEFAULT NULL COMMENT '成本金额，与数量同号',
+    partner_id   BIGINT                  DEFAULT NULL COMMENT '往来单位（供应商 / 客户）',
+    partner_name VARCHAR(128)            DEFAULT NULL COMMENT '往来单位名称快照',
+    cost_estimated TINYINT               NOT NULL DEFAULT 0 COMMENT '1 升级前的历史流水：成本按当时的成本核算单价 / 参考成本价回填，是近似值',
     create_by    BIGINT                  DEFAULT NULL COMMENT '操作人',
     create_time  DATETIME                DEFAULT NULL COMMENT '发生时间',
     PRIMARY KEY (id),
@@ -973,6 +980,19 @@ CREATE TABLE wms_stock_flow (
     KEY idx_flow_doc (biz_type, doc_id),
     KEY idx_flow_time (create_time)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '库存流水';
+
+CREATE TABLE wms_material_cost (
+    id          BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    material_id BIGINT         NOT NULL COMMENT '物料',
+    qty         DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '计价数量：全部仓库（不含供应商寄售仓）的库存合计',
+    amount      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '库存金额',
+    unit_cost   DECIMAL(18, 6) NOT NULL DEFAULT 0 COMMENT '移动加权平均单价；数量为 0 时保留最后的单价',
+    create_time DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_wms_material_cost (material_id, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '物料实时库存成本（移动加权平均，按物料不分仓库），随库存变动在同一事务中更新';
 
 CREATE TABLE wms_serial_log (
     id           BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -1012,6 +1032,8 @@ CREATE TABLE wms_stock_doc (
     receive_time    DATETIME                DEFAULT NULL COMMENT '调入收货时间',
     red_of          BIGINT                  DEFAULT NULL COMMENT '红字冲销单：被冲销的原单据',
     reversed        TINYINT        NOT NULL DEFAULT 0 COMMENT '已被冲销 1是',
+    partner_id      BIGINT                  DEFAULT NULL COMMENT '往来单位（业务单据生成时由来源单据传入）',
+    partner_name    VARCHAR(128)            DEFAULT NULL COMMENT '往来单位名称快照',
     flow_instance_id VARCHAR(64)             DEFAULT NULL COMMENT '审批流程实例（发布了出入库审批流程时，手工单据确认前审批）',
     dept_id         BIGINT                  DEFAULT NULL COMMENT '制单人部门（数据权限）',
     create_by       BIGINT                  DEFAULT NULL COMMENT '制单人',
@@ -1038,6 +1060,8 @@ CREATE TABLE wms_stock_doc_item (
     production_date DATE                    DEFAULT NULL COMMENT '生产日期，仅入库新批次',
     expiry_date     DATE                    DEFAULT NULL COMMENT '有效期至，仅入库新批次',
     qty             DECIMAL(18, 4) NOT NULL COMMENT '数量',
+    cost_price      DECIMAL(18, 6)          DEFAULT NULL COMMENT '成本单价：其他入库、期初入库填写的入库成本，业务单据传入的成本；为空按当前移动加权平均价',
+    biz_price       DECIMAL(18, 6)          DEFAULT NULL COMMENT '业务单价（不含税，本位币），业务单据生成时传入',
     serial_nos      TEXT COMMENT '序列号，逗号分隔',
     remark          VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     create_time     DATETIME                DEFAULT NULL COMMENT '创建时间',
@@ -1131,6 +1155,7 @@ CREATE TABLE wms_check_item (
     actual_qty  DECIMAL(18, 4)          DEFAULT NULL COMMENT '实盘数量，草稿中可为空',
     serial_nos  TEXT COMMENT '实盘序列号，逗号分隔（序列号物料）',
     remark      VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    cost_price  DECIMAL(18, 6)          DEFAULT NULL COMMENT '盘盈的成本单价，为空按确认时的当前均价；盘亏按当前均价',
     create_time DATETIME                DEFAULT NULL COMMENT '创建时间',
     update_time DATETIME                DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
@@ -1366,6 +1391,7 @@ CREATE TABLE scm_quotation (
     status           VARCHAR(16)    NOT NULL DEFAULT 'DRAFT' COMMENT '状态(字典 scm_quotation_status) DRAFT草稿 APPROVING审批中 APPROVED已批准 ORDERED已成交 LOST已失效',
     total_amount     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '价税合计',
     tax_amount       DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '税额',
+    whole_discount   DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '整单优惠（含税，含抹零），已从价税合计中扣除；转订单时分摊到订单各行',
     remark           VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     lost_reason      VARCHAR(255)            DEFAULT NULL COMMENT '失效原因',
     order_id         BIGINT                  DEFAULT NULL COMMENT '成交生成的销售订单',
@@ -1434,7 +1460,7 @@ CREATE TABLE scm_customer (
     credit_limit DECIMAL(18, 2)          DEFAULT NULL COMMENT '信用额度，审核销售订单时校验未完成订单金额',
     payment_days INT            NOT NULL DEFAULT 0 COMMENT '账期（天），应收单到期日 = 单据日期 + 账期',
     channel      VARCHAR(16)    NOT NULL DEFAULT 'DIRECT' COMMENT '渠道(字典 scm_channel) DIRECT直销 DEALER经销商',
-    region       VARCHAR(128)            DEFAULT NULL COMMENT '经销商授权区域',
+    region       VARCHAR(128)            DEFAULT NULL COMMENT '区域(业务字典 scm_region)，经销商为授权区域，进销存报表按区域汇总',
     owner_id     BIGINT                  DEFAULT NULL COMMENT '负责销售：经销商门户订单以其为制单人（按其数据权限可见）',
     status       TINYINT        NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
     remark       VARCHAR(255)            DEFAULT NULL COMMENT '备注',
@@ -1466,6 +1492,8 @@ CREATE TABLE scm_order (
     confirm_time     DATETIME                DEFAULT NULL COMMENT '供应商确认时间',
     discount_amount  DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '促销优惠合计（原价 - 成交价），已从金额中扣除',
     rebate_amount    DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '使用返利抵扣的金额（按行金额分摊到单价），已从金额中扣除',
+    whole_discount   DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '整单优惠（含税，含抹零）：促销、返利之后按行金额分摊到各行金额，已从金额中扣除',
+    close_adjust     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '关闭时的尾差调整（订单币种）：部分出入库的行按 行金额 × 已出入库数量 / 订单数量 调整已出入库金额，生成应收 / 应付调整单',
     external_no      VARCHAR(64)             DEFAULT NULL COMMENT '外部单号（电商 / 门店订单导入），同一租户不重复',
     remark           VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     version          INT            NOT NULL DEFAULT 1 COMMENT '版本：每次变更单生效后加 1',
@@ -1497,6 +1525,8 @@ CREATE TABLE scm_order_change (
     status           VARCHAR(16)  NOT NULL DEFAULT 'APPROVING' COMMENT '状态(字典 scm_change_status) APPROVING审批中 APPROVED已生效 REJECTED已驳回',
     old_amount       DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '变更前价税合计',
     new_amount       DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '变更后价税合计',
+    old_whole_discount DECIMAL(18, 2)       DEFAULT NULL COMMENT '变更前的整单优惠',
+    new_whole_discount DECIMAL(18, 2)       DEFAULT NULL COMMENT '变更后的整单优惠（按变更后未出入库部分重新分摊）',
     flow_instance_id VARCHAR(64)           DEFAULT NULL COMMENT '审批流程实例',
     approve_time     DATETIME              DEFAULT NULL COMMENT '生效时间',
     create_by        BIGINT                DEFAULT NULL COMMENT '申请人',
@@ -1542,6 +1572,12 @@ CREATE TABLE scm_order_item (
     done_qty      DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '已入库 / 已出库数量',
     return_qty    DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '已退货数量',
     replenish_qty DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '退货后需要补发（补收）的数量，计入未完成数量',
+    done_amount   DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '已出入库金额（订单币种，补发的退货扣减）：最后一批取 行金额 − 已出入库金额',
+    return_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '已退款的退货金额（订单币种，不补发的退货）',
+    discount_share DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '分摊到本行的整单优惠（行金额已扣除）',
+    done_share    DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '已出入库部分已分摊的整单优惠（订单变更时不变，剩余的重新分摊）',
+    close_adjust  DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '订单关闭时本行的尾差调整（订单币种，已计入已出入库金额）',
+    close_adjust_net DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '尾差调整的不含税金额（本位币）：采购订单计入调整单所在期间的月末成本核算，凭证按物料分类取数',
     orig_price    DECIMAL(18, 4)          DEFAULT NULL COMMENT '原价（促销、返利抵扣前的含税单价），没有优惠时为空',
     promotion_id  BIGINT                  DEFAULT NULL COMMENT '应用的折扣促销 / 赠品来源的买赠促销',
     gift          TINYINT        NOT NULL DEFAULT 0 COMMENT '1 赠品（单价为 0，由买赠促销自动生成）',
@@ -2075,6 +2111,8 @@ CREATE TABLE mes_work_order (
     release_time DATETIME                DEFAULT NULL COMMENT '下达时间',
     finish_time  DATETIME                DEFAULT NULL COMMENT '完工时间',
     close_time   DATETIME                DEFAULT NULL COMMENT '关闭时间，成本核算在关闭当期转出剩余在产品',
+    close_cost   DECIMAL(18, 2)          DEFAULT NULL COMMENT '关闭时尚未转入产品的成本（净领料成本 + 工费 − 已转入完工产品）',
+    close_stock_cost DECIMAL(18, 2)      DEFAULT NULL COMMENT '其中追加到已完工产品库存的部分，其余（没有完工、产品已出库）计入当期成本',
     create_time  DATETIME                DEFAULT NULL COMMENT '创建时间',
     update_time  DATETIME                DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
@@ -2157,6 +2195,11 @@ CREATE TABLE mes_wo_doc (
     total_qty    DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '合计数量',
     wms_doc_id   BIGINT                  DEFAULT NULL COMMENT '生成的出入库单ID',
     wms_doc_no   VARCHAR(32)             DEFAULT NULL COMMENT '生成的出入库单号',
+    cost_basis   VARCHAR(16)             DEFAULT NULL COMMENT '完工入库的成本口径 STANDARD标准成本 ACTUAL工单实际成本 AVERAGE当前均价（工单没有已计价的领料和工费）',
+    material_cost DECIMAL(18, 2)         DEFAULT NULL COMMENT '转入产品的材料成本：完工入库为本次分摊的净领料成本；退料为冲减已完工产品的成本（负数）',
+    labor_cost   DECIMAL(18, 2)          DEFAULT NULL COMMENT '完工入库的直接人工',
+    overhead_cost DECIMAL(18, 2)         DEFAULT NULL COMMENT '完工入库的制造费用',
+    stock_cost_adjust DECIMAL(18, 2)     DEFAULT NULL COMMENT '退料冲减已完工产品成本中计入库存的部分（负数），其余对应已出库的产品',
     remark       VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     create_by    BIGINT                  DEFAULT NULL COMMENT '制单人',
     create_time  DATETIME                DEFAULT NULL COMMENT '创建时间',
@@ -2549,6 +2592,7 @@ CREATE TABLE fin_bill (
     settled_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '已核销金额（与金额同号）',
     invoiced_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '已开票 / 已收票金额（与金额同号）',
     bad_debt_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '坏账核销金额（计入已核销）',
+    discount_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '收付款时的折让 / 抹零金额（计入已核销）',
     currency        VARCHAR(8)     NOT NULL DEFAULT 'CNY' COMMENT '币种；金额、已核销等为本位币（按记账汇率折算）',
     exchange_rate   DECIMAL(18, 6) NOT NULL DEFAULT 1 COMMENT '记账汇率',
     amount_fc       DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '原币金额',
@@ -2579,6 +2623,10 @@ CREATE TABLE fin_settlement (
     currency    VARCHAR(8)     NOT NULL DEFAULT 'CNY' COMMENT '币种',
     exchange_rate DECIMAL(18, 6) NOT NULL DEFAULT 1 COMMENT '收付款汇率；金额 = 原币 × 汇率（实收实付本位币）',
     amount_fc   DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '原币金额',
+    discount_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '折让 / 抹零合计（不含在金额中，单据的已核销 = 金额 + 折让）',
+    discount_fc     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '折让合计（原币）',
+    advance_amount  DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '多收 / 多付转预收预付的金额（不含在金额中）',
+    advance_id      BIGINT                  DEFAULT NULL COMMENT '多收 / 多付生成的预收预付单',
     voucher_id  BIGINT                  DEFAULT NULL COMMENT '生成的凭证',
     status       VARCHAR(16)    NOT NULL DEFAULT 'APPROVED' COMMENT '状态 APPROVED已生效 APPROVING审批中 REJECTED已拒绝（付款审批）',
     flow_instance_id VARCHAR(64)        DEFAULT NULL COMMENT '审批流程实例ID',
@@ -2599,12 +2647,42 @@ CREATE TABLE fin_settlement_item (
     bill_id       BIGINT         NOT NULL COMMENT '核销的应收 / 应付单',
     amount        DECIMAL(18, 2) NOT NULL COMMENT '核销金额（红字单据为负数）',
     amount_fc     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '核销原币金额（本位币单据与金额相同）',
+    discount      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '折让 / 抹零金额（与单据同号），单据的已核销 = 核销金额 + 折让',
+    discount_fc   DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '折让原币金额（外币按单据记账汇率折算为折让）',
     create_time   DATETIME                DEFAULT NULL COMMENT '创建时间',
     update_time   DATETIME                DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
     KEY idx_settlement_item_settlement (settlement_id),
     KEY idx_settlement_item_bill (bill_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '收付款核销明细';
+
+CREATE TABLE fin_offset (
+    id          BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    offset_no   VARCHAR(32)    NOT NULL COMMENT '单号',
+    kind        VARCHAR(8)     NOT NULL COMMENT '方向 AR应收冲账（客户） AP应付冲账（供应商）',
+    partner_id  BIGINT         NOT NULL COMMENT '客户 / 供应商',
+    offset_date DATE           NOT NULL COMMENT '冲账日期',
+    handler_id  BIGINT                  DEFAULT NULL COMMENT '经办人',
+    item        VARCHAR(32)    NOT NULL COMMENT '冲账项目(业务字典 fin_offset_item)',
+    amount      DECIMAL(18, 2) NOT NULL COMMENT '冲账金额（正数），复核后生成金额为其负数的红字应收 / 应付单',
+    begin_date  DATE                    DEFAULT NULL COMMENT '冲账项目期间：开始日期',
+    end_date    DATE                    DEFAULT NULL COMMENT '冲账项目期间：结束日期',
+    ticket_no   VARCHAR(64)             DEFAULT NULL COMMENT '票据编号',
+    account_id  BIGINT                  DEFAULT NULL COMMENT '凭证对方科目，为空取凭证科目设置（应收冲账 / 应付冲账）',
+    status      VARCHAR(16)    NOT NULL DEFAULT 'DRAFT' COMMENT '状态(字典 fin_offset_status) DRAFT待复核 REVIEWED已复核',
+    bill_id     BIGINT                  DEFAULT NULL COMMENT '复核生成的红字应收 / 应付单',
+    review_by   BIGINT                  DEFAULT NULL COMMENT '复核人',
+    review_time DATETIME                DEFAULT NULL COMMENT '复核时间',
+    remark      VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    create_by   BIGINT                  DEFAULT NULL COMMENT '制单人',
+    create_time DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_offset_no (offset_no, tenant_id),
+    KEY idx_offset_partner (kind, partner_id),
+    KEY idx_offset_bill (bill_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '冲账单（垫付运费、返利、三包赔偿等抵扣往来款）';
 
 CREATE TABLE fin_invoice (
     id             BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -2676,6 +2754,10 @@ CREATE TABLE fin_advance (
     method       VARCHAR(16)             DEFAULT NULL COMMENT '结算方式(字典 fin_settle_method)',
     amount       DECIMAL(18, 2) NOT NULL COMMENT '金额',
     used_amount  DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '已冲抵应收应付的金额',
+    currency     VARCHAR(8)     NOT NULL DEFAULT 'CNY' COMMENT '币种',
+    exchange_rate DECIMAL(18, 6) NOT NULL DEFAULT 1 COMMENT '汇率；金额 = 原币金额 × 汇率',
+    amount_fc    DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '原币金额',
+    used_fc      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '原币已冲抵',
     voucher_id   BIGINT                  DEFAULT NULL COMMENT '收付款凭证',
     remark       VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     create_by    BIGINT                  DEFAULT NULL COMMENT '制单人',
@@ -2692,6 +2774,8 @@ CREATE TABLE fin_advance_apply (
     advance_id  BIGINT         NOT NULL COMMENT '预收 / 预付款',
     bill_id     BIGINT         NOT NULL COMMENT '冲抵的应收 / 应付单',
     amount      DECIMAL(18, 2) NOT NULL COMMENT '冲抵金额',
+    amount_fc   DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '冲抵原币金额',
+    bill_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '单据一方的本位币核销金额（计入单据的已核销，外币单据可能与预收预付一方的冲抵金额不同）',
     apply_date  DATE           NOT NULL COMMENT '冲抵日期',
     voucher_id  BIGINT                  DEFAULT NULL COMMENT '转账凭证',
     create_by   BIGINT                  DEFAULT NULL COMMENT '操作人',
@@ -4132,7 +4216,7 @@ CREATE TABLE crm_customer (
     industry         VARCHAR(32)           DEFAULT NULL COMMENT '行业(字典 crm_industry)',
     source           VARCHAR(16)           DEFAULT NULL COMMENT '来源(字典 crm_source)',
     stage            VARCHAR(16)  NOT NULL DEFAULT 'POTENTIAL' COMMENT '客户阶段(字典 crm_customer_stage) POTENTIAL潜在 INTENT意向 DEAL成交 LOST流失',
-    region           VARCHAR(64)           DEFAULT NULL COMMENT '所在地区',
+    region           VARCHAR(64)           DEFAULT NULL COMMENT '所在地区(业务字典 scm_region)',
     website          VARCHAR(128)          DEFAULT NULL COMMENT '网站',
     last_follow_time DATETIME              DEFAULT NULL COMMENT '最近跟进时间',
     next_follow_time DATETIME              DEFAULT NULL COMMENT '下次跟进时间',
@@ -4175,7 +4259,7 @@ CREATE TABLE crm_lead (
     industry         VARCHAR(32)           DEFAULT NULL COMMENT '行业(字典 crm_industry)',
     source           VARCHAR(16)           DEFAULT NULL COMMENT '来源(字典 crm_source)',
     campaign_id      BIGINT                DEFAULT NULL COMMENT '来源市场活动',
-    region           VARCHAR(64)           DEFAULT NULL COMMENT '地区',
+    region           VARCHAR(64)           DEFAULT NULL COMMENT '地区(业务字典 scm_region)',
     requirement      VARCHAR(500)          DEFAULT NULL COMMENT '需求描述',
     owner_id         BIGINT                DEFAULT NULL COMMENT '负责人',
     dept_id          BIGINT                DEFAULT NULL COMMENT '负责人部门（数据权限）',
@@ -7119,6 +7203,57 @@ SELECT g.role_id, g.menu_id FROM (
 ) g
 WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
   AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);
+
+-- 实时库存成本：库存查询的「查看成本金额」按钮（均价、库存金额、流水的单价金额），授权总经理、仓库管理员、会计
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(3652, 134, '查看成本金额', 'F', NULL, NULL, 'wms:stock:cost', NULL, 1, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT r.id, 3652 FROM sys_role r
+WHERE r.id IN (3, 6, 9) AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = r.id AND x.menu_id = 3652);
+
+-- 应收应付：冲账单（垫付运费、返利、三包赔偿等抵扣往来款，复核后生成红字应收应付单）、应付坏账（无法支付的应付款转销）
+INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
+(185, '冲账项目', 'fin_offset_item', 'BUSINESS', 1, '冲账单的项目，如垫付运费、销售返利、三包赔偿', NOW(), NOW()),
+(186, '冲账单状态', 'fin_offset_status', 'SYSTEM', 1, '冲账单的复核状态', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('fin_offset_item', '垫付运费', 'FREIGHT', 'cyan', 1, 1, NOW(), NOW()),
+('fin_offset_item', '销售返利', 'REBATE', 'volcano', 2, 1, NOW(), NOW()),
+('fin_offset_item', '三包赔偿', 'WARRANTY', 'orange', 3, 1, NOW(), NOW()),
+('fin_offset_item', '其他', 'OTHER', 'default', 9, 1, NOW(), NOW()),
+('fin_offset_status', '待复核', 'DRAFT', 'default', 1, 1, NOW(), NOW()),
+('fin_offset_status', '已复核', 'REVIEWED', 'green', 2, 1, NOW(), NOW()),
+('fin_bill_source', '冲账单', 'OFFSET', 'magenta', 13, 1, NOW(), NOW()),
+('fin_bill_source', '订单尾差调整', 'ORDER_ADJUST', 'geekblue', 14, 1, NOW(), NOW());
+UPDATE sys_dict_data SET builtin = 1 WHERE dict_type = 'fin_offset_item' AND dict_value = 'OTHER';
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(377, 932, '冲账单', 'C', 'offset', 'fin/offset/index', 'fin:offset:list', 'InteractionOutlined', 9, 1, 1, NOW(), NOW()),
+(3770, 377, '冲账单新增', 'F', NULL, NULL, 'fin:offset:add', NULL, 1, 1, 1, NOW(), NOW()),
+(3771, 377, '冲账单修改', 'F', NULL, NULL, 'fin:offset:edit', NULL, 2, 1, 1, NOW(), NOW()),
+(3772, 377, '冲账单删除', 'F', NULL, NULL, 'fin:offset:remove', NULL, 3, 1, 1, NOW(), NOW()),
+(3773, 377, '冲账单复核', 'F', NULL, NULL, 'fin:offset:review', NULL, 4, 1, 1, NOW(), NOW()),
+(1843, 184, '应付坏账', 'F', NULL, NULL, 'fin:ap:baddebt', NULL, 9, 1, 1, NOW(), NOW());
+-- 普通用户、总经理、出纳只读；会计全部
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT g.role_id, g.menu_id FROM (
+    SELECT 2 AS role_id, 377 AS menu_id UNION ALL SELECT 3, 377 UNION ALL SELECT 10, 377
+    UNION ALL SELECT 9, 377 UNION ALL SELECT 9, 3770 UNION ALL SELECT 9, 3771 UNION ALL SELECT 9, 3772 UNION ALL SELECT 9, 3773
+    UNION ALL SELECT 9, 1843
+) g
+WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);
+
+-- 客户区域（业务字典，每个租户一份）：客户、CRM 客户和线索的地区下拉选择，进销存报表按区域汇总
+INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
+(187, '客户区域', 'scm_region', 'BUSINESS', 1, '客户的销售区域（经销商为授权区域），CRM 客户、线索的地区也用此字典，进销存报表按区域汇总', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('scm_region', '华东', 'EAST', 'blue', 1, 1, NOW(), NOW()),
+('scm_region', '华南', 'SOUTH', 'green', 2, 1, NOW(), NOW()),
+('scm_region', '华北', 'NORTH', 'orange', 3, 1, NOW(), NOW()),
+('scm_region', '华中', 'CENTRAL', 'cyan', 4, 1, NOW(), NOW()),
+('scm_region', '西南', 'SOUTHWEST', 'purple', 5, 1, NOW(), NOW()),
+('scm_region', '西北', 'NORTHWEST', 'gold', 6, 1, NOW(), NOW()),
+('scm_region', '东北', 'NORTHEAST', 'geekblue', 7, 1, NOW(), NOW()),
+('scm_region', '海外', 'OVERSEAS', 'magenta', 8, 1, NOW(), NOW());
 
 ALTER TABLE sys_dept AUTO_INCREMENT = 200;
 ALTER TABLE sys_user AUTO_INCREMENT = 100;

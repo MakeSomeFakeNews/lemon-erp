@@ -120,6 +120,9 @@
               <a-button type="link" size="small" @click="openUnits(record)">
                 <template #icon><SwapOutlined /></template>{{ $t('common.field.unit') }}
               </a-button>
+              <a-button v-if="record.isTemplate !== 1" type="link" size="small" @click="openHistory(record)">
+                <template #icon><HistoryOutlined /></template>{{ $t('wms.history.action') }}
+              </a-button>
               <a-button v-if="!record.templateId" type="link" size="small" @click="openVariants(record)">
                 <template #icon><AppstoreAddOutlined /></template>{{ $t('wms.variant.title') }}
               </a-button>
@@ -446,6 +449,7 @@
     />
     <LabelPrintModal v-model:open="labelOpen" type-key="label.material" :items="labelItems" />
     <PriceLevelModal ref="priceLevelRef" @saved="load" />
+    <StockHistory ref="historyRef" />
   </div>
 </template>
 
@@ -455,7 +459,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { isZh } from '@/locales'
 import { message } from 'ant-design-vue'
-import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, DollarOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, QuestionCircleOutlined, SwapOutlined } from '@ant-design/icons-vue'
+import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, DollarOutlined, EditOutlined, HistoryOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, QuestionCircleOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -467,6 +471,7 @@ import LabelPrintModal from '@/components/label/LabelPrintModal.vue'
 import LocationSelect from '@/components/wms/LocationSelect.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import MaterialUnitsModal from '@/components/wms/MaterialUnitsModal.vue'
+import StockHistory from '@/components/wms/StockHistory.vue'
 import VariantDrawer from '@/components/wms/VariantDrawer.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { addMaterial, changeMaterialStatus, deleteMaterial, getMaterial, pageMaterial, updateMaterial, importMaterial } from '@/api/wms/material'
@@ -542,6 +547,12 @@ function openVariants(record) {
   variantOpen.value = true
 }
 
+// 经营历史（库存流水的进出、单价与结余）
+const historyRef = ref()
+function openHistory(record) {
+  historyRef.value.open({ materialId: record.id, materialCode: record.code, materialName: record.name })
+}
+
 function openUnits(record) {
   unitsMaterial.value = record
   unitsOpen.value = true
@@ -584,7 +595,7 @@ const columns = [
   { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 120, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 90 },
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 270, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: 360, fixed: 'right' }
 ]
 const { checked } = useColumns(columns, 'wms-material')
 /** 列设置、导出用的列：只有启用的价格列，标题为价格列名称 */

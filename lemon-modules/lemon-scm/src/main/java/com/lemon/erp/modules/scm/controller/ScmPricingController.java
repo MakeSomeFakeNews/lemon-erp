@@ -3,8 +3,11 @@ package com.lemon.erp.modules.scm.controller;
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
+import com.lemon.erp.framework.excel.ImportRequest;
+import com.lemon.erp.framework.excel.ImportResult;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.scm.dto.CustomerPriceImportRow;
 import com.lemon.erp.modules.scm.dto.PricingViews;
 import com.lemon.erp.modules.scm.entity.ScmCustomerPrice;
 import com.lemon.erp.modules.scm.model.OrderKind;
@@ -12,11 +15,13 @@ import com.lemon.erp.modules.scm.service.ScmCustomerPriceService;
 import com.lemon.erp.modules.scm.service.ScmPricingService;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,9 +31,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
- * 价格体系：开单默认价、价格参考、商品价格批量维护、客户执行价
+ * 价格体系：开单默认价、价格参考、商品价格批量维护、客户执行价（含导入导出）
  */
 @RestController
 @RequestMapping("/scm")
@@ -86,11 +92,16 @@ public class ScmPricingController {
         return R.ok(materialService.pagePrices(current, size, keyword, category, brand, status));
     }
 
-    /** 批量保存：每行物料 id + 各价格列，只更新启用的价格列；@return 更新的物料数 */
+    /**
+     * 批量保存：每行 { id, 要修改的价格列 }（retailPrice、wholesalePrice1-8）。只更新行中出现的字段，没有出现的价格列不变；
+     * 清空须显式传 null。停用的价格列、其他字段忽略
+     *
+     * @return 价格有变化的物料数
+     */
     @PutMapping("/goods-price")
     @PreAuthorize("@ss.hasPerm('scm:goodsPrice:edit')")
     @OperLog(title = "商品价格", type = OperType.UPDATE) // i18n-ignore
-    public R<Integer> saveGoodsPrices(@RequestBody List<WmsMaterial> rows) {
+    public R<Integer> saveGoodsPrices(@RequestBody List<Map<String, Object>> rows) {
         return R.ok(materialService.savePrices(rows));
     }
 
@@ -100,6 +111,27 @@ public class ScmPricingController {
     @PreAuthorize("@ss.hasPerm('scm:customer:list')")
     public R<List<ScmCustomerPrice>> customerPrices(@PathVariable Long customerId) {
         return R.ok(customerPriceService.list(customerId));
+    }
+
+    /**
+     * 导出执行价（含客户、物料编码名称），列与导入模板一致
+     *
+     * @param customerId 只导出该客户，为空导出全部
+     * @param keyword    客户编码 / 名称
+     */
+    @GetMapping("/customer-price/export")
+    @PreAuthorize("@ss.hasPerm('scm:customer:list')")
+    public R<List<ScmCustomerPrice>> exportCustomerPrices(@RequestParam(required = false) Long customerId,
+                                                          @RequestParam(required = false) String keyword) {
+        return R.ok(customerPriceService.export(customerId, keyword));
+    }
+
+    /** Excel 导入：按 客户编码 × 物料编码 新增或更新执行价（文件中没有的不变），任何一行出错整批不导入 */
+    @PostMapping("/customer-price/import")
+    @PreAuthorize("@ss.hasPerm('scm:customer:edit')")
+    @OperLog(title = "客户执行价-导入", type = OperType.IMPORT) // i18n-ignore
+    public R<ImportResult> importCustomerPrices(@Valid @RequestBody ImportRequest<CustomerPriceImportRow> req) {
+        return R.ok(customerPriceService.importRows(req));
     }
 
     @PutMapping("/customer/{customerId}/prices")

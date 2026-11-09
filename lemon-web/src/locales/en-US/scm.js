@@ -4,6 +4,18 @@ export default {
     listPrice: 'List price {price}',
     discount: 'Discount {n}%'
   },
+  wholeDiscount: {
+    label: 'Order discount',
+    total: 'Total',
+    after: 'Total after discount',
+    round: 'Round down',
+    roundFen: 'Drop cents',
+    roundJiao: 'Drop decimals',
+    roundYuan: 'Drop units digit',
+    clear: 'Clear discount',
+    hint: 'Tax-inclusive amount, allocated to lines in proportion to line amounts on save (after promotions and rebates); receivables / payables use the discounted amount',
+    value: 'Order discount {amount}'
+  },
   partnerSelect: {
     searchSupplier: 'Search supplier code or name',
     searchCustomer: 'Search customer code or name'
@@ -103,6 +115,7 @@ export default {
     deliveryDate: 'Delivery Date',
     materialCode: 'Material Code',
     taxPrice: 'Price incl. Tax',
+    importWholeDiscount: 'Order Discount (once per external No.)',
     importDone: '{n} sales orders created (draft)',
     importDoneSkipped: '{n} sales orders created (draft); skipped {skipped} already imported: {list}',
     listSep: ', ',
@@ -167,8 +180,10 @@ export default {
     unapproveContent: 'The order returns to draft and can be edited.',
     unapproved: 'Unapproved',
     closeTitle: 'Close the order?',
-    closeContentIn: 'No further receipts after closing; completed quantities are not affected.',
-    closeContentOut: 'No further shipments after closing; completed quantities are not affected.',
+    closeContentIn: 'No further receipts after closing; completed quantities are not affected. Partially received lines are settled at line amount × received qty / order qty, and the rounding difference (a few cents) generates a payable adjustment.',
+    closeContentOut: 'No further shipments after closing; completed quantities are not affected. Partially shipped lines are settled at line amount × shipped qty / order qty, and the rounding difference (a few cents) generates a receivable adjustment.',
+    closeAdjust: 'Closing Adjustment',
+    closeAdjustHint: 'Difference settled at the order basis for partially completed lines when closing; a receivable / payable adjustment has been generated',
     closed: 'Closed',
     change: 'Change',
     createProject: 'Create Project',
@@ -297,7 +312,11 @@ export default {
     rejectedAt: ', rejected {time}',
     effectiveAt: ', effective {time}',
     reasonValue: 'Reason: {reason}',
-    action: 'Action'
+    action: 'Action',
+    wholeDiscount: 'Order Discount',
+    wholeDiscountHint: 'You may change the discount. Amounts and allocated discount of received / shipped quantities stay unchanged; the remaining discount is reallocated by the amounts of open quantities after the change. With an order discount, lines are edited at prices before the discount; the total is an estimate until saved.',
+    newGrossPrice: 'New Price before Discount',
+    grossAmount: 'Amount before Discount'
   },
   atp: {
     title: 'Available to Promise (ATP)',
@@ -450,7 +469,10 @@ export default {
     taxRate: 'Tax Rate',
     priceReference: 'Price Reference',
     promoPrice: 'Promotion price ¥{price}',
-    promoTotal: 'Promotions will deduct ¥{amount} on save (gifts are not shipped with direct documents)'
+    promoTotal: 'Promotions will deduct ¥{amount} on save',
+    giftTag: 'Gift',
+    giftPrice: 'Gift ¥0',
+    giftExpected: 'Promotion gives {qty}'
   },
   delivery: {
     title: 'Delivery Notice',
@@ -1165,8 +1187,9 @@ export default {
     channelTip: 'Dealers can be given dealer portal access to place orders and report channel stock',
     owner: 'Sales Owner',
     ownerTip: 'Dealer portal orders are assigned to this salesperson for approval',
-    region: 'Authorized Region',
-    regionPlaceholder: 'e.g. South China (Guangdong, Guangxi, Hainan)',
+    region: 'Region',
+    regionPlaceholder: 'Select a region',
+    regionTip: 'The authorized region for dealers; JXC reports group by region. Values are maintained in System → Business Dictionaries → Customer Region',
     paymentDaysTip: 'Receivable due date = delivery date + payment terms',
     creditLimit: 'Credit Limit',
     creditLimitTip: 'Open order amount is checked when approving sales orders; leave blank for no limit',

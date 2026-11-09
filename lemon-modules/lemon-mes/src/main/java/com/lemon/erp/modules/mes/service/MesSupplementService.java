@@ -189,7 +189,7 @@ public class MesSupplementService {
         MesWoDoc doc = docService.issueSupplement(s.getWoId(), new WoDocRequest(req.warehouseId(), req.bizDate(),
                 remark.length() > 255 ? remark.substring(0, 255) : remark,
                 req.items().stream().map(i -> new WoDocItemRequest(i.materialId(), i.locationId(), i.batchNo(), null, null,
-                        i.qty(), i.serialNos())).toList()));
+                        i.qty(), i.serialNos(), null)).toList()));
         suppMapper.update(Wrappers.<MesWoSupplement>lambdaUpdate()
                 .set(MesWoSupplement::getDocId, doc.getId())
                 .set(MesWoSupplement::getDocNo, doc.getDocNo())

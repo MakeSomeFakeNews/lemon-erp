@@ -72,6 +72,12 @@ public class MesWorkOrder extends BaseEntity {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime closeTime;
 
+    /** 关闭时尚未转入产品的成本（净领料成本 + 工费 − 已转入完工产品）。没有「查看成本金额」权限时不返回 */
+    private BigDecimal closeCost;
+
+    /** 其中追加到已完工产品库存的部分，其余（没有完工、产品已出库）计入当期成本 */
+    private BigDecimal closeStockCost;
+
     @TableField(exist = false)
     private String materialCode;
 

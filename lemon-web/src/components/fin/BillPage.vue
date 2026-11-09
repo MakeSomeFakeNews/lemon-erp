@@ -34,7 +34,7 @@
             :loading="loading"
             :pagination="pagination"
             :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: !!r.voucherId || r.sourceType === BillSource.MANUAL }) }"
-            :scroll="{ x: 1560 }"
+            :scroll="{ x: 1640 }"
             @change="onTableChange"
           >
             <template #bodyCell="{ column, record }">
@@ -65,6 +65,7 @@
                   {{ $t('fin.billPage.originalSettled', { settled: formatMoney(record.settledFc), remaining: formatMoney(Number(record.amountFc || 0) - Number(record.settledFc || 0)) }) }}
                 </div>
                 <div v-if="Number(record.badDebtAmount)" class="sub-text neg">{{ $t('fin.billPage.badDebtN', { amount: formatMoney(record.badDebtAmount) }) }}</div>
+                <div v-if="Number(record.discountAmount)" class="sub-text">{{ $t('fin.billPage.discountN', { amount: formatMoney(record.discountAmount) }) }}</div>
               </template>
               <template v-else-if="column.key === 'invoiced'">
                 <div>¥{{ formatMoney(record.invoicedAmount ?? 0) }}</div>
@@ -86,13 +87,13 @@
               <template v-else-if="column.key === 'action'">
                 <span class="table-actions">
                   <a-button
-                    v-if="kind === 'ar' && Number(record.amount) > 0 && remaining(record) > 0"
-                    v-perm="'fin:ar:baddebt'"
+                    v-if="Number(record.amount) > 0 && remaining(record) > 0"
+                    v-perm="`fin:${kind}:baddebt`"
                     type="link"
                     size="small"
                     @click="openBadDebt(record)"
                   >
-                    {{ $t('fin.billPage.badDebt') }}
+                    {{ conf.badDebt }}
                   </a-button>
                   <span v-if="record.sourceType === BillSource.MANUAL && Number(record.settledAmount) === 0" v-perm="`fin:${kind}:remove`">
                     <a-popconfirm :title="$t('fin.billPage.confirmDelete')" @confirm="remove(record.id)">
@@ -159,12 +160,12 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="badDebtOpen" :title="$t('fin.billPage.badDebtTitle', { no: badDebtTarget?.billNo || '' })" :confirm-loading="badDebtSaving" @ok="submitBadDebt">
+    <a-modal v-model:open="badDebtOpen" :title="conf.badDebtTitle(badDebtTarget?.billNo || '')" :confirm-loading="badDebtSaving" @ok="submitBadDebt">
       <a-alert
         type="info"
         show-icon
         class="tip"
-        :message="$t('fin.billPage.badDebtTip')"
+        :message="conf.badDebtTip"
       />
       <a-form layout="vertical">
         <a-row :gutter="16">
@@ -187,7 +188,7 @@
           </a-col>
         </a-row>
         <a-form-item :label="$t('fin.billPage.badDebtReason')">
-          <a-textarea v-model:value="badDebtForm.reason" :rows="2" :maxlength="255" :placeholder="$t('fin.billPage.badDebtReasonPlaceholder')" />
+          <a-textarea v-model:value="badDebtForm.reason" :rows="2" :maxlength="255" :placeholder="conf.badDebtReasonPh" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -229,7 +230,11 @@ const CONF = {
     invoiceLabel: t('fin.billPage.ar.invoiced'),
     invoicedAll: t('fin.billPage.ar.invoicedAll'),
     notInvoiced: (amount) => t('fin.billPage.ar.notInvoiced', { amount }),
-    createTitle: t('fin.billPage.ar.createTitle')
+    createTitle: t('fin.billPage.ar.createTitle'),
+    badDebt: t('fin.billPage.badDebt'),
+    badDebtTitle: (no) => t('fin.billPage.badDebtTitle', { no }),
+    badDebtTip: t('fin.billPage.badDebtTip'),
+    badDebtReasonPh: t('fin.billPage.badDebtReasonPlaceholder')
   },
   ap: {
     partner: 'supplier',
@@ -239,7 +244,11 @@ const CONF = {
     invoiceLabel: t('fin.billPage.ap.invoiced'),
     invoicedAll: t('fin.billPage.ap.invoicedAll'),
     notInvoiced: (amount) => t('fin.billPage.ap.notInvoiced', { amount }),
-    createTitle: t('fin.billPage.ap.createTitle')
+    createTitle: t('fin.billPage.ap.createTitle'),
+    badDebt: t('fin.billPage.ap.badDebt'),
+    badDebtTitle: (no) => t('fin.billPage.ap.badDebtTitle', { no }),
+    badDebtTip: t('fin.billPage.ap.badDebtTip'),
+    badDebtReasonPh: t('fin.billPage.ap.badDebtReasonPh')
   }
 }
 const conf = CONF[props.kind]
@@ -257,7 +266,7 @@ const columns = [
   { title: t('fin.billPage.dateDue'), key: 'dueDate', width: 130 },
   { title: t('common.field.status'), key: 'status', width: 100 },
   { title: t('fin.billPage.voucher'), key: 'voucher', width: 120 },
-  { title: t('common.action.operation'), key: 'action', width: props.kind === 'ar' ? 150 : 80 }
+  { title: t('common.action.operation'), key: 'action', width: 150 }
 ]
 const query = reactive({ partnerId: undefined, status: undefined, keyword: undefined, overdue: false })
 const { list, loading, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable((p) => pageBill(props.kind, p), query)
@@ -324,7 +333,7 @@ async function submitBadDebt() {
   }
   badDebtSaving.value = true
   try {
-    const id = await badDebt(badDebtTarget.value.id, { ...badDebtForm, reason: badDebtForm.reason || null })
+    const id = await badDebt(props.kind, badDebtTarget.value.id, { ...badDebtForm, reason: badDebtForm.reason || null })
     message.success(t('fin.billPage.badDebtDone'))
     badDebtOpen.value = false
     load()
