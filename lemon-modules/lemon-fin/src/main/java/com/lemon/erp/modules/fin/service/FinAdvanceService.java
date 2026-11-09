@@ -20,6 +20,7 @@ import com.lemon.erp.modules.fin.mapper.FinBillMapper;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.wms.service.DocNoService;
+import com.lemon.erp.framework.finance.ExchangeRateProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +37,9 @@ import java.util.stream.Collectors;
 
 /**
  * 预收预付：收到客户预付款记 借 银行 / 贷 预收账款，预付供应商记 借 预付账款 / 贷 银行（立即生成凭证）；
- * 发货、收货形成应收应付单后冲抵：借 预收账款 / 贷 应收账款，借 应付账款 / 贷 预付账款，并核销应收应付单
+ * 发货、收货形成应收应付单后冲抵：借 预收账款 / 贷 应收账款，借 应付账款 / 贷 预付账款，并核销应收应付单。
+ * 外币预收预付按原币登记（本位币 = 原币 × 收付日汇率），只能冲抵同币种的单据：冲抵金额为原币，预收预付按其汇率、
+ * 单据按记账汇率折算本位币，差额计入财务费用（汇兑损益）
  */
 @Service
 @RequiredArgsConstructor
@@ -51,6 +54,7 @@ public class FinAdvanceService {
     private final FinAccountRuleService accountRules;
     private final FinBizPeriodGuard periodGuard;
     private final DocNoService docNoService;
+    private final ExchangeRateProvider rateProvider;
 
     public PageResult<FinAdvance> page(long current, long size, SettleKind kind, Long partnerId, String keyword, boolean onlyOpen) {
         Page<FinAdvance> page = Page.of(current, size);
@@ -73,6 +77,14 @@ public class FinAdvanceService {
         periodGuard.checkOpen(req.advanceDate(), receipt ? "fin.label.advanceReceipt" : "fin.label.advancePayment");
         accountService.requireCashAccount(req.accountId());
         String partner = billService.partnerName(req.kind(), req.partnerId());
+        String currency = req.currency() == null || req.currency().isBlank() ? FinConstants.BASE_CURRENCY : req.currency().trim();
+        boolean foreign = ForeignAmounts.isForeign(currency);
+        BigDecimal rate = !foreign ? BigDecimal.ONE : req.exchangeRate() != null ? req.exchangeRate() : rateProvider.rate(currency, req.advanceDate());
+        if (rate == null) {
+            throw new BizException("fin.error.enterExchangeRateAdvance", currency);
+        }
+        // 本位币金额：外币按收付日汇率折算，凭证按本位币
+        BigDecimal base = foreign ? Decimals.money(req.amount().multiply(rate)) : req.amount();
         FinAdvance a = new FinAdvance();
         a.setAdvanceNo(docNoService.next(receipt ? FinDocNos.ADVANCE_RECEIPT : FinDocNos.ADVANCE_PAYMENT));
         a.setKind(req.kind());
@@ -80,80 +92,126 @@ public class FinAdvanceService {
         a.setAdvanceDate(req.advanceDate());
         a.setAccountId(req.accountId());
         a.setMethod(req.method());
-        a.setAmount(req.amount());
+        a.setAmount(base);
         a.setUsedAmount(BigDecimal.ZERO);
+        a.setCurrency(currency);
+        a.setExchangeRate(rate);
+        a.setAmountFc(req.amount());
+        a.setUsedFc(BigDecimal.ZERO);
         a.setRemark(req.remark());
         advanceMapper.insert(a);
-        String summary = (receipt ? "预收 " : "预付 ") + partner + " 货款"; // i18n-ignore 凭证摘要
+        String summary = (receipt ? "预收 " : "预付 ") + partner + " 货款" // i18n-ignore 凭证摘要
+                + (foreign ? " " + currency + " " + req.amount().toPlainString() + " @" + rate.stripTrailingZeros().toPlainString() : "");
         List<VoucherLine> lines = receipt
-                ? List.of(VoucherLine.debit(summary, req.accountId(), null, req.amount()),
-                VoucherLine.credit(summary, accountRules.accountId(AccountRole.ADVANCE_RECEIVED), null, req.amount())
+                ? List.of(VoucherLine.debit(summary, req.accountId(), null, base),
+                VoucherLine.credit(summary, accountRules.accountId(AccountRole.ADVANCE_RECEIVED), null, base)
                         .withCustomer(req.partnerId()))
-                : List.of(VoucherLine.debit(summary, accountRules.accountId(AccountRole.PREPAYMENT), null, req.amount())
+                : List.of(VoucherLine.debit(summary, accountRules.accountId(AccountRole.PREPAYMENT), null, base)
                         .withSupplier(req.partnerId()),
-                VoucherLine.credit(summary, req.accountId(), null, req.amount()));
+                VoucherLine.credit(summary, req.accountId(), null, base));
         Long voucherId = voucherService.createGenerated(req.advanceDate(), VoucherSource.ADVANCE, a.getAdvanceNo(), lines);
         advanceMapper.update(Wrappers.<FinAdvance>lambdaUpdate().set(FinAdvance::getVoucherId, voucherId).eq(FinAdvance::getId, a.getId()));
         return a.getId();
     }
 
-    /** 冲抵应收应付单：每张单据冲抵金额不超过其未核销金额，合计不超过预收预付余额 */
+    /**
+     * 冲抵应收应付单：每张单据冲抵金额不超过其未核销金额，合计不超过预收预付余额。
+     * 外币预收预付只能冲抵同币种的单据，冲抵金额为原币
+     */
     @Transactional
     public void apply(Long id, LocalDate date, List<SettlementItemRequest> items) {
         FinAdvance a = detail(id);
         boolean receipt = a.getKind() == SettleKind.RECEIPT;
         BillKind billKind = a.getKind().billKind();
+        String currency = currencyOf(a);
         LocalDate d = date == null ? LocalDate.now() : date;
         periodGuard.checkOpen(d, "fin.label.advanceOffset");
         Map<Long, FinBill> bills = billMapper.selectByIds(items.stream().map(SettlementItemRequest::billId).toList()).stream()
                 .collect(Collectors.toMap(FinBill::getId, Function.identity()));
         Set<Long> seen = new HashSet<>();
-        BigDecimal total = BigDecimal.ZERO;
+        BigDecimal totalFc = BigDecimal.ZERO;
+        BigDecimal billBase = BigDecimal.ZERO;
         List<String> billNos = new ArrayList<>();
+        List<BigDecimal> billBases = new ArrayList<>();
         for (SettlementItemRequest item : items) {
             FinBill bill = bills.get(item.billId());
             if (bill == null || bill.getKind() != billKind || !bill.getPartnerId().equals(a.getPartnerId())) {
                 throw receipt ? new BizException("fin.error.offsetDocumentDoesNotBelongCustomer") : new BizException("fin.error.offsetDocumentDoesNotBelongSupplier");
             }
-            if (bill.getCurrency() != null && !FinConstants.BASE_CURRENCY.equals(bill.getCurrency())) {
-                throw new BizException("fin.error.foreignCurrencyDocumentWriteOffReceipt", bill.getBillNo());
+            String billCurrency = bill.getCurrency() == null ? FinConstants.BASE_CURRENCY : bill.getCurrency();
+            if (!currency.equals(billCurrency)) {
+                throw new BizException("fin.error.advanceCurrencyMismatch", bill.getBillNo(), billCurrency, currency);
             }
             if (!seen.add(bill.getId()) || item.amount().signum() <= 0 || bill.getAmount().signum() <= 0) {
                 throw new BizException("fin.error.offsetAmountMustGreaterDocumentsCannot", bill.getBillNo());
             }
-            if (billMapper.addSettled(bill.getId(), item.amount()) == 0) {
-                throw new BizException("fin.error.offsetAmountExceedsOutstandingAmount", bill.getBillNo(), bill.getAmount().subtract(bill.getSettledAmount()).toPlainString());
+            BigDecimal base = ForeignAmounts.toBase(bill, item.amount(), BigDecimal.ZERO)[0];
+            if (billMapper.addSettled(bill.getId(), base) == 0) {
+                throw new BizException("fin.error.offsetAmountExceedsOutstandingAmount", bill.getBillNo(),
+                        ForeignAmounts.isForeign(currency) ? bill.getAmountFc().subtract(bill.getSettledFc()).toPlainString()
+                                : bill.getAmount().subtract(bill.getSettledAmount()).toPlainString());
             }
             billMapper.addSettledFc(bill.getId(), item.amount());
-            total = total.add(item.amount());
+            totalFc = totalFc.add(item.amount());
+            billBase = billBase.add(base);
+            billBases.add(base);
             billNos.add(bill.getBillNo());
         }
-        if (total.signum() <= 0 || advanceMapper.addUsed(id, total) == 0) {
-            throw new BizException("fin.error.totalOffsetAmountExceedsAdvanceBalance", a.getAmount().subtract(a.getUsedAmount()).toPlainString());
+        // 预收预付的本位币：按其汇率折算，原币冲抵完时取剩余本位币
+        List<BigDecimal> applyBases = applyBases(a, items, totalFc);
+        BigDecimal advanceBase = Decimals.sum(applyBases);
+        if (totalFc.signum() <= 0 || advanceMapper.addUsed(id, advanceBase, totalFc) == 0) {
+            throw new BizException("fin.error.totalOffsetAmountExceedsAdvanceBalance", Decimals.nz(a.getAmountFc()).subtract(Decimals.nz(a.getUsedFc())).toPlainString());
         }
         String summary = (receipt ? "预收款冲抵应收 " : "预付款冲抵应付 ") + a.getAdvanceNo() + " " + String.join("、", billNos); // i18n-ignore 凭证摘要
         if (summary.length() > 200) {
             summary = summary.substring(0, 200);
         }
-        List<VoucherLine> lines = receipt
-                ? List.of(VoucherLine.debit(summary, accountRules.accountId(AccountRole.ADVANCE_RECEIVED), null, total)
+        List<VoucherLine> lines = new ArrayList<>(receipt
+                ? List.of(VoucherLine.debit(summary, accountRules.accountId(AccountRole.ADVANCE_RECEIVED), null, advanceBase)
                         .withCustomer(a.getPartnerId()),
-                VoucherLine.credit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, total)
+                VoucherLine.credit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, billBase)
                         .withCustomer(a.getPartnerId()))
-                : List.of(VoucherLine.debit(summary, accountRules.accountId(AccountRole.PAYABLE), null, total)
+                : List.of(VoucherLine.debit(summary, accountRules.accountId(AccountRole.PAYABLE), null, billBase)
                         .withSupplier(a.getPartnerId()),
-                VoucherLine.credit(summary, accountRules.accountId(AccountRole.PREPAYMENT), null, total)
-                        .withSupplier(a.getPartnerId()));
+                VoucherLine.credit(summary, accountRules.accountId(AccountRole.PREPAYMENT), null, advanceBase)
+                        .withSupplier(a.getPartnerId())));
+        // 外币：预收预付汇率与单据记账汇率的差额计入财务费用（预收汇率高于记账汇率为汇兑收益，冲减财务费用）
+        BigDecimal diff = receipt ? advanceBase.subtract(billBase) : billBase.subtract(advanceBase);
+        if (diff.signum() != 0) {
+            lines.add(VoucherLine.credit(summary + " 汇兑损益", accountRules.accountId(AccountRole.FINANCE_EXPENSE), null, diff)); // i18n-ignore
+        }
         Long voucherId = voucherService.createGenerated(d, VoucherSource.ADVANCE, a.getAdvanceNo(), lines);
-        for (SettlementItemRequest item : items) {
+        for (int i = 0; i < items.size(); i++) {
             FinAdvanceApply apply = new FinAdvanceApply();
             apply.setAdvanceId(id);
-            apply.setBillId(item.billId());
-            apply.setAmount(item.amount());
+            apply.setBillId(items.get(i).billId());
+            apply.setAmount(applyBases.get(i));
+            apply.setAmountFc(items.get(i).amount());
+            apply.setBillAmount(billBases.get(i));
             apply.setApplyDate(d);
             apply.setVoucherId(voucherId);
             applyMapper.insert(apply);
         }
+    }
+
+    /** 各冲抵行的预收预付本位币：原币 × 预收预付汇率；本次冲抵完全部原币余额时，最后一行取剩余本位币 */
+    private static List<BigDecimal> applyBases(FinAdvance a, List<SettlementItemRequest> items, BigDecimal totalFc) {
+        boolean foreign = ForeignAmounts.isForeign(currencyOf(a));
+        List<BigDecimal> bases = new ArrayList<>();
+        for (SettlementItemRequest item : items) {
+            bases.add(foreign ? Decimals.money(item.amount().multiply(a.getExchangeRate())) : item.amount());
+        }
+        BigDecimal remainingFc = Decimals.nz(a.getAmountFc()).subtract(Decimals.nz(a.getUsedFc()));
+        if (foreign && !bases.isEmpty() && totalFc.compareTo(remainingFc) == 0) {
+            BigDecimal others = Decimals.sum(bases.subList(0, bases.size() - 1));
+            bases.set(bases.size() - 1, a.getAmount().subtract(a.getUsedAmount()).subtract(others));
+        }
+        return bases;
+    }
+
+    private static String currencyOf(FinAdvance a) {
+        return a.getCurrency() == null ? FinConstants.BASE_CURRENCY : a.getCurrency();
     }
 
     /** 删除：未冲抵且凭证未审核的预收预付单，同时删除其凭证 */

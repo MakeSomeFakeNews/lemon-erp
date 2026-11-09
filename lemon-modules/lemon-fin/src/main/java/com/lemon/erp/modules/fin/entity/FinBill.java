@@ -61,6 +61,9 @@ public class FinBill extends BaseEntity {
     /** 坏账核销金额（计入已核销） */
     private BigDecimal badDebtAmount;
 
+    /** 收付款时的折让 / 抹零金额（计入已核销） */
+    private BigDecimal discountAmount;
+
     /** 币种；金额、已核销等为本位币（按记账汇率折算） */
     private String currency;
 

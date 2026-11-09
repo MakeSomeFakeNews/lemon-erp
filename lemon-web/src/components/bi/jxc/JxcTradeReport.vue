@@ -15,7 +15,8 @@
           :placeholder="$t('jxc.common.allCategories')" class="filter-s" />
         <a-select v-model:value="query.brand" :options="toOptions(dict.wms_material_brand)" allow-clear
           :placeholder="$t('jxc.common.allBrands')" class="filter-s" />
-        <a-input v-if="sales" v-model:value="query.region" allow-clear :placeholder="$t('jxc.common.region')" class="filter-s" />
+        <a-select v-if="sales" v-model:value="query.region" :options="toOptions(dict.scm_region)" allow-clear show-search option-filter-prop="label"
+          :placeholder="$t('jxc.common.allRegions')" class="filter-s" />
         <WarehouseSelect v-model:value="query.warehouseId" :placeholder="$t('jxc.common.allWarehouses')" class="filter-s" />
         <a-input v-model:value="query.keyword" allow-clear :placeholder="$t('jxc.common.materialKeyword')" class="filter" @press-enter="load" />
         <a-button type="primary" :loading="loading" @click="load">{{ $t('common.action.query') }}</a-button>
@@ -147,7 +148,7 @@ const dims = computed(() => (sales.value ? SALES_DIMS : PURCHASE_DIMS))
 const presets = rangePresets()
 const range = ref(thisMonth())
 const groupBy = ref(sales.value ? JxcDimension.CUSTOMER : JxcDimension.SUPPLIER)
-const query = reactive({ partnerId: undefined, salesmanId: undefined, category: undefined, brand: undefined, region: '', warehouseId: undefined, keyword: '' })
+const query = reactive({ partnerId: undefined, salesmanId: undefined, category: undefined, brand: undefined, region: undefined, warehouseId: undefined, keyword: '' })
 const data = ref({ rows: [], total: {}, truncated: false })
 const total = computed(() => data.value.total || {})
 const loading = ref(false)
@@ -178,7 +179,7 @@ const columns = computed(() => {
 
 /** 查询条件（不含汇总维度），去掉空值 */
 function params() {
-  const p = { begin: range.value[0], end: range.value[1], ...query, region: query.region?.trim(), keyword: query.keyword?.trim() }
+  const p = { begin: range.value[0], end: range.value[1], ...query, keyword: query.keyword?.trim() }
   return Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined && v !== null && v !== ''))
 }
 

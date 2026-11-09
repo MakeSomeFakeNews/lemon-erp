@@ -63,9 +63,9 @@ public class ScmPromotionController {
         return R.ok(promotionService.usages(id));
     }
 
-    /** 下单前预览促销：lines、gifts、discountAmount、notes */
+    /** 下单前预览促销：lines、gifts、discountAmount、notes；销售出库直接开单（scm:salesOut:add）也用它带出赠品 */
     @PostMapping("/preview")
-    @PreAuthorize("@ss.hasPerm('scm:sales:add') or @ss.hasPerm('scm:sales:edit')")
+    @PreAuthorize("@ss.hasPerm('scm:sales:add') or @ss.hasPerm('scm:sales:edit') or @ss.hasPerm('scm:salesOut:add')")
     public R<ScmPriceViews.PromotionPreview> preview(@Valid @RequestBody PromotionRequests.Preview req) {
         return R.ok(promotionService.preview(customerService.get(req.customerId()), req));
     }

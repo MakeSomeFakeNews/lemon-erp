@@ -20,7 +20,11 @@
     >
       <template #cell="{ column, record }">
         <template v-if="column.key === 'material'">
-          <a-form-item v-if="direct" :name="lines.itemName(record, 'materialId')" :rules="requiredRule($t('scm.trade.selectMaterial'))" class="cell-item">
+          <template v-if="record.gift">
+            <div>{{ record.materialName }}</div>
+            <div class="sub-text">{{ record.spec }}</div>
+          </template>
+          <a-form-item v-else-if="direct" :name="lines.itemName(record, 'materialId')" :rules="requiredRule($t('scm.trade.selectMaterial'))" class="cell-item">
             <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
           </a-form-item>
           <template v-else>
@@ -28,6 +32,7 @@
             <div class="sub-text">{{ record.spec }}</div>
           </template>
           <div class="row-tags">
+            <a-tag v-if="record.gift" color="green" :bordered="false">{{ $t('scm.trade.giftTag') }}</a-tag>
             <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">{{ $t('scm.trade.batch') }}</a-tag>
             <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">{{ $t('scm.trade.serialNo') }}</a-tag>
           </div>
@@ -80,9 +85,13 @@
               :precision="record.serialEnabled === 1 ? 0 : 4"
               :addon-after="record.unit || undefined"
               class="full"
-              @change="direct && fillPrices([record])"
+              @change="direct && !record.gift && fillPrices([record])"
             />
           </a-form-item>
+          <div v-if="record.gift" class="sub-text">{{ $t('scm.trade.giftExpected', { qty: formatQty(giftExpected(promo?.gifts, record.materialId)) }) }}</div>
+        </template>
+        <template v-else-if="column.key === 'price' && record.gift">
+          <div class="promo-text">{{ $t('scm.trade.giftPrice') }}<span v-if="record.promotionName">（{{ record.promotionName }}）</span></div>
         </template>
         <template v-else-if="column.key === 'price'">
           <a-form-item :name="lines.itemName(record, 'price')" :rules="requiredRule($t('scm.trade.inputPrice'))" class="cell-item">
@@ -98,7 +107,7 @@
           </div>
         </template>
         <template v-else-if="column.key === 'taxRate'">
-          <a-input-number v-model:value="record.taxRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" />
+          <a-input-number v-model:value="record.taxRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" :disabled="record.gift" />
         </template>
         <template v-else-if="column.key === 'amount'">
           <div class="amount">¥{{ formatMoney(lineAmount(record.qty, record.price)) }}</div>
@@ -121,7 +130,7 @@
             <template #icon><SplitCellsOutlined /></template>
           </a-button>
         </a-tooltip>
-        <a-button type="link" danger size="small" @click="lines.removeRow(record)">
+        <a-button v-if="!record.gift || giftRowCount(record.materialId) > 1" type="link" danger size="small" @click="lines.removeRow(record)">
           <template #icon><DeleteOutlined /></template>
         </a-button>
       </template>
@@ -129,6 +138,7 @@
     <div v-if="direct && promo?.discountAmount > 0" class="promo-text promo-total">
       {{ $t('scm.trade.promoTotal', { amount: formatMoney(promo.discountAmount) }) }}
     </div>
+    <WholeDiscountBar v-if="direct && form.items.length" v-model:value="form.wholeDiscount" :total="discountBase" />
     <PriceReference ref="referenceRef" @pick="pickPrice" />
   </div>
 </template>
@@ -145,8 +155,10 @@ import SerialInput from '@/components/wms/SerialInput.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import StockSlotSelect from './StockSlotSelect.vue'
 import PriceReference from './PriceReference.vue'
+import WholeDiscountBar from './WholeDiscountBar.vue'
 import { defaultPrices } from '@/api/scm/pricing'
 import { previewPromotion } from '@/api/scm/sourcing'
+import { giftExpected, syncGifts } from './giftRows'
 import { useLineItems } from '@/composables/useLineItems'
 import { fillPutaway, formatQty } from '@/components/wms/wms'
 import { TRADE_KINDS, formatMoney, lineAmount, newTradeRow } from './scm'
@@ -222,10 +234,16 @@ function changeRowWarehouse(row, id) {
   clearSlot(row)
 }
 
-/** 表头仓库变化：沿用表头仓库的行清空库位 */
+/** 表头仓库变化：沿用表头仓库的行清空库位，赠品行按新仓库重新先到期先出 */
 watch(
   () => props.form.warehouseId,
-  () => props.form.items.forEach((i) => !(props.lineWarehouse && i.warehouseId) && clearSlot(i))
+  async () => {
+    props.form.items.forEach((i) => !(props.lineWarehouse && i.warehouseId) && clearSlot(i))
+    if (promo.value?.gifts?.length) {
+      for (let i = props.form.items.length - 1; i >= 0; i--) if (props.form.items[i].gift) props.form.items.splice(i, 1)
+      await syncGifts(props.form.items, promo.value.gifts, props.form.warehouseId)
+    }
+  }
 )
 
 function applySlot(row, slot) {
@@ -274,7 +292,8 @@ async function fillPrices(rows) {
     date: props.form.bizDate
   }).catch(() => [])
   targets.forEach((r, i) => {
-    const p = list?.[i]?.materialId === r.materialId ? list[i] : (list || []).find((x) => x.materialId === r.materialId)
+    // 默认价按行返回（与请求的物料一一对应，同一物料多行按各行数量匹配起订量）
+    const p = list?.[i]?.materialId === r.materialId ? list[i] : undefined
     if (!p || !r.priceAuto) return
     if (p.price == null) return
     r.price = Number(p.price)
@@ -303,32 +322,43 @@ function pickPrice(price) {
   Object.assign(referenceRow, { price, priceAuto: false, priceSource: undefined })
 }
 
-// ---------------------------------------------------------------- 销售出库：促销预览（买赠不适用于直接开单）
+// ---------------------------------------------------------------- 销售出库：促销预览，买赠的赠品行随单出库
 const promo = ref()
 let promoTimer
 let promoSeq = 0
+const goodsRows = () => props.form.items.filter((i) => !i.gift)
+const giftRowCount = (materialId) => props.form.items.filter((i) => i.gift && i.materialId === materialId).length
 watch(
   () => props.direct && props.kind === 'salesOut'
-    ? JSON.stringify([props.form.partnerId, props.form.bizDate, props.form.items.map((i) => [i.materialId, i.qty, i.price])])
+    ? JSON.stringify([props.form.partnerId, props.form.bizDate, goodsRows().map((i) => [i.materialId, i.qty, i.price])])
     : null,
   (key) => {
     clearTimeout(promoTimer)
-    if (!key) return (promo.value = undefined)
+    if (!key) return applyPromo(undefined)
     promoTimer = setTimeout(async () => {
       const f = props.form
-      const ready = f.items.length && f.items.every((i) => i.materialId && Number(i.qty) > 0 && i.price != null)
-      if (!f.partnerId || !f.bizDate || !ready) return (promo.value = undefined)
+      const rows = goodsRows()
+      const ready = rows.length && rows.every((i) => i.materialId && Number(i.qty) > 0 && i.price != null)
+      if (!f.partnerId || !f.bizDate || !ready) return applyPromo(undefined)
       const seq = ++promoSeq
       const res = await previewPromotion({
         customerId: f.partnerId, orderDate: f.bizDate,
-        items: f.items.map((i) => ({ materialId: i.materialId, qty: i.qty, price: i.price }))
+        items: rows.map((i) => ({ materialId: i.materialId, qty: i.qty, price: i.price }))
       }).catch(() => undefined)
-      if (seq === promoSeq) promo.value = res
+      if (seq === promoSeq) applyPromo(res)
     }, 500)
   }
 )
+/** 预览结果：赠品同步到明细末尾（没有预览结果时保留已有赠品行，保存时后端按促销校验） */
+async function applyPromo(res) {
+  promo.value = res
+  if (res) await syncGifts(props.form.items, res.gifts, props.form.warehouseId)
+  else if (!props.direct || props.kind !== 'salesOut') props.form.items.splice(0, props.form.items.length, ...goodsRows())
+}
+/** 直接开单整单优惠的基数：扣除促销优惠后的合计 */
+const discountBase = computed(() => round2(totalAmount.value - (Number(promo.value?.discountAmount) || 0)))
 const promoLine = (row) => {
-  const line = promo.value?.lines?.[props.form.items.indexOf(row)]
+  const line = promo.value?.lines?.[goodsRows().indexOf(row)]
   return line && line.origPrice != null ? line : null
 }
 

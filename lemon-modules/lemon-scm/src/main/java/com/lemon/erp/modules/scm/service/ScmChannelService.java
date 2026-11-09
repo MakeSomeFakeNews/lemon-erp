@@ -28,6 +28,7 @@ import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -137,7 +138,8 @@ public class ScmChannelService {
 
     public PageResult<ScmChannelReport> reports(long current, long size, Long customerId, Integer period, String keyword) {
         Page<ScmChannelReport> page = Page.of(current, size);
-        reportMapper.selectPageList(page, customerId, period, keyword);
+        String kw = StringUtils.hasText(keyword) ? keyword.trim() : null;
+        reportMapper.selectPageList(page, customerId, period, kw, kw == null ? List.of() : customerService.regionsMatching(kw));
         return PageResult.of(page);
     }
 

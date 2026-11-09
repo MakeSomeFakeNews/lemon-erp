@@ -25,6 +25,7 @@ bin/
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+!lemon-web/src/**/out/
 
 ### NetBeans ###
 /nbproject/private/

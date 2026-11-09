@@ -1,6 +1,10 @@
 <template>
   <a-drawer :open="open" :title="$t('pricing.customerPrice.title', { name: customer?.name || '' })" width="min(880px, 100vw)" destroy-on-close @close="open = false">
     <a-alert type="info" show-icon class="tip" :message="$t('pricing.customerPrice.tip')" />
+    <a-space class="tip">
+      <a-button v-if="editable" size="small" @click="importOpen = true"><ImportOutlined />{{ $t('common.action.import') }}</a-button>
+      <a-button size="small" :disabled="!form.items.length" @click="exportRows"><ExportOutlined />{{ $t('common.action.export') }}</a-button>
+    </a-space>
     <a-spin :spinning="loading">
       <a-form ref="formRef" :model="form">
         <LineItemsTable :items="form.items" :columns="columns" :empty-text="$t('pricing.customerPrice.empty')">
@@ -38,6 +42,14 @@
         <a-button type="primary" :loading="saving" @click="save">{{ $t('common.action.save') }}</a-button>
       </a-space>
     </template>
+    <ImportModal
+      v-model:open="importOpen"
+      :title="$t('pricing.customerPrice.importTitle')"
+      :columns="importColumns"
+      :importer="importRows"
+      :sample="priceImportSample"
+      @success="reload"
+    />
   </a-drawer>
 </template>
 
@@ -45,10 +57,12 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { ExportOutlined, ImportOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import ImportModal from '@/components/ImportModal.vue'
+import { CUSTOMER_PRICE_COLUMNS, exportCustomerPriceRows, priceImportSample } from './customerPrices'
 import LineItemsTable from '@/components/common/LineItemsTable.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
-import { customerPrices, saveCustomerPrices } from '@/api/scm/pricing'
+import { customerPrices, importCustomerPrices, saveCustomerPrices } from '@/api/scm/pricing'
 import { useLineItems } from '@/composables/useLineItems'
 import { useUserStore } from '@/store/user'
 import { price } from '@/utils/number'
@@ -75,8 +89,20 @@ const columns = computed(() => [
 
 async function show(record) {
   customer.value = record
-  form.value = { items: [] }
   open.value = true
+  await reload()
+}
+
+// Excel 导入导出（只含当前客户，导入按物料新增或更新，直接保存；导入后重新读取，未保存的修改会丢弃）
+const importOpen = ref(false)
+const importColumns = CUSTOMER_PRICE_COLUMNS(false)
+const importRows = (data) =>
+  importCustomerPrices({ rows: data.rows.map((r) => ({ ...r, data: { ...r.data, customerCode: customer.value.code } })) })
+const exportRows = () =>
+  exportCustomerPriceRows({ customerId: customer.value.id }, t('pricing.customerPrice.exportOneName', { name: customer.value.name }))
+
+async function reload() {
+  form.value = { items: [] }
   loading.value = true
   try {
     const list = await customerPrices(record.id)

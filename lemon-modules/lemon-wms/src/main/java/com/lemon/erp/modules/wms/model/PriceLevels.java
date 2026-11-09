@@ -12,6 +12,10 @@ public final class PriceLevels {
     public static final int RETAIL = 0;
     public static final int MAX = 8;
 
+    /** 各价格列在物料（JSON）中的字段名，下标为价格列 */
+    public static final java.util.List<String> FIELDS = java.util.List.of("retailPrice", "wholesalePrice1", "wholesalePrice2",
+            "wholesalePrice3", "wholesalePrice4", "wholesalePrice5", "wholesalePrice6", "wholesalePrice7", "wholesalePrice8");
+
     private PriceLevels() {
     }
 

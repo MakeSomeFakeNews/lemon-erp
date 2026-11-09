@@ -17,6 +17,7 @@ export default {
     allCategories: 'All categories',
     allBrands: 'All brands',
     allWarehouses: 'All warehouses',
+    allRegions: 'All regions',
     region: 'Region',
     materialKeyword: 'Product code / name',
     customerKeyword: 'Customer code / name',
@@ -27,8 +28,8 @@ export default {
     last12Months: 'Last 12 months',
     refCost: 'Ref. cost',
     hasRefCost: 'Incl. ref. cost',
-    refCostTip: 'Costing has not been run for this month; valued at the reference cost',
-    missingCostTip: '{n} rows fall in months without costing and are valued at the reference cost',
+    refCostTip: 'No real-time issue cost (a document from before the upgrade) and the month has not been costed; valued at the reference cost',
+    missingCostTip: '{n} rows have no real-time issue cost and fall in months not yet costed; valued at the reference cost',
     noDetailPerm: 'You need the sales report permission to view details',
     yuan: '¥ {v}'
   },
@@ -77,7 +78,7 @@ export default {
   },
   sales: {
     title: 'Sales report',
-    tip: 'Sales and net amounts exclude tax (amount incl. tax − tax); net = sales shipments − sales returns, in the base currency. Cost = net qty × the costing unit cost of the document month, or the reference cost for months not yet costed, the same as Finance "Gross Margin". Data is limited to your data scope. Click a row to see the details and a document number to open the document.'
+    tip: 'Sales and net amounts exclude tax (amount incl. tax − tax); net = sales shipments − sales returns, in the base currency. Cost is the real-time inventory cost: shipments at the moving average cost at the time of issue, returns at the original issue cost (see stock transactions); older documents without real-time cost use the costing unit cost of the month or the reference cost. Finance "Gross Margin" uses the month-end costing unit cost (for bookkeeping), so the two may differ. Data is limited to your data scope. Click a row to see the details and a document number to open the document.'
   },
   purchase: {
     title: 'Purchase report',
@@ -99,7 +100,7 @@ export default {
     netCash: 'Net inflow',
     salesTrend: 'Sales and profit trend',
     cashTrend: 'Cash flow trend',
-    cashTip: 'Receipts = receipts + advance receipts; payments = payments + prepayments (effective documents)',
+    cashTip: 'Receipts = receipts + advance receipts + note collections / discounting (net of interest); payments = payments + prepayments + notes payable paid (effective documents, actual amounts excluding discounts; receiving, endorsing or issuing notes moves no cash and is excluded)',
     cashNoScope: 'Cash flow covers the whole company and requires the "All data" data scope',
     salesmen: 'Sales by employee',
     customers: 'Sales by customer',
@@ -108,7 +109,16 @@ export default {
   },
   assets: {
     asOf: 'As of {date} (live)',
-    tip: 'Fund balances come from vouchers (including unposted ones, the same as the cashier daily report); inventory = current stock × the latest costing unit cost (or the reference cost), excluding supplier consignment warehouses; receivables and payables are unsettled balances. Covers the whole company.',
+    asOfPast: 'As of the end of {date}',
+    asOfLabel: 'As of',
+    today: 'Today',
+    lastMonthEnd: 'End of last month',
+    lastYearEnd: 'End of last year',
+    tip: 'Fund balances are voucher balances as of the date (including unposted ones, the same as the cashier daily report); inventory is the cumulative stock flow cost as of the date (by document date, rolled back from current stock × the real-time moving average cost for later flows; as of today it equals Stock Query), excluding supplier consignment warehouses; receivables and payables = documents up to the date − settlements up to the date (including discounts, advance offsets and bad debts; returns, offset notes and other red documents reduce the balance directly), and advances likewise; notes receivable are the notes held on the date and notes payable those issued but not yet paid, at face value. Documents dated after the as-of date are excluded. Covers the whole company.',
+    estimated: 'The date is before real-time inventory costing went live, so the inventory value uses approximate costs backfilled from costing unit costs or reference costs during the upgrade. For reference only.',
+    notesReceivable: 'Notes receivable',
+    notesPayable: 'Notes payable',
+    unvouchered: '{n} effective receipts / payments up to the date have no voucher yet (receipts {receipt}, payments {payment}); fund balances exclude them until vouchers are generated.',
     funds: 'Funds',
     cash: 'Cash',
     bank: 'Bank deposits',
@@ -119,7 +129,7 @@ export default {
     payable: 'Payables',
     advance: 'Advance receipts',
     netAssets: 'Net assets',
-    netTip: 'Net assets = funds + inventory + receivables + prepayments − payables − advance receipts',
+    netTip: 'Net assets = funds + inventory + receivables + notes receivable + prepayments − payables − notes payable − advance receipts (notes are hidden when there are none)',
     account: 'Account',
     balance: 'Balance',
     byWarehouse: 'Inventory by warehouse',

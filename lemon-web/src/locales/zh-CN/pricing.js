@@ -8,6 +8,7 @@ export default {
     empty: '暂无记录',
     usePrice: '使用此价格',
     note: '价格为含税单价（基本单位、人民币）；每个分区最多显示 200 条',
+    compareScope: '没有「全部数据」权限时，客户 / 供商对比只统计您有权查看的出入库单（只列出这些单据的往来单位），与报价、销售、进货历史的数据权限一致',
     customer: '客户',
     supplier: '供应商',
     date: '日期',
@@ -92,6 +93,19 @@ export default {
     selectMaterial: '请选择物料',
     inputPrice: '请填写执行价',
     saved: '客户执行价已保存',
-    empty: '没有执行价'
+    empty: '没有执行价',
+    batch: '执行价',
+    importAll: '导入执行价',
+    exportAll: '导出执行价',
+    importTitle: '客户执行价',
+    customerCode: '客户编码',
+    customerName: '客户名称',
+    materialCode: '物料编码',
+    materialName: '物料名称',
+    spec: '规格',
+    unit: '单位',
+    taxRateCol: '税率(%)',
+    exportName: '客户执行价',
+    exportOneName: '客户执行价_{name}'
   }
 }

@@ -21,6 +21,9 @@ import java.time.LocalDate;
  * @param price          直接开单：含税单价
  * @param taxRate        直接开单：税率（%），为空按默认税率
  * @param warehouseId    仅销售出库（业务参数 scm.salesOut.lineWarehouse 开启时）：本行出库的仓库，为空取表头仓库
+ * @param gift           仅直接开单的销售出库：买赠促销的赠品行（单价为 0，不计应收），同一赠品可拆成多行（不同库位、批次、仓库），
+ *                       各赠品的数量合计须与促销规则计算的一致；请求中没有赠品行时按先到期先出自动补上
+ * @param unitName       直接开单：录入时使用的辅助单位（仅用于显示，数量、单价仍按基本单位）
  */
 public record TradeDocItemRequest(
         Long orderItemId,
@@ -38,11 +41,26 @@ public record TradeDocItemRequest(
         @Digits(integer = 14, fraction = 4, message = "{scm.valid.unitPriceAllowsMostDecimalPlaces}") BigDecimal price,
         @DecimalMin(value = "0", message = "{scm.valid.taxRateCannotNegative}")
         @DecimalMax(value = "100", message = "{scm.valid.taxRateCannotExceed}") BigDecimal taxRate,
-        Long warehouseId) {
+        Long warehouseId,
+        Boolean gift,
+        @Size(max = 16, message = "{scm.valid.unitCannotExceedCharacters}") String unitName) {
 
     /** 引用订单明细 */
     public TradeDocItemRequest(Long orderItemId, Long locationId, String batchNo, LocalDate productionDate, LocalDate expiryDate,
                                BigDecimal qty, String serialNos, String remark) {
-        this(orderItemId, locationId, batchNo, productionDate, expiryDate, qty, serialNos, remark, null, null, null, null);
+        this(orderItemId, locationId, batchNo, productionDate, expiryDate, qty, serialNos, remark, null, null, null, null, null, null);
+    }
+
+    /** 直接开单的普通行（不含赠品、辅助单位） */
+    public TradeDocItemRequest(Long orderItemId, Long locationId, String batchNo, LocalDate productionDate, LocalDate expiryDate,
+                               BigDecimal qty, String serialNos, String remark, Long materialId, BigDecimal price, BigDecimal taxRate,
+                               Long warehouseId) {
+        this(orderItemId, locationId, batchNo, productionDate, expiryDate, qty, serialNos, remark, materialId, price, taxRate, warehouseId,
+                null, null);
+    }
+
+    /** 是否赠品行 */
+    public boolean isGift() {
+        return Boolean.TRUE.equals(gift);
     }
 }

@@ -140,6 +140,9 @@
             </a-form-item>
             <div v-if="record.available != null" class="sub-text">{{ $t('wms.common.availableN', { n: formatQty(record.available) }) }}</div>
           </template>
+          <template v-else-if="column.key === 'costPrice'">
+            <a-input-number v-model:value="record.costPrice" :min="0" :max="999999999999" class="full" :placeholder="$t('wms.doc.costPricePh')" />
+          </template>
           <template v-else-if="column.key === 'serialNos'">
             <SerialInput
               v-if="record.serialEnabled === 1"
@@ -169,7 +172,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { message } from 'ant-design-vue'
+import { Modal, message } from 'ant-design-vue'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import LocationSelect from './LocationSelect.vue'
@@ -178,6 +181,7 @@ import SerialInput from './SerialInput.vue'
 import StockPicker from './StockPicker.vue'
 import WarehouseSelect from './WarehouseSelect.vue'
 import { addDoc, getDoc, updateDoc } from '@/api/wms/doc'
+import { unitCosts } from '@/api/wms/stock'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { toOptions } from '@/utils/dict'
@@ -215,6 +219,7 @@ const COLUMNS = {
     { title: t('wms.common.productionDate'), key: 'productionDate', width: 140 },
     { title: t('wms.common.expiryDate'), key: 'expiryDate', width: 140 },
     { title: t('common.field.quantity'), key: 'qty', width: 150 },
+    { title: t('wms.doc.costPrice'), key: 'costPrice', width: 140 },
     { title: t('wms.common.serialNo'), key: 'serialNos', width: 260 },
     { title: t('common.field.remark'), key: 'remark', width: 150 }
   ],
@@ -236,7 +241,12 @@ const COLUMNS = {
     { title: t('common.field.remark'), key: 'remark', width: 150 }
   ]
 }
-const columns = computed(() => [...COLUMNS[props.kind], { title: '', key: 'action', width: 50, fixed: 'right' }])
+/** 成本价：其他入库填写入库成本（默认当前均价，可改为 0）；寄售入库不计存货成本，不填写 */
+const showCost = computed(() => props.kind === 'in' && !consignIn.value)
+const columns = computed(() => [
+  ...COLUMNS[props.kind].filter((c) => c.key !== 'costPrice' || showCost.value),
+  { title: '', key: 'action', width: 50, fixed: 'right' }
+])
 const scrollX = computed(() => columns.value.reduce((sum, c) => sum + c.width, 0))
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
@@ -268,8 +278,9 @@ const toRow = (item) => ({
   batchNo: item.batchNo || undefined
 })
 
-const pickItem = (i) => ({
+const pickItem = (i, withCost) => ({
   materialId: i.materialId,
+  costPrice: withCost && i.costPrice != null && i.costPrice !== '' ? i.costPrice : null,
   locationId: i.locationId || null,
   toLocationId: i.toLocationId || null,
   batchNo: i.batchNo || null,
@@ -286,8 +297,14 @@ const drawer = useFormDrawer({
     const doc = await getDoc(props.kind, record.id)
     return { ...doc, ioCategory: doc.ioCategory || undefined, inTransit: doc.inTransit === true || doc.inTransit === 1, items: doc.items.map(toRow) }
   },
-  create: (data) => addDoc(props.kind, data),
-  update: (id, data) => updateDoc(props.kind, id, data),
+  create: async (data) => {
+    await confirmZeroCost(data)
+    return addDoc(props.kind, data)
+  },
+  update: async (id, data) => {
+    await confirmZeroCost(data)
+    return updateDoc(props.kind, id, data)
+  },
   toPayload: (f) => ({
     bizType: f.bizType,
     ioCategory: ioCategoryDict(props.kind, f.bizType) ? f.ioCategory || null : null,
@@ -296,11 +313,25 @@ const drawer = useFormDrawer({
     bizDate: f.bizDate,
     ...(props.kind === 'transfer' ? { inTransit: !!f.inTransit } : {}),
     remark: f.remark,
-    items: f.items.map(pickItem)
+    items: f.items.map((i) => pickItem(i, props.kind === 'in' && f.bizType !== StockInType.CONSIGN_IN))
   }),
   onSuccess: () => emit('success')
 })
 const { form, formRef } = drawer
+
+/** 成本价为 0 的行（如赠品）需要明确确认，避免漏填按 0 入账 */
+function confirmZeroCost(data) {
+  const zero = data.items.filter((i) => i.costPrice != null && Number(i.costPrice) === 0).length
+  if (!zero) return Promise.resolve()
+  return new Promise((resolve, reject) =>
+    Modal.confirm({
+      title: t('wms.doc.zeroCostTitle'),
+      content: t('wms.doc.zeroCostContent', { n: zero }),
+      onOk: () => resolve(),
+      onCancel: () => reject({ handled: true })
+    })
+  )
+}
 
 const totalQty = computed(() => form.value.items.reduce((sum, i) => sum + (Number(i.qty) || 0), 0))
 
@@ -324,6 +355,13 @@ function applyMaterial(row, material) {
   if (material.batchEnabled !== 1) Object.assign(row, { batchNo: undefined, productionDate: null, expiryDate: null })
   if (material.serialEnabled !== 1) row.serialNos = undefined
   applyDefaultLocation(row)
+  // 成本价默认当前均价（可修改）
+  if (showCost.value) {
+    row.costPrice = null
+    unitCosts([material.id]).then((m) => {
+      if (row.materialId === material.id && row.costPrice == null && m[material.id] != null) row.costPrice = Number(m[material.id])
+    })
+  }
   // 扫的是辅助单位条码（如整箱）：数量为空时按一个辅助单位折算成基本单位
   if (material.scanRatio && row.qty == null && material.serialEnabled !== 1) row.qty = material.scanRatio
 }

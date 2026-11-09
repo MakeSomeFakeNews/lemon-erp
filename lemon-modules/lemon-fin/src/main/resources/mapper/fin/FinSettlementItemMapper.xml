@@ -3,17 +3,40 @@
 <mapper namespace="com.lemon.erp.modules.fin.mapper.FinSettlementItemMapper">
 
     <select id="selectBySettlement" resultType="com.lemon.erp.modules.fin.entity.FinSettlementItem">
-        SELECT i.*, b.bill_no, b.source_no, b.bill_date, b.amount AS bill_amount
+        SELECT i.*, b.bill_no, b.source_type, b.source_no, b.bill_date, b.amount AS bill_amount
         FROM fin_settlement_item i
         JOIN fin_bill b ON b.id = i.bill_id
         WHERE i.settlement_id = #{settlementId}
         ORDER BY i.id
     </select>
 
+    <!-- 折让记录：已生效的收付款中有折让的核销明细（日期、单号、往来单位、原单据、折让、经办人） -->
+    <select id="selectDiscountPage" resultType="com.lemon.erp.modules.fin.dto.SettlementDiscountRow">
+        SELECT i.id, s.id AS settlement_id, s.settle_no, s.settle_date, s.partner_id,
+               COALESCE(c.code, sp.code) AS partner_code, COALESCE(c.name, sp.name) AS partner_name,
+               i.bill_id, b.bill_no, b.source_type, b.source_no, b.bill_date, b.amount AS bill_amount,
+               s.currency, i.discount, i.discount_fc, s.remark, u.nickname AS create_by_name
+        FROM fin_settlement_item i
+        JOIN fin_settlement s ON s.id = i.settlement_id
+        JOIN fin_bill b ON b.id = i.bill_id
+        LEFT JOIN scm_customer c ON s.kind = 'RECEIPT' AND c.id = s.partner_id
+        LEFT JOIN scm_supplier sp ON s.kind = 'PAYMENT' AND sp.id = s.partner_id
+        LEFT JOIN sys_user u ON u.id = s.create_by
+        WHERE s.kind = #{q.kind} AND s.status = 'APPROVED' AND i.discount &lt;&gt; 0
+        <if test="q.partnerId != null">AND s.partner_id = #{q.partnerId}</if>
+        <if test="q.beginDate != null">AND s.settle_date &gt;= #{q.beginDate}</if>
+        <if test="q.endDate != null">AND s.settle_date &lt;= #{q.endDate}</if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND (s.settle_no LIKE CONCAT('%', #{q.keyword}, '%') OR b.bill_no LIKE CONCAT('%', #{q.keyword}, '%')
+                 OR b.source_no LIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+        ORDER BY s.settle_date DESC, s.id DESC, i.id
+    </select>
+
     <insert id="insertBatch">
-        INSERT INTO fin_settlement_item (settlement_id, bill_id, amount, amount_fc, create_time, update_time) VALUES
+        INSERT INTO fin_settlement_item (settlement_id, bill_id, amount, amount_fc, discount, discount_fc, create_time, update_time) VALUES
         <foreach collection="list" item="i" separator=",">
-            (#{i.settlementId}, #{i.billId}, #{i.amount}, #{i.amountFc}, NOW(), NOW())
+            (#{i.settlementId}, #{i.billId}, #{i.amount}, #{i.amountFc}, #{i.discount}, #{i.discountFc}, NOW(), NOW())
         </foreach>
     </insert>
 

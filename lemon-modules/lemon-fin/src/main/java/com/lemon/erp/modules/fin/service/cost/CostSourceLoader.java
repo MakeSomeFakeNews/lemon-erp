@@ -91,6 +91,9 @@ public class CostSourceLoader {
         for (Map<String, Object> row : sourceMapper.selectTradeSums(begin, end)) {
             src.addTrade(new TradeSum(id(row, "materialId"), enumOf(TradeKind.class, row.get("kind")), dec(row, "qty"), dec(row, "net")));
         }
+        for (Map<String, Object> row : sourceMapper.selectPurchaseAdjusts(begin, end)) {
+            src.addPurchaseAdjust(id(row, "materialId"), dec(row, "net"));
+        }
         for (Map<String, Object> row : sourceMapper.selectAssemblies(begin, end)) {
             src.addAssembly(new AssemblyRow((String) row.get("assemblyNo"), enumOf(AssemblyKind.class, row.get("kind")),
                     id(row, "productId"), dec(row, "qty"), id(row, "partId"), dec(row, "partQty")));

@@ -14,10 +14,10 @@
 
     <insert id="insertBatch">
         INSERT INTO scm_order_item (order_id, material_id, qty, unit_name, unit_ratio, price, tax_rate, amount, tax_amount, done_qty,
-                                    return_qty, delivery_date, remark, orig_price, promotion_id, gift, create_time, update_time) VALUES
+                                    return_qty, delivery_date, remark, orig_price, promotion_id, gift, discount_share, create_time, update_time) VALUES
         <foreach collection="list" item="i" separator=",">
             (#{i.orderId}, #{i.materialId}, #{i.qty}, #{i.unitName}, #{i.unitRatio}, #{i.price}, #{i.taxRate}, #{i.amount}, #{i.taxAmount}, 0,
-             0, #{i.deliveryDate}, #{i.remark}, #{i.origPrice}, #{i.promotionId}, COALESCE(#{i.gift}, 0), NOW(), NOW())
+             0, #{i.deliveryDate}, #{i.remark}, #{i.origPrice}, #{i.promotionId}, COALESCE(#{i.gift}, 0), COALESCE(CAST(#{i.discountShare} AS DECIMAL(18, 2)), 0), NOW(), NOW())
         </foreach>
     </insert>
 
@@ -34,8 +34,24 @@
         WHERE id = #{id} AND done_qty - return_qty &gt;= #{qty}
     </update>
 
+    <update id="addAmounts">
+        UPDATE scm_order_item SET done_amount = done_amount + #{doneAmount}, return_amount = return_amount + #{returnAmount},
+                                  done_share = done_share + #{doneShare}, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectForClose" resultType="com.lemon.erp.modules.scm.entity.ScmOrderItem">
+        SELECT * FROM scm_order_item WHERE order_id = #{orderId} ORDER BY id FOR UPDATE
+    </select>
+
+    <update id="addCloseAdjust">
+        UPDATE scm_order_item SET done_amount = done_amount + #{amount}, close_adjust = close_adjust + #{amount},
+                                  close_adjust_net = close_adjust_net + #{net}, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
     <update id="markAllDone">
-        UPDATE scm_order_item SET done_qty = qty, update_time = NOW() WHERE order_id = #{orderId}
+        UPDATE scm_order_item SET done_qty = qty, done_amount = amount, done_share = discount_share, update_time = NOW() WHERE order_id = #{orderId}
     </update>
 
 </mapper>

@@ -11,6 +11,9 @@ public interface MesWoOpMapper extends BaseMapper<MesWoOp> {
 
     List<MesWoOp> selectByWo(@Param("woId") Long woId);
 
+    /** 工单工序的累计工时、标准工时、合格数和工作中心的人工 / 制造费用率（完工入库的工费） */
+    List<MesWoOp> selectCostOps(@Param("woId") Long woId);
+
     void insertBatch(@Param("list") List<MesWoOp> list);
 
     /** 累加报工：合格 + 报废累计不超过 maxQty */

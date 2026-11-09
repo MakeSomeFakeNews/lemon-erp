@@ -93,7 +93,7 @@ public class WmsOpeningStockService {
                     if (error == null) {
                         byWarehouse.computeIfAbsent(wh.getId(), k -> new ArrayList<>()).add(new ImportRow<>(row.rowNum(),
                                 new StockDocItemRequest(m.getId(), locationId, null, d.batchNo(), d.productionDate(), d.expiryDate(),
-                                        d.qty(), d.serialNos(), null)));
+                                        d.qty(), d.serialNos(), null).withCost(d.costPrice() != null ? d.costPrice() : m.getRefCost(), null)));
                     }
                 }
             }

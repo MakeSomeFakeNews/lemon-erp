@@ -33,6 +33,7 @@ public class StockDocReverser {
     private final DocNoService docNoService;
     private final StockService stockService;
     private final BizPeriodGuard periodGuard;
+    private final StockCostService costService;
 
     /**
      * @param doc 已按数据权限读取的原单
@@ -75,7 +76,9 @@ public class StockDocReverser {
         List<WmsStockDocItem> redItems = items.stream().map(StockDocReverser::redItem).toList();
         redItems.forEach(i -> i.setDocId(red.getId()));
         itemMapper.insertBatch(redItems);
-        stockService.apply(kind, red.getId(), red.getDocNo(), StockDocRules.reverseChanges(kind, doc, items));
+        // 按原单的实际成本反向计价，冲销后均价恢复
+        stockService.apply(kind, red.getId(), red.getDocNo(),
+                StockDocRules.reverseChanges(kind, doc, items, costService.docUnitCosts(kind, List.of(id))));
         return red.getId();
     }
 
@@ -90,6 +93,8 @@ public class StockDocReverser {
         r.setProductionDate(i.getProductionDate());
         r.setExpiryDate(i.getExpiryDate());
         r.setQty(i.getQty().negate());
+        r.setCostPrice(i.getCostPrice());
+        r.setBizPrice(i.getBizPrice());
         r.setSerialNos(i.getSerialNos());
         r.setRemark(i.getRemark());
         return r;

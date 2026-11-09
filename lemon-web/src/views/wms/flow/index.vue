@@ -39,7 +39,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1200, y: '100%' }"
+        :scroll="{ x: canCost ? 1670 : 1350, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -55,6 +55,17 @@
           <template v-else-if="column.key === 'qty'">
             <QtyDiff :value="Number(record.qty)" /> <span class="sub-text">{{ record.unit }}</span>
           </template>
+          <template v-else-if="column.key === 'bizPrice'">{{ record.bizPrice == null ? '-' : price(record.bizPrice) }}</template>
+          <template v-else-if="column.key === 'costPrice'">
+            <a-tooltip v-if="record.costEstimated === 1" :title="$t('wms.history.estimatedTip')">
+              <a-tag color="orange" :bordered="false" class="estimated-tag">{{ $t('wms.history.estimated') }}</a-tag>
+            </a-tooltip>
+            {{ record.costPrice == null ? '-' : price(record.costPrice) }}
+          </template>
+          <template v-else-if="column.key === 'costAmount'">
+            <span :class="{ negative: Number(record.costAmount) < 0 }">{{ record.costAmount == null ? '-' : money(record.costAmount) }}</span>
+          </template>
+          <template v-else-if="column.key === 'partnerName'">{{ record.partnerName || '-' }}</template>
         </template>
       </a-table>
     </a-card>
@@ -75,10 +86,13 @@ import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
+import { money, price } from '@/utils/number'
+import { useUserStore } from '@/store/user'
 
 const { t } = useI18n()
 
 const dict = useDict('wms_biz_type')
+const canCost = useUserStore().hasPerm('wms:stock:cost')
 
 const columns = [
   { title: t('wms.flow.time'), dataIndex: 'createTime', width: 170 },
@@ -89,6 +103,15 @@ const columns = [
   { title: t('wms.common.location'), key: 'location', width: 100 },
   { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
   { title: t('wms.flow.changeQty'), key: 'qty', width: 120, align: 'right' },
+  // 单价、金额需要「查看成本金额」权限（后端不返回）
+  ...(canCost
+    ? [
+        { title: t('wms.flow.bizPrice'), key: 'bizPrice', width: 100, align: 'right' },
+        { title: t('wms.flow.costPrice'), key: 'costPrice', width: 130, align: 'right' },
+        { title: t('wms.flow.costAmount'), key: 'costAmount', width: 120, align: 'right' }
+      ]
+    : []),
+  { title: t('wms.flow.partner'), key: 'partnerName', width: 150, ellipsis: true },
   { title: t('wms.flow.operator'), dataIndex: 'createByName', width: 100 }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'wms-flow')
@@ -119,5 +142,11 @@ onMounted(load)
 .sub-text {
   color: var(--app-text-3);
   font-size: 12px;
+}
+.negative {
+  color: #cf1322;
+}
+.estimated-tag {
+  margin: 0 4px 0 0;
 }
 </style>

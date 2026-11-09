@@ -5,7 +5,7 @@
     <sql id="viewColumns">
         d.id, d.doc_no, d.kind, d.biz_type, d.io_category, d.warehouse_id, w.name AS warehouse_name, d.to_warehouse_id,
         tw.name AS to_warehouse_name, d.biz_date, d.status, d.total_qty, d.remark, d.source_no, d.in_transit,
-        d.receive_by, ru.nickname AS receive_by_name, d.receive_time, d.red_of, rd.doc_no AS red_of_no, d.reversed, d.flow_instance_id, d.dept_id,
+        d.receive_by, ru.nickname AS receive_by_name, d.receive_time, d.red_of, rd.doc_no AS red_of_no, d.reversed, d.partner_id, d.partner_name, d.flow_instance_id, d.dept_id,
         d.create_by, cu.nickname AS create_by_name, d.confirm_by, fu.nickname AS confirm_by_name, d.confirm_time,
         d.create_time, d.update_time
     </sql>
@@ -27,12 +27,21 @@
         <if test="q.docNo != null and q.docNo != ''">AND d.doc_no LIKE CONCAT('%', #{q.docNo}, '%')</if>
         <if test="q.bizType != null and q.bizType != ''">AND d.biz_type = #{q.bizType}</if>
         <if test="q.ioCategory != null and q.ioCategory != ''">AND d.io_category = #{q.ioCategory}</if>
-        <if test="q.warehouseId != null">AND (d.warehouse_id = #{q.warehouseId} OR d.to_warehouse_id = #{q.warehouseId}
-            OR EXISTS (SELECT 1 FROM wms_stock_doc_item wi WHERE wi.doc_id = d.id AND wi.warehouse_id = #{q.warehouseId}))</if>
+        <!-- 按调入仓库或明细的实际仓库（明细仓库，为空取表头仓库）筛选 -->
+        <if test="q.warehouseId != null">AND (d.to_warehouse_id = #{q.warehouseId}
+            OR EXISTS (SELECT 1 FROM wms_stock_doc_item wi WHERE wi.doc_id = d.id AND COALESCE(wi.warehouse_id, d.warehouse_id) = #{q.warehouseId}))</if>
         <if test="q.status != null and q.status != ''">AND d.status = #{q.status}</if>
         <if test="q.beginDate != null">AND d.biz_date &gt;= #{q.beginDate}</if>
         <if test="q.endDate != null">AND d.biz_date &lt;= #{q.endDate}</if>
         ORDER BY d.id DESC
+    </select>
+
+    <select id="selectItemWarehouses" resultType="java.util.Map">
+        SELECT wi.doc_id AS "docId", wi.warehouse_id AS "warehouseId", w.name AS "warehouseName"
+        FROM wms_stock_doc_item wi
+        LEFT JOIN wms_warehouse w ON w.id = wi.warehouse_id
+        WHERE wi.doc_id IN <foreach collection="docIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        GROUP BY wi.doc_id, wi.warehouse_id, w.name
     </select>
 
     <select id="selectDetail" resultType="com.lemon.erp.modules.wms.entity.WmsStockDoc">

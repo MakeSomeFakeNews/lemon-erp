@@ -69,6 +69,12 @@ public class WmsStockDoc extends BaseEntity {
     /** 已被冲销 1 */
     private Integer reversed;
 
+    /** 往来单位（业务单据生成时由来源单据传入） */
+    private Long partnerId;
+
+    /** 往来单位名称快照 */
+    private String partnerName;
+
     /** 审批流程实例（手工单据确认前审批） */
     private String flowInstanceId;
 
@@ -84,6 +90,10 @@ public class WmsStockDoc extends BaseEntity {
 
     @TableField(exist = false)
     private String warehouseName;
+
+    /** 列表：明细实际涉及的仓库（表头仓库在前），多于一个时显示「多仓」 */
+    @TableField(exist = false)
+    private List<String> warehouseNames;
 
     @TableField(exist = false)
     private String toWarehouseName;

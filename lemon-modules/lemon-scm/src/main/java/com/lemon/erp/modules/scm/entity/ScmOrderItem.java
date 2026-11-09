@@ -41,6 +41,27 @@ public class ScmOrderItem extends BaseEntity {
     /** 退货后需要补发（补收）的数量：退货时选择「补发」的计入，订单恢复相应的未完成数量 */
     private BigDecimal replenishQty;
 
+    /**
+     * 已出入库金额（订单币种）：出入库累加、退货补发时扣减。订单行最后一次出入库取 订单行金额 − 已出入库金额，
+     * 保证累计金额精确等于订单行金额（整单优惠分摊后行金额不一定等于 数量 × 单价）
+     */
+    private BigDecimal doneAmount;
+
+    /** 已退款的退货金额（订单币种，退货选择退款、不补发的部分） */
+    private BigDecimal returnAmount;
+
+    /** 分摊到本行的整单优惠（含税），行金额已扣除；订单变更时据此还原优惠前单价并重新分摊 */
+    private BigDecimal discountShare;
+
+    /** 已出入库部分已分摊的整单优惠：每批按 剩余分摊额 × 本次数量 / 未完成数量 计入，最后一批取剩余；补发的退货按比例退回 */
+    private BigDecimal doneShare;
+
+    /** 订单关闭时本行的尾差调整（订单币种，已计入已出入库金额） */
+    private BigDecimal closeAdjust;
+
+    /** 尾差调整的不含税金额（本位币）：采购订单计入月末成本核算的采购金额 */
+    private BigDecimal closeAdjustNet;
+
     private LocalDate deliveryDate;
 
     private String remark;

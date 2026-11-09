@@ -26,8 +26,8 @@
           </template>
           <template v-else-if="column.key === 'amount'">
             ¥{{ formatMoney(record.totalAmount) }}
-            <div v-if="Number(record.discountAmount) || Number(record.rebateAmount)" class="sub-text">
-              {{ $t('dealer.order.discount', { amount: formatMoney(Number(record.discountAmount) + Number(record.rebateAmount)) }) }}
+            <div v-if="Number(record.discountAmount) || Number(record.rebateAmount) || Number(record.wholeDiscount)" class="sub-text">
+              {{ $t('dealer.order.discount', { amount: formatMoney(Number(record.discountAmount || 0) + Number(record.rebateAmount || 0) + Number(record.wholeDiscount || 0)) }) }}
             </div>
           </template>
           <template v-else-if="column.key === 'qty'">{{ formatQty(record.totalQty) }}</template>
@@ -100,6 +100,7 @@
           <a-descriptions-item :label="$t('common.field.amount')">¥{{ formatMoney(detail.totalAmount) }}</a-descriptions-item>
           <a-descriptions-item :label="$t('dealer.order.promoDiscount')">¥{{ formatMoney(detail.discountAmount) }}</a-descriptions-item>
           <a-descriptions-item :label="$t('dealer.order.rebateDeduct')">¥{{ formatMoney(detail.rebateAmount) }}</a-descriptions-item>
+          <a-descriptions-item v-if="Number(detail.wholeDiscount)" :label="$t('dealer.order.wholeDiscount')">¥{{ formatMoney(detail.wholeDiscount) }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')" :span="3">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
         <a-table row-key="id" size="small" :columns="itemColumns" :data-source="detail.items" :pagination="false" :scroll="{ x: 760 }">

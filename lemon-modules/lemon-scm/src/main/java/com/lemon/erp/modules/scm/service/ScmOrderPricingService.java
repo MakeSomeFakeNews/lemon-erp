@@ -64,6 +64,12 @@ public class ScmOrderPricingService {
         return applied;
     }
 
+    /** 整单优惠（在促销、返利抵扣之后）：按行金额分摊到各行，返回订单记录的优惠金额 */
+    public static BigDecimal applyWholeDiscount(OrderRequest req, List<ScmOrderItem> items) {
+        WholeDiscounts.apply(items, req.wholeDiscount());
+        return Decimals.money(req.wholeDiscount());
+    }
+
     /** 订单记录的返利抵扣金额 */
     public static BigDecimal rebateOf(OrderRequest req) {
         return Decimals.money(req.rebateAmount());

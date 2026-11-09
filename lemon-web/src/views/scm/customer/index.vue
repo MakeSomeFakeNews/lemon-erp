@@ -8,6 +8,9 @@
         <a-form-item :label="$t('scm.customer.level')" name="level">
           <a-select v-model:value="query.level" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.scm_customer_level)" />
         </a-form-item>
+        <a-form-item :label="$t('scm.customer.region')" name="region">
+          <a-select v-model:value="query.region" :placeholder="$t('common.placeholder.all')" allow-clear show-search option-filter-prop="label" :options="toOptions(dict.scm_region)" />
+        </a-form-item>
         <a-form-item :label="$t('scm.customer.channel')" name="channel">
           <a-select v-model:value="query.channel" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.scm_channel)" />
         </a-form-item>
@@ -33,6 +36,15 @@
         <a-button v-perm="'scm:customer:add'" @click="importOpen = true">
           <template #icon><ImportOutlined /></template>{{ $t('common.action.import') }}
         </a-button>
+        <a-dropdown>
+          <a-button><DollarOutlined />{{ $t('pricing.customerPrice.batch') }} <DownOutlined /></a-button>
+          <template #overlay>
+            <a-menu @click="({ key }) => (key === 'import' ? (priceImportOpen = true) : exportPrices())">
+              <a-menu-item v-if="userStore.hasPerm('scm:customer:edit')" key="import"><ImportOutlined /> {{ $t('pricing.customerPrice.importAll') }}</a-menu-item>
+              <a-menu-item key="export"><ExportOutlined /> {{ $t('pricing.customerPrice.exportAll') }}</a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
       </TableToolbar>
 
       <a-table
@@ -42,7 +54,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1690, y: '100%' }"
+        :scroll="{ x: 2000, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -54,9 +66,12 @@
             <DictTag type="scm_customer_level" :value="record.level" />
           </template>
           <template v-else-if="column.key === 'priceLevel'">{{ levelName(record.priceLevel ?? 0) || '-' }}</template>
+          <template v-else-if="column.key === 'region'">
+            <DictTag v-if="record.region" type="scm_region" :value="record.region" />
+            <span v-else>-</span>
+          </template>
           <template v-else-if="column.key === 'channel'">
             <DictTag type="scm_channel" :value="record.channel || 'DIRECT'" />
-            <div v-if="record.region" class="sub-text">{{ record.region }}</div>
             <div v-if="record.ownerName" class="sub-text">{{ $t('scm.customer.ownerOf', { name: record.ownerName }) }}</div>
           </template>
           <template v-else-if="column.key === 'contact'">
@@ -138,9 +153,16 @@
               <IdentityUserSelect v-model:value="form.ownerId" :label="form.ownerName" />
             </a-form-item>
           </a-col>
-          <a-col v-if="form.channel === SalesChannel.DEALER" :span="24">
-            <a-form-item :label="$t('scm.customer.region')" name="region">
-              <a-input v-model:value="form.region" :maxlength="128" :placeholder="$t('scm.customer.regionPlaceholder')" />
+          <a-col :xs="24" :sm="12">
+            <a-form-item :label="$t('scm.customer.region')" name="region" :extra="$t('scm.customer.regionTip')">
+              <a-select
+                v-model:value="form.region"
+                allow-clear
+                show-search
+                option-filter-prop="label"
+                :placeholder="$t('scm.customer.regionPlaceholder')"
+                :options="optionsWithCurrent(dict.scm_region, form.region)"
+              />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
@@ -191,6 +213,13 @@
       :sample="{ code: 'C0001', name: $t('scm.customer.sampleName'), contact: $t('scm.customer.sampleContact'), phone: '13800000000', paymentDays: 30 }"
       @success="search"
     />
+    <ImportModal
+      v-model:open="priceImportOpen"
+      :title="$t('pricing.customerPrice.importTitle')"
+      :columns="priceImportColumns"
+      :importer="importCustomerPrices"
+      :sample="priceImportSample"
+    />
     <RecordExtrasModal
       v-model:open="extrasOpen"
       :title="extrasTitle"
@@ -206,7 +235,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, DollarOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, DollarOutlined, DownOutlined, EditOutlined, ExportOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -218,13 +247,15 @@ import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import PortalAccountDrawer from '@/components/scm/PortalAccountDrawer.vue'
 import CustomerPriceDrawer from '@/components/scm/CustomerPriceDrawer.vue'
 import { usePriceLevels } from '@/components/wms/priceLevels'
+import { CUSTOMER_PRICE_COLUMNS, exportCustomerPriceRows, priceImportSample } from '@/components/scm/customerPrices'
+import { importCustomerPrices } from '@/api/scm/pricing'
 import { addPartner, changePartnerStatus, deletePartner, getPartner, pagePartner, updatePartner, importPartner } from '@/api/scm/partner'
 import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
-import { toOptions } from '@/utils/dict'
+import { optionsWithCurrent, toOptions } from '@/utils/dict'
 import { formatMoney } from '@/components/scm/scm'
 import CustomFieldsForm from '@/components/common/CustomFieldsForm.vue'
 import { useCustomColumns, useCustomFields } from '@/composables/useCustomFields'
@@ -237,7 +268,7 @@ import { SalesChannel } from '@/constants/enums'
 import { STATUS_ENABLED } from '@/utils/constants'
 const { t } = useI18n()
 const userStore = useUserStore()
-const dict = useDict('sys_common_status', 'scm_customer_level', 'scm_channel')
+const dict = useDict('sys_common_status', 'scm_customer_level', 'scm_channel', 'scm_region')
 
 // 经销商门户账号
 const portalOpen = ref(false)
@@ -253,6 +284,10 @@ const priceLevelOptions = computed(() =>
   levels.value.filter((l) => l.status === STATUS_ENABLED || l.level === (form.value.priceLevel ?? 0)).map((l) => ({ value: l.level, label: l.name }))
 )
 const customerPriceRef = ref()
+// 执行价批量导入导出（全部客户，含客户编码列）
+const priceImportOpen = ref(false)
+const priceImportColumns = CUSTOMER_PRICE_COLUMNS(true)
+const exportPrices = () => exportCustomerPriceRows({ keyword: query.keyword || undefined })
 
 const importOpen = ref(false)
 // 附件、变更记录
@@ -268,6 +303,7 @@ const importColumns = [
   { title: t('scm.customer.code'), key: 'code', required: true },
   { title: t('scm.customer.name'), key: 'name', required: true },
   { title: t('scm.customer.customerLevel'), key: 'level', dict: 'scm_customer_level' },
+  { title: t('scm.customer.region'), key: 'region', dict: 'scm_region' },
   { title: t('scm.customer.contact'), key: 'contact' },
   { title: t('scm.customer.phone'), key: 'phone' },
   { title: t('scm.customer.shipAddress'), key: 'address' },
@@ -282,6 +318,7 @@ const columns = [
   { title: t('scm.customer.customer'), key: 'name', width: 240 },
   { title: t('scm.customer.level'), key: 'level', width: 100, dict: 'scm_customer_level' },
   { title: t('pricing.level.priceLevel'), key: 'priceLevel', width: 100, exportValue: (r) => levelName(r.priceLevel ?? 0) },
+  { title: t('scm.customer.region'), key: 'region', width: 110, dict: 'scm_region' },
   { title: t('scm.customer.channel'), key: 'channel', width: 150, dict: 'scm_channel' },
   { title: t('scm.customer.contact'), key: 'contact', width: 150 },
   { title: t('scm.customer.creditLimit'), key: 'creditLimit', width: 130, align: 'right' },
@@ -294,7 +331,7 @@ const columns = [
 const { checked, visibleColumns } = useColumns(columns, 'scm-customer')
 const showSearch = ref(true)
 
-const query = reactive({ keyword: undefined, level: undefined, status: undefined, channel: undefined })
+const query = reactive({ keyword: undefined, level: undefined, status: undefined, channel: undefined, region: undefined })
 const { list, loading, size, pagination, load, search, onTableChange, exportAll } = useTable((p) => pagePartner('customer', p), query)
 // 自定义字段：表单中填写，勾选「列表显示」的作为列
 const cf = useCustomFields('scm_customer')
@@ -307,7 +344,7 @@ const tableColumns = computed(() => {
 })
 
 function resetQuery() {
-  Object.assign(query, { keyword: undefined, level: undefined, status: undefined, channel: undefined })
+  Object.assign(query, { keyword: undefined, level: undefined, status: undefined, channel: undefined, region: undefined })
   search()
 }
 

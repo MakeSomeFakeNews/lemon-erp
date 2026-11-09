@@ -47,7 +47,7 @@ import { ensureLogin } from '@/utils/session'
 import { applyTabBar, setMessageBadge } from '@/utils/tabbar'
 import { getBusiness, getTodos } from '@/api/dashboard'
 import { unreadCount } from '@/api/message'
-import { GROUPS, entryOfLink, openEntry, visibleEntries } from '@/config/entries'
+import { GROUPS, entryOfLink, loadEntryRules, openEntry, visibleEntries } from '@/config/entries'
 import { qty, shortMoney } from '@/utils/format'
 import { useTitle } from '@/composables/useTitle'
 import { requestSubscribe } from '@/utils/subscribe'
@@ -66,6 +66,7 @@ const groups = computed(() => {
 const rate = (c) => Math.round(((Number(c.value) - Number(c.previous)) / Math.abs(Number(c.previous))) * 1000) / 10
 
 async function load() {
+  loadEntryRules()
   const [td, bz, unread] = await Promise.all([getTodos().catch(() => []), getBusiness().catch(() => []), unreadCount().catch(() => 0)])
   todos.value = td || []
   cards.value = bz || []

@@ -19,6 +19,14 @@
         ORDER BY d.id DESC
     </select>
 
+    <select id="selectCostSums" resultType="java.util.Map">
+        SELECT kind AS "kind", cost_basis AS "basis", COALESCE(SUM(material_cost), 0) AS "material",
+               COALESCE(SUM(labor_cost), 0) AS "labor", COALESCE(SUM(overhead_cost), 0) AS "overhead"
+        FROM mes_wo_doc
+        WHERE wo_id = #{woId} AND kind IN ('FINISH', 'RETURN')
+        GROUP BY kind, cost_basis
+    </select>
+
     <select id="selectDetail" resultType="com.lemon.erp.modules.mes.entity.MesWoDoc">
         <include refid="viewSelect"/>
         WHERE d.id = #{id}

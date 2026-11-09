@@ -81,6 +81,7 @@
           <template v-else-if="column.key === 'totalAmount'">
             {{ currencySymbol(record.currency) }}{{ formatMoney(record.totalAmount) }}
             <div v-if="isForeign(record.currency)" class="sub-text">{{ record.currency }} @{{ Number(record.exchangeRate) }}</div>
+            <div v-if="Number(record.wholeDiscount)" class="sub-text">{{ $t('scm.wholeDiscount.value', { amount: currencySymbol(record.currency) + formatMoney(record.wholeDiscount) }) }}</div>
           </template>
           <template v-else-if="column.key === 'progress'">
             <a-progress :percent="progress(record)" size="small" :show-info="false" :status="progress(record) >= 100 ? 'success' : 'normal'" />
@@ -183,7 +184,8 @@ const importColumns = [
   { title: t('scm.order.materialCode'), key: 'materialCode', required: true },
   { title: t('common.field.quantity'), key: 'qty', type: 'number', required: true },
   { title: t('scm.order.taxPrice'), key: 'price', type: 'number' },
-  { title: t('common.field.remark'), key: 'remark' }
+  { title: t('common.field.remark'), key: 'remark' },
+  { title: t('scm.order.importWholeDiscount'), key: 'wholeDiscount', type: 'number' }
 ]
 async function importOrders(req) {
   const res = await importSalesOrders(req)

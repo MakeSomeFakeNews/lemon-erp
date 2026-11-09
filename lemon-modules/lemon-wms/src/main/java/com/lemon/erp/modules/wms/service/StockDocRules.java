@@ -4,6 +4,7 @@ import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.entity.WmsStockDoc;
 import com.lemon.erp.modules.wms.entity.WmsStockDocItem;
+import com.lemon.erp.modules.wms.entity.WmsWarehouse;
 import com.lemon.erp.modules.wms.model.DocStatus;
 import com.lemon.erp.modules.wms.model.StockBizType;
 import com.lemon.erp.modules.wms.model.StockChange;
@@ -15,6 +16,8 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import static com.lemon.erp.modules.wms.model.StockBizType.IN;
@@ -71,6 +74,21 @@ public final class StockDocRules {
                 throw new BizException("wms.error.consignmentInboundRequiresSupplierConsignmentWarehouse");
             }
             throw new BizException("wms.error.supplierConsignmentWarehousesOnlyAllowConsignment");
+        }
+    }
+
+    /**
+     * 供应商寄售仓的货物属于供应商、不计入存货成本：不能与本公司的仓库互相调拨（领用走寄售结算，退回供应商做其他出库），
+     * 只能在同一供应商的寄售仓之间调拨。否则实时库存成本的计价数量与库存不一致
+     */
+    public static void checkConsignTransfer(WmsWarehouse from, WmsWarehouse to) {
+        boolean fromConsign = from.getType() == WarehouseType.CONSIGN_IN;
+        boolean toConsign = to.getType() == WarehouseType.CONSIGN_IN;
+        if (fromConsign != toConsign) {
+            throw new BizException("wms.error.supplierConsignmentTransferNotAllowed", fromConsign ? from.getName() : to.getName());
+        }
+        if (fromConsign && !Objects.equals(from.getPartnerId(), to.getPartnerId())) {
+            throw new BizException("wms.error.supplierConsignmentTransferDifferentSupplier");
         }
     }
 
@@ -149,16 +167,21 @@ public final class StockDocRules {
         }
     }
 
-    /** 明细对应的库存变动：入库增加、出库减少（仓库取明细仓库，为空取表头仓库），调拨先从调出库位减少再在调入库位增加 */
+    /**
+     * 明细对应的库存变动：入库增加、出库减少（仓库取明细仓库，为空取表头仓库），调拨先从调出库位减少再在调入库位增加。
+     * 出入库带上明细的成本单价、业务单价和单据的往来单位
+     */
     public static List<StockChange> toChanges(StockBizType kind, WmsStockDoc doc, List<WmsStockDocItem> items) {
         List<StockChange> changes = new ArrayList<>();
         for (WmsStockDocItem item : items) {
             List<String> serials = splitSerials(item.getSerialNos());
             switch (kind) {
                 case IN -> changes.add(new StockChange(item.warehouseOr(doc.getWarehouseId()), item.getLocationId(), item.getMaterialId(),
-                        item.getBatchNo(), item.getQty(), serials, item.getProductionDate(), item.getExpiryDate()));
+                        item.getBatchNo(), item.getQty(), serials, item.getProductionDate(), item.getExpiryDate())
+                        .withCost(item.getCostPrice(), item.getBizPrice(), doc.getPartnerId(), doc.getPartnerName()));
                 case OUT -> changes.add(StockChange.of(item.warehouseOr(doc.getWarehouseId()), item.getLocationId(), item.getMaterialId(),
-                        item.getBatchNo(), item.getQty().negate(), serials));
+                        item.getBatchNo(), item.getQty().negate(), serials)
+                        .withCost(item.getCostPrice(), item.getBizPrice(), doc.getPartnerId(), doc.getPartnerName()));
                 case TRANSFER -> {
                     changes.add(StockChange.of(doc.getWarehouseId(), item.getLocationId(), item.getMaterialId(),
                             item.getBatchNo(), item.getQty().negate(), serials));
@@ -171,10 +194,16 @@ public final class StockDocRules {
         return changes;
     }
 
-    /** 冲销的库存变动：原单变动反向（不再登记批次日期） */
-    public static List<StockChange> reverseChanges(StockBizType kind, WmsStockDoc doc, List<WmsStockDocItem> items) {
+    /**
+     * 冲销的库存变动：原单变动反向（不再登记批次日期），按原单的实际成本计价
+     *
+     * @param costs 原单各物料的成本单价，没有的按当前均价
+     */
+    public static List<StockChange> reverseChanges(StockBizType kind, WmsStockDoc doc, List<WmsStockDocItem> items,
+                                                   Map<Long, BigDecimal> costs) {
         return toChanges(kind, doc, items).stream()
-                .map(c -> StockChange.of(c.warehouseId(), c.locationId(), c.materialId(), c.batchNo(), c.qty().negate(), c.serialNos()))
+                .map(c -> StockChange.of(c.warehouseId(), c.locationId(), c.materialId(), c.batchNo(), c.qty().negate(), c.serialNos())
+                        .withCost(costs.get(c.materialId()), c.bizPrice(), c.partnerId(), c.partnerName()))
                 .toList();
     }
 }

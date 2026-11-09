@@ -70,7 +70,7 @@ public class ScmCustomer extends BaseEntity {
     /** 销售渠道，为空按直销 */
     private SalesChannel channel;
 
-    /** 经销商授权区域 */
+    /** 区域（业务字典 scm_region），经销商为授权区域；进销存报表按区域汇总 */
     @Size(max = 128, message = "{scm.valid.authorizedRegionCannotExceedCharacters}")
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String region;

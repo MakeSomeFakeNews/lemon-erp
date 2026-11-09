@@ -195,6 +195,7 @@ export default {
     salesman: '业务员',
     warehouse: '发货仓库',
     totalAmount: '订单金额',
+    wholeDiscount: '整单优惠',
     taxAmount: '税额',
     remark: '备注',
     progress: '发货进度',

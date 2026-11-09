@@ -8,6 +8,7 @@ import com.lemon.erp.framework.data.DetailLines;
 import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.period.BizPeriodGuard;
 import com.lemon.erp.framework.security.LoginUser;
+import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.framework.security.datascope.DataScopes;
@@ -29,6 +30,7 @@ import com.lemon.erp.modules.wms.entity.WmsWarehouse;
 import com.lemon.erp.modules.wms.mapper.WmsCheckItemMapper;
 import com.lemon.erp.modules.wms.mapper.WmsCheckMapper;
 import com.lemon.erp.modules.wms.mapper.WmsSerialMapper;
+import com.lemon.erp.modules.wms.mapper.WmsStockFlowMapper;
 import com.lemon.erp.modules.wms.mapper.WmsStockMapper;
 import com.lemon.erp.modules.wms.model.DocStatus;
 import com.lemon.erp.modules.wms.model.SerialStatus;
@@ -63,6 +65,7 @@ import static com.lemon.erp.modules.wms.model.WmsConstants.splitSerials;
  * <ul>
  *   <li>账面数量以确认时的库存为准（草稿中显示的是最近一次保存时的库存），确认后库存 = 实盘数量</li>
  *   <li>序列号物料按实盘序列号盘点：生成明细时带出在库序列号，确认时多出的序列号盘盈入库、缺少的盘亏出库</li>
+ *   <li>实时库存成本：盘盈按明细填写的成本价（为空按确认时的当前均价），盘亏按当前均价</li>
  * </ul>
  */
 @Service
@@ -78,6 +81,9 @@ public class WmsCheckService {
     private final StockService stockService;
     private final BizPeriodGuard periodGuard;
     private final ApprovalSupport approvalSupport;
+    private final PermissionService permissionService;
+    private final StockCostService costService;
+    private final WmsStockFlowMapper flowMapper;
 
     public static final String PROCESS_KEY = "wms_check";
     private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "wms_check:");
@@ -92,8 +98,31 @@ public class WmsCheckService {
     public WmsCheck detail(Long id) {
         getAccessible(id);
         WmsCheck check = checkMapper.selectDetail(id);
-        check.setItems(itemMapper.selectByCheckId(id));
+        List<WmsCheckItem> items = itemMapper.selectByCheckId(id);
+        boolean costVisible = costVisible();
+        if (!costVisible) {
+            items.forEach(i -> i.setCostPrice(null));
+        } else if (check.getStatus() == DocStatus.DONE) {
+            Map<String, BigDecimal> amounts = new HashMap<>();
+            flowMapper.selectSlotCosts(StockBizType.CHECK, id).forEach(r -> amounts.put(slotKey(((Number) r.get("locationId")).longValue(),
+                    ((Number) r.get("materialId")).longValue(), (String) r.get("batchNo")), new BigDecimal(r.get("amount").toString())));
+            items.forEach(i -> i.setDiffAmount(amounts.get(slotKey(i.getLocationId(), i.getMaterialId(), i.getBatchNo()))));
+        } else {
+            fillAvgCost(items);
+        }
+        check.setCostVisible(costVisible);
+        check.setItems(items);
         return check;
+    }
+
+    /** 成本价、当前均价、差异金额：有「查看成本金额」权限，或能新增 / 修改盘点单（填写盘盈成本价）时返回 */
+    private boolean costVisible() {
+        return permissionService.hasAnyPerm(WmsStockDocService.COST_PERM, "wms:check:add", "wms:check:edit");
+    }
+
+    private void fillAvgCost(List<WmsCheckItem> items) {
+        Map<Long, BigDecimal> costs = costService.unitCosts(items.stream().map(WmsCheckItem::getMaterialId).collect(Collectors.toSet()));
+        items.forEach(i -> i.setAvgCost(costs.get(i.getMaterialId())));
     }
 
     /**
@@ -109,7 +138,7 @@ public class WmsCheckService {
         Set<Long> serialMaterialIds = stocks.stream().filter(s -> Integer.valueOf(1).equals(s.getSerialEnabled()))
                 .map(StockView::getMaterialId).collect(Collectors.toSet());
         Map<String, Set<String>> serials = inStockSerials(warehouseId, serialMaterialIds);
-        return stocks.stream().map(s -> {
+        List<WmsCheckItem> items = stocks.stream().map(s -> {
             WmsCheckItem item = new WmsCheckItem();
             item.setMaterialId(s.getMaterialId());
             item.setMaterialCode(s.getMaterialCode());
@@ -126,6 +155,10 @@ public class WmsCheckService {
             item.setSerialNos(slotSerials == null ? null : joinSerials(List.copyOf(slotSerials)));
             return item;
         }).toList();
+        if (costVisible()) {
+            fillAvgCost(items);
+        }
+        return items;
     }
 
     @Transactional
@@ -249,7 +282,8 @@ public class WmsCheckService {
             WmsMaterial material = materials.get(item.getMaterialId());
             BigDecimal diff = item.getActualQty().subtract(item.getBookQty());
             if (!material.isSerialManaged()) {
-                changes.add(StockChange.of(warehouseId, item.getLocationId(), item.getMaterialId(), item.getBatchNo(), diff, List.of()));
+                changes.add(StockChange.of(warehouseId, item.getLocationId(), item.getMaterialId(), item.getBatchNo(), diff, List.of())
+                        .withCost(diff.signum() > 0 ? item.getCostPrice() : null, null, null, null));
                 continue;
             }
             Set<String> counted = new LinkedHashSet<>(splitSerials(item.getSerialNos()));
@@ -266,7 +300,7 @@ public class WmsCheckService {
             }
             if (!gain.isEmpty()) {
                 changes.add(StockChange.of(warehouseId, item.getLocationId(), item.getMaterialId(), item.getBatchNo(),
-                        BigDecimal.valueOf(gain.size()), gain));
+                        BigDecimal.valueOf(gain.size()), gain).withCost(item.getCostPrice(), null, null, null));
             }
         }
         // 保存确认时的账面数量
@@ -297,6 +331,7 @@ public class WmsCheckService {
             item.setActualQty(r.actualQty());
             item.setSerialNos(joinSerials(splitSerials(r.serialNos())));
             item.setRemark(r.remark());
+            item.setCostPrice(r.costPrice());
             return item;
         }).toList();
     }

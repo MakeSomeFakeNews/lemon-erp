@@ -23,6 +23,7 @@ import com.lemon.erp.modules.wms.mapper.WmsAssemblyMapper;
 import com.lemon.erp.modules.wms.mapper.WmsMaterialMapper;
 import com.lemon.erp.modules.wms.model.AssemblyKind;
 import com.lemon.erp.modules.wms.model.DocStatus;
+import com.lemon.erp.modules.wms.model.MovingAverage;
 import com.lemon.erp.modules.wms.model.StockBizType;
 import com.lemon.erp.modules.wms.model.StockInType;
 import com.lemon.erp.modules.wms.model.StockOutType;
@@ -31,7 +32,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -55,6 +59,7 @@ public class WmsAssemblyService {
     private final WmsMaterialMapper materialMapper;
     private final WmsStockDocService docService;
     private final DocNoService docNoService;
+    private final StockCostService costService;
 
     @DataPermission(table = "wms_assembly", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<WmsAssembly> page(long current, long size, DocQuery query) {
@@ -133,8 +138,22 @@ public class WmsAssemblyService {
         // 先出库后入库：组装时子件先出库，拆卸时成套件先出库
         WmsStockDoc out = docService.createConfirmed(StockBizType.OUT, new StockDocRequest(StockOutType.ASSEMBLY, a.getWarehouseId(), null,
                 a.getBizDate(), remark, assemble ? parts : product), a.getAssemblyNo());
+        // 实时成本：组装的成套件成本 = 子件出库成本合计；拆卸时成套件的出库成本按 子件数量 × 当前均价 分摊到子件
+        BigDecimal outAmount = costService.docAmount(StockBizType.OUT, out.getId());
+        List<StockDocItemRequest> inItems;
+        if (assemble) {
+            inItems = List.of(product.get(0).withCost(outAmount.divide(a.getQty(), MovingAverage.PRICE_SCALE, RoundingMode.HALF_UP), null));
+        } else {
+            Map<Long, BigDecimal> avg = costService.unitCosts(parts.stream().map(StockDocItemRequest::materialId).distinct().toList());
+            List<BigDecimal> unitCosts = MovingAverage.allocate(outAmount, parts.stream().map(StockDocItemRequest::qty).toList(),
+                    parts.stream().map(p -> p.qty().multiply(avg.getOrDefault(p.materialId(), BigDecimal.ZERO))).toList());
+            inItems = new ArrayList<>(parts.size());
+            for (int i = 0; i < parts.size(); i++) {
+                inItems.add(parts.get(i).withCost(unitCosts.get(i), null));
+            }
+        }
         WmsStockDoc in = docService.createConfirmed(StockBizType.IN, new StockDocRequest(StockInType.ASSEMBLY, a.getWarehouseId(), null,
-                a.getBizDate(), remark, assemble ? product : parts), a.getAssemblyNo());
+                a.getBizDate(), remark, inItems), a.getAssemblyNo());
         assemblyMapper.update(Wrappers.<WmsAssembly>lambdaUpdate()
                 .set(WmsAssembly::getOutDocId, out.getId()).set(WmsAssembly::getOutDocNo, out.getDocNo())
                 .set(WmsAssembly::getInDocId, in.getId()).set(WmsAssembly::getInDocNo, in.getDocNo())

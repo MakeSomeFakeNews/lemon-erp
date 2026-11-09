@@ -4,6 +4,7 @@ import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.fin.dto.PeriodCloseRequests;
+import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.service.FinBillService;
 import com.lemon.erp.modules.fin.service.FinCloseCheckService;
 import com.lemon.erp.modules.fin.service.FinTaxService;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 坏账核销、红字冲销、结账检查与增值税结转
@@ -36,12 +38,12 @@ public class FinPeriodCloseController {
     private final FinCloseCheckService closeCheckService;
     private final FinTaxService taxService;
 
-    /** 坏账核销，返回凭证 ID */
-    @PostMapping("/bill/ar/{id}/bad-debt")
-    @PreAuthorize("@ss.hasPerm('fin:ar:baddebt')")
+    /** 坏账核销：应收（无法收回）、应付（无法支付），返回凭证 ID */
+    @PostMapping("/bill/{kind:ar|ap}/{id}/bad-debt")
+    @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':baddebt')")
     @OperLog(title = "坏账核销", type = OperType.UPDATE) // i18n-ignore
-    public R<Long> badDebt(@PathVariable Long id, @Valid @RequestBody PeriodCloseRequests.BadDebt req) {
-        return R.ok(billService.writeOffBadDebt(id, req.amount(), req.date(), req.reason()));
+    public R<Long> badDebt(@PathVariable String kind, @PathVariable Long id, @Valid @RequestBody PeriodCloseRequests.BadDebt req) {
+        return R.ok(billService.writeOffBadDebt(BillKind.valueOf(kind.toUpperCase(Locale.ROOT)), id, req.amount(), req.date(), req.reason()));
     }
 
     /** 红字冲销，返回红字凭证 ID */

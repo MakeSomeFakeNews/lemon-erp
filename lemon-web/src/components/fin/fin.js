@@ -1,5 +1,6 @@
 import dayjs from 'dayjs'
 import { t } from '@/locales'
+import { round2 } from '@/utils/number'
 
 import { VoucherSource, VoucherStatus } from '@/constants/enums'
 export { formatMoney } from '@/components/scm/scm'
@@ -85,3 +86,31 @@ export const canReverse = (v) => v.status === VoucherStatus.POSTED && v.reversed
 
 /** 可以删除：未审核，且不是与业务单据联动的凭证 */
 export const canDeleteVoucher = (v) => v.status === VoucherStatus.DRAFT && !UNDELETABLE_SOURCES.includes(v.sourceType)
+
+const byBillDate = (a, b) =>
+  String(a.billDate || '').localeCompare(String(b.billDate || '')) || String(a.dueDate || '').localeCompare(String(b.dueDate || '')) || a.id - b.id
+
+/**
+ * 收付款自动核销：先用红字单据（退货、冲账）全额冲抵，再按单据日期从早到晚（同日按到期日）把目标金额分配到蓝字单据，
+ * 早的欠款先结清。收款单 / 付款单、票据收票背书共用。
+ *
+ * @param {Array}    bills       参与分配的单据（已勾选的）
+ * @param {number}   target      本次收付款金额
+ * @param {Function} remainingOf (bill) => 可核销余额（已扣除折让，红字为负数）
+ * @returns {{ amounts: Map<number, number>, left: number }} 各单据的核销金额，以及分配后剩余（多收 / 多付）的金额
+ */
+export function allocateSettle(bills, target, remainingOf) {
+  const amounts = new Map()
+  let left = round2(Number(target) || 0)
+  bills.filter((b) => remainingOf(b) < 0).forEach((b) => {
+    amounts.set(b.id, remainingOf(b))
+    left = round2(left - remainingOf(b))
+  })
+  for (const b of bills.filter((x) => remainingOf(x) > 0).sort(byBillDate)) {
+    if (left <= 0) break
+    const v = round2(Math.min(left, remainingOf(b)))
+    amounts.set(b.id, v)
+    left = round2(left - v)
+  }
+  return { amounts, left }
+}

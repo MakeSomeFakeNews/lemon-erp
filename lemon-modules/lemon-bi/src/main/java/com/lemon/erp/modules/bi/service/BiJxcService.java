@@ -80,7 +80,7 @@ public class BiJxcService {
     // ---------------------------------------------------------------- 经营状况
 
     /**
-     * 经营状况：销售及利润走势（按月）、资金流走势（收付款单 + 预收预付款，需要「全部数据」权限）、员工销售情况、客户销售分布
+     * 经营状况：销售及利润走势（按月）、资金流走势（收付款单 + 预收预付款 + 票据托收、贴现、兑付，收票、背书、开票不计入，需要「全部数据」权限）、员工销售情况、客户销售分布
      */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
     public JxcViews.Business business(JxcQuery q) {
@@ -114,6 +114,7 @@ public class BiJxcService {
             }
             List<JxcViews.CashRow> source = new ArrayList<>(jxcMapper.selectSettlementByMonth(q.getBegin(), q.getEnd()));
             source.addAll(jxcMapper.selectAdvanceByMonth(q.getBegin(), q.getEnd()));
+            source.addAll(jxcMapper.selectNoteCashByMonth(q.getBegin(), q.getEnd()));
             for (JxcViews.CashRow r : source) {
                 JxcViews.CashRow c = byPeriod.get(r.getPeriod());
                 if (c != null) {

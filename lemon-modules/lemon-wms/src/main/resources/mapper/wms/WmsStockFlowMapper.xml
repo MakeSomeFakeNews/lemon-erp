@@ -3,21 +3,24 @@
 <mapper namespace="com.lemon.erp.modules.wms.mapper.WmsStockFlowMapper">
 
     <insert id="insertBatch">
-        INSERT INTO wms_stock_flow (biz_type, doc_id, doc_no, warehouse_id, location_id, material_id, batch_no, qty, create_by, create_time) VALUES
+        INSERT INTO wms_stock_flow (biz_type, doc_id, doc_no, warehouse_id, location_id, material_id, batch_no, qty,
+                                    biz_price, cost_price, cost_amount, partner_id, partner_name, create_by, create_time) VALUES
         <foreach collection="list" item="f" separator=",">
             (#{f.bizType}, #{f.docId}, #{f.docNo}, #{f.warehouseId}, #{f.locationId}, #{f.materialId}, #{f.batchNo},
-             #{f.qty}, #{f.createBy}, #{f.createTime})
+             #{f.qty}, #{f.bizPrice}, #{f.costPrice}, #{f.costAmount}, #{f.partnerId}, #{f.partnerName}, #{f.createBy}, #{f.createTime})
         </foreach>
     </insert>
 
     <select id="selectPageList" resultType="com.lemon.erp.modules.wms.dto.StockFlowView">
         SELECT f.id, f.biz_type, f.doc_id, f.doc_no, f.warehouse_id, w.name AS warehouse_name, f.location_id,
                l.code AS location_code, f.material_id, m.code AS material_code, m.name AS material_name, m.spec, m.unit,
-               f.batch_no, f.qty, u.nickname AS create_by_name, f.create_time
+               f.batch_no, f.qty, f.biz_price, f.cost_price, f.cost_amount, f.partner_id, f.partner_name,
+               f.cost_estimated, sd.biz_type AS doc_biz_type, u.nickname AS create_by_name, f.create_time
         FROM wms_stock_flow f
         JOIN wms_material m ON m.id = f.material_id
         JOIN wms_warehouse w ON w.id = f.warehouse_id
         LEFT JOIN wms_location l ON l.id = f.location_id
+        LEFT JOIN wms_stock_doc sd ON f.biz_type IN ('IN', 'OUT') AND sd.id = f.doc_id
         LEFT JOIN sys_user u ON u.id = f.create_by
         <where>
             <if test="q.bizType != null and q.bizType != ''">f.biz_type = #{q.bizType}</if>
@@ -32,6 +35,86 @@
             <if test="end != null">AND f.create_time &lt; #{end}</if>
         </where>
         ORDER BY f.id DESC
+    </select>
+
+    <!-- 单据各物料的成本金额、数量合计（退货、冲销按原单成本计价） -->
+    <select id="selectDocCosts" resultType="java.util.Map">
+        SELECT material_id AS "materialId", SUM(qty) AS "qty", SUM(cost_amount) AS "amount"
+        FROM wms_stock_flow
+        WHERE biz_type = #{kind}
+          AND doc_id IN <foreach collection="docIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND cost_amount IS NOT NULL
+        GROUP BY material_id
+    </select>
+
+    <!-- 按来源单号汇总某类出入库单各物料的成本金额、数量（委外发料、委外收回按委外订单号） -->
+    <select id="selectSourceCosts" resultType="java.util.Map">
+        SELECT f.material_id AS "materialId", SUM(f.qty) AS "qty", SUM(f.cost_amount) AS "amount"
+        FROM wms_stock_flow f
+        JOIN wms_stock_doc sd ON sd.id = f.doc_id
+        WHERE f.biz_type = #{kind}
+          AND sd.kind = #{kind}
+          AND sd.biz_type = #{bizType}
+          AND sd.source_no = #{sourceNo}
+          AND f.cost_amount IS NOT NULL
+        GROUP BY f.material_id
+    </select>
+
+    <!-- 单据某些物料已计价的流水（追加成本时按数量分摊） -->
+    <select id="selectPricedFlows" resultType="com.lemon.erp.modules.wms.dto.StockFlowView">
+        SELECT id, material_id, qty, cost_price, cost_amount
+        FROM wms_stock_flow
+        WHERE biz_type = #{kind}
+          AND doc_id = #{docId}
+          AND material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND cost_amount IS NOT NULL
+        ORDER BY id
+    </select>
+
+    <!-- 单据按库存位置（库位 + 物料 + 批次）汇总的成本金额：盘点单明细的差异金额 -->
+    <select id="selectSlotCosts" resultType="java.util.Map">
+        SELECT material_id AS "materialId", location_id AS "locationId", batch_no AS "batchNo", SUM(cost_amount) AS "amount"
+        FROM wms_stock_flow
+        WHERE biz_type = #{kind}
+          AND doc_id = #{docId}
+          AND cost_amount IS NOT NULL
+        GROUP BY material_id, location_id, batch_no
+    </select>
+
+    <update id="updateFlowCost">
+        UPDATE wms_stock_flow SET cost_price = #{costPrice}, cost_amount = #{costAmount} WHERE id = #{id}
+    </update>
+
+    <!-- 经营历史：物料在日期范围内的流水，按业务日期（出入库单、盘点单的业务日期）。不选仓库时为全公司：不含调拨和供应商寄售仓 -->
+    <sql id="historyFrom">
+        FROM wms_stock_flow f
+        JOIN wms_warehouse w ON w.id = f.warehouse_id
+        LEFT JOIN wms_stock_doc sd ON f.biz_type IN ('IN', 'OUT', 'TRANSFER') AND sd.id = f.doc_id
+        LEFT JOIN wms_check ck ON f.biz_type = 'CHECK' AND ck.id = f.doc_id
+        WHERE f.material_id = #{q.materialId}
+        <choose>
+            <when test="q.warehouseId != null">AND f.warehouse_id = #{q.warehouseId}</when>
+            <otherwise>AND f.biz_type &lt;&gt; 'TRANSFER' AND w.type &lt;&gt; 'CONSIGN_IN'</otherwise>
+        </choose>
+    </sql>
+
+    <sql id="historyDate">COALESCE(sd.biz_date, ck.biz_date, CAST(f.create_time AS DATE))</sql>
+
+    <select id="selectHistoryOpening" resultType="java.util.Map">
+        SELECT COALESCE(SUM(f.qty), 0) AS "qty", COALESCE(SUM(f.cost_amount), 0) AS "amount",
+               COALESCE(MAX(f.cost_estimated), 0) AS "estimated"
+        <include refid="historyFrom"/>
+        AND <include refid="historyDate"/> &lt; #{q.beginDate}
+    </select>
+
+    <select id="selectHistory" resultType="com.lemon.erp.modules.wms.dto.StockHistoryRow">
+        SELECT f.id, <include refid="historyDate"/> AS biz_date, f.biz_type, sd.biz_type AS doc_biz_type, f.doc_id, f.doc_no,
+               sd.source_no, w.name AS warehouse_name, f.batch_no, f.qty, f.biz_price, f.cost_price, f.cost_amount,
+               f.partner_name, f.cost_estimated, f.create_time
+        <include refid="historyFrom"/>
+        AND <include refid="historyDate"/> &gt;= #{q.beginDate} AND <include refid="historyDate"/> &lt;= #{q.endDate}
+        ORDER BY <include refid="historyDate"/>, f.id
+        LIMIT #{limit}
     </select>
 
     <select id="existsByMaterialId" resultType="boolean">

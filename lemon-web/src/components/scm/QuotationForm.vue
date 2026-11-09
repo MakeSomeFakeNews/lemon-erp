@@ -90,6 +90,7 @@
           </template>
         </template>
       </LineItemsTable>
+      <WholeDiscountBar v-if="form.items.length" v-model:value="form.wholeDiscount" :total="round2(totalAmount)" />
     </a-form>
     <AtpModal
       v-model:open="atpOpen"
@@ -112,6 +113,8 @@ import PartnerSelect from './PartnerSelect.vue'
 import AtpModal from './AtpModal.vue'
 import PriceHint from './PriceHint.vue'
 import PriceReference from './PriceReference.vue'
+import WholeDiscountBar from './WholeDiscountBar.vue'
+import { round2 } from '@/utils/number'
 import { addQuotation, getQuotation, updateQuotation } from '@/api/scm/sourcing'
 import { defaultPrices } from '@/api/scm/pricing'
 import { OrderKind, PriceSource } from '@/constants/enums'
@@ -153,6 +156,7 @@ const emptyForm = () => ({
   quoteDate: today(),
   validTo: undefined,
   remark: '',
+  wholeDiscount: undefined,
   items: []
 })
 
@@ -172,7 +176,7 @@ const drawer = useFormDrawer({
   emptyForm,
   fetch: async (record) => {
     const q = await getQuotation(record.id)
-    return { ...q, items: q.items.map(toRow) }
+    return { ...q, wholeDiscount: Number(q.wholeDiscount) || undefined, items: q.items.map(toRow) }
   },
   create: async (data) => emit('success', await addQuotation(data)),
   update: async (id, data) => {
@@ -185,6 +189,7 @@ const drawer = useFormDrawer({
     quoteDate: f.quoteDate,
     validTo: f.validTo || null,
     remark: f.remark || null,
+    wholeDiscount: f.wholeDiscount || null,
     items: f.items.map((i) => ({
       materialId: i.materialId,
       qty: i.qty,
@@ -216,10 +221,10 @@ async function fetchPrices(rows) {
     qtys: list.map((row) => row.qty || 1),
     date: form.value.quoteDate || undefined
   }).catch(() => [])
-  const byMaterial = new Map(res.map((p) => [p.materialId, p]))
   list.forEach((row, i) => {
     if (seqs[i] !== row.priceSeq) return
-    const p = byMaterial.get(row.materialId)
+    // 默认价按行返回（与请求的物料一一对应）
+    const p = res?.[i]?.materialId === row.materialId ? res[i] : undefined
     const found = p && p.price != null
     row.listPrice = found && p.source === PriceSource.PRICE_LIST ? Number(p.price) : undefined
     if (found && (row.priceAuto || row.price == null)) {

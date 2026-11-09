@@ -4,6 +4,18 @@ export default {
     listPrice: '价目价 {price}',
     discount: '折扣 {n}%'
   },
+  wholeDiscount: {
+    label: '整单优惠',
+    total: '合计',
+    after: '优惠后合计',
+    round: '抹零',
+    roundFen: '抹去分',
+    roundJiao: '抹去角分',
+    roundYuan: '抹去个位',
+    clear: '清除优惠',
+    hint: '含税金额，保存时按各行金额比例分摊到明细（在促销、返利之后），应收 / 应付按优惠后的金额',
+    value: '整单优惠 {amount}'
+  },
   partnerSelect: {
     searchSupplier: '搜索供应商编码或名称',
     searchCustomer: '搜索客户编码或名称'
@@ -103,6 +115,7 @@ export default {
     deliveryDate: '交货日期',
     materialCode: '物料编码',
     taxPrice: '含税单价',
+    importWholeDiscount: '整单优惠（同一外部单号填一行即可）',
     importDone: '生成 {n} 张销售订单（草稿）',
     importDoneSkipped: '生成 {n} 张销售订单（草稿），跳过已导入的 {skipped} 张：{list}',
     listSep: '、',
@@ -167,8 +180,10 @@ export default {
     unapproveContent: '订单回到草稿，可以修改。',
     unapproved: '已反审核',
     closeTitle: '关闭订单？',
-    closeContentIn: '关闭后不能再入库，已完成部分不受影响。',
-    closeContentOut: '关闭后不能再出库，已完成部分不受影响。',
+    closeContentIn: '关闭后不能再入库，已完成部分不受影响；部分入库的明细按 行金额 × 已入库数量 / 订单数量 结算，几分钱的尾差自动生成应付调整单。',
+    closeContentOut: '关闭后不能再出库，已完成部分不受影响；部分出库的明细按 行金额 × 已出库数量 / 订单数量 结算，几分钱的尾差自动生成应收调整单。',
+    closeAdjust: '关闭尾差调整',
+    closeAdjustHint: '部分出入库的明细关闭时按订单口径结算的差额，已生成应收 / 应付调整单',
     closed: '已关闭',
     change: '变更',
     createProject: '创建项目',
@@ -297,7 +312,11 @@ export default {
     rejectedAt: '，驳回 {time}',
     effectiveAt: '，生效 {time}',
     reasonValue: '变更原因：{reason}',
-    action: '动作'
+    action: '动作',
+    wholeDiscount: '整单优惠',
+    wholeDiscountHint: '可修改优惠金额；已出入库部分的金额和已分摊的优惠不变，剩余的优惠按变更后未出入库部分的金额比例重新分摊。有整单优惠时明细按优惠前单价修改，合计为试算，以保存结果为准。',
+    newGrossPrice: '新优惠前单价',
+    grossAmount: '优惠前金额'
   },
   atp: {
     title: '可承诺量（ATP）',
@@ -450,7 +469,10 @@ export default {
     taxRate: '税率',
     priceReference: '价格参考',
     promoPrice: '促销价 ¥{price}',
-    promoTotal: '保存时按促销规则优惠 ¥{amount}（买赠的赠品不随直接开单出库）'
+    promoTotal: '保存时按促销规则优惠 ¥{amount}',
+    giftTag: '赠品',
+    giftPrice: '赠品 ¥0',
+    giftExpected: '按促销应赠 {qty}'
   },
   delivery: {
     title: '发货通知',
@@ -1165,8 +1187,9 @@ export default {
     channelTip: '经销商可开通经销商门户，在门户订货、上报渠道库存',
     owner: '负责销售',
     ownerTip: '经销商门户的订单记到其名下审核',
-    region: '授权区域',
-    regionPlaceholder: '如：华南（广东、广西、海南）',
+    region: '区域',
+    regionPlaceholder: '请选择区域',
+    regionTip: '经销商为授权区域；进销存报表按区域汇总，取值在「系统管理 → 业务字典 → 客户区域」中维护',
     paymentDaysTip: '应收单到期日 = 出库日期 + 账期',
     creditLimit: '信用额度',
     creditLimitTip: '审核销售订单时校验未完成订单金额，不填不限制',

@@ -35,6 +35,12 @@ public class WmsStockDocItem extends BaseEntity {
 
     private BigDecimal qty;
 
+    /** 成本单价：其他入库、期初入库填写的入库成本，业务单据传入的成本；为空按当前移动加权平均价 */
+    private BigDecimal costPrice;
+
+    /** 业务单价（来源单据的不含税单价，本位币） */
+    private BigDecimal bizPrice;
+
     /** 序列号，逗号分隔 */
     private String serialNos;
 

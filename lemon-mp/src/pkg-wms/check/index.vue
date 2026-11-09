@@ -52,6 +52,17 @@
           <text>{{ t('wms.check.actualScan', { n: row.serials.length }) }}</text>
           <text v-for="s in row.serials" :key="s" class="m-serial" @click.stop="removeSerial(row, s)">{{ s }}</text>
         </view>
+        <!-- 盘盈行的成本价：后端返回 costVisible（有成本权限或可编辑盘点单）时显示，为空按确认时的当前均价 -->
+        <view v-if="check.costVisible && isGain(row)" class="m-input">
+          <text class="m-input__label">{{ t('wms.check.costPrice') }}</text>
+          <input
+            :value="row.costPrice"
+            type="digit"
+            :placeholder="row.avgCost != null ? t('wms.check.costPricePh', { n: price(row.avgCost) }) : t('wms.check.costPriceDefault')"
+            placeholder-class="l-placeholder"
+            @blur="(e) => changeCost(row, e.detail.value)"
+          />
+        </view>
       </view>
       <view class="l-footer-space" />
       <view class="l-footer">
@@ -72,12 +83,12 @@ import { WmsDocStatus } from '@web/constants/enums'
 import { getCheck, locationOptions, pageCheck, updateCheck } from '@/api/wms'
 import { useTitle } from '@/composables/useTitle'
 import { runAction } from '@/composables/useAction'
-import { qty } from '@/utils/format'
+import { price, qty } from '@/utils/format'
 import { locationText, qty4, resolveScan, rowKey, splitSerials, toNumber, useScanTip } from '../mobile'
 
 /**
  * 盘点：选择草稿盘点单，扫描库位后扫描物料累计实盘数量（包装条码按换算比例），序列号物料扫描序列号；
- * 账面没有的物料作为盘盈行添加。保存实盘数量，盘点确认仍在后台进行
+ * 账面没有的物料作为盘盈行添加；盘盈行可填成本价（默认确认时的当前均价）。保存实盘数量，盘点确认仍在后台进行
  */
 const { t } = useI18n()
 useTitle('wms.entry.check')
@@ -104,7 +115,7 @@ async function selectCheck(id) {
   const c = await getCheck(id)
   items.value = (c.items || []).map((i) => ({
     ...i, key: `item-${i.id}`, bookQty: Number(i.bookQty), actualQty: i.actualQty == null ? null : Number(i.actualQty),
-    serials: splitSerials(i.serialNos), added: false
+    serials: splitSerials(i.serialNos), added: false, costPrice: i.costPrice == null ? null : Number(i.costPrice)
   }))
   locations.value = await locationOptions(c.warehouseId)
   check.value = c
@@ -123,6 +134,8 @@ const shown = computed(() =>
 const actualOf = (r) => (r.serialEnabled === 1 ? (r.serials.length || r.actualQty != null ? r.serials.length : null) : r.actualQty)
 const countedCount = computed(() => items.value.filter((r) => actualOf(r) != null).length)
 const diffCount = computed(() => items.value.filter((r) => actualOf(r) != null && qty4(actualOf(r)) !== r.bookQty).length)
+/** 盘盈：实盘大于账面 */
+const isGain = (r) => actualOf(r) != null && qty4(actualOf(r)) > r.bookQty
 const diffClass = (r) => (r.actualQty == null ? '' : qty4(r.actualQty) === r.bookQty ? 'qty-done' : 'qty-short')
 
 async function onScan(code) {
@@ -158,6 +171,11 @@ async function onScan(code) {
   tip.show(t('wms.check.serialAdded', { name: row.materialName, code, n: row.serials.length }))
 }
 
+function changeCost(row, v) {
+  const n = v === '' ? null : Number(v)
+  row.costPrice = n != null && Number.isFinite(n) && n >= 0 ? Math.round(n * 1000000) / 1000000 : null
+}
+
 function removeSerial(row, s) {
   row.serials = row.serials.filter((x) => x !== s)
 }
@@ -179,7 +197,9 @@ async function save() {
             .filter((r) => !r.added || actualOf(r) != null)
             .map((r) => ({
               materialId: r.materialId, locationId: r.locationId || null, batchNo: r.batchNo || null, actualQty: actualOf(r),
-              serialNos: r.serialEnabled === 1 && r.serials.length ? r.serials.join(',') : null, remark: r.remark || null
+              serialNos: r.serialEnabled === 1 && r.serials.length ? r.serials.join(',') : null, remark: r.remark || null,
+              // 原样带回已填写的成本价（在电脑端填写的也保留），只对盘盈生效
+              costPrice: r.costPrice ?? null
             }))
         }),
       { success: t('wms.check.saved'), then: () => selectCheck(c.id) }

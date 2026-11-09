@@ -7,6 +7,8 @@ export const addWo = (data) => request.post('/mes/wo', data)
 export const updateWo = (id, data) => request.put(`/mes/wo/${id}`, data)
 export const releaseWo = (id) => request.post(`/mes/wo/${id}/release`)
 export const closeWo = (id) => request.post(`/mes/wo/${id}/close`)
+/** 关闭前预览尚未转入产品的实时成本 */
+export const getWoCloseCost = (id) => request.get(`/mes/wo/${id}/close-cost`)
 export const deleteWo = (ids) => request.delete(`/mes/wo/${[].concat(ids).join(',')}`)
 export const reportWo = (id, data) => request.post(`/mes/wo/${id}/report`, data)
 export const pageReport = (params) => request.get('/mes/wo/reports', { params })

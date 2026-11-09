@@ -8,7 +8,7 @@
     </select>
 
     <select id="sumSettlementsBefore" resultType="java.math.BigDecimal">
-        SELECT COALESCE(SUM(amount), 0) FROM fin_settlement
+        SELECT COALESCE(SUM(amount + discount_amount), 0) FROM fin_settlement
         WHERE kind = #{settleKind} AND partner_id = #{partnerId} AND status = 'APPROVED' AND settle_date &lt; #{date}
     </select>
 
@@ -26,7 +26,7 @@
             FROM fin_bill b
             WHERE b.kind = #{billKind} AND b.partner_id = #{partnerId} AND b.bill_date &gt;= #{begin} AND b.bill_date &lt;= #{end}
             UNION ALL
-            SELECT s.settle_date, 'SETTLEMENT', 2, s.settle_no, s.method, NULL, s.amount, s.remark, s.id
+            SELECT s.settle_date, 'SETTLEMENT', 2, s.settle_no, s.method, NULL, s.amount + s.discount_amount, s.remark, s.id
             FROM fin_settlement s
             WHERE s.kind = #{settleKind} AND s.partner_id = #{partnerId} AND s.status = 'APPROVED'
               AND s.settle_date &gt;= #{begin} AND s.settle_date &lt;= #{end}

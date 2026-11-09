@@ -118,7 +118,7 @@ const rules = computed(() => ({
 
 const emptyForm = () => ({
   id: undefined, orderId: undefined, sourceDocId: undefined, partnerId: undefined, partnerLabel: undefined, salesmanId: undefined,
-  warehouseId: undefined, bizDate: today(), remark: '', replenish: false, items: []
+  warehouseId: undefined, bizDate: today(), remark: '', replenish: false, wholeDiscount: undefined, items: []
 })
 
 const drawer = useFormDrawer({
@@ -136,6 +136,7 @@ const drawer = useFormDrawer({
       bizDate: f.bizDate,
       remark: f.remark,
       replenish: isReturn.value && byOrder ? f.replenish : null,
+      wholeDiscount: byOrder ? null : f.wholeDiscount || null,
       items: f.items.map((i) => ({
         orderItemId: byOrder ? i.orderItemId : null,
         materialId: byOrder ? null : i.materialId,
@@ -147,7 +148,9 @@ const drawer = useFormDrawer({
         productionDate: i.productionDate || null,
         expiryDate: i.expiryDate || null,
         qty: i.qty,
-        serialNos: i.serialNos || null
+        serialNos: i.serialNos || null,
+        // 买赠赠品行（直接开单的销售出库）：数量须与促销一致，后端校验
+        gift: !byOrder && i.gift ? true : null
       }))
     }
   }
@@ -246,7 +249,7 @@ async function selectSource(id) {
 /** 取消引用：回到直接开单 */
 function clearSource() {
   currentOrder.value = undefined
-  Object.assign(form.value, { orderId: undefined, sourceDocId: undefined, replenish: false })
+  Object.assign(form.value, { orderId: undefined, sourceDocId: undefined, replenish: false, wholeDiscount: undefined })
   form.value.items = allowDirect.value ? [{ ...newTradeRow(), key: rowKey() }] : []
 }
 

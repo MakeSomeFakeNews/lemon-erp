@@ -13,7 +13,7 @@
 
     <!-- 业务单据发起的流程：发起时的业务信息（金额、天数等），字典值显示为标签 -->
     <l-card v-if="detail.business && detail.business.length" :title="t('approval.business')">
-      <l-cell v-for="b in detail.business" :key="b.field" :label="b.label">
+      <l-cell v-for="b in businessItems" :key="b.field" :label="b.label">
         <l-tag v-if="b.dictType" :text="dictText(dict[b.dictType], b.value)" :color="dictColor(dict[b.dictType], b.value)" />
         <text v-else>{{ businessValue(b) }}</text>
       </l-cell>
@@ -192,6 +192,15 @@ const formItems = computed(() => {
     return d.form.map((f) => ({ key: f.field, label: f.label, value: display(d.formData?.[f.field]), multiline: f.type === FormFieldType.TEXTAREA }))
   }
   return Object.entries(d.formData || {}).map(([k, v]) => ({ key: k, label: k, value: display(v) }))
+})
+
+/** 整单优惠类变量（wholeDiscount、wholeDiscountRate、wholeDiscountDelta 等）全部为 0 / 空时不显示（单据没有整单优惠） */
+const isDiscountField = (b) => String(b.field).startsWith('wholeDiscount')
+const isZero = (v) => v === null || v === undefined || v === '' || Number(v) === 0
+const businessItems = computed(() => {
+  const list = detail.value?.business || []
+  const discounts = list.filter(isDiscountField)
+  return discounts.length && discounts.every((b) => isZero(b.value)) ? list.filter((b) => !isDiscountField(b)) : list
 })
 
 const businessValue = (b) =>

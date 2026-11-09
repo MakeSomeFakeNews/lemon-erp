@@ -27,7 +27,9 @@
         </picker>
       </l-field>
       <l-field :label="t('crm.lead.region')">
-        <input v-model="form.region" class="l-input" maxlength="64" :placeholder="t('common.pleaseInput')" placeholder-class="l-placeholder" />
+        <picker :range="dict.scm_region" range-key="label" @change="(e) => (form.region = dict.scm_region[e.detail.value].value)">
+          <view class="l-input" :class="{ 'l-placeholder': !form.region }">{{ form.region ? dictText(dict.scm_region, form.region) : t('common.pleaseSelect') }}</view>
+        </picker>
       </l-field>
       <l-field :label="t('crm.lead.requirement')">
         <textarea v-model="form.requirement" class="l-textarea" maxlength="500" :placeholder="t('crm.lead.requirementPh')" placeholder-class="l-placeholder" />
@@ -48,7 +50,7 @@ import { addLead, getLead, updateLead } from '@/api/crm'
 import { dictText, useDict } from '@/store/dict'
 
 const { t } = useI18n()
-const dict = useDict('crm_source', 'crm_industry')
+const dict = useDict('crm_source', 'crm_industry', 'scm_region')
 const FIELDS = ['company', 'contactName', 'title', 'phone', 'email', 'industry', 'source', 'region', 'requirement']
 const form = reactive(Object.fromEntries(FIELDS.map((f) => [f, ''])))
 const id = ref(null)

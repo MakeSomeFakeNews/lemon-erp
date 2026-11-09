@@ -6,6 +6,7 @@ import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.ref.RefType;
 import com.lemon.erp.framework.ref.ReferenceGuard;
@@ -33,9 +34,12 @@ public class ScmCustomerService {
 
     /** 记录变更历史的字段 */
     private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "客户编码", "name", "客户名称", "level", "客户等级", "priceLevel", "价格等级", "contact", "联系人", "phone", "联系电话", // i18n-ignore
-            "address", "收货地址", "taxNo", "纳税人识别号", "creditLimit", "信用额度", "paymentDays", "账期", "remark", "备注"); // i18n-ignore
+            "address", "收货地址", "taxNo", "纳税人识别号", "creditLimit", "信用额度", "paymentDays", "账期", "region", "区域", "remark", "备注"); // i18n-ignore
 
     private static final int OPTION_LIMIT = 50;
+
+    /** 区域（业务字典） */
+    public static final String REGION_DICT = "scm_region";
 
     private final ScmCustomerMapper customerMapper;
     private final DocNoService docNoService;
@@ -43,14 +47,20 @@ public class ScmCustomerService {
     private final ReferenceGuard referenceGuard;
     private final ChangeLogger changeLogger;
     private final FlowIdentityProvider identityProvider;
+    private final DictLookup dictLookup;
 
-    /** @param keyword 编码或名称，模糊匹配 */
-    public PageResult<ScmCustomer> page(long current, long size, String keyword, String level, EnableStatus status, SalesChannel channel) {
+    /**
+     * @param keyword 编码或名称，模糊匹配
+     * @param region  区域（字典 scm_region 的值）
+     */
+    public PageResult<ScmCustomer> page(long current, long size, String keyword, String level, EnableStatus status, SalesChannel channel,
+                                        String region) {
         Page<ScmCustomer> page = customerMapper.selectPage(Page.of(current, size), Wrappers.<ScmCustomer>lambdaQuery()
                 .and(StringUtils.hasText(keyword), w -> w.like(ScmCustomer::getCode, keyword).or().like(ScmCustomer::getName, keyword))
                 .eq(StringUtils.hasText(level), ScmCustomer::getLevel, level)
                 .eq(status != null, ScmCustomer::getStatus, status)
                 .eq(channel != null, ScmCustomer::getChannel, channel)
+                .eq(StringUtils.hasText(region), ScmCustomer::getRegion, region)
                 .orderByAsc(ScmCustomer::getCode));
         List<Long> owners = page.getRecords().stream().map(ScmCustomer::getOwnerId).filter(Objects::nonNull).distinct().toList();
         if (!owners.isEmpty()) {
@@ -107,6 +117,11 @@ public class ScmCustomerService {
         return list.stream().filter(x -> key.equals(x.getCode())).findFirst().orElse(list.get(0)).getId();
     }
 
+    /** 按编码精确查找客户（不限状态），没有时返回 null */
+    public ScmCustomer findByCode(String code) {
+        return code == null ? null : customerMapper.selectOne(Wrappers.<ScmCustomer>lambdaQuery().eq(ScmCustomer::getCode, code));
+    }
+
     private static Long firstId(List<ScmCustomer> list) {
         return list.isEmpty() ? null : list.get(0).getId();
     }
@@ -150,6 +165,7 @@ public class ScmCustomerService {
             customer.setCode(docNoService.next(ScmDocNos.CUSTOMER));
         }
         checkCodeUnique(customer.getCode(), null);
+        customer.setRegion(normalizeRegion(customer.getRegion(), null));
         customer.setId(null);
         if (customer.getStatus() == null) customer.setStatus(EnableStatus.ENABLED);
         if (customer.getPaymentDays() == null) customer.setPaymentDays(0);
@@ -163,6 +179,7 @@ public class ScmCustomerService {
         Object before = customerMapper.selectById(id);
         ScmCustomer old = get(id);
         checkCodeUnique(customer.getCode(), id);
+        customer.setRegion(normalizeRegion(customer.getRegion(), old.getRegion()));
         customer.setId(id);
         customer.setStatus(null);
         if (customer.getPaymentDays() == null) customer.setPaymentDays(0);
@@ -193,6 +210,27 @@ public class ScmCustomerService {
             referenceGuard.checkDeletable(RefType.CUSTOMER, customer.getId(), Messages.get("scm.text.customer", customer.getName()));
         }
         customerMapper.deleteByIds(ids);
+    }
+
+    /**
+     * 区域须为业务字典 scm_region 中启用的值；未修改的（字典值后来停用）不再校验。CRM 客户、线索的地区共用此字典
+     *
+     * @param old 修改前的值，新增时为 null
+     * @return 去掉首尾空格的值，空白为 null
+     */
+    public String normalizeRegion(String region, String old) {
+        String r = StringUtils.hasText(region) ? region.trim() : null;
+        if (r != null && !r.equals(old)) {
+            dictLookup.check(REGION_DICT, r, "scm.label.region");
+        }
+        return r;
+    }
+
+    /** 名称或键值包含关键字的区域（字典 scm_region 的值），用于按区域名称搜索 */
+    public List<String> regionsMatching(String keyword) {
+        return dictLookup.options(REGION_DICT).entrySet().stream()
+                .filter(e -> e.getKey().contains(keyword) || e.getValue() != null && e.getValue().contains(keyword))
+                .map(Map.Entry::getKey).toList();
     }
 
     private void checkCodeUnique(String code, Long id) {

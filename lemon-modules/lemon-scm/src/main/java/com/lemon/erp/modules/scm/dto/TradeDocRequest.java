@@ -1,10 +1,13 @@
 package com.lemon.erp.modules.scm.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -19,6 +22,7 @@ import java.util.List;
  * @param replenish   仅退货：退货后需要补发（销售）/ 补收（采购），订单恢复相应的未完成数量；否则视为退款，订单不再补发。直接开单不支持
  * @param partnerId   直接开单：客户 / 供应商
  * @param salesmanId  直接开单的销售出库：业务员（用户），为空时取客户负责人，没有时为制单人
+ * @param wholeDiscount 直接开单：整单优惠（含税，抹零也用它），记在隐式订单上并按行金额分摊到各行
  */
 public record TradeDocRequest(
         Long orderId,
@@ -28,12 +32,20 @@ public record TradeDocRequest(
         Boolean replenish,
         @NotEmpty(message = "{scm.valid.addLineItems}") @Size(max = 500, message = "{scm.valid.lineItemsCannotExceed}") List<@Valid @NotNull TradeDocItemRequest> items,
         Long partnerId,
-        Long salesmanId) {
+        Long salesmanId,
+        @DecimalMin(value = "0", message = "{scm.valid.wholeDiscountCannotNegative}")
+        @Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") BigDecimal wholeDiscount) {
 
     /** 引用订单 */
     public TradeDocRequest(Long orderId, Long warehouseId, LocalDate bizDate, String remark, Boolean replenish,
                            List<TradeDocItemRequest> items) {
-        this(orderId, warehouseId, bizDate, remark, replenish, items, null, null);
+        this(orderId, warehouseId, bizDate, remark, replenish, items, null, null, null);
+    }
+
+    /** 直接开单，没有整单优惠 */
+    public TradeDocRequest(Long orderId, Long warehouseId, LocalDate bizDate, String remark, Boolean replenish,
+                           List<TradeDocItemRequest> items, Long partnerId, Long salesmanId) {
+        this(orderId, warehouseId, bizDate, remark, replenish, items, partnerId, salesmanId, null);
     }
 
     /** 是否直接开单（不引用订单） */

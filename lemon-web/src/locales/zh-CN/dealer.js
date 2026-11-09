@@ -20,6 +20,7 @@ export default {
     expected: '期望交货',
     promoDiscount: '促销优惠',
     rebateDeduct: '返利抵扣',
+    wholeDiscount: '整单优惠',
     gift: '赠品',
     orderNo: '订单号',
     material: '物料',

@@ -12,6 +12,7 @@ import java.math.BigDecimal;
  *
  * @param actualQty 实盘数量，草稿中可以为空，确认时必填；序列号物料以序列号个数为准
  * @param serialNos 实盘的全部序列号（序列号物料），逗号或换行分隔
+ * @param costPrice 盘盈的成本单价，为空按确认时的当前均价；盘亏按当前均价，忽略此值
  */
 public record CheckItemRequest(
         @NotNull(message = "{wms.valid.selectMaterial}") Long materialId,
@@ -20,5 +21,7 @@ public record CheckItemRequest(
         @DecimalMin(value = "0", message = "{wms.valid.countedQuantityCannotLess}")
         @Digits(integer = 14, fraction = 4, message = "{wms.valid.quantityAllowsMostDecimalPlaces}") BigDecimal actualQty,
         String serialNos,
-        @Size(max = 255, message = "{wms.valid.remarkCannotExceedCharacters}") String remark) {
+        @Size(max = 255, message = "{wms.valid.remarkCannotExceedCharacters}") String remark,
+        @DecimalMin(value = "0", message = "{wms.valid.checkCostPriceCannotNegative}")
+        @Digits(integer = 12, fraction = 6, message = "{wms.valid.checkCostPriceAllowsMostDecimalPlaces}") BigDecimal costPrice) {
 }

@@ -29,6 +29,11 @@
           <text class="stock__num-label">{{ t('wms.stock.safety') }}</text>
         </view>
       </view>
+      <!-- 均价、库存金额：有「查看成本金额」权限时后端才返回 -->
+      <view v-if="s.unitCost != null || s.amount != null" class="m-row stock__cost">
+        <text>{{ t('wms.stock.unitCost') }} {{ price(s.unitCost) }}</text>
+        <text>{{ t('wms.stock.amount') }} <text class="stock__amount">{{ money(s.amount) }}</text></text>
+      </view>
       <!-- 展开：各仓库、库位、批次的库存 -->
       <view v-if="expanded[s.materialId]" class="stock__details">
         <view v-if="expanded[s.materialId].loading" class="m-sub">{{ t('common.loading') }}</view>
@@ -44,6 +49,7 @@
             <text v-if="Number(d.frozenQty) > 0">{{ t('wms.stock.frozen', { n: qty(d.frozenQty) }) }}</text>
           </view>
         </view>
+        <view v-if="!expanded[s.materialId].loading" class="stock__history" @click.stop="openHistory(s)">{{ t('wms.history.open') }} ›</view>
       </view>
     </view>
     <l-empty v-if="paged.loaded && !paged.list.length" />
@@ -59,12 +65,12 @@ import { materialByBarcode, pageStock, pageStockSummary } from '@/api/wms'
 import { useTitle } from '@/composables/useTitle'
 import { usePaged } from '@/composables/usePaged'
 import { vibrate } from '@/composables/useAction'
-import { qty, today } from '@/utils/format'
+import { money, price, qty, today } from '@/utils/format'
 import { availableQty, locationText } from '../mobile'
 
 /**
  * 库存查询：扫描物料条码 / 包装条码，或输入物料编码、名称，按物料汇总显示库存；点开查看各仓库、库位、批次的数量。
- * 低于安全库存的物料标红，可只看低于安全库存的物料
+ * 低于安全库存的物料标红，可只看低于安全库存的物料；有「查看成本金额」权限时显示均价、库存金额。展开后可进入经营历史
  */
 const { t } = useI18n()
 useTitle('wms.entry.stock')
@@ -123,6 +129,12 @@ function clearFilter() {
 function changeLow(e) {
   lowStock.value = e.detail.value
   reload()
+}
+
+/** 经营历史：期初、流水、结余（与 Web 端相同的接口） */
+function openHistory(s) {
+  const name = encodeURIComponent(`${s.materialCode} ${s.materialName}`)
+  uni.navigateTo({ url: `/pkg-wms/stock/history?materialId=${s.materialId}&name=${name}` })
 }
 
 async function toggle(s) {
@@ -186,6 +198,21 @@ async function toggle(s) {
   }
   &__expired {
     color: $l-danger;
+  }
+  &__cost {
+    margin-top: 12rpx;
+    font-size: 24rpx;
+    color: $l-text-2;
+  }
+  &__amount {
+    font-weight: 600;
+    color: $l-text;
+  }
+  &__history {
+    padding-top: 16rpx;
+    font-size: 26rpx;
+    color: $l-primary;
+    text-align: right;
   }
 }
 </style>

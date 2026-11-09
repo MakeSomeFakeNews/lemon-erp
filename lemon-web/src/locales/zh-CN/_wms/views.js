@@ -13,7 +13,32 @@ export default {
     fullBatchNo: '完整批次号',
     time: '时间',
     changeQty: '变动数量',
-    operator: '操作人'
+    operator: '操作人',
+    bizPrice: '业务单价',
+    costPrice: '成本价',
+    costAmount: '成本金额',
+    partner: '往来单位'
+  },
+  history: {
+    action: '经营历史',
+    title: '经营历史：{name}',
+    allWarehouses: '全部仓库',
+    dateRange: '日期范围',
+    allTip: '全部仓库：全公司的进出与结余，不含仓库之间的调拨和供应商寄售仓；日期为单据的业务日期',
+    warehouseTip: '所选仓库的进出与结余（含调拨）；日期为单据的业务日期',
+    opening: '期初余额',
+    bizType: '业务类型',
+    partner: '往来单位',
+    bizPrice: '业务单价',
+    costPrice: '成本价',
+    inQty: '入库数量',
+    outQty: '出库数量',
+    balanceQty: '结余数量',
+    costAmount: '金额',
+    balanceAmount: '结余金额',
+    estimated: '近似',
+    estimatedTip: '升级到实时库存成本之前的历史流水，成本按当时的成本核算单价或参考成本价回填，是近似值',
+    openingEstimated: '期初金额含升级前回填的近似成本'
   },
   hold: {
     keywordPh: '物料编码、名称或入库单号',
@@ -100,7 +125,11 @@ export default {
     frozen: '冻结',
     safetyStock: '安全库存',
     qty: '库存数量',
-    serialTitle: '在库序列号：{name}（{slot}）'
+    serialTitle: '在库序列号：{name}（{slot}）',
+    unitCost: '均价',
+    amount: '库存金额',
+    totalQty: '合计数量 {n}',
+    totalAmount: '，库存金额 {n}'
   },
   warehouse: {
     createTitle: '新增仓库',

@@ -165,7 +165,11 @@ function discard() {
 }
 
 async function save() {
-  const rows = changedRows.value.map((r) => ({ id: r.id, ...Object.fromEntries(enabledLevels.value.map((l) => [l.field, r[l.field] ?? null])) }))
+  // 只提交改过的价格列（后端只更新出现的字段，清空的列显式传 null）
+  const rows = changedRows.value.map((r) => ({
+    id: r.id,
+    ...Object.fromEntries(enabledLevels.value.filter((l) => isChanged(r, l.field)).map((l) => [l.field, r[l.field] ?? null]))
+  }))
   if (!rows.length) {
     message.info(t('pricing.goods.noChange'))
     return

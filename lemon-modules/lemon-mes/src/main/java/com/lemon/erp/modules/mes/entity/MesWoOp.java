@@ -44,4 +44,12 @@ public class MesWoOp extends BaseEntity {
 
     @TableField(exist = false)
     private String workCenterName;
+
+    /** 工作中心人工费率（元 / 工时），仅计算完工入库工费时查询 */
+    @TableField(exist = false)
+    private BigDecimal laborRate;
+
+    /** 工作中心制造费用率（元 / 工时），仅计算完工入库工费时查询 */
+    @TableField(exist = false)
+    private BigDecimal overheadRate;
 }

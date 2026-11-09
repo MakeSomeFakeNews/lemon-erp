@@ -29,6 +29,7 @@
             <span class="sub-text">{{ $t('scm.trade.taxPart', { amount: formatMoney(detail.taxAmount) }) }}</span>
             <div v-if="isForeign(detail.currency)" class="sub-text">{{ $t('scm.trade.originalCurrency') }} {{ fcText(detail.currency, detail.amountFc, detail.exchangeRate) }}</div>
           </a-descriptions-item>
+          <a-descriptions-item v-if="Number(detail.wholeDiscount)" :label="$t('scm.wholeDiscount.label')">¥{{ formatMoney(detail.wholeDiscount) }}</a-descriptions-item>
           <a-descriptions-item :label="$t('scm.trade.prepared')">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
@@ -36,7 +37,7 @@
         <a-table row-key="id" size="small" :columns="columns" :data-source="detail.items" :pagination="false" :scroll="{ x: 900 }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'material'">
-              <div>{{ record.materialCode }} {{ record.materialName }}</div>
+              <div>{{ record.materialCode }} {{ record.materialName }}<a-tag v-if="record.gift === 1" color="green" :bordered="false" class="gift-tag">{{ $t('scm.trade.giftTag') }}</a-tag></div>
               <div class="sub-text">{{ record.spec }}</div>
             </template>
             <template v-else-if="column.key === 'location'">{{ locationText(record.locationCode) }}</template>
@@ -113,6 +114,7 @@ function print() {
       [t('scm.trade.bizDate'), d.bizDate],
       [t('scm.trade.wmsDocNo'), d.wmsDocNo],
       [t('scm.trade.totalAmount'), `¥${formatMoney(d.totalAmount)}`],
+      ...(Number(d.wholeDiscount) ? [[t('scm.wholeDiscount.label'), `¥${formatMoney(d.wholeDiscount)}`]] : []),
       ...(isForeign(d.currency) ? [[t('scm.trade.originalCurrency'), fcText(d.currency, d.amountFc, d.exchangeRate)]] : [])
     ],
     columns: [
@@ -149,6 +151,9 @@ watch(
 </script>
 
 <style scoped>
+.gift-tag {
+  margin-left: 6px;
+}
 .doc-desc {
   margin-bottom: 16px;
 }

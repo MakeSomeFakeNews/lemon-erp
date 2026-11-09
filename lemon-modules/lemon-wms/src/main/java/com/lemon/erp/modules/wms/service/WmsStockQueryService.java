@@ -14,6 +14,12 @@ import com.lemon.erp.modules.wms.dto.SerialLogView;
 import com.lemon.erp.modules.wms.dto.SerialQuery;
 import com.lemon.erp.modules.wms.dto.SerialView;
 import com.lemon.erp.modules.wms.dto.StockFlowView;
+import com.lemon.erp.modules.wms.dto.StockHistoryQuery;
+import com.lemon.erp.modules.wms.dto.StockHistoryRow;
+import com.lemon.erp.modules.wms.dto.StockHistoryView;
+import com.lemon.erp.modules.wms.entity.WmsMaterial;
+import com.lemon.erp.modules.wms.mapper.WmsMaterialMapper;
+import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.modules.wms.dto.StockQuery;
 import com.lemon.erp.modules.wms.dto.StockSummaryView;
 import com.lemon.erp.modules.wms.dto.StockView;
@@ -45,6 +51,9 @@ import static com.lemon.erp.modules.wms.model.WmsConstants.locationOrNone;
 @RequiredArgsConstructor
 public class WmsStockQueryService {
 
+    /** 经营历史最多返回的流水条数 */
+    private static final int HISTORY_LIMIT = 5000;
+
     /** 选择序列号时最多返回的条数 */
     private static final int SERIAL_OPTION_LIMIT = 500;
 
@@ -55,17 +64,104 @@ public class WmsStockQueryService {
     private final WmsSerialMapper serialMapper;
     private final WmsSerialLogMapper serialLogMapper;
     private final StockHoldService holdService;
+    private final StockCostService costService;
+    private final WmsMaterialMapper materialMapper;
+    private final PermissionService permissionService;
 
     public PageResult<StockView> stockPage(long current, long size, StockQuery query) {
         Page<StockView> page = Page.of(current, size);
         stockMapper.selectPageList(page, query);
+        if (!costVisible()) {
+            page.getRecords().forEach(v -> {
+                v.setUnitCost(null);
+                v.setAmount(null);
+            });
+        }
         return PageResult.of(page);
     }
 
     public PageResult<StockSummaryView> summaryPage(long current, long size, StockQuery query) {
         Page<StockSummaryView> page = Page.of(current, size);
         stockMapper.selectSummary(page, query);
+        if (!costVisible()) {
+            page.getRecords().forEach(v -> {
+                v.setUnitCost(null);
+                v.setAmount(null);
+            });
+        }
         return PageResult.of(page);
+    }
+
+    /**
+     * 库存查询的合计（全部页）：数量、库存金额（需要「查看成本金额」权限，否则为空）
+     *
+     * @param summary true 按物料汇总，false 库存明细
+     */
+    public Map<String, BigDecimal> stockTotal(StockQuery query, boolean summary) {
+        Map<String, Object> row = stockMapper.selectTotal(query, summary);
+        Map<String, BigDecimal> total = new HashMap<>();
+        total.put("qty", decimal(row == null ? null : row.get("qty")));
+        total.put("amount", costVisible() ? decimal(row == null ? null : row.get("amount")) : null);
+        return total;
+    }
+
+    /** 各物料的当前均价（其他入库录入成本价时默认带出） */
+    public Map<Long, BigDecimal> unitCosts(Collection<Long> materialIds) {
+        return costService.unitCosts(materialIds);
+    }
+
+    /**
+     * 经营历史：物料在日期范围内的每条流水（业务单价、成本价、入库 / 出库数量、结余数量和金额、往来单位），
+     * 第一行为期初余额。日期默认本月 1 日到今天；不选仓库时为全公司（不含调拨和供应商寄售仓）
+     */
+    public StockHistoryView history(StockHistoryQuery query) {
+        if (query.materialId() == null) {
+            throw new BizException("wms.error.selectMaterialFirst");
+        }
+        WmsMaterial m = materialMapper.selectById(query.materialId());
+        if (m == null) {
+            throw new BizException("wms.error.materialNotFound");
+        }
+        LocalDate end = query.endDate() == null ? LocalDate.now() : query.endDate();
+        LocalDate begin = query.beginDate() == null ? end.withDayOfMonth(1) : query.beginDate();
+        if (end.isBefore(begin)) {
+            throw new BizException("wms.error.endDateCannotEarlierStartDate");
+        }
+        StockHistoryQuery q = new StockHistoryQuery(query.materialId(), query.warehouseId(), begin, end);
+        List<StockHistoryRow> rows = flowMapper.selectHistory(q, HISTORY_LIMIT + 1);
+        if (rows.size() > HISTORY_LIMIT) {
+            throw new BizException("wms.error.historyTooManyRows", HISTORY_LIMIT);
+        }
+        Map<String, Object> opening = flowMapper.selectHistoryOpening(q);
+        BigDecimal qty = decimal(opening == null ? null : opening.get("qty"));
+        BigDecimal amount = decimal(opening == null ? null : opening.get("amount"));
+        BigDecimal openingQty = qty;
+        BigDecimal openingAmount = amount;
+        boolean costVisible = costVisible();
+        for (StockHistoryRow r : rows) {
+            qty = qty.add(r.getQty());
+            amount = amount.add(r.getCostAmount() == null ? BigDecimal.ZERO : r.getCostAmount());
+            r.setBalanceQty(qty);
+            if (costVisible) {
+                r.setBalanceAmount(amount);
+            } else {
+                r.setBizPrice(null);
+                r.setCostPrice(null);
+                r.setCostAmount(null);
+            }
+        }
+        return new StockHistoryView(m.getId(), m.getCode(), m.getName(), m.getSpec(), m.getUnit(), begin, end,
+                openingQty, costVisible ? openingAmount : null, rows, costVisible,
+                opening != null && decimal(opening.get("estimated")).signum() > 0);
+    }
+
+    /** 有「查看成本金额」权限 */
+    private boolean costVisible() {
+        return permissionService.hasPerm(WmsStockDocService.COST_PERM);
+    }
+
+    private static BigDecimal decimal(Object v) {
+        return v == null ? BigDecimal.ZERO : new BigDecimal(v.toString());
     }
 
     /** 某个库存位置上的在库序列号，出库、调拨时选择 */
@@ -114,6 +210,13 @@ public class WmsStockQueryService {
         LocalDateTime end = query.endDate() == null ? null : query.endDate().plusDays(1).atStartOfDay();
         Page<StockFlowView> page = Page.of(current, size);
         flowMapper.selectPageList(page, query, begin, end);
+        if (!costVisible()) {
+            page.getRecords().forEach(v -> {
+                v.setBizPrice(null);
+                v.setCostPrice(null);
+                v.setCostAmount(null);
+            });
+        }
         return PageResult.of(page);
     }
 

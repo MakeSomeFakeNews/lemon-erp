@@ -40,11 +40,14 @@
                 {{ record.accountName }}
                 <div><DictTag type="fin_settle_method" :value="record.method" /></div>
               </template>
-              <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}</template>
+              <template v-else-if="column.key === 'amount'">
+                ¥{{ formatMoney(record.amount) }}
+                <div v-if="isForeign(record.currency)" class="sub-text">{{ fcText(record.currency, record.amountFc, record.exchangeRate) }}</div>
+              </template>
               <template v-else-if="column.key === 'used'">
-                <div>{{ formatMoney(record.usedAmount) }}</div>
+                <div>{{ formatMoney(isForeign(record.currency) ? record.usedFc : record.usedAmount) }}</div>
                 <div class="sub-text">
-                  {{ $t('fin.advance.left') }} <b>{{ formatMoney(remaining(record)) }}</b>
+                  {{ $t('fin.advance.left') }} <b>{{ curPrefix(record) }}{{ formatMoney(remaining(record)) }}</b>
                 </div>
               </template>
               <template v-else-if="column.key === 'voucher'">
@@ -76,12 +79,23 @@
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item :label="$t('common.field.date')" name="advanceDate" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('common.field.date') }) }]">
-              <a-date-picker v-model:value="form.advanceDate" value-format="YYYY-MM-DD" class="full" />
+              <a-date-picker v-model:value="form.advanceDate" value-format="YYYY-MM-DD" class="full" @change="refreshRate" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item :label="$t('common.field.amount')" name="amount" :rules="[{ required: true, message: $t('common.rule.required', { name: $t('common.field.amount') }) }]">
-              <a-input-number v-model:value="form.amount" :min="0.01" :precision="2" prefix="¥" class="full" />
+            <a-form-item :label="$t('fin.advance.currency')" name="currency">
+              <a-select v-model:value="form.currency" :options="currencyOptions(currencyList)" @change="refreshRate" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item :label="$t('common.field.amount')" name="amount" :rules="[{ required: true, message: $t('common.rule.required', { name: $t('common.field.amount') }) }]"
+              :extra="isForeign(form.currency) && form.amount && form.exchangeRate ? $t('fin.advance.baseAmount', { amount: formatMoney(round2(form.amount * form.exchangeRate)) }) : ''">
+              <a-input-number v-model:value="form.amount" :min="0.01" :precision="2" :prefix="currencySymbol(form.currency)" class="full" />
+            </a-form-item>
+          </a-col>
+          <a-col v-if="isForeign(form.currency)" :span="12">
+            <a-form-item :label="$t('fin.advance.rateLabel', { currency: form.currency })" name="exchangeRate" :rules="[{ required: true, message: $t('fin.advance.rateRequired') }]">
+              <a-input-number v-model:value="form.exchangeRate" :min="0" :precision="6" class="full" :placeholder="$t('fin.advance.ratePh')" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -106,9 +120,10 @@
       <template v-if="applyTarget">
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" class="block">
           <a-descriptions-item :label="conf.partnerLabel">{{ applyTarget.partnerName }}</a-descriptions-item>
-          <a-descriptions-item :label="conf.amountLabel">¥{{ formatMoney(applyTarget.amount) }}</a-descriptions-item>
-          <a-descriptions-item :label="$t('fin.advance.available')"><b>¥{{ formatMoney(remaining(applyTarget)) }}</b></a-descriptions-item>
+          <a-descriptions-item :label="conf.amountLabel">{{ curPrefix(applyTarget) }}{{ formatMoney(isForeign(applyTarget.currency) ? applyTarget.amountFc : applyTarget.amount) }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.advance.available')"><b>{{ curPrefix(applyTarget) }}{{ formatMoney(remaining(applyTarget)) }}</b></a-descriptions-item>
         </a-descriptions>
+        <a-alert v-if="isForeign(applyTarget.currency)" type="info" show-icon class="block" :message="$t('fin.advance.foreignApplyTip', { currency: applyTarget.currency })" />
         <div class="bills-head">
           <a-space>
             <span>{{ $t('fin.advance.applyDate') }}</span>
@@ -116,7 +131,7 @@
           </a-space>
           <a-space>
             <a-button size="small" :disabled="!bills.length" @click="autoFill">{{ $t('fin.advance.autoFill') }}</a-button>
-            <span>{{ $t('fin.advance.thisApply') }} <b :class="['total', { warn: applyTotal > remaining(applyTarget) }]">¥{{ formatMoney(applyTotal) }}</b></span>
+            <span>{{ $t('fin.advance.thisApply') }} <b :class="['total', { warn: applyTotal > remaining(applyTarget) }]">{{ curPrefix(applyTarget) }}{{ formatMoney(applyTotal) }}</b></span>
           </a-space>
         </div>
         <a-table row-key="id" size="small" :columns="billColumns" :data-source="bills" :loading="billLoading" :pagination="false" :scroll="{ x: billScrollX }"
@@ -126,7 +141,7 @@
               <DictTag type="fin_bill_source" :value="record.sourceType" />
               <span class="sub-text"> {{ record.sourceNo || '' }}</span>
             </template>
-            <template v-else-if="column.key === 'amount'">{{ formatMoney(record.amount) }}</template>
+            <template v-else-if="column.key === 'amount'">{{ formatMoney(isForeign(record.currency) ? record.amountFc : record.amount) }}</template>
             <template v-else-if="column.key === 'remaining'">{{ formatMoney(billRemaining(record)) }}</template>
             <template v-else-if="column.key === 'apply'">
               <a-input-number v-model:value="record.apply" :precision="2" :min="0" :max="Math.max(0, billRemaining(record))" class="full" />
@@ -148,8 +163,15 @@
         <a-descriptions :column="{ xs: 1, sm: 2 }" size="small" class="block">
           <a-descriptions-item :label="KINDS[detail.kind]?.partnerLabel">{{ detail.partnerName }}</a-descriptions-item>
           <a-descriptions-item :label="$t('common.field.date')">{{ detail.advanceDate }}</a-descriptions-item>
-          <a-descriptions-item :label="$t('common.field.amount')"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
-          <a-descriptions-item :label="$t('fin.advance.used')">{{ $t('fin.advance.usedText', { used: formatMoney(detail.usedAmount), left: formatMoney(remaining(detail)) }) }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('common.field.amount')">
+            <b>¥{{ formatMoney(detail.amount) }}</b>
+            <span v-if="isForeign(detail.currency)" class="sub-text"> {{ fcText(detail.currency, detail.amountFc, detail.exchangeRate) }}</span>
+          </a-descriptions-item>
+          <a-descriptions-item :label="$t('fin.advance.used')">
+            {{ isForeign(detail.currency)
+              ? `${detail.currency} ${formatMoney(detail.usedFc)} (${$t('fin.advance.left')} ${formatMoney(remaining(detail))})`
+              : $t('fin.advance.usedText', { used: formatMoney(detail.usedAmount), left: formatMoney(remaining(detail)) }) }}
+          </a-descriptions-item>
           <a-descriptions-item :label="$t('fin.advance.settleAccount')">{{ detail.accountName }}</a-descriptions-item>
           <a-descriptions-item :label="$t('fin.advance.method')"><DictTag type="fin_settle_method" :value="detail.method" /></a-descriptions-item>
           <a-descriptions-item :label="$t('fin.advance.voucher')">{{ detail.voucherNo || '-' }}</a-descriptions-item>
@@ -158,7 +180,10 @@
         <div class="section-title block-title">{{ $t('fin.advance.records') }}</div>
         <a-table row-key="id" size="small" :columns="applyColumns" :data-source="detail.applies" :pagination="false" :locale="{ emptyText: $t('fin.advance.noRecords') }">
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'amount'">{{ formatMoney(record.amount) }}</template>
+            <template v-if="column.key === 'amount'">
+              {{ formatMoney(record.amount) }}
+              <div v-if="isForeign(detail.currency)" class="sub-text">{{ detail.currency }} {{ formatMoney(record.amountFc) }}</div>
+            </template>
           </template>
         </a-table>
       </template>
@@ -186,6 +211,7 @@ import { today } from '@/components/wms/wms'
 import { formatMoney } from '@/components/fin/fin'
 import { round2 } from '@/utils/number'
 import { useAction } from '@/composables/useAction'
+import { BASE_CURRENCY, currencyOptions, currencySymbol, fcText, fetchRate, isForeign, useCurrencies } from '@/components/fin/currency'
 
 import { SettleKind } from '@/constants/enums'
 const { t } = useI18n()
@@ -200,7 +226,11 @@ const KINDS = {
 const dict = useDict('fin_settle_method', 'fin_bill_source')
 const tab = ref('RECEIPT')
 const conf = computed(() => KINDS[tab.value])
-const remaining = (a) => round2(Number(a.amount) - Number(a.usedAmount || 0))
+/** 可冲抵余额：外币为原币 */
+const remaining = (a) =>
+  isForeign(a.currency) ? round2(Number(a.amountFc || 0) - Number(a.usedFc || 0)) : round2(Number(a.amount) - Number(a.usedAmount || 0))
+const curPrefix = (a) => (isForeign(a?.currency) ? `${a.currency} ` : '¥')
+const currencyList = useCurrencies()
 
 const columns = computed(() => [
   { title: t('fin.advance.docNo'), key: 'advanceNo', width: 160 },
@@ -230,14 +260,23 @@ const saving = ref(false)
 const formRef = ref()
 const form = ref({})
 function openCreate() {
-  form.value = { kind: tab.value, partnerId: undefined, advanceDate: today(), accountId: undefined, method: 'TRANSFER', amount: undefined, remark: '' }
+  form.value = { kind: tab.value, partnerId: undefined, advanceDate: today(), accountId: undefined, method: 'TRANSFER', amount: undefined, remark: '',
+    currency: BASE_CURRENCY, exchangeRate: undefined }
   createOpen.value = true
+}
+/** 外币：带出登记日期的记账汇率（未维护时手工填写） */
+async function refreshRate() {
+  const f = form.value
+  if (!isForeign(f.currency)) return
+  const rate = await fetchRate(f.currency, f.advanceDate)
+  if (rate != null) f.exchangeRate = rate
 }
 async function submit() {
   await formRef.value.validate()
   saving.value = true
   try {
-    await addAdvance({ ...form.value, remark: form.value.remark || null })
+    const f = form.value
+    await addAdvance({ ...f, remark: f.remark || null, exchangeRate: isForeign(f.currency) ? f.exchangeRate : null })
     message.success(t('fin.advance.created'))
     createOpen.value = false
     load()
@@ -263,7 +302,9 @@ const applyTarget = ref()
 const applyDate = ref(today())
 const bills = ref([])
 const billLoading = ref(false)
-const billRemaining = (b) => round2(Number(b.amount) - Number(b.settledAmount))
+/** 单据未核销：外币为原币 */
+const billRemaining = (b) =>
+  isForeign(b.currency) ? round2(Number(b.amountFc || 0) - Number(b.settledFc || 0)) : round2(Number(b.amount) - Number(b.settledAmount))
 const applyTotal = computed(() => round2(bills.value.reduce((s, b) => s + (Number(b.apply) || 0), 0)))
 
 async function openApply(record) {
@@ -273,9 +314,10 @@ async function openApply(record) {
   applyOpen.value = true
   billLoading.value = true
   try {
-    // 只列出正数单据，红字单据不能用预收预付冲抵
+    // 只列出与预收预付同币种的正数单据，红字单据不能用预收预付冲抵
+    const currency = record.currency || BASE_CURRENCY
     bills.value = (await unsettledBills(KINDS[record.kind].billKind, record.partnerId))
-      .filter((b) => billRemaining(b) > 0)
+      .filter((b) => (b.currency || BASE_CURRENCY) === currency && billRemaining(b) > 0)
       .map((b) => ({ ...b, apply: undefined }))
   } finally {
     billLoading.value = false
@@ -295,7 +337,7 @@ function autoFill() {
 
 async function submitApply() {
   if (applyTotal.value > remaining(applyTarget.value)) {
-    message.warning(t('fin.advance.overApply', { amount: formatMoney(remaining(applyTarget.value)) }))
+    message.warning(t('fin.advance.overApply', { amount: curPrefix(applyTarget.value) + formatMoney(remaining(applyTarget.value)) }))
     return
   }
   const items = bills.value.filter((b) => Number(b.apply) > 0).map((b) => ({ billId: b.id, amount: b.apply }))

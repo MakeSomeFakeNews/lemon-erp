@@ -35,8 +35,8 @@ export const TRADE_PATHS = {
   [TradeKind.PURCHASE_RETURN]: 'purchaseReturn'
 }
 
-/** 物料分类、品牌（业务字典） */
-export const DICT_TYPES = ['wms_material_category', 'wms_material_brand']
+/** 物料分类、品牌、客户区域（业务字典） */
+export const DICT_TYPES = ['wms_material_category', 'wms_material_brand', 'scm_region']
 
 /** 汇总行的显示名称；dict 为 useDict(...DICT_TYPES) */
 export function groupLabel(dim, row, dict) {
@@ -51,8 +51,9 @@ export function groupLabel(dim, row, dict) {
       return findDict(dict.wms_material_brand, key)?.label || key
     case JxcDimension.MONTH:
       return periodLabel(key)
-    case JxcDimension.DAY:
     case JxcDimension.REGION:
+      return findDict(dict.scm_region, key)?.label || key
+    case JxcDimension.DAY:
       return String(key)
     default:
       return row.groupName || String(key)

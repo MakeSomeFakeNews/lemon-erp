@@ -47,12 +47,12 @@ import { computed, ref, watch } from 'vue'
 import DictTag from '@/components/DictTag.vue'
 import { unsettledBills } from '@/api/fin'
 import { useDict } from '@/composables/useDict'
-import { formatMoney } from './fin'
+import { allocateSettle, formatMoney } from './fin'
 import { isForeign } from './currency'
 import { t } from '@/locales'
 
 /**
- * 选择要核销的应收 / 应付单（票据收票、背书、开票使用）：只列人民币单据，可按目标金额按到期日先后自动分配。
+ * 选择要核销的应收 / 应付单（票据收票、背书、开票使用）：只列人民币单据，可按目标金额按单据日期先后自动分配。
  * v-model 为 [{ billId, amount }]
  */
 const props = defineProps({
@@ -100,20 +100,10 @@ watch(
   { immediate: true }
 )
 
-/** 先用红字单据冲抵，再按到期日先后分配，直到达到目标金额 */
+/** 先用红字单据冲抵，再按单据日期先后分配，直到达到目标金额 */
 function allocate() {
-  let left = props.target
-  bills.value.forEach((b) => (b.settle = undefined))
-  bills.value.filter((b) => remaining(b) < 0).forEach((b) => {
-    b.settle = remaining(b)
-    left -= b.settle
-  })
-  const positive = bills.value.filter((b) => remaining(b) > 0).sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)))
-  for (const b of positive) {
-    if (left <= 0) break
-    b.settle = Math.round(Math.min(left, remaining(b)) * 100) / 100
-    left = Math.round((left - b.settle) * 100) / 100
-  }
+  const { amounts } = allocateSettle(bills.value, props.target, remaining)
+  bills.value.forEach((b) => (b.settle = amounts.get(b.id)))
   emitItems()
 }
 

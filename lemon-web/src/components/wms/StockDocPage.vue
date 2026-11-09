@@ -75,7 +75,7 @@
           </template>
           <template v-else-if="column.key === 'warehouse'">
             <span v-if="kind === 'transfer'">{{ record.warehouseName }} <ArrowRightOutlined class="arrow" /> {{ record.toWarehouseName }}</span>
-            <span v-else>{{ record.warehouseName }}</span>
+            <WarehouseNames v-else :name="record.warehouseName" :names="record.warehouseNames" />
             <div v-if="kind === 'transfer' && isTrue(record.inTransit)" class="sub-text">{{ $t('wms.doc.inTransitTransfer') }}</div>
           </template>
           <template v-else-if="column.key === 'totalQty'">
@@ -166,6 +166,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import StockDocDetail from './StockDocDetail.vue'
 import StockDocForm from './StockDocForm.vue'
 import WarehouseSelect from './WarehouseSelect.vue'
+import WarehouseNames from './WarehouseNames.vue'
 import { confirmDoc, deleteDoc, pageDoc, receiveTransfer, reverseDoc } from '@/api/wms/doc'
 import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'

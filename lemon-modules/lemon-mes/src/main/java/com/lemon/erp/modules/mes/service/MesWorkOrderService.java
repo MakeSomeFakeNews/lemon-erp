@@ -6,9 +6,11 @@ import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.security.LoginUser;
+import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.framework.security.datascope.DataScopes;
+import com.lemon.erp.modules.mes.dto.WoCloseCostView;
 import com.lemon.erp.modules.mes.dto.WorkOrderQuery;
 import com.lemon.erp.modules.mes.dto.WorkOrderRequest;
 import com.lemon.erp.modules.mes.entity.MesBom;
@@ -25,6 +27,7 @@ import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.entity.WmsWarehouse;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
+import com.lemon.erp.modules.wms.service.WmsStockDocService;
 import com.lemon.erp.modules.wms.service.WmsWarehouseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -56,17 +59,25 @@ public class MesWorkOrderService {
     private final WmsWarehouseService warehouseService;
     private final DocNoService docNoService;
     private final ApplicationEventPublisher eventPublisher;
+    private final MesStockCosts stockCosts;
+    private final PermissionService permissionService;
 
     @DataPermission(table = "mes_work_order", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<MesWorkOrder> page(long current, long size, WorkOrderQuery query) {
         Page<MesWorkOrder> page = Page.of(current, size);
         workOrderMapper.selectPageList(page, query);
+        if (!costVisible()) {
+            page.getRecords().forEach(MesWorkOrderService::hideCost);
+        }
         return PageResult.of(page);
     }
 
     public MesWorkOrder detail(Long id) {
         getAccessible(id);
         MesWorkOrder wo = workOrderMapper.selectDetail(id);
+        if (!costVisible()) {
+            hideCost(wo);
+        }
         wo.setMaterials(lineService.materials(id));
         wo.setOps(lineService.ops(id));
         return wo;
@@ -139,7 +150,10 @@ public class MesWorkOrderService {
         transit(id, Set.of(WorkOrderStatus.DRAFT), WorkOrderStatus.RELEASED, true);
     }
 
-    /** 关闭：未完工的工单不再生产，已领未用的物料请先退料 */
+    /**
+     * 关闭：未完工的工单不再生产，已领未用的物料请先退料。实时库存成本：尚未转入产品的净领料成本和工费，
+     * 有完工时追加到已完工产品（只追加仍在库的部分），没有完工时为在制品损失、不进入库存（{@link MesStockCosts#applyClose}）
+     */
     @Transactional
     public void close(Long id) {
         MesWorkOrder wo = getAccessible(id);
@@ -147,7 +161,23 @@ public class MesWorkOrderService {
             throw new BizException("mes.error.onlyReleasedProductionWorkOrdersClosed");
         }
         transit(id, WorkOrderStatus.EXECUTABLE, WorkOrderStatus.CLOSED, false);
+        BigDecimal[] cost = stockCosts.applyClose(workOrderMapper.selectById(id));
+        workOrderMapper.update(Wrappers.<MesWorkOrder>lambdaUpdate().set(MesWorkOrder::getCloseCost, cost[0])
+                .set(MesWorkOrder::getCloseStockCost, cost[1]).eq(MesWorkOrder::getId, id));
         eventPublisher.publishEvent(new WorkOrderClosedEvent(id));
+    }
+
+    /** 关闭前预览尚未转入产品的成本（金额需要「查看成本金额」权限，否则为空） */
+    public WoCloseCostView closeCost(Long id) {
+        MesWorkOrder wo = getAccessible(id);
+        if (!wo.getStatus().isExecutable()) {
+            throw new BizException("mes.error.onlyReleasedProductionWorkOrdersClosed");
+        }
+        MesStockCosts.CloseCost c = stockCosts.closeCost(wo);
+        boolean visible = costVisible();
+        return new WoCloseCostView(c.standard(), wo.getFinishedQty(), visible,
+                visible ? c.material() : null, visible ? c.conversion() : null,
+                visible ? c.total() : null, visible ? c.toStock() : null, visible ? c.toExpense() : null);
     }
 
     // ---------------------------------------------------------------- 返工
@@ -227,6 +257,15 @@ public class MesWorkOrderService {
     }
 
     // ---------------------------------------------------------------- 内部
+
+    private boolean costVisible() {
+        return permissionService.hasPerm(WmsStockDocService.COST_PERM);
+    }
+
+    private static void hideCost(MesWorkOrder wo) {
+        wo.setCloseCost(null);
+        wo.setCloseStockCost(null);
+    }
 
     private MesWorkOrder getDraft(Long id) {
         MesWorkOrder wo = getAccessible(id);

@@ -31,7 +31,7 @@ public interface MesOutsourceMaterialMapper extends BaseMapper<MesOutsourceMater
     /**
      * 采购入库 / 退货单明细（核销用料）
      *
-     * @return [{orderId, orderItemId, materialId, qty}]
+     * @return [{orderId, orderItemId, materialId, qty, wmsDocId, orderNo}]
      */
     List<Map<String, Object>> selectTradeItems(@Param("docId") Long docId);
 }

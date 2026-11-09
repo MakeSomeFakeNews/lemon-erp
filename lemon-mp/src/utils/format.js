@@ -7,6 +7,13 @@ export function money(v) {
   return Number.isFinite(n) ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : String(v)
 }
 
+/** 单价：千分位，至少两位、最多四位小数 */
+export function price(v) {
+  if (v === null || v === undefined || v === '') return '-'
+  const n = Number(v)
+  return Number.isFinite(n) ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : String(v)
+}
+
 /** 数量：去掉多余的 0，最多 4 位小数 */
 export function qty(v) {
   if (v === null || v === undefined || v === '') return '-'

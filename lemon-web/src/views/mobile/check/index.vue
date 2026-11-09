@@ -162,7 +162,9 @@ async function save() {
         .filter((r) => !r.added || actualOf(r) != null)
         .map((r) => ({
           materialId: r.materialId, locationId: r.locationId || null, batchNo: r.batchNo || null, actualQty: actualOf(r),
-          serialNos: r.serialEnabled === 1 && r.serials.length ? r.serials.join(',') : null, remark: r.remark || null
+          serialNos: r.serialEnabled === 1 && r.serials.length ? r.serials.join(',') : null, remark: r.remark || null,
+          // 保留电脑端填写的盘盈成本价
+          costPrice: r.costPrice ?? null
         }))
     })
     message.success(t('mobile.check.saved'))

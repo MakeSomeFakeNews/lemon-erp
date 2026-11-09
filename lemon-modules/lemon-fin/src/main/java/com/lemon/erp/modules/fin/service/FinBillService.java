@@ -20,9 +20,11 @@ import com.lemon.erp.modules.fin.mapper.FinBillMapper;
 import com.lemon.erp.modules.fin.mapper.FinSettlementItemMapper;
 import com.lemon.erp.modules.fin.model.VoucherLine;
 import com.lemon.erp.modules.fin.model.VoucherSource;
+import com.lemon.erp.modules.fin.model.VoucherStatus;
 import com.lemon.erp.modules.mes.event.SupplierClaimCancelledEvent;
 import com.lemon.erp.modules.mes.event.SupplierClaimConfirmedEvent;
 import com.lemon.erp.modules.mes.service.QmsClaimService;
+import com.lemon.erp.modules.scm.event.OrderCloseAdjustedEvent;
 import com.lemon.erp.modules.scm.event.RebateSettledEvent;
 import com.lemon.erp.modules.scm.event.RebateUnsettledEvent;
 import com.lemon.erp.modules.scm.model.ScmConstants;
@@ -91,7 +93,7 @@ public class FinBillService {
                 .eq(FinBill::getKind, kind)
                 .eq(FinBill::getPartnerId, partnerId)
                 .ne(FinBill::getStatus, BillStatus.SETTLED)
-                .orderByAsc(FinBill::getDueDate).orderByAsc(FinBill::getId));
+                .orderByAsc(FinBill::getBillDate).orderByAsc(FinBill::getDueDate).orderByAsc(FinBill::getId));
     }
 
     public PageResult<AgingRow> aging(long current, long size, BillKind kind, LocalDate asOf) {
@@ -156,6 +158,29 @@ public class FinBillService {
         }
         periodGuard.checkOpen(bill.getBillDate(), "fin.label.receivablePayable");
         billMapper.deleteById(id);
+    }
+
+    /**
+     * 冲账单取消复核：删除红字单据，连同其未审核的凭证（凭证已记账时不能取消，已审核时须先反审核）；须未核销
+     */
+    @Transactional
+    public void deleteOffsetBill(Long id) {
+        FinBill bill = billMapper.selectById(id);
+        if (bill == null) {
+            return;
+        }
+        if (bill.getSettledAmount().signum() != 0
+                || settlementItemMapper.exists(Wrappers.<FinSettlementItem>lambdaQuery().eq(FinSettlementItem::getBillId, id))) {
+            throw new BizException("fin.error.hasSettledCannotCanceled", bill.getBillNo());
+        }
+        if (bill.getVoucherId() != null) {
+            if (voucherService.statusOf(bill.getVoucherId()) == VoucherStatus.POSTED) {
+                throw new BizException("fin.error.offsetVoucherPosted", bill.getBillNo());
+            }
+            voucherService.deleteOwned(bill.getVoucherId());
+            billMapper.update(Wrappers.<FinBill>lambdaUpdate().set(FinBill::getVoucherId, null).eq(FinBill::getId, id));
+        }
+        deleteSourceBill(id);
     }
 
     /** 只能删除手工录入、未核销、未生成凭证的单据 */
@@ -234,6 +259,25 @@ public class FinBillService {
     }
 
     /**
+     * 订单关闭的尾差调整：生成应收 / 应付调整单（来源 ORDER_ADJUST，正数蓝字、负数红字），与关闭同一事务；
+     * 到期日按往来单位账期，外币订单记原币和汇率
+     */
+    @EventListener
+    public void onOrderCloseAdjusted(OrderCloseAdjustedEvent e) {
+        BillKind billKind = e.kind() == OrderKind.SALES ? BillKind.AR : BillKind.AP;
+        periodGuard.checkOpen(e.date(), billKind == BillKind.AR ? "fin.label.receivable" : "fin.label.payable");
+        FinBill bill = newBill(billKind, e.partnerId(), BillSource.ORDER_ADJUST, e.orderId(), e.orderNo(), e.date(),
+                e.date().plusDays(paymentDays(billKind, e.partnerId())), e.amount(), e.taxAmount());
+        if (e.currency() != null && !FinConstants.BASE_CURRENCY.equals(e.currency())) {
+            bill.setCurrency(e.currency());
+            bill.setExchangeRate(e.exchangeRate());
+            bill.setAmountFc(e.amountFc());
+        }
+        bill.setRemark("订单 " + e.orderNo() + " 关闭尾差调整"); // i18n-ignore
+        billMapper.insert(bill);
+    }
+
+    /**
      * 为业务生成的单据逐张生成凭证（未审核），已生成的跳过
      *
      * @return 生成的凭证数
@@ -257,24 +301,26 @@ public class FinBillService {
     }
 
     /**
-     * 坏账核销（直接转销法）：确认无法收回的应收款，计入已核销，生成凭证 借 营业外支出 / 贷 应收账款
+     * 坏账核销（直接转销法）：确认无法收回的应收款，计入已核销，生成凭证 借 营业外支出 / 贷 应收账款；
+     * 无法支付的应付款（供应商注销等）转销：借 应付账款 / 贷 营业外收入
      *
      * @return 凭证 ID
      */
     @Transactional
-    public Long writeOffBadDebt(Long id, BigDecimal amount, LocalDate date, String reason) {
+    public Long writeOffBadDebt(BillKind kind, Long id, BigDecimal amount, LocalDate date, String reason) {
+        boolean ar = kind == BillKind.AR;
         FinBill bill = billMapper.selectById(id);
-        if (bill == null || bill.getKind() != BillKind.AR) {
-            throw new BizException("fin.error.receivableDoesNotExist");
+        if (bill == null || bill.getKind() != kind) {
+            throw new BizException(ar ? "fin.error.receivableDoesNotExist" : "fin.error.payableDoesNotExist");
         }
         if (bill.getAmount().signum() <= 0 || amount == null || amount.signum() <= 0) {
-            throw new BizException("fin.error.onlyNonReversalReceivablesWrittenOff");
+            throw new BizException(ar ? "fin.error.onlyNonReversalReceivablesWrittenOff" : "fin.error.onlyNonReversalPayablesWrittenOff");
         }
         if (bill.getVoucherId() == null && bill.getSourceType() != BillSource.MANUAL) {
-            throw new BizException("fin.error.noReceivableVoucherHasGeneratedGenerate", bill.getBillNo());
+            throw new BizException(ar ? "fin.error.noReceivableVoucherHasGeneratedGenerate" : "fin.error.noPayableVoucherGenerated", bill.getBillNo());
         }
         if (bill.getCurrency() != null && !FinConstants.BASE_CURRENCY.equals(bill.getCurrency())) {
-            throw new BizException("fin.error.foreignCurrencyReceivablesReceivePaymentRevalue");
+            throw new BizException(ar ? "fin.error.foreignCurrencyReceivablesReceivePaymentRevalue" : "fin.error.foreignCurrencyPayablesBadDebt");
         }
         LocalDate d = date == null ? LocalDate.now() : date;
         periodGuard.checkOpen(d, "fin.label.badDebtWriteOff");
@@ -283,12 +329,34 @@ public class FinBillService {
         }
         billMapper.addSettledFc(id, amount);
         billMapper.addBadDebt(id, amount);
-        String summary = "坏账核销 " + bill.getBillNo() + " " + partnerName(BillKind.AR, bill.getPartnerId()) // i18n-ignore
+        String summary = (ar ? "坏账核销 " : "无法支付的应付款转销 ") + bill.getBillNo() + " " + partnerName(kind, bill.getPartnerId()) // i18n-ignore
                 + (reason == null || reason.isBlank() ? "" : " " + reason);
-        return voucherService.createGenerated(d, VoucherSource.BAD_DEBT, bill.getBillNo(), List.of(
-                VoucherLine.debit(summary, accountRules.accountId(AccountRole.NON_OPERATING_EXPENSE), null, amount),
+        List<VoucherLine> lines = ar
+                ? List.of(VoucherLine.debit(summary, accountRules.accountId(AccountRole.NON_OPERATING_EXPENSE), null, amount),
                 VoucherLine.credit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, amount)
-                        .withCustomer(bill.getPartnerId()).withProject(bill.getProjectId())));
+                        .withCustomer(bill.getPartnerId()).withProject(bill.getProjectId()))
+                : List.of(VoucherLine.debit(summary, accountRules.accountId(AccountRole.PAYABLE), null, amount)
+                        .withSupplier(bill.getPartnerId()).withProject(bill.getProjectId()),
+                VoucherLine.credit(summary, accountRules.accountId(AccountRole.NON_OPERATING_INCOME), null, amount));
+        return voucherService.createGenerated(d, VoucherSource.BAD_DEBT, bill.getBillNo(), lines);
+    }
+
+    /**
+     * 冲账单复核：生成红字应收 / 应付单（来源 OFFSET），到期日为冲账日期，收付款时与欠款冲抵
+     *
+     * @param amount    冲账金额（正数），单据金额为其负数
+     * @param accountId 凭证的对方科目，为空时取凭证科目设置中的应收冲账 / 应付冲账科目
+     */
+    @Transactional
+    public FinBill createOffsetBill(BillKind kind, Long partnerId, Long offsetId, String offsetNo, LocalDate date,
+                                    BigDecimal amount, Long accountId, String remark) {
+        checkKind(kind);
+        periodGuard.checkOpen(date, kind == BillKind.AR ? "fin.label.receivable" : "fin.label.payable");
+        FinBill bill = newBill(kind, partnerId, BillSource.OFFSET, offsetId, offsetNo, date, date, amount.negate(), BigDecimal.ZERO);
+        bill.setExpenseAccountId(accountId);
+        bill.setRemark(remark);
+        billMapper.insert(bill);
+        return bill;
     }
 
     // ---------------------------------------------------------------- 内部
@@ -297,18 +365,37 @@ public class FinBillService {
     private List<VoucherLine> lines(FinBill bill) {
         String partner = partnerName(bill.getKind(), bill.getPartnerId());
         List<VoucherLine> lines = new ArrayList<>();
+        if (bill.getSourceType() == BillSource.OFFSET) {
+            // 冲账单（红字）：应收冲账 借 费用类科目 / 贷 应收账款；应付冲账 借 应付账款 / 贷 收入或冲减成本类科目
+            String summary = "冲账 " + bill.getSourceNo() + " " + partner; // i18n-ignore
+            BigDecimal amount = bill.getAmount().negate();
+            boolean ar = bill.getKind() == BillKind.AR;
+            Long account = bill.getExpenseAccountId() != null ? bill.getExpenseAccountId()
+                    : accountRules.accountId(ar ? AccountRole.OFFSET_AR : AccountRole.OFFSET_AP);
+            if (ar) {
+                lines.add(VoucherLine.debit(summary, account, null, amount));
+                lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, amount)
+                        .withCustomer(bill.getPartnerId()));
+            } else {
+                lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.PAYABLE), null, amount)
+                        .withSupplier(bill.getPartnerId()));
+                lines.add(VoucherLine.credit(summary, account, null, amount));
+            }
+            return lines;
+        }
         BigDecimal sign = BigDecimal.valueOf(bill.getAmount().signum() < 0 ? -1 : 1);
         if (bill.getKind() == BillKind.AR) {
             String summary = (bill.getSourceType() == BillSource.PROJECT ? "项目开票 " : bill.getSourceType() == BillSource.TICKET ? "服务收费 " // i18n-ignore
-                    : bill.getSourceType() == BillSource.REBATE ? "销售返利 " : sign.signum() < 0 ? "销售退货 " : "销售出库 ") // i18n-ignore
+                    : bill.getSourceType() == BillSource.REBATE ? "销售返利 " : bill.getSourceType() == BillSource.ORDER_ADJUST ? "订单尾差调整 " // i18n-ignore
+                    : sign.signum() < 0 ? "销售退货 " : "销售出库 ") // i18n-ignore
                     + bill.getSourceNo() + " " + partner;
             BigDecimal net = bill.getAmount().subtract(bill.getTaxAmount());
             boolean project = bill.getSourceType() == BillSource.PROJECT;
             lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, bill.getAmount())
                     .withCustomer(bill.getPartnerId()).withProject(bill.getProjectId()));
-            if (isTradeDoc(bill)) {
-                // 销售出库 / 退货：主营业务收入按物料分类取科目
-                revenueByCategory(bill, net).forEach((category, amount) -> lines.add(
+            if (isTradeDoc(bill) || bill.getSourceType() == BillSource.ORDER_ADJUST) {
+                // 销售出库 / 退货、订单尾差调整：主营业务收入按物料分类取科目
+                byCategory(bill, net).forEach((category, amount) -> lines.add(
                         VoucherLine.credit(summary, accountRules.accountId(AccountRole.REVENUE, category), null, amount)));
             } else {
                 // 项目开票计入合同负债，按完工百分比确认收入时再转入主营业务收入（项目月结）
@@ -328,6 +415,16 @@ public class FinBillService {
             lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.PAYABLE), null, amount)
                     .withSupplier(bill.getPartnerId()));
             lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.NON_OPERATING_INCOME), null, amount));
+            return lines;
+        }
+        if (bill.getSourceType() == BillSource.ORDER_ADJUST) {
+            // 采购订单尾差调整：借 存货（按物料分类）、进项税额 / 贷 应付账款（红字时自动反向）
+            String summary = "订单尾差调整 " + bill.getSourceNo() + " " + partner; // i18n-ignore
+            byCategory(bill, bill.getAmount().subtract(bill.getTaxAmount())).forEach((category, amount) -> lines.add(
+                    VoucherLine.debit(summary, accountRules.accountId(AccountRole.INVENTORY, category), null, amount)));
+            lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INPUT_VAT), null, bill.getTaxAmount()));
+            lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.PAYABLE), null, bill.getAmount())
+                    .withSupplier(bill.getPartnerId()));
             return lines;
         }
         if (bill.getExpenseAccountId() != null) {
@@ -355,9 +452,10 @@ public class FinBillService {
         return bill.getSourceType() != null && bill.getSourceType().isTrade();
     }
 
-    /** 不含税收入按出库单各物料分类的金额比例分摊，尾差计入最后一类 */
-    private Map<String, BigDecimal> revenueByCategory(FinBill bill, BigDecimal net) {
-        List<Map<String, Object>> rows = billMapper.selectSourceByCategory(bill.getSourceId());
+    /** 不含税金额按来源单据（出入库单 / 订单尾差调整）各物料分类的金额比例分摊，尾差计入最后一类 */
+    private Map<String, BigDecimal> byCategory(FinBill bill, BigDecimal net) {
+        List<Map<String, Object>> rows = bill.getSourceType() == BillSource.ORDER_ADJUST
+                ? billMapper.selectOrderAdjustByCategory(bill.getSourceId()) : billMapper.selectSourceByCategory(bill.getSourceId());
         BigDecimal total = Decimals.sum(rows, r -> new BigDecimal(r.get("net").toString()));
         Map<String, BigDecimal> result = new LinkedHashMap<>();
         if (rows.isEmpty() || total.signum() == 0) {
@@ -391,6 +489,7 @@ public class FinBillService {
         bill.setSettledAmount(BigDecimal.ZERO);
         bill.setInvoicedAmount(BigDecimal.ZERO);
         bill.setBadDebtAmount(BigDecimal.ZERO);
+        bill.setDiscountAmount(BigDecimal.ZERO);
         bill.setCurrency(FinConstants.BASE_CURRENCY);
         bill.setExchangeRate(BigDecimal.ONE);
         bill.setAmountFc(amount);

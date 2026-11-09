@@ -14,5 +14,10 @@ public interface ScmTradeDocItemMapper extends BaseMapper<ScmTradeDocItem> {
 
     void insertBatch(@Param("list") List<ScmTradeDocItem> list);
 
+    /**
+     * 订单明细最近一张入库 / 出库单（按种类）对应的仓库单据：[{orderItemId, wmsDocId}]，关闭订单时把采购的尾差调整追加到该入库单的成本
+     */
+    List<java.util.Map<String, Object>> selectLastWmsDocs(@Param("orderItemIds") java.util.Collection<Long> orderItemIds, @Param("kind") TradeKind kind);
+
     BigDecimal sumQtyByDocNo(@Param("docNo") String docNo, @Param("kind") TradeKind kind, @Param("materialId") Long materialId);
 }

@@ -30,15 +30,22 @@
           AND frozen_qty &gt;= #{qty}
     </update>
 
+    <!-- 物料的当前均价（实时移动加权平均）：没有成本记录、或数量为 0 且没有单价时取参考成本价 -->
+    <sql id="avgCost">CASE WHEN mc.id IS NULL OR (mc.unit_cost = 0 AND mc.qty &lt;= 0) THEN m.ref_cost ELSE mc.unit_cost END</sql>
+
+    <!-- 供应商寄售仓的库存属于供应商，不计价 -->
     <sql id="stockSelect">
         SELECT s.id, s.warehouse_id, w.name AS warehouse_name, s.location_id, l.code AS location_code, l.name AS location_name,
                s.material_id, m.code AS material_code, m.name AS material_name, m.spec, m.unit,
-               m.batch_enabled, m.serial_enabled, s.batch_no, b.production_date, b.expiry_date, s.qty, s.frozen_qty
+               m.batch_enabled, m.serial_enabled, s.batch_no, b.production_date, b.expiry_date, s.qty, s.frozen_qty,
+               CASE WHEN w.type &lt;&gt; 'CONSIGN_IN' THEN <include refid="avgCost"/> END AS unit_cost,
+               CASE WHEN w.type &lt;&gt; 'CONSIGN_IN' THEN ROUND(s.qty * COALESCE(<include refid="avgCost"/>, 0), 2) END AS amount
         FROM wms_stock s
         JOIN wms_material m ON m.id = s.material_id
         JOIN wms_warehouse w ON w.id = s.warehouse_id
         LEFT JOIN wms_location l ON l.id = s.location_id
         LEFT JOIN wms_batch b ON b.material_id = s.material_id AND b.batch_no = s.batch_no
+        LEFT JOIN wms_material_cost mc ON mc.material_id = s.material_id
         <where>
             <if test="q.hideZero()">s.qty &lt;&gt; 0</if>
             <if test="q.warehouseId != null">AND s.warehouse_id = #{q.warehouseId}</if>
@@ -62,12 +69,16 @@
         ORDER BY l.code, m.code, s.batch_no
     </select>
 
-    <select id="selectSummary" resultType="com.lemon.erp.modules.wms.dto.StockSummaryView">
+    <sql id="summarySelect">
         SELECT m.id AS material_id, m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.category,
-               m.safety_stock, COALESCE(SUM(s.qty), 0) AS qty, COALESCE(SUM(s.frozen_qty), 0) AS frozen_qty
+               m.safety_stock, COALESCE(SUM(s.qty), 0) AS qty, COALESCE(SUM(s.frozen_qty), 0) AS frozen_qty,
+               <include refid="avgCost"/> AS unit_cost,
+               ROUND(COALESCE(SUM(CASE WHEN w.type &lt;&gt; 'CONSIGN_IN' THEN s.qty ELSE 0 END), 0) * COALESCE(<include refid="avgCost"/>, 0), 2) AS amount
         FROM wms_material m
         LEFT JOIN wms_stock s ON s.material_id = m.id
             <if test="q.warehouseId != null">AND s.warehouse_id = #{q.warehouseId}</if>
+        LEFT JOIN wms_warehouse w ON w.id = s.warehouse_id
+        LEFT JOIN wms_material_cost mc ON mc.material_id = m.id
         <where>
             <if test="q.materialId != null">m.id = #{q.materialId}</if>
             <if test="q.keyword != null and q.keyword != ''">
@@ -75,7 +86,7 @@
             </if>
             <if test="q.category != null and q.category != ''">AND m.category = #{q.category}</if>
         </where>
-        GROUP BY m.id, m.code, m.name, m.spec, m.unit, m.category, m.safety_stock
+        GROUP BY m.id, m.code, m.name, m.spec, m.unit, m.category, m.safety_stock, m.ref_cost, mc.id, mc.unit_cost, mc.qty
         <choose>
             <when test="q.lowStock != null and q.lowStock">
                 HAVING m.safety_stock IS NOT NULL AND COALESCE(SUM(s.qty), 0) &lt; m.safety_stock
@@ -84,7 +95,22 @@
                 HAVING COALESCE(SUM(s.qty), 0) &lt;&gt; 0
             </when>
         </choose>
+    </sql>
+
+    <select id="selectSummary" resultType="com.lemon.erp.modules.wms.dto.StockSummaryView">
+        <include refid="summarySelect"/>
         ORDER BY m.code
+    </select>
+
+    <!-- 库存查询的合计（全部页）：库存明细、按物料汇总分别按各自的条件 -->
+    <select id="selectTotal" resultType="java.util.Map">
+        SELECT COALESCE(SUM(x.qty), 0) AS "qty", COALESCE(SUM(x.amount), 0) AS "amount"
+        FROM (
+        <choose>
+            <when test="summary"><include refid="summarySelect"/></when>
+            <otherwise><include refid="stockSelect"/></otherwise>
+        </choose>
+        ) x
     </select>
 
     <select id="selectQtyByMaterial" resultType="java.util.Map">

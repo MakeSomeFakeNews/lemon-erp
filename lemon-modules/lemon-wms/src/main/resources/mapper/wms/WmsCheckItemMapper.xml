@@ -3,7 +3,7 @@
 <mapper namespace="com.lemon.erp.modules.wms.mapper.WmsCheckItemMapper">
 
     <select id="selectByCheckId" resultType="com.lemon.erp.modules.wms.entity.WmsCheckItem">
-        SELECT i.id, i.check_id, i.material_id, i.location_id, i.batch_no, i.book_qty, i.actual_qty, i.serial_nos, i.remark,
+        SELECT i.id, i.check_id, i.material_id, i.location_id, i.batch_no, i.book_qty, i.actual_qty, i.serial_nos, i.remark, i.cost_price,
                m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.batch_enabled, m.serial_enabled,
                l.code AS location_code
         FROM wms_check_item i
@@ -14,11 +14,11 @@
     </select>
 
     <insert id="insertBatch">
-        INSERT INTO wms_check_item (check_id, material_id, location_id, batch_no, book_qty, actual_qty, serial_nos, remark,
+        INSERT INTO wms_check_item (check_id, material_id, location_id, batch_no, book_qty, actual_qty, serial_nos, remark, cost_price,
                                     create_time, update_time) VALUES
         <foreach collection="list" item="i" separator=",">
             (#{i.checkId}, #{i.materialId}, #{i.locationId}, #{i.batchNo}, #{i.bookQty}, #{i.actualQty}, #{i.serialNos},
-             #{i.remark}, NOW(), NOW())
+             #{i.remark}, #{i.costPrice}, NOW(), NOW())
         </foreach>
     </insert>
 

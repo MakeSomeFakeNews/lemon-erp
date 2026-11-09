@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsMaterialCostMapper">
+
+    <select id="selectForUpdate" resultType="com.lemon.erp.modules.wms.entity.WmsMaterialCost">
+        SELECT id, material_id, qty, amount, unit_cost
+        FROM wms_material_cost
+        WHERE material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY material_id
+        FOR UPDATE
+    </select>
+
+    <select id="selectValuedQty" resultType="java.util.Map">
+        SELECT s.material_id AS "materialId", SUM(s.qty) AS "qty"
+        FROM wms_stock s
+        JOIN wms_warehouse w ON w.id = s.warehouse_id
+        WHERE s.material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND w.type &lt;&gt; 'CONSIGN_IN'
+        GROUP BY s.material_id
+    </select>
+
+    <update id="updateCost">
+        UPDATE wms_material_cost SET qty = #{qty}, amount = #{amount}, unit_cost = #{unitCost}, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

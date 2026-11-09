@@ -327,7 +327,7 @@ export default {
     name: 'Customer Name',
     stage: 'Customer Stage',
     contactPhone: 'Contact Phone',
-    regionPh: 'e.g. Shanghai',
+    regionPh: 'Select a region (dictionary "Customer Region")',
     assignTitle: 'Assign Customers',
     assignTo: 'Assign {n} selected customer(s) to:',
     assignPh: 'Leave empty to return to the public pool',

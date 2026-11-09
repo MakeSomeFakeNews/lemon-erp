@@ -297,6 +297,7 @@ const stockInImportColumns = [
   { title: t('fin.opening.materialName'), key: 'materialName' },
   { title: t('fin.opening.batchNo'), key: 'batchNo' },
   { title: t('common.field.quantity'), key: 'qty', type: 'number', required: true },
+  { title: t('fin.opening.costPrice'), key: 'costPrice', type: 'number' },
   { title: t('fin.opening.serialNos'), key: 'serialNos' },
   { title: t('fin.opening.productionDate'), key: 'productionDate', type: 'date' },
   { title: t('fin.opening.expiryDate'), key: 'expiryDate', type: 'date' }

@@ -33,6 +33,17 @@ public class WmsCheckItem extends BaseEntity {
 
     private String remark;
 
+    /** 盘盈的成本单价，为空按确认时的当前均价；盘亏按当前均价，忽略此值 */
+    private BigDecimal costPrice;
+
+    /** 物料的当前均价（盘盈成本价的默认值），草稿 / 审批中返回 */
+    @TableField(exist = false)
+    private BigDecimal avgCost;
+
+    /** 差异金额（实际计价的成本金额，盘盈为正、盘亏为负），已完成时返回 */
+    @TableField(exist = false)
+    private BigDecimal diffAmount;
+
     @TableField(exist = false)
     private String materialCode;
 

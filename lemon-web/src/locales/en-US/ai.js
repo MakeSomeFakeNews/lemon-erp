@@ -280,6 +280,7 @@ export default {
       deliveryDate: 'Delivery date',
       warehouse: 'Warehouse',
       currency: 'Currency',
+      wholeDiscount: 'Order discount',
       totalAmount: 'Total amount',
       remark: 'Remark',
       items: 'Lines',

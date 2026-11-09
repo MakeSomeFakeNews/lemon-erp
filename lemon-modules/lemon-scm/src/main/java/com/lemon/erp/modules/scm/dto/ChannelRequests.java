@@ -60,6 +60,8 @@ public final class ChannelRequests {
             @NotNull(message = "{scm.valid.quantityRequired}") @DecimalMin(value = "0", inclusive = false, message = "{scm.valid.quantityMustGreater}")
             @Digits(integer = 14, fraction = 4, message = "{scm.valid.quantityAllowsMostDecimalPlaces}") BigDecimal qty,
             @DecimalMin(value = "0", message = "{scm.valid.unitPriceCannotLess}") @Digits(integer = 14, fraction = 4, message = "{scm.valid.unitPriceAllowsMostDecimalPlaces}") BigDecimal price,
-            @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}") String remark) {
+            @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}") String remark,
+            @DecimalMin(value = "0", message = "{scm.valid.wholeDiscountCannotNegative}")
+            @Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") BigDecimal wholeDiscount) {
     }
 }

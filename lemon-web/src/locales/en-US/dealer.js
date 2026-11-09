@@ -20,6 +20,7 @@ export default {
     expected: 'Expected Delivery',
     promoDiscount: 'Promotion Discount',
     rebateDeduct: 'Rebate Deduction',
+    wholeDiscount: 'Order Discount',
     gift: 'Gift',
     orderNo: 'Order No.',
     material: 'Material',

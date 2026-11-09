@@ -341,41 +341,51 @@ public class WmsMaterialService {
     }
 
     /**
-     * 批量保存商品价格：每行物料 ID + 各价格列（为空表示清空），只更新启用的价格列
+     * 批量保存商品价格。每行为 物料 id + 要修改的价格列（字段名见 {@link PriceLevels#FIELDS}）：
+     * <b>只更新行中出现的字段</b>，没有出现的价格列保持不变；要清空某列须显式传 null（或空字符串）。
+     * 停用的价格列和其他字段忽略
      *
-     * @return 更新的物料数
+     * @return 价格有变化的物料数
      */
     @Transactional
-    public int savePrices(List<WmsMaterial> rows) {
+    public int savePrices(List<Map<String, Object>> rows) {
         if (rows.isEmpty()) {
             return 0;
         }
         java.util.Set<Integer> enabledLevels = priceLevelService.enabledLevels();
-        Map<Long, WmsMaterial> exists = mapByIds(rows.stream().map(WmsMaterial::getId).filter(Objects::nonNull).toList());
-        int count = 0;
-        for (WmsMaterial row : rows) {
-            WmsMaterial old = exists.get(row.getId());
-            if (old == null) {
-                throw new BizException("wms.error.materialNotFound2", row.getId());
+        List<Long> ids = new java.util.ArrayList<>(rows.size());
+        for (int i = 0; i < rows.size(); i++) {
+            Long id = rows.get(i) == null ? null : rowId(rows.get(i).get("id"));
+            if (id == null) {
+                throw new BizException("wms.error.priceRowIdRequired", i + 1);
             }
-            var update = Wrappers.<WmsMaterial>lambdaUpdate().eq(WmsMaterial::getId, row.getId())
+            ids.add(id);
+        }
+        Map<Long, WmsMaterial> exists = mapByIds(ids);
+        int count = 0;
+        for (int i = 0; i < rows.size(); i++) {
+            Map<String, Object> row = rows.get(i);
+            WmsMaterial old = exists.get(ids.get(i));
+            if (old == null) {
+                throw new BizException("wms.error.materialNotFound2", ids.get(i));
+            }
+            var update = Wrappers.<WmsMaterial>lambdaUpdate().eq(WmsMaterial::getId, old.getId())
                     .set(WmsMaterial::getUpdateTime, java.time.LocalDateTime.now());
             boolean changed = false;
             for (int level = PriceLevels.RETAIL; level <= PriceLevels.MAX; level++) {
-                if (!enabledLevels.contains(level)) {
+                String field = PriceLevels.FIELDS.get(level);
+                if (!enabledLevels.contains(level) || !row.containsKey(field)) {
                     continue;
                 }
-                BigDecimal price = PriceLevels.price(row, level);
-                if (price != null && price.signum() < 0) {
-                    throw new BizException("wms.error.priceNegative", old.getCode());
-                }
-                price = price == null ? null : price.setScale(4, java.math.RoundingMode.HALF_UP);
+                BigDecimal price = priceValue(row.get(field), old.getCode());
                 BigDecimal before = PriceLevels.price(old, level);
                 if (before == null ? price == null : price != null && before.compareTo(price) == 0) {
                     continue;
                 }
                 changed = true;
                 update.set(PRICE_COLUMNS.get(level), price);
+                // 同一请求中同一物料出现多次时按最后一次
+                PriceLevels.setPrice(old, level, price);
             }
             if (changed) {
                 materialMapper.update(update);
@@ -383,6 +393,33 @@ public class WmsMaterialService {
             }
         }
         return count;
+    }
+
+    private static Long rowId(Object v) {
+        if (v instanceof Number n) {
+            return n.longValue();
+        }
+        if (v instanceof String s && s.matches("\\d{1,18}")) {
+            return Long.valueOf(s);
+        }
+        return null;
+    }
+
+    /** 价格字段的值：null / 空字符串为清空，数字或数字字符串，不能小于 0，保留 4 位小数 */
+    private static BigDecimal priceValue(Object v, String materialCode) {
+        if (v == null || v instanceof String s && s.isBlank()) {
+            return null;
+        }
+        BigDecimal price;
+        try {
+            price = new BigDecimal(v.toString().trim());
+        } catch (NumberFormatException e) {
+            throw new BizException("wms.error.priceInvalid", materialCode, v);
+        }
+        if (price.signum() < 0) {
+            throw new BizException("wms.error.priceNegative", materialCode);
+        }
+        return price.setScale(4, java.math.RoundingMode.HALF_UP);
     }
 
     /** 价格列 → 物料字段 */

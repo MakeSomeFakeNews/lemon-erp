@@ -16,6 +16,7 @@ import java.time.LocalDate;
  * @param location     库位编码，不填为未指定库位
  * @param materialCode 物料编码
  * @param serialNos    序列号，逗号或换行分隔
+ * @param costPrice    成本单价（不含税），不填按物料的参考成本价（实时库存成本的期初）
  */
 public record OpeningStockRow(
         @NotBlank(message = "{wms.valid.enterWarehouse}") String warehouse,
@@ -27,5 +28,12 @@ public record OpeningStockRow(
         @Digits(integer = 14, fraction = 4, message = "{wms.valid.quantityAllowsMostDecimalPlaces}") BigDecimal qty,
         String serialNos,
         LocalDate productionDate,
-        LocalDate expiryDate) {
+        LocalDate expiryDate,
+        @DecimalMin(value = "0", message = "{wms.valid.costPriceCannotNegative}")
+        @Digits(integer = 12, fraction = 6, message = "{wms.valid.costPriceAllowsMostDecimalPlaces}") BigDecimal costPrice) {
+
+    public OpeningStockRow(String warehouse, String location, String materialCode, String batchNo, BigDecimal qty, String serialNos,
+                           LocalDate productionDate, LocalDate expiryDate) {
+        this(warehouse, location, materialCode, batchNo, qty, serialNos, productionDate, expiryDate, null);
+    }
 }

@@ -17,6 +17,10 @@
         <a-form-item :label="$t('scm.orderChange.reason')" required>
           <a-textarea v-model:value="reason" :rows="2" :maxlength="255" show-count :placeholder="$t('scm.orderChange.reasonPlaceholder')" />
         </a-form-item>
+        <a-form-item :label="$t('scm.orderChange.wholeDiscount')" :extra="$t('scm.orderChange.wholeDiscountHint')">
+          <a-input-number v-model:value="wholeDiscount" :min="0" :precision="2" :prefix="symbol" class="discount-input" />
+          <span v-if="Number(order.wholeDiscount)" class="sub-text discount-orig">{{ $t('scm.orderChange.orig', { value: symbol + formatMoney(order.wholeDiscount) }) }}</span>
+        </a-form-item>
       </a-form>
 
       <div class="items-head">
@@ -55,7 +59,7 @@
           </template>
           <template v-else-if="column.key === 'price'">
             <a-input-number v-model:value="record.newPrice" :min="0" :precision="4" :prefix="symbol" :disabled="record.remove" class="full" />
-            <div class="sub-text">{{ $t('scm.orderChange.origPrice', { price: symbol + formatMoney(record.price), rate: Number(record.taxRate) }) }}</div>
+            <div class="sub-text">{{ $t('scm.orderChange.origPrice', { price: symbol + formatMoney(record.grossPrice), rate: Number(record.taxRate) }) }}</div>
           </template>
           <template v-else-if="column.key === 'deliveryDate'">
             <a-date-picker v-model:value="record.newDeliveryDate" value-format="YYYY-MM-DD" :placeholder="$t('scm.orderForm.sameAsOrder')" :disabled="record.remove" class="full" />
@@ -155,15 +159,16 @@ const { t } = useI18n()
 const conf = computed(() => ORDER_KINDS[props.kind])
 const symbol = computed(() => currencySymbol(props.order?.currency))
 
-const lineColumns = [
+/** 有整单优惠时单价、金额为优惠前的 */
+const lineColumns = computed(() => [
   { title: t('scm.order.material'), key: 'material', width: 220 },
   { title: t('scm.orderChange.done'), key: 'done', width: 110, align: 'right' },
   { title: t('scm.orderChange.newQty'), key: 'qty', width: 180 },
-  { title: t('scm.orderChange.newPrice'), key: 'price', width: 170 },
+  { title: t(discounted.value ? 'scm.orderChange.newGrossPrice' : 'scm.orderChange.newPrice'), key: 'price', width: 170 },
   { title: t('scm.orderChange.newDeliveryDate'), key: 'deliveryDate', width: 150 },
-  { title: t('scm.order.totalAmount'), key: 'amount', width: 130, align: 'right' },
+  { title: t(discounted.value ? 'scm.orderChange.grossAmount' : 'scm.order.totalAmount'), key: 'amount', width: 130, align: 'right' },
   { title: '', key: 'action', width: 90 }
-]
+])
 const addColumns = [
   { title: t('scm.order.material'), key: 'material', width: 290 },
   { title: t('common.field.quantity'), key: 'qty', width: 150 },
@@ -176,6 +181,7 @@ const addColumns = [
 const addScrollX = addColumns.reduce((sum, c) => sum + c.width, 0)
 
 const reason = ref('')
+const wholeDiscount = ref(0)
 const lines = ref([])
 const adds = ref([])
 const saving = ref(false)
@@ -185,18 +191,27 @@ watch(
   (o) => {
     if (!o) return
     reason.value = ''
+    wholeDiscount.value = Number(o.wholeDiscount) || 0
     adds.value = []
     lines.value = o.items.map((i) => ({
       ...i,
       key: `item-${i.id}`,
+      grossPrice: grossPrice(i),
       newQty: Number(i.qty),
-      newPrice: Number(i.price),
+      newPrice: grossPrice(i),
       newDeliveryDate: i.deliveryDate || undefined,
       remove: false
     }))
   },
   { immediate: true }
 )
+
+/** 优惠前单价：行金额加回分摊的整单优惠后除以数量（与后端 OrderLineAmounts.grossPrice 一致），没有分摊时即单价 */
+function grossPrice(i) {
+  const share = Number(i.discountShare) || 0
+  if (!share || !Number(i.qty)) return Number(i.price)
+  return Math.round(((Number(i.amount) + share) / Number(i.qty)) * 10000) / 10000
+}
 
 /** 数量下限：已完成 − 退货补发 */
 const minQty = (i) => Math.max(qty4(Number(i.doneQty || 0) - Number(i.replenishQty || 0)), 0)
@@ -207,17 +222,36 @@ function lineAction(i) {
   if (i.remove) return OrderChangeAction.REMOVE
   if (
     Number(i.newQty) !== Number(i.qty) ||
-    Number(i.newPrice) !== Number(i.price) ||
+    Number(i.newPrice) !== Number(i.grossPrice) ||
     (i.newDeliveryDate || null) !== (i.deliveryDate || null)
   ) return OrderChangeAction.MODIFY
   return null
 }
 const changedCount = computed(() => lines.value.filter(lineAction).length)
 
+const discountChanged = computed(() => Math.round((Number(wholeDiscount.value) || 0) * 100) !== Math.round((Number(props.order?.wholeDiscount) || 0) * 100))
+const discounted = computed(() => !!(Number(wholeDiscount.value) || Number(props.order?.wholeDiscount) || lines.value.some((i) => Number(i.discountShare))))
+
+/**
+ * 变更后的合计（试算，以保存结果为准）：已出入库部分（金额 + 已分摊的优惠）不变，未出入库部分 = 未出数量 × 新单价，
+ * 有整单优惠时减去优惠；没有影响金额的变更时各行不变
+ */
 const newTotal = computed(() => {
-  const kept = lines.value.filter((i) => !i.remove).reduce((s, i) => s + lineAmount(i.newQty, i.newPrice), 0)
+  const affecting = discountChanged.value || adds.value.length || lines.value.some((i) => i.remove ||
+    Number(i.newQty) !== Number(i.qty) || Number(i.newPrice) !== Number(i.grossPrice))
+  const kept = lines.value.filter((i) => !i.remove)
+  if (!affecting) return Math.round(kept.reduce((s, i) => s + Number(i.amount), 0) * 100) / 100
+  const changed = (i) => Number(i.newQty) !== Number(i.qty) || Number(i.newPrice) !== Number(i.grossPrice)
+  const value = kept.reduce((s, i) => {
+    if (!discounted.value && !changed(i)) return s + Number(i.amount)
+    const shipped = Math.max(Number(i.doneQty || 0) - Number(i.replenishQty || 0), 0)
+    const open = Math.max(qty4(Number(i.newQty) - shipped), 0)
+    const consumed = open === 0 && !changed(i) ? Number(i.discountShare || 0) : Number(i.doneShare || 0)
+    return s + (open === 0 && !changed(i) ? Number(i.amount) + consumed : Number(i.doneAmount || 0) + consumed + lineAmount(open, i.newPrice))
+  }, 0)
   const added = adds.value.reduce((s, i) => s + lineAmount(i.qty, i.price), 0)
-  return Math.round((kept + added) * 100) / 100
+  const off = discounted.value ? Number(wholeDiscount.value) || 0 : 0
+  return Math.round((value + added - off) * 100) / 100
 })
 
 function addRow() {
@@ -271,7 +305,7 @@ async function submit() {
       deliveryDate: a.deliveryDate || null
     })
   }
-  if (!changed.length) {
+  if (!changed.length && !discountChanged.value) {
     message.warning(t('scm.orderChange.noChange'))
     return
   }
@@ -281,7 +315,11 @@ async function submit() {
   }
   saving.value = true
   try {
-    const id = await changeOrder(props.kind, props.order.id, { reason: reason.value.trim(), lines: changed })
+    const id = await changeOrder(props.kind, props.order.id, {
+      reason: reason.value.trim(),
+      lines: changed,
+      wholeDiscount: discountChanged.value ? Number(wholeDiscount.value) || 0 : null
+    })
     const list = await orderChanges(props.kind, props.order.id).catch(() => [])
     const saved = list.find((c) => c.id === id)
     message.success(saved?.status === OrderChangeStatus.APPROVING ? t('scm.orderChange.submittedApproval') : t('scm.orderChange.effective'))
@@ -316,6 +354,12 @@ async function submit() {
 }
 .full {
   width: 100%;
+}
+.discount-input {
+  width: 200px;
+}
+.discount-orig {
+  margin-left: 8px;
 }
 .amount {
   line-height: 32px;

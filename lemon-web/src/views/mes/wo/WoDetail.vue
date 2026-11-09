@@ -30,6 +30,9 @@
           <a-descriptions-item :label="$t('mes.wo.preparedBy')">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.releaseTime" :label="$t('mes.wo.releaseTime')">{{ detail.releaseTime }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.finishTime" :label="$t('mes.wo.finishTime')">{{ detail.finishTime }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.status === WorkOrderStatus.CLOSED && detail.closeCost != null" :label="$t('mes.wo.closeCostLabel')">
+            {{ $t('mes.wo.closeCostValue', { total: money(detail.closeCost), toStock: money(detail.closeStockCost) }) }}
+          </a-descriptions-item>
           <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
         <a-tabs size="small">
@@ -76,10 +79,11 @@ import AttachmentPanel from '@/components/AttachmentPanel.vue'
 import SupplementForm from '@/components/mes/SupplementForm.vue'
 import WoDocForm from '@/components/mes/WoDocForm.vue'
 import { scheduleWo } from '@/api/mes/capacity'
-import { closeWo, getWo, pageReport, pageWoDoc } from '@/api/mes/wo'
+import { closeWo, getWo, getWoCloseCost, pageReport, pageWoDoc } from '@/api/mes/wo'
 import { useAction } from '@/composables/useAction'
 import { useUserStore } from '@/store/user'
 import { formatQty } from '@/components/wms/wms'
+import { money } from '@/utils/number'
 import { materialColumns as printMaterialColumns, printDocs } from '@/utils/print'
 import { printLabel } from '@/utils/printTemplates'
 import WoDocsTab from './WoDocsTab.vue'
@@ -216,7 +220,7 @@ const actions = computed(() => {
         key: 'close',
         label: t('common.action.close'),
         danger: true,
-        run: () => close(d)
+        run: () => confirmClose(d)
       })
     if (can('issue')) {
       list.push({ key: 'return', label: t('mes.woDocForm.kind.return'), run: () => openDoc('return') })
@@ -239,10 +243,24 @@ const schedule = useAction((d) => scheduleWo(d.id), {
 })
 
 const close = useAction((d) => closeWo(d.id), {
-  confirm: { title: t('mes.wo.closeConfirm'), content: t('mes.wo.closeContent') },
+  confirm: (d, content) => ({ title: t('mes.wo.closeConfirm'), content }),
   successKey: 'mes.wo.closed',
   reload: () => refreshDetail()
 })
+
+/** 关闭前先取尚未转入产品的实时成本，在确认框中说明去向（追加到已完工产品 / 在制品损失） */
+async function confirmClose(d) {
+  const c = await getWoCloseCost(d.id)
+  const amounts = { total: money(c.total), toStock: money(c.toStock), toExpense: money(c.toExpense) }
+  let costText
+  if (c.standard) costText = t('mes.wo.closeCostStandard')
+  else if (Number(c.finishedQty) > 0) {
+    if (!c.costVisible) costText = t('mes.wo.closeCostFinishedHidden')
+    else costText = Number(c.toExpense) ? t('mes.wo.closeCostFinished', amounts) : t('mes.wo.closeCostFinishedAll', amounts)
+  }
+  else costText = c.costVisible ? t('mes.wo.closeCostWip', amounts) : t('mes.wo.closeCostWipHidden')
+  return close(d, t('mes.wo.closeContent') + costText)
+}
 
 function onSplit(id) {
   refreshDetail()

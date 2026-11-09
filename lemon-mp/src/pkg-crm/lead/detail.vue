@@ -17,7 +17,7 @@
       <l-cell :label="t('crm.lead.email')" :value="lead.email" />
       <l-cell :label="t('crm.lead.source')" :value="dictText(dict.crm_source, lead.source)" />
       <l-cell :label="t('crm.lead.industry')" :value="dictText(dict.crm_industry, lead.industry)" />
-      <l-cell :label="t('crm.lead.region')" :value="lead.region" />
+      <l-cell :label="t('crm.lead.region')" :value="dictText(dict.scm_region, lead.region)" />
       <l-cell :label="t('crm.lead.owner')" :value="lead.ownerName" />
       <l-cell v-if="lead.campaignName" :label="t('crm.lead.campaign')" :value="lead.campaignName" />
       <l-cell :label="t('crm.lead.requirement')" :value="lead.requirement" />
@@ -69,7 +69,7 @@ import FollowupPhotos from '../components/FollowupPhotos.vue'
 
 const { t } = useI18n()
 useTitle('crm.lead.detailTitle')
-const dict = useDict('crm_lead_status', 'crm_source', 'crm_industry', 'crm_follow_method')
+const dict = useDict('crm_lead_status', 'crm_source', 'crm_industry', 'crm_follow_method', 'scm_region')
 const id = ref(null)
 const lead = ref(null)
 const followups = ref([])

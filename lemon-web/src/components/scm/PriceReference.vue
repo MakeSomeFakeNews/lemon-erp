@@ -37,6 +37,7 @@
         </a-tab-pane>
       </a-tabs>
       <div class="sub-text">{{ $t('pricing.reference.note') }}</div>
+      <div v-if="COMPARE_KEYS.includes(activeTab)" class="sub-text">{{ $t('pricing.reference.compareScope') }}</div>
     </a-spin>
   </a-modal>
 </template>
@@ -51,10 +52,12 @@ import { OrderKind } from '@/constants/enums'
 /**
  * 价格参考弹窗：报价历史、销售历史、进货历史（日期 单号 单位编号 单位名称 数量 单价 金额 备注）、进货数量（按供应商汇总）、
  * 供商对比、客户对比（价格记忆）。没有权限的分区后端不返回，不显示对应标签页。价格均为含税、基本单位、本位币。
+ * 报价、出入库历史按数据权限；供商 / 客户对比有「全部数据」权限时取价格记忆，否则只按有权查看的出入库单统计（只列出这些单据的往来单位）。
  * 用法：ref.open({ materialId, materialName, partnerId, kind })，kind 为 SALES / PURCHASE（决定默认打开的标签页）；
  * 传了 partnerId 时默认只看该往来单位。监听 @pick(price) 时单价可点击，选中后关闭弹窗
  */
 const emit = defineEmits(['pick'])
+const COMPARE_KEYS = ['customerCompare', 'supplierCompare']
 defineProps({
   /** 单价是否可点击选用（父组件监听了 pick 时传 true） */
   pickable: Boolean

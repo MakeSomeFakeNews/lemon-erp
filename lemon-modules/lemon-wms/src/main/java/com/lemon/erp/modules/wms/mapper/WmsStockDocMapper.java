@@ -12,5 +12,8 @@ public interface WmsStockDocMapper extends BaseMapper<WmsStockDoc> {
     /** 分页查询某种单据，带仓库、制单人、确认人名称 */
     IPage<WmsStockDoc> selectPageList(IPage<WmsStockDoc> page, @Param("kind") StockBizType kind, @Param("q") DocQuery query);
 
+    /** 各单据明细的仓库（warehouseId 为空表示表头仓库）：[{docId, warehouseId, warehouseName}] */
+    java.util.List<java.util.Map<String, Object>> selectItemWarehouses(@Param("docIds") java.util.Collection<Long> docIds);
+
     WmsStockDoc selectDetail(@Param("id") Long id);
 }

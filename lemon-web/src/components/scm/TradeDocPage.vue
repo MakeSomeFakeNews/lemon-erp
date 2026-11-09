@@ -51,12 +51,18 @@
             <a-tag v-if="record.orderSource === OrderSource.DIRECT" color="blue" :bordered="false">{{ $t('scm.trade.direct') }}</a-tag>
             <span v-else>{{ record.orderNo }}</span>
           </template>
+          <template v-else-if="column.key === 'warehouse'">
+            <WarehouseNames :name="record.warehouseName" :names="record.warehouseNames" />
+          </template>
           <template v-else-if="column.key === 'partner'">
             <div>{{ record.partnerName }}</div>
             <div class="sub-text">{{ record.partnerCode }}</div>
           </template>
           <template v-else-if="column.key === 'totalQty'">{{ formatQty(record.totalQty) }}</template>
-          <template v-else-if="column.key === 'totalAmount'">¥{{ formatMoney(record.totalAmount) }}</template>
+          <template v-else-if="column.key === 'totalAmount'">
+            ¥{{ formatMoney(record.totalAmount) }}
+            <div v-if="Number(record.wholeDiscount)" class="sub-text">{{ $t('scm.wholeDiscount.value', { amount: '¥' + formatMoney(record.wholeDiscount) }) }}</div>
+          </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">
@@ -83,6 +89,7 @@ import { CarOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
+import WarehouseNames from '@/components/wms/WarehouseNames.vue'
 import PartnerSelect from './PartnerSelect.vue'
 import TradeDocDetail from './TradeDocDetail.vue'
 import TradeDocForm from './TradeDocForm.vue'
@@ -111,7 +118,7 @@ const columns = [
   { title: t('scm.trade.docNo'), key: 'docNo', width: 170 },
   { title: t('scm.trade.orderNo'), key: 'orderNo', width: 170 },
   { title: orderConf.partnerLabel, key: 'partner', width: 200 },
-  { title: t('scm.trade.warehouse'), dataIndex: 'warehouseName', width: 130 },
+  { title: t('scm.trade.warehouse'), key: 'warehouse', width: 130 },
   { title: t('scm.trade.bizDate'), dataIndex: 'bizDate', width: 120 },
   { title: t('common.field.quantity'), key: 'totalQty', width: 100, align: 'right' },
   { title: t('scm.trade.totalAmount'), key: 'totalAmount', width: 140, align: 'right' },

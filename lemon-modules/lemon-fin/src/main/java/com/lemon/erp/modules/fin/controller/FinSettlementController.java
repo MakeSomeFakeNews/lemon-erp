@@ -18,9 +18,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
+import com.lemon.erp.modules.fin.dto.SettlementDiscountRow;
 import com.lemon.erp.modules.fin.dto.SettlementRequest;
+import org.springframework.format.annotation.DateTimeFormat;
 import com.lemon.erp.modules.fin.entity.FinSettlement;
 import com.lemon.erp.modules.fin.service.FinSettlementService;
 
@@ -40,8 +43,23 @@ public class FinSettlementController {
                                              @RequestParam(defaultValue = "1") long current,
                                              @RequestParam(defaultValue = "10") long size,
                                              @RequestParam(required = false) Long partnerId,
-                                             @RequestParam(required = false) String keyword) {
-        return R.ok(settlementService.page(current, size, settleKind(kind), partnerId, keyword));
+                                             @RequestParam(required = false) String keyword,
+                                             @RequestParam(defaultValue = "false") boolean discountOnly) {
+        return R.ok(settlementService.page(current, size, settleKind(kind), partnerId, keyword, discountOnly));
+    }
+
+    /** 折让记录：日期、单号、往来单位、原单据、折让金额、经办人 */
+    @GetMapping("/discounts")
+    @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':list')")
+    public R<PageResult<SettlementDiscountRow>> discounts(@PathVariable String kind,
+                                                          @RequestParam(defaultValue = "1") long current,
+                                                          @RequestParam(defaultValue = "10") long size,
+                                                          @RequestParam(required = false) Long partnerId,
+                                                          @RequestParam(required = false) String keyword,
+                                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate beginDate,
+                                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return R.ok(settlementService.discounts(current, size,
+                new SettlementDiscountRow.Query(settleKind(kind), partnerId, keyword, beginDate, endDate)));
     }
 
     @GetMapping("/{id}")
