@@ -15,6 +15,7 @@
         <where>
             <if test="keyword != null and keyword != ''">r.req_no LIKE CONCAT('%', #{keyword}, '%')</if>
             <if test="status != null">AND r.status = #{status}</if>
+            <if test="processorId != null">AND (r.status &lt;&gt; 'DRAFT' OR r.create_by = #{processorId})</if>
         </where>
         ORDER BY r.id DESC
     </select>

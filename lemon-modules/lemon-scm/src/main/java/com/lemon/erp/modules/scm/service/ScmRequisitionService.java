@@ -6,8 +6,8 @@ import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.LoginUser;
+import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
-import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.framework.security.datascope.DataPermissionRule;
 import com.lemon.erp.framework.security.datascope.DataScopes;
 import com.lemon.erp.framework.workflow.ApprovalFlow;
@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 请购：部门提出采购需求，审批（发布了「请购」审批流程时）后由采购按建议供应商（为空取默认供应商）合并生成采购订单
@@ -50,6 +51,7 @@ public class ScmRequisitionService {
     public static final String PROCESS_KEY = "scm_requisition";
     private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "scm_requisition:");
     private static final DataPermissionRule RULE = new DataPermissionRule("scm_requisition", "dept_id", "create_by");
+    private static final String ORDER_PERM = "scm:requisition:order";
 
     private final ScmRequisitionMapper requisitionMapper;
     private final ScmRequisitionItemMapper itemMapper;
@@ -58,12 +60,25 @@ public class ScmRequisitionService {
     private final WmsMaterialService materialService;
     private final DocNoService docNoService;
     private final ApprovalSupport approvalSupport;
+    private final PermissionService permissionService;
 
-    @DataPermission(table = "scm_requisition", deptColumn = "dept_id", userColumn = "create_by")
+    /**
+     * 请购单列表：按数据权限；能生成采购订单的人（采购员）处理各部门提交的请购，还能看到所有已提交（非草稿）的请购单，
+     * 其他人的草稿仍按数据权限
+     */
     public PageResult<ScmRequisition> page(long current, long size, String keyword, RequisitionStatus status) {
         Page<ScmRequisition> page = Page.of(current, size);
-        requisitionMapper.selectPageList(page, keyword, status);
+        if (canProcess()) {
+            requisitionMapper.selectPageList(page, keyword, status, SecurityUtils.getUserId());
+        } else {
+            DataScopes.load(RULE, () -> requisitionMapper.selectPageList(page, keyword, status, null));
+        }
         return PageResult.of(page);
+    }
+
+    /** 能处理（生成采购订单）各部门提交的请购单 */
+    private boolean canProcess() {
+        return permissionService.hasPerm(ORDER_PERM);
     }
 
     public ScmRequisition detail(Long id) {
@@ -226,7 +241,14 @@ public class ScmRequisitionService {
         return r;
     }
 
+    /** 按数据权限读取；能处理请购的人还可以读取已提交（非草稿）的请购单和自己的草稿 */
     private ScmRequisition getAccessible(Long id) {
+        if (canProcess()) {
+            ScmRequisition r = requisitionMapper.selectById(id);
+            if (r != null && (r.getStatus() != RequisitionStatus.DRAFT || Objects.equals(r.getCreateBy(), SecurityUtils.getUserId()))) {
+                return r;
+            }
+        }
         return DataScopes.require(RULE, () -> requisitionMapper.selectById(id), "scm.error.requisitionDoesNotExistAccessDenied");
     }
 }
