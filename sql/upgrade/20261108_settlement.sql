@@ -175,7 +175,7 @@ BEGIN
     END IF;
 END //
 DELIMITER ;
-CALL lemon_add_column('fin_advance_apply', 'bill_amount', 'bill_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT ''单据一方的本位币核销金额（计入单据的已核销）'' AFTER amount_fc');
+CALL lemon_add_column('fin_advance_apply', 'bill_amount', 'bill_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT ''单据一方的本位币核销金额（计入单据的已核销，外币单据可能与预收预付一方的冲抵金额不同）'' AFTER amount_fc');
 DROP PROCEDURE IF EXISTS lemon_add_column;
 
 UPDATE fin_advance_apply p JOIN fin_bill b ON b.id = p.bill_id
