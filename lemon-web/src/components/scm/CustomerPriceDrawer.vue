@@ -39,7 +39,7 @@
     <template v-if="editable" #footer>
       <a-space class="footer">
         <a-button @click="open = false">{{ $t('common.action.cancel') }}</a-button>
-        <a-button type="primary" :loading="saving" @click="save">{{ $t('common.action.save') }}</a-button>
+        <a-button type="primary" :loading="saving" :disabled="!loaded" @click="save">{{ $t('common.action.save') }}</a-button>
       </a-space>
     </template>
     <ImportModal
@@ -73,6 +73,8 @@ const userStore = useUserStore()
 const editable = computed(() => userStore.hasPerm('scm:customer:edit'))
 const open = ref(false)
 const loading = ref(false)
+/** 执行价已读取成功：保存是整体替换，读取失败时不能保存，否则会把已有的执行价覆盖为空 */
+const loaded = ref(false)
 const saving = ref(false)
 const customer = ref()
 const formRef = ref()
@@ -103,15 +105,17 @@ const exportRows = () =>
 
 async function reload() {
   form.value = { items: [] }
+  loaded.value = false
   loading.value = true
   try {
-    const list = await customerPrices(record.id)
+    const list = await customerPrices(customer.value.id)
     form.value.items = list.map((p) => lines.withKey({
       ...p,
       materialLabel: `${p.materialCode} ${p.materialName}`,
       price: Number(p.price),
       taxRate: p.taxRate != null ? Number(p.taxRate) : undefined
     }))
+    loaded.value = true
   } finally {
     loading.value = false
   }
