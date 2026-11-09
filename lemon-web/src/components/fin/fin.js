@@ -91,8 +91,26 @@ const byBillDate = (a, b) =>
   String(a.billDate || '').localeCompare(String(b.billDate || '')) || String(a.dueDate || '').localeCompare(String(b.dueDate || '')) || a.id - b.id
 
 /**
- * 收付款自动核销：先用红字单据（退货、冲账）全额冲抵，再按单据日期从早到晚（同日按到期日）把目标金额分配到蓝字单据，
- * 早的欠款先结清。收款单 / 付款单、票据收票背书共用。
+ * 红字单据（退货、冲账）的冲抵额：冲抵总额不超过蓝字单据的余额合计（核销合计不能为负数），按单据日期从早到晚冲抵，
+ * 冲不完的红字单据留待下次核销
+ *
+ * @returns {Map<number, number>} 各红字单据的核销金额（负数）
+ */
+function offsetRed(bills, remainingOf) {
+  const amounts = new Map()
+  let cap = round2(bills.filter((b) => remainingOf(b) > 0).reduce((sum, b) => sum + remainingOf(b), 0))
+  for (const b of bills.filter((x) => remainingOf(x) < 0).sort(byBillDate)) {
+    if (cap <= 0) break
+    const v = round2(Math.min(cap, -remainingOf(b)))
+    amounts.set(b.id, -v)
+    cap = round2(cap - v)
+  }
+  return amounts
+}
+
+/**
+ * 收付款自动核销：先用红字单据（退货、冲账）冲抵（冲抵总额不超过勾选的蓝字欠款，见 offsetRed），再按单据日期从早到晚
+ * （同日按到期日）把目标金额分配到蓝字单据，早的欠款先结清。收款单 / 付款单、票据收票背书共用。
  *
  * @param {Array}    bills       参与分配的单据（已勾选的）
  * @param {number}   target      本次收付款金额
@@ -100,12 +118,9 @@ const byBillDate = (a, b) =>
  * @returns {{ amounts: Map<number, number>, left: number }} 各单据的核销金额，以及分配后剩余（多收 / 多付）的金额
  */
 export function allocateSettle(bills, target, remainingOf) {
-  const amounts = new Map()
+  const amounts = offsetRed(bills, remainingOf)
   let left = round2(Number(target) || 0)
-  bills.filter((b) => remainingOf(b) < 0).forEach((b) => {
-    amounts.set(b.id, remainingOf(b))
-    left = round2(left - remainingOf(b))
-  })
+  amounts.forEach((v) => (left = round2(left - v)))
   for (const b of bills.filter((x) => remainingOf(x) > 0).sort(byBillDate)) {
     if (left <= 0) break
     const v = round2(Math.min(left, remainingOf(b)))
@@ -113,4 +128,11 @@ export function allocateSettle(bills, target, remainingOf) {
     left = round2(left - v)
   }
   return { amounts, left }
+}
+
+/** 全部核销：蓝字单据全部结清，红字单据按 offsetRed 冲抵（核销合计不为负数） */
+export function settleAllAmounts(bills, remainingOf) {
+  const amounts = offsetRed(bills, remainingOf)
+  bills.filter((b) => remainingOf(b) > 0).forEach((b) => amounts.set(b.id, remainingOf(b)))
+  return amounts
 }

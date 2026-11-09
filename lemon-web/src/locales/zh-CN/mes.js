@@ -794,7 +794,9 @@ export default {
       },
       breakdown: '材料 ¥{m}，人工 ¥{l}，制造费用 ¥{o}',
       returnAdjust: '冲减产品成本 ¥{v}',
-      returnAdjustStock: '其中库存 ¥{v}，其余对应已出库的产品'
+      returnAdjustStock: '其中库存 ¥{v}，其余对应已出库的产品',
+      estimated: '近似',
+      estimatedTip: '升级到实时库存成本之前的完工入库，按入库时产品流水回填的成本（全部计为材料），是近似值'
     },
     closed: '已关闭',
     scheduleConfirm: '排程工单 {no}？',

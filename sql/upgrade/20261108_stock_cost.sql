@@ -106,6 +106,23 @@ SET f.cost_estimated = 1
 WHERE f.cost_estimated = 0 AND f.cost_price IS NOT NULL
   AND f.create_time < (SELECT MIN(c.create_time) FROM wms_material_cost c WHERE c.tenant_id = f.tenant_id);
 
+-- 物料库存金额与流水成本累计对齐：采购入库按各自的业务单价回填，出库和物料成本按核算单价，两者累计会有差额，
+-- 导致经营历史的结余金额与库存查询的库存金额不一致。对还没有升级后业务的物料（流水全部是回填的近似成本），
+-- 流水累计数量等于当前库存时，库存金额取流水成本累计，单价随之重算。可重复执行（已对齐的不再变化）
+UPDATE wms_material_cost c
+JOIN (
+    SELECT f.tenant_id, f.material_id, SUM(f.qty) AS qty, SUM(f.cost_amount) AS amount
+    FROM wms_stock_flow f
+    JOIN wms_warehouse w ON w.id = f.warehouse_id
+    WHERE w.type <> 'CONSIGN_IN'
+    GROUP BY f.tenant_id, f.material_id
+    HAVING SUM(CASE WHEN f.cost_estimated = 1 THEN 0 ELSE 1 END) = 0 AND COUNT(f.cost_amount) = COUNT(*)
+) t ON t.tenant_id = c.tenant_id AND t.material_id = c.material_id
+SET c.amount = t.amount,
+    c.unit_cost = CASE WHEN t.qty > 0 THEN ROUND(t.amount / t.qty, 6) ELSE c.unit_cost END,
+    c.update_time = NOW()
+WHERE c.qty = t.qty AND c.amount <> t.amount AND t.qty > 0 AND t.amount >= 0;
+
 -- ==================== 菜单 ====================
 
 -- 库存查询的「查看成本金额」按钮：加入包含库存查询的套餐，授权有库存查询的管理员、总经理、仓库管理员、会计

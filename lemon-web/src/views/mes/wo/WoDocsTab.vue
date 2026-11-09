@@ -10,6 +10,13 @@
           </a-tooltip>
           <a-tag :bordered="false" class="basis">{{ $t('mes.wo.cost.basis.' + record.costBasis) }}</a-tag>
         </template>
+        <!-- 升级到实时库存成本之前的完工入库：没有成本口径，材料成本是按产品流水回填的近似成本 -->
+        <template v-else-if="record.kind === WoDocKind.FINISH && record.materialCost != null">
+          <span>{{ money(finishTotal(record)) }}</span>
+          <a-tooltip :title="$t('mes.wo.cost.estimatedTip')">
+            <a-tag :bordered="false" color="orange" class="basis">{{ $t('mes.wo.cost.estimated') }}</a-tag>
+          </a-tooltip>
+        </template>
         <a-tooltip v-else-if="record.kind === WoDocKind.RETURN && record.materialCost != null" :title="$t('mes.wo.cost.returnAdjustStock', { v: money(record.stockCostAdjust) })">
           <span class="sub-text">{{ $t('mes.wo.cost.returnAdjust', { v: money(record.materialCost) }) }}</span>
         </a-tooltip>

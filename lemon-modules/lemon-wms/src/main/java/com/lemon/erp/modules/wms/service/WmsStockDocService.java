@@ -94,10 +94,14 @@ public class WmsStockDocService {
         getAccessible(kind, id);
         WmsStockDoc doc = docMapper.selectDetail(id);
         List<WmsStockDocItem> items = itemMapper.selectByDocId(id);
-        // 成本单价、业务单价：有「查看成本金额」权限，或能编辑入库单（填写其他入库的成本价）时返回
-        if (!permissionService.hasAnyPerm(COST_PERM, "wms:in:add", "wms:in:edit")) {
+        // 成本单价、业务单价：有「查看成本金额」权限时返回；没有时只把草稿入库单上填写的成本价返回给能编辑入库单的人
+        // （其他入库填写成本价），确认后的实际成本、出库成本不返回
+        if (!permissionService.hasPerm(COST_PERM)) {
+            boolean draftEditable = kind == IN && doc.getStatus() == DocStatus.DRAFT && permissionService.hasAnyPerm("wms:in:add", "wms:in:edit");
             items.forEach(i -> {
-                i.setCostPrice(null);
+                if (!draftEditable) {
+                    i.setCostPrice(null);
+                }
                 i.setBizPrice(null);
             });
         }

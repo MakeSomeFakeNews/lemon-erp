@@ -54,6 +54,8 @@
             <template v-else-if="column.key === 'costPrice'">
               <template v-if="(diffOf(record) ?? 0) > 0">
                 <span v-if="record.costPrice != null">{{ price(record.costPrice) }}</span>
+                <!-- 已完成：没填成本价的按确认时的均价计价，显示实际单价 -->
+                <span v-else-if="record.diffAmount != null">{{ price(record.diffAmount / diffOf(record)) }}</span>
                 <span v-else-if="record.avgCost != null" class="sub-text">{{ $t('wms.checkDoc.avgCostTag', { v: price(record.avgCost) }) }}</span>
                 <span v-else class="sub-text">{{ $t('wms.checkDoc.costPriceDefault') }}</span>
               </template>
@@ -115,7 +117,7 @@ const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPerm('wms:check:edit'))
 const canConfirm = computed(() => userStore.hasPerm('wms:check:confirm'))
 
-/** 盘盈成本价、差异金额：后端按权限返回（costVisible） */
+/** 盘盈成本价：后端按权限返回（costVisible：有成本权限，或确认前能编辑盘点单）；差异金额只给有「查看成本金额」权限的人 */
 const columns = computed(() =>
   [
     { title: t('wms.common.material'), key: 'material', width: 240 },
@@ -125,7 +127,7 @@ const columns = computed(() =>
     { title: t('wms.checkDoc.actualQty'), key: 'actualQty', width: 120, align: 'right' },
     { title: t('wms.checkDoc.diff'), key: 'diff', width: 100, align: 'right' },
     detail.value?.costVisible ? { title: t('wms.checkDoc.costPrice'), key: 'costPrice', width: 120, align: 'right' } : null,
-    detail.value?.costVisible ? { title: t('wms.checkDoc.diffAmount'), key: 'diffAmount', width: 120, align: 'right' } : null,
+    userStore.hasPerm('wms:stock:cost') ? { title: t('wms.checkDoc.diffAmount'), key: 'diffAmount', width: 120, align: 'right' } : null,
     { title: t('wms.checkDoc.actualSerials'), key: 'serialNos', width: 240 },
     { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true }
   ].filter(Boolean)

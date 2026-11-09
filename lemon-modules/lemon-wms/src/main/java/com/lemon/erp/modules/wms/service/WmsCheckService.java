@@ -99,25 +99,23 @@ public class WmsCheckService {
         getAccessible(id);
         WmsCheck check = checkMapper.selectDetail(id);
         List<WmsCheckItem> items = itemMapper.selectByCheckId(id);
-        boolean costVisible = costVisible();
+        // 当前均价、差异金额（系统计算的成本）只给有「查看成本金额」权限的人；没有该权限的盘点人在确认前能看到、填写盘盈成本价
+        boolean costPerm = permissionService.hasPerm(WmsStockDocService.COST_PERM);
+        boolean costVisible = costPerm || check.getStatus() != DocStatus.DONE && permissionService.hasAnyPerm("wms:check:add", "wms:check:edit");
         if (!costVisible) {
             items.forEach(i -> i.setCostPrice(null));
-        } else if (check.getStatus() == DocStatus.DONE) {
+        }
+        if (costPerm && check.getStatus() == DocStatus.DONE) {
             Map<String, BigDecimal> amounts = new HashMap<>();
             flowMapper.selectSlotCosts(StockBizType.CHECK, id).forEach(r -> amounts.put(slotKey(((Number) r.get("locationId")).longValue(),
                     ((Number) r.get("materialId")).longValue(), (String) r.get("batchNo")), new BigDecimal(r.get("amount").toString())));
             items.forEach(i -> i.setDiffAmount(amounts.get(slotKey(i.getLocationId(), i.getMaterialId(), i.getBatchNo()))));
-        } else {
+        } else if (costPerm) {
             fillAvgCost(items);
         }
         check.setCostVisible(costVisible);
         check.setItems(items);
         return check;
-    }
-
-    /** 成本价、当前均价、差异金额：有「查看成本金额」权限，或能新增 / 修改盘点单（填写盘盈成本价）时返回 */
-    private boolean costVisible() {
-        return permissionService.hasAnyPerm(WmsStockDocService.COST_PERM, "wms:check:add", "wms:check:edit");
     }
 
     private void fillAvgCost(List<WmsCheckItem> items) {
@@ -155,7 +153,7 @@ public class WmsCheckService {
             item.setSerialNos(slotSerials == null ? null : joinSerials(List.copyOf(slotSerials)));
             return item;
         }).toList();
-        if (costVisible()) {
+        if (permissionService.hasPerm(WmsStockDocService.COST_PERM)) {
             fillAvgCost(items);
         }
         return items;

@@ -70,9 +70,9 @@ public class WmsStockController {
         return R.ok(queryService.stockTotal(query, summary));
     }
 
-    /** 物料的当前均价：{物料 ID: 均价}，其他入库录入成本价、盘点单录入盘盈成本价时默认带出 */
+    /** 物料的当前均价：{物料 ID: 均价}，其他入库录入成本价、盘点单录入盘盈成本价时默认带出；均价属于成本信息，只给有「查看成本金额」权限的人 */
     @GetMapping("/stock/unit-cost")
-    @PreAuthorize("@ss.hasAnyPerm('wms:stock:cost', 'wms:in:add', 'wms:in:edit', 'wms:check:add', 'wms:check:edit')")
+    @PreAuthorize("@ss.hasPerm('wms:stock:cost')")
     public R<Map<Long, BigDecimal>> unitCosts(@RequestParam List<Long> materialIds) {
         return R.ok(queryService.unitCosts(materialIds));
     }

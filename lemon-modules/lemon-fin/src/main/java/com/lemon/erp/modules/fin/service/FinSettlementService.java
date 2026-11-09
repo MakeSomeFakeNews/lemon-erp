@@ -238,9 +238,10 @@ public class FinSettlementService {
         if (!approval) {
             toAdvance(s);
         } else {
-            // 插入时已是审批中，直接发起流程
+            // 插入时已是审批中，直接发起流程；金额为实际付出的本位币（核销 + 多付转预付），不能只按核销合计，否则可以把大额付款做成预付绕过金额条件
+            BigDecimal paid = Decimals.money(s.getAmount().add(advance.multiply(settleRate)));
             approvalSupport.start(PAYMENT_FLOW, s.getId(), Map.of(
-                            "amount", total.doubleValue(),
+                            "amount", paid.doubleValue(),
                             "settleNo", s.getSettleNo(),
                             "partnerId", s.getPartnerId()),
                     () -> {

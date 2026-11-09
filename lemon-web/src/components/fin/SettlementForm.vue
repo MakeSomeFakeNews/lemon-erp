@@ -140,7 +140,7 @@ import { useDict } from '@/composables/useDict'
 import { toOptions } from '@/utils/dict'
 import { nz, round2 } from '@/utils/number'
 import { today } from '@/components/wms/wms'
-import { allocateSettle, formatMoney } from './fin'
+import { allocateSettle, formatMoney, settleAllAmounts } from './fin'
 import { BASE_CURRENCY, currencySymbol, fetchRate, isForeign, useCurrencies } from './currency'
 import { t } from '@/locales'
 import { ApproveStatus } from '@/constants/enums'
@@ -274,9 +274,10 @@ function autoSettle() {
   checkedBills.value.forEach((b) => (b.settle = amounts.get(b.id)))
 }
 
-/** 全部核销：勾选的单据按未核销余额（扣除折让）全部核销，本次收付款总额同步为核销合计 */
+/** 全部核销：勾选的蓝字单据按未核销余额（扣除折让）全部核销，红字单据冲抵不超过蓝字合计；本次收付款总额同步为核销合计 */
 function fillAll() {
-  checkedBills.value.forEach((b) => (b.settle = round2(remaining(b) - nz(b.discount)) || undefined))
+  const amounts = settleAllAmounts(checkedBills.value, (b) => round2(remaining(b) - nz(b.discount)))
+  checkedBills.value.forEach((b) => (b.settle = amounts.get(b.id) || undefined))
   payTotal.value = total.value
   payTouched.value = false
   if (currencies.value.length > 1) message.info(props.conf.filledTip(settleCurrency.value))
