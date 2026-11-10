@@ -31,7 +31,12 @@
             <div class="sub-text">{{ record.fromVersion }} → {{ record.toVersion || '-' }}</div>
           </template>
           <template v-else-if="column.key === 'reason'"><DictTag type="mes_ecn_reason" :value="record.reason" /></template>
-          <template v-else-if="column.key === 'status'"><DictTag type="mes_ecn_status" :value="record.status" /></template>
+          <template v-else-if="column.key === 'status'">
+            <DictTag type="mes_ecn_status" :value="record.status" />
+            <a-tooltip v-if="record.flowInstanceId" :title="$t('mes.ecn.viewFlow')">
+              <ApartmentOutlined class="flow-icon" @click="openFlow(record.flowInstanceId)" />
+            </a-tooltip>
+          </template>
           <template v-else-if="column.key === 'action'">
             <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
           </template>
@@ -89,7 +94,7 @@
     <SubPage :open="detailOpen" :title="detail ? $t('mes.ecn.detailTitle', { no: detail.ecnNo, title: detail.title }) : ''" width="min(1000px, 100vw)" @close="detailOpen = false">
       <template v-if="detail" #extra>
         <a-space>
-          <a-button v-if="detail.flowInstanceId" @click="flowOpen = true">{{ $t('mes.ecn.flowRecord') }}</a-button>
+          <a-button v-if="detail.flowInstanceId" @click="openFlow(detail.flowInstanceId)">{{ $t('mes.ecn.flowRecord') }}</a-button>
           <template v-if="detail.status === EcnStatus.DRAFT">
             <a-button v-perm="'mes:bom:edit'" @click="router.push({ path: '/mes/bom', query: { edit: detail.toBomId } })">{{ $t('mes.ecn.editToBom') }}</a-button>
             <a-button v-perm="'mes:ecn:edit'" @click="drawer.openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
@@ -111,6 +116,7 @@
         </a-space>
       </template>
       <template v-if="detail">
+        <a-alert v-if="detail.status === EcnStatus.APPROVING" type="info" show-icon class="block" :message="$t('mes.ecn.approvingTip')" />
         <a-descriptions :column="{ xs: 1, sm: 3 }" size="small" bordered class="block">
           <a-descriptions-item :label="$t('mes.bom.product')">{{ detail.materialCode }} {{ detail.materialName }}</a-descriptions-item>
           <a-descriptions-item :label="$t('mes.bom.version')">{{ detail.fromVersion }} → {{ detail.toVersion }}</a-descriptions-item>
@@ -119,7 +125,13 @@
           <a-descriptions-item :label="$t('mes.ecn.effectiveDate')">{{ detail.effectiveDate }}</a-descriptions-item>
           <a-descriptions-item :label="$t('mes.ecn.syncDraftWo')">{{ detail.syncDraftWo === 1 ? $t('common.status.yes') : $t('common.status.no') }}</a-descriptions-item>
           <a-descriptions-item :label="$t('mes.ecn.initiated')">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item :label="$t('mes.ecn.approved')">{{ detail.approveByName }} {{ detail.approveTime || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('mes.ecn.approved')">
+            {{ detail.approveByName }} {{ detail.approveTime || '-' }}
+            <div v-if="detail.approveTime" class="sub-text">
+              <a v-if="detail.flowInstanceId" @click="openFlow(detail.flowInstanceId)">{{ $t('mes.ecn.viaFlow') }}</a>
+              <template v-else>{{ $t('mes.ecn.directApproved') }}</template>
+            </div>
+          </a-descriptions-item>
           <a-descriptions-item :label="$t('mes.ecn.effected')">{{ detail.effectTime || '-' }} <span class="sub-text">{{ detail.resultNote || '' }}</span></a-descriptions-item>
           <a-descriptions-item v-if="detail.description" :label="$t('mes.ecn.description')" :span="3"><span class="pre">{{ detail.description }}</span></a-descriptions-item>
         </a-descriptions>
@@ -152,7 +164,7 @@
       </template>
     </SubPage>
 
-    <InstanceDetailDrawer v-model:open="flowOpen" :instance-id="detail?.flowInstanceId" />
+    <InstanceDetailDrawer v-model:open="flowOpen" :instance-id="flowInstanceId" />
   </div>
 </template>
 
@@ -162,7 +174,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { ApartmentOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -303,6 +315,12 @@ const detailOpen = ref(false)
 const detail = ref()
 const diff = ref({ items: [], ops: [] })
 const flowOpen = ref(false)
+const flowInstanceId = ref()
+/** 审批记录：列表状态旁的图标、详情中的按钮 */
+function openFlow(id) {
+  flowInstanceId.value = id
+  flowOpen.value = true
+}
 async function openDetail(id) {
   const [e, d] = await Promise.all([getEcn(id), ecnDiff(id)])
   detail.value = e
@@ -354,6 +372,11 @@ async function remove() {
 .sub-text {
   color: var(--app-text-3);
   font-size: 12px;
+}
+.flow-icon {
+  margin-left: 4px;
+  color: var(--app-text-3);
+  cursor: pointer;
 }
 .section-title {
   margin: 8px 0;

@@ -135,7 +135,8 @@ public class MesEcnService {
     }
 
     /**
-     * 提交：发布了审批流程时进入审批，否则直接批准（生效日期已到时立即生效）
+     * 提交：发布了审批流程时进入审批（流程变量：变更原因、用料 / 工序变更项数、产品编码、单号，与 {@link MesFlowBusinesses#ecnFlow} 一致），
+     * 否则直接批准（批准人为提交人；生效日期已到时立即生效）。审批通过后批准人为最后一步的审批人
      *
      * @return 是否进入审批
      */
@@ -148,6 +149,8 @@ public class MesEcnService {
         }
         return approvalSupport.submit(FLOW, id, Map.of(
                         "reason", ecn.getReason(),
+                        "itemChanges", diff.items().size(),
+                        "opChanges", diff.ops().size(),
                         "materialCode", ecn.getMaterialCode(),
                         "ecnNo", ecn.getEcnNo()),
                 () -> approve(id, EcnStatus.DRAFT),
