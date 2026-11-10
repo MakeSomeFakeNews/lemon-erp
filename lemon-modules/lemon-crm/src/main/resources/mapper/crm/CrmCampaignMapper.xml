@@ -21,11 +21,17 @@
                    FROM crm_opportunity op
                    JOIN scm_order so ON so.id = op.sales_order_id AND so.status NOT IN ('DRAFT', 'APPROVING')
                    WHERE op.campaign_id IS NOT NULL GROUP BY op.campaign_id) so ON so.campaign_id = cp.id
-        LEFT JOIN (SELECT op.campaign_id, SUM(b.settled_amount) AS received_amount
-                   FROM crm_opportunity op
-                   JOIN scm_trade_doc d ON d.order_id = op.sales_order_id
-                   JOIN fin_bill b ON b.source_id = d.id AND b.source_type = d.kind
-                   WHERE op.campaign_id IS NOT NULL GROUP BY op.campaign_id) ar ON ar.campaign_id = cp.id
+        <!-- 回款口径与销售合同一致：每张订单取蓝字应收单的已核销金额，不超过订单的应收净额（退货红字冲减应收，不计为负的回款） -->
+        LEFT JOIN (SELECT r.campaign_id, SUM(GREATEST(0, LEAST(r.blue_settled, r.net_amount))) AS received_amount
+                   FROM (SELECT op.campaign_id, d.order_id,
+                                SUM(CASE WHEN b.amount &gt; 0 THEN b.settled_amount ELSE 0 END) AS blue_settled,
+                                SUM(b.amount) AS net_amount
+                         FROM crm_opportunity op
+                         JOIN scm_trade_doc d ON d.order_id = op.sales_order_id
+                         JOIN fin_bill b ON b.source_id = d.id AND b.source_type = d.kind AND b.kind = 'AR'
+                         WHERE op.campaign_id IS NOT NULL
+                         GROUP BY op.campaign_id, d.order_id) r
+                   GROUP BY r.campaign_id) ar ON ar.campaign_id = cp.id
     </sql>
 
     <select id="selectPageList" resultType="com.lemon.erp.modules.crm.entity.CrmCampaign">

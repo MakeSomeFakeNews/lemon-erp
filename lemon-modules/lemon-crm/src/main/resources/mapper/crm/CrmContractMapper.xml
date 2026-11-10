@@ -2,10 +2,14 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.lemon.erp.modules.crm.mapper.CrmContractMapper">
 
-    <!-- 已回款：关联销售订单的销售出库 / 退货形成的应收单的已核销金额 -->
+    <!-- 已回款：关联销售订单的销售出库应收单（蓝字）的已核销金额，不超过订单的应收净额（出库 - 退货）。
+         退货红字应收单冲减的是应收，不计为负的回款（红字单在收款时可能与其他订单的应收单抵扣，不是本合同的退款）；
+         已回款后再退货的，回款按冲减后的应收计，不超过应收净额，也不小于 0 -->
     <sql id="viewSelect">
         SELECT c.*, cu.name AS customer_name, u.nickname AS owner_name, o.name AS opportunity_name, q.quote_no, so.order_no,
-               COALESCE((SELECT SUM(b.settled_amount) FROM fin_bill b
+               COALESCE((SELECT GREATEST(0, LEAST(COALESCE(SUM(CASE WHEN b.amount &gt; 0 THEN b.settled_amount ELSE 0 END), 0),
+                                                  COALESCE(SUM(b.amount), 0)))
+                         FROM fin_bill b
                          JOIN scm_trade_doc d ON d.id = b.source_id AND b.source_type IN ('SALES_OUT', 'SALES_RETURN')
                          WHERE b.kind = 'AR' AND c.order_id IS NOT NULL AND d.order_id = c.order_id), 0) AS received_amount
         FROM crm_contract c
