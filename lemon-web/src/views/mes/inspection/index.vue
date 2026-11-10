@@ -229,7 +229,11 @@
               <span v-else class="sub-text">-</span>
             </template>
             <template v-else-if="column.key === 'result'">
-              <a-tag :color="record.result === QcResult.FAIL ? 'red' : 'green'" :bordered="false">{{ $t('mes.inspection.failN', { n: record.defectCount }) }}</a-tag>
+              <!-- 定性项目显示不合格数，定量项目按实测值判定（超差的实测值标红） -->
+              <a-tag v-if="record.result === QcResult.FAIL" color="red" :bordered="false">
+                {{ record.defectCount != null ? $t('mes.inspection.failN', { n: record.defectCount }) : $t('mes.inspection.fail') }}
+              </a-tag>
+              <a-tag v-else color="green" :bordered="false">{{ $t('mes.inspection.pass') }}</a-tag>
             </template>
           </template>
         </a-table>
@@ -266,10 +270,10 @@ const dict = useDict('mes_qc_type', 'mes_qc_result', 'mes_defect_type')
 const { t } = useI18n()
 
 const columns = [
-  { title: t('mes.inspection.noType'), key: 'inspNo', width: 190 },
-  { title: t('mes.inspection.source'), key: 'source', width: 180 },
-  { title: t('mes.wo.material'), key: 'material', width: 210 },
-  { title: t('common.field.quantity'), key: 'qty', width: 220 },
+  { title: t('mes.inspection.noType'), key: 'inspNo', width: 180 },
+  { title: t('mes.inspection.source'), key: 'source', width: 170 },
+  { title: t('mes.wo.material'), key: 'material', width: 200 },
+  { title: t('common.field.quantity'), key: 'qty', width: 190 },
   { title: t('mes.inspection.conclusion'), key: 'result', width: 110 },
   { title: t('mes.inspection.inspectDate'), key: 'inspectDate', width: 120 },
   { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
