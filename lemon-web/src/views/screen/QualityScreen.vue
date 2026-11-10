@@ -25,7 +25,7 @@
       </ScreenPanel>
     </div>
 
-    <div class="panels">
+    <div class="panels bottom">
       <ScreenPanel :title="$t('screen.quality.suppliers')">
         <template #extra>{{ $t('screen.quality.suppliersHint') }}</template>
         <EChart :option="supplierOption" height="100%" dark />
@@ -98,14 +98,18 @@ const trendOption = computed(() => {
   }
 })
 
-/** 各类检验一个仪表盘 */
+/**
+ * 各类检验一个仪表盘，横向排成一行。半径是面板最短边（高度）一半的百分比，每个仪表盘只占面板宽度的 1 / n：
+ * 面板高度约为宽度的 0.37（大屏整体等比缩放，比例不变），4 个时超过 54% 相邻仪表盘就会重叠
+ */
+const GAUGE_RADIUS = { 1: '70%', 2: '66%', 3: '62%', 4: '54%' }
 const typeOption = computed(() => {
   const rows = withDictLabel(props.data.byType, 'mes_qc_type', 'type', 'label').slice(0, 4)
   const n = Math.max(rows.length, 1)
   return {
     title: rows.length ? undefined : { text: t('screen.quality.noInspectionMonth'), left: 'center', top: 'middle', textStyle: { color: COLORS.sub, fontSize: 15, fontWeight: 400 } },
     series: rows.map((r, i) => ({
-      type: 'gauge', center: [`${((i + 0.5) * 100) / n}%`, '55%'], radius: n > 2 ? '62%' : '70%',
+      type: 'gauge', center: [`${((i + 0.5) * 100) / n}%`, '52%'], radius: GAUGE_RADIUS[n],
       startAngle: 220, endAngle: -40, min: 0, max: 100,
       progress: { show: true, width: 10, itemStyle: { color: rateColor(r.rate) } },
       axisLine: { lineStyle: { width: 10, color: [[1, 'rgba(64, 158, 255, 0.15)']] } },
@@ -157,22 +161,26 @@ const supplierOption = computed(() => {
 
 const inspectionColumns = [
   { key: 'date', title: t('common.field.date'), width: '64px' },
-  { key: 'inspNo', title: t('screen.quality.inspNo'), width: '150px' },
-  { key: 'typeLabel', title: t('common.field.type'), width: '100px' },
-  { key: 'material', title: t('screen.quality.material'), width: '1fr' },
-  { key: 'defectQty', title: t('screen.quality.defect'), width: '70px', align: 'right' },
-  { key: 'resultLabel', title: t('screen.quality.result'), width: '110px', align: 'center' }
+  { key: 'inspNo', title: t('screen.quality.inspNo'), width: '140px' },
+  { key: 'typeLabel', title: t('common.field.type'), width: '84px' },
+  { key: 'material', title: t('screen.quality.material'), width: 'minmax(0, 1fr)' },
+  { key: 'defectQty', title: t('screen.quality.defect'), width: '56px', align: 'right' },
+  { key: 'resultLabel', title: t('screen.quality.result'), width: '84px', align: 'center' }
 ]
 const ncrColumns = [
-  { key: 'ncrNo', title: t('screen.quality.ncrNo'), width: '140px' },
-  { key: 'material', title: t('screen.quality.material'), width: '1fr' },
-  { key: 'defectLabel', title: t('screen.quality.defectType'), width: '100px' },
-  { key: 'qty', title: t('common.field.quantity'), width: '64px', align: 'right' },
-  { key: 'statusLabel', title: t('common.field.status'), width: '100px', align: 'center' }
+  { key: 'ncrNo', title: t('screen.quality.ncrNo'), width: '132px' },
+  { key: 'material', title: t('screen.quality.material'), width: 'minmax(0, 1fr)' },
+  { key: 'defectLabel', title: t('screen.quality.defectType'), width: '80px' },
+  { key: 'qty', title: t('common.field.quantity'), width: '52px', align: 'right' },
+  { key: 'statusLabel', title: t('common.field.status'), width: '76px', align: 'center' }
 ]
 </script>
 
 <style scoped>
+/* 下面一行：待处置不合格品的列较多，右侧面板加宽（中间的最近检验物料列自适应） */
+.screen-grid .panels.bottom {
+  grid-template-columns: 520px 1fr 600px;
+}
 .bad {
   color: #ff5b5b;
 }

@@ -40,7 +40,7 @@
           :loading="loading"
           :pagination="false"
           :expanded-row-keys="expanded"
-          :scroll="{ x: 1300 }"
+          :scroll="{ x: scrollX }"
           @expand="onExpand"
         >
           <template #bodyCell="{ column, record }">
@@ -172,6 +172,7 @@ import { useUserStore } from '@/store/user'
 import { load as loadStorage, save as saveStorage } from '@/utils/storage'
 import { flattenTasks, today } from '@/components/pm/pm'
 import { t } from '@/locales'
+import { sumWidth } from '@/composables/useColumns'
 import { useAction } from '@/composables/useAction'
 
 import { ProjectStatus } from '@/constants/enums'
@@ -188,15 +189,16 @@ const expanded = ref([])
 const editable = computed(() => project.value && ![ProjectStatus.FINISHED, ProjectStatus.CLOSED].includes(project.value.status))
 
 const columns = [
-  { title: t('pm.common.task'), key: 'name', width: 280, fixed: 'left' },
-  { title: t('pm.common.assignee'), dataIndex: 'assigneeName', width: 110 },
+  { title: t('pm.common.task'), key: 'name', width: 220, fixed: 'left' },
+  { title: t('pm.common.assignee'), dataIndex: 'assigneeName', width: 90 },
   { title: t('pm.common.planDates'), key: 'dates', width: 210 },
-  { title: t('pm.plan.planActualHours'), key: 'hours', width: 160 },
-  { title: t('pm.common.progress'), key: 'progress', width: 170 },
-  { title: t('common.field.status'), key: 'status', width: 150 },
-  { title: t('pm.plan.predecessor'), dataIndex: 'predecessorName', width: 140, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
+  { title: t('pm.plan.planActualHours'), key: 'hours', width: 130 },
+  { title: t('pm.common.progress'), key: 'progress', width: 130 },
+  { title: t('common.field.status'), key: 'status', width: 110 },
+  { title: t('pm.plan.predecessor'), dataIndex: 'predecessorName', width: 100, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
 ]
+const scrollX = sumWidth(columns)
 
 async function onProject(id) {
   saveStorage(STORAGE_KEY, id)

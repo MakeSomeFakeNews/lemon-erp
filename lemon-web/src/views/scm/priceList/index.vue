@@ -182,14 +182,14 @@ function validityTag(r) {
 }
 
 const columns = [
-  { title: t('scm.priceList.material'), key: 'material', width: 240, exportValue: (r) => `${r.materialCode} ${r.materialName}` },
-  { title: t('scm.priceList.applicableCustomer'), key: 'customerLevel', dataIndex: 'customerLevel', width: 180, dict: 'scm_customer_level' },
-  { title: t('scm.priceList.minQty'), key: 'minQty', dataIndex: 'minQty', width: 120, align: 'right' },
-  { title: t('scm.priceList.taxPrice'), key: 'price', dataIndex: 'price', width: 160 },
-  { title: t('scm.priceList.taxRatePct'), dataIndex: 'taxRate', width: 100, align: 'right' },
-  { title: t('scm.priceList.validity'), key: 'validity', width: 240, exportValue: validityText },
+  { title: t('scm.priceList.material'), key: 'material', width: 210, exportValue: (r) => `${r.materialCode} ${r.materialName}` },
+  { title: t('scm.priceList.applicableCustomer'), key: 'customerLevel', dataIndex: 'customerLevel', width: 140, dict: 'scm_customer_level' },
+  { title: t('scm.priceList.minQty'), key: 'minQty', dataIndex: 'minQty', width: 90, align: 'right' },
+  { title: t('scm.priceList.taxPrice'), key: 'price', dataIndex: 'price', width: 140 },
+  { title: t('scm.priceList.taxRatePct'), dataIndex: 'taxRate', width: 80, align: 'right' },
+  { title: t('scm.priceList.validity'), key: 'validity', width: 210, exportValue: validityText },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-price-list')
 const showSearch = ref(true)

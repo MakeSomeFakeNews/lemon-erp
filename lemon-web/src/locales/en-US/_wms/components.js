@@ -20,6 +20,7 @@ export default {
     unspecified: 'Unspecified',
     expired: 'Expired',
     expireInDays: 'Expires in {days} d',
+    expireToday: 'Expires today',
     availableN: 'Available {n}',
     red: 'Red',
     reversed: 'Reversed',

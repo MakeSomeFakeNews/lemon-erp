@@ -3203,6 +3203,7 @@ CREATE TABLE mes_ecn (
     sync_draft_wo    TINYINT      NOT NULL DEFAULT 1 COMMENT '生效时同步草稿工单的用料和工序',
     status           VARCHAR(16)  NOT NULL COMMENT '状态(字典 mes_ecn_status) DRAFT草稿 APPROVING审批中 APPROVED待生效 EFFECTIVE已生效 CANCELLED已取消',
     flow_instance_id VARCHAR(64)           DEFAULT NULL COMMENT '审批流程实例ID',
+    approve_by       BIGINT                DEFAULT NULL COMMENT '批准人（审批流程最后一步的审批人；未发布流程时为提交人）',
     approve_time     DATETIME              DEFAULT NULL COMMENT '批准时间',
     effect_time      DATETIME              DEFAULT NULL COMMENT '生效时间',
     result_note      VARCHAR(255)          DEFAULT NULL COMMENT '生效结果',

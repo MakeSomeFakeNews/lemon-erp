@@ -21,7 +21,7 @@
             :data-source="kpiTable.list.value"
             :loading="kpiTable.loading.value"
             :pagination="kpiTable.pagination"
-            :scroll="{ x: 1200 }"
+            :scroll="{ x: kpiScrollX }"
             @change="kpiTable.onTableChange"
           >
             <template #bodyCell="{ column, record }">
@@ -149,6 +149,7 @@ import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import { addEval, deleteEval, pageEval, supplierKpi } from '@/api/scm/partner'
+import { sumWidth } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 import { formatMoney } from '@/components/scm/scm'
 import { formatQty } from '@/components/wms/wms'
@@ -157,16 +158,17 @@ const { t } = useI18n()
 const tab = ref('kpi')
 
 const kpiColumns = [
-  { title: t('scm.eval.supplier'), key: 'supplier', width: 220 },
-  { title: t('scm.eval.level'), key: 'level', width: 90 },
-  { title: t('scm.eval.orderCount'), dataIndex: 'orderCount', width: 90, align: 'right' },
-  { title: t('scm.eval.purchaseAmount'), key: 'purchaseAmount', width: 140, align: 'right' },
-  { title: t('scm.eval.onTimeRate'), key: 'onTimeRate', width: 180 },
-  { title: t('scm.eval.iqcPassRate'), key: 'iqcPassRate', width: 170 },
-  { title: t('scm.eval.returnRate'), key: 'returnRate', width: 170 },
-  { title: t('scm.eval.last'), key: 'last', width: 160 },
+  { title: t('scm.eval.supplier'), key: 'supplier', width: 180 },
+  { title: t('scm.eval.level'), key: 'level', width: 80 },
+  { title: t('scm.eval.orderCount'), dataIndex: 'orderCount', width: 80, align: 'right' },
+  { title: t('scm.eval.purchaseAmount'), key: 'purchaseAmount', width: 130, align: 'right' },
+  { title: t('scm.eval.onTimeRate'), key: 'onTimeRate', width: 140 },
+  { title: t('scm.eval.iqcPassRate'), key: 'iqcPassRate', width: 140 },
+  { title: t('scm.eval.returnRate'), key: 'returnRate', width: 140 },
+  { title: t('scm.eval.last'), key: 'last', width: 150 },
   { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
 ]
+const kpiScrollX = sumWidth(kpiColumns)
 const kpiQuery = reactive({ keyword: undefined, range: undefined })
 const kpiTable = useTable(supplierKpi, kpiQuery, {
   params: ({ range, ...rest }) => ({ ...rest, beginDate: range?.[0], endDate: range?.[1] })

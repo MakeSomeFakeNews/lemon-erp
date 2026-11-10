@@ -123,11 +123,11 @@ const { t } = useI18n()
 const route = useRoute()
 
 const columns = [
-  { title: t('qms.claim.claimNo'), key: 'claimNo', width: 190 },
+  { title: t('qms.claim.claimNo'), key: 'claimNo', width: 180 },
   { title: t('mes.mrp.supplier'), dataIndex: 'supplierName', width: 180, ellipsis: true },
   { title: t('qms.claim.claimDate'), dataIndex: 'claimDate', width: 110 },
   { title: t('qms.claim.amount'), key: 'amount', width: 130, align: 'right' },
-  { title: t('qms.claim.reason'), dataIndex: 'reason', width: 220, ellipsis: true },
+  { title: t('qms.claim.reason'), dataIndex: 'reason', width: 190, ellipsis: true },
   { title: t('qms.claim.statusOffset'), key: 'status', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
 ]

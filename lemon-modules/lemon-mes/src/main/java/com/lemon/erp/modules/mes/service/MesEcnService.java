@@ -216,7 +216,7 @@ public class MesEcnService {
 
     private void approve(Long id, EcnStatus from) {
         if (!StatusTransitions.tryChange(ecnMapper, MesEcn::getId, id, MesEcn::getStatus, from, EcnStatus.APPROVED,
-                w -> w.set(MesEcn::getApproveTime, LocalDateTime.now()))) {
+                w -> w.set(MesEcn::getApproveBy, SecurityUtils.getUserIdOrNull()).set(MesEcn::getApproveTime, LocalDateTime.now()))) {
             throw new BizException("mes.error.ecnStatusHasChangedRefreshTry");
         }
         MesEcn ecn = ecnMapper.selectById(id);

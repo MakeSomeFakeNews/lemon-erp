@@ -208,13 +208,13 @@ const c = 'fin.consumable.'
 const tab = ref('uses')
 
 const columns = [
-  { title: t(c + 'useNo'), key: 'useNo', width: 190 },
-  { title: t(c + 'useDept'), key: 'dept', width: 150 },
-  { title: t(c + 'warehouse'), dataIndex: 'warehouseName', width: 150 },
-  { title: t(c + 'expenseAccount'), dataIndex: 'expenseAccountName', width: 150 },
-  { title: t('common.field.quantity'), key: 'qty', width: 100, align: 'right' },
-  { title: t(c + 'refAmount'), key: 'amount', width: 120, align: 'right' },
-  { title: t(c + 'purpose'), dataIndex: 'remark', width: 160, ellipsis: true },
+  { title: t(c + 'useNo'), key: 'useNo', width: 170 },
+  { title: t(c + 'useDept'), key: 'dept', width: 130 },
+  { title: t(c + 'warehouse'), dataIndex: 'warehouseName', width: 120 },
+  { title: t(c + 'expenseAccount'), dataIndex: 'expenseAccountName', width: 120 },
+  { title: t('common.field.quantity'), key: 'qty', width: 80, align: 'right' },
+  { title: t(c + 'refAmount'), key: 'amount', width: 110, align: 'right' },
+  { title: t(c + 'purpose'), dataIndex: 'remark', width: 140, ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]

@@ -167,14 +167,14 @@ const DUE_OPTIONS = [
 ]
 
 const columns = [
-  { title: t('mes.oee.equipment'), key: 'name', width: 240 },
-  { title: t('mes.wo.workCenter'), dataIndex: 'workCenterName', width: 130 },
-  { title: t('mes.equipment.locationShort'), dataIndex: 'location', width: 130 },
+  { title: t('mes.oee.equipment'), key: 'name', width: 200 },
+  { title: t('mes.wo.workCenter'), dataIndex: 'workCenterName', width: 110 },
+  { title: t('mes.equipment.locationShort'), dataIndex: 'location', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'mes_equipment_status' },
-  { title: t('mes.equipment.periodic'), key: 'maintain', width: 260 },
-  { title: t('mes.equipment.purchaseDate'), dataIndex: 'purchaseDate', width: 120 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 220, fixed: 'right' }
+  { title: t('mes.equipment.periodic'), key: 'maintain', width: 220 },
+  { title: t('mes.equipment.purchaseDate'), dataIndex: 'purchaseDate', width: 110 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 100, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-equipment')
 const showSearch = ref(true)

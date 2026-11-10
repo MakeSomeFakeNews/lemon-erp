@@ -15,7 +15,7 @@
             </a-tag>
           </template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="record.status === 0 ? 'default' : 'green'" :bordered="false">{{ record.status === 0 ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
+            <a-tag :color="record.status === STATUS_DISABLED ? 'default' : 'green'" :bordered="false">{{ record.status === STATUS_DISABLED ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
             <span v-perm="'wms:attribute:edit'" class="table-actions">
@@ -44,7 +44,7 @@
           </a-col>
           <a-col :xs="12" :sm="6">
             <a-form-item :label="$t('common.field.status')" name="status">
-              <a-switch :checked="form.status !== 0" :checked-children="$t('common.status.enabled')" :un-checked-children="$t('common.status.disabled')" @change="(v) => (form.status = v ? 1 : 0)" />
+              <a-switch :checked="form.status !== STATUS_DISABLED" :checked-children="$t('common.status.enabled')" :un-checked-children="$t('common.status.disabled')" @change="(v) => (form.status = v ? STATUS_ENABLED : STATUS_DISABLED)" />
             </a-form-item>
           </a-col>
         </a-row>
@@ -53,7 +53,9 @@
           <a-input v-model:value="v.value" :maxlength="32" :placeholder="$t('wms.attribute.valuePh')" />
           <a-input v-model:value="v.code" :maxlength="16" :placeholder="$t('wms.attribute.codePh')" class="code" />
           <a-button :disabled="i === 0" @click="move(i, -1)"><ArrowUpOutlined /></a-button>
-          <a-button danger @click="form.values.splice(i, 1)"><DeleteOutlined /></a-button>
+          <a-tooltip :title="v.used ? $t('wms.attribute.valueUsed') : undefined">
+            <a-button danger :disabled="v.used" @click="form.values.splice(i, 1)"><DeleteOutlined /></a-button>
+          </a-tooltip>
         </div>
         <a-button type="dashed" block @click="form.values.push({ key: rowKey(), value: '', code: '' })">
           <template #icon><PlusOutlined /></template>{{ $t('wms.attribute.addValue') }}
@@ -75,6 +77,7 @@ import { addAttribute, attributes, deleteAttribute, updateAttribute } from '@/ap
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { rowKey } from '@/components/wms/wms'
 import { useAction } from '@/composables/useAction'
+import { STATUS_DISABLED, STATUS_ENABLED } from '@/utils/constants'
 
 const { t } = useI18n()
 
@@ -100,7 +103,7 @@ onMounted(load)
 
 const rules = { name: [{ required: true, whitespace: true, message: t('wms.attribute.inputName') }] }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, name: '', sort: 0, status: 1, remark: '', values: [] }),
+  emptyForm: () => ({ id: undefined, name: '', sort: 0, status: STATUS_ENABLED, remark: '', values: [] }),
   fetch: (record) => ({ ...record, values: record.values.map((v) => ({ ...v, key: rowKey(), code: v.code || '' })) }),
   create: addAttribute,
   update: updateAttribute,

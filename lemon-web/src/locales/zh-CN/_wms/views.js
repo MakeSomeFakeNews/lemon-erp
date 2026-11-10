@@ -90,6 +90,7 @@ export default {
     namePh: '如：颜色、尺码',
     values: '属性值',
     valuesTip: '（编码用于生成 SKU 编码，为空用属性值；已被 SKU 使用的不能删除）',
+    valueUsed: '已被 SKU 使用，不能删除（可以改名）',
     valuePh: '属性值，如 红色',
     codePh: '编码，如 RD',
     addValue: '添加属性值',

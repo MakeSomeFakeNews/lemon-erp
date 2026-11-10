@@ -111,14 +111,14 @@ const { t } = useI18n()
 const dict = useDict('wms_doc_status')
 
 const columns = [
-  { title: t('wms.common.docNo'), key: 'docNo', width: 170 },
-  { title: t('wms.checkDoc.warehouse'), dataIndex: 'warehouseName', width: 150 },
+  { title: t('wms.common.docNo'), key: 'docNo', width: 160 },
+  { title: t('wms.checkDoc.warehouse'), dataIndex: 'warehouseName', width: 130 },
   { title: t('wms.checkDoc.date'), dataIndex: 'bizDate', width: 110 },
-  { title: t('wms.checkDoc.items'), key: 'items', width: 150 },
+  { title: t('wms.checkDoc.items'), key: 'items', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 90, dict: 'wms_doc_status' },
-  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 100 },
+  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 90 },
   { title: t('wms.doc.confirmed'), key: 'confirm', width: 160 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 80, ellipsis: true },
   { title: t('common.action.operation'), key: 'action', width: 200, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-check')

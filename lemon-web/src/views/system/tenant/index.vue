@@ -194,15 +194,15 @@ const dict = useDict('sys_common_status')
 const showSearch = ref(true)
 
 const columns = [
-  { title: t('system.tenant.name'), key: 'name', width: 200 },
-  { title: t('system.tenant.package'), key: 'packageName', width: 140 },
-  { title: t('system.tenant.contact'), key: 'contact', width: 150 },
-  { title: t('system.tenant.accountCol'), key: 'account', width: 130, align: 'right' },
-  { title: t('system.tenant.expireTime'), key: 'expireTime', width: 120 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 200, ellipsis: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  { title: t('system.tenant.name'), key: 'name', width: 180 },
+  { title: t('system.tenant.package'), key: 'packageName', width: 120 },
+  { title: t('system.tenant.contact'), key: 'contact', width: 130 },
+  { title: t('system.tenant.accountCol'), key: 'account', width: 110, align: 'right' },
+  { title: t('system.tenant.expireTime'), key: 'expireTime', width: 110 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 120, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 160 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: 120, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'system-tenant')
 

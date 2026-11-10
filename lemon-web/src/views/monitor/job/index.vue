@@ -26,15 +26,17 @@
             </a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button v-perm="'monitor:job:run'" type="link" size="small" :loading="running === record.id" @click="run(record)">
-              <template #icon><PlayCircleOutlined /></template>{{ $t('monitor.job.run') }}
-            </a-button>
-            <a-button v-perm="'monitor:job:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-              <template #icon><EditOutlined /></template>{{ $t('common.action.modify') }}
-            </a-button>
-            <a-button type="link" size="small" @click="openLogs(record)">
-              <template #icon><FileTextOutlined /></template>{{ $t('monitor.job.log') }}
-            </a-button>
+            <span class="table-actions">
+              <a-button v-perm="'monitor:job:run'" type="link" size="small" :loading="running === record.id" @click="run(record)">
+                <template #icon><PlayCircleOutlined /></template>{{ $t('monitor.job.run') }}
+              </a-button>
+              <a-button v-perm="'monitor:job:edit'" type="link" size="small" @click="drawer.openEdit(record)">
+                <template #icon><EditOutlined /></template>{{ $t('common.action.modify') }}
+              </a-button>
+              <a-button type="link" size="small" @click="openLogs(record)">
+                <template #icon><FileTextOutlined /></template>{{ $t('monitor.job.log') }}
+              </a-button>
+            </span>
           </template>
         </template>
       </a-table>
@@ -103,15 +105,15 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { JobRunStatus, JobTrigger } from '@/constants/enums'
 const { t } = useI18n()
 const columns = [
-  { title: t('monitor.job.name'), dataIndex: 'name', width: 180 },
-  { title: t('monitor.job.jobKey'), dataIndex: 'jobKey', width: 180 },
-  { title: 'Cron', dataIndex: 'cron', width: 140 },
-  { title: t('monitor.job.params'), dataIndex: 'params', width: 120, ellipsis: true },
+  { title: t('monitor.job.name'), dataIndex: 'name', width: 150 },
+  { title: t('monitor.job.jobKey'), dataIndex: 'jobKey', width: 140 },
+  { title: 'Cron', dataIndex: 'cron', width: 120 },
+  { title: t('monitor.job.params'), dataIndex: 'params', width: 100, ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('monitor.job.lastRun'), dataIndex: 'lastRunTime', width: 170 },
+  { title: t('monitor.job.lastRun'), dataIndex: 'lastRunTime', width: 160 },
   { title: t('monitor.job.result'), key: 'lastStatus', width: 90 },
   { title: t('monitor.job.lastMessage'), dataIndex: 'lastMessage', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: 210, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns)
 const size = ref('middle')

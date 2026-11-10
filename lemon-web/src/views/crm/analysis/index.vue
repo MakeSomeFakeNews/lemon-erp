@@ -196,9 +196,11 @@ const stageOption = computed(() => ({
   series: [
     {
       type: 'pie',
-      radius: ['45%', '70%'],
+      // 卡片较窄：环形缩小，给外侧标签（阶段名 + 数量）留出位置，不再被截断成「意...」
+      radius: ['36%', '56%'],
       center: ['50%', '45%'],
-      label: { formatter: '{b}\n{c}' },
+      label: { formatter: '{b}\n{c}', overflow: 'none' },
+      labelLine: { length: 8, length2: 8 },
       data: (overview.value.customerStages || []).map((s) => ({ name: label('crm_customer_stage', s.stage), value: num(s.count) }))
     }
   ]
@@ -244,7 +246,8 @@ const rfmOption = computed(() => {
   return {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     legend: { data: [t('crm.analysis.customers'), t('crm.analysis.sales')] },
-    grid: { left: 100, right: 40, top: 40, bottom: 20 },
+    // 坐标轴名称（客户数 / 销售额）在轴的右端，containLabel 不计入名称，右侧留出名称的宽度
+    grid: { left: 8, right: 64, top: 40, bottom: 20, containLabel: true },
     xAxis: [
       { type: 'value', name: t('crm.analysis.customers'), minInterval: 1 },
       { type: 'value', name: t('crm.analysis.sales'), axisLabel: { formatter: (v) => shortMoney(v) }, splitLine: { show: false } }

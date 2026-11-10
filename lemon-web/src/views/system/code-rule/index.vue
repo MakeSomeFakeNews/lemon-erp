@@ -123,11 +123,11 @@ const resetCycleLabel = (v) => RESET_CYCLES.find((d) => d.value === v)?.label ??
 
 const columns = [
   { title: t('system.codeRule.doc'), key: 'name', width: 200 },
-  { title: t('system.codeRule.module'), dataIndex: 'module', width: 120 },
-  { title: t('system.codeRule.example'), key: 'example', width: 200 },
+  { title: t('system.codeRule.module'), dataIndex: 'module', width: 110 },
+  { title: t('system.codeRule.example'), key: 'example', width: 170 },
   { title: t('system.codeRule.prefix'), dataIndex: 'prefix', width: 90 },
-  { title: t('system.codeRule.dateFormat'), key: 'dateFormat', width: 130 },
-  { title: t('system.codeRule.seqLength'), dataIndex: 'seqLength', width: 110, align: 'right' },
+  { title: t('system.codeRule.dateFormat'), key: 'dateFormat', width: 120 },
+  { title: t('system.codeRule.seqLength'), dataIndex: 'seqLength', width: 100, align: 'right' },
   { title: t('system.codeRule.resetCycle'), key: 'resetCycle', width: 110 },
   { title: t('common.action.operation'), key: 'action', width: 220, fixed: 'right' }
 ]

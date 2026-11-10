@@ -266,10 +266,10 @@ const TYPE_TIPS = {
 
 const columns = [
   { title: t('scm.contract.noName'), key: 'contractNo', width: 240 },
-  { title: t('scm.contract.supplier'), dataIndex: 'supplierName', width: 200, ellipsis: true },
+  { title: t('scm.contract.supplier'), dataIndex: 'supplierName', width: 190, ellipsis: true },
   { title: t('scm.contract.type'), key: 'type', width: 130 },
-  { title: t('scm.contract.period'), key: 'period', width: 200 },
-  { title: t('scm.contract.execAmount'), key: 'amount', width: 190 },
+  { title: t('scm.contract.period'), key: 'period', width: 210 },
+  { title: t('scm.contract.execAmount'), key: 'amount', width: 170 },
   { title: t('common.field.status'), key: 'status', width: 100 },
   { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]

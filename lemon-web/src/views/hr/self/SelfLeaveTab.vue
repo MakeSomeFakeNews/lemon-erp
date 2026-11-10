@@ -7,7 +7,7 @@
     <template #bodyCell="{ column, record }">
       <template v-if="column.key === 'kind'">
         <DictTag type="hr_leave_kind" :value="record.kind" />
-        <DictTag v-if="record.type" type="hr_leave_type" :value="record.type" />
+        <DictTag v-if="record.type" :type="record.kind === LeaveKind.OVERTIME ? 'hr_overtime_comp' : 'hr_leave_type'" :value="record.type" />
       </template>
       <template v-else-if="column.key === 'time'">{{ $t('hr.self.timeRange', { start: fmt(record.startTime), end: fmt(record.endTime) }) }}</template>
       <template v-else-if="column.key === 'hours'">{{ hoursText(record.hours) }}</template>

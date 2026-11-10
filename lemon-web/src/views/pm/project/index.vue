@@ -186,17 +186,17 @@ import { ProjectStatus } from '@/constants/enums'
 const dict = useDict('pm_project_status', 'pm_project_type', 'pm_priority')
 
 const columns = [
-  { title: t('pm.common.project'), key: 'name', width: 220, fixed: 'left' },
-  { title: t('common.field.type'), key: 'type', width: 110, dict: 'pm_project_type' },
-  { title: t('pm.common.customer'), key: 'customer', width: 180, ellipsis: true },
-  { title: t('pm.common.manager'), dataIndex: 'managerName', width: 130 },
+  { title: t('pm.common.project'), key: 'name', width: 200, fixed: 'left' },
+  { title: t('common.field.type'), key: 'type', width: 90, dict: 'pm_project_type' },
+  { title: t('pm.common.customer'), key: 'customer', width: 150, ellipsis: true },
+  { title: t('pm.common.manager'), dataIndex: 'managerName', width: 90 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'pm_project_status' },
-  { title: t('pm.common.progress'), key: 'progress', width: 150 },
+  { title: t('pm.common.progress'), key: 'progress', width: 130 },
   { title: t('pm.common.planDates'), key: 'dates', width: 210 },
-  { title: t('pm.project.contract'), key: 'contract', width: 130, align: 'right' },
-  { title: t('pm.project.costBudget'), key: 'cost', width: 170, align: 'right' },
-  { title: t('pm.common.tasks'), key: 'tasks', width: 90 },
-  { title: t('common.action.operation'), key: 'action', width: 280, fixed: 'right' }
+  { title: t('pm.project.contract'), key: 'contract', width: 110, align: 'right' },
+  { title: t('pm.project.costBudget'), key: 'cost', width: 130, align: 'right' },
+  { title: t('pm.common.tasks'), key: 'tasks', width: 80 },
+  { title: t('common.action.operation'), key: 'action', width: 250, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'pm-project')
 const showSearch = ref(true)

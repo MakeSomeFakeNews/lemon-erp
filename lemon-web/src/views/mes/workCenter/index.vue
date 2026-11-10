@@ -166,14 +166,14 @@ const { t } = useI18n()
 const dict = useDict('sys_common_status')
 
 const columns = [
-  { title: t('mes.workCenter.title'), key: 'name', width: 200 },
-  { title: t('mes.workCenter.laborRate'), key: 'laborRate', width: 150 },
-  { title: t('mes.workCenter.overheadRate'), key: 'overheadRate', width: 160 },
-  { title: t('mes.workCenter.dailyCapacity'), key: 'capacity', width: 190, exportValue: (r) => dailyCapacity(r) },
+  { title: t('mes.workCenter.title'), key: 'name', width: 170 },
+  { title: t('mes.workCenter.laborRate'), key: 'laborRate', width: 130 },
+  { title: t('mes.workCenter.overheadRate'), key: 'overheadRate', width: 140 },
+  { title: t('mes.workCenter.dailyCapacity'), key: 'capacity', width: 170, exportValue: (r) => dailyCapacity(r) },
   { title: t('mes.workCenter.workDays'), key: 'workDays', width: 150, exportValue: (r) => workDaysText(r.workDays) },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
 ]
 const WEEK_DAYS = t('mes.workCenter.weekDays').split(',').map((label, i) => ({ label, value: i + 1 }))
 const parseWorkDays = (v) => (v || '').split(',').filter(Boolean).map(Number)

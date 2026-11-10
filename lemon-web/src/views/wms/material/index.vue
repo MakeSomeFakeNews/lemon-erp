@@ -111,20 +111,11 @@
           <template v-else-if="column.custom">{{ cfCell(record, column) }}</template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button type="link" size="small" @click="openExtras(record)">
-                <template #icon><PaperClipOutlined /></template>{{ $t('wms.material.extras') }}
-              </a-button>
               <a-button v-if="canEdit || canEditPlan" type="link" size="small" @click="drawer.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
-              <a-button type="link" size="small" @click="openUnits(record)">
-                <template #icon><SwapOutlined /></template>{{ $t('common.field.unit') }}
-              </a-button>
-              <a-button v-if="record.isTemplate !== 1" type="link" size="small" @click="openHistory(record)">
-                <template #icon><HistoryOutlined /></template>{{ $t('wms.history.action') }}
-              </a-button>
-              <a-button v-if="!record.templateId" type="link" size="small" @click="openVariants(record)">
-                <template #icon><AppstoreAddOutlined /></template>{{ $t('wms.variant.title') }}
+              <a-button type="link" size="small" @click="openExtras(record)">
+                <template #icon><PaperClipOutlined /></template>{{ $t('wms.material.extras') }}
               </a-button>
               <span v-perm="'wms:material:remove'">
                 <a-popconfirm :title="$t('wms.material.confirmDelete', { name: record.name })" @confirm="remove([record.id])">
@@ -133,6 +124,17 @@
                   </a-button>
                 </a-popconfirm>
               </span>
+              <!-- 不常用的操作收进「更多」，操作列不至于太宽 -->
+              <a-dropdown>
+                <a-button type="link" size="small">{{ $t('common.action.more') }}<DownOutlined /></a-button>
+                <template #overlay>
+                  <a-menu>
+                    <a-menu-item key="units" @click="openUnits(record)"><SwapOutlined /> {{ $t('common.field.unit') }}</a-menu-item>
+                    <a-menu-item v-if="record.isTemplate !== 1" key="history" @click="openHistory(record)"><HistoryOutlined /> {{ $t('wms.history.action') }}</a-menu-item>
+                    <a-menu-item v-if="!record.templateId" key="variants" @click="openVariants(record)"><AppstoreAddOutlined /> {{ $t('wms.variant.title') }}</a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
             </span>
           </template>
         </template>
@@ -459,7 +461,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { isZh } from '@/locales'
 import { message } from 'ant-design-vue'
-import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, DollarOutlined, EditOutlined, HistoryOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, QuestionCircleOutlined, SwapOutlined } from '@ant-design/icons-vue'
+import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, DollarOutlined, DownOutlined, EditOutlined, HistoryOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, QuestionCircleOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -595,7 +597,7 @@ const columns = [
   { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 120, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 90 },
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 360, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: 270, fixed: 'right' }
 ]
 const { checked } = useColumns(columns, 'wms-material')
 /** 列设置、导出用的列：只有启用的价格列，标题为价格列名称 */

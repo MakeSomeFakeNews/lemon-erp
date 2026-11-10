@@ -307,13 +307,13 @@ const statusOptions = computed(() =>
 const dueSoon = ref(false)
 
 const columns = [
-  { title: t('fin.note.noteNo'), key: 'noteNo', width: 180 },
+  { title: t('fin.note.noteNo'), key: 'noteNo', width: 240 },
   { title: t('common.field.type'), key: 'noteType', width: 110 },
-  { title: t('fin.note.partner'), dataIndex: 'partnerName', width: 150, ellipsis: true },
+  { title: t('fin.note.partner'), dataIndex: 'partnerName', width: 120, ellipsis: true },
   { title: t('fin.note.faceAmount'), key: 'amount', width: 130, align: 'right' },
   { title: t('fin.note.issueDate'), dataIndex: 'issueDate', width: 100 },
   { title: t('fin.note.dueDate'), key: 'dueDate', width: 120 },
-  { title: t('fin.note.acceptor'), dataIndex: 'acceptor', width: 120, ellipsis: true },
+  { title: t('fin.note.acceptor'), dataIndex: 'acceptor', width: 90, ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 90 },
   { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]

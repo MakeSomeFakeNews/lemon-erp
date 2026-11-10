@@ -606,6 +606,7 @@ export default {
     receivedN: '已入库 {qty}',
     overdueDays: '逾期 {n} 天',
     dueInDays: '{n} 天后到期',
+    dueToday: '今天到期',
     shortage: '缺货',
     atp: '可承诺量',
     customer: '客户',

@@ -287,7 +287,7 @@
                 <template v-else-if="column.key === 'status'">
                   <DictTag type="hr_contract_status" :value="record.status" />
                   <div v-if="record.status === LaborContractStatus.ACTIVE && record.daysLeft != null && record.daysLeft <= 30" class="warn">
-                    {{ record.daysLeft < 0 ? $t('hr.contract.overdueDays', { n: -record.daysLeft }) : $t('hr.employee.expiresIn', { n: record.daysLeft }) }}
+                    {{ record.daysLeft < 0 ? $t('hr.contract.overdueDays', { n: -record.daysLeft }) : record.daysLeft === 0 ? $t('hr.contract.dueToday') : $t('hr.employee.expiresIn', { n: record.daysLeft }) }}
                   </div>
                   <div v-else-if="record.terminateDate" class="sub-text">{{ record.terminateDate }} {{ record.terminateReason }}</div>
                 </template>

@@ -217,14 +217,14 @@ const thisYear = dayjs().year()
 const years = [thisYear + 1, thisYear, thisYear - 1, thisYear - 2].map((y) => ({ value: y, label: t('hr.training.yearOption', { year: y }) }))
 
 const columns = [
-  { title: t('hr.training.training'), key: 'title', width: 260, fixed: 'left' },
-  { title: t('hr.training.category'), key: 'category', width: 110, dict: 'hr_training_category' },
+  { title: t('hr.training.training'), key: 'title', width: 200, fixed: 'left' },
+  { title: t('hr.training.category'), key: 'category', width: 90, dict: 'hr_training_category' },
   { title: t('common.field.date'), key: 'date', width: 200 },
-  { title: t('hr.training.hours'), dataIndex: 'hours', width: 100 },
-  { title: t('hr.training.col.trainees'), key: 'trainees', width: 170 },
-  { title: t('hr.training.cost'), key: 'cost', width: 110, align: 'right' },
+  { title: t('hr.training.hours'), dataIndex: 'hours', width: 70 },
+  { title: t('hr.training.col.trainees'), key: 'trainees', width: 140 },
+  { title: t('hr.training.cost'), key: 'cost', width: 100, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'hr_training_status' },
-  { title: t('common.action.operation'), key: 'action', width: 280, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-training')
 

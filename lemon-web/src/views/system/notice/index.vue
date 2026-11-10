@@ -130,14 +130,14 @@ const form = ref()
 const detail = ref()
 
 const columns = [
-  { title: t('system.notice.titleLabel'), key: 'title', dataIndex: 'title', width: 280, ellipsis: true },
+  { title: t('system.notice.titleLabel'), key: 'title', dataIndex: 'title', width: 210, ellipsis: true },
   { title: t('system.notice.type'), key: 'type', dataIndex: 'type', width: 90, dict: 'sys_notice_type' },
   { title: t('system.notice.scope'), key: 'scope', dataIndex: 'scopeType', width: 100, dict: 'sys_notice_scope' },
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 140, dict: 'sys_notice_status' },
-  { title: t('system.notice.progress'), key: 'progress', width: 150, exportValue: (r) => (r.totalCount ? `${r.readCount}/${r.totalCount}` : '') },
-  { title: t('system.notice.publishTime'), key: 'publish', dataIndex: 'publishTime', width: 170 },
+  { title: t('system.notice.progress'), key: 'progress', width: 120, exportValue: (r) => (r.totalCount ? `${r.readCount}/${r.totalCount}` : '') },
+  { title: t('system.notice.publishTime'), key: 'publish', dataIndex: 'publishTime', width: 160 },
   { title: t('system.notice.expireDate'), key: 'expireDate', dataIndex: 'expireDate', width: 110 },
-  { title: t('common.action.operation'), key: 'action', width: 220, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: 210, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'sys-notice')
 const showSearch = ref(true)

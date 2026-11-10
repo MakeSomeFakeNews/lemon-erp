@@ -53,12 +53,17 @@ public class WmsVariantService {
 
     // ---------------------------------------------------------------- 规格属性
 
-    /** 全部规格属性及属性值，按排序 */
+    /** 全部规格属性及属性值，按排序；属性值标记是否已被 SKU 使用 */
     public List<WmsAttribute> attributes() {
         List<WmsAttribute> list = attributeMapper.selectList(Wrappers.<WmsAttribute>lambdaQuery()
                 .orderByAsc(WmsAttribute::getSort).orderByAsc(WmsAttribute::getId));
-        Map<Long, List<WmsAttributeValue>> values = valueMapper.selectList(Wrappers.<WmsAttributeValue>lambdaQuery()
-                        .orderByAsc(WmsAttributeValue::getSort).orderByAsc(WmsAttributeValue::getId)).stream()
+        Set<Long> usedValueIds = variantValueMapper.selectList(Wrappers.<WmsVariantValue>lambdaQuery()
+                        .select(WmsVariantValue::getValueId).groupBy(WmsVariantValue::getValueId)).stream()
+                .map(WmsVariantValue::getValueId).collect(Collectors.toSet());
+        List<WmsAttributeValue> allValues = valueMapper.selectList(Wrappers.<WmsAttributeValue>lambdaQuery()
+                .orderByAsc(WmsAttributeValue::getSort).orderByAsc(WmsAttributeValue::getId));
+        allValues.forEach(v -> v.setUsed(usedValueIds.contains(v.getId())));
+        Map<Long, List<WmsAttributeValue>> values = allValues.stream()
                 .collect(Collectors.groupingBy(WmsAttributeValue::getAttributeId, LinkedHashMap::new, Collectors.toList()));
         list.forEach(a -> a.setValues(values.getOrDefault(a.getId(), List.of())));
         return list;

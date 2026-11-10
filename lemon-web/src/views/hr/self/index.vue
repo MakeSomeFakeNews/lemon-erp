@@ -128,7 +128,7 @@ import SelfPayslipTab from './SelfPayslipTab.vue'
 import SelfPerfTab from './SelfPerfTab.vue'
 import SelfTrainingTab from './SelfTrainingTab.vue'
 
-useDict('hr_emp_status', 'hr_attendance_status', 'hr_leave_type', 'hr_leave_kind', 'hr_leave_status', 'hr_payroll_status',
+useDict('hr_emp_status', 'hr_attendance_status', 'hr_leave_type', 'hr_overtime_comp', 'hr_leave_kind', 'hr_leave_status', 'hr_payroll_status',
   'hr_perf_grade', 'hr_appraisal_status', 'hr_training_category', 'hr_training_status')
 
 const loading = ref(false)

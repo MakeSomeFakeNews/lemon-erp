@@ -30,7 +30,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1100, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -94,6 +94,7 @@ import GenerateModal from './GenerateModal.vue'
 import ReportDetail from './ReportDetail.vue'
 import { getAiStatus } from '@/api/ai/config'
 import { deleteReport, pageReports } from '@/api/ai/report'
+import { sumWidth } from '@/composables/useColumns'
 import { useAction } from '@/composables/useAction'
 import { useTable } from '@/composables/useTable'
 import { AiReportPeriodType, AiReportStatus } from '@/constants/enums'
@@ -110,16 +111,17 @@ const userStore = useUserStore()
 const canConfig = userStore.hasPerm('ai:config:list')
 
 const columns = [
-  { title: t('ai.report.colTitle'), key: 'title', width: 260, ellipsis: true },
-  { title: t('ai.report.colType'), key: 'periodType', width: 80 },
-  { title: t('ai.report.colPeriod'), key: 'period', width: 200 },
-  { title: t('ai.report.colGeneratedBy'), key: 'generatedBy', width: 110 },
-  { title: t('ai.report.colSources'), key: 'sources', width: 220, ellipsis: true },
-  { title: t('ai.report.colStatus'), key: 'status', width: 100 },
-  { title: t('ai.report.colTokens'), key: 'tokens', width: 90, align: 'right' },
-  { title: t('ai.report.colTime'), dataIndex: 'createTime', width: 170 },
+  { title: t('ai.report.colTitle'), key: 'title', width: 170, ellipsis: true },
+  { title: t('ai.report.colType'), key: 'periodType', width: 70 },
+  { title: t('ai.report.colPeriod'), key: 'period', width: 210 },
+  { title: t('ai.report.colGeneratedBy'), key: 'generatedBy', width: 90 },
+  { title: t('ai.report.colSources'), key: 'sources', width: 130, ellipsis: true },
+  { title: t('ai.report.colStatus'), key: 'status', width: 90 },
+  { title: t('ai.report.colTokens'), key: 'tokens', width: 80, align: 'right' },
+  { title: t('ai.report.colTime'), dataIndex: 'createTime', width: 160 },
   { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
+const scrollX = sumWidth(columns)
 
 const status = ref(null)
 const generateRef = ref()

@@ -4,12 +4,13 @@
 
     <sql id="viewSelect">
         SELECT e.*, m.code AS material_code, m.name AS material_name, fb.version AS from_version, tb.version AS to_version,
-               u.nickname AS create_by_name
+               u.nickname AS create_by_name, au.nickname AS approve_by_name
         FROM mes_ecn e
         LEFT JOIN wms_material m ON m.id = e.material_id
         LEFT JOIN mes_bom fb ON fb.id = e.from_bom_id
         LEFT JOIN mes_bom tb ON tb.id = e.to_bom_id
         LEFT JOIN sys_user u ON u.id = e.create_by
+        LEFT JOIN sys_user au ON au.id = e.approve_by
     </sql>
 
     <select id="selectPageList" resultType="com.lemon.erp.modules.mes.entity.MesEcn">

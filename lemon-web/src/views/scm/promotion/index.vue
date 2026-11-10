@@ -223,10 +223,10 @@ function scopeText(p) {
 }
 
 const columns = [
-  { title: t('scm.promotion.promotion'), key: 'name', width: 220 },
+  { title: t('scm.promotion.promotion'), key: 'name', width: 210 },
   { title: t('common.field.type'), key: 'type', width: 100 },
-  { title: t('scm.promotion.rule'), key: 'rule', width: 220 },
-  { title: t('scm.promotion.scope'), key: 'scope', width: 220 },
+  { title: t('scm.promotion.rule'), key: 'rule', width: 200 },
+  { title: t('scm.promotion.scope'), key: 'scope', width: 200 },
   { title: t('scm.promotion.usage'), key: 'usage', width: 150 },
   { title: t('common.field.status'), key: 'status', width: 100 },
   { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }

@@ -65,6 +65,7 @@ export default {
   pick: {
     scanDelivery: '扫描或输入发货通知号',
     noDeliveries: '没有待拣货的发货通知',
+    change: '换通知',
     shortage: '{names} 拣货建议不足，请在后台调整后再拣货',
     picked: '已拣',
     submit: '确认拣货',
@@ -81,6 +82,7 @@ export default {
   check: {
     tip: '在后台按库存生成盘点单（草稿）后，在这里扫码录入实盘数量',
     noChecks: '没有待盘点的盘点单',
+    change: '换盘点单',
     counted: '已盘 {n} / {total} 行',
     onlyCurrent: '只看当前库位',
     book: '账面 {n}',
