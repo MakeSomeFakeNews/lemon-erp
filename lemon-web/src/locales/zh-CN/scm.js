@@ -690,6 +690,7 @@ export default {
     noLocation: '未分库位',
     expiryN: '有效期 {date}',
     pickTip: '按库位路径（区域 → 排序 → 编码）排列，先按行拣出合计数量，再按「分拣」放入各发货通知',
+    pickDoneTip: '波次已完成：显示各发货通知实际拣货的库位、批次和数量（完成时跳过、仍待拣货的通知不在其中）',
     deliveryTab: '发货通知（{n}）',
     removeConfirm: '把该发货通知移出波次？',
     remove: '移出',

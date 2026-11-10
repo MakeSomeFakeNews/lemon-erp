@@ -64,11 +64,11 @@ public class ScmWaveService {
         return w;
     }
 
-    /** 拣货单（按库位路径汇总）和库存不足的明细 */
+    /** 拣货单（按库位路径汇总）和库存不足的明细；已完成的波次显示实际拣货（没有库存不足） */
     public WavePickList pickList(Long id) {
-        detail(id);
+        boolean done = detail(id).getStatus() == WaveStatus.DONE;
         Map<String, WavePickList.Line> lines = new LinkedHashMap<>();
-        for (WavePickList.PickRow r : waveMapper.selectPickLines(id)) {
+        for (WavePickList.PickRow r : waveMapper.selectPickLines(id, done)) {
             String key = r.getLocationId() + "|" + r.getMaterialId() + "|" + r.getBatchNo();
             BigDecimal qty = r.getQty();
             WavePickList.Line line = lines.get(key);
@@ -78,7 +78,7 @@ public class ScmWaveService {
                     r.getMaterialCode(), r.getMaterialName(), r.getSpec(), r.getUnit(),
                     r.getBatchNo(), r.getExpiryDate(), line == null ? qty : line.qty().add(qty), sorts));
         }
-        return new WavePickList(new ArrayList<>(lines.values()), waveMapper.selectShortages(id));
+        return new WavePickList(new ArrayList<>(lines.values()), done ? List.of() : waveMapper.selectShortages(id));
     }
 
     @Transactional
@@ -150,7 +150,7 @@ public class ScmWaveService {
             throw new BizException("scm.error.noDeliveryNoticesPendingPickingWave");
         }
         List<String> shortage = waveMapper.selectShortages(id).stream().map(WavePickList.Shortage::getDeliveryNo).distinct().toList();
-        List<String> serial = waveMapper.selectPickLines(id).stream().filter(r -> Integer.valueOf(1).equals(r.getSerialEnabled()))
+        List<String> serial = waveMapper.selectPickLines(id, false).stream().filter(r -> Integer.valueOf(1).equals(r.getSerialEnabled()))
                 .map(WavePickList.PickRow::getDeliveryNo).filter(no -> !shortage.contains(no)).distinct().toList();
         List<ScmDelivery> ready = pending.stream().filter(d -> !shortage.contains(d.getDeliveryNo()) && !serial.contains(d.getDeliveryNo())).toList();
         if (ready.isEmpty()) {

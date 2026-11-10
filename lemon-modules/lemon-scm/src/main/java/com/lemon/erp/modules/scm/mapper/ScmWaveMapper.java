@@ -21,7 +21,8 @@ public interface ScmWaveMapper extends BaseMapper<ScmWave> {
      * deliveryId、deliveryNo、customerName、deliveryItemId、materialId、materialCode、materialName、spec、unit、serialEnabled、
      * locationId、locationCode、zone、batchNo、expiryDate、qty
      */
-    List<WavePickList.PickRow> selectPickLines(@Param("waveId") Long waveId);
+    /** 拣货行：拣货中的波次为待拣货通知的拣货建议；已完成的波次（done）为已拣货 / 已发货通知的实际拣货 */
+    List<WavePickList.PickRow> selectPickLines(@Param("waveId") Long waveId, @Param("done") boolean done);
 
     /** 拣货建议不足通知数量的明细（库存不足）：deliveryNo、materialCode、materialName、unit、qty、suggested */
     List<WavePickList.Shortage> selectShortages(@Param("waveId") Long waveId);

@@ -204,6 +204,20 @@ function openExtras(record) {
   extrasTitle.value = `${record.code} ${record.name}`
   extrasOpen.value = true
 }
+// 门户账号
+const portalOpen = ref(false)
+const portalSupplier = ref()
+function openPortal(record) {
+  portalSupplier.value = record
+  portalOpen.value = true
+}
+// 供货价格
+const priceOpen = ref(false)
+const priceSupplier = ref()
+function openPrices(record) {
+  priceSupplier.value = record
+  priceOpen.value = true
+}
 const importColumns = [
   { title: t('scm.supplier.code'), key: 'code', required: true },
   { title: t('scm.supplier.name'), key: 'name', required: true },
