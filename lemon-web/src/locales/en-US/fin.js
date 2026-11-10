@@ -811,6 +811,8 @@ export default {
     usedText: '¥{used} (balance {left})',
     voucher: 'Voucher',
     records: 'Offset Records',
+    receiptSettlement: 'Receipt',
+    paymentSettlement: 'Payment',
     noRecords: 'No offsets yet',
     receiptTab: 'Advance Receipts (Customers)',
     receipt: 'Advance Receipt',

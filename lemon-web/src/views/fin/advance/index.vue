@@ -177,6 +177,10 @@
               {{ formatMoney(record.amount) }}
               <div v-if="isForeign(detail.currency)" class="sub-text">{{ detail.currency }} {{ formatMoney(record.amountFc) }}</div>
             </template>
+            <template v-else-if="column.key === 'settleNo'">
+              <a v-if="record.settlementId && canOpenSettlement" @click="openSettlement(record.settlementId)">{{ record.settleNo }}</a>
+              <span v-else>{{ record.settleNo || '-' }}</span>
+            </template>
           </template>
         </a-table>
       </template>
@@ -210,7 +214,11 @@ import { useAction } from '@/composables/useAction'
 import { BASE_CURRENCY, currencyOptions, currencySymbol, fcText, fetchRate, isForeign, useCurrencies } from '@/components/fin/currency'
 
 import { SettleKind } from '@/constants/enums'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/store/user'
 const { t } = useI18n()
+const router = useRouter()
+const userStore = useUserStore()
 const KINDS = {
   RECEIPT: { tab: t('fin.advance.receiptTab'), label: t('fin.advance.receipt'), partner: 'customer', partnerLabel: t('fin.advance.customer'), billKind: 'ar',
     addLabel: t('fin.advance.addReceipt'), allPartner: t('fin.advance.allCustomers'), amountLabel: t('fin.advance.receiptAmount'),
@@ -361,14 +369,21 @@ async function submitApply() {
 }
 
 // ---------------------------------------------------------------- 详情
-const applyColumns = [
+const detailOpen = ref(false)
+const detail = ref()
+// 收付款中冲抵的记录带收付款单（预收对应收款单、预付对应付款单），点击跳转到收付款页面打开详情
+const settleKind = computed(() => (detail.value?.kind === SettleKind.PAYMENT ? 'payment' : 'receipt'))
+const canOpenSettlement = computed(() => userStore.hasPerm(`fin:${settleKind.value}:list`))
+const applyColumns = computed(() => [
   { title: t('fin.advance.applyBill'), dataIndex: 'billNo', width: 160 },
   { title: t('fin.advance.applyDate'), dataIndex: 'applyDate', width: 120 },
   { title: t('common.field.amount'), key: 'amount', width: 130, align: 'right' },
+  { title: t(`fin.advance.${settleKind.value}Settlement`), key: 'settleNo', width: 160 },
   { title: t('fin.advance.voucher'), dataIndex: 'voucherNo', width: 120 }
-]
-const detailOpen = ref(false)
-const detail = ref()
+])
+function openSettlement(id) {
+  router.push({ path: `/fin/${settleKind.value}`, query: { id } })
+}
 async function openDetail(record) {
   detail.value = undefined
   detailOpen.value = true
