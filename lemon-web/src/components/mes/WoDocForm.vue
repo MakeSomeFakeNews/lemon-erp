@@ -1,6 +1,7 @@
 <template>
   <SubPage :open="open" :title="title" width="min(1150px, 100vw)" destroy-on-close @close="emit('update:open', false)">
     <a-alert type="info" show-icon class="tip" :message="tip" />
+    <a-alert v-if="kitText" :type="kitShort ? 'warning' : 'success'" show-icon class="tip" :message="kitText" />
     <a-form ref="formRef" :model="form" layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="24" :sm="8">
@@ -110,14 +111,15 @@
 <script setup>
 import SubPage from '@/components/SubPage.vue'
 import { computed, ref, watch } from 'vue'
-import { message } from 'ant-design-vue'
+import { Modal, message } from 'ant-design-vue'
 import { DeleteOutlined, SplitCellsOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import StockSlotSelect from '@/components/scm/StockSlotSelect.vue'
 import LocationSelect from '@/components/wms/LocationSelect.vue'
 import SerialInput from '@/components/wms/SerialInput.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
-import { addWoDoc, issueSupplement } from '@/api/mes/wo'
+import { addWoDoc, getWoFinishCheck, issueSupplement } from '@/api/mes/wo'
+import { FinishKitCheck } from '@/constants/enums'
 import { unitCosts } from '@/api/wms/stock'
 import { useUserStore } from '@/store/user'
 import { formatQty, rowKey, today } from '@/components/wms/wms'
@@ -202,7 +204,10 @@ function buildRows() {
   if (props.kind === 'finish' || props.kind === 'scrap') {
     // 报废入库：各工序报工报废数合计 − 已报废入库
     const scrapped = (wo.ops || []).reduce((sum, o) => sum + Number(o.scrapQty || 0), 0)
-    const remaining = props.kind === 'scrap' ? qty4(scrapped - Number(props.scrapIn || 0)) : qty4(Number(wo.qty) - Number(wo.finishedQty))
+    // 完工入库：工单数量 − 已完工 − 报工报废（报废的不会再生产出来）
+    const remaining = props.kind === 'scrap'
+      ? qty4(scrapped - Number(props.scrapIn || 0))
+      : qty4(Number(wo.qty) - Number(wo.finishedQty) - Number(wo.scrapQty || 0))
     return remaining > 0
       ? [
           {
@@ -258,12 +263,60 @@ watch(
       remark: '',
       items: buildRows()
     }
+    kit.value = null
+    if (props.kind === 'finish') loadKit(props.wo.id)
     if (costEditable.value && form.value.items.length) {
       const ids = [...new Set(form.value.items.map((i) => i.materialId))]
       unitCosts(ids).then((costs) => form.value.items.forEach((i) => (i.costPrice ??= costs[i.materialId] == null ? undefined : Number(costs[i.materialId]))))
     }
   }
 )
+
+// ---------------------------------------------------------------- 完工入库的领料校验
+/** 按净领料（领料 + 补料 − 退料）计算的可完工齐套数量和校验方式（业务参数「完工入库领料校验」） */
+const kit = ref(null)
+const kitEnabled = computed(() => kit.value && kit.value.mode !== FinishKitCheck.NONE && kit.value.kitQty != null)
+/** 本次还能按齐套入库的数量 */
+const kitLeft = computed(() => (kitEnabled.value ? Math.max(qty4(Number(kit.value.kitQty) - Number(kit.value.finishedQty)), 0) : null))
+const totalQty = computed(() => form.value.items.reduce((sum, i) => sum + Number(i.qty || 0), 0))
+const kitShort = computed(() => kitEnabled.value && qty4(totalQty.value) > kitLeft.value)
+const kitText = computed(() => {
+  if (!kitEnabled.value) return ''
+  const k = kit.value
+  const params = { kit: formatQty(k.kitQty), finished: formatQty(k.finishedQty), left: formatQty(kitLeft.value), material: `${k.limitMaterialCode || ''} ${k.limitMaterialName || ''}`.trim() }
+  return t(k.mode === FinishKitCheck.BLOCK ? 'mes.woDocForm.kitBlock' : 'mes.woDocForm.kitWarn', params)
+})
+
+async function loadKit(woId) {
+  const res = await getWoFinishCheck(woId).catch(() => null)
+  if (!props.open || props.kind !== 'finish' || props.wo?.id !== woId) return
+  kit.value = res
+  // 禁止超出时，默认数量不超过按齐套还能入库的数量
+  if (res && res.mode === FinishKitCheck.BLOCK && kitLeft.value != null) {
+    form.value.items.forEach((i) => {
+      if (Number(i.qty || 0) > kitLeft.value) i.qty = kitLeft.value
+    })
+  }
+}
+
+/** 超出齐套数量：禁止时提示并返回 false，提示时确认后继续 */
+function confirmKit() {
+  if (props.kind !== 'finish' || !kitShort.value) return Promise.resolve(true)
+  const params = { qty: formatQty(totalQty.value), left: formatQty(kitLeft.value) }
+  if (kit.value.mode === FinishKitCheck.BLOCK) {
+    message.error(t('mes.woDocForm.kitExceedBlock', params))
+    return Promise.resolve(false)
+  }
+  return new Promise((resolve) => {
+    Modal.confirm({
+      title: t('mes.woDocForm.kitExceedTitle'),
+      content: t('mes.woDocForm.kitExceedWarn', params),
+      okText: t('mes.woDocForm.kitExceedOk'),
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false)
+    })
+  })
+}
 
 function onWarehouseChange(id) {
   form.value.warehouseId = id
@@ -281,6 +334,7 @@ async function submit() {
   } catch {
     return
   }
+  if (!(await confirmKit())) return
   saving.value = true
   try {
     const payload = {

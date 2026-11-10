@@ -42,7 +42,7 @@ import java.util.Set;
 import static com.lemon.erp.modules.mes.model.MesConstants.WO_RULE;
 
 /**
- * 生产工单：草稿 → 下达 → 生产中 → 已完工，未完工的可以关闭。
+ * 生产工单：草稿 → 下达 → 生产中 → 已完工（完工入库满数量，或 完工 + 报工报废 达到工单数量），未完工的可以关闭。
  * 保存时按 BOM 生成用料（需求数量 = 工单数量 × 用量 × (1 + 损耗率)，虚拟件展开为子件）和工序（工艺路线），之后修改 BOM 不影响已有工单；
  * 领料、退料、完工入库见 {@link MesWoDocService}，报工见 {@link WoReportService}，改量、拆分见 {@link WoChangeService}，
  * 用料和工序行的生成见 {@link WoLineService}
@@ -107,6 +107,7 @@ public class MesWorkOrderService {
         wo.setWarehouseId(req.warehouseId());
         wo.setStatus(WorkOrderStatus.DRAFT);
         wo.setFinishedQty(BigDecimal.ZERO);
+        wo.setScrapQty(BigDecimal.ZERO);
         wo.setSource(source);
         wo.setPlanId(planId);
         wo.setRemark(req.remark());
@@ -207,6 +208,7 @@ public class MesWorkOrderService {
         wo.setWarehouseId(req.warehouseId());
         wo.setStatus(WorkOrderStatus.DRAFT);
         wo.setFinishedQty(BigDecimal.ZERO);
+        wo.setScrapQty(BigDecimal.ZERO);
         wo.setSource(WorkOrderSource.REWORK);
         wo.setSourceWoId(sourceWoId);
         wo.setRemark(req.remark());
@@ -233,6 +235,15 @@ public class MesWorkOrderService {
         return wo;
     }
 
+    /** 报废入库：已下达、生产中的工单，以及完工 + 报废达到数量而完工、报废品还没有全部入库的工单 */
+    MesWorkOrder getScrapReceivable(Long id) {
+        MesWorkOrder wo = getAccessible(id);
+        if (!wo.getStatus().isExecutable() && wo.getStatus() != WorkOrderStatus.COMPLETED) {
+            throw new BizException("mes.error.workOrderNotReleasedProduction", wo.getWoNo());
+        }
+        return wo;
+    }
+
     /** 首次领料、报工、完工入库后：已下达 → 生产中 */
     void markStarted(Long id) {
         workOrderMapper.update(Wrappers.<MesWorkOrder>lambdaUpdate()
@@ -241,14 +252,41 @@ public class MesWorkOrderService {
                 .eq(MesWorkOrder::getStatus, WorkOrderStatus.RELEASED));
     }
 
-    /** 完工入库满数量：已完工；计划下全部工单的完工数量达到计划数量时，计划自动关闭（不再参与 MRP） */
-    void markCompleted(Long id) {
-        if (workOrderMapper.markCompleted(id) == 0) {
+    /** 报工报废：累计到工单的报废数量 */
+    void addScrap(Long id, BigDecimal qty) {
+        if (qty != null && qty.signum() > 0) {
+            workOrderMapper.addScrap(id, qty);
+        }
+    }
+
+    /**
+     * 不经完工入库的完工（报工报废、改量后 完工 + 报废 达到工单数量）：工单完工，尚未转入产品的实时成本按关闭的规则追加到
+     * 已完工产品（{@link MesStockCosts#applyClose}），记录在 closeCost / closeStockCost
+     */
+    void completeIfDone(Long id) {
+        if (!markCompleted(id)) {
             return;
+        }
+        BigDecimal[] cost = stockCosts.applyClose(workOrderMapper.selectById(id));
+        if (cost[0].signum() != 0) {
+            workOrderMapper.update(Wrappers.<MesWorkOrder>lambdaUpdate().set(MesWorkOrder::getCloseCost, cost[0])
+                    .set(MesWorkOrder::getCloseStockCost, cost[1]).eq(MesWorkOrder::getId, id));
+        }
+    }
+
+    /**
+     * 完工入库满数量，或已有完工且 完工 + 报工报废 达到工单数量：已完工；
+     * 计划下全部工单的完工数量达到计划数量时，计划自动关闭（不再参与 MRP；报废的部分不算完成计划）
+     *
+     * @return 是否由本次改为已完工
+     */
+    boolean markCompleted(Long id) {
+        if (workOrderMapper.markCompleted(id) == 0) {
+            return false;
         }
         MesWorkOrder wo = workOrderMapper.selectById(id);
         if (wo.getPlanId() == null) {
-            return;
+            return true;
         }
         MesPlan plan = planMapper.selectById(wo.getPlanId());
         if (plan != null && plan.getStatus() == PlanStatus.CONFIRMED
@@ -257,6 +295,7 @@ public class MesWorkOrderService {
                     .set(MesPlan::getUpdateTime, LocalDateTime.now())
                     .eq(MesPlan::getId, plan.getId()).eq(MesPlan::getStatus, PlanStatus.CONFIRMED));
         }
+        return true;
     }
 
     // ---------------------------------------------------------------- 内部

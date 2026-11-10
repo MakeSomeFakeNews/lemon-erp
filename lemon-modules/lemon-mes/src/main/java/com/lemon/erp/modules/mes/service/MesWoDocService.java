@@ -6,10 +6,12 @@ import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.rule.BizRules;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.mes.dto.WoDocItemRequest;
 import com.lemon.erp.modules.mes.dto.WoDocRequest;
+import com.lemon.erp.modules.mes.dto.WoFinishCheckView;
 import com.lemon.erp.modules.mes.entity.MesMaterialPlan;
 import com.lemon.erp.modules.mes.entity.MesWoDoc;
 import com.lemon.erp.modules.mes.entity.MesWoDocItem;
@@ -22,6 +24,7 @@ import com.lemon.erp.modules.mes.mapper.MesWoDocMapper;
 import com.lemon.erp.modules.mes.mapper.MesWoMaterialMapper;
 import com.lemon.erp.modules.mes.mapper.MesWoOpMapper;
 import com.lemon.erp.modules.mes.mapper.MesWorkOrderMapper;
+import com.lemon.erp.modules.mes.model.FinishKitCheck;
 import com.lemon.erp.modules.mes.model.WoDocKind;
 import com.lemon.erp.modules.wms.dto.StockDocItemRequest;
 import com.lemon.erp.modules.wms.dto.StockDocRequest;
@@ -58,7 +61,9 @@ import static com.lemon.erp.modules.wms.model.WmsConstants.splitSerials;
  *   <li>领料、退料：物料必须是工单用料，退料不超过已领数量；
  *       累计领料不超过 需求 × (1 + 物料的允许超领比例) + 已补料，超出部分走补料申请（{@link MesSupplementService}）</li>
  *   <li>补料：补料申请审批通过后发料，不受领料上限限制，同时计入已领和已补料</li>
- *   <li>完工入库：物料为工单产品，累计不超过工单数量，满数量后工单自动完工</li>
+ *   <li>完工入库：物料为工单产品，累计不超过工单数量，满数量（或 完工 + 报工报废 达到工单数量）后工单自动完工；
+ *       按业务参数校验累计完工不超过按净领料计算的齐套数量（{@link WoKitQty}）</li>
+ *   <li>报废入库：工单产品入不良品仓，累计不超过报工报废数；完工 + 报废达到数量而完工的工单仍可报废入库</li>
  * </ul>
  */
 @Service
@@ -79,6 +84,7 @@ public class MesWoDocService {
     private final com.lemon.erp.modules.wms.service.WmsWarehouseService warehouseService;
     private final MesStockCosts stockCosts;
     private final PermissionService permissionService;
+    private final BizRules bizRules;
 
     public PageResult<MesWoDoc> page(long current, long size, Long woId, WoDocKind kind) {
         if (woId != null) {
@@ -117,7 +123,8 @@ public class MesWoDocService {
     }
 
     private Long save(Long woId, WoDocKind kind, WoDocRequest req) {
-        MesWorkOrder wo = workOrderService.getExecutable(woId);
+        // 报废入库：完工 + 报废达到数量而完工的工单，报废品还可以继续入库
+        MesWorkOrder wo = kind == WoDocKind.SCRAP ? workOrderService.getScrapReceivable(woId) : workOrderService.getExecutable(woId);
         Map<Long, WmsMaterial> materials = materialService.mapByIds(req.items().stream().map(WoDocItemRequest::materialId).toList());
         BigDecimal total = Decimals.sum(req.items(), WoDocItemRequest::qty);
 
@@ -125,6 +132,7 @@ public class MesWoDocService {
             if (req.items().stream().anyMatch(i -> !i.materialId().equals(wo.getMaterialId()))) {
                 throw new BizException("mes.error.completionReceiptMaterialMustWorkOrder");
             }
+            checkKit(wo, total);
             if (workOrderMapper.addFinished(woId, total) == 0) {
                 BigDecimal remaining = wo.getQty().subtract(workOrderMapper.selectById(woId).getFinishedQty());
                 throw new BizException("mes.error.completedQuantityExceedsUnfinishedQuantity", remaining.stripTrailingZeros().toPlainString());
@@ -215,6 +223,52 @@ public class MesWoDocService {
             workOrderService.markCompleted(woId);
         }
         return doc.getId();
+    }
+
+    /** 完工入库的领料校验：可完工的齐套数量（按净领料计算）与校验方式 */
+    public WoFinishCheckView finishCheck(Long woId) {
+        MesWorkOrder wo = workOrderService.getAccessible(woId);
+        List<MesWoMaterial> materials = woMaterialMapper.selectByWo(woId);
+        WoKitQty.Result kit = kitQty(materials);
+        MesWoMaterial limit = kit.limitMaterial() == null ? null
+                : materials.stream().filter(m -> m.getMaterialId().equals(kit.limitMaterial())).findFirst().orElse(null);
+        return new WoFinishCheckView(kitCheckMode(), wo.getQty(), wo.getFinishedQty(), Decimals.nz(wo.getScrapQty()), kit.qty(),
+                limit == null ? null : limit.getMaterialCode(), limit == null ? null : limit.getMaterialName());
+    }
+
+    private FinishKitCheck kitCheckMode() {
+        return bizRules.option(MesBizRules.FINISH_KIT_CHECK, FinishKitCheck.class);
+    }
+
+    /** 工单用料按净领料能支持的齐套数量（替代料与主料合并计算），见 {@link WoKitQty} */
+    private WoKitQty.Result kitQty(List<MesWoMaterial> materials) {
+        if (materials.isEmpty()) {
+            return WoKitQty.Result.UNLIMITED;
+        }
+        Set<Long> ids = materials.stream().map(MesWoMaterial::getMaterialId).collect(Collectors.toSet());
+        Map<Long, Map<Long, BigDecimal>> subs = new HashMap<>();
+        materialPlanService.substitutes(ids).forEach((main, list) -> list.stream().filter(x -> ids.contains(x.getSubstituteId()))
+                .forEach(x -> subs.computeIfAbsent(main, k -> new HashMap<>()).put(x.getSubstituteId(), x.getRatio())));
+        return WoKitQty.compute(materials.stream()
+                .map(m -> new WoKitQty.Line(m.getMaterialId(), m.getUnitQty(), m.getIssuedQty())).toList(), subs);
+    }
+
+    /**
+     * 完工入库的领料校验（业务参数 {@link MesBizRules#FINISH_KIT_CHECK}）：累计完工入库超过按净领料计算的齐套数量时，
+     * 「禁止」不能入库；「提示」由界面确认后入库，这里不拦截
+     */
+    private void checkKit(MesWorkOrder wo, BigDecimal qty) {
+        if (kitCheckMode() != FinishKitCheck.BLOCK) {
+            return;
+        }
+        List<MesWoMaterial> materials = woMaterialMapper.selectByWo(wo.getId());
+        WoKitQty.Result kit = kitQty(materials);
+        if (kit.qty() == null || wo.getFinishedQty().add(qty).compareTo(kit.qty()) <= 0) {
+            return;
+        }
+        String name = materials.stream().filter(m -> m.getMaterialId().equals(kit.limitMaterial())).findFirst()
+                .map(m -> m.getMaterialCode() + " " + m.getMaterialName()).orElse("");
+        throw new BizException("mes.error.finishExceedsKitQty", plain(kit.qty()), plain(wo.getFinishedQty()), name);
     }
 
     /** 报废入库填写的成本单价（同一产品多行时取第一行填写的），没有「查看成本金额」权限时忽略 */

@@ -7,6 +7,7 @@ import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.mes.dto.ReportRequest;
 import com.lemon.erp.modules.mes.dto.WoCloseCostView;
 import com.lemon.erp.modules.mes.dto.WoDocRequest;
+import com.lemon.erp.modules.mes.dto.WoFinishCheckView;
 import com.lemon.erp.modules.mes.dto.WorkOrderQuery;
 import com.lemon.erp.modules.mes.dto.WorkOrderRequest;
 import com.lemon.erp.modules.mes.entity.MesReport;
@@ -125,6 +126,13 @@ public class MesWorkOrderController {
     @OperLog(title = "生产工单-领料退料完工", type = OperType.INSERT) // i18n-ignore
     public R<Long> createDoc(@PathVariable Long id, @PathVariable String kind, @Valid @RequestBody WoDocRequest req) {
         return R.ok(docService.create(id, WoDocKind.ofPath(kind), req));
+    }
+
+    /** 完工入库的领料校验：按净领料计算的可完工齐套数量和校验方式（完工入库表单打开时读取） */
+    @GetMapping("/{id}/finish-check")
+    @PreAuthorize("@ss.hasPerm('mes:wo:finish')")
+    public R<WoFinishCheckView> finishCheck(@PathVariable Long id) {
+        return R.ok(docService.finishCheck(id));
     }
 
     @GetMapping("/docs")

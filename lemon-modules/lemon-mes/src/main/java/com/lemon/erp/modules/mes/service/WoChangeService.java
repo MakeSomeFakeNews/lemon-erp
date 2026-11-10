@@ -55,9 +55,8 @@ public class WoChangeService {
                 .set(MesWorkOrder::getUpdateTime, LocalDateTime.now()).eq(MesWorkOrder::getId, id));
         lineService.recalcRequired(id, qty);
         changeLogger.log("mes_work_order", id, before, workOrderMapper.selectById(id), CHANGE_FIELDS);
-        if (wo.getFinishedQty().compareTo(qty) >= 0) {
-            workOrderService.markCompleted(id);
-        }
+        // 完工 + 报废达到新的数量时完工
+        workOrderService.completeIfDone(id);
     }
 
     /**

@@ -30,7 +30,10 @@
           <a-descriptions-item :label="$t('mes.wo.preparedBy')">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.releaseTime" :label="$t('mes.wo.releaseTime')">{{ detail.releaseTime }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.finishTime" :label="$t('mes.wo.finishTime')">{{ detail.finishTime }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.status === WorkOrderStatus.CLOSED && detail.closeCost != null" :label="$t('mes.wo.closeCostLabel')">
+          <a-descriptions-item
+            v-if="detail.closeCost != null && [WorkOrderStatus.CLOSED, WorkOrderStatus.COMPLETED].includes(detail.status)"
+            :label="detail.status === WorkOrderStatus.CLOSED ? $t('mes.wo.closeCostLabel') : $t('mes.wo.completeCostLabel')"
+          >
             {{ $t('mes.wo.closeCostValue', { total: money(detail.closeCost), toStock: money(detail.closeStockCost) }) }}
           </a-descriptions-item>
           <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
@@ -231,6 +234,10 @@ const actions = computed(() => {
       list.push({ key: 'scrap', label: t('mes.woDocForm.kind.scrap'), run: () => openDoc('scrap') })
       list.push({ key: 'finish', label: t('mes.woDocForm.kind.finish'), primary: true, run: () => openDoc('finish') })
     }
+  }
+  // 完工 + 报废达到数量而完工的工单：报废品还没有全部入库时可以继续报废入库
+  if (d.status === WorkOrderStatus.COMPLETED && can('finish') && scrapReported.value > scrapIn.value) {
+    list.push({ key: 'scrap', label: t('mes.woDocForm.kind.scrap'), run: () => openDoc('scrap') })
   }
   return list
 })

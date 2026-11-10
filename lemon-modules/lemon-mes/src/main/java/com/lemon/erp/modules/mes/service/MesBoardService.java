@@ -62,7 +62,9 @@ public class MesBoardService {
         LocalDate today = LocalDate.now();
         WorkCalendar calendar = new WorkCalendar(workCenterMapper, calendarMapper, today, today.plusDays(MAX_DAYS));
         List<BoardOrderRow> rows = boardMapper.selectOrders();
-        Map<Long, List<MesWoOp>> opsByWo = boardMapper.selectOps().stream()
+        List<MesWoOp> allOps = boardMapper.selectOps();
+        WoOpQty.fillUpstreamScrap(allOps);
+        Map<Long, List<MesWoOp>> opsByWo = allOps.stream()
                 .collect(Collectors.groupingBy(MesWoOp::getWoId, LinkedHashMap::new, Collectors.toList()));
         Map<Long, BoardReportSum> todayByOp = boardMapper.sumByOp(today).stream()
                 .collect(Collectors.toMap(BoardReportSum::getId, Function.identity()));
@@ -329,9 +331,9 @@ public class MesBoardService {
 
     // ---------------------------------------------------------------- 工具
 
-    /** 工序未完成的数量 = 工单数量 - 合格 - 报废 */
+    /** 工序未完成的数量 = 工单数量 - 前序工序的报废 - 本工序的合格和报废 */
     private static BigDecimal left(BigDecimal qty, MesWoOp op) {
-        return qty.subtract(op.getGoodQty()).subtract(op.getScrapQty());
+        return WoOpQty.left(qty, op);
     }
 
     /** 单件工时：标准工时，没有设置时按已报工的实际工时折算 */

@@ -47,6 +47,12 @@ public class MesWorkOrder extends BaseEntity {
 
     private BigDecimal finishedQty;
 
+    /**
+     * 报工报废数量：各工序报工的报废数合计（每件只会在一道工序报废）。完工入库 + 报废达到工单数量时工单完工，
+     * 在制产出（MRP、齐套、可承诺量）= 工单数量 − 完工 − 报废
+     */
+    private BigDecimal scrapQty;
+
     /** 工单来源 */
     private WorkOrderSource source;
 
@@ -72,7 +78,10 @@ public class MesWorkOrder extends BaseEntity {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime closeTime;
 
-    /** 关闭时尚未转入产品的成本（净领料成本 + 工费 − 已转入完工产品）。没有「查看成本金额」权限时不返回 */
+    /**
+     * 关闭时（或报工报废、改量后不经完工入库而完工时）尚未转入产品的成本（净领料成本 + 工费 − 已转入完工产品）。
+     * 没有「查看成本金额」权限时不返回
+     */
     private BigDecimal closeCost;
 
     /** 其中追加到已完工产品库存的部分，其余（没有完工、产品已出库）计入当期成本 */

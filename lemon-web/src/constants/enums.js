@@ -700,6 +700,13 @@ export const FinishCostBasis = Object.freeze({
   AVERAGE: 'AVERAGE', // 当前均价
 })
 
+/** com.lemon.erp.modules.mes.model.FinishKitCheck */
+export const FinishKitCheck = Object.freeze({
+  NONE: 'NONE', // 不校验
+  WARN: 'WARN', // 提示
+  BLOCK: 'BLOCK', // 禁止
+})
+
 /** com.lemon.erp.framework.workflow.FlowStatus（字典 wf_status） */
 export const FlowStatus = Object.freeze({
   RUNNING: 'RUNNING', // 审批中
@@ -995,6 +1002,23 @@ export const MesDocStatus = Object.freeze({
   DRAFT: 'DRAFT',
   RELEASED: 'RELEASED',
   OBSOLETE: 'OBSOLETE', // 发布了新版本后作废
+})
+
+/** com.lemon.erp.modules.mes.model.MesStatDimension */
+export const MesStatDimension = Object.freeze({
+  OPERATOR: 'OPERATOR', // 人员
+  OPERATOR_OP: 'OPERATOR_OP', // 人员 × 工序
+  OPERATOR_DAY: 'OPERATOR_DAY', // 人员 × 日期
+  WORK_CENTER: 'WORK_CENTER', // 工作中心
+  OPERATION: 'OPERATION', // 工序
+  PRODUCT: 'PRODUCT', // 产品
+  CATEGORY: 'CATEGORY', // 产品分类
+  DEPT: 'DEPT', // 车间
+  DAY: 'DAY', // 日
+  MONTH: 'MONTH', // 月
+  WORK_ORDER: 'WORK_ORDER', // 工单
+  MATERIAL: 'MATERIAL', // 物料
+  WO_MATERIAL: 'WO_MATERIAL', // 工单 × 物料
 })
 
 /** com.lemon.erp.framework.message.MessageCategory（字典 sys_message_category） */
@@ -1720,6 +1744,15 @@ export const WoDocKind = Object.freeze({
   FINISH: 'FINISH', // 完工入库
   SUPPLEMENT: 'SUPPLEMENT', // 补料
   SCRAP: 'SCRAP', // 报废入库
+})
+
+/** com.lemon.erp.modules.mes.model.WoDueState */
+export const WoDueState = Object.freeze({
+  ON_TIME: 'ON_TIME', // 按期完工
+  LATE: 'LATE', // 延期完工
+  OVERDUE: 'OVERDUE', // 逾期未完工
+  OPEN: 'OPEN', // 进行中
+  CLOSED: 'CLOSED', // 已关闭
 })
 
 /** com.lemon.erp.modules.mes.model.WorkOrderSource */

@@ -21,6 +21,8 @@ export const addReworkWo = (data, sourceWoId) => request.post('/mes/wo/rework', 
 /** kind：issue 领料 / return 退料 / finish 完工入库 / scrap 报废入库 */
 export const addWoDoc = (id, kind, data) => request.post(`/mes/wo/${id}/${kind}`, data)
 export const pageWoDoc = (params) => request.get('/mes/wo/docs', { params })
+/** 完工入库的领料校验：按净领料计算的可完工齐套数量和校验方式 */
+export const getWoFinishCheck = (id) => request.get(`/mes/wo/${id}/finish-check`)
 export const getWoDoc = (docId) => request.get(`/mes/wo/docs/${docId}`)
 
 /** 补料申请 */

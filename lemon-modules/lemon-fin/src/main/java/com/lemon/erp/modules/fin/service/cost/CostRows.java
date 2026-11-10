@@ -76,6 +76,7 @@ public final class CostRows {
     /**
      * 工单基本信息
      *
+     * @param qty            应完工数量 = 工单数量 − 报工报废（完工达到它时转出全部成本）
      * @param finishedBefore 期初之前累计完工数量
      * @param closeDate      关闭日期（未关闭为空）
      */

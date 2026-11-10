@@ -52,4 +52,9 @@ public class MesWoOp extends BaseEntity {
     /** 工作中心制造费用率（元 / 工时），仅计算完工入库工费时查询 */
     @TableField(exist = false)
     private BigDecimal overheadRate;
+
+    /** 前序工序的报废合计（这些数量不会流到本工序），看板、排程计算剩余数量时由 {@code WoOpQty.fillUpstreamScrap} 填写 */
+    @TableField(exist = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private BigDecimal upstreamScrap;
 }
