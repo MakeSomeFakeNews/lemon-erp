@@ -17,7 +17,7 @@
                 <a-tag v-if="record.isBase === 1 || record.isBase === true" color="blue" :bordered="false" class="ml">{{ $t('fin.currencyPage.baseCurrency') }}</a-tag>
               </template>
               <template v-else-if="column.key === 'status'">
-                <a-tag :color="record.status === 0 ? 'default' : 'green'" :bordered="false">{{ record.status === 0 ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
+                <a-tag :color="record.status === STATUS_DISABLED ? 'default' : 'green'" :bordered="false">{{ record.status === STATUS_DISABLED ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
               </template>
               <template v-else-if="column.key === 'action'">
                 <TableActions :actions="[{ type: 'edit', perm: 'fin:currency:edit', onClick: () => openCurrency(record) }]" />
@@ -170,8 +170,8 @@
           <a-col :span="12">
             <a-form-item :label="$t('common.field.status')" name="status">
               <a-radio-group v-model:value="currencyForm.status" :disabled="currencyForm.isBase">
-                <a-radio :value="1">{{ $t('common.status.enabled') }}</a-radio>
-                <a-radio :value="0">{{ $t('common.status.disabled') }}</a-radio>
+                <a-radio :value="STATUS_ENABLED">{{ $t('common.status.enabled') }}</a-radio>
+                <a-radio :value="STATUS_DISABLED">{{ $t('common.status.disabled') }}</a-radio>
               </a-radio-group>
             </a-form-item>
           </a-col>
@@ -198,6 +198,7 @@ import { useCurrencies } from '@/components/fin/currency'
 import { useI18n } from 'vue-i18n'
 
 import { BillKind } from '@/constants/enums'
+import { STATUS_DISABLED, STATUS_ENABLED } from '@/utils/constants'
 /** 币种与汇率：币种维护、按月汇率、期末调汇 */
 const userStore = useUserStore()
 const { t } = useI18n()
@@ -241,7 +242,7 @@ const currencyRules = {
 function openCurrency(record) {
   currencyForm.value = record
     ? { ...record, isNew: false, isBase: isBase(record), status: record.status ?? 1 }
-    : { code: '', name: '', symbol: '', status: 1, sort: currencyList.value.length + 1, isNew: true, isBase: false }
+    : { code: '', name: '', symbol: '', status: STATUS_ENABLED, sort: currencyList.value.length + 1, isNew: true, isBase: false }
   currencyOpen.value = true
 }
 async function submitCurrency() {
@@ -259,7 +260,7 @@ async function submitCurrency() {
 }
 
 // ---------------------------------------------------------------- 汇率
-const foreignCurrencies = computed(() => currencyList.value.filter((c) => !isBase(c) && c.status !== 0))
+const foreignCurrencies = computed(() => currencyList.value.filter((c) => !isBase(c) && c.status !== STATUS_DISABLED))
 const periodColumns = [
   { title: t('fin.currencyPage.currency'), key: 'currency', width: 200 },
   { title: t('fin.currencyPage.rateColumn'), key: 'rate', width: 260 },

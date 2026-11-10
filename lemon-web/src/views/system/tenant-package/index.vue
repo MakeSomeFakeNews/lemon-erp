@@ -19,7 +19,7 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
-            <a-tag :color="record.status === 1 ? 'green' : 'default'">{{ record.status === 1 ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
+            <a-tag :color="record.status === STATUS_ENABLED ? 'green' : 'default'">{{ record.status === STATUS_ENABLED ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
             <TableActions
@@ -48,8 +48,8 @@
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('common.field.status')" name="status" :extra="$t('system.tenantPackage.statusTip')">
               <a-radio-group v-model:value="form.status">
-                <a-radio :value="1">{{ $t('common.status.enabled') }}</a-radio>
-                <a-radio :value="0">{{ $t('common.status.disabled') }}</a-radio>
+                <a-radio :value="STATUS_ENABLED">{{ $t('common.status.enabled') }}</a-radio>
+                <a-radio :value="STATUS_DISABLED">{{ $t('common.status.disabled') }}</a-radio>
               </a-radio-group>
             </a-form-item>
           </a-col>
@@ -99,6 +99,7 @@ import { actionColumn } from '@/components/common/tableActions'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { translateMenus } from '@/store/user'
 import { useAction } from '@/composables/useAction'
+import { STATUS_DISABLED, STATUS_ENABLED } from '@/utils/constants'
 
 const { t } = useI18n()
 const columns = [
@@ -136,7 +137,7 @@ const rules = {
   menuIds: [{ validator: (_, v) => (v?.length ? Promise.resolve() : Promise.reject(t('system.tenantPackage.selectMenus'))) }]
 }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, name: '', status: 1, remark: '', menuIds: [] }),
+  emptyForm: () => ({ id: undefined, name: '', status: STATUS_ENABLED, remark: '', menuIds: [] }),
   beforeOpen: loadMenuTree,
   fetch: (record) => getTenantPackage(record.id),
   create: addTenantPackage,

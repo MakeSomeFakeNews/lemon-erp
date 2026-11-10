@@ -31,6 +31,7 @@ import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { changeUserDept } from '@/api/system/user'
 import { mapTree } from '@/utils/tree'
+import { STATUS_DISABLED } from '@/utils/constants'
 
 /** 批量调整用户部门 */
 const props = defineProps({
@@ -46,7 +47,7 @@ const { t } = useI18n()
 const deptId = ref()
 const saving = ref(false)
 // 停用的部门不能选
-const options = computed(() => mapTree(props.deptTree, (n) => ({ id: n.id, name: n.name, disabled: n.status === 0 })))
+const options = computed(() => mapTree(props.deptTree, (n) => ({ id: n.id, name: n.name, disabled: n.status === STATUS_DISABLED })))
 
 watch(
   () => props.open,

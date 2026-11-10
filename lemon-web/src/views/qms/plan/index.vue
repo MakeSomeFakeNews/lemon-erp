@@ -36,7 +36,7 @@
             <div class="sub-text">{{ samplingText(record) }}</div>
           </template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="record.status === 1 ? 'green' : 'default'" :bordered="false">{{ record.status === 1 ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
+            <a-tag :color="record.status === STATUS_ENABLED ? 'green' : 'default'" :bordered="false">{{ record.status === STATUS_ENABLED ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
             <TableActions
@@ -212,6 +212,7 @@ import { toOptions } from '@/utils/dict'
 import { useAction } from '@/composables/useAction'
 
 import { InspectionLevel, ItemMethod, QcType, SamplingMode } from '@/constants/enums'
+import { STATUS_ENABLED } from '@/utils/constants'
 /** 检验方案：按物料或物料分类定义检验项目与抽样方案，新建检验单时自动匹配 */
 const dict = useDict('mes_qc_type', 'qms_sampling_mode', 'wms_material_category')
 const { t } = useI18n()
@@ -258,7 +259,7 @@ const drawer = useFormDrawer({
     const p = await getPlan(record.id)
     return {
       ...p,
-      enabled: p.status === 1,
+      enabled: p.status === STATUS_ENABLED,
       scope: p.materialId ? 'material' : 'category',
       materialLabel: p.materialId ? `${p.materialCode} ${p.materialName}` : undefined,
       fixedQty: num(p.fixedQty),

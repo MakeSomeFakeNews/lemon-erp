@@ -162,6 +162,7 @@ import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
+import { STATUS_ENABLED } from '@/utils/constants'
 
 const { t } = useI18n()
 
@@ -211,7 +212,7 @@ async function loadSchemes() {
 }
 const schemeOptions = computed(() =>
   schemes.value
-    .filter((s) => s.status === 1 || s.id === form.schemeId)
+    .filter((s) => s.status === STATUS_ENABLED || s.id === form.schemeId)
     .map((s) => ({
       value: s.id,
       label: t('hr.salary.schemeOption', {

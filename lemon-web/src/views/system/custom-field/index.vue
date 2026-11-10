@@ -20,7 +20,7 @@
             <a-tag v-if="record.showInList === 1" color="blue" :bordered="false">{{ $t('system.customField.showInList') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="record.status === 0 ? 'default' : 'green'" :bordered="false">{{ record.status === 0 ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
+            <a-tag :color="record.status === STATUS_DISABLED ? 'default' : 'green'" :bordered="false">{{ record.status === STATUS_DISABLED ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
             <TableActions
@@ -67,7 +67,7 @@
         <a-space :size="24" class="flags">
           <a-checkbox :checked="form.required === 1" @update:checked="(v) => (form.required = v ? 1 : 0)">{{ $t('system.customField.required') }}</a-checkbox>
           <a-checkbox :checked="form.showInList === 1" @update:checked="(v) => (form.showInList = v ? 1 : 0)">{{ $t('system.customField.showInList') }}</a-checkbox>
-          <a-checkbox :checked="form.status !== 0" @update:checked="(v) => (form.status = v ? 1 : 0)">{{ $t('common.status.enabled') }}</a-checkbox>
+          <a-checkbox :checked="form.status !== STATUS_DISABLED" @update:checked="(v) => (form.status = v ? STATUS_ENABLED : STATUS_DISABLED)">{{ $t('common.status.enabled') }}</a-checkbox>
         </a-space>
         <a-form-item :label="$t('common.field.description')" name="remark">
           <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('system.customField.remarkPlaceholder')" />
@@ -93,6 +93,7 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { toOptions } from '@/utils/dict'
 
 import { CustomFieldType } from '@/constants/enums'
+import { STATUS_DISABLED, STATUS_ENABLED } from '@/utils/constants'
 /** 自定义字段：按业务类型维护扩展字段的定义 */
 const { t } = useI18n()
 const dict = useDict('sys_custom_field_type')
@@ -137,7 +138,7 @@ const rules = {
   fieldType: [{ required: true, message: t('system.customField.selectType') }]
 }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, bizType: undefined, fieldKey: '', label: '', fieldType: CustomFieldType.TEXT, options: '', required: 0, showInList: 0, sort: 0, status: 1, remark: '' }),
+  emptyForm: () => ({ id: undefined, bizType: undefined, fieldKey: '', label: '', fieldType: CustomFieldType.TEXT, options: '', required: 0, showInList: 0, sort: 0, status: STATUS_ENABLED, remark: '' }),
   create: addCustomField,
   update: updateCustomField,
   toPayload: ({ bizType: b, fieldKey, label, fieldType, options, required, showInList, sort, status, remark }) => ({

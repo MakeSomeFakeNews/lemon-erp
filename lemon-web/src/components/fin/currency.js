@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { currencies, rateOf } from '@/api/fin'
 import { cached } from '@/utils/cache'
 import { formatMoney } from '@/components/scm/scm'
+import { STATUS_DISABLED } from '@/utils/constants'
 
 /** 本位币 */
 export const BASE_CURRENCY = 'CNY'
@@ -33,7 +34,7 @@ export const fcText = (code, amount, rate) => `${code} ${formatMoney(amount)}${r
 
 /** 启用的币种下拉选项 */
 export const currencyOptions = (items) =>
-  items.filter((c) => c.status !== 0).map((c) => ({ value: c.code, label: `${c.code} ${c.name || ''}`.trim() }))
+  items.filter((c) => c.status !== STATUS_DISABLED).map((c) => ({ value: c.code, label: `${c.code} ${c.name || ''}`.trim() }))
 
 /** 某日的记账汇率，未维护或本位币时返回 null / 1 */
 export async function fetchRate(currency, date) {

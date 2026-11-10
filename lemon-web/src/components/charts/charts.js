@@ -15,8 +15,27 @@ export function shortMoney(n) {
   return v.toLocaleString('zh-CN', { maximumFractionDigits: 2 })
 }
 
-/** 数值轴刻度：同 shortMoney，去掉整数后多余的 .0（400.0 万 → 400 万） */
-export const axisNumber = (n) => shortMoney(n).replace(/\.0+(?=\s|$)/, '')
+/** 保留至多 digits 位小数并去掉末尾的 0（同时消除浮点误差，0.30000000000000004 → 0.3） */
+const trimDigits = (v, digits) => String(Number(v.toFixed(digits)))
+
+/**
+ * 数值轴刻度：按万 / 亿（英文 K / M / B）显示，去掉多余的 0（400.0 万 → 400 万）。
+ * 刻度本身是整齐的数，小数位按刻度值保留（最多 6 位），不固定为 1~2 位：
+ * 否则数据范围很小时（如 SPC 控制图 1.600 ~ 1.615）相邻刻度舍入成同一个值
+ */
+export function axisNumber(n) {
+  const v = Number(n) || 0
+  const a = Math.abs(v)
+  if (isZh()) {
+    if (a >= 1e8) return t('components.chart.yi', { n: trimDigits(v / 1e8, 6) })
+    if (a >= 1e4) return t('components.chart.wan', { n: trimDigits(v / 1e4, 6) })
+  } else {
+    if (a >= 1e9) return `${trimDigits(v / 1e9, 6)} B`
+    if (a >= 1e6) return `${trimDigits(v / 1e6, 6)} M`
+    if (a >= 1e4) return `${trimDigits(v / 1e3, 6)} K`
+  }
+  return Number(v.toFixed(6)).toLocaleString('zh-CN', { maximumFractionDigits: 6 })
+}
 
 export const percent = (n, digits = 1) => (n === null || n === undefined ? '-' : `${Number(n).toFixed(digits)}%`)
 

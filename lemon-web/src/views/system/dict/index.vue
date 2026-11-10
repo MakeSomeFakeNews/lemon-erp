@@ -167,6 +167,7 @@ import { useDictStore } from '@/store/dict'
 import { toOptions } from '@/utils/dict'
 
 import { DictKind } from '@/constants/enums'
+import { STATUS_ENABLED } from '@/utils/constants'
 const { t } = useI18n()
 const dictStore = useDictStore()
 const dict = useDict('sys_common_status')
@@ -210,7 +211,7 @@ function clearCache() {
 const formOpen = ref(false)
 const saving = ref(false)
 const formRef = ref()
-const emptyForm = () => ({ id: undefined, name: '', type: '', kind: DictKind.BUSINESS, status: 1, remark: '' })
+const emptyForm = () => ({ id: undefined, name: '', type: '', kind: DictKind.BUSINESS, status: STATUS_ENABLED, remark: '' })
 const form = ref(emptyForm())
 let originalType = ''
 const rules = {

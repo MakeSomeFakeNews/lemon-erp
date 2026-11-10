@@ -194,6 +194,7 @@ import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
 import { EcnStatus } from '@/constants/enums'
+import { STATUS_ENABLED } from '@/utils/constants'
 /** 工程变更（ECN）：复制基准 BOM 为新版本修改，审批后按生效日期切换默认 BOM */
 const dict = useDict('mes_ecn_reason', 'mes_ecn_status')
 const userStore = useUserStore()
@@ -247,7 +248,7 @@ const rules = {
 const bomOptions = ref([])
 const bomLabel = (b) => `${b.materialCode} ${b.materialName} ${b.isDefault === 1 ? t('mes.wo.bomDefault', { v: b.version }) : b.version}`
 async function searchBoms(keyword) {
-  const page = await pageBom({ keyword: keyword || undefined, status: 1, size: 20 })
+  const page = await pageBom({ keyword: keyword || undefined, status: STATUS_ENABLED, size: 20 })
   bomOptions.value = page.records.map((b) => ({ value: b.id, label: bomLabel(b), version: b.version }))
 }
 /** 建议的新版本号：末尾数字加 1（V1.0 → V1.1，V2 → V3），否则加后缀 */

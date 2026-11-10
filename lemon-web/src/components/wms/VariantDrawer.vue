@@ -65,7 +65,7 @@
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'stock'">{{ formatQty(stock?.[record.id] || 0) }}</template>
             <template v-else-if="column.key === 'status'">
-              <a-tag :color="record.status === 0 ? 'default' : 'green'" :bordered="false">{{ record.status === 0 ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
+              <a-tag :color="record.status === STATUS_DISABLED ? 'default' : 'green'" :bordered="false">{{ record.status === STATUS_DISABLED ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
             </template>
           </template>
         </a-table>
@@ -81,6 +81,7 @@ import { attributes, generateVariants, materialVariants, variantStock } from '@/
 import { formatQty } from '@/components/wms/wms'
 import { t } from '@/locales'
 import { useUserStore } from '@/store/user'
+import { STATUS_DISABLED } from '@/utils/constants'
 
 /**
  * 多规格：为物料选择规格属性和属性值生成 SKU；已是款式时可补充属性值生成新的 SKU，并查看各 SKU 的库存矩阵
@@ -98,7 +99,7 @@ const selectedAttrs = ref([])
 const checked = reactive({})
 
 const isTemplate = computed(() => props.material?.isTemplate === 1)
-const attrOptions = computed(() => allAttrs.value.filter((a) => a.status !== 0).map((a) => ({ value: a.id, label: a.name })))
+const attrOptions = computed(() => allAttrs.value.filter((a) => a.status !== STATUS_DISABLED).map((a) => ({ value: a.id, label: a.name })))
 const chosenAttrs = computed(() => selectedAttrs.value.map((id) => allAttrs.value.find((a) => a.id === id)).filter(Boolean))
 const usedValues = computed(() => new Set((matrix.value?.variants || []).flatMap((v) => Object.values(v.values).map(Number))))
 const canGenerate = computed(() => chosenAttrs.value.length > 0)

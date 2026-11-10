@@ -17,13 +17,13 @@
             v-for="r in filteredRoles"
             :key="r.id"
             class="role-item"
-            :class="{ active: r.id === currentId, disabled: r.status === 0 }"
+            :class="{ active: r.id === currentId, disabled: r.status === STATUS_DISABLED }"
             @click="select(r.id)"
           >
             <div class="role-item-main">
               <HighlightText :text="r.name" :keyword="keyword" class="role-item-name" />
               <a-tag v-if="isAdminRole(r)" :bordered="false" color="gold" class="role-item-tag">{{ $t('system.role.admin') }}</a-tag>
-              <a-tag v-else-if="r.status === 0" :bordered="false" class="role-item-tag">{{ $t('common.status.disabled') }}</a-tag>
+              <a-tag v-else-if="r.status === STATUS_DISABLED" :bordered="false" class="role-item-tag">{{ $t('common.status.disabled') }}</a-tag>
             </div>
             <div class="role-item-sub">
               <span class="role-item-code">{{ r.code }}</span>
@@ -183,6 +183,7 @@ import { menuTree } from '@/api/system/menu'
 import { deptTree } from '@/api/system/dept'
 import { useDict } from '@/composables/useDict'
 import { translateMenus, useUserStore } from '@/store/user'
+import { STATUS_DISABLED } from '@/utils/constants'
 
 const { t } = useI18n()
 useDict('sys_data_scope', 'sys_common_status')

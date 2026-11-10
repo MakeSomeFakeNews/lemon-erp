@@ -88,7 +88,7 @@ import { roleOptions } from '@/api/system/role'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useUserStore } from '@/store/user'
-import { ADMIN_ROLE, SUPER_ADMIN_ID } from '@/utils/constants'
+import { ADMIN_ROLE, STATUS_DISABLED, SUPER_ADMIN_ID } from '@/utils/constants'
 import { toOptions } from '@/utils/dict'
 import { generateAndCopyPassword, passwordHint, passwordRules } from '@/utils/password'
 import { mapTree } from '@/utils/tree'
@@ -107,7 +107,7 @@ const userStore = useUserStore()
 const dict = useDict('sys_common_status')
 
 // 停用的部门不能选
-const deptOptions = computed(() => mapTree(props.deptTree, (n) => ({ id: n.id, name: n.name, disabled: n.status === 0 })))
+const deptOptions = computed(() => mapTree(props.deptTree, (n) => ({ id: n.id, name: n.name, disabled: n.status === STATUS_DISABLED })))
 
 // 非超级管理员不能分配超级管理员角色；每次打开时刷新，保证与角色管理一致
 const roleOptionList = ref([])

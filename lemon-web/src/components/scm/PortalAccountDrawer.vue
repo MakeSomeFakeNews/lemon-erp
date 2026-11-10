@@ -12,7 +12,7 @@
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'status'">
           <a-switch
-            :checked="record.status === 1"
+            :checked="record.status === STATUS_ENABLED"
             :checked-children="$t('common.status.enabled')"
             :un-checked-children="$t('common.status.disabled')"
             @change="(v) => changeStatus(record, v)"
@@ -63,6 +63,7 @@ import { useI18n } from 'vue-i18n'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
 import { addPortalAccount, changePortalAccountStatus, portalAccounts, resetPortalAccountPassword } from '@/api/scm/srm'
+import { STATUS_DISABLED, STATUS_ENABLED } from '@/utils/constants'
 
 /** 门户账号：开通、停用、重置密码。kind：supplier 供应商门户 / customer 经销商门户 */
 const props = defineProps({
@@ -125,8 +126,8 @@ async function create() {
   }
 }
 async function changeStatus(record, checked) {
-  await changePortalAccountStatus(props.kind, props.partner.id, record.userId, checked ? 1 : 0)
-  record.status = checked ? 1 : 0
+  await changePortalAccountStatus(props.kind, props.partner.id, record.userId, checked ? STATUS_ENABLED : STATUS_DISABLED)
+  record.status = checked ? STATUS_ENABLED : STATUS_DISABLED
   message.success(checked ? t('scm.portalAccount.enabledMsg') : t('scm.portalAccount.disabledMsg'))
 }
 const resetOpen = ref(false)

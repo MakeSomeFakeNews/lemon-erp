@@ -85,7 +85,7 @@
               <template v-else-if="column.key === 'threshold'">{{ Number(record.threshold) ? `≥ ${formatMoney(record.threshold)}` : '-' }}</template>
               <template v-else-if="column.key === 'rate'"><b>{{ Number(record.rate) }}%</b></template>
               <template v-else-if="column.key === 'status'">
-                <a-tag :color="record.status === 0 ? 'default' : 'green'" :bordered="false">{{ record.status === 0 ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
+                <a-tag :color="record.status === STATUS_DISABLED ? 'default' : 'green'" :bordered="false">{{ record.status === STATUS_DISABLED ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
               </template>
               <template v-else-if="column.key === 'action'">
                 <TableActions
@@ -141,7 +141,7 @@
           </a-col>
         </a-row>
         <a-form-item :label="$t('common.field.status')" name="status">
-          <a-switch :checked="form.status !== 0" :checked-children="$t('common.status.enabled')" :un-checked-children="$t('common.status.disabled')" @change="(v) => (form.status = v ? 1 : 0)" />
+          <a-switch :checked="form.status !== STATUS_DISABLED" :checked-children="$t('common.status.enabled')" :un-checked-children="$t('common.status.disabled')" @change="(v) => (form.status = v ? STATUS_ENABLED : STATUS_DISABLED)" />
         </a-form-item>
         <a-form-item :label="$t('common.field.remark')" name="remark">
           <a-input v-model:value="form.remark" :maxlength="255" />
@@ -180,6 +180,7 @@ import { useI18n } from 'vue-i18n'
 import { useAction } from '@/composables/useAction'
 
 import { CommissionBasis, CommissionStatus } from '@/constants/enums'
+import { STATUS_DISABLED, STATUS_ENABLED } from '@/utils/constants'
 /** 销售提成：按业务员统计当月业绩，按规则计算提成，确认后计入工资表 */
 const { t } = useI18n()
 const dict = useDict('fin_commission_basis', 'wms_material_category')
@@ -287,7 +288,7 @@ const formRules = {
   rate: [{ required: true, message: t('fin.commission.rateRequired') }]
 }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, name: '', basis: 'SALES', salesmanId: null, materialCategory: undefined, threshold: 0, rate: undefined, status: 1, remark: '' }),
+  emptyForm: () => ({ id: undefined, name: '', basis: 'SALES', salesmanId: null, materialCategory: undefined, threshold: 0, rate: undefined, status: STATUS_ENABLED, remark: '' }),
   fetch: (r) => ({ ...r, threshold: Number(r.threshold), rate: Number(r.rate), materialCategory: r.materialCategory || undefined }),
   create: addCommissionRule,
   update: updateCommissionRule,

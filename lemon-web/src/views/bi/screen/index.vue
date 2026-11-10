@@ -107,8 +107,8 @@
           <a-col :span="12">
             <a-form-item :label="$t('common.field.status')" name="status">
               <a-radio-group v-model:value="form.status">
-                <a-radio :value="1">{{ $t('common.status.enabled') }}</a-radio>
-                <a-radio :value="0">{{ $t('common.status.disabled') }}</a-radio>
+                <a-radio :value="STATUS_ENABLED">{{ $t('common.status.enabled') }}</a-radio>
+                <a-radio :value="STATUS_DISABLED">{{ $t('common.status.disabled') }}</a-radio>
               </a-radio-group>
             </a-form-item>
           </a-col>
@@ -122,7 +122,6 @@
 import { sumWidth } from '@/composables/useColumns'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
-import { STATUS_ENABLED } from '@/utils/constants'
 import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { CopyOutlined, ExpandOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons-vue'
@@ -134,6 +133,7 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useUserStore } from '@/store/user'
 import { useI18n } from 'vue-i18n'
 import { useAction } from '@/composables/useAction'
+import { STATUS_DISABLED, STATUS_ENABLED } from '@/utils/constants'
 
 /** 数据大屏：打开 / 轮播大屏，管理投屏链接（电视免登录查看） */
 const { t } = useI18n()
@@ -202,7 +202,7 @@ const rules = {
   intervalSeconds: [{ required: true, message: t('common.rule.required', { name: t('bi.screen.interval') }) }]
 }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, name: '', screens: ['FACTORY'], intervalSeconds: 60, workCenterId: undefined, expireTime: undefined, status: 1 }),
+  emptyForm: () => ({ id: undefined, name: '', screens: ['FACTORY'], intervalSeconds: 60, workCenterId: undefined, expireTime: undefined, status: STATUS_ENABLED }),
   fetch: (r) => ({ ...r, screens: r.screens.split(','), expireTime: r.expireTime ? r.expireTime.replace(' ', 'T') : undefined }),
   create: createShare,
   update: updateShare,

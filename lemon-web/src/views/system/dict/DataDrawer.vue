@@ -155,6 +155,7 @@ import { useDictStore } from '@/store/dict'
 import { toOptions } from '@/utils/dict'
 
 import { DictKind } from '@/constants/enums'
+import { STATUS_ENABLED } from '@/utils/constants'
 /**
  * 字典数据：系统字典只能改名称、颜色、排序、备注；业务字典可以新增取值，内置取值（程序依赖）不能删除、不能改键值。
  * biz 为「业务字典」页面（当前租户自己的取值，权限 sys:bizdict:*），否则为平台的「字典管理」
@@ -240,7 +241,7 @@ const emptyForm = () => ({
   value: '',
   tagColor: 'default',
   sort: (pagination.total || 0) + 1,
-  status: 1,
+  status: STATUS_ENABLED,
   remark: ''
 })
 const form = ref(emptyForm())
