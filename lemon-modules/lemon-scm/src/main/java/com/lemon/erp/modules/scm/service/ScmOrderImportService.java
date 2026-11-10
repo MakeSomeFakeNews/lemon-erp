@@ -9,12 +9,11 @@ import com.lemon.erp.framework.excel.ImportRow;
 import com.lemon.erp.modules.scm.dto.ChannelRequests;
 import com.lemon.erp.modules.scm.dto.OrderItemRequest;
 import com.lemon.erp.modules.scm.dto.OrderRequest;
+import com.lemon.erp.modules.scm.dto.PricingViews.DefaultPrice;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
-import com.lemon.erp.modules.scm.entity.ScmPriceList;
 import com.lemon.erp.modules.scm.mapper.ScmCustomerMapper;
 import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
-import com.lemon.erp.modules.scm.mapper.ScmPriceListMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
@@ -49,7 +48,7 @@ public class ScmOrderImportService {
     private final ScmOrderService orderService;
     private final ScmOrderMapper orderMapper;
     private final ScmCustomerMapper customerMapper;
-    private final ScmPriceListMapper priceListMapper;
+    private final ScmPricingService pricingService;
     private final WmsMaterialService materialService;
     private final Validator validator;
     private final TransactionTemplate transactionTemplate;
@@ -131,12 +130,16 @@ public class ScmOrderImportService {
             BigDecimal price = d.price();
             BigDecimal taxRate = DEFAULT_TAX_RATE;
             if (price == null) {
-                ScmPriceList p = priceListMapper.selectQuote(m.getId(), customer.getId(), customer.getLevel(), d.qty(), d.orderDate());
-                if (p == null) {
-                    throw new BizException("scm.error.materialHasNoPriceListPrice2", m.getCode());
+                // 与开单默认价一致：客户执行价 → 价目表 → 价格等级 → 零售价 → 最近售价
+                DefaultPrice p = pricingService.defaults(OrderKind.SALES, customer.getId(), List.of(m.getId()), List.of(d.qty()),
+                        d.orderDate()).get(0);
+                if (p.price() == null) {
+                    throw new BizException("scm.error.materialHasNoDefaultSalesPrice2", m.getCode());
                 }
-                price = p.getPrice();
-                taxRate = p.getTaxRate();
+                price = p.price();
+                if (p.taxRate() != null) {
+                    taxRate = p.taxRate();
+                }
             }
             items.add(new OrderItemRequest(m.getId(), d.qty(), price, taxRate, d.deliveryDate(), d.remark()));
         }
