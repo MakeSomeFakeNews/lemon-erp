@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.scm.model.FreightBearer;
 import com.lemon.erp.modules.scm.model.ShipmentStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -34,11 +35,17 @@ public class ScmShipment extends BaseEntity {
 
     private BigDecimal freight;
 
+    /** 运费承担：本公司承担（销售费用）/ 客户承担（代垫，计入客户应收） */
+    private FreightBearer freightBearer;
+
     /** 承运商（供应商），有运费时生成应付单 */
     private Long carrierSupplierId;
 
     /** 运费应付单 */
     private Long freightBillId;
+
+    /** 代垫运费应收单（客户承担时） */
+    private Long freightArBillId;
 
     private String receiver;
 

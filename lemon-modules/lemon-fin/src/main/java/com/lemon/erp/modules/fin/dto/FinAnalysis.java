@@ -21,7 +21,11 @@ public final class FinAnalysis {
 
     /**
      * 毛利汇总的一行：按物料、客户或月份汇总的销售出库 / 退货（不含税），成本 = 数量 × 当期加权平均单价；
-     * missingCost 为没有当期核算单价（取参考成本价）的明细行数
+     * missingCost 为没有当期核算单价（取参考成本价）的明细行数。
+     * 参考口径：badDebt 为这些销售出库单应收单上的坏账核销金额（含税，与凭证中计入营业外支出的金额一致），
+     * freight 为本公司承担的发运运费（凭证中计入销售运费），按行金额分摊；profitAfterBadDebt = 毛利 − 坏账，
+     * profitAfterFreight = 毛利 − 坏账 − 运费。坏账、运费在财务报表中分别计入营业外支出、销售费用，不在营业成本中，
+     * 所以利润表的毛利不扣它们，这里只是按单据的真实收益参考
      */
     @Data
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -38,10 +42,19 @@ public final class FinAnalysis {
         /** 毛利率（%），收入为 0 时为空 */
         @JsonInclude(JsonInclude.Include.ALWAYS)
         private BigDecimal margin;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal badDebt;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal freight;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal profitAfterBadDebt;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal profitAfterFreight;
     }
 
-    /** 毛利合计 */
-    public record MarginTotal(BigDecimal revenue, BigDecimal cost, BigDecimal profit, BigDecimal margin) {
+    /** 毛利合计；坏账核销、本公司运费及扣除后的毛利见 {@link MarginRow} */
+    public record MarginTotal(BigDecimal revenue, BigDecimal cost, BigDecimal profit, BigDecimal margin,
+                              BigDecimal badDebt, BigDecimal freight, BigDecimal profitAfterBadDebt, BigDecimal profitAfterFreight) {
     }
 
     /** 销售毛利汇总 */
@@ -69,6 +82,14 @@ public final class FinAnalysis {
         private BigDecimal profit;
         @JsonInclude(JsonInclude.Include.ALWAYS)
         private BigDecimal margin;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal badDebt;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal freight;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal profitAfterBadDebt;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal profitAfterFreight;
     }
 
     /** 毛利明细，truncated 表示超出行数上限只返回了前面的部分 */

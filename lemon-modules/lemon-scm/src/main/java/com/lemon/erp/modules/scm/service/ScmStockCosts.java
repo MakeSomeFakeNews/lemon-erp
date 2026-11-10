@@ -30,7 +30,7 @@ import java.util.Objects;
  * 采购入库 / 退货、销售出库 / 退货生成仓库出入库单时，给库存变动带上成本单价、业务单价和往来单位（实时库存成本）：
  * <ul>
  *   <li>业务单价 = 行不含税金额（本位币，已含促销、返利、整单优惠的分摊）/ 数量</li>
- *   <li>采购入库、采购退货的成本单价 = 业务单价（退货按退货金额冲减库存成本）</li>
+ *   <li>采购入库的成本单价 = (行不含税金额 + 分摊的采购运费) / 数量；采购退货的成本单价 = 业务单价（退货按退货金额冲减库存成本，运费不退）</li>
  *   <li>销售出库按当前均价出库；销售退货按该订单原销售出库的实际成本入库，没有时按当前均价</li>
  * </ul>
  */
@@ -53,7 +53,8 @@ public class ScmStockCosts {
             ScmTradeDocItem item = items.get(i);
             BigDecimal bizPrice = netPrice(item);
             BigDecimal cost = switch (kind) {
-                case PURCHASE_IN, PURCHASE_RETURN -> bizPrice;
+                case PURCHASE_IN -> withFreight(item, bizPrice);
+                case PURCHASE_RETURN -> bizPrice;
                 case SALES_RETURN -> returnCosts.get(item.getMaterialId());
                 case SALES_OUT -> null;
             };
@@ -69,6 +70,16 @@ public class ScmStockCosts {
         }
         BigDecimal tax = item.getTaxAmount() == null ? BigDecimal.ZERO : item.getTaxAmount();
         return item.getAmount().subtract(tax).divide(item.getQty(), MovingAverage.PRICE_SCALE, RoundingMode.HALF_UP);
+    }
+
+    /** 采购入库的成本单价：业务单价加上分摊的运费 / 数量 */
+    static BigDecimal withFreight(ScmTradeDocItem item, BigDecimal bizPrice) {
+        BigDecimal freight = item.getFreightShare();
+        if (bizPrice == null || freight == null || freight.signum() == 0) {
+            return bizPrice;
+        }
+        BigDecimal tax = item.getTaxAmount() == null ? BigDecimal.ZERO : item.getTaxAmount();
+        return item.getAmount().subtract(tax).add(freight).divide(item.getQty(), MovingAverage.PRICE_SCALE, RoundingMode.HALF_UP);
     }
 
     /** 订单已有销售出库的实际出库成本（各物料 成本金额 / 数量） */

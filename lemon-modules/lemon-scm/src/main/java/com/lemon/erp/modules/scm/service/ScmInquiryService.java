@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.framework.security.LoginUser;
 import com.lemon.erp.framework.security.SecurityUtils;
@@ -18,9 +19,11 @@ import com.lemon.erp.modules.scm.dto.OrderRequest;
 import com.lemon.erp.modules.scm.entity.ScmInquiry;
 import com.lemon.erp.modules.scm.entity.ScmInquiryItem;
 import com.lemon.erp.modules.scm.entity.ScmInquiryQuote;
+import com.lemon.erp.modules.scm.entity.ScmInquirySupplier;
 import com.lemon.erp.modules.scm.mapper.ScmInquiryItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmInquiryMapper;
 import com.lemon.erp.modules.scm.mapper.ScmInquiryQuoteMapper;
+import com.lemon.erp.modules.scm.mapper.ScmInquirySupplierMapper;
 import com.lemon.erp.modules.scm.model.InquiryStatus;
 import com.lemon.erp.modules.scm.model.OrderDeletedEvent;
 import com.lemon.erp.modules.scm.model.OrderKind;
@@ -32,9 +35,12 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,6 +48,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
 
 /**
  * 询价比价：一张询价单向多个供应商询价，录入报价后逐行比价定标，完成时用中标价更新供货价格、按中标供应商生成采购订单
@@ -55,6 +63,7 @@ public class ScmInquiryService {
     private final ScmInquiryMapper inquiryMapper;
     private final ScmInquiryItemMapper itemMapper;
     private final ScmInquiryQuoteMapper quoteMapper;
+    private final ScmInquirySupplierMapper offerMapper;
     private final ScmSupplierService supplierService;
     private final ScmSupplierPriceService supplierPriceService;
     private final ScmOrderService orderService;
@@ -73,6 +82,7 @@ public class ScmInquiryService {
         ScmInquiry q = inquiryMapper.selectDetail(id);
         q.setItems(inquiryMapper.selectItems(id));
         q.setQuotes(inquiryMapper.selectQuotes(id));
+        q.setOffers(offerMapper.selectList(Wrappers.<ScmInquirySupplier>lambdaQuery().eq(ScmInquirySupplier::getInquiryId, id)));
         return q;
     }
 
@@ -109,25 +119,32 @@ public class ScmInquiryService {
     public void delete(List<Long> ids) {
         ids.forEach(this::getQuoting);
         quoteMapper.delete(Wrappers.<ScmInquiryQuote>lambdaQuery().in(ScmInquiryQuote::getInquiryId, ids));
+        offerMapper.delete(Wrappers.<ScmInquirySupplier>lambdaQuery().in(ScmInquirySupplier::getInquiryId, ids));
         itemMapper.delete(Wrappers.<ScmInquiryItem>lambdaQuery().in(ScmInquiryItem::getInquiryId, ids));
         inquiryMapper.deleteByIds(ids);
     }
 
-    /** 录入供应商报价：覆盖该供应商之前的报价 */
+    /** 录入供应商报价：覆盖该供应商之前的报价和整单优惠承诺 */
     @Transactional
     public void saveQuote(Long id, InquiryQuoteRequest req) {
         getQuoting(id);
         supplierService.get(req.supplierId());
-        Set<Long> itemIds = itemMapper.selectList(Wrappers.<ScmInquiryItem>lambdaQuery().eq(ScmInquiryItem::getInquiryId, id))
-                .stream().map(ScmInquiryItem::getId).collect(Collectors.toSet());
+        Map<Long, ScmInquiryItem> itemsById = itemMapper.selectList(Wrappers.<ScmInquiryItem>lambdaQuery().eq(ScmInquiryItem::getInquiryId, id))
+                .stream().collect(Collectors.toMap(ScmInquiryItem::getId, Function.identity()));
         Set<Long> seen = new HashSet<>();
+        BigDecimal quoteTotal = BigDecimal.ZERO;
         for (InquiryQuoteRequest.Line l : req.lines()) {
-            if (!itemIds.contains(l.itemId())) {
+            if (!itemsById.containsKey(l.itemId())) {
                 throw new BizException("scm.error.quotationLineDoesNotBelongRfq");
             }
             if (!seen.add(l.itemId())) {
                 throw new BizException("scm.error.sameLineCannotQuotedMoreOnce");
             }
+            quoteTotal = quoteTotal.add(amount(itemsById.get(l.itemId()).getQty(), l.price()));
+        }
+        BigDecimal discount = Decimals.money(req.wholeDiscount());
+        if (discount.compareTo(quoteTotal) > 0) {
+            throw new BizException("scm.error.wholeDiscountExceedsTotal", quoteTotal.stripTrailingZeros().toPlainString());
         }
         List<Long> old = quoteMapper.selectList(Wrappers.<ScmInquiryQuote>lambdaQuery().eq(ScmInquiryQuote::getInquiryId, id)
                 .eq(ScmInquiryQuote::getSupplierId, req.supplierId())).stream().map(ScmInquiryQuote::getId).toList();
@@ -136,6 +153,15 @@ public class ScmInquiryService {
             itemMapper.update(Wrappers.<ScmInquiryItem>lambdaUpdate().set(ScmInquiryItem::getSelectedQuoteId, null)
                     .eq(ScmInquiryItem::getInquiryId, id).in(ScmInquiryItem::getSelectedQuoteId, old));
             quoteMapper.deleteByIds(old);
+        }
+        offerMapper.delete(Wrappers.<ScmInquirySupplier>lambdaQuery().eq(ScmInquirySupplier::getInquiryId, id)
+                .eq(ScmInquirySupplier::getSupplierId, req.supplierId()));
+        if (discount.signum() > 0 && !req.lines().isEmpty()) {
+            ScmInquirySupplier offer = new ScmInquirySupplier();
+            offer.setInquiryId(id);
+            offer.setSupplierId(req.supplierId());
+            offer.setWholeDiscount(discount);
+            offerMapper.insert(offer);
         }
         for (InquiryQuoteRequest.Line l : req.lines()) {
             ScmInquiryQuote quote = new ScmInquiryQuote();
@@ -193,6 +219,8 @@ public class ScmInquiryService {
         }
         List<Long> orderIds = new ArrayList<>();
         if (req.createOrder()) {
+            Map<Long, BigDecimal> offers = offerMapper.selectList(Wrappers.<ScmInquirySupplier>lambdaQuery().eq(ScmInquirySupplier::getInquiryId, id))
+                    .stream().collect(Collectors.toMap(ScmInquirySupplier::getSupplierId, ScmInquirySupplier::getWholeDiscount, (a, b) -> a));
             bySupplier.forEach((supplierId, list) -> {
                 List<OrderItemRequest> lines = list.stream().map(i -> {
                     ScmInquiryQuote q = selectedOf.get(i.getId());
@@ -200,8 +228,9 @@ public class ScmInquiryService {
                             : q.getLeadDays() == null ? null : LocalDate.now().plusDays(q.getLeadDays());
                     return new OrderItemRequest(i.getMaterialId(), i.getQty(), q.getPrice(), q.getTaxRate(), delivery, i.getRemark());
                 }).toList();
+                BigDecimal discount = awardedDiscount(offers.get(supplierId), supplierId, list, selectedOf, quotes.values(), items);
                 Long orderId = orderService.createDraft(OrderKind.PURCHASE, new OrderRequest(supplierId, LocalDate.now(), null,
-                        req.warehouseId(), "询价单 " + inquiry.getInquiryNo(), lines), OrderSource.INQUIRY); // i18n-ignore
+                        req.warehouseId(), "询价单 " + inquiry.getInquiryNo(), lines, null, null, null, null, discount), OrderSource.INQUIRY); // i18n-ignore
                 itemMapper.update(Wrappers.<ScmInquiryItem>lambdaUpdate().set(ScmInquiryItem::getOrderId, orderId)
                         .in(ScmInquiryItem::getId, list.stream().map(ScmInquiryItem::getId).toList()));
                 orderIds.add(orderId);
@@ -209,6 +238,31 @@ public class ScmInquiryService {
         }
         transit(id, InquiryStatus.FINISHED);
         return orderIds;
+    }
+
+    /**
+     * 中标部分对应的整单优惠：供应商的优惠承诺按全部报价行的合计计算，全部中标时取全额，部分中标按 中标行金额 / 报价合计 折算（保留 2 位）
+     *
+     * @param promised 供应商的整单优惠承诺，没有时为空
+     * @param awarded  该供应商中标的明细
+     */
+    static BigDecimal awardedDiscount(BigDecimal promised, Long supplierId, List<ScmInquiryItem> awarded, Map<Long, ScmInquiryQuote> selectedOf,
+                                      Collection<ScmInquiryQuote> allQuotes, Map<Long, ScmInquiryItem> items) {
+        if (promised == null || promised.signum() <= 0) {
+            return null;
+        }
+        BigDecimal quoted = BigDecimal.ZERO;
+        for (ScmInquiryQuote q : allQuotes) {
+            ScmInquiryItem item = items.get(q.getItemId());
+            if (q.getSupplierId().equals(supplierId) && item != null) {
+                quoted = quoted.add(amount(item.getQty(), q.getPrice()));
+            }
+        }
+        BigDecimal won = Decimals.sum(awarded, i -> amount(i.getQty(), selectedOf.get(i.getId()).getPrice()));
+        if (quoted.signum() <= 0 || won.compareTo(quoted) >= 0) {
+            return promised.min(won);
+        }
+        return promised.multiply(won).divide(quoted, 2, RoundingMode.HALF_UP);
     }
 
     @Transactional

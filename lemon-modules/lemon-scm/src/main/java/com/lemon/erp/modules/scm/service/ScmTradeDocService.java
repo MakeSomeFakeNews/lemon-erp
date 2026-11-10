@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.service;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
@@ -20,10 +21,12 @@ import com.lemon.erp.modules.scm.entity.ScmOrder;
 import com.lemon.erp.modules.scm.entity.ScmOrderItem;
 import com.lemon.erp.modules.scm.entity.ScmTradeDoc;
 import com.lemon.erp.modules.scm.entity.ScmTradeDocItem;
+import com.lemon.erp.modules.scm.event.PurchaseFreightEvent;
 import com.lemon.erp.modules.scm.event.TradeDocConfirmedEvent;
 import com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmTradeDocItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmTradeDocMapper;
+import com.lemon.erp.modules.scm.model.FreightBearer;
 import com.lemon.erp.modules.scm.model.OrderStatus;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.OrderSource;
@@ -84,6 +87,7 @@ public class ScmTradeDocService {
     private final ScmReservationService reservationService;
     private final ScmStockCosts stockCosts;
     private final DirectGifts directGifts;
+    private final ScmSupplierService supplierService;
 
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmTradeDoc> page(TradeKind kind, long current, long size, TradeDocQuery query) {
@@ -171,7 +175,8 @@ public class ScmTradeDocService {
         List<ScmOrderItem> giftItems = orderItems.subList(normal.size(), orderItems.size()).stream()
                 .filter(i -> Integer.valueOf(1).equals(i.getGift())).toList();
         items.addAll(directGifts.lines(giftItems, giftReqs, req.warehouseId()));
-        return create(kind, new TradeDocRequest(order.getId(), req.warehouseId(), req.bizDate(), req.remark(), false, items), order);
+        return create(kind, new TradeDocRequest(order.getId(), req.warehouseId(), req.bizDate(), req.remark(), false, items,
+                null, null, null, req.freight(), req.freightBearer(), req.carrierSupplierId()), order);
     }
 
     private Long create(TradeKind kind, TradeDocRequest req, ScmOrder order) {
@@ -197,6 +202,7 @@ public class ScmTradeDocService {
         if (kind == TradeKind.SALES_OUT) {
             creditChecker.checkBeforeShipment(order);
         }
+        FreightBearer freightBearer = checkFreight(kind, req);
         // 业务参数：销售出库的明细可以各自选择仓库
         boolean lineWarehouse = kind == TradeKind.SALES_OUT && bizRules.bool(ScmBizRules.SALES_OUT_LINE_WAREHOUSE);
         Map<Long, ScmOrderItem> orderItems = orderItemMapper.selectByOrderId(order.getId()).stream()
@@ -236,11 +242,22 @@ public class ScmTradeDocService {
             orderItemMapper.addAmounts(orderItem.getId(), !kind.isReturns() ? amountFc : replenish ? amountFc.negate() : BigDecimal.ZERO,
                     kind.isReturns() && !replenish ? amountFc : BigDecimal.ZERO, share);
             amountsFc.add(amountFc);
-            ScmTradeDocItem item = toItem(kind, r, orderItem, rate(order), amountFc);
+            // 整单优惠的分摊（只用于显示优惠前的单价、金额）：出入库为本次消耗的分摊额，退货为按优惠前单价计的金额与退货金额之差
+            BigDecimal shareFc = !kind.isReturns() ? share : OrderLineAmounts.returnShare(orderItem, r.qty(), amountFc);
+            ScmTradeDocItem item = toItem(kind, r, orderItem, rate(order), amountFc, shareFc);
             if (lineWarehouse && r.warehouseId() != null && !r.warehouseId().equals(req.warehouseId())) {
                 item.setWarehouseId(r.warehouseId());
             }
             items.add(item);
+        }
+
+        if (freightBearer != null) {
+            // 采购运费按各行不含税金额分摊，计入存货成本
+            List<BigDecimal> shares = ScmFreights.allocate(req.freight(),
+                    items.stream().map(i -> i.getAmount().subtract(i.getTaxAmount())).toList(), items.stream().map(ScmTradeDocItem::getQty).toList());
+            for (int i = 0; i < items.size(); i++) {
+                items.get(i).setFreightShare(shares.get(i));
+            }
         }
 
         // 实时库存成本：带上成本单价、业务单价（不含税）和往来单位
@@ -279,6 +296,10 @@ public class ScmTradeDocService {
         doc.setWmsDocNo(stockDoc.getDocNo());
         doc.setRemark(req.remark());
         doc.setReplenish(kind.isReturns() && Boolean.TRUE.equals(req.replenish()) ? 1 : 0);
+        doc.setDiscountAmount(Decimals.sum(items, ScmTradeDocItem::getDiscountShare));
+        doc.setFreight(freightBearer == null ? BigDecimal.ZERO : Decimals.money(req.freight()));
+        doc.setFreightBearer(freightBearer);
+        doc.setCarrierSupplierId(freightBearer == FreightBearer.COMPANY ? req.carrierSupplierId() : null);
         doc.setDeptId(user.deptId());
         docMapper.insert(doc);
         items.forEach(i -> i.setDocId(doc.getId()));
@@ -292,7 +313,44 @@ public class ScmTradeDocService {
         eventPublisher.publishEvent(new TradeDocConfirmedEvent(doc.getId(), kind, docNo, order.getPartnerId(),
                 req.bizDate(), doc.getTotalAmount().multiply(sign), doc.getTaxAmount().multiply(sign), doc.getCurrency(),
                 doc.getExchangeRate(), doc.getAmountFc().multiply(sign)));
+        if (freightBearer != null) {
+            // 运费应付：供应商代垫计入该供应商，本公司承担付给承运商
+            eventPublisher.publishEvent(new PurchaseFreightEvent(doc.getId(), docNo, freightBearer == FreightBearer.COMPANY
+                    ? req.carrierSupplierId() : order.getPartnerId(), req.bizDate(), doc.getFreight(), user.deptId()));
+        }
         return doc.getId();
+    }
+
+    /**
+     * 记录采购运费生成的应付单。由财务模块处理 {@link PurchaseFreightEvent} 时调用，与入库同一事务
+     */
+    public void bindFreightBill(Long docId, Long billId) {
+        docMapper.update(Wrappers.<ScmTradeDoc>lambdaUpdate().set(ScmTradeDoc::getFreightBillId, billId).eq(ScmTradeDoc::getId, docId));
+    }
+
+    /**
+     * 校验运费：只有采购入库可以填写；付给方式默认供应商代垫，本公司承担时必须选择承运商（供应商）
+     *
+     * @return 运费付给方式，没有运费时为 null
+     */
+    private FreightBearer checkFreight(TradeKind kind, TradeDocRequest req) {
+        if (!req.hasFreight()) {
+            return null;
+        }
+        if (kind != TradeKind.PURCHASE_IN) {
+            throw new BizException("scm.error.freightOnlyPurchaseIn");
+        }
+        FreightBearer bearer = req.freightBearer() == null ? FreightBearer.SUPPLIER : req.freightBearer();
+        if (bearer == FreightBearer.CUSTOMER) {
+            throw new BizException("scm.error.freightBearerInvalid");
+        }
+        if (bearer == FreightBearer.COMPANY) {
+            if (req.carrierSupplierId() == null) {
+                throw new BizException("scm.error.freightSelectCarrier");
+            }
+            supplierService.get(req.carrierSupplierId());
+        }
+        return bearer;
     }
 
     /** 订单汇率，本位币为 1 */
@@ -305,7 +363,8 @@ public class ScmTradeDocService {
      *
      * @param amountFc 本行金额（订单币种），见 {@link OrderLineAmounts}
      */
-    private static ScmTradeDocItem toItem(TradeKind kind, TradeDocItemRequest r, ScmOrderItem orderItem, BigDecimal rate, BigDecimal amountFc) {
+    private static ScmTradeDocItem toItem(TradeKind kind, TradeDocItemRequest r, ScmOrderItem orderItem, BigDecimal rate, BigDecimal amountFc,
+                                          BigDecimal shareFc) {
         ScmTradeDocItem item = new ScmTradeDocItem();
         item.setOrderItemId(orderItem.getId());
         item.setMaterialId(orderItem.getMaterialId());
@@ -324,6 +383,11 @@ public class ScmTradeDocService {
         item.setTaxRate(orderItem.getTaxRate());
         item.setAmount(rate.compareTo(BigDecimal.ONE) == 0 ? amountFc : amountFc.multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP));
         item.setTaxAmount(tax(item.getAmount(), item.getTaxRate()));
+        // 优惠前单价：订单行金额加回整单优惠分摊后的单价（没有分摊时同单价），价格记忆、价格参考、明细显示都用它
+        BigDecimal gross = OrderLineAmounts.grossPrice(orderItem);
+        item.setGrossPrice(rate.compareTo(BigDecimal.ONE) == 0 ? gross : gross.multiply(rate).setScale(4, java.math.RoundingMode.HALF_UP));
+        BigDecimal share = Decimals.nz(shareFc);
+        item.setDiscountShare(rate.compareTo(BigDecimal.ONE) == 0 ? share : share.multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP));
         item.setSerialNos(Integer.valueOf(1).equals(orderItem.getSerialEnabled()) ? joinSerials(splitSerials(r.serialNos())) : null);
         item.setRemark(r.remark());
         return item;

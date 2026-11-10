@@ -97,6 +97,15 @@
         GROUP BY m.category
     </select>
 
+    <!-- 采购运费按物料分类汇总（入库单明细分摊的运费），合计等于运费 -->
+    <select id="selectFreightByCategory" resultType="java.util.Map">
+        SELECT m.category AS "category", SUM(i.freight_share) AS "net"
+        FROM scm_trade_doc_item i
+        JOIN wms_material m ON m.id = i.material_id
+        WHERE i.doc_id = #{tradeDocId} AND i.freight_share &lt;&gt; 0
+        GROUP BY m.category
+    </select>
+
     <select id="selectSourceByCategory" resultType="java.util.Map">
         SELECT m.category AS "category", SUM(i.amount - i.tax_amount) AS "net", SUM(i.tax_amount) AS "tax"
         FROM scm_trade_doc_item i

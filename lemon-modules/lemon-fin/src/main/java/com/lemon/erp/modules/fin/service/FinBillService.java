@@ -29,8 +29,10 @@ import com.lemon.erp.modules.scm.event.RebateSettledEvent;
 import com.lemon.erp.modules.scm.event.RebateUnsettledEvent;
 import com.lemon.erp.modules.scm.model.RebateKind;
 import com.lemon.erp.modules.scm.model.ScmConstants;
+import com.lemon.erp.modules.scm.event.PurchaseFreightEvent;
 import com.lemon.erp.modules.scm.event.ShipmentShippedEvent;
 import com.lemon.erp.modules.scm.event.TradeDocConfirmedEvent;
+import com.lemon.erp.modules.scm.model.FreightBearer;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.scm.service.ScmCustomerService;
@@ -38,6 +40,7 @@ import com.lemon.erp.modules.scm.service.ScmQueryService;
 import com.lemon.erp.modules.scm.service.ScmRebateService;
 import com.lemon.erp.modules.scm.service.ScmShipmentService;
 import com.lemon.erp.modules.scm.service.ScmSupplierService;
+import com.lemon.erp.modules.scm.service.ScmTradeDocService;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
@@ -79,6 +82,7 @@ public class FinBillService {
     private final QmsClaimService claimService;
     private final ScmRebateService rebateService;
     private final ScmQueryService scmQueryService;
+    private final ScmTradeDocService tradeDocService;
 
     public PageResult<FinBill> page(long current, long size, BillQuery query) {
         checkKind(query.kind());
@@ -199,16 +203,47 @@ public class FinBillService {
         billMapper.deleteByIds(ids);
     }
 
-    /** 发运单发货：运费生成承运商应付单（借 销售费用），与发货在同一事务 */
+    /**
+     * 发运单发货，与发货在同一事务：
+     * <ul>
+     *   <li>指定了承运商时生成承运商应付单：本公司承担 借 销售运费 / 贷 应付账款；客户承担 借 代垫运费 / 贷 应付账款</li>
+     *   <li>客户承担（代垫）时生成客户的代垫运费应收单（来源 SHIPMENT，不含税额）：借 应收账款 / 贷 代垫运费，不是销售收入，不影响毛利</li>
+     * </ul>
+     */
     @EventListener
     public void onShipmentShipped(ShipmentShippedEvent e) {
-        FinBill bill = newBill(BillKind.AP, e.carrierId(), BillSource.SHIPMENT, e.shipmentId(), e.shipNo(), e.shipDate(),
-                e.shipDate().plusDays(paymentDays(BillKind.AP, e.carrierId())), e.freight(), BigDecimal.ZERO);
-        bill.setExpenseAccountId(accountRules.accountId(AccountRole.SELLING_EXPENSE));
+        boolean customer = e.bearer() == FreightBearer.CUSTOMER;
+        if (e.carrierId() != null) {
+            FinBill bill = newBill(BillKind.AP, e.carrierId(), BillSource.SHIPMENT, e.shipmentId(), e.shipNo(), e.shipDate(),
+                    e.shipDate().plusDays(paymentDays(BillKind.AP, e.carrierId())), e.freight(), BigDecimal.ZERO);
+            bill.setExpenseAccountId(accountRules.accountId(customer ? AccountRole.FREIGHT_ADVANCE : AccountRole.SALES_FREIGHT));
+            bill.setDeptId(e.deptId());
+            bill.setRemark("发运单 " + e.shipNo() + (customer ? " 代垫运费" : " 运费")); // i18n-ignore
+            billMapper.insert(bill);
+            shipmentService.bindFreightBill(e.shipmentId(), bill.getId());
+        }
+        if (customer) {
+            FinBill ar = newBill(BillKind.AR, e.customerId(), BillSource.SHIPMENT, e.shipmentId(), e.shipNo(), e.shipDate(),
+                    e.shipDate().plusDays(paymentDays(BillKind.AR, e.customerId())), e.freight(), BigDecimal.ZERO);
+            ar.setDeptId(e.deptId());
+            ar.setRemark("发运单 " + e.shipNo() + " 代垫运费"); // i18n-ignore
+            billMapper.insert(ar);
+            shipmentService.bindFreightArBill(e.shipmentId(), ar.getId());
+        }
+    }
+
+    /**
+     * 采购入库的运费：生成运费应付单（来源 PURCHASE_FREIGHT，供应商代垫时应付该供应商，本公司承担时应付承运商），
+     * 凭证 借 存货（按物料分类，运费已分摊计入入库成本）/ 贷 应付账款；与入库同一事务
+     */
+    @EventListener
+    public void onPurchaseFreight(PurchaseFreightEvent e) {
+        FinBill bill = newBill(BillKind.AP, e.payeeId(), BillSource.PURCHASE_FREIGHT, e.docId(), e.docNo(), e.bizDate(),
+                e.bizDate().plusDays(paymentDays(BillKind.AP, e.payeeId())), e.freight(), BigDecimal.ZERO);
         bill.setDeptId(e.deptId());
-        bill.setRemark("发运单 " + e.shipNo() + " 运费"); // i18n-ignore
+        bill.setRemark("采购入库 " + e.docNo() + " 运费"); // i18n-ignore
         billMapper.insert(bill);
-        shipmentService.bindFreightBill(e.shipmentId(), bill.getId());
+        tradeDocService.bindFreightBill(e.docId(), bill.getId());
     }
 
     /** 供应商质量索赔确认：生成红字应付单冲减应付，与确认同一事务 */
@@ -389,6 +424,14 @@ public class FinBillService {
         }
         BigDecimal sign = BigDecimal.valueOf(bill.getAmount().signum() < 0 ? -1 : 1);
         if (bill.getKind() == BillKind.AR) {
+            if (bill.getSourceType() == BillSource.SHIPMENT) {
+                // 代垫运费（客户承担的发运运费）：借 应收账款 / 贷 代垫运费，与付承运商时的 借 代垫运费 相抵
+                String summary = "代垫运费 " + bill.getSourceNo() + " " + partner; // i18n-ignore
+                lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, bill.getAmount())
+                        .withCustomer(bill.getPartnerId()));
+                lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.FREIGHT_ADVANCE), null, bill.getAmount()));
+                return lines;
+            }
             String summary = (bill.getSourceType() == BillSource.PROJECT ? "项目开票 " : bill.getSourceType() == BillSource.TICKET ? "服务收费 " // i18n-ignore
                     : bill.getSourceType() == BillSource.REBATE ? "销售返利 " : bill.getSourceType() == BillSource.ORDER_ADJUST ? "订单尾差调整 " // i18n-ignore
                     : sign.signum() < 0 ? "销售退货 " : "销售出库 ") // i18n-ignore
@@ -438,6 +481,23 @@ public class FinBillService {
             byCategory(bill, bill.getAmount().subtract(bill.getTaxAmount())).forEach((category, amount) -> lines.add(
                     VoucherLine.debit(summary, accountRules.accountId(AccountRole.INVENTORY, category), null, amount)));
             lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INPUT_VAT), null, bill.getTaxAmount()));
+            lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.PAYABLE), null, bill.getAmount())
+                    .withSupplier(bill.getPartnerId()));
+            return lines;
+        }
+        if (bill.getSourceType() == BillSource.PURCHASE_FREIGHT) {
+            // 采购运费：借 存货（按物料分类，与入库成本中分摊的运费一致）/ 贷 应付账款
+            String summary = "采购运费 " + bill.getSourceNo() + " " + partner; // i18n-ignore
+            List<Map<String, Object>> rows = billMapper.selectFreightByCategory(bill.getSourceId());
+            BigDecimal allocated = BigDecimal.ZERO;
+            for (int i = 0; i < rows.size(); i++) {
+                BigDecimal net = i == rows.size() - 1 ? bill.getAmount().subtract(allocated) : new BigDecimal(rows.get(i).get("net").toString());
+                allocated = allocated.add(net);
+                lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INVENTORY, (String) rows.get(i).get("category")), null, net));
+            }
+            if (rows.isEmpty()) {
+                lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INVENTORY), null, bill.getAmount()));
+            }
             lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.PAYABLE), null, bill.getAmount())
                     .withSupplier(bill.getPartnerId()));
             return lines;

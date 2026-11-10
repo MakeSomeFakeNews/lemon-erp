@@ -34,7 +34,9 @@ public enum BillSource {
     /** 冲账单（垫付运费、返利、三包赔偿等抵扣往来款，红字） */
     OFFSET,
     /** 订单尾差调整：部分出入库的订单关闭时，已出入库金额与订单口径的差额（蓝字或红字） */
-    ORDER_ADJUST;
+    ORDER_ADJUST,
+    /** 采购运费：采购入库的运费（供应商代垫或付承运商），计入存货成本 */
+    PURCHASE_FREIGHT;
 
     /** 供应链出入库生成的单据（与 scm TradeKind 同名） */
     public static final Set<BillSource> TRADE = EnumSet.of(SALES_OUT, SALES_RETURN, PURCHASE_IN, PURCHASE_RETURN);

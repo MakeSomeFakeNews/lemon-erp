@@ -34,7 +34,7 @@
 
     <select id="selectPurchaseHistory" resultType="com.lemon.erp.modules.scm.dto.ScmPriceViews$PurchaseHistory">
         SELECT d.biz_date AS "bizDate", d.doc_no AS "docNo", d.partner_id AS "supplierId", s.name AS "supplierName",
-               i.material_id AS "materialId", i.qty AS "qty", i.price AS "price", i.tax_rate AS "taxRate"
+               i.material_id AS "materialId", i.qty AS "qty", COALESCE(i.gross_price, i.price) AS "price", i.tax_rate AS "taxRate"
         FROM scm_trade_doc_item i
         JOIN scm_trade_doc d ON d.id = i.doc_id
         JOIN scm_supplier s ON s.id = d.partner_id

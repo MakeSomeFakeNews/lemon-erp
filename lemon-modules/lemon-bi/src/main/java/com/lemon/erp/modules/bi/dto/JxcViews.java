@@ -40,6 +40,14 @@ public final class JxcViews {
         private BigDecimal profit;
         /** 毛利率（%），净额为 0 时为空 */
         private BigDecimal margin;
+        /** 坏账核销（销售出库单应收单上的核销金额，含税，按行金额分摊；只有销售报表） */
+        private BigDecimal badDebt;
+        /** 本公司承担的发运运费（只有销售报表） */
+        private BigDecimal freight;
+        /** 扣坏账后毛利 = 毛利 − 坏账核销 */
+        private BigDecimal profitAfterBadDebt;
+        /** 扣坏账、运费后毛利 = 毛利 − 坏账核销 − 本公司运费（参考口径，财务报表中这两项是营业外支出、销售费用） */
+        private BigDecimal profitAfterFreight;
         /** 平均单价（不含税）= 净额 / 净数量 */
         private BigDecimal avgPrice;
         /** 单据数（出库 / 入库 + 退货） */
@@ -79,6 +87,10 @@ public final class JxcViews {
         private BigDecimal taxedAmount;
         private BigDecimal cost;
         private BigDecimal profit;
+        private BigDecimal badDebt;
+        private BigDecimal freight;
+        private BigDecimal profitAfterBadDebt;
+        private BigDecimal profitAfterFreight;
         /** 1 已按当期核算成本，0 按参考成本价 */
         private Integer costed;
         private String remark;
