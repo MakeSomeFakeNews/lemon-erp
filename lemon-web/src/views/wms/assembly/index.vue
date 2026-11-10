@@ -179,7 +179,7 @@
           <a-descriptions-item :label="$t('common.field.status')">{{ detail.status === WmsDocStatus.DONE ? $t('wms.assembly.done') : $t('wms.assembly.draft') }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.outDocNo" :label="$t('wms.assembly.docs')">{{ $t('wms.assembly.docsValue', { out: detail.outDocNo, in: detail.inDocNo }) }}</a-descriptions-item>
           <a-descriptions-item :label="$t('wms.common.createBy')">{{ detail.createByName }}</a-descriptions-item>
-          <a-descriptions-item v-if="detail.serialNos" :label="$t('wms.common.serialNo')">{{ detail.serialNos }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.serialNos" :label="$t('wms.common.serialNo')"><SerialTags :value="detail.serialNos" :limit="10" /></a-descriptions-item>
           <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
         <a-table row-key="id" size="small" :columns="detailColumns" :data-source="detail.items" :pagination="false">
@@ -197,6 +197,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
+import SerialTags from '@/components/wms/SerialTags.vue'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
