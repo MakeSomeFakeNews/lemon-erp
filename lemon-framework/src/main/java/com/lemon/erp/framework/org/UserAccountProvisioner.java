@@ -1,7 +1,8 @@
 package com.lemon.erp.framework.org;
 
 /**
- * 为新员工开通登录账号，由系统模块实现（{@code SysUserAccountProvisioner}）。初始密码与「重置密码」默认值一致
+ * 为新员工开通登录账号，由系统模块实现（{@code SysOrgSyncService}）。初始密码取系统参数「初始密码」，首次登录要求修改；
+ * 授予内置的「普通员工」角色（员工自助、发起审批），其他角色由管理员在用户管理中分配
  */
 public interface UserAccountProvisioner {
 

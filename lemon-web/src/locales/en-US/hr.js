@@ -262,7 +262,7 @@ export default {
     probationSalary: 'Probation Base Salary',
     probationSalaryExtra: 'A salary profile is also created (social insurance and housing fund bases default to the base salary)',
     username: 'Username',
-    usernameExtra: 'The initial password is the system default; please change it after first login',
+    usernameExtra: 'The initial password is the one in system settings and must be changed at first sign-in. The account gets the Staff role (self-service, approvals); assign other roles in User Management',
     existingAccount: 'Existing Account',
     peopleN: '{n}',
     confirmDelete: 'Delete "{name}"?',

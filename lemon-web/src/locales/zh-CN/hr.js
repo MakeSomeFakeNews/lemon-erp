@@ -262,7 +262,7 @@ export default {
     probationSalary: '试用期基本工资',
     probationSalaryExtra: '填写后同时建立薪资档案（社保、公积金基数默认为基本工资）',
     username: '登录名',
-    usernameExtra: '初始密码为系统配置的默认密码，首次登录后请修改',
+    usernameExtra: '初始密码为系统参数中的初始密码，首次登录后须修改；授予「普通员工」角色（员工自助、发起审批），其他权限由管理员在用户管理中分配',
     existingAccount: '已有账号',
     peopleN: '{n} 人',
     confirmDelete: '确定删除「{name}」？',
