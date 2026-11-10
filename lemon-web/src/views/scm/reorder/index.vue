@@ -45,8 +45,7 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'material'">
-            <div>{{ record.code }} {{ record.name }}</div>
-            <div class="sub-text">{{ record.spec }}</div>
+            {{ record.code }} {{ record.name }}
           </template>
           <template v-else-if="column.key === 'supplyType'">
             <DictTag type="mes_supply_type" :value="record.supplyType" />

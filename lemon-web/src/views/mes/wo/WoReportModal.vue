@@ -13,7 +13,7 @@
           </a-form-item>
         </a-col>
         <a-col :span="12">
-          <a-form-item :label="$t('mes.wo.goodQty')" required>
+          <a-form-item :label="$t('mes.wo.goodQty')" required :extra="reportOp?.firstArticlePending ? $t('mes.wo.firstArticlePending') : undefined">
             <a-input-number v-model:value="report.goodQty" :min="0" class="full" />
           </a-form-item>
         </a-col>
@@ -79,7 +79,7 @@ const shotsHint = computed(() => {
 })
 async function open(op) {
   reportOp.value = op
-  // 默认合格数为还可报工的数量（后端按上道工序累计合格数 − 本工序已报合格和报废计算，与报工校验一致）
+  // 默认合格数为还可报工的数量（后端按上道工序累计合格数 − 本工序已报合格和报废计算，首件检验合格前累计不超过 1 件，与报工校验一致）
   const remaining = Number(op.reportableQty ?? Math.max(Number(props.detail.qty) - Number(op.goodQty) - Number(op.scrapQty), 0))
   const hours = Math.round(Number(op.stdHours) * remaining * 100) / 100
   const [eqs, ms] = await Promise.all([equipmentOptions(), moldsOfWo(props.detail.id)])

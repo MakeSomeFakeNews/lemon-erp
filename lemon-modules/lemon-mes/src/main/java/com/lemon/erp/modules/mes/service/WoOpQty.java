@@ -33,8 +33,8 @@ final class WoOpQty {
 
     /**
      * 按工序号填写各工序还可报工的数量（{@link MesWoOp#getReportableQty()}）：
-     * 上道工序（工序号小于本工序的最后一道）的累计合格数，第一道工序为工单数量，减本工序已报的合格和报废，不小于 0。
-     * 与报工校验（{@code WoReportService.report}）一致
+     * 上道工序（工序号小于本工序的最后一道）的累计合格数，第一道工序为工单数量，减本工序已报的合格和报废，不小于 0；
+     * 首件检验尚未合格（{@link MesWoOp#getFirstArticlePending()}）时累计不超过 1 件。与报工校验（{@code WoReportService.report}）一致
      */
     static void fillReportable(BigDecimal woQty, List<MesWoOp> ops) {
         List<MesWoOp> sorted = ops.stream()
@@ -49,6 +49,9 @@ final class WoOpQty {
                 }
             }
             BigDecimal cap = prev == null ? woQty : nz(prev.getGoodQty()).min(woQty);
+            if (Boolean.TRUE.equals(op.getFirstArticlePending())) {
+                cap = cap.min(BigDecimal.ONE);
+            }
             op.setReportableQty(cap.subtract(nz(op.getGoodQty())).subtract(nz(op.getScrapQty())).max(BigDecimal.ZERO));
         }
     }

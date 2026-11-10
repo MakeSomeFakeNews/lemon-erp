@@ -191,7 +191,7 @@ export default {
     },
     stat: {
       credit: '可用信用额度',
-      sales: '近一年销售额',
+      sales: '近一年销售额（不含税）',
       orders: '销售订单',
       ordersValue: '{n} 张',
       lastOrder: '最近下单',
@@ -504,7 +504,7 @@ export default {
       rfm: '客户价值分层（RFM，近一年）',
       rfmDetail: '客户 RFM 明细',
       source: '来源分析',
-      industry: '行业分布（近一年销售额）',
+      industry: '行业分布（近一年不含税销售额）',
       owner: '销售人员排名',
       service: '服务质量'
     },
@@ -527,11 +527,11 @@ export default {
       openTickets: '未关闭工单',
       openTicketsSub: '超时 {overdue} · 满意度 {s}'
     },
-    sales: '销售额',
+    sales: '销售额（不含税）',
     wonAmount: '赢单金额',
     reachedTip: '到达 {n} 个',
     customers: '客户数',
-    industryTip: '销售额 ¥{amount}',
+    industryTip: '销售额（不含税）¥{amount}',
     industryCustomers: '客户 {n} 个',
     unset: '未设置',
     col: {

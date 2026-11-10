@@ -823,6 +823,7 @@ export default {
     moldRequired: '须先在「模具工装」中领用到该工单',
     shotsHint: '本次 {shots} 模次，累计 {used}',
     shotsHintLife: '本次 {shots} 模次，累计 {used} / {life}',
+    firstArticlePending: '首件检验合格前，该工序累计只能报工 1 件',
     reportSuccess: '报工成功'
   },
   woDocForm: {

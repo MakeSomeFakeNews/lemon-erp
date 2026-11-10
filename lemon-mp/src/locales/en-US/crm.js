@@ -33,7 +33,7 @@ export default {
     paymentDays: 'Payment terms (days)',
     openOpp: '{n} open opportunities',
     overview: 'Overview',
-    salesAmount: 'Total sales',
+    salesAmount: 'Sales, 12 mo (excl. tax)',
     orderCount: 'Orders',
     arBalance: 'Receivable',
     wonAmount: 'Won amount',

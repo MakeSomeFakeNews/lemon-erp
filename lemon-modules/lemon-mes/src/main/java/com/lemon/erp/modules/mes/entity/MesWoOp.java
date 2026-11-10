@@ -58,9 +58,13 @@ public class MesWoOp extends BaseEntity {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private BigDecimal upstreamScrap;
 
+    /** 需要首件检验且首件检验尚未合格（合格前该工序累计只能报工 1 件），按工单查询工序时填写 */
+    @TableField(exist = false)
+    private Boolean firstArticlePending;
+
     /**
      * 本工序还可报工的数量（合格 + 报废）：不超过上道工序的累计合格数（第一道工序为工单数量）减本工序已报的合格和报废，
-     * 与报工校验一致，报工默认合格数使用；工单详情由 {@code WoOpQty.fillReportable} 填写
+     * 首件检验合格前累计不超过 1；与报工校验一致，报工默认合格数使用；工单详情由 {@code WoOpQty.fillReportable} 填写
      */
     @TableField(exist = false)
     private BigDecimal reportableQty;

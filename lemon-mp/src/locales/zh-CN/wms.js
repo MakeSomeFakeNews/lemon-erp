@@ -225,6 +225,7 @@ export default {
     selectOp: '选择要报工的工序',
     noOps: '工单没有工序',
     firstArticle: '首件检验',
+    firstArticlePending: '首件检验合格前，该工序累计只能报工 1 件',
     opProgress: '合格 {good}，报废 {scrap}，计划 {total}',
     opHours: '工时 {n}',
     changeOp: '换工序',

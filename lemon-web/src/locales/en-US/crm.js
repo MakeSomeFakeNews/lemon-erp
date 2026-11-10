@@ -191,7 +191,7 @@ export default {
     },
     stat: {
       credit: 'Available Credit',
-      sales: 'Sales (Last 12 Months)',
+      sales: 'Sales (Last 12 Months, Excl. Tax)',
       orders: 'Sales Orders',
       ordersValue: '{n}',
       lastOrder: 'Last Order',
@@ -504,7 +504,7 @@ export default {
       rfm: 'Customer Value Segments (RFM, Last 12 Months)',
       rfmDetail: 'Customer RFM Details',
       source: 'Source Analysis',
-      industry: 'Sales by Industry (Last 12 Months)',
+      industry: 'Sales by Industry (Last 12 Months, Excl. Tax)',
       owner: 'Sales Rep Ranking',
       service: 'Service Quality'
     },
@@ -527,11 +527,11 @@ export default {
       openTickets: 'Open Tickets',
       openTicketsSub: 'Overdue {overdue} · Satisfaction {s}'
     },
-    sales: 'Sales',
+    sales: 'Sales (Excl. Tax)',
     wonAmount: 'Won Amount',
     reachedTip: 'Reached {n}',
     customers: 'Customers',
-    industryTip: 'Sales ¥{amount}',
+    industryTip: 'Sales (excl. tax) ¥{amount}',
     industryCustomers: 'Customers {n}',
     unset: 'Not Set',
     col: {

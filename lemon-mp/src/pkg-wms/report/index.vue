@@ -53,6 +53,7 @@
         </view>
         <view class="m-sub">{{ wo.materialCode }} {{ wo.materialName }}</view>
         <view class="m-sub">{{ t('wms.report.opProgress', { good: qty(op.goodQty), scrap: qty(op.scrapQty), total: qty(wo.qty) }) }}</view>
+        <view v-if="op.firstArticlePending" class="m-sub report__warn">{{ t('wms.report.firstArticlePending') }}</view>
       </view>
       <l-card>
         <l-field :label="t('wms.report.reportDate')" required>
@@ -171,7 +172,7 @@ function backToList() {
 
 function openOp(o) {
   op.value = o
-  // 默认合格数为还可报工的数量（后端按上道工序累计合格数 − 本工序已报合格和报废计算，与报工校验一致）
+  // 默认合格数为还可报工的数量（后端按上道工序累计合格数 − 本工序已报合格和报废计算，首件检验合格前累计不超过 1 件，与报工校验一致）
   const remaining = Number(o.reportableQty ?? Math.max(Number(wo.value.qty) - Number(o.goodQty || 0) - Number(o.scrapQty || 0), 0))
   const hours = Math.round(Number(o.stdHours || 0) * remaining * 100) / 100
   const sameCenter = equipments.value.filter((e) => e.workCenterId === o.workCenterId)
@@ -227,6 +228,9 @@ function toast(title) {
   }
   &__self {
     margin: 0 32rpx;
+  }
+  &__warn {
+    color: $l-warning;
   }
 }
 </style>

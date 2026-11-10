@@ -57,9 +57,10 @@
         HAVING SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE 0 END) &gt; 0
     </select>
 
+    <!-- 成交趋势、行业分布的销售额与 RFM 同一口径：不含税净销售额（价税合计 − 税额，扣除退货） -->
     <select id="selectMonthlySales" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$MonthlyRow">
         SELECT YEAR(biz_date) * 100 + MONTH(biz_date) AS "period",
-               SUM(CASE WHEN kind = 'SALES_OUT' THEN total_amount ELSE -total_amount END) AS "amount",
+               SUM(CASE WHEN kind = 'SALES_OUT' THEN 1 ELSE -1 END * (total_amount - tax_amount)) AS "amount",
                COUNT(DISTINCT partner_id) AS "customers"
         FROM scm_trade_doc
         WHERE kind IN ('SALES_OUT', 'SALES_RETURN') AND biz_date &gt;= #{since}
@@ -103,7 +104,7 @@
         SELECT COALESCE(x.industry, 'UNKNOWN') AS "industry", COUNT(*) AS "customers", COALESCE(SUM(s.sales), 0) AS "sales"
         FROM scm_customer c
         LEFT JOIN crm_customer x ON x.customer_id = c.id
-        LEFT JOIN (SELECT partner_id, SUM(CASE WHEN kind = 'SALES_OUT' THEN total_amount ELSE -total_amount END) AS sales
+        LEFT JOIN (SELECT partner_id, SUM(CASE WHEN kind = 'SALES_OUT' THEN 1 ELSE -1 END * (total_amount - tax_amount)) AS sales
                    FROM scm_trade_doc
                    WHERE kind IN ('SALES_OUT', 'SALES_RETURN') AND biz_date &gt;= #{since}
                    GROUP BY partner_id) s ON s.partner_id = c.id
