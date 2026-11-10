@@ -157,9 +157,9 @@ public final class BiInsight {
         private String category;
         private String unit;
         private BigDecimal qty;
-        /** 最近出库时间（yyyy-MM-dd HH:mm:ss） */
+        /** 最近出库的业务日期（yyyy-MM-dd），不含调拨 */
         private String lastOut;
-        /** 最早入库时间 */
+        /** 最早入库的业务日期 */
         private String firstIn;
         private BigDecimal amount;
         /** 闲置天数，没有出入库记录时为空 */

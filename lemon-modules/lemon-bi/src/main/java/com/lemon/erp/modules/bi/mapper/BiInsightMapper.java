@@ -34,10 +34,10 @@ public interface BiInsightMapper {
     /** ABC 分析：近一年各物料的销售成本、销售额 */
     List<BiInsight.AbcRow> selectAbcSource(@Param("from") LocalDate from);
 
-    /** 呆滞物料：有库存但 since 以来没有出库（不含调拨） */
-    List<BiInsight.SlowMovingRow> selectSlowMoving(@Param("since") LocalDateTime since);
+    /** 呆滞物料：有库存但业务日期 since（含）以来没有出库（不含调拨） */
+    List<BiInsight.SlowMovingRow> selectSlowMoving(@Param("since") LocalDate since);
 
     /** 预警指标的当前值（BiAlertMetric） */
     BigDecimal selectMetric(@Param("metric") String metric, @Param("today") LocalDate today, @Param("now") LocalDateTime now,
-                            @Param("period") int period, @Param("since") LocalDateTime since);
+                            @Param("period") int period, @Param("since") LocalDate since);
 }

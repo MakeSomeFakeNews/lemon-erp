@@ -89,21 +89,31 @@
         HAVING SUM(f.amount) &gt; 0
     </select>
 
+    <!-- 物料的最近出库（不含调拨）、最早入库业务日期：出入库单、调拨单取业务日期（在途调拨的调入取收货日期），盘点取盘点日期 -->
+    <sql id="flowDates">
+        SELECT f.material_id,
+               MAX(CASE WHEN f.qty &lt; 0 AND f.biz_type &lt;&gt; 'TRANSFER'
+                        THEN COALESCE(d.biz_date, c.biz_date) END) AS last_out,
+               MIN(CASE WHEN f.qty &gt; 0
+                        THEN COALESCE(CASE WHEN f.biz_type = 'TRANSFER' THEN d.receive_date END, d.biz_date, c.biz_date) END) AS first_in
+        FROM wms_stock_flow f
+        LEFT JOIN wms_stock_doc d ON f.biz_type IN ('IN', 'OUT', 'TRANSFER') AND d.id = f.doc_id
+        LEFT JOIN wms_check c ON f.biz_type = 'CHECK' AND c.id = f.doc_id
+        GROUP BY f.material_id
+    </sql>
+
     <select id="selectSlowMoving" resultType="com.lemon.erp.modules.bi.dto.BiInsight$SlowMovingRow">
         SELECT s.material_id AS "materialId", m.code AS "code", m.name AS "name", m.category AS "category", m.unit AS "unit",
                SUM(s.qty) AS "qty",
-               (SELECT CAST(MAX(f.create_time) AS CHAR(19)) FROM wms_stock_flow f
-                WHERE f.material_id = s.material_id AND f.qty &lt; 0 AND f.biz_type &lt;&gt; 'TRANSFER') AS "lastOut",
-               (SELECT CAST(MIN(f.create_time) AS CHAR(19)) FROM wms_stock_flow f WHERE f.material_id = s.material_id AND f.qty &gt; 0) AS "firstIn",
+               CAST(MAX(t.last_out) AS CHAR(10)) AS "lastOut",
+               CAST(MAX(t.first_in) AS CHAR(10)) AS "firstIn",
                (SELECT COALESCE(SUM(i.amount), 0) FROM bi_fact_inventory i
                 WHERE i.material_id = s.material_id AND i.snap_date = (SELECT MAX(snap_date) FROM bi_fact_inventory)) AS "amount"
         FROM wms_stock s
         JOIN wms_material m ON m.id = s.material_id
+        LEFT JOIN (<include refid="flowDates"/>) t ON t.material_id = s.material_id
         GROUP BY s.material_id, m.code, m.name, m.category, m.unit
-        HAVING SUM(s.qty) &gt; 0
-           AND NOT EXISTS (SELECT 1 FROM wms_stock_flow f
-                           WHERE f.material_id = s.material_id AND f.qty &lt; 0 AND f.biz_type &lt;&gt; 'TRANSFER'
-                             AND f.create_time &gt;= #{since})
+        HAVING SUM(s.qty) &gt; 0 AND (MAX(t.last_out) IS NULL OR MAX(t.last_out) &lt; #{since})
     </select>
 
     <select id="selectMetric" resultType="java.math.BigDecimal">
@@ -120,11 +130,9 @@
             <when test="metric == 'SLOW_MOVING'">
                 SELECT COUNT(*) FROM (
                     SELECT s.material_id FROM wms_stock s
+                    LEFT JOIN (<include refid="flowDates"/>) t ON t.material_id = s.material_id
                     GROUP BY s.material_id
-                    HAVING SUM(s.qty) &gt; 0
-                       AND NOT EXISTS (SELECT 1 FROM wms_stock_flow f
-                                       WHERE f.material_id = s.material_id AND f.qty &lt; 0 AND f.biz_type &lt;&gt; 'TRANSFER'
-                                         AND f.create_time &gt;= #{since})) t
+                    HAVING SUM(s.qty) &gt; 0 AND (MAX(t.last_out) IS NULL OR MAX(t.last_out) &lt; #{since})) x
             </when>
             <when test="metric == 'GROSS_MARGIN'">
                 SELECT CASE WHEN SUM(amount) &gt; 0 THEN SUM(profit) * 100 / SUM(amount) END

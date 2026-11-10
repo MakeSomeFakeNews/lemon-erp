@@ -20,7 +20,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class BiSlowMovingTool implements AiTool {
 
-    /** 呆滞物料，金额单位元；lastOut 最近出库时间，idleDays 闲置天数 */
+    /** 呆滞物料，金额单位元；lastOut 最近出库的业务日期，idleDays 闲置天数 */
     record SlowItem(String code, String name, String category, String unit, BigDecimal qty, BigDecimal amount, String lastOut, Long idleDays) {
     }
 

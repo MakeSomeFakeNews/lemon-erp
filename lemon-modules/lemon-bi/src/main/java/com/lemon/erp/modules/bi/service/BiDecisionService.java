@@ -153,13 +153,13 @@ public class BiDecisionService {
         return new BiInsight.Abc(rows, summary, useCost ? Messages.get("bi.text.costSales") : Messages.get("bi.text.sales"), total);
     }
 
-    /** 呆滞物料：有库存但超过 days 天没有出库 */
+    /** 呆滞物料：有库存但超过 days 天没有出库（按出入库单、盘点单的业务日期，补录的历史单据按其业务日期计算） */
     public List<BiInsight.SlowMovingRow> slowMoving(int days) {
-        LocalDateTime now = LocalDateTime.now();
-        List<BiInsight.SlowMovingRow> rows = new ArrayList<>(insightMapper.selectSlowMoving(now.minusDays(days)));
+        LocalDate today = LocalDate.now();
+        List<BiInsight.SlowMovingRow> rows = new ArrayList<>(insightMapper.selectSlowMoving(today.minusDays(days)));
         for (BiInsight.SlowMovingRow r : rows) {
             String since = r.getLastOut() != null ? r.getLastOut() : r.getFirstIn();
-            r.setIdleDays(since == null ? null : ChronoUnit.DAYS.between(LocalDateTime.parse(since.replace(' ', 'T').substring(0, 19)), now));
+            r.setIdleDays(since == null ? null : ChronoUnit.DAYS.between(LocalDate.parse(since.substring(0, 10)), today));
         }
         rows.sort(Comparator.comparing((BiInsight.SlowMovingRow r) -> dec(r.getAmount())).reversed());
         return rows;
@@ -184,6 +184,13 @@ public class BiDecisionService {
             throw new BizException("bi.error.invalidMetric");
         }
         if (rule.getEnabled() == null) rule.setEnabled(1);
+        // 同名规则会在预警列表中重复出现（如演示数据、手工再建一条内置规则），名称不能重复
+        String name = rule.getName() == null ? null : rule.getName().trim();
+        if (name != null && ruleMapper.exists(Wrappers.<BiAlertRule>lambdaQuery().eq(BiAlertRule::getName, name)
+                .ne(id != null, BiAlertRule::getId, id))) {
+            throw new BizException("bi.error.alertRuleNameExists", name);
+        }
+        rule.setName(name);
         rule.setId(id);
         if (id == null) {
             ruleMapper.insert(rule);
@@ -233,7 +240,7 @@ public class BiDecisionService {
 
     private BigDecimal metricValue(BiAlertMetric m, LocalDate today, LocalDateTime now, int period) {
         return m == BiAlertMetric.BUDGET_OVERRUN ? budgetOverrun()
-                : insightMapper.selectMetric(m.name(), today, now, period, now.minusDays(SLOW_DAYS));
+                : insightMapper.selectMetric(m.name(), today, now, period, today.minusDays(SLOW_DAYS));
     }
 
     /** 本年累计（截至本月）执行数超过累计预算的预算科目，按超支金额降序（智能报告的预警分析使用） */
