@@ -3,7 +3,8 @@
 <mapper namespace="com.lemon.erp.modules.fin.mapper.FinSettlementItemMapper">
 
     <select id="selectBySettlement" resultType="com.lemon.erp.modules.fin.entity.FinSettlementItem">
-        SELECT i.*, b.bill_no, b.source_type, b.source_no, b.bill_date, b.amount AS bill_amount
+        SELECT i.*, b.bill_no, b.source_type, b.source_no, b.source_id, b.project_id, b.kind AS bill_kind, b.bill_date,
+               b.amount AS bill_amount
         FROM fin_settlement_item i
         JOIN fin_bill b ON b.id = i.bill_id
         WHERE i.settlement_id = #{settlementId}
@@ -34,9 +35,9 @@
     </select>
 
     <insert id="insertBatch">
-        INSERT INTO fin_settlement_item (settlement_id, bill_id, amount, amount_fc, discount, discount_fc, create_time, update_time) VALUES
+        INSERT INTO fin_settlement_item (settlement_id, bill_id, amount, amount_fc, discount, discount_fc, advance_offset, create_time, update_time) VALUES
         <foreach collection="list" item="i" separator=",">
-            (#{i.settlementId}, #{i.billId}, #{i.amount}, #{i.amountFc}, #{i.discount}, #{i.discountFc}, NOW(), NOW())
+            (#{i.settlementId}, #{i.billId}, #{i.amount}, #{i.amountFc}, #{i.discount}, #{i.discountFc}, #{i.advanceOffset}, NOW(), NOW())
         </foreach>
     </insert>
 

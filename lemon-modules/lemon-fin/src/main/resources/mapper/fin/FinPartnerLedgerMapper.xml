@@ -38,4 +38,53 @@
         ORDER BY t.biz_date, t.seq, t.id
     </select>
 
+    <!-- 往来汇总：各往来单位当前的期初往来余额、业务单据余额、预收预付未冲抵余额、坏账核销累计（本位币）。
+         单据余额 = 金额 - 已核销（已核销含收付款、折让、预收预付冲抵、坏账）；预收预付余额 = 金额 - 已冲抵 -->
+    <sql id="summaryRows">
+        SELECT s.partner_id, COALESCE(c.code, sp.code) AS partner_code, COALESCE(c.name, sp.name) AS partner_name,
+               u.nickname AS owner_name, s.opening, s.bill_balance, 0 - s.advance AS advance_balance, s.bad_debt,
+               s.opening + s.bill_balance - s.advance AS net
+        FROM (
+            SELECT x.partner_id, SUM(x.opening) AS opening, SUM(x.bill_balance) AS bill_balance, SUM(x.advance) AS advance,
+                   SUM(x.bad_debt) AS bad_debt
+            FROM (
+                SELECT b.partner_id,
+                       CASE WHEN b.source_type = 'MANUAL' THEN b.amount - b.settled_amount ELSE 0 END AS opening,
+                       CASE WHEN b.source_type = 'MANUAL' THEN 0 ELSE b.amount - b.settled_amount END AS bill_balance,
+                       0 AS advance, b.bad_debt_amount AS bad_debt
+                FROM fin_bill b
+                WHERE b.kind = #{q.kind}
+                <if test="q.partnerId != null">AND b.partner_id = #{q.partnerId}</if>
+                UNION ALL
+                SELECT a.partner_id, 0, 0, a.amount - a.used_amount, 0
+                FROM fin_advance a
+                WHERE a.kind = #{settleKind} AND a.used_amount &lt;&gt; a.amount
+                <if test="q.partnerId != null">AND a.partner_id = #{q.partnerId}</if>
+            ) x
+            GROUP BY x.partner_id
+        ) s
+        LEFT JOIN scm_customer c ON #{q.kind} = 'AR' AND c.id = s.partner_id
+        LEFT JOIN scm_supplier sp ON #{q.kind} = 'AP' AND sp.id = s.partner_id
+        LEFT JOIN sys_user u ON u.id = c.owner_id
+        WHERE 1 = 1
+        <if test="q.keyword != null and q.keyword != ''">
+            AND (c.code LIKE CONCAT('%', #{q.keyword}, '%') OR c.name LIKE CONCAT('%', #{q.keyword}, '%')
+                 OR sp.code LIKE CONCAT('%', #{q.keyword}, '%') OR sp.name LIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+        <if test="q.ownerId != null">AND c.owner_id = #{q.ownerId}</if>
+        <if test="q.onlyBalance">AND (s.opening &lt;&gt; 0 OR s.bill_balance &lt;&gt; 0 OR s.advance &lt;&gt; 0)</if>
+    </sql>
+
+    <select id="selectSummary" resultType="com.lemon.erp.modules.fin.dto.PartnerSummaryRow">
+        SELECT r.* FROM (<include refid="summaryRows"/>) r
+        ORDER BY r.net DESC, r.partner_id
+    </select>
+
+    <select id="selectSummaryTotal" resultType="com.lemon.erp.modules.fin.dto.PartnerSummaryRow">
+        SELECT COALESCE(SUM(r.opening), 0) AS opening, COALESCE(SUM(r.bill_balance), 0) AS bill_balance,
+               COALESCE(SUM(r.advance_balance), 0) AS advance_balance, COALESCE(SUM(r.bad_debt), 0) AS bad_debt,
+               COALESCE(SUM(r.net), 0) AS net
+        FROM (<include refid="summaryRows"/>) r
+    </select>
+
 </mapper>

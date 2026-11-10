@@ -29,10 +29,11 @@
     </select>
 
     <select id="selectApplies" resultType="com.lemon.erp.modules.fin.entity.FinAdvanceApply">
-        SELECT p.*, b.bill_no, v.voucher_no
+        SELECT p.*, b.bill_no, v.voucher_no, st.settle_no
         FROM fin_advance_apply p
         JOIN fin_bill b ON b.id = p.bill_id
         LEFT JOIN fin_voucher v ON v.id = p.voucher_id
+        LEFT JOIN fin_settlement st ON st.id = p.settlement_id
         WHERE p.advance_id = #{advanceId}
         ORDER BY p.id
     </select>
@@ -42,6 +43,15 @@
         WHERE id = #{id} AND used_amount + #{amount} &lt;= amount AND used_amount + #{amount} &gt;= 0
           AND used_fc + #{fc} &lt;= amount_fc
     </update>
+
+    <!-- 往来单位未冲抵完的预收 / 预付款（收付款中勾选冲抵），按收付日期从早到晚 -->
+    <select id="selectOpen" resultType="com.lemon.erp.modules.fin.entity.FinAdvance">
+        SELECT a.id, a.advance_no, a.kind, a.partner_id, a.advance_date, a.amount, a.used_amount, a.currency, a.exchange_rate,
+               a.amount_fc, a.used_fc, a.remark
+        FROM fin_advance a
+        WHERE a.kind = #{kind} AND a.partner_id = #{partnerId} AND a.used_fc &lt; a.amount_fc
+        ORDER BY a.advance_date, a.id
+    </select>
 
     <select id="sumUnused" resultType="java.math.BigDecimal">
         SELECT COALESCE(SUM(amount - used_amount), 0) FROM fin_advance WHERE kind = #{kind} AND partner_id = #{partnerId}

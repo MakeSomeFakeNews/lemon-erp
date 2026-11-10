@@ -56,9 +56,12 @@ public class FinSettlement extends BaseEntity {
 
     private Long advanceId;
 
+    /** 冲抵的预收 / 预付合计（原币，不含在金额中）：本次实收实付 = 核销合计 − 冲抵预收预付，确认时同一事务冲抵（fin_advance_apply） */
+    private BigDecimal advanceOffset;
+
     private Long voucherId;
 
-    /** APPROVED 已生效（已核销）/ APPROVING 审批中 / REJECTED 已拒绝；只有付款单会审批 */
+    /** DRAFT 草稿（业务参数「收付款先存草稿」开启时）/ APPROVED 已生效（已核销）/ APPROVING 审批中 / REJECTED 已拒绝；只有付款单会审批 */
     private ApproveStatus status;
 
     private String flowInstanceId;
@@ -86,4 +89,8 @@ public class FinSettlement extends BaseEntity {
     /** 核销明细，仅详情返回 */
     @TableField(exist = false)
     private List<FinSettlementItem> items;
+
+    /** 选用的预收 / 预付款，仅详情返回 */
+    @TableField(exist = false)
+    private List<FinSettlementAdvance> advances;
 }

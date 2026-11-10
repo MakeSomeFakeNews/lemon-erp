@@ -19,6 +19,7 @@ import com.lemon.erp.modules.fin.dto.VoucherEntryRequest;
 import com.lemon.erp.modules.fin.dto.VoucherQuery;
 import com.lemon.erp.modules.fin.dto.VoucherRequest;
 import com.lemon.erp.modules.fin.entity.FinAccount;
+import com.lemon.erp.modules.fin.entity.FinAdvanceApply;
 import com.lemon.erp.modules.fin.entity.FinBill;
 import com.lemon.erp.modules.fin.entity.FinCostRun;
 import com.lemon.erp.modules.fin.entity.FinDepreciation;
@@ -26,6 +27,7 @@ import com.lemon.erp.modules.fin.entity.FinSettlement;
 import com.lemon.erp.modules.fin.entity.FinVoucher;
 import com.lemon.erp.modules.fin.entity.FinVoucherEntry;
 import com.lemon.erp.modules.fin.event.VoucherDeletedEvent;
+import com.lemon.erp.modules.fin.mapper.FinAdvanceApplyMapper;
 import com.lemon.erp.modules.fin.mapper.FinBillMapper;
 import com.lemon.erp.modules.fin.mapper.FinCostRunMapper;
 import com.lemon.erp.modules.fin.mapper.FinDepreciationMapper;
@@ -76,6 +78,7 @@ public class FinVoucherService {
     private final FinAccountService accountService;
     private final FinBillMapper billMapper;
     private final FinSettlementMapper settlementMapper;
+    private final FinAdvanceApplyMapper applyMapper;
     private final FinDepreciationMapper depreciationMapper;
     private final FinCostRunMapper costRunMapper;
     private final ApplicationEventPublisher eventPublisher;
@@ -157,6 +160,8 @@ public class FinVoucherService {
         voucherMapper.deleteByIds(ids);
         billMapper.update(Wrappers.<FinBill>lambdaUpdate().set(FinBill::getVoucherId, null).in(FinBill::getVoucherId, ids));
         settlementMapper.update(Wrappers.<FinSettlement>lambdaUpdate().set(FinSettlement::getVoucherId, null).in(FinSettlement::getVoucherId, ids));
+        // 收付款中冲抵预收预付的分录在收付款凭证中
+        applyMapper.update(Wrappers.<FinAdvanceApply>lambdaUpdate().set(FinAdvanceApply::getVoucherId, null).in(FinAdvanceApply::getVoucherId, ids));
         depreciationMapper.update(Wrappers.<FinDepreciation>lambdaUpdate().set(FinDepreciation::getVoucherId, null).in(FinDepreciation::getVoucherId, ids));
         costRunMapper.update(Wrappers.<FinCostRun>lambdaUpdate().set(FinCostRun::getVoucherId, null).in(FinCostRun::getVoucherId, ids));
         eventPublisher.publishEvent(new VoucherDeletedEvent(ids));

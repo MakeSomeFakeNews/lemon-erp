@@ -22,6 +22,9 @@ public class FinAdvanceApply extends BaseEntity {
 
     private Long billId;
 
+    /** 在收付款中冲抵时的收付款单（凭证并入收付款凭证，删除收付款单时撤销冲抵）；在预收预付页面冲抵的为空 */
+    private Long settlementId;
+
     /** 冲抵金额（预收预付的本位币） */
     private BigDecimal amount;
 
@@ -42,4 +45,6 @@ public class FinAdvanceApply extends BaseEntity {
     private String billNo;
     @TableField(exist = false)
     private String voucherNo;
+    @TableField(exist = false)
+    private String settleNo;
 }

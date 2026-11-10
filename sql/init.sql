@@ -2717,8 +2717,9 @@ CREATE TABLE fin_settlement (
     discount_fc     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '折让合计（原币）',
     advance_amount  DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '多收 / 多付转预收预付的金额（不含在金额中）',
     advance_id      BIGINT                  DEFAULT NULL COMMENT '多收 / 多付生成的预收预付单',
+    advance_offset  DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '冲抵预收 / 预付合计（原币，不含在金额中）：实收实付 = 核销合计 - 冲抵',
     voucher_id  BIGINT                  DEFAULT NULL COMMENT '生成的凭证',
-    status       VARCHAR(16)    NOT NULL DEFAULT 'APPROVED' COMMENT '状态 APPROVED已生效 APPROVING审批中 REJECTED已拒绝（付款审批）',
+    status       VARCHAR(16)    NOT NULL DEFAULT 'APPROVED' COMMENT '状态 DRAFT草稿 APPROVED已生效 APPROVING审批中 REJECTED已拒绝（付款审批）',
     flow_instance_id VARCHAR(64)        DEFAULT NULL COMMENT '审批流程实例ID',
     remark      VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     create_by   BIGINT                  DEFAULT NULL COMMENT '制单人',
@@ -2739,12 +2740,26 @@ CREATE TABLE fin_settlement_item (
     amount_fc     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '核销原币金额（本位币单据与金额相同）',
     discount      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '折让 / 抹零金额（与单据同号），单据的已核销 = 核销金额 + 折让',
     discount_fc   DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '折让原币金额（外币按单据记账汇率折算为折让）',
+    advance_offset DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '其中由预收 / 预付冲抵的金额（原币），核销金额只含实收实付的部分',
     create_time   DATETIME                DEFAULT NULL COMMENT '创建时间',
     update_time   DATETIME                DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
     KEY idx_settlement_item_settlement (settlement_id),
     KEY idx_settlement_item_bill (bill_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '收付款核销明细';
+
+CREATE TABLE fin_settlement_advance (
+    id            BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id     BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    settlement_id BIGINT         NOT NULL COMMENT '收付款单',
+    advance_id    BIGINT         NOT NULL COMMENT '冲抵的预收 / 预付款',
+    amount        DECIMAL(18, 2) NOT NULL COMMENT '冲抵金额（原币）',
+    create_time   DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time   DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_settlement_advance_settlement (settlement_id),
+    KEY idx_settlement_advance_advance (advance_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '收付款冲抵的预收预付（草稿、审批中时登记，生效时冲抵）';
 
 CREATE TABLE fin_offset (
     id          BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -2920,6 +2935,7 @@ CREATE TABLE fin_advance_apply (
     tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     advance_id  BIGINT         NOT NULL COMMENT '预收 / 预付款',
     bill_id     BIGINT         NOT NULL COMMENT '冲抵的应收 / 应付单',
+    settlement_id BIGINT                DEFAULT NULL COMMENT '在收付款中冲抵时的收付款单（凭证并入收付款凭证）',
     amount      DECIMAL(18, 2) NOT NULL COMMENT '冲抵金额',
     amount_fc   DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '冲抵原币金额',
     bill_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '单据一方的本位币核销金额（计入单据的已核销，外币单据可能与预收预付一方的冲抵金额不同）',
@@ -2930,7 +2946,8 @@ CREATE TABLE fin_advance_apply (
     update_time DATETIME                DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
     KEY idx_advance_apply_advance (advance_id),
-    KEY idx_advance_apply_bill (bill_id)
+    KEY idx_advance_apply_bill (bill_id),
+    KEY idx_advance_apply_settlement (settlement_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '预收预付冲抵应收应付';
 
 -- ---------------------------------------------------------------- 质量管理（代码在生产制造模块，表以 qms_ 开头）
@@ -6250,7 +6267,8 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('sys_approve_status', '审批中', 'APPROVING', 'processing', 2, 1, NOW(), NOW()),
 ('sys_approve_status', '已拒绝', 'REJECTED', 'red', 3, 1, NOW(), NOW()),
 ('sys_approve_status', '已撤回', 'CANCELED', 'default', 4, 1, NOW(), NOW()),
-('sys_approve_status', '已生效', 'DONE', 'green', 5, 1, NOW(), NOW());
+('sys_approve_status', '已生效', 'DONE', 'green', 5, 1, NOW(), NOW()),
+('sys_approve_status', '草稿', 'DRAFT', 'default', 6, 1, NOW(), NOW());
 
 INSERT INTO sys_dict_type (id, name, type, status, remark, create_time, update_time) VALUES
 (102, '审批状态', 'sys_approve_status', 1, '需审批生效的业务记录（人事异动、付款、项目费用）的状态', NOW(), NOW());
@@ -7582,6 +7600,17 @@ ALTER TABLE hr_position AUTO_INCREMENT = 100;
 ALTER TABLE hr_shift AUTO_INCREMENT = 100;
 ALTER TABLE hr_employee AUTO_INCREMENT = 100;
 ALTER TABLE bi_alert_rule AUTO_INCREMENT = 100;
+
+-- 应收应付（issue #50）：收付款单确认按钮（业务参数「收付款先存草稿」开启时，草稿确认后才生效），有新增权限的内置角色（会计、出纳）同时授权
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(1853, 185, '收款单确认', 'F', NULL, NULL, 'fin:receipt:confirm', NULL, 4, 1, 1, NOW(), NOW()),
+(1863, 186, '付款单确认', 'F', NULL, NULL, 'fin:payment:confirm', NULL, 4, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT g.role_id, g.menu_id FROM (
+    SELECT 9 AS role_id, 1853 AS menu_id UNION ALL SELECT 9, 1863 UNION ALL SELECT 10, 1853 UNION ALL SELECT 10, 1863
+) g
+WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);
 
 -- 字典种类：业务字典由各租户自己维护（可新增取值），其余为系统字典；程序依赖的取值标记为内置（不能删除、不能改键值）
 UPDATE sys_dict_type SET kind = 'BUSINESS' WHERE type IN ('wf_category', 'scm_customer_level', 'scm_carrier', 'mes_supplement_reason',
