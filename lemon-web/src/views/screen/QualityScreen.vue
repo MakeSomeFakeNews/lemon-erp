@@ -85,7 +85,7 @@ const trendOption = computed(() => {
   return {
     tooltip: tooltip(),
     legend: legend(),
-    grid: { left: 46, right: 50, top: 36, bottom: 26 },
+    grid: { left: 8, right: 8, top: 36, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: rows.map((r) => shortDay(r.day)), ...axisStyle },
     yAxis: [
       { type: 'value', minInterval: 1, ...axisStyle },
@@ -125,7 +125,7 @@ const paretoOption = computed(() => {
   return {
     tooltip: tooltip(),
     title: rows.length ? undefined : { text: t('screen.quality.noDefect'), left: 'center', top: 'middle', textStyle: { color: COLORS.sub, fontSize: 15, fontWeight: 400 } },
-    grid: { left: 40, right: 46, top: 24, bottom: 40 },
+    grid: { left: 8, right: 8, top: 24, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: rows.map((r) => r.label), ...axisStyle, axisLabel: { ...axisStyle.axisLabel, interval: 0, rotate: rows.length > 5 ? 30 : 0 } },
     yAxis: [
       { type: 'value', minInterval: 1, ...axisStyle },

@@ -181,7 +181,7 @@ const kpis = computed(() => {
 const trendOption = computed(() => ({
   tooltip: { trigger: 'axis' },
   legend: { data: [t('crm.analysis.sales'), t('crm.analysis.wonAmount')] },
-  grid: { left: 60, right: 20, top: 40, bottom: 30 },
+  grid: { left: 8, right: 20, top: 40, bottom: 8, containLabel: true },
   xAxis: { type: 'category', data: trend.value.map((r) => monthLabel(r.period)) },
   yAxis: { type: 'value', axisLabel: { formatter: (v) => shortMoney(v) } },
   series: [

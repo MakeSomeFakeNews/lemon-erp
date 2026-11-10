@@ -104,7 +104,7 @@ const trendOption = computed(() => {
   return {
     tooltip: tooltip(),
     legend: legend(),
-    grid: { left: 56, right: 16, top: 36, bottom: 26 },
+    grid: { left: 8, right: 16, top: 36, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: rows.map((r) => shortDay(r.day)), ...axisStyle },
     yAxis: { type: 'value', ...axisStyle },
     series: [
@@ -128,7 +128,7 @@ const warehouseOption = computed(() => {
     tooltip: tooltip({ formatter: (p) => { const r = rows[p[0].dataIndex]; return `${r.name}<br/>${t('screen.warehouse.warehouseTip', { qty: fmtNum(r.qty, 2), skus: fmtNum(r.skus) })}` } }),
     grid: { left: 110, right: 90, top: 8, bottom: 8 },
     xAxis: { type: 'value', show: false },
-    yAxis: { type: 'category', inverse: true, data: rows.map((r) => r.name), ...axisStyle, axisLabel: { ...axisStyle.axisLabel, fontSize: 14, color: COLORS.text }, axisLine: { show: false }, axisTick: { show: false } },
+    yAxis: { type: 'category', inverse: true, data: rows.map((r) => r.name), ...axisStyle, axisLabel: { ...axisStyle.axisLabel, fontSize: 14, color: COLORS.text, width: 100, overflow: 'truncate' }, axisLine: { show: false }, axisTick: { show: false } },
     series: [{
       type: 'bar', barWidth: 14, data: rows.map((r) => Number(r.qty)),
       showBackground: true, backgroundStyle: { color: 'rgba(64, 158, 255, 0.12)', borderRadius: 7 },

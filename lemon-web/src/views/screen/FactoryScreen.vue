@@ -105,7 +105,7 @@ const trendOption = computed(() => {
   return {
     tooltip: tooltip(),
     legend: legend(),
-    grid: { left: 50, right: 46, top: 36, bottom: 26 },
+    grid: { left: 8, right: 8, top: 36, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: rows.map((r) => shortDay(r.day)), ...axisStyle },
     yAxis: [
       { type: 'value', ...axisStyle },
@@ -157,7 +157,7 @@ const loadOption = computed(() => {
     tooltip: tooltip({ formatter: (p) => { const r = rows[p[0].dataIndex]; return `${r.name}<br/>${t('screen.factory.loadTip', { load: load[p[0].dataIndex], hours: fmtNum(r.hours, 1), capacity: fmtNum(r.capacity, 1), good: fmtNum(r.good), scrap: fmtNum(r.scrap) })}` } }),
     grid: { left: 110, right: 60, top: 8, bottom: 8 },
     xAxis: { type: 'value', max: (v) => Math.max(100, Math.ceil(v.max)), show: false },
-    yAxis: { type: 'category', inverse: true, data: rows.map((r) => r.name), ...axisStyle, axisLabel: { ...axisStyle.axisLabel, fontSize: 14, color: COLORS.text }, axisLine: { show: false }, axisTick: { show: false } },
+    yAxis: { type: 'category', inverse: true, data: rows.map((r) => r.name), ...axisStyle, axisLabel: { ...axisStyle.axisLabel, fontSize: 14, color: COLORS.text, width: 100, overflow: 'truncate' }, axisLine: { show: false }, axisTick: { show: false } },
     series: [{
       type: 'bar', barWidth: 14, data: load,
       showBackground: true, backgroundStyle: { color: 'rgba(64, 158, 255, 0.12)', borderRadius: 7 },

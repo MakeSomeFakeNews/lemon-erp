@@ -201,7 +201,7 @@ const evmChart = computed(() => {
   const a = acc.value
   return {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (v) => formatMoney(v) },
-    grid: { left: 60, right: 16, top: 16, bottom: 30 },
+    grid: { left: 8, right: 16, top: 16, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: [t('pm.acc.bac'), t('pm.acc.pv'), t('pm.acc.ev'), t('pm.acc.ac')] },
     yAxis: { type: 'value', axisLabel: { formatter: shortMoney } },
     series: [
@@ -223,7 +223,7 @@ const evmChart = computed(() => {
 const monthlyChart = computed(() => ({
   tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
   legend: { data: [t('pm.common.labor'), t('pm.common.expense')], top: 0 },
-  grid: { left: 60, right: 16, top: 36, bottom: 30 },
+  grid: { left: 8, right: 16, top: 36, bottom: 8, containLabel: true },
   xAxis: { type: 'category', data: monthly.value.map((m) => periodLabel(m.period)) },
   yAxis: { type: 'value', axisLabel: { formatter: shortMoney } },
   series: [

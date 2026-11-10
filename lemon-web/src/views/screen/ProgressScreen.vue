@@ -147,7 +147,7 @@ const hourlyOption = computed(() => {
   return {
     tooltip: tooltip(),
     legend: legend(),
-    grid: { left: 50, right: 16, top: 36, bottom: 26 },
+    grid: { left: 8, right: 16, top: 36, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: axis.map((h) => `${String(h).padStart(2, '0')}:00`), ...axisStyle },
     yAxis: { type: 'value', ...axisStyle },
     series: [

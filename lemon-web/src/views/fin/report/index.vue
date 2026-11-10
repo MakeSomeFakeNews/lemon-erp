@@ -205,7 +205,7 @@ function openDrill(row) {
 const trendOption = computed(() => ({
   tooltip: { trigger: 'axis', valueFormatter: (v) => `¥${formatMoney(v)}` },
   legend: { top: 0 },
-  grid: { left: 60, right: 20, top: 36, bottom: 28 },
+  grid: { left: 8, right: 20, top: 36, bottom: 8, containLabel: true },
   xAxis: { type: 'category', data: trend.value.map((x) => t('fin.report.monthLabel', { m: Number(String(x.period).slice(4)) })) },
   yAxis: { type: 'value' },
   series: [

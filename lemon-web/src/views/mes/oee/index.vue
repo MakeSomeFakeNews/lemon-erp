@@ -219,7 +219,7 @@ const trendOption = computed(() => {
   return {
     tooltip: { trigger: 'axis', valueFormatter: (v) => (v == null ? '-' : `${v}%`) },
     legend: { top: 0 },
-    grid: { left: 40, right: 20, top: 36, bottom: 30 },
+    grid: { left: 8, right: 20, top: 36, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: days.map((d) => d.date.slice(5)) },
     yAxis: { type: 'value', axisLabel: { formatter: '{value}%' } },
     series: series.map(([name, key]) => ({

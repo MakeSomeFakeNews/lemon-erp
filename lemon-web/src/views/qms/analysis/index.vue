@@ -108,7 +108,7 @@ const trendOption = computed(() => {
   return {
     tooltip: { trigger: 'axis', valueFormatter: (v) => (v == null ? '-' : `${v}%`) },
     legend: { top: 0 },
-    grid: { left: 48, right: 16, top: 36, bottom: 28 },
+    grid: { left: 8, right: 16, top: 36, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: months },
     yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
     series: types.map((ty) => ({
@@ -133,7 +133,7 @@ const paretoOption = computed(() => {
   return {
     tooltip: { trigger: 'axis' },
     legend: { top: 0 },
-    grid: { left: 48, right: 48, top: 36, bottom: 28 },
+    grid: { left: 8, right: 8, top: 36, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: pareto.value.map((r) => dictLabel(dict.mes_defect_type, r.defectType) || (r.defectType === 'OTHER' ? t('qms.analysis.other') : r.defectType)) },
     yAxis: [
       { type: 'value', name: t('qms.analysis.defectCount') },

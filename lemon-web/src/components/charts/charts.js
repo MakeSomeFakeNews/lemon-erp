@@ -15,6 +15,9 @@ export function shortMoney(n) {
   return v.toLocaleString('zh-CN', { maximumFractionDigits: 2 })
 }
 
+/** 数值轴刻度：同 shortMoney，去掉整数后多余的 .0（400.0 万 → 400 万） */
+export const axisNumber = (n) => shortMoney(n).replace(/\.0+(?=\s|$)/, '')
+
 export const percent = (n, digits = 1) => (n === null || n === undefined ? '-' : `${Number(n).toFixed(digits)}%`)
 
 /** 月份 202610 → 2026-10 / 10月 */
