@@ -22,12 +22,12 @@
         <template v-else-if="column.key === 'maxPurchasePrice'">{{ record.maxPurchasePrice != null ? `¥${Number(record.maxPurchasePrice)}` : '-' }}</template>
         <template v-else-if="column.key === 'controlMode'"><DictTag type="scm_price_control_mode" :value="record.controlMode" /></template>
         <template v-else-if="column.key === 'action'">
-          <span v-perm="'scm:price:edit'" class="table-actions">
-            <a-button type="link" size="small" @click="openForm(record)">{{ $t('common.action.edit') }}</a-button>
-            <a-popconfirm :title="$t('scm.priceControl.confirmDelete')" @confirm="remove(record.id)">
-              <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-            </a-popconfirm>
-          </span>
+          <TableActions
+            :actions="[
+              { type: 'edit', perm: 'scm:price:edit', onClick: () => openForm(record) },
+              { type: 'delete', perm: 'scm:price:edit', confirm: $t('scm.priceControl.confirmDelete'), onClick: () => remove(record.id) }
+            ]"
+          />
         </template>
       </template>
     </a-table>
@@ -69,6 +69,8 @@ import { reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { addPriceControl, deletePriceControl, pagePriceControl, updatePriceControl } from '@/api/scm/sourcing'
 import { useDict } from '@/composables/useDict'
@@ -89,7 +91,7 @@ const columns = [
   { title: t('scm.priceControl.maxPurchasePrice'), key: 'maxPurchasePrice', width: 150, align: 'right' },
   { title: t('scm.priceControl.controlMode'), key: 'controlMode', width: 120 },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 120 }
+  actionColumn(2, [], { fixed: undefined })
 ]
 const keyword = ref('')
 const query = reactive({ keyword: undefined })

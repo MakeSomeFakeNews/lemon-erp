@@ -33,7 +33,7 @@
           <template v-else-if="column.key === 'qty'">{{ formatQty(record.totalQty) }}</template>
           <template v-else-if="column.key === 'status'"><DictTag type="scm_order_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
+            <TableActions :actions="[{ type: 'view', onClick: () => openDetail(record.id) }]" />
           </template>
         </template>
       </a-table>
@@ -139,6 +139,8 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 
 import { OrderStatus } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 const { t } = useI18n()
 
 /** 经销商门户：按价目表订货（提交后自动应用促销、可使用返利），查看订单进度 */
@@ -150,7 +152,7 @@ const columns = [
   { title: t('common.field.amount'), key: 'amount', width: 160, align: 'right' },
   { title: t('dealer.order.expected'), dataIndex: 'deliveryDate', width: 150 },
   { title: t('common.field.status'), key: 'status', width: 110 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'dealer-order')
 const { list, loading, size, pagination, load, onTableChange } = useTable(pageDealerOrder, reactive({}))

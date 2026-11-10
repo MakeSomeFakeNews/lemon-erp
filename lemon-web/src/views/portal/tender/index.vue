@@ -32,7 +32,11 @@
             <DictTag v-else type="scm_tender_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ biddable(record) ? $t('portal.tender.bidAction') : $t('common.action.view') }}</a-button>
+            <TableActions
+              :actions="[
+                biddable(record) ? { type: 'submit', label: $t('portal.tender.bidAction'), onClick: () => openDetail(record.id) } : { type: 'view', onClick: () => openDetail(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -103,6 +107,8 @@ import { useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 
 import { TenderStatus } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 const { t } = useI18n()
 
 /** 供应商门户 - 招标投标：截止前提交或修改报价，定标后显示是否中标 */
@@ -111,7 +117,7 @@ const columns = [
   { title: t('portal.tender.deadline'), key: 'deadline', width: 180 },
   { title: t('portal.tender.myBid'), key: 'mine', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 110 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('common.action.view'), t('portal.tender.bidAction')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'portal-tender')
 const { list, loading, size, pagination, load, onTableChange } = useTable(pagePortalTender, reactive({}))

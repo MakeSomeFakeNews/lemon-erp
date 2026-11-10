@@ -29,7 +29,7 @@
             <div class="sub-text">{{ record.reportByName }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
+            <TableActions :actions="[{ type: 'view', onClick: () => openDetail(record.id) }]" />
           </template>
         </template>
       </a-table>
@@ -75,6 +75,8 @@ import { useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 import { useDict } from '@/composables/useDict'
 import { findDict } from '@/utils/dict'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 
 const { t } = useI18n()
 // 区域（业务字典）显示名称
@@ -89,7 +91,7 @@ const columns = [
   { title: t('scm.channel.monthSales'), key: 'sell', width: 130, align: 'right' },
   { title: t('scm.channel.monthEndStock'), key: 'stock', width: 140, align: 'right' },
   { title: t('scm.channel.reported'), key: 'time', width: 180 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-channel')
 const query = reactive({ keyword: undefined, period: undefined })

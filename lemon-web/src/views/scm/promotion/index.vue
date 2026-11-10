@@ -47,13 +47,13 @@
             <a-tag v-else color="green">{{ $t('scm.promotion.stActive') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
-              <template v-if="userStore.hasPerm('scm:promotion:edit')">
-                <a-button type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-                <a-button type="link" size="small" @click="toggle(record)">{{ record.status ? $t('common.action.disable') : $t('common.action.enable') }}</a-button>
-              </template>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'view', onClick: () => openDetail(record.id) },
+                { type: 'edit', perm: 'scm:promotion:edit', onClick: () => drawer.openEdit(record) },
+                { type: record.status ? 'disable' : 'enable', perm: 'scm:promotion:edit', onClick: () => toggle(record) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -202,6 +202,8 @@ import { useUserStore } from '@/store/user'
 import { findDict, toOptions } from '@/utils/dict'
 
 import { PromoType } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 /** 促销活动：折扣、满减、买赠，手工新建 / 修改销售订单时按订单日期和客户等级自动应用 */
 const dict = useDict('scm_promo_type', 'scm_customer_level', 'wms_material_category', 'scm_order_status')
 const userStore = useUserStore()
@@ -223,13 +225,13 @@ function scopeText(p) {
 }
 
 const columns = [
-  { title: t('scm.promotion.promotion'), key: 'name', width: 210 },
+  { title: t('scm.promotion.promotion'), key: 'name', width: 220 },
   { title: t('common.field.type'), key: 'type', width: 100 },
-  { title: t('scm.promotion.rule'), key: 'rule', width: 200 },
-  { title: t('scm.promotion.scope'), key: 'scope', width: 200 },
+  { title: t('scm.promotion.rule'), key: 'rule', width: 220 },
+  { title: t('scm.promotion.scope'), key: 'scope', width: 220 },
   { title: t('scm.promotion.usage'), key: 'usage', width: 150 },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }
+  actionColumn(3, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-promotion')
 const activeOnly = ref(false)

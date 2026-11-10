@@ -55,21 +55,13 @@
             <DictTag type="scm_inquiry_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
-              </a-button>
-              <a-button v-if="record.status === InquiryStatus.QUOTING && !record.supplierCount" v-perm="'scm:inquiry:edit'" type="link" size="small" @click="form.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-if="record.status === InquiryStatus.QUOTING" v-perm="'scm:inquiry:remove'">
-                <a-popconfirm :title="$t('scm.inquiry.confirmDelete')" @confirm="remove([record.id])">
-                  <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'view', onClick: () => openDetail(record) },
+                { type: 'edit', show: record.status === InquiryStatus.QUOTING && !record.supplierCount, perm: 'scm:inquiry:edit', onClick: () => form.openEdit(record) },
+                { type: 'delete', show: record.status === InquiryStatus.QUOTING, perm: 'scm:inquiry:remove', confirm: $t('scm.inquiry.confirmDelete'), onClick: () => remove([record.id]) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -84,19 +76,21 @@
 import { useI18n } from 'vue-i18n'
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import InquiryDetail from '@/components/scm/InquiryDetail.vue'
 import InquiryForm from '@/components/scm/InquiryForm.vue'
 import { deleteInquiry, pageInquiry } from '@/api/scm/sourcing'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
 import { InquiryStatus } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 const { t } = useI18n()
 
 const dict = useDict('scm_inquiry_status')
@@ -108,10 +102,10 @@ const columns = [
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'scm_inquiry_status' },
   { title: t('scm.inquiry.itemCount'), dataIndex: 'itemCount', width: 120, align: 'right' },
   { title: t('scm.inquiry.quoteSuppliers'), dataIndex: 'supplierCount', width: 140, align: 'right' },
-  { title: t('scm.inquiry.preparedBy'), dataIndex: 'createByName', width: 110, defaultHidden: true },
-  { title: t('scm.inquiry.remark'), dataIndex: 'remark', width: 200, ellipsis: true, defaultHidden: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('common.action.edit'), t('common.action.delete')]), fixed: 'right' }
+  { title: t('scm.inquiry.preparedBy'), dataIndex: 'createByName', width: 110 },
+  { title: t('scm.inquiry.remark'), dataIndex: 'remark', width: 200, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  actionColumn(3, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-inquiry')
 const showSearch = ref(true)

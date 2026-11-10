@@ -63,9 +63,7 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record)">
-              <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
-            </a-button>
+            <TableActions :actions="[{ type: 'view', onClick: () => openDetail(record) }]" />
           </template>
         </template>
       </a-table>
@@ -80,7 +78,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { EyeOutlined, MergeCellsOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { MergeCellsOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -90,13 +88,15 @@ import DeliveryForm from '@/components/scm/DeliveryForm.vue'
 import { pageDelivery } from '@/api/scm/planning'
 import { addWave } from '@/api/scm/shipment'
 import { formatQty } from '@/components/wms/wms'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useI18n } from 'vue-i18n'
 
 import { DeliveryStatus } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 const { t } = useI18n()
 const dict = useDict('scm_delivery_status')
 
@@ -104,16 +104,16 @@ const columns = [
   { title: t('scm.delivery.deliveryNo'), key: 'deliveryNo', dataIndex: 'deliveryNo', width: 180 },
   { title: t('scm.delivery.salesOrder'), key: 'orderNo', dataIndex: 'orderNo', width: 180 },
   { title: t('scm.delivery.customer'), dataIndex: 'customerName', width: 180, ellipsis: true },
-  { title: t('scm.delivery.shipWarehouse'), dataIndex: 'warehouseName', width: 120 },
+  { title: t('scm.delivery.shipWarehouse'), dataIndex: 'warehouseName', width: 140 },
   { title: t('scm.delivery.shipDate'), dataIndex: 'shipDate', width: 120 },
   { title: t('common.field.quantity'), key: 'totalQty', dataIndex: 'totalQty', width: 100, align: 'right' },
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'scm_delivery_status' },
-  { title: t('scm.delivery.picked'), key: 'pick', width: 200, exportValue: (r) => (r.pickTime ? `${r.pickByName || ''} ${r.pickTime}` : ''), defaultHidden: true },
-  { title: t('scm.delivery.salesOutDoc'), key: 'tradeDocNo', dataIndex: 'tradeDocNo', width: 170, defaultHidden: true },
-  { title: t('scm.delivery.createBy'), dataIndex: 'createByName', width: 120, defaultHidden: true },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view')]), fixed: 'right' }
+  { title: t('scm.delivery.picked'), key: 'pick', width: 200, exportValue: (r) => (r.pickTime ? `${r.pickByName || ''} ${r.pickTime}` : '') },
+  { title: t('scm.delivery.salesOutDoc'), key: 'tradeDocNo', dataIndex: 'tradeDocNo', width: 170 },
+  { title: t('scm.delivery.createBy'), dataIndex: 'createByName', width: 120 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  actionColumn(1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-delivery')
 const showSearch = ref(true)

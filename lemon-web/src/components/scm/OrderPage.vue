@@ -92,24 +92,7 @@
             <DictTag type="scm_order_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
-              </a-button>
-              <a-button v-if="record.status === OrderStatus.DRAFT" v-perm="`scm:${kind}:edit`" type="link" size="small" @click="form.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <a-button
-                v-else-if="[OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(record.status)"
-                v-perm="`scm:${conf.trades[0]}:add`"
-                type="link"
-                size="small"
-                @click="openTrade(conf.trades[0], record)"
-              >
-                <template #icon><component :is="kind === 'purchase' ? ImportOutlined : ExportOutlined" /></template>
-                {{ kind === 'purchase' ? $t('scm.order.inbound') : $t('scm.order.outbound') }}
-              </a-button>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -143,7 +126,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, ExportOutlined, EyeOutlined, ImportOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, ExportOutlined, ImportOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import ImportModal from '@/components/ImportModal.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -156,7 +139,9 @@ import AiExtractButton from '@/components/ai/AiExtractButton.vue'
 import { useAiPrefill } from '@/composables/useAiPrefill'
 import { deleteOrder, pageOrder } from '@/api/scm/order'
 import { importSalesOrders } from '@/api/scm/dealer'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -205,7 +190,7 @@ useCurrencies()
 // 导出（exportColumns / exportValue）：合并显示的列拆开导出，金额、数量为原始数值，见 useTable
 const columns = [
   { title: t('scm.order.orderNo'), key: 'orderNo', width: 190 },
-  { title: conf.partnerLabel, key: 'partner', width: 180, exportValue: (r) => [r.partnerCode, r.partnerName].filter(Boolean).join(' ') },
+  { title: conf.partnerLabel, key: 'partner', width: 200, exportValue: (r) => [r.partnerCode, r.partnerName].filter(Boolean).join(' ') },
   {
     title: t('scm.order.orderDeliveryDate'),
     key: 'dates',
@@ -230,21 +215,30 @@ const columns = [
   {
     title: props.kind === 'purchase' ? t('scm.order.inProgress') : t('scm.order.outProgress'),
     key: 'progress',
-    width: 160,
+    width: 190,
     exportValue: (r) => `${formatQty(r.doneQty)} / ${formatQty(r.totalQty)}`
   },
-  { title: conf.warehouseLabel, dataIndex: 'warehouseName', width: 120, defaultHidden: true },
-  { title: t('scm.order.preparedBy'), dataIndex: 'createByName', width: 110, defaultHidden: true },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true, defaultHidden: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
-  {
-    title: t('common.action.operation'),
-    key: 'action',
-    width: actionWidth([t('common.action.view'), [t('common.action.edit'), props.kind === 'purchase' ? t('scm.order.inbound') : t('scm.order.outbound')]]),
-    fixed: 'right'
-  }
+  { title: conf.warehouseLabel, dataIndex: 'warehouseName', width: 120 },
+  { title: t('scm.order.preparedBy'), dataIndex: 'createByName', width: 110 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  actionColumn(2, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, `scm-${props.kind}`)
+
+// 行操作：查看；草稿可编辑，已审核 / 部分完成可入库（出库）
+const rowActions = (record) => [
+  { type: 'view', onClick: () => openDetail(record) },
+  { type: 'edit', show: record.status === OrderStatus.DRAFT, perm: `scm:${props.kind}:edit`, onClick: () => form.value.openEdit(record) },
+  {
+    key: 'trade',
+    label: props.kind === 'purchase' ? t('scm.order.inbound') : t('scm.order.outbound'),
+    icon: props.kind === 'purchase' ? ImportOutlined : ExportOutlined,
+    show: [OrderStatus.APPROVED, OrderStatus.PARTIAL].includes(record.status),
+    perm: `scm:${conf.trades[0]}:add`,
+    onClick: () => openTrade(conf.trades[0], record)
+  }
+]
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ orderNo: undefined, partnerId: undefined, status: undefined, keyword: undefined, range: undefined })

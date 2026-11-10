@@ -31,7 +31,13 @@
             <div v-if="record.pickTime" class="sub-text">{{ record.pickByName }} {{ record.pickTime }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === WaveStatus.PICKING ? $t('scm.wave.pick') : $t('common.action.view') }}</a-button>
+            <TableActions
+              :actions="[
+                record.status === WaveStatus.PICKING
+                  ? { key: 'pick', label: $t('scm.wave.pick'), icon: CarryOutOutlined, onClick: () => openDetail(record.id) }
+                  : { type: 'view', onClick: () => openDetail(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -101,11 +107,18 @@
                 <template v-if="column.key === 'status'"><DictTag type="scm_delivery_status" :value="record.status" /></template>
                 <template v-else-if="column.key === 'qty'">{{ formatQty(record.totalQty) }}</template>
                 <template v-else-if="column.key === 'action'">
-                  <span v-if="detail.status === WaveStatus.PICKING && record.status === DeliveryStatus.PENDING" v-perm="'scm:wave:add'">
-                    <a-popconfirm :title="$t('scm.wave.removeConfirm')" @confirm="remove(record.id)">
-                      <a-button type="link" size="small" danger>{{ $t('scm.wave.remove') }}</a-button>
-                    </a-popconfirm>
-                  </span>
+                  <TableActions
+                    :actions="[
+                      {
+                        type: 'delete',
+                        label: $t('scm.wave.remove'),
+                        show: detail.status === WaveStatus.PICKING && record.status === DeliveryStatus.PENDING,
+                        perm: 'scm:wave:add',
+                        confirm: $t('scm.wave.removeConfirm'),
+                        onClick: () => remove(record.id)
+                      }
+                    ]"
+                  />
                 </template>
               </template>
             </a-table>
@@ -120,7 +133,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
-import { PrinterOutlined } from '@ant-design/icons-vue'
+import { CarryOutOutlined, PrinterOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SubPage from '@/components/SubPage.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -136,6 +149,8 @@ import { useI18n } from 'vue-i18n'
 import { useAction } from '@/composables/useAction'
 
 import { DeliveryStatus, WaveStatus } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 /** 波次拣货：多张发货通知合并拣货，拣货单按库位路径汇总，再按单分拣 */
 const { t } = useI18n()
 const dict = useDict('scm_wave_status', 'scm_delivery_status')
@@ -147,7 +162,7 @@ const columns = [
   { title: t('scm.wave.delivery'), key: 'count', width: 150 },
   { title: t('common.field.status'), key: 'status', width: 220 },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
+  actionColumn(1, [t('common.action.view'), t('scm.wave.pick')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-wave')
 const query = reactive({ status: undefined, warehouseId: undefined, keyword: undefined })
@@ -171,7 +186,7 @@ const deliveryColumns = [
   { title: t('scm.wave.customer'), dataIndex: 'customerName', ellipsis: true },
   { title: t('common.field.quantity'), key: 'qty', width: 90, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: '', key: 'action', width: 70 }
+  actionColumn(1, [t('scm.wave.remove')], { title: '', fixed: undefined })
 ]
 const detailOpen = ref(false)
 const detail = ref()

@@ -41,15 +41,13 @@
         <template v-else-if="column.key === 'leadDays'">{{ $t('scm.supplierPrice.days', { n: record.leadDays }) }}</template>
         <template v-else-if="column.key === 'minQty'">{{ formatQty(record.minQty) }}</template>
         <template v-else-if="column.key === 'action'">
-          <span class="table-actions">
-            <a-button type="link" size="small" @click="openHistory(record)">{{ $t('scm.supplierPrice.history') }}</a-button>
-          </span>
-          <span v-perm="'scm:supplier:edit'" class="table-actions">
-            <a-button type="link" size="small" @click="openForm(record)">{{ $t('common.action.edit') }}</a-button>
-            <a-popconfirm :title="$t('scm.supplierPrice.confirmDelete')" @confirm="remove(record.id)">
-              <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-            </a-popconfirm>
-          </span>
+          <TableActions
+            :actions="[
+              { type: 'edit', perm: 'scm:supplier:edit', onClick: () => openForm(record) },
+              { type: 'delete', perm: 'scm:supplier:edit', confirm: $t('scm.supplierPrice.confirmDelete'), onClick: () => remove(record.id) },
+              { type: 'history', label: $t('scm.supplierPrice.history'), more: true, onClick: () => openHistory(record) }
+            ]"
+          />
         </template>
       </template>
     </a-table>
@@ -144,6 +142,8 @@ import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { addPrice, deletePrice, pagePrice, priceHistory, priceTiers, updatePrice } from '@/api/scm/partner'
 import { useTable } from '@/composables/useTable'
 import { formatQty, rowKey, today } from '@/components/wms/wms'
@@ -165,7 +165,7 @@ const columns = [
   { title: t('scm.supplierPrice.leadTime'), key: 'leadDays', width: 100 },
   { title: t('scm.supplierPrice.minQty'), key: 'minQty', width: 120, align: 'right' },
   { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 220 }
+  actionColumn(3, [t('scm.supplierPrice.history')], { fixed: undefined })
 ]
 
 const keyword = ref('')

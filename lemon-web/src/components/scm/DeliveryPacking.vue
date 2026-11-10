@@ -24,10 +24,7 @@
           <div v-if="record.volume != null" class="sub-text">{{ formatQty(record.volume) }} m³</div>
         </template>
         <template v-else-if="column.key === 'action'">
-          <span v-if="editable" v-perm="'scm:delivery:pack'" class="table-actions">
-            <a-button type="link" size="small" @click="openBox(record)">{{ $t('common.action.edit') }}</a-button>
-            <a-popconfirm :title="$t('scm.deliveryPacking.confirmDelete')" @confirm="remove(record)"><a-button type="link" size="small" danger>{{ $t('common.action.delete') }}</a-button></a-popconfirm>
-          </span>
+          <TableActions v-if="editable" :actions="rowActions(record)" />
         </template>
       </template>
     </a-table>
@@ -70,6 +67,8 @@ import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { BarcodeOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons-vue'
 import LabelPrintModal from '@/components/label/LabelPrintModal.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { addPackage, deletePackage, deliveryPackages, updatePackage } from '@/api/scm/planning'
 import { formatQty } from '@/components/wms/wms'
 import { printDocs } from '@/utils/print'
@@ -87,12 +86,17 @@ const columns = [
   { title: t('scm.deliveryPacking.boxNo'), key: 'box', width: 200 },
   { title: t('scm.deliveryPacking.boxItems'), key: 'items' },
   { title: t('scm.deliveryPacking.weightVolume'), key: 'size', width: 160 },
-  { title: '', key: 'action', width: 110 }
+  actionColumn(2, [], { fixed: undefined })
 ]
 const lineColumns = [
   { title: t('scm.deliveryPacking.material'), key: 'material' },
   { title: t('scm.deliveryPacking.left'), key: 'left', width: 110 },
   { title: t('scm.deliveryPacking.packQty'), key: 'qty', width: 140 }
+]
+// 行操作：编辑、删除（装箱权限）
+const rowActions = (record) => [
+  { type: 'edit', perm: 'scm:delivery:pack', onClick: () => openBox(record) },
+  { type: 'delete', perm: 'scm:delivery:pack', confirm: t('scm.deliveryPacking.confirmDelete'), onClick: () => remove(record) }
 ]
 const packages = ref([])
 async function load() {

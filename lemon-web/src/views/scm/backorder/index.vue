@@ -22,7 +22,7 @@
         v-model:size="size"
         v-model:checked="checked"
         v-model:show-search="showSearch"
-        :exporter="(cols) => exportAll(withExportColumns(cols), query.kind === OrderKind.SALES ? $t('scm.backorder.sales') : $t('scm.backorder.purchase'))"
+        :exporter="(cols) => exportAll(cols, query.kind === OrderKind.SALES ? $t('scm.backorder.sales') : $t('scm.backorder.purchase'))"
         :columns="columns"
         @refresh="load"
       >
@@ -51,18 +51,18 @@
             <div class="sub-text">{{ record.spec }}</div>
           </template>
           <template v-else-if="column.key === 'qty'">
-            {{ formatQty(record.qty) }} <span class="sub-text">{{ record.unit }}</span>
+            {{ formatQty(record.qty) }}
             <div class="sub-text">{{ query.kind === OrderKind.SALES ? $t('scm.backorder.shippedN', { qty: formatQty(record.doneQty) }) : $t('scm.backorder.receivedN', { qty: formatQty(record.doneQty) }) }}</div>
           </template>
           <template v-else-if="column.key === 'openQty'">
             <b>{{ formatQty(record.openQty) }}</b> <span class="sub-text">{{ record.unit }}</span>
           </template>
-          <template v-else-if="column.key === 'deliveryDate'">
-            {{ record.deliveryDate || '-' }}
-            <div v-if="overdueDays(record) > 0" class="overdue">{{ $t('scm.backorder.overdueDays', { n: overdueDays(record) }) }}</div>
-            <div v-else-if="record.deliveryDate" class="sub-text">
+          <template v-else-if="column.key === 'overdue'">
+            <span v-if="overdueDays(record) > 0" class="overdue">{{ $t('scm.backorder.overdueDays', { n: overdueDays(record) }) }}</span>
+            <span v-else-if="record.deliveryDate" class="sub-text">
               {{ overdueDays(record) === 0 ? $t('scm.backorder.dueToday') : $t('scm.backorder.dueInDays', { n: -overdueDays(record) }) }}
-            </div>
+            </span>
+            <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'reservedQty'">{{ formatQty(record.reservedQty) }}</template>
           <template v-else-if="column.key === 'availableQty'">
@@ -70,9 +70,7 @@
             <a-tag v-if="shortage(record)" color="red" :bordered="false" class="short-tag">{{ $t('scm.backorder.shortage') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openAtp(record)">
-              <template #icon><FieldTimeOutlined /></template>{{ $t('scm.backorder.atp') }}
-            </a-button>
+            <TableActions :actions="[{ key: 'atp', label: $t('scm.backorder.atp'), icon: FieldTimeOutlined, onClick: () => openAtp(record) }]" />
           </template>
         </template>
       </a-table>
@@ -103,6 +101,8 @@ import { useTable } from '@/composables/useTable'
 import { useI18n } from 'vue-i18n'
 
 import { OrderKind } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 const { t } = useI18n()
 const router = useRouter()
 
@@ -118,29 +118,25 @@ const partnerLabel = computed(() => (query.kind === OrderKind.SALES ? t('scm.bac
 function buildColumns(kind) {
   const sales = kind === OrderKind.SALES
   return [
-    { title: t('scm.backorder.orderNo'), key: 'orderNo', dataIndex: 'orderNo', width: 140 },
-    { title: t('scm.backorder.orderDate'), dataIndex: 'orderDate', width: 100 },
-    { title: sales ? t('scm.backorder.customer') : t('scm.backorder.supplier'), dataIndex: 'partnerName', width: 110, ellipsis: true },
-    { title: t('scm.backorder.material'), key: 'material', width: 160, exportValue: (r) => `${r.materialCode} ${r.materialName}` },
-    { title: t('scm.backorder.orderQty'), key: 'qty', dataIndex: 'qty', width: 90, align: 'right' },
-    { title: sales ? t('scm.backorder.unshipped') : t('scm.backorder.unreceived'), key: 'openQty', dataIndex: 'openQty', width: 90, align: 'right' },
-    // 交货日期下面显示逾期 / 到期天数（不再单独一列），1440 宽屏幕下销售欠交不需要横向滚动
-    { title: t('scm.backorder.deliveryDate'), key: 'deliveryDate', dataIndex: 'deliveryDate', width: 100 },
+    { title: t('scm.backorder.orderNo'), key: 'orderNo', dataIndex: 'orderNo', width: 180 },
+    { title: t('scm.backorder.orderDate'), dataIndex: 'orderDate', width: 120 },
+    { title: sales ? t('scm.backorder.customer') : t('scm.backorder.supplier'), dataIndex: 'partnerName', width: 180, ellipsis: true },
+    { title: t('scm.backorder.material'), key: 'material', width: 240, exportValue: (r) => `${r.materialCode} ${r.materialName}` },
+    { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
+    { title: t('scm.backorder.orderQty'), key: 'qty', dataIndex: 'qty', width: 120, align: 'right' },
+    { title: sales ? t('scm.backorder.unshipped') : t('scm.backorder.unreceived'), key: 'openQty', dataIndex: 'openQty', width: 120, align: 'right' },
+    { title: t('scm.backorder.deliveryDate'), dataIndex: 'deliveryDate', width: 120 },
+    { title: t('scm.backorder.overdue'), key: 'overdue', width: 120, exportValue: (r) => (overdueDays(r) > 0 ? overdueDays(r) : '') },
     ...(sales
       ? [
-          { title: t('scm.backorder.reserved'), key: 'reservedQty', dataIndex: 'reservedQty', width: 70, align: 'right' },
-          { title: t('scm.backorder.available'), key: 'availableQty', dataIndex: 'availableQty', width: 90, align: 'right' }
+          { title: t('scm.backorder.reserved'), key: 'reservedQty', dataIndex: 'reservedQty', width: 100, align: 'right' },
+          { title: t('scm.backorder.available'), key: 'availableQty', dataIndex: 'availableQty', width: 140, align: 'right' }
         ]
       : []),
-    { title: t('scm.backorder.createBy'), dataIndex: 'createByName', width: 70 },
-    ...(sales ? [{ title: t('common.action.operation'), key: 'action', width: 120, fixed: 'right' }] : [])
+    { title: t('scm.backorder.createBy'), dataIndex: 'createByName', width: 120 },
+    ...(sales ? [actionColumn(1, [t('scm.backorder.atp')])] : [])
   ]
 }
-/** 列表中单位跟在数量后面、逾期天数显示在交货日期下面，导出时仍各占一列 */
-const unitColumn = { title: t('common.field.unit'), dataIndex: 'unit' }
-const overdueColumn = { title: t('scm.backorder.overdue'), key: 'overdue', exportValue: (r) => (overdueDays(r) > 0 ? overdueDays(r) : '') }
-const withExportColumns = (cols) =>
-  cols.flatMap((c) => (c.key === 'material' ? [c, unitColumn] : c.key === 'deliveryDate' ? [c, overdueColumn] : [c]))
 const columns = computed(() => buildColumns(query.kind))
 const { checked } = useColumns(buildColumns('SALES'), 'scm-backorder')
 const visibleColumns = computed(() => columns.value.filter((c) => checked.value.includes(columnKey(c))))

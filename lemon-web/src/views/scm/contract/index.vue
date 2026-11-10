@@ -38,7 +38,7 @@
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="scm_contract_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
+            <TableActions :actions="[{ type: 'view', onClick: () => openDetail(record.id) }]" />
           </template>
         </template>
       </a-table>
@@ -255,6 +255,8 @@ import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
 import { ContractStatus, ContractType } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 /** 采购合同 / 框架协议：生效后采购订单可引用，按合同价下单并校验数量、金额上限 */
 const { t } = useI18n()
 const dict = useDict('scm_contract_type', 'scm_contract_status')
@@ -266,12 +268,12 @@ const TYPE_TIPS = {
 
 const columns = [
   { title: t('scm.contract.noName'), key: 'contractNo', width: 240 },
-  { title: t('scm.contract.supplier'), dataIndex: 'supplierName', width: 190, ellipsis: true },
+  { title: t('scm.contract.supplier'), dataIndex: 'supplierName', width: 200, ellipsis: true },
   { title: t('scm.contract.type'), key: 'type', width: 130 },
   { title: t('scm.contract.period'), key: 'period', width: 210 },
-  { title: t('scm.contract.execAmount'), key: 'amount', width: 170 },
+  { title: t('scm.contract.execAmount'), key: 'amount', width: 190 },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-contract')
 const query = reactive({ status: undefined, supplierId: undefined, keyword: undefined })

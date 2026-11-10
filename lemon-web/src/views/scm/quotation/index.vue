@@ -71,21 +71,13 @@
             <DictTag type="scm_quotation_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
-              </a-button>
-              <a-button v-if="record.status === QuotationStatus.DRAFT" v-perm="'scm:quotation:edit'" type="link" size="small" @click="form.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-if="record.status === QuotationStatus.DRAFT" v-perm="'scm:quotation:remove'">
-                <a-popconfirm :title="$t('scm.quotation.confirmDelete')" @confirm="remove([record.id])">
-                  <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'view', onClick: () => openDetail(record) },
+                { type: 'edit', show: record.status === QuotationStatus.DRAFT, perm: 'scm:quotation:edit', onClick: () => form.openEdit(record) },
+                { type: 'delete', show: record.status === QuotationStatus.DRAFT, perm: 'scm:quotation:remove', confirm: $t('scm.quotation.confirmDelete'), onClick: () => remove([record.id]) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -101,14 +93,14 @@ import { useI18n } from 'vue-i18n'
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import QuotationDetail from '@/components/scm/QuotationDetail.vue'
 import QuotationForm from '@/components/scm/QuotationForm.vue'
 import { deleteQuotation, pageQuotation } from '@/api/scm/sourcing'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -117,6 +109,8 @@ import { formatMoney } from '@/components/scm/scm'
 import { today } from '@/components/wms/wms'
 
 import { QuotationStatus } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 const { t } = useI18n()
 
 const dict = useDict('scm_quotation_status')
@@ -128,11 +122,11 @@ const columns = [
   { title: t('scm.quotation.validTo'), key: 'validTo', dataIndex: 'validTo', width: 160 },
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'scm_quotation_status' },
   { title: t('scm.quotation.amount'), key: 'totalAmount', dataIndex: 'totalAmount', width: 130, align: 'right' },
-  { title: t('scm.quotation.orderOrLost'), key: 'orderNo', dataIndex: 'orderNo', width: 200, ellipsis: true, defaultHidden: true },
-  { title: t('scm.quotation.preparedBy'), dataIndex: 'createByName', width: 110, defaultHidden: true },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true, defaultHidden: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('common.action.edit'), t('common.action.delete')]), fixed: 'right' }
+  { title: t('scm.quotation.orderOrLost'), key: 'orderNo', dataIndex: 'orderNo', width: 200, ellipsis: true },
+  { title: t('scm.quotation.preparedBy'), dataIndex: 'createByName', width: 110 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  actionColumn(3, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-quotation')
 const showSearch = ref(true)
