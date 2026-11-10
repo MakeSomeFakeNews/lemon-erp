@@ -117,7 +117,7 @@ final class SysFeatureCatalog {
             f(Key.WAREHOUSE_OPS, "system.label.warehouseOperations", "system.label.warehousing", "system.label.stockReservationFreezingMobilePdaScanning", List.of(913L, 15L), Key.INVENTORY),
             // 生产与质量
             f(Key.PRODUCTION, "system.label.production", "system.label.productionQuality", "system.label.productionPlanningMrpCapacitySchedulingWork",
-                    List.of(921L, 922L, 166L, 167L), Key.INVENTORY, Key.PURCHASE),
+                    List.of(921L, 922L, 970L, 166L, 167L), Key.INVENTORY, Key.PURCHASE),
             f(Key.ENGINEERING, "system.label.engineering", "system.label.productionQuality", "system.label.engineeringChangesTechnicalDocuments", List.of(305L, 306L), Key.PRODUCTION),
             f(Key.EQUIPMENT, "system.label.equipment", "system.label.productionQuality", "system.label.equipmentLedgerMaintenanceOeeMoldsTooling", List.of(164L, 165L, 310L, 311L), Key.PRODUCTION),
             f(Key.QUALITY, "system.label.quality", "system.label.productionQuality", "system.label.inspectionPlansInspectionsNonconformanceHandlingCapa", List.of(12L), Key.INVENTORY),

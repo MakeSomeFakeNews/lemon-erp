@@ -2190,6 +2190,7 @@ CREATE TABLE mes_work_order (
     warehouse_id BIGINT                  DEFAULT NULL COMMENT '默认完工入库仓库',
     status       VARCHAR(16)    NOT NULL COMMENT '状态(字典 mes_wo_status) DRAFT草稿 RELEASED已下达 STARTED生产中 COMPLETED已完工 CLOSED已关闭',
     finished_qty DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '已完工入库数量',
+    scrap_qty    DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '报工报废数量（各工序报废合计），完工 + 报废达到工单数量时完工',
     source       VARCHAR(16)    NOT NULL DEFAULT 'MANUAL' COMMENT '来源 MANUAL手工 MRP PLAN计划转工单 KIT生产缺料 SPLIT拆分 REWORK返工',
     plan_id      BIGINT                  DEFAULT NULL COMMENT '来源生产计划',
     source_wo_id BIGINT                  DEFAULT NULL COMMENT '来源工单：拆分自、返工自',
@@ -2199,7 +2200,7 @@ CREATE TABLE mes_work_order (
     release_time DATETIME                DEFAULT NULL COMMENT '下达时间',
     finish_time  DATETIME                DEFAULT NULL COMMENT '完工时间',
     close_time   DATETIME                DEFAULT NULL COMMENT '关闭时间，成本核算在关闭当期转出剩余在产品',
-    close_cost   DECIMAL(18, 2)          DEFAULT NULL COMMENT '关闭时尚未转入产品的成本（净领料成本 + 工费 − 已转入完工产品）',
+    close_cost   DECIMAL(18, 2)          DEFAULT NULL COMMENT '关闭（或报工报废、改量后不经完工入库而完工）时尚未转入产品的成本（净领料成本 + 工费 − 已转入完工产品）',
     close_stock_cost DECIMAL(18, 2)      DEFAULT NULL COMMENT '其中追加到已完工产品库存的部分，其余（没有完工、产品已出库）计入当期成本',
     create_time  DATETIME                DEFAULT NULL COMMENT '创建时间',
     update_time  DATETIME                DEFAULT NULL COMMENT '更新时间',
@@ -2207,7 +2208,8 @@ CREATE TABLE mes_work_order (
     UNIQUE KEY uk_wo_no (wo_no, tenant_id),
     KEY idx_wo_status (status),
     KEY idx_wo_material (material_id),
-    KEY idx_wo_dept (dept_id)
+    KEY idx_wo_dept (dept_id),
+    KEY idx_wo_plan_end (plan_end)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '生产工单';
 
 CREATE TABLE mes_wo_material (
@@ -7539,6 +7541,28 @@ INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT g.role_id, g.menu_id FROM (
     SELECT 2 AS role_id, 392 AS menu_id UNION ALL SELECT 3, 392 UNION ALL SELECT 3, 3921
     UNION ALL SELECT 4, 392 UNION ALL SELECT 4, 3920 UNION ALL SELECT 9, 5 UNION ALL SELECT 9, 901 UNION ALL SELECT 9, 392 UNION ALL SELECT 9, 3921
+) g
+WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);
+
+-- 生产统计（生产制造下的分组，issue #49）：人员计件、工序产量、工单完成情况、产品产量、用料差异，只读报表，前端导出
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(970, 6, '生产统计', 'M', NULL, NULL, NULL, 'BarChartOutlined', 4, 1, 1, NOW(), NOW()),
+(410, 970, '人员计件统计', 'C', 'stat-piece', 'mes/stat/piece/index', 'mes:stat:piece', 'TeamOutlined', 1, 1, 1, NOW(), NOW()),
+(411, 970, '工序产量统计', 'C', 'stat-output', 'mes/stat/output/index', 'mes:stat:output', 'BarChartOutlined', 2, 1, 1, NOW(), NOW()),
+(412, 970, '工单完成情况', 'C', 'stat-wo', 'mes/stat/wo/index', 'mes:stat:wo', 'CarryOutOutlined', 3, 1, 1, NOW(), NOW()),
+(413, 970, '产品产量汇总', 'C', 'stat-product', 'mes/stat/product/index', 'mes:stat:product', 'AppstoreOutlined', 4, 1, 1, NOW(), NOW()),
+(414, 970, '用料差异分析', 'C', 'stat-usage', 'mes/stat/usage/index', 'mes:stat:usage', 'DiffOutlined', 5, 1, 1, NOW(), NOW());
+-- 普通用户、总经理、生产计划员、车间主管全部；仓库管理员产品产量；会计人员计件、产品产量、用料差异；人事专员人员计件；
+-- 质量工程师工序产量、工单完成情况（连同分组和生产制造模块）
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT g.role_id, g.menu_id FROM (
+    SELECT r.id AS role_id, m.id AS menu_id FROM sys_role r JOIN sys_menu m ON m.id IN (6, 970, 410, 411, 412, 413, 414)
+    WHERE r.id IN (2, 3, 7, 8)
+    UNION ALL SELECT 6, 413 UNION ALL SELECT 9, 410 UNION ALL SELECT 9, 413 UNION ALL SELECT 9, 414 UNION ALL SELECT 11, 410
+    UNION ALL SELECT 14, 411 UNION ALL SELECT 14, 412
+    UNION ALL SELECT r.id, 970 FROM sys_role r WHERE r.id IN (6, 9, 11, 14)
+    UNION ALL SELECT r.id, 6 FROM sys_role r WHERE r.id IN (6, 9, 11, 14)
 ) g
 WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
   AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);

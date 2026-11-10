@@ -1,0 +1,125 @@
+/** Production statistics (Manufacturing → Production Statistics, backend /mes/stat) */
+export default {
+  common: {
+    unset: 'Not set',
+    noWorkCenter: 'No work center',
+    allOperators: 'All operators',
+    allWorkCenters: 'All work centers',
+    allStatus: 'All statuses',
+    allCategories: 'All categories',
+    groupBy: 'Group by',
+    allDetail: 'All Details',
+    export: 'Export',
+    exportDetail: 'Export Details',
+    exportTruncated: 'Too much data, only the first {n} rows were exported',
+    truncated: 'Too many rows, only the first {n} are shown (the total covers all data)',
+    total: 'Total'
+  },
+  dim: {
+    OPERATOR: 'Operator',
+    OPERATOR_OP: 'Operator × Operation',
+    OPERATOR_DAY: 'Operator × Day',
+    WORK_CENTER: 'Work Center',
+    OPERATION: 'Operation',
+    PRODUCT: 'Product',
+    CATEGORY: 'Product Category',
+    DEPT: 'Workshop',
+    DAY: 'Day',
+    MONTH: 'Month',
+    WORK_ORDER: 'Work Order',
+    MATERIAL: 'Material',
+    WO_MATERIAL: 'Work Order × Material'
+  },
+  field: {
+    operator: 'Operator',
+    dept: 'Department',
+    workCenter: 'Work Center',
+    op: 'Operation',
+    opSeq: 'Op No.',
+    product: 'Product',
+    spec: 'Specification',
+    unit: 'Unit',
+    day: 'Date',
+    month: 'Month',
+    workshop: 'Workshop',
+    category: 'Product Category',
+    goodQty: 'Good Qty',
+    scrapQty: 'Scrap Qty',
+    yieldRate: 'Yield',
+    hours: 'Actual Hours',
+    stdHours: 'Standard Hours',
+    efficiency: 'Efficiency',
+    pieceWage: 'Piece Wage',
+    pieceRate: 'Piece Rate',
+    operatorCount: 'Operators',
+    reportCount: 'Reports',
+    woCount: 'Work Orders',
+    woNo: 'Work Order No.',
+    status: 'Status',
+    planEnd: 'Planned Finish',
+    finishTime: 'Finished / Closed',
+    dueState: 'Due',
+    delayDays: 'Days Late',
+    qty: 'Planned Qty',
+    finishedQty: 'Finished Qty',
+    completionRate: 'Completion',
+    completedCount: 'Completed',
+    onTimeCount: 'On Time',
+    lateCount: 'Late',
+    overdueCount: 'Overdue',
+    closedCount: 'Closed',
+    onTimeRate: 'On-time Rate',
+    finishQty: 'Completed Qty',
+    scrapInQty: 'Scrap Received',
+    finishCount: 'Receipts',
+    finishCost: 'Completion Cost',
+    unitCost: 'Unit Cost',
+    finishedOfQty: 'Finished / Planned',
+    material: 'Material',
+    stdQty: 'Standard Usage',
+    actualQty: 'Actual Usage',
+    varianceQty: 'Variance',
+    varianceRate: 'Variance %',
+    reportDate: 'Report Date',
+    equipment: 'Equipment',
+    remark: 'Remark'
+  },
+  due: {
+    ON_TIME: 'On time',
+    LATE: 'Late',
+    OVERDUE: 'Overdue',
+    OPEN: 'In progress',
+    CLOSED: 'Closed'
+  },
+  piece: {
+    title: 'Piecework by Operator',
+    keyword: 'Product code / name, work order No.',
+    tip: 'Summarizes good and scrap quantities and hours of production reports by report date and operator (the reporter when no operator is entered). Piece wage = good qty × piece rate of the operation (set in the routing and copied to the work order on release), the same as the piece wage in payroll; standard hours = (good + scrap) × standard hours of the operation, efficiency = standard hours ÷ actual hours. Click a row for report details.'
+  },
+  output: {
+    title: 'Operation Output',
+    keyword: 'Product code / name, work order No.',
+    tip: 'Output of work centers and operations by report date: yield = good ÷ (good + scrap), standard hours = (good + scrap) × standard hours of the operation, efficiency = standard hours ÷ actual hours. Operations with the same name in different work centers are counted separately. Click a row for report details.'
+  },
+  wo: {
+    title: 'Work Order Completion',
+    keyword: 'Product code / name, work order No.',
+    tip: 'Work orders (excluding drafts) whose planned finish date is in the period: completion = finished ÷ planned, yield = finished ÷ (finished + reported scrap); completed no later than the planned finish date is on time, later is late; released or in production past the planned finish date is overdue; on-time rate = on time ÷ completed.'
+  },
+  product: {
+    title: 'Product Output Summary',
+    keyword: 'Product code / name',
+    tip: 'Quantities of completion receipts and scrap receipts by business date. The completion cost is the material, labor and overhead at receipt (requires the "View Cost" permission), unit cost = completion cost ÷ completed qty; it is a business reference cost, finance uses month-end costing.'
+  },
+  usage: {
+    title: 'Material Usage Variance',
+    keyword: 'Material, product code / name, work order No.',
+    tip: 'Work orders completed (by completion time) or closed (by closing time) in the period: standard usage = finished qty × unit usage (including loss), actual usage = net issued (issued + supplementary − returned), variance = actual − standard; positive is overuse (including materials consumed by scrapped units), negative is saving. A closed work order without completion has a standard usage of 0.',
+    overCount: 'Overuse Rows',
+    underCount: 'Saving Rows'
+  },
+  detail: {
+    title: 'Report Details - {name}',
+    fileName: 'Report Details'
+  }
+}
