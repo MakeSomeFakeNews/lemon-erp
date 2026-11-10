@@ -3,8 +3,8 @@ import { load, save } from '@/utils/storage'
 
 export const columnKey = (c) => c.key || c.dataIndex
 
-/** 没有写宽度的列按此宽度计入横向滚动宽度 */
-const DEFAULT_WIDTH = 150
+/** 没有写宽度的列（自适应剩余宽度，如备注）按此最小宽度计入横向滚动宽度 */
+const DEFAULT_WIDTH = 80
 
 /** 列宽合计：表格的 scroll.x 用它，与列定义保持一致（勾选列另加 32） */
 export const sumWidth = (columns) => columns.reduce((sum, c) => sum + (Number(c.width) || DEFAULT_WIDTH), 0)

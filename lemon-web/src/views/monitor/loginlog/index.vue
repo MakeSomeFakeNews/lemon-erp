@@ -104,13 +104,13 @@ const dict = useDict('sys_success_fail')
 const columns = [
   { title: t('monitor.loginlog.id'), dataIndex: 'id', width: 80 },
   { title: t('monitor.online.username'), dataIndex: 'username', width: 130 },
-  { title: t('monitor.online.ip'), dataIndex: 'ip', width: 150 },
-  { title: t('monitor.online.location'), dataIndex: 'location', width: 180, ellipsis: true },
+  { title: t('monitor.online.ip'), dataIndex: 'ip', width: 130 },
+  { title: t('monitor.online.location'), dataIndex: 'location', width: 150, ellipsis: true },
   { title: t('monitor.online.browser'), dataIndex: 'browser', ellipsis: true },
   { title: t('monitor.online.os'), dataIndex: 'os', ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 90, dict: 'sys_success_fail' },
   { title: t('monitor.loginlog.msg'), dataIndex: 'msg', ellipsis: true },
-  { title: t('monitor.online.loginTime'), dataIndex: 'loginTime', width: 180 },
+  { title: t('monitor.online.loginTime'), dataIndex: 'loginTime', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 110, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns)

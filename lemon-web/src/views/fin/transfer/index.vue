@@ -103,11 +103,11 @@ const { t } = useI18n()
 const columns = [
   { title: t('fin.transfer.transferNo'), dataIndex: 'transferNo', width: 170 },
   { title: t('common.field.date'), dataIndex: 'transferDate', width: 110 },
-  { title: t('fin.transfer.flow'), key: 'flow', width: 340 },
+  { title: t('fin.transfer.flow'), key: 'flow', width: 320 },
   { title: t('common.field.amount'), key: 'amount', width: 150, align: 'right' },
   { title: t('fin.transfer.voucher'), key: 'voucher', width: 120 },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: t('fin.transfer.createBy'), dataIndex: 'createByName', width: 120 },
+  { title: t('fin.transfer.createBy'), dataIndex: 'createByName', width: 100 },
   { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-transfer')
