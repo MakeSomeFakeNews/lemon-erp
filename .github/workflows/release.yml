@@ -17,12 +17,15 @@ permissions:
   packages: write
 
 env:
+  NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+  NPM_CONFIG_REPLACE_REGISTRY_HOST: always
   TAG: ${{ github.event.release.tag_name || inputs.tag }}
 
 jobs:
   images:
     name: 构建并推送镜像
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       matrix:
         include:
@@ -69,6 +72,7 @@ jobs:
   assets:
     name: 上传发布文件
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
         with:
