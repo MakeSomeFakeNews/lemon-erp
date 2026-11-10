@@ -169,16 +169,21 @@
                 <a-tag v-else :bordered="false">{{ $t('system.im.unbound') }}</a-tag>
               </template>
               <template v-else-if="column.key === 'action'">
-                <template v-if="canSync">
-                  <a v-if="!record.bindingId" @click="openBind(record)">{{ $t('common.action.bind') }}</a>
-                  <template v-else>
-                    <a @click="openBind(record)">{{ $t('common.action.modify') }}</a>
-                    <a-divider type="vertical" />
-                    <a-popconfirm :title="$t('system.im.unbindConfirm')" @confirm="unbind(record)">
-                      <a class="danger">{{ $t('common.action.unbind') }}</a>
-                    </a-popconfirm>
-                  </template>
-                </template>
+                <TableActions
+                  :actions="[
+                    { key: 'bind', label: $t('common.action.bind'), icon: LinkOutlined, show: canSync && !record.bindingId, onClick: () => openBind(record) },
+                    { type: 'modify', show: canSync && !!record.bindingId, onClick: () => openBind(record) },
+                    {
+                      key: 'unbind',
+                      label: $t('common.action.unbind'),
+                      icon: DisconnectOutlined,
+                      danger: true,
+                      show: canSync && !!record.bindingId,
+                      confirm: $t('system.im.unbindConfirm'),
+                      onClick: () => unbind(record)
+                    }
+                  ]"
+                />
               </template>
             </template>
           </a-table>
@@ -223,8 +228,10 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { BulbOutlined, SyncOutlined } from '@ant-design/icons-vue'
+import { BulbOutlined, DisconnectOutlined, LinkOutlined, SyncOutlined } from '@ant-design/icons-vue'
 import ImPlatformIcon from '@/components/im/ImPlatformIcon.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { bindImUser, listImBindings, listImConfig, saveImConfig, syncImContacts, testImRobot, unbindImUser, verifyIm } from '@/api/system/im'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
@@ -392,7 +399,7 @@ const columns = [
   { title: t('common.field.phone'), dataIndex: 'phone', width: 140 },
   { title: t('system.im.boundMember'), key: 'member', width: 260 },
   { title: t('system.im.bindTime'), dataIndex: 'bindTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
+  actionColumn(2, [t('common.action.bind')])
 ]
 
 const syncing = ref(false)
@@ -577,9 +584,6 @@ onMounted(() => {
 }
 .member-id {
   margin-left: 6px;
-}
-.danger {
-  color: var(--ant-color-error, #ff4d4f);
 }
 .stats {
   display: grid;

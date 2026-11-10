@@ -87,18 +87,12 @@
             <span :class="{ slow: record.costTime >= 1000 }">{{ record.costTime }} ms</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.detail') }}
-              </a-button>
-              <span v-perm="'monitor:operlog:remove'">
-                <a-popconfirm :title="$t('monitor.loginlog.confirmDelete')" @confirm="remove([record.id])">
-                  <a-button type="link" size="small" danger>
-                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'detail', onClick: () => openDetail(record) },
+                { type: 'delete', perm: 'monitor:operlog:remove', confirm: $t('monitor.loginlog.confirmDelete'), onClick: () => remove([record.id]) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -152,12 +146,14 @@
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { ClearOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons-vue'
+import { ClearOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { cleanOperLog, deleteOperLog, getOperLog, pageOperLog } from '@/api/monitor/operlog'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -168,17 +164,17 @@ const { t } = useI18n()
 const dict = useDict('sys_oper_type', 'sys_success_fail')
 
 const columns = [
-  { title: t('monitor.loginlog.id'), dataIndex: 'id', width: 80, defaultHidden: true },
+  { title: t('monitor.loginlog.id'), dataIndex: 'id', width: 80 },
   { title: t('monitor.operlog.title'), dataIndex: 'title', width: 130 },
   { title: t('monitor.operlog.operType'), key: 'operType', width: 100, dict: 'sys_oper_type' },
   { title: t('monitor.operlog.operator'), dataIndex: 'operator', width: 110 },
   { title: t('monitor.operlog.request'), key: 'url', width: 260 },
-  { title: t('monitor.operlog.ip'), dataIndex: 'ip', width: 140, defaultHidden: true },
-  { title: t('monitor.operlog.location'), dataIndex: 'location', width: 160, ellipsis: true, defaultHidden: true },
+  { title: t('monitor.operlog.ip'), dataIndex: 'ip', width: 140 },
+  { title: t('monitor.operlog.location'), dataIndex: 'location', width: 160, ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 90, dict: 'sys_success_fail' },
-  { title: t('monitor.operlog.cost'), key: 'costTime', width: 100, defaultHidden: true },
+  { title: t('monitor.operlog.cost'), key: 'costTime', width: 100 },
   { title: t('monitor.operlog.operTime'), dataIndex: 'operTime', width: 180 },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.detail'), t('common.action.delete')]), fixed: 'right' }
+  actionColumn(2, [t('common.action.detail')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'monitor-operlog')
 const showSearch = ref(true)

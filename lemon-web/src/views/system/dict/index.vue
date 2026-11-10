@@ -78,21 +78,19 @@
             <DictTag type="sys_common_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openData(record)">
-                <template #icon><UnorderedListOutlined /></template>{{ $t('system.dict.data') }}
-              </a-button>
-              <a-button v-perm="'sys:dict:edit'" type="link" size="small" @click="openForm(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-if="record.kind === DictKind.BUSINESS" v-perm="'sys:dict:remove'">
-                <a-popconfirm :title="$t('system.dict.confirmDelete')" @confirm="remove([record.id])">
-                  <a-button type="link" size="small" danger>
-                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'list', label: $t('system.dict.data'), onClick: () => openData(record) },
+                { type: 'edit', perm: 'sys:dict:edit', onClick: () => openForm(record) },
+                {
+                  type: 'delete',
+                  show: record.kind === DictKind.BUSINESS,
+                  perm: 'sys:dict:remove',
+                  confirm: $t('system.dict.confirmDelete'),
+                  onClick: () => remove([record.id])
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -153,9 +151,7 @@ import { useI18n } from 'vue-i18n'
 import {
   ClearOutlined,
   DeleteOutlined,
-  EditOutlined,
-  PlusOutlined,
-  UnorderedListOutlined
+  PlusOutlined
 } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -163,6 +159,8 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import DataDrawer from './DataDrawer.vue'
 import { addDictType, deleteDictType, pageDictType, updateDictType } from '@/api/system/dict'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { useDictStore } from '@/store/dict'
@@ -186,7 +184,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 90, dict: 'sys_common_status' },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 180 },
-  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
+  actionColumn(3, [t('system.dict.data')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns)
 const showSearch = ref(true)

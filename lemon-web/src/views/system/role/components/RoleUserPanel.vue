@@ -43,11 +43,19 @@
           <DictTag type="sys_common_status" :value="record.status" />
         </template>
         <template v-else-if="column.key === 'action'">
-          <a-popconfirm :title="$t('system.role.confirmRemove', { name: record.username })" @confirm="remove([record.id])">
-            <a-button type="link" size="small" danger :disabled="isBuiltinAdmin(record)">
-              <template #icon><UserDeleteOutlined /></template>{{ $t('system.role.remove') }}
-            </a-button>
-          </a-popconfirm>
+          <TableActions
+            :actions="[
+              {
+                key: 'remove',
+                label: $t('system.role.remove'),
+                icon: UserDeleteOutlined,
+                danger: true,
+                disabled: isBuiltinAdmin(record),
+                confirm: $t('system.role.confirmRemove', { name: record.username }),
+                onClick: () => remove([record.id])
+              }
+            ]"
+          />
         </template>
       </template>
       <template #emptyText>
@@ -70,6 +78,8 @@ import { Empty, message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { UserDeleteOutlined, UsergroupAddOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import UserCell from '@/components/user/UserCell.vue'
 import UserPicker from '@/components/user/UserPicker.vue'
 import { addRoleUsers, pageRoleUsers, removeRoleUsers } from '@/api/system/role'
@@ -91,7 +101,7 @@ const columns = computed(() => [
   { title: t('common.field.dept'), dataIndex: 'deptName', width: 140, ellipsis: true },
   { title: t('common.field.phone'), dataIndex: 'phone', width: 140 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  ...(props.canAssign ? [{ title: t('common.action.operation'), key: 'action', width: 110, fixed: 'right' }] : [])
+  ...(props.canAssign ? [actionColumn(1, [t('system.role.remove')])] : [])
 ])
 
 const query = reactive({ username: undefined })

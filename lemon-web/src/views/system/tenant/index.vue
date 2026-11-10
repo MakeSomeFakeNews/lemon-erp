@@ -58,19 +58,18 @@
             />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="'sys:tenant:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-if="!record.platform" v-perm="'sys:tenant:remove'">
-                <a-popconfirm
-                  :title="$t('system.tenant.confirmDelete', { name: record.name })"
-                  @confirm="remove(record.id)"
-                >
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', perm: 'sys:tenant:edit', onClick: () => drawer.openEdit(record) },
+                {
+                  type: 'delete',
+                  show: !record.platform,
+                  perm: 'sys:tenant:remove',
+                  confirm: $t('system.tenant.confirmDelete', { name: record.name }),
+                  onClick: () => remove(record.id)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -164,7 +163,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import FeaturePicker from '@/components/system/FeaturePicker.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -181,6 +180,8 @@ import {
   updateTenant
 } from '@/api/system/tenant'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -194,15 +195,15 @@ const dict = useDict('sys_common_status')
 const showSearch = ref(true)
 
 const columns = [
-  { title: t('system.tenant.name'), key: 'name', width: 180 },
-  { title: t('system.tenant.package'), key: 'packageName', width: 120 },
-  { title: t('system.tenant.contact'), key: 'contact', width: 130 },
-  { title: t('system.tenant.accountCol'), key: 'account', width: 110, align: 'right' },
-  { title: t('system.tenant.expireTime'), key: 'expireTime', width: 110 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 120, ellipsis: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 160 },
+  { title: t('system.tenant.name'), key: 'name', width: 200 },
+  { title: t('system.tenant.package'), key: 'packageName', width: 140 },
+  { title: t('system.tenant.contact'), key: 'contact', width: 150 },
+  { title: t('system.tenant.accountCol'), key: 'account', width: 130, align: 'right' },
+  { title: t('system.tenant.expireTime'), key: 'expireTime', width: 120 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 200, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.action.operation'), key: 'action', width: 120, fixed: 'right' }
+  actionColumn(2, [t('common.action.edit')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'system-tenant')
 

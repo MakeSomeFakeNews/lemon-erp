@@ -26,17 +26,13 @@
             </a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="'monitor:job:run'" type="link" size="small" :loading="running === record.id" @click="run(record)">
-                <template #icon><PlayCircleOutlined /></template>{{ $t('monitor.job.run') }}
-              </a-button>
-              <a-button v-perm="'monitor:job:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.modify') }}
-              </a-button>
-              <a-button type="link" size="small" @click="openLogs(record)">
-                <template #icon><FileTextOutlined /></template>{{ $t('monitor.job.log') }}
-              </a-button>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'run', label: $t('monitor.job.run'), perm: 'monitor:job:run', loading: running === record.id, onClick: () => run(record) },
+                { type: 'modify', perm: 'monitor:job:edit', onClick: () => drawer.openEdit(record) },
+                { type: 'log', label: $t('monitor.job.log'), more: true, onClick: () => openLogs(record) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -95,25 +91,27 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { EditOutlined, FileTextOutlined, PlayCircleOutlined } from '@ant-design/icons-vue'
+import { FileTextOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { listJob, pageJobLog, runJob, updateJob } from '@/api/monitor/job'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 
 import { JobRunStatus, JobTrigger } from '@/constants/enums'
 const { t } = useI18n()
 const columns = [
-  { title: t('monitor.job.name'), dataIndex: 'name', width: 150 },
+  { title: t('monitor.job.name'), dataIndex: 'name', width: 180 },
   { title: t('monitor.job.jobKey'), dataIndex: 'jobKey', width: 180 },
-  { title: 'Cron', dataIndex: 'cron', width: 120 },
-  { title: t('monitor.job.params'), dataIndex: 'params', width: 100, ellipsis: true, defaultHidden: true },
+  { title: 'Cron', dataIndex: 'cron', width: 140 },
+  { title: t('monitor.job.params'), dataIndex: 'params', width: 120, ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('monitor.job.lastRun'), dataIndex: 'lastRunTime', width: 160 },
+  { title: t('monitor.job.lastRun'), dataIndex: 'lastRunTime', width: 170 },
   { title: t('monitor.job.result'), key: 'lastStatus', width: 90 },
   { title: t('monitor.job.lastMessage'), dataIndex: 'lastMessage', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('monitor.job.run'), t('common.action.modify'), t('monitor.job.log')]), fixed: 'right' }
+  actionColumn(3)
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'monitor-job')
 const size = ref('middle')

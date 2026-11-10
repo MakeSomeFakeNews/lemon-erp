@@ -19,6 +19,7 @@
 import { useI18n } from 'vue-i18n'
 import { AuditOutlined } from '@ant-design/icons-vue'
 import TaskListPage from '@/components/workflow/TaskListPage.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { pageTodoTask } from '@/api/workflow/task'
 
 const { t } = useI18n()
@@ -29,7 +30,7 @@ const columns = [
   { title: t('workflow.list.initiator'), dataIndex: 'startUserName', width: 120 },
   { title: t('workflow.list.startTime'), dataIndex: 'startTime', width: 170 },
   { title: t('workflow.todo.arriveTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 110, fixed: 'right' }
+  actionColumn(1, [t('workflow.todo.approve')])
 ]
 </script>
 

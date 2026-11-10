@@ -40,13 +40,19 @@
             />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-perm="'monitor:online:kick'">
-              <a-popconfirm :title="$t('monitor.online.confirmKick', { name: record.username })" @confirm="kick(record)">
-                <a-button type="link" size="small" danger>
-                  <template #icon><DisconnectOutlined /></template>{{ $t('monitor.online.kick') }}
-                </a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[
+                {
+                  key: 'kick',
+                  label: $t('monitor.online.kick'),
+                  icon: DisconnectOutlined,
+                  danger: true,
+                  perm: 'monitor:online:kick',
+                  confirm: $t('monitor.online.confirmKick', { name: record.username }),
+                  onClick: () => kick(record)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -63,6 +69,8 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { kickOnline, listOnline } from '@/api/monitor/online'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useUserStore } from '@/store/user'
 
 const { t } = useI18n()
@@ -76,7 +84,7 @@ const columns = [
   { title: t('monitor.online.browser'), dataIndex: 'browser', ellipsis: true },
   { title: t('monitor.online.os'), dataIndex: 'os', ellipsis: true },
   { title: t('monitor.online.loginTime'), dataIndex: 'loginTime', width: 180 },
-  { title: t('common.action.operation'), key: 'action', width: 120, fixed: 'right' }
+  actionColumn(1, [t('monitor.online.kick')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns)
 const size = ref('middle')

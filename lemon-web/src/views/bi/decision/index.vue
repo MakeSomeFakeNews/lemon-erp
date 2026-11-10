@@ -155,12 +155,12 @@
               <a-tag :color="record.enabled === 1 ? 'green' : 'default'" :bordered="false">{{ record.enabled === 1 ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
             </template>
             <template v-else-if="column.key === 'action'">
-              <span v-perm="'bi:alert:edit'" class="table-actions">
-                <a-button type="link" size="small" @click="openRule(record)"><EditOutlined />{{ $t('common.action.edit') }}</a-button>
-                <a-popconfirm :title="$t('bi.decision.confirmDeleteRule', { name: record.name })" @confirm="removeRule(record)">
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
+              <TableActions
+                :actions="[
+                  { type: 'edit', perm: 'bi:alert:edit', onClick: () => openRule(record) },
+                  { type: 'delete', perm: 'bi:alert:edit', confirm: $t('bi.decision.confirmDeleteRule', { name: record.name }), onClick: () => removeRule(record) }
+                ]"
+              />
             </template>
           </template>
         </a-table>
@@ -210,7 +210,9 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, RobotOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, ReloadOutlined, RobotOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import AlertAnalysisModal from './AlertAnalysisModal.vue'
 import { getAiStatus } from '@/api/ai/config'
 import DictTag from '@/components/DictTag.vue'
@@ -357,7 +359,7 @@ const ruleColumns = [
   { title: t('bi.decision.level'), key: 'level', width: 80 },
   { title: t('common.field.status'), key: 'enabled', width: 90 },
   { title: t('bi.decision.suggestion'), dataIndex: 'remark', width: 220, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
+  actionColumn(2)
 ]
 const ruleScrollX = ruleColumns.reduce((sum, c) => sum + c.width, 0)
 

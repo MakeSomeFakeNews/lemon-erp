@@ -44,21 +44,8 @@
             <span v-if="record.status === FlowStatus.RUNNING && record.currentNodes">{{ record.currentNodes }}</span>
             <span v-else class="sub-text">-</span>
           </template>
-          <template v-else-if="column.key === 'times'">
-            <div>{{ record.startTime }}</div>
-            <div v-if="record.endTime" class="sub-text">{{ record.endTime }}</div>
-          </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
-              </a-button>
-              <template v-if="manage && record.status === FlowStatus.RUNNING">
-                <a-button v-perm="'wf:instance:cancel'" type="link" size="small" danger @click="openTerminate(record)">
-                  <template #icon><StopOutlined /></template>{{ $t('workflow.list.terminate') }}
-                </a-button>
-              </template>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -90,13 +77,15 @@
 import { useI18n } from 'vue-i18n'
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { EyeOutlined, StopOutlined } from '@ant-design/icons-vue'
+import { StopOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import InstanceDetailDrawer from './InstanceDetailDrawer.vue'
 import { terminateInstance } from '@/api/workflow/instance'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -116,26 +105,35 @@ const props = defineProps({
 })
 const dict = useDict('wf_status', 'wf_category')
 
-// 管理页多一列发起人和终止按钮：发起 / 结束时间合并为一列（结束时间在发起时间下），标题列保持足够宽度，
-// 分类、状态列按英文标签（Administration、In Approval）留宽，1440 宽屏幕下中英文都不需要横向滚动
+// 管理页多一列发起人和终止操作；分类、状态列按英文标签（Administration、In Approval）留宽
 const isManage = props.manage
 const columns = [
-  { title: t('workflow.list.title'), key: 'name', width: isManage ? 210 : 220, ellipsis: true },
-  { title: t('workflow.list.process'), dataIndex: 'processName', width: isManage ? 120 : 140, ellipsis: true },
+  { title: t('workflow.list.title'), key: 'name', width: 220, ellipsis: true },
+  { title: t('workflow.list.process'), dataIndex: 'processName', width: 140, ellipsis: true },
   { title: t('workflow.list.category'), key: 'category', width: isManage ? 120 : 100 },
-  ...(isManage ? [{ title: t('workflow.list.initiator'), dataIndex: 'startUserName', width: 90 }] : []),
+  ...(isManage ? [{ title: t('workflow.list.initiator'), dataIndex: 'startUserName', width: 120 }] : []),
   { title: t('common.field.status'), key: 'status', width: isManage ? 120 : 110 },
-  { title: t('workflow.list.currentNode'), key: 'currentNodes', width: isManage ? 120 : 140, ellipsis: true },
-  ...(isManage
-    ? [{ title: t('workflow.list.startEndTime'), key: 'times', width: 170 }]
-    : [
-        { title: t('workflow.list.startTime'), dataIndex: 'startTime', width: 160 },
-        { title: t('workflow.list.endTime'), dataIndex: 'endTime', width: 160 }
-      ]),
-  { title: t('common.action.operation'), key: 'action', width: actionWidth(isManage ? [t('common.action.view'), t('workflow.list.terminate')] : [t('common.action.view')]), fixed: 'right' }
+  { title: t('workflow.list.currentNode'), key: 'currentNodes', width: 140, ellipsis: true },
+  { title: t('workflow.list.startTime'), dataIndex: 'startTime', width: 170 },
+  { title: t('workflow.list.endTime'), dataIndex: 'endTime', width: 170 },
+  actionColumn(isManage ? 2 : 1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, props.storageKey)
 const showSearch = ref(true)
+
+// 行操作：查看；管理视图中审批中的流程可终止
+const rowActions = (record) => [
+  { type: 'view', onClick: () => openDetail(record) },
+  {
+    key: 'terminate',
+    label: t('workflow.list.terminate'),
+    icon: StopOutlined,
+    danger: true,
+    show: props.manage && record.status === FlowStatus.RUNNING,
+    perm: 'wf:instance:cancel',
+    onClick: () => openTerminate(record)
+  }
+]
 
 const query = reactive({ name: undefined, status: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable((p) => props.fetcher(p), query)

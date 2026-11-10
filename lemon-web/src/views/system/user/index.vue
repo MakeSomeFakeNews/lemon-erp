@@ -94,21 +94,7 @@
               />
             </template>
             <template v-else-if="column.key === 'action'">
-              <span class="table-actions">
-                <a-button v-perm="'sys:user:edit'" type="link" size="small" @click="userForm.openEdit(record)">
-                  <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-                </a-button>
-                <a-dropdown v-if="moreActions(record).length">
-                  <a-button type="link" size="small">{{ $t('common.action.more') }}<DownOutlined /></a-button>
-                  <template #overlay>
-                    <a-menu @click="({ key }) => onMoreAction(key, record)">
-                      <a-menu-item v-for="a in moreActions(record)" :key="a.key" :danger="a.danger" :disabled="a.disabled">
-                        <component :is="a.icon" /> {{ a.label }}
-                      </a-menu-item>
-                    </a-menu>
-                  </template>
-                </a-dropdown>
-              </span>
+              <TableActions :actions="rowActions(record)" />
             </template>
           </template>
         </a-table>
@@ -153,12 +139,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Modal, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import {
   DeleteOutlined,
-  DownOutlined,
-  EditOutlined,
-  KeyOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   PlusOutlined,
@@ -171,10 +154,12 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import DeptTree from '@/components/tree/DeptTree.vue'
 import DeptMoveModal from '@/components/user/DeptMoveModal.vue'
 import UserCell from '@/components/user/UserCell.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import UserFormDrawer from '@/components/user/UserFormDrawer.vue'
 import { changeUserStatus, deleteUser, pageUser, resetUserPassword } from '@/api/system/user'
 import { deptTree } from '@/api/system/dept'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
@@ -193,10 +178,10 @@ const columns = [
   { title: t('common.field.user'), key: 'username', width: 180 },
   { title: t('common.field.dept'), key: 'dept', width: 120, ellipsis: true },
   { title: t('common.field.phone'), dataIndex: 'phone', width: 130 },
-  { title: t('common.field.email'), dataIndex: 'email', width: 180, ellipsis: true, defaultHidden: true },
+  { title: t('common.field.email'), dataIndex: 'email', width: 180, ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('common.action.more')]), fixed: 'right' }
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  actionColumn(3)
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'system-user')
 const showSearch = ref(true)
@@ -235,28 +220,19 @@ onMounted(() => {
 // 受保护的账号：内置超级管理员和当前登录用户不能删除 / 停用
 const isProtected = (record) => record.id === SUPER_ADMIN_ID || record.id === userStore.user?.id
 
-function moreActions(record) {
-  const actions = []
-  if (userStore.hasPerm('sys:user:edit')) actions.push({ key: 'move', label: t('system.user.moveDept'), icon: SwapOutlined })
-  if (userStore.hasPerm('sys:user:resetPwd')) actions.push({ key: 'resetPwd', label: t('system.user.resetPwd'), icon: KeyOutlined })
-  if (userStore.hasPerm('sys:user:remove')) {
-    actions.push({ key: 'remove', label: t('common.action.delete'), icon: DeleteOutlined, danger: true, disabled: isProtected(record) })
-  }
-  return actions
-}
-
-function onMoreAction(key, record) {
-  if (key === 'move') openMove([record.id])
-  if (key === 'resetPwd') openReset(record)
-  if (key === 'remove') {
-    Modal.confirm({
-      title: t('system.user.confirmDelete', { name: record.username }),
-      content: t('system.user.deleteTip'),
-      okType: 'danger',
-      onOk: () => remove([record.id])
-    })
-  }
-}
+// 行操作：编辑、删除直接显示，调整部门、重置密码在「更多」中
+const rowActions = (record) => [
+  { type: 'edit', perm: 'sys:user:edit', onClick: () => userForm.value.openEdit(record) },
+  {
+    type: 'delete',
+    perm: 'sys:user:remove',
+    disabled: isProtected(record),
+    confirm: { title: t('system.user.confirmDelete', { name: record.username }), description: t('system.user.deleteTip') },
+    onClick: () => remove([record.id])
+  },
+  { key: 'move', type: 'move', label: t('system.user.moveDept'), perm: 'sys:user:edit', more: true, onClick: () => openMove([record.id]) },
+  { key: 'resetPwd', type: 'password', label: t('system.user.resetPwd'), perm: 'sys:user:resetPwd', more: true, onClick: () => openReset(record) }
+]
 
 async function remove(ids) {
   await deleteUser(ids)

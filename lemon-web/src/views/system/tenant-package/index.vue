@@ -22,16 +22,18 @@
             <a-tag :color="record.status === 1 ? 'green' : 'default'">{{ record.status === 1 ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="'sys:tenantPackage:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-perm="'sys:tenantPackage:remove'">
-                <a-popconfirm :title="$t('system.tenantPackage.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small" :disabled="record.tenantCount > 0"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', perm: 'sys:tenantPackage:edit', onClick: () => drawer.openEdit(record) },
+                {
+                  type: 'delete',
+                  perm: 'sys:tenantPackage:remove',
+                  disabled: record.tenantCount > 0,
+                  confirm: $t('system.tenantPackage.confirmDelete', { name: record.name }),
+                  onClick: () => remove(record.id)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -77,7 +79,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
 import CheckTree from '@/components/tree/CheckTree.vue'
 import FeaturePicker from '@/components/system/FeaturePicker.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -92,6 +94,8 @@ import {
   updateTenantPackage
 } from '@/api/system/tenant'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { translateMenus } from '@/store/user'
 import { useAction } from '@/composables/useAction'
@@ -103,7 +107,7 @@ const columns = [
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
+  actionColumn(2, [t('common.action.edit')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'system-tenant-package')
 const size = ref('middle')

@@ -23,12 +23,12 @@
             <a-tag :color="record.status === 0 ? 'default' : 'green'" :bordered="false">{{ record.status === 0 ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-perm="'sys:customField:edit'" class="table-actions">
-              <a-button type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-              <a-popconfirm :title="$t('system.customField.confirmDelete', { name: record.label })" @confirm="remove(record.id)">
-                <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', perm: 'sys:customField:edit', onClick: () => drawer.openEdit(record) },
+                { type: 'delete', perm: 'sys:customField:edit', confirm: $t('system.customField.confirmDelete', { name: record.label }), onClick: () => remove(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -83,6 +83,8 @@ import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import FormDrawer from '@/components/FormDrawer.vue'
 import { addCustomField, allCustomFields, customFieldTypes, deleteCustomField, updateCustomField } from '@/api/system/customField'
 import { clearCustomFieldCache } from '@/composables/useCustomFields'
@@ -101,15 +103,15 @@ const bizType = ref()
 const list = ref([])
 const loading = ref(false)
 const columns = [
-  { title: t('system.customField.bizType'), key: 'bizType', width: 130 },
-  { title: t('system.customField.label'), dataIndex: 'label', width: 130 },
+  { title: t('system.customField.bizType'), key: 'bizType', width: 140 },
+  { title: t('system.customField.label'), dataIndex: 'label', width: 140 },
   { title: t('system.customField.fieldKey'), dataIndex: 'fieldKey', width: 130 },
   { title: t('common.field.type'), key: 'fieldType', width: 100 },
-  { title: t('system.customField.options'), dataIndex: 'options', width: 170, ellipsis: true },
-  { title: t('system.customField.flags'), key: 'flags', width: 170 },
+  { title: t('system.customField.options'), dataIndex: 'options', width: 220, ellipsis: true },
+  { title: t('system.customField.flags'), key: 'flags', width: 190 },
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
+  actionColumn(2, [t('common.action.edit')])
 ]
 const scrollX = columns.reduce((sum, c) => sum + c.width, 0)
 async function load() {

@@ -70,13 +70,9 @@
             <DictTag type="sys_success_fail" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-perm="'monitor:loginlog:remove'">
-              <a-popconfirm :title="$t('monitor.loginlog.confirmDelete')" @confirm="remove([record.id])">
-                <a-button type="link" size="small" danger>
-                  <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                </a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[{ type: 'delete', perm: 'monitor:loginlog:remove', confirm: $t('monitor.loginlog.confirmDelete'), onClick: () => remove([record.id]) }]"
+            />
           </template>
         </template>
       </a-table>
@@ -94,6 +90,8 @@ import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { cleanLoginLog, deleteLoginLog, pageLoginLog } from '@/api/monitor/loginlog'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -111,7 +109,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 90, dict: 'sys_success_fail' },
   { title: t('monitor.loginlog.msg'), dataIndex: 'msg', ellipsis: true },
   { title: t('monitor.online.loginTime'), dataIndex: 'loginTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 110, fixed: 'right' }
+  actionColumn(1, [t('common.action.delete')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns)
 const showSearch = ref(true)
