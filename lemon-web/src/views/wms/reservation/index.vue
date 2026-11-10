@@ -45,11 +45,10 @@
             <span v-else>{{ record.sourceNo }}</span>
           </template>
           <template v-else-if="column.key === 'material'">
-            <div>{{ record.materialCode }} {{ record.materialName }}</div>
-            <div class="sub-text">{{ record.spec }}</div>
+            {{ record.materialCode }} {{ record.materialName }}
           </template>
           <template v-else-if="column.key === 'qty'">
-            <b>{{ formatQty(record.qty) }}</b> <span class="sub-text">{{ record.unit }}</span>
+            <b>{{ formatQty(record.qty) }}</b>
           </template>
           <template v-else-if="column.key === 'action'">
             <TableActions

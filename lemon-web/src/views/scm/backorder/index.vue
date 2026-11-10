@@ -55,7 +55,7 @@
             <div class="sub-text">{{ query.kind === OrderKind.SALES ? $t('scm.backorder.shippedN', { qty: formatQty(record.doneQty) }) : $t('scm.backorder.receivedN', { qty: formatQty(record.doneQty) }) }}</div>
           </template>
           <template v-else-if="column.key === 'openQty'">
-            <b>{{ formatQty(record.openQty) }}</b> <span class="sub-text">{{ record.unit }}</span>
+            <b>{{ formatQty(record.openQty) }}</b>
           </template>
           <template v-else-if="column.key === 'overdue'">
             <span v-if="overdueDays(record) > 0" class="overdue">{{ $t('scm.backorder.overdueDays', { n: overdueDays(record) }) }}</span>

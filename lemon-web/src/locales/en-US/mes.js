@@ -823,6 +823,7 @@ export default {
     moldRequired: 'The mold must first be checked out to this work order in "Molds & Tooling"',
     shotsHint: '{shots} shots this time, {used} in total',
     shotsHintLife: '{shots} shots this time, {used} / {life} in total',
+    firstArticlePending: 'Until the first article inspection passes, only 1 piece in total can be reported for this operation',
     reportSuccess: 'Reported successfully'
   },
   woDocForm: {

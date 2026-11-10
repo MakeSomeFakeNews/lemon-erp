@@ -2,8 +2,13 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.lemon.erp.modules.mes.mapper.MesWoOpMapper">
 
+    <!-- first_article_pending：需要首件检验、还没有已确认且不是不合格的首件检验单（与报工校验 WoReportService.firstArticlePassed 一致） -->
     <select id="selectByWo" resultType="com.lemon.erp.modules.mes.entity.MesWoOp">
-        SELECT o.*, w.name AS work_center_name
+        SELECT o.*, w.name AS work_center_name,
+               CASE WHEN o.first_article = 1 AND NOT EXISTS (
+                   SELECT 1 FROM mes_inspection i
+                   WHERE i.wo_op_id = o.id AND i.type = 'FAI' AND i.status = 'CONFIRMED' AND i.result &lt;&gt; 'FAIL')
+                    THEN 1 ELSE 0 END AS first_article_pending
         FROM mes_wo_op o
         LEFT JOIN mes_work_center w ON w.id = o.work_center_id
         WHERE o.wo_id = #{woId}

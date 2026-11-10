@@ -33,7 +33,7 @@ export default {
     paymentDays: '账期（天）',
     openOpp: '进行中商机 {n} 个',
     overview: '经营概况',
-    salesAmount: '累计销售额',
+    salesAmount: '近一年销售（不含税）',
     orderCount: '订单数',
     arBalance: '应收余额',
     wonAmount: '赢单金额',

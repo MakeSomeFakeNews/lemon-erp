@@ -21,6 +21,7 @@ import com.lemon.erp.modules.mes.mapper.MesPlanMapper;
 import com.lemon.erp.modules.mes.mapper.MesWorkOrderMapper;
 import com.lemon.erp.modules.mes.model.PlanStatus;
 import com.lemon.erp.modules.mes.model.WorkOrderClosedEvent;
+import com.lemon.erp.modules.mes.model.WorkOrderCompletedEvent;
 import com.lemon.erp.modules.mes.model.WorkOrderSource;
 import com.lemon.erp.modules.mes.model.WorkOrderStatus;
 import com.lemon.erp.modules.mes.model.WorkOrderType;
@@ -279,7 +280,8 @@ public class MesWorkOrderService {
 
     /**
      * 完工入库满数量，或已有完工且 完工 + 报工报废 达到工单数量：已完工；
-     * 计划下全部工单的完工数量达到计划数量时，计划自动关闭（不再参与 MRP；报废的部分不算完成计划）
+     * 计划下全部工单的完工数量达到计划数量时，计划自动关闭（不再参与 MRP；报废的部分不算完成计划）。
+     * 发布 {@link WorkOrderCompletedEvent}（未完成的补料申请自动撤销），调用方须在事务中
      *
      * @return 是否由本次改为已完工
      */
@@ -287,6 +289,7 @@ public class MesWorkOrderService {
         if (workOrderMapper.markCompleted(id) == 0) {
             return false;
         }
+        eventPublisher.publishEvent(new WorkOrderCompletedEvent(id));
         MesWorkOrder wo = workOrderMapper.selectById(id);
         if (wo.getPlanId() == null) {
             return true;

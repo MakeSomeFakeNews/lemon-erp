@@ -116,7 +116,7 @@ public class CrmAnalysisService {
                 result.avgR(), result.avgF(), result.avgM());
     }
 
-    /** 近 12 个月的销售额、成交客户数、赢单金额 */
+    /** 近 12 个月的销售额（不含税净销售额，与 RFM 同一口径）、成交客户数、赢单金额 */
     public List<CrmAnalysis.TrendRow> trend() {
         YearMonth start = YearMonth.now().minusMonths(11);
         Map<Integer, CrmAnalysis.MonthlyRow> sales = new HashMap<>();
@@ -147,8 +147,9 @@ public class CrmAnalysisService {
         return rows;
     }
 
+    /** 行业分布：近一年（与 RFM 相同的期间）的不含税净销售额 */
     public List<CrmAnalysis.IndustryStat> industries() {
-        return analysisMapper.selectIndustryStats(LocalDate.now().minusYears(1));
+        return analysisMapper.selectIndustryStats(LocalDate.now().minusYears(1).plusDays(1));
     }
 
     public List<CrmAnalysis.TicketStat> tickets() {

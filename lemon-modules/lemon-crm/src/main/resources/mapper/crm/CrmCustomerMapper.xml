@@ -51,9 +51,10 @@
         WHERE c.id = #{customerId}
     </select>
 
+    <!-- 近一年销售额：不含税净销售额（价税合计 − 税额，扣除退货），与客户分析、RFM 同一口径 -->
     <select id="selectSummary" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$CustomerSummary">
         SELECT
-            (SELECT COALESCE(SUM(CASE WHEN d.kind = 'SALES_OUT' THEN d.total_amount ELSE -d.total_amount END), 0)
+            (SELECT COALESCE(SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * (d.total_amount - d.tax_amount)), 0)
              FROM scm_trade_doc d
              WHERE d.partner_id = #{customerId} AND d.kind IN ('SALES_OUT', 'SALES_RETURN') AND d.biz_date &gt;= #{since}) AS "salesAmount",
             (SELECT COUNT(*) FROM scm_order o WHERE o.kind = 'SALES' AND o.partner_id = #{customerId}

@@ -29,6 +29,7 @@ import com.lemon.erp.modules.mes.mapper.MesWoSupplementItemMapper;
 import com.lemon.erp.modules.mes.mapper.MesWoSupplementMapper;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import com.lemon.erp.modules.mes.model.WorkOrderClosedEvent;
+import com.lemon.erp.modules.mes.model.WorkOrderCompletedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -227,22 +228,33 @@ public class MesSupplementService {
                 .eq(MesWoSupplement::getStatus, SupplementStatus.APPROVING));
     }
 
-    /** 工单关闭：审批中、待发料的补料申请自动撤销（撤销审批流程） */
+    /** 工单关闭：审批中、待发料的补料申请自动撤销（撤销审批流程）；与关闭同一事务 */
     @EventListener
     public void onWorkOrderClosed(WorkOrderClosedEvent e) {
+        cancelActive(e.woId(), "工单已关闭"); // i18n-ignore
+    }
+
+    /** 工单完工（完工入库或 完工 + 报废 达到数量自动完工）：不再领料，审批中、待发料的补料申请自动撤销；与完工同一事务 */
+    @EventListener
+    public void onWorkOrderCompleted(WorkOrderCompletedEvent e) {
+        cancelActive(e.woId(), "工单已完工"); // i18n-ignore
+    }
+
+    // ---------------------------------------------------------------- 内部
+
+    /** 撤销工单下审批中、待发料的补料申请，审批中的同时撤销审批流程（撤销意见存库，保持中文） */
+    private void cancelActive(Long woId, String reason) {
         for (MesWoSupplement s : suppMapper.selectList(Wrappers.<MesWoSupplement>lambdaQuery()
-                .eq(MesWoSupplement::getWoId, e.woId()).in(MesWoSupplement::getStatus, SupplementStatus.ACTIVE))) {
+                .eq(MesWoSupplement::getWoId, woId).in(MesWoSupplement::getStatus, SupplementStatus.ACTIVE))) {
             if (s.getFlowInstanceId() != null && s.getStatus() == SupplementStatus.APPROVING
                     && flowApi.getStatus(s.getFlowInstanceId()) == FlowStatus.RUNNING) {
-                flowApi.cancel(s.getFlowInstanceId(), "工单已关闭"); // i18n-ignore
+                flowApi.cancel(s.getFlowInstanceId(), reason);
             }
             suppMapper.update(Wrappers.<MesWoSupplement>lambdaUpdate().set(MesWoSupplement::getStatus, SupplementStatus.CANCELED)
                     .set(MesWoSupplement::getUpdateTime, LocalDateTime.now())
                     .eq(MesWoSupplement::getId, s.getId()).in(MesWoSupplement::getStatus, SupplementStatus.ACTIVE));
         }
     }
-
-    // ---------------------------------------------------------------- 内部
 
     private MesWoSupplement getAccessible(Long id) {
         return DataScopes.require(SUPPLEMENT_RULE, () -> id == null ? null : suppMapper.selectById(id),

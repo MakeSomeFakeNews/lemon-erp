@@ -97,7 +97,7 @@ public final class CrmAnalysis {
         private BigDecimal amount;
     }
 
-    /** 近 12 个月趋势 */
+    /** 近 12 个月趋势：销售额为不含税净销售额（扣除退货），赢单金额为商机金额 */
     public record TrendRow(int period, BigDecimal sales, long customers, long wonCount, BigDecimal wonAmount) {
     }
 
@@ -132,6 +132,7 @@ public final class CrmAnalysis {
     public static class IndustryStat {
         private String industry;
         private Long customers;
+        /** 近一年不含税净销售额（扣除退货） */
         private BigDecimal sales;
     }
 
@@ -153,6 +154,7 @@ public final class CrmAnalysis {
     @Data
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class CustomerSummary {
+        /** 近一年不含税净销售额 */
         private BigDecimal salesAmount;
         private Long orderCount;
         private String lastOrderDate;

@@ -225,6 +225,7 @@ export default {
     selectOp: 'Select an operation to report',
     noOps: 'This work order has no operations',
     firstArticle: 'First article',
+    firstArticlePending: 'Until the first article inspection passes, only 1 piece in total can be reported',
     opProgress: 'Good {good}, scrap {scrap}, planned {total}',
     opHours: 'Hours {n}',
     changeOp: 'Change',
