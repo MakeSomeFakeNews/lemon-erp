@@ -54,6 +54,9 @@
 
     <div class="grid">
       <div class="main-col">
+        <!-- 通知公告：发给本人的有效公告 -->
+        <NoticeCard />
+
         <!-- 功能导航 -->
         <a-card :bordered="false" class="page-card" :title="$t('dashboard.modules')">
           <div v-if="!modules.length" class="empty">{{ $t('dashboard.noModules') }}</div>
@@ -142,6 +145,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ReloadOutlined, RightOutlined } from '@ant-design/icons-vue'
 import MenuIcon from '@/components/MenuIcon.vue'
+import NoticeCard from './NoticeCard.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { getBusinessCards, getTodos } from '@/api/dashboard'
 import { useElementWidth } from '@/composables/useElementWidth'
@@ -159,7 +163,7 @@ import { MenuType } from '@/constants/enums'
 const { t } = useI18n()
 
 /**
- * 首页工作台：按模块的功能导航、待办事项、待我审批、消息通知。
+ * 首页工作台：通知公告、按模块的功能导航、待办事项、待我审批、消息通知。
  * 经营数据、快捷入口、功能都只显示当前用户有权限的
  */
 const router = useRouter()

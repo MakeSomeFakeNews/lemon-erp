@@ -718,6 +718,7 @@ export default {
     'REMIND': 'Reminder', // 提醒
     'ALERT': 'Alert', // 预警
     'SYSTEM': 'System', // 系统
+    'NOTICE': 'Notice', // 公告
   },
   // 审批状态
   sys_approve_status: {
@@ -1126,5 +1127,24 @@ export default {
     'DINGTALK': 'DingTalk', // 钉钉
     'WECOM': 'WeCom', // 企业微信
     'FEISHU': 'Feishu (Lark)', // 飞书
+  },
+  // 公告状态
+  sys_notice_status: {
+    'DRAFT': 'Draft', // 草稿
+    'PUBLISHED': 'Published', // 已发布
+    'WITHDRAWN': 'Withdrawn', // 已撤回
+  },
+  // 公告发布范围
+  sys_notice_scope: {
+    'ALL': 'Everyone', // 全员
+    'DEPT': 'Departments', // 指定部门
+    'ROLE': 'Roles', // 指定角色
+  },
+  // 公告类型
+  sys_notice_type: {
+    'NOTICE': 'Notice', // 通知
+    'ANNOUNCE': 'Announcement', // 公告
+    'POLICY': 'Policy', // 制度
+    'EVENT': 'Event', // 活动
   },
 }

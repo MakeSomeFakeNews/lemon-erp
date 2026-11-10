@@ -3,6 +3,7 @@ package com.lemon.erp.modules.fin.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.modules.fin.dto.CostRunResult;
 import com.lemon.erp.modules.fin.entity.FinCostLayer;
@@ -27,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -115,6 +117,41 @@ public class FinCostService {
         run.setVoucherId(voucher.voucherId());
         runMapper.insert(run);
         return new CostRunResult(result.materials().size(), result.zeroCostWarnings());
+    }
+
+    /** 期间的成本结转状态：利润表、经营驾驶舱据此提示营业成本是否完整 */
+    public enum CostState {
+        /** 已核算，成本结转凭证已记账（或没有需要结转的成本、存货期初期间） */
+        DONE,
+        /** 尚未进行成本核算 */
+        NOT_RUN,
+        /** 已核算，成本结转凭证尚未记账（利润表只统计已记账凭证） */
+        UNPOSTED
+    }
+
+    public CostState costState(int period) {
+        FinCostRun run = runMapper.selectOne(Wrappers.<FinCostRun>lambdaQuery().eq(FinCostRun::getPeriod, period));
+        if (run == null) {
+            return CostState.NOT_RUN;
+        }
+        if (run.getKind() == CostRunKind.OPENING || run.getVoucherId() == null) {
+            return CostState.DONE;
+        }
+        FinVoucher v = voucherMapper.selectById(run.getVoucherId());
+        return v == null || v.getStatus() == VoucherStatus.POSTED ? CostState.DONE : CostState.UNPOSTED;
+    }
+
+    /**
+     * 期间的营业成本不完整（未核算或成本结转凭证未记账）时的提示（按请求语言），完整时为空。
+     * 销售成本在月末成本核算时结转，未结转时利润表只有收入没有成本，毛利率可能显示为 100%
+     */
+    public String costWarning(int period) {
+        String month = YearMonth.of(period / 100, period % 100).toString();
+        return switch (costState(period)) {
+            case NOT_RUN -> Messages.get("fin.text.costNotRunWarning", month);
+            case UNPOSTED -> Messages.get("fin.text.costVoucherUnpostedWarning", month);
+            case DONE -> null;
+        };
     }
 
     /** 撤销核算：删除成本数据和未审核的成本凭证 */

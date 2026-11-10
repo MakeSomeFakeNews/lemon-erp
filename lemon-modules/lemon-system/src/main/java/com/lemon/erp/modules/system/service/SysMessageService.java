@@ -93,6 +93,18 @@ public class SysMessageService implements MessageSender {
                 .in(ids != null && !ids.isEmpty(), SysMessage::getId, ids));
     }
 
+    /** 把某用户相同去重键的未读消息标为已读（如阅读公告时，发布公告的消息一并已读） */
+    public void readByDedupKey(Long userId, String dedupKey) {
+        messageMapper.update(Wrappers.<SysMessage>lambdaUpdate()
+                .set(SysMessage::getReadFlag, 1).set(SysMessage::getReadTime, LocalDateTime.now())
+                .eq(SysMessage::getUserId, userId).eq(SysMessage::getDedupKey, dedupKey).eq(SysMessage::getReadFlag, 0));
+    }
+
+    /** 删除相同去重键的未读消息（如撤回公告时，还没看的人不再收到提醒；再次发布时重新发送） */
+    public void deleteUnreadByDedupKey(String dedupKey) {
+        messageMapper.delete(Wrappers.<SysMessage>lambdaQuery().eq(SysMessage::getDedupKey, dedupKey).eq(SysMessage::getReadFlag, 0));
+    }
+
     public void delete(List<Long> ids) {
         messageMapper.delete(Wrappers.<SysMessage>lambdaQuery()
                 .eq(SysMessage::getUserId, SecurityUtils.getUserId()).in(SysMessage::getId, ids));

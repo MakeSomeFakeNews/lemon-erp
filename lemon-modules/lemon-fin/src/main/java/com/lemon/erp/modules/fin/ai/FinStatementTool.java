@@ -77,6 +77,10 @@ public class FinStatementTool implements AiTool {
             row.put(st.columns().get(1), m.value2());
             rows.add(row);
         }
+        if (st.warning() != null) {
+            // 营业成本未结转等数据不完整的提示，供模型在回答中说明
+            rows.add(new LinkedHashMap<>(Map.of(ITEM, st.warning())));
+        }
         return AiToolResult.rows(rows);
     }
 

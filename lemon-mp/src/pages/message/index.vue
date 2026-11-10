@@ -4,6 +4,12 @@
       <l-segmented v-model="tab" :options="tabs" class="msg__seg" @change="paged.refresh()" />
       <text class="msg__all" @click="readAll">{{ t('common.message.readAll') }}</text>
     </view>
+    <!-- 通知公告：有未读时提示，点击进入公告列表 -->
+    <view v-if="noticeUnread" class="msg__notice" @click="openNotices">
+      <text class="msg__notice-title">{{ t('notice.title') }}</text>
+      <text class="msg__notice-count">{{ t('notice.unreadN', { n: noticeUnread }) }}</text>
+      <text class="msg__notice-arrow">›</text>
+    </view>
     <view v-for="m in paged.list" :key="m.id" class="l-item" @click="open(m)">
       <view class="l-item__head">
         <view v-if="!m.readFlag" class="msg__dot" />
@@ -23,6 +29,7 @@ import { computed, ref } from 'vue'
 import { onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
 import { useI18n } from '@/locales'
 import { pageMessages, readMessages, unreadCount } from '@/api/message'
+import { noticeUnreadCount } from '@/api/notice'
 import { usePaged } from '@/composables/usePaged'
 import { runAction } from '@/composables/useAction'
 import { useTitle } from '@/composables/useTitle'
@@ -42,7 +49,12 @@ const tabs = computed(() => [
 ])
 const paged = usePaged((p) => pageMessages({ ...p, unread: tab.value === 'unread' ? true : undefined }))
 
-const refreshBadge = () => unreadCount().then(setMessageBadge).catch(() => {})
+const noticeUnread = ref(0)
+const refreshBadge = () => {
+  unreadCount().then(setMessageBadge).catch(() => {})
+  noticeUnreadCount().then((n) => (noticeUnread.value = n)).catch(() => {})
+}
+const openNotices = () => uni.navigateTo({ url: '/pkg-notice/index' })
 
 onShow(async () => {
   if (await ensureLogin()) {
@@ -101,6 +113,29 @@ function readAll() {
     height: 14rpx;
     border-radius: 50%;
     background: $l-danger;
+  }
+  &__notice {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+    margin: 16rpx 24rpx 0;
+    padding: 24rpx 28rpx;
+    border-radius: 12rpx;
+    background: #fff7e6;
+  }
+  &__notice-title {
+    flex: 1;
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #d46b08;
+  }
+  &__notice-count {
+    font-size: 26rpx;
+    color: #d46b08;
+  }
+  &__notice-arrow {
+    font-size: 34rpx;
+    color: #d46b08;
   }
   &__content {
     color: $l-text-2;

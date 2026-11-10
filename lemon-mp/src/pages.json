@@ -23,6 +23,13 @@
       ]
     },
     {
+      "root": "pkg-notice",
+      "pages": [
+        { "path": "index", "style": { "navigationBarTitleText": "通知公告", "enablePullDownRefresh": true } },
+        { "path": "detail", "style": { "navigationBarTitleText": "公告详情" } }
+      ]
+    },
+    {
       "root": "pkg-hr",
       "pages": [
         { "path": "clock/index", "style": { "navigationBarTitleText": "打卡" } },

@@ -9,6 +9,8 @@ export default {
   noTasks: '没有待审批的事项',
   messages: '消息通知',
   noMessages: '暂无消息',
+  notices: '通知公告',
+  noNotices: '暂无公告',
   card: {
     receivableSub: '未核销的应收单',
     payableSub: '未核销的应付单',

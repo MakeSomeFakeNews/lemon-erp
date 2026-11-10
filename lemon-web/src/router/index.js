@@ -55,6 +55,13 @@ const constantRoutes = [
         name: 'Messages',
         component: () => import('@/views/message/index.vue'),
         meta: { title: t('route.messages'), icon: 'BellOutlined' }
+      },
+      {
+        // 全部公告：所有登录用户可见（只显示发给自己的），不需要菜单权限
+        path: 'notices',
+        name: 'Notices',
+        component: () => import('@/views/notice/index.vue'),
+        meta: { title: t('route.notices'), icon: 'NotificationOutlined' }
       }
     ]
   }

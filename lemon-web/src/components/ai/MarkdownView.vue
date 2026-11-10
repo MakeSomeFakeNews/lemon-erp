@@ -6,7 +6,7 @@
 import { computed } from 'vue'
 import { renderMarkdown } from '@/utils/markdown'
 
-/** 显示模型生成的 Markdown（marked 解析后经 DOMPurify 清理，见 utils/markdown.js） */
+/** 显示 Markdown（模型的回答、通知公告正文等；marked 解析后经 DOMPurify 清理，见 utils/markdown.js） */
 const props = defineProps({ content: { type: String, default: '' } })
 const html = computed(() => renderMarkdown(props.content))
 </script>

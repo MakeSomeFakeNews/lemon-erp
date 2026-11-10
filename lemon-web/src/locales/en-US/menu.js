@@ -182,6 +182,7 @@ export default {
   350: 'Integrations', // 第三方集成
   351: 'Production Board', // 生产看板
   352: 'Business Dictionaries', // 业务字典
+  353: 'Notices', // 通知公告
   901: 'Purchasing', // 采购
   902: 'Sales', // 销售
   903: 'Business Partners', // 往来单位
@@ -562,6 +563,10 @@ export default {
   3500: 'Edit Integration Settings', // 集成配置修改
   3501: 'Sync & Bind Contacts', // 通讯录同步与绑定
   3520: 'Maintain Business Dictionaries', // 业务字典维护
+  3530: 'Add Notices', // 公告新增
+  3531: 'Edit Notices', // 公告修改
+  3532: 'Delete Notices', // 公告删除
+  3533: 'Publish & Withdraw Notices', // 公告发布与撤回
   360: 'AI Q&A', // AI 问数
   361: 'AI Settings', // AI 设置
   3610: 'Edit AI Settings', // AI 设置修改

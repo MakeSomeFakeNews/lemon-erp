@@ -117,6 +117,14 @@ public class SysDeptService extends ServiceImpl<SysDeptMapper, SysDept> {
                 list(Wrappers.<SysDept>lambdaQuery().select(SysDept::getId, SysDept::getParentId)), deptId);
     }
 
+    /** 多个部门自身及全部下级部门的 ID（只查询一次部门表） */
+    public Set<Long> selfAndDescendantIds(Collection<Long> deptIds) {
+        List<SysDept> all = list(Wrappers.<SysDept>lambdaQuery().select(SysDept::getId, SysDept::getParentId));
+        Set<Long> ids = new java.util.LinkedHashSet<>();
+        deptIds.forEach(id -> ids.addAll(TreeUtils.selfAndDescendantIds(all, id)));
+        return ids;
+    }
+
     /** 用户被删除时，清除其担任的部门负责人 */
     public void clearLeader(Collection<Long> userIds) {
         update(Wrappers.<SysDept>lambdaUpdate()

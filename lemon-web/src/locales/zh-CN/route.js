@@ -5,6 +5,7 @@ export default {
   dashboard: '首页',
   profile: '个人中心',
   messages: '我的消息',
+  notices: '全部公告',
   mobile: '移动作业',
   screen: '数据大屏',
   notFound: '页面不存在'

@@ -899,7 +899,7 @@ export default {
     preparedByUnit: '编制单位：{name}',
     unitYuan: '单位：元',
     unbalanced: '报表不平衡：资产总计不等于负债和所有者权益总计，请检查科目设置',
-    cashMismatch: '期末余额与账面不一致（账面现金及银行存款余额 ¥{amount}），可能有未记账的现金凭证',
+    cashMismatch: '期末余额与账面不一致（账面现金及银行存款余额 ¥{amount}）：部分现金凭证无法按对方科目分类（如对方科目与现金在同一方向、红字冲销），这部分现金变动未计入各项目，请检查相关凭证',
     headOfUnitColon: '单位负责人：',
     chiefAccountantColon: '会计主管：',
     preparerColon: '制表：{name}',

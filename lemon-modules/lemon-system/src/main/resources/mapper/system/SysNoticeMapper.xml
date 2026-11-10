@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.system.mapper.SysNoticeMapper">
+
+    <!-- 本人可见：本人是接收人、已发布、未过期（有效期含当天） -->
+    <sql id="mineFrom">
+        FROM sys_notice n
+        JOIN sys_notice_recipient r ON r.notice_id = n.id AND r.user_id = #{userId}
+        LEFT JOIN sys_user u ON u.id = n.publish_by
+        WHERE n.status = 'PUBLISHED' AND (n.expire_date IS NULL OR n.expire_date &gt;= #{today})
+    </sql>
+
+    <sql id="mineColumns">
+        n.id, n.title, n.type, n.scope_type, n.pinned, n.expire_date, n.status, n.publish_time, n.publish_by,
+        COALESCE(NULLIF(u.nickname, ''), u.username) AS publish_by_name, r.read_time
+    </sql>
+
+    <select id="selectMine" resultType="com.lemon.erp.modules.system.entity.SysNotice">
+        SELECT <include refid="mineColumns"/>
+        <include refid="mineFrom"/>
+        <if test="unread">AND r.read_time IS NULL</if>
+        <if test="keyword != null and keyword != ''">AND n.title LIKE CONCAT('%', #{keyword}, '%')</if>
+        <if test="type != null and type != ''">AND n.type = #{type}</if>
+        ORDER BY n.pinned DESC, n.publish_time DESC, n.id DESC
+    </select>
+
+    <select id="countMineUnread" resultType="long">
+        SELECT COUNT(*)
+        <include refid="mineFrom"/>
+        AND r.read_time IS NULL
+    </select>
+
+    <select id="selectMineById" resultType="com.lemon.erp.modules.system.entity.SysNotice">
+        SELECT <include refid="mineColumns"/>, n.content
+        <include refid="mineFrom"/>
+        AND n.id = #{id}
+    </select>
+
+</mapper>

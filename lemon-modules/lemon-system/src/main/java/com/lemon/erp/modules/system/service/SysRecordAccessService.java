@@ -8,6 +8,7 @@ import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.datascope.DataScopes;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -59,7 +60,8 @@ public class SysRecordAccessService {
             throw new BizException("system.error.unsupportedBusinessType");
         }
         String perm = write ? type.editPerm() : type.viewPerm();
-        if (Arrays.stream(perm.split(",")).map(String::trim).noneMatch(permissionService::hasPerm)) {
+        // 权限为空表示登录即可，由 loader 按业务规则判断能否访问（如通知公告只能看发给自己的）
+        if (StringUtils.hasText(perm) && Arrays.stream(perm.split(",")).map(String::trim).noneMatch(permissionService::hasPerm)) {
             if (write) {
                 throw new BizException("system.error.noPermissionModify", Messages.get(type.name()), Messages.get(what));
             }
