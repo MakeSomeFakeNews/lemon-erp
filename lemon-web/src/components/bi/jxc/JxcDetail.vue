@@ -13,7 +13,7 @@
       :data-source="rows"
       :loading="loading"
       :pagination="pagination"
-      :scroll="{ x: sales ? 1560 : 1300 }"
+      :scroll="{ x: sales ? 2060 : 1300 }"
       @change="onChange"
     >
       <template #bodyCell="{ column, record }">
@@ -31,7 +31,7 @@
           <span :class="{ neg: Number(record.qty) < 0 }">{{ qty(record.qty) }}</span> {{ record.unit }}
         </template>
         <template v-else-if="column.key === 'price'">{{ price(record.price) }}</template>
-        <template v-else-if="['amount', 'taxedAmount', 'profit'].includes(column.key)">
+        <template v-else-if="['amount', 'taxedAmount', 'profit', 'badDebt', 'freight', 'profitAfterBadDebt', 'profitAfterFreight'].includes(column.key)">
           <span :class="{ neg: Number(record[column.key]) < 0 }">{{ money(record[column.key]) }}</span>
         </template>
         <template v-else-if="column.key === 'cost'">
@@ -97,7 +97,11 @@ const columns = computed(() => [
   ...(sales.value
     ? [
         { title: t('jxc.field.cost'), key: 'cost', width: 160, align: 'right' },
-        { title: t('jxc.field.profit'), key: 'profit', width: 110, align: 'right' }
+        { title: t('jxc.field.profit'), key: 'profit', width: 110, align: 'right' },
+        { title: t('jxc.field.badDebt'), key: 'badDebt', width: 110, align: 'right' },
+        { title: t('jxc.field.profitAfterBadDebt'), key: 'profitAfterBadDebt', width: 130, align: 'right' },
+        { title: t('jxc.field.freight'), key: 'freight', width: 110, align: 'right' },
+        { title: t('jxc.field.profitAfterFreight'), key: 'profitAfterFreight', width: 150, align: 'right' }
       ]
     : []),
   { title: t('jxc.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true }
@@ -164,7 +168,8 @@ async function exportRows() {
       ...(sales.value ? [t('jxc.field.salesman')] : []),
       t('common.field.code'), t('jxc.field.material'), t('jxc.field.spec'), t('jxc.field.category'), t('jxc.field.brand'),
       t('jxc.field.warehouse'), t('jxc.field.qty'), t('jxc.field.unit'), t('jxc.field.price'), t('jxc.field.amount'), t('jxc.field.taxedAmount'),
-      ...(sales.value ? [t('jxc.field.cost'), t('jxc.field.profit')] : []),
+      ...(sales.value ? [t('jxc.field.cost'), t('jxc.field.profit'), t('jxc.field.badDebt'), t('jxc.field.profitAfterBadDebt'),
+        t('jxc.field.freight'), t('jxc.field.profitAfterFreight')] : []),
       t('jxc.field.remark')
     ].map((title) => ({ title }))
     const data = res.rows.map((r) => [
@@ -172,7 +177,8 @@ async function exportRows() {
       ...(sales.value ? [r.salesmanName] : []),
       r.materialCode, r.materialName, r.spec, dictLabel(dict.wms_material_category, r.category), dictLabel(dict.wms_material_brand, r.brand),
       r.warehouseName, Number(r.qty), r.unit, Number(r.price), Number(r.amount), Number(r.taxedAmount),
-      ...(sales.value ? [Number(r.cost), Number(r.profit)] : []),
+      ...(sales.value ? [Number(r.cost), Number(r.profit), Number(r.badDebt), Number(r.profitAfterBadDebt), Number(r.freight),
+        Number(r.profitAfterFreight)] : []),
       r.remark
     ])
     const name = t(sales.value ? 'jxc.detail.salesName' : 'jxc.detail.purchaseName') + (label.value ? `_${label.value}` : '')

@@ -45,6 +45,12 @@
                 <span>
                   {{ column.supplier.supplierName }}
                   <DictTag v-if="column.supplier.supplierLevel" type="scm_supplier_level" :value="column.supplier.supplierLevel" />
+                  <div class="sub-text">
+                    {{ $t('scm.inquiry.quoteTotal', { amount: formatMoney(supplierTotal(column.supplier.supplierId)) }) }}
+                    <template v-if="offerOf(column.supplier.supplierId)">
+                      · {{ $t('scm.wholeDiscount.value', { amount: '¥' + formatMoney(offerOf(column.supplier.supplierId)) }) }}
+                    </template>
+                  </div>
                 </span>
                 <span v-if="quoting && can('edit')" class="head-actions">
                   <a-tooltip :title="$t('scm.inquiry.editQuote')">
@@ -142,6 +148,9 @@
           </template>
         </template>
       </a-table>
+      <!-- 整单优惠承诺：按本次报价各行 数量 × 单价 的合计；定标生成采购订单时按中标金额比例带到订单上 -->
+      <WholeDiscountBar v-model:value="quoteForm.wholeDiscount" :total="quoteTotal" />
+      <div class="sub-text quote-discount-tip">{{ $t('scm.inquiry.wholeDiscountTip') }}</div>
     </a-modal>
 
     <a-modal v-model:open="finishOpen" :title="$t('scm.inquiry.finish')" :confirm-loading="saving" @ok="submitFinish">
@@ -173,6 +182,8 @@ import { CheckCircleFilled, DeleteOutlined, EditOutlined, FormOutlined, StopOutl
 import DictTag from '@/components/DictTag.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import PartnerSelect from './PartnerSelect.vue'
+import WholeDiscountBar from './WholeDiscountBar.vue'
+import { formatMoney, lineAmount } from './scm'
 import { closeInquiry, deleteInquiryQuote, finishInquiry, getInquiry, saveInquiryQuote } from '@/api/scm/sourcing'
 import { useUserStore } from '@/store/user'
 import { formatQty, today } from '@/components/wms/wms'
@@ -216,6 +227,11 @@ const quoteMap = computed(() => {
   return map
 })
 const quoteOf = (itemId, supplierId) => quoteMap.value.get(itemId)?.get(supplierId)
+
+/** 供应商的报价合计（数量 × 单价）与整单优惠承诺 */
+const supplierTotal = (supplierId) =>
+  Math.round((detail.value?.items || []).reduce((sum, i) => sum + lineAmount(i.qty, quoteOf(i.id, supplierId)?.price), 0) * 100) / 100
+const offerOf = (supplierId) => Number((detail.value?.offers || []).find((o) => o.supplierId === supplierId)?.wholeDiscount) || 0
 
 /** itemId → 最低价报价 */
 const lowestMap = computed(() => {
@@ -293,9 +309,11 @@ function toOrder(id) {
 // 录入报价
 const quoteOpen = ref(false)
 const saving = ref(false)
-const quoteForm = reactive({ supplierId: undefined, supplierName: undefined, locked: false, lines: [] })
+const quoteForm = reactive({ supplierId: undefined, supplierName: undefined, locked: false, wholeDiscount: undefined, lines: [] })
+const quoteTotal = computed(() => Math.round(quoteForm.lines.reduce((sum, l) => sum + lineAmount(l.qty, l.price), 0) * 100) / 100)
 
 function fillLines(supplierId) {
+  quoteForm.wholeDiscount = (supplierId && offerOf(supplierId)) || undefined
   quoteForm.lines = detail.value.items.map((item) => {
     const q = supplierId ? quoteOf(item.id, supplierId) : undefined
     return {
@@ -333,7 +351,7 @@ async function submitQuote() {
   if (!lines.length) return message.warning(t('scm.inquiry.atLeastOneQuote'))
   saving.value = true
   try {
-    await saveInquiryQuote(props.inquiryId, { supplierId: quoteForm.supplierId, lines })
+    await saveInquiryQuote(props.inquiryId, { supplierId: quoteForm.supplierId, lines, wholeDiscount: quoteForm.wholeDiscount || null })
     quoteOpen.value = false
     await afterChange(t('scm.inquiry.quoteSaved'))
   } finally {
@@ -404,6 +422,10 @@ defineExpose({ reload: load })
 <style scoped>
 .doc-desc {
   margin-bottom: 16px;
+}
+.quote-discount-tip {
+  margin-top: 4px;
+  text-align: right;
 }
 .section-head {
   display: flex;

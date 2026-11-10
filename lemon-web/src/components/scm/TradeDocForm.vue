@@ -66,6 +66,27 @@
       </a-form-item>
 
       <TradeDocItems :kind="kind" :form="form" :direct="direct" :line-warehouse="lineWarehouse" />
+
+      <!-- 采购入库的运费：按各行不含税金额分摊计入存货成本，生成运费应付单 -->
+      <a-row v-if="kind === 'purchaseIn'" :gutter="16" class="freight-row">
+        <a-col :xs="24" :sm="8" :lg="5">
+          <a-form-item :label="$t('scm.freight.label')" name="freight" :extra="$t('scm.freight.purchaseHint')">
+            <a-input-number v-model:value="form.freight" :min="0" :precision="2" prefix="¥" class="full" :placeholder="$t('scm.trade.optional')" />
+          </a-form-item>
+        </a-col>
+        <template v-if="Number(form.freight) > 0">
+          <a-col :xs="24" :sm="8" :lg="5">
+            <a-form-item :label="$t('scm.freight.payTo')" name="freightBearer">
+              <a-select v-model:value="form.freightBearer" :options="purchaseBearers" />
+            </a-form-item>
+          </a-col>
+          <a-col v-if="form.freightBearer === FreightBearer.COMPANY" :xs="24" :sm="8" :lg="6">
+            <a-form-item :label="$t('scm.freight.carrier')" name="carrierSupplierId" :rules="requiredRule($t('scm.freight.selectCarrier'))">
+              <PartnerSelect v-model:value="form.carrierSupplierId" type="supplier" :placeholder="$t('scm.freight.selectCarrier')" />
+            </a-form-item>
+          </a-col>
+        </template>
+      </a-row>
       <div class="tip sub-text">{{ tip }}</div>
     </a-form>
   </FormDrawer>
@@ -85,8 +106,10 @@ import { addTrade, getTrade, pageTrade } from '@/api/scm/trade'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useBizRules } from '@/composables/useBizRules'
 import { rowKey, today } from '@/components/wms/wms'
-import { ORDER_KINDS, TRADE_KINDS, formatMoney, netQty, newTradeRow, remainingQty } from './scm'
-import { OrderSource, OrderStatus } from '@/constants/enums'
+import { ORDER_KINDS, TRADE_KINDS, formatMoney, grossPrice, netQty, newTradeRow, remainingQty } from './scm'
+import { FreightBearer, OrderSource, OrderStatus } from '@/constants/enums'
+import { useDict } from '@/composables/useDict'
+import { toOptions } from '@/utils/dict'
 
 /**
  * 采购入库 / 采购退货 / 销售出库 / 销售退货，保存即确认（更新库存）。
@@ -110,6 +133,11 @@ const allowDirect = computed(() => bizRules['scm.directDoc.enabled'] === true)
 const lineWarehouse = computed(() => props.kind === 'salesOut' && bizRules['scm.salesOut.lineWarehouse'] === true)
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
+/** 采购运费付给：供应商代垫（计入该供应商应付）/ 本公司承担（付承运商） */
+const dict = useDict('scm_freight_bearer')
+const purchaseBearers = computed(() =>
+  toOptions(dict.scm_freight_bearer).filter((d) => d.value === FreightBearer.SUPPLIER || d.value === FreightBearer.COMPANY)
+)
 const rules = computed(() => ({
   partnerId: direct.value ? requiredRule(t('scm.trade.selectPartner', { partner: orderConf.value.partnerLabel })) : [],
   warehouseId: requiredRule(t('scm.trade.selectWarehouse')),
@@ -118,7 +146,8 @@ const rules = computed(() => ({
 
 const emptyForm = () => ({
   id: undefined, orderId: undefined, sourceDocId: undefined, partnerId: undefined, partnerLabel: undefined, salesmanId: undefined,
-  warehouseId: undefined, bizDate: today(), remark: '', replenish: false, wholeDiscount: undefined, items: []
+  warehouseId: undefined, bizDate: today(), remark: '', replenish: false, wholeDiscount: undefined,
+  freight: undefined, freightBearer: FreightBearer.SUPPLIER, carrierSupplierId: undefined, items: []
 })
 
 const drawer = useFormDrawer({
@@ -137,6 +166,9 @@ const drawer = useFormDrawer({
       remark: f.remark,
       replenish: isReturn.value && byOrder ? f.replenish : null,
       wholeDiscount: byOrder ? null : f.wholeDiscount || null,
+      ...(props.kind === 'purchaseIn' && Number(f.freight) > 0
+        ? { freight: f.freight, freightBearer: f.freightBearer, carrierSupplierId: f.freightBearer === FreightBearer.COMPANY ? f.carrierSupplierId : null }
+        : {}),
       items: f.items.map((i) => ({
         orderItemId: byOrder ? i.orderItemId : null,
         materialId: byOrder ? null : i.materialId,
@@ -207,14 +239,14 @@ function orderRows(order, doc) {
   const items = new Map(order.items.map((i) => [i.id, i]))
   const base = (i) => ({
     key: rowKey(), orderItemId: i.id, materialId: i.materialId, materialCode: i.materialCode, materialName: i.materialName,
-    spec: i.spec, unit: i.unit, batchEnabled: i.batchEnabled, serialEnabled: i.serialEnabled, price: Number(i.price),
+    spec: i.spec, unit: i.unit, batchEnabled: i.batchEnabled, serialEnabled: i.serialEnabled, price: Number(i.price), grossPrice: grossPrice(i),
     warehouseId: null, locationId: null, batchNo: undefined, slot: undefined, slotLabel: undefined, available: undefined, serialNos: undefined
   })
   if (doc) {
     return doc.items
       .map((d) => ({ d, i: items.get(d.orderItemId) }))
       .filter(({ i }) => i && netQty(i) > 0)
-      .map(({ d, i }) => ({ ...base(i), price: Number(d.price), limit: netQty(i), qty: undefined, batchNo: d.batchNo || undefined }))
+      .map(({ d, i }) => ({ ...base(i), price: Number(d.price), grossPrice: grossPrice(d), limit: netQty(i), qty: undefined, batchNo: d.batchNo || undefined }))
   }
   return order.items
     .map((i) => ({ i, limit: isReturn.value ? netQty(i) : remainingQty(i) }))
@@ -300,6 +332,9 @@ defineExpose({ openCreate })
 }
 .replenish {
   margin-bottom: 8px;
+}
+.freight-row {
+  margin-top: 12px;
 }
 .sub-text {
   color: var(--app-text-3);

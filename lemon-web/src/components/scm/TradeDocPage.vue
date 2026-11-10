@@ -64,7 +64,8 @@
           <template v-else-if="column.key === 'totalQty'">{{ formatQty(record.totalQty) }}</template>
           <template v-else-if="column.key === 'totalAmount'">
             ¥{{ formatMoney(record.totalAmount) }}
-            <div v-if="Number(record.wholeDiscount)" class="sub-text">{{ $t('scm.wholeDiscount.value', { amount: '¥' + formatMoney(record.wholeDiscount) }) }}</div>
+            <div v-if="Number(record.discountAmount)" class="sub-text">{{ $t('scm.wholeDiscount.value', { amount: '¥' + formatMoney(record.discountAmount) }) }}</div>
+            <div v-if="Number(record.freight)" class="sub-text">{{ $t('scm.freight.value', { amount: '¥' + formatMoney(record.freight) }) }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
@@ -138,7 +139,8 @@ const columns = [
     align: 'right',
     exportColumns: [
       { title: t('scm.trade.totalAmount'), dataIndex: 'totalAmount' },
-      { title: t('scm.wholeDiscount.label'), exportValue: (r) => (Number(r.wholeDiscount) ? Number(r.wholeDiscount) : '') }
+      { title: t('scm.wholeDiscount.label'), exportValue: (r) => (Number(r.discountAmount) ? Number(r.discountAmount) : '') },
+      ...(props.kind === 'purchaseIn' ? [{ title: t('scm.freight.label'), exportValue: (r) => (Number(r.freight) ? Number(r.freight) : '') }] : [])
     ]
   },
   { title: t('scm.trade.wmsDocNo'), dataIndex: 'wmsDocNo', width: 170, defaultHidden: true },

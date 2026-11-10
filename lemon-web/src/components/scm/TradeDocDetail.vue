@@ -24,12 +24,24 @@
           <a-descriptions-item v-if="conf.returns" :label="$t('scm.trade.returnMode')">
             {{ detail.replenish === 1 ? (conf.orderKind === 'sales' ? $t('scm.trade.returnReship') : $t('scm.trade.returnRereceive')) : $t('scm.trade.returnRefund') }}
           </a-descriptions-item>
-          <a-descriptions-item :label="$t('scm.trade.totalAmount')">
+          <a-descriptions-item v-if="discount" :label="$t('print.name.grossTotal')">¥{{ formatMoney(grossTotal) }}</a-descriptions-item>
+          <a-descriptions-item v-if="discount" :label="conf.returns ? $t('scm.wholeDiscount.returnShare') : $t('scm.wholeDiscount.label')">
+            <a-tooltip :title="conf.returns ? $t('scm.wholeDiscount.returnShareHint') : $t('scm.wholeDiscount.hint')">
+              <span class="dashed">−¥{{ formatMoney(discount) }}</span>
+            </a-tooltip>
+          </a-descriptions-item>
+          <a-descriptions-item :label="discount ? (conf.returns ? $t('scm.wholeDiscount.refundAfter') : $t('scm.wholeDiscount.after')) : $t('scm.trade.totalAmount')">
             <b>¥{{ formatMoney(detail.totalAmount) }}</b>
             <span class="sub-text">{{ $t('scm.trade.taxPart', { amount: formatMoney(detail.taxAmount) }) }}</span>
             <div v-if="isForeign(detail.currency)" class="sub-text">{{ $t('scm.trade.originalCurrency') }} {{ fcText(detail.currency, detail.amountFc, detail.exchangeRate) }}</div>
           </a-descriptions-item>
-          <a-descriptions-item v-if="Number(detail.wholeDiscount)" :label="$t('scm.wholeDiscount.label')">¥{{ formatMoney(detail.wholeDiscount) }}</a-descriptions-item>
+          <a-descriptions-item v-if="Number(detail.freight)" :label="$t('scm.freight.label')">
+            <div>
+              <span class="nowrap">¥{{ formatMoney(detail.freight) }}</span>
+              <DictTag type="scm_freight_bearer" :value="detail.freightBearer" class="freight-tag" />
+              <div class="sub-text">{{ [detail.carrierSupplierName, $t('scm.freight.purchaseHint')].filter(Boolean).join(' · ') }}</div>
+            </div>
+          </a-descriptions-item>
           <a-descriptions-item :label="$t('scm.trade.prepared')">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
@@ -46,9 +58,9 @@
               <div v-if="record.expiryDate" class="sub-text">{{ record.productionDate || '?' }} ~ {{ record.expiryDate }}</div>
             </template>
             <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }} {{ record.unit }}</template>
-            <template v-else-if="column.key === 'price'">¥{{ formatMoney(record.price) }}</template>
+            <template v-else-if="column.key === 'price'">¥{{ formatMoney(grossPrice(record)) }}</template>
             <template v-else-if="column.key === 'amount'">
-              <div>¥{{ formatMoney(record.amount) }}</div>
+              <div>¥{{ formatMoney(grossAmount(record)) }}</div>
               <div class="sub-text">{{ $t('scm.trade.taxRateN', { rate: Number(record.taxRate) }) }}</div>
             </template>
             <template v-else-if="column.key === 'serialNos'">
@@ -68,7 +80,8 @@ import { PrinterOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import { getTrade } from '@/api/scm/trade'
 import { formatQty, locationText } from '@/components/wms/wms'
-import { ORDER_KINDS, TRADE_KINDS, formatMoney } from './scm'
+import { ORDER_KINDS, TRADE_KINDS, formatMoney, grossAmount, grossPrice } from './scm'
+import DictTag from '@/components/DictTag.vue'
 import { fcText, isForeign } from '@/components/fin/currency'
 import { materialColumns, printDocs } from '@/utils/print'
 import { useI18n } from 'vue-i18n'
@@ -97,6 +110,9 @@ const columns = computed(() => [
 ])
 
 const detail = ref()
+/** 本单分摊的整单优惠（退货为对应的原单优惠分摊）；明细显示优惠前的单价、金额，合计处扣减 */
+const discount = computed(() => Number(detail.value?.discountAmount) || 0)
+const grossTotal = computed(() => Math.round((Number(detail.value?.totalAmount || 0) + discount.value) * 100) / 100)
 
 function print() {
   const d = detail.value
@@ -111,8 +127,10 @@ function print() {
       [t('scm.trade.warehouse'), d.warehouseName],
       [t('scm.trade.bizDate'), d.bizDate],
       [t('scm.trade.wmsDocNo'), d.wmsDocNo],
-      [t('scm.trade.totalAmount'), `¥${formatMoney(d.totalAmount)}`],
-      ...(Number(d.wholeDiscount) ? [[t('scm.wholeDiscount.label'), `¥${formatMoney(d.wholeDiscount)}`]] : []),
+      ...(discount.value ? [[t('print.name.grossTotal'), `¥${formatMoney(grossTotal.value)}`],
+        [c.returns ? t('print.name.discountShare') : t('scm.wholeDiscount.label'), `¥${formatMoney(discount.value)}`]] : []),
+      [discount.value ? t('print.name.discountedTotal') : t('scm.trade.totalAmount'), `¥${formatMoney(d.totalAmount)}`],
+      ...(Number(d.freight) ? [[t('print.name.freight'), `¥${formatMoney(d.freight)}`]] : []),
       ...(isForeign(d.currency) ? [[t('scm.trade.originalCurrency'), fcText(d.currency, d.amountFc, d.exchangeRate)]] : [])
     ],
     columns: [
@@ -121,12 +139,12 @@ function print() {
       { title: t('scm.trade.location'), value: (r) => locationText(r.locationCode) },
       { title: t('scm.trade.batch'), key: 'batchNo' },
       { title: t('common.field.quantity'), value: (r) => formatQty(r.qty), align: 'right' },
-      { title: t('scm.trade.taxPrice'), value: (r) => formatMoney(r.price), align: 'right' },
-      { title: t('scm.trade.totalAmount'), key: 'amount', value: (r) => formatMoney(r.amount), align: 'right' },
+      { title: t('scm.trade.taxPrice'), value: (r) => formatMoney(grossPrice(r)), align: 'right' },
+      { title: t('scm.trade.totalAmount'), key: 'amount', value: (r) => formatMoney(grossAmount(r)), align: 'right' },
       { title: t('scm.trade.serialNo'), key: 'serialNos' }
     ],
     rows: d.items,
-    totals: { amount: formatMoney(d.totalAmount) },
+    totals: { amount: formatMoney(grossTotal.value) },
     note: d.remark,
     signs: [[t('scm.trade.prepared'), d.createByName], t('scm.trade.storekeeper'), t('scm.trade.partnerSign', { partner: partnerLabel })]
   }, `${c.label} ${d.docNo}`, `scm.${props.kind}`)
@@ -161,5 +179,15 @@ watch(
 }
 .direct-tag {
   margin-left: 6px;
+}
+.freight-tag {
+  margin-left: 6px;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.dashed {
+  border-bottom: 1px dashed var(--app-text-3);
+  cursor: help;
 }
 </style>

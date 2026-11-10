@@ -13,8 +13,22 @@ export default {
     roundJiao: '抹去角分',
     roundYuan: '抹去个位',
     clear: '清除优惠',
-    hint: '含税金额，保存时按各行金额比例分摊到明细（在促销、返利之后），应收 / 应付按优惠后的金额',
-    value: '整单优惠 {amount}'
+    hint: '含税金额，只在合计处扣减，明细的单价不变（不影响价格记忆、价格参考）；应收 / 应付按优惠后的金额。部分出入库、退货时按各行金额比例计算对应的优惠',
+    value: '整单优惠 {amount}',
+    grossOnly: '优惠前 {amount}',
+    returnShare: '原单优惠分摊',
+    returnShareHint: '原单的整单优惠按各行金额比例分摊，退货按扣除优惠后的成交价退款：退款金额 = 优惠前金额 − 原单优惠分摊',
+    orderShare: '订单优惠分摊',
+    orderShareHint: '订单的整单优惠按各行金额比例分摊，本次按扣除优惠后的成交价计算，金额以保存后的单据为准',
+    refundAfter: '退款金额'
+  },
+  freight: {
+    label: '运费',
+    value: '运费 {amount}',
+    payTo: '运费付给',
+    carrier: '承运商',
+    selectCarrier: '请选择承运商（供应商）',
+    purchaseHint: '按各行不含税金额分摊计入存货成本，生成运费应付单'
   },
   partnerSelect: {
     searchSupplier: '搜索供应商编码或名称',
@@ -726,7 +740,12 @@ export default {
     address: '收货地址',
     freight: '运费',
     carrierSupplier: '运费结算供应商',
-    carrierSupplierExtra: '发货时按运费生成该供应商的应付单（计入销售费用）',
+    freightBearer: '运费承担',
+    customerBears: '客户承担',
+    customerHint: '客户承担（代垫）：发货时生成客户的代垫运费应收，不计入销售收入，不影响毛利',
+    companyHint: '本公司承担：运费计入销售费用，应付给承运商',
+    customerBilled: '已生成代垫运费应收',
+    carrierSupplierExtra: '发货时按运费生成该供应商的应付单（本公司承担计入销售费用，客户承担计入代垫运费）',
     noPayable: '不生成应付',
     outDoc: '出库单',
     orderNo: '订单号',
@@ -754,6 +773,8 @@ export default {
     signPh: '选填，默认「客户已签收」'
   },
   inquiry: {
+    quoteTotal: '报价合计 ¥{amount}',
+    wholeDiscountTip: '整单优惠承诺按本次报价的合计计算；定标时全部中标带全额到采购订单，部分中标按中标金额比例折算',
     createTitle: '新增询价单',
     editTitle: '编辑询价单',
     inquiryDate: '询价日期',

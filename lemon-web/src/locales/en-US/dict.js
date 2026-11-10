@@ -366,6 +366,13 @@ export default {
     'REBATE': 'Rebate', // 返利
     'OFFSET': 'Offset', // 冲账单
     'ORDER_ADJUST': 'Order Rounding Adjustment', // 订单尾差调整
+    'PURCHASE_FREIGHT': 'Purchase Freight', // 采购运费
+  },
+  // 运费承担
+  scm_freight_bearer: {
+    'COMPANY': 'Company Pays', // 本公司承担
+    'CUSTOMER': 'Customer Pays (Advanced)', // 客户承担（代垫）
+    'SUPPLIER': 'Advanced by Supplier', // 供应商代垫
   },
   // 冲账项目
   fin_offset_item: {
