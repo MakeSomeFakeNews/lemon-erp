@@ -92,16 +92,18 @@ const accountColumns = computed(() => [
   { title: t('fin.reportDrill.account'), key: 'account' },
   ...props.columns.map((c, i) => ({ title: c, key: `v${i}`, index: i, width: 150, align: 'right' }))
 ])
+// 列宽合计不超过抽屉内容区（860 - 左右内边距 48），摘要列自适应剩余宽度，余额列不需要横向滚动
 const ledgerColumns = [
-  { title: t('common.field.date'), dataIndex: 'entryDate', width: 110 },
-  { title: t('fin.reportDrill.voucherNo'), key: 'voucherNo', width: 140 },
-  { title: t('fin.reportDrill.summary'), dataIndex: 'summary', width: 220, ellipsis: true },
+  { title: t('common.field.date'), dataIndex: 'entryDate', width: 100 },
+  { title: t('fin.reportDrill.voucherNo'), key: 'voucherNo', width: 100 },
+  { title: t('fin.reportDrill.summary'), dataIndex: 'summary', ellipsis: true },
   { title: t('fin.reportDrill.debit'), key: 'debit', width: 120, align: 'right' },
   { title: t('fin.reportDrill.credit'), key: 'credit', width: 120, align: 'right' },
-  { title: t('fin.reportDrill.side'), dataIndex: 'side', width: 80, align: 'center' },
+  { title: t('fin.reportDrill.side'), dataIndex: 'side', width: 56, align: 'center' },
   { title: t('fin.reportDrill.balance'), key: 'balance', width: 130, align: 'right' }
 ]
-const ledgerScrollX = ledgerColumns.reduce((sum, c) => sum + c.width, 0)
+/** 摘要列最少 160px，抽屉变窄（手机）时横向滚动 */
+const ledgerScrollX = ledgerColumns.reduce((sum, c) => sum + (c.width || 160), 0)
 
 const ledgerAccount = ref()
 const ledgerRows = ref([])
