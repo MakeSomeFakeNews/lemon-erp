@@ -19,7 +19,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1120, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -131,7 +131,7 @@ const columns = [
   { title: t('qms.claim.statusOffset'), key: 'status', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'qms-claim')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'qms-claim')
 const query = reactive({ status: undefined, supplierId: undefined, keyword: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageClaim, query)
 

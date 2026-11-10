@@ -62,7 +62,7 @@
         :loading="loading"
         :pagination="pagination"
         :row-selection="rowSelection"
-        :scroll="{ x: 1010, y: '100%' }"
+        :scroll="{ x: scrollX + 32, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -188,7 +188,7 @@ const columns = [
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 180 },
   { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns)
+const { checked, visibleColumns, scrollX } = useColumns(columns)
 const showSearch = ref(true)
 
 const query = reactive({ name: undefined, type: undefined, kind: undefined, status: undefined })

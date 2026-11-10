@@ -30,7 +30,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1250, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -96,7 +96,7 @@ const columns = [
   { title: t('crm.followup.followBy'), dataIndex: 'createByName', width: 100 },
   { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'crm-followup')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-followup')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ targetType: undefined, method: undefined, dateRange: undefined, mine: false })

@@ -16,7 +16,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 900, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -152,7 +152,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 110 },
   { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'dealer-order')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'dealer-order')
 const { list, loading, size, pagination, load, onTableChange } = useTable(pageDealerOrder, reactive({}))
 onMounted(load)
 

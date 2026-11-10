@@ -17,7 +17,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 980, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -232,7 +232,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 200 },
   { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'fin-std-cost')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-std-cost')
 const { list, loading, size, pagination, load, onTableChange } = useTable(pageStdCost, reactive({}))
 onMounted(load)
 

@@ -20,7 +20,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1200, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -307,17 +307,17 @@ const statusOptions = computed(() =>
 const dueSoon = ref(false)
 
 const columns = [
-  { title: t('fin.note.noteNo'), key: 'noteNo', width: 200 },
-  { title: t('common.field.type'), key: 'noteType', width: 150 },
-  { title: t('fin.note.partner'), dataIndex: 'partnerName', width: 200, ellipsis: true },
-  { title: t('fin.note.faceAmount'), key: 'amount', width: 140, align: 'right' },
-  { title: t('fin.note.issueDate'), dataIndex: 'issueDate', width: 110 },
-  { title: t('fin.note.dueDate'), key: 'dueDate', width: 130 },
-  { title: t('fin.note.acceptor'), dataIndex: 'acceptor', width: 160, ellipsis: true },
-  { title: t('common.field.status'), key: 'status', width: 120 },
-  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
+  { title: t('fin.note.noteNo'), key: 'noteNo', width: 180 },
+  { title: t('common.field.type'), key: 'noteType', width: 110 },
+  { title: t('fin.note.partner'), dataIndex: 'partnerName', width: 150, ellipsis: true },
+  { title: t('fin.note.faceAmount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('fin.note.issueDate'), dataIndex: 'issueDate', width: 100 },
+  { title: t('fin.note.dueDate'), key: 'dueDate', width: 120 },
+  { title: t('fin.note.acceptor'), dataIndex: 'acceptor', width: 120, ellipsis: true },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'fin-note')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-note')
 const query = reactive({ kind: NoteKind.RECEIVABLE, status: undefined, keyword: undefined, dueWithin: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageNote, query)
 watch(kind, (k) => {

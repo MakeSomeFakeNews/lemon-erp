@@ -177,6 +177,12 @@ body {
 .table-card .ant-table-wrapper .ant-pagination {
   flex: none;
 }
+/* 没有设置 scroll.y 的表格（上方还有检查结果等内容时）：放不下时在表格内滚动，分页器不压住表头和最后几行 */
+.table-card .ant-table-wrapper .ant-table-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto !important;
+}
 /* 表格卡片中使用标签页时，剩余高度沿标签页传递给当前页签中的表格 */
 .table-card > .ant-card-body > .ant-tabs,
 .table-card > .ant-card-body > .ant-tabs > .ant-tabs-content-holder,
@@ -190,6 +196,10 @@ body {
 /* 一个页签中有多块内容（如两张表）放不下时，在页签内滚动 */
 .table-card > .ant-card-body > .ant-tabs > .ant-tabs-content-holder > .ant-tabs-content > .ant-tabs-tabpane-active {
   overflow-y: auto;
+}
+/* 有多张表时各表按内容高度显示（不再平分剩余高度被压扁、分页器压住最后一行），整个页签滚动 */
+.table-card > .ant-card-body > .ant-tabs .ant-tabs-tabpane-active:has(.ant-table-wrapper ~ .ant-table-wrapper) .ant-table-wrapper {
+  flex: none;
 }
 
 /* 窄屏高度有限，恢复整页自然滚动 */
@@ -393,4 +403,18 @@ body {
 /* 可编辑明细表中的下拉框占满单元格（:where 不增加优先级，组件中显式设置的宽度仍然生效） */
 :where(.ant-table-cell) .ant-select {
   width: 100%;
+}
+
+/* 横向滚动的表格：右侧固定列（操作列）左边缘的阴影加深，表明其下还有被遮住、可横向滚动查看的列（Ant Design 默认阴影很淡） */
+.ant-table-wrapper .ant-table.ant-table-ping-right .ant-table-cell-fix-right-first::after {
+  box-shadow: inset -10px 0 8px -8px rgba(0, 0, 0, 0.18);
+}
+.ant-table-wrapper .ant-table.ant-table-ping-left .ant-table-cell-fix-left-last::after {
+  box-shadow: inset 10px 0 8px -8px rgba(0, 0, 0, 0.18);
+}
+html[data-theme='dark'] .ant-table-wrapper .ant-table.ant-table-ping-right .ant-table-cell-fix-right-first::after {
+  box-shadow: inset -10px 0 8px -8px rgba(0, 0, 0, 0.6);
+}
+html[data-theme='dark'] .ant-table-wrapper .ant-table.ant-table-ping-left .ant-table-cell-fix-left-last::after {
+  box-shadow: inset 10px 0 8px -8px rgba(0, 0, 0, 0.6);
 }

@@ -27,7 +27,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1150, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -123,7 +123,7 @@ const columns = [
   { title: t('workflow.list.endTime'), dataIndex: 'endTime', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: props.manage ? 170 : 100, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, props.storageKey)
+const { checked, visibleColumns, scrollX } = useColumns(columns, props.storageKey)
 const showSearch = ref(true)
 
 const query = reactive({ name: undefined, status: undefined })

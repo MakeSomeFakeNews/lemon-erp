@@ -38,7 +38,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1400, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -273,7 +273,7 @@ const columns = [
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 220, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'scm-shipment')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-shipment')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ keyword: undefined, customerId: undefined, status: undefined, carrier: undefined })

@@ -20,7 +20,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1150, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -239,7 +239,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 180 },
   { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'mes-mold')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-mold')
 const query = reactive({ keyword: undefined, moldType: undefined, status: undefined, warn: false })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageMold, query, {
   params: (q) => ({ ...q, warn: q.warn || undefined })

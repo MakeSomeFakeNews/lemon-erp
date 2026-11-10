@@ -18,7 +18,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1100, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -110,7 +110,7 @@ const columns = [
   { title: t('fin.transfer.createBy'), dataIndex: 'createByName', width: 120 },
   { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'fin-transfer')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-transfer')
 const range = ref()
 const query = reactive({ keyword: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(

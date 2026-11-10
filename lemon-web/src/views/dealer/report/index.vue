@@ -16,7 +16,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 800, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -88,7 +88,7 @@ const columns = [
   { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true },
   { title: t('dealer.report.reported'), key: 'time', width: 180 }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'dealer-report')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'dealer-report')
 const { list, loading, size, pagination, load, onTableChange } = useTable(pageDealerReport, reactive({}))
 onMounted(load)
 

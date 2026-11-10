@@ -15,7 +15,7 @@
         :data-source="filtered"
         :loading="loading"
         :pagination="false"
-        :scroll="{ x: 900, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
@@ -131,7 +131,7 @@ const columns = [
   { title: t('system.codeRule.resetCycle'), key: 'resetCycle', width: 110 },
   { title: t('common.action.operation'), key: 'action', width: 220, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'system-code-rule')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'system-code-rule')
 const size = ref('middle')
 const list = ref([])
 const loading = ref(false)

@@ -118,14 +118,14 @@ const auxLabels = (record) => auxItemsOf(record).map((v) => AUX_ITEMS.find((a) =
 const dict = useDict('fin_account_category')
 
 const columns = [
-  { title: t('fin.account.code'), dataIndex: 'code', width: 180 },
-  { title: t('fin.account.name'), key: 'name', width: 240 },
-  { title: t('fin.account.category'), key: 'category', width: 120 },
-  { title: t('fin.account.direction'), key: 'direction', width: 130 },
-  { title: t('fin.account.aux'), key: 'auxItems', width: 200 },
-  { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 200, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
+  { title: t('fin.account.code'), dataIndex: 'code', width: 140 },
+  { title: t('fin.account.name'), key: 'name', width: 220 },
+  { title: t('fin.account.category'), key: 'category', width: 90 },
+  { title: t('fin.account.direction'), key: 'direction', width: 90 },
+  { title: t('fin.account.aux'), key: 'auxItems', width: 180 },
+  { title: t('common.field.status'), key: 'status', width: 80 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 120, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 200, fixed: 'right' }
 ]
 const scrollX = columns.reduce((sum, c) => sum + c.width, 0)
 

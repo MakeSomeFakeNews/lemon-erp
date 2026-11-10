@@ -18,7 +18,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1110, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -223,7 +223,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 100 },
   { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'qms-ncr')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'qms-ncr')
 const query = reactive({ status: undefined, keyword: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageNcr, query)
 onMounted(load)

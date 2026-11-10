@@ -56,7 +56,7 @@
         :loading="loading"
         :pagination="pagination"
         :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== OrderStatus.DRAFT }) }"
-        :scroll="{ x: 1500, y: '100%' }"
+        :scroll="{ x: scrollX + 32, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -214,7 +214,7 @@ const columns = [
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, `scm-${props.kind}`)
+const { checked, visibleColumns, scrollX } = useColumns(columns, `scm-${props.kind}`)
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ orderNo: undefined, partnerId: undefined, status: undefined, keyword: undefined, range: undefined })

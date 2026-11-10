@@ -20,7 +20,7 @@
             :data-source="list"
             :loading="loading"
             :pagination="pagination"
-            :scroll="{ x: 1720 }"
+            :scroll="{ x: scrollX }"
             @change="onTableChange"
           >
             <template #bodyCell="{ column, record }">
@@ -338,22 +338,24 @@ import { currentPeriod, formatMoney } from '@/components/fin/fin'
 import { useAction } from '@/composables/useAction'
 
 import { AssetMoveType, AssetStatus } from '@/constants/enums'
+import { sumWidth } from '@/composables/useColumns'
 const { t } = useI18n()
 const dict = useDict('fin_asset_category', 'fin_asset_status', 'fin_asset_move_type')
 const tab = ref('cards')
 
 const columns = [
-  { title: t('fin.asset.asset'), key: 'name', width: 220 },
-  { title: t('fin.asset.category'), key: 'category', width: 110 },
-  { title: t('fin.asset.colUser'), key: 'user', width: 200 },
-  { title: t('fin.asset.colUseDate'), dataIndex: 'useDate', width: 110 },
-  { title: t('fin.asset.originalValue'), key: 'value', width: 150, align: 'right' },
-  { title: t('fin.asset.colProgress'), key: 'depreciation', width: 240 },
-  { title: t('fin.asset.netValue'), key: 'net', width: 170, align: 'right' },
-  { title: t('fin.asset.colExpenseAccount'), dataIndex: 'expenseAccountName', width: 140 },
-  { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: 280, fixed: 'right' }
+  { title: t('fin.asset.asset'), key: 'name', width: 200 },
+  { title: t('fin.asset.category'), key: 'category', width: 90 },
+  { title: t('fin.asset.colUser'), key: 'user', width: 150 },
+  { title: t('fin.asset.colUseDate'), dataIndex: 'useDate', width: 100 },
+  { title: t('fin.asset.originalValue'), key: 'value', width: 130, align: 'right' },
+  { title: t('fin.asset.colProgress'), key: 'depreciation', width: 200 },
+  { title: t('fin.asset.netValue'), key: 'net', width: 150, align: 'right' },
+  { title: t('fin.asset.colExpenseAccount'), dataIndex: 'expenseAccountName', width: 120 },
+  { title: t('common.field.status'), key: 'status', width: 80 },
+  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
 ]
+const scrollX = sumWidth(columns)
 const query = reactive({ keyword: undefined, category: undefined, status: undefined })
 const { list, loading, pagination, load, search, onTableChange } = useTable(pageAsset, query)
 onMounted(load)

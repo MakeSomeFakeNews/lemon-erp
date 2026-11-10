@@ -35,7 +35,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1450, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -234,7 +234,7 @@ const columns = [
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 160 },
   { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'crm-lead')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-lead')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ keyword: undefined, status: undefined, source: undefined, campaignId: undefined, mine: false })

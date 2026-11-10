@@ -39,7 +39,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1500, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -96,7 +96,7 @@ import AtpModal from '@/components/scm/AtpModal.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import { pageBackorder } from '@/api/scm/planning'
 import { formatQty } from '@/components/wms/wms'
-import { columnKey, useColumns } from '@/composables/useColumns'
+import { columnKey, sumWidth, useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 import { useI18n } from 'vue-i18n'
 
@@ -138,6 +138,7 @@ function buildColumns(kind) {
 const columns = computed(() => buildColumns(query.kind))
 const { checked } = useColumns(buildColumns('SALES'), 'scm-backorder')
 const visibleColumns = computed(() => columns.value.filter((c) => checked.value.includes(columnKey(c))))
+const scrollX = computed(() => sumWidth(visibleColumns.value))
 const showSearch = ref(true)
 
 const { list, loading, size, pagination, load, search, onTableChange, exportAll } = useTable(pageBackorder, query)

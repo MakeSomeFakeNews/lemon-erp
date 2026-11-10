@@ -21,7 +21,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1130, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -274,7 +274,7 @@ const columns = [
   { title: t('mes.inspection.inspectDate'), key: 'inspectDate', width: 120 },
   { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'mes-inspection')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-inspection')
 const statusOptions = [
   { value: InspectionStatus.DRAFT, label: t('mes.inspection.draft') },
   { value: InspectionStatus.CONFIRMED, label: t('mes.inspection.confirmed') }

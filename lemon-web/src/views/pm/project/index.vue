@@ -32,7 +32,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1500, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -198,7 +198,7 @@ const columns = [
   { title: t('pm.common.tasks'), key: 'tasks', width: 90 },
   { title: t('common.action.operation'), key: 'action', width: 280, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'pm-project')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'pm-project')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ keyword: undefined, status: undefined, type: undefined, mine: false })

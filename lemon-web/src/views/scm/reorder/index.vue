@@ -40,7 +40,7 @@
         :loading="loading"
         :pagination="pagination"
         :row-selection="rowSelection"
-        :scroll="{ x: 1700, y: '100%' }"
+        :scroll="{ x: scrollX + 32, y: '100%' }"
         @change="(p) => Object.assign(pagination, { current: p.current, pageSize: p.pageSize })"
       >
         <template #bodyCell="{ column, record }">
@@ -144,7 +144,7 @@ const columns = [
   { title: t('scm.reorder.orderQty'), key: 'orderQty', width: 170, exportValue: (r) => (selectable(r) ? r.orderQty : '') },
   { title: t('scm.reorder.supplier'), key: 'supplier', width: 200, exportValue: (r) => r.supplierName || '' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'scm-reorder')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-reorder')
 const showSearch = ref(true)
 const size = ref('middle')
 

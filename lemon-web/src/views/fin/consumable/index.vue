@@ -20,7 +20,7 @@
             :data-source="list"
             :loading="loading"
             :pagination="pagination"
-            :scroll="{ x: 1100 }"
+            :scroll="{ x: scrollX }"
             @change="onTableChange"
           >
             <template #bodyCell="{ column, record }">
@@ -218,7 +218,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'fin-consumable')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-consumable')
 const query = reactive({ status: undefined, deptId: undefined, keyword: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageConsumable, query)
 onMounted(load)

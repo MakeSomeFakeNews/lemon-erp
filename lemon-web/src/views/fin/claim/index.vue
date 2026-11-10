@@ -40,7 +40,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1400, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -262,7 +262,7 @@ const columns = [
   { title: t('fin.claim.reason'), dataIndex: 'remark', ellipsis: true },
   { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'fin-claim')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-claim')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ keyword: undefined, status: undefined, mine: false })

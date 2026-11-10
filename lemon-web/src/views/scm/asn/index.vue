@@ -13,7 +13,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1100, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -130,7 +130,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 160 },
   { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'scm-asn')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-asn')
 const query = reactive({ status: undefined, keyword: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageAsn, query)
 onMounted(load)

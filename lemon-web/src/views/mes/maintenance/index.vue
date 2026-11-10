@@ -35,7 +35,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1400, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -156,7 +156,7 @@ const columns = [
   { title: t('mes.maintenance.result'), key: 'result', width: 220 },
   { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'mes-maintenance')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-maintenance')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ keyword: undefined, type: undefined, status: undefined, equipmentId: Number(route.query.equipmentId) || undefined })
