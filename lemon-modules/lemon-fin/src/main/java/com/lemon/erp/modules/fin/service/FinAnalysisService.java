@@ -124,8 +124,9 @@ public class FinAnalysisService {
     }
 
     /**
-     * 现金流量表（直接法）：已记账凭证中库存现金、银行存款的发生额，按对方科目分类；一张凭证有多个对方科目时按金额比例分摊，
-     * 只有现金科目之间的划转不计入。期初、期末现金余额同样只按已记账凭证（与资产负债表口径一致），有未记账凭证时也能平衡
+     * 现金流量表（直接法）：已记账凭证中库存现金、银行存款的发生额，按对方科目分类；一张凭证有多个对方科目时按金额比例分摊
+     * （尾差计入最后一个参与分摊的科目），只有现金科目之间的划转不计入。付款核销了固定资产购置应付单的部分、直接付款购入固定资产时的
+     * 进项税额归入购建固定资产支付的现金。期初、期末现金余额同样只按已记账凭证（与资产负债表口径一致），有未记账凭证时也能平衡
      */
     public FinAnalysis.CashFlow cashFlow(int begin, int end) {
         toYearMonth(begin);
@@ -137,6 +138,9 @@ public class FinAnalysisService {
         List<String> cash = accountService.cashCodes();
         String inputVat = accountService.roleCode(AccountRole.INPUT_VAT);
         String outputVat = accountService.roleCode(AccountRole.OUTPUT_VAT);
+        String payable = accountService.roleCode(AccountRole.PAYABLE);
+        Map<Long, FinAnalysis.AssetPayment> assetPayments = new HashMap<>();
+        analysisMapper.selectAssetPayments(begin, end).forEach(a -> assetPayments.put(a.getVoucherId(), a));
         Map<Long, List<FinAnalysis.CashEntry>> byVoucher = new LinkedHashMap<>();
         for (FinAnalysis.CashEntry e : analysisMapper.selectCashVoucherEntries(begin, end, cash)) {
             byVoucher.computeIfAbsent(e.getVoucherId(), k -> new ArrayList<>()).add(e);
@@ -162,24 +166,28 @@ public class FinAnalysisService {
             }
             // 对方科目与现金反方向的金额作为分摊基数（现金流入时取对方贷方，流出时取对方借方）
             boolean inflow = cashNet.signum() > 0;
-            BigDecimal base = BigDecimal.ZERO;
-            for (FinAnalysis.CashEntry e : others) {
-                base = base.add(side(e, inflow));
-            }
-            if (base.signum() == 0) {
-                continue;
-            }
-            BigDecimal allocated = BigDecimal.ZERO;
+            List<BigDecimal> shares = others.stream().map(e -> side(e, inflow)).toList();
+            List<BigDecimal> amounts = allocate(cashNet.abs(), shares);
+            // 购入固定资产直接付款的凭证中，进项税额与资产一并计入购建固定资产支付的现金（与付款核销固定资产应付单的口径一致）
+            boolean assetPurchase = !inflow && others.stream().anyMatch(e -> side(e, false).signum() > 0 && isLongTermAsset(e.getAccountCode()));
+            FinAnalysis.AssetPayment assetPayment = assetPayments.get(others.get(0).getVoucherId());
             for (int i = 0; i < others.size(); i++) {
-                FinAnalysis.CashEntry e = others.get(i);
-                BigDecimal share = side(e, inflow);
-                if (share.signum() == 0) {
+                BigDecimal amount = amounts.get(i);
+                if (amount.signum() == 0) {
                     continue;
                 }
-                BigDecimal amount = i == others.size() - 1 ? cashNet.abs().subtract(allocated)
-                        : cashNet.abs().multiply(share).divide(base, Decimals.MONEY_SCALE, Decimals.ROUNDING);
-                allocated = allocated.add(amount);
-                CashItem item = classify(e.getAccountCode(), inflow, inputVat, outputVat);
+                String code = others.get(i).getAccountCode();
+                CashItem item = classify(code, inflow, inputVat, outputVat);
+                if (assetPurchase && item == CashItem.PURCHASE_OUT && code.startsWith(inputVat)) {
+                    item = CashItem.ASSET_OUT;
+                }
+                if (!inflow && assetPayment != null && code.startsWith(payable) && dec(assetPayment.getTotalAmount()).signum() != 0) {
+                    // 付款核销了固定资产购置应付单：按核销金额比例归入购建固定资产支付的现金，其余仍为购买商品、接受劳务支付的现金
+                    BigDecimal asset = amount.multiply(dec(assetPayment.getAssetAmount()))
+                            .divide(dec(assetPayment.getTotalAmount()), Decimals.MONEY_SCALE, Decimals.ROUNDING);
+                    items.merge(CashItem.ASSET_OUT, asset, BigDecimal::add);
+                    amount = amount.subtract(asset);
+                }
                 items.merge(item, amount, BigDecimal::add);
             }
         }
@@ -212,6 +220,43 @@ public class FinAnalysisService {
         lines.add(line("fin.label.addCashCashEquivalentsBeginningPeriod", opening, 1, false));
         lines.add(line("fin.label.vCashCashEquivalentsEndPeriod", opening.add(netTotal), 0, true));
         return new FinAnalysis.CashFlow(lines, closing, opening.add(netTotal).compareTo(closing) == 0);
+    }
+
+    /**
+     * 按基数比例分摊金额（2 位小数），尾差计入最后一个基数不为 0 的项；基数都为 0 时全部为 0
+     *
+     * @return 与基数一一对应的金额
+     */
+    static List<BigDecimal> allocate(BigDecimal total, List<BigDecimal> bases) {
+        BigDecimal base = Decimals.sum(bases);
+        List<BigDecimal> result = new ArrayList<>(bases.size());
+        int last = -1;
+        for (int i = 0; i < bases.size(); i++) {
+            result.add(BigDecimal.ZERO);
+            if (bases.get(i).signum() != 0) {
+                last = i;
+            }
+        }
+        if (base.signum() == 0) {
+            return result;
+        }
+        BigDecimal allocated = BigDecimal.ZERO;
+        for (int i = 0; i <= last; i++) {
+            BigDecimal share = bases.get(i);
+            if (share.signum() == 0) {
+                continue;
+            }
+            BigDecimal amount = i == last ? total.subtract(allocated)
+                    : total.multiply(share).divide(base, Decimals.MONEY_SCALE, Decimals.ROUNDING);
+            allocated = allocated.add(amount);
+            result.set(i, amount);
+        }
+        return result;
+    }
+
+    /** 固定资产、在建工程、无形资产等长期资产（现金流量表的投资活动） */
+    private static boolean isLongTermAsset(String code) {
+        return code.startsWith("1601") || code.startsWith("1606") || code.startsWith("1604");
     }
 
     /** 现金流量项目 */
@@ -254,7 +299,7 @@ public class FinAnalysisService {
         if (code.startsWith("6603") || code.startsWith("4104")) {
             return inflow ? CashItem.OTHER_OPERATING_IN : CashItem.DIVIDEND_OUT;
         }
-        if (code.startsWith("1601") || code.startsWith("1606") || code.startsWith("1604")) {
+        if (isLongTermAsset(code)) {
             return inflow ? CashItem.ASSET_DISPOSAL_IN : CashItem.ASSET_OUT;
         }
         if (inflow) {

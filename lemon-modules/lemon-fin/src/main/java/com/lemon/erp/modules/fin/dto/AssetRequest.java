@@ -21,6 +21,9 @@ import java.time.LocalDate;
  * @param expenseAccountId   折旧费用科目（末级）
  * @param openingMonths      期初已计提月数（系统上线前已使用的资产），仅新增时有效
  * @param openingAccumulated 期初累计折旧，仅新增时有效
+ * @param supplierId         采购供应商（仅新增非期初资产）：生成应付单
+ * @param payAccountId       付款账户（库存现金 / 银行存款的末级科目，仅新增非期初资产、不填供应商时）：
+ *                           直接生成购置凭证 借 固定资产、进项税额 / 贷 付款账户
  */
 public record AssetRequest(
         @NotBlank(message = "{fin.valid.enterAssetCode}") @Pattern(regexp = "^[A-Za-z0-9_-]{1,32}$", message = "{fin.valid.assetCodeOnlyContainLettersDigits}") String code,
@@ -41,5 +44,6 @@ public record AssetRequest(
         @Min(value = 0, message = "{fin.valid.openingDepreciatedMonthsCannotLess}") Integer openingMonths,
         @DecimalMin(value = "0", message = "{fin.valid.openingAccumulatedDepreciationCannotLess}") @Digits(integer = 16, fraction = 2) BigDecimal openingAccumulated,
         Long supplierId,
-        @DecimalMin(value = "0", message = "{fin.valid.inputVatCannotLess}") @Digits(integer = 16, fraction = 2) BigDecimal taxAmount) {
+        @DecimalMin(value = "0", message = "{fin.valid.inputVatCannotLess}") @Digits(integer = 16, fraction = 2) BigDecimal taxAmount,
+        Long payAccountId) {
 }

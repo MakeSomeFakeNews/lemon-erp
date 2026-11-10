@@ -43,4 +43,11 @@ public interface FinAnalysisMapper {
      * @param cashCodes 货币资金科目编码（含下级），见 FinAccountService.cashCodes
      */
     List<FinAnalysis.CashEntry> selectCashVoucherEntries(@Param("begin") int begin, @Param("end") int end, @Param("cashCodes") List<String> cashCodes);
+
+    /**
+     * 期间内已记账的付款凭证中，核销固定资产购置应付单（来源 ASSET）的部分：现金流量表把这部分付款归入「购建固定资产支付的现金」
+     *
+     * @return 只返回核销了固定资产应付单的付款凭证：[{voucherId, assetAmount（核销固定资产应付单的金额）, totalAmount（核销合计）}]
+     */
+    List<FinAnalysis.AssetPayment> selectAssetPayments(@Param("begin") int begin, @Param("end") int end);
 }

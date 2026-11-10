@@ -49,6 +49,8 @@ import static com.lemon.erp.modules.fin.model.FinConstants.previous;
  * 固定资产：平均年限法，月折旧额 = 原值 × (1 - 残值率) / 使用月数，开始使用的次月开始计提，最后一个月计提剩余部分。
  * 系统上线前已使用的资产，新增时录入期初已计提月数和累计折旧。
  * 按期间计提（每期一次），生成凭证：借 折旧费用科目（按部门）/ 贷 累计折旧；可以撤销最近一期（凭证未审核时）。
+ * 购入：填写供应商的生成应付单；不填供应商、选择付款账户的直接生成购置凭证（借 固定资产、进项税额 / 贷 库存现金或银行存款）；
+ * 都不填（如捐赠、投资投入、自建转入）时不生成，需要手工做凭证。
  * 处置：生成凭证 借 累计折旧、固定资产清理 / 贷 固定资产
  */
 @Service
@@ -98,6 +100,9 @@ public class FinAssetService {
         if (req.supplierId() != null && months > 0) {
             throw new BizException("fin.error.openingAssetCannotHavePurchaseSupplier");
         }
+        if (req.payAccountId() != null && (months > 0 || req.supplierId() != null)) {
+            throw new BizException("fin.error.assetPayAccountOnlyWithoutSupplier");
+        }
         asset.setDepreciatedMonths(months);
         asset.setAccumulated(accumulated);
         asset.setStatus(req.status() != null && STATUSES.contains(req.status()) ? req.status() : AssetStatus.IN_USE);
@@ -114,6 +119,18 @@ public class FinAssetService {
             billMapper.update(Wrappers.<FinBill>lambdaUpdate()
                     .set(FinBill::getExpenseAccountId, accountRules.accountId(AccountRole.FIXED_ASSET))
                     .set(FinBill::getDeptId, asset.getDeptId()).eq(FinBill::getId, bill.getId()));
+        } else if (req.payAccountId() != null) {
+            // 直接付款购入：生成购置凭证（未审核）借 固定资产、进项税额 / 贷 库存现金或银行存款，现金流量表归入投资活动
+            Long payAccount = accountService.requireCashAccount(req.payAccountId()).getId();
+            BigDecimal tax = Decimals.nz(req.taxAmount());
+            String summary = "购入固定资产 " + asset.getCode() + " " + asset.getName(); // i18n-ignore 凭证摘要存库
+            List<VoucherLine> lines = new ArrayList<>();
+            lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.FIXED_ASSET), asset.getDeptId(), req.originalValue()));
+            if (tax.signum() > 0) {
+                lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INPUT_VAT), null, tax));
+            }
+            lines.add(VoucherLine.credit(summary, payAccount, null, req.originalValue().add(tax)));
+            voucherService.createGenerated(req.useDate(), VoucherSource.ASSET, asset.getCode(), lines);
         }
     }
 
