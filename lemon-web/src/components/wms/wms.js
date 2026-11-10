@@ -79,6 +79,9 @@ export const availableQty = (s) => Number(s.qty || 0) - Number(s.frozenQty || 0)
 
 export const formatQty = (n) => qty(n, 4, currentLocale())
 
+/** 单据列表导出的仓库：明细涉及的全部仓库（列表返回的 warehouseNames），没有时取表头仓库，与 WarehouseNames 显示的一致 */
+export const warehouseText = (r) => (r.warehouseNames?.length ? r.warehouseNames : [r.warehouseName]).filter(Boolean).join(t('components.excel.listSep'))
+
 /** 已完成、非业务单据生成、非红字、未冲销的单据可以冲销 */
 export const canReverse = (d) => d.status === WmsDocStatus.DONE && !d.sourceNo && !d.redOf && d.reversed !== 1
 

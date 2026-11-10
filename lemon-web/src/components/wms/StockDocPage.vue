@@ -25,6 +25,7 @@
 
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar
+        :exporter="exportAll"
         v-model:size="size"
         v-model:checked="checked"
         v-model:show-search="showSearch"
@@ -170,7 +171,7 @@ import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
-import { DOC_KINDS, canReverse, formatQty, negativeClass } from './wms'
+import { DOC_KINDS, canReverse, formatQty, negativeClass, warehouseText } from './wms'
 import { useAction } from '@/composables/useAction'
 
 import { WmsDocStatus } from '@/constants/enums'
@@ -186,16 +187,45 @@ const userStore = useUserStore()
 const conf = DOC_KINDS[props.kind]
 const dict = useDict('wms_doc_status', ...(conf.typeDict ? [conf.typeDict, conf.categoryDict] : []))
 
+// 导出（exportColumns / exportValue）：单号下显示的来源单号、调拨的调出 / 调入仓库拆成单独的列，数量为原始数值，见 useTable
 const columns = [
-  { title: t('wms.common.docNo'), key: 'docNo', width: 170 },
-  conf.typeDict ? { title: conf.typeLabel, key: 'bizType', width: 120 } : null,
-  conf.categoryDict ? { title: conf.categoryLabel, key: 'ioCategory', width: 100 } : null,
-  { title: props.kind === 'transfer' ? t('wms.doc.fromTo') : t('wms.common.warehouse'), key: 'warehouse', width: props.kind === 'transfer' ? 240 : 120 },
+  {
+    title: t('wms.common.docNo'),
+    key: 'docNo',
+    width: 170,
+    exportColumns: [
+      {
+        title: t('wms.common.docNo'),
+        exportValue: (r) => [r.docNo, r.redOf && t('wms.common.red'), r.reversed === 1 && t('wms.common.reversed')].filter(Boolean).join(' ')
+      },
+      { title: t('wms.common.sourceNo'), exportValue: (r) => r.sourceNo || (r.redOf ? t('wms.doc.reverseOfN', { no: r.redOfNo || r.redOf }) : '') }
+    ]
+  },
+  conf.typeDict ? { title: conf.typeLabel, key: 'bizType', width: 120, dict: conf.typeDict } : null,
+  conf.categoryDict ? { title: conf.categoryLabel, key: 'ioCategory', width: 100, dict: conf.categoryDict } : null,
+  props.kind === 'transfer'
+    ? {
+        title: t('wms.doc.fromTo'),
+        key: 'warehouse',
+        width: 240,
+        exportColumns: [
+          { title: t('wms.doc.kind.fromWarehouse'), dataIndex: 'warehouseName' },
+          { title: t('wms.doc.toWarehouse'), dataIndex: 'toWarehouseName' },
+          { title: t('wms.doc.transferMode'), exportValue: (r) => (isTrue(r.inTransit) ? t('wms.doc.inTransitTransfer') : t('wms.doc.directTransfer')) }
+        ]
+      }
+    : { title: t('wms.common.warehouse'), key: 'warehouse', width: 120, exportValue: warehouseText },
   { title: t('wms.common.bizDate'), dataIndex: 'bizDate', width: 120 },
   { title: t('wms.common.totalQty'), key: 'totalQty', width: 110, align: 'right' },
-  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('common.field.status'), key: 'status', width: 100, dict: 'wms_doc_status' },
   { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 110, defaultHidden: true },
-  { title: t('wms.doc.confirmed'), key: 'confirm', width: 160, defaultHidden: true },
+  {
+    title: t('wms.doc.confirmed'),
+    key: 'confirm',
+    width: 160,
+    defaultHidden: true,
+    exportValue: (r) => (r.confirmTime ? [r.confirmByName, r.confirmTime].filter(Boolean).join(' ') : '')
+  },
   { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
   {
@@ -211,7 +241,7 @@ const showSearch = ref(true)
 
 const emptyQuery = () => ({ docNo: undefined, bizType: undefined, ioCategory: undefined, status: undefined, warehouseId: undefined, range: undefined })
 const query = reactive(emptyQuery())
-const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable(
+const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange, exportAll } = useTable(
   (params) => pageDoc(props.kind, params),
   query,
   { params: ({ range, ...rest }) => ({ ...rest, beginDate: range?.[0], endDate: range?.[1] }) }

@@ -14,7 +14,9 @@ const EXPORT_MAX_PAGES = 20
  * options.params：自定义请求参数（如时间范围拆分为 beginTime/endTime）
  *
  * exportAll(columns)：按当前查询条件导出 Excel（传给 TableToolbar 的 exporter）。列取 dataIndex 或 key 对应的字段，
- * 列定义上 dict: '字典类型' 时导出字典标签，exportValue: (record) => 值 可自定义；操作列不导出
+ * 列定义上 dict: '字典类型' 时导出字典标签，exportValue: (record) => 值 可自定义；操作列不导出。
+ * 一列合并显示了几项信息（如「订单 / 交货日期」）时，用 exportColumns: [{ title, dataIndex | exportValue, dict }] 导出为多列，
+ * 便于在 Excel 中筛选、计算；金额、数量导出原始数值，不带货币符号和千分位
  */
 export function useTable(fetcher, query = {}, options = {}) {
   const route = useRoute()
@@ -70,7 +72,9 @@ export function useTable(fetcher, query = {}, options = {}) {
   })
 
   async function exportAll(columns, filename) {
-    const cols = columns.filter((c) => c.key !== 'action' && (c.dataIndex || c.key || c.exportValue))
+    const cols = columns
+      .filter((c) => c.key !== 'action' && (c.dataIndex || c.key || c.exportValue || c.exportColumns))
+      .flatMap((c) => (c.exportColumns ? c.exportColumns.map((e) => ({ width: c.width, ...e })) : [c]))
     const dictStore = useDictStore()
     const dicts = {}
     await Promise.all(
