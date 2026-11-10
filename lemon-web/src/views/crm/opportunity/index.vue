@@ -98,19 +98,19 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.detail') }}
-              </a-button>
-              <a-button v-if="isOpen(record)" v-perm="'crm:opp:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-if="!record.salesOrderId" v-perm="'crm:opp:remove'">
-                <a-popconfirm :title="$t('crm.opportunity.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'detail', onClick: () => openDetail(record) },
+                { type: 'edit', show: isOpen(record), perm: 'crm:opp:edit', onClick: () => drawer.openEdit(record) },
+                {
+                  type: 'delete',
+                  show: !record.salesOrderId,
+                  perm: 'crm:opp:remove',
+                  confirm: $t('crm.opportunity.confirmDelete', { name: record.name }),
+                  onClick: () => remove(record.id)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -225,7 +225,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import dayjs from 'dayjs'
 import { Empty } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { AppstoreOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons-vue'
+import { AppstoreOutlined, DeleteOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -236,6 +236,8 @@ import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import OpportunityDetail from '@/components/crm/OpportunityDetail.vue'
 import { addOpportunity, campaignOptions, deleteOpportunity, getOpportunity, listContacts, pageOpportunity, updateOpportunity } from '@/api/crm'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -260,15 +262,15 @@ const openStageOptions = computed(() =>
 )
 
 const columns = [
-  { title: t('crm.common.f.opportunity'), key: 'name', width: 170 },
-  { title: t('crm.common.f.customer'), key: 'customer', width: 140 },
-  { title: t('crm.common.f.stage'), key: 'stage', width: 90, dict: 'crm_opp_stage' },
-  { title: t('crm.common.f.amountExpected'), key: 'amount', width: 110, align: 'right' },
-  { title: t('crm.common.f.expectedDate'), key: 'expectedDate', width: 150 },
-  { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 80 },
-  { title: t('crm.common.f.source'), key: 'source', width: 100, dict: 'crm_source' },
-  { title: t('crm.common.f.salesOrder'), key: 'order', width: 130 },
-  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
+  { title: t('crm.common.f.opportunity'), key: 'name', width: 220 },
+  { title: t('crm.common.f.customer'), key: 'customer', width: 200 },
+  { title: t('crm.common.f.stage'), key: 'stage', width: 110, dict: 'crm_opp_stage' },
+  { title: t('crm.common.f.amountExpected'), key: 'amount', width: 140, align: 'right' },
+  { title: t('crm.common.f.expectedDate'), key: 'expectedDate', width: 160 },
+  { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 100 },
+  { title: t('crm.common.f.source'), key: 'source', width: 140, dict: 'crm_source' },
+  { title: t('crm.common.f.salesOrder'), key: 'order', width: 150 },
+  actionColumn(3, [t('common.action.detail')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-opportunity')
 const showSearch = ref(true)

@@ -61,19 +61,7 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <router-link v-if="userStore.hasPerm('crm:lead:list')" :to="{ path: '/crm/lead', query: { campaignId: record.id } }">
-                <a-button type="link" size="small">{{ $t('crm.campaign.leads') }}</a-button>
-              </router-link>
-              <a-button v-perm="'crm:campaign:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-perm="'crm:campaign:remove'">
-                <a-popconfirm :title="$t('crm.campaign.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -138,26 +126,28 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import { addCampaign, deleteCampaign, getCampaign, pageCampaign, updateCampaign } from '@/api/crm'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
-import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { formatMoney } from '@/components/scm/scm'
 import { percent } from '@/components/charts/charts'
 import { useAction } from '@/composables/useAction'
 
 import { CampaignStatus } from '@/constants/enums'
-const userStore = useUserStore()
+const router = useRouter()
 const { t } = useI18n()
 const dict = useDict('crm_campaign_type', 'crm_campaign_status')
 
@@ -165,17 +155,24 @@ const columns = [
   { title: t('crm.campaign.campaign'), key: 'name', width: 240 },
   { title: t('common.field.type'), key: 'type', width: 110, dict: 'crm_campaign_type' },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'crm_campaign_status' },
-  { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 100, defaultHidden: true },
+  { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 100 },
   { title: t('crm.campaign.actualCost'), key: 'cost', width: 150, align: 'right' },
   { title: t('crm.campaign.col.leads'), key: 'leads', width: 130 },
-  { title: t('crm.campaign.col.converted'), key: 'converted', width: 100, defaultHidden: true },
-  { title: t('crm.campaign.col.opps'), dataIndex: 'oppCount', width: 120, defaultHidden: true },
+  { title: t('crm.campaign.col.converted'), key: 'converted', width: 100 },
+  { title: t('crm.campaign.col.opps'), dataIndex: 'oppCount', width: 120 },
   { title: t('crm.campaign.col.won'), key: 'won', width: 140, align: 'right' },
-  { title: t('crm.campaign.col.actual'), key: 'actual', width: 170, align: 'right', defaultHidden: true },
+  { title: t('crm.campaign.col.actual'), key: 'actual', width: 170, align: 'right' },
   { title: t('crm.campaign.col.roi'), key: 'roi', width: 90, align: 'right' },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([{ text: t('crm.campaign.leads'), icon: false }, t('common.action.edit'), '']), fixed: 'right' }
+  actionColumn(3)
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-campaign')
+
+// 行操作：编辑、删除；活动的线索列表在「更多」中
+const rowActions = (record) => [
+  { type: 'edit', perm: 'crm:campaign:edit', onClick: () => drawer.openEdit(record) },
+  { type: 'delete', perm: 'crm:campaign:remove', confirm: t('crm.campaign.confirmDelete', { name: record.name }), onClick: () => remove(record.id) },
+  { key: 'leads', type: 'list', label: t('crm.campaign.leads'), perm: 'crm:lead:list', more: true, onClick: () => router.push({ path: '/crm/lead', query: { campaignId: record.id } }) }
+]
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ keyword: undefined, type: undefined, status: undefined })

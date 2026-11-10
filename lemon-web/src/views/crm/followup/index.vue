@@ -54,11 +54,16 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-if="record.createBy === userStore.user?.id || userStore.hasPerm('crm:followup:remove')">
-              <a-popconfirm :title="$t('crm.followup.confirmDelete')" @confirm="remove(record.id)">
-                <a-button type="link" danger size="small"><template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}</a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[
+                {
+                  type: 'delete',
+                  show: record.createBy === userStore.user?.id || userStore.hasPerm('crm:followup:remove'),
+                  confirm: $t('crm.followup.confirmDelete'),
+                  onClick: () => remove(record.id)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -69,7 +74,8 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -88,13 +94,13 @@ const dict = useDict('crm_follow_method')
 
 const columns = [
   { title: t('crm.followupModal.followTime'), dataIndex: 'followTime', width: 160 },
-  { title: t('crm.followup.target'), key: 'target', width: 190 },
-  { title: t('crm.common.f.customer'), dataIndex: 'customerName', width: 160, ellipsis: true },
-  { title: t('crm.followup.method'), key: 'method', width: 80, dict: 'crm_follow_method' },
-  { title: t('crm.followup.content'), key: 'content', width: 210 },
-  { title: t('crm.common.f.nextFollow'), key: 'next', width: 170 },
-  { title: t('crm.followup.followBy'), dataIndex: 'createByName', width: 80 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  { title: t('crm.followup.target'), key: 'target', width: 240 },
+  { title: t('crm.common.f.customer'), dataIndex: 'customerName', width: 180, ellipsis: true },
+  { title: t('crm.followup.method'), key: 'method', width: 90, dict: 'crm_follow_method' },
+  { title: t('crm.followup.content'), key: 'content', width: 300 },
+  { title: t('crm.common.f.nextFollow'), key: 'next', width: 200 },
+  { title: t('crm.followup.followBy'), dataIndex: 'createByName', width: 100 },
+  actionColumn(1, [t('common.action.delete')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-followup')
 const showSearch = ref(true)

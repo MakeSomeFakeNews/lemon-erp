@@ -96,25 +96,7 @@
             </div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.detail') }}
-              </a-button>
-              <a-button v-if="query.scope === 'pool'" v-perm="'crm:customer:claim'" type="link" size="small" @click="claim([record.customerId])">
-                <template #icon><UserAddOutlined /></template>{{ $t('crm.common.claim') }}
-              </a-button>
-              <a-button v-else v-perm="'crm:followup:add'" type="link" size="small" @click="openFollow(record)">
-                <template #icon><MessageOutlined /></template>{{ $t('crm.common.writeFollowup') }}
-              </a-button>
-              <a-dropdown v-if="moreActions(record).length">
-                <a-button type="link" size="small">{{ $t('crm.common.more') }}<DownOutlined /></a-button>
-                <template #overlay>
-                  <a-menu @click="({ key }) => onMore(key, record)">
-                    <a-menu-item v-for="a in moreActions(record)" :key="a.key">{{ a.label }}</a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -206,7 +188,9 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { DownOutlined, EyeOutlined, MessageOutlined, PlusOutlined, SwapOutlined, UserAddOutlined } from '@ant-design/icons-vue'
+import { MessageOutlined, PlusOutlined, RollbackOutlined, SwapOutlined, UserAddOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -230,15 +214,16 @@ const { t } = useI18n()
 const dict = useDict('scm_customer_level', 'crm_customer_stage', 'crm_industry', 'crm_source', 'scm_region')
 
 const columns = [
-  { title: t('crm.common.f.customer'), key: 'name', width: 180 },
-  { title: t('crm.common.f.stage'), key: 'stage', width: 90, dict: 'crm_customer_stage' },
-  { title: t('crm.common.f.industry'), key: 'industry', width: 90, dict: 'crm_industry' },
-  { title: t('crm.common.f.owner'), key: 'owner', width: 80 },
-  { title: t('crm.common.f.contact'), key: 'contact', width: 110 },
-  { title: t('crm.customer.col.openOpp'), key: 'opp', width: 100, align: 'right' },
-  { title: t('crm.common.f.region'), key: 'region', width: 70, dict: 'scm_region' },
-  { title: t('crm.customer.col.follow'), key: 'follow', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 210, fixed: 'right' }
+  { title: t('crm.common.f.customer'), key: 'name', width: 240 },
+  { title: t('crm.common.f.stage'), key: 'stage', width: 110, dict: 'crm_customer_stage' },
+  { title: t('crm.common.f.industry'), key: 'industry', width: 110, dict: 'crm_industry' },
+  { title: t('crm.common.f.owner'), key: 'owner', width: 110 },
+  { title: t('crm.common.f.contact'), key: 'contact', width: 150 },
+  { title: t('crm.customer.col.openOpp'), key: 'opp', width: 150, align: 'right' },
+  { title: t('crm.common.f.region'), key: 'region', width: 110, dict: 'scm_region' },
+  { title: t('crm.customer.col.follow'), key: 'follow', width: 220 },
+  // 公海：详情、领取、分配；我的客户：详情、写跟进、编辑、更多（分配 / 转移、退回公海）
+  actionColumn(4, [t('common.action.detail')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-customer')
 const showSearch = ref(true)
@@ -267,19 +252,30 @@ onMounted(() => {
 
 const isOwner = (r) => r.ownerId && r.ownerId === userStore.user?.id
 
-function moreActions(record) {
-  if (query.scope === 'pool') return userStore.hasPerm('crm:customer:assign') ? [{ key: 'assign', label: t('crm.common.assign') }] : []
-  const actions = []
-  if (isOwner(record) || userStore.hasPerm('crm:customer:edit')) actions.push({ key: 'edit', label: t('common.action.edit') })
-  if (userStore.hasPerm('crm:customer:assign')) actions.push({ key: 'assign', label: t('crm.customer.assignTransfer') })
-  if (isOwner(record) || userStore.hasPerm('crm:customer:assign')) actions.push({ key: 'release', label: t('crm.customer.release') })
-  return actions
-}
-
-function onMore(key, record) {
-  if (key === 'edit') drawer.openEdit(record)
-  else if (key === 'assign') openAssign([record.customerId])
-  else if (key === 'release') release(record)
+function rowActions(record) {
+  const pool = query.scope === 'pool'
+  return [
+    { type: 'detail', onClick: () => openDetail(record) },
+    { key: 'claim', label: t('crm.common.claim'), icon: UserAddOutlined, show: pool, perm: 'crm:customer:claim', onClick: () => claim([record.customerId]) },
+    { key: 'follow', label: t('crm.common.writeFollowup'), icon: MessageOutlined, show: !pool, perm: 'crm:followup:add', onClick: () => openFollow(record) },
+    { type: 'edit', show: !pool && (isOwner(record) || userStore.hasPerm('crm:customer:edit')), onClick: () => drawer.openEdit(record) },
+    {
+      key: 'assign',
+      label: pool ? t('crm.common.assign') : t('crm.customer.assignTransfer'),
+      icon: SwapOutlined,
+      perm: 'crm:customer:assign',
+      more: true,
+      onClick: () => openAssign([record.customerId])
+    },
+    {
+      key: 'release',
+      label: t('crm.customer.release'),
+      icon: RollbackOutlined,
+      show: !pool && (isOwner(record) || userStore.hasPerm('crm:customer:assign')),
+      more: true,
+      onClick: () => release(record)
+    }
+  ]
 }
 
 // ---------------------------------------------------------------- 新增 / 编辑

@@ -53,22 +53,20 @@
               <span v-else class="sub-text">-</span>
             </template>
             <template v-else-if="column.key === 'action'">
-              <span class="table-actions">
-                <template v-if="record.status === BillingStatus.PLANNED">
-                  <a-button v-perm="'pm:billing:bill'" type="link" size="small" @click="openBill(record)">{{ $t('pm.acc.bill') }}</a-button>
-                  <a-button v-perm="'pm:billing:edit'" type="link" size="small" @click="openBilling(record)"><EditOutlined /></a-button>
-                  <span v-perm="'pm:billing:edit'">
-                    <a-popconfirm :title="$t('pm.acc.confirmDeleteBilling', { name: record.name })" @confirm="removeBilling(record)">
-                      <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                    </a-popconfirm>
-                  </span>
-                </template>
-                <span v-else v-perm="'pm:billing:bill'">
-                  <a-popconfirm :title="$t('pm.acc.confirmUnbill')" @confirm="unbill(record)">
-                    <a-button type="link" size="small">{{ $t('pm.acc.unbill') }}</a-button>
-                  </a-popconfirm>
-                </span>
-              </span>
+              <TableActions
+                :actions="[
+                  { type: 'edit', show: record.status === BillingStatus.PLANNED, perm: 'pm:billing:edit', onClick: () => openBilling(record) },
+                  { key: 'bill', label: $t('pm.acc.bill'), icon: FileDoneOutlined, show: record.status === BillingStatus.PLANNED, perm: 'pm:billing:bill', onClick: () => openBill(record) },
+                  {
+                    type: 'delete',
+                    show: record.status === BillingStatus.PLANNED,
+                    perm: 'pm:billing:edit',
+                    confirm: $t('pm.acc.confirmDeleteBilling', { name: record.name }),
+                    onClick: () => removeBilling(record)
+                  },
+                  { type: 'unaudit', label: $t('pm.acc.unbill'), show: record.status !== BillingStatus.PLANNED, perm: 'pm:billing:bill', confirm: $t('pm.acc.confirmUnbill'), onClick: () => unbill(record) }
+                ]"
+              />
             </template>
           </template>
         </a-table>
@@ -135,7 +133,9 @@
 import SubPage from '@/components/SubPage.vue'
 import { computed, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, FlagFilled, PlusOutlined } from '@ant-design/icons-vue'
+import { FileDoneOutlined, FlagFilled, PlusOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import DictTag from '@/components/DictTag.vue'
 import EChart from '@/components/charts/EChart.vue'
 import {
@@ -194,7 +194,7 @@ const billingColumns = [
   { title: t('common.field.amount'), key: 'amount', width: 120, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 100 },
   { title: t('pm.acc.billProgress'), key: 'bill', width: 260 },
-  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
+  actionColumn(3, [t('pm.acc.unbill')])
 ]
 
 const evmChart = computed(() => {

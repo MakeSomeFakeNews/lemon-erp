@@ -32,12 +32,12 @@
                 <div v-if="record.status === TimesheetStatus.REJECTED" class="sub-text danger">{{ record.rejectReason }}</div>
               </template>
               <template v-else-if="column.key === 'action'">
-                <span v-if="record.status !== TimesheetStatus.APPROVED" class="table-actions">
-                  <a-button type="link" size="small" @click="openEntry(record)"><EditOutlined /></a-button>
-                  <a-popconfirm :title="$t('pm.timesheet.confirmDelete')" @confirm="removeEntry(record)">
-                    <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                  </a-popconfirm>
-                </span>
+                <TableActions
+                  :actions="[
+                    { type: 'edit', show: record.status !== TimesheetStatus.APPROVED, onClick: () => openEntry(record) },
+                    { type: 'delete', show: record.status !== TimesheetStatus.APPROVED, confirm: $t('pm.timesheet.confirmDelete'), onClick: () => removeEntry(record) }
+                  ]"
+                />
               </template>
             </template>
           </a-table>
@@ -58,19 +58,27 @@
                 <a-progress :percent="Math.round(Number(record.progress))" size="small" />
               </template>
               <template v-else-if="column.key === 'action'">
-                <a-popover trigger="click" :title="$t('pm.plan.updateProgress')" :open="progressFor === record.id" @open-change="(v) => togglePopover(v, record)">
-                  <template #content>
-                    <div class="progress-pop">
-                      <a-slider v-model:value="progressValue" :step="5" :marks="{ 0: '0', 50: '50', 100: '100' }" />
-                      <div class="pop-actions">
-                        <a-button size="small" @click="progressFor = null">{{ $t('common.action.cancel') }}</a-button>
-                        <a-button size="small" type="primary" :loading="progressSaving" @click="saveProgress(record)">{{ $t('common.action.save') }}</a-button>
-                      </div>
-                    </div>
+                <TableActions
+                  :actions="[
+                    { key: 'progress', slot: 'progress', label: $t('pm.plan.updateProgress'), icon: PercentageOutlined },
+                    { key: 'log', label: $t('pm.timesheet.logShort'), icon: FieldTimeOutlined, onClick: () => openEntry(null, record) }
+                  ]"
+                >
+                  <template #progress="{ action, text }">
+                    <a-popover trigger="click" :title="$t('pm.plan.updateProgress')" :open="progressFor === record.id" @open-change="(v) => togglePopover(v, record)">
+                      <template #content>
+                        <div class="progress-pop">
+                          <a-slider v-model:value="progressValue" :step="5" :marks="{ 0: '0', 50: '50', 100: '100' }" />
+                          <div class="pop-actions">
+                            <a-button size="small" @click="progressFor = null">{{ $t('common.action.cancel') }}</a-button>
+                            <a-button size="small" type="primary" :loading="progressSaving" @click="saveProgress(record)">{{ $t('common.action.save') }}</a-button>
+                          </div>
+                        </div>
+                      </template>
+                      <TableActionButton :action="action" :text="text" />
+                    </a-popover>
                   </template>
-                  <a-button type="link" size="small">{{ $t('pm.plan.updateProgress') }}</a-button>
-                </a-popover>
-                <a-button type="link" size="small" @click="openEntry(null, record)">{{ $t('pm.timesheet.logShort') }}</a-button>
+                </TableActions>
               </template>
             </template>
           </a-table>
@@ -168,9 +176,12 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'
 import {
-  CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined, LeftOutlined, PlusOutlined, RightOutlined, SearchOutlined
+  CheckOutlined, CloseOutlined, FieldTimeOutlined, LeftOutlined, PercentageOutlined, PlusOutlined, RightOutlined, SearchOutlined
 } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import TableActionButton from '@/components/common/TableActionButton.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import ProjectSelect from '@/components/pm/ProjectSelect.vue'
 import {
@@ -207,7 +218,7 @@ const mineColumns = [
   { title: t('pm.common.hours'), key: 'hours', width: 80 },
   { title: t('pm.common.workContent'), dataIndex: 'content', ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 150 },
-  { title: '', key: 'action', width: 100, fixed: 'right' }
+  actionColumn(2, [], { title: '' })
 ]
 
 const weekTotal = computed(() => mine.value.filter((r) => r.status !== TimesheetStatus.REJECTED).reduce((s, r) => s + Number(r.hours), 0))
@@ -242,7 +253,7 @@ const taskColumns = [
   { title: t('pm.common.planDates'), key: 'dates', width: 230 },
   { title: t('pm.plan.planHours'), dataIndex: 'planHours', width: 120 },
   { title: t('pm.common.progress'), key: 'progress', width: 160 },
-  { title: '', key: 'action', width: 200, fixed: 'right' }
+  actionColumn(2, [], { title: '' })
 ]
 
 async function loadTasks() {

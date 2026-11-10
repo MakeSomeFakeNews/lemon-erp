@@ -68,19 +68,19 @@
             <DictTag type="crm_contract_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.detail') }}
-              </a-button>
-              <a-button v-if="record.status === SalesContractStatus.DRAFT" v-perm="'crm:contract:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-if="record.status === SalesContractStatus.DRAFT" v-perm="'crm:contract:remove'">
-                <a-popconfirm :title="$t('crm.contract.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'detail', onClick: () => openDetail(record) },
+                { type: 'edit', show: record.status === SalesContractStatus.DRAFT, perm: 'crm:contract:edit', onClick: () => drawer.openEdit(record) },
+                {
+                  type: 'delete',
+                  show: record.status === SalesContractStatus.DRAFT,
+                  perm: 'crm:contract:remove',
+                  confirm: $t('crm.contract.confirmDelete', { name: record.name }),
+                  onClick: () => remove(record.id)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -203,7 +203,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -224,7 +224,9 @@ import {
   updateCrmContract
 } from '@/api/crm'
 import { pageQuotation } from '@/api/scm/sourcing'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -243,16 +245,16 @@ const percentOf = (r) => (Number(r.amount) ? Math.min(Math.round(((Number(r.rece
 
 const columns = [
   { title: t('crm.common.f.contract'), key: 'name', width: 220, fixed: 'left', exportValue: (r) => `${r.contractNo} ${r.name}` },
-  { title: t('crm.common.f.customer'), dataIndex: 'customerName', width: 150, ellipsis: true },
-  { title: t('crm.contract.col.source'), key: 'source', width: 210, exportValue: (r) => [r.opportunityName, r.quoteNo].filter(Boolean).join(' / '), defaultHidden: true },
-  { title: t('crm.contractDetail.term'), key: 'term', width: 200, exportValue: (r) => `${r.startDate || ''} ~ ${r.endDate || ''}` },
+  { title: t('crm.common.f.customer'), dataIndex: 'customerName', width: 180, ellipsis: true },
+  { title: t('crm.contract.col.source'), key: 'source', width: 210, exportValue: (r) => [r.opportunityName, r.quoteNo].filter(Boolean).join(' / ') },
+  { title: t('crm.contractDetail.term'), key: 'term', width: 210, exportValue: (r) => `${r.startDate || ''} ~ ${r.endDate || ''}` },
   { title: t('crm.common.f.contractAmount'), key: 'amount', dataIndex: 'amount', width: 130, align: 'right' },
-  { title: t('crm.common.f.received'), key: 'received', dataIndex: 'receivedAmount', width: 140, align: 'right' },
-  { title: t('crm.common.f.salesOrder'), key: 'orderNo', dataIndex: 'orderNo', width: 160, defaultHidden: true },
+  { title: t('crm.common.f.received'), key: 'received', dataIndex: 'receivedAmount', width: 150, align: 'right' },
+  { title: t('crm.common.f.salesOrder'), key: 'orderNo', dataIndex: 'orderNo', width: 160 },
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'crm_contract_status' },
-  { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 100, defaultHidden: true },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.detail'), t('common.action.edit'), '']), fixed: 'right' }
+  { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 100 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true },
+  actionColumn(3, [t('common.action.detail')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-contract')
 const showSearch = ref(true)

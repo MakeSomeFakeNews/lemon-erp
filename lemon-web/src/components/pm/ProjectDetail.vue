@@ -68,12 +68,18 @@
                 <template v-else-if="column.key === 'hours'">{{ $t('pm.common.nHours', { n: Number(record.approvedHours || 0) }) }}</template>
                 <template v-else-if="column.key === 'dates'">{{ record.joinDate || '-' }} ~ {{ record.leaveDate || '-' }}</template>
                 <template v-else-if="column.key === 'action'">
-                  <span v-perm="'pm:member:edit'" class="table-actions">
-                    <a-button type="link" size="small" @click="openMember(record)"><EditOutlined /></a-button>
-                    <a-popconfirm v-if="record.role !== 'MANAGER'" :title="$t('pm.detail.confirmRemoveMember', { name: record.userName })" @confirm="removeMember(record)">
-                      <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                    </a-popconfirm>
-                  </span>
+                  <TableActions
+                    :actions="[
+                      { type: 'edit', perm: 'pm:member:edit', onClick: () => openMember(record) },
+                      {
+                        type: 'delete',
+                        show: record.role !== 'MANAGER',
+                        perm: 'pm:member:edit',
+                        confirm: $t('pm.detail.confirmRemoveMember', { name: record.userName }),
+                        onClick: () => removeMember(record)
+                      }
+                    ]"
+                  />
                 </template>
               </template>
             </a-table>
@@ -168,7 +174,9 @@
 import SubPage from '@/components/SubPage.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import DictTag from '@/components/DictTag.vue'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
 import ChangeLogPanel from '@/components/ChangeLogPanel.vue'
@@ -215,7 +223,7 @@ const memberColumns = [
   { title: t('pm.common.hourlyCost'), key: 'costRate', width: 120, align: 'right' },
   { title: t('pm.detail.approvedHours'), key: 'hours', width: 130 },
   { title: t('pm.detail.period'), key: 'dates', width: 200 },
-  { title: '', key: 'action', width: 90, fixed: 'right' }
+  actionColumn(2, [t('common.action.edit')], { title: '' })
 ]
 const timesheetColumns = [
   { title: t('common.field.date'), dataIndex: 'workDate', width: 110 },

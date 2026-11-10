@@ -70,9 +70,7 @@
           </template>
           <template v-else-if="column.key === 'eac'">{{ record.eac == null ? '-' : formatMoney(record.eac) }}</template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record)">
-              <template #icon><EyeOutlined /></template>{{ $t('pm.accounting.view') }}
-            </a-button>
+            <TableActions :actions="[{ type: 'view', label: $t('pm.accounting.view'), onClick: () => openDetail(record) }]" />
           </template>
         </template>
       </a-table>
@@ -95,7 +93,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { CarryOutOutlined, EyeOutlined } from '@ant-design/icons-vue'
+import { CarryOutOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -103,7 +101,9 @@ import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import { currentPeriod } from '@/components/fin/fin'
 import AccountingDetail from '@/components/pm/AccountingDetail.vue'
 import { closeAccounting, pageAccounting } from '@/api/pm'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -117,15 +117,15 @@ const columns = [
   { title: t('pm.common.project'), key: 'name', width: 220, fixed: 'left' },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'pm_project_status' },
   { title: t('pm.acc.completion'), key: 'progress', width: 160 },
-  { title: t('pm.project.contract'), key: 'contract', width: 150, align: 'right', defaultHidden: true },
+  { title: t('pm.project.contract'), key: 'contract', width: 150, align: 'right' },
   { title: t('pm.acc.revenue'), key: 'revenue', width: 160, align: 'right' },
   { title: t('pm.acc.actualCost'), key: 'cost', width: 150, align: 'right' },
   { title: t('pm.acc.profitMargin'), key: 'profit', width: 170, align: 'right' },
-  { title: t('pm.accounting.billedReceived'), key: 'billing', width: 160, align: 'right', defaultHidden: true },
-  { title: 'SPI', key: 'spi', width: 80, defaultHidden: true },
-  { title: 'CPI', key: 'cpi', width: 80, defaultHidden: true },
-  { title: t('pm.acc.eac'), key: 'eac', width: 130, align: 'right', defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('pm.accounting.view')]), fixed: 'right' }
+  { title: t('pm.accounting.billedReceived'), key: 'billing', width: 160, align: 'right' },
+  { title: 'SPI', key: 'spi', width: 80 },
+  { title: 'CPI', key: 'cpi', width: 80 },
+  { title: t('pm.acc.eac'), key: 'eac', width: 130, align: 'right' },
+  actionColumn(1, [t('pm.accounting.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'pm-accounting')
 const showSearch = ref(true)

@@ -60,24 +60,7 @@
             <div v-if="record.overdueTaskCount" class="danger sub-danger">{{ $t('pm.common.overdue') }} {{ record.overdueTaskCount }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.detail') }}
-              </a-button>
-              <a-button v-if="record.status !== ProjectStatus.CLOSED" v-perm="'pm:project:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-for="a in STATUS_ACTIONS[record.status]" :key="a.status" v-perm="'pm:project:edit'">
-                <a-popconfirm :title="$t('pm.project.confirmStatus', { action: a.label, name: record.name, tip: a.confirm })" @confirm="changeStatus(record, a)">
-                  <a-button type="link" size="small">{{ a.label }}</a-button>
-                </a-popconfirm>
-              </span>
-              <span v-if="record.status === ProjectStatus.PLANNING" v-perm="'pm:project:remove'">
-                <a-popconfirm :title="$t('pm.project.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -163,7 +146,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { CheckCircleOutlined, PauseCircleOutlined, PlayCircleOutlined, PlusOutlined, StopOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -172,7 +155,9 @@ import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import ProjectDetail from '@/components/pm/ProjectDetail.vue'
 import { addProject, changeProjectStatus, deleteProject, getProject, pageProject, updateProject } from '@/api/pm'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -186,28 +171,18 @@ import { ProjectStatus } from '@/constants/enums'
 const dict = useDict('pm_project_status', 'pm_project_type', 'pm_priority')
 
 const columns = [
-  { title: t('pm.common.project'), key: 'name', width: 200, fixed: 'left' },
-  { title: t('common.field.type'), key: 'type', width: 90, dict: 'pm_project_type', defaultHidden: true },
-  { title: t('pm.common.customer'), key: 'customer', width: 120, ellipsis: true },
-  { title: t('pm.common.manager'), dataIndex: 'managerName', width: 90 },
+  { title: t('pm.common.project'), key: 'name', width: 220, fixed: 'left' },
+  { title: t('common.field.type'), key: 'type', width: 110, dict: 'pm_project_type' },
+  { title: t('pm.common.customer'), key: 'customer', width: 180, ellipsis: true },
+  { title: t('pm.common.manager'), dataIndex: 'managerName', width: 130 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'pm_project_status' },
-  { title: t('pm.common.progress'), key: 'progress', width: 120 },
+  { title: t('pm.common.progress'), key: 'progress', width: 150 },
   { title: t('pm.common.planDates'), key: 'dates', width: 210 },
-  { title: t('pm.project.contract'), key: 'contract', width: 110, align: 'right', defaultHidden: true },
-  { title: t('pm.project.costBudget'), key: 'cost', width: 130, align: 'right', defaultHidden: true },
-  { title: t('pm.common.tasks'), key: 'tasks', width: 80, defaultHidden: true },
-  {
-    title: t('common.action.operation'),
-    key: 'action',
-    // 进行中：详情、编辑、暂停、完成；规划中：详情、编辑、启动、删除（只有图标）
-    width: actionWidth([
-      t('common.action.detail'),
-      t('common.action.edit'),
-      [{ text: t('pm.status.suspend'), icon: false }, { text: t('pm.status.start'), icon: false }],
-      [{ text: t('pm.status.finish'), icon: false }, '']
-    ]),
-    fixed: 'right'
-  }
+  { title: t('pm.project.contract'), key: 'contract', width: 130, align: 'right' },
+  { title: t('pm.project.costBudget'), key: 'cost', width: 170, align: 'right' },
+  { title: t('pm.common.tasks'), key: 'tasks', width: 90 },
+  // 进行中：详情、编辑、暂停、完成；规划中：详情、编辑、启动、删除
+  actionColumn(4, [t('common.action.detail')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'pm-project')
 const showSearch = ref(true)
@@ -282,6 +257,35 @@ async function changeStatus(record, action) {
 }
 
 const remove = useAction(deleteProject, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+
+/** 状态操作按目标状态显示的图标 */
+const STATUS_ICONS = {
+  [ProjectStatus.ACTIVE]: PlayCircleOutlined,
+  [ProjectStatus.SUSPENDED]: PauseCircleOutlined,
+  [ProjectStatus.FINISHED]: CheckCircleOutlined,
+  [ProjectStatus.CLOSED]: StopOutlined
+}
+
+// 行操作：详情、编辑、状态操作（启动 / 暂停 / 完成 / 恢复 / 关闭）、删除（规划中）
+const rowActions = (record) => [
+  { type: 'detail', onClick: () => openDetail(record) },
+  { type: 'edit', show: record.status !== ProjectStatus.CLOSED, perm: 'pm:project:edit', onClick: () => drawer.openEdit(record) },
+  ...(STATUS_ACTIONS[record.status] || []).map((a) => ({
+    key: `status-${a.status}`,
+    label: a.label,
+    icon: STATUS_ICONS[a.status],
+    perm: 'pm:project:edit',
+    confirm: t('pm.project.confirmStatus', { action: a.label, name: record.name, tip: a.confirm }),
+    onClick: () => changeStatus(record, a)
+  })),
+  {
+    type: 'delete',
+    show: record.status === ProjectStatus.PLANNING,
+    perm: 'pm:project:remove',
+    confirm: t('pm.project.confirmDelete', { name: record.name }),
+    onClick: () => remove(record.id)
+  }
+]
 </script>
 
 <style scoped>
