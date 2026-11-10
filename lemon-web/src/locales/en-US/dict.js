@@ -342,6 +342,7 @@ export default {
     'FX': 'Exchange Gain/Loss', // 汇兑
     'NOTE': 'Notes', // 票据
     'TRANSFER': 'Account Transfer', // 账户调拨
+    'INCOME_EXPENSE': 'Other Income / Expense', // 其他收支
   },
   // 核销状态
   fin_bill_status: {
@@ -362,7 +363,7 @@ export default {
     'ASSET': 'Fixed Asset', // 固定资产
     'NOTE': 'Dishonored Note', // 票据拒付
     'QUALITY_CLAIM': 'Quality Claim', // 质量索赔
-    'REBATE': 'Sales Rebate', // 销售返利
+    'REBATE': 'Rebate', // 返利
     'OFFSET': 'Offset', // 冲账单
     'ORDER_ADJUST': 'Order Rounding Adjustment', // 订单尾差调整
   },
@@ -1071,6 +1072,37 @@ export default {
   scm_rebate_settle: {
     'CREDIT_NOTE': 'Credit Note', // 红字应收
     'NEXT_ORDER': 'Deduct from Next Order', // 下次订单抵扣
+  },
+  // 返利种类
+  scm_rebate_kind: {
+    'SALES': 'Sales Rebate', // 销售返利
+    'PURCHASE': 'Purchase Rebate', // 采购返利
+  },
+  // 返利计算方式
+  scm_rebate_calc: {
+    'TIER': 'Tiered Rate', // 阶梯比例
+    'ITEM': 'Item Amounts', // 按项目填写金额
+  },
+  // 收支方向
+  fin_fund_direction: {
+    'IN': 'Income', // 收入
+    'OUT': 'Expense', // 支出
+  },
+  // 收支单状态
+  fin_io_status: {
+    'DRAFT': 'Unconfirmed', // 待确认
+    'CONFIRMED': 'Confirmed', // 已确认
+  },
+  // 关联单位类型
+  fin_io_partner_type: {
+    'CUSTOMER': 'Customer', // 客户
+    'SUPPLIER': 'Supplier', // 供应商
+    'OTHER': 'Other', // 其他
+  },
+  // 手续费承担方
+  fin_fee_bearer: {
+    'FROM': 'Paying Account', // 转出账户
+    'TO': 'Receiving Account', // 转入账户
   },
   // 销售渠道
   scm_channel: {

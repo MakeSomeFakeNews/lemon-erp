@@ -27,6 +27,7 @@ import com.lemon.erp.modules.mes.service.QmsClaimService;
 import com.lemon.erp.modules.scm.event.OrderCloseAdjustedEvent;
 import com.lemon.erp.modules.scm.event.RebateSettledEvent;
 import com.lemon.erp.modules.scm.event.RebateUnsettledEvent;
+import com.lemon.erp.modules.scm.model.RebateKind;
 import com.lemon.erp.modules.scm.model.ScmConstants;
 import com.lemon.erp.modules.scm.event.ShipmentShippedEvent;
 import com.lemon.erp.modules.scm.event.TradeDocConfirmedEvent;
@@ -226,12 +227,15 @@ public class FinBillService {
         }
     }
 
-    /** 销售返利结算（红字应收方式）：生成红字应收单冲减应收，税额按 13% 价内计算；与结算同一事务 */
+    /**
+     * 返利结算（红字单据方式）：销售返利生成红字应收单冲减应收，采购返利生成红字应付单冲减应付；税额按 13% 价内计算，与结算同一事务
+     */
     @EventListener
     public void onRebateSettled(RebateSettledEvent e) {
         BigDecimal tax = ScmConstants.tax(e.amount(), REBATE_TAX_RATE);
-        FinBill bill = createFromSource(BillKind.AR, e.customerId(), BillSource.REBATE, e.rebateId(), e.rebateNo(), e.settleDate(),
-                e.amount().negate(), tax.negate(), "销售返利 " + e.rebateNo(), null); // i18n-ignore
+        boolean purchase = e.kind() == RebateKind.PURCHASE;
+        FinBill bill = createFromSource(purchase ? BillKind.AP : BillKind.AR, e.partnerId(), BillSource.REBATE, e.rebateId(), e.rebateNo(),
+                e.settleDate(), e.amount().negate(), tax.negate(), (purchase ? "采购返利 " : "销售返利 ") + e.rebateNo(), null); // i18n-ignore
         rebateService.bindBill(e.rebateId(), bill.getId());
     }
 
@@ -406,6 +410,17 @@ public class FinBillService {
                         .withProject(bill.getProjectId()));
             }
             lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.OUTPUT_VAT), null, bill.getTaxAmount()));
+            return lines;
+        }
+        if (bill.getSourceType() == BillSource.REBATE) {
+            // 采购返利（红字应付单）：借 应付账款 / 贷 采购返利科目（默认冲减主营业务成本）、进项税额（红字，即进项税额转出）
+            String summary = "采购返利 " + bill.getSourceNo() + " " + partner; // i18n-ignore
+            BigDecimal amount = bill.getAmount().negate();
+            BigDecimal tax = bill.getTaxAmount().negate();
+            lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.PAYABLE), null, amount)
+                    .withSupplier(bill.getPartnerId()));
+            lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.PURCHASE_REBATE), null, amount.subtract(tax)));
+            lines.add(VoucherLine.credit(summary, accountRules.accountId(AccountRole.INPUT_VAT), null, tax));
             return lines;
         }
         if (bill.getSourceType() == BillSource.QUALITY_CLAIM) {

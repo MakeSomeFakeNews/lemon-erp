@@ -35,6 +35,7 @@
         SELECT CASE
             WHEN EXISTS (SELECT 1 FROM scm_quotation WHERE customer_id = #{id}) THEN 'scm.label.salesQuotation2'
             WHEN EXISTS (SELECT 1 FROM scm_customer_price WHERE customer_id = #{id}) THEN 'scm.label.customerPrice'
+            WHEN EXISTS (SELECT 1 FROM scm_rebate WHERE customer_id = #{id}) THEN 'scm.label.rebateAgreement'
         END
     </select>
 
@@ -42,6 +43,7 @@
         SELECT CASE
             WHEN EXISTS (SELECT 1 FROM scm_inquiry_quote WHERE supplier_id = #{id}) THEN 'scm.label.rfqQuotation'
             WHEN EXISTS (SELECT 1 FROM scm_requisition_item WHERE supplier_id = #{id}) THEN 'scm.label.purchaseRequisition'
+            WHEN EXISTS (SELECT 1 FROM scm_rebate WHERE supplier_id = #{id}) THEN 'scm.label.rebateAgreement'
         END
     </select>
 

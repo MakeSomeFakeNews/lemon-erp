@@ -3,22 +3,28 @@
 <mapper namespace="com.lemon.erp.modules.scm.mapper.ScmRebateMapper">
 
     <sql id="viewSelect">
-        SELECT r.*, c.name AS customer_name, b.bill_no, u.nickname AS create_by_name
+        SELECT r.*, c.name AS customer_name, s.name AS supplier_name, b.bill_no, u.nickname AS create_by_name
         FROM scm_rebate r
-        JOIN scm_customer c ON c.id = r.customer_id
+        LEFT JOIN scm_customer c ON c.id = r.customer_id
+        LEFT JOIN scm_supplier s ON s.id = r.supplier_id
         LEFT JOIN fin_bill b ON b.id = r.bill_id
         LEFT JOIN sys_user u ON u.id = r.create_by
     </sql>
 
     <select id="selectPageList" resultType="com.lemon.erp.modules.scm.entity.ScmRebate">
         <include refid="viewSelect"/>
-        <where>
-            <if test="customerId != null">r.customer_id = #{customerId}</if>
-            <if test="status != null">AND r.status = #{status}</if>
-            <if test="keyword != null and keyword != ''">
-                AND (r.rebate_no LIKE CONCAT('%', #{keyword}, '%') OR c.name LIKE CONCAT('%', #{keyword}, '%'))
-            </if>
-        </where>
+        WHERE r.kind = #{kind}
+        <if test="partnerId != null">
+            <choose>
+                <when test="kind.name() == 'PURCHASE'">AND r.supplier_id = #{partnerId}</when>
+                <otherwise>AND r.customer_id = #{partnerId}</otherwise>
+            </choose>
+        </if>
+        <if test="status != null">AND r.status = #{status}</if>
+        <if test="keyword != null and keyword != ''">
+            AND (r.rebate_no LIKE CONCAT('%', #{keyword}, '%') OR c.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR s.name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
         ORDER BY r.id DESC
     </select>
 
@@ -40,16 +46,33 @@
         <foreach collection="list" item="t" separator=",">(#{rebateId}, #{t.minAmount}, #{t.rate})</foreach>
     </insert>
 
-    <select id="selectSalesAmount" resultType="java.math.BigDecimal">
-        SELECT COALESCE(SUM(CASE WHEN kind = 'SALES_RETURN' THEN -total_amount ELSE total_amount END), 0)
+    <select id="selectItems" resultType="com.lemon.erp.modules.scm.entity.ScmRebateItem">
+        SELECT * FROM scm_rebate_item WHERE rebate_id = #{rebateId} ORDER BY id
+    </select>
+
+    <delete id="deleteItems">
+        DELETE FROM scm_rebate_item WHERE rebate_id = #{rebateId}
+    </delete>
+
+    <insert id="insertItems">
+        INSERT INTO scm_rebate_item (rebate_id, item_name, brand, category, amount, remark) VALUES
+        <foreach collection="list" item="i" separator=",">(#{rebateId}, #{i.itemName}, #{i.brand}, #{i.category}, #{i.amount}, #{i.remark})</foreach>
+    </insert>
+
+    <select id="selectTradeAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(CASE WHEN kind IN ('SALES_RETURN', 'PURCHASE_RETURN') THEN -total_amount ELSE total_amount END), 0)
         FROM scm_trade_doc
-        WHERE partner_id = #{customerId} AND kind IN ('SALES_OUT', 'SALES_RETURN')
+        WHERE partner_id = #{partnerId}
+        <choose>
+            <when test="kind.name() == 'PURCHASE'">AND kind IN ('PURCHASE_IN', 'PURCHASE_RETURN')</when>
+            <otherwise>AND kind IN ('SALES_OUT', 'SALES_RETURN')</otherwise>
+        </choose>
           AND biz_date &gt;= #{begin} AND biz_date &lt;= #{end}
     </select>
 
     <select id="selectEarned" resultType="java.math.BigDecimal">
         SELECT COALESCE(SUM(rebate_amount), 0) FROM scm_rebate
-        WHERE customer_id = #{customerId} AND status = 'SETTLED' AND settle_mode = 'NEXT_ORDER'
+        WHERE customer_id = #{customerId} AND kind = 'SALES' AND status = 'SETTLED' AND settle_mode = 'NEXT_ORDER'
     </select>
 
     <select id="selectUsed" resultType="java.math.BigDecimal">

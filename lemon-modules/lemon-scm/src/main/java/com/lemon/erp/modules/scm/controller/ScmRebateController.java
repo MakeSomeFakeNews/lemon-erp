@@ -6,6 +6,7 @@ import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.scm.dto.RebateRequest;
 import com.lemon.erp.modules.scm.entity.ScmRebate;
+import com.lemon.erp.modules.scm.model.RebateKind;
 import com.lemon.erp.modules.scm.model.RebateStatus;
 import com.lemon.erp.modules.scm.service.ScmRebateService;
 import jakarta.validation.Valid;
@@ -26,12 +27,14 @@ import java.time.LocalDate;
 import java.util.Map;
 
 /**
- * 销售返利
+ * 销售返利（给客户），权限 scm:rebate:list/add/settle；采购返利见 {@link ScmPurchaseRebateController}
  */
 @RestController
 @RequestMapping("/scm/rebate")
 @RequiredArgsConstructor
 public class ScmRebateController {
+
+    private static final RebateKind KIND = RebateKind.SALES;
 
     private final ScmRebateService rebateService;
 
@@ -42,7 +45,7 @@ public class ScmRebateController {
                                          @RequestParam(required = false) Long customerId,
                                          @RequestParam(required = false) RebateStatus status,
                                          @RequestParam(required = false) String keyword) {
-        return R.ok(rebateService.page(current, size, customerId, status, keyword));
+        return R.ok(rebateService.page(KIND, current, size, customerId, status, keyword));
     }
 
     /** 客户可用的返利余额（下单抵扣），excludeOrderId：修改订单时排除该订单已抵扣的 */
@@ -55,28 +58,28 @@ public class ScmRebateController {
     @GetMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:rebate:list')")
     public R<ScmRebate> detail(@PathVariable Long id) {
-        return R.ok(rebateService.detail(id));
+        return R.ok(rebateService.detail(KIND, id));
     }
 
     /** 按当前数据计算（期间未结束时为截至今天的预估） */
     @GetMapping("/{id}/calc")
     @PreAuthorize("@ss.hasPerm('scm:rebate:list')")
     public R<ScmRebateService.Calc> calc(@PathVariable Long id) {
-        return R.ok(rebateService.calc(id));
+        return R.ok(rebateService.calc(KIND, id));
     }
 
     @PostMapping
     @PreAuthorize("@ss.hasPerm('scm:rebate:add')")
     @OperLog(title = "销售返利", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@Valid @RequestBody RebateRequest req) {
-        return R.ok(rebateService.create(req));
+        return R.ok(rebateService.create(KIND, req));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:rebate:add')")
     @OperLog(title = "销售返利", type = OperType.UPDATE) // i18n-ignore
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody RebateRequest req) {
-        rebateService.update(id, req);
+        rebateService.update(KIND, id, req);
         return R.ok();
     }
 
@@ -84,7 +87,7 @@ public class ScmRebateController {
     @PreAuthorize("@ss.hasPerm('scm:rebate:add')")
     @OperLog(title = "销售返利", type = OperType.DELETE) // i18n-ignore
     public R<Void> delete(@PathVariable Long id) {
-        rebateService.delete(id);
+        rebateService.delete(KIND, id);
         return R.ok();
     }
 
@@ -94,14 +97,14 @@ public class ScmRebateController {
     @OperLog(title = "销售返利-结算", type = OperType.UPDATE) // i18n-ignore
     public R<ScmRebateService.Calc> settle(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         String date = body == null ? null : body.get("settleDate");
-        return R.ok(rebateService.settle(id, date == null || date.isBlank() ? null : LocalDate.parse(date)));
+        return R.ok(rebateService.settle(KIND, id, date == null || date.isBlank() ? null : LocalDate.parse(date)));
     }
 
     @PostMapping("/{id}/unsettle")
     @PreAuthorize("@ss.hasPerm('scm:rebate:settle')")
     @OperLog(title = "销售返利-撤销结算", type = OperType.UPDATE) // i18n-ignore
     public R<Void> unsettle(@PathVariable Long id) {
-        rebateService.unsettle(id);
+        rebateService.unsettle(KIND, id);
         return R.ok();
     }
 }

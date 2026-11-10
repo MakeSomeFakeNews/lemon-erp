@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinIoDocMapper">
+
+    <!-- 关联单位：客户 / 供应商取资料名称，其他取填写的名称 -->
+    <sql id="partnerLabel">
+        CASE t.partner_type WHEN 'CUSTOMER' THEN c.name WHEN 'SUPPLIER' THEN s.name ELSE t.partner_name END
+    </sql>
+
+    <sql id="partnerJoin">
+        LEFT JOIN scm_customer c ON t.partner_type = 'CUSTOMER' AND c.id = t.partner_id
+        LEFT JOIN scm_supplier s ON t.partner_type = 'SUPPLIER' AND s.id = t.partner_id
+    </sql>
+
+    <sql id="viewSelect">
+        SELECT t.*, <include refid="partnerLabel"/> AS partner_label, CONCAT(a.code, ' ', a.name) AS account_name, d.name AS dept_name,
+               v.voucher_no, v.status AS voucher_status, cu.nickname AS create_by_name, fu.nickname AS confirm_by_name
+        FROM fin_io_doc t
+        <include refid="partnerJoin"/>
+        LEFT JOIN fin_account a ON a.id = t.account_id
+        LEFT JOIN sys_dept d ON d.id = t.dept_id
+        LEFT JOIN fin_voucher v ON v.id = t.voucher_id
+        LEFT JOIN sys_user cu ON cu.id = t.create_by
+        LEFT JOIN sys_user fu ON fu.id = t.confirm_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinIoDoc">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="q.direction != null">AND t.direction = #{q.direction}</if>
+            <if test="q.status != null">AND t.status = #{q.status}</if>
+            <if test="q.accountId != null">AND t.account_id = #{q.accountId}</if>
+            <if test="q.categoryId != null">
+                AND EXISTS (SELECT 1 FROM fin_io_doc_item x WHERE x.doc_id = t.id AND x.category_id = #{q.categoryId})
+            </if>
+            <if test="q.keyword != null and q.keyword != ''">
+                AND (t.doc_no LIKE CONCAT('%', #{q.keyword}, '%') OR t.ticket_no LIKE CONCAT('%', #{q.keyword}, '%')
+                     OR t.remark LIKE CONCAT('%', #{q.keyword}, '%') OR t.partner_name LIKE CONCAT('%', #{q.keyword}, '%')
+                     OR c.name LIKE CONCAT('%', #{q.keyword}, '%') OR s.name LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+            <if test="q.beginDate != null">AND t.doc_date &gt;= #{q.beginDate}</if>
+            <if test="q.endDate != null">AND t.doc_date &lt;= #{q.endDate}</if>
+        </where>
+        ORDER BY t.doc_date DESC, t.id DESC
+    </select>
+
+    <!-- 列表页各单据明细的类别名称 -->
+    <select id="selectCategoryNames" resultType="com.lemon.erp.modules.fin.entity.FinIoDocItem">
+        SELECT DISTINCT i.doc_id, g.name AS category_name
+        FROM fin_io_doc_item i
+        JOIN fin_io_category g ON g.id = i.category_id
+        WHERE i.doc_id IN <foreach collection="docIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinIoDoc">
+        <include refid="viewSelect"/>
+        WHERE t.id = #{id}
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.fin.entity.FinIoDocItem">
+        SELECT i.*, g.name AS category_name, g.account_id, CONCAT(a.code, ' ', a.name) AS account_name
+        FROM fin_io_doc_item i
+        JOIN fin_io_category g ON g.id = i.category_id
+        LEFT JOIN fin_account a ON a.id = g.account_id
+        WHERE i.doc_id = #{docId}
+        ORDER BY i.id
+    </select>
+
+    <select id="selectSummary" resultType="com.lemon.erp.modules.fin.dto.IoRequests$SummaryRow">
+        SELECT g.id AS "categoryId", g.name AS "categoryName", t.direction AS "direction", a.code AS "accountCode", a.name AS "accountName",
+               COUNT(*) AS "count", SUM(i.amount) AS "amount"
+        FROM fin_io_doc_item i
+        JOIN fin_io_doc t ON t.id = i.doc_id
+        JOIN fin_io_category g ON g.id = i.category_id
+        LEFT JOIN fin_account a ON a.id = g.account_id
+        WHERE t.status = #{status} AND t.doc_date &gt;= #{begin} AND t.doc_date &lt;= #{end}
+        <if test="direction != null">AND t.direction = #{direction}</if>
+        GROUP BY g.id, g.name, t.direction, a.code, a.name, g.sort
+        ORDER BY t.direction, g.sort, g.id
+    </select>
+
+    <select id="selectLines" resultType="com.lemon.erp.modules.fin.dto.IoRequests$LineRow">
+        SELECT i.id AS "id", t.id AS "docId", t.doc_no AS "docNo", t.doc_date AS "docDate", t.direction AS "direction", t.ticket_no AS "ticketNo",
+               <include refid="partnerLabel"/> AS "partnerLabel", t.settle_method AS "settleMethod",
+               CONCAT(a.code, ' ', a.name) AS "accountName", g.name AS "categoryName", i.amount AS "amount", i.remark AS "remark"
+        FROM fin_io_doc_item i
+        JOIN fin_io_doc t ON t.id = i.doc_id
+        JOIN fin_io_category g ON g.id = i.category_id
+        <include refid="partnerJoin"/>
+        LEFT JOIN fin_account a ON a.id = t.account_id
+        WHERE t.status = #{status} AND t.doc_date &gt;= #{begin} AND t.doc_date &lt;= #{end}
+        <if test="direction != null">AND t.direction = #{direction}</if>
+        <if test="categoryId != null">AND i.category_id = #{categoryId}</if>
+        ORDER BY t.doc_date DESC, t.id DESC, i.id
+    </select>
+
+</mapper>

@@ -25,13 +25,19 @@
             :loading="journalLoading"
             :pagination="false"
             :row-class-name="(r) => (r.type !== LedgerRowType.ENTRY ? 'total-row' : '')"
-            :scroll="{ x: 1200, y: '100%' }"
+            :scroll="{ x: 1350, y: '100%' }"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'voucherNo'">
                 <template v-if="record.voucherId">
                   <a @click="openVoucher(record.voucherId)">{{ record.voucherNo }}</a>
                   <DictTag v-if="record.voucherStatus !== VoucherStatus.POSTED" type="fin_voucher_status" :value="record.voucherStatus" class="ml" />
+                </template>
+              </template>
+              <template v-else-if="column.key === 'source'">
+                <template v-if="record.sourceNo">
+                  <DictTag type="fin_voucher_source" :value="record.sourceType" />
+                  <div class="sub-text">{{ record.sourceNo }}</div>
                 </template>
               </template>
               <template v-else-if="column.key === 'account'">
@@ -105,7 +111,7 @@ import { useDict } from '@/composables/useDict'
 import { LedgerRowType, VoucherStatus } from '@/constants/enums'
 /** 出纳管理：现金 / 银行日记账（逐笔收支、对方科目、每日小计）与资金日报（各账户期初、收入、支出、余额） */
 const { t } = useI18n()
-useDict('fin_voucher_status')
+useDict('fin_voucher_status', 'fin_voucher_source')
 /** 货币资金科目（库存现金、银行存款，按凭证科目设置） */
 const CASH_ROLES = ['CASH', 'BANK']
 const tab = ref('daily')
@@ -118,6 +124,7 @@ const journalColumns = [
   { title: t('common.field.date'), dataIndex: 'entryDate', width: 110 },
   { title: t('fin.cashier.voucherNo'), key: 'voucherNo', width: 150 },
   { title: t('fin.cashier.summary'), dataIndex: 'summary', width: 240, ellipsis: true },
+  { title: t('fin.cashier.source'), key: 'source', width: 150 },
   { title: t('fin.cashier.account'), key: 'account', width: 180 },
   { title: t('fin.cashier.counterAccounts'), dataIndex: 'counterAccounts', width: 180, ellipsis: true },
   { title: t('fin.cashier.income'), key: 'debit', width: 130, align: 'right' },

@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.fin.dto;
 
+import com.lemon.erp.modules.fin.model.FeeBearer;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
@@ -11,7 +12,8 @@ import java.time.LocalDate;
 /**
  * 账户调拨
  *
- * @param fee 手续费，由转出账户承担
+ * @param fee       手续费，计入财务费用
+ * @param feeBearer 手续费承担方，不填为转出账户
  */
 public record FundTransferRequest(
         @NotNull(message = "{fin.valid.selectTransferDate}") LocalDate transferDate,
@@ -20,5 +22,6 @@ public record FundTransferRequest(
         @NotNull(message = "{fin.valid.enterAmount}") @DecimalMin(value = "0", inclusive = false, message = "{fin.valid.amountMustGreater2}")
         @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount,
         @DecimalMin(value = "0", message = "{fin.valid.feeCannotLess}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal fee,
+        FeeBearer feeBearer,
         @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}") String remark) {
 }

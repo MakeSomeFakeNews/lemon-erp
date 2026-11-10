@@ -8,12 +8,16 @@ import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.entity.FinAccountRule;
 import com.lemon.erp.modules.fin.entity.FinAsset;
 import com.lemon.erp.modules.fin.entity.FinBudget;
+import com.lemon.erp.modules.fin.entity.FinIoCategory;
+import com.lemon.erp.modules.fin.entity.FinIoDoc;
 import com.lemon.erp.modules.fin.entity.FinSettlement;
 import com.lemon.erp.modules.fin.entity.FinVoucherEntry;
 import com.lemon.erp.modules.fin.mapper.FinAccountMapper;
 import com.lemon.erp.modules.fin.mapper.FinAccountRuleMapper;
 import com.lemon.erp.modules.fin.mapper.FinAssetMapper;
 import com.lemon.erp.modules.fin.mapper.FinBudgetMapper;
+import com.lemon.erp.modules.fin.mapper.FinIoCategoryMapper;
+import com.lemon.erp.modules.fin.mapper.FinIoDocMapper;
 import com.lemon.erp.modules.fin.mapper.FinSettlementMapper;
 import com.lemon.erp.modules.fin.mapper.FinVoucherEntryMapper;
 import com.lemon.erp.modules.fin.model.AccountRole;
@@ -52,6 +56,8 @@ public class FinAccountService {
     private final FinAssetMapper assetMapper;
     private final FinBudgetMapper budgetMapper;
     private final FinAccountRuleMapper ruleMapper;
+    private final FinIoCategoryMapper ioCategoryMapper;
+    private final FinIoDocMapper ioDocMapper;
 
     /** 科目树，按编码排序 */
     public List<FinAccount> tree(String keyword) {
@@ -283,13 +289,15 @@ public class FinAccountService {
         return accountMapper.exists(Wrappers.<FinAccount>lambdaQuery().eq(FinAccount::getParentId, id));
     }
 
-    /** 被凭证分录、收付款、固定资产、凭证科目设置（科目范围用途除外）使用（这些地方只能用末级科目） */
+    /** 被凭证分录、收付款、固定资产、凭证科目设置（科目范围用途除外）、收支类别、其他收支单使用（这些地方只能用末级科目） */
     private boolean usedInBooks(Long id) {
         return entryMapper.exists(Wrappers.<FinVoucherEntry>lambdaQuery().eq(FinVoucherEntry::getAccountId, id))
                 || ruleMapper.exists(Wrappers.<FinAccountRule>lambdaQuery().eq(FinAccountRule::getAccountId, id)
                         .notIn(FinAccountRule::getRole, SCOPE_ROLES))
                 || settlementMapper.exists(Wrappers.<FinSettlement>lambdaQuery().eq(FinSettlement::getAccountId, id))
-                || assetMapper.exists(Wrappers.<FinAsset>lambdaQuery().eq(FinAsset::getExpenseAccountId, id));
+                || assetMapper.exists(Wrappers.<FinAsset>lambdaQuery().eq(FinAsset::getExpenseAccountId, id))
+                || ioCategoryMapper.exists(Wrappers.<FinIoCategory>lambdaQuery().eq(FinIoCategory::getAccountId, id))
+                || ioDocMapper.exists(Wrappers.<FinIoDoc>lambdaQuery().eq(FinIoDoc::getAccountId, id));
     }
 
     /** 已使用：账簿中使用、编制了预算，或在凭证科目设置中被科目范围用途使用 */

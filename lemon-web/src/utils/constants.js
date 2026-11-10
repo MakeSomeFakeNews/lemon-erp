@@ -9,3 +9,6 @@ export const SUPER_ADMIN_ID = 1
 /** 启用 / 停用状态（字典 sys_common_status，后端 EnableStatus，接口中是数字 1 / 0） */
 export const STATUS_ENABLED = 1
 export const STATUS_DISABLED = 0
+
+/** 结算方式（业务字典 fin_settle_method）中的「票据」：由票据管理生成，手工收付款、其他收支单不能选择（后端 SettleMethods.NOTE） */
+export const SETTLE_METHOD_NOTE = 'NOTE'

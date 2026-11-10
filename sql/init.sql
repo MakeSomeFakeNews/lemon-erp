@@ -76,6 +76,7 @@ DROP TABLE IF EXISTS scm_delivery_package;
 DROP TABLE IF EXISTS scm_wave;
 DROP TABLE IF EXISTS scm_channel_report_item;
 DROP TABLE IF EXISTS scm_channel_report;
+DROP TABLE IF EXISTS scm_rebate_item;
 DROP TABLE IF EXISTS scm_rebate_tier;
 DROP TABLE IF EXISTS scm_rebate;
 DROP TABLE IF EXISTS scm_promotion_usage;
@@ -127,6 +128,9 @@ DROP TABLE IF EXISTS fin_expense_claim_item;
 DROP TABLE IF EXISTS fin_loan;
 DROP TABLE IF EXISTS fin_loan_repay;
 DROP TABLE IF EXISTS fin_offset;
+DROP TABLE IF EXISTS fin_io_doc_item;
+DROP TABLE IF EXISTS fin_io_doc;
+DROP TABLE IF EXISTS fin_io_category;
 DROP TABLE IF EXISTS fin_settlement_item;
 DROP TABLE IF EXISTS fin_settlement;
 DROP TABLE IF EXISTS fin_bill;
@@ -1678,25 +1682,29 @@ CREATE TABLE scm_rebate (
     id            BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id     BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     rebate_no     VARCHAR(32)    NOT NULL COMMENT '协议号',
-    customer_id   BIGINT         NOT NULL COMMENT '客户',
+    kind          VARCHAR(16)    NOT NULL DEFAULT 'SALES' COMMENT '种类(字典 scm_rebate_kind) SALES销售返利（客户） PURCHASE采购返利（供应商）',
+    calc_mode     VARCHAR(16)    NOT NULL DEFAULT 'TIER' COMMENT '计算方式(字典 scm_rebate_calc) TIER阶梯比例 ITEM按项目填写金额',
+    customer_id   BIGINT                  DEFAULT NULL COMMENT '客户（销售返利）',
+    supplier_id   BIGINT                  DEFAULT NULL COMMENT '供应商（采购返利）',
     begin_date    DATE           NOT NULL COMMENT '期间开始',
     end_date      DATE           NOT NULL COMMENT '期间结束',
-    settle_mode   VARCHAR(16)    NOT NULL COMMENT '兑付方式(字典 scm_rebate_settle) CREDIT_NOTE红字应收 NEXT_ORDER下次订单抵扣',
+    settle_mode   VARCHAR(16)    NOT NULL COMMENT '兑付方式(字典 scm_rebate_settle) CREDIT_NOTE红字应收（采购返利为红字应付） NEXT_ORDER下次订单抵扣',
     status        VARCHAR(16)    NOT NULL COMMENT '状态(字典 scm_rebate_status) ACTIVE执行中 SETTLED已结算',
-    sales_amount  DECIMAL(18, 2)          DEFAULT NULL COMMENT '结算：期间销售额（出库 - 退货，含税）',
+    sales_amount  DECIMAL(18, 2)          DEFAULT NULL COMMENT '结算：期间销售额 / 采购额（出库 - 退货或入库 - 退货，含税）',
     rate          DECIMAL(5, 2)           DEFAULT NULL COMMENT '结算：返利率（%）',
     rebate_amount DECIMAL(18, 2)          DEFAULT NULL COMMENT '结算：返利金额',
     settle_date   DATE                    DEFAULT NULL COMMENT '结算日期',
     settle_by     BIGINT                  DEFAULT NULL COMMENT '结算人',
-    bill_id       BIGINT                  DEFAULT NULL COMMENT '红字应收单（兑付方式为红字应收时）',
+    bill_id       BIGINT                  DEFAULT NULL COMMENT '红字应收 / 应付单（兑付方式为红字应收时）',
     remark        VARCHAR(255)            DEFAULT NULL COMMENT '说明',
     create_by     BIGINT                  DEFAULT NULL COMMENT '创建人',
     create_time   DATETIME                DEFAULT NULL COMMENT '创建时间',
     update_time   DATETIME                DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_rebate_no (rebate_no, tenant_id),
-    KEY idx_rebate_customer (customer_id)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '销售返利协议';
+    KEY idx_rebate_customer (customer_id),
+    KEY idx_rebate_supplier (supplier_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '返利协议（销售返利、采购返利）';
 
 CREATE TABLE scm_rebate_tier (
     id         BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -1707,6 +1715,19 @@ CREATE TABLE scm_rebate_tier (
     PRIMARY KEY (id),
     KEY idx_rebate_tier (rebate_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '返利阶梯';
+
+CREATE TABLE scm_rebate_item (
+    id        BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    rebate_id BIGINT         NOT NULL COMMENT '返利协议',
+    item_name VARCHAR(64)    NOT NULL COMMENT '返利项目',
+    brand     VARCHAR(64)             DEFAULT NULL COMMENT '品牌(业务字典 wms_material_brand)',
+    category  VARCHAR(32)             DEFAULT NULL COMMENT '物料分类(业务字典 wms_material_category)',
+    amount    DECIMAL(18, 2) NOT NULL COMMENT '返利金额（含税）',
+    remark    VARCHAR(255)            DEFAULT NULL COMMENT '说明',
+    PRIMARY KEY (id),
+    KEY idx_rebate_item (rebate_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '返利项目（按项目填写金额）';
 
 -- 渠道库存与销量上报：经销商在门户按月上报各物料的期末库存和当月销量，同一期间重复上报覆盖
 CREATE TABLE scm_channel_report (
@@ -2728,6 +2749,63 @@ CREATE TABLE fin_offset (
     KEY idx_offset_bill (bill_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '冲账单（垫付运费、返利、三包赔偿等抵扣往来款）';
 
+CREATE TABLE fin_io_category (
+    id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    name        VARCHAR(64)  NOT NULL COMMENT '类别名称',
+    direction   VARCHAR(8)   NOT NULL COMMENT '方向(字典 fin_fund_direction) IN收入 OUT支出',
+    account_id  BIGINT                DEFAULT NULL COMMENT '凭证科目（末级）：收入记贷方、支出记借方',
+    sort        INT          NOT NULL DEFAULT 0 COMMENT '排序',
+    status      TINYINT      NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
+    remark      VARCHAR(255)          DEFAULT NULL COMMENT '备注',
+    create_time DATETIME              DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME              DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_io_category (direction, name, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '收支类别（其他收入、费用支出的分类）';
+
+CREATE TABLE fin_io_doc (
+    id            BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id     BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    doc_no        VARCHAR(32)    NOT NULL COMMENT '单号',
+    direction     VARCHAR(8)     NOT NULL COMMENT '方向(字典 fin_fund_direction) IN其他收入 OUT费用支出',
+    doc_date      DATE           NOT NULL COMMENT '日期',
+    ticket_no     VARCHAR(64)             DEFAULT NULL COMMENT '票据编号',
+    partner_type  VARCHAR(16)             DEFAULT NULL COMMENT '关联单位类型(字典 fin_io_partner_type) CUSTOMER客户 SUPPLIER供应商 OTHER其他',
+    partner_id    BIGINT                  DEFAULT NULL COMMENT '客户 / 供应商',
+    partner_name  VARCHAR(128)            DEFAULT NULL COMMENT '其他单位的名称',
+    settle_method VARCHAR(32)             DEFAULT NULL COMMENT '结算方式(业务字典 fin_settle_method)',
+    account_id    BIGINT         NOT NULL COMMENT '结算账户（现金 / 银行末级科目）',
+    dept_id       BIGINT                  DEFAULT NULL COMMENT '费用归属部门',
+    amount        DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '金额合计',
+    status        VARCHAR(16)    NOT NULL DEFAULT 'DRAFT' COMMENT '状态(字典 fin_io_status) DRAFT待确认 CONFIRMED已确认',
+    voucher_id    BIGINT                  DEFAULT NULL COMMENT '确认生成的凭证',
+    confirm_by    BIGINT                  DEFAULT NULL COMMENT '确认人',
+    confirm_time  DATETIME                DEFAULT NULL COMMENT '确认时间',
+    remark        VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    create_by     BIGINT                  DEFAULT NULL COMMENT '制单人',
+    create_time   DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time   DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_io_doc_no (doc_no, tenant_id),
+    KEY idx_io_doc_date (doc_date),
+    KEY idx_io_doc_partner (partner_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '其他收支单（其他收入单、费用支出单）';
+
+CREATE TABLE fin_io_doc_item (
+    id          BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    doc_id      BIGINT         NOT NULL COMMENT '收支单',
+    category_id BIGINT         NOT NULL COMMENT '收支类别',
+    amount      DECIMAL(18, 2) NOT NULL COMMENT '金额',
+    remark      VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    create_time DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_io_item_doc (doc_id),
+    KEY idx_io_item_category (category_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '其他收支单明细';
+
 CREATE TABLE fin_invoice (
     id             BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id      BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
@@ -3391,7 +3469,8 @@ CREATE TABLE fin_fund_transfer (
     from_account_id BIGINT         NOT NULL COMMENT '转出科目',
     to_account_id   BIGINT         NOT NULL COMMENT '转入科目',
     amount          DECIMAL(18, 2) NOT NULL COMMENT '调拨金额',
-    fee             DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '手续费（由转出账户承担，计入财务费用）',
+    fee             DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '手续费（计入财务费用）',
+    fee_bearer      VARCHAR(8)     NOT NULL DEFAULT 'FROM' COMMENT '手续费承担方(字典 fin_fee_bearer) FROM转出账户 TO转入账户',
     voucher_id      BIGINT                  DEFAULT NULL COMMENT '凭证',
     remark          VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     create_by       BIGINT                  DEFAULT NULL COMMENT '制单人',
@@ -6932,7 +7011,7 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('scm_rebate_status', '已结算', 'SETTLED', 'green', 2, 1, NOW(), NOW()),
 ('scm_rebate_settle', '红字应收', 'CREDIT_NOTE', 'red', 1, 1, NOW(), NOW()),
 ('scm_rebate_settle', '下次订单抵扣', 'NEXT_ORDER', 'blue', 2, 1, NOW(), NOW()),
-('fin_bill_source', '销售返利', 'REBATE', 'volcano', 12, 1, NOW(), NOW());
+('fin_bill_source', '返利', 'REBATE', 'volcano', 12, 1, NOW(), NOW());
 
 -- 销售：价目表之后为促销活动、销售返利
 UPDATE sys_menu SET sort = sort + 2 WHERE parent_id = 902 AND sort >= 3;
@@ -7351,6 +7430,86 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('sys_notice_type', '公告', 'ANNOUNCE', 'green', 2, 1, NOW(), NOW()),
 ('sys_notice_type', '制度', 'POLICY', 'purple', 3, 1, NOW(), NOW()),
 ('sys_notice_type', '活动', 'EVENT', 'orange', 4, 1, NOW(), NOW());
+
+-- 现金银行：其他收入单、费用支出单（明细为收支类别，确认后生成凭证，进入出纳日记账和资金日报），收支类别（每个租户一份，标明收 / 支并关联科目）；
+-- 账户调拨的手续费承担方（转出 / 转入账户）
+INSERT INTO fin_account (code, name, parent_id, category, direction, status, create_time, update_time) VALUES
+('660206', '业务招待费', 56, 'PROFIT', 'DEBIT', 1, NOW(), NOW()),
+('660207', '水电费', 56, 'PROFIT', 'DEBIT', 1, NOW(), NOW()),
+('660208', '租赁费', 56, 'PROFIT', 'DEBIT', 1, NOW(), NOW()),
+('660209', '快递费', 56, 'PROFIT', 'DEBIT', 1, NOW(), NOW());
+INSERT INTO fin_io_category (name, direction, account_id, sort, status, create_time, update_time)
+SELECT g.name, g.direction, a.id, g.sort, 1, NOW(), NOW()
+FROM (
+    SELECT '废料销售' AS name, 'IN' AS direction, '6051' AS code, 1 AS sort
+    UNION ALL SELECT '佣金收入', 'IN', '6051', 2
+    UNION ALL SELECT '房租收入', 'IN', '6051', 3
+    UNION ALL SELECT '其他收入', 'IN', '6301', 9
+    UNION ALL SELECT '差旅费', 'OUT', '660204', 1
+    UNION ALL SELECT '业务招待费', 'OUT', '660206', 2
+    UNION ALL SELECT '办公费', 'OUT', '660202', 3
+    UNION ALL SELECT '房租', 'OUT', '660208', 4
+    UNION ALL SELECT '水电费', 'OUT', '660207', 5
+    UNION ALL SELECT '快递费', 'OUT', '660209', 6
+    UNION ALL SELECT '工资', 'OUT', '660201', 7
+    UNION ALL SELECT '银行手续费', 'OUT', '6603', 8
+    UNION ALL SELECT '其他支出', 'OUT', '6711', 9
+) g
+LEFT JOIN fin_account a ON a.code = g.code AND a.tenant_id = 1;
+INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
+(201, '收支方向', 'fin_fund_direction', 'SYSTEM', 1, '收支类别、其他收支单的方向：收入、支出', NOW(), NOW()),
+(202, '收支单状态', 'fin_io_status', 'SYSTEM', 1, '其他收入单、费用支出单的状态', NOW(), NOW()),
+(203, '关联单位类型', 'fin_io_partner_type', 'SYSTEM', 1, '其他收支单的关联单位：客户、供应商或其他', NOW(), NOW()),
+(204, '手续费承担方', 'fin_fee_bearer', 'SYSTEM', 1, '账户调拨的手续费由转出账户还是转入账户承担', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('fin_fund_direction', '收入', 'IN', 'green', 1, 1, NOW(), NOW()),
+('fin_fund_direction', '支出', 'OUT', 'orange', 2, 1, NOW(), NOW()),
+('fin_io_status', '待确认', 'DRAFT', 'default', 1, 1, NOW(), NOW()),
+('fin_io_status', '已确认', 'CONFIRMED', 'green', 2, 1, NOW(), NOW()),
+('fin_io_partner_type', '客户', 'CUSTOMER', 'blue', 1, 1, NOW(), NOW()),
+('fin_io_partner_type', '供应商', 'SUPPLIER', 'purple', 2, 1, NOW(), NOW()),
+('fin_io_partner_type', '其他', 'OTHER', 'default', 3, 1, NOW(), NOW()),
+('fin_fee_bearer', '转出账户', 'FROM', 'default', 1, 1, NOW(), NOW()),
+('fin_fee_bearer', '转入账户', 'TO', 'default', 2, 1, NOW(), NOW()),
+('fin_voucher_source', '其他收支', 'INCOME_EXPENSE', 'lime', 22, 1, NOW(), NOW());
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(391, 933, '其他收支', 'C', 'income-expense', 'fin/income-expense/index', 'fin:io:list', 'DollarCircleOutlined', 7, 1, 1, NOW(), NOW()),
+(3910, 391, '收支单新增', 'F', NULL, NULL, 'fin:io:add', NULL, 1, 1, 1, NOW(), NOW()),
+(3911, 391, '收支单修改', 'F', NULL, NULL, 'fin:io:edit', NULL, 2, 1, 1, NOW(), NOW()),
+(3912, 391, '收支单删除', 'F', NULL, NULL, 'fin:io:remove', NULL, 3, 1, 1, NOW(), NOW()),
+(3913, 391, '收支单确认', 'F', NULL, NULL, 'fin:io:confirm', NULL, 4, 1, 1, NOW(), NOW()),
+(3914, 391, '收支类别维护', 'F', NULL, NULL, 'fin:io:category', NULL, 5, 1, 1, NOW(), NOW());
+-- 普通用户、总经理只读；会计、出纳全部
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT g.role_id, g.menu_id FROM (
+    SELECT 2 AS role_id, 391 AS menu_id UNION ALL SELECT 3, 391
+    UNION ALL SELECT 9, 391 UNION ALL SELECT 9, 3910 UNION ALL SELECT 9, 3911 UNION ALL SELECT 9, 3912 UNION ALL SELECT 9, 3913 UNION ALL SELECT 9, 3914
+    UNION ALL SELECT 10, 391 UNION ALL SELECT 10, 3910 UNION ALL SELECT 10, 3911 UNION ALL SELECT 10, 3912 UNION ALL SELECT 10, 3913 UNION ALL SELECT 10, 3914
+) g
+WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);
+
+-- 返利：返利协议分为销售返利（给客户）和采购返利（供应商给我方，结算生成红字应付单冲减应付）；计算方式增加「按项目填写金额」
+INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
+(205, '返利种类', 'scm_rebate_kind', 'SYSTEM', 1, '销售返利（给客户）、采购返利（供应商给我方）', NOW(), NOW()),
+(206, '返利计算方式', 'scm_rebate_calc', 'SYSTEM', 1, '阶梯比例或按项目填写金额', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('scm_rebate_kind', '销售返利', 'SALES', 'volcano', 1, 1, NOW(), NOW()),
+('scm_rebate_kind', '采购返利', 'PURCHASE', 'cyan', 2, 1, NOW(), NOW()),
+('scm_rebate_calc', '阶梯比例', 'TIER', 'blue', 1, 1, NOW(), NOW()),
+('scm_rebate_calc', '按项目填写金额', 'ITEM', 'purple', 2, 1, NOW(), NOW());
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(392, 901, '采购返利', 'C', 'purchase-rebate', 'scm/purchase-rebate/index', 'scm:purchaseRebate:list', 'RedEnvelopeOutlined', 7, 1, 1, NOW(), NOW()),
+(3920, 392, '采购返利协议维护', 'F', NULL, NULL, 'scm:purchaseRebate:add', NULL, 1, 1, 1, NOW(), NOW()),
+(3921, 392, '采购返利结算', 'F', NULL, NULL, 'scm:purchaseRebate:settle', NULL, 2, 1, 1, NOW(), NOW());
+-- 普通用户查看；采购员维护协议；总经理、会计结算（与销售返利对称）
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT g.role_id, g.menu_id FROM (
+    SELECT 2 AS role_id, 392 AS menu_id UNION ALL SELECT 3, 392 UNION ALL SELECT 3, 3921
+    UNION ALL SELECT 4, 392 UNION ALL SELECT 4, 3920 UNION ALL SELECT 9, 5 UNION ALL SELECT 9, 901 UNION ALL SELECT 9, 392 UNION ALL SELECT 9, 3921
+) g
+WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);
 
 ALTER TABLE sys_dept AUTO_INCREMENT = 200;
 ALTER TABLE sys_user AUTO_INCREMENT = 100;

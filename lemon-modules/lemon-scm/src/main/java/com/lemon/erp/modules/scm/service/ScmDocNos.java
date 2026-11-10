@@ -49,6 +49,7 @@ public class ScmDocNos {
         types.add(doc(ScmWaveService.DOC_NO, "scm.label.pickingWave"));
         types.add(doc(SHIPMENT, "scm.label.shipment"));
         types.add(doc(ScmRebateService.DOC_NO, "scm.label.salesRebate"));
+        types.add(doc(ScmRebateService.PURCHASE_DOC_NO, "scm.label.purchaseRebate"));
         types.add(master(SUPPLIER, "scm.label.supplierCode"));
         types.add(master(CUSTOMER, "scm.label.customerCode"));
         return new DocNoCatalog("scm.label.supplyChainManagement", types);
