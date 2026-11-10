@@ -899,7 +899,7 @@ export default {
     preparedByUnit: 'Reporting Entity: {name}',
     unitYuan: 'Unit: CNY',
     unbalanced: 'Report out of balance: total assets do not equal total liabilities and equity. Please check the account settings',
-    cashMismatch: 'Ending balance differs from the books (book cash and bank balance ¥{amount}); there may be unposted cash vouchers',
+    cashMismatch: 'Ending balance differs from the books (book cash and bank balance ¥{amount}): some cash vouchers cannot be classified by counter account (e.g. counter entries on the same side as cash, or red-ink reversals), so those cash movements are not in any line item; check the vouchers',
     headOfUnitColon: 'Head of Entity:',
     chiefAccountantColon: 'Chief Accountant:',
     preparerColon: 'Prepared By: {name}',
