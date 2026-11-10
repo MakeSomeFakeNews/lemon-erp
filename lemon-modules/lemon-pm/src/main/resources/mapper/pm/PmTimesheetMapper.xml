@@ -21,9 +21,10 @@
         <where>
             <if test="projectId != null">ts.project_id = #{projectId}</if>
             <if test="userId != null">AND ts.user_id = #{userId}</if>
-            <if test="status != null and status != ''">AND ts.status = #{status}</if>
+            <if test="status != null">AND ts.status = #{status}</if>
             <if test="beginDate != null">AND ts.work_date &gt;= #{beginDate}</if>
             <if test="endDate != null">AND ts.work_date &lt;= #{endDate}</if>
+            <if test="excludeUserId != null">AND ts.user_id &lt;&gt; #{excludeUserId}</if>
         </where>
         ORDER BY ts.work_date DESC, ts.id DESC
     </select>

@@ -58,7 +58,8 @@ const tabs = computed(() =>
 )
 const canApprove = computed(() => hasPerm('pm:timesheet:approve'))
 const selected = ref([])
-const paged = usePaged((p) => pageTimesheet({ ...p, status: status.value }))
+// 待审批列表不含本人的工时（不能审批自己的，项目经理本人的工时由上级审批）
+const paged = usePaged((p) => pageTimesheet({ ...p, status: status.value, excludeSelf: status.value === TimesheetStatus.SUBMITTED }))
 
 const canSelect = (r) => canApprove.value && r.status === TimesheetStatus.SUBMITTED
 const selectable = computed(() => paged.list.filter(canSelect))

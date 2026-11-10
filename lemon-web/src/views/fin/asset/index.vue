@@ -189,15 +189,20 @@
               </a-col>
               <a-col :xs="24" :sm="10">
                 <a-form-item :label="$t('fin.asset.taxAmount')" name="taxAmount">
-                  <a-input-number v-model:value="form.taxAmount" :min="0" :precision="2" prefix="¥" :disabled="!form.supplierId" class="full" />
+                  <a-input-number v-model:value="form.taxAmount" :min="0" :precision="2" prefix="¥" :disabled="!form.supplierId && !form.payAccountId" class="full" />
                 </a-form-item>
               </a-col>
-              <a-col v-if="form.supplierId" :span="24">
+              <a-col v-if="!form.supplierId" :xs="24" :sm="14">
+                <a-form-item :label="$t('fin.asset.payAccount')" name="payAccountId" :extra="$t('fin.asset.payAccountExtra')">
+                  <AccountSelect v-model:value="form.payAccountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.asset.settleAccountPh')" allow-clear />
+                </a-form-item>
+              </a-col>
+              <a-col v-if="form.supplierId || form.payAccountId" :span="24">
                 <a-alert
                   type="info"
                   show-icon
                   class="supplier-tip"
-                  :message="$t('fin.asset.supplierTip', { amount: formatMoney((Number(form.originalValue) || 0) + (Number(form.taxAmount) || 0)) })"
+                  :message="$t(form.supplierId ? 'fin.asset.supplierTip' : 'fin.asset.payAccountTip', { amount: formatMoney((Number(form.originalValue) || 0) + (Number(form.taxAmount) || 0)) })"
                 />
               </a-col>
             </template>
@@ -224,41 +229,7 @@
         <a-alert v-if="monthly" type="info" :message="$t('fin.asset.monthlyTip', { amount: formatMoney(monthly) })" show-icon />
       </a-form>
     </FormDrawer>
-    <a-modal v-model:open="disposeOpen" :title="$t('fin.asset.disposeTitle', { name: disposeTarget?.name || '' })" :confirm-loading="disposing" @ok="submitDispose">
-      <a-alert
-        type="info"
-        show-icon
-        class="dispose-tip"
-        :message="$t('fin.asset.disposeTip')"
-      />
-      <a-form layout="vertical">
-        <a-row :gutter="16">
-          <a-col :span="12">
-            <a-form-item :label="$t('fin.asset.disposeDate')" required>
-              <a-date-picker v-model:value="disposeForm.date" value-format="YYYY-MM-DD" class="full" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item :label="$t('fin.asset.settleAccount')" :extra="disposeForm.income || disposeForm.expense ? '' : $t('fin.asset.settleAccountExtra')">
-              <AccountSelect v-model:value="disposeForm.settleAccountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.asset.settleAccountPh')" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item :label="$t('fin.asset.disposeIncome')">
-              <a-input-number v-model:value="disposeForm.income" :min="0" :precision="2" :addon-after="$t('fin.asset.yuan')" class="full" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item :label="$t('fin.asset.disposeExpense')">
-              <a-input-number v-model:value="disposeForm.expense" :min="0" :precision="2" :addon-after="$t('fin.asset.yuan')" class="full" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <div v-if="disposeTarget" class="sub-text">
-          {{ $t(disposeNet >= 0 ? 'fin.asset.disposeLoss' : 'fin.asset.disposeGain', { net: formatMoney(disposeTarget.netValue), amount: formatMoney(Math.abs(disposeNet)) }) }}
-        </div>
-      </a-form>
-    </a-modal>
+    <DisposeModal ref="disposeModal" @done="load" />
     <a-modal
       v-model:open="moveOpen"
       :title="$t('fin.asset.moveTitle', { type: MOVE_TITLES[moveForm.moveType], name: moveTarget?.name || '' })"
@@ -328,7 +299,8 @@ import AccountSelect from '@/components/fin/AccountSelect.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
-import { addAsset, assetMoves, deleteAsset, moveAsset, depreciate, disposeAsset, getAsset, pageAsset, pageDepreciation, undoDepreciation, updateAsset } from '@/api/fin'
+import DisposeModal from './DisposeModal.vue'
+import { addAsset, assetMoves, deleteAsset, moveAsset, depreciate, getAsset, pageAsset, pageDepreciation, undoDepreciation, updateAsset } from '@/api/fin'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -370,11 +342,11 @@ const rules = {
   expenseAccountId: [{ required: true, message: t('common.rule.requiredSelect', { name: t('fin.asset.expenseAccount') }) }]
 }
 const FIELDS = ['code', 'name', 'category', 'model', 'deptId', 'custodianId', 'location', 'useDate', 'originalValue', 'residualRate', 'usefulMonths', 'expenseAccountId', 'status', 'remark',
-  'openingMonths', 'openingAccumulated', 'supplierId', 'taxAmount']
+  'openingMonths', 'openingAccumulated', 'supplierId', 'taxAmount', 'payAccountId']
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, code: '', name: '', category: 'ELECTRONIC', model: '', deptId: undefined, custodianId: undefined, location: '', useDate: today(), originalValue: undefined,
     residualRate: 5, usefulMonths: 36, expenseAccountId: undefined, status: AssetStatus.IN_USE, remark: '', depreciatedMonths: 0,
-    supplierId: undefined, taxAmount: undefined }),
+    supplierId: undefined, taxAmount: undefined, payAccountId: undefined }),
   fetch: async (record) => {
     const a = await getAsset(record.id)
     return { ...a, custodianName: record.custodianName, originalValue: Number(a.originalValue), residualRate: Number(a.residualRate) }
@@ -383,8 +355,10 @@ const drawer = useFormDrawer({
   update: updateAsset,
   toPayload: (f) => {
     const data = Object.fromEntries(FIELDS.map((k) => [k, f[k] === '' || f[k] === undefined ? null : f[k]]))
-    // 只有新增的非期初资产可以登记采购供应商
-    if (f.id || f.openingMonths || !f.supplierId) Object.assign(data, { supplierId: null, taxAmount: null })
+    // 只有新增的非期初资产可以登记采购供应商或付款账户（二选一）
+    if (f.id || f.openingMonths) Object.assign(data, { supplierId: null, taxAmount: null, payAccountId: null })
+    else if (f.supplierId) data.payAccountId = null
+    else if (!f.payAccountId) data.taxAmount = null
     return data
   },
   onSuccess: load
@@ -397,35 +371,8 @@ const monthly = computed(() => {
   return (f.originalValue * (1 - (f.residualRate || 0) / 100)) / f.usefulMonths
 })
 
-const disposeOpen = ref(false)
-const disposing = ref(false)
-const disposeTarget = ref()
-const disposeForm = reactive({ date: undefined, income: undefined, expense: undefined, settleAccountId: undefined, remark: '' })
-const disposeNet = computed(() => {
-  const r = disposeTarget.value
-  if (!r) return 0
-  return Number(r.netValue) + (Number(disposeForm.expense) || 0) - (Number(disposeForm.income) || 0)
-})
-function dispose(record) {
-  disposeTarget.value = record
-  Object.assign(disposeForm, { date: today(), income: undefined, expense: undefined, settleAccountId: undefined, remark: '' })
-  disposeOpen.value = true
-}
-async function submitDispose() {
-  if ((disposeForm.income || disposeForm.expense) && !disposeForm.settleAccountId) {
-    message.warning(t('fin.asset.needSettleAccount'))
-    return
-  }
-  disposing.value = true
-  try {
-    await disposeAsset(disposeTarget.value.id, { ...disposeForm })
-    message.success(t('fin.asset.disposed'))
-    disposeOpen.value = false
-    load()
-  } finally {
-    disposing.value = false
-  }
-}
+const disposeModal = ref()
+const dispose = (record) => disposeModal.value.open(record)
 
 // ---------------------------------------------------------------- 领用 / 归还 / 调拨、履历
 const MOVE_TITLES = { ASSIGN: t('fin.asset.assign'), RETURN: t('fin.asset.return'), TRANSFER: t('fin.asset.transfer') }
@@ -509,9 +456,6 @@ async function undo() {
 
 <style scoped>
 .supplier-tip {
-  margin-bottom: 16px;
-}
-.dispose-tip {
   margin-bottom: 16px;
 }
 .toolbar {

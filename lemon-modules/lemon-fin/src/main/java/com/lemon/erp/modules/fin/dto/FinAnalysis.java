@@ -116,6 +116,14 @@ public final class FinAnalysis {
         private BigDecimal credit;
     }
 
+    /** 核销了固定资产购置应付单的付款凭证 */
+    @Data
+    public static class AssetPayment {
+        private Long voucherId;
+        private BigDecimal assetAmount;
+        private BigDecimal totalAmount;
+    }
+
     /** 现金流量表的行：标题行金额为空 */
     public record CashFlowLine(String name, BigDecimal amount, int level, boolean bold) {
     }

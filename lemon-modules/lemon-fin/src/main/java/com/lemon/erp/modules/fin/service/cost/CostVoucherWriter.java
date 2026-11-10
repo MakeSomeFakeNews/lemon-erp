@@ -31,7 +31,7 @@ import static com.lemon.erp.modules.fin.service.cost.Valuation.money;
 /**
  * 成本结转凭证（未审核）：领料 借 生产成本 / 贷 原材料、库存商品；人工、制造费用 借 生产成本 / 贷 制造费用
  * （生产岗位工资计提时计入制造费用）；制造费用差异（期末制造费用余额）转主营业务成本；关闭工单的剩余在产品转主营业务成本；
- * 完工 借 库存商品 / 贷 生产成本；销售成本 借 主营业务成本 / 贷 存货；项目领料 借 合同履约成本；委外发料 借 委托加工物资；
+ * 完工 借 库存商品 / 贷 生产成本；销售成本 借 主营业务成本 / 贷 存货；项目领料 借 合同履约成本（按项目辅助核算）；委外发料 借 委托加工物资；
  * 其他出入库 待处理财产损溢（填写了收发类别的按类别取凭证科目设置中的对方科目）
  */
 @Component
@@ -125,6 +125,8 @@ public class CostVoucherWriter {
         Map<Long, BigDecimal> outsourceByAccount = new HashMap<>();
         Map<Long, BigDecimal> serviceByAccount = new HashMap<>();
         Map<Long, BigDecimal> assemblyOutByAccount = new HashMap<>();
+        // 项目 → 项目领料金额（借 合同履约成本，按项目辅助核算，与项目月结贷方口径一致；键为空表示对应不到项目）
+        Map<Long, BigDecimal> projectDebits = new LinkedHashMap<>();
         materials.values().forEach(c -> {
             Long code = inventory.apply(category.apply(c.getMaterialId()));
             salesByAccount.merge(code, c.getSalesAmount(), BigDecimal::add);
@@ -136,13 +138,17 @@ public class CostVoucherWriter {
             BigDecimal assemblyOutAmount = money(src.getAssemblyOut().getOrDefault(c.getMaterialId(), BigDecimal.ZERO).multiply(c.getUnitCost()));
             assemblyOutByAccount.merge(code, assemblyOutAmount, BigDecimal::add);
             projectByAccount.merge(code, project, BigDecimal::add);
+            splitByProject(src.getProjectOutByProject().getOrDefault(c.getMaterialId(), Map.of()),
+                    src.getProjectOut().getOrDefault(c.getMaterialId(), BigDecimal.ZERO), c.getUnitCost(), project)
+                    .forEach((p, amount) -> projectDebits.merge(p, amount, BigDecimal::add));
             outsourceByAccount.merge(code, outsource, BigDecimal::add);
             serviceByAccount.merge(code, service, BigDecimal::add);
             otherByAccount.merge(code, c.getOtherInAmount().subtract(c.getOtherOutAmount()).add(project).add(outsource).add(service)
                     .add(assemblyOutAmount), BigDecimal::add);
         });
-        BigDecimal project = Decimals.sum(projectByAccount.values());
-        lines.add(VoucherLine.debit(summary + "-项目领料", accountRules.accountId(AccountRole.CONTRACT_COST), null, project)); // i18n-ignore
+        Long contractCost = accountRules.accountId(AccountRole.CONTRACT_COST);
+        projectDebits.forEach((p, amount) -> lines.add(
+                VoucherLine.debit(summary + "-项目领料", contractCost, null, amount).withProject(p))); // i18n-ignore
         projectByAccount.forEach((code, amount) -> lines.add(VoucherLine.credit(summary + "-项目领料", code, null, amount))); // i18n-ignore
         // 委外收货核销用料：借 委外件存货科目 / 贷 委托加工物资
         Map<Long, BigDecimal> consumedByAccount = new HashMap<>();
@@ -189,6 +195,37 @@ public class CostVoucherWriter {
         otherByAccount.forEach((code, amount) -> lines.add(VoucherLine.debit(summary + "-其他出入库", code, null, amount))); // i18n-ignore
         otherOffsets(src, materials, other).forEach((account, amount) -> lines.add(VoucherLine.credit(summary + "-其他出入库", account, null, amount))); // i18n-ignore
         return new Lines(lines.stream().anyMatch(l -> !l.isZero()) ? lines : List.of(), overheadVariance);
+    }
+
+    /**
+     * 一个物料的项目领料金额按项目拆分：各项目按「数量 × 本期单价」，对应不到项目的数量（手工做的项目领料出库）
+     * 剩余金额不带项目；数量全部对应到项目时舍入尾差计入最后一个项目，保证合计等于物料的项目领料金额
+     *
+     * @param byProject 项目 → 数量
+     * @param totalQty  物料的项目领料总数量
+     * @param total     物料的项目领料金额
+     * @return 项目（为空表示不带项目）→ 金额
+     */
+    static Map<Long, BigDecimal> splitByProject(Map<Long, BigDecimal> byProject, BigDecimal totalQty, BigDecimal unitCost,
+                                                BigDecimal total) {
+        Map<Long, BigDecimal> result = new LinkedHashMap<>();
+        BigDecimal qtyLeft = totalQty;
+        BigDecimal amountLeft = total;
+        Long last = null;
+        for (Map.Entry<Long, BigDecimal> e : byProject.entrySet()) {
+            if (e.getValue().signum() == 0) {
+                continue;
+            }
+            BigDecimal amount = money(e.getValue().multiply(unitCost));
+            result.merge(e.getKey(), amount, BigDecimal::add);
+            qtyLeft = qtyLeft.subtract(e.getValue());
+            amountLeft = amountLeft.subtract(amount);
+            last = e.getKey();
+        }
+        if (amountLeft.signum() != 0) {
+            result.merge(qtyLeft.signum() == 0 && last != null ? last : null, amountLeft, BigDecimal::add);
+        }
+        return result;
     }
 
     /**

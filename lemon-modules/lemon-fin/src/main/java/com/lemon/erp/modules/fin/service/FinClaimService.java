@@ -184,9 +184,12 @@ public class FinClaimService {
         int year = c.getClaimDate().getYear();
         Map<Long, BigDecimal> amounts = new HashMap<>();
         c.getItems().forEach(i -> amounts.merge(i.getAccountId(), i.getAmount(), BigDecimal::add));
-        Map<Long, BigDecimal> committed = new HashMap<>();
-        claimMapper.selectCommitted(c.getDeptId(), LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31), c.getId())
-                .forEach(r -> committed.put(((Number) r.get("accountId")).longValue(), new BigDecimal(r.get("amount").toString())));
+        Map<Long, Map<Long, BigDecimal>> committed = new HashMap<>();
+        for (Map<String, Object> r : claimMapper.selectCommitted(LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31), c.getId())) {
+            Long dept = r.get("deptId") == null ? null : ((Number) r.get("deptId")).longValue();
+            committed.computeIfAbsent(dept, k -> new HashMap<>())
+                    .merge(((Number) r.get("accountId")).longValue(), new BigDecimal(r.get("amount").toString()), BigDecimal::add);
+        }
         return budgetService.check(year, c.getDeptId(), amounts, committed);
     }
 

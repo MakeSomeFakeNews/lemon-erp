@@ -93,4 +93,17 @@
         ORDER BY e.voucher_id, e.seq
     </select>
 
+    <select id="selectAssetPayments" resultType="com.lemon.erp.modules.fin.dto.FinAnalysis$AssetPayment">
+        SELECT s.voucher_id AS "voucherId",
+               SUM(CASE WHEN b.source_type = 'ASSET' THEN si.amount ELSE 0 END) AS "assetAmount",
+               SUM(si.amount) AS "totalAmount"
+        FROM fin_settlement s
+        JOIN fin_voucher v ON v.id = s.voucher_id
+        JOIN fin_settlement_item si ON si.settlement_id = s.id
+        JOIN fin_bill b ON b.id = si.bill_id
+        WHERE s.kind = 'PAYMENT' AND v.status = 'POSTED' AND v.period &gt;= #{begin} AND v.period &lt;= #{end}
+        GROUP BY s.voucher_id
+        HAVING SUM(CASE WHEN b.source_type = 'ASSET' THEN si.amount ELSE 0 END) &lt;&gt; 0
+    </select>
+
 </mapper>

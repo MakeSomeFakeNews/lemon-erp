@@ -5,6 +5,7 @@ import com.lemon.erp.modules.fin.model.BudgetControl;
 import com.lemon.erp.modules.fin.model.AccountDirection;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
+import com.lemon.erp.framework.org.DeptLookup;
 import com.lemon.erp.modules.fin.dto.AccountSum;
 import com.lemon.erp.modules.fin.dto.BudgetExecution;
 import com.lemon.erp.modules.fin.dto.BudgetRequest;
@@ -23,12 +24,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 /**
  * 预算管理：按年度、部门（0 为全公司）、科目编制 12 个月的预算；科目可以是上级科目，执行数按其全部下级汇总。
- * 执行数取已记账凭证（不含结转损益），部门预算只统计分录部门为该部门的金额；
+ * 执行数取已记账凭证（不含结转损益），部门预算统计分录部门为该部门及其下级部门的金额（与数据权限「本部门及以下」一致）；
+ * 上下级部门都编制了预算时，上级部门的预算是包含下级部门在内的总额度，下级的费用同时计入下级和上级部门的执行数，
+ * 预算控制时分别校验（报销部门的预算、各上级部门的预算、全公司预算）；
  * 借方科目（成本、费用）取借 - 贷，贷方科目（收入）取贷 - 借
  */
 @Service
@@ -41,6 +43,7 @@ public class FinBudgetService {
     private final FinBudgetMapper budgetMapper;
     private final FinVoucherEntryMapper entryMapper;
     private final FinAccountService accountService;
+    private final DeptLookup deptLookup;
 
     public List<FinBudget> list(int year, Long deptId) {
         return budgetMapper.selectListView(year, deptId);
@@ -91,10 +94,14 @@ public class FinBudgetService {
         List<AccountSum> sums = allLeaves.isEmpty() ? List.of() : entryMapper.sumByPeriodDept(year * 100 + 1, year * 100 + 12, allLeaves);
         Map<Long, AccountDirection> directions = new HashMap<>();
         accounts.forEach(a -> directions.put(a.getId(), a.getDirection()));
+        // 部门预算 → 该部门及全部下级部门
+        Map<Long, Set<Long>> deptScopes = deptLookup.selfAndDescendantIds(
+                budgets.stream().map(FinBudget::getDeptId).filter(d -> d != 0).distinct().toList());
 
         List<BudgetExecution> result = new ArrayList<>();
         for (FinBudget b : budgets) {
             Set<Long> leaves = new HashSet<>(leavesByBudget.get(b.getId()));
+            Set<Long> depts = b.getDeptId() == 0 ? null : deptScopes.getOrDefault(b.getDeptId(), Set.of(b.getDeptId()));
             boolean debitSide = directions.get(b.getAccountId()) == AccountDirection.DEBIT;
             BigDecimal[] actual = new BigDecimal[12];
             Arrays.fill(actual, BigDecimal.ZERO);
@@ -102,7 +109,7 @@ public class FinBudgetService {
                 if (!leaves.contains(s.getAccountId())) {
                     continue;
                 }
-                if (b.getDeptId() != 0 && !Objects.equals(b.getDeptId(), s.getDeptId())) {
+                if (depts != null && (s.getDeptId() == null || !depts.contains(s.getDeptId()))) {
                     continue;
                 }
                 int m = s.getPeriod() % 100 - 1;
@@ -120,17 +127,22 @@ public class FinBudgetService {
     }
 
     /**
-     * 预算控制（费用报销提交时）：设置了控制方式的年度预算，已执行 + 在途 + 本次超过全年预算时，
+     * 预算控制（费用报销提交时）：设置了控制方式的年度预算（全公司、报销部门及其上级部门），已执行 + 在途 + 本次超过全年预算时，
      * 「超预算禁止」抛出异常，「超预算提示」返回提示
      *
      * @param amounts   本次金额：科目 ID → 金额
-     * @param committed 在途（已提交未付款的报销等）：科目 ID → 金额
+     * @param committed 在途（已提交未付款的报销等）：部门 ID（可为空）→ 科目 ID → 金额，按预算的部门范围汇总
      * @return 超预算提示
      */
-    public List<String> check(int year, Long deptId, Map<Long, BigDecimal> amounts, Map<Long, BigDecimal> committed) {
-        List<FinBudget> budgets = list(year, null).stream()
-                .filter(b -> b.getControlMode() != null && b.getControlMode() != BudgetControl.NONE)
-                .filter(b -> b.getDeptId() == 0 || Objects.equals(b.getDeptId(), deptId)).toList();
+    public List<String> check(int year, Long deptId, Map<Long, BigDecimal> amounts, Map<Long, Map<Long, BigDecimal>> committed) {
+        List<FinBudget> controlled = list(year, null).stream()
+                .filter(b -> b.getControlMode() != null && b.getControlMode() != BudgetControl.NONE).toList();
+        // 适用的预算：全公司，以及报销部门本身和各上级部门的预算
+        Map<Long, Set<Long>> deptScopes = deptId == null ? Map.of() : deptLookup.selfAndDescendantIds(
+                controlled.stream().map(FinBudget::getDeptId).filter(d -> d != 0).distinct().toList());
+        List<FinBudget> budgets = controlled.stream()
+                .filter(b -> b.getDeptId() == 0 || deptId != null
+                        && deptScopes.getOrDefault(b.getDeptId(), Set.of(b.getDeptId())).contains(deptId)).toList();
         if (budgets.isEmpty()) {
             return List.of();
         }
@@ -144,7 +156,13 @@ public class FinBudgetService {
             if (request.signum() <= 0) {
                 continue;
             }
-            BigDecimal pending = sumUnder(committed, accounts, b.getAccountCode());
+            Set<Long> scope = b.getDeptId() == 0 ? null : deptScopes.getOrDefault(b.getDeptId(), Set.of(b.getDeptId()));
+            BigDecimal pending = BigDecimal.ZERO;
+            for (Map.Entry<Long, Map<Long, BigDecimal>> c : committed.entrySet()) {
+                if (scope == null || c.getKey() != null && scope.contains(c.getKey())) {
+                    pending = pending.add(sumUnder(c.getValue(), accounts, b.getAccountCode()));
+                }
+            }
             BudgetExecution e = exec.get(b.getId());
             BigDecimal actual = e == null ? BigDecimal.ZERO : e.totalActual();
             BigDecimal over = actual.add(pending).add(request).subtract(b.getTotal());

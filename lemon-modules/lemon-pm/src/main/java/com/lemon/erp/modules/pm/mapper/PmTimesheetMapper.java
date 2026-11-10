@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.lemon.erp.modules.pm.dto.TimesheetSummaryRow;
 import com.lemon.erp.modules.pm.entity.PmTimesheet;
+import com.lemon.erp.modules.pm.model.TimesheetStatus;
 import org.apache.ibatis.annotations.Param;
 
 import java.math.BigDecimal;
@@ -12,9 +13,10 @@ import java.util.List;
 
 public interface PmTimesheetMapper extends BaseMapper<PmTimesheet> {
 
+    /** @param excludeUserId 不含该账号的工时（审批列表排除审批人本人的），可为空 */
     IPage<PmTimesheet> selectPageList(IPage<PmTimesheet> page, @Param("projectId") Long projectId, @Param("userId") Long userId,
-                                      @Param("status") String status, @Param("beginDate") LocalDate beginDate,
-                                      @Param("endDate") LocalDate endDate);
+                                      @Param("status") TimesheetStatus status, @Param("beginDate") LocalDate beginDate,
+                                      @Param("endDate") LocalDate endDate, @Param("excludeUserId") Long excludeUserId);
 
     /** 本人某段时间的工时 */
     List<PmTimesheet> selectMine(@Param("userId") Long userId, @Param("beginDate") LocalDate beginDate, @Param("endDate") LocalDate endDate);

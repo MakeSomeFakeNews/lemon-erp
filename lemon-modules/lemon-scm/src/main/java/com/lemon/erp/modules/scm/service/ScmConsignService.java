@@ -5,14 +5,13 @@ import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.scm.dto.ConsignSettleRequest;
 import com.lemon.erp.modules.scm.dto.OrderItemRequest;
 import com.lemon.erp.modules.scm.dto.OrderRequest;
+import com.lemon.erp.modules.scm.dto.PricingViews.DefaultPrice;
 import com.lemon.erp.modules.scm.dto.TradeDocItemRequest;
 import com.lemon.erp.modules.scm.dto.TradeDocRequest;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
 import com.lemon.erp.modules.scm.entity.ScmOrderItem;
-import com.lemon.erp.modules.scm.entity.ScmPriceList;
 import com.lemon.erp.modules.scm.entity.ScmSupplierPrice;
 import com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper;
-import com.lemon.erp.modules.scm.mapper.ScmPriceListMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.model.TradeKind;
@@ -52,7 +51,7 @@ public class ScmConsignService {
     private final ScmTradeDocService tradeDocService;
     private final ScmQueryService queryService;
     private final ScmCustomerService customerService;
-    private final ScmPriceListMapper priceListMapper;
+    private final ScmPricingService pricingService;
     private final WmsWarehouseService warehouseService;
     private final WmsStockDocService stockDocService;
 
@@ -61,17 +60,22 @@ public class ScmConsignService {
     public Map<String, Long> settleCustomer(ConsignSettleRequest req) {
         WmsWarehouse w = consignWarehouse(req.warehouseId(), WarehouseType.CONSIGN_OUT, "scm.label.customerConsignmentWarehouse");
         ScmCustomer customer = customerService.get(w.getPartnerId());
+        // 不填单价时与开单默认价一致：客户执行价 → 价目表 → 价格等级 → 零售价 → 最近售价
+        List<DefaultPrice> defaults = pricingService.defaults(OrderKind.SALES, customer.getId(),
+                req.items().stream().map(ConsignSettleRequest.Item::materialId).toList(),
+                req.items().stream().map(ConsignSettleRequest.Item::qty).toList(), req.bizDate());
         List<OrderItemRequest> lines = new ArrayList<>();
-        for (ConsignSettleRequest.Item i : req.items()) {
+        for (int k = 0; k < req.items().size(); k++) {
+            ConsignSettleRequest.Item i = req.items().get(k);
             BigDecimal price = i.price();
             BigDecimal taxRate = i.taxRate();
             if (price == null) {
-                ScmPriceList p = priceListMapper.selectQuote(i.materialId(), customer.getId(), customer.getLevel(), i.qty(), req.bizDate());
-                if (p == null) {
-                    throw new BizException("scm.error.materialHasNoPriceListPrice");
+                DefaultPrice p = defaults.get(k);
+                if (p.price() == null) {
+                    throw new BizException("scm.error.materialHasNoDefaultSalesPrice");
                 }
-                price = p.getPrice();
-                taxRate = taxRate == null ? p.getTaxRate() : taxRate;
+                price = p.price();
+                taxRate = taxRate == null ? p.taxRate() : taxRate;
             }
             lines.add(new OrderItemRequest(i.materialId(), i.qty(), price, taxRate, req.bizDate(), null));
         }

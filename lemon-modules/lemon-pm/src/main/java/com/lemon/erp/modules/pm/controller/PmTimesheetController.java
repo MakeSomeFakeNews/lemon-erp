@@ -11,6 +11,7 @@ import com.lemon.erp.modules.pm.entity.PmTask;
 import com.lemon.erp.modules.pm.entity.PmTimesheet;
 import com.lemon.erp.modules.pm.service.PmTimesheetService;
 import jakarta.validation.Valid;
+import com.lemon.erp.modules.pm.model.TimesheetStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -42,10 +43,11 @@ public class PmTimesheetController {
                                            @RequestParam(defaultValue = "10") long size,
                                            @RequestParam(required = false) Long projectId,
                                            @RequestParam(required = false) Long userId,
-                                           @RequestParam(required = false) String status,
+                                           @RequestParam(required = false) TimesheetStatus status,
                                            @RequestParam(required = false) LocalDate beginDate,
-                                           @RequestParam(required = false) LocalDate endDate) {
-        return R.ok(timesheetService.page(current, size, projectId, userId, status, beginDate, endDate));
+                                           @RequestParam(required = false) LocalDate endDate,
+                                           @RequestParam(defaultValue = "false") boolean excludeSelf) {
+        return R.ok(timesheetService.page(current, size, projectId, userId, status, beginDate, endDate, excludeSelf));
     }
 
     /** 审批通过 / 驳回，返回处理条数 */

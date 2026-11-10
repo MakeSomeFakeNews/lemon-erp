@@ -97,7 +97,7 @@
             <span v-if="selectedKeys.length" class="sub-text">{{ $t('pm.timesheet.selected', { n: selectedKeys.length, hours: selectedHours }) }}</span>
           </div>
           <a-table row-key="id" size="middle" :columns="reviewColumns" :data-source="list" :loading="loading" :pagination="pagination"
-                   :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== TimesheetStatus.SUBMITTED }) }"
+                   :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== TimesheetStatus.SUBMITTED || r.userId === userStore.user?.id }) }"
                    :scroll="{ x: 1200 }" @change="onTableChange">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'project'">
@@ -326,7 +326,8 @@ const removeEntry = useAction((record) => deleteTimesheet(record.id), { successK
 
 const query = reactive({ projectId: undefined, userId: undefined, status: TimesheetStatus.SUBMITTED, range: undefined })
 const { list, loading, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable(pageTimesheet, query, {
-  params: ({ range, ...q }) => ({ ...q, beginDate: range?.[0], endDate: range?.[1] })
+  // 待审批列表不含本人的工时（不能审批自己的，项目经理本人的工时由上级审批）
+  params: ({ range, ...q }) => ({ ...q, beginDate: range?.[0], endDate: range?.[1], excludeSelf: q.status === TimesheetStatus.SUBMITTED })
 })
 
 const reviewColumns = [
