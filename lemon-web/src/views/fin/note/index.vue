@@ -257,6 +257,7 @@ import { today } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
+import { useRouteOpen } from '@/composables/useRouteOpen'
 import { toOptions } from '@/utils/dict'
 
 import { NoteAction, NoteKind, NoteStatus, NoteType } from '@/constants/enums'
@@ -474,6 +475,9 @@ async function remove() {
 
 const voucherOpen = ref(false)
 const voucherId = ref()
+// 从应收应付单的来源单号跳转过来（?id=票据ID）时打开详情
+useRouteOpen({ id: (id) => openDetail(id) })
+
 function openVoucher(id) {
   voucherId.value = id
   voucherOpen.value = true

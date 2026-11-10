@@ -28,6 +28,8 @@ import com.lemon.erp.modules.fin.dto.BillQuery;
 import com.lemon.erp.modules.fin.dto.BillRequest;
 import com.lemon.erp.modules.fin.entity.FinBill;
 import com.lemon.erp.modules.fin.service.FinBillService;
+import com.lemon.erp.modules.fin.service.FinPartnerLedgerService;
+import com.lemon.erp.modules.fin.dto.PartnerSummaryRow;
 
 /**
  * 应收单 /fin/bill/ar、应付单 /fin/bill/ap，权限标识按路径区分，如 fin:ar:list
@@ -38,6 +40,7 @@ import com.lemon.erp.modules.fin.service.FinBillService;
 public class FinBillController {
 
     private final FinBillService billService;
+    private final FinPartnerLedgerService partnerLedgerService;
 
     @GetMapping
     @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':list')")
@@ -68,6 +71,30 @@ public class FinBillController {
                                          @RequestParam(defaultValue = "10") long size,
                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate asOf) {
         return R.ok(billService.aging(current, size, billKind(kind), asOf));
+    }
+
+    /** 往来汇总：一个往来单位一行（期初、单据余额、预收预付、坏账、净欠款），可按单位、负责人（客户）、是否有余额筛选 */
+    @GetMapping("/summary")
+    @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':list')")
+    public R<PageResult<PartnerSummaryRow>> summary(@PathVariable String kind,
+                                                    @RequestParam(defaultValue = "1") long current,
+                                                    @RequestParam(defaultValue = "10") long size,
+                                                    @RequestParam(required = false) Long partnerId,
+                                                    @RequestParam(required = false) String keyword,
+                                                    @RequestParam(required = false) Long ownerId,
+                                                    @RequestParam(defaultValue = "true") boolean onlyBalance) {
+        return R.ok(partnerLedgerService.summary(current, size, new PartnerSummaryRow.Query(billKind(kind), partnerId, keyword, ownerId, onlyBalance)));
+    }
+
+    /** 往来汇总的合计（筛选条件同上） */
+    @GetMapping("/summary/total")
+    @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':list')")
+    public R<PartnerSummaryRow> summaryTotal(@PathVariable String kind,
+                                             @RequestParam(required = false) Long partnerId,
+                                             @RequestParam(required = false) String keyword,
+                                             @RequestParam(required = false) Long ownerId,
+                                             @RequestParam(defaultValue = "true") boolean onlyBalance) {
+        return R.ok(partnerLedgerService.summaryTotal(new PartnerSummaryRow.Query(billKind(kind), partnerId, keyword, ownerId, onlyBalance)));
     }
 
     /** 手工录入（期初余额等） */

@@ -233,7 +233,15 @@ export default {
       paidLabel: '实收金额',
       advanceN: '转预收 {amount}',
       tab: '收款单',
-      discountExport: '收款折让记录'
+      discountExport: '收款折让记录',
+      editTitle: '修改收款单',
+      saveConfirm: '保存并确认收款',
+      advanceOffsetLabel: '冲抵预收',
+      advanceTitle: '冲抵预收款',
+      advanceTip: '勾选该客户的预收款与应收一起冲抵，本次实收 = 核销合计 − 冲抵预收；外币只能冲抵同币种的预收款',
+      zeroTip: '实收为 0：欠款与红字单据（冲账、退货）正好抵消，不发生资金收付，凭证为应收账款的冲抵分录',
+      zeroWithAdvance: '实收为 0：欠款全部由预收款冲抵，不发生资金收付，凭证为 借 预收账款 / 贷 应收账款',
+      confirmTip: '确认后核销应收单、冲抵勾选的预收款（多收的部分转为预收款），之后只能删除重做（凭证未审核时）'
     },
     payment: {
       partner: '供应商',
@@ -256,7 +264,15 @@ export default {
       paidLabel: '实付金额',
       advanceN: '转预付 {amount}',
       tab: '付款单',
-      discountExport: '付款折让记录'
+      discountExport: '付款折让记录',
+      editTitle: '修改付款单',
+      saveConfirm: '保存并确认付款',
+      advanceOffsetLabel: '冲抵预付',
+      advanceTitle: '冲抵预付款',
+      advanceTip: '勾选给该供应商的预付款与应付一起冲抵，本次实付 = 核销合计 − 冲抵预付；外币只能冲抵同币种的预付款',
+      zeroTip: '实付为 0：欠款与红字单据（冲账、退货、返利）正好抵消，不发生资金收付，凭证为应付账款的冲抵分录',
+      zeroWithAdvance: '实付为 0：欠款全部由预付款冲抵，不发生资金收付，凭证为 借 应付账款 / 贷 预付账款',
+      confirmTip: '确认后核销应付单、冲抵勾选的预付款（多付的部分转为预付款）；发布了付款审批流程时提交审批，审批通过后才核销'
     },
     no: '单号',
     generateN: '生成凭证（{n}）',
@@ -298,7 +314,10 @@ export default {
     discountDate: '日期',
     discountBill: '原单据',
     discountAmount: '折让金额',
-    handler: '经办人'
+    handler: '经办人',
+    confirmAction: '确认',
+    confirmTitle: '确认 {no}？',
+    confirmed: '已确认'
   },
   invoice: {
     kinds: {
@@ -1631,6 +1650,38 @@ export default {
     amountRequired: '请填写金额',
     success: '调拨成功，凭证已生成（未审核）'
   },
+  partnerSummary: {
+    tab: '往来汇总',
+    keywordPh: '单位编码或名称',
+    owner: '负责销售',
+    onlyBalance: '只看有余额',
+    statement: '对账单',
+    recentTip: '最近 {n} 笔，更多请到收付款页面查询',
+    ar: {
+      opening: '期初应收',
+      bills: '应收单据余额',
+      advance: '预收余额',
+      badDebt: '坏账核销',
+      net: '净欠款',
+      settle: '收款',
+      formula: '净欠款 = 期初应收（期初往来的未核销余额）+ 应收单据余额（出库、退货、运费、返利、冲账单等，红字为负数）+ 预收余额（未冲抵的预收款，负数）。坏账核销已从单据余额中扣除，单列参考；往来对账单截至今天的期末余额 = 净欠款 + 坏账核销。金额为人民币（外币单据按记账汇率折算）',
+      billTab: '未核销的应收单',
+      advanceTab: '未冲抵的预收款',
+      settleTab: '收款记录'
+    },
+    ap: {
+      opening: '期初应付',
+      bills: '应付单据余额',
+      advance: '预付余额',
+      badDebt: '无法支付转销',
+      net: '净欠款',
+      settle: '付款',
+      formula: '净欠款 = 期初应付（期初往来的未核销余额）+ 应付单据余额（入库、退货、运费、返利、索赔、冲账单等，红字为负数）+ 预付余额（未冲抵的预付款，负数）。无法支付转销已从单据余额中扣除，单列参考；往来对账单截至今天的期末余额 = 净欠款 + 转销金额。金额为人民币（外币单据按记账汇率折算）',
+      billTab: '未核销的应付单',
+      advanceTab: '未冲抵的预付款',
+      settleTab: '付款记录'
+    }
+  },
   settlementForm: {
     auto: '自动核销',
     autoTip: '把本次金额按单据日期从早到晚分配到勾选的单据，红字单据（退货、冲账）先冲抵',
@@ -1642,7 +1693,17 @@ export default {
     checkedN: '已勾选 {n} 张，未核销合计 ¥{amount}',
     short: '核销合计比本次金额多 ¥{amount}，请调整核销金额或本次金额',
     over: '本次金额比核销合计多 ¥{amount}',
-    overForeign: '本次金额比核销合计多 {currency} {amount}'
+    overForeign: '本次金额比核销合计多 {currency} {amount}',
+    advanceBlocked: '只能冲抵与核销单据同币种（{currency}）的预收预付',
+    advanceNo: '预收预付单',
+    advanceRemaining: '未冲抵余额',
+    advanceOffset: '本次冲抵',
+    advanceTooMuch: '冲抵的预收预付比核销合计多 {amount}，请减少冲抵金额或增加核销金额',
+    overWithAdvance: '本次金额比实收实付多 {amount}：冲抵预收预付时不能再把多收的部分转为预收预付，请调整本次金额',
+    saveDraft: '保存草稿',
+    checkAmounts: '请检查核销金额、冲抵金额与本次金额',
+    noItems: '请填写核销金额',
+    draftSaved: '草稿已保存，确认后生效'
   },
   offset: {
     no: '单号',

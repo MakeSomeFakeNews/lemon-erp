@@ -9,6 +9,7 @@
         <PartnerSelect
           :key="kind"
           v-model:value="partnerId"
+          :label="partnerName"
           :type="kind === BillKind.AR ? 'customer' : 'supplier'"
           :placeholder="kind === BillKind.AR ? $t('fin.partnerStatement.selectCustomer') : $t('fin.partnerStatement.selectSupplier')"
           class="partner"
@@ -68,6 +69,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import { useI18n } from 'vue-i18n'
 import { PrinterOutlined } from '@ant-design/icons-vue'
@@ -82,8 +84,12 @@ import { BillKind, PartnerLedgerType } from '@/constants/enums'
 /** 往来对账单：客户 / 供应商在期间内的应收应付、收付款、预收预付和逐笔余额，可打印给对方核对 */
 const { t } = useI18n()
 const dict = useDict('fin_bill_source', 'fin_settle_method')
-const kind = ref('AR')
-const partnerId = ref()
+// 从往来汇总进入（?kind=AR&partnerId=&partnerName=）时直接查询该单位
+const route = useRoute()
+const kind = ref(route.query.kind === BillKind.AP ? BillKind.AP : BillKind.AR)
+const partnerId = ref(Number(route.query.partnerId) || undefined)
+const partnerName = ref(route.query.partnerName ? String(route.query.partnerName) : undefined)
+if (route.query.partnerId) useRouter().replace({ query: {} })
 const range = ref([dayjs().startOf('year').format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD')])
 const data = ref()
 const loading = ref(false)
@@ -161,6 +167,7 @@ function onKindChange() {
   data.value = undefined
 }
 watch([partnerId, range], load)
+if (partnerId.value) load()
 
 function print() {
   const d = data.value

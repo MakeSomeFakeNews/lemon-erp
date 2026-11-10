@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinSettlementAdvanceMapper">
+
+    <select id="selectBySettlement" resultType="com.lemon.erp.modules.fin.entity.FinSettlementAdvance">
+        SELECT sa.*, a.advance_no, a.advance_date, a.currency, a.amount_fc AS advance_amount, a.used_fc AS used_amount
+        FROM fin_settlement_advance sa
+        JOIN fin_advance a ON a.id = sa.advance_id
+        WHERE sa.settlement_id = #{settlementId}
+        ORDER BY a.advance_date, a.id
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO fin_settlement_advance (settlement_id, advance_id, amount, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.settlementId}, #{i.advanceId}, #{i.amount}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

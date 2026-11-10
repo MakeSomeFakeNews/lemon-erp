@@ -198,6 +198,7 @@ import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
+import { useRouteOpen } from '@/composables/useRouteOpen'
 import { toOptions } from '@/utils/dict'
 import { BillKind, OffsetStatus, VoucherStatus } from '@/constants/enums'
 
@@ -311,6 +312,8 @@ async function openView(record) {
   viewOpen.value = true
   viewing.value = await getOffset(record.id)
 }
+// 从应收应付单的来源单号跳转过来（?id=冲账单ID）时打开详情
+useRouteOpen({ id: (id) => openView({ id }) })
 
 const voucherOpen = ref(false)
 const voucherId = ref()

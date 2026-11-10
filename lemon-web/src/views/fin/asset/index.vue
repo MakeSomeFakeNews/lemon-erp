@@ -313,6 +313,7 @@ import { toOptions } from '@/utils/dict'
 import { today } from '@/components/wms/wms'
 import { currentPeriod, formatMoney } from '@/components/fin/fin'
 import { useAction } from '@/composables/useAction'
+import { useRouteOpen } from '@/composables/useRouteOpen'
 
 import { AssetMoveType, AssetStatus } from '@/constants/enums'
 import { actionWidth, useColumns } from '@/composables/useColumns'
@@ -345,6 +346,8 @@ const size = ref('middle')
 const userStore = useUserStore()
 const query = reactive({ keyword: undefined, category: undefined, status: undefined })
 const { list, loading, pagination, load, search, onTableChange } = useTable(pageAsset, query)
+// 从应付单的来源（资产编码）跳转过来时按编码筛选
+useRouteOpen({ keyword: (kw) => (query.keyword = kw), reload: () => search() })
 onMounted(load)
 
 const rules = {

@@ -115,6 +115,7 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { useAction } from '@/composables/useAction'
+import { useRouteOpen } from '@/composables/useRouteOpen'
 
 import { ClaimStatus } from '@/constants/enums'
 /** 供应商质量索赔：确认后冲减应付 */
@@ -134,6 +135,8 @@ const columns = [
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'qms-claim')
 const query = reactive({ status: undefined, supplierId: undefined, keyword: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageClaim, query)
+// 从应付单的来源单号跳转过来时按索赔单号筛选
+useRouteOpen({ keyword: (kw) => (query.keyword = kw), reload: () => search() })
 
 const rules = {
   supplierId: [{ required: true, message: t('qms.claim.supplierRequired') }],

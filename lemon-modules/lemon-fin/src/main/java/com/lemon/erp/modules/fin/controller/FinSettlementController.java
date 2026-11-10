@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.framework.security.PermissionService;
+import com.lemon.erp.modules.fin.entity.FinAdvance;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -36,6 +40,7 @@ import com.lemon.erp.modules.fin.service.FinSettlementService;
 public class FinSettlementController {
 
     private final FinSettlementService settlementService;
+    private final PermissionService permissionService;
 
     @GetMapping
     @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':list')")
@@ -68,6 +73,13 @@ public class FinSettlementController {
         return R.ok(settlementService.detail(id));
     }
 
+    /** 往来单位可以冲抵的预收 / 预付款（新增、修改收付款时勾选） */
+    @GetMapping("/advances")
+    @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':add')")
+    public R<List<FinAdvance>> advances(@PathVariable String kind, @RequestParam Long partnerId) {
+        return R.ok(settlementService.openAdvances(settleKind(kind), partnerId));
+    }
+
     @PostMapping
     @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':add')")
     @OperLog(title = "收付款", type = OperType.INSERT) // i18n-ignore
@@ -75,7 +87,30 @@ public class FinSettlementController {
         if (settleKind(kind) != req.kind()) {
             return R.fail(Messages.get("fin.text.documentKindDoesNotMatch"));
         }
+        checkConfirmPerm(kind, req);
         return R.ok(settlementService.create(req));
+    }
+
+    /** 修改草稿或已拒绝的付款单 */
+    @PutMapping("/{id}")
+    @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':add')")
+    @OperLog(title = "收付款", type = OperType.UPDATE) // i18n-ignore
+    public R<Void> update(@PathVariable String kind, @PathVariable Long id, @Valid @RequestBody SettlementRequest req) {
+        if (settleKind(kind) != req.kind()) {
+            return R.fail(Messages.get("fin.text.documentKindDoesNotMatch"));
+        }
+        checkConfirmPerm(kind, req);
+        settlementService.update(id, req);
+        return R.ok();
+    }
+
+    /** 确认草稿：核销生效（付款发布了审批流程时提交审批） */
+    @PostMapping("/{id}/confirm")
+    @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':confirm')")
+    @OperLog(title = "收付款-确认", type = OperType.UPDATE) // i18n-ignore
+    public R<Void> confirm(@PathVariable String kind, @PathVariable Long id) {
+        settlementService.confirm(id);
+        return R.ok();
     }
 
     @DeleteMapping("/{ids}")
@@ -91,6 +126,14 @@ public class FinSettlementController {
     @OperLog(title = "收付款-生成凭证", type = OperType.INSERT) // i18n-ignore
     public R<Integer> voucher(@PathVariable String kind, @PathVariable List<Long> ids) {
         return R.ok(settlementService.generateVouchers(ids));
+    }
+
+    /** 启用草稿时「保存并确认」需要确认权限；未启用时保存即生效，只需新增权限（与原来一致） */
+    private void checkConfirmPerm(String kind, SettlementRequest req) {
+        if (Boolean.TRUE.equals(req.confirm()) && settlementService.draftEnabled()
+                && !permissionService.hasPerm("fin:" + kind + ":confirm")) {
+            throw new BizException("fin.error.noPermissionConfirmSettlement");
+        }
     }
 
     /** 路径中的种类 receipt / payment */

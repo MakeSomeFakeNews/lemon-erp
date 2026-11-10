@@ -139,6 +139,7 @@ import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { rowKey, useLineItems } from '@/composables/useLineItems'
 import { useTable } from '@/composables/useTable'
+import { useRouteOpen } from '@/composables/useRouteOpen'
 import { toOptions } from '@/utils/dict'
 import { RebateCalcMode, RebateKind, RebateSettle, RebateStatus } from '@/constants/enums'
 
@@ -231,6 +232,8 @@ const itemsTotal = items.total('amount')
 
 const detailRef = ref()
 const openDetail = (id) => detailRef.value.open(id)
+// 从应收应付单的来源单号跳转过来（?id=返利协议ID）时打开详情
+useRouteOpen({ id: (id) => openDetail(id) })
 </script>
 
 <style scoped>

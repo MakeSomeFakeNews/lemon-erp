@@ -233,7 +233,15 @@ export default {
       paidLabel: 'Amount Received',
       advanceN: 'To advance {amount}',
       tab: 'Receipts',
-      discountExport: 'Receipt Discounts'
+      discountExport: 'Receipt Discounts',
+      editTitle: 'Edit Receipt',
+      saveConfirm: 'Save and Confirm',
+      advanceOffsetLabel: 'Advance offset',
+      advanceTitle: 'Offset Advance Receipts',
+      advanceTip: 'Select the customer\'s advance receipts to offset together; amount received = settled total − advance offset. Foreign currency advances can only offset documents in the same currency',
+      zeroTip: 'Amount received is 0: the debt and red documents (offsets, returns) cancel out, no cash is received; the voucher offsets receivables',
+      zeroWithAdvance: 'Amount received is 0: the debt is fully offset by advance receipts; the voucher is Dr advance receipts / Cr receivables',
+      confirmTip: 'Confirming settles the receivables and offsets the selected advances (overpayment becomes an advance receipt); afterwards it can only be deleted and re-entered (while the voucher is unapproved)'
     },
     payment: {
       partner: 'Supplier',
@@ -256,7 +264,15 @@ export default {
       paidLabel: 'Amount Paid',
       advanceN: 'To prepayment {amount}',
       tab: 'Payments',
-      discountExport: 'Payment Discounts'
+      discountExport: 'Payment Discounts',
+      editTitle: 'Edit Payment',
+      saveConfirm: 'Save and Confirm',
+      advanceOffsetLabel: 'Prepayment offset',
+      advanceTitle: 'Offset Prepayments',
+      advanceTip: 'Select prepayments to this supplier to offset together; amount paid = settled total − prepayment offset. Foreign currency prepayments can only offset documents in the same currency',
+      zeroTip: 'Amount paid is 0: the debt and red documents (offsets, returns, rebates) cancel out, no cash is paid; the voucher offsets payables',
+      zeroWithAdvance: 'Amount paid is 0: the debt is fully offset by prepayments; the voucher is Dr payables / Cr prepayments',
+      confirmTip: 'Confirming settles the payables and offsets the selected prepayments (overpayment becomes a prepayment); when a payment approval flow is published it is submitted for approval and settled after approval'
     },
     no: 'Document No.',
     generateN: 'Generate Vouchers ({n})',
@@ -298,7 +314,10 @@ export default {
     discountDate: 'Date',
     discountBill: 'Document',
     discountAmount: 'Discount',
-    handler: 'Handled By'
+    handler: 'Handled By',
+    confirmAction: 'Confirm',
+    confirmTitle: 'Confirm {no}?',
+    confirmed: 'Confirmed'
   },
   invoice: {
     kinds: {
@@ -1631,6 +1650,38 @@ export default {
     amountRequired: 'Please enter the amount',
     success: 'Transfer completed; voucher generated (unapproved)'
   },
+  partnerSummary: {
+    tab: 'Partner Summary',
+    keywordPh: 'Partner code or name',
+    owner: 'Sales owner',
+    onlyBalance: 'With balance only',
+    statement: 'Statement',
+    recentTip: 'Latest {n}; see the receipt / payment page for more',
+    ar: {
+      opening: 'Opening AR',
+      bills: 'AR Documents',
+      advance: 'Advance Receipts',
+      badDebt: 'Bad Debt',
+      net: 'Net Owed',
+      settle: 'Receive',
+      formula: 'Net owed = opening AR (unsettled opening balances) + AR document balance (deliveries, returns, freight, rebates, offsets; red documents are negative) + advance receipts (unused, negative). Bad debts are already deducted from document balances and shown separately; the partner statement closing balance as of today = net owed + bad debts. Amounts in CNY (foreign currency documents at booking rate)',
+      billTab: 'Unsettled Receivables',
+      advanceTab: 'Unused Advance Receipts',
+      settleTab: 'Receipts'
+    },
+    ap: {
+      opening: 'Opening AP',
+      bills: 'AP Documents',
+      advance: 'Prepayments',
+      badDebt: 'Written Off',
+      net: 'Net Owed',
+      settle: 'Pay',
+      formula: 'Net owed = opening AP (unsettled opening balances) + AP document balance (receipts, returns, freight, rebates, claims, offsets; red documents are negative) + prepayments (unused, negative). Written-off payables are already deducted and shown separately; the partner statement closing balance as of today = net owed + written-off amount. Amounts in CNY (foreign currency documents at booking rate)',
+      billTab: 'Unsettled Payables',
+      advanceTab: 'Unused Prepayments',
+      settleTab: 'Payments'
+    }
+  },
   settlementForm: {
     auto: 'Auto Settle',
     autoTip: 'Allocate this amount to the checked documents from the earliest document date; red documents (returns, offsets) are offset first',
@@ -1642,7 +1693,17 @@ export default {
     checkedN: '{n} checked, outstanding ¥{amount}',
     short: 'The settled total exceeds this amount by ¥{amount}. Please adjust the settled amounts or this amount',
     over: 'This amount exceeds the settled total by ¥{amount}',
-    overForeign: 'This amount exceeds the settled total by {currency} {amount}'
+    overForeign: 'This amount exceeds the settled total by {currency} {amount}',
+    advanceBlocked: 'Only advances in the documents\' currency ({currency}) can be offset',
+    advanceNo: 'Advance No.',
+    advanceRemaining: 'Unused Balance',
+    advanceOffset: 'Offset Now',
+    advanceTooMuch: 'The advance offset exceeds the settled total by {amount}; reduce the offset or settle more',
+    overWithAdvance: 'This amount exceeds the actual amount by {amount}: when offsetting advances the overpaid part cannot become a new advance, please adjust the amount',
+    saveDraft: 'Save Draft',
+    checkAmounts: 'Please check the settled amounts, advance offset and this amount',
+    noItems: 'Please enter the settled amounts',
+    draftSaved: 'Draft saved; it takes effect after confirmation'
   },
   offset: {
     no: 'No.',

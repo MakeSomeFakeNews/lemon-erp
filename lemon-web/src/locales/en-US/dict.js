@@ -735,6 +735,7 @@ export default {
     'REJECTED': 'Rejected', // 已拒绝
     'CANCELED': 'Withdrawn', // 已撤回
     'DONE': 'Effective', // 已生效
+    'DRAFT': 'Draft', // 草稿
   },
   // 冻结状态
   wms_hold_status: {

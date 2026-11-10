@@ -203,6 +203,7 @@ export const ApproveMode = Object.freeze({
 
 /** com.lemon.erp.framework.workflow.ApproveStatus（字典 sys_approve_status） */
 export const ApproveStatus = Object.freeze({
+  DRAFT: 'DRAFT', // 草稿
   APPROVED: 'APPROVED', // 已生效
   APPROVING: 'APPROVING', // 审批中
   REJECTED: 'REJECTED', // 已拒绝

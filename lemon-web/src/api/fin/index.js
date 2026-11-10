@@ -42,6 +42,9 @@ export const incomeTrend = (period) => request.get('/fin/report/income/trend', {
 export const pageBill = (kind, params) => request.get(`/fin/bill/${kind}`, { params })
 export const unsettledBills = (kind, partnerId) => request.get(`/fin/bill/${kind}/unsettled`, { params: { partnerId } })
 export const billAging = (kind, params) => request.get(`/fin/bill/${kind}/aging`, { params })
+/** 往来汇总：一个往来单位一行（期初、单据余额、预收预付、坏账、净欠款），合计另取 */
+export const billSummary = (kind, params) => request.get(`/fin/bill/${kind}/summary`, { params })
+export const billSummaryTotal = (kind, params) => request.get(`/fin/bill/${kind}/summary/total`, { params })
 export const addBill = (kind, data) => request.post(`/fin/bill/${kind}`, data)
 export const deleteBill = (kind, id) => request.delete(`/fin/bill/${kind}/${ids(id)}`)
 /** 返回生成的凭证数 */
@@ -51,6 +54,11 @@ export const billVoucher = (kind, id) => request.post(`/fin/bill/${kind}/voucher
 export const pageSettlement = (kind, params) => request.get(`/fin/settlement/${kind}`, { params })
 export const getSettlement = (kind, id) => request.get(`/fin/settlement/${kind}/${id}`)
 export const addSettlement = (kind, data) => request.post(`/fin/settlement/${kind}`, data)
+/** 修改草稿或已拒绝的付款单；确认草稿（核销生效或提交付款审批） */
+export const updateSettlement = (kind, id, data) => request.put(`/fin/settlement/${kind}/${id}`, data)
+export const confirmSettlement = (kind, id) => request.post(`/fin/settlement/${kind}/${id}/confirm`)
+/** 往来单位可以冲抵的预收 / 预付款 */
+export const settlementAdvances = (kind, partnerId) => request.get(`/fin/settlement/${kind}/advances`, { params: { partnerId } })
 export const deleteSettlement = (kind, id) => request.delete(`/fin/settlement/${kind}/${ids(id)}`)
 export const settlementVoucher = (kind, id) => request.post(`/fin/settlement/${kind}/voucher/${ids(id)}`)
 /** 折让记录：已生效收付款中有折让的核销明细 */

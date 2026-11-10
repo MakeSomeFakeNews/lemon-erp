@@ -2,7 +2,10 @@ package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.framework.security.PermissionService;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.modules.fin.dto.FinAnalysis;
+import com.lemon.erp.modules.fin.dto.PartnerSummaryRow;
 import com.lemon.erp.modules.fin.mapper.FinPartnerLedgerMapper;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.model.PartnerLedgerType;
@@ -61,5 +64,22 @@ public class FinPartnerLedgerService {
             }
         }
         return new FinAnalysis.PartnerStatement(billService.partnerName(kind, partnerId), opening, rows, increase, decrease, balance);
+    }
+
+    /**
+     * 往来汇总：一个往来单位一行，期初余额、单据余额、预收预付未冲抵（负数）、坏账核销（单列）、净欠款（当前余额，本位币）。
+     * 口径与往来对账单一致：对账单截至今天的期末余额 = 净欠款 + 坏账核销（对账单不扣坏账）
+     */
+    public PageResult<PartnerSummaryRow> summary(long current, long size, PartnerSummaryRow.Query query) {
+        FinBillService.checkKind(query.kind());
+        Page<PartnerSummaryRow> page = Page.of(current, size);
+        ledgerMapper.selectSummary(page, query, query.kind().settleKind());
+        return PageResult.of(page);
+    }
+
+    /** 往来汇总的合计行 */
+    public PartnerSummaryRow summaryTotal(PartnerSummaryRow.Query query) {
+        FinBillService.checkKind(query.kind());
+        return ledgerMapper.selectSummaryTotal(query, query.kind().settleKind());
     }
 }
