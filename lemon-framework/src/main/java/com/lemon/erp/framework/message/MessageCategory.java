@@ -11,5 +11,7 @@ public enum MessageCategory {
     /** 预警 */
     ALERT,
     /** 系统 */
-    SYSTEM
+    SYSTEM,
+    /** 公告（发布通知公告时发给范围内的用户，阅读公告时一并标为已读） */
+    NOTICE
 }

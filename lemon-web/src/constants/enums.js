@@ -973,6 +973,7 @@ export const MessageCategory = Object.freeze({
   REMIND: 'REMIND', // 提醒
   ALERT: 'ALERT', // 预警
   SYSTEM: 'SYSTEM', // 系统
+  NOTICE: 'NOTICE', // 公告
 })
 
 /** com.lemon.erp.modules.mes.model.MoldAction（字典 mes_mold_action） */
@@ -1068,6 +1069,20 @@ export const NoteStatus = Object.freeze({
 export const NoteType = Object.freeze({
   BANK: 'BANK', // 银行承兑汇票
   COMMERCIAL: 'COMMERCIAL', // 商业承兑汇票
+})
+
+/** com.lemon.erp.modules.system.model.NoticeScope（字典 sys_notice_scope） */
+export const NoticeScope = Object.freeze({
+  ALL: 'ALL', // 全员
+  DEPT: 'DEPT', // 指定部门
+  ROLE: 'ROLE', // 指定角色
+})
+
+/** com.lemon.erp.modules.system.model.NoticeStatus（字典 sys_notice_status） */
+export const NoticeStatus = Object.freeze({
+  DRAFT: 'DRAFT', // 草稿
+  PUBLISHED: 'PUBLISHED', // 已发布
+  WITHDRAWN: 'WITHDRAWN', // 已撤回
 })
 
 /** com.lemon.erp.modules.fin.model.OffsetStatus（字典 fin_offset_status） */

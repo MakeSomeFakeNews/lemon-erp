@@ -218,6 +218,9 @@ DROP TABLE IF EXISTS wf_copy;
 DROP TABLE IF EXISTS wf_model;
 DROP TABLE IF EXISTS sys_change_log;
 DROP TABLE IF EXISTS sys_attachment;
+DROP TABLE IF EXISTS sys_notice_recipient;
+DROP TABLE IF EXISTS sys_notice_target;
+DROP TABLE IF EXISTS sys_notice;
 DROP TABLE IF EXISTS sys_message;
 DROP TABLE IF EXISTS sys_job_log;
 DROP TABLE IF EXISTS sys_job;
@@ -580,7 +583,7 @@ CREATE TABLE sys_message (
     id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     user_id     BIGINT       NOT NULL COMMENT '接收人',
-    category    VARCHAR(16)  NOT NULL COMMENT '类别(字典 sys_message_category) APPROVAL审批 REMIND提醒 ALERT预警 SYSTEM系统',
+    category    VARCHAR(16)  NOT NULL COMMENT '类别(字典 sys_message_category) APPROVAL审批 REMIND提醒 ALERT预警 SYSTEM系统 NOTICE公告',
     title       VARCHAR(128) NOT NULL COMMENT '标题',
     content     VARCHAR(500)          DEFAULT NULL COMMENT '内容',
     link        VARCHAR(255)          DEFAULT NULL COMMENT '前端路由，点击跳转',
@@ -593,6 +596,45 @@ CREATE TABLE sys_message (
     KEY idx_message_user (user_id, read_flag),
     KEY idx_message_dedup (dedup_key)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '站内消息';
+
+CREATE TABLE sys_notice (
+    id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id    BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    title        VARCHAR(128) NOT NULL COMMENT '标题',
+    type         VARCHAR(32)  NOT NULL COMMENT '类型(业务字典 sys_notice_type)',
+    content      MEDIUMTEXT COMMENT '正文(Markdown)',
+    scope_type   VARCHAR(16)  NOT NULL DEFAULT 'ALL' COMMENT '发布范围(字典 sys_notice_scope) ALL全员 DEPT指定部门(含下级) ROLE指定角色',
+    pinned       TINYINT      NOT NULL DEFAULT 0 COMMENT '置顶 1是 0否',
+    expire_date  DATE                  DEFAULT NULL COMMENT '有效期至(含当天)，为空长期有效，过期后员工不再看到',
+    status       VARCHAR(16)  NOT NULL DEFAULT 'DRAFT' COMMENT '状态(字典 sys_notice_status) DRAFT草稿 PUBLISHED已发布 WITHDRAWN已撤回',
+    publish_time DATETIME              DEFAULT NULL COMMENT '最近发布时间',
+    publish_by   BIGINT                DEFAULT NULL COMMENT '发布人',
+    create_by    BIGINT                DEFAULT NULL COMMENT '创建人',
+    create_time  DATETIME              DEFAULT NULL COMMENT '创建时间',
+    update_time  DATETIME              DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_notice_status (status, publish_time)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '通知公告';
+
+CREATE TABLE sys_notice_target (
+    id          BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    notice_id   BIGINT NOT NULL COMMENT '公告ID',
+    target_id   BIGINT NOT NULL COMMENT '部门ID(指定部门)或角色ID(指定角色)',
+    PRIMARY KEY (id),
+    KEY idx_notice_target (notice_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '通知公告发布范围';
+
+CREATE TABLE sys_notice_recipient (
+    id          BIGINT   NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT   NOT NULL DEFAULT 1 COMMENT '租户ID',
+    notice_id   BIGINT   NOT NULL COMMENT '公告ID',
+    user_id     BIGINT   NOT NULL COMMENT '接收人(发布时按范围确定)',
+    read_time   DATETIME          DEFAULT NULL COMMENT '阅读时间，未读为空',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_notice_recipient (notice_id, user_id, tenant_id),
+    KEY idx_notice_recipient_user (user_id, read_time)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '通知公告接收人与阅读记录';
 
 CREATE TABLE sys_attachment (
     id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -6069,7 +6111,8 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('sys_message_category', '审批', 'APPROVAL', 'blue', 1, 1, NOW(), NOW()),
 ('sys_message_category', '提醒', 'REMIND', 'orange', 2, 1, NOW(), NOW()),
 ('sys_message_category', '预警', 'ALERT', 'red', 3, 1, NOW(), NOW()),
-('sys_message_category', '系统', 'SYSTEM', 'default', 4, 1, NOW(), NOW());
+('sys_message_category', '系统', 'SYSTEM', 'default', 4, 1, NOW(), NOW()),
+('sys_message_category', '公告', 'NOTICE', 'cyan', 5, 1, NOW(), NOW());
 
 -- 内置流程示例：未发布，业务单据仍直接审核；在「流程管理」中按需调整并发布后启用
 INSERT INTO wf_model (model_key, name, category, sort, status, design_json, remark, create_time, update_time) VALUES
@@ -7276,6 +7319,37 @@ SELECT 17, menu_id FROM sys_role_menu WHERE role_id = 5;
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT 17, m.id FROM sys_menu m
 WHERE m.id IN (226, 2700, 3650) AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = 17 AND x.menu_id = m.id);
+
+-- 通知公告：系统管理下维护、发布（超级管理员、租户管理员、人事专员；普通用户只读），员工在工作台和「全部公告」中查看发给自己的公告
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(353, 1, '通知公告', 'C', 'notice', 'system/notice/index', 'sys:notice:list', 'NotificationOutlined', 14, 1, 1, NOW(), NOW()),
+(3530, 353, '公告新增', 'F', NULL, NULL, 'sys:notice:add', NULL, 1, 1, 1, NOW(), NOW()),
+(3531, 353, '公告修改', 'F', NULL, NULL, 'sys:notice:edit', NULL, 2, 1, 1, NOW(), NOW()),
+(3532, 353, '公告删除', 'F', NULL, NULL, 'sys:notice:remove', NULL, 3, 1, 1, NOW(), NOW()),
+(3533, 353, '公告发布与撤回', 'F', NULL, NULL, 'sys:notice:publish', NULL, 4, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT g.role_id, g.menu_id FROM (
+    SELECT 2 AS role_id, 1 AS menu_id UNION ALL SELECT 2, 353
+    UNION ALL SELECT 11, 1 UNION ALL SELECT 11, 353 UNION ALL SELECT 11, 3530 UNION ALL SELECT 11, 3531
+    UNION ALL SELECT 11, 3532 UNION ALL SELECT 11, 3533
+) g
+WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);
+INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
+(188, '公告状态', 'sys_notice_status', 'SYSTEM', 1, '通知公告的状态：草稿、已发布、已撤回', NOW(), NOW()),
+(189, '公告发布范围', 'sys_notice_scope', 'SYSTEM', 1, '通知公告发给全员、指定部门（含下级部门）或指定角色', NOW(), NOW()),
+(190, '公告类型', 'sys_notice_type', 'BUSINESS', 1, '通知公告的分类', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('sys_notice_status', '草稿', 'DRAFT', 'default', 1, 1, NOW(), NOW()),
+('sys_notice_status', '已发布', 'PUBLISHED', 'green', 2, 1, NOW(), NOW()),
+('sys_notice_status', '已撤回', 'WITHDRAWN', 'orange', 3, 1, NOW(), NOW()),
+('sys_notice_scope', '全员', 'ALL', 'blue', 1, 1, NOW(), NOW()),
+('sys_notice_scope', '指定部门', 'DEPT', 'cyan', 2, 1, NOW(), NOW()),
+('sys_notice_scope', '指定角色', 'ROLE', 'purple', 3, 1, NOW(), NOW()),
+('sys_notice_type', '通知', 'NOTICE', 'blue', 1, 1, NOW(), NOW()),
+('sys_notice_type', '公告', 'ANNOUNCE', 'green', 2, 1, NOW(), NOW()),
+('sys_notice_type', '制度', 'POLICY', 'purple', 3, 1, NOW(), NOW()),
+('sys_notice_type', '活动', 'EVENT', 'orange', 4, 1, NOW(), NOW());
 
 ALTER TABLE sys_dept AUTO_INCREMENT = 200;
 ALTER TABLE sys_user AUTO_INCREMENT = 100;

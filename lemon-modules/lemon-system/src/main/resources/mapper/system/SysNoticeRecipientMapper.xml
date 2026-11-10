@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.system.mapper.SysNoticeRecipientMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO sys_notice_recipient (notice_id, user_id) VALUES
+        <foreach collection="userIds" item="u" separator=",">(#{noticeId}, #{u})</foreach>
+    </insert>
+
+    <!-- 启用的内部用户（门户账号关联了供应商或客户，不接收内部公告） -->
+    <select id="selectScopeUsers" resultType="java.lang.Long">
+        SELECT u.id FROM sys_user u
+        WHERE u.status = 1 AND u.supplier_id IS NULL AND u.customer_id IS NULL
+        <if test="deptIds != null">
+            AND u.dept_id IN <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
+        <if test="roleIds != null">
+            AND EXISTS (SELECT 1 FROM sys_user_role ur JOIN sys_role ro ON ro.id = ur.role_id AND ro.status = 1
+                        WHERE ur.user_id = u.id
+                          AND ur.role_id IN <foreach collection="roleIds" item="r" open="(" separator="," close=")">#{r}</foreach>)
+        </if>
+        ORDER BY u.id
+    </select>
+
+    <select id="selectStats" resultType="com.lemon.erp.modules.system.dto.NoticeReadStat">
+        SELECT notice_id AS "noticeId", COUNT(*) AS "totalCount", COUNT(read_time) AS "readCount"
+        FROM sys_notice_recipient
+        WHERE notice_id IN <foreach collection="noticeIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        GROUP BY notice_id
+    </select>
+
+    <select id="selectReaders" resultType="com.lemon.erp.modules.system.dto.NoticeReader">
+        SELECT r.user_id AS "userId", u.username AS "username", u.nickname AS "nickname", d.name AS "deptName", r.read_time AS "readTime"
+        FROM sys_notice_recipient r
+        JOIN sys_user u ON u.id = r.user_id
+        LEFT JOIN sys_dept d ON d.id = u.dept_id
+        WHERE r.notice_id = #{noticeId}
+        <if test="read != null and read">AND r.read_time IS NOT NULL</if>
+        <if test="read != null and !read">AND r.read_time IS NULL</if>
+        <if test="keyword != null and keyword != ''">
+            AND (u.username LIKE CONCAT('%', #{keyword}, '%') OR u.nickname LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY r.read_time DESC, r.user_id
+    </select>
+
+    <update id="markRead">
+        UPDATE sys_notice_recipient SET read_time = #{time}
+        WHERE notice_id = #{noticeId} AND user_id = #{userId} AND read_time IS NULL
+    </update>
+
+</mapper>

@@ -9,6 +9,8 @@ export default {
   noTasks: 'Nothing awaiting approval',
   messages: 'Messages',
   noMessages: 'No messages',
+  notices: 'Notices',
+  noNotices: 'No notices',
   card: {
     receivableSub: 'Open receivables',
     payableSub: 'Open payables',

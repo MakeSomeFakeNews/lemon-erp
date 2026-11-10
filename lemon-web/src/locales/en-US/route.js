@@ -4,6 +4,7 @@ export default {
   dashboard: 'Home',
   profile: 'My Profile',
   messages: 'My Messages',
+  notices: 'All Notices',
   mobile: 'Mobile Operations',
   screen: 'Data Screen',
   notFound: 'Page Not Found'

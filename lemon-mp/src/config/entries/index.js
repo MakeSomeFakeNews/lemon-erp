@@ -6,6 +6,7 @@ import crm from './crm'
 import wms from './wms'
 import pm from './pm'
 import mes from './mes'
+import notice from './notice'
 
 /**
  * 工作台入口。每个功能区在本目录的同名文件中登记：
@@ -14,7 +15,7 @@ import mes from './mes'
  * group：office 办公 / sales 销售与服务 / warehouse 仓储生产 / quality 设备与质量。links 用于把首页待办、站内消息中的 Web 端链接转到小程序页面
  */
 export const GROUPS = ['office', 'sales', 'warehouse', 'quality']
-const ALL = [...approval, ...hr, ...pm, ...crm, ...wms, ...mes]
+const ALL = [...approval, ...notice, ...hr, ...pm, ...crm, ...wms, ...mes]
 
 export function visibleEntries() {
   return ALL.filter((e) => hasPerm(e.perm) && (e.permAll || []).every((p) => hasPerm(p)) && (!e.rule || bizRule(e.rule, true) !== false))

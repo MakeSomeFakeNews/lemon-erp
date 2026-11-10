@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.system.mapper.SysNoticeTargetMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO sys_notice_target (notice_id, target_id) VALUES
+        <foreach collection="list" item="i" separator=",">(#{i.noticeId}, #{i.targetId})</foreach>
+    </insert>
+
+</mapper>
