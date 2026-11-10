@@ -178,6 +178,7 @@ export default {
     currentNode: '当前节点',
     startTime: '发起时间',
     endTime: '结束时间',
+    startEndTime: '发起 / 结束时间',
     terminated: '流程已终止'
   },
   detail: {

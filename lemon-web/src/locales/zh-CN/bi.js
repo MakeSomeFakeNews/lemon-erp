@@ -284,7 +284,7 @@ export default {
     class: '类别',
     stockQty: '库存数量',
     stockAmount: '库存金额',
-    lastOut: '最近出库',
+    lastOut: '最近出库日期',
     idleDays: '呆滞天数',
     rule: '规则',
     condition: '预警条件'

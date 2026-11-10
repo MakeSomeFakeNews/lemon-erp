@@ -368,8 +368,6 @@ export default {
     leaveType: '假期类型',
     leaveTypeRequired: '请选择假期类型',
     compensation: '补偿方式',
-    payOvertime: '发加班费',
-    toLeave: '转调休',
     time: '时间',
     rangeRequired: '请选择开始和结束时间',
     duration: '时长',

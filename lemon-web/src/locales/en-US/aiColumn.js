@@ -136,7 +136,7 @@ export default {
   laborCost: 'Labor Cost',
   lastGrade: 'Last Grade',
   lastMaintainDate: 'Last Maintain Date',
-  lastOut: 'Last Out',
+  lastOut: 'Last Outbound Date',
   lastScore: 'Last Score',
   lastSync: 'Last Sync',
   lateCount: 'Late Count',

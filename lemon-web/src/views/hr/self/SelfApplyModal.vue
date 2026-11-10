@@ -6,10 +6,8 @@
         <a-select v-model:value="applyForm.type" :options="leaveTypeOptions" />
       </a-form-item>
       <a-form-item v-else :label="$t('hr.self.compensation')" name="type">
-        <a-radio-group v-model:value="applyForm.type">
-          <a-radio :value="OvertimeComp.PAY">{{ $t('hr.self.payOvertime') }}</a-radio>
-          <a-radio :value="OvertimeComp.TO_LEAVE">{{ $t('hr.self.toLeave') }}</a-radio>
-        </a-radio-group>
+        <!-- 选项名称取字典 hr_overtime_comp，与列表、详情中的显示一致 -->
+        <a-radio-group v-model:value="applyForm.type" :options="toOptions(dict.hr_overtime_comp)" />
       </a-form-item>
       <a-form-item :label="$t('hr.self.time')" name="range" :rules="[{ required: true, message: $t('hr.self.rangeRequired') }]">
         <a-range-picker
@@ -48,7 +46,7 @@ const props = defineProps({
   annualLeft: { type: Number, default: 0 }
 })
 const emit = defineEmits(['success'])
-const dict = useDict('hr_leave_type')
+const dict = useDict('hr_leave_type', 'hr_overtime_comp')
 
 const visible = ref(false)
 const saving = ref(false)

@@ -136,7 +136,7 @@ export default {
   laborCost: '人工成本',
   lastGrade: '上次评级',
   lastMaintainDate: '上次保养日期',
-  lastOut: '最近出库',
+  lastOut: '最近出库日期',
   lastScore: '上次得分',
   lastSync: '最近同步',
   lateCount: '迟到次数',

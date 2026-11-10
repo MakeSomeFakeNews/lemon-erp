@@ -325,13 +325,13 @@ const tab = ref('cards')
 const columns = [
   { title: t('fin.asset.asset'), key: 'name', width: 200 },
   { title: t('fin.asset.category'), key: 'category', width: 90, defaultHidden: true },
-  { title: t('fin.asset.colUser'), key: 'user', width: 150 },
+  { title: t('fin.asset.colUser'), key: 'user', width: 140 },
   { title: t('fin.asset.colUseDate'), dataIndex: 'useDate', width: 100, defaultHidden: true },
   { title: t('fin.asset.originalValue'), key: 'value', width: 130, align: 'right' },
-  { title: t('fin.asset.colProgress'), key: 'depreciation', width: 200 },
+  { title: t('fin.asset.colProgress'), key: 'depreciation', width: 190 },
   { title: t('fin.asset.netValue'), key: 'net', width: 150, align: 'right' },
   { title: t('fin.asset.colExpenseAccount'), dataIndex: 'expenseAccountName', width: 120, defaultHidden: true },
-  { title: t('common.field.status'), key: 'status', width: 80 },
+  { title: t('common.field.status'), key: 'status', width: 100 },
   {
     title: t('common.action.operation'),
     key: 'action',

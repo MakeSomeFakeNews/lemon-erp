@@ -73,8 +73,6 @@ export default {
     leaveType: 'Leave type',
     annualOption: '{label} ({n} days left)',
     compensation: 'Compensation',
-    payOvertime: 'Overtime pay',
-    toLeave: 'Comp time',
     startTime: 'Start',
     endTime: 'End',
     duration: 'Duration (hours)',

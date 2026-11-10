@@ -61,9 +61,10 @@
             <a-progress
               :percent="pct(record.finishedQty, record.qty)"
               size="small"
+              :show-info="false"
               :status="pct(record.finishedQty, record.qty) >= 100 ? 'success' : 'normal'"
-              :format="() => `${formatQty(record.finishedQty)} / ${formatQty(record.qty)}`"
             />
+            <div class="sub-text">{{ formatQty(record.finishedQty) }} / {{ formatQty(record.qty) }} · {{ pct(record.finishedQty, record.qty) }}%</div>
           </template>
           <template v-else-if="column.key === 'plan'">
             <div>{{ record.planStart || '-' }}</div>
@@ -125,7 +126,7 @@ const dict = useDict('mes_wo_status', 'mes_wo_type')
 const columns = [
   { title: t('mes.wo.woNo'), key: 'woNo', width: 190 },
   { title: t('mes.wo.product'), key: 'product', width: 240 },
-  { title: t('mes.wo.progress'), key: 'progress', width: 180 },
+  { title: t('mes.wo.progress'), key: 'progress', width: 180, exportValue: (r) => `${formatQty(r.finishedQty)} / ${formatQty(r.qty)}` },
   { title: t('mes.wo.planDate'), key: 'plan', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'mes_wo_status' },
   { title: t('mes.wo.finishWarehouseShort'), dataIndex: 'warehouseName', width: 130, defaultHidden: true },

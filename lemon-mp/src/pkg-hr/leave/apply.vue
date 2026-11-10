@@ -65,7 +65,7 @@ import { useDict } from '@/store/dict'
 import { today } from '@/utils/format'
 
 const { t } = useI18n()
-const dict = useDict('hr_leave_type')
+const dict = useDict('hr_leave_type', 'hr_overtime_comp')
 /** 业务字典 hr_leave_type 中程序依赖的内置取值 */
 const ANNUAL = 'ANNUAL'
 const COMPENSATORY = 'COMPENSATORY'
@@ -86,10 +86,8 @@ const typeOptions = computed(() =>
 )
 const typeIndex = computed(() => Math.max(0, typeOptions.value.findIndex((o) => o.value === form.type)))
 const typeLabel = computed(() => typeOptions.value.find((o) => o.value === form.type)?.label)
-const compOptions = computed(() => [
-  { value: OvertimeComp.PAY, label: t('hr.leave.payOvertime') },
-  { value: OvertimeComp.TO_LEAVE, label: t('hr.leave.toLeave') }
-])
+/** 加班补偿方式：名称取字典 hr_overtime_comp，与列表、Web 端一致 */
+const compOptions = computed(() => dict.hr_overtime_comp.map((d) => ({ value: d.value, label: d.label })))
 
 onLoad((q) => {
   kind.value = q.kind === LeaveKind.OVERTIME ? LeaveKind.OVERTIME : LeaveKind.LEAVE
