@@ -10,7 +10,8 @@ import java.util.List;
  * @param rows     报表行；资产负债表为左侧（资产）
  * @param right    资产负债表右侧（负债和所有者权益），利润表为空
  * @param balanced 资产负债表是否平衡，利润表为空
+ * @param warning  报表数据不完整的提示（利润表：本月有收入但尚未成本核算或成本结转凭证未记账），没有时为空
  */
 public record FinancialStatement(String title, String formNo, List<String> columns, List<FinancialRow> rows, List<FinancialRow> right,
-                        List<FinancialMetric> metrics, Boolean balanced) {
+                        List<FinancialMetric> metrics, Boolean balanced, String warning) {
 }

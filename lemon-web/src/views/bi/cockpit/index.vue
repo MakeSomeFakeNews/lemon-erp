@@ -24,6 +24,9 @@
       </template>
     </a-alert>
 
+    <!-- 账务利润（凭证）中本月的营业成本在月末成本核算后才结转 -->
+    <a-alert v-if="!loading && data.costWarning" type="info" show-icon class="alert" :message="data.costWarning" />
+
     <a-row :gutter="[16, 16]">
       <a-col v-for="k in kpis" :key="k.key" :xs="12" :md="8" :xl="6" :xxl="4">
         <div class="page-card kpi" :class="{ link: k.to }" @click="k.to && router.push(k.to)">

@@ -21,6 +21,8 @@
 
       <div ref="scrollEl" class="report-scroll">
         <a-spin :spinning="loading">
+          <!-- 本月有收入但营业成本尚未结转（未成本核算或结转凭证未记账）：毛利率等可能偏高，提示仅供参考 -->
+          <a-alert v-if="type === 'income' && report?.warning" type="warning" show-icon class="warn" :message="report.warning" />
           <div v-if="metrics.length" class="metrics">
             <a-tooltip v-for="m in metrics" :key="m.name" :title="m.hint">
               <div class="metric">

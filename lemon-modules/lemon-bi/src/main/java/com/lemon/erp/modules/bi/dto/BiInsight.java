@@ -100,9 +100,13 @@ public final class BiInsight {
         private String snapDate;
     }
 
-    /** 经营驾驶舱 */
+    /**
+     * 经营驾驶舱
+     *
+     * @param costWarning 本月账务利润不完整的提示（本月有收入但尚未成本核算或成本结转凭证未记账），没有时为空
+     */
     public record Cockpit(CockpitKpi kpi, List<CockpitTrend> trend, List<TopItem> topCustomers, List<TopItem> topMaterials,
-                          List<InventoryCategory> inventory, LocalDateTime lastSync) {
+                          List<InventoryCategory> inventory, LocalDateTime lastSync, String costWarning) {
     }
 
     // ---------------------------------------------------------------- 决策

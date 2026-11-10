@@ -123,6 +123,7 @@ public class FinFinancialStatementService {
 
     private final FinVoucherEntryMapper entryMapper;
     private final FinAccountService accountService;
+    private final FinCostService costService;
 
     /** 资产负债表：period 期末、年初余额 */
     public FinancialStatement balanceSheet(int period) {
@@ -142,7 +143,7 @@ public class FinFinancialStatementService {
                 ratio("fin.label.currentRatio", left, right, false, "fin.label.totalCurrentAssetsTotalCurrentLiabilities"),
                 ratio("fin.label.quickRatio", left, right, true, "fin.label.totalCurrentAssetsInventoriesTotalCurrent"));
         return new FinancialStatement(Messages.get("fin.text.balanceSheet"), Messages.get("fin.text.formSe"), List.of(Messages.get("fin.text.closingBalance"), Messages.get("fin.text.beginningYearBalance")), left.rows(), right.rows(),
-                metrics, balanced);
+                metrics, balanced, null);
     }
 
     /** 利润表：本月金额、本年累计、上年同期累计 */
@@ -161,7 +162,12 @@ public class FinFinancialStatementService {
                 incomeMetric("fin.label.netMargin", r, "fin.label.netProfitOperatingRevenue", "net"),
                 incomeMetric("fin.label.periodExpenseRatio", r, "fin.label.sellingAdministrativeFinancialExpensesOperatingRevenue", "selling", "admin", "finance"));
         return new FinancialStatement(Messages.get("fin.text.incomeStatement"), Messages.get("fin.text.formSe2"), List.of(Messages.get("fin.text.currentMonth"), Messages.get("fin.text.yearDate"), Messages.get("fin.text.priorYearDate")),
-                r.rows(), null, metrics, null);
+                r.rows(), null, metrics, null, incomeWarning(period, r));
+    }
+
+    /** 本月有营业收入但营业成本尚未结转（未成本核算或结转凭证未记账）时提示利润仅供参考 */
+    private String incomeWarning(int period, FinancialTemplate.Result r) {
+        return r.get("revenue", 0).signum() == 0 ? null : costService.costWarning(period);
     }
 
     /** 本年各月（截至 period）的营业收入、营业成本、营业利润、净利润 */
