@@ -58,21 +58,13 @@
             />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="'wms:location:list'" type="link" size="small" @click="toLocations(record)">
-                <template #icon><EnvironmentOutlined /></template>{{ $t('wms.common.location') }}
-              </a-button>
-              <a-button v-perm="'wms:warehouse:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-perm="'wms:warehouse:remove'">
-                <a-popconfirm :title="$t('wms.warehouse.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', perm: 'wms:warehouse:edit', onClick: () => drawer.openEdit(record) },
+                { key: 'location', label: $t('wms.common.location'), icon: EnvironmentOutlined, perm: 'wms:location:list', onClick: () => toLocations(record) },
+                { type: 'delete', perm: 'wms:warehouse:remove', confirm: $t('wms.warehouse.confirmDelete', { name: record.name }), onClick: () => remove(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -149,7 +141,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { DeleteOutlined, EditOutlined, EnvironmentOutlined, InfoCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { EnvironmentOutlined, InfoCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -158,7 +150,9 @@ import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { partnerOptions } from '@/api/scm/partner'
 import { addWarehouse, changeWarehouseStatus, deleteWarehouse, getWarehouse, pageWarehouse, updateWarehouse } from '@/api/wms/warehouse'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -174,14 +168,14 @@ const userStore = useUserStore()
 const dict = useDict('sys_common_status', 'wms_warehouse_type')
 
 const columns = [
-  { title: t('wms.common.warehouse'), key: 'name', width: 180 },
-  { title: t('common.field.type'), key: 'type', width: 120, dict: 'wms_warehouse_type' },
-  { title: t('wms.warehouse.address'), dataIndex: 'address', width: 200, ellipsis: true },
-  { title: t('wms.warehouse.contact'), key: 'contact', width: 130 },
-  { title: t('common.field.sort'), dataIndex: 'sort', width: 70, defaultHidden: true },
+  { title: t('wms.common.warehouse'), key: 'name', width: 200 },
+  { title: t('common.field.type'), key: 'type', width: 150, dict: 'wms_warehouse_type' },
+  { title: t('wms.warehouse.address'), dataIndex: 'address', width: 240, ellipsis: true },
+  { title: t('wms.warehouse.contact'), key: 'contact', width: 140 },
+  { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('wms.common.location'), t('common.action.edit'), t('common.action.delete')]), fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  actionColumn(3)
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-warehouse')
 const showSearch = ref(true)

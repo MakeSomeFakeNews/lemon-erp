@@ -67,18 +67,12 @@
             />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="'wms:location:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-perm="'wms:location:remove'">
-                <a-popconfirm :title="$t('wms.location.confirmDelete', { code: record.code })" @confirm="remove([record.id])">
-                  <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', perm: 'wms:location:edit', onClick: () => drawer.openEdit(record) },
+                { type: 'delete', perm: 'wms:location:remove', confirm: $t('wms.location.confirmDelete', { code: record.code }), onClick: () => remove([record.id]) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -134,7 +128,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { BarcodeOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { BarcodeOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -144,6 +138,8 @@ import LabelPrintModal from '@/components/label/LabelPrintModal.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { addLocation, changeLocationStatus, deleteLocation, getLocation, pageLocation, updateLocation } from '@/api/wms/location'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -160,13 +156,13 @@ const dict = useDict('sys_common_status', 'wms_location_type')
 const columns = [
   { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 160 },
   { title: t('wms.location.code'), dataIndex: 'code', width: 140 },
-  { title: t('wms.location.name'), dataIndex: 'name', width: 150 },
+  { title: t('wms.location.name'), dataIndex: 'name', width: 160 },
   { title: t('wms.location.zone'), dataIndex: 'zone', width: 100 },
   { title: t('common.field.type'), key: 'type', width: 100 },
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  actionColumn(2)
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-location')
 const showSearch = ref(true)

@@ -58,15 +58,18 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button
-              v-if="record.status === HoldStatus.PENDING || record.status === HoldStatus.REJECTED"
-              v-perm="'wms:hold:release'"
-              type="link"
-              size="small"
-              @click="openRelease(record)"
-            >
-              <template #icon><UnlockOutlined /></template>{{ $t('wms.hold.release') }}
-            </a-button>
+            <TableActions
+              :actions="[
+                {
+                  key: 'release',
+                  label: $t('wms.hold.release'),
+                  icon: UnlockOutlined,
+                  show: record.status === HoldStatus.PENDING || record.status === HoldStatus.REJECTED,
+                  perm: 'wms:hold:release',
+                  onClick: () => openRelease(record)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -92,7 +95,9 @@ import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { pageHold, releaseHold } from '@/api/wms/hold'
 import { formatQty, locationText } from '@/components/wms/wms'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -106,13 +111,13 @@ const columns = [
   { title: t('wms.hold.purchaseIn'), dataIndex: 'sourceNo', width: 170 },
   { title: t('wms.hold.supplier'), dataIndex: 'partnerName', width: 160, ellipsis: true },
   { title: t('wms.common.material'), key: 'material', width: 220 },
-  { title: t('wms.hold.slot'), key: 'slot', width: 170 },
+  { title: t('wms.hold.slot'), key: 'slot', width: 190 },
   { title: t('wms.hold.qty'), key: 'qty', width: 150, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 110, dict: 'wms_hold_status' },
-  { title: t('wms.hold.inspNo'), dataIndex: 'inspNo', width: 150, defaultHidden: true },
-  { title: t('wms.hold.release'), key: 'release', width: 200, defaultHidden: true },
-  { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('wms.hold.release')]), fixed: 'right' }
+  { title: t('wms.hold.inspNo'), dataIndex: 'inspNo', width: 150 },
+  { title: t('wms.hold.release'), key: 'release', width: 200 },
+  { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true },
+  actionColumn(1, [t('wms.hold.release')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-hold')
 const showSearch = ref(true)

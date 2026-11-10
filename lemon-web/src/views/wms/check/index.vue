@@ -61,23 +61,19 @@
             <span v-else>-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
-              </a-button>
-              <template v-if="record.status === WmsDocStatus.DRAFT">
-                <a-button v-perm="'wms:check:edit'" type="link" size="small" @click="form.openEdit(record)">
-                  <template #icon><EditOutlined /></template>{{ $t('wms.check.count') }}
-                </a-button>
-                <span v-perm="'wms:check:remove'">
-                  <a-popconfirm :title="$t('wms.check.confirmDelete', { no: record.docNo })" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small">
-                      <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                    </a-button>
-                  </a-popconfirm>
-                </span>
-              </template>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'view', onClick: () => openDetail(record) },
+                { type: 'edit', label: $t('wms.check.count'), show: record.status === WmsDocStatus.DRAFT, perm: 'wms:check:edit', onClick: () => form.openEdit(record) },
+                {
+                  type: 'delete',
+                  show: record.status === WmsDocStatus.DRAFT,
+                  perm: 'wms:check:remove',
+                  confirm: $t('wms.check.confirmDelete', { no: record.docNo }),
+                  onClick: () => remove(record.id)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -91,7 +87,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -99,7 +95,9 @@ import CheckDetail from '@/components/wms/CheckDetail.vue'
 import CheckForm from '@/components/wms/CheckForm.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { deleteCheck, pageCheck } from '@/api/wms/check'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -111,15 +109,15 @@ const { t } = useI18n()
 const dict = useDict('wms_doc_status')
 
 const columns = [
-  { title: t('wms.common.docNo'), key: 'docNo', width: 160 },
-  { title: t('wms.checkDoc.warehouse'), dataIndex: 'warehouseName', width: 130 },
+  { title: t('wms.common.docNo'), key: 'docNo', width: 170 },
+  { title: t('wms.checkDoc.warehouse'), dataIndex: 'warehouseName', width: 150 },
   { title: t('wms.checkDoc.date'), dataIndex: 'bizDate', width: 110 },
-  { title: t('wms.checkDoc.items'), key: 'items', width: 120 },
+  { title: t('wms.checkDoc.items'), key: 'items', width: 150 },
   { title: t('common.field.status'), key: 'status', width: 90, dict: 'wms_doc_status' },
-  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 90, defaultHidden: true },
+  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 100 },
   { title: t('wms.doc.confirmed'), key: 'confirm', width: 160 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 80, ellipsis: true, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('wms.check.count'), t('common.action.delete')]), fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  actionColumn(3, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-check')
 const showSearch = ref(true)

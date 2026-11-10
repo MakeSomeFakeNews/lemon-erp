@@ -18,12 +18,12 @@
             <a-tag :color="record.status === STATUS_DISABLED ? 'default' : 'green'" :bordered="false">{{ record.status === STATUS_DISABLED ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-perm="'wms:attribute:edit'" class="table-actions">
-              <a-button type="link" size="small" @click="drawer.openEdit(record)"><template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}</a-button>
-              <a-popconfirm :title="$t('wms.attribute.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                <a-button type="link" danger size="small"><template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}</a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', perm: 'wms:attribute:edit', onClick: () => drawer.openEdit(record) },
+                { type: 'delete', perm: 'wms:attribute:edit', confirm: $t('wms.attribute.confirmDelete', { name: record.name }), onClick: () => remove(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -71,8 +71,10 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowUpOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { ArrowUpOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { addAttribute, attributes, deleteAttribute, updateAttribute } from '@/api/wms/material'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { rowKey } from '@/components/wms/wms'
@@ -87,7 +89,7 @@ const columns = [
   { title: t('wms.attribute.values'), key: 'values' },
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
   { title: t('common.field.status'), key: 'status', width: 80 },
-  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
+  actionColumn(2)
 ]
 const list = ref([])
 const loading = ref(false)
