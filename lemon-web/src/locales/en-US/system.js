@@ -328,7 +328,7 @@ export default {
     confirmDelete: 'Delete plan "{name}"?',
     statusTip: 'A disabled plan cannot be used for new tenants; existing tenants are not affected',
     menus: 'Available Menus',
-    menusTip: 'The tenant admin has all menus in the plan. Changes apply immediately to tenants using this plan. Platform features such as menus, dictionaries, tenants and server monitoring cannot be added to a plan',
+    menusTip: 'The tenant admin has all menus in the plan. Changes apply immediately to tenants using this plan. Platform features such as menu management, system dictionaries, settings, tenants and plans, server and cache monitoring, and scheduled jobs cannot be added to a plan (business dictionaries can)',
     menuDetail: 'Menu Details',
     menuDetailTip: 'After selecting modules, add or remove individual pages and buttons here',
     tenantCount: 'Tenants',
