@@ -1351,7 +1351,13 @@ export const ReservationSource = Object.freeze({
   SALES: 'SALES', // 销售订单
 })
 
-/** com.lemon.erp.modules.bi.model.RfmSegment */
+/** com.lemon.erp.modules.scm.model.RfmMode */
+export const RfmMode = Object.freeze({
+  THRESHOLD: 'THRESHOLD', // 固定阈值
+  AVERAGE: 'AVERAGE', // 平均分
+})
+
+/** com.lemon.erp.modules.scm.model.RfmSegment */
 export const RfmSegment = Object.freeze({
   IMPORTANT_VALUE: 'IMPORTANT_VALUE', // 重要价值
   IMPORTANT_DEVELOP: 'IMPORTANT_DEVELOP', // 重要发展

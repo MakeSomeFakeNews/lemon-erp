@@ -4,6 +4,10 @@ import com.lemon.erp.modules.crm.dto.CrmAnalysis;
 import com.lemon.erp.modules.crm.dto.RfmRow;
 import com.lemon.erp.modules.crm.mapper.CrmAnalysisMapper;
 import com.lemon.erp.modules.crm.model.OpportunityStage;
+import com.lemon.erp.modules.scm.dto.RfmSettings;
+import com.lemon.erp.modules.scm.model.RfmSegment;
+import com.lemon.erp.modules.scm.service.RfmCalculator;
+import com.lemon.erp.modules.scm.service.ScmRfmService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -15,8 +19,8 @@ import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +32,7 @@ import java.util.Map;
 public class CrmAnalysisService {
 
     private final CrmAnalysisMapper analysisMapper;
+    private final ScmRfmService rfmService;
 
     public CrmAnalysis.Overview overview() {
         LocalDate today = LocalDate.now();
@@ -72,52 +77,42 @@ public class CrmAnalysisService {
     }
 
     /**
-     * RFM 分析（近一年）：R、F、M 分别与平均值比较，R 天数不高于平均为「近」，F、M 不低于平均为「高」
+     * RFM 分析（近一年）：按分群参数（页面传入，为空的项取租户默认值）判断 R、F、M 的高低，分为八类（{@link RfmCalculator}）
      */
-    public CrmAnalysis.Rfm rfm() {
+    public CrmAnalysis.Rfm rfm(RfmSettings params) {
+        RfmSettings settings = rfmService.settings(params);
         LocalDate today = LocalDate.now();
-        List<CrmAnalysis.RfmSource> src = analysisMapper.selectRfmSource(today.minusYears(1));
-        if (src.isEmpty()) {
-            return new CrmAnalysis.Rfm(List.of(), List.of(), null, null, null);
-        }
-        List<long[]> rf = new ArrayList<>();
-        double sumR = 0, sumF = 0;
-        BigDecimal sumM = BigDecimal.ZERO;
+        LocalDate since = today.minusYears(1).plusDays(1);
+        BigDecimal months = RfmCalculator.months(since, today);
+        List<CrmAnalysis.RfmSource> src = analysisMapper.selectRfmSource(since);
+        List<RfmCalculator.Metrics> metrics = new ArrayList<>(src.size());
         for (CrmAnalysis.RfmSource r : src) {
             LocalDate last = LocalDate.parse(r.getLastDate().substring(0, 10));
-            long recency = ChronoUnit.DAYS.between(last, today);
-            long freq = num(r.getFrequency()).longValue();
-            rf.add(new long[]{recency, freq});
-            sumR += recency;
-            sumF += freq;
-            sumM = sumM.add(num(r.getMonetary()));
+            metrics.add(new RfmCalculator.Metrics(Math.max(0, ChronoUnit.DAYS.between(last, today)),
+                    num(r.getFrequency()).longValue(), num(r.getMonetary())));
         }
-        double avgR = sumR / src.size();
-        double avgF = sumF / src.size();
-        BigDecimal avgM = sumM.divide(BigDecimal.valueOf(src.size()), 2, RoundingMode.HALF_UP);
+        RfmCalculator.Result result = RfmCalculator.calculate(metrics, settings, months);
         List<RfmRow> rows = new ArrayList<>();
-        Map<String, long[]> segments = new LinkedHashMap<>();
-        for (String s : SEGMENTS) segments.put(s, new long[]{0});
-        Map<String, BigDecimal> segmentAmount = new HashMap<>();
+        Map<RfmSegment, long[]> counts = new EnumMap<>(RfmSegment.class);
+        Map<RfmSegment, BigDecimal> amounts = new EnumMap<>(RfmSegment.class);
         for (int i = 0; i < src.size(); i++) {
             CrmAnalysis.RfmSource r = src.get(i);
-            BigDecimal m = num(r.getMonetary());
-            boolean recent = rf.get(i)[0] <= avgR;
-            boolean frequent = rf.get(i)[1] >= avgF;
-            boolean valuable = m.compareTo(avgM) >= 0;
-            String segment = segment(recent, frequent, valuable);
-            segments.get(segment)[0]++;
-            segmentAmount.merge(segment, m, BigDecimal::add);
-            rows.add(new RfmRow(num(r.getCustomerId()).longValue(), r.getCode(), r.getName(),
-                    r.getOwnerName(), (int) rf.get(i)[0], (int) rf.get(i)[1], m, recent, frequent, valuable, segment));
+            RfmCalculator.Metrics x = metrics.get(i);
+            RfmCalculator.Score s = result.scores().get(i);
+            counts.computeIfAbsent(s.segment(), k -> new long[1])[0]++;
+            amounts.merge(s.segment(), x.monetary(), BigDecimal::add);
+            rows.add(new RfmRow(num(r.getCustomerId()).longValue(), r.getCode(), r.getName(), r.getOwnerName(),
+                    (int) x.recency(), (int) x.frequency(), x.monetary(), s.monthlyFrequency(), s.avgAmount(),
+                    s.r(), s.f(), s.m(), s.recent(), s.frequent(), s.valuable(), s.segment()));
         }
         rows.sort(Comparator.comparing(RfmRow::monetary).reversed());
-        List<CrmAnalysis.RfmSegment> segmentRows = new ArrayList<>();
-        segments.forEach((name, count) -> segmentRows.add(new CrmAnalysis.RfmSegment(name, count[0],
-                segmentAmount.getOrDefault(name, BigDecimal.ZERO))));
-        return new CrmAnalysis.Rfm(rows, segmentRows,
-                BigDecimal.valueOf(avgR).setScale(1, RoundingMode.HALF_UP),
-                BigDecimal.valueOf(avgF).setScale(1, RoundingMode.HALF_UP), avgM);
+        List<CrmAnalysis.SegmentStat> segments = new ArrayList<>();
+        for (RfmSegment seg : RfmSegment.values()) {
+            segments.add(new CrmAnalysis.SegmentStat(seg, counts.getOrDefault(seg, new long[1])[0],
+                    amounts.getOrDefault(seg, BigDecimal.ZERO)));
+        }
+        return new CrmAnalysis.Rfm(rows, segments, months.setScale(1, RoundingMode.HALF_UP), settings,
+                result.avgR(), result.avgF(), result.avgM());
     }
 
     /** 近 12 个月的销售额、成交客户数、赢单金额 */
@@ -160,15 +155,6 @@ public class CrmAnalysisService {
     }
 
     // ---------------------------------------------------------------- 内部
-
-    private static final List<String> SEGMENTS = List.of("重要价值客户", "重要发展客户", "重要保持客户", "重要挽留客户", // i18n-ignore 分层名称由前端按中文名翻译
-            "一般价值客户", "一般发展客户", "一般保持客户", "一般挽留客户"); // i18n-ignore
-
-    static String segment(boolean recent, boolean frequent, boolean valuable) {
-        String level = valuable ? "重要" : "一般"; // i18n-ignore
-        String kind = recent ? (frequent ? "价值" : "发展") : (frequent ? "保持" : "挽留"); // i18n-ignore
-        return level + kind + "客户"; // i18n-ignore 分层名称是标识，由前端按中文名翻译
-    }
 
     private static long count(CrmAnalysis.StageCount r) {
         return r == null || r.getCount() == null ? 0 : r.getCount();

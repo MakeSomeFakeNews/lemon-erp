@@ -34,6 +34,8 @@
                  JOIN sys_user u ON u.id = ur.user_id
         WHERE r.status = 1
           AND u.status = 1
+          AND u.supplier_id IS NULL
+          AND u.customer_id IS NULL
           AND ur.role_id IN
         <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">
             #{roleId}
@@ -49,6 +51,8 @@
         WHERE r.code = #{roleCode}
           AND r.status = 1
           AND u.status = 1
+          AND u.supplier_id IS NULL
+          AND u.customer_id IS NULL
         ORDER BY u.id
     </select>
 

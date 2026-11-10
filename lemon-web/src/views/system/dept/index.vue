@@ -149,7 +149,7 @@
     <UserPicker
       v-model:open="pickerOpen"
       :title="$t('system.dept.addMembersTitle', { name: current?.name })"
-      :fetcher="pageUser"
+      :fetcher="pageInternalUser"
       :disabled-row="(r) => r.deptId === current?.id"
       :disabled-text="$t('system.dept.alreadyIn')"
       :submit="addMembers"
@@ -187,7 +187,7 @@ import UserFormDrawer from '@/components/user/UserFormDrawer.vue'
 import UserPicker from '@/components/user/UserPicker.vue'
 import DeptFormDrawer from './components/DeptFormDrawer.vue'
 import { deleteDept, deptTree } from '@/api/system/dept'
-import { changeUserDept, changeUserStatus, pageUser } from '@/api/system/user'
+import { changeUserDept, changeUserStatus, pageInternalUser, pageUser } from '@/api/system/user'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'

@@ -509,7 +509,7 @@ export default {
       service: '服务质量'
     },
     funnelNote: '到达：曾经推进到该阶段的商机数；转化率 = 到达下一阶段 / 到达本阶段',
-    rfmNote: '与平均值比较：最近购买距今 {r} 天、购买 {f} 次、金额 ¥{m}；R 近、F 多为「价值 / 保持」，M 高为「重要」',
+    rfmNote: '近一年（{months} 个月）有销售出库的客户：F 为每月购买次数，M 为平均每次购买金额（含税，扣除退货）；按分群参数判断高低（绿色为高），M 高为「重要」，R 近、F 多为「价值 / 保持」',
     days: '{n} 天',
     times: '{n} 次',
     hours: '{n} 小时',
@@ -540,7 +540,9 @@ export default {
       conversion: '转化率',
       recency: '最近购买（R）',
       frequency: '购买次数（F）',
+      monthlyFrequency: '每月次数',
       monetary: '购买金额（M）',
+      avgAmount: '平均每次金额',
       segment: '客户分层',
       leads: '线索',
       converted: '已转化',
@@ -559,16 +561,6 @@ export default {
       avgHours: '平均解决时长',
       onTime: '按时解决率',
       satisfaction: '平均满意度'
-    },
-    seg: {
-      importantValue: '重要价值客户',
-      importantDevelop: '重要发展客户',
-      importantKeep: '重要保持客户',
-      importantWinback: '重要挽留客户',
-      generalValue: '一般价值客户',
-      generalDevelop: '一般发展客户',
-      generalKeep: '一般保持客户',
-      generalWinback: '一般挽留客户'
     }
   }
 }

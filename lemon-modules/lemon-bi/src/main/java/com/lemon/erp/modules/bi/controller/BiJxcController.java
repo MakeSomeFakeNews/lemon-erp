@@ -7,6 +7,7 @@ import com.lemon.erp.modules.bi.dto.JxcViews;
 import com.lemon.erp.modules.bi.model.JxcDimension;
 import com.lemon.erp.modules.bi.service.BiJxcAnalysisService;
 import com.lemon.erp.modules.bi.service.BiJxcService;
+import com.lemon.erp.modules.scm.dto.RfmSettings;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -125,9 +126,10 @@ public class BiJxcController {
 
     // ---------------------------------------------------------------- 客户 RFM
 
+    /** @param params 分群方式和阈值（mode、recencyDays、frequency、monetary），不传的取租户默认值 */
     @GetMapping("/rfm")
     @PreAuthorize("@ss.hasPerm('bi:jxc:rfm')")
-    public R<JxcViews.Rfm> rfm(JxcQuery q) {
-        return R.ok(analysisService.rfm(q));
+    public R<JxcViews.Rfm> rfm(JxcQuery q, RfmSettings params) {
+        return R.ok(analysisService.rfm(q, params));
     }
 }

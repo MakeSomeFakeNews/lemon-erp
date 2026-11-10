@@ -70,6 +70,8 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
                         .or().like(SysUser::getNickname, username))
                 .like(StringUtils.hasText(query.phone()), SysUser::getPhone, query.phone())
                 .eq(query.status() != null, SysUser::getStatus, query.status())
+                .isNull(Boolean.TRUE.equals(query.internal()), SysUser::getSupplierId)
+                .isNull(Boolean.TRUE.equals(query.internal()), SysUser::getCustomerId)
                 .orderByDesc(SysUser::getId);
         if (query.deptId() != null) {
             if (query.includeChildDepts()) {

@@ -17,21 +17,21 @@ public interface UserLookup {
     Optional<UserBrief> find(Long userId);
 
     /**
-     * 账号必须存在（不检查是否停用）
+     * 内部账号必须存在（不检查是否停用）；供应商 / 经销商门户账号不是内部人员，视为不存在
      *
      * @param errorKey 不存在时抛出的 {@link BizException} 消息键
      */
     default UserBrief require(Long userId, String errorKey) {
-        return find(userId).orElseThrow(() -> new BizException(errorKey));
+        return find(userId).filter(u -> !u.portal()).orElseThrow(() -> new BizException(errorKey));
     }
 
     /**
-     * 账号必须存在且为正常状态
+     * 内部账号必须存在且为正常状态（门户账号视为不存在）
      *
      * @param errorKey 不存在或已停用时抛出的 {@link BizException} 消息键
      */
     default UserBrief requireActive(Long userId, String errorKey) {
-        return find(userId).filter(UserBrief::active).orElseThrow(() -> new BizException(errorKey));
+        return find(userId).filter(u -> u.active() && !u.portal()).orElseThrow(() -> new BizException(errorKey));
     }
 
     /**
@@ -43,7 +43,8 @@ public interface UserLookup {
 
     /**
      * @param active 账号状态为正常（未停用）
+     * @param portal 供应商 / 经销商门户账号（不是内部人员）
      */
-    record UserBrief(Long id, String username, String nickname, Long deptId, boolean active) {
+    record UserBrief(Long id, String username, String nickname, Long deptId, boolean active, boolean portal) {
     }
 }

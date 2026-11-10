@@ -21,7 +21,7 @@ import { pageUser } from '@/api/system/user'
 import { t } from '@/locales'
 
 /**
- * 用户单选下拉：按用户名或昵称远程搜索
+ * 用户单选下拉：按用户名或昵称远程搜索，选项显示昵称、部门和用户名
  * - v-model:value：用户 ID
  * - label：当前值的显示名（编辑时回显，避免为了显示名称额外请求）
  * - fetcher(params)：返回 { records, total }，默认用户管理的分页接口
@@ -39,7 +39,11 @@ const loading = ref(false)
 let seq = 0
 let timer
 
-const toOption = (u) => ({ value: u.id, label: u.nickname ? `${u.nickname}（${u.username}）` : u.username })
+/** 显示「昵称 · 部门（用户名）」，同名的人可按部门、用户名区分 */
+const toOption = (u) => {
+  const name = u.nickname ? `${u.nickname}（${u.username}）` : u.username
+  return { value: u.id, label: u.deptName ? `${u.nickname || u.username} · ${u.deptName}（${u.username}）` : name }
+}
 
 // 当前值不在搜索结果中时，仍用 label 回显
 const options = computed(() => {
