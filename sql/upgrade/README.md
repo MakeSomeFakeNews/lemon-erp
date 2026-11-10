@@ -13,6 +13,7 @@
 | `20261108_stock_cost.sql` | 实时库存成本：物料移动加权平均成本（`wms_material_cost`）、库存流水的业务单价 / 成本单价 / 成本金额 / 往来单位、出入库明细的成本价，按历史单据和成本核算单价回填并标记为近似成本（`cost_estimated`），回填后物料库存金额与流水成本累计对齐（经营历史结余与库存查询金额一致）；盘点明细的盘盈成本价（`wms_check_item.cost_price`）；库存查询「查看成本金额」按钮（`wms:stock:cost`）；生产成本：完工入库的成本口径与料工费（`mes_wo_doc.cost_basis` / `material_cost` / `labor_cost` / `overhead_cost`，历史完工入库回填流水成本为材料）、完工后退料冲减产品成本（`mes_wo_doc.stock_cost_adjust`）、工单关闭转出成本（`mes_work_order.close_cost` / `close_stock_cost`） |
 | `20261109_gm_order_close.sql` | 总经理角色增加「采购订单关闭」「销售订单关闭」按钮权限（各租户按角色编码 gm），请购单的可见范围调整不需要改库 |
 | `20261109_role_perms.sql` | 内置角色权限补齐（各租户按角色编码，非平台租户以套餐为上限）：质量工程师补齐员工自助、费用报销、借款申请；销售员增加服务工单处理、市场活动维护；新增菜单「项目 → 我的工时」（`pm:timesheet:mine`）并授权普通员工；新增内置角色「销售经理」（`sales_mgr`，本部门及以下，复制销售员权限并加客户分析、价目表和商品价格维护）；缩短总经理备注 |
+| `20261109_system_bugs.sql` | 缺陷修复：在途调拨收货日期（`wms_stock_doc.receive_date`，历史单据取收货时间的日期）；工作中心所属车间（`mes_work_center.dept_id`，工单的数据权限部门取第一道工序工作中心的车间）；金额为 0 的应收应付单改为已核销（不生成凭证） |
 
 之后的变更按 `YYYYMMDD_名称.sql`（变更当天的日期）新增，并在上表中登记。
 
