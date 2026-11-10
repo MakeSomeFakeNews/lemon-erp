@@ -64,6 +64,7 @@ import EChart from '@/components/charts/EChart.vue'
 import ScreenKpi from '@/components/screen/ScreenKpi.vue'
 import ScreenPanel from '@/components/screen/ScreenPanel.vue'
 import ScrollList from '@/components/screen/ScrollList.vue'
+import { textWidth } from '@/components/common/tableActions'
 import { COLORS, axisStyle, fmtNum, gradient, hGradient, legend, shortDay, tooltip, withDictLabel } from '@/components/screen/screen'
 import './screen.css'
 
@@ -114,9 +115,10 @@ const typeOption = computed(() => {
       progress: { show: true, width: 10, itemStyle: { color: rateColor(r.rate) } },
       axisLine: { lineStyle: { width: 10, color: [[1, 'rgba(64, 158, 255, 0.15)']] } },
       axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: false }, pointer: { show: false },
-      title: { show: true, offsetCenter: [0, '72%'], color: COLORS.text, fontSize: 15 },
+      // 检验类别和批数分两行，英文类别名较长时不与相邻仪表盘的文字连在一起
+      title: { show: true, offsetCenter: [0, '80%'], color: COLORS.text, fontSize: 15, lineHeight: 20 },
       detail: { valueAnimation: true, offsetCenter: [0, '0%'], fontSize: 24, fontWeight: 700, color: rateColor(r.rate), formatter: (v) => (r.rate === null ? '-' : `${v}%`) },
-      data: [{ value: r.rate === null ? 0 : Number(r.rate), name: `${r.label} ${t('screen.quality.lotsN', { n: r.total })}` }]
+      data: [{ value: r.rate === null ? 0 : Number(r.rate), name: `${r.label}\n${t('screen.quality.lotsN', { n: r.total })}` }]
     }))
   }
 })
@@ -130,7 +132,11 @@ const paretoOption = computed(() => {
     tooltip: tooltip(),
     title: rows.length ? undefined : { text: t('screen.quality.noDefect'), left: 'center', top: 'middle', textStyle: { color: COLORS.sub, fontSize: 15, fontWeight: 400 } },
     grid: { left: 8, right: 8, top: 24, bottom: 8, containLabel: true },
-    xAxis: { type: 'category', data: rows.map((r) => r.label), ...axisStyle, axisLabel: { ...axisStyle.axisLabel, interval: 0, rotate: rows.length > 5 ? 30 : 0 } },
+    xAxis: { type: 'category', data: rows.map((r) => r.label), ...axisStyle, axisLabel: {
+      ...axisStyle.axisLabel, interval: 0, rotate: rows.length > 5 ? 30 : 0,
+      // 不倾斜时多个单词的类别名（英文）按单词换行，相邻标签不重叠
+      formatter: (v) => (rows.length > 5 ? v : String(v).replace(/\s+/g, '\n'))
+    } },
     yAxis: [
       { type: 'value', minInterval: 1, ...axisStyle },
       { type: 'value', min: 0, max: 100, ...axisStyle, splitLine: { show: false }, axisLabel: { ...axisStyle.axisLabel, formatter: '{value}%' } }
@@ -167,13 +173,17 @@ const inspectionColumns = [
   { key: 'defectQty', title: t('screen.quality.defect'), width: '56px', align: 'right' },
   { key: 'resultLabel', title: t('screen.quality.result'), width: '84px', align: 'center' }
 ]
-const ncrColumns = [
-  { key: 'ncrNo', title: t('screen.quality.ncrNo'), width: '132px' },
-  { key: 'material', title: t('screen.quality.material'), width: 'minmax(0, 1fr)' },
-  { key: 'defectLabel', title: t('screen.quality.defectType'), width: '80px' },
-  { key: 'qty', title: t('common.field.quantity'), width: '52px', align: 'right' },
-  { key: 'statusLabel', title: t('common.field.status'), width: '76px', align: 'center' }
-]
+// 状态列按当前显示的状态名称（英文较长）加宽，标签不被截断
+const ncrColumns = computed(() => {
+  const status = Math.max(76, ...ncrs.value.map((r) => Math.ceil(textWidth(r.statusLabel || '', 13)) + 28))
+  return [
+    { key: 'ncrNo', title: t('screen.quality.ncrNo'), width: '132px' },
+    { key: 'material', title: t('screen.quality.material'), width: 'minmax(0, 1fr)' },
+    { key: 'defectLabel', title: t('screen.quality.defectType'), width: '80px' },
+    { key: 'qty', title: t('common.field.quantity'), width: '52px', align: 'right' },
+    { key: 'statusLabel', title: t('common.field.status'), width: `${status}px`, align: 'center' }
+  ]
+})
 </script>
 
 <style scoped>

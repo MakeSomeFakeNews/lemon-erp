@@ -261,7 +261,7 @@ const columns = [
   { title: t('mes.inspection.source'), key: 'source', width: 180 },
   { title: t('mes.wo.material'), key: 'material', width: 210 },
   { title: t('common.field.quantity'), key: 'qty', width: 220 },
-  { title: t('mes.inspection.conclusion'), key: 'result', width: 110 },
+  { title: t('mes.inspection.conclusion'), key: 'result', width: 110, dict: 'mes_qc_result' },
   { title: t('mes.inspection.inspectDate'), key: 'inspectDate', width: 120 },
   // 已确认：查看；草稿：编辑、确认、删除
   actionColumn(3, [t('common.action.view')])

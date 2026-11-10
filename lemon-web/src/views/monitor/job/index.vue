@@ -18,7 +18,7 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
-            <a-tag :color="record.status === 1 ? 'green' : 'default'">{{ record.status === 1 ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
+            <a-tag :color="record.status === STATUS_ENABLED ? 'green' : 'default'">{{ record.status === STATUS_ENABLED ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'lastStatus'">
             <a-tag v-if="record.lastStatus" :color="record.lastStatus === JobRunStatus.SUCCESS ? 'green' : 'red'">
@@ -51,8 +51,8 @@
         </a-form-item>
         <a-form-item :label="$t('common.field.status')" name="status">
           <a-radio-group v-model:value="form.status">
-            <a-radio :value="1">{{ $t('common.status.enabled') }}</a-radio>
-            <a-radio :value="0">{{ $t('common.status.disabled') }}</a-radio>
+            <a-radio :value="STATUS_ENABLED">{{ $t('common.status.enabled') }}</a-radio>
+            <a-radio :value="STATUS_DISABLED">{{ $t('common.status.disabled') }}</a-radio>
           </a-radio-group>
         </a-form-item>
         <a-form-item :label="$t('common.field.remark')" name="remark">
@@ -101,6 +101,7 @@ import { actionColumn } from '@/components/common/tableActions'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 
 import { JobRunStatus, JobTrigger } from '@/constants/enums'
+import { STATUS_DISABLED, STATUS_ENABLED } from '@/utils/constants'
 const { t } = useI18n()
 const columns = [
   { title: t('monitor.job.name'), dataIndex: 'name', width: 180 },
@@ -146,7 +147,7 @@ const rules = {
   status: [{ required: true, message: t('monitor.job.selectStatus') }]
 }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, jobKey: '', name: '', cron: '', params: '', status: 1, remark: '' }),
+  emptyForm: () => ({ id: undefined, jobKey: '', name: '', cron: '', params: '', status: STATUS_ENABLED, remark: '' }),
   create: () => Promise.resolve(),
   update: (id, form) => updateJob(id, form),
   toPayload: ({ cron, params, status, remark }) => ({ cron, params, status, remark }),

@@ -188,6 +188,7 @@ import { allIds, filterTree, mapTree } from '@/utils/tree'
 import { useAction } from '@/composables/useAction'
 
 import { MenuType } from '@/constants/enums'
+import { STATUS_ENABLED } from '@/utils/constants'
 const { t } = useI18n()
 const dict = useDict('sys_menu_type', 'sys_common_status', 'sys_show_hide')
 
@@ -258,7 +259,7 @@ const drawer = useFormDrawer({
     icon: '',
     sort: 0,
     visible: 1,
-    status: 1
+    status: STATUS_ENABLED
   }),
   create: addMenu,
   update: updateMenu,

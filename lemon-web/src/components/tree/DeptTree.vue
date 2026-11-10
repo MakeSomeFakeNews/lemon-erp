@@ -27,8 +27,8 @@
         >
           <template #title="node">
             <div class="dept-node">
-              <HighlightText :text="node.name" :keyword="keyword" :title="node.name" :class="['dept-node-name', { 'is-disabled': node.status === 0 }]" />
-              <a-tag v-if="node.status === 0" :bordered="false" class="dept-node-tag">{{ $t('common.status.disabled') }}</a-tag>
+              <HighlightText :text="node.name" :keyword="keyword" :title="node.name" :class="['dept-node-name', { 'is-disabled': node.status === STATUS_DISABLED }]" />
+              <a-tag v-if="node.status === STATUS_DISABLED" :bordered="false" class="dept-node-tag">{{ $t('common.status.disabled') }}</a-tag>
               <span v-if="$slots.actions" class="dept-node-actions" @click.stop>
                 <slot name="actions" :node="node.dataRef" />
               </span>
@@ -47,6 +47,7 @@ import { Empty } from 'ant-design-vue'
 import { ApartmentOutlined, NodeCollapseOutlined, NodeExpandOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import HighlightText from './HighlightText.vue'
 import { allIds, filterTree } from '@/utils/tree'
+import { STATUS_DISABLED } from '@/utils/constants'
 
 /**
  * 部门树：搜索高亮、展开折叠；v-model 为选中的部门 id

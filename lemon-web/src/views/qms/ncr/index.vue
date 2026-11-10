@@ -198,7 +198,7 @@ import { addNcr, cancelNcr, deleteNcr, getNcr, pageNcr, reviewNcr } from '@/api/
 import { formatQty } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
 import TableActions from '@/components/common/TableActions.vue'
-import { actionColumn } from '@/components/common/tableActions'
+import { actionColumn, subTextWidth } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -220,11 +220,11 @@ const DISPOSITION_TIPS = {
 
 const columns = [
   { title: t('qms.ncr.no'), key: 'ncrNo', width: 170 },
-  { title: t('qms.ncr.sourceDoc'), key: 'source', width: 180 },
+  { title: t('qms.ncr.sourceDoc'), key: 'source', width: subTextWidth(180, t('mes.wo.detailTitle', { no: 'SC202611020002' })) },
   { title: t('mes.wo.material'), key: 'material', width: 230 },
   { title: t('qms.ncr.description'), key: 'description', width: 200, ellipsis: true },
-  { title: t('qms.ncr.dispResp'), key: 'disposition', width: 150 },
-  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('qms.ncr.dispResp'), key: 'disposition', width: 150, dict: 'qms_disposition' },
+  { title: t('common.field.status'), key: 'status', width: 100, dict: 'qms_ncr_status' },
   actionColumn(2, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'qms-ncr')

@@ -290,7 +290,7 @@ import { useRouteOpen } from '@/composables/useRouteOpen'
 import { AssetMoveType, AssetStatus } from '@/constants/enums'
 import { useColumns } from '@/composables/useColumns'
 import TableActions from '@/components/common/TableActions.vue'
-import { actionColumn } from '@/components/common/tableActions'
+import { actionColumn, subTextWidth } from '@/components/common/tableActions'
 import TableToolbar from '@/components/TableToolbar.vue'
 const { t } = useI18n()
 const dict = useDict('fin_asset_category', 'fin_asset_status', 'fin_asset_move_type')
@@ -298,14 +298,15 @@ const tab = ref('cards')
 
 const columns = [
   { title: t('fin.asset.asset'), key: 'name', width: 200 },
-  { title: t('fin.asset.category'), key: 'category', width: 90 },
+  { title: t('fin.asset.category'), key: 'category', width: 90, dict: 'fin_asset_category' },
   { title: t('fin.asset.colUser'), key: 'user', width: 150 },
   { title: t('fin.asset.colUseDate'), dataIndex: 'useDate', width: 100 },
   { title: t('fin.asset.originalValue'), key: 'value', width: 130, align: 'right' },
-  { title: t('fin.asset.colProgress'), key: 'depreciation', width: 200 },
-  { title: t('fin.asset.netValue'), key: 'net', width: 150, align: 'right' },
+  // 进度、净值下面的说明文字按当前语言测量列宽（英文较长）
+  { title: t('fin.asset.colProgress'), key: 'depreciation', width: subTextWidth(200, t('fin.asset.progressText', { done: 120, total: 120, monthly: '99,999.99' })) },
+  { title: t('fin.asset.netValue'), key: 'net', width: subTextWidth(150, t('fin.asset.accumulatedText', { amount: '999,999.99' })), align: 'right' },
   { title: t('fin.asset.colExpenseAccount'), dataIndex: 'expenseAccountName', width: 120 },
-  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('common.field.status'), key: 'status', width: 100, dict: 'fin_asset_status' },
   // 编辑、领用 / 归还、删除、更多；已处置只有履历
   actionColumn(4, [t('fin.asset.history')])
 ]

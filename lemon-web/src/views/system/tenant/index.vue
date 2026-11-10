@@ -188,6 +188,7 @@ import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { useAction } from '@/composables/useAction'
+import { STATUS_ENABLED } from '@/utils/constants'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -244,7 +245,7 @@ const drawer = useFormDrawer({
     accountLimit: null,
     adminUsername: '',
     adminPassword: '',
-    status: 1,
+    status: STATUS_ENABLED,
     remark: '',
     platform: false,
     mode: 'template',

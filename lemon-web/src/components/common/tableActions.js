@@ -67,14 +67,21 @@ const CELL = 16
 const SPARE = 4
 
 /** 与 Ant Design Vue 默认字体一致，用于测量文字宽度 */
-const FONT = "14px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif"
+const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif"
 let measureCtx
-export function textWidth(text) {
+/** 文字宽度（px），size 为字号（表格正文 14，标签 12） */
+export function textWidth(text, size = 14) {
   measureCtx ||= document.createElement('canvas').getContext('2d')
-  if (!measureCtx) return String(text).length * 8
-  measureCtx.font = FONT
+  if (!measureCtx) return String(text).length * (size * 0.57)
+  measureCtx.font = `${size}px ${FONT}`
   return measureCtx.measureText(String(text)).width
 }
+
+/**
+ * 单元格中说明文字（.sub-text，12px）单行放得下的列宽，不小于 min：说明文字随语言变化较大（英文较长）时，
+ * 列定义写 width: subTextWidth(150, t('xxx', { 典型参数 }))，按当前语言测量
+ */
+export const subTextWidth = (min, ...texts) => Math.max(min, ...texts.map((s) => Math.ceil(textWidth(s, 12)) + 28))
 
 /** 操作的显示文字：label 优先，否则按 type 取 */
 export const actionLabel = (a) => a.label || (ACTION_TYPES[a.type]?.label ? t(ACTION_TYPES[a.type].label) : '')

@@ -109,8 +109,8 @@
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('common.field.status')" name="status">
               <a-radio-group v-model:value="form.status">
-                <a-radio :value="1">{{ $t('common.status.enabled') }}</a-radio>
-                <a-radio :value="0">{{ $t('common.status.disabled') }}</a-radio>
+                <a-radio :value="STATUS_ENABLED">{{ $t('common.status.enabled') }}</a-radio>
+                <a-radio :value="STATUS_DISABLED">{{ $t('common.status.disabled') }}</a-radio>
               </a-radio-group>
             </a-form-item>
           </a-col>
@@ -136,7 +136,7 @@ import { useAction } from '@/composables/useAction'
 import { useColumns } from '@/composables/useColumns'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
-import { STATUS_ENABLED } from '@/utils/constants'
+import { STATUS_DISABLED, STATUS_ENABLED } from '@/utils/constants'
 
 const { t } = useI18n()
 
@@ -207,7 +207,7 @@ const drawer = useFormDrawer({
     injuryCompany: 0.2,
     housingMin: 0,
     housingMax: 0,
-    status: 1,
+    status: STATUS_ENABLED,
     remark: undefined
   }),
   create: addSocialScheme,

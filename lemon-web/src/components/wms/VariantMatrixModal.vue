@@ -58,6 +58,7 @@ import { computed, reactive, ref } from 'vue'
 import { materialVariants, templateOptions } from '@/api/wms/material'
 import { formatQty } from '@/components/wms/wms'
 import { t } from '@/locales'
+import { STATUS_DISABLED } from '@/utils/constants'
 
 /**
  * 按规格录入：选择款式后，在规格矩阵（如 颜色 × 尺码）中填写各 SKU 的数量，确认后返回
@@ -116,7 +117,7 @@ function close() {
 
 function confirm() {
   const lines = matrix.value.variants
-    .filter((v) => Number(qty[v.id]) > 0 && v.status !== 0)
+    .filter((v) => Number(qty[v.id]) > 0 && v.status !== STATUS_DISABLED)
     .map((v) => ({
       material: { id: v.id, code: v.code, name: v.name, spec: v.spec, unit: v.unit, serialEnabled: v.serialEnabled, label: `${v.code} ${v.name}${v.spec ? `（${v.spec}）` : ''}` },
       qty: Number(qty[v.id])

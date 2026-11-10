@@ -185,7 +185,7 @@ import FormDrawer from '@/components/FormDrawer.vue'
 import SubPage from '@/components/SubPage.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import TableActions from '@/components/common/TableActions.vue'
-import { actionColumn } from '@/components/common/tableActions'
+import { actionColumn, subTextWidth } from '@/components/common/tableActions'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
@@ -217,7 +217,8 @@ const columns = [
   { title: t('common.field.quantity'), key: 'qty', width: 100, align: 'right' },
   { title: t(c + 'refAmount'), key: 'amount', width: 120, align: 'right' },
   { title: t(c + 'purpose'), dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: t('common.field.status'), key: 'status', width: 170 },
+  // 状态下面显示出库单号（英文「Outbound CK...」较长），按当前语言测量
+  { title: t('common.field.status'), key: 'status', width: subTextWidth(170, t(c + 'outbound', { no: 'CK202611100009' })), dict: 'fin_consumable_status' },
   actionColumn(1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-consumable')
