@@ -159,7 +159,9 @@ public final class CostCalculator {
         BigDecimal total = c.getWipOpen().add(material).add(c.getLaborCost()).add(c.getOverheadCost());
         BigDecimal remainingBefore = wo.qty().subtract(wo.finishedBefore());
         BigDecimal finishedAmount;
-        if (finished.signum() <= 0) {
+        // 本期之前已完工满数量的工单：之后的退料、补报工等剩余成本（与实时成本的完工后退料口径一致）计入产品成本，
+        // 不留在在产品中（否则没有完工入库的期间会一直结转下去）
+        if (finished.signum() <= 0 && remainingBefore.signum() > 0) {
             finishedAmount = BigDecimal.ZERO;
         } else if (finished.compareTo(remainingBefore) >= 0 || remainingBefore.signum() <= 0) {
             finishedAmount = total;
