@@ -25,6 +25,6 @@ public class SysUserLookup implements UserLookup {
         }
         SysUser u = userMapper.selectById(userId);
         return Optional.ofNullable(u).map(x -> new UserBrief(x.getId(), x.getUsername(), x.getNickname(),
-                x.getDeptId(), x.getStatus() == EnableStatus.ENABLED));
+                x.getDeptId(), x.getStatus() == EnableStatus.ENABLED, x.getSupplierId() != null || x.getCustomerId() != null));
     }
 }

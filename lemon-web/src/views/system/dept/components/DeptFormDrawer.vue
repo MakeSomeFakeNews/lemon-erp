@@ -26,7 +26,7 @@
         </a-col>
         <a-col :xs="24" :sm="12">
           <a-form-item :label="$t('system.dept.leader')" name="leaderUserId" :extra="$t('system.dept.leaderTip')">
-            <UserSelect v-model:value="form.leaderUserId" :label="form.leaderName" :placeholder="$t('system.dept.leaderPlaceholder')" />
+            <UserSelect v-model:value="form.leaderUserId" :label="form.leaderName" :fetcher="internalUsers" :placeholder="$t('system.dept.leaderPlaceholder')" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12">
@@ -55,6 +55,7 @@ import { useI18n } from 'vue-i18n'
 import FormDrawer from '@/components/FormDrawer.vue'
 import UserSelect from '@/components/user/UserSelect.vue'
 import { addDept, updateDept } from '@/api/system/dept'
+import { pageInternalUser as internalUsers } from '@/api/system/user'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { STATUS_ENABLED } from '@/utils/constants'

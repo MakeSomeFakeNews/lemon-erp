@@ -11,13 +11,13 @@ import java.util.Map;
  */
 public interface FlowIdentityProvider {
 
-    /** 过滤出存在且启用的用户，保持传入顺序 */
+    /** 过滤出存在且启用的内部用户（排除供应商 / 经销商门户账号，门户账号不能审批），保持传入顺序 */
     List<Long> listEnabledUserIds(Collection<Long> userIds);
 
-    /** 拥有任一角色（角色启用）的启用用户 */
+    /** 拥有任一角色（角色启用）的启用内部用户 */
     List<Long> listUserIdsByRoleIds(Collection<Long> roleIds);
 
-    /** 拥有指定角色编码（角色启用）的启用用户 */
+    /** 拥有指定角色编码（角色启用）的启用内部用户 */
     List<Long> listUserIdsByRoleCode(String roleCode);
 
     /**
@@ -28,7 +28,7 @@ public interface FlowIdentityProvider {
     /** 用户显示名（昵称，没有昵称时为用户名），不存在的用户不返回 */
     Map<Long, String> getUserNames(Collection<Long> userIds);
 
-    /** 按用户名或昵称搜索启用的用户，用于选择审批人、转交 */
+    /** 按用户名或昵称搜索启用的内部用户（排除门户账号），用于选择审批人、转交，以及各业务表单的选人（{@code GET /workflow/identity/users}） */
     PageResult<FlowUser> searchUsers(String keyword, long current, long size);
 
     /** 启用的角色，用于按角色指定审批人 */
