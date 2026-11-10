@@ -1,5 +1,5 @@
 import { t } from '@/locales'
-import { money, round4 } from '@/utils/number'
+import { money, round2, round4 } from '@/utils/number'
 
 /** 订单种类（与后端 OrderKind 的路径一致） */
 export const ORDER_KINDS = {
@@ -43,6 +43,18 @@ export const formatMoney = (n) => money(n)
 
 /** 价税合计 = 数量 × 含税单价（与后端一致，四舍五入到分） */
 export const lineAmount = (qty, price) => Math.round((Number(qty) || 0) * (Number(price) || 0) * 100) / 100
+
+/**
+ * 优惠前的含税单价：整单优惠只在合计处扣减，明细显示原来的单价（价格体系不变）。
+ * 出入库明细取后端记录的 grossPrice；订单明细按 (行金额 + 分摊的整单优惠) / 数量；没有分摊时即单价
+ */
+export const grossPrice = (i) => {
+  if (i.grossPrice != null) return Number(i.grossPrice)
+  return Number(i.discountShare) && Number(i.qty) ? round4((Number(i.amount) + Number(i.discountShare)) / Number(i.qty)) : Number(i.price)
+}
+
+/** 优惠前的金额 = 行金额 + 分摊的整单优惠（订单明细、出入库明细都适用） */
+export const grossAmount = (i) => round2(Number(i.amount || 0) + Number(i.discountShare || 0))
 
 /** 税额 = 价税合计 × 税率 / (100 + 税率) */
 export const lineTax = (amount, rate) => (rate ? Math.round(((amount * rate) / (100 + Number(rate))) * 100) / 100 : 0)

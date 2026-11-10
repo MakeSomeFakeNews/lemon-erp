@@ -43,6 +43,15 @@ public class ScmTradeDocItem extends BaseEntity {
 
     private BigDecimal taxAmount;
 
+    /** 优惠前含税单价（整单优惠分摊前，本位币）：明细、打印、价格记忆、价格参考都用它；历史单据为空，同单价 */
+    private BigDecimal grossPrice;
+
+    /** 本行分摊的整单优惠（本位币，含税）：优惠前金额 = 价税合计 + 本项 */
+    private BigDecimal discountShare;
+
+    /** 本行分摊的采购运费（本位币），计入存货成本 */
+    private BigDecimal freightShare;
+
     /** 序列号，逗号分隔 */
     private String serialNos;
 

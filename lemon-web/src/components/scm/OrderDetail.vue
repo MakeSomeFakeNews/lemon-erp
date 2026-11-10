@@ -40,6 +40,7 @@
             <span v-if="Number(detail.rebateAmount)">{{ $t('scm.order.rebateAmount', { amount: symbol + formatMoney(detail.rebateAmount) }) }}</span>
             <span v-if="Number(detail.wholeDiscount) && (Number(detail.discountAmount) || Number(detail.rebateAmount))">{{ $t('scm.order.comma') }}</span>
             <span v-if="Number(detail.wholeDiscount)">{{ $t('scm.wholeDiscount.value', { amount: symbol + formatMoney(detail.wholeDiscount) }) }}</span>
+            <div v-if="Number(detail.wholeDiscount)" class="sub-text">{{ $t('scm.wholeDiscount.grossOnly', { amount: symbol + formatMoney(grossTotal) }) }}</div>
           </a-descriptions-item>
           <a-descriptions-item v-if="Number(detail.closeAdjust)" :label="$t('scm.order.closeAdjust')">
             <div>
@@ -93,15 +94,16 @@
                 </template>
                 <template v-else-if="column.key === 'qty'">{{ qtyText(record) }}</template>
                 <template v-else-if="column.key === 'price'">
-                  <div>{{ symbol }}{{ formatMoney(record.price) }}</div>
+                  <!-- 整单优惠只在合计处扣减：明细显示优惠前的单价；划线价只表示促销、返利抵扣 -->
+                  <div>{{ symbol }}{{ formatMoney(grossPrice(record)) }}</div>
                   <div v-if="record.gift" class="sub-text"><a-tag color="magenta">{{ $t('scm.order.gift') }}</a-tag>{{ record.promotionName }}</div>
-                  <div v-else-if="record.origPrice != null" class="sub-text">
+                  <div v-else-if="promoted(record)" class="sub-text">
                     <del>{{ symbol }}{{ formatMoney(record.origPrice) }}</del> {{ record.promotionName || $t('scm.order.discountAllocation') }}
                   </div>
-                  <div v-if="hasUnit(record)" class="sub-text">{{ $t('scm.order.perUnit', { unit: record.unitName, price: symbol + formatMoney(record.price * record.unitRatio) }) }}</div>
+                  <div v-if="hasUnit(record)" class="sub-text">{{ $t('scm.order.perUnit', { unit: record.unitName, price: symbol + formatMoney(grossPrice(record) * record.unitRatio) }) }}</div>
                   <div class="sub-text">{{ $t('scm.order.taxRateValue', { rate: Number(record.taxRate) }) }}</div>
                 </template>
-                <template v-else-if="column.key === 'amount'">{{ symbol }}{{ formatMoney(record.amount) }}</template>
+                <template v-else-if="column.key === 'amount'">{{ symbol }}{{ formatMoney(grossAmount(record)) }}</template>
                 <template v-else-if="column.key === 'progress'">
                   <a-progress :percent="percent(record)" size="small" :status="percent(record) >= 100 ? 'success' : 'normal'" />
                   <div class="sub-text">
@@ -211,7 +213,7 @@ import { pageTrade } from '@/api/scm/trade'
 import { pageDelivery } from '@/api/scm/planning'
 import { useUserStore } from '@/store/user'
 import { formatQty } from '@/components/wms/wms'
-import { ORDER_KINDS, TRADE_KINDS, formatMoney, netQty } from './scm'
+import { ORDER_KINDS, TRADE_KINDS, formatMoney, grossAmount, grossPrice, netQty } from './scm'
 import { materialColumns, printDocs } from '@/utils/print'
 
 import { OrderSource, OrderStatus } from '@/constants/enums'
@@ -261,6 +263,10 @@ const deliveryColumns = [
 ]
 
 const detail = ref()
+/** 优惠前合计（明细金额合计）= 价税合计 + 整单优惠 */
+const grossTotal = computed(() => Math.round((Number(detail.value?.totalAmount || 0) + Number(detail.value?.wholeDiscount || 0)) * 100) / 100)
+/** 有促销、返利抵扣（原价不同于优惠前单价）时显示划线原价；只有整单优惠时不显示 */
+const promoted = (r) => r.origPrice != null && Math.abs(Number(r.origPrice) - grossPrice(r)) >= 0.005
 const deliveries = ref([])
 const voucherOpen = ref(false)
 const voucherId = ref()
@@ -276,8 +282,9 @@ function print() {
       [t('scm.order.orderDate'), d.orderDate],
       [t('scm.order.deliveryDate'), d.deliveryDate],
       [c.warehouseLabel, d.warehouseName],
-      [t('scm.order.totalAmount'), `${currencySymbol(d.currency)}${formatMoney(d.totalAmount)}`],
-      ...(Number(d.wholeDiscount) ? [[t('scm.wholeDiscount.label'), `${currencySymbol(d.currency)}${formatMoney(d.wholeDiscount)}`]] : []),
+      ...(Number(d.wholeDiscount) ? [[t('print.name.grossTotal'), `${currencySymbol(d.currency)}${formatMoney(grossTotal.value)}`],
+        [t('scm.wholeDiscount.label'), `${currencySymbol(d.currency)}${formatMoney(d.wholeDiscount)}`]] : []),
+      [Number(d.wholeDiscount) ? t('print.name.discountedTotal') : t('scm.order.totalAmount'), `${currencySymbol(d.currency)}${formatMoney(d.totalAmount)}`],
       [t('scm.order.taxAmount'), `${currencySymbol(d.currency)}${formatMoney(d.taxAmount)}`],
       ...(isForeign(d.currency) ? [[t('scm.order.currencyRate'), `${d.currency} @${Number(d.exchangeRate)}`]] : []),
       ...(d.version > 1 ? [[t('scm.order.version'), `V${d.version}`]] : [])
@@ -285,13 +292,13 @@ function print() {
     columns: [
       ...materialColumns(),
       { title: t('common.field.quantity'), value: qtyText, align: 'right' },
-      { title: t('scm.order.taxPrice'), value: (r) => formatMoney(r.price), align: 'right' },
+      { title: t('scm.order.taxPrice'), value: (r) => formatMoney(grossPrice(r)), align: 'right' },
       { title: t('scm.order.taxRate'), value: (r) => `${Number(r.taxRate)}%`, align: 'right' },
-      { title: t('scm.order.totalAmount'), key: 'amount', value: (r) => formatMoney(r.amount), align: 'right' },
+      { title: t('scm.order.totalAmount'), key: 'amount', value: (r) => formatMoney(grossAmount(r)), align: 'right' },
       { title: t('scm.order.deliveryDate'), key: 'deliveryDate' }
     ],
     rows: d.items,
-    totals: { amount: formatMoney(d.totalAmount) },
+    totals: { amount: formatMoney(grossTotal.value) },
     note: d.remark,
     signs: [[t('scm.order.prepared'), d.createByName], [t('scm.order.approved'), d.approveByName], t('scm.order.partnerSign', { partner: c.partnerLabel })]
   }, `${c.label} ${d.orderNo}`, props.kind === 'purchase' ? 'scm.purchaseOrder' : 'scm.salesOrder')

@@ -2,6 +2,16 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.lemon.erp.modules.fin.mapper.FinAnalysisMapper">
 
+    <!-- 销售出库单的坏账核销（该单应收单上的核销金额，含税）与本公司承担的发运运费（已发货），按行金额比例分摊到明细；
+         只作为毛利的参考口径（扣坏账后毛利、扣运费后毛利），不改变销售收入 -->
+    <sql id="docShare">CASE WHEN d.total_amount &lt;&gt; 0 THEN i.amount / d.total_amount WHEN d.total_qty &lt;&gt; 0 THEN i.qty / d.total_qty ELSE 0 END</sql>
+    <sql id="badDebtFreightJoins">
+        LEFT JOIN (SELECT source_id, SUM(bad_debt_amount) AS amount FROM fin_bill
+                   WHERE kind = 'AR' AND source_type = 'SALES_OUT' AND bad_debt_amount &lt;&gt; 0 GROUP BY source_id) bd ON d.kind = 'SALES_OUT' AND bd.source_id = d.id
+        LEFT JOIN (SELECT trade_doc_id, SUM(freight) AS amount FROM scm_shipment
+                   WHERE freight_bearer = 'COMPANY' AND status &lt;&gt; 'PENDING' AND freight &gt; 0 GROUP BY trade_doc_id) sf ON d.kind = 'SALES_OUT' AND sf.trade_doc_id = d.id
+    </sql>
+
     <select id="selectGrossMargin" resultType="com.lemon.erp.modules.fin.dto.FinAnalysis$MarginRow">
         SELECT
             <choose>
@@ -12,7 +22,9 @@
             SUM(CASE WHEN d.kind = 'SALES_OUT' THEN i.qty ELSE -i.qty END) AS "qty",
             SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * (i.amount - i.tax_amount)) AS "revenue",
             SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * i.qty * COALESCE(mc.unit_cost, m.ref_cost, 0)) AS "cost",
-            SUM(CASE WHEN mc.unit_cost IS NULL THEN 1 ELSE 0 END) AS "missingCost"
+            SUM(CASE WHEN mc.unit_cost IS NULL THEN 1 ELSE 0 END) AS "missingCost",
+            SUM(COALESCE(bd.amount, 0) * <include refid="docShare"/>) AS "badDebt",
+            SUM(COALESCE(sf.amount, 0) * <include refid="docShare"/>) AS "freight"
         FROM scm_trade_doc_item i
         JOIN scm_trade_doc d ON d.id = i.doc_id
         JOIN (SELECT id, YEAR(biz_date) * 100 + MONTH(biz_date) AS period FROM scm_trade_doc
@@ -20,6 +32,7 @@
         JOIN wms_material m ON m.id = i.material_id
         LEFT JOIN scm_customer c ON c.id = d.partner_id
         LEFT JOIN fin_material_cost mc ON mc.material_id = i.material_id AND mc.period = t.period
+        <include refid="badDebtFreightJoins"/>
         WHERE 1 = 1
         <if test="customerId != null">AND d.partner_id = #{customerId}</if>
         GROUP BY
@@ -37,12 +50,15 @@
                CASE WHEN d.kind = 'SALES_OUT' THEN i.qty ELSE -i.qty END AS "qty",
                CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * (i.amount - i.tax_amount) AS "revenue",
                CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * i.qty * COALESCE(mc.unit_cost, m.ref_cost, 0) AS "cost",
-               CASE WHEN mc.unit_cost IS NULL THEN 0 ELSE 1 END AS "costed"
+               CASE WHEN mc.unit_cost IS NULL THEN 0 ELSE 1 END AS "costed",
+               COALESCE(bd.amount, 0) * <include refid="docShare"/> AS "badDebt",
+               COALESCE(sf.amount, 0) * <include refid="docShare"/> AS "freight"
         FROM scm_trade_doc_item i
         JOIN scm_trade_doc d ON d.id = i.doc_id
         JOIN wms_material m ON m.id = i.material_id
         LEFT JOIN scm_customer c ON c.id = d.partner_id
         LEFT JOIN fin_material_cost mc ON mc.material_id = i.material_id AND mc.period = YEAR(d.biz_date) * 100 + MONTH(d.biz_date)
+        <include refid="badDebtFreightJoins"/>
         WHERE d.kind IN ('SALES_OUT', 'SALES_RETURN') AND d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}
         <if test="customerId != null">AND d.partner_id = #{customerId}</if>
         <if test="keyword != null and keyword != ''">

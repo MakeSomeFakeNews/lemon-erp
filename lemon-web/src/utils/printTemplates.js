@@ -50,7 +50,7 @@ const order = (key, name, partner, warehouse, confirm) => ({
   key,
   module: n.modScm,
   name,
-  fields: [partner, n.orderDate, n.deliveryDate, warehouse, n.totalAmount, n.wholeDiscount, n.taxAmount, n.currencyRate, n.version],
+  fields: [partner, n.orderDate, n.deliveryDate, warehouse, n.grossTotal, n.wholeDiscount, n.discountedTotal, n.totalAmount, n.taxAmount, n.currencyRate, n.version],
   columns: [...MATERIAL_COLUMNS, num(n.quantity), num(n.taxPrice), num(n.taxRate), num(n.totalAmount), n.deliveryDate],
   signs: [n.prepared, n.approved, confirm],
   note: true
@@ -60,7 +60,7 @@ const trade = (key, name, partner, sign, lineWarehouse = false) => ({
   key,
   module: n.modScm,
   name,
-  fields: [n.orderNo, partner, n.warehouse, n.bizDate, n.wmsDocNo, n.totalAmount, n.wholeDiscount, n.originalCurrency],
+  fields: [n.orderNo, partner, n.warehouse, n.bizDate, n.wmsDocNo, n.grossTotal, n.wholeDiscount, n.discountShare, n.discountedTotal, n.totalAmount, n.freight, n.originalCurrency],
   columns: [...MATERIAL_COLUMNS, ...(lineWarehouse ? [n.warehouse] : []), n.location, n.batch, num(n.quantity), num(n.taxPrice), num(n.totalAmount), n.serialNo],
   signs: [n.prepared, n.storekeeper, sign],
   note: true

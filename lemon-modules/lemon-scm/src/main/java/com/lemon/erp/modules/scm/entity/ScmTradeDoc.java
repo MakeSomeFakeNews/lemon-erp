@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.scm.model.FreightBearer;
 import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import lombok.Data;
@@ -58,6 +59,21 @@ public class ScmTradeDoc extends BaseEntity {
     /** 退货是否补发（补收）：1 补发 0 退款 */
     private Integer replenish;
 
+    /** 本单分摊的整单优惠（本位币，含税）：优惠前合计 = 价税合计 + 本项；明细显示优惠前的单价、金额，优惠只在合计处体现 */
+    private BigDecimal discountAmount;
+
+    /** 采购运费（仅采购入库，按行金额分摊计入存货成本），0 为没有 */
+    private BigDecimal freight;
+
+    /** 采购运费付给：供应商代垫（计入该供应商应付）/ 本公司承担（付承运商） */
+    private FreightBearer freightBearer;
+
+    /** 采购运费的承运商（供应商） */
+    private Long carrierSupplierId;
+
+    /** 采购运费应付单 */
+    private Long freightBillId;
+
     private Long deptId;
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
@@ -73,6 +89,10 @@ public class ScmTradeDoc extends BaseEntity {
     /** 直接开单的整单优惠（隐式订单上记录，已分摊到各行金额），引用订单时为空 */
     @TableField(exist = false)
     private BigDecimal wholeDiscount;
+
+    /** 采购运费承运商名称 */
+    @TableField(exist = false)
+    private String carrierSupplierName;
 
     @TableField(exist = false)
     private String partnerCode;

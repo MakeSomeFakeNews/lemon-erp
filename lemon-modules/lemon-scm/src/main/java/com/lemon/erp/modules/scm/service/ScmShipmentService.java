@@ -21,6 +21,7 @@ import com.lemon.erp.modules.scm.event.ShipmentShippedEvent;
 import com.lemon.erp.modules.scm.mapper.ScmShipmentMapper;
 import com.lemon.erp.modules.scm.mapper.ScmShipmentTrackMapper;
 import com.lemon.erp.modules.scm.mapper.ScmTradeDocMapper;
+import com.lemon.erp.modules.scm.model.FreightBearer;
 import com.lemon.erp.modules.scm.model.ShipmentStatus;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.wms.service.DocNoService;
@@ -101,8 +102,9 @@ public class ScmShipmentService {
         }
         ScmShipment shipment = new ScmShipment();
         fill(shipment, req);
-        if (old.getFreightBillId() != null && (!Objects.equals(old.getCarrierSupplierId(), shipment.getCarrierSupplierId())
-                || compare(old.getFreight(), shipment.getFreight()) != 0)) {
+        if ((old.getFreightBillId() != null || old.getFreightArBillId() != null)
+                && (!Objects.equals(old.getCarrierSupplierId(), shipment.getCarrierSupplierId())
+                || compare(old.getFreight(), shipment.getFreight()) != 0 || old.getFreightBearer() != shipment.getFreightBearer())) {
             throw new BizException("scm.error.freightPayableHasGeneratedFreightCarrier");
         }
         shipmentMapper.update(Wrappers.<ScmShipment>lambdaUpdate()
@@ -110,6 +112,7 @@ public class ScmShipmentService {
                 .set(ScmShipment::getCarrierSupplierId, shipment.getCarrierSupplierId())
                 .set(ScmShipment::getTrackingNo, shipment.getTrackingNo())
                 .set(ScmShipment::getFreight, shipment.getFreight())
+                .set(ScmShipment::getFreightBearer, shipment.getFreightBearer())
                 .set(ScmShipment::getReceiver, shipment.getReceiver())
                 .set(ScmShipment::getPhone, shipment.getPhone())
                 .set(ScmShipment::getAddress, shipment.getAddress())
@@ -132,11 +135,12 @@ public class ScmShipmentService {
                 .set(ScmShipment::getShipDate, shipment.getStatus() == PENDING ? date : shipment.getShipDate()));
         addTrack(id, SHIPPED, StringUtils.hasText(req.content()) ? req.content()
                 : (shipment.getStatus() == PENDING ? "已发货" : "异常已处理，继续运输") + "，运单号 " + trackingNo); // i18n-ignore
-        // 首次发货：运费生成承运商应付单
-        if (shipment.getStatus() == PENDING && shipment.getCarrierSupplierId() != null
-                && shipment.getFreight() != null && shipment.getFreight().signum() > 0) {
+        // 首次发货：运费生成承运商应付单；客户承担的运费（代垫）另生成客户应收单
+        FreightBearer bearer = shipment.getFreightBearer() == null ? FreightBearer.COMPANY : shipment.getFreightBearer();
+        if (shipment.getStatus() == PENDING && shipment.getFreight() != null && shipment.getFreight().signum() > 0
+                && (shipment.getCarrierSupplierId() != null || bearer == FreightBearer.CUSTOMER)) {
             eventPublisher.publishEvent(new ShipmentShippedEvent(id, shipment.getShipNo(), shipment.getCarrierSupplierId(),
-                    shipment.getFreight(), date, shipment.getDeptId()));
+                    shipment.getFreight(), date, shipment.getDeptId(), shipment.getCustomerId(), bearer));
         }
     }
 
@@ -192,6 +196,14 @@ public class ScmShipmentService {
                 .eq(ScmShipment::getId, shipmentId));
     }
 
+    /**
+     * 记录客户承担运费（代垫）生成的客户应收单。由财务模块在处理 {@link ShipmentShippedEvent} 时调用，与发货在同一事务
+     */
+    public void bindFreightArBill(Long shipmentId, Long billId) {
+        shipmentMapper.update(Wrappers.<ScmShipment>lambdaUpdate().set(ScmShipment::getFreightArBillId, billId)
+                .eq(ScmShipment::getId, shipmentId));
+    }
+
     private ScmShipment getAccessible(Long id) {
         return DataScopes.require(SHIPMENT_RULE, () -> shipmentMapper.selectById(id), "scm.error.shipmentDoesNotExistAccessDenied");
     }
@@ -225,6 +237,7 @@ public class ScmShipmentService {
         shipment.setTrackingNo(StringUtils.hasText(req.trackingNo()) ? req.trackingNo().trim() : null);
         shipment.setFreight(req.freight());
         shipment.setCarrierSupplierId(req.carrierSupplierId());
+        shipment.setFreightBearer(req.freightBearer() == null ? FreightBearer.COMPANY : req.freightBearer());
         shipment.setReceiver(req.receiver());
         shipment.setPhone(req.phone());
         shipment.setAddress(req.address());

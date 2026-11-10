@@ -14,10 +14,20 @@ import java.util.List;
 
 /**
  * 录入一个供应商的报价：覆盖该供应商之前的报价；不报价的明细不传
+ *
+ * @param wholeDiscount 整单优惠承诺（含税，按本次报价各行 数量 × 单价 的合计），为空或 0 表示没有；定标生成采购订单时带到订单上
  */
 public record InquiryQuoteRequest(
         @NotNull(message = "{scm.valid.selectSupplier}") Long supplierId,
-        @NotNull(message = "{scm.valid.enterQuotation}") @Size(max = 200, message = "{scm.valid.quotationLinesCannotExceed}") List<@Valid @NotNull Line> lines) {
+        @NotNull(message = "{scm.valid.enterQuotation}") @Size(max = 200, message = "{scm.valid.quotationLinesCannotExceed}") List<@Valid @NotNull Line> lines,
+        @DecimalMin(value = "0", message = "{scm.valid.wholeDiscountCannotNegative}")
+        @Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") BigDecimal wholeDiscount) {
+
+    /** 没有整单优惠 */
+    public InquiryQuoteRequest(Long supplierId, List<Line> lines) {
+        this(supplierId, lines, null);
+    }
+
 
     public record Line(
             @NotNull(message = "{scm.valid.missingRfqLine}") Long itemId,

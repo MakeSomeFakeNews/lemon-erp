@@ -49,6 +49,12 @@
               <div class="sub-text">{{ $t('jxc.field.margin') }}</div>
               <b>{{ marginText(total.margin) }}</b>
             </div>
+            <a-tooltip v-if="Number(total.badDebt) || Number(total.freight)" :title="$t('jxc.common.profitAfterTip')">
+              <div class="kpi">
+                <div class="sub-text">{{ $t('jxc.field.profitAfterFreight') }}</div>
+                <b :class="{ neg: Number(total.profitAfterFreight) < 0 }">¥{{ money(total.profitAfterFreight) }}</b>
+              </div>
+            </a-tooltip>
           </template>
           <div class="kpi">
             <div class="sub-text">{{ $t('jxc.field.netQty') }}</div>
@@ -75,7 +81,7 @@
         :data-source="data.rows"
         :loading="loading"
         :pagination="data.rows.length > 50 ? { pageSize: 50, showSizeChanger: false, showTotal: (n) => $t('common.table.total', { total: n }) } : false"
-        :scroll="{ x: sales ? 1500 : 1200, y: '100%' }"
+        :scroll="{ x: sales ? 2030 : 1200, y: '100%' }"
         :custom-row="(r) => ({ onClick: () => openDetail(r), class: 'click-row' })"
       >
         <template #bodyCell="{ column, record }">
@@ -169,7 +175,12 @@ const columns = computed(() => {
       ? [
           { title: t('jxc.field.cost'), key: 'cost', width: 170, align: 'right' },
           { title: t('jxc.field.profit'), key: 'profit', width: 120, align: 'right', money: true },
-          { title: t('jxc.field.margin'), key: 'margin', width: 90, align: 'right' }
+          { title: t('jxc.field.margin'), key: 'margin', width: 90, align: 'right' },
+          // 参考口径：坏账核销、本公司承担的发运运费及扣除后的毛利（财务报表中分别计入营业外支出、销售费用）
+          { title: t('jxc.field.badDebt'), key: 'badDebt', width: 110, align: 'right', money: true },
+          { title: t('jxc.field.profitAfterBadDebt'), key: 'profitAfterBadDebt', width: 130, align: 'right', money: true },
+          { title: t('jxc.field.freight'), key: 'freight', width: 110, align: 'right', money: true },
+          { title: t('jxc.field.profitAfterFreight'), key: 'profitAfterFreight', width: 150, align: 'right', money: true }
         ]
       : []),
     { title: t('jxc.field.avgPrice'), key: 'avgPrice', width: 100, align: 'right' },

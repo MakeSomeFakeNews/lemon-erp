@@ -54,6 +54,9 @@ public interface FinBillMapper extends BaseMapper<FinBill> {
 
     List<Map<String, Object>> selectSourceByCategory(@Param("tradeDocId") Long tradeDocId);
 
+    /** 采购入库单分摊的运费按物料分类汇总：[{category, net}] */
+    List<Map<String, Object>> selectFreightByCategory(@Param("tradeDocId") Long tradeDocId);
+
     /** 往来单位未核销金额合计 */
     BigDecimal selectUnsettledAmount(@Param("kind") BillKind kind, @Param("partnerId") Long partnerId);
 }

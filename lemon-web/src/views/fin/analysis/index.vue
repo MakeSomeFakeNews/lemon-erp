@@ -36,6 +36,21 @@
                 :suffix="margin.total?.margin == null ? '' : '%'" />
             </a-col>
           </a-row>
+          <!-- 参考口径：坏账核销、本公司承担的运费（财务报表中计入营业外支出、销售费用，不在营业成本里） -->
+          <a-row v-if="Number(margin.total?.badDebt) || Number(margin.total?.freight)" :gutter="12" class="cards">
+            <a-col :xs="12" :md="6">
+              <a-statistic :title="$t('fin.analysis.badDebt')" :value="Number(margin.total?.badDebt || 0)" :precision="2" prefix="¥" />
+            </a-col>
+            <a-col :xs="12" :md="6">
+              <a-statistic :title="$t('fin.analysis.profitAfterBadDebt')" :value="Number(margin.total?.profitAfterBadDebt || 0)" :precision="2" prefix="¥" />
+            </a-col>
+            <a-col :xs="12" :md="6">
+              <a-statistic :title="$t('fin.analysis.freight')" :value="Number(margin.total?.freight || 0)" :precision="2" prefix="¥" />
+            </a-col>
+            <a-col :xs="12" :md="6">
+              <a-statistic :title="$t('fin.analysis.profitAfterFreight')" :value="Number(margin.total?.profitAfterFreight || 0)" :precision="2" prefix="¥" />
+            </a-col>
+          </a-row>
           <a-alert v-if="margin.truncated" type="warning" show-icon class="tip" :message="$t('fin.analysis.truncated')" />
           <a-table
             :row-key="(r) => (groupBy === DETAIL ? `${r.docId}-${r.materialCode}-${r.qty}-${r.revenue}` : r.groupKey ?? r.groupName)"
@@ -44,7 +59,7 @@
             :data-source="margin.rows"
             :loading="marginLoading"
             :pagination="margin.rows?.length > 20 ? { pageSize: 20, showTotal: (n) => $t('common.table.total', { total: n }) } : false"
-            :scroll="{ x: 1000 }"
+            :scroll="{ x: 1500 }"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'docNo'">
@@ -66,7 +81,11 @@
                   <a-tag color="orange" :bordered="false" class="hint">{{ $t('fin.analysis.hasRefCost') }}</a-tag>
                 </a-tooltip>
               </template>
-              <template v-else-if="['revenue', 'profit'].includes(column.key)">
+              <template v-else-if="['badDebt', 'freight'].includes(column.key)">
+                <span v-if="Number(record[column.key])">{{ formatMoney(record[column.key]) }}</span>
+                <span v-else class="sub-text">-</span>
+              </template>
+              <template v-else-if="['revenue', 'profit', 'profitAfterBadDebt', 'profitAfterFreight'].includes(column.key)">
                 <span :class="{ neg: Number(record[column.key]) < 0 }">{{ formatMoney(record[column.key]) }}</span>
               </template>
               <template v-else-if="column.key === 'margin'">
@@ -215,6 +234,15 @@ const margin = ref({ rows: [], total: {} })
 const marginLoading = ref(false)
 const GROUP_TITLES = { MATERIAL: t('fin.analysis.material'), CUSTOMER: t('fin.analysis.customer'), MONTH: t('fin.analysis.month') }
 const keyword = ref('')
+/** 参考口径列：坏账核销、扣坏账后毛利、本公司运费、扣运费后毛利 */
+function referenceColumns() {
+  return [
+    { title: t('fin.analysis.badDebt'), key: 'badDebt', width: 120, align: 'right' },
+    { title: t('fin.analysis.profitAfterBadDebt'), key: 'profitAfterBadDebt', width: 140, align: 'right' },
+    { title: t('fin.analysis.freight'), key: 'freight', width: 120, align: 'right' },
+    { title: t('fin.analysis.profitAfterFreight'), key: 'profitAfterFreight', width: 150, align: 'right' }
+  ]
+}
 const DETAIL_COLUMNS = [
   { title: t('common.field.date'), dataIndex: 'bizDate', width: 110 },
   { title: t('fin.analysis.doc'), key: 'docNo', width: 200 },
@@ -225,7 +253,8 @@ const DETAIL_COLUMNS = [
   { title: t('fin.analysis.revenue'), key: 'revenue', width: 130, align: 'right' },
   { title: t('fin.analysis.cost'), key: 'cost', width: 190, align: 'right' },
   { title: t('fin.analysis.grossProfit'), key: 'profit', width: 130, align: 'right' },
-  { title: t('fin.analysis.grossMargin'), key: 'margin', width: 120, align: 'right' }
+  { title: t('fin.analysis.grossMargin'), key: 'margin', width: 120, align: 'right' },
+  ...referenceColumns()
 ]
 const marginColumns = computed(() => groupBy.value === DETAIL ? DETAIL_COLUMNS : [
   { title: GROUP_TITLES[groupBy.value], key: 'group', width: 240 },
@@ -233,7 +262,8 @@ const marginColumns = computed(() => groupBy.value === DETAIL ? DETAIL_COLUMNS :
   { title: t('fin.analysis.revenue'), key: 'revenue', width: 140, align: 'right' },
   { title: t('fin.analysis.cost'), key: 'cost', width: 200, align: 'right' },
   { title: t('fin.analysis.grossProfit'), key: 'profit', width: 140, align: 'right' },
-  { title: t('fin.analysis.grossMargin'), key: 'margin', width: 120, align: 'right' }
+  { title: t('fin.analysis.grossMargin'), key: 'margin', width: 120, align: 'right' },
+  ...referenceColumns()
 ])
 let marginSeq = 0
 async function loadMargin() {

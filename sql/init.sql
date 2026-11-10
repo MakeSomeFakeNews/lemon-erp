@@ -192,6 +192,7 @@ DROP TABLE IF EXISTS scm_requisition_item;
 DROP TABLE IF EXISTS scm_inquiry;
 DROP TABLE IF EXISTS scm_inquiry_item;
 DROP TABLE IF EXISTS scm_inquiry_quote;
+DROP TABLE IF EXISTS scm_inquiry_supplier;
 DROP TABLE IF EXISTS scm_quotation;
 DROP TABLE IF EXISTS scm_quotation_item;
 DROP TABLE IF EXISTS scm_supplier_price;
@@ -1427,6 +1428,18 @@ CREATE TABLE scm_inquiry_quote (
     KEY idx_inquiry_quote_supplier (supplier_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '供应商报价';
 
+CREATE TABLE scm_inquiry_supplier (
+    id             BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id      BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    inquiry_id     BIGINT         NOT NULL COMMENT '询价单',
+    supplier_id    BIGINT         NOT NULL COMMENT '供应商',
+    whole_discount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '整单优惠承诺（含税，按该供应商全部报价行的合计）',
+    create_time    DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time    DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_inquiry_supplier (inquiry_id, supplier_id, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '询价单的供应商报价汇总（整单优惠承诺）';
+
 CREATE TABLE scm_quotation (
     id               BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id        BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
@@ -1775,6 +1788,11 @@ CREATE TABLE scm_trade_doc (
     wms_doc_no   VARCHAR(32)             DEFAULT NULL COMMENT '生成的出入库单号',
     remark       VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     replenish    TINYINT        NOT NULL DEFAULT 0 COMMENT '退货是否补发（补收） 1补发 0退款',
+    discount_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '本单分摊的整单优惠（本位币，含税）：优惠前合计 = 价税合计 + 本项',
+    freight      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '采购运费（仅采购入库，计入存货成本）',
+    freight_bearer VARCHAR(16)           DEFAULT NULL COMMENT '采购运费付给(字典 scm_freight_bearer) SUPPLIER供应商代垫 COMPANY本公司承担（付承运商）',
+    carrier_supplier_id BIGINT           DEFAULT NULL COMMENT '采购运费的承运商（供应商），本公司承担时必填',
+    freight_bill_id BIGINT               DEFAULT NULL COMMENT '采购运费应付单',
     dept_id      BIGINT                  DEFAULT NULL COMMENT '制单人部门（数据权限）',
     create_by    BIGINT                  DEFAULT NULL COMMENT '制单人',
     create_time  DATETIME                DEFAULT NULL COMMENT '创建时间',
@@ -1799,10 +1817,13 @@ CREATE TABLE scm_trade_doc_item (
     production_date DATE                    DEFAULT NULL COMMENT '生产日期，仅采购入库',
     expiry_date     DATE                    DEFAULT NULL COMMENT '有效期至，仅采购入库',
     qty             DECIMAL(18, 4) NOT NULL COMMENT '数量',
-    price           DECIMAL(18, 4) NOT NULL COMMENT '含税单价（取订单）',
+    price           DECIMAL(18, 4) NOT NULL COMMENT '含税单价（取订单，已扣除整单优惠的分摊）',
     tax_rate        DECIMAL(5, 2)  NOT NULL DEFAULT 0 COMMENT '税率（%）',
     amount          DECIMAL(18, 2) NOT NULL COMMENT '价税合计',
     tax_amount      DECIMAL(18, 2) NOT NULL COMMENT '税额',
+    gross_price     DECIMAL(18, 4)          DEFAULT NULL COMMENT '优惠前含税单价（整单优惠分摊前，本位币），为空同单价',
+    discount_share  DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '本行分摊的整单优惠（本位币，含税）',
+    freight_share   DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '本行分摊的采购运费（本位币，计入存货成本）',
     serial_nos      TEXT COMMENT '序列号，逗号分隔',
     remark          VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     create_time     DATETIME                DEFAULT NULL COMMENT '创建时间',
@@ -1822,8 +1843,10 @@ CREATE TABLE scm_shipment (
     carrier      VARCHAR(32)    NOT NULL COMMENT '承运商(字典 scm_carrier)',
     tracking_no  VARCHAR(64)             DEFAULT NULL COMMENT '运单号',
     freight      DECIMAL(18, 2)          DEFAULT NULL COMMENT '运费',
+    freight_bearer VARCHAR(16)  NOT NULL DEFAULT 'COMPANY' COMMENT '运费承担(字典 scm_freight_bearer) COMPANY本公司承担（销售费用） CUSTOMER客户承担（代垫，计入应收）',
     carrier_supplier_id BIGINT              DEFAULT NULL COMMENT '承运商对应的供应商（运费应付）',
     freight_bill_id     BIGINT              DEFAULT NULL COMMENT '运费应付单',
+    freight_ar_bill_id  BIGINT              DEFAULT NULL COMMENT '代垫运费应收单（客户承担时）',
     receiver     VARCHAR(64)             DEFAULT NULL COMMENT '收货人',
     phone        VARCHAR(32)             DEFAULT NULL COMMENT '收货电话',
     address      VARCHAR(255)            DEFAULT NULL COMMENT '收货地址',
@@ -7351,6 +7374,15 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('fin_bill_source', '冲账单', 'OFFSET', 'magenta', 13, 1, NOW(), NOW()),
 ('fin_bill_source', '订单尾差调整', 'ORDER_ADJUST', 'geekblue', 14, 1, NOW(), NOW());
 UPDATE sys_dict_data SET builtin = 1 WHERE dict_type = 'fin_offset_item' AND dict_value = 'OTHER';
+
+-- 运费承担方（发运单：本公司承担计销售费用、客户承担为代垫运费计入应收；采购入库：供应商代垫计入应付、本公司承担付承运商，都计入存货成本）
+INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
+(196, '运费承担', 'scm_freight_bearer', 'SYSTEM', 1, '发运单、采购入库的运费由谁承担 / 付给谁', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('scm_freight_bearer', '本公司承担', 'COMPANY', 'default', 1, 1, NOW(), NOW()),
+('scm_freight_bearer', '客户承担（代垫）', 'CUSTOMER', 'blue', 2, 1, NOW(), NOW()),
+('scm_freight_bearer', '供应商代垫', 'SUPPLIER', 'orange', 3, 1, NOW(), NOW()),
+('fin_bill_source', '采购运费', 'PURCHASE_FREIGHT', 'cyan', 15, 1, NOW(), NOW());
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
 (377, 932, '冲账单', 'C', 'offset', 'fin/offset/index', 'fin:offset:list', 'InteractionOutlined', 9, 1, 1, NOW(), NOW()),
 (3770, 377, '冲账单新增', 'F', NULL, NULL, 'fin:offset:add', NULL, 1, 1, 1, NOW(), NOW()),

@@ -22,6 +22,8 @@ public enum AccountRole {
     NOTES_PAYABLE("fin.label.receivablesPayables", "fin.label.notesPayable", "2201"),
     OTHER_RECEIVABLE("fin.label.receivablesPayables", "fin.label.otherReceivablesEmployeeLoans", "1221"),
     OTHER_PAYABLE("fin.label.receivablesPayables", "fin.label.otherPayablesExpensesWithholdings", "2241"),
+    /** 代垫运费（客户承担的发运运费）：付承运商时 借 该科目 / 贷 应付账款，向客户收取时 借 应收账款 / 贷 该科目，两边相抵 */
+    FREIGHT_ADVANCE("fin.label.receivablesPayables", "fin.label.freightAdvance", "1221"),
 
     /** 默认：低值易耗品 → 周转材料，半成品、成品 → 库存商品，其余 → 原材料 */
     INVENTORY("fin.label.inventoryCost", "fin.label.inventories", "1403", Dimension.MATERIAL_CATEGORY,
@@ -41,6 +43,8 @@ public enum AccountRole {
     OTHER_REVENUE("fin.label.revenueExpenses", "fin.label.otherOperatingRevenueServiceFees", "6051"),
     CONTRACT_LIABILITY("fin.label.revenueExpenses", "fin.label.contractLiabilitiesProjectInvoicing", "2205"),
     SELLING_EXPENSE("fin.label.revenueExpenses", "fin.label.sellingExpensesFreightAfterSalesParts", "6601"),
+    /** 销售运费（本公司承担的发运运费）：借 该科目 / 贷 应付账款-承运商 */
+    SALES_FREIGHT("fin.label.revenueExpenses", "fin.label.salesFreight", "6601"),
     TRAINING_EXPENSE("fin.label.revenueExpenses", "fin.label.trainingExpenses", "660205"),
     FINANCE_EXPENSE("fin.label.revenueExpenses", "fin.label.financialExpensesFeesDiscountsFxGains", "6603"),
     NON_OPERATING_INCOME("fin.label.revenueExpenses", "fin.label.nonOperatingIncome", "6301"),

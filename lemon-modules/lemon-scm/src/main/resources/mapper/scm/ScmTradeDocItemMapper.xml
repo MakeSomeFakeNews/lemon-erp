@@ -17,11 +17,13 @@
 
     <insert id="insertBatch">
         INSERT INTO scm_trade_doc_item (doc_id, order_item_id, material_id, warehouse_id, location_id, batch_no, production_date,
-                                        expiry_date, qty, price, tax_rate, amount, tax_amount, serial_nos, remark,
+                                        expiry_date, qty, price, tax_rate, amount, tax_amount, gross_price, discount_share,
+                                        freight_share, serial_nos, remark,
                                         create_time, update_time) VALUES
         <foreach collection="list" item="i" separator=",">
             (#{i.docId}, #{i.orderItemId}, #{i.materialId}, #{i.warehouseId}, #{i.locationId}, #{i.batchNo}, #{i.productionDate},
-             #{i.expiryDate}, #{i.qty}, #{i.price}, #{i.taxRate}, #{i.amount}, #{i.taxAmount}, #{i.serialNos},
+             #{i.expiryDate}, #{i.qty}, #{i.price}, #{i.taxRate}, #{i.amount}, #{i.taxAmount}, #{i.grossPrice},
+             COALESCE(CAST(#{i.discountShare} AS DECIMAL(18, 2)), 0), COALESCE(CAST(#{i.freightShare} AS DECIMAL(18, 2)), 0), #{i.serialNos},
              #{i.remark}, NOW(), NOW())
         </foreach>
     </insert>

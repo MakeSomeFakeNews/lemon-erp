@@ -12,7 +12,7 @@
       <l-cell :label="t('crm.order.salesman')" :value="o.salesmanName" />
       <l-cell :label="t('crm.order.warehouse')" :value="o.warehouseName" />
       <l-cell :label="t('crm.order.totalAmount')" :value="money(o.totalAmount)" />
-      <!-- 整单优惠（含抹零）：已按行金额分摊，订单金额是优惠后的 -->
+      <!-- 整单优惠（含抹零）：只在合计处扣减，订单金额是优惠后的；明细显示优惠前的单价、金额 -->
       <l-cell v-if="Number(o.wholeDiscount) > 0" :label="t('crm.order.wholeDiscount')" :value="money(o.wholeDiscount)" />
       <l-cell :label="t('crm.order.taxAmount')" :value="money(o.taxAmount)" />
       <l-cell :label="t('crm.order.progress')" :value="t('crm.order.shipped', { done: qty(shippedQty), total: qty(o.totalQty) })" />
@@ -33,8 +33,8 @@
           <text v-if="Number(it.returnQty) > 0">{{ t('crm.order.returnQty') }} {{ qty(it.returnQty) }}</text>
         </view>
         <view class="od__line-nums">
-          <text>{{ t('crm.order.price') }} {{ money(it.price) }}</text>
-          <text class="od__line-amount">{{ money(it.amount) }}</text>
+          <text>{{ t('crm.order.price') }} {{ money(grossPrice(it)) }}</text>
+          <text class="od__line-amount">{{ money(Number(it.amount || 0) + Number(it.discountShare || 0)) }}</text>
         </view>
       </view>
     </l-card>
@@ -93,6 +93,8 @@ const o = ref(null)
 /** 订单追溯：出库单、应收单、发运（按当前用户的权限返回） */
 const trace = ref({})
 
+/** 优惠前单价：行金额加回分摊的整单优惠后除以数量（与 Web 端一致），没有分摊时即单价 */
+const grossPrice = (it) => (Number(it.discountShare) && Number(it.qty) ? (Number(it.amount) + Number(it.discountShare)) / Number(it.qty) : Number(it.price))
 const shippedQty = computed(() => (o.value?.items || []).reduce((sum, it) => sum + (Number(it.doneQty) || 0), 0))
 const billTotal = computed(() => (trace.value.bills || []).reduce((sum, b) => sum + (Number(b.amount) || 0), 0))
 const billSettled = computed(() => (trace.value.bills || []).reduce((sum, b) => sum + (Number(b.settledAmount) || 0), 0))

@@ -181,9 +181,15 @@ public class BiJxcService {
             r.setCost(Decimals.money(r.getCost()));
             r.setProfit(r.getNetAmount().subtract(r.getCost()));
             r.setMargin(Decimals.percent(r.getProfit(), r.getNetAmount(), 2));
+            r.setBadDebt(Decimals.money(r.getBadDebt()));
+            r.setFreight(Decimals.money(r.getFreight()));
+            r.setProfitAfterBadDebt(r.getProfit().subtract(r.getBadDebt()));
+            r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(r.getFreight()));
         } else {
             r.setCost(null);
             r.setMissingCost(null);
+            r.setBadDebt(null);
+            r.setFreight(null);
         }
     }
 
@@ -193,6 +199,10 @@ public class BiJxcService {
         if (sales) {
             r.setCost(Decimals.money(r.getCost()));
             r.setProfit(r.getAmount().subtract(r.getCost()));
+            r.setBadDebt(Decimals.money(r.getBadDebt()));
+            r.setFreight(Decimals.money(r.getFreight()));
+            r.setProfitAfterBadDebt(r.getProfit().subtract(r.getBadDebt()));
+            r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(r.getFreight()));
         }
     }
 

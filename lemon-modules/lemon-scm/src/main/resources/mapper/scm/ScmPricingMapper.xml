@@ -24,7 +24,7 @@
 
     <select id="selectTradeHistory" resultType="com.lemon.erp.modules.scm.dto.PricingViews$HistoryRow">
         SELECT d.id AS doc_id, d.doc_no, d.biz_date, p.id AS partner_id, p.code AS partner_code, p.name AS partner_name,
-               i.qty, i.price, i.amount, COALESCE(i.remark, d.remark) AS remark
+               i.qty, COALESCE(i.gross_price, i.price) AS price, i.amount + i.discount_share AS amount, COALESCE(i.remark, d.remark) AS remark
         FROM scm_trade_doc_item i
         JOIN scm_trade_doc d ON d.id = i.doc_id
         <choose>
@@ -41,8 +41,8 @@
 
     <select id="selectPurchaseQty" resultType="com.lemon.erp.modules.scm.dto.PricingViews$PartnerQtyRow">
         SELECT p.id AS partner_id, p.code AS partner_code, p.name AS partner_name, COUNT(DISTINCT d.id) AS times,
-               SUM(i.qty) AS qty, SUM(i.amount) AS amount,
-               CASE WHEN SUM(i.qty) = 0 THEN NULL ELSE ROUND(SUM(i.amount) / SUM(i.qty), 4) END AS avg_price,
+               SUM(i.qty) AS qty, SUM(i.amount + i.discount_share) AS amount,
+               CASE WHEN SUM(i.qty) = 0 THEN NULL ELSE ROUND(SUM(i.amount + i.discount_share) / SUM(i.qty), 4) END AS avg_price,
                MAX(d.biz_date) AS last_date
         FROM scm_trade_doc_item i
         JOIN scm_trade_doc d ON d.id = i.doc_id
@@ -57,7 +57,7 @@
     </select>
 
     <!-- 供商 / 客户对比（没有「全部数据」权限时）：按看得到的销售出库 / 采购入库计算，口径同价格记忆（scm_price_memory）：
-         单价大于 0 的行，最新价取业务日期最晚的单据（同日取后确认的）的最后一行，最低 / 最高价日期取最早出现的日期。
+         优惠前单价（gross_price，历史单据为空时取单价）大于 0 的行，最新价取业务日期最晚的单据（同日取后确认的）的最后一行，最低 / 最高价日期取最早出现的日期。
          数据权限条件加在子查询的 scm_trade_doc 上 -->
     <select id="selectTradeCompare" resultType="com.lemon.erp.modules.scm.dto.PricingViews$MemoryRow">
         SELECT p.id AS partner_id, p.code AS partner_code, p.name AS partner_name, g.last_date, g.last_price,
@@ -71,13 +71,13 @@
                    MAX(CASE WHEN x.rn_max = 1 THEN x.biz_date END) AS max_date,
                    MAX(x.price) AS max_price
             FROM (
-                SELECT d.partner_id, d.biz_date, i.price,
+                SELECT d.partner_id, d.biz_date, COALESCE(i.gross_price, i.price) AS price,
                        ROW_NUMBER() OVER (PARTITION BY d.partner_id ORDER BY d.biz_date DESC, d.id DESC, i.id DESC) AS rn_last,
-                       ROW_NUMBER() OVER (PARTITION BY d.partner_id ORDER BY i.price, d.biz_date, d.id) AS rn_min,
-                       ROW_NUMBER() OVER (PARTITION BY d.partner_id ORDER BY i.price DESC, d.biz_date, d.id) AS rn_max
+                       ROW_NUMBER() OVER (PARTITION BY d.partner_id ORDER BY COALESCE(i.gross_price, i.price), d.biz_date, d.id) AS rn_min,
+                       ROW_NUMBER() OVER (PARTITION BY d.partner_id ORDER BY COALESCE(i.gross_price, i.price) DESC, d.biz_date, d.id) AS rn_max
                 FROM scm_trade_doc_item i
                 JOIN scm_trade_doc d ON d.id = i.doc_id
-                WHERE d.kind = #{kind} AND i.material_id = #{q.materialId} AND i.price &gt; 0
+                WHERE d.kind = #{kind} AND i.material_id = #{q.materialId} AND COALESCE(i.gross_price, i.price) &gt; 0
             ) x
             GROUP BY x.partner_id
         ) g

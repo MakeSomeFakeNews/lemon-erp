@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.dto;
 
+import com.lemon.erp.modules.scm.model.FreightBearer;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -23,6 +24,9 @@ import java.util.List;
  * @param partnerId   直接开单：客户 / 供应商
  * @param salesmanId  直接开单的销售出库：业务员（用户），为空时取客户负责人，没有时为制单人
  * @param wholeDiscount 直接开单：整单优惠（含税，抹零也用它），记在隐式订单上并按行金额分摊到各行
+ * @param freight       仅采购入库：运费，按行金额分摊计入存货成本，生成运费应付单
+ * @param freightBearer 运费付给：SUPPLIER 供应商代垫（计入该供应商应付，默认）/ COMPANY 本公司承担（付承运商）
+ * @param carrierSupplierId 本公司承担时的承运商（供应商）
  */
 public record TradeDocRequest(
         Long orderId,
@@ -34,18 +38,27 @@ public record TradeDocRequest(
         Long partnerId,
         Long salesmanId,
         @DecimalMin(value = "0", message = "{scm.valid.wholeDiscountCannotNegative}")
-        @Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") BigDecimal wholeDiscount) {
+        @Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") BigDecimal wholeDiscount,
+        @DecimalMin(value = "0", message = "{scm.valid.freightCannotLess}")
+        @Digits(integer = 16, fraction = 2, message = "{scm.valid.freightDecimals}") BigDecimal freight,
+        FreightBearer freightBearer,
+        Long carrierSupplierId) {
 
     /** 引用订单 */
     public TradeDocRequest(Long orderId, Long warehouseId, LocalDate bizDate, String remark, Boolean replenish,
                            List<TradeDocItemRequest> items) {
-        this(orderId, warehouseId, bizDate, remark, replenish, items, null, null, null);
+        this(orderId, warehouseId, bizDate, remark, replenish, items, null, null, null, null, null, null);
     }
 
     /** 直接开单，没有整单优惠 */
     public TradeDocRequest(Long orderId, Long warehouseId, LocalDate bizDate, String remark, Boolean replenish,
                            List<TradeDocItemRequest> items, Long partnerId, Long salesmanId) {
-        this(orderId, warehouseId, bizDate, remark, replenish, items, partnerId, salesmanId, null);
+        this(orderId, warehouseId, bizDate, remark, replenish, items, partnerId, salesmanId, null, null, null, null);
+    }
+
+    /** 是否有运费 */
+    public boolean hasFreight() {
+        return freight != null && freight.signum() > 0;
     }
 
     /** 是否直接开单（不引用订单） */

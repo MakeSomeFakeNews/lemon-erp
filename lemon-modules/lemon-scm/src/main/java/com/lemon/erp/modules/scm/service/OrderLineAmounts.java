@@ -120,6 +120,22 @@ public final class OrderLineAmounts {
     }
 
     /**
+     * 退货单本行对应的整单优惠（含税，只用于显示）：按优惠前单价计的金额 − 实际退货金额，不小于 0；
+     * 订单行没有分摊整单优惠时为 0。退货金额按扣除优惠后的成交价计算（见 {@link #returned}），所以退回的正是原单的优惠分摊
+     *
+     * @param item   订单行
+     * @param qty    本次退货数量
+     * @param amount 本次退货金额（订单币种）
+     */
+    public static BigDecimal returnShare(ScmOrderItem item, BigDecimal qty, BigDecimal amount) {
+        if (Decimals.nz(item.getDiscountShare()).signum() == 0) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal diff = amount(qty, grossPrice(item)).subtract(amount);
+        return diff.signum() < 0 ? BigDecimal.ZERO : diff;
+    }
+
+    /**
      * 订单变更后的一行
      *
      * @param qty           变更后的数量

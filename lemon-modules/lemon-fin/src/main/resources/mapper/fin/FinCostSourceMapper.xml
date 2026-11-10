@@ -58,8 +58,9 @@
         SELECT id AS "materialId", ref_cost AS "refCost" FROM wms_material WHERE ref_cost &gt; 0
     </select>
 
+    <!-- 出入库单按物料汇总的数量、不含税金额；采购入库的金额含分摊的运费（freight_share，计入存货成本，其他种类为 0） -->
     <select id="selectTradeSums" resultType="java.util.Map">
-        SELECT i.material_id AS "materialId", d.kind AS "kind", SUM(i.qty) AS "qty", SUM(i.amount - i.tax_amount) AS "net"
+        SELECT i.material_id AS "materialId", d.kind AS "kind", SUM(i.qty) AS "qty", SUM(i.amount - i.tax_amount + i.freight_share) AS "net"
         FROM scm_trade_doc d
         JOIN scm_trade_doc_item i ON i.doc_id = d.id
         WHERE d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}

@@ -50,19 +50,23 @@ public class FinAnalysisService {
         }
         String g = MarginGroup.of(groupBy).name();
         List<FinAnalysis.MarginRow> rows = analysisMapper.selectGrossMargin(begin, end, g, customerId);
-        BigDecimal revenue = BigDecimal.ZERO;
-        BigDecimal cost = BigDecimal.ZERO;
+        MarginSum sum = new MarginSum();
         for (FinAnalysis.MarginRow r : rows) {
             BigDecimal rev = Decimals.money(dec(r.getRevenue()));
             BigDecimal c = Decimals.money(dec(r.getCost()));
+            BigDecimal bad = Decimals.money(dec(r.getBadDebt()));
+            BigDecimal freight = Decimals.money(dec(r.getFreight()));
             r.setRevenue(rev);
             r.setCost(c);
             r.setProfit(rev.subtract(c));
             r.setMargin(margin(rev, c));
-            revenue = revenue.add(rev);
-            cost = cost.add(c);
+            r.setBadDebt(bad);
+            r.setFreight(freight);
+            r.setProfitAfterBadDebt(r.getProfit().subtract(bad));
+            r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(freight));
+            sum.add(rev, c, bad, freight);
         }
-        return new FinAnalysis.GrossMargin(rows, new FinAnalysis.MarginTotal(revenue, cost, revenue.subtract(cost), margin(revenue, cost)));
+        return new FinAnalysis.GrossMargin(rows, sum.total());
     }
 
     /** 销售毛利明细：按销售出库 / 退货单据明细逐行计算，最多 5000 行 */
@@ -72,20 +76,44 @@ public class FinAnalysisService {
         }
         List<FinAnalysis.MarginDetailRow> list = analysisMapper.selectMarginDetail(begin, end, customerId, keyword, MARGIN_DETAIL_LIMIT + 1);
         List<FinAnalysis.MarginDetailRow> rows = new ArrayList<>(list.subList(0, Math.min(list.size(), MARGIN_DETAIL_LIMIT)));
-        BigDecimal revenue = BigDecimal.ZERO;
-        BigDecimal cost = BigDecimal.ZERO;
+        MarginSum sum = new MarginSum();
         for (FinAnalysis.MarginDetailRow r : rows) {
             BigDecimal rev = Decimals.money(dec(r.getRevenue()));
             BigDecimal c = Decimals.money(dec(r.getCost()));
+            BigDecimal bad = Decimals.money(dec(r.getBadDebt()));
+            BigDecimal freight = Decimals.money(dec(r.getFreight()));
             r.setRevenue(rev);
             r.setCost(c);
             r.setProfit(rev.subtract(c));
             r.setMargin(margin(rev, c));
+            r.setBadDebt(bad);
+            r.setFreight(freight);
+            r.setProfitAfterBadDebt(r.getProfit().subtract(bad));
+            r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(freight));
+            sum.add(rev, c, bad, freight);
+        }
+        return new FinAnalysis.MarginDetail(rows, sum.total(), list.size() > MARGIN_DETAIL_LIMIT);
+    }
+
+    /** 毛利合计的累加 */
+    private static final class MarginSum {
+        private BigDecimal revenue = BigDecimal.ZERO;
+        private BigDecimal cost = BigDecimal.ZERO;
+        private BigDecimal badDebt = BigDecimal.ZERO;
+        private BigDecimal freight = BigDecimal.ZERO;
+
+        void add(BigDecimal rev, BigDecimal c, BigDecimal bad, BigDecimal f) {
             revenue = revenue.add(rev);
             cost = cost.add(c);
+            badDebt = badDebt.add(bad);
+            freight = freight.add(f);
         }
-        return new FinAnalysis.MarginDetail(rows, new FinAnalysis.MarginTotal(revenue, cost, revenue.subtract(cost), margin(revenue, cost)),
-                list.size() > MARGIN_DETAIL_LIMIT);
+
+        FinAnalysis.MarginTotal total() {
+            BigDecimal profit = revenue.subtract(cost);
+            return new FinAnalysis.MarginTotal(revenue, cost, profit, margin(revenue, cost), badDebt, freight,
+                    profit.subtract(badDebt), profit.subtract(badDebt).subtract(freight));
+        }
     }
 
     /**

@@ -18,6 +18,7 @@
 | `20261109_ecn_approver.sql` | 工程变更记录批准人（`mes_ecn.approve_by`），详情的「批准」显示批准人和时间；已批准的历史变更单没有批准人 |
 | `20261110_ecn_flow.sql` | 工程变更审批的内置示例流程（`mes_ecn`，未发布）增加条件分支：变更原因为客户要求、质量问题或用料变更 ≥ 5 项时总经理审批（流程变量新增 `itemChanges` 用料变更项数、`opChanges` 工序变更项数）；只更新从未发布、从未修改过的模型，各租户按角色编码对应本租户的岗位角色。项目月结迟审批工时入账、合同已回款口径、分批预留合并不需要改库 |
 | `20261110_other_income_rebate.sql` | 现金银行与返利：其他收支（新表 `fin_io_category` 收支类别、`fin_io_doc` / `fin_io_doc_item` 其他收入单与费用支出单；管理费用下增加业务招待费、水电费、租赁费、快递费明细科目；平台和已有租户各复制一份内置收支类别，科目按编码关联）；账户调拨的手续费承担方（`fin_fund_transfer.fee_bearer`，已有数据为转出账户）；返利协议的种类、计算方式和供应商（`scm_rebate.kind` / `calc_mode` / `supplier_id`，已有数据为销售返利、阶梯比例）、返利项目（新表 `scm_rebate_item`），应收应付来源「销售返利」改名为「返利」；字典收支方向、收支单状态、关联单位类型、手续费承担方、返利种类、返利计算方式，凭证来源增加「其他收支」；菜单「财务 → 资金与费用 → 其他收支」（`fin:io:*`）和「供应链 → 采购 → 采购返利」（`scm:purchaseRebate:*`），随套餐加入，内置角色按编码授权（平台以外的租户以套餐为上限） |
+| `20261110_trade_discount_freight.sql` | 整单优惠不改变价格体系（issue #43）：出入库单记录本单分摊的整单优惠（`scm_trade_doc.discount_amount`），明细记录优惠前单价和分摊额（`scm_trade_doc_item.gross_price`、`discount_share`），按订单明细的分摊额回填已有单据，并按优惠前单价重算受影响的价格记忆；询价单的供应商整单优惠承诺（新表 `scm_inquiry_supplier`）；采购入库运费（`scm_trade_doc.freight`、`freight_bearer`、`carrier_supplier_id`、`freight_bill_id`，明细 `freight_share`，应收应付来源「采购运费」`PURCHASE_FREIGHT`）；发运单运费承担方（`scm_shipment.freight_bearer`，默认本公司承担，与原来一致；`freight_ar_bill_id` 代垫运费应收单）；系统字典「运费承担」`scm_freight_bearer`。销售毛利扣坏账、运费的口径（issue #38）只是查询，不需要改库 |
 
 之后的变更按 `YYYYMMDD_名称.sql`（变更当天的日期）新增，并在上表中登记。
 

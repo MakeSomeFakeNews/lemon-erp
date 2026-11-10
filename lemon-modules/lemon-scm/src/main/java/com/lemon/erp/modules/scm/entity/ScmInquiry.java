@@ -46,4 +46,7 @@ public class ScmInquiry extends BaseEntity {
     private List<ScmInquiryItem> items;
     @TableField(exist = false)
     private List<ScmInquiryQuote> quotes;
+    /** 各供应商的整单优惠承诺（只有填写了优惠的供应商） */
+    @TableField(exist = false)
+    private List<ScmInquirySupplier> offers;
 }

@@ -39,7 +39,7 @@
         </template>
         <template v-else-if="column.key === 'limit'">
           <div>{{ formatQty(record.limit) }} {{ record.unit }}</div>
-          <div class="sub-text">¥{{ formatMoney(record.price) }} / {{ record.unit || $t('common.field.unit') }}</div>
+          <div class="sub-text">¥{{ formatMoney(record.grossPrice ?? record.price) }} / {{ record.unit || $t('common.field.unit') }}</div>
         </template>
         <template v-else-if="column.key === 'warehouse'">
           <WarehouseSelect
@@ -139,6 +139,17 @@
       {{ $t('scm.trade.promoTotal', { amount: formatMoney(promo.discountAmount) }) }}
     </div>
     <WholeDiscountBar v-if="direct && form.items.length" v-model:value="form.wholeDiscount" :total="discountBase" />
+    <!-- 引用订单 / 原单：明细按优惠前单价显示，订单的整单优惠按成交价自动扣减（退货即退回原单的优惠分摊），金额以保存后的单据为准 -->
+    <div v-if="!direct && refDiscount > 0" class="ref-discount">
+      <span>{{ $t('scm.wholeDiscount.total') }} <b>¥{{ formatMoney(totalAmount) }}</b></span>
+      <span>
+        <a-tooltip :title="conf.returns ? $t('scm.wholeDiscount.returnShareHint') : $t('scm.wholeDiscount.orderShareHint')">
+          <span class="dashed">{{ conf.returns ? $t('scm.wholeDiscount.returnShare') : $t('scm.wholeDiscount.orderShare') }}</span>
+        </a-tooltip>
+        <b>−¥{{ formatMoney(refDiscount) }}</b>
+      </span>
+      <span>{{ conf.returns ? $t('scm.wholeDiscount.refundAfter') : $t('scm.wholeDiscount.after') }} <b class="after">¥{{ formatMoney(netAmount) }}</b></span>
+    </div>
     <PriceReference ref="referenceRef" pickable @pick="pickPrice" />
   </div>
 </template>
@@ -214,7 +225,11 @@ const columns = computed(() => {
 })
 
 const totalQty = computed(() => props.form.items.reduce((sum, i) => sum + (Number(i.qty) || 0), 0))
-const totalAmount = computed(() => round2(props.form.items.reduce((sum, i) => sum + lineAmount(i.qty, i.price), 0)))
+/** 明细合计：直接开单按录入的单价；引用订单按优惠前单价（整单优惠在合计处扣减） */
+const totalAmount = computed(() => round2(props.form.items.reduce((sum, i) => sum + lineAmount(i.qty, i.grossPrice ?? i.price), 0)))
+/** 引用订单时按成交价（已扣除整单优惠分摊）估算的金额，以及与优惠前合计的差额（订单 / 原单的整单优惠分摊） */
+const netAmount = computed(() => round2(props.form.items.reduce((sum, i) => sum + lineAmount(i.qty, i.price), 0)))
+const refDiscount = computed(() => round2(totalAmount.value - netAmount.value))
 
 async function putaway() {
   const n = await fillPutaway(props.form.warehouseId, props.form.items)
@@ -412,5 +427,21 @@ defineExpose({ addRow, fillPrices })
 }
 .amount {
   font-weight: 500;
+}
+.ref-discount {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 24px;
+  margin-top: 12px;
+}
+.ref-discount .dashed {
+  border-bottom: 1px dashed var(--app-text-3);
+  cursor: help;
+  margin-right: 8px;
+}
+.ref-discount .after {
+  font-size: 16px;
+  color: var(--ant-color-primary, #1677ff);
 }
 </style>

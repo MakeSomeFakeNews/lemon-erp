@@ -40,6 +40,7 @@ export const AccountRole = Object.freeze({
   NOTES_PAYABLE: 'NOTES_PAYABLE',
   OTHER_RECEIVABLE: 'OTHER_RECEIVABLE',
   OTHER_PAYABLE: 'OTHER_PAYABLE',
+  FREIGHT_ADVANCE: 'FREIGHT_ADVANCE', // 代垫运费
   INVENTORY: 'INVENTORY', // 默认
   OUTSOURCE_MATERIAL: 'OUTSOURCE_MATERIAL',
   PRODUCTION_COST: 'PRODUCTION_COST',
@@ -53,6 +54,7 @@ export const AccountRole = Object.freeze({
   OTHER_REVENUE: 'OTHER_REVENUE',
   CONTRACT_LIABILITY: 'CONTRACT_LIABILITY',
   SELLING_EXPENSE: 'SELLING_EXPENSE',
+  SALES_FREIGHT: 'SALES_FREIGHT', // 销售运费
   TRAINING_EXPENSE: 'TRAINING_EXPENSE',
   FINANCE_EXPENSE: 'FINANCE_EXPENSE',
   NON_OPERATING_INCOME: 'NON_OPERATING_INCOME',
@@ -335,6 +337,7 @@ export const BillSource = Object.freeze({
   REBATE: 'REBATE', // 销售返利
   OFFSET: 'OFFSET', // 冲账单
   ORDER_ADJUST: 'ORDER_ADJUST', // 订单尾差调整
+  PURCHASE_FREIGHT: 'PURCHASE_FREIGHT', // 采购运费
 })
 
 /** com.lemon.erp.modules.fin.model.BillStatus（字典 fin_bill_status） */
@@ -719,6 +722,13 @@ export const FormFieldType = Object.freeze({
   NUMBER: 'NUMBER', // 整数保存为 Long
   DATE: 'DATE', // yyyy-MM-dd
   SELECT: 'SELECT',
+})
+
+/** com.lemon.erp.modules.scm.model.FreightBearer（字典 scm_freight_bearer） */
+export const FreightBearer = Object.freeze({
+  COMPANY: 'COMPANY', // 本公司承担
+  CUSTOMER: 'CUSTOMER', // 客户承担
+  SUPPLIER: 'SUPPLIER', // 供应商代垫
 })
 
 /** com.lemon.erp.modules.fin.model.FundDirection（字典 fin_fund_direction） */

@@ -13,8 +13,22 @@ export default {
     roundJiao: 'Drop decimals',
     roundYuan: 'Drop units digit',
     clear: 'Clear discount',
-    hint: 'Tax-inclusive amount, allocated to lines in proportion to line amounts on save (after promotions and rebates); receivables / payables use the discounted amount',
-    value: 'Order discount {amount}'
+    hint: 'Tax-inclusive amount deducted only from the total; line prices stay unchanged (price memory and price references are not affected); receivables / payables use the discounted amount. For partial receipts / deliveries and returns, the matching discount is calculated in proportion to line amounts',
+    value: 'Order discount {amount}',
+    grossOnly: 'Before discount {amount}',
+    returnShare: 'Original order discount',
+    returnShareHint: 'The original order discount is allocated by line amount and returns are refunded at the discounted price: refund = amount before discount − original order discount',
+    orderShare: 'Order discount share',
+    orderShareHint: 'The order discount is allocated by line amount; this document uses the discounted price, and the saved document is authoritative',
+    refundAfter: 'Refund amount'
+  },
+  freight: {
+    label: 'Freight',
+    value: 'Freight {amount}',
+    payTo: 'Freight paid to',
+    carrier: 'Carrier',
+    selectCarrier: 'Select the carrier (supplier)',
+    purchaseHint: 'Allocated to inventory cost by tax-exclusive line amount; a freight payable is generated'
   },
   partnerSelect: {
     searchSupplier: 'Search supplier code or name',
@@ -726,7 +740,12 @@ export default {
     address: 'Delivery Address',
     freight: 'Freight',
     carrierSupplier: 'Freight Supplier',
-    carrierSupplierExtra: 'On shipping, a payable to this supplier is generated for the freight (charged to selling expenses)',
+    freightBearer: 'Freight borne by',
+    customerBears: 'Customer pays',
+    customerHint: 'Customer pays (advanced by us): a freight receivable from the customer is generated on shipping; not sales revenue, gross profit unaffected',
+    companyHint: 'Company pays: freight is a selling expense, payable to the carrier',
+    customerBilled: 'Freight receivable generated',
+    carrierSupplierExtra: 'On shipping, a payable to this supplier is generated for the freight (selling expense if the company pays, freight advance if the customer pays)',
     noPayable: 'No payable',
     outDoc: 'Delivery',
     orderNo: 'Order No.',
@@ -754,6 +773,8 @@ export default {
     signPh: 'Optional, defaults to "Signed by customer"'
   },
   inquiry: {
+    quoteTotal: 'Quote total ¥{amount}',
+    wholeDiscountTip: 'The promised order discount applies to this quote total; when awarding, the full discount goes to the PO if all lines are won, otherwise it is prorated by the awarded amount',
     createTitle: 'New RFQ',
     editTitle: 'Edit RFQ',
     inquiryDate: 'RFQ Date',

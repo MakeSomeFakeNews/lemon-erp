@@ -57,7 +57,10 @@
             <div>{{ record.receiver || '-' }} {{ record.phone }}</div>
             <div class="sub-text ellipsis" :title="record.address">{{ record.address }}</div>
           </template>
-          <template v-else-if="column.key === 'freight'">{{ record.freight != null ? '¥' + formatMoney(record.freight) : '-' }}</template>
+          <template v-else-if="column.key === 'freight'">
+            {{ record.freight != null ? '¥' + formatMoney(record.freight) : '-' }}
+            <div v-if="record.freight != null && record.freightBearer === FreightBearer.CUSTOMER" class="sub-text">{{ $t('scm.shipment.customerBears') }}</div>
+          </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="scm_shipment_status" :value="record.status" />
           </template>
@@ -133,7 +136,12 @@
           </a-col>
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('scm.shipment.freight')" name="freight">
-              <a-input-number v-model:value="form.freight" :min="0" :precision="2" prefix="¥" class="full" :disabled="!!form.freightBillId" />
+              <a-input-number v-model:value="form.freight" :min="0" :precision="2" prefix="¥" class="full" :disabled="billed" />
+            </a-form-item>
+          </a-col>
+          <a-col :xs="24" :sm="12">
+            <a-form-item :label="$t('scm.shipment.freightBearer')" name="freightBearer" :extra="bearerExtra">
+              <a-radio-group v-model:value="form.freightBearer" :options="bearerOptions" :disabled="billed" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
@@ -144,7 +152,7 @@
                 :label="form.carrierSupplierName ? `${form.carrierSupplierCode} ${form.carrierSupplierName}` : undefined"
                 allow-clear
                 :placeholder="$t('scm.shipment.noPayable')"
-                :disabled="!!form.freightBillId"
+                :disabled="billed"
               />
             </a-form-item>
           </a-col>
@@ -173,6 +181,10 @@
             <a-descriptions-item :label="$t('scm.shipment.freight')">
               {{ detail.freight != null ? '¥' + formatMoney(detail.freight) : '-' }}
               <span v-if="detail.carrierSupplierName" class="sub-text">{{ detail.freightBillId ? $t('scm.shipment.supplierBilled', { name: detail.carrierSupplierName }) : $t('scm.shipment.supplierParen', { name: detail.carrierSupplierName }) }}</span>
+              <div v-if="detail.freight != null" class="sub-text">
+                <DictTag type="scm_freight_bearer" :value="detail.freightBearer" />
+                {{ detail.freightBearer === FreightBearer.CUSTOMER ? (detail.freightArBillId ? $t('scm.shipment.customerBilled') : $t('scm.shipment.customerHint')) : $t('scm.shipment.companyHint') }}
+              </div>
             </a-descriptions-item>
             <a-descriptions-item :label="$t('scm.shipment.receiver')">{{ detail.receiver || '-' }} {{ detail.phone }}</a-descriptions-item>
             <a-descriptions-item :label="$t('scm.shipment.shipSign')">{{ detail.shipDate || '-' }} / {{ detail.signDate || '-' }}</a-descriptions-item>
@@ -255,11 +267,11 @@ import { today } from '@/components/wms/wms'
 import { useI18n } from 'vue-i18n'
 import { useAction } from '@/composables/useAction'
 
-import { ShipmentStatus } from '@/constants/enums'
+import { FreightBearer, ShipmentStatus } from '@/constants/enums'
 const { t } = useI18n()
 const route = useRoute()
 const userStore = useUserStore()
-const dict = useDict('scm_shipment_status', 'scm_carrier')
+const dict = useDict('scm_shipment_status', 'scm_carrier', 'scm_freight_bearer')
 
 const columns = [
   { title: t('scm.shipment.shipNo'), key: 'shipNo', width: 170 },
@@ -297,6 +309,7 @@ const drawer = useFormDrawer({
     carrier: undefined,
     trackingNo: '',
     freight: undefined,
+    freightBearer: FreightBearer.COMPANY,
     carrierSupplierId: undefined,
     receiver: '',
     phone: '',
@@ -310,11 +323,12 @@ const drawer = useFormDrawer({
   },
   create: addShipment,
   update: updateShipment,
-  toPayload: ({ tradeDocId, carrier, trackingNo, freight, carrierSupplierId, receiver, phone, address, remark }) => ({
+  toPayload: ({ tradeDocId, carrier, trackingNo, freight, freightBearer, carrierSupplierId, receiver, phone, address, remark }) => ({
     tradeDocId,
     carrier,
     trackingNo,
     freight: freight ?? null,
+    freightBearer: freightBearer || FreightBearer.COMPANY,
     carrierSupplierId: carrierSupplierId ?? null,
     receiver,
     phone,
@@ -324,6 +338,13 @@ const drawer = useFormDrawer({
   onSuccess: load
 })
 const { formRef, form } = drawer
+/** 已生成运费应付 / 代垫运费应收后，运费、承担方、承运商不能再改 */
+const billed = computed(() => !!(form.value.freightBillId || form.value.freightArBillId))
+/** 运费承担：本公司承担（销售费用）/ 客户承担（代垫，计入客户应收），供应商代垫只用于采购入库 */
+const bearerOptions = computed(() =>
+  toOptions(dict.scm_freight_bearer).filter((d) => d.value === FreightBearer.COMPANY || d.value === FreightBearer.CUSTOMER)
+)
+const bearerExtra = computed(() => (form.value.freightBearer === FreightBearer.CUSTOMER ? t('scm.shipment.customerHint') : t('scm.shipment.companyHint')))
 
 const docs = ref([])
 const docLoading = ref(false)

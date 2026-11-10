@@ -24,7 +24,8 @@ import java.util.stream.Collectors;
 
 /**
  * 价格记忆：销售出库、采购入库确认后（同一事务）登记 往来单位 × 物料 的最新 / 最低 / 最高价（含税、基本单位、本位币）。
- * 退货不登记；单价为 0 的行（赠品）不登记
+ * 登记优惠前的单价（{@link ScmTradeDocItem#getGrossPrice()}）：整单优惠是不改变价格体系的让利，只体现在单据合计和应收应付中，
+ * 价格记忆、价格参考仍是原来的成交单价；促销、返利抵扣直接改变单价，按改变后的记。退货不登记；单价为 0 的行（赠品）不登记
  */
 @Service
 @RequiredArgsConstructor
@@ -50,10 +51,11 @@ public class ScmPriceMemoryService {
     void record(OrderKind kind, Long partnerId, LocalDate date, List<ScmTradeDocItem> items) {
         Map<Long, List<BigDecimal>> prices = new TreeMap<>();
         for (ScmTradeDocItem i : items) {
-            if (i.getPrice() == null || i.getPrice().signum() <= 0 || i.getMaterialId() == null) {
+            BigDecimal price = i.getGrossPrice() != null ? i.getGrossPrice() : i.getPrice();
+            if (price == null || price.signum() <= 0 || i.getMaterialId() == null) {
                 continue;
             }
-            prices.computeIfAbsent(i.getMaterialId(), k -> new ArrayList<>()).add(i.getPrice());
+            prices.computeIfAbsent(i.getMaterialId(), k -> new ArrayList<>()).add(price);
         }
         prices.forEach((materialId, list) -> memoryMapper.upsert(kind, partnerId, materialId, date, list.get(list.size() - 1),
                 list.stream().min(BigDecimal::compareTo).orElseThrow(), list.stream().max(BigDecimal::compareTo).orElseThrow()));
