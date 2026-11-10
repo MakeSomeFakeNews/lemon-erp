@@ -59,7 +59,7 @@
                 </span>
                 <template v-if="current.remark">
                   <a-divider type="vertical" />
-                  <span class="role-remark">{{ current.remark }}</span>
+                  <span class="role-remark" :title="current.remark">{{ current.remark }}</span>
                 </template>
               </div>
             </div>
@@ -398,6 +398,10 @@ onMounted(async () => {
   justify-content: space-between;
   gap: 12px;
 }
+.role-heading {
+  flex: 1 1 320px;
+  min-width: 0;
+}
 .role-title {
   display: flex;
   align-items: center;
@@ -413,7 +417,13 @@ onMounted(async () => {
   color: var(--app-text-2);
   font-size: 13px;
 }
+/* 备注过长时省略（悬浮显示全文），不把右侧的状态开关、删除按钮挤到下一行 */
 .role-remark {
+  flex: 1 1 120px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--app-text-3);
 }
 .role-tabs-card {

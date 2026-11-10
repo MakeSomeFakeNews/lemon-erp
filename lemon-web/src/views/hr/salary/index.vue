@@ -24,7 +24,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1600, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -180,7 +180,7 @@ const columns = [
   { title: t('hr.salary.col.bank'), key: 'bank', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'hr-salary')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-salary')
 const emptyQuery = () => ({ keyword: undefined, deptId: undefined, missing: undefined })
 const query = reactive(emptyQuery())
 const { list, loading, size, pagination, load, search, onTableChange, exportAll } = useTable(pageSalary, query)

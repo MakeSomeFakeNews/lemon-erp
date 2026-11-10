@@ -36,7 +36,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1200, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -97,7 +97,7 @@ const columns = [
   { title: t('wms.reservation.time'), dataIndex: 'createTime', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'wms-reservation')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-reservation')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ warehouseId: undefined, keyword: undefined, sourceNo: undefined })

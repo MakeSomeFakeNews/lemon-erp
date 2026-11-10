@@ -33,6 +33,8 @@ export const myTimesheet = (beginDate, endDate) => request.get('/pm/my/timesheet
 export const addTimesheet = (data) => request.post('/pm/my/timesheet', data)
 export const updateTimesheet = (id, data) => request.put(`/pm/my/timesheet/${id}`, data)
 export const deleteTimesheet = (id) => request.delete(`/pm/my/timesheet/${id}`)
+/** 填报工时选择任务：本人参与的项目的任务树（项目成员即可） */
+export const myTimesheetTasks = (projectId) => request.get('/pm/my/timesheet/tasks', { params: { projectId } })
 
 /** 成本控制 */
 export const pageCost = (params) => request.get('/pm/cost', { params })

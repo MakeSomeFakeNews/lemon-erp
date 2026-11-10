@@ -32,7 +32,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1220, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -178,7 +178,7 @@ const workDaysText = (v) => {
 /** 日产能 = 每资源每日工时 × 资源数 */
 const dailyCapacity = (r) => Math.round(Number(r.dailyHours ?? 8) * Number(r.resources ?? 1) * 100) / 100
 
-const { checked, visibleColumns } = useColumns(columns, 'mes-work-center')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-work-center')
 const showSearch = ref(true)
 
 const query = reactive({ keyword: undefined, status: undefined })

@@ -8,6 +8,8 @@ export default {
     batch: 'Batch',
     batchNo: 'Batch No.',
     serialNo: 'Serial No.',
+    serialTotal: '{n} in total',
+    serialAll: 'All serial numbers ({n})',
     productionDate: 'Production Date',
     expiryDate: 'Expiry Date',
     bizDate: 'Business Date',

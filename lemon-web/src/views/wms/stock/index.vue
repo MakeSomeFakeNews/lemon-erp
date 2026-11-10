@@ -50,7 +50,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: mode === 'detail' ? 1470 + (canCost ? 240 : 0) : 1090 + (canCost ? 240 : 0), y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -181,6 +181,7 @@ const checked = computed({
   set: (v) => (current.value.checked.value = v)
 })
 const visibleColumns = computed(() => current.value.visibleColumns.value)
+const scrollX = computed(() => current.value.scrollX.value)
 const showSearch = ref(true)
 
 const emptyQuery = () => ({

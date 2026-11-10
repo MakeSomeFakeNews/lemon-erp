@@ -71,7 +71,7 @@
           :loading="loading"
           :pagination="pagination"
           :row-selection="rowSelection"
-          :scroll="{ x: 1020, y: '100%' }"
+          :scroll="{ x: scrollX + 32, y: '100%' }"
           @change="onTableChange"
         >
           <template #bodyCell="{ column, record }">
@@ -198,7 +198,7 @@ const columns = [
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'system-user')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'system-user')
 const showSearch = ref(true)
 const showDept = ref(loadPref('user-page:show-dept', true))
 watch(showDept, (v) => savePref('user-page:show-dept', v))

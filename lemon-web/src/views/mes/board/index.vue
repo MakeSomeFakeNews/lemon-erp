@@ -154,7 +154,7 @@
             </div>
           </template>
           <template v-else-if="column.key === 'progress'">
-            <a-progress :percent="Number(record.progress)" size="small" :stroke-color="RISK_COLORS[record.risk] === RISK_COLORS.OVERDUE ? RISK_COLORS.OVERDUE : undefined" />
+            <a-progress :percent="Math.round(Number(record.progress))" size="small" :stroke-color="RISK_COLORS[record.risk] === RISK_COLORS.OVERDUE ? RISK_COLORS.OVERDUE : undefined" />
             <div class="sub-text">{{ $t('mes.board.finished', { done: formatQty(record.finishedQty), qty: formatQty(record.qty), unit: record.unit || '' }) }}</div>
           </template>
           <template v-else-if="column.key === 'remaining'">

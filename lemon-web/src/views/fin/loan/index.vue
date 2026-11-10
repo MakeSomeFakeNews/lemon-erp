@@ -36,7 +36,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1300, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -202,7 +202,7 @@ const columns = [
   { title: t('fin.loan.purpose'), dataIndex: 'purpose', ellipsis: true },
   { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'fin-loan')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-loan')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ keyword: undefined, status: undefined })

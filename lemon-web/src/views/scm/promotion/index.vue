@@ -19,7 +19,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1200, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -231,7 +231,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 100 },
   { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'scm-promotion')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-promotion')
 const activeOnly = ref(false)
 const query = reactive({ keyword: undefined, promoType: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pagePromotion, query, {

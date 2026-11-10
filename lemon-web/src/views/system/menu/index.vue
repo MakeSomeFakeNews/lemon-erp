@@ -41,7 +41,7 @@
         :data-source="treeData"
         :loading="loading"
         :pagination="false"
-        :scroll="{ x: 1100, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
@@ -209,7 +209,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 140 },
   { title: t('common.action.operation'), key: 'action', width: 230, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'system-menu')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'system-menu')
 const showSearch = ref(true)
 const size = ref('middle')
 

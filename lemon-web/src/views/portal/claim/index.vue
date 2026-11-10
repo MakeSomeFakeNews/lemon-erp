@@ -9,7 +9,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 800, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -41,7 +41,7 @@ const columns = [
   { title: t('portal.claim.reason'), dataIndex: 'reason', ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 100 }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'portal-claim')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'portal-claim')
 const { list, loading, size, pagination, load, onTableChange } = useTable(pagePortalClaim, reactive({}))
 onMounted(load)
 </script>

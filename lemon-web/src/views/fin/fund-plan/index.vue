@@ -203,7 +203,7 @@ const chartOption = computed(() => {
   return {
     tooltip: { trigger: 'axis' },
     legend: { data: [t('fin.fundPlan.expectedIn'), t('fin.fundPlan.expectedOut'), t('fin.fundPlan.closing')] },
-    grid: { left: 60, right: 60, top: 40, bottom: 30 },
+    grid: { left: 8, right: 8, top: 40, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: ps.map((p) => p.label) },
     yAxis: [{ type: 'value', name: t('fin.fundPlan.inOut') }, { type: 'value', name: t('fin.fundPlan.balance') }],
     series: [
@@ -215,7 +215,7 @@ const chartOption = computed(() => {
         yAxisIndex: 1,
         smooth: true,
         data: ps.map((p) => Number(p.closing)),
-        markLine: { silent: true, symbol: 'none', data: [{ yAxis: 0 }], lineStyle: { color: '#d03b3b', type: 'dashed' } }
+        markLine: { silent: true, symbol: 'none', label: { show: false }, data: [{ yAxis: 0 }], lineStyle: { color: '#d03b3b', type: 'dashed' } }
       }
     ]
   }

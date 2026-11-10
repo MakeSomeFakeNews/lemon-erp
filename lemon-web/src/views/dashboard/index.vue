@@ -39,8 +39,8 @@
         </span>
         <div class="stat-body">
           <div class="stat-label">{{ c.label }}</div>
-          <div class="stat-value">
-            <template v-if="c.kind === 'MONEY'"><span class="stat-unit">¥</span>{{ money(c.value) }}</template>
+          <div class="stat-value" :data-key="c.key" :title="c.kind === 'MONEY' ? `¥${money(c.value)}` : undefined">
+            <template v-if="c.kind === 'MONEY'"><span class="stat-unit">¥</span>{{ compactKeys.has(c.key) ? shortMoney(c.value) : money(c.value) }}</template>
             <template v-else>{{ Number(c.value) }}<span class="stat-unit suffix">{{ cardMeta[c.key].unit }}</span></template>
           </div>
           <div v-if="c.previous != null" class="stat-sub" :title="`${$t('dashboard.vsLastMonth')} ${trend(c).text}`">
@@ -138,7 +138,7 @@
 
 <script setup>
 import { useI18n } from 'vue-i18n'
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ReloadOutlined, RightOutlined } from '@ant-design/icons-vue'
 import MenuIcon from '@/components/MenuIcon.vue'
@@ -151,6 +151,7 @@ import { currentLocale } from '@/locales'
 import { useUserStore } from '@/store/user'
 import { greeting } from '@/utils/format'
 import { money as formatMoney } from '@/utils/number'
+import { shortMoney } from '@/components/charts/charts'
 import { flattenPages } from '@/utils/menu'
 import { joinPath } from '@/utils/path'
 
@@ -190,6 +191,19 @@ const statColumns = computed(() => {
   return Math.ceil(n / Math.ceil(n / max))
 })
 const money = (v) => formatMoney(v || 0)
+// 金额放不下时（如千万级金额、卡片较窄）改为按万 / 亿显示，悬浮显示完整金额；内容区宽度或数据变化时重新判断
+const compactKeys = ref(new Set())
+function fitValues() {
+  compactKeys.value = new Set()
+  nextTick(() => {
+    const keys = new Set()
+    root.value?.querySelectorAll('.stat-value[data-key]').forEach((el) => {
+      if (el.scrollWidth > el.clientWidth + 1) keys.add(el.dataset.key)
+    })
+    compactKeys.value = keys
+  })
+}
+watch([cards, width, statColumns], fitValues)
 function trend(c) {
   const cur = Number(c.value || 0)
   const prev = Number(c.previous || 0)

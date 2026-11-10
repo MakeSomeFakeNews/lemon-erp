@@ -39,7 +39,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: canCost ? 1670 : 1350, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -114,7 +114,7 @@ const columns = [
   { title: t('wms.flow.partner'), key: 'partnerName', width: 150, ellipsis: true },
   { title: t('wms.flow.operator'), dataIndex: 'createByName', width: 100 }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'wms-flow')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-flow')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({

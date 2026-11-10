@@ -52,10 +52,7 @@
               <div class="sub-text">{{ $t('scm.trade.taxRateN', { rate: Number(record.taxRate) }) }}</div>
             </template>
             <template v-else-if="column.key === 'serialNos'">
-              <template v-if="record.serialNos">
-                <a-tag v-for="sn in splitSerials(record.serialNos)" :key="sn" class="serial-tag">{{ sn }}</a-tag>
-              </template>
-              <span v-else>-</span>
+              <SerialTags :value="record.serialNos" />
             </template>
           </template>
         </a-table>
@@ -66,10 +63,11 @@
 
 <script setup>
 import SubPage from '@/components/SubPage.vue'
+import SerialTags from '@/components/wms/SerialTags.vue'
 import { PrinterOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import { getTrade } from '@/api/scm/trade'
-import { formatQty, locationText, splitSerials } from '@/components/wms/wms'
+import { formatQty, locationText } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney } from './scm'
 import { fcText, isForeign } from '@/components/fin/currency'
 import { materialColumns, printDocs } from '@/utils/print'
@@ -163,8 +161,5 @@ watch(
 }
 .direct-tag {
   margin-left: 6px;
-}
-.serial-tag {
-  margin: 2px 4px 2px 0;
 }
 </style>

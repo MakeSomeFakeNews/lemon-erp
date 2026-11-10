@@ -24,7 +24,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1100, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -256,7 +256,7 @@ const columns = [
   { title: t('common.field.createBy'), dataIndex: 'createByName', width: 100 },
   { title: t('common.action.operation'), key: 'action', width: 260, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'hr-perf')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-perf')
 const emptyQuery = () => ({ keyword: undefined, status: undefined })
 const query = reactive(emptyQuery())
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pagePerf, query)

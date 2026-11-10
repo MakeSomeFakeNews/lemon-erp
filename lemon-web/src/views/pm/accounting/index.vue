@@ -32,7 +32,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1700, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -42,7 +42,7 @@
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="pm_project_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'progress'">
-            <a-progress :percent="Number(record.progress)" size="small" class="bar" />
+            <a-progress :percent="Math.round(Number(record.progress))" size="small" class="bar" />
             <div class="sub-text">{{ $t('pm.detail.planPercent', { p: Number(record.plannedRate) }) }}</div>
           </template>
           <template v-else-if="column.key === 'contract'">
@@ -127,7 +127,7 @@ const columns = [
   { title: t('pm.acc.eac'), key: 'eac', width: 130, align: 'right' },
   { title: t('common.action.operation'), key: 'action', width: 110, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'pm-accounting')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'pm-accounting')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ keyword: undefined, status: undefined })

@@ -88,7 +88,7 @@ const monthlyOption = computed(() => {
   return {
     tooltip: tooltip({ valueFormatter: (v) => (v === null || v === undefined ? '-' : `${v} ${chartUnit.unit}`) }),
     legend: legend(),
-    grid: { left: 56, right: 16, top: 36, bottom: 26 },
+    grid: { left: 8, right: 16, top: 36, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: rows.map((r) => t(`screen.month.${Number(r.month)}`)), ...axisStyle },
     yAxis: { type: 'value', ...axisStyle },
     series: [

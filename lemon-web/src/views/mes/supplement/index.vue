@@ -35,7 +35,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1200, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -156,7 +156,7 @@ const columns = [
   { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true, width: 180 },
   { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'mes-supplement')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-supplement')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ keyword: undefined, status: undefined, reason: undefined })

@@ -69,10 +69,7 @@
               <span v-else class="sub-text">-</span>
             </template>
             <template v-else-if="column.key === 'serialNos'">
-              <template v-if="record.serialNos">
-                <a-tag v-for="sn in splitSerials(record.serialNos)" :key="sn" class="serial-tag">{{ sn }}</a-tag>
-              </template>
-              <span v-else>-</span>
+              <SerialTags :value="record.serialNos" />
             </template>
           </template>
         </a-table>
@@ -94,6 +91,7 @@
 
 <script setup>
 import SubPage from '@/components/SubPage.vue'
+import SerialTags from '@/components/wms/SerialTags.vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Modal, message } from 'ant-design-vue'
@@ -103,7 +101,7 @@ import QtyDiff from './QtyDiff.vue'
 import { confirmCheck, getCheck } from '@/api/wms/check'
 import { useUserStore } from '@/store/user'
 import { money, price, round2 } from '@/utils/number'
-import { formatQty, locationText, splitSerials } from './wms'
+import { formatQty, locationText } from './wms'
 
 import { WmsDocStatus } from '@/constants/enums'
 const props = defineProps({
@@ -211,8 +209,5 @@ defineExpose({ reload: load })
 }
 .negative {
   color: #cf1322;
-}
-.serial-tag {
-  margin: 2px 4px 2px 0;
 }
 </style>

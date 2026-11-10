@@ -2,8 +2,8 @@ import { del, get, post, put } from '@/utils/request'
 
 /** 我参与的、未完成的项目 [{ id, code, name, status }] */
 export const myProjects = () => get('/pm/project/options', { mine: true })
-/** 项目任务树（需要项目、任务、工时查看等权限之一；没有权限时静默失败，改用我的任务） */
-export const taskTree = (projectId) => get('/pm/task', { projectId }, { silent: true })
+/** 填报工时选择任务：本人参与的项目的任务树（项目成员即可，不需要项目权限；失败时静默，改用我的任务） */
+export const taskTree = (projectId) => get('/pm/my/timesheet/tasks', { projectId }, { silent: true })
 /** 分配给我的任务（登录即可） */
 export const myTasks = () => get('/pm/my/tasks', null, { silent: true })
 

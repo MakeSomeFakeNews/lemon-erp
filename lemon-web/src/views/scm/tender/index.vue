@@ -18,7 +18,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1100, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -317,7 +317,7 @@ const columns = [
   { title: t('scm.tender.creator'), dataIndex: 'createByName', width: 110 },
   { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'scm-tender')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-tender')
 const query = reactive({ status: undefined, keyword: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageTender, query)
 onMounted(load)

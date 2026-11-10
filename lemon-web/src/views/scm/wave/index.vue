@@ -14,7 +14,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1000, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -149,7 +149,7 @@ const columns = [
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
   { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'scm-wave')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-wave')
 const query = reactive({ status: undefined, warehouseId: undefined, keyword: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageWave, query)
 onMounted(() => {

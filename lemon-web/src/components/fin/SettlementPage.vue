@@ -25,7 +25,7 @@
             :loading="loading"
             :pagination="pagination"
             :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: !!r.voucherId || r.status !== ApproveStatus.APPROVED }) }"
-            :scroll="{ x: 1260 }"
+            :scroll="{ x: scrollX }"
             @change="onTableChange"
           >
             <template #bodyCell="{ column, record }">
@@ -188,17 +188,19 @@ const CONF = {
 const conf = CONF[props.kind]
 useDict('fin_settle_method', 'fin_bill_source', 'sys_approve_status')
 
+// 列宽合计 + 勾选列不超过 1440 宽屏幕的内容区（约 1140px），右侧固定的操作列不遮挡其他列
 const columns = [
-  { title: t('fin.settlementPage.no'), key: 'settleNo', width: 170 },
-  { title: conf.partnerLabel, dataIndex: 'partnerName', width: 220, ellipsis: true },
-  { title: t('common.field.date'), dataIndex: 'settleDate', width: 110 },
-  { title: t('common.field.amount'), key: 'amount', width: 170, align: 'right' },
-  { title: t('fin.settlementPage.account'), dataIndex: 'accountName', width: 150 },
-  { title: t('fin.settlementPage.methodShort'), key: 'method', width: 110 },
-  { title: t('fin.settlementPage.voucher'), key: 'voucher', width: 120 },
-  { title: t('fin.settlementPage.createBy'), dataIndex: 'createByName', width: 120 },
-  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
+  { title: t('fin.settlementPage.no'), key: 'settleNo', width: 160 },
+  { title: conf.partnerLabel, dataIndex: 'partnerName', width: 180, ellipsis: true },
+  { title: t('common.field.date'), dataIndex: 'settleDate', width: 100 },
+  { title: t('common.field.amount'), key: 'amount', width: 150, align: 'right' },
+  { title: t('fin.settlementPage.account'), dataIndex: 'accountName', width: 120, ellipsis: true },
+  { title: t('fin.settlementPage.methodShort'), key: 'method', width: 90 },
+  { title: t('fin.settlementPage.voucher'), key: 'voucher', width: 100 },
+  { title: t('fin.settlementPage.createBy'), dataIndex: 'createByName', width: 80, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 120, fixed: 'right' }
 ]
+const scrollX = columns.reduce((sum, c) => sum + c.width, 0) + 32
 const tab = ref('docs')
 const query = reactive({ partnerId: undefined, keyword: undefined })
 const { list, loading, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable(

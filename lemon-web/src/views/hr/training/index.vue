@@ -31,7 +31,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1400, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -226,7 +226,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'hr_training_status' },
   { title: t('common.action.operation'), key: 'action', width: 280, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'hr-training')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-training')
 
 const emptyQuery = () => ({ keyword: undefined, category: undefined, status: undefined, year: undefined })
 const query = reactive(emptyQuery())

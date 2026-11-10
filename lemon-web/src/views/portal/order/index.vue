@@ -13,7 +13,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1000, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -172,7 +172,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 100 },
   { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'portal-order')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'portal-order')
 const query = reactive({ pending: true, keyword: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pagePortalOrder, query)
 watch(tab, (t) => {

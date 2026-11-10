@@ -13,7 +13,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1000, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -91,7 +91,7 @@ const columns = [
   { title: t('scm.channel.reported'), key: 'time', width: 180 },
   { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'scm-channel')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-channel')
 const query = reactive({ keyword: undefined, period: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageChannelReport, query)
 onMounted(load)

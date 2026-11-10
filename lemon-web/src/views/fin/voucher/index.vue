@@ -64,7 +64,7 @@
         :loading="loading"
         :pagination="pagination"
         :row-selection="rowSelection"
-        :scroll="{ x: 1250, y: '100%' }"
+        :scroll="{ x: scrollX + 32, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -151,7 +151,7 @@ const columns = [
   { title: t('fin.voucher.people'), key: 'people', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'fin-voucher')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-voucher')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ period: currentPeriod(), status: undefined, sourceType: undefined, keyword: undefined, accountId: undefined })

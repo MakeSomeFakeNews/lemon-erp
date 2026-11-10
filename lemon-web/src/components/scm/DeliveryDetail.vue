@@ -113,7 +113,7 @@
                     :source="serialSource(record, item)"
                     :placeholder="$t('scm.delivery.selectOrScan')"
                   />
-                  <span v-else>{{ record.serialNos || '-' }}</span>
+                  <SerialTags v-else :value="record.serialNos" />
                 </template>
                 <span v-else class="sub-text">-</span>
               </template>
@@ -162,6 +162,7 @@
 
 <script setup>
 import SubPage from '@/components/SubPage.vue'
+import SerialTags from '@/components/wms/SerialTags.vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'

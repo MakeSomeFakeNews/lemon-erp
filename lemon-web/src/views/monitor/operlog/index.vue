@@ -67,7 +67,7 @@
         :loading="loading"
         :pagination="pagination"
         :row-selection="rowSelection"
-        :scroll="{ x: 1200, y: '100%' }"
+        :scroll="{ x: scrollX + 32, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -180,7 +180,7 @@ const columns = [
   { title: t('monitor.operlog.operTime'), dataIndex: 'operTime', width: 180 },
   { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns)
+const { checked, visibleColumns, scrollX } = useColumns(columns)
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ title: undefined, operator: undefined, operType: undefined, status: undefined, range: [] })

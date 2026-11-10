@@ -141,17 +141,17 @@ const kind = ref(InvoiceKind.OUTPUT)
 const conf = computed(() => KINDS[kind.value])
 
 const columns = computed(() => [
-  { title: t('fin.invoice.invoiceNo'), key: 'invoiceNo', width: 160 },
-  { title: t('common.field.type'), key: 'invoiceType', width: 140 },
-  { title: conf.value.partnerLabel, dataIndex: 'partnerName', width: 200, ellipsis: true },
-  { title: t('fin.invoice.invoiceDate'), dataIndex: 'invoiceDate', width: 120 },
-  { title: t('fin.invoice.amount'), key: 'amount', width: 140, align: 'right' },
-  { title: t('fin.invoice.taxAmount'), key: 'taxAmount', width: 120, align: 'right' },
-  { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('fin.invoice.match'), key: 'matched', width: 170 },
-  ...(kind.value === InvoiceKind.INPUT ? [{ title: t('fin.invoice.certifyPeriod'), key: 'certify', width: 140 }] : []),
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 200, ellipsis: true },
-  { title: t('fin.invoice.registeredBy'), dataIndex: 'createByName', width: 120 },
+  { title: t('fin.invoice.invoiceNo'), key: 'invoiceNo', width: 190 },
+  { title: t('common.field.type'), key: 'invoiceType', width: 130 },
+  { title: conf.value.partnerLabel, dataIndex: 'partnerName', width: 150, ellipsis: true },
+  { title: t('fin.invoice.invoiceDate'), dataIndex: 'invoiceDate', width: 100 },
+  { title: t('fin.invoice.amount'), key: 'amount', width: 120, align: 'right' },
+  { title: t('fin.invoice.taxAmount'), key: 'taxAmount', width: 100, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 70 },
+  { title: t('fin.invoice.match'), key: 'matched', width: 120 },
+  ...(kind.value === InvoiceKind.INPUT ? [{ title: t('fin.invoice.certifyPeriod'), key: 'certify', width: 110 }] : []),
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 120, ellipsis: true },
+  { title: t('fin.invoice.registeredBy'), dataIndex: 'createByName', width: 80 },
   { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
 ])
 // 进项发票带勾选列

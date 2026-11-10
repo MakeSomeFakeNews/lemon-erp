@@ -37,7 +37,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1950, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -96,7 +96,7 @@ const COLUMNS = [
   q(t('wms.inout.otherOut'), 'otherOut'),
   q(t('wms.inout.closeQty'), 'closeQty', { bold: true, fixed: 'right' })
 ]
-const { checked, visibleColumns } = useColumns(COLUMNS, 'wms-inout')
+const { checked, visibleColumns, scrollX } = useColumns(COLUMNS, 'wms-inout')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({

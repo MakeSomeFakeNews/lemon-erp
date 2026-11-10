@@ -8,6 +8,8 @@ export default {
     batch: '批次',
     batchNo: '批次号',
     serialNo: '序列号',
+    serialTotal: '共 {n} 个',
+    serialAll: '全部序列号（{n} 个）',
     productionDate: '生产日期',
     expiryDate: '有效期至',
     bizDate: '业务日期',

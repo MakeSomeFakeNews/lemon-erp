@@ -44,7 +44,7 @@
         :loading="loading"
         :pagination="pagination"
         :row-selection="rowSelection"
-        :scroll="{ x: 1200, y: '100%' }"
+        :scroll="{ x: scrollX + 32, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -192,7 +192,7 @@ const columns = [
   { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'workflow-model')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'workflow-model')
 const showSearch = ref(true)
 
 const query = reactive({ name: undefined, category: undefined })

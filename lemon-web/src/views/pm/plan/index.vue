@@ -7,7 +7,7 @@
           <DictTag type="pm_project_status" :value="project.status" />
           <div class="summary">
             <span class="label">{{ $t('pm.acc.completion') }}</span>
-            <a-progress :percent="Number(project.progress)" size="small" class="progress" />
+            <a-progress :percent="Math.round(Number(project.progress))" size="small" class="progress" />
             <span class="sub-text">
               {{ $t('pm.gantt.plan') }} {{ project.planStart }} ~ {{ project.planEnd }} · {{ $t('pm.common.tasks') }} {{ project.doneTaskCount }} / {{ project.taskCount }}
               <span v-if="project.overdueTaskCount" class="danger">· {{ $t('pm.common.overdue') }} {{ project.overdueTaskCount }}</span>
@@ -67,9 +67,9 @@
                     </div>
                   </div>
                 </template>
-                <a-progress :percent="record.progress" size="small" class="clickable" :status="record.overdue ? 'exception' : undefined" />
+                <a-progress :percent="Math.round(Number(record.progress))" size="small" class="clickable" :status="record.overdue ? 'exception' : undefined" />
               </a-popover>
-              <a-progress v-else :percent="record.progress" size="small" :status="record.overdue ? 'exception' : undefined" />
+              <a-progress v-else :percent="Math.round(Number(record.progress))" size="small" :status="record.overdue ? 'exception' : undefined" />
             </template>
             <template v-else-if="column.key === 'status'">
               <DictTag type="pm_task_status" :value="record.status" />

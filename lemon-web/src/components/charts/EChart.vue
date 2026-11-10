@@ -9,6 +9,7 @@ import { BarChart, FunnelChart, GaugeChart, LineChart, PieChart, ScatterChart } 
 import { DatasetComponent, GridComponent, LegendComponent, MarkLineComponent, TitleComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { useAppStore } from '@/store/app'
+import { axisNumber } from '@/components/charts/charts'
 
 echarts.use([BarChart, LineChart, PieChart, FunnelChart, ScatterChart, GaugeChart, GridComponent, TooltipComponent, LegendComponent,
   TitleComponent, DatasetComponent, MarkLineComponent, CanvasRenderer])
@@ -16,7 +17,7 @@ echarts.use([BarChart, LineChart, PieChart, FunnelChart, ScatterChart, GaugeChar
 /**
  * ECharts 图表：option 变化时更新，随容器大小自适应，跟随系统亮色 / 暗色主题。
  * 只注册了柱状图、折线图、饼图、漏斗图、散点图、仪表盘，需要其他图表时在这里添加
- * - option：ECharts 配置
+ * - option：ECharts 配置；数值轴没有指定 formatter 时按万 / 亿显示刻度，网格建议 containLabel: true（不要写死左右边距给刻度留位置）
  * - height：高度，默认 300px
  * - dark：强制暗色（数据大屏），不传时跟随系统主题
  * - @click(params)：点击图形（钻取）
@@ -38,8 +39,10 @@ function themed(option) {
   const dark = props.dark ?? app.dark
   const text = dark ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)'
   const line = dark ? (props.dark ? 'rgba(80, 160, 255, 0.15)' : '#303033') : '#e8e8e8'
-  const axis = (a) => (a ? [].concat(a).map((x) => ({ axisLabel: { color: text }, axisLine: { lineStyle: { color: line } },
-    splitLine: { lineStyle: { color: line } }, ...x })) : a)
+  // 数值轴默认按万 / 亿（英文 K / M / B）显示刻度，金额大时刻度不被截断；指定了 formatter 的不变
+  const label = (x) => (x.type === 'value' && !x.axisLabel?.formatter ? { formatter: axisNumber } : {})
+  const axis = (a) => (a ? [].concat(a).map((x) => ({ axisLine: { lineStyle: { color: line } },
+    splitLine: { lineStyle: { color: line } }, ...x, axisLabel: { color: text, ...label(x), ...x.axisLabel } })) : a)
   return {
     color: ['#1677ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2', '#eb2f96', '#fa8c16', '#2f54eb', '#a0d911'],
     backgroundColor: 'transparent',

@@ -21,7 +21,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="{ pageSize: 20, showTotal: (total) => $t('common.table.total', { total }), hideOnSinglePage: true }"
-        :scroll="{ x: 900, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'username'">
@@ -78,7 +78,7 @@ const columns = [
   { title: t('monitor.online.loginTime'), dataIndex: 'loginTime', width: 180 },
   { title: t('common.action.operation'), key: 'action', width: 120, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns)
+const { checked, visibleColumns, scrollX } = useColumns(columns)
 const size = ref('middle')
 
 const username = ref('')

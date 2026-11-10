@@ -39,7 +39,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1600, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -254,7 +254,7 @@ const columns = [
   { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true },
   { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'crm-contract')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-contract')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ keyword: undefined, status: undefined, customerId: undefined })

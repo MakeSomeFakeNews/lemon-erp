@@ -29,7 +29,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1450, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -175,7 +175,7 @@ const columns = [
   { title: t('crm.campaign.col.roi'), key: 'roi', width: 90, align: 'right' },
   { title: t('common.action.operation'), key: 'action', width: 200, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'crm-campaign')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-campaign')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ keyword: undefined, type: undefined, status: undefined })

@@ -14,7 +14,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="false"
-        :scroll="{ x: 1200, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
@@ -113,7 +113,7 @@ const columns = [
   { title: t('monitor.job.lastMessage'), dataIndex: 'lastMessage', ellipsis: true },
   { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns)
+const { checked, visibleColumns, scrollX } = useColumns(columns)
 const size = ref('middle')
 const list = ref([])
 const loading = ref(false)

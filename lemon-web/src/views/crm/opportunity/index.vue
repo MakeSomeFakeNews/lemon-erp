@@ -68,7 +68,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1350, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -270,7 +270,7 @@ const columns = [
   { title: t('crm.common.f.salesOrder'), key: 'order', width: 150 },
   { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'crm-opportunity')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-opportunity')
 const showSearch = ref(true)
 const view = ref('board')
 

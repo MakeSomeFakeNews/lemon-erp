@@ -50,7 +50,7 @@
         :loading="loading"
         :pagination="pagination"
         :row-selection="rowSelection"
-        :scroll="{ x: 1100, y: '100%' }"
+        :scroll="{ x: scrollX + 32, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -168,7 +168,7 @@ const columns = [
   { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
   { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'wms-location')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-location')
 const showSearch = ref(true)
 
 // 从仓库管理「库位」进入时带上仓库

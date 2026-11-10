@@ -15,7 +15,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="false"
-        :scroll="{ x: 800, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
@@ -105,7 +105,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 90 },
   { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'system-tenant-package')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'system-tenant-package')
 const size = ref('middle')
 const keyword = ref('')
 const list = ref([])

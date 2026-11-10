@@ -18,7 +18,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1100, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -218,7 +218,7 @@ const columns = [
   { title: t('mes.ecn.initiator'), dataIndex: 'createByName', width: 100 },
   { title: t('common.action.operation'), key: 'action', width: 80, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'mes-ecn')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-ecn')
 const query = reactive({ status: undefined, keyword: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageEcn, query)
 

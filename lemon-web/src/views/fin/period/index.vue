@@ -246,6 +246,9 @@ function openVoucher(id) {
   margin-bottom: 12px;
 }
 .check-panel {
+  flex: none;
+  max-height: 45%;
+  overflow-y: auto;
   margin-bottom: 16px;
   padding: 12px;
   border: 1px solid var(--app-border, #f0f0f0);

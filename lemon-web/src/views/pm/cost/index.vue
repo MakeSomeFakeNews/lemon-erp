@@ -188,7 +188,7 @@ const budgetColumns = [
 const budgetChart = computed(() => ({
   tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
   legend: { data: [t('pm.common.budget'), t('pm.common.actual')], top: 0 },
-  grid: { left: 60, right: 16, top: 36, bottom: 30 },
+  grid: { left: 8, right: 16, top: 36, bottom: 8, containLabel: true },
   xAxis: { type: 'category', data: budgets.value.map((b) => typeLabel(b.costType)) },
   yAxis: { type: 'value', axisLabel: { formatter: shortMoney } },
   series: [
@@ -208,7 +208,7 @@ const budgetChart = computed(() => ({
 const monthlyChart = computed(() => ({
   tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
   legend: { data: [t('pm.common.labor'), t('pm.common.expense')], top: 0 },
-  grid: { left: 60, right: 16, top: 36, bottom: 30 },
+  grid: { left: 8, right: 16, top: 36, bottom: 8, containLabel: true },
   xAxis: { type: 'category', data: monthly.value.map((m) => periodLabel(m.period)) },
   yAxis: { type: 'value', axisLabel: { formatter: shortMoney } },
   series: [

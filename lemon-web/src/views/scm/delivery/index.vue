@@ -39,7 +39,7 @@
         :loading="loading"
         :pagination="pagination"
         :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== DeliveryStatus.PENDING || !!r.waveNo }) }"
-        :scroll="{ x: 1400, y: '100%' }"
+        :scroll="{ x: scrollX + 32, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -115,7 +115,7 @@ const columns = [
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
   { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'scm-delivery')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-delivery')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ keyword: undefined, status: undefined, warehouseId: undefined })

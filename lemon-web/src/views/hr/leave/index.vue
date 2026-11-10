@@ -37,7 +37,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1300, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -132,7 +132,7 @@ const columns = [
   { title: t('hr.leave.approve'), key: 'approve', width: 200 },
   { title: t('common.action.operation'), key: 'action', width: 80, fixed: 'right' }
 ]
-const { checked, visibleColumns } = useColumns(columns, 'hr-leave')
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-leave')
 
 const emptyQuery = () => ({ keyword: undefined, kind: undefined, type: undefined, status: undefined, range: undefined })
 const query = reactive(emptyQuery())

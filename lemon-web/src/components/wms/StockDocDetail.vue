@@ -81,10 +81,7 @@
             </template>
             <template v-else-if="column.key === 'costPrice'">{{ record.costPrice == null ? '-' : price(record.costPrice) }}</template>
             <template v-else-if="column.key === 'serialNos'">
-              <template v-if="record.serialNos">
-                <a-tag v-for="sn in splitSerials(record.serialNos)" :key="sn" class="serial-tag">{{ sn }}</a-tag>
-              </template>
-              <span v-else>-</span>
+              <SerialTags :value="record.serialNos" />
             </template>
           </template>
         </a-table>
@@ -129,6 +126,7 @@
 
 <script setup>
 import SubPage from '@/components/SubPage.vue'
+import SerialTags from '@/components/wms/SerialTags.vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Modal, message } from 'ant-design-vue'
@@ -136,7 +134,7 @@ import { CheckOutlined, EditOutlined, InboxOutlined, PrinterOutlined, RollbackOu
 import DictTag from '@/components/DictTag.vue'
 import { confirmDoc, getDoc, receiveTransfer, reverseDoc } from '@/api/wms/doc'
 import { useUserStore } from '@/store/user'
-import { DOC_KINDS, canReverse, formatQty, locationText, negativeClass, splitSerials } from './wms'
+import { DOC_KINDS, canReverse, formatQty, locationText, negativeClass } from './wms'
 import { materialColumns, printDocs } from '@/utils/print'
 import { printName } from '@/utils/printTemplates'
 import { useDict } from '@/composables/useDict'
@@ -301,8 +299,5 @@ defineExpose({ reload: load })
 .sub-text {
   color: var(--app-text-3);
   font-size: 12px;
-}
-.serial-tag {
-  margin: 2px 4px 2px 0;
 }
 </style>

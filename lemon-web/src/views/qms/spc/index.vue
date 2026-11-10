@@ -133,7 +133,7 @@ function chartOption(field, center, ucl, lcl) {
         return `${p.inspNo}<br/>${p.date}<br/>${t('qms.spc.tooltip', { label, v: Number(p[field]) })}`
       }
     },
-    grid: { left: 56, right: 24, top: 24, bottom: 28 },
+    grid: { left: 8, right: 24, top: 24, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: points.map((p) => p.date) },
     // 坐标范围包含控制限，否则超出数据范围的控制限不显示
     yAxis: { type: 'value', ...axisRange(points.map((p) => Number(p[field])).concat([Number(ucl), Number(lcl)])) },
