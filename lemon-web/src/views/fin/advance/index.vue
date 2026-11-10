@@ -29,7 +29,7 @@
             :data-source="list"
             :loading="loading"
             :pagination="pagination"
-            :scroll="{ x: 1250 }"
+            :scroll="{ x: scrollX }"
             @change="onTableChange"
           >
             <template #bodyCell="{ column, record }">
@@ -204,6 +204,7 @@ import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import { addAdvance, applyAdvance, deleteAdvance, getAdvance, pageAdvance, unsettledBills } from '@/api/fin'
+import { sumWidth } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -233,16 +234,17 @@ const curPrefix = (a) => (isForeign(a?.currency) ? `${a.currency} ` : '¥')
 const currencyList = useCurrencies()
 
 const columns = computed(() => [
-  { title: t('fin.advance.docNo'), key: 'advanceNo', width: 160 },
-  { title: conf.value.partnerLabel, dataIndex: 'partnerName', width: 200, ellipsis: true },
+  { title: t('fin.advance.docNo'), key: 'advanceNo', width: 150 },
+  { title: conf.value.partnerLabel, dataIndex: 'partnerName', width: 170, ellipsis: true },
   { title: t('common.field.date'), dataIndex: 'advanceDate', width: 110 },
-  { title: t('fin.advance.accountMethod'), key: 'account', width: 170 },
-  { title: t('common.field.amount'), key: 'amount', width: 130, align: 'right' },
-  { title: t('fin.advance.used'), key: 'used', width: 130, align: 'right' },
+  { title: t('fin.advance.accountMethod'), key: 'account', width: 150 },
+  { title: t('common.field.amount'), key: 'amount', width: 120, align: 'right' },
+  { title: t('fin.advance.used'), key: 'used', width: 120, align: 'right' },
   { title: t('fin.advance.voucher'), key: 'voucher', width: 110 },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
   { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
 ])
+const scrollX = computed(() => sumWidth(columns.value))
 const query = reactive({ kind: SettleKind.RECEIPT, partnerId: undefined, keyword: undefined, onlyOpen: false })
 const { list, loading, pagination, load, search, onTableChange } = useTable(pageAdvance, query)
 onMounted(load)

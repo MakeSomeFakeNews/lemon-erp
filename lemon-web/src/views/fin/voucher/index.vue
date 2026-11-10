@@ -142,14 +142,14 @@ const userStore = useUserStore()
 const dict = useDict('fin_voucher_status', 'fin_voucher_source')
 
 const columns = [
-  { title: t('fin.voucher.voucherNo'), key: 'voucherNo', width: 140 },
-  { title: t('common.field.date'), dataIndex: 'voucherDate', width: 110 },
-  { title: t('fin.voucher.summary'), dataIndex: 'summary', width: 260, ellipsis: true },
-  { title: t('common.field.amount'), key: 'amount', width: 140, align: 'right' },
-  { title: t('common.field.status'), key: 'status', width: 150, dict: 'fin_voucher_status' },
-  { title: t('fin.voucher.source'), key: 'source', width: 160, dict: 'fin_voucher_source' },
-  { title: t('fin.voucher.people'), key: 'people', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }
+  { title: t('fin.voucher.voucherNo'), key: 'voucherNo', width: 130 },
+  { title: t('common.field.date'), dataIndex: 'voucherDate', width: 100 },
+  { title: t('fin.voucher.summary'), dataIndex: 'summary', width: 200, ellipsis: true },
+  { title: t('common.field.amount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 140, dict: 'fin_voucher_status' },
+  { title: t('fin.voucher.source'), key: 'source', width: 140, dict: 'fin_voucher_source' },
+  { title: t('fin.voucher.people'), key: 'people', width: 120 },
+  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-voucher')
 const showSearch = ref(true)

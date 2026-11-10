@@ -260,15 +260,15 @@ const openStageOptions = computed(() =>
 )
 
 const columns = [
-  { title: t('crm.common.f.opportunity'), key: 'name', width: 220 },
-  { title: t('crm.common.f.customer'), key: 'customer', width: 200 },
-  { title: t('crm.common.f.stage'), key: 'stage', width: 110, dict: 'crm_opp_stage' },
-  { title: t('crm.common.f.amountExpected'), key: 'amount', width: 140, align: 'right' },
-  { title: t('crm.common.f.expectedDate'), key: 'expectedDate', width: 160 },
-  { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 100 },
-  { title: t('crm.common.f.source'), key: 'source', width: 140, dict: 'crm_source' },
-  { title: t('crm.common.f.salesOrder'), key: 'order', width: 150 },
-  { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
+  { title: t('crm.common.f.opportunity'), key: 'name', width: 170 },
+  { title: t('crm.common.f.customer'), key: 'customer', width: 140 },
+  { title: t('crm.common.f.stage'), key: 'stage', width: 90, dict: 'crm_opp_stage' },
+  { title: t('crm.common.f.amountExpected'), key: 'amount', width: 110, align: 'right' },
+  { title: t('crm.common.f.expectedDate'), key: 'expectedDate', width: 150 },
+  { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 80 },
+  { title: t('crm.common.f.source'), key: 'source', width: 100, dict: 'crm_source' },
+  { title: t('crm.common.f.salesOrder'), key: 'order', width: 130 },
+  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-opportunity')
 const showSearch = ref(true)

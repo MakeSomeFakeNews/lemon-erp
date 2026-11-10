@@ -101,12 +101,12 @@ const bizType = ref()
 const list = ref([])
 const loading = ref(false)
 const columns = [
-  { title: t('system.customField.bizType'), key: 'bizType', width: 140 },
-  { title: t('system.customField.label'), dataIndex: 'label', width: 140 },
+  { title: t('system.customField.bizType'), key: 'bizType', width: 130 },
+  { title: t('system.customField.label'), dataIndex: 'label', width: 130 },
   { title: t('system.customField.fieldKey'), dataIndex: 'fieldKey', width: 130 },
   { title: t('common.field.type'), key: 'fieldType', width: 100 },
-  { title: t('system.customField.options'), dataIndex: 'options', width: 220, ellipsis: true },
-  { title: t('system.customField.flags'), key: 'flags', width: 190 },
+  { title: t('system.customField.options'), dataIndex: 'options', width: 170, ellipsis: true },
+  { title: t('system.customField.flags'), key: 'flags', width: 170 },
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
   { title: t('common.field.status'), key: 'status', width: 90 },
   { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }

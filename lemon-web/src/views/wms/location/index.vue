@@ -160,12 +160,12 @@ const dict = useDict('sys_common_status', 'wms_location_type')
 const columns = [
   { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 160 },
   { title: t('wms.location.code'), dataIndex: 'code', width: 140 },
-  { title: t('wms.location.name'), dataIndex: 'name', width: 160 },
+  { title: t('wms.location.name'), dataIndex: 'name', width: 150 },
   { title: t('wms.location.zone'), dataIndex: 'zone', width: 100 },
   { title: t('common.field.type'), key: 'type', width: 100 },
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true },
   { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-location')

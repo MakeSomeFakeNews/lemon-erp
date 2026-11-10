@@ -112,16 +112,18 @@ const props = defineProps({
 })
 const dict = useDict('wf_status', 'wf_category')
 
+// 管理页多一列发起人和终止按钮：其他列收窄，1440 宽屏幕下不需要横向滚动
+const isManage = props.manage
 const columns = [
-  { title: t('workflow.list.title'), key: 'name', width: 220, ellipsis: true },
-  { title: t('workflow.list.process'), dataIndex: 'processName', width: 140, ellipsis: true },
-  { title: t('workflow.list.category'), key: 'category', width: 100 },
-  ...(props.manage ? [{ title: t('workflow.list.initiator'), dataIndex: 'startUserName', width: 120 }] : []),
-  { title: t('common.field.status'), key: 'status', width: 110 },
-  { title: t('workflow.list.currentNode'), key: 'currentNodes', width: 140, ellipsis: true },
-  { title: t('workflow.list.startTime'), dataIndex: 'startTime', width: 170 },
-  { title: t('workflow.list.endTime'), dataIndex: 'endTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: props.manage ? 170 : 100, fixed: 'right' }
+  { title: t('workflow.list.title'), key: 'name', width: isManage ? 160 : 220, ellipsis: true },
+  { title: t('workflow.list.process'), dataIndex: 'processName', width: isManage ? 110 : 140, ellipsis: true },
+  { title: t('workflow.list.category'), key: 'category', width: isManage ? 90 : 100 },
+  ...(isManage ? [{ title: t('workflow.list.initiator'), dataIndex: 'startUserName', width: 100 }] : []),
+  { title: t('common.field.status'), key: 'status', width: isManage ? 90 : 110 },
+  { title: t('workflow.list.currentNode'), key: 'currentNodes', width: isManage ? 120 : 140, ellipsis: true },
+  { title: t('workflow.list.startTime'), dataIndex: 'startTime', width: 160 },
+  { title: t('workflow.list.endTime'), dataIndex: 'endTime', width: 160 },
+  { title: t('common.action.operation'), key: 'action', width: isManage ? 150 : 90, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, props.storageKey)
 const showSearch = ref(true)

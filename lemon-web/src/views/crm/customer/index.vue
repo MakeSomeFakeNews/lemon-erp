@@ -230,15 +230,15 @@ const { t } = useI18n()
 const dict = useDict('scm_customer_level', 'crm_customer_stage', 'crm_industry', 'crm_source', 'scm_region')
 
 const columns = [
-  { title: t('crm.common.f.customer'), key: 'name', width: 240 },
-  { title: t('crm.common.f.stage'), key: 'stage', width: 110, dict: 'crm_customer_stage' },
-  { title: t('crm.common.f.industry'), key: 'industry', width: 110, dict: 'crm_industry' },
-  { title: t('crm.common.f.owner'), key: 'owner', width: 110 },
-  { title: t('crm.common.f.contact'), key: 'contact', width: 150 },
-  { title: t('crm.customer.col.openOpp'), key: 'opp', width: 150, align: 'right' },
-  { title: t('crm.common.f.region'), key: 'region', width: 110, dict: 'scm_region' },
-  { title: t('crm.customer.col.follow'), key: 'follow', width: 220 },
-  { title: t('common.action.operation'), key: 'action', width: 260, fixed: 'right' }
+  { title: t('crm.common.f.customer'), key: 'name', width: 180 },
+  { title: t('crm.common.f.stage'), key: 'stage', width: 90, dict: 'crm_customer_stage' },
+  { title: t('crm.common.f.industry'), key: 'industry', width: 90, dict: 'crm_industry' },
+  { title: t('crm.common.f.owner'), key: 'owner', width: 80 },
+  { title: t('crm.common.f.contact'), key: 'contact', width: 110 },
+  { title: t('crm.customer.col.openOpp'), key: 'opp', width: 100, align: 'right' },
+  { title: t('crm.common.f.region'), key: 'region', width: 70, dict: 'scm_region' },
+  { title: t('crm.customer.col.follow'), key: 'follow', width: 170 },
+  { title: t('common.action.operation'), key: 'action', width: 210, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-customer')
 const showSearch = ref(true)

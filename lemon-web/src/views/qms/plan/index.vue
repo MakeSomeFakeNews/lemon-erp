@@ -223,9 +223,9 @@ const METHODS = [
 const columns = [
   { title: t('qms.plan.name'), key: 'name', width: 220 },
   { title: t('mes.inspection.type'), key: 'type', width: 130 },
-  { title: t('qms.plan.scope'), key: 'scope', width: 240 },
-  { title: t('qms.plan.sampling'), key: 'sampling', width: 240 },
-  { title: t('mes.inspection.item'), dataIndex: 'itemCount', width: 130, align: 'right' },
+  { title: t('qms.plan.scope'), key: 'scope', width: 220 },
+  { title: t('qms.plan.sampling'), key: 'sampling', width: 220 },
+  { title: t('mes.inspection.item'), dataIndex: 'itemCount', width: 110, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 90 },
   { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
 ]

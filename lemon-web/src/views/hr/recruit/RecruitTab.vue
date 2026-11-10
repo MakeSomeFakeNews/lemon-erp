@@ -11,7 +11,7 @@
     :data-source="list"
     :loading="loading"
     :pagination="pagination"
-    :scroll="{ x: 1200, y: '100%' }"
+    :scroll="{ x: recruitScrollX, y: '100%' }"
     @change="onTableChange"
   >
     <template #bodyCell="{ column, record }">
@@ -71,6 +71,7 @@ import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { approveRecruit, closeRecruit, deleteRecruit, pageRecruit, withdrawRecruit } from '@/api/hr'
+import { sumWidth } from '@/composables/useColumns'
 import { useAction } from '@/composables/useAction'
 import { useTable } from '@/composables/useTable'
 import { t } from '@/locales'
@@ -85,16 +86,17 @@ const props = defineProps({ query: { type: Object, required: true } })
 const emit = defineEmits(['view-candidates', 'add-candidate', 'options-changed'])
 
 const recruitColumns = [
-  { title: t('hr.recruit.position'), key: 'title', width: 220, fixed: 'left' },
-  { title: t('hr.recruit.deptPosition'), key: 'dept', width: 190 },
-  { title: t('hr.recruit.progress'), key: 'progress', width: 150 },
-  { title: t('hr.recruit.candidate'), key: 'candidates', width: 100 },
-  { title: t('hr.recruit.salaryRange'), dataIndex: 'salaryRange', width: 120 },
-  { title: t('hr.recruit.deadline'), dataIndex: 'deadline', width: 130 },
-  { title: t('common.field.status'), key: 'status', width: 110 },
-  { title: t('hr.recruit.applicant'), dataIndex: 'createByName', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: 230, fixed: 'right' }
+  { title: t('hr.recruit.position'), key: 'title', width: 190, fixed: 'left' },
+  { title: t('hr.recruit.deptPosition'), key: 'dept', width: 160 },
+  { title: t('hr.recruit.progress'), key: 'progress', width: 140 },
+  { title: t('hr.recruit.candidate'), key: 'candidates', width: 90 },
+  { title: t('hr.recruit.salaryRange'), dataIndex: 'salaryRange', width: 110 },
+  { title: t('hr.recruit.deadline'), dataIndex: 'deadline', width: 110 },
+  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('hr.recruit.applicant'), dataIndex: 'createByName', width: 90 },
+  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
 ]
+const recruitScrollX = sumWidth(recruitColumns)
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageRecruit, props.query)
 const formRef = ref()
 

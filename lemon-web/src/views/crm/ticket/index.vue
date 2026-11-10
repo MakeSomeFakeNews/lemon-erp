@@ -188,15 +188,15 @@ const { t } = useI18n()
 const dict = useDict('crm_ticket_type', 'crm_ticket_priority', 'crm_ticket_status', 'crm_ticket_channel')
 
 const columns = [
-  { title: t('crm.common.f.ticket'), key: 'title', width: 240 },
-  { title: t('crm.common.f.customer'), key: 'customer', width: 200 },
-  { title: t('common.field.type'), key: 'type', width: 100, dict: 'crm_ticket_type' },
-  { title: t('crm.common.f.priority'), key: 'priority', width: 90, dict: 'crm_ticket_priority' },
-  { title: t('common.field.status'), key: 'status', width: 140, dict: 'crm_ticket_status' },
-  { title: t('crm.common.f.assignee'), key: 'assignee', width: 110 },
-  { title: t('crm.ticket.col.due'), key: 'due', width: 170 },
+  { title: t('crm.common.f.ticket'), key: 'title', width: 140 },
+  { title: t('crm.common.f.customer'), key: 'customer', width: 190 },
+  { title: t('common.field.type'), key: 'type', width: 80, dict: 'crm_ticket_type' },
+  { title: t('crm.common.f.priority'), key: 'priority', width: 80, dict: 'crm_ticket_priority' },
+  { title: t('common.field.status'), key: 'status', width: 100, dict: 'crm_ticket_status' },
+  { title: t('crm.common.f.assignee'), key: 'assignee', width: 80 },
+  { title: t('crm.ticket.col.due'), key: 'due', width: 140 },
   { title: t('crm.common.f.acceptTime'), dataIndex: 'createTime', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-ticket')
 const showSearch = ref(true)

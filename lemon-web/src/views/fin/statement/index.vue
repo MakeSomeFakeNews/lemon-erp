@@ -124,13 +124,13 @@ const dict = useDict('fin_statement_status')
 const userStore = useUserStore()
 
 const columns = [
-  { title: t('fin.statement.statementNo'), key: 'statementNo', width: 180 },
-  { title: t('fin.statement.supplier'), dataIndex: 'supplierName', width: 200, ellipsis: true },
-  { title: t('fin.statement.period'), key: 'period', width: 200 },
-  { title: t('fin.statement.amount'), key: 'amount', width: 160, align: 'right' },
-  { title: t('fin.statement.invoice'), key: 'invoice', width: 180 },
-  { title: t('common.field.status'), key: 'status', width: 130 },
-  { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
+  { title: t('fin.statement.statementNo'), key: 'statementNo', width: 170 },
+  { title: t('fin.statement.supplier'), dataIndex: 'supplierName', width: 170, ellipsis: true },
+  { title: t('fin.statement.period'), key: 'period', width: 210 },
+  { title: t('fin.statement.amount'), key: 'amount', width: 140, align: 'right' },
+  { title: t('fin.statement.invoice'), key: 'invoice', width: 200 },
+  { title: t('common.field.status'), key: 'status', width: 120 },
+  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-statement')
 const query = reactive({ status: undefined, supplierId: undefined, keyword: undefined })

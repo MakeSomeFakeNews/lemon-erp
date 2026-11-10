@@ -252,15 +252,15 @@ const userStore = useUserStore()
 const dict = useDict('fin_claim_status')
 
 const columns = [
-  { title: t('fin.claim.claimNo'), key: 'claimNo', dataIndex: 'claimNo', width: 160 },
-  { title: t('fin.claim.claimant'), key: 'user', dataIndex: 'userName', width: 150 },
+  { title: t('fin.claim.claimNo'), key: 'claimNo', dataIndex: 'claimNo', width: 150 },
+  { title: t('fin.claim.claimant'), key: 'user', dataIndex: 'userName', width: 130 },
   { title: t('fin.claim.claimDate'), dataIndex: 'claimDate', width: 120 },
   { title: t('common.field.amount'), key: 'amount', dataIndex: 'amount', width: 130, align: 'right' },
-  { title: t('fin.claim.offsetLoan'), key: 'loan', dataIndex: 'loanNo', width: 150 },
+  { title: t('fin.claim.offsetLoan'), key: 'loan', dataIndex: 'loanNo', width: 140 },
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 120, dict: 'fin_claim_status' },
-  { title: t('fin.claim.pay'), key: 'pay', dataIndex: 'payDate', width: 130 },
+  { title: t('fin.claim.pay'), key: 'pay', dataIndex: 'payDate', width: 120 },
   { title: t('fin.claim.reason'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-claim')
 const showSearch = ref(true)

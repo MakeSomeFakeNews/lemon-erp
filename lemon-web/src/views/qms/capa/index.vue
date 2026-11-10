@@ -199,7 +199,7 @@ const STEP_HINTS = {
 
 const columns = [
   { title: t('qms.capa.no'), key: 'capaNo', width: 170 },
-  { title: t('qms.capa.title'), dataIndex: 'title', width: 260, ellipsis: true },
+  { title: t('qms.capa.title'), dataIndex: 'title', width: 240, ellipsis: true },
   { title: t('qms.capa.owner'), dataIndex: 'ownerName', width: 100 },
   { title: t('mes.wo.opProgress'), key: 'progress', width: 160 },
   { title: t('qms.capa.due'), key: 'dueDate', width: 110 },

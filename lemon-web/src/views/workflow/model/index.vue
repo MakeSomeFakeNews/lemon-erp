@@ -183,14 +183,14 @@ const userStore = useUserStore()
 const dict = useDict('wf_category')
 
 const columns = [
-  { title: t('workflow.list.process'), key: 'name', width: 220 },
-  { title: t('workflow.list.category'), key: 'category', width: 110, dict: 'wf_category' },
-  { title: t('workflow.model.version'), key: 'version', width: 140 },
-  { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('common.field.sort'), dataIndex: 'sort', width: 80 },
-  { title: t('workflow.model.deployTime'), dataIndex: 'deployTime', width: 170 },
-  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
+  { title: t('workflow.list.process'), key: 'name', width: 190 },
+  { title: t('workflow.list.category'), key: 'category', width: 100, dict: 'wf_category' },
+  { title: t('workflow.model.version'), key: 'version', width: 120 },
+  { title: t('common.field.status'), key: 'status', width: 90 },
+  { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
+  { title: t('workflow.model.deployTime'), dataIndex: 'deployTime', width: 160 },
+  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 160 },
+  { title: t('common.action.operation'), key: 'action', width: 210, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'workflow-model')
 const showSearch = ref(true)

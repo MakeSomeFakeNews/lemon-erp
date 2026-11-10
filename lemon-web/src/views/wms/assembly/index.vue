@@ -30,7 +30,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1100, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -211,6 +211,7 @@ import { addAssembly, confirmAssembly, deleteAssembly, getAssembly, pageAssembly
 import { bomsOfMaterial, getBom } from '@/api/mes/base'
 import { getMaterial } from '@/api/wms/material'
 import { formatQty, rowKey, today } from '@/components/wms/wms'
+import { sumWidth } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -227,16 +228,17 @@ const STATUS_OPTIONS = [
   { value: 'DONE', label: t('wms.assembly.done') }
 ]
 const columns = [
-  { title: t('wms.common.docNo'), key: 'assemblyNo', width: 160 },
-  { title: t('wms.assembly.kind'), key: 'kind', width: 110 },
-  { title: t('wms.assembly.kit'), key: 'material', width: 240 },
-  { title: t('common.field.quantity'), key: 'qty', width: 110, align: 'right' },
-  { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 140 },
+  { title: t('wms.common.docNo'), key: 'assemblyNo', width: 150 },
+  { title: t('wms.assembly.kind'), key: 'kind', width: 90 },
+  { title: t('wms.assembly.kit'), key: 'material', width: 220 },
+  { title: t('common.field.quantity'), key: 'qty', width: 100, align: 'right' },
+  { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 120 },
   { title: t('wms.common.bizDate'), dataIndex: 'bizDate', width: 110 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }
+  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 90 },
+  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
 ]
+const scrollX = sumWidth(columns)
 const showSearch = ref(true)
 const query = reactive({ docNo: undefined, bizType: undefined, warehouseId: undefined, status: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageAssembly, query)

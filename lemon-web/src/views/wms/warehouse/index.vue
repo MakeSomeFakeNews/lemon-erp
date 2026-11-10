@@ -174,14 +174,14 @@ const userStore = useUserStore()
 const dict = useDict('sys_common_status', 'wms_warehouse_type')
 
 const columns = [
-  { title: t('wms.common.warehouse'), key: 'name', width: 200 },
-  { title: t('common.field.type'), key: 'type', width: 150, dict: 'wms_warehouse_type' },
-  { title: t('wms.warehouse.address'), dataIndex: 'address', width: 240, ellipsis: true },
-  { title: t('wms.warehouse.contact'), key: 'contact', width: 140 },
+  { title: t('wms.common.warehouse'), key: 'name', width: 180 },
+  { title: t('common.field.type'), key: 'type', width: 120, dict: 'wms_warehouse_type' },
+  { title: t('wms.warehouse.address'), dataIndex: 'address', width: 200, ellipsis: true },
+  { title: t('wms.warehouse.contact'), key: 'contact', width: 130 },
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 220, fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true },
+  { title: t('common.action.operation'), key: 'action', width: 200, fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-warehouse')
 const showSearch = ref(true)
