@@ -12,6 +12,7 @@
 | `20261108_settlement.sql` | 应收应付：收付款核销折让 / 抹零（`discount_amount`、`discount`，外币折让的原币 `discount_fc`）、多收转预收预付、外币预收预付（`fin_advance.currency` / `exchange_rate` / `amount_fc` / `used_fc`、`fin_advance_apply.amount_fc`，冲抵的单据一方本位币 `fin_advance_apply.bill_amount`（资产状况按截至日倒推应收应付用，历史数据回填））、冲账单（`fin_offset`，菜单「冲账单」、字典 `fin_offset_item`）、应付坏账按钮 |
 | `20261108_stock_cost.sql` | 实时库存成本：物料移动加权平均成本（`wms_material_cost`）、库存流水的业务单价 / 成本单价 / 成本金额 / 往来单位、出入库明细的成本价，按历史单据和成本核算单价回填并标记为近似成本（`cost_estimated`），回填后物料库存金额与流水成本累计对齐（经营历史结余与库存查询金额一致）；盘点明细的盘盈成本价（`wms_check_item.cost_price`）；库存查询「查看成本金额」按钮（`wms:stock:cost`）；生产成本：完工入库的成本口径与料工费（`mes_wo_doc.cost_basis` / `material_cost` / `labor_cost` / `overhead_cost`，历史完工入库回填流水成本为材料）、完工后退料冲减产品成本（`mes_wo_doc.stock_cost_adjust`）、工单关闭转出成本（`mes_work_order.close_cost` / `close_stock_cost`） |
 | `20261109_gm_order_close.sql` | 总经理角色增加「采购订单关闭」「销售订单关闭」按钮权限（各租户按角色编码 gm），请购单的可见范围调整不需要改库 |
+| `20261109_role_perms.sql` | 内置角色权限补齐（各租户按角色编码，非平台租户以套餐为上限）：质量工程师补齐员工自助、费用报销、借款申请；销售员增加服务工单处理、市场活动维护；新增菜单「项目 → 我的工时」（`pm:timesheet:mine`）并授权普通员工；新增内置角色「销售经理」（`sales_mgr`，本部门及以下，复制销售员权限并加客户分析、价目表和商品价格维护）；缩短总经理备注 |
 
 之后的变更按 `YYYYMMDD_名称.sql`（变更当天的日期）新增，并在上表中登记。
 

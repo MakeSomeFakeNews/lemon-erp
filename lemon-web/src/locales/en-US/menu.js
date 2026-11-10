@@ -108,6 +108,7 @@ export default {
   243: 'Timesheets', // 工时管理
   244: 'Cost Control', // 成本控制
   245: 'Project Accounting', // 项目核算
+  246: 'My Timesheets', // 我的工时
   260: 'Business Cockpit', // 经营驾驶舱
   261: 'Pivot Analysis', // 多维分析
   262: 'Custom Reports', // 自定义报表

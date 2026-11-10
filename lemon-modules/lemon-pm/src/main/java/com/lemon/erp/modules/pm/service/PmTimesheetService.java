@@ -79,6 +79,14 @@ public class PmTimesheetService {
         return timesheetMapper.selectMine(SecurityUtils.getUserId(), beginDate, endDate);
     }
 
+    /** 填报工时选择任务：本人参与的项目的任务树（不需要项目权限，须为项目成员） */
+    public List<PmTask> memberTasks(Long projectId) {
+        if (memberService.find(projectId, SecurityUtils.getUserId()) == null) {
+            throw new BizException("pm.error.notMemberProjectCannotSubmitTimesheets");
+        }
+        return taskService.tree(projectId);
+    }
+
     @Transactional
     public TimesheetSaved save(Long id, TimesheetRequest req) {
         Long userId = SecurityUtils.getUserId();

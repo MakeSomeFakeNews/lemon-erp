@@ -5916,6 +5916,7 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 (243, 10, '工时管理', 'C', 'timesheet', 'pm/timesheet/index', 'pm:timesheet:list', 'ClockCircleOutlined', 4, 1, 1, NOW(), NOW()),
 (244, 10, '成本控制', 'C', 'cost', 'pm/cost/index', 'pm:cost:list', 'DollarOutlined', 5, 1, 1, NOW(), NOW()),
 (245, 10, '项目核算', 'C', 'accounting', 'pm/accounting/index', 'pm:accounting:list', 'CalculatorOutlined', 6, 1, 1, NOW(), NOW()),
+(246, 10, '我的工时', 'C', 'my-timesheet', 'pm/timesheet/index', 'pm:timesheet:mine', 'FieldTimeOutlined', 7, 1, 1, NOW(), NOW()),
 (2400, 240, '项目新增', 'F', NULL, NULL, 'pm:project:add', NULL, 1, 1, 1, NOW(), NOW()),
 (2401, 240, '项目修改', 'F', NULL, NULL, 'pm:project:edit', NULL, 2, 1, 1, NOW(), NOW()),
 (2402, 240, '项目删除', 'F', NULL, NULL, 'pm:project:remove', NULL, 3, 1, 1, NOW(), NOW()),
@@ -6365,7 +6366,7 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 
 -- 内置角色：按岗位预置菜单和按钮权限，可在「角色管理」中调整
 INSERT INTO sys_role (id, name, code, sort, data_scope, status, remark, create_time, update_time) VALUES
-(3, '总经理', 'gm', 3, 1, 1, '查看全部业务数据和商务智能，审核、关闭采购销售订单，审核招聘需求、假勤和工时', NOW(), NOW()),
+(3, '总经理', 'gm', 3, 1, 1, '查看全部业务和商务智能，审核关闭订单，审核招聘、假勤、工时', NOW(), NOW()),
 (4, '采购员', 'purchaser', 4, 3, 1, '请购、询价、采购订单与收退货、供应商、寄售结算，可查看库存和物料', NOW(), NOW()),
 (5, '销售员', 'sales', 5, 5, 1, '报价、销售订单、发货通知、客户与商机跟进，只能看本人的数据', NOW(), NOW()),
 (6, '仓库管理员', 'warehouse', 6, 1, 1, '出入库、调拨、盘点、批次序列号、库存冻结预留，采购收货、销售出库、拣货和发运，生产领料和完工入库', NOW(), NOW()),
@@ -7254,6 +7255,25 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('scm_region', '西北', 'NORTHWEST', 'gold', 6, 1, NOW(), NOW()),
 ('scm_region', '东北', 'NORTHEAST', 'geekblue', 7, 1, NOW(), NOW()),
 ('scm_region', '海外', 'OVERSEAS', 'magenta', 8, 1, NOW(), NOW());
+
+-- 内置角色补充：质量工程师补齐员工通用权限（员工自助、费用报销、借款申请）；销售员处理服务工单、维护市场活动；
+-- 普通员工「我的工时」（项目成员填报，不含审批）；销售经理（销售员的全部功能 + 本部门及以下的数据、客户分析、价目表和商品价格维护）
+INSERT INTO sys_role (id, name, code, sort, data_scope, status, remark, create_time, update_time) VALUES
+(17, '销售经理', 'sales_mgr', 17, 4, 1, '销售员的全部功能，可查看本部门及以下的客户、订单和业绩，维护价目表和商品价格', NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT g.role_id, g.menu_id FROM (
+    SELECT 14 AS role_id, 7 AS menu_id UNION ALL SELECT 14, 933 UNION ALL SELECT 14, 279 UNION ALL SELECT 14, 2790
+    UNION ALL SELECT 14, 280 UNION ALL SELECT 14, 2800 UNION ALL SELECT 14, 8 UNION ALL SELECT 14, 951 UNION ALL SELECT 14, 209
+    UNION ALL SELECT 5, 224 UNION ALL SELECT 5, 2240 UNION ALL SELECT 5, 2241 UNION ALL SELECT 5, 2242
+    UNION ALL SELECT 5, 2250 UNION ALL SELECT 5, 2251 UNION ALL SELECT 5, 2252
+    UNION ALL SELECT 13, 10 UNION ALL SELECT 13, 246
+) g
+WHERE NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT 17, menu_id FROM sys_role_menu WHERE role_id = 5;
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT 17, m.id FROM sys_menu m
+WHERE m.id IN (226, 2700, 3650) AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = 17 AND x.menu_id = m.id);
 
 ALTER TABLE sys_dept AUTO_INCREMENT = 200;
 ALTER TABLE sys_user AUTO_INCREMENT = 100;

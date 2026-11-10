@@ -174,7 +174,7 @@ import DictTag from '@/components/DictTag.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import ProjectSelect from '@/components/pm/ProjectSelect.vue'
 import {
-  addTimesheet, deleteTimesheet, myTasks, myTimesheet, pageTimesheet, reviewTimesheet, taskTree, updateTaskProgress, updateTimesheet
+  addTimesheet, deleteTimesheet, myTasks, myTimesheet, myTimesheetTasks, pageTimesheet, reviewTimesheet, updateTaskProgress, updateTimesheet
 } from '@/api/pm'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
@@ -282,7 +282,7 @@ const taskOptions = ref([])
 async function onEntryProject(projectId) {
   taskOptions.value = []
   if (!projectId) return
-  const tree = await taskTree(projectId)
+  const tree = await myTimesheetTasks(projectId)
   taskOptions.value = leafTasks(tree).map((task) => ({ value: task.id, label: task.name }))
   if (entry.value.taskId && !taskOptions.value.some((o) => o.value === entry.value.taskId)) entry.value.taskId = undefined
 }

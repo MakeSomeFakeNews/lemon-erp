@@ -7,6 +7,7 @@ import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.pm.dto.ReviewRequest;
 import com.lemon.erp.modules.pm.dto.TimesheetRequest;
 import com.lemon.erp.modules.pm.dto.TimesheetSaved;
+import com.lemon.erp.modules.pm.entity.PmTask;
 import com.lemon.erp.modules.pm.entity.PmTimesheet;
 import com.lemon.erp.modules.pm.service.PmTimesheetService;
 import jakarta.validation.Valid;
@@ -58,6 +59,12 @@ public class PmTimesheetController {
     @GetMapping("/my/timesheet")
     public R<List<PmTimesheet>> mine(@RequestParam LocalDate beginDate, @RequestParam LocalDate endDate) {
         return R.ok(timesheetService.mine(beginDate, endDate));
+    }
+
+    /** 填报时选择任务：本人参与的项目的任务树 */
+    @GetMapping("/my/timesheet/tasks")
+    public R<List<PmTask>> memberTasks(@RequestParam Long projectId) {
+        return R.ok(timesheetService.memberTasks(projectId));
     }
 
     @PostMapping("/my/timesheet")

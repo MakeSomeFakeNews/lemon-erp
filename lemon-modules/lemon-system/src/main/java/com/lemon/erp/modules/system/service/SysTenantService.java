@@ -51,8 +51,8 @@ public class SysTenantService extends ServiceImpl<SysTenantMapper, SysTenant> {
 
     /** 新租户从平台复制的内置岗位角色（菜单取与套餐的交集） */
     static final List<String> BUILT_IN_ROLES = List.of(
-            "common", "gm", "purchaser", "sales", "warehouse", "planner", "workshop", "quality", "accountant", "cashier", "hr", "pm", "staff", "supplier",
-            "dealer");
+            "common", "gm", "purchaser", "sales", "sales_mgr", "warehouse", "planner", "workshop", "quality", "accountant", "cashier", "hr", "pm",
+            "staff", "supplier", "dealer");
 
     private final SysTenantLookup lookup;
     private final SysFeatureService featureService;
