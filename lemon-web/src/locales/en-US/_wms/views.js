@@ -90,6 +90,7 @@ export default {
     namePh: 'e.g. Color, Size',
     values: 'Values',
     valuesTip: ' (Codes are used to build SKU codes, defaulting to the value; values used by SKUs cannot be deleted)',
+    valueUsed: 'Used by SKUs and cannot be deleted (can be renamed)',
     valuePh: 'Value, e.g. Red',
     codePh: 'Code, e.g. RD',
     addValue: 'Add Value',

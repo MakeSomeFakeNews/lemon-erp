@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.wms.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.common.base.BaseEntity;
@@ -24,4 +25,9 @@ public class WmsAttributeValue extends BaseEntity {
     private String code;
 
     private Integer sort;
+
+    /** 是否已被 SKU 使用（已使用的不能删除，可以改名），列表返回 */
+    @TableField(exist = false)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Boolean used;
 }
