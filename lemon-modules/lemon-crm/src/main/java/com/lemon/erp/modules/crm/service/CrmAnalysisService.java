@@ -77,7 +77,8 @@ public class CrmAnalysisService {
     }
 
     /**
-     * RFM 分析（近一年）：按分群参数（页面传入，为空的项取租户默认值）判断 R、F、M 的高低，分为八类（{@link RfmCalculator}）
+     * RFM 分析（近一年）：按分群参数（页面传入，为空的项取租户默认值）判断 R、F、M 的高低，分为八类（{@link RfmCalculator}）；
+     * 金额为不含税净销售额，与进销存报表的客户 RFM 口径一致（两处共用 M 阈值）
      */
     public CrmAnalysis.Rfm rfm(RfmSettings params) {
         RfmSettings settings = rfmService.settings(params);

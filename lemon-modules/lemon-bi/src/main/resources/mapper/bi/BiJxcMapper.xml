@@ -23,12 +23,13 @@
                    GROUP BY f.doc_id, f.material_id) fc ON fc.doc_id = d.wms_doc_id AND fc.material_id = i.material_id
     </sql>
 
-    <!-- 销售出库单的坏账核销（应收单上的核销金额，含税）与本公司承担的发运运费（已发货），按行金额比例分摊到明细，
+    <!-- 销售出库单的坏账核销（应收单上的核销金额按该单不含税比例折算：核销金额 × (价税合计 − 税额) ÷ 价税合计，
+         跟随出库单的业务日期归属）与本公司承担的发运运费（已发货），按行金额比例分摊到明细，
          只用于「扣坏账后毛利」「扣运费后毛利」等参考口径，不改变销售额（口径同财务「毛利分析」） -->
     <sql id="docShare">CASE WHEN d.total_amount &lt;&gt; 0 THEN i.amount / d.total_amount WHEN d.total_qty &lt;&gt; 0 THEN i.qty / d.total_qty ELSE 0 END</sql>
     <sql id="badDebtFreight">
-        LEFT JOIN (SELECT source_id, SUM(bad_debt_amount) AS amount FROM fin_bill
-                   WHERE kind = 'AR' AND source_type = 'SALES_OUT' AND bad_debt_amount &lt;&gt; 0 GROUP BY source_id) bd ON d.kind = 'SALES_OUT' AND bd.source_id = d.id
+        LEFT JOIN (SELECT source_id, SUM(bad_debt_amount * (amount - tax_amount) / amount) AS amount FROM fin_bill
+                   WHERE kind = 'AR' AND source_type = 'SALES_OUT' AND bad_debt_amount &lt;&gt; 0 AND amount &lt;&gt; 0 GROUP BY source_id) bd ON d.kind = 'SALES_OUT' AND bd.source_id = d.id
         LEFT JOIN (SELECT trade_doc_id, SUM(freight) AS amount FROM scm_shipment
                    WHERE freight_bearer = 'COMPANY' AND status &lt;&gt; 'PENDING' AND freight &gt; 0 GROUP BY trade_doc_id) sf ON d.kind = 'SALES_OUT' AND sf.trade_doc_id = d.id
     </sql>

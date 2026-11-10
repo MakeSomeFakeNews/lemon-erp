@@ -42,11 +42,12 @@
         GROUP BY to_stage
     </select>
 
+    <!-- RFM 的金额为不含税净销售额（价税合计 − 税额，扣除退货），与进销存报表的客户 RFM 同一口径，共用 M 阈值 -->
     <select id="selectRfmSource" resultType="com.lemon.erp.modules.crm.dto.CrmAnalysis$RfmSource">
         SELECT c.id AS "customerId", c.code AS "code", c.name AS "name", u.nickname AS "ownerName",
                CAST(MAX(CASE WHEN d.kind = 'SALES_OUT' THEN d.biz_date END) AS CHAR(10)) AS "lastDate",
                SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE 0 END) AS "frequency",
-               SUM(CASE WHEN d.kind = 'SALES_OUT' THEN d.total_amount ELSE -d.total_amount END) AS "monetary"
+               SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * (d.total_amount - d.tax_amount)) AS "monetary"
         FROM scm_trade_doc d
         JOIN scm_customer c ON c.id = d.partner_id
         LEFT JOIN crm_customer x ON x.customer_id = c.id

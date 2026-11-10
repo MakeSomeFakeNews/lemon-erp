@@ -1,7 +1,7 @@
 /** Sales & purchase reports (Supply Chain → Sales & Purchase Reports, backend /bi/jxc) */
 export default {
   common: {
-    profitAfterTip: 'Gross profit − bad debts written off − freight borne by the company, for reference only: in the income statement bad debts are non-operating expenses and freight is a selling expense, so gross profit itself excludes them and nothing is counted twice',
+    profitAfterTip: 'Gross profit − bad debts written off (excluding tax, by delivery date) − freight borne by the company, for reference only: in the income statement bad debts are non-operating expenses and freight is a selling expense, so gross profit itself excludes them and nothing is counted twice',
     unset: 'Not set',
     noSalesman: 'Unassigned',
     others: 'Other customers',
@@ -83,7 +83,7 @@ export default {
   },
   sales: {
     title: 'Sales report',
-    tip: 'Sales and net amounts exclude tax (amount incl. tax − tax); net = sales shipments − sales returns, in the base currency. Cost is the real-time inventory cost: shipments at the moving average cost at the time of issue, returns at the original issue cost (see stock transactions); older documents without real-time cost use the costing unit cost of the month or the reference cost. Finance "Gross Margin" uses the month-end costing unit cost (for bookkeeping), so the two may differ. Bad debts written off on the delivery receivables and freight borne by the company are allocated by line amount as reference profit figures; sales amounts are unchanged. Data is limited to your data scope. Click a row to see the details and a document number to open the document.'
+    tip: 'Sales and net amounts exclude tax (amount incl. tax − tax); net = sales shipments − sales returns, in the base currency. Cost is the real-time inventory cost: shipments at the moving average cost at the time of issue, returns at the original issue cost (see stock transactions); older documents without real-time cost use the costing unit cost of the month or the reference cost. Finance "Gross Margin" uses the month-end costing unit cost (for bookkeeping), so the two may differ. Bad debts written off on the delivery receivables (converted to tax-exclusive by the ratio of the receivable and counted on the delivery date, not the write-off date) and freight borne by the company are allocated by line amount as reference profit figures; sales amounts are unchanged. Data is limited to your data scope. Click a row to see the details and a document number to open the document.'
   },
   purchase: {
     title: 'Purchase report',
@@ -201,7 +201,7 @@ export default {
       fLabel: 'F frequency ≥',
       fUnit: 'orders / month',
       mLabel: 'M avg order amount ≥',
-      mUnit: 'per order',
+      mUnit: 'per order (excl. tax)',
       averageHint: 'R, F and M are each scored 1–5 by quintile; a score not below the overall average counts as high, adjusting to the customer base automatically',
       saveDefault: 'Save as default',
       saveDefaultTip: 'Save the current parameters as the company default (business rules, Customer Analysis), used by both the inventory reports and the CRM customer analysis',
