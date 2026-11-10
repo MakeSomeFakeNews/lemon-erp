@@ -122,7 +122,7 @@ public class HrRecruitController {
     @GetMapping("/candidate/{id}")
     @PreAuthorize("@ss.hasPerm('hr:recruit:list')")
     public R<HrCandidate> candidate(@PathVariable Long id) {
-        return R.ok(recruitService.candidate(id));
+        return R.ok(recruitService.candidateDetail(id));
     }
 
     @PostMapping("/candidate")

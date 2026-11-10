@@ -172,6 +172,15 @@ public class HrRecruitService {
         return PageResult.of(page);
     }
 
+    /** 应聘者详情（带出应聘岗位、工号） */
+    public HrCandidate candidateDetail(Long id) {
+        HrCandidate c = id == null ? null : candidateMapper.selectDetail(id);
+        if (c == null) {
+            throw new BizException("hr.error.candidateDoesNotExist");
+        }
+        return c;
+    }
+
     public HrCandidate candidate(Long id) {
         HrCandidate c = id == null ? null : candidateMapper.selectById(id);
         if (c == null) {

@@ -22,4 +22,13 @@
         ORDER BY c.id DESC
     </select>
 
+    <!-- 单条详情：带出应聘岗位（招聘需求标题、编号）和入职后的工号 -->
+    <select id="selectDetail" resultType="com.lemon.erp.modules.hr.entity.HrCandidate">
+        SELECT c.*, r.title AS recruit_title, r.recruit_no, e.emp_no
+        FROM hr_candidate c
+        JOIN hr_recruit r ON r.id = c.recruit_id
+        LEFT JOIN hr_employee e ON e.id = c.employee_id
+        WHERE c.id = #{id}
+    </select>
+
 </mapper>
