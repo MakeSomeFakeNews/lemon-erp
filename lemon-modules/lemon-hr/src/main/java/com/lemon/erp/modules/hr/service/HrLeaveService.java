@@ -61,6 +61,7 @@ public class HrLeaveService {
     private final HrPayrollLock payrollLock;
     private final DictLookup dictLookup;
     private final HrRuleService ruleService;
+    private final HrAttendanceService attendanceService;
 
     @DataPermission(table = "hr_leave", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<HrLeave> page(long current, long size, LeaveQuery query) {
@@ -177,6 +178,9 @@ public class HrLeaveService {
                 .set(HrLeave::getStatus, LeaveStatus.CANCELED)
                 .eq(HrLeave::getId, id)
                 .in(HrLeave::getStatus, LeaveStatus.EFFECTIVE));
+        if (!approving && l.getKind() == LeaveKind.LEAVE) {
+            attendanceService.reevaluate(l.getEmployeeId(), l.getStartTime(), l.getEndTime());
+        }
     }
 
     /** 人事审批（没有走审批流程的申请） */
@@ -225,9 +229,16 @@ public class HrLeaveService {
     // ---------------------------------------------------------------- 内部
 
     private void finish(Long id, LeaveStatus status, Long approveBy, String comment) {
-        StatusTransitions.tryChange(leaveMapper, HrLeave::getId, id, HrLeave::getStatus, LeaveStatus.APPROVING, status,
+        boolean changed = StatusTransitions.tryChange(leaveMapper, HrLeave::getId, id, HrLeave::getStatus, LeaveStatus.APPROVING, status,
                 w -> w.set(HrLeave::getApproveBy, approveBy).set(HrLeave::getApproveTime, LocalDateTime.now())
                         .set(HrLeave::getApproveComment, comment));
+        // 请假通过后，按请假重新判断已有考勤的迟到早退（如上午请假下午上班的打卡）
+        if (changed && status == LeaveStatus.APPROVED) {
+            HrLeave l = leaveMapper.selectById(id);
+            if (l.getKind() == LeaveKind.LEAVE) {
+                attendanceService.reevaluate(l.getEmployeeId(), l.getStartTime(), l.getEndTime());
+            }
+        }
     }
 
     /** 年假余额 = 年假天数 × 标准工时 - 本年已用（含审批中） */

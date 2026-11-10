@@ -85,7 +85,7 @@ public class HrAttendanceService {
             a.setWorkDate(today);
             a.setCheckIn(now);
             a.setSource(AttendanceSource.CLOCK);
-            evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(today), ruleService.current());
+            evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(today), ruleService.current(), dayLeaves(e.getId(), today));
             try {
                 attendanceMapper.insert(a);
                 return a;
@@ -95,7 +95,7 @@ public class HrAttendanceService {
             }
         }
         a.setCheckOut(now);
-        evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(today), ruleService.current());
+        evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(today), ruleService.current(), dayLeaves(e.getId(), today));
         saveTimes(a);
         return a;
     }
@@ -130,7 +130,8 @@ public class HrAttendanceService {
         a.setCheckOut(req.checkOut());
         a.setSource(AttendanceSource.MANUAL);
         a.setRemark(req.remark());
-        evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(req.workDate()), ruleService.current());
+        evaluate(a, calendarService.shiftOf(e), calendarService.isWorkday(req.workDate()), ruleService.current(),
+                dayLeaves(e.getId(), req.workDate()));
         if (insert) {
             attendanceMapper.insert(a);
         } else {
@@ -295,15 +296,46 @@ public class HrAttendanceService {
 
     /** 按班次计算迟到、早退、缺卡，出勤时长按规则扣除午休（业务参数）；非工作日打卡（加班）不计迟到早退 */
     static void evaluate(HrAttendance a, HrShift shift, boolean workday, HrRules rules) {
+        evaluate(a, shift, workday, rules, List.of());
+    }
+
+    /**
+     * 同上，并考虑当天已批准的请假：请假覆盖上班时间时迟到从请假结束起算，覆盖下班时间时早退到请假开始为止，
+     * 都留出午休时长（业务参数「扣除的午休小时数」），上午请假下午按时上班、下午请假中午下班不算迟到早退；
+     * 请假覆盖到下班（上班）时不计迟到（早退）
+     *
+     * @param leaves 当天已批准的请假（不含加班）
+     */
+    static void evaluate(HrAttendance a, HrShift shift, boolean workday, HrRules rules, List<HrLeave> leaves) {
         int late = 0, early = 0;
         if (workday) {
-            LocalTime lateAfter = shift.getStartTime().plusMinutes(shift.getFlexMinutes());
-            LocalTime earlyBefore = shift.getEndTime().minusMinutes(shift.getFlexMinutes());
-            if (a.getCheckIn() != null && a.getCheckIn().toLocalTime().isAfter(lateAfter)) {
-                late = (int) Duration.between(shift.getStartTime(), a.getCheckIn().toLocalTime()).toMinutes();
+            LocalTime start = shift.getStartTime();
+            LocalTime end = shift.getEndTime();
+            boolean lateFree = false;
+            boolean earlyFree = false;
+            LocalDate day = a.getWorkDate() != null ? a.getWorkDate()
+                    : a.getCheckIn() != null ? a.getCheckIn().toLocalDate() : a.getCheckOut() != null ? a.getCheckOut().toLocalDate() : null;
+            // 跨零点的班次不按请假调整
+            if (day != null && !leaves.isEmpty() && end.isAfter(start)) {
+                long lunch = rules.lunchBreak().multiply(BigDecimal.valueOf(60)).longValue();
+                LocalDateTime from = coveredUntil(leaves, day.atTime(start));
+                if (from != null) {
+                    lateFree = !from.isBefore(day.atTime(end));
+                    start = lateFree ? start : from.plusMinutes(lunch).toLocalTime();
+                }
+                LocalDateTime to = coveredSince(leaves, day.atTime(end));
+                if (to != null) {
+                    earlyFree = !to.isAfter(day.atTime(shift.getStartTime()));
+                    end = earlyFree ? end : to.minusMinutes(lunch).toLocalTime();
+                }
             }
-            if (a.getCheckOut() != null && a.getCheckOut().toLocalTime().isBefore(earlyBefore)) {
-                early = (int) Duration.between(a.getCheckOut().toLocalTime(), shift.getEndTime()).toMinutes();
+            LocalTime lateAfter = start.plusMinutes(shift.getFlexMinutes());
+            LocalTime earlyBefore = end.minusMinutes(shift.getFlexMinutes());
+            if (!lateFree && a.getCheckIn() != null && a.getCheckIn().toLocalTime().isAfter(lateAfter)) {
+                late = (int) Duration.between(start, a.getCheckIn().toLocalTime()).toMinutes();
+            }
+            if (!earlyFree && a.getCheckOut() != null && a.getCheckOut().toLocalTime().isBefore(earlyBefore)) {
+                early = (int) Duration.between(a.getCheckOut().toLocalTime(), end).toMinutes();
             }
         }
         a.setLateMinutes(late);
@@ -315,6 +347,63 @@ public class HrAttendanceService {
         }
         a.setStatus(AttendanceStatus.of(late, early));
         a.setWorkHours(rules.workHours(Duration.between(a.getCheckIn(), a.getCheckOut()).toMinutes()));
+    }
+
+    /** 请假（可以首尾相接的多段）连续覆盖时刻 t 时，覆盖到的结束时间；没有覆盖 t 时为空 */
+    private static LocalDateTime coveredUntil(List<HrLeave> leaves, LocalDateTime t) {
+        LocalDateTime until = null;
+        for (boolean changed = true; changed; ) {
+            changed = false;
+            LocalDateTime at = until == null ? t : until;
+            for (HrLeave l : leaves) {
+                if (!l.getStartTime().isAfter(at) && l.getEndTime().isAfter(at)) {
+                    until = l.getEndTime();
+                    changed = true;
+                }
+            }
+        }
+        return until;
+    }
+
+    /** 请假连续覆盖时刻 t 之前时，覆盖开始的时间；没有覆盖 t 之前时为空 */
+    private static LocalDateTime coveredSince(List<HrLeave> leaves, LocalDateTime t) {
+        LocalDateTime since = null;
+        for (boolean changed = true; changed; ) {
+            changed = false;
+            LocalDateTime at = since == null ? t : since;
+            for (HrLeave l : leaves) {
+                if (l.getStartTime().isBefore(at) && !l.getEndTime().isBefore(at)) {
+                    since = l.getStartTime();
+                    changed = true;
+                }
+            }
+        }
+        return since;
+    }
+
+    /** 当天已批准的请假（不含加班），判断迟到早退用 */
+    private List<HrLeave> dayLeaves(Long employeeId, LocalDate date) {
+        return leaveMapper.selectApprovedOverlapping(List.of(employeeId), date.atStartOfDay(), date.plusDays(1).atStartOfDay())
+                .stream().filter(l -> l.getKind() == LeaveKind.LEAVE).toList();
+    }
+
+    /**
+     * 请假审批结束、撤销后，按当天已批准的请假重新判断这段时间内已有考勤记录的迟到早退（已确认工资的月份不调整）
+     */
+    void reevaluate(Long employeeId, LocalDateTime from, LocalDateTime to) {
+        HrEmployee e = employeeMapper.selectById(employeeId);
+        if (e == null) {
+            return;
+        }
+        HrShift shift = calendarService.shiftOf(e);
+        HrRules rules = ruleService.current();
+        for (HrAttendance a : attendanceMapper.selectBetween(Set.of(employeeId), from.toLocalDate(), to.toLocalDate())) {
+            if (!payrollLock.isOpen(a.getWorkDate())) {
+                continue;
+            }
+            evaluate(a, shift, calendarService.isWorkday(a.getWorkDate()), rules, dayLeaves(employeeId, a.getWorkDate()));
+            saveTimes(a);
+        }
     }
 
     /** 加班倍数（业务参数，默认工作日 1.5、休息日 2、法定节假日 3） */
