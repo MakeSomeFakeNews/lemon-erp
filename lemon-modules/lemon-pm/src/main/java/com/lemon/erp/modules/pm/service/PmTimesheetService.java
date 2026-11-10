@@ -50,12 +50,16 @@ public class PmTimesheetService {
     private final HrAttendanceService attendanceService;
     private final HrRuleService hrRuleService;
 
-    /** 按项目的数据权限（项目部门、项目经理）过滤 */
+    /**
+     * 按项目的数据权限（项目部门、项目经理）过滤
+     *
+     * @param excludeSelf 不含当前用户本人的工时（审批列表：不能审批自己的工时，项目经理本人的工时由有全部数据权限的上级审批）
+     */
     @DataPermission(table = "pm_project", deptColumn = "dept_id", userColumn = "manager_id")
-    public PageResult<PmTimesheet> page(long current, long size, Long projectId, Long userId, String status,
-                                        LocalDate beginDate, LocalDate endDate) {
+    public PageResult<PmTimesheet> page(long current, long size, Long projectId, Long userId, TimesheetStatus status,
+                                        LocalDate beginDate, LocalDate endDate, boolean excludeSelf) {
         Page<PmTimesheet> page = Page.of(current, size);
-        timesheetMapper.selectPageList(page, projectId, userId, status, beginDate, endDate);
+        timesheetMapper.selectPageList(page, projectId, userId, status, beginDate, endDate, excludeSelf ? SecurityUtils.getUserId() : null);
         return PageResult.of(page);
     }
 
@@ -146,6 +150,11 @@ public class PmTimesheetService {
                 .set(PmTimesheet::getHours, ts.getHours())
                 .set(PmTimesheet::getContent, ts.getContent())
                 .set(PmTimesheet::getStatus, TimesheetStatus.SUBMITTED)
+                // 驳回后修改重新提交：清空上次的审批结果
+                .set(PmTimesheet::getApproveBy, null)
+                .set(PmTimesheet::getApproveTime, null)
+                .set(PmTimesheet::getCostRate, null)
+                .set(PmTimesheet::getCost, BigDecimal.ZERO)
                 .set(PmTimesheet::getRejectReason, null)
                 .set(PmTimesheet::getUpdateTime, LocalDateTime.now())
                 .eq(PmTimesheet::getId, id));
