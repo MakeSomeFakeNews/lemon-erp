@@ -5,6 +5,8 @@ import com.lemon.erp.framework.rule.BizRule;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -14,7 +16,7 @@ import java.util.function.Function;
 
 /**
  * 人力资源的计算规则（按租户的业务参数，「系统管理 → 业务参数 → 人力资源」修改）：计薪天数、每日工时、默认社保比例、
- * 考勤扣款、午休扣除、加班倍数、个税减除费用与累计预扣率表、试用期。比例类参数按百分数保存（10.5 表示 10.5%）。
+ * 考勤扣款、午休扣除、加班倍数、个税减除费用与累计预扣率表、试用期、入职 / 离职当月是否缴社保。比例类参数按百分数保存（10.5 表示 10.5%）。
  * 未修改的参数使用 {@link #DEFAULTS}（即 {@link #DEFAULT}）
  *
  * @param monthPayDays    月计薪天数：日工资 = (基本工资 + 岗位津贴) / 月计薪天数
@@ -31,11 +33,13 @@ import java.util.function.Function;
  * @param probationMonths 默认试用期（月）
  * @param lunchThreshold  出勤超过该小时数时扣除午休（不含等于）
  * @param lunchBreak      扣除的午休小时数
+ * @param socialEntryDay  入职当月缴社保的截止日：入职日期在该日（含）之前的当月缴纳社保公积金，之后入职的次月起缴
+ * @param socialLeaveDay  离职当月缴社保的起始日：离职日期早于该日的离职当月不再缴纳（1 表示离职当月照常缴纳）
  */
 public record HrRules(BigDecimal monthPayDays, BigDecimal dayHours, BigDecimal socialPersonal, BigDecimal socialCompany,
                       BigDecimal lateFine, BigDecimal sickDeduct, BigDecimal overtimeWorkday, BigDecimal overtimeRestday,
                       BigDecimal overtimeHoliday, BigDecimal taxThreshold, List<TaxBracket> taxBrackets, int probationMonths,
-                      BigDecimal lunchThreshold, BigDecimal lunchBreak) {
+                      BigDecimal lunchThreshold, BigDecimal lunchBreak, int socialEntryDay, int socialLeaveDay) {
 
     public static final String MONTH_PAY_DAYS = "hr.pay.monthDays";
     public static final String DAY_HOURS = "hr.pay.dayHours";
@@ -51,6 +55,8 @@ public record HrRules(BigDecimal monthPayDays, BigDecimal dayHours, BigDecimal s
     public static final String PROBATION_MONTHS = "hr.employee.probationMonths";
     public static final String LUNCH_THRESHOLD = "hr.attendance.lunchThresholdHours";
     public static final String LUNCH_BREAK = "hr.attendance.lunchBreakHours";
+    public static final String SOCIAL_ENTRY_DAY = "hr.social.entryCutoffDay";
+    public static final String SOCIAL_LEAVE_DAY = "hr.social.leaveCutoffDay";
 
     /** 默认值（规范写法，业务参数的默认值）：与此前写死的规则一致 */
     public static final Map<String, String> DEFAULTS;
@@ -75,6 +81,9 @@ public record HrRules(BigDecimal monthPayDays, BigDecimal dayHours, BigDecimal s
         // 出勤超过 5 小时扣除 1 小时午休
         m.put(LUNCH_THRESHOLD, "5");
         m.put(LUNCH_BREAK, "1");
+        // 15 日（含）之前入职的当月缴社保公积金，之后入职的次月起缴；离职当月照常缴纳
+        m.put(SOCIAL_ENTRY_DAY, "15");
+        m.put(SOCIAL_LEAVE_DAY, "1");
         DEFAULTS = Collections.unmodifiableMap(m);
     }
 
@@ -97,7 +106,8 @@ public record HrRules(BigDecimal monthPayDays, BigDecimal dayHours, BigDecimal s
         return new HrRules(dec(values, MONTH_PAY_DAYS), dec(values, DAY_HOURS), dec(values, SOCIAL_PERSONAL), dec(values, SOCIAL_COMPANY),
                 dec(values, LATE_FINE), dec(values, SICK_DEDUCT), dec(values, OVERTIME_WORKDAY), dec(values, OVERTIME_RESTDAY),
                 dec(values, OVERTIME_HOLIDAY), dec(values, TAX_THRESHOLD), brackets(values.apply(TAX_TABLE)),
-                Integer.parseInt(values.apply(PROBATION_MONTHS)), dec(values, LUNCH_THRESHOLD), dec(values, LUNCH_BREAK));
+                Integer.parseInt(values.apply(PROBATION_MONTHS)), dec(values, LUNCH_THRESHOLD), dec(values, LUNCH_BREAK),
+                Integer.parseInt(values.apply(SOCIAL_ENTRY_DAY)), Integer.parseInt(values.apply(SOCIAL_LEAVE_DAY)));
     }
 
     /** 解析预扣率表：每行 上限,预扣率,速算扣除数，最后一行上限留空 */
@@ -144,6 +154,18 @@ public record HrRules(BigDecimal monthPayDays, BigDecimal dayHours, BigDecimal s
             net = net.subtract(lunchBreak.multiply(SIXTY)).max(BigDecimal.ZERO);
         }
         return net.divide(SIXTY, 2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * 该月是否缴纳社保公积金（个人和单位）：入职当月入职日期晚于截止日的不缴（次月起缴），离职当月离职日期早于起始日的不缴
+     *
+     * @param leaveDate 离职日期，在职为空
+     */
+    public boolean paysSocial(YearMonth month, LocalDate entryDate, LocalDate leaveDate) {
+        if (entryDate != null && YearMonth.from(entryDate).equals(month) && entryDate.getDayOfMonth() > socialEntryDay) {
+            return false;
+        }
+        return leaveDate == null || !YearMonth.from(leaveDate).equals(month) || leaveDate.getDayOfMonth() >= socialLeaveDay;
     }
 
     /** 累计预扣的个税（本年累计应纳税额）= 累计应纳税所得额 × 预扣率 − 速算扣除数，累计应纳税所得额不大于 0 时为 0 */
