@@ -15,6 +15,7 @@ import com.lemon.erp.modules.mes.dto.WorkOrderQuery;
 import com.lemon.erp.modules.mes.dto.WorkOrderRequest;
 import com.lemon.erp.modules.mes.entity.MesBom;
 import com.lemon.erp.modules.mes.entity.MesPlan;
+import com.lemon.erp.modules.mes.entity.MesWoOp;
 import com.lemon.erp.modules.mes.entity.MesWorkOrder;
 import com.lemon.erp.modules.mes.mapper.MesPlanMapper;
 import com.lemon.erp.modules.mes.mapper.MesWorkOrderMapper;
@@ -79,7 +80,9 @@ public class MesWorkOrderService {
             hideCost(wo);
         }
         wo.setMaterials(lineService.materials(id));
-        wo.setOps(lineService.ops(id));
+        List<MesWoOp> ops = lineService.ops(id);
+        WoOpQty.fillReportable(wo.getQty(), ops);
+        wo.setOps(ops);
         return wo;
     }
 

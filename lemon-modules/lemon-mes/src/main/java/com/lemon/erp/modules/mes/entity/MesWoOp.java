@@ -57,4 +57,11 @@ public class MesWoOp extends BaseEntity {
     @TableField(exist = false)
     @com.fasterxml.jackson.annotation.JsonIgnore
     private BigDecimal upstreamScrap;
+
+    /**
+     * 本工序还可报工的数量（合格 + 报废）：不超过上道工序的累计合格数（第一道工序为工单数量）减本工序已报的合格和报废，
+     * 与报工校验一致，报工默认合格数使用；工单详情由 {@code WoOpQty.fillReportable} 填写
+     */
+    @TableField(exist = false)
+    private BigDecimal reportableQty;
 }
