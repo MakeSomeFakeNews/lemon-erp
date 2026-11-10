@@ -44,6 +44,10 @@ public class MesEcn extends BaseEntity {
 
     private String flowInstanceId;
 
+    /** 批准人：审批流程最后一步的审批人，未发布流程时为提交人 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Long approveBy;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime approveTime;
 
@@ -67,4 +71,6 @@ public class MesEcn extends BaseEntity {
     private String toVersion;
     @TableField(exist = false)
     private String createByName;
+    @TableField(exist = false)
+    private String approveByName;
 }

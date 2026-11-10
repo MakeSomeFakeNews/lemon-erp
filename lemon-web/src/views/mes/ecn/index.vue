@@ -119,7 +119,7 @@
           <a-descriptions-item :label="$t('mes.ecn.effectiveDate')">{{ detail.effectiveDate }}</a-descriptions-item>
           <a-descriptions-item :label="$t('mes.ecn.syncDraftWo')">{{ detail.syncDraftWo === 1 ? $t('common.status.yes') : $t('common.status.no') }}</a-descriptions-item>
           <a-descriptions-item :label="$t('mes.ecn.initiated')">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item :label="$t('mes.ecn.approved')">{{ detail.approveTime || '-' }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('mes.ecn.approved')">{{ detail.approveByName }} {{ detail.approveTime || '-' }}</a-descriptions-item>
           <a-descriptions-item :label="$t('mes.ecn.effected')">{{ detail.effectTime || '-' }} <span class="sub-text">{{ detail.resultNote || '' }}</span></a-descriptions-item>
           <a-descriptions-item v-if="detail.description" :label="$t('mes.ecn.description')" :span="3"><span class="pre">{{ detail.description }}</span></a-descriptions-item>
         </a-descriptions>
