@@ -21,9 +21,8 @@ public interface FinExpenseClaimMapper extends BaseMapper<FinExpenseClaim> {
 
     List<FinExpenseClaimItem> selectItems(@Param("claimId") Long claimId);
 
-    /** 部门在途（审批中、待付款）报销金额按科目汇总，不含指定的报销单：[{accountId, amount}] */
-    List<Map<String, Object>> selectCommitted(@Param("deptId") Long deptId, @Param("begin") LocalDate begin, @Param("end") LocalDate end,
-                                              @Param("excludeId") Long excludeId);
+    /** 在途（审批中、待付款）报销金额按部门、科目汇总，不含指定的报销单：[{deptId, accountId, amount}] */
+    List<Map<String, Object>> selectCommitted(@Param("begin") LocalDate begin, @Param("end") LocalDate end, @Param("excludeId") Long excludeId);
 
     /**
      * 费用报销汇总（报销日期范围，不含草稿）：byAccount 为 true 时按费用科目汇总明细金额，否则按部门汇总报销金额

@@ -38,13 +38,12 @@
     </select>
 
     <select id="selectCommitted" resultType="java.util.Map">
-        SELECT i.account_id AS "accountId", SUM(i.amount) AS "amount"
+        SELECT c.dept_id AS "deptId", i.account_id AS "accountId", SUM(i.amount) AS "amount"
         FROM fin_expense_claim_item i
         JOIN fin_expense_claim c ON c.id = i.claim_id
         WHERE c.status IN ('APPROVING', 'APPROVED') AND c.claim_date &gt;= #{begin} AND c.claim_date &lt;= #{end}
-          <if test="deptId != null">AND c.dept_id = #{deptId}</if>
           <if test="excludeId != null">AND c.id &lt;&gt; #{excludeId}</if>
-        GROUP BY i.account_id
+        GROUP BY c.dept_id, i.account_id
     </select>
 
     <select id="selectSummary" resultType="com.lemon.erp.modules.fin.dto.ClaimSummaryRow">
