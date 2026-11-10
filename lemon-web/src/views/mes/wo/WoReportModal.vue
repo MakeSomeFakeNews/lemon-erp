@@ -79,7 +79,8 @@ const shotsHint = computed(() => {
 })
 async function open(op) {
   reportOp.value = op
-  const remaining = Math.max(Number(props.detail.qty) - Number(op.goodQty) - Number(op.scrapQty), 0)
+  // 默认合格数为还可报工的数量（后端按上道工序累计合格数 − 本工序已报合格和报废计算，与报工校验一致）
+  const remaining = Number(op.reportableQty ?? Math.max(Number(props.detail.qty) - Number(op.goodQty) - Number(op.scrapQty), 0))
   const hours = Math.round(Number(op.stdHours) * remaining * 100) / 100
   const [eqs, ms] = await Promise.all([equipmentOptions(), moldsOfWo(props.detail.id)])
   equipments.value = eqs

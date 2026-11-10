@@ -811,6 +811,8 @@ export default {
     usedText: '¥{used}（余 {left}）',
     voucher: '凭证',
     records: '冲抵记录',
+    receiptSettlement: '收款单',
+    paymentSettlement: '付款单',
     noRecords: '还没有冲抵',
     receiptTab: '预收（客户）',
     receipt: '预收',

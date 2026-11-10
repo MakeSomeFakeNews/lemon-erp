@@ -138,6 +138,7 @@ import { actionColumn } from '@/components/common/tableActions'
 import { confirmSettlement, deleteSettlement, getSettlement, pageSettlement, settlementVoucher } from '@/api/fin'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
+import { useRouteOpen } from '@/composables/useRouteOpen'
 import { formatMoney } from './fin'
 import { fcText, isForeign } from './currency'
 import { t } from '@/locales'
@@ -246,6 +247,8 @@ async function openDetail(record) {
   detailOpen.value = true
   detail.value = await getSettlement(props.kind, record.id)
 }
+// 从其他页面跳转过来（如预收预付的冲抵记录）：?id= 打开收付款单详情
+useRouteOpen({ id: (id) => openDetail({ id }) })
 
 const voucherOpen = ref(false)
 const voucherId = ref()

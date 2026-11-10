@@ -5,7 +5,7 @@
         <a-range-picker v-model:value="range" value-format="YYYY-MM-DD" :allow-clear="false" :presets="presets" @change="load" />
         <IdentityUserSelect v-if="has('operator')" v-model:value="query.operatorId" :placeholder="$t('mesStat.common.allOperators')" class="filter-s" />
         <WorkCenterSelect v-if="has('workCenter')" v-model:value="query.workCenterId" :placeholder="$t('mesStat.common.allWorkCenters')" class="filter-s" />
-        <a-select v-if="has('status')" v-model:value="query.status" :options="toOptions(dict.mes_wo_status)" allow-clear
+        <a-select v-if="has('status')" v-model:value="query.status" :options="statusOptions" allow-clear
           :placeholder="$t('mesStat.common.allStatus')" class="filter-s" />
         <a-select v-if="has('category')" v-model:value="query.category" :options="toOptions(dict.wms_material_category)" allow-clear
           :placeholder="$t('mesStat.common.allCategories')" class="filter-s" />
@@ -105,6 +105,7 @@ import { writeExcel } from '@/utils/excel'
 import { rangePresets, thisMonth } from '@/components/bi/jxc/jxc'
 import { DICT_TYPES, DUE_COLORS, REPORTS, cellText, dimLabel, exportCell, rateText } from './stat'
 import { t } from '@/locales'
+import { WorkOrderStatus } from '@/constants/enums'
 
 /**
  * 生产统计报表页（生产制造 → 生产统计）：按维度汇总，人员计件、工序产量可点击汇总行查看报工明细；导出当前汇总结果。
@@ -130,6 +131,8 @@ const total = computed(() => data.value.total || {})
 const loading = ref(false)
 
 const has = (f) => config.value.filters.includes(f)
+/** 工单状态：报表只统计已下达的工单，不列出草稿 */
+const statusOptions = computed(() => toOptions(dict.mes_wo_status).filter((o) => o.value !== WorkOrderStatus.DRAFT))
 const columns = computed(() => config.value.columns(groupBy.value, costVisible))
 const scrollX = computed(() => columns.value.reduce((sum, c) => sum + (c.width || 100), 0))
 const kpis = computed(() => config.value.kpis.filter((k) => !k.cost || costVisible))
