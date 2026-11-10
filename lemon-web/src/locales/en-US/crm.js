@@ -509,7 +509,7 @@ export default {
       service: 'Service Quality'
     },
     funnelNote: 'Reached: opportunities that ever reached the stage; Conversion = reached next stage / reached this stage',
-    rfmNote: 'Customers with sales shipments in the last year ({months} months): F is purchases per month and M is the average amount per purchase (tax included, after returns). High / low follows the segmentation parameters (green means high); high M means "Important", recent R and high F mean "Value / Retain"',
+    rfmNote: 'Customers with sales shipments in the last year ({months} months): F is purchases per month and M is the average amount per purchase (excluding tax, after returns, the same basis as customer RFM in the inventory reports). High / low follows the segmentation parameters (green means high); high M means "Important", recent R and high F mean "Value / Retain"',
     days: '{n} d',
     times: '{n}x',
     hours: '{n} h',

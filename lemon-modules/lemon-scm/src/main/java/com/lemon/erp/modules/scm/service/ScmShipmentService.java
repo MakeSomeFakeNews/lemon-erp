@@ -87,6 +87,7 @@ public class ScmShipmentService {
         shipment.setTradeDocId(doc.getId());
         shipment.setCustomerId(doc.getPartnerId());
         fill(shipment, req);
+        checkFreight(shipment);
         shipment.setStatus(PENDING);
         shipment.setDeptId(user.deptId());
         shipmentMapper.insert(shipment);
@@ -102,8 +103,11 @@ public class ScmShipmentService {
         }
         ScmShipment shipment = new ScmShipment();
         fill(shipment, req);
-        if ((old.getFreightBillId() != null || old.getFreightArBillId() != null)
-                && (!Objects.equals(old.getCarrierSupplierId(), shipment.getCarrierSupplierId())
+        boolean billed = old.getFreightBillId() != null || old.getFreightArBillId() != null;
+        if (!billed) {
+            checkFreight(shipment);
+        }
+        if (billed && (!Objects.equals(old.getCarrierSupplierId(), shipment.getCarrierSupplierId())
                 || compare(old.getFreight(), shipment.getFreight()) != 0 || old.getFreightBearer() != shipment.getFreightBearer())) {
             throw new BizException("scm.error.freightPayableHasGeneratedFreightCarrier");
         }
@@ -129,16 +133,18 @@ public class ScmShipmentService {
         if (!StringUtils.hasText(trackingNo)) {
             throw new BizException("scm.error.enterTrackingNo");
         }
+        if (shipment.getStatus() == PENDING) {
+            checkFreight(shipment);
+        }
         LocalDate date = req.date() == null ? LocalDate.now() : req.date();
         transit(shipment, Set.of(PENDING, EXCEPTION), SHIPPED, w -> w
                 .set(ScmShipment::getTrackingNo, trackingNo)
                 .set(ScmShipment::getShipDate, shipment.getStatus() == PENDING ? date : shipment.getShipDate()));
         addTrack(id, SHIPPED, StringUtils.hasText(req.content()) ? req.content()
                 : (shipment.getStatus() == PENDING ? "已发货" : "异常已处理，继续运输") + "，运单号 " + trackingNo); // i18n-ignore
-        // 首次发货：运费生成承运商应付单；客户承担的运费（代垫）另生成客户应收单
+        // 首次发货：运费生成承运商应付单；客户承担的运费（代垫）另生成客户应收单（客户承担时必有承运商，见 checkFreight）
         FreightBearer bearer = shipment.getFreightBearer() == null ? FreightBearer.COMPANY : shipment.getFreightBearer();
-        if (shipment.getStatus() == PENDING && shipment.getFreight() != null && shipment.getFreight().signum() > 0
-                && (shipment.getCarrierSupplierId() != null || bearer == FreightBearer.CUSTOMER)) {
+        if (shipment.getStatus() == PENDING && hasFreight(shipment) && shipment.getCarrierSupplierId() != null) {
             eventPublisher.publishEvent(new ShipmentShippedEvent(id, shipment.getShipNo(), shipment.getCarrierSupplierId(),
                     shipment.getFreight(), date, shipment.getDeptId(), shipment.getCustomerId(), bearer));
         }
@@ -226,6 +232,21 @@ public class ScmShipmentService {
         track.setStatus(status);
         track.setContent(content);
         trackMapper.insert(track);
+    }
+
+    /**
+     * 客户承担（代垫）运费时必须指定承运商（运费结算供应商）：代垫运费科目由客户应收（贷方）和承运商应付（借方）对冲，
+     * 只有应收没有应付会在代垫运费科目留下贷方余额。现场用现金付给承运商的，也应建一个承运商供应商，付款时核销其应付单。
+     * 本公司承担时可以不选（不生成应付，运费另行登记费用支出）
+     */
+    private static void checkFreight(ScmShipment shipment) {
+        if (shipment.getFreightBearer() == FreightBearer.CUSTOMER && hasFreight(shipment) && shipment.getCarrierSupplierId() == null) {
+            throw new BizException("scm.error.customerFreightRequiresCarrier");
+        }
+    }
+
+    private static boolean hasFreight(ScmShipment shipment) {
+        return shipment.getFreight() != null && shipment.getFreight().signum() > 0;
     }
 
     private static int compare(BigDecimal a, BigDecimal b) {

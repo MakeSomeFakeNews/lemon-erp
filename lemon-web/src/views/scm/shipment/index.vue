@@ -145,7 +145,12 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
-            <a-form-item :label="$t('scm.shipment.carrierSupplier')" name="carrierSupplierId" :extra="$t('scm.shipment.carrierSupplierExtra')">
+            <a-form-item
+              :label="$t('scm.shipment.carrierSupplier')"
+              name="carrierSupplierId"
+              :required="carrierRequired"
+              :extra="$t('scm.shipment.carrierSupplierExtra')"
+            >
               <PartnerSelect
                 v-model:value="form.carrierSupplierId"
                 type="supplier"
@@ -235,7 +240,7 @@
 
 <script setup>
 import SubPage from '@/components/SubPage.vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useRouteOpen } from '@/composables/useRouteOpen'
 import { message } from 'ant-design-vue'
@@ -301,7 +306,14 @@ function resetQuery() {
 // ---------------------------------------------------------------- 新增 / 编辑
 const rules = {
   tradeDocId: [{ required: true, message: t('scm.shipment.selectDoc') }],
-  carrier: [{ required: true, message: t('scm.shipment.selectCarrier') }]
+  carrier: [{ required: true, message: t('scm.shipment.selectCarrier') }],
+  // 客户承担（代垫）运费时必须选择运费结算供应商，否则只有客户应收、没有承运商应付
+  carrierSupplierId: [
+    {
+      validator: (_rule, value) =>
+        carrierRequired.value && !value ? Promise.reject(t('scm.shipment.customerNeedsCarrier')) : Promise.resolve()
+    }
+  ]
 }
 const drawer = useFormDrawer({
   emptyForm: () => ({
@@ -345,6 +357,11 @@ const billed = computed(() => !!(form.value.freightBillId || form.value.freightA
 const bearerOptions = computed(() =>
   toOptions(dict.scm_freight_bearer).filter((d) => d.value === FreightBearer.COMPANY || d.value === FreightBearer.CUSTOMER)
 )
+/** 客户承担且有运费时必须选择承运商（运费结算供应商） */
+const carrierRequired = computed(() => form.value.freightBearer === FreightBearer.CUSTOMER && form.value.freight > 0)
+watch(carrierRequired, (required) => {
+  if (!required) formRef.value?.clearValidate('carrierSupplierId')
+})
 const bearerExtra = computed(() => (form.value.freightBearer === FreightBearer.CUSTOMER ? t('scm.shipment.customerHint') : t('scm.shipment.companyHint')))
 
 const docs = ref([])

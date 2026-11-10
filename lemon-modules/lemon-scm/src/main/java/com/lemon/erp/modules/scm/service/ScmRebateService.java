@@ -130,7 +130,8 @@ public class ScmRebateService {
         }
         Calc c = calc(r, r.getEndDate());
         if (c.rebateAmount().signum() <= 0) {
-            throw new BizException("scm.error.periodSalesAmountDoesNotReach", plain(c.salesAmount()));
+            throw new BizException(kind == RebateKind.PURCHASE ? "scm.error.periodPurchaseAmountDoesNotReach"
+                    : "scm.error.periodSalesAmountDoesNotReach", plain(c.salesAmount()));
         }
         LocalDate date = settleDate != null ? settleDate : LocalDate.now();
         if (!StatusTransitions.tryChange(rebateMapper, ScmRebate::getId, id, ScmRebate::getStatus, RebateStatus.ACTIVE, RebateStatus.SETTLED,
@@ -233,7 +234,8 @@ public class ScmRebateService {
             }
             if (req.tiers().stream().map(t -> t.minAmount().stripTrailingZeros()).collect(HashSet::new, HashSet::add, HashSet::addAll).size()
                     != req.tiers().size()) {
-                throw new BizException("scm.error.rebateTierSalesAmountsCannotDuplicated");
+                throw new BizException(kind == RebateKind.PURCHASE ? "scm.error.rebateTierPurchaseAmountsCannotDuplicated"
+                        : "scm.error.rebateTierSalesAmountsCannotDuplicated");
             }
         }
         if (kind == RebateKind.PURCHASE) {
