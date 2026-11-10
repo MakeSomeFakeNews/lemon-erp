@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -78,6 +79,15 @@ public class StockReservationService {
         if (free.compareTo(qty) < 0) {
             throw new BizException("wms.error.insufficientFreeStockReservableRequired", material.getCode(), material.getName(),
                     plain(free.max(BigDecimal.ZERO)), plain(qty));
+        }
+        // 同一来源明细在同一仓库分批预留时累加到未结束的预留上，不拆成多行（同一物料的不同明细行，如赠品行，仍各自预留）
+        WmsReservation open = sourceItemId == null ? null : Queries.first(reservationMapper, Wrappers.<WmsReservation>lambdaQuery()
+                .eq(WmsReservation::getSourceType, sourceType).eq(WmsReservation::getSourceItemId, sourceItemId)
+                .eq(WmsReservation::getWarehouseId, warehouseId).gt(WmsReservation::getQty, 0).orderByAsc(WmsReservation::getId));
+        if (open != null) {
+            reservationMapper.update(Wrappers.<WmsReservation>lambdaUpdate().set(WmsReservation::getQty, open.getQty().add(qty))
+                    .set(WmsReservation::getUpdateTime, LocalDateTime.now()).eq(WmsReservation::getId, open.getId()));
+            return;
         }
         WmsReservation r = new WmsReservation();
         r.setWarehouseId(warehouseId);

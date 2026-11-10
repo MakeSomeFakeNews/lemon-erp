@@ -25,6 +25,8 @@ public class MesFlowBusinesses {
     public FlowBusiness ecnFlow() {
         return FlowBusiness.of(MesEcnService.PROCESS_KEY, "mes.label.ecnApproval",
                 dict("reason", "mes.label.changeReason", "mes_ecn_reason"),
+                number("itemChanges", "mes.label.ecnItemChanges"),
+                number("opChanges", "mes.label.ecnOpChanges"),
                 text("materialCode", "mes.label.productCode"),
                 text("ecnNo", "mes.label.ecnNo"));
     }
