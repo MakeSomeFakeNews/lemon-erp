@@ -58,7 +58,7 @@
               <FlowDesigner
                 v-if="detail.flow"
                 :model-value="detail.flow"
-                :fields="detail.form || []"
+                :fields="flowFields"
                 :node-status="detail.nodeStatus || {}"
                 readonly
               />
@@ -260,9 +260,24 @@ async function submitAction() {
 // 业务变量中的字典（请假类型、凭证来源等）
 const dictStore = useDictStore()
 watch(
-  () => detail.value?.business,
-  (list) => (list || []).forEach((b) => b.dictType && dictStore.load(b.dictType).catch(() => {}))
+  () => detail.value?.variables,
+  (list) => (list || []).forEach((v) => v.dictType && dictStore.load(v.dictType).catch(() => {}))
 )
+// 流程图中条件分支显示的字段：表单字段 + 业务单据的流程变量（与设计器一致，字典变量的取值显示为字典标签）
+const flowFields = computed(() => [
+  ...(detail.value?.form || []),
+  ...(detail.value?.variables || []).map((v) => ({
+    field: v.field,
+    label: v.label,
+    type: v.type,
+    options: v.dictType
+      ? [
+          ...(dictStore.cache[v.dictType] || []).map((d) => ({ label: d.label, value: d.value })),
+          ...(v.options || []).map((o) => ({ label: o, value: o }))
+        ]
+      : v.options || []
+  }))
+])
 const formatBusinessValue = (b) =>
   b.type === FormFieldType.NUMBER && typeof b.value === 'number' ? b.value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : b.value
 </script>

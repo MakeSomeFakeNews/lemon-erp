@@ -17,6 +17,7 @@ import java.util.Map;
  * @param form       发起时所用版本的表单
  * @param formData   表单数据
  * @param business   业务单据的流程：发起时传入的业务变量
+ * @param variables  业务单据的流程：全部业务变量的定义（名称、类型、字典、可选值），流程图中条件按名称显示
  * @param flow       发起时所用版本的流程
  * @param nodeStatus 节点（及走过的分支）状态
  * @param todoTaskId 当前用户在该流程中的待办任务，没有为 null
@@ -26,7 +27,8 @@ public record InstanceDetail(String id, String name, String processKey, String p
                              Long startUserId, String startUserName,
                              @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
                              @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
-                             List<FormField> form, Map<String, Object> formData, List<BusinessField> business, FlowNode flow,
+                             List<FormField> form, Map<String, Object> formData, List<BusinessField> business,
+                             List<FlowBusiness.Variable> variables, FlowNode flow,
                              Map<String, NodeStatus> nodeStatus, List<ApprovalRecord> records, String todoTaskId,
                              boolean cancelable) {
 
