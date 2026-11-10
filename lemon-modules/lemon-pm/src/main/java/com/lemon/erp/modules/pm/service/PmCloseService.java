@@ -44,7 +44,9 @@ import static com.lemon.erp.common.util.Decimals.HUNDRED;
  *   <li>收入：有合同金额的项目按完工进度确认收入 借 合同负债（开票时计入）/ 贷 主营业务收入，
  *       同时把累计实际成本结转 借 主营业务成本 / 贷 合同履约成本</li>
  * </ul>
- * 每次月结只处理未入账的工时、费用和收入、成本的增量；删除月结凭证后可以重新月结
+ * 每次月结只处理未入账的工时、费用和收入、成本的增量；删除月结凭证后可以重新月结。
+ * 工时、费用按截至期末未入账的全部入账（不限本期）：以前月份被驳回、本月才审批通过的计入本期凭证，
+ * 与结转成本按截至期末的累计已审批成本计算一致，合同履约成本不会出现贷方余额；已入账的有凭证 ID，不会重复入账
  */
 @Service
 @RequiredArgsConstructor
@@ -61,7 +63,6 @@ public class PmCloseService {
     /** @return 生成的凭证数 */
     @Transactional
     public int close(int period) {
-        LocalDate begin = FinConstants.firstDay(period);
         LocalDate end = FinConstants.lastDay(period);
         periodGuard.checkOpen(end, "pm.label.projectPeriodClose");
         Long contractCost = accountRules.accountId(AccountRole.CONTRACT_COST);
@@ -69,7 +70,7 @@ public class PmCloseService {
         // 按项目汇总本期的分录
         Map<Long, List<VoucherLine>> lines = new LinkedHashMap<>();
         Map<Long, BigDecimal[]> amounts = new HashMap<>();
-        for (Map<String, Object> row : closeMapper.selectUnpostedLabor(begin, end)) {
+        for (Map<String, Object> row : closeMapper.selectUnpostedLabor(end)) {
             Long projectId = ((Number) row.get("projectId")).longValue();
             BigDecimal amount = decimal(row.get("amount"));
             Long expense = accountRules.accountId(AccountRole.SALARY_EXPENSE, (String) row.get("category"));
@@ -80,7 +81,7 @@ public class PmCloseService {
             amounts.computeIfAbsent(projectId, k -> zeros())[0] = amounts.get(projectId)[0].add(amount);
         }
         Long otherPayable = accountRules.accountId(AccountRole.OTHER_PAYABLE);
-        for (Map<String, Object> row : closeMapper.selectUnpostedExpense(begin, end)) {
+        for (Map<String, Object> row : closeMapper.selectUnpostedExpense(end)) {
             Long projectId = ((Number) row.get("projectId")).longValue();
             BigDecimal amount = decimal(row.get("amount"));
             String summary = "项目费用 " + period; // i18n-ignore 凭证摘要存库
@@ -144,8 +145,8 @@ public class PmCloseService {
             Long deptId = p == null ? null : p.getDeptId();
             List<VoucherLine> withDept = e.getValue().stream().map(l -> l.deptId() != null ? l : l.withDept(deptId)).toList();
             Long voucherId = voucherService.createGenerated(end, VoucherSource.PROJECT, p == null ? null : p.getCode(), withDept);
-            closeMapper.markTimesheets(voucherId, projectId, begin, end);
-            closeMapper.markCosts(voucherId, projectId, begin, end);
+            closeMapper.markTimesheets(voucherId, projectId, end);
+            closeMapper.markCosts(voucherId, projectId, end);
             PmRevenue r = revenues.getOrDefault(projectId, new PmRevenue());
             BigDecimal[] a = amounts.getOrDefault(projectId, zeros());
             r.setProjectId(projectId);

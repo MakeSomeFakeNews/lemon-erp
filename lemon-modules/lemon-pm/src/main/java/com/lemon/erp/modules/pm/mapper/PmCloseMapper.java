@@ -14,18 +14,18 @@ import java.util.Map;
 public interface PmCloseMapper extends BaseMapper<PmRevenue> {
 
     /**
-     * 未入账的已审批工时成本，按项目和员工岗位类别汇总
+     * 截至期末未入账的已审批工时成本（含以前月份驳回后本月才审批通过的），按项目和员工岗位类别汇总
      *
      * @return [{projectId, category, amount}]
      */
-    List<Map<String, Object>> selectUnpostedLabor(@Param("begin") LocalDate begin, @Param("end") LocalDate end);
+    List<Map<String, Object>> selectUnpostedLabor(@Param("end") LocalDate end);
 
     /**
-     * 未入账的已审批手工费用（领料成本已由成本核算计入合同履约成本），按项目汇总
+     * 截至期末未入账的已审批手工费用（含以前月份迟审批的；领料成本已由成本核算计入合同履约成本），按项目汇总
      *
      * @return [{projectId, amount}]
      */
-    List<Map<String, Object>> selectUnpostedExpense(@Param("begin") LocalDate begin, @Param("end") LocalDate end);
+    List<Map<String, Object>> selectUnpostedExpense(@Param("end") LocalDate end);
 
     /**
      * 有合同金额、已启动的项目截至期末的累计实际成本（人工 + 费用 + 领料）与已确认的收入、已结转的成本
@@ -34,11 +34,11 @@ public interface PmCloseMapper extends BaseMapper<PmRevenue> {
      */
     List<Map<String, Object>> selectRecognition(@Param("end") LocalDate end);
 
-    int markTimesheets(@Param("voucherId") Long voucherId, @Param("projectId") Long projectId,
-                       @Param("begin") LocalDate begin, @Param("end") LocalDate end);
+    /** 截至期末未入账的已审批工时记入月结凭证（与 selectUnpostedLabor 同一口径） */
+    int markTimesheets(@Param("voucherId") Long voucherId, @Param("projectId") Long projectId, @Param("end") LocalDate end);
 
-    int markCosts(@Param("voucherId") Long voucherId, @Param("projectId") Long projectId,
-                  @Param("begin") LocalDate begin, @Param("end") LocalDate end);
+    /** 截至期末未入账的已审批手工费用记入月结凭证（与 selectUnpostedExpense 同一口径） */
+    int markCosts(@Param("voucherId") Long voucherId, @Param("projectId") Long projectId, @Param("end") LocalDate end);
 
     List<PmRevenue> selectByProject(@Param("projectId") Long projectId);
 }
