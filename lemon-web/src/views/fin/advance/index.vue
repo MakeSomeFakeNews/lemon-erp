@@ -55,14 +55,7 @@
                 <span v-else class="sub-text">-</span>
               </template>
               <template v-else-if="column.key === 'action'">
-                <span class="table-actions">
-                  <a-button v-if="remaining(record) > 0" v-perm="'fin:advance:add'" type="link" size="small" @click="openApply(record)">{{ $t('fin.advance.apply') }}</a-button>
-                  <span v-if="!Number(record.usedAmount)" v-perm="'fin:advance:add'">
-                    <a-popconfirm :title="$t('fin.advance.confirmDelete', { no: record.advanceNo })" @confirm="remove(record.id)">
-                      <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                    </a-popconfirm>
-                  </span>
-                </span>
+                <TableActions :actions="rowActions(record)" />
               </template>
             </template>
           </a-table>
@@ -198,10 +191,12 @@ import SubPage from '@/components/SubPage.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { InteractionOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import { addAdvance, applyAdvance, deleteAdvance, getAdvance, pageAdvance, unsettledBills } from '@/api/fin'
 import { sumWidth } from '@/composables/useColumns'
@@ -234,16 +229,27 @@ const curPrefix = (a) => (isForeign(a?.currency) ? `${a.currency} ` : '¥')
 const currencyList = useCurrencies()
 
 const columns = computed(() => [
-  { title: t('fin.advance.docNo'), key: 'advanceNo', width: 150 },
-  { title: conf.value.partnerLabel, dataIndex: 'partnerName', width: 170, ellipsis: true },
+  { title: t('fin.advance.docNo'), key: 'advanceNo', width: 160 },
+  { title: conf.value.partnerLabel, dataIndex: 'partnerName', width: 200, ellipsis: true },
   { title: t('common.field.date'), dataIndex: 'advanceDate', width: 110 },
-  { title: t('fin.advance.accountMethod'), key: 'account', width: 150 },
-  { title: t('common.field.amount'), key: 'amount', width: 120, align: 'right' },
-  { title: t('fin.advance.used'), key: 'used', width: 120, align: 'right' },
+  { title: t('fin.advance.accountMethod'), key: 'account', width: 170 },
+  { title: t('common.field.amount'), key: 'amount', width: 130, align: 'right' },
+  { title: t('fin.advance.used'), key: 'used', width: 130, align: 'right' },
   { title: t('fin.advance.voucher'), key: 'voucher', width: 110 },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
+  actionColumn(2, [t('fin.advance.apply'), t('common.action.delete')])
 ])
+// 行操作：有余额的可冲抵；未使用的可删除
+const rowActions = (record) => [
+  { key: 'apply', label: t('fin.advance.apply'), icon: InteractionOutlined, show: remaining(record) > 0, perm: 'fin:advance:add', onClick: () => openApply(record) },
+  {
+    type: 'delete',
+    show: !Number(record.usedAmount),
+    perm: 'fin:advance:add',
+    confirm: t('fin.advance.confirmDelete', { no: record.advanceNo }),
+    onClick: () => remove(record.id)
+  }
+]
 const scrollX = computed(() => sumWidth(columns.value))
 const query = reactive({ kind: SettleKind.RECEIPT, partnerId: undefined, keyword: undefined, onlyOpen: false })
 const { list, loading, pagination, load, search, onTableChange } = useTable(pageAdvance, query)

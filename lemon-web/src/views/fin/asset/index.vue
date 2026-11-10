@@ -50,35 +50,7 @@
                 <div v-if="record.disposeDate" class="sub-text">{{ record.disposeDate }}</div>
               </template>
               <template v-else-if="column.key === 'action'">
-                <span class="table-actions">
-                  <template v-if="record.status !== AssetStatus.DISPOSED">
-                    <a-button v-perm="'fin:asset:edit'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-                    <a-dropdown v-perm="'fin:asset:move'">
-                      <a-button type="link" size="small">{{ $t('fin.asset.move') }} <DownOutlined /></a-button>
-                      <template #overlay>
-                        <a-menu @click="({ key }) => openMove(record, key)">
-                          <a-menu-item v-if="record.status === AssetStatus.IDLE" key="ASSIGN">{{ $t('fin.asset.assign') }}</a-menu-item>
-                          <a-menu-item v-if="record.status === AssetStatus.IN_USE" key="RETURN">{{ $t('fin.asset.return') }}</a-menu-item>
-                          <a-menu-item key="TRANSFER">{{ $t('fin.asset.transfer') }}</a-menu-item>
-                        </a-menu>
-                      </template>
-                    </a-dropdown>
-                  </template>
-                  <a-button v-if="record.status === AssetStatus.DISPOSED" type="link" size="small" @click="openHistory(record)">{{ $t('fin.asset.history') }}</a-button>
-                  <!-- 履历、处置、删除收进「更多」 -->
-                  <a-dropdown v-else>
-                    <a-button type="link" size="small">{{ $t('common.action.more') }} <DownOutlined /></a-button>
-                    <template #overlay>
-                      <a-menu @click="({ key }) => onMoreAction(key, record)">
-                        <a-menu-item key="history">{{ $t('fin.asset.history') }}</a-menu-item>
-                        <a-menu-item v-if="userStore.hasPerm('fin:asset:edit')" key="dispose">{{ $t('fin.asset.dispose') }}</a-menu-item>
-                        <a-menu-item v-if="record.depreciatedMonths === 0 && userStore.hasPerm('fin:asset:remove')" key="remove" danger>
-                          {{ $t('common.action.delete') }}
-                        </a-menu-item>
-                      </a-menu>
-                    </template>
-                  </a-dropdown>
-                </span>
+                <TableActions :actions="rowActions(record)" />
               </template>
             </template>
           </a-table>
@@ -294,9 +266,9 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { Modal, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { DownOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, RollbackOutlined, StopOutlined, UserAddOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -316,8 +288,9 @@ import { useAction } from '@/composables/useAction'
 import { useRouteOpen } from '@/composables/useRouteOpen'
 
 import { AssetMoveType, AssetStatus } from '@/constants/enums'
-import { actionWidth, useColumns } from '@/composables/useColumns'
-import { useUserStore } from '@/store/user'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import TableToolbar from '@/components/TableToolbar.vue'
 const { t } = useI18n()
 const dict = useDict('fin_asset_category', 'fin_asset_status', 'fin_asset_move_type')
@@ -325,25 +298,52 @@ const tab = ref('cards')
 
 const columns = [
   { title: t('fin.asset.asset'), key: 'name', width: 200 },
-  { title: t('fin.asset.category'), key: 'category', width: 90, defaultHidden: true },
-  { title: t('fin.asset.colUser'), key: 'user', width: 140 },
-  { title: t('fin.asset.colUseDate'), dataIndex: 'useDate', width: 100, defaultHidden: true },
+  { title: t('fin.asset.category'), key: 'category', width: 90 },
+  { title: t('fin.asset.colUser'), key: 'user', width: 150 },
+  { title: t('fin.asset.colUseDate'), dataIndex: 'useDate', width: 100 },
   { title: t('fin.asset.originalValue'), key: 'value', width: 130, align: 'right' },
-  { title: t('fin.asset.colProgress'), key: 'depreciation', width: 190 },
+  { title: t('fin.asset.colProgress'), key: 'depreciation', width: 200 },
   { title: t('fin.asset.netValue'), key: 'net', width: 150, align: 'right' },
-  { title: t('fin.asset.colExpenseAccount'), dataIndex: 'expenseAccountName', width: 120, defaultHidden: true },
+  { title: t('fin.asset.colExpenseAccount'), dataIndex: 'expenseAccountName', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  {
-    title: t('common.action.operation'),
-    key: 'action',
-    // 编辑、变动（下拉）、更多；已处置只有履历
-    width: actionWidth([{ text: t('common.action.edit'), icon: false }, t('fin.asset.move'), t('common.action.more')]),
-    fixed: 'right'
-  }
+  // 编辑、领用 / 归还、删除、更多；已处置只有履历
+  actionColumn(4, [t('fin.asset.history')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-asset')
 const size = ref('middle')
-const userStore = useUserStore()
+// 行操作：编辑、领用（闲置）/ 归还（在用）、删除（未计提折旧）直接显示；调拨、处置、履历在「更多」中；已处置只能看履历
+const rowActions = (record) => {
+  const active = record.status !== AssetStatus.DISPOSED
+  return [
+    { type: 'edit', show: active, perm: 'fin:asset:edit', onClick: () => drawer.openEdit(record) },
+    {
+      key: 'assign',
+      label: t('fin.asset.assign'),
+      icon: UserAddOutlined,
+      show: record.status === AssetStatus.IDLE,
+      perm: 'fin:asset:move',
+      onClick: () => openMove(record, AssetMoveType.ASSIGN)
+    },
+    {
+      key: 'return',
+      label: t('fin.asset.return'),
+      icon: RollbackOutlined,
+      show: record.status === AssetStatus.IN_USE,
+      perm: 'fin:asset:move',
+      onClick: () => openMove(record, AssetMoveType.RETURN)
+    },
+    {
+      type: 'delete',
+      show: active && record.depreciatedMonths === 0,
+      perm: 'fin:asset:remove',
+      confirm: { title: t('fin.asset.confirmDelete', { name: record.name }), okType: 'danger' },
+      onClick: () => remove(record.id)
+    },
+    { key: 'transfer', type: 'move', label: t('fin.asset.transfer'), show: active, perm: 'fin:asset:move', more: true, onClick: () => openMove(record, AssetMoveType.TRANSFER) },
+    { key: 'dispose', label: t('fin.asset.dispose'), icon: StopOutlined, show: active, perm: 'fin:asset:edit', more: true, onClick: () => dispose(record) },
+    { key: 'history', type: 'history', label: t('fin.asset.history'), more: active, onClick: () => openHistory(record) }
+  ]
+}
 const query = reactive({ keyword: undefined, category: undefined, status: undefined })
 const { list, loading, pagination, load, search, onTableChange } = useTable(pageAsset, query)
 // 从应付单的来源（资产编码）跳转过来时按编码筛选
@@ -439,17 +439,7 @@ async function openHistory(record) {
 }
 const arrow = (from, to) => (from === to ? from || '-' : `${from || '-'} → ${to || '-'}`)
 
-const remove = useAction(deleteAsset, {
-  confirm: (id, name) => ({ title: t('fin.asset.confirmDelete', { name }), okType: 'danger' }),
-  successKey: 'common.msg.deleteSuccess',
-  reload: () => load()
-})
-
-function onMoreAction(key, record) {
-  if (key === 'history') openHistory(record)
-  if (key === 'dispose') dispose(record)
-  if (key === 'remove') remove(record.id, record.name)
-}
+const remove = useAction(deleteAsset, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- 折旧
 const depPeriod = ref(currentPeriod())

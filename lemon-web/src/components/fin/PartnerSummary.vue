@@ -41,10 +41,7 @@
           <span class="sub-text">{{ moneyOrBlank(record.badDebt) }}</span>
         </template>
         <template v-else-if="column.key === 'action'">
-          <span class="table-actions">
-            <a-button v-perm="`fin:${settleKind}:add`" type="link" size="small" @click="openSettle(record)">{{ tx.settle }}</a-button>
-            <a-button v-perm="'fin:partnerStatement:list'" type="link" size="small" @click="toStatement(record)">{{ $t('fin.partnerSummary.statement') }}</a-button>
-          </span>
+          <TableActions :actions="rowActions(record)" />
         </template>
         <template v-else-if="column.money">
           <span :class="{ neg: Number(record[column.key]) < 0 }">{{ moneyOrBlank(record[column.key]) }}</span>
@@ -62,9 +59,11 @@
 <script setup>
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { QuestionCircleOutlined } from '@ant-design/icons-vue'
+import { FileSearchOutlined, QuestionCircleOutlined, TransactionOutlined } from '@ant-design/icons-vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import SettlementForm from './SettlementForm.vue'
 import PartnerSummaryDetail from './PartnerSummaryDetail.vue'
 import { billSummary, billSummaryTotal } from '@/api/fin'
@@ -103,9 +102,14 @@ const columns = [
   { title: tx.advance, key: 'advanceBalance', width: 150, align: 'right', money: true },
   { title: tx.badDebt, key: 'badDebt', width: 120, align: 'right' },
   { title: tx.net, key: 'net', width: 150, align: 'right' },
-  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
+  actionColumn(2, [tx.settle, t('fin.partnerSummary.statement')])
 ]
 const scrollX = columns.reduce((s, c) => s + c.width, 0) + 48
+// 行操作：收款 / 付款、往来对账单
+const rowActions = (record) => [
+  { key: 'settle', label: tx.settle, icon: TransactionOutlined, perm: `fin:${settleKind}:add`, onClick: () => openSettle(record) },
+  { key: 'statement', label: t('fin.partnerSummary.statement'), icon: FileSearchOutlined, perm: 'fin:partnerStatement:list', onClick: () => toStatement(record) }
+]
 
 const query = reactive({ partnerId: undefined, keyword: undefined, ownerId: undefined, onlyBalance: true })
 const total = ref({})

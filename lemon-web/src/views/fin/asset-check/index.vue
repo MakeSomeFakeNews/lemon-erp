@@ -43,7 +43,13 @@
             <div v-if="record.finishTime" class="sub-text">{{ record.finishTime }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === AssetCheckStatus.CHECKING ? $t('fin.assetCheck.check') : $t('common.action.view') }}</a-button>
+            <TableActions
+              :actions="[
+                record.status === AssetCheckStatus.CHECKING
+                  ? { key: 'check', label: $t('fin.assetCheck.check'), icon: CheckSquareOutlined, onClick: () => openDetail(record.id) }
+                  : { type: 'view', onClick: () => openDetail(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -137,16 +143,7 @@
               <div v-if="record.remark" class="sub-text">{{ record.remark }}</div>
             </template>
             <template v-else-if="column.key === 'action'">
-              <span v-if="checking" v-perm="'fin:assetCheck:edit'" class="table-actions">
-                <template v-if="record.assetId">
-                  <a-button type="link" size="small" :disabled="record.result === AssetCheckResult.NORMAL" @click="mark(record, 'NORMAL')">{{ $t('fin.assetCheck.normal') }}</a-button>
-                  <a-button type="link" size="small" @click="openRecord(record, 'MOVED')">{{ $t('fin.assetCheck.moved') }}</a-button>
-                  <a-button type="link" size="small" danger @click="openRecord(record, 'LOSS')">{{ $t('fin.assetCheck.loss') }}</a-button>
-                </template>
-                <a-popconfirm v-else :title="$t('fin.assetCheck.confirmDeleteGain')" @confirm="removeGain(record)">
-                  <a-button type="link" size="small" danger>{{ $t('common.action.delete') }}</a-button>
-                </a-popconfirm>
-              </span>
+              <TableActions :actions="itemActions(record)" />
             </template>
           </template>
         </a-table>
@@ -198,11 +195,13 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { CheckCircleOutlined, CheckSquareOutlined, MinusCircleOutlined, PlusOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SubPage from '@/components/SubPage.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
 import { addAssetCheck, addAssetGain, deleteAssetCheck, finishAssetCheck, getAssetCheck, pageAssetCheck, recordAssetCheck, removeAssetGain } from '@/api/fin'
 import { today } from '@/components/wms/wms'
@@ -223,7 +222,7 @@ const columns = [
   { title: t('fin.assetCheck.progress'), key: 'progress', width: 160 },
   { title: t('fin.assetCheck.diff'), key: 'diff', width: 240 },
   { title: t('common.field.status'), key: 'status', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('fin.assetCheck.check'), t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-asset-check')
 const query = reactive({ status: undefined })
@@ -260,8 +259,29 @@ const itemColumns = [
   { title: t('fin.assetCheck.result'), key: 'result', width: 120 },
   { title: t('fin.assetCheck.actual'), key: 'actual', width: 220 },
   { title: t('fin.assetCheck.checkBy'), dataIndex: 'checkByName', width: 110 },
-  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
+  actionColumn(3)
 ]
+// 明细行操作（盘点中）：正常、位置变化、盘亏；盘盈的资产可删除
+const itemActions = (record) => {
+  const show = checking.value
+  const perm = 'fin:assetCheck:edit'
+  if (!record.assetId) {
+    return [{ type: 'delete', show, perm, confirm: t('fin.assetCheck.confirmDeleteGain'), onClick: () => removeGain(record) }]
+  }
+  return [
+    {
+      key: 'normal',
+      label: t('fin.assetCheck.normal'),
+      icon: CheckCircleOutlined,
+      show,
+      perm,
+      disabled: record.result === AssetCheckResult.NORMAL,
+      onClick: () => mark(record, AssetCheckResult.NORMAL)
+    },
+    { key: 'moved', label: t('fin.assetCheck.moved'), icon: SwapOutlined, show, perm, onClick: () => openRecord(record, AssetCheckResult.MOVED) },
+    { key: 'loss', label: t('fin.assetCheck.loss'), icon: MinusCircleOutlined, danger: true, show, perm, onClick: () => openRecord(record, AssetCheckResult.LOSS) }
+  ]
+}
 const detailOpen = ref(false)
 const detail = ref()
 const filter = ref('')

@@ -20,9 +20,7 @@
                 <a-tag :color="record.status === 0 ? 'default' : 'green'" :bordered="false">{{ record.status === 0 ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
               </template>
               <template v-else-if="column.key === 'action'">
-                <a-button v-perm="'fin:currency:edit'" type="link" size="small" @click="openCurrency(record)">
-                  <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-                </a-button>
+                <TableActions :actions="[{ type: 'edit', perm: 'fin:currency:edit', onClick: () => openCurrency(record) }]" />
               </template>
             </template>
           </a-table>
@@ -188,8 +186,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
-import { EditOutlined, PlusOutlined, SaveOutlined, SwapOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, SaveOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import { currencies, exchangeRates, revalue, saveCurrency, saveRate } from '@/api/fin'
 import { useUserStore } from '@/store/user'
@@ -212,7 +212,7 @@ const currencyColumns = [
   { title: t('fin.currencyPage.symbol'), dataIndex: 'symbol', width: 100 },
   { title: t('common.field.sort'), dataIndex: 'sort', width: 80 },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: 110 }
+  actionColumn(1, [t('common.action.edit')], { fixed: undefined })
 ]
 const currencyList = ref([])
 const currencyLoading = ref(false)

@@ -36,19 +36,7 @@
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="fin_note_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
-              <span v-if="actionsOf(record).length" v-perm="'fin:note:edit'">
-                <a-dropdown>
-                  <a-button type="link" size="small">{{ $t('fin.note.handle') }} <DownOutlined /></a-button>
-                  <template #overlay>
-                    <a-menu @click="({ key }) => openAction(record, key)">
-                      <a-menu-item v-for="a in actionsOf(record)" :key="a.key">{{ a.label }}</a-menu-item>
-                    </a-menu>
-                  </template>
-                </a-dropdown>
-              </span>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -243,10 +231,21 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
-import { DeleteOutlined, DownOutlined, PlusOutlined, UndoOutlined } from '@ant-design/icons-vue'
+import {
+  BankOutlined,
+  CloseCircleOutlined,
+  DeleteOutlined,
+  PayCircleOutlined,
+  PercentageOutlined,
+  PlusOutlined,
+  SwapOutlined,
+  UndoOutlined
+} from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SubPage from '@/components/SubPage.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import BillSettleTable from '@/components/fin/BillSettleTable.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
@@ -286,12 +285,12 @@ const CONF = {
 /** 各状态可以办理的操作 */
 const ACTIONS = {
   HELD: [
-    { key: 'endorse', label: t('fin.note.actions.endorse') },
-    { key: 'discount', label: t('fin.note.actions.discount') },
-    { key: 'collect', label: t('fin.note.actions.collect') },
-    { key: 'dishonor', label: t('fin.note.actions.dishonor') }
+    { key: 'endorse', label: t('fin.note.actions.endorse'), icon: SwapOutlined },
+    { key: 'discount', label: t('fin.note.actions.discount'), icon: PercentageOutlined },
+    { key: 'collect', label: t('fin.note.actions.collect'), icon: BankOutlined },
+    { key: 'dishonor', label: t('fin.note.actions.dishonor'), icon: CloseCircleOutlined }
   ],
-  ISSUED: [{ key: 'pay', label: t('fin.note.actions.pay') }]
+  ISSUED: [{ key: 'pay', label: t('fin.note.actions.pay'), icon: PayCircleOutlined }]
 }
 const SETTLE_TIPS = {
   discount: t('fin.note.tips.discount'),
@@ -310,15 +309,20 @@ const dueSoon = ref(false)
 const columns = [
   { title: t('fin.note.noteNo'), key: 'noteNo', width: 240 },
   { title: t('common.field.type'), key: 'noteType', width: 110 },
-  { title: t('fin.note.partner'), dataIndex: 'partnerName', width: 120, ellipsis: true },
+  { title: t('fin.note.partner'), dataIndex: 'partnerName', width: 150, ellipsis: true },
   { title: t('fin.note.faceAmount'), key: 'amount', width: 130, align: 'right' },
   { title: t('fin.note.issueDate'), dataIndex: 'issueDate', width: 100 },
   { title: t('fin.note.dueDate'), key: 'dueDate', width: 120 },
-  { title: t('fin.note.acceptor'), dataIndex: 'acceptor', width: 90, ellipsis: true },
+  { title: t('fin.note.acceptor'), dataIndex: 'acceptor', width: 120, ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
+  // 查看 + 办理（持有中的背书、贴现、托收、拒付在「更多」中；已开出的只有付款，直接显示）
+  actionColumn(2, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-note')
+const rowActions = (record) => [
+  { type: 'view', onClick: () => openDetail(record.id) },
+  ...actionsOf(record).map((a) => ({ ...a, perm: 'fin:note:edit', more: true, onClick: () => openAction(record, a.key) }))
+]
 const query = reactive({ kind: NoteKind.RECEIVABLE, status: undefined, keyword: undefined, dueWithin: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageNote, query)
 watch(kind, (k) => {

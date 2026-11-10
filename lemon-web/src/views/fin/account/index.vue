@@ -42,15 +42,7 @@
             />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="'fin:account:add'" type="link" size="small" @click="openForm(null, record)">{{ $t('fin.account.addChild') }}</a-button>
-              <a-button v-perm="'fin:account:edit'" type="link" size="small" @click="openForm(record)">{{ $t('common.action.edit') }}</a-button>
-              <span v-if="!record.children" v-perm="'fin:account:remove'">
-                <a-popconfirm :title="$t('fin.account.confirmDelete', { name: `${record.code} ${record.name}` })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -98,13 +90,14 @@
 </template>
 
 <script setup>
-import { actionWidth } from '@/composables/useColumns'
 import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import StatusSwitch from '@/components/StatusSwitch.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { accountTree, addAccount, changeAccountStatus, deleteAccount, updateAccount } from '@/api/fin'
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
@@ -123,12 +116,24 @@ const columns = [
   { title: t('fin.account.name'), key: 'name', width: 220 },
   { title: t('fin.account.category'), key: 'category', width: 90 },
   { title: t('fin.account.direction'), key: 'direction', width: 90 },
-  { title: t('fin.account.aux'), key: 'auxItems', width: 160 },
+  { title: t('fin.account.aux'), key: 'auxItems', width: 180 },
   { title: t('common.field.status'), key: 'status', width: 80 },
   { title: t('common.field.remark'), dataIndex: 'remark', width: 120, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('fin.account.addChild'), t('common.action.edit'), t('common.action.delete')].map((text) => ({ text, icon: false }))), fixed: 'right' }
+  actionColumn(3)
 ]
 const scrollX = columns.reduce((sum, c) => sum + c.width, 0)
+// 行操作：编辑、新增下级、删除（只有末级科目可删除）
+const rowActions = (record) => [
+  { type: 'edit', perm: 'fin:account:edit', onClick: () => openForm(record) },
+  { type: 'add', label: t('fin.account.addChild'), perm: 'fin:account:add', onClick: () => openForm(null, record) },
+  {
+    type: 'delete',
+    show: !record.children,
+    perm: 'fin:account:remove',
+    confirm: t('fin.account.confirmDelete', { name: `${record.code} ${record.name}` }),
+    onClick: () => remove(record.id)
+  }
+]
 
 const keyword = ref('')
 const list = ref([])

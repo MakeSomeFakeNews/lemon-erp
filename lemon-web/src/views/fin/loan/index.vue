@@ -56,18 +56,7 @@
             <DictTag type="fin_loan_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <template v-if="record.status === LoanStatus.DRAFT">
-                <a-button v-perm="'fin:loan:add'" type="link" size="small" @click="submit(record)">{{ $t('common.action.submit') }}</a-button>
-                <span v-perm="'fin:loan:add'">
-                  <a-popconfirm :title="$t('fin.loan.confirmDelete', { no: record.loanNo })" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                  </a-popconfirm>
-                </span>
-              </template>
-              <a-button v-if="record.status === LoanStatus.APPROVED" v-perm="'fin:loan:pay'" type="link" size="small" @click="openPay(record, 'pay')">{{ $t('fin.loan.pay') }}</a-button>
-              <a-button v-if="record.status === LoanStatus.PAID" v-perm="'fin:loan:pay'" type="link" size="small" @click="openPay(record, 'repay')">{{ $t('fin.loan.repay') }}</a-button>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -169,10 +158,12 @@
 import SubPage from '@/components/SubPage.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { PayCircleOutlined, PlusOutlined, TransactionOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
@@ -200,8 +191,18 @@ const columns = [
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'fin_loan_status' },
   { title: t('fin.loan.payVoucher'), dataIndex: 'voucherNo', width: 130 },
   { title: t('fin.loan.purpose'), dataIndex: 'purpose', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
+  // 草稿：提交、删除；已审批：付款；已付款：还款
+  actionColumn(2, [t('fin.loan.pay'), t('fin.loan.repay')])
 ]
+const rowActions = (record) => {
+  const draft = record.status === LoanStatus.DRAFT
+  return [
+    { type: 'submit', show: draft, perm: 'fin:loan:add', onClick: () => submit(record) },
+    { key: 'pay', label: t('fin.loan.pay'), icon: PayCircleOutlined, show: record.status === LoanStatus.APPROVED, perm: 'fin:loan:pay', onClick: () => openPay(record, 'pay') },
+    { key: 'repay', label: t('fin.loan.repay'), icon: TransactionOutlined, show: record.status === LoanStatus.PAID, perm: 'fin:loan:pay', onClick: () => openPay(record, 'repay') },
+    { type: 'delete', show: draft, perm: 'fin:loan:add', confirm: t('fin.loan.confirmDelete', { no: record.loanNo }), onClick: () => remove(record.id) }
+  ]
+}
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-loan')
 const showSearch = ref(true)
 

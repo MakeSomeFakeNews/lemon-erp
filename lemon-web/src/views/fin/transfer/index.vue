@@ -37,11 +37,9 @@
             <a v-if="record.voucherId" @click="openVoucher(record.voucherId)">{{ record.voucherNo }}</a>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-perm="'fin:transfer:edit'">
-              <a-popconfirm :title="$t('fin.transfer.confirmDelete', { no: record.transferNo })" @confirm="remove(record.id)">
-                <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[{ type: 'delete', perm: 'fin:transfer:edit', confirm: $t('fin.transfer.confirmDelete', { no: record.transferNo }), onClick: () => remove(record.id) }]"
+            />
           </template>
         </template>
       </a-table>
@@ -95,9 +93,11 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowRightOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import { addFundTransfer, deleteFundTransfer, pageFundTransfer } from '@/api/fin'
@@ -121,7 +121,7 @@ const columns = [
   { title: t('fin.transfer.voucher'), key: 'voucher', width: 120 },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
   { title: t('fin.transfer.createBy'), dataIndex: 'createByName', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('common.action.delete')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-transfer')
 const range = ref()

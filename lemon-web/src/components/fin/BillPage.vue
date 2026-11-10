@@ -94,22 +94,7 @@
                 }}</span>
               </template>
               <template v-else-if="column.key === 'action'">
-                <span class="table-actions">
-                  <a-button
-                    v-if="Number(record.amount) > 0 && remaining(record) > 0"
-                    v-perm="`fin:${kind}:baddebt`"
-                    type="link"
-                    size="small"
-                    @click="openBadDebt(record)"
-                  >
-                    {{ conf.badDebt }}
-                  </a-button>
-                  <span v-if="record.sourceType === BillSource.MANUAL && Number(record.settledAmount) === 0" v-perm="`fin:${kind}:remove`">
-                    <a-popconfirm :title="$t('fin.billPage.confirmDelete')" @confirm="remove(record.id)">
-                      <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                    </a-popconfirm>
-                  </span>
-                </span>
+                <TableActions :actions="rowActions(record)" />
               </template>
             </template>
           </a-table>
@@ -214,12 +199,14 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { Modal, message } from 'ant-design-vue'
-import { FileAddOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { AlertOutlined, FileAddOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import VoucherDetail from './VoucherDetail.vue'
 import PartnerSummary from './PartnerSummary.vue'
 import SourceDocLink from '@/components/common/SourceDocLink.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { addBill, badDebt, billAging, billVoucher, deleteBill, pageBill } from '@/api/fin'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
@@ -281,7 +268,25 @@ const columns = [
   { title: t('fin.billPage.dateDue'), key: 'dueDate', width: 130 },
   { title: t('common.field.status'), key: 'status', width: 100 },
   { title: t('fin.billPage.voucher'), key: 'voucher', width: 120 },
-  { title: t('common.action.operation'), key: 'action', width: 150 }
+  actionColumn(2, [conf.badDebt, t('common.action.delete')], { fixed: undefined })
+]
+// 行操作：有余额的应收 / 应付可转坏账；手工录入且未核销的可删除
+const rowActions = (record) => [
+  {
+    key: 'badDebt',
+    label: conf.badDebt,
+    icon: AlertOutlined,
+    show: Number(record.amount) > 0 && remaining(record) > 0,
+    perm: `fin:${props.kind}:baddebt`,
+    onClick: () => openBadDebt(record)
+  },
+  {
+    type: 'delete',
+    show: record.sourceType === BillSource.MANUAL && Number(record.settledAmount) === 0,
+    perm: `fin:${props.kind}:remove`,
+    confirm: t('fin.billPage.confirmDelete'),
+    onClick: () => remove(record.id)
+  }
 ]
 const query = reactive({ partnerId: undefined, status: undefined, keyword: undefined, overdue: false })
 const { list, loading, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable((p) => pageBill(props.kind, p), query)

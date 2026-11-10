@@ -68,26 +68,7 @@
             </template>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <template v-if="record.status === OffsetStatus.DRAFT">
-                <a-button v-perm="'fin:offset:edit'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-                <a-button v-perm="'fin:offset:review'" type="link" size="small" @click="review(record)">{{ $t('fin.offset.review') }}</a-button>
-                <span v-perm="'fin:offset:remove'">
-                  <a-popconfirm :title="$t('fin.offset.confirmDelete', { no: record.offsetNo })" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                  </a-popconfirm>
-                </span>
-              </template>
-              <a-button
-                v-else-if="!Number(record.billSettledAmount) && record.voucherStatus !== VoucherStatus.POSTED"
-                v-perm="'fin:offset:review'"
-                type="link"
-                size="small"
-                @click="cancelReview(record)"
-              >
-                {{ $t('fin.offset.cancelReview') }}
-              </a-button>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -186,6 +167,8 @@ import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
@@ -194,7 +177,7 @@ import { addOffset, cancelReviewOffset, deleteOffset, getOffset, pageOffset, rev
 import { formatMoney } from '@/components/fin/fin'
 import { today } from '@/components/wms/wms'
 import { useAction } from '@/composables/useAction'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -220,20 +203,36 @@ const settleText = (r) => {
 const columns = [
   { title: t('fin.offset.no'), key: 'offsetNo', width: 160 },
   { title: t('fin.offset.date'), dataIndex: 'offsetDate', width: 110 },
-  { title: t('fin.offset.kind'), key: 'kind', width: 100 },
-  { title: t('fin.offset.partner'), key: 'partner', width: 170, ellipsis: true },
+  { title: t('fin.offset.kind'), key: 'kind', width: 110 },
+  { title: t('fin.offset.partner'), key: 'partner', width: 200, ellipsis: true },
   { title: t('fin.offset.item'), key: 'item', width: 110 },
   { title: t('fin.offset.amount'), key: 'amount', width: 130, align: 'right' },
-  { title: t('fin.offset.period'), key: 'period', width: 210, defaultHidden: true },
-  { title: t('fin.offset.ticketNo'), dataIndex: 'ticketNo', width: 130, ellipsis: true, defaultHidden: true },
+  { title: t('fin.offset.period'), key: 'period', width: 210 },
+  { title: t('fin.offset.ticketNo'), dataIndex: 'ticketNo', width: 130, ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 120 },
-  { title: t('fin.offset.bill'), key: 'bill', width: 150, defaultHidden: true },
-  { title: t('fin.offset.handler'), dataIndex: 'handlerName', width: 100, defaultHidden: true },
-  { title: t('fin.offset.createBy'), dataIndex: 'createByName', width: 100, defaultHidden: true },
-  { title: t('fin.offset.reviewBy'), key: 'review', width: 150, defaultHidden: true },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([[t('common.action.edit'), t('fin.offset.cancelReview')], t('fin.offset.review'), t('common.action.delete')].map((l) => (Array.isArray(l) ? l.map((text) => ({ text, icon: false })) : { text: l, icon: false }))), fixed: 'right' }
+  { title: t('fin.offset.bill'), key: 'bill', width: 150 },
+  { title: t('fin.offset.handler'), dataIndex: 'handlerName', width: 100 },
+  { title: t('fin.offset.createBy'), dataIndex: 'createByName', width: 100 },
+  { title: t('fin.offset.reviewBy'), key: 'review', width: 150 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  // 草稿：编辑、审核、删除；已审核（未核销、凭证未过账）：取消审核
+  actionColumn(3, [t('fin.offset.cancelReview')])
 ]
+const rowActions = (record) => {
+  const draft = record.status === OffsetStatus.DRAFT
+  return [
+    { type: 'edit', show: draft, perm: 'fin:offset:edit', onClick: () => drawer.openEdit(record) },
+    { type: 'audit', label: t('fin.offset.review'), show: draft, perm: 'fin:offset:review', onClick: () => review(record) },
+    {
+      type: 'unaudit',
+      label: t('fin.offset.cancelReview'),
+      show: !draft && !Number(record.billSettledAmount) && record.voucherStatus !== VoucherStatus.POSTED,
+      perm: 'fin:offset:review',
+      onClick: () => cancelReview(record)
+    },
+    { type: 'delete', show: draft, perm: 'fin:offset:remove', confirm: t('fin.offset.confirmDelete', { no: record.offsetNo }), onClick: () => remove(record.id) }
+  ]
+}
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-offset')
 const query = reactive({ kind: undefined, partnerId: undefined, item: undefined, status: undefined, keyword: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageOffset, query)

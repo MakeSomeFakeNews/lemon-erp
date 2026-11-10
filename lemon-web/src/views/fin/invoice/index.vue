@@ -56,7 +56,6 @@
               <template v-else-if="column.key === 'invoiceType'"><DictTag type="fin_invoice_type" :value="record.invoiceType" /></template>
               <template v-else-if="column.key === 'amount'">
                 <span :class="{ neg: Number(record.amount) < 0, void: record.status === InvoiceStatus.VOID }">¥{{ formatMoney(record.amount) }}</span>
-                <div v-if="!checked.includes('taxAmount')" class="sub-text">{{ $t('fin.billPage.taxN', { amount: formatMoney(record.taxAmount) }) }}</div>
               </template>
               <template v-else-if="column.key === 'taxAmount'">
                 <span :class="{ void: record.status === InvoiceStatus.VOID }">{{ formatMoney(record.taxAmount) }}</span>
@@ -65,8 +64,7 @@
                 <a-tag :color="record.status === InvoiceStatus.VOID ? 'default' : 'green'" :bordered="false">{{ record.status === InvoiceStatus.VOID ? $t('fin.invoice.statusVoid') : $t('fin.invoice.statusValid') }}</a-tag>
               </template>
               <template v-else-if="column.key === 'matched'">
-                <!-- 状态列默认隐藏：作废显示在勾稽列 -->
-                <a-tag v-if="record.status === InvoiceStatus.VOID" :bordered="false">{{ $t('fin.invoice.statusVoid') }}</a-tag>
+                <span v-if="record.status === InvoiceStatus.VOID" class="sub-text">-</span>
                 <a-tag v-else-if="unmatchedAmount(record) === 0" color="green" :bordered="false">{{ $t('fin.invoice.matched') }}</a-tag>
                 <a-tag v-else color="orange" :bordered="false">{{ $t('fin.invoice.unmatchedAmt', { amount: formatMoney(unmatchedAmount(record)) }) }}</a-tag>
               </template>
@@ -76,17 +74,7 @@
                 <span v-else class="sub-text">-</span>
               </template>
               <template v-else-if="column.key === 'action'">
-                <span class="table-actions">
-                  <a-button type="link" size="small" @click="detailRef.open(record)">{{ $t('common.action.view') }}</a-button>
-                  <a-button v-if="record.status === InvoiceStatus.VALID && unmatchedAmount(record) !== 0" v-perm="'fin:invoice:edit'" type="link" size="small" @click="matchRef.open(record)">
-                    {{ $t('fin.invoice.match') }}
-                  </a-button>
-                  <span v-if="record.status === InvoiceStatus.VALID" v-perm="'fin:invoice:edit'">
-                    <a-popconfirm :title="$t('fin.invoice.confirmVoid', { no: record.invoiceNo })" @confirm="cancel(record.id)">
-                      <a-button type="link" danger size="small">{{ $t('fin.invoice.void') }}</a-button>
-                    </a-popconfirm>
-                  </span>
-                </span>
+                <TableActions :actions="rowActions(record)" />
               </template>
             </template>
           </a-table>
@@ -120,13 +108,15 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ImportOutlined, PlusOutlined, SafetyCertificateOutlined } from '@ant-design/icons-vue'
+import { ImportOutlined, LinkOutlined, PlusOutlined, SafetyCertificateOutlined, StopOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import { cancelInvoice, pageInvoice } from '@/api/fin'
 import TableToolbar from '@/components/TableToolbar.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useAction } from '@/composables/useAction'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 import { today } from '@/components/wms/wms'
 import { formatMoney, periodText } from '@/components/fin/fin'
@@ -146,26 +136,39 @@ const tab = ref(InvoiceKind.OUTPUT)
 const kind = ref(InvoiceKind.OUTPUT)
 const conf = computed(() => KINDS[kind.value])
 
-// 销项、进项各一套列设置（进项多认证期间）；税额默认显示在金额下方，状态（作废）显示在勾稽列
+// 销项、进项各一套列设置（进项多认证期间）
 const buildColumns = (k) => [
   { title: t('fin.invoice.invoiceNo'), key: 'invoiceNo', width: 190 },
   { title: t('common.field.type'), key: 'invoiceType', width: 130 },
   { title: KINDS[k].partnerLabel, dataIndex: 'partnerName', width: 150, ellipsis: true },
   { title: t('fin.invoice.invoiceDate'), dataIndex: 'invoiceDate', width: 100 },
   { title: t('fin.invoice.amount'), key: 'amount', width: 120, align: 'right' },
-  { title: t('fin.invoice.taxAmount'), key: 'taxAmount', width: 100, align: 'right', defaultHidden: true },
-  { title: t('common.field.status'), key: 'status', width: 70, defaultHidden: true },
+  { title: t('fin.invoice.taxAmount'), key: 'taxAmount', width: 100, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 70 },
   { title: t('fin.invoice.match'), key: 'matched', width: 120 },
   ...(k === InvoiceKind.INPUT ? [{ title: t('fin.invoice.certifyPeriod'), key: 'certify', width: 110 }] : []),
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 120, ellipsis: true, defaultHidden: true },
-  { title: t('fin.invoice.registeredBy'), dataIndex: 'createByName', width: 80, defaultHidden: true },
-  {
-    title: t('common.action.operation'),
-    key: 'action',
-    width: actionWidth([t('common.action.view'), t('fin.invoice.match'), t('fin.invoice.void')].map((text) => ({ text, icon: false }))),
-    fixed: 'right'
-  }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 120, ellipsis: true },
+  { title: t('fin.invoice.registeredBy'), dataIndex: 'createByName', width: 80 },
+  actionColumn(3, [t('common.action.view')])
 ]
+// 行操作：查看；有效且未勾稽完的可勾稽，有效的可作废
+const rowActions = (record) => {
+  const valid = record.status === InvoiceStatus.VALID
+  return [
+    { type: 'view', onClick: () => detailRef.value.open(record) },
+    { key: 'match', label: t('fin.invoice.match'), icon: LinkOutlined, show: valid && unmatchedAmount(record) !== 0, perm: 'fin:invoice:edit', onClick: () => matchRef.value.open(record) },
+    {
+      key: 'void',
+      label: t('fin.invoice.void'),
+      icon: StopOutlined,
+      danger: true,
+      show: valid,
+      perm: 'fin:invoice:edit',
+      confirm: t('fin.invoice.confirmVoid', { no: record.invoiceNo }),
+      onClick: () => cancel(record.id)
+    }
+  ]
+}
 const COLUMN_SETS = Object.fromEntries(
   [InvoiceKind.OUTPUT, InvoiceKind.INPUT].map((k) => {
     const base = buildColumns(k)

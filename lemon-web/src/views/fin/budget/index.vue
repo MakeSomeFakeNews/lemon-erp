@@ -78,12 +78,12 @@
             <span class="sub-text">{{ MONTH_KEYS.map((k) => short(record[k])).join(' · ') }}</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-perm="'fin:budget:edit'" class="table-actions">
-              <a-button type="link" size="small" @click="openForm(record)">{{ $t('common.action.edit') }}</a-button>
-              <a-popconfirm :title="$t('fin.budget.confirmDelete')" @confirm="remove(record.id)">
-                <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', perm: 'fin:budget:edit', onClick: () => openForm(record) },
+                { type: 'delete', perm: 'fin:budget:edit', confirm: $t('fin.budget.confirmDelete'), onClick: () => remove(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -145,6 +145,8 @@ import { useI18n } from 'vue-i18n'
 import { currentLocale } from '@/locales'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
 import { addBudget, budgetExecution, deleteBudget, listBudget, updateBudget } from '@/api/fin'
@@ -189,7 +191,7 @@ const budgetColumns = [
   { title: t('fin.budget.control'), key: 'controlMode', width: 140 },
   { title: t('fin.budget.months'), key: 'months' },
   { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
+  actionColumn(2)
 ]
 
 async function load() {

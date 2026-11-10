@@ -44,20 +44,7 @@
                 </div>
               </template>
               <template v-else-if="column.key === 'action'">
-                <span class="table-actions">
-                  <template v-if="record.status === IoStatus.DRAFT">
-                    <a-button v-perm="'fin:io:edit'" type="link" size="small" @click="formRef.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-                    <a-button v-perm="'fin:io:confirm'" type="link" size="small" @click="confirm(record)">{{ $t('fin.io.confirm') }}</a-button>
-                    <span v-perm="'fin:io:remove'">
-                      <a-popconfirm :title="$t('fin.io.confirmDelete', { no: record.docNo })" @confirm="remove(record.id)">
-                        <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                      </a-popconfirm>
-                    </span>
-                  </template>
-                  <a-button v-else-if="record.voucherStatus !== VoucherStatus.POSTED" v-perm="'fin:io:confirm'" type="link" size="small" @click="cancelConfirm(record)">
-                    {{ $t('fin.io.cancelConfirm') }}
-                  </a-button>
-                </span>
+                <TableActions :actions="rowActions(record)" />
               </template>
             </template>
           </a-table>
@@ -83,11 +70,13 @@ import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import { deleteIo, pageIo } from '@/api/fin'
 import { formatMoney } from '@/components/fin/fin'
 import { useAction } from '@/composables/useAction'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -113,15 +102,31 @@ const columns = [
   { title: t('fin.io.categories'), dataIndex: 'categoryNames', width: 170, ellipsis: true },
   { title: t('fin.io.amount'), key: 'amount', width: 120, align: 'right' },
   { title: t('fin.io.account'), dataIndex: 'accountName', width: 160, ellipsis: true },
-  { title: t('fin.io.partner'), dataIndex: 'partnerLabel', width: 150, ellipsis: true, defaultHidden: true },
-  { title: t('fin.io.settleMethod'), key: 'settleMethod', width: 110, defaultHidden: true },
-  { title: t('fin.io.ticketNo'), dataIndex: 'ticketNo', width: 130, ellipsis: true, defaultHidden: true },
-  { title: t('fin.io.dept'), dataIndex: 'deptName', width: 120, defaultHidden: true },
+  { title: t('fin.io.partner'), dataIndex: 'partnerLabel', width: 150, ellipsis: true },
+  { title: t('fin.io.settleMethod'), key: 'settleMethod', width: 110 },
+  { title: t('fin.io.ticketNo'), dataIndex: 'ticketNo', width: 130, ellipsis: true },
+  { title: t('fin.io.dept'), dataIndex: 'deptName', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('fin.io.createBy'), dataIndex: 'createByName', width: 100, defaultHidden: true },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([[t('common.action.edit'), t('fin.io.cancelConfirm')], t('fin.io.confirm'), t('common.action.delete')].map((l) => (Array.isArray(l) ? l.map((text) => ({ text, icon: false })) : { text: l, icon: false }))), fixed: 'right' }
+  { title: t('fin.io.createBy'), dataIndex: 'createByName', width: 100 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  // 草稿：编辑、确认、删除；已确认（凭证未过账）：取消确认
+  actionColumn(3, [t('fin.io.cancelConfirm')])
 ]
+const rowActions = (record) => {
+  const draft = record.status === IoStatus.DRAFT
+  return [
+    { type: 'edit', show: draft, perm: 'fin:io:edit', onClick: () => formRef.value.openEdit(record) },
+    { type: 'confirm', label: t('fin.io.confirm'), show: draft, perm: 'fin:io:confirm', onClick: () => confirm(record) },
+    {
+      type: 'unaudit',
+      label: t('fin.io.cancelConfirm'),
+      show: !draft && record.voucherStatus !== VoucherStatus.POSTED,
+      perm: 'fin:io:confirm',
+      onClick: () => cancelConfirm(record)
+    },
+    { type: 'delete', show: draft, perm: 'fin:io:remove', confirm: t('fin.io.confirmDelete', { no: record.docNo }), onClick: () => remove(record.id) }
+  ]
+}
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-income-expense')
 const range = ref()
 const query = reactive({ direction: undefined, status: undefined, keyword: undefined })
