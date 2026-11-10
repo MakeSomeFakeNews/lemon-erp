@@ -362,7 +362,12 @@ export default {
     released: 'Released'
   },
   outsource: {
-    empty: 'No outsourced items in the order (materials marked as outsourced with a default BOM)',
+    empty: 'No outsourced items in the order (materials marked as outsourced with a default BOM). To outsource self-made items, select the lines to generate materials',
+    addLines: 'Outsource Lines',
+    addLinesTip: 'Lines whose material is marked as outsourced already have materials. To occasionally outsource a self-made item, select its lines to generate materials from the default BOM (only lines not yet received)',
+    noCandidates: 'No lines available (a default BOM, no materials yet and nothing received are required)',
+    selectItems: 'Select lines',
+    linesAdded: 'Outsourcing materials generated',
     tip: 'Balance at subcontractor = issued − returned − consumed. When outsourced items are received, materials are consumed automatically by unit usage, and cost accounting transfers the consumed component cost to the outsourced item.',
     issue: 'Outsourcing Issue',
     return: 'Outsourcing Return',

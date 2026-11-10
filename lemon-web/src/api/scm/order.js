@@ -19,6 +19,8 @@ export const orderTrace = (kind, id) => request.get(`/bi/trace/order/${kind}/${i
 /** 委外加工：委外订单的用料、发料、退料 */
 export const outsourceMaterials = (orderId) => request.get(`/mes/outsource/${orderId}/materials`)
 export const outsourceIssue = (orderId, data) => request.post(`/mes/outsource/${orderId}/issue`, data)
+export const outsourceCandidates = (orderId) => request.get(`/mes/outsource/${orderId}/candidates`)
+export const outsourceAddLines = (orderId, data) => request.post(`/mes/outsource/${orderId}/lines`, data)
 export const outsourceReturn = (orderId, data) => request.post(`/mes/outsource/${orderId}/return`, data)
 /** 订单变更：data { reason, lines: [{ action: MODIFY | REMOVE | ADD, orderItemId, materialId, qty, price, taxRate, deliveryDate }] } */
 export const changeOrder = (kind, id, data) => request.post(`/scm/${kind}/order/${id}/change`, data)

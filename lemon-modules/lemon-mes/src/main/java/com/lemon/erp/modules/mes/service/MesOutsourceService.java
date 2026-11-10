@@ -5,6 +5,7 @@ import com.lemon.erp.modules.wms.model.StockInType;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
+import com.lemon.erp.modules.mes.dto.OutsourceCandidate;
 import com.lemon.erp.modules.mes.dto.OutsourceStockRequest;
 import com.lemon.erp.modules.mes.entity.MesBom;
 import com.lemon.erp.modules.mes.entity.MesBomItem;
@@ -33,12 +34,16 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
- * 委外加工：委外采购订单（物料属性为委外的物料）按默认 BOM 展开委外用料；
+ * 委外加工：委外采购订单（物料属性为委外的物料）按默认 BOM 展开委外用料，物料属性不是委外的自制件偶尔委外加工时，
+ * 在委外用料中手工选择订单明细生成用料（{@link #addLines}）；
  * 发料给加工商生成委外发料出库单（成本核算计入委托加工物资），加工商退回生成委外收回入库单；
  * 委外件收货（采购入库）时按单位用量核销用料，成本核算把核销的子件成本转入委外件
  */
@@ -61,6 +66,42 @@ public class MesOutsourceService {
         orderService.detail(OrderKind.PURCHASE, orderId);
         ensureLines(orderId);
         return materialMapper.selectByOrder(orderId);
+    }
+
+    /**
+     * 可以按委外加工生成用料的明细：有默认 BOM、还没有生成用料、还没有收货（委外件已自动生成，不在其中）
+     */
+    @Transactional
+    public List<OutsourceCandidate> candidates(Long orderId) {
+        orderService.detail(OrderKind.PURCHASE, orderId);
+        Set<Long> generated = ensureLines(orderId).stream().map(MesOutsourceMaterial::getOrderItemId).collect(Collectors.toSet());
+        List<Map<String, Object>> items = materialMapper.selectOrderItems(orderId);
+        Map<Long, MesBom> boms = bomService.defaultBoms(items.stream().map(i -> ((Number) i.get("materialId")).longValue()).distinct().toList());
+        return items.stream()
+                .filter(i -> !generated.contains(((Number) i.get("orderItemId")).longValue())
+                        && boms.containsKey(((Number) i.get("materialId")).longValue())
+                        && new BigDecimal(i.get("doneQty").toString()).signum() == 0)
+                .map(i -> new OutsourceCandidate(((Number) i.get("orderItemId")).longValue(), ((Number) i.get("materialId")).longValue(),
+                        (String) i.get("materialCode"), (String) i.get("materialName"), (String) i.get("spec"),
+                        new BigDecimal(i.get("qty").toString())))
+                .toList();
+    }
+
+    /**
+     * 把选中的订单明细按委外加工生成用料（按默认 BOM 展开，不要求物料属性为委外），同一产品可以有时自制、有时委外。
+     * 只能选择 {@link #candidates} 中的明细：已收货的明细生成用料后之前的收货没有核销，不允许
+     */
+    @Transactional
+    public void addLines(Long orderId, List<Long> orderItemIds) {
+        executableOrder(orderId);
+        Set<Long> allowed = candidates(orderId).stream().map(OutsourceCandidate::orderItemId).collect(Collectors.toSet());
+        Set<Long> chosen = new HashSet<>(orderItemIds);
+        if (!allowed.containsAll(chosen)) {
+            throw new BizException("mes.error.outsourceItemsNotAllowed");
+        }
+        List<Map<String, Object>> items = materialMapper.selectOrderItems(orderId).stream()
+                .filter(i -> chosen.contains(((Number) i.get("orderItemId")).longValue())).toList();
+        insertLines(orderId, items, false);
     }
 
     @Transactional
@@ -186,9 +227,18 @@ public class MesOutsourceService {
         if (!existing.isEmpty()) {
             return existing;
         }
-        List<Map<String, Object>> items = materialMapper.selectOrderItems(orderId);
+        insertLines(orderId, materialMapper.selectOrderItems(orderId), true);
+        return materialMapper.selectList(Wrappers.<MesOutsourceMaterial>lambdaQuery().eq(MesOutsourceMaterial::getOrderId, orderId));
+    }
+
+    /**
+     * 按默认 BOM 生成订单明细的用料行
+     *
+     * @param outsourceOnly 只生成物料属性为委外的明细（自动生成）；false 时不限物料属性（手工选择的明细）
+     */
+    private void insertLines(Long orderId, List<Map<String, Object>> items, boolean outsourceOnly) {
         if (items.isEmpty()) {
-            return List.of();
+            return;
         }
         List<Long> materialIds = items.stream().map(i -> ((Number) i.get("materialId")).longValue()).distinct().toList();
         Map<Long, MesMaterialPlan> plans = materialPlanService.plans(materialIds);
@@ -198,7 +248,7 @@ public class MesOutsourceService {
         for (Map<String, Object> item : items) {
             Long productId = ((Number) item.get("materialId")).longValue();
             MesBom bom = boms.get(productId);
-            if (bom == null || MesMaterialService.supplyType(plans.get(productId), true) != SupplyType.OUTSOURCE) {
+            if (bom == null || outsourceOnly && MesMaterialService.supplyType(plans.get(productId), true) != SupplyType.OUTSOURCE) {
                 continue;
             }
             BigDecimal qty = new BigDecimal(item.get("qty").toString());
@@ -217,6 +267,5 @@ public class MesOutsourceService {
         if (!lines.isEmpty()) {
             materialMapper.insertBatch(lines);
         }
-        return materialMapper.selectList(Wrappers.<MesOutsourceMaterial>lambdaQuery().eq(MesOutsourceMaterial::getOrderId, orderId));
     }
 }

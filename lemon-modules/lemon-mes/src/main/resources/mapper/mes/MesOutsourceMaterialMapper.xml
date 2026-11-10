@@ -34,9 +34,11 @@
     </update>
 
     <select id="selectOrderItems" resultType="java.util.Map">
-        SELECT i.id AS "orderItemId", i.material_id AS "materialId", i.qty AS "qty"
+        SELECT i.id AS "orderItemId", i.material_id AS "materialId", i.qty AS "qty", i.done_qty AS "doneQty",
+               m.code AS "materialCode", m.name AS "materialName", m.spec AS "spec"
         FROM scm_order_item i
         JOIN scm_order o ON o.id = i.order_id
+        JOIN wms_material m ON m.id = i.material_id
         WHERE i.order_id = #{orderId} AND o.kind = 'PURCHASE'
         ORDER BY i.id
     </select>
