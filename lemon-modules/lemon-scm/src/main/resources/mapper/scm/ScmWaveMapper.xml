@@ -47,7 +47,11 @@
         JOIN wms_material m ON m.id = p.material_id
         LEFT JOIN wms_location l ON l.id = p.location_id
         LEFT JOIN wms_batch b ON b.material_id = p.material_id AND b.batch_no = p.batch_no AND p.batch_no &lt;&gt; ''
-        WHERE d.wave_id = #{waveId} AND d.status = 'PENDING'
+        WHERE d.wave_id = #{waveId}
+        <choose>
+            <when test="done">AND d.status IN ('PICKED', 'SHIPPED')</when>
+            <otherwise>AND d.status = 'PENDING'</otherwise>
+        </choose>
         ORDER BY CASE WHEN l.id IS NULL THEN 1 ELSE 0 END, l.zone, l.sort, l.code, m.code, p.batch_no, d.delivery_no
     </select>
 

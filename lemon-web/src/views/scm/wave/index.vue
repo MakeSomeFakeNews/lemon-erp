@@ -99,7 +99,7 @@
                 </template>
               </template>
             </a-table>
-            <div class="sub-text tip">{{ $t('scm.wave.pickTip') }}</div>
+            <div class="sub-text tip">{{ detail.status === WaveStatus.DONE ? $t('scm.wave.pickDoneTip') : $t('scm.wave.pickTip') }}</div>
           </a-tab-pane>
           <a-tab-pane key="deliveries" :tab="$t('scm.wave.deliveryTab', { n: detail.deliveries.length })">
             <a-table row-key="id" size="small" :columns="deliveryColumns" :data-source="detail.deliveries" :pagination="false">

@@ -690,6 +690,7 @@ export default {
     noLocation: 'No location',
     expiryN: 'Expiry {date}',
     pickTip: 'Sorted by location path (zone → sort → code). Pick the total quantity per row first, then sort into each delivery notice as shown in "Sorting"',
+    pickDoneTip: 'Wave completed: showing the locations, batches and quantities actually picked for each delivery notice (notices skipped at completion and still pending are not included)',
     deliveryTab: 'Delivery Notices ({n})',
     removeConfirm: 'Remove this delivery notice from the wave?',
     remove: 'Remove',
