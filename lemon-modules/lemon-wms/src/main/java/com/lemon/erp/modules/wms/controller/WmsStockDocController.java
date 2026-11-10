@@ -6,6 +6,7 @@ import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.wms.dto.DocQuery;
 import com.lemon.erp.modules.wms.dto.StockDocRequest;
+import com.lemon.erp.modules.wms.dto.TransferReceiveRequest;
 import com.lemon.erp.modules.wms.entity.WmsStockDoc;
 import com.lemon.erp.modules.wms.model.StockBizType;
 import com.lemon.erp.modules.wms.service.WmsStockDocService;
@@ -85,8 +86,9 @@ public class WmsStockDocController {
     @PostMapping("/{id}/receive")
     @PreAuthorize("@ss.hasPerm('wms:transfer:receive') and #kind == 'transfer'")
     @OperLog(title = "调拨单-收货", type = OperType.UPDATE) // i18n-ignore
-    public R<Void> receive(@PathVariable String kind, @PathVariable Long id) {
-        docService.receive(id);
+    public R<Void> receive(@PathVariable String kind, @PathVariable Long id,
+                           @RequestBody(required = false) TransferReceiveRequest req) {
+        docService.receive(id, req == null ? null : req.receiveDate());
         return R.ok();
     }
 

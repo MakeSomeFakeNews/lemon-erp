@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
  * 按物料 ID 顺序加行锁后随库存变动更新，并给每条流水计价。供应商寄售仓的库存属于供应商，不计价。
  * <ul>
  *   <li>入库按 {@link StockChange#unitCost()} 计价（采购入库的不含税单价、其他入库填写的成本价、销售退货的原出库成本等），没有时按当前均价</li>
- *   <li>出库按当前均价（采购退货按退货单价）；调拨（含在途）不改变数量和均价；盘盈按填写的成本价（为空按当前均价），盘亏按当前均价</li>
+ *   <li>出库按当前均价（采购退货按退货单价）；调拨（含在途）不改变数量和均价，在途调拨收货按调出时的成本计价；盘盈按填写的成本价（为空按当前均价），盘亏按当前均价</li>
  *   <li>物料还没有成本记录时初始化：数量 = 当前计价的库存合计，单价 = 参考成本价</li>
  * </ul>
  * 财务月末的成本核算（fin 模块）另行按物料的计价方法计算，用于记账，不使用这里的结果。
@@ -94,9 +94,10 @@ public class StockCostService {
             WmsMaterial material = materials.get(c.materialId());
             BigDecimal refCost = material == null ? null : material.getRefCost();
             MovingAverage.State state = states.get(c.materialId());
-            // 调拨（含在途调拨的调出、收货）只是存放位置变化，不改变全公司的数量和均价，只按均价计价
+            // 调拨（含在途调拨的调出、收货）只是存放位置变化，不改变全公司的数量和均价：按均价计价，
+            // 在途调拨收货按调出时的成本单价（由调用方传入），调出、调入金额相抵
             if (bizType == StockBizType.TRANSFER) {
-                BigDecimal avg = MovingAverage.average(state, refCost);
+                BigDecimal avg = c.increase() && c.unitCost() != null ? c.unitCost() : MovingAverage.average(state, refCost);
                 BigDecimal amount = MovingAverage.value(c.qty().abs(), avg);
                 result.add(new Priced(avg, c.increase() ? amount : amount.negate()));
                 continue;
@@ -241,6 +242,20 @@ public class StockCostService {
             docItemMapper.updateCostPrice(docId, id, docAmount.divide(docQty, MovingAverage.PRICE_SCALE, RoundingMode.HALF_UP));
         }
         return applied;
+    }
+
+    /** 在途调拨各物料调出流水的成本单价（调出时的均价），收货时按此计价；没有计价的物料不在结果中 */
+    public Map<Long, BigDecimal> transferOutCosts(Long docId, Collection<Long> materialIds) {
+        Map<Long, BigDecimal> map = new HashMap<>();
+        if (materialIds.isEmpty()) {
+            return map;
+        }
+        for (StockFlowView f : flowMapper.selectPricedFlows(StockBizType.TRANSFER, docId, materialIds)) {
+            if (f.getQty().signum() < 0 && f.getCostPrice() != null) {
+                map.putIfAbsent(f.getMaterialId(), f.getCostPrice());
+            }
+        }
+        return map;
     }
 
     /** 物料当前的计价数量（全公司，不含供应商寄售仓），没有成本记录时为 0 */

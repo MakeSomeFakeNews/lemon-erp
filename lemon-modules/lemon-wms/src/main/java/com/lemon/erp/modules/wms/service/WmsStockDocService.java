@@ -41,6 +41,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.lemon.erp.modules.wms.model.StockBizType.IN;
 import static com.lemon.erp.modules.wms.model.StockBizType.TRANSFER;
@@ -65,6 +66,7 @@ public class WmsStockDocService {
     private final WmsStockDocItemMapper itemMapper;
     private final DocNoService docNoService;
     private final StockService stockService;
+    private final StockCostService costService;
     private final BizPeriodGuard periodGuard;
     private final ApprovalSupport approvalSupport;
     private final StockDocValidator validator;
@@ -263,23 +265,37 @@ public class WmsStockDocService {
         stockService.apply(kind, id, doc.getDocNo(), transit ? changes.stream().filter(c -> !c.increase()).toList() : changes);
     }
 
-    /** 在途调拨收货：调入仓库入库，单据变为已完成 */
+    /**
+     * 在途调拨收货：调入仓库入库，单据变为已完成。调入按调出时的成本计价（调拨不改变均价，在途期间计价数量不变），
+     * 调出、调入流水金额相抵
+     *
+     * @param receiveDate 收货日期，为空取当天；不能早于调拨单的业务日期，所在会计期间须未结账
+     */
     @Transactional
-    public void receive(Long id) {
+    public void receive(Long id, LocalDate receiveDate) {
         WmsStockDoc doc = getAccessible(TRANSFER, id);
         if (doc.getStatus() != DocStatus.TRANSIT) {
             throw new BizException("wms.error.transferOrderNotTransit", doc.getDocNo());
         }
-        periodGuard.checkOpen(LocalDate.now(), "wms.label.transferReceipt");
+        LocalDate date = receiveDate == null ? LocalDate.now() : receiveDate;
+        if (date.isBefore(doc.getBizDate())) {
+            throw new BizException("wms.error.receiveDateBeforeTransferDate", date, doc.getBizDate());
+        }
+        periodGuard.checkOpen(date, "wms.label.transferReceipt");
         StatusTransitions.change(docMapper, WmsStockDoc::getId, id, WmsStockDoc::getStatus,
                 DocStatus.TRANSIT, DocStatus.DONE, w -> w
                         .set(WmsStockDoc::getReceiveBy, SecurityUtils.getUserId())
+                        .set(WmsStockDoc::getReceiveDate, date)
                         .set(WmsStockDoc::getReceiveTime, LocalDateTime.now()),
                 "wms.error.transferOrderHasReceivedRefresh");
         List<WmsStockDocItem> items = itemMapper.selectList(Wrappers.<WmsStockDocItem>lambdaQuery()
                 .eq(WmsStockDocItem::getDocId, id).orderByAsc(WmsStockDocItem::getId));
         validator.checkReceiveWarehouse(doc);
-        stockService.apply(TRANSFER, id, doc.getDocNo(), StockDocRules.toChanges(TRANSFER, doc, items).stream().filter(StockChange::increase).toList());
+        List<StockChange> increases = StockDocRules.toChanges(TRANSFER, doc, items).stream().filter(StockChange::increase).toList();
+        Map<Long, BigDecimal> outCosts = costService.transferOutCosts(id,
+                increases.stream().map(StockChange::materialId).collect(Collectors.toSet()));
+        stockService.apply(TRANSFER, id, doc.getDocNo(), increases.stream()
+                .map(c -> c.withCost(outCosts.get(c.materialId()), c.bizPrice(), c.partnerId(), c.partnerName())).toList());
     }
 
     /**

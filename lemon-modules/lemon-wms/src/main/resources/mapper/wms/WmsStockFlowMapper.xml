@@ -98,7 +98,7 @@
         </choose>
     </sql>
 
-    <sql id="historyDate">COALESCE(sd.biz_date, ck.biz_date, CAST(f.create_time AS DATE))</sql>
+    <sql id="historyDate">COALESCE(CASE WHEN f.qty &gt; 0 THEN sd.receive_date END, sd.biz_date, ck.biz_date, CAST(f.create_time AS DATE))</sql>
 
     <select id="selectHistoryOpening" resultType="java.util.Map">
         SELECT COALESCE(SUM(f.qty), 0) AS "qty", COALESCE(SUM(f.cost_amount), 0) AS "amount",

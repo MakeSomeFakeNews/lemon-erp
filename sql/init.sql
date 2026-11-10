@@ -1029,6 +1029,7 @@ CREATE TABLE wms_stock_doc (
     source_no       VARCHAR(32)             DEFAULT NULL COMMENT '来源单号：由采购入库、销售出库、工单领料等业务单据自动生成时填写',
     in_transit      TINYINT        NOT NULL DEFAULT 0 COMMENT '在途调拨 1是：确认时只调出，调入仓库收货后才入库',
     receive_by      BIGINT                  DEFAULT NULL COMMENT '调入收货人',
+    receive_date    DATE                    DEFAULT NULL COMMENT '调入收货日期：在途调拨收货的业务日期，调入流水按此日期统计',
     receive_time    DATETIME                DEFAULT NULL COMMENT '调入收货时间',
     red_of          BIGINT                  DEFAULT NULL COMMENT '红字冲销单：被冲销的原单据',
     reversed        TINYINT        NOT NULL DEFAULT 0 COMMENT '已被冲销 1是',

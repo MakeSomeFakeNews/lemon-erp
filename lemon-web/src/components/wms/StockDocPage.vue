@@ -112,15 +112,11 @@
                 </a-dropdown>
               </template>
               <span v-if="kind === 'transfer' && record.status === WmsDocStatus.TRANSIT" v-perm="'wms:transfer:receive'">
-                <a-popconfirm
-                  :title="$t('wms.doc.confirmReceive', { name: record.toWarehouseName })"
-                  :description="$t('wms.doc.receiveTip')"
-                  @confirm="receive(record)"
-                >
+                <ReceiveConfirm :warehouse-name="record.toWarehouseName" @confirm="(date) => receive(record, date)">
                   <a-button type="link" size="small">
                     <template #icon><InboxOutlined /></template>{{ $t('wms.common.receive') }}
                   </a-button>
-                </a-popconfirm>
+                </ReceiveConfirm>
               </span>
               <span v-if="canReverse(record)" v-perm="`wms:${kind}:reverse`">
                 <a-popconfirm
@@ -163,6 +159,7 @@ import {
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
+import ReceiveConfirm from './ReceiveConfirm.vue'
 import StockDocDetail from './StockDocDetail.vue'
 import StockDocForm from './StockDocForm.vue'
 import WarehouseSelect from './WarehouseSelect.vue'
@@ -269,7 +266,7 @@ function onMoreAction(key, record) {
 
 const isTrue = (v) => v === true || v === 1
 
-const receive = useAction((record) => receiveTransfer(record.id), { successKey: 'wms.doc.receiveSuccess', reload: () => load() })
+const receive = useAction((record, date) => receiveTransfer(record.id, date), { successKey: 'wms.doc.receiveSuccess', reload: () => load() })
 
 const reverse = useAction((record) => reverseDoc(props.kind, record.id), { successKey: 'wms.doc.reverseSuccess', reload: () => load() })
 

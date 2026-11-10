@@ -14,7 +14,7 @@ import java.util.List;
  * @param productionDate 生产日期，仅增加时用于登记新批次
  * @param expiryDate     有效期至，仅增加时用于登记新批次
  * @param unitCost       指定的成本单价（采购入库的不含税单价、其他入库填写的成本价、销售退货的原出库成本等），
- *                       为空按当前移动加权平均价；调拨、盘点忽略
+ *                       为空按当前移动加权平均价；在途调拨收货为调出时的成本单价，其他调拨和盘点忽略
  * @param bizPrice       业务单价（来源单据的不含税单价，本位币），只记录在流水上
  * @param partnerId      往来单位，只记录在流水上
  * @param partnerName    往来单位名称快照（wms 不关联供应链的表，由调用方传入）
