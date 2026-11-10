@@ -38,7 +38,7 @@
             <div class="sub-text">{{ record.releaseByName }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
+            <TableActions :actions="[{ type: 'view', onClick: () => openDetail(record.id) }]" />
           </template>
         </template>
       </a-table>
@@ -140,6 +140,8 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { addDoc, deleteDoc, docVersions, getDoc, pageDoc, releaseDoc, reviseDoc, updateDoc } from '@/api/mes/plm'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -160,7 +162,7 @@ const columns = [
   { title: t('mes.doc.material'), key: 'material', width: 220 },
   { title: t('common.field.status'), key: 'status', width: 90 },
   { title: t('mes.doc.release'), key: 'release', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 80, fixed: 'right' }
+  actionColumn(1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-doc')
 const query = reactive({ docType: undefined, status: undefined, keyword: undefined })

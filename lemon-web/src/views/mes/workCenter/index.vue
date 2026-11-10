@@ -57,18 +57,7 @@
             />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="'mes:wc:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-perm="'mes:wc:remove'">
-                <a-popconfirm :title="$t('mes.workCenter.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -136,7 +125,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -152,6 +141,8 @@ import {
   updateWorkCenter
 } from '@/api/mes/base'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -166,14 +157,14 @@ const { t } = useI18n()
 const dict = useDict('sys_common_status')
 
 const columns = [
-  { title: t('mes.workCenter.title'), key: 'name', width: 170 },
-  { title: t('mes.workCenter.laborRate'), key: 'laborRate', width: 130 },
-  { title: t('mes.workCenter.overheadRate'), key: 'overheadRate', width: 140 },
-  { title: t('mes.workCenter.dailyCapacity'), key: 'capacity', width: 170, exportValue: (r) => dailyCapacity(r) },
+  { title: t('mes.workCenter.title'), key: 'name', width: 200 },
+  { title: t('mes.workCenter.laborRate'), key: 'laborRate', width: 150 },
+  { title: t('mes.workCenter.overheadRate'), key: 'overheadRate', width: 160 },
+  { title: t('mes.workCenter.dailyCapacity'), key: 'capacity', width: 190, exportValue: (r) => dailyCapacity(r) },
   { title: t('mes.workCenter.workDays'), key: 'workDays', width: 150, exportValue: (r) => workDaysText(r.workDays) },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true },
+  actionColumn(2, [t('common.action.edit')])
 ]
 const WEEK_DAYS = t('mes.workCenter.weekDays').split(',').map((label, i) => ({ label, value: i + 1 }))
 const parseWorkDays = (v) => (v || '').split(',').filter(Boolean).map(Number)
@@ -254,6 +245,11 @@ const drawer = useFormDrawer({
 const { formRef, form } = drawer
 
 const remove = useAction(deleteWorkCenter, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+
+const rowActions = (record) => [
+  { type: 'edit', perm: 'mes:wc:edit', onClick: () => drawer.openEdit(record) },
+  { type: 'delete', perm: 'mes:wc:remove', confirm: t('mes.workCenter.confirmDelete', { name: record.name }), onClick: () => remove(record.id) }
+]
 </script>
 
 <style scoped>

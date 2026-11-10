@@ -47,10 +47,12 @@
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="qms_ncr_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
-              <a-button v-if="record.status === NcrStatus.OPEN" v-perm="'qms:ncr:edit'" type="link" size="small" @click="openReview(record)">{{ $t('qms.ncr.review') }}</a-button>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'view', onClick: () => openDetail(record.id) },
+                { type: 'audit', label: $t('qms.ncr.review'), show: record.status === NcrStatus.OPEN, perm: 'qms:ncr:edit', onClick: () => openReview(record) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -194,7 +196,9 @@ import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import InstanceDetailDrawer from '@/components/workflow/InstanceDetailDrawer.vue'
 import { addNcr, cancelNcr, deleteNcr, getNcr, pageNcr, reviewNcr } from '@/api/qms'
 import { formatQty } from '@/components/wms/wms'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -215,13 +219,13 @@ const DISPOSITION_TIPS = {
 }
 
 const columns = [
-  { title: t('qms.ncr.no'), key: 'ncrNo', width: 160 },
-  { title: t('qms.ncr.sourceDoc'), key: 'source', width: 170 },
-  { title: t('mes.wo.material'), key: 'material', width: 210 },
-  { title: t('qms.ncr.description'), key: 'description', width: 150, ellipsis: true },
-  { title: t('qms.ncr.dispResp'), key: 'disposition', width: 140 },
+  { title: t('qms.ncr.no'), key: 'ncrNo', width: 170 },
+  { title: t('qms.ncr.sourceDoc'), key: 'source', width: 180 },
+  { title: t('mes.wo.material'), key: 'material', width: 230 },
+  { title: t('qms.ncr.description'), key: 'description', width: 200, ellipsis: true },
+  { title: t('qms.ncr.dispResp'), key: 'disposition', width: 150 },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('qms.ncr.review')].map((text) => ({ text, icon: false }))), fixed: 'right' }
+  actionColumn(2, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'qms-ncr')
 const query = reactive({ status: undefined, keyword: undefined })

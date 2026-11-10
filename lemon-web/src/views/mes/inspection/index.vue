@@ -53,22 +53,7 @@
             <div class="sub-text">{{ record.createByName }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-if="record.status === InspectionStatus.CONFIRMED" type="link" size="small" @click="openDetail(record)">{{ $t('common.action.view') }}</a-button>
-              <template v-else>
-                <a-button v-perm="'mes:qc:edit'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-                <span v-perm="'mes:qc:edit'">
-                  <a-popconfirm :title="confirmTitle(record)" @confirm="confirm(record.id)">
-                    <a-button type="link" size="small">{{ $t('mes.plan.confirm') }}</a-button>
-                  </a-popconfirm>
-                </span>
-                <span v-perm="'mes:qc:remove'">
-                  <a-popconfirm :title="$t('mes.inspection.confirmDelete')" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                  </a-popconfirm>
-                </span>
-              </template>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -256,7 +241,9 @@ import { outOfSpec, parseMeasured, samplingText, specText } from '@/components/q
 import { addInspection, confirmInspection, deleteInspection, getInspection, pageInspection, updateInspection } from '@/api/mes/base'
 import { getWo, pageWo } from '@/api/mes/wo'
 import { matchPlan } from '@/api/qms'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -270,13 +257,14 @@ const dict = useDict('mes_qc_type', 'mes_qc_result', 'mes_defect_type')
 const { t } = useI18n()
 
 const columns = [
-  { title: t('mes.inspection.noType'), key: 'inspNo', width: 180 },
-  { title: t('mes.inspection.source'), key: 'source', width: 170 },
-  { title: t('mes.wo.material'), key: 'material', width: 200 },
-  { title: t('common.field.quantity'), key: 'qty', width: 175 },
+  { title: t('mes.inspection.noType'), key: 'inspNo', width: 190 },
+  { title: t('mes.inspection.source'), key: 'source', width: 180 },
+  { title: t('mes.wo.material'), key: 'material', width: 210 },
+  { title: t('common.field.quantity'), key: 'qty', width: 220 },
   { title: t('mes.inspection.conclusion'), key: 'result', width: 110 },
   { title: t('mes.inspection.inspectDate'), key: 'inspectDate', width: 120 },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('mes.plan.confirm'), t('common.action.delete')].map((text) => ({ text, icon: false }))), fixed: 'right' }
+  // 已确认：查看；草稿：编辑、确认、删除
+  actionColumn(3, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-inspection')
 const statusOptions = [
@@ -296,6 +284,16 @@ onMounted(() => {
 
 const confirmTitle = (r) =>
   r.result === QcResult.FAIL ? t('mes.inspection.confirmFail') : t('mes.inspection.confirmPass')
+
+const rowActions = (record) => {
+  const confirmed = record.status === InspectionStatus.CONFIRMED
+  return [
+    { type: 'view', show: confirmed, onClick: () => openDetail(record) },
+    { type: 'edit', show: !confirmed, perm: 'mes:qc:edit', onClick: () => drawer.openEdit(record) },
+    { type: 'confirm', label: t('mes.plan.confirm'), show: !confirmed, perm: 'mes:qc:edit', confirm: confirmTitle(record), onClick: () => confirm(record.id) },
+    { type: 'delete', show: !confirmed, perm: 'mes:qc:remove', confirm: t('mes.inspection.confirmDelete'), onClick: () => remove(record.id) }
+  ]
+}
 
 // ---------------------------------------------------------------- 表单
 const rules = computed(() => ({

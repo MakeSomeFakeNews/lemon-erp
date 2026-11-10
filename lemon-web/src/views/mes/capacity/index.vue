@@ -115,11 +115,9 @@
                     <a-tag v-else :bordered="false">{{ $t('mes.capacity.off') }}</a-tag>
                   </template>
                   <template v-else-if="column.key === 'action'">
-                    <span v-perm="'mes:capacity:edit'">
-                      <a-popconfirm :title="$t('mes.capacity.deleteConfirm')" @confirm="removeEntry(record.id)">
-                        <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                      </a-popconfirm>
-                    </span>
+                    <TableActions
+                      :actions="[{ type: 'delete', perm: 'mes:capacity:edit', confirm: $t('mes.capacity.deleteConfirm'), onClick: () => removeEntry(record.id) }]"
+                    />
                   </template>
                 </template>
               </a-table>
@@ -152,10 +150,12 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import { Modal, message } from 'ant-design-vue'
-import { DeleteOutlined, ReloadOutlined, ScheduleOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, ScheduleOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import WorkCenterSelect from '@/components/mes/WorkCenterSelect.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { workCenterOptions } from '@/api/mes/base'
 import { capacityLoad, deleteCalendar, listCalendar, saveCalendar, scheduleAll } from '@/api/mes/capacity'
 import { formatQty } from '@/components/wms/wms'
@@ -298,7 +298,7 @@ const calColumns = [
   { title: t('common.field.date'), dataIndex: 'calDate', width: 110 },
   { title: t('mes.wo.hours'), key: 'hours', width: 90 },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: '', key: 'action', width: 50 }
+  actionColumn(1, [t('common.action.delete')], { title: '', fixed: undefined })
 ]
 
 function onPanelChange(value) {

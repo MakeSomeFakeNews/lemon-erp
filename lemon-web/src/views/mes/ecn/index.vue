@@ -38,7 +38,7 @@
             </a-tooltip>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
+            <TableActions :actions="[{ type: 'view', onClick: () => openDetail(record.id) }]" />
           </template>
         </template>
       </a-table>
@@ -185,6 +185,8 @@ import { getBom, pageBom } from '@/api/mes/base'
 import { addEcn, cancelEcn, deleteEcn, ecnDiff, effectEcn, getEcn, pageEcn, submitEcn, updateEcn } from '@/api/mes/plm'
 import { formatQty } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -228,7 +230,7 @@ const columns = [
   { title: t('mes.ecn.effectiveDate'), dataIndex: 'effectiveDate', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 100 },
   { title: t('mes.ecn.initiator'), dataIndex: 'createByName', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: 80, fixed: 'right' }
+  actionColumn(1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-ecn')
 const query = reactive({ status: undefined, keyword: undefined })

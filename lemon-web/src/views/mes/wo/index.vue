@@ -77,15 +77,7 @@
             <DictTag type="mes_wo_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record.id)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
-              </a-button>
-              <template v-if="record.status === WorkOrderStatus.DRAFT">
-                <a-button v-perm="'mes:wo:edit'" type="link" size="small" @click="formRef.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-                <a-button v-perm="'mes:wo:release'" type="link" size="small" @click="release(record)">{{ $t('mes.wo.release') }}</a-button>
-              </template>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -105,14 +97,16 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { EyeOutlined, PlusOutlined, RedoOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, RedoOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { pageWo, releaseWo } from '@/api/mes/wo'
 import { useAction } from '@/composables/useAction'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -136,10 +130,10 @@ const columns = [
   ] },
   { title: t('mes.wo.planDate'), key: 'plan', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'mes_wo_status' },
-  { title: t('mes.wo.finishWarehouseShort'), dataIndex: 'warehouseName', width: 130, defaultHidden: true },
-  { title: t('mes.wo.preparedByCol'), dataIndex: 'createByName', width: 110, defaultHidden: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), { text: t('common.action.edit'), icon: false }, { text: t('mes.wo.release'), icon: false }]), fixed: 'right' }
+  { title: t('mes.wo.finishWarehouseShort'), dataIndex: 'warehouseName', width: 130 },
+  { title: t('mes.wo.preparedByCol'), dataIndex: 'createByName', width: 110 },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  actionColumn(3, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-wo')
 const showSearch = ref(true)
@@ -168,6 +162,16 @@ onMounted(() => {
 })
 
 const formRef = ref()
+
+// 行操作：查看；草稿可编辑、下达
+const rowActions = (record) => {
+  const draft = record.status === WorkOrderStatus.DRAFT
+  return [
+    { type: 'view', onClick: () => openDetail(record.id) },
+    { type: 'edit', show: draft, perm: 'mes:wo:edit', onClick: () => formRef.value.openEdit(record) },
+    { type: 'submit', label: t('mes.wo.release'), show: draft, perm: 'mes:wo:release', onClick: () => release(record) }
+  ]
+}
 const detailRef = ref()
 const reworkRef = ref()
 const openDetail = (id) => detailRef.value.open(id)

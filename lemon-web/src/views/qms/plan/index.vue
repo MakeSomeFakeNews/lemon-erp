@@ -39,14 +39,12 @@
             <a-tag :color="record.status === 1 ? 'green' : 'default'" :bordered="false">{{ record.status === 1 ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="'qms:plan:edit'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-              <span v-perm="'qms:plan:remove'">
-                <a-popconfirm :title="$t('qms.plan.deleteConfirm')" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', perm: 'qms:plan:edit', onClick: () => drawer.openEdit(record) },
+                { type: 'delete', perm: 'qms:plan:remove', confirm: $t('qms.plan.deleteConfirm'), onClick: () => remove(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -205,6 +203,8 @@ import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { AQL_OPTIONS, INSPECTION_LEVELS, samplingText, specText } from '@/components/qms/qms'
 import { addPlan, deletePlan, getPlan, pagePlan, updatePlan } from '@/api/qms'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -223,11 +223,11 @@ const METHODS = [
 const columns = [
   { title: t('qms.plan.name'), key: 'name', width: 220 },
   { title: t('mes.inspection.type'), key: 'type', width: 130 },
-  { title: t('qms.plan.scope'), key: 'scope', width: 220 },
-  { title: t('qms.plan.sampling'), key: 'sampling', width: 220 },
-  { title: t('mes.inspection.item'), dataIndex: 'itemCount', width: 110, align: 'right' },
+  { title: t('qms.plan.scope'), key: 'scope', width: 240 },
+  { title: t('qms.plan.sampling'), key: 'sampling', width: 240 },
+  { title: t('mes.inspection.item'), dataIndex: 'itemCount', width: 130, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
+  actionColumn(2, [t('common.action.edit')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'qms-plan')
 const query = reactive({ type: undefined, keyword: undefined })

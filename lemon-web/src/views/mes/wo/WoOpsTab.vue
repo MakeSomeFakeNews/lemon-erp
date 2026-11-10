@@ -22,15 +22,18 @@
         <span v-else class="sub-text">{{ $t('mes.wo.unscheduled') }}</span>
       </template>
       <template v-else-if="column.key === 'action'">
-        <a-button
-          v-if="[WorkOrderStatus.RELEASED, WorkOrderStatus.STARTED].includes(detail.status)"
-          v-perm="'mes:wo:report'"
-          type="link"
-          size="small"
-          @click="emit('report', record)"
-        >
-          {{ $t('mes.wo.report') }}
-        </a-button>
+        <TableActions
+          :actions="[
+            {
+              key: 'report',
+              label: $t('mes.wo.report'),
+              icon: FormOutlined,
+              show: [WorkOrderStatus.RELEASED, WorkOrderStatus.STARTED].includes(detail.status),
+              perm: 'mes:wo:report',
+              onClick: () => emit('report', record)
+            }
+          ]"
+        />
       </template>
     </template>
   </a-table>
@@ -38,6 +41,9 @@
 
 <script setup>
 import { useI18n } from 'vue-i18n'
+import { FormOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { formatQty } from '@/components/wms/wms'
 import { pct } from './wo'
 import { WorkOrderStatus } from '@/constants/enums'
@@ -54,7 +60,7 @@ const columns = [
   { title: t('mes.wo.opProgress'), key: 'progress', width: 220 },
   { title: t('mes.wo.actualStdHours'), key: 'hours', width: 170 },
   { title: t('mes.wo.planDate'), key: 'plan', width: 120 },
-  { title: '', key: 'action', width: 70 }
+  actionColumn(1, [t('mes.wo.report')], { title: '', fixed: undefined })
 ]
 </script>
 

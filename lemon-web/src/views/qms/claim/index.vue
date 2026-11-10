@@ -33,26 +33,7 @@
             <div v-if="record.billNo" class="sub-text">{{ $t('qms.claim.billNo', { no: record.billNo }) }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <template v-if="record.status === ClaimStatus.DRAFT">
-                <a-button v-perm="'qms:claim:add'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-                <span v-perm="'qms:claim:confirm'">
-                  <a-popconfirm :title="$t('qms.claim.confirmConfirm')" @confirm="confirm(record.id)">
-                    <a-button type="link" size="small">{{ $t('mes.plan.confirm') }}</a-button>
-                  </a-popconfirm>
-                </span>
-                <span v-perm="'qms:claim:remove'">
-                  <a-popconfirm :title="$t('qms.claim.deleteConfirm')" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                  </a-popconfirm>
-                </span>
-              </template>
-              <span v-else-if="record.status === ClaimStatus.CONFIRMED" v-perm="'qms:claim:confirm'">
-                <a-popconfirm :title="$t('qms.claim.cancelConfirm')" @confirm="cancel(record.id)">
-                  <a-button type="link" danger size="small">{{ $t('common.action.cancel') }}</a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -110,6 +91,8 @@ import { addClaim, cancelClaim, confirmClaim, deleteClaim, getClaim, getNcr, pag
 import { formatMoney } from '@/components/fin/fin'
 import { today } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -124,13 +107,14 @@ const { t } = useI18n()
 const route = useRoute()
 
 const columns = [
-  { title: t('qms.claim.claimNo'), key: 'claimNo', width: 180 },
+  { title: t('qms.claim.claimNo'), key: 'claimNo', width: 190 },
   { title: t('mes.mrp.supplier'), dataIndex: 'supplierName', width: 180, ellipsis: true },
   { title: t('qms.claim.claimDate'), dataIndex: 'claimDate', width: 110 },
   { title: t('qms.claim.amount'), key: 'amount', width: 130, align: 'right' },
-  { title: t('qms.claim.reason'), dataIndex: 'reason', width: 190, ellipsis: true },
+  { title: t('qms.claim.reason'), dataIndex: 'reason', width: 220, ellipsis: true },
   { title: t('qms.claim.statusOffset'), key: 'status', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
+  // 草稿：编辑、确认、删除；已确认：撤销
+  actionColumn(3, [t('common.action.cancel')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'qms-claim')
 const query = reactive({ status: undefined, supplierId: undefined, keyword: undefined })
@@ -190,6 +174,23 @@ onMounted(async () => {
 const confirm = useAction(confirmClaim, { successKey: 'qms.claim.confirmed', reload: () => load() })
 const cancel = useAction(cancelClaim, { successKey: 'mes.ecn.cancelled', reload: () => load() })
 const remove = useAction(deleteClaim, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+
+const rowActions = (record) => {
+  const draft = record.status === ClaimStatus.DRAFT
+  return [
+    { type: 'edit', show: draft, perm: 'qms:claim:add', onClick: () => drawer.openEdit(record) },
+    { type: 'confirm', label: t('mes.plan.confirm'), show: draft, perm: 'qms:claim:confirm', confirm: t('qms.claim.confirmConfirm'), onClick: () => confirm(record.id) },
+    { type: 'delete', show: draft, perm: 'qms:claim:remove', confirm: t('qms.claim.deleteConfirm'), onClick: () => remove(record.id) },
+    {
+      type: 'cancel',
+      danger: true,
+      show: record.status === ClaimStatus.CONFIRMED,
+      perm: 'qms:claim:confirm',
+      confirm: t('qms.claim.cancelConfirm'),
+      onClick: () => cancel(record.id)
+    }
+  ]
+}
 </script>
 
 <style scoped>

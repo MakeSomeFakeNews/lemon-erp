@@ -59,27 +59,7 @@
             />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
-              </a-button>
-              <a-button v-if="editable(record)" v-perm="'mes:bom:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <a-button v-if="record.isDefault !== 1 && !pending(record)" v-perm="'mes:bom:edit'" type="link" size="small" @click="makeDefault(record)">
-                {{ $t('mes.bom.setDefault') }}
-              </a-button>
-              <a-button v-if="!pending(record)" v-perm="'mes:ecn:add'" type="link" size="small" @click="router.push({ path: '/mes/ecn', query: { bomId: record.id } })">
-                {{ $t('mes.bom.startEcn') }}
-              </a-button>
-              <span v-perm="'mes:bom:remove'">
-                <a-popconfirm :title="$t('mes.bom.confirmDelete', { v: record.version })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>
-                  </a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -280,7 +260,7 @@
 import SubPage from '@/components/SubPage.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { BranchesOutlined, DeleteOutlined, PlusOutlined, StarOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -291,7 +271,9 @@ import WorkCenterSelect from '@/components/mes/WorkCenterSelect.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { addBom, changeBomStatus, deleteBom, getBom, pageBom, setDefaultBom, updateBom } from '@/api/mes/base'
 import { releasedDocs } from '@/api/mes/plm'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -311,9 +293,9 @@ const columns = [
   { title: t('mes.bom.leadTime'), key: 'leadDays', width: 100 },
   { title: t('mes.bom.structure'), key: 'lines', width: 190 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
-  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 170, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('common.action.edit'), { text: t('mes.bom.setDefault'), icon: false }, { text: t('mes.bom.startEcn'), icon: false }, '']), fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 170 },
+  actionColumn(4, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-bom')
 const showSearch = ref(true)
@@ -405,6 +387,31 @@ function addOp() {
 const makeDefault = useAction((record) => setDefaultBom(record.id), { successKey: 'mes.bom.defaultSet', reload: () => load() })
 
 const remove = useAction(deleteBom, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+
+// 行操作：查看、编辑、删除直接显示，设为默认、发起变更在「更多」中
+const rowActions = (record) => [
+  { type: 'view', onClick: () => openDetail(record) },
+  { type: 'edit', show: editable(record), perm: 'mes:bom:edit', onClick: () => drawer.openEdit(record) },
+  { type: 'delete', perm: 'mes:bom:remove', confirm: t('mes.bom.confirmDelete', { v: record.version }), onClick: () => remove(record.id) },
+  {
+    key: 'setDefault',
+    label: t('mes.bom.setDefault'),
+    icon: StarOutlined,
+    show: record.isDefault !== 1 && !pending(record),
+    perm: 'mes:bom:edit',
+    more: true,
+    onClick: () => makeDefault(record)
+  },
+  {
+    key: 'startEcn',
+    label: t('mes.bom.startEcn'),
+    icon: BranchesOutlined,
+    show: !pending(record),
+    perm: 'mes:ecn:add',
+    more: true,
+    onClick: () => router.push({ path: '/mes/ecn', query: { bomId: record.id } })
+  }
+]
 
 // ---------------------------------------------------------------- 位号：R1,R2 或区间 C1-C8，与后端 RefDes 的规则一致
 const REF_TOKEN = /^([A-Z]+)(\d+)(?:-([A-Z]*)(\d+))?$/
