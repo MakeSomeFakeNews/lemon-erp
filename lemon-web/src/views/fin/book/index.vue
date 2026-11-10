@@ -1,7 +1,7 @@
 <template>
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
-      <a-tabs v-model:active-key="tab">
+      <a-tabs v-model:active-key="tab" @change="onTabChange">
         <a-tab-pane key="balance" :tab="$t('fin.book.trialBalance')">
           <div class="filters">
             <span>{{ $t('fin.book.period') }}</span>
@@ -185,6 +185,11 @@ async function loadLedger() {
   }
 }
 
+/** 辅助核算页签第一次打开时按默认条件查询 */
+function onTabChange(key) {
+  if (key === 'aux' && !aux.loaded) loadAux()
+}
+
 /** 从余额表点科目编码打开明细账 */
 function openLedger(row) {
   ledgerAccount.value = row.accountId
@@ -207,8 +212,9 @@ const auxColumns = computed(() => [
   { title: t('fin.book.periodCredit'), key: 'credit', width: 150, align: 'right' },
   { title: t('fin.book.closeBalance'), key: 'balance', width: 170, align: 'right' }
 ])
-const aux = reactive({ dimension: 'PROJECT', accountId: undefined, rows: [], loading: false })
+const aux = reactive({ dimension: 'PROJECT', accountId: undefined, rows: [], loading: false, loaded: false })
 async function loadAux() {
+  aux.loaded = true
   aux.loading = true
   try {
     const rows = await auxBalance({ dimension: aux.dimension, begin: range.begin, end: range.end, accountId: aux.accountId })
