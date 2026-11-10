@@ -49,20 +49,14 @@
             {{ record.mine ? $t('bi.common.me') : record.createByName }}
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="preview(record)"><EyeOutlined />{{ $t('common.action.preview') }}</a-button>
-              <a-button type="link" size="small" @click="router.push({ path: '/bi/olap', query: { report: record.id } })">
-                <AppstoreOutlined />{{ $t('bi.board.analyze') }}
-              </a-button>
-              <a-button v-if="record.mine" v-perm="'bi:report:edit'" type="link" size="small" @click="openEdit(record)">
-                <EditOutlined />{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-if="record.mine" v-perm="'bi:report:remove'">
-                <a-popconfirm :title="$t('bi.report.confirmDelete', { name: record.name })" @confirm="remove(record)">
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'view', label: $t('common.action.preview'), onClick: () => preview(record) },
+                { key: 'analyze', label: $t('bi.board.analyze'), icon: AppstoreOutlined, onClick: () => router.push({ path: '/bi/olap', query: { report: record.id } }) },
+                { type: 'edit', show: record.mine, perm: 'bi:report:edit', onClick: () => openEdit(record) },
+                { type: 'delete', show: record.mine, perm: 'bi:report:remove', confirm: $t('bi.report.confirmDelete', { name: record.name }), onClick: () => remove(record) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -102,13 +96,15 @@ import SubPage from '@/components/SubPage.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { AppstoreOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { AppstoreOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import SearchForm from '@/components/SearchForm.vue'
 import ReportView from '@/components/bi/ReportView.vue'
 import { deleteReport, listReports, updateReport } from '@/api/bi'
 import { CHART_TYPES, RANGES, loadCubes } from '@/components/bi/bi'
 import { t } from '@/locales'
-import { actionWidth, sumWidth } from '@/composables/useColumns'
+import { sumWidth } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useAction } from '@/composables/useAction'
 
 const router = useRouter()
@@ -121,13 +117,13 @@ const cubeOptions = computed(() => cubes.value.map((c) => ({ value: c.key, label
 const cubeLabel = (k) => cubes.value.find((c) => c.key === k)?.label || k
 
 const columns = [
-  { title: t('bi.report.report'), key: 'name', width: 210 },
-  { title: t('bi.common.cube'), key: 'cube', width: 100 },
-  { title: t('bi.report.config'), key: 'config', width: 190 },
+  { title: t('bi.report.report'), key: 'name', width: 240 },
+  { title: t('bi.common.cube'), key: 'cube', width: 110 },
+  { title: t('bi.report.config'), key: 'config', width: 300 },
   { title: t('bi.report.share'), key: 'shared', width: 90 },
-  { title: t('common.field.createBy'), key: 'owner', width: 100 },
-  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.preview'), t('bi.board.analyze'), t('common.action.edit'), '']), fixed: 'right' }
+  { title: t('common.field.createBy'), key: 'owner', width: 110 },
+  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 170 },
+  actionColumn(4)
 ]
 const scrollX = sumWidth(columns)
 

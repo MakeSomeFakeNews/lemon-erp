@@ -181,8 +181,6 @@ export default {
     workCenterExtra: 'The Production and Production Progress screens show only this work center',
     expireTime: 'Valid Until',
     lastAccess: 'Last Access',
-    lastAccessValue: 'Last access {time}',
-    expireValue: 'Valid until {time}',
     link: 'Link',
     linkCopied: 'Link copied',
     regenerated: 'Regenerated; the old link no longer works',

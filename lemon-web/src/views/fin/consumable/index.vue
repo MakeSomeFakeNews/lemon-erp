@@ -39,7 +39,7 @@
                 <div v-if="record.wmsDocNo" class="sub-text">{{ $t('fin.consumable.outbound', { no: record.wmsDocNo }) }}</div>
               </template>
               <template v-else-if="column.key === 'action'">
-                <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
+                <TableActions :actions="[{ type: 'view', onClick: () => openDetail(record.id) }]" />
               </template>
             </template>
           </a-table>
@@ -184,6 +184,8 @@ import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SubPage from '@/components/SubPage.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
@@ -208,15 +210,15 @@ const c = 'fin.consumable.'
 const tab = ref('uses')
 
 const columns = [
-  { title: t(c + 'useNo'), key: 'useNo', width: 170 },
-  { title: t(c + 'useDept'), key: 'dept', width: 130 },
-  { title: t(c + 'warehouse'), dataIndex: 'warehouseName', width: 120 },
-  { title: t(c + 'expenseAccount'), dataIndex: 'expenseAccountName', width: 120 },
-  { title: t('common.field.quantity'), key: 'qty', width: 80, align: 'right' },
-  { title: t(c + 'refAmount'), key: 'amount', width: 110, align: 'right' },
-  { title: t(c + 'purpose'), dataIndex: 'remark', width: 140, ellipsis: true },
+  { title: t(c + 'useNo'), key: 'useNo', width: 190 },
+  { title: t(c + 'useDept'), key: 'dept', width: 150 },
+  { title: t(c + 'warehouse'), dataIndex: 'warehouseName', width: 150 },
+  { title: t(c + 'expenseAccount'), dataIndex: 'expenseAccountName', width: 150 },
+  { title: t('common.field.quantity'), key: 'qty', width: 100, align: 'right' },
+  { title: t(c + 'refAmount'), key: 'amount', width: 120, align: 'right' },
+  { title: t(c + 'purpose'), dataIndex: 'remark', width: 160, ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-consumable')
 const query = reactive({ status: undefined, deptId: undefined, keyword: undefined })

@@ -20,12 +20,12 @@
         </template>
         <template v-else-if="column.key === 'status'"><DictTag type="sys_common_status" :value="record.status" /></template>
         <template v-else-if="column.key === 'action'">
-          <span v-perm="'fin:io:category'" class="table-actions">
-            <a-button type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-            <a-popconfirm v-if="!record.used" :title="$t('fin.io.confirmDeleteCategory', { name: record.name })" @confirm="remove(record.id)">
-              <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-            </a-popconfirm>
-          </span>
+          <TableActions
+            :actions="[
+              { type: 'edit', perm: 'fin:io:category', onClick: () => drawer.openEdit(record) },
+              { type: 'delete', show: !record.used, perm: 'fin:io:category', confirm: $t('fin.io.confirmDeleteCategory', { name: record.name }), onClick: () => remove(record.id) }
+            ]"
+          />
         </template>
       </template>
     </a-table>
@@ -70,6 +70,8 @@ import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import { addIoCategory, deleteIoCategory, listIoCategory, updateIoCategory } from '@/api/fin'
 import { useAction } from '@/composables/useAction'
@@ -90,7 +92,7 @@ const columns = [
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 80 },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 120 }
+  actionColumn(2, [t('common.action.edit')], { fixed: undefined })
 ]
 const list = ref([])
 const loading = ref(false)

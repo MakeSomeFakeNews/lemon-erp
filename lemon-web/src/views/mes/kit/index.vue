@@ -65,14 +65,10 @@
                   </template>
                   <template v-else-if="QTY_KEYS.includes(column.key)">{{ formatQty(line[column.key]) }}</template>
                   <template v-else-if="column.key === 'action'">
-                    <a-button
+                    <TableActions
                       v-if="Number(line.shortageQty) > 0 && line.substitutes?.length && canSubstitute"
-                      type="link"
-                      size="small"
-                      @click="openSubstitute(record, line)"
-                    >
-                      {{ $t('mes.kit.substitutesN', { n: line.substitutes.length }) }}
-                    </a-button>
+                      :actions="[{ key: 'substitute', label: $t('mes.kit.substitutesN', { n: line.substitutes.length }), icon: SwapOutlined, onClick: () => openSubstitute(record, line) }]"
+                    />
                     <span v-else-if="Number(line.shortageQty) > 0 && line.substitutes?.length" class="sub-text">{{ $t('mes.kit.hasSubstitute') }}</span>
                   </template>
                 </template>
@@ -211,8 +207,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
-import { ReloadOutlined, ShoppingCartOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, ShoppingCartOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import DictTag from '@/components/DictTag.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { kitMaterialLines, kitMaterials, kitOrderLines, kitOrders, kitRelease, switchSubstitute } from '@/api/mes/base'
@@ -252,7 +250,7 @@ const lineColumns = [
   { title: t('mes.kit.shortage'), key: 'shortageQty', width: 90, align: 'right' },
   { title: t('mes.mrp.scheduled'), key: 'onOrderQty', width: 90, align: 'right' },
   { title: t('common.field.unit'), dataIndex: 'unit', width: 60 },
-  { title: '', key: 'action', width: 120 }
+  actionColumn(1, [t('mes.kit.substitutesN', { n: 9 }), t('mes.kit.hasSubstitute')], { title: '', fixed: undefined })
 ]
 const orderQuery = reactive({ woNo: '', kitStatus: '' })
 const orders = ref([])

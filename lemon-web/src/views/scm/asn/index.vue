@@ -35,10 +35,12 @@
             <div v-if="record.tradeDocNo" class="sub-text">{{ $t('scm.asn.inboundN', { no: record.tradeDocNo }) }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
-              <a-button v-if="record.status === AsnStatus.SUBMITTED" v-perm="'scm:asn:receive'" type="link" size="small" @click="openReceive(record.id)">{{ $t('scm.asn.receive') }}</a-button>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'view', onClick: () => openDetail(record.id) },
+                { key: 'receive', label: $t('scm.asn.receive'), icon: InboxOutlined, show: record.status === AsnStatus.SUBMITTED, perm: 'scm:asn:receive', onClick: () => openReceive(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -117,6 +119,9 @@ import { toOptions } from '@/utils/dict'
 import { useI18n } from 'vue-i18n'
 
 import { AsnStatus } from '@/constants/enums'
+import { InboxOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 /** 送货通知：供应商在门户按采购订单发起，仓库按送货通知收货生成采购入库 */
 const { t } = useI18n()
 const dict = useDict('scm_asn_status')
@@ -128,7 +133,7 @@ const columns = [
   { title: t('scm.asn.logistics'), key: 'logistics', width: 160 },
   { title: t('scm.asn.shipQty'), key: 'qty', width: 110, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
+  actionColumn(2, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-asn')
 const query = reactive({ status: undefined, keyword: undefined })

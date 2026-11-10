@@ -76,14 +76,7 @@
               <a-tag v-if="record.overdue" color="red" :bordered="false">{{ $t('pm.common.overdue') }}</a-tag>
             </template>
             <template v-else-if="column.key === 'action'">
-              <span v-perm="'pm:task:edit'" class="table-actions">
-                <a-button type="link" size="small" :disabled="!editable" @click="openTask(null, record)">{{ $t('pm.plan.subtask') }}</a-button>
-                <a-button type="link" size="small" :disabled="!editable" @click="openTask(record)"><EditOutlined /></a-button>
-                <a-popconfirm :title="record.children?.length ? $t('pm.plan.confirmDeleteWithChildren', { name: record.name }) : $t('pm.plan.confirmDelete', { name: record.name })" :disabled="!editable"
-                              @confirm="removeTask(record)">
-                  <a-button type="link" danger size="small" :disabled="!editable"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
+              <TableActions :actions="rowActions(record)" />
             </template>
           </template>
         </a-table>
@@ -162,7 +155,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, FlagFilled, PlusOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import { FlagFilled, PlusOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import GanttChart from '@/components/pm/GanttChart.vue'
@@ -173,6 +166,8 @@ import { load as loadStorage, save as saveStorage } from '@/utils/storage'
 import { flattenTasks, today } from '@/components/pm/pm'
 import { t } from '@/locales'
 import { sumWidth } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useAction } from '@/composables/useAction'
 
 import { ProjectStatus } from '@/constants/enums'
@@ -189,16 +184,29 @@ const expanded = ref([])
 const editable = computed(() => project.value && ![ProjectStatus.FINISHED, ProjectStatus.CLOSED].includes(project.value.status))
 
 const columns = [
-  { title: t('pm.common.task'), key: 'name', width: 220, fixed: 'left' },
-  { title: t('pm.common.assignee'), dataIndex: 'assigneeName', width: 90 },
+  { title: t('pm.common.task'), key: 'name', width: 280, fixed: 'left' },
+  { title: t('pm.common.assignee'), dataIndex: 'assigneeName', width: 110 },
   { title: t('pm.common.planDates'), key: 'dates', width: 210 },
-  { title: t('pm.plan.planActualHours'), key: 'hours', width: 130 },
-  { title: t('pm.common.progress'), key: 'progress', width: 130 },
-  { title: t('common.field.status'), key: 'status', width: 110 },
-  { title: t('pm.plan.predecessor'), dataIndex: 'predecessorName', width: 100, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
+  { title: t('pm.plan.planActualHours'), key: 'hours', width: 160 },
+  { title: t('pm.common.progress'), key: 'progress', width: 170 },
+  { title: t('common.field.status'), key: 'status', width: 150 },
+  { title: t('pm.plan.predecessor'), dataIndex: 'predecessorName', width: 140, ellipsis: true },
+  actionColumn(3)
 ]
 const scrollX = sumWidth(columns)
+
+// 行操作：编辑、添加子任务、删除（项目已完成 / 关闭时禁用）
+const rowActions = (record) => [
+  { type: 'edit', perm: 'pm:task:edit', disabled: !editable.value, onClick: () => openTask(record) },
+  { type: 'add', label: t('pm.plan.subtask'), perm: 'pm:task:edit', disabled: !editable.value, onClick: () => openTask(null, record) },
+  {
+    type: 'delete',
+    perm: 'pm:task:edit',
+    disabled: !editable.value,
+    confirm: record.children?.length ? t('pm.plan.confirmDeleteWithChildren', { name: record.name }) : t('pm.plan.confirmDelete', { name: record.name }),
+    onClick: () => removeTask(record)
+  }
+]
 
 async function onProject(id) {
   saveStorage(STORAGE_KEY, id)

@@ -79,16 +79,12 @@
             </a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-perm="'scm:price:edit'" class="table-actions">
-              <a-button type="link" size="small" @click="openForm(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <a-popconfirm :title="$t('scm.priceList.confirmDelete')" @confirm="remove([record.id])">
-                <a-button type="link" danger size="small">
-                  <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                </a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', perm: 'scm:price:edit', onClick: () => openForm(record) },
+                { type: 'delete', perm: 'scm:price:edit', confirm: $t('scm.priceList.confirmDelete'), onClick: () => remove([record.id]) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -155,7 +151,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, EditOutlined, PlusOutlined, SafetyOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, PlusOutlined, SafetyOutlined } from '@ant-design/icons-vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import PriceControlDrawer from '@/components/scm/PriceControlDrawer.vue'
 import DictTag from '@/components/DictTag.vue'
@@ -169,6 +165,8 @@ import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 
 const { t } = useI18n()
 const dict = useDict('scm_customer_level')
@@ -182,14 +180,14 @@ function validityTag(r) {
 }
 
 const columns = [
-  { title: t('scm.priceList.material'), key: 'material', width: 210, exportValue: (r) => `${r.materialCode} ${r.materialName}` },
-  { title: t('scm.priceList.applicableCustomer'), key: 'customerLevel', dataIndex: 'customerLevel', width: 140, dict: 'scm_customer_level' },
-  { title: t('scm.priceList.minQty'), key: 'minQty', dataIndex: 'minQty', width: 90, align: 'right' },
-  { title: t('scm.priceList.taxPrice'), key: 'price', dataIndex: 'price', width: 140 },
-  { title: t('scm.priceList.taxRatePct'), dataIndex: 'taxRate', width: 80, align: 'right' },
-  { title: t('scm.priceList.validity'), key: 'validity', width: 210, exportValue: validityText },
+  { title: t('scm.priceList.material'), key: 'material', width: 240, exportValue: (r) => `${r.materialCode} ${r.materialName}` },
+  { title: t('scm.priceList.applicableCustomer'), key: 'customerLevel', dataIndex: 'customerLevel', width: 180, dict: 'scm_customer_level' },
+  { title: t('scm.priceList.minQty'), key: 'minQty', dataIndex: 'minQty', width: 120, align: 'right' },
+  { title: t('scm.priceList.taxPrice'), key: 'price', dataIndex: 'price', width: 160 },
+  { title: t('scm.priceList.taxRatePct'), dataIndex: 'taxRate', width: 100, align: 'right' },
+  { title: t('scm.priceList.validity'), key: 'validity', width: 240, exportValue: validityText },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
+  actionColumn(2)
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-price-list')
 const showSearch = ref(true)

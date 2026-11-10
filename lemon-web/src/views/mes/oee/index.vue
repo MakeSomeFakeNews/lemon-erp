@@ -78,12 +78,13 @@
                 <div v-if="record.maintenanceNo" class="sub-text">{{ $t('mes.oee.maintenanceNo', { no: record.maintenanceNo }) }}</div>
               </template>
               <template v-else-if="column.key === 'action'">
-                <span v-if="!record.maintenanceId" v-perm="'mes:equipment:stop'" class="table-actions">
-                  <a-button type="link" size="small" @click="openStop(record)">{{ $t('common.action.edit') }}</a-button>
-                  <a-popconfirm :title="$t('mes.oee.deleteStop')" @confirm="removeStop(record.id)">
-                    <a-button type="link" size="small" danger>{{ $t('common.action.delete') }}</a-button>
-                  </a-popconfirm>
-                </span>
+                <TableActions
+                  v-if="!record.maintenanceId"
+                  :actions="[
+                    { type: 'edit', perm: 'mes:equipment:stop', onClick: () => openStop(record) },
+                    { type: 'delete', perm: 'mes:equipment:stop', confirm: $t('mes.oee.deleteStop'), onClick: () => removeStop(record.id) }
+                  ]"
+                />
                 <span v-else class="sub-text">{{ $t('mes.oee.auto') }}</span>
               </template>
             </template>
@@ -154,6 +155,8 @@ import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import DictTag from '@/components/DictTag.vue'
 import SubPage from '@/components/SubPage.vue'
 import EChart from '@/components/charts/EChart.vue'
@@ -244,7 +247,7 @@ const stopColumns = [
   { title: t('mes.supplement.reason'), key: 'reason', width: 160 },
   { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true },
   { title: t('mes.oee.recorder'), dataIndex: 'createByName', width: 110 },
-  { title: t('common.action.operation'), key: 'action', width: 120, fixed: 'right' }
+  actionColumn(2, [t('mes.oee.auto')])
 ]
 watch(tab, (v) => v === 'stops' && stops.load())
 

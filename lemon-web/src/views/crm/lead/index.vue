@@ -64,29 +64,7 @@
             <div v-else-if="record.status === LeadStatus.INVALID && record.invalidReason" class="sub-text">{{ record.invalidReason }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-if="open(record)" class="table-actions">
-              <a-button v-perm="'crm:followup:add'" type="link" size="small" @click="openFollow(record)">
-                <template #icon><MessageOutlined /></template>{{ $t('crm.lead.follow') }}
-              </a-button>
-              <a-button v-perm="'crm:lead:convert'" type="link" size="small" @click="openConvert(record)">
-                <template #icon><SwapRightOutlined /></template>{{ $t('crm.lead.convert') }}
-              </a-button>
-              <a-dropdown v-if="userStore.hasPerm(['crm:lead:edit', 'crm:lead:remove'])">
-                <a-button type="link" size="small">{{ $t('crm.common.more') }}<DownOutlined /></a-button>
-                <template #overlay>
-                  <a-menu @click="({ key }) => onMore(key, record)">
-                    <a-menu-item v-if="userStore.hasPerm('crm:lead:edit')" key="edit">{{ $t('common.action.edit') }}</a-menu-item>
-                    <a-menu-item v-if="userStore.hasPerm('crm:lead:edit')" key="invalid">{{ $t('crm.lead.markInvalid') }}</a-menu-item>
-                    <a-menu-item v-if="userStore.hasPerm('crm:lead:remove')" key="remove" danger>{{ $t('common.action.delete') }}</a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </span>
-            <span v-else-if="record.status === LeadStatus.INVALID" v-perm="'crm:lead:remove'">
-              <a-popconfirm :title="$t('crm.lead.confirmDelete', { name: record.company })" @confirm="remove(record.id)">
-                <a-button type="link" danger size="small"><template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}</a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -199,7 +177,9 @@ import { h, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, DownOutlined, MessageOutlined, PlusOutlined, SwapRightOutlined } from '@ant-design/icons-vue'
+import { MessageOutlined, PlusOutlined, StopOutlined, SwapRightOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -207,32 +187,31 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import FollowupModal from '@/components/crm/FollowupModal.vue'
 import { addLead, campaignOptions, convertLead, deleteLead, getLead, invalidLead, pageLead, updateLead } from '@/api/crm'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
-import { useUserStore } from '@/store/user'
 import { optionsWithCurrent, toOptions } from '@/utils/dict'
 import { useAction } from '@/composables/useAction'
 
 import { LeadStatus } from '@/constants/enums'
 const route = useRoute()
 const router = useRouter()
-const userStore = useUserStore()
 const { t } = useI18n()
 const dict = useDict('crm_lead_status', 'crm_source', 'crm_industry', 'scm_region')
 
 const columns = [
   { title: t('crm.lead.col.company'), key: 'company', width: 220 },
-  { title: t('crm.common.f.contact'), key: 'contact', width: 140 },
-  { title: t('crm.common.f.source'), key: 'source', width: 110, dict: 'crm_source' },
-  { title: t('crm.common.f.industry'), key: 'industry', width: 110, dict: 'crm_industry', defaultHidden: true },
+  { title: t('crm.common.f.contact'), key: 'contact', width: 170 },
+  { title: t('crm.common.f.source'), key: 'source', width: 150, dict: 'crm_source' },
+  { title: t('crm.common.f.industry'), key: 'industry', width: 110, dict: 'crm_industry' },
   { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 100 },
-  { title: t('common.field.status'), key: 'status', width: 130, dict: 'crm_lead_status' },
+  { title: t('common.field.status'), key: 'status', width: 140, dict: 'crm_lead_status' },
   { title: t('crm.common.f.lastFollow'), dataIndex: 'lastFollowTime', width: 160 },
-  { title: t('crm.lead.col.requirement'), dataIndex: 'requirement', width: 180, ellipsis: true, defaultHidden: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 160, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('crm.lead.follow'), t('crm.lead.convert'), t('crm.common.more')]), fixed: 'right' }
+  { title: t('crm.lead.col.requirement'), dataIndex: 'requirement', width: 180, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 160 },
+  // 跟进中：编辑、跟进、转化、更多（删除、标记无效）；无效：删除
+  actionColumn(4, [t('common.action.delete')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-lead')
 const showSearch = ref(true)
@@ -255,12 +234,21 @@ onMounted(async () => {
 
 const open = (r) => r.status === LeadStatus.NEW || r.status === LeadStatus.FOLLOWING
 
-function onMore(key, record) {
-  if (key === 'edit') drawer.openEdit(record)
-  else if (key === 'invalid') openInvalid(record)
-  else if (key === 'remove') {
-    Modal.confirm({ title: t('crm.lead.confirmDelete', { name: record.company }), okType: 'danger', onOk: () => remove(record.id) })
-  }
+function rowActions(record) {
+  const active = open(record)
+  return [
+    { type: 'edit', show: active, perm: 'crm:lead:edit', onClick: () => drawer.openEdit(record) },
+    { key: 'follow', label: t('crm.lead.follow'), icon: MessageOutlined, show: active, perm: 'crm:followup:add', onClick: () => openFollow(record) },
+    { key: 'convert', label: t('crm.lead.convert'), icon: SwapRightOutlined, show: active, perm: 'crm:lead:convert', onClick: () => openConvert(record) },
+    {
+      type: 'delete',
+      show: active || record.status === LeadStatus.INVALID,
+      perm: 'crm:lead:remove',
+      confirm: t('crm.lead.confirmDelete', { name: record.company }),
+      onClick: () => remove(record.id)
+    },
+    { key: 'invalid', label: t('crm.lead.markInvalid'), icon: StopOutlined, show: active, perm: 'crm:lead:edit', more: true, onClick: () => openInvalid(record) }
+  ]
 }
 
 // ---------------------------------------------------------------- 新增 / 编辑

@@ -48,21 +48,7 @@
             <DictTag type="hr_perf_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-if="record.status !== PerfStatus.DRAFT" type="link" size="small" @click="openResult(record)">{{ $t('hr.perf.result') }}</a-button>
-              <a-button v-if="record.status === PerfStatus.DRAFT" v-perm="'hr:perf:edit'" type="link" size="small" @click="openStart(record)">{{ $t('hr.perf.start') }}</a-button>
-              <span v-if="record.status === PerfStatus.SCORING" v-perm="'hr:perf:edit'">
-                <a-popconfirm :title="$t('hr.perf.confirmFinish')" @confirm="finish(record.id)">
-                  <a-button type="link" size="small">{{ $t('hr.perf.archive') }}</a-button>
-                </a-popconfirm>
-              </span>
-              <a-button v-if="record.status !== PerfStatus.FINISHED" v-perm="'hr:perf:edit'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-              <span v-if="record.status === PerfStatus.DRAFT" v-perm="'hr:perf:remove'">
-                <a-popconfirm :title="$t('hr.perf.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -192,19 +178,24 @@
               <div v-if="record.selfComment" class="sub-text">{{ $t('hr.perf.selfComment', { text: record.selfComment }) }}</div>
             </template>
             <template v-else-if="column.key === 'action'">
-              <span v-if="resultPlan.status === PerfStatus.SCORING" class="table-actions">
-                <a-button
-                  v-if="record.status !== AppraisalStatus.DONE && (record.reviewerId === userStore.user?.id || userStore.hasPerm('hr:perf:score'))"
-                  type="link"
-                  size="small"
-                  @click="openScore(record)"
-                >
-                  {{ $t('hr.perf.score') }}
-                </a-button>
-                <a-popconfirm v-if="record.status === AppraisalStatus.DONE && userStore.hasPerm('hr:perf:score')" :title="$t('hr.perf.confirmReopen')" @confirm="reopen(record.id)">
-                  <a-button type="link" size="small">{{ $t('hr.perf.reopen') }}</a-button>
-                </a-popconfirm>
-              </span>
+              <TableActions
+                :actions="[
+                  {
+                    type: 'edit',
+                    label: $t('hr.perf.score'),
+                    show: resultPlan.status === PerfStatus.SCORING && record.status !== AppraisalStatus.DONE && (record.reviewerId === userStore.user?.id || userStore.hasPerm('hr:perf:score')),
+                    onClick: () => openScore(record)
+                  },
+                  {
+                    type: 'unaudit',
+                    label: $t('hr.perf.reopen'),
+                    show: resultPlan.status === PerfStatus.SCORING && record.status === AppraisalStatus.DONE,
+                    perm: 'hr:perf:score',
+                    confirm: $t('hr.perf.confirmReopen'),
+                    onClick: () => reopen(record.id)
+                  }
+                ]"
+              />
             </template>
           </template>
         </a-table>
@@ -220,7 +211,9 @@ import { useI18n } from 'vue-i18n'
 import SubPage from '@/components/SubPage.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { BarChartOutlined, CheckCircleOutlined, DeleteOutlined, PlayCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import dayjs from 'dayjs'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -254,7 +247,8 @@ const columns = [
   { title: t('hr.perf.col.scoreProgress'), key: 'progress', width: 180 },
   { title: t('common.field.status'), key: 'status', width: 110 },
   { title: t('common.field.createBy'), dataIndex: 'createByName', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: 260, fixed: 'right' }
+  // 草稿：编辑、发起考核、删除；评分中：结果、编辑、归档；已归档：结果
+  actionColumn(3, [t('hr.perf.result')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-perf')
 const emptyQuery = () => ({ keyword: undefined, status: undefined })
@@ -306,6 +300,18 @@ const indicatorColumns = [
 const remove = useAction(deletePerf, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 const finish = useAction(finishPerf, { successKey: 'hr.perf.archived', reload: () => load() })
 
+// 行操作
+const rowActions = (record) => {
+  const draft = record.status === PerfStatus.DRAFT
+  return [
+    { key: 'result', label: t('hr.perf.result'), icon: BarChartOutlined, show: !draft, onClick: () => openResult(record) },
+    { type: 'edit', show: record.status !== PerfStatus.FINISHED, perm: 'hr:perf:edit', onClick: () => drawer.openEdit(record) },
+    { key: 'start', label: t('hr.perf.start'), icon: PlayCircleOutlined, show: draft, perm: 'hr:perf:edit', onClick: () => openStart(record) },
+    { key: 'archive', label: t('hr.perf.archive'), icon: CheckCircleOutlined, show: record.status === PerfStatus.SCORING, perm: 'hr:perf:edit', confirm: t('hr.perf.confirmFinish'), onClick: () => finish(record.id) },
+    { type: 'delete', show: draft, perm: 'hr:perf:remove', confirm: t('hr.perf.confirmDelete', { name: record.name }), onClick: () => remove(record.id) }
+  ]
+}
+
 // 发起
 const startOpen = ref(false)
 const startTarget = ref()
@@ -342,7 +348,7 @@ const appraisalColumns = [
   { title: t('hr.perf.col.grade'), key: 'grade', width: 90 },
   { title: t('common.field.status'), key: 'status', width: 110 },
   { title: t('hr.perf.col.comment'), key: 'comment' },
-  { title: '', key: 'action', width: 100 }
+  actionColumn(1, [t('hr.perf.score'), t('hr.perf.reopen')], { title: '', fixed: undefined })
 ]
 const GRADE_COLORS = { S: '#faad14', A: '#52c41a', B: '#1677ff', C: '#fa8c16', D: '#f5222d' }
 const gradeOption = computed(() => {

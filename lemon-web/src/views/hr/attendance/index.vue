@@ -65,14 +65,12 @@
             <div v-if="record.remark" class="sub-text">{{ record.remark }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="'hr:attendance:edit'" type="link" size="small" @click="openManual(record)">{{ $t('hr.attendance.fix') }}</a-button>
-              <span v-perm="'hr:attendance:edit'">
-                <a-popconfirm :title="$t('hr.attendance.confirmDeleteRecord')" @confirm="removeRecord(record.id)">
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', label: $t('hr.attendance.fix'), perm: 'hr:attendance:edit', onClick: () => openManual(record) },
+                { type: 'delete', perm: 'hr:attendance:edit', confirm: $t('hr.attendance.confirmDeleteRecord'), onClick: () => removeRecord(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -121,12 +119,12 @@
               </template>
               <template v-else-if="column.key === 'time'">{{ record.startTime }} - {{ record.endTime }}</template>
               <template v-else-if="column.key === 'action'">
-                <span v-if="userStore.hasPerm('hr:attendance:config')" class="table-actions">
-                  <a-button type="link" size="small" @click="openShift(record)">{{ $t('common.action.edit') }}</a-button>
-                  <a-popconfirm v-if="!record.isDefault" :title="$t('hr.attendance.confirmDeleteShift')" @confirm="removeShift(record.id)">
-                    <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                  </a-popconfirm>
-                </span>
+                <TableActions
+                  :actions="[
+                    { type: 'edit', perm: 'hr:attendance:config', onClick: () => openShift(record) },
+                    { type: 'delete', perm: 'hr:attendance:config', show: !record.isDefault, confirm: $t('hr.attendance.confirmDeleteShift'), onClick: () => removeShift(record.id) }
+                  ]"
+                />
               </template>
             </template>
           </a-table>
@@ -145,12 +143,12 @@
               <template v-if="column.key === 'date'">{{ record.holidayDate }} <span class="sub-text">{{ weekday(record.holidayDate) }}</span></template>
               <template v-else-if="column.key === 'type'"><DictTag type="hr_holiday_type" :value="record.type" /></template>
               <template v-else-if="column.key === 'action'">
-                <span v-if="userStore.hasPerm('hr:attendance:config')" class="table-actions">
-                  <a-button type="link" size="small" @click="openHoliday(record)">{{ $t('common.action.edit') }}</a-button>
-                  <a-popconfirm :title="$t('hr.attendance.confirmDeleteHoliday')" @confirm="removeHoliday(record.id)">
-                    <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                  </a-popconfirm>
-                </span>
+                <TableActions
+                  :actions="[
+                    { type: 'edit', perm: 'hr:attendance:config', onClick: () => openHoliday(record) },
+                    { type: 'delete', perm: 'hr:attendance:config', confirm: $t('hr.attendance.confirmDeleteHoliday'), onClick: () => removeHoliday(record.id) }
+                  ]"
+                />
               </template>
             </template>
           </a-table>
@@ -240,7 +238,9 @@
 import { useI18n } from 'vue-i18n'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import dayjs from 'dayjs'
 import DictTag from '@/components/DictTag.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -264,14 +264,12 @@ import {
 } from '@/api/hr'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
-import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { useAction } from '@/composables/useAction'
 
 import { AttendanceSource, HolidayType } from '@/constants/enums'
 const { t } = useI18n()
 
-const userStore = useUserStore()
 const dict = useDict('hr_attendance_status', 'hr_leave_type', 'hr_holiday_type')
 const TABS = [
   { label: t('hr.attendance.tab.records'), value: 'records' },
@@ -290,7 +288,7 @@ const columns = [
   { title: t('hr.attendance.col.workHours'), dataIndex: 'workHours', width: 120, customRender: ({ text }) => t('hr.attendance.hoursN', { n: Number(text) }) },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'hr_attendance_status' },
   { title: t('hr.attendance.col.source'), key: 'source', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: 120, fixed: 'right' }
+  actionColumn(2)
 ]
 const range = ref([dayjs().startOf('month').format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD')])
 const query = reactive({ keyword: undefined, deptId: undefined, status: undefined })
@@ -365,7 +363,7 @@ const shiftColumns = [
   { title: t('hr.attendance.col.time'), key: 'time', width: 120 },
   { title: t('hr.attendance.col.flex'), dataIndex: 'flexMinutes', width: 80, customRender: ({ text }) => t('hr.attendance.minN', { n: text }) },
   { title: t('hr.attendance.col.hours'), dataIndex: 'workHours', width: 70, customRender: ({ text }) => t('hr.attendance.hN', { n: Number(text) }) },
-  { title: '', key: 'action', width: 110 }
+  actionColumn(2, [t('common.action.edit')], { title: '', fixed: undefined })
 ]
 async function loadShifts() {
   shifts.value = await listShift()
@@ -404,7 +402,7 @@ const holidayColumns = [
   { title: t('common.field.date'), key: 'date', width: 150 },
   { title: t('common.field.name'), dataIndex: 'name' },
   { title: t('common.field.type'), key: 'type', width: 110, dict: 'hr_holiday_type' },
-  { title: '', key: 'action', width: 110 }
+  actionColumn(2, [t('common.action.edit')], { title: '', fixed: undefined })
 ]
 async function loadHolidays() {
   holidays.value = await listHoliday(holidayYear.value)

@@ -80,24 +80,7 @@
             />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="['wf:model:edit', 'wf:model:deploy']" type="link" size="small" @click="openDesigner(record)">
-                <template #icon><NodeIndexOutlined /></template>{{ $t('workflow.model.design') }}
-              </a-button>
-              <a-button v-perm="'wf:model:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <a-dropdown v-if="moreActions(record).length">
-                <a-button type="link" size="small">{{ $t('common.action.more') }}<DownOutlined /></a-button>
-                <template #overlay>
-                  <a-menu @click="({ key }) => onMoreAction(key, record)">
-                    <a-menu-item v-for="a in moreActions(record)" :key="a.key" :danger="a.danger" :disabled="a.disabled">
-                      <component :is="a.icon" /> {{ a.label }}
-                    </a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -152,12 +135,10 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
 import { onMounted, reactive, ref } from 'vue'
-import { Modal, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import {
   CloudUploadOutlined,
   DeleteOutlined,
-  DownOutlined,
-  EditOutlined,
   NodeIndexOutlined,
   PlusOutlined
 } from '@ant-design/icons-vue'
@@ -170,7 +151,9 @@ import StatusSwitch from '@/components/StatusSwitch.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import ModelDesigner from './components/ModelDesigner.vue'
 import { addModel, changeModelStatus, deleteModel, deployModel, getModel, pageModel, updateModel } from '@/api/workflow/model'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -183,14 +166,14 @@ const userStore = useUserStore()
 const dict = useDict('wf_category')
 
 const columns = [
-  { title: t('workflow.list.process'), key: 'name', width: 190 },
-  { title: t('workflow.list.category'), key: 'category', width: 100, dict: 'wf_category' },
-  { title: t('workflow.model.version'), key: 'version', width: 120 },
-  { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.sort'), dataIndex: 'sort', width: 70, defaultHidden: true },
-  { title: t('workflow.model.deployTime'), dataIndex: 'deployTime', width: 160 },
-  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('workflow.model.design'), t('common.action.edit'), t('common.action.more')]), fixed: 'right' }
+  { title: t('workflow.list.process'), key: 'name', width: 220 },
+  { title: t('workflow.list.category'), key: 'category', width: 110, dict: 'wf_category' },
+  { title: t('workflow.model.version'), key: 'version', width: 140 },
+  { title: t('common.field.status'), key: 'status', width: 100 },
+  { title: t('common.field.sort'), dataIndex: 'sort', width: 80 },
+  { title: t('workflow.model.deployTime'), dataIndex: 'deployTime', width: 170 },
+  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 170 },
+  actionColumn(4, [t('workflow.model.design')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'workflow-model')
 const showSearch = ref(true)
@@ -245,35 +228,30 @@ function openDesigner(record) {
   designerOpen.value = true
 }
 
-function moreActions(record) {
-  const actions = []
-  if (userStore.hasPerm('wf:model:deploy')) {
-    actions.push({ key: 'deploy', label: t('workflow.model.deploy'), icon: CloudUploadOutlined, disabled: !record.designed })
+// 行操作：设计、编辑、发布、删除
+const rowActions = (record) => [
+  { key: 'design', label: t('workflow.model.design'), icon: NodeIndexOutlined, perm: ['wf:model:edit', 'wf:model:deploy'], onClick: () => openDesigner(record) },
+  { type: 'edit', perm: 'wf:model:edit', onClick: () => drawer.openEdit(record) },
+  {
+    key: 'deploy',
+    label: t('workflow.model.deploy'),
+    icon: CloudUploadOutlined,
+    perm: 'wf:model:deploy',
+    disabled: !record.designed,
+    confirm: { title: t('workflow.model.deployTitle', { name: record.name }), description: t('workflow.model.deployContent') },
+    onClick: () => deploy(record)
+  },
+  {
+    type: 'delete',
+    perm: 'wf:model:remove',
+    confirm: { title: t('workflow.model.deleteTitle', { name: record.name }), description: t('workflow.model.deleteContent') },
+    onClick: () => remove([record.id])
   }
-  if (userStore.hasPerm('wf:model:remove')) actions.push({ key: 'remove', label: t('common.action.delete'), icon: DeleteOutlined, danger: true })
-  return actions
-}
-
-function onMoreAction(key, record) {
-  if (key === 'deploy') {
-    Modal.confirm({
-      title: t('workflow.model.deployTitle', { name: record.name }),
-      content: t('workflow.model.deployContent'),
-      async onOk() {
-        const version = await deployModel(record.id)
-        message.success(t('workflow.model.deployed', { v: version }))
-        load()
-      }
-    })
-  }
-  if (key === 'remove') {
-    Modal.confirm({
-      title: t('workflow.model.deleteTitle', { name: record.name }),
-      content: t('workflow.model.deleteContent'),
-      okType: 'danger',
-      onOk: () => remove([record.id])
-    })
-  }
+]
+async function deploy(record) {
+  const version = await deployModel(record.id)
+  message.success(t('workflow.model.deployed', { v: version }))
+  load()
 }
 
 async function remove(ids) {

@@ -46,18 +46,7 @@
                 <span v-else class="sub-text">{{ $t('fin.settlementPage.notGenerated') }}</span>
               </template>
               <template v-else-if="column.key === 'action'">
-                <span class="table-actions">
-                  <a-button type="link" size="small" @click="openDetail(record)">{{ $t('common.action.view') }}</a-button>
-                  <a-button v-if="editable(record)" v-perm="`fin:${kind}:add`" type="link" size="small" @click="openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-                  <a-button v-if="record.status === ApproveStatus.DRAFT" v-perm="`fin:${kind}:confirm`" type="link" size="small" @click="confirm(record)">
-                    {{ $t('fin.settlementPage.confirmAction') }}
-                  </a-button>
-                  <span v-if="!record.voucherId && record.status !== ApproveStatus.APPROVING" v-perm="`fin:${kind}:remove`">
-                    <a-popconfirm :title="record.status === ApproveStatus.APPROVED ? $t('fin.settlementPage.confirmDeleteApproved', { no: record.settleNo }) : $t('fin.settlementPage.confirmDelete', { no: record.settleNo })" @confirm="remove(record.id)">
-                      <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                    </a-popconfirm>
-                  </span>
-                </span>
+                <TableActions :actions="rowActions(record)" />
               </template>
             </template>
           </a-table>
@@ -144,8 +133,9 @@ import VoucherDetail from './VoucherDetail.vue'
 import SettlementForm from './SettlementForm.vue'
 import SettlementDiscounts from './SettlementDiscounts.vue'
 import SourceDocLink from '@/components/common/SourceDocLink.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { confirmSettlement, deleteSettlement, getSettlement, pageSettlement, settlementVoucher } from '@/api/fin'
-import { actionWidth } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { formatMoney } from './fin'
@@ -173,14 +163,32 @@ const columns = [
   { title: t('fin.settlementPage.methodShort'), key: 'method', width: 90 },
   { title: t('fin.settlementPage.voucher'), key: 'voucher', width: 100 },
   { title: t('fin.settlementPage.createBy'), dataIndex: 'createByName', width: 80, ellipsis: true },
-  {
-    title: t('common.action.operation'),
-    key: 'action',
-    width: actionWidth([t('common.action.view'), t('common.action.edit'), t('fin.settlementPage.confirmAction'), t('common.action.delete')].map((text) => ({ text, icon: false }))),
-    fixed: 'right'
-  }
+  // 草稿：查看、修改、确认、删除
+  actionColumn(4, [t('common.action.view')])
 ]
 const scrollX = columns.reduce((sum, c) => sum + c.width, 0) + 32
+// 行操作：查看；草稿 / 已拒绝可修改，草稿可确认；未生成凭证且不在审批中的可删除
+const rowActions = (record) => [
+  { type: 'view', onClick: () => openDetail(record) },
+  { type: 'edit', show: editable(record), perm: `fin:${props.kind}:add`, onClick: () => openEdit(record) },
+  {
+    type: 'confirm',
+    label: t('fin.settlementPage.confirmAction'),
+    show: record.status === ApproveStatus.DRAFT,
+    perm: `fin:${props.kind}:confirm`,
+    onClick: () => confirm(record)
+  },
+  {
+    type: 'delete',
+    show: !record.voucherId && record.status !== ApproveStatus.APPROVING,
+    perm: `fin:${props.kind}:remove`,
+    confirm:
+      record.status === ApproveStatus.APPROVED
+        ? t('fin.settlementPage.confirmDeleteApproved', { no: record.settleNo })
+        : t('fin.settlementPage.confirmDelete', { no: record.settleNo }),
+    onClick: () => remove(record.id)
+  }
+]
 const tab = ref('docs')
 const query = reactive({ partnerId: undefined, keyword: undefined })
 const { list, loading, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable(

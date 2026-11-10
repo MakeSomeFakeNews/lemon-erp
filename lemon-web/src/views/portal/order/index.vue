@@ -35,7 +35,13 @@
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="scm_order_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ !record.supplierConfirm && executable(record) ? $t('portal.order.confirmAction') : $t('common.action.view') }}</a-button>
+            <TableActions
+              :actions="[
+                !record.supplierConfirm && executable(record)
+                  ? { type: 'confirm', label: $t('portal.order.confirmAction'), onClick: () => openDetail(record.id) }
+                  : { type: 'view', onClick: () => openDetail(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -154,6 +160,8 @@ import { useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 
 import { OrderStatus, SupplierConfirm } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 const { t } = useI18n()
 
 /** 供应商门户 - 我的订单：确认订单（承诺交期）、发起送货 */
@@ -170,7 +178,7 @@ const columns = [
   { title: t('portal.order.progress'), key: 'progress', width: 180 },
   { title: t('portal.order.confirm'), key: 'confirm', width: 160 },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('common.action.view'), t('portal.order.confirmAction')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'portal-order')
 const query = reactive({ pending: true, keyword: undefined })

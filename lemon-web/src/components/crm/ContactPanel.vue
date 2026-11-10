@@ -17,12 +17,12 @@
           <div v-if="record.email" class="sub-text">{{ record.email }}</div>
         </template>
         <template v-else-if="column.key === 'action'">
-          <span v-if="editable" class="table-actions">
-            <a-button type="link" size="small" @click="openForm(record)"><EditOutlined /></a-button>
-            <a-popconfirm :title="$t('crm.contactPanel.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-              <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-            </a-popconfirm>
-          </span>
+          <TableActions
+            :actions="[
+              { type: 'edit', show: editable, onClick: () => openForm(record) },
+              { type: 'delete', show: editable, confirm: $t('crm.contactPanel.confirmDelete', { name: record.name }), onClick: () => remove(record.id) }
+            ]"
+          />
         </template>
       </template>
     </a-table>
@@ -68,7 +68,9 @@
 import { onMounted, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, EditOutlined, PlusOutlined, StarFilled } from '@ant-design/icons-vue'
+import { PlusOutlined, StarFilled } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { addContact, deleteContact, listContacts, updateContact } from '@/api/crm'
 
 /** 客户的联系人：负责人或有客户修改权限的用户可以维护 */
@@ -85,7 +87,7 @@ const columns = [
   { title: t('crm.contactPanel.wechat'), dataIndex: 'wechat', width: 120 },
   { title: t('crm.contactPanel.birthday'), dataIndex: 'birthday', width: 110 },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: '', key: 'action', width: 90, fixed: 'right' }
+  actionColumn(2)
 ]
 const list = ref([])
 const loading = ref(false)

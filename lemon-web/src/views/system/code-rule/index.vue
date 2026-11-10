@@ -28,16 +28,21 @@
           <template v-else-if="column.key === 'dateFormat'">{{ dateFormatLabel(record.dateFormat) }}</template>
           <template v-else-if="column.key === 'resetCycle'">{{ resetCycleLabel(record.resetCycle) }}</template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="'sys:codeRule:edit'" type="link" size="small" @click="drawer.openEdit({ ...record, id: record.key })">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.modify') }}
-              </a-button>
-              <span v-if="record.customized" v-perm="'sys:codeRule:edit'">
-                <a-popconfirm :title="$t('system.codeRule.confirmReset', { name: record.name })" @confirm="reset(record)">
-                  <a-button type="link" size="small"><template #icon><UndoOutlined /></template>{{ $t('system.config.restoreDefault') }}</a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'modify', perm: 'sys:codeRule:edit', onClick: () => drawer.openEdit({ ...record, id: record.key }) },
+                {
+                  type: 'unaudit',
+                  key: 'reset',
+                  label: $t('system.config.restoreDefault'),
+                  show: !!record.customized,
+                  perm: 'sys:codeRule:edit',
+                  confirm: $t('system.codeRule.confirmReset', { name: record.name }),
+                  more: true,
+                  onClick: () => reset(record)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -87,11 +92,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
-import { EditOutlined, UndoOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { listCodeRules, resetCodeRule, updateCodeRule } from '@/api/system/codeRule'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useAction } from '@/composables/useAction'
 
@@ -123,13 +129,13 @@ const resetCycleLabel = (v) => RESET_CYCLES.find((d) => d.value === v)?.label ??
 
 const columns = [
   { title: t('system.codeRule.doc'), key: 'name', width: 200 },
-  { title: t('system.codeRule.module'), dataIndex: 'module', width: 110 },
-  { title: t('system.codeRule.example'), key: 'example', width: 170 },
+  { title: t('system.codeRule.module'), dataIndex: 'module', width: 120 },
+  { title: t('system.codeRule.example'), key: 'example', width: 200 },
   { title: t('system.codeRule.prefix'), dataIndex: 'prefix', width: 90 },
-  { title: t('system.codeRule.dateFormat'), key: 'dateFormat', width: 120 },
-  { title: t('system.codeRule.seqLength'), dataIndex: 'seqLength', width: 100, align: 'right' },
+  { title: t('system.codeRule.dateFormat'), key: 'dateFormat', width: 130 },
+  { title: t('system.codeRule.seqLength'), dataIndex: 'seqLength', width: 110, align: 'right' },
   { title: t('system.codeRule.resetCycle'), key: 'resetCycle', width: 110 },
-  { title: t('common.action.operation'), key: 'action', width: 220, fixed: 'right' }
+  actionColumn(2, [t('common.action.modify')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'system-code-rule')
 const size = ref('middle')

@@ -47,20 +47,7 @@
             <a-tag :color="record.status === WmsDocStatus.DONE ? 'green' : 'default'" :bordered="false">{{ record.status === WmsDocStatus.DONE ? $t('wms.assembly.done') : $t('wms.assembly.draft') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-if="record.status === WmsDocStatus.DRAFT" class="table-actions">
-              <a-button v-perm="'wms:assembly:add'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-              <span v-perm="'wms:assembly:confirm'">
-                <a-popconfirm :title="$t('wms.assembly.confirmTitle', { no: record.assemblyNo })" @confirm="confirm(record.id)">
-                  <a-button type="link" size="small">{{ $t('wms.doc.confirm') }}</a-button>
-                </a-popconfirm>
-              </span>
-              <span v-perm="'wms:assembly:add'">
-                <a-popconfirm :title="$t('wms.assembly.confirmDelete', { no: record.assemblyNo })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                </a-popconfirm>
-              </span>
-            </span>
-            <a-button v-else type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -198,12 +185,14 @@ import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import SerialTags from '@/components/wms/SerialTags.vue'
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { CheckOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import SubPage from '@/components/SubPage.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import LocationSelect from '@/components/wms/LocationSelect.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
@@ -228,17 +217,36 @@ const STATUS_OPTIONS = [
   { value: 'DONE', label: t('wms.assembly.done') }
 ]
 const columns = [
-  { title: t('wms.common.docNo'), key: 'assemblyNo', width: 150 },
-  { title: t('wms.assembly.kind'), key: 'kind', width: 90 },
-  { title: t('wms.assembly.kit'), key: 'material', width: 220 },
-  { title: t('common.field.quantity'), key: 'qty', width: 100, align: 'right' },
-  { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 120 },
+  { title: t('wms.common.docNo'), key: 'assemblyNo', width: 160 },
+  { title: t('wms.assembly.kind'), key: 'kind', width: 110 },
+  { title: t('wms.assembly.kit'), key: 'material', width: 240 },
+  { title: t('common.field.quantity'), key: 'qty', width: 110, align: 'right' },
+  { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 140 },
   { title: t('wms.common.bizDate'), dataIndex: 'bizDate', width: 110 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 90 },
-  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
+  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 100 },
+  // 草稿：编辑、确认、删除；已完成：查看
+  actionColumn(3, [t('common.action.view')])
 ]
 const scrollX = sumWidth(columns)
+
+const rowActions = (record) => {
+  const draft = record.status === WmsDocStatus.DRAFT
+  return [
+    { type: 'view', show: !draft, onClick: () => openDetail(record.id) },
+    { type: 'edit', show: draft, perm: 'wms:assembly:add', onClick: () => drawer.openEdit(record) },
+    {
+      key: 'confirm',
+      label: t('wms.doc.confirm'),
+      icon: CheckOutlined,
+      show: draft,
+      perm: 'wms:assembly:confirm',
+      confirm: t('wms.assembly.confirmTitle', { no: record.assemblyNo }),
+      onClick: () => confirm(record.id)
+    },
+    { type: 'delete', show: draft, perm: 'wms:assembly:add', confirm: t('wms.assembly.confirmDelete', { no: record.assemblyNo }), onClick: () => remove(record.id) }
+  ]
+}
 const showSearch = ref(true)
 const query = reactive({ docNo: undefined, bizType: undefined, warehouseId: undefined, status: undefined })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageAssembly, query)

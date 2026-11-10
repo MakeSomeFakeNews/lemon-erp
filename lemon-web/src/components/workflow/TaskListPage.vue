@@ -37,11 +37,7 @@
             <DictTag type="wf_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><component :is="actionIcon" /></template>{{ actionText || $t('common.action.view') }}
-              </a-button>
-            </span>
+            <TableActions :actions="[{ key: 'open', label: actionText || $t('common.action.view'), icon: actionIcon, onClick: () => openDetail(record) }]" />
           </template>
           <slot v-else name="cell" :column="column" :record="record" />
         </template>
@@ -60,12 +56,13 @@ import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import InstanceDetailDrawer from '@/components/workflow/InstanceDetailDrawer.vue'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 
 /**
  * 待办 / 已办 / 抄送列表：按流程名称搜索，点击查看审批详情。
- * 内置 processName、status、action 列，其它需要自定义渲染的列通过 cell 插槽提供
+ * 内置 processName、status、action 列（action 列用 actionColumn(1, [按钮文字]) 定义），其它需要自定义渲染的列通过 cell 插槽提供
  */
 const props = defineProps({
   fetcher: { type: Function, required: true },

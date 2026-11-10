@@ -86,14 +86,12 @@
           <template v-else-if="column.key === 'unitCost'">{{ record.unitCost == null ? '-' : price(record.unitCost) }}</template>
           <template v-else-if="column.key === 'amount'">{{ record.amount == null ? '-' : money(record.amount) }}</template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="showHistory(record)">
-                <template #icon><HistoryOutlined /></template>{{ $t('wms.history.action') }}
-              </a-button>
-              <a-button v-if="record.serialEnabled === 1" type="link" size="small" @click="showSerials(record)">
-                <template #icon><BarcodeOutlined /></template>{{ $t('wms.common.serialNo') }}
-              </a-button>
-            </span>
+            <TableActions
+              :actions="[
+                { key: 'history', type: 'history', label: $t('wms.history.action'), onClick: () => showHistory(record) },
+                { key: 'serial', label: $t('wms.common.serialNo'), icon: BarcodeOutlined, show: record.serialEnabled === 1, onClick: () => showSerials(record) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -116,7 +114,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { BarcodeOutlined, HistoryOutlined } from '@ant-design/icons-vue'
+import { BarcodeOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -125,7 +123,9 @@ import StockHistory from '@/components/wms/StockHistory.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { availableSerials, pageStock, pageStockSummary, stockTotal } from '@/api/wms/stock'
 import { expiryStatus, formatQty, locationText } from '@/components/wms/wms'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -139,37 +139,37 @@ const dict = useDict('wms_material_category')
 const canCost = useUserStore().hasPerm('wms:stock:cost')
 const COST_COLUMNS = canCost
   ? [
-      { title: t('wms.stock.unitCost'), key: 'unitCost', width: 110, align: 'right', defaultHidden: true },
-      { title: t('wms.stock.amount'), key: 'amount', width: 130, align: 'right', defaultHidden: true }
+      { title: t('wms.stock.unitCost'), key: 'unitCost', width: 110, align: 'right' },
+      { title: t('wms.stock.amount'), key: 'amount', width: 130, align: 'right' }
     ]
   : []
 
 /** 操作列：流水、序列号（启用序列号的物料） */
-const ACTION_WIDTH = actionWidth([t('wms.history.action'), t('wms.common.serialNo')])
+const actionCol = () => actionColumn(2, [t('wms.history.action')])
 const DETAIL_COLUMNS = [
   { title: t('wms.common.material'), key: 'material', width: 200 },
-  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 140, ellipsis: true, defaultHidden: true },
+  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 140, ellipsis: true },
   { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 130 },
   { title: t('wms.common.location'), key: 'location', width: 110 },
   { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
   { title: t('common.field.quantity'), key: 'qty', width: 110, align: 'right' },
-  { title: t('wms.stock.frozen'), key: 'frozenQty', width: 90, align: 'right', defaultHidden: true },
+  { title: t('wms.stock.frozen'), key: 'frozenQty', width: 90, align: 'right' },
   { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
   ...COST_COLUMNS,
-  { title: t('wms.common.productionDate'), dataIndex: 'productionDate', width: 110, defaultHidden: true },
-  { title: t('wms.common.expiryDate'), key: 'expiryDate', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: ACTION_WIDTH, fixed: 'right' }
+  { title: t('wms.common.productionDate'), dataIndex: 'productionDate', width: 110 },
+  { title: t('wms.common.expiryDate'), key: 'expiryDate', width: 190 },
+  actionCol()
 ]
 const SUMMARY_COLUMNS = [
   { title: t('wms.common.material'), key: 'material', width: 220 },
   { title: t('wms.inout.spec'), dataIndex: 'spec', width: 160, ellipsis: true },
-  { title: t('wms.inout.category'), key: 'category', width: 100, dict: 'wms_material_category', defaultHidden: true },
+  { title: t('wms.inout.category'), key: 'category', width: 100, dict: 'wms_material_category' },
   { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
   { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 120, align: 'right' },
   { title: t('wms.stock.qty'), key: 'qty', width: 200, align: 'right' },
-  { title: t('wms.stock.frozen'), key: 'frozenQty', width: 100, align: 'right', defaultHidden: true },
+  { title: t('wms.stock.frozen'), key: 'frozenQty', width: 100, align: 'right' },
   ...COST_COLUMNS,
-  { title: t('common.action.operation'), key: 'action', width: ACTION_WIDTH, fixed: 'right' }
+  actionCol()
 ]
 
 const route = useRoute()

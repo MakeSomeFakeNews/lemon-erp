@@ -28,14 +28,12 @@
           <template v-else-if="column.key === 'qty'">{{ formatQty(record.totalQty) }}</template>
           <template v-else-if="column.key === 'status'"><DictTag type="scm_asn_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
-              <span v-if="record.status === AsnStatus.SUBMITTED" v-perm="'portal:asn:add'">
-                <a-popconfirm :title="$t('portal.asn.confirmCancel')" @confirm="cancel(record.id)">
-                  <a-button type="link" danger size="small">{{ $t('common.action.cancel') }}</a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'view', onClick: () => openDetail(record.id) },
+                { type: 'cancel', danger: true, show: record.status === AsnStatus.SUBMITTED, perm: 'portal:asn:add', confirm: $t('portal.asn.confirmCancel'), onClick: () => cancel(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -77,6 +75,8 @@ import { toOptions } from '@/utils/dict'
 import { useAction } from '@/composables/useAction'
 
 import { AsnStatus } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 const { t } = useI18n()
 
 /** 供应商门户 - 送货通知 */
@@ -88,7 +88,7 @@ const columns = [
   { title: t('portal.asn.logistics'), key: 'logistics', width: 160 },
   { title: t('common.field.quantity'), key: 'qty', width: 100, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
+  actionColumn(2, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'portal-asn')
 const query = reactive({ status: undefined, keyword: undefined })

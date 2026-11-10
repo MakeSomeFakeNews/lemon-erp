@@ -15,9 +15,10 @@
             <a-typography-text code>{{ record.type }}</a-typography-text>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click.stop="openData(record)">
-              <template #icon><UnorderedListOutlined /></template>{{ $t('system.bizDict.maintain') }}
-            </a-button>
+            <!-- 整行可点击，按钮点击不再冒泡到行 -->
+            <span @click.stop>
+              <TableActions :actions="[{ type: 'list', label: $t('system.bizDict.maintain'), onClick: () => openData(record) }]" />
+            </span>
           </template>
         </template>
       </a-table>
@@ -28,12 +29,12 @@
 </template>
 
 <script setup>
-import { actionWidth } from '@/composables/useColumns'
 import { computed, onMounted, ref } from 'vue'
-import { UnorderedListOutlined } from '@ant-design/icons-vue'
 import { listBizDictTypes } from '@/api/system/dict'
 import { t, te } from '@/locales'
 import DataDrawer from '../dict/DataDrawer.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 
 /** 业务字典：当前租户维护自己的取值（新增、改名、停用）；系统字典由平台维护，这里不显示 */
 const loading = ref(false)
@@ -51,7 +52,7 @@ const columns = [
   { title: t('system.dict.name'), key: 'name', width: 180 },
   { title: t('system.dict.type'), key: 'type', width: 220 },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('system.bizDict.maintain')]), fixed: 'right' }
+  actionColumn(1, [t('system.bizDict.maintain')])
 ]
 
 async function load() {

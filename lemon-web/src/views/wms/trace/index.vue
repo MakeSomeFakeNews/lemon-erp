@@ -73,9 +73,7 @@
           </template>
           <template v-else-if="column.key === 'batchNo'">{{ record.batchNo || '-' }}</template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openTrace(record)">
-              <template #icon><NodeIndexOutlined /></template>{{ $t('wms.trace.trace') }}
-            </a-button>
+            <TableActions :actions="[{ key: 'trace', label: $t('wms.trace.trace'), icon: NodeIndexOutlined, onClick: () => openTrace(record) }]" />
           </template>
         </template>
       </a-table>
@@ -146,6 +144,8 @@ import SubPage from '@/components/SubPage.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NodeIndexOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -169,7 +169,7 @@ const batchColumns = [
   { title: t('wms.common.expiryDate'), key: 'expiryDate', width: 190 },
   { title: t('wms.trace.inStockQty'), key: 'qty', width: 120, align: 'right' },
   { title: t('wms.trace.firstIn'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('wms.trace.trace')])
 ]
 const serialColumns = [
   { title: t('wms.common.serialNo'), dataIndex: 'serialNo', width: 180 },
@@ -179,7 +179,7 @@ const serialColumns = [
   { title: t('wms.common.batch'), key: 'batchNo', width: 120 },
   { title: t('wms.trace.firstIn'), dataIndex: 'createTime', width: 170 },
   { title: t('wms.trace.lastChange'), dataIndex: 'updateTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('wms.trace.trace')])
 ]
 const distColumns = [
   { title: t('wms.common.warehouse'), dataIndex: 'warehouseName' },

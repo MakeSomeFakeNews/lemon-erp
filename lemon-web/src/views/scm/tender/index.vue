@@ -40,7 +40,7 @@
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="scm_tender_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
+            <TableActions :actions="[{ type: 'view', onClick: () => openDetail(record.id) }]" />
           </template>
         </template>
       </a-table>
@@ -302,6 +302,8 @@ import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
 import { AwardTarget, TenderStatus } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 const { t } = useI18n()
 
 /** 招标采购：邀请供应商投标（门户或代录），截止后开标比价，定标生成采购合同或订单 */
@@ -315,7 +317,7 @@ const columns = [
   { title: t('scm.tender.colAward'), key: 'award', width: 220 },
   { title: t('common.field.status'), key: 'status', width: 120 },
   { title: t('scm.tender.creator'), dataIndex: 'createByName', width: 110 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-tender')
 const query = reactive({ status: undefined, keyword: undefined })

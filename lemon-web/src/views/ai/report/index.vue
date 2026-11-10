@@ -63,17 +63,18 @@
             <span v-if="record.promptTokens != null">{{ formatNumber(record.promptTokens + (record.completionTokens || 0)) }}</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a @click="detailRef.open(record.id)"><EyeOutlined /> {{ $t('common.action.view') }}</a>
-              <a-popconfirm
-                v-if="record.status !== AiReportStatus.GENERATING"
-                v-perm="'ai:report:generate'"
-                :title="$t('ai.report.deleteConfirm')"
-                @confirm="remove(record.id)"
-              >
-                <a class="danger"><DeleteOutlined /> {{ $t('common.action.delete') }}</a>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'view', onClick: () => detailRef.open(record.id) },
+                {
+                  type: 'delete',
+                  perm: 'ai:report:generate',
+                  show: record.status !== AiReportStatus.GENERATING,
+                  confirm: $t('ai.report.deleteConfirm'),
+                  onClick: () => remove(record.id)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -88,13 +89,15 @@
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, EyeOutlined, QuestionCircleOutlined, SyncOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
+import { QuestionCircleOutlined, SyncOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import GenerateModal from './GenerateModal.vue'
 import ReportDetail from './ReportDetail.vue'
 import { getAiStatus } from '@/api/ai/config'
 import { deleteReport, pageReports } from '@/api/ai/report'
 import { sumWidth } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useAction } from '@/composables/useAction'
 import { useTable } from '@/composables/useTable'
 import { AiReportPeriodType, AiReportStatus } from '@/constants/enums'
@@ -111,15 +114,15 @@ const userStore = useUserStore()
 const canConfig = userStore.hasPerm('ai:config:list')
 
 const columns = [
-  { title: t('ai.report.colTitle'), key: 'title', width: 170, ellipsis: true },
-  { title: t('ai.report.colType'), key: 'periodType', width: 70 },
+  { title: t('ai.report.colTitle'), key: 'title', width: 260, ellipsis: true },
+  { title: t('ai.report.colType'), key: 'periodType', width: 80 },
   { title: t('ai.report.colPeriod'), key: 'period', width: 210 },
-  { title: t('ai.report.colGeneratedBy'), key: 'generatedBy', width: 90 },
-  { title: t('ai.report.colSources'), key: 'sources', width: 130, ellipsis: true },
-  { title: t('ai.report.colStatus'), key: 'status', width: 90 },
-  { title: t('ai.report.colTokens'), key: 'tokens', width: 80, align: 'right' },
-  { title: t('ai.report.colTime'), dataIndex: 'createTime', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
+  { title: t('ai.report.colGeneratedBy'), key: 'generatedBy', width: 110 },
+  { title: t('ai.report.colSources'), key: 'sources', width: 220, ellipsis: true },
+  { title: t('ai.report.colStatus'), key: 'status', width: 100 },
+  { title: t('ai.report.colTokens'), key: 'tokens', width: 90, align: 'right' },
+  { title: t('ai.report.colTime'), dataIndex: 'createTime', width: 170 },
+  actionColumn(2, [t('common.action.view')])
 ]
 const scrollX = sumWidth(columns)
 
@@ -161,8 +164,5 @@ onMounted(async () => {
 }
 .sources {
   color: var(--app-text-2);
-}
-.danger {
-  color: var(--ant-color-error, #ff4d4f);
 }
 </style>

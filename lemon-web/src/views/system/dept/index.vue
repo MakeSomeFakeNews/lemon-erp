@@ -117,14 +117,12 @@
                 />
               </template>
               <template v-else-if="column.key === 'action'">
-                <span class="table-actions">
-                  <a-button v-perm="'sys:user:edit'" type="link" size="small" @click="userForm.openEdit(record)">
-                    <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-                  </a-button>
-                  <a-button v-perm="'sys:user:edit'" type="link" size="small" @click="openMove([record.id])">
-                    <template #icon><SwapOutlined /></template>{{ $t('system.user.moveDept') }}
-                  </a-button>
-                </span>
+                <TableActions
+                  :actions="[
+                    { type: 'edit', perm: 'sys:user:edit', onClick: () => userForm.openEdit(record) },
+                    { type: 'move', label: $t('system.user.moveDept'), perm: 'sys:user:edit', more: true, onClick: () => openMove([record.id]) }
+                  ]"
+                />
               </template>
             </template>
             <template #emptyText>
@@ -178,6 +176,8 @@ import {
   UsergroupAddOutlined
 } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import StatusSwitch from '@/components/StatusSwitch.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import DeptTree from '@/components/tree/DeptTree.vue'
@@ -255,7 +255,7 @@ const columns = [
   { title: t('common.field.dept'), key: 'dept', width: 140, ellipsis: true },
   { title: t('common.field.phone'), dataIndex: 'phone', width: 140 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.action.operation'), key: 'action', width: 230, fixed: 'right' }
+  actionColumn(2, [t('common.action.edit')])
 ]
 const query = reactive({ username: undefined, deptId: undefined, includeChildren: true })
 const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange, exportAll } = useTable(

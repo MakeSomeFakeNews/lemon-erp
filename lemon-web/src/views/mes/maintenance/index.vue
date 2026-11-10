@@ -57,17 +57,7 @@
             </div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-if="record.status === MaintenanceStatus.PENDING" v-perm="'mes:maintain:handle'" type="link" size="small" @click="start(record)">{{ $t('mes.maintenance.start') }}</a-button>
-              <a-button v-if="record.status === MaintenanceStatus.IN_PROGRESS" v-perm="'mes:maintain:handle'" type="link" size="small" @click="openFinish(record)">
-                {{ $t('mes.maintenance.finish') }}
-              </a-button>
-              <span v-if="record.status === MaintenanceStatus.PENDING" v-perm="'mes:maintain:remove'">
-                <a-popconfirm :title="$t('mes.maintenance.confirmDelete')" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -126,12 +116,14 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { CheckCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { addMaintenance, deleteMaintenance, equipmentOptions, finishMaintenance, pageMaintenance, startMaintenance } from '@/api/mes/base'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -151,10 +143,11 @@ const columns = [
   { title: t('mes.maintenance.content'), dataIndex: 'content', width: 220, ellipsis: true },
   { title: t('mes.wo.planDate'), dataIndex: 'planDate', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'mes_maintain_status' },
-  { title: t('mes.maintenance.handler'), dataIndex: 'handler', width: 100, defaultHidden: true },
-  { title: t('mes.maintenance.handleTime'), key: 'time', width: 200, defaultHidden: true },
-  { title: t('mes.maintenance.result'), key: 'result', width: 220, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([[{ text: t('mes.maintenance.start'), icon: false }, { text: t('mes.maintenance.finish'), icon: false }], { text: t('common.action.delete'), icon: false }]), fixed: 'right' }
+  { title: t('mes.maintenance.handler'), dataIndex: 'handler', width: 100 },
+  { title: t('mes.maintenance.handleTime'), key: 'time', width: 200 },
+  { title: t('mes.maintenance.result'), key: 'result', width: 220 },
+  // 待处理：开始、删除；处理中：完成
+  actionColumn(2, [t('mes.maintenance.finish')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-maintenance')
 const showSearch = ref(true)
@@ -238,6 +231,22 @@ async function submitFinish() {
 }
 
 const remove = useAction(deleteMaintenance, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+
+const rowActions = (record) => {
+  const pending = record.status === MaintenanceStatus.PENDING
+  return [
+    { type: 'run', label: t('mes.maintenance.start'), show: pending, perm: 'mes:maintain:handle', onClick: () => start(record) },
+    {
+      key: 'finish',
+      label: t('mes.maintenance.finish'),
+      icon: CheckCircleOutlined,
+      show: record.status === MaintenanceStatus.IN_PROGRESS,
+      perm: 'mes:maintain:handle',
+      onClick: () => openFinish(record)
+    },
+    { type: 'delete', show: pending, perm: 'mes:maintain:remove', confirm: t('mes.maintenance.confirmDelete'), onClick: () => remove(record.id) }
+  ]
+}
 </script>
 
 <style scoped>

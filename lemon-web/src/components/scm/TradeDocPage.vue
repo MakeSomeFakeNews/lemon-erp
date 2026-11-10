@@ -47,8 +47,6 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'docNo'">
             <a @click="openDetail(record)">{{ record.docNo }}</a>
-            <div v-if="record.orderSource === OrderSource.DIRECT" class="sub-text">{{ $t('scm.trade.direct') }}</div>
-            <div v-else-if="record.orderNo" class="sub-text">{{ $t('scm.trade.orderNoValue', { no: record.orderNo }) }}</div>
           </template>
           <template v-else-if="column.key === 'orderNo'">
             <a-tag v-if="record.orderSource === OrderSource.DIRECT" color="blue" :bordered="false">{{ $t('scm.trade.direct') }}</a-tag>
@@ -68,14 +66,12 @@
             <div v-if="Number(record.freight)" class="sub-text">{{ $t('scm.freight.value', { amount: '¥' + formatMoney(record.freight) }) }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
-              </a-button>
-              <a-button v-if="kind === 'salesOut'" v-perm="'scm:shipment:add'" type="link" size="small" @click="createShipment(record)">
-                <template #icon><CarOutlined /></template>{{ $t('scm.trade.ship') }}
-              </a-button>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'view', onClick: () => openDetail(record) },
+                { key: 'ship', label: $t('scm.trade.ship'), icon: CarOutlined, show: kind === 'salesOut', perm: 'scm:shipment:add', onClick: () => createShipment(record) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -89,7 +85,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CarOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { CarOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
@@ -98,7 +94,9 @@ import PartnerSelect from './PartnerSelect.vue'
 import TradeDocDetail from './TradeDocDetail.vue'
 import TradeDocForm from './TradeDocForm.vue'
 import { pageTrade } from '@/api/scm/trade'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useTable } from '@/composables/useTable'
 import { formatQty, warehouseText } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney } from './scm'
@@ -125,7 +123,6 @@ const columns = [
     title: t('scm.trade.orderNo'),
     key: 'orderNo',
     width: 170,
-    defaultHidden: true,
     exportValue: (r) => (r.orderSource === OrderSource.DIRECT ? t('scm.trade.direct') : r.orderNo || '')
   },
   { title: orderConf.partnerLabel, key: 'partner', width: 200, exportValue: (r) => [r.partnerCode, r.partnerName].filter(Boolean).join(' ') },
@@ -143,15 +140,10 @@ const columns = [
       ...(props.kind === 'purchaseIn' ? [{ title: t('scm.freight.label'), exportValue: (r) => (Number(r.freight) ? Number(r.freight) : '') }] : [])
     ]
   },
-  { title: t('scm.trade.wmsDocNo'), dataIndex: 'wmsDocNo', width: 170, defaultHidden: true },
-  { title: t('scm.trade.createBy'), dataIndex: 'createByName', width: 120, defaultHidden: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
-  {
-    title: t('common.action.operation'),
-    key: 'action',
-    width: actionWidth(props.kind === 'salesOut' ? [t('common.action.view'), t('scm.trade.ship')] : [t('common.action.view')]),
-    fixed: 'right'
-  }
+  { title: t('scm.trade.wmsDocNo'), dataIndex: 'wmsDocNo', width: 170 },
+  { title: t('scm.trade.createBy'), dataIndex: 'createByName', width: 120 },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  actionColumn(props.kind === 'salesOut' ? 2 : 1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, `scm-${props.kind}`)
 const showSearch = ref(true)

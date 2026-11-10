@@ -19,7 +19,7 @@
           />
         </template>
         <template v-else-if="column.key === 'action'">
-          <a-button type="link" size="small" @click="openReset(record)">{{ $t('scm.portalAccount.resetPassword') }}</a-button>
+          <TableActions :actions="[{ type: 'password', label: $t('scm.portalAccount.resetPassword'), onClick: () => openReset(record) }]" />
         </template>
       </template>
     </a-table>
@@ -60,6 +60,8 @@
 import { ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { addPortalAccount, changePortalAccountStatus, portalAccounts, resetPortalAccountPassword } from '@/api/scm/srm'
 
 /** 门户账号：开通、停用、重置密码。kind：supplier 供应商门户 / customer 经销商门户 */
@@ -76,7 +78,7 @@ const columns = [
   { title: t('scm.portalAccount.contact'), dataIndex: 'nickname', width: 120 },
   { title: t('common.field.phone'), dataIndex: 'phone', width: 130 },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: '', key: 'action', width: 130 }
+  actionColumn(1, [t('scm.portalAccount.resetPassword')], { fixed: undefined })
 ]
 const accounts = ref([])
 const loading = ref(false)

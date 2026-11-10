@@ -55,21 +55,13 @@
             <DictTag type="scm_requisition_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
-              </a-button>
-              <a-button v-if="record.status === RequisitionStatus.DRAFT" v-perm="'scm:requisition:edit'" type="link" size="small" @click="form.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-if="record.status === RequisitionStatus.DRAFT" v-perm="'scm:requisition:remove'">
-                <a-popconfirm :title="$t('scm.requisition.confirmDelete')" @confirm="remove([record.id])">
-                  <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'view', onClick: () => openDetail(record) },
+                { type: 'edit', show: record.status === RequisitionStatus.DRAFT, perm: 'scm:requisition:edit', onClick: () => form.openEdit(record) },
+                { type: 'delete', show: record.status === RequisitionStatus.DRAFT, perm: 'scm:requisition:remove', confirm: $t('scm.requisition.confirmDelete'), onClick: () => remove([record.id]) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -85,19 +77,21 @@ import { useI18n } from 'vue-i18n'
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import RequisitionDetail from '@/components/scm/RequisitionDetail.vue'
 import RequisitionForm from '@/components/scm/RequisitionForm.vue'
 import { deleteRequisition, pageRequisition } from '@/api/scm/sourcing'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 
 import { RequisitionStatus } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 const { t } = useI18n()
 
 const dict = useDict('scm_requisition_status')
@@ -108,11 +102,11 @@ const columns = [
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'scm_requisition_status' },
   { title: t('scm.requisition.itemCount'), dataIndex: 'itemCount', width: 90, align: 'right' },
   { title: t('scm.requisition.dept'), dataIndex: 'deptName', width: 160, ellipsis: true },
-  { title: t('scm.requisition.preparedBy'), dataIndex: 'createByName', width: 110, defaultHidden: true },
-  { title: t('scm.requisition.approveTime'), dataIndex: 'approveTime', width: 170, defaultHidden: true },
-  { title: t('scm.requisition.remark'), dataIndex: 'remark', width: 200, ellipsis: true, defaultHidden: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('common.action.edit'), t('common.action.delete')]), fixed: 'right' }
+  { title: t('scm.requisition.preparedBy'), dataIndex: 'createByName', width: 110 },
+  { title: t('scm.requisition.approveTime'), dataIndex: 'approveTime', width: 170 },
+  { title: t('scm.requisition.remark'), dataIndex: 'remark', width: 200, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  actionColumn(3, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-requisition')
 const showSearch = ref(true)

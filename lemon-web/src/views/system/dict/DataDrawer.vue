@@ -62,18 +62,18 @@
           <DictTag type="sys_common_status" :value="record.status" />
         </template>
         <template v-else-if="column.key === 'action'">
-          <span class="table-actions">
-            <a-button v-perm="perms.edit" type="link" size="small" @click="openForm(record)">
-              <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-            </a-button>
-            <span v-if="!isSystem && record.builtin !== 1" v-perm="perms.remove">
-              <a-popconfirm :title="$t('system.dict.confirmDeleteData')" @confirm="remove([record.id])">
-                <a-button type="link" size="small" danger>
-                  <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                </a-button>
-              </a-popconfirm>
-            </span>
-          </span>
+          <TableActions
+            :actions="[
+              { type: 'edit', perm: perms.edit, onClick: () => openForm(record) },
+              {
+                type: 'delete',
+                show: !isSystem && record.builtin !== 1,
+                perm: perms.remove,
+                confirm: $t('system.dict.confirmDeleteData'),
+                onClick: () => remove([record.id])
+              }
+            ]"
+          />
         </template>
       </template>
     </a-table>
@@ -143,8 +143,10 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { addBizDictData, addDictData, deleteBizDictData, deleteDictData, pageBizDictData, pageDictData, updateBizDictData, updateDictData } from '@/api/system/dict'
 import { useDict } from '@/composables/useDict'
@@ -207,7 +209,7 @@ const columns = [
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
   { title: t('common.field.status'), key: 'status', width: 90, dict: 'sys_common_status' },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
+  actionColumn(2, [t('common.action.edit')])
 ]
 
 const query = reactive({ dictType: undefined, label: undefined })

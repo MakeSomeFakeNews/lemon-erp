@@ -60,19 +60,7 @@
             <span v-else class="sub-text">{{ $t('mes.equipment.noMaintain') }}</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="'mes:maintain:add'" type="link" size="small" @click="toMaintenance(record)">
-                <template #icon><ToolOutlined /></template>{{ $t('mes.equipment.maintain') }}
-              </a-button>
-              <a-button v-perm="'mes:equipment:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-perm="'mes:equipment:remove'">
-                <a-popconfirm :title="$t('mes.equipment.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -141,7 +129,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
-import { DeleteOutlined, EditOutlined, PlusOutlined, ToolOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, ToolOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -149,7 +137,9 @@ import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import WorkCenterSelect from '@/components/mes/WorkCenterSelect.vue'
 import { addEquipment, deleteEquipment, getEquipment, pageEquipment, updateEquipment } from '@/api/mes/base'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -167,14 +157,14 @@ const DUE_OPTIONS = [
 ]
 
 const columns = [
-  { title: t('mes.oee.equipment'), key: 'name', width: 200 },
-  { title: t('mes.wo.workCenter'), dataIndex: 'workCenterName', width: 110 },
-  { title: t('mes.equipment.locationShort'), dataIndex: 'location', width: 120 },
+  { title: t('mes.oee.equipment'), key: 'name', width: 240 },
+  { title: t('mes.wo.workCenter'), dataIndex: 'workCenterName', width: 130 },
+  { title: t('mes.equipment.locationShort'), dataIndex: 'location', width: 130 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'mes_equipment_status' },
-  { title: t('mes.equipment.periodic'), key: 'maintain', width: 220 },
-  { title: t('mes.equipment.purchaseDate'), dataIndex: 'purchaseDate', width: 110, defaultHidden: true },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 100, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('mes.equipment.maintain'), t('common.action.edit'), '']), fixed: 'right' }
+  { title: t('mes.equipment.periodic'), key: 'maintain', width: 260 },
+  { title: t('mes.equipment.purchaseDate'), dataIndex: 'purchaseDate', width: 120 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true },
+  actionColumn(3, [t('mes.equipment.maintain')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-equipment')
 const showSearch = ref(true)
@@ -220,6 +210,13 @@ const { formRef, form } = drawer
 const toMaintenance = (record) => router.push({ path: '/mes/maintenance', query: { equipmentId: record.id } })
 
 const remove = useAction(deleteEquipment, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+
+// 行操作：编辑、保养（新建保养单）、删除
+const rowActions = (record) => [
+  { type: 'edit', perm: 'mes:equipment:edit', onClick: () => drawer.openEdit(record) },
+  { key: 'maintain', label: t('mes.equipment.maintain'), icon: ToolOutlined, perm: 'mes:maintain:add', onClick: () => toMaintenance(record) },
+  { type: 'delete', perm: 'mes:equipment:remove', confirm: t('mes.equipment.confirmDelete', { name: record.name }), onClick: () => remove(record.id) }
+]
 </script>
 
 <style scoped>

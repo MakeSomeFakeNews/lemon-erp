@@ -70,19 +70,7 @@
           <a-tag v-else :bordered="false" :color="STATUS_COLOR[record.status]">{{ $t('ai.cleanse.status.' + record.status) }}</a-tag>
         </template>
         <template v-else-if="column.key === 'action'">
-          <span v-if="canApply && record.status === AiSuggestionStatus.PENDING" v-perm="'ai:cleanse:apply'" class="table-actions">
-            <a-popconfirm
-              v-if="isDuplicate"
-              :title="$t('ai.cleanse.disableConfirm', { name: record.recordName })"
-              @confirm="apply([record.id])"
-            >
-              <a-button type="link" size="small">{{ $t('ai.cleanse.applyDisable') }}</a-button>
-            </a-popconfirm>
-            <a-button v-else-if="record.kind !== AiCleanseKind.MISSING" type="link" size="small" @click="apply([record.id])">
-              {{ $t('ai.cleanse.apply') }}
-            </a-button>
-            <a-button type="link" size="small" class="ignore-btn" @click="ignore([record.id])">{{ $t('ai.cleanse.ignore') }}</a-button>
-          </span>
+          <TableActions :actions="rowActions(record)" />
         </template>
       </template>
     </a-table>
@@ -100,6 +88,8 @@ import {
   ExclamationCircleOutlined,
   StopOutlined
 } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { AiCleanseField, AiCleanseKind, AiSuggestionStatus } from '@/constants/enums'
@@ -186,7 +176,7 @@ const columns = computed(() =>
         { title: t('ai.cleanse.reason'), key: 'reason', width: 220 },
         { title: t('ai.cleanse.confidence'), key: 'confidence', width: 100, align: 'center' },
         { title: t('common.field.status'), key: 'status', width: 90 },
-        { title: t('common.action.operation'), key: 'action', width: 120 }
+        actionColumn(2, [t('ai.cleanse.ignore')], { fixed: undefined })
       ]
     : [
         { title: t('ai.cleanse.record'), key: 'record', width: 170 },
@@ -195,9 +185,26 @@ const columns = computed(() =>
         { title: t('ai.cleanse.reason'), key: 'reason', width: 180 },
         { title: t('ai.cleanse.confidence'), key: 'confidence', width: 100, align: 'center' },
         { title: t('common.field.status'), key: 'status', width: 90 },
-        { title: t('common.action.operation'), key: 'action', width: 120 }
+        actionColumn(2, [t('ai.cleanse.ignore')], { fixed: undefined })
       ]
 )
+
+// 行操作：待处理的建议可采纳（疑似重复为停用，需确认）、忽略；缺失字段的提示只能忽略
+const rowActions = (record) => {
+  const pending = props.canApply && record.status === AiSuggestionStatus.PENDING
+  return [
+    {
+      key: 'apply',
+      label: isDuplicate.value ? t('ai.cleanse.applyDisable') : t('ai.cleanse.apply'),
+      icon: CheckOutlined,
+      perm: 'ai:cleanse:apply',
+      show: pending && (isDuplicate.value || record.kind !== AiCleanseKind.MISSING),
+      confirm: isDuplicate.value ? t('ai.cleanse.disableConfirm', { name: record.recordName }) : undefined,
+      onClick: () => apply([record.id])
+    },
+    { key: 'ignore', label: t('ai.cleanse.ignore'), icon: StopOutlined, perm: 'ai:cleanse:apply', show: pending, onClick: () => ignore([record.id]) }
+  ]
+}
 
 const scrollX = computed(() => columns.value.reduce((n, c) => n + c.width, 0))
 
@@ -369,9 +376,6 @@ defineExpose({ reload: () => load() })
   color: rgba(0, 0, 0, 0.45);
   background: rgba(0, 0, 0, 0.04);
 }
-.ignore-btn {
-  color: rgba(0, 0, 0, 0.45);
-}
 :deep(.group-start > td) {
   border-top: 2px solid var(--app-border, #f0f0f0);
 }
@@ -380,7 +384,6 @@ defineExpose({ reload: () => load() })
 <style>
 html[data-theme='dark'] .suggestion-table .change .old,
 html[data-theme='dark'] .suggestion-table .arrow,
-html[data-theme='dark'] .suggestion-table .ignore-btn,
 html[data-theme='dark'] .suggestion-table .confidence.low {
   color: rgba(255, 255, 255, 0.45);
 }

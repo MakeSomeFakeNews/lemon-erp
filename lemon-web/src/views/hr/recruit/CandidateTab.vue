@@ -44,27 +44,7 @@
         <span v-else class="sub-text">-</span>
       </template>
       <template v-else-if="column.key === 'action'">
-        <span class="table-actions">
-          <a-button type="link" size="small" @click="interviewsRef.open(record)">{{ $t('hr.recruit.interview') }}</a-button>
-          <template v-if="[CandidateStage.NEW, CandidateStage.INTERVIEW, CandidateStage.OFFER].includes(record.stage)">
-            <span v-if="record.stage === CandidateStage.INTERVIEW" v-perm="'hr:recruit:candidate'">
-              <a-popconfirm :title="$t('hr.recruit.confirmOffer')" @confirm="offer(record.id)">
-                <a-button type="link" size="small">{{ $t('hr.recruit.offer') }}</a-button>
-              </a-popconfirm>
-            </span>
-            <a-button v-if="record.stage === CandidateStage.OFFER" v-perm="'hr:recruit:hire'" type="link" size="small" @click="hireRef.open(record)">{{ $t('hr.recruit.hire') }}</a-button>
-            <a-dropdown>
-              <a-button type="link" size="small">{{ $t('common.action.more') }}<DownOutlined /></a-button>
-              <template #overlay>
-                <a-menu @click="({ key }) => onMore(key, record)">
-                  <a-menu-item key="edit" :disabled="!userStore.hasPerm('hr:recruit:candidate')">{{ $t('common.action.edit') }}</a-menu-item>
-                  <a-menu-item key="reject" danger :disabled="!userStore.hasPerm('hr:recruit:candidate')">{{ $t('hr.recruit.reject') }}</a-menu-item>
-                  <a-menu-item key="delete" danger :disabled="!userStore.hasPerm('hr:recruit:candidate')">{{ $t('common.action.delete') }}</a-menu-item>
-                </a-menu>
-              </template>
-            </a-dropdown>
-          </template>
-        </span>
+        <TableActions :actions="rowActions(record)" />
       </template>
     </template>
   </a-table>
@@ -75,10 +55,11 @@
 </template>
 
 <script setup>
-import { actionWidth } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { h, ref } from 'vue'
 import { Modal } from 'ant-design-vue'
-import { DownOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { CloseCircleOutlined, CommentOutlined, PlusOutlined, SendOutlined, UserAddOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { genderText } from '@/components/hr/hr'
@@ -87,7 +68,6 @@ import { deleteCandidate, offerCandidate, pageCandidate, rejectCandidate } from 
 import { useAction } from '@/composables/useAction'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
-import { useUserStore } from '@/store/user'
 import { findDict } from '@/utils/dict'
 import { t } from '@/locales'
 import CandidateForm from './CandidateForm.vue'
@@ -104,7 +84,6 @@ const props = defineProps({
   openOptions: { type: Array, default: () => [] }
 })
 const emit = defineEmits(['recruit-changed', 'options-changed'])
-const userStore = useUserStore()
 const dict = useDict('hr_education')
 const dictLabel = (list, v) => findDict(list, v)?.label || ''
 
@@ -117,7 +96,7 @@ const candidateColumns = [
   { title: t('hr.recruit.interview'), key: 'interview', width: 150 },
   { title: t('hr.recruit.stage'), key: 'stage', width: 120 },
   { title: t('hr.recruit.createTime'), dataIndex: 'createTime', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([{ text: t('hr.recruit.interview'), icon: false }, [{ text: t('hr.recruit.offer'), icon: false }, { text: t('hr.recruit.hire'), icon: false }], t('common.action.more')]), fixed: 'right' }
+  actionColumn(4, [t('hr.recruit.interview')])
 ]
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageCandidate, props.query)
 const formRef = ref()
@@ -142,20 +121,27 @@ const remove = useAction((record) => deleteCandidate(record.id), {
   reload: onSaved
 })
 
-function onMore(key, record) {
-  if (key === 'edit') {
-    formRef.value.openEdit(record)
-  } else if (key === 'reject') {
-    let reason = ''
-    Modal.confirm({
-      title: t('hr.recruit.rejectTitle', { name: record.name }),
-      content: () => h('textarea', { class: 'ant-input', rows: 2, placeholder: t('hr.recruit.rejectReasonPh'), onInput: (e) => (reason = e.target.value) }),
-      okType: 'danger',
-      onOk: () => reject(record, reason)
-    })
-  } else if (key === 'delete') {
-    remove(record)
-  }
+function openReject(record) {
+  let reason = ''
+  Modal.confirm({
+    title: t('hr.recruit.rejectTitle', { name: record.name }),
+    content: () => h('textarea', { class: 'ant-input', rows: 2, placeholder: t('hr.recruit.rejectReasonPh'), onInput: (e) => (reason = e.target.value) }),
+    okType: 'danger',
+    onOk: () => reject(record, reason)
+  })
+}
+
+// 行操作：面试记录；进行中的候选人可编辑、发 Offer（面试中）/ 录用（已发 Offer），淘汰、删除在「更多」中
+const rowActions = (record) => {
+  const active = [CandidateStage.NEW, CandidateStage.INTERVIEW, CandidateStage.OFFER].includes(record.stage)
+  return [
+    { key: 'interview', label: t('hr.recruit.interview'), icon: CommentOutlined, onClick: () => interviewsRef.value.open(record) },
+    { type: 'edit', show: active, perm: 'hr:recruit:candidate', onClick: () => formRef.value.openEdit(record) },
+    { key: 'offer', label: t('hr.recruit.offer'), icon: SendOutlined, show: record.stage === CandidateStage.INTERVIEW, perm: 'hr:recruit:candidate', confirm: t('hr.recruit.confirmOffer'), onClick: () => offer(record.id) },
+    { key: 'hire', label: t('hr.recruit.hire'), icon: UserAddOutlined, show: record.stage === CandidateStage.OFFER, perm: 'hr:recruit:hire', onClick: () => hireRef.value.open(record) },
+    { key: 'reject', label: t('hr.recruit.reject'), icon: CloseCircleOutlined, danger: true, show: active, perm: 'hr:recruit:candidate', more: true, onClick: () => openReject(record) },
+    { type: 'delete', show: active, perm: 'hr:recruit:candidate', more: true, onClick: () => remove(record) }
+  ]
 }
 
 defineExpose({ load, search, openCreate: (defaults) => formRef.value.openCreate(defaults) })

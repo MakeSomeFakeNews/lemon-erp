@@ -46,11 +46,7 @@
             <div v-else-if="record.location" class="sub-text">{{ record.location }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
-              <a-button v-if="record.status === MoldStatus.AVAILABLE" v-perm="'mes:mold:issue'" type="link" size="small" @click="openAction(record, 'issue')">{{ $t('mes.mold.action.issue') }}</a-button>
-              <a-button v-if="record.status === MoldStatus.IN_USE" v-perm="'mes:mold:issue'" type="link" size="small" @click="openAction(record, 'return')">{{ $t('mes.mold.action.return') }}</a-button>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -206,7 +202,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { ExportOutlined, ImportOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -217,6 +213,8 @@ import { pageWo } from '@/api/mes/wo'
 import { materialOptions } from '@/api/wms/material'
 import { today } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -237,9 +235,15 @@ const columns = [
   { title: t('mes.mold.products'), key: 'products', width: 220, ellipsis: true },
   { title: t('mes.mold.life'), key: 'life', width: 230 },
   { title: t('common.field.status'), key: 'status', width: 180 },
-  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
+  // 查看；在库可领用，使用中可归还
+  actionColumn(2, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-mold')
+const rowActions = (record) => [
+  { type: 'view', onClick: () => openDetail(record.id) },
+  { key: 'issue', label: t('mes.mold.action.issue'), icon: ExportOutlined, show: record.status === MoldStatus.AVAILABLE, perm: 'mes:mold:issue', onClick: () => openAction(record, 'issue') },
+  { key: 'return', label: t('mes.mold.action.return'), icon: ImportOutlined, show: record.status === MoldStatus.IN_USE, perm: 'mes:mold:issue', onClick: () => openAction(record, 'return') }
+]
 const query = reactive({ keyword: undefined, moldType: undefined, status: undefined, warn: false })
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageMold, query, {
   params: (q) => ({ ...q, warn: q.warn || undefined })

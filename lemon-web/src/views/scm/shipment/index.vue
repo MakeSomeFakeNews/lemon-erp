@@ -69,21 +69,19 @@
             <div class="sub-text">{{ $t('scm.shipment.signShort', { date: record.signDate || '-' }) }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
-              </a-button>
-              <a-button v-if="record.status !== ShipmentStatus.SIGNED" v-perm="'scm:shipment:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-if="record.status === ShipmentStatus.PENDING" v-perm="'scm:shipment:remove'">
-                <a-popconfirm :title="$t('scm.shipment.confirmDelete', { no: record.shipNo })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'view', onClick: () => openDetail(record) },
+                { type: 'edit', show: record.status !== ShipmentStatus.SIGNED, perm: 'scm:shipment:edit', onClick: () => drawer.openEdit(record) },
+                {
+                  type: 'delete',
+                  show: record.status === ShipmentStatus.PENDING,
+                  perm: 'scm:shipment:remove',
+                  confirm: $t('scm.shipment.confirmDelete', { no: record.shipNo }),
+                  onClick: () => remove(record.id)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -247,9 +245,6 @@ import { message } from 'ant-design-vue'
 import {
   CarOutlined,
   CheckOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
   MessageOutlined,
   PlusOutlined,
   WarningOutlined
@@ -262,7 +257,7 @@ import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import { partnerOptions } from '@/api/scm/partner'
 import { addShipment, deleteShipment, getShipment, pageShipment, shipmentAction, updateShipment } from '@/api/scm/shipment'
 import { pageTrade } from '@/api/scm/trade'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -274,6 +269,8 @@ import { useI18n } from 'vue-i18n'
 import { useAction } from '@/composables/useAction'
 
 import { FreightBearer, ShipmentStatus } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 const { t } = useI18n()
 const route = useRoute()
 const userStore = useUserStore()
@@ -282,14 +279,14 @@ const dict = useDict('scm_shipment_status', 'scm_carrier', 'scm_freight_bearer')
 const columns = [
   { title: t('scm.shipment.shipNo'), key: 'shipNo', width: 170 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'scm_shipment_status' },
-  { title: t('scm.shipment.source'), key: 'source', width: 180, defaultHidden: true },
+  { title: t('scm.shipment.source'), key: 'source', width: 180 },
   { title: t('scm.shipment.customer'), dataIndex: 'customerName', width: 180, ellipsis: true },
   { title: t('scm.shipment.carrierTracking'), key: 'carrier', width: 180, dict: 'scm_carrier' },
-  { title: t('scm.shipment.receiverInfo'), key: 'receiver', width: 220, defaultHidden: true },
+  { title: t('scm.shipment.receiverInfo'), key: 'receiver', width: 220 },
   { title: t('scm.shipment.freight'), key: 'freight', width: 100, align: 'right' },
   { title: t('scm.shipment.shipSign'), key: 'dates', width: 150 },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('common.action.edit'), t('common.action.delete')]), fixed: 'right' }
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  actionColumn(3, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-shipment')
 const showSearch = ref(true)

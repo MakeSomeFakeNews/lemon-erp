@@ -10,6 +10,7 @@
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import TaskListPage from '@/components/workflow/TaskListPage.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { pageDoneTask } from '@/api/workflow/task'
 import { useDict } from '@/composables/useDict'
 
@@ -25,6 +26,6 @@ const columns = [
   { title: t('workflow.list.initiator'), dataIndex: 'startUserName', width: 120 },
   { title: t('workflow.list.startTime'), dataIndex: 'startTime', width: 170 },
   { title: t('workflow.done.handleTime'), dataIndex: 'endTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 110, fixed: 'right' }
+  actionColumn(1, [t('common.action.view')])
 ]
 </script>

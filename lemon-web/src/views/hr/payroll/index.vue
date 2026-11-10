@@ -134,7 +134,9 @@
                 <span :class="{ strong: ['grossPay', 'netPay'].includes(column.key) }">{{ formatMoney(cellValue(record, column.key)) }}</span>
               </template>
               <template v-else-if="column.key === 'action'">
-                <a-button v-if="payroll.status === PayrollStatus.DRAFT" v-perm="'hr:payroll:edit'" type="link" size="small" @click="openAdjust(record)">{{ $t('hr.payroll.adjust') }}</a-button>
+                <TableActions
+                  :actions="[{ type: 'edit', label: $t('hr.payroll.adjust'), show: payroll.status === PayrollStatus.DRAFT, perm: 'hr:payroll:edit', onClick: () => openAdjust(record) }]"
+                />
               </template>
             </template>
             <template #summary>
@@ -192,7 +194,9 @@
 
 <script setup>
 import TableToolbar from '@/components/TableToolbar.vue'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useI18n } from 'vue-i18n'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
@@ -306,13 +310,12 @@ const itemColumns = [
   { title: t('hr.payroll.col.incomeTax'), key: 'incomeTax', width: 100, align: 'right' },
   { title: t('hr.payroll.otherDeduct'), key: 'otherDeduct', width: 140, align: 'right' },
   { title: t('hr.payroll.col.netPay'), key: 'netPay', width: 120, align: 'right' },
-  // 单位社保公积金（顶部合计已显示）、累计应纳税所得额 / 已缴税额（个税计算用）、备注默认隐藏
-  { title: t('hr.payroll.col.socialCompany'), key: 'socialCompany', width: 150, align: 'right', defaultHidden: true },
-  { title: t('hr.payroll.col.housingCompany'), key: 'housingCompany', width: 170, align: 'right', defaultHidden: true },
-  { title: t('hr.payroll.col.cumTaxable'), key: 'cumTaxable', width: 160, align: 'right', exportValue: (r) => cellValue(r, 'cumTaxable'), defaultHidden: true },
-  { title: t('hr.payroll.col.cumTax'), key: 'cumTax', width: 150, align: 'right', defaultHidden: true },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true, defaultHidden: true },
-  { title: '', key: 'action', width: actionWidth([{ text: t('hr.payroll.adjust'), icon: false }]), fixed: 'right' }
+  { title: t('hr.payroll.col.socialCompany'), key: 'socialCompany', width: 150, align: 'right' },
+  { title: t('hr.payroll.col.housingCompany'), key: 'housingCompany', width: 170, align: 'right' },
+  { title: t('hr.payroll.col.cumTaxable'), key: 'cumTaxable', width: 160, align: 'right', exportValue: (r) => cellValue(r, 'cumTaxable') },
+  { title: t('hr.payroll.col.cumTax'), key: 'cumTax', width: 150, align: 'right' },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true },
+  actionColumn(1, [t('hr.payroll.adjust')], { title: '' })
 ]
 // 工资表列多，保持横向滚动（左右固定员工和操作列）
 const { checked, visibleColumns, scrollX } = useColumns(itemColumns, 'hr-payroll')

@@ -54,31 +54,7 @@
             <DictTag type="hr_training_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openRecords(record)">{{ $t('hr.training.records') }}</a-button>
-              <template v-if="userStore.hasPerm('hr:training:edit')">
-                <a-popconfirm v-if="record.status === TrainingStatus.PLANNED" :title="$t('hr.training.confirmStart')" @confirm="setStatus(record, 'ONGOING')">
-                  <a-button type="link" size="small">{{ $t('hr.training.start') }}</a-button>
-                </a-popconfirm>
-                <a-popconfirm v-if="record.status === TrainingStatus.ONGOING" :title="$t('hr.training.confirmFinish')" @confirm="setStatus(record, 'FINISHED')">
-                  <a-button type="link" size="small">{{ $t('hr.training.finish') }}</a-button>
-                </a-popconfirm>
-                <a-dropdown v-if="[TrainingStatus.PLANNED, TrainingStatus.ONGOING].includes(record.status)">
-                  <a-button type="link" size="small">{{ $t('common.action.more') }}<DownOutlined /></a-button>
-                  <template #overlay>
-                    <a-menu @click="({ key }) => (key === 'edit' ? drawer.openEdit(record) : setStatus(record, 'CANCELED'))">
-                      <a-menu-item key="edit">{{ $t('common.action.edit') }}</a-menu-item>
-                      <a-menu-item key="cancel" danger>{{ $t('hr.training.cancelTraining') }}</a-menu-item>
-                    </a-menu>
-                  </template>
-                </a-dropdown>
-              </template>
-              <span v-if="[TrainingStatus.PLANNED, TrainingStatus.CANCELED].includes(record.status)" v-perm="'hr:training:remove'">
-                <a-popconfirm :title="$t('hr.training.confirmDelete', { name: record.title })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -179,7 +155,7 @@ import { useI18n } from 'vue-i18n'
 import SubPage from '@/components/SubPage.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, DownOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { CheckCircleOutlined, CloseCircleOutlined, DeleteOutlined, PlayCircleOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -199,7 +175,9 @@ import {
   trainingRecords,
   updateTraining
 } from '@/api/hr'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -217,14 +195,15 @@ const thisYear = dayjs().year()
 const years = [thisYear + 1, thisYear, thisYear - 1, thisYear - 2].map((y) => ({ value: y, label: t('hr.training.yearOption', { year: y }) }))
 
 const columns = [
-  { title: t('hr.training.training'), key: 'title', width: 200, fixed: 'left' },
-  { title: t('hr.training.category'), key: 'category', width: 90, dict: 'hr_training_category' },
+  { title: t('hr.training.training'), key: 'title', width: 260, fixed: 'left' },
+  { title: t('hr.training.category'), key: 'category', width: 110, dict: 'hr_training_category' },
   { title: t('common.field.date'), key: 'date', width: 200 },
-  { title: t('hr.training.hours'), dataIndex: 'hours', width: 70 },
-  { title: t('hr.training.col.trainees'), key: 'trainees', width: 160 },
-  { title: t('hr.training.cost'), key: 'cost', width: 100, align: 'right', defaultHidden: true },
+  { title: t('hr.training.hours'), dataIndex: 'hours', width: 100 },
+  { title: t('hr.training.col.trainees'), key: 'trainees', width: 170 },
+  { title: t('hr.training.cost'), key: 'cost', width: 110, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'hr_training_status' },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([{ text: t('hr.training.records'), icon: false }, [{ text: t('hr.training.start'), icon: false }, { text: t('hr.training.finish'), icon: false }], t('common.action.more')]), fixed: 'right' }
+  // 计划中：参训记录、编辑、开始，删除、取消在「更多」中；进行中：参训记录、编辑、结束、更多（取消）
+  actionColumn(4, [t('hr.training.records')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-training')
 
@@ -261,6 +240,26 @@ async function setStatus(record, status) {
 }
 
 const remove = useAction(deleteTraining, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+
+// 行操作
+const rowActions = (record) => {
+  const planned = record.status === TrainingStatus.PLANNED
+  const ongoing = record.status === TrainingStatus.ONGOING
+  return [
+    { key: 'records', label: t('hr.training.records'), icon: TeamOutlined, onClick: () => openRecords(record) },
+    { type: 'edit', show: planned || ongoing, perm: 'hr:training:edit', onClick: () => drawer.openEdit(record) },
+    { key: 'start', label: t('hr.training.start'), icon: PlayCircleOutlined, show: planned, perm: 'hr:training:edit', confirm: t('hr.training.confirmStart'), onClick: () => setStatus(record, TrainingStatus.ONGOING) },
+    { key: 'finish', label: t('hr.training.finish'), icon: CheckCircleOutlined, show: ongoing, perm: 'hr:training:edit', confirm: t('hr.training.confirmFinish'), onClick: () => setStatus(record, TrainingStatus.FINISHED) },
+    {
+      type: 'delete',
+      show: planned || record.status === TrainingStatus.CANCELED,
+      perm: 'hr:training:remove',
+      confirm: t('hr.training.confirmDelete', { name: record.title }),
+      onClick: () => remove(record.id)
+    },
+    { key: 'cancel', label: t('hr.training.cancelTraining'), icon: CloseCircleOutlined, danger: true, show: planned || ongoing, perm: 'hr:training:edit', more: true, onClick: () => setStatus(record, TrainingStatus.CANCELED) }
+  ]
+}
 
 // 学员与成绩
 const recordOpen = ref(false)

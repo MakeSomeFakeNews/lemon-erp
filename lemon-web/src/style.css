@@ -279,6 +279,27 @@ body {
   padding: 0 4px;
   height: auto;
 }
+/* TableActions：图标按钮 24 × 24，竖线分隔；宽度与 components/common/tableActions.js 的 actionWidth 一致 */
+.table-actions.icon-actions {
+  gap: 0;
+}
+.table-actions .table-action-btn.ant-btn-icon-only {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+.table-actions .table-action-btn {
+  height: 24px;
+}
+.table-actions .table-actions-divider {
+  height: 14px;
+  margin: 0 4px;
+  border-inline-start-color: var(--app-text-3);
+  opacity: 0.45;
+}
+.table-actions-menu-item .anticon {
+  margin-right: 8px;
+}
 
 /* 抽屉表单底部 */
 .drawer-footer {

@@ -25,7 +25,13 @@
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="fin_statement_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === StatementStatus.SENT ? $t('portal.statement.confirmAction') : $t('common.action.view') }}</a-button>
+            <TableActions
+              :actions="[
+                record.status === StatementStatus.SENT
+                  ? { type: 'confirm', label: $t('portal.statement.confirmAction'), onClick: () => openDetail(record.id) }
+                  : { type: 'view', onClick: () => openDetail(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -108,6 +114,8 @@ import { toOptions } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 
 import { StatementStatus } from '@/constants/enums'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 const { t } = useI18n()
 
 /** 供应商门户 - 对账单：确认或提出异议，填写发票并上传扫描件 */
@@ -120,7 +128,7 @@ const columns = [
   { title: t('portal.statement.amount'), key: 'amount', width: 160, align: 'right' },
   { title: t('portal.statement.invoice'), key: 'invoice', width: 150 },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('common.action.view'), t('portal.statement.confirmAction')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'portal-statement')
 const query = reactive({ status: undefined })

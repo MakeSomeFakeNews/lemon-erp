@@ -47,12 +47,13 @@
             <span v-else>-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-perm="'fin:period:close'">
-              <a-button v-if="record.status === PeriodStatus.OPEN" type="link" size="small" @click="close(record.period)">{{ $t('fin.period.close') }}</a-button>
-              <a-popconfirm v-else :title="$t('fin.period.confirmReopen')" @confirm="reopen(record.period)">
-                <a-button type="link" size="small">{{ $t('fin.period.reopen') }}</a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[
+                record.status === PeriodStatus.OPEN
+                  ? { key: 'close', label: $t('fin.period.close'), icon: LockOutlined, perm: 'fin:period:close', onClick: () => close(record.period) }
+                  : { key: 'reopen', label: $t('fin.period.reopen'), icon: UnlockOutlined, perm: 'fin:period:close', confirm: $t('fin.period.confirmReopen'), onClick: () => reopen(record.period) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -133,8 +134,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { CalculatorOutlined, SafetyCertificateOutlined } from '@ant-design/icons-vue'
+import { CalculatorOutlined, LockOutlined, SafetyCertificateOutlined, UnlockOutlined } from '@ant-design/icons-vue'
 import CloseCheckList from '@/components/fin/CloseCheckList.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import { closeCheck, closePeriod, pagePeriod, reopenPeriod, transferVat } from '@/api/fin'
@@ -151,7 +154,7 @@ const columns = [
   { title: t('common.field.status'), key: 'status', width: 110 },
   { title: t('fin.period.vouchers'), key: 'vouchers', width: 200 },
   { title: t('fin.period.close'), key: 'close', width: 260 },
-  { title: t('common.action.operation'), key: 'action', width: 130 }
+  actionColumn(1, [t('fin.period.close'), t('fin.period.reopen')], { fixed: undefined })
 ]
 const { list, loading, pagination, load, onTableChange } = useTable(pagePeriod, reactive({}))
 const target = ref(currentPeriod())

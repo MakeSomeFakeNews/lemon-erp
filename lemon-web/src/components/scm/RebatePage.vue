@@ -43,7 +43,7 @@
             <div v-if="record.billNo" class="sub-text">{{ tx('creditNoteNo', { no: record.billNo }) }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
+            <TableActions :actions="[{ type: 'view', onClick: () => openDetail(record.id) }]" />
           </template>
         </template>
       </a-table>
@@ -129,6 +129,8 @@ import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import LineItemsTable from '@/components/common/LineItemsTable.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import RebateDetail from '@/components/scm/RebateDetail.vue'
@@ -164,7 +166,7 @@ const columns = [
   { title: t('scm.rebate.calcMode'), key: 'mode', width: 150 },
   { title: t('scm.rebate.rebate'), key: 'result', width: 200 },
   { title: t('common.field.status'), key: 'status', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, purchase ? 'scm-purchase-rebate' : 'scm-rebate')
 const query = reactive({ keyword: undefined, status: undefined })

@@ -66,15 +66,17 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button
-              v-if="record.status === LeaveStatus.APPROVING && !record.flowInstanceId"
-              v-perm="'hr:leave:approve'"
-              type="link"
-              size="small"
-              @click="openApprove(record)"
-            >
-              {{ $t('hr.leave.approve') }}
-            </a-button>
+            <TableActions
+              :actions="[
+                {
+                  type: 'audit',
+                  label: $t('hr.leave.approve'),
+                  show: record.status === LeaveStatus.APPROVING && !record.flowInstanceId,
+                  perm: 'hr:leave:approve',
+                  onClick: () => openApprove(record)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -110,6 +112,8 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import { hoursText } from '@/components/hr/hr'
 import { approveLeave, pageLeave } from '@/api/hr'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { findDict, toOptions } from '@/utils/dict'
@@ -122,15 +126,15 @@ const fmt = (t) => (t ? dayjs(t).format('YYYY-MM-DD HH:mm') : '')
 const showSearch = ref(true)
 
 const columns = [
-  { title: t('hr.leave.no'), dataIndex: 'leaveNo', width: 140 },
-  { title: t('hr.leave.employee'), key: 'employee', width: 130 },
-  { title: t('hr.leave.kind'), key: 'kind', width: 130, dict: 'hr_leave_kind' },
-  { title: t('hr.leave.time'), key: 'time', width: 160 },
-  { title: t('hr.leave.hours'), key: 'hours', width: 130 },
+  { title: t('hr.leave.no'), dataIndex: 'leaveNo', width: 150 },
+  { title: t('hr.leave.employee'), key: 'employee', width: 170 },
+  { title: t('hr.leave.kind'), key: 'kind', width: 140, dict: 'hr_leave_kind' },
+  { title: t('hr.leave.time'), key: 'time', width: 170 },
+  { title: t('hr.leave.hours'), key: 'hours', width: 140 },
   { title: t('hr.leave.reason'), dataIndex: 'reason', ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'hr_leave_status' },
-  { title: t('hr.leave.approve'), key: 'approve', width: 190 },
-  { title: t('common.action.operation'), key: 'action', width: 80, fixed: 'right' }
+  { title: t('hr.leave.approve'), key: 'approve', width: 200 },
+  actionColumn(1, [t('hr.leave.approve')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-leave')
 

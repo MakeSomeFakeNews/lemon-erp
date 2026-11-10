@@ -74,19 +74,24 @@
             </template>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('crm.ticket.handle') }}
-              </a-button>
-              <a-button v-if="[TicketStatus.OPEN, TicketStatus.PROCESSING].includes(record.status)" v-perm="'crm:ticket:handle'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-if="record.status === TicketStatus.OPEN" v-perm="'crm:ticket:remove'">
-                <a-popconfirm :title="$t('crm.ticket.confirmDelete', { no: record.ticketNo })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'view', label: $t('crm.ticket.handle'), onClick: () => openDetail(record) },
+                {
+                  type: 'edit',
+                  show: [TicketStatus.OPEN, TicketStatus.PROCESSING].includes(record.status),
+                  perm: 'crm:ticket:handle',
+                  onClick: () => drawer.openEdit(record)
+                },
+                {
+                  type: 'delete',
+                  show: record.status === TicketStatus.OPEN,
+                  perm: 'crm:ticket:remove',
+                  confirm: $t('crm.ticket.confirmDelete', { no: record.ticketNo }),
+                  onClick: () => remove(record.id)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -165,7 +170,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -175,7 +180,9 @@ import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import TicketDetail from '@/components/crm/TicketDetail.vue'
 import { addTicket, deleteTicket, getTicket, listContacts, pageTicket, ticketWarranty, updateTicket } from '@/api/crm'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -188,15 +195,15 @@ const { t } = useI18n()
 const dict = useDict('crm_ticket_type', 'crm_ticket_priority', 'crm_ticket_status', 'crm_ticket_channel')
 
 const columns = [
-  { title: t('crm.common.f.ticket'), key: 'title', width: 140 },
-  { title: t('crm.common.f.customer'), key: 'customer', width: 190 },
+  { title: t('crm.common.f.ticket'), key: 'title', width: 240 },
+  { title: t('crm.common.f.customer'), key: 'customer', width: 200 },
   { title: t('common.field.type'), key: 'type', width: 100, dict: 'crm_ticket_type' },
-  { title: t('crm.common.f.priority'), key: 'priority', width: 80, dict: 'crm_ticket_priority' },
-  { title: t('common.field.status'), key: 'status', width: 100, dict: 'crm_ticket_status' },
-  { title: t('crm.common.f.assignee'), key: 'assignee', width: 80 },
-  { title: t('crm.ticket.col.due'), key: 'due', width: 140 },
-  { title: t('crm.common.f.acceptTime'), dataIndex: 'createTime', width: 160, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('crm.ticket.handle'), t('common.action.edit'), '']), fixed: 'right' }
+  { title: t('crm.common.f.priority'), key: 'priority', width: 90, dict: 'crm_ticket_priority' },
+  { title: t('common.field.status'), key: 'status', width: 140, dict: 'crm_ticket_status' },
+  { title: t('crm.common.f.assignee'), key: 'assignee', width: 110 },
+  { title: t('crm.ticket.col.due'), key: 'due', width: 170 },
+  { title: t('crm.common.f.acceptTime'), dataIndex: 'createTime', width: 160 },
+  actionColumn(3, [t('crm.ticket.handle')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-ticket')
 const showSearch = ref(true)

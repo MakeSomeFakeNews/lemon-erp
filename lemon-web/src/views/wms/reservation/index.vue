@@ -52,13 +52,19 @@
             <b>{{ formatQty(record.qty) }}</b> <span class="sub-text">{{ record.unit }}</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-perm="'wms:reservation:release'">
-              <a-popconfirm :title="$t('wms.reservation.confirmRelease')" @confirm="release(record)">
-                <a-button type="link" danger size="small">
-                  <template #icon><UnlockOutlined /></template>{{ $t('wms.reservation.release') }}
-                </a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[
+                {
+                  key: 'release',
+                  label: $t('wms.reservation.release'),
+                  icon: UnlockOutlined,
+                  danger: true,
+                  perm: 'wms:reservation:release',
+                  confirm: $t('wms.reservation.confirmRelease'),
+                  onClick: () => release(record)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -76,7 +82,9 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { pageReservation, releaseReservation } from '@/api/wms/reservation'
 import { formatQty } from '@/components/wms/wms'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useTable } from '@/composables/useTable'
 import { useAction } from '@/composables/useAction'
 
@@ -89,13 +97,13 @@ const columns = [
   { title: t('wms.reservation.salesOrder'), key: 'sourceNo', dataIndex: 'sourceNo', width: 180 },
   { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 140 },
   { title: t('wms.common.material'), key: 'material', width: 240, exportValue: (r) => `${r.materialCode} ${r.materialName}` },
-  { title: t('common.field.spec'), dataIndex: 'spec', width: 140, ellipsis: true, defaultHidden: true },
+  { title: t('common.field.spec'), dataIndex: 'spec', width: 140, ellipsis: true },
   { title: t('wms.reservation.qty'), key: 'qty', dataIndex: 'qty', width: 130, align: 'right' },
   { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
   { title: t('common.field.description'), dataIndex: 'remark', width: 180, ellipsis: true },
-  { title: t('wms.reservation.by'), dataIndex: 'createByName', width: 110, defaultHidden: true },
-  { title: t('wms.reservation.time'), dataIndex: 'createTime', width: 170, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('wms.reservation.release')]), fixed: 'right' }
+  { title: t('wms.reservation.by'), dataIndex: 'createByName', width: 110 },
+  { title: t('wms.reservation.time'), dataIndex: 'createTime', width: 170 },
+  actionColumn(1, [t('wms.reservation.release')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-reservation')
 const showSearch = ref(true)

@@ -80,12 +80,12 @@
           </template>
           <template v-else-if="column.key === 'amount'">¥{{ formatMoney(record.amount) }}</template>
           <template v-else-if="column.key === 'action'">
-            <span v-perm="'fin:fundPlan:edit'" class="table-actions">
-              <a-button type="link" size="small" @click="drawer.openEdit(record)"><EditOutlined /></a-button>
-              <a-popconfirm :title="$t('fin.fundPlan.confirmDeleteItem', { name: record.description })" @confirm="removeItem(record.id)">
-                <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', perm: 'fin:fundPlan:edit', onClick: () => drawer.openEdit(record) },
+                { type: 'delete', perm: 'fin:fundPlan:edit', confirm: $t('fin.fundPlan.confirmDeleteItem', { name: record.description }), onClick: () => removeItem(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -128,10 +128,12 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import EChart from '@/components/charts/EChart.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SubPage from '@/components/SubPage.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import {
   addFundPlanItem,
   deleteFundPlanItem,
@@ -252,7 +254,7 @@ const itemColumns = [
   { title: t('fin.fundPlan.direction'), key: 'direction', width: 90 },
   { title: t('common.field.description'), dataIndex: 'description', ellipsis: true },
   { title: t('common.field.amount'), key: 'amount', width: 150, align: 'right' },
-  { title: t('common.action.operation'), key: 'action', width: 100 }
+  actionColumn(2, [], { fixed: undefined })
 ]
 const items = reactive({ list: [], total: 0, current: 1, size: 10, loading: false })
 const itemPagination = computed(() => ({ current: items.current, pageSize: items.size, total: items.total, showTotal: (total) => t('common.table.total', { total }) }))

@@ -70,18 +70,7 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <template v-if="record.status === ExpenseClaimStatus.DRAFT">
-                <a-button v-perm="'fin:claim:add'" type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-                <a-button v-perm="'fin:claim:add'" type="link" size="small" @click="submit(record)">{{ $t('common.action.submit') }}</a-button>
-                <span v-perm="'fin:claim:add'">
-                  <a-popconfirm :title="$t('fin.claim.confirmDelete', { no: record.claimNo })" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                  </a-popconfirm>
-                </span>
-              </template>
-              <a-button v-if="record.status === ExpenseClaimStatus.APPROVED" v-perm="'fin:claim:pay'" type="link" size="small" @click="openPay(record)">{{ $t('fin.claim.pay') }}</a-button>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -217,7 +206,7 @@ import SubPage from '@/components/SubPage.vue'
 import { computed, h, onMounted, reactive, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { PayCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import LineItemsTable from '@/components/common/LineItemsTable.vue'
@@ -226,10 +215,12 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import ProjectSelect from '@/components/pm/ProjectSelect.vue'
 import { addClaim, deleteClaim, getClaim, pageClaim, pageLoan, payClaim, submitClaim, updateClaim } from '@/api/fin'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -252,16 +243,33 @@ const userStore = useUserStore()
 const dict = useDict('fin_claim_status')
 
 const columns = [
-  { title: t('fin.claim.claimNo'), key: 'claimNo', dataIndex: 'claimNo', width: 150 },
-  { title: t('fin.claim.claimant'), key: 'user', dataIndex: 'userName', width: 130 },
+  { title: t('fin.claim.claimNo'), key: 'claimNo', dataIndex: 'claimNo', width: 160 },
+  { title: t('fin.claim.claimant'), key: 'user', dataIndex: 'userName', width: 150 },
   { title: t('fin.claim.claimDate'), dataIndex: 'claimDate', width: 120 },
   { title: t('common.field.amount'), key: 'amount', dataIndex: 'amount', width: 130, align: 'right' },
-  { title: t('fin.claim.offsetLoan'), key: 'loan', dataIndex: 'loanNo', width: 140, defaultHidden: true },
+  { title: t('fin.claim.offsetLoan'), key: 'loan', dataIndex: 'loanNo', width: 150 },
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 120, dict: 'fin_claim_status' },
-  { title: t('fin.claim.pay'), key: 'pay', dataIndex: 'payDate', width: 120 },
+  { title: t('fin.claim.pay'), key: 'pay', dataIndex: 'payDate', width: 130 },
   { title: t('fin.claim.reason'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('common.action.submit'), t('common.action.delete')].map((text) => ({ text, icon: false }))), fixed: 'right' }
+  // 草稿：编辑、提交、删除；已审批：付款
+  actionColumn(3, [t('fin.claim.pay')])
 ]
+const rowActions = (record) => {
+  const draft = record.status === ExpenseClaimStatus.DRAFT
+  return [
+    { type: 'edit', show: draft, perm: 'fin:claim:add', onClick: () => drawer.openEdit(record) },
+    { type: 'submit', show: draft, perm: 'fin:claim:add', onClick: () => submit(record) },
+    {
+      key: 'pay',
+      label: t('fin.claim.pay'),
+      icon: PayCircleOutlined,
+      show: record.status === ExpenseClaimStatus.APPROVED,
+      perm: 'fin:claim:pay',
+      onClick: () => openPay(record)
+    },
+    { type: 'delete', show: draft, perm: 'fin:claim:add', confirm: t('fin.claim.confirmDelete', { no: record.claimNo }), onClick: () => remove(record.id) }
+  ]
+}
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-claim')
 const showSearch = ref(true)
 

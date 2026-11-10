@@ -72,26 +72,20 @@
             <span :class="{ 'sub-text': expired(record) }">{{ record.expireDate || $t('system.notice.longTerm') }}</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <template v-if="editable(record)">
-                <a-button v-perm="'sys:notice:publish'" type="link" size="small" @click="publish(record)">
-                  <template #icon><SendOutlined /></template>{{ $t('system.notice.publish') }}
-                </a-button>
-                <a-button v-perm="'sys:notice:edit'" type="link" size="small" @click="form.openEdit(record)">
-                  <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-                </a-button>
-                <span v-perm="'sys:notice:remove'">
-                  <a-popconfirm :title="$t('system.notice.confirmDelete', { name: record.title })" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small">
-                      <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                    </a-button>
-                  </a-popconfirm>
-                </span>
-              </template>
-              <a-button v-else v-perm="'sys:notice:publish'" type="link" size="small" @click="withdraw(record)">
-                <template #icon><RollbackOutlined /></template>{{ $t('system.notice.withdraw') }}
-              </a-button>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', show: editable(record), perm: 'sys:notice:edit', onClick: () => form.openEdit(record) },
+                { type: 'submit', label: $t('system.notice.publish'), show: editable(record), perm: 'sys:notice:publish', onClick: () => publish(record) },
+                {
+                  type: 'delete',
+                  show: editable(record),
+                  perm: 'sys:notice:remove',
+                  confirm: $t('system.notice.confirmDelete', { name: record.title }),
+                  onClick: () => remove(record.id)
+                },
+                { type: 'reverse', label: $t('system.notice.withdraw'), danger: false, show: !editable(record), perm: 'sys:notice:publish', onClick: () => withdraw(record) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -105,13 +99,15 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, EditOutlined, PlusOutlined, PushpinFilled, RollbackOutlined, SendOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, PushpinFilled } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { deleteNotice, pageNotice, publishNotice, withdrawNotice } from '@/api/system/notice'
 import { useAction } from '@/composables/useAction'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -130,14 +126,14 @@ const form = ref()
 const detail = ref()
 
 const columns = [
-  { title: t('system.notice.titleLabel'), key: 'title', dataIndex: 'title', width: 210, ellipsis: true },
+  { title: t('system.notice.titleLabel'), key: 'title', dataIndex: 'title', width: 280, ellipsis: true },
   { title: t('system.notice.type'), key: 'type', dataIndex: 'type', width: 90, dict: 'sys_notice_type' },
   { title: t('system.notice.scope'), key: 'scope', dataIndex: 'scopeType', width: 100, dict: 'sys_notice_scope' },
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 140, dict: 'sys_notice_status' },
-  { title: t('system.notice.progress'), key: 'progress', width: 140, exportValue: (r) => (r.totalCount ? `${r.readCount}/${r.totalCount}` : '') },
-  { title: t('system.notice.publishTime'), key: 'publish', dataIndex: 'publishTime', width: 160 },
-  { title: t('system.notice.expireDate'), key: 'expireDate', dataIndex: 'expireDate', width: 110, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('system.notice.publish'), t('common.action.edit'), t('common.action.delete')]), fixed: 'right' }
+  { title: t('system.notice.progress'), key: 'progress', width: 150, exportValue: (r) => (r.totalCount ? `${r.readCount}/${r.totalCount}` : '') },
+  { title: t('system.notice.publishTime'), key: 'publish', dataIndex: 'publishTime', width: 170 },
+  { title: t('system.notice.expireDate'), key: 'expireDate', dataIndex: 'expireDate', width: 110 },
+  actionColumn(3, [t('system.notice.withdraw')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'sys-notice')
 const showSearch = ref(true)

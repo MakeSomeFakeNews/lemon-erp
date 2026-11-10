@@ -60,7 +60,9 @@
               </template>
               <template v-else-if="column.key === 'finalAmount'"><b>{{ formatMoney(record.finalAmount) }}</b></template>
               <template v-else-if="column.key === 'action'">
-                <a-button v-if="sheet.status === CommissionStatus.DRAFT" v-perm="'fin:commission:edit'" type="link" size="small" @click="openAdjust(record)">{{ $t('fin.commission.adjust') }}</a-button>
+                <TableActions
+                  :actions="[{ type: 'modify', label: $t('fin.commission.adjust'), show: sheet.status === CommissionStatus.DRAFT, perm: 'fin:commission:edit', onClick: () => openAdjust(record) }]"
+                />
               </template>
             </template>
           </a-table>
@@ -86,12 +88,12 @@
                 <a-tag :color="record.status === 0 ? 'default' : 'green'" :bordered="false">{{ record.status === 0 ? $t('common.status.disabled') : $t('common.status.enabled') }}</a-tag>
               </template>
               <template v-else-if="column.key === 'action'">
-                <span v-perm="'fin:commission:rule'" class="table-actions">
-                  <a-button type="link" size="small" @click="drawer.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-                  <a-popconfirm :title="$t('fin.commission.confirmDeleteRule', { name: record.name })" @confirm="removeRule(record.id)">
-                    <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                  </a-popconfirm>
-                </span>
+                <TableActions
+                  :actions="[
+                    { type: 'edit', perm: 'fin:commission:rule', onClick: () => drawer.openEdit(record) },
+                    { type: 'delete', perm: 'fin:commission:rule', confirm: $t('fin.commission.confirmDeleteRule', { name: record.name }), onClick: () => removeRule(record.id) }
+                  ]"
+                />
               </template>
             </template>
           </a-table>
@@ -156,6 +158,8 @@ import { CalculatorOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import {
   addCommissionRule,
@@ -192,7 +196,7 @@ const sheetColumns = [
   { title: t('fin.commission.adjust'), key: 'adjustAmount', width: 110, align: 'right' },
   { title: t('fin.commission.finalCommission'), key: 'finalAmount', width: 130, align: 'right' },
   { title: t('fin.commission.adjustReason'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('fin.commission.adjust')])
 ]
 const detailColumns = [
   { title: t('fin.commission.basisShort'), key: 'basis', width: 110 },
@@ -264,7 +268,7 @@ const ruleColumns = [
   { title: t('fin.commission.rate'), key: 'rate', width: 90, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 90 },
   { title: t('common.field.remark'), dataIndex: 'remark', width: 200, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
+  actionColumn(2)
 ]
 const ruleScrollX = ruleColumns.reduce((sum, c) => sum + c.width, 0)
 const rules = ref([])

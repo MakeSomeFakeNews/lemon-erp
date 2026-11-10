@@ -89,21 +89,7 @@
             <div class="sub-text">{{ record.postByName ? $t('fin.voucher.postedBy', { name: record.postByName }) : record.auditByName ? $t('fin.voucher.auditedBy', { name: record.auditByName }) : $t('fin.voucher.unaudited') }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">{{ $t('common.action.view') }}</a-button>
-              <a-button
-                v-if="record.status === VoucherStatus.DRAFT && record.sourceType === VoucherSource.MANUAL"
-                v-perm="'fin:voucher:edit'"
-                type="link"
-                size="small"
-                @click="form.openEdit(record)"
-              >
-                {{ $t('common.action.edit') }}
-              </a-button>
-              <a-button v-if="canReverse(record)" v-perm="'fin:voucher:reverse'" type="link" size="small" danger @click="openReverse(record)">
-                {{ $t('fin.voucher.reverse') }}
-              </a-button>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -122,6 +108,8 @@ import { DownOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
@@ -142,14 +130,25 @@ const userStore = useUserStore()
 const dict = useDict('fin_voucher_status', 'fin_voucher_source')
 
 const columns = [
-  { title: t('fin.voucher.voucherNo'), key: 'voucherNo', width: 130 },
-  { title: t('common.field.date'), dataIndex: 'voucherDate', width: 100 },
-  { title: t('fin.voucher.summary'), dataIndex: 'summary', width: 200, ellipsis: true },
-  { title: t('common.field.amount'), key: 'amount', width: 130, align: 'right' },
-  { title: t('common.field.status'), key: 'status', width: 140, dict: 'fin_voucher_status' },
-  { title: t('fin.voucher.source'), key: 'source', width: 140, dict: 'fin_voucher_source' },
-  { title: t('fin.voucher.people'), key: 'people', width: 120 },
-  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
+  { title: t('fin.voucher.voucherNo'), key: 'voucherNo', width: 140 },
+  { title: t('common.field.date'), dataIndex: 'voucherDate', width: 110 },
+  { title: t('fin.voucher.summary'), dataIndex: 'summary', width: 260, ellipsis: true },
+  { title: t('common.field.amount'), key: 'amount', width: 140, align: 'right' },
+  { title: t('common.field.status'), key: 'status', width: 150, dict: 'fin_voucher_status' },
+  { title: t('fin.voucher.source'), key: 'source', width: 160, dict: 'fin_voucher_source' },
+  { title: t('fin.voucher.people'), key: 'people', width: 170 },
+  actionColumn(3, [t('common.action.view')])
+]
+// 行操作：查看；手工录入的草稿可编辑；可冲销的凭证冲销
+const rowActions = (record) => [
+  { type: 'view', onClick: () => openDetail(record) },
+  {
+    type: 'edit',
+    show: record.status === VoucherStatus.DRAFT && record.sourceType === VoucherSource.MANUAL,
+    perm: 'fin:voucher:edit',
+    onClick: () => form.value.openEdit(record)
+  },
+  { type: 'reverse', label: t('fin.voucher.reverse'), show: canReverse(record), perm: 'fin:voucher:reverse', onClick: () => openReverse(record) }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-voucher')
 const showSearch = ref(true)

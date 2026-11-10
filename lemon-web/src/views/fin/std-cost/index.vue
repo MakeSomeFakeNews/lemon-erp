@@ -40,7 +40,7 @@
             <div v-if="record.releaseTime" class="sub-text">{{ record.releaseTime }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
+            <TableActions :actions="[{ type: 'view', onClick: () => openDetail(record.id) }]" />
           </template>
         </template>
       </a-table>
@@ -138,15 +138,7 @@
             <template v-else-if="column.key === 'stdHours'">{{ record.make ? fmt(record.stdHours) : '' }}</template>
             <template v-else-if="column.num">{{ record.make ? fmt(record[column.key]) : column.key === 'materialCost' ? fmt(record.materialCost) : '' }}</template>
             <template v-else-if="column.key === 'action'">
-              <span class="table-actions">
-                <a-button v-if="record.make" type="link" size="small" @click="openBreakdown(record)">{{ $t('fin.stdCost.breakdown') }}</a-button>
-                <template v-else-if="editable">
-                  <a-button type="link" size="small" @click="openPrice(record)">{{ $t('fin.stdCost.changePrice') }}</a-button>
-                  <a-popconfirm :title="$t('fin.stdCost.confirmRemovePart')" @confirm="removePrice(record)">
-                    <a-button type="link" size="small" danger>{{ $t('common.action.delete') }}</a-button>
-                  </a-popconfirm>
-                </template>
-              </span>
+              <TableActions :actions="itemActions(record)" />
             </template>
           </template>
         </a-table>
@@ -202,6 +194,8 @@ import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SubPage from '@/components/SubPage.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import {
@@ -230,7 +224,7 @@ const columns = [
   { title: t('fin.stdCost.materialCount'), key: 'count', width: 160 },
   { title: t('fin.stdCost.missingPrice'), key: 'zero', width: 200 },
   { title: t('common.field.status'), key: 'status', width: 200 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-std-cost')
 const { list, loading, size, pagination, load, onTableChange } = useTable(pageStdCost, reactive({}))
@@ -265,8 +259,16 @@ const itemColumns = [
   { title: t('fin.stdCost.overhead'), key: 'overheadCost', num: true, width: 120, align: 'right' },
   { title: t('fin.stdCost.unitStdCost'), key: 'unitCost', width: 150, align: 'right' },
   { title: t('fin.stdCost.stdHours'), key: 'stdHours', width: 110, align: 'right' },
-  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
+  actionColumn(2, [t('fin.stdCost.breakdown')])
 ]
+// 明细行操作：自制件看成本构成；外购件（版本可修改时）改价、删除
+const itemActions = (record) =>
+  record.make
+    ? [{ key: 'breakdown', type: 'list', label: t('fin.stdCost.breakdown'), onClick: () => openBreakdown(record) }]
+    : [
+        { type: 'modify', label: t('fin.stdCost.changePrice'), show: editable.value, onClick: () => openPrice(record) },
+        { type: 'delete', show: editable.value, confirm: t('fin.stdCost.confirmRemovePart'), onClick: () => removePrice(record) }
+      ]
 const detailOpen = ref(false)
 const detail = ref()
 const editable = computed(() => detail.value?.status === StdCostStatus.DRAFT && userStore.hasPerm('fin:stdCost:edit'))

@@ -93,45 +93,13 @@
             <span v-else>-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
-              </a-button>
-              <template v-if="record.status === WmsDocStatus.DRAFT">
-                <a-button v-perm="`wms:${kind}:edit`" type="link" size="small" @click="form.openEdit(record)">
-                  <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-                </a-button>
-                <a-dropdown v-if="moreActions.length">
-                  <a-button type="link" size="small">{{ $t('common.action.more') }}<DownOutlined /></a-button>
-                  <template #overlay>
-                    <a-menu @click="({ key }) => onMoreAction(key, record)">
-                      <a-menu-item v-for="a in moreActions" :key="a.key" :danger="a.danger">
-                        <component :is="a.icon" /> {{ a.label }}
-                      </a-menu-item>
-                    </a-menu>
-                  </template>
-                </a-dropdown>
-              </template>
-              <span v-if="kind === 'transfer' && record.status === WmsDocStatus.TRANSIT" v-perm="'wms:transfer:receive'">
+            <TableActions :actions="rowActions(record)">
+              <template #receive="{ action, text }">
                 <ReceiveConfirm :warehouse-name="record.toWarehouseName" @confirm="(date) => receive(record, date)">
-                  <a-button type="link" size="small">
-                    <template #icon><InboxOutlined /></template>{{ $t('wms.common.receive') }}
-                  </a-button>
+                  <TableActionButton :action="action" :text="text" />
                 </ReceiveConfirm>
-              </span>
-              <span v-if="canReverse(record)" v-perm="`wms:${kind}:reverse`">
-                <a-popconfirm
-                  :title="$t('wms.doc.confirmReverse', { kind: conf.label, no: record.docNo })"
-                  :description="$t('wms.doc.reverseTip')"
-                  ok-type="danger"
-                  @confirm="reverse(record)"
-                >
-                  <a-button type="link" danger size="small">
-                    <template #icon><RollbackOutlined /></template>{{ $t('wms.common.reverse') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+              </template>
+            </TableActions>
           </template>
         </template>
       </a-table>
@@ -143,19 +111,15 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Modal, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import {
   ArrowRightOutlined,
   CheckOutlined,
   DeleteOutlined,
-  DownOutlined,
-  EditOutlined,
-  EyeOutlined,
   InboxOutlined,
-  PlusOutlined,
-  RollbackOutlined
+  PlusOutlined
 } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -166,10 +130,12 @@ import StockDocForm from './StockDocForm.vue'
 import WarehouseSelect from './WarehouseSelect.vue'
 import WarehouseNames from './WarehouseNames.vue'
 import { confirmDoc, deleteDoc, pageDoc, receiveTransfer, reverseDoc } from '@/api/wms/doc'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import TableActionButton from '@/components/common/TableActionButton.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
-import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { DOC_KINDS, canReverse, formatQty, negativeClass, warehouseText } from './wms'
 import { useAction } from '@/composables/useAction'
@@ -183,7 +149,6 @@ const props = defineProps({
 })
 
 const { t } = useI18n()
-const userStore = useUserStore()
 const conf = DOC_KINDS[props.kind]
 const dict = useDict('wms_doc_status', ...(conf.typeDict ? [conf.typeDict, conf.categoryDict] : []))
 
@@ -202,7 +167,7 @@ const columns = [
     ]
   },
   conf.typeDict ? { title: conf.typeLabel, key: 'bizType', width: 120, dict: conf.typeDict } : null,
-  conf.categoryDict ? { title: conf.categoryLabel, key: 'ioCategory', width: 100, dict: conf.categoryDict } : null,
+  conf.categoryDict ? { title: conf.categoryLabel, key: 'ioCategory', width: 110, dict: conf.categoryDict } : null,
   props.kind === 'transfer'
     ? {
         title: t('wms.doc.fromTo'),
@@ -214,27 +179,21 @@ const columns = [
           { title: t('wms.doc.transferMode'), exportValue: (r) => (isTrue(r.inTransit) ? t('wms.doc.inTransitTransfer') : t('wms.doc.directTransfer')) }
         ]
       }
-    : { title: t('wms.common.warehouse'), key: 'warehouse', width: 120, exportValue: warehouseText },
+    : { title: t('wms.common.warehouse'), key: 'warehouse', width: 140, exportValue: warehouseText },
   { title: t('wms.common.bizDate'), dataIndex: 'bizDate', width: 120 },
   { title: t('wms.common.totalQty'), key: 'totalQty', width: 110, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'wms_doc_status' },
-  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 110, defaultHidden: true },
+  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 110 },
   {
     title: t('wms.doc.confirmed'),
     key: 'confirm',
     width: 160,
-    defaultHidden: true,
     exportValue: (r) => (r.confirmTime ? [r.confirmByName, r.confirmTime].filter(Boolean).join(' ') : '')
   },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
-  {
-    title: t('common.action.operation'),
-    key: 'action',
-    // 草稿：查看、编辑、更多；在途调拨：查看、收货；已确认：查看、冲销
-    width: actionWidth([t('common.action.view'), [t('common.action.edit'), t('wms.common.receive')], [t('common.action.more'), t('wms.common.reverse')]]),
-    fixed: 'right'
-  }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
+  // 草稿：查看、编辑、确认、删除；在途调拨：查看、收货；已确认：查看、冲销
+  actionColumn(4, [t('common.action.view')])
 ].filter(Boolean)
 const { checked, visibleColumns, scrollX } = useColumns(columns, `wms-${props.kind}`)
 const showSearch = ref(true)
@@ -272,32 +231,51 @@ function onEditFromDetail(record) {
   form.value.openEdit(record)
 }
 
-const moreActions = computed(() => {
-  const actions = []
-  if (userStore.hasPerm(`wms:${props.kind}:confirm`)) actions.push({ key: 'confirm', label: t('wms.doc.confirm'), icon: CheckOutlined })
-  if (userStore.hasPerm(`wms:${props.kind}:remove`)) actions.push({ key: 'remove', label: t('common.action.delete'), icon: DeleteOutlined, danger: true })
-  return actions
-})
+// 行操作
+const rowActions = (record) => {
+  const draft = record.status === WmsDocStatus.DRAFT
+  return [
+    { type: 'view', onClick: () => openDetail(record) },
+    { type: 'edit', show: draft, perm: `wms:${props.kind}:edit`, onClick: () => form.value.openEdit(record) },
+    {
+      key: 'confirm',
+      label: t('wms.doc.confirm'),
+      icon: CheckOutlined,
+      show: draft,
+      perm: `wms:${props.kind}:confirm`,
+      confirm: { title: t('wms.doc.confirmDoc', { kind: conf.label, no: record.docNo }), description: t('wms.doc.confirmContent') },
+      onClick: () => confirm(record)
+    },
+    {
+      type: 'delete',
+      show: draft,
+      perm: `wms:${props.kind}:remove`,
+      confirm: t('wms.doc.confirmDeleteDoc', { kind: conf.label, no: record.docNo }),
+      onClick: () => remove([record.id])
+    },
+    {
+      key: 'receive',
+      slot: 'receive',
+      label: t('wms.common.receive'),
+      icon: InboxOutlined,
+      show: props.kind === 'transfer' && record.status === WmsDocStatus.TRANSIT,
+      perm: 'wms:transfer:receive'
+    },
+    {
+      type: 'reverse',
+      label: t('wms.common.reverse'),
+      show: canReverse(record),
+      perm: `wms:${props.kind}:reverse`,
+      confirm: { title: t('wms.doc.confirmReverse', { kind: conf.label, no: record.docNo }), description: t('wms.doc.reverseTip'), okType: 'danger' },
+      onClick: () => reverse(record)
+    }
+  ]
+}
 
-function onMoreAction(key, record) {
-  if (key === 'confirm') {
-    Modal.confirm({
-      title: t('wms.doc.confirmDoc', { kind: conf.label, no: record.docNo }),
-      content: t('wms.doc.confirmContent'),
-      async onOk() {
-        const flow = await confirmDoc(props.kind, record.id)
-        message.success(flow ? t('wms.doc.submittedApproval') : t('wms.doc.confirmOk'))
-        load()
-      }
-    })
-  }
-  if (key === 'remove') {
-    Modal.confirm({
-      title: t('wms.doc.confirmDeleteDoc', { kind: conf.label, no: record.docNo }),
-      okType: 'danger',
-      onOk: () => remove([record.id])
-    })
-  }
+async function confirm(record) {
+  const flow = await confirmDoc(props.kind, record.id)
+  message.success(flow ? t('wms.doc.submittedApproval') : t('wms.doc.confirmOk'))
+  load()
 }
 
 const isTrue = (v) => v === true || v === 1

@@ -62,7 +62,7 @@
                 <span v-else class="sub-text">{{ $t('scm.eval.notEvaluated') }}</span>
               </template>
               <template v-else-if="column.key === 'action'">
-                <a-button v-perm="'scm:eval:add'" type="link" size="small" @click="openEval(record)">{{ $t('scm.eval.evaluate') }}</a-button>
+                <TableActions :actions="[{ key: 'evaluate', label: $t('scm.eval.evaluate'), icon: StarOutlined, perm: 'scm:eval:add', onClick: () => openEval(record) }]" />
               </template>
             </template>
           </a-table>
@@ -98,11 +98,7 @@
                 <DictTag type="scm_supplier_level" :value="record.grade" />
               </template>
               <template v-else-if="column.key === 'action'">
-                <span v-perm="'scm:eval:remove'">
-                  <a-popconfirm :title="$t('scm.eval.confirmDelete')" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                  </a-popconfirm>
-                </span>
+                <TableActions :actions="[{ type: 'delete', perm: 'scm:eval:remove', confirm: $t('scm.eval.confirmDelete'), onClick: () => remove(record.id) }]" />
               </template>
             </template>
           </a-table>
@@ -145,7 +141,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, StarOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import { addEval, deleteEval, pageEval, supplierKpi } from '@/api/scm/partner'
@@ -153,20 +149,22 @@ import { sumWidth } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 import { formatMoney } from '@/components/scm/scm'
 import { formatQty } from '@/components/wms/wms'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 
 const { t } = useI18n()
 const tab = ref('kpi')
 
 const kpiColumns = [
-  { title: t('scm.eval.supplier'), key: 'supplier', width: 180 },
-  { title: t('scm.eval.level'), key: 'level', width: 80 },
-  { title: t('scm.eval.orderCount'), dataIndex: 'orderCount', width: 80, align: 'right' },
-  { title: t('scm.eval.purchaseAmount'), key: 'purchaseAmount', width: 130, align: 'right' },
-  { title: t('scm.eval.onTimeRate'), key: 'onTimeRate', width: 140 },
-  { title: t('scm.eval.iqcPassRate'), key: 'iqcPassRate', width: 140 },
-  { title: t('scm.eval.returnRate'), key: 'returnRate', width: 140 },
-  { title: t('scm.eval.last'), key: 'last', width: 150 },
-  { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
+  { title: t('scm.eval.supplier'), key: 'supplier', width: 220 },
+  { title: t('scm.eval.level'), key: 'level', width: 90 },
+  { title: t('scm.eval.orderCount'), dataIndex: 'orderCount', width: 90, align: 'right' },
+  { title: t('scm.eval.purchaseAmount'), key: 'purchaseAmount', width: 140, align: 'right' },
+  { title: t('scm.eval.onTimeRate'), key: 'onTimeRate', width: 180 },
+  { title: t('scm.eval.iqcPassRate'), key: 'iqcPassRate', width: 170 },
+  { title: t('scm.eval.returnRate'), key: 'returnRate', width: 170 },
+  { title: t('scm.eval.last'), key: 'last', width: 160 },
+  actionColumn(1, [t('scm.eval.evaluate')])
 ]
 const kpiScrollX = sumWidth(kpiColumns)
 const kpiQuery = reactive({ keyword: undefined, range: undefined })
@@ -183,7 +181,7 @@ const recordColumns = [
   { title: t('scm.eval.comment'), dataIndex: 'remark', width: 180, ellipsis: true },
   { title: t('scm.eval.evaluator'), dataIndex: 'createByName', width: 110 },
   { title: t('scm.eval.evalTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
+  actionColumn(1, [t('common.action.delete')])
 ]
 const recordQuery = reactive({ supplierId: undefined, period: undefined })
 const recordTable = useTable(pageEval, recordQuery)

@@ -66,33 +66,7 @@
             <DictTag type="mes_plan_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <template v-if="record.status === PlanStatus.DRAFT">
-                <a-button v-perm="'mes:plan:edit'" type="link" size="small" @click="openForm(record)">{{ $t('common.action.edit') }}</a-button>
-                <a-button v-perm="'mes:plan:confirm'" type="link" size="small" @click="confirmOne(record)">{{ $t('mes.plan.confirm') }}</a-button>
-                <span v-perm="'mes:plan:remove'">
-                  <a-popconfirm :title="$t('mes.plan.confirmDelete', { no: record.planNo })" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                  </a-popconfirm>
-                </span>
-              </template>
-              <template v-else-if="record.status === PlanStatus.CONFIRMED">
-                <a-button
-                  v-if="Number(record.woQty) < Number(record.qty)"
-                  v-perm="'mes:wo:add'"
-                  type="link"
-                  size="small"
-                  @click="openToWo(record)"
-                >
-                  {{ $t('mes.plan.toWo') }}
-                </a-button>
-                <span v-perm="'mes:plan:confirm'">
-                  <a-popconfirm :title="$t('mes.plan.closeConfirm')" @confirm="close(record.id)">
-                    <a-button type="link" size="small">{{ $t('common.action.close') }}</a-button>
-                  </a-popconfirm>
-                </span>
-              </template>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -178,7 +152,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { CalculatorOutlined, CheckOutlined, PlusOutlined, ShoppingOutlined } from '@ant-design/icons-vue'
+import { CalculatorOutlined, CheckOutlined, CloseCircleOutlined, NodeExpandOutlined, PlusOutlined, ShoppingOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -187,7 +161,9 @@ import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { addPlan, closePlan, confirmPlan, deletePlan, pagePlan, planFromSales, planToWo, runMrp, updatePlan } from '@/api/mes/plan'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { pageOrder } from '@/api/scm/order'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -205,11 +181,12 @@ const columns = [
   { title: t('common.field.quantity'), key: 'qty', width: 110, align: 'right' },
   { title: t('mes.plan.progress'), key: 'progress', width: 120, align: 'right' },
   { title: t('mes.plan.dueDate'), dataIndex: 'dueDate', width: 110 },
-  { title: t('mes.plan.source'), key: 'source', width: 200, defaultHidden: true },
+  { title: t('mes.plan.source'), key: 'source', width: 200 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'mes_plan_status' },
-  { title: t('mes.wo.preparedByCol'), dataIndex: 'createByName', width: 110, defaultHidden: true },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([{ text: t('common.action.edit'), icon: false }, [{ text: t('mes.plan.confirm'), icon: false }, { text: t('mes.plan.toWo'), icon: false }], { text: t('common.action.delete'), icon: false }]), fixed: 'right' }
+  { title: t('mes.wo.preparedByCol'), dataIndex: 'createByName', width: 110 },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  // 草稿：编辑、确认、删除；已确认：转工单、关闭
+  actionColumn(3, [t('common.action.close')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-plan')
 const showSearch = ref(true)
@@ -292,6 +269,33 @@ async function confirmSelected() {
 const close = useAction(closePlan, { successKey: 'mes.wo.closed', reload: () => load() })
 
 const remove = useAction(deletePlan, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+
+const rowActions = (record) => {
+  const draft = record.status === PlanStatus.DRAFT
+  const confirmed = record.status === PlanStatus.CONFIRMED
+  return [
+    { type: 'edit', show: draft, perm: 'mes:plan:edit', onClick: () => openForm(record) },
+    { key: 'confirm', label: t('mes.plan.confirm'), icon: CheckOutlined, show: draft, perm: 'mes:plan:confirm', onClick: () => confirmOne(record) },
+    {
+      key: 'toWo',
+      label: t('mes.plan.toWo'),
+      icon: NodeExpandOutlined,
+      show: confirmed && Number(record.woQty) < Number(record.qty),
+      perm: 'mes:wo:add',
+      onClick: () => openToWo(record)
+    },
+    {
+      key: 'close',
+      label: t('common.action.close'),
+      icon: CloseCircleOutlined,
+      show: confirmed,
+      perm: 'mes:plan:confirm',
+      confirm: t('mes.plan.closeConfirm'),
+      onClick: () => close(record.id)
+    },
+    { type: 'delete', show: draft, perm: 'mes:plan:remove', confirm: t('mes.plan.confirmDelete', { no: record.planNo }), onClick: () => remove(record.id) }
+  ]
+}
 
 // ---------------------------------------------------------------- MRP
 const running = ref(false)

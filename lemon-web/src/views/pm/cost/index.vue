@@ -76,11 +76,9 @@
               <DictTag v-if="record.status && record.status !== ApproveStatus.APPROVED" type="sys_approve_status" :value="record.status" />
             </template>
             <template v-else-if="column.key === 'action'">
-              <span v-if="record.source === CostSource.MANUAL" v-perm="'pm:cost:remove'">
-                <a-popconfirm :title="$t('pm.cost.confirmDelete')" @confirm="removeCost(record.id)">
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
+              <TableActions
+                :actions="[{ type: 'delete', show: record.source === CostSource.MANUAL, perm: 'pm:cost:remove', confirm: $t('pm.cost.confirmDelete'), onClick: () => removeCost(record.id) }]"
+              />
             </template>
           </template>
         </a-table>
@@ -134,7 +132,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, ExportOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { EditOutlined, ExportOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import DictTag from '@/components/DictTag.vue'
 import EChart from '@/components/charts/EChart.vue'
 import IssueForm from '@/components/pm/IssueForm.vue'
@@ -230,7 +230,7 @@ const costColumns = [
   { title: t('common.field.description'), dataIndex: 'description', ellipsis: true },
   { title: t('pm.cost.source'), key: 'source', width: 200 },
   { title: t('pm.common.enteredBy'), dataIndex: 'createByName', width: 110 },
-  { title: '', key: 'action', width: 60, fixed: 'right' }
+  actionColumn(1, [t('common.action.delete')], { title: '' })
 ]
 
 async function refresh() {

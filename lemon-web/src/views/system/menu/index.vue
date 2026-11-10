@@ -61,27 +61,19 @@
             <DictTag v-if="record.type !== MenuType.F && record.visible === 0" type="sys_show_hide" :value="record.visible" />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button
-                v-if="record.type !== MenuType.F"
-                v-perm="'sys:menu:add'"
-                type="link"
-                size="small"
-                @click="openCreate(record)"
-              >
-                <template #icon><PlusOutlined /></template>{{ $t('common.action.add') }}
-              </a-button>
-              <a-button v-perm="'sys:menu:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-perm="'sys:menu:remove'">
-                <a-popconfirm :title="$t('system.menu.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                  <a-button type="link" size="small" danger :disabled="!!record.children?.length">
-                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'add', show: record.type !== MenuType.F, perm: 'sys:menu:add', onClick: () => openCreate(record) },
+                { type: 'edit', perm: 'sys:menu:edit', onClick: () => drawer.openEdit(record) },
+                {
+                  type: 'delete',
+                  perm: 'sys:menu:remove',
+                  disabled: !!record.children?.length,
+                  confirm: $t('system.menu.confirmDelete', { name: record.name }),
+                  onClick: () => remove(record.id)
+                }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -173,8 +165,6 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
-  DeleteOutlined,
-  EditOutlined,
   NodeCollapseOutlined,
   NodeExpandOutlined,
   PlusOutlined,
@@ -189,6 +179,8 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import HighlightText from '@/components/tree/HighlightText.vue'
 import { addMenu, deleteMenu, menuTree, updateMenu } from '@/api/system/menu'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { toOptions } from '@/utils/dict'
@@ -207,7 +199,7 @@ const columns = [
   { title: t('system.menu.perms'), key: 'perms', width: 200 },
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
   { title: t('common.field.status'), key: 'status', width: 140 },
-  { title: t('common.action.operation'), key: 'action', width: 230, fixed: 'right' }
+  actionColumn(3, [t('common.action.edit')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'system-menu')
 const showSearch = ref(true)

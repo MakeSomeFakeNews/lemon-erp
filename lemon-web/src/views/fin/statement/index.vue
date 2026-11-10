@@ -43,7 +43,7 @@
             <a-tooltip v-if="record.supplierRemark" :title="record.supplierRemark"><div class="sub-text ellipsis">{{ record.supplierRemark }}</div></a-tooltip>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ $t('common.action.view') }}</a-button>
+            <TableActions :actions="[{ type: 'view', onClick: () => openDetail(record.id) }]" />
           </template>
         </template>
       </a-table>
@@ -106,6 +106,8 @@ import { PlusOutlined } from '@ant-design/icons-vue'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
 import DictTag from '@/components/DictTag.vue'
 import SubPage from '@/components/SubPage.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import TableToolbar from '@/components/TableToolbar.vue'
 import StatementLines from '@/components/fin/StatementLines.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
@@ -124,13 +126,13 @@ const dict = useDict('fin_statement_status')
 const userStore = useUserStore()
 
 const columns = [
-  { title: t('fin.statement.statementNo'), key: 'statementNo', width: 170 },
-  { title: t('fin.statement.supplier'), dataIndex: 'supplierName', width: 170, ellipsis: true },
+  { title: t('fin.statement.statementNo'), key: 'statementNo', width: 180 },
+  { title: t('fin.statement.supplier'), dataIndex: 'supplierName', width: 200, ellipsis: true },
   { title: t('fin.statement.period'), key: 'period', width: 210 },
-  { title: t('fin.statement.amount'), key: 'amount', width: 140, align: 'right' },
+  { title: t('fin.statement.amount'), key: 'amount', width: 160, align: 'right' },
   { title: t('fin.statement.invoice'), key: 'invoice', width: 200 },
-  { title: t('common.field.status'), key: 'status', width: 120 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  { title: t('common.field.status'), key: 'status', width: 130 },
+  actionColumn(1, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-statement')
 const query = reactive({ status: undefined, supplierId: undefined, keyword: undefined })

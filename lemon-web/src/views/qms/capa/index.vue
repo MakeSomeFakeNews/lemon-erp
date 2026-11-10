@@ -35,7 +35,13 @@
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="qms_capa_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record.id)">{{ record.status === CapaStatus.OPEN ? $t('qms.capa.handle') : $t('common.action.view') }}</a-button>
+            <TableActions
+              :actions="[
+                record.status === CapaStatus.OPEN
+                  ? { type: 'edit', label: $t('qms.capa.handle'), onClick: () => openDetail(record.id) }
+                  : { type: 'view', onClick: () => openDetail(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -170,6 +176,8 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import { addCapa, deleteCapa, getCapa, pageCapa, pageNcr, saveCapaStep, submitCapa, updateCapa, verifyCapa } from '@/api/qms'
 import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -199,13 +207,13 @@ const STEP_HINTS = {
 
 const columns = [
   { title: t('qms.capa.no'), key: 'capaNo', width: 170 },
-  { title: t('qms.capa.title'), dataIndex: 'title', width: 240, ellipsis: true },
+  { title: t('qms.capa.title'), dataIndex: 'title', width: 260, ellipsis: true },
   { title: t('qms.capa.owner'), dataIndex: 'ownerName', width: 100 },
   { title: t('mes.wo.opProgress'), key: 'progress', width: 160 },
   { title: t('qms.capa.due'), key: 'dueDate', width: 110 },
   { title: t('common.field.status'), key: 'status', width: 100 },
   { title: t('qms.capa.registerTime'), dataIndex: 'createTime', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  actionColumn(1, [t('qms.capa.handle'), t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'qms-capa')
 const query = reactive({ status: undefined, keyword: undefined })

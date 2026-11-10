@@ -61,19 +61,7 @@
             <div class="sub-text">{{ record.createTime }}</div>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button type="link" size="small" @click="openDetail(record.id)">
-                <template #icon><EyeOutlined /></template>{{ $t('common.action.view') }}
-              </a-button>
-              <a-button v-if="record.status === SupplementStatus.APPROVED" v-perm="'mes:supplement:issue'" type="link" size="small" @click="openIssue(record.id)">
-                {{ $t('mes.supplement.issue') }}
-              </a-button>
-              <span v-if="canCancel(record)" v-perm="'mes:supplement:add'">
-                <a-popconfirm :title="$t('mes.supplement.cancelConfirm', { no: record.suppNo })" @confirm="cancel(record.id)">
-                  <a-button type="link" danger size="small">{{ $t('mes.supplement.cancel') }}</a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -124,7 +112,7 @@
 <script setup>
 import SubPage from '@/components/SubPage.vue'
 import { onMounted, reactive, ref } from 'vue'
-import { ApartmentOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { ApartmentOutlined, ExportOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -133,7 +121,9 @@ import SupplementForm from '@/components/mes/SupplementForm.vue'
 import WoDocForm from '@/components/mes/WoDocForm.vue'
 import { cancelSupplement, getSupplement, pageSupplement } from '@/api/mes/wo'
 import { formatQty } from '@/components/wms/wms'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
@@ -152,9 +142,9 @@ const columns = [
   { title: t('common.field.quantity'), key: 'totalQty', width: 90, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 120, dict: 'mes_supplement_status' },
   { title: t('mes.supplement.applicant'), key: 'creator', width: 170 },
-  { title: t('mes.supplement.docNo'), dataIndex: 'docNo', width: 170, defaultHidden: true },
-  { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true, width: 180, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), { text: t('mes.supplement.issue'), icon: false }, { text: t('mes.supplement.cancel'), icon: false }]), fixed: 'right' }
+  { title: t('mes.supplement.docNo'), dataIndex: 'docNo', width: 170 },
+  { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true, width: 180 },
+  actionColumn(3, [t('common.action.view')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-supplement')
 const showSearch = ref(true)
@@ -173,6 +163,28 @@ onMounted(load)
 const canCancel = (r) => [SupplementStatus.APPROVING, SupplementStatus.APPROVED].includes(r.status) && r.createBy === userStore.user?.id
 
 const cancel = useAction(cancelSupplement, { successKey: 'mes.supplement.cancelled', reload: () => load() })
+
+// 行操作：查看；已批准可发料；申请人可撤销审批中 / 已批准的补料单
+const rowActions = (record) => [
+  { type: 'view', onClick: () => openDetail(record.id) },
+  {
+    key: 'issue',
+    label: t('mes.supplement.issue'),
+    icon: ExportOutlined,
+    show: record.status === SupplementStatus.APPROVED,
+    perm: 'mes:supplement:issue',
+    onClick: () => openIssue(record.id)
+  },
+  {
+    type: 'cancel',
+    label: t('mes.supplement.cancel'),
+    danger: true,
+    show: canCancel(record),
+    perm: 'mes:supplement:add',
+    confirm: t('mes.supplement.cancelConfirm', { no: record.suppNo }),
+    onClick: () => cancel(record.id)
+  }
+]
 
 // ---------------------------------------------------------------- 新增、发料
 const formOpen = ref(false)

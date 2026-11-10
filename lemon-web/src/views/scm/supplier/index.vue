@@ -66,24 +66,7 @@
           </template>
           <template v-else-if="column.custom">{{ cfCell(record, column) }}</template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="'scm:supplier:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <a-button type="link" size="small" @click="openPrices(record)">
-                <template #icon><DollarOutlined /></template>{{ $t('scm.supplier.prices') }}
-              </a-button>
-              <a-dropdown>
-                <a-button type="link" size="small">{{ $t('common.action.more') }}<DownOutlined /></a-button>
-                <template #overlay>
-                  <a-menu @click="({ key }) => onMoreAction(key, record)">
-                    <a-menu-item v-for="a in moreActions" :key="a.key" :danger="a.danger">
-                      <component :is="a.icon" /> {{ a.label }}
-                    </a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -181,7 +164,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, DollarOutlined, DownOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons-vue'
+import { DollarOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -192,7 +175,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import PortalAccountDrawer from '@/components/scm/PortalAccountDrawer.vue'
 import SupplierPriceDrawer from '@/components/scm/SupplierPriceDrawer.vue'
 import { addPartner, changePartnerStatus, deletePartner, getPartner, pagePartner, updatePartner, importPartner } from '@/api/scm/partner'
-import { actionWidth, sumWidth, useColumns } from '@/composables/useColumns'
+import { sumWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -204,6 +187,8 @@ import { useAction } from '@/composables/useAction'
 import AiExtractButton from '@/components/ai/AiExtractButton.vue'
 import AiPrefillAlert from '@/components/ai/AiPrefillAlert.vue'
 import { useAiPrefill } from '@/composables/useAiPrefill'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -239,11 +224,10 @@ const columns = [
   { title: t('scm.supplier.level'), key: 'level', width: 100, dict: 'scm_supplier_level' },
   { title: t('scm.supplier.contact'), key: 'contact', width: 150 },
   { title: t('scm.supplier.paymentDays'), key: 'paymentDays', width: 110 },
-  { title: t('scm.supplier.address'), dataIndex: 'address', width: 220, ellipsis: true, defaultHidden: true },
+  { title: t('scm.supplier.address'), dataIndex: 'address', width: 220, ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true, defaultHidden: true },
-  // 资料、门户账号、删除收进「更多」
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('scm.supplier.prices'), t('common.action.more')]), fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true },
+  actionColumn(4)
 ]
 const { checked, visibleColumns } = useColumns(columns, 'scm-supplier')
 const showSearch = ref(true)
@@ -290,39 +274,16 @@ const { formRef, form } = drawer
 // 智能录入：名片、营业执照等识别结果打开新增表单并预填
 const ai = useAiPrefill('supplier', (data) => drawer.openCreate(data), () => drawer.open.value)
 
-const remove = useAction((id) => deletePartner('supplier', id), {
-  confirm: (id, name) => ({ title: t('scm.supplier.confirmDelete', { name }), okType: 'danger' }),
-  successKey: 'common.msg.deleteSuccess',
-  reload: () => load()
-})
+const remove = useAction((id) => deletePartner('supplier', id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
-/** 操作列「更多」：资料、门户账号、删除 */
-const moreActions = computed(() => {
-  const actions = [{ key: 'extras', label: t('scm.supplier.extras'), icon: PaperClipOutlined }]
-  if (userStore.hasPerm('scm:supplier:portal')) actions.push({ key: 'portal', label: t('scm.supplier.portal'), icon: UserOutlined })
-  if (userStore.hasPerm('scm:supplier:remove')) actions.push({ key: 'remove', label: t('common.action.delete'), icon: DeleteOutlined, danger: true })
-  return actions
-})
-
-function onMoreAction(key, record) {
-  if (key === 'extras') openExtras(record)
-  if (key === 'portal') openPortal(record)
-  if (key === 'remove') remove(record.id, record.name)
-}
-
-const portalOpen = ref(false)
-const portalSupplier = ref()
-function openPortal(record) {
-  portalSupplier.value = record
-  portalOpen.value = true
-}
-
-const priceOpen = ref(false)
-const priceSupplier = ref()
-function openPrices(record) {
-  priceSupplier.value = record
-  priceOpen.value = true
-}
+/** 行操作：编辑、供应商价格、删除直接显示，资料、门户账号在「更多」中 */
+const rowActions = (record) => [
+  { type: 'edit', perm: 'scm:supplier:edit', onClick: () => drawer.openEdit(record) },
+  { key: 'prices', label: t('scm.supplier.prices'), icon: DollarOutlined, onClick: () => openPrices(record) },
+  { type: 'delete', perm: 'scm:supplier:remove', confirm: t('scm.supplier.confirmDelete', { name: record.name }), onClick: () => remove(record.id) },
+  { key: 'extras', label: t('scm.supplier.extras'), icon: PaperClipOutlined, more: true, onClick: () => openExtras(record) },
+  { key: 'portal', label: t('scm.supplier.portal'), icon: UserOutlined, perm: 'scm:supplier:portal', more: true, onClick: () => openPortal(record) }
+]
 </script>
 
 <style scoped>
