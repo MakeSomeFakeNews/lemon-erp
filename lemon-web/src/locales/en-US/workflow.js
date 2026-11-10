@@ -178,7 +178,6 @@ export default {
     currentNode: 'Current Node',
     startTime: 'Started At',
     endTime: 'Ended At',
-    startEndTime: 'Started / Ended',
     terminated: 'Process terminated'
   },
   detail: {

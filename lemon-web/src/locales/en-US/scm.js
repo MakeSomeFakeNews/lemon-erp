@@ -406,7 +406,6 @@ export default {
     docNo: 'Document No.',
     inputDocNo: 'Enter document no.',
     orderNo: 'Order No.',
-    orderNoValue: 'Order {no}',
     inputOrderNo: 'Enter order no.',
     warehouse: 'Warehouse',
     bizDate: 'Business Date',
