@@ -223,6 +223,15 @@ export default {
   3771: 'Edit Offset', // 冲账单修改
   3772: 'Delete Offset', // 冲账单删除
   3773: 'Review Offset', // 冲账单复核
+  391: 'Other Income & Expenses', // 其他收支
+  3910: 'Add Income / Expense Document', // 收支单新增
+  3911: 'Edit Income / Expense Document', // 收支单修改
+  3912: 'Delete Income / Expense Document', // 收支单删除
+  3913: 'Confirm Income / Expense Document', // 收支单确认
+  3914: 'Maintain Income / Expense Categories', // 收支类别维护
+  392: 'Purchase Rebates', // 采购返利
+  3920: 'Maintain Purchase Rebate Agreements', // 采购返利协议维护
+  3921: 'Settle Purchase Rebates', // 采购返利结算
   1000: 'Add User', // 用户新增
   1001: 'Edit User', // 用户修改
   1002: 'Delete User', // 用户删除

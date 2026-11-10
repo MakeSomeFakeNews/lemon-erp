@@ -29,7 +29,9 @@
           </template>
           <template v-else-if="column.key === 'amount'">
             ¥{{ formatMoney(record.amount) }}
-            <div v-if="Number(record.fee)" class="sub-text">{{ $t('fin.transfer.feeText', { amount: formatMoney(record.fee) }) }}</div>
+            <div v-if="Number(record.fee)" class="sub-text">
+              {{ $t('fin.transfer.feeText', { amount: formatMoney(record.fee) }) }} · {{ findDict(dict.fin_fee_bearer, record.feeBearer)?.label || record.feeBearer }}
+            </div>
           </template>
           <template v-else-if="column.key === 'voucher'">
             <a v-if="record.voucherId" @click="openVoucher(record.voucherId)">{{ record.voucherNo }}</a>
@@ -72,6 +74,13 @@
               <a-input-number v-model:value="form.fee" :min="0" :precision="2" prefix="¥" class="full" />
             </a-form-item>
           </a-col>
+          <a-col v-if="Number(form.fee)" :span="24">
+            <a-form-item :label="$t('fin.transfer.feeBearer')" name="feeBearer" :extra="feeBearerText">
+              <a-radio-group v-model:value="form.feeBearer">
+                <a-radio v-for="o in dict.fin_fee_bearer" :key="o.value" :value="o.value">{{ o.label }}</a-radio>
+              </a-radio-group>
+            </a-form-item>
+          </a-col>
         </a-row>
         <a-form-item :label="$t('common.field.remark')" name="remark">
           <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('fin.transfer.remarkPh')" />
@@ -84,7 +93,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowRightOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -95,16 +104,20 @@ import { addFundTransfer, deleteFundTransfer, pageFundTransfer } from '@/api/fin
 import { formatMoney } from '@/components/fin/fin'
 import { today } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
+import { useDict } from '@/composables/useDict'
+import { findDict } from '@/utils/dict'
+import { FeeBearer } from '@/constants/enums'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useAction } from '@/composables/useAction'
 
 const { t } = useI18n()
+const dict = useDict('fin_fee_bearer')
 const columns = [
   { title: t('fin.transfer.transferNo'), dataIndex: 'transferNo', width: 170 },
   { title: t('common.field.date'), dataIndex: 'transferDate', width: 110 },
-  { title: t('fin.transfer.flow'), key: 'flow', width: 320 },
-  { title: t('common.field.amount'), key: 'amount', width: 150, align: 'right' },
+  { title: t('fin.transfer.flow'), key: 'flow', width: 270 },
+  { title: t('common.field.amount'), key: 'amount', width: 190, align: 'right' },
   { title: t('fin.transfer.voucher'), key: 'voucher', width: 120 },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
   { title: t('fin.transfer.createBy'), dataIndex: 'createByName', width: 100 },
@@ -129,13 +142,22 @@ const rules = {
   amount: [{ required: true, message: t('fin.transfer.amountRequired') }]
 }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ transferDate: today(), fromAccountId: undefined, toAccountId: undefined, amount: undefined, fee: 0, remark: '' }),
+  emptyForm: () => ({ transferDate: today(), fromAccountId: undefined, toAccountId: undefined, amount: undefined, fee: 0, feeBearer: FeeBearer.FROM, remark: '' }),
   create: addFundTransfer,
   update: () => Promise.resolve(),
   successMessage: t('fin.transfer.success'),
   onSuccess: load
 })
 const { formRef, form } = drawer
+/** 手续费承担方的效果：转出账户多付出手续费，或转入账户少收到手续费 */
+const feeBearerText = computed(() => {
+  const f = form.value
+  const amount = Number(f.amount) || 0
+  const fee = Number(f.fee) || 0
+  return f.feeBearer === FeeBearer.TO
+    ? t('fin.transfer.bearerToText', { out: formatMoney(amount), in: formatMoney(amount - fee) })
+    : t('fin.transfer.bearerFromText', { out: formatMoney(amount + fee), in: formatMoney(amount) })
+})
 
 const remove = useAction(deleteFundTransfer, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 

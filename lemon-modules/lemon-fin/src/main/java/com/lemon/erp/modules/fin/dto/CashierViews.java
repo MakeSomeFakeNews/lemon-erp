@@ -3,6 +3,7 @@ package com.lemon.erp.modules.fin.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.lemon.erp.modules.fin.model.LedgerRowType;
 import com.lemon.erp.modules.fin.model.SettleKind;
+import com.lemon.erp.modules.fin.model.VoucherSource;
 import com.lemon.erp.modules.fin.model.VoucherStatus;
 import lombok.Data;
 
@@ -19,7 +20,7 @@ public final class CashierViews {
     }
 
     /**
-     * 日记账的一行：type 为 OPEN 期初 / ENTRY 分录 / DAY 本日合计 / TOTAL 合计；凭证、科目、对方科目只有分录行有
+     * 日记账的一行：type 为 OPEN 期初 / ENTRY 分录 / DAY 本日合计 / TOTAL 合计；凭证、科目、对方科目、来源单据只有分录行有
      */
     public record JournalRow(LedgerRowType type, LocalDate entryDate, String summary, BigDecimal debit, BigDecimal credit,
                              BigDecimal balance,
@@ -28,12 +29,14 @@ public final class CashierViews {
                              @JsonInclude(JsonInclude.Include.NON_NULL) VoucherStatus voucherStatus,
                              @JsonInclude(JsonInclude.Include.NON_NULL) String accountCode,
                              @JsonInclude(JsonInclude.Include.NON_NULL) String accountName,
-                             @JsonInclude(JsonInclude.Include.NON_NULL) String counterAccounts) {
+                             @JsonInclude(JsonInclude.Include.NON_NULL) String counterAccounts,
+                             @JsonInclude(JsonInclude.Include.NON_NULL) VoucherSource sourceType,
+                             @JsonInclude(JsonInclude.Include.NON_NULL) String sourceNo) {
 
         /** 期初、合计行 */
         public static JournalRow total(LedgerRowType type, LocalDate date, String summary, BigDecimal debit, BigDecimal credit,
                                        BigDecimal balance) {
-            return new JournalRow(type, date, summary, debit, credit, balance, null, null, null, null, null, null);
+            return new JournalRow(type, date, summary, debit, credit, balance, null, null, null, null, null, null, null, null);
         }
     }
 
@@ -44,6 +47,8 @@ public final class CashierViews {
         private Long voucherId;
         private String voucherNo;
         private VoucherStatus voucherStatus;
+        private VoucherSource sourceType;
+        private String sourceNo;
         private String summary;
         private Long accountId;
         private String accountCode;

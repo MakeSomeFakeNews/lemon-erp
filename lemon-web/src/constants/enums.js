@@ -61,6 +61,7 @@ export const AccountRole = Object.freeze({
   PAYMENT_DISCOUNT: 'PAYMENT_DISCOUNT', // 付款折让 / 抹零
   OFFSET_AR: 'OFFSET_AR', // 应收冲账
   OFFSET_AP: 'OFFSET_AP', // 应付冲账
+  PURCHASE_REBATE: 'PURCHASE_REBATE', // 采购返利
   INPUT_VAT: 'INPUT_VAT',
   OUTPUT_VAT: 'OUTPUT_VAT',
   UNPAID_VAT: 'UNPAID_VAT',
@@ -683,6 +684,12 @@ export const ExpenseClaimStatus = Object.freeze({
   PAID: 'PAID', // 已付款
 })
 
+/** com.lemon.erp.modules.fin.model.FeeBearer（字典 fin_fee_bearer） */
+export const FeeBearer = Object.freeze({
+  FROM: 'FROM',
+  TO: 'TO',
+})
+
 /** com.lemon.erp.modules.mes.model.FinishCostBasis */
 export const FinishCostBasis = Object.freeze({
   STANDARD: 'STANDARD', // 标准成本
@@ -714,7 +721,7 @@ export const FormFieldType = Object.freeze({
   SELECT: 'SELECT',
 })
 
-/** com.lemon.erp.modules.fin.model.FundDirection */
+/** com.lemon.erp.modules.fin.model.FundDirection（字典 fin_fund_direction） */
 export const FundDirection = Object.freeze({
   IN: 'IN',
   OUT: 'OUT',
@@ -821,6 +828,19 @@ export const InvoiceType = Object.freeze({
   NORMAL: 'NORMAL', // 普通发票
   E_SPECIAL: 'E_SPECIAL', // 数电票
   E_NORMAL: 'E_NORMAL', // 数电票
+})
+
+/** com.lemon.erp.modules.fin.model.IoPartnerType（字典 fin_io_partner_type） */
+export const IoPartnerType = Object.freeze({
+  CUSTOMER: 'CUSTOMER',
+  SUPPLIER: 'SUPPLIER',
+  OTHER: 'OTHER',
+})
+
+/** com.lemon.erp.modules.fin.model.IoStatus（字典 fin_io_status） */
+export const IoStatus = Object.freeze({
+  DRAFT: 'DRAFT',
+  CONFIRMED: 'CONFIRMED',
 })
 
 /** com.lemon.erp.modules.mes.model.ItemMethod */
@@ -1307,6 +1327,18 @@ export const QuotationStatus = Object.freeze({
   LOST: 'LOST', // 已失效
 })
 
+/** com.lemon.erp.modules.scm.model.RebateCalcMode（字典 scm_rebate_calc） */
+export const RebateCalcMode = Object.freeze({
+  TIER: 'TIER',
+  ITEM: 'ITEM',
+})
+
+/** com.lemon.erp.modules.scm.model.RebateKind（字典 scm_rebate_kind） */
+export const RebateKind = Object.freeze({
+  SALES: 'SALES',
+  PURCHASE: 'PURCHASE',
+})
+
 /** com.lemon.erp.modules.scm.model.RebateSettle（字典 scm_rebate_settle） */
 export const RebateSettle = Object.freeze({
   CREDIT_NOTE: 'CREDIT_NOTE',
@@ -1635,6 +1667,7 @@ export const VoucherSource = Object.freeze({
   FX: 'FX', // 期末调汇
   NOTE: 'NOTE', // 票据贴现、托收、拒付、兑付
   TRANSFER: 'TRANSFER', // 账户调拨
+  INCOME_EXPENSE: 'INCOME_EXPENSE', // 其他收支单
 })
 
 /** com.lemon.erp.modules.fin.model.VoucherStatus（字典 fin_voucher_status） */

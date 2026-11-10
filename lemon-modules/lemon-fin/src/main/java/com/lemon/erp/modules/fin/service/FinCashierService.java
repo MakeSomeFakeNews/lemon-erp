@@ -72,7 +72,8 @@ public class FinCashierService {
             totalDebit = totalDebit.add(debit);
             totalCredit = totalCredit.add(credit);
             rows.add(new CashierViews.JournalRow(LedgerRowType.ENTRY, date, e.getSummary(), debit, credit, balance, e.getVoucherId(),
-                    e.getVoucherNo(), e.getVoucherStatus(), e.getAccountCode(), e.getAccountName(), counters.get(e.getVoucherId())));
+                    e.getVoucherNo(), e.getVoucherStatus(), e.getAccountCode(), e.getAccountName(), counters.get(e.getVoucherId()),
+                    e.getSourceType(), e.getSourceNo()));
         }
         if (day != null) {
             rows.add(line(LedgerRowType.DAY, day, Messages.get("fin.text.dailyTotal"), dayDebit, dayCredit, balance));

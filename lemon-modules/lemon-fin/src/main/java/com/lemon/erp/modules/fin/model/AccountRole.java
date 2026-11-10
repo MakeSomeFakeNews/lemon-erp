@@ -53,6 +53,8 @@ public enum AccountRole {
     OFFSET_AR("fin.label.revenueExpenses", "fin.label.offsetArAccount", "6601"),
     /** 应付冲账（供应商返利、赔偿等抵扣欠供应商的款）：借 应付账款 / 贷 该科目（默认冲减主营业务成本），冲账单上可另选科目 */
     OFFSET_AP("fin.label.revenueExpenses", "fin.label.offsetApAccount", "6401"),
+    /** 采购返利（供应商给我方的返利，结算生成红字应付单）：借 应付账款 / 贷 该科目（默认冲减主营业务成本）、进项税额 */
+    PURCHASE_REBATE("fin.label.revenueExpenses", "fin.label.purchaseRebateAccount", "6401"),
 
     INPUT_VAT("fin.label.taxes", "fin.label.inputVat", "222101"),
     OUTPUT_VAT("fin.label.taxes", "fin.label.outputVat", "222102"),

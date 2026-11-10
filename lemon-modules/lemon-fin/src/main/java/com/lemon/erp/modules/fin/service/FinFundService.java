@@ -15,6 +15,7 @@ import com.lemon.erp.modules.fin.entity.FinFundPlanItem;
 import com.lemon.erp.modules.fin.entity.FinFundTransfer;
 import com.lemon.erp.modules.fin.mapper.FinFundPlanMapper;
 import com.lemon.erp.modules.fin.mapper.FinFundTransferMapper;
+import com.lemon.erp.modules.fin.model.FeeBearer;
 import com.lemon.erp.modules.fin.model.FundDirection;
 import com.lemon.erp.modules.fin.model.FundSource;
 import com.lemon.erp.modules.fin.model.PlanUnit;
@@ -63,7 +64,10 @@ public class FinFundService {
         return PageResult.of(page);
     }
 
-    /** 调拨：借 转入账户（金额）、财务费用（手续费），贷 转出账户（金额 + 手续费） */
+    /**
+     * 调拨：手续费由转出账户承担时 借 转入账户（金额）、财务费用（手续费）/ 贷 转出账户（金额 + 手续费）；
+     * 由转入账户承担时 借 转入账户（金额 - 手续费）、财务费用（手续费）/ 贷 转出账户（金额）
+     */
     @Transactional
     public Long createTransfer(FundTransferRequest req) {
         if (req.fromAccountId().equals(req.toAccountId())) {
@@ -73,6 +77,10 @@ public class FinFundService {
         accountService.requireCashAccount(req.toAccountId());
         periodGuard.checkOpen(req.transferDate(), "fin.label.fundTransfer");
         BigDecimal fee = Decimals.nz(req.fee());
+        FeeBearer bearer = req.feeBearer() == null ? FeeBearer.FROM : req.feeBearer();
+        if (bearer == FeeBearer.TO && fee.compareTo(req.amount()) >= 0) {
+            throw new BizException("fin.error.transferFeeExceedsAmount");
+        }
         FinFundTransfer t = new FinFundTransfer();
         t.setTransferNo(docNoService.next(TRANSFER_NO));
         t.setTransferDate(req.transferDate());
@@ -80,16 +88,18 @@ public class FinFundService {
         t.setToAccountId(req.toAccountId());
         t.setAmount(req.amount());
         t.setFee(fee);
+        t.setFeeBearer(bearer);
         t.setRemark(req.remark());
         String summary = "账户调拨" + (req.remark() // i18n-ignore
                 == null || req.remark().isBlank() ? "" : " " + req.remark());
         List<VoucherLine> lines = new ArrayList<>();
-        lines.add(VoucherLine.debit(summary, req.toAccountId(), null, req.amount()));
+        boolean toBears = bearer == FeeBearer.TO;
+        lines.add(VoucherLine.debit(summary, req.toAccountId(), null, toBears ? req.amount().subtract(fee) : req.amount()));
         if (fee.signum() > 0) {
             lines.add(VoucherLine.debit(summary + "-手续费", // i18n-ignore
                     accountRules.accountId(AccountRole.FINANCE_EXPENSE), null, fee));
         }
-        lines.add(VoucherLine.credit(summary, req.fromAccountId(), null, req.amount().add(fee)));
+        lines.add(VoucherLine.credit(summary, req.fromAccountId(), null, toBears ? req.amount() : req.amount().add(fee)));
         t.setVoucherId(voucherService.createGenerated(req.transferDate(), VoucherSource.TRANSFER, t.getTransferNo(), lines));
         transferMapper.insert(t);
         return t.getId();

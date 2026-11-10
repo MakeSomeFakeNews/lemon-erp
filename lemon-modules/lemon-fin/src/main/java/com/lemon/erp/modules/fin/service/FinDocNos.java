@@ -43,6 +43,8 @@ public class FinDocNos {
                 doc(FinStatementService.DOC_NO, "fin.label.supplierStatement"),
                 doc(FinAssetCheckService.DOC_NO, "fin.label.assetCount"),
                 doc(FinConsumableService.DOC_NO, "fin.label.consumableRequisition"),
-                doc(FinOffsetService.DOC_NO, "fin.label.offsetDoc"));
+                doc(FinOffsetService.DOC_NO, "fin.label.offsetDoc"),
+                doc(FinIoService.INCOME_NO, "fin.label.otherIncomeDoc"),
+                doc(FinIoService.EXPENSE_NO, "fin.label.expenseDoc"));
     }
 }

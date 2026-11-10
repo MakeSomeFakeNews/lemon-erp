@@ -9,6 +9,7 @@
             WHEN EXISTS (SELECT 1 FROM fin_invoice WHERE partner_id = #{id} AND kind = 'OUTPUT') THEN '销项发票'
             WHEN EXISTS (SELECT 1 FROM fin_advance WHERE partner_id = #{id} AND kind = 'RECEIPT') THEN '预收款'
             WHEN EXISTS (SELECT 1 FROM fin_offset WHERE partner_id = #{id} AND kind = 'AR') THEN '冲账单'
+            WHEN EXISTS (SELECT 1 FROM fin_io_doc WHERE partner_id = #{id} AND partner_type = 'CUSTOMER') THEN '其他收支单'
         END
     </select>
 
@@ -18,6 +19,7 @@
             WHEN EXISTS (SELECT 1 FROM fin_invoice WHERE partner_id = #{id} AND kind = 'INPUT') THEN '进项发票'
             WHEN EXISTS (SELECT 1 FROM fin_advance WHERE partner_id = #{id} AND kind = 'PAYMENT') THEN '预付款'
             WHEN EXISTS (SELECT 1 FROM fin_offset WHERE partner_id = #{id} AND kind = 'AP') THEN '冲账单'
+            WHEN EXISTS (SELECT 1 FROM fin_io_doc WHERE partner_id = #{id} AND partner_type = 'SUPPLIER') THEN '其他收支单'
         END
     </select>
 
@@ -34,6 +36,7 @@
             WHEN EXISTS (SELECT 1 FROM fin_voucher_entry WHERE dept_id = #{id}) THEN '凭证分录'
             WHEN EXISTS (SELECT 1 FROM fin_budget WHERE dept_id = #{id}) THEN '预算'
             WHEN EXISTS (SELECT 1 FROM fin_expense_claim WHERE dept_id = #{id}) THEN '费用报销'
+            WHEN EXISTS (SELECT 1 FROM fin_io_doc WHERE dept_id = #{id}) THEN '其他收支单'
         END
     </select>
 

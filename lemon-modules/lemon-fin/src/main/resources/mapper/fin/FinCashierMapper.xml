@@ -24,7 +24,7 @@
 
     <select id="selectJournal" resultType="com.lemon.erp.modules.fin.dto.CashierViews$JournalEntry">
         SELECT v.voucher_date AS "entryDate", v.id AS "voucherId", v.voucher_no AS "voucherNo", v.status AS "voucherStatus",
-               e.summary AS "summary", a.id AS "accountId", a.code AS "accountCode", a.name AS "accountName",
+               v.source_type AS "sourceType", v.source_no AS "sourceNo", e.summary AS "summary", a.id AS "accountId", a.code AS "accountCode", a.name AS "accountName",
                e.debit AS "debit", e.credit AS "credit"
         FROM fin_voucher_entry e
         JOIN fin_voucher v ON v.id = e.voucher_id
