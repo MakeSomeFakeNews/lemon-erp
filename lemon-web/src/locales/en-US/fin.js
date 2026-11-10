@@ -170,6 +170,7 @@ export default {
     discountN: 'Discount {amount}',
     overdueDays: 'Overdue {n} days',
     dueOn: 'Due {date}',
+    noVoucherZero: 'Not needed (zero amount)',
     noVoucherOpening: 'Opening, none',
     notGenerated: 'Not generated',
     badDebt: 'Bad Debt Write-off',

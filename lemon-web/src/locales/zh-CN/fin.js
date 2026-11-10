@@ -171,6 +171,7 @@ export default {
     overdueDays: '逾期 {n} 天',
     dueOn: '到期 {date}',
     noVoucherOpening: '期初不生成',
+    noVoucherZero: '金额为 0 无需凭证',
     notGenerated: '未生成',
     badDebt: '坏账核销',
     confirmDelete: '确定删除该单据？',

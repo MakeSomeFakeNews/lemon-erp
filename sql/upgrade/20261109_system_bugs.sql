@@ -21,3 +21,6 @@ CALL lemon_add_column('wms_stock_doc', 'receive_date', 'receive_date DATE DEFAUL
 DROP PROCEDURE IF EXISTS lemon_add_column;
 
 UPDATE wms_stock_doc SET receive_date = CAST(receive_time AS DATE) WHERE receive_date IS NULL AND receive_time IS NOT NULL;
+
+-- 金额为 0 的应收应付单（整单赠品等）不生成凭证，状态为已核销
+UPDATE fin_bill SET status = 'SETTLED' WHERE amount = 0 AND settled_amount = 0 AND status <> 'SETTLED';
