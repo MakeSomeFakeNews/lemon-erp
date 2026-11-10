@@ -40,7 +40,7 @@
             {{ $t('qms.analysis.counts', { total: record.totalCount, pass: record.passCount, fail: record.failCount, concession: record.concessionCount }) }}
           </template>
           <template v-else-if="column.key === 'passRate'">
-            <a-progress :percent="Number(record.passRate || 0)" size="small" :status="record.passRate < 95 ? 'exception' : 'success'" />
+            <a-progress :percent="Math.floor(Number(record.passRate || 0))" size="small" :status="record.passRate < 95 ? 'exception' : 'success'" />
           </template>
           <template v-else-if="column.key === 'defectRate'">
             <span :class="{ danger: record.defectRate > 1 }">{{ record.defectRate != null ? record.defectRate + '%' : '-' }}</span>

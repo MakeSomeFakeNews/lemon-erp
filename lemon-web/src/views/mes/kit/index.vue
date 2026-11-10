@@ -35,7 +35,7 @@
                 <div class="sub-text">{{ $t('mes.kit.finished', { done: formatQty(record.finishedQty), qty: formatQty(record.qty), unit: record.unit || '' }) }}</div>
               </template>
               <template v-else-if="column.key === 'kitRate'">
-                <a-progress :percent="Number(record.kitRate)" size="small" :status="Number(record.kitRate) >= 100 ? 'success' : 'exception'" />
+                <a-progress :percent="Math.floor(Number(record.kitRate))" size="small" :status="Number(record.kitRate) >= 100 ? 'success' : 'exception'" />
                 <div class="sub-text">{{ $t('mes.kit.shortLines', { short: record.shortLineCount, total: record.lineCount }) }}</div>
               </template>
               <template v-else-if="column.key === 'buildableQty'">

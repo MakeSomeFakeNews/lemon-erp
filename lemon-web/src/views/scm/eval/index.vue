@@ -35,7 +35,7 @@
               <template v-else-if="column.key === 'purchaseAmount'">¥{{ formatMoney(record.purchaseAmount) }}</template>
               <template v-else-if="column.key === 'onTimeRate'">
                 <template v-if="record.onTimeRate != null">
-                  <a-progress :percent="Number(record.onTimeRate)" size="small" :status="record.onTimeRate < 90 ? 'exception' : 'success'" />
+                  <a-progress :percent="Math.floor(Number(record.onTimeRate))" size="small" :status="record.onTimeRate < 90 ? 'exception' : 'success'" />
                   <div class="sub-text">{{ $t('scm.eval.lines', { done: record.onTimeLines, total: record.inLines }) }}</div>
                 </template>
                 <span v-else class="sub-text">{{ $t('scm.eval.noReceipt') }}</span>

@@ -44,7 +44,7 @@
           <template v-else-if="column.key === 'customer'">{{ record.customerName || $t('pm.common.internal') }}</template>
           <template v-else-if="column.key === 'status'"><DictTag type="pm_project_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'progress'">
-            <a-progress :percent="Number(record.progress)" size="small" :status="record.status === ProjectStatus.FINISHED ? 'success' : 'normal'" />
+            <a-progress :percent="Math.round(Number(record.progress))" size="small" :status="record.status === ProjectStatus.FINISHED ? 'success' : 'normal'" />
           </template>
           <template v-else-if="column.key === 'dates'">
             <div>{{ record.planStart }} ~ {{ record.planEnd }}</div>

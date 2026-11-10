@@ -23,8 +23,8 @@
           <a-col :xs="24" :md="8">
             <div class="stat">
               <div class="stat-title">{{ $t('pm.detail.progressVsPlan') }}</div>
-              <a-progress :percent="Number(acc.progress)" :success="{ percent: 0 }" size="small" />
-              <a-progress :percent="Number(acc.plannedRate)" size="small" stroke-color="#d9d9d9" :format="(p) => $t('pm.detail.planPercent', { p })" />
+              <a-progress :percent="Math.round(Number(acc.progress))" :success="{ percent: 0 }" size="small" />
+              <a-progress :percent="Number(acc.plannedRate)" size="small" stroke-color="#d9d9d9" :format="(p) => $t('pm.detail.planPercent', { p: Math.round(p) })" />
             </div>
           </a-col>
           <a-col :xs="24" :md="8">

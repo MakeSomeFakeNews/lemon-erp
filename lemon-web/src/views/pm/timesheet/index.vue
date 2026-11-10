@@ -55,7 +55,7 @@
                 <a-tag v-if="record.overdue" color="red" :bordered="false">{{ $t('pm.common.overdue') }}</a-tag>
               </template>
               <template v-else-if="column.key === 'progress'">
-                <a-progress :percent="record.progress" size="small" />
+                <a-progress :percent="Math.round(Number(record.progress))" size="small" />
               </template>
               <template v-else-if="column.key === 'action'">
                 <a-popover trigger="click" :title="$t('pm.plan.updateProgress')" :open="progressFor === record.id" @open-change="(v) => togglePopover(v, record)">

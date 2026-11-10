@@ -42,7 +42,7 @@
           </template>
           <template v-else-if="column.key === 'status'"><DictTag type="pm_project_status" :value="record.status" /></template>
           <template v-else-if="column.key === 'progress'">
-            <a-progress :percent="Number(record.progress)" size="small" class="bar" />
+            <a-progress :percent="Math.round(Number(record.progress))" size="small" class="bar" />
             <div class="sub-text">{{ $t('pm.detail.planPercent', { p: Number(record.plannedRate) }) }}</div>
           </template>
           <template v-else-if="column.key === 'contract'">
