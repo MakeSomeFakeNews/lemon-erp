@@ -88,7 +88,7 @@ function onProject(e) {
   loadTasks(form.projectId)
 }
 
-/** 末级任务；没有任务查看权限时用分配给我的任务 */
+/** 末级任务（本人参与的项目的任务树）；读取失败时用分配给我的任务 */
 async function loadTasks(projectId) {
   let list
   try {

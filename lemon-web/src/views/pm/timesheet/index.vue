@@ -77,7 +77,7 @@
         </a-tab-pane>
 
         <!-- 工时审批 -->
-        <a-tab-pane v-if="userStore.hasPerm('pm:timesheet:list')" key="review" :tab="$t('pm.timesheet.review')">
+        <a-tab-pane v-if="canReview" key="review" :tab="$t('pm.timesheet.review')">
           <div class="filters">
             <ProjectSelect v-model:value="query.projectId" class="w220" :placeholder="$t('pm.timesheet.allProjects')" />
             <IdentityUserSelect v-model:value="query.userId" class="w180" :placeholder="$t('pm.timesheet.allMembers')" />
@@ -179,6 +179,7 @@ import {
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
+import { useRoute } from 'vue-router'
 import { toOptions } from '@/utils/dict'
 import { formatMoney } from '@/components/scm/scm'
 import { leafTasks, today, weekRange } from '@/components/pm/pm'
@@ -188,6 +189,8 @@ import { useAction } from '@/composables/useAction'
 import { TimesheetStatus } from '@/constants/enums'
 const dict = useDict('pm_timesheet_status')
 const userStore = useUserStore()
+// 「工时管理」页（pm:timesheet:list）有审批页签；「我的工时」菜单（pm:timesheet:mine，普通员工）只填报
+const canReview = useRoute().meta.perms !== 'pm:timesheet:mine' && userStore.hasPerm('pm:timesheet:list')
 const tab = ref('mine')
 const todayStr = today()
 
@@ -373,7 +376,7 @@ async function reject() {
 onMounted(() => {
   loadMine()
   loadTasks()
-  if (userStore.hasPerm('pm:timesheet:list')) load()
+  if (canReview) load()
 })
 </script>
 
