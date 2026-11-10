@@ -41,15 +41,15 @@
         <a-col :xs="24" :lg="12">
           <a-card :bordered="false" class="page-card" :title="$t('crm.analysis.card.rfm')">
             <EChart :option="rfmOption" height="260px" />
-            <div class="sub-text note">
-              {{ $t('crm.analysis.rfmNote', { r: rfm.avgRecency ?? '-', f: rfm.avgFrequency ?? '-', m: formatMoney(rfm.avgMonetary) }) }}
-            </div>
+            <div class="sub-text note">{{ $t('crm.analysis.rfmNote', { months: rfm.months ?? 12 }) }}</div>
           </a-card>
         </a-col>
       </a-row>
 
       <a-card :bordered="false" class="page-card row" :title="$t('crm.analysis.card.rfmDetail')">
-        <a-table row-key="customerId" size="small" :columns="rfmColumns" :data-source="rfm.rows || []" :pagination="{ pageSize: 10, showSizeChanger: false }" :scroll="{ x: 860 }">
+        <RfmSettingsBar class="rfm-settings" :settings="rfm.settings" @apply="loadRfm" />
+        <a-table row-key="customerId" size="small" :columns="rfmColumns" :data-source="rfm.rows || []" :loading="rfmLoading"
+          :pagination="{ pageSize: 10, showSizeChanger: false }" :scroll="{ x: 1080 }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'customer'">
               <div>{{ record.name }}</div>
@@ -58,11 +58,13 @@
             <template v-else-if="column.key === 'recency'">
               <span :class="record.recent ? 'good' : 'bad'">{{ $t('crm.analysis.days', { n: record.recency }) }}</span>
             </template>
-            <template v-else-if="column.key === 'frequency'">
-              <span :class="record.frequent ? 'good' : 'bad'">{{ $t('crm.analysis.times', { n: record.frequency }) }}</span>
+            <template v-else-if="column.key === 'frequency'">{{ $t('crm.analysis.times', { n: record.frequency }) }}</template>
+            <template v-else-if="column.key === 'monthlyFrequency'">
+              <span :class="record.frequent ? 'good' : 'bad'">{{ record.monthlyFrequency }}</span>
             </template>
-            <template v-else-if="column.key === 'monetary'">
-              <span :class="record.valuable ? 'good' : 'bad'">¥{{ formatMoney(record.monetary) }}</span>
+            <template v-else-if="column.key === 'monetary'">¥{{ formatMoney(record.monetary) }}</template>
+            <template v-else-if="column.key === 'avgAmount'">
+              <span :class="record.valuable ? 'good' : 'bad'">¥{{ formatMoney(record.avgAmount) }}</span>
             </template>
             <template v-else-if="column.key === 'segment'">
               <a-tag :color="segmentColor(record.segment)" :bordered="false">{{ segmentText(record.segment) }}</a-tag>
@@ -123,12 +125,13 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
 import EChart from '@/components/charts/EChart.vue'
+import RfmSettingsBar from '@/components/bi/RfmSettingsBar.vue'
 import { crmFunnel, crmIndustries, crmOverview, crmOwners, crmRfm, crmSources, crmTickets, crmTrend } from '@/api/crm'
 import { useDict } from '@/composables/useDict'
 import { formatMoney } from '@/components/scm/scm'
 import { monthLabel, percent, shortMoney } from '@/components/charts/charts'
 
-import { OpportunityStage } from '@/constants/enums'
+import { OpportunityStage, RfmSegment } from '@/constants/enums'
 const { t } = useI18n()
 const dict = useDict('crm_opp_stage', 'crm_customer_stage', 'crm_industry', 'crm_source', 'crm_ticket_type')
 const label = (type, v) => dict[type].find((d) => d.value === v)?.label || v
@@ -142,6 +145,17 @@ const sources = ref([])
 const owners = ref([])
 const industries = ref([])
 const tickets = ref([])
+
+const rfmLoading = ref(false)
+/** 按页面上的分群参数重新计算 RFM（参数为空时取本公司默认值） */
+async function loadRfm(params) {
+  rfmLoading.value = true
+  try {
+    rfm.value = await crmRfm(params)
+  } finally {
+    rfmLoading.value = false
+  }
+}
 
 onMounted(async () => {
   loading.value = true
@@ -228,19 +242,18 @@ const funnelColumns = [
   { title: t('crm.analysis.col.conversion'), key: 'conversion', width: 100, align: 'right' }
 ]
 
-// 后端返回的分层名称（中文）→ 颜色、译文键
-const SEGMENTS = {
-  重要价值客户: ['gold', 'importantValue'], // i18n-ignore
-  重要发展客户: ['green', 'importantDevelop'], // i18n-ignore
-  重要保持客户: ['blue', 'importantKeep'], // i18n-ignore
-  重要挽留客户: ['red', 'importantWinback'], // i18n-ignore
-  一般价值客户: ['cyan', 'generalValue'], // i18n-ignore
-  一般发展客户: ['lime', 'generalDevelop'], // i18n-ignore
-  一般保持客户: ['geekblue', 'generalKeep'], // i18n-ignore
-  一般挽留客户: ['default', 'generalWinback'] // i18n-ignore
+const SEGMENT_COLORS = {
+  [RfmSegment.IMPORTANT_VALUE]: 'gold',
+  [RfmSegment.IMPORTANT_DEVELOP]: 'green',
+  [RfmSegment.IMPORTANT_KEEP]: 'blue',
+  [RfmSegment.IMPORTANT_RETAIN]: 'red',
+  [RfmSegment.GENERAL_VALUE]: 'cyan',
+  [RfmSegment.GENERAL_DEVELOP]: 'lime',
+  [RfmSegment.GENERAL_KEEP]: 'geekblue',
+  [RfmSegment.GENERAL_RETAIN]: 'default'
 }
-const segmentColor = (s) => SEGMENTS[s]?.[0] || 'default'
-const segmentText = (s) => (SEGMENTS[s] ? t(`crm.analysis.seg.${SEGMENTS[s][1]}`) : s)
+const segmentColor = (s) => SEGMENT_COLORS[s] || 'default'
+const segmentText = (s) => t(`jxc.rfm.seg.${s}`)
 const rfmOption = computed(() => {
   const segs = (rfm.value.segments || []).slice().reverse()
   return {
@@ -263,8 +276,10 @@ const rfmColumns = [
   { title: t('crm.common.f.customer'), key: 'customer', width: 220 },
   { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 100 },
   { title: t('crm.analysis.col.recency'), key: 'recency', width: 120, align: 'right' },
-  { title: t('crm.analysis.col.frequency'), key: 'frequency', width: 130, align: 'right' },
-  { title: t('crm.analysis.col.monetary'), key: 'monetary', width: 150, align: 'right' },
+  { title: t('crm.analysis.col.frequency'), key: 'frequency', width: 110, align: 'right' },
+  { title: t('crm.analysis.col.monthlyFrequency'), key: 'monthlyFrequency', width: 110, align: 'right' },
+  { title: t('crm.analysis.col.monetary'), key: 'monetary', width: 140, align: 'right' },
+  { title: t('crm.analysis.col.avgAmount'), key: 'avgAmount', width: 140, align: 'right' },
   { title: t('crm.analysis.col.segment'), key: 'segment', width: 160 }
 ]
 
@@ -342,6 +357,9 @@ const ticketColumns = [
 }
 .note {
   margin-top: 8px;
+}
+.rfm-settings {
+  margin-bottom: 12px;
 }
 .sub-text {
   color: var(--app-text-3);

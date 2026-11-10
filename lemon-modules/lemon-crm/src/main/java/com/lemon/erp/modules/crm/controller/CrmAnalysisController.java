@@ -3,6 +3,7 @@ package com.lemon.erp.modules.crm.controller;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.modules.crm.dto.CrmAnalysis;
 import com.lemon.erp.modules.crm.service.CrmAnalysisService;
+import com.lemon.erp.modules.scm.dto.RfmSettings;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,9 +33,10 @@ public class CrmAnalysisController {
         return R.ok(analysisService.funnel());
     }
 
+    /** @param params 分群方式和阈值（mode、recencyDays、frequency、monetary），不传的取租户默认值 */
     @GetMapping("/rfm")
-    public R<CrmAnalysis.Rfm> rfm() {
-        return R.ok(analysisService.rfm());
+    public R<CrmAnalysis.Rfm> rfm(RfmSettings params) {
+        return R.ok(analysisService.rfm(params));
     }
 
     @GetMapping("/trend")

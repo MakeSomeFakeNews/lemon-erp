@@ -9,9 +9,12 @@ import com.lemon.erp.modules.bi.dto.JxcQuery;
 import com.lemon.erp.modules.bi.dto.JxcViews;
 import com.lemon.erp.modules.bi.mapper.BiJxcMapper;
 import com.lemon.erp.modules.bi.model.GoodsRankBy;
-import com.lemon.erp.modules.bi.model.RfmSegment;
 import com.lemon.erp.modules.fin.dto.CashierViews;
 import com.lemon.erp.modules.fin.service.FinCashierService;
+import com.lemon.erp.modules.scm.dto.RfmSettings;
+import com.lemon.erp.modules.scm.model.RfmSegment;
+import com.lemon.erp.modules.scm.service.RfmCalculator;
+import com.lemon.erp.modules.scm.service.ScmRfmService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -44,6 +47,7 @@ public class BiJxcAnalysisService {
 
     private final BiJxcMapper jxcMapper;
     private final FinCashierService cashierService;
+    private final ScmRfmService rfmService;
 
     // ---------------------------------------------------------------- 资产状况
 
@@ -175,17 +179,38 @@ public class BiJxcAnalysisService {
 
     // ---------------------------------------------------------------- RFM
 
-    /** 客户 RFM：期间有销售出库的客户，按最近购买、频次、净销售额打分分群 */
+    /**
+     * 客户 RFM：期间有销售出库的客户，按最近购买、每月订货次数、平均每次订货金额分群（{@link RfmCalculator}）
+     *
+     * @param params 页面传入的分群参数，为空的项取租户默认值（业务参数 scm.rfm.*）
+     */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
-    public JxcViews.Rfm rfm(JxcQuery q) {
+    public JxcViews.Rfm rfm(JxcQuery q, RfmSettings params) {
         BiJxcService.checkRange(q, BiJxcService.MAX_DAYS_LONG);
+        RfmSettings settings = rfmService.settings(params);
         LocalDate asOf = q.getEnd().isBefore(LocalDate.now()) ? q.getEnd() : LocalDate.now();
+        BigDecimal months = RfmCalculator.months(q.getBegin(), asOf);
         List<JxcViews.RfmRow> rows = new ArrayList<>(jxcMapper.selectRfm(q));
+        List<RfmCalculator.Metrics> metrics = new ArrayList<>(rows.size());
         for (JxcViews.RfmRow r : rows) {
             r.setMonetary(Decimals.money(r.getMonetary()));
-            r.setRecency(r.getLastDate() == null ? null : Math.max(0, ChronoUnit.DAYS.between(r.getLastDate(), asOf)));
+            r.setRecency(r.getLastDate() == null ? 0 : Math.max(0, ChronoUnit.DAYS.between(r.getLastDate(), asOf)));
+            metrics.add(new RfmCalculator.Metrics(r.getRecency(), r.getFrequency(), r.getMonetary()));
         }
-        BigDecimal[] avg = RfmScorer.score(rows);
+        RfmCalculator.Result result = RfmCalculator.calculate(metrics, settings, months);
+        for (int i = 0; i < rows.size(); i++) {
+            JxcViews.RfmRow r = rows.get(i);
+            RfmCalculator.Score s = result.scores().get(i);
+            r.setR(s.r());
+            r.setF(s.f());
+            r.setM(s.m());
+            r.setMonthlyFrequency(s.monthlyFrequency());
+            r.setAvgAmount(s.avgAmount());
+            r.setRecent(s.recent());
+            r.setFrequent(s.frequent());
+            r.setValuable(s.valuable());
+            r.setSegment(s.segment());
+        }
         rows.sort(Comparator.comparing((JxcViews.RfmRow r) -> r.getR() + r.getF() + r.getM()).reversed()
                 .thenComparing(JxcViews.RfmRow::getMonetary, Comparator.reverseOrder()));
         Map<RfmSegment, int[]> counts = new LinkedHashMap<>();
@@ -200,7 +225,8 @@ public class BiJxcAnalysisService {
         }
         List<JxcViews.SegmentStat> segments = new ArrayList<>();
         counts.forEach((s, c) -> segments.add(new JxcViews.SegmentStat(s, c[0], amounts.get(s))));
-        return new JxcViews.Rfm(asOf, rows, segments, avg[0], avg[1], avg[2]);
+        return new JxcViews.Rfm(asOf, months.setScale(1, RoundingMode.HALF_UP), settings, rows, segments,
+                result.avgR(), result.avgF(), result.avgM());
     }
 
     // ---------------------------------------------------------------- 计算

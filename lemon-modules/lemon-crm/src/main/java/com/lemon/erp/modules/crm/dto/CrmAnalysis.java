@@ -1,6 +1,8 @@
 package com.lemon.erp.modules.crm.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.lemon.erp.modules.scm.dto.RfmSettings;
+import com.lemon.erp.modules.scm.model.RfmSegment;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -72,13 +74,18 @@ public final class CrmAnalysis {
     }
 
     /** RFM 分层汇总 */
-    public record RfmSegment(String segment, long count, BigDecimal amount) {
+    public record SegmentStat(RfmSegment segment, long count, BigDecimal amount) {
     }
 
-    /** RFM 分析结果；没有销售数据时只有 rows、segments */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record Rfm(List<RfmRow> rows, List<RfmSegment> segments, BigDecimal avgRecency, BigDecimal avgFrequency,
-                      BigDecimal avgMonetary) {
+    /**
+     * RFM 分析结果
+     *
+     * @param months   统计月数（近一年为 12）
+     * @param settings 实际使用的分群参数
+     * @param avgR     R、F、M 五分位得分的平均分，没有数据时为 0
+     */
+    public record Rfm(List<RfmRow> rows, List<SegmentStat> segments, BigDecimal months, RfmSettings settings,
+                      BigDecimal avgR, BigDecimal avgF, BigDecimal avgM) {
     }
 
     /** 按月汇总：销售额与成交客户数、赢单数与金额 */

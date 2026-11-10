@@ -7,8 +7,11 @@
           :placeholder="$t('jxc.common.allRegions')" class="filter-s" @change="load" />
         <a-input v-model:value="keyword" allow-clear :placeholder="$t('jxc.common.customerKeyword')" class="filter" @press-enter="load" />
         <a-button type="primary" :loading="loading" @click="load">{{ $t('common.action.query') }}</a-button>
-        <span v-if="data.rows.length" class="sub-text">{{ $t('jxc.rfm.avg', { r: data.avgR, f: data.avgF, m: data.avgM }) }}</span>
+        <span v-if="data.rows.length && data.settings?.mode === RfmMode.AVERAGE" class="sub-text">
+          {{ $t('jxc.rfm.avg', { r: data.avgR, f: data.avgF, m: data.avgM }) }}
+        </span>
       </div>
+      <RfmSettingsBar class="settings" :settings="data.settings" @apply="applySettings" />
       <div class="segments">
         <div class="seg" :class="{ active: !segment }" @click="segment = undefined">
           <div class="seg-name">{{ $t('jxc.rfm.all') }}</div>
@@ -37,13 +40,22 @@
         :data-source="filtered"
         :loading="loading"
         :pagination="{ pageSize: 50, showSizeChanger: false, showTotal: (n) => $t('common.table.total', { total: n }) }"
-        :scroll="{ x: 1000, y: '100%' }"
+        :scroll="{ x: 1080, y: '100%' }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'customer'">
             <a v-if="canDrill" @click="drill(record)">{{ record.name }}</a>
             <span v-else>{{ record.name }}</span>
             <div class="sub-text">{{ record.code }}</div>
+          </template>
+          <template v-else-if="column.key === 'recency'">
+            <span :class="record.recent ? 'high' : 'low'">{{ record.recency }}</span>
+          </template>
+          <template v-else-if="column.key === 'monthlyFrequency'">
+            <span :class="record.frequent ? 'high' : 'low'">{{ record.monthlyFrequency }}</span>
+          </template>
+          <template v-else-if="column.key === 'avgAmount'">
+            <span :class="record.valuable ? 'high' : 'low'">{{ money(record.avgAmount) }}</span>
           </template>
           <template v-else-if="column.key === 'monetary'">{{ money(record.monetary) }}</template>
           <template v-else-if="column.key === 'score'">
@@ -64,6 +76,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { DownloadOutlined } from '@ant-design/icons-vue'
 import JxcDetail from '@/components/bi/jxc/JxcDetail.vue'
+import RfmSettingsBar from '@/components/bi/RfmSettingsBar.vue'
 import { jxcRfm } from '@/api/bi/jxc'
 import { last12Months, rangePresets } from '@/components/bi/jxc/jxc'
 import { useUserStore } from '@/store/user'
@@ -71,7 +84,7 @@ import { useDict } from '@/composables/useDict'
 import { toOptions } from '@/utils/dict'
 import { money } from '@/utils/number'
 import { writeExcel } from '@/utils/excel'
-import { JxcDimension, RfmSegment } from '@/constants/enums'
+import { JxcDimension, RfmMode, RfmSegment } from '@/constants/enums'
 import { t } from '@/locales'
 
 const SEGMENT_COLORS = {
@@ -94,28 +107,39 @@ const dict = useDict('scm_region')
 const keyword = ref('')
 const segment = ref()
 const data = ref({ rows: [], segments: [] })
+/** 页面上临时修改的分群参数，为空时取本公司默认值 */
+const rfmParams = ref({})
 const loading = ref(false)
 const filtered = computed(() => (segment.value ? data.value.rows.filter((r) => r.segment === segment.value) : data.value.rows))
 
 const columns = [
-  { title: t('jxc.rfm.customer'), key: 'customer', width: 220, fixed: 'left', ellipsis: true },
-  { title: t('jxc.rfm.lastDate'), dataIndex: 'lastDate', width: 110 },
-  { title: t('jxc.rfm.recency'), dataIndex: 'recency', width: 100, align: 'right', sorter: (a, b) => a.recency - b.recency },
-  { title: t('jxc.rfm.frequency'), dataIndex: 'frequency', width: 100, align: 'right', sorter: (a, b) => a.frequency - b.frequency },
+  { title: t('jxc.rfm.customer'), key: 'customer', width: 200, fixed: 'left', ellipsis: true },
+  { title: t('jxc.rfm.lastDate'), dataIndex: 'lastDate', width: 100 },
+  { title: t('jxc.rfm.recency'), key: 'recency', width: 100, align: 'right', sorter: (a, b) => a.recency - b.recency },
+  { title: t('jxc.rfm.frequency'), dataIndex: 'frequency', width: 90, align: 'right', sorter: (a, b) => a.frequency - b.frequency },
+  { title: t('jxc.rfm.monthlyFrequency'), key: 'monthlyFrequency', width: 100, align: 'right',
+    sorter: (a, b) => Number(a.monthlyFrequency) - Number(b.monthlyFrequency) },
   { title: t('jxc.rfm.monetary'), key: 'monetary', width: 130, align: 'right', sorter: (a, b) => Number(a.monetary) - Number(b.monetary) },
-  { title: t('jxc.rfm.score'), key: 'score', width: 150 },
+  { title: t('jxc.rfm.avgAmount'), key: 'avgAmount', width: 120, align: 'right', sorter: (a, b) => Number(a.avgAmount) - Number(b.avgAmount) },
+  { title: t('jxc.rfm.score'), key: 'score', width: 120 },
   { title: t('jxc.rfm.segment'), key: 'segment', width: 120 }
 ]
 
 async function load() {
   loading.value = true
   try {
-    const p = { begin: range.value[0], end: range.value[1], region: region.value || undefined, keyword: keyword.value?.trim() || undefined }
+    const p = { begin: range.value[0], end: range.value[1], region: region.value || undefined, keyword: keyword.value?.trim() || undefined,
+      ...rfmParams.value }
     data.value = await jxcRfm(p)
     segment.value = undefined
   } finally {
     loading.value = false
   }
+}
+
+function applySettings(p) {
+  rfmParams.value = p
+  load()
 }
 
 const detailRef = ref()
@@ -125,9 +149,9 @@ function drill(r) {
 
 function exportRows() {
   const headers = [t('common.field.code'), t('jxc.rfm.customer'), t('jxc.rfm.lastDate'), t('jxc.rfm.recency'), t('jxc.rfm.frequency'),
-    t('jxc.rfm.monetary'), 'R', 'F', 'M', t('jxc.rfm.segment')].map((title) => ({ title }))
-  const rows = filtered.value.map((r) => [r.code, r.name, r.lastDate, r.recency, r.frequency, Number(r.monetary), r.r, r.f, r.m,
-    t(`jxc.rfm.seg.${r.segment}`)])
+    t('jxc.rfm.monthlyFrequency'), t('jxc.rfm.monetary'), t('jxc.rfm.avgAmount'), 'R', 'F', 'M', t('jxc.rfm.segment')].map((title) => ({ title }))
+  const rows = filtered.value.map((r) => [r.code, r.name, r.lastDate, r.recency, r.frequency, Number(r.monthlyFrequency), Number(r.monetary),
+    Number(r.avgAmount), r.r, r.f, r.m, t(`jxc.rfm.seg.${r.segment}`)])
   writeExcel(`RFM_${range.value[0]}_${range.value[1]}`, headers, rows, { withStamp: false })
 }
 
@@ -146,6 +170,15 @@ onMounted(load)
 }
 .filter-s {
   width: 150px;
+}
+.settings {
+  margin-top: 12px;
+}
+.high {
+  color: #52c41a;
+}
+.low {
+  color: var(--app-text-3);
 }
 .segments {
   display: grid;
@@ -186,8 +219,8 @@ onMounted(load)
 }
 .score {
   display: inline-block;
-  min-width: 30px;
-  margin-right: 4px;
+  min-width: 26px;
+  margin-right: 2px;
   font-family: monospace;
 }
 .sub-text {

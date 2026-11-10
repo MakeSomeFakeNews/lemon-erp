@@ -79,7 +79,8 @@ export const deleteTicket = (id) => request.delete(`/crm/ticket/${ids(id)}`)
 /** 客户分析 */
 export const crmOverview = () => request.get('/crm/analysis/overview')
 export const crmFunnel = () => request.get('/crm/analysis/funnel')
-export const crmRfm = () => request.get('/crm/analysis/rfm')
+/** 客户 RFM 分层；params 为分群参数（mode、recencyDays、frequency、monetary），不传时取本公司默认值 */
+export const crmRfm = (params) => request.get('/crm/analysis/rfm', { params })
 export const crmTrend = () => request.get('/crm/analysis/trend')
 export const crmSources = () => request.get('/crm/analysis/sources')
 export const crmOwners = () => request.get('/crm/analysis/owners')

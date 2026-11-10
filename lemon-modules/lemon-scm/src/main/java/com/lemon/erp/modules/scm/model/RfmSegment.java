@@ -1,7 +1,8 @@
-package com.lemon.erp.modules.bi.model;
+package com.lemon.erp.modules.scm.model;
 
 /**
- * RFM 客户分群：最近购买（R）、购买频次（F）、购买金额（M）的得分不低于全体平均分为「高」，按高低组合分为八类
+ * RFM 客户分群：最近购买（R）、购买频次（F）、购买金额（M）各分高低（按固定阈值或平均分，见 {@link RfmMode}），按高低组合分为八类。
+ * 进销存报表「客户分析」和客户关系「客户分析」共用
  */
 public enum RfmSegment {
     /** 重要价值：R 高 F 高 M 高 */

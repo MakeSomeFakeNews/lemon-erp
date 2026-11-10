@@ -509,7 +509,7 @@ export default {
       service: 'Service Quality'
     },
     funnelNote: 'Reached: opportunities that ever reached the stage; Conversion = reached next stage / reached this stage',
-    rfmNote: 'Compared with averages: last purchase {r} days ago, {f} purchases, amount ¥{m}. Recent R and high F mean "Value / Retain"; high M means "Important"',
+    rfmNote: 'Customers with sales shipments in the last year ({months} months): F is purchases per month and M is the average amount per purchase (tax included, after returns). High / low follows the segmentation parameters (green means high); high M means "Important", recent R and high F mean "Value / Retain"',
     days: '{n} d',
     times: '{n}x',
     hours: '{n} h',
@@ -540,7 +540,9 @@ export default {
       conversion: 'Conversion',
       recency: 'Recency (R)',
       frequency: 'Frequency (F)',
+      monthlyFrequency: 'Per month',
       monetary: 'Monetary (M)',
+      avgAmount: 'Avg per purchase',
       segment: 'Segment',
       leads: 'Leads',
       converted: 'Converted',
@@ -559,16 +561,6 @@ export default {
       avgHours: 'Avg. Resolution',
       onTime: 'On-time Rate',
       satisfaction: 'Avg. Satisfaction'
-    },
-    seg: {
-      importantValue: 'Important Value',
-      importantDevelop: 'Important Develop',
-      importantKeep: 'Important Retain',
-      importantWinback: 'Important Win-back',
-      generalValue: 'General Value',
-      generalDevelop: 'General Develop',
-      generalKeep: 'General Retain',
-      generalWinback: 'General Win-back'
     }
   }
 }

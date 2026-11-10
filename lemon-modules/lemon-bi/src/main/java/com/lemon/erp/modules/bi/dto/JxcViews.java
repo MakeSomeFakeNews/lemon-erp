@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.bi.dto;
 
-import com.lemon.erp.modules.bi.model.RfmSegment;
+import com.lemon.erp.modules.scm.dto.RfmSettings;
+import com.lemon.erp.modules.scm.model.RfmSegment;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import lombok.Data;
 
@@ -227,9 +228,18 @@ public final class JxcViews {
         private Long frequency;
         /** 期间净销售额（不含税） */
         private BigDecimal monetary;
+        /** 每月订货次数 = 出库单数 ÷ 统计月数 */
+        private BigDecimal monthlyFrequency;
+        /** 平均每次订货金额 = 净销售额 ÷ 出库单数 */
+        private BigDecimal avgAmount;
+        /** 五分位得分 1–5 */
         private Integer r;
         private Integer f;
         private Integer m;
+        /** R / F / M 是否为「高」（按所选的分群方式） */
+        private boolean recent;
+        private boolean frequent;
+        private boolean valuable;
         private RfmSegment segment;
     }
 
@@ -237,8 +247,11 @@ public final class JxcViews {
     }
 
     /**
-     * @param asOf 计算最近购买天数的截止日（结束日期与今天中较早的一个）
+     * @param asOf     计算最近购买天数的截止日（结束日期与今天中较早的一个）
+     * @param months   统计月数（开始日期到截止日），用于计算每月订货次数
+     * @param settings 实际使用的分群参数
      */
-    public record Rfm(LocalDate asOf, List<RfmRow> rows, List<SegmentStat> segments, BigDecimal avgR, BigDecimal avgF, BigDecimal avgM) {
+    public record Rfm(LocalDate asOf, BigDecimal months, RfmSettings settings, List<RfmRow> rows, List<SegmentStat> segments,
+                      BigDecimal avgR, BigDecimal avgF, BigDecimal avgM) {
     }
 }
