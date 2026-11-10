@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static com.lemon.erp.modules.wms.model.StockBizType.TRANSFER;
 
@@ -78,7 +79,8 @@ public class StockDocReverser {
         itemMapper.insertBatch(redItems);
         // 按原单的实际成本反向计价，冲销后均价恢复
         stockService.apply(kind, red.getId(), red.getDocNo(),
-                StockDocRules.reverseChanges(kind, doc, items, costService.docUnitCosts(kind, List.of(id))));
+                StockDocRules.reverseChanges(kind, doc, items,
+                        kind == TRANSFER ? Map.of() : costService.docUnitCosts(kind, List.of(id))));
         return red.getId();
     }
 

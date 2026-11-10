@@ -278,7 +278,7 @@ public class FinBillService {
     }
 
     /**
-     * 为业务生成的单据逐张生成凭证（未审核），已生成的跳过
+     * 为业务生成的单据逐张生成凭证（未审核），已生成的、金额为 0 的（整单赠品等，无需凭证）跳过
      *
      * @return 生成的凭证数
      */
@@ -286,7 +286,7 @@ public class FinBillService {
     public int generateVouchers(List<Long> ids) {
         int count = 0;
         for (FinBill bill : billMapper.selectByIds(ids)) {
-            if (bill.getVoucherId() != null) {
+            if (bill.getVoucherId() != null || bill.zeroAmount()) {
                 continue;
             }
             if (bill.getSourceType() == BillSource.MANUAL) {
@@ -494,7 +494,8 @@ public class FinBillService {
         bill.setExchangeRate(BigDecimal.ONE);
         bill.setAmountFc(amount);
         bill.setSettledFc(BigDecimal.ZERO);
-        bill.setStatus(BillStatus.UNSETTLED);
+        // 金额为 0（整单赠品等）没有可核销的金额，直接为已核销
+        bill.setStatus(amount.signum() == 0 ? BillStatus.SETTLED : BillStatus.UNSETTLED);
         return bill;
     }
 

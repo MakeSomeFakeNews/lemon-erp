@@ -5,7 +5,7 @@
     <sql id="viewColumns">
         d.id, d.doc_no, d.kind, d.biz_type, d.io_category, d.warehouse_id, w.name AS warehouse_name, d.to_warehouse_id,
         tw.name AS to_warehouse_name, d.biz_date, d.status, d.total_qty, d.remark, d.source_no, d.in_transit,
-        d.receive_by, ru.nickname AS receive_by_name, d.receive_time, d.red_of, rd.doc_no AS red_of_no, d.reversed, d.partner_id, d.partner_name, d.flow_instance_id, d.dept_id,
+        d.receive_by, ru.nickname AS receive_by_name, d.receive_date, d.receive_time, d.red_of, rd.doc_no AS red_of_no, d.reversed, d.partner_id, d.partner_name, d.flow_instance_id, d.dept_id,
         d.create_by, cu.nickname AS create_by_name, d.confirm_by, fu.nickname AS confirm_by_name, d.confirm_time,
         d.create_time, d.update_time
     </sql>

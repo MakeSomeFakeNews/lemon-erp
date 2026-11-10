@@ -60,6 +60,9 @@ public class WmsStockDoc extends BaseEntity {
 
     private Long receiveBy;
 
+    /** 调入收货日期（在途调拨收货的业务日期），调入流水按此日期统计 */
+    private LocalDate receiveDate;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime receiveTime;
 

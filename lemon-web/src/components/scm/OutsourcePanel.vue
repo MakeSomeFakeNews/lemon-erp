@@ -1,10 +1,15 @@
 <template>
   <a-spin :spinning="loading">
-    <a-empty v-if="!loading && !list.length" :description="$t('scm.outsource.empty')" />
+    <template v-if="!loading && !list.length">
+      <a-empty :description="$t('scm.outsource.empty')">
+        <a-button v-if="editable" size="small" @click="openLines">{{ $t('scm.outsource.addLines') }}</a-button>
+      </a-empty>
+    </template>
     <template v-else>
       <div class="ops">
         <span class="sub-text">{{ $t('scm.outsource.tip') }}</span>
         <a-space v-if="editable">
+          <a-button size="small" @click="openLines">{{ $t('scm.outsource.addLines') }}</a-button>
           <a-button size="small" type="primary" @click="openIssue">{{ $t('scm.outsource.issue') }}</a-button>
           <a-button size="small" @click="openReturn">{{ $t('scm.outsource.return') }}</a-button>
         </a-space>
@@ -53,6 +58,28 @@
       </a-table>
       <StockPicker v-model:open="pickerOpen" :warehouse-id="form.warehouseId" @pick="onPick" />
     </a-modal>
+
+    <a-modal v-model:open="linesOpen" :title="$t('scm.outsource.addLines')" width="min(640px, 100vw)" :confirm-loading="saving" destroy-on-close @ok="submitLines">
+      <a-alert type="info" show-icon class="head" :message="$t('scm.outsource.addLinesTip')" />
+      <a-table
+        row-key="orderItemId"
+        size="small"
+        :columns="candidateColumns"
+        :data-source="candidates"
+        :pagination="false"
+        :loading="candidatesLoading"
+        :row-selection="{ selectedRowKeys: chosen, onChange: (keys) => (chosen = keys) }"
+        :locale="{ emptyText: $t('scm.outsource.noCandidates') }"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'material'">
+            <div>{{ record.materialCode }} {{ record.materialName }}</div>
+            <div class="sub-text">{{ record.spec }}</div>
+          </template>
+          <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }}</template>
+        </template>
+      </a-table>
+    </a-modal>
   </a-spin>
 </template>
 
@@ -62,7 +89,7 @@ import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import StockPicker from '@/components/wms/StockPicker.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
-import { outsourceIssue, outsourceMaterials, outsourceReturn } from '@/api/scm/order'
+import { outsourceAddLines, outsourceCandidates, outsourceIssue, outsourceMaterials, outsourceReturn } from '@/api/scm/order'
 import { availableQty, formatQty, rowKey, today } from '@/components/wms/wms'
 
 /** 委外订单的用料：发料给加工商、加工商退料，收货核销 */
@@ -88,6 +115,10 @@ const formColumns = [
   { title: t('scm.consign.slot'), key: 'slot', width: 160 },
   { title: t('common.field.quantity'), key: 'qty', width: 180 },
   { title: '', key: 'action', width: 60 }
+]
+const candidateColumns = [
+  { title: t('scm.order.material'), key: 'material' },
+  { title: t('common.field.quantity'), key: 'qty', width: 120, align: 'right' }
 ]
 const atSupplier = (r) => Number(r.issuedQty) - Number(r.returnedQty) - Number(r.consumedQty)
 
@@ -145,6 +176,39 @@ function onPick(stocks) {
       locationId: s.locationId || null, locationCode: s.locationCode, batchNo: s.batchNo || null, max: availableQty(s), qty: 1 })
   })
 }
+// 物料属性不是委外的自制件偶尔委外加工：选择订单明细按默认 BOM 生成用料
+const linesOpen = ref(false)
+const candidates = ref([])
+const candidatesLoading = ref(false)
+const chosen = ref([])
+async function openLines() {
+  chosen.value = []
+  candidates.value = []
+  linesOpen.value = true
+  candidatesLoading.value = true
+  try {
+    candidates.value = await outsourceCandidates(props.orderId)
+  } finally {
+    candidatesLoading.value = false
+  }
+}
+async function submitLines() {
+  if (!chosen.value.length) {
+    message.warning(t('scm.outsource.selectItems'))
+    return
+  }
+  saving.value = true
+  try {
+    await outsourceAddLines(props.orderId, { orderItemIds: chosen.value })
+    message.success(t('scm.outsource.linesAdded'))
+    linesOpen.value = false
+    load()
+    emit('changed')
+  } finally {
+    saving.value = false
+  }
+}
+
 async function submit() {
   const f = form.value
   if (!f.warehouseId || !f.items.length) {

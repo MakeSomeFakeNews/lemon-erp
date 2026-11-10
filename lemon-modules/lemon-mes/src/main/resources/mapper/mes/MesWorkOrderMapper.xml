@@ -88,4 +88,13 @@
         WHERE id = #{id} AND finished_qty + #{qty} &lt;= qty
     </update>
 
+    <!-- 工作中心设置所属车间后，第一道工序在该工作中心的未结束工单改为该车间（数据权限部门） -->
+    <update id="updateOpenDeptByFirstWorkCenter">
+        UPDATE mes_work_order SET dept_id = #{deptId}, update_time = NOW()
+        WHERE status IN ('DRAFT', 'RELEASED', 'STARTED')
+          AND id IN (SELECT op.wo_id FROM mes_wo_op op
+                     WHERE op.work_center_id = #{workCenterId}
+                       AND op.seq = (SELECT MIN(o2.seq) FROM mes_wo_op o2 WHERE o2.wo_id = op.wo_id))
+    </update>
+
 </mapper>

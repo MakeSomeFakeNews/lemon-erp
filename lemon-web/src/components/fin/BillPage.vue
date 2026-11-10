@@ -33,7 +33,7 @@
             :data-source="list"
             :loading="loading"
             :pagination="pagination"
-            :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: !!r.voucherId || r.sourceType === BillSource.MANUAL }) }"
+            :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: !!r.voucherId || r.sourceType === BillSource.MANUAL || zeroAmount(r) }) }"
             :scroll="{ x: 1640 }"
             @change="onTableChange"
           >
@@ -82,7 +82,13 @@
               <template v-else-if="column.key === 'status'"><DictTag type="fin_bill_status" :value="record.status" /></template>
               <template v-else-if="column.key === 'voucher'">
                 <a v-if="record.voucherId" @click="openVoucher(record.voucherId)">{{ record.voucherNo }}</a>
-                <span v-else class="sub-text">{{ record.sourceType === BillSource.MANUAL ? $t('fin.billPage.noVoucherOpening') : $t('fin.billPage.notGenerated') }}</span>
+                <span v-else class="sub-text">{{
+                  record.sourceType === BillSource.MANUAL
+                    ? $t('fin.billPage.noVoucherOpening')
+                    : zeroAmount(record)
+                      ? $t('fin.billPage.noVoucherZero')
+                      : $t('fin.billPage.notGenerated')
+                }}</span>
               </template>
               <template v-else-if="column.key === 'action'">
                 <span class="table-actions">
@@ -359,6 +365,8 @@ watch(tab, (t) => t === 'aging' && aging.load())
 
 const voucherOpen = ref(false)
 const voucherId = ref()
+// 金额为 0（整单赠品等）不生成凭证
+const zeroAmount = (r) => Number(r.amount) === 0 && Number(r.taxAmount || 0) === 0
 function openVoucher(id) {
   voucherId.value = id
   voucherOpen.value = true

@@ -92,7 +92,8 @@ public class WfInstanceDetailService {
                 instance.getProcessDefinitionName(), status, startUserId, names.get(startUserId),
                 toLocalDateTime(instance.getStartTime()), toLocalDateTime(instance.getEndTime()),
                 design.form(), formData(processInstanceId, design.form()),
-                businessData(processInstanceId, instance.getProcessDefinitionKey()), design.flow(),
+                businessData(processInstanceId, instance.getProcessDefinitionKey()), businessVariables(instance.getProcessDefinitionKey()),
+                design.flow(),
                 nodeStatus(processInstanceId, meta, tasks), records(instance, meta, tasks, comments, copies, names),
                 todoTaskId, running && userId.equals(startUserId));
     }
@@ -109,6 +110,12 @@ public class WfInstanceDetailService {
         if (!viewable) {
             throw new BizException(R.FORBIDDEN, "workflow.error.noPermissionViewProcess");
         }
+    }
+
+    /** 业务单据的流程：全部业务变量的定义（名称按请求语言翻译），不是业务单据的流程返回空列表 */
+    private List<FlowBusiness.Variable> businessVariables(String processKey) {
+        return businesses.stream().filter(b -> b.processKey().equals(processKey)).findFirst()
+                .map(b -> WfModelService.translate(b).variables()).orElse(List.of());
     }
 
     /** 业务单据的流程：发起时传入的业务变量（订单金额、请假天数等），不是业务单据的流程返回空列表 */

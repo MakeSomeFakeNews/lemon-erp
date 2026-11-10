@@ -113,6 +113,11 @@
             </a-form-item>
           </a-col>
           <a-col :span="24">
+            <a-form-item :label="$t('mes.workCenter.dept')" name="deptId" :extra="$t('mes.workCenter.deptExtra')">
+              <DeptSelect v-model:value="form.deptId" :placeholder="$t('mes.workCenter.deptPh')" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
             <a-form-item :label="$t('mes.workCenter.workDays')" name="workDays" :extra="$t('mes.workCenter.workDaysExtra', { v: formatQty(dailyCapacity(form)) })">
               <a-checkbox-group v-model:value="form.workDays" :options="WEEK_DAYS" />
             </a-form-item>
@@ -133,6 +138,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
+import DeptSelect from '@/components/fin/DeptSelect.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import StatusSwitch from '@/components/StatusSwitch.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
@@ -214,6 +220,7 @@ const drawer = useFormDrawer({
     dailyHours: 8,
     resources: 1,
     workDays: [1, 2, 3, 4, 5],
+    deptId: null,
     remark: ''
   }),
   // 打开时取人力资源的人工成本参考（没有薪资档案时不显示）
@@ -231,7 +238,7 @@ const drawer = useFormDrawer({
   },
   create: addWorkCenter,
   update: updateWorkCenter,
-  toPayload: ({ code, name, laborRate, overheadRate, dailyHours, resources, workDays, remark }) => ({
+  toPayload: ({ code, name, laborRate, overheadRate, dailyHours, resources, workDays, deptId, remark }) => ({
     code,
     name,
     laborRate,
@@ -239,6 +246,7 @@ const drawer = useFormDrawer({
     dailyHours,
     resources,
     workDays: [...workDays].sort((a, b) => a - b).join(','),
+    deptId: deptId ?? null,
     remark
   }),
   onSuccess: load

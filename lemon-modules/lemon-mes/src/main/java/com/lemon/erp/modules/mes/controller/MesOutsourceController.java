@@ -3,6 +3,8 @@ package com.lemon.erp.modules.mes.controller;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.mes.dto.OutsourceCandidate;
+import com.lemon.erp.modules.mes.dto.OutsourceLinesRequest;
 import com.lemon.erp.modules.mes.dto.OutsourceStockRequest;
 import com.lemon.erp.modules.mes.entity.MesOutsourceMaterial;
 import com.lemon.erp.modules.mes.service.MesOutsourceService;
@@ -32,6 +34,22 @@ public class MesOutsourceController {
     @PreAuthorize("@ss.hasPerm('scm:purchase:list')")
     public R<List<MesOutsourceMaterial>> materials(@PathVariable Long orderId) {
         return R.ok(outsourceService.materials(orderId));
+    }
+
+    /** 可以按委外加工生成用料的明细（物料属性不是委外的自制件偶尔委外加工） */
+    @GetMapping("/candidates")
+    @PreAuthorize("@ss.hasPerm('scm:purchase:list')")
+    public R<List<OutsourceCandidate>> candidates(@PathVariable Long orderId) {
+        return R.ok(outsourceService.candidates(orderId));
+    }
+
+    /** 把选中的明细按委外加工生成用料 */
+    @PostMapping("/lines")
+    @PreAuthorize("@ss.hasPerm('scm:purchaseIn:add')")
+    @OperLog(title = "委外用料-生成", type = OperType.INSERT) // i18n-ignore
+    public R<Void> addLines(@PathVariable Long orderId, @Valid @RequestBody OutsourceLinesRequest req) {
+        outsourceService.addLines(orderId, req.orderItemIds());
+        return R.ok();
     }
 
     /** 委外发料：生成委外发料出库单 */

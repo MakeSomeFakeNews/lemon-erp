@@ -23,12 +23,17 @@ public class HrPayrollLock {
 
     /** @param what 被禁止的操作（消息键） */
     public void checkOpen(LocalDate date, String what) {
-        if (date == null) {
-            return;
-        }
-        int period = date.getYear() * 100 + date.getMonthValue();
-        if (payrollMapper.exists(Wrappers.<HrPayroll>lambdaQuery().eq(HrPayroll::getPeriod, period).ne(HrPayroll::getStatus, PayrollStatus.DRAFT))) {
+        if (!isOpen(date)) {
             throw new BizException("hr.error.payrollHasConfirmedCannot", date.getYear(), date.getMonthValue(), Messages.get(what));
         }
+    }
+
+    /** 该日所在月份的考勤没有锁定（没有已确认的工资表）；日期为空时为 true */
+    public boolean isOpen(LocalDate date) {
+        if (date == null) {
+            return true;
+        }
+        int period = date.getYear() * 100 + date.getMonthValue();
+        return !payrollMapper.exists(Wrappers.<HrPayroll>lambdaQuery().eq(HrPayroll::getPeriod, period).ne(HrPayroll::getStatus, PayrollStatus.DRAFT));
     }
 }

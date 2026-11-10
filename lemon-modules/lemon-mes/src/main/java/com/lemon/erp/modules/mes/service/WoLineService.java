@@ -3,11 +3,13 @@ package com.lemon.erp.modules.mes.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.modules.mes.entity.MesBom;
 import com.lemon.erp.modules.mes.entity.MesBomItem;
+import com.lemon.erp.modules.mes.entity.MesBomOp;
 import com.lemon.erp.modules.mes.entity.MesMaterialPlan;
 import com.lemon.erp.modules.mes.entity.MesWoMaterial;
 import com.lemon.erp.modules.mes.entity.MesWoOp;
 import com.lemon.erp.modules.mes.mapper.MesWoMaterialMapper;
 import com.lemon.erp.modules.mes.mapper.MesWoOpMapper;
+import com.lemon.erp.modules.mes.mapper.MesWorkCenterMapper;
 import com.lemon.erp.modules.mes.model.SupplyType;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
@@ -16,9 +18,11 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 工单的用料和工序行：按 BOM 生成（虚拟件展开见 {@link WoBomExpander}）、改量时重算需求数量、删除。
@@ -30,6 +34,7 @@ class WoLineService {
 
     private final MesWoMaterialMapper woMaterialMapper;
     private final MesWoOpMapper woOpMapper;
+    private final MesWorkCenterMapper workCenterMapper;
     private final MesBomService bomService;
     private final MesMaterialService materialPlanService;
     private final WmsMaterialService materialService;
@@ -40,6 +45,29 @@ class WoLineService {
 
     List<MesWoOp> ops(Long woId) {
         return woOpMapper.selectByWo(woId);
+    }
+
+    /**
+     * 工单的生产车间：工艺路线中第一个设置了所属车间的工作中心的车间，都没有设置时为空
+     *
+     * @param bom 工单的 BOM（工艺路线），可以为空
+     */
+    Long productionDept(MesBom bom) {
+        if (bom == null) {
+            return null;
+        }
+        List<Long> centerIds = bomService.ops(bom.getId()).stream().sorted(Comparator.comparing(MesBomOp::getSeq, Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(MesBomOp::getWorkCenterId).filter(Objects::nonNull).distinct().toList();
+        if (centerIds.isEmpty()) {
+            return null;
+        }
+        Map<Long, Long> depts = new HashMap<>();
+        workCenterMapper.selectByIds(centerIds).forEach(w -> {
+            if (w.getDeptId() != null) {
+                depts.put(w.getId(), w.getDeptId());
+            }
+        });
+        return centerIds.stream().map(depts::get).filter(Objects::nonNull).findFirst().orElse(null);
     }
 
     /** 按 BOM 生成工单用料（虚拟件展开为它的子件，同一物料合并；序列号物料向上取整）和工序 */

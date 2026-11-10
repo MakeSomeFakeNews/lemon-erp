@@ -166,6 +166,7 @@ public class HrPayrollService {
         Map<Long, Long> userOf = new HashMap<>();
         payable.stream().filter(e -> e.getUserId() != null).forEach(e -> userOf.put(e.getId(), e.getUserId()));
         List<Long> ids = payable.stream().map(HrEmployee::getId).toList();
+        Map<Long, HrEmployee> employeeOf = payable.stream().collect(Collectors.toMap(HrEmployee::getId, e -> e));
         Map<Long, BigDecimal> special = socialService.deductionsOf(ids, period);
         Map<Long, HrSocialScheme> schemes = socialService.schemesByIds(salaries.values().stream().map(HrSalary::getSchemeId)
                 .filter(java.util.Objects::nonNull).distinct().toList());
@@ -188,8 +189,10 @@ public class HrPayrollService {
             item.setCommission(userId == null ? BigDecimal.ZERO : commissions.getOrDefault(userId, BigDecimal.ZERO));
             HrSalary salary = salaries.get(s.employeeId());
             item.setSpecialDeduct(special.getOrDefault(s.employeeId(), BigDecimal.ZERO));
+            HrEmployee emp = employeeOf.get(s.employeeId());
             calculate(item, salary, s, grades.get(s.employeeId()), salary.getSchemeId() == null ? null : schemes.get(salary.getSchemeId()),
-                    prior.getOrDefault(s.employeeId(), new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO}), rules);
+                    prior.getOrDefault(s.employeeId(), new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO}), rules,
+                    rules.paysSocial(ym, emp.getEntryDate(), emp.getLeaveDate()));
             items.add(item);
         }
         itemMapper.insertBatch(items);
@@ -375,6 +378,14 @@ public class HrPayrollService {
      */
     static void calculate(HrPayrollItem item, HrSalary salary, AttendanceSummary s, PerfGrade grade, HrSocialScheme scheme, BigDecimal[] prior,
                           HrRules rules) {
+        calculate(item, salary, s, grade, scheme, prior, rules, true);
+    }
+
+    /**
+     * @param paysSocial 当月是否缴纳社保公积金（入职 / 离职当月按业务参数判断，见 {@link HrRules#paysSocial}），不缴时个人和单位部分都为 0
+     */
+    static void calculate(HrPayrollItem item, HrSalary salary, AttendanceSummary s, PerfGrade grade, HrSocialScheme scheme, BigDecimal[] prior,
+                          HrRules rules, boolean paysSocial) {
         BigDecimal ratio = s.monthDays() == 0 ? BigDecimal.ONE
                 : BigDecimal.valueOf(s.shouldDays()).divide(BigDecimal.valueOf(s.monthDays()), 6, RoundingMode.HALF_UP);
         BigDecimal daily = salary.getBaseSalary().add(salary.getPostAllowance()).divide(rules.monthPayDays(), 6, RoundingMode.HALF_UP);
@@ -418,6 +429,11 @@ public class HrPayrollService {
             item.setSocialCompany(money(base.multiply(scheme.companyRate()).divide(Decimals.HUNDRED, 4, RoundingMode.HALF_UP)));
             BigDecimal housingBase = HrSocialScheme.clamp(salary.getHousingBase(), scheme.getHousingMin(), scheme.getHousingMax());
             item.setHousingPersonal(money(housingBase.multiply(housingRate)));
+        }
+        if (!paysSocial) {
+            item.setSocialPersonal(BigDecimal.ZERO.setScale(2));
+            item.setSocialCompany(BigDecimal.ZERO.setScale(2));
+            item.setHousingPersonal(BigDecimal.ZERO.setScale(2));
         }
         item.setHousingCompany(item.getHousingPersonal());
         if (item.getSpecialDeduct() == null) {

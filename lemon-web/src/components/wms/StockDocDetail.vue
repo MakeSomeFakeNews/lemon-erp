@@ -43,6 +43,7 @@
           </a-descriptions-item>
           <a-descriptions-item v-if="detail.receiveTime" :label="$t('wms.doc.received')">
             {{ detail.receiveByName || '-' }} {{ detail.receiveTime }}
+            <template v-if="detail.receiveDate"> · {{ $t('wms.doc.receiveDate') }} {{ detail.receiveDate }}</template>
           </a-descriptions-item>
           <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
@@ -98,16 +99,11 @@
             <template #icon><CheckOutlined /></template>{{ $t(`wms.doc.confirmAction.${kind}`) }}
           </a-button>
         </template>
-        <a-popconfirm
-          v-if="showReceive"
-          :title="$t('wms.doc.confirmReceive', { name: detail.toWarehouseName })"
-          :description="$t('wms.doc.receiveTip')"
-          @confirm="receive"
-        >
+        <ReceiveConfirm v-if="showReceive" :warehouse-name="detail.toWarehouseName" @confirm="receive">
           <a-button type="primary" :loading="acting">
             <template #icon><InboxOutlined /></template>{{ $t('wms.common.receive') }}
           </a-button>
-        </a-popconfirm>
+        </ReceiveConfirm>
         <a-popconfirm
           v-if="showReverse"
           :title="$t('wms.doc.confirmReverse', { kind: conf.label, no: detail.docNo })"
@@ -132,6 +128,7 @@ import { useI18n } from 'vue-i18n'
 import { Modal, message } from 'ant-design-vue'
 import { CheckOutlined, EditOutlined, InboxOutlined, PrinterOutlined, RollbackOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
+import ReceiveConfirm from './ReceiveConfirm.vue'
 import { confirmDoc, getDoc, receiveTransfer, reverseDoc } from '@/api/wms/doc'
 import { useUserStore } from '@/store/user'
 import { DOC_KINDS, canReverse, formatQty, locationText, negativeClass } from './wms'
@@ -262,10 +259,10 @@ function confirm() {
 }
 
 const acting = ref(false)
-async function receive() {
+async function receive(receiveDate) {
   acting.value = true
   try {
-    await receiveTransfer(props.docId)
+    await receiveTransfer(props.docId, receiveDate)
     message.success(t('wms.doc.receiveSuccess'))
     await load()
     emit('changed')

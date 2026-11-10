@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.modules.fin.dto.AccountSum;
 import com.lemon.erp.modules.fin.dto.FinAnalysis;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.common.exception.BizException;
@@ -124,7 +125,7 @@ public class FinAnalysisService {
 
     /**
      * 现金流量表（直接法）：已记账凭证中库存现金、银行存款的发生额，按对方科目分类；一张凭证有多个对方科目时按金额比例分摊，
-     * 只有现金科目之间的划转不计入
+     * 只有现金科目之间的划转不计入。期初、期末现金余额同样只按已记账凭证（与资产负债表口径一致），有未记账凭证时也能平衡
      */
     public FinAnalysis.CashFlow cashFlow(int begin, int end) {
         toYearMonth(begin);
@@ -292,11 +293,15 @@ public class FinAnalysisService {
         }
     }
 
+    /** 现金科目截至期末的余额（期初余额 + 已记账凭证，与资产负债表一致） */
     private BigDecimal cashBalance(int period, List<String> cash) {
+        Map<Long, AccountSum> sums = new HashMap<>();
+        entryMapper.sumByAccount(null, period, false).forEach(s -> sums.put(s.getAccountId(), s));
         BigDecimal sum = BigDecimal.ZERO;
         for (FinAccount a : accountService.listAll()) {
-            if (Boolean.TRUE.equals(a.getLeaf()) && FinAccountService.inScope(a.getCode(), cash)) {
-                sum = sum.add(entryMapper.sumBalanceUpTo(a.getId(), period));
+            AccountSum s = sums.get(a.getId());
+            if (s != null && Boolean.TRUE.equals(a.getLeaf()) && FinAccountService.inScope(a.getCode(), cash)) {
+                sum = sum.add(dec(s.getDebit())).subtract(dec(s.getCredit()));
             }
         }
         return sum;

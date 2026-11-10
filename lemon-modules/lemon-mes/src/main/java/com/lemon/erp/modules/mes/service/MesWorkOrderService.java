@@ -110,7 +110,8 @@ public class MesWorkOrderService {
         wo.setSource(source);
         wo.setPlanId(planId);
         wo.setRemark(req.remark());
-        wo.setDeptId(user.deptId());
+        Long workshop = lineService.productionDept(bom);
+        wo.setDeptId(workshop != null ? workshop : user.deptId());
         wo.setCreateBy(user.userId());
         workOrderMapper.insert(wo);
         lineService.generate(wo.getId(), bom, req.qty());
@@ -122,7 +123,9 @@ public class MesWorkOrderService {
     public void update(Long id, WorkOrderRequest req) {
         getDraft(id);
         MesBom bom = resolveBom(req);
+        Long workshop = lineService.productionDept(bom);
         workOrderMapper.update(Wrappers.<MesWorkOrder>lambdaUpdate()
+                .set(workshop != null, MesWorkOrder::getDeptId, workshop)
                 .set(MesWorkOrder::getMaterialId, req.materialId())
                 .set(MesWorkOrder::getBomId, bom.getId())
                 .set(MesWorkOrder::getQty, req.qty())
@@ -191,9 +194,7 @@ public class MesWorkOrderService {
     public Long createRework(WorkOrderRequest req, Long sourceWoId) {
         MesBom bom = resolveBom(new WorkOrderRequest(req.materialId(), null, req.qty(), req.planStart(), req.planEnd(), req.warehouseId(),
                 req.remark()));
-        if (sourceWoId != null) {
-            getAccessible(sourceWoId);
-        }
+        MesWorkOrder source = sourceWoId == null ? null : getAccessible(sourceWoId);
         LoginUser user = SecurityUtils.getLoginUser();
         MesWorkOrder wo = new MesWorkOrder();
         wo.setWoNo(docNoService.next(MesDocNos.REWORK_ORDER));
@@ -209,7 +210,9 @@ public class MesWorkOrderService {
         wo.setSource(WorkOrderSource.REWORK);
         wo.setSourceWoId(sourceWoId);
         wo.setRemark(req.remark());
-        wo.setDeptId(user.deptId());
+        // 返工在车间执行：取工艺路线的生产车间，没有时取原工单的部门（品质部发起的返工计划员、车间也能看到），再没有取制单人部门
+        Long workshop = lineService.productionDept(bom);
+        wo.setDeptId(workshop != null ? workshop : source != null ? source.getDeptId() : user.deptId());
         wo.setCreateBy(user.userId());
         workOrderMapper.insert(wo);
         lineService.generateRework(wo.getId(), req.materialId(), req.qty(), bom);

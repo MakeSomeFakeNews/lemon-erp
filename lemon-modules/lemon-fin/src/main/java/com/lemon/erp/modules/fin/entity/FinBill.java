@@ -52,6 +52,11 @@ public class FinBill extends BaseEntity {
 
     private BigDecimal taxAmount;
 
+    /** 金额为 0（如整单赠品）：没有分录，不生成凭证，结账检查也不提示 */
+    public boolean zeroAmount() {
+        return amount != null && amount.signum() == 0 && (taxAmount == null || taxAmount.signum() == 0);
+    }
+
     /** 已核销金额（与金额同号） */
     private BigDecimal settledAmount;
 

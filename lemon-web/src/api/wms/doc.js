@@ -13,4 +13,4 @@ export const deleteDoc = (kind, ids) => request.delete(`/wms/${kind}/${[].concat
 /** 冲销已完成的单据，返回红字单据 ID */
 export const reverseDoc = (kind, id) => request.post(`/wms/${kind}/${id}/reverse`)
 /** 在途调拨单收货：调入仓库入库 */
-export const receiveTransfer = (id) => request.post(`/wms/transfer/${id}/receive`)
+export const receiveTransfer = (id, receiveDate) => request.post(`/wms/transfer/${id}/receive`, { receiveDate })

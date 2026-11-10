@@ -31,6 +31,7 @@ import com.lemon.erp.modules.fin.model.VoucherStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -79,7 +80,7 @@ public class FinCloseCheckService {
         items.add(balanced ? ok("fin.label.trialBalance") : error("fin.label.trialBalance", Messages.get("fin.text.debitsCreditsOpeningBalancePeriodActivity")));
 
         long bills = billMapper.selectCount(Wrappers.<FinBill>lambdaQuery().between(FinBill::getBillDate, begin, end)
-                .isNull(FinBill::getVoucherId).ne(FinBill::getSourceType, BillSource.MANUAL));
+                .isNull(FinBill::getVoucherId).ne(FinBill::getSourceType, BillSource.MANUAL).ne(FinBill::getAmount, BigDecimal.ZERO));
         items.add(bills == 0 ? ok("fin.label.vouchersGeneratedReceivablesPayables") : warn("fin.label.vouchersGeneratedReceivablesPayables", Messages.get("fin.text.receivablePayableDocumentSWithoutVouchers", bills)));
         long settles = settlementMapper.selectCount(Wrappers.<FinSettlement>lambdaQuery().between(FinSettlement::getSettleDate, begin, end)
                 .isNull(FinSettlement::getVoucherId).eq(FinSettlement::getStatus, ApproveStatus.APPROVED));

@@ -11,8 +11,10 @@ import com.lemon.erp.modules.mes.entity.MesWorkCenter;
 import com.lemon.erp.modules.mes.mapper.MesBomOpMapper;
 import com.lemon.erp.modules.mes.mapper.MesEquipmentMapper;
 import com.lemon.erp.modules.mes.mapper.MesWorkCenterMapper;
+import com.lemon.erp.modules.mes.mapper.MesWorkOrderMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -26,6 +28,7 @@ public class MesWorkCenterService {
     private final MesWorkCenterMapper workCenterMapper;
     private final MesBomOpMapper bomOpMapper;
     private final MesEquipmentMapper equipmentMapper;
+    private final MesWorkOrderMapper workOrderMapper;
 
     public PageResult<MesWorkCenter> page(long current, long size, String keyword, EnableStatus status) {
         Page<MesWorkCenter> page = workCenterMapper.selectPage(Page.of(current, size), Wrappers.<MesWorkCenter>lambdaQuery()
@@ -57,13 +60,18 @@ public class MesWorkCenterService {
         workCenterMapper.insert(wc);
     }
 
+    /** 修改；所属车间有变化时，第一道工序在这里的未结束工单的部门（数据权限）随之改为新车间 */
+    @Transactional
     public void update(Long id, MesWorkCenter wc) {
-        get(id);
+        MesWorkCenter old = get(id);
         checkCodeUnique(wc.getCode(), id);
         wc.setId(id);
         normalize(wc);
         wc.setStatus(null);
         workCenterMapper.updateById(wc);
+        if (wc.getDeptId() != null && !wc.getDeptId().equals(old.getDeptId())) {
+            workOrderMapper.updateOpenDeptByFirstWorkCenter(id, wc.getDeptId());
+        }
     }
 
     public void changeStatus(Long id, EnableStatus status) {
