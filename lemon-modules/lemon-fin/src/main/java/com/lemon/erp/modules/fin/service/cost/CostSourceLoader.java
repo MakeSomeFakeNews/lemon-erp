@@ -81,6 +81,9 @@ public class CostSourceLoader {
         for (Map<String, Object> row : sourceMapper.selectStockMovements(begin, end)) {
             src.addMovement(stockMovement(row));
         }
+        for (Map<String, Object> row : sourceMapper.selectProjectMovements(begin, end)) {
+            src.addProjectMovement(id(row, "materialId"), id(row, "projectId"), dec(row, "qty"));
+        }
         for (Map<String, Object> row : consumableMapper.selectForCost(begin, end)) {
             src.addConsume(new ConsumeRow(id(row, "materialId"), idOrNull(row, "deptId"), idOrNull(row, "accountId"), dec(row, "qty")));
         }

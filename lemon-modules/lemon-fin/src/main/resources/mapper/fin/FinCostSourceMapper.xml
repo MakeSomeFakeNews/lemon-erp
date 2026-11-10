@@ -19,6 +19,18 @@
         GROUP BY f.material_id, COALESCE(d.biz_type, f.biz_type)
     </select>
 
+    <!-- 项目领料按项目汇总（出库为负数，取反后领用为正、退回为负），成本凭证借方按项目辅助核算 -->
+    <select id="selectProjectMovements" resultType="java.util.Map">
+        SELECT f.material_id AS "materialId", p.id AS "projectId", -SUM(f.qty) AS "qty"
+        FROM wms_stock_flow f
+        JOIN wms_warehouse wh ON wh.id = f.warehouse_id
+        JOIN wms_stock_doc d ON d.id = f.doc_id
+        JOIN pm_project p ON p.code = d.source_no
+        WHERE f.biz_type IN ('IN', 'OUT') AND d.biz_type = 'PROJECT' AND wh.type &lt;&gt; 'CONSIGN_IN'
+          AND d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}
+        GROUP BY f.material_id, p.id
+    </select>
+
     <!-- 按收发类别汇总的其他出入库数量（成本凭证按类别取对方科目） -->
     <select id="selectIoCategoryMovements" resultType="java.util.Map">
         SELECT f.material_id AS "materialId", d.kind AS "kind", d.io_category AS "ioCategory",

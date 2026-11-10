@@ -67,6 +67,8 @@ public final class CostSource {
     /** 物料 → 项目领料数量（扣除退回）、委外发料数量，计入合同履约成本、委托加工物资 */
     private final Map<Long, BigDecimal> projectOut = new HashMap<>();
     private final Map<Long, BigDecimal> outsourceOut = new HashMap<>();
+    /** 物料 → 项目 → 项目领料数量（扣除退回）：合同履约成本按项目辅助核算，对应不到项目的部分不带项目 */
+    private final Map<Long, Map<Long, BigDecimal>> projectOutByProject = new HashMap<>();
     /** 服务工单领用的备件（售后），计入销售费用 */
     private final Map<Long, BigDecimal> serviceOut = new HashMap<>();
     /** 物料 → 入库类别 / 出库类别 → 数量：其他出入库按类别取对方科目 */
@@ -140,6 +142,11 @@ public final class CostSource {
             serviceOut.merge(m, row.outQty().subtract(row.inQty()), BigDecimal::add);
         }
         stock.put(m, new StockSums(v.inQty().add(row.inQty()), v.outQty().add(row.outQty()), salesOut, salesReturn));
+    }
+
+    /** 本期项目领料按项目的数量（领用 - 退回） */
+    public void addProjectMovement(Long materialId, Long projectId, BigDecimal qty) {
+        projectOutByProject.computeIfAbsent(materialId, k -> new LinkedHashMap<>()).merge(projectId, qty, BigDecimal::add);
     }
 
     public void addConsume(ConsumeRow row) {
