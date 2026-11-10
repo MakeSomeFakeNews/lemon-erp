@@ -606,6 +606,7 @@ export default {
     receivedN: 'Received {qty}',
     overdueDays: '{n} days overdue',
     dueInDays: 'Due in {n} days',
+    dueToday: 'Due today',
     shortage: 'Shortage',
     atp: 'ATP',
     customer: 'Customer',
