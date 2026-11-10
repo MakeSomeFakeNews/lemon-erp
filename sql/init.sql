@@ -1908,6 +1908,7 @@ CREATE TABLE mes_work_center (
     daily_hours   DECIMAL(6, 2)  NOT NULL DEFAULT 8 COMMENT '每个资源每个工作日的可用工时',
     resources     INT            NOT NULL DEFAULT 1 COMMENT '资源数（设备台数 / 班组人数），日产能 = 每日工时 × 资源数',
     work_days     VARCHAR(16)    NOT NULL DEFAULT '1,2,3,4,5' COMMENT '工作日（1 周一 … 7 周日，逗号分隔），工厂日历可按日期调整',
+    dept_id       BIGINT                  DEFAULT NULL COMMENT '所属车间（部门）：工单的数据权限部门取第一道工序工作中心的所属车间',
     status        TINYINT        NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
     remark        VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     create_time   DATETIME                DEFAULT NULL COMMENT '创建时间',

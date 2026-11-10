@@ -873,6 +873,9 @@ export default {
   },
   workCenter: {
     title: 'Work Center',
+    dept: 'Workshop',
+    deptPh: 'Select a workshop (department)',
+    deptExtra: "A work order's department is the workshop of its first operation's work center, so workshop staff with the \"own department\" data scope can see and execute it. Open work orders whose first operation is here follow changes",
     codeOrName: 'Code or name',
     add: 'New Work Center',
     edit: 'Edit Work Center',

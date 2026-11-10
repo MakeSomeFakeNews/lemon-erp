@@ -40,4 +40,7 @@ public interface MesWorkOrderMapper extends BaseMapper<MesWorkOrder> {
 
     /** 回写完工数量：不超过计划数量 */
     int addFinished(@Param("id") Long id, @Param("qty") BigDecimal qty);
+
+    /** 第一道工序在该工作中心的未结束工单，数据权限部门改为工作中心的所属车间 */
+    int updateOpenDeptByFirstWorkCenter(@Param("workCenterId") Long workCenterId, @Param("deptId") Long deptId);
 }

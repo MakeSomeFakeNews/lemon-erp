@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.mes.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.common.enums.EnableStatus;
@@ -48,6 +50,10 @@ public class MesWorkCenter extends BaseEntity {
     /** 工作日：1 周一 … 7 周日，逗号分隔 */
     @Pattern(regexp = "^([1-7](,[1-7])*)?$", message = "{mes.valid.invalidWorkDaysFormat}")
     private String workDays;
+
+    /** 所属车间（部门）：工单的数据权限部门取第一道工序工作中心的所属车间，车间人员按「本部门」可以看到并执行 */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private Long deptId;
 
     /** 1 启用 0 停用 */
     private EnableStatus status;
