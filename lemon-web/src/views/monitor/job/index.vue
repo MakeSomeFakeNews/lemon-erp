@@ -106,7 +106,7 @@ import { JobRunStatus, JobTrigger } from '@/constants/enums'
 const { t } = useI18n()
 const columns = [
   { title: t('monitor.job.name'), dataIndex: 'name', width: 150 },
-  { title: t('monitor.job.jobKey'), dataIndex: 'jobKey', width: 140 },
+  { title: t('monitor.job.jobKey'), dataIndex: 'jobKey', width: 180 },
   { title: 'Cron', dataIndex: 'cron', width: 120 },
   { title: t('monitor.job.params'), dataIndex: 'params', width: 100, ellipsis: true, defaultHidden: true },
   { title: t('common.field.status'), key: 'status', width: 90 },
@@ -169,7 +169,7 @@ const logPagination = computed(() => ({
   showTotal: (total) => t('common.table.total', { total })
 }))
 const logColumns = [
-  { title: t('monitor.job.job'), dataIndex: 'jobKey', width: 170 },
+  { title: t('monitor.job.job'), dataIndex: 'jobKey', width: 180 },
   { title: t('monitor.job.trigger'), key: 'triggerType', width: 90 },
   { title: t('monitor.job.startTime'), dataIndex: 'startTime', width: 170 },
   { title: t('monitor.job.costMs'), dataIndex: 'costMs', width: 110, align: 'right' },

@@ -57,7 +57,7 @@
           <template v-else-if="column.key === 'progress'">
             <a v-if="record.totalCount" class="progress" @click="detail.open(record.id, 'readers')">
               <a-progress :percent="percent(record)" size="small" :show-info="false" class="progress-bar" />
-              <span>{{ record.readCount }} / {{ record.totalCount }}</span>
+              <span class="progress-text">{{ record.readCount }} / {{ record.totalCount }}</span>
             </a>
             <span v-else class="sub-text">-</span>
           </template>
@@ -134,7 +134,7 @@ const columns = [
   { title: t('system.notice.type'), key: 'type', dataIndex: 'type', width: 90, dict: 'sys_notice_type' },
   { title: t('system.notice.scope'), key: 'scope', dataIndex: 'scopeType', width: 100, dict: 'sys_notice_scope' },
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 140, dict: 'sys_notice_status' },
-  { title: t('system.notice.progress'), key: 'progress', width: 120, exportValue: (r) => (r.totalCount ? `${r.readCount}/${r.totalCount}` : '') },
+  { title: t('system.notice.progress'), key: 'progress', width: 140, exportValue: (r) => (r.totalCount ? `${r.readCount}/${r.totalCount}` : '') },
   { title: t('system.notice.publishTime'), key: 'publish', dataIndex: 'publishTime', width: 160 },
   { title: t('system.notice.expireDate'), key: 'expireDate', dataIndex: 'expireDate', width: 110, defaultHidden: true },
   { title: t('common.action.operation'), key: 'action', width: actionWidth([t('system.notice.publish'), t('common.action.edit'), t('common.action.delete')]), fixed: 'right' }
@@ -182,8 +182,12 @@ const remove = useAction(deleteNotice, { successKey: 'common.msg.deleteSuccess',
   color: var(--app-text-2);
 }
 .progress-bar {
-  width: 64px;
+  flex: 0 0 48px;
+  width: 48px;
   margin: 0;
+}
+.progress-text {
+  white-space: nowrap;
 }
 .sub-text {
   color: var(--app-text-3);

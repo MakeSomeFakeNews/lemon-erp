@@ -368,8 +368,6 @@ export default {
     leaveType: 'Leave Type',
     leaveTypeRequired: 'Please select the leave type',
     compensation: 'Compensation',
-    payOvertime: 'Overtime pay',
-    toLeave: 'Comp time',
     time: 'Time',
     rangeRequired: 'Please select the start and end time',
     duration: 'Duration',

@@ -44,6 +44,10 @@
             <span v-if="record.status === FlowStatus.RUNNING && record.currentNodes">{{ record.currentNodes }}</span>
             <span v-else class="sub-text">-</span>
           </template>
+          <template v-else-if="column.key === 'times'">
+            <div>{{ record.startTime }}</div>
+            <div v-if="record.endTime" class="sub-text">{{ record.endTime }}</div>
+          </template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
               <a-button type="link" size="small" @click="openDetail(record)">
@@ -112,17 +116,22 @@ const props = defineProps({
 })
 const dict = useDict('wf_status', 'wf_category')
 
-// 管理页多一列发起人和终止按钮：其他列收窄，1440 宽屏幕下不需要横向滚动
+// 管理页多一列发起人和终止按钮：发起 / 结束时间合并为一列（结束时间在发起时间下），标题列保持足够宽度，
+// 分类、状态列按英文标签（Administration、In Approval）留宽，1440 宽屏幕下中英文都不需要横向滚动
 const isManage = props.manage
 const columns = [
-  { title: t('workflow.list.title'), key: 'name', width: isManage ? 140 : 220, ellipsis: true },
-  { title: t('workflow.list.process'), dataIndex: 'processName', width: isManage ? 100 : 140, ellipsis: true },
-  { title: t('workflow.list.category'), key: 'category', width: isManage ? 90 : 100 },
-  ...(isManage ? [{ title: t('workflow.list.initiator'), dataIndex: 'startUserName', width: 100 }] : []),
-  { title: t('common.field.status'), key: 'status', width: isManage ? 90 : 110 },
-  { title: t('workflow.list.currentNode'), key: 'currentNodes', width: isManage ? 110 : 140, ellipsis: true },
-  { title: t('workflow.list.startTime'), dataIndex: 'startTime', width: 160 },
-  { title: t('workflow.list.endTime'), dataIndex: 'endTime', width: 160 },
+  { title: t('workflow.list.title'), key: 'name', width: isManage ? 210 : 220, ellipsis: true },
+  { title: t('workflow.list.process'), dataIndex: 'processName', width: isManage ? 120 : 140, ellipsis: true },
+  { title: t('workflow.list.category'), key: 'category', width: isManage ? 120 : 100 },
+  ...(isManage ? [{ title: t('workflow.list.initiator'), dataIndex: 'startUserName', width: 90 }] : []),
+  { title: t('common.field.status'), key: 'status', width: isManage ? 120 : 110 },
+  { title: t('workflow.list.currentNode'), key: 'currentNodes', width: isManage ? 120 : 140, ellipsis: true },
+  ...(isManage
+    ? [{ title: t('workflow.list.startEndTime'), key: 'times', width: 170 }]
+    : [
+        { title: t('workflow.list.startTime'), dataIndex: 'startTime', width: 160 },
+        { title: t('workflow.list.endTime'), dataIndex: 'endTime', width: 160 }
+      ]),
   { title: t('common.action.operation'), key: 'action', width: actionWidth(isManage ? [t('common.action.view'), t('workflow.list.terminate')] : [t('common.action.view')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, props.storageKey)
@@ -175,5 +184,6 @@ onMounted(load)
 <style scoped>
 .sub-text {
   color: var(--app-text-3);
+  font-size: 12px;
 }
 </style>

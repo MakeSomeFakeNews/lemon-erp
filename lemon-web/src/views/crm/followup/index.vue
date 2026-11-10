@@ -8,7 +8,7 @@
         <a-form-item :label="$t('crm.followupModal.method')" name="method">
           <a-select v-model:value="query.method" :placeholder="$t('crm.common.all')" allow-clear :options="toOptions(dict.crm_follow_method)" />
         </a-form-item>
-        <a-form-item :label="$t('crm.followupModal.followTime')" name="dateRange">
+        <a-form-item :label="$t('crm.followupModal.followTime')" name="dateRange" data-wide>
           <a-range-picker v-model:value="query.dateRange" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
         <a-form-item :label="$t('crm.followup.followBy')" name="mine">

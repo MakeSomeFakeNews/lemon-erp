@@ -22,6 +22,7 @@
 
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar
+        :exporter="exportAll"
         v-model:size="size"
         v-model:checked="checked"
         v-model:show-search="showSearch"
@@ -201,13 +202,37 @@ async function importOrders(req) {
 const dict = useDict('scm_order_status')
 useCurrencies()
 
+// 导出（exportColumns / exportValue）：合并显示的列拆开导出，金额、数量为原始数值，见 useTable
 const columns = [
   { title: t('scm.order.orderNo'), key: 'orderNo', width: 190 },
-  { title: conf.partnerLabel, key: 'partner', width: 180 },
-  { title: t('scm.order.orderDeliveryDate'), key: 'dates', width: 140 },
-  { title: t('scm.order.totalAmount'), key: 'totalAmount', width: 130, align: 'right' },
-  { title: t('common.field.status'), key: 'status', width: 120 },
-  { title: props.kind === 'purchase' ? t('scm.order.inProgress') : t('scm.order.outProgress'), key: 'progress', width: 160 },
+  { title: conf.partnerLabel, key: 'partner', width: 180, exportValue: (r) => [r.partnerCode, r.partnerName].filter(Boolean).join(' ') },
+  {
+    title: t('scm.order.orderDeliveryDate'),
+    key: 'dates',
+    width: 140,
+    exportColumns: [
+      { title: t('scm.order.orderDate'), dataIndex: 'orderDate' },
+      { title: t('scm.order.deliveryDate'), dataIndex: 'deliveryDate' }
+    ]
+  },
+  {
+    title: t('scm.order.totalAmount'),
+    key: 'totalAmount',
+    width: 130,
+    align: 'right',
+    exportColumns: [
+      { title: t('scm.order.totalAmount'), dataIndex: 'totalAmount' },
+      { title: t('scm.order.currencyRate'), exportValue: (r) => (isForeign(r.currency) ? `${r.currency} @${Number(r.exchangeRate)}` : r.currency || '') },
+      { title: t('scm.wholeDiscount.label'), exportValue: (r) => (Number(r.wholeDiscount) ? Number(r.wholeDiscount) : '') }
+    ]
+  },
+  { title: t('common.field.status'), key: 'status', width: 120, dict: 'scm_order_status' },
+  {
+    title: props.kind === 'purchase' ? t('scm.order.inProgress') : t('scm.order.outProgress'),
+    key: 'progress',
+    width: 160,
+    exportValue: (r) => `${formatQty(r.doneQty)} / ${formatQty(r.totalQty)}`
+  },
   { title: conf.warehouseLabel, dataIndex: 'warehouseName', width: 120, defaultHidden: true },
   { title: t('scm.order.preparedBy'), dataIndex: 'createByName', width: 110, defaultHidden: true },
   { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true, defaultHidden: true },
@@ -224,7 +249,7 @@ const showSearch = ref(true)
 
 const emptyQuery = () => ({ orderNo: undefined, partnerId: undefined, status: undefined, keyword: undefined, range: undefined })
 const query = reactive(emptyQuery())
-const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable(
+const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange, exportAll } = useTable(
   (params) => pageOrder(props.kind, params),
   query,
   { params: ({ range, ...rest }) => ({ ...rest, beginDate: range?.[0], endDate: range?.[1] }) }

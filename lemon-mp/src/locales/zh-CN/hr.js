@@ -73,8 +73,6 @@ export default {
     leaveType: '假期类型',
     annualOption: '{label}（余 {n} 天）',
     compensation: '补偿方式',
-    payOvertime: '发加班费',
-    toLeave: '转调休',
     startTime: '开始时间',
     endTime: '结束时间',
     duration: '时长（小时）',

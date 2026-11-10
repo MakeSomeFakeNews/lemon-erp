@@ -2,7 +2,7 @@
   <div class="table-page">
     <a-card v-show="showSearch" :bordered="false" class="page-card">
       <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item :label="$t('common.field.date')" name="range">
+        <a-form-item :label="$t('common.field.date')" name="range" data-wide>
           <a-range-picker v-model:value="query.range" value-format="YYYY-MM-DD" :allow-clear="false" />
         </a-form-item>
         <a-form-item :label="$t('wms.common.warehouse')" name="warehouseId">

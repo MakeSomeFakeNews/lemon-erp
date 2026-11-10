@@ -284,7 +284,7 @@ export default {
     class: 'Class',
     stockQty: 'Stock Qty',
     stockAmount: 'Stock Value',
-    lastOut: 'Last Outbound',
+    lastOut: 'Last Outbound Date',
     idleDays: 'Idle Days',
     rule: 'Rule',
     condition: 'Condition'

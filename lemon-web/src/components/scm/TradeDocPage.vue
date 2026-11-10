@@ -22,6 +22,7 @@
 
     <a-card :bordered="false" class="page-card table-card">
       <TableToolbar
+        :exporter="exportAll"
         v-model:size="size"
         v-model:checked="checked"
         v-model:show-search="showSearch"
@@ -98,7 +99,7 @@ import TradeDocForm from './TradeDocForm.vue'
 import { pageTrade } from '@/api/scm/trade'
 import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
-import { formatQty } from '@/components/wms/wms'
+import { formatQty, warehouseText } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney } from './scm'
 import { useI18n } from 'vue-i18n'
 import { OrderSource } from '@/constants/enums'
@@ -116,14 +117,30 @@ const router = useRouter()
 const conf = TRADE_KINDS[props.kind]
 const orderConf = ORDER_KINDS[conf.orderKind]
 
+// 导出（exportValue）：往来单位为「编码 名称」，金额、数量为原始数值，见 useTable
 const columns = [
   { title: t('scm.trade.docNo'), key: 'docNo', width: 170 },
-  { title: t('scm.trade.orderNo'), key: 'orderNo', width: 170, defaultHidden: true },
-  { title: orderConf.partnerLabel, key: 'partner', width: 200 },
-  { title: t('scm.trade.warehouse'), key: 'warehouse', width: 130 },
+  {
+    title: t('scm.trade.orderNo'),
+    key: 'orderNo',
+    width: 170,
+    defaultHidden: true,
+    exportValue: (r) => (r.orderSource === OrderSource.DIRECT ? t('scm.trade.direct') : r.orderNo || '')
+  },
+  { title: orderConf.partnerLabel, key: 'partner', width: 200, exportValue: (r) => [r.partnerCode, r.partnerName].filter(Boolean).join(' ') },
+  { title: t('scm.trade.warehouse'), key: 'warehouse', width: 130, exportValue: warehouseText },
   { title: t('scm.trade.bizDate'), dataIndex: 'bizDate', width: 120 },
   { title: t('common.field.quantity'), key: 'totalQty', width: 100, align: 'right' },
-  { title: t('scm.trade.totalAmount'), key: 'totalAmount', width: 140, align: 'right' },
+  {
+    title: t('scm.trade.totalAmount'),
+    key: 'totalAmount',
+    width: 140,
+    align: 'right',
+    exportColumns: [
+      { title: t('scm.trade.totalAmount'), dataIndex: 'totalAmount' },
+      { title: t('scm.wholeDiscount.label'), exportValue: (r) => (Number(r.wholeDiscount) ? Number(r.wholeDiscount) : '') }
+    ]
+  },
   { title: t('scm.trade.wmsDocNo'), dataIndex: 'wmsDocNo', width: 170, defaultHidden: true },
   { title: t('scm.trade.createBy'), dataIndex: 'createByName', width: 120, defaultHidden: true },
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
@@ -139,7 +156,7 @@ const showSearch = ref(true)
 
 const emptyQuery = () => ({ docNo: undefined, orderNo: undefined, partnerId: undefined, warehouseId: undefined, range: undefined })
 const query = reactive(emptyQuery())
-const { list, loading, size, pagination, load, search, onTableChange } = useTable((params) => pageTrade(props.kind, params), query, {
+const { list, loading, size, pagination, load, search, onTableChange, exportAll } = useTable((params) => pageTrade(props.kind, params), query, {
   params: ({ range, ...rest }) => ({ ...rest, beginDate: range?.[0], endDate: range?.[1] })
 })
 
