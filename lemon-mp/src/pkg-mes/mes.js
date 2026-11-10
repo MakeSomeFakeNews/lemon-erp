@@ -1,11 +1,12 @@
 /** 设备与质量分包的公共逻辑（与 Web 端 components/qms/qms.js 的检验规则一致） */
 import { today } from '@/utils/format'
 
-/** 下次保养日期的提示：已到期 / 7 天内到期，其余为空 */
+/** 下次保养日期的提示：已到期 / 今天到期 / 7 天内到期，其余为空 */
 export function dueText(date, t) {
   if (!date) return ''
   const days = Math.round((new Date(date.replace(/-/g, '/')) - new Date(today().replace(/-/g, '/'))) / 86400000)
   if (days < 0) return t('mes.equipment.overdue')
+  if (days === 0) return t('mes.equipment.dueToday')
   if (days <= 7) return t('mes.equipment.dueSoon', { n: days })
   return ''
 }

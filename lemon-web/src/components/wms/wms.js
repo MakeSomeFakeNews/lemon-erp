@@ -103,7 +103,7 @@ export function expiryStatus(date) {
   if (!date) return null
   const days = dayjs(date).diff(dayjs().startOf('day'), 'day')
   if (days < 0) return { color: 'red', text: t('wms.common.expired') }
-  if (days <= 30) return { color: 'orange', text: t('wms.common.expireInDays', { days }) }
+  if (days <= 30) return { color: 'orange', text: days === 0 ? t('wms.common.expireToday') : t('wms.common.expireInDays', { days }) }
   return null
 }
 

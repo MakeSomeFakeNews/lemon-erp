@@ -35,6 +35,7 @@ export default {
     nextMaintain: '下次保养',
     overdue: '已到期',
     dueSoon: '{n} 天内到期',
+    dueToday: '今天到期',
     records: '保养维修记录',
     noRecords: '暂无保养维修记录',
     report: '报修',

@@ -35,6 +35,7 @@ export default {
     nextMaintain: 'Next maintenance',
     overdue: 'Overdue',
     dueSoon: 'Due in {n} days',
+    dueToday: 'Due today',
     records: 'Maintenance & repair history',
     noRecords: 'No maintenance or repair records',
     report: 'Report fault',

@@ -20,6 +20,7 @@ export default {
     unspecified: '未指定',
     expired: '已过期',
     expireInDays: '{days} 天后到期',
+    expireToday: '今天到期',
     availableN: '可用 {n}',
     red: '红字',
     reversed: '已冲销',
