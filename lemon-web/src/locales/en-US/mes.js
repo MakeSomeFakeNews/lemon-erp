@@ -700,6 +700,9 @@ export default {
     finishWarehousePh: 'Optional, default for completion receipt',
     detailTitle: 'Work Order {no}',
     finishedOfPlan: 'Finished / Planned',
+    finishedQty: 'Finished Qty',
+    planQty: 'Planned Qty',
+    scrapShort: 'Scrap {n}',
     planDate: 'Planned Dates',
     reworkFrom: 'Rework of',
     splitFrom: 'Split from',
@@ -726,7 +729,7 @@ export default {
     report: 'Report',
     moldShots: 'Mold {code} × {shots} shots',
     qtyTitle: 'Change Qty - Work Order {no}',
-    qtyTip: 'The new quantity cannot be less than the finished or reported quantity; material requirements are recalculated by the new quantity.',
+    qtyTip: 'The new quantity cannot be less than the finished or reported quantity; material requirements are recalculated by the new quantity. The work order is completed when finished + reported scrap reaches the new quantity.',
     qtyExtra: 'Current {qty}, finished {finished} {unit}',
     splitTitle: 'Split - Work Order {no}',
     splitTip: 'Split part of the quantity into a new draft work order and reduce this order accordingly; the split quantity cannot exceed the quantity not yet started, and material requirements are recalculated.',
@@ -788,6 +791,7 @@ export default {
     closeCostWip: ' No completion receipts: the net issued material cost and conversion cost (¥{total}) is a work-in-process loss and does not go into inventory; month-end cost accounting writes off the remaining WIP as production loss (cost of sales) in the closing period.',
     closeCostWipHidden: ' No completion receipts: the net issued material cost and conversion cost is a work-in-process loss and does not go into inventory; month-end cost accounting writes off the remaining WIP as production loss (cost of sales) in the closing period.',
     closeCostLabel: 'Cost Released on Closing',
+    completeCostLabel: 'Cost Transferred on Completion',
     closeCostValue: '¥{total}, of which ¥{toStock} added to product inventory',
     cost: {
       title: 'Cost to Product',
@@ -850,7 +854,7 @@ export default {
     tip: {
       issue: 'Pick locations and batches from current stock; the default quantity is the unissued quantity. A "Production Issue" outbound document is generated.',
       return: 'Return excess or unused materials to the warehouse, up to the issued quantity, at the issue cost of this work order. A "Production Return" inbound document is generated. If products have been received, the excess material cost they absorbed is reduced accordingly.',
-      finish: 'Receive finished goods, up to the work order quantity in total; the work order is completed automatically when fully received. A "Production Receipt" inbound document is generated. The cost is the standard cost, or else the allocated net issued material cost + reported hours × labor / overhead rate of the work center (standard hours when no hours are reported).',
+      finish: 'Receive finished goods, up to the work order quantity in total; the work order is completed automatically when finished + reported scrap reaches the work order quantity. A "Production Receipt" inbound document is generated. The cost is the standard cost, or else the allocated net issued material cost + reported hours × labor / overhead rate of the work center (standard hours when no hours are reported); the last receipt bears the cost of scrapped units.',
       scrap: 'Products scrapped in production reports go into the defective goods warehouse, up to the total reported scrap of all operations. A "Scrap Receipt" inbound document is generated and it does not count toward the completed quantity.',
       supplement: 'Issue materials for approved supplementary issue requests, up to the unissued quantity of each material, possibly in several issues. A "Supplementary Issue" document and a "Production Issue" outbound document are generated and counted as supplemented on the work order.'
     },
@@ -873,7 +877,13 @@ export default {
     issueHint: 'Required {req}, issued {issued}',
     issueHintSupp: 'Required {req}, supplemented {supp}, issued {issued}',
     issuedSupp: 'Materials issued, supplementary issue document {no}',
-    kindSuccess: '{label} completed'
+    kindSuccess: '{label} completed',
+    kitWarn: 'Issued materials (issued + supplementary − returned) support completing {kit}; {finished} completed, {left} more can be received by kit (limited by {material}). Receiving more requires confirmation.',
+    kitBlock: 'Issued materials (issued + supplementary − returned) support completing {kit}; {finished} completed, at most {left} more can be received (limited by {material}). Issue or supplement materials for more.',
+    kitExceedTitle: 'Exceeds the quantity supported by issued materials',
+    kitExceedWarn: 'Receiving {qty}, but issued materials only support {left} more. Some materials may not be issued, have been returned or issues are not recorded. Continue?',
+    kitExceedBlock: 'Receiving {qty} exceeds the {left} supported by issued materials. Issue or supplement materials first',
+    kitExceedOk: 'Continue'
   },
   workCenter: {
     title: 'Work Center',

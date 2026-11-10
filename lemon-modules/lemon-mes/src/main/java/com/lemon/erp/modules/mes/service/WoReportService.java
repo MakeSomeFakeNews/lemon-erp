@@ -45,7 +45,7 @@ public class WoReportService {
     private final MesMoldService moldService;
     private final BizPeriodGuard periodGuard;
 
-    /** 报工：合格 + 报废累计不超过工单数量 */
+    /** 报工：合格 + 报废累计不超过工单数量；报废累计到工单，已有完工入库且 完工 + 报废 达到工单数量时工单完工 */
     @Transactional
     public void report(Long id, ReportRequest req) {
         MesWorkOrder wo = workOrderService.getExecutable(id);
@@ -98,6 +98,11 @@ public class WoReportService {
             reportMapper.update(Wrappers.<MesReport>lambdaUpdate().set(MesReport::getShots, shots).eq(MesReport::getId, report.getId()));
         }
         workOrderService.markStarted(id);
+        // 报废的产品不会再生产出来：完工 + 报废达到工单数量时完工
+        if (scrap.signum() > 0) {
+            workOrderService.addScrap(id, scrap);
+            workOrderService.completeIfDone(id);
+        }
     }
 
     public PageResult<MesReport> reports(long current, long size, Long woId, LocalDate beginDate, LocalDate endDate) {

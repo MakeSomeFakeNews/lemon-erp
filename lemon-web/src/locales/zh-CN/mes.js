@@ -700,6 +700,9 @@ export default {
     finishWarehousePh: '选填，完工入库时默认',
     detailTitle: '工单 {no}',
     finishedOfPlan: '完工 / 计划',
+    finishedQty: '完工数量',
+    planQty: '计划数量',
+    scrapShort: '报废 {n}',
     planDate: '计划日期',
     reworkFrom: '返工自',
     splitFrom: '拆分自',
@@ -726,7 +729,7 @@ export default {
     report: '报工',
     moldShots: '模具 {code} × {shots} 模次',
     qtyTitle: '改量 - 工单 {no}',
-    qtyTip: '新数量不少于已完工、已报工数量，用料需求按新数量重算。',
+    qtyTip: '新数量不少于已完工、已报工数量，用料需求按新数量重算；完工 + 报工报废达到新数量时工单完工。',
     qtyExtra: '当前 {qty}，已完工 {finished} {unit}',
     splitTitle: '拆分 - 工单 {no}',
     splitTip: '从本工单拆出部分数量生成新的草稿工单，本工单数量相应减少；拆分数量不超过未开工的数量，用料需求按数量重算。',
@@ -788,6 +791,7 @@ export default {
     closeCostWip: '工单没有完工入库：已领料的净成本和工费 ¥{total} 为在制品损失，不进入库存；财务月末成本核算在关闭当期把剩余在产品转为生产损失（主营业务成本）。',
     closeCostWipHidden: '工单没有完工入库：已领料的净成本和工费为在制品损失，不进入库存；财务月末成本核算在关闭当期把剩余在产品转为生产损失（主营业务成本）。',
     closeCostLabel: '关闭转出成本',
+    completeCostLabel: '完工补转成本',
     closeCostValue: '¥{total}，其中追加到产品库存 ¥{toStock}',
     cost: {
       title: '转入产品成本',
@@ -850,7 +854,7 @@ export default {
     tip: {
       issue: '从仓库现有库存中选择库位、批次领用，默认数量为未领数量；生成「生产领料」出库单。',
       return: '把多领、未用完的物料退回仓库，数量不超过已领数量，按该工单的领料成本入库；生成「生产退料」入库单。已有完工入库时，已完工产品多承担的材料成本随退料冲减。',
-      finish: '产成品入库，累计不超过工单数量，满数量后工单自动完工；生成「生产入库」入库单。入库成本取标准成本，没有时为 净领料成本分摊 + 报工工时 × 工作中心人工 / 制造费用率（没有报工工时按标准工时）。',
+      finish: '产成品入库，累计不超过工单数量，完工 + 报工报废达到工单数量后工单自动完工；生成「生产入库」入库单。入库成本取标准成本，没有时为 净领料成本分摊 + 报工工时 × 工作中心人工 / 制造费用率（没有报工工时按标准工时），最后一次完工承担报废品的成本。',
       scrap: '报工时报废的产品入不良品仓，累计不超过各工序报工报废数合计；生成「报废入库」入库单，不计入完工数量。',
       supplement: '按审批通过的补料申请发料，各物料不超过未发数量，可以分次发料；生成「补料」单据和「生产领料」出库单，计入工单的已补料。'
     },
@@ -873,7 +877,13 @@ export default {
     issueHint: '需求 {req}，已领 {issued}',
     issueHintSupp: '需求 {req}，补料 {supp}，已领 {issued}',
     issuedSupp: '发料成功，补料单 {no}',
-    kindSuccess: '{label}成功'
+    kindSuccess: '{label}成功',
+    kitWarn: '按已领料（领料 + 补料 − 退料）可完工 {kit}，已完工 {finished}，本次按齐套还能入库 {left}（受物料 {material} 限制）；超出时需要确认。',
+    kitBlock: '按已领料（领料 + 补料 − 退料）可完工 {kit}，已完工 {finished}，本次最多入库 {left}（受物料 {material} 限制）；超出部分请先领料或补料。',
+    kitExceedTitle: '超出已领料可完工的数量',
+    kitExceedWarn: '本次入库 {qty}，按已领料只能再完工 {left}。可能有物料未领、已退料或领料未登记，确认继续入库？',
+    kitExceedBlock: '本次入库 {qty} 超出按已领料还能完工的 {left}，请先领料或补料',
+    kitExceedOk: '继续入库'
   },
   workCenter: {
     title: '工作中心',

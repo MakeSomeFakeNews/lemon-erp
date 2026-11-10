@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 生产统计报表，见 MesStatService。数据权限按工单（mes_work_order 的部门 + 制单人），由 @DataPermission 追加条件 -->
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesStatMapper">
+
+    <!-- 报工：期间内的报工记录及筛选条件 -->
+    <sql id="reportFrom">
+        FROM mes_report r
+        JOIN mes_work_order o ON o.id = r.wo_id
+        JOIN mes_wo_op op ON op.id = r.op_id
+        JOIN wms_material p ON p.id = o.material_id
+        LEFT JOIN mes_work_center w ON w.id = op.work_center_id
+        LEFT JOIN sys_user u ON u.id = r.operator_id
+        LEFT JOIN sys_dept d ON d.id = u.dept_id
+        WHERE r.report_date &gt;= #{q.begin} AND r.report_date &lt;= #{q.end}
+        <if test="q.operatorId != null">AND r.operator_id = #{q.operatorId}</if>
+        <if test="q.workCenterId != null">AND op.work_center_id = #{q.workCenterId}</if>
+        <if test="q.noWorkCenter != null and q.noWorkCenter">AND op.work_center_id IS NULL</if>
+        <if test="q.opName != null and q.opName != ''">AND op.name = #{q.opName}</if>
+        <if test="q.productId != null">AND o.material_id = #{q.productId}</if>
+        <if test="q.day != null">AND r.report_date = #{q.day}</if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND (p.code LIKE CONCAT('%', #{q.keyword}, '%') OR p.name LIKE CONCAT('%', #{q.keyword}, '%')
+                 OR o.wo_no LIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+    </sql>
+
+    <sql id="reportMeasures">
+        COUNT(*) AS report_count, COUNT(DISTINCT r.wo_id) AS wo_count, COUNT(DISTINCT r.operator_id) AS operator_count,
+        SUM(r.good_qty) AS good_qty, SUM(r.scrap_qty) AS scrap_qty, SUM(r.hours) AS hours,
+        SUM((r.good_qty + r.scrap_qty) * COALESCE(op.std_hours, 0)) AS std_hours, SUM(COALESCE(r.piece_wage, 0)) AS piece_wage
+    </sql>
+
+    <select id="selectReportSummary" resultType="com.lemon.erp.modules.mes.dto.MesStatViews$ReportRow">
+        SELECT
+        <choose>
+            <when test="dim.name() == 'OPERATOR'">
+                r.operator_id, MAX(u.nickname) AS operator_name, MAX(d.name) AS dept_name,
+            </when>
+            <when test="dim.name() == 'OPERATOR_OP'">
+                r.operator_id, MAX(u.nickname) AS operator_name, MAX(d.name) AS dept_name,
+                op.work_center_id, MAX(w.name) AS work_center_name, op.name AS op_name,
+            </when>
+            <when test="dim.name() == 'OPERATOR_DAY'">
+                r.operator_id, MAX(u.nickname) AS operator_name, MAX(d.name) AS dept_name, r.report_date AS day,
+            </when>
+            <when test="dim.name() == 'WORK_CENTER'">
+                op.work_center_id, MAX(w.name) AS work_center_name,
+            </when>
+            <when test="dim.name() == 'OPERATION'">
+                op.work_center_id, MAX(w.name) AS work_center_name, op.name AS op_name,
+            </when>
+            <when test="dim.name() == 'PRODUCT'">
+                o.material_id AS product_id, MAX(p.code) AS product_code, MAX(p.name) AS product_name, MAX(p.unit) AS unit,
+            </when>
+            <when test="dim.name() == 'DAY'">
+                r.report_date AS day,
+            </when>
+            <otherwise>
+                YEAR(r.report_date) * 100 + MONTH(r.report_date) AS period,
+            </otherwise>
+        </choose>
+        <include refid="reportMeasures"/>
+        <include refid="reportFrom"/>
+        GROUP BY
+        <choose>
+            <when test="dim.name() == 'OPERATOR'">r.operator_id</when>
+            <when test="dim.name() == 'OPERATOR_OP'">r.operator_id, op.work_center_id, op.name</when>
+            <when test="dim.name() == 'OPERATOR_DAY'">r.operator_id, r.report_date</when>
+            <when test="dim.name() == 'WORK_CENTER'">op.work_center_id</when>
+            <when test="dim.name() == 'OPERATION'">op.work_center_id, op.name</when>
+            <when test="dim.name() == 'PRODUCT'">o.material_id</when>
+            <when test="dim.name() == 'DAY'">r.report_date</when>
+            <otherwise>YEAR(r.report_date) * 100 + MONTH(r.report_date)</otherwise>
+        </choose>
+        ORDER BY
+        <choose>
+            <when test="dim.name() == 'OPERATOR_DAY'">operator_name, r.operator_id, day</when>
+            <when test="dim.name() == 'DAY'">day</when>
+            <when test="dim.name() == 'MONTH'">period</when>
+            <when test="dim.name() == 'OPERATOR' or dim.name() == 'OPERATOR_OP'">piece_wage DESC, good_qty DESC</when>
+            <otherwise>good_qty DESC</otherwise>
+        </choose>
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectReportTotal" resultType="com.lemon.erp.modules.mes.dto.MesStatViews$ReportRow">
+        SELECT <include refid="reportMeasures"/>
+        <include refid="reportFrom"/>
+    </select>
+
+    <select id="selectReportDetail" resultType="com.lemon.erp.modules.mes.dto.MesStatViews$ReportDetail">
+        SELECT r.id, r.report_date, r.wo_id, o.wo_no, p.code AS product_code, p.name AS product_name, p.unit,
+               op.seq AS op_seq, op.name AS op_name, w.name AS work_center_name, u.nickname AS operator_name,
+               r.good_qty, r.scrap_qty, r.hours, op.piece_rate, r.piece_wage, eq.name AS equipment_name, r.remark
+        FROM mes_report r
+        JOIN mes_work_order o ON o.id = r.wo_id
+        JOIN mes_wo_op op ON op.id = r.op_id
+        JOIN wms_material p ON p.id = o.material_id
+        LEFT JOIN mes_work_center w ON w.id = op.work_center_id
+        LEFT JOIN sys_user u ON u.id = r.operator_id
+        LEFT JOIN mes_equipment eq ON eq.id = r.equipment_id
+        WHERE r.report_date &gt;= #{q.begin} AND r.report_date &lt;= #{q.end}
+        <if test="q.operatorId != null">AND r.operator_id = #{q.operatorId}</if>
+        <if test="q.workCenterId != null">AND op.work_center_id = #{q.workCenterId}</if>
+        <if test="q.noWorkCenter != null and q.noWorkCenter">AND op.work_center_id IS NULL</if>
+        <if test="q.opName != null and q.opName != ''">AND op.name = #{q.opName}</if>
+        <if test="q.productId != null">AND o.material_id = #{q.productId}</if>
+        <if test="q.day != null">AND r.report_date = #{q.day}</if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND (p.code LIKE CONCAT('%', #{q.keyword}, '%') OR p.name LIKE CONCAT('%', #{q.keyword}, '%')
+                 OR o.wo_no LIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+        ORDER BY r.report_date DESC, r.id DESC
+    </select>
+
+    <!-- 工单完成情况：计划完工日期在期间内、已下达的工单（不含草稿） -->
+    <sql id="woFrom">
+        FROM mes_work_order o
+        JOIN wms_material p ON p.id = o.material_id
+        LEFT JOIN sys_dept d ON d.id = o.dept_id
+        WHERE o.status &lt;&gt; 'DRAFT' AND o.plan_end &gt;= #{q.begin} AND o.plan_end &lt;= #{q.end}
+        <if test="q.status != null">AND o.status = #{q.status}</if>
+        <if test="q.productId != null">AND o.material_id = #{q.productId}</if>
+        <if test="q.deptId != null">AND o.dept_id = #{q.deptId}</if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND (p.code LIKE CONCAT('%', #{q.keyword}, '%') OR p.name LIKE CONCAT('%', #{q.keyword}, '%')
+                 OR o.wo_no LIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+    </sql>
+
+    <select id="selectWoList" resultType="com.lemon.erp.modules.mes.dto.MesStatViews$WoRow">
+        SELECT o.id AS wo_id, o.wo_no, o.wo_type, o.status, o.plan_start, o.plan_end, o.finish_time, o.close_time,
+               o.material_id AS product_id, p.code AS product_code, p.name AS product_name, p.unit,
+               o.dept_id, d.name AS dept_name, o.qty, o.finished_qty, o.scrap_qty
+        <include refid="woFrom"/>
+        ORDER BY o.plan_end, o.id
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectWoSummary" resultType="com.lemon.erp.modules.mes.dto.MesStatViews$WoRow">
+        SELECT
+        <choose>
+            <when test="dim == null"></when>
+            <when test="dim.name() == 'PRODUCT'">
+                o.material_id AS product_id, MAX(p.code) AS product_code, MAX(p.name) AS product_name, MAX(p.unit) AS unit,
+            </when>
+            <when test="dim.name() == 'DEPT'">o.dept_id, MAX(d.name) AS dept_name,</when>
+            <otherwise>YEAR(o.plan_end) * 100 + MONTH(o.plan_end) AS period,</otherwise>
+        </choose>
+               COUNT(*) AS wo_count, SUM(o.qty) AS qty, SUM(o.finished_qty) AS finished_qty, SUM(o.scrap_qty) AS scrap_qty,
+               SUM(CASE WHEN o.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_count,
+               SUM(CASE WHEN o.status = 'COMPLETED' AND CAST(o.finish_time AS DATE) &lt;= o.plan_end THEN 1 ELSE 0 END) AS on_time_count,
+               SUM(CASE WHEN o.status = 'COMPLETED' AND CAST(o.finish_time AS DATE) &gt; o.plan_end THEN 1 ELSE 0 END) AS late_count,
+               SUM(CASE WHEN o.status IN ('RELEASED', 'STARTED') AND o.plan_end &lt; #{today} THEN 1 ELSE 0 END) AS overdue_count,
+               SUM(CASE WHEN o.status = 'CLOSED' THEN 1 ELSE 0 END) AS closed_count
+        <include refid="woFrom"/>
+        <if test="dim != null">
+            GROUP BY
+            <choose>
+                <when test="dim.name() == 'PRODUCT'">o.material_id</when>
+                <when test="dim.name() == 'DEPT'">o.dept_id</when>
+                <otherwise>YEAR(o.plan_end) * 100 + MONTH(o.plan_end)</otherwise>
+            </choose>
+            ORDER BY
+            <choose>
+                <when test="dim.name() == 'MONTH'">period</when>
+                <otherwise>wo_count DESC</otherwise>
+            </choose>
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <!-- 产品产量：期间内的完工入库、报废入库单 -->
+    <select id="selectOutputSummary" resultType="com.lemon.erp.modules.mes.dto.MesStatViews$OutputRow">
+        SELECT
+        <choose>
+            <when test="dim == null"></when>
+            <when test="dim.name() == 'PRODUCT'">
+                o.material_id AS product_id, MAX(p.code) AS product_code, MAX(p.name) AS product_name, MAX(p.spec) AS spec,
+                MAX(p.unit) AS unit, MAX(p.category) AS category,
+            </when>
+            <when test="dim.name() == 'CATEGORY'">p.category,</when>
+            <when test="dim.name() == 'DEPT'">o.dept_id, MAX(dp.name) AS dept_name,</when>
+            <when test="dim.name() == 'DAY'">x.biz_date AS day,</when>
+            <otherwise>YEAR(x.biz_date) * 100 + MONTH(x.biz_date) AS period,</otherwise>
+        </choose>
+               SUM(CASE WHEN x.kind = 'FINISH' THEN x.total_qty ELSE 0 END) AS finish_qty,
+               SUM(CASE WHEN x.kind = 'SCRAP' THEN x.total_qty ELSE 0 END) AS scrap_in_qty,
+               SUM(CASE WHEN x.kind = 'FINISH' THEN 1 ELSE 0 END) AS finish_count,
+               COUNT(DISTINCT x.wo_id) AS wo_count,
+               SUM(CASE WHEN x.kind = 'FINISH'
+                        THEN COALESCE(x.material_cost, 0) + COALESCE(x.labor_cost, 0) + COALESCE(x.overhead_cost, 0)
+                        ELSE 0 END) AS finish_cost
+        FROM mes_wo_doc x
+        JOIN mes_work_order o ON o.id = x.wo_id
+        JOIN wms_material p ON p.id = o.material_id
+        LEFT JOIN sys_dept dp ON dp.id = o.dept_id
+        WHERE x.kind IN ('FINISH', 'SCRAP') AND x.biz_date &gt;= #{q.begin} AND x.biz_date &lt;= #{q.end}
+        <if test="q.productId != null">AND o.material_id = #{q.productId}</if>
+        <if test="q.category != null and q.category != ''">AND p.category = #{q.category}</if>
+        <if test="q.deptId != null">AND o.dept_id = #{q.deptId}</if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND (p.code LIKE CONCAT('%', #{q.keyword}, '%') OR p.name LIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+        <if test="dim != null">
+            GROUP BY
+            <choose>
+                <when test="dim.name() == 'PRODUCT'">o.material_id</when>
+                <when test="dim.name() == 'CATEGORY'">p.category</when>
+                <when test="dim.name() == 'DEPT'">o.dept_id</when>
+                <when test="dim.name() == 'DAY'">x.biz_date</when>
+                <otherwise>YEAR(x.biz_date) * 100 + MONTH(x.biz_date)</otherwise>
+            </choose>
+            ORDER BY
+            <choose>
+                <when test="dim.name() == 'DAY'">day</when>
+                <when test="dim.name() == 'MONTH'">period</when>
+                <otherwise>finish_qty DESC</otherwise>
+            </choose>
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <!-- 用料差异：期间内完工（完工时间）或关闭（关闭时间）的工单，标准用量 = 完工数量 × 单位用量（含损耗），实际 = 净领料 -->
+    <select id="selectUsage" resultType="com.lemon.erp.modules.mes.dto.MesStatViews$UsageRow">
+        SELECT
+        <choose>
+            <when test="dim.name() == 'MATERIAL'">
+                x.material_id, MAX(m.code) AS material_code, MAX(m.name) AS material_name, MAX(m.spec) AS spec, MAX(m.unit) AS unit,
+                COUNT(DISTINCT o.id) AS wo_count,
+                SUM(o.finished_qty * x.unit_qty) AS std_qty, SUM(x.issued_qty) AS actual_qty
+            </when>
+            <otherwise>
+                o.id AS wo_id, o.wo_no, o.status, p.code AS product_code, p.name AS product_name, o.qty AS wo_qty, o.finished_qty,
+                x.material_id, m.code AS material_code, m.name AS material_name, m.spec, m.unit,
+                o.finished_qty * x.unit_qty AS std_qty, x.issued_qty AS actual_qty
+            </otherwise>
+        </choose>
+        FROM mes_wo_material x
+        JOIN mes_work_order o ON o.id = x.wo_id
+        JOIN wms_material m ON m.id = x.material_id
+        JOIN wms_material p ON p.id = o.material_id
+        WHERE ((o.status = 'COMPLETED' AND o.finish_time &gt;= #{from} AND o.finish_time &lt; #{to})
+               OR (o.status = 'CLOSED' AND o.close_time &gt;= #{from} AND o.close_time &lt; #{to}))
+        <if test="q.productId != null">AND o.material_id = #{q.productId}</if>
+        <if test="q.materialId != null">AND x.material_id = #{q.materialId}</if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%')
+                 OR p.code LIKE CONCAT('%', #{q.keyword}, '%') OR p.name LIKE CONCAT('%', #{q.keyword}, '%')
+                 OR o.wo_no LIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+        <choose>
+            <when test="dim.name() == 'MATERIAL'">
+                GROUP BY x.material_id
+                ORDER BY material_code
+            </when>
+            <otherwise>ORDER BY o.wo_no, m.code</otherwise>
+        </choose>
+        LIMIT #{limit}
+    </select>
+
+</mapper>

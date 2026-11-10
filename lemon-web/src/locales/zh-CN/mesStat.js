@@ -1,0 +1,125 @@
+/** 生产统计（生产制造 → 生产统计，后端 /mes/stat） */
+export default {
+  common: {
+    unset: '未设置',
+    noWorkCenter: '未设置工作中心',
+    allOperators: '全部人员',
+    allWorkCenters: '全部工作中心',
+    allStatus: '全部状态',
+    allCategories: '全部分类',
+    groupBy: '汇总方式',
+    allDetail: '全部明细',
+    export: '导出',
+    exportDetail: '导出明细',
+    exportTruncated: '数据较多，只导出了前 {n} 行',
+    truncated: '汇总行数较多，只显示前 {n} 行（合计为全部数据）',
+    total: '合计'
+  },
+  dim: {
+    OPERATOR: '人员',
+    OPERATOR_OP: '人员 × 工序',
+    OPERATOR_DAY: '人员 × 日期',
+    WORK_CENTER: '工作中心',
+    OPERATION: '工序',
+    PRODUCT: '产品',
+    CATEGORY: '产品分类',
+    DEPT: '车间',
+    DAY: '日',
+    MONTH: '月',
+    WORK_ORDER: '工单',
+    MATERIAL: '物料',
+    WO_MATERIAL: '工单 × 物料'
+  },
+  field: {
+    operator: '人员',
+    dept: '部门',
+    workCenter: '工作中心',
+    op: '工序',
+    opSeq: '工序号',
+    product: '产品',
+    spec: '规格',
+    unit: '单位',
+    day: '日期',
+    month: '月份',
+    workshop: '车间',
+    category: '产品分类',
+    goodQty: '合格数量',
+    scrapQty: '报废数量',
+    yieldRate: '良品率',
+    hours: '实际工时',
+    stdHours: '标准工时',
+    efficiency: '效率',
+    pieceWage: '计件工资',
+    pieceRate: '计件单价',
+    operatorCount: '人数',
+    reportCount: '报工次数',
+    woCount: '工单数',
+    woNo: '工单号',
+    status: '状态',
+    planEnd: '计划完工',
+    finishTime: '完工 / 关闭日期',
+    dueState: '交期',
+    delayDays: '延期天数',
+    qty: '计划数量',
+    finishedQty: '完工数量',
+    completionRate: '完成率',
+    completedCount: '已完工',
+    onTimeCount: '按期完工',
+    lateCount: '延期完工',
+    overdueCount: '逾期未完工',
+    closedCount: '已关闭',
+    onTimeRate: '按期完工率',
+    finishQty: '完工入库数量',
+    scrapInQty: '报废入库数量',
+    finishCount: '完工入库次数',
+    finishCost: '完工入库成本',
+    unitCost: '单位成本',
+    finishedOfQty: '完工 / 计划',
+    material: '物料',
+    stdQty: '标准用量',
+    actualQty: '实际用量',
+    varianceQty: '差异数量',
+    varianceRate: '差异率',
+    reportDate: '报工日期',
+    equipment: '生产设备',
+    remark: '备注'
+  },
+  due: {
+    ON_TIME: '按期完工',
+    LATE: '延期完工',
+    OVERDUE: '逾期未完工',
+    OPEN: '进行中',
+    CLOSED: '已关闭'
+  },
+  piece: {
+    title: '人员计件统计',
+    keyword: '产品编码 / 名称、工单号',
+    tip: '按报工日期汇总报工中录入的操作员（未填写时为报工人）的合格、报废数量和工时；计件工资 = 合格数 × 工序计件单价（工艺路线中设置，下达时带入工单），与工资表的计件工资同一口径；标准工时 = (合格 + 报废) × 工序标准工时，效率 = 标准工时 ÷ 实际工时。点击汇总行查看报工明细。'
+  },
+  output: {
+    title: '工序产量统计',
+    keyword: '产品编码 / 名称、工单号',
+    tip: '按报工日期汇总各工作中心、工序的产量：良品率 = 合格 ÷ (合格 + 报废)，标准工时 = (合格 + 报废) × 工序标准工时，效率 = 标准工时 ÷ 实际工时。按工序汇总时同名工序在不同工作中心分开统计。点击汇总行查看报工明细。'
+  },
+  wo: {
+    title: '工单完成情况',
+    keyword: '产品编码 / 名称、工单号',
+    tip: '统计计划完工日期在期间内的工单（不含草稿）：完成率 = 完工 ÷ 计划，良品率 = 完工 ÷ (完工 + 报工报废)；完工日期不晚于计划完工日期为按期完工，晚于为延期完工；已下达、生产中且计划完工日期已过为逾期未完工；按期完工率 = 按期完工 ÷ 已完工。'
+  },
+  product: {
+    title: '产品产量汇总',
+    keyword: '产品编码 / 名称',
+    tip: '按业务日期汇总完工入库、报废入库单的数量；完工入库成本为入库时的料工费（需要「查看成本金额」权限），单位成本 = 完工入库成本 ÷ 完工数量，是业务参考成本，财务以月末成本核算为准。'
+  },
+  usage: {
+    title: '用料差异分析',
+    keyword: '物料、产品编码 / 名称、工单号',
+    tip: '统计期间内完工（按完工时间）或关闭（按关闭时间）的工单：标准用量 = 完工数量 × 单位用量（含损耗），实际用量 = 净领料（领料 + 补料 − 退料），差异 = 实际 − 标准，正数为超耗（含报废品耗用的物料），负数为节约。关闭的工单没有完工时标准用量为 0。',
+    overCount: '超耗行数',
+    underCount: '节约行数'
+  },
+  detail: {
+    title: '报工明细 - {name}',
+    fileName: '报工明细'
+  }
+}

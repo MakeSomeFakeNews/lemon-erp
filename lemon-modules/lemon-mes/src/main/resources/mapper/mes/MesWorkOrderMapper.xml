@@ -33,7 +33,7 @@
     </select>
 
     <select id="selectOpenOutput" resultType="java.util.Map">
-        SELECT material_id AS "materialId", SUM(GREATEST(qty - finished_qty, 0)) AS "qty"
+        SELECT material_id AS "materialId", SUM(GREATEST(qty - finished_qty - scrap_qty, 0)) AS "qty"
         FROM mes_work_order
         WHERE status IN <foreach collection="statuses" item="s" open="(" separator="," close=")">#{s}</foreach>
           AND material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
@@ -41,9 +41,9 @@
     </select>
 
     <select id="selectAtpLines" resultType="java.util.Map">
-        SELECT o.plan_end AS "date", 'WO' AS "type", o.wo_no AS "docNo", o.qty - o.finished_qty AS "qty"
+        SELECT o.plan_end AS "date", 'WO' AS "type", o.wo_no AS "docNo", o.qty - o.finished_qty - o.scrap_qty AS "qty"
         FROM mes_work_order o
-        WHERE o.material_id = #{materialId} AND o.status IN ('RELEASED', 'STARTED') AND o.qty &gt; o.finished_qty
+        WHERE o.material_id = #{materialId} AND o.status IN ('RELEASED', 'STARTED') AND o.qty &gt; o.finished_qty + o.scrap_qty
           <if test="warehouseId != null">AND (o.warehouse_id = #{warehouseId} OR o.warehouse_id IS NULL)</if>
         UNION ALL
         SELECT o.plan_start AS "date", 'WM' AS "type", o.wo_no AS "docNo", -(m.required_qty - m.issued_qty) AS "qty"
@@ -55,9 +55,9 @@
     <select id="selectNetSupply" resultType="java.util.Map">
         SELECT t.material_id AS "materialId", SUM(t.qty) AS "qty"
         FROM (
-            SELECT o.material_id, o.qty - o.finished_qty AS qty
+            SELECT o.material_id, o.qty - o.finished_qty - o.scrap_qty AS qty
             FROM mes_work_order o
-            WHERE o.status IN ('RELEASED', 'STARTED') AND o.qty &gt; o.finished_qty
+            WHERE o.status IN ('RELEASED', 'STARTED') AND o.qty &gt; o.finished_qty + o.scrap_qty
               AND o.material_id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
             UNION ALL
             SELECT m.material_id, -(m.required_qty - m.issued_qty) AS qty
@@ -78,9 +78,14 @@
         WHERE m.id IN <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
     </select>
 
+    <!-- 完工入库满数量，或已有完工入库且 完工 + 报工报废 达到工单数量（报废的不会再生产出来） -->
     <update id="markCompleted">
         UPDATE mes_work_order SET status = 'COMPLETED', finish_time = NOW(), update_time = NOW()
-        WHERE id = #{id} AND status IN ('RELEASED', 'STARTED') AND finished_qty &gt;= qty
+        WHERE id = #{id} AND status IN ('RELEASED', 'STARTED') AND finished_qty &gt; 0 AND finished_qty + scrap_qty &gt;= qty
+    </update>
+
+    <update id="addScrap">
+        UPDATE mes_work_order SET scrap_qty = scrap_qty + #{qty}, update_time = NOW() WHERE id = #{id}
     </update>
 
     <update id="addFinished">

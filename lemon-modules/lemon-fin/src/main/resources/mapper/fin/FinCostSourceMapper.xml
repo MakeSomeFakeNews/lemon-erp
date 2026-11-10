@@ -103,8 +103,9 @@
         GROUP BY r.wo_id
     </select>
 
+    <!-- qty 为应完工数量 = 工单数量 − 报工报废：完工达到它时取全部成本（报废品的成本由合格品承担），与实时成本一致 -->
     <select id="selectWorkOrders" resultType="java.util.Map">
-        SELECT o.id AS "id", o.wo_no AS "woNo", o.material_id AS "materialId", o.qty AS "qty", o.status AS "status",
+        SELECT o.id AS "id", o.wo_no AS "woNo", o.material_id AS "materialId", o.qty - o.scrap_qty AS "qty", o.status AS "status",
                o.close_time AS "closeTime",
                (SELECT COALESCE(SUM(d.total_qty), 0) FROM mes_wo_doc d
                 WHERE d.wo_id = o.id AND d.kind = 'FINISH' AND d.biz_date &lt; #{begin}) AS "finishedBefore"

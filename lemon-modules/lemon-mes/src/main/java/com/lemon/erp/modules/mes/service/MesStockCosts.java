@@ -42,7 +42,9 @@ import java.util.stream.Collectors;
  *       没有报工工时的工序按标准工时）；既没有已计价的领料也没有工费时按当前均价。每张完工入库单记录口径和料工费（{@code mes_wo_doc}）</li>
  *   <li>生产退料：按该工单该物料的领料平均成本入库（不按当前均价），工单的净领料成本 = 领料成本 − 退料成本；
  *       已有完工入库时，退料后已转入产品的材料成本超过「按新的净领料重新计算的已完工部分」的差额冲减产品成本（{@link #afterReturn}）</li>
- *   <li>关闭工单：未转入产品的净领料成本和工费，有完工时追加到已完工产品，没有完工时为在制品损失（{@link #applyClose}）</li>
+ *   <li>最后一次完工：累计完工达到 工单数量 − 报工报废 时取全部剩余的净领料成本和工费（报废品的料工费由合格品承担）</li>
+ *   <li>关闭工单（以及报工报废、改量后不经完工入库而完工）：未转入产品的净领料成本和工费，有完工时追加到已完工产品，
+ *       没有完工时为在制品损失（{@link #applyClose}）</li>
  *   <li>委外收回（加工商退回子件）：按该委外订单该子件的发料平均成本入库</li>
  *   <li>委外件收货：采购入库按加工费（不含税单价）计价后，再追加核销的子件成本（核销数量 × 该订单该子件的发料平均成本）；
  *       委外件退货反向冲回</li>
@@ -108,8 +110,9 @@ public class MesStockCosts {
             }
         }
         Absorbed absorbed = absorbed(wo.getId());
-        BigDecimal material = WoFinishCost.amount(wo.getQty(), wo.getFinishedQty(), qty, issued(wo), absorbed.material());
-        WoConversionCost.Amount conversion = WoConversionCost.amount(wo.getQty(), wo.getFinishedQty(), qty, ops(wo.getId()),
+        BigDecimal target = targetQty(wo);
+        BigDecimal material = WoFinishCost.amount(target, wo.getFinishedQty(), qty, issued(wo), absorbed.material());
+        WoConversionCost.Amount conversion = WoConversionCost.amount(target, wo.getFinishedQty(), qty, ops(wo.getId()),
                 absorbed.conversion());
         if (material == null && conversion.total().signum() == 0) {
             return new FinishCost(FinishCostBasis.AVERAGE, null, null, BigDecimal.ZERO, BigDecimal.ZERO);
@@ -145,7 +148,7 @@ public class MesStockCosts {
         if (absorbed.standard()) {
             return null;
         }
-        BigDecimal target = WoFinishCost.amount(wo.getQty(), BigDecimal.ZERO, finished, issued(wo), BigDecimal.ZERO);
+        BigDecimal target = WoFinishCost.amount(targetQty(wo), BigDecimal.ZERO, finished, issued(wo), BigDecimal.ZERO);
         // 按当前均价完工入库的金额不来自领料，不参与冲减
         BigDecimal over = absorbed.actualMaterial().subtract(target == null ? BigDecimal.ZERO : target);
         BigDecimal reduce = over.min(absorbed.actualMaterial().max(BigDecimal.ZERO));
@@ -259,6 +262,14 @@ public class MesStockCosts {
         return woOpMapper.selectCostOps(woId).stream()
                 .map(o -> new WoConversionCost.Op(o.getHours(), o.getStdHours(), o.getGoodQty(), o.getLaborRate(), o.getOverheadRate()))
                 .toList();
+    }
+
+    /**
+     * 应完工数量 = 工单数量 − 报工报废：累计完工达到它即为最后一次完工，取全部剩余成本（报废品耗用的料工费由合格品承担）
+     */
+    private static BigDecimal targetQty(MesWorkOrder wo) {
+        BigDecimal scrap = wo.getScrapQty() == null ? BigDecimal.ZERO : wo.getScrapQty();
+        return wo.getQty().subtract(scrap).max(BigDecimal.ZERO);
     }
 
     /** 仍在库的比例 = min(产品当前计价数量, 完工数量) / 完工数量 */

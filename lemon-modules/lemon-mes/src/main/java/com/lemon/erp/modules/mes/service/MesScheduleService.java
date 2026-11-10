@@ -82,6 +82,7 @@ public class MesScheduleService {
         if (ops.isEmpty()) {
             return;
         }
+        WoOpQty.fillUpstreamScrap(ops);
         ops.sort(Comparator.comparing(MesWoOp::getSeq));
         LocalDate cursor = wo.getPlanStart() == null || wo.getPlanStart().isBefore(today) ? today : wo.getPlanStart();
         LocalDate first = null;
@@ -136,8 +137,13 @@ public class MesScheduleService {
         Map<Long, Map<LocalDate, BigDecimal>> loads = new HashMap<>();
         Map<Long, List<CapacityLoad.Op>> opRows = new HashMap<>();
         if (!wos.isEmpty()) {
-            for (MesWoOp op : woOpMapper.selectList(Wrappers.<MesWoOp>lambdaQuery().in(MesWoOp::getWoId, wos.keySet())
-                    .eq(workCenterId != null, MesWoOp::getWorkCenterId, workCenterId))) {
+            // 前序工序的报废要按工单的全部工序计算，再按工作中心筛选
+            List<MesWoOp> allOps = woOpMapper.selectList(Wrappers.<MesWoOp>lambdaQuery().in(MesWoOp::getWoId, wos.keySet()));
+            WoOpQty.fillUpstreamScrap(allOps);
+            for (MesWoOp op : allOps) {
+                if (workCenterId != null && !workCenterId.equals(op.getWorkCenterId())) {
+                    continue;
+                }
                 MesWorkOrder wo = wos.get(op.getWoId());
                 BigDecimal hours = remainingHours(wo, op);
                 if (hours.signum() <= 0) {
@@ -223,7 +229,7 @@ public class MesScheduleService {
     }
 
     private static BigDecimal remainingHours(MesWorkOrder wo, MesWoOp op) {
-        BigDecimal left = wo.getQty().subtract(op.getGoodQty()).subtract(op.getScrapQty());
+        BigDecimal left = WoOpQty.left(wo.getQty(), op);
         return left.signum() <= 0 ? BigDecimal.ZERO : left.multiply(op.getStdHours());
     }
 }

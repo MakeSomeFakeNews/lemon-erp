@@ -218,6 +218,12 @@ export default {
   373: 'Asset Overview', // 资产状况
   374: 'Product Analysis', // 商品分析
   375: 'Customer Analysis', // 客户分析
+  970: 'Production Statistics', // 生产统计
+  410: 'Piecework by Operator', // 人员计件统计
+  411: 'Operation Output', // 工序产量统计
+  412: 'Work Order Completion', // 工单完成情况
+  413: 'Product Output Summary', // 产品产量汇总
+  414: 'Material Usage Variance', // 用料差异分析
   377: 'Offsets', // 冲账单
   3770: 'Add Offset', // 冲账单新增
   3771: 'Edit Offset', // 冲账单修改
