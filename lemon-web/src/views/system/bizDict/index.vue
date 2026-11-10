@@ -28,6 +28,7 @@
 </template>
 
 <script setup>
+import { actionWidth } from '@/composables/useColumns'
 import { computed, onMounted, ref } from 'vue'
 import { UnorderedListOutlined } from '@ant-design/icons-vue'
 import { listBizDictTypes } from '@/api/system/dict'
@@ -50,7 +51,7 @@ const columns = [
   { title: t('system.dict.name'), key: 'name', width: 180 },
   { title: t('system.dict.type'), key: 'type', width: 220 },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 120, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('system.bizDict.maintain')]), fixed: 'right' }
 ]
 
 async function load() {

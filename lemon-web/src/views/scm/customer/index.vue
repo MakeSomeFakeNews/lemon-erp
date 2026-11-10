@@ -54,7 +54,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 2000, y: '100%' }"
+        :scroll="{ x: sumWidth(tableColumns), y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -92,25 +92,22 @@
           <template v-else-if="column.custom">{{ cfCell(record, column) }}</template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button type="link" size="small" @click="openExtras(record)">
-                <template #icon><PaperClipOutlined /></template>{{ $t('scm.customer.extras') }}
-              </a-button>
               <a-button v-perm="'scm:customer:edit'" type="link" size="small" @click="drawer.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <a-button type="link" size="small" @click="customerPriceRef.open(record)">
                 <template #icon><DollarOutlined /></template>{{ $t('pricing.customerPrice.open') }}
               </a-button>
-              <a-button v-if="record.channel === SalesChannel.DEALER" v-perm="'scm:customer:portal'" type="link" size="small" @click="openPortal(record)">
-                {{ $t('scm.customer.portal') }}
-              </a-button>
-              <span v-perm="'scm:customer:remove'">
-                <a-popconfirm :title="$t('scm.customer.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
+              <a-dropdown>
+                <a-button type="link" size="small">{{ $t('common.action.more') }}<DownOutlined /></a-button>
+                <template #overlay>
+                  <a-menu @click="({ key }) => onMoreAction(key, record)">
+                    <a-menu-item v-for="a in moreActions(record)" :key="a.key" :danger="a.danger">
+                      <component :is="a.icon" /> {{ a.label }}
+                    </a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
             </span>
           </template>
         </template>
@@ -235,7 +232,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, DollarOutlined, DownOutlined, EditOutlined, ExportOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, DollarOutlined, DownOutlined, EditOutlined, ExportOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -250,7 +247,7 @@ import { usePriceLevels } from '@/components/wms/priceLevels'
 import { CUSTOMER_PRICE_COLUMNS, exportCustomerPriceRows, priceImportSample } from '@/components/scm/customerPrices'
 import { importCustomerPrices } from '@/api/scm/pricing'
 import { addPartner, changePartnerStatus, deletePartner, getPartner, pagePartner, updatePartner, importPartner } from '@/api/scm/partner'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, sumWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -318,15 +315,16 @@ const columns = [
   { title: t('scm.customer.customer'), key: 'name', width: 240 },
   { title: t('scm.customer.level'), key: 'level', width: 100, dict: 'scm_customer_level' },
   { title: t('pricing.level.priceLevel'), key: 'priceLevel', width: 100, exportValue: (r) => levelName(r.priceLevel ?? 0) },
-  { title: t('scm.customer.region'), key: 'region', width: 110, dict: 'scm_region' },
+  { title: t('scm.customer.region'), key: 'region', width: 110, dict: 'scm_region', defaultHidden: true },
   { title: t('scm.customer.channel'), key: 'channel', width: 150, dict: 'scm_channel' },
   { title: t('scm.customer.contact'), key: 'contact', width: 150 },
-  { title: t('scm.customer.creditLimit'), key: 'creditLimit', width: 130, align: 'right' },
-  { title: t('scm.customer.paymentDays'), key: 'paymentDays', width: 110 },
-  { title: t('scm.customer.address'), dataIndex: 'address', width: 220, ellipsis: true },
+  { title: t('scm.customer.creditLimit'), key: 'creditLimit', width: 130, align: 'right', defaultHidden: true },
+  { title: t('scm.customer.paymentDays'), key: 'paymentDays', width: 110, defaultHidden: true },
+  { title: t('scm.customer.address'), dataIndex: 'address', width: 220, ellipsis: true, defaultHidden: true },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 400, fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true, defaultHidden: true },
+  // 资料、门户账号、删除收进「更多」
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('pricing.customerPrice.open'), t('common.action.more')]), fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'scm-customer')
 const showSearch = ref(true)
@@ -373,7 +371,27 @@ const { formRef, form } = drawer
 // 智能录入：名片、营业执照等识别结果打开新增表单并预填
 const ai = useAiPrefill('customer', (data) => drawer.openCreate(data), () => drawer.open.value)
 
-const remove = useAction((id) => deletePartner('customer', id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+const remove = useAction((id) => deletePartner('customer', id), {
+  confirm: (id, name) => ({ title: t('scm.customer.confirmDelete', { name }), okType: 'danger' }),
+  successKey: 'common.msg.deleteSuccess',
+  reload: () => load()
+})
+
+/** 操作列「更多」：资料、门户账号（经销商）、删除 */
+function moreActions(record) {
+  const actions = [{ key: 'extras', label: t('scm.customer.extras'), icon: PaperClipOutlined }]
+  if (record.channel === SalesChannel.DEALER && userStore.hasPerm('scm:customer:portal')) {
+    actions.push({ key: 'portal', label: t('scm.customer.portal'), icon: UserOutlined })
+  }
+  if (userStore.hasPerm('scm:customer:remove')) actions.push({ key: 'remove', label: t('common.action.delete'), icon: DeleteOutlined, danger: true })
+  return actions
+}
+
+function onMoreAction(key, record) {
+  if (key === 'extras') openExtras(record)
+  if (key === 'portal') openPortal(record)
+  if (key === 'remove') remove(record.id, record.name)
+}
 </script>
 
 <style scoped>

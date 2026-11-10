@@ -59,11 +59,13 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { ColumnHeightOutlined, DownloadOutlined, ReloadOutlined, SearchOutlined, SettingOutlined } from '@ant-design/icons-vue'
-import { columnKey } from '@/composables/useColumns'
+import { columnKey, defaultKeys } from '@/composables/useColumns'
 
 /**
  * 表格工具栏：默认插槽放操作按钮；右侧为搜索显隐、刷新、密度、列设置。
- * 不传 size / columns / showSearch 时对应功能不显示；传 exporter（useTable 的 exportAll）时显示导出，导出当前显示的列
+ * 不传 size / columns / showSearch 时对应功能不显示；传 exporter（useTable 的 exportAll）时显示导出，
+ * 导出当前显示的列和默认隐藏（defaultHidden）的列：默认隐藏只为节省屏幕宽度，不减少导出的内容。
+ * 列设置的「重置」恢复列定义的默认显示列
  */
 const props = defineProps({
   size: String,
@@ -79,13 +81,13 @@ const allChecked = computed(() => props.checked?.length === allKeys.value.length
 const indeterminate = computed(() => !!props.checked?.length && !allChecked.value)
 
 const toggleAll = (e) => emit('update:checked', e.target.checked ? allKeys.value : [])
-const reset = () => emit('update:checked', allKeys.value)
+const reset = () => emit('update:checked', defaultKeys(props.columns || []))
 
 const exporting = ref(false)
 async function doExport() {
   exporting.value = true
   try {
-    const cols = (props.columns || []).filter((c) => !props.checked || props.checked.includes(columnKey(c)))
+    const cols = (props.columns || []).filter((c) => !props.checked || c.defaultHidden || props.checked.includes(columnKey(c)))
     await props.exporter(cols)
   } finally {
     exporting.value = false

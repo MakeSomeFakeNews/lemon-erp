@@ -99,7 +99,7 @@ import { EditOutlined, FileTextOutlined, PlayCircleOutlined } from '@ant-design/
 import FormDrawer from '@/components/FormDrawer.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { listJob, pageJobLog, runJob, updateJob } from '@/api/monitor/job'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 
 import { JobRunStatus, JobTrigger } from '@/constants/enums'
@@ -108,14 +108,14 @@ const columns = [
   { title: t('monitor.job.name'), dataIndex: 'name', width: 150 },
   { title: t('monitor.job.jobKey'), dataIndex: 'jobKey', width: 140 },
   { title: 'Cron', dataIndex: 'cron', width: 120 },
-  { title: t('monitor.job.params'), dataIndex: 'params', width: 100, ellipsis: true },
+  { title: t('monitor.job.params'), dataIndex: 'params', width: 100, ellipsis: true, defaultHidden: true },
   { title: t('common.field.status'), key: 'status', width: 90 },
   { title: t('monitor.job.lastRun'), dataIndex: 'lastRunTime', width: 160 },
   { title: t('monitor.job.result'), key: 'lastStatus', width: 90 },
   { title: t('monitor.job.lastMessage'), dataIndex: 'lastMessage', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 210, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('monitor.job.run'), t('common.action.modify'), t('monitor.job.log')]), fixed: 'right' }
 ]
-const { checked, visibleColumns, scrollX } = useColumns(columns)
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'monitor-job')
 const size = ref('middle')
 const list = ref([])
 const loading = ref(false)

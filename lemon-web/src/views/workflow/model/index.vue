@@ -170,7 +170,7 @@ import StatusSwitch from '@/components/StatusSwitch.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import ModelDesigner from './components/ModelDesigner.vue'
 import { addModel, changeModelStatus, deleteModel, deployModel, getModel, pageModel, updateModel } from '@/api/workflow/model'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -187,10 +187,10 @@ const columns = [
   { title: t('workflow.list.category'), key: 'category', width: 100, dict: 'wf_category' },
   { title: t('workflow.model.version'), key: 'version', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
+  { title: t('common.field.sort'), dataIndex: 'sort', width: 70, defaultHidden: true },
   { title: t('workflow.model.deployTime'), dataIndex: 'deployTime', width: 160 },
   { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: 210, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('workflow.model.design'), t('common.action.edit'), t('common.action.more')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'workflow-model')
 const showSearch = ref(true)

@@ -108,7 +108,7 @@ import ReportView from '@/components/bi/ReportView.vue'
 import { deleteReport, listReports, updateReport } from '@/api/bi'
 import { CHART_TYPES, RANGES, loadCubes } from '@/components/bi/bi'
 import { t } from '@/locales'
-import { sumWidth } from '@/composables/useColumns'
+import { actionWidth, sumWidth } from '@/composables/useColumns'
 import { useAction } from '@/composables/useAction'
 
 const router = useRouter()
@@ -121,13 +121,13 @@ const cubeOptions = computed(() => cubes.value.map((c) => ({ value: c.key, label
 const cubeLabel = (k) => cubes.value.find((c) => c.key === k)?.label || k
 
 const columns = [
-  { title: t('bi.report.report'), key: 'name', width: 220 },
-  { title: t('bi.common.cube'), key: 'cube', width: 110 },
-  { title: t('bi.report.config'), key: 'config', width: 260 },
+  { title: t('bi.report.report'), key: 'name', width: 210 },
+  { title: t('bi.common.cube'), key: 'cube', width: 100 },
+  { title: t('bi.report.config'), key: 'config', width: 190 },
   { title: t('bi.report.share'), key: 'shared', width: 90 },
-  { title: t('common.field.createBy'), key: 'owner', width: 110 },
-  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
+  { title: t('common.field.createBy'), key: 'owner', width: 100 },
+  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 160 },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.preview'), t('bi.board.analyze'), t('common.action.edit'), '']), fixed: 'right' }
 ]
 const scrollX = sumWidth(columns)
 

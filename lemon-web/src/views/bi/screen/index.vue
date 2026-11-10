@@ -47,18 +47,22 @@
       </template>
       <a-alert type="info" show-icon class="tip"
         :message="$t('bi.screen.shareTip')" />
-      <a-table row-key="id" size="middle" :columns="columns" :data-source="shares" :loading="loading" :pagination="false" :scroll="{ x: 1100 }">
+      <a-table row-key="id" size="middle" :columns="columns" :data-source="shares" :loading="loading" :pagination="false" :scroll="{ x: sumWidth(columns) }">
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'screens'">
+          <template v-if="column.key === 'name'">
+            <div>{{ record.name }}</div>
+            <div class="sub-text">{{ $t('bi.screen.lastAccessValue', { time: record.lastAccessTime || '-' }) }}</div>
+          </template>
+          <template v-else-if="column.key === 'screens'">
             <a-tag v-for="k in record.screens.split(',')" :key="k" :bordered="false" color="blue">{{ screenLabel(k) }}</a-tag>
           </template>
           <template v-else-if="column.key === 'workCenter'">{{ workCenterName(record.workCenterId) }}</template>
           <template v-else-if="column.key === 'interval'">{{ record.screens.includes(',') ? $t('bi.screen.seconds', { n: record.intervalSeconds }) : '-' }}</template>
           <template v-else-if="column.key === 'status'">
             <a-tag v-if="expired(record)" color="default" :bordered="false">{{ $t('bi.screen.expired') }}</a-tag>
-            <a-tag v-else :color="record.status === 1 ? 'green' : 'default'" :bordered="false">{{ record.status === 1 ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
+            <a-tag v-else :color="record.status === STATUS_ENABLED ? 'green' : 'default'" :bordered="false">{{ record.status === STATUS_ENABLED ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
+            <div class="sub-text">{{ record.expireTime ? $t('bi.screen.expireValue', { time: record.expireTime }) : $t('bi.screen.permanent') }}</div>
           </template>
-          <template v-else-if="column.key === 'expireTime'">{{ record.expireTime || $t('bi.screen.permanent') }}</template>
           <template v-else-if="column.key === 'link'">
             <a-space>
               <a @click="copy(record)"><CopyOutlined /> {{ $t('bi.screen.copyLink') }}</a>
@@ -117,6 +121,8 @@
 </template>
 
 <script setup>
+import { actionWidth, sumWidth } from '@/composables/useColumns'
+import { STATUS_ENABLED } from '@/utils/constants'
 import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { CopyOutlined, ExpandOutlined, PlusOutlined } from '@ant-design/icons-vue'
@@ -158,16 +164,20 @@ function open(keys) {
 // ---------------------------------------------------------------- 投屏链接
 const shares = ref([])
 const loading = ref(false)
+// 最近访问显示在名称下方，有效期显示在状态下方
 const columns = [
-  { title: t('common.field.name'), dataIndex: 'name', width: 160 },
-  { title: t('bi.screen.screens'), key: 'screens', width: 260 },
-  { title: t('bi.screen.interval'), key: 'interval', width: 110 },
-  { title: t('bi.screen.workCenter'), key: 'workCenter', width: 130 },
-  { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('bi.screen.expireTime'), key: 'expireTime', width: 170 },
-  { title: t('bi.screen.lastAccess'), dataIndex: 'lastAccessTime', width: 170 },
-  { title: t('bi.screen.link'), key: 'link', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: 210, fixed: 'right' }
+  { title: t('common.field.name'), key: 'name', width: 180 },
+  { title: t('bi.screen.screens'), key: 'screens', width: 190 },
+  { title: t('bi.screen.interval'), key: 'interval', width: 100 },
+  { title: t('bi.screen.workCenter'), key: 'workCenter', width: 120 },
+  { title: t('common.field.status'), key: 'status', width: 170 },
+  { title: t('bi.screen.link'), key: 'link', width: 170 },
+  {
+    title: t('common.action.operation'),
+    key: 'action',
+    width: actionWidth([t('common.action.edit'), t('bi.screen.regenerate'), t('common.action.delete')].map((text) => ({ text, icon: false }))) + 8,
+    fixed: 'right'
+  }
 ]
 async function load() {
   loading.value = true

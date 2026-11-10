@@ -133,7 +133,7 @@ import SupplementForm from '@/components/mes/SupplementForm.vue'
 import WoDocForm from '@/components/mes/WoDocForm.vue'
 import { cancelSupplement, getSupplement, pageSupplement } from '@/api/mes/wo'
 import { formatQty } from '@/components/wms/wms'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
@@ -152,9 +152,9 @@ const columns = [
   { title: t('common.field.quantity'), key: 'totalQty', width: 90, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 120, dict: 'mes_supplement_status' },
   { title: t('mes.supplement.applicant'), key: 'creator', width: 170 },
-  { title: t('mes.supplement.docNo'), dataIndex: 'docNo', width: 170 },
-  { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true, width: 180 },
-  { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
+  { title: t('mes.supplement.docNo'), dataIndex: 'docNo', width: 170, defaultHidden: true },
+  { title: t('common.field.description'), dataIndex: 'remark', ellipsis: true, width: 180, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), { text: t('mes.supplement.issue'), icon: false }, { text: t('mes.supplement.cancel'), icon: false }]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-supplement')
 const showSearch = ref(true)

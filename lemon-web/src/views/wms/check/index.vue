@@ -99,7 +99,7 @@ import CheckDetail from '@/components/wms/CheckDetail.vue'
 import CheckForm from '@/components/wms/CheckForm.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { deleteCheck, pageCheck } from '@/api/wms/check'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -116,10 +116,10 @@ const columns = [
   { title: t('wms.checkDoc.date'), dataIndex: 'bizDate', width: 110 },
   { title: t('wms.checkDoc.items'), key: 'items', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 90, dict: 'wms_doc_status' },
-  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 90 },
+  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 90, defaultHidden: true },
   { title: t('wms.doc.confirmed'), key: 'confirm', width: 160 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 80, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 200, fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 80, ellipsis: true, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('wms.check.count'), t('common.action.delete')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-check')
 const showSearch = ref(true)

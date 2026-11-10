@@ -172,7 +172,7 @@ import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import ProjectDetail from '@/components/pm/ProjectDetail.vue'
 import { addProject, changeProjectStatus, deleteProject, getProject, pageProject, updateProject } from '@/api/pm'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -187,16 +187,27 @@ const dict = useDict('pm_project_status', 'pm_project_type', 'pm_priority')
 
 const columns = [
   { title: t('pm.common.project'), key: 'name', width: 200, fixed: 'left' },
-  { title: t('common.field.type'), key: 'type', width: 90, dict: 'pm_project_type' },
-  { title: t('pm.common.customer'), key: 'customer', width: 150, ellipsis: true },
+  { title: t('common.field.type'), key: 'type', width: 90, dict: 'pm_project_type', defaultHidden: true },
+  { title: t('pm.common.customer'), key: 'customer', width: 120, ellipsis: true },
   { title: t('pm.common.manager'), dataIndex: 'managerName', width: 90 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'pm_project_status' },
-  { title: t('pm.common.progress'), key: 'progress', width: 130 },
+  { title: t('pm.common.progress'), key: 'progress', width: 120 },
   { title: t('pm.common.planDates'), key: 'dates', width: 210 },
-  { title: t('pm.project.contract'), key: 'contract', width: 110, align: 'right' },
-  { title: t('pm.project.costBudget'), key: 'cost', width: 130, align: 'right' },
-  { title: t('pm.common.tasks'), key: 'tasks', width: 80 },
-  { title: t('common.action.operation'), key: 'action', width: 250, fixed: 'right' }
+  { title: t('pm.project.contract'), key: 'contract', width: 110, align: 'right', defaultHidden: true },
+  { title: t('pm.project.costBudget'), key: 'cost', width: 130, align: 'right', defaultHidden: true },
+  { title: t('pm.common.tasks'), key: 'tasks', width: 80, defaultHidden: true },
+  {
+    title: t('common.action.operation'),
+    key: 'action',
+    // 进行中：详情、编辑、暂停、完成；规划中：详情、编辑、启动、删除（只有图标）
+    width: actionWidth([
+      t('common.action.detail'),
+      t('common.action.edit'),
+      [{ text: t('pm.status.suspend'), icon: false }, { text: t('pm.status.start'), icon: false }],
+      [{ text: t('pm.status.finish'), icon: false }, '']
+    ]),
+    fixed: 'right'
+  }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'pm-project')
 const showSearch = ref(true)

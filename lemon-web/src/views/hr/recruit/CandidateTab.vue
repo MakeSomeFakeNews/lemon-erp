@@ -75,6 +75,7 @@
 </template>
 
 <script setup>
+import { actionWidth } from '@/composables/useColumns'
 import { h, ref } from 'vue'
 import { Modal } from 'ant-design-vue'
 import { DownOutlined, PlusOutlined } from '@ant-design/icons-vue'
@@ -116,7 +117,7 @@ const candidateColumns = [
   { title: t('hr.recruit.interview'), key: 'interview', width: 150 },
   { title: t('hr.recruit.stage'), key: 'stage', width: 120 },
   { title: t('hr.recruit.createTime'), dataIndex: 'createTime', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: 230, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([{ text: t('hr.recruit.interview'), icon: false }, [{ text: t('hr.recruit.offer'), icon: false }, { text: t('hr.recruit.hire'), icon: false }], t('common.action.more')]), fixed: 'right' }
 ]
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageCandidate, props.query)
 const formRef = ref()

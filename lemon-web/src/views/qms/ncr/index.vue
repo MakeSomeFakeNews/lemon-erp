@@ -194,7 +194,7 @@ import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import InstanceDetailDrawer from '@/components/workflow/InstanceDetailDrawer.vue'
 import { addNcr, cancelNcr, deleteNcr, getNcr, pageNcr, reviewNcr } from '@/api/qms'
 import { formatQty } from '@/components/wms/wms'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -218,10 +218,10 @@ const columns = [
   { title: t('qms.ncr.no'), key: 'ncrNo', width: 160 },
   { title: t('qms.ncr.sourceDoc'), key: 'source', width: 170 },
   { title: t('mes.wo.material'), key: 'material', width: 210 },
-  { title: t('qms.ncr.description'), key: 'description', width: 170, ellipsis: true },
+  { title: t('qms.ncr.description'), key: 'description', width: 150, ellipsis: true },
   { title: t('qms.ncr.dispResp'), key: 'disposition', width: 140 },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('qms.ncr.review')].map((text) => ({ text, icon: false }))), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'qms-ncr')
 const query = reactive({ status: undefined, keyword: undefined })

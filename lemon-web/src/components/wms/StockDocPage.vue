@@ -165,7 +165,7 @@ import StockDocForm from './StockDocForm.vue'
 import WarehouseSelect from './WarehouseSelect.vue'
 import WarehouseNames from './WarehouseNames.vue'
 import { confirmDoc, deleteDoc, pageDoc, receiveTransfer, reverseDoc } from '@/api/wms/doc'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
@@ -189,16 +189,22 @@ const dict = useDict('wms_doc_status', ...(conf.typeDict ? [conf.typeDict, conf.
 const columns = [
   { title: t('wms.common.docNo'), key: 'docNo', width: 170 },
   conf.typeDict ? { title: conf.typeLabel, key: 'bizType', width: 120 } : null,
-  conf.categoryDict ? { title: conf.categoryLabel, key: 'ioCategory', width: 110 } : null,
-  { title: props.kind === 'transfer' ? t('wms.doc.fromTo') : t('wms.common.warehouse'), key: 'warehouse', width: props.kind === 'transfer' ? 240 : 140 },
+  conf.categoryDict ? { title: conf.categoryLabel, key: 'ioCategory', width: 100 } : null,
+  { title: props.kind === 'transfer' ? t('wms.doc.fromTo') : t('wms.common.warehouse'), key: 'warehouse', width: props.kind === 'transfer' ? 240 : 120 },
   { title: t('wms.common.bizDate'), dataIndex: 'bizDate', width: 120 },
   { title: t('wms.common.totalQty'), key: 'totalQty', width: 110, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 110 },
-  { title: t('wms.doc.confirmed'), key: 'confirm', width: 160 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 280, fixed: 'right' }
+  { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 110, defaultHidden: true },
+  { title: t('wms.doc.confirmed'), key: 'confirm', width: 160, defaultHidden: true },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
+  {
+    title: t('common.action.operation'),
+    key: 'action',
+    // 草稿：查看、编辑、更多；在途调拨：查看、收货；已确认：查看、冲销
+    width: actionWidth([t('common.action.view'), [t('common.action.edit'), t('wms.common.receive')], [t('common.action.more'), t('wms.common.reverse')]]),
+    fixed: 'right'
+  }
 ].filter(Boolean)
 const { checked, visibleColumns, scrollX } = useColumns(columns, `wms-${props.kind}`)
 const showSearch = ref(true)

@@ -92,7 +92,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import RequisitionDetail from '@/components/scm/RequisitionDetail.vue'
 import RequisitionForm from '@/components/scm/RequisitionForm.vue'
 import { deleteRequisition, pageRequisition } from '@/api/scm/sourcing'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -108,11 +108,11 @@ const columns = [
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'scm_requisition_status' },
   { title: t('scm.requisition.itemCount'), dataIndex: 'itemCount', width: 90, align: 'right' },
   { title: t('scm.requisition.dept'), dataIndex: 'deptName', width: 160, ellipsis: true },
-  { title: t('scm.requisition.preparedBy'), dataIndex: 'createByName', width: 110 },
-  { title: t('scm.requisition.approveTime'), dataIndex: 'approveTime', width: 170 },
-  { title: t('scm.requisition.remark'), dataIndex: 'remark', width: 200, ellipsis: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 200, fixed: 'right' }
+  { title: t('scm.requisition.preparedBy'), dataIndex: 'createByName', width: 110, defaultHidden: true },
+  { title: t('scm.requisition.approveTime'), dataIndex: 'approveTime', width: 170, defaultHidden: true },
+  { title: t('scm.requisition.remark'), dataIndex: 'remark', width: 200, ellipsis: true, defaultHidden: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('common.action.edit'), t('common.action.delete')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-requisition')
 const showSearch = ref(true)

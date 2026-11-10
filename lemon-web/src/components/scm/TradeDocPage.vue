@@ -46,6 +46,8 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'docNo'">
             <a @click="openDetail(record)">{{ record.docNo }}</a>
+            <div v-if="record.orderSource === OrderSource.DIRECT" class="sub-text">{{ $t('scm.trade.direct') }}</div>
+            <div v-else-if="record.orderNo" class="sub-text">{{ $t('scm.trade.orderNoValue', { no: record.orderNo }) }}</div>
           </template>
           <template v-else-if="column.key === 'orderNo'">
             <a-tag v-if="record.orderSource === OrderSource.DIRECT" color="blue" :bordered="false">{{ $t('scm.trade.direct') }}</a-tag>
@@ -94,7 +96,7 @@ import PartnerSelect from './PartnerSelect.vue'
 import TradeDocDetail from './TradeDocDetail.vue'
 import TradeDocForm from './TradeDocForm.vue'
 import { pageTrade } from '@/api/scm/trade'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 import { formatQty } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney } from './scm'
@@ -116,16 +118,21 @@ const orderConf = ORDER_KINDS[conf.orderKind]
 
 const columns = [
   { title: t('scm.trade.docNo'), key: 'docNo', width: 170 },
-  { title: t('scm.trade.orderNo'), key: 'orderNo', width: 170 },
+  { title: t('scm.trade.orderNo'), key: 'orderNo', width: 170, defaultHidden: true },
   { title: orderConf.partnerLabel, key: 'partner', width: 200 },
   { title: t('scm.trade.warehouse'), key: 'warehouse', width: 130 },
   { title: t('scm.trade.bizDate'), dataIndex: 'bizDate', width: 120 },
   { title: t('common.field.quantity'), key: 'totalQty', width: 100, align: 'right' },
   { title: t('scm.trade.totalAmount'), key: 'totalAmount', width: 140, align: 'right' },
-  { title: t('scm.trade.wmsDocNo'), dataIndex: 'wmsDocNo', width: 170 },
-  { title: t('scm.trade.createBy'), dataIndex: 'createByName', width: 120 },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
+  { title: t('scm.trade.wmsDocNo'), dataIndex: 'wmsDocNo', width: 170, defaultHidden: true },
+  { title: t('scm.trade.createBy'), dataIndex: 'createByName', width: 120, defaultHidden: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
+  {
+    title: t('common.action.operation'),
+    key: 'action',
+    width: actionWidth(props.kind === 'salesOut' ? [t('common.action.view'), t('scm.trade.ship')] : [t('common.action.view')]),
+    fixed: 'right'
+  }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, `scm-${props.kind}`)
 const showSearch = ref(true)

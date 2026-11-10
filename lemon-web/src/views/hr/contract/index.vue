@@ -64,6 +64,10 @@
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="hr_contract_status" :value="record.status" />
+            <!-- 剩余天数列默认隐藏：显示在状态下方 -->
+            <div v-if="!checked.includes('daysLeft') && record.daysLeft != null && record.status === LaborContractStatus.ACTIVE" :class="['days-sub', daysClass(record.daysLeft) || 'sub-text']">
+              {{ daysText(record.daysLeft) }}
+            </div>
           </template>
           <template v-else-if="column.key === 'terminate'">
             <template v-if="record.terminateDate">
@@ -173,7 +177,7 @@ import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import EmployeeSelect from '@/components/hr/EmployeeSelect.vue'
 import { addContract, deleteContract, getContract, pageContract, renewContract, terminateContract, updateContract } from '@/api/hr'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -189,13 +193,13 @@ const columns = [
   { title: t('hr.contract.contractNo'), dataIndex: 'contractNo', width: 160, fixed: 'left' },
   { title: t('hr.contract.employee'), key: 'employee', width: 210, exportValue: (r) => `${r.empNo} ${r.employeeName}` },
   { title: t('hr.contract.contractType'), key: 'contractType', dataIndex: 'contractType', width: 150, dict: 'hr_contract_type' },
-  { title: t('hr.contract.signDate'), dataIndex: 'signDate', width: 110 },
+  { title: t('hr.contract.signDate'), dataIndex: 'signDate', width: 110, defaultHidden: true },
   { title: t('hr.contract.term'), key: 'term', width: 230, exportValue: (r) => `${r.startDate} ~ ${r.endDate || t('hr.contract.openEnded')}` },
-  { title: t('hr.contract.daysLeft'), key: 'daysLeft', dataIndex: 'daysLeft', width: 110, align: 'right' },
+  { title: t('hr.contract.daysLeft'), key: 'daysLeft', dataIndex: 'daysLeft', width: 110, align: 'right', defaultHidden: true },
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'hr_contract_status' },
-  { title: t('hr.contract.terminate'), key: 'terminate', width: 180, exportValue: (r) => (r.terminateDate ? `${r.terminateDate} ${r.terminateReason || ''}` : '') },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 260, fixed: 'right' }
+  { title: t('hr.contract.terminate'), key: 'terminate', width: 180, exportValue: (r) => (r.terminateDate ? `${r.terminateDate} ${r.terminateReason || ''}` : ''), defaultHidden: true },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('hr.contract.renew'), { text: t('hr.contract.terminate'), icon: false }, '']), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-contract')
 const showSearch = ref(true)
@@ -336,5 +340,8 @@ async function submitTerminate() {
 .warn {
   color: #fa8c16;
   font-weight: 500;
+}
+.days-sub {
+  font-size: 12px;
 }
 </style>

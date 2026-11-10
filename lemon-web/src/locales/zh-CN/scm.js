@@ -392,6 +392,7 @@ export default {
     docNo: '单据号',
     inputDocNo: '请输入单据号',
     orderNo: '订单号',
+    orderNoValue: '订单 {no}',
     inputOrderNo: '请输入订单号',
     warehouse: '仓库',
     bizDate: '业务日期',

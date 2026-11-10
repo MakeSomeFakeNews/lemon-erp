@@ -146,7 +146,7 @@ import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import { addCampaign, deleteCampaign, getCampaign, pageCampaign, updateCampaign } from '@/api/crm'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -165,15 +165,15 @@ const columns = [
   { title: t('crm.campaign.campaign'), key: 'name', width: 240 },
   { title: t('common.field.type'), key: 'type', width: 110, dict: 'crm_campaign_type' },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'crm_campaign_status' },
-  { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 100 },
+  { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 100, defaultHidden: true },
   { title: t('crm.campaign.actualCost'), key: 'cost', width: 150, align: 'right' },
   { title: t('crm.campaign.col.leads'), key: 'leads', width: 130 },
-  { title: t('crm.campaign.col.converted'), key: 'converted', width: 100 },
-  { title: t('crm.campaign.col.opps'), dataIndex: 'oppCount', width: 120 },
+  { title: t('crm.campaign.col.converted'), key: 'converted', width: 100, defaultHidden: true },
+  { title: t('crm.campaign.col.opps'), dataIndex: 'oppCount', width: 120, defaultHidden: true },
   { title: t('crm.campaign.col.won'), key: 'won', width: 140, align: 'right' },
-  { title: t('crm.campaign.col.actual'), key: 'actual', width: 170, align: 'right' },
+  { title: t('crm.campaign.col.actual'), key: 'actual', width: 170, align: 'right', defaultHidden: true },
   { title: t('crm.campaign.col.roi'), key: 'roi', width: 90, align: 'right' },
-  { title: t('common.action.operation'), key: 'action', width: 200, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([{ text: t('crm.campaign.leads'), icon: false }, t('common.action.edit'), '']), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-campaign')
 const showSearch = ref(true)

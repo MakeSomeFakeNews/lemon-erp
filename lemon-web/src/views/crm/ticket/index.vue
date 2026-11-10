@@ -175,7 +175,7 @@ import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import TicketDetail from '@/components/crm/TicketDetail.vue'
 import { addTicket, deleteTicket, getTicket, listContacts, pageTicket, ticketWarranty, updateTicket } from '@/api/crm'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -190,13 +190,13 @@ const dict = useDict('crm_ticket_type', 'crm_ticket_priority', 'crm_ticket_statu
 const columns = [
   { title: t('crm.common.f.ticket'), key: 'title', width: 140 },
   { title: t('crm.common.f.customer'), key: 'customer', width: 190 },
-  { title: t('common.field.type'), key: 'type', width: 80, dict: 'crm_ticket_type' },
+  { title: t('common.field.type'), key: 'type', width: 100, dict: 'crm_ticket_type' },
   { title: t('crm.common.f.priority'), key: 'priority', width: 80, dict: 'crm_ticket_priority' },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'crm_ticket_status' },
   { title: t('crm.common.f.assignee'), key: 'assignee', width: 80 },
   { title: t('crm.ticket.col.due'), key: 'due', width: 140 },
-  { title: t('crm.common.f.acceptTime'), dataIndex: 'createTime', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
+  { title: t('crm.common.f.acceptTime'), dataIndex: 'createTime', width: 160, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('crm.ticket.handle'), t('common.action.edit'), '']), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-ticket')
 const showSearch = ref(true)

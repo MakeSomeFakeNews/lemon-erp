@@ -194,7 +194,7 @@ import { addOffset, cancelReviewOffset, deleteOffset, getOffset, pageOffset, rev
 import { formatMoney } from '@/components/fin/fin'
 import { today } from '@/components/wms/wms'
 import { useAction } from '@/composables/useAction'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -219,19 +219,19 @@ const settleText = (r) => {
 const columns = [
   { title: t('fin.offset.no'), key: 'offsetNo', width: 160 },
   { title: t('fin.offset.date'), dataIndex: 'offsetDate', width: 110 },
-  { title: t('fin.offset.kind'), key: 'kind', width: 110 },
-  { title: t('fin.offset.partner'), key: 'partner', width: 200, ellipsis: true },
+  { title: t('fin.offset.kind'), key: 'kind', width: 100 },
+  { title: t('fin.offset.partner'), key: 'partner', width: 170, ellipsis: true },
   { title: t('fin.offset.item'), key: 'item', width: 110 },
   { title: t('fin.offset.amount'), key: 'amount', width: 130, align: 'right' },
-  { title: t('fin.offset.period'), key: 'period', width: 210 },
-  { title: t('fin.offset.ticketNo'), dataIndex: 'ticketNo', width: 130, ellipsis: true },
+  { title: t('fin.offset.period'), key: 'period', width: 210, defaultHidden: true },
+  { title: t('fin.offset.ticketNo'), dataIndex: 'ticketNo', width: 130, ellipsis: true, defaultHidden: true },
   { title: t('common.field.status'), key: 'status', width: 120 },
-  { title: t('fin.offset.bill'), key: 'bill', width: 150 },
-  { title: t('fin.offset.handler'), dataIndex: 'handlerName', width: 100 },
-  { title: t('fin.offset.createBy'), dataIndex: 'createByName', width: 100 },
-  { title: t('fin.offset.reviewBy'), key: 'review', width: 150 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
+  { title: t('fin.offset.bill'), key: 'bill', width: 150, defaultHidden: true },
+  { title: t('fin.offset.handler'), dataIndex: 'handlerName', width: 100, defaultHidden: true },
+  { title: t('fin.offset.createBy'), dataIndex: 'createByName', width: 100, defaultHidden: true },
+  { title: t('fin.offset.reviewBy'), key: 'review', width: 150, defaultHidden: true },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([[t('common.action.edit'), t('fin.offset.cancelReview')], t('fin.offset.review'), t('common.action.delete')].map((l) => (Array.isArray(l) ? l.map((text) => ({ text, icon: false })) : { text: l, icon: false }))), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-offset')
 const query = reactive({ kind: undefined, partnerId: undefined, item: undefined, status: undefined, keyword: undefined })

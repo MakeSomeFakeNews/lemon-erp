@@ -81,20 +81,20 @@
         </a-card>
 
         <a-card :bordered="false" class="page-card table-card">
-          <div class="table-head">
+          <TableToolbar v-model:checked="checked" :columns="itemColumns" class="table-head" @refresh="loadDetail">
             <a-input-search v-model:value="keyword" :placeholder="$t('hr.payroll.keywordPh')" allow-clear class="w220" @search="loadDetail" />
-            <span class="sub-text">{{ $t('hr.payroll.dailyTip') }}</span>
-            <span class="sub-text">{{ $t('hr.payroll.taxTip') }}</span>
-          </div>
+            <span class="sub-text tip">{{ $t('hr.payroll.dailyTip') }}</span>
+            <span class="sub-text tip">{{ $t('hr.payroll.taxTip') }}</span>
+          </TableToolbar>
           <a-table
             row-key="id"
             size="small"
             bordered
-            :columns="itemColumns"
+            :columns="visibleColumns"
             :data-source="payroll.items"
             :loading="detailLoading"
             :pagination="false"
-            :scroll="{ x: 3000, y: '100%' }"
+            :scroll="{ x: scrollX, y: '100%' }"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'employee'">
@@ -141,7 +141,7 @@
               <a-table-summary fixed>
                 <a-table-summary-row>
                   <a-table-summary-cell :index="0" :col-span="2"><b>{{ $t('hr.payroll.total') }}</b></a-table-summary-cell>
-                  <a-table-summary-cell v-for="(c, i) in itemColumns.slice(2)" :key="c.key" :index="i + 2" align="right">
+                  <a-table-summary-cell v-for="(c, i) in visibleColumns.slice(2)" :key="c.key" :index="i + 2" align="right">
                     <b v-if="SUM_KEYS.includes(c.key)">{{ formatMoney(sum(c.key)) }}</b>
                   </a-table-summary-cell>
                 </a-table-summary-row>
@@ -191,6 +191,8 @@
 </template>
 
 <script setup>
+import TableToolbar from '@/components/TableToolbar.vue'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useI18n } from 'vue-i18n'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
@@ -304,13 +306,16 @@ const itemColumns = [
   { title: t('hr.payroll.col.incomeTax'), key: 'incomeTax', width: 100, align: 'right' },
   { title: t('hr.payroll.otherDeduct'), key: 'otherDeduct', width: 140, align: 'right' },
   { title: t('hr.payroll.col.netPay'), key: 'netPay', width: 120, align: 'right' },
-  { title: t('hr.payroll.col.socialCompany'), key: 'socialCompany', width: 150, align: 'right' },
-  { title: t('hr.payroll.col.housingCompany'), key: 'housingCompany', width: 170, align: 'right' },
-  { title: t('hr.payroll.col.cumTaxable'), key: 'cumTaxable', width: 160, align: 'right', exportValue: (r) => cellValue(r, 'cumTaxable') },
-  { title: t('hr.payroll.col.cumTax'), key: 'cumTax', width: 150, align: 'right' },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true },
-  { title: '', key: 'action', width: 70, fixed: 'right' }
+  // 单位社保公积金（顶部合计已显示）、累计应纳税所得额 / 已缴税额（个税计算用）、备注默认隐藏
+  { title: t('hr.payroll.col.socialCompany'), key: 'socialCompany', width: 150, align: 'right', defaultHidden: true },
+  { title: t('hr.payroll.col.housingCompany'), key: 'housingCompany', width: 170, align: 'right', defaultHidden: true },
+  { title: t('hr.payroll.col.cumTaxable'), key: 'cumTaxable', width: 160, align: 'right', exportValue: (r) => cellValue(r, 'cumTaxable'), defaultHidden: true },
+  { title: t('hr.payroll.col.cumTax'), key: 'cumTax', width: 150, align: 'right', defaultHidden: true },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true, defaultHidden: true },
+  { title: '', key: 'action', width: actionWidth([{ text: t('hr.payroll.adjust'), icon: false }]), fixed: 'right' }
 ]
+// 工资表列多，保持横向滚动（左右固定员工和操作列）
+const { checked, visibleColumns, scrollX } = useColumns(itemColumns, 'hr-payroll')
 /** 工资条：当前列表（可先按工号或姓名筛选）每人一条；打印字段名是模板匹配用的原始名称，保持中文 */
 function printSlips() {
   const p = payroll.value
@@ -483,11 +488,10 @@ async function pay() {
   margin-top: 8px;
 }
 .table-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
   margin-bottom: 12px;
+}
+.tip {
+  align-self: center;
 }
 .w220 {
   width: 220px;

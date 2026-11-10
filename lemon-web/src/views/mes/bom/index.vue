@@ -291,7 +291,7 @@ import WorkCenterSelect from '@/components/mes/WorkCenterSelect.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { addBom, changeBomStatus, deleteBom, getBom, pageBom, setDefaultBom, updateBom } from '@/api/mes/base'
 import { releasedDocs } from '@/api/mes/plm'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -311,9 +311,9 @@ const columns = [
   { title: t('mes.bom.leadTime'), key: 'leadDays', width: 100 },
   { title: t('mes.bom.structure'), key: 'lines', width: 190 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 300, fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
+  { title: t('common.field.updateTime'), dataIndex: 'updateTime', width: 170, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('common.action.edit'), { text: t('mes.bom.setDefault'), icon: false }, { text: t('mes.bom.startEcn'), icon: false }, '']), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-bom')
 const showSearch = ref(true)

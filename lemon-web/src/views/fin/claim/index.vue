@@ -229,7 +229,7 @@ import DeptSelect from '@/components/fin/DeptSelect.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import ProjectSelect from '@/components/pm/ProjectSelect.vue'
 import { addClaim, deleteClaim, getClaim, pageClaim, pageLoan, payClaim, submitClaim, updateClaim } from '@/api/fin'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -256,11 +256,11 @@ const columns = [
   { title: t('fin.claim.claimant'), key: 'user', dataIndex: 'userName', width: 130 },
   { title: t('fin.claim.claimDate'), dataIndex: 'claimDate', width: 120 },
   { title: t('common.field.amount'), key: 'amount', dataIndex: 'amount', width: 130, align: 'right' },
-  { title: t('fin.claim.offsetLoan'), key: 'loan', dataIndex: 'loanNo', width: 140 },
+  { title: t('fin.claim.offsetLoan'), key: 'loan', dataIndex: 'loanNo', width: 140, defaultHidden: true },
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 120, dict: 'fin_claim_status' },
   { title: t('fin.claim.pay'), key: 'pay', dataIndex: 'payDate', width: 120 },
   { title: t('fin.claim.reason'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('common.action.submit'), t('common.action.delete')].map((text) => ({ text, icon: false }))), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-claim')
 const showSearch = ref(true)

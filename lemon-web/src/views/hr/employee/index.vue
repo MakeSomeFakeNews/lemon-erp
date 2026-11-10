@@ -365,7 +365,7 @@ import {
   updateEmployee
 } from '@/api/hr'
 import { deptTree } from '@/api/system/dept'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -413,14 +413,14 @@ const importColumns = [
 
 const columns = [
   { title: t('hr.employee.employee'), key: 'name', width: 160, fixed: 'left' },
-  { title: t('hr.employee.deptPosition'), key: 'dept', width: 180 },
-  { title: t('hr.employee.empType'), key: 'empType', width: 130, dict: 'hr_emp_type' },
-  { title: t('common.field.status'), key: 'status', width: 130, dict: 'hr_emp_status' },
+  { title: t('hr.employee.deptPosition'), key: 'dept', width: 170 },
+  { title: t('hr.employee.empType'), key: 'empType', width: 110, dict: 'hr_emp_type' },
+  { title: t('common.field.status'), key: 'status', width: 110, dict: 'hr_emp_status' },
   { title: t('hr.employee.entryDate'), dataIndex: 'entryDate', width: 110 },
-  { title: t('common.field.phone'), dataIndex: 'phone', width: 130 },
-  { title: t('hr.employee.education'), dataIndex: 'education', width: 100, customRender: ({ text }) => dict.hr_education.find((d) => d.value === text)?.label || '-' },
-  { title: t('hr.employee.account'), key: 'account', width: 130 },
-  { title: t('common.action.operation'), key: 'action', width: 210, fixed: 'right' }
+  { title: t('common.field.phone'), dataIndex: 'phone', width: 130, defaultHidden: true },
+  { title: t('hr.employee.education'), dataIndex: 'education', width: 100, customRender: ({ text }) => dict.hr_education.find((d) => d.value === text)?.label || '-', defaultHidden: true },
+  { title: t('hr.employee.account'), key: 'account', width: 130, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('hr.employee.change'), '']), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-employee')
 

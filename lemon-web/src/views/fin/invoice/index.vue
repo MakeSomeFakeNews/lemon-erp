@@ -31,20 +31,22 @@
             <a-input-search v-model:value="query.keyword" :placeholder="$t('fin.invoice.keywordPlaceholder')" allow-clear class="filter" @search="search" />
             <a-checkbox v-model:checked="query.unmatched" @change="search">{{ $t('fin.invoice.onlyUnmatched') }}</a-checkbox>
           </div>
-          <div class="stats">
-            <span>{{ $t('fin.invoice.pageTotal') }} <b>¥{{ formatMoney(pageTotal.amount) }}</b></span>
-            <span>{{ $t('fin.invoice.taxAmount') }} ¥{{ formatMoney(pageTotal.tax) }}</span>
-            <span class="sub-text">{{ $t('fin.invoice.voidExcluded') }}</span>
-          </div>
+          <TableToolbar v-model:size="size" v-model:checked="checked" :columns="baseColumns" class="stats-bar" @refresh="load">
+            <div class="stats">
+              <span>{{ $t('fin.invoice.pageTotal') }} <b>¥{{ formatMoney(pageTotal.amount) }}</b></span>
+              <span>{{ $t('fin.invoice.taxAmount') }} ¥{{ formatMoney(pageTotal.tax) }}</span>
+              <span class="sub-text">{{ $t('fin.invoice.voidExcluded') }}</span>
+            </div>
+          </TableToolbar>
           <a-table
             row-key="id"
-            size="middle"
-            :columns="columns"
+            :size="size"
+            :columns="visibleColumns"
             :data-source="list"
             :loading="loading"
             :pagination="pagination"
             :row-selection="k === InvoiceKind.INPUT ? { ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.status !== InvoiceStatus.VALID }) } : undefined"
-            :scroll="{ x: scrollX }"
+            :scroll="{ x: scrollX + (k === InvoiceKind.INPUT ? 32 : 0) }"
             @change="onTableChange"
           >
             <template #bodyCell="{ column, record }">
@@ -54,6 +56,7 @@
               <template v-else-if="column.key === 'invoiceType'"><DictTag type="fin_invoice_type" :value="record.invoiceType" /></template>
               <template v-else-if="column.key === 'amount'">
                 <span :class="{ neg: Number(record.amount) < 0, void: record.status === InvoiceStatus.VOID }">¥{{ formatMoney(record.amount) }}</span>
+                <div v-if="!checked.includes('taxAmount')" class="sub-text">{{ $t('fin.billPage.taxN', { amount: formatMoney(record.taxAmount) }) }}</div>
               </template>
               <template v-else-if="column.key === 'taxAmount'">
                 <span :class="{ void: record.status === InvoiceStatus.VOID }">{{ formatMoney(record.taxAmount) }}</span>
@@ -62,7 +65,8 @@
                 <a-tag :color="record.status === InvoiceStatus.VOID ? 'default' : 'green'" :bordered="false">{{ record.status === InvoiceStatus.VOID ? $t('fin.invoice.statusVoid') : $t('fin.invoice.statusValid') }}</a-tag>
               </template>
               <template v-else-if="column.key === 'matched'">
-                <span v-if="record.status === InvoiceStatus.VOID" class="sub-text">-</span>
+                <!-- 状态列默认隐藏：作废显示在勾稽列 -->
+                <a-tag v-if="record.status === InvoiceStatus.VOID" :bordered="false">{{ $t('fin.invoice.statusVoid') }}</a-tag>
                 <a-tag v-else-if="unmatchedAmount(record) === 0" color="green" :bordered="false">{{ $t('fin.invoice.matched') }}</a-tag>
                 <a-tag v-else color="orange" :bordered="false">{{ $t('fin.invoice.unmatchedAmt', { amount: formatMoney(unmatchedAmount(record)) }) }}</a-tag>
               </template>
@@ -120,7 +124,9 @@ import { ImportOutlined, PlusOutlined, SafetyCertificateOutlined } from '@ant-de
 import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import { cancelInvoice, pageInvoice } from '@/api/fin'
+import TableToolbar from '@/components/TableToolbar.vue'
 import { useAction } from '@/composables/useAction'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 import { today } from '@/components/wms/wms'
 import { formatMoney, periodText } from '@/components/fin/fin'
@@ -140,22 +146,41 @@ const tab = ref(InvoiceKind.OUTPUT)
 const kind = ref(InvoiceKind.OUTPUT)
 const conf = computed(() => KINDS[kind.value])
 
-const columns = computed(() => [
+// 销项、进项各一套列设置（进项多认证期间）；税额默认显示在金额下方，状态（作废）显示在勾稽列
+const buildColumns = (k) => [
   { title: t('fin.invoice.invoiceNo'), key: 'invoiceNo', width: 190 },
   { title: t('common.field.type'), key: 'invoiceType', width: 130 },
-  { title: conf.value.partnerLabel, dataIndex: 'partnerName', width: 150, ellipsis: true },
+  { title: KINDS[k].partnerLabel, dataIndex: 'partnerName', width: 150, ellipsis: true },
   { title: t('fin.invoice.invoiceDate'), dataIndex: 'invoiceDate', width: 100 },
   { title: t('fin.invoice.amount'), key: 'amount', width: 120, align: 'right' },
-  { title: t('fin.invoice.taxAmount'), key: 'taxAmount', width: 100, align: 'right' },
-  { title: t('common.field.status'), key: 'status', width: 70 },
+  { title: t('fin.invoice.taxAmount'), key: 'taxAmount', width: 100, align: 'right', defaultHidden: true },
+  { title: t('common.field.status'), key: 'status', width: 70, defaultHidden: true },
   { title: t('fin.invoice.match'), key: 'matched', width: 120 },
-  ...(kind.value === InvoiceKind.INPUT ? [{ title: t('fin.invoice.certifyPeriod'), key: 'certify', width: 110 }] : []),
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 120, ellipsis: true },
-  { title: t('fin.invoice.registeredBy'), dataIndex: 'createByName', width: 80 },
-  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
-])
-// 进项发票带勾选列
-const scrollX = computed(() => columns.value.reduce((sum, c) => sum + c.width, 0) + (kind.value === InvoiceKind.INPUT ? 32 : 0))
+  ...(k === InvoiceKind.INPUT ? [{ title: t('fin.invoice.certifyPeriod'), key: 'certify', width: 110 }] : []),
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 120, ellipsis: true, defaultHidden: true },
+  { title: t('fin.invoice.registeredBy'), dataIndex: 'createByName', width: 80, defaultHidden: true },
+  {
+    title: t('common.action.operation'),
+    key: 'action',
+    width: actionWidth([t('common.action.view'), t('fin.invoice.match'), t('fin.invoice.void')].map((text) => ({ text, icon: false }))),
+    fixed: 'right'
+  }
+]
+const COLUMN_SETS = Object.fromEntries(
+  [InvoiceKind.OUTPUT, InvoiceKind.INPUT].map((k) => {
+    const base = buildColumns(k)
+    return [k, { base, ...useColumns(base, `fin-invoice-${k.toLowerCase()}`) }]
+  })
+)
+const current = computed(() => COLUMN_SETS[kind.value])
+const baseColumns = computed(() => current.value.base)
+const checked = computed({
+  get: () => current.value.checked.value,
+  set: (v) => (current.value.checked.value = v)
+})
+const visibleColumns = computed(() => current.value.visibleColumns.value)
+const scrollX = computed(() => current.value.scrollX.value)
+const size = ref('middle')
 const query = reactive({ kind: InvoiceKind.OUTPUT, partnerId: undefined, status: undefined, keyword: undefined, unmatched: false })
 const { list, loading, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable(pageInvoice, query)
 onMounted(load)
@@ -212,9 +237,12 @@ const asOf = ref(today())
 .stats {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 24px;
-  margin-bottom: 8px;
   color: var(--app-text-2);
+}
+.stats-bar {
+  margin-bottom: 8px;
 }
 .sub-text {
   color: var(--app-text-3);
