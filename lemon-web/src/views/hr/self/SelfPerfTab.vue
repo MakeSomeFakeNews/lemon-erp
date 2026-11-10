@@ -6,10 +6,12 @@
         <template v-if="column.key === 'status'"><DictTag type="hr_appraisal_status" :value="record.status" /></template>
         <template v-else-if="column.key === 'grade'"><DictTag type="hr_perf_grade" :value="record.grade" /></template>
         <template v-else-if="column.key === 'action'">
-          <a-button v-if="record.status === AppraisalStatus.SELF && record.planStatus === PerfStatus.SCORING" type="link" size="small" @click="openScore(record, 'self')">
-            {{ $t('hr.scoreModal.self') }}
-          </a-button>
-          <a-button v-else-if="record.status === AppraisalStatus.DONE" type="link" size="small" @click="viewResult(record)">{{ $t('common.action.view') }}</a-button>
+          <TableActions
+            :actions="[
+              { type: 'edit', label: $t('hr.scoreModal.self'), show: record.status === AppraisalStatus.SELF && record.planStatus === PerfStatus.SCORING, onClick: () => openScore(record, 'self') },
+              { type: 'view', show: record.status === AppraisalStatus.DONE, onClick: () => viewResult(record) }
+            ]"
+          />
         </template>
       </template>
     </a-table>
@@ -21,9 +23,11 @@
       <template v-else-if="column.key === 'status'"><DictTag type="hr_appraisal_status" :value="record.status" /></template>
       <template v-else-if="column.key === 'grade'"><DictTag type="hr_perf_grade" :value="record.grade" /></template>
       <template v-else-if="column.key === 'action'">
-        <a-button v-if="record.status !== AppraisalStatus.DONE && record.planStatus === PerfStatus.SCORING" type="link" size="small" @click="openScore(record, 'review')">
-          {{ $t('hr.scoreModal.score') }}
-        </a-button>
+        <TableActions
+          :actions="[
+            { type: 'edit', label: $t('hr.scoreModal.score'), show: record.status !== AppraisalStatus.DONE && record.planStatus === PerfStatus.SCORING, onClick: () => openScore(record, 'review') }
+          ]"
+        />
       </template>
     </template>
   </a-table>
@@ -47,6 +51,8 @@
 <script setup>
 import { ref } from 'vue'
 import DictTag from '@/components/DictTag.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import ScoreModal from '@/components/hr/ScoreModal.vue'
 import { getAppraisal } from '@/api/hr'
 import { t } from '@/locales'
@@ -67,7 +73,7 @@ const myAppraisalColumns = [
   { title: t('hr.self.score'), dataIndex: 'score', width: 80 },
   { title: t('hr.self.grade'), key: 'grade', width: 90 },
   { title: t('common.field.status'), key: 'status', width: 110 },
-  { title: '', key: 'action', width: 80 }
+  actionColumn(1, [t('hr.scoreModal.self'), t('common.action.view')], { title: '', fixed: undefined })
 ]
 const reviewColumns = [
   { title: t('hr.scoreModal.plan'), dataIndex: 'planName' },
@@ -77,7 +83,7 @@ const reviewColumns = [
   { title: t('hr.self.score'), dataIndex: 'score', width: 80 },
   { title: t('hr.self.grade'), key: 'grade', width: 90 },
   { title: t('common.field.status'), key: 'status', width: 110 },
-  { title: '', key: 'action', width: 80 }
+  actionColumn(1, [t('hr.scoreModal.score')], { title: '', fixed: undefined })
 ]
 const scoreOpen = ref(false)
 const scoreId = ref()

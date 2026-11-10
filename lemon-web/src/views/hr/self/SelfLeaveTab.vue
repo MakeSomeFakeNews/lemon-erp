@@ -16,9 +16,9 @@
         <div v-if="record.approveComment" class="sub-text">{{ record.approveComment }}</div>
       </template>
       <template v-else-if="column.key === 'action'">
-        <a-popconfirm v-if="canCancel(record)" :title="$t('hr.self.confirmCancel')" @confirm="cancel(record.id)">
-          <a-button type="link" size="small">{{ $t('hr.self.cancel') }}</a-button>
-        </a-popconfirm>
+        <TableActions
+          :actions="[{ type: 'cancel', label: $t('hr.self.cancel'), show: canCancel(record), confirm: $t('hr.self.confirmCancel'), onClick: () => cancel(record.id) }]"
+        />
       </template>
     </template>
   </a-table>
@@ -27,6 +27,8 @@
 <script setup>
 import dayjs from 'dayjs'
 import DictTag from '@/components/DictTag.vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { hoursText } from '@/components/hr/hr'
 import { cancelLeave } from '@/api/hr'
 import { useAction } from '@/composables/useAction'
@@ -45,7 +47,7 @@ const leaveColumns = [
   { title: t('hr.self.duration'), key: 'hours', width: 140 },
   { title: t('hr.self.reason'), dataIndex: 'reason', width: 200, ellipsis: true },
   { title: t('common.field.status'), key: 'status', width: 140 },
-  { title: '', key: 'action', width: 80 }
+  actionColumn(1, [t('hr.self.cancel')], { title: '', fixed: undefined })
 ]
 const leaveScrollX = leaveColumns.reduce((sum, c) => sum + c.width, 0)
 const canCancel = (r) => r.status === LeaveStatus.APPROVING || (r.status === LeaveStatus.APPROVED && dayjs(r.startTime).isAfter(dayjs()))

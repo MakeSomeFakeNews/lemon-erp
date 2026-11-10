@@ -39,14 +39,12 @@
             <a-tag :color="record.status === STATUS_ENABLED ? 'green' : 'default'" :bordered="false">{{ record.status === STATUS_ENABLED ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-perm="'hr:social:edit'" class="table-actions">
-              <a-button type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <a-popconfirm :title="$t('hr.social.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', perm: 'hr:social:edit', onClick: () => drawer.openEdit(record) },
+                { type: 'delete', perm: 'hr:social:edit', confirm: $t('hr.social.confirmDelete', { name: record.name }), onClick: () => remove(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -128,14 +126,16 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
 import { onMounted, ref } from 'vue'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { formatMoney } from '@/components/scm/scm'
 import { addSocialScheme, deleteSocialScheme, listSocialScheme, updateSocialScheme } from '@/api/hr'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useAction } from '@/composables/useAction'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { STATUS_ENABLED } from '@/utils/constants'
 
 const { t } = useI18n()
@@ -149,18 +149,17 @@ const companyTotal = (r) => n(r.pensionCompany) + n(r.medicalCompany) + n(r.unem
 const columns = [
   { title: t('hr.social.col.scheme'), key: 'name', width: 180, fixed: 'left' },
   { title: t('hr.social.col.base'), key: 'base', width: 190 },
-  { title: t('hr.social.col.pension'), key: 'pension', rate: true, width: 170, align: 'right', defaultHidden: true },
-  { title: t('hr.social.col.medical'), key: 'medical', rate: true, width: 170, align: 'right', defaultHidden: true },
-  { title: t('hr.social.col.unemployment'), key: 'unemployment', rate: true, width: 190, align: 'right', defaultHidden: true },
-  { title: t('hr.social.col.injury'), key: 'injury', width: 140, align: 'right', defaultHidden: true },
+  { title: t('hr.social.col.pension'), key: 'pension', rate: true, width: 170, align: 'right' },
+  { title: t('hr.social.col.medical'), key: 'medical', rate: true, width: 170, align: 'right' },
+  { title: t('hr.social.col.unemployment'), key: 'unemployment', rate: true, width: 190, align: 'right' },
+  { title: t('hr.social.col.injury'), key: 'injury', width: 140, align: 'right' },
   { title: t('hr.social.col.personalTotal'), key: 'personalTotal', width: 120, align: 'right' },
   { title: t('hr.social.col.companyTotal'), key: 'companyTotal', width: 120, align: 'right' },
   { title: t('hr.social.col.housing'), key: 'housing', width: 190 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), '']), fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
+  actionColumn(2)
 ]
-// 各险种比例默认隐藏（个人 / 单位合计已显示），可在列设置中勾选
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-social')
 const RATE_ITEMS = [
   { key: 'pension', label: t('hr.social.item.pension'), personal: 'pensionPersonal', company: 'pensionCompany' },

@@ -81,24 +81,7 @@
               <span v-else class="sub-text">{{ $t('hr.employee.unlinked') }}</span>
             </template>
             <template v-else-if="column.key === 'action'">
-              <span class="table-actions">
-                <a-button v-perm="'hr:employee:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                  <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-                </a-button>
-                <a-dropdown v-if="record.status !== EmployeeStatus.LEFT && userStore.hasPerm('hr:employee:change')">
-                  <a-button type="link" size="small">{{ $t('hr.employee.change') }}<DownOutlined /></a-button>
-                  <template #overlay>
-                    <a-menu @click="({ key }) => openChange(record, key)">
-                      <a-menu-item v-for="t in changeTypes(record)" :key="t.value" :danger="t.value === ChangeType.LEAVE">{{ t.label }}</a-menu-item>
-                    </a-menu>
-                  </template>
-                </a-dropdown>
-                <span v-perm="'hr:employee:remove'">
-                  <a-popconfirm :title="$t('hr.employee.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                    <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                  </a-popconfirm>
-                </span>
-              </span>
+              <TableActions :actions="rowActions(record)" />
             </template>
           </template>
         </a-table>
@@ -335,7 +318,7 @@
 import SubPage from '@/components/SubPage.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, DownOutlined, EditOutlined, ImportOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { ImportOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
 import DictTag from '@/components/DictTag.vue'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
@@ -365,7 +348,9 @@ import {
   updateEmployee
 } from '@/api/hr'
 import { deptTree } from '@/api/system/dept'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -413,14 +398,14 @@ const importColumns = [
 
 const columns = [
   { title: t('hr.employee.employee'), key: 'name', width: 160, fixed: 'left' },
-  { title: t('hr.employee.deptPosition'), key: 'dept', width: 170 },
-  { title: t('hr.employee.empType'), key: 'empType', width: 110, dict: 'hr_emp_type' },
-  { title: t('common.field.status'), key: 'status', width: 110, dict: 'hr_emp_status' },
+  { title: t('hr.employee.deptPosition'), key: 'dept', width: 180 },
+  { title: t('hr.employee.empType'), key: 'empType', width: 130, dict: 'hr_emp_type' },
+  { title: t('common.field.status'), key: 'status', width: 130, dict: 'hr_emp_status' },
   { title: t('hr.employee.entryDate'), dataIndex: 'entryDate', width: 110 },
-  { title: t('common.field.phone'), dataIndex: 'phone', width: 130, defaultHidden: true },
-  { title: t('hr.employee.education'), dataIndex: 'education', width: 100, customRender: ({ text }) => dict.hr_education.find((d) => d.value === text)?.label || '-', defaultHidden: true },
-  { title: t('hr.employee.account'), key: 'account', width: 130, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('hr.employee.change'), '']), fixed: 'right' }
+  { title: t('common.field.phone'), dataIndex: 'phone', width: 130 },
+  { title: t('hr.employee.education'), dataIndex: 'education', width: 100, customRender: ({ text }) => dict.hr_education.find((d) => d.value === text)?.label || '-' },
+  { title: t('hr.employee.account'), key: 'account', width: 130 },
+  actionColumn(3)
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-employee')
 
@@ -506,6 +491,22 @@ const changeRef = ref()
 const changeForm = reactive({ type: undefined, changeDate: undefined, deptId: undefined, positionId: undefined, salary: undefined, reason: '', handoverUserId: undefined })
 const changeLabel = computed(() => CHANGE_TYPES.find((c) => c.value === changeForm.type)?.label || t('hr.employee.change'))
 const changeTypes = (record) => CHANGE_TYPES.filter((c) => c.value !== ChangeType.REGULAR || record.status === EmployeeStatus.PROBATION)
+
+// 行操作：编辑、删除直接显示，人事变动（转正、调岗、离职等）在「更多」中
+const rowActions = (record) => [
+  { type: 'edit', perm: 'hr:employee:edit', onClick: () => drawer.openEdit(record) },
+  { type: 'delete', perm: 'hr:employee:remove', confirm: t('hr.employee.confirmDelete', { name: record.name }), onClick: () => remove(record.id) },
+  ...changeTypes(record).map((c) => ({
+    key: `change-${c.value}`,
+    label: c.label,
+    icon: SwapOutlined,
+    danger: c.value === ChangeType.LEAVE,
+    show: record.status !== EmployeeStatus.LEFT,
+    perm: 'hr:employee:change',
+    more: true,
+    onClick: () => openChange(record, c.value)
+  }))
+]
 
 function openChange(record, type) {
   changeTarget.value = record

@@ -61,9 +61,9 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button v-perm="'hr:salary:edit'" type="link" size="small" @click="openEdit(record)">
-              <template #icon><EditOutlined /></template>{{ record.id ? $t('hr.salary.adjust') : $t('hr.salary.create') }}
-            </a-button>
+            <TableActions
+              :actions="[{ type: 'edit', label: record.id ? $t('hr.salary.adjust') : $t('hr.salary.create'), perm: 'hr:salary:edit', onClick: () => openEdit(record) }]"
+            />
           </template>
         </template>
       </a-table>
@@ -151,14 +151,15 @@
 import { useI18n } from 'vue-i18n'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { EditOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
 import { formatMoney } from '@/components/scm/scm'
 import { listSocialScheme, pageSalary, saveSalary, salaryHistory, salaryRules } from '@/api/hr'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 
@@ -171,14 +172,14 @@ const columns = [
   { title: t('hr.salary.baseSalary'), key: 'baseSalary', width: 120, align: 'right' },
   { title: t('hr.salary.postAllowance'), key: 'postAllowance', width: 150, align: 'right' },
   { title: t('hr.salary.otherAllowance'), key: 'otherAllowance', width: 130, align: 'right' },
-  { title: t('hr.salary.col.perfBonusBase'), key: 'perfBonusBase', width: 130, align: 'right', defaultHidden: true },
-  { title: t('hr.salary.scheme'), key: 'scheme', width: 180, exportValue: (r) => (r.id ? (r.schemeId ? schemeName(r) : t('hr.salary.defaultRates')) : ''), defaultHidden: true },
+  { title: t('hr.salary.col.perfBonusBase'), key: 'perfBonusBase', width: 130, align: 'right' },
+  { title: t('hr.salary.scheme'), key: 'scheme', width: 180, exportValue: (r) => (r.id ? (r.schemeId ? schemeName(r) : t('hr.salary.defaultRates')) : '') },
   { title: t('hr.salary.socialBase'), key: 'socialBase', width: 170, align: 'right' },
-  { title: t('hr.salary.housingBase'), key: 'housingBase', width: 150, align: 'right', defaultHidden: true },
-  { title: t('hr.salary.housingRate'), key: 'housingRate', width: 140, align: 'right', defaultHidden: true },
+  { title: t('hr.salary.housingBase'), key: 'housingBase', width: 150, align: 'right' },
+  { title: t('hr.salary.housingRate'), key: 'housingRate', width: 140, align: 'right' },
   { title: t('hr.salary.col.monthly'), key: 'monthly', width: 160, align: 'right' },
-  { title: t('hr.salary.col.bank'), key: 'bank', width: 170, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([[t('hr.salary.adjust'), t('hr.salary.create')]]), fixed: 'right' }
+  { title: t('hr.salary.col.bank'), key: 'bank', width: 170 },
+  actionColumn(1, [t('hr.salary.adjust'), t('hr.salary.create')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-salary')
 const emptyQuery = () => ({ keyword: undefined, deptId: undefined, missing: undefined })

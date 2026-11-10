@@ -33,32 +33,7 @@
         <DictTag type="hr_recruit_status" :value="record.status" />
       </template>
       <template v-else-if="column.key === 'action'">
-        <span class="table-actions">
-          <template v-if="record.status === RecruitStatus.DRAFT">
-            <a-button v-perm="'hr:recruit:approve'" type="link" size="small" @click="approve(record)">{{ $t('common.action.audit') }}</a-button>
-            <a-button v-perm="'hr:recruit:edit'" type="link" size="small" @click="formRef.openEdit(record)">{{ $t('common.action.edit') }}</a-button>
-            <span v-perm="'hr:recruit:remove'">
-              <a-popconfirm :title="$t('hr.recruit.confirmDelete', { name: record.title })" @confirm="removeRecruit(record.id)">
-                <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-              </a-popconfirm>
-            </span>
-          </template>
-          <span v-else-if="record.status === RecruitStatus.APPROVING" v-perm="'hr:recruit:approve'">
-            <a-popconfirm :title="$t('hr.recruit.confirmWithdraw')" @confirm="withdraw(record.id)">
-              <a-button type="link" size="small">{{ $t('hr.recruit.withdraw') }}</a-button>
-            </a-popconfirm>
-          </span>
-          <template v-else-if="record.status === RecruitStatus.OPEN">
-            <a-button v-perm="'hr:recruit:candidate'" type="link" size="small" @click="emit('add-candidate', record.id)">
-              {{ $t('hr.recruit.addCandidate') }}
-            </a-button>
-            <span v-perm="'hr:recruit:edit'">
-              <a-popconfirm :title="$t('hr.recruit.confirmClose')" @confirm="close(record.id)">
-                <a-button type="link" size="small">{{ $t('common.action.close') }}</a-button>
-              </a-popconfirm>
-            </span>
-          </template>
-        </span>
+        <TableActions :actions="rowActions(record)" />
       </template>
     </template>
   </a-table>
@@ -67,11 +42,13 @@
 
 <script setup>
 import { ref } from 'vue'
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { CloseCircleOutlined, PlusOutlined, RollbackOutlined, UserAddOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { approveRecruit, closeRecruit, deleteRecruit, pageRecruit, withdrawRecruit } from '@/api/hr'
-import { actionWidth, sumWidth } from '@/composables/useColumns'
+import { sumWidth } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useAction } from '@/composables/useAction'
 import { useTable } from '@/composables/useTable'
 import { t } from '@/locales'
@@ -86,15 +63,15 @@ const props = defineProps({ query: { type: Object, required: true } })
 const emit = defineEmits(['view-candidates', 'add-candidate', 'options-changed'])
 
 const recruitColumns = [
-  { title: t('hr.recruit.position'), key: 'title', width: 190, fixed: 'left' },
-  { title: t('hr.recruit.deptPosition'), key: 'dept', width: 140 },
-  { title: t('hr.recruit.progress'), key: 'progress', width: 110 },
-  { title: t('hr.recruit.candidate'), key: 'candidates', width: 90 },
-  { title: t('hr.recruit.salaryRange'), dataIndex: 'salaryRange', width: 110 },
-  { title: t('hr.recruit.deadline'), dataIndex: 'deadline', width: 110 },
-  { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('hr.recruit.applicant'), dataIndex: 'createByName', width: 90 },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([[t('common.action.audit'), t('hr.recruit.addCandidate'), t('hr.recruit.withdraw')].map((text) => ({ text, icon: false })), [t('common.action.edit'), t('common.action.close')].map((text) => ({ text, icon: false })), '']), fixed: 'right' }
+  { title: t('hr.recruit.position'), key: 'title', width: 220, fixed: 'left' },
+  { title: t('hr.recruit.deptPosition'), key: 'dept', width: 190 },
+  { title: t('hr.recruit.progress'), key: 'progress', width: 150 },
+  { title: t('hr.recruit.candidate'), key: 'candidates', width: 100 },
+  { title: t('hr.recruit.salaryRange'), dataIndex: 'salaryRange', width: 120 },
+  { title: t('hr.recruit.deadline'), dataIndex: 'deadline', width: 130 },
+  { title: t('common.field.status'), key: 'status', width: 110 },
+  { title: t('hr.recruit.applicant'), dataIndex: 'createByName', width: 100 },
+  actionColumn(3, [t('hr.recruit.withdraw')])
 ]
 const recruitScrollX = sumWidth(recruitColumns)
 const { list, loading, size, pagination, load, search, onTableChange } = useTable(pageRecruit, props.query)
@@ -113,6 +90,28 @@ const approve = useAction((record) => approveRecruit(record.id), {
 const withdraw = useAction(withdrawRecruit, { successKey: 'hr.recruit.withdrawn', reload: () => load() })
 const close = useAction(closeRecruit, { successKey: 'hr.recruit.closed', reload: changed })
 const removeRecruit = useAction(deleteRecruit, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+
+// 行操作：草稿可编辑、审核、删除；审批中可撤回；招聘中可添加候选人、关闭
+const rowActions = (record) => {
+  const draft = record.status === RecruitStatus.DRAFT
+  const open = record.status === RecruitStatus.OPEN
+  return [
+    { type: 'edit', show: draft, perm: 'hr:recruit:edit', onClick: () => formRef.value.openEdit(record) },
+    { type: 'audit', show: draft, perm: 'hr:recruit:approve', onClick: () => approve(record) },
+    { type: 'delete', show: draft, perm: 'hr:recruit:remove', confirm: t('hr.recruit.confirmDelete', { name: record.title }), onClick: () => removeRecruit(record.id) },
+    {
+      key: 'withdraw',
+      label: t('hr.recruit.withdraw'),
+      icon: RollbackOutlined,
+      show: record.status === RecruitStatus.APPROVING,
+      perm: 'hr:recruit:approve',
+      confirm: t('hr.recruit.confirmWithdraw'),
+      onClick: () => withdraw(record.id)
+    },
+    { key: 'addCandidate', label: t('hr.recruit.addCandidate'), icon: UserAddOutlined, show: open, perm: 'hr:recruit:candidate', onClick: () => emit('add-candidate', record.id) },
+    { key: 'close', label: t('common.action.close'), icon: CloseCircleOutlined, show: open, perm: 'hr:recruit:edit', confirm: t('hr.recruit.confirmClose'), onClick: () => close(record.id) }
+  ]
+}
 
 defineExpose({ load, search })
 </script>

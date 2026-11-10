@@ -64,10 +64,6 @@
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="hr_contract_status" :value="record.status" />
-            <!-- 剩余天数列默认隐藏：显示在状态下方 -->
-            <div v-if="!checked.includes('daysLeft') && record.daysLeft != null && record.status === LaborContractStatus.ACTIVE" :class="['days-sub', daysClass(record.daysLeft) || 'sub-text']">
-              {{ daysText(record.daysLeft) }}
-            </div>
           </template>
           <template v-else-if="column.key === 'terminate'">
             <template v-if="record.terminateDate">
@@ -77,18 +73,7 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-if="record.status === LaborContractStatus.ACTIVE || record.status === LaborContractStatus.EXPIRED" v-perm="'hr:contract:edit'" class="table-actions">
-              <a-button v-if="record.status === LaborContractStatus.ACTIVE" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <a-button type="link" size="small" @click="openRenew(record)">
-                <template #icon><SyncOutlined /></template>{{ $t('hr.contract.renew') }}
-              </a-button>
-              <a-button v-if="record.status === LaborContractStatus.ACTIVE" type="link" danger size="small" @click="openTerminate(record)">{{ $t('hr.contract.terminate') }}</a-button>
-              <a-popconfirm v-if="record.status === LaborContractStatus.ACTIVE" :title="$t('hr.contract.confirmDelete', { no: record.contractNo })" @confirm="remove(record.id)">
-                <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -169,7 +154,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, StopOutlined, SyncOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -177,7 +162,9 @@ import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import EmployeeSelect from '@/components/hr/EmployeeSelect.vue'
 import { addContract, deleteContract, getContract, pageContract, renewContract, terminateContract, updateContract } from '@/api/hr'
-import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useColumns } from '@/composables/useColumns'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -193,13 +180,13 @@ const columns = [
   { title: t('hr.contract.contractNo'), dataIndex: 'contractNo', width: 160, fixed: 'left' },
   { title: t('hr.contract.employee'), key: 'employee', width: 210, exportValue: (r) => `${r.empNo} ${r.employeeName}` },
   { title: t('hr.contract.contractType'), key: 'contractType', dataIndex: 'contractType', width: 150, dict: 'hr_contract_type' },
-  { title: t('hr.contract.signDate'), dataIndex: 'signDate', width: 110, defaultHidden: true },
+  { title: t('hr.contract.signDate'), dataIndex: 'signDate', width: 110 },
   { title: t('hr.contract.term'), key: 'term', width: 230, exportValue: (r) => `${r.startDate} ~ ${r.endDate || t('hr.contract.openEnded')}` },
-  { title: t('hr.contract.daysLeft'), key: 'daysLeft', dataIndex: 'daysLeft', width: 110, align: 'right', defaultHidden: true },
+  { title: t('hr.contract.daysLeft'), key: 'daysLeft', dataIndex: 'daysLeft', width: 110, align: 'right' },
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'hr_contract_status' },
-  { title: t('hr.contract.terminate'), key: 'terminate', width: 180, exportValue: (r) => (r.terminateDate ? `${r.terminateDate} ${r.terminateReason || ''}` : ''), defaultHidden: true },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true, defaultHidden: true },
-  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('hr.contract.renew'), { text: t('hr.contract.terminate'), icon: false }, '']), fixed: 'right' }
+  { title: t('hr.contract.terminate'), key: 'terminate', width: 180, exportValue: (r) => (r.terminateDate ? `${r.terminateDate} ${r.terminateReason || ''}` : '') },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true },
+  actionColumn(4, [t('hr.contract.renew')])
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-contract')
 const showSearch = ref(true)
@@ -297,6 +284,17 @@ function onStartChange(start) {
 
 const remove = useAction(deleteContract, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
+// 行操作：生效中可编辑、续签、终止、删除；已到期可续签
+const rowActions = (record) => {
+  const active = record.status === LaborContractStatus.ACTIVE
+  return [
+    { type: 'edit', show: active, perm: 'hr:contract:edit', onClick: () => drawer.openEdit(record) },
+    { key: 'renew', label: t('hr.contract.renew'), icon: SyncOutlined, show: active || record.status === LaborContractStatus.EXPIRED, perm: 'hr:contract:edit', onClick: () => openRenew(record) },
+    { key: 'terminate', label: t('hr.contract.terminate'), icon: StopOutlined, danger: true, show: active, perm: 'hr:contract:edit', onClick: () => openTerminate(record) },
+    { type: 'delete', show: active, perm: 'hr:contract:edit', confirm: t('hr.contract.confirmDelete', { no: record.contractNo }), onClick: () => remove(record.id) }
+  ]
+}
+
 // 终止
 const saving = ref(false)
 const terminateOpen = ref(false)
@@ -340,8 +338,5 @@ async function submitTerminate() {
 .warn {
   color: #fa8c16;
   font-weight: 500;
-}
-.days-sub {
-  font-size: 12px;
 }
 </style>

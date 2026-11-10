@@ -54,16 +54,12 @@
             />
           </template>
           <template v-else-if="column.key === 'action'">
-            <span class="table-actions">
-              <a-button v-perm="'hr:position:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-perm="'hr:position:remove'">
-                <a-popconfirm :title="$t('hr.position.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-                </a-popconfirm>
-              </span>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', perm: 'hr:position:edit', onClick: () => drawer.openEdit(record) },
+                { type: 'delete', perm: 'hr:position:remove', confirm: $t('hr.position.confirmDelete', { name: record.name }), onClick: () => remove(record.id) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -105,7 +101,9 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SearchForm from '@/components/SearchForm.vue'
@@ -133,7 +131,7 @@ const columns = [
   { title: t('hr.position.duty'), dataIndex: 'remark', ellipsis: true },
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.action.operation'), key: 'action', width: 150, fixed: 'right' }
+  actionColumn(2)
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-position')
 

@@ -61,14 +61,12 @@
             <a-tag v-if="record.endPeriod && record.endPeriod < thisPeriod" :bordered="false" class="tag-gap">{{ $t('hr.deduction.ended') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <span v-perm="'hr:deduction:edit'" class="table-actions">
-              <a-button type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <a-popconfirm :title="$t('hr.deduction.confirmDelete')" @confirm="remove([record.id])">
-                <a-button type="link" danger size="small"><DeleteOutlined /></a-button>
-              </a-popconfirm>
-            </span>
+            <TableActions
+              :actions="[
+                { type: 'edit', perm: 'hr:deduction:edit', onClick: () => drawer.openEdit(record) },
+                { type: 'delete', perm: 'hr:deduction:edit', confirm: $t('hr.deduction.confirmDelete'), onClick: () => remove([record.id]) }
+              ]"
+            />
           </template>
         </template>
       </a-table>
@@ -129,7 +127,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import TableActions from '@/components/common/TableActions.vue'
+import { actionColumn } from '@/components/common/tableActions'
 import dayjs from 'dayjs'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
@@ -161,7 +161,7 @@ const columns = [
     exportValue: (r) => `${periodText(r.startPeriod)} ~ ${r.endPeriod ? periodText(r.endPeriod) : t('hr.deduction.longTerm')}`
   },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
+  actionColumn(2)
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-deduction')
 const showSearch = ref(true)
