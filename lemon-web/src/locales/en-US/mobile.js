@@ -65,6 +65,7 @@ export default {
   pick: {
     scanDelivery: 'Scan or enter delivery No.',
     noDeliveries: 'No deliveries to pick',
+    change: 'Change delivery',
     shortage: 'Not enough pick suggestions for {names}; adjust on desktop first',
     picked: 'Picked',
     submit: 'Confirm Pick',
@@ -81,6 +82,7 @@ export default {
   check: {
     tip: 'Generate a stock count (draft) on desktop, then scan here to enter counted quantities',
     noChecks: 'No stock counts pending',
+    change: 'Change count',
     counted: 'Counted {n} / {total}',
     onlyCurrent: 'This location only',
     book: 'Book {n}',

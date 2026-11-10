@@ -15,7 +15,7 @@
     <!-- 按库位扫码盘点 -->
     <template v-else>
       <div class="m-card">
-        <div class="m-row"><b>{{ check.docNo }}</b><a @click="leave">{{ $t('mobile.putaway.change') }}</a></div>
+        <div class="m-row"><b>{{ check.docNo }}</b><a @click="leave">{{ $t('mobile.check.change') }}</a></div>
         <div class="sub-text">{{ check.warehouseName }} · {{ $t('mobile.check.counted', { n: countedCount, total: items.length }) }}</div>
       </div>
       <ScanBox ref="scanRef" :placeholder="$t('mobile.common.scanLocThenItem')" @scan="onScan" />

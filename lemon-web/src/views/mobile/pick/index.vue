@@ -15,7 +15,7 @@
     <!-- 按库位顺序拣货 -->
     <template v-else>
       <div class="m-card">
-        <div class="m-row"><b>{{ detail.deliveryNo }}</b><a @click="reset">{{ $t('mobile.putaway.change') }}</a></div>
+        <div class="m-row"><b>{{ detail.deliveryNo }}</b><a @click="reset">{{ $t('mobile.pick.change') }}</a></div>
         <div class="sub-text">{{ detail.customerName }} · {{ detail.warehouseName }}</div>
         <a-alert v-if="shortItems.length" type="warning" show-icon class="m-current"
           :message="$t('mobile.pick.shortage', { names: shortItems.map((i) => i.materialName).join($t('mobile.common.listSep')) })" />
