@@ -387,9 +387,11 @@ export default {
   1850: 'Add Receipt', // 收款单新增
   1851: 'Delete Receipt', // 收款单删除
   1852: 'Generate Receipt Voucher', // 收款生成凭证
+  1853: 'Confirm Receipt', // 收款单确认
   1860: 'Add Payment', // 付款单新增
   1861: 'Delete Payment', // 付款单删除
   1862: 'Generate Payment Voucher', // 付款生成凭证
+  1863: 'Confirm Payment', // 付款单确认
   1870: 'Add Asset', // 资产新增
   1871: 'Edit Asset', // 资产修改
   1872: 'Delete Asset', // 资产删除

@@ -37,6 +37,7 @@
                 <div v-if="isForeign(record.currency)" class="sub-text">{{ fcText(record.currency, record.amountFc, record.exchangeRate) }}</div>
                 <div v-if="Number(record.discountAmount)" class="sub-text">{{ $t('fin.settlementPage.discountN', { amount: formatMoney(record.discountAmount) }) }}</div>
                 <div v-if="Number(record.advanceAmount)" class="sub-text">{{ conf.advanceN((isForeign(record.currency) ? `${record.currency} ` : '') + formatMoney(record.advanceAmount)) }}</div>
+                <div v-if="Number(record.advanceOffset)" class="sub-text">{{ conf.advanceOffsetLabel }} {{ (isForeign(record.currency) ? `${record.currency} ` : '') + formatMoney(record.advanceOffset) }}</div>
               </template>
               <template v-else-if="column.key === 'method'"><DictTag type="fin_settle_method" :value="record.method" /></template>
               <template v-else-if="column.key === 'voucher'">
@@ -47,6 +48,10 @@
               <template v-else-if="column.key === 'action'">
                 <span class="table-actions">
                   <a-button type="link" size="small" @click="openDetail(record)">{{ $t('common.action.view') }}</a-button>
+                  <a-button v-if="editable(record)" v-perm="`fin:${kind}:add`" type="link" size="small" @click="openEdit(record)">{{ $t('common.action.edit') }}</a-button>
+                  <a-button v-if="record.status === ApproveStatus.DRAFT" v-perm="`fin:${kind}:confirm`" type="link" size="small" @click="confirm(record)">
+                    {{ $t('fin.settlementPage.confirmAction') }}
+                  </a-button>
                   <span v-if="!record.voucherId && record.status !== ApproveStatus.APPROVING" v-perm="`fin:${kind}:remove`">
                     <a-popconfirm :title="record.status === ApproveStatus.APPROVED ? $t('fin.settlementPage.confirmDeleteApproved', { no: record.settleNo }) : $t('fin.settlementPage.confirmDelete', { no: record.settleNo })" @confirm="remove(record.id)">
                       <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
@@ -63,13 +68,16 @@
       </a-tabs>
     </a-card>
 
-    <SettlementForm ref="formRef" :kind="kind" :conf="conf" @saved="load" />
+    <SettlementForm ref="formRef" :kind="kind" :conf="conf" @saved="onSaved" />
 
     <!-- 详情 -->
     <SubPage :open="detailOpen" :title="detail ? conf.detailTitle(detail.settleNo) : ''" width="min(820px, 100vw)" @close="detailOpen = false">
       <template v-if="detail">
         <a-descriptions :column="{ xs: 1, sm: 2 }" size="small" class="block">
           <a-descriptions-item :label="conf.partnerLabel">{{ detail.partnerName }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.status !== ApproveStatus.APPROVED" :label="$t('common.field.status')">
+            <DictTag type="sys_approve_status" :value="detail.status" />
+          </a-descriptions-item>
           <a-descriptions-item :label="$t('common.field.date')">{{ detail.settleDate }}</a-descriptions-item>
           <a-descriptions-item :label="conf.paidLabel"><b>¥{{ formatMoney(detail.amount) }}</b></a-descriptions-item>
           <a-descriptions-item v-if="Number(detail.discountAmount)" :label="$t('fin.settlementForm.discountTotal')">
@@ -78,6 +86,10 @@
           </a-descriptions-item>
           <a-descriptions-item v-if="Number(detail.advanceAmount)" :label="conf.toAdvance">
             {{ isForeign(detail.currency) ? `${detail.currency} ` : '¥' }}{{ formatMoney(detail.advanceAmount) }} <span class="sub-text">{{ detail.advanceNo || '' }}</span>
+          </a-descriptions-item>
+          <a-descriptions-item v-if="Number(detail.advanceOffset)" :label="conf.advanceOffsetLabel">
+            {{ isForeign(detail.currency) ? `${detail.currency} ` : '¥' }}{{ formatMoney(detail.advanceOffset) }}
+            <span class="sub-text inline-gap">{{ (detail.advances || []).map((a) => a.advanceNo).join('、') }}</span>
           </a-descriptions-item>
           <a-descriptions-item v-if="isForeign(detail.currency)" :label="$t('fin.settlementPage.fcRate')">
             {{ fcText(detail.currency, detail.amountFc, detail.exchangeRate) }}
@@ -91,7 +103,11 @@
         <a-table row-key="id" size="small" :columns="itemColumns" :data-source="detail.items" :pagination="false">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'billAmount'">{{ formatMoney(record.billAmount) }}</template>
-            <template v-else-if="column.key === 'source'"><DictTag type="fin_bill_source" :value="record.sourceType" /> <span class="sub-text">{{ record.sourceNo || '' }}</span></template>
+            <template v-else-if="column.key === 'source'">
+              <DictTag type="fin_bill_source" :value="record.sourceType" />
+              <SourceDocLink class="sub-text" :type="record.sourceType" :id="record.sourceId" :no="record.sourceNo" :bill-kind="record.billKind" :project-id="record.projectId" />
+            </template>
+            <template v-else-if="column.key === 'advanceOffset'">{{ Number(record.advanceOffset) ? formatMoney(record.advanceOffset) : '' }}</template>
             <template v-else-if="column.key === 'discount'">
               {{ Number(record.discount) ? formatMoney(record.discount) : '' }}
               <div v-if="Number(record.discount) && isForeign(detail.currency)" class="sub-text">{{ $t('fin.settlementPage.originalN', { amount: `${detail.currency} ${formatMoney(record.discountFc)}` }) }}</div>
@@ -102,6 +118,14 @@
             </template>
           </template>
         </a-table>
+      </template>
+      <template v-if="detail && editable(detail)" #footer>
+        <div class="drawer-footer">
+          <a-button v-perm="`fin:${kind}:add`" @click="openEdit(detail)">{{ $t('common.action.edit') }}</a-button>
+          <a-button v-if="detail.status === ApproveStatus.DRAFT" v-perm="`fin:${kind}:confirm`" type="primary" @click="confirm(detail)">
+            {{ $t('fin.settlementPage.confirmAction') }}
+          </a-button>
+        </div>
       </template>
     </SubPage>
 
@@ -119,12 +143,15 @@ import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import VoucherDetail from './VoucherDetail.vue'
 import SettlementForm from './SettlementForm.vue'
 import SettlementDiscounts from './SettlementDiscounts.vue'
-import { deleteSettlement, getSettlement, pageSettlement, settlementVoucher } from '@/api/fin'
+import SourceDocLink from '@/components/common/SourceDocLink.vue'
+import { confirmSettlement, deleteSettlement, getSettlement, pageSettlement, settlementVoucher } from '@/api/fin'
+import { actionWidth } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { formatMoney } from './fin'
 import { fcText, isForeign } from './currency'
 import { t } from '@/locales'
+import { settlementConf } from './settlementConf'
 import { useAction } from '@/composables/useAction'
 
 import { ApproveStatus } from '@/constants/enums'
@@ -133,59 +160,7 @@ const props = defineProps({
   kind: { type: String, required: true }
 })
 
-const CONF = {
-  receipt: {
-    partner: 'customer',
-    billKind: 'ar',
-    partnerLabel: t('fin.settlementPage.receipt.partner'),
-    allPartners: t('fin.settlementPage.receipt.allPartners'),
-    newTitle: t('fin.settlementPage.receipt.newTitle'),
-    dateLabel: t('fin.settlementPage.receipt.date'),
-    billsTitle: t('fin.settlementPage.receipt.billsTitle'),
-    thisTotal: t('fin.settlementPage.receipt.thisTotal'),
-    confirm: t('fin.settlementPage.receipt.confirm'),
-    generateTip: t('fin.settlementPage.receipt.generateTip'),
-    submitted: t('fin.settlementPage.receipt.submitted'),
-    success: t('fin.settlementPage.receipt.success'),
-    foreignTip: (currency) => t('fin.settlementPage.receipt.foreignTip', { currency }),
-    multiCurrency: (currencies) => t('fin.settlementPage.receipt.multiCurrency', { currencies }),
-    foreignTotal: (currency, amount) => t('fin.settlementPage.receipt.foreignTotal', { currency, amount }),
-    detailTitle: (no) => t('fin.settlementPage.receipt.detailTitle', { no }),
-    generateConfirm: (n) => t('fin.settlementPage.receipt.generateConfirm', { n }),
-    filledTip: (currency) => t('fin.settlementPage.receipt.filledTip', { currency }),
-    toAdvance: t('fin.settlementPage.receipt.toAdvance'),
-    paidLabel: t('fin.settlementPage.receipt.paidLabel'),
-    advanceN: (amount) => t('fin.settlementPage.receipt.advanceN', { amount }),
-    tab: t('fin.settlementPage.receipt.tab'),
-    discountExport: t('fin.settlementPage.receipt.discountExport')
-  },
-  payment: {
-    partner: 'supplier',
-    billKind: 'ap',
-    partnerLabel: t('fin.settlementPage.payment.partner'),
-    allPartners: t('fin.settlementPage.payment.allPartners'),
-    newTitle: t('fin.settlementPage.payment.newTitle'),
-    dateLabel: t('fin.settlementPage.payment.date'),
-    billsTitle: t('fin.settlementPage.payment.billsTitle'),
-    thisTotal: t('fin.settlementPage.payment.thisTotal'),
-    confirm: t('fin.settlementPage.payment.confirm'),
-    generateTip: t('fin.settlementPage.payment.generateTip'),
-    submitted: t('fin.settlementPage.payment.submitted'),
-    success: t('fin.settlementPage.payment.success'),
-    foreignTip: (currency) => t('fin.settlementPage.payment.foreignTip', { currency }),
-    multiCurrency: (currencies) => t('fin.settlementPage.payment.multiCurrency', { currencies }),
-    foreignTotal: (currency, amount) => t('fin.settlementPage.payment.foreignTotal', { currency, amount }),
-    detailTitle: (no) => t('fin.settlementPage.payment.detailTitle', { no }),
-    generateConfirm: (n) => t('fin.settlementPage.payment.generateConfirm', { n }),
-    filledTip: (currency) => t('fin.settlementPage.payment.filledTip', { currency }),
-    toAdvance: t('fin.settlementPage.payment.toAdvance'),
-    paidLabel: t('fin.settlementPage.payment.paidLabel'),
-    advanceN: (amount) => t('fin.settlementPage.payment.advanceN', { amount }),
-    tab: t('fin.settlementPage.payment.tab'),
-    discountExport: t('fin.settlementPage.payment.discountExport')
-  }
-}
-const conf = CONF[props.kind]
+const conf = settlementConf(props.kind)
 useDict('fin_settle_method', 'fin_bill_source', 'sys_approve_status')
 
 // 列宽合计 + 勾选列不超过 1440 宽屏幕的内容区（约 1140px），右侧固定的操作列不遮挡其他列
@@ -198,7 +173,12 @@ const columns = [
   { title: t('fin.settlementPage.methodShort'), key: 'method', width: 90 },
   { title: t('fin.settlementPage.voucher'), key: 'voucher', width: 100 },
   { title: t('fin.settlementPage.createBy'), dataIndex: 'createByName', width: 80, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 120, fixed: 'right' }
+  {
+    title: t('common.action.operation'),
+    key: 'action',
+    width: actionWidth([t('common.action.view'), t('common.action.edit'), t('fin.settlementPage.confirmAction'), t('common.action.delete')].map((text) => ({ text, icon: false }))),
+    fixed: 'right'
+  }
 ]
 const scrollX = columns.reduce((sum, c) => sum + c.width, 0) + 32
 const tab = ref('docs')
@@ -225,9 +205,21 @@ function generate() {
 
 const remove = useAction((id) => deleteSettlement(props.kind, id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
-// ---------------------------------------------------------------- 新增
+// ---------------------------------------------------------------- 新增、修改草稿、确认
 const formRef = ref()
 const openCreate = () => formRef.value.open()
+/** 草稿、已拒绝的付款单可以修改（票据业务生成的除外） */
+const editable = (r) => (r.status === ApproveStatus.DRAFT || r.status === ApproveStatus.REJECTED) && r.method !== 'NOTE'
+const openEdit = (r) => formRef.value.open({ id: r.id })
+function onSaved() {
+  load()
+  if (detailOpen.value && detail.value) openDetail(detail.value)
+}
+const confirm = useAction((r) => confirmSettlement(props.kind, r.id), {
+  confirm: (r) => ({ title: t('fin.settlementPage.confirmTitle', { no: r.settleNo }), content: conf.confirmTip }),
+  successKey: 'fin.settlementPage.confirmed',
+  reload: () => onSaved()
+})
 
 // ---------------------------------------------------------------- 详情
 const itemColumns = [
@@ -236,7 +228,8 @@ const itemColumns = [
   { title: t('fin.settlementPage.billDate'), dataIndex: 'billDate', width: 110 },
   { title: t('fin.settlementPage.billAmount'), key: 'billAmount', width: 130, align: 'right' },
   { title: t('fin.settlementPage.settle'), key: 'amount', width: 130, align: 'right' },
-  { title: t('fin.settlementForm.discount'), key: 'discount', width: 110, align: 'right' }
+  { title: t('fin.settlementForm.discount'), key: 'discount', width: 110, align: 'right' },
+  { title: conf.advanceOffsetLabel, key: 'advanceOffset', width: 110, align: 'right' }
 ]
 const detailOpen = ref(false)
 const detail = ref()
@@ -271,5 +264,8 @@ function openVoucher(id) {
 }
 .block {
   margin-bottom: 16px;
+}
+.inline-gap {
+  margin-left: 8px;
 }
 </style>

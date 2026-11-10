@@ -237,6 +237,7 @@
 import SubPage from '@/components/SubPage.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useRouteOpen } from '@/composables/useRouteOpen'
 import { message } from 'ant-design-vue'
 import {
   CarOutlined,
@@ -404,6 +405,8 @@ function openDetail(record) {
   detailOpen.value = true
   loadDetail(record.id)
 }
+// 从应收应付单的来源单号等跳转过来（?id=发运单ID）时打开详情
+useRouteOpen({ id: (id) => openDetail({ id }) })
 const trackColor = (status) => ({ SIGNED: 'green', EXCEPTION: 'red', PENDING: 'gray' })[status] || 'blue'
 
 const ACTIONS = {

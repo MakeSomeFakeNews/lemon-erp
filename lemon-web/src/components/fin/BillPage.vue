@@ -44,7 +44,10 @@
               </template>
               <template v-else-if="column.key === 'source'">
                 <DictTag type="fin_bill_source" :value="record.sourceType" />
-                <div class="sub-text">{{ record.sourceNo || record.remark || '' }}</div>
+                <div class="sub-text">
+                  <SourceDocLink v-if="record.sourceNo" :type="record.sourceType" :id="record.sourceId" :no="record.sourceNo" :bill-kind="record.kind" :project-id="record.projectId" />
+                  <template v-else>{{ record.remark || '' }}</template>
+                </div>
               </template>
               <template v-else-if="column.key === 'amount'">
                 <span :class="{ neg: Number(record.amount) < 0 }">¥{{ formatMoney(record.amount) }}</span>
@@ -110,6 +113,10 @@
               </template>
             </template>
           </a-table>
+        </a-tab-pane>
+
+        <a-tab-pane key="summary" :tab="$t('fin.partnerSummary.tab')">
+          <PartnerSummary v-if="tab === 'summary'" :kind="kind" :conf="conf" />
         </a-tab-pane>
 
         <a-tab-pane key="aging" :tab="$t('fin.billPage.aging')">
@@ -211,6 +218,8 @@ import { FileAddOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import VoucherDetail from './VoucherDetail.vue'
+import PartnerSummary from './PartnerSummary.vue'
+import SourceDocLink from '@/components/common/SourceDocLink.vue'
 import { addBill, badDebt, billAging, billVoucher, deleteBill, pageBill } from '@/api/fin'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
