@@ -26,7 +26,7 @@
         </template>
         <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }} {{ record.unit }}</template>
         <template v-else-if="column.key === 'action'">
-          <span v-perm="'mes:mrp:run'">
+          <span v-perm="'mes:mrp:run'" class="table-actions">
             <a-button type="link" size="small" @click="openEdit(record)">{{ $t('common.action.modify') }}</a-button>
             <a-popconfirm :title="$t('mes.forecast.confirmDelete')" @confirm="remove(record.id)">
               <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
@@ -67,6 +67,7 @@ import { currentPeriod } from '@/components/fin/fin'
 import { formatQty } from '@/components/wms/wms'
 import { useTable } from '@/composables/useTable'
 import { useAction } from '@/composables/useAction'
+import { actionWidth } from '@/composables/useColumns'
 const { t } = useI18n()
 
 const columns = [
@@ -74,7 +75,7 @@ const columns = [
   { title: t('mes.forecast.material'), key: 'material' },
   { title: t('mes.forecast.qty'), key: 'qty', width: 150, align: 'right' },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 130 }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.modify'), t('common.action.delete')].map((text) => ({ text, icon: false }))) }
 ]
 const keyword = ref()
 const query = reactive({ beginPeriod: currentPeriod() })

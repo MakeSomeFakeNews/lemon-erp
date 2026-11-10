@@ -187,7 +187,7 @@ import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import { addPlan, closePlan, confirmPlan, deletePlan, pagePlan, planFromSales, planToWo, runMrp, updatePlan } from '@/api/mes/plan'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { pageOrder } from '@/api/scm/order'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -205,11 +205,11 @@ const columns = [
   { title: t('common.field.quantity'), key: 'qty', width: 110, align: 'right' },
   { title: t('mes.plan.progress'), key: 'progress', width: 120, align: 'right' },
   { title: t('mes.plan.dueDate'), dataIndex: 'dueDate', width: 110 },
-  { title: t('mes.plan.source'), key: 'source', width: 200 },
+  { title: t('mes.plan.source'), key: 'source', width: 200, defaultHidden: true },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'mes_plan_status' },
-  { title: t('mes.wo.preparedByCol'), dataIndex: 'createByName', width: 110 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
+  { title: t('mes.wo.preparedByCol'), dataIndex: 'createByName', width: 110, defaultHidden: true },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([{ text: t('common.action.edit'), icon: false }, [{ text: t('mes.plan.confirm'), icon: false }, { text: t('mes.plan.toWo'), icon: false }], { text: t('common.action.delete'), icon: false }]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-plan')
 const showSearch = ref(true)

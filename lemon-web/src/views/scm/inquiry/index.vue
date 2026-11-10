@@ -91,7 +91,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import InquiryDetail from '@/components/scm/InquiryDetail.vue'
 import InquiryForm from '@/components/scm/InquiryForm.vue'
 import { deleteInquiry, pageInquiry } from '@/api/scm/sourcing'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -108,10 +108,10 @@ const columns = [
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'scm_inquiry_status' },
   { title: t('scm.inquiry.itemCount'), dataIndex: 'itemCount', width: 120, align: 'right' },
   { title: t('scm.inquiry.quoteSuppliers'), dataIndex: 'supplierCount', width: 140, align: 'right' },
-  { title: t('scm.inquiry.preparedBy'), dataIndex: 'createByName', width: 110 },
-  { title: t('scm.inquiry.remark'), dataIndex: 'remark', width: 200, ellipsis: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 200, fixed: 'right' }
+  { title: t('scm.inquiry.preparedBy'), dataIndex: 'createByName', width: 110, defaultHidden: true },
+  { title: t('scm.inquiry.remark'), dataIndex: 'remark', width: 200, ellipsis: true, defaultHidden: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('common.action.edit'), t('common.action.delete')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-inquiry')
 const showSearch = ref(true)

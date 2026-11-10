@@ -111,7 +111,7 @@ import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { deleteNotice, pageNotice, publishNotice, withdrawNotice } from '@/api/system/notice'
 import { useAction } from '@/composables/useAction'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -136,8 +136,8 @@ const columns = [
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 140, dict: 'sys_notice_status' },
   { title: t('system.notice.progress'), key: 'progress', width: 120, exportValue: (r) => (r.totalCount ? `${r.readCount}/${r.totalCount}` : '') },
   { title: t('system.notice.publishTime'), key: 'publish', dataIndex: 'publishTime', width: 160 },
-  { title: t('system.notice.expireDate'), key: 'expireDate', dataIndex: 'expireDate', width: 110 },
-  { title: t('common.action.operation'), key: 'action', width: 210, fixed: 'right' }
+  { title: t('system.notice.expireDate'), key: 'expireDate', dataIndex: 'expireDate', width: 110, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('system.notice.publish'), t('common.action.edit'), t('common.action.delete')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'sys-notice')
 const showSearch = ref(true)

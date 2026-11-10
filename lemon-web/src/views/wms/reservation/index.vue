@@ -76,7 +76,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { pageReservation, releaseReservation } from '@/api/wms/reservation'
 import { formatQty } from '@/components/wms/wms'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useTable } from '@/composables/useTable'
 import { useAction } from '@/composables/useAction'
 
@@ -89,13 +89,13 @@ const columns = [
   { title: t('wms.reservation.salesOrder'), key: 'sourceNo', dataIndex: 'sourceNo', width: 180 },
   { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 140 },
   { title: t('wms.common.material'), key: 'material', width: 240, exportValue: (r) => `${r.materialCode} ${r.materialName}` },
-  { title: t('common.field.spec'), dataIndex: 'spec', width: 140, ellipsis: true },
+  { title: t('common.field.spec'), dataIndex: 'spec', width: 140, ellipsis: true, defaultHidden: true },
   { title: t('wms.reservation.qty'), key: 'qty', dataIndex: 'qty', width: 130, align: 'right' },
   { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
   { title: t('common.field.description'), dataIndex: 'remark', width: 180, ellipsis: true },
-  { title: t('wms.reservation.by'), dataIndex: 'createByName', width: 110 },
-  { title: t('wms.reservation.time'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 90, fixed: 'right' }
+  { title: t('wms.reservation.by'), dataIndex: 'createByName', width: 110, defaultHidden: true },
+  { title: t('wms.reservation.time'), dataIndex: 'createTime', width: 170, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('wms.reservation.release')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-reservation')
 const showSearch = ref(true)

@@ -60,7 +60,7 @@
         :loading="loading"
         :pagination="pagination"
         :row-selection="rowSelection"
-        :scroll="{ x: 1580 + enabledLevels.length * 100, y: '100%' }"
+        :scroll="{ x: sumWidth(tableColumns) + 32, y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -114,24 +114,18 @@
               <a-button v-if="canEdit || canEditPlan" type="link" size="small" @click="drawer.openEdit(record)">
                 <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
-              <a-button type="link" size="small" @click="openExtras(record)">
-                <template #icon><PaperClipOutlined /></template>{{ $t('wms.material.extras') }}
-              </a-button>
-              <span v-perm="'wms:material:remove'">
-                <a-popconfirm :title="$t('wms.material.confirmDelete', { name: record.name })" @confirm="remove([record.id])">
-                  <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
               <!-- 不常用的操作收进「更多」，操作列不至于太宽 -->
               <a-dropdown>
                 <a-button type="link" size="small">{{ $t('common.action.more') }}<DownOutlined /></a-button>
                 <template #overlay>
                   <a-menu>
+                    <a-menu-item key="extras" @click="openExtras(record)"><PaperClipOutlined /> {{ $t('wms.material.extras') }}</a-menu-item>
                     <a-menu-item key="units" @click="openUnits(record)"><SwapOutlined /> {{ $t('common.field.unit') }}</a-menu-item>
                     <a-menu-item v-if="record.isTemplate !== 1" key="history" @click="openHistory(record)"><HistoryOutlined /> {{ $t('wms.history.action') }}</a-menu-item>
                     <a-menu-item v-if="!record.templateId" key="variants" @click="openVariants(record)"><AppstoreAddOutlined /> {{ $t('wms.variant.title') }}</a-menu-item>
+                    <a-menu-item v-if="userStore.hasPerm('wms:material:remove')" key="remove" danger @click="confirmRemove(record)">
+                      <DeleteOutlined /> {{ $t('common.action.delete') }}
+                    </a-menu-item>
                   </a-menu>
                 </template>
               </a-dropdown>
@@ -460,7 +454,7 @@ import SubPage from '@/components/SubPage.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { isZh } from '@/locales'
-import { message } from 'ant-design-vue'
+import { Modal, message } from 'ant-design-vue'
 import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, DollarOutlined, DownOutlined, EditOutlined, HistoryOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, QuestionCircleOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
@@ -479,7 +473,7 @@ import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { addMaterial, changeMaterialStatus, deleteMaterial, getMaterial, pageMaterial, updateMaterial, importMaterial } from '@/api/wms/material'
 import { getMaterialPlan, kitMaterialLines, materialPlans, saveMaterialPlan } from '@/api/mes/base'
 import { formatQty, rowKey } from '@/components/wms/wms'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, sumWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -585,19 +579,20 @@ const importColumns = computed(() => [
 
 const columns = [
   { title: t('wms.common.material'), key: 'name', width: 200 },
-  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 150, ellipsis: true },
-  { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
-  { title: t('wms.units.barcode'), key: 'barcode', width: 140, ellipsis: true },
+  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 110, ellipsis: true },
+  { title: t('common.field.unit'), dataIndex: 'unit', width: 60 },
+  { title: t('wms.units.barcode'), key: 'barcode', width: 140, ellipsis: true, defaultHidden: true },
   { title: t('wms.inout.category'), key: 'category', width: 100, dict: 'wms_material_category' },
-  { title: t('pricing.goods.brand'), key: 'brand', width: 100, dict: 'wms_material_brand' },
+  { title: t('pricing.goods.brand'), key: 'brand', width: 100, dict: 'wms_material_brand', defaultHidden: true },
   ...PRICE_FIELDS.map((key, level) => ({ title: key, key, dataIndex: key, priceLevel: level, width: 100, align: 'right' })),
-  { title: t('wms.material.tracking'), key: 'tracking', width: 120 },
-  { title: t('wms.material.supplyType'), key: 'supplyType', width: 110 },
-  { title: t('wms.material.planParams'), key: 'planRule', width: 150 },
-  { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 120, align: 'right' },
+  { title: t('wms.material.tracking'), key: 'tracking', width: 120, defaultHidden: true },
+  { title: t('wms.material.supplyType'), key: 'supplyType', width: 110, defaultHidden: true },
+  { title: t('wms.material.planParams'), key: 'planRule', width: 150, defaultHidden: true },
+  { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 120, align: 'right', defaultHidden: true },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 270, fixed: 'right' }
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
+  // 资料、单位、变更记录、款式变体、删除收进「更多」
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('common.action.more')]), fixed: 'right' }
 ]
 const { checked } = useColumns(columns, 'wms-material')
 /** 列设置、导出用的列：只有启用的价格列，标题为价格列名称 */
@@ -785,6 +780,10 @@ const ai = useAiPrefill('material', (data) => drawer.openCreate(data), () => dra
 
 function addSubstitute() {
   form.value.substitutes.push({ key: rowKey(), substituteId: undefined, label: undefined, ratio: 1, priority: form.value.substitutes.length + 1, remark: '' })
+}
+
+function confirmRemove(record) {
+  Modal.confirm({ title: t('wms.material.confirmDelete', { name: record.name }), okType: 'danger', onOk: () => remove([record.id]) })
 }
 
 async function remove(ids) {

@@ -90,7 +90,7 @@ import DeliveryForm from '@/components/scm/DeliveryForm.vue'
 import { pageDelivery } from '@/api/scm/planning'
 import { addWave } from '@/api/scm/shipment'
 import { formatQty } from '@/components/wms/wms'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -104,16 +104,16 @@ const columns = [
   { title: t('scm.delivery.deliveryNo'), key: 'deliveryNo', dataIndex: 'deliveryNo', width: 180 },
   { title: t('scm.delivery.salesOrder'), key: 'orderNo', dataIndex: 'orderNo', width: 180 },
   { title: t('scm.delivery.customer'), dataIndex: 'customerName', width: 180, ellipsis: true },
-  { title: t('scm.delivery.shipWarehouse'), dataIndex: 'warehouseName', width: 140 },
+  { title: t('scm.delivery.shipWarehouse'), dataIndex: 'warehouseName', width: 120 },
   { title: t('scm.delivery.shipDate'), dataIndex: 'shipDate', width: 120 },
   { title: t('common.field.quantity'), key: 'totalQty', dataIndex: 'totalQty', width: 100, align: 'right' },
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'scm_delivery_status' },
-  { title: t('scm.delivery.picked'), key: 'pick', width: 200, exportValue: (r) => (r.pickTime ? `${r.pickByName || ''} ${r.pickTime}` : '') },
-  { title: t('scm.delivery.salesOutDoc'), key: 'tradeDocNo', dataIndex: 'tradeDocNo', width: 170 },
-  { title: t('scm.delivery.createBy'), dataIndex: 'createByName', width: 120 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 100, fixed: 'right' }
+  { title: t('scm.delivery.picked'), key: 'pick', width: 200, exportValue: (r) => (r.pickTime ? `${r.pickByName || ''} ${r.pickTime}` : ''), defaultHidden: true },
+  { title: t('scm.delivery.salesOutDoc'), key: 'tradeDocNo', dataIndex: 'tradeDocNo', width: 170, defaultHidden: true },
+  { title: t('scm.delivery.createBy'), dataIndex: 'createByName', width: 120, defaultHidden: true },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-delivery')
 const showSearch = ref(true)

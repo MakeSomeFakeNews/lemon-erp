@@ -131,7 +131,7 @@ import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { addMaintenance, deleteMaintenance, equipmentOptions, finishMaintenance, pageMaintenance, startMaintenance } from '@/api/mes/base'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -151,10 +151,10 @@ const columns = [
   { title: t('mes.maintenance.content'), dataIndex: 'content', width: 220, ellipsis: true },
   { title: t('mes.wo.planDate'), dataIndex: 'planDate', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'mes_maintain_status' },
-  { title: t('mes.maintenance.handler'), dataIndex: 'handler', width: 100 },
-  { title: t('mes.maintenance.handleTime'), key: 'time', width: 200 },
-  { title: t('mes.maintenance.result'), key: 'result', width: 220 },
-  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
+  { title: t('mes.maintenance.handler'), dataIndex: 'handler', width: 100, defaultHidden: true },
+  { title: t('mes.maintenance.handleTime'), key: 'time', width: 200, defaultHidden: true },
+  { title: t('mes.maintenance.result'), key: 'result', width: 220, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([[{ text: t('mes.maintenance.start'), icon: false }, { text: t('mes.maintenance.finish'), icon: false }], { text: t('common.action.delete'), icon: false }]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-maintenance')
 const showSearch = ref(true)

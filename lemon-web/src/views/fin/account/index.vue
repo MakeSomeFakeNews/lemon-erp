@@ -98,6 +98,7 @@
 </template>
 
 <script setup>
+import { actionWidth } from '@/composables/useColumns'
 import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
@@ -122,10 +123,10 @@ const columns = [
   { title: t('fin.account.name'), key: 'name', width: 220 },
   { title: t('fin.account.category'), key: 'category', width: 90 },
   { title: t('fin.account.direction'), key: 'direction', width: 90 },
-  { title: t('fin.account.aux'), key: 'auxItems', width: 180 },
+  { title: t('fin.account.aux'), key: 'auxItems', width: 160 },
   { title: t('common.field.status'), key: 'status', width: 80 },
   { title: t('common.field.remark'), dataIndex: 'remark', width: 120, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 200, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('fin.account.addChild'), t('common.action.edit'), t('common.action.delete')].map((text) => ({ text, icon: false }))), fixed: 'right' }
 ]
 const scrollX = columns.reduce((sum, c) => sum + c.width, 0)
 

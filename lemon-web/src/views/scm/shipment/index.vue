@@ -244,7 +244,7 @@ import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import { partnerOptions } from '@/api/scm/partner'
 import { addShipment, deleteShipment, getShipment, pageShipment, shipmentAction, updateShipment } from '@/api/scm/shipment'
 import { pageTrade } from '@/api/scm/trade'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -264,14 +264,14 @@ const dict = useDict('scm_shipment_status', 'scm_carrier')
 const columns = [
   { title: t('scm.shipment.shipNo'), key: 'shipNo', width: 170 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'scm_shipment_status' },
-  { title: t('scm.shipment.source'), key: 'source', width: 180 },
+  { title: t('scm.shipment.source'), key: 'source', width: 180, defaultHidden: true },
   { title: t('scm.shipment.customer'), dataIndex: 'customerName', width: 180, ellipsis: true },
   { title: t('scm.shipment.carrierTracking'), key: 'carrier', width: 180, dict: 'scm_carrier' },
-  { title: t('scm.shipment.receiverInfo'), key: 'receiver', width: 220 },
+  { title: t('scm.shipment.receiverInfo'), key: 'receiver', width: 220, defaultHidden: true },
   { title: t('scm.shipment.freight'), key: 'freight', width: 100, align: 'right' },
   { title: t('scm.shipment.shipSign'), key: 'dates', width: 150 },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 220, fixed: 'right' }
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('common.action.edit'), t('common.action.delete')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-shipment')
 const showSearch = ref(true)

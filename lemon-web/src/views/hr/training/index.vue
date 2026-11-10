@@ -199,7 +199,7 @@ import {
   trainingRecords,
   updateTraining
 } from '@/api/hr'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -221,10 +221,10 @@ const columns = [
   { title: t('hr.training.category'), key: 'category', width: 90, dict: 'hr_training_category' },
   { title: t('common.field.date'), key: 'date', width: 200 },
   { title: t('hr.training.hours'), dataIndex: 'hours', width: 70 },
-  { title: t('hr.training.col.trainees'), key: 'trainees', width: 140 },
-  { title: t('hr.training.cost'), key: 'cost', width: 100, align: 'right' },
+  { title: t('hr.training.col.trainees'), key: 'trainees', width: 160 },
+  { title: t('hr.training.cost'), key: 'cost', width: 100, align: 'right', defaultHidden: true },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'hr_training_status' },
-  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([{ text: t('hr.training.records'), icon: false }, [{ text: t('hr.training.start'), icon: false }, { text: t('hr.training.finish'), icon: false }], t('common.action.more')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-training')
 

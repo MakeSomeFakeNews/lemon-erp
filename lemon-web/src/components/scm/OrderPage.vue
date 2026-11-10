@@ -155,7 +155,7 @@ import AiExtractButton from '@/components/ai/AiExtractButton.vue'
 import { useAiPrefill } from '@/composables/useAiPrefill'
 import { deleteOrder, pageOrder } from '@/api/scm/order'
 import { importSalesOrders } from '@/api/scm/dealer'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -203,16 +203,21 @@ useCurrencies()
 
 const columns = [
   { title: t('scm.order.orderNo'), key: 'orderNo', width: 190 },
-  { title: conf.partnerLabel, key: 'partner', width: 200 },
+  { title: conf.partnerLabel, key: 'partner', width: 180 },
   { title: t('scm.order.orderDeliveryDate'), key: 'dates', width: 140 },
   { title: t('scm.order.totalAmount'), key: 'totalAmount', width: 130, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 120 },
-  { title: props.kind === 'purchase' ? t('scm.order.inProgress') : t('scm.order.outProgress'), key: 'progress', width: 190 },
-  { title: conf.warehouseLabel, dataIndex: 'warehouseName', width: 120 },
-  { title: t('scm.order.preparedBy'), dataIndex: 'createByName', width: 110 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }
+  { title: props.kind === 'purchase' ? t('scm.order.inProgress') : t('scm.order.outProgress'), key: 'progress', width: 160 },
+  { title: conf.warehouseLabel, dataIndex: 'warehouseName', width: 120, defaultHidden: true },
+  { title: t('scm.order.preparedBy'), dataIndex: 'createByName', width: 110, defaultHidden: true },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true, defaultHidden: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
+  {
+    title: t('common.action.operation'),
+    key: 'action',
+    width: actionWidth([t('common.action.view'), [t('common.action.edit'), props.kind === 'purchase' ? t('scm.order.inbound') : t('scm.order.outbound')]]),
+    fixed: 'right'
+  }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, `scm-${props.kind}`)
 const showSearch = ref(true)

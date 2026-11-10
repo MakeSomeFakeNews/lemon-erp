@@ -158,7 +158,7 @@ import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { partnerOptions } from '@/api/scm/partner'
 import { addWarehouse, changeWarehouseStatus, deleteWarehouse, getWarehouse, pageWarehouse, updateWarehouse } from '@/api/wms/warehouse'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -178,10 +178,10 @@ const columns = [
   { title: t('common.field.type'), key: 'type', width: 120, dict: 'wms_warehouse_type' },
   { title: t('wms.warehouse.address'), dataIndex: 'address', width: 200, ellipsis: true },
   { title: t('wms.warehouse.contact'), key: 'contact', width: 130 },
-  { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
+  { title: t('common.field.sort'), dataIndex: 'sort', width: 70, defaultHidden: true },
   { title: t('common.field.status'), key: 'status', width: 90 },
   { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 200, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('wms.common.location'), t('common.action.edit'), t('common.action.delete')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'wms-warehouse')
 const showSearch = ref(true)

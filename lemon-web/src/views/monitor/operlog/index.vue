@@ -157,7 +157,7 @@ import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { cleanOperLog, deleteOperLog, getOperLog, pageOperLog } from '@/api/monitor/operlog'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -168,19 +168,19 @@ const { t } = useI18n()
 const dict = useDict('sys_oper_type', 'sys_success_fail')
 
 const columns = [
-  { title: t('monitor.loginlog.id'), dataIndex: 'id', width: 80 },
+  { title: t('monitor.loginlog.id'), dataIndex: 'id', width: 80, defaultHidden: true },
   { title: t('monitor.operlog.title'), dataIndex: 'title', width: 130 },
   { title: t('monitor.operlog.operType'), key: 'operType', width: 100, dict: 'sys_oper_type' },
   { title: t('monitor.operlog.operator'), dataIndex: 'operator', width: 110 },
   { title: t('monitor.operlog.request'), key: 'url', width: 260 },
-  { title: t('monitor.operlog.ip'), dataIndex: 'ip', width: 140 },
-  { title: t('monitor.operlog.location'), dataIndex: 'location', width: 160, ellipsis: true },
+  { title: t('monitor.operlog.ip'), dataIndex: 'ip', width: 140, defaultHidden: true },
+  { title: t('monitor.operlog.location'), dataIndex: 'location', width: 160, ellipsis: true, defaultHidden: true },
   { title: t('common.field.status'), key: 'status', width: 90, dict: 'sys_success_fail' },
-  { title: t('monitor.operlog.cost'), key: 'costTime', width: 100 },
+  { title: t('monitor.operlog.cost'), key: 'costTime', width: 100, defaultHidden: true },
   { title: t('monitor.operlog.operTime'), dataIndex: 'operTime', width: 180 },
-  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.detail'), t('common.action.delete')]), fixed: 'right' }
 ]
-const { checked, visibleColumns, scrollX } = useColumns(columns)
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'monitor-operlog')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({ title: undefined, operator: undefined, operType: undefined, status: undefined, range: [] })

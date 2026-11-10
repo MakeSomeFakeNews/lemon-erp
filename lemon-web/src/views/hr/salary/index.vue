@@ -158,7 +158,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
 import { formatMoney } from '@/components/scm/scm'
 import { listSocialScheme, pageSalary, saveSalary, salaryHistory, salaryRules } from '@/api/hr'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 
@@ -171,14 +171,14 @@ const columns = [
   { title: t('hr.salary.baseSalary'), key: 'baseSalary', width: 120, align: 'right' },
   { title: t('hr.salary.postAllowance'), key: 'postAllowance', width: 150, align: 'right' },
   { title: t('hr.salary.otherAllowance'), key: 'otherAllowance', width: 130, align: 'right' },
-  { title: t('hr.salary.col.perfBonusBase'), key: 'perfBonusBase', width: 130, align: 'right' },
-  { title: t('hr.salary.scheme'), key: 'scheme', width: 180, exportValue: (r) => (r.id ? (r.schemeId ? schemeName(r) : t('hr.salary.defaultRates')) : '') },
+  { title: t('hr.salary.col.perfBonusBase'), key: 'perfBonusBase', width: 130, align: 'right', defaultHidden: true },
+  { title: t('hr.salary.scheme'), key: 'scheme', width: 180, exportValue: (r) => (r.id ? (r.schemeId ? schemeName(r) : t('hr.salary.defaultRates')) : ''), defaultHidden: true },
   { title: t('hr.salary.socialBase'), key: 'socialBase', width: 170, align: 'right' },
-  { title: t('hr.salary.housingBase'), key: 'housingBase', width: 150, align: 'right' },
-  { title: t('hr.salary.housingRate'), key: 'housingRate', width: 140, align: 'right' },
+  { title: t('hr.salary.housingBase'), key: 'housingBase', width: 150, align: 'right', defaultHidden: true },
+  { title: t('hr.salary.housingRate'), key: 'housingRate', width: 140, align: 'right', defaultHidden: true },
   { title: t('hr.salary.col.monthly'), key: 'monthly', width: 160, align: 'right' },
-  { title: t('hr.salary.col.bank'), key: 'bank', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 140, fixed: 'right' }
+  { title: t('hr.salary.col.bank'), key: 'bank', width: 170, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([[t('hr.salary.adjust'), t('hr.salary.create')]]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-salary')
 const emptyQuery = () => ({ keyword: undefined, deptId: undefined, missing: undefined })

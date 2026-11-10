@@ -1,7 +1,7 @@
 <template>
   <div class="table-page">
     <a-card :bordered="false" class="page-card table-card">
-      <TableToolbar v-model:size="size" @refresh="load">
+      <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
         <a-button v-perm="'hr:social:edit'" type="primary" @click="drawer.openCreate()">
           <template #icon><PlusOutlined /></template>{{ $t('hr.social.add') }}
         </a-button>
@@ -14,11 +14,11 @@
       <a-table
         row-key="id"
         :size="size"
-        :columns="columns"
+        :columns="visibleColumns"
         :data-source="list"
         :loading="loading"
         :pagination="false"
-        :scroll="{ x: 1700, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
@@ -36,7 +36,7 @@
           <template v-else-if="column.key === 'personalTotal'"><b>{{ pct(personalTotal(record)) }}</b></template>
           <template v-else-if="column.key === 'companyTotal'"><b>{{ pct(companyTotal(record)) }}</b></template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="record.status === 1 ? 'green' : 'default'" :bordered="false">{{ record.status === 1 ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
+            <a-tag :color="record.status === STATUS_ENABLED ? 'green' : 'default'" :bordered="false">{{ record.status === STATUS_ENABLED ? $t('common.status.enabled') : $t('common.status.disabled') }}</a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
             <span v-perm="'hr:social:edit'" class="table-actions">
@@ -135,6 +135,8 @@ import { formatMoney } from '@/components/scm/scm'
 import { addSocialScheme, deleteSocialScheme, listSocialScheme, updateSocialScheme } from '@/api/hr'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useAction } from '@/composables/useAction'
+import { actionWidth, useColumns } from '@/composables/useColumns'
+import { STATUS_ENABLED } from '@/utils/constants'
 
 const { t } = useI18n()
 
@@ -147,17 +149,19 @@ const companyTotal = (r) => n(r.pensionCompany) + n(r.medicalCompany) + n(r.unem
 const columns = [
   { title: t('hr.social.col.scheme'), key: 'name', width: 180, fixed: 'left' },
   { title: t('hr.social.col.base'), key: 'base', width: 190 },
-  { title: t('hr.social.col.pension'), key: 'pension', rate: true, width: 170, align: 'right' },
-  { title: t('hr.social.col.medical'), key: 'medical', rate: true, width: 170, align: 'right' },
-  { title: t('hr.social.col.unemployment'), key: 'unemployment', rate: true, width: 190, align: 'right' },
-  { title: t('hr.social.col.injury'), key: 'injury', width: 140, align: 'right' },
+  { title: t('hr.social.col.pension'), key: 'pension', rate: true, width: 170, align: 'right', defaultHidden: true },
+  { title: t('hr.social.col.medical'), key: 'medical', rate: true, width: 170, align: 'right', defaultHidden: true },
+  { title: t('hr.social.col.unemployment'), key: 'unemployment', rate: true, width: 190, align: 'right', defaultHidden: true },
+  { title: t('hr.social.col.injury'), key: 'injury', width: 140, align: 'right', defaultHidden: true },
   { title: t('hr.social.col.personalTotal'), key: 'personalTotal', width: 120, align: 'right' },
   { title: t('hr.social.col.companyTotal'), key: 'companyTotal', width: 120, align: 'right' },
   { title: t('hr.social.col.housing'), key: 'housing', width: 190 },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 130, fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 160, ellipsis: true, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), '']), fixed: 'right' }
 ]
+// 各险种比例默认隐藏（个人 / 单位合计已显示），可在列设置中勾选
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'hr-social')
 const RATE_ITEMS = [
   { key: 'pension', label: t('hr.social.item.pension'), personal: 'pensionPersonal', company: 'pensionCompany' },
   { key: 'medical', label: t('hr.social.item.medical'), personal: 'medicalPersonal', company: 'medicalCompany' },

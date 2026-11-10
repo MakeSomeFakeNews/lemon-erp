@@ -181,6 +181,8 @@ export default {
     workCenterExtra: '生产车间、生产进度大屏只显示该工作中心',
     expireTime: '有效期至',
     lastAccess: '最近访问',
+    lastAccessValue: '最近访问 {time}',
+    expireValue: '有效期至 {time}',
     link: '链接',
     linkCopied: '已复制链接',
     regenerated: '已重新生成，原链接已失效',

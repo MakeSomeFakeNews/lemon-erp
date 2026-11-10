@@ -174,7 +174,7 @@ import UserCell from '@/components/user/UserCell.vue'
 import UserFormDrawer from '@/components/user/UserFormDrawer.vue'
 import { changeUserStatus, deleteUser, pageUser, resetUserPassword } from '@/api/system/user'
 import { deptTree } from '@/api/system/dept'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
@@ -193,10 +193,10 @@ const columns = [
   { title: t('common.field.user'), key: 'username', width: 180 },
   { title: t('common.field.dept'), key: 'dept', width: 120, ellipsis: true },
   { title: t('common.field.phone'), dataIndex: 'phone', width: 130 },
-  { title: t('common.field.email'), dataIndex: 'email', width: 180, ellipsis: true },
+  { title: t('common.field.email'), dataIndex: 'email', width: 180, ellipsis: true, defaultHidden: true },
   { title: t('common.field.status'), key: 'status', width: 90 },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 170, fixed: 'right' }
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('common.action.more')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'system-user')
 const showSearch = ref(true)

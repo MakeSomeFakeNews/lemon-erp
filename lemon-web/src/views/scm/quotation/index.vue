@@ -108,7 +108,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import QuotationDetail from '@/components/scm/QuotationDetail.vue'
 import QuotationForm from '@/components/scm/QuotationForm.vue'
 import { deleteQuotation, pageQuotation } from '@/api/scm/sourcing'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -128,11 +128,11 @@ const columns = [
   { title: t('scm.quotation.validTo'), key: 'validTo', dataIndex: 'validTo', width: 160 },
   { title: t('common.field.status'), key: 'status', dataIndex: 'status', width: 100, dict: 'scm_quotation_status' },
   { title: t('scm.quotation.amount'), key: 'totalAmount', dataIndex: 'totalAmount', width: 130, align: 'right' },
-  { title: t('scm.quotation.orderOrLost'), key: 'orderNo', dataIndex: 'orderNo', width: 200, ellipsis: true },
-  { title: t('scm.quotation.preparedBy'), dataIndex: 'createByName', width: 110 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 200, fixed: 'right' }
+  { title: t('scm.quotation.orderOrLost'), key: 'orderNo', dataIndex: 'orderNo', width: 200, ellipsis: true, defaultHidden: true },
+  { title: t('scm.quotation.preparedBy'), dataIndex: 'createByName', width: 110, defaultHidden: true },
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 180, ellipsis: true, defaultHidden: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), t('common.action.edit'), t('common.action.delete')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'scm-quotation')
 const showSearch = ref(true)

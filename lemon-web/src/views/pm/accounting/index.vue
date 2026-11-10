@@ -103,7 +103,7 @@ import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import { currentPeriod } from '@/components/fin/fin'
 import AccountingDetail from '@/components/pm/AccountingDetail.vue'
 import { closeAccounting, pageAccounting } from '@/api/pm'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -117,15 +117,15 @@ const columns = [
   { title: t('pm.common.project'), key: 'name', width: 220, fixed: 'left' },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'pm_project_status' },
   { title: t('pm.acc.completion'), key: 'progress', width: 160 },
-  { title: t('pm.project.contract'), key: 'contract', width: 150, align: 'right' },
+  { title: t('pm.project.contract'), key: 'contract', width: 150, align: 'right', defaultHidden: true },
   { title: t('pm.acc.revenue'), key: 'revenue', width: 160, align: 'right' },
   { title: t('pm.acc.actualCost'), key: 'cost', width: 150, align: 'right' },
   { title: t('pm.acc.profitMargin'), key: 'profit', width: 170, align: 'right' },
-  { title: t('pm.accounting.billedReceived'), key: 'billing', width: 160, align: 'right' },
-  { title: 'SPI', key: 'spi', width: 80 },
-  { title: 'CPI', key: 'cpi', width: 80 },
-  { title: t('pm.acc.eac'), key: 'eac', width: 130, align: 'right' },
-  { title: t('common.action.operation'), key: 'action', width: 110, fixed: 'right' }
+  { title: t('pm.accounting.billedReceived'), key: 'billing', width: 160, align: 'right', defaultHidden: true },
+  { title: 'SPI', key: 'spi', width: 80, defaultHidden: true },
+  { title: 'CPI', key: 'cpi', width: 80, defaultHidden: true },
+  { title: t('pm.acc.eac'), key: 'eac', width: 130, align: 'right', defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('pm.accounting.view')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'pm-accounting')
 const showSearch = ref(true)

@@ -108,7 +108,7 @@ import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import { pageWo, releaseWo } from '@/api/mes/wo'
 import { useAction } from '@/composables/useAction'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
@@ -128,10 +128,10 @@ const columns = [
   { title: t('mes.wo.progress'), key: 'progress', width: 180 },
   { title: t('mes.wo.planDate'), key: 'plan', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'mes_wo_status' },
-  { title: t('mes.wo.finishWarehouseShort'), dataIndex: 'warehouseName', width: 130 },
-  { title: t('mes.wo.preparedByCol'), dataIndex: 'createByName', width: 110 },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
-  { title: t('common.action.operation'), key: 'action', width: 190, fixed: 'right' }
+  { title: t('mes.wo.finishWarehouseShort'), dataIndex: 'warehouseName', width: 130, defaultHidden: true },
+  { title: t('mes.wo.preparedByCol'), dataIndex: 'createByName', width: 110, defaultHidden: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.view'), { text: t('common.action.edit'), icon: false }, { text: t('mes.wo.release'), icon: false }]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-wo')
 const showSearch = ref(true)

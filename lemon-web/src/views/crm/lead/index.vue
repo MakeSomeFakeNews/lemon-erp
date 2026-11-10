@@ -207,7 +207,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import FollowupModal from '@/components/crm/FollowupModal.vue'
 import { addLead, campaignOptions, convertLead, deleteLead, getLead, invalidLead, pageLead, updateLead } from '@/api/crm'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -224,15 +224,15 @@ const dict = useDict('crm_lead_status', 'crm_source', 'crm_industry', 'scm_regio
 
 const columns = [
   { title: t('crm.lead.col.company'), key: 'company', width: 220 },
-  { title: t('crm.common.f.contact'), key: 'contact', width: 170 },
-  { title: t('crm.common.f.source'), key: 'source', width: 150, dict: 'crm_source' },
-  { title: t('crm.common.f.industry'), key: 'industry', width: 110, dict: 'crm_industry' },
+  { title: t('crm.common.f.contact'), key: 'contact', width: 140 },
+  { title: t('crm.common.f.source'), key: 'source', width: 110, dict: 'crm_source' },
+  { title: t('crm.common.f.industry'), key: 'industry', width: 110, dict: 'crm_industry', defaultHidden: true },
   { title: t('crm.common.f.owner'), dataIndex: 'ownerName', width: 100 },
-  { title: t('common.field.status'), key: 'status', width: 140, dict: 'crm_lead_status' },
+  { title: t('common.field.status'), key: 'status', width: 130, dict: 'crm_lead_status' },
   { title: t('crm.common.f.lastFollow'), dataIndex: 'lastFollowTime', width: 160 },
-  { title: t('crm.lead.col.requirement'), dataIndex: 'requirement', width: 180, ellipsis: true },
-  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 160 },
-  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
+  { title: t('crm.lead.col.requirement'), dataIndex: 'requirement', width: 180, ellipsis: true, defaultHidden: true },
+  { title: t('common.field.createTime'), dataIndex: 'createTime', width: 160, defaultHidden: true },
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('crm.lead.follow'), t('crm.lead.convert'), t('crm.common.more')]), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'crm-lead')
 const showSearch = ref(true)

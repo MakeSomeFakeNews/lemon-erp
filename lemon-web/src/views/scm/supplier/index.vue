@@ -39,7 +39,7 @@
         :data-source="list"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1370, y: '100%' }"
+        :scroll="{ x: sumWidth(tableColumns), y: '100%' }"
         @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -67,25 +67,22 @@
           <template v-else-if="column.custom">{{ cfCell(record, column) }}</template>
           <template v-else-if="column.key === 'action'">
             <span class="table-actions">
-              <a-button type="link" size="small" @click="openExtras(record)">
-                <template #icon><PaperClipOutlined /></template>{{ $t('scm.supplier.extras') }}
+              <a-button v-perm="'scm:supplier:edit'" type="link" size="small" @click="drawer.openEdit(record)">
+                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
               </a-button>
               <a-button type="link" size="small" @click="openPrices(record)">
                 <template #icon><DollarOutlined /></template>{{ $t('scm.supplier.prices') }}
               </a-button>
-              <a-button v-perm="'scm:supplier:portal'" type="link" size="small" @click="openPortal(record)">
-                <template #icon><UserOutlined /></template>{{ $t('scm.supplier.portal') }}
-              </a-button>
-              <a-button v-perm="'scm:supplier:edit'" type="link" size="small" @click="drawer.openEdit(record)">
-                <template #icon><EditOutlined /></template>{{ $t('common.action.edit') }}
-              </a-button>
-              <span v-perm="'scm:supplier:remove'">
-                <a-popconfirm :title="$t('scm.supplier.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                  <a-button type="link" danger size="small">
-                    <template #icon><DeleteOutlined /></template>{{ $t('common.action.delete') }}
-                  </a-button>
-                </a-popconfirm>
-              </span>
+              <a-dropdown>
+                <a-button type="link" size="small">{{ $t('common.action.more') }}<DownOutlined /></a-button>
+                <template #overlay>
+                  <a-menu @click="({ key }) => onMoreAction(key, record)">
+                    <a-menu-item v-for="a in moreActions" :key="a.key" :danger="a.danger">
+                      <component :is="a.icon" /> {{ a.label }}
+                    </a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
             </span>
           </template>
         </template>
@@ -184,7 +181,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DeleteOutlined, DollarOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, DollarOutlined, DownOutlined, EditOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -195,7 +192,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import PortalAccountDrawer from '@/components/scm/PortalAccountDrawer.vue'
 import SupplierPriceDrawer from '@/components/scm/SupplierPriceDrawer.vue'
 import { addPartner, changePartnerStatus, deletePartner, getPartner, pagePartner, updatePartner, importPartner } from '@/api/scm/partner'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, sumWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -242,10 +239,11 @@ const columns = [
   { title: t('scm.supplier.level'), key: 'level', width: 100, dict: 'scm_supplier_level' },
   { title: t('scm.supplier.contact'), key: 'contact', width: 150 },
   { title: t('scm.supplier.paymentDays'), key: 'paymentDays', width: 110 },
-  { title: t('scm.supplier.address'), dataIndex: 'address', width: 220, ellipsis: true },
+  { title: t('scm.supplier.address'), dataIndex: 'address', width: 220, ellipsis: true, defaultHidden: true },
   { title: t('common.field.status'), key: 'status', width: 100 },
-  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 470, fixed: 'right' }
+  { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true, defaultHidden: true },
+  // 资料、门户账号、删除收进「更多」
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('scm.supplier.prices'), t('common.action.more')]), fixed: 'right' }
 ]
 const { checked, visibleColumns } = useColumns(columns, 'scm-supplier')
 const showSearch = ref(true)
@@ -292,7 +290,25 @@ const { formRef, form } = drawer
 // 智能录入：名片、营业执照等识别结果打开新增表单并预填
 const ai = useAiPrefill('supplier', (data) => drawer.openCreate(data), () => drawer.open.value)
 
-const remove = useAction((id) => deletePartner('supplier', id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+const remove = useAction((id) => deletePartner('supplier', id), {
+  confirm: (id, name) => ({ title: t('scm.supplier.confirmDelete', { name }), okType: 'danger' }),
+  successKey: 'common.msg.deleteSuccess',
+  reload: () => load()
+})
+
+/** 操作列「更多」：资料、门户账号、删除 */
+const moreActions = computed(() => {
+  const actions = [{ key: 'extras', label: t('scm.supplier.extras'), icon: PaperClipOutlined }]
+  if (userStore.hasPerm('scm:supplier:portal')) actions.push({ key: 'portal', label: t('scm.supplier.portal'), icon: UserOutlined })
+  if (userStore.hasPerm('scm:supplier:remove')) actions.push({ key: 'remove', label: t('common.action.delete'), icon: DeleteOutlined, danger: true })
+  return actions
+})
+
+function onMoreAction(key, record) {
+  if (key === 'extras') openExtras(record)
+  if (key === 'portal') openPortal(record)
+  if (key === 'remove') remove(record.id, record.name)
+}
 
 const portalOpen = ref(false)
 const portalSupplier = ref()

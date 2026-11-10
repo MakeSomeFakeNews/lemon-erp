@@ -256,7 +256,7 @@ import { outOfSpec, parseMeasured, samplingText, specText } from '@/components/q
 import { addInspection, confirmInspection, deleteInspection, getInspection, pageInspection, updateInspection } from '@/api/mes/base'
 import { getWo, pageWo } from '@/api/mes/wo'
 import { matchPlan } from '@/api/qms'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -273,10 +273,10 @@ const columns = [
   { title: t('mes.inspection.noType'), key: 'inspNo', width: 180 },
   { title: t('mes.inspection.source'), key: 'source', width: 170 },
   { title: t('mes.wo.material'), key: 'material', width: 200 },
-  { title: t('common.field.quantity'), key: 'qty', width: 190 },
+  { title: t('common.field.quantity'), key: 'qty', width: 175 },
   { title: t('mes.inspection.conclusion'), key: 'result', width: 110 },
   { title: t('mes.inspection.inspectDate'), key: 'inspectDate', width: 120 },
-  { title: t('common.action.operation'), key: 'action', width: 160, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('common.action.edit'), t('mes.plan.confirm'), t('common.action.delete')].map((text) => ({ text, icon: false }))), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-inspection')
 const statusOptions = [

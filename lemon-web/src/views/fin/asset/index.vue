@@ -3,20 +3,20 @@
     <a-card :bordered="false" class="page-card table-card">
       <a-tabs v-model:active-key="tab">
         <a-tab-pane key="cards" :tab="$t('fin.asset.tabCards')">
-          <div class="toolbar">
-            <a-space wrap>
-              <a-input-search v-model:value="query.keyword" :placeholder="$t('fin.asset.keywordPh')" allow-clear class="filter" @search="search" />
-              <a-select v-model:value="query.category" :placeholder="$t('fin.asset.category')" allow-clear :options="toOptions(dict.fin_asset_category)" class="filter-s" @change="search" />
-              <a-select v-model:value="query.status" :placeholder="$t('common.field.status')" allow-clear :options="toOptions(dict.fin_asset_status)" class="filter-s" @change="search" />
-            </a-space>
-            <a-button v-perm="'fin:asset:add'" type="primary" @click="drawer.openCreate()">
-              <template #icon><PlusOutlined /></template>{{ $t('fin.asset.add') }}
-            </a-button>
-          </div>
+          <TableToolbar v-model:size="size" v-model:checked="checked" :columns="columns" @refresh="load">
+            <a-input-search v-model:value="query.keyword" :placeholder="$t('fin.asset.keywordPh')" allow-clear class="filter" @search="search" />
+            <a-select v-model:value="query.category" :placeholder="$t('fin.asset.category')" allow-clear :options="toOptions(dict.fin_asset_category)" class="filter-s" @change="search" />
+            <a-select v-model:value="query.status" :placeholder="$t('common.field.status')" allow-clear :options="toOptions(dict.fin_asset_status)" class="filter-s" @change="search" />
+            <template #extra>
+              <a-button v-perm="'fin:asset:add'" type="primary" @click="drawer.openCreate()">
+                <template #icon><PlusOutlined /></template>{{ $t('fin.asset.add') }}
+              </a-button>
+            </template>
+          </TableToolbar>
           <a-table
             row-key="id"
-            size="middle"
-            :columns="columns"
+            :size="size"
+            :columns="visibleColumns"
             :data-source="list"
             :loading="loading"
             :pagination="pagination"
@@ -64,15 +64,20 @@
                       </template>
                     </a-dropdown>
                   </template>
-                  <a-button type="link" size="small" @click="openHistory(record)">{{ $t('fin.asset.history') }}</a-button>
-                  <template v-if="record.status !== AssetStatus.DISPOSED">
-                    <a-button v-perm="'fin:asset:edit'" type="link" size="small" @click="dispose(record)">{{ $t('fin.asset.dispose') }}</a-button>
-                    <span v-if="record.depreciatedMonths === 0" v-perm="'fin:asset:remove'">
-                      <a-popconfirm :title="$t('fin.asset.confirmDelete', { name: record.name })" @confirm="remove(record.id)">
-                        <a-button type="link" danger size="small">{{ $t('common.action.delete') }}</a-button>
-                      </a-popconfirm>
-                    </span>
-                  </template>
+                  <a-button v-if="record.status === AssetStatus.DISPOSED" type="link" size="small" @click="openHistory(record)">{{ $t('fin.asset.history') }}</a-button>
+                  <!-- 履历、处置、删除收进「更多」 -->
+                  <a-dropdown v-else>
+                    <a-button type="link" size="small">{{ $t('common.action.more') }} <DownOutlined /></a-button>
+                    <template #overlay>
+                      <a-menu @click="({ key }) => onMoreAction(key, record)">
+                        <a-menu-item key="history">{{ $t('fin.asset.history') }}</a-menu-item>
+                        <a-menu-item v-if="userStore.hasPerm('fin:asset:edit')" key="dispose">{{ $t('fin.asset.dispose') }}</a-menu-item>
+                        <a-menu-item v-if="record.depreciatedMonths === 0 && userStore.hasPerm('fin:asset:remove')" key="remove" danger>
+                          {{ $t('common.action.delete') }}
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
                 </span>
               </template>
             </template>
@@ -310,24 +315,34 @@ import { currentPeriod, formatMoney } from '@/components/fin/fin'
 import { useAction } from '@/composables/useAction'
 
 import { AssetMoveType, AssetStatus } from '@/constants/enums'
-import { sumWidth } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
+import { useUserStore } from '@/store/user'
+import TableToolbar from '@/components/TableToolbar.vue'
 const { t } = useI18n()
 const dict = useDict('fin_asset_category', 'fin_asset_status', 'fin_asset_move_type')
 const tab = ref('cards')
 
 const columns = [
   { title: t('fin.asset.asset'), key: 'name', width: 200 },
-  { title: t('fin.asset.category'), key: 'category', width: 90 },
+  { title: t('fin.asset.category'), key: 'category', width: 90, defaultHidden: true },
   { title: t('fin.asset.colUser'), key: 'user', width: 150 },
-  { title: t('fin.asset.colUseDate'), dataIndex: 'useDate', width: 100 },
+  { title: t('fin.asset.colUseDate'), dataIndex: 'useDate', width: 100, defaultHidden: true },
   { title: t('fin.asset.originalValue'), key: 'value', width: 130, align: 'right' },
   { title: t('fin.asset.colProgress'), key: 'depreciation', width: 200 },
   { title: t('fin.asset.netValue'), key: 'net', width: 150, align: 'right' },
-  { title: t('fin.asset.colExpenseAccount'), dataIndex: 'expenseAccountName', width: 120 },
+  { title: t('fin.asset.colExpenseAccount'), dataIndex: 'expenseAccountName', width: 120, defaultHidden: true },
   { title: t('common.field.status'), key: 'status', width: 80 },
-  { title: t('common.action.operation'), key: 'action', width: 240, fixed: 'right' }
+  {
+    title: t('common.action.operation'),
+    key: 'action',
+    // 编辑、变动（下拉）、更多；已处置只有履历
+    width: actionWidth([{ text: t('common.action.edit'), icon: false }, t('fin.asset.move'), t('common.action.more')]),
+    fixed: 'right'
+  }
 ]
-const scrollX = sumWidth(columns)
+const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-asset')
+const size = ref('middle')
+const userStore = useUserStore()
 const query = reactive({ keyword: undefined, category: undefined, status: undefined })
 const { list, loading, pagination, load, search, onTableChange } = useTable(pageAsset, query)
 onMounted(load)
@@ -421,7 +436,17 @@ async function openHistory(record) {
 }
 const arrow = (from, to) => (from === to ? from || '-' : `${from || '-'} → ${to || '-'}`)
 
-const remove = useAction(deleteAsset, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+const remove = useAction(deleteAsset, {
+  confirm: (id, name) => ({ title: t('fin.asset.confirmDelete', { name }), okType: 'danger' }),
+  successKey: 'common.msg.deleteSuccess',
+  reload: () => load()
+})
+
+function onMoreAction(key, record) {
+  if (key === 'history') openHistory(record)
+  if (key === 'dispose') dispose(record)
+  if (key === 'remove') remove(record.id, record.name)
+}
 
 // ---------------------------------------------------------------- 折旧
 const depPeriod = ref(currentPeriod())

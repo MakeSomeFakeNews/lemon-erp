@@ -149,7 +149,7 @@ import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import WorkCenterSelect from '@/components/mes/WorkCenterSelect.vue'
 import { addEquipment, deleteEquipment, getEquipment, pageEquipment, updateEquipment } from '@/api/mes/base'
-import { useColumns } from '@/composables/useColumns'
+import { actionWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
@@ -172,9 +172,9 @@ const columns = [
   { title: t('mes.equipment.locationShort'), dataIndex: 'location', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'mes_equipment_status' },
   { title: t('mes.equipment.periodic'), key: 'maintain', width: 220 },
-  { title: t('mes.equipment.purchaseDate'), dataIndex: 'purchaseDate', width: 110 },
+  { title: t('mes.equipment.purchaseDate'), dataIndex: 'purchaseDate', width: 110, defaultHidden: true },
   { title: t('common.field.remark'), dataIndex: 'remark', width: 100, ellipsis: true },
-  { title: t('common.action.operation'), key: 'action', width: 180, fixed: 'right' }
+  { title: t('common.action.operation'), key: 'action', width: actionWidth([t('mes.equipment.maintain'), t('common.action.edit'), '']), fixed: 'right' }
 ]
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'mes-equipment')
 const showSearch = ref(true)
