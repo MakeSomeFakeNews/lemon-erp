@@ -30,7 +30,7 @@
           <l-cell v-if="Number(s.commission)" :label="t('hr.payslip.commission')" :value="money(s.commission)" />
           <l-cell :label="t('hr.payslip.otherBonus')" :value="money(s.otherBonus)" />
           <l-cell :label="t('hr.payslip.attendanceDeduct')">
-            <text>-{{ money(s.attendanceDeduct) }}</text>
+            <text>{{ minus(s.attendanceDeduct) }}</text>
             <view class="slip__note">{{ t('hr.payslip.deductDetail', { absent: Number(s.absentDays || 0), late: s.lateCount || 0 }) }}</view>
           </l-cell>
           <l-cell :label="t('hr.payslip.grossPay')">
@@ -38,17 +38,17 @@
           </l-cell>
 
           <view class="slip__section">{{ t('hr.payslip.deduction') }}</view>
-          <l-cell :label="t('hr.payslip.socialPersonal')" :value="'-' + money(s.socialPersonal)" />
-          <l-cell :label="t('hr.payslip.housingPersonal')" :value="'-' + money(s.housingPersonal)" />
-          <l-cell :label="t('hr.payslip.incomeTax')" :value="'-' + money(s.incomeTax)" />
-          <l-cell :label="t('hr.payslip.otherDeduct')" :value="'-' + money(s.otherDeduct)" />
+          <l-cell :label="t('hr.payslip.socialPersonal')" :value="minus(s.socialPersonal)" />
+          <l-cell :label="t('hr.payslip.housingPersonal')" :value="minus(s.housingPersonal)" />
+          <l-cell :label="t('hr.payslip.incomeTax')" :value="minus(s.incomeTax)" />
+          <l-cell :label="t('hr.payslip.otherDeduct')" :value="minus(s.otherDeduct)" />
           <l-cell :label="t('hr.payslip.netPay')">
             <text class="slip__strong slip__primary">{{ money(s.netPay) }}</text>
           </l-cell>
 
           <view class="slip__section">{{ t('hr.payslip.tax') }}</view>
           <l-cell :label="t('hr.payslip.specialDeduct')" :value="money(s.specialDeduct)" />
-          <l-cell :label="t('hr.payslip.cumTaxable')" :value="money(s.cumTaxable)" />
+          <l-cell :label="t('hr.payslip.cumTaxable')" :value="money(taxable(s.cumTaxable))" />
           <l-cell :label="t('hr.payslip.cumTax')" :value="money(s.cumTax)" />
           <l-cell :label="t('hr.payslip.status')">
             <l-tag :text="dictText(dict.hr_payroll_status, s.payrollStatus)" :color="dictColor(dict.hr_payroll_status, s.payrollStatus)" />
@@ -72,6 +72,10 @@ import { periodText } from '../hr'
 
 const { t } = useI18n()
 useTitle('hr.title.payslip')
+// 扣款显示为负数，金额为 0 时不带负号
+const minus = (v) => (Number(v) ? '-' + money(v) : money(0))
+// 累计预扣法：累计应纳税所得额小于 0 时按 0（个税为 0，计算时仍按累计数结转）
+const taxable = (v) => Math.max(0, Number(v || 0))
 const dict = useDict('hr_perf_grade', 'hr_payroll_status')
 const profile = ref(null)
 const list = ref([])

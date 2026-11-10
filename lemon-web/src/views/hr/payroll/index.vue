@@ -131,7 +131,7 @@
                 <span v-else class="sub-text">0.00</span>
               </template>
               <template v-else-if="MONEY_KEYS.includes(column.key)">
-                <span :class="{ strong: ['grossPay', 'netPay'].includes(column.key) }">{{ formatMoney(record[column.key]) }}</span>
+                <span :class="{ strong: ['grossPay', 'netPay'].includes(column.key) }">{{ formatMoney(cellValue(record, column.key)) }}</span>
               </template>
               <template v-else-if="column.key === 'action'">
                 <a-button v-if="payroll.status === PayrollStatus.DRAFT" v-perm="'hr:payroll:edit'" type="link" size="small" @click="openAdjust(record)">{{ $t('hr.payroll.adjust') }}</a-button>
@@ -224,6 +224,8 @@ const userStore = useUserStore()
 useDict('hr_payroll_status', 'hr_perf_grade')
 const MONEY_KEYS = ['baseSalary', 'allowance', 'pieceWage', 'commission', 'otherBonus', 'grossPay', 'socialPersonal', 'housingPersonal', 'specialDeduct', 'incomeTax',
   'otherDeduct', 'netPay', 'socialCompany', 'housingCompany', 'cumTaxable', 'cumTax']
+// 累计预扣法：累计应纳税所得额小于 0 时显示为 0（个税为 0，计算时仍按累计数结转）
+const cellValue = (record, key) => (key === 'cumTaxable' ? Math.max(0, Number(record.cumTaxable || 0)) : record[key])
 const SUM_KEYS = [...MONEY_KEYS.filter((k) => !['cumTaxable', 'cumTax'].includes(k)), 'attendanceDeduct', 'overtime', 'perf']
 
 const thisYear = dayjs().year()
@@ -304,7 +306,7 @@ const itemColumns = [
   { title: t('hr.payroll.col.netPay'), key: 'netPay', width: 120, align: 'right' },
   { title: t('hr.payroll.col.socialCompany'), key: 'socialCompany', width: 150, align: 'right' },
   { title: t('hr.payroll.col.housingCompany'), key: 'housingCompany', width: 170, align: 'right' },
-  { title: t('hr.payroll.col.cumTaxable'), key: 'cumTaxable', width: 160, align: 'right' },
+  { title: t('hr.payroll.col.cumTaxable'), key: 'cumTaxable', width: 160, align: 'right', exportValue: (r) => cellValue(r, 'cumTaxable') },
   { title: t('hr.payroll.col.cumTax'), key: 'cumTax', width: 150, align: 'right' },
   { title: t('common.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true },
   { title: '', key: 'action', width: 70, fixed: 'right' }

@@ -19,17 +19,17 @@
         <a-descriptions-item v-if="Number(slip.commission)" :label="$t('hr.self.commission')">{{ formatMoney(slip.commission) }}</a-descriptions-item>
         <a-descriptions-item :label="$t('hr.self.otherBonus')">{{ formatMoney(slip.otherBonus) }}</a-descriptions-item>
         <a-descriptions-item :label="$t('hr.self.attendanceDeduct')">
-          -{{ formatMoney(slip.attendanceDeduct) }}
+          {{ minus(slip.attendanceDeduct) }}
           <span class="sub-text">{{ $t('hr.self.deductDetail', { absent: Number(slip.absentDays), late: slip.lateCount }) }}</span>
         </a-descriptions-item>
         <a-descriptions-item :label="$t('hr.self.grossPay')" :span="2"><b>{{ formatMoney(slip.grossPay) }}</b></a-descriptions-item>
-        <a-descriptions-item :label="$t('hr.self.socialPersonal')">-{{ formatMoney(slip.socialPersonal) }}</a-descriptions-item>
-        <a-descriptions-item :label="$t('hr.self.housingPersonal')">-{{ formatMoney(slip.housingPersonal) }}</a-descriptions-item>
-        <a-descriptions-item :label="$t('hr.self.incomeTax')">-{{ formatMoney(slip.incomeTax) }}</a-descriptions-item>
-        <a-descriptions-item :label="$t('hr.self.otherDeduct')">-{{ formatMoney(slip.otherDeduct) }}</a-descriptions-item>
+        <a-descriptions-item :label="$t('hr.self.socialPersonal')">{{ minus(slip.socialPersonal) }}</a-descriptions-item>
+        <a-descriptions-item :label="$t('hr.self.housingPersonal')">{{ minus(slip.housingPersonal) }}</a-descriptions-item>
+        <a-descriptions-item :label="$t('hr.self.incomeTax')">{{ minus(slip.incomeTax) }}</a-descriptions-item>
+        <a-descriptions-item :label="$t('hr.self.otherDeduct')">{{ minus(slip.otherDeduct) }}</a-descriptions-item>
         <a-descriptions-item :label="$t('hr.self.netPay')" :span="2"><b class="net">{{ formatMoney(slip.netPay) }}</b></a-descriptions-item>
         <a-descriptions-item :label="$t('hr.self.specialDeduct')">{{ formatMoney(slip.specialDeduct) }}</a-descriptions-item>
-        <a-descriptions-item :label="$t('hr.self.cumTaxable')">{{ formatMoney(slip.cumTaxable) }}</a-descriptions-item>
+        <a-descriptions-item :label="$t('hr.self.cumTaxable')">{{ formatMoney(taxable(slip.cumTaxable)) }}</a-descriptions-item>
         <a-descriptions-item :label="$t('hr.self.cumTax')">{{ formatMoney(slip.cumTax) }}</a-descriptions-item>
         <a-descriptions-item :label="$t('common.field.status')"><DictTag type="hr_payroll_status" :value="slip.payrollStatus" /></a-descriptions-item>
       </a-descriptions>
@@ -47,6 +47,10 @@ import { formatMoney } from '@/components/scm/scm'
 const props = defineProps({ payslips: { type: Array, default: () => [] } })
 const slip = ref()
 watch(() => props.payslips, (p) => (slip.value = p[0]), { immediate: true })
+// 扣款显示为负数，金额为 0 时不带负号
+const minus = (v) => (Number(v) ? '-' + formatMoney(v) : formatMoney(0))
+// 累计预扣法：累计应纳税所得额小于 0 时按 0（个税为 0，计算时仍按累计数结转）
+const taxable = (v) => Math.max(0, Number(v || 0))
 </script>
 
 <style scoped>
