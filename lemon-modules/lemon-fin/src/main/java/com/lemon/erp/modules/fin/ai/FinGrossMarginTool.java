@@ -17,7 +17,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 销售毛利分析：按物料、客户或月份汇总销售收入、成本、毛利、毛利率，复用经营分析 {@link FinAnalysisService#grossMargin}
+ * 销售毛利分析：按物料、客户或月份汇总销售收入、销售金额、成本、毛利、毛利率，复用经营分析 {@link FinAnalysisService#grossMargin}
+ * （销售金额 = 销售收入 − 本公司运费 − 收款折让 − 坏账核销，毛利 = 销售金额 − 成本）
  */
 @Component
 @RequiredArgsConstructor
@@ -26,10 +27,12 @@ public class FinGrossMarginTool implements AiTool {
     /**
      * 一组的毛利，金额单位元；第一行为合计
      *
-     * @param marginPercent 毛利率（%）
+     * @param revenue       销售收入（扣整单优惠后，不含税）
+     * @param salesAmount   销售金额（再扣本公司运费、收款折让、坏账核销）
+     * @param marginPercent 毛利率（%）= 毛利 ÷ 销售金额
      * @param missingCost   没有成本的明细行数（毛利偏高）
      */
-    record MarginItem(String name, BigDecimal qty, BigDecimal revenue, BigDecimal cost, BigDecimal profit, BigDecimal marginPercent,
+    record MarginItem(String name, BigDecimal qty, BigDecimal revenue, BigDecimal salesAmount, BigDecimal cost, BigDecimal profit, BigDecimal marginPercent,
                       Long missingCost) {
     }
 
@@ -83,9 +86,9 @@ public class FinGrossMarginTool implements AiTool {
         list.sort(group == MarginGroup.MONTH ? Comparator.comparing(FinAnalysis.MarginRow::getGroupKey) : order.reversed());
         FinAnalysis.MarginTotal t = gm.total();
         List<MarginItem> rows = new ArrayList<>();
-        rows.add(new MarginItem(FinAiSupport.totalLabel(), null, t.revenue(), t.cost(), t.profit(), t.margin(), null));
+        rows.add(new MarginItem(FinAiSupport.totalLabel(), null, t.revenue(), t.salesAmount(), t.cost(), t.profit(), t.margin(), null));
         list.stream().limit(FinAiSupport.top(args)).forEach(r -> rows.add(new MarginItem(r.getGroupName(), r.getQty(), r.getRevenue(),
-                r.getCost(), r.getProfit(), r.getMargin(), r.getMissingCost() == null || r.getMissingCost() == 0 ? null : r.getMissingCost())));
+                r.getSalesAmount(), r.getCost(), r.getProfit(), r.getMargin(), r.getMissingCost() == null || r.getMissingCost() == 0 ? null : r.getMissingCost())));
         return AiToolResult.rows(rows, (long) list.size() + 1);
     }
 }

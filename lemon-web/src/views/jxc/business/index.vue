@@ -69,7 +69,7 @@
                 <a v-if="record.groupKey">{{ record.groupName }}</a>
                 <span v-else>{{ $t('jxc.common.others') }}</span>
               </template>
-              <template v-else-if="column.key === 'share'">{{ share(record.netAmount) }}</template>
+              <template v-else-if="column.key === 'share'">{{ share(record.salesAmount) }}</template>
               <template v-else-if="column.key === 'margin'">{{ marginText(record.margin) }}</template>
               <template v-else-if="column.money">{{ money(record[column.key]) }}</template>
               <template v-else-if="column.key === 'action'">
@@ -122,7 +122,7 @@ const sumCash = (field) => (data.value.cash || []).reduce((s, r) => s + num(r[fi
 const kpis = computed(() => {
   const tot = data.value.total || {}
   const list = [
-    { key: 'sales', label: t('jxc.business.netSales'), value: yuan(tot.netAmount) },
+    { key: 'sales', label: t('jxc.business.netSales'), value: yuan(tot.salesAmount) },
     { key: 'profit', label: t('jxc.business.profit'), value: yuan(tot.profit), neg: num(tot.profit) < 0 },
     { key: 'margin', label: t('jxc.business.margin'), value: marginText(tot.margin) }
   ]
@@ -146,7 +146,7 @@ const salesOption = computed(() => ({
   xAxis: { type: 'category', data: data.value.trend.map((r) => monthLabel(r.groupKey)) },
   yAxis: valueAxis,
   series: [
-    { name: t('jxc.business.netSales'), type: 'bar', barMaxWidth: 28, data: data.value.trend.map((r) => num(r.netAmount)) },
+    { name: t('jxc.business.netSales'), type: 'bar', barMaxWidth: 28, data: data.value.trend.map((r) => num(r.salesAmount)) },
     { name: t('jxc.business.profit'), type: 'line', data: data.value.trend.map((r) => num(r.profit)) }
   ]
 }))
@@ -173,7 +173,7 @@ const salesmanOption = computed(() => {
     xAxis: valueAxis,
     yAxis: { type: 'category', data: rows.map((r) => groupLabel(JxcDimension.SALESMAN, r, dict)) },
     series: [
-      { name: t('jxc.business.netSales'), type: 'bar', barMaxWidth: 16, data: rows.map((r) => num(r.netAmount)) },
+      { name: t('jxc.business.netSales'), type: 'bar', barMaxWidth: 16, data: rows.map((r) => num(r.salesAmount)) },
       { name: t('jxc.business.profit'), type: 'bar', barMaxWidth: 16, data: rows.map((r) => num(r.profit)) }
     ]
   }
@@ -184,14 +184,14 @@ const customerOption = computed(() => ({
   legend: { type: 'scroll', orient: 'vertical', right: 0, top: 'middle' },
   series: [{
     type: 'pie', radius: ['40%', '70%'], center: ['35%', '50%'],
-    data: data.value.customers.filter((r) => num(r.netAmount) > 0)
-      .map((r) => ({ name: r.groupKey ? r.groupName : t('jxc.common.others'), value: num(r.netAmount) }))
+    data: data.value.customers.filter((r) => num(r.salesAmount) > 0)
+      .map((r) => ({ name: r.groupKey ? r.groupName : t('jxc.common.others'), value: num(r.salesAmount) }))
   }]
 }))
 
 const salesmanColumns = [
   { title: t('jxc.field.salesman'), key: 'name', ellipsis: true },
-  { title: t('jxc.field.netAmount'), key: 'netAmount', align: 'right', money: true, width: 120 },
+  { title: t('jxc.field.salesAmount'), key: 'salesAmount', align: 'right', money: true, width: 120 },
   { title: t('jxc.field.profit'), key: 'profit', align: 'right', money: true, width: 110 },
   { title: t('jxc.field.margin'), key: 'margin', align: 'right', width: 80 },
   { title: t('jxc.field.docCount'), dataIndex: 'docCount', align: 'right', width: 70 },
@@ -199,7 +199,7 @@ const salesmanColumns = [
 ]
 const customerColumns = [
   { title: t('jxc.field.customer'), key: 'name', ellipsis: true },
-  { title: t('jxc.field.netAmount'), key: 'netAmount', align: 'right', money: true, width: 120 },
+  { title: t('jxc.field.salesAmount'), key: 'salesAmount', align: 'right', money: true, width: 120 },
   { title: t('jxc.business.share'), key: 'share', align: 'right', width: 70 },
   { title: t('jxc.field.profit'), key: 'profit', align: 'right', money: true, width: 110 },
   { title: t('jxc.field.margin'), key: 'margin', align: 'right', width: 80 },
@@ -207,7 +207,7 @@ const customerColumns = [
 ]
 
 function share(v) {
-  const all = num(data.value.total?.netAmount)
+  const all = num(data.value.total?.salesAmount)
   return all ? `${((num(v) / all) * 100).toFixed(1)}%` : '-'
 }
 

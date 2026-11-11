@@ -82,6 +82,20 @@ export const AccountRole = Object.freeze({
   PROFIT_DISTRIBUTION: 'PROFIT_DISTRIBUTION',
 })
 
+/** com.lemon.erp.modules.fin.model.AdjustItem */
+export const AdjustItem = Object.freeze({
+  DISCOUNT: 'DISCOUNT', // 整单优惠
+  FREIGHT: 'FREIGHT', // 本公司承担的运费
+  SETTLE_DISCOUNT: 'SETTLE_DISCOUNT', // 收款折让 / 抹零
+  BAD_DEBT: 'BAD_DEBT', // 坏账核销
+})
+
+/** com.lemon.erp.modules.fin.model.AdjustMode */
+export const AdjustMode = Object.freeze({
+  BOTTOM: 'BOTTOM', // 汇总到底部
+  ALLOCATE: 'ALLOCATE', // 分摊到各行
+})
+
 /** com.lemon.erp.framework.ai.AiCleanseField */
 export const AiCleanseField = Object.freeze({
   NAME: 'NAME', // 名称

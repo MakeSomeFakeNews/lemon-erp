@@ -31,15 +31,13 @@
     <a-card :bordered="false" class="page-card table-card">
       <div class="head">
         <div class="kpis">
-          <div class="kpi">
-            <div class="sub-text">{{ $t('jxc.field.netAmount') }}</div>
-            <b>¥{{ money(total.netAmount) }}</b>
-          </div>
-          <div class="kpi">
-            <div class="sub-text">{{ $t('jxc.field.taxedAmount') }}</div>
-            <b>¥{{ money(total.taxedAmount) }}</b>
-          </div>
           <template v-if="sales">
+            <a-tooltip :title="$t('jxc.common.salesAmountTip')">
+              <div class="kpi">
+                <div class="sub-text">{{ $t('jxc.field.salesAmount') }}</div>
+                <b>¥{{ money(total.salesAmount) }}</b>
+              </div>
+            </a-tooltip>
             <div class="kpi">
               <div class="sub-text">{{ $t('jxc.field.profit') }}</div>
               <b :class="{ neg: Number(total.profit) < 0 }">¥{{ money(total.profit) }}</b>
@@ -48,14 +46,16 @@
               <div class="sub-text">{{ $t('jxc.field.margin') }}</div>
               <b>{{ marginText(total.margin) }}</b>
             </div>
-            <a-tooltip v-if="Number(total.settleDiscount) || Number(total.badDebt) || Number(total.freight)" :title="$t('jxc.common.profitAfterTip')">
-              <div class="kpi">
-                <div class="sub-text">{{ $t('jxc.field.profitAfterFreight') }}</div>
-                <b :class="{ neg: Number(total.profitAfterFreight) < 0 }">¥{{ money(total.profitAfterFreight) }}</b>
-              </div>
-            </a-tooltip>
           </template>
-          <a-tooltip v-else-if="Number(total.settleDiscount)" :title="$t('jxc.common.purchaseDiscountTip')">
+          <div class="kpi">
+            <div class="sub-text">{{ $t('jxc.field.netAmount') }}</div>
+            <b>¥{{ money(total.netAmount) }}</b>
+          </div>
+          <div class="kpi">
+            <div class="sub-text">{{ $t('jxc.field.taxedAmount') }}</div>
+            <b>¥{{ money(total.taxedAmount) }}</b>
+          </div>
+          <a-tooltip v-if="!sales && Number(total.settleDiscount)" :title="$t('jxc.common.purchaseDiscountTip')">
             <div class="kpi">
               <div class="sub-text">{{ $t('jxc.field.netAfterDiscount') }}</div>
               <b>¥{{ money(total.netAfterDiscount) }}</b>
@@ -174,34 +174,39 @@ const total = computed(() => data.value.total || {})
 const loading = ref(false)
 const tip = computed(() => t(sales.value ? 'jxc.sales.tip' : 'jxc.purchase.tip'))
 
+/**
+ * 金额口径（issue #93）：出库（入库）货款 − 退货货款 = 货款（优惠前）；货款 − 整单优惠 = 净额（销售收入 / 进货金额）；
+ * 销售金额 = 净额 − 本公司运费 − 收款折让 − 坏账核销，毛利 = 销售金额 − 成本；进货的扣折让后净进货额 = 净额 − 付款折让（参考）
+ */
 const columns = computed(() => {
   const s = sales.value
+  const m = (key, titleKey, width = 120) => ({ title: t(titleKey), key, width, align: 'right', money: true })
   return [
     { title: t(`jxc.dim.${groupBy.value}`), key: 'group', width: 220, fixed: 'left', ellipsis: true },
     { title: t(s ? 'jxc.field.outQty' : 'jxc.field.inQty'), key: 'bizQty', width: 110, align: 'right', qty: true },
     { title: t('jxc.field.returnQty'), key: 'returnQty', width: 100, align: 'right', qty: true },
     { title: t('jxc.field.netQty'), key: 'netQty', width: 100, align: 'right', qty: true },
-    { title: t(s ? 'jxc.field.outAmount' : 'jxc.field.inAmount'), key: 'bizAmount', width: 130, align: 'right', money: true },
-    { title: t('jxc.field.returnAmount'), key: 'returnAmount', width: 120, align: 'right', money: true },
-    { title: t('jxc.field.netAmount'), key: 'netAmount', width: 130, align: 'right', money: true },
-    { title: t('jxc.field.taxedAmount'), key: 'taxedAmount', width: 130, align: 'right', money: true },
+    m('bizAmount', s ? 'jxc.field.outAmount' : 'jxc.field.inAmount', 130),
+    m('returnAmount', 'jxc.field.returnAmount'),
+    m('goodsAmount', 'jxc.field.goodsAmount', 130),
+    m('discount', 'jxc.field.discount', 110),
+    m('netAmount', 'jxc.field.netAmount', 130),
     ...(s
       ? [
+          m('freight', 'jxc.field.freight', 110),
+          m('settleDiscount', 'jxc.field.receiptDiscount', 110),
+          m('badDebt', 'jxc.field.badDebt', 110),
+          m('salesAmount', 'jxc.field.salesAmount', 130),
+          m('taxedAmount', 'jxc.field.taxedAmount', 130),
           { title: t('jxc.field.cost'), key: 'cost', width: 170, align: 'right' },
-          { title: t('jxc.field.profit'), key: 'profit', width: 120, align: 'right', money: true },
-          { title: t('jxc.field.margin'), key: 'margin', width: 90, align: 'right' },
-          // 参考口径（依次扣除）：收款折让、坏账核销、本公司承担的发运运费及扣除后的毛利（财务报表中分别计入财务费用、营业外支出、销售费用）
-          { title: t('jxc.field.receiptDiscount'), key: 'settleDiscount', width: 110, align: 'right', money: true },
-          { title: t('jxc.field.profitAfterDiscount'), key: 'profitAfterDiscount', width: 130, align: 'right', money: true },
-          { title: t('jxc.field.badDebt'), key: 'badDebt', width: 110, align: 'right', money: true },
-          { title: t('jxc.field.profitAfterBadDebt'), key: 'profitAfterBadDebt', width: 150, align: 'right', money: true },
-          { title: t('jxc.field.freight'), key: 'freight', width: 110, align: 'right', money: true },
-          { title: t('jxc.field.profitAfterFreight'), key: 'profitAfterFreight', width: 170, align: 'right', money: true }
+          m('profit', 'jxc.field.profit'),
+          { title: t('jxc.field.margin'), key: 'margin', width: 90, align: 'right' }
         ]
       : [
+          m('taxedAmount', 'jxc.field.taxedAmount', 130),
           // 参考口径：付款折让（计入财务费用，不冲减存货成本）
-          { title: t('jxc.field.purchaseDiscount'), key: 'settleDiscount', width: 110, align: 'right', money: true },
-          { title: t('jxc.field.netAfterDiscount'), key: 'netAfterDiscount', width: 150, align: 'right', money: true }
+          m('settleDiscount', 'jxc.field.purchaseDiscount', 110),
+          m('netAfterDiscount', 'jxc.field.netAfterDiscount', 150)
         ]),
     { title: t('jxc.field.avgPrice'), key: 'avgPrice', width: 100, align: 'right' },
     { title: t('jxc.field.docCount'), key: 'docCount', dataIndex: 'docCount', width: 80, align: 'right' },
