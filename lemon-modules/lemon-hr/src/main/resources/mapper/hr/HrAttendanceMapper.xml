@@ -14,7 +14,11 @@
             <if test="deptIds != null and deptIds.size() > 0">
                 AND e.dept_id IN <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
             </if>
-            <if test="status != null and status != ''">AND a.status = #{status}</if>
+            <if test="status != null">AND a.status = #{status}</if>
+            <!-- 按缺卡筛选时不含当天已打上班卡、还没打下班卡的记录（界面显示为「未打下班卡」） -->
+            <if test="awaitingDay != null">
+                AND NOT (a.work_date = #{awaitingDay} AND a.check_in IS NOT NULL AND a.check_out IS NULL)
+            </if>
             <if test="beginDate != null">AND a.work_date &gt;= #{beginDate}</if>
             <if test="endDate != null">AND a.work_date &lt;= #{endDate}</if>
         </where>
