@@ -162,7 +162,8 @@ export default {
       mes_mold_type: 'Mold Type',
       mes_stop_reason: 'Downtime Reason',
       wms_in_category: 'Inbound Category',
-      wms_out_category: 'Outbound Category'
+      wms_out_category: 'Outbound Category',
+      scm_invoice_kind: 'Invoice Type'
     }
   },
   dict: {

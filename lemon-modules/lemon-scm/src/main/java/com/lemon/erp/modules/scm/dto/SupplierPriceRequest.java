@@ -16,7 +16,7 @@ import java.util.List;
  * 新增 / 修改供货价格
  *
  * @param price     含税单价
- * @param taxRate   税率（%），默认 13
+ * @param taxRate   税率（%），为空时取业务参数「默认税率」
  * @param leadDays  采购提前期（天）
  * @param isDefault 设为该物料的默认供应商（同一物料只有一个默认供应商）
  * @param validFrom 有效期起（为空不限）

@@ -42,7 +42,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.tax;
 
 /**
@@ -69,6 +68,7 @@ public class ScmOrderChangeService {
     private final StockReservationService reservationService;
     private final DocNoService docNoService;
     private final ApprovalSupport approvalSupport;
+    private final ScmTaxRates taxRates;
 
     public List<ScmOrderChange> list(OrderKind kind, Long orderId) {
         orderService.getAccessible(kind, orderId);
@@ -109,7 +109,8 @@ public class ScmOrderChangeService {
                 ci.setMaterialId(l.materialId());
                 ci.setNewQty(l.qty());
                 ci.setNewPrice(l.price());
-                ci.setTaxRate(l.taxRate() == null ? DEFAULT_TAX_RATE : l.taxRate());
+                // 新增明细未填写税率时：订单发票类型的税率 → 默认税率
+                ci.setTaxRate(taxRates.resolve(l.taxRate(), order.getInvoiceKind()));
                 ci.setNewDeliveryDate(l.deliveryDate() != null ? l.deliveryDate() : order.getDeliveryDate());
             } else {
                 ScmOrderItem item = l.orderItemId() == null ? null : items.get(l.orderItemId());

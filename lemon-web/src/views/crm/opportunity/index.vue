@@ -248,7 +248,10 @@ import { OPEN_STAGES, STAGE_PROBABILITY, sum } from '@/components/crm/crm'
 import { useAction } from '@/composables/useAction'
 
 import { OpportunityStage } from '@/constants/enums'
+import { useTaxRates } from '@/components/scm/taxRate'
 const { t } = useI18n()
+/** 新明细 / 新价格的税率：业务参数「默认税率」（issue #82） */
+const tax = useTaxRates()
 const simpleImage = Empty.PRESENTED_IMAGE_SIMPLE
 const dict = useDict('crm_opp_stage', 'crm_source')
 const STATUS_OPTIONS = [
@@ -323,7 +326,7 @@ function onCustomer(id) {
   loadContacts(id)
 }
 
-const newItem = () => ({ key: rowKey(), materialId: undefined, qty: 1, price: undefined, taxRate: 13 })
+const newItem = () => ({ key: rowKey(), materialId: undefined, qty: 1, price: undefined, taxRate: tax.defaultRate.value })
 function addItem() {
   form.value.items.push(newItem())
 }

@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.cache.CacheService;
+import com.lemon.erp.framework.dict.DictExtension;
 import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.dict.DictSource;
 import com.lemon.erp.framework.tenant.TenantContext;
@@ -22,6 +24,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,6 +56,8 @@ public class SysDictService implements DictLookup {
     private final SysDictDataMapper dataMapper;
     private final CacheService cache;
     private final ObjectProvider<DictSource> sources;
+    /** 业务模块声明的字典扩展值（如开票类型的税率） */
+    private final ObjectProvider<DictExtension> extensions;
 
     // ---------------- 字典类型 ----------------
 
@@ -63,13 +68,53 @@ public class SysDictService implements DictLookup {
                 .eq(status != null, SysDictType::getStatus, status)
                 .eq(kind != null, SysDictType::getKind, kind)
                 .orderByDesc(SysDictType::getId));
+        page.getRecords().forEach(this::fillExt);
         return PageResult.of(page);
     }
 
     /** 全部业务字典类型（业务字典页面左侧列表） */
     public List<SysDictType> businessTypes() {
-        return typeMapper.selectList(Wrappers.<SysDictType>lambdaQuery().eq(SysDictType::getKind, DictKind.BUSINESS)
+        List<SysDictType> list = typeMapper.selectList(Wrappers.<SysDictType>lambdaQuery().eq(SysDictType::getKind, DictKind.BUSINESS)
                 .orderByAsc(SysDictType::getType));
+        list.forEach(this::fillExt);
+        return list;
+    }
+
+    /** 声明了扩展值的字典：附上扩展值的名称和范围，页面据此显示扩展值列 */
+    private void fillExt(SysDictType type) {
+        DictExtension e = extensionOf(type.getType());
+        if (e != null) {
+            type.setExt(new SysDictType.Ext(Messages.get(e.label()), e.scale(), e.min(), e.max()));
+        }
+    }
+
+    private DictExtension extensionOf(String dictType) {
+        return extensions.stream().filter(e -> e.dictType().equals(dictType)).findFirst().orElse(null);
+    }
+
+    /**
+     * 扩展值按字典的定义校验并规范写法（去掉末尾的 0）；没有定义扩展值的字典不保存
+     */
+    private void normalizeExt(SysDictData data) {
+        DictExtension e = extensionOf(data.getDictType());
+        if (e == null) {
+            data.setExtValue(null);
+            return;
+        }
+        String label = Messages.get(e.label());
+        if (!StringUtils.hasText(data.getExtValue())) {
+            throw new BizException("system.error.dictExtRequired", label);
+        }
+        BigDecimal v;
+        try {
+            v = new BigDecimal(data.getExtValue().trim());
+        } catch (NumberFormatException ex) {
+            throw new BizException("system.error.dictExtInvalid", label, e.min().toPlainString(), e.max().toPlainString(), e.scale());
+        }
+        if (v.compareTo(e.min()) < 0 || v.compareTo(e.max()) > 0 || v.stripTrailingZeros().scale() > e.scale()) {
+            throw new BizException("system.error.dictExtInvalid", label, e.min().toPlainString(), e.max().toPlainString(), e.scale());
+        }
+        data.setExtValue(v.signum() == 0 ? "0" : v.stripTrailingZeros().toPlainString());
     }
 
     public SysDictType getType(Long id) {
@@ -198,6 +243,21 @@ public class SysDictService implements DictLookup {
         return map;
     }
 
+    @Override
+    public Map<String, BigDecimal> extValues(String dictType) {
+        Map<String, BigDecimal> map = new LinkedHashMap<>();
+        for (SysDictData d : listDataByType(dictType)) {
+            if (StringUtils.hasText(d.getExtValue())) {
+                try {
+                    map.put(d.getDictValue(), new BigDecimal(d.getExtValue().trim()));
+                } catch (NumberFormatException ignored) {
+                    // 直接改库写入的非数字扩展值视为没有
+                }
+            }
+        }
+        return map;
+    }
+
     /** 只有业务字典可以新增取值 */
     public void createData(SysDictData data) {
         SysDictType type = requireType(data.getDictType());
@@ -208,6 +268,7 @@ public class SysDictService implements DictLookup {
         data.setId(null);
         data.setTenantId(tenantOf(type));
         data.setBuiltin(0);
+        normalizeExt(data);
         checkValueUnique(data);
         if (data.getStatus() == null) data.setStatus(EnableStatus.ENABLED);
         if (data.getSort() == null) data.setSort(0);
@@ -215,7 +276,7 @@ public class SysDictService implements DictLookup {
         evict(type);
     }
 
-    /** 系统字典只能改名称、颜色、排序、备注；内置取值不能改键值 */
+    /** 系统字典只能改名称、颜色、排序、备注；内置取值不能改键值；业务字典的扩展值按定义校验 */
     public void updateData(SysDictData data) {
         SysDictData old = getData(data.getId());
         SysDictType type = requireType(old.getDictType());
@@ -229,6 +290,11 @@ public class SysDictService implements DictLookup {
             data.setDictValue(old.getDictValue());
         } else if (type.getKind() == DictKind.BUSINESS && !old.getDictValue().equals(data.getDictValue())) {
             checkBusinessValue(data.getDictValue());
+        }
+        if (type.getKind() == DictKind.SYSTEM) {
+            data.setExtValue(old.getExtValue());
+        } else {
+            normalizeExt(data);
         }
         checkValueUnique(data);
         dataMapper.updateById(data);

@@ -21,7 +21,6 @@ import com.lemon.erp.modules.crm.mapper.CrmContactMapper;
 import com.lemon.erp.modules.crm.mapper.CrmOpportunityItemMapper;
 import com.lemon.erp.modules.crm.mapper.CrmOpportunityMapper;
 import com.lemon.erp.modules.crm.mapper.CrmStageLogMapper;
-import com.lemon.erp.modules.crm.model.CrmConstants;
 import com.lemon.erp.modules.crm.model.OpportunityStage;
 import com.lemon.erp.modules.scm.dto.OrderItemRequest;
 import com.lemon.erp.modules.scm.dto.OrderRequest;
@@ -29,6 +28,7 @@ import com.lemon.erp.modules.scm.entity.ScmOrder;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.service.ScmOrderService;
+import com.lemon.erp.modules.scm.service.ScmTaxRates;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +38,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -61,6 +62,7 @@ public class CrmOpportunityService {
     private final WmsMaterialService materialService;
     private final UserLookup userLookup;
     private final DocNoService docNoService;
+    private final ScmTaxRates taxRates;
 
     @DataPermission(table = "crm_opportunity", deptColumn = "dept_id", userColumn = "owner_id")
     public PageResult<CrmOpportunity> page(long current, long size, String keyword, String stage, String status,
@@ -246,12 +248,13 @@ public class CrmOpportunityService {
         if (req.items() != null && !req.items().isEmpty()) {
             materialService.getEnabled(req.items().stream().map(OpportunityRequest.Item::materialId).toList());
         }
+        BigDecimal defaultRate = req.items() == null || req.items().isEmpty() ? null : taxRates.defaultRate();
         List<CrmOpportunityItem> items = req.items() == null ? List.of() : req.items().stream().map(i -> {
             CrmOpportunityItem item = new CrmOpportunityItem();
             item.setMaterialId(i.materialId());
             item.setQty(i.qty());
             item.setPrice(i.price());
-            item.setTaxRate(i.taxRate() == null ? CrmConstants.DEFAULT_TAX_RATE : i.taxRate());
+            item.setTaxRate(i.taxRate() == null ? defaultRate : i.taxRate());
             item.setAmount(i.qty().multiply(i.price()).setScale(2, RoundingMode.HALF_UP));
             return item;
         }).toList();

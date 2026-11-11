@@ -8,6 +8,9 @@
     :scroll="{ x: scrollX ?? widthSum }"
     :locale="emptyText ? { emptyText } : undefined"
   >
+    <template #headerCell="slotProps">
+      <slot name="header" v-bind="slotProps" />
+    </template>
     <template #bodyCell="slotProps">
       <template v-if="slotProps.column.key === 'action' && !$slots.action">
         <a-button type="link" danger size="small" :disabled="items.length <= minRows" @click="remove(slotProps.record)">
@@ -28,7 +31,7 @@ import { DeleteOutlined } from '@ant-design/icons-vue'
 /**
  * 单据明细行表格：行 key 为 key（见 useLineItems），横向滚动宽度默认为各列宽之和；
  * key 为 action 的列默认是删除按钮（少于等于 minRows 行时不可删，confirmRemove 返回标题时先确认），可用 #action 插槽替换；
- * 其余单元格用 #cell 插槽，参数同 a-table 的 bodyCell（column、record、index）。
+ * 其余单元格用 #cell 插槽，参数同 a-table 的 bodyCell（column、record、index）；#header 插槽可自定义列头（参数同 headerCell，不处理的列显示 title）。
  */
 const props = defineProps({
   items: { type: Array, required: true },

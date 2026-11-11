@@ -80,6 +80,9 @@ public class ScmOrder extends BaseEntity {
     /** 整单优惠（含税，含抹零）：按行金额分摊到各行，已从金额中扣除 */
     private BigDecimal wholeDiscount;
 
+    /** 发票类型（业务字典 scm_invoice_kind，可空）：明细未填写税率时取它的税率，出入库单显示订单的发票类型 */
+    private String invoiceKind;
+
     /** 关闭时的尾差调整合计（订单币种）：部分出入库的行按 行金额 × 已出入库数量 / 订单数量 调整，生成应收 / 应付调整单 */
     private BigDecimal closeAdjust;
 

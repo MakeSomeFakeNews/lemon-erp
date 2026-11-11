@@ -17,6 +17,11 @@ public interface DictLookup {
     Map<String, String> options(String dictType);
 
     /**
+     * 启用取值的扩展值（值 → 扩展值，见 {@link DictExtension}；业务字典按当前租户），没有扩展值的取值不在其中
+     */
+    Map<String, java.math.BigDecimal> extValues(String dictType);
+
+    /**
      * 取值必须是字典中启用的值，否则提示「{名称}不正确」；value 为空时不校验（是否必填由调用方决定）
      *
      * @param fieldKey 字段名称的消息键，如 hr.label.empType

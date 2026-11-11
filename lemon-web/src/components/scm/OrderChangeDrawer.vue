@@ -143,6 +143,7 @@ import { currencySymbol } from '@/components/fin/currency'
 import { ORDER_KINDS, formatMoney, lineAmount, qty4 } from './scm'
 
 import { OrderChangeAction, OrderChangeStatus } from '@/constants/enums'
+import { useTaxRates } from './taxRate'
 /**
  * 订单变更：已审核 / 部分完成的订单修改明细数量、单价、交货日期，删除未执行的明细，新增明细。
  * 只提交有变化的明细；数量、单价按基本单位。提交成功后触发 success
@@ -156,6 +157,8 @@ const props = defineProps({
 const emit = defineEmits(['update:open', 'success'])
 
 const { t } = useI18n()
+/** 新增明细的税率：订单发票类型的税率，没有时为业务参数「默认税率」（issue #82） */
+const tax = useTaxRates()
 const conf = computed(() => ORDER_KINDS[props.kind])
 const symbol = computed(() => currencySymbol(props.order?.currency))
 
@@ -255,7 +258,7 @@ const newTotal = computed(() => {
 })
 
 function addRow() {
-  adds.value.push({ key: rowKey(), materialId: undefined, qty: undefined, price: undefined, taxRate: 13, deliveryDate: undefined })
+  adds.value.push({ key: rowKey(), materialId: undefined, qty: undefined, price: undefined, taxRate: tax.fallback(props.order?.invoiceKind), deliveryDate: undefined })
 }
 
 function applyMaterial(row, m) {

@@ -1,6 +1,8 @@
 package com.lemon.erp.modules.system.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.system.model.DictKind;
@@ -9,6 +11,8 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
+import java.math.BigDecimal;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -30,4 +34,20 @@ public class SysDictType extends BaseEntity {
     private EnableStatus status;
 
     private String remark;
+
+    /** 取值的扩展值定义（业务模块声明的 DictExtension，名称已按界面语言翻译），没有时为空；只读 */
+    @TableField(exist = false)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Ext ext;
+
+    /**
+     * 扩展值定义：字典页面多显示一列，保存取值时必填
+     *
+     * @param label 名称，如 税率(%)
+     * @param scale 最多小数位数
+     * @param min   最小值
+     * @param max   最大值
+     */
+    public record Ext(String label, int scale, BigDecimal min, BigDecimal max) {
+    }
 }

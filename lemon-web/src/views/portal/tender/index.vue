@@ -150,7 +150,8 @@ async function openDetail(id) {
   const byItem = new Map((own?.items || []).map((i) => [i.tenderItemId, i]))
   prices.value = Object.fromEntries(tender.items.map((i) => [i.id, {
     price: byItem.get(i.id) ? Number(byItem.get(i.id).price) : undefined,
-    taxRate: byItem.get(i.id) ? Number(byItem.get(i.id).taxRate) : 13
+    // 未投过标的物料按采购方的默认税率（业务参数，详情接口返回）
+    taxRate: byItem.get(i.id) ? Number(byItem.get(i.id).taxRate) : tender.defaultTaxRate != null ? Number(tender.defaultTaxRate) : undefined
   }]))
   bidForm.value = { deliveryDays: own?.deliveryDays, remark: own?.remark || '' }
   detail.value = tender

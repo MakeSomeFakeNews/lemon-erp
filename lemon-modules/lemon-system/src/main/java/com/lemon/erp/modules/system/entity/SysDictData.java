@@ -46,4 +46,7 @@ public class SysDictData extends BaseEntity {
     private Integer builtin;
 
     private String remark;
+
+    /** 扩展值：只用于声明了 DictExtension 的字典（如开票类型的税率），保存时按定义校验，其他字典为空 */
+    private String extValue;
 }

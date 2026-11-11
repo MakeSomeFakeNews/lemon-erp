@@ -35,7 +35,13 @@
             <IdentityUserSelect v-model:value="form.salesmanId" :placeholder="$t('scm.trade.salesmanDefault')" />
           </a-form-item>
         </a-col>
-        <a-col :xs="24" :sm="12" :lg="kind === 'salesOut' && direct ? 5 : 9">
+        <!-- 发票类型：直接开单时选择后明细税率统一调整；引用订单时显示订单的发票类型（税率取订单） -->
+        <a-col :xs="24" :sm="12" :lg="4">
+          <a-form-item :label="$t('scm.taxRate.invoiceKind')" name="invoiceKind" :tooltip="direct ? $t('scm.taxRate.invoiceKindExtra') : undefined">
+            <InvoiceKindSelect v-model:value="form.invoiceKind" :disabled="!direct" @change="onInvoiceKindChange" />
+          </a-form-item>
+        </a-col>
+        <a-col :xs="24" :sm="12" :lg="kind === 'salesOut' && direct ? 24 : 5">
           <a-form-item :label="$t('common.field.remark')" name="remark">
             <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('scm.trade.optional')" />
           </a-form-item>
@@ -100,6 +106,8 @@ import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import PartnerSelect from './PartnerSelect.vue'
 import TradeDocItems from './TradeDocItems.vue'
 import TradeFreight from './TradeFreight.vue'
+import InvoiceKindSelect from './InvoiceKindSelect.vue'
+import { applyTaxRate, useTaxRates } from './taxRate'
 import { getOrder, pageOrder } from '@/api/scm/order'
 import { addTrade, addTradeDraft, getTrade, getTradeDraft, pageTrade, postTradeDraft, updateTradeDraft } from '@/api/scm/trade'
 import { useFormDrawer } from '@/composables/useFormDrawer'
@@ -149,8 +157,16 @@ const rules = computed(() => ({
 const emptyForm = () => ({
   id: undefined, docNo: undefined, orderId: undefined, sourceDocId: undefined, partnerId: undefined, partnerLabel: undefined, salesmanId: undefined,
   warehouseId: undefined, bizDate: today(), remark: '', replenish: false, wholeDiscount: undefined, orderDiscount: undefined,
-  ...freightForm(props.kind), items: []
+  invoiceKind: undefined, ...freightForm(props.kind), items: []
 })
+
+// 税率：直接开单的新明细为发票类型的税率，没有时为业务参数「默认税率」；选择发票类型后明细税率统一调整（issue #82）
+const tax = useTaxRates()
+const newRow = () => ({ ...newTradeRow(tax.fallback(form.value.invoiceKind)), key: rowKey() })
+function onInvoiceKindChange(kind, rate) {
+  if (rate == null || !direct.value) return
+  message.success(t('scm.taxRate.invoiceKindApplied', { n: applyTaxRate(form.value.items, rate), rate }))
+}
 
 /**
  * 保存方式：save 保存即审核（未开启草稿）；draft 保存草稿；post 审核（新单直接保存并审核，草稿先按表单修改再审核）。
@@ -190,6 +206,7 @@ const drawer = useFormDrawer({
       replenish: isReturn.value && byOrder ? f.replenish : null,
       sourceDocId: sourceByDoc.value && byOrder ? f.sourceDocId || null : null,
       wholeDiscount: byOrder ? null : f.wholeDiscount || null,
+      invoiceKind: byOrder ? null : f.invoiceKind || null,
       // 引用订单的采购入库修改了订单优惠（为空按订单分摊）
       orderDiscount: byOrder && props.kind === 'purchaseIn' && f.orderDiscount != null ? f.orderDiscount : null,
       ...freightPayload(props.kind, f),
@@ -298,6 +315,8 @@ function useOrder(order, doc) {
   form.value.partnerId = order.partnerId
   form.value.partnerLabel = `${order.partnerCode} ${order.partnerName}`
   form.value.orderDiscount = undefined
+  // 引用订单时沿用订单的发票类型（只显示，税率取订单明细）
+  form.value.invoiceKind = order.invoiceKind || undefined
   if (directOrder.value) form.value.replenish = false
   const warehouseId = doc?.warehouseId || order.warehouseId
   if (warehouseId && !form.value.warehouseId) form.value.warehouseId = warehouseId
@@ -320,17 +339,17 @@ async function selectSource(id) {
 /** 取消引用：回到直接开单 */
 function clearSource() {
   currentOrder.value = undefined
-  Object.assign(form.value, { orderId: undefined, sourceDocId: undefined, replenish: false, wholeDiscount: undefined, orderDiscount: undefined })
-  form.value.items = allowDirect.value ? [{ ...newTradeRow(), key: rowKey() }] : []
+  Object.assign(form.value, { orderId: undefined, sourceDocId: undefined, replenish: false, wholeDiscount: undefined, orderDiscount: undefined, invoiceKind: undefined })
+  form.value.items = allowDirect.value ? [newRow()] : []
 }
 
 async function openCreate(order) {
   fixedOrder.value = !!order
   currentOrder.value = undefined
   sources.value = []
-  await rulesReady
+  await Promise.all([rulesReady, tax.ready])
   mode.value = draftMode.value ? 'draft' : 'save'
-  if (!order) return drawer.openCreate(allowDirect.value ? { items: [{ ...newTradeRow(), key: rowKey() }] } : {})
+  if (!order) return drawer.openCreate(allowDirect.value ? { items: [{ ...newTradeRow(tax.defaultRate.value), key: rowKey() }] } : {})
   const full = await getOrder(conf.value.orderKind, order.id)
   const items = orderRows(full)
   if (!items.length) {
@@ -341,7 +360,7 @@ async function openCreate(order) {
   sources.value = [full]
   return drawer.openCreate({
     orderId: full.id, partnerId: full.partnerId, partnerLabel: `${full.partnerCode} ${full.partnerName}`,
-    warehouseId: full.warehouseId || undefined, items
+    warehouseId: full.warehouseId || undefined, invoiceKind: full.invoiceKind || undefined, items
   })
 }
 
@@ -374,13 +393,15 @@ async function loadDraft(id) {
     warehouseId: d.warehouseId, bizDate: d.bizDate, remark: d.remark || '', replenish: d.replenish === 1,
     wholeDiscount: d.wholeDiscount != null ? Number(d.wholeDiscount) : undefined,
     orderDiscount: d.orderDiscount != null ? Number(d.orderDiscount) : undefined,
+    invoiceKind: d.invoiceKind || undefined,
     ...freightForm(props.kind, d)
   }
   if (!d.orderId) {
     const items = d.items.map((i) => ({
       ...newTradeRow(), key: rowKey(), materialId: i.materialId, materialLabel: [i.materialCode, i.materialName].filter(Boolean).join(' '),
       materialCode: i.materialCode, materialName: i.materialName, spec: i.spec, unit: i.unit, batchEnabled: i.batchEnabled,
-      serialEnabled: i.serialEnabled, price: i.price != null ? Number(i.price) : undefined, taxRate: i.taxRate != null ? Number(i.taxRate) : 13,
+      serialEnabled: i.serialEnabled, price: i.price != null ? Number(i.price) : undefined,
+      taxRate: i.taxRate != null ? Number(i.taxRate) : i.gift === 1 ? undefined : tax.fallback(d.invoiceKind),
       priceAuto: false, gift: i.gift === 1, unitName: i.unitName || undefined, ...draftSlot(i)
     }))
     return { ...head, items }
@@ -400,7 +421,7 @@ async function loadDraft(id) {
 
 /** 修改草稿（列表中的「编辑」或点击草稿单号） */
 async function openDraft(draft) {
-  await rulesReady
+  await Promise.all([rulesReady, tax.ready])
   mode.value = 'draft'
   return drawer.openEdit(draft)
 }

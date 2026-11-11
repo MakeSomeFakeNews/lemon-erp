@@ -23,11 +23,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ScmPriceListService {
 
-    private static final BigDecimal DEFAULT_TAX_RATE = BigDecimal.valueOf(13);
-
     private final ScmPriceListMapper priceListMapper;
     private final WmsMaterialService materialService;
     private final ScmCustomerService customerService;
+    private final ScmTaxRates taxRates;
 
     public PageResult<ScmPriceList> page(long current, long size, String keyword, String level) {
         Page<ScmPriceList> page = Page.of(current, size);
@@ -80,7 +79,7 @@ public class ScmPriceListService {
             p.setCustomerLevel(null);
         }
         p.setMinQty(Decimals.nz(p.getMinQty()));
-        p.setTaxRate(p.getTaxRate() == null ? DEFAULT_TAX_RATE : p.getTaxRate());
+        p.setTaxRate(p.getTaxRate() == null ? taxRates.defaultRate() : p.getTaxRate());
         return p;
     }
 }

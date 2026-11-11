@@ -18,6 +18,9 @@
       :columns="columns"
       :empty-text="direct ? $t('scm.trade.emptyDirect') : form.orderId ? $t('scm.trade.noItems', { action: conf.action }) : $t('scm.trade.selectOrderFirst')"
     >
+      <template #header="{ column }">
+        <TaxRateTitle v-if="column.key === 'taxRate'" :title="column.title" @apply="applyAllTaxRate" />
+      </template>
       <template #cell="{ column, record }">
         <template v-if="column.key === 'material'">
           <template v-if="record.gift">
@@ -182,6 +185,8 @@ import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import StockSlotSelect from './StockSlotSelect.vue'
 import PriceReference from './PriceReference.vue'
 import WholeDiscountBar from './WholeDiscountBar.vue'
+import TaxRateTitle from './TaxRateTitle.vue'
+import { applyTaxRate, useTaxRates } from './taxRate'
 import { defaultPrices } from '@/api/scm/pricing'
 import { previewPromotion } from '@/api/scm/sourcing'
 import { giftExpected, syncGifts } from './giftRows'
@@ -212,7 +217,13 @@ const priceKind = computed(() => (conf.value.orderKind === 'sales' ? 'SALES' : '
 const inbound = computed(() => props.kind === 'purchaseIn' || props.kind === 'salesReturn')
 const requiredRule = (msg) => [{ required: true, message: msg }]
 
-const lines = useLineItems(() => props.form.items, { newRow: newTradeRow })
+// 新明细的税率：表头发票类型的税率，没有时为业务参数「默认税率」（issue #82）
+const tax = useTaxRates()
+const lines = useLineItems(() => props.form.items, { newRow: () => newTradeRow(tax.fallback(props.form.invoiceKind)) })
+/** 列头「统一设置税率」：全部明细（赠品除外） */
+function applyAllTaxRate(rate) {
+  message.success(t('scm.taxRate.applied', { n: applyTaxRate(props.form.items, rate), rate }))
+}
 const addRow = (extra) => lines.addRow(extra)
 
 const columns = computed(() => {
@@ -339,7 +350,9 @@ async function fillPrices(rows) {
     if (!p || !r.priceAuto) return
     if (p.price == null) return
     r.price = Number(p.price)
-    if (p.taxRate != null) r.taxRate = Number(p.taxRate)
+    // 选了发票类型时税率按发票类型，否则按价格来源的税率（没有时保持原税率）
+    const rate = tax.sourceRate(props.form.invoiceKind, p.taxRate)
+    if (rate != null) r.taxRate = rate
     r.priceSource = p.source
   })
 }

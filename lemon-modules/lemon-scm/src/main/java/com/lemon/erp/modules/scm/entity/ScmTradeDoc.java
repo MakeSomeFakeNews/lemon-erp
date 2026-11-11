@@ -127,6 +127,10 @@ public class ScmTradeDoc extends BaseEntity {
     @TableField(exist = false)
     private BigDecimal wholeDiscount;
 
+    /** 发票类型（业务字典 scm_invoice_kind）：取订单（直接开单为隐式订单）的发票类型 */
+    @TableField(exist = false)
+    private String invoiceKind;
+
     /** 采购运费承运商名称 */
     @TableField(exist = false)
     private String carrierSupplierName;

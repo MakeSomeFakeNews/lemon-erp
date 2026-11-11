@@ -40,6 +40,7 @@ import com.lemon.erp.modules.scm.service.ScmQueryService;
 import com.lemon.erp.modules.scm.service.ScmRebateService;
 import com.lemon.erp.modules.scm.service.ScmShipmentService;
 import com.lemon.erp.modules.scm.service.ScmSupplierService;
+import com.lemon.erp.modules.scm.service.ScmTaxRates;
 import com.lemon.erp.modules.scm.service.ScmTradeDocService;
 import com.lemon.erp.modules.wms.service.DocNoService;
 import lombok.RequiredArgsConstructor;
@@ -67,7 +68,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class FinBillService {
 
-    private static final BigDecimal REBATE_TAX_RATE = BigDecimal.valueOf(13);
 
     private final FinBillMapper billMapper;
     private final FinSettlementItemMapper settlementItemMapper;
@@ -81,6 +81,7 @@ public class FinBillService {
     private final ScmShipmentService shipmentService;
     private final QmsClaimService claimService;
     private final ScmRebateService rebateService;
+    private final ScmTaxRates taxRates;
     private final ScmQueryService scmQueryService;
     private final ScmTradeDocService tradeDocService;
 
@@ -283,11 +284,11 @@ public class FinBillService {
     }
 
     /**
-     * 返利结算（红字单据方式）：销售返利生成红字应收单冲减应收，采购返利生成红字应付单冲减应付；税额按 13% 价内计算，与结算同一事务
+     * 返利结算（红字单据方式）：销售返利生成红字应收单冲减应收，采购返利生成红字应付单冲减应付；税额按默认税率（供应链业务参数，默认 13%）价内计算，与结算同一事务
      */
     @EventListener
     public void onRebateSettled(RebateSettledEvent e) {
-        BigDecimal tax = ScmConstants.tax(e.amount(), REBATE_TAX_RATE);
+        BigDecimal tax = ScmConstants.tax(e.amount(), taxRates.defaultRate());
         boolean purchase = e.kind() == RebateKind.PURCHASE;
         FinBill bill = createFromSource(purchase ? BillKind.AP : BillKind.AR, e.partnerId(), BillSource.REBATE, e.rebateId(), e.rebateNo(),
                 e.settleDate(), e.amount().negate(), tax.negate(), (purchase ? "采购返利 " : "销售返利 ") + e.rebateNo(), null); // i18n-ignore

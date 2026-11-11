@@ -19,6 +19,7 @@ export default {
     quantity: 'Qty',
     taxPrice: 'Unit Price (Tax Incl.)',
     taxRate: 'Tax Rate',
+    invoiceKind: 'Invoice Type',
     prepared: 'Prepared By',
     approved: 'Approved By',
     orderNo: 'Order No.',

@@ -19,6 +19,7 @@ export default {
     quantity: '数量',
     taxPrice: '含税单价',
     taxRate: '税率',
+    invoiceKind: '发票类型',
     prepared: '制单',
     approved: '审核',
     orderNo: '订单号',

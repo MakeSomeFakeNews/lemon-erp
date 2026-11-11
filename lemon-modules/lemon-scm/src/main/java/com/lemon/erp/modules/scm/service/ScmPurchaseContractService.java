@@ -42,7 +42,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.lemon.erp.modules.scm.model.ScmConstants.CONTRACT_RULE;
-import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 
 /**
  * 采购合同 / 框架协议：草稿 → 提交（发布了审批流程时审批）→ 生效 → 关闭。生效且在期限内的合同可被采购订单引用，
@@ -64,6 +63,7 @@ public class ScmPurchaseContractService {
     private final WmsMaterialService materialService;
     private final DocNoService docNoService;
     private final ApprovalSupport approvalSupport;
+    private final ScmTaxRates taxRates;
 
     @DataPermission(table = "scm_purchase_contract", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmPurchaseContract> page(long current, long size, ContractStatus status, Long supplierId, String keyword) {
@@ -209,11 +209,12 @@ public class ScmPurchaseContractService {
             throw new BizException("scm.error.fixedQuantityContractsRequireQuantityEach");
         }
         materialService.getEnabled(req.items().stream().map(SrmRequests.ContractItem::materialId).toList());
+        BigDecimal defaultRate = taxRates.defaultRate();
         return req.items().stream().map(r -> {
             ScmPurchaseContractItem item = new ScmPurchaseContractItem();
             item.setMaterialId(r.materialId());
             item.setPrice(r.price());
-            item.setTaxRate(r.taxRate() == null ? DEFAULT_TAX_RATE : r.taxRate());
+            item.setTaxRate(r.taxRate() == null ? defaultRate : r.taxRate());
             item.setQtyLimit(r.qtyLimit());
             item.setRemark(r.remark());
             return item;

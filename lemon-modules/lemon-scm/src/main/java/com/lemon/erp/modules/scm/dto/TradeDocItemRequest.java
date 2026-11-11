@@ -19,7 +19,7 @@ import java.time.LocalDate;
  * @param serialNos      序列号，逗号或换行分隔
  * @param materialId     直接开单：物料
  * @param price          直接开单：含税单价
- * @param taxRate        直接开单：税率（%），为空按默认税率
+ * @param taxRate        直接开单：税率（%），为空时取表头发票类型的税率，没有时取业务参数「默认税率」
  * @param warehouseId    仅销售出库（业务参数 scm.salesOut.lineWarehouse 开启时）：本行出库的仓库，为空取表头仓库
  * @param gift           仅直接开单的销售出库：买赠促销的赠品行（单价为 0，不计应收），同一赠品可拆成多行（不同库位、批次、仓库），
  *                       各赠品的数量合计须与促销规则计算的一致；请求中没有赠品行时按先到期先出自动补上

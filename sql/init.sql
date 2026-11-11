@@ -560,6 +560,7 @@ CREATE TABLE sys_dict_data (
     status      TINYINT      NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
     builtin     TINYINT      NOT NULL DEFAULT 0 COMMENT '内置取值 1是：程序依赖该取值，不能删除、不能改键值（系统字典的取值全部内置）',
     remark      VARCHAR(255)          DEFAULT NULL COMMENT '备注',
+    ext_value   VARCHAR(32)           DEFAULT NULL COMMENT '扩展值：只用于业务模块声明了扩展值的字典（如开票类型 scm_invoice_kind 的税率 %），其他字典为空',
     create_time DATETIME              DEFAULT NULL COMMENT '创建时间',
     update_time DATETIME              DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
@@ -1476,6 +1477,7 @@ CREATE TABLE scm_quotation (
     total_amount     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '价税合计',
     tax_amount       DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '税额',
     whole_discount   DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '整单优惠（含税，含抹零），已从价税合计中扣除；转订单时分摊到订单各行',
+    invoice_kind     VARCHAR(16)             DEFAULT NULL COMMENT '发票类型(业务字典 scm_invoice_kind)：明细未填写税率时取它的税率，转销售订单时带到订单',
     remark           VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     lost_reason      VARCHAR(255)            DEFAULT NULL COMMENT '失效原因',
     order_id         BIGINT                  DEFAULT NULL COMMENT '成交生成的销售订单',
@@ -1577,6 +1579,7 @@ CREATE TABLE scm_order (
     discount_amount  DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '促销优惠合计（原价 - 成交价），已从金额中扣除',
     rebate_amount    DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '使用返利抵扣的金额（按行金额分摊到单价），已从金额中扣除',
     whole_discount   DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '整单优惠（含税，含抹零）：促销、返利之后按行金额分摊到各行金额，已从金额中扣除',
+    invoice_kind     VARCHAR(16)             DEFAULT NULL COMMENT '发票类型(业务字典 scm_invoice_kind)：明细未填写税率时取它的税率；出入库单显示所属订单的发票类型',
     close_adjust     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '关闭时的尾差调整（订单币种）：部分出入库的行按 行金额 × 已出入库数量 / 订单数量 调整已出入库金额，生成应收 / 应付调整单',
     external_no      VARCHAR(64)             DEFAULT NULL COMMENT '外部单号（电商 / 门店订单导入），同一租户不重复',
     remark           VARCHAR(255)            DEFAULT NULL COMMENT '备注',
@@ -1879,6 +1882,7 @@ CREATE TABLE scm_trade_draft (
     salesman_id  BIGINT                  DEFAULT NULL COMMENT '直接开单的销售出库：业务员',
     replenish    TINYINT        NOT NULL DEFAULT 0 COMMENT '退货是否补发（补收） 1补发 0退款',
     whole_discount DECIMAL(18, 2)        DEFAULT NULL COMMENT '直接开单的整单优惠（含税）',
+    invoice_kind   VARCHAR(16)           DEFAULT NULL COMMENT '直接开单的发票类型(业务字典 scm_invoice_kind)，审核时记在隐式订单上；引用订单时为空（取订单的）',
     order_discount DECIMAL(18, 2)        DEFAULT NULL COMMENT '引用订单的采购入库：本单的订单优惠（含税，订单币种），为空按订单分摊',
     freight      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '运费',
     freight_bearer VARCHAR(16)           DEFAULT NULL COMMENT '运费承担(字典 scm_freight_bearer)，含义同出入库单',
@@ -7755,6 +7759,19 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT DISTINCT rm.role_id, 1374 FROM sys_role_menu rm
 WHERE rm.menu_id = 1371 AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = rm.role_id AND x.menu_id = 1374);
+
+-- 发票类型（开票类型，业务字典，每个租户一份，issue #82）：订单、报价单、直接开单的出入库表头选择后明细税率按它统一调整，
+-- 扩展值为税率（%），租户可自行增加；明细未填写税率时取发票类型的税率，没有时取业务参数「默认税率」
+INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
+(208, '发票类型', 'scm_invoice_kind', 'BUSINESS', 1, '进销存单据表头的发票类型（开票类型），扩展值为税率（%）：选择后明细税率统一调整为该税率', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, ext_value, create_time, update_time) VALUES
+('scm_invoice_kind', '增值税专票 13%', 'SPECIAL_13', 'red', 1, 1, '13', NOW(), NOW()),
+('scm_invoice_kind', '增值税专票 9%', 'SPECIAL_9', 'volcano', 2, 1, '9', NOW(), NOW()),
+('scm_invoice_kind', '增值税专票 6%', 'SPECIAL_6', 'orange', 3, 1, '6', NOW(), NOW()),
+('scm_invoice_kind', '增值税普票 13%', 'NORMAL_13', 'blue', 4, 1, '13', NOW(), NOW()),
+('scm_invoice_kind', '增值税普票 3%', 'NORMAL_3', 'geekblue', 5, 1, '3', NOW(), NOW()),
+('scm_invoice_kind', '增值税普票 1%', 'NORMAL_1', 'cyan', 6, 1, '1', NOW(), NOW()),
+('scm_invoice_kind', '不开票', 'NONE', 'default', 7, 1, '0', NOW(), NOW());
 
 -- 字典种类：业务字典由各租户自己维护（可新增取值），其余为系统字典；程序依赖的取值标记为内置（不能删除、不能改键值）
 UPDATE sys_dict_type SET kind = 'BUSINESS' WHERE type IN ('wf_category', 'scm_customer_level', 'scm_carrier', 'mes_supplement_reason',

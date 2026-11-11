@@ -72,6 +72,16 @@ export default {
     'OWN': 'Own Brand', // 自有品牌
     'OTHER': 'Other', // 其他
   },
+  // 发票类型（开票类型，扩展值为税率）
+  scm_invoice_kind: {
+    'SPECIAL_13': 'VAT Special Invoice 13%', // 增值税专票 13%
+    'SPECIAL_9': 'VAT Special Invoice 9%', // 增值税专票 9%
+    'SPECIAL_6': 'VAT Special Invoice 6%', // 增值税专票 6%
+    'NORMAL_13': 'VAT General Invoice 13%', // 增值税普票 13%
+    'NORMAL_3': 'VAT General Invoice 3%', // 增值税普票 3%
+    'NORMAL_1': 'VAT General Invoice 1%', // 增值税普票 1%
+    'NONE': 'No Invoice', // 不开票
+  },
   // 客户区域
   scm_region: {
     'EAST': 'East China', // 华东

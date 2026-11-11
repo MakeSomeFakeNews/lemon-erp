@@ -167,8 +167,11 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
+import { useTaxRates } from '@/components/scm/taxRate'
 
 const { t } = useI18n()
+/** 新明细 / 新价格的税率：业务参数「默认税率」（issue #82） */
+const tax = useTaxRates()
 const dict = useDict('scm_customer_level')
 
 const validityText = (r) => (r.validFrom || r.validTo ? `${r.validFrom || t('scm.priceList.unlimited')} ~ ${r.validTo || t('scm.priceList.unlimited')}` : t('scm.priceList.longTerm'))
@@ -232,7 +235,7 @@ function openForm(record) {
         price: num(record.price),
         taxRate: num(record.taxRate)
       }
-    : { materialId: undefined, customerId: null, customerLevel: undefined, minQty: undefined, price: undefined, taxRate: 13, remark: '' }
+    : { materialId: undefined, customerId: null, customerLevel: undefined, minQty: undefined, price: undefined, taxRate: tax.defaultRate.value, remark: '' }
   formOpen.value = true
 }
 

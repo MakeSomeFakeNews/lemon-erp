@@ -171,10 +171,15 @@ const warehouseIndex = computed(() => Math.max(0, warehouses.value.findIndex((w)
 const warehouseName = computed(() => warehouses.value.find((w) => w.id === warehouseId.value)?.name)
 /** 业务参数：销售出库明细可选仓库（默认开启，与后端一致） */
 const lineWarehouse = computed(() => bizRule('scm.salesOut.lineWarehouse', true) === true)
+/** 业务参数：默认税率（%），新明细的税率；读取失败时为空，由后端按默认税率处理（issue #82） */
+const defaultTaxRate = computed(() => {
+  const v = bizRule('scm.defaultTaxRate', null)
+  return v == null || v === '' ? null : Number(v)
+})
 
 onLoad(async () => {
   if (!(await ensureLogin())) return
-  await loadBizRules(['scm.directDoc.enabled', 'scm.salesOut.lineWarehouse', 'scm.tradeDoc.draft'])
+  await loadBizRules(['scm.directDoc.enabled', 'scm.salesOut.lineWarehouse', 'scm.tradeDoc.draft', 'scm.defaultTaxRate'])
   disabled.value = bizRule('scm.directDoc.enabled', true) === false
   if (disabled.value) return
   warehouses.value = (await warehouseOptions().catch(() => [])) || []
@@ -287,7 +292,7 @@ async function onScan(code) {
 function newRow(m, extra) {
   return {
     key: rowKey(), materialId: m.id, materialCode: m.code, materialName: m.name, spec: m.spec, unit: m.unit,
-    batchEnabled: m.batchEnabled, serialEnabled: m.serialEnabled, qty: 0, price: null, taxRate: null,
+    batchEnabled: m.batchEnabled, serialEnabled: m.serialEnabled, qty: 0, price: null, taxRate: defaultTaxRate.value,
     unitName: null, unitRatio: 1, units: [], warehouseId: null,
     priceSource: null, priceAuto: true, slots: [], slotIndex: 0, slotsLoading: false, serials: [], gift: false,
     ...extra
