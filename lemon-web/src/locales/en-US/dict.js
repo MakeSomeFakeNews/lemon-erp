@@ -353,6 +353,7 @@ export default {
     'NOTE': 'Notes', // 票据
     'TRANSFER': 'Account Transfer', // 账户调拨
     'INCOME_EXPENSE': 'Other Income / Expense', // 其他收支
+    'NETTING': 'AR/AP Netting', // 应收应付对冲
   },
   // 核销状态
   fin_bill_status: {

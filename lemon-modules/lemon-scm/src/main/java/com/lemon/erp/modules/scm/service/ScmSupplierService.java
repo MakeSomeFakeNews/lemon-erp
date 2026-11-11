@@ -16,10 +16,12 @@ import com.lemon.erp.framework.ref.ReferenceGuard;
 import com.lemon.erp.modules.scm.dto.CarrierOptions;
 import com.lemon.erp.modules.scm.dto.PartnerOption;
 import com.lemon.erp.modules.scm.dto.SupplierKpi;
+import com.lemon.erp.modules.scm.entity.ScmCustomer;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
 import com.lemon.erp.modules.scm.entity.ScmSupplier;
 import com.lemon.erp.modules.scm.entity.ScmSupplierEval;
 import com.lemon.erp.modules.scm.entity.ScmSupplierPrice;
+import com.lemon.erp.modules.scm.mapper.ScmCustomerMapper;
 import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
 import com.lemon.erp.modules.scm.mapper.ScmSupplierEvalMapper;
 import com.lemon.erp.modules.scm.mapper.ScmSupplierMapper;
@@ -33,10 +35,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -44,7 +48,8 @@ public class ScmSupplierService {
 
     /** 记录变更历史的字段 */
     private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "供应商编码", "name", "供应商名称", "contact", "联系人", "phone", "联系电话", "email", "邮箱", // i18n-ignore
-            "address", "地址", "taxNo", "纳税人识别号", "bankName", "开户行", "bankAccount", "银行账号", "paymentDays", "账期", "logistics", "物流公司", "routes", "营运路线", "remark", "备注"); // i18n-ignore
+            "address", "地址", "taxNo", "纳税人识别号", "bankName", "开户行", "bankAccount", "银行账号", "paymentDays", "账期", "logistics", "物流公司", "routes", "营运路线", // i18n-ignore
+            "customerId", "关联客户", "remark", "备注"); // i18n-ignore
 
     /** 下拉搜索每页最多返回的条数 */
     public static final int OPTION_LIMIT = 50;
@@ -52,6 +57,7 @@ public class ScmSupplierService {
     private static final int LOGISTICS = 1;
 
     private final ScmSupplierMapper supplierMapper;
+    private final ScmCustomerMapper customerMapper;
     private final DocNoService docNoService;
     private final ScmSupplierPriceMapper priceMapper;
     private final ScmSupplierEvalMapper evalMapper;
@@ -72,7 +78,22 @@ public class ScmSupplierService {
                 .eq(logistics != null, ScmSupplier::getLogistics, logistics)
                 .eq(status != null, ScmSupplier::getStatus, status)
                 .orderByAsc(ScmSupplier::getCode));
+        fillNames(page.getRecords());
         return PageResult.of(page);
+    }
+
+    /** 关联客户、已合并到的供应商的显示名（编码 名称），一次查询 */
+    private void fillNames(List<ScmSupplier> rows) {
+        List<Long> customerIds = rows.stream().map(ScmSupplier::getCustomerId).filter(Objects::nonNull).distinct().toList();
+        Map<Long, String> customers = customerIds.isEmpty() ? Collections.<Long, String>emptyMap() : customerMapper.selectByIds(customerIds).stream()
+                .collect(Collectors.toMap(ScmCustomer::getId, c -> c.getCode() + " " + c.getName()));
+        List<Long> mergedIds = rows.stream().map(ScmSupplier::getMergedTo).filter(Objects::nonNull).distinct().toList();
+        Map<Long, String> merged = mergedIds.isEmpty() ? Collections.<Long, String>emptyMap() : supplierMapper.selectByIds(mergedIds).stream()
+                .collect(Collectors.toMap(ScmSupplier::getId, x -> x.getCode() + " " + x.getName()));
+        rows.forEach(r -> {
+            r.setCustomerName(customers.get(r.getCustomerId()));
+            r.setMergedToName(merged.get(r.getMergedTo()));
+        });
     }
 
     public ScmSupplier get(Long id) {
@@ -81,6 +102,40 @@ public class ScmSupplierService {
             throw new BizException("scm.error.supplierDoesNotExist");
         }
         return supplier;
+    }
+
+    /** 详情（编辑表单）：带关联客户、已合并到的供应商的名称 */
+    public ScmSupplier detail(Long id) {
+        ScmSupplier supplier = get(id);
+        fillNames(List.of(supplier));
+        return supplier;
+    }
+
+    /**
+     * 关联该客户的供应商（同一单位既是客户又是供应商），没有时返回 null；供财务模块挂接应付、应收应付对冲使用
+     */
+    public ScmSupplier linkedSupplier(Long customerId) {
+        return customerId == null ? null : supplierMapper.selectOne(Wrappers.<ScmSupplier>lambdaQuery()
+                .select(ScmSupplier::getId, ScmSupplier::getCode, ScmSupplier::getName, ScmSupplier::getCustomerId, ScmSupplier::getStatus)
+                .eq(ScmSupplier::getCustomerId, customerId));
+    }
+
+    /** 关联客户的校验：客户存在、未被合并，且没有被其他供应商关联（一对一） */
+    private void checkLinkedCustomer(Long customerId, Long supplierId) {
+        if (customerId == null) {
+            return;
+        }
+        ScmCustomer customer = customerMapper.selectById(customerId);
+        if (customer == null) {
+            throw new BizException("scm.error.customerDoesNotExist");
+        }
+        if (customer.getMergedTo() != null) {
+            throw new BizException("scm.error.linkedCustomerMerged", customer.getName());
+        }
+        ScmSupplier other = linkedSupplier(customerId);
+        if (other != null && !other.getId().equals(supplierId)) {
+            throw new BizException("scm.error.customerAlreadyLinked", customer.getName(), other.getCode() + " " + other.getName());
+        }
     }
 
     /**
@@ -209,6 +264,7 @@ public class ScmSupplierService {
         if (supplier.getStatus() == null) supplier.setStatus(EnableStatus.ENABLED);
         if (supplier.getPaymentDays() == null) supplier.setPaymentDays(0);
         supplier.setLogistics(Integer.valueOf(LOGISTICS).equals(supplier.getLogistics()) ? LOGISTICS : 0);
+        checkLinkedCustomer(supplier.getCustomerId(), null);
         supplierMapper.insert(supplier);
     }
 
@@ -221,14 +277,20 @@ public class ScmSupplierService {
         supplier.setStatus(null);
         if (supplier.getPaymentDays() == null) supplier.setPaymentDays(0);
         if (supplier.getLogistics() != null) supplier.setLogistics(supplier.getLogistics() == LOGISTICS ? LOGISTICS : 0);
+        checkLinkedCustomer(supplier.getCustomerId(), id);
         supplierMapper.updateById(supplier);
+        // 关联客户可以清空：单独按请求值更新（updateById 不更新为空的字段）
+        supplierMapper.update(Wrappers.<ScmSupplier>lambdaUpdate().set(ScmSupplier::getCustomerId, supplier.getCustomerId()).eq(ScmSupplier::getId, id));
         ScmSupplier after = supplierMapper.selectById(id);
         searchKeys.refresh(after);
         changeLogger.log("scm_supplier", id, before, after, CHANGE_FIELDS);
     }
 
     public void changeStatus(Long id, EnableStatus status) {
-        get(id);
+        ScmSupplier old = detail(id);
+        if (old.getMergedTo() != null && status == EnableStatus.ENABLED) {
+            throw new BizException("scm.error.mergedCannotEnable", old.getName(), old.getMergedToName());
+        }
         ScmSupplier entity = new ScmSupplier();
         entity.setId(id);
         entity.setStatus(status);

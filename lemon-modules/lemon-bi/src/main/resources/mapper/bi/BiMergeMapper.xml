@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 往来单位合并（PartnerMergeHandler）：事实表的影响范围与迁移。customer = true 为客户，否则为供应商 -->
+<mapper namespace="com.lemon.erp.modules.bi.mapper.BiMergeMapper">
+
+    <sql id="ids"><foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach></sql>
+
+    <select id="impacts" resultType="com.lemon.erp.framework.ref.MergeImpact">
+        <choose>
+            <when test="customer">
+                SELECT 'bi.merge.factSales' AS label_key, COUNT(*) AS total, 0 AS conflicts FROM bi_fact_sales WHERE customer_id IN <include refid="ids"/>
+            </when>
+            <otherwise>
+                SELECT 'bi.merge.factPurchase' AS label_key, COUNT(*) AS total, 0 AS conflicts FROM bi_fact_purchase WHERE supplier_id IN <include refid="ids"/>
+            </otherwise>
+        </choose>
+    </select>
+
+    <update id="mergeSales">
+        UPDATE bi_fact_sales SET customer_id = #{targetId} WHERE customer_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergePurchase">
+        UPDATE bi_fact_purchase SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/>
+    </update>
+
+</mapper>

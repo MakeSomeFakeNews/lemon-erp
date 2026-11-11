@@ -248,11 +248,16 @@ public final class FinAnalysis {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record StatementLine(LocalDate bizDate, PartnerLedgerType type, String docNo, String sourceType, String sourceNo,
                                 String remark, @JsonInclude(JsonInclude.Include.ALWAYS) BigDecimal increase,
-                                @JsonInclude(JsonInclude.Include.ALWAYS) BigDecimal decrease, BigDecimal balance) {
+                                @JsonInclude(JsonInclude.Include.ALWAYS) BigDecimal decrease, BigDecimal balance, boolean linkedAp) {
     }
 
-    /** 往来对账单 */
+    /**
+     * 往来对账单
+     *
+     * @param linkedSupplierName 挂接应付时关联的供应商（编码 名称），没有挂接为 null；此时期初、期末为 应收 − 应付，
+     *                           关联供应商的应付单计入减少、付款 / 预付 / 对冲计入增加（明细 linkedAp = true）
+     */
     public record PartnerStatement(String partnerName, BigDecimal opening, List<StatementLine> rows, BigDecimal increase,
-                                   BigDecimal decrease, BigDecimal closing) {
+                                   BigDecimal decrease, BigDecimal closing, String linkedSupplierName) {
     }
 }

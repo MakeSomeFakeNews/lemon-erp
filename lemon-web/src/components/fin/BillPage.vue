@@ -19,6 +19,9 @@
             <a-select v-model:value="query.status" :placeholder="$t('fin.billPage.settleStatus')" allow-clear :options="toOptions(dict.fin_bill_status)" class="filter-s" @change="search" />
             <a-input-search v-model:value="query.keyword" :placeholder="$t('fin.billPage.keywordPlaceholder')" allow-clear class="filter" @search="search" />
             <a-checkbox v-model:checked="query.overdue" @change="search">{{ $t('fin.billPage.overdueOnly') }}</a-checkbox>
+            <a-tooltip v-if="canLinkAp" :title="$t('fin.linkedAp.tip')">
+              <a-checkbox v-model:checked="query.withAp" @change="search">{{ $t('fin.linkedAp.label') }}</a-checkbox>
+            </a-tooltip>
           </div>
           <div class="stats">
             <span v-if="list.some((b) => isForeign(b.currency))" class="sub-text">{{ $t('fin.billPage.foreignTip') }}</span>
@@ -34,13 +37,15 @@
             :data-source="list"
             :loading="loading"
             :pagination="pagination"
-            :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: !!r.voucherId || r.sourceType === BillSource.MANUAL || zeroAmount(r) }) }"
+            :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: r.linkedAp || !!r.voucherId || r.sourceType === BillSource.MANUAL || zeroAmount(r) }) }"
             :scroll="{ x: 1770 }"
             @change="onTableChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'partner'">
-                <div>{{ record.partnerName }}</div>
+                <div>
+                  <a-tag v-if="record.linkedAp" color="orange" :bordered="false">{{ $t('fin.linkedAp.apTag') }}</a-tag>{{ record.partnerName }}
+                </div>
                 <div class="sub-text">{{ record.partnerCode }}</div>
               </template>
               <template v-else-if="column.key === 'source'">
@@ -98,7 +103,7 @@
                 }}</span>
               </template>
               <template v-else-if="column.key === 'action'">
-                <TableActions :actions="rowActions(record)" />
+                <TableActions v-if="!record.linkedAp" :actions="rowActions(record)" />
               </template>
             </template>
           </a-table>
@@ -112,6 +117,9 @@
           <div class="filters">
             <span>{{ $t('fin.billPage.asOf') }}</span>
             <a-date-picker v-model:value="asOf" value-format="YYYY-MM-DD" :allow-clear="false" @change="aging.search" />
+            <a-tooltip v-if="canLinkAp" :title="$t('fin.linkedAp.tip')">
+              <a-checkbox v-model:checked="agingWithAp" @change="aging.search">{{ $t('fin.linkedAp.label') }}</a-checkbox>
+            </a-tooltip>
             <span class="sub-text">{{ $t('fin.billPage.agingTip') }}</span>
           </div>
           <a-table
@@ -132,6 +140,10 @@
               </template>
             </template>
           </a-table>
+        </a-tab-pane>
+
+        <a-tab-pane key="netting" :tab="$t('fin.netting.tab')">
+          <NettingPanel v-if="tab === 'netting'" />
         </a-tab-pane>
       </a-tabs>
     </a-card>
@@ -208,6 +220,7 @@ import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import VoucherDetail from './VoucherDetail.vue'
 import PartnerSummary from './PartnerSummary.vue'
+import NettingPanel from './NettingPanel.vue'
 import SourceDocLink from '@/components/common/SourceDocLink.vue'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
@@ -220,6 +233,7 @@ import { formatMoney, moneyOrBlank } from './fin'
 import { isForeign } from './currency'
 import { t } from '@/locales'
 import { useAction } from '@/composables/useAction'
+import { useUserStore } from '@/store/user'
 
 import { BillSource, BillStatus } from '@/constants/enums'
 /** 应收管理 / 应付管理，kind = ar | ap */
@@ -296,7 +310,9 @@ const rowActions = (record) => [
     onClick: () => remove(record.id)
   }
 ]
-const query = reactive({ partnerId: undefined, status: undefined, keyword: undefined, overdue: false })
+const query = reactive({ partnerId: undefined, status: undefined, keyword: undefined, overdue: false, withAp: false })
+// 挂接应付（issue #95）：只用于应收，需要应付的查看权限；挂接后关联供应商的应付单以负数列入（只读）
+const canLinkAp = props.kind === 'ar' && useUserStore().hasPerm('fin:ap:list')
 const { list, loading, pagination, selectedKeys, rowSelection, load, search, onTableChange } = useTable((p) => pageBill(props.kind, p), query)
 watch(() => query.partnerId, () => search())
 onMounted(load)
@@ -385,7 +401,8 @@ const agingColumns = [
   { title: t('fin.billPage.d90'), key: 'd90', width: 130, align: 'right' },
   { title: t('fin.billPage.over90'), key: 'over90', width: 130, align: 'right' }
 ]
-const aging = useTable((p) => billAging(props.kind, { ...p, asOf: asOf.value }), reactive({}))
+const agingWithAp = ref(false)
+const aging = useTable((p) => billAging(props.kind, { ...p, asOf: asOf.value, withAp: agingWithAp.value }), reactive({}))
 watch(tab, (t) => t === 'aging' && aging.load())
 
 const voucherOpen = ref(false)

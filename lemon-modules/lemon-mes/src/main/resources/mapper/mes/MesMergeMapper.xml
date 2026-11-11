@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 往来单位合并（PartnerMergeHandler）：影响范围与迁移，本模块只引用供应商 -->
+<mapper namespace="com.lemon.erp.modules.mes.mapper.MesMergeMapper">
+
+    <sql id="ids"><foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach></sql>
+
+    <select id="supplierImpacts" resultType="com.lemon.erp.framework.ref.MergeImpact">
+        SELECT 'mes.merge.mrpResult' AS label_key, COUNT(*) AS total, 0 AS conflicts FROM mes_mrp_result WHERE supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'mes.merge.inspection', COUNT(*), 0 FROM mes_inspection WHERE supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'mes.merge.ncr', COUNT(*), 0 FROM qms_ncr WHERE supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'mes.merge.supplierClaim', COUNT(*), 0 FROM qms_supplier_claim WHERE supplier_id IN <include refid="ids"/>
+    </select>
+
+    <update id="mergeMrpResult">
+        UPDATE mes_mrp_result SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeInspection">
+        UPDATE mes_inspection SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeNcr">
+        UPDATE qms_ncr SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeSupplierClaim">
+        UPDATE qms_supplier_claim SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/>
+    </update>
+
+</mapper>

@@ -46,3 +46,10 @@ export const customerCredit = (id) => request.get(`/scm/customer/${id}/credit`)
 export const priceTiers = (id) => request.get(`/scm/supplier-price/${id}/tiers`)
 /** 采购入库价格历史：{ materialId, supplierId } */
 export const priceHistory = (params) => request.get('/scm/supplier-price/history', { params })
+
+/**
+ * 资料合并（issue #95）：data = { targetId, sourceIds }；预览返回 { target, sources, impacts: [{ labelKey, label, total, conflicts }], linkedName }，
+ * 合并后被合并的资料停用并标记「已合并到」，业务数据改为指向保留的资料
+ */
+export const previewPartnerMerge = (type, data) => request.post(`/scm/${type}/merge/preview`, data)
+export const mergePartner = (type, data) => request.post(`/scm/${type}/merge`, data)

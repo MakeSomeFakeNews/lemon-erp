@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinNettingMapper">
+
+    <sql id="viewSelect">
+        SELECT n.*, c.code AS customer_code, c.name AS customer_name, s.code AS supplier_code, s.name AS supplier_name,
+               v.voucher_no, u.nickname AS create_by_name
+        FROM fin_netting n
+        LEFT JOIN scm_customer c ON c.id = n.customer_id
+        LEFT JOIN scm_supplier s ON s.id = n.supplier_id
+        LEFT JOIN fin_voucher v ON v.id = n.voucher_id
+        LEFT JOIN sys_user u ON u.id = n.create_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinNetting">
+        <include refid="viewSelect"/>
+        <where>
+            <if test="q.customerId != null">AND n.customer_id = #{q.customerId}</if>
+            <if test="q.supplierId != null">AND n.supplier_id = #{q.supplierId}</if>
+            <if test="q.keyword != null and q.keyword != ''">AND n.netting_no LIKE CONCAT('%', #{q.keyword}, '%')</if>
+            <if test="q.beginDate != null">AND n.netting_date &gt;= #{q.beginDate}</if>
+            <if test="q.endDate != null">AND n.netting_date &lt;= #{q.endDate}</if>
+        </where>
+        ORDER BY n.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinNetting">
+        <include refid="viewSelect"/>
+        WHERE n.id = #{id}
+    </select>
+
+    <select id="selectItems" resultType="com.lemon.erp.modules.fin.entity.FinNettingItem">
+        SELECT i.*, b.bill_no, b.bill_date, b.source_type, b.source_no, b.amount AS bill_amount
+        FROM fin_netting_item i
+        JOIN fin_bill b ON b.id = i.bill_id
+        WHERE i.netting_id = #{nettingId}
+        ORDER BY i.kind DESC, i.id
+    </select>
+
+    <insert id="insertItems">
+        INSERT INTO fin_netting_item (netting_id, bill_id, kind, amount, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.nettingId}, #{i.billId}, #{i.kind}, #{i.amount}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

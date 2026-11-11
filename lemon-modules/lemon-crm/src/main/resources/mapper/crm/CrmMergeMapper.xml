@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 往来单位合并（PartnerMergeHandler）：影响范围与迁移，本模块只引用客户 -->
+<mapper namespace="com.lemon.erp.modules.crm.mapper.CrmMergeMapper">
+
+    <sql id="ids"><foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach></sql>
+
+    <!-- 经营信息一个客户一行：保留的客户已有时，被合并客户的经营信息全部舍弃（跟进时间取最近的）；没有时第一份移过来，其余舍弃 -->
+    <select id="customerImpacts" resultType="com.lemon.erp.framework.ref.MergeImpact">
+        SELECT 'crm.merge.customer' AS label_key, COUNT(*) AS total,
+               CASE WHEN EXISTS (SELECT 1 FROM crm_customer t WHERE t.customer_id = #{targetId}) THEN COUNT(*)
+                    WHEN COUNT(*) > 0 THEN COUNT(*) - 1 ELSE 0 END AS conflicts
+        FROM crm_customer WHERE customer_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'crm.merge.contact', COUNT(*), 0 FROM crm_contact WHERE customer_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'crm.merge.lead', COUNT(*), 0 FROM crm_lead WHERE customer_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'crm.merge.followup', COUNT(*), 0 FROM crm_followup
+        WHERE customer_id IN <include refid="ids"/> OR (target_type = 'CUSTOMER' AND target_id IN <include refid="ids"/>)
+        UNION ALL
+        SELECT 'crm.merge.opportunity', COUNT(*), 0 FROM crm_opportunity WHERE customer_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'crm.merge.contract', COUNT(*), 0 FROM crm_contract WHERE customer_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'crm.merge.ticket', COUNT(*), 0 FROM crm_ticket WHERE customer_id IN <include refid="ids"/>
+    </select>
+
+    <update id="mergeContact">
+        UPDATE crm_contact SET customer_id = #{targetId}<if test="!keepPrimary">, is_primary = 0</if>
+        WHERE customer_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeLead">
+        UPDATE crm_lead SET customer_id = #{targetId} WHERE customer_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeFollowup">
+        UPDATE crm_followup
+        SET target_id = CASE WHEN target_type = 'CUSTOMER' AND target_id IN <include refid="ids"/> THEN #{targetId} ELSE target_id END,
+            customer_id = CASE WHEN customer_id IN <include refid="ids"/> THEN #{targetId} ELSE customer_id END
+        WHERE customer_id IN <include refid="ids"/> OR (target_type = 'CUSTOMER' AND target_id IN <include refid="ids"/>)
+    </update>
+
+    <update id="mergeOpportunity">
+        UPDATE crm_opportunity SET customer_id = #{targetId} WHERE customer_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeContract">
+        UPDATE crm_contract SET customer_id = #{targetId} WHERE customer_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeTicket">
+        UPDATE crm_ticket SET customer_id = #{targetId} WHERE customer_id IN <include refid="ids"/>
+    </update>
+
+</mapper>

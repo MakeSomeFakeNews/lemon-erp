@@ -335,12 +335,14 @@ export default {
   1470: 'Add Supplier', // 供应商新增
   1471: 'Edit Supplier', // 供应商修改
   1472: 'Delete Supplier', // 供应商删除
+  1474: 'Merge Suppliers', // 供应商合并
   1473: 'Portal Accounts', // 门户账号
   1480: 'Add Evaluation', // 评估新增
   1481: 'Delete Evaluation', // 评估删除
   1490: 'Add Customer', // 客户新增
   1491: 'Edit Customer', // 客户修改
   1492: 'Delete Customer', // 客户删除
+  1494: 'Merge Customers', // 客户合并
   1493: 'Portal Accounts', // 门户账号
   1600: 'Add Plan', // 计划新增
   1601: 'Edit Plan', // 计划修改
@@ -386,6 +388,8 @@ export default {
   1832: 'Generate AR Voucher', // 应收生成凭证
   1834: 'Write Off Bad Debt', // 坏账核销
   1843: 'Write Off Payable', // 应付坏账
+  1835: 'AR/AP Netting', // 应收应付对冲
+  1836: 'Delete Netting', // 删除对冲单
   1840: 'Add Payable', // 应付单新增
   1841: 'Delete Payable', // 应付单删除
   1842: 'Generate AP Voucher', // 应付生成凭证

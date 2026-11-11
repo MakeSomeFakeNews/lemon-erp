@@ -16,7 +16,8 @@ import java.util.Map;
 
 public interface FinBillMapper extends BaseMapper<FinBill> {
 
-    IPage<FinBill> selectPageList(IPage<FinBill> page, @Param("q") BillQuery query, @Param("today") LocalDate today);
+    /** withAp：同时列出关联供应商的应付单（应收挂接应付），金额由 Service 取负数 */
+    IPage<FinBill> selectPageList(IPage<FinBill> page, @Param("q") BillQuery query, @Param("today") LocalDate today, @Param("withAp") boolean withAp);
 
     /**
      * 账龄分析：未核销余额按到期日分段
@@ -24,7 +25,8 @@ public interface FinBillMapper extends BaseMapper<FinBill> {
      * @param d30 asOf - 30 天，到期日早于它的逾期超过 30 天，依此类推
      */
     IPage<AgingRow> selectAging(IPage<AgingRow> page, @Param("kind") BillKind kind, @Param("asOf") LocalDate asOf,
-                                @Param("d30") LocalDate d30, @Param("d60") LocalDate d60, @Param("d90") LocalDate d90);
+                                @Param("d30") LocalDate d30, @Param("d60") LocalDate d60, @Param("d90") LocalDate d90,
+                                @Param("withAp") boolean withAp);
 
     /** 核销（金额与单据同号），累计不超过单据金额；返回 0 表示超出 */
     int addSettled(@Param("id") Long id, @Param("amount") BigDecimal amount);

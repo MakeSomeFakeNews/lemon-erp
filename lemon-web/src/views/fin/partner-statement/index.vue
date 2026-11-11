@@ -15,12 +15,16 @@
           class="partner"
         />
         <a-range-picker v-model:value="range" value-format="YYYY-MM-DD" :allow-clear="false" />
+        <a-tooltip v-if="kind === BillKind.AR && canLinkAp" :title="$t('fin.linkedAp.statementTip')">
+          <a-checkbox v-model:checked="withAp">{{ $t('fin.linkedAp.label') }}</a-checkbox>
+        </a-tooltip>
         <a-button type="primary" :disabled="!partnerId" @click="load">{{ $t('common.action.query') }}</a-button>
         <a-button :disabled="!data" @click="print"><template #icon><PrinterOutlined /></template>{{ $t('common.action.print') }}</a-button>
         <span class="sub-text">{{ kind === BillKind.AR ? $t('fin.partnerStatement.arTip') : $t('fin.partnerStatement.apTip') }}</span>
       </div>
 
       <template v-if="data">
+        <a-alert v-if="data.linkedSupplierName" type="info" show-icon class="cards" :message="$t('fin.linkedAp.statementLinked', { name: data.linkedSupplierName })" />
         <a-row :gutter="12" class="cards">
           <a-col :xs="12" :md="6"><a-statistic :title="$t('fin.partnerStatement.opening')" :value="Number(data.opening)" :precision="2" prefix="¥" /></a-col>
           <a-col :xs="12" :md="6"><a-statistic :title="labels.periodIncrease" :value="Number(data.increase)" :precision="2" prefix="¥" /></a-col>
@@ -79,6 +83,7 @@ import { formatMoney, moneyOrBlank } from '@/components/fin/fin'
 import { useDict } from '@/composables/useDict'
 import { findDict } from '@/utils/dict'
 import { printDocs } from '@/utils/print'
+import { useUserStore } from '@/store/user'
 
 import { BillKind, PartnerLedgerType } from '@/constants/enums'
 /** 往来对账单：客户 / 供应商在期间内的应收应付、收付款、预收预付和逐笔余额，可打印给对方核对 */
@@ -89,6 +94,9 @@ const route = useRoute()
 const kind = ref(route.query.kind === BillKind.AP ? BillKind.AP : BillKind.AR)
 const partnerId = ref(Number(route.query.partnerId) || undefined)
 const partnerName = ref(route.query.partnerName ? String(route.query.partnerName) : undefined)
+// 挂接应付（issue #95，仅客户、需要应付的查看权限）：关联供应商的应付按相反方向列入，余额 = 应收 − 应付
+const canLinkAp = useUserStore().hasPerm('fin:ap:list')
+const withAp = ref(route.query.withAp === '1' && canLinkAp)
 if (route.query.partnerId) useRouter().replace({ query: {} })
 const range = ref([dayjs().startOf('year').format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD')])
 const data = ref()
@@ -138,11 +146,19 @@ const rows = computed(() =>
 )
 
 function typeText(r) {
+  if (r.linkedAp) {
+    return {
+      BILL: t('fin.linkedAp.apBill'),
+      SETTLEMENT: t('fin.linkedAp.payment'),
+      ADVANCE: t('fin.linkedAp.prepayment'),
+      NETTING: t('fin.linkedAp.netting')
+    }[r.type]
+  }
   const l = labels.value
-  return { OPENING: t('fin.partnerStatement.opening'), BILL: l.bill, SETTLEMENT: l.settle, ADVANCE: l.advance }[r.type]
+  return { OPENING: t('fin.partnerStatement.opening'), BILL: l.bill, SETTLEMENT: l.settle, ADVANCE: l.advance, NETTING: t('fin.partnerStatement.netting') }[r.type]
 }
 function sourceText(r) {
-  if (r.type === OPENING) return ''
+  if (r.type === OPENING || r.type === PartnerLedgerType.NETTING) return ''
   if (r.type === PartnerLedgerType.BILL) {
     const src = findDict(dict.fin_bill_source, r.sourceType)?.label || r.sourceType || ''
     return [src, r.sourceNo].filter(Boolean).join(' ')
@@ -156,7 +172,13 @@ async function load() {
   const current = ++seq
   loading.value = true
   try {
-    const res = await partnerStatement({ kind: kind.value, partnerId: partnerId.value, begin: range.value[0], end: range.value[1] })
+    const res = await partnerStatement({
+      kind: kind.value,
+      partnerId: partnerId.value,
+      begin: range.value[0],
+      end: range.value[1],
+      withAp: kind.value === BillKind.AR && withAp.value
+    })
     if (current === seq) data.value = res
   } finally {
     if (current === seq) loading.value = false
@@ -166,7 +188,7 @@ function onKindChange() {
   partnerId.value = undefined
   data.value = undefined
 }
-watch([partnerId, range], load)
+watch([partnerId, range, withAp], load)
 if (partnerId.value) load()
 
 function print() {
@@ -176,6 +198,7 @@ function print() {
     title: l.title,
     fields: [
       [l.partner, d.partnerName],
+      ...(d.linkedSupplierName ? [[t('fin.linkedAp.linkedSupplier'), d.linkedSupplierName]] : []),
       [t('fin.partnerStatement.statementPeriod'), t('fin.partnerStatement.range', { begin: range.value[0], end: range.value[1] })],
       [t('fin.partnerStatement.opening'), formatMoney(d.opening)],
       [t('fin.partnerStatement.closing'), formatMoney(d.closing)]

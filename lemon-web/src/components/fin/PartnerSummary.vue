@@ -6,6 +6,9 @@
       <a-input-search v-model:value="query.keyword" :placeholder="$t('fin.partnerSummary.keywordPh')" allow-clear class="filter" @search="search" />
       <IdentityUserSelect v-if="kind === 'ar'" v-model:value="query.ownerId" :placeholder="$t('fin.partnerSummary.owner')" class="filter-s" />
       <a-checkbox v-model:checked="query.onlyBalance" @change="search">{{ $t('fin.partnerSummary.onlyBalance') }}</a-checkbox>
+      <a-tooltip v-if="canLinkAp" :title="$t('fin.linkedAp.summaryTip')">
+        <a-checkbox v-model:checked="query.withAp" @change="search">{{ $t('fin.linkedAp.label') }}</a-checkbox>
+      </a-tooltip>
       <a-tooltip :title="tx.formula">
         <QuestionCircleOutlined class="help" />
       </a-tooltip>
@@ -14,6 +17,7 @@
       <span>{{ tx.opening }} <b>¥{{ formatMoney(total.opening) }}</b></span>
       <span>{{ tx.bills }} <b>¥{{ formatMoney(total.billBalance) }}</b></span>
       <span>{{ tx.advance }} <b :class="{ neg: Number(total.advanceBalance) < 0 }">¥{{ formatMoney(total.advanceBalance) }}</b></span>
+      <span v-if="query.withAp">{{ $t('fin.linkedAp.column') }} <b :class="{ neg: Number(total.linkedAp) < 0 }">¥{{ formatMoney(total.linkedAp) }}</b></span>
       <span>{{ tx.net }} <b class="warn">¥{{ formatMoney(total.net) }}</b></span>
       <span class="sub-text">{{ tx.badDebt }} ¥{{ formatMoney(total.badDebt) }}</span>
       <span class="sub-text">{{ tx.discount }} ¥{{ formatMoney(total.discount) }}</span>
@@ -21,11 +25,11 @@
     <a-table
       row-key="partnerId"
       size="middle"
-      :columns="columns"
+      :columns="tableColumns"
       :data-source="list"
       :loading="loading"
       :pagination="pagination"
-      :scroll="{ x: scrollX }"
+      :scroll="{ x: tableColumns.reduce((s, c) => s + c.width, 0) + 48 }"
       :expanded-row-keys="expanded"
       @expand="onExpand"
       @change="onTableChange"
@@ -34,6 +38,7 @@
         <template v-if="column.key === 'partner'">
           <a @click="toggle(record)">{{ record.partnerName }}</a>
           <div class="sub-text">{{ record.partnerCode }}<template v-if="record.ownerName"> · {{ record.ownerName }}</template></div>
+          <div v-if="record.linkedSupplierName" class="sub-text">{{ $t('fin.linkedAp.supplierOf', { name: record.linkedSupplierName }) }}</div>
         </template>
         <template v-else-if="column.key === 'net'">
           <b :class="{ neg: Number(record.net) < 0 }">{{ formatMoney(record.net) }}</b>
@@ -49,24 +54,27 @@
         </template>
       </template>
       <template #expandedRowRender="{ record }">
-        <PartnerSummaryDetail :kind="kind" :partner-id="record.partnerId" :conf="conf" />
+        <PartnerSummaryDetail :kind="kind" :partner-id="record.partnerId" :linked-supplier-id="query.withAp ? record.linkedSupplierId : undefined" :conf="conf" />
       </template>
     </a-table>
 
     <SettlementForm ref="settleRef" :kind="settleKind" :conf="settleConf" @saved="reload" />
+    <NettingForm v-if="ar" ref="nettingRef" @saved="reload" />
   </div>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { FileSearchOutlined, QuestionCircleOutlined, TransactionOutlined } from '@ant-design/icons-vue'
+import { FileSearchOutlined, InteractionOutlined, QuestionCircleOutlined, TransactionOutlined } from '@ant-design/icons-vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
 import SettlementForm from './SettlementForm.vue'
 import PartnerSummaryDetail from './PartnerSummaryDetail.vue'
+import NettingForm from './NettingForm.vue'
+import { useUserStore } from '@/store/user'
 import { billSummary, billSummaryTotal } from '@/api/fin'
 import { useTable } from '@/composables/useTable'
 import { formatMoney, moneyOrBlank } from './fin'
@@ -97,6 +105,8 @@ const tx = {
   formula: t(ar ? 'fin.partnerSummary.ar.formula' : 'fin.partnerSummary.ap.formula')
 }
 
+// 挂接应付（issue #95）：只用于应收，需要应付的查看权限；挂接后另列关联供应商的应付净额（负数），净欠款 = 应收 − 应付
+const canLinkAp = ar && useUserStore().hasPerm('fin:ap:list')
 const columns = [
   { title: props.conf.partnerLabel, key: 'partner', width: 220 },
   { title: tx.opening, key: 'opening', width: 140, align: 'right', money: true },
@@ -105,16 +115,24 @@ const columns = [
   { title: tx.badDebt, key: 'badDebt', width: 120, align: 'right' },
   { title: tx.discount, key: 'discount', width: 120, align: 'right' },
   { title: tx.net, key: 'net', width: 150, align: 'right' },
-  actionColumn(2, [tx.settle, t('fin.partnerSummary.statement')])
+  actionColumn(ar ? 3 : 2, [tx.settle, t('fin.partnerSummary.statement')])
 ]
-const scrollX = columns.reduce((s, c) => s + c.width, 0) + 48
+const linkedColumn = { title: t('fin.linkedAp.column'), key: 'linkedAp', width: 140, align: 'right', money: true }
+const tableColumns = computed(() => {
+  if (!query.withAp) return columns
+  const i = columns.findIndex((c) => c.key === 'net')
+  return [...columns.slice(0, i), linkedColumn, ...columns.slice(i)]
+})
 // 行操作：收款 / 付款、往来对账单
 const rowActions = (record) => [
   { key: 'settle', label: tx.settle, icon: TransactionOutlined, perm: `fin:${settleKind}:add`, onClick: () => openSettle(record) },
-  { key: 'statement', label: t('fin.partnerSummary.statement'), icon: FileSearchOutlined, perm: 'fin:partnerStatement:list', onClick: () => toStatement(record) }
+  { key: 'statement', label: t('fin.partnerSummary.statement'), icon: FileSearchOutlined, perm: 'fin:partnerStatement:list', onClick: () => toStatement(record) },
+  // 有关联供应商的客户：应收应付对冲
+  { key: 'netting', label: t('fin.netting.create'), icon: InteractionOutlined, perm: 'fin:netting:add', more: true, show: !!record.linkedSupplierId, onClick: () => nettingRef.value.open(record.partnerId) }
 ]
 
-const query = reactive({ partnerId: undefined, keyword: undefined, ownerId: undefined, onlyBalance: true })
+const query = reactive({ partnerId: undefined, keyword: undefined, ownerId: undefined, onlyBalance: true, withAp: false })
+const nettingRef = ref()
 const total = ref({})
 const { list, loading, pagination, load, search, onTableChange } = useTable((p) => billSummary(props.kind, p), query)
 async function loadTotal() {
@@ -144,7 +162,10 @@ const openSettle = (record) => settleRef.value.open({ partnerId: record.partnerI
 
 const router = useRouter()
 const toStatement = (record) =>
-  router.push({ path: '/fin/partner-statement', query: { kind: props.kind.toUpperCase(), partnerId: record.partnerId, partnerName: `${record.partnerCode} ${record.partnerName}` } })
+  router.push({
+    path: '/fin/partner-statement',
+    query: { kind: props.kind.toUpperCase(), partnerId: record.partnerId, partnerName: `${record.partnerCode} ${record.partnerName}`, withAp: query.withAp ? '1' : undefined }
+  })
 </script>
 
 <style scoped>

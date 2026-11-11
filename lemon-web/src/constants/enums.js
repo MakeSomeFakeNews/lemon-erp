@@ -1256,6 +1256,13 @@ export const PartnerLedgerType = Object.freeze({
   BILL: 'BILL',
   SETTLEMENT: 'SETTLEMENT',
   ADVANCE: 'ADVANCE',
+  NETTING: 'NETTING', // 应收应付对冲
+})
+
+/** com.lemon.erp.framework.ref.PartnerType */
+export const PartnerType = Object.freeze({
+  CUSTOMER: 'CUSTOMER',
+  SUPPLIER: 'SUPPLIER',
 })
 
 /** com.lemon.erp.framework.setting.PasswordComplexity */
@@ -1758,6 +1765,7 @@ export const VoucherSource = Object.freeze({
   NOTE: 'NOTE', // 票据贴现、托收、拒付、兑付
   TRANSFER: 'TRANSFER', // 账户调拨
   INCOME_EXPENSE: 'INCOME_EXPENSE', // 其他收支单
+  NETTING: 'NETTING', // 应收应付对冲
 })
 
 /** com.lemon.erp.modules.fin.model.VoucherStatus（字典 fin_voucher_status） */

@@ -50,7 +50,11 @@
             <div>
               {{ record.name }}
               <a-tag v-if="record.logistics === 1" color="cyan" :bordered="false" class="logistics-tag">{{ $t('scm.supplier.logistics') }}</a-tag>
+              <a-tooltip v-if="record.mergedTo" :title="$t('scm.partnerMerge.mergedTo', { name: record.mergedToName })">
+                <a-tag :bordered="false" class="logistics-tag">{{ $t('scm.partnerMerge.merged') }}</a-tag>
+              </a-tooltip>
             </div>
+            <div v-if="record.customerName" class="sub-text">{{ $t('scm.supplier.linkedCustomerOf', { name: record.customerName }) }}</div>
             <div class="sub-text code-line">
               <span class="code">{{ record.code }}</span>
               <!-- 营运路线较长时省略显示，悬浮看全文 -->
@@ -161,6 +165,11 @@
             </a-form-item>
           </a-col>
           <a-col :span="24">
+            <a-form-item :label="$t('scm.supplier.linkedCustomer')" name="customerId" :extra="$t('scm.supplier.linkedCustomerExtra')">
+              <PartnerSelect v-model:value="form.customerId" :label="form.customerName" type="customer" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
             <a-form-item :label="$t('scm.supplier.address')" name="address">
               <a-input v-model:value="form.address" :maxlength="255" />
             </a-form-item>
@@ -177,6 +186,7 @@
 
     <SupplierPriceDrawer v-model:open="priceOpen" :supplier="priceSupplier" />
     <PortalAccountDrawer v-model:open="portalOpen" kind="supplier" :partner="portalSupplier" />
+    <PartnerMergeModal ref="mergeRef" type="supplier" @merged="load" />
     <ImportModal
       v-model:open="importOpen"
       :title="$t('scm.supplier.supplier')"
@@ -198,7 +208,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DollarOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons-vue'
+import { DollarOutlined, ImportOutlined, MergeCellsOutlined, PaperClipOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -208,6 +218,8 @@ import StatusSwitch from '@/components/StatusSwitch.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import PortalAccountDrawer from '@/components/scm/PortalAccountDrawer.vue'
 import SupplierPriceDrawer from '@/components/scm/SupplierPriceDrawer.vue'
+import PartnerMergeModal from '@/components/scm/PartnerMergeModal.vue'
+import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import { addPartner, changePartnerStatus, deletePartner, getPartner, pagePartner, updatePartner, importPartner } from '@/api/scm/partner'
 import { sumWidth, useColumns } from '@/composables/useColumns'
 import { useDict } from '@/composables/useDict'
@@ -312,7 +324,7 @@ const rules = {
   name: [{ required: true, whitespace: true, message: t('scm.supplier.nameRequired') }],
   email: [{ type: 'email', message: t('common.rule.email') }]
 }
-const FIELDS = ['code', 'name', 'level', 'contact', 'phone', 'email', 'address', 'taxNo', 'bankName', 'bankAccount', 'paymentDays', 'logistics', 'routes', 'remark']
+const FIELDS = ['code', 'name', 'level', 'contact', 'phone', 'email', 'address', 'taxNo', 'bankName', 'bankAccount', 'paymentDays', 'logistics', 'routes', 'customerId', 'remark']
 const drawer = useFormDrawer(
   cf.wrap({
     emptyForm: () => ({ id: undefined, ...Object.fromEntries(FIELDS.map((f) => [f, undefined])), paymentDays: 30, logistics: 0 }),
@@ -333,13 +345,17 @@ const ai = useAiPrefill('supplier', (data) => drawer.openCreate(data), () => dra
 
 const remove = useAction((id) => deletePartner('supplier', id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
-/** 行操作：编辑、供应商价格、删除直接显示，资料、门户账号在「更多」中 */
+// 资料合并（issue #95）
+const mergeRef = ref()
+
+/** 行操作：编辑、供应商价格、删除直接显示，资料、门户账号、合并在「更多」中 */
 const rowActions = (record) => [
   { type: 'edit', perm: 'scm:supplier:edit', onClick: () => drawer.openEdit(record) },
   { key: 'prices', label: t('scm.supplier.prices'), icon: DollarOutlined, onClick: () => openPrices(record) },
   { type: 'delete', perm: 'scm:supplier:remove', confirm: t('scm.supplier.confirmDelete', { name: record.name }), onClick: () => remove(record.id) },
   { key: 'extras', label: t('scm.supplier.extras'), icon: PaperClipOutlined, more: true, onClick: () => openExtras(record) },
-  { key: 'portal', label: t('scm.supplier.portal'), icon: UserOutlined, perm: 'scm:supplier:portal', more: true, onClick: () => openPortal(record) }
+  { key: 'portal', label: t('scm.supplier.portal'), icon: UserOutlined, perm: 'scm:supplier:portal', more: true, onClick: () => openPortal(record) },
+  { key: 'merge', label: t('scm.partnerMerge.action'), icon: MergeCellsOutlined, perm: 'scm:supplier:merge', show: !record.mergedTo, more: true, onClick: () => mergeRef.value.open(record) }
 ]
 </script>
 

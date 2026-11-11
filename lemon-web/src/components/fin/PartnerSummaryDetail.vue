@@ -22,6 +22,20 @@
         </template>
       </a-table>
     </a-tab-pane>
+    <a-tab-pane v-if="linkedSupplierId" key="linkedAp" :tab="$t('fin.linkedAp.detailTab')">
+      <!-- 挂接应付：关联供应商未核销的应付单（金额为应付方向，净欠款中按负数扣除） -->
+      <a-table row-key="id" size="small" :columns="billColumns" :data-source="linkedBills" :loading="loading.linked" :pagination="false" :scroll="{ x: 860, y: 320 }">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'source'">
+            <DictTag type="fin_bill_source" :value="record.sourceType" />
+            <SourceDocLink class="sub-text" :type="record.sourceType" :id="record.sourceId" :no="record.sourceNo" :bill-kind="record.kind" :project-id="record.projectId" />
+          </template>
+          <template v-else-if="column.key === 'amount'">{{ formatMoney(record.amount) }}</template>
+          <template v-else-if="column.key === 'remaining'"><b>{{ formatMoney(remaining(record)) }}</b></template>
+          <template v-else-if="column.key === 'status'"><DictTag type="fin_bill_status" :value="record.status" /></template>
+        </template>
+      </a-table>
+    </a-tab-pane>
     <a-tab-pane v-if="canAdvance" key="advances" :tab="tx.advances">
       <a-table row-key="id" size="small" :columns="advanceColumns" :data-source="advances" :loading="loading.advances" :pagination="false" :scroll="{ x: 700, y: 320 }">
         <template #bodyCell="{ column, record }">
@@ -67,6 +81,8 @@ import { t } from '@/locales'
 const props = defineProps({
   kind: { type: String, required: true },
   partnerId: { type: Number, required: true },
+  /** 挂接应付时客户关联的供应商：另列其未核销的应付单 */
+  linkedSupplierId: { type: Number, default: undefined },
   conf: { type: Object, required: true }
 })
 useDict('fin_bill_source', 'fin_bill_status', 'sys_approve_status')
@@ -112,7 +128,8 @@ const tab = ref('bills')
 const bills = ref([])
 const advances = ref([])
 const settlements = ref([])
-const loading = reactive({ bills: false, advances: false, settlements: false })
+const linkedBills = ref([])
+const loading = reactive({ bills: false, advances: false, settlements: false, linked: false })
 const remaining = (b) => round2(Number(b.amount) - Number(b.settledAmount))
 
 async function fetch(key, loader) {
@@ -135,6 +152,9 @@ onMounted(async () => {
   }
   if (canSettle.value) {
     tasks.push(fetch('settlements', () => pageSettlement(settleKind, { partnerId: props.partnerId, size: SETTLE_LIMIT })).then((r) => (settlements.value = r.records)))
+  }
+  if (props.linkedSupplierId) {
+    tasks.push(fetch('linked', () => unsettledBills('ap', props.linkedSupplierId)).then((r) => (linkedBills.value = r)))
   }
   await Promise.allSettled(tasks)
 })

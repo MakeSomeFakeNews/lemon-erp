@@ -190,6 +190,8 @@ export default {
       projects: '项目'
     },
     stat: {
+      linkedAp: '关联供应商应付',
+      netAr: '应收净额（应收 − 应付）',
       credit: '可用信用额度',
       sales: '近一年销售额（不含税）',
       orders: '销售订单',

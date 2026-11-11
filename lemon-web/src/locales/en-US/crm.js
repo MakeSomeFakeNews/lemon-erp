@@ -190,6 +190,8 @@ export default {
       projects: 'Projects'
     },
     stat: {
+      linkedAp: 'Linked supplier payables',
+      netAr: 'Net receivable (AR − AP)',
       credit: 'Available Credit',
       sales: 'Sales (Last 12 Months, Excl. Tax)',
       orders: 'Sales Orders',

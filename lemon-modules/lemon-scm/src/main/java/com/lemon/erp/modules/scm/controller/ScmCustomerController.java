@@ -16,6 +16,9 @@ import com.lemon.erp.modules.scm.dto.PartnerOption;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
 import com.lemon.erp.modules.scm.model.SalesChannel;
 import com.lemon.erp.modules.scm.service.ScmCustomerService;
+import com.lemon.erp.modules.scm.service.ScmPartnerMergeService;
+import com.lemon.erp.modules.scm.dto.PartnerMergeRequests;
+import com.lemon.erp.framework.ref.PartnerType;
 import com.lemon.erp.modules.scm.service.ScmOrderCreditChecker;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +42,7 @@ import java.util.List;
 public class ScmCustomerController {
 
     private final ScmCustomerService customerService;
+    private final ScmPartnerMergeService mergeService;
     private final ScmOrderCreditChecker creditChecker;
     private final ImportExecutor importExecutor;
 
@@ -66,7 +70,7 @@ public class ScmCustomerController {
     @GetMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:customer:list')")
     public R<ScmCustomer> get(@PathVariable Long id) {
-        return R.ok(customerService.get(id));
+        return R.ok(customerService.detail(id));
     }
 
     /** 信用占用：额度、应收余额、未完成订单金额（客户管理、CRM 客户详情） */
@@ -114,5 +118,20 @@ public class ScmCustomerController {
     public R<Void> delete(@PathVariable List<Long> ids) {
         customerService.delete(ids);
         return R.ok();
+    }
+
+    /** 合并预览：被合并资料的各类业务数据数量（影响范围），有不能自动处理的冲突时提示 */
+    @PostMapping("/merge/preview")
+    @PreAuthorize("@ss.hasPerm('scm:customer:merge')")
+    public R<PartnerMergeRequests.Preview> mergePreview(@Valid @RequestBody PartnerMergeRequests.Merge req) {
+        return R.ok(mergeService.preview(PartnerType.CUSTOMER, req));
+    }
+
+    /** 合并：被合并资料的全部业务数据改为指向保留的资料，被合并的资料停用并标记为已合并 */
+    @PostMapping("/merge")
+    @PreAuthorize("@ss.hasPerm('scm:customer:merge')")
+    @OperLog(title = "客户管理-合并", type = OperType.UPDATE) // i18n-ignore
+    public R<PartnerMergeRequests.Preview> merge(@Valid @RequestBody PartnerMergeRequests.Merge req) {
+        return R.ok(mergeService.merge(PartnerType.CUSTOMER, req));
     }
 }

@@ -17,8 +17,10 @@ import com.lemon.erp.framework.workflow.identity.FlowIdentityProvider;
 import com.lemon.erp.modules.scm.dto.PartnerOption;
 import com.lemon.erp.modules.scm.entity.ScmCustomer;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
+import com.lemon.erp.modules.scm.entity.ScmSupplier;
 import com.lemon.erp.modules.scm.mapper.ScmCustomerMapper;
 import com.lemon.erp.modules.scm.mapper.ScmOrderMapper;
+import com.lemon.erp.modules.scm.mapper.ScmSupplierMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.SalesChannel;
 import com.lemon.erp.modules.wms.service.DocNoService;
@@ -27,10 +29,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +51,7 @@ public class ScmCustomerService {
     public static final String REGION_DICT = "scm_region";
 
     private final ScmCustomerMapper customerMapper;
+    private final ScmSupplierMapper supplierMapper;
     private final DocNoService docNoService;
     private final ScmOrderMapper orderMapper;
     private final ReferenceGuard referenceGuard;
@@ -73,7 +78,33 @@ public class ScmCustomerService {
             Map<Long, String> names = identityProvider.getUserNames(owners);
             page.getRecords().forEach(c -> c.setOwnerName(c.getOwnerId() == null ? null : names.get(c.getOwnerId())));
         }
+        fillNames(page.getRecords());
         return PageResult.of(page);
+    }
+
+    /** 已合并到的客户、关联的供应商的显示名（编码 名称） */
+    private void fillNames(List<ScmCustomer> rows) {
+        if (rows.isEmpty()) {
+            return;
+        }
+        List<Long> mergedIds = rows.stream().map(ScmCustomer::getMergedTo).filter(Objects::nonNull).distinct().toList();
+        Map<Long, String> merged = mergedIds.isEmpty() ? Collections.<Long, String>emptyMap() : customerMapper.selectByIds(mergedIds).stream()
+                .collect(Collectors.toMap(ScmCustomer::getId, x -> x.getCode() + " " + x.getName()));
+        Map<Long, String> suppliers = supplierMapper.selectList(Wrappers.<ScmSupplier>lambdaQuery()
+                        .select(ScmSupplier::getCustomerId, ScmSupplier::getCode, ScmSupplier::getName)
+                        .in(ScmSupplier::getCustomerId, rows.stream().map(ScmCustomer::getId).toList()))
+                .stream().collect(Collectors.toMap(ScmSupplier::getCustomerId, x -> x.getCode() + " " + x.getName(), (a, b) -> a));
+        rows.forEach(r -> {
+            r.setMergedToName(merged.get(r.getMergedTo()));
+            r.setLinkedSupplierName(suppliers.get(r.getId()));
+        });
+    }
+
+    /** 详情（编辑表单）：带已合并到的客户、关联的供应商的名称 */
+    public ScmCustomer detail(Long id) {
+        ScmCustomer customer = get(id);
+        fillNames(List.of(customer));
+        return customer;
     }
 
     public ScmCustomer get(Long id) {
@@ -231,14 +262,18 @@ public class ScmCustomerService {
     }
 
     public void changeStatus(Long id, EnableStatus status) {
-        get(id);
+        ScmCustomer old = detail(id);
+        if (old.getMergedTo() != null && status == EnableStatus.ENABLED) {
+            throw new BizException("scm.error.mergedCannotEnable", old.getName(), old.getMergedToName());
+        }
         ScmCustomer entity = new ScmCustomer();
         entity.setId(id);
         entity.setStatus(status);
         customerMapper.updateById(entity);
     }
 
-    /** 有订单的客户不能删除，可以停用 */
+    /** 有订单的客户不能删除，可以停用；删除时解除供应商对它的关联 */
+    @Transactional
     public void delete(List<Long> ids) {
         for (ScmCustomer customer : customerMapper.selectByIds(ids)) {
             if (orderMapper.exists(Wrappers.<ScmOrder>lambdaQuery()
@@ -247,6 +282,7 @@ public class ScmCustomerService {
             }
             referenceGuard.checkDeletable(RefType.CUSTOMER, customer.getId(), Messages.get("scm.text.customer", customer.getName()));
         }
+        supplierMapper.update(Wrappers.<ScmSupplier>lambdaUpdate().set(ScmSupplier::getCustomerId, null).in(ScmSupplier::getCustomerId, ids));
         customerMapper.deleteByIds(ids);
     }
 

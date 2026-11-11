@@ -52,8 +52,9 @@ public class FinBillController {
                                        @RequestParam(required = false) String keyword,
                                        @RequestParam(required = false) Boolean overdue,
                                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate beginDate,
-                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return R.ok(billService.page(current, size, new BillQuery(billKind(kind), partnerId, status, keyword, overdue, beginDate, endDate)));
+                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+                                       @RequestParam(defaultValue = "false") boolean withAp) {
+        return R.ok(billService.page(current, size, new BillQuery(billKind(kind), partnerId, status, keyword, overdue, beginDate, endDate, withAp)));
     }
 
     /** 往来单位未核销的单据：收付款核销时选择 */
@@ -63,14 +64,15 @@ public class FinBillController {
         return R.ok(billService.unsettled(billKind(kind), partnerId));
     }
 
-    /** 账龄分析 */
+    /** 账龄分析；withAp 挂接应付（仅应收）：关联供应商的未付应付按到期日计入同一分段（负数） */
     @GetMapping("/aging")
     @PreAuthorize("@ss.hasPerm('fin:' + #kind + ':list')")
     public R<PageResult<AgingRow>> aging(@PathVariable String kind,
                                          @RequestParam(defaultValue = "1") long current,
                                          @RequestParam(defaultValue = "10") long size,
-                                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate asOf) {
-        return R.ok(billService.aging(current, size, billKind(kind), asOf));
+                                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate asOf,
+                                         @RequestParam(defaultValue = "false") boolean withAp) {
+        return R.ok(billService.aging(current, size, billKind(kind), asOf, withAp));
     }
 
     /** 往来汇总：一个往来单位一行（期初、单据余额、预收预付、坏账、净欠款），可按单位、负责人（客户）、是否有余额筛选 */
@@ -82,8 +84,9 @@ public class FinBillController {
                                                     @RequestParam(required = false) Long partnerId,
                                                     @RequestParam(required = false) String keyword,
                                                     @RequestParam(required = false) Long ownerId,
-                                                    @RequestParam(defaultValue = "true") boolean onlyBalance) {
-        return R.ok(partnerLedgerService.summary(current, size, new PartnerSummaryRow.Query(billKind(kind), partnerId, keyword, ownerId, onlyBalance)));
+                                                    @RequestParam(defaultValue = "true") boolean onlyBalance,
+                                                    @RequestParam(defaultValue = "false") boolean withAp) {
+        return R.ok(partnerLedgerService.summary(current, size, new PartnerSummaryRow.Query(billKind(kind), partnerId, keyword, ownerId, onlyBalance, withAp)));
     }
 
     /** 往来汇总的合计（筛选条件同上） */
@@ -93,8 +96,9 @@ public class FinBillController {
                                              @RequestParam(required = false) Long partnerId,
                                              @RequestParam(required = false) String keyword,
                                              @RequestParam(required = false) Long ownerId,
-                                             @RequestParam(defaultValue = "true") boolean onlyBalance) {
-        return R.ok(partnerLedgerService.summaryTotal(new PartnerSummaryRow.Query(billKind(kind), partnerId, keyword, ownerId, onlyBalance)));
+                                             @RequestParam(defaultValue = "true") boolean onlyBalance,
+                                             @RequestParam(defaultValue = "false") boolean withAp) {
+        return R.ok(partnerLedgerService.summaryTotal(new PartnerSummaryRow.Query(billKind(kind), partnerId, keyword, ownerId, onlyBalance, withAp)));
     }
 
     /** 手工录入（期初余额等） */
