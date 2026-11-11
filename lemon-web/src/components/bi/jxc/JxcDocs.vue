@@ -53,6 +53,7 @@
               <template v-if="c.key === 'bizDate'">{{ $t('jxc.common.total') }}</template>
               <template v-else-if="c.key === 'qty'">{{ qty(summary.netQty) }}</template>
               <template v-else-if="c.key === 'amount'">{{ money(summary.netAmount) }}</template>
+              <template v-else-if="c.key === 'amountAfterDiscount'">{{ money(summary.netAfterDiscount) }}</template>
               <template v-else-if="c.money && c.key !== 'discount'">{{ money(summary[c.key]) }}</template>
               <template v-else-if="c.key === 'cost'">{{ money(summary.cost) }}</template>
               <template v-else-if="c.key === 'margin'">{{ marginText(summary.margin) }}</template>
@@ -121,12 +122,18 @@ const columns = computed(() => [
         { title: t('jxc.field.cost'), key: 'cost', width: 160, align: 'right' },
         { title: t('jxc.field.profit'), key: 'profit', width: 110, align: 'right', money: true },
         { title: t('jxc.field.margin'), key: 'margin', width: 90, align: 'right' },
+        // 参考口径（依次扣除）：收款折让、坏账核销、本公司运费
+        { title: t('jxc.field.receiptDiscount'), key: 'settleDiscount', width: 110, align: 'right', money: true },
+        { title: t('jxc.field.profitAfterDiscount'), key: 'profitAfterDiscount', width: 130, align: 'right', money: true },
         { title: t('jxc.field.badDebt'), key: 'badDebt', width: 110, align: 'right', money: true },
-        { title: t('jxc.field.profitAfterBadDebt'), key: 'profitAfterBadDebt', width: 130, align: 'right', money: true },
+        { title: t('jxc.field.profitAfterBadDebt'), key: 'profitAfterBadDebt', width: 150, align: 'right', money: true },
         { title: t('jxc.field.freight'), key: 'freight', width: 110, align: 'right', money: true },
-        { title: t('jxc.field.profitAfterFreight'), key: 'profitAfterFreight', width: 150, align: 'right', money: true }
+        { title: t('jxc.field.profitAfterFreight'), key: 'profitAfterFreight', width: 170, align: 'right', money: true }
       ]
-    : []),
+    : [
+        { title: t('jxc.field.purchaseDiscount'), key: 'settleDiscount', width: 110, align: 'right', money: true },
+        { title: t('jxc.field.amountAfterDiscount'), key: 'amountAfterDiscount', width: 140, align: 'right', money: true }
+      ]),
   { title: t('jxc.field.remark'), dataIndex: 'remark', key: 'remark', width: 140, ellipsis: true },
   drillColumn()
 ])
@@ -200,8 +207,10 @@ async function exportRows() {
       t('jxc.field.bizDate'), t('jxc.field.docNo'), t('jxc.field.kind'), t(s ? 'jxc.field.customer' : 'jxc.field.supplier'),
       ...(s ? [t('jxc.field.salesman')] : []),
       t('jxc.field.warehouse'), t('jxc.field.lineCount'), t('jxc.field.qty'), t('jxc.field.amount'), t('jxc.field.taxedAmount'), t('jxc.field.discount'),
-      ...(s ? [t('jxc.field.cost'), t('jxc.field.profit'), t('jxc.field.margin'), t('jxc.field.badDebt'), t('jxc.field.profitAfterBadDebt'),
-        t('jxc.field.freight'), t('jxc.field.profitAfterFreight')] : []),
+      ...(s
+        ? [t('jxc.field.cost'), t('jxc.field.profit'), t('jxc.field.margin'), t('jxc.field.receiptDiscount'), t('jxc.field.profitAfterDiscount'),
+            t('jxc.field.badDebt'), t('jxc.field.profitAfterBadDebt'), t('jxc.field.freight'), t('jxc.field.profitAfterFreight')]
+        : [t('jxc.field.purchaseDiscount'), t('jxc.field.amountAfterDiscount')]),
       t('jxc.field.remark')
     ].map((title) => ({ title }))
     const n = (v) => (v === null || v === undefined ? '' : Number(v))
@@ -209,7 +218,10 @@ async function exportRows() {
       r.bizDate, r.docNo, kindLabel(r.kind), r.partnerName,
       ...(s ? [r.salesmanName] : []),
       r.warehouseName, n(r.lineCount), n(r.qty), n(r.amount), n(r.taxedAmount), n(r.discount),
-      ...(s ? [n(r.cost), n(r.profit), n(r.margin), n(r.badDebt), n(r.profitAfterBadDebt), n(r.freight), n(r.profitAfterFreight)] : []),
+      ...(s
+        ? [n(r.cost), n(r.profit), n(r.margin), n(r.settleDiscount), n(r.profitAfterDiscount), n(r.badDebt), n(r.profitAfterBadDebt), n(r.freight),
+            n(r.profitAfterFreight)]
+        : [n(r.settleDiscount), n(r.amountAfterDiscount)]),
       r.remark
     ])
     const name = t(s ? 'jxc.docs.salesName' : 'jxc.docs.purchaseName') + (label.value ? `_${label.value}` : '')

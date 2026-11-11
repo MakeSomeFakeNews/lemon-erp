@@ -42,7 +42,7 @@ export const incomeTrend = (period) => request.get('/fin/report/income/trend', {
 export const pageBill = (kind, params) => request.get(`/fin/bill/${kind}`, { params })
 export const unsettledBills = (kind, partnerId) => request.get(`/fin/bill/${kind}/unsettled`, { params: { partnerId } })
 export const billAging = (kind, params) => request.get(`/fin/bill/${kind}/aging`, { params })
-/** 往来汇总：一个往来单位一行（期初、单据余额、预收预付、坏账、净欠款），合计另取 */
+/** 往来汇总：一个往来单位一行（期初、单据余额、预收预付、坏账、收付款折让、净欠款），合计另取 */
 export const billSummary = (kind, params) => request.get(`/fin/bill/${kind}/summary`, { params })
 export const billSummaryTotal = (kind, params) => request.get(`/fin/bill/${kind}/summary/total`, { params })
 export const addBill = (kind, data) => request.post(`/fin/bill/${kind}`, data)

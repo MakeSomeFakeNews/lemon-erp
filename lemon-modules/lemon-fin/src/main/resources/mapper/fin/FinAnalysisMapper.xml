@@ -11,11 +11,21 @@
     <!-- 本公司承担的运费：发运单的运费（出库单没有登记运费时，已发货）+ 出库单上本公司承担的运费 + 销售退货客户代垫的运费（issue #72），
          出库单已登记运费时发运单从出库单带出，不重复计算 -->
     <sql id="freightAmount">(COALESCE(sf.amount, 0) + CASE WHEN (d.kind = 'SALES_OUT' AND d.freight_bearer = 'COMPANY') OR d.kind = 'SALES_RETURN' THEN d.freight ELSE 0 END)</sql>
+    <!-- 收款折让 / 抹零（issue #89）：该出库 / 退货单生成的应收单（货款，以及客户代垫运费、退货运费的应收单）在收款时的折让累计
+         （fin_bill.discount_amount，同一单据多次收款累计，作废收款时扣回；本位币，外币单据已按记账汇率折算），
+         与坏账同样按应收单的不含税比例折算、跟随出库单的业务日期归属；退货的红字应收单折让为负数（少退给客户），扣除后毛利增加。
+         凭证中折让按含税金额计入财务费用等（收款折让科目），利润表的毛利不扣，所以这里扣除不会重复 -->
+    <sql id="settleDiscount">
+        LEFT JOIN (SELECT source_id, SUM(discount_amount * (amount - tax_amount) / amount) AS amount FROM fin_bill
+                   WHERE kind = 'AR' AND source_type IN ('SALES_OUT', 'SALES_RETURN', 'SALES_FREIGHT', 'SALES_RETURN_FREIGHT')
+                     AND discount_amount &lt;&gt; 0 AND amount &lt;&gt; 0 GROUP BY source_id) sd ON sd.source_id = d.id
+    </sql>
     <sql id="badDebtFreightJoins">
         LEFT JOIN (SELECT source_id, SUM(bad_debt_amount * (amount - tax_amount) / amount) AS amount FROM fin_bill
                    WHERE kind = 'AR' AND source_type = 'SALES_OUT' AND bad_debt_amount &lt;&gt; 0 AND amount &lt;&gt; 0 GROUP BY source_id) bd ON d.kind = 'SALES_OUT' AND bd.source_id = d.id
         LEFT JOIN (SELECT trade_doc_id, SUM(freight) AS amount FROM scm_shipment
                    WHERE freight_bearer = 'COMPANY' AND status &lt;&gt; 'PENDING' AND freight &gt; 0 GROUP BY trade_doc_id) sf ON d.kind = 'SALES_OUT' AND sf.trade_doc_id = d.id AND d.freight = 0
+        <include refid="settleDiscount"/>
     </sql>
 
     <select id="selectGrossMargin" resultType="com.lemon.erp.modules.fin.dto.FinAnalysis$MarginRow">
@@ -30,7 +40,8 @@
             SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * i.qty * COALESCE(mc.unit_cost, m.ref_cost, 0)) AS "cost",
             SUM(CASE WHEN mc.unit_cost IS NULL THEN 1 ELSE 0 END) AS "missingCost",
             SUM(COALESCE(bd.amount, 0) * <include refid="docShare"/>) AS "badDebt",
-            SUM(<include refid="freightAmount"/> * <include refid="docShare"/>) AS "freight"
+            SUM(<include refid="freightAmount"/> * <include refid="docShare"/>) AS "freight",
+            SUM(COALESCE(sd.amount, 0) * <include refid="docShare"/>) AS "settleDiscount"
         FROM scm_trade_doc_item i
         JOIN scm_trade_doc d ON d.id = i.doc_id
         JOIN (SELECT id, YEAR(biz_date) * 100 + MONTH(biz_date) AS period FROM scm_trade_doc
@@ -54,27 +65,47 @@
         </choose>
     </select>
 
+    <!-- 毛利明细。没有关键字时按整张单据列出，收款折让作为单据的最后一行（discountLine = 1，只有折让及扣除后的毛利，
+         商品行的折让为 0），单据各行扣折让后毛利之和 = 单据毛利 − 折让；有关键字时可能只列出单据的部分明细，折让按行金额比例分摊到各行 -->
     <select id="selectMarginDetail" resultType="com.lemon.erp.modules.fin.dto.FinAnalysis$MarginDetailRow">
-        SELECT d.id AS "docId", d.doc_no AS "docNo", d.kind AS "kind", d.biz_date AS "bizDate", c.name AS "customerName",
-               m.code AS "materialCode", m.name AS "materialName", m.spec AS "spec", m.unit AS "unit",
-               CASE WHEN d.kind = 'SALES_OUT' THEN i.qty ELSE -i.qty END AS "qty",
-               CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * (i.amount - i.tax_amount) AS "revenue",
-               CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * i.qty * COALESCE(mc.unit_cost, m.ref_cost, 0) AS "cost",
-               CASE WHEN mc.unit_cost IS NULL THEN 0 ELSE 1 END AS "costed",
-               COALESCE(bd.amount, 0) * <include refid="docShare"/> AS "badDebt",
-               <include refid="freightAmount"/> * <include refid="docShare"/> AS "freight"
-        FROM scm_trade_doc_item i
-        JOIN scm_trade_doc d ON d.id = i.doc_id
-        JOIN wms_material m ON m.id = i.material_id
-        LEFT JOIN scm_customer c ON c.id = d.partner_id
-        LEFT JOIN fin_material_cost mc ON mc.material_id = i.material_id AND mc.period = YEAR(d.biz_date) * 100 + MONTH(d.biz_date)
-        <include refid="badDebtFreightJoins"/>
-        WHERE d.kind IN ('SALES_OUT', 'SALES_RETURN') AND d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}
-        <if test="customerId != null">AND d.partner_id = #{customerId}</if>
-        <if test="keyword != null and keyword != ''">
-            AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%') OR d.doc_no LIKE CONCAT('%', #{keyword}, '%'))
-        </if>
-        ORDER BY d.biz_date, d.id, i.id
+        SELECT x.* FROM (
+            SELECT d.id AS "docId", d.doc_no AS "docNo", d.kind AS "kind", d.biz_date AS "bizDate", c.name AS "customerName",
+                   m.code AS "materialCode", m.name AS "materialName", m.spec AS "spec", m.unit AS "unit",
+                   CASE WHEN d.kind = 'SALES_OUT' THEN i.qty ELSE -i.qty END AS "qty",
+                   CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * (i.amount - i.tax_amount) AS "revenue",
+                   CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * i.qty * COALESCE(mc.unit_cost, m.ref_cost, 0) AS "cost",
+                   CASE WHEN mc.unit_cost IS NULL THEN 0 ELSE 1 END AS "costed",
+                   COALESCE(bd.amount, 0) * <include refid="docShare"/> AS "badDebt",
+                   <include refid="freightAmount"/> * <include refid="docShare"/> AS "freight",
+                   <choose>
+                       <when test="keyword == null or keyword == ''">0</when>
+                       <otherwise>COALESCE(sd.amount, 0) * <include refid="docShare"/></otherwise>
+                   </choose> AS "settleDiscount",
+                   0 AS "discountLine",
+                   d.biz_date AS sort_date, d.id AS sort_doc, 0 AS sort_line, i.id AS sort_item
+            FROM scm_trade_doc_item i
+            JOIN scm_trade_doc d ON d.id = i.doc_id
+            JOIN wms_material m ON m.id = i.material_id
+            LEFT JOIN scm_customer c ON c.id = d.partner_id
+            LEFT JOIN fin_material_cost mc ON mc.material_id = i.material_id AND mc.period = YEAR(d.biz_date) * 100 + MONTH(d.biz_date)
+            <include refid="badDebtFreightJoins"/>
+            WHERE d.kind IN ('SALES_OUT', 'SALES_RETURN') AND d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end}
+            <if test="customerId != null">AND d.partner_id = #{customerId}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%') OR d.doc_no LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="keyword == null or keyword == ''">
+                UNION ALL
+                SELECT d.id, d.doc_no, d.kind, d.biz_date, c.name, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, 0, 0, sd.amount, 1,
+                       d.biz_date, d.id, 1, 0
+                FROM scm_trade_doc d
+                LEFT JOIN scm_customer c ON c.id = d.partner_id
+                <include refid="settleDiscount"/>
+                WHERE d.kind IN ('SALES_OUT', 'SALES_RETURN') AND d.biz_date &gt;= #{begin} AND d.biz_date &lt;= #{end} AND sd.amount IS NOT NULL
+                <if test="customerId != null">AND d.partner_id = #{customerId}</if>
+            </if>
+        ) x
+        ORDER BY x.sort_date, x.sort_doc, x.sort_line, x.sort_item
         LIMIT #{limit}
     </select>
 

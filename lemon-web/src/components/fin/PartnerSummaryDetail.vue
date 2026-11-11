@@ -11,6 +11,9 @@
           <template v-else-if="column.key === 'amount'">
             <span :class="{ neg: Number(record.amount) < 0 }">{{ formatMoney(record.amount) }}</span>
             <div v-if="isForeign(record.currency)" class="sub-text">{{ record.currency }} {{ formatMoney(record.amountFc) }}</div>
+            <div v-if="Number(record.discountAmount)" class="sub-text">
+              {{ $t('fin.billPage.discountN', { amount: formatMoney(record.discountAmount) }) }} · {{ $t('fin.partnerSummary.netN', { amount: formatMoney(record.netAmount) }) }}
+            </div>
           </template>
           <template v-else-if="column.key === 'remaining'">
             <b :class="{ neg: remaining(record) < 0 }">{{ formatMoney(remaining(record)) }}</b>

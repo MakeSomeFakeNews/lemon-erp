@@ -54,22 +54,26 @@ public class FinAnalysisService {
         for (FinAnalysis.MarginRow r : rows) {
             BigDecimal rev = Decimals.money(dec(r.getRevenue()));
             BigDecimal c = Decimals.money(dec(r.getCost()));
-            BigDecimal bad = Decimals.money(dec(r.getBadDebt()));
-            BigDecimal freight = Decimals.money(dec(r.getFreight()));
+            Deductions x = Deductions.of(r.getSettleDiscount(), r.getBadDebt(), r.getFreight());
             r.setRevenue(rev);
             r.setCost(c);
             r.setProfit(rev.subtract(c));
             r.setMargin(margin(rev, c));
-            r.setBadDebt(bad);
-            r.setFreight(freight);
-            r.setProfitAfterBadDebt(r.getProfit().subtract(bad));
-            r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(freight));
-            sum.add(rev, c, bad, freight);
+            r.setSettleDiscount(x.discount());
+            r.setBadDebt(x.badDebt());
+            r.setFreight(x.freight());
+            r.setProfitAfterDiscount(x.afterDiscount(r.getProfit()));
+            r.setProfitAfterBadDebt(x.afterBadDebt(r.getProfit()));
+            r.setProfitAfterFreight(x.afterFreight(r.getProfit()));
+            sum.add(rev, c, x);
         }
         return new FinAnalysis.GrossMargin(rows, sum.total());
     }
 
-    /** 销售毛利明细：按销售出库 / 退货单据明细逐行计算，最多 5000 行 */
+    /**
+     * 销售毛利明细：按销售出库 / 退货单据明细逐行计算，最多 5000 行。没有关键字时按整张单据列出，
+     * 收款折让作为单据的最后一行（{@code discountLine = 1}，没有收入和成本，扣折让后毛利为 −折让）
+     */
     public FinAnalysis.MarginDetail grossMarginDetail(LocalDate begin, LocalDate end, Long customerId, String keyword) {
         if (end.isBefore(begin)) {
             throw new BizException("fin.error.endDateCannotEarlierStartDate");
@@ -78,41 +82,75 @@ public class FinAnalysisService {
         List<FinAnalysis.MarginDetailRow> rows = new ArrayList<>(list.subList(0, Math.min(list.size(), MARGIN_DETAIL_LIMIT)));
         MarginSum sum = new MarginSum();
         for (FinAnalysis.MarginDetailRow r : rows) {
+            Deductions x = Deductions.of(r.getSettleDiscount(), r.getBadDebt(), r.getFreight());
+            r.setSettleDiscount(x.discount());
+            r.setBadDebt(x.badDebt());
+            r.setFreight(x.freight());
+            if (r.getDiscountLine() != null && r.getDiscountLine() == 1) {
+                // 单据的收款折让行：只有折让，扣除后的毛利都是 −折让
+                r.setProfit(null);
+                r.setMargin(null);
+                r.setProfitAfterDiscount(x.afterDiscount(BigDecimal.ZERO));
+                r.setProfitAfterBadDebt(x.afterBadDebt(BigDecimal.ZERO));
+                r.setProfitAfterFreight(x.afterFreight(BigDecimal.ZERO));
+                sum.add(BigDecimal.ZERO, BigDecimal.ZERO, x);
+                continue;
+            }
             BigDecimal rev = Decimals.money(dec(r.getRevenue()));
             BigDecimal c = Decimals.money(dec(r.getCost()));
-            BigDecimal bad = Decimals.money(dec(r.getBadDebt()));
-            BigDecimal freight = Decimals.money(dec(r.getFreight()));
             r.setRevenue(rev);
             r.setCost(c);
             r.setProfit(rev.subtract(c));
             r.setMargin(margin(rev, c));
-            r.setBadDebt(bad);
-            r.setFreight(freight);
-            r.setProfitAfterBadDebt(r.getProfit().subtract(bad));
-            r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(freight));
-            sum.add(rev, c, bad, freight);
+            r.setProfitAfterDiscount(x.afterDiscount(r.getProfit()));
+            r.setProfitAfterBadDebt(x.afterBadDebt(r.getProfit()));
+            r.setProfitAfterFreight(x.afterFreight(r.getProfit()));
+            sum.add(rev, c, x);
         }
         return new FinAnalysis.MarginDetail(rows, sum.total(), list.size() > MARGIN_DETAIL_LIMIT);
+    }
+
+    /** 毛利的参考扣除项（已舍入到分）：收款折让、坏账核销、本公司运费，依次扣除 */
+    private record Deductions(BigDecimal discount, BigDecimal badDebt, BigDecimal freight) {
+
+        static Deductions of(BigDecimal discount, BigDecimal badDebt, BigDecimal freight) {
+            return new Deductions(Decimals.money(dec(discount)), Decimals.money(dec(badDebt)), Decimals.money(dec(freight)));
+        }
+
+        BigDecimal afterDiscount(BigDecimal profit) {
+            return profit.subtract(discount);
+        }
+
+        BigDecimal afterBadDebt(BigDecimal profit) {
+            return afterDiscount(profit).subtract(badDebt);
+        }
+
+        BigDecimal afterFreight(BigDecimal profit) {
+            return afterBadDebt(profit).subtract(freight);
+        }
     }
 
     /** 毛利合计的累加 */
     private static final class MarginSum {
         private BigDecimal revenue = BigDecimal.ZERO;
         private BigDecimal cost = BigDecimal.ZERO;
+        private BigDecimal discount = BigDecimal.ZERO;
         private BigDecimal badDebt = BigDecimal.ZERO;
         private BigDecimal freight = BigDecimal.ZERO;
 
-        void add(BigDecimal rev, BigDecimal c, BigDecimal bad, BigDecimal f) {
+        void add(BigDecimal rev, BigDecimal c, Deductions x) {
             revenue = revenue.add(rev);
             cost = cost.add(c);
-            badDebt = badDebt.add(bad);
-            freight = freight.add(f);
+            discount = discount.add(x.discount());
+            badDebt = badDebt.add(x.badDebt());
+            freight = freight.add(x.freight());
         }
 
         FinAnalysis.MarginTotal total() {
             BigDecimal profit = revenue.subtract(cost);
-            return new FinAnalysis.MarginTotal(revenue, cost, profit, margin(revenue, cost), badDebt, freight,
-                    profit.subtract(badDebt), profit.subtract(badDebt).subtract(freight));
+            Deductions x = new Deductions(discount, badDebt, freight);
+            return new FinAnalysis.MarginTotal(revenue, cost, profit, margin(revenue, cost), discount, badDebt, freight,
+                    x.afterDiscount(profit), x.afterBadDebt(profit), x.afterFreight(profit));
         }
     }
 

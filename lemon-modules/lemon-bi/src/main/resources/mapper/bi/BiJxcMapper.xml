@@ -37,6 +37,20 @@
                    WHERE freight_bearer = 'COMPANY' AND status &lt;&gt; 'PENDING' AND freight &gt; 0 GROUP BY trade_doc_id) sf ON d.kind = 'SALES_OUT' AND sf.trade_doc_id = d.id AND d.freight = 0
     </sql>
 
+    <!-- 收付款折让 / 抹零（issue #89）：该出入库单生成的应收单（销售：货款，以及客户代垫运费、退货运费的应收单）/ 应付单
+         （进货：货款，以及采购运费、退货运费的应付单）在收付款时的折让累计（fin_bill.discount_amount，同一单据多次收付款累计，
+         作废收付款时扣回；本位币），按单据自身的不含税比例折算（与坏账相同），跟随出入库单的业务日期归属，按行金额比例分摊到明细；
+         退货的红字单据折让为负数。只用于「扣折让后毛利」「扣折让后净进货额」等参考口径，不改变销售额 / 进货额。
+         凭证中收款折让、付款折让按含税金额计入财务费用等，利润表的毛利不扣，所以销售报表中扣除不会重复 -->
+    <sql id="settleDiscount">
+        LEFT JOIN (SELECT source_id, SUM(discount_amount * (amount - tax_amount) / amount) AS amount FROM fin_bill
+                   <choose>
+                       <when test="sales">WHERE kind = 'AR' AND source_type IN ('SALES_OUT', 'SALES_RETURN', 'SALES_FREIGHT', 'SALES_RETURN_FREIGHT')</when>
+                       <otherwise>WHERE kind = 'AP' AND source_type IN ('PURCHASE_IN', 'PURCHASE_RETURN', 'PURCHASE_FREIGHT', 'PURCHASE_RETURN_FREIGHT')</otherwise>
+                   </choose>
+                     AND discount_amount &lt;&gt; 0 AND amount &lt;&gt; 0 GROUP BY source_id) sd ON sd.source_id = d.id
+    </sql>
+
     <!-- 销售成本单价：实时出库成本 → 期间核算单价 → 参考成本价 -->
     <sql id="saleUnitCost">COALESCE(fc.amount / NULLIF(fc.qty, 0), mc.unit_cost, m.ref_cost, 0)</sql>
 
@@ -54,6 +68,7 @@
             </when>
             <otherwise>LEFT JOIN scm_supplier p ON p.id = d.partner_id</otherwise>
         </choose>
+        <include refid="settleDiscount"/>
     </sql>
 
     <sql id="tradeWhere">
@@ -98,6 +113,7 @@
             </when>
             <otherwise>0 AS "cost", 0 AS "missingCost",</otherwise>
         </choose>
+        SUM(COALESCE(sd.amount, 0) * <include refid="docShare"/>) AS "settleDiscount",
         COUNT(DISTINCT d.id) AS "docCount"
     </sql>
 
@@ -145,7 +161,10 @@
         <include refid="tradeWhere"/>
     </select>
 
-    <sql id="detailSelect">
+    <!-- 明细。按整张单据列出时（q.wholeDocs：没有商品、分类、品牌、仓库、关键字条件），收付款折让作为单据的最后一行
+         （discountLine = 1，只有折让及扣除后的毛利 / 进货额），商品行的折让为 0，单据各行扣折让后毛利之和 = 单据毛利 − 折让；
+         否则只列出单据的部分明细，折让按行金额比例分摊到各行。两种方式下明细的折让合计都与汇总一致 -->
+    <sql id="detailLines">
         SELECT d.id AS "docId", d.doc_no AS "docNo", d.kind AS "kind", d.biz_date AS "bizDate", p.name AS "partnerName",
                <if test="sales">u.nickname AS "salesmanName",</if>
                w.name AS "warehouseName", m.code AS "materialCode", m.name AS "materialName", m.spec AS "spec", m.unit AS "unit",
@@ -159,12 +178,51 @@
                    COALESCE(bd.amount, 0) * <include refid="docShare"/> AS "badDebt",
                    <include refid="freightAmount"/> * <include refid="docShare"/> AS "freight",
                </if>
-               i.remark AS "remark"
+               <choose>
+                   <when test="q.wholeDocs">0</when>
+                   <otherwise>COALESCE(sd.amount, 0) * <include refid="docShare"/></otherwise>
+               </choose> AS "settleDiscount",
+               0 AS "discountLine",
+               i.remark AS "remark",
+               d.biz_date AS sort_date, d.id AS sort_doc, 0 AS sort_line, i.id AS sort_item
         <include refid="tradeFrom"/>
         <if test="sales">LEFT JOIN sys_user u ON u.id = o.salesman_id</if>
         LEFT JOIN wms_warehouse w ON w.id = COALESCE(i.warehouse_id, d.warehouse_id)
         <include refid="tradeWhere"/>
-        ORDER BY d.biz_date, d.id, i.id
+    </sql>
+
+    <!-- 单据的收付款折让行：条件只有单据级的（q.wholeDocs 时 tradeWhere 不引用明细和物料） -->
+    <sql id="discountLines">
+        SELECT d.id, d.doc_no, d.kind, d.biz_date, p.name,
+               <if test="sales">u.nickname,</if>
+               NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+               NULL, NULL, NULL, NULL,
+               <if test="sales">NULL, 1, 0, 0,</if>
+               sd.amount, 1, NULL,
+               d.biz_date, d.id, 1, 0
+        FROM scm_trade_doc d
+        JOIN scm_order o ON o.id = d.order_id
+        <choose>
+            <when test="sales">
+                LEFT JOIN scm_customer p ON p.id = d.partner_id
+                LEFT JOIN sys_user u ON u.id = o.salesman_id
+            </when>
+            <otherwise>LEFT JOIN scm_supplier p ON p.id = d.partner_id</otherwise>
+        </choose>
+        <include refid="settleDiscount"/>
+        <include refid="tradeWhere"/>
+          AND sd.amount IS NOT NULL
+    </sql>
+
+    <sql id="detailSelect">
+        SELECT x.* FROM (
+            <include refid="detailLines"/>
+            <if test="q.wholeDocs">
+                UNION ALL
+                <include refid="discountLines"/>
+            </if>
+        ) x
+        ORDER BY x.sort_date, x.sort_doc, x.sort_line, x.sort_item
     </sql>
 
     <select id="selectDetail" resultType="com.lemon.erp.modules.bi.dto.JxcViews$DetailRow">
@@ -185,7 +243,8 @@
                SUM(<include refid="sign"/> * i.qty) AS "qty",
                SUM(<include refid="sign"/> * (i.amount - i.tax_amount)) AS "amount",
                SUM(<include refid="sign"/> * i.amount) AS "taxedAmount",
-               SUM(<include refid="sign"/> * i.discount_share) AS "discount"
+               SUM(<include refid="sign"/> * i.discount_share) AS "discount",
+               SUM(COALESCE(sd.amount, 0) * <include refid="docShare"/>) AS "settleDiscount"
                <if test="sales">,
                    SUM(<include refid="sign"/> * i.qty * <include refid="saleUnitCost"/>) AS "cost",
                    SUM(CASE WHEN fc.amount IS NULL AND mc.unit_cost IS NULL THEN 1 ELSE 0 END) AS "missingCost",
