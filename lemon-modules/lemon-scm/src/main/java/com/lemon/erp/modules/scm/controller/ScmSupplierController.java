@@ -17,6 +17,9 @@ import com.lemon.erp.modules.scm.dto.SupplierKpi;
 import com.lemon.erp.modules.scm.entity.ScmSupplier;
 import com.lemon.erp.modules.scm.model.SupplierLevel;
 import com.lemon.erp.modules.scm.service.ScmSupplierService;
+import com.lemon.erp.modules.scm.service.ScmPartnerMergeService;
+import com.lemon.erp.modules.scm.dto.PartnerMergeRequests;
+import com.lemon.erp.framework.ref.PartnerType;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -41,6 +44,7 @@ import java.util.List;
 public class ScmSupplierController {
 
     private final ScmSupplierService supplierService;
+    private final ScmPartnerMergeService mergeService;
     private final ImportExecutor importExecutor;
 
     @GetMapping
@@ -85,7 +89,7 @@ public class ScmSupplierController {
     @GetMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('scm:supplier:list')")
     public R<ScmSupplier> get(@PathVariable Long id) {
-        return R.ok(supplierService.get(id));
+        return R.ok(supplierService.detail(id));
     }
 
     @PostMapping
@@ -126,5 +130,20 @@ public class ScmSupplierController {
     public R<Void> delete(@PathVariable List<Long> ids) {
         supplierService.delete(ids);
         return R.ok();
+    }
+
+    /** 合并预览：被合并资料的各类业务数据数量（影响范围），有不能自动处理的冲突时提示 */
+    @PostMapping("/merge/preview")
+    @PreAuthorize("@ss.hasPerm('scm:supplier:merge')")
+    public R<PartnerMergeRequests.Preview> mergePreview(@Valid @RequestBody PartnerMergeRequests.Merge req) {
+        return R.ok(mergeService.preview(PartnerType.SUPPLIER, req));
+    }
+
+    /** 合并：被合并资料的全部业务数据改为指向保留的资料，被合并的资料停用并标记为已合并 */
+    @PostMapping("/merge")
+    @PreAuthorize("@ss.hasPerm('scm:supplier:merge')")
+    @OperLog(title = "供应商管理-合并", type = OperType.UPDATE) // i18n-ignore
+    public R<PartnerMergeRequests.Preview> merge(@Valid @RequestBody PartnerMergeRequests.Merge req) {
+        return R.ok(mergeService.merge(PartnerType.SUPPLIER, req));
     }
 }

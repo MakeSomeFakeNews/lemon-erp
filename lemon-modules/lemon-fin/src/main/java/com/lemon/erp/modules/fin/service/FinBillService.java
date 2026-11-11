@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.modules.fin.model.FinConstants;
 import com.lemon.erp.modules.fin.model.SettleKind;
@@ -84,12 +85,49 @@ public class FinBillService {
     private final ScmTaxRates taxRates;
     private final ScmQueryService scmQueryService;
     private final ScmTradeDocService tradeDocService;
+    private final PermissionService permissionService;
 
     public PageResult<FinBill> page(long current, long size, BillQuery query) {
         checkKind(query.kind());
+        boolean withAp = linkedAp(query.kind(), query.withAp());
         Page<FinBill> page = Page.of(current, size);
-        billMapper.selectPageList(page, query, LocalDate.now());
+        billMapper.selectPageList(page, query, LocalDate.now(), withAp);
+        if (withAp) {
+            page.getRecords().stream().filter(b -> b.getKind() == BillKind.AP).forEach(FinBillService::negateLinked);
+        }
         return PageResult.of(page);
+    }
+
+    /**
+     * 挂接应付（issue #95）：只用于应收的查询，需要应付的查看权限
+     *
+     * @return 是否挂接
+     */
+    boolean linkedAp(BillKind kind, boolean withAp) {
+        if (!withAp || kind != BillKind.AR) {
+            return false;
+        }
+        if (!permissionService.hasPerm("fin:ap:list")) {
+            throw new BizException("fin.error.linkedApNoPermission");
+        }
+        return true;
+    }
+
+    /** 挂接到应收列表的应付单：金额、已核销等取负数（冲减应收），标记为只读 */
+    private static void negateLinked(FinBill b) {
+        b.setAmount(negate(b.getAmount()));
+        b.setTaxAmount(negate(b.getTaxAmount()));
+        b.setSettledAmount(negate(b.getSettledAmount()));
+        b.setInvoicedAmount(negate(b.getInvoicedAmount()));
+        b.setBadDebtAmount(negate(b.getBadDebtAmount()));
+        b.setDiscountAmount(negate(b.getDiscountAmount()));
+        b.setAmountFc(negate(b.getAmountFc()));
+        b.setSettledFc(negate(b.getSettledFc()));
+        b.setLinkedAp(true);
+    }
+
+    private static BigDecimal negate(BigDecimal v) {
+        return v == null ? null : v.negate();
     }
 
     /** 往来单位未核销的单据，收付款时选择核销 */
@@ -102,11 +140,17 @@ public class FinBillService {
                 .orderByAsc(FinBill::getBillDate).orderByAsc(FinBill::getDueDate).orderByAsc(FinBill::getId));
     }
 
+    /** 账龄分析（不挂接应付） */
     public PageResult<AgingRow> aging(long current, long size, BillKind kind, LocalDate asOf) {
+        return aging(current, size, kind, asOf, false);
+    }
+
+    /** @param withAp 挂接应付（仅应收）：关联供应商的应付按到期日计入同一分段，取负数 */
+    public PageResult<AgingRow> aging(long current, long size, BillKind kind, LocalDate asOf, boolean withAp) {
         checkKind(kind);
         LocalDate date = asOf == null ? LocalDate.now() : asOf;
         Page<AgingRow> page = Page.of(current, size);
-        billMapper.selectAging(page, kind, date, date.minusDays(30), date.minusDays(60), date.minusDays(90));
+        billMapper.selectAging(page, kind, date, date.minusDays(30), date.minusDays(60), date.minusDays(90), linkedAp(kind, withAp));
         return PageResult.of(page);
     }
 

@@ -76,7 +76,12 @@ public class CrmCustomerService {
 
     public CrmAnalysis.CustomerSummary summary(Long customerId) {
         detail(customerId);
-        return customerMapper.selectSummary(customerId, LocalDate.now().minusYears(1));
+        CrmAnalysis.CustomerSummary s = customerMapper.selectSummary(customerId, LocalDate.now().minusYears(1));
+        // 关联供应商的应付（挂接应付）只给有应付查看权限的用户
+        if (!permissionService.hasPerm("fin:ap:list")) {
+            s.setLinkedApBalance(null);
+        }
+        return s;
     }
 
     /**

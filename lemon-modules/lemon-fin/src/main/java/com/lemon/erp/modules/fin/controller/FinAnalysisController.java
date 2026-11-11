@@ -39,13 +39,14 @@ public class FinAnalysisController {
         return R.ok(analysisService.grossMargin(begin, end, groupBy, customerId));
     }
 
-    /** 往来对账单：kind 为 AR（客户）/ AP（供应商） */
+    /** 往来对账单：kind 为 AR（客户）/ AP（供应商）；withAp 挂接关联供应商的应付（仅客户） */
     @GetMapping("/partner-statement")
     @PreAuthorize("@ss.hasPerm('fin:partnerStatement:list')")
     public R<FinAnalysis.PartnerStatement> partnerStatement(@RequestParam BillKind kind, @RequestParam Long partnerId,
                                                             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate begin,
-                                                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
-        return R.ok(partnerLedgerService.statement(kind, partnerId, begin, end));
+                                                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
+                                                            @RequestParam(defaultValue = "false") boolean withAp) {
+        return R.ok(partnerLedgerService.statement(kind, partnerId, begin, end, withAp));
     }
 
     /** 销售毛利明细（按单据明细）；adjustMode 为调整项的显示方式，不传为汇总到底部 */

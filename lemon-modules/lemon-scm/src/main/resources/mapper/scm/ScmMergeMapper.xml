@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 往来单位合并（PartnerMergeHandler）：影响范围、冲突检查与迁移。订单、出入库单、草稿的 partner_id 按种类区分客户和供应商 -->
+<mapper namespace="com.lemon.erp.modules.scm.mapper.ScmMergeMapper">
+
+    <sql id="ids"><foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach></sql>
+
+    <select id="customerImpacts" resultType="com.lemon.erp.framework.ref.MergeImpact">
+        SELECT 'scm.merge.salesOrder' AS label_key, COUNT(*) AS total, 0 AS conflicts FROM scm_order WHERE kind = 'SALES' AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.salesTradeDoc', COUNT(*), 0 FROM scm_trade_doc WHERE kind IN ('SALES_OUT', 'SALES_RETURN') AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.tradeDraft', COUNT(*), 0 FROM scm_trade_draft WHERE kind IN ('SALES_OUT', 'SALES_RETURN') AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.quotation', COUNT(*), 0 FROM scm_quotation WHERE customer_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.delivery', COUNT(*), 0 FROM scm_delivery WHERE customer_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.shipment', COUNT(*), 0 FROM scm_shipment WHERE customer_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.rebate', COUNT(*), 0 FROM scm_rebate WHERE customer_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.channelReport', COUNT(*), 0 FROM scm_channel_report WHERE customer_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.priceList', COUNT(*), 0 FROM scm_price_list WHERE customer_id IN <include refid="ids"/>
+    </select>
+
+    <select id="supplierImpacts" resultType="com.lemon.erp.framework.ref.MergeImpact">
+        SELECT 'scm.merge.purchaseOrder' AS label_key, COUNT(*) AS total, 0 AS conflicts FROM scm_order WHERE kind = 'PURCHASE' AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.purchaseTradeDoc', COUNT(*), 0 FROM scm_trade_doc WHERE kind IN ('PURCHASE_IN', 'PURCHASE_RETURN') AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.tradeDraft', COUNT(*), 0 FROM scm_trade_draft WHERE kind IN ('PURCHASE_IN', 'PURCHASE_RETURN') AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.carrier', COUNT(*), 0 FROM scm_trade_doc WHERE carrier_supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.carrier', COUNT(*), 0 FROM scm_trade_draft WHERE carrier_supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.carrier', COUNT(*), 0 FROM scm_shipment WHERE carrier_supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.requisition', COUNT(*), 0 FROM scm_requisition_item WHERE supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.inquiry', COUNT(*), 0 FROM scm_inquiry_supplier WHERE supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.inquiryQuote', COUNT(*), 0 FROM scm_inquiry_quote WHERE supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.supplierEval', COUNT(*), 0 FROM scm_supplier_eval WHERE supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.rebate', COUNT(*), 0 FROM scm_rebate WHERE supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.purchaseContract', COUNT(*), 0 FROM scm_purchase_contract WHERE supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.tender', COUNT(*), 0 FROM scm_tender WHERE award_supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.tender', COUNT(*), 0 FROM scm_tender_supplier WHERE supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.bid', COUNT(*), 0 FROM scm_bid WHERE supplier_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'scm.merge.asn', COUNT(*), 0 FROM scm_asn WHERE supplier_id IN <include refid="ids"/>
+    </select>
+
+    <update id="mergeRef">
+        <choose>
+            <!-- 客户 -->
+            <when test="ref == 'salesOrder'">UPDATE scm_order SET partner_id = #{targetId} WHERE kind = 'SALES' AND partner_id IN <include refid="ids"/></when>
+            <when test="ref == 'salesTradeDoc'">UPDATE scm_trade_doc SET partner_id = #{targetId} WHERE kind IN ('SALES_OUT', 'SALES_RETURN') AND partner_id IN <include refid="ids"/></when>
+            <when test="ref == 'salesDraft'">UPDATE scm_trade_draft SET partner_id = #{targetId} WHERE kind IN ('SALES_OUT', 'SALES_RETURN') AND partner_id IN <include refid="ids"/></when>
+            <when test="ref == 'quotation'">UPDATE scm_quotation SET customer_id = #{targetId} WHERE customer_id IN <include refid="ids"/></when>
+            <when test="ref == 'delivery'">UPDATE scm_delivery SET customer_id = #{targetId} WHERE customer_id IN <include refid="ids"/></when>
+            <when test="ref == 'shipment'">UPDATE scm_shipment SET customer_id = #{targetId} WHERE customer_id IN <include refid="ids"/></when>
+            <when test="ref == 'salesRebate'">UPDATE scm_rebate SET customer_id = #{targetId} WHERE customer_id IN <include refid="ids"/></when>
+            <when test="ref == 'channelReport'">UPDATE scm_channel_report SET customer_id = #{targetId} WHERE customer_id IN <include refid="ids"/></when>
+            <when test="ref == 'priceList'">UPDATE scm_price_list SET customer_id = #{targetId} WHERE customer_id IN <include refid="ids"/></when>
+            <!-- 供应商 -->
+            <when test="ref == 'purchaseOrder'">UPDATE scm_order SET partner_id = #{targetId} WHERE kind = 'PURCHASE' AND partner_id IN <include refid="ids"/></when>
+            <when test="ref == 'purchaseTradeDoc'">UPDATE scm_trade_doc SET partner_id = #{targetId} WHERE kind IN ('PURCHASE_IN', 'PURCHASE_RETURN') AND partner_id IN <include refid="ids"/></when>
+            <when test="ref == 'purchaseDraft'">UPDATE scm_trade_draft SET partner_id = #{targetId} WHERE kind IN ('PURCHASE_IN', 'PURCHASE_RETURN') AND partner_id IN <include refid="ids"/></when>
+            <when test="ref == 'carrierTradeDoc'">UPDATE scm_trade_doc SET carrier_supplier_id = #{targetId} WHERE carrier_supplier_id IN <include refid="ids"/></when>
+            <when test="ref == 'carrierDraft'">UPDATE scm_trade_draft SET carrier_supplier_id = #{targetId} WHERE carrier_supplier_id IN <include refid="ids"/></when>
+            <when test="ref == 'carrierShipment'">UPDATE scm_shipment SET carrier_supplier_id = #{targetId} WHERE carrier_supplier_id IN <include refid="ids"/></when>
+            <when test="ref == 'requisition'">UPDATE scm_requisition_item SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/></when>
+            <when test="ref == 'inquiryQuote'">UPDATE scm_inquiry_quote SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/></when>
+            <when test="ref == 'inquirySupplier'">UPDATE scm_inquiry_supplier SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/></when>
+            <when test="ref == 'supplierEval'">UPDATE scm_supplier_eval SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/></when>
+            <when test="ref == 'purchaseRebate'">UPDATE scm_rebate SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/></when>
+            <when test="ref == 'purchaseContract'">UPDATE scm_purchase_contract SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/></when>
+            <when test="ref == 'tenderAward'">UPDATE scm_tender SET award_supplier_id = #{targetId} WHERE award_supplier_id IN <include refid="ids"/></when>
+            <when test="ref == 'tenderSupplier'">UPDATE scm_tender_supplier SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/></when>
+            <when test="ref == 'bid'">UPDATE scm_bid SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/></when>
+            <when test="ref == 'asn'">UPDATE scm_asn SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/></when>
+            <otherwise>UPDATE scm_order SET partner_id = partner_id WHERE 1 = 0</otherwise>
+        </choose>
+    </update>
+
+    <select id="sharedInquiries" resultType="java.lang.String">
+        SELECT i.inquiry_no FROM scm_inquiry_supplier s JOIN scm_inquiry i ON i.id = s.inquiry_id
+        WHERE s.supplier_id IN <include refid="ids"/>
+        GROUP BY i.id, i.inquiry_no HAVING COUNT(*) > 1
+        ORDER BY i.id
+    </select>
+
+    <select id="sharedTenders" resultType="java.lang.String">
+        SELECT t.tender_no FROM (
+            SELECT tender_id, supplier_id FROM scm_tender_supplier WHERE supplier_id IN <include refid="ids"/>
+            UNION
+            SELECT tender_id, supplier_id FROM scm_bid WHERE supplier_id IN <include refid="ids"/>
+        ) x JOIN scm_tender t ON t.id = x.tender_id
+        GROUP BY t.id, t.tender_no HAVING COUNT(DISTINCT x.supplier_id) > 1
+        ORDER BY t.id
+    </select>
+
+    <select id="sharedChannelPeriods" resultType="java.lang.Integer">
+        SELECT period FROM scm_channel_report WHERE customer_id IN <include refid="ids"/>
+        GROUP BY period HAVING COUNT(*) > 1
+        ORDER BY period
+    </select>
+
+</mapper>

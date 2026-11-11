@@ -59,8 +59,14 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
-            <div>{{ record.name }}</div>
+            <div>
+              {{ record.name }}
+              <a-tooltip v-if="record.mergedTo" :title="$t('scm.partnerMerge.mergedTo', { name: record.mergedToName })">
+                <a-tag :bordered="false" class="merged-tag">{{ $t('scm.partnerMerge.merged') }}</a-tag>
+              </a-tooltip>
+            </div>
             <div class="sub-text">{{ record.code }}</div>
+            <div v-if="record.linkedSupplierName" class="sub-text">{{ $t('scm.customer.linkedSupplierOf', { name: record.linkedSupplierName }) }}</div>
           </template>
           <template v-else-if="column.key === 'level'">
             <DictTag type="scm_customer_level" :value="record.level" />
@@ -208,6 +214,7 @@
       :editable="userStore.hasPerm('scm:customer:edit')"
     />
     <PortalAccountDrawer v-model:open="portalOpen" kind="customer" :partner="portalCustomer" />
+    <PartnerMergeModal ref="mergeRef" type="customer" @merged="load" />
     <CustomerPriceDrawer ref="customerPriceRef" />
   </div>
 </template>
@@ -215,7 +222,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DollarOutlined, DownOutlined, ExportOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons-vue'
+import { DollarOutlined, DownOutlined, ExportOutlined, ImportOutlined, MergeCellsOutlined, PaperClipOutlined, PlusOutlined, UserOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -225,6 +232,7 @@ import StatusSwitch from '@/components/StatusSwitch.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import PortalAccountDrawer from '@/components/scm/PortalAccountDrawer.vue'
+import PartnerMergeModal from '@/components/scm/PartnerMergeModal.vue'
 import CustomerPriceDrawer from '@/components/scm/CustomerPriceDrawer.vue'
 import { usePriceLevels } from '@/components/wms/priceLevels'
 import { CUSTOMER_PRICE_COLUMNS, exportCustomerPriceRows, priceImportSample } from '@/components/scm/customerPrices'
@@ -356,6 +364,8 @@ const { formRef, form } = drawer
 const ai = useAiPrefill('customer', (data) => drawer.openCreate(data), () => drawer.open.value)
 
 const remove = useAction((id) => deletePartner('customer', id), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+// 资料合并（issue #95）
+const mergeRef = ref()
 
 /** 行操作：编辑、客户价格、删除直接显示，资料、门户账号（经销商）在「更多」中 */
 const rowActions = (record) => [
@@ -363,11 +373,15 @@ const rowActions = (record) => [
   { key: 'price', label: t('pricing.customerPrice.open'), icon: DollarOutlined, onClick: () => customerPriceRef.value.open(record) },
   { type: 'delete', perm: 'scm:customer:remove', confirm: t('scm.customer.confirmDelete', { name: record.name }), onClick: () => remove(record.id) },
   { key: 'extras', label: t('scm.customer.extras'), icon: PaperClipOutlined, more: true, onClick: () => openExtras(record) },
-  { key: 'portal', label: t('scm.customer.portal'), icon: UserOutlined, show: record.channel === SalesChannel.DEALER, perm: 'scm:customer:portal', more: true, onClick: () => openPortal(record) }
+  { key: 'portal', label: t('scm.customer.portal'), icon: UserOutlined, show: record.channel === SalesChannel.DEALER, perm: 'scm:customer:portal', more: true, onClick: () => openPortal(record) },
+  { key: 'merge', label: t('scm.partnerMerge.action'), icon: MergeCellsOutlined, perm: 'scm:customer:merge', show: !record.mergedTo, more: true, onClick: () => mergeRef.value.open(record) }
 ]
 </script>
 
 <style scoped>
+.merged-tag {
+  margin-left: 4px;
+}
 .sub-text {
   color: var(--app-text-3);
   font-size: 12px;

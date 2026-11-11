@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.validation.Update;
@@ -93,4 +94,16 @@ public class ScmCustomer extends BaseEntity implements Searchable {
 
     @TableField(exist = false)
     private String ownerName;
+
+    /** 已合并到的客户（资料合并后停用，不能再启用）；只能由合并功能设置 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Long mergedTo;
+
+    /** 已合并到的客户：编码 名称（列表显示） */
+    @TableField(exist = false)
+    private String mergedToName;
+
+    /** 关联的供应商（供应商资料中设置的关联客户为本客户）：编码 名称（列表显示） */
+    @TableField(exist = false)
+    private String linkedSupplierName;
 }

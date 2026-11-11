@@ -79,7 +79,16 @@ export function moneyUpper(n) {
 }
 
 /** 与业务单据金额联动的凭证来源，不能直接删除（在业务单据中撤销或做红字冲销） */
-export const UNDELETABLE_SOURCES = [VoucherSource.ADVANCE, VoucherSource.BAD_DEBT, VoucherSource.CLAIM, VoucherSource.LOAN, VoucherSource.NOTE, VoucherSource.TRANSFER]
+export const UNDELETABLE_SOURCES = [
+  VoucherSource.ADVANCE,
+  VoucherSource.BAD_DEBT,
+  VoucherSource.CLAIM,
+  VoucherSource.LOAN,
+  VoucherSource.NOTE,
+  VoucherSource.TRANSFER,
+  VoucherSource.INCOME_EXPENSE,
+  VoucherSource.NETTING
+]
 
 /** 可以红字冲销：已记账、未冲销、本身不是红字凭证、不是结转损益凭证 */
 export const canReverse = (v) => v.status === VoucherStatus.POSTED && v.reversed !== 1 && !v.reversalOf && v.sourceType !== VoucherSource.CLOSE

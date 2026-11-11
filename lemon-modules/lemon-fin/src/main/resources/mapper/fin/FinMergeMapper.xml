@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 往来单位合并（PartnerMergeHandler）：影响范围与迁移。customer = true 为客户，否则为供应商 -->
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinMergeMapper">
+
+    <sql id="ids"><foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach></sql>
+    <sql id="billKind"><choose><when test="customer">kind = 'AR'</when><otherwise>kind = 'AP'</otherwise></choose></sql>
+    <sql id="settleKind"><choose><when test="customer">kind = 'RECEIPT'</when><otherwise>kind = 'PAYMENT'</otherwise></choose></sql>
+    <sql id="invoiceKind"><choose><when test="customer">kind = 'OUTPUT'</when><otherwise>kind = 'INPUT'</otherwise></choose></sql>
+    <sql id="ioType"><choose><when test="customer">partner_type = 'CUSTOMER'</when><otherwise>partner_type = 'SUPPLIER'</otherwise></choose></sql>
+    <sql id="noteKind"><choose><when test="customer">kind = 'RECEIVABLE'</when><otherwise>kind = 'PAYABLE'</otherwise></choose></sql>
+    <!-- 票据操作记录的往来单位：收票为客户，背书、开票为供应商 -->
+    <sql id="noteAction"><choose><when test="customer">action = 'RECEIVE'</when><otherwise>action IN ('ENDORSE', 'ISSUE')</otherwise></choose></sql>
+    <sql id="auxColumn"><choose><when test="customer">customer_id</when><otherwise>supplier_id</otherwise></choose></sql>
+
+    <select id="impacts" resultType="com.lemon.erp.framework.ref.MergeImpact">
+        SELECT <choose><when test="customer">'fin.merge.ar'</when><otherwise>'fin.merge.ap'</otherwise></choose> AS label_key, COUNT(*) AS total, 0 AS conflicts
+        FROM fin_bill WHERE <include refid="billKind"/> AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT <choose><when test="customer">'fin.merge.receipt'</when><otherwise>'fin.merge.payment'</otherwise></choose>, COUNT(*), 0
+        FROM fin_settlement WHERE <include refid="settleKind"/> AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT <choose><when test="customer">'fin.merge.advanceReceipt'</when><otherwise>'fin.merge.advancePayment'</otherwise></choose>, COUNT(*), 0
+        FROM fin_advance WHERE <include refid="settleKind"/> AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'fin.merge.offset', COUNT(*), 0 FROM fin_offset WHERE <include refid="billKind"/> AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'fin.merge.invoice', COUNT(*), 0 FROM fin_invoice WHERE <include refid="invoiceKind"/> AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'fin.merge.ioDoc', COUNT(*), 0 FROM fin_io_doc WHERE <include refid="ioType"/> AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'fin.merge.note', COUNT(*), 0 FROM fin_note WHERE <include refid="noteKind"/> AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'fin.merge.voucherEntry', COUNT(*), 0 FROM fin_voucher_entry WHERE <include refid="auxColumn"/> IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'fin.merge.netting', COUNT(*), 0 FROM fin_netting WHERE <include refid="auxColumn"/> IN <include refid="ids"/>
+        <if test="!customer">
+            UNION ALL
+            SELECT 'fin.merge.supplierStatement', COUNT(*), 0 FROM fin_supplier_statement WHERE supplier_id IN <include refid="ids"/>
+        </if>
+    </select>
+
+    <update id="mergeBill">
+        UPDATE fin_bill SET partner_id = #{targetId} WHERE <include refid="billKind"/> AND partner_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeSettlement">
+        UPDATE fin_settlement SET partner_id = #{targetId} WHERE <include refid="settleKind"/> AND partner_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeAdvance">
+        UPDATE fin_advance SET partner_id = #{targetId} WHERE <include refid="settleKind"/> AND partner_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeOffset">
+        UPDATE fin_offset SET partner_id = #{targetId} WHERE <include refid="billKind"/> AND partner_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeInvoice">
+        UPDATE fin_invoice SET partner_id = #{targetId} WHERE <include refid="invoiceKind"/> AND partner_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeIoDoc">
+        UPDATE fin_io_doc SET partner_id = #{targetId} WHERE <include refid="ioType"/> AND partner_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeNote">
+        UPDATE fin_note SET partner_id = #{targetId} WHERE <include refid="noteKind"/> AND partner_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeNoteLog">
+        UPDATE fin_note_log SET partner_id = #{targetId} WHERE <include refid="noteAction"/> AND partner_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeVoucherEntry">
+        UPDATE fin_voucher_entry SET <include refid="auxColumn"/> = #{targetId} WHERE <include refid="auxColumn"/> IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeNetting">
+        UPDATE fin_netting SET <include refid="auxColumn"/> = #{targetId} WHERE <include refid="auxColumn"/> IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeSupplierStatement">
+        UPDATE fin_supplier_statement SET supplier_id = #{targetId} WHERE supplier_id IN <include refid="ids"/>
+    </update>
+
+</mapper>

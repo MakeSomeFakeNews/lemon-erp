@@ -159,6 +159,10 @@ public final class CrmAnalysis {
         private Long orderCount;
         private String lastOrderDate;
         private BigDecimal arBalance;
+        /** 关联供应商（供应商资料中的关联客户为本客户）：编码 名称，没有为空 */
+        private String linkedSupplierName;
+        /** 关联供应商的应付余额（未核销的应付单），没有应付查看权限时为空；应收净额 = 应收余额 − 关联应付 */
+        private BigDecimal linkedApBalance;
         private Long wonCount;
         private BigDecimal wonAmount;
         private Long openTickets;

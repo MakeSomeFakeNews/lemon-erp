@@ -128,6 +128,8 @@ DROP TABLE IF EXISTS fin_expense_claim_item;
 DROP TABLE IF EXISTS fin_loan;
 DROP TABLE IF EXISTS fin_loan_repay;
 DROP TABLE IF EXISTS fin_offset;
+DROP TABLE IF EXISTS fin_netting_item;
+DROP TABLE IF EXISTS fin_netting;
 DROP TABLE IF EXISTS fin_io_doc_item;
 DROP TABLE IF EXISTS fin_io_doc;
 DROP TABLE IF EXISTS fin_io_category;
@@ -1294,13 +1296,16 @@ CREATE TABLE scm_supplier (
     payment_days INT          NOT NULL DEFAULT 0 COMMENT '账期（天），应付单到期日 = 单据日期 + 账期',
     logistics    TINYINT      NOT NULL DEFAULT 0 COMMENT '物流公司（承运商） 1是 0否：采购运费、发运单的承运商只列出物流公司',
     routes       VARCHAR(1000)         DEFAULT NULL COMMENT '营运路线（物流公司），可写途经站点，如 青岛北—青岛西—诸城—济南',
+    customer_id  BIGINT                DEFAULT NULL COMMENT '关联客户（同一单位既是供应商又是客户，一对一）：查询应收时可挂接该供应商的应付，可做应收应付对冲',
+    merged_to    BIGINT                DEFAULT NULL COMMENT '已合并到的供应商（资料合并后本资料停用，业务数据已改为指向该供应商）',
     status       TINYINT      NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
     remark       VARCHAR(255)          DEFAULT NULL COMMENT '备注',
     search_key   VARCHAR(1000)          DEFAULT NULL COMMENT '检索列：编码、名称、联系人、电话去掉分隔符的小写串、数字串、拼音首字母（空格分隔），由程序计算，下拉和列表关键字匹配',
     create_time  DATETIME              DEFAULT NULL COMMENT '创建时间',
     update_time  DATETIME              DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_supplier_code (code, tenant_id)
+    UNIQUE KEY uk_supplier_code (code, tenant_id),
+    UNIQUE KEY uk_supplier_customer (customer_id, tenant_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '供应商';
 
 CREATE TABLE scm_supplier_price (
@@ -1584,6 +1589,7 @@ CREATE TABLE scm_customer (
     channel      VARCHAR(16)    NOT NULL DEFAULT 'DIRECT' COMMENT '渠道(字典 scm_channel) DIRECT直销 DEALER经销商',
     region       VARCHAR(128)            DEFAULT NULL COMMENT '区域(业务字典 scm_region)，经销商为授权区域，进销存报表按区域汇总',
     owner_id     BIGINT                  DEFAULT NULL COMMENT '负责销售：经销商门户订单以其为制单人（按其数据权限可见）',
+    merged_to    BIGINT                  DEFAULT NULL COMMENT '已合并到的客户（资料合并后本资料停用，业务数据已改为指向该客户）',
     status       TINYINT        NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
     remark       VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     search_key   VARCHAR(1000)          DEFAULT NULL COMMENT '检索列：编码、名称、联系人、电话去掉分隔符的小写串、数字串、拼音首字母（空格分隔），由程序计算，下拉和列表关键字匹配',
@@ -2923,6 +2929,40 @@ CREATE TABLE fin_offset (
     KEY idx_offset_partner (kind, partner_id),
     KEY idx_offset_bill (bill_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '冲账单（垫付运费、返利、三包赔偿等抵扣往来款）';
+
+CREATE TABLE fin_netting (
+    id           BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id    BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    netting_no   VARCHAR(32)    NOT NULL COMMENT '单号',
+    customer_id  BIGINT         NOT NULL COMMENT '客户',
+    supplier_id  BIGINT         NOT NULL COMMENT '供应商（关联该客户的供应商）',
+    netting_date DATE           NOT NULL COMMENT '对冲日期',
+    amount       DECIMAL(18, 2) NOT NULL COMMENT '对冲金额（正数）= 核销的应收合计 = 核销的应付合计（本位币）',
+    voucher_id   BIGINT                  DEFAULT NULL COMMENT '凭证：借 应付账款（供应商）/ 贷 应收账款（客户）',
+    remark       VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    create_by    BIGINT                  DEFAULT NULL COMMENT '制单人',
+    create_time  DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time  DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_netting_no (netting_no, tenant_id),
+    KEY idx_netting_customer (customer_id),
+    KEY idx_netting_supplier (supplier_id),
+    KEY idx_netting_voucher (voucher_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '应收应付对冲：关联的客户与供应商之间用应付抵减应收（不收付现金）';
+
+CREATE TABLE fin_netting_item (
+    id          BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    netting_id  BIGINT         NOT NULL COMMENT '对冲单',
+    bill_id     BIGINT         NOT NULL COMMENT '核销的应收 / 应付单',
+    kind        VARCHAR(8)     NOT NULL COMMENT '种类 AR应收 AP应付',
+    amount      DECIMAL(18, 2) NOT NULL COMMENT '核销金额（与单据金额同号，红字单据为负数）',
+    create_time DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_netting_item_netting (netting_id),
+    KEY idx_netting_item_bill (bill_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '应收应付对冲的核销明细';
 
 CREATE TABLE fin_io_category (
     id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -7854,3 +7894,19 @@ WHERE dict_type NOT IN (SELECT type FROM sys_dict_type WHERE kind = 'BUSINESS')
    OR (dict_type = 'crm_ticket_channel' AND dict_value = 'ONSITE')
    OR (dict_type = 'pm_priority' AND dict_value = 'MEDIUM')
    OR (dict_type = 'hr_training_category' AND dict_value = 'SKILL');
+
+-- 往来单位合并与关联（issue #95）：客户合并、供应商合并按钮（销售经理、采购员），应收应付对冲的新增、删除按钮（会计）；
+-- 凭证来源「应收应付对冲」。供应商的关联客户（scm_supplier.customer_id）、已合并标记（merged_to）、对冲单表见建表语句
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(1474, 147, '供应商合并', 'F', NULL, NULL, 'scm:supplier:merge', NULL, 5, 1, 1, NOW(), NOW()),
+(1494, 149, '客户合并', 'F', NULL, NULL, 'scm:customer:merge', NULL, 5, 1, 1, NOW(), NOW()),
+(1835, 183, '应收应付对冲', 'F', NULL, NULL, 'fin:netting:add', NULL, 10, 1, 1, NOW(), NOW()),
+(1836, 183, '删除对冲单', 'F', NULL, NULL, 'fin:netting:remove', NULL, 11, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT g.role_id, g.menu_id FROM (
+    SELECT 17 AS role_id, 1494 AS menu_id UNION ALL SELECT 4, 1474 UNION ALL SELECT 9, 1835 UNION ALL SELECT 9, 1836
+) g
+WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, builtin, create_time, update_time) VALUES
+('fin_voucher_source', '应收应付对冲', 'NETTING', 'volcano', 23, 1, 1, NOW(), NOW());

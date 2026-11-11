@@ -1,7 +1,9 @@
 package com.lemon.erp.modules.scm.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.validation.Update;
@@ -67,6 +69,25 @@ public class ScmSupplier extends BaseEntity implements Searchable {
     /** 营运路线（物流公司），可写完整的途经站点，如 青岛北—青岛西—诸城—济南，最多 1000 个字符 */
     @Size(max = 1000, message = "{scm.valid.routesCannotExceedCharacters}")
     private String routes;
+
+    /**
+     * 关联客户：同一单位既是供应商又是客户时设置（一对一，一个客户只能被一个供应商关联）。
+     * 查询应收（应收列表、往来汇总、账龄、往来对账单、客户详情）时可「挂接应付」，关联的客户与供应商之间可做应收应付对冲。
+     * 修改资料时由 Service 单独更新（可清空），其他按 ID 更新的地方不会误清
+     */
+    private Long customerId;
+
+    /** 关联客户：编码 名称（列表、表单回显） */
+    @TableField(exist = false)
+    private String customerName;
+
+    /** 已合并到的供应商（资料合并后停用，不能再启用）；只能由合并功能设置 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Long mergedTo;
+
+    /** 已合并到的供应商：编码 名称（列表显示） */
+    @TableField(exist = false)
+    private String mergedToName;
 
     /** 1 启用 0 停用 */
     private EnableStatus status;

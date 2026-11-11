@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 往来单位合并（PartnerMergeHandler）：影响范围与迁移。customer = true 为客户，否则为供应商 -->
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsMergeMapper">
+
+    <sql id="ids"><foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach></sql>
+
+    <!-- 寄售仓：客户寄售仓 / 供应商寄售仓 -->
+    <sql id="warehouseType">
+        <choose>
+            <when test="customer">type = 'CONSIGN_OUT'</when>
+            <otherwise>type = 'CONSIGN_IN'</otherwise>
+        </choose>
+    </sql>
+
+    <!-- 出入库单的往来单位：销售出库 / 销售退货为客户，采购入库 / 采购退货为供应商 -->
+    <sql id="docBizType">
+        <choose>
+            <when test="customer">((kind = 'OUT' AND biz_type = 'SALES') OR (kind = 'IN' AND biz_type = 'SALES_RETURN'))</when>
+            <otherwise>((kind = 'IN' AND biz_type = 'PURCHASE') OR (kind = 'OUT' AND biz_type = 'PURCHASE_RETURN'))</otherwise>
+        </choose>
+    </sql>
+
+    <select id="impacts" resultType="com.lemon.erp.framework.ref.MergeImpact">
+        SELECT 'wms.merge.consignWarehouse' AS label_key, COUNT(*) AS total, 0 AS conflicts
+        FROM wms_warehouse WHERE <include refid="warehouseType"/> AND partner_id IN <include refid="ids"/>
+        UNION ALL
+        SELECT 'wms.merge.stockDoc', COUNT(*), 0
+        FROM wms_stock_doc WHERE <include refid="docBizType"/> AND partner_id IN <include refid="ids"/>
+        <if test="!customer">
+            UNION ALL
+            SELECT 'wms.merge.stockHold', COUNT(*), 0 FROM wms_stock_hold WHERE partner_id IN <include refid="ids"/>
+        </if>
+    </select>
+
+    <update id="mergeWarehouse">
+        UPDATE wms_warehouse SET partner_id = #{targetId}
+        WHERE <include refid="warehouseType"/> AND partner_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeStockFlow">
+        UPDATE wms_stock_flow SET partner_id = #{targetId}, partner_name = #{targetName}
+        WHERE biz_type IN ('IN', 'OUT') AND partner_id IN <include refid="ids"/>
+          AND doc_id IN (SELECT d.id FROM wms_stock_doc d
+                         WHERE d.partner_id IN <include refid="ids"/>
+                           AND <choose>
+                                   <when test="customer">((d.kind = 'OUT' AND d.biz_type = 'SALES') OR (d.kind = 'IN' AND d.biz_type = 'SALES_RETURN'))</when>
+                                   <otherwise>((d.kind = 'IN' AND d.biz_type = 'PURCHASE') OR (d.kind = 'OUT' AND d.biz_type = 'PURCHASE_RETURN'))</otherwise>
+                               </choose>)
+    </update>
+
+    <update id="mergeStockDoc">
+        UPDATE wms_stock_doc SET partner_id = #{targetId}, partner_name = #{targetName}
+        WHERE <include refid="docBizType"/> AND partner_id IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeStockHold">
+        UPDATE wms_stock_hold SET partner_id = #{targetId} WHERE partner_id IN <include refid="ids"/>
+    </update>
+
+</mapper>

@@ -29,10 +29,23 @@ public class PartnerSummaryRow {
     private BigDecimal badDebt;
     /** 收付款折让 / 抹零累计（已计入单据的已核销，已从单据余额中扣除），单列参考 */
     private BigDecimal discount;
-    /** 净欠款合计 = 期初 + 单据余额 + 预收预付（负数） */
+    /** 净欠款合计 = 期初 + 单据余额 + 预收预付（负数）+ 挂接的关联应付（负数） */
     private BigDecimal net;
 
-    /** 汇总查询条件 */
-    public record Query(BillKind kind, Long partnerId, String keyword, Long ownerId, boolean onlyBalance) {
+    /**
+     * 挂接应付（应收汇总勾选「挂接应付」时）：关联供应商的应付净额（期初 + 单据余额 − 预付未冲抵），取负数；不挂接时为 0
+     */
+    private BigDecimal linkedAp;
+    /** 关联的供应商 ID（挂接应付时） */
+    private Long linkedSupplierId;
+    /** 关联的供应商：编码 名称（挂接应付时） */
+    private String linkedSupplierName;
+
+    /**
+     * 汇总查询条件
+     *
+     * @param withAp 挂接应付（仅应收）：每个客户一行加上关联供应商的应付（负数），净欠款 = 应收 − 应付；只有应付没有应收的客户也列出
+     */
+    public record Query(BillKind kind, Long partnerId, String keyword, Long ownerId, boolean onlyBalance, boolean withAp) {
     }
 }

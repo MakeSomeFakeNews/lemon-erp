@@ -107,4 +107,8 @@ public class FinBill extends BaseEntity {
 
     @TableField(exist = false)
     private String voucherNo;
+
+    /** 应收列表挂接应付时列出的关联供应商的应付单（金额等已取负数，只读） */
+    @TableField(exist = false)
+    private Boolean linkedAp;
 }

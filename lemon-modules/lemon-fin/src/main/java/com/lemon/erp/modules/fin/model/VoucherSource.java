@@ -44,5 +44,7 @@ public enum VoucherSource {
     /** 账户调拨 */
     TRANSFER,
     /** 其他收支单（其他收入、费用支出） */
-    INCOME_EXPENSE
+    INCOME_EXPENSE,
+    /** 应收应付对冲 */
+    NETTING
 }

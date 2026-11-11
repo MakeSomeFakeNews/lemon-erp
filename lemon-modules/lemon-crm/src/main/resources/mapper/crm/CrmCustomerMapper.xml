@@ -63,6 +63,9 @@
                AND o.status IN ('APPROVED', 'PARTIAL', 'COMPLETED')) AS "lastOrderDate",
             (SELECT COALESCE(SUM(b.amount - b.settled_amount), 0) FROM fin_bill b
              WHERE b.kind = 'AR' AND b.partner_id = #{customerId}) AS "arBalance",
+            (SELECT CONCAT(sp.code, ' ', sp.name) FROM scm_supplier sp WHERE sp.customer_id = #{customerId}) AS "linkedSupplierName",
+            (SELECT SUM(b.amount - b.settled_amount) FROM fin_bill b JOIN scm_supplier sp ON sp.id = b.partner_id
+             WHERE b.kind = 'AP' AND sp.customer_id = #{customerId}) AS "linkedApBalance",
             (SELECT COUNT(*) FROM crm_opportunity o WHERE o.customer_id = #{customerId} AND o.stage = 'WON') AS "wonCount",
             (SELECT COALESCE(SUM(o.amount), 0) FROM crm_opportunity o WHERE o.customer_id = #{customerId} AND o.stage = 'WON') AS "wonAmount",
             (SELECT COUNT(*) FROM crm_ticket t WHERE t.customer_id = #{customerId} AND t.status IN ('OPEN', 'PROCESSING')) AS "openTickets"

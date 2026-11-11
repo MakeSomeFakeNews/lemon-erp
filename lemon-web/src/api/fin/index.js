@@ -308,6 +308,17 @@ export const deleteOffset = (id) => request.delete(`/fin/offset/${ids(id)}`)
 export const reviewOffset = (id) => request.post(`/fin/offset/${id}/review`)
 export const cancelReviewOffset = (id) => request.post(`/fin/offset/${id}/cancel-review`)
 
+/**
+ * 应收应付对冲（issue #95）：关联的客户与供应商之间用应付抵减应收。
+ * 候选：{ supplierId, supplierCode, supplierName, receivables, payables }（两边未核销的本位币单据）；
+ * 新增：{ customerId, nettingDate, remark, items: [{ billId, amount }] }，应收合计须等于应付合计
+ */
+export const pageNetting = (params) => request.get('/fin/netting', { params })
+export const getNetting = (id) => request.get(`/fin/netting/${id}`)
+export const nettingCandidates = (customerId) => request.get('/fin/netting/candidates', { params: { customerId } })
+export const addNetting = (data) => request.post('/fin/netting', data)
+export const deleteNetting = (id) => request.delete(`/fin/netting/${ids(id)}`)
+
 // ---------------------------------------------------------------- 其他收支（其他收入单、费用支出单、收支类别）
 export const listIoCategory = (params) => request.get('/fin/io/category', { params })
 export const addIoCategory = (data) => request.post('/fin/io/category', data)

@@ -2,15 +2,18 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.lemon.erp.modules.fin.mapper.FinBillMapper">
 
-    <!-- 往来单位按种类分别关联客户 / 供应商 -->
+    <!-- 往来单位按种类分别关联客户 / 供应商。withAp（应收挂接应付）：同时列出关联供应商（scm_supplier.customer_id）的应付单，
+         按关联的客户筛选，金额由 Service 取负数 -->
     <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinBill">
         SELECT b.*, COALESCE(c.code, s.code) AS partner_code, COALESCE(c.name, s.name) AS partner_name, v.voucher_no
         FROM fin_bill b
         LEFT JOIN scm_customer c ON b.kind = 'AR' AND c.id = b.partner_id
         LEFT JOIN scm_supplier s ON b.kind = 'AP' AND s.id = b.partner_id
         LEFT JOIN fin_voucher v ON v.id = b.voucher_id
-        WHERE b.kind = #{q.kind}
-        <if test="q.partnerId != null">AND b.partner_id = #{q.partnerId}</if>
+        WHERE ((b.kind = #{q.kind}<if test="q.partnerId != null"> AND b.partner_id = #{q.partnerId}</if>)
+        <if test="withAp">
+            OR (b.kind = 'AP' AND s.customer_id IS NOT NULL<if test="q.partnerId != null"> AND s.customer_id = #{q.partnerId}</if>)
+        </if>)
         <if test="q.status != null">AND b.status = #{q.status}</if>
         <if test="q.keyword != null and q.keyword != ''">
             AND (b.bill_no LIKE CONCAT('%', #{q.keyword}, '%') OR b.source_no LIKE CONCAT('%', #{q.keyword}, '%'))
@@ -25,24 +28,39 @@
         SELECT COALESCE(SUM(amount - settled_amount), 0) FROM fin_bill WHERE kind = #{kind} AND partner_id = #{partnerId}
     </select>
 
+    <!-- withAp（应收挂接应付）：关联供应商的应付单按关联的客户汇总，金额取负数，计入同一账龄分段 -->
     <select id="selectAging" resultType="com.lemon.erp.modules.fin.dto.AgingRow">
         SELECT x.partner_id, COALESCE(c.code, s.code) AS partner_code, COALESCE(c.name, s.name) AS partner_name,
                x.balance, x.not_due, x.d30, x.d60, x.d90, x.over90
         FROM (
             SELECT b.partner_id,
-                   SUM(b.amount - COALESCE(st.settled, 0)) AS balance,
-                   SUM(CASE WHEN b.due_date &gt;= #{asOf} THEN b.amount - COALESCE(st.settled, 0) ELSE 0 END) AS not_due,
-                   SUM(CASE WHEN b.due_date &lt; #{asOf} AND b.due_date &gt;= #{d30} THEN b.amount - COALESCE(st.settled, 0) ELSE 0 END) AS d30,
-                   SUM(CASE WHEN b.due_date &lt; #{d30} AND b.due_date &gt;= #{d60} THEN b.amount - COALESCE(st.settled, 0) ELSE 0 END) AS d60,
-                   SUM(CASE WHEN b.due_date &lt; #{d60} AND b.due_date &gt;= #{d90} THEN b.amount - COALESCE(st.settled, 0) ELSE 0 END) AS d90,
-                   SUM(CASE WHEN b.due_date &lt; #{d90} THEN b.amount - COALESCE(st.settled, 0) ELSE 0 END) AS over90
-            FROM fin_bill b
-            <!-- 截至查询日期的核销金额：之后的收付款不扣减，查历史日期的账龄也准确 -->
-            LEFT JOIN (SELECT si.bill_id, SUM(si.amount + si.discount) AS settled
-                       FROM fin_settlement_item si JOIN fin_settlement s ON s.id = si.settlement_id
-                       WHERE s.settle_date &lt;= #{asOf} AND s.status = 'APPROVED'
-                       GROUP BY si.bill_id) st ON st.bill_id = b.id
-            WHERE b.kind = #{kind} AND b.bill_date &lt;= #{asOf}
+                   SUM(b.sgn * (b.amount - COALESCE(st.settled, 0))) AS balance,
+                   SUM(CASE WHEN b.due_date &gt;= #{asOf} THEN b.sgn * (b.amount - COALESCE(st.settled, 0)) ELSE 0 END) AS not_due,
+                   SUM(CASE WHEN b.due_date &lt; #{asOf} AND b.due_date &gt;= #{d30} THEN b.sgn * (b.amount - COALESCE(st.settled, 0)) ELSE 0 END) AS d30,
+                   SUM(CASE WHEN b.due_date &lt; #{d30} AND b.due_date &gt;= #{d60} THEN b.sgn * (b.amount - COALESCE(st.settled, 0)) ELSE 0 END) AS d60,
+                   SUM(CASE WHEN b.due_date &lt; #{d60} AND b.due_date &gt;= #{d90} THEN b.sgn * (b.amount - COALESCE(st.settled, 0)) ELSE 0 END) AS d90,
+                   SUM(CASE WHEN b.due_date &lt; #{d90} THEN b.sgn * (b.amount - COALESCE(st.settled, 0)) ELSE 0 END) AS over90
+            FROM (
+                SELECT b0.id, b0.partner_id, 1 AS sgn, b0.amount, b0.due_date
+                FROM fin_bill b0
+                WHERE b0.kind = #{kind} AND b0.bill_date &lt;= #{asOf}
+                <if test="withAp">
+                    UNION ALL
+                    SELECT b1.id, sp.customer_id, -1, b1.amount, b1.due_date
+                    FROM fin_bill b1 JOIN scm_supplier sp ON sp.id = b1.partner_id
+                    WHERE b1.kind = 'AP' AND sp.customer_id IS NOT NULL AND b1.bill_date &lt;= #{asOf}
+                </if>
+            ) b
+            <!-- 截至查询日期的核销金额（收付款、应收应付对冲）：之后的核销不扣减，查历史日期的账龄也准确 -->
+            LEFT JOIN (SELECT y.bill_id, SUM(y.settled) AS settled FROM (
+                           SELECT si.bill_id, si.amount + si.discount AS settled
+                           FROM fin_settlement_item si JOIN fin_settlement s ON s.id = si.settlement_id
+                           WHERE s.settle_date &lt;= #{asOf} AND s.status = 'APPROVED'
+                           UNION ALL
+                           SELECT ni.bill_id, ni.amount
+                           FROM fin_netting_item ni JOIN fin_netting n ON n.id = ni.netting_id
+                           WHERE n.netting_date &lt;= #{asOf}
+                       ) y GROUP BY y.bill_id) st ON st.bill_id = b.id
             GROUP BY b.partner_id
         ) x
         LEFT JOIN scm_customer c ON #{kind} = 'AR' AND c.id = x.partner_id

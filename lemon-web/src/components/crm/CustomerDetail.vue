@@ -30,7 +30,7 @@
         <a-row v-if="summary" :gutter="[12, 12]" class="block">
           <a-col v-for="s in stats" :key="s.label" :xs="12" :sm="8" :lg="4">
             <div class="stat">
-              <div class="stat-label">{{ s.label }}</div>
+              <div class="stat-label" :title="s.tip">{{ s.label }}</div>
               <div class="stat-value">{{ s.value }}</div>
             </div>
           </a-col>
@@ -142,6 +142,13 @@ const stats = computed(() => {
     { label: t('crm.customerDetail.stat.orders'), value: t('crm.customerDetail.stat.ordersValue', { n: s.orderCount }) },
     { label: t('crm.customerDetail.stat.lastOrder'), value: s.lastOrderDate || '-' },
     { label: t('crm.customerDetail.stat.ar'), value: `¥${formatMoney(s.arBalance)}` },
+    // 挂接应付（issue #95）：有关联供应商且有应付查看权限时显示其应付和应收净额
+    ...(s.linkedSupplierName && s.linkedApBalance != null
+      ? [
+          { label: t('crm.customerDetail.stat.linkedAp'), value: `¥${formatMoney(s.linkedApBalance)}`, tip: s.linkedSupplierName },
+          { label: t('crm.customerDetail.stat.netAr'), value: `¥${formatMoney(Number(s.arBalance || 0) - Number(s.linkedApBalance || 0))}` }
+        ]
+      : []),
     { label: t('crm.customerDetail.stat.won'), value: t('crm.customerDetail.stat.wonValue', { n: s.wonCount, amount: formatMoney(s.wonAmount) }) },
     { label: t('crm.customerDetail.stat.openTickets'), value: t('crm.customerDetail.stat.ordersValue', { n: s.openTickets }) }
   ]
