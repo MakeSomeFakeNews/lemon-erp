@@ -161,7 +161,7 @@ const columns = [
     exportColumns: [
       { title: t('scm.trade.totalAmount'), dataIndex: 'totalAmount' },
       { title: t('scm.wholeDiscount.label'), exportValue: (r) => (Number(r.discountAmount) ? Number(r.discountAmount) : '') },
-      ...(props.kind === 'purchaseIn' ? [{ title: t('scm.freight.label'), exportValue: (r) => (Number(r.freight) ? Number(r.freight) : '') }] : [])
+      { title: t('scm.freight.label'), exportValue: (r) => (Number(r.freight) ? Number(r.freight) : '') }
     ]
   },
   { title: t('scm.trade.wmsDocNo'), dataIndex: 'wmsDocNo', width: 170 },

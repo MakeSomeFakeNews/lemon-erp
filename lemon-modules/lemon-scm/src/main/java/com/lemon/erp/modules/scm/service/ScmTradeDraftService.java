@@ -23,7 +23,6 @@ import com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmTradeDocMapper;
 import com.lemon.erp.modules.scm.mapper.ScmTradeDraftItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmTradeDraftMapper;
-import com.lemon.erp.modules.scm.model.FreightBearer;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.wms.service.DocNoService;
@@ -162,6 +161,8 @@ public class ScmTradeDraftService {
                 .set(ScmTradeDraft::getFreight, draft.getFreight())
                 .set(ScmTradeDraft::getFreightBearer, draft.getFreightBearer())
                 .set(ScmTradeDraft::getCarrierSupplierId, draft.getCarrierSupplierId())
+                .set(ScmTradeDraft::getFreightSettle, draft.getFreightSettle())
+                .set(ScmTradeDraft::getFreightAccountId, draft.getFreightAccountId())
                 .set(ScmTradeDraft::getTotalQty, draft.getTotalQty())
                 .set(ScmTradeDraft::getTotalAmount, draft.getTotalAmount())
                 .set(ScmTradeDraft::getRemark, draft.getRemark())
@@ -181,7 +182,7 @@ public class ScmTradeDraftService {
 
     /**
      * 按请求填写草稿表头，返回明细。只校验结构：引用订单时订单可见、明细属于该订单（物料取订单明细）；直接开单有往来单位、每行有物料；
-     * 运费只用于采购入库，赠品只用于销售出库，直接开单的退货不能补发。合计金额按订单单价 / 录入单价估算（直接开单扣除整单优惠）
+     * 运费的承担方式须符合单据种类，赠品只用于销售出库，直接开单的退货不能补发。合计金额按订单单价 / 录入单价估算（直接开单扣除整单优惠）
      */
     private List<ScmTradeDraftItem> fill(TradeKind kind, ScmTradeDraft draft, TradeDocRequest req) {
         boolean direct = req.direct();
@@ -207,9 +208,8 @@ public class ScmTradeDraftService {
             orderItems = orderItemMapper.selectByOrderId(order.getId()).stream()
                     .collect(Collectors.toMap(ScmOrderItem::getId, Function.identity()));
         }
-        if (req.hasFreight() && kind != TradeKind.PURCHASE_IN) {
-            throw new BizException("scm.error.freightOnlyPurchaseIn");
-        }
+        // 运费按单据种类规范（承运商、付款账户是否必填在审核时校验）
+        ScmTradeDocService.Freight freight = ScmTradeDocService.normalizeFreight(kind, req);
         if (req.orderDiscount() != null) {
             if (direct) {
                 throw new BizException("scm.error.orderDiscountNeedsOrder");
@@ -268,11 +268,11 @@ public class ScmTradeDraftService {
         draft.setWholeDiscount(wholeDiscount);
         // 引用订单的采购入库修改过的订单优惠（为空按订单分摊），审核时校验不超过本单合计
         draft.setOrderDiscount(req.orderDiscount() == null ? null : Decimals.money(req.orderDiscount()));
-        boolean freight = kind == TradeKind.PURCHASE_IN && req.hasFreight();
-        FreightBearer bearer = !freight ? null : req.freightBearer() == null ? FreightBearer.SUPPLIER : req.freightBearer();
-        draft.setFreight(freight ? Decimals.money(req.freight()) : BigDecimal.ZERO);
-        draft.setFreightBearer(bearer);
-        draft.setCarrierSupplierId(bearer == FreightBearer.COMPANY ? req.carrierSupplierId() : null);
+        draft.setFreight(freight != null ? Decimals.money(req.freight()) : BigDecimal.ZERO);
+        draft.setFreightBearer(freight == null ? null : freight.bearer());
+        draft.setCarrierSupplierId(freight == null ? null : freight.carrierId());
+        draft.setFreightSettle(freight == null ? null : freight.settle());
+        draft.setFreightAccountId(freight == null ? null : freight.accountId());
         draft.setTotalQty(Decimals.sum(items, ScmTradeDraftItem::getQty));
         BigDecimal total = wholeDiscount != null ? amount.subtract(wholeDiscount) : draft.getOrderDiscount() != null ? estimateWithOrderDiscount(items, orderItems, draft.getOrderDiscount()) : amount;
         draft.setTotalAmount(total.signum() < 0 ? BigDecimal.ZERO : total);
@@ -310,6 +310,7 @@ public class ScmTradeDraftService {
         }
         return new TradeDocRequest(d.getOrderId(), d.getWarehouseId(), d.getBizDate(), d.getRemark(),
                 kind.isReturns() ? Integer.valueOf(1).equals(d.getReplenish()) : null, items, direct ? d.getPartnerId() : null, salesmanId,
-                d.getWholeDiscount(), d.getFreight(), d.getFreightBearer(), d.getCarrierSupplierId(), d.getOrderDiscount());
+                d.getWholeDiscount(), d.getFreight(), d.getFreightBearer(), d.getCarrierSupplierId(), d.getOrderDiscount(), null,
+                d.getFreightSettle(), d.getFreightAccountId());
     }
 }

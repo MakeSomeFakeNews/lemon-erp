@@ -3,7 +3,7 @@
 <mapper namespace="com.lemon.erp.modules.scm.mapper.ScmShipmentMapper">
 
     <sql id="viewSelect">
-        SELECT s.*, d.doc_no AS trade_doc_no, o.order_no, c.name AS customer_name, u.nickname AS create_by_name,
+        SELECT s.*, d.doc_no AS trade_doc_no, CASE WHEN d.freight &gt; 0 THEN 1 ELSE 0 END AS freight_on_doc, o.order_no, c.name AS customer_name, u.nickname AS create_by_name,
                sp.code AS carrier_supplier_code, sp.name AS carrier_supplier_name
         FROM scm_shipment s
         LEFT JOIN scm_supplier sp ON sp.id = s.carrier_supplier_id

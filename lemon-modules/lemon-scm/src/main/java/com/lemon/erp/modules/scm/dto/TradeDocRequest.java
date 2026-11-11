@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.scm.dto;
 
 import com.lemon.erp.modules.scm.model.FreightBearer;
+import com.lemon.erp.modules.scm.model.FreightSettle;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -24,13 +25,17 @@ import java.util.List;
  * @param partnerId   直接开单：客户 / 供应商
  * @param salesmanId  直接开单的销售出库：业务员（用户），为空时取客户负责人，没有时为制单人
  * @param wholeDiscount 直接开单：整单优惠（含税，抹零也用它），记在隐式订单上并按行金额分摊到各行
- * @param freight       仅采购入库：运费，生成运费应付单；供应商代垫的按各行不含税金额分摊计入存货成本，
- *                      本公司承担的按业务参数 scm.purchaseFreight.cost 计入存货成本（默认）或当期费用
- * @param freightBearer 运费付给：SUPPLIER 供应商代垫（计入该供应商应付，默认）/ COMPANY 本公司承担（付承运商）
- * @param carrierSupplierId 本公司承担时的承运商（供应商）
+ * @param freight       运费，0 或为空表示没有。采购入库生成运费应付单，供应商代垫的按各行不含税金额分摊计入存货成本，
+ *                      本公司承担的按业务参数 scm.purchaseFreight.cost 计入存货成本（默认）或当期费用；
+ *                      销售出库、销售退货、采购退货见 {@link com.lemon.erp.modules.scm.event.TradeFreightEvent}
+ * @param freightBearer 运费承担（见 {@link FreightBearer}）：采购入库 SUPPLIER 供应商代垫（默认）/ COMPANY 本公司承担；
+ *                      销售出库 COMPANY 本公司承担（默认）/ CUSTOMER 代垫运费；销售退货只能 CUSTOMER；采购退货只能 SUPPLIER（为空时取默认值）
+ * @param carrierSupplierId 承运商（供应商）：采购入库本公司承担、销售出库 / 采购退货月结时必填
  * @param orderDiscount 仅引用订单的采购入库：本单的订单优惠（含税，订单币种），为空时按订单的整单优惠分摊；
  *                      明细单价不变，优惠在合计处整单扣减应付，并按各行金额比例冲减存货成本
  * @param sourceDocId 仅草稿：退货引用的原出入库单，只用于修改草稿时回显，出入库不使用
+ * @param freightSettle 销售出库、采购退货：付给承运商的方式，CASH 现付（默认，生成费用支出单）/ MONTHLY 月结（生成承运商应付单）
+ * @param freightAccountId 现付时的付款账户（现金 / 银行末级科目）
  */
 public record TradeDocRequest(
         Long orderId,
@@ -49,7 +54,17 @@ public record TradeDocRequest(
         Long carrierSupplierId,
         @DecimalMin(value = "0", message = "{scm.valid.orderDiscountCannotNegative}")
         @Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") BigDecimal orderDiscount,
-        Long sourceDocId) {
+        Long sourceDocId,
+        FreightSettle freightSettle,
+        Long freightAccountId) {
+
+    /** 运费没有结算方式、付款账户（采购入库） */
+    public TradeDocRequest(Long orderId, Long warehouseId, LocalDate bizDate, String remark, Boolean replenish,
+                           List<TradeDocItemRequest> items, Long partnerId, Long salesmanId, BigDecimal wholeDiscount,
+                           BigDecimal freight, FreightBearer freightBearer, Long carrierSupplierId, BigDecimal orderDiscount, Long sourceDocId) {
+        this(orderId, warehouseId, bizDate, remark, replenish, items, partnerId, salesmanId, wholeDiscount, freight, freightBearer,
+                carrierSupplierId, orderDiscount, sourceDocId, null, null);
+    }
 
     /** 不带草稿回显信息 */
     public TradeDocRequest(Long orderId, Long warehouseId, LocalDate bizDate, String remark, Boolean replenish,

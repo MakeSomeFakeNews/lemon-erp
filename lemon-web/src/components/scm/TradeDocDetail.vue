@@ -41,9 +41,19 @@
           <a-descriptions-item v-if="Number(detail.freight)" :label="$t('scm.freight.label')">
             <div>
               <span class="nowrap">¥{{ formatMoney(detail.freight) }}</span>
-              <DictTag type="scm_freight_bearer" :value="detail.freightBearer" class="freight-tag" />
-              <div class="sub-text">{{ [detail.carrierSupplierName, detail.freightCost ? $t(`scm.freight.cost.${detail.freightCost}`) : null].filter(Boolean).join(' · ') }}</div>
+              <a-tag :bordered="false" class="freight-tag">{{ bearerLabel }}</a-tag>
+              <DictTag v-if="detail.freightSettle" type="scm_freight_settle" :value="detail.freightSettle" />
+              <div class="sub-text">
+                {{ [detail.carrierSupplierName, accountName, detail.freightCost ? $t(`scm.freight.cost.${detail.freightCost}`) : null].filter(Boolean).join(' · ') }}
+              </div>
+              <div v-if="detail.freightIoId" class="sub-text">
+                <a v-if="userStore.hasPerm('fin:io:list')" @click="openIo">{{ $t('scm.freight.ioDoc') }}</a>
+                <span v-else>{{ $t('scm.freight.ioDoc') }}</span>
+              </div>
             </div>
+          </a-descriptions-item>
+          <a-descriptions-item v-if="advanceTotal != null" :label="$t(`scm.freight.advanceTotal.${kind}`)">
+            <b>¥{{ formatMoney(advanceTotal) }}</b>
           </a-descriptions-item>
           <a-descriptions-item :label="$t('scm.trade.prepared')">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.postTime" :label="$t('scm.trade.postedBy')">{{ detail.postByName || '-' }} {{ detail.postTime }}</a-descriptions-item>
@@ -82,14 +92,20 @@ import SubPage from '@/components/SubPage.vue'
 import SerialTags from '@/components/wms/SerialTags.vue'
 import { PrinterOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { getTrade } from '@/api/scm/trade'
 import { formatQty, locationText } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney, grossAmount, grossPrice } from './scm'
 import DictTag from '@/components/DictTag.vue'
+import { accountOptions } from '@/api/fin'
+import { cached } from '@/utils/cache'
+import { useDict } from '@/composables/useDict'
+import { useUserStore } from '@/store/user'
+import { round2 } from '@/utils/number'
 import { fcText, isForeign } from '@/components/fin/currency'
 import { materialColumns, printDocs } from '@/utils/print'
 import { useI18n } from 'vue-i18n'
-import { OrderSource } from '@/constants/enums'
+import { FreightBearer, OrderSource } from '@/constants/enums'
 
 const props = defineProps({
   open: Boolean,
@@ -126,6 +142,35 @@ const discountLabel = computed(() =>
 const discountAdjust = computed(() => Number(detail.value?.discountAdjust) || 0)
 const grossTotal = computed(() => Math.round((Number(detail.value?.totalAmount || 0) + discount.value) * 100) / 100)
 
+useDict('scm_freight_settle')
+const userStore = useUserStore()
+const router = useRouter()
+/** 运费承担的名称按单据种类（退货中往来单位一方表示往来单位代垫） */
+const bearerLabel = computed(() => {
+  const b = detail.value?.freightBearer
+  return b ? t(`scm.freight.bearers.${props.kind}.${b}`) : ''
+})
+/**
+ * 往来合计（货款 + 代垫运费，代垫运费单独一张应收应付单）：销售出库代垫运费为客户应收合计，
+ * 销售退货客户代垫为应退合计，采购退货代垫运费为应付冲减合计
+ */
+const advanceTotal = computed(() => {
+  const d = detail.value
+  if (!d || !Number(d.freight) || props.kind === 'purchaseIn' || d.freightBearer === FreightBearer.COMPANY) return null
+  return round2(Number(d.totalAmount) + Number(d.freight))
+})
+/** 现付的付款账户名称（会计科目，登录即可读取） */
+const accounts = ref([])
+const accountName = computed(() => {
+  const a = accounts.value.find((x) => x.id === detail.value?.freightAccountId)
+  return a ? `${a.code} ${a.name}` : ''
+})
+/** 打开现付运费生成的费用支出单 */
+function openIo() {
+  emit('update:open', false)
+  router.push({ path: '/fin/income-expense', query: { id: detail.value.freightIoId } })
+}
+
 function print() {
   const d = detail.value
   const c = conf.value
@@ -142,7 +187,8 @@ function print() {
       ...(discount.value ? [[t('print.name.grossTotal'), `¥${formatMoney(grossTotal.value)}`],
         [c.returns ? t('print.name.discountShare') : t('scm.wholeDiscount.label'), `¥${formatMoney(discount.value)}`]] : []),
       [discount.value ? t('print.name.discountedTotal') : t('scm.trade.totalAmount'), `¥${formatMoney(d.totalAmount)}`],
-      ...(Number(d.freight) ? [[t('print.name.freight'), `¥${formatMoney(d.freight)}`]] : []),
+      ...(Number(d.freight) ? [[t('print.name.freight'), `¥${formatMoney(d.freight)}`], [t('print.name.freightBearer'), bearerLabel.value]] : []),
+      ...(advanceTotal.value != null ? [[t('print.name.advanceTotal'), `¥${formatMoney(advanceTotal.value)}`]] : []),
       ...(isForeign(d.currency) ? [[t('scm.trade.originalCurrency'), fcText(d.currency, d.amountFc, d.exchangeRate)]] : [])
     ],
     columns: [
@@ -171,6 +217,9 @@ watch(
     loading.value = true
     try {
       detail.value = await getTrade(props.kind, props.docId)
+      if (detail.value.freightAccountId && !accounts.value.length) {
+        accounts.value = await cached('accounts-leaf', accountOptions)
+      }
     } finally {
       loading.value = false
     }

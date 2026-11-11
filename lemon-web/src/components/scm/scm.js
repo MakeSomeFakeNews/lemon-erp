@@ -1,5 +1,6 @@
 import { t } from '@/locales'
 import { money, round2, round4 } from '@/utils/number'
+import { FreightBearer, FreightSettle } from '@/constants/enums'
 
 /** 订单种类（与后端 OrderKind 的路径一致） */
 export const ORDER_KINDS = {
@@ -68,3 +69,41 @@ export const netQty = (i) => qty4(Number(i.doneQty || 0) - Number(i.returnQty ||
 /** 订单明细的未出库 / 未入库数量（与后端一致：数量 − 已完成 + 退货补发；退款的退货不再补发） */
 export const openQty = (i) => Math.max(qty4(Number(i.qty) - Number(i.doneQty || 0) + Number(i.replenishQty || 0)), 0)
 export const remainingQty = openQty
+
+/** 各种单据可选的运费承担（与后端 ScmTradeDocService.normalizeFreight 一致），第一个为默认值 */
+export const FREIGHT_BEARERS = {
+  purchaseIn: [FreightBearer.SUPPLIER, FreightBearer.COMPANY],
+  salesOut: [FreightBearer.COMPANY, FreightBearer.CUSTOMER],
+  salesReturn: [FreightBearer.CUSTOMER],
+  purchaseReturn: [FreightBearer.SUPPLIER]
+}
+
+/** 销售出库、采购退货的运费要选择付给承运商的方式（现付 / 月结） */
+export const freightSettled = (kind) => kind === 'salesOut' || kind === 'purchaseReturn'
+
+/** 运费表单字段的初始值（新建、草稿回显） */
+export const freightForm = (kind, d = {}) => ({
+  freight: Number(d.freight) > 0 ? Number(d.freight) : undefined,
+  freightBearer: d.freightBearer || FREIGHT_BEARERS[kind][0],
+  freightSettle: d.freightSettle || FreightSettle.CASH,
+  freightAccountId: d.freightAccountId || undefined,
+  carrierSupplierId: d.carrierSupplierId || undefined,
+  carrierSupplierName: d.carrierSupplierName || undefined
+})
+
+/** 运费的请求字段：没有运费时不传；采购入库只有本公司承担时传承运商，销售退货没有承运商和付款方式 */
+export function freightPayload(kind, f) {
+  if (!(Number(f.freight) > 0)) return {}
+  if (kind === 'purchaseIn') {
+    return { freight: f.freight, freightBearer: f.freightBearer, carrierSupplierId: f.freightBearer === FreightBearer.COMPANY ? f.carrierSupplierId : null }
+  }
+  if (!freightSettled(kind)) return { freight: f.freight, freightBearer: f.freightBearer }
+  const cash = f.freightSettle === FreightSettle.CASH
+  return {
+    freight: f.freight,
+    freightBearer: f.freightBearer,
+    freightSettle: f.freightSettle,
+    freightAccountId: cash ? f.freightAccountId : null,
+    carrierSupplierId: f.carrierSupplierId || null
+  }
+}

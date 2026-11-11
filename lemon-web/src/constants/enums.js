@@ -340,6 +340,9 @@ export const BillSource = Object.freeze({
   OFFSET: 'OFFSET', // 冲账单
   ORDER_ADJUST: 'ORDER_ADJUST', // 订单尾差调整
   PURCHASE_FREIGHT: 'PURCHASE_FREIGHT', // 采购运费
+  SALES_FREIGHT: 'SALES_FREIGHT', // 销售运费
+  SALES_RETURN_FREIGHT: 'SALES_RETURN_FREIGHT', // 销售退货运费
+  PURCHASE_RETURN_FREIGHT: 'PURCHASE_RETURN_FREIGHT', // 采购退货运费
 })
 
 /** com.lemon.erp.modules.fin.model.BillStatus（字典 fin_bill_status） */
@@ -736,8 +739,14 @@ export const FormFieldType = Object.freeze({
 /** com.lemon.erp.modules.scm.model.FreightBearer（字典 scm_freight_bearer） */
 export const FreightBearer = Object.freeze({
   COMPANY: 'COMPANY', // 本公司承担
-  CUSTOMER: 'CUSTOMER', // 客户承担
-  SUPPLIER: 'SUPPLIER', // 供应商代垫
+  CUSTOMER: 'CUSTOMER', // 客户一方
+  SUPPLIER: 'SUPPLIER', // 供应商一方
+})
+
+/** com.lemon.erp.modules.scm.model.FreightSettle（字典 scm_freight_settle） */
+export const FreightSettle = Object.freeze({
+  CASH: 'CASH', // 现付
+  MONTHLY: 'MONTHLY', // 月结
 })
 
 /** com.lemon.erp.modules.fin.model.FundDirection（字典 fin_fund_direction） */
@@ -847,6 +856,12 @@ export const InvoiceType = Object.freeze({
   NORMAL: 'NORMAL', // 普通发票
   E_SPECIAL: 'E_SPECIAL', // 数电票
   E_NORMAL: 'E_NORMAL', // 数电票
+})
+
+/** com.lemon.erp.modules.fin.model.IoCategoryCode */
+export const IoCategoryCode = Object.freeze({
+  SALES_FREIGHT: 'SALES_FREIGHT', // 销售运费
+  FREIGHT_ADVANCE: 'FREIGHT_ADVANCE', // 代垫运费
 })
 
 /** com.lemon.erp.modules.fin.model.IoPartnerType（字典 fin_io_partner_type） */

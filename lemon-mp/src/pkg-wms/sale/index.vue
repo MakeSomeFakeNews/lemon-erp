@@ -95,6 +95,8 @@
         </view>
       </view>
 
+      <SaleFreight v-if="rows.length" ref="freightRef" />
+
       <view class="l-footer-space" />
       <view class="l-footer">
         <view class="m-footer-info">
@@ -134,6 +136,7 @@ import { qty4, resolveScan, rowKey, useScanTip } from '../mobile'
 import { baseQty, basePrice, lineAmount, loadSlots, loadUnits, overStock, ratioOf } from './lines'
 import { useGiftRows } from './gifts'
 import SaleRow from './SaleRow.vue'
+import SaleFreight from './SaleFreight.vue'
 import SearchSheet from '../components/SearchSheet.vue'
 import PriceRefSheet from '../components/PriceRefSheet.vue'
 
@@ -161,6 +164,8 @@ const rows = ref([])
 const activeRow = ref(null)
 const wholeDiscount = ref(null)
 const saving = ref(false)
+/** 运费（SaleFreight） */
+const freightRef = ref()
 
 const warehouseIndex = computed(() => Math.max(0, warehouses.value.findIndex((w) => w.id === warehouseId.value)))
 const warehouseName = computed(() => warehouses.value.find((w) => w.id === warehouseId.value)?.name)
@@ -493,6 +498,8 @@ async function submit() {
   const mismatch = mismatchRow()
   if (mismatch) return toast(t('wms.sale.giftQtyMismatch', { name: mismatch.materialName, n: qty(mismatch.giftTotal) }))
   if (payable.value < 0) return toast(t('wms.sale.discountTooLarge'))
+  const freightError = freightRef.value?.check()
+  if (freightError) return toast(freightError)
   // 业务参数「进销存单据先存草稿」开启且没有审核权限时保存为草稿
   const asDraft = bizRule('scm.tradeDoc.draft', false) === true && !hasPerm('scm:salesOut:post')
   saving.value = true
@@ -506,6 +513,7 @@ async function submit() {
           bizDate: bizDate.value,
           remark: remark.value || null,
           wholeDiscount: wholeDiscount.value || null,
+          ...(freightRef.value?.payload() || {}),
           items: [...rows.value.map((r) => toItem(r)), ...giftRows.value.filter((r) => Number(r.qty) > 0).flatMap(giftItems)]
         }),
       { success: asDraft ? t('wms.sale.draftSaved') : t('wms.sale.done'), then: reset }
@@ -521,6 +529,7 @@ function reset() {
   giftRows.value = []
   activeRow.value = null
   wholeDiscount.value = null
+  freightRef.value?.reset()
   remark.value = ''
   promo.value = null
   tip.text = ''

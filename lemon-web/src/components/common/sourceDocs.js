@@ -17,6 +17,10 @@ export const SOURCE_DOCS = {
   [BillSource.PURCHASE_RETURN]: { perm: 'scm:purchaseReturn:list', trade: 'purchaseReturn' },
   // 采购运费：来源为采购入库单
   [BillSource.PURCHASE_FREIGHT]: { perm: 'scm:purchaseIn:list', trade: 'purchaseIn' },
+  // 销售出库、销售退货、采购退货的运费：来源为该出入库单（其他收支单现付的运费也以出入库单为来源）
+  [BillSource.SALES_FREIGHT]: { perm: 'scm:salesOut:list', trade: 'salesOut' },
+  [BillSource.SALES_RETURN_FREIGHT]: { perm: 'scm:salesReturn:list', trade: 'salesReturn' },
+  [BillSource.PURCHASE_RETURN_FREIGHT]: { perm: 'scm:purchaseReturn:list', trade: 'purchaseReturn' },
   [BillSource.TICKET]: { perm: 'crm:ticket:list', ticket: true },
   [BillSource.PROJECT]: { perm: 'pm:project:list', project: true },
   [BillSource.SHIPMENT]: { perm: 'scm:shipment:list', path: '/scm/shipment' },

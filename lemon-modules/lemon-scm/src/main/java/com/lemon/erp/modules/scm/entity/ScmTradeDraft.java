@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.modules.scm.model.FreightBearer;
+import com.lemon.erp.modules.scm.model.FreightSettle;
 import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import lombok.Data;
@@ -54,6 +55,10 @@ public class ScmTradeDraft extends BaseEntity {
     private FreightBearer freightBearer;
 
     private Long carrierSupplierId;
+
+    private FreightSettle freightSettle;
+
+    private Long freightAccountId;
 
     private BigDecimal totalQty;
 

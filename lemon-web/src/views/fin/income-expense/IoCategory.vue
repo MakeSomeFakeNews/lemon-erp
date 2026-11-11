@@ -13,7 +13,11 @@
     </div>
     <a-table row-key="id" size="small" :columns="columns" :data-source="shown" :loading="loading" :pagination="false" :scroll="{ x: 760 }">
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'direction'"><DictTag type="fin_fund_direction" :value="record.direction" /></template>
+        <template v-if="column.key === 'name'">
+          {{ record.name }}
+          <a-tooltip v-if="record.code" :title="$t('fin.io.builtinHint')"><a-tag :bordered="false" class="builtin">{{ $t('fin.io.builtin') }}</a-tag></a-tooltip>
+        </template>
+        <template v-else-if="column.key === 'direction'"><DictTag type="fin_fund_direction" :value="record.direction" /></template>
         <template v-else-if="column.key === 'account'">
           <span v-if="record.accountCode">{{ record.accountCode }} {{ record.accountName }}</span>
           <span v-else class="warn">{{ $t('fin.io.noAccount') }}</span>
@@ -23,7 +27,7 @@
           <TableActions
             :actions="[
               { type: 'edit', perm: 'fin:io:category', onClick: () => drawer.openEdit(record) },
-              { type: 'delete', show: !record.used, perm: 'fin:io:category', confirm: $t('fin.io.confirmDeleteCategory', { name: record.name }), onClick: () => remove(record.id) }
+              { type: 'delete', show: !record.used && !record.code, perm: 'fin:io:category', confirm: $t('fin.io.confirmDeleteCategory', { name: record.name }), onClick: () => remove(record.id) }
             ]"
           />
         </template>
@@ -32,8 +36,8 @@
 
     <FormDrawer :drawer="drawer" :create-title="$t('fin.io.addCategory')" :edit-title="$t('fin.io.editCategory')">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-form-item :label="$t('fin.io.type')" name="direction" :extra="form.used ? $t('fin.io.directionLocked') : ''">
-          <a-radio-group v-model:value="form.direction" :disabled="form.used">
+        <a-form-item :label="$t('fin.io.type')" name="direction" :extra="form.code ? $t('fin.io.builtinHint') : form.used ? $t('fin.io.directionLocked') : ''">
+          <a-radio-group v-model:value="form.direction" :disabled="form.used || !!form.code">
             <a-radio :value="FundDirection.IN">{{ $t('fin.io.typeIn') }}</a-radio>
             <a-radio :value="FundDirection.OUT">{{ $t('fin.io.typeOut') }}</a-radio>
           </a-radio-group>
@@ -86,7 +90,7 @@ const { t } = useI18n()
 const dict = useDict('fin_fund_direction', 'sys_common_status')
 const direction = ref('')
 const columns = [
-  { title: t('fin.io.categoryName'), dataIndex: 'name', width: 160 },
+  { title: t('fin.io.categoryName'), key: 'name', width: 180 },
   { title: t('fin.io.type'), key: 'direction', width: 80 },
   { title: t('fin.io.categoryAccount'), key: 'account', width: 220 },
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70, align: 'right' },
@@ -112,7 +116,7 @@ const rules = {
   accountId: [{ required: true, message: t('fin.io.categoryAccountRequired') }]
 }
 const drawer = useFormDrawer({
-  emptyForm: () => ({ id: undefined, name: '', direction: FundDirection.OUT, accountId: undefined, sort: 0, status: STATUS_ENABLED, remark: '', used: false }),
+  emptyForm: () => ({ id: undefined, name: '', direction: FundDirection.OUT, accountId: undefined, sort: 0, status: STATUS_ENABLED, remark: '', used: false, code: undefined }),
   create: addIoCategory,
   update: updateIoCategory,
   toPayload: (f) => ({ name: f.name, direction: f.direction, accountId: f.accountId, sort: f.sort ?? 0, status: f.status, remark: f.remark || null }),
@@ -123,6 +127,9 @@ const remove = useAction(deleteIoCategory, { successKey: 'common.msg.deleteSucce
 </script>
 
 <style scoped>
+.builtin {
+  margin-left: 4px;
+}
 .filters {
   display: flex;
   flex-wrap: wrap;

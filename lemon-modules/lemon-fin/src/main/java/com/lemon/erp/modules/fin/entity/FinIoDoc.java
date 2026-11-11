@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.modules.fin.model.BillSource;
 import com.lemon.erp.modules.fin.model.FundDirection;
 import com.lemon.erp.modules.fin.model.IoPartnerType;
 import com.lemon.erp.modules.fin.model.IoStatus;
@@ -69,6 +70,13 @@ public class FinIoDoc extends BaseEntity {
     private LocalDateTime confirmTime;
 
     private String remark;
+
+    /** 来源单据类型：由业务单据生成时填写（销售出库、采购退货现付的运费），手工录入为空；有来源的单据不能修改、删除 */
+    private BillSource sourceType;
+
+    private Long sourceId;
+
+    private String sourceNo;
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;

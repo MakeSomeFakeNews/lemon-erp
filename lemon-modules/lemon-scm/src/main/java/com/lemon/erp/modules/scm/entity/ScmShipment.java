@@ -85,6 +85,10 @@ public class ScmShipment extends BaseEntity {
     @TableField(exist = false)
     private String createByName;
 
+    /** 运费已在销售出库单登记：发运单的运费从出库单带出，不能修改，发货时不再生成运费单据 */
+    @TableField(exist = false)
+    private Boolean freightOnDoc;
+
     /** 物流动态，仅详情返回，按时间倒序 */
     @TableField(exist = false)
     private List<ScmShipmentTrack> tracks;

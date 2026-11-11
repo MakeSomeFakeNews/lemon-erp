@@ -35,7 +35,7 @@
             </if>
             <if test="q.keyword != null and q.keyword != ''">
                 AND (t.doc_no LIKE CONCAT('%', #{q.keyword}, '%') OR t.ticket_no LIKE CONCAT('%', #{q.keyword}, '%')
-                     OR t.remark LIKE CONCAT('%', #{q.keyword}, '%') OR t.partner_name LIKE CONCAT('%', #{q.keyword}, '%')
+                     OR t.remark LIKE CONCAT('%', #{q.keyword}, '%') OR t.source_no LIKE CONCAT('%', #{q.keyword}, '%') OR t.partner_name LIKE CONCAT('%', #{q.keyword}, '%')
                      OR c.name LIKE CONCAT('%', #{q.keyword}, '%') OR s.name LIKE CONCAT('%', #{q.keyword}, '%'))
             </if>
             <if test="q.beginDate != null">AND t.doc_date &gt;= #{q.beginDate}</if>

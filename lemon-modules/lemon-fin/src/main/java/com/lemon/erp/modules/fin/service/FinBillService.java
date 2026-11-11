@@ -250,6 +250,22 @@ public class FinBillService {
         tradeDocService.bindFreightBill(e.docId(), bill.getId());
     }
 
+    /**
+     * 出入库单运费的应收 / 应付单（销售出库、销售退货、采购退货，见 {@link FinFreightService}），与出入库同一事务，不含税额，到期日按往来单位账期。
+     * 凭证中与应收 / 应付账款相对的科目取 {@code role}（记在单据上），金额为负数（红字）时反方向记账
+     *
+     * @param role 对方科目：销售运费 / 代垫运费
+     */
+    FinBill createFreightBill(BillKind kind, Long partnerId, BillSource source, Long docId, String docNo, LocalDate date, BigDecimal amount,
+                              AccountRole role, Long deptId, String remark) {
+        FinBill bill = newBill(kind, partnerId, source, docId, docNo, date, date.plusDays(paymentDays(kind, partnerId)), amount, BigDecimal.ZERO);
+        bill.setExpenseAccountId(accountRules.accountId(role));
+        bill.setDeptId(deptId);
+        bill.setRemark(remark);
+        billMapper.insert(bill);
+        return bill;
+    }
+
     /** 供应商质量索赔确认：生成红字应付单冲减应付，与确认同一事务 */
     @EventListener
     public void onSupplierClaimConfirmed(SupplierClaimConfirmedEvent e) {
@@ -428,6 +444,17 @@ public class FinBillService {
         }
         BigDecimal sign = BigDecimal.valueOf(bill.getAmount().signum() < 0 ? -1 : 1);
         if (bill.getKind() == BillKind.AR) {
+            if (bill.getSourceType() == BillSource.SALES_FREIGHT || bill.getSourceType() == BillSource.SALES_RETURN_FREIGHT) {
+                // 销售出库的代垫运费：借 应收账款 / 贷 代垫运费（与付承运商时的 借 代垫运费 相抵）；
+                // 销售退货客户代垫的运费（红字）：借 销售运费（部门）/ 贷 应收账款
+                String summary = (bill.getSourceType() == BillSource.SALES_FREIGHT ? "代垫运费 " : "退货运费 ") + bill.getSourceNo() + " " + partner; // i18n-ignore
+                Long account = bill.getExpenseAccountId() != null ? bill.getExpenseAccountId() : accountRules.accountId(
+                        bill.getSourceType() == BillSource.SALES_FREIGHT ? AccountRole.FREIGHT_ADVANCE : AccountRole.SALES_FREIGHT);
+                lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.RECEIVABLE), null, bill.getAmount())
+                        .withCustomer(bill.getPartnerId()));
+                lines.add(VoucherLine.credit(summary, account, bill.getDeptId(), bill.getAmount()));
+                return lines;
+            }
             if (bill.getSourceType() == BillSource.SHIPMENT) {
                 // 代垫运费（客户承担的发运运费）：借 应收账款 / 贷 代垫运费，与付承运商时的 借 代垫运费 相抵
                 String summary = "代垫运费 " + bill.getSourceNo() + " " + partner; // i18n-ignore
@@ -508,8 +535,12 @@ public class FinBillService {
         }
         if (bill.getExpenseAccountId() != null) {
             // 费用类应付（运费等）：借 费用科目、进项税额 / 贷 应付账款
+            // 销售运费（月结的承运商应付）借 销售运费或代垫运费 / 贷 应付账款；
+            // 采购退货运费：给供应商的红字应付 借 应付账款 / 贷 代垫运费，月结的承运商应付 借 代垫运费 / 贷 应付账款
             String summary = bill.getSourceType() == BillSource.SHIPMENT ? "运费 " + bill.getSourceNo() + " " + partner // i18n-ignore
                     : bill.getSourceType() == BillSource.PURCHASE_FREIGHT ? "采购运费 " + bill.getSourceNo() + " " + partner // i18n-ignore
+                    : bill.getSourceType() == BillSource.SALES_FREIGHT ? "销售运费 " + bill.getSourceNo() + " " + partner // i18n-ignore
+                    : bill.getSourceType() == BillSource.PURCHASE_RETURN_FREIGHT ? "退货运费 " + bill.getSourceNo() + " " + partner // i18n-ignore
                     : bill.getSourceNo() + " " + partner;
             lines.add(VoucherLine.debit(summary, bill.getExpenseAccountId(), bill.getDeptId(), bill.getAmount().subtract(bill.getTaxAmount())));
             lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INPUT_VAT), null, bill.getTaxAmount()));

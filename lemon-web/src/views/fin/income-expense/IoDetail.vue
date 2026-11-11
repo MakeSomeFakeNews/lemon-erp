@@ -3,12 +3,12 @@
     <template v-if="detail" #extra>
       <a-space>
         <template v-if="detail.status === IoStatus.DRAFT">
-          <span v-perm="'fin:io:remove'">
+          <span v-if="!detail.sourceType" v-perm="'fin:io:remove'">
             <a-popconfirm :title="$t('fin.io.confirmDelete', { no: detail.docNo })" @confirm="remove">
               <a-button danger>{{ $t('common.action.delete') }}</a-button>
             </a-popconfirm>
           </span>
-          <a-button v-perm="'fin:io:edit'" @click="emit('edit', detail)">{{ $t('common.action.edit') }}</a-button>
+          <a-button v-if="!detail.sourceType" v-perm="'fin:io:edit'" @click="emit('edit', detail)">{{ $t('common.action.edit') }}</a-button>
           <a-button v-perm="'fin:io:confirm'" type="primary" @click="confirm(detail)">{{ $t('fin.io.confirm') }}</a-button>
         </template>
         <a-button v-else-if="detail.voucherStatus !== VoucherStatus.POSTED" v-perm="'fin:io:confirm'" @click="cancelConfirm(detail)">
@@ -37,6 +37,11 @@
         </a-descriptions-item>
         <a-descriptions-item :label="$t('fin.io.createBy')">{{ detail.createByName }} {{ detail.createTime }}</a-descriptions-item>
         <a-descriptions-item :label="$t('fin.io.confirmBy')">{{ detail.confirmByName || '-' }} {{ detail.confirmTime || '' }}</a-descriptions-item>
+        <a-descriptions-item v-if="detail.sourceType" :label="$t('fin.io.source')" :span="3">
+          <DictTag type="fin_bill_source" :value="detail.sourceType" />
+          <SourceDocLink :type="detail.sourceType" :id="detail.sourceId" :no="detail.sourceNo" />
+          <div class="sub-text">{{ $t('fin.io.generatedHint') }}</div>
+        </a-descriptions-item>
         <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')" :span="3">{{ detail.remark }}</a-descriptions-item>
       </a-descriptions>
       <div class="section-title">{{ $t('fin.io.items') }}</div>
@@ -57,16 +62,17 @@ import { message } from 'ant-design-vue'
 import DictTag from '@/components/DictTag.vue'
 import SubPage from '@/components/SubPage.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
+import SourceDocLink from '@/components/common/SourceDocLink.vue'
 import { deleteIo, getIo } from '@/api/fin'
 import { formatMoney } from '@/components/fin/fin'
 import { useDict } from '@/composables/useDict'
 import { FundDirection, IoStatus, VoucherStatus } from '@/constants/enums'
 import { useIoActions } from './useIoActions'
 
-/** 收支单详情：待确认时可修改、确认、删除；已确认、凭证未记账时可取消确认 */
+/** 收支单详情：待确认时可修改、确认、删除（由业务单据生成的只能确认）；已确认、凭证未记账时可取消确认 */
 const emit = defineEmits(['edit', 'changed'])
 const { t } = useI18n()
-useDict('fin_fund_direction', 'fin_io_status', 'fin_io_partner_type', 'fin_settle_method', 'fin_voucher_status')
+useDict('fin_fund_direction', 'fin_io_status', 'fin_io_partner_type', 'fin_settle_method', 'fin_voucher_status', 'fin_bill_source')
 const typeLabel = (d) => (d === FundDirection.IN ? t('fin.io.typeIn') : t('fin.io.typeOut'))
 const columns = [
   { title: t('fin.io.category'), dataIndex: 'categoryName', width: 180 },
@@ -107,5 +113,9 @@ defineExpose({ open: show, reload })
 }
 .ml {
   margin-left: 4px;
+}
+.sub-text {
+  color: var(--app-text-3);
+  font-size: 12px;
 }
 </style>

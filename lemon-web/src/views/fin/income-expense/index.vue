@@ -36,6 +36,9 @@
               <template v-else-if="column.key === 'amount'">
                 <span :class="record.direction === FundDirection.OUT ? 'out' : 'in'">¥{{ formatMoney(record.amount) }}</span>
               </template>
+              <template v-else-if="column.key === 'source'">
+                <SourceDocLink v-if="record.sourceType" :type="record.sourceType" :id="record.sourceId" :no="record.sourceNo" />
+              </template>
               <template v-else-if="column.key === 'settleMethod'"><DictTag v-if="record.settleMethod" type="fin_settle_method" :value="record.settleMethod" /></template>
               <template v-else-if="column.key === 'status'">
                 <DictTag type="fin_io_status" :value="record.status" />
@@ -73,6 +76,8 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
+import SourceDocLink from '@/components/common/SourceDocLink.vue'
+import { useRouteOpen } from '@/composables/useRouteOpen'
 import { deleteIo, pageIo } from '@/api/fin'
 import { formatMoney } from '@/components/fin/fin'
 import { useAction } from '@/composables/useAction'
@@ -105,6 +110,7 @@ const columns = [
   { title: t('fin.io.partner'), dataIndex: 'partnerLabel', width: 150, ellipsis: true },
   { title: t('fin.io.settleMethod'), key: 'settleMethod', width: 110 },
   { title: t('fin.io.ticketNo'), dataIndex: 'ticketNo', width: 130, ellipsis: true },
+  { title: t('fin.io.source'), key: 'source', width: 140 },
   { title: t('fin.io.dept'), dataIndex: 'deptName', width: 120 },
   { title: t('common.field.status'), key: 'status', width: 100 },
   { title: t('fin.io.createBy'), dataIndex: 'createByName', width: 100 },
@@ -114,8 +120,10 @@ const columns = [
 ]
 const rowActions = (record) => {
   const draft = record.status === IoStatus.DRAFT
+  // 由业务单据生成的（如销售出库现付的运费）不能修改、删除，可以确认、取消确认
+  const manual = !record.sourceType
   return [
-    { type: 'edit', show: draft, perm: 'fin:io:edit', onClick: () => formRef.value.openEdit(record) },
+    { type: 'edit', show: draft && manual, perm: 'fin:io:edit', onClick: () => formRef.value.openEdit(record) },
     { type: 'confirm', label: t('fin.io.confirm'), show: draft, perm: 'fin:io:confirm', onClick: () => confirm(record) },
     {
       type: 'unaudit',
@@ -124,7 +132,7 @@ const rowActions = (record) => {
       perm: 'fin:io:confirm',
       onClick: () => cancelConfirm(record)
     },
-    { type: 'delete', show: draft, perm: 'fin:io:remove', confirm: t('fin.io.confirmDelete', { no: record.docNo }), onClick: () => remove(record.id) }
+    { type: 'delete', show: draft && manual, perm: 'fin:io:remove', confirm: t('fin.io.confirmDelete', { no: record.docNo }), onClick: () => remove(record.id) }
   ]
 }
 const { checked, visibleColumns, scrollX } = useColumns(columns, 'fin-income-expense')
@@ -140,6 +148,8 @@ const formRef = ref()
 const detailRef = ref()
 const { confirm, cancelConfirm } = useIoActions(() => load())
 const remove = useAction(deleteIo, { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+// 从出入库单的「费用支出单」跳转过来（?id=）时打开详情
+useRouteOpen({ id: (id) => detailRef.value.open(id) })
 
 /** 保存后刷新列表；在详情中修改的刷新详情，新增的打开详情以便确认 */
 function onSaved(id) {
