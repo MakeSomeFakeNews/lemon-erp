@@ -93,4 +93,58 @@
         LIMIT #{q.limit}
     </select>
 
+    <!-- ================================================================ 商品速查（issue #97），数据权限条件加在 scm_trade_doc 上 -->
+
+    <!-- 各物料最近一次出入库的优惠前单价（大于 0 的行，赠品等 0 价行不算）：业务日期最晚的单据（同日取后确认的）的最后一行 -->
+    <select id="selectLatestPrices" resultType="com.lemon.erp.modules.scm.dto.QuickLookupViews$LatestPrice">
+        SELECT x.material_id, x.price
+        FROM (
+            SELECT i.material_id, COALESCE(i.gross_price, i.price) AS price,
+                   ROW_NUMBER() OVER (PARTITION BY i.material_id ORDER BY d.biz_date DESC, d.id DESC, i.id DESC) AS rn
+            FROM scm_trade_doc_item i
+            JOIN scm_trade_doc d ON d.id = i.doc_id
+            WHERE d.kind = #{kind} AND COALESCE(i.gross_price, i.price) &gt; 0
+              AND i.material_id IN
+              <foreach collection="materialIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ) x
+        WHERE x.rn = 1
+    </select>
+
+    <!-- 价格明细：往来单位（客户 / 供应商）、制单人、审核人；往来单位按编码、名称、电话筛选 -->
+    <sql id="tradeLineFrom">
+        SELECT d.id AS doc_id, d.doc_no, d.biz_date, p.id AS partner_id, p.code AS partner_code, p.name AS partner_name,
+               i.qty, COALESCE(i.gross_price, i.price) AS price, cu.nickname AS create_by_name, pu.nickname AS post_by_name
+        FROM scm_trade_doc_item i
+        JOIN scm_trade_doc d ON d.id = i.doc_id
+        <choose>
+            <when test="sales">JOIN scm_customer p ON p.id = d.partner_id</when>
+            <otherwise>JOIN scm_supplier p ON p.id = d.partner_id</otherwise>
+        </choose>
+        LEFT JOIN sys_user cu ON cu.id = d.create_by
+        LEFT JOIN sys_user pu ON pu.id = d.post_by
+        WHERE d.kind = #{kind} AND i.material_id = #{q.materialId} AND COALESCE(i.gross_price, i.price) &gt; 0
+        <if test="q.partnerId != null">AND p.id = #{q.partnerId}</if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND (p.code LIKE CONCAT('%', #{q.keyword}, '%') OR p.name LIKE CONCAT('%', #{q.keyword}, '%')
+                 OR p.phone LIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+        <if test="q.start != null">AND d.biz_date &gt;= #{q.start}</if>
+        <if test="q.end != null">AND d.biz_date &lt;= #{q.end}</if>
+    </sql>
+
+    <select id="selectTradeLines" resultType="com.lemon.erp.modules.scm.dto.QuickLookupViews$TradeLine">
+        <include refid="tradeLineFrom"/>
+        <choose>
+            <when test="order.name() == 'HIGHEST'">ORDER BY COALESCE(i.gross_price, i.price) DESC, d.biz_date DESC, d.id DESC, i.id DESC</when>
+            <when test="order.name() == 'LOWEST'">ORDER BY COALESCE(i.gross_price, i.price), d.biz_date DESC, d.id DESC, i.id DESC</when>
+            <otherwise>ORDER BY d.biz_date DESC, d.id DESC, i.id DESC</otherwise>
+        </choose>
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectTradeLinePage" resultType="com.lemon.erp.modules.scm.dto.QuickLookupViews$TradeLine">
+        <include refid="tradeLineFrom"/>
+        ORDER BY d.biz_date DESC, d.id DESC, i.id DESC
+    </select>
+
 </mapper>

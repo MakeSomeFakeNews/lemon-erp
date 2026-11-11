@@ -598,6 +598,7 @@ export default {
   364: 'AI Reports', // 智能报告
   3640: 'Generate Reports', // 生成报告
   365: 'Item Prices', // 商品价格
+  368: 'Quick Lookup', // 商品速查
   3650: 'Maintain Item Prices', // 商品价格维护
   3651: 'Price Columns', // 价格列设置
   3652: 'View Cost Amounts', // 查看成本金额

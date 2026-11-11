@@ -109,7 +109,18 @@
         <view class="m-footer-info">
           {{ t('wms.sale.payable') }}<text class="m-strong">{{ money(payable) }}</text>
         </view>
-        <button class="l-btn" :loading="saving" :disabled="saving || !rows.length" @click="submit">{{ t('wms.sale.submit') }}</button>
+        <!-- 保存方式：保存即审核，或存草稿 / 保存并审核（业务参数「进销存单据先存草稿」） -->
+        <button
+          v-for="m in modes"
+          :key="m.mode"
+          class="l-btn sale__save"
+          :class="{ 'l-btn--ghost': m.ghost }"
+          :loading="saving === m.mode"
+          :disabled="!!saving || !rows.length"
+          @click="submit(m.mode)"
+        >
+          {{ m.mode === 'post' && modes.length === 1 ? t('wms.sale.submit') : m.label }}
+        </button>
       </view>
     </block>
 
@@ -133,10 +144,9 @@
 import { computed, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from '@/locales'
-import { OPTION_PAGE_SIZE, addSalesOut, addSalesOutDraft, customerOptions, defaultPrices, materialOptions, previewPromotion, warehouseOptions } from '@/api/wms'
+import { OPTION_PAGE_SIZE, customerOptions, defaultPrices, materialOptions, previewPromotion, warehouseOptions } from '@/api/wms'
 import { pageIdentityUsers } from '@/api/workflow'
 import { useTitle } from '@/composables/useTitle'
-import { runAction } from '@/composables/useAction'
 import { bizRule, loadBizRules } from '@/store/bizRules'
 import { useDict } from '@/store/dict'
 import { hasPerm } from '@/store/user'
@@ -150,6 +160,7 @@ import SaleRow from './SaleRow.vue'
 import SaleFreight from './SaleFreight.vue'
 import SearchSheet from '../components/SearchSheet.vue'
 import PriceRefSheet from '../components/PriceRefSheet.vue'
+import { saveModes, saveTrade } from '../tradeSave'
 
 /**
  * 快速开单：销售出库直接开单（不引用订单，与 Web 端销售出库「直接开单」相同的接口 POST /scm/salesOut）。
@@ -165,6 +176,8 @@ const tip = useScanTip()
 const WAREHOUSE_KEY = 'lemon_mp_sale_warehouse'
 
 const disabled = ref(false)
+/** 保存按钮（saveModes） */
+const modes = ref(saveModes('salesOut'))
 const customer = ref(null)
 const salesman = ref(null)
 const warehouses = ref([])
@@ -174,7 +187,8 @@ const remark = ref('')
 const rows = ref([])
 const activeRow = ref(null)
 const wholeDiscount = ref(null)
-const saving = ref(false)
+/** 正在保存的方式（draft / post），空为没有在保存 */
+const saving = ref('')
 /** 运费（SaleFreight） */
 const freightRef = ref()
 
@@ -213,6 +227,7 @@ onLoad(async () => {
   if (!(await ensureLogin())) return
   await loadBizRules(['scm.directDoc.enabled', 'scm.salesOut.lineWarehouse', 'scm.tradeDoc.draft', 'scm.defaultTaxRate'])
   disabled.value = bizRule('scm.directDoc.enabled', true) === false
+  modes.value = saveModes('salesOut')
   if (disabled.value) return
   warehouses.value = (await warehouseOptions().catch(() => [])) || []
   const saved = uni.getStorageSync(WAREHOUSE_KEY)
@@ -536,7 +551,8 @@ function giftItems(r) {
   return left > 0 ? null : items
 }
 
-async function submit() {
+/** mode：draft 存草稿 / post 保存并审核（见 tradeSave.js） */
+async function submit(mode) {
   if (!customer.value) return toast(t('wms.sale.selectCustomer'))
   if (!warehouseId.value) return toast(t('wms.common.selectWarehouseFirst'))
   if (promoPending.value) return toast(t('wms.sale.promoLoading'))
@@ -558,27 +574,26 @@ async function submit() {
   if (payable.value < 0) return toast(t('wms.sale.discountTooLarge'))
   const freightError = freightRef.value?.check()
   if (freightError) return toast(freightError)
-  // 业务参数「进销存单据先存草稿」开启且没有审核权限时保存为草稿
-  const asDraft = bizRule('scm.tradeDoc.draft', false) === true && !hasPerm('scm:salesOut:post')
-  saving.value = true
+  saving.value = mode
   try {
-    await runAction(
-      () =>
-        (asDraft ? addSalesOutDraft : addSalesOut)({
-          partnerId: customer.value.id,
-          salesmanId: salesman.value?.id || null,
-          warehouseId: warehouseId.value,
-          bizDate: bizDate.value,
-          remark: remark.value || null,
-          wholeDiscount: wholeDiscount.value || null,
-          invoiceKind: invoiceKind.value || null,
-          ...(freightRef.value?.payload() || {}),
-          items: [...rows.value.map((r) => toItem(r)), ...giftRows.value.filter((r) => Number(r.qty) > 0).flatMap(giftItems)]
-        }),
-      { success: asDraft ? t('wms.sale.draftSaved') : t('wms.sale.done'), then: reset }
+    await saveTrade(
+      'salesOut',
+      mode,
+      () => ({
+        partnerId: customer.value.id,
+        salesmanId: salesman.value?.id || null,
+        warehouseId: warehouseId.value,
+        bizDate: bizDate.value,
+        remark: remark.value || null,
+        wholeDiscount: wholeDiscount.value || null,
+        invoiceKind: invoiceKind.value || null,
+        ...(freightRef.value?.payload() || {}),
+        items: [...rows.value.map((r) => toItem(r)), ...giftRows.value.filter((r) => Number(r.qty) > 0).flatMap(giftItems)]
+      }),
+      { then: reset }
     )
   } finally {
-    saving.value = false
+    saving.value = ''
   }
 }
 
@@ -609,6 +624,10 @@ function reset() {
   }
   &__search {
     padding-right: 24rpx;
+  }
+  &__save {
+    padding: 0 16rpx;
+    font-size: 28rpx;
   }
   &__promo {
     margin-top: 8rpx;

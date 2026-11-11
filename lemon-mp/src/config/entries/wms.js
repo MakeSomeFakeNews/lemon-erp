@@ -11,6 +11,36 @@ export default [
     rule: 'scm.directDoc.enabled'
   },
   {
+    // 商品速查：名称、规格、简拼搜索商品，看库存和按设置显示的价格（价格按权限由后端过滤），点击联查图片、库存分布、价格历史
+    key: 'scm-quick-lookup',
+    group: 'sales',
+    title: 'lookup.entry',
+    color: '#fa541c',
+    url: '/pkg-wms/lookup/index',
+    perm: 'scm:quickLookup:list',
+    links: ['/scm/quick-lookup']
+  },
+  {
+    // 快速入库：采购入库直接开单（不引用采购订单），参数关闭时不显示
+    key: 'wms-quick-purchase',
+    group: 'warehouse',
+    title: 'trade.entry.purchase',
+    color: '#2f54eb',
+    url: '/pkg-wms/purchase/index',
+    perm: 'scm:purchaseIn:add',
+    rule: 'scm.directDoc.enabled'
+  },
+  {
+    // 单据草稿：销售出库、采购入库的草稿，查看、审核记账、删除；参数「进销存单据先存草稿」关闭时不显示
+    key: 'scm-trade-draft',
+    group: 'sales',
+    title: 'trade.entry.draft',
+    color: '#faad14',
+    url: '/pkg-wms/draft/index',
+    perm: ['scm:salesOut:list', 'scm:purchaseIn:list'],
+    rule: 'scm.tradeDoc.draft'
+  },
+  {
     key: 'wms-stock',
     group: 'warehouse',
     title: 'wms.entry.stock',

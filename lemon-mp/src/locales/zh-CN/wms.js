@@ -107,8 +107,6 @@ export default {
     inputPrice: '{name}：请填写单价',
     noStockOf: '{name}：所选仓库没有可用库存',
     discountTooLarge: '整单优惠不能超过合计',
-    done: '已出库',
-    draftSaved: '已存草稿，待审核',
     refTitle: '价格参考：{name}',
     refTip: '含税、基本单位；点击价格使用',
     refCustomer: '该客户历史售价',
@@ -174,9 +172,7 @@ export default {
     notInOrder: '{code} 不在该订单中',
     overQty: '{name} 已超过待入库数量',
     added: '{name} +{qty}，共 {total}',
-    selectWarehouse: '请选择收货仓库',
-    done: '已入库',
-    draftSaved: '已存草稿，待审核'
+    selectWarehouse: '请选择收货仓库'
   },
   putaway: {
     source: '来源库位',

@@ -1,0 +1,41 @@
+/* 商品速查弹层的公共样式（小程序组件样式隔离，各组件分别引入） */
+.lk-sheet-sub {
+  padding: 8rpx 32rpx 16rpx;
+  font-size: 24rpx;
+}
+.lk-sheet-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+.lk-sheet-qty {
+  flex-shrink: 0;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.lk-sheet-price {
+  flex-shrink: 0;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: $l-primary;
+}
+.lk-sheet-actions {
+  display: flex;
+  gap: 20rpx;
+  padding: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: #fff;
+}
+.lk-sheet-btn {
+  flex: 1;
+  padding: 20rpx 0;
+  text-align: center;
+  font-size: 28rpx;
+  color: #fff;
+  background: $l-primary;
+  border-radius: $l-radius;
+  &--plain {
+    color: $l-text-2;
+    background: $l-bg;
+  }
+}
