@@ -1239,7 +1239,7 @@ export default {
     logisticsLabel: 'Logistics company (carrier)',
     logisticsExtra: 'Can be selected as the carrier for freight on purchase receipts, purchase returns, sales deliveries and shipments; payables and payments are the same as for other suppliers',
     routes: 'Routes',
-    routesPlaceholder: 'e.g. East China FTL, Guangzhou–Shanghai line',
+    routesPlaceholder: 'List all stops, e.g. Qingdao North – Qingdao West – Zhucheng – Qingzhou – Weifang – Zibo – Jinan; one route per line',
     type: 'Type',
     typeLogistics: 'Logistics company',
     typeGoods: 'Other suppliers',

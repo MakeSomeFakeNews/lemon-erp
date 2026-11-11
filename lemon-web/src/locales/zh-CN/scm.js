@@ -1239,7 +1239,7 @@ export default {
     logisticsLabel: '物流公司（承运商）',
     logisticsExtra: '勾选后可在出入库单的运费（采购入库、采购退货、销售出库）和发运单中被选为承运商；应付、付款与其他供应商相同',
     routes: '营运路线',
-    routesPlaceholder: '如：华东整车、广州—上海专线',
+    routesPlaceholder: '可写完整的途经站点，如：青岛北—青岛西—诸城—青州—潍坊—淄博—济南；多条路线可分行填写',
     type: '类型',
     typeLogistics: '物流公司',
     typeGoods: '其他供应商',
