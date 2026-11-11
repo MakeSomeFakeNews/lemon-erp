@@ -7583,6 +7583,15 @@ INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT 17, m.id FROM sys_menu m
 WHERE m.id IN (226, 2700, 3650) AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = 17 AND x.menu_id = m.id);
 
+-- 商品速查（issue #97，Web 与小程序共用）：按名称、规格、简拼搜索商品，看可用库存和个人设置中选择的一种价格，联查库存分布、售价 / 进价历史。
+-- 价格按已有权限过滤（进货类看采购订单 / 采购入库查看权限，库存均价看「查看成本金额」，售价类看报价 / 销售订单 / 销售出库查看权限），不另设按钮。
+-- 授权普通用户、总经理、采购员、销售员、仓库管理员、销售经理（连同销售分组和供应链模块）
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(368, 902, '商品速查', 'C', 'quick-lookup', 'scm/quickLookup/index', 'scm:quickLookup:list', 'SearchOutlined', 10, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT r.id, m.menu_id FROM sys_role r JOIN (SELECT 5 AS menu_id UNION ALL SELECT 902 UNION ALL SELECT 368) m ON 1 = 1
+WHERE r.id IN (2, 3, 4, 5, 6, 17) AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = r.id AND x.menu_id = m.menu_id);
+
 -- 通知公告：系统管理下维护、发布（超级管理员、租户管理员、人事专员；普通用户只读），员工在工作台和「全部公告」中查看发给自己的公告
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
 (353, 1, '通知公告', 'C', 'notice', 'system/notice/index', 'sys:notice:list', 'NotificationOutlined', 14, 1, 1, NOW(), NOW()),

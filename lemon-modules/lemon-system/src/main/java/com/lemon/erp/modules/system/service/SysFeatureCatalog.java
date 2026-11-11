@@ -108,7 +108,7 @@ final class SysFeatureCatalog {
             f(Key.SOURCING, "system.label.sourcing", "system.label.supplyChain", "system.label.rfqsPriceComparisonTenderingPurchaseContracts", List.of(904L), Key.PURCHASE),
             f(Key.SUPPLIER_PORTAL, "system.label.supplierPortal", "system.label.supplyChain", "system.label.suppliersConfirmOrdersShipReconcileBid", List.of(13L), Key.PURCHASE),
             f(Key.SALES, "system.label.sales", "system.label.supplyChain", "system.label.quotationsPriceListsSalesOrdersDelivery",
-                    List.of(269L, 270L, 365L, 143L, 271L, 315L, 144L, 145L, 146L, 272L), Key.INVENTORY),
+                    List.of(269L, 270L, 365L, 368L, 143L, 271L, 315L, 144L, 145L, 146L, 272L), Key.INVENTORY),
             f(Key.CHANNEL, "system.label.channelDistribution", "system.label.supplyChain", "system.label.promotionsRebatesChannelInventoryConsignmentSettlement", List.of(312L, 313L, 314L, 287L, 14L), Key.SALES),
             f(Key.COMMISSION, "system.label.salesCommission", "system.label.supplyChain", "system.label.calculateSalespersonCommissionSalesGrossProfit", List.of(344L), Key.SALES),
             f(Key.JXC_REPORT, "system.label.jxcReport", "system.label.supplyChain", "system.label.jxcReportDesc", List.of(966L), Key.SALES, Key.PURCHASE),

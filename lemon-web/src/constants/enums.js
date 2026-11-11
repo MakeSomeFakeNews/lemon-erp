@@ -1389,6 +1389,24 @@ export const QualitySummaryBy = Object.freeze({
   SUPPLIER: 'SUPPLIER', // 按供应商
 })
 
+/** com.lemon.erp.modules.scm.model.QuickPrice */
+export const QuickPrice = Object.freeze({
+  REF_COST: 'REF_COST', // 参考进货价
+  AVG_COST: 'AVG_COST', // 库存均价
+  LAST_PURCHASE: 'LAST_PURCHASE', // 最新进价
+  LAST_SALES: 'LAST_SALES', // 最新售价
+  RETAIL: 'RETAIL',
+  WHOLESALE1: 'WHOLESALE1',
+  WHOLESALE2: 'WHOLESALE2',
+  WHOLESALE3: 'WHOLESALE3',
+  WHOLESALE4: 'WHOLESALE4',
+  WHOLESALE5: 'WHOLESALE5',
+  WHOLESALE6: 'WHOLESALE6',
+  WHOLESALE7: 'WHOLESALE7',
+  WHOLESALE8: 'WHOLESALE8',
+  NONE: 'NONE', // 不显示价格
+})
+
 /** com.lemon.erp.modules.scm.model.QuotationStatus（字典 scm_quotation_status） */
 export const QuotationStatus = Object.freeze({
   DRAFT: 'DRAFT', // 草稿

@@ -73,7 +73,17 @@
         <view class="m-footer-info">
           {{ t('wms.receive.thisTime') }}<text class="m-strong">{{ qty(totalQty) }}</text>
         </view>
-        <button class="l-btn" :loading="saving" :disabled="saving || !totalQty" @click="submit">{{ t('wms.receive.submit') }}</button>
+        <button
+          v-for="m in modes"
+          :key="m.mode"
+          class="l-btn"
+          :class="{ 'l-btn--ghost': m.ghost }"
+          :loading="saving === m.mode"
+          :disabled="!!saving || !totalQty"
+          @click="submit(m.mode)"
+        >
+          {{ m.mode === 'post' && modes.length === 1 ? t('wms.receive.submit') : m.label }}
+        </button>
       </view>
     </block>
   </view>
@@ -84,13 +94,12 @@ import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from '@/locales'
 import { OrderStatus } from '@web/constants/enums'
-import { addPurchaseIn, addPurchaseInDraft, getPurchaseOrder, locationOptions, pagePurchaseOrder, warehouseOptions } from '@/api/wms'
-import { bizRule, loadBizRules } from '@/store/bizRules'
-import { hasPerm } from '@/store/user'
+import { getPurchaseOrder, locationOptions, pagePurchaseOrder, warehouseOptions } from '@/api/wms'
+import { loadBizRules } from '@/store/bizRules'
 import { useTitle } from '@/composables/useTitle'
-import { runAction } from '@/composables/useAction'
 import { dictColor, dictText, useDict } from '@/store/dict'
 import { qty, today } from '@/utils/format'
+import { saveModes, saveTrade } from '../tradeSave'
 import { fillPutaway, locationIndex, locationRange, openQty, qty4, resolveScan, toNumber, useScanTip } from '../mobile'
 
 /**
@@ -110,7 +119,9 @@ const locations = ref([])
 const currentLocation = ref(null)
 const rows = ref([])
 const activeRow = ref(null)
-const saving = ref(false)
+/** 正在保存的方式（draft / post），保存按钮见 tradeSave.js */
+const saving = ref('')
+const modes = ref(saveModes('purchaseIn'))
 
 const warehouseIndex = computed(() => Math.max(0, warehouses.value.findIndex((w) => w.id === warehouseId.value)))
 const warehouseName = computed(() => warehouses.value.find((w) => w.id === warehouseId.value)?.name)
@@ -118,7 +129,7 @@ const locRange = computed(() => locationRange(locations.value, t('wms.receive.lo
 const totalQty = computed(() => qty4(rows.value.reduce((s, r) => s + (Number(r.qty) || 0), 0)))
 
 onLoad(() => {
-  loadBizRules(['scm.tradeDoc.draft'])
+  loadBizRules(['scm.tradeDoc.draft']).then(() => (modes.value = saveModes('purchaseIn')))
   warehouseOptions().then((list) => (warehouses.value = list || [])).catch(() => {})
   searchOrders()
 })
@@ -200,19 +211,19 @@ function removeSerial(row, s) {
   row.qty = row.serials.length
 }
 
-async function submit() {
+async function submit(mode) {
   if (!warehouseId.value) return uni.showToast({ title: t('wms.receive.selectWarehouse'), icon: 'none' })
   const list = rows.value.filter((r) => Number(r.qty) > 0)
   const noBatch = list.find((r) => r.batchEnabled === 1 && !r.batchNo)
   if (noBatch) return uni.showToast({ title: t('wms.common.inputBatch', { name: noBatch.materialName }), icon: 'none' })
-  // 业务参数「进销存单据先存草稿」开启且没有审核权限时保存为草稿
-  const asDraft = bizRule('scm.tradeDoc.draft', false) === true && !hasPerm('scm:purchaseIn:post')
-  saving.value = true
+  saving.value = mode
   try {
-    await runAction(
+    await saveTrade(
+      'purchaseIn',
+      mode,
       async () => {
         await fillPutaway(warehouseId.value, list)
-        await (asDraft ? addPurchaseInDraft : addPurchaseIn)({
+        return {
           orderId: order.value.id,
           warehouseId: warehouseId.value,
           bizDate: today(),
@@ -220,12 +231,12 @@ async function submit() {
             orderItemId: r.orderItemId, locationId: r.locationId || null, batchNo: r.batchNo || null, qty: r.qty,
             serialNos: r.serialEnabled === 1 ? r.serials.join(',') : null
           }))
-        })
+        }
       },
-      { success: asDraft ? t('wms.receive.draftSaved') : t('wms.receive.done'), then: reset }
+      { then: reset }
     )
   } finally {
-    saving.value = false
+    saving.value = ''
   }
 }
 </script>
