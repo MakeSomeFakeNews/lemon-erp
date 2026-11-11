@@ -63,6 +63,7 @@
         <if test="sales and q.salesmanId != null">AND o.salesman_id = #{q.salesmanId}</if>
         <if test="sales and q.noSalesman">AND o.salesman_id IS NULL</if>
         <if test="q.materialId != null">AND i.material_id = #{q.materialId}</if>
+        <if test="q.docId != null">AND d.id = #{q.docId}</if>
         <if test="q.category != null and q.category != ''">
             <choose>
                 <when test="q.categoryExact">AND m.category = #{q.category}</when>
@@ -172,6 +173,39 @@
 
     <select id="selectDetailList" resultType="com.lemon.erp.modules.bi.dto.JxcViews$DetailRow">
         <include refid="detailSelect"/>
+        LIMIT #{limit}
+    </select>
+
+    <!-- 单据列表：与明细相同的取数和筛选条件，按出入库单汇总（只含符合条件的明细行），各单合计 = 汇总行 -->
+    <sql id="docSelect">
+        SELECT d.id AS "docId", d.doc_no AS "docNo", d.kind AS "kind", d.biz_date AS "bizDate", p.name AS "partnerName",
+               <if test="sales">u.nickname AS "salesmanName",</if>
+               w.name AS "warehouseName", d.remark AS "remark",
+               COUNT(*) AS "lineCount",
+               SUM(<include refid="sign"/> * i.qty) AS "qty",
+               SUM(<include refid="sign"/> * (i.amount - i.tax_amount)) AS "amount",
+               SUM(<include refid="sign"/> * i.amount) AS "taxedAmount",
+               SUM(<include refid="sign"/> * i.discount_share) AS "discount"
+               <if test="sales">,
+                   SUM(<include refid="sign"/> * i.qty * <include refid="saleUnitCost"/>) AS "cost",
+                   SUM(CASE WHEN fc.amount IS NULL AND mc.unit_cost IS NULL THEN 1 ELSE 0 END) AS "missingCost",
+                   SUM(COALESCE(bd.amount, 0) * <include refid="docShare"/>) AS "badDebt",
+                   SUM(<include refid="freightAmount"/> * <include refid="docShare"/>) AS "freight"
+               </if>
+        <include refid="tradeFrom"/>
+        <if test="sales">LEFT JOIN sys_user u ON u.id = o.salesman_id</if>
+        LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id
+        <include refid="tradeWhere"/>
+        GROUP BY d.id, d.doc_no, d.kind, d.biz_date, p.name, w.name, d.remark<if test="sales">, u.nickname</if>
+        ORDER BY d.biz_date, d.id
+    </sql>
+
+    <select id="selectDocs" resultType="com.lemon.erp.modules.bi.dto.JxcViews$DocRow">
+        <include refid="docSelect"/>
+    </select>
+
+    <select id="selectDocList" resultType="com.lemon.erp.modules.bi.dto.JxcViews$DocRow">
+        <include refid="docSelect"/>
         LIMIT #{limit}
     </select>
 

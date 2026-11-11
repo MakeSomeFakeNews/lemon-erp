@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 进销存报表：销售报表、进货报表（汇总 → 明细 → 单据）、经营状况。
+ * 进销存报表：销售报表、进货报表（汇总 → 商品明细，或汇总 → 单据列表 → 单据明细）、经营状况。
  * 实时汇总 scm_trade_doc（不依赖数据仓库），按出入库单的制单人部门 + 制单人做数据权限；净额 = 出库（入库）− 退货
  */
 @Service
@@ -75,6 +75,33 @@ public class BiJxcService {
         List<JxcViews.DetailRow> rows = new ArrayList<>(list.subList(0, Math.min(list.size(), EXPORT_LIMIT)));
         rows.forEach(r -> fillDetail(sales, r));
         return new JxcViews.DetailExport(rows, list.size() > EXPORT_LIMIT);
+    }
+
+    /**
+     * 单据列表（分页）：汇总项下的出入库单 / 退货单，每张一行，金额为该单中符合条件的明细合计（与明细同一取数和口径），
+     * summary 为全部单据的合计（与汇总行一致）
+     */
+    @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
+    public JxcViews.DocPage docs(boolean sales, JxcQuery q, long current, long size) {
+        prepare(sales, q, MAX_DAYS);
+        Page<JxcViews.DocRow> page = jxcMapper.selectDocs(Page.of(current, size), sales, q);
+        page.getRecords().forEach(r -> fillDoc(sales, r));
+        JxcViews.SummaryRow total = jxcMapper.selectTotal(sales, q);
+        if (total == null) {
+            total = new JxcViews.SummaryRow();
+        }
+        fillSummary(sales, total);
+        return new JxcViews.DocPage(page.getRecords(), page.getTotal(), total);
+    }
+
+    /** 导出单据列表：最多 {@link #EXPORT_LIMIT} 行 */
+    @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
+    public JxcViews.DocExport exportDocs(boolean sales, JxcQuery q) {
+        prepare(sales, q, MAX_DAYS);
+        List<JxcViews.DocRow> list = jxcMapper.selectDocList(sales, q, EXPORT_LIMIT + 1);
+        List<JxcViews.DocRow> rows = new ArrayList<>(list.subList(0, Math.min(list.size(), EXPORT_LIMIT)));
+        rows.forEach(r -> fillDoc(sales, r));
+        return new JxcViews.DocExport(rows, list.size() > EXPORT_LIMIT);
     }
 
     // ---------------------------------------------------------------- 经营状况
@@ -203,6 +230,25 @@ public class BiJxcService {
             r.setFreight(Decimals.money(r.getFreight()));
             r.setProfitAfterBadDebt(r.getProfit().subtract(r.getBadDebt()));
             r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(r.getFreight()));
+        }
+    }
+
+    static void fillDoc(boolean sales, JxcViews.DocRow r) {
+        r.setQty(Decimals.qty(r.getQty()));
+        r.setAmount(Decimals.money(r.getAmount()));
+        r.setTaxedAmount(Decimals.money(r.getTaxedAmount()));
+        r.setDiscount(Decimals.money(r.getDiscount()));
+        if (sales) {
+            r.setCost(Decimals.money(r.getCost()));
+            r.setProfit(r.getAmount().subtract(r.getCost()));
+            r.setMargin(Decimals.percent(r.getProfit(), r.getAmount(), 2));
+            r.setBadDebt(Decimals.money(r.getBadDebt()));
+            r.setFreight(Decimals.money(r.getFreight()));
+            r.setProfitAfterBadDebt(r.getProfit().subtract(r.getBadDebt()));
+            r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(r.getFreight()));
+            r.setMissingCost(r.getMissingCost() == null ? 0L : r.getMissingCost());
+        } else {
+            r.setMissingCost(null);
         }
     }
 

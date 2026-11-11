@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 
 /**
- * 进销存报表 /bi/jxc：销售报表、进货报表（汇总 → 明细 → 单据）、经营状况、资产状况、商品分析、客户 RFM。
+ * 进销存报表 /bi/jxc：销售报表、进货报表（汇总 → 商品明细 / 单据列表 → 单据明细）、经营状况、资产状况、商品分析、客户 RFM。
  * 查询条件见 {@link JxcQuery}，日期范围必填；明细的 dim + key 为穿透的汇总维度和取值
  */
 @RestController
@@ -51,6 +51,20 @@ public class BiJxcController {
         return R.ok(jxcService.export(true, q));
     }
 
+    /** 单据列表：汇总项下的出入库单 / 退货单，每张一行（docId 穿透到该单的明细用 /detail） */
+    @GetMapping("/sales/docs")
+    @PreAuthorize("@ss.hasPerm('bi:jxc:sales')")
+    public R<JxcViews.DocPage> salesDocs(JxcQuery q, @RequestParam(defaultValue = "1") long current,
+                                            @RequestParam(defaultValue = "20") long size) {
+        return R.ok(jxcService.docs(true, q, current, size));
+    }
+
+    @GetMapping("/sales/docs/export")
+    @PreAuthorize("@ss.hasPerm('bi:jxc:sales')")
+    public R<JxcViews.DocExport> salesDocsExport(JxcQuery q) {
+        return R.ok(jxcService.exportDocs(true, q));
+    }
+
     // ---------------------------------------------------------------- 进货报表
 
     @GetMapping("/purchase")
@@ -70,6 +84,20 @@ public class BiJxcController {
     @PreAuthorize("@ss.hasPerm('bi:jxc:purchase')")
     public R<JxcViews.DetailExport> purchaseExport(JxcQuery q) {
         return R.ok(jxcService.export(false, q));
+    }
+
+    /** 单据列表：汇总项下的出入库单 / 退货单，每张一行（docId 穿透到该单的明细用 /detail） */
+    @GetMapping("/purchase/docs")
+    @PreAuthorize("@ss.hasPerm('bi:jxc:purchase')")
+    public R<JxcViews.DocPage> purchaseDocs(JxcQuery q, @RequestParam(defaultValue = "1") long current,
+                                            @RequestParam(defaultValue = "20") long size) {
+        return R.ok(jxcService.docs(false, q, current, size));
+    }
+
+    @GetMapping("/purchase/docs/export")
+    @PreAuthorize("@ss.hasPerm('bi:jxc:purchase')")
+    public R<JxcViews.DocExport> purchaseDocsExport(JxcQuery q) {
+        return R.ok(jxcService.exportDocs(false, q));
     }
 
     // ---------------------------------------------------------------- 经营状况、资产状况

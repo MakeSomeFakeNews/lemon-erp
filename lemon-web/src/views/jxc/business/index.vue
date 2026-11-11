@@ -45,6 +45,9 @@
               <template v-if="column.key === 'name'"><a>{{ groupLabel(JxcDimension.SALESMAN, record, dict) }}</a></template>
               <template v-else-if="column.key === 'margin'">{{ marginText(record.margin) }}</template>
               <template v-else-if="column.money">{{ money(record[column.key]) }}</template>
+              <template v-else-if="column.key === 'action'">
+                <span @click.stop><TableActions :actions="drillActions(() => drill(JxcDimension.SALESMAN, record), () => drill(JxcDimension.SALESMAN, record, true))" /></span>
+              </template>
             </template>
           </a-table>
         </a-card>
@@ -69,6 +72,11 @@
               <template v-else-if="column.key === 'share'">{{ share(record.netAmount) }}</template>
               <template v-else-if="column.key === 'margin'">{{ marginText(record.margin) }}</template>
               <template v-else-if="column.money">{{ money(record[column.key]) }}</template>
+              <template v-else-if="column.key === 'action'">
+                <span v-if="record.groupKey" @click.stop>
+                  <TableActions :actions="drillActions(() => drill(JxcDimension.CUSTOMER, record), () => drill(JxcDimension.CUSTOMER, record, true))" />
+                </span>
+              </template>
             </template>
           </a-table>
         </a-card>
@@ -76,6 +84,7 @@
     </a-row>
 
     <JxcDetail ref="detailRef" report="sales" />
+    <JxcDocs ref="docsRef" report="sales" />
   </div>
 </template>
 
@@ -85,9 +94,11 @@ import { Empty } from 'ant-design-vue'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import EChart from '@/components/charts/EChart.vue'
 import JxcDetail from '@/components/bi/jxc/JxcDetail.vue'
+import JxcDocs from '@/components/bi/jxc/JxcDocs.vue'
+import TableActions from '@/components/common/TableActions.vue'
 import { jxcBusiness } from '@/api/bi/jxc'
 import { monthLabel, shortMoney } from '@/components/charts/charts'
-import { DICT_TYPES, groupLabel, marginText, rangePresets, thisYear } from '@/components/bi/jxc/jxc'
+import { DICT_TYPES, drillActions, drillColumn, groupLabel, marginText, rangePresets, thisYear } from '@/components/bi/jxc/jxc'
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
 import { money } from '@/utils/number'
@@ -96,6 +107,7 @@ import { t } from '@/locales'
 
 const dict = useDict(...DICT_TYPES)
 const userStore = useUserStore()
+const canDrill = userStore.hasPerm('bi:jxc:sales')
 const simpleImage = Empty.PRESENTED_IMAGE_SIMPLE
 const presets = rangePresets()
 /** 走势按月展示，默认本年 */
@@ -182,14 +194,16 @@ const salesmanColumns = [
   { title: t('jxc.field.netAmount'), key: 'netAmount', align: 'right', money: true, width: 120 },
   { title: t('jxc.field.profit'), key: 'profit', align: 'right', money: true, width: 110 },
   { title: t('jxc.field.margin'), key: 'margin', align: 'right', width: 80 },
-  { title: t('jxc.field.docCount'), dataIndex: 'docCount', align: 'right', width: 70 }
+  { title: t('jxc.field.docCount'), dataIndex: 'docCount', align: 'right', width: 70 },
+  ...(canDrill ? [drillColumn({ fixed: false })] : [])
 ]
 const customerColumns = [
   { title: t('jxc.field.customer'), key: 'name', ellipsis: true },
   { title: t('jxc.field.netAmount'), key: 'netAmount', align: 'right', money: true, width: 120 },
   { title: t('jxc.business.share'), key: 'share', align: 'right', width: 70 },
   { title: t('jxc.field.profit'), key: 'profit', align: 'right', money: true, width: 110 },
-  { title: t('jxc.field.margin'), key: 'margin', align: 'right', width: 80 }
+  { title: t('jxc.field.margin'), key: 'margin', align: 'right', width: 80 },
+  ...(canDrill ? [drillColumn({ fixed: false })] : [])
 ]
 
 function share(v) {
@@ -206,10 +220,14 @@ async function load() {
   }
 }
 
+/** 业务员、客户与商品没有直接关系：点击行到单据列表（再到单据明细），lines 为 true 时到商品明细 */
 const detailRef = ref()
-function drill(dim, row) {
-  if (!userStore.hasPerm('bi:jxc:sales')) return
-  detailRef.value.open({ params: { begin: range.value[0], end: range.value[1] }, dim, key: row.groupKey, label: groupLabel(dim, row, dict) })
+const docsRef = ref()
+function drill(dim, row, lines = false) {
+  if (!canDrill) return
+  const opts = { params: { begin: range.value[0], end: range.value[1] }, dim, key: row.groupKey, label: groupLabel(dim, row, dict) }
+  if (lines) detailRef.value.open(opts)
+  else docsRef.value.open(opts)
 }
 
 onMounted(load)

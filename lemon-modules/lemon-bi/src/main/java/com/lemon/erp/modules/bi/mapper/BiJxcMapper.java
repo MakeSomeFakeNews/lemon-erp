@@ -25,6 +25,11 @@ public interface BiJxcMapper {
 
     List<JxcViews.DetailRow> selectDetailList(@Param("sales") boolean sales, @Param("q") JxcQuery q, @Param("limit") int limit);
 
+    /** 单据列表：按出入库单汇总符合条件的明细行 */
+    Page<JxcViews.DocRow> selectDocs(Page<JxcViews.DocRow> page, @Param("sales") boolean sales, @Param("q") JxcQuery q);
+
+    List<JxcViews.DocRow> selectDocList(@Param("sales") boolean sales, @Param("q") JxcQuery q, @Param("limit") int limit);
+
     /** 收款单 / 付款单（已生效，不含票据业务生成的）按月 */
     List<JxcViews.CashRow> selectSettlementByMonth(@Param("begin") LocalDate begin, @Param("end") LocalDate end);
 
