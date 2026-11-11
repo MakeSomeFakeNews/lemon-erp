@@ -14,6 +14,9 @@ public class PrintRequest {
     /** 打印模板标识（前端 PRINT_TYPES 的 key），租户上传了该单据的 JRXML 时按 JRXML 打印 */
     private String type;
 
+    /** 打印格式（同一单据有多份格式时打印前选择），为空时按默认格式；只决定使用哪一份格式的 JRXML，配置已由前端套用 */
+    private Long formatId;
+
     /** 打印任务标题（PDF 文件名、文档标题） */
     private String title;
 

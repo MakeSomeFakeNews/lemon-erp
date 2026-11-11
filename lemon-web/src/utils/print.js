@@ -1,15 +1,29 @@
 import { reactive } from 'vue'
 import { message } from 'ant-design-vue'
+import { getUserSetting, saveUserSetting } from '@/api/profile'
 import { printPdf } from '@/api/system/print'
 import { DEFAULT_LOCALE, currentLocale, i18n, isZh, t } from '@/locales'
 import { useUserStore } from '@/store/user'
-import { COMMON_KEY, PRINT_TYPE_MAP, applyTemplate, layoutOf, loadTemplates, printLabel, printName } from './printTemplates'
+import {
+  COMMON_KEY,
+  PRINT_TYPE_MAP,
+  applyTemplate,
+  formatConfig,
+  formatsOf,
+  layoutOf,
+  loadFormats,
+  loadTemplates,
+  printLabel,
+  printName
+} from './printTemplates'
 
 /**
  * 单据打印：页面组装单据，按「系统管理 - 打印模板」中的配置调整后发给后端，由 JasperReports 生成 PDF，
  * 在预览窗口（components/PrintPreview.vue）中打印或下载。
  * 后端按纸张自动分页：每页重复表头和列头，末页底部打印签字栏，页脚有页码；上传了 JRXML 的单据按 JRXML 打印。
  * 公司名称：打印模板通用设置 > SaaS 租户名称 > 环境变量 VITE_COMPANY_NAME
+ * 打印格式：单据有多份启用的格式时，先弹出格式选择（components/print/PrintFormatPicker.vue，默认选中上次使用的格式，
+ * 没有时为默认格式；批量打印也只选择一次），按选中格式的配置和 JRXML 打印；只有一份时直接打印
  *
  * 多语言：表头字段、明细列、签字栏的匹配键始终是中文名称（printTemplates.js 的 PRINT_TYPES 中登记的名称），显示名称按界面语言：
  * - 调用处可以直接写中文名称（显示时自动翻译），也可以传入 t() 翻译后的名称（按语言包反查回中文匹配键）
@@ -172,12 +186,55 @@ export function defaultCompanyName() {
  * @param type  打印模板标识
  * @param templates 已保存的模板
  * @param [tpl] 使用的模板配置，默认为 templates[type]
+ * @param [formatId] 打印格式（后端据此取该格式上传的 JRXML），为空时为默认格式
  */
-export function buildPrintRequest(list, title, type, templates, tpl = type && templates[type]) {
+export function buildPrintRequest(list, title, type, templates, tpl = type && templates[type], formatId = undefined) {
   const docs = list.map((d) => applyTemplate({ ...d, companyName: d.companyName ?? defaultCompanyName() }, tpl, templates[COMMON_KEY]))
   // 套打：按定位输出（上传了 JRXML 时以 JRXML 为准）
   const overlay = tpl && !tpl.jrxml && tpl.overlay?.enabled ? tpl.overlay : undefined
-  return { type, title, layout: layoutOf(tpl || {}), docs, overlay }
+  return { type, title, formatId, layout: layoutOf(tpl || {}), docs, overlay }
+}
+
+// ---------------------------------------------------------------- 打印格式选择
+
+/** 格式选择框的状态（PrintFormatPicker.vue 读取）：选择后调用 resolve(格式)，取消时 resolve(null) */
+export const formatPicker = reactive({ open: false, title: '', count: 0, options: [], value: undefined, lastUsed: undefined, resolve: null })
+
+/** 用户上次使用的格式（个人设置 printFormats：{ 模板标识: 格式 ID }），首次选择格式时读取 */
+const LAST_FORMATS_KEY = 'printFormats'
+let lastFormats = null
+async function loadLastFormats() {
+  if (!lastFormats) lastFormats = (await getUserSetting(LAST_FORMATS_KEY).catch(() => null)) || {}
+  return lastFormats
+}
+
+/** 记住本次选择的格式（与上次相同时不保存；保存失败不影响打印） */
+function rememberFormat(type, id) {
+  if (!lastFormats || lastFormats[type] === id) return
+  // 只保留仍存在的单据，避免个人设置无限增长
+  lastFormats = Object.fromEntries(Object.entries({ ...lastFormats, [type]: id }).filter(([k]) => PRINT_TYPE_MAP[k]))
+  saveUserSetting(LAST_FORMATS_KEY, lastFormats).catch(() => {})
+}
+
+/** 弹出格式选择，返回选中的格式（取消时为 null） */
+async function pickFormat(type, options, title, count) {
+  const last = (await loadLastFormats())[type]
+  const lastUsed = options.some((f) => f.id === last) ? last : undefined
+  const value = lastUsed ?? (options.find((f) => f.isDefault) || options[0]).id
+  const picked = await new Promise((resolve) => Object.assign(formatPicker, { open: true, title, count, options, value, lastUsed, resolve }))
+  if (picked) rememberFormat(type, picked.id)
+  return picked
+}
+
+/**
+ * 本次打印使用的格式：没有保存过格式时为 undefined（默认版式），只有一份启用的格式时直接使用，多份时让用户选择；
+ * 取消选择返回 null
+ */
+async function resolveFormat(type, title, count) {
+  if (!type) return undefined
+  const options = formatsOf(await loadFormats().catch(() => []), type, true)
+  if (options.length <= 1) return options[0]
+  return pickFormat(type, options, title, count)
 }
 
 /**
@@ -189,10 +246,12 @@ export function buildPrintRequest(list, title, type, templates, tpl = type && te
  */
 export async function printDocs(docs, title = t('print.common.print'), type) {
   const list = [].concat(docs).map((d) => toPrintDoc(d, type))
-  const templates = await loadTemplates().catch(() => ({}))
+  const [templates, format] = await Promise.all([loadTemplates().catch(() => ({})), resolveFormat(type, title, list.length)])
+  if (format === null) return
+  const tpl = format ? formatConfig(format) : type && templates[type]
   const hide = message.loading({ content: t('print.common.generating'), key: 'print', duration: 0 })
   try {
-    showPdf(await printPdf(buildPrintRequest(list, title, type, templates)), title)
+    showPdf(await printPdf(buildPrintRequest(list, title, type, templates, tpl, format?.id)), title)
   } finally {
     hide()
   }

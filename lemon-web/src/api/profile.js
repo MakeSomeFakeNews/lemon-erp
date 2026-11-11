@@ -7,3 +7,6 @@ export const updatePassword = (data) => request.put('/profile/password', data)
 export const AVATAR_UPLOAD_URL = '/api/profile/avatar'
 /** 保存当前用户的界面设置（主题、布局等，见 utils/uiSettings.js）；读取随登录后的 /auth/info（uiSettings）返回 */
 export const saveUiSettings = (data) => request.put('/profile/settings/ui', data)
+/** 当前用户的某项个人设置（没有保存过时为 null）、保存（整体替换） */
+export const getUserSetting = (key) => request.get(`/profile/settings/${key}`)
+export const saveUserSetting = (key, data) => request.put(`/profile/settings/${key}`, data)

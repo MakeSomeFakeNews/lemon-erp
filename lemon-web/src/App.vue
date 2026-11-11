@@ -4,6 +4,7 @@
       <a-app>
         <router-view />
         <PrintPreview />
+        <PrintFormatPicker />
       </a-app>
     </ThemeVars>
   </a-config-provider>
@@ -19,6 +20,7 @@ import 'dayjs/locale/zh-cn'
 import 'dayjs/locale/en'
 import { isZh } from '@/locales'
 import { useAppStore } from '@/store/app'
+import PrintFormatPicker from '@/components/print/PrintFormatPicker.vue'
 import PrintPreview from '@/components/print/PrintPreview.vue'
 import ThemeVars from '@/components/ThemeVars.vue'
 

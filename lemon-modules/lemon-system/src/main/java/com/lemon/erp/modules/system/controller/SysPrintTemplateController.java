@@ -4,8 +4,11 @@ import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.system.dto.PrintBackgroundRequest;
+import com.lemon.erp.modules.system.dto.PrintFormatRequest;
+import com.lemon.erp.modules.system.dto.PrintFormatVO;
 import com.lemon.erp.modules.system.print.PrintService;
 import com.lemon.erp.modules.system.service.SysPrintTemplateService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -25,10 +28,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 /**
- * 打印模板（系统管理）
+ * 打印模板（系统管理）。同一单据可以有多份打印格式：按模板标识的接口带 formatId 时操作该格式，不带时操作默认格式
+ * （标签、通用设置只有默认格式）；维护格式沿用打印模板的权限
  */
 @RestController
 @RequestMapping("/system/print-template")
@@ -38,34 +43,66 @@ public class SysPrintTemplateController {
     private final SysPrintTemplateService templateService;
     private final PrintService printService;
 
-    /** 已修改的模板，所有登录用户打印单据时使用 */
+    /** 已修改的模板（各单据的默认格式），所有登录用户打印单据时使用 */
     @GetMapping
     public R<Map<String, Object>> all() {
         return R.ok(templateService.all());
     }
 
-    @PutMapping("/{key}")
+    /** 各单据的打印格式（含配置），所有登录用户打印单据时选择格式使用 */
+    @GetMapping("/formats")
+    public R<List<PrintFormatVO>> formats() {
+        return R.ok(templateService.formats());
+    }
+
+    /** 新增打印格式（可从已有格式复制） */
+    @PostMapping("/formats")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
-    @OperLog(title = "打印模板", type = OperType.UPDATE) // i18n-ignore 操作日志存库
-    public R<Void> save(@PathVariable String key, @RequestBody Map<String, Object> config) {
-        templateService.save(key, config);
+    @OperLog(title = "打印模板-新增格式", type = OperType.INSERT) // i18n-ignore 操作日志存库
+    public R<Long> createFormat(@Valid @RequestBody PrintFormatRequest req) {
+        return R.ok(templateService.createFormat(req));
+    }
+
+    /** 修改打印格式的名称、排序、状态，或设为默认 */
+    @PutMapping("/formats/{id}")
+    @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
+    @OperLog(title = "打印模板-修改格式", type = OperType.UPDATE) // i18n-ignore 操作日志存库
+    public R<Void> updateFormat(@PathVariable Long id, @Valid @RequestBody PrintFormatRequest req) {
+        templateService.updateFormat(id, req);
         return R.ok();
     }
 
-    /** 恢复默认版式（同时删除上传的 JRXML） */
+    @DeleteMapping("/formats/{id}")
+    @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
+    @OperLog(title = "打印模板-删除格式", type = OperType.DELETE) // i18n-ignore 操作日志存库
+    public R<Void> deleteFormat(@PathVariable Long id) {
+        templateService.deleteFormat(id);
+        return R.ok();
+    }
+
+    @PutMapping("/{key}")
+    @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
+    @OperLog(title = "打印模板", type = OperType.UPDATE) // i18n-ignore 操作日志存库
+    public R<Void> save(@PathVariable String key, @RequestParam(required = false) Long formatId,
+                        @RequestBody Map<String, Object> config) {
+        templateService.save(key, formatId, config);
+        return R.ok();
+    }
+
+    /** 恢复默认版式（同时删除上传的 JRXML）：带 formatId 时只清空该格式，不带时删除该单据的全部格式 */
     @DeleteMapping("/{key}")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
     @OperLog(title = "打印模板-恢复默认", type = OperType.UPDATE) // i18n-ignore 操作日志存库
-    public R<Void> reset(@PathVariable String key) {
-        templateService.reset(key);
+    public R<Void> reset(@PathVariable String key, @RequestParam(required = false) Long formatId) {
+        templateService.reset(key, formatId);
         return R.ok();
     }
 
     /** 下载上传的 JRXML */
     @GetMapping("/{key}/jrxml")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
-    public ResponseEntity<byte[]> downloadJrxml(@PathVariable String key) {
-        String jrxml = templateService.jrxml(key);
+    public ResponseEntity<byte[]> downloadJrxml(@PathVariable String key, @RequestParam(required = false) Long formatId) {
+        String jrxml = templateService.jrxml(key, formatId);
         if (jrxml == null) {
             return ResponseEntity.notFound().build();
         }
@@ -80,24 +117,26 @@ public class SysPrintTemplateController {
     @PostMapping("/{key}/jrxml")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
     @OperLog(title = "打印模板-上传 JRXML", type = OperType.UPDATE, saveParams = false) // i18n-ignore 操作日志存库
-    public R<Void> uploadJrxml(@PathVariable String key, @RequestParam("file") MultipartFile file) throws IOException {
-        printService.uploadJrxml(key, file);
+    public R<Void> uploadJrxml(@PathVariable String key, @RequestParam(required = false) Long formatId,
+                               @RequestParam("file") MultipartFile file) throws IOException {
+        printService.uploadJrxml(key, formatId, file);
         return R.ok();
     }
 
     /** 套打底图（data URL），没有时为空 */
     @GetMapping("/{key}/background")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:list')")
-    public R<String> background(@PathVariable String key) {
-        return R.ok(templateService.background(key));
+    public R<String> background(@PathVariable String key, @RequestParam(required = false) Long formatId) {
+        return R.ok(templateService.background(key, formatId));
     }
 
     /** 保存套打底图（为空时删除） */
     @PutMapping("/{key}/background")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
     @OperLog(title = "打印模板-套打底图", type = OperType.UPDATE, saveParams = false) // i18n-ignore 操作日志存库
-    public R<Void> saveBackground(@PathVariable String key, @RequestBody PrintBackgroundRequest req) {
-        templateService.saveBackground(key, req.dataUrl());
+    public R<Void> saveBackground(@PathVariable String key, @RequestParam(required = false) Long formatId,
+                                  @RequestBody PrintBackgroundRequest req) {
+        templateService.saveBackground(key, formatId, req.dataUrl());
         return R.ok();
     }
 
@@ -105,8 +144,8 @@ public class SysPrintTemplateController {
     @DeleteMapping("/{key}/jrxml")
     @PreAuthorize("@ss.hasPerm('sys:printTemplate:edit')")
     @OperLog(title = "打印模板-删除 JRXML", type = OperType.UPDATE) // i18n-ignore 操作日志存库
-    public R<Void> removeJrxml(@PathVariable String key) {
-        templateService.removeJrxml(key);
+    public R<Void> removeJrxml(@PathVariable String key, @RequestParam(required = false) Long formatId) {
+        templateService.removeJrxml(key, formatId);
         return R.ok();
     }
 }

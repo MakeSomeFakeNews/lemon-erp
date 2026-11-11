@@ -321,18 +321,23 @@ CREATE TABLE sys_config (
     UNIQUE KEY uk_config_key (config_key)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '系统参数';
 
--- 打印模板：租户修改过的单据打印配置（JSON，由前端解释），未修改的单据使用默认版式；上传了 JRXML 的单据按 JRXML 打印
+-- 打印模板：租户修改过的单据打印配置（JSON，由前端解释），未修改的单据使用默认版式；上传了 JRXML 的单据按 JRXML 打印。
+-- 同一单据可有多份打印格式（每行一份，如销售出库单的「发货单（不含价格）」），每个模板标识有且只有一份默认格式，有多份启用的格式时打印前选择
 CREATE TABLE sys_print_template (
     id           BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id    BIGINT      NOT NULL DEFAULT 1 COMMENT '租户ID',
     template_key VARCHAR(64) NOT NULL COMMENT '模板标识，如 scm.purchaseOrder；_common 为通用设置',
+    name         VARCHAR(32) NOT NULL COMMENT '格式名称，同一模板标识内唯一；只有一份格式时为「标准格式」',
+    is_default   TINYINT     NOT NULL DEFAULT 1 COMMENT '是否默认格式 1是 0否：每个模板标识只有一份，只有一份启用的格式时直接按它打印',
+    sort         INT         NOT NULL DEFAULT 0 COMMENT '排序（打印时选择格式的顺序）',
+    status       TINYINT     NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用（默认格式不能停用）',
     config       TEXT        NOT NULL COMMENT '模板配置 JSON',
     jrxml        MEDIUMTEXT COMMENT '自定义 JRXML（Jaspersoft Studio 7），为空时按配置生成默认版式',
     background   MEDIUMTEXT COMMENT '套打底图（data URL）：设计套打位置时对照，不打印',
     create_time  DATETIME             DEFAULT NULL COMMENT '创建时间',
     update_time  DATETIME             DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_print_template (template_key, tenant_id)
+    UNIQUE KEY uk_print_template (template_key, name, tenant_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '打印模板';
 
 CREATE TABLE sys_biz_rule (
@@ -5451,6 +5456,12 @@ INSERT INTO sys_role_menu (role_id, menu_id) VALUES
 (2, 1), (2, 100), (2, 104), (2, 101), (2, 102), (2, 103), (2, 109),
 (2, 2), (2, 110), (2, 111), (2, 112), (2, 113), (2, 114), (2, 115),
 (2, 3), (2, 120), (2, 121), (2, 122), (2, 123), (2, 124), (2, 125), (2, 126);
+
+-- 打印格式示例：销售出库单除标准格式（默认）外预置「发货单（不含价格）」，给同行的发货单、代发第三方时只显示数量，
+-- 标题为「发货单」，隐藏单价、税率、金额列和金额类表头字段。新租户由 SysPrintTenantInitializer 从平台复制
+INSERT INTO sys_print_template (template_key, name, is_default, sort, status, config, create_time, update_time) VALUES
+('scm.salesOut', '标准格式', 1, 0, 1, '{}', NOW(), NOW()),
+('scm.salesOut', '发货单（不含价格）', 0, 1, 1, '{"title":"发货单","orientation":"portrait","paper":"A4","margin":10,"fontSize":10,"showCompany":true,"showNote":true,"fields":[{"label":"订单号"},{"label":"客户"},{"label":"仓库"},{"label":"业务日期"},{"label":"仓库单据"},{"label":"发票类型","hidden":true},{"label":"优惠前合计","hidden":true},{"label":"整单优惠","hidden":true},{"label":"原单优惠分摊","hidden":true},{"label":"优惠后合计","hidden":true},{"label":"价税合计","hidden":true},{"label":"运费","hidden":true},{"label":"运费承担","hidden":true},{"label":"含代垫运费合计","hidden":true},{"label":"原币","hidden":true}],"columns":[{"title":"序号"},{"title":"物料编码"},{"title":"物料名称"},{"title":"规格型号"},{"title":"单位"},{"title":"仓库"},{"title":"库位"},{"title":"批次"},{"title":"数量"},{"title":"含税单价","hidden":true},{"title":"税率","hidden":true},{"title":"价税合计","hidden":true},{"title":"序列号"}],"signs":[{"label":"制单"},{"label":"仓管"},{"label":"客户签收"}]}', NOW(), NOW());
 
 -- ---------------------------------------------------------------- 仓库管理：菜单、字典、示例数据
 
