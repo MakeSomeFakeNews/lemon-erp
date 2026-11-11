@@ -19,7 +19,9 @@ import com.lemon.erp.modules.fin.mapper.FinIoCategoryMapper;
 import com.lemon.erp.modules.fin.mapper.FinIoDocItemMapper;
 import com.lemon.erp.modules.fin.mapper.FinIoDocMapper;
 import com.lemon.erp.modules.fin.model.BillKind;
+import com.lemon.erp.modules.fin.model.BillSource;
 import com.lemon.erp.modules.fin.model.FundDirection;
+import com.lemon.erp.modules.fin.model.IoCategoryCode;
 import com.lemon.erp.modules.fin.model.IoPartnerType;
 import com.lemon.erp.modules.fin.model.IoStatus;
 import com.lemon.erp.modules.fin.model.SettleMethods;
@@ -31,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -44,7 +47,8 @@ import java.util.stream.Collectors;
 /**
  * 其他收支单：其他收入单（IN，单号 SR）、费用支出单（OUT，单号 ZC），明细为收支类别 + 金额。
  * 待确认时可修改、删除；确认时同一事务生成凭证（未审核）：收入 借 结算账户 / 贷 各类别科目，支出 借 各类别科目（带部门）/ 贷 结算账户，
- * 凭证进入出纳日记账和资金日报。取消确认删除未审核的凭证（凭证已审核须先反审核，已记账不能取消）。业务日期所在期间已结账时不能办理
+ * 凭证进入出纳日记账和资金日报。取消确认删除未审核的凭证（凭证已审核须先反审核，已记账不能取消）。业务日期所在期间已结账时不能办理。
+ * 业务单据也可以生成费用支出单（{@link #createGenerated}，如销售出库、采购退货现付的运费），记录来源单据，不能修改、删除
  */
 @Service
 @RequiredArgsConstructor
@@ -67,6 +71,7 @@ public class FinIoService {
     private final DocNoService docNoService;
     private final DictLookup dictLookup;
     private final FinFundService fundService;
+    private final FinIoCategoryService categoryService;
 
     public PageResult<FinIoDoc> page(long current, long size, IoRequests.Query query) {
         Page<FinIoDoc> page = Page.of(current, size);
@@ -103,10 +108,48 @@ public class FinIoService {
         return d.getId();
     }
 
+    /**
+     * 由业务单据生成费用支出单（待确认，出纳确认后生成凭证）：如销售出库、采购退货现付的运费。来源单据记录在收支单上供联查，
+     * 生成的单据不能修改、删除（金额与来源单据一致），可以确认、取消确认
+     *
+     * @param code      内置收支类别
+     * @param accountId 付款账户（现金 / 银行末级科目）
+     * @param supplierId 关联单位（供应商，如承运商），可为空
+     * @return 费用支出单 ID
+     */
+    @Transactional
+    public Long createGenerated(IoCategoryCode code, LocalDate date, Long accountId, Long supplierId, Long deptId, BigDecimal amount,
+                                BillSource sourceType, Long sourceId, String sourceNo, String remark) {
+        accountService.requireCashAccount(accountId);
+        periodGuard.checkOpen(date, "fin.label.incomeExpenseDoc");
+        FinIoCategory category = categoryService.getBuiltin(code);
+        FinIoDoc d = new FinIoDoc();
+        d.setDocNo(docNoService.next(EXPENSE_NO));
+        d.setDirection(FundDirection.OUT);
+        d.setStatus(IoStatus.DRAFT);
+        d.setDocDate(date);
+        d.setPartnerType(supplierId == null ? null : IoPartnerType.SUPPLIER);
+        d.setPartnerId(supplierId);
+        d.setAccountId(accountId);
+        d.setDeptId(deptId);
+        d.setAmount(amount);
+        d.setRemark(cut(remark));
+        d.setSourceType(sourceType);
+        d.setSourceId(sourceId);
+        d.setSourceNo(sourceNo);
+        docMapper.insert(d);
+        FinIoDocItem item = new FinIoDocItem();
+        item.setCategoryId(category.getId());
+        item.setAmount(amount);
+        DetailLines.replace(itemMapper, FinIoDocItem::getDocId, d.getId(), List.of(item), FinIoDocItem::setDocId, itemMapper::insertBatch);
+        return d.getId();
+    }
+
     /** 修改（待确认）；收入 / 支出方向不能修改 */
     @Transactional
     public void update(Long id, IoRequests.Save req) {
         FinIoDoc old = requireDraft(id);
+        requireManual(old);
         if (old.getDirection() != req.direction()) {
             throw new BizException("fin.error.ioDirectionCannotChange");
         }
@@ -138,6 +181,7 @@ public class FinIoService {
     public void delete(List<Long> ids) {
         for (Long id : ids) {
             FinIoDoc d = requireDraft(id);
+            requireManual(d);
             periodGuard.checkOpen(d.getDocDate(), "fin.label.incomeExpenseDoc");
             if (docMapper.delete(Wrappers.<FinIoDoc>lambdaQuery().eq(FinIoDoc::getId, id).eq(FinIoDoc::getStatus, IoStatus.DRAFT)) == 0) {
                 throw new BizException("fin.error.ioDocOnlyDraftEditable", d.getDocNo());
@@ -298,6 +342,13 @@ public class FinIoService {
         d.setDeptId(req.deptId());
         d.setAmount(Decimals.sum(items, FinIoDocItem::getAmount));
         d.setRemark(blankToNull(req.remark()));
+    }
+
+    /** 由业务单据生成的收支单不能修改、删除（金额与来源单据一致） */
+    private static void requireManual(FinIoDoc d) {
+        if (d.getSourceType() != null) {
+            throw new BizException("fin.error.ioDocGenerated", d.getDocNo(), d.getSourceNo());
+        }
     }
 
     private FinIoDoc requireDraft(Long id) {

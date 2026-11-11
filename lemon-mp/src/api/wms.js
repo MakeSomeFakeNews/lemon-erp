@@ -62,10 +62,19 @@ export const priceReference = (params) => get('/scm/pricing/reference', params, 
 export const previewPromotion = (data) => post('/scm/promotion/preview', data, { silent: true })
 /**
  * 销售出库（直接开单）：{ partnerId, salesmanId, warehouseId, bizDate, remark, wholeDiscount,
+ *   freight, freightBearer（COMPANY / CUSTOMER）, freightSettle（CASH / MONTHLY）, freightAccountId, carrierSupplierId（运费，可不传），
  *   items: [{ materialId, qty, price, taxRate, unitName, gift, warehouseId, locationId, batchNo, serialNos }] }
  * qty、price 为基本单位（price 为促销前原价），unitName 为录入单位（仅显示）；warehouseId 为明细仓库（scm.salesOut.lineWarehouse）；
  * 赠品行 gift: true（单价按 0，同一赠品可拆多行，合计须等于促销算出的数量；不带赠品行时后端从表头仓库先到期先出自动补上，序列号赠品除外）
  */
 export const addSalesOut = (data) => post('/scm/salesOut', data)
+/** 承运商选项（物流公司，还没有标记时为全部供应商）：{ marked, options: [{ id, code, name }] }（登录即可访问） */
+export const carrierOptions = (keyword) => get('/scm/supplier/carrier-options', { keyword })
+/** 运费现付的付款账户：现金、银行末级科目 [{ id, label }]（科目范围按「凭证科目设置」，登录即可访问） */
+export async function cashAccounts() {
+  const [accounts, scopes] = await Promise.all([get('/fin/account/options'), get('/fin/account/scopes')])
+  const prefixes = [scopes?.CASH, scopes?.BANK].filter(Boolean)
+  return (accounts || []).filter((a) => prefixes.some((p) => a.code.startsWith(p))).map((a) => ({ id: a.id, label: `${a.code} ${a.name}` }))
+}
 /** 销售出库草稿（同上，请求与 addSalesOut 相同） */
 export const addSalesOutDraft = (data) => post('/scm/salesOut/drafts', data)

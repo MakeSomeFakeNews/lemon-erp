@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.fin.model.FundDirection;
+import com.lemon.erp.modules.fin.model.IoCategoryCode;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -17,6 +18,9 @@ import lombok.EqualsAndHashCode;
 public class FinIoCategory extends BaseEntity {
 
     private String name;
+
+    /** 内置类别标识（程序使用，不能删除、不能改方向），自定义类别为空 */
+    private IoCategoryCode code;
 
     /** IN 收入 / OUT 支出 */
     private FundDirection direction;

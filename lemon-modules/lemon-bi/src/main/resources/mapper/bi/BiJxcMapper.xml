@@ -27,11 +27,14 @@
          跟随出库单的业务日期归属）与本公司承担的发运运费（已发货），按行金额比例分摊到明细，
          只用于「扣坏账后毛利」「扣运费后毛利」等参考口径，不改变销售额（口径同财务「毛利分析」） -->
     <sql id="docShare">CASE WHEN d.total_amount &lt;&gt; 0 THEN i.amount / d.total_amount WHEN d.total_qty &lt;&gt; 0 THEN i.qty / d.total_qty ELSE 0 END</sql>
+    <!-- 本公司承担的运费：发运单的运费（出库单没有登记运费时，已发货）+ 出库单上本公司承担的运费 + 销售退货客户代垫的运费（issue #72），
+         出库单已登记运费时发运单从出库单带出，不重复计算 -->
+    <sql id="freightAmount">(COALESCE(sf.amount, 0) + CASE WHEN (d.kind = 'SALES_OUT' AND d.freight_bearer = 'COMPANY') OR d.kind = 'SALES_RETURN' THEN d.freight ELSE 0 END)</sql>
     <sql id="badDebtFreight">
         LEFT JOIN (SELECT source_id, SUM(bad_debt_amount * (amount - tax_amount) / amount) AS amount FROM fin_bill
                    WHERE kind = 'AR' AND source_type = 'SALES_OUT' AND bad_debt_amount &lt;&gt; 0 AND amount &lt;&gt; 0 GROUP BY source_id) bd ON d.kind = 'SALES_OUT' AND bd.source_id = d.id
         LEFT JOIN (SELECT trade_doc_id, SUM(freight) AS amount FROM scm_shipment
-                   WHERE freight_bearer = 'COMPANY' AND status &lt;&gt; 'PENDING' AND freight &gt; 0 GROUP BY trade_doc_id) sf ON d.kind = 'SALES_OUT' AND sf.trade_doc_id = d.id
+                   WHERE freight_bearer = 'COMPANY' AND status &lt;&gt; 'PENDING' AND freight &gt; 0 GROUP BY trade_doc_id) sf ON d.kind = 'SALES_OUT' AND sf.trade_doc_id = d.id AND d.freight = 0
     </sql>
 
     <!-- 销售成本单价：实时出库成本 → 期间核算单价 → 参考成本价 -->
@@ -85,7 +88,7 @@
                 SUM(<include refid="sign"/> * i.qty * <include refid="saleUnitCost"/>) AS "cost",
                 SUM(CASE WHEN fc.amount IS NULL AND mc.unit_cost IS NULL THEN 1 ELSE 0 END) AS "missingCost",
                 SUM(COALESCE(bd.amount, 0) * <include refid="docShare"/>) AS "badDebt",
-                SUM(COALESCE(sf.amount, 0) * <include refid="docShare"/>) AS "freight",
+                SUM(<include refid="freightAmount"/> * <include refid="docShare"/>) AS "freight",
             </when>
             <otherwise>0 AS "cost", 0 AS "missingCost",</otherwise>
         </choose>
@@ -148,7 +151,7 @@
                    <include refid="sign"/> * i.qty * <include refid="saleUnitCost"/> AS "cost",
                    CASE WHEN fc.amount IS NULL AND mc.unit_cost IS NULL THEN 0 ELSE 1 END AS "costed",
                    COALESCE(bd.amount, 0) * <include refid="docShare"/> AS "badDebt",
-                   COALESCE(sf.amount, 0) * <include refid="docShare"/> AS "freight",
+                   <include refid="freightAmount"/> * <include refid="docShare"/> AS "freight",
                </if>
                i.remark AS "remark"
         <include refid="tradeFrom"/>

@@ -31,6 +31,8 @@ export default {
     discountedTotal: 'Total after Discount',
     discountShare: 'Original Order Discount',
     freight: 'Freight',
+    freightBearer: 'Freight Bearer',
+    advanceTotal: 'Total incl. Advanced Freight',
     location: 'Location',
     batch: 'Batch',
     serialNo: 'Serial No.',

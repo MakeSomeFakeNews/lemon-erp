@@ -23,10 +23,12 @@ import com.lemon.erp.modules.scm.entity.ScmTradeDoc;
 import com.lemon.erp.modules.scm.entity.ScmTradeDocItem;
 import com.lemon.erp.modules.scm.event.PurchaseFreightEvent;
 import com.lemon.erp.modules.scm.event.TradeDocConfirmedEvent;
+import com.lemon.erp.modules.scm.event.TradeFreightEvent;
 import com.lemon.erp.modules.scm.mapper.ScmOrderItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmTradeDocItemMapper;
 import com.lemon.erp.modules.scm.mapper.ScmTradeDocMapper;
 import com.lemon.erp.modules.scm.model.FreightBearer;
+import com.lemon.erp.modules.scm.model.FreightSettle;
 import com.lemon.erp.modules.scm.model.OrderStatus;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.OrderSource;
@@ -197,7 +199,8 @@ public class ScmTradeDocService {
                 .filter(i -> Integer.valueOf(1).equals(i.getGift())).toList();
         items.addAll(directGifts.lines(giftItems, giftReqs, req.warehouseId()));
         return create(kind, new TradeDocRequest(order.getId(), req.warehouseId(), req.bizDate(), req.remark(), false, items,
-                null, null, null, req.freight(), req.freightBearer(), req.carrierSupplierId(), null), order, origin);
+                null, null, null, req.freight(), req.freightBearer(), req.carrierSupplierId(), null, null, req.freightSettle(),
+                req.freightAccountId()), order, origin);
     }
 
     private Long create(TradeKind kind, TradeDocRequest req, ScmOrder order, Origin origin) {
@@ -223,7 +226,8 @@ public class ScmTradeDocService {
         if (kind == TradeKind.SALES_OUT) {
             creditChecker.checkBeforeShipment(order);
         }
-        FreightBearer freightBearer = checkFreight(kind, req);
+        Freight freight = checkFreight(kind, req);
+        FreightBearer freightBearer = freight == null ? null : freight.bearer();
         if (req.orderDiscount() != null && kind != TradeKind.PURCHASE_IN) {
             throw new BizException("scm.error.orderDiscountOnlyPurchaseIn");
         }
@@ -281,8 +285,8 @@ public class ScmTradeDocService {
         BigDecimal discountAdjust = req.orderDiscount() == null ? BigDecimal.ZERO
                 : applyOrderDiscount(items, amountsFc, sharesFc, Decimals.money(req.orderDiscount()), rate(order));
 
-        // 运费入账方式：供应商代垫的计入存货成本，本公司承担的按业务参数（入库时确定，记在单据上）
-        PurchaseFreightCost freightCost = freightBearer == null ? null : freightBearer == FreightBearer.COMPANY
+        // 采购运费入账方式：供应商代垫的计入存货成本，本公司承担的按业务参数（入库时确定，记在单据上）；其他种类的运费不分摊
+        PurchaseFreightCost freightCost = freightBearer == null || kind != TradeKind.PURCHASE_IN ? null : freightBearer == FreightBearer.COMPANY
                 ? bizRules.option(ScmBizRules.PURCHASE_FREIGHT_COST, PurchaseFreightCost.class) : PurchaseFreightCost.INVENTORY;
         if (freightCost == PurchaseFreightCost.INVENTORY) {
             // 采购运费按各行不含税金额分摊，计入存货成本；计入当期费用的不分摊（明细的分摊额为 0）
@@ -335,7 +339,9 @@ public class ScmTradeDocService {
         doc.setFreight(freightBearer == null ? BigDecimal.ZERO : Decimals.money(req.freight()));
         doc.setFreightBearer(freightBearer);
         doc.setFreightCost(freightCost);
-        doc.setCarrierSupplierId(freightBearer == FreightBearer.COMPANY ? req.carrierSupplierId() : null);
+        doc.setCarrierSupplierId(freight == null ? null : freight.carrierId());
+        doc.setFreightSettle(freight == null ? null : freight.settle());
+        doc.setFreightAccountId(freight == null ? null : freight.accountId());
         doc.setDeptId(deptId);
         // 制单人：草稿的制单人（为空时由插件填当前用户）；审核人为当前用户
         doc.setCreateBy(origin != null ? origin.createBy() : null);
@@ -353,11 +359,15 @@ public class ScmTradeDocService {
         eventPublisher.publishEvent(new TradeDocConfirmedEvent(doc.getId(), kind, docNo, order.getPartnerId(),
                 req.bizDate(), doc.getTotalAmount().multiply(sign), doc.getTaxAmount().multiply(sign), doc.getCurrency(),
                 doc.getExchangeRate(), doc.getAmountFc().multiply(sign)));
-        if (freightBearer != null) {
-            // 运费应付：供应商代垫计入该供应商，本公司承担付给承运商
+        if (freight != null && kind == TradeKind.PURCHASE_IN) {
+            // 采购运费应付：供应商代垫计入该供应商，本公司承担付给承运商
             eventPublisher.publishEvent(new PurchaseFreightEvent(doc.getId(), docNo, freightBearer == FreightBearer.COMPANY
-                    ? req.carrierSupplierId() : order.getPartnerId(), req.bizDate(), doc.getFreight(), deptId,
+                    ? freight.carrierId() : order.getPartnerId(), req.bizDate(), doc.getFreight(), deptId,
                     freightCost == PurchaseFreightCost.EXPENSE));
+        } else if (freight != null) {
+            // 销售出库、销售退货、采购退货的运费：费用支出单 / 承运商应付、往来单位的代垫运费单据
+            eventPublisher.publishEvent(new TradeFreightEvent(doc.getId(), kind, docNo, order.getPartnerId(), req.bizDate(),
+                    doc.getFreight(), freightBearer, freight.settle(), freight.carrierId(), freight.accountId(), deptId));
         }
         return doc.getId();
     }
@@ -370,28 +380,91 @@ public class ScmTradeDocService {
     }
 
     /**
-     * 校验运费：只有采购入库可以填写；付给方式默认供应商代垫，本公司承担时必须选择承运商（供应商）
+     * 记录销售出库、销售退货、采购退货的运费生成的单据。由财务模块处理 {@link TradeFreightEvent} 时调用，与出入库同一事务
      *
-     * @return 运费付给方式，没有运费时为 null
+     * @param carrierBillId 月结的承运商应付单
+     * @param partnerBillId 往来单位的代垫运费单据（应收 / 红字应收 / 红字应付）
+     * @param ioId          现付的费用支出单
      */
-    private FreightBearer checkFreight(TradeKind kind, TradeDocRequest req) {
+    public void bindFreight(Long docId, Long carrierBillId, Long partnerBillId, Long ioId) {
+        docMapper.update(Wrappers.<ScmTradeDoc>lambdaUpdate()
+                .set(ScmTradeDoc::getFreightBillId, carrierBillId)
+                .set(ScmTradeDoc::getFreightPartnerBillId, partnerBillId)
+                .set(ScmTradeDoc::getFreightIoId, ioId)
+                .eq(ScmTradeDoc::getId, docId));
+    }
+
+    /**
+     * 规范化后的运费
+     *
+     * @param settle    付给承运商的方式（销售出库、采购退货）
+     * @param carrierId 承运商（供应商）
+     * @param accountId 现付的付款账户
+     */
+    record Freight(FreightBearer bearer, FreightSettle settle, Long carrierId, Long accountId) {
+    }
+
+    /**
+     * 按单据种类规范运费（草稿保存、审核共用，只校验取值组合，不校验必填）：
+     * <ul>
+     *   <li>采购入库：供应商代垫（默认）/ 本公司承担，本公司承担时记录承运商</li>
+     *   <li>销售出库：本公司承担（默认）/ 代垫运费（客户承担），付给承运商现付（默认，记录付款账户）/ 月结</li>
+     *   <li>销售退货：只有客户代垫（客户已付给承运商，没有承运商、付款方式）</li>
+     *   <li>采购退货：只有代垫运费（本公司替供应商垫付），付给承运商现付（默认）/ 月结</li>
+     * </ul>
+     *
+     * @return 没有运费时为 null
+     */
+    static Freight normalizeFreight(TradeKind kind, TradeDocRequest req) {
         if (!req.hasFreight()) {
             return null;
         }
-        if (kind != TradeKind.PURCHASE_IN) {
-            throw new BizException("scm.error.freightOnlyPurchaseIn");
+        FreightBearer bearer = req.freightBearer() != null ? req.freightBearer() : switch (kind) {
+            case PURCHASE_IN, PURCHASE_RETURN -> FreightBearer.SUPPLIER;
+            case SALES_OUT -> FreightBearer.COMPANY;
+            case SALES_RETURN -> FreightBearer.CUSTOMER;
+        };
+        boolean valid = switch (kind) {
+            case PURCHASE_IN -> bearer != FreightBearer.CUSTOMER;
+            case SALES_OUT -> bearer != FreightBearer.SUPPLIER;
+            case SALES_RETURN -> bearer == FreightBearer.CUSTOMER;
+            case PURCHASE_RETURN -> bearer == FreightBearer.SUPPLIER;
+        };
+        if (!valid) {
+            throw new BizException(kind == TradeKind.PURCHASE_IN ? "scm.error.freightBearerInvalid" : "scm.error.freightBearerNotAllowed",
+                    Messages.get(kind.getLabelKey()));
         }
-        FreightBearer bearer = req.freightBearer() == null ? FreightBearer.SUPPLIER : req.freightBearer();
-        if (bearer == FreightBearer.CUSTOMER) {
-            throw new BizException("scm.error.freightBearerInvalid");
+        if (kind == TradeKind.PURCHASE_IN) {
+            return new Freight(bearer, null, bearer == FreightBearer.COMPANY ? req.carrierSupplierId() : null, null);
         }
-        if (bearer == FreightBearer.COMPANY) {
-            if (req.carrierSupplierId() == null) {
-                throw new BizException("scm.error.freightSelectCarrier");
-            }
-            supplierService.get(req.carrierSupplierId());
+        if (kind == TradeKind.SALES_RETURN) {
+            return new Freight(bearer, null, null, null);
         }
-        return bearer;
+        FreightSettle settle = req.freightSettle() == null ? FreightSettle.CASH : req.freightSettle();
+        return new Freight(bearer, settle, req.carrierSupplierId(), settle == FreightSettle.CASH ? req.freightAccountId() : null);
+    }
+
+    /**
+     * 审核时校验运费：采购入库本公司承担、月结时必须选择承运商（供应商），现付时必须选择付款账户（是否为现金 / 银行科目由财务生成费用支出单时校验）
+     *
+     * @return 运费，没有运费时为 null
+     */
+    private Freight checkFreight(TradeKind kind, TradeDocRequest req) {
+        Freight freight = normalizeFreight(kind, req);
+        if (freight == null) {
+            return null;
+        }
+        boolean carrierRequired = kind == TradeKind.PURCHASE_IN ? freight.bearer() == FreightBearer.COMPANY : freight.settle() == FreightSettle.MONTHLY;
+        if (carrierRequired && freight.carrierId() == null) {
+            throw new BizException(kind == TradeKind.PURCHASE_IN ? "scm.error.freightSelectCarrier" : "scm.error.freightMonthlySelectCarrier");
+        }
+        if (freight.settle() == FreightSettle.CASH && freight.accountId() == null) {
+            throw new BizException("scm.error.freightSelectAccount");
+        }
+        if (freight.carrierId() != null) {
+            supplierService.get(freight.carrierId());
+        }
+        return freight;
     }
 
     /**

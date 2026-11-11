@@ -60,7 +60,7 @@ const trade = (key, name, partner, sign, lineWarehouse = false) => ({
   key,
   module: n.modScm,
   name,
-  fields: [n.orderNo, partner, n.warehouse, n.bizDate, n.wmsDocNo, n.grossTotal, n.wholeDiscount, n.discountShare, n.discountedTotal, n.totalAmount, n.freight, n.originalCurrency],
+  fields: [n.orderNo, partner, n.warehouse, n.bizDate, n.wmsDocNo, n.grossTotal, n.wholeDiscount, n.discountShare, n.discountedTotal, n.totalAmount, n.freight, n.freightBearer, n.advanceTotal, n.originalCurrency],
   columns: [...MATERIAL_COLUMNS, ...(lineWarehouse ? [n.warehouse] : []), n.location, n.batch, num(n.quantity), num(n.taxPrice), num(n.totalAmount), n.serialNo],
   signs: [n.prepared, n.storekeeper, sign],
   note: true

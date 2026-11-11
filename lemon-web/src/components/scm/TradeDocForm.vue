@@ -73,29 +73,8 @@
 
       <TradeDocItems :kind="kind" :form="form" :direct="direct" :line-warehouse="lineWarehouse" />
 
-      <!-- 采购入库的运费：生成运费应付单；供应商代垫的计入存货成本，本公司承担的按业务参数计入存货成本或当期费用 -->
-      <a-row v-if="kind === 'purchaseIn'" :gutter="16" class="freight-row">
-        <a-col :xs="24" :sm="8" :lg="5">
-          <a-form-item :label="$t('scm.freight.label')" name="freight">
-            <a-input-number v-model:value="form.freight" :min="0" :precision="2" prefix="¥" class="full" :placeholder="$t('scm.trade.optional')" />
-          </a-form-item>
-        </a-col>
-        <template v-if="Number(form.freight) > 0">
-          <a-col :xs="24" :sm="8" :lg="5">
-            <a-form-item :label="$t('scm.freight.payTo')" name="freightBearer">
-              <a-select v-model:value="form.freightBearer" :options="purchaseBearers" />
-            </a-form-item>
-          </a-col>
-          <a-col v-if="form.freightBearer === FreightBearer.COMPANY" :xs="24" :sm="8" :lg="6">
-            <a-form-item :label="$t('scm.freight.carrier')" name="carrierSupplierId" :rules="requiredRule($t('scm.freight.selectCarrier'))">
-              <PartnerSelect v-model:value="form.carrierSupplierId" type="supplier" carrier :placeholder="$t('scm.freight.selectCarrier')" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="24">
-            <div class="sub-text freight-hint">{{ freightHint }}</div>
-          </a-col>
-        </template>
-      </a-row>
+      <!-- 运费：采购入库生成运费应付单；销售出库、退货的运费见 TradeFreight（issue #72、#73） -->
+      <TradeFreight :kind="kind" :form="form" :purchase-freight-cost="bizRules['scm.purchaseFreight.cost']" />
       <div class="tip sub-text">{{ tip }}</div>
       <div v-if="showDraftActions" class="tip sub-text">{{ $t('scm.trade.draftHint') }}</div>
     </a-form>
@@ -120,16 +99,15 @@ import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import PartnerSelect from './PartnerSelect.vue'
 import TradeDocItems from './TradeDocItems.vue'
+import TradeFreight from './TradeFreight.vue'
 import { getOrder, pageOrder } from '@/api/scm/order'
 import { addTrade, addTradeDraft, getTrade, getTradeDraft, pageTrade, postTradeDraft, updateTradeDraft } from '@/api/scm/trade'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useBizRules } from '@/composables/useBizRules'
 import { useUserStore } from '@/store/user'
 import { locationText, rowKey, today } from '@/components/wms/wms'
-import { ORDER_KINDS, TRADE_KINDS, formatMoney, grossPrice, netQty, newTradeRow, remainingQty } from './scm'
-import { FreightBearer, OrderSource, OrderStatus, PurchaseFreightCost } from '@/constants/enums'
-import { useDict } from '@/composables/useDict'
-import { toOptions } from '@/utils/dict'
+import { ORDER_KINDS, TRADE_KINDS, formatMoney, freightForm, freightPayload, grossPrice, netQty, newTradeRow, remainingQty } from './scm'
+import { OrderSource, OrderStatus, PurchaseFreightCost } from '@/constants/enums'
 
 /**
  * 采购入库 / 采购退货 / 销售出库 / 销售退货，保存即审核（更新库存）。
@@ -162,16 +140,6 @@ const draftMode = computed(() => bizRules['scm.tradeDoc.draft'] === true)
 const lineWarehouse = computed(() => props.kind === 'salesOut' && bizRules['scm.salesOut.lineWarehouse'] === true)
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
-/** 采购运费付给：供应商代垫（计入该供应商应付）/ 本公司承担（付承运商） */
-const dict = useDict('scm_freight_bearer')
-const purchaseBearers = computed(() =>
-  toOptions(dict.scm_freight_bearer).filter((d) => d.value === FreightBearer.SUPPLIER || d.value === FreightBearer.COMPANY)
-)
-/** 运费的实际入账方式：供应商代垫计入存货成本；本公司承担按业务参数「本公司承担的采购运费计入」 */
-const freightHint = computed(() => {
-  if (form.value.freightBearer !== FreightBearer.COMPANY) return t('scm.freight.supplierHint')
-  return bizRules['scm.purchaseFreight.cost'] === PurchaseFreightCost.EXPENSE ? t('scm.freight.expenseHint') : t('scm.freight.inventoryHint')
-})
 const rules = computed(() => ({
   partnerId: direct.value ? requiredRule(t('scm.trade.selectPartner', { partner: orderConf.value.partnerLabel })) : [],
   warehouseId: requiredRule(t('scm.trade.selectWarehouse')),
@@ -181,7 +149,7 @@ const rules = computed(() => ({
 const emptyForm = () => ({
   id: undefined, docNo: undefined, orderId: undefined, sourceDocId: undefined, partnerId: undefined, partnerLabel: undefined, salesmanId: undefined,
   warehouseId: undefined, bizDate: today(), remark: '', replenish: false, wholeDiscount: undefined, orderDiscount: undefined,
-  freight: undefined, freightBearer: FreightBearer.SUPPLIER, carrierSupplierId: undefined, items: []
+  ...freightForm(props.kind), items: []
 })
 
 /**
@@ -224,9 +192,7 @@ const drawer = useFormDrawer({
       wholeDiscount: byOrder ? null : f.wholeDiscount || null,
       // 引用订单的采购入库修改了订单优惠（为空按订单分摊）
       orderDiscount: byOrder && props.kind === 'purchaseIn' && f.orderDiscount != null ? f.orderDiscount : null,
-      ...(props.kind === 'purchaseIn' && Number(f.freight) > 0
-        ? { freight: f.freight, freightBearer: f.freightBearer, carrierSupplierId: f.freightBearer === FreightBearer.COMPANY ? f.carrierSupplierId : null }
-        : {}),
+      ...freightPayload(props.kind, f),
       items: f.items.map((i) => ({
         orderItemId: byOrder ? i.orderItemId : null,
         materialId: byOrder ? null : i.materialId,
@@ -408,8 +374,7 @@ async function loadDraft(id) {
     warehouseId: d.warehouseId, bizDate: d.bizDate, remark: d.remark || '', replenish: d.replenish === 1,
     wholeDiscount: d.wholeDiscount != null ? Number(d.wholeDiscount) : undefined,
     orderDiscount: d.orderDiscount != null ? Number(d.orderDiscount) : undefined,
-    freight: Number(d.freight) > 0 ? Number(d.freight) : undefined, freightBearer: d.freightBearer || FreightBearer.SUPPLIER,
-    carrierSupplierId: d.carrierSupplierId || undefined
+    ...freightForm(props.kind, d)
   }
   if (!d.orderId) {
     const items = d.items.map((i) => ({
@@ -466,13 +431,6 @@ defineExpose({ openCreate, openDraft })
   width: min(420px, 100%);
 }
 .replenish {
-  margin-bottom: 8px;
-}
-.freight-row {
-  margin-top: 12px;
-}
-.freight-hint {
-  margin-top: -16px;
   margin-bottom: 8px;
 }
 .sub-text {

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.modules.scm.model.FreightBearer;
+import com.lemon.erp.modules.scm.model.FreightSettle;
 import com.lemon.erp.modules.scm.model.PurchaseFreightCost;
 import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.model.TradeKind;
@@ -71,20 +72,32 @@ public class ScmTradeDoc extends BaseEntity {
      */
     private BigDecimal discountAdjust;
 
-    /** 采购运费（仅采购入库，计入存货成本时按行不含税金额分摊，见 freightCost），0 为没有 */
+    /** 运费，0 为没有。采购入库计入存货成本时按行不含税金额分摊（见 freightCost），其他种类不分摊 */
     private BigDecimal freight;
 
-    /** 采购运费付给：供应商代垫（计入该供应商应付）/ 本公司承担（付承运商） */
+    /** 运费承担，含义按单据种类，见 {@link FreightBearer} */
     private FreightBearer freightBearer;
 
     /** 采购运费的入账方式：供应商代垫的始终计入存货成本，本公司承担的按业务参数 scm.purchaseFreight.cost（入库时确定）；没有运费为空 */
     private PurchaseFreightCost freightCost;
 
-    /** 采购运费的承运商（供应商） */
+    /** 运费的承运商（供应商）：采购入库本公司承担、月结时必填，现付时可为空 */
     private Long carrierSupplierId;
 
-    /** 采购运费应付单 */
+    /** 运费应付单：采购入库的运费应付，销售出库 / 采购退货月结时的承运商应付 */
     private Long freightBillId;
+
+    /** 运费付给承运商的方式（销售出库、采购退货），见 {@link FreightSettle} */
+    private FreightSettle freightSettle;
+
+    /** 现付运费的付款账户（财务的现金 / 银行末级科目） */
+    private Long freightAccountId;
+
+    /** 往来单位的代垫运费单据：销售出库代垫运费应收、销售退货红字应收、采购退货红字应付 */
+    private Long freightPartnerBillId;
+
+    /** 现付运费生成的费用支出单 */
+    private Long freightIoId;
 
     private Long deptId;
 

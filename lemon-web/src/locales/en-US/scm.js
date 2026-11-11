@@ -41,7 +41,34 @@ export default {
       INVENTORY: 'Inventory cost',
       EXPENSE: 'Period expense'
     },
-    carrierUnmarked: 'No logistics company is marked yet, so all suppliers are listed; check "Logistics company" in the supplier record'
+    carrierUnmarked: 'No logistics company is marked yet, so all suppliers are listed; check "Logistics company" in the supplier record',
+    bearerLabel: 'Freight bearer',
+    settle: 'Pay carrier',
+    account: 'Payment account',
+    selectAccount: 'Select the payment account',
+    carrierOptional: 'Carrier (optional)',
+    bearers: {
+      purchaseIn: { SUPPLIER: 'Advanced by supplier', COMPANY: 'Company pays' },
+      salesOut: { COMPANY: 'Company pays', CUSTOMER: 'Advanced for customer (customer pays)' },
+      salesReturn: { CUSTOMER: 'Advanced by customer (company pays)' },
+      purchaseReturn: { SUPPLIER: 'Advanced for supplier (supplier pays)' }
+    },
+    hint: {
+      salesOutCompanyCash: 'Company pays in cash: an expense document (category "Sales freight", sourced from this delivery and linked both ways) is generated; when the cashier confirms it the voucher is Dr Sales freight / Cr payment account',
+      salesOutCompanyMonthly: 'Company pays monthly: a payable to the carrier is generated (Dr Sales freight / Cr Accounts Payable - carrier) and settled later',
+      salesOutCustomerCash: 'Advanced for customer: a separate freight receivable is generated, so the customer owes goods + freight; the cash paid to the carrier becomes an expense document (category "Freight advanced"); both net out in the freight advanced account and are not sales revenue',
+      salesOutCustomerMonthly: 'Advanced for customer: a separate freight receivable is generated, so the customer owes goods + freight; a payable to the carrier is generated; both net out in the freight advanced account and are not sales revenue',
+      salesReturn: 'Advanced by customer: the customer paid the return freight that the company bears; a red receivable reduces what the customer owes, receivable = -(goods + freight), voucher Dr Sales freight / Cr Accounts Receivable',
+      purchaseReturnCash: 'Advanced for supplier: the company pays the return freight on the supplier\'s behalf; a red payable reduces what is owed to the supplier, payable = -(goods + freight); the cash paid to the carrier becomes an expense document (category "Freight advanced")',
+      purchaseReturnMonthly: 'Advanced for supplier: the company pays the return freight on the supplier\'s behalf; a red payable reduces what is owed to the supplier, payable = -(goods + freight); a payable to the carrier is generated'
+    },
+    advanceTotal: {
+      salesOut: 'Receivable total (goods + freight)',
+      salesReturn: 'Refund total (goods + freight)',
+      purchaseReturn: 'Payable reduction (goods + freight)'
+    },
+    ioDoc: 'Expense document',
+    onDocHint: 'Freight was entered on sales delivery {no} (its freight documents were generated when it was posted); shown read-only here and not generated again on dispatch'
   },
   partnerSelect: {
     searchSupplier: 'Search supplier code or name',

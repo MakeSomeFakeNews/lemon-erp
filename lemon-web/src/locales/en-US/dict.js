@@ -367,12 +367,20 @@ export default {
     'OFFSET': 'Offset', // 冲账单
     'ORDER_ADJUST': 'Order Rounding Adjustment', // 订单尾差调整
     'PURCHASE_FREIGHT': 'Purchase Freight', // 采购运费
+    'SALES_FREIGHT': 'Sales Freight', // 销售运费
+    'SALES_RETURN_FREIGHT': 'Sales Return Freight', // 销售退货运费
+    'PURCHASE_RETURN_FREIGHT': 'Purchase Return Freight', // 采购退货运费
   },
   // 运费承担
   scm_freight_bearer: {
     'COMPANY': 'Company Pays', // 本公司承担
     'CUSTOMER': 'Customer Pays (Advanced)', // 客户承担（代垫）
     'SUPPLIER': 'Advanced by Supplier', // 供应商代垫
+  },
+  // 运费结算方式
+  scm_freight_settle: {
+    'CASH': 'Cash', // 现付
+    'MONTHLY': 'Monthly', // 月结
   },
   // 冲账项目
   fin_offset_item: {

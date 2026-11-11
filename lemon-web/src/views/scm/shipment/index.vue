@@ -132,6 +132,9 @@
               <a-input v-model:value="form.address" :maxlength="255" />
             </a-form-item>
           </a-col>
+          <a-col v-if="form.freightOnDoc" :span="24">
+            <a-alert type="info" show-icon :message="$t('scm.freight.onDocHint', { no: form.tradeDocNo || '' })" class="on-doc" />
+          </a-col>
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('scm.shipment.freight')" name="freight">
               <a-input-number v-model:value="form.freight" :min="0" :precision="2" prefix="¥" class="full" :disabled="billed" />
@@ -153,7 +156,7 @@
                 v-model:value="form.carrierSupplierId"
                 type="supplier"
                 carrier
-                :label="form.carrierSupplierName ? `${form.carrierSupplierCode} ${form.carrierSupplierName}` : undefined"
+                :label="[form.carrierSupplierCode, form.carrierSupplierName].filter(Boolean).join(' ') || undefined"
                 allow-clear
                 :placeholder="$t('scm.shipment.noPayable')"
                 :disabled="billed"
@@ -184,10 +187,13 @@
             <a-descriptions-item :label="$t('scm.shipment.trackingNo')">{{ detail.trackingNo || '-' }}</a-descriptions-item>
             <a-descriptions-item :label="$t('scm.shipment.freight')">
               {{ detail.freight != null ? '¥' + formatMoney(detail.freight) : '-' }}
-              <span v-if="detail.carrierSupplierName" class="sub-text">{{ detail.freightBillId ? $t('scm.shipment.supplierBilled', { name: detail.carrierSupplierName }) : $t('scm.shipment.supplierParen', { name: detail.carrierSupplierName }) }}</span>
+              <span v-if="detail.carrierSupplierName && !detail.freightOnDoc" class="sub-text">{{ detail.freightBillId ? $t('scm.shipment.supplierBilled', { name: detail.carrierSupplierName }) : $t('scm.shipment.supplierParen', { name: detail.carrierSupplierName }) }}</span>
               <div v-if="detail.freight != null" class="sub-text">
-                <DictTag type="scm_freight_bearer" :value="detail.freightBearer" />
-                {{ detail.freightBearer === FreightBearer.CUSTOMER ? (detail.freightArBillId ? $t('scm.shipment.customerBilled') : $t('scm.shipment.customerHint')) : $t('scm.shipment.companyHint') }}
+                <template v-if="detail.freightOnDoc">{{ $t('scm.freight.onDocHint', { no: detail.tradeDocNo }) }}</template>
+                <template v-else>
+                  <DictTag type="scm_freight_bearer" :value="detail.freightBearer" />
+                  {{ detail.freightBearer === FreightBearer.CUSTOMER ? (detail.freightArBillId ? $t('scm.shipment.customerBilled') : $t('scm.shipment.customerHint')) : $t('scm.shipment.companyHint') }}
+                </template>
               </div>
             </a-descriptions-item>
             <a-descriptions-item :label="$t('scm.shipment.receiver')">{{ detail.receiver || '-' }} {{ detail.phone }}</a-descriptions-item>
@@ -322,6 +328,7 @@ const drawer = useFormDrawer({
     freight: undefined,
     freightBearer: FreightBearer.COMPANY,
     carrierSupplierId: undefined,
+    freightOnDoc: false,
     receiver: '',
     phone: '',
     address: '',
@@ -349,14 +356,14 @@ const drawer = useFormDrawer({
   onSuccess: load
 })
 const { formRef, form } = drawer
-/** 已生成运费应付 / 代垫运费应收后，运费、承担方、承运商不能再改 */
-const billed = computed(() => !!(form.value.freightBillId || form.value.freightArBillId))
+/** 已生成运费应付 / 代垫运费应收后，或运费已在销售出库单登记（issue #72，带出只读），运费、承担方、承运商不能再改 */
+const billed = computed(() => !!(form.value.freightBillId || form.value.freightArBillId || form.value.freightOnDoc))
 /** 运费承担：本公司承担（销售费用）/ 客户承担（代垫，计入客户应收），供应商代垫只用于采购入库 */
 const bearerOptions = computed(() =>
   toOptions(dict.scm_freight_bearer).filter((d) => d.value === FreightBearer.COMPANY || d.value === FreightBearer.CUSTOMER)
 )
 /** 客户承担且有运费时必须选择承运商（运费结算供应商） */
-const carrierRequired = computed(() => form.value.freightBearer === FreightBearer.CUSTOMER && form.value.freight > 0)
+const carrierRequired = computed(() => !form.value.freightOnDoc && form.value.freightBearer === FreightBearer.CUSTOMER && form.value.freight > 0)
 watch(carrierRequired, (required) => {
   if (!required) formRef.value?.clearValidate('carrierSupplierId')
 })
@@ -378,10 +385,19 @@ function searchDocs(docNo) {
   }, 200)
 }
 
-/** 选择出库单后带出客户的联系人、电话、地址 */
+/** 选择出库单后带出客户的联系人、电话、地址；出库单已登记运费时带出运费（只读，发货时不再生成运费单据） */
 async function onDocSelect(id) {
   const doc = docs.value.find((d) => d.id === id)
   if (!doc) return
+  const onDoc = Number(doc.freight) > 0
+  Object.assign(form.value, {
+    freightOnDoc: onDoc,
+    tradeDocNo: doc.docNo,
+    ...(onDoc
+      ? { freight: Number(doc.freight), freightBearer: doc.freightBearer, carrierSupplierId: doc.carrierSupplierId || undefined,
+          carrierSupplierName: doc.carrierSupplierName, carrierSupplierCode: '' }
+      : {})
+  })
   const customers = await partnerOptions('customer', doc.partnerCode)
   const c = customers.find((p) => p.code === doc.partnerCode)
   if (c) Object.assign(form.value, { receiver: c.contact || '', phone: c.phone || '', address: c.address || '' })
@@ -453,6 +469,9 @@ async function submitAction() {
 </script>
 
 <style scoped>
+.on-doc {
+  margin-bottom: 16px;
+}
 .sub-text {
   color: var(--app-text-3);
   font-size: 12px;

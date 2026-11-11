@@ -47,7 +47,10 @@ import static com.lemon.erp.modules.scm.model.ShipmentStatus.SIGNED;
 
 /**
  * 物流发运：由销售出库单生成发运单，记录承运商、运单号、运费，跟踪物流动态直到签收。
- * 状态：待发运 → 运输中 → 已签收；运输中可标记异常，异常处理后重新发货或直接签收
+ * 状态：待发运 → 运输中 → 已签收；运输中可标记异常，异常处理后重新发货或直接签收。
+ * <p>
+ * 运费只记一次：销售出库单已登记运费（issue #72）时，发运单带出出库单的运费、承担方和承运商，只读显示，发货时不再生成运费单据
+ * （出库单审核时已生成）；出库单没有运费时在发运单上填写，首次发货生成运费单据（与原来一致）
  */
 @Service
 @RequiredArgsConstructor
@@ -87,7 +90,14 @@ public class ScmShipmentService {
         shipment.setTradeDocId(doc.getId());
         shipment.setCustomerId(doc.getPartnerId());
         fill(shipment, req);
-        checkFreight(shipment);
+        if (hasFreight(doc)) {
+            // 运费已在出库单登记：带出出库单的运费，发运单上不能修改
+            shipment.setFreight(doc.getFreight());
+            shipment.setFreightBearer(doc.getFreightBearer());
+            shipment.setCarrierSupplierId(doc.getCarrierSupplierId());
+        } else {
+            checkFreight(shipment);
+        }
         shipment.setStatus(PENDING);
         shipment.setDeptId(user.deptId());
         shipmentMapper.insert(shipment);
@@ -103,7 +113,13 @@ public class ScmShipmentService {
         }
         ScmShipment shipment = new ScmShipment();
         fill(shipment, req);
-        boolean billed = old.getFreightBillId() != null || old.getFreightArBillId() != null;
+        if (freightOnDoc(old)) {
+            // 运费已在出库单登记：保持带出的运费不变
+            shipment.setFreight(old.getFreight());
+            shipment.setFreightBearer(old.getFreightBearer());
+            shipment.setCarrierSupplierId(old.getCarrierSupplierId());
+        }
+        boolean billed = old.getFreightBillId() != null || old.getFreightArBillId() != null || freightOnDoc(old);
         if (!billed) {
             checkFreight(shipment);
         }
@@ -133,7 +149,8 @@ public class ScmShipmentService {
         if (!StringUtils.hasText(trackingNo)) {
             throw new BizException("scm.error.enterTrackingNo");
         }
-        if (shipment.getStatus() == PENDING) {
+        boolean onDoc = freightOnDoc(shipment);
+        if (shipment.getStatus() == PENDING && !onDoc) {
             checkFreight(shipment);
         }
         LocalDate date = req.date() == null ? LocalDate.now() : req.date();
@@ -142,9 +159,10 @@ public class ScmShipmentService {
                 .set(ScmShipment::getShipDate, shipment.getStatus() == PENDING ? date : shipment.getShipDate()));
         addTrack(id, SHIPPED, StringUtils.hasText(req.content()) ? req.content()
                 : (shipment.getStatus() == PENDING ? "已发货" : "异常已处理，继续运输") + "，运单号 " + trackingNo); // i18n-ignore
-        // 首次发货：运费生成承运商应付单；客户承担的运费（代垫）另生成客户应收单（客户承担时必有承运商，见 checkFreight）
+        // 首次发货：运费生成承运商应付单；客户承担的运费（代垫）另生成客户应收单（客户承担时必有承运商，见 checkFreight）。
+        // 运费已在出库单登记的，出库单审核时已生成运费单据，不再重复生成
         FreightBearer bearer = shipment.getFreightBearer() == null ? FreightBearer.COMPANY : shipment.getFreightBearer();
-        if (shipment.getStatus() == PENDING && hasFreight(shipment) && shipment.getCarrierSupplierId() != null) {
+        if (shipment.getStatus() == PENDING && !onDoc && hasFreight(shipment) && shipment.getCarrierSupplierId() != null) {
             eventPublisher.publishEvent(new ShipmentShippedEvent(id, shipment.getShipNo(), shipment.getCarrierSupplierId(),
                     shipment.getFreight(), date, shipment.getDeptId(), shipment.getCustomerId(), bearer));
         }
@@ -247,6 +265,16 @@ public class ScmShipmentService {
 
     private static boolean hasFreight(ScmShipment shipment) {
         return shipment.getFreight() != null && shipment.getFreight().signum() > 0;
+    }
+
+    private static boolean hasFreight(ScmTradeDoc doc) {
+        return doc.getFreight() != null && doc.getFreight().signum() > 0;
+    }
+
+    /** 运费是否已在销售出库单登记（发运单的运费从出库单带出，只读） */
+    private boolean freightOnDoc(ScmShipment shipment) {
+        ScmTradeDoc doc = tradeDocMapper.selectById(shipment.getTradeDocId());
+        return doc != null && hasFreight(doc);
     }
 
     private static int compare(BigDecimal a, BigDecimal b) {

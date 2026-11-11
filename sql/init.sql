@@ -1794,11 +1794,15 @@ CREATE TABLE scm_trade_doc (
     replenish    TINYINT        NOT NULL DEFAULT 0 COMMENT '退货是否补发（补收） 1补发 0退款',
     discount_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '本单分摊的整单优惠（本位币，含税）：优惠前合计 = 价税合计 + 本项',
     discount_adjust DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '采购入库修改的订单优惠与按订单分摊之差（本位币，含税），0为与订单一致',
-    freight      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '采购运费（仅采购入库）',
-    freight_bearer VARCHAR(16)           DEFAULT NULL COMMENT '采购运费付给(字典 scm_freight_bearer) SUPPLIER供应商代垫 COMPANY本公司承担（付承运商）',
+    freight      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '运费，0为没有',
+    freight_bearer VARCHAR(16)           DEFAULT NULL COMMENT '运费承担(字典 scm_freight_bearer)：采购入库 SUPPLIER供应商代垫 COMPANY本公司承担；销售出库 COMPANY本公司承担 CUSTOMER代垫运费（客户承担）；销售退货 CUSTOMER客户代垫；采购退货 SUPPLIER代垫运费（供应商承担）',
     freight_cost VARCHAR(16)             DEFAULT NULL COMMENT '采购运费入账方式 INVENTORY计入存货成本 EXPENSE计入当期费用（本公司承担时按业务参数）',
-    carrier_supplier_id BIGINT           DEFAULT NULL COMMENT '采购运费的承运商（供应商），本公司承担时必填',
-    freight_bill_id BIGINT               DEFAULT NULL COMMENT '采购运费应付单',
+    carrier_supplier_id BIGINT           DEFAULT NULL COMMENT '运费的承运商（供应商）：采购入库本公司承担、月结时必填',
+    freight_bill_id BIGINT               DEFAULT NULL COMMENT '运费应付单（采购入库运费应付、月结的承运商应付）',
+    freight_settle VARCHAR(16)           DEFAULT NULL COMMENT '付给承运商的方式(字典 scm_freight_settle，销售出库、采购退货) CASH现付 MONTHLY月结',
+    freight_account_id BIGINT            DEFAULT NULL COMMENT '现付运费的付款账户（现金 / 银行末级科目）',
+    freight_partner_bill_id BIGINT       DEFAULT NULL COMMENT '往来单位的代垫运费单据：销售出库代垫运费应收、销售退货红字应收、采购退货红字应付',
+    freight_io_id BIGINT                 DEFAULT NULL COMMENT '现付运费生成的费用支出单',
     dept_id      BIGINT                  DEFAULT NULL COMMENT '制单人部门（数据权限）',
     create_by    BIGINT                  DEFAULT NULL COMMENT '制单人',
     post_by      BIGINT                  DEFAULT NULL COMMENT '审核人（保存即审核时为制单人，草稿审核时为审核人）',
@@ -1856,9 +1860,11 @@ CREATE TABLE scm_trade_draft (
     replenish    TINYINT        NOT NULL DEFAULT 0 COMMENT '退货是否补发（补收） 1补发 0退款',
     whole_discount DECIMAL(18, 2)        DEFAULT NULL COMMENT '直接开单的整单优惠（含税）',
     order_discount DECIMAL(18, 2)        DEFAULT NULL COMMENT '引用订单的采购入库：本单的订单优惠（含税，订单币种），为空按订单分摊',
-    freight      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '采购运费（仅采购入库）',
-    freight_bearer VARCHAR(16)           DEFAULT NULL COMMENT '采购运费付给(字典 scm_freight_bearer) SUPPLIER供应商代垫 COMPANY本公司承担（付承运商）',
-    carrier_supplier_id BIGINT           DEFAULT NULL COMMENT '采购运费的承运商（供应商）',
+    freight      DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '运费',
+    freight_bearer VARCHAR(16)           DEFAULT NULL COMMENT '运费承担(字典 scm_freight_bearer)，含义同出入库单',
+    carrier_supplier_id BIGINT           DEFAULT NULL COMMENT '运费的承运商（供应商）',
+    freight_settle VARCHAR(16)           DEFAULT NULL COMMENT '付给承运商的方式(字典 scm_freight_settle) CASH现付 MONTHLY月结',
+    freight_account_id BIGINT            DEFAULT NULL COMMENT '现付运费的付款账户',
     total_qty    DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '合计数量',
     total_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '价税合计（按录入单价估算，审核后以出入库单为准）',
     remark       VARCHAR(255)            DEFAULT NULL COMMENT '备注',
@@ -2737,7 +2743,7 @@ CREATE TABLE fin_bill (
     bill_no        VARCHAR(32)    NOT NULL COMMENT '单号',
     kind           VARCHAR(8)     NOT NULL COMMENT '种类 AR应收 AP应付',
     partner_id     BIGINT         NOT NULL COMMENT '客户 / 供应商',
-    source_type    VARCHAR(16)    NOT NULL COMMENT '来源(字典 fin_bill_source) SALES_OUT销售出库 SALES_RETURN销售退货 PURCHASE_IN采购入库 PURCHASE_RETURN采购退货 MANUAL期初 / 手工',
+    source_type    VARCHAR(32)    NOT NULL COMMENT '来源(字典 fin_bill_source) SALES_OUT销售出库 SALES_RETURN销售退货 PURCHASE_IN采购入库 PURCHASE_RETURN采购退货 MANUAL期初 / 手工 等',
     source_id      BIGINT                  DEFAULT NULL COMMENT '来源单据ID',
     source_no      VARCHAR(32)             DEFAULT NULL COMMENT '来源单号',
     project_id     BIGINT                  DEFAULT NULL COMMENT '项目（辅助核算），项目开票时填写',
@@ -2861,6 +2867,7 @@ CREATE TABLE fin_io_category (
     id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     name        VARCHAR(64)  NOT NULL COMMENT '类别名称',
+    code        VARCHAR(32)           DEFAULT NULL COMMENT '内置类别标识（程序使用，不能删除、不能改方向）：SALES_FREIGHT销售运费 FREIGHT_ADVANCE代垫运费',
     direction   VARCHAR(8)   NOT NULL COMMENT '方向(字典 fin_fund_direction) IN收入 OUT支出',
     account_id  BIGINT                DEFAULT NULL COMMENT '凭证科目（末级）：收入记贷方、支出记借方',
     sort        INT          NOT NULL DEFAULT 0 COMMENT '排序',
@@ -2869,7 +2876,8 @@ CREATE TABLE fin_io_category (
     create_time DATETIME              DEFAULT NULL COMMENT '创建时间',
     update_time DATETIME              DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_io_category (direction, name, tenant_id)
+    UNIQUE KEY uk_io_category (direction, name, tenant_id),
+    UNIQUE KEY uk_io_category_code (code, tenant_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '收支类别（其他收入、费用支出的分类）';
 
 CREATE TABLE fin_io_doc (
@@ -2891,13 +2899,17 @@ CREATE TABLE fin_io_doc (
     confirm_by    BIGINT                  DEFAULT NULL COMMENT '确认人',
     confirm_time  DATETIME                DEFAULT NULL COMMENT '确认时间',
     remark        VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    source_type   VARCHAR(32)             DEFAULT NULL COMMENT '来源单据类型(字典 fin_bill_source)：由业务单据生成时填写（如销售出库、采购退货现付的运费），手工录入为空',
+    source_id     BIGINT                  DEFAULT NULL COMMENT '来源单据ID',
+    source_no     VARCHAR(32)             DEFAULT NULL COMMENT '来源单据号',
     create_by     BIGINT                  DEFAULT NULL COMMENT '制单人',
     create_time   DATETIME                DEFAULT NULL COMMENT '创建时间',
     update_time   DATETIME                DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_io_doc_no (doc_no, tenant_id),
     KEY idx_io_doc_date (doc_date),
-    KEY idx_io_doc_partner (partner_id)
+    KEY idx_io_doc_partner (partner_id),
+    KEY idx_io_doc_source (source_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '其他收支单（其他收入单、费用支出单）';
 
 CREATE TABLE fin_io_doc_item (
@@ -3365,7 +3377,7 @@ CREATE TABLE fin_supplier_statement_line (
     statement_id BIGINT         NOT NULL COMMENT '对账单',
     bill_id      BIGINT         NOT NULL COMMENT '应付单',
     bill_no      VARCHAR(32)    NOT NULL COMMENT '应付单号',
-    source_type  VARCHAR(16)    NOT NULL COMMENT '来源(字典 fin_bill_source)',
+    source_type  VARCHAR(32)    NOT NULL COMMENT '来源(字典 fin_bill_source)',
     source_no    VARCHAR(32)             DEFAULT NULL COMMENT '来源单号',
     bill_date    DATE           NOT NULL COMMENT '单据日期',
     amount       DECIMAL(18, 2) NOT NULL COMMENT '价税合计',
@@ -7467,7 +7479,7 @@ UPDATE sys_dict_data SET builtin = 1 WHERE dict_type = 'fin_offset_item' AND dic
 
 -- 运费承担方（发运单：本公司承担计销售费用、客户承担为代垫运费计入应收；采购入库：供应商代垫计入应付、本公司承担付承运商，都计入存货成本）
 INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
-(196, '运费承担', 'scm_freight_bearer', 'SYSTEM', 1, '发运单、采购入库的运费由谁承担 / 付给谁', NOW(), NOW());
+(196, '运费承担', 'scm_freight_bearer', 'SYSTEM', 1, '发运单、出入库单的运费由谁承担 / 付给谁', NOW(), NOW());
 INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
 ('scm_freight_bearer', '本公司承担', 'COMPANY', 'default', 1, 1, NOW(), NOW()),
 ('scm_freight_bearer', '客户承担（代垫）', 'CUSTOMER', 'blue', 2, 1, NOW(), NOW()),
@@ -7697,6 +7709,24 @@ SELECT g.role_id, g.menu_id FROM (
 ) g
 WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
   AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);
+
+-- 销售出库、销售退货、采购退货的运费（issue #72、#73）：付给承运商的方式（现付生成费用支出单 / 月结生成承运商应付），
+-- 应收应付来源增加三类运费；收支类别增加内置的「销售运费」「代垫运费」（现付运费自动生成费用支出单时使用，科目与凭证科目设置的默认值一致）
+INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
+(207, '运费结算方式', 'scm_freight_settle', 'SYSTEM', 1, '销售出库、采购退货的运费付给承运商的方式：现付（生成费用支出单）、月结（生成承运商应付单）', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
+('scm_freight_settle', '现付', 'CASH', 'green', 1, 1, NOW(), NOW()),
+('scm_freight_settle', '月结', 'MONTHLY', 'blue', 2, 1, NOW(), NOW()),
+('fin_bill_source', '销售运费', 'SALES_FREIGHT', 'cyan', 16, 1, NOW(), NOW()),
+('fin_bill_source', '销售退货运费', 'SALES_RETURN_FREIGHT', 'cyan', 17, 1, NOW(), NOW()),
+('fin_bill_source', '采购退货运费', 'PURCHASE_RETURN_FREIGHT', 'cyan', 18, 1, NOW(), NOW());
+INSERT INTO fin_io_category (name, code, direction, account_id, sort, status, remark, create_time, update_time)
+SELECT g.name, g.code, 'OUT', a.id, g.sort, 1, g.remark, NOW(), NOW()
+FROM (
+    SELECT '销售运费' AS name, 'SALES_FREIGHT' AS code, '6601' AS acct, 10 AS sort, '销售出库本公司承担、现付的运费' AS remark
+    UNION ALL SELECT '代垫运费', 'FREIGHT_ADVANCE', '1221', 11, '销售出库、采购退货替往来单位垫付、现付的运费'
+) g
+LEFT JOIN fin_account a ON a.code = g.acct AND a.tenant_id = 1;
 
 -- 字典种类：业务字典由各租户自己维护（可新增取值），其余为系统字典；程序依赖的取值标记为内置（不能删除、不能改键值）
 UPDATE sys_dict_type SET kind = 'BUSINESS' WHERE type IN ('wf_category', 'scm_customer_level', 'scm_carrier', 'mes_supplement_reason',

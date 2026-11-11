@@ -41,7 +41,34 @@ export default {
       INVENTORY: '计入存货成本',
       EXPENSE: '计入当期费用'
     },
-    carrierUnmarked: '还没有标记物流公司，下面列出全部供应商；请在「供应商」资料中勾选「物流公司」'
+    carrierUnmarked: '还没有标记物流公司，下面列出全部供应商；请在「供应商」资料中勾选「物流公司」',
+    bearerLabel: '运费承担',
+    settle: '付给承运商',
+    account: '付款账户',
+    selectAccount: '请选择付款账户',
+    carrierOptional: '承运商（可不选）',
+    bearers: {
+      purchaseIn: { SUPPLIER: '供应商代垫', COMPANY: '本公司承担' },
+      salesOut: { COMPANY: '本公司承担', CUSTOMER: '代垫运费（客户承担）' },
+      salesReturn: { CUSTOMER: '客户代垫（本公司承担）' },
+      purchaseReturn: { SUPPLIER: '代垫运费（供应商承担）' }
+    },
+    hint: {
+      salesOutCompanyCash: '本公司承担、现付：生成一张费用支出单（类别「销售运费」，来源为本出库单，可互相联查），出纳确认后生成凭证 借 销售运费 / 贷 付款账户',
+      salesOutCompanyMonthly: '本公司承担、月结：生成承运商的应付单（借 销售运费 / 贷 应付账款-承运商），以后付款核销',
+      salesOutCustomerCash: '代垫运费：另生成客户的代垫运费应收单，客户应收 = 货款 + 代垫运费；付给承运商的运费生成费用支出单（类别「代垫运费」），两边在代垫运费科目冲平，不是销售收入',
+      salesOutCustomerMonthly: '代垫运费：另生成客户的代垫运费应收单，客户应收 = 货款 + 代垫运费；付给承运商的运费生成承运商应付单，两边在代垫运费科目冲平，不是销售收入',
+      salesReturn: '客户代垫：退货运费由客户先付、本公司承担，生成红字应收冲减客户欠款，应收 = −（货款 + 代垫运费），凭证 借 销售运费 / 贷 应收账款',
+      purchaseReturnCash: '代垫运费：本公司替供应商垫付退货运费，生成红字应付冲减欠供应商的款，应付 = −（货款 + 代垫运费）；付给承运商的运费生成费用支出单（类别「代垫运费」）',
+      purchaseReturnMonthly: '代垫运费：本公司替供应商垫付退货运费，生成红字应付冲减欠供应商的款，应付 = −（货款 + 代垫运费）；付给承运商的运费生成承运商应付单'
+    },
+    advanceTotal: {
+      salesOut: '应收合计（货款 + 代垫运费）',
+      salesReturn: '应退合计（货款 + 代垫运费）',
+      purchaseReturn: '应付冲减合计（货款 + 代垫运费）'
+    },
+    ioDoc: '费用支出单',
+    onDocHint: '运费已在销售出库单 {no} 登记（出库单审核时已生成运费单据），这里只读显示，发货时不再生成'
   },
   partnerSelect: {
     searchSupplier: '搜索供应商编码或名称',

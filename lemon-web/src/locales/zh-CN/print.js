@@ -31,6 +31,8 @@ export default {
     discountedTotal: '优惠后合计',
     discountShare: '原单优惠分摊',
     freight: '运费',
+    freightBearer: '运费承担',
+    advanceTotal: '含代垫运费合计',
     location: '库位',
     batch: '批次',
     serialNo: '序列号',
