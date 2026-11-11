@@ -56,6 +56,11 @@ export default {
     later: '暂不',
     generating: '正在生成 PDF',
     failed: '生成 PDF 失败',
-    direct: '直接开单'
+    direct: '直接开单',
+    pickFormat: '选择打印格式',
+    lastUsed: '上次使用',
+    isDefault: '默认',
+    more: '更多格式…',
+    formatTagged: '{name}（{tags}）'
   }
 }

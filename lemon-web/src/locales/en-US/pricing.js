@@ -127,6 +127,7 @@ export default {
     sideCOST: 'Cost',
     sideSALES: 'Sales',
     stockTitle: 'Stock by Location - {name}',
+    stockHistory: 'Movement History',
     warehouse: 'Warehouse',
     location: 'Location',
     batch: 'Batch',

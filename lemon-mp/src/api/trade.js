@@ -1,4 +1,4 @@
-import { del, get, post } from '@/utils/request'
+import { del, get, post, put } from '@/utils/request'
 import { OPTION_PAGE_SIZE } from '@/api/wms'
 
 /**
@@ -31,3 +31,9 @@ export const getTradeDoc = (kind, id) => get(`/scm/${kind}/${id}`)
 
 /** 打印模板配置：{ 模板标识: 配置 }（登录即可读取） */
 export const printTemplates = () => get('/system/print-template', undefined, { silent: true })
+/** 各单据的打印格式：[{ id, templateKey, name, isDefault, sort, status, jrxml, config }]（登录即可读取） */
+export const printFormats = () => get('/system/print-template/formats', undefined, { silent: true })
+/** 个人设置 printFormats：{ 模板标识: 上次使用的格式 ID }，与 Web 端共用 */
+export const PRINT_FORMATS_KEY = 'printFormats'
+export const getPrintFormatSetting = () => get(`/profile/settings/${PRINT_FORMATS_KEY}`, undefined, { silent: true })
+export const savePrintFormatSetting = (value) => put(`/profile/settings/${PRINT_FORMATS_KEY}`, value, { silent: true })

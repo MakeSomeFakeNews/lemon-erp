@@ -7,7 +7,8 @@ import { getToken } from '@/utils/auth'
 import { hasPerm, userState } from '@/store/user'
 import { dictText, useDict } from '@/store/dict'
 import { money, price, qty } from '@/utils/format'
-import { getTradeDoc, printTemplates } from '@/api/trade'
+import { STATUS_ENABLED } from '@web/utils/constants'
+import { getPrintFormatSetting, getTradeDoc, printFormats, printTemplates, savePrintFormatSetting } from '@/api/trade'
 
 /**
  * 手机打印 / 分享 PDF（销售出库、采购入库）：与 Web 端 TradeDocDetail 的 print() 相同的单据结构，
@@ -16,7 +17,11 @@ import { getTradeDoc, printTemplates } from '@/api/trade'
  * 用户在右上角菜单中转发给微信好友 / 文件传输助手，或用其他应用（打印机 App、WPS 等）打开打印。
  *
  * 字段、列、签字栏的匹配键是中文打印名称（取自 Web 端语言包 zh-CN/print.js 的 name，模板配置和 JRXML 都按它匹配），
- * 显示名称按界面语言。打印相关的改动（如以后支持更多格式）集中在本文件。
+ * 显示名称按界面语言。打印相关的改动集中在本文件。
+ *
+ * 打印格式（issue #96）：同一单据可有多份格式，与 Web 端一致——只有一份启用的格式时直接按它生成，
+ * 多份时先在 action sheet 中选择（上次使用的排在最前面并标注，个人设置 printFormats 与 Web 端共用），
+ * 按所选格式的配置组装并把 formatId 传给后端（后端据此取该格式上传的 JRXML）；没有保存过格式的单据按默认版式。
  */
 const N = zhPrint.name
 const label = (key) => {
@@ -129,6 +134,67 @@ function applyTemplate(doc, tpl, common) {
   return result
 }
 
+// ---------------------------------------------------------------- 打印格式
+
+/** 预置的格式名称（存库为中文）在英文界面下的显示文字，其他名称原样显示（同 Web 端 formatLabel） */
+const formatLabel = (name) => {
+  if (isZh()) return name
+  const id = Object.keys(zhPrint.format).find((k) => zhPrint.format[k] === name)
+  return (id && enPrint.format[id]) || name
+}
+
+/** 格式的打印配置：上传了 JRXML 的带 jrxml: true（与 printTemplates 返回的结构一致） */
+const formatConfig = (f) => ({ ...(f.config || {}), ...(f.jrxml ? { jrxml: true } : {}) })
+
+/** 微信 action sheet 最多 6 项，超过时每页 5 项，最后一项为「更多格式…」 */
+const SHEET_MAX = 6
+
+function actionSheet(itemList) {
+  return new Promise((resolve) => {
+    uni.showActionSheet({
+      title: t('trade.print.pickFormat'),
+      alertText: t('trade.print.pickFormat'),
+      itemList,
+      success: ({ tapIndex }) => resolve(tapIndex),
+      fail: () => resolve(-1)
+    })
+  })
+}
+
+/** 在 action sheet 中选择格式（options 已按显示顺序），取消返回 null */
+async function chooseFormat(options, lastUsed) {
+  const name = (f) => {
+    const tags = [f.id === lastUsed && t('trade.print.lastUsed'), f.isDefault && t('trade.print.isDefault')].filter(Boolean)
+    return tags.length ? t('trade.print.formatTagged', { name: formatLabel(f.name), tags: tags.join(' / ') }) : formatLabel(f.name)
+  }
+  for (let start = 0; start < options.length; ) {
+    const rest = options.length - start
+    const page = options.slice(start, start + (rest > SHEET_MAX ? SHEET_MAX - 1 : rest))
+    const more = start + page.length < options.length
+    const index = await actionSheet([...page.map(name), ...(more ? [t('trade.print.more')] : [])])
+    if (index < 0) return null
+    if (index < page.length) return page[index]
+    start += page.length
+  }
+  return null
+}
+
+/**
+ * 本次打印使用的格式：没有保存过格式时为 undefined（默认版式），只有一份启用的格式时直接使用，
+ * 多份时让用户选择（上次使用的或默认格式排在最前面）并记住；取消选择返回 null
+ */
+async function resolveFormat(type) {
+  const options = ((await printFormats().catch(() => [])) || []).filter((f) => f.templateKey === type && f.status === STATUS_ENABLED)
+  if (options.length <= 1) return options[0]
+  const saved = (await getPrintFormatSetting().catch(() => null)) || {}
+  const lastUsed = options.some((f) => f.id === saved[type]) ? saved[type] : undefined
+  const first = options.find((f) => f.id === lastUsed) || options.find((f) => f.isDefault) || options[0]
+  const picked = await chooseFormat([first, ...options.filter((f) => f !== first)], lastUsed)
+  // 与上次相同时不保存；保存失败不影响打印
+  if (picked && picked.id !== saved[type]) savePrintFormatSetting({ ...saved, [type]: picked.id }).catch(() => {})
+  return picked
+}
+
 // ---------------------------------------------------------------- 生成并打开 PDF
 
 function requestPdf(body) {
@@ -164,18 +230,20 @@ function openPdf(buffer, fileName) {
   // #endif
 }
 
-/** 生成并打开出入库单的 PDF（打印 / 分享） */
+/** 生成并打开出入库单的 PDF（打印 / 分享）：有多份启用的格式时先选择格式（action sheet 不能叠在加载遮罩之上，因此先选再加载） */
 export async function printTradeDoc(kind, id) {
   const c = KINDS[kind]
   const dict = useDict('scm_invoice_kind', 'scm_freight_bearer')
+  const format = await resolveFormat(c.type)
+  if (format === null) return
   uni.showLoading({ title: t('trade.print.generating'), mask: true })
   try {
     const [d, templates] = await Promise.all([getTradeDoc(kind, id), printTemplates().catch(() => ({}))])
-    const tpl = templates?.[c.type]
+    const tpl = format ? formatConfig(format) : templates?.[c.type]
     const doc = applyTemplate(buildDoc(kind, d, dict), tpl, templates?._common)
     const overlay = tpl && !tpl.jrxml && tpl.overlay?.enabled ? tpl.overlay : undefined
     const title = `${label(c.title)} ${d.docNo}`
-    const buffer = await requestPdf({ type: c.type, title, layout: layoutOf(tpl || {}), docs: [doc], overlay })
+    const buffer = await requestPdf({ type: c.type, title, formatId: format?.id, layout: layoutOf(tpl || {}), docs: [doc], overlay })
     uni.hideLoading()
     await openPdf(buffer, title)
   } catch (e) {
