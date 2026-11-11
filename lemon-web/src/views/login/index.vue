@@ -341,7 +341,7 @@ async function handleLogin() {
   height: 360px;
   top: 30%;
   left: 40%;
-  background: rgba(22, 119, 255, 0.12);
+  background: color-mix(in srgb, var(--app-primary) 12%, transparent);
 }
 .slice {
   position: absolute;

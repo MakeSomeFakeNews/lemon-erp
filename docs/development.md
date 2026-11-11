@@ -35,7 +35,7 @@
 - **登录会话**：JWT + 服务端会话，退出登录、强制下线、停用用户、重置密码后 token 立即失效
 - **多语言**：简体中文 / 英文，界面、菜单、字典、后端提示、打印按语言显示，一键切换（见「多语言」）
 - **小程序**：微信小程序（`lemon-mp`）——审批、消息、通知公告、工作台、员工自助、销售外勤、扫码作业与报工，微信绑定已有账号后免密登录（见「小程序」）
-- **界面**：多标签页、面包屑、暗色主题、全屏、固定页头且只有表格滚动、表格列设置/密度、字典标签、图标选择器
+- **界面**：多标签页、面包屑、全屏、固定页头且只有表格滚动、表格列设置/密度、字典标签、图标选择器；**界面设置**（顶栏「界面设置」按钮）：浅色 / 深色 / 跟随系统、主题色（预设色块或自定义取色）、四种布局（顶部模块 + 侧边菜单、侧边菜单、顶部菜单、双栏）、多标签页开关、紧凑模式、界面语言，每个用户一份保存在服务端，换浏览器 / 设备登录后恢复
 
 ## 快速开始
 
@@ -110,7 +110,7 @@ npm run dev
 
 `sys_menu.type`：`M` 目录、`C` 菜单（对应前端页面）、`F` 按钮（只有权限标识）。
 
-菜单层级：一级目录是**模块**，和「首页」一起显示在页面顶部的导航栏；侧边栏只显示当前模块的菜单，在首页、个人中心等不属于模块的页面显示模块列表。模块下可以再建一层目录作为侧边栏的**分组**（如 供应链 → 采购 / 销售 / 往来单位），分组不填路由地址，页面地址仍拼接在模块路径之后（`/scm/purchase`）。切换模块时回到该模块上次打开的页面；移动端抽屉显示完整的菜单树。新增页面放在对应的分组下，并给需要的角色勾选（勾选页面会自动勾选所在分组和模块）。
+菜单层级：一级目录是**模块**，和「首页」一起显示在页面顶部的导航栏；侧边栏只显示当前模块的菜单，在首页、个人中心等不属于模块的页面显示模块列表（默认的「顶部模块 + 侧边菜单」布局，其他布局见「界面设置」）。模块下可以再建一层目录作为侧边栏的**分组**（如 供应链 → 采购 / 销售 / 往来单位），分组不填路由地址，页面地址仍拼接在模块路径之后（`/scm/purchase`）。切换模块时回到该模块上次打开的页面；移动端抽屉显示完整的菜单树。新增页面放在对应的分组下，并给需要的角色勾选（勾选页面会自动勾选所在分组和模块）。
 
 权限分两层：
 
@@ -932,6 +932,26 @@ const ai = useAiPrefill('supplier', (data) => drawer.openCreate(data), () => dra
 
 **新增一种语言**：`locales/index.js` 的 `LOCALES` 加一项并新建 `locales/<语言>/` 下全部文件（键与 zh-CN 一致）；后端 `Messages.SUPPORTED_LOCALES` 加上该语言并为各模块新建 `<模块>_<语言>.properties`；`App.vue` 中加上 Ant Design 和 dayjs 的语言包。
 
+## 界面设置
+
+顶栏的「界面设置」按钮打开右侧抽屉，修改立即生效（实时预览），底部「恢复默认」（保留侧边栏折叠和语言）。
+
+**设置项**（`lemon-web/src/utils/uiSettings.js`：默认值、预设主题色、取值校验 `normalizeSettings`）
+- 主题模式：浅色 / 深色 / 跟随系统（默认，随系统切换）。`appStore.dark` 是实际是否深色，`html[data-theme]` 随之切换，深色样式仍写在非 scoped 的 `html[data-theme='dark'] ...` 中。
+- 主题色：10 个预设（拂晓蓝为品牌色和默认值）+ 自定义取色。`App.vue` 把它作为 `colorPrimary` / `colorInfo`（链接色由 colorInfo 派生）交给 Ant Design，派生色由算法生成，深浅色各自正确；`components/ThemeVars.vue` 用 `theme.useToken()` 把派生后的 token 写成 html 上的 CSS 变量：`--app-primary`、`--app-primary-bg`、`--app-primary-hover`、`--app-primary-border`，以及 `--ant-color-primary`、`--ant-color-primary-bg`、`--ant-color-success` / `warning` / `error`、`--ant-color-text-tertiary` 等（Ant Design Vue 4 本身不输出 CSS 变量）。**自定义样式中的强调色一律用这些变量**，需要半透明时写 `color-mix(in srgb, var(--app-primary) 20%, transparent)`，不要写死 `#1677ff`、`rgba(22, 119, 255, …)`；图表系列色、状态色（运行中、等级等）、第三方品牌色是数据颜色，不跟随主题色。
+- 布局（`layout/BasicLayout.vue` 按 `appStore.layout` 组合）：
+  - `mix` 顶部模块 + 侧边菜单（默认）：顶栏切换模块，侧边栏显示当前模块的分组和页面（`SideMenu` 的 `module` 模式）。
+  - `side` 侧边菜单：全部模块、分组、页面的多级树（`SideMenu` 的 `tree` 模式，分组也是可折叠的子菜单，展开一个模块时收起其他模块），顶栏显示面包屑。
+  - `top` 顶部菜单：没有侧边栏，`TopMenu` 把全部菜单显示为水平菜单，模块的下拉面板按分组排成多列（`style.css` 的 `.top-menu-popup` / `.top-menu-cols-N`），放不下的模块收进「…」。
+  - `column` 双栏：最左一列 `ModuleRail` 显示模块图标和名称，第二栏显示当前模块的分组和页面，收起时第二栏隐藏；首页等不属于模块的页面只显示模块栏。
+  - 菜单项统一由 `layout/menuItems.js` 的 `toMenuItems` 从 `/auth/menus` 生成（已按权限过滤），各布局的高亮都按当前路由；多标签页、菜单搜索、面包屑与布局无关。小于 768px 时不区分布局，统一使用抽屉菜单；768 ~ 1199px 侧边栏默认收起。移动作业（`MobileLayout`）、数据大屏、打印等独立页面不使用后台布局，不受影响。
+- 显示多标签页、紧凑模式（`theme.compactAlgorithm`）、侧边栏折叠、界面语言。没有提供「固定顶栏」（页头本来就固定，只有内容区滚动）、圆角和侧边栏宽度（收益小，保持简洁）。
+
+**保存**：每个用户一份，服务端为准、浏览器缓存。
+- 后端：表 `sys_user_setting`（`user_id`、`setting_key`、`setting_value` JSON 文本，唯一约束 `(user_id, setting_key, tenant_id)`），`UserSettingService` 只读写当前登录用户的设置；接口 `GET` / `PUT /profile/settings/{key}`（界面设置的 key 为 `ui`，整体替换；key 为小写字母开头的字母、数字、下划线，内容必须是 JSON 对象、不超过 8000 字符，每人最多 20 项；较频繁，不记操作日志）。登录后 `/auth/info` 的 `uiSettings` 一并返回，不再单独请求；删除用户时一并删除。只在登录后读一次，按唯一索引查询，不加缓存。以后新增个人设置（如表格列设置）用新的 key，不必加表。
+- 前端（`store/app.js`）：修改后立即写入本地缓存 `lemon_erp_settings`，800ms 防抖保存到服务端，退出登录前、页面关闭时（`keepalive` 请求）把未保存的修改发出。登录后应用服务端的设置；服务端还没有时把本地设置（含旧版本只有 `{ dark, collapsed }` 的本地设置）上传。登录页使用本地缓存的上次设置。演示模式下所有人共用账号，只保存在本地。
+- 语言：切换语言仍保存在浏览器（`lemon_erp_locale`，登录页也能切换），已登录时同时写入界面设置的 `locale`；在没有选择过语言的浏览器上登录时采用服务端保存的语言（刷新一次页面），选择过的以本浏览器为准。
+
 ## 数据校验与主数据保护
 
 - **删除主数据**：删除物料、仓库、客户、供应商、用户、部门前，各业务模块检查自己的单据是否引用（`framework/ref/ReferenceChecker`，每个模块一个 `XxxReferenceChecker` + `XxxRefMapper.xml`），被引用时只能停用。新增业务表引用主数据时，在对应模块的 `XxxRefMapper.xml` 中加一行。
@@ -1022,7 +1042,7 @@ lemon-erp
 │       ├── views/<模块>/<页面>/index.vue 页面（菜单的组件路径即相对 views 的路径）
 │       ├── components                  TableToolbar、SearchForm、FormDrawer、SubPage（子页）、DictTag 等通用组件，以及各业务模块的单据表单与详情
 │       ├── composables                 useTable、useColumns、useFormDrawer、useDict、useAction、useLineItems、useRemoteOptions
-│       ├── layout                      顶部模块导航、侧边栏、多标签页；移动作业的移动端布局
+│       ├── layout                      后台布局（四种布局、侧边栏、顶部菜单、模块栏、多标签页、界面设置抽屉）；移动作业的移动端布局
 │       └── router / store / directives / utils
 └── sql
     └── init.sql                建表 + 初始数据（MySQL）

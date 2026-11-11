@@ -59,6 +59,7 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
     private final TokenService tokenService;
     private final ReferenceGuard referenceGuard;
     private final SysTenantLookup tenantLookup;
+    private final UserSettingService userSettingService;
 
     @DataPermission(table = "sys_user", deptColumn = "dept_id", userColumn = "id")
     public PageResult<SysUser> page(long current, long size, UserQuery query) {
@@ -169,6 +170,7 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         }
         removeByIds(ids);
         userRoleMapper.delete(Wrappers.<SysUserRole>lambdaQuery().in(SysUserRole::getUserId, ids));
+        userSettingService.deleteByUsers(ids);
         deptService.clearLeader(ids);
         ids.forEach(tokenService::kickUser);
     }

@@ -188,7 +188,7 @@ onMounted(async () => {
   background: #52c41a;
 }
 .legend-dot.running {
-  background: #1677ff;
+  background: var(--app-primary);
 }
 .legend-dot.rejected {
   background: #ff4d4f;

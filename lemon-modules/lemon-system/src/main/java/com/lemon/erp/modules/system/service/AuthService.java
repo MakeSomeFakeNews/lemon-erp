@@ -54,6 +54,7 @@ public class AuthService {
     private final SettingService settings;
     private final CaptchaService captchaService;
     private final DemoProperties demoProperties;
+    private final UserSettingService userSettingService;
 
     public AuthConfig publicConfig() {
         // 未修改系统名称时按语言显示默认名称
@@ -148,7 +149,8 @@ public class AuthService {
         LoginUser loginUser = SecurityUtils.getLoginUser();
         SysUser user = userMapper.selectById(loginUser.userId());
         return new UserInfo(user, loginUser.roles(), loginUser.perms(),
-                tenantLookup.isEnabled() ? tenantLookup.currentTenantName() : null);
+                tenantLookup.isEnabled() ? tenantLookup.currentTenantName() : null,
+                userSettingService.find(loginUser.userId(), UserSettingService.UI));
     }
 
     /**

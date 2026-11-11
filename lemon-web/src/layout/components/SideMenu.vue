@@ -1,19 +1,21 @@
 <template>
   <div class="side-menu">
-    <router-link to="/" class="logo">
+    <router-link v-if="!hideLogo" to="/" class="logo">
       <AppLogo :size="28" class="logo-icon" />
       <transition name="logo-fade">
         <span v-show="!collapsed" class="logo-title">{{ configStore.systemName }}</span>
       </transition>
     </router-link>
-    <div class="menu-scroll scroll-hover">
+    <!-- 双栏布局的第二栏：显示当前模块名称 -->
+    <div v-else-if="activeModule" class="module-title">{{ activeModule.title }}</div>
+    <div ref="scrollRef" class="menu-scroll scroll-hover">
       <a-menu
         theme="light"
         mode="inline"
         :items="menuItems"
         :selected-keys="[route.path]"
         :open-keys="collapsed ? undefined : openKeys"
-        @open-change="(keys) => (openKeys = keys)"
+        @open-change="onOpenChange"
         @click="onClick"
       />
     </div>
@@ -21,23 +23,30 @@
 </template>
 
 <script setup>
-import { computed, h, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLogo from '@/components/AppLogo.vue'
-import MenuIcon from '@/components/MenuIcon.vue'
-import { t } from '@/locales'
 import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
 import { joinPath } from '@/utils/path'
-import { HOME_PATH, useModuleNav } from '../useModuleNav'
+import { useModuleNav } from '../useModuleNav'
+import { homeItem, menuIcon, parentKeys, toMenuItems } from '../menuItems'
 
 import { MenuType } from '@/constants/enums'
 /**
- * 桌面端只显示当前模块的菜单（模块在顶部切换）；移动端抽屉（full）显示完整菜单树。
- * 模块下的二级目录作为分组标题，不折叠。
+ * 侧边菜单，mode：
+ * - module 只显示当前模块的菜单（顶部模块 + 侧边菜单、双栏布局），模块下的二级目录作为分组标题，不折叠；
+ *          不在任何模块中（首页、个人中心等）时显示模块列表
+ * - tree   全部模块、分组、页面的多级树（侧边菜单布局），模块和分组都可折叠，展开一个模块时收起其他模块
+ * - full   完整菜单（移动端抽屉），模块可折叠，分组为标题
  */
 const configStore = useConfigStore()
-const props = defineProps({ collapsed: Boolean, full: Boolean })
+const props = defineProps({
+  collapsed: Boolean,
+  mode: { type: String, default: 'module' },
+  /** 不显示 Logo（双栏布局的 Logo 在最左一列） */
+  hideLogo: Boolean
+})
 const emit = defineEmits(['navigate'])
 
 const route = useRoute()
@@ -45,50 +54,53 @@ const router = useRouter()
 const userStore = useUserStore()
 const { modules, activeModule, openModule } = useModuleNav()
 
-const icon = (name) => (name ? () => h(MenuIcon, { name }) : undefined)
-
-function toItems(menus, parentPath = '', depth = 0) {
-  return menus
-    .filter((m) => m.visible === 1)
-    .map((m) => {
-      const fullPath = joinPath(parentPath, m.path)
-      if (m.type !== MenuType.M) return { key: fullPath, label: m.name, icon: icon(m.icon) }
-      const children = toItems(m.children || [], fullPath, depth + 1)
-      if (!children.length) return null
-      // 模块内的目录作为分组；顶层目录（仅移动端完整菜单）作为可折叠的子菜单
-      return depth === 0
-        ? { key: fullPath, label: m.name, icon: icon(m.icon), children }
-        : { type: 'group', key: `group-${m.id}`, label: m.name, children }
-    })
-    .filter(Boolean)
-}
-
 const MODULE_PREFIX = 'module:'
 const menuItems = computed(() => {
-  if (props.full) return [{ key: HOME_PATH, label: t('route.dashboard'), icon: icon('HomeOutlined') }, ...toItems(userStore.menus)]
+  if (props.mode !== 'module') {
+    return [homeItem(), ...toMenuItems(userStore.menus, { groups: props.mode === 'tree' ? 'submenu' : 'group' })]
+  }
   const m = activeModule.value?.menu
   // 不在任何模块中（首页、个人中心等）：显示模块列表，点击进入模块
-  if (!m) return modules.value.map((x) => ({ key: MODULE_PREFIX + x.key, label: x.title, icon: icon(x.icon) }))
-  const items = m.type === MenuType.C ? toItems([m]) : toItems(m.children || [], joinPath('', m.path), 1)
+  if (!m) return modules.value.map((x) => ({ key: MODULE_PREFIX + x.key, label: x.title, icon: menuIcon(x.icon) }))
+  const items = m.type === MenuType.C ? toMenuItems([m]) : toMenuItems(m.children, { parentPath: joinPath('', m.path), depth: 1 })
   // 收起时放不下分组标题，改为分隔线
   return props.collapsed
     ? items.flatMap((i) => (i.type === 'group' ? [{ type: 'divider', key: `d-${i.key}` }, ...i.children] : [i]))
     : items
 })
 
-// 移动端完整菜单：展开当前路由所在的模块
-const contains = (items, key) => items.some((i) => i.key === key || (i.children && contains(i.children, key)))
+// 展开当前路由所在的模块（和分组）；多级树同时只展开一个模块，避免整棵树过长
+const topKeys = computed(() => new Set(menuItems.value.filter((i) => i.children).map((i) => i.key)))
 const openKeys = ref([])
 watch(
   [() => route.path, menuItems],
   ([path]) => {
-    const parents = menuItems.value
-      .filter((i) => i.children && i.type !== 'group' && contains(i.children, path))
-      .map((i) => i.key)
-    openKeys.value = [...new Set([...openKeys.value, ...parents])]
+    const parents = parentKeys(menuItems.value, path) || []
+    const keep = props.mode === 'tree' && parents.length ? openKeys.value.filter((k) => !topKeys.value.has(k) || parents.includes(k)) : openKeys.value
+    openKeys.value = [...new Set([...keep, ...parents])]
   },
   { immediate: true }
 )
+
+// 当前页面不在可见范围内时（菜单较长、刚展开模块）滚动到可见位置，等子菜单展开动画结束
+const scrollRef = ref()
+let scrollTimer
+watch(
+  () => route.path,
+  () => {
+    clearTimeout(scrollTimer)
+    scrollTimer = setTimeout(() => scrollRef.value?.querySelector('.ant-menu-item-selected')?.scrollIntoView({ block: 'nearest' }), 350)
+  },
+  { immediate: true }
+)
+onBeforeUnmount(() => clearTimeout(scrollTimer))
+
+function onOpenChange(keys) {
+  const opened = keys.find((k) => !openKeys.value.includes(k))
+  openKeys.value = props.mode === 'tree' && opened && topKeys.value.has(opened)
+    ? keys.filter((k) => !topKeys.value.has(k) || k === opened)
+    : keys
+}
 
 function onClick({ key }) {
   if (key.startsWith(MODULE_PREFIX)) {
@@ -132,6 +144,20 @@ function onClick({ key }) {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+.module-title {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--app-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--app-border);
 }
 .menu-scroll {
   flex: 1;

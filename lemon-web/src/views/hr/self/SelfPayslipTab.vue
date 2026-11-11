@@ -72,7 +72,7 @@ const taxable = (v) => Math.max(0, Number(v || 0))
   background: var(--app-primary-bg);
 }
 .net {
-  color: #1677ff;
+  color: var(--app-primary);
   font-size: 16px;
 }
 </style>

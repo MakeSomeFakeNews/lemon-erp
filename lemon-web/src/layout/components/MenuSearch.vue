@@ -1,9 +1,11 @@
 <template>
   <a-tooltip :title="$t('components.layout.searchMenuShortcut', { key: shortcut })">
-    <button type="button" class="search-trigger" @click="show">
+    <button type="button" :class="['search-trigger', { compact }]" @click="show">
       <SearchOutlined />
-      <span class="trigger-text hide-mobile">{{ $t('components.layout.searchMenu') }}</span>
-      <kbd class="trigger-kbd hide-mobile">{{ shortcut }} K</kbd>
+      <template v-if="!compact">
+        <span class="trigger-text hide-mobile">{{ $t('components.layout.searchMenu') }}</span>
+        <kbd class="trigger-kbd hide-mobile">{{ shortcut }} K</kbd>
+      </template>
     </button>
   </a-tooltip>
 
@@ -76,6 +78,9 @@ import { load, save } from '@/utils/storage'
  */
 const RECENT_MAX = 8
 const RESULT_MAX = 50
+
+/** 只显示图标（顶部菜单布局中顶栏空间有限） */
+defineProps({ compact: Boolean })
 
 const route = useRoute()
 const router = useRouter()
@@ -215,6 +220,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
   color: var(--app-text-3);
   background: var(--app-card);
   border: 1px solid var(--app-border);
+}
+.search-trigger.compact {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+  border-color: transparent;
+  background: transparent;
+  font-size: 16px;
 }
 @media (max-width: 575px) {
   .hide-mobile {

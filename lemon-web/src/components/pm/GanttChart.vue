@@ -296,13 +296,13 @@ watch(
   top: 8px;
   height: 16px;
   border-radius: 4px;
-  background: rgba(22, 119, 255, 0.25);
+  background: color-mix(in srgb, var(--app-primary) 25%, transparent);
   overflow: hidden;
   z-index: 1;
 }
 .bar .fill {
   height: 100%;
-  background: #1677ff;
+  background: var(--app-primary);
 }
 .bar.done .fill {
   background: #52c41a;
@@ -358,10 +358,10 @@ watch(
   vertical-align: middle;
 }
 .bar-sample {
-  background: rgba(22, 119, 255, 0.25);
+  background: color-mix(in srgb, var(--app-primary) 25%, transparent);
 }
 .fill-sample {
-  background: #1677ff;
+  background: var(--app-primary);
 }
 .late-sample {
   background: #f5222d;

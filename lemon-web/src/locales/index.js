@@ -22,10 +22,16 @@ for (const [path, mod] of Object.entries(modules)) {
   ;(messages[lang] ||= {})[name] = mod.default
 }
 
+/** 本浏览器中选择过的语言，没有选择过时为 null */
+export function savedLocale() {
+  const saved = load(LOCALE_KEY, null)
+  return LOCALES.some((l) => l.value === saved) ? saved : null
+}
+
 /** 初始语言：上次选择的语言；没有选择过时，英文浏览器用英文，其他用中文 */
 function initialLocale() {
-  const saved = load(LOCALE_KEY, null)
-  if (LOCALES.some((l) => l.value === saved)) return saved
+  const saved = savedLocale()
+  if (saved) return saved
   return navigator.language?.toLowerCase().startsWith('en') ? 'en-US' : DEFAULT_LOCALE
 }
 

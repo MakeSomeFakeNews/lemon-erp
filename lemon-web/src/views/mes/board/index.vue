@@ -525,7 +525,7 @@ onBeforeUnmount(() => {
   background: #52c41a;
 }
 .step.doing {
-  background: #1677ff;
+  background: var(--app-primary);
 }
 .step.doing.today {
   animation: blink 1.6s ease-in-out infinite;

@@ -11,5 +11,43 @@ export default {
   forbidden: 'Access denied. Please contact your administrator',
   timeout: 'Request timed out. Please try again later',
   serverError: 'Server error ({status})',
-  networkError: 'Network connection failed'
+  networkError: 'Network connection failed',
+  settings: {
+    title: 'Appearance',
+    themeMode: 'Theme',
+    light: 'Light',
+    dark: 'Dark',
+    system: 'System',
+    primaryColor: 'Theme color',
+    customColor: 'Custom color',
+    layout: 'Layout',
+    layouts: {
+      mix: 'Top modules + side menu',
+      side: 'Side menu',
+      top: 'Top menu',
+      column: 'Two columns'
+    },
+    mobileLayoutTip: 'Phones always use the drawer menu; the layout applies on desktop',
+    display: 'Display',
+    tabs: 'Show tabs',
+    compact: 'Compact mode',
+    compactTip: 'Smaller controls and spacing to fit more on screen',
+    language: 'Language',
+    reset: 'Reset to defaults',
+    resetDone: 'Settings reset to defaults',
+    savedTip: 'Changes apply instantly and are saved to your account, so they follow you to other browsers and devices',
+    localTip: 'Everyone shares accounts in the demo, so settings are only saved in this browser',
+    colors: {
+      daybreak: 'Daybreak Blue (default)',
+      dust: 'Dust Red',
+      volcano: 'Volcano',
+      sunset: 'Calendula Gold',
+      lemon: 'Lemon Yellow',
+      polar: 'Polar Green',
+      cyan: 'Cyan',
+      geekblue: 'Geek Blue',
+      purple: 'Golden Purple',
+      magenta: 'Magenta'
+    }
+  }
 }

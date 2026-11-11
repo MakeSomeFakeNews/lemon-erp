@@ -355,8 +355,8 @@ function confirm() {
 .item {
   position: absolute;
   padding: 0 2px;
-  border: 1px dashed #1677ff;
-  background: rgba(22, 119, 255, 0.08);
+  border: 1px dashed var(--app-primary);
+  background: color-mix(in srgb, var(--app-primary) 8%, transparent);
   color: #1d39c4;
   font-size: 12px;
   line-height: 1.4;

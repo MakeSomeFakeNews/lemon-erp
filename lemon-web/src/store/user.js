@@ -40,8 +40,10 @@ export const useUserStore = defineStore('user', {
       this.perms = info.perms
       this.tenantName = info.tenantName
       this.menus = translateMenus(menus)
+      useAppStore().applyServerSettings(info.uiSettings)
     },
     async logout() {
+      await useAppStore().flushSettings()
       try {
         await authApi.logout()
       } finally {
@@ -50,6 +52,7 @@ export const useUserStore = defineStore('user', {
       }
     },
     reset() {
+      useAppStore().stopSync()
       removeToken()
       useDictStore().clear()
       clearBizRules()

@@ -398,6 +398,6 @@ html[data-theme='dark'] .ai-cleanse .task-item:hover {
   background: rgba(255, 255, 255, 0.06);
 }
 html[data-theme='dark'] .ai-cleanse .task-item.active {
-  background: rgba(22, 119, 255, 0.18);
+  background: color-mix(in srgb, var(--app-primary) 18%, transparent);
 }
 </style>

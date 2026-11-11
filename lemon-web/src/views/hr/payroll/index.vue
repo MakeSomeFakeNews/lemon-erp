@@ -485,7 +485,7 @@ async function pay() {
   font-weight: 600;
 }
 .total-value.net {
-  color: #1677ff;
+  color: var(--app-primary);
 }
 .vouchers {
   margin-top: 8px;
