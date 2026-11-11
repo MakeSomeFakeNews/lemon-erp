@@ -58,18 +58,23 @@ import LocationSelect from '@/components/wms/LocationSelect.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { resolveScan } from '@/components/mobile/mobile'
 import { getOrder, pageOrder } from '@/api/scm/order'
-import { addTrade } from '@/api/scm/trade'
+import { addTrade, addTradeDraft } from '@/api/scm/trade'
 import { locationOptions } from '@/api/wms/location'
 import { openQty, qty4 } from '@/components/scm/scm'
 import { fillPutaway, formatQty, today } from '@/components/wms/wms'
+import { useBizRules } from '@/composables/useBizRules'
 import { useDict } from '@/composables/useDict'
+import { useUserStore } from '@/store/user'
 
 import { OrderStatus } from '@/constants/enums'
 /**
  * 扫码收货：选择采购订单后逐个扫描物料条码累计数量（包装条码按换算比例），
- * 序列号物料选中后扫描序列号；没有指定库位的按上架策略推荐，生成采购入库单
+ * 序列号物料选中后扫描序列号；没有指定库位的按上架策略推荐，生成采购入库单。
+ * 业务参数「进销存单据先存草稿」开启且没有审核权限时保存为草稿，由有审核权限的人在采购入库中审核
  */
 const { t } = useI18n()
+const userStore = useUserStore()
+const { rules: bizRules } = useBizRules({ 'scm.tradeDoc.draft': false })
 useDict('scm_order_status')
 const scanRef = ref()
 const loading = ref(false)
@@ -161,7 +166,8 @@ async function submit() {
   saving.value = true
   try {
     await fillPutaway(warehouseId.value, list)
-    await addTrade('purchaseIn', {
+    const asDraft = bizRules['scm.tradeDoc.draft'] === true && !userStore.hasPerm('scm:purchaseIn:post')
+    await (asDraft ? addTradeDraft : addTrade)('purchaseIn', {
       orderId: order.value.id,
       warehouseId: warehouseId.value,
       bizDate: today(),
@@ -170,7 +176,7 @@ async function submit() {
         serialNos: r.serialEnabled === 1 ? r.serials.join(',') : null
       }))
     })
-    message.success(t('mobile.receive.done'))
+    message.success(asDraft ? t('mobile.receive.draftSaved') : t('mobile.receive.done'))
     reset()
   } finally {
     saving.value = false

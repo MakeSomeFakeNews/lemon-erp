@@ -29,6 +29,8 @@ public class ScmBizRules implements BizRuleProvider {
     public static final String SALES_OUT_LINE_WAREHOUSE = "scm.salesOut.lineWarehouse";
     /** 本公司承担的采购运费计入存货成本或当期费用（供应商代垫的始终计入存货成本） */
     public static final String PURCHASE_FREIGHT_COST = "scm.purchaseFreight.cost";
+    /** 采购入库 / 退货、销售出库 / 退货先存草稿，审核后才出入库、生成应收应付（默认关闭：保存即审核，与原来一致） */
+    public static final String TRADE_DRAFT = "scm.tradeDoc.draft";
 
     @Override
     public List<BizRule> rules() {
@@ -43,11 +45,12 @@ public class ScmBizRules implements BizRuleProvider {
                 BizRule.bool(SALES_OUT_LINE_WAREHOUSE, MODULE, "scm.label.salesOutLineWarehouse", true,
                         "scm.label.salesOutLineWarehouseRemark"),
                 BizRule.select(PURCHASE_FREIGHT_COST, MODULE, "scm.label.purchaseFreightCost", PurchaseFreightCost.INVENTORY,
-                        PurchaseFreightCost.class, "scm.label.purchaseFreightCostRemark"));
+                        PurchaseFreightCost.class, "scm.label.purchaseFreightCostRemark"),
+                BizRule.bool(TRADE_DRAFT, MODULE, "scm.label.tradeDraft", false, "scm.label.tradeDraftRemark"));
     }
 
     @Override
     public Set<String> publicKeys() {
-        return Set.of(DIRECT_DOC, SALES_OUT_LINE_WAREHOUSE, PURCHASE_FREIGHT_COST);
+        return Set.of(DIRECT_DOC, SALES_OUT_LINE_WAREHOUSE, PURCHASE_FREIGHT_COST, TRADE_DRAFT);
     }
 }

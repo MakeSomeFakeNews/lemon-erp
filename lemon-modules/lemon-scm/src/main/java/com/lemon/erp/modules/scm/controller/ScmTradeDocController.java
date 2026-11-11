@@ -1,9 +1,12 @@
 package com.lemon.erp.modules.scm.controller;
 
+import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.framework.security.PermissionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,13 +23,13 @@ import com.lemon.erp.modules.scm.dto.TradeDocRequest;
 import com.lemon.erp.modules.scm.entity.ScmTradeDoc;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.scm.service.ScmTradeDocService;
+import com.lemon.erp.modules.scm.service.ScmTradeDraftService;
 
 /**
  * 采购入库 /scm/purchaseIn、采购退货 /scm/purchaseReturn、销售出库 /scm/salesOut、销售退货 /scm/salesReturn：
- * 共用一套接口，权限标识按路径区分，如 scm:purchaseIn:add。保存即确认，没有修改、删除
- */
-/**
- * 采购入库 / 退货、销售出库 / 退货；创建发运单的用户（scm:shipment:add）只能查看销售出库单
+ * 共用一套接口，权限标识按路径区分，如 scm:purchaseIn:add。保存即审核（出入库），没有修改、删除；
+ * 业务参数 scm.tradeDoc.draft 开启时可先存草稿（{@link ScmTradeDraftController}），此时直接保存即审核还需要审核权限 scm:{kind}:post。
+ * 创建发运单的用户（scm:shipment:add）只能查看销售出库单
  */
 @RestController
 @RequestMapping("/scm/{kind:purchaseIn|purchaseReturn|salesOut|salesReturn}")
@@ -34,6 +37,8 @@ import com.lemon.erp.modules.scm.service.ScmTradeDocService;
 public class ScmTradeDocController {
 
     private final ScmTradeDocService docService;
+    private final ScmTradeDraftService draftService;
+    private final PermissionService permissionService;
 
     @GetMapping
     @PreAuthorize("@ss.hasPerm('scm:' + #kind + ':list') or (#kind == 'salesOut' and @ss.hasPerm('scm:shipment:add'))")
@@ -55,6 +60,11 @@ public class ScmTradeDocController {
     @PreAuthorize("@ss.hasPerm('scm:' + #kind + ':add')")
     @OperLog(title = "采购销售出入库", type = OperType.INSERT) // i18n-ignore
     public R<Long> create(@PathVariable String kind, @Valid @RequestBody TradeDocRequest req) {
-        return R.ok(docService.create(TradeKind.ofPath(kind), req));
+        TradeKind tradeKind = TradeKind.ofPath(kind);
+        // 启用草稿时「保存并审核」需要审核权限；未启用时保存即审核，只需新增权限（与原来一致）
+        if (draftService.enabled() && !permissionService.hasPerm("scm:" + kind + ":post")) {
+            throw new BizException("scm.error.noPermissionPostTrade", Messages.get(tradeKind.getLabelKey()));
+        }
+        return R.ok(docService.create(tradeKind, req));
     }
 }

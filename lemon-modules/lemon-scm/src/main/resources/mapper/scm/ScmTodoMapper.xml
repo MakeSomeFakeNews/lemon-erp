@@ -7,7 +7,11 @@
         SELECT
             (SELECT COUNT(*) FROM scm_order WHERE kind = 'PURCHASE' AND status IN ('APPROVED', 'PARTIAL') AND delivery_date &lt; #{today}) AS "purchaseOverdue",
             (SELECT COUNT(*) FROM scm_order WHERE kind = 'SALES' AND status IN ('APPROVED', 'PARTIAL') AND delivery_date &lt; #{today}) AS "salesOverdue",
-            (SELECT COUNT(*) FROM scm_shipment WHERE status = 'EXCEPTION') AS "shipmentException"
+            (SELECT COUNT(*) FROM scm_shipment WHERE status = 'EXCEPTION') AS "shipmentException",
+            (SELECT COUNT(*) FROM scm_trade_draft WHERE kind = 'PURCHASE_IN') AS "purchaseInDraft",
+            (SELECT COUNT(*) FROM scm_trade_draft WHERE kind = 'PURCHASE_RETURN') AS "purchaseReturnDraft",
+            (SELECT COUNT(*) FROM scm_trade_draft WHERE kind = 'SALES_OUT') AS "salesOutDraft",
+            (SELECT COUNT(*) FROM scm_trade_draft WHERE kind = 'SALES_RETURN') AS "salesReturnDraft"
     </select>
 
 </mapper>

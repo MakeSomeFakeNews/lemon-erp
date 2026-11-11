@@ -275,10 +275,11 @@ function changeRowWarehouse(row, id) {
   clearSlot(row)
 }
 
-/** 表头仓库变化：沿用表头仓库的行清空库位，赠品行按新仓库重新先到期先出 */
+/** 表头仓库变化：沿用表头仓库的行清空库位，赠品行按新仓库重新先到期先出（整个表单被替换时，如打开草稿，不处理） */
 watch(
-  () => props.form.warehouseId,
-  async () => {
+  () => [props.form, props.form.warehouseId],
+  async ([form], [oldForm]) => {
+    if (form !== oldForm) return
     props.form.items.forEach((i) => !(props.lineWarehouse && i.warehouseId) && clearSlot(i))
     if (promo.value?.gifts?.length) {
       for (let i = props.form.items.length - 1; i >= 0; i--) if (props.form.items[i].gift) props.form.items.splice(i, 1)

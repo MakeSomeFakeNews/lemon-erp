@@ -14,7 +14,10 @@
       <div class="drawer-footer">
         <span class="shortcut-hint">{{ $t('components.formDrawer.shortcut', { key: shortcut }) }}</span>
         <a-button @click="state.close">{{ $t('common.action.cancel') }}</a-button>
-        <a-button type="primary" :loading="state.saving" :disabled="state.loading" @click="state.submit">{{ $t('common.action.save') }}</a-button>
+        <!-- actions：替换「保存」按钮（如「保存草稿」「审核」），插槽参数 saving、loading -->
+        <slot name="actions" :saving="state.saving" :loading="state.loading">
+          <a-button type="primary" :loading="state.saving" :disabled="state.loading" @click="state.submit">{{ $t('common.action.save') }}</a-button>
+        </slot>
       </div>
     </template>
   </component>
@@ -28,7 +31,7 @@ import SubPage from './SubPage.vue'
 
 /**
  * 新增 / 编辑抽屉，drawer 传入 useFormDrawer() 的返回值；表单内容放在默认插槽。
- * 复杂表单（明细行多、字段多）加 page，以子页的形式占满内容区显示
+ * 复杂表单（明细行多、字段多）加 page，以子页的形式占满内容区显示；底部按钮可用 actions 插槽替换「保存」
  */
 const props = defineProps({
   drawer: { type: Object, required: true },

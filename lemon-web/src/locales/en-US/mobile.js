@@ -38,7 +38,8 @@ export default {
     overQty: '{name} exceeds open qty',
     added: '{name} +{qty}, total {total}',
     selectWarehouse: 'Select a receiving warehouse',
-    done: 'Received'
+    done: 'Received',
+    draftSaved: 'Saved as a purchase receipt draft; stock is received after posting'
   },
   putaway: {
     source: 'From',

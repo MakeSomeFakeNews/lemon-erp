@@ -32,6 +32,8 @@ export const pagePurchaseOrder = (params) => get('/scm/purchase/order', params)
 export const getPurchaseOrder = (id) => get(`/scm/purchase/order/${id}`)
 /** 采购入库 */
 export const addPurchaseIn = (data) => post('/scm/purchaseIn', data)
+/** 采购入库草稿（业务参数 scm.tradeDoc.draft 开启且没有审核权限时，由有审核权限的人在 Web 端审核） */
+export const addPurchaseInDraft = (data) => post('/scm/purchaseIn/drafts', data)
 
 /** 发货通知（拣货） */
 export const pageDelivery = (params) => get('/scm/delivery', params)
@@ -65,3 +67,5 @@ export const previewPromotion = (data) => post('/scm/promotion/preview', data, {
  * 赠品行 gift: true（单价按 0，同一赠品可拆多行，合计须等于促销算出的数量；不带赠品行时后端从表头仓库先到期先出自动补上，序列号赠品除外）
  */
 export const addSalesOut = (data) => post('/scm/salesOut', data)
+/** 销售出库草稿（同上，请求与 addSalesOut 相同） */
+export const addSalesOutDraft = (data) => post('/scm/salesOut/drafts', data)

@@ -313,7 +313,9 @@ export default {
   1404: 'Close Purchase Order', // 采购订单关闭
   1405: 'Change Purchase Order', // 采购订单变更
   1410: 'Purchase Receipt', // 采购入库
+  1411: 'Post Purchase Receipt', // 采购入库审核
   1420: 'Purchase Return', // 采购退货
+  1421: 'Post Purchase Return', // 采购退货审核
   1430: 'Add Sales Order', // 销售订单新增
   1431: 'Edit Sales Order', // 销售订单修改
   1432: 'Delete Sales Order', // 销售订单删除
@@ -322,7 +324,9 @@ export default {
   1435: 'Reserve Stock', // 预留库存
   1436: 'Change Sales Order', // 销售订单变更
   1440: 'Sales Delivery', // 销售出库
+  1441: 'Post Sales Delivery', // 销售出库审核
   1450: 'Sales Return', // 销售退货
+  1451: 'Post Sales Return', // 销售退货审核
   1460: 'Add Shipment', // 发运单新增
   1461: 'Edit Shipment', // 发运单修改
   1462: 'Delete Shipment', // 发运单删除

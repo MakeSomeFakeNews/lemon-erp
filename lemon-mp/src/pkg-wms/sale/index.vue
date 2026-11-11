@@ -122,7 +122,7 @@
 import { computed, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from '@/locales'
-import { addSalesOut, customerOptions, defaultPrices, materialOptions, previewPromotion, warehouseOptions } from '@/api/wms'
+import { addSalesOut, addSalesOutDraft, customerOptions, defaultPrices, materialOptions, previewPromotion, warehouseOptions } from '@/api/wms'
 import { pageIdentityUsers } from '@/api/workflow'
 import { useTitle } from '@/composables/useTitle'
 import { runAction } from '@/composables/useAction'
@@ -169,7 +169,7 @@ const lineWarehouse = computed(() => bizRule('scm.salesOut.lineWarehouse', true)
 
 onLoad(async () => {
   if (!(await ensureLogin())) return
-  await loadBizRules(['scm.directDoc.enabled', 'scm.salesOut.lineWarehouse'])
+  await loadBizRules(['scm.directDoc.enabled', 'scm.salesOut.lineWarehouse', 'scm.tradeDoc.draft'])
   disabled.value = bizRule('scm.directDoc.enabled', true) === false
   if (disabled.value) return
   warehouses.value = (await warehouseOptions().catch(() => [])) || []
@@ -493,11 +493,13 @@ async function submit() {
   const mismatch = mismatchRow()
   if (mismatch) return toast(t('wms.sale.giftQtyMismatch', { name: mismatch.materialName, n: qty(mismatch.giftTotal) }))
   if (payable.value < 0) return toast(t('wms.sale.discountTooLarge'))
+  // 业务参数「进销存单据先存草稿」开启且没有审核权限时保存为草稿
+  const asDraft = bizRule('scm.tradeDoc.draft', false) === true && !hasPerm('scm:salesOut:post')
   saving.value = true
   try {
     await runAction(
       () =>
-        addSalesOut({
+        (asDraft ? addSalesOutDraft : addSalesOut)({
           partnerId: customer.value.id,
           salesmanId: salesman.value?.id || null,
           warehouseId: warehouseId.value,
@@ -506,7 +508,7 @@ async function submit() {
           wholeDiscount: wholeDiscount.value || null,
           items: [...rows.value.map((r) => toItem(r)), ...giftRows.value.filter((r) => Number(r.qty) > 0).flatMap(giftItems)]
         }),
-      { success: t('wms.sale.done'), then: reset }
+      { success: asDraft ? t('wms.sale.draftSaved') : t('wms.sale.done'), then: reset }
     )
   } finally {
     saving.value = false
