@@ -75,6 +75,7 @@ public class WmsMaterialService {
     private final DocNoService docNoService;
     private final DictLookup dictLookup;
     private final WmsPriceLevelService priceLevelService;
+    private final WmsMaterialCategoryService categoryService;
 
     /** @param keyword 编码或名称，模糊匹配 */
     /** @param templateId 只看某个款式的 SKU */
@@ -82,16 +83,24 @@ public class WmsMaterialService {
         return page(current, size, keyword, category, null, status, templateId);
     }
 
-    /** @param brand 品牌，为空不限 */
+    /**
+     * @param category 分类编码，包含其下级分类的物料；为空不限
+     * @param brand    品牌，为空不限
+     */
     public PageResult<WmsMaterial> page(long current, long size, String keyword, String category, String brand, EnableStatus status, Long templateId) {
         Page<WmsMaterial> page = materialMapper.selectPage(Page.of(current, size), Wrappers.<WmsMaterial>lambdaQuery()
                 .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword))
-                .eq(StringUtils.hasText(category), WmsMaterial::getCategory, category)
+                .in(StringUtils.hasText(category), WmsMaterial::getCategory, categoryCodes(category))
                 .eq(StringUtils.hasText(brand), WmsMaterial::getBrand, brand)
                 .eq(status != null, WmsMaterial::getStatus, status)
                 .eq(templateId != null, WmsMaterial::getTemplateId, templateId)
                 .orderByDesc(WmsMaterial::getId));
         return PageResult.of(page);
+    }
+
+    /** 分类及其下级分类的编码（按分类筛选时使用），为空时不查询 */
+    private List<String> categoryCodes(String category) {
+        return StringUtils.hasText(category) ? categoryService.tree().subtree(category) : List.of();
     }
 
     public WmsMaterial get(Long id) {
@@ -201,8 +210,19 @@ public class WmsMaterialService {
         material.setVariantText(null);
         normalize(material);
         checkExtras(material, null);
+        categoryService.checkUsable(material.getCategory(), null);
         if (material.getStatus() == null) material.setStatus(EnableStatus.ENABLED);
         materialMapper.insert(material);
+    }
+
+    /**
+     * 导入一行：分类可填写分类编码、完整路径（如「电子元器件/电阻」）或不重名的分类名称，规则见 {@link WmsMaterialCategoryService#resolve}；
+     * 其余同新增
+     */
+    @Transactional
+    public void importRow(WmsMaterial material) {
+        material.setCategory(categoryService.resolve(material.getCategory()));
+        create(material);
     }
 
     /** 已发生库存业务的物料，不能修改批次、序列号管理方式，否则已有库存与新规则不一致 */
@@ -213,6 +233,7 @@ public class WmsMaterialService {
         checkCodeUnique(material.getCode(), id);
         normalize(material);
         checkExtras(material, id);
+        categoryService.checkUsable(material.getCategory(), old.getCategory());
         boolean trackingChanged = !Objects.equals(old.getBatchEnabled(), material.getBatchEnabled())
                 || !Objects.equals(old.getSerialEnabled(), material.getSerialEnabled());
         if (trackingChanged && flowMapper.existsByMaterialId(id)) {
@@ -241,6 +262,7 @@ public class WmsMaterialService {
                 .set(WmsMaterial::getDefaultLocationId, material.getDefaultLocationId())
                 .set(WmsMaterial::getRefCost, material.getRefCost())
                 .set(WmsMaterial::getBrand, material.getBrand())
+                .set(WmsMaterial::getCategory, material.getCategory())
                 .set(WmsMaterial::getRetailPrice, material.getRetailPrice())
                 .set(WmsMaterial::getWholesalePrice1, material.getWholesalePrice1())
                 .set(WmsMaterial::getWholesalePrice2, material.getWholesalePrice2())
@@ -285,6 +307,7 @@ public class WmsMaterialService {
     }
 
     private static void normalize(WmsMaterial material) {
+        material.setCategory(StringUtils.hasText(material.getCategory()) ? material.getCategory().trim() : null);
         material.setBatchEnabled(Integer.valueOf(1).equals(material.getBatchEnabled()) ? 1 : 0);
         material.setSerialEnabled(Integer.valueOf(1).equals(material.getSerialEnabled()) ? 1 : 0);
         material.setIqcRequired(Integer.valueOf(1).equals(material.getIqcRequired()) ? 1 : 0);
@@ -333,7 +356,7 @@ public class WmsMaterialService {
                 .eq(WmsMaterial::getIsTemplate, 0)
                 .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword)
                         .or().eq(WmsMaterial::getBarcode, keyword))
-                .eq(StringUtils.hasText(category), WmsMaterial::getCategory, category)
+                .in(StringUtils.hasText(category), WmsMaterial::getCategory, categoryCodes(category))
                 .eq(StringUtils.hasText(brand), WmsMaterial::getBrand, brand)
                 .eq(status != null, WmsMaterial::getStatus, status)
                 .orderByAsc(WmsMaterial::getCode));

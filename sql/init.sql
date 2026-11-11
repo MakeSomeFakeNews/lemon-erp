@@ -219,6 +219,7 @@ DROP TABLE IF EXISTS wms_attribute;
 DROP TABLE IF EXISTS wms_material_unit;
 DROP TABLE IF EXISTS wms_price_level;
 DROP TABLE IF EXISTS wms_material;
+DROP TABLE IF EXISTS wms_material_category;
 DROP TABLE IF EXISTS wms_location;
 DROP TABLE IF EXISTS wms_warehouse;
 DROP TABLE IF EXISTS wf_copy;
@@ -808,7 +809,7 @@ CREATE TABLE wms_material (
     spec           VARCHAR(128)           DEFAULT NULL COMMENT '规格型号',
     unit           VARCHAR(16)            DEFAULT NULL COMMENT '计量单位',
     barcode        VARCHAR(64)            DEFAULT NULL COMMENT '条码（基本单位），扫码录入物料',
-    category       VARCHAR(64)            DEFAULT NULL COMMENT '分类(字典 wms_material_category)',
+    category       VARCHAR(64)            DEFAULT NULL COMMENT '分类编码(wms_material_category.code，多级分类)',
     brand          VARCHAR(64)            DEFAULT NULL COMMENT '品牌(业务字典 wms_material_brand)',
     batch_enabled  TINYINT       NOT NULL DEFAULT 0 COMMENT '是否启用批次管理 1是 0否',
     serial_enabled TINYINT       NOT NULL DEFAULT 0 COMMENT '是否启用序列号管理 1是 0否',
@@ -839,8 +840,27 @@ CREATE TABLE wms_material (
     PRIMARY KEY (id),
     UNIQUE KEY uk_material_code (code, tenant_id),
     KEY idx_material_barcode (barcode),
-    KEY idx_material_template (template_id)
+    KEY idx_material_template (template_id),
+    KEY idx_material_category (category)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '物料';
+
+CREATE TABLE wms_material_category (
+    id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID',
+    parent_id   BIGINT       NOT NULL DEFAULT 0 COMMENT '上级分类ID，0为一级分类',
+    ancestors   VARCHAR(255) NOT NULL DEFAULT '0' COMMENT '祖级ID路径（逗号分隔，从 0 开始，如 0,3,7），查询下级分类用',
+    code        VARCHAR(16)  NOT NULL COMMENT '分类编码：物料、检验方案、促销、提成规则、凭证科目设置等按编码关联，保存后不能修改',
+    name        VARCHAR(64)  NOT NULL COMMENT '分类名称（同一上级下不重复）',
+    sort        INT          NOT NULL DEFAULT 0 COMMENT '同级排序',
+    status      TINYINT      NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用（停用后连同下级不能再被新物料选用）',
+    builtin     TINYINT      NOT NULL DEFAULT 0 COMMENT '内置分类 1是：程序依赖（原材料、半成品、成品、低值易耗品），不能删除',
+    remark      VARCHAR(255)          DEFAULT NULL COMMENT '备注',
+    create_time DATETIME              DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME              DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_material_category_code (code, tenant_id),
+    KEY idx_material_category_parent (parent_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '物料分类（多级，每个租户一份）';
 
 CREATE TABLE wms_price_level (
     id          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -1664,7 +1684,7 @@ CREATE TABLE scm_promotion (
     end_date          DATE           NOT NULL COMMENT '结束日期',
     customer_level    VARCHAR(16)             DEFAULT NULL COMMENT '客户等级(字典 scm_customer_level)，为空适用全部客户',
     material_id       BIGINT                  DEFAULT NULL COMMENT '适用物料，为空按分类',
-    material_category VARCHAR(16)             DEFAULT NULL COMMENT '适用物料分类(字典 wms_material_category)，物料和分类都为空适用全部物料',
+    material_category VARCHAR(16)             DEFAULT NULL COMMENT '适用物料分类编码(wms_material_category.code，含下级分类)，物料和分类都为空适用全部物料',
     min_qty           DECIMAL(18, 4)          DEFAULT NULL COMMENT '折扣：明细数量达到时才打折',
     discount_rate     DECIMAL(5, 2)           DEFAULT NULL COMMENT '折扣：成交价 = 原价 × 折扣率%，如 90 为九折',
     threshold_amount  DECIMAL(18, 2)          DEFAULT NULL COMMENT '满减：适用物料的金额（折扣后）达到此金额',
@@ -1739,7 +1759,7 @@ CREATE TABLE scm_rebate_item (
     rebate_id BIGINT         NOT NULL COMMENT '返利协议',
     item_name VARCHAR(64)    NOT NULL COMMENT '返利项目',
     brand     VARCHAR(64)             DEFAULT NULL COMMENT '品牌(业务字典 wms_material_brand)',
-    category  VARCHAR(32)             DEFAULT NULL COMMENT '物料分类(业务字典 wms_material_category)',
+    category  VARCHAR(32)             DEFAULT NULL COMMENT '物料分类编码(wms_material_category.code)',
     amount    DECIMAL(18, 2) NOT NULL COMMENT '返利金额（含税）',
     remark    VARCHAR(255)            DEFAULT NULL COMMENT '说明',
     PRIMARY KEY (id),
@@ -3038,7 +3058,7 @@ CREATE TABLE qms_inspection_plan (
     name              VARCHAR(64)    NOT NULL COMMENT '方案名称',
     insp_type         VARCHAR(16)    NOT NULL COMMENT '检验类型(字典 mes_qc_type) IQC来料 IPQC过程 FQC成品 FAI首件',
     material_id       BIGINT                  DEFAULT NULL COMMENT '适用物料（与物料分类二选一，物料优先）',
-    material_category VARCHAR(32)             DEFAULT NULL COMMENT '适用物料分类(字典 wms_material_category)',
+    material_category VARCHAR(32)             DEFAULT NULL COMMENT '适用物料分类编码(wms_material_category.code，含下级分类)',
     sampling_mode     VARCHAR(16)    NOT NULL COMMENT '抽样方式 FULL全检 FIXED固定数量 AQL按GB/T 2828.1',
     fixed_qty         DECIMAL(18, 4)          DEFAULT NULL COMMENT '固定抽样数量',
     accept_qty        INT                     DEFAULT NULL COMMENT '固定抽样的允收不良数',
@@ -3909,7 +3929,7 @@ CREATE TABLE fin_commission_rule (
     name              VARCHAR(64)    NOT NULL COMMENT '规则名称',
     basis             VARCHAR(16)    NOT NULL COMMENT '提成依据(字典 fin_commission_basis) SALES销售额（不含税） PROFIT毛利 RECEIPT回款',
     salesman_id       BIGINT                  DEFAULT NULL COMMENT '适用业务员，为空适用全部',
-    material_category VARCHAR(32)             DEFAULT NULL COMMENT '适用物料分类(字典 wms_material_category)，为空适用全部；回款不区分分类',
+    material_category VARCHAR(32)             DEFAULT NULL COMMENT '适用物料分类编码(wms_material_category.code，含下级分类)，为空适用全部；回款不区分分类',
     threshold         DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '业绩门槛：业务员当月该依据的业绩达到此金额时适用（阶梯提成）',
     rate              DECIMAL(6, 3)  NOT NULL COMMENT '提成比例（%）',
     status            TINYINT        NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
@@ -5439,7 +5459,6 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 (1392, 139, '库位删除', 'F', NULL, NULL, 'wms:location:remove', NULL, 3, 1, 1, NOW(), NOW());
 
 INSERT INTO sys_dict_type (id, name, type, status, remark, create_time, update_time) VALUES
-(10, '物料分类', 'wms_material_category', 1, '物料的分类', NOW(), NOW()),
 (11, '入库类型', 'wms_in_type', 1, '入库单的业务类型', NOW(), NOW()),
 (12, '出库类型', 'wms_out_type', 1, '出库单的业务类型', NOW(), NOW()),
 (13, '单据状态', 'wms_doc_status', 1, '仓库单据的状态', NOW(), NOW()),
@@ -5447,11 +5466,6 @@ INSERT INTO sys_dict_type (id, name, type, status, remark, create_time, update_t
 (15, '序列号状态', 'wms_serial_status', 1, '序列号是否在库', NOW(), NOW());
 
 INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
-('wms_material_category', '原材料', 'RAW', 'blue', 1, 1, NOW(), NOW()),
-('wms_material_category', '半成品', 'SEMI', 'cyan', 2, 1, NOW(), NOW()),
-('wms_material_category', '成品', 'FINISHED', 'green', 3, 1, NOW(), NOW()),
-('wms_material_category', '包装材料', 'PACKING', 'gold', 4, 1, NOW(), NOW()),
-('wms_material_category', '其他', 'OTHER', 'default', 5, 1, NOW(), NOW()),
 ('wms_in_type', '采购入库', 'PURCHASE', 'blue', 1, 1, NOW(), NOW()),
 ('wms_in_type', '生产入库', 'PRODUCTION', 'cyan', 2, 1, NOW(), NOW()),
 ('wms_in_type', '销售退货', 'SALES_RETURN', 'orange', 3, 1, NOW(), NOW()),
@@ -7043,7 +7057,6 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('fin_asset_check_result', '盘盈', 'GAIN', 'purple', 5, 1, NOW(), NOW()),
 ('fin_consumable_status', '草稿', 'DRAFT', 'default', 1, 1, NOW(), NOW()),
 ('fin_consumable_status', '已出库', 'CONFIRMED', 'green', 2, 1, NOW(), NOW()),
-('wms_material_category', '低值易耗品', 'LOW_VALUE', 'magenta', 6, 1, NOW(), NOW()),
 ('wms_out_type', '部门领用', 'CONSUME', 'lime', 10, 1, NOW(), NOW());
 
 -- 资产与成本：固定资产之后为资产盘点、低值易耗品
@@ -7728,15 +7741,29 @@ FROM (
 ) g
 LEFT JOIN fin_account a ON a.code = g.acct AND a.tenant_id = 1;
 
+-- 物料分类（多级）：在物料管理页左侧的分类树中维护（按钮「物料分类维护」wms:material:category，授权给有物料修改权限的角色）。
+-- 新租户由仓库模块的 WmsTenantInitializer 复制平台的分类；原材料、半成品、成品、低值易耗品为内置分类（凭证科目、低值易耗品领用按编码使用）
+INSERT INTO wms_material_category (parent_id, ancestors, code, name, sort, status, builtin, create_time, update_time) VALUES
+(0, '0', 'RAW', '原材料', 1, 1, 1, NOW(), NOW()),
+(0, '0', 'SEMI', '半成品', 2, 1, 1, NOW(), NOW()),
+(0, '0', 'FINISHED', '成品', 3, 1, 1, NOW(), NOW()),
+(0, '0', 'PACKING', '包装材料', 4, 1, 0, NOW(), NOW()),
+(0, '0', 'OTHER', '其他', 5, 1, 0, NOW(), NOW()),
+(0, '0', 'LOW_VALUE', '低值易耗品', 6, 1, 1, NOW(), NOW());
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(1374, 137, '物料分类维护', 'F', NULL, NULL, 'wms:material:category', NULL, 6, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT DISTINCT rm.role_id, 1374 FROM sys_role_menu rm
+WHERE rm.menu_id = 1371 AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = rm.role_id AND x.menu_id = 1374);
+
 -- 字典种类：业务字典由各租户自己维护（可新增取值），其余为系统字典；程序依赖的取值标记为内置（不能删除、不能改键值）
 UPDATE sys_dict_type SET kind = 'BUSINESS' WHERE type IN ('wf_category', 'scm_customer_level', 'scm_carrier', 'mes_supplement_reason',
     'fin_asset_category', 'hr_education', 'hr_candidate_source', 'crm_industry', 'crm_campaign_type', 'hr_training_category',
-    'crm_follow_method', 'crm_ticket_channel', 'pm_priority', 'wms_material_category', 'hr_position_category', 'fin_settle_method',
+    'crm_follow_method', 'crm_ticket_channel', 'pm_priority', 'hr_position_category', 'fin_settle_method',
     'mes_defect_type', 'crm_source', 'hr_emp_type', 'crm_ticket_type', 'pm_project_type', 'hr_contract_type', 'hr_leave_type',
     'pm_member_role', 'mes_ecn_reason', 'mes_doc_type', 'qms_responsibility', 'mes_mold_type', 'mes_stop_reason');
 UPDATE sys_dict_data SET builtin = 1
 WHERE dict_type NOT IN (SELECT type FROM sys_dict_type WHERE kind = 'BUSINESS')
-   OR (dict_type = 'wms_material_category' AND dict_value IN ('RAW', 'SEMI', 'FINISHED', 'LOW_VALUE'))
    OR (dict_type = 'hr_position_category' AND dict_value IN ('PRODUCTION', 'SALES'))
    OR (dict_type = 'fin_settle_method' AND dict_value IN ('TRANSFER', 'NOTE'))
    OR (dict_type IN ('mes_defect_type', 'crm_source') AND dict_value = 'OTHER')

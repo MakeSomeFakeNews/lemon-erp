@@ -8,6 +8,7 @@ import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.entity.FinAccountRule;
 import com.lemon.erp.modules.fin.mapper.FinAccountRuleMapper;
 import com.lemon.erp.modules.fin.model.AccountRole;
+import com.lemon.erp.modules.wms.service.WmsMaterialCategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +23,8 @@ import java.util.stream.Collectors;
 
 /**
  * 凭证科目设置：业务单据自动生成凭证时，按用途（{@link AccountRole}）取科目。
- * 优先级：用途 + 维度取值的设置 → 用途的默认设置 → 后备用途（{@link AccountRole#fallback()}）的设置 → 预置科目编码（按维度取值区分，如半成品、成品为库存商品）
+ * 优先级：用途 + 维度取值的设置 → 用途的默认设置 → 后备用途（{@link AccountRole#fallback()}）的设置 → 预置科目编码（按维度取值区分，如半成品、成品为库存商品）。
+ * 物料分类是多级的：下级分类没有单独设置时沿用最近一级上级分类的设置（含预置科目，如低值易耗品的下级分类也是周转材料）
  */
 @Service
 @RequiredArgsConstructor
@@ -32,6 +34,7 @@ public class FinAccountRuleService {
 
     private final FinAccountRuleMapper ruleMapper;
     private final FinAccountService accountService;
+    private final WmsMaterialCategoryService categoryService;
 
     /** 用途使用的末级科目 ID */
     public Long accountId(AccountRole role) {
@@ -58,16 +61,27 @@ public class FinAccountRuleService {
             throw new IllegalArgumentException("scope role " + role);
         }
         String dim = dimValue == null || role.dimension() == AccountRole.Dimension.NONE ? NO_DIM : dimValue;
+        // 维度取值及其上级（物料分类），越近越优先
+        List<String> dims = dim.isEmpty() ? List.of() : role.dimension() == AccountRole.Dimension.MATERIAL_CATEGORY
+                ? categoryService.tree().lineage(dim) : List.of(dim);
+        List<String> keys = new ArrayList<>(dims);
+        keys.add(NO_DIM);
         List<FinAccountRule> rules = ruleMapper.selectList(Wrappers.<FinAccountRule>lambdaQuery()
                 .eq(FinAccountRule::getRole, role)
-                .in(FinAccountRule::getDimValue, dim.isEmpty() ? List.of(NO_DIM) : List.of(dim, NO_DIM)));
-        FinAccountRule rule = rules.stream().filter(r -> dim.equals(r.getDimValue())).findFirst()
-                .orElseGet(() -> rules.stream().filter(r -> NO_DIM.equals(r.getDimValue())).findFirst().orElse(null));
+                .in(FinAccountRule::getDimValue, keys));
+        FinAccountRule rule = null;
+        for (String key : keys) {
+            rule = rules.stream().filter(r -> key.equals(r.getDimValue())).findFirst().orElse(null);
+            if (rule != null) {
+                break;
+            }
+        }
         if (rule == null && role.fallback() != null) {
             return account(role.fallback(), null);
         }
         if (rule == null) {
-            return accountService.leafByCode(role.defaultCode(dim.isEmpty() ? null : dim));
+            String preset = dims.stream().filter(d -> role.dimensionDefaults().containsKey(d)).findFirst().orElse(null);
+            return accountService.leafByCode(role.defaultCode(preset));
         }
         try {
             return accountService.requireLeaves(List.of(rule.getAccountId())).get(rule.getAccountId());

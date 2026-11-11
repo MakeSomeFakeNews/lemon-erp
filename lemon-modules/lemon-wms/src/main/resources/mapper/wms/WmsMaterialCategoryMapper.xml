@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsMaterialCategoryMapper">
+
+    <!--
+        分类及其全部下级分类的编码（子查询，只读）：按分类筛选物料时选上级分类包含下级分类的物料。
+        其他 mapper（含其他模块）这样引用，code 为分类编码参数的表达式：
+        AND m.category IN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialCategoryMapper.subtreeCodes"><property name="code" value="q.category"/></include>)
+    -->
+    <sql id="subtreeCodes">
+        SELECT sc.code FROM wms_material_category sc
+        JOIN wms_material_category sp ON sp.code = #{${code}}
+        WHERE sc.id = sp.id OR sc.ancestors = CONCAT(sp.ancestors, ',', sp.id) OR sc.ancestors LIKE CONCAT(sp.ancestors, ',', sp.id, ',%')
+    </sql>
+
+    <select id="countMaterials" resultType="java.util.Map">
+        SELECT category AS "code", COUNT(*) AS "count"
+        FROM wms_material
+        WHERE category IS NOT NULL AND category &lt;&gt; ''
+        GROUP BY category
+    </select>
+
+</mapper>

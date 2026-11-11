@@ -9,8 +9,8 @@ import com.lemon.erp.framework.ai.AiCleanseField;
 import com.lemon.erp.framework.ai.AiCleanseRecord;
 import com.lemon.erp.framework.ai.AiCleanseSource;
 import com.lemon.erp.framework.ai.AiCleanseSupport;
-import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
+import com.lemon.erp.modules.wms.service.WmsMaterialCategoryService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import jakarta.validation.Validator;
 import jakarta.validation.groups.Default;
@@ -23,16 +23,14 @@ import java.util.Set;
 
 /**
  * 数据整理：物料（名称、规格、分类、计量单位）。应用建议调用 {@link WmsMaterialService#update}（编码、条码等校验与变更历史），
- * 另外按实体注解校验长度、按业务字典校验分类，不允许改成与其他启用物料同名同规格；疑似重复的物料可停用
+ * 另外按实体注解校验长度、按物料分类校验分类（可选用的分类，候选为编码 → 完整路径），不允许改成与其他启用物料同名同规格；疑似重复的物料可停用
  */
 @Component
 @RequiredArgsConstructor
 public class WmsMaterialCleanseSource implements AiCleanseSource {
 
-    static final String CATEGORY_DICT = "wms_material_category";
-
     private final WmsMaterialService materialService;
-    private final DictLookup dictLookup;
+    private final WmsMaterialCategoryService categoryService;
     private final Validator validator;
 
     @Override
@@ -73,7 +71,7 @@ public class WmsMaterialCleanseSource implements AiCleanseSource {
 
     @Override
     public Map<String, String> categoryOptions() {
-        return dictLookup.options(CATEGORY_DICT);
+        return categoryService.options();
     }
 
     @Override
@@ -85,7 +83,7 @@ public class WmsMaterialCleanseSource implements AiCleanseSource {
                 case NAME -> m.setName(v);
                 case SPEC -> m.setSpec(v);
                 case CATEGORY -> {
-                    dictLookup.check(CATEGORY_DICT, v, "wms.label.cleanseCategory");
+                    categoryService.checkUsable(v, null);
                     m.setCategory(v);
                 }
                 case UNIT -> m.setUnit(v);

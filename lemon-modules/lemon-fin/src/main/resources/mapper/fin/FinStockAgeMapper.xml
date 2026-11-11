@@ -25,7 +25,7 @@
         ) t
         JOIN wms_material m ON m.id = t.material_id
         WHERE t.qty &gt; 0
-        <if test="category != null and category != ''">AND m.category = #{category}</if>
+        <if test="category != null and category != ''">AND m.category IN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialCategoryMapper.subtreeCodes"><property name="code" value="category"/></include>)</if>
         <if test="keyword != null and keyword != ''">AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))</if>
         ORDER BY m.code
     </select>

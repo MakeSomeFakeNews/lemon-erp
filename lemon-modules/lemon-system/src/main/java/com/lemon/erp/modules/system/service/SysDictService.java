@@ -7,6 +7,7 @@ import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.cache.CacheService;
 import com.lemon.erp.framework.dict.DictLookup;
+import com.lemon.erp.framework.dict.DictSource;
 import com.lemon.erp.framework.tenant.TenantContext;
 import com.lemon.erp.modules.system.entity.SysDictData;
 import com.lemon.erp.modules.system.entity.SysDictType;
@@ -14,6 +15,7 @@ import com.lemon.erp.modules.system.mapper.SysDictDataMapper;
 import com.lemon.erp.modules.system.mapper.SysDictTypeMapper;
 import com.lemon.erp.modules.system.model.DictKind;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -21,6 +23,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,7 +38,8 @@ import java.util.regex.Pattern;
  *   <li>业务字典：每个租户各自一份（新租户开通时从平台复制），可新增、修改、停用、删除取值；内置取值（程序依赖）不能删除、不能改键值</li>
  * </ul>
  * 字典表不由租户插件处理（平台共用的系统字典要跨租户读取），按种类在这里指定租户。
- * 按类型查询的结果走缓存：系统字典 dict:{type}，业务字典 dict:{租户}:{type}，变更时清除
+ * 按类型查询的结果走缓存：系统字典 dict:{type}，业务字典 dict:{租户}:{type}，变更时清除。
+ * 业务模块登记的 {@link DictSource}（如物料分类）按类型读取时改为从业务模块取值（不缓存、只读）
  */
 @Service
 @RequiredArgsConstructor
@@ -48,6 +52,7 @@ public class SysDictService implements DictLookup {
     private final SysDictTypeMapper typeMapper;
     private final SysDictDataMapper dataMapper;
     private final CacheService cache;
+    private final ObjectProvider<DictSource> sources;
 
     // ---------------- 字典类型 ----------------
 
@@ -109,6 +114,10 @@ public class SysDictService implements DictLookup {
     }
 
     private void checkTypeUnique(SysDictType type) {
+        if (source(type.getType()) != null) {
+            // 业务模块维护的字典（如物料分类）占用了该类型
+            throw new BizException("system.error.dictionaryTypeAlreadyExists");
+        }
         SysDictType exist = typeMapper.selectOne(Wrappers.<SysDictType>lambdaQuery().eq(SysDictType::getType, type.getType()));
         if (exist != null && !Objects.equals(exist.getId(), type.getId())) {
             throw new BizException("system.error.dictionaryTypeAlreadyExists");
@@ -131,6 +140,10 @@ public class SysDictService implements DictLookup {
 
     /** 某类型下启用的字典数据，供前端渲染下拉框、标签 */
     public List<SysDictData> listDataByType(String dictType) {
+        DictSource source = source(dictType);
+        if (source != null) {
+            return fromSource(source);
+        }
         SysDictType type = typeMapper.selectOne(Wrappers.<SysDictType>lambdaQuery().eq(SysDictType::getType, dictType));
         if (type == null) {
             return List.of();
@@ -148,6 +161,28 @@ public class SysDictService implements DictLookup {
                 .orderByAsc(SysDictData::getSort)
                 .orderByAsc(SysDictData::getId));
         cache.set(key, list, CACHE_TTL);
+        return list;
+    }
+
+    /** 业务模块维护的字典，没有为 null */
+    private DictSource source(String dictType) {
+        return sources.stream().filter(s -> s.dictType().equals(dictType)).findFirst().orElse(null);
+    }
+
+    /** 业务模块维护的字典转为字典数据（只读，不缓存） */
+    private static List<SysDictData> fromSource(DictSource source) {
+        List<SysDictData> list = new ArrayList<>();
+        int sort = 0;
+        for (Map.Entry<String, String> e : source.options().entrySet()) {
+            SysDictData d = new SysDictData();
+            d.setDictType(source.dictType());
+            d.setDictValue(e.getKey());
+            d.setDictLabel(e.getValue());
+            d.setSort(++sort);
+            d.setStatus(EnableStatus.ENABLED);
+            d.setBuiltin(1);
+            list.add(d);
+        }
         return list;
     }
 

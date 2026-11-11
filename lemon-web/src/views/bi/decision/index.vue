@@ -4,7 +4,7 @@
       <!-- 销售预测 -->
       <a-tab-pane key="forecast" :tab="$t('bi.decision.forecast')">
         <div class="filters">
-          <a-select v-model:value="fc.category" :placeholder="$t('bi.decision.allCategories')" allow-clear :options="toOptions(dict.wms_material_category)" style="width: 160px" />
+          <MaterialCategorySelect v-model="fc.category" :placeholder="$t('bi.decision.allCategories')" style="width: 180px" />
           <a-radio-group v-model:value="fc.months" button-style="solid">
             <a-radio-button :value="3">{{ $t('bi.decision.monthsN', { n: 3 }) }}</a-radio-button>
             <a-radio-button :value="6">{{ $t('bi.decision.monthsN', { n: 6 }) }}</a-radio-button>
@@ -207,6 +207,7 @@
 </template>
 
 <script setup>
+import MaterialCategorySelect from '@/components/wms/MaterialCategorySelect.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { message } from 'ant-design-vue'

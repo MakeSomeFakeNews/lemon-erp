@@ -1,442 +1,447 @@
 <template>
-  <div class="table-page">
-    <a-card v-show="showSearch" :bordered="false" class="page-card">
-      <SearchForm :model="query" @search="search" @reset="resetQuery">
-        <a-form-item :label="$t('wms.common.material')" name="keyword">
-          <a-input v-model:value="query.keyword" :placeholder="$t('wms.flow.codeOrName')" allow-clear />
-        </a-form-item>
-        <a-form-item :label="$t('wms.inout.category')" name="category">
-          <a-select v-model:value="query.category" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_material_category)" />
-        </a-form-item>
-        <a-form-item :label="$t('pricing.goods.brand')" name="brand">
-          <a-select v-model:value="query.brand" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_material_brand)" />
-        </a-form-item>
-        <a-form-item :label="$t('common.field.status')" name="status">
-          <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
-        </a-form-item>
-      </SearchForm>
+  <div class="workspace">
+    <!-- 物料分类树：点击分类列出该分类及其下级分类的物料，有权限时可维护分类 -->
+    <a-card v-show="showCategory" :bordered="false" class="page-card workspace-side">
+      <MaterialCategoryTree ref="categoryTreeRef" v-model="query.category" @change="search" />
     </a-card>
 
-    <a-card :bordered="false" class="page-card table-card">
-      <TableToolbar
-        :exporter="exportAll"
-        v-model:size="size"
-        v-model:checked="checked"
-        v-model:show-search="showSearch"
-        :columns="toolbarColumns"
-        @refresh="load"
-      >
-        <a-button v-perm="'wms:material:add'" type="primary" @click="drawer.openCreate()">
-          <template #icon><PlusOutlined /></template>{{ $t('wms.material.createTitle') }}
-        </a-button>
-        <AiExtractButton target="wms.material" perm="wms:material:add" :title="$t('wms.material.createTitle')" @result="ai.apply" />
-        <a-button v-perm="'wms:material:add'" @click="importOpen = true">
-          <template #icon><ImportOutlined /></template>{{ $t('common.action.import') }}
-        </a-button>
-        <span v-perm="'wms:material:remove'">
-          <a-popconfirm
-            :title="$t('wms.material.confirmDeleteN', { n: selectedKeys.length })"
-            :disabled="!selectedKeys.length"
-            @confirm="remove(selectedKeys)"
-          >
-            <a-button danger :disabled="!selectedKeys.length">
-              <template #icon><DeleteOutlined /></template>{{ $t('common.action.batchDelete') }}
-            </a-button>
-          </a-popconfirm>
-        </span>
-        <a-button v-perm="'wms:material:priceLevel'" @click="priceLevelRef.open()">
-          <template #icon><DollarOutlined /></template>{{ $t('pricing.level.title') }}
-        </a-button>
-        <a-button :disabled="!selectedKeys.length" @click="openLabels">
-          <template #icon><BarcodeOutlined /></template>{{ $t('wms.material.printLabel') }}{{ selectedKeys.length ? ` (${selectedKeys.length})` : '' }}
-        </a-button>
-      </TableToolbar>
+    <div class="table-page workspace-main">
+      <a-card v-show="showSearch" :bordered="false" class="page-card">
+        <SearchForm :model="query" @search="search" @reset="resetQuery">
+          <a-form-item :label="$t('wms.common.material')" name="keyword">
+            <a-input v-model:value="query.keyword" :placeholder="$t('wms.flow.codeOrName')" allow-clear />
+          </a-form-item>
+          <a-form-item :label="$t('pricing.goods.brand')" name="brand">
+            <a-select v-model:value="query.brand" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_material_brand)" />
+          </a-form-item>
+          <a-form-item :label="$t('common.field.status')" name="status">
+            <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
+          </a-form-item>
+        </SearchForm>
+      </a-card>
 
-      <a-table
-        row-key="id"
-        :size="size"
-        :columns="tableColumns"
-        :data-source="list"
-        :loading="loading"
-        :pagination="pagination"
-        :row-selection="rowSelection"
-        :scroll="{ x: sumWidth(tableColumns) + 32, y: '100%' }"
-        @change="onTableChange"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'name'">
-            <a @click="openDetail(record.id)">{{ record.name }}</a>
-            <a-tag v-if="record.isTemplate === 1" color="magenta" :bordered="false" class="ml">{{ $t('wms.material.style') }}</a-tag>
-            <div class="sub-text">
-              {{ record.code }}
-              <template v-if="record.variantText"> · {{ record.variantText }}</template>
-            </div>
+      <a-card :bordered="false" class="page-card table-card">
+        <TableToolbar
+          :exporter="exportAll"
+          v-model:size="size"
+          v-model:checked="checked"
+          v-model:show-search="showSearch"
+          :columns="toolbarColumns"
+          @refresh="load"
+        >
+          <a-button v-perm="'wms:material:add'" type="primary" @click="drawer.openCreate()">
+            <template #icon><PlusOutlined /></template>{{ $t('wms.material.createTitle') }}
+          </a-button>
+          <AiExtractButton target="wms.material" perm="wms:material:add" :title="$t('wms.material.createTitle')" @result="ai.apply" />
+          <a-button v-perm="'wms:material:add'" @click="importOpen = true">
+            <template #icon><ImportOutlined /></template>{{ $t('common.action.import') }}
+          </a-button>
+          <span v-perm="'wms:material:remove'">
+            <a-popconfirm
+              :title="$t('wms.material.confirmDeleteN', { n: selectedKeys.length })"
+              :disabled="!selectedKeys.length"
+              @confirm="remove(selectedKeys)"
+            >
+              <a-button danger :disabled="!selectedKeys.length">
+                <template #icon><DeleteOutlined /></template>{{ $t('common.action.batchDelete') }}
+              </a-button>
+            </a-popconfirm>
+          </span>
+          <a-button v-perm="'wms:material:priceLevel'" @click="priceLevelRef.open()">
+            <template #icon><DollarOutlined /></template>{{ $t('pricing.level.title') }}
+          </a-button>
+          <a-button :disabled="!selectedKeys.length" @click="openLabels">
+            <template #icon><BarcodeOutlined /></template>{{ $t('wms.material.printLabel') }}{{ selectedKeys.length ? ` (${selectedKeys.length})` : '' }}
+          </a-button>
+          <template #extra>
+            <a-tooltip :title="showCategory ? $t('wms.material.hideCategory') : $t('wms.material.showCategory')">
+              <a-button type="text" @click="showCategory = !showCategory">
+                <template #icon><MenuFoldOutlined v-if="showCategory" /><MenuUnfoldOutlined v-else /></template>
+              </a-button>
+            </a-tooltip>
           </template>
-          <template v-else-if="column.key === 'category'">
-            <DictTag type="wms_material_category" :value="record.category" />
-          </template>
-          <template v-else-if="column.key === 'brand'">
-            <DictTag type="wms_material_brand" :value="record.brand" />
-          </template>
-          <template v-else-if="column.priceLevel != null">{{ record[column.key] == null ? '-' : price(record[column.key]) }}</template>
-          <template v-else-if="column.key === 'tracking'">
-            <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">{{ $t('wms.common.batch') }}</a-tag>
-            <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">{{ $t('wms.common.serialNo') }}</a-tag>
-            <a-tag v-if="record.iqcRequired === 1" color="orange" :bordered="false">{{ $t('wms.material.iqc') }}</a-tag>
-            <span v-if="record.batchEnabled !== 1 && record.serialEnabled !== 1 && record.iqcRequired !== 1" class="sub-text">-</span>
-          </template>
-          <template v-else-if="column.key === 'supplyType'">
-            <template v-if="record.plan">
-              <DictTag type="mes_supply_type" :value="record.plan.effectiveSupplyType" />
-              <div v-if="!record.plan.supplyType" class="sub-text">{{ $t('wms.material.auto') }}</div>
-            </template>
-          </template>
-          <template v-else-if="column.key === 'planRule'">
-            <template v-if="record.plan">
-              <div v-for="t in planRule(record.plan)" :key="t" class="rule-line">{{ t }}</div>
-              <span v-if="!planRule(record.plan).length" class="sub-text">-</span>
-            </template>
-          </template>
-          <template v-else-if="column.key === 'safetyStock'">{{ formatQty(record.safetyStock) }}</template>
-          <template v-else-if="column.key === 'barcode'">{{ record.barcode || '-' }}</template>
-          <template v-else-if="column.key === 'status'">
-            <StatusSwitch
-              :value="record.status"
-              :name="record.name"
-              :api="(s) => changeMaterialStatus(record.id, s)"
-              :disabled="!userStore.hasPerm('wms:material:edit')"
-              @changed="(s) => (record.status = s)"
-            />
-          </template>
-          <template v-else-if="column.custom">{{ cfCell(record, column) }}</template>
-          <template v-else-if="column.key === 'action'">
-            <TableActions :actions="rowActions(record)" />
-          </template>
-        </template>
-      </a-table>
-    </a-card>
+        </TableToolbar>
 
-    <FormDrawer page :drawer="drawer" :create-title="$t('wms.material.createTitle')" :edit-title="$t('wms.material.editTitle')" :width="canEditPlan ? 'min(860px, 100vw)' : undefined">
-      <AiPrefillAlert :ai="ai" />
-      <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <div v-if="canEditPlan" class="section-title">{{ $t('wms.material.basic') }}</div>
-        <a-alert v-if="!canEdit && form.id" type="info" show-icon class="tip" :message="$t('wms.material.planOnly')" />
-        <a-row :gutter="16">
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.material.code')" name="code" :class="ai.cls('code')">
-              <a-input v-model:value="form.code" :maxlength="64" :placeholder="$t('wms.material.codePh')" :disabled="basicReadonly" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.material.name')" name="name" :class="ai.cls('name')">
-              <a-input v-model:value="form.name" :maxlength="128" :disabled="basicReadonly" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.inout.spec')" name="spec">
-              <a-input v-model:value="form.spec" :maxlength="128" :disabled="basicReadonly" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.material.unit')" name="unit">
-              <a-auto-complete v-model:value="form.unit" :options="UNITS" :maxlength="16" :placeholder="$t('wms.material.unitPh')" :disabled="basicReadonly" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.inout.category')" name="category" :class="ai.cls('category')">
-              <a-select
-                v-model:value="form.category"
-                :placeholder="$t('common.placeholder.select')"
-                allow-clear
-                :options="toOptions(dict.wms_material_category)"
-                :disabled="basicReadonly"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('pricing.goods.brand')" name="brand">
-              <a-select
-                v-model:value="form.brand"
-                :placeholder="$t('wms.common.optional')"
-                allow-clear
-                show-search
-                option-filter-prop="label"
-                :options="toOptions(dict.wms_material_brand)"
-                :disabled="basicReadonly"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.stock.safetyStock')" name="safetyStock" :extra="$t('wms.material.safetyTip')">
-              <a-input-number v-model:value="form.safetyStock" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.noAlert')" :disabled="basicReadonly" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item name="reorderPoint" :extra="$t('wms.material.reorderPointExtra')">
-              <template #label>
-                {{ $t('wms.material.reorderPoint') }}
-                <a-tooltip :title="$t('wms.material.reorderPointTip')">
-                  <QuestionCircleOutlined class="label-help" />
-                </a-tooltip>
+        <a-table
+          row-key="id"
+          :size="size"
+          :columns="tableColumns"
+          :data-source="list"
+          :loading="loading"
+          :pagination="pagination"
+          :row-selection="rowSelection"
+          :scroll="{ x: sumWidth(tableColumns) + 32, y: '100%' }"
+          @change="onTableChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'name'">
+              <a @click="openDetail(record.id)">{{ record.name }}</a>
+              <a-tag v-if="record.isTemplate === 1" color="magenta" :bordered="false" class="ml">{{ $t('wms.material.style') }}</a-tag>
+              <div class="sub-text">
+                {{ record.code }}
+                <template v-if="record.variantText"> · {{ record.variantText }}</template>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'category'">
+              <DictTag type="wms_material_category" :value="record.category" />
+            </template>
+            <template v-else-if="column.key === 'brand'">
+              <DictTag type="wms_material_brand" :value="record.brand" />
+            </template>
+            <template v-else-if="column.priceLevel != null">{{ record[column.key] == null ? '-' : price(record[column.key]) }}</template>
+            <template v-else-if="column.key === 'tracking'">
+              <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">{{ $t('wms.common.batch') }}</a-tag>
+              <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">{{ $t('wms.common.serialNo') }}</a-tag>
+              <a-tag v-if="record.iqcRequired === 1" color="orange" :bordered="false">{{ $t('wms.material.iqc') }}</a-tag>
+              <span v-if="record.batchEnabled !== 1 && record.serialEnabled !== 1 && record.iqcRequired !== 1" class="sub-text">-</span>
+            </template>
+            <template v-else-if="column.key === 'supplyType'">
+              <template v-if="record.plan">
+                <DictTag type="mes_supply_type" :value="record.plan.effectiveSupplyType" />
+                <div v-if="!record.plan.supplyType" class="sub-text">{{ $t('wms.material.auto') }}</div>
               </template>
-              <a-input-number v-model:value="form.reorderPoint" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.notInvolved')" :disabled="basicReadonly" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.material.reorderQty')" name="reorderQty" :extra="$t('wms.material.reorderQtyTip')">
-              <a-input-number v-model:value="form.reorderQty" :min="0" :precision="4" class="full" :placeholder="$t('wms.common.optional')" :disabled="basicReadonly" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.units.barcode')" name="barcode" :extra="$t('wms.material.barcodeTip')">
-              <a-input v-model:value="form.barcode" :maxlength="64" :placeholder="$t('wms.common.optional')" allow-clear :disabled="basicReadonly" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.material.refCost')" name="refCost" :extra="$t('wms.material.refCostTip')">
-              <a-input-number v-model:value="form.refCost" :min="0" :precision="4" class="full" :placeholder="$t('wms.common.optional')" :disabled="basicReadonly" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.material.costMethod')" name="costMethod" :extra="$t('wms.material.costMethodTip')">
-              <a-select v-model:value="form.costMethod" :options="toOptions(dict.wms_cost_method)" :disabled="basicReadonly" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.material.defaultWarehouse')" name="defaultWarehouseId">
-              <WarehouseSelect v-model:value="form.defaultWarehouseId" :placeholder="$t('wms.common.optional')" :disabled="basicReadonly" @update:value="form.defaultLocationId = null" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="colSpan">
-            <a-form-item :label="$t('wms.material.defaultLocation')" name="defaultLocationId" :extra="$t('wms.material.defaultLocationTip')">
-              <LocationSelect v-model:value="form.defaultLocationId" :warehouse-id="form.defaultWarehouseId" :disabled="basicReadonly" />
-            </a-form-item>
-          </a-col>
-          <a-col v-if="enabledLevels.length" :span="24">
-            <div class="sub-title">{{ $t('pricing.level.prices') }}</div>
-            <a-row :gutter="16">
-              <a-col v-for="l in enabledLevels" :key="l.level" :xs="12" :sm="6">
-                <a-form-item :label="l.name" :name="l.field">
-                  <a-input-number v-model:value="form[l.field]" :min="0" :precision="4" class="full" :disabled="basicReadonly" />
-                </a-form-item>
-              </a-col>
-            </a-row>
-          </a-col>
-          <a-col :span="24">
-            <a-form-item :label="$t('wms.material.tracking')" :extra="$t('wms.material.trackingTip')">
-              <a-space direction="vertical">
-                <a-checkbox :checked="form.batchEnabled === 1" :disabled="basicReadonly" @change="(e) => (form.batchEnabled = e.target.checked ? 1 : 0)">
-                  {{ $t('wms.material.batchManaged') }}<span class="option-desc">{{ $t('wms.material.batchManagedDesc') }}</span>
-                </a-checkbox>
-                <a-checkbox :checked="form.serialEnabled === 1" :disabled="basicReadonly" @change="(e) => (form.serialEnabled = e.target.checked ? 1 : 0)">
-                  {{ $t('wms.material.serialManaged') }}<span class="option-desc">{{ $t('wms.material.serialManagedDesc') }}</span>
-                </a-checkbox>
-                <a-checkbox :checked="form.iqcRequired === 1" :disabled="basicReadonly" @change="(e) => (form.iqcRequired = e.target.checked ? 1 : 0)">
-                  {{ $t('wms.material.iqc') }}<span class="option-desc">{{ $t('wms.material.iqcDesc') }}</span>
-                </a-checkbox>
-              </a-space>
-            </a-form-item>
-          </a-col>
-          <a-col :span="24">
-            <a-form-item :label="$t('common.field.remark')" name="remark">
-              <a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" show-count :disabled="basicReadonly" />
-            </a-form-item>
-          </a-col>
-        </a-row>
+            </template>
+            <template v-else-if="column.key === 'planRule'">
+              <template v-if="record.plan">
+                <div v-for="t in planRule(record.plan)" :key="t" class="rule-line">{{ t }}</div>
+                <span v-if="!planRule(record.plan).length" class="sub-text">-</span>
+              </template>
+            </template>
+            <template v-else-if="column.key === 'safetyStock'">{{ formatQty(record.safetyStock) }}</template>
+            <template v-else-if="column.key === 'barcode'">{{ record.barcode || '-' }}</template>
+            <template v-else-if="column.key === 'status'">
+              <StatusSwitch
+                :value="record.status"
+                :name="record.name"
+                :api="(s) => changeMaterialStatus(record.id, s)"
+                :disabled="!userStore.hasPerm('wms:material:edit')"
+                @changed="(s) => (record.status = s)"
+              />
+            </template>
+            <template v-else-if="column.custom">{{ cfCell(record, column) }}</template>
+            <template v-else-if="column.key === 'action'">
+              <TableActions :actions="rowActions(record)" />
+            </template>
+          </template>
+        </a-table>
+      </a-card>
 
-        <template v-if="canEditPlan">
-          <div class="section-title">{{ $t('wms.material.plan') }}</div>
+      <FormDrawer page :drawer="drawer" :create-title="$t('wms.material.createTitle')" :edit-title="$t('wms.material.editTitle')" :width="canEditPlan ? 'min(860px, 100vw)' : undefined">
+        <AiPrefillAlert :ai="ai" />
+        <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
+          <div v-if="canEditPlan" class="section-title">{{ $t('wms.material.basic') }}</div>
+          <a-alert v-if="!canEdit && form.id" type="info" show-icon class="tip" :message="$t('wms.material.planOnly')" />
           <a-row :gutter="16">
-            <a-col :xs="24" :sm="8">
-              <a-form-item :label="$t('wms.material.supplyType')" name="supplyType" :extra="SUPPLY_HINTS[form.supplyType || 'AUTO']">
-                <a-select v-model:value="form.supplyType" :options="supplyOptions" />
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item :label="$t('wms.material.code')" name="code" :class="ai.cls('code')">
+                <a-input v-model:value="form.code" :maxlength="64" :placeholder="$t('wms.material.codePh')" :disabled="basicReadonly" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="8">
-              <a-form-item :label="$t('wms.material.leadDays')" name="leadDays" :extra="$t('wms.material.leadDaysTip')">
-                <a-input-number v-model:value="form.leadDays" :min="0" :max="365" :precision="0" :addon-after="$t('common.unit.day')" class="full" :placeholder="$t('wms.material.auto')" />
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item :label="$t('wms.material.name')" name="name" :class="ai.cls('name')">
+                <a-input v-model:value="form.name" :maxlength="128" :disabled="basicReadonly" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="8">
-              <a-form-item :label="$t('wms.material.planner')" name="planner">
-                <a-input v-model:value="form.planner" :maxlength="64" :placeholder="$t('wms.common.optional')" />
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item :label="$t('wms.inout.spec')" name="spec">
+                <a-input v-model:value="form.spec" :maxlength="128" :disabled="basicReadonly" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="8">
-              <a-form-item :label="$t('wms.material.minLot')" name="minLot" :extra="$t('wms.material.minLotTip')">
-                <a-input-number v-model:value="form.minLot" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.noLimit')" />
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item :label="$t('wms.material.unit')" name="unit">
+                <a-auto-complete v-model:value="form.unit" :options="UNITS" :maxlength="16" :placeholder="$t('wms.material.unitPh')" :disabled="basicReadonly" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="8">
-              <a-form-item :label="$t('wms.material.lotMultiple')" name="lotMultiple" :extra="$t('wms.material.lotMultipleTip')">
-                <a-input-number v-model:value="form.lotMultiple" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.noRounding')" />
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item :label="$t('wms.inout.category')" name="category" :class="ai.cls('category')">
+                <MaterialCategorySelect v-model="form.category" usable-only :placeholder="$t('common.placeholder.select')" :disabled="basicReadonly" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="8">
-              <a-form-item :label="$t('wms.material.overIssue')" name="overIssueRate" :extra="$t('wms.material.overIssueTip')">
-                <a-input-number v-model:value="form.overIssueRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" />
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item :label="$t('pricing.goods.brand')" name="brand">
+                <a-select
+                  v-model:value="form.brand"
+                  :placeholder="$t('wms.common.optional')"
+                  allow-clear
+                  show-search
+                  option-filter-prop="label"
+                  :options="toOptions(dict.wms_material_brand)"
+                  :disabled="basicReadonly"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item :label="$t('wms.stock.safetyStock')" name="safetyStock" :extra="$t('wms.material.safetyTip')">
+                <a-input-number v-model:value="form.safetyStock" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.noAlert')" :disabled="basicReadonly" />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item name="reorderPoint" :extra="$t('wms.material.reorderPointExtra')">
+                <template #label>
+                  {{ $t('wms.material.reorderPoint') }}
+                  <a-tooltip :title="$t('wms.material.reorderPointTip')">
+                    <QuestionCircleOutlined class="label-help" />
+                  </a-tooltip>
+                </template>
+                <a-input-number v-model:value="form.reorderPoint" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.notInvolved')" :disabled="basicReadonly" />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item :label="$t('wms.material.reorderQty')" name="reorderQty" :extra="$t('wms.material.reorderQtyTip')">
+                <a-input-number v-model:value="form.reorderQty" :min="0" :precision="4" class="full" :placeholder="$t('wms.common.optional')" :disabled="basicReadonly" />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item :label="$t('wms.units.barcode')" name="barcode" :extra="$t('wms.material.barcodeTip')">
+                <a-input v-model:value="form.barcode" :maxlength="64" :placeholder="$t('wms.common.optional')" allow-clear :disabled="basicReadonly" />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item :label="$t('wms.material.refCost')" name="refCost" :extra="$t('wms.material.refCostTip')">
+                <a-input-number v-model:value="form.refCost" :min="0" :precision="4" class="full" :placeholder="$t('wms.common.optional')" :disabled="basicReadonly" />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item :label="$t('wms.material.costMethod')" name="costMethod" :extra="$t('wms.material.costMethodTip')">
+                <a-select v-model:value="form.costMethod" :options="toOptions(dict.wms_cost_method)" :disabled="basicReadonly" />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item :label="$t('wms.material.defaultWarehouse')" name="defaultWarehouseId">
+                <WarehouseSelect v-model:value="form.defaultWarehouseId" :placeholder="$t('wms.common.optional')" :disabled="basicReadonly" @update:value="form.defaultLocationId = null" />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="colSpan">
+              <a-form-item :label="$t('wms.material.defaultLocation')" name="defaultLocationId" :extra="$t('wms.material.defaultLocationTip')">
+                <LocationSelect v-model:value="form.defaultLocationId" :warehouse-id="form.defaultWarehouseId" :disabled="basicReadonly" />
+              </a-form-item>
+            </a-col>
+            <a-col v-if="enabledLevels.length" :span="24">
+              <div class="sub-title">{{ $t('pricing.level.prices') }}</div>
+              <a-row :gutter="16">
+                <a-col v-for="l in enabledLevels" :key="l.level" :xs="12" :sm="6">
+                  <a-form-item :label="l.name" :name="l.field">
+                    <a-input-number v-model:value="form[l.field]" :min="0" :precision="4" class="full" :disabled="basicReadonly" />
+                  </a-form-item>
+                </a-col>
+              </a-row>
+            </a-col>
+            <a-col :span="24">
+              <a-form-item :label="$t('wms.material.tracking')" :extra="$t('wms.material.trackingTip')">
+                <a-space direction="vertical">
+                  <a-checkbox :checked="form.batchEnabled === 1" :disabled="basicReadonly" @change="(e) => (form.batchEnabled = e.target.checked ? 1 : 0)">
+                    {{ $t('wms.material.batchManaged') }}<span class="option-desc">{{ $t('wms.material.batchManagedDesc') }}</span>
+                  </a-checkbox>
+                  <a-checkbox :checked="form.serialEnabled === 1" :disabled="basicReadonly" @change="(e) => (form.serialEnabled = e.target.checked ? 1 : 0)">
+                    {{ $t('wms.material.serialManaged') }}<span class="option-desc">{{ $t('wms.material.serialManagedDesc') }}</span>
+                  </a-checkbox>
+                  <a-checkbox :checked="form.iqcRequired === 1" :disabled="basicReadonly" @change="(e) => (form.iqcRequired = e.target.checked ? 1 : 0)">
+                    {{ $t('wms.material.iqc') }}<span class="option-desc">{{ $t('wms.material.iqcDesc') }}</span>
+                  </a-checkbox>
+                </a-space>
               </a-form-item>
             </a-col>
             <a-col :span="24">
-              <a-checkbox :checked="form.fqcRequired === 1" @change="(e) => (form.fqcRequired = e.target.checked ? 1 : 0)">
-                {{ $t('wms.material.fqcRequired') }}<span class="option-desc">{{ $t('wms.material.fqcDesc') }}</span>
-              </a-checkbox>
+              <a-form-item :label="$t('common.field.remark')" name="remark">
+                <a-textarea v-model:value="form.remark" :rows="2" :maxlength="255" show-count :disabled="basicReadonly" />
+              </a-form-item>
             </a-col>
           </a-row>
 
-          <div class="sub-title">
-            {{ $t('wms.material.substitute') }}
-            <span class="option-desc">{{ $t('wms.material.substituteTip') }}</span>
-          </div>
-          <a-table
-            row-key="key"
-            size="small"
-            :columns="subColumns"
-            :data-source="form.substitutes"
-            :pagination="false"
-            :scroll="{ x: subScrollX }"
-            :locale="{ emptyText: $t('wms.material.noSubstitute') }"
-          >
-            <template #bodyCell="{ column, record, index }">
-              <template v-if="column.key === 'substitute'">
-                <a-form-item :name="['substitutes', index, 'substituteId']" :rules="[{ required: true, message: $t('wms.material.selectSubstitute') }]" class="cell-item">
-                  <MaterialSelect
-                    :value="record.substituteId"
-                    :label="record.label"
-                    @update:value="(v) => (record.substituteId = v)"
-                    @select="(m) => (record.label = m.label)"
-                  />
+          <template v-if="canEditPlan">
+            <div class="section-title">{{ $t('wms.material.plan') }}</div>
+            <a-row :gutter="16">
+              <a-col :xs="24" :sm="8">
+                <a-form-item :label="$t('wms.material.supplyType')" name="supplyType" :extra="SUPPLY_HINTS[form.supplyType || 'AUTO']">
+                  <a-select v-model:value="form.supplyType" :options="supplyOptions" />
                 </a-form-item>
-              </template>
-              <template v-else-if="column.key === 'ratio'">
-                <a-form-item :name="['substitutes', index, 'ratio']" :rules="[{ required: true, message: $t('wms.material.inputRatio') }]" class="cell-item">
-                  <a-input-number v-model:value="record.ratio" :min="0" :step="0.5" class="full" />
+              </a-col>
+              <a-col :xs="24" :sm="8">
+                <a-form-item :label="$t('wms.material.leadDays')" name="leadDays" :extra="$t('wms.material.leadDaysTip')">
+                  <a-input-number v-model:value="form.leadDays" :min="0" :max="365" :precision="0" :addon-after="$t('common.unit.day')" class="full" :placeholder="$t('wms.material.auto')" />
                 </a-form-item>
-              </template>
-              <template v-else-if="column.key === 'priority'">
-                <a-input-number v-model:value="record.priority" :min="1" :max="99" :precision="0" class="full" />
-              </template>
-              <template v-else-if="column.key === 'remark'">
-                <a-input v-model:value="record.remark" :maxlength="255" :placeholder="$t('wms.material.condition')" />
-              </template>
-              <template v-else-if="column.key === 'action'">
-                <a-button type="link" danger size="small" @click="form.substitutes.splice(index, 1)"><DeleteOutlined /></a-button>
-              </template>
-            </template>
-          </a-table>
-          <a-button type="dashed" block class="add-row" :disabled="form.supplyType === SupplyType.PHANTOM" @click="addSubstitute">
-            <template #icon><PlusOutlined /></template>{{ $t('wms.material.addSubstitute') }}
-          </a-button>
-        </template>
-        <CustomFieldsForm :fields="cfFields" :values="form.cf || {}" :title="$t('wms.material.customFields')" />
-      </a-form>
-    </FormDrawer>
-    <VariantDrawer v-model:open="variantOpen" :material="variantMaterial" @generated="load" />
+              </a-col>
+              <a-col :xs="24" :sm="8">
+                <a-form-item :label="$t('wms.material.planner')" name="planner">
+                  <a-input v-model:value="form.planner" :maxlength="64" :placeholder="$t('wms.common.optional')" />
+                </a-form-item>
+              </a-col>
+              <a-col :xs="24" :sm="8">
+                <a-form-item :label="$t('wms.material.minLot')" name="minLot" :extra="$t('wms.material.minLotTip')">
+                  <a-input-number v-model:value="form.minLot" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.noLimit')" />
+                </a-form-item>
+              </a-col>
+              <a-col :xs="24" :sm="8">
+                <a-form-item :label="$t('wms.material.lotMultiple')" name="lotMultiple" :extra="$t('wms.material.lotMultipleTip')">
+                  <a-input-number v-model:value="form.lotMultiple" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.noRounding')" />
+                </a-form-item>
+              </a-col>
+              <a-col :xs="24" :sm="8">
+                <a-form-item :label="$t('wms.material.overIssue')" name="overIssueRate" :extra="$t('wms.material.overIssueTip')">
+                  <a-input-number v-model:value="form.overIssueRate" :min="0" :max="100" :precision="2" addon-after="%" class="full" />
+                </a-form-item>
+              </a-col>
+              <a-col :span="24">
+                <a-checkbox :checked="form.fqcRequired === 1" @change="(e) => (form.fqcRequired = e.target.checked ? 1 : 0)">
+                  {{ $t('wms.material.fqcRequired') }}<span class="option-desc">{{ $t('wms.material.fqcDesc') }}</span>
+                </a-checkbox>
+              </a-col>
+            </a-row>
 
-    <!-- 详情：生产计划、被 BOM 使用、在制工单用料 -->
-    <SubPage :open="detailOpen" :title="detail ? `${detail.code} ${detail.name}` : $t('wms.common.material')" width="min(960px, 100vw)" destroy-on-close @close="detailOpen = false">
-      <template #extra>
-        <a-button v-if="detail && (canEdit || canEditPlan)" type="primary" @click="drawer.openEdit({ id: detail.id })">{{ $t('common.action.edit') }}</a-button>
-      </template>
-      <a-spin :spinning="detailLoading">
-        <template v-if="detail">
-          <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="block">
-            <a-descriptions-item :label="$t('wms.material.specUnit')">{{ detail.spec || '-' }} / {{ detail.unit || '-' }}</a-descriptions-item>
-            <a-descriptions-item :label="$t('wms.inout.category')"><DictTag type="wms_material_category" :value="detail.category" /></a-descriptions-item>
-            <a-descriptions-item v-if="detail.barcode" :label="$t('wms.units.barcode')">{{ detail.barcode }}</a-descriptions-item>
-            <a-descriptions-item :label="$t('wms.material.stockSafety')">
-              <span>
-                <span :class="{ danger: belowSafety(detail) }">{{ formatQty(detail.onHandQty) }}</span> /
-                {{ detail.safetyStock != null ? formatQty(detail.safetyStock) : '-' }} {{ detail.unit }}
-              </span>
-            </a-descriptions-item>
-            <a-descriptions-item :label="$t('wms.material.supplyType')">
-              <span>
-                <DictTag type="mes_supply_type" :value="detail.effectiveSupplyType" />
-                <span v-if="!detail.supplyType" class="sub-text">{{ $t('wms.material.auto') }}</span>
-              </span>
-            </a-descriptions-item>
-            <a-descriptions-item :label="$t('wms.material.defaultBom')">{{ detail.bomVersion ? $t('wms.material.bomLead', { version: detail.bomVersion, days: detail.bomLeadDays }) : '-' }}</a-descriptions-item>
-            <a-descriptions-item :label="$t('wms.material.defaultSupplier')">
-              {{ detail.supplierName ? $t('wms.material.supplierLead', { name: detail.supplierName, days: detail.supplierLeadDays }) : '-' }}
-            </a-descriptions-item>
-            <a-descriptions-item :label="$t('wms.material.leadDays')">{{ leadText(detail) }}</a-descriptions-item>
-            <a-descriptions-item :label="$t('wms.material.lotRule')">{{ planRule(detail).join($t('wms.material.listSep')) || '-' }}</a-descriptions-item>
-            <a-descriptions-item :label="$t('wms.material.overIssue')">{{ formatQty(detail.overIssueRate) }}%</a-descriptions-item>
-            <a-descriptions-item v-if="detail.fqcRequired === 1" :label="$t('wms.material.fqc')">{{ $t('wms.material.fqcYes') }}</a-descriptions-item>
-            <a-descriptions-item v-if="detail.planner" :label="$t('wms.material.planner')">{{ detail.planner }}</a-descriptions-item>
-          </a-descriptions>
-          <a-tabs size="small">
-            <a-tab-pane v-if="canSeeKit" key="usage" :tab="$t('wms.material.usageTab', { n: usage.length })">
-              <a-table row-key="woMaterialId" size="small" :columns="usageColumns" :data-source="usage" :pagination="false" :scroll="{ x: 820 }">
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'wo'">
-                    <div>{{ record.woNo }} <DictTag type="mes_wo_status" :value="record.woStatus" /></div>
-                    <div class="sub-text">{{ record.productCode }} {{ record.productName }}</div>
-                  </template>
-                  <template v-else-if="column.key === 'shortageQty'">
-                    <span :class="{ danger: Number(record.shortageQty) > 0 }">{{ formatQty(record.shortageQty) }}</span>
-                  </template>
-                  <template v-else-if="QTY_KEYS.includes(column.key)">{{ formatQty(record[column.key]) }}</template>
+            <div class="sub-title">
+              {{ $t('wms.material.substitute') }}
+              <span class="option-desc">{{ $t('wms.material.substituteTip') }}</span>
+            </div>
+            <a-table
+              row-key="key"
+              size="small"
+              :columns="subColumns"
+              :data-source="form.substitutes"
+              :pagination="false"
+              :scroll="{ x: subScrollX }"
+              :locale="{ emptyText: $t('wms.material.noSubstitute') }"
+            >
+              <template #bodyCell="{ column, record, index }">
+                <template v-if="column.key === 'substitute'">
+                  <a-form-item :name="['substitutes', index, 'substituteId']" :rules="[{ required: true, message: $t('wms.material.selectSubstitute') }]" class="cell-item">
+                    <MaterialSelect
+                      :value="record.substituteId"
+                      :label="record.label"
+                      @update:value="(v) => (record.substituteId = v)"
+                      @select="(m) => (record.label = m.label)"
+                    />
+                  </a-form-item>
                 </template>
-              </a-table>
-            </a-tab-pane>
-            <a-tab-pane key="whereUsed" :tab="$t('wms.material.whereUsedTab', { n: detail.whereUsed.length })">
-              <a-table row-key="bomId" size="small" :columns="whereUsedColumns" :data-source="detail.whereUsed" :pagination="false">
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'product'">{{ record.productCode }} {{ record.productName }}</template>
-                  <template v-else-if="column.key === 'version'">
-                    {{ record.version }}
-                    <a-tag v-if="record.isDefault === 1" color="blue" :bordered="false">{{ $t('wms.material.default') }}</a-tag>
-                    <a-tag v-if="record.bomStatus !== 1" :bordered="false">{{ $t('common.status.disabled') }}</a-tag>
-                  </template>
-                  <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }}</template>
-                  <template v-else-if="column.key === 'lossRate'">{{ formatQty(record.lossRate) }}%</template>
+                <template v-else-if="column.key === 'ratio'">
+                  <a-form-item :name="['substitutes', index, 'ratio']" :rules="[{ required: true, message: $t('wms.material.inputRatio') }]" class="cell-item">
+                    <a-input-number v-model:value="record.ratio" :min="0" :step="0.5" class="full" />
+                  </a-form-item>
                 </template>
-              </a-table>
-            </a-tab-pane>
-            <a-tab-pane key="substitutes" :tab="$t('wms.material.substituteTab', { n: detail.substitutes.length })">
-              <a-table row-key="id" size="small" :columns="subViewColumns" :data-source="detail.substitutes" :pagination="false">
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'substitute'">{{ record.substituteCode }} {{ record.substituteName }}</template>
-                  <template v-else-if="column.key === 'ratio'">1 : {{ formatQty(record.ratio) }}</template>
-                  <template v-else-if="column.key === 'onHandQty'">{{ formatQty(record.onHandQty) }} {{ record.unit }}</template>
+                <template v-else-if="column.key === 'priority'">
+                  <a-input-number v-model:value="record.priority" :min="1" :max="99" :precision="0" class="full" />
                 </template>
-              </a-table>
-            </a-tab-pane>
-          </a-tabs>
+                <template v-else-if="column.key === 'remark'">
+                  <a-input v-model:value="record.remark" :maxlength="255" :placeholder="$t('wms.material.condition')" />
+                </template>
+                <template v-else-if="column.key === 'action'">
+                  <a-button type="link" danger size="small" @click="form.substitutes.splice(index, 1)"><DeleteOutlined /></a-button>
+                </template>
+              </template>
+            </a-table>
+            <a-button type="dashed" block class="add-row" :disabled="form.supplyType === SupplyType.PHANTOM" @click="addSubstitute">
+              <template #icon><PlusOutlined /></template>{{ $t('wms.material.addSubstitute') }}
+            </a-button>
+          </template>
+          <CustomFieldsForm :fields="cfFields" :values="form.cf || {}" :title="$t('wms.material.customFields')" />
+        </a-form>
+      </FormDrawer>
+      <VariantDrawer v-model:open="variantOpen" :material="variantMaterial" @generated="load" />
+
+      <!-- 详情：生产计划、被 BOM 使用、在制工单用料 -->
+      <SubPage :open="detailOpen" :title="detail ? `${detail.code} ${detail.name}` : $t('wms.common.material')" width="min(960px, 100vw)" destroy-on-close @close="detailOpen = false">
+        <template #extra>
+          <a-button v-if="detail && (canEdit || canEditPlan)" type="primary" @click="drawer.openEdit({ id: detail.id })">{{ $t('common.action.edit') }}</a-button>
         </template>
-      </a-spin>
-    </SubPage>
-    <ImportModal
-      v-model:open="importOpen"
-      :title="$t('wms.common.material')"
-      :columns="importColumns"
-      :importer="importMaterial"
-      :sample="{ code: 'M0001', name: $t('wms.material.sampleName'), spec: 'M3*8', unit: $t('wms.material.sampleUnit'), batchEnabled: $t('wms.material.sampleNo'), serialEnabled: $t('wms.material.sampleNo'), safetyStock: 100 }"
-      @success="search"
-    />
-    <MaterialUnitsModal v-model:open="unitsOpen" :material="unitsMaterial" :editable="canEdit" />
-    <RecordExtrasModal
-      v-model:open="extrasOpen"
-      :title="extrasTitle"
-      biz-type="wms_material"
-      :biz-id="extrasId"
-      :editable="userStore.hasPerm('wms:material:edit')"
-    />
-    <LabelPrintModal v-model:open="labelOpen" type-key="label.material" :items="labelItems" />
-    <PriceLevelModal ref="priceLevelRef" @saved="load" />
-    <StockHistory ref="historyRef" />
+        <a-spin :spinning="detailLoading">
+          <template v-if="detail">
+            <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="block">
+              <a-descriptions-item :label="$t('wms.material.specUnit')">{{ detail.spec || '-' }} / {{ detail.unit || '-' }}</a-descriptions-item>
+              <a-descriptions-item :label="$t('wms.inout.category')"><DictTag type="wms_material_category" :value="detail.category" /></a-descriptions-item>
+              <a-descriptions-item v-if="detail.barcode" :label="$t('wms.units.barcode')">{{ detail.barcode }}</a-descriptions-item>
+              <a-descriptions-item :label="$t('wms.material.stockSafety')">
+                <span>
+                  <span :class="{ danger: belowSafety(detail) }">{{ formatQty(detail.onHandQty) }}</span> /
+                  {{ detail.safetyStock != null ? formatQty(detail.safetyStock) : '-' }} {{ detail.unit }}
+                </span>
+              </a-descriptions-item>
+              <a-descriptions-item :label="$t('wms.material.supplyType')">
+                <span>
+                  <DictTag type="mes_supply_type" :value="detail.effectiveSupplyType" />
+                  <span v-if="!detail.supplyType" class="sub-text">{{ $t('wms.material.auto') }}</span>
+                </span>
+              </a-descriptions-item>
+              <a-descriptions-item :label="$t('wms.material.defaultBom')">{{ detail.bomVersion ? $t('wms.material.bomLead', { version: detail.bomVersion, days: detail.bomLeadDays }) : '-' }}</a-descriptions-item>
+              <a-descriptions-item :label="$t('wms.material.defaultSupplier')">
+                {{ detail.supplierName ? $t('wms.material.supplierLead', { name: detail.supplierName, days: detail.supplierLeadDays }) : '-' }}
+              </a-descriptions-item>
+              <a-descriptions-item :label="$t('wms.material.leadDays')">{{ leadText(detail) }}</a-descriptions-item>
+              <a-descriptions-item :label="$t('wms.material.lotRule')">{{ planRule(detail).join($t('wms.material.listSep')) || '-' }}</a-descriptions-item>
+              <a-descriptions-item :label="$t('wms.material.overIssue')">{{ formatQty(detail.overIssueRate) }}%</a-descriptions-item>
+              <a-descriptions-item v-if="detail.fqcRequired === 1" :label="$t('wms.material.fqc')">{{ $t('wms.material.fqcYes') }}</a-descriptions-item>
+              <a-descriptions-item v-if="detail.planner" :label="$t('wms.material.planner')">{{ detail.planner }}</a-descriptions-item>
+            </a-descriptions>
+            <a-tabs size="small">
+              <a-tab-pane v-if="canSeeKit" key="usage" :tab="$t('wms.material.usageTab', { n: usage.length })">
+                <a-table row-key="woMaterialId" size="small" :columns="usageColumns" :data-source="usage" :pagination="false" :scroll="{ x: 820 }">
+                  <template #bodyCell="{ column, record }">
+                    <template v-if="column.key === 'wo'">
+                      <div>{{ record.woNo }} <DictTag type="mes_wo_status" :value="record.woStatus" /></div>
+                      <div class="sub-text">{{ record.productCode }} {{ record.productName }}</div>
+                    </template>
+                    <template v-else-if="column.key === 'shortageQty'">
+                      <span :class="{ danger: Number(record.shortageQty) > 0 }">{{ formatQty(record.shortageQty) }}</span>
+                    </template>
+                    <template v-else-if="QTY_KEYS.includes(column.key)">{{ formatQty(record[column.key]) }}</template>
+                  </template>
+                </a-table>
+              </a-tab-pane>
+              <a-tab-pane key="whereUsed" :tab="$t('wms.material.whereUsedTab', { n: detail.whereUsed.length })">
+                <a-table row-key="bomId" size="small" :columns="whereUsedColumns" :data-source="detail.whereUsed" :pagination="false">
+                  <template #bodyCell="{ column, record }">
+                    <template v-if="column.key === 'product'">{{ record.productCode }} {{ record.productName }}</template>
+                    <template v-else-if="column.key === 'version'">
+                      {{ record.version }}
+                      <a-tag v-if="record.isDefault === 1" color="blue" :bordered="false">{{ $t('wms.material.default') }}</a-tag>
+                      <a-tag v-if="record.bomStatus !== 1" :bordered="false">{{ $t('common.status.disabled') }}</a-tag>
+                    </template>
+                    <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }}</template>
+                    <template v-else-if="column.key === 'lossRate'">{{ formatQty(record.lossRate) }}%</template>
+                  </template>
+                </a-table>
+              </a-tab-pane>
+              <a-tab-pane key="substitutes" :tab="$t('wms.material.substituteTab', { n: detail.substitutes.length })">
+                <a-table row-key="id" size="small" :columns="subViewColumns" :data-source="detail.substitutes" :pagination="false">
+                  <template #bodyCell="{ column, record }">
+                    <template v-if="column.key === 'substitute'">{{ record.substituteCode }} {{ record.substituteName }}</template>
+                    <template v-else-if="column.key === 'ratio'">1 : {{ formatQty(record.ratio) }}</template>
+                    <template v-else-if="column.key === 'onHandQty'">{{ formatQty(record.onHandQty) }} {{ record.unit }}</template>
+                  </template>
+                </a-table>
+              </a-tab-pane>
+            </a-tabs>
+          </template>
+        </a-spin>
+      </SubPage>
+      <ImportModal
+        v-model:open="importOpen"
+        :title="$t('wms.common.material')"
+        :columns="importColumns"
+        :importer="importMaterial"
+        :sample="{ code: 'M0001', name: $t('wms.material.sampleName'), spec: 'M3*8', unit: $t('wms.material.sampleUnit'), batchEnabled: $t('wms.material.sampleNo'), serialEnabled: $t('wms.material.sampleNo'), safetyStock: 100 }"
+        @success="onImported"
+      />
+      <MaterialUnitsModal v-model:open="unitsOpen" :material="unitsMaterial" :editable="canEdit" />
+      <RecordExtrasModal
+        v-model:open="extrasOpen"
+        :title="extrasTitle"
+        biz-type="wms_material"
+        :biz-id="extrasId"
+        :editable="userStore.hasPerm('wms:material:edit')"
+      />
+      <LabelPrintModal v-model:open="labelOpen" type-key="label.material" :items="labelItems" />
+      <PriceLevelModal ref="priceLevelRef" @saved="load" />
+      <StockHistory ref="historyRef" />
+    </div>
   </div>
 </template>
 
 <script setup>
 import SubPage from '@/components/SubPage.vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { isZh } from '@/locales'
 import { message } from 'ant-design-vue'
-import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, DollarOutlined, ImportOutlined, PaperClipOutlined, PlusOutlined, QuestionCircleOutlined, SwapOutlined } from '@ant-design/icons-vue'
+import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, DollarOutlined, ImportOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PaperClipOutlined, PlusOutlined, QuestionCircleOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -446,6 +451,8 @@ import StatusSwitch from '@/components/StatusSwitch.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import LabelPrintModal from '@/components/label/LabelPrintModal.vue'
 import LocationSelect from '@/components/wms/LocationSelect.vue'
+import MaterialCategorySelect from '@/components/wms/MaterialCategorySelect.vue'
+import MaterialCategoryTree from '@/components/wms/MaterialCategoryTree.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import MaterialUnitsModal from '@/components/wms/MaterialUnitsModal.vue'
 import StockHistory from '@/components/wms/StockHistory.vue'
@@ -472,6 +479,7 @@ import { CostMethod, SupplyType } from '@/constants/enums'
 import AiExtractButton from '@/components/ai/AiExtractButton.vue'
 import AiPrefillAlert from '@/components/ai/AiPrefillAlert.vue'
 import { useAiPrefill } from '@/composables/useAiPrefill'
+import { load as loadPref, save as savePref } from '@/utils/storage'
 const { t } = useI18n()
 
 /**
@@ -482,6 +490,12 @@ const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPerm('wms:material:edit'))
 const canEditPlan = computed(() => userStore.hasPerm('mes:material:edit'))
 const canSeeKit = computed(() => userStore.hasPerm('mes:kit:list'))
+// 左侧分类树：显示 / 隐藏记在本机
+const showCategory = ref(loadPref('material-page:show-category', true))
+watch(showCategory, (v) => savePref('material-page:show-category', v))
+const categoryTreeRef = ref()
+/** 物料有增删改、导入后刷新分类树上的物料数 */
+const refreshCounts = () => categoryTreeRef.value?.refresh()
 const dict = useDict('sys_common_status', 'wms_material_category', 'wms_material_brand', 'mes_supply_type', 'mes_wo_status', 'wms_cost_method')
 const UNITS = (isZh() ? ['个', '件', '台', '箱', '包', '桶', '瓶', '袋', 'kg', 'g', 'L', 'm'] : ['pcs', 'set', 'box', 'pack', 'bag', 'bottle', 'drum', 'kg', 'g', 'L', 'm']).map((value) => ({ value })) // i18n-ignore
 const SUPPLY_HINTS = {
@@ -550,7 +564,8 @@ const importColumns = computed(() => [
   { title: t('wms.material.name'), key: 'name', required: true },
   { title: t('wms.inout.spec'), key: 'spec' },
   { title: t('wms.material.unit'), key: 'unit' },
-  { title: t('wms.inout.category'), key: 'category', dict: 'wms_material_category' },
+  // 分类可填编码、完整路径（如「电子元器件/电阻」）或不重名的分类名称，由后端匹配
+  { title: t('wms.inout.category'), key: 'category' },
   { title: t('pricing.goods.brand'), key: 'brand', dict: 'wms_material_brand' },
   { title: t('wms.material.batchManaged'), key: 'batchEnabled', type: 'bool' },
   { title: t('wms.material.serialManaged'), key: 'serialEnabled', type: 'bool' },
@@ -565,7 +580,7 @@ const columns = [
   { title: t('wms.inout.spec'), dataIndex: 'spec', width: 150, ellipsis: true },
   { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
   { title: t('wms.units.barcode'), key: 'barcode', width: 140, ellipsis: true },
-  { title: t('wms.inout.category'), key: 'category', width: 100, dict: 'wms_material_category' },
+  { title: t('wms.inout.category'), key: 'category', width: 160, dict: 'wms_material_category' },
   { title: t('pricing.goods.brand'), key: 'brand', width: 100, dict: 'wms_material_brand' },
   ...PRICE_FIELDS.map((key, level) => ({ title: key, key, dataIndex: key, priceLevel: level, width: 100, align: 'right' })),
   { title: t('wms.material.tracking'), key: 'tracking', width: 120 },
@@ -753,6 +768,7 @@ const drawer = useFormDrawer(
     }),
     onSuccess: () => {
       load()
+      refreshCounts()
       if (detailOpen.value && detail.value) openDetail(detail.value.id)
     }
   })
@@ -779,6 +795,12 @@ async function remove(ids) {
   message.success(t('common.msg.deleteSuccess'))
   selectedKeys.value = selectedKeys.value.filter((k) => !ids.includes(k))
   load()
+  refreshCounts()
+}
+
+function onImported() {
+  search()
+  refreshCounts()
 }
 
 // ---------------------------------------------------------------- 详情

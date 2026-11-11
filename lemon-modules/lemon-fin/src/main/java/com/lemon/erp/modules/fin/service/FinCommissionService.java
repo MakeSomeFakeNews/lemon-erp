@@ -15,6 +15,8 @@ import com.lemon.erp.modules.fin.mapper.FinCommissionQueryMapper;
 import com.lemon.erp.modules.fin.mapper.FinCommissionRuleMapper;
 import com.lemon.erp.modules.fin.model.CommissionBasis;
 import com.lemon.erp.modules.fin.model.CommissionStatus;
+import com.lemon.erp.modules.wms.model.MaterialCategoryTree;
+import com.lemon.erp.modules.wms.service.WmsMaterialCategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +32,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -52,6 +53,7 @@ public class FinCommissionService {
 
 
     private final FinCommissionRuleMapper ruleMapper;
+    private final WmsMaterialCategoryService categoryService;
     private final FinCommissionMapper commissionMapper;
     private final FinCommissionLineMapper lineMapper;
     private final FinCommissionQueryMapper queryMapper;
@@ -136,6 +138,7 @@ public class FinCommissionService {
         }
         List<Perf> perfs = performance(period);
         List<FinCommissionRule> rules = ruleMapper.selectList(Wrappers.<FinCommissionRule>lambdaQuery().eq(FinCommissionRule::getStatus, EnableStatus.ENABLED));
+        MaterialCategoryTree categories = categoryService.tree();
         BigDecimal total = BigDecimal.ZERO;
         for (Perf perf : perfs) {
             List<Map<String, Object>> detail = new ArrayList<>();
@@ -146,7 +149,7 @@ public class FinCommissionService {
                 Map<String, BigDecimal> buckets = basis == CommissionBasis.RECEIPT ? Map.of("", perf.receipt) : perf.byCategory(basis);
                 for (Map.Entry<String, BigDecimal> b : buckets.entrySet()) {
                     String category = b.getKey().isEmpty() ? null : b.getKey();
-                    FinCommissionRule rule = match(rules, basis, perf.salesmanId, category, achievement);
+                    FinCommissionRule rule = match(rules, basis, perf.salesmanId, categories.lineage(category), achievement);
                     if (rule == null || b.getValue().signum() == 0) {
                         continue;
                     }
@@ -237,14 +240,20 @@ public class FinCommissionService {
 
     // ---------------------------------------------------------------- 内部
 
-    /** 最具体（指定业务员 2 分 + 指定分类 1 分）、门槛最高的已达成规则 */
-    static FinCommissionRule match(List<FinCommissionRule> rules, CommissionBasis basis, Long salesmanId, String category, BigDecimal achievement) {
+    /**
+     * 最具体（指定业务员 2 分 + 指定分类 1 分）、分类最近、门槛最高的已达成规则。
+     * 物料分类是多级的：指定上级分类的规则对下级分类同样适用，同时有上级、下级分类的规则时取最近的
+     *
+     * @param lineage 业绩所属物料分类及其各级上级的编码（自身在前），没有分类为空列表
+     */
+    static FinCommissionRule match(List<FinCommissionRule> rules, CommissionBasis basis, Long salesmanId, List<String> lineage, BigDecimal achievement) {
         return rules.stream()
                 .filter(r -> r.getBasis() == basis)
                 .filter(r -> r.getSalesmanId() == null || r.getSalesmanId().equals(salesmanId))
-                .filter(r -> r.getMaterialCategory() == null || Objects.equals(r.getMaterialCategory(), category))
+                .filter(r -> r.getMaterialCategory() == null || lineage.contains(r.getMaterialCategory()))
                 .filter(r -> r.getThreshold().compareTo(achievement) <= 0)
                 .max(Comparator.comparingInt((FinCommissionRule r) -> (r.getSalesmanId() != null ? 2 : 0) + (r.getMaterialCategory() != null ? 1 : 0))
+                        .thenComparingInt(r -> r.getMaterialCategory() == null ? 0 : -lineage.indexOf(r.getMaterialCategory()))
                         .thenComparing(FinCommissionRule::getThreshold))
                 .orElse(null);
     }

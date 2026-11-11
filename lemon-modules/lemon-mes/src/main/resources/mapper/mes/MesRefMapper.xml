@@ -43,4 +43,11 @@
         END
     </select>
 
+    <!-- 物料分类（按编码关联，分类表只读关联） -->
+    <select id="findMaterialCategory" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM qms_inspection_plan x JOIN wms_material_category c ON c.code = x.material_category WHERE c.id = #{id}) THEN 'mes.label.inspectionPlan'
+        END
+    </select>
+
 </mapper>

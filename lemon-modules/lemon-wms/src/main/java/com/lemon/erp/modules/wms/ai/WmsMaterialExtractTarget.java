@@ -5,8 +5,9 @@ import com.lemon.erp.framework.ai.AiExtractTarget;
 import com.lemon.erp.framework.ai.AiPrefill;
 import com.lemon.erp.framework.ai.AiPrefillBuilder;
 import com.lemon.erp.framework.ai.AiSchema;
-import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
+import com.lemon.erp.modules.wms.model.MaterialCategoryTree;
+import com.lemon.erp.modules.wms.service.WmsMaterialCategoryService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.annotation.Order;
@@ -19,7 +20,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * 智能录入：物料（产品规格书、报价单中的单个商品、标签照片等），分类按业务字典 wms_material_category 的名称匹配，
+ * 智能录入：物料（产品规格书、报价单中的单个商品、标签照片等），分类按物料分类的完整路径（作为枚举给模型）、编码或不重名的名称匹配，
  * 提示已有名称和规格相同的物料、编码已被使用
  */
 @Component
@@ -27,11 +28,10 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class WmsMaterialExtractTarget implements AiExtractTarget {
 
-    private static final String CATEGORY_DICT = "wms_material_category";
     private static final Pattern CODE = Pattern.compile("^[A-Za-z0-9_.-]{1,64}$");
 
     private final WmsMaterialService materialService;
-    private final DictLookup dictLookup;
+    private final WmsMaterialCategoryService categoryService;
 
     @Override
     public String key() {
@@ -50,7 +50,7 @@ public class WmsMaterialExtractTarget implements AiExtractTarget {
 
     @Override
     public Map<String, Object> schema() {
-        List<String> categories = List.copyOf(dictLookup.options(CATEGORY_DICT).values());
+        List<String> categories = List.copyOf(categoryService.options().values());
         AiSchema category = categories.isEmpty() ? AiSchema.string("wms.ai.extractCategory").maxLength(64)
                 : AiSchema.enumOf("wms.ai.extractCategory", categories.toArray(String[]::new));
         return AiSchema.object()
@@ -112,14 +112,11 @@ public class WmsMaterialExtractTarget implements AiExtractTarget {
         return b.build();
     }
 
-    /** 分类：按字典名称或键值匹配（忽略大小写），匹配不上为 null */
+    /** 分类：按编码、完整路径或不重名的名称匹配可选用的分类，匹配不上为 null */
     private String categoryValue(String text) {
-        for (Map.Entry<String, String> e : dictLookup.options(CATEGORY_DICT).entrySet()) {
-            if (e.getValue().equals(text) || e.getKey().equalsIgnoreCase(text)) {
-                return e.getKey();
-            }
-        }
-        return null;
+        MaterialCategoryTree tree = categoryService.tree();
+        String code = tree.resolve(text);
+        return code != null && tree.usable(code) ? code : null;
     }
 
     /** 规格相同：都为空，或忽略大小写和空白后相同 */

@@ -89,8 +89,7 @@
           </a-col>
           <a-col :span="12">
             <a-form-item :label="$t('scm.promotion.materialCategory')" name="materialCategory" :extra="$t('scm.promotion.materialCategoryExtra')">
-              <a-select v-model:value="form.materialCategory" allow-clear :placeholder="$t('scm.promotion.allCategories')" :disabled="!!form.materialId"
-                :options="toOptions(dict.wms_material_category)" />
+              <MaterialCategorySelect v-model="form.materialCategory" usable-only :placeholder="$t('scm.promotion.allCategories')" :disabled="!!form.materialId" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
@@ -182,6 +181,7 @@
 </template>
 
 <script setup>
+import MaterialCategorySelect from '@/components/wms/MaterialCategorySelect.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'

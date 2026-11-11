@@ -6,7 +6,9 @@
         SELECT period AS "period", SUM(amount) AS "amount", SUM(cost) AS "cost", SUM(profit) AS "profit", SUM(qty) AS "qty"
         FROM bi_fact_sales
         WHERE period &gt;= #{fromPeriod}
-        <if test="category != null and category != ''">AND category = #{category}</if>
+        <if test="category != null and category != ''">
+            AND category IN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialCategoryMapper.subtreeCodes"><property name="code" value="category"/></include>)
+        </if>
         GROUP BY period
         ORDER BY period
     </select>

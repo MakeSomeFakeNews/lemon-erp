@@ -63,7 +63,12 @@
         <if test="sales and q.salesmanId != null">AND o.salesman_id = #{q.salesmanId}</if>
         <if test="sales and q.noSalesman">AND o.salesman_id IS NULL</if>
         <if test="q.materialId != null">AND i.material_id = #{q.materialId}</if>
-        <if test="q.category != null and q.category != ''">AND m.category = #{q.category}</if>
+        <if test="q.category != null and q.category != ''">
+            <choose>
+                <when test="q.categoryExact">AND m.category = #{q.category}</when>
+                <otherwise>AND m.category IN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialCategoryMapper.subtreeCodes"><property name="code" value="q.category"/></include>)</otherwise>
+            </choose>
+        </if>
         <if test="q.noCategory">AND (m.category IS NULL OR m.category = '')</if>
         <if test="q.brand != null and q.brand != ''">AND m.brand = #{q.brand}</if>
         <if test="q.noBrand">AND (m.brand IS NULL OR m.brand = '')</if>
@@ -355,7 +360,12 @@
 
     <sql id="materialFilters">
         AND m.is_template = 0
-        <if test="q.category != null and q.category != ''">AND m.category = #{q.category}</if>
+        <if test="q.category != null and q.category != ''">
+            <choose>
+                <when test="q.categoryExact">AND m.category = #{q.category}</when>
+                <otherwise>AND m.category IN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialCategoryMapper.subtreeCodes"><property name="code" value="q.category"/></include>)</otherwise>
+            </choose>
+        </if>
         <if test="q.brand != null and q.brand != ''">AND m.brand = #{q.brand}</if>
         <if test="q.keyword != null and q.keyword != ''">
             AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%'))

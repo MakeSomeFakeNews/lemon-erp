@@ -40,4 +40,13 @@
         END
     </select>
 
+    <!-- 物料分类（按编码关联，分类表只读关联）：提成规则、按物料分类设置的凭证科目（存货、主营业务收入、主营业务成本） -->
+    <select id="findMaterialCategory" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM fin_commission_rule x JOIN wms_material_category c ON c.code = x.material_category WHERE c.id = #{id}) THEN 'fin.label.commissionRule'
+            WHEN EXISTS (SELECT 1 FROM fin_account_rule x JOIN wms_material_category c ON c.code = x.dim_value
+                         WHERE c.id = #{id} AND x.role IN ('INVENTORY', 'REVENUE', 'COST_OF_SALES')) THEN 'fin.label.voucherAccountSettings'
+        END
+    </select>
+
 </mapper>

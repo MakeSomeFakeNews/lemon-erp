@@ -300,6 +300,7 @@ export default {
   1371: 'Edit Material', // 物料修改
   1372: 'Delete Material', // 物料删除
   1373: 'Planning Attributes', // 生产计划属性
+  1374: 'Maintain Material Categories', // 物料分类维护
   1380: 'Add Warehouse', // 仓库新增
   1381: 'Edit Warehouse', // 仓库修改
   1382: 'Delete Warehouse', // 仓库删除

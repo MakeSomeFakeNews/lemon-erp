@@ -92,7 +92,7 @@
             <template #cell="{ column, record }">
               <a-input v-if="column.key === 'itemName'" v-model:value="record.itemName" :maxlength="64" :placeholder="$t('scm.rebate.itemNamePh')" />
               <a-select v-else-if="column.key === 'brand'" v-model:value="record.brand" :options="toOptions(dict.wms_material_brand)" allow-clear class="full" />
-              <a-select v-else-if="column.key === 'category'" v-model:value="record.category" :options="toOptions(dict.wms_material_category)" allow-clear class="full" />
+              <MaterialCategorySelect v-else-if="column.key === 'category'" v-model="record.category" usable-only class="full" />
               <a-input-number v-else-if="column.key === 'amount'" v-model:value="record.amount" :min="0.01" :precision="2" prefix="¥" class="full" />
             </template>
           </LineItemsTable>
@@ -123,6 +123,7 @@
 </template>
 
 <script setup>
+import MaterialCategorySelect from '@/components/wms/MaterialCategorySelect.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'

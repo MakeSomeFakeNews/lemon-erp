@@ -1424,6 +1424,7 @@ export const RefType = Object.freeze({
   SUPPLIER: 'SUPPLIER',
   USER: 'USER',
   DEPT: 'DEPT',
+  MATERIAL_CATEGORY: 'MATERIAL_CATEGORY', // 物料分类
 })
 
 /** com.lemon.erp.modules.scm.model.RequisitionStatus（字典 scm_requisition_status） */

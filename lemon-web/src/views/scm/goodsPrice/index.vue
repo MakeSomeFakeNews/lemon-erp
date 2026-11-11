@@ -6,7 +6,7 @@
           <a-input v-model:value="query.keyword" :placeholder="$t('pricing.goods.keyword')" allow-clear />
         </a-form-item>
         <a-form-item :label="$t('pricing.goods.category')" name="category">
-          <a-select v-model:value="query.category" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_material_category)" />
+          <MaterialCategorySelect v-model="query.category" :placeholder="$t('common.placeholder.all')" />
         </a-form-item>
         <a-form-item :label="$t('pricing.goods.brand')" name="brand">
           <a-select v-model:value="query.brand" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_material_brand)" />
@@ -92,6 +92,7 @@
 </template>
 
 <script setup>
+import MaterialCategorySelect from '@/components/wms/MaterialCategorySelect.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { message, Modal } from 'ant-design-vue'
@@ -122,7 +123,7 @@ const saving = ref(false)
 const columns = computed(() => [
   { title: t('wms.common.material'), key: 'name', width: 240, fixed: 'left' },
   { title: t('common.field.unit'), dataIndex: 'unit', key: 'unit', width: 70 },
-  { title: t('pricing.goods.category'), key: 'category', width: 100, dict: 'wms_material_category' },
+  { title: t('pricing.goods.category'), key: 'category', width: 160, dict: 'wms_material_category' },
   { title: t('pricing.goods.brand'), key: 'brand', width: 100, dict: 'wms_material_brand' },
   { title: t('pricing.goods.refCost'), key: 'refCost', dataIndex: 'refCost', width: 100, align: 'right' },
   ...enabledLevels.value.map((l) => ({ title: l.name, key: l.field, dataIndex: l.field, priceLevel: l.level, width: 130, align: 'right' }))
