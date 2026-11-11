@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 出纳管理：现金日记账、银行日记账（按日期逐笔列出现金 / 银行科目的收支、对方科目和余额，每日小计）和资金日报（各账户的期初、收入、支出、余额）。
+ * 出纳管理：现金日记账、银行日记账（按日期逐笔列出现金 / 银行科目的收支、对方科目（按分录配对）和余额，每日小计）和资金日报（各账户的期初、收入、支出、余额）。
  * 数据来自凭证，默认包含未审核、未记账的凭证（出纳需要实时余额），也可只看已记账的；另提示还没有生成凭证的收付款
  */
 @Service
@@ -50,7 +50,7 @@ public class FinCashierService {
         BigDecimal balance = cashierMapper.sumBefore(ids, begin, posted);
         rows.add(line(LedgerRowType.OPEN, begin, Messages.get("fin.text.openingBalance"), null, null, balance));
         List<CashierViews.JournalEntry> entries = cashierMapper.selectJournal(ids, begin, end, posted);
-        Map<Long, String> counters = counterAccounts(entries, ids);
+        Map<Long, String> counters = counterAccounts(entries);
         BigDecimal dayDebit = BigDecimal.ZERO;
         BigDecimal dayCredit = BigDecimal.ZERO;
         BigDecimal totalDebit = BigDecimal.ZERO;
@@ -72,7 +72,7 @@ public class FinCashierService {
             totalDebit = totalDebit.add(debit);
             totalCredit = totalCredit.add(credit);
             rows.add(new CashierViews.JournalRow(LedgerRowType.ENTRY, date, e.getSummary(), debit, credit, balance, e.getVoucherId(),
-                    e.getVoucherNo(), e.getVoucherStatus(), e.getAccountCode(), e.getAccountName(), counters.get(e.getVoucherId()),
+                    e.getVoucherNo(), e.getVoucherStatus(), e.getAccountCode(), e.getAccountName(), counters.get(e.getEntryId()),
                     e.getSourceType(), e.getSourceNo()));
         }
         if (day != null) {
@@ -142,14 +142,13 @@ public class FinCashierService {
         return accountService.selfAndChildren(account);
     }
 
-    /** 每张凭证的对方科目（现金、银行以外的科目名称，顿号分隔） */
-    private Map<Long, String> counterAccounts(List<CashierViews.JournalEntry> entries, List<Long> ids) {
+    /** 每笔分录的对方科目：按分录配对（规则见 {@link CounterAccounts}），分录 ID → 科目名称（顿号分隔） */
+    private Map<Long, String> counterAccounts(List<CashierViews.JournalEntry> entries) {
         List<Long> voucherIds = entries.stream().map(CashierViews.JournalEntry::getVoucherId).distinct().toList();
         Map<Long, String> result = new HashMap<>();
         for (int i = 0; i < voucherIds.size(); i += 500) {
             List<Long> chunk = voucherIds.subList(i, Math.min(i + 500, voucherIds.size()));
-            cashierMapper.selectCounterAccounts(chunk, ids).forEach(r -> result.merge(r.getVoucherId(),
-                    r.getAccountName(), (a, b) -> a.equals(b) ? a : a + "、" + b));
+            result.putAll(CounterAccounts.of(cashierMapper.selectVoucherLines(chunk)));
         }
         return result;
     }

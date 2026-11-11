@@ -44,7 +44,11 @@
                 <when test="groupBy == 'MONTH'">t.period</when>
                 <otherwise>i.material_id, m.code, m.name</otherwise>
             </choose>
-        ORDER BY 4 DESC
+        <!-- 按月份时按月份先后，其他维度按收入从高到低 -->
+        <choose>
+            <when test="groupBy == 'MONTH'">ORDER BY t.period</when>
+            <otherwise>ORDER BY 4 DESC, 1</otherwise>
+        </choose>
     </select>
 
     <select id="selectMarginDetail" resultType="com.lemon.erp.modules.fin.dto.FinAnalysis$MarginDetailRow">

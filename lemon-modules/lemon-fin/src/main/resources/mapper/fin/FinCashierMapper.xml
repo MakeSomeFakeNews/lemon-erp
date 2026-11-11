@@ -23,7 +23,7 @@
     </select>
 
     <select id="selectJournal" resultType="com.lemon.erp.modules.fin.dto.CashierViews$JournalEntry">
-        SELECT v.voucher_date AS "entryDate", v.id AS "voucherId", v.voucher_no AS "voucherNo", v.status AS "voucherStatus",
+        SELECT e.id AS "entryId", v.voucher_date AS "entryDate", v.id AS "voucherId", v.voucher_no AS "voucherNo", v.status AS "voucherStatus",
                v.source_type AS "sourceType", v.source_no AS "sourceNo", e.summary AS "summary", a.id AS "accountId", a.code AS "accountCode", a.name AS "accountName",
                e.debit AS "debit", e.credit AS "credit"
         FROM fin_voucher_entry e
@@ -34,12 +34,12 @@
         ORDER BY v.voucher_date, v.period, v.voucher_seq, e.seq
     </select>
 
-    <select id="selectCounterAccounts" resultType="com.lemon.erp.modules.fin.dto.CashierViews$CounterAccount">
-        SELECT DISTINCT e.voucher_id AS "voucherId", a.name AS "accountName"
+    <select id="selectVoucherLines" resultType="com.lemon.erp.modules.fin.dto.CashierViews$VoucherLine">
+        SELECT e.voucher_id AS "voucherId", e.id AS "entryId", a.name AS "accountName", e.debit AS "debit", e.credit AS "credit"
         FROM fin_voucher_entry e
         JOIN fin_account a ON a.id = e.account_id
         WHERE e.voucher_id IN <foreach collection="voucherIds" item="id" open="(" separator="," close=")">#{id}</foreach>
-          AND e.account_id NOT IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY e.voucher_id, e.seq, e.id
     </select>
 
     <select id="sumByAccount" resultType="com.lemon.erp.modules.fin.dto.CashierViews$AccountTotal">

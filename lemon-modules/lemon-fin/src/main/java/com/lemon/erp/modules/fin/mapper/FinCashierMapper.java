@@ -16,13 +16,12 @@ public interface FinCashierMapper {
     /** 日期之前的余额（借 - 贷），含科目期初 */
     BigDecimal sumBefore(@Param("accountIds") Collection<Long> accountIds, @Param("date") LocalDate date, @Param("posted") boolean posted);
 
-    /** 日记账分录：[{entryDate, voucherId, voucherNo, voucherStatus, summary, accountId, accountCode, accountName, debit, credit}] */
+    /** 日记账分录：[{entryId, entryDate, voucherId, voucherNo, voucherStatus, summary, accountId, accountCode, accountName, debit, credit}] */
     List<CashierViews.JournalEntry> selectJournal(@Param("accountIds") Collection<Long> accountIds, @Param("begin") LocalDate begin,
                                             @Param("end") LocalDate end, @Param("posted") boolean posted);
 
-    /** 凭证中现金、银行以外的分录科目（对方科目）：[{voucherId, accountName}] */
-    List<CashierViews.CounterAccount> selectCounterAccounts(@Param("voucherIds") Collection<Long> voucherIds,
-                                                    @Param("accountIds") Collection<Long> accountIds);
+    /** 凭证的全部分录（按凭证、行号排列），用于按分录配对确定对方科目：[{voucherId, entryId, accountName, debit, credit}] */
+    List<CashierViews.VoucherLine> selectVoucherLines(@Param("voucherIds") Collection<Long> voucherIds);
 
     /** 按科目汇总期间的收入、支出和笔数：[{accountId, debit, credit, inCount, outCount}] */
     List<CashierViews.AccountTotal> sumByAccount(@Param("accountIds") Collection<Long> accountIds, @Param("begin") LocalDate begin,
