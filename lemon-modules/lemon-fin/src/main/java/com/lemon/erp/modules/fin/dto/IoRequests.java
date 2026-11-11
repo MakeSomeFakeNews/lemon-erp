@@ -74,10 +74,11 @@ public final class IoRequests {
                         LocalDate beginDate, LocalDate endDate) {
     }
 
-    /** 按收支类别汇总（已确认的单据）：笔数为明细行数 */
+    /** 按收支类别汇总（已确认的单据）：笔数为明细行数；账户调拨的手续费单列一行（transferFee 为 true，没有类别） */
     @Data
     public static class SummaryRow {
         private Long categoryId;
+        private boolean transferFee;
         private String categoryName;
         private FundDirection direction;
         private String accountCode;
@@ -86,11 +87,12 @@ public final class IoRequests {
         private BigDecimal amount;
     }
 
-    /** 收支明细（已确认的单据的明细行） */
+    /** 收支明细（已确认的单据的明细行）；账户调拨手续费的行 transferId 为调拨 ID（docId、类别为空），账户为支付手续费的账户 */
     @Data
     public static class LineRow {
         private Long id;
         private Long docId;
+        private Long transferId;
         private String docNo;
         private LocalDate docDate;
         private FundDirection direction;

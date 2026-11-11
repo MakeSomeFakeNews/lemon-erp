@@ -1107,10 +1107,10 @@ export default {
     'SUPPLIER': 'Supplier', // 供应商
     'OTHER': 'Other', // 其他
   },
-  // 手续费承担方
+  // 手续费支付账户
   fin_fee_bearer: {
-    'FROM': 'Paying Account', // 转出账户
-    'TO': 'Receiving Account', // 转入账户
+    'FROM': 'Paid by Source Account', // 转出账户支付
+    'TO': 'Paid by Receiving Account', // 转入账户支付
   },
   // 销售渠道
   scm_channel: {

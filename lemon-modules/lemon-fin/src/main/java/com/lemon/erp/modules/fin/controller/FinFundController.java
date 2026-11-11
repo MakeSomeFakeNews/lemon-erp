@@ -149,6 +149,12 @@ public class FinFundController {
         return R.ok(fundService.pageTransfers(current, size, keyword, begin, end));
     }
 
+    @GetMapping("/fund-transfer/{id}")
+    @PreAuthorize("@ss.hasPerm('fin:transfer:list')")
+    public R<FinFundTransfer> getTransfer(@PathVariable Long id) {
+        return R.ok(fundService.getTransfer(id));
+    }
+
     @PostMapping("/fund-transfer")
     @PreAuthorize("@ss.hasPerm('fin:transfer:edit')")
     @OperLog(title = "账户调拨", type = OperType.INSERT) // i18n-ignore

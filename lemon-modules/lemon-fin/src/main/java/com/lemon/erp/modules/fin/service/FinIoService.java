@@ -66,6 +66,7 @@ public class FinIoService {
     private final FinBizPeriodGuard periodGuard;
     private final DocNoService docNoService;
     private final DictLookup dictLookup;
+    private final FinFundService fundService;
 
     public PageResult<FinIoDoc> page(long current, long size, IoRequests.Query query) {
         Page<FinIoDoc> page = Page.of(current, size);
@@ -181,18 +182,34 @@ public class FinIoService {
                 "fin.error.ioDocNotConfirmed", d.getDocNo());
     }
 
-    /** 按收支类别汇总（已确认的单据，日期范围不超过一年） */
+    /**
+     * 按收支类别汇总（已确认的单据，日期范围不超过一年）；账户调拨的手续费（计入财务费用的实际支出）在支出最后单列一行
+     */
     public List<IoRequests.SummaryRow> summary(LocalDate begin, LocalDate end, FundDirection direction) {
         checkRange(begin, end);
-        return docMapper.selectSummary(begin, end, direction, IoStatus.CONFIRMED);
+        List<IoRequests.SummaryRow> rows = new ArrayList<>(docMapper.selectSummary(begin, end, direction, IoStatus.CONFIRMED));
+        IoRequests.SummaryRow fee = direction == FundDirection.IN ? null : fundService.feeSummary(begin, end);
+        if (fee != null) {
+            rows.add(fee);
+        }
+        return rows;
     }
 
-    /** 收支明细（已确认的单据的明细行） */
+    /**
+     * 收支明细（已确认的单据的明细行）和账户调拨的手续费
+     *
+     * @param categoryId  只看该类别
+     * @param transferFee 只看账户调拨的手续费
+     */
     public PageResult<IoRequests.LineRow> lines(long current, long size, LocalDate begin, LocalDate end, FundDirection direction,
-                                                Long categoryId) {
+                                                Long categoryId, boolean transferFee) {
         checkRange(begin, end);
+        boolean docs = !transferFee;
+        boolean fees = categoryId == null && direction != FundDirection.IN;
         Page<IoRequests.LineRow> page = Page.of(current, size);
-        docMapper.selectLines(page, begin, end, direction, categoryId, IoStatus.CONFIRMED);
+        if (docs || fees) {
+            docMapper.selectLines(page, begin, end, direction, categoryId, IoStatus.CONFIRMED, docs, fees);
+        }
         return PageResult.of(page);
     }
 
