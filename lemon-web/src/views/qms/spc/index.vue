@@ -121,9 +121,12 @@ function axisRange(values) {
 function chartOption(field, center, ucl, lcl) {
   const points = spc.value.points.filter((p) => p[field] != null)
   const out = (v) => v > Number(ucl) || v < Number(lcl)
+  // 控制限标签放在标线右端外侧，不与数据点重叠；网格右侧按最长的标签留出宽度
+  const labelText = (name, value) => `${name} ${Number(value)}`
   const line = (name, value, color, type = 'dashed') => ({
-    name, yAxis: Number(value), lineStyle: { color, type }, label: { formatter: `${name} ${Number(value)}`, position: 'insideEndTop' }
+    name, yAxis: Number(value), lineStyle: { color, type }, label: { formatter: labelText(name, value), position: 'end', color }
   })
+  const labelWidth = Math.max(...[['UCL', ucl], ['CL', center], ['LCL', lcl]].map(([n, v]) => labelText(n, v).length)) * 7 + 12
   return {
     tooltip: {
       trigger: 'axis',
@@ -133,7 +136,7 @@ function chartOption(field, center, ucl, lcl) {
         return `${p.inspNo}<br/>${p.date}<br/>${t('qms.spc.tooltip', { label, v: Number(p[field]) })}`
       }
     },
-    grid: { left: 8, right: 24, top: 24, bottom: 8, containLabel: true },
+    grid: { left: 8, right: labelWidth, top: 24, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: points.map((p) => p.date) },
     // 坐标范围包含控制限，否则超出数据范围的控制限不显示
     // 不显示坐标范围两端不整齐的刻度（如 1.6083），与相邻刻度挤在一起

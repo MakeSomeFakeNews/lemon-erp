@@ -1,12 +1,12 @@
 <template>
-  <div>
+  <div class="m-page">
     <!-- 选择采购订单 -->
     <template v-if="!order">
       <ScanBox ref="scanRef" :placeholder="$t('mobile.receive.scanOrder')" @scan="searchOrders" />
       <a-spin :spinning="loading">
         <div v-for="o in orders" :key="o.id" class="m-card m-click" @click="selectOrder(o.id)">
           <div class="m-row"><b>{{ o.orderNo }}</b><DictTag type="scm_order_status" :value="o.status" /></div>
-          <div class="m-row sub-text"><span>{{ o.partnerName }}</span><span>{{ o.orderDate }}</span></div>
+          <div class="m-row sub-text"><span class="m-grow">{{ o.partnerName }}</span><span class="m-nowrap">{{ o.orderDate }}</span></div>
         </div>
         <a-empty v-if="!loading && !orders.length" :description="$t('mobile.receive.noOrders')" />
       </a-spin>

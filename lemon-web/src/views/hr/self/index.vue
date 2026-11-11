@@ -53,7 +53,11 @@
               <div class="clock-records">
                 <span>{{ $t('hr.self.checkIn') }} <b>{{ timeText(todayRecord?.checkIn) }}</b></span>
                 <span>{{ $t('hr.self.checkOut') }} <b>{{ timeText(todayRecord?.checkOut) }}</b></span>
-                <DictTag v-if="todayRecord" type="hr_attendance_status" :value="todayRecord.status" />
+                <template v-if="awaitingCheckOut(todayRecord)">
+                  <DictTag v-if="todayRecord.lateMinutes" type="hr_attendance_status" :value="AttendanceStatus.LATE" />
+                  <a-tag :bordered="false">{{ $t('hr.common.awaitingCheckOut') }}</a-tag>
+                </template>
+                <DictTag v-else-if="todayRecord" type="hr_attendance_status" :value="todayRecord.status" />
               </div>
               <a-button type="primary" size="large" shape="round" :loading="clocking" class="clock-btn" @click="clock">
                 {{ todayRecord?.checkIn ? $t('hr.self.clockOut') : $t('hr.self.clockIn') }}
@@ -107,7 +111,7 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 import DictTag from '@/components/DictTag.vue'
-import { timeText } from '@/components/hr/hr'
+import { awaitingCheckOut, timeText } from '@/components/hr/hr'
 import {
   selfAppraisals,
   selfCalendar,
@@ -120,6 +124,7 @@ import {
   selfTrainings
 } from '@/api/hr'
 import { useDict } from '@/composables/useDict'
+import { AttendanceStatus } from '@/constants/enums'
 import { t } from '@/locales'
 import SelfApplyModal from './SelfApplyModal.vue'
 import SelfCalendarTab from './SelfCalendarTab.vue'

@@ -9,8 +9,8 @@
           <l-tag :text="dictText(dict.scm_order_status, o.status)" :color="dictColor(dict.scm_order_status, o.status)" />
         </view>
         <view class="m-row m-sub">
-          <text>{{ o.partnerName }}</text>
-          <text>{{ o.orderDate }}</text>
+          <text class="m-grow">{{ o.partnerName }}</text>
+          <text class="m-nowrap">{{ o.orderDate }}</text>
         </view>
       </view>
       <l-empty v-if="loaded && !orders.length" :text="t('wms.receive.noOrders')" />

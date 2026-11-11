@@ -35,6 +35,12 @@ export const hoursText = (h) => {
 
 export const timeText = (t) => (t ? dayjs(t).format('HH:mm') : '-')
 
+/**
+ * 今天已打上班卡、还没打下班卡：库里的状态是缺卡（下班打卡或补录后重新计算），界面上显示为「未打下班卡」，
+ * 与月度汇总一致，当天不计缺卡
+ */
+export const awaitingCheckOut = (a) => !!a && a.workDate === dayjs().format('YYYY-MM-DD') && !!a.checkIn && !a.checkOut
+
 /** yyyyMM ↔ dayjs */
 export const periodOf = (d) => Number(dayjs(d).format('YYYYMM'))
 export const periodDate = (p) => (p ? dayjs(`${String(p).slice(0, 4)}-${String(p).slice(4)}-01`) : undefined)

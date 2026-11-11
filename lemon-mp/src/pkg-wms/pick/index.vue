@@ -9,8 +9,8 @@
           <l-tag v-if="d.waveNo" :text="d.waveNo" color="blue" />
         </view>
         <view class="m-row m-sub">
-          <text>{{ d.customerName }} · {{ d.warehouseName }}</text>
-          <text>{{ d.shipDate }}</text>
+          <text class="m-grow">{{ d.customerName }} · {{ d.warehouseName }}</text>
+          <text class="m-nowrap">{{ d.shipDate }}</text>
         </view>
       </view>
       <l-empty v-if="loaded && !deliveries.length" :text="t('wms.pick.noDeliveries')" />

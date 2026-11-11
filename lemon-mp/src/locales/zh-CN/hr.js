@@ -23,6 +23,7 @@ export default {
   clock: {
     checkIn: '上班',
     checkOut: '下班',
+    awaitingCheckOut: '未打下班卡',
     notYet: '未打卡',
     clockIn: '上班打卡',
     clockOut: '下班打卡',

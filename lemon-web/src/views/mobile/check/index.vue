@@ -1,11 +1,11 @@
 <template>
-  <div>
+  <div class="m-page">
     <!-- 选择盘点单 -->
     <template v-if="!check">
       <div class="sub-text">{{ $t('mobile.check.tip') }}</div>
       <a-spin :spinning="loading">
         <div v-for="c in checks" :key="c.id" class="m-card m-click" @click="selectCheck(c.id)">
-          <div class="m-row"><b>{{ c.docNo }}</b><span class="sub-text">{{ c.bizDate }}</span></div>
+          <div class="m-row"><b>{{ c.docNo }}</b><span class="sub-text m-nowrap">{{ c.bizDate }}</span></div>
           <div class="sub-text">{{ c.warehouseName }}{{ c.remark ? ` · ${c.remark}` : '' }}</div>
         </div>
         <a-empty v-if="!loading && !checks.length" :description="$t('mobile.check.noChecks')" />

@@ -1,6 +1,7 @@
 /** 人力资源模块（hr.*） */
 export default {
   common: {
+    awaitingCheckOut: 'Not clocked out',
     male: 'Male',
     female: 'Female',
     change: {

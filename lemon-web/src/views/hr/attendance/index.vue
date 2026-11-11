@@ -57,7 +57,8 @@
             <span v-if="record.earlyMinutes" class="warn">{{ $t('hr.attendance.early', { n: record.earlyMinutes }) }}</span>
           </template>
           <template v-else-if="column.key === 'status'">
-            <DictTag type="hr_attendance_status" :value="record.status" />
+            <a-tag v-if="awaitingCheckOut(record)" :bordered="false">{{ $t('hr.common.awaitingCheckOut') }}</a-tag>
+            <DictTag v-else type="hr_attendance_status" :value="record.status" />
           </template>
           <template v-else-if="column.key === 'source'">
             <a-tag v-if="record.source === AttendanceSource.MANUAL" color="purple" :bordered="false">{{ $t('hr.attendance.manual') }}</a-tag>
@@ -247,7 +248,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import EmployeeSelect from '@/components/hr/EmployeeSelect.vue'
-import { timeText } from '@/components/hr/hr'
+import { awaitingCheckOut, timeText } from '@/components/hr/hr'
 import {
   addHoliday,
   addShift,
