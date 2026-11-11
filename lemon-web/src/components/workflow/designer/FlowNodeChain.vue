@@ -235,8 +235,8 @@ const move = (branch, offset) => moveBranch(node.value, branch, offset)
   border-color: #52c41a;
 }
 .status-running {
-  border-color: #1677ff;
-  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.2);
+  border-color: var(--app-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-primary) 20%, transparent);
 }
 .status-rejected {
   border-color: #ff4d4f;

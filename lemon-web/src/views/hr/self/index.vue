@@ -250,7 +250,7 @@ watch(tab, (t) => {
   align-items: center;
 }
 .avatar {
-  background: #1677ff;
+  background: var(--app-primary);
   flex-shrink: 0;
 }
 .profile-name {

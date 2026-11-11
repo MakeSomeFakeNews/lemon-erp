@@ -1,20 +1,27 @@
 <template>
-  <a-layout class="layout">
-    <!-- 桌面端侧边栏 -->
+  <!-- 双栏布局的模块栏不是 a-layout-sider，要显式声明横向排列 -->
+  <a-layout :class="['layout', `layout-${layout}`]" :has-sider="!isMobile && layout !== LayoutMode.TOP">
+    <!-- 双栏布局：最左一列模块 -->
+    <ModuleRail v-if="!isMobile && layout === LayoutMode.COLUMN" />
+    <!-- 桌面端侧边栏：当前模块的菜单（顶部模块 + 侧边菜单、双栏）或完整的多级树（侧边菜单）；顶部菜单布局没有侧边栏 -->
     <a-layout-sider
-      v-if="!isMobile"
+      v-if="!isMobile && hasSider"
       :collapsed="collapsed"
       :trigger="null"
       collapsible
-      :width="220"
-      :collapsed-width="64"
-      class="sider app-sider"
+      :width="layout === LayoutMode.COLUMN ? 200 : 220"
+      :collapsed-width="layout === LayoutMode.COLUMN ? 0 : 64"
+      :class="['sider', 'app-sider', { 'sider-hidden': layout === LayoutMode.COLUMN && collapsed }]"
     >
-      <SideMenu :collapsed="collapsed" />
+      <SideMenu
+        :collapsed="collapsed"
+        :mode="layout === LayoutMode.SIDE ? 'tree' : 'module'"
+        :hide-logo="layout === LayoutMode.COLUMN"
+      />
     </a-layout-sider>
-    <!-- 移动端抽屉菜单 -->
+    <!-- 移动端抽屉菜单（不区分布局） -->
     <a-drawer
-      v-else
+      v-if="isMobile"
       :open="drawerOpen"
       placement="left"
       :width="220"
@@ -23,13 +30,20 @@
       class="app-sider"
       @close="drawerOpen = false"
     >
-      <SideMenu full @navigate="drawerOpen = false" />
+      <SideMenu mode="full" @navigate="drawerOpen = false" />
     </a-drawer>
 
     <a-layout class="main">
       <div class="main-header">
-        <HeaderBar :collapsed="isMobile ? !drawerOpen : collapsed" :mobile="isMobile" @toggle="toggleMenu" />
-        <TabsBar />
+        <HeaderBar
+          :collapsed="isMobile ? !drawerOpen : collapsed"
+          :mobile="isMobile"
+          :layout="layout"
+          :show-toggle="isMobile || hasSider"
+          @toggle="toggleMenu"
+          @settings="settingsOpen = true"
+        />
+        <TabsBar v-if="appStore.settings.tabs" />
       </div>
       <div class="content-wrap">
         <a-layout-content class="content">
@@ -43,6 +57,7 @@
         <div id="subpage-host" class="subpage-host" />
       </div>
     </a-layout>
+    <SettingDrawer v-model:open="settingsOpen" />
     <Watermark />
   </a-layout>
 </template>
@@ -51,11 +66,17 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import Watermark from '@/components/Watermark.vue'
 import { useAppStore } from '@/store/app'
+import { LayoutMode } from '@/utils/uiSettings'
 import SideMenu from './components/SideMenu.vue'
 import HeaderBar from './components/HeaderBar.vue'
 import TabsBar from './components/TabsBar.vue'
+import ModuleRail from './components/ModuleRail.vue'
+import SettingDrawer from './components/settings/SettingDrawer.vue'
+import { useModuleNav } from './useModuleNav'
 
 const appStore = useAppStore()
+const { activeModule } = useModuleNav()
+const settingsOpen = ref(false)
 
 // 小于 768px 时侧边栏改为抽屉；768 ~ 1199px（平板）默认收起，展开只在本次有效，不改变保存的偏好
 const mobileMedia = window.matchMedia('(max-width: 767px)')
@@ -79,6 +100,12 @@ onBeforeUnmount(() => {
   tabletMedia.removeEventListener('change', onTablet)
 })
 
+const layout = computed(() => appStore.layout)
+// 顶部菜单布局没有侧边栏；双栏布局在首页等不属于模块的页面只显示模块栏
+const hasSider = computed(() =>
+  layout.value === LayoutMode.TOP ? false : layout.value === LayoutMode.COLUMN ? !!activeModule.value : true
+)
+
 function toggleMenu() {
   if (isMobile.value) drawerOpen.value = !drawerOpen.value
   else if (isTablet.value) tabletExpanded.value = !tabletExpanded.value
@@ -96,6 +123,10 @@ function toggleMenu() {
   height: 100vh;
   border-right: 1px solid var(--app-border);
   z-index: 10;
+}
+/* 双栏布局收起第二栏时宽度为 0，不显示分隔线 */
+.sider.sider-hidden {
+  border-right: none;
 }
 .main {
   min-width: 0;

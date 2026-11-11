@@ -473,7 +473,7 @@ onMounted(() => {
 }
 .platform.active {
   border-color: var(--app-primary);
-  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.12);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-primary) 12%, transparent);
 }
 .platform-main {
   flex: 1;

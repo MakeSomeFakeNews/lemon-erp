@@ -71,7 +71,7 @@ function add(type) {
 .add-node-btn {
   position: relative;
   z-index: 1;
-  box-shadow: 0 2px 6px rgba(22, 119, 255, 0.35);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--app-primary) 35%, transparent);
   transition: transform 0.15s;
 }
 .add-node-btn:hover {

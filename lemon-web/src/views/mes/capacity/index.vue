@@ -467,7 +467,7 @@ onMounted(async () => {
   font-size: 12px;
   padding: 2px 4px;
   border-radius: 4px;
-  background: rgba(22, 119, 255, 0.12);
+  background: color-mix(in srgb, var(--app-primary) 12%, transparent);
   line-height: 1.4;
 }
 .cal-entry.off {

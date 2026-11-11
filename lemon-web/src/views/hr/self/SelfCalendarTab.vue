@@ -107,7 +107,7 @@ const WEEK = [0, 1, 2, 3, 4, 5, 6].map((i) => t(`hr.self.week.${i}`))
   background: var(--app-hover);
 }
 .cal-cell.today {
-  box-shadow: inset 0 0 0 2px #1677ff;
+  box-shadow: inset 0 0 0 2px var(--app-primary);
 }
 .cal-cell.absent {
   background: rgba(255, 77, 79, 0.08);
@@ -128,7 +128,7 @@ const WEEK = [0, 1, 2, 3, 4, 5, 6].map((i) => t(`hr.self.week.${i}`))
   color: var(--app-text-3);
 }
 .cal-leave {
-  color: #1677ff;
+  color: var(--app-primary);
 }
 .cal-leave.pending {
   color: #fa8c16;

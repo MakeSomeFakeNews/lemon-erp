@@ -1,25 +1,31 @@
 <template>
   <header class="header-bar">
-    <a-button type="text" class="header-btn" @click="emit('toggle')">
+    <!-- 顶部菜单布局：Logo 在顶栏 -->
+    <router-link v-if="layout === LayoutMode.TOP && !mobile" to="/" class="header-logo">
+      <AppLogo :size="28" />
+      <span class="header-logo-title">{{ configStore.systemName }}</span>
+    </router-link>
+    <a-button v-else-if="showToggle" type="text" class="header-btn" @click="emit('toggle')">
       <template #icon>
         <MenuUnfoldOutlined v-if="collapsed" />
         <MenuFoldOutlined v-else />
       </template>
     </a-button>
 
-    <!-- 桌面端：顶部模块导航；移动端：面包屑 -->
+    <!-- 桌面端：顶部模块导航 / 顶部菜单 / 面包屑（侧边菜单、双栏布局）；移动端：当前页面 -->
     <a-menu
-      v-if="!mobile"
+      v-if="!mobile && layout === LayoutMode.MIX"
       mode="horizontal"
       class="module-nav"
       :items="moduleItems"
       :selected-keys="activeModule ? [activeModule.key] : [route.path]"
       @click="({ key }) => openModule(key)"
     />
+    <TopMenu v-else-if="!mobile && layout === LayoutMode.TOP" />
     <a-breadcrumb v-else class="breadcrumb">
-      <!-- 窄屏空间有限，只显示当前页面（所属模块可从菜单抽屉看到） -->
-      <a-breadcrumb-item v-for="(item, i) in breadcrumbs.slice(-1)" :key="i">
-        <MenuIcon v-if="item.icon" :name="item.icon" />
+      <!-- 桌面端显示完整层级；窄屏空间有限，只显示当前页面（所属模块可从菜单抽屉看到） -->
+      <a-breadcrumb-item v-for="(item, i) in mobile ? breadcrumbs.slice(-1) : breadcrumbs" :key="i">
+        <MenuIcon v-if="item.icon && (mobile || i === 0)" :name="item.icon" />
         <span>{{ item.title }}</span>
       </a-breadcrumb-item>
     </a-breadcrumb>
@@ -28,7 +34,7 @@
       <a-tooltip v-if="configStore.demoMode" :title="$t('layout.demoTip')">
         <a-tag color="orange" :bordered="false" class="demo-tag">{{ $t('layout.demoMode') }}</a-tag>
       </a-tooltip>
-      <MenuSearch />
+      <MenuSearch :compact="layout === LayoutMode.TOP" />
       <MessageBell />
       <LangSwitch btn-class="header-btn" />
       <a-tooltip :title="appStore.dark ? $t('layout.toLight') : $t('layout.toDark')">
@@ -36,6 +42,12 @@
           <template #icon>
             <ThemeIcon :dark="appStore.dark" />
           </template>
+        </a-button>
+      </a-tooltip>
+
+      <a-tooltip :title="$t('layout.settings.title')">
+        <a-button type="text" class="header-btn" @click="emit('settings')">
+          <template #icon><SkinOutlined /></template>
         </a-button>
       </a-tooltip>
 
@@ -79,7 +91,7 @@
 </template>
 
 <script setup>
-import { computed, h } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
@@ -90,11 +102,14 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   ShopOutlined,
+  SkinOutlined,
   UserOutlined
 } from '@ant-design/icons-vue'
+import AppLogo from '@/components/AppLogo.vue'
 import MenuIcon from '@/components/MenuIcon.vue'
 import MenuSearch from './MenuSearch.vue'
 import MessageBell from './MessageBell.vue'
+import TopMenu from './TopMenu.vue'
 import LangSwitch from '@/components/LangSwitch.vue'
 import ThemeIcon from '@/components/ThemeIcon.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
@@ -102,11 +117,19 @@ import { useAppStore } from '@/store/app'
 import { useConfigStore } from '@/store/config'
 import { useUserStore } from '@/store/user'
 import { buildBreadcrumbIndex } from '@/utils/menu'
-import { isZh } from '@/locales'
-import { HOME_PATH, useModuleNav } from '../useModuleNav'
+import { LayoutMode } from '@/utils/uiSettings'
+import { useModuleNav } from '../useModuleNav'
+import { homeItem, menuIcon, shortModuleTitle } from '../menuItems'
 
-defineProps({ collapsed: Boolean, mobile: Boolean })
-const emit = defineEmits(['toggle'])
+defineProps({
+  collapsed: Boolean,
+  mobile: Boolean,
+  /** 布局（utils/uiSettings 的 LayoutMode），移动端不区分 */
+  layout: { type: String, default: LayoutMode.MIX },
+  /** 显示折叠侧边栏按钮（没有侧边栏时不显示） */
+  showToggle: { type: Boolean, default: true }
+})
+const emit = defineEmits(['toggle', 'settings'])
 
 const { t } = useI18n()
 const route = useRoute()
@@ -117,13 +140,8 @@ const userStore = useUserStore()
 
 const { modules, activeModule, openModule } = useModuleNav()
 const moduleItems = computed(() => [
-  { key: HOME_PATH, label: t('route.dashboard'), icon: () => h(MenuIcon, { name: 'HomeOutlined' }) },
-  // 顶部空间有限，「供应链管理」显示为「供应链」
-  ...modules.value.map((m) => ({
-    key: m.key,
-    label: isZh() ? m.title.replace(/(.{2,})管理$/, '$1') : m.title, // i18n-ignore 中文模块名去掉「管理」后缀
-    icon: m.icon ? () => h(MenuIcon, { name: m.icon }) : undefined
-  }))
+  homeItem(),
+  ...modules.value.map((m) => ({ key: m.key, label: shortModuleTitle(m.title), icon: menuIcon(m.icon) }))
 ])
 
 const breadcrumbIndex = computed(() => buildBreadcrumbIndex(userStore.menus))
@@ -159,6 +177,23 @@ function confirmLogout() {
 }
 .header-btn {
   font-size: 16px;
+}
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 0 8px;
+  flex: none;
+}
+.header-logo-title {
+  color: var(--app-text);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .breadcrumb {
   flex: 1;

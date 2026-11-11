@@ -407,6 +407,18 @@ CREATE TABLE sys_miniapp_user (
     UNIQUE KEY uk_miniapp_user_user (user_id, tenant_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '系统用户与微信小程序的绑定（登录时按 openid 跨租户查询）';
 
+CREATE TABLE sys_user_setting (
+    id            BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id     BIGINT      NOT NULL DEFAULT 1 COMMENT '租户ID',
+    user_id       BIGINT      NOT NULL COMMENT '用户ID',
+    setting_key   VARCHAR(32) NOT NULL COMMENT '设置项标识：ui 界面设置（主题、主题色、布局、多标签页、紧凑模式等）',
+    setting_value TEXT                 DEFAULT NULL COMMENT '设置内容（JSON 对象）',
+    create_time   DATETIME             DEFAULT NULL COMMENT '创建时间',
+    update_time   DATETIME             DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_user_setting (user_id, setting_key, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '用户个人设置（只能本人读写）';
+
 CREATE TABLE sys_custom_field (
     id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id    BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID',

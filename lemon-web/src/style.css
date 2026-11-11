@@ -1,8 +1,7 @@
 /* 全局 CSS 变量：亮色为默认，html[data-theme='dark'] 时切换为暗色。自定义样式统一使用这些变量 */
 :root {
   color-scheme: light;
-  --app-primary: #1677ff;
-  --app-primary-bg: #e6f4ff;
+  /* 主题色 --app-primary、--app-primary-bg、--app-primary-hover、--app-primary-border 由 components/ThemeVars.vue 按界面设置写到 html 上 */
   --app-bg: #f4f6fa;
   --app-card: #ffffff;
   --app-header: #ffffff;
@@ -31,8 +30,6 @@
 
 html[data-theme='dark'] {
   color-scheme: dark;
-  --app-primary: #1668dc;
-  --app-primary-bg: #111a2c;
   --app-bg: #0d0d0e;
   --app-card: #18181a;
   --app-header: #18181a;
@@ -123,6 +120,44 @@ body {
 /* 去掉 antd 浅色菜单选中项右侧的竖线 */
 .app-sider .ant-menu-light .ant-menu-item::after {
   display: none;
+}
+
+/*
+ * 顶部菜单布局的下拉面板（渲染在 body 下）：有分组的模块把分组排成多列（列数由 TopMenu 按分组数给出 top-menu-cols-N），
+ * 分组不跨列；面板过高时滚动
+ */
+.top-menu-popup .ant-menu-sub.ant-menu-vertical {
+  max-height: calc(100vh - 72px);
+  overflow-y: auto;
+}
+.top-menu-popup .ant-menu-sub.ant-menu-vertical .ant-menu-item {
+  height: 36px;
+  line-height: 36px;
+  margin-block: 2px;
+}
+.top-menu-popup[class*='top-menu-cols-'] .ant-menu-sub.ant-menu-vertical {
+  display: block;
+  column-gap: 4px;
+  padding: 4px;
+}
+.top-menu-popup[class*='top-menu-cols-'] .ant-menu-sub.ant-menu-vertical > li {
+  break-inside: avoid;
+}
+.top-menu-cols-2 .ant-menu-sub.ant-menu-vertical {
+  column-count: 2;
+  width: 420px;
+}
+.top-menu-cols-3 .ant-menu-sub.ant-menu-vertical {
+  column-count: 3;
+  width: 630px;
+}
+.top-menu-cols-4 .ant-menu-sub.ant-menu-vertical {
+  column-count: 4;
+  width: min(840px, calc(100vw - 32px));
+}
+.top-menu-popup .ant-menu-item-group-title {
+  font-weight: 500;
+  color: var(--app-text-2);
 }
 
 /* 页面卡片 */

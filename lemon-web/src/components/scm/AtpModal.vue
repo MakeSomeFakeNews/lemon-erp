@@ -13,7 +13,7 @@
           <a-col :xs="12" :sm="6"><a-statistic :title="$t('scm.atp.reserved')" :value="fmt(data.reserved)" /></a-col>
           <a-col :xs="12" :sm="6"><a-statistic :title="$t('scm.atp.free')" :value="fmt(data.free)" /></a-col>
           <a-col :xs="12" :sm="6">
-            <a-statistic :title="$t('scm.atp.atp')" :value="fmt(data.atp)" :value-style="{ color: '#1677ff' }" />
+            <a-statistic :title="$t('scm.atp.atp')" :value="fmt(data.atp)" :value-style="{ color: 'var(--app-primary)' }" />
           </a-col>
         </a-row>
         <a-alert

@@ -7,7 +7,7 @@
       </a-button>
     </a-tooltip>
     <template #overlay>
-      <a-menu :selected-keys="[current.value]" @click="({ key }) => key !== current.value && setLocale(key)">
+      <a-menu :selected-keys="[current.value]" @click="({ key }) => key !== current.value && appStore.changeLocale(key)">
         <a-menu-item v-for="l in LOCALES" :key="l.value">{{ l.label }}</a-menu-item>
       </a-menu>
     </template>
@@ -17,14 +17,16 @@
 <script setup>
 import { computed } from 'vue'
 import { TranslationOutlined } from '@ant-design/icons-vue'
-import { LOCALES, currentLocale, setLocale } from '@/locales'
+import { LOCALES, currentLocale } from '@/locales'
+import { useAppStore } from '@/store/app'
 
-/** 切换界面语言（保存后刷新页面） */
+/** 切换界面语言（保存后刷新页面；已登录时同时保存到界面设置） */
 defineProps({
   btnClass: String,
   /** 显示当前语言名称 */
   showLabel: Boolean
 })
+const appStore = useAppStore()
 const current = computed(() => LOCALES.find((l) => l.value === currentLocale()) || LOCALES[0])
 </script>
 
