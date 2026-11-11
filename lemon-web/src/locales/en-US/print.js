@@ -168,6 +168,7 @@ export default {
     incomeTax: 'Income Tax',
     otherDeduction: 'Other Deductions',
     netPay: 'Net Pay',
+    deliveryNote: 'Delivery Note',
     total: 'Total'
   },
   paper: {
@@ -216,6 +217,33 @@ export default {
     company: 'Company Name',
     bgTooLarge: 'The background cannot exceed 2 MB',
     bgUploaded: 'Background uploaded'
+  },
+  format: {
+    title: 'Print Formats',
+    hint: 'A document can have several formats (e.g. a delivery note without prices for peers or drop shipping). You choose one when printing; with only one enabled format it prints directly',
+    standard: 'Standard',
+    deliveryNoPrice: 'Delivery Note (No Prices)',
+    add: 'New Format',
+    settings: 'Format Settings',
+    name: 'Format Name',
+    inputName: 'Enter a format name',
+    copyFrom: 'Copy From',
+    copyNone: 'None (default layout)',
+    copyTip: 'After copying, uncheck price and amount columns / fields to make a quantity-only format without uploading JRXML',
+    setDefault: 'Set as Default',
+    isDefault: 'Default Format',
+    defaultTip: 'With only one enabled format it prints directly; with several you choose before printing, the default or last used format is preselected',
+    disabled: 'Disabled',
+    enabled: 'Enabled',
+    count: '{n} formats',
+    deleteConfirm: 'Delete print format "{name}"?',
+    created: 'Print format added',
+    updated: 'Format settings saved',
+    deleted: 'Print format deleted',
+    defaultSet: 'Set as default format',
+    pickTitle: 'Choose Print Format',
+    pickTip: '{n} document(s) will be printed with the selected format',
+    lastUsed: 'Last used'
   },
   preview: {
     title: 'Print Preview',

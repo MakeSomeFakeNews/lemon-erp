@@ -168,6 +168,7 @@ export default {
     incomeTax: '个税',
     otherDeduction: '其他扣款',
     netPay: '实发工资',
+    deliveryNote: '发货单',
     total: '合计'
   },
   paper: {
@@ -216,6 +217,33 @@ export default {
     company: '公司名称',
     bgTooLarge: '底图不能超过 2MB',
     bgUploaded: '底图已上传'
+  },
+  format: {
+    title: '打印格式',
+    hint: '同一单据可设置多份格式（如给同行、代发第三方的不含价格发货单），打印时选择；只有一份启用的格式时直接打印',
+    standard: '标准格式',
+    deliveryNoPrice: '发货单（不含价格）',
+    add: '新增格式',
+    settings: '格式设置',
+    name: '格式名称',
+    inputName: '请输入格式名称',
+    copyFrom: '复制自',
+    copyNone: '不复制（默认版式）',
+    copyTip: '复制后可在明细列、表头字段中取消勾选单价、金额等，做出只显示数量的格式，无需上传 JRXML',
+    setDefault: '设为默认',
+    isDefault: '默认格式',
+    defaultTip: '只有一份启用的格式时直接按它打印；有多份时打印前选择，默认选中默认格式或上次使用的格式',
+    disabled: '已停用',
+    enabled: '启用',
+    count: '{n} 个格式',
+    deleteConfirm: '确定删除打印格式「{name}」？',
+    created: '已新增打印格式',
+    updated: '已保存格式设置',
+    deleted: '已删除打印格式',
+    defaultSet: '已设为默认格式',
+    pickTitle: '选择打印格式',
+    pickTip: '共 {n} 张单据，按选中的格式打印',
+    lastUsed: '上次使用'
   },
   preview: {
     title: '打印预览',

@@ -1,6 +1,7 @@
-import { listPrintTemplates } from '@/api/system/printTemplate'
+import { listPrintFormats, listPrintTemplates } from '@/api/system/printTemplate'
 import { isZh, t } from '@/locales'
 import zhPrint from '@/locales/zh-CN/print'
+import { STATUS_ENABLED } from '@/utils/constants'
 
 /**
  * 打印模板：可配置的单据（目录）、已保存的模板配置，以及把模板套用到单据上。
@@ -21,6 +22,9 @@ import zhPrint from '@/locales/zh-CN/print'
  *   signs:   [{ label, alias, hidden }]
  * }
  * 通用设置（模板标识 _common）：{ companyName }
+ *
+ * 打印格式：同一单据可以有多份格式（loadFormats，每份有自己的配置和 JRXML），其中一份为默认格式（loadTemplates 返回的即默认格式的配置）；
+ * 有多份启用的格式时打印前选择（utils/print.js）。没有保存过任何格式的单据按默认版式，相当于一份「标准格式」
  *
  * 多语言：字段、列、签字栏的「中文名称」是匹配键（模板配置、上传的 JRXML 都按它匹配），不随界面语言变化；
  * 显示时用 printLabel 翻译（译文在 locales/<语言>/print.js 的 name 中，这里按中文语言包取中文名称）
@@ -178,16 +182,31 @@ export const PRINT_TYPE_MAP = Object.fromEntries(PRINT_TYPES.map((t) => [t.key, 
 // ---------------------------------------------------------------- 已保存的模板
 
 let cache = null
+let formatCache = null
 
-/** 已保存的模板（按租户），首次打印时加载，模板修改后调用 setTemplates 更新 */
+/** 已保存的模板（按租户，各单据的默认格式），首次打印时加载；打印模板页面修改后 force 重新加载 */
 export async function loadTemplates(force = false) {
   if (!cache || force) cache = (await listPrintTemplates()) || {}
   return cache
 }
 
-export function setTemplates(templates) {
-  cache = templates
+/** 各单据的打印格式（按租户），首次打印时加载；打印模板页面修改后 force 重新加载 */
+export async function loadFormats(force = false) {
+  if (!formatCache || force) formatCache = (await listPrintFormats()) || []
+  return formatCache
 }
+
+/** 某个单据的打印格式（已按排序）；onlyEnabled 时只取启用的 */
+export function formatsOf(formats, key, onlyEnabled = false) {
+  return (formats || []).filter((f) => f.templateKey === key && (!onlyEnabled || f.status === STATUS_ENABLED))
+}
+
+/** 格式的打印配置：上传了 JRXML 的带 jrxml: true（与 loadTemplates 的结构一致） */
+export const formatConfig = (format) => (format ? { ...(format.config || {}), ...(format.jrxml ? { jrxml: true } : {}) } : undefined)
+
+/** 预置的格式名称（存库为中文）在当前语言下的显示文字，其他名称原样显示 */
+const FORMAT_NAMES = { [zhPrint.format.standard]: 'print.format.standard', [zhPrint.format.deliveryNoPrice]: 'print.format.deliveryNoPrice' }
+export const formatLabel = (name) => (!isZh() && FORMAT_NAMES[name] ? t(FORMAT_NAMES[name]) : name)
 
 // ---------------------------------------------------------------- 纸张
 
@@ -246,7 +265,7 @@ export function applyTemplate(doc, tpl, common) {
   const result = { ...doc }
   if (common?.companyName) result.companyName = common.companyName
   if (!tpl || tpl.jrxml) return result
-  if (tpl.title) result.title = tpl.title
+  if (tpl.title) result.title = printLabel(tpl.title)
   if (tpl.showCompany === false) result.companyName = ''
   if (tpl.showNote === false) result.note = undefined
   result.fields = arrange(doc.fields || [], tpl.fields, (f, s) => (s.alias ? { ...f, label: s.alias } : f))

@@ -85,7 +85,7 @@ public class PrintService {
     /** 生成 PDF：多张单据合并为一个文件，每张单独分页、编页码（工资条连续打印） */
     public byte[] pdf(PrintRequest request) {
         List<PrintDoc> docs = normalize(request);
-        String jrxml = templateService.jrxml(request.getType());
+        String jrxml = templateService.jrxml(request.getType(), request.getFormatId());
         List<JasperPrint> prints = new ArrayList<>();
         try {
             if (docs.get(0).isSlip()) {
@@ -138,15 +138,15 @@ public class PrintService {
         }
     }
 
-    /** 上传 JRXML：校验文件大小、能编译通过后保存，之后该单据按 JRXML 打印 */
-    public void uploadJrxml(String key, MultipartFile file) throws IOException {
+    /** 上传 JRXML：校验文件大小、能编译通过后保存，之后该格式（formatId 为空时为默认格式）按 JRXML 打印 */
+    public void uploadJrxml(String key, Long formatId, MultipartFile file) throws IOException {
         checkUploadAllowed();
         if (file.getSize() > MAX_JRXML) {
             throw new BizException("system.text.templateFileCannotExceedMb");
         }
         String jrxml = new String(file.getBytes(), StandardCharsets.UTF_8);
         validateJrxml(jrxml);
-        templateService.saveJrxml(key, jrxml);
+        templateService.saveJrxml(key, formatId, jrxml);
     }
 
     /** SaaS 模式下只有平台租户能上传 JRXML：其中的 Java 表达式在服务器上执行 */

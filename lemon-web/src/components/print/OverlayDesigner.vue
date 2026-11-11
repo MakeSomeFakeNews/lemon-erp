@@ -120,7 +120,7 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { PictureOutlined } from '@ant-design/icons-vue'
-import request from '@/utils/request'
+import { getPrintBackground, savePrintBackground } from '@/api/system/printTemplate'
 import { printLabel } from '@/utils/printTemplates'
 
 /**
@@ -131,6 +131,8 @@ const props = defineProps({
   open: Boolean,
   /** 打印模板标识 */
   templateKey: String,
+  /** 打印格式（同一单据有多份格式时），为空时为默认格式 */
+  formatId: Number,
   /** 单据目录（PRINT_TYPES 中的一项） */
   type: { type: Object, required: true },
   /** 纸张 { width, height, fontSize } */
@@ -238,7 +240,7 @@ onBeforeUnmount(endDrag)
 async function loadBackground() {
   background.value = ''
   if (!props.templateKey) return
-  background.value = (await request.get(`/system/print-template/${props.templateKey}/background`).catch(() => '')) || ''
+  background.value = (await getPrintBackground(props.templateKey, props.formatId).catch(() => '')) || ''
 }
 function uploadBackground(file) {
   if (file.size > 2 * 1024 * 1024) {
@@ -249,7 +251,7 @@ function uploadBackground(file) {
   reader.onload = async () => {
     uploading.value = true
     try {
-      await request.put(`/system/print-template/${props.templateKey}/background`, { dataUrl: reader.result })
+      await savePrintBackground(props.templateKey, reader.result, props.formatId)
       background.value = reader.result
       message.success(t('print.overlay.bgUploaded'))
     } finally {
@@ -260,7 +262,7 @@ function uploadBackground(file) {
   return false
 }
 async function removeBackground() {
-  await request.put(`/system/print-template/${props.templateKey}/background`, { dataUrl: null })
+  await savePrintBackground(props.templateKey, null, props.formatId)
   background.value = ''
 }
 
