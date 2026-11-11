@@ -71,59 +71,7 @@
 
             <FormatBar :model-value="currentFormat?.id" :type-key="current" :formats="keyFormats" @update:model-value="selectFormat" @changed="onFormatsChanged" />
 
-            <div class="section-title">{{ $t('print.template.basic') }}</div>
-            <a-form layout="vertical" class="basic">
-              <a-row :gutter="12">
-                <a-col :span="14">
-                  <a-form-item :label="$t('print.overlay.docTitle')">
-                    <a-input v-model:value="config.title" :placeholder="printLabel(type.name)" :maxlength="32" allow-clear />
-                  </a-form-item>
-                </a-col>
-                <a-col :span="10">
-                  <a-form-item :label="$t('print.template.orientation')">
-                    <a-radio-group v-model:value="config.orientation" button-style="solid" size="small">
-                      <a-radio-button value="portrait">{{ $t('print.template.portrait') }}</a-radio-button>
-                      <a-radio-button value="landscape">{{ $t('print.template.landscape') }}</a-radio-button>
-                    </a-radio-group>
-                  </a-form-item>
-                </a-col>
-                <a-col :span="config.paper === 'custom' ? 10 : 24">
-                  <a-form-item :label="$t('print.template.paper')">
-                    <a-select v-model:value="config.paper" :options="PAPERS" />
-                  </a-form-item>
-                </a-col>
-                <template v-if="config.paper === 'custom'">
-                  <a-col :span="7">
-                    <a-form-item :label="$t('print.template.paperWidth')">
-                      <a-input-number v-model:value="config.paperWidth" :min="50" :max="1000" :precision="0" class="full" />
-                    </a-form-item>
-                  </a-col>
-                  <a-col :span="7">
-                    <a-form-item :label="$t('print.template.paperHeight')">
-                      <a-input-number v-model:value="config.paperHeight" :min="50" :max="2000" :precision="0" class="full" />
-                    </a-form-item>
-                  </a-col>
-                </template>
-                <a-col :span="12">
-                  <a-form-item :label="$t('print.template.margin')">
-                    <a-input-number v-model:value="config.margin" :min="0" :max="40" :precision="0" class="full">
-                      <template #addonAfter>mm</template>
-                    </a-input-number>
-                  </a-form-item>
-                </a-col>
-                <a-col :span="12">
-                  <a-form-item :label="$t('print.template.fontSize')">
-                    <a-input-number v-model:value="config.fontSize" :min="6" :max="24" :precision="0" class="full">
-                      <template #addonAfter>pt</template>
-                    </a-input-number>
-                  </a-form-item>
-                </a-col>
-              </a-row>
-              <a-space :size="24">
-                <a-checkbox v-if="!type.slip" v-model:checked="config.showCompany">{{ $t('print.template.showCompany') }}</a-checkbox>
-                <a-checkbox v-if="type.note" v-model:checked="config.showNote">{{ $t('print.template.showNote') }}</a-checkbox>
-              </a-space>
-            </a-form>
+            <BasicSettings :config="config" :type="type" />
 
             <div class="section-title">
               {{ $t('print.template.jrxml') }}
@@ -131,83 +79,17 @@
             </div>
             <JrxmlPanel :type-key="current" :format-id="currentFormat?.id" :custom="custom" :build-request="defaultJrxmlRequest" @changed="refresh" />
 
-            <div v-if="!type.slip" class="section-title">
-              {{ $t('print.template.overlay') }}
-              <span class="section-hint">{{ $t('print.template.overlayHint') }}</span>
-            </div>
-            <div v-if="!type.slip" class="jrxml">
-              <a-space wrap>
-                <a-switch
-                  :checked="!!config.overlay?.enabled"
-                  :checked-children="$t('system.im.enabled')"
-                  :un-checked-children="$t('system.im.notEnabled')"
-                  :disabled="custom"
-                  @change="toggleOverlay"
-                />
-                <a-button size="small" :disabled="custom" @click="overlayOpen = true">
-                  <template #icon><DragOutlined /></template>{{ $t('print.template.designOverlay') }}
-                </a-button>
-                <span v-if="config.overlay" class="section-hint">
-                  {{ config.overlay.detail
-                    ? $t('print.template.overlayStatsDetail', { n: config.overlay.items?.length || 0, cols: config.overlay.detail.columns.length })
-                    : $t('print.template.overlayStats', { n: config.overlay.items?.length || 0 }) }}
-                </span>
-              </a-space>
-              <div class="jrxml-hint">{{ $t('print.template.overlayTip') }}</div>
-            </div>
-            <OverlayDesigner
-              v-model:open="overlayOpen"
-              :template-key="current"
-              :format-id="currentFormat?.id"
-              :type="type"
-              :layout="overlayLayout"
-              :value="config.overlay"
-              @confirm="(o) => (config.overlay = o)"
-            />
+            <OverlaySection :config="config" :type="type" :template-key="current" :format-id="currentFormat?.id" :custom="custom" />
 
             <a-alert v-if="custom" type="info" show-icon class="custom-tip" :message="$t('print.template.customTip')" />
-            <template v-for="sec in sections" :key="sec.key">
-              <div class="section-title">
-                {{ sec.title }}
-                <span class="section-hint">{{ sec.key === 'columns' ? $t('print.template.sectionHintColumns') : $t('print.template.sectionHint') }}</span>
-              </div>
-              <div class="rows">
-                <div v-for="(row, i) in config[sec.key]" :key="row[sec.nameKey]" :class="['row', { hidden: row.hidden }]">
-                  <a-checkbox :checked="!row.hidden" @update:checked="(v) => (row.hidden = !v)" />
-                  <span class="row-name" :title="printLabel(row[sec.nameKey])">{{ printLabel(row[sec.nameKey]) }}</span>
-                  <a-input v-model:value="row.alias" size="small" :placeholder="$t('print.template.alias')" :maxlength="20" class="row-alias" />
-                  <a-input-number
-                    v-if="sec.key === 'columns'"
-                    v-model:value="row.width"
-                    size="small"
-                    :min="5"
-                    :max="200"
-                    :placeholder="$t('print.template.auto')"
-                    class="row-width"
-                  >
-                    <template #addonAfter>mm</template>
-                  </a-input-number>
-                  <span class="row-move">
-                    <a-button type="text" size="small" :disabled="i === 0" @click="move(sec.key, i, -1)"><ArrowUpOutlined /></a-button>
-                    <a-button type="text" size="small" :disabled="i === config[sec.key].length - 1" @click="move(sec.key, i, 1)">
-                      <ArrowDownOutlined />
-                    </a-button>
-                  </span>
-                </div>
-              </div>
-            </template>
+            <SectionRows :config="config" />
           </div>
 
-          <div class="preview">
-            <div class="preview-head">
-              <span>{{ $t('print.template.preview') }}</span>
-              <a-spin v-if="previewing" size="small" />
-              <span class="spacer" />
-              <a-button type="link" size="small" :disabled="!previewUrl" @click="zoom"><template #icon><ExpandOutlined /></template>{{ $t('print.template.zoom') }}</a-button>
-            </div>
-            <iframe v-if="previewUrl" class="preview-frame" :src="`${previewUrl}#toolbar=0&view=FitH`" :title="$t('print.preview.title')" />
-            <div v-else class="preview-empty">{{ previewError || $t('print.template.generating') }}</div>
-          </div>
+          <PreviewPane
+            :build-request="sampleRequest"
+            :watch-key="previewKey"
+            :zoom-title="$t('print.template.previewTitle', { name: printLabel(type.name) })"
+          />
         </div>
       </a-card>
     </div>
@@ -215,38 +97,29 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowDownOutlined, ArrowUpOutlined, BarcodeOutlined, DragOutlined, ExpandOutlined, FileTextOutlined, SettingOutlined, UndoOutlined } from '@ant-design/icons-vue'
-import OverlayDesigner from '@/components/print/OverlayDesigner.vue'
-import { printPdf } from '@/api/system/print'
+import { BarcodeOutlined, FileTextOutlined, SettingOutlined, UndoOutlined } from '@ant-design/icons-vue'
 import { resetPrintTemplate, savePrintTemplate } from '@/api/system/printTemplate'
 import LabelTemplateEditor from '@/components/label/LabelTemplateEditor.vue'
 import { LABEL_TYPES, isLabel } from '@/utils/labels'
-import { buildPrintRequest, defaultCompanyName, showPdf } from '@/utils/print'
-import {
-  COMMON_KEY,
-  DEFAULT_FONT_SIZE,
-  DEFAULT_MARGIN,
-  PAPERS,
-  PRINT_TYPES,
-  PRINT_TYPE_MAP,
-  formatConfig,
-  formatsOf,
-  layoutOf,
-  loadFormats,
-  loadTemplates,
-  printLabel,
-  sampleDoc
-} from '@/utils/printTemplates'
+import { buildPrintRequest, defaultCompanyName } from '@/utils/print'
+import { COMMON_KEY, PRINT_TYPES, PRINT_TYPE_MAP, formatConfig, formatsOf, loadFormats, loadTemplates, printLabel, sampleDoc } from '@/utils/printTemplates'
+import BasicSettings from './BasicSettings.vue'
 import FormatBar from './FormatBar.vue'
 import JrxmlPanel from './JrxmlPanel.vue'
+import OverlaySection from './OverlaySection.vue'
+import PreviewPane from './PreviewPane.vue'
+import SectionRows from './SectionRows.vue'
+import { buildConfig, toPayload } from './templateConfig'
 
 /**
  * 打印模板设计：按单据配置纸张、标题、表头字段、明细列、签字栏的显示、顺序、名称与列宽，右侧为后端生成的 PDF 预览；
  * 也可以下载默认版式的 JRXML，用 Jaspersoft Studio 修改后上传。
- * 同一单据可以有多份打印格式（FormatBar），页面编辑的是选中的格式（默认为默认格式）
+ * 同一单据可以有多份打印格式（FormatBar），页面编辑的是选中的格式（默认为默认格式）。
+ * 各区域在同目录子组件中：BasicSettings（基本设置）、JrxmlPanel（JRXML）、OverlaySection（套打）、SectionRows（字段 / 列 / 签字栏）、
+ * PreviewPane（预览）；编辑配置的结构见 templateConfig.js，子组件直接修改页面持有的配置对象
  */
 const { t } = useI18n()
 const groups = computed(() => {
@@ -273,64 +146,6 @@ const common = ref({ companyName: '' })
 const snapshot = ref('')
 const saving = ref(false)
 const custom = computed(() => !!saved.value?.jrxml)
-
-const ALL_SECTIONS = [
-  { key: 'fields', title: t('print.overlay.fields'), nameKey: 'label' },
-  { key: 'columns', title: t('print.template.columns'), nameKey: 'title' },
-  { key: 'signs', title: t('print.overlay.signs'), nameKey: 'label' }
-]
-const sections = computed(() => ALL_SECTIONS.filter((s) => config.value?.[s.key]?.length))
-
-/** 已保存的配置与目录合并：按保存的顺序，目录中新增的项放末尾 */
-function merge(names, saved, nameKey, extra = {}) {
-  const byName = new Map((saved || []).map((s) => [s[nameKey], s]))
-  const ordered = (saved || []).filter((s) => names.includes(s[nameKey]))
-  names.filter((n) => !byName.has(n)).forEach((n) => ordered.push({ [nameKey]: n }))
-  return ordered.map((s) => ({ [nameKey]: s[nameKey], alias: s.alias || '', hidden: !!s.hidden, ...extra, ...(s.width ? { width: s.width } : {}) }))
-}
-
-function buildConfig(tp, saved = {}) {
-  return {
-    title: saved.title || '',
-    orientation: saved.orientation || 'portrait',
-    paper: saved.paper || 'A4',
-    paperWidth: saved.paperWidth || 210,
-    paperHeight: saved.paperHeight || 297,
-    margin: saved.margin ?? DEFAULT_MARGIN,
-    fontSize: saved.fontSize || DEFAULT_FONT_SIZE,
-    showCompany: saved.showCompany !== false,
-    showNote: saved.showNote !== false,
-    fields: merge(tp.fields, saved.fields, 'label'),
-    columns: merge(tp.columns.map((c) => c.title), saved.columns, 'title', { width: null }),
-    signs: merge(tp.signs, saved.signs, 'label'),
-    overlay: saved.overlay || null
-  }
-}
-
-/** 保存的内容：去掉空的显示名称、列宽 */
-function toPayload(cfg) {
-  const clean = (rows, nameKey) =>
-    rows.map((r) => ({
-      [nameKey]: r[nameKey],
-      ...(r.alias?.trim() ? { alias: r.alias.trim() } : {}),
-      ...(r.hidden ? { hidden: true } : {}),
-      ...(r.width ? { width: r.width } : {})
-    }))
-  return {
-    ...(cfg.title?.trim() ? { title: cfg.title.trim() } : {}),
-    orientation: cfg.orientation,
-    paper: cfg.paper,
-    ...(cfg.paper === 'custom' ? { paperWidth: cfg.paperWidth || 210, paperHeight: cfg.paperHeight || 297 } : {}),
-    margin: cfg.margin ?? DEFAULT_MARGIN,
-    fontSize: cfg.fontSize || DEFAULT_FONT_SIZE,
-    showCompany: cfg.showCompany,
-    showNote: cfg.showNote,
-    fields: clean(cfg.fields, 'label'),
-    columns: clean(cfg.columns, 'title'),
-    signs: clean(cfg.signs, 'label'),
-    ...(cfg.overlay ? { overlay: cfg.overlay } : {})
-  }
-}
 
 const currentPayload = computed(() =>
   current.value === COMMON_KEY
@@ -366,27 +181,11 @@ async function onFormatsChanged(id) {
   select(current.value, id)
 }
 
-// ---------------------------------------------------------------- 套打
-const overlayOpen = ref(false)
-const overlayLayout = computed(() => layoutOf(toPayload(config.value)))
-function toggleOverlay(on) {
-  if (on && !config.value.overlay?.items?.length && !config.value.overlay?.detail) {
-    overlayOpen.value = true
-    return
-  }
-  config.value.overlay = { ...(config.value.overlay || { items: [], detail: null, offsetX: 0, offsetY: 0 }), enabled: on }
-}
-
-function move(key, i, delta) {
-  const rows = config.value[key]
-  const [row] = rows.splice(i, 1)
-  rows.splice(i + delta, 0, row)
-}
-
 // ---------------------------------------------------------------- 预览（后端生成 PDF）
 
-/** 用当前（未保存的）配置和示例数据生成的打印请求；已上传 JRXML 时按 JRXML */
+/** 用当前（未保存的）配置和示例数据生成的打印请求；已上传 JRXML 时按 JRXML；通用设置、标签不预览 */
 function sampleRequest() {
+  if (!config.value || current.value === COMMON_KEY) return null
   const tpl = { ...toPayload(config.value), ...(custom.value ? { jrxml: true } : {}) }
   return buildPrintRequest([sampleDoc(type.value)], printLabel(type.value.name), current.value, templates.value, tpl, currentFormat.value?.id)
 }
@@ -396,48 +195,8 @@ function defaultJrxmlRequest() {
   return buildPrintRequest([sampleDoc(type.value)], printLabel(type.value.name), current.value, templates.value, toPayload(config.value))
 }
 
-const previewUrl = ref('')
-const previewing = ref(false)
-const previewError = ref('')
-let previewBlob = null
-let previewTimer = null
-let previewSeq = 0
-
-async function renderPreview() {
-  if (!config.value || current.value === COMMON_KEY) return
-  const seq = ++previewSeq
-  previewing.value = true
-  try {
-    const blob = await printPdf(sampleRequest())
-    if (seq !== previewSeq) return
-    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
-    previewBlob = blob
-    previewUrl.value = URL.createObjectURL(blob)
-    previewError.value = ''
-  } catch (e) {
-    if (seq === previewSeq) previewError.value = e?.message || t('print.template.previewFailed')
-  } finally {
-    if (seq === previewSeq) previewing.value = false
-  }
-}
-
-// 配置变化后稍等再生成，避免输入时频繁请求
-watch(
-  () => [current.value, currentFormat.value?.id, JSON.stringify(currentPayload.value), custom.value, templates.value[COMMON_KEY]?.companyName],
-  () => {
-    clearTimeout(previewTimer)
-    previewTimer = setTimeout(renderPreview, 500)
-  }
-)
-
-function zoom() {
-  if (previewBlob) showPdf(previewBlob, t('print.template.previewTitle', { name: printLabel(type.value.name) }))
-}
-
-onBeforeUnmount(() => {
-  clearTimeout(previewTimer)
-  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
-})
+/** 配置变化后预览重新生成 */
+const previewKey = computed(() => [current.value, currentFormat.value?.id, JSON.stringify(currentPayload.value), custom.value, templates.value[COMMON_KEY]?.companyName])
 
 // ---------------------------------------------------------------- 保存
 
@@ -471,7 +230,6 @@ async function reset() {
 onMounted(async () => {
   await refresh()
   select(current.value)
-  renderPreview()
 })
 </script>
 
@@ -557,92 +315,6 @@ onMounted(async () => {
   margin-left: 8px;
   font-weight: 400;
   font-size: 12px;
-  color: var(--app-text-3);
-}
-.basic :deep(.ant-form-item) {
-  margin-bottom: 12px;
-}
-.rows {
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-}
-.row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-}
-.row + .row {
-  border-top: 1px solid var(--app-border);
-}
-.row.hidden .row-name {
-  color: var(--app-text-3);
-  text-decoration: line-through;
-}
-.row-name {
-  width: 96px;
-  flex: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.row-alias {
-  flex: 1;
-  min-width: 0;
-}
-.row-width {
-  width: 104px;
-  flex: none;
-}
-.row-move {
-  flex: none;
-  display: flex;
-}
-.preview {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  border-radius: 8px;
-  background: var(--app-hover);
-  padding: 8px;
-}
-.preview-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--app-text-3);
-  margin-bottom: 6px;
-}
-.preview-frame {
-  flex: 1;
-  min-height: 480px;
-  width: 100%;
-  border: 0;
-  border-radius: 4px;
-  background: #fff;
-}
-.preview-empty {
-  flex: 1;
-  min-height: 480px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--app-text-3);
-}
-.full {
-  width: 100%;
-}
-.jrxml {
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-  padding: 10px 12px;
-}
-.jrxml-hint {
-  margin-top: 8px;
-  font-size: 12px;
-  line-height: 1.7;
   color: var(--app-text-3);
 }
 .custom-tip {
