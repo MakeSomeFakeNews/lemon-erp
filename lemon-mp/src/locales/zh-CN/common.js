@@ -32,6 +32,7 @@ export default {
   loading: '加载中…',
   noMore: '没有更多了',
   pullUp: '上拉加载更多',
+  moreHint: '上拉加载更多，或输入编码、名称、简拼查找',
   empty: '暂无数据',
   required: '请填写{name}',
   selectRequired: '请选择{name}',

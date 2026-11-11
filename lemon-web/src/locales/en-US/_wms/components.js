@@ -181,7 +181,7 @@ export default {
   },
   select: {
     noMaterial: 'No matching material',
-    materialPlaceholder: 'Search material code, name or scan',
+    materialPlaceholder: 'Search code, name, spec, initials or scan',
     materialNotFound: 'No material found with code, name or barcode "{code}"',
     noSerial: 'No serial numbers in stock at this location'
   },

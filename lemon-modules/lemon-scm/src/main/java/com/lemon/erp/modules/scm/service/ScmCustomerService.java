@@ -1,11 +1,14 @@
 package com.lemon.erp.modules.scm.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.SearchKeyTable;
+import com.lemon.erp.framework.data.SearchKeys;
 import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.ref.RefType;
@@ -27,6 +30,7 @@ import org.springframework.util.StringUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 @Service
 @RequiredArgsConstructor
@@ -36,7 +40,8 @@ public class ScmCustomerService {
     private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "客户编码", "name", "客户名称", "level", "客户等级", "priceLevel", "价格等级", "contact", "联系人", "phone", "联系电话", // i18n-ignore
             "address", "收货地址", "taxNo", "纳税人识别号", "creditLimit", "信用额度", "paymentDays", "账期", "region", "区域", "remark", "备注"); // i18n-ignore
 
-    private static final int OPTION_LIMIT = 50;
+    /** 下拉搜索每页最多返回的条数 */
+    public static final int OPTION_LIMIT = 50;
 
     /** 区域（业务字典） */
     public static final String REGION_DICT = "scm_region";
@@ -48,15 +53,16 @@ public class ScmCustomerService {
     private final ChangeLogger changeLogger;
     private final FlowIdentityProvider identityProvider;
     private final DictLookup dictLookup;
+    private final SearchKeyTable<ScmCustomer> searchKeys;
 
     /**
-     * @param keyword 编码或名称，模糊匹配
+     * @param keyword 编码、名称、联系人、电话、拼音首字母或去掉分隔符的缩写，规则见 {@link SearchKeys}
      * @param region  区域（字典 scm_region 的值）
      */
     public PageResult<ScmCustomer> page(long current, long size, String keyword, String level, EnableStatus status, SalesChannel channel,
                                         String region) {
         Page<ScmCustomer> page = customerMapper.selectPage(Page.of(current, size), Wrappers.<ScmCustomer>lambdaQuery()
-                .and(StringUtils.hasText(keyword), w -> w.like(ScmCustomer::getCode, keyword).or().like(ScmCustomer::getName, keyword))
+                .and(StringUtils.hasText(keyword), keywordMatch(keyword))
                 .eq(StringUtils.hasText(level), ScmCustomer::getLevel, level)
                 .eq(status != null, ScmCustomer::getStatus, status)
                 .eq(channel != null, ScmCustomer::getChannel, channel)
@@ -126,15 +132,39 @@ public class ScmCustomerService {
         return list.isEmpty() ? null : list.get(0).getId();
     }
 
-    /** 启用的客户，按编码或名称搜索 */
+    /** 启用的客户，按关键字搜索，最多 {@value #OPTION_LIMIT} 条 */
     public List<PartnerOption> options(String keyword) {
-        return customerMapper.selectPage(Page.of(1, OPTION_LIMIT, false), Wrappers.<ScmCustomer>lambdaQuery()
+        return options(keyword, 1, OPTION_LIMIT);
+    }
+
+    /**
+     * 启用的客户下拉：按关键字（规则见 {@link SearchKeys}）分页搜索，按编码排序，不查总数；
+     * 第一页中编码与关键字完全一致的客户排在最前
+     *
+     * @param size 每页条数，最多 {@value #OPTION_LIMIT}
+     */
+    public List<PartnerOption> options(String keyword, long current, long size) {
+        List<ScmCustomer> rows = customerMapper.selectPage(Page.of(Math.max(current, 1), Math.min(Math.max(size, 1), OPTION_LIMIT), false),
+                Wrappers.<ScmCustomer>lambdaQuery()
                         .eq(ScmCustomer::getStatus, EnableStatus.ENABLED)
-                        .and(StringUtils.hasText(keyword), w -> w.like(ScmCustomer::getCode, keyword).or().like(ScmCustomer::getName, keyword))
-                        .orderByAsc(ScmCustomer::getCode))
-                .getRecords().stream()
-                .map(c -> new PartnerOption(c.getId(), c.getCode(), c.getName(), c.getContact(), c.getPhone(), c.getAddress(), c.getLevel()))
-                .toList();
+                        .and(StringUtils.hasText(keyword), keywordMatch(keyword))
+                        .orderByAsc(ScmCustomer::getCode)).getRecords();
+        if (StringUtils.hasText(keyword) && current <= 1) {
+            ScmCustomer exact = customerMapper.selectOne(Wrappers.<ScmCustomer>lambdaQuery()
+                    .eq(ScmCustomer::getStatus, EnableStatus.ENABLED).eq(ScmCustomer::getCode, keyword.trim()));
+            rows = SearchKeys.exactFirst(rows, exact, ScmCustomer::getId);
+        }
+        return rows.stream().map(ScmCustomerService::toOption).toList();
+    }
+
+    /** 按 ID 取客户（含停用的，最多 {@value #OPTION_LIMIT} 个），下拉回显已选的值 */
+    public List<PartnerOption> optionsByIds(List<Long> ids) {
+        return ids.isEmpty() ? List.of() : customerMapper.selectByIds(ids.stream().distinct().limit(OPTION_LIMIT).toList())
+                .stream().map(ScmCustomerService::toOption).toList();
+    }
+
+    private static PartnerOption toOption(ScmCustomer c) {
+        return new PartnerOption(c.getId(), c.getCode(), c.getName(), c.getContact(), c.getPhone(), c.getAddress(), c.getLevel());
     }
 
     /**
@@ -146,9 +176,15 @@ public class ScmCustomerService {
         Page<ScmCustomer> page = customerMapper.selectPage(Page.of(current, size), Wrappers.<ScmCustomer>lambdaQuery()
                 .select(ScmCustomer::getId, ScmCustomer::getCode, ScmCustomer::getName, ScmCustomer::getContact, ScmCustomer::getAddress, ScmCustomer::getTaxNo)
                 .eq(ScmCustomer::getStatus, EnableStatus.ENABLED)
-                .and(StringUtils.hasText(keyword), w -> w.like(ScmCustomer::getCode, keyword).or().like(ScmCustomer::getName, keyword))
+                .and(StringUtils.hasText(keyword), keywordMatch(keyword))
                 .orderByAsc(ScmCustomer::getId));
         return PageResult.of(page);
+    }
+
+    /** 关键字匹配：编码、名称、联系人、电话包含关键字，或检索列包含规范化的关键字 */
+    private static Consumer<LambdaQueryWrapper<ScmCustomer>> keywordMatch(String keyword) {
+        return SearchKeys.matches(keyword, ScmCustomer::getSearchKey,
+                ScmCustomer::getCode, ScmCustomer::getName, ScmCustomer::getContact, ScmCustomer::getPhone);
     }
 
     /** 是否有其他启用的客户使用该名称 */
@@ -189,7 +225,9 @@ public class ScmCustomerService {
         if (customer.getCreditLimit() == null && old.getCreditLimit() != null) {
             customerMapper.update(Wrappers.<ScmCustomer>lambdaUpdate().set(ScmCustomer::getCreditLimit, null).eq(ScmCustomer::getId, id));
         }
-        changeLogger.log("scm_customer", id, before, customerMapper.selectById(id), CHANGE_FIELDS);
+        ScmCustomer after = customerMapper.selectById(id);
+        searchKeys.refresh(after);
+        changeLogger.log("scm_customer", id, before, after, CHANGE_FIELDS);
     }
 
     public void changeStatus(Long id, EnableStatus status) {

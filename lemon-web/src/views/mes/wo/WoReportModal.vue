@@ -26,7 +26,7 @@
       <a-row :gutter="16">
         <a-col :span="12">
           <a-form-item :label="$t('mes.wo.equipment')" :extra="$t('mes.wo.equipmentExtra')">
-            <a-select v-model:value="report.equipmentId" allow-clear show-search option-filter-prop="label" :placeholder="$t('mes.wo.notSpecified')" :options="equipmentChoices" />
+            <EquipmentSelect v-model:value="report.equipmentId" :placeholder="$t('mes.wo.notSpecified')" :pinned="sameCenter" />
           </a-form-item>
         </a-col>
         <a-col :span="12">
@@ -50,6 +50,7 @@ import { computed, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
+import EquipmentSelect from '@/components/mes/EquipmentSelect.vue'
 import { equipmentOptions, moldsOfWo } from '@/api/mes/base'
 import { reportWo } from '@/api/mes/wo'
 import { formatQty, today } from '@/components/wms/wms'
@@ -64,12 +65,9 @@ const reportOp = ref()
 const saving = ref(false)
 const report = reactive({ reportDate: today(), goodQty: undefined, scrapQty: 0, hours: undefined, remark: '', operatorId: undefined,
   equipmentId: undefined, moldId: undefined })
-const equipments = ref([])
+/** 工序所在工作中心的设备：下拉中排在前面，只有一台时默认选中 */
+const sameCenter = ref([])
 const molds = ref([])
-/** 工序所在工作中心的设备排在前面 */
-const equipmentChoices = computed(() => [...equipments.value]
-  .sort((a, b) => Number(b.workCenterId === reportOp.value?.workCenterId) - Number(a.workCenterId === reportOp.value?.workCenterId))
-  .map((e) => ({ value: e.id, label: `${e.code} ${e.name}` })))
 const moldChoices = computed(() => molds.value.map((m) => ({ value: m.id, label: t('mes.wo.moldOption', { code: m.code, name: m.name, n: m.cavities }) })))
 const shotsHint = computed(() => {
   const m = molds.value.find((x) => x.id === report.moldId)
@@ -82,12 +80,11 @@ async function open(op) {
   // 默认合格数为还可报工的数量（后端按上道工序累计合格数 − 本工序已报合格和报废计算，首件检验合格前累计不超过 1 件，与报工校验一致）
   const remaining = Number(op.reportableQty ?? Math.max(Number(props.detail.qty) - Number(op.goodQty) - Number(op.scrapQty), 0))
   const hours = Math.round(Number(op.stdHours) * remaining * 100) / 100
-  const [eqs, ms] = await Promise.all([equipmentOptions(), moldsOfWo(props.detail.id)])
-  equipments.value = eqs
+  const [eqs, ms] = await Promise.all([op.workCenterId ? equipmentOptions({ workCenterId: op.workCenterId, size: 50 }) : [], moldsOfWo(props.detail.id)])
+  sameCenter.value = eqs
   molds.value = ms
-  const sameCenter = eqs.filter((e) => e.workCenterId === op.workCenterId)
   Object.assign(report, { reportDate: today(), goodQty: remaining, scrapQty: 0, hours, remark: '', operatorId: undefined,
-    equipmentId: ms[0]?.equipmentId ?? (sameCenter.length === 1 ? sameCenter[0].id : undefined), moldId: ms.length === 1 ? ms[0].id : undefined })
+    equipmentId: ms[0]?.equipmentId ?? (eqs.length === 1 ? eqs[0].id : undefined), moldId: ms.length === 1 ? ms[0].id : undefined })
   visible.value = true
 }
 async function submit() {

@@ -102,7 +102,7 @@
                 :key="form.type"
                 v-model:value="form.partnerId"
                 :type="CONSIGN_PARTNER[form.type].type"
-                :label="partnerText(form)"
+                :label="partnerName(form)"
               />
             </a-form-item>
           </a-col>
@@ -138,7 +138,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { EnvironmentOutlined, InfoCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
@@ -148,7 +148,7 @@ import SearchForm from '@/components/SearchForm.vue'
 import StatusSwitch from '@/components/StatusSwitch.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
-import { partnerOptions } from '@/api/scm/partner'
+import { partnersByIds } from '@/api/scm/partner'
 import { addWarehouse, changeWarehouseStatus, deleteWarehouse, getWarehouse, pageWarehouse, updateWarehouse } from '@/api/wms/warehouse'
 import { useColumns } from '@/composables/useColumns'
 import TableActions from '@/components/common/TableActions.vue'
@@ -193,26 +193,26 @@ const CONSIGN_PARTNER = {
   CONSIGN_OUT: { type: 'customer', label: t('wms.warehouse.consignCustomer') },
   CONSIGN_IN: { type: 'supplier', label: t('wms.warehouse.consignSupplier') }
 }
-// 往来单位名称：列表只返回 partnerId，按客户 / 供应商下拉选项映射名称
+// 往来单位名称：列表只返回 partnerId，按当前页用到的 ID 取客户 / 供应商的名称
 const partnerNames = reactive({ customer: new Map(), supplier: new Map() })
-const partnerText = (w) => {
+const partnerName = (w) => {
   const c = CONSIGN_PARTNER[w.type]
-  if (!c || !w.partnerId) return undefined
-  return partnerNames[c.type].get(w.partnerId) || `#${w.partnerId}`
+  return c && w.partnerId ? partnerNames[c.type].get(w.partnerId) : undefined
 }
-async function loadPartnerNames() {
-  await Promise.all(
-    ['customer', 'supplier'].map(async (type) => {
-      const list = await partnerOptions(type).catch(() => [])
-      partnerNames[type] = new Map(list.map((p) => [p.id, `${p.code} ${p.name}`]))
-    })
-  )
-}
-
-onMounted(() => {
-  load()
-  loadPartnerNames()
+const partnerText = (w) => partnerName(w) || `#${w.partnerId}`
+watch(list, (rows) => {
+  ['customer', 'supplier'].forEach(async (type) => {
+    const ids = [...new Set(rows.filter((w) => CONSIGN_PARTNER[w.type]?.type === type && w.partnerId && !partnerNames[type].has(w.partnerId))
+      .map((w) => w.partnerId))]
+    if (!ids.length) return
+    const found = await partnersByIds(type, ids).catch(() => [])
+    const map = new Map(partnerNames[type])
+    found.forEach((p) => map.set(p.id, `${p.code} ${p.name}`))
+    partnerNames[type] = map
+  })
 })
+
+onMounted(load)
 
 const rules = {
   code: [

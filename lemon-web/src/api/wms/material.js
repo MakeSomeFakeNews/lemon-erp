@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { batchByIds } from '@/utils/batchByIds'
 
 const ids = (v) => [].concat(v).join(',')
 
@@ -8,8 +9,13 @@ export const addMaterial = (data) => request.post('/wms/material', data)
 export const updateMaterial = (id, data) => request.put(`/wms/material/${id}`, data)
 export const changeMaterialStatus = (id, status) => request.put(`/wms/material/${id}/status`, { status })
 export const deleteMaterial = (id) => request.delete(`/wms/material/${ids(id)}`)
-/** 按编码或名称搜索启用的物料，最多 50 条 */
-export const materialOptions = (keyword) => request.get('/wms/material/options', { params: { keyword } })
+/**
+ * 物料下拉：启用的物料按关键字（编码、名称、规格、条码、拼音首字母、去掉分隔符的缩写）分页搜索；
+ * page：{ current, size }（每页最多 50，默认 20）
+ */
+export const materialOptions = (keyword, page) => request.get('/wms/material/options', { params: { keyword, ...page } })
+/** 按 ID 取物料（含停用的），下拉回显已选的值 */
+export const materialsByIds = batchByIds((idList) => request.get('/wms/material/options', { params: { ids: ids(idList) } }))
 /** Excel 导入：{ rows: [{ rowNum, data }] } */
 export const importMaterial = (data) => request.post('/wms/material/import', data)
 /** 辅助单位：[{ id, materialId, unit, ratio, barcode }]，1 辅助单位 = ratio 基本单位 */

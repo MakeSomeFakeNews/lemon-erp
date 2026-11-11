@@ -71,9 +71,9 @@
           <input v-model="form.hours" class="l-input" type="digit" :placeholder="t('common.pleaseInput')" placeholder-class="l-placeholder" />
         </l-field>
         <l-field :label="t('wms.report.equipment')">
-          <picker :range="equipmentRange" range-key="label" :value="equipmentIndex" @change="(e) => (form.equipmentId = equipmentRange[e.detail.value].id)">
-            <view class="l-input" :class="{ 'l-placeholder': !form.equipmentId }">{{ equipmentRange[equipmentIndex].label }}</view>
-          </picker>
+          <view class="l-input" :class="{ 'l-placeholder': !equipment }" @click="eqOpen = true">
+            {{ equipment ? `${equipment.code} ${equipment.name}` : t('wms.report.notSpecified') }}
+          </view>
         </l-field>
         <l-field v-if="molds.length" :label="t('wms.report.mold')">
           <picker :range="moldRange" range-key="label" :value="moldIndex" @change="(e) => (form.moldId = moldRange[e.detail.value].id)">
@@ -91,6 +91,18 @@
         <button class="l-btn" :loading="saving" :disabled="saving" @click="submit">{{ t('wms.report.submit') }}</button>
       </view>
     </block>
+    <SearchSheet
+      :open="eqOpen"
+      :title="t('wms.report.equipment')"
+      :items="eqItems"
+      :loading="eqLoading"
+      :has-more="eqHasMore"
+      :empty-option="t('wms.report.notSpecified')"
+      @search="searchEquipment"
+      @more="searchEquipment(eqKeyword, true)"
+      @select="selectEquipment"
+      @close="eqOpen = false"
+    />
   </view>
 </template>
 
@@ -101,6 +113,7 @@ import { useI18n } from '@/locales'
 import { WorkOrderStatus } from '@web/constants/enums'
 import { equipmentOptions, getWorkOrder, moldsOfWo, pageWorkOrder, reportWorkOrder } from '@/api/mes'
 import { useTitle } from '@/composables/useTitle'
+import SearchSheet from '../components/SearchSheet.vue'
 import { runAction } from '@/composables/useAction'
 import { dictColor, dictText, useDict } from '@/store/dict'
 import { qty, today } from '@/utils/format'
@@ -117,19 +130,48 @@ const loaded = ref(false)
 const workOrders = ref([])
 const wo = ref(null)
 const op = ref(null)
-const equipments = ref([])
 const molds = ref([])
 const saving = ref(false)
 const form = reactive({ reportDate: today(), goodQty: '', scrapQty: '', hours: '', equipmentId: null, moldId: null, remark: '' })
 
-/** 工序所在工作中心的设备排在前面 */
-const equipmentRange = computed(() => [
-  { id: null, label: t('wms.report.notSpecified') },
-  ...[...equipments.value]
-    .sort((a, b) => Number(b.workCenterId === op.value?.workCenterId) - Number(a.workCenterId === op.value?.workCenterId))
-    .map((e) => ({ id: e.id, label: `${e.code} ${e.name}` }))
-])
-const equipmentIndex = computed(() => Math.max(0, equipmentRange.value.findIndex((e) => e.id === (form.equipmentId || null))))
+// ---------------------------------------------------------------- 设备：远程搜索，工序所在工作中心的设备排在前面
+const EQ_PAGE_SIZE = 20
+/** 工序所在工作中心的设备（只有一台时默认选中） */
+const sameCenter = ref([])
+/** 所选设备 { id, code, name } */
+const equipment = ref(null)
+const eqOpen = ref(false)
+const eqItems = ref([])
+const eqLoading = ref(false)
+const eqHasMore = ref(false)
+const eqKeyword = ref('')
+let eqPage = 1
+let eqSeq = 0
+const eqItem = (e) => ({ id: e.id, title: `${e.code} ${e.name}`, raw: e })
+
+/** 按关键字分页查询设备，more 为加载下一页；没有关键字时工作中心的设备排在最前 */
+async function searchEquipment(keyword, more = false) {
+  const seq = ++eqSeq
+  const page = more ? eqPage + 1 : 1
+  if (!more) eqKeyword.value = keyword
+  eqLoading.value = true
+  try {
+    const rows = (await equipmentOptions({ keyword: keyword || undefined, current: page, size: EQ_PAGE_SIZE }).catch(() => [])) || []
+    if (seq !== eqSeq) return
+    eqPage = page
+    const base = more ? eqItems.value : keyword ? [] : sameCenter.value.map(eqItem)
+    eqItems.value = [...base, ...rows.filter((e) => !base.some((x) => x.id === e.id)).map(eqItem)]
+    eqHasMore.value = rows.length >= EQ_PAGE_SIZE
+  } finally {
+    if (seq === eqSeq) eqLoading.value = false
+  }
+}
+
+function selectEquipment(item) {
+  equipment.value = item?.raw || null
+  form.equipmentId = item?.id || null
+  eqOpen.value = false
+}
 const moldRange = computed(() => [
   { id: null, label: t('wms.report.notUsed') },
   ...molds.value.map((m) => ({ id: m.id, label: t('wms.report.moldOption', { code: m.code, name: m.name, n: m.cavities }) }))
@@ -158,9 +200,8 @@ async function searchWo(woNo) {
 }
 
 async function selectWo(id) {
-  const [detail, eqs, ms] = await Promise.all([getWorkOrder(id), equipmentOptions().catch(() => []), moldsOfWo(id).catch(() => [])])
+  const [detail, ms] = await Promise.all([getWorkOrder(id), moldsOfWo(id).catch(() => [])])
   wo.value = detail
-  equipments.value = eqs || []
   molds.value = ms || []
   op.value = null
 }
@@ -170,17 +211,24 @@ function backToList() {
   searchWo()
 }
 
-function openOp(o) {
+async function openOp(o) {
   op.value = o
   // 默认合格数为还可报工的数量（后端按上道工序累计合格数 − 本工序已报合格和报废计算，首件检验合格前累计不超过 1 件，与报工校验一致）
   const remaining = Number(o.reportableQty ?? Math.max(Number(wo.value.qty) - Number(o.goodQty || 0) - Number(o.scrapQty || 0), 0))
   const hours = Math.round(Number(o.stdHours || 0) * remaining * 100) / 100
-  const sameCenter = equipments.value.filter((e) => e.workCenterId === o.workCenterId)
   Object.assign(form, {
-    reportDate: today(), goodQty: String(remaining), scrapQty: '0', hours: String(hours), remark: '',
-    equipmentId: molds.value[0]?.equipmentId ?? (sameCenter.length === 1 ? sameCenter[0].id : null),
+    reportDate: today(), goodQty: String(remaining), scrapQty: '0', hours: String(hours), remark: '', equipmentId: null,
     moldId: molds.value.length === 1 ? molds.value[0].id : null
   })
+  equipment.value = null
+  // 默认设备：模具所在的设备，否则工作中心只有一台设备时选中它
+  const eqs = o.workCenterId ? (await equipmentOptions({ workCenterId: o.workCenterId, size: 50 }).catch(() => [])) || [] : []
+  if (op.value !== o) return
+  sameCenter.value = eqs
+  const moldEq = molds.value[0]?.equipmentId
+  let preset = moldEq ? eqs.find((e) => e.id === moldEq) : eqs.length === 1 ? eqs[0] : null
+  if (moldEq && !preset) preset = ((await equipmentOptions({ ids: moldEq }).catch(() => [])) || [])[0] || null
+  if (op.value === o && preset && !form.equipmentId) selectEquipment(eqItem(preset))
 }
 
 const num = (v) => (v === '' || v === null || v === undefined ? null : Number(v))

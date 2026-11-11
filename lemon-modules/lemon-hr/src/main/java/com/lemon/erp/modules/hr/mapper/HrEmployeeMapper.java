@@ -20,7 +20,8 @@ public interface HrEmployeeMapper extends BaseMapper<HrEmployee> {
     HrEmployee selectDetail(@Param("id") Long id);
 
     /** 在职员工，按工号或姓名搜索 */
-    List<EmployeeOption> selectOptions(@Param("keyword") String keyword, @Param("limit") int limit);
+    /** 员工下拉：指定 ids 时只取这些员工（回显，含离职的），否则为未离职的员工，按工号或姓名搜索；分页取一页（不查总数） */
+    List<EmployeeOption> selectOptions(IPage<EmployeeOption> page, @Param("keyword") String keyword, @Param("ids") List<Long> ids);
 
     /**
      * 在 [from, to] 期间在职过的员工（入职不晚于 to，未离职或离职不早于 from），考勤汇总、工资计算使用

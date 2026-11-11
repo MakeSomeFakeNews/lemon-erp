@@ -51,10 +51,14 @@ public class PmProjectController {
         return R.ok(projectService.page(current, size, keyword, status, type, mine, customerId));
     }
 
-    /** 登录即可访问：选择项目；mine 只返回我参与的（填报工时） */
+    /** 登录即可访问：选择项目，按编码或名称分页搜索（每页最多 50 条）；mine 只返回我参与的（填报工时）；ids 按 ID 取已选项目的名称 */
     @GetMapping("/project/options")
-    public R<List<PmProject>> options(@RequestParam(defaultValue = "false") boolean mine) {
-        return R.ok(projectService.options(mine));
+    public R<List<PmProject>> options(@RequestParam(defaultValue = "false") boolean mine,
+                                      @RequestParam(required = false) String keyword,
+                                      @RequestParam(required = false) List<Long> ids,
+                                      @RequestParam(defaultValue = "1") long current,
+                                      @RequestParam(defaultValue = "20") long size) {
+        return R.ok(projectService.options(mine, keyword, ids, current, size));
     }
 
     @GetMapping("/project/{id}")

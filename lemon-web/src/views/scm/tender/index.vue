@@ -61,14 +61,14 @@
           </a-col>
           <a-col :span="24">
             <a-form-item :label="$t('scm.tender.suppliers')" name="supplierIds" :extra="$t('scm.tender.suppliersExtra')">
-              <a-select
+              <RemoteSelect
                 v-model:value="form.supplierIds"
-                mode="multiple"
-                :filter-option="false"
-                :options="supplierOptions"
+                multiple
+                :fetch="({ keyword, current, size }) => partnerOptions('supplier', keyword, { current, size })"
+                :fetch-by-ids="(ids) => partnersByIds('supplier', ids)"
+                :to-label="(s) => `${s.code} ${s.name}`"
                 :placeholder="$t('scm.tender.searchSupplier')"
-                @search="searchSuppliers"
-                @focus="searchSuppliers('')"
+                :dropdown-width="true"
               />
             </a-form-item>
           </a-col>
@@ -290,7 +290,8 @@ import SubPage from '@/components/SubPage.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
-import { partnerOptions } from '@/api/scm/partner'
+import RemoteSelect from '@/components/common/RemoteSelect.vue'
+import { partnerOptions, partnersByIds } from '@/api/scm/partner'
 import { addTender, awardTender, cancelTender, deleteTender, getTender, openTender, pageTender, proxyBid, publishTender, updateTender } from '@/api/scm/srm'
 import { formatMoney } from '@/components/scm/scm'
 import { formatQty, rowKey } from '@/components/wms/wms'
@@ -344,22 +345,14 @@ const rules = {
   deadline: [{ required: true, message: t('scm.tender.selectDeadline') }],
   supplierIds: [{ required: true, type: 'array', min: 1, message: t('scm.tender.selectSuppliers') }]
 }
-const supplierOptions = ref([])
-async function searchSuppliers(keyword) {
-  const list = await partnerOptions('supplier', keyword || undefined)
-  const selected = supplierOptions.value.filter((o) => form.value.supplierIds?.includes(o.value))
-  const map = new Map(selected.map((o) => [o.value, o]))
-  list.forEach((s) => map.set(s.id, { value: s.id, label: `${s.code} ${s.name}` }))
-  supplierOptions.value = [...map.values()]
-}
 const drawer = useFormDrawer({
   emptyForm: () => ({
     id: undefined, title: '', deadline: dayjs().add(7, 'day').hour(17).minute(0).second(0).format('YYYY-MM-DDTHH:mm:ss'),
     remark: '', supplierIds: [], items: [newItem()]
   }),
   fetch: async (record) => {
+    // 已邀请供应商的名称由下拉按 ID 取回
     const tender = await getTender(record.id)
-    supplierOptions.value = tender.suppliers.map((s) => ({ value: s.supplierId, label: `${s.supplierCode} ${s.supplierName}` }))
     return {
       ...tender,
       deadline: tender.deadline.replace(' ', 'T'),
@@ -367,9 +360,6 @@ const drawer = useFormDrawer({
       items: tender.items.map((i) => ({ key: rowKey(), materialId: i.materialId, materialLabel: `${i.materialCode} ${i.materialName}`,
         qty: Number(i.qty), requiredDate: i.requiredDate, remark: i.remark }))
     }
-  },
-  beforeOpen: (record) => {
-    if (!record) supplierOptions.value = []
   },
   create: addTender,
   update: updateTender,

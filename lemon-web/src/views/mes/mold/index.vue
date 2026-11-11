@@ -102,15 +102,14 @@
           </a-col>
           <a-col :span="24">
             <a-form-item :label="$t('mes.mold.products')" name="productIds" :extra="$t('mes.mold.productsExtra')">
-              <a-select
+              <RemoteSelect
                 v-model:value="form.productIds"
-                mode="multiple"
-                show-search
-                :filter-option="false"
-                :options="productOptions"
+                multiple
+                :fetch="({ keyword, current, size }) => materialOptions(keyword, { current, size })"
+                :fetch-by-ids="materialsByIds"
+                :to-label="(m) => `${m.code} ${m.name}`"
                 :placeholder="$t('mes.bom.materialKeyword')"
-                @search="searchProducts"
-                @focus="searchProducts('')"
+                :dropdown-width="true"
               />
             </a-form-item>
           </a-col>
@@ -182,7 +181,7 @@
               @search="searchWo" @focus="searchWo('')" />
           </a-form-item>
           <a-form-item :label="$t('mes.mold.installEquipment')">
-            <a-select v-model:value="actionForm.equipmentId" allow-clear show-search option-filter-prop="label" :options="equipmentChoices" />
+            <EquipmentSelect v-model:value="actionForm.equipmentId" />
           </a-form-item>
         </template>
         <a-form-item :label="$t('common.field.date')" required>
@@ -200,7 +199,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { ExportOutlined, ImportOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
@@ -208,9 +207,11 @@ import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import SubPage from '@/components/SubPage.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
-import { addMold, deleteMold, equipmentOptions, getMold, moldAction, moldLogs, pageMold, updateMold } from '@/api/mes/base'
+import { addMold, deleteMold, getMold, moldAction, moldLogs, pageMold, updateMold } from '@/api/mes/base'
 import { pageWo } from '@/api/mes/wo'
-import { materialOptions } from '@/api/wms/material'
+import { materialOptions, materialsByIds } from '@/api/wms/material'
+import RemoteSelect from '@/components/common/RemoteSelect.vue'
+import EquipmentSelect from '@/components/mes/EquipmentSelect.vue'
 import { today } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
 import TableActions from '@/components/common/TableActions.vue'
@@ -250,17 +251,6 @@ const { list, loading, size, pagination, load, search, onTableChange } = useTabl
 })
 onMounted(load)
 
-const productOptions = ref([])
-let productSeq = 0
-async function searchProducts(keyword) {
-  const seq = ++productSeq
-  const res = await materialOptions(keyword || undefined)
-  if (seq !== productSeq) return
-  const selected = (form.value.productIds || []).map((id) => productOptions.value.find((o) => o.value === id)).filter(Boolean)
-  const fresh = res.map((m) => ({ value: m.id, label: `${m.code} ${m.name}` }))
-  productOptions.value = [...selected, ...fresh.filter((o) => !selected.some((s) => s.value === o.value))]
-}
-
 const rules = {
   code: [{ required: true, message: t('mes.mold.codeRequired') }],
   name: [{ required: true, whitespace: true, message: t('mes.mold.nameRequired') }],
@@ -271,10 +261,9 @@ const rules = {
 const drawer = useFormDrawer({
   emptyForm: () => ({ id: undefined, code: '', name: '', moldType: 'MOLD', spec: '', cavities: 1, designLife: undefined, warnRatio: 90,
     usedCount: 0, location: '', productIds: [], remark: '' }),
+  // 适用产品的名称由下拉按 ID 取回
   fetch: async (record) => {
     const m = await getMold(record.id)
-    const names = m.productNames ? m.productNames.split('、') : []
-    productOptions.value = m.productIds.map((id, i) => ({ value: id, label: names[i] }))
     return { ...m, warnRatio: Number(m.warnRatio) }
   },
   create: addMold,
@@ -312,8 +301,6 @@ async function remove() {
   load()
 }
 
-const equipments = ref([])
-const equipmentChoices = computed(() => equipments.value.map((e) => ({ value: e.id, label: `${e.code} ${e.name}` })))
 const woOptions = ref([])
 let woSeq = 0
 async function searchWo(keyword) {
@@ -327,10 +314,9 @@ const actionOpen = ref(false)
 const actionTarget = ref()
 const saving = ref(false)
 const actionForm = reactive({})
-async function openAction(record, action) {
+function openAction(record, action) {
   actionTarget.value = record
   Object.assign(actionForm, { action, woId: undefined, equipmentId: undefined, date: today(), location: '', remark: '' })
-  if (action === 'issue' && !equipments.value.length) equipments.value = await equipmentOptions()
   actionOpen.value = true
 }
 async function submitAction() {

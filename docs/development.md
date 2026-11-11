@@ -370,7 +370,7 @@ public void onOrderApproved(FlowFinishedEvent e) {
 | 冲销、在途调拨收货 | `wms:{in,out,transfer}:reverse`、`wms:transfer:receive` |
 | 库存预留 | `wms:reservation:list`、`wms:reservation:release` |
 
-入库、出库、调拨三种单据共用一套接口 `/wms/{in|out|transfer}`，权限标识按路径区分。单据按制单人部门 + 制单人做数据权限。仓库、库位、物料的下拉选项接口登录即可访问；出库、调拨、盘点选择库存时，有对应单据新增 / 修改权限即可查询库存。
+入库、出库、调拨三种单据共用一套接口 `/wms/{in|out|transfer}`，权限标识按路径区分。单据按制单人部门 + 制单人做数据权限。仓库、库位、物料的下拉选项接口登录即可访问（物料下拉分页搜索，见「数据访问规范」中的主数据检索）；出库、调拨、盘点选择库存时，有对应单据新增 / 修改权限即可查询库存。
 
 ## 业务联动
 
@@ -953,6 +953,10 @@ const ai = useAiPrefill('supplier', (data) => drawer.openCreate(data), () => dra
 - **索引**：WHERE、JOIN、ORDER BY 用到的列要有索引，关联表的反向查询也要建索引，比如 `sys_user_role.role_id`。统计类查询尽量做到只读索引就能出结果。
 - **兜底防护**：分页单页最多 500 条（`MybatisPlusConfig.MAX_PAGE_SIZE`）；不带 WHERE 的 UPDATE、DELETE 会被拦截。
 - **Redis 批量读写**：批量读取用 `CacheService.getAll`（Redis 实现是一次 `MGET`）；只需要数量时不读取值。
+- **主数据检索与下拉（issue #86）**：客户、供应商、物料（含 SKU）、员工、用户、设备、项目等可能上千条的资料，下拉接口一律分页（`current` / `size`，默认 20、每页最多 50，不查总数），并支持 `ids`（按 ID 取已选记录、含停用 / 离职 / 已结束的，供编辑回显）；仓库、库位、单位、字典、部门、职位、科目、工作中心等数据量小的仍一次性加载（库位按仓库加载并在页面内缓存，移动端扫码按编码在列表中匹配）。
+  - 关键字匹配规则（`framework/data/SearchKeys`）：原字段包含关键字（物料：编码、名称、规格、条码；客户 / 供应商：编码、名称、联系人、电话），或**检索列** `search_key` 包含规范化后的关键字（转小写、去掉空格、斜杠、横线、括号等分隔符）。检索列由各字段计算，空格分隔多段：去掉分隔符的小写串（「12/R60 34TH」→ `12r6034th`）、只含数字的串（→ `126034`）、拼音首字母（「深圳智控」→ `szzk`，字母数字原样保留），所以「126034」「12r60」「szzk」「深圳 智控」都能检索到；各字段分段存放，关键字不会跨字段匹配。拼音用 pinyin4j（BSD，版本在 `libs.versions.toml`）：多音字取第一个读音（少数常用字在 `SearchKeys.PREFERRED` 中修正，如厦 x、长 c），含多音字时另存一份第二读音的首字母串（「重庆银行」同时有 `zqyx`、`cqyh`）；同一名称中多个多音字需要不同读音组合的匹配不到，可用汉字或编码检索。下拉和列表（物料管理、商品价格、客户、供应商、款式）共用同一规则（各 Service 的 `keywordMatch`）。
+  - 检索列的维护：实体实现 `Searchable`（`searchTexts()` 返回参与检索的字段，`searchKey` 加 `@JsonIgnore`）；插入时由 `MybatisPlusConfig` 的插入拦截器自动计算（导入、多规格生成 SKU、租户初始化等所有插入路径），修改后 Service 调用模块中声明的 `SearchKeyTable` Bean 的 `refresh(修改后重新读取的记录)`（如 `WmsSearchKeys`、`ScmSearchKeys`）；检索列为 NULL 的行（升级前的数据、init.sql 初始数据、直接写库新增的记录）由 `SearchKeyBackfill` 在应用就绪后回填全部租户（只处理 NULL 行、按主键每批 500 行、可重复执行，多实例同时回填写入的值相同；回填完成前仍可按编码、名称检索）。修改计算规则时，升级脚本把相应表的 `search_key` 置为 NULL 即可按新规则重算。新增需要检索的资料按同样方式接入。
+  - 性能与索引：关键字是前后模糊的 `LIKE '%…%'`，不能使用 B-tree 索引，也不对列套函数；下拉按编码排序取一页（`ORDER BY code LIMIT n`），可沿编码唯一键 `(code, tenant_id)` 顺序扫描、找够一页即停止，没有关键字时只读一页；有关键字时最坏情况扫描本租户的全部行（单表、只比较几个短列，十万行以内为毫秒到几十毫秒级）。数据量达到百万级时可考虑 MySQL ngram 全文索引（H2 不支持，未采用）。
 
 ## 单据开发的公共组件
 
@@ -1017,7 +1021,7 @@ lemon-erp
 │       ├── api/<模块>/*.js              接口
 │       ├── views/<模块>/<页面>/index.vue 页面（菜单的组件路径即相对 views 的路径）
 │       ├── components                  TableToolbar、SearchForm、FormDrawer、SubPage（子页）、DictTag 等通用组件，以及各业务模块的单据表单与详情
-│       ├── composables                 useTable、useColumns、useFormDrawer、useDict、useAction、useLineItems
+│       ├── composables                 useTable、useColumns、useFormDrawer、useDict、useAction、useLineItems、useRemoteOptions
 │       ├── layout                      顶部模块导航、侧边栏、多标签页；移动作业的移动端布局
 │       └── router / store / directives / utils
 └── sql
@@ -1052,6 +1056,7 @@ lemon-erp
    - 状态、类型等用字典：`const dict = useDict('sys_common_status')` + `<DictTag>`。
    - 新增 / 编辑表单用 `useFormDrawer` + `<FormDrawer>`：自带加载详情、校验、保存、未保存修改的关闭确认、Ctrl/⌘ + Enter 保存。
    - 单条操作（删除、审核、关闭等）用 `useAction(api, { confirm, successKey, reload })`：返回的函数参数原样传给接口，依次执行（可选的确认框）→ 调接口 → 提示成功 → 刷新，直接写在 `@confirm` / `@click` 上；`confirm` 为标题、`Modal.confirm` 参数或按参数返回它们的函数，`successKey` 为消息键或 `(结果, ...参数) => 文字`，`reload` 写成 `() => load()`（声明在 `useTable` 之前也不会出错）。
+   - **选择资料的下拉**：可能上千条的资料用远程搜索组件，不要一次性加载全部再在前端过滤：客户 / 供应商 `PartnerSelect`、物料 `MaterialSelect`（支持扫码）、员工 `EmployeeSelect`、用户 `UserSelect` / `IdentityUserSelect`、设备 `EquipmentSelect`、项目 `ProjectSelect`；其他资料用通用的 `components/common/RemoteSelect.vue`（`fetch({ keyword, current, size })` 返回数组或 `{ records, total }`、`fetchByIds`、`toLabel`、`multiple`、`pinned` 置顶记录）或组合式函数 `useRemoteOptions`。打开时取第一页（20 条），输入时防抖 300ms 搜索，滚动到底部加载下一页并提示「滚动加载更多，或输入编码、名称、拼音首字母查找」；已选值优先用表单数据带的名称（`label`），没有时组件按 ID 取名称（`xxxByIds`，`utils/batchByIds.js` 把同一时刻多行的请求合并为一次），不依赖把全部数据加载到前端。小程序的搜索弹层 `pkg-wms/components/SearchSheet.vue` 同样输入防抖搜索、上拉加载下一页（`has-more` + `@more`）。
    - 单据明细行用 `useLineItems(() => form.value.items, { newRow })`（`addRow`、`removeRow`、`withKey` / `lineKey` 生成行 key、`total(字段或函数)` 合计、`itemName` 校验路径）+ `<LineItemsTable :items :columns>`（`components/common`，行 key 为 `key`，`#cell` 插槽同 `bodyCell`，`action` 列默认是删除按钮，`min-rows`、`confirm-remove` 控制能否删除、是否确认），示例 `QuotationForm`、`CheckForm`、`fin/claim`。
    - 金额、数量的显示和舍入用 `utils/number.js`：`money`（千分位 2 位，空值 `-`）、`moneyOrBlank`、`price`（2～4 位）、`qty`（最多 4 位）、`num`、`round2` / `round4`、`sumBy`，与后端 `Decimals` 的精度一致；不要在页面里再写 `toLocaleString` / `Math.round(x * 100) / 100`。
    - 页面超过 500 行时，把弹窗、标签页、表单拆成同目录下的子组件（如 `views/mes/wo/WoDetail.vue`、`WoReportModal.vue`），子组件通过 `defineExpose({ open })` 打开、事件通知页面刷新。

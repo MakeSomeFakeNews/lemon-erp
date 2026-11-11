@@ -32,6 +32,7 @@ export default {
   loading: 'Loading…',
   noMore: 'No more',
   pullUp: 'Pull up to load more',
+  moreHint: 'Pull up for more, or search by code, name or initials',
   empty: 'No data',
   required: 'Please enter {name}',
   selectRequired: 'Please select {name}',

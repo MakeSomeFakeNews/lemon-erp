@@ -1,33 +1,33 @@
 <template>
-  <a-select
-    :value="value ?? undefined"
-    show-search
+  <RemoteSelect
+    :value="value"
+    :label="label"
+    :fetch="fetch"
+    :fetch-by-ids="(ids) => partnersByIds(carrier ? 'supplier' : type, ids)"
+    :to-label="(p) => `${p.code} ${p.name}`"
     :allow-clear="allowClear"
-    :placeholder="placeholder || $t(type === 'supplier' ? 'scm.partnerSelect.searchSupplier' : 'scm.partnerSelect.searchCustomer')"
-    :filter-option="false"
-    :dropdown-match-select-width="360"
-    :options="options"
-    :loading="loading"
     :disabled="disabled"
-    @search="onSearch"
-    @focus="onFocus"
-    @change="onChange"
+    :placeholder="placeholder || $t(type === 'supplier' ? 'scm.partnerSelect.searchSupplier' : 'scm.partnerSelect.searchCustomer')"
+    :dropdown-width="360"
+    @update:value="(v) => emit('update:value', v)"
+    @select="(p) => emit('select', p)"
   >
-    <template v-if="carrier && !marked" #dropdownRender="{ menuNode }">
+    <template v-if="carrier && !marked" #header>
       <div class="carrier-hint">{{ $t('scm.freight.carrierUnmarked') }}</div>
-      <component :is="menuNode" />
     </template>
-  </a-select>
+  </RemoteSelect>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { carrierOptions, partnerOptions } from '@/api/scm/partner'
+import { ref } from 'vue'
+import RemoteSelect from '@/components/common/RemoteSelect.vue'
+import { carrierOptions, partnerOptions, partnersByIds } from '@/api/scm/partner'
 
 /**
- * 供应商 / 客户下拉：按编码或名称远程搜索启用的往来单位。
+ * 供应商 / 客户下拉：启用的往来单位远程分页搜索（编码、名称、联系人、电话、拼音首字母、去掉分隔符的缩写），
+ * 打开时取前 20 条，滚动加载更多。
  * - type：supplier | customer
- * - v-model:value：ID；label：当前值的显示名（编辑时回显）
+ * - v-model:value：ID；label：当前值的显示名（编辑时回显，不传时按 ID 取名称）
  * - @select(partner)：选中后返回 { id, code, name, contact, phone, address }
  * - carrier：承运商（采购运费、发运单），只列出标记为物流公司的供应商；还没有标记时列出全部供应商并提示去标记
  */
@@ -42,53 +42,14 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:value', 'select'])
 
-const list = ref([])
 /** 承运商：是否已有标记为物流公司的供应商 */
 const marked = ref(true)
-const loading = ref(false)
-let seq = 0
-let timer
 
-const options = computed(() => {
-  const opts = list.value.map((p) => ({ value: p.id, label: `${p.code} ${p.name}` }))
-  if (props.value != null && !opts.some((o) => o.value === props.value)) {
-    opts.unshift({ value: props.value, label: props.label || String(props.value) })
-  }
-  return opts
-})
-
-async function load(keyword) {
-  const current = ++seq
-  loading.value = true
-  try {
-    if (props.carrier) {
-      const res = await carrierOptions(keyword || undefined)
-      if (current === seq) {
-        list.value = res.options
-        marked.value = res.marked
-      }
-    } else {
-      const res = await partnerOptions(props.type, keyword || undefined)
-      if (current === seq) list.value = res
-    }
-  } finally {
-    if (current === seq) loading.value = false
-  }
-}
-
-function onSearch(keyword) {
-  clearTimeout(timer)
-  timer = setTimeout(() => load(keyword), 300)
-}
-
-function onFocus() {
-  if (!list.value.length) load()
-}
-
-function onChange(id) {
-  emit('update:value', id ?? null)
-  const partner = list.value.find((p) => p.id === id)
-  if (partner) emit('select', partner)
+async function fetch({ keyword, current, size }) {
+  if (!props.carrier) return partnerOptions(props.type, keyword, { current, size })
+  const res = await carrierOptions(keyword, { current, size })
+  marked.value = res.marked
+  return res.options
 }
 </script>
 

@@ -133,8 +133,16 @@ public class HrEmployeeService {
         return e;
     }
 
-    public List<EmployeeOption> options(String keyword) {
-        return employeeMapper.selectOptions(keyword, OPTION_LIMIT);
+    /**
+     * 员工下拉：未离职的员工按工号或姓名分页搜索
+     *
+     * @param ids  指定 ID 时只返回这些员工（含离职的），用于回显已选的值
+     * @param size 每页条数，最多 {@value #OPTION_LIMIT}
+     */
+    public List<EmployeeOption> options(String keyword, List<Long> ids, long current, long size) {
+        boolean byIds = ids != null && !ids.isEmpty();
+        Page<EmployeeOption> page = Page.of(byIds ? 1 : Math.max(current, 1), byIds ? OPTION_LIMIT : Math.min(Math.max(size, 1), OPTION_LIMIT), false);
+        return employeeMapper.selectOptions(page, StringUtils.hasText(keyword) ? keyword.trim() : null, byIds ? ids : null);
     }
 
     public EmployeeStats stats() {

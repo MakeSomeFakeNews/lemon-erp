@@ -46,8 +46,7 @@
         <a-tab-pane key="stops" :tab="$t('mes.oee.stopsTab')">
           <div class="toolbar">
             <a-space wrap>
-              <a-select v-model:value="stopQuery.equipmentId" allow-clear show-search option-filter-prop="label" :placeholder="$t('mes.oee.allEquipment')"
-                :options="equipmentChoices" class="filter-wide" @change="stops.search" />
+              <EquipmentSelect v-model:value="stopQuery.equipmentId" :placeholder="$t('mes.oee.allEquipment')" class="filter-wide" @update:value="stops.search" />
               <a-select v-model:value="stopQuery.reason" allow-clear :placeholder="$t('mes.oee.stopReason')" :options="toOptions(dict.mes_stop_reason)" class="filter"
                 @change="stops.search" />
               <a-range-picker v-model:value="stopRange" value-format="YYYY-MM-DD" @change="stops.search" />
@@ -124,7 +123,7 @@
     <a-modal v-model:open="stopOpen" :title="stopForm.id ? $t('mes.oee.editStop') : $t('mes.oee.addStop')" :confirm-loading="saving" @ok="submitStop">
       <a-form layout="vertical">
         <a-form-item :label="$t('mes.oee.equipment')" required>
-          <a-select v-model:value="stopForm.equipmentId" show-search option-filter-prop="label" :options="equipmentChoices" />
+          <EquipmentSelect v-model:value="stopForm.equipmentId" :allow-clear="false" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
@@ -160,8 +159,9 @@ import { actionColumn } from '@/components/common/tableActions'
 import DictTag from '@/components/DictTag.vue'
 import SubPage from '@/components/SubPage.vue'
 import EChart from '@/components/charts/EChart.vue'
+import EquipmentSelect from '@/components/mes/EquipmentSelect.vue'
 import WorkCenterSelect from '@/components/mes/WorkCenterSelect.vue'
-import { addStop, deleteStop, equipmentOptions, oeeDetail, oeeSummary, pageStop, updateStop } from '@/api/mes/base'
+import { addStop, deleteStop, oeeDetail, oeeSummary, pageStop, updateStop } from '@/api/mes/base'
 import { formatQty, today } from '@/components/wms/wms'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
@@ -233,8 +233,6 @@ const trendOption = computed(() => {
 })
 
 // ---------------------------------------------------------------- 停机记录
-const equipments = ref([])
-const equipmentChoices = computed(() => equipments.value.map((e) => ({ value: e.id, label: `${e.code} ${e.name}` })))
 const stopRange = ref()
 const stopQuery = reactive({ equipmentId: undefined, reason: undefined })
 const stops = useTable(pageStop, stopQuery, {
@@ -286,10 +284,7 @@ async function removeStop(id) {
   load()
 }
 
-onMounted(async () => {
-  load()
-  equipments.value = await equipmentOptions()
-})
+onMounted(load)
 </script>
 
 <style scoped>

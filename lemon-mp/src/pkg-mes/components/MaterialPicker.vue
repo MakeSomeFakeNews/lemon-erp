@@ -13,12 +13,13 @@
     <view v-if="open" class="mp-mask" @click.self="open = false">
       <view class="mp-panel">
         <l-scan-input :placeholder="t('mes.common.searchMaterial')" focus @scan="onScan" />
-        <scroll-view scroll-y class="mp-list">
+        <scroll-view scroll-y class="mp-list" @scrolltolower="more">
           <view v-for="m in list" :key="m.id" class="mp-row" @click="select(m)">
             <text class="mp__name">{{ m.name }}</text>
             <text class="mp__sub">{{ [m.code, m.spec, m.unit].filter(Boolean).join(' · ') }}</text>
           </view>
           <l-empty v-if="searched && !list.length" />
+          <view v-else-if="hasMore" class="mp-more" @click="more">{{ t('common.moreHint') }}</view>
         </scroll-view>
         <view class="mp-cancel" @click="open = false">{{ t('common.cancel') }}</view>
       </view>
@@ -34,16 +35,22 @@ import { materialByBarcode } from '@/api/wms'
 import { vibrate } from '@/composables/useAction'
 
 /**
- * 选择物料：点击后弹出搜索，扫码时先按物料条码 / 包装条码识别，再按编码精确匹配，其余按编码、名称模糊搜索。
+ * 选择物料：点击后弹出搜索，扫码时先按物料条码 / 包装条码识别，再按编码精确匹配，其余按关键字模糊搜索
+ * （编码、名称、规格、条码、拼音首字母、去掉分隔符的缩写），每页 20 条，上拉加载更多。
  * v-model 为物料 { id, code, name, spec, unit }
  */
 const props = defineProps({ modelValue: Object, disabled: Boolean })
 const emit = defineEmits(['update:modelValue', 'change'])
 const { t } = useI18n()
 
+const PAGE_SIZE = 20
 const open = ref(false)
 const list = ref([])
 const searched = ref(false)
+const hasMore = ref(false)
+let keyword = ''
+let page = 1
+let loading = false
 
 function openSearch() {
   if (props.disabled) return
@@ -51,9 +58,31 @@ function openSearch() {
   if (!searched.value) search('')
 }
 
-async function search(keyword) {
-  list.value = (await materialOptions(keyword).catch(() => [])) || []
-  searched.value = true
+async function search(kw) {
+  keyword = kw
+  page = 1
+  loading = true
+  try {
+    list.value = (await materialOptions(kw).catch(() => [])) || []
+    hasMore.value = list.value.length >= PAGE_SIZE
+    searched.value = true
+  } finally {
+    loading = false
+  }
+}
+
+/** 上拉：加载当前关键字的下一页 */
+async function more() {
+  if (!hasMore.value || loading) return
+  loading = true
+  try {
+    const rows = (await materialOptions(keyword, page + 1).catch(() => null)) || []
+    page += 1
+    list.value = [...list.value, ...rows.filter((m) => !list.value.some((x) => x.id === m.id))]
+    hasMore.value = rows.length >= PAGE_SIZE
+  } finally {
+    loading = false
+  }
 }
 
 async function onScan(code) {
@@ -138,6 +167,13 @@ function select(m) {
   padding: 20rpx 24rpx;
   background: #fff;
   border-radius: $l-radius;
+}
+
+.mp-more {
+  padding: 24rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: $l-text-3;
 }
 
 .mp-cancel {

@@ -54,10 +54,13 @@ public class ScmCustomerController {
         return R.ok(customerService.page(current, size, keyword, level, status, channel, region));
     }
 
-    /** 登录即可访问：订单等页面按编码或名称搜索 */
+    /** 登录即可访问：订单等页面的下拉，按关键字分页搜索（每页最多 50 条，滚动加载下一页）；ids 按 ID 取已选客户的名称 */
     @GetMapping("/options")
-    public R<List<PartnerOption>> options(@RequestParam(required = false) String keyword) {
-        return R.ok(customerService.options(keyword));
+    public R<List<PartnerOption>> options(@RequestParam(required = false) String keyword,
+                                          @RequestParam(required = false) List<Long> ids,
+                                          @RequestParam(defaultValue = "1") long current,
+                                          @RequestParam(defaultValue = "20") long size) {
+        return R.ok(ids != null && !ids.isEmpty() ? customerService.optionsByIds(ids) : customerService.options(keyword, current, size));
     }
 
     @GetMapping("/{id}")

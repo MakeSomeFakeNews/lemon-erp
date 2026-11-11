@@ -39,6 +39,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -68,6 +69,9 @@ public class PmProjectService {
     private static final String DEFAULT_PRIORITY = "MEDIUM";
     /** 默认税率（%） */
     private static final BigDecimal DEFAULT_TAX_RATE = BigDecimal.valueOf(6);
+
+    /** 下拉每页最多返回的条数 */
+    public static final int OPTION_LIMIT = 50;
 
     private final PmProjectMapper projectMapper;
     private final PmMemberMapper memberMapper;
@@ -108,9 +112,17 @@ public class PmProjectService {
         return p;
     }
 
-    /** 未完成的项目；mine 为 true 时只返回我参与的（填报工时） */
-    public List<PmProject> options(boolean mine) {
-        return projectMapper.selectOptions(mine ? SecurityUtils.getUserId() : null);
+    /**
+     * 项目下拉：未完成的项目，按编码或名称分页搜索；mine 为 true 时只返回我参与的（填报工时）
+     *
+     * @param ids  指定 ID 时只返回这些项目（含已结束的），用于回显已选的值
+     * @param size 每页条数，最多 {@value #OPTION_LIMIT}
+     */
+    public List<PmProject> options(boolean mine, String keyword, List<Long> ids, long current, long size) {
+        boolean byIds = ids != null && !ids.isEmpty();
+        Page<PmProject> page = Page.of(byIds ? 1 : Math.max(current, 1), byIds ? OPTION_LIMIT : Math.min(Math.max(size, 1), OPTION_LIMIT), false);
+        return projectMapper.selectOptions(page, mine && !byIds ? SecurityUtils.getUserId() : null,
+                StringUtils.hasText(keyword) ? keyword.trim() : null, byIds ? ids : null);
     }
 
     @Transactional

@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -39,6 +40,9 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class MesEquipmentService {
+
+    /** 下拉每页最多返回的条数 */
+    public static final int OPTION_LIMIT = 50;
 
     private final MesEquipmentMapper equipmentMapper;
     private final MesMaintenanceMapper maintenanceMapper;
@@ -61,12 +65,23 @@ public class MesEquipmentService {
         return equipment;
     }
 
-    /** 未报废的设备，维护单选择 */
-    public List<MesEquipment> options() {
-        return equipmentMapper.selectList(Wrappers.<MesEquipment>lambdaQuery()
-                .select(MesEquipment::getId, MesEquipment::getCode, MesEquipment::getName, MesEquipment::getStatus, MesEquipment::getWorkCenterId)
-                .ne(MesEquipment::getStatus, EquipmentStatus.SCRAPPED)
-                .orderByAsc(MesEquipment::getCode));
+    /**
+     * 设备下拉（维护单、停机记录、报工、模具发放）：未报废的设备按编码或名称分页搜索，按编码排序，不查总数
+     *
+     * @param ids          指定 ID 时只返回这些设备（含已报废的），用于回显已选的值
+     * @param workCenterId 只看某个工作中心的设备，为空不限
+     * @param size         每页条数，最多 {@value #OPTION_LIMIT}
+     */
+    public List<MesEquipment> options(String keyword, List<Long> ids, Long workCenterId, long current, long size) {
+        boolean byIds = ids != null && !ids.isEmpty();
+        return equipmentMapper.selectPage(Page.of(byIds ? 1 : Math.max(current, 1), byIds ? OPTION_LIMIT : Math.min(Math.max(size, 1), OPTION_LIMIT), false),
+                Wrappers.<MesEquipment>lambdaQuery()
+                        .select(MesEquipment::getId, MesEquipment::getCode, MesEquipment::getName, MesEquipment::getStatus, MesEquipment::getWorkCenterId)
+                        .in(byIds, MesEquipment::getId, ids)
+                        .ne(!byIds, MesEquipment::getStatus, EquipmentStatus.SCRAPPED)
+                        .eq(!byIds && workCenterId != null, MesEquipment::getWorkCenterId, workCenterId)
+                        .and(!byIds && StringUtils.hasText(keyword), w -> w.like(MesEquipment::getCode, keyword.trim()).or().like(MesEquipment::getName, keyword.trim()))
+                        .orderByAsc(MesEquipment::getCode)).getRecords();
     }
 
     public void create(MesEquipment equipment) {

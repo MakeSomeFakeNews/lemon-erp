@@ -118,8 +118,10 @@
       :title="sheetTitle"
       :items="sheetItems"
       :loading="sheetLoading"
+      :has-more="sheetHasMore"
       :empty-option="sheet === 'salesman' ? t('wms.sale.salesmanDefault') : ''"
       @search="searchSheet"
+      @more="searchSheet(sheetKeyword, true)"
       @select="selectSheet"
       @close="sheet = ''"
     />
@@ -131,7 +133,7 @@
 import { computed, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from '@/locales'
-import { addSalesOut, addSalesOutDraft, customerOptions, defaultPrices, materialOptions, previewPromotion, warehouseOptions } from '@/api/wms'
+import { OPTION_PAGE_SIZE, addSalesOut, addSalesOutDraft, customerOptions, defaultPrices, materialOptions, previewPromotion, warehouseOptions } from '@/api/wms'
 import { pageIdentityUsers } from '@/api/workflow'
 import { useTitle } from '@/composables/useTitle'
 import { runAction } from '@/composables/useAction'
@@ -256,25 +258,43 @@ const materialItem = (m) => ({ id: m.id, title: m.name, sub: [m.code, m.spec, m.
 
 function openSheet(type) {
   sheetItems.value = []
+  sheetHasMore.value = false
   sheet.value = type
 }
 
-async function searchSheet(keyword) {
+/** 搜索弹层：客户、业务员、商品按关键字分页查询，more 为加载下一页（上拉）；只采用最后一次查询的结果 */
+const sheetKeyword = ref('')
+const sheetHasMore = ref(false)
+let sheetPage = 1
+let sheetSeq = 0
+async function searchSheet(keyword, more = false) {
   const type = sheet.value
+  const seq = ++sheetSeq
+  const page = more ? sheetPage + 1 : 1
+  if (!more) sheetKeyword.value = keyword
   sheetLoading.value = true
   try {
+    let items = []
+    let hasMore = false
     if (type === 'customer') {
-      const list = (await customerOptions(keyword).catch(() => [])) || []
-      sheetItems.value = list.map((c) => ({ id: c.id, title: `${c.code} ${c.name}`, raw: c }))
+      const list = (await customerOptions(keyword, page).catch(() => [])) || []
+      items = list.map((c) => ({ id: c.id, title: `${c.code} ${c.name}`, raw: c }))
+      hasMore = list.length >= OPTION_PAGE_SIZE
     } else if (type === 'salesman') {
-      const res = await pageIdentityUsers({ current: 1, size: 30, username: keyword || undefined }).catch(() => null)
-      sheetItems.value = (res?.records || []).map((u) => ({ id: u.id, title: u.nickname || u.username, sub: [u.username, u.deptName].filter(Boolean).join(' · ') }))
+      const res = await pageIdentityUsers({ current: page, size: OPTION_PAGE_SIZE, username: keyword || undefined }).catch(() => null)
+      items = (res?.records || []).map((u) => ({ id: u.id, title: u.nickname || u.username, sub: [u.username, u.deptName].filter(Boolean).join(' · ') }))
+      hasMore = page * OPTION_PAGE_SIZE < (res?.total || 0)
     } else if (type === 'material') {
-      const list = (await materialOptions(keyword).catch(() => [])) || []
-      sheetItems.value = list.map(materialItem)
+      const list = (await materialOptions(keyword, page).catch(() => [])) || []
+      items = list.map(materialItem)
+      hasMore = list.length >= OPTION_PAGE_SIZE
     }
+    if (seq !== sheetSeq || type !== sheet.value) return
+    sheetPage = page
+    sheetItems.value = more ? [...sheetItems.value, ...items.filter((it) => !sheetItems.value.some((x) => x.id === it.id))] : items
+    sheetHasMore.value = hasMore
   } finally {
-    sheetLoading.value = false
+    if (seq === sheetSeq) sheetLoading.value = false
   }
 }
 

@@ -1,8 +1,11 @@
 package com.lemon.erp.modules.wms.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.framework.data.Queries;
+import com.lemon.erp.framework.data.SearchKeyTable;
+import com.lemon.erp.framework.data.SearchKeys;
 import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.modules.wms.model.PriceLevels;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -41,6 +44,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -58,8 +62,8 @@ public class WmsMaterialService {
     /** 品牌字典（业务字典） */
     public static final String BRAND_DICT = "wms_material_brand";
 
-    /** 下拉搜索最多返回的条数 */
-    private static final int OPTION_LIMIT = 50;
+    /** 下拉搜索每页最多返回的条数 */
+    public static final int OPTION_LIMIT = 50;
 
     private final WmsMaterialMapper materialMapper;
     private final WmsVariantValueMapper variantValueMapper;
@@ -76,9 +80,12 @@ public class WmsMaterialService {
     private final DictLookup dictLookup;
     private final WmsPriceLevelService priceLevelService;
     private final WmsMaterialCategoryService categoryService;
+    private final SearchKeyTable<WmsMaterial> searchKeys;
 
-    /** @param keyword 编码或名称，模糊匹配 */
-    /** @param templateId 只看某个款式的 SKU */
+    /**
+     * @param keyword    编码、名称、规格、条码、拼音首字母或去掉分隔符的缩写，规则见 {@link SearchKeys}
+     * @param templateId 只看某个款式的 SKU
+     */
     public PageResult<WmsMaterial> page(long current, long size, String keyword, String category, EnableStatus status, Long templateId) {
         return page(current, size, keyword, category, null, status, templateId);
     }
@@ -89,7 +96,7 @@ public class WmsMaterialService {
      */
     public PageResult<WmsMaterial> page(long current, long size, String keyword, String category, String brand, EnableStatus status, Long templateId) {
         Page<WmsMaterial> page = materialMapper.selectPage(Page.of(current, size), Wrappers.<WmsMaterial>lambdaQuery()
-                .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword))
+                .and(StringUtils.hasText(keyword), keywordMatch(keyword))
                 .in(StringUtils.hasText(category), WmsMaterial::getCategory, categoryCodes(category))
                 .eq(StringUtils.hasText(brand), WmsMaterial::getBrand, brand)
                 .eq(status != null, WmsMaterial::getStatus, status)
@@ -153,23 +160,53 @@ public class WmsMaterialService {
                 .collect(Collectors.toMap(WmsMaterial::getCode, Function.identity()));
     }
 
-    /** 启用的物料，按编码或名称搜索，供单据明细选择 */
+    /** 启用的物料，按关键字搜索，最多 {@value #OPTION_LIMIT} 条，供单据明细选择、AI 识别物料 */
     public List<WmsMaterial> options(String keyword) {
-        return materialMapper.selectPage(Page.of(1, OPTION_LIMIT, false), Wrappers.<WmsMaterial>lambdaQuery()
+        return options(keyword, 1, OPTION_LIMIT);
+    }
+
+    /**
+     * 启用的物料下拉：按关键字（规则见 {@link SearchKeys}）分页搜索，按编码排序，不查总数；
+     * 第一页中编码或条码与关键字完全一致的物料排在最前
+     *
+     * @param size 每页条数，最多 {@value #OPTION_LIMIT}
+     */
+    public List<WmsMaterial> options(String keyword, long current, long size) {
+        List<WmsMaterial> rows = materialMapper.selectPage(Page.of(Math.max(current, 1), Math.min(Math.max(size, 1), OPTION_LIMIT), false),
+                optionQuery().eq(WmsMaterial::getStatus, EnableStatus.ENABLED)
+                        // 多规格款式不能直接用于单据，选择具体的 SKU
+                        .eq(WmsMaterial::getIsTemplate, 0)
+                        .and(StringUtils.hasText(keyword), keywordMatch(keyword))
+                        .orderByAsc(WmsMaterial::getCode)).getRecords();
+        if (!StringUtils.hasText(keyword) || current > 1) {
+            return rows;
+        }
+        String kw = keyword.trim();
+        WmsMaterial exact = Queries.first(materialMapper, optionQuery().eq(WmsMaterial::getStatus, EnableStatus.ENABLED)
+                .eq(WmsMaterial::getIsTemplate, 0)
+                .and(w -> w.eq(WmsMaterial::getCode, kw).or().eq(WmsMaterial::getBarcode, kw))
+                .orderByAsc(WmsMaterial::getCode));
+        return SearchKeys.exactFirst(rows, exact, WmsMaterial::getId);
+    }
+
+    /** 按 ID 取物料（含停用的，最多 {@value #OPTION_LIMIT} 个，列同下拉），下拉回显已选的值 */
+    public List<WmsMaterial> optionsByIds(List<Long> ids) {
+        return ids.isEmpty() ? List.of() : materialMapper.selectList(optionQuery()
+                .in(WmsMaterial::getId, ids.stream().distinct().limit(OPTION_LIMIT).toList()));
+    }
+
+    /** 下拉返回的列 */
+    private static LambdaQueryWrapper<WmsMaterial> optionQuery() {
+        return Wrappers.<WmsMaterial>lambdaQuery()
                 .select(WmsMaterial::getId, WmsMaterial::getCode, WmsMaterial::getName, WmsMaterial::getSpec,
                         WmsMaterial::getUnit, WmsMaterial::getBatchEnabled, WmsMaterial::getSerialEnabled,
-                        WmsMaterial::getBarcode, WmsMaterial::getDefaultWarehouseId, WmsMaterial::getDefaultLocationId)
-                .eq(WmsMaterial::getStatus, EnableStatus.ENABLED)
-                // 多规格款式不能直接用于单据，选择具体的 SKU
-                .eq(WmsMaterial::getIsTemplate, 0)
-                .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword))
-                .orderByAsc(WmsMaterial::getCode)).getRecords();
+                        WmsMaterial::getBarcode, WmsMaterial::getDefaultWarehouseId, WmsMaterial::getDefaultLocationId);
     }
 
     /**
      * 数据整理的候选物料：启用的物料（不含多规格的 SKU，SKU 由款式生成、名称相同），按 ID 升序分页，只查分析需要的列
      *
-     * @param keyword 编码或名称，模糊匹配
+     * @param keyword 关键字，规则见 {@link SearchKeys}
      */
     public PageResult<WmsMaterial> pageForCleanse(long current, long size, String keyword) {
         Page<WmsMaterial> page = materialMapper.selectPage(Page.of(current, size), Wrappers.<WmsMaterial>lambdaQuery()
@@ -177,9 +214,15 @@ public class WmsMaterialService {
                         WmsMaterial::getCategory, WmsMaterial::getUnit, WmsMaterial::getBarcode)
                 .eq(WmsMaterial::getStatus, EnableStatus.ENABLED)
                 .isNull(WmsMaterial::getTemplateId)
-                .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword))
+                .and(StringUtils.hasText(keyword), keywordMatch(keyword))
                 .orderByAsc(WmsMaterial::getId));
         return PageResult.of(page);
+    }
+
+    /** 关键字匹配：编码、名称、规格、条码包含关键字，或检索列包含规范化的关键字（{@link SearchKeys}） */
+    public static Consumer<LambdaQueryWrapper<WmsMaterial>> keywordMatch(String keyword) {
+        return SearchKeys.matches(keyword, WmsMaterial::getSearchKey,
+                WmsMaterial::getCode, WmsMaterial::getName, WmsMaterial::getSpec, WmsMaterial::getBarcode);
     }
 
     /** 是否有其他启用的物料名称和规格都相同（规格为空视为相同的空规格） */
@@ -273,7 +316,9 @@ public class WmsMaterialService {
                 .set(WmsMaterial::getWholesalePrice7, material.getWholesalePrice7())
                 .set(WmsMaterial::getWholesalePrice8, material.getWholesalePrice8())
                 .eq(WmsMaterial::getId, id));
-        changeLogger.log("wms_material", id, before, materialMapper.selectById(id), CHANGE_FIELDS);
+        WmsMaterial after = materialMapper.selectById(id);
+        searchKeys.refresh(after);
+        changeLogger.log("wms_material", id, before, after, CHANGE_FIELDS);
     }
 
     public void changeStatus(Long id, EnableStatus status) {
@@ -344,7 +389,7 @@ public class WmsMaterialService {
     /**
      * 商品价格列表：可用于单据的物料（不含多规格款式）及各价格列，按编码排序
      *
-     * @param keyword 编码、名称或条码，模糊匹配
+     * @param keyword 关键字（含条码），规则见 {@link SearchKeys}
      */
     public PageResult<WmsMaterial> pagePrices(long current, long size, String keyword, String category, String brand, EnableStatus status) {
         Page<WmsMaterial> page = materialMapper.selectPage(Page.of(current, size), Wrappers.<WmsMaterial>lambdaQuery()
@@ -354,8 +399,7 @@ public class WmsMaterialService {
                         WmsMaterial::getWholesalePrice3, WmsMaterial::getWholesalePrice4, WmsMaterial::getWholesalePrice5,
                         WmsMaterial::getWholesalePrice6, WmsMaterial::getWholesalePrice7, WmsMaterial::getWholesalePrice8)
                 .eq(WmsMaterial::getIsTemplate, 0)
-                .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword)
-                        .or().eq(WmsMaterial::getBarcode, keyword))
+                .and(StringUtils.hasText(keyword), keywordMatch(keyword))
                 .in(StringUtils.hasText(category), WmsMaterial::getCategory, categoryCodes(category))
                 .eq(StringUtils.hasText(brand), WmsMaterial::getBrand, brand)
                 .eq(status != null, WmsMaterial::getStatus, status)

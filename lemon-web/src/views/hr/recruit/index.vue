@@ -9,15 +9,14 @@
           <a-button type="primary" @click="rSearch">{{ $t('common.action.query') }}</a-button>
         </template>
         <template v-else>
-          <a-select
+          <RemoteSelect
             v-model:value="cq.recruitId"
+            :label="cqRecruitLabel"
+            :fetch="({ keyword, current, size }) => pageRecruit({ keyword, current, size })"
+            :to-label="(r) => `${r.recruitNo} ${r.title}`"
             :placeholder="$t('hr.recruit.allRecruits')"
-            allow-clear
-            show-search
-            option-filter-prop="label"
             class="w240"
-            :options="recruitOptions"
-            @change="cSearch"
+            @update:value="cSearch"
           />
           <a-input v-model:value="cq.keyword" :placeholder="$t('hr.recruit.candidateKeywordPh')" allow-clear class="w200" @press-enter="cSearch" />
           <a-button type="primary" @click="cSearch">{{ $t('common.action.query') }}</a-button>
@@ -63,6 +62,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { openRecruits, pageRecruit } from '@/api/hr'
+import RemoteSelect from '@/components/common/RemoteSelect.vue'
 import { useDict } from '@/composables/useDict'
 import { toOptions } from '@/utils/dict'
 import CandidateTab from './CandidateTab.vue'
@@ -79,16 +79,16 @@ const rLoad = () => recruitRef.value.load()
 const rSearch = () => recruitRef.value.search()
 function viewCandidates(record) {
   cq.recruitId = record.id
+  cqRecruitLabel.value = `${record.recruitNo} ${record.title}`
   tab.value = 'candidate'
   cSearch()
 }
 
-// 招聘需求下拉：全部（筛选）与招聘中（录入简历）
-const recruitOptions = ref([])
+// 招聘需求：筛选应聘者时远程搜索全部需求（从需求列表进入时带名称回显）；录入简历只能选招聘中的需求
+const cqRecruitLabel = ref()
 const openOptions = ref([])
 async function loadRecruitOptions() {
-  const [all, open] = await Promise.all([pageRecruit({ current: 1, size: 200 }), openRecruits()])
-  recruitOptions.value = all.records.map((r) => ({ value: r.id, label: `${r.recruitNo} ${r.title}` }))
+  const open = await openRecruits()
   openOptions.value = open.map((r) => ({ value: r.id, label: `${r.recruitNo} ${r.title}` }))
 }
 

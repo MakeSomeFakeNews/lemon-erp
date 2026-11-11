@@ -1,9 +1,12 @@
 package com.lemon.erp.modules.scm.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.validation.Update;
+import com.lemon.erp.framework.data.SearchKeys;
+import com.lemon.erp.framework.data.Searchable;
 import com.lemon.erp.modules.scm.model.SupplierLevel;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
@@ -17,7 +20,7 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("scm_supplier")
-public class ScmSupplier extends BaseEntity {
+public class ScmSupplier extends BaseEntity implements Searchable {
 
     /** 新增时留空则按编码规则自动生成 */
     @NotBlank(groups = Update.class, message = "{scm.valid.supplierCodeRequired}")
@@ -70,4 +73,13 @@ public class ScmSupplier extends BaseEntity {
 
     @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}")
     private String remark;
+
+    /** 检索列：由编码、名称、联系人、电话计算（{@link SearchKeys}），下拉搜索、列表关键字按它匹配拼音首字母和去掉分隔符的缩写 */
+    @JsonIgnore
+    private String searchKey;
+
+    @Override
+    public String[] searchTexts() {
+        return new String[]{code, name, contact, phone};
+    }
 }
