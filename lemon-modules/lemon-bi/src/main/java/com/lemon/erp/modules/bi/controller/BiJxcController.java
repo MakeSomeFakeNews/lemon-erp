@@ -40,7 +40,7 @@ public class BiJxcController {
 
     @GetMapping("/sales/detail")
     @PreAuthorize("@ss.hasPerm('bi:jxc:sales')")
-    public R<PageResult<JxcViews.DetailRow>> salesDetail(JxcQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<JxcViews.DetailPage> salesDetail(JxcQuery q, @RequestParam(defaultValue = "1") long current,
                                                          @RequestParam(defaultValue = "20") long size) {
         return R.ok(jxcService.detail(true, q, current, size));
     }
@@ -75,7 +75,7 @@ public class BiJxcController {
 
     @GetMapping("/purchase/detail")
     @PreAuthorize("@ss.hasPerm('bi:jxc:purchase')")
-    public R<PageResult<JxcViews.DetailRow>> purchaseDetail(JxcQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<JxcViews.DetailPage> purchaseDetail(JxcQuery q, @RequestParam(defaultValue = "1") long current,
                                                             @RequestParam(defaultValue = "20") long size) {
         return R.ok(jxcService.detail(false, q, current, size));
     }

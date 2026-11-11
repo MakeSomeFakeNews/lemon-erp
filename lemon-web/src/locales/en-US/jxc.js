@@ -1,7 +1,7 @@
 /** Sales & purchase reports (Supply Chain → Sales & Purchase Reports, backend /bi/jxc) */
 export default {
   common: {
-    profitAfterTip: 'Gross profit − receipt discounts − bad debts written off (excluding tax, by delivery date) − freight borne by the company, for reference only: in the income statement discounts are financial expenses, bad debts are non-operating expenses and freight is a selling expense, so gross profit itself excludes them and nothing is counted twice',
+    salesAmountTip: 'Sales amount = goods amount − order discount − freight borne by the company − receipt discounts / rounding − bad debts written off (excluding tax); gross profit = sales amount − cost. In the income statement freight, discounts and bad debts are selling, financial and non-operating expenses rather than cost of sales, so this differs from the income statement gross profit (net − cost)',
     purchaseDiscountTip: 'Net amount − payment discounts (discounts / rounding off when paying the payables, accumulated over payments, excluding tax, by receipt date), for reference only: payment discounts are financial expenses and do not reduce inventory cost',
     unset: 'Not set',
     noSalesman: 'Unassigned',
@@ -53,21 +53,22 @@ export default {
   field: {
     badDebt: 'Bad debt',
     receiptDiscount: 'Receipt discount',
-    profitAfterDiscount: 'Profit after discount',
-    profitAfterBadDebt: 'Profit after discount & bad debt',
     purchaseDiscount: 'Payment discount',
     netAfterDiscount: 'Net purchases after discount',
     amountAfterDiscount: 'Amount after discount',
     freight: 'Freight (company)',
-    profitAfterFreight: 'Profit after discount, bad debt & freight',
     outQty: 'Shipped qty',
     inQty: 'Received qty',
     returnQty: 'Returned qty',
     netQty: 'Net qty',
-    outAmount: 'Shipped amount',
-    inAmount: 'Received amount',
-    returnAmount: 'Returned amount',
+    outAmount: 'Shipped goods',
+    inAmount: 'Received goods',
+    returnAmount: 'Returned goods',
     netAmount: 'Net amount',
+    goodsAmount: 'Goods amount',
+    salesAmount: 'Sales amount',
+    grossPrice: 'Price before discount',
+    grossTaxedAmount: 'Incl. tax before discount',
     taxedAmount: 'Amount incl. tax',
     cost: 'Cost',
     profit: 'Gross profit',
@@ -95,19 +96,31 @@ export default {
   },
   sales: {
     title: 'Sales report',
-    tip: 'Sales and net amounts exclude tax (amount incl. tax − tax); net = sales shipments − sales returns, in the base currency. Cost is the real-time inventory cost: shipments at the moving average cost at the time of issue, returns at the original issue cost (see stock transactions); older documents without real-time cost use the costing unit cost of the month or the reference cost. Finance "Gross Margin" uses the month-end costing unit cost (for bookkeeping), so the two may differ. Receipt discounts (discounts / rounding off given when collecting the receivables of deliveries and returns, accumulated over receipts; negative for returns refunded less) and bad debts written off on the delivery receivables are converted to tax-exclusive by the ratio of the receivable and counted on the delivery date, not the receipt / write-off date; together with freight borne by the company they are allocated by line amount and deducted in turn as reference profit figures; sales amounts are unchanged. In the income statement discounts are financial expenses (receipt discount account, tax-inclusive, by receipt date) and gross profit itself excludes them, so nothing is counted twice. When the details list whole documents (no material, category, brand or warehouse filter), the discount is listed as the last line of the document ("Receipt discount / rounding"); otherwise it is allocated to the lines. Data is limited to your data scope. Clicking a row opens the shipment lines when grouped by category, brand or item, and lists the documents otherwise (click a document for its lines); use "Documents" or "Item details" in the actions to choose. Click a document number to open the document.'
+    tip: 'Amounts exclude tax, in the base currency, with returns negative: shipped goods − returned goods = goods amount (before the order discount); goods amount − order discount = net amount (sales revenue, as booked); sales amount = net amount − freight borne by the company − receipt discounts / rounding − bad debts written off; gross profit = sales amount − cost, margin = gross profit / sales amount. The order discount is allocated to the lines (the tax-inclusive share converted by the line tax rate); receipt discounts (given when collecting the receivables of deliveries and returns, accumulated over receipts; negative for returns refunded less) and bad debts written off on the delivery receivables are converted to tax-exclusive by the ratio of the receivable and counted on the delivery date, not the receipt / write-off date; freight borne by the company covers shipments, deliveries with company-borne freight and freight paid by customers on returns; freight, discounts and bad debts are allocated by line amount, so a category, brand or item only carries the part of its own lines. In the income statement these three are selling, financial and non-operating expenses and gross profit there is net amount − cost, which differs from the gross profit here. Cost is the real-time inventory cost: shipments at the moving average cost at the time of issue, returns at the original issue cost (see stock transactions); older documents without real-time cost use the costing unit cost of the month or the reference cost. Finance "Gross Margin" uses the month-end costing unit cost (for bookkeeping), so the two may differ. In the details the adjustments can be shown "at the bottom" (lines show the goods amount and profit before discount, with one adjustment row per type at the bottom) or "allocated to lines", with the same totals. Data is limited to your data scope. Clicking a row opens the shipment lines when grouped by category, brand or item, and lists the documents otherwise (click a document for its lines); use "Documents" or "Item details" in the actions to choose. Click a document number to open the document.'
   },
   purchase: {
     title: 'Purchase report',
-    tip: 'Purchase and net amounts exclude tax (amount incl. tax − tax); net = purchase receipts − purchase returns, in the base currency. Payment discounts (discounts / rounding off when paying the payables of receipts and returns, accumulated over payments, excluding tax, counted on the receipt date) are allocated by line amount; "Net purchases after discount" is for reference only: payment discounts are financial expenses and do not reduce inventory cost, so purchase amounts are unchanged; when the details list whole documents the discount is the last line of the document. Data is limited to your data scope. Clicking a row opens the receipt lines when grouped by category, brand or item, and lists the documents otherwise (click a document for its lines); use "Documents" or "Item details" in the actions to choose. Click a document number to open the document.'
+    tip: 'Amounts exclude tax, in the base currency, with returns negative: received goods − returned goods = goods amount (before the order discount); goods amount − order discount = net amount (purchase amount, in inventory cost). Payment discounts (discounts / rounding off when paying the payables of receipts and returns, accumulated over payments, excluding tax, counted on the receipt date) are allocated by line amount; "Net purchases after discount" = net amount − payment discounts, for reference only: payment discounts are financial expenses and do not reduce inventory cost. In the details the adjustments (order discount, payment discount) can be shown "at the bottom" or "allocated to lines", with the same totals. Data is limited to your data scope. Clicking a row opens the receipt lines when grouped by category, brand or item, and lists the documents otherwise (click a document for its lines); use "Documents" or "Item details" in the actions to choose. Click a document number to open the document.'
   },
   detail: {
     title: '{name} · Details',
     titleAll: 'Details',
     salesName: 'Sales details',
-    purchaseName: 'Purchase details',
-    receiptDiscountLine: 'Receipt discount / rounding',
-    paymentDiscountLine: 'Payment discount / rounding'
+    purchaseName: 'Purchase details'
+  },
+  adjust: {
+    BOTTOM: 'Adjustments at the bottom',
+    ALLOCATE: 'Allocated to lines',
+    tip: 'How the order discount, company freight, receipt / payment discounts and bad debts are shown; both give the same totals',
+    salesBottomTip: 'Lines show the price, goods amount and profit before discount; the order discount, freight borne by the company, receipt discounts / rounding and bad debts written off are summed by type at the bottom (negative amounts with zero cost, the other way round for returns; only types with an amount are listed), and the total equals the document sales amount and gross profit, matching the summary row. When filtering by item, category and so on shows only part of a document, the adjustment rows are in proportion to the selected lines.',
+    salesAllocateTip: 'The order discount, freight borne by the company, receipt discounts / rounding and bad debts are allocated to the lines by line amount: sales amount = net amount − freight − discounts − bad debts, gross profit = sales amount − cost; the totals match the summary row.',
+    purchaseBottomTip: 'Lines show the price and goods amount before discount; the order discount and payment discounts / rounding are summed by type at the bottom (negative amounts, the other way round for returns; only types with an amount are listed), and the total equals the net purchases after discount, matching the summary row. When filtering by item, category and so on the adjustment rows are in proportion to the selected lines.',
+    purchaseAllocateTip: 'The order discount and payment discounts / rounding are allocated to the lines by line amount: after discount = net amount − payment discounts; the totals match the summary row.',
+    DISCOUNT: 'Order discount',
+    FREIGHT: 'Freight borne by the company',
+    SETTLE_DISCOUNT: 'Receipt discount / rounding',
+    PAYMENT_DISCOUNT: 'Payment discount / rounding',
+    BAD_DEBT: 'Bad debts written off'
   },
   docs: {
     title: '{name} · Documents',
@@ -115,11 +128,11 @@ export default {
     lineLabel: '{name} / {docNo}',
     salesName: 'Sales documents',
     purchaseName: 'Purchase documents',
-    tip: 'One row per document; amounts are the lines of the document that belong to this summary item (only the matching items when grouped by category, brand or item), net of the order discount, with returns negative; the totals match the summary row. The receipt / payment discount is the discount on the receivable / payable (accumulated over receipts / payments) allocated to these lines. Click a document to see its lines; for a whole document the discount is the last line.'
+    tip: 'One row per document; amounts are the lines of the document that belong to this summary item (only the matching items when grouped by category, brand or item, and only the order discount, freight, discounts and bad debts allocated to them), with returns negative; the totals match the summary row: goods amount − order discount = net amount, sales amount = net amount − company freight − receipt discounts − bad debts, gross profit = sales amount − cost (purchases: after discount = net amount − payment discounts). Click a document to see its lines.'
   },
   business: {
-    tip: 'Sales are summarized live from sales shipments (excluding tax, net = shipments − returns) within your data scope; cost is calculated as in the sales report.',
-    netSales: 'Net sales',
+    tip: 'Sales are summarized live from sales shipments (excluding tax, shipments − returns) within your data scope; sales amount = net amount (after the order discount) − freight borne by the company − receipt discounts − bad debts, gross profit = sales amount − cost, as in the sales report.',
+    netSales: 'Sales amount',
     profit: 'Gross profit',
     margin: 'Margin',
     receipt: 'Receipts',

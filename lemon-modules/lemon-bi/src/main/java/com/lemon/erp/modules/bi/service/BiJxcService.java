@@ -2,7 +2,6 @@ package com.lemon.erp.modules.bi.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
@@ -10,6 +9,8 @@ import com.lemon.erp.modules.bi.dto.JxcQuery;
 import com.lemon.erp.modules.bi.dto.JxcViews;
 import com.lemon.erp.modules.bi.mapper.BiJxcMapper;
 import com.lemon.erp.modules.bi.model.JxcDimension;
+import com.lemon.erp.modules.fin.dto.AdjustRow;
+import com.lemon.erp.modules.fin.model.AdjustMode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -58,23 +59,30 @@ public class BiJxcService {
         return doSummary(sales, dim, q);
     }
 
-    /** 明细（分页），带汇总的筛选条件和穿透的维度取值 */
+    /**
+     * 明细（分页），带汇总的筛选条件和穿透的维度取值；调整项按 {@link JxcQuery#getAdjustMode()} 汇总到底部（默认）或分摊到各行，
+     * summary 为全部明细的合计（与汇总行一致）
+     */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
-    public PageResult<JxcViews.DetailRow> detail(boolean sales, JxcQuery q, long current, long size) {
+    public JxcViews.DetailPage detail(boolean sales, JxcQuery q, long current, long size) {
         prepare(sales, q, MAX_DAYS);
+        boolean bottom = AdjustMode.orDefault(q.getAdjustMode()) == AdjustMode.BOTTOM;
         Page<JxcViews.DetailRow> page = jxcMapper.selectDetail(Page.of(current, size), sales, q);
-        page.getRecords().forEach(r -> fillDetail(sales, r));
-        return PageResult.of(page);
+        page.getRecords().forEach(r -> fillDetail(sales, bottom, r));
+        JxcViews.SummaryRow total = total(sales, q);
+        return new JxcViews.DetailPage(page.getRecords(), page.getTotal(), adjustments(sales, bottom, total), total);
     }
 
-    /** 导出明细：最多 {@link #EXPORT_LIMIT} 行 */
+    /** 导出明细：最多 {@link #EXPORT_LIMIT} 行，调整行与合计同 {@link #detail} */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
     public JxcViews.DetailExport export(boolean sales, JxcQuery q) {
         prepare(sales, q, MAX_DAYS);
+        boolean bottom = AdjustMode.orDefault(q.getAdjustMode()) == AdjustMode.BOTTOM;
         List<JxcViews.DetailRow> list = jxcMapper.selectDetailList(sales, q, EXPORT_LIMIT + 1);
         List<JxcViews.DetailRow> rows = new ArrayList<>(list.subList(0, Math.min(list.size(), EXPORT_LIMIT)));
-        rows.forEach(r -> fillDetail(sales, r));
-        return new JxcViews.DetailExport(rows, list.size() > EXPORT_LIMIT);
+        rows.forEach(r -> fillDetail(sales, bottom, r));
+        JxcViews.SummaryRow total = total(sales, q);
+        return new JxcViews.DetailExport(rows, list.size() > EXPORT_LIMIT, adjustments(sales, bottom, total), total);
     }
 
     /**
@@ -86,22 +94,17 @@ public class BiJxcService {
         prepare(sales, q, MAX_DAYS);
         Page<JxcViews.DocRow> page = jxcMapper.selectDocs(Page.of(current, size), sales, q);
         page.getRecords().forEach(r -> fillDoc(sales, r));
-        JxcViews.SummaryRow total = jxcMapper.selectTotal(sales, q);
-        if (total == null) {
-            total = new JxcViews.SummaryRow();
-        }
-        fillSummary(sales, total);
-        return new JxcViews.DocPage(page.getRecords(), page.getTotal(), total);
+        return new JxcViews.DocPage(page.getRecords(), page.getTotal(), total(sales, q));
     }
 
-    /** 导出单据列表：最多 {@link #EXPORT_LIMIT} 行 */
+    /** 导出单据列表：最多 {@link #EXPORT_LIMIT} 行，带全部单据的合计 */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
     public JxcViews.DocExport exportDocs(boolean sales, JxcQuery q) {
         prepare(sales, q, MAX_DAYS);
         List<JxcViews.DocRow> list = jxcMapper.selectDocList(sales, q, EXPORT_LIMIT + 1);
         List<JxcViews.DocRow> rows = new ArrayList<>(list.subList(0, Math.min(list.size(), EXPORT_LIMIT)));
         rows.forEach(r -> fillDoc(sales, r));
-        return new JxcViews.DocExport(rows, list.size() > EXPORT_LIMIT);
+        return new JxcViews.DocExport(rows, list.size() > EXPORT_LIMIT, total(sales, q));
     }
 
     // ---------------------------------------------------------------- 经营状况
@@ -163,10 +166,12 @@ public class BiJxcService {
         if (customers.rows().size() > TOP_CUSTOMERS) {
             JxcViews.SummaryRow others = new JxcViews.SummaryRow();
             BigDecimal topAmount = Decimals.sum(top, JxcViews.SummaryRow::getNetAmount);
+            BigDecimal topSales = Decimals.sum(top, JxcViews.SummaryRow::getSalesAmount);
             BigDecimal topProfit = Decimals.sum(top, JxcViews.SummaryRow::getProfit);
             others.setNetAmount(customers.total().getNetAmount().subtract(topAmount));
+            others.setSalesAmount(customers.total().getSalesAmount().subtract(topSales));
             others.setProfit(customers.total().getProfit().subtract(topProfit));
-            others.setMargin(Decimals.percent(others.getProfit(), others.getNetAmount(), 2));
+            others.setMargin(Decimals.percent(others.getProfit(), others.getSalesAmount(), 2));
             top.add(others);
         }
         return new JxcViews.Business(byMonth.total(), trend, cash, salesmen.rows(), top, customers.rows().size());
@@ -183,15 +188,32 @@ public class BiJxcService {
             }
             fillSummary(sales, r);
         });
+        return new JxcViews.Summary(rows, total(sales, q), list.size() > SUMMARY_LIMIT);
+    }
+
+    /** 符合条件的全部明细的合计（汇总的合计行、明细和单据列表的合计都取它，口径一致） */
+    private JxcViews.SummaryRow total(boolean sales, JxcQuery q) {
         JxcViews.SummaryRow total = jxcMapper.selectTotal(sales, q);
         if (total == null) {
             total = new JxcViews.SummaryRow();
         }
         fillSummary(sales, total);
-        return new JxcViews.Summary(rows, total, list.size() > SUMMARY_LIMIT);
+        return total;
     }
 
-    /** 统一精度，计算毛利、毛利率、平均单价 */
+    /**
+     * 汇总到底部时的调整行（issue #93）：取合计中的整单优惠、本公司运费、收付款折让、坏账（按商品、类别等筛选时为所选明细分摊的部分，
+     * 与汇总一致），只列出有金额的类别；明细行的销售金额（进货为扣折让后金额）之和 + 调整行 = 合计
+     */
+    static List<AdjustRow> adjustments(boolean sales, boolean bottom, JxcViews.SummaryRow total) {
+        if (!bottom) {
+            return List.of();
+        }
+        return AdjustRow.of(sales, total.getDiscount(), total.getDiscountTaxed(), total.getFreight(), total.getSettleDiscount(),
+                total.getBadDebt());
+    }
+
+    /** 统一精度，计算货款、销售金额、毛利、毛利率、平均单价（口径见 {@link JxcViews.SummaryRow}） */
     static void fillSummary(boolean sales, JxcViews.SummaryRow r) {
         r.setBizQty(Decimals.qty(r.getBizQty()));
         r.setReturnQty(Decimals.qty(r.getReturnQty()));
@@ -199,6 +221,10 @@ public class BiJxcService {
         r.setBizAmount(Decimals.money(r.getBizAmount()));
         r.setReturnAmount(Decimals.money(r.getReturnAmount()));
         r.setNetAmount(Decimals.money(r.getNetAmount()));
+        r.setDiscount(Decimals.money(r.getDiscount()));
+        r.setDiscountTaxed(Decimals.money(r.getDiscountTaxed()));
+        // 货款由净额 + 整单优惠得出（各自舍入后相加），保证 货款 − 优惠 = 净额
+        r.setGoodsAmount(r.getNetAmount().add(r.getDiscount()));
         r.setTaxedAmount(Decimals.money(r.getTaxedAmount()));
         r.setDocCount(r.getDocCount() == null ? 0L : r.getDocCount());
         r.setMissingCost(r.getMissingCost() == null ? 0L : r.getMissingCost());
@@ -207,14 +233,11 @@ public class BiJxcService {
         r.setSettleDiscount(Decimals.money(r.getSettleDiscount()));
         if (sales) {
             r.setCost(Decimals.money(r.getCost()));
-            r.setProfit(r.getNetAmount().subtract(r.getCost()));
-            r.setMargin(Decimals.percent(r.getProfit(), r.getNetAmount(), 2));
             r.setBadDebt(Decimals.money(r.getBadDebt()));
             r.setFreight(Decimals.money(r.getFreight()));
-            // 依次扣除收款折让、坏账核销、本公司运费（参考口径）
-            r.setProfitAfterDiscount(r.getProfit().subtract(r.getSettleDiscount()));
-            r.setProfitAfterBadDebt(r.getProfitAfterDiscount().subtract(r.getBadDebt()));
-            r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(r.getFreight()));
+            r.setSalesAmount(salesAmount(r.getNetAmount(), r.getFreight(), r.getSettleDiscount(), r.getBadDebt()));
+            r.setProfit(r.getSalesAmount().subtract(r.getCost()));
+            r.setMargin(Decimals.percent(r.getProfit(), r.getSalesAmount(), 2));
         } else {
             r.setCost(null);
             r.setMissingCost(null);
@@ -224,34 +247,48 @@ public class BiJxcService {
         }
     }
 
-    private static void fillDetail(boolean sales, JxcViews.DetailRow r) {
-        r.setSettleDiscount(Decimals.money(r.getSettleDiscount()));
-        if (r.getDiscountLine() != null && r.getDiscountLine() == 1) {
-            // 单据的收付款折让行：没有金额和成本，扣除后的毛利 / 金额为 −折让
-            BigDecimal minus = r.getSettleDiscount().negate();
-            if (sales) {
-                r.setBadDebt(Decimals.money(null));
-                r.setFreight(Decimals.money(null));
-                r.setProfitAfterDiscount(minus);
-                r.setProfitAfterBadDebt(minus);
-                r.setProfitAfterFreight(minus);
-            } else {
-                r.setAmountAfterDiscount(minus);
-            }
-            return;
-        }
+    /** 销售金额 = 净额（扣整单优惠后）− 本公司运费 − 收款折让 − 坏账核销 */
+    private static BigDecimal salesAmount(BigDecimal net, BigDecimal freight, BigDecimal settleDiscount, BigDecimal badDebt) {
+        return net.subtract(freight).subtract(settleDiscount).subtract(badDebt);
+    }
+
+    /**
+     * 明细行：bottom 为调整项汇总到底部（行上为优惠前的单价、价税合计、货款，销售金额 = 货款，调整项为 0），
+     * 否则调整项按行分摊（销售金额 = 净额 − 运费 − 折让 − 坏账）
+     */
+    static void fillDetail(boolean sales, boolean bottom, JxcViews.DetailRow r) {
+        BigDecimal zero = Decimals.money(BigDecimal.ZERO);
         r.setAmount(Decimals.money(r.getAmount()));
         r.setTaxedAmount(Decimals.money(r.getTaxedAmount()));
+        r.setDiscount(Decimals.money(r.getDiscount()));
+        r.setGoodsAmount(r.getAmount().add(r.getDiscount()));
+        r.setSettleDiscount(Decimals.money(r.getSettleDiscount()));
         if (sales) {
             r.setCost(Decimals.money(r.getCost()));
-            r.setProfit(r.getAmount().subtract(r.getCost()));
             r.setBadDebt(Decimals.money(r.getBadDebt()));
             r.setFreight(Decimals.money(r.getFreight()));
-            r.setProfitAfterDiscount(r.getProfit().subtract(r.getSettleDiscount()));
-            r.setProfitAfterBadDebt(r.getProfitAfterDiscount().subtract(r.getBadDebt()));
-            r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(r.getFreight()));
+        }
+        if (bottom) {
+            if (r.getGrossPrice() != null) {
+                r.setPrice(r.getGrossPrice());
+            }
+            r.setTaxedAmount(r.getTaxedAmount().add(Decimals.money(r.getDiscountTaxed())));
+            r.setDiscount(zero);
+            r.setSettleDiscount(zero);
+            if (sales) {
+                r.setBadDebt(zero);
+                r.setFreight(zero);
+                r.setSalesAmount(r.getGoodsAmount());
+            } else {
+                r.setAmountAfterDiscount(r.getGoodsAmount());
+            }
+        } else if (sales) {
+            r.setSalesAmount(salesAmount(r.getAmount(), r.getFreight(), r.getSettleDiscount(), r.getBadDebt()));
         } else {
             r.setAmountAfterDiscount(r.getAmount().subtract(r.getSettleDiscount()));
+        }
+        if (sales) {
+            r.setProfit(r.getSalesAmount().subtract(r.getCost()));
         }
     }
 
@@ -260,17 +297,15 @@ public class BiJxcService {
         r.setAmount(Decimals.money(r.getAmount()));
         r.setTaxedAmount(Decimals.money(r.getTaxedAmount()));
         r.setDiscount(Decimals.money(r.getDiscount()));
+        r.setGoodsAmount(r.getAmount().add(r.getDiscount()));
         r.setSettleDiscount(Decimals.money(r.getSettleDiscount()));
         if (sales) {
             r.setCost(Decimals.money(r.getCost()));
-            r.setProfit(r.getAmount().subtract(r.getCost()));
-            r.setMargin(Decimals.percent(r.getProfit(), r.getAmount(), 2));
             r.setBadDebt(Decimals.money(r.getBadDebt()));
             r.setFreight(Decimals.money(r.getFreight()));
-            // 依次扣除收款折让、坏账核销、本公司运费（与汇总、明细同一口径）
-            r.setProfitAfterDiscount(r.getProfit().subtract(r.getSettleDiscount()));
-            r.setProfitAfterBadDebt(r.getProfitAfterDiscount().subtract(r.getBadDebt()));
-            r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(r.getFreight()));
+            r.setSalesAmount(salesAmount(r.getAmount(), r.getFreight(), r.getSettleDiscount(), r.getBadDebt()));
+            r.setProfit(r.getSalesAmount().subtract(r.getCost()));
+            r.setMargin(Decimals.percent(r.getProfit(), r.getSalesAmount(), 2));
             r.setMissingCost(r.getMissingCost() == null ? 0L : r.getMissingCost());
         } else {
             r.setMissingCost(null);

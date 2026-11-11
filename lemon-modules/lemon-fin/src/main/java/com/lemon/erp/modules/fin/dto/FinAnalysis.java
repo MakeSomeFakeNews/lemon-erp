@@ -20,14 +20,13 @@ public final class FinAnalysis {
     // ---------------------------------------------------------------- 销售毛利
 
     /**
-     * 毛利汇总的一行：按物料、客户或月份汇总的销售出库 / 退货（不含税），成本 = 数量 × 当期加权平均单价；
-     * missingCost 为没有当期核算单价（取参考成本价）的明细行数。
-     * 参考口径：badDebt 为这些销售出库单应收单上的坏账核销金额（按应收单的不含税比例折算，凭证中营业外支出为含税金额），
-     * freight 为本公司承担的发运运费（凭证中计入销售运费），settleDiscount 为这些单据应收单在收款时的折让 / 抹零（多次收款累计，
-     * 按应收单的不含税比例折算），都按行金额分摊；依次扣除：profitAfterDiscount = 毛利 − 折让，
-     * profitAfterBadDebt = 毛利 − 折让 − 坏账，profitAfterFreight = 毛利 − 折让 − 坏账 − 运费。
-     * 折让、坏账、运费在财务报表中分别计入财务费用（收款折让科目）、营业外支出、销售费用，不在营业成本中，
-     * 所以利润表的毛利不扣它们，这里只是按单据的真实收益参考
+     * 毛利汇总的一行：按物料、客户或月份汇总的销售出库 / 退货（不含税，退货为负），口径同 issue #93：
+     * 货款（优惠前）− 整单优惠 = 销售收入（revenue，记账的主营业务收入）；
+     * 销售金额 = 销售收入 − 本公司承担运费 − 收款折让 / 抹零 − 坏账核销；毛利 = 销售金额 − 成本，毛利率 = 毛利 ÷ 销售金额。
+     * 成本 = 数量 × 当期加权平均单价，missingCost 为没有当期核算单价（取参考成本价）的明细行数。
+     * 整单优惠按行分摊（含税的分摊额按行税率折算为不含税）；坏账为销售出库单应收单上的核销金额、收款折让为这些单据应收单在收款时的折让
+     * （多次收款累计），都按应收单的不含税比例折算、跟随出库单的业务日期归属；运费为本公司承担的发运运费等；三者按行金额分摊。
+     * 折让、坏账、运费在财务报表中分别计入财务费用、营业外支出、销售费用，利润表的毛利 = 销售收入 − 成本，不扣它们
      */
     @Data
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -36,35 +35,37 @@ public final class FinAnalysis {
         private Long groupKey;
         private String groupName;
         private BigDecimal qty;
+        /** 货款：优惠前的不含税金额 = 销售收入 + 整单优惠 */
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal goodsAmount;
+        /** 整单优惠（不含税） */
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal discount;
+        /** 销售收入（扣整单优惠后，不含税） */
         private BigDecimal revenue;
-        private BigDecimal cost;
-        private Long missingCost;
-        @JsonInclude(JsonInclude.Include.ALWAYS)
-        private BigDecimal profit;
-        /** 毛利率（%），收入为 0 时为空 */
-        @JsonInclude(JsonInclude.Include.ALWAYS)
-        private BigDecimal margin;
-        @JsonInclude(JsonInclude.Include.ALWAYS)
-        private BigDecimal badDebt;
         @JsonInclude(JsonInclude.Include.ALWAYS)
         private BigDecimal freight;
         /** 收款折让 / 抹零（不含税） */
         @JsonInclude(JsonInclude.Include.ALWAYS)
         private BigDecimal settleDiscount;
-        /** 扣折让后毛利 = 毛利 − 折让 */
         @JsonInclude(JsonInclude.Include.ALWAYS)
-        private BigDecimal profitAfterDiscount;
-        /** 扣折让、坏账后毛利 */
+        private BigDecimal badDebt;
+        /** 销售金额 = 销售收入 − 运费 − 折让 − 坏账 */
         @JsonInclude(JsonInclude.Include.ALWAYS)
-        private BigDecimal profitAfterBadDebt;
+        private BigDecimal salesAmount;
+        private BigDecimal cost;
+        private Long missingCost;
+        /** 毛利 = 销售金额 − 成本 */
         @JsonInclude(JsonInclude.Include.ALWAYS)
-        private BigDecimal profitAfterFreight;
+        private BigDecimal profit;
+        /** 毛利率（%）= 毛利 ÷ 销售金额，销售金额为 0 时为空 */
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal margin;
     }
 
-    /** 毛利合计；收款折让、坏账核销、本公司运费及扣除后的毛利见 {@link MarginRow} */
-    public record MarginTotal(BigDecimal revenue, BigDecimal cost, BigDecimal profit, BigDecimal margin,
-                              BigDecimal settleDiscount, BigDecimal badDebt, BigDecimal freight,
-                              BigDecimal profitAfterDiscount, BigDecimal profitAfterBadDebt, BigDecimal profitAfterFreight) {
+    /** 毛利合计，字段含义见 {@link MarginRow} */
+    public record MarginTotal(BigDecimal goodsAmount, BigDecimal discount, BigDecimal revenue, BigDecimal freight, BigDecimal settleDiscount,
+                              BigDecimal badDebt, BigDecimal salesAmount, BigDecimal cost, BigDecimal profit, BigDecimal margin) {
     }
 
     /** 销售毛利汇总 */
@@ -73,8 +74,9 @@ public final class FinAnalysis {
 
     /**
      * 毛利明细：每条销售出库 / 退货明细，退货为负；costed 为 1 表示有当期核算单价。
-     * discountLine 为 1 的是单据的「收款折让 / 抹零」行（按整张单据列出时追加在单据最后，没有物料、数量、收入、成本，
-     * 只有折让和扣除后的毛利，为负数），此时商品行的折让为 0；按关键字筛选时不追加，折让按行金额分摊到各行
+     * 调整项（整单优惠、运费、折让、坏账）的显示方式（{@link com.lemon.erp.modules.fin.model.AdjustMode}）：
+     * 汇总到底部时行上为优惠前的货款（销售金额 = 货款，毛利 = 货款 − 成本），调整项不分摊（为 0），在 {@link MarginDetail#adjustments} 中；
+     * 分摊到各行时按行金额比例分摊，销售金额 = 销售收入 − 运费 − 折让 − 坏账
      */
     @Data
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -89,33 +91,33 @@ public final class FinAnalysis {
         private String spec;
         private String unit;
         private BigDecimal qty;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal goodsAmount;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal discount;
+        /** 销售收入（扣整单优惠后） */
         private BigDecimal revenue;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal freight;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal settleDiscount;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal badDebt;
+        @JsonInclude(JsonInclude.Include.ALWAYS)
+        private BigDecimal salesAmount;
         private BigDecimal cost;
         private Integer costed;
-        private Integer discountLine;
         @JsonInclude(JsonInclude.Include.ALWAYS)
         private BigDecimal profit;
         @JsonInclude(JsonInclude.Include.ALWAYS)
         private BigDecimal margin;
-        @JsonInclude(JsonInclude.Include.ALWAYS)
-        private BigDecimal badDebt;
-        @JsonInclude(JsonInclude.Include.ALWAYS)
-        private BigDecimal freight;
-        /** 收款折让 / 抹零（不含税） */
-        @JsonInclude(JsonInclude.Include.ALWAYS)
-        private BigDecimal settleDiscount;
-        /** 扣折让后毛利 = 毛利 − 折让 */
-        @JsonInclude(JsonInclude.Include.ALWAYS)
-        private BigDecimal profitAfterDiscount;
-        /** 扣折让、坏账后毛利 */
-        @JsonInclude(JsonInclude.Include.ALWAYS)
-        private BigDecimal profitAfterBadDebt;
-        @JsonInclude(JsonInclude.Include.ALWAYS)
-        private BigDecimal profitAfterFreight;
     }
 
-    /** 毛利明细，truncated 表示超出行数上限只返回了前面的部分 */
-    public record MarginDetail(List<MarginDetailRow> rows, MarginTotal total, boolean truncated) {
+    /**
+     * 毛利明细，truncated 表示超出行数上限只返回了前面的部分；total 为全部行的合计（单据口径的销售金额与毛利，两种显示方式相同）；
+     * adjustments 为汇总到底部时的调整行（只列出有金额的类别），各行销售金额 + 调整行金额 = 合计销售金额
+     */
+    public record MarginDetail(List<MarginDetailRow> rows, MarginTotal total, List<AdjustRow> adjustments, boolean truncated) {
     }
 
     // ---------------------------------------------------------------- 存货对账

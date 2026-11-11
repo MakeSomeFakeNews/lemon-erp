@@ -1,5 +1,7 @@
 package com.lemon.erp.modules.bi.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.lemon.erp.modules.fin.dto.AdjustRow;
 import com.lemon.erp.modules.scm.dto.RfmSettings;
 import com.lemon.erp.modules.scm.model.RfmSegment;
 import com.lemon.erp.modules.scm.model.TradeKind;
@@ -11,14 +13,21 @@ import java.util.List;
 
 /**
  * 进销存报表的返回结构。金额均为本位币；销售额、进货额为不含税金额，另给出含税的价税合计；
- * 净额 = 出库（入库）− 退货
+ * 净额 = 出库（入库）− 退货，口径见 {@link SummaryRow}
  */
 public final class JxcViews {
 
     private JxcViews() {
     }
 
-    /** 汇总行（销售：出库 / 退货；进货：入库 / 退货），合计行的 groupKey 为空 */
+    /**
+     * 汇总行（销售：出库 / 退货；进货：入库 / 退货），合计行的 groupKey 为空。金额口径（issue #93）：
+     * 货款（优惠前，不含税）− 整单优惠 = 净额（销售收入 / 进货金额，扣整单优惠后）；
+     * 销售：销售金额 = 净额 − 本公司承担运费 − 收款折让 / 抹零 − 坏账核销，毛利 = 销售金额 − 成本，毛利率 = 毛利 ÷ 销售金额；
+     * 进货：扣折让后净进货额 = 净额 − 付款折让 / 抹零（参考口径：付款折让计入财务费用，不冲减存货成本）。
+     * 整单优惠按行分摊（含税的分摊额按行税率折算为不含税），运费、折让、坏账按单据归属、按行金额比例分摊到明细，
+     * 所以按分类、品牌、商品汇总时只含所属明细的部分
+     */
     @Data
     public static class SummaryRow {
         /** 维度取值：分类 / 品牌 / 区域的编码，客户 / 供应商 / 业务员 / 物料的 ID，日期，月份（202611）；为空表示未设置 */
@@ -28,38 +37,39 @@ public final class JxcViews {
         private BigDecimal bizQty;
         private BigDecimal returnQty;
         private BigDecimal netQty;
-        /** 出库 / 入库金额（不含税） */
+        /** 出库 / 入库货款（优惠前，不含税） */
         private BigDecimal bizAmount;
+        /** 退货货款（优惠前，不含税） */
         private BigDecimal returnAmount;
-        /** 净额（不含税） */
+        /** 货款 = 出库（入库）货款 − 退货货款 */
+        private BigDecimal goodsAmount;
+        /** 整单优惠（不含税，退货为负） */
+        private BigDecimal discount;
+        /** 整单优惠（含税） */
+        private BigDecimal discountTaxed;
+        /** 净额 = 货款 − 整单优惠（不含税，即销售收入 / 进货金额） */
         private BigDecimal netAmount;
-        /** 净价税合计（含税） */
+        /** 净价税合计（含税，扣整单优惠后） */
         private BigDecimal taxedAmount;
-        /** 销售成本（只有销售报表） */
-        private BigDecimal cost;
-        private BigDecimal profit;
-        /** 毛利率（%），净额为 0 时为空 */
-        private BigDecimal margin;
+        /** 本公司承担的运费（只有销售报表） */
+        private BigDecimal freight;
         /**
          * 收付款折让 / 抹零（issue #89）：销售报表为收款折让，进货报表为付款折让；这些单据的应收 / 应付单在收付款时的折让累计
          * （多次收付款累计），按单据的不含税比例折算、按行金额分摊，退货为负数
          */
         private BigDecimal settleDiscount;
-        /** 扣折让后毛利 = 毛利 − 收款折让（只有销售报表） */
-        private BigDecimal profitAfterDiscount;
-        /** 扣折让后净进货额 = 净额 − 付款折让（只有进货报表，参考口径：付款折让计入财务费用，不冲减存货成本） */
-        private BigDecimal netAfterDiscount;
         /** 坏账核销（销售出库单应收单上的核销金额，按该单的不含税比例折算，按行金额分摊；只有销售报表） */
         private BigDecimal badDebt;
-        /** 本公司承担的发运运费（只有销售报表） */
-        private BigDecimal freight;
-        /** 扣折让、坏账后毛利 = 毛利 − 收款折让 − 坏账核销 */
-        private BigDecimal profitAfterBadDebt;
-        /**
-         * 扣折让、坏账、运费后毛利 = 毛利 − 收款折让 − 坏账核销 − 本公司运费
-         * （参考口径，财务报表中这三项分别是财务费用、营业外支出、销售费用）
-         */
-        private BigDecimal profitAfterFreight;
+        /** 销售金额 = 净额 − 运费 − 收款折让 − 坏账核销（只有销售报表） */
+        private BigDecimal salesAmount;
+        /** 扣折让后净进货额 = 净额 − 付款折让（只有进货报表） */
+        private BigDecimal netAfterDiscount;
+        /** 销售成本（只有销售报表） */
+        private BigDecimal cost;
+        /** 毛利 = 销售金额 − 成本 */
+        private BigDecimal profit;
+        /** 毛利率（%）= 毛利 ÷ 销售金额，销售金额为 0 时为空 */
+        private BigDecimal margin;
         /** 平均单价（不含税）= 净额 / 净数量 */
         private BigDecimal avgPrice;
         /** 单据数（出库 / 入库 + 退货） */
@@ -75,8 +85,10 @@ public final class JxcViews {
     }
 
     /**
-     * 明细行：退货的数量、金额为负数。discountLine 为 1 的是单据的「收付款折让 / 抹零」行（按整张单据列出时追加在单据最后，
-     * 没有物料、数量、金额和成本，只有折让及扣除后的毛利 / 进货额），此时商品行的折让为 0；否则折让按行金额分摊到各行
+     * 明细行：退货的数量、金额为负数。调整项的显示方式（{@link JxcQuery#getAdjustMode()}）：
+     * 汇总到底部时行上为优惠前的单价、价税合计、货款，销售金额 = 货款（进货的扣折让后金额 = 货款），毛利 = 货款 − 成本，
+     * 调整项为 0，在 {@link DetailPage#adjustments()} 中按类别列出；分摊到各行时整单优惠、运费、折让、坏账按行分摊，
+     * 销售金额 = 净额 − 运费 − 折让 − 坏账
      */
     @Data
     public static class DetailRow {
@@ -94,37 +106,53 @@ public final class JxcViews {
         private String category;
         private String brand;
         private BigDecimal qty;
-        /** 含税单价 */
+        /** 含税单价（汇总到底部时为优惠前的单价） */
         private BigDecimal price;
-        /** 金额（不含税） */
+        /** 优惠前含税单价（数据库取数，为空同单价） */
+        @JsonIgnore
+        private BigDecimal grossPrice;
+        /** 货款（优惠前，不含税） */
+        private BigDecimal goodsAmount;
+        /** 本行分摊的整单优惠（不含税） */
+        private BigDecimal discount;
+        /** 本行分摊的整单优惠（含税，数据库取数） */
+        @JsonIgnore
+        private BigDecimal discountTaxed;
+        /** 净额（扣整单优惠后，不含税） */
         private BigDecimal amount;
-        /** 价税合计 */
+        /** 价税合计（汇总到底部时为优惠前） */
         private BigDecimal taxedAmount;
-        private BigDecimal cost;
-        private BigDecimal profit;
-        /** 收付款折让（折让行为该单据的全部折让，商品行在按整张单据列出时为 0，否则为分摊额） */
+        private BigDecimal freight;
+        /** 收付款折让 */
         private BigDecimal settleDiscount;
-        private BigDecimal profitAfterDiscount;
+        private BigDecimal badDebt;
+        /** 销售金额（只有销售报表） */
+        private BigDecimal salesAmount;
         /** 扣折让后金额（只有进货报表） */
         private BigDecimal amountAfterDiscount;
-        private BigDecimal badDebt;
-        private BigDecimal freight;
-        private BigDecimal profitAfterBadDebt;
-        private BigDecimal profitAfterFreight;
+        private BigDecimal cost;
+        private BigDecimal profit;
         /** 1 已按当期核算成本，0 按参考成本价 */
         private Integer costed;
-        /** 1 为单据的收付款折让行 */
-        private Integer discountLine;
         private String remark;
     }
 
-    /** 导出用的明细（最多 {@code limit} 行） */
-    public record DetailExport(List<DetailRow> rows, boolean truncated) {
+    /**
+     * 明细（分页）
+     *
+     * @param adjustments 汇总到底部时的调整行（全部明细的合计，只列出有金额的类别；分摊到各行时为空）
+     * @param summary     全部明细的合计（与汇总行一致；两种显示方式相同）
+     */
+    public record DetailPage(List<DetailRow> records, long total, List<AdjustRow> adjustments, SummaryRow summary) {
+    }
+
+    /** 导出用的明细（最多 {@code limit} 行），调整行与合计同 {@link DetailPage} */
+    public record DetailExport(List<DetailRow> rows, boolean truncated, List<AdjustRow> adjustments, SummaryRow summary) {
     }
 
     /**
      * 单据行：汇总项下的一张出入库单 / 退货单，金额为该单中属于汇总项的明细行合计（与汇总同一口径，按分类、品牌、商品等汇总时
-     * 只含匹配的明细），退货的数量、金额为负数
+     * 只含匹配的明细，调整项也只含这些明细分摊的部分），退货的数量、金额为负数；金额口径同 {@link SummaryRow}
      */
     @Data
     public static class DocRow {
@@ -139,28 +167,26 @@ public final class JxcViews {
         /** 属于汇总项的明细行数 */
         private Long lineCount;
         private BigDecimal qty;
-        /** 金额（不含税，已扣除整单优惠的分摊） */
+        /** 货款（优惠前，不含税） */
+        private BigDecimal goodsAmount;
+        /** 整单优惠（不含税） */
+        private BigDecimal discount;
+        /** 净额（扣整单优惠后，不含税） */
         private BigDecimal amount;
         /** 价税合计 */
         private BigDecimal taxedAmount;
-        /** 这些明细行分摊的整单优惠（含税，参考；金额中已扣除） */
-        private BigDecimal discount;
-        private BigDecimal cost;
-        private BigDecimal profit;
-        /** 毛利率（%），金额为 0 时为空 */
-        private BigDecimal margin;
-        /** 收付款折让（issue #89，这些明细行按行金额分摊的部分；整张单据时为该单的全部折让） */
+        private BigDecimal freight;
+        /** 收付款折让（issue #89） */
         private BigDecimal settleDiscount;
-        /** 扣折让后毛利（只有销售报表） */
-        private BigDecimal profitAfterDiscount;
+        private BigDecimal badDebt;
+        /** 销售金额（只有销售报表） */
+        private BigDecimal salesAmount;
         /** 扣折让后金额（只有进货报表） */
         private BigDecimal amountAfterDiscount;
-        private BigDecimal badDebt;
-        private BigDecimal freight;
-        /** 扣折让、坏账后毛利 */
-        private BigDecimal profitAfterBadDebt;
-        /** 扣折让、坏账、运费后毛利 */
-        private BigDecimal profitAfterFreight;
+        private BigDecimal cost;
+        private BigDecimal profit;
+        /** 毛利率（%），销售金额为 0 时为空 */
+        private BigDecimal margin;
         /** 按参考成本价计算的明细行数 */
         private Long missingCost;
         private String remark;
@@ -174,8 +200,8 @@ public final class JxcViews {
     public record DocPage(List<DocRow> records, long total, SummaryRow summary) {
     }
 
-    /** 导出用的单据列表（最多 {@code limit} 行） */
-    public record DocExport(List<DocRow> rows, boolean truncated) {
+    /** 导出用的单据列表（最多 {@code limit} 行），summary 为全部单据的合计 */
+    public record DocExport(List<DocRow> rows, boolean truncated, SummaryRow summary) {
     }
 
     // ---------------------------------------------------------------- 经营状况

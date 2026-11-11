@@ -2,6 +2,7 @@ package com.lemon.erp.modules.fin.controller;
 
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.modules.fin.dto.FinAnalysis;
+import com.lemon.erp.modules.fin.model.AdjustMode;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.service.FinAnalysisService;
 import com.lemon.erp.modules.fin.service.FinPartnerLedgerService;
@@ -47,14 +48,15 @@ public class FinAnalysisController {
         return R.ok(partnerLedgerService.statement(kind, partnerId, begin, end));
     }
 
-    /** 销售毛利明细（按单据明细） */
+    /** 销售毛利明细（按单据明细）；adjustMode 为调整项的显示方式，不传为汇总到底部 */
     @GetMapping("/analysis/gross-margin/detail")
     @PreAuthorize("@ss.hasPerm('fin:analysis:list')")
     public R<FinAnalysis.MarginDetail> grossMarginDetail(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate begin,
                                                          @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
                                                          @RequestParam(required = false) Long customerId,
-                                                         @RequestParam(required = false) String keyword) {
-        return R.ok(analysisService.grossMarginDetail(begin, end, customerId, keyword));
+                                                         @RequestParam(required = false) String keyword,
+                                                         @RequestParam(required = false) AdjustMode adjustMode) {
+        return R.ok(analysisService.grossMarginDetail(begin, end, customerId, keyword, adjustMode));
     }
 
     /** 库龄分析：buckets 为分段上限（天，逗号分隔，递增），为空用默认 30,60,90,180,365 */

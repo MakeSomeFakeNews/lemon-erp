@@ -52,10 +52,7 @@
             <a-table-summary-cell v-for="(c, i) in columns" :key="c.key" :index="i" :align="c.align">
               <template v-if="c.key === 'bizDate'">{{ $t('jxc.common.total') }}</template>
               <template v-else-if="c.key === 'qty'">{{ qty(summary.netQty) }}</template>
-              <template v-else-if="c.key === 'amount'">{{ money(summary.netAmount) }}</template>
-              <template v-else-if="c.key === 'amountAfterDiscount'">{{ money(summary.netAfterDiscount) }}</template>
-              <template v-else-if="c.money && c.key !== 'discount'">{{ money(summary[c.key]) }}</template>
-              <template v-else-if="c.key === 'cost'">{{ money(summary.cost) }}</template>
+              <template v-else-if="c.money || c.key === 'cost'">{{ money(summary[totalKey(c.key)]) }}</template>
               <template v-else-if="c.key === 'margin'">{{ marginText(summary.margin) }}</template>
             </a-table-summary-cell>
           </a-table-summary-row>
@@ -85,7 +82,8 @@ import { TRADE_PATHS, drillColumn, marginText } from './jxc'
 import { t } from '@/locales'
 
 /**
- * 进销存报表的单据列表子页：汇总项下的出入库单 / 退货单，每张一行（金额为该单中属于汇总项的明细合计，退货为负数，合计与汇总行一致）；
+ * 进销存报表的单据列表子页：汇总项下的出入库单 / 退货单，每张一行（金额为该单中属于汇总项的明细合计，列出货款、整单优惠、运费、
+ * 折让、坏账、销售金额、成本、毛利，退货为负数，合计与汇总行一致）；
  * 点击单据打开该单（在汇总项范围内）的明细子页，操作列可打开单据详情。
  * 用法：ref.open({ params, dim, key, label })，参数同 JxcDetail
  */
@@ -106,6 +104,25 @@ const pagination = reactive({ current: 1, pageSize: 20, total: 0, showSizeChange
 
 const title = computed(() => (label.value ? t('jxc.docs.title', { name: label.value }) : t('jxc.docs.titleAll')))
 
+/** 合计行取汇总的字段（与单据行的字段名不同的） */
+const TOTAL_KEYS = { amount: 'netAmount', amountAfterDiscount: 'netAfterDiscount' }
+const totalKey = (k) => TOTAL_KEYS[k] || k
+
+/**
+ * 金额列（issue #93 口径）：货款 − 整单优惠 = 净额；销售金额 = 净额 − 本公司运费 − 收款折让 − 坏账核销，毛利 = 销售金额 − 成本；
+ * 进货：扣折让后金额 = 净额 − 付款折让
+ */
+const moneyColumns = computed(() => {
+  const m = (key, titleKey, width = 120) => ({ title: t(titleKey), key, width, align: 'right', money: true })
+  const head = [m('goodsAmount', 'jxc.field.goodsAmount'), m('discount', 'jxc.field.discount', 110), m('amount', 'jxc.field.netAmount'),
+    m('taxedAmount', 'jxc.field.taxedAmount')]
+  return sales.value
+    ? [...head, m('freight', 'jxc.field.freight', 110), m('settleDiscount', 'jxc.field.receiptDiscount', 110), m('badDebt', 'jxc.field.badDebt', 110),
+        m('salesAmount', 'jxc.field.salesAmount'), { title: t('jxc.field.cost'), key: 'cost', width: 160, align: 'right' },
+        m('profit', 'jxc.field.profit'), { title: t('jxc.field.margin'), key: 'margin', width: 90, align: 'right' }]
+    : [...head, m('settleDiscount', 'jxc.field.purchaseDiscount', 110), m('amountAfterDiscount', 'jxc.field.amountAfterDiscount', 140)]
+})
+
 const columns = computed(() => [
   { title: t('jxc.field.bizDate'), dataIndex: 'bizDate', key: 'bizDate', width: 105, fixed: 'left' },
   { title: t('jxc.field.docNo'), key: 'docNo', width: 250, fixed: 'left' },
@@ -114,26 +131,7 @@ const columns = computed(() => [
   { title: t('jxc.field.warehouse'), dataIndex: 'warehouseName', key: 'warehouseName', width: 110, ellipsis: true },
   { title: t('jxc.field.lineCount'), dataIndex: 'lineCount', key: 'lineCount', width: 70, align: 'right' },
   { title: t('jxc.field.qty'), key: 'qty', width: 100, align: 'right' },
-  { title: t('jxc.field.amount'), key: 'amount', width: 120, align: 'right', money: true },
-  { title: t('jxc.field.taxedAmount'), key: 'taxedAmount', width: 120, align: 'right', money: true },
-  { title: t('jxc.field.discount'), key: 'discount', width: 110, align: 'right', money: true },
-  ...(sales.value
-    ? [
-        { title: t('jxc.field.cost'), key: 'cost', width: 160, align: 'right' },
-        { title: t('jxc.field.profit'), key: 'profit', width: 110, align: 'right', money: true },
-        { title: t('jxc.field.margin'), key: 'margin', width: 90, align: 'right' },
-        // 参考口径（依次扣除）：收款折让、坏账核销、本公司运费
-        { title: t('jxc.field.receiptDiscount'), key: 'settleDiscount', width: 110, align: 'right', money: true },
-        { title: t('jxc.field.profitAfterDiscount'), key: 'profitAfterDiscount', width: 130, align: 'right', money: true },
-        { title: t('jxc.field.badDebt'), key: 'badDebt', width: 110, align: 'right', money: true },
-        { title: t('jxc.field.profitAfterBadDebt'), key: 'profitAfterBadDebt', width: 150, align: 'right', money: true },
-        { title: t('jxc.field.freight'), key: 'freight', width: 110, align: 'right', money: true },
-        { title: t('jxc.field.profitAfterFreight'), key: 'profitAfterFreight', width: 170, align: 'right', money: true }
-      ]
-    : [
-        { title: t('jxc.field.purchaseDiscount'), key: 'settleDiscount', width: 110, align: 'right', money: true },
-        { title: t('jxc.field.amountAfterDiscount'), key: 'amountAfterDiscount', width: 140, align: 'right', money: true }
-      ]),
+  ...moneyColumns.value,
   { title: t('jxc.field.remark'), dataIndex: 'remark', key: 'remark', width: 140, ellipsis: true },
   drillColumn()
 ])
@@ -203,27 +201,25 @@ async function exportRows() {
     const res = await jxcDocsExport(props.report, clean(params.value))
     const kindLabel = (k) => findDict(dict.scm_trade_kind, k)?.label || k
     const s = sales.value
+    const cols = moneyColumns.value
     const headers = [
       t('jxc.field.bizDate'), t('jxc.field.docNo'), t('jxc.field.kind'), t(s ? 'jxc.field.customer' : 'jxc.field.supplier'),
       ...(s ? [t('jxc.field.salesman')] : []),
-      t('jxc.field.warehouse'), t('jxc.field.lineCount'), t('jxc.field.qty'), t('jxc.field.amount'), t('jxc.field.taxedAmount'), t('jxc.field.discount'),
-      ...(s
-        ? [t('jxc.field.cost'), t('jxc.field.profit'), t('jxc.field.margin'), t('jxc.field.receiptDiscount'), t('jxc.field.profitAfterDiscount'),
-            t('jxc.field.badDebt'), t('jxc.field.profitAfterBadDebt'), t('jxc.field.freight'), t('jxc.field.profitAfterFreight')]
-        : [t('jxc.field.purchaseDiscount'), t('jxc.field.amountAfterDiscount')]),
+      t('jxc.field.warehouse'), t('jxc.field.lineCount'), t('jxc.field.qty'),
+      ...cols.map((c) => c.title),
       t('jxc.field.remark')
     ].map((title) => ({ title }))
     const n = (v) => (v === null || v === undefined ? '' : Number(v))
     const data = res.rows.map((r) => [
       r.bizDate, r.docNo, kindLabel(r.kind), r.partnerName,
       ...(s ? [r.salesmanName] : []),
-      r.warehouseName, n(r.lineCount), n(r.qty), n(r.amount), n(r.taxedAmount), n(r.discount),
-      ...(s
-        ? [n(r.cost), n(r.profit), n(r.margin), n(r.settleDiscount), n(r.profitAfterDiscount), n(r.badDebt), n(r.profitAfterBadDebt), n(r.freight),
-            n(r.profitAfterFreight)]
-        : [n(r.settleDiscount), n(r.amountAfterDiscount)]),
+      r.warehouseName, n(r.lineCount), n(r.qty),
+      ...cols.map((c) => n(r[c.key])),
       r.remark
     ])
+    // 合计行（与页面一致，取全部单据的合计）
+    const sum = res.summary || {}
+    data.push([t('jxc.common.total'), '', '', '', ...(s ? [''] : []), '', '', n(sum.netQty), ...cols.map((c) => n(sum[totalKey(c.key)])), ''])
     const name = t(s ? 'jxc.docs.salesName' : 'jxc.docs.purchaseName') + (label.value ? `_${label.value}` : '')
     await writeExcel(name, headers, data)
     if (res.truncated) message.warning(t('jxc.common.exportTruncated', { n: res.rows.length }))
