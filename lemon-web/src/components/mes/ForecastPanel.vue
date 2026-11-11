@@ -1,15 +1,15 @@
 <template>
-  <a-card :bordered="false" class="page-card">
+  <!-- 销售预测（MRP 运算页面的标签页）：MRP 运算时可选择计入 -->
+  <div class="forecast-panel">
     <div class="head">
-      <span class="section-title">{{ $t('mes.forecast.title') }}</span>
       <a-space wrap>
-        <a-input-search v-model:value="keyword" :placeholder="$t('mes.forecast.materialKeyword')" allow-clear style="width: 220px" @search="search" />
         <a-button v-perm="'mes:mrp:run'" type="primary" @click="openAdd">
           <template #icon><PlusOutlined /></template>{{ $t('mes.forecast.add') }}
         </a-button>
+        <a-input-search v-model:value="keyword" :placeholder="$t('mes.forecast.materialKeyword')" allow-clear class="keyword" @search="search" />
       </a-space>
+      <span class="sub-text"><InfoCircleOutlined class="help" /> {{ $t('mes.forecast.tip') }}</span>
     </div>
-    <div class="sub-text tip">{{ $t('mes.forecast.tip') }}</div>
     <a-table
       row-key="id"
       size="small"
@@ -17,12 +17,13 @@
       :data-source="list"
       :loading="loading"
       :pagination="pagination"
+      :scroll="{ y: '100%' }"
       @change="onTableChange"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'material'">
           {{ record.materialCode }} {{ record.materialName }}
-          <span class="sub-text">{{ record.spec }}</span>
+          <span v-if="record.spec" class="sub-text">{{ record.spec }}</span>
         </template>
         <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }} {{ record.unit }}</template>
         <template v-else-if="column.key === 'action'">
@@ -52,13 +53,13 @@
         </a-form-item>
       </a-form>
     </a-modal>
-  </a-card>
+  </div>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { InfoCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import MaterialSelect from '@/components/wms/MaterialSelect.vue'
@@ -117,16 +118,30 @@ const remove = useAction(deleteForecast, { successKey: 'common.msg.deleteSuccess
 </script>
 
 <style scoped>
+.forecast-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .head {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
-.tip {
-  margin-bottom: 8px;
+.keyword {
+  width: 220px;
+}
+.help {
+  color: var(--app-text-3);
+  cursor: help;
+}
+.sub-text {
+  color: var(--app-text-3);
+  font-size: 12px;
 }
 .full {
   width: 100%;
