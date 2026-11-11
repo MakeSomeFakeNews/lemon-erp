@@ -3,9 +3,12 @@ package com.lemon.erp.modules.scm.entity;
 import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.validation.Update;
+import com.lemon.erp.framework.data.SearchKeys;
+import com.lemon.erp.framework.data.Searchable;
 import com.lemon.erp.modules.scm.model.SalesChannel;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
@@ -21,7 +24,7 @@ import java.math.BigDecimal;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("scm_customer")
-public class ScmCustomer extends BaseEntity {
+public class ScmCustomer extends BaseEntity implements Searchable {
 
     /** 新增时留空则按编码规则自动生成 */
     @NotBlank(groups = Update.class, message = "{scm.valid.customerCodeRequired}")
@@ -66,6 +69,15 @@ public class ScmCustomer extends BaseEntity {
 
     @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}")
     private String remark;
+
+    /** 检索列：由编码、名称、联系人、电话计算（{@link SearchKeys}），下拉搜索、列表关键字按它匹配拼音首字母和去掉分隔符的缩写 */
+    @JsonIgnore
+    private String searchKey;
+
+    @Override
+    public String[] searchTexts() {
+        return new String[]{code, name, contact, phone};
+    }
 
     /** 销售渠道，为空按直销 */
     private SalesChannel channel;

@@ -105,6 +105,11 @@ export default {
     selectName: 'Select {name}',
     all: 'All'
   },
+  /** Remote search select (RemoteSelect) */
+  select: {
+    noMatch: 'No matching data',
+    moreHint: 'Scroll for more, or search by code, name or pinyin initials'
+  },
   rule: {
     required: 'Please enter {name}',
     requiredSelect: 'Please select {name}',

@@ -1,10 +1,14 @@
 import request from '@/utils/request'
+import { batchByIds } from '@/utils/batchByIds'
 
 const ids = (v) => [].concat(v).join(',')
 
 /** 项目 */
 export const pageProject = (params) => request.get('/pm/project', { params })
-export const projectOptions = (mine) => request.get('/pm/project/options', { params: { mine } })
+/** 项目下拉：未结束的项目按编码或名称分页搜索，mine 只列出我参与的；page：{ current, size }（每页最多 50，默认 20） */
+export const projectOptions = (mine, keyword, page) => request.get('/pm/project/options', { params: { mine, keyword, ...page } })
+/** 按 ID 取项目（含已结束的），下拉回显已选的值 */
+export const projectsByIds = batchByIds((idList) => request.get('/pm/project/options', { params: { ids: ids(idList) } }))
 export const getProject = (id) => request.get(`/pm/project/${id}`)
 export const addProject = (data) => request.post('/pm/project', data)
 export const updateProject = (id, data) => request.put(`/pm/project/${id}`, data)

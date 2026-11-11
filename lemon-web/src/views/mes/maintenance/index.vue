@@ -66,7 +66,7 @@
     <a-modal v-model:open="createOpen" :title="$t('mes.maintenance.add')" :confirm-loading="saving" @ok="submitCreate">
       <a-form ref="createRef" :model="createForm" :rules="createRules" layout="vertical">
         <a-form-item :label="$t('mes.oee.equipment')" name="equipmentId">
-          <a-select v-model:value="createForm.equipmentId" show-search option-filter-prop="label" :options="equipmentOptionList" />
+          <EquipmentSelect v-model:value="createForm.equipmentId" :allow-clear="false" />
         </a-form-item>
         <a-form-item :label="$t('common.field.type')" name="type">
           <a-radio-group v-model:value="createForm.type" :options="toOptions(dict.mes_maintain_type)" />
@@ -112,15 +112,16 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { CheckCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
+import EquipmentSelect from '@/components/mes/EquipmentSelect.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
-import { addMaintenance, deleteMaintenance, equipmentOptions, finishMaintenance, pageMaintenance, startMaintenance } from '@/api/mes/base'
+import { addMaintenance, deleteMaintenance, finishMaintenance, pageMaintenance, startMaintenance } from '@/api/mes/base'
 import { useColumns } from '@/composables/useColumns'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
@@ -161,12 +162,8 @@ function resetQuery() {
   search()
 }
 
-const equipments = ref([])
-const equipmentOptionList = computed(() => equipments.value.map((e) => ({ value: e.id, label: `${e.code} ${e.name}` })))
-
-onMounted(async () => {
+onMounted(() => {
   load()
-  equipments.value = await equipmentOptions()
   if (query.equipmentId) openCreate(query.equipmentId)
 })
 

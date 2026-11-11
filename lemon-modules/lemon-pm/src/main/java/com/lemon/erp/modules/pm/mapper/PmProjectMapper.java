@@ -21,6 +21,9 @@ public interface PmProjectMapper extends BaseMapper<PmProject> {
 
     PmProject selectDetail(@Param("id") Long id, @Param("today") LocalDate today);
 
-    /** 进行中、规划中、已暂停的项目；userId 不为空时只返回该用户参与的项目 */
-    List<PmProject> selectOptions(@Param("userId") Long userId);
+    /**
+     * 项目下拉：指定 ids 时只取这些项目（回显），否则为规划中、审批中、进行中、已暂停的项目，按编码或名称搜索；
+     * userId 不为空时只返回该用户参与的项目；分页取一页（不查总数）
+     */
+    List<PmProject> selectOptions(IPage<PmProject> page, @Param("userId") Long userId, @Param("keyword") String keyword, @Param("ids") List<Long> ids);
 }

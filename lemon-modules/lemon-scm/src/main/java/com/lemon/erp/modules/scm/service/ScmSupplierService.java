@@ -1,11 +1,14 @@
 package com.lemon.erp.modules.scm.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.SearchKeyTable;
+import com.lemon.erp.framework.data.SearchKeys;
 import com.lemon.erp.framework.quality.SupplierQualityProvider;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.ref.RefType;
@@ -33,6 +36,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 @Service
 @RequiredArgsConstructor
@@ -42,7 +46,8 @@ public class ScmSupplierService {
     private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "供应商编码", "name", "供应商名称", "contact", "联系人", "phone", "联系电话", "email", "邮箱", // i18n-ignore
             "address", "地址", "taxNo", "纳税人识别号", "bankName", "开户行", "bankAccount", "银行账号", "paymentDays", "账期", "logistics", "物流公司", "routes", "营运路线", "remark", "备注"); // i18n-ignore
 
-    private static final int OPTION_LIMIT = 50;
+    /** 下拉搜索每页最多返回的条数 */
+    public static final int OPTION_LIMIT = 50;
     /** logistics 取值：物流公司 */
     private static final int LOGISTICS = 1;
 
@@ -54,14 +59,15 @@ public class ScmSupplierService {
     private final ReferenceGuard referenceGuard;
     private final ChangeLogger changeLogger;
     private final SupplierQualityProvider qualityProvider;
+    private final SearchKeyTable<ScmSupplier> searchKeys;
 
     /**
-     * @param keyword   编码或名称，模糊匹配
+     * @param keyword   编码、名称、联系人、电话、拼音首字母或去掉分隔符的缩写，规则见 {@link SearchKeys}
      * @param logistics 1 只查物流公司，0 只查其他供应商，为空不限
      */
     public PageResult<ScmSupplier> page(long current, long size, String keyword, SupplierLevel level, EnableStatus status, Integer logistics) {
         Page<ScmSupplier> page = supplierMapper.selectPage(Page.of(current, size), Wrappers.<ScmSupplier>lambdaQuery()
-                .and(StringUtils.hasText(keyword), w -> w.like(ScmSupplier::getCode, keyword).or().like(ScmSupplier::getName, keyword))
+                .and(StringUtils.hasText(keyword), keywordMatch(keyword))
                 .eq(level != null, ScmSupplier::getLevel, level)
                 .eq(logistics != null, ScmSupplier::getLogistics, logistics)
                 .eq(status != null, ScmSupplier::getStatus, status)
@@ -113,30 +119,56 @@ public class ScmSupplierService {
         return list.isEmpty() ? null : list.get(0).getId();
     }
 
-    /** 启用的供应商，按编码或名称搜索 */
+    /** 启用的供应商，按关键字搜索，最多 {@value #OPTION_LIMIT} 条 */
     public List<PartnerOption> options(String keyword) {
-        return options(keyword, false);
+        return options(keyword, false, 1, OPTION_LIMIT);
+    }
+
+    /**
+     * 启用的供应商下拉：按关键字（规则见 {@link SearchKeys}）分页搜索，按编码排序，不查总数
+     *
+     * @param size 每页条数，最多 {@value #OPTION_LIMIT}
+     */
+    public List<PartnerOption> options(String keyword, long current, long size) {
+        return options(keyword, false, current, size);
     }
 
     /**
      * 承运商下拉：启用的物流公司（{@code logistics = 1}），按编码或名称搜索；还没有标记任何物流公司时回退到全部启用的供应商
      */
-    public CarrierOptions carrierOptions(String keyword) {
+    public CarrierOptions carrierOptions(String keyword, long current, long size) {
         boolean marked = supplierMapper.exists(Wrappers.<ScmSupplier>lambdaQuery()
                 .eq(ScmSupplier::getStatus, EnableStatus.ENABLED).eq(ScmSupplier::getLogistics, LOGISTICS));
-        return new CarrierOptions(marked, options(keyword, marked));
+        return new CarrierOptions(marked, options(keyword, marked, current, size));
     }
 
-    private List<PartnerOption> options(String keyword, boolean logisticsOnly) {
-        return supplierMapper.selectPage(Page.of(1, OPTION_LIMIT, false), Wrappers.<ScmSupplier>lambdaQuery()
+    /** 第一页中编码与关键字完全一致的供应商排在最前 */
+    private List<PartnerOption> options(String keyword, boolean logisticsOnly, long current, long size) {
+        List<ScmSupplier> rows = supplierMapper.selectPage(Page.of(Math.max(current, 1), Math.min(Math.max(size, 1), OPTION_LIMIT), false),
+                Wrappers.<ScmSupplier>lambdaQuery()
                         .eq(ScmSupplier::getStatus, EnableStatus.ENABLED)
                         .eq(logisticsOnly, ScmSupplier::getLogistics, LOGISTICS)
-                        .and(StringUtils.hasText(keyword), w -> w.like(ScmSupplier::getCode, keyword).or().like(ScmSupplier::getName, keyword))
-                        .orderByAsc(ScmSupplier::getCode))
-                .getRecords().stream()
-                .map(s -> new PartnerOption(s.getId(), s.getCode(), s.getName(), s.getContact(), s.getPhone(), s.getAddress(),
-                        s.getLevel() == null ? null : s.getLevel().name()))
-                .toList();
+                        .and(StringUtils.hasText(keyword), keywordMatch(keyword))
+                        .orderByAsc(ScmSupplier::getCode)).getRecords();
+        if (StringUtils.hasText(keyword) && current <= 1) {
+            ScmSupplier exact = supplierMapper.selectOne(Wrappers.<ScmSupplier>lambdaQuery()
+                    .eq(ScmSupplier::getStatus, EnableStatus.ENABLED)
+                    .eq(logisticsOnly, ScmSupplier::getLogistics, LOGISTICS)
+                    .eq(ScmSupplier::getCode, keyword.trim()));
+            rows = SearchKeys.exactFirst(rows, exact, ScmSupplier::getId);
+        }
+        return rows.stream().map(ScmSupplierService::toOption).toList();
+    }
+
+    /** 按 ID 取供应商（含停用的，最多 {@value #OPTION_LIMIT} 个），下拉回显已选的值 */
+    public List<PartnerOption> optionsByIds(List<Long> ids) {
+        return ids.isEmpty() ? List.of() : supplierMapper.selectByIds(ids.stream().distinct().limit(OPTION_LIMIT).toList())
+                .stream().map(ScmSupplierService::toOption).toList();
+    }
+
+    private static PartnerOption toOption(ScmSupplier s) {
+        return new PartnerOption(s.getId(), s.getCode(), s.getName(), s.getContact(), s.getPhone(), s.getAddress(),
+                s.getLevel() == null ? null : s.getLevel().name());
     }
 
     /**
@@ -148,9 +180,15 @@ public class ScmSupplierService {
         Page<ScmSupplier> page = supplierMapper.selectPage(Page.of(current, size), Wrappers.<ScmSupplier>lambdaQuery()
                 .select(ScmSupplier::getId, ScmSupplier::getCode, ScmSupplier::getName, ScmSupplier::getContact, ScmSupplier::getAddress, ScmSupplier::getTaxNo)
                 .eq(ScmSupplier::getStatus, EnableStatus.ENABLED)
-                .and(StringUtils.hasText(keyword), w -> w.like(ScmSupplier::getCode, keyword).or().like(ScmSupplier::getName, keyword))
+                .and(StringUtils.hasText(keyword), keywordMatch(keyword))
                 .orderByAsc(ScmSupplier::getId));
         return PageResult.of(page);
+    }
+
+    /** 关键字匹配：编码、名称、联系人、电话包含关键字，或检索列包含规范化的关键字 */
+    private static Consumer<LambdaQueryWrapper<ScmSupplier>> keywordMatch(String keyword) {
+        return SearchKeys.matches(keyword, ScmSupplier::getSearchKey,
+                ScmSupplier::getCode, ScmSupplier::getName, ScmSupplier::getContact, ScmSupplier::getPhone);
     }
 
     /** 是否有其他启用的供应商使用该名称 */
@@ -174,6 +212,7 @@ public class ScmSupplierService {
         supplierMapper.insert(supplier);
     }
 
+    @Transactional
     public void update(Long id, ScmSupplier supplier) {
         Object before = supplierMapper.selectById(id);
         get(id);
@@ -183,7 +222,9 @@ public class ScmSupplierService {
         if (supplier.getPaymentDays() == null) supplier.setPaymentDays(0);
         if (supplier.getLogistics() != null) supplier.setLogistics(supplier.getLogistics() == LOGISTICS ? LOGISTICS : 0);
         supplierMapper.updateById(supplier);
-        changeLogger.log("scm_supplier", id, before, supplierMapper.selectById(id), CHANGE_FIELDS);
+        ScmSupplier after = supplierMapper.selectById(id);
+        searchKeys.refresh(after);
+        changeLogger.log("scm_supplier", id, before, after, CHANGE_FIELDS);
     }
 
     public void changeStatus(Long id, EnableStatus status) {

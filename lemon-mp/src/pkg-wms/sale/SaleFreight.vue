@@ -37,8 +37,10 @@
       :title="t('wms.sale.freightCarrier')"
       :items="carrierItems"
       :loading="carrierLoading"
+      :has-more="carrierHasMore"
       :empty-option="settle === FreightSettle.CASH ? t('wms.sale.freightNoCarrier') : ''"
       @search="searchCarrier"
+      @more="searchCarrier(carrierKeyword, true)"
       @select="selectCarrier"
       @close="carrierOpen = false"
     />
@@ -48,7 +50,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useI18n } from '@/locales'
-import { carrierOptions, cashAccounts } from '@/api/wms'
+import { OPTION_PAGE_SIZE, carrierOptions, cashAccounts } from '@/api/wms'
 import { FreightBearer, FreightSettle } from '@web/constants/enums'
 import SearchSheet from '../components/SearchSheet.vue'
 
@@ -94,13 +96,25 @@ watch(amount, async (v) => {
 const carrierOpen = ref(false)
 const carrierItems = ref([])
 const carrierLoading = ref(false)
-async function searchCarrier(keyword) {
+const carrierHasMore = ref(false)
+const carrierKeyword = ref('')
+let carrierPage = 1
+let carrierSeq = 0
+/** 承运商按关键字分页查询，more 为加载下一页 */
+async function searchCarrier(keyword, more = false) {
+  const seq = ++carrierSeq
+  const page = more ? carrierPage + 1 : 1
+  if (!more) carrierKeyword.value = keyword
   carrierLoading.value = true
   try {
-    const res = await carrierOptions(keyword).catch(() => null)
-    carrierItems.value = (res?.options || []).map((s) => ({ id: s.id, title: `${s.code} ${s.name}` }))
+    const res = await carrierOptions(keyword, page).catch(() => null)
+    if (seq !== carrierSeq) return
+    const items = (res?.options || []).map((s) => ({ id: s.id, title: `${s.code} ${s.name}` }))
+    carrierPage = page
+    carrierItems.value = more ? [...carrierItems.value, ...items.filter((it) => !carrierItems.value.some((x) => x.id === it.id))] : items
+    carrierHasMore.value = items.length >= OPTION_PAGE_SIZE
   } finally {
-    carrierLoading.value = false
+    if (seq === carrierSeq) carrierLoading.value = false
   }
 }
 function selectCarrier(item) {

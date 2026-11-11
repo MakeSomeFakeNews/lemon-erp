@@ -81,8 +81,8 @@ export default {
     onDocHint: '运费已在销售出库单 {no} 登记（出库单审核时已生成运费单据），这里只读显示，发货时不再生成'
   },
   partnerSelect: {
-    searchSupplier: '搜索供应商编码或名称',
-    searchCustomer: '搜索客户编码或名称'
+    searchSupplier: '搜索供应商编码、名称或简拼',
+    searchCustomer: '搜索客户编码、名称或简拼'
   },
   stockSlot: {
     selectSlot: '选择库位 / 批次',

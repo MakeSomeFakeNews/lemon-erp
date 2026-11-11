@@ -50,10 +50,13 @@ public class WmsMaterialController {
         return R.ok(materialService.page(current, size, keyword, category, brand, status, templateId));
     }
 
-    /** 登录即可访问：各单据页面按编码或名称搜索物料 */
+    /** 登录即可访问：各单据页面的物料下拉，按关键字分页搜索（每页最多 50 条，滚动加载下一页）；ids 按 ID 取已选物料的名称 */
     @GetMapping("/options")
-    public R<List<WmsMaterial>> options(@RequestParam(required = false) String keyword) {
-        return R.ok(materialService.options(keyword));
+    public R<List<WmsMaterial>> options(@RequestParam(required = false) String keyword,
+                                        @RequestParam(required = false) List<Long> ids,
+                                        @RequestParam(defaultValue = "1") long current,
+                                        @RequestParam(defaultValue = "20") long size) {
+        return R.ok(ids != null && !ids.isEmpty() ? materialService.optionsByIds(ids) : materialService.options(keyword, current, size));
     }
 
     /** 扫码：物料条码、包装条码或物料编码 → {material, unit, ratio}，找不到时为空 */

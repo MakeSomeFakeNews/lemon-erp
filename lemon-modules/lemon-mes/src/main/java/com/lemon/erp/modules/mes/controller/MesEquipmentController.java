@@ -52,10 +52,14 @@ public class MesEquipmentController {
         return R.ok(equipmentService.page(current, size, keyword, status, workCenterId, dueDays));
     }
 
-    /** 登录即可访问：维护单选择设备 */
+    /** 登录即可访问：选择设备，按编码或名称分页搜索（每页最多 50 条）；ids 按 ID 取已选设备的名称 */
     @GetMapping("/equipment/options")
-    public R<List<MesEquipment>> options() {
-        return R.ok(equipmentService.options());
+    public R<List<MesEquipment>> options(@RequestParam(required = false) String keyword,
+                                         @RequestParam(required = false) List<Long> ids,
+                                         @RequestParam(required = false) Long workCenterId,
+                                         @RequestParam(defaultValue = "1") long current,
+                                         @RequestParam(defaultValue = "20") long size) {
+        return R.ok(equipmentService.options(keyword, ids, workCenterId, current, size));
     }
 
     @GetMapping("/equipment/{id}")

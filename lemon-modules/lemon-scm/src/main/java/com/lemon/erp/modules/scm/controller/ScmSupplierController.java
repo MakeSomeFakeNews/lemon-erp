@@ -54,16 +54,21 @@ public class ScmSupplierController {
         return R.ok(supplierService.page(current, size, keyword, level, status, logistics));
     }
 
-    /** 登录即可访问：订单等页面按编码或名称搜索 */
+    /** 登录即可访问：订单等页面的下拉，按关键字分页搜索（每页最多 50 条，滚动加载下一页）；ids 按 ID 取已选供应商的名称 */
     @GetMapping("/options")
-    public R<List<PartnerOption>> options(@RequestParam(required = false) String keyword) {
-        return R.ok(supplierService.options(keyword));
+    public R<List<PartnerOption>> options(@RequestParam(required = false) String keyword,
+                                          @RequestParam(required = false) List<Long> ids,
+                                          @RequestParam(defaultValue = "1") long current,
+                                          @RequestParam(defaultValue = "20") long size) {
+        return R.ok(ids != null && !ids.isEmpty() ? supplierService.optionsByIds(ids) : supplierService.options(keyword, current, size));
     }
 
     /** 登录即可访问：承运商下拉（采购运费、发运单），只列出物流公司，没有标记时为全部供应商 */
     @GetMapping("/carrier-options")
-    public R<CarrierOptions> carrierOptions(@RequestParam(required = false) String keyword) {
-        return R.ok(supplierService.carrierOptions(keyword));
+    public R<CarrierOptions> carrierOptions(@RequestParam(required = false) String keyword,
+                                            @RequestParam(defaultValue = "1") long current,
+                                            @RequestParam(defaultValue = "20") long size) {
+        return R.ok(supplierService.carrierOptions(keyword, current, size));
     }
 
     /** 供应商绩效：订单数、入库金额、准时交货率、退货率、最近评估 */

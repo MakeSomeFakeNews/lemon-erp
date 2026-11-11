@@ -8,8 +8,8 @@ export const getWorkOrder = (id) => get(`/mes/wo/${id}`)
 export const reportWorkOrder = (id, data) => post(`/mes/wo/${id}/report`, data)
 /** 报工记录：{ current, size, woId } */
 export const pageReport = (params) => get('/mes/wo/reports', params)
-/** 设备选项（登录即可访问） */
-export const equipmentOptions = () => get('/mes/equipment/options')
+/** 设备选项（登录即可访问）：未报废的设备按编码或名称分页搜索，params { keyword, workCenterId, ids, current, size }（每页最多 50） */
+export const equipmentOptions = (params) => get('/mes/equipment/options', params)
 /** 领用到工单的模具 */
 export const moldsOfWo = (woId) => get(`/mes/mold/by-wo/${woId}`)
 
@@ -44,5 +44,5 @@ export const getNcr = (id) => get(`/qms/ncr/${id}`)
 /** 手工登记：{ source, materialId, batchNo, qty, woNo, defectType, description } */
 export const addNcr = (data) => post('/qms/ncr', data)
 
-/** 物料选项（登录即可访问）：按编码、名称搜索 */
-export const materialOptions = (keyword) => get('/wms/material/options', { keyword })
+/** 物料选项（登录即可访问）：按编码、名称、规格、条码、拼音首字母、去掉分隔符的缩写分页搜索，每页 20 条 */
+export const materialOptions = (keyword, current = 1) => get('/wms/material/options', { keyword, current, size: 20 })

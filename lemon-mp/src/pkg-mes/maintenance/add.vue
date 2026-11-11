@@ -3,14 +3,15 @@
     <!-- 选择设备：扫码或搜索 -->
     <template v-if="picking">
       <l-scan-input :placeholder="t('mes.maintenance.searchEquipment')" focus @scan="onScan" />
-      <view v-for="e in filtered" :key="e.id" class="l-item" @click="pick(e)">
+      <view v-for="e in options" :key="e.id" class="l-item" @click="pick(e)">
         <view class="l-item__head">
           <text class="l-item__title">{{ e.name }}</text>
           <l-tag :text="dictText(dict.mes_equipment_status, e.status)" :color="dictColor(dict.mes_equipment_status, e.status)" />
         </view>
         <view class="l-item__desc">{{ e.code }}</view>
       </view>
-      <l-empty v-if="!filtered.length" />
+      <l-empty v-if="loaded && !options.length" />
+      <l-load-more v-else-if="options.length" :status="loading ? 'loading' : hasMore ? 'more' : 'noMore'" />
     </template>
 
     <template v-else>
@@ -48,8 +49,8 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { reactive, ref } from 'vue'
+import { onLoad, onReachBottom } from '@dcloudio/uni-app'
 import { useI18n } from '@/locales'
 import { EquipmentStatus, MaintenanceType } from '@web/constants/enums'
 import { addMaintenance, equipmentOptions } from '@/api/mes'
@@ -58,38 +59,65 @@ import { useTitle } from '@/composables/useTitle'
 import { dictColor, dictText, useDict } from '@/store/dict'
 import { today } from '@/utils/format'
 
-/** 报修 / 登记保养：从设备详情进入时带出设备，否则扫码或搜索选择（设备选项不含已报废的） */
+/** 报修 / 登记保养：从设备详情进入时带出设备，否则扫码或搜索选择（设备选项不含已报废的，按编码、名称远程分页搜索，上拉加载更多） */
 const { t } = useI18n()
 useTitle('mes.maintenance.addTitle')
 const dict = useDict('mes_maintain_type', 'mes_equipment_status')
+const PAGE_SIZE = 20
 const options = ref([])
+const loaded = ref(false)
+const loading = ref(false)
+const hasMore = ref(false)
 const equipment = ref(null)
 const picking = ref(false)
-const keyword = ref('')
+let keyword = ''
+let page = 1
+let seq = 0
 const busy = ref(false)
 const form = reactive({ type: MaintenanceType.REPAIR, content: '', planDate: today(), handler: '' })
 
-const filtered = computed(() => {
-  const k = keyword.value.trim().toLowerCase()
-  return options.value.filter((e) => !k || e.code.toLowerCase().includes(k) || e.name.toLowerCase().includes(k)).slice(0, 100)
-})
-
 onLoad(async (q) => {
   if (q.type && Object.values(MaintenanceType).includes(q.type)) form.type = q.type
-  options.value = (await equipmentOptions().catch(() => [])) || []
-  if (q.equipmentId) equipment.value = options.value.find((e) => String(e.id) === String(q.equipmentId)) || null
+  if (q.equipmentId) {
+    const list = (await equipmentOptions({ ids: q.equipmentId }).catch(() => [])) || []
+    equipment.value = list.find((e) => e.status !== EquipmentStatus.SCRAPPED) || null
+  }
+})
+
+/** 按关键字查询设备，more 为加载下一页；只采用最后一次查询的结果 */
+async function search(kw, more = false) {
+  const current = ++seq
+  const target = more ? page + 1 : 1
+  if (!more) keyword = kw
+  loading.value = true
+  try {
+    const rows = (await equipmentOptions({ keyword: keyword || undefined, current: target, size: PAGE_SIZE }).catch(() => [])) || []
+    if (current !== seq) return null
+    page = target
+    options.value = more ? [...options.value, ...rows.filter((e) => !options.value.some((x) => x.id === e.id))] : rows
+    hasMore.value = rows.length >= PAGE_SIZE
+    loaded.value = true
+    return rows
+  } finally {
+    if (current === seq) loading.value = false
+  }
+}
+
+onReachBottom(() => {
+  if (picking.value && hasMore.value && !loading.value) search(keyword, true)
 })
 
 function startPick() {
-  keyword.value = ''
   picking.value = true
+  search('')
 }
 
-function onScan(code) {
-  const exact = options.value.find((e) => e.code === code)
+async function onScan(code) {
+  const rows = await search(code)
+  if (!rows) return
+  const exact = rows.find((e) => e.code === code)
   if (exact) return pick(exact)
-  keyword.value = code
-  if (!filtered.value.length) vibrate(false)
+  if (!rows.length) vibrate(false)
 }
 
 function pick(e) {

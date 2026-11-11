@@ -81,8 +81,8 @@ export default {
     onDocHint: 'Freight was entered on sales delivery {no} (its freight documents were generated when it was posted); shown read-only here and not generated again on dispatch'
   },
   partnerSelect: {
-    searchSupplier: 'Search supplier code or name',
-    searchCustomer: 'Search customer code or name'
+    searchSupplier: 'Search supplier code, name or initials',
+    searchCustomer: 'Search customer code, name or initials'
   },
   stockSlot: {
     selectSlot: 'Select location / batch',

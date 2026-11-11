@@ -297,12 +297,12 @@ public class WmsVariantService {
         return result;
     }
 
-    /** 款式（启用），按编码或名称搜索，订单按规格矩阵录入时选择 */
+    /** 款式（启用），按关键字搜索（规则同物料下拉），订单按规格矩阵录入时选择 */
     public List<WmsMaterial> templateOptions(String keyword) {
         return Queries.limit(materialMapper, Wrappers.<WmsMaterial>lambdaQuery()
                 .select(WmsMaterial::getId, WmsMaterial::getCode, WmsMaterial::getName, WmsMaterial::getSpec, WmsMaterial::getUnit)
                 .eq(WmsMaterial::getIsTemplate, 1).eq(WmsMaterial::getStatus, EnableStatus.ENABLED)
-                .and(StringUtils.hasText(keyword), w -> w.like(WmsMaterial::getCode, keyword).or().like(WmsMaterial::getName, keyword))
+                .and(StringUtils.hasText(keyword), WmsMaterialService.keywordMatch(keyword))
                 .orderByAsc(WmsMaterial::getCode), 50);
     }
 

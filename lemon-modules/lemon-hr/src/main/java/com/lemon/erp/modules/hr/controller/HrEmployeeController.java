@@ -62,10 +62,13 @@ public class HrEmployeeController {
         return R.ok(employeeService.stats());
     }
 
-    /** 登录即可访问：培训学员、考勤补录、工时等选择员工 */
+    /** 登录即可访问：培训学员、考勤补录、工时等选择员工，按工号或姓名分页搜索（每页最多 50 条）；ids 按 ID 取已选员工的名称 */
     @GetMapping("/options")
-    public R<List<EmployeeOption>> options(@RequestParam(required = false) String keyword) {
-        return R.ok(employeeService.options(keyword));
+    public R<List<EmployeeOption>> options(@RequestParam(required = false) String keyword,
+                                           @RequestParam(required = false) List<Long> ids,
+                                           @RequestParam(defaultValue = "1") long current,
+                                           @RequestParam(defaultValue = "20") long size) {
+        return R.ok(employeeService.options(keyword, ids, current, size));
     }
 
     @GetMapping("/{id}")

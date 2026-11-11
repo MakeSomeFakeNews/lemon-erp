@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { batchByIds } from '@/utils/batchByIds'
 
 const ids = (v) => [].concat(v).join(',')
 
@@ -29,7 +30,10 @@ export const getEquipment = (id) => request.get(`/mes/equipment/${id}`)
 export const addEquipment = (data) => request.post('/mes/equipment', data)
 export const updateEquipment = (id, data) => request.put(`/mes/equipment/${id}`, data)
 export const deleteEquipment = (id) => request.delete(`/mes/equipment/${ids(id)}`)
-export const equipmentOptions = () => request.get('/mes/equipment/options')
+/** 设备下拉：未报废的设备按编码或名称分页搜索；params：{ keyword, workCenterId, current, size }（每页最多 50，默认 20） */
+export const equipmentOptions = (params) => request.get('/mes/equipment/options', { params })
+/** 按 ID 取设备（含已报废的），下拉回显已选的值 */
+export const equipmentsByIds = batchByIds((idList) => request.get('/mes/equipment/options', { params: { ids: ids(idList) } }))
 export const pageMaintenance = (params) => request.get('/mes/maintenance', { params })
 export const addMaintenance = (data) => request.post('/mes/maintenance', data)
 export const startMaintenance = (id, handler) => request.post(`/mes/maintenance/${id}/start`, { handler })

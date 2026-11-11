@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { batchByIds } from '@/utils/batchByIds'
 
 const ids = (v) => [].concat(v).join(',')
 
@@ -13,7 +14,10 @@ export const deletePosition = (id) => request.delete(`/hr/position/${ids(id)}`)
 /** 员工档案与人事异动 */
 export const pageEmployee = (params) => request.get('/hr/employee', { params })
 export const employeeStats = () => request.get('/hr/employee/stats')
-export const employeeOptions = (keyword) => request.get('/hr/employee/options', { params: { keyword } })
+/** 员工下拉：在职员工按工号或姓名分页搜索；page：{ current, size }（每页最多 50，默认 20） */
+export const employeeOptions = (keyword, page) => request.get('/hr/employee/options', { params: { keyword, ...page } })
+/** 按 ID 取员工（含离职的），下拉回显已选的值 */
+export const employeesByIds = batchByIds((idList) => request.get('/hr/employee/options', { params: { ids: ids(idList) } }))
 export const getEmployee = (id) => request.get(`/hr/employee/${id}`)
 export const employeeChanges = (id) => request.get(`/hr/employee/${id}/changes`)
 export const employeeTrainings = (id) => request.get(`/hr/employee/${id}/trainings`)

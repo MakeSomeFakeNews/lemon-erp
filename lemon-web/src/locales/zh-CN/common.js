@@ -106,6 +106,11 @@ export default {
     selectName: '请选择{name}',
     all: '全部'
   },
+  /** 远程搜索下拉（RemoteSelect） */
+  select: {
+    noMatch: '没有匹配的数据',
+    moreHint: '滚动加载更多，或输入编码、名称、拼音首字母查找'
+  },
   rule: {
     required: '请输入{name}',
     requiredSelect: '请选择{name}',

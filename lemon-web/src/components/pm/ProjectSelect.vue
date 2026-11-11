@@ -1,50 +1,34 @@
 <template>
-  <a-select
-    :value="value ?? undefined"
-    show-search
+  <RemoteSelect
+    :value="value"
+    :label="label"
+    :fetch="({ keyword, current, size }) => projectOptions(mine, keyword, { current, size })"
+    :fetch-by-ids="projectsByIds"
+    :to-label="(p) => `${p.code} ${p.name}`"
     :allow-clear="allowClear"
-    option-filter-prop="label"
-    :dropdown-match-select-width="360"
     :placeholder="placeholder"
-    :options="options"
-    :loading="loading"
-    @change="onChange"
+    :dropdown-width="360"
+    @update:value="(v) => emit('update:value', v)"
+    @select="(p) => emit('select', p)"
   />
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
-import { projectOptions } from '@/api/pm'
+import { projectOptions, projectsByIds } from '@/api/pm'
 import { t } from '@/locales'
+import RemoteSelect from '@/components/common/RemoteSelect.vue'
 
 /**
- * 项目下拉：未完成的项目；mine 只列出我参与的项目（填报工时）
+ * 项目下拉：未完成的项目按编码或名称远程分页搜索；mine 只列出我参与的项目（填报工时）
+ * - label：当前值的显示名（不传时按 ID 取名称，已结束的项目也能回显）
  * - @select(project)：选中后返回项目
  */
-const props = defineProps({
+defineProps({
   value: Number,
+  label: String,
   mine: Boolean,
   allowClear: { type: Boolean, default: true },
   placeholder: { type: String, default: () => t('pm.common.selectProject') }
 })
 const emit = defineEmits(['update:value', 'select'])
-
-const list = ref([])
-const options = ref([])
-const loading = ref(false)
-
-onMounted(async () => {
-  loading.value = true
-  try {
-    list.value = await projectOptions(props.mine)
-    options.value = list.value.map((p) => ({ value: p.id, label: `${p.code} ${p.name}` }))
-  } finally {
-    loading.value = false
-  }
-})
-
-function onChange(v) {
-  emit('update:value', v ?? null)
-  emit('select', list.value.find((p) => p.id === v))
-}
 </script>

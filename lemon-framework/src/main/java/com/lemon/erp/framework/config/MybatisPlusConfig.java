@@ -7,6 +7,8 @@ import com.baomidou.mybatisplus.extension.plugins.inner.BlockAttackInnerIntercep
 import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
+import com.lemon.erp.framework.data.SearchKeys;
+import com.lemon.erp.framework.data.Searchable;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.LazyDataPermissionInterceptor;
 import com.lemon.erp.framework.tenant.LemonTenantLineHandler;
@@ -68,7 +70,8 @@ public class MybatisPlusConfig {
     }
 
     /**
-     * 制单人：插入实体时 createBy 字段未赋值则填当前登录用户（定时任务等没有登录用户时保持为空）。
+     * 制单人：插入实体时 createBy 字段未赋值则填当前登录用户（定时任务等没有登录用户时保持为空）；
+     * 同时给有检索列的实体（{@link Searchable}）计算 searchKey。
      * 不能放在 MetaObjectHandler.insertFill 中：没有 {@code @TableField(fill = ...)} 的字段，INSERT 语句按
      * {@code <if test="createBy != null">} 在填充之前就已生成，填充的值不会写入数据库；这里在生成 SQL 之前赋值
      */
@@ -78,6 +81,10 @@ public class MybatisPlusConfig {
         public void beforeUpdate(Executor executor, MappedStatement ms, Object parameter) {
             if (ms.getSqlCommandType() != SqlCommandType.INSERT || parameter == null || parameter instanceof Map) {
                 return;
+            }
+            // 检索列：插入时按编码、名称等计算（修改后由 Service 刷新，见 Searchable）
+            if (parameter instanceof Searchable searchable && searchable.getSearchKey() == null) {
+                searchable.setSearchKey(SearchKeys.of(searchable));
             }
             MetaObject metaObject = ms.getConfiguration().newMetaObject(parameter);
             if (metaObject.hasSetter(CREATE_BY) && metaObject.getValue(CREATE_BY) == null) {

@@ -50,8 +50,18 @@
     <select id="selectOptions" resultType="com.lemon.erp.modules.pm.entity.PmProject">
         SELECT p.id, p.code, p.name, p.status, p.customer_id, p.manager_id
         FROM pm_project p
-        WHERE p.status IN ('PLANNING', 'APPROVING', 'ACTIVE', 'SUSPENDED')
-        <if test="userId != null">AND EXISTS (SELECT 1 FROM pm_member m WHERE m.project_id = p.id AND m.user_id = #{userId})</if>
+        <where>
+            <choose>
+                <when test="ids != null and ids.size() > 0">
+                    p.id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+                </when>
+                <otherwise>
+                    p.status IN ('PLANNING', 'APPROVING', 'ACTIVE', 'SUSPENDED')
+                    <if test="userId != null">AND EXISTS (SELECT 1 FROM pm_member m WHERE m.project_id = p.id AND m.user_id = #{userId})</if>
+                    <if test="keyword != null and keyword != ''">AND (p.code LIKE CONCAT('%', #{keyword}, '%') OR p.name LIKE CONCAT('%', #{keyword}, '%'))</if>
+                </otherwise>
+            </choose>
+        </where>
         ORDER BY p.code
     </select>
 

@@ -181,7 +181,7 @@ export default {
   },
   select: {
     noMaterial: '没有匹配的物料',
-    materialPlaceholder: '搜索物料编码、名称或扫码',
+    materialPlaceholder: '搜索编码、名称、规格、简拼或扫码',
     materialNotFound: '没有找到编码、名称或条码为「{code}」的物料',
     noSerial: '该位置没有在库序列号'
   },

@@ -11,6 +11,8 @@ dependencies {
     api libs.mybatis.plus.jsqlparser
     api libs.jjwt.api
     implementation libs.ip2region
+    // 拼音首字母：往来单位、物料的检索列（SearchKeys），BSD 许可
+    implementation libs.pinyin4j
     runtimeOnly libs.jjwt.impl
     runtimeOnly libs.jjwt.jackson
 }
