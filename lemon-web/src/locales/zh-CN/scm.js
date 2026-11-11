@@ -18,8 +18,14 @@ export default {
     grossOnly: '优惠前 {amount}',
     returnShare: '原单优惠分摊',
     returnShareHint: '原单的整单优惠按各行金额比例分摊，退货按扣除优惠后的成交价退款：退款金额 = 优惠前金额 − 原单优惠分摊',
-    orderShare: '订单优惠分摊',
-    orderShareHint: '订单的整单优惠按各行金额比例分摊，本次按扣除优惠后的成交价计算，金额以保存后的单据为准',
+    orderShare: '订单优惠',
+    orderShareHint: '订单的整单优惠：明细单价保持与订单一致，不改单价；优惠作为整单减少应收金额，本次按各行金额比例计算对应的优惠（最后一批为订单剩余的优惠），金额以保存后的单据为准',
+    orderSharePurchaseHint: '明细单价保持与订单 / 供应商送货单一致，不改单价；订单优惠作为整单减少应付金额；存货成本按各行金额比例冲减（内部成本核算，不影响单据上的单价和金额显示）。默认带出本次按订单比例计算的优惠（最后一批为订单剩余的优惠），可按供应商实际给的优惠修改',
+    orderDiscountChanged: '与按订单计算的优惠 ¥{amount} 不一致：本单应付和存货成本按修改后的优惠计算，订单的已入库金额仍按订单',
+    orderDiscountReset: '恢复按订单',
+    orderDiscountAdjusted: '已修改，比按订单分摊{diff} ¥{amount}',
+    more: '多',
+    less: '少',
     refundAfter: '退款金额'
   },
   freight: {
@@ -27,8 +33,15 @@ export default {
     value: '运费 {amount}',
     payTo: '运费付给',
     carrier: '承运商',
-    selectCarrier: '请选择承运商（供应商）',
-    purchaseHint: '按各行不含税金额分摊计入存货成本，生成运费应付单'
+    selectCarrier: '请选择承运商（物流公司）',
+    supplierHint: '供应商代垫：运费并入该供应商的应付（单独一张运费应付单），按各行不含税金额分摊计入存货成本；不生成费用',
+    inventoryHint: '本公司承担：应付给承运商，按各行不含税金额分摊计入存货成本（借 存货 / 贷 应付账款-承运商）；不另生成费用支出单，运费只计一次',
+    expenseHint: '本公司承担：应付给承运商，计入当期费用（借 采购运费科目，默认销售费用 / 贷 应付账款-承运商），不分摊到存货成本（业务参数「本公司承担的采购运费计入」）',
+    cost: {
+      INVENTORY: '计入存货成本',
+      EXPENSE: '计入当期费用'
+    },
+    carrierUnmarked: '还没有标记物流公司，下面列出全部供应商；请在「供应商」资料中勾选「物流公司」'
   },
   partnerSelect: {
     searchSupplier: '搜索供应商编码或名称',
@@ -1180,6 +1193,14 @@ export default {
     paymentDaysTip: '应付单到期日 = 入库日期 + 账期',
     bankName: '开户行',
     bankAccount: '银行账号',
+    logistics: '物流公司',
+    logisticsLabel: '物流公司（承运商）',
+    logisticsExtra: '勾选后可在采购运费、发运单中被选为承运商；应付、付款与其他供应商相同',
+    routes: '营运路线',
+    routesPlaceholder: '如：华东整车、广州—上海专线',
+    type: '类型',
+    typeLogistics: '物流公司',
+    typeGoods: '其他供应商',
     sampleName: '示例供应商',
     sampleContact: '李四',
     codeRequired: '请输入供应商编码',

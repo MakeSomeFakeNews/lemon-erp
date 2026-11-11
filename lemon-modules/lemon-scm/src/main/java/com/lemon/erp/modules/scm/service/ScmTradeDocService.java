@@ -30,6 +30,7 @@ import com.lemon.erp.modules.scm.model.FreightBearer;
 import com.lemon.erp.modules.scm.model.OrderStatus;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.OrderSource;
+import com.lemon.erp.modules.scm.model.PurchaseFreightCost;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.wms.dto.StockDocItemRequest;
 import com.lemon.erp.modules.wms.dto.StockDocRequest;
@@ -142,6 +143,10 @@ public class ScmTradeDocService {
         if (kind.isReturns() && Boolean.TRUE.equals(req.replenish())) {
             throw new BizException("scm.error.directOrderNoReplenish");
         }
+        if (req.orderDiscount() != null) {
+            // 直接开单的优惠填写在整单优惠中（记在隐式订单上）
+            throw new BizException("scm.error.orderDiscountNeedsOrder");
+        }
         // 买赠的赠品行只用于销售出库：数量由促销规则决定，请求中的赠品行只指定库位、批次、仓库、序列号
         List<TradeDocItemRequest> normal = req.items().stream().filter(r -> !r.isGift()).toList();
         List<TradeDocItemRequest> giftReqs = req.items().stream().filter(TradeDocItemRequest::isGift).toList();
@@ -176,7 +181,7 @@ public class ScmTradeDocService {
                 .filter(i -> Integer.valueOf(1).equals(i.getGift())).toList();
         items.addAll(directGifts.lines(giftItems, giftReqs, req.warehouseId()));
         return create(kind, new TradeDocRequest(order.getId(), req.warehouseId(), req.bizDate(), req.remark(), false, items,
-                null, null, null, req.freight(), req.freightBearer(), req.carrierSupplierId()), order);
+                null, null, null, req.freight(), req.freightBearer(), req.carrierSupplierId(), null), order);
     }
 
     private Long create(TradeKind kind, TradeDocRequest req, ScmOrder order) {
@@ -203,6 +208,9 @@ public class ScmTradeDocService {
             creditChecker.checkBeforeShipment(order);
         }
         FreightBearer freightBearer = checkFreight(kind, req);
+        if (req.orderDiscount() != null && kind != TradeKind.PURCHASE_IN) {
+            throw new BizException("scm.error.orderDiscountOnlyPurchaseIn");
+        }
         // 业务参数：销售出库的明细可以各自选择仓库
         boolean lineWarehouse = kind == TradeKind.SALES_OUT && bizRules.bool(ScmBizRules.SALES_OUT_LINE_WAREHOUSE);
         Map<Long, ScmOrderItem> orderItems = orderItemMapper.selectByOrderId(order.getId()).stream()
@@ -211,6 +219,7 @@ public class ScmTradeDocService {
 
         List<ScmTradeDocItem> items = new ArrayList<>(req.items().size());
         List<BigDecimal> amountsFc = new ArrayList<>(req.items().size());
+        List<BigDecimal> sharesFc = new ArrayList<>(req.items().size());
         // 业务参数：允许超收 / 超发的比例
         BigDecimal overRate = kind.isReturns() ? BigDecimal.ZERO : BigDecimal.valueOf(bizRules.number(
                 kind.getOrderKind() == OrderKind.PURCHASE ? ScmBizRules.PURCHASE_OVER_RATE : ScmBizRules.SALES_OVER_RATE));
@@ -244,6 +253,7 @@ public class ScmTradeDocService {
             amountsFc.add(amountFc);
             // 整单优惠的分摊（只用于显示优惠前的单价、金额）：出入库为本次消耗的分摊额，退货为按优惠前单价计的金额与退货金额之差
             BigDecimal shareFc = !kind.isReturns() ? share : OrderLineAmounts.returnShare(orderItem, r.qty(), amountFc);
+            sharesFc.add(Decimals.nz(shareFc));
             ScmTradeDocItem item = toItem(kind, r, orderItem, rate(order), amountFc, shareFc);
             if (lineWarehouse && r.warehouseId() != null && !r.warehouseId().equals(req.warehouseId())) {
                 item.setWarehouseId(r.warehouseId());
@@ -251,8 +261,15 @@ public class ScmTradeDocService {
             items.add(item);
         }
 
-        if (freightBearer != null) {
-            // 采购运费按各行不含税金额分摊，计入存货成本
+        // 修改了本单的订单优惠（引用订单的采购入库）：按优惠前金额重新分摊，订单的已入库金额仍按订单计算
+        BigDecimal discountAdjust = req.orderDiscount() == null ? BigDecimal.ZERO
+                : applyOrderDiscount(items, amountsFc, sharesFc, Decimals.money(req.orderDiscount()), rate(order));
+
+        // 运费入账方式：供应商代垫的计入存货成本，本公司承担的按业务参数（入库时确定，记在单据上）
+        PurchaseFreightCost freightCost = freightBearer == null ? null : freightBearer == FreightBearer.COMPANY
+                ? bizRules.option(ScmBizRules.PURCHASE_FREIGHT_COST, PurchaseFreightCost.class) : PurchaseFreightCost.INVENTORY;
+        if (freightCost == PurchaseFreightCost.INVENTORY) {
+            // 采购运费按各行不含税金额分摊，计入存货成本；计入当期费用的不分摊（明细的分摊额为 0）
             List<BigDecimal> shares = ScmFreights.allocate(req.freight(),
                     items.stream().map(i -> i.getAmount().subtract(i.getTaxAmount())).toList(), items.stream().map(ScmTradeDocItem::getQty).toList());
             for (int i = 0; i < items.size(); i++) {
@@ -297,8 +314,10 @@ public class ScmTradeDocService {
         doc.setRemark(req.remark());
         doc.setReplenish(kind.isReturns() && Boolean.TRUE.equals(req.replenish()) ? 1 : 0);
         doc.setDiscountAmount(Decimals.sum(items, ScmTradeDocItem::getDiscountShare));
+        doc.setDiscountAdjust(discountAdjust);
         doc.setFreight(freightBearer == null ? BigDecimal.ZERO : Decimals.money(req.freight()));
         doc.setFreightBearer(freightBearer);
+        doc.setFreightCost(freightCost);
         doc.setCarrierSupplierId(freightBearer == FreightBearer.COMPANY ? req.carrierSupplierId() : null);
         doc.setDeptId(user.deptId());
         docMapper.insert(doc);
@@ -316,7 +335,8 @@ public class ScmTradeDocService {
         if (freightBearer != null) {
             // 运费应付：供应商代垫计入该供应商，本公司承担付给承运商
             eventPublisher.publishEvent(new PurchaseFreightEvent(doc.getId(), docNo, freightBearer == FreightBearer.COMPANY
-                    ? req.carrierSupplierId() : order.getPartnerId(), req.bizDate(), doc.getFreight(), user.deptId()));
+                    ? req.carrierSupplierId() : order.getPartnerId(), req.bizDate(), doc.getFreight(), user.deptId(),
+                    freightCost == PurchaseFreightCost.EXPENSE));
         }
         return doc.getId();
     }
@@ -351,6 +371,45 @@ public class ScmTradeDocService {
             supplierService.get(req.carrierSupplierId());
         }
         return bearer;
+    }
+
+    /**
+     * 修改本单的订单优惠：按各行优惠前金额（订单币种）的比例重新分摊（尾差放在金额最大的一行），改写各行金额、税额和分摊额。
+     * 明细单价（优惠前单价）不变，优惠在合计处整单扣减应付，存货成本按分摊后的不含税金额计算
+     *
+     * @param amountsFc 各行金额（订单币种，按订单分摊后），改写为本单分摊后的金额
+     * @param sharesFc  各行按订单分摊的优惠（订单币种）
+     * @param discount  本单的订单优惠（订单币种，含税）
+     * @return 本单优惠与按订单分摊的优惠之差（本位币）
+     */
+    private static BigDecimal applyOrderDiscount(List<ScmTradeDocItem> items, List<BigDecimal> amountsFc, List<BigDecimal> sharesFc,
+                                                 BigDecimal discount, BigDecimal rate) {
+        List<BigDecimal> gross = new ArrayList<>(items.size());
+        for (int i = 0; i < items.size(); i++) {
+            gross.add(amountsFc.get(i).add(sharesFc.get(i)));
+        }
+        if (discount.signum() < 0) {
+            throw new BizException("scm.error.orderDiscountNegative");
+        }
+        BigDecimal grossTotal = Decimals.sum(gross, a -> a);
+        if (discount.compareTo(grossTotal) > 0) {
+            throw new BizException("scm.error.orderDiscountExceedsTotal", grossTotal.stripTrailingZeros().toPlainString());
+        }
+        BigDecimal before = Decimals.sum(items, ScmTradeDocItem::getDiscountShare);
+        List<BigDecimal> net = WholeDiscounts.allocate(gross, discount);
+        for (int i = 0; i < items.size(); i++) {
+            ScmTradeDocItem item = items.get(i);
+            amountsFc.set(i, net.get(i));
+            item.setAmount(toBase(net.get(i), rate));
+            item.setTaxAmount(tax(item.getAmount(), item.getTaxRate()));
+            item.setDiscountShare(toBase(gross.get(i).subtract(net.get(i)), rate));
+        }
+        return Decimals.sum(items, ScmTradeDocItem::getDiscountShare).subtract(before);
+    }
+
+    /** 订单币种金额折算为本位币（2 位小数），本位币原样返回 */
+    private static BigDecimal toBase(BigDecimal amountFc, BigDecimal rate) {
+        return rate.compareTo(BigDecimal.ONE) == 0 ? amountFc : amountFc.multiply(rate).setScale(2, RoundingMode.HALF_UP);
     }
 
     /** 订单汇率，本位币为 1 */

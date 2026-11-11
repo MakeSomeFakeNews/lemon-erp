@@ -8,6 +8,9 @@
         <a-form-item :label="$t('scm.supplier.level')" name="level">
           <a-select v-model:value="query.level" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.scm_supplier_level)" />
         </a-form-item>
+        <a-form-item :label="$t('scm.supplier.type')" name="logistics">
+          <a-select v-model:value="query.logistics" :placeholder="$t('common.placeholder.all')" allow-clear :options="typeOptions" />
+        </a-form-item>
         <a-form-item :label="$t('common.field.status')" name="status">
           <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
         </a-form-item>
@@ -44,7 +47,12 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
-            <div>{{ record.name }}</div>
+            <div>
+              {{ record.name }}
+              <a-tooltip v-if="record.logistics === 1" :title="record.routes">
+                <a-tag color="cyan" :bordered="false" class="logistics-tag">{{ $t('scm.supplier.logistics') }}</a-tag>
+              </a-tooltip>
+            </div>
             <div class="sub-text">{{ record.code }}</div>
           </template>
           <template v-else-if="column.key === 'level'">
@@ -124,6 +132,18 @@
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('scm.supplier.bankAccount')" name="bankAccount">
               <a-input v-model:value="form.bankAccount" :maxlength="64" />
+            </a-form-item>
+          </a-col>
+          <a-col :xs="24" :sm="12">
+            <a-form-item :label="$t('scm.supplier.type')" name="logistics" :extra="$t('scm.supplier.logisticsExtra')">
+              <a-checkbox :checked="form.logistics === 1" @update:checked="(v) => (form.logistics = v ? 1 : 0)">
+                {{ $t('scm.supplier.logisticsLabel') }}
+              </a-checkbox>
+            </a-form-item>
+          </a-col>
+          <a-col v-if="form.logistics === 1" :xs="24" :sm="12">
+            <a-form-item :label="$t('scm.supplier.routes')" name="routes">
+              <a-input v-model:value="form.routes" :maxlength="255" :placeholder="$t('scm.supplier.routesPlaceholder')" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
@@ -246,7 +266,12 @@ const columns = [
 const { checked, visibleColumns } = useColumns(columns, 'scm-supplier')
 const showSearch = ref(true)
 
-const query = reactive({ keyword: undefined, level: undefined, status: undefined })
+const query = reactive({ keyword: undefined, level: undefined, logistics: undefined, status: undefined })
+/** 类型：物流公司（承运商）/ 其他供应商 */
+const typeOptions = [
+  { value: 1, label: t('scm.supplier.typeLogistics') },
+  { value: 0, label: t('scm.supplier.typeGoods') }
+]
 const { list, loading, size, pagination, load, search, onTableChange, exportAll } = useTable((p) => pagePartner('supplier', p), query)
 // 自定义字段：表单中填写，勾选「列表显示」的作为列
 const cf = useCustomFields('scm_supplier')
@@ -259,7 +284,7 @@ const tableColumns = computed(() => {
 })
 
 function resetQuery() {
-  Object.assign(query, { keyword: undefined, level: undefined, status: undefined })
+  Object.assign(query, { keyword: undefined, level: undefined, logistics: undefined, status: undefined })
   search()
 }
 
@@ -273,14 +298,18 @@ const rules = {
   name: [{ required: true, whitespace: true, message: t('scm.supplier.nameRequired') }],
   email: [{ type: 'email', message: t('common.rule.email') }]
 }
-const FIELDS = ['code', 'name', 'level', 'contact', 'phone', 'email', 'address', 'taxNo', 'bankName', 'bankAccount', 'paymentDays', 'remark']
+const FIELDS = ['code', 'name', 'level', 'contact', 'phone', 'email', 'address', 'taxNo', 'bankName', 'bankAccount', 'paymentDays', 'logistics', 'routes', 'remark']
 const drawer = useFormDrawer(
   cf.wrap({
-    emptyForm: () => ({ id: undefined, ...Object.fromEntries(FIELDS.map((f) => [f, undefined])), paymentDays: 30 }),
+    emptyForm: () => ({ id: undefined, ...Object.fromEntries(FIELDS.map((f) => [f, undefined])), paymentDays: 30, logistics: 0 }),
     fetch: (record) => getPartner('supplier', record.id),
     create: (data) => addPartner('supplier', data),
     update: (id, data) => updatePartner('supplier', id, data),
-    toPayload: (f) => Object.fromEntries(FIELDS.map((k) => [k, f[k] === '' ? null : f[k]])),
+    toPayload: (f) => ({
+      ...Object.fromEntries(FIELDS.map((k) => [k, f[k] === '' ? null : f[k]])),
+      logistics: f.logistics === 1 ? 1 : 0,
+      routes: f.logistics === 1 ? f.routes || null : null
+    }),
     onSuccess: load
   })
 )
@@ -307,5 +336,8 @@ const rowActions = (record) => [
 }
 .full {
   width: 100%;
+}
+.logistics-tag {
+  margin-left: 4px;
 }
 </style>

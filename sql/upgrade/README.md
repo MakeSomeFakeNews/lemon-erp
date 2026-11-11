@@ -22,6 +22,7 @@
 | `20261110_mes_issue49.sql` | 生产制造（issue #49）：工单报工报废数量（`mes_work_order.scrap_qty`，按已有报工的各工序报废数回填），完工入库 + 报废达到工单数量时工单完工，在制产出按 工单数量 − 完工 − 报废 计算（已有完工入库且 完工 + 报废已达到数量的在制工单改为已完工，完工时间取最后一次完工入库或报工的时间）；工单计划完工日期索引；菜单「生产制造 → 生产统计」（人员计件统计、工序产量统计、工单完成情况、产品产量汇总、用料差异分析，`mes:stat:*`），包含生产工单的套餐及其租户管理员随套餐加入，内置角色按编码授权（平台以外的租户以套餐为上限）。业务参数「完工入库领料校验」（`mes.finish.kitCheck`，默认提示）不需要改库 |
 | `20261110_arap_issue50.sql` | 应收应付的综合问题（issue #50）：收付款中冲抵预收预付（`fin_settlement.advance_offset`、`fin_settlement_item.advance_offset`，新表 `fin_settlement_advance` 登记收付款选用的预收预付，`fin_advance_apply.settlement_id` 关联在收付款中冲抵的记录）；收付款草稿（`fin_settlement.status` 增加 `DRAFT`，字典「审批状态」增加「草稿」，是否启用由业务参数「收付款先存草稿」控制，默认关闭）；按钮「收款单确认」「付款单确认」（`fin:receipt:confirm` / `fin:payment:confirm`），随套餐加入，已有收款单 / 付款单新增权限的角色同时授权。往来汇总、来源单据穿透联查不需要改库 |
 | `20261111_fund_transfer_fields.sql` | 账户调拨（issue #66）：经办人、票据号码（`fin_fund_transfer.handler_id`、`ticket_no`，可空）；手续费承担方改称「手续费支付账户」（`fee_bearer` 注释，系统字典 `fin_fee_bearer` 改名，取值名称改为「转出账户支付」「转入账户支付」，只改仍为原名称的）。手续费单独生成凭证分录（出纳日记账中作为支付账户的一笔支出）、收支汇总单列调拨手续费只是程序变化，已有调拨的凭证保持原样 |
+| `20261111_purchase_discount_freight.sql` | 采购入库的订单优惠、运费、承运商（issue #68）：引用订单的采购入库可修改本单订单优惠，记录与按订单分摊之差（`scm_trade_doc.discount_adjust`，已有单据为 0）；采购运费的入账方式（`scm_trade_doc.freight_cost`，已有带运费的入库单为计入存货成本 `INVENTORY`）；供应商的物流公司标识和营运路线（`scm_supplier.logistics` / `routes`），已被用作承运商（采购入库承运商、发运单运费结算供应商）的供应商标记为物流公司。业务参数「本公司承担的采购运费计入」（`scm.purchaseFreight.cost`，默认存货成本）、凭证科目「采购运费（计入当期费用时）」使用默认值，不需要改库 |
 
 之后的变更按 `YYYYMMDD_名称.sql`（变更当天的日期）新增，并在上表中登记。
 

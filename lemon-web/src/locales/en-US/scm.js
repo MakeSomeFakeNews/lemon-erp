@@ -18,8 +18,14 @@ export default {
     grossOnly: 'Before discount {amount}',
     returnShare: 'Original order discount',
     returnShareHint: 'The original order discount is allocated by line amount and returns are refunded at the discounted price: refund = amount before discount − original order discount',
-    orderShare: 'Order discount share',
-    orderShareHint: 'The order discount is allocated by line amount; this document uses the discounted price, and the saved document is authoritative',
+    orderShare: 'Order discount',
+    orderShareHint: 'Order discount: line prices stay the same as on the order; the discount reduces the receivable for the whole document, calculated for this delivery in proportion to line amounts (the last batch takes the remaining order discount); the saved document is authoritative',
+    orderSharePurchaseHint: 'Line prices stay the same as on the order / supplier delivery note; the order discount reduces the payable for the whole document, and inventory cost is reduced in proportion to line amounts (internal costing only; prices and amounts shown on the document are unchanged). Defaults to the discount calculated from the order for this receipt (the last batch takes the remaining order discount) and can be changed to what the supplier actually gave',
+    orderDiscountChanged: 'Differs from the discount calculated from the order (¥{amount}): this payable and inventory cost use the changed discount; the order received amount still follows the order',
+    orderDiscountReset: 'Use order discount',
+    orderDiscountAdjusted: 'Changed, ¥{amount} {diff} than the order allocation',
+    more: 'more',
+    less: 'less',
     refundAfter: 'Refund amount'
   },
   freight: {
@@ -27,8 +33,15 @@ export default {
     value: 'Freight {amount}',
     payTo: 'Freight paid to',
     carrier: 'Carrier',
-    selectCarrier: 'Select the carrier (supplier)',
-    purchaseHint: 'Allocated to inventory cost by tax-exclusive line amount; a freight payable is generated'
+    selectCarrier: 'Select the carrier (logistics company)',
+    supplierHint: 'Advanced by supplier: added to this supplier\'s payables (a separate freight payable) and allocated to inventory cost by tax-exclusive line amount; no expense is generated',
+    inventoryHint: 'Borne by company: payable to the carrier, allocated to inventory cost by tax-exclusive line amount (Dr Inventory / Cr Accounts Payable - carrier); no separate expense document, so freight is counted once',
+    expenseHint: 'Borne by company: payable to the carrier and expensed in the period (Dr purchase freight account, selling expenses by default / Cr Accounts Payable - carrier), not allocated to inventory cost (business rule "Company-borne purchase freight goes to")',
+    cost: {
+      INVENTORY: 'Inventory cost',
+      EXPENSE: 'Period expense'
+    },
+    carrierUnmarked: 'No logistics company is marked yet, so all suppliers are listed; check "Logistics company" in the supplier record'
   },
   partnerSelect: {
     searchSupplier: 'Search supplier code or name',
@@ -1180,6 +1193,14 @@ export default {
     paymentDaysTip: 'Payable due date = receipt date + payment terms',
     bankName: 'Bank Name',
     bankAccount: 'Bank Account',
+    logistics: 'Logistics',
+    logisticsLabel: 'Logistics company (carrier)',
+    logisticsExtra: 'Can be selected as the carrier for purchase freight and shipments; payables and payments are the same as for other suppliers',
+    routes: 'Routes',
+    routesPlaceholder: 'e.g. East China FTL, Guangzhou–Shanghai line',
+    type: 'Type',
+    typeLogistics: 'Logistics company',
+    typeGoods: 'Other suppliers',
     sampleName: 'Sample Supplier',
     sampleContact: 'John Smith',
     codeRequired: 'Please enter the supplier code',

@@ -10,6 +10,7 @@ import com.lemon.erp.framework.quality.SupplierQualityProvider;
 import com.lemon.erp.framework.record.ChangeLogger;
 import com.lemon.erp.framework.ref.RefType;
 import com.lemon.erp.framework.ref.ReferenceGuard;
+import com.lemon.erp.modules.scm.dto.CarrierOptions;
 import com.lemon.erp.modules.scm.dto.PartnerOption;
 import com.lemon.erp.modules.scm.dto.SupplierKpi;
 import com.lemon.erp.modules.scm.entity.ScmOrder;
@@ -39,9 +40,11 @@ public class ScmSupplierService {
 
     /** 记录变更历史的字段 */
     private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "供应商编码", "name", "供应商名称", "contact", "联系人", "phone", "联系电话", "email", "邮箱", // i18n-ignore
-            "address", "地址", "taxNo", "纳税人识别号", "bankName", "开户行", "bankAccount", "银行账号", "paymentDays", "账期", "remark", "备注"); // i18n-ignore
+            "address", "地址", "taxNo", "纳税人识别号", "bankName", "开户行", "bankAccount", "银行账号", "paymentDays", "账期", "logistics", "物流公司", "routes", "营运路线", "remark", "备注"); // i18n-ignore
 
     private static final int OPTION_LIMIT = 50;
+    /** logistics 取值：物流公司 */
+    private static final int LOGISTICS = 1;
 
     private final ScmSupplierMapper supplierMapper;
     private final DocNoService docNoService;
@@ -52,11 +55,15 @@ public class ScmSupplierService {
     private final ChangeLogger changeLogger;
     private final SupplierQualityProvider qualityProvider;
 
-    /** @param keyword 编码或名称，模糊匹配 */
-    public PageResult<ScmSupplier> page(long current, long size, String keyword, SupplierLevel level, EnableStatus status) {
+    /**
+     * @param keyword   编码或名称，模糊匹配
+     * @param logistics 1 只查物流公司，0 只查其他供应商，为空不限
+     */
+    public PageResult<ScmSupplier> page(long current, long size, String keyword, SupplierLevel level, EnableStatus status, Integer logistics) {
         Page<ScmSupplier> page = supplierMapper.selectPage(Page.of(current, size), Wrappers.<ScmSupplier>lambdaQuery()
                 .and(StringUtils.hasText(keyword), w -> w.like(ScmSupplier::getCode, keyword).or().like(ScmSupplier::getName, keyword))
                 .eq(level != null, ScmSupplier::getLevel, level)
+                .eq(logistics != null, ScmSupplier::getLogistics, logistics)
                 .eq(status != null, ScmSupplier::getStatus, status)
                 .orderByAsc(ScmSupplier::getCode));
         return PageResult.of(page);
@@ -108,8 +115,22 @@ public class ScmSupplierService {
 
     /** 启用的供应商，按编码或名称搜索 */
     public List<PartnerOption> options(String keyword) {
+        return options(keyword, false);
+    }
+
+    /**
+     * 承运商下拉：启用的物流公司（{@code logistics = 1}），按编码或名称搜索；还没有标记任何物流公司时回退到全部启用的供应商
+     */
+    public CarrierOptions carrierOptions(String keyword) {
+        boolean marked = supplierMapper.exists(Wrappers.<ScmSupplier>lambdaQuery()
+                .eq(ScmSupplier::getStatus, EnableStatus.ENABLED).eq(ScmSupplier::getLogistics, LOGISTICS));
+        return new CarrierOptions(marked, options(keyword, marked));
+    }
+
+    private List<PartnerOption> options(String keyword, boolean logisticsOnly) {
         return supplierMapper.selectPage(Page.of(1, OPTION_LIMIT, false), Wrappers.<ScmSupplier>lambdaQuery()
                         .eq(ScmSupplier::getStatus, EnableStatus.ENABLED)
+                        .eq(logisticsOnly, ScmSupplier::getLogistics, LOGISTICS)
                         .and(StringUtils.hasText(keyword), w -> w.like(ScmSupplier::getCode, keyword).or().like(ScmSupplier::getName, keyword))
                         .orderByAsc(ScmSupplier::getCode))
                 .getRecords().stream()
@@ -149,6 +170,7 @@ public class ScmSupplierService {
         supplier.setId(null);
         if (supplier.getStatus() == null) supplier.setStatus(EnableStatus.ENABLED);
         if (supplier.getPaymentDays() == null) supplier.setPaymentDays(0);
+        supplier.setLogistics(Integer.valueOf(LOGISTICS).equals(supplier.getLogistics()) ? LOGISTICS : 0);
         supplierMapper.insert(supplier);
     }
 
@@ -159,6 +181,7 @@ public class ScmSupplierService {
         supplier.setId(id);
         supplier.setStatus(null);
         if (supplier.getPaymentDays() == null) supplier.setPaymentDays(0);
+        if (supplier.getLogistics() != null) supplier.setLogistics(supplier.getLogistics() == LOGISTICS ? LOGISTICS : 0);
         supplierMapper.updateById(supplier);
         changeLogger.log("scm_supplier", id, before, supplierMapper.selectById(id), CHANGE_FIELDS);
     }

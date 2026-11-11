@@ -55,6 +55,7 @@ export const AccountRole = Object.freeze({
   CONTRACT_LIABILITY: 'CONTRACT_LIABILITY',
   SELLING_EXPENSE: 'SELLING_EXPENSE',
   SALES_FREIGHT: 'SALES_FREIGHT', // 销售运费
+  PURCHASE_FREIGHT: 'PURCHASE_FREIGHT', // 采购运费
   TRAINING_EXPENSE: 'TRAINING_EXPENSE',
   FINANCE_EXPENSE: 'FINANCE_EXPENSE',
   NON_OPERATING_INCOME: 'NON_OPERATING_INCOME',
@@ -1330,6 +1331,12 @@ export const PromoType = Object.freeze({
   DISCOUNT: 'DISCOUNT',
   REDUCE: 'REDUCE',
   GIFT: 'GIFT',
+})
+
+/** com.lemon.erp.modules.scm.model.PurchaseFreightCost */
+export const PurchaseFreightCost = Object.freeze({
+  INVENTORY: 'INVENTORY', // 计入存货成本
+  EXPENSE: 'EXPENSE', // 计入当期费用
 })
 
 /** com.lemon.erp.modules.mes.model.QcResult（字典 mes_qc_result） */

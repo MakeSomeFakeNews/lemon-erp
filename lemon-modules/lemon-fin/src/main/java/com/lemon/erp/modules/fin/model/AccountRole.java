@@ -45,6 +45,11 @@ public enum AccountRole {
     SELLING_EXPENSE("fin.label.revenueExpenses", "fin.label.sellingExpensesFreightAfterSalesParts", "6601"),
     /** 销售运费（本公司承担的发运运费）：借 该科目 / 贷 应付账款-承运商 */
     SALES_FREIGHT("fin.label.revenueExpenses", "fin.label.salesFreight", "6601"),
+    /**
+     * 采购运费（本公司承担、业务参数「本公司承担的采购运费计入」为当期费用时）：借 该科目 / 贷 应付账款-承运商。
+     * 默认销售费用（商品流通企业的进货费用），计入存货成本时不用此科目
+     */
+    PURCHASE_FREIGHT("fin.label.revenueExpenses", "fin.label.purchaseFreightExpense", "6601"),
     TRAINING_EXPENSE("fin.label.revenueExpenses", "fin.label.trainingExpenses", "660205"),
     FINANCE_EXPENSE("fin.label.revenueExpenses", "fin.label.financialExpensesFeesDiscountsFxGains", "6603"),
     NON_OPERATING_INCOME("fin.label.revenueExpenses", "fin.label.nonOperatingIncome", "6301"),

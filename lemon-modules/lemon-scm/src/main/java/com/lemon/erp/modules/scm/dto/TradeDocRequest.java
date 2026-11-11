@@ -24,9 +24,12 @@ import java.util.List;
  * @param partnerId   直接开单：客户 / 供应商
  * @param salesmanId  直接开单的销售出库：业务员（用户），为空时取客户负责人，没有时为制单人
  * @param wholeDiscount 直接开单：整单优惠（含税，抹零也用它），记在隐式订单上并按行金额分摊到各行
- * @param freight       仅采购入库：运费，按行金额分摊计入存货成本，生成运费应付单
+ * @param freight       仅采购入库：运费，生成运费应付单；供应商代垫的按各行不含税金额分摊计入存货成本，
+ *                      本公司承担的按业务参数 scm.purchaseFreight.cost 计入存货成本（默认）或当期费用
  * @param freightBearer 运费付给：SUPPLIER 供应商代垫（计入该供应商应付，默认）/ COMPANY 本公司承担（付承运商）
  * @param carrierSupplierId 本公司承担时的承运商（供应商）
+ * @param orderDiscount 仅引用订单的采购入库：本单的订单优惠（含税，订单币种），为空时按订单的整单优惠分摊；
+ *                      明细单价不变，优惠在合计处整单扣减应付，并按各行金额比例冲减存货成本
  */
 public record TradeDocRequest(
         Long orderId,
@@ -42,18 +45,20 @@ public record TradeDocRequest(
         @DecimalMin(value = "0", message = "{scm.valid.freightCannotLess}")
         @Digits(integer = 16, fraction = 2, message = "{scm.valid.freightDecimals}") BigDecimal freight,
         FreightBearer freightBearer,
-        Long carrierSupplierId) {
+        Long carrierSupplierId,
+        @DecimalMin(value = "0", message = "{scm.valid.orderDiscountCannotNegative}")
+        @Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") BigDecimal orderDiscount) {
 
     /** 引用订单 */
     public TradeDocRequest(Long orderId, Long warehouseId, LocalDate bizDate, String remark, Boolean replenish,
                            List<TradeDocItemRequest> items) {
-        this(orderId, warehouseId, bizDate, remark, replenish, items, null, null, null, null, null, null);
+        this(orderId, warehouseId, bizDate, remark, replenish, items, null, null, null, null, null, null, null);
     }
 
     /** 直接开单，没有整单优惠 */
     public TradeDocRequest(Long orderId, Long warehouseId, LocalDate bizDate, String remark, Boolean replenish,
                            List<TradeDocItemRequest> items, Long partnerId, Long salesmanId) {
-        this(orderId, warehouseId, bizDate, remark, replenish, items, partnerId, salesmanId, null, null, null, null);
+        this(orderId, warehouseId, bizDate, remark, replenish, items, partnerId, salesmanId, null, null, null, null, null);
     }
 
     /** 是否有运费 */

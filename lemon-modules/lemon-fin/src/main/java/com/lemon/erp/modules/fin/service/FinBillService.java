@@ -233,14 +233,18 @@ public class FinBillService {
     }
 
     /**
-     * 采购入库的运费：生成运费应付单（来源 PURCHASE_FREIGHT，供应商代垫时应付该供应商，本公司承担时应付承运商），
-     * 凭证 借 存货（按物料分类，运费已分摊计入入库成本）/ 贷 应付账款；与入库同一事务
+     * 采购入库的运费：生成运费应付单（来源 PURCHASE_FREIGHT，供应商代垫时应付该供应商，本公司承担时应付承运商），与入库同一事务。
+     * 凭证：计入存货成本的 借 存货（按物料分类，运费已分摊计入入库成本）/ 贷 应付账款；
+     * 计入当期费用的（本公司承担且业务参数为当期费用）记录费用科目，借 采购运费科目（默认销售费用）/ 贷 应付账款
      */
     @EventListener
     public void onPurchaseFreight(PurchaseFreightEvent e) {
         FinBill bill = newBill(BillKind.AP, e.payeeId(), BillSource.PURCHASE_FREIGHT, e.docId(), e.docNo(), e.bizDate(),
                 e.bizDate().plusDays(paymentDays(BillKind.AP, e.payeeId())), e.freight(), BigDecimal.ZERO);
         bill.setDeptId(e.deptId());
+        if (e.expense()) {
+            bill.setExpenseAccountId(accountRules.accountId(AccountRole.PURCHASE_FREIGHT));
+        }
         bill.setRemark("采购入库 " + e.docNo() + " 运费"); // i18n-ignore
         billMapper.insert(bill);
         tradeDocService.bindFreightBill(e.docId(), bill.getId());
@@ -485,8 +489,8 @@ public class FinBillService {
                     .withSupplier(bill.getPartnerId()));
             return lines;
         }
-        if (bill.getSourceType() == BillSource.PURCHASE_FREIGHT) {
-            // 采购运费：借 存货（按物料分类，与入库成本中分摊的运费一致）/ 贷 应付账款
+        if (bill.getSourceType() == BillSource.PURCHASE_FREIGHT && bill.getExpenseAccountId() == null) {
+            // 采购运费（计入存货成本）：借 存货（按物料分类，与入库成本中分摊的运费一致）/ 贷 应付账款；计入当期费用的按下面的费用类应付
             String summary = "采购运费 " + bill.getSourceNo() + " " + partner; // i18n-ignore
             List<Map<String, Object>> rows = billMapper.selectFreightByCategory(bill.getSourceId());
             BigDecimal allocated = BigDecimal.ZERO;
@@ -505,6 +509,7 @@ public class FinBillService {
         if (bill.getExpenseAccountId() != null) {
             // 费用类应付（运费等）：借 费用科目、进项税额 / 贷 应付账款
             String summary = bill.getSourceType() == BillSource.SHIPMENT ? "运费 " + bill.getSourceNo() + " " + partner // i18n-ignore
+                    : bill.getSourceType() == BillSource.PURCHASE_FREIGHT ? "采购运费 " + bill.getSourceNo() + " " + partner // i18n-ignore
                     : bill.getSourceNo() + " " + partner;
             lines.add(VoucherLine.debit(summary, bill.getExpenseAccountId(), bill.getDeptId(), bill.getAmount().subtract(bill.getTaxAmount())));
             lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INPUT_VAT), null, bill.getTaxAmount()));

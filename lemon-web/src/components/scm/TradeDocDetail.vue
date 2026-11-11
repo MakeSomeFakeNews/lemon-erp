@@ -24,11 +24,14 @@
           <a-descriptions-item v-if="conf.returns" :label="$t('scm.trade.returnMode')">
             {{ detail.replenish === 1 ? (conf.orderKind === 'sales' ? $t('scm.trade.returnReship') : $t('scm.trade.returnRereceive')) : $t('scm.trade.returnRefund') }}
           </a-descriptions-item>
-          <a-descriptions-item v-if="discount" :label="$t('print.name.grossTotal')">¥{{ formatMoney(grossTotal) }}</a-descriptions-item>
-          <a-descriptions-item v-if="discount" :label="conf.returns ? $t('scm.wholeDiscount.returnShare') : $t('scm.wholeDiscount.label')">
-            <a-tooltip :title="conf.returns ? $t('scm.wholeDiscount.returnShareHint') : $t('scm.wholeDiscount.hint')">
+          <a-descriptions-item v-if="discount || discountAdjust" :label="$t('print.name.grossTotal')">¥{{ formatMoney(grossTotal) }}</a-descriptions-item>
+          <a-descriptions-item v-if="discount || discountAdjust" :label="discountLabel">
+            <a-tooltip :title="conf.returns ? $t('scm.wholeDiscount.returnShareHint') : kind === 'purchaseIn' ? $t('scm.wholeDiscount.orderSharePurchaseHint') : $t('scm.wholeDiscount.hint')">
               <span class="dashed">−¥{{ formatMoney(discount) }}</span>
             </a-tooltip>
+            <div v-if="discountAdjust" class="sub-text">
+              {{ $t('scm.wholeDiscount.orderDiscountAdjusted', { diff: discountAdjust > 0 ? $t('scm.wholeDiscount.more') : $t('scm.wholeDiscount.less'), amount: formatMoney(Math.abs(discountAdjust)) }) }}
+            </div>
           </a-descriptions-item>
           <a-descriptions-item :label="discount ? (conf.returns ? $t('scm.wholeDiscount.refundAfter') : $t('scm.wholeDiscount.after')) : $t('scm.trade.totalAmount')">
             <b>¥{{ formatMoney(detail.totalAmount) }}</b>
@@ -39,7 +42,7 @@
             <div>
               <span class="nowrap">¥{{ formatMoney(detail.freight) }}</span>
               <DictTag type="scm_freight_bearer" :value="detail.freightBearer" class="freight-tag" />
-              <div class="sub-text">{{ [detail.carrierSupplierName, $t('scm.freight.purchaseHint')].filter(Boolean).join(' · ') }}</div>
+              <div class="sub-text">{{ [detail.carrierSupplierName, detail.freightCost ? $t(`scm.freight.cost.${detail.freightCost}`) : null].filter(Boolean).join(' · ') }}</div>
             </div>
           </a-descriptions-item>
           <a-descriptions-item :label="$t('scm.trade.prepared')">{{ detail.createByName || '-' }} {{ detail.createTime }}</a-descriptions-item>
@@ -112,6 +115,14 @@ const columns = computed(() => [
 const detail = ref()
 /** 本单分摊的整单优惠（退货为对应的原单优惠分摊）；明细显示优惠前的单价、金额，合计处扣减 */
 const discount = computed(() => Number(detail.value?.discountAmount) || 0)
+/** 优惠的名称：退货为原单优惠分摊，引用订单的为订单优惠，直接开单为整单优惠 */
+const discountLabel = computed(() =>
+  conf.value.returns
+    ? t('scm.wholeDiscount.returnShare')
+    : detail.value?.orderSource === OrderSource.DIRECT ? t('scm.wholeDiscount.label') : t('scm.wholeDiscount.orderShare')
+)
+/** 采购入库修改了订单优惠时与按订单分摊之差（正数为多优惠） */
+const discountAdjust = computed(() => Number(detail.value?.discountAdjust) || 0)
 const grossTotal = computed(() => Math.round((Number(detail.value?.totalAmount || 0) + discount.value) * 100) / 100)
 
 function print() {

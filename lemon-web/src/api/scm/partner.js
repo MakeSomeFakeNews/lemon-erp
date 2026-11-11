@@ -11,6 +11,8 @@ export const changePartnerStatus = (type, id, status) => request.put(`/scm/${typ
 export const deletePartner = (type, id) => request.delete(`/scm/${type}/${ids(id)}`)
 /** 启用的供应商 / 客户：[{ id, code, name, contact, phone, address }] */
 export const partnerOptions = (type, keyword) => request.get(`/scm/${type}/options`, { params: { keyword } })
+/** 承运商下拉（只列出物流公司，没有标记时为全部供应商）：{ marked, options: [{ id, code, name, contact, phone, address }] } */
+export const carrierOptions = (keyword) => request.get('/scm/supplier/carrier-options', { params: { keyword } })
 
 /** 供应商绩效 */
 export const supplierKpi = (params) => request.get('/scm/supplier/kpi', { params })

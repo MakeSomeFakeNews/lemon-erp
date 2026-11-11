@@ -58,6 +58,13 @@ public class ScmSupplier extends BaseEntity {
     @Max(value = 365, message = "{scm.valid.paymentTermsCannotExceedDays}")
     private Integer paymentDays;
 
+    /** 物流公司（承运商）：1 是 0 否。采购运费、发运单的承运商只列出物流公司；物流公司的应付、付款与其他供应商相同 */
+    private Integer logistics;
+
+    /** 营运路线（物流公司），如 华东整车、广州—上海专线 */
+    @Size(max = 255, message = "{scm.valid.routesCannotExceedCharacters}")
+    private String routes;
+
     /** 1 启用 0 停用 */
     private EnableStatus status;
 

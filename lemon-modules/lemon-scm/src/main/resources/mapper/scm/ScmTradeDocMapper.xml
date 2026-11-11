@@ -4,7 +4,7 @@
 
     <sql id="viewColumns">
         d.id, d.doc_no, d.kind, d.order_id, d.partner_id, d.warehouse_id, d.biz_date, d.total_qty, d.total_amount,
-        d.tax_amount, d.wms_doc_id, d.wms_doc_no, d.remark, d.replenish, d.discount_amount, d.freight, d.freight_bearer,
+        d.tax_amount, d.wms_doc_id, d.wms_doc_no, d.remark, d.replenish, d.discount_amount, d.discount_adjust, d.freight, d.freight_bearer, d.freight_cost,
         d.carrier_supplier_id, d.freight_bill_id, cs.name AS carrier_supplier_name, d.dept_id, d.create_by, d.create_time, d.update_time,
         o.order_no, o.source AS order_source, CASE WHEN o.source = 'DIRECT' THEN o.whole_discount END AS whole_discount, COALESCE(sp.code, cu.code) AS partner_code, COALESCE(sp.name, cu.name) AS partner_name,
         w.name AS warehouse_name, u.nickname AS create_by_name
