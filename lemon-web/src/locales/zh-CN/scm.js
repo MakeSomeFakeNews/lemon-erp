@@ -91,7 +91,8 @@ export default {
     available: '可用 {qty}',
     frozen: '（冻结 {qty}）',
     unspecified: '未指定',
-    location: '库位 {loc}'
+    location: '库位 {loc}',
+    produced: '生产 {date}'
   },
   consign: {
     noPerm: '没有寄售结算权限（scm:consign:settle），只能查看寄售仓库存',

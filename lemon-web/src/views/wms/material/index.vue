@@ -75,11 +75,16 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'name'">
-              <a @click="openDetail(record.id)">{{ record.name }}</a>
-              <a-tag v-if="record.isTemplate === 1" color="magenta" :bordered="false" class="ml">{{ $t('wms.material.style') }}</a-tag>
-              <div class="sub-text">
-                {{ record.code }}
-                <template v-if="record.variantText"> · {{ record.variantText }}</template>
+              <div class="name-cell">
+                <a-image v-if="record.imageUrl" :src="record.imageUrl" :width="36" :height="36" class="thumb" />
+                <div>
+                  <a @click="openDetail(record.id)">{{ record.name }}</a>
+                  <a-tag v-if="record.isTemplate === 1" color="magenta" :bordered="false" class="ml">{{ $t('wms.material.style') }}</a-tag>
+                  <div class="sub-text">
+                    {{ record.code }}
+                    <template v-if="record.variantText"> · {{ record.variantText }}</template>
+                  </div>
+                </div>
               </div>
             </template>
             <template v-else-if="column.key === 'category'">
@@ -344,6 +349,7 @@
         </template>
         <a-spin :spinning="detailLoading">
           <template v-if="detail">
+            <MaterialImages :material-id="detail.id" :editable="canEdit" :size="88" class="block" @changed="load" />
             <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="small" class="block">
               <a-descriptions-item :label="$t('wms.material.specUnit')">{{ detail.spec || '-' }} / {{ detail.unit || '-' }}</a-descriptions-item>
               <a-descriptions-item :label="$t('wms.inout.category')"><DictTag type="wms_material_category" :value="detail.category" /></a-descriptions-item>
@@ -431,6 +437,8 @@
       <LabelPrintModal v-model:open="labelOpen" type-key="label.material" :items="labelItems" />
       <PriceLevelModal ref="priceLevelRef" @saved="load" />
       <StockHistory ref="historyRef" />
+      <MaterialImagesModal ref="imagesRef" :editable="canEdit" @changed="load" />
+      <MaterialTrackingModal ref="trackingRef" @saved="load" />
     </div>
   </div>
 </template>
@@ -441,7 +449,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { isZh } from '@/locales'
 import { message } from 'ant-design-vue'
-import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, DollarOutlined, ImportOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PaperClipOutlined, PlusOutlined, QuestionCircleOutlined, SwapOutlined } from '@ant-design/icons-vue'
+import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, DollarOutlined, ImportOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PaperClipOutlined, PictureOutlined, PlusOutlined, QuestionCircleOutlined, SafetyCertificateOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -465,7 +473,7 @@ import { sumWidth, useColumns } from '@/composables/useColumns'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
-import { useFormDrawer } from '@/composables/useFormDrawer'
+import { asPrefilled, useFormDrawer } from '@/composables/useFormDrawer'
 import { useTable } from '@/composables/useTable'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
@@ -474,6 +482,9 @@ import { useCustomColumns, useCustomFields } from '@/composables/useCustomFields
 import { PRICE_FIELDS, usePriceLevels } from '@/components/wms/priceLevels'
 import { price } from '@/utils/number'
 import PriceLevelModal from './PriceLevelModal.vue'
+import MaterialImagesModal from './MaterialImagesModal.vue'
+import MaterialTrackingModal from './MaterialTrackingModal.vue'
+import MaterialImages from '@/components/wms/MaterialImages.vue'
 
 import { CostMethod, SupplyType } from '@/constants/enums'
 import AiExtractButton from '@/components/ai/AiExtractButton.vue'
@@ -673,106 +684,107 @@ const MATERIAL_FIELDS = [
 ]
 const num = (v) => (v == null ? null : Number(v))
 
-const drawer = useFormDrawer(
-  cf.wrap({
-    emptyForm: () => ({
-      id: undefined,
-      code: '',
-      name: '',
-      spec: '',
-      unit: undefined,
-      category: undefined,
-      brand: undefined,
-      ...Object.fromEntries(PRICE_FIELDS.map((k) => [k, null])),
-      batchEnabled: 0,
-      serialEnabled: 0,
-      iqcRequired: 0,
-      safetyStock: null,
-      reorderPoint: null,
-      reorderQty: null,
-      barcode: '',
-      defaultWarehouseId: null,
-      defaultLocationId: null,
-      refCost: null,
-      costMethod: CostMethod.WEIGHTED,
-      remark: '',
-      supplyType: '',
-      leadDays: null,
-      minLot: null,
-      lotMultiple: null,
-      overIssueRate: 0,
-      fqcRequired: 0,
-      planner: '',
-      substitutes: []
-    }),
-    fetch: async (record) => {
-      const [m, p] = await Promise.all([getMaterial(record.id), canEditPlan.value ? getMaterialPlan(record.id) : null])
-      const form = { ...m, safetyStock: num(m.safetyStock), reorderPoint: num(m.reorderPoint), reorderQty: num(m.reorderQty), refCost: num(m.refCost), barcode: m.barcode || '' }
-      PRICE_FIELDS.forEach((k) => (form[k] = num(m[k])))
-      if (p) {
-        Object.assign(form, {
-          supplyType: p.supplyType || '',
-          leadDays: p.leadDays,
-          minLot: num(p.minLot),
-          lotMultiple: num(p.lotMultiple),
-          overIssueRate: Number(p.overIssueRate),
-          fqcRequired: p.fqcRequired || 0,
-          planner: p.planner || '',
-          substitutes: p.substitutes.map((s) => ({
-            key: rowKey(),
-            substituteId: s.substituteId,
-            label: `${s.substituteCode} ${s.substituteName}`,
-            ratio: Number(s.ratio),
-            priority: s.priority,
-            remark: s.remark || ''
-          }))
-        })
-      }
-      return form
-    },
-    create: async ({ material, plan }) => {
-      const id = await addMaterial(material)
-      if (plan) await saveMaterialPlan(id, plan)
-      return id
-    },
-    update: async (id, { material, plan }) => {
-      if (canEdit.value) await updateMaterial(id, material)
-      if (plan) await saveMaterialPlan(id, plan)
-    },
-    toPayload: (f) => ({
-      material: {
-        ...Object.fromEntries(MATERIAL_FIELDS.map((k) => [k, f[k]])),
-        reorderPoint: f.reorderPoint ?? null,
-        reorderQty: f.reorderQty ?? null,
-        refCost: f.refCost ?? null,
-        ...Object.fromEntries(PRICE_FIELDS.map((k) => [k, f[k] ?? null])),
-        brand: f.brand || null,
-        barcode: f.barcode?.trim() || null,
-        defaultLocationId: f.defaultWarehouseId ? f.defaultLocationId || null : null
-      },
-      plan: canEditPlan.value
-        ? {
-            supplyType: f.supplyType || null,
-            leadDays: f.leadDays ?? null,
-            minLot: f.minLot || null,
-            lotMultiple: f.lotMultiple || null,
-            overIssueRate: f.overIssueRate ?? 0,
-            fqcRequired: f.fqcRequired || 0,
-            planner: f.planner || null,
-            substitutes:
-              f.supplyType === SupplyType.PHANTOM
-                ? []
-                : f.substitutes.map(({ substituteId, ratio, priority, remark }) => ({ substituteId, ratio, priority, remark: remark || null }))
-          }
-        : null
-    }),
-    onSuccess: () => {
-      load()
-      refreshCounts()
-      if (detailOpen.value && detail.value) openDetail(detail.value.id)
+const drawerOptions = cf.wrap({
+  emptyForm: () => ({
+    id: undefined,
+    code: '',
+    name: '',
+    spec: '',
+    unit: undefined,
+    category: undefined,
+    brand: undefined,
+    ...Object.fromEntries(PRICE_FIELDS.map((k) => [k, null])),
+    batchEnabled: 0,
+    serialEnabled: 0,
+    iqcRequired: 0,
+    safetyStock: null,
+    reorderPoint: null,
+    reorderQty: null,
+    barcode: '',
+    defaultWarehouseId: null,
+    defaultLocationId: null,
+    refCost: null,
+    costMethod: CostMethod.WEIGHTED,
+    remark: '',
+    supplyType: '',
+    leadDays: null,
+    minLot: null,
+    lotMultiple: null,
+    overIssueRate: 0,
+    fqcRequired: 0,
+    planner: '',
+    substitutes: [],
+    copyFrom: undefined
+  }),
+  fetch: async (record) => {
+    const [m, p] = await Promise.all([getMaterial(record.id), canEditPlan.value ? getMaterialPlan(record.id) : null])
+    const form = { ...m, safetyStock: num(m.safetyStock), reorderPoint: num(m.reorderPoint), reorderQty: num(m.reorderQty), refCost: num(m.refCost), barcode: m.barcode || '' }
+    PRICE_FIELDS.forEach((k) => (form[k] = num(m[k])))
+    if (p) {
+      Object.assign(form, {
+        supplyType: p.supplyType || '',
+        leadDays: p.leadDays,
+        minLot: num(p.minLot),
+        lotMultiple: num(p.lotMultiple),
+        overIssueRate: Number(p.overIssueRate),
+        fqcRequired: p.fqcRequired || 0,
+        planner: p.planner || '',
+        substitutes: p.substitutes.map((s) => ({
+          key: rowKey(),
+          substituteId: s.substituteId,
+          label: `${s.substituteCode} ${s.substituteName}`,
+          ratio: Number(s.ratio),
+          priority: s.priority,
+          remark: s.remark || ''
+        }))
+      })
     }
-  })
-)
+    return form
+  },
+  create: async ({ material, plan, copyFrom }) => {
+    const id = await addMaterial(material, copyFrom)
+    if (plan) await saveMaterialPlan(id, plan)
+    return id
+  },
+  update: async (id, { material, plan }) => {
+    if (canEdit.value) await updateMaterial(id, material)
+    if (plan) await saveMaterialPlan(id, plan)
+  },
+  toPayload: (f) => ({
+    copyFrom: f.copyFrom,
+    material: {
+      ...Object.fromEntries(MATERIAL_FIELDS.map((k) => [k, f[k]])),
+      reorderPoint: f.reorderPoint ?? null,
+      reorderQty: f.reorderQty ?? null,
+      refCost: f.refCost ?? null,
+      ...Object.fromEntries(PRICE_FIELDS.map((k) => [k, f[k] ?? null])),
+      brand: f.brand || null,
+      barcode: f.barcode?.trim() || null,
+      defaultLocationId: f.defaultWarehouseId ? f.defaultLocationId || null : null
+    },
+    plan: canEditPlan.value
+      ? {
+          supplyType: f.supplyType || null,
+          leadDays: f.leadDays ?? null,
+          minLot: f.minLot || null,
+          lotMultiple: f.lotMultiple || null,
+          overIssueRate: f.overIssueRate ?? 0,
+          fqcRequired: f.fqcRequired || 0,
+          planner: f.planner || null,
+          substitutes:
+            f.supplyType === SupplyType.PHANTOM
+              ? []
+              : f.substitutes.map(({ substituteId, ratio, priority, remark }) => ({ substituteId, ratio, priority, remark: remark || null }))
+        }
+      : null
+  }),
+  onSuccess: () => {
+    load()
+    refreshCounts()
+    if (detailOpen.value && detail.value) openDetail(detail.value.id)
+  }
+})
+const drawer = useFormDrawer(drawerOptions)
 const { formRef, form } = drawer
 // 智能录入：规格书、商品标签等识别结果打开新增物料并预填
 const ai = useAiPrefill('material', (data) => drawer.openCreate(data), () => drawer.open.value)
@@ -784,11 +796,25 @@ function addSubstitute() {
 const rowActions = (record) => [
   { type: 'edit', show: canEdit.value || canEditPlan.value, onClick: () => drawer.openEdit(record) },
   { type: 'delete', perm: 'wms:material:remove', confirm: t('wms.material.confirmDelete', { name: record.name }), onClick: () => remove([record.id]) },
+  { key: 'copy', type: 'copy', perm: 'wms:material:add', more: true, onClick: () => copyMaterial(record) },
+  { key: 'images', label: t('wms.materialImage.action'), icon: PictureOutlined, more: true, onClick: () => imagesRef.value.open(record) },
+  { key: 'tracking', label: t('wms.tracking.action'), icon: SafetyCertificateOutlined, perm: 'wms:material:edit', show: record.isTemplate !== 1, more: true, onClick: () => trackingRef.value.open(record) },
   { key: 'extras', label: t('wms.material.extras'), icon: PaperClipOutlined, more: true, onClick: () => openExtras(record) },
   { key: 'units', label: t('common.field.unit'), icon: SwapOutlined, more: true, onClick: () => openUnits(record) },
   { key: 'history', type: 'history', label: t('wms.history.action'), show: record.isTemplate !== 1, more: true, onClick: () => openHistory(record) },
   { key: 'variants', label: t('wms.variant.title'), icon: AppstoreAddOutlined, show: !record.templateId, more: true, onClick: () => openVariants(record) }
 ]
+
+// 复制：带出原物料的资料、计划属性、替代料和自定义字段，编码留空（按编码规则生成）、条码不带；保存时后端复制辅助单位（不含包装条码）和图片
+const imagesRef = ref()
+const trackingRef = ref()
+async function copyMaterial(record) {
+  const src = await drawerOptions.fetch(record)
+  const data = omitKeys(src, ['id', 'code', 'barcode', 'createTime', 'updateTime', 'createBy', 'status', 'isTemplate', 'templateId', 'variantText', 'imageUrl', 'searchKey'])
+  if (record.isTemplate === 1 || record.templateId) message.info(t('wms.material.copyVariantTip'))
+  asPrefilled(() => drawer.openCreate({ ...data, code: '', barcode: '', copyFrom: record.id }))
+}
+const omitKeys = (obj, keys) => Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k)))
 
 async function remove(ids) {
   await deleteMaterial(ids)
@@ -902,5 +928,14 @@ function openLabels() {
 }
 .ml {
   margin-left: 6px;
+}
+.name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.name-cell :deep(.thumb) {
+  object-fit: cover;
+  border-radius: 4px;
 }
 </style>

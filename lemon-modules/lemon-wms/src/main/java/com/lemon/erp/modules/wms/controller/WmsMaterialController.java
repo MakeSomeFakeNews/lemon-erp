@@ -12,8 +12,13 @@ import com.lemon.erp.framework.excel.ImportResult;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.wms.dto.BarcodeMatch;
+import com.lemon.erp.modules.wms.dto.TrackingRequest;
+import com.lemon.erp.modules.wms.dto.TrackingView;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
+import com.lemon.erp.modules.wms.entity.WmsMaterialImage;
+import com.lemon.erp.modules.wms.service.WmsMaterialImageService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
+import com.lemon.erp.modules.wms.service.WmsMaterialTrackingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,8 +32,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/wms/material")
@@ -37,6 +44,8 @@ public class WmsMaterialController {
 
     private final WmsMaterialService materialService;
     private final ImportExecutor importExecutor;
+    private final WmsMaterialTrackingService trackingService;
+    private final WmsMaterialImageService imageService;
 
     @GetMapping
     @PreAuthorize("@ss.hasPerm('wms:material:list')")
@@ -89,9 +98,78 @@ public class WmsMaterialController {
     @PreAuthorize("@ss.hasPerm('wms:material:add')")
     @OperLog(title = "物料管理", type = OperType.INSERT) // i18n-ignore
     /** @return 新物料 ID */
-    public R<Long> create(@Validated(Create.class) @RequestBody WmsMaterial material) {
-        materialService.create(material);
+    public R<Long> create(@Validated(Create.class) @RequestBody WmsMaterial material,
+                          @RequestParam(required = false) Long copyFrom) {
+        materialService.create(material, copyFrom);
         return R.ok(material.getId());
+    }
+
+    // ---------------------------------------------------------------- 批次 / 序列号管理切换
+
+    /** 切换前检查：库存情况和阻止切换的进行中单据 */
+    @GetMapping("/{id}/tracking")
+    @PreAuthorize("@ss.hasPerm('wms:material:edit')")
+    public R<TrackingView> tracking(@PathVariable Long id) {
+        return R.ok(trackingService.preview(id));
+    }
+
+    /** 启用 / 停用批次管理（已有库存归入指定批次或按库位合并），库存为 0 时可切换序列号管理 */
+    @PutMapping("/{id}/tracking")
+    @PreAuthorize("@ss.hasPerm('wms:material:edit')")
+    @OperLog(title = "物料管理-批次管理", type = OperType.UPDATE) // i18n-ignore
+    public R<Void> changeTracking(@PathVariable Long id, @Valid @RequestBody TrackingRequest req) {
+        trackingService.change(id, req);
+        return R.ok();
+    }
+
+    // ---------------------------------------------------------------- 商品图片
+
+    /** 物料的图片，第一张为主图 */
+    @GetMapping("/{id}/images")
+    @PreAuthorize("@ss.hasPerm('wms:material:list')")
+    public R<List<WmsMaterialImage>> images(@PathVariable Long id) {
+        return R.ok(imageService.list(id));
+    }
+
+    /**
+     * 登录即可访问：多个物料的图片 URL（第一张为主图），body 为物料 ID 列表（最多 500 个），
+     * 供电商小程序等展示商品图。图片文件本身是公开文件，URL 可直接访问
+     */
+    @PostMapping("/images/urls")
+    public R<Map<Long, List<String>>> imageUrls(@RequestBody List<Long> ids) {
+        return R.ok(imageService.urls(ids));
+    }
+
+    @PostMapping("/{id}/images")
+    @PreAuthorize("@ss.hasPerm('wms:material:edit')")
+    @OperLog(title = "物料图片-上传", type = OperType.INSERT, saveParams = false) // i18n-ignore
+    public R<WmsMaterialImage> uploadImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        return R.ok(imageService.upload(id, file));
+    }
+
+    /** 调整顺序：body 为全部图片 ID，第一张为主图 */
+    @PutMapping("/{id}/images/order")
+    @PreAuthorize("@ss.hasPerm('wms:material:edit')")
+    @OperLog(title = "物料图片-排序", type = OperType.UPDATE) // i18n-ignore
+    public R<Void> reorderImages(@PathVariable Long id, @RequestBody List<Long> imageIds) {
+        imageService.reorder(id, imageIds);
+        return R.ok();
+    }
+
+    @PutMapping("/{id}/images/{imageId}/main")
+    @PreAuthorize("@ss.hasPerm('wms:material:edit')")
+    @OperLog(title = "物料图片-设为主图", type = OperType.UPDATE) // i18n-ignore
+    public R<Void> setMainImage(@PathVariable Long id, @PathVariable Long imageId) {
+        imageService.setMain(id, imageId);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{id}/images/{imageId}")
+    @PreAuthorize("@ss.hasPerm('wms:material:edit')")
+    @OperLog(title = "物料图片-删除", type = OperType.DELETE) // i18n-ignore
+    public R<Void> deleteImage(@PathVariable Long id, @PathVariable Long imageId) {
+        imageService.delete(id, imageId);
+        return R.ok();
     }
 
 

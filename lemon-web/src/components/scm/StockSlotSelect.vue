@@ -22,7 +22,7 @@ import { availableQty, expiryStatus, formatQty, locationText } from '@/component
 
 /**
  * 库存位置选择：列出仓库中某物料各库位、批次的现有库存，出库、退货时选择从哪里出；
- * 批次按先到期先出排序，临期、过期的批次在选项中标注。
+ * 批次按先到期先出排序，选项中显示批次的生产日期，临期、过期的批次标注。
  * - value：`${locationId}|${batchNo}`，未选时为 undefined
  * - @select({ locationId, locationCode, batchNo, qty, label })，label 为「库位 · 批次」短名称（选择框中显示短名称，下拉中显示完整信息）
  */
@@ -60,7 +60,8 @@ const options = computed(() => {
       short,
       label:
         `${short} · ${t('scm.stockSlot.available', { qty: formatQty(usable(s)) })}` +
-        `${Number(s.frozenQty) ? t('scm.stockSlot.frozen', { qty: formatQty(s.frozenQty) }) : ''}${expiry ? ` · ${expiry.text}` : ''}`
+        `${Number(s.frozenQty) ? t('scm.stockSlot.frozen', { qty: formatQty(s.frozenQty) }) : ''}` +
+        `${s.productionDate ? ` · ${t('scm.stockSlot.produced', { date: s.productionDate })}` : ''}${expiry ? ` · ${expiry.text}` : ''}`
     }
   })
   if (props.value && !opts.some((o) => o.value === props.value)) {

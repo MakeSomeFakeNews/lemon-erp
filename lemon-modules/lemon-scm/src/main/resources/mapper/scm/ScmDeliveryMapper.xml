@@ -67,4 +67,13 @@
         GROUP BY i.order_item_id
     </select>
 
+    <!-- 含该物料、尚未出库（待拣货 / 已拣货）的发货通知单号：拣货明细已确定库位和批次，切换物料的批次管理前检查 -->
+    <select id="selectOpenNosByMaterial" resultType="java.lang.String">
+        SELECT DISTINCT d.delivery_no
+        FROM scm_delivery d
+        JOIN scm_delivery_item i ON i.delivery_id = d.id
+        WHERE i.material_id = #{materialId} AND d.status IN ('PENDING', 'PICKED')
+        ORDER BY d.delivery_no
+    </select>
+
 </mapper>

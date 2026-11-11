@@ -59,6 +59,9 @@ public class WmsMaterialService {
             "wholesalePrice4", "批发价4", "wholesalePrice5", "批发价5", "wholesalePrice6", "批发价6", "wholesalePrice7", "批发价7", // i18n-ignore
             "wholesalePrice8", "批发价8"); // i18n-ignore
 
+    /** 切换批次 / 序列号管理时记录变更历史的字段 */
+    static final Map<String, String> TRACKING_FIELDS = ChangeLogger.fields("batchEnabled", "批次管理", "serialEnabled", "序列号管理"); // i18n-ignore 字段名写入变更记录
+
     /** 品牌字典（业务字典） */
     public static final String BRAND_DICT = "wms_material_brand";
 
@@ -81,6 +84,7 @@ public class WmsMaterialService {
     private final WmsPriceLevelService priceLevelService;
     private final WmsMaterialCategoryService categoryService;
     private final SearchKeyTable<WmsMaterial> searchKeys;
+    private final WmsMaterialImageService imageService;
 
     /**
      * @param keyword    编码、名称、规格、条码、拼音首字母或去掉分隔符的缩写，规则见 {@link SearchKeys}
@@ -200,7 +204,8 @@ public class WmsMaterialService {
         return Wrappers.<WmsMaterial>lambdaQuery()
                 .select(WmsMaterial::getId, WmsMaterial::getCode, WmsMaterial::getName, WmsMaterial::getSpec,
                         WmsMaterial::getUnit, WmsMaterial::getBatchEnabled, WmsMaterial::getSerialEnabled,
-                        WmsMaterial::getBarcode, WmsMaterial::getDefaultWarehouseId, WmsMaterial::getDefaultLocationId);
+                        WmsMaterial::getBarcode, WmsMaterial::getDefaultWarehouseId, WmsMaterial::getDefaultLocationId,
+                        WmsMaterial::getImageUrl);
     }
 
     /**
@@ -242,6 +247,18 @@ public class WmsMaterialService {
 
     @Transactional
     public void create(WmsMaterial material) {
+        create(material, null);
+    }
+
+    /**
+     * 新增；copyFrom 不为空时为复制物料：表单内容由前端从原物料带出（编码、条码留空），
+     * 这里再复制原物料的辅助单位（不含包装条码）和图片（复制文件）。库存、批次、序列号等业务数据不复制
+     *
+     * @param copyFrom 复制的原物料 ID
+     */
+    @Transactional
+    public void create(WmsMaterial material, Long copyFrom) {
+        WmsMaterial source = copyFrom == null ? null : get(copyFrom);
         if (!StringUtils.hasText(material.getCode())) {
             material.setCode(docNoService.next(WmsDocNos.MATERIAL));
         }
@@ -251,11 +268,22 @@ public class WmsMaterialService {
         material.setIsTemplate(0);
         material.setTemplateId(null);
         material.setVariantText(null);
+        material.setImageUrl(null);
         normalize(material);
         checkExtras(material, null);
         categoryService.checkUsable(material.getCategory(), null);
         if (material.getStatus() == null) material.setStatus(EnableStatus.ENABLED);
         materialMapper.insert(material);
+        if (source != null) {
+            for (WmsMaterialUnit u : units(source.getId())) {
+                WmsMaterialUnit copy = new WmsMaterialUnit();
+                copy.setMaterialId(material.getId());
+                copy.setUnit(u.getUnit());
+                copy.setRatio(u.getRatio());
+                unitMapper.insert(copy);
+            }
+            imageService.copy(source.getId(), material.getId());
+        }
     }
 
     /**
@@ -268,7 +296,10 @@ public class WmsMaterialService {
         create(material);
     }
 
-    /** 已发生库存业务的物料，不能修改批次、序列号管理方式，否则已有库存与新规则不一致 */
+    /**
+     * 已发生库存业务的物料，不能在这里修改批次、序列号管理方式（已有库存需要随之调整），
+     * 改用「批次管理」切换（{@link WmsMaterialTrackingService}）
+     */
     @Transactional
     public void update(Long id, WmsMaterial material) {
         Object before = materialMapper.selectById(id);
@@ -294,6 +325,7 @@ public class WmsMaterialService {
         material.setIsTemplate(null);
         material.setTemplateId(null);
         material.setVariantText(null);
+        material.setImageUrl(null);
         materialMapper.updateById(material);
         // 可为空的字段：updateById 会跳过 null，单独更新以便清空
         materialMapper.update(Wrappers.<WmsMaterial>lambdaUpdate()
@@ -348,6 +380,7 @@ public class WmsMaterialService {
             referenceGuard.checkDeletable(RefType.MATERIAL, id, Messages.get("wms.text.material", material.getCode(), material.getName()));
         }
         materialMapper.deleteByIds(ids);
+        imageService.deleteByMaterials(ids);
         variantValueMapper.delete(Wrappers.<WmsVariantValue>lambdaQuery().in(WmsVariantValue::getMaterialId, ids));
     }
 

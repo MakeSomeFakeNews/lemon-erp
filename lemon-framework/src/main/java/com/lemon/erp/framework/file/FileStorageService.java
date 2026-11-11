@@ -66,6 +66,54 @@ public class FileStorageService {
         return contextPath + WebMvcConfig.FILE_URL_PREFIX + relative;
     }
 
+    /**
+     * 复制一张由 {@link #storeImage} 保存的图片到同一业务目录（如复制物料时复制商品图片），新文件名随机
+     *
+     * @param url 原图片 URL
+     * @return 新图片 URL；原文件不存在时返回 null
+     */
+    public String copyImage(String url, String dir) {
+        Path source = resolveImage(url);
+        if (source == null || !Files.isRegularFile(source)) {
+            return null;
+        }
+        String ext = StringUtils.getFilenameExtension(source.getFileName().toString());
+        String relative = dir + "/" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM")) + "/"
+                + UUID.randomUUID().toString().replace("-", "") + (ext == null ? "" : "." + ext.toLowerCase(Locale.ROOT));
+        Path target = uploadProperties.root().resolve(relative).normalize();
+        try {
+            Files.createDirectories(target.getParent());
+            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new BizException("framework.error.failedSaveFile", e.getMessage());
+        }
+        return contextPath + WebMvcConfig.FILE_URL_PREFIX + relative;
+    }
+
+    /** 删除由 {@link #storeImage} 保存的图片，URL 不在公开文件目录下或删除失败时忽略 */
+    public void deleteImage(String url) {
+        Path file = resolveImage(url);
+        if (file == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException ignored) {
+            // 文件可能已被手工清理
+        }
+    }
+
+    /** 公开图片 URL 对应的文件，不是本服务保存的 URL 或跳出公开文件目录时返回 null */
+    private Path resolveImage(String url) {
+        String prefix = contextPath + WebMvcConfig.FILE_URL_PREFIX;
+        if (url == null || !url.startsWith(prefix)) {
+            return null;
+        }
+        Path root = uploadProperties.root();
+        Path target = root.resolve(url.substring(prefix.length())).normalize();
+        return target.startsWith(root) && !target.equals(root) ? target : null;
+    }
+
     /** 附件禁止上传的扩展名（可执行文件、脚本） */
     private static final Set<String> BLOCKED_EXTENSIONS = Set.of("exe", "bat", "cmd", "com", "msi", "sh", "ps1", "vbs",
             "js", "jar", "dll", "scr", "html", "htm", "svg", "php", "jsp");

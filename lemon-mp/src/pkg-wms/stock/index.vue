@@ -10,11 +10,17 @@
       <switch :checked="lowStock" style="transform: scale(0.7)" @change="changeLow" />
     </view>
     <view v-for="s in paged.list" :key="s.materialId" class="m-card" @click="toggle(s)">
-      <view class="m-row">
-        <text class="m-title">{{ s.materialCode }} {{ s.materialName }}</text>
-        <l-tag v-if="isLow(s)" :text="t('wms.stock.low')" color="red" />
+      <view class="stock__head">
+        <!-- 商品主图，点击查看大图 -->
+        <image v-if="s.imageUrl" class="stock__img" :src="fileUrl(s.imageUrl)" mode="aspectFill" @click.stop="preview(s)" />
+        <view class="stock__head-text">
+          <view class="m-row">
+            <text class="m-title">{{ s.materialCode }} {{ s.materialName }}</text>
+            <l-tag v-if="isLow(s)" :text="t('wms.stock.low')" color="red" />
+          </view>
+          <view v-if="s.spec" class="m-sub">{{ s.spec }}</view>
+        </view>
       </view>
-      <view v-if="s.spec" class="m-sub">{{ s.spec }}</view>
       <view class="stock__nums">
         <view class="stock__num">
           <text class="stock__num-value" :class="{ 'stock__num-value--low': isLow(s) }">{{ qty(s.qty) }}</text>
@@ -45,6 +51,7 @@
           </view>
           <view v-if="d.batchNo || Number(d.frozenQty) > 0 || d.expiryDate" class="m-sub">
             <text v-if="d.batchNo">{{ t('wms.common.batch') }} {{ d.batchNo }}　</text>
+            <text v-if="d.productionDate">{{ t('wms.stock.produced', { date: d.productionDate }) }}　</text>
             <text v-if="d.expiryDate" :class="{ 'stock__expired': d.expiryDate < todayStr }">{{ t('wms.stock.expiry', { date: d.expiryDate }) }}　</text>
             <text v-if="Number(d.frozenQty) > 0">{{ t('wms.stock.frozen', { n: qty(d.frozenQty) }) }}</text>
           </view>
@@ -67,6 +74,7 @@ import { usePaged } from '@/composables/usePaged'
 import { vibrate } from '@/composables/useAction'
 import { money, price, qty, today } from '@/utils/format'
 import { availableQty, locationText } from '../mobile'
+import { fileUrl } from '@/utils/request'
 
 /**
  * 库存查询：扫描物料条码 / 包装条码，或输入物料编码、名称，按物料汇总显示库存；点开查看各仓库、库位、批次的数量。
@@ -132,6 +140,12 @@ function changeLow(e) {
 }
 
 /** 经营历史：期初、流水、结余（与 Web 端相同的接口） */
+/** 查看商品主图大图 */
+function preview(s) {
+  const url = fileUrl(s.imageUrl)
+  uni.previewImage({ urls: [url], current: url })
+}
+
 function openHistory(s) {
   const name = encodeURIComponent(`${s.materialCode} ${s.materialName}`)
   uni.navigateTo({ url: `/pkg-wms/stock/history?materialId=${s.materialId}&name=${name}` })
@@ -156,6 +170,22 @@ async function toggle(s) {
 @import '../mobile.scss';
 
 .stock {
+  &__head {
+    display: flex;
+    align-items: center;
+  }
+  &__head-text {
+    flex: 1;
+    min-width: 0;
+  }
+  &__img {
+    flex-shrink: 0;
+    width: 96rpx;
+    height: 96rpx;
+    margin-right: 20rpx;
+    border-radius: 8rpx;
+    background: #f5f5f5;
+  }
   &__low {
     margin-left: auto;
   }

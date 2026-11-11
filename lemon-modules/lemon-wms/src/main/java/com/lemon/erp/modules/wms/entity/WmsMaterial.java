@@ -118,6 +118,9 @@ public class WmsMaterial extends BaseEntity implements Searchable {
     /** SKU 的规格属性值，如 红色 / XL */
     private String variantText;
 
+    /** 主图 URL（图片中排在第一张的），由 {@link com.lemon.erp.modules.wms.service.WmsMaterialImageService} 维护，新增、修改物料时忽略 */
+    private String imageUrl;
+
     /** 1 启用 0 停用 */
     private EnableStatus status;
 

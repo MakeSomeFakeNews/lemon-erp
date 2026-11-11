@@ -141,6 +141,7 @@ import { bizRule, loadBizRules } from '@/store/bizRules'
 import { useDict } from '@/store/dict'
 import { hasPerm } from '@/store/user'
 import { ensureLogin } from '@/utils/session'
+import { fileUrl } from '@/utils/request'
 import { money, qty, today } from '@/utils/format'
 import { qty4, resolveScan, rowKey, useScanTip } from '../mobile'
 import { baseQty, basePrice, lineAmount, loadSlots, loadUnits, overStock, ratioOf } from './lines'
@@ -254,7 +255,8 @@ const sheet = ref('')
 const sheetItems = ref([])
 const sheetLoading = ref(false)
 const sheetTitle = computed(() => (sheet.value ? t(`wms.sale.sheet.${sheet.value}`) : ''))
-const materialItem = (m) => ({ id: m.id, title: m.name, sub: [m.code, m.spec, m.unit].filter(Boolean).join(' · '), raw: m })
+// 商品主图（物料资料中排在第一张的图片）作为缩略图
+const materialItem = (m) => ({ id: m.id, title: m.name, sub: [m.code, m.spec, m.unit].filter(Boolean).join(' · '), image: m.imageUrl ? fileUrl(m.imageUrl) : '', raw: m })
 
 function openSheet(type) {
   sheetItems.value = []

@@ -46,6 +46,13 @@ public class WmsStockDocItem extends BaseEntity {
 
     private String remark;
 
+    /** 批次登记的生产日期、有效期（出库等单据随批次带出显示） */
+    @TableField(exist = false)
+    private LocalDate batchProductionDate;
+
+    @TableField(exist = false)
+    private LocalDate batchExpiryDate;
+
     @TableField(exist = false)
     private String materialCode;
 

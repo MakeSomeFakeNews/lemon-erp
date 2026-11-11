@@ -70,6 +70,7 @@ const columns = [
   { title: t('wms.common.material'), key: 'material', width: 260 },
   { title: t('wms.common.location'), key: 'location', width: 120 },
   { title: t('wms.common.batch'), key: 'batchNo', width: 140 },
+  { title: t('wms.common.productionDate'), dataIndex: 'productionDate', width: 120 },
   { title: t('wms.common.expiryDate'), dataIndex: 'expiryDate', width: 120 },
   { title: t('wms.common.availableQty'), key: 'qty', width: 130, align: 'right' }
 ]

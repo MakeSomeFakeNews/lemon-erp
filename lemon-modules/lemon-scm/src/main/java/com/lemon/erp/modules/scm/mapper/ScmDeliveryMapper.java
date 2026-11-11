@@ -28,4 +28,7 @@ public interface ScmDeliveryMapper extends BaseMapper<ScmDelivery> {
 
     /** 订单明细在未完成（待拣货、已拣货）的发货通知中的数量：[{orderItemId, qty}] */
     List<Map<String, Object>> selectNoticedQty(@Param("orderId") Long orderId);
+
+    /** 含该物料、尚未出库（待拣货 / 已拣货）的发货通知单号 */
+    List<String> selectOpenNosByMaterial(@Param("materialId") Long materialId);
 }

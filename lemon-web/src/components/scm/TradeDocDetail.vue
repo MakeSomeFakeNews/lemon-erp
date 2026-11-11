@@ -72,7 +72,7 @@
             <template v-else-if="column.key === 'location'">{{ locationText(record.locationCode) }}</template>
             <template v-else-if="column.key === 'batchNo'">
               <span>{{ record.batchNo || '-' }}</span>
-              <div v-if="record.expiryDate" class="sub-text">{{ record.productionDate || '?' }} ~ {{ record.expiryDate }}</div>
+              <div v-if="batchDates(record)" class="sub-text">{{ batchDates(record) }}</div>
             </template>
             <template v-else-if="column.key === 'qty'">{{ formatQty(record.qty) }} {{ record.unit }}</template>
             <template v-else-if="column.key === 'price'">¥{{ formatMoney(grossPrice(record)) }}</template>
@@ -97,7 +97,7 @@ import { PrinterOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getTrade } from '@/api/scm/trade'
-import { formatQty, locationText } from '@/components/wms/wms'
+import { batchDates, formatQty, locationText } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney, grossAmount, grossPrice } from './scm'
 import DictTag from '@/components/DictTag.vue'
 import { accountOptions } from '@/api/fin'

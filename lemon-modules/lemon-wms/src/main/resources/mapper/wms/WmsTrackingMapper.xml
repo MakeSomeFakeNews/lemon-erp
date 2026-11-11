@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 切换物料批次 / 序列号管理前检查进行中的单据（WmsMaterialTrackingService） -->
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsTrackingMapper">
+
+    <!-- 在途调拨收货、审批通过后确认时按单据上已确定的批次变动库存，不再按物料的管理方式规范批次 -->
+    <select id="selectOpenStockDocs" resultType="java.lang.String">
+        SELECT DISTINCT d.doc_no
+        FROM wms_stock_doc d
+        JOIN wms_stock_doc_item i ON i.doc_id = d.id
+        WHERE i.material_id = #{materialId} AND d.status IN ('TRANSIT', 'APPROVING')
+        ORDER BY d.doc_no
+    </select>
+
+    <!-- 盘点明细按 库位 + 物料 + 批次 记录账面和实盘数量 -->
+    <select id="selectOpenChecks" resultType="java.lang.String">
+        SELECT DISTINCT c.doc_no
+        FROM wms_check c
+        JOIN wms_check_item i ON i.check_id = c.id
+        WHERE i.material_id = #{materialId} AND c.status IN ('DRAFT', 'APPROVING')
+        ORDER BY c.doc_no
+    </select>
+
+</mapper>
