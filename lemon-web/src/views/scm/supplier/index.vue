@@ -49,11 +49,19 @@
           <template v-if="column.key === 'name'">
             <div>
               {{ record.name }}
-              <a-tooltip v-if="record.logistics === 1" :title="record.routes">
-                <a-tag color="cyan" :bordered="false" class="logistics-tag">{{ $t('scm.supplier.logistics') }}</a-tag>
+              <a-tag v-if="record.logistics === 1" color="cyan" :bordered="false" class="logistics-tag">{{ $t('scm.supplier.logistics') }}</a-tag>
+            </div>
+            <div class="sub-text code-line">
+              <span class="code">{{ record.code }}</span>
+              <!-- 营运路线较长时省略显示，悬浮看全文 -->
+              <a-tooltip v-if="record.logistics === 1 && record.routes" :overlay-style="{ maxWidth: '420px' }">
+                <template #title>
+                  <div class="routes-tip-label">{{ $t('scm.supplier.routes') }}</div>
+                  <div class="routes-tip">{{ record.routes }}</div>
+                </template>
+                <span class="routes">{{ record.routes }}</span>
               </a-tooltip>
             </div>
-            <div class="sub-text">{{ record.code }}</div>
           </template>
           <template v-else-if="column.key === 'level'">
             <DictTag type="scm_supplier_level" :value="record.level" />
@@ -141,9 +149,15 @@
               </a-checkbox>
             </a-form-item>
           </a-col>
-          <a-col v-if="form.logistics === 1" :xs="24" :sm="12">
+          <a-col v-if="form.logistics === 1" :span="24">
             <a-form-item :label="$t('scm.supplier.routes')" name="routes">
-              <a-input v-model:value="form.routes" :maxlength="255" :placeholder="$t('scm.supplier.routesPlaceholder')" />
+              <a-textarea
+                v-model:value="form.routes"
+                :auto-size="{ minRows: 2, maxRows: 6 }"
+                :maxlength="1000"
+                show-count
+                :placeholder="$t('scm.supplier.routesPlaceholder')"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="24">
@@ -339,5 +353,27 @@ const rowActions = (record) => [
 }
 .logistics-tag {
   margin-left: 4px;
+}
+.code-line {
+  display: flex;
+  min-width: 0;
+}
+.code-line .code {
+  flex: none;
+}
+.code-line .routes {
+  flex: 1;
+  min-width: 0;
+  margin-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.routes-tip-label {
+  opacity: 0.75;
+}
+.routes-tip {
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 </style>

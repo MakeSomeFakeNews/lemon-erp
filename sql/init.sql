@@ -1257,7 +1257,7 @@ CREATE TABLE scm_supplier (
     bank_account VARCHAR(64)           DEFAULT NULL COMMENT '银行账号',
     payment_days INT          NOT NULL DEFAULT 0 COMMENT '账期（天），应付单到期日 = 单据日期 + 账期',
     logistics    TINYINT      NOT NULL DEFAULT 0 COMMENT '物流公司（承运商） 1是 0否：采购运费、发运单的承运商只列出物流公司',
-    routes       VARCHAR(255)          DEFAULT NULL COMMENT '营运路线（物流公司）',
+    routes       VARCHAR(1000)         DEFAULT NULL COMMENT '营运路线（物流公司），可写途经站点，如 青岛北—青岛西—诸城—济南',
     status       TINYINT      NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
     remark       VARCHAR(255)          DEFAULT NULL COMMENT '备注',
     create_time  DATETIME              DEFAULT NULL COMMENT '创建时间',
