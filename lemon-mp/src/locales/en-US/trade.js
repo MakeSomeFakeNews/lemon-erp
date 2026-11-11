@@ -56,6 +56,11 @@ export default {
     later: 'Not now',
     generating: 'Generating PDF',
     failed: 'Failed to generate PDF',
-    direct: 'Direct'
+    direct: 'Direct',
+    pickFormat: 'Choose print format',
+    lastUsed: 'last used',
+    isDefault: 'default',
+    more: 'More formats…',
+    formatTagged: '{name} ({tags})'
   }
 }

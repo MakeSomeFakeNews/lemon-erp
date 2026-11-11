@@ -13,18 +13,30 @@
         <template v-if="column.key === 'qty' || column.key === 'frozenQty'">{{ qty(record[column.key]) }}</template>
       </template>
     </a-table>
-    <div class="sub-text">{{ $t('pricing.lookup.total', { n: `${qty(total)} ${material?.unit || ''}` }) }}</div>
+    <div class="stock-footer">
+      <span class="sub-text">{{ $t('pricing.lookup.total', { n: `${qty(total)} ${material?.unit || ''}` }) }}</span>
+      <a v-if="canHistory" @click="openHistory"><HistoryOutlined /> {{ $t('pricing.lookup.stockHistory') }}</a>
+    </div>
   </a-modal>
+  <StockHistory v-if="canHistory" ref="historyRef" />
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { HistoryOutlined } from '@ant-design/icons-vue'
 import { quickLookupStock } from '@/api/scm/quickLookup'
 import { qty } from '@/utils/number'
+import { useUserStore } from '@/store/user'
+import StockHistory from '@/components/wms/StockHistory.vue'
 
-/** 库存分布：各仓库、库位、批次（有效期、冻结）的数量。用法：ref.open(row) */
+/**
+ * 库存分布：各仓库、库位、批次（有效期、冻结）的数量。用法：ref.open(row)
+ * 有库存查询权限时可联查经营历史（进销存，与库存查询、物料资料中的「经营历史」相同，与小程序一致）
+ */
 const { t } = useI18n()
+const canHistory = useUserStore().hasPerm('wms:stock:list')
+const historyRef = ref()
 const visible = ref(false)
 const loading = ref(false)
 const material = ref()
@@ -52,13 +64,26 @@ async function open(m) {
   }
 }
 
+/** 关闭弹窗，以子页打开该物料的经营历史（返回后回到商品速查） */
+function openHistory() {
+  const m = material.value
+  visible.value = false
+  historyRef.value.open({ materialId: m.materialId, materialCode: m.code, materialName: m.name })
+}
+
 defineExpose({ open })
 </script>
 
 <style scoped>
+.stock-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
 .sub-text {
   color: var(--app-text-3);
   font-size: 12px;
-  margin-top: 8px;
 }
 </style>

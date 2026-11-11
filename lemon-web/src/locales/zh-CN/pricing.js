@@ -127,6 +127,7 @@ export default {
     sideCOST: '成本',
     sideSALES: '销售类',
     stockTitle: '库存分布 - {name}',
+    stockHistory: '经营历史（进销存）',
     warehouse: '仓库',
     location: '库位',
     batch: '批次',
