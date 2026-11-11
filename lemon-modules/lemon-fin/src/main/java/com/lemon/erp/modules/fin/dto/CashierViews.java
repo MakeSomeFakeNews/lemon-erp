@@ -43,6 +43,7 @@ public final class CashierViews {
     /** 现金、银行科目的凭证分录 */
     @Data
     public static class JournalEntry {
+        private Long entryId;
         private LocalDate entryDate;
         private Long voucherId;
         private String voucherNo;
@@ -57,11 +58,14 @@ public final class CashierViews {
         private BigDecimal credit;
     }
 
-    /** 凭证的对方科目 */
+    /** 凭证分录（确定对方科目用） */
     @Data
-    public static class CounterAccount {
+    public static class VoucherLine {
         private Long voucherId;
+        private Long entryId;
         private String accountName;
+        private BigDecimal debit;
+        private BigDecimal credit;
     }
 
     /** 按科目汇总：借贷发生额与笔数，或期初余额 */

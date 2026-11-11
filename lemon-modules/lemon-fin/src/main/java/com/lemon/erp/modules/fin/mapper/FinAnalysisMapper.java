@@ -14,7 +14,7 @@ public interface FinAnalysisMapper {
     /**
      * 销售毛利明细：销售出库 / 退货（不含税）按维度汇总，成本 = 数量 × 当期加权平均单价（没有核算时取参考成本价）
      *
-     * @param groupBy MATERIAL / CUSTOMER / MONTH
+     * @param groupBy MATERIAL / CUSTOMER / MONTH；按月份时按月份先后排列，其他按收入从高到低
      */
     List<FinAnalysis.MarginRow> selectGrossMargin(@Param("begin") LocalDate begin, @Param("end") LocalDate end,
                                               @Param("groupBy") String groupBy, @Param("customerId") Long customerId);
