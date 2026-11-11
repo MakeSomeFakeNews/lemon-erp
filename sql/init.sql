@@ -3512,7 +3512,9 @@ CREATE TABLE fin_fund_transfer (
     to_account_id   BIGINT         NOT NULL COMMENT '转入科目',
     amount          DECIMAL(18, 2) NOT NULL COMMENT '调拨金额',
     fee             DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '手续费（计入财务费用）',
-    fee_bearer      VARCHAR(8)     NOT NULL DEFAULT 'FROM' COMMENT '手续费承担方(字典 fin_fee_bearer) FROM转出账户 TO转入账户',
+    fee_bearer      VARCHAR(8)     NOT NULL DEFAULT 'FROM' COMMENT '手续费支付账户(字典 fin_fee_bearer) FROM转出账户支付 TO转入账户支付',
+    handler_id      BIGINT                  DEFAULT NULL COMMENT '经办人',
+    ticket_no       VARCHAR(64)             DEFAULT NULL COMMENT '票据号码（转账回单、支票号等）',
     voucher_id      BIGINT                  DEFAULT NULL COMMENT '凭证',
     remark          VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     create_by       BIGINT                  DEFAULT NULL COMMENT '制单人',
@@ -7512,7 +7514,7 @@ INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, up
 (201, '收支方向', 'fin_fund_direction', 'SYSTEM', 1, '收支类别、其他收支单的方向：收入、支出', NOW(), NOW()),
 (202, '收支单状态', 'fin_io_status', 'SYSTEM', 1, '其他收入单、费用支出单的状态', NOW(), NOW()),
 (203, '关联单位类型', 'fin_io_partner_type', 'SYSTEM', 1, '其他收支单的关联单位：客户、供应商或其他', NOW(), NOW()),
-(204, '手续费承担方', 'fin_fee_bearer', 'SYSTEM', 1, '账户调拨的手续费由转出账户还是转入账户承担', NOW(), NOW());
+(204, '手续费支付账户', 'fin_fee_bearer', 'SYSTEM', 1, '账户调拨的手续费由转出账户还是转入账户支付', NOW(), NOW());
 INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
 ('fin_fund_direction', '收入', 'IN', 'green', 1, 1, NOW(), NOW()),
 ('fin_fund_direction', '支出', 'OUT', 'orange', 2, 1, NOW(), NOW()),
@@ -7521,8 +7523,8 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('fin_io_partner_type', '客户', 'CUSTOMER', 'blue', 1, 1, NOW(), NOW()),
 ('fin_io_partner_type', '供应商', 'SUPPLIER', 'purple', 2, 1, NOW(), NOW()),
 ('fin_io_partner_type', '其他', 'OTHER', 'default', 3, 1, NOW(), NOW()),
-('fin_fee_bearer', '转出账户', 'FROM', 'default', 1, 1, NOW(), NOW()),
-('fin_fee_bearer', '转入账户', 'TO', 'default', 2, 1, NOW(), NOW()),
+('fin_fee_bearer', '转出账户支付', 'FROM', 'default', 1, 1, NOW(), NOW()),
+('fin_fee_bearer', '转入账户支付', 'TO', 'default', 2, 1, NOW(), NOW()),
 ('fin_voucher_source', '其他收支', 'INCOME_EXPENSE', 'lime', 22, 1, NOW(), NOW());
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
 (391, 933, '其他收支', 'C', 'income-expense', 'fin/income-expense/index', 'fin:io:list', 'DollarCircleOutlined', 7, 1, 1, NOW(), NOW()),

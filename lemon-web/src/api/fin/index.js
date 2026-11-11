@@ -256,6 +256,7 @@ export const undoNote = (id) => request.post(`/fin/note/${id}/undo`)
 export const deleteNote = (id) => request.delete(`/fin/note/${id}`)
 
 export const pageFundTransfer = (params) => request.get('/fin/fund-transfer', { params })
+export const getFundTransfer = (id) => request.get(`/fin/fund-transfer/${id}`)
 export const addFundTransfer = (data) => request.post('/fin/fund-transfer', data)
 export const deleteFundTransfer = (id) => request.delete(`/fin/fund-transfer/${ids(id)}`)
 

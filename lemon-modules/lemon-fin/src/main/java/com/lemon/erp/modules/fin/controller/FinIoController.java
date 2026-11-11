@@ -90,9 +90,10 @@ public class FinIoController {
                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
                                                    @RequestParam(required = false) FundDirection direction,
                                                    @RequestParam(required = false) Long categoryId,
+                                                   @RequestParam(defaultValue = "false") boolean transferFee,
                                                    @RequestParam(defaultValue = "1") long current,
                                                    @RequestParam(defaultValue = "10") long size) {
-        return R.ok(ioService.lines(current, size, begin, end, direction, categoryId));
+        return R.ok(ioService.lines(current, size, begin, end, direction, categoryId, transferFee));
     }
 
     // ---------------------------------------------------------------- 收支单

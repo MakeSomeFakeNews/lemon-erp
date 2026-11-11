@@ -28,8 +28,14 @@ public interface FinIoDocMapper extends BaseMapper<FinIoDoc> {
     List<IoRequests.SummaryRow> selectSummary(@Param("begin") LocalDate begin, @Param("end") LocalDate end,
                                               @Param("direction") FundDirection direction, @Param("status") IoStatus status);
 
-    /** 已确认单据的明细行 */
+    /**
+     * 已确认单据的明细行，以及账户调拨的手续费
+     *
+     * @param docs        包含收支单的明细行（选了类别时只有该类别）
+     * @param transferFee 包含账户调拨的手续费
+     */
     IPage<IoRequests.LineRow> selectLines(IPage<IoRequests.LineRow> page, @Param("begin") LocalDate begin, @Param("end") LocalDate end,
                                           @Param("direction") FundDirection direction, @Param("categoryId") Long categoryId,
-                                          @Param("status") IoStatus status);
+                                          @Param("status") IoStatus status, @Param("docs") boolean docs,
+                                          @Param("transferFee") boolean transferFee);
 }

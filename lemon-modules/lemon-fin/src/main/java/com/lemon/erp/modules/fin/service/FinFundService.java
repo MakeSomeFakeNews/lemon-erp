@@ -11,6 +11,8 @@ import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.modules.fin.dto.FundPlan;
 import com.lemon.erp.modules.fin.dto.FundPlanEntry;
 import com.lemon.erp.modules.fin.dto.FundTransferRequest;
+import com.lemon.erp.modules.fin.dto.IoRequests;
+import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.entity.FinFundPlanItem;
 import com.lemon.erp.modules.fin.entity.FinFundTransfer;
 import com.lemon.erp.modules.fin.mapper.FinFundPlanMapper;
@@ -64,9 +66,18 @@ public class FinFundService {
         return PageResult.of(page);
     }
 
+    public FinFundTransfer getTransfer(Long id) {
+        FinFundTransfer t = transferMapper.selectDetail(id);
+        if (t == null) {
+            throw new BizException("fin.error.transferNotFound");
+        }
+        return t;
+    }
+
     /**
-     * 调拨：手续费由转出账户承担时 借 转入账户（金额）、财务费用（手续费）/ 贷 转出账户（金额 + 手续费）；
-     * 由转入账户承担时 借 转入账户（金额 - 手续费）、财务费用（手续费）/ 贷 转出账户（金额）
+     * 调拨：借 转入账户 / 贷 转出账户（调拨金额）；有手续费时另记一笔 借 财务费用 / 贷 支付手续费的账户（手续费），
+     * 出纳日记账、银行对账中手续费作为支付账户单独的一笔支出。合计效果：转出账户支付时 转出 金额 + 手续费、转入 金额；
+     * 转入账户支付时 转出 金额、转入 金额 - 手续费（手续费须小于金额）
      */
     @Transactional
     public Long createTransfer(FundTransferRequest req) {
@@ -89,20 +100,36 @@ public class FinFundService {
         t.setAmount(req.amount());
         t.setFee(fee);
         t.setFeeBearer(bearer);
+        t.setHandlerId(req.handlerId());
+        t.setTicketNo(blankToNull(req.ticketNo()));
         t.setRemark(req.remark());
         String summary = "账户调拨" + (req.remark() // i18n-ignore
                 == null || req.remark().isBlank() ? "" : " " + req.remark());
         List<VoucherLine> lines = new ArrayList<>();
-        boolean toBears = bearer == FeeBearer.TO;
-        lines.add(VoucherLine.debit(summary, req.toAccountId(), null, toBears ? req.amount().subtract(fee) : req.amount()));
+        lines.add(VoucherLine.debit(summary, req.toAccountId(), null, req.amount()));
+        lines.add(VoucherLine.credit(summary, req.fromAccountId(), null, req.amount()));
         if (fee.signum() > 0) {
-            lines.add(VoucherLine.debit(summary + "-手续费", // i18n-ignore
-                    accountRules.accountId(AccountRole.FINANCE_EXPENSE), null, fee));
+            String feeSummary = summary + "-手续费"; // i18n-ignore
+            lines.add(VoucherLine.debit(feeSummary, accountRules.accountId(AccountRole.FINANCE_EXPENSE), null, fee));
+            lines.add(VoucherLine.credit(feeSummary, bearer == FeeBearer.TO ? req.toAccountId() : req.fromAccountId(), null, fee));
         }
-        lines.add(VoucherLine.credit(summary, req.fromAccountId(), null, toBears ? req.amount() : req.amount().add(fee)));
         t.setVoucherId(voucherService.createGenerated(req.transferDate(), VoucherSource.TRANSFER, t.getTransferNo(), lines));
         transferMapper.insert(t);
         return t.getId();
+    }
+
+    /** 期间内的调拨手续费（收支汇总中作为一项费用支出）：笔数、金额，没有时为 null */
+    public IoRequests.SummaryRow feeSummary(LocalDate begin, LocalDate end) {
+        IoRequests.SummaryRow row = transferMapper.selectFeeSummary(begin, end);
+        if (row == null || row.getCount() == null || row.getCount() == 0) {
+            return null;
+        }
+        FinAccount account = accountService.get(accountRules.accountId(AccountRole.FINANCE_EXPENSE));
+        row.setTransferFee(true);
+        row.setDirection(FundDirection.OUT);
+        row.setAccountCode(account.getCode());
+        row.setAccountName(account.getName());
+        return row;
     }
 
     /** 删除调拨，同时删除其凭证（须未审核） */
@@ -200,5 +227,9 @@ public class FinFundService {
 
     public void deleteItems(List<Long> ids) {
         planMapper.deleteByIds(ids);
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
     }
 }

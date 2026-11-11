@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.modules.fin.model.FeeBearer;
+import com.lemon.erp.modules.fin.model.VoucherStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -32,8 +33,14 @@ public class FinFundTransfer extends BaseEntity {
     /** 手续费，计入财务费用 */
     private BigDecimal fee;
 
-    /** 手续费承担方：FROM 转出账户（转出 金额 + 手续费）/ TO 转入账户（转入 金额 - 手续费） */
+    /** 手续费支付账户：FROM 转出账户支付（转出 金额 + 手续费）/ TO 转入账户支付（转入 金额 - 手续费），手续费为 0 时不起作用 */
     private FeeBearer feeBearer;
+
+    /** 经办人（用户），可空 */
+    private Long handlerId;
+
+    /** 票据号码（转账回单、支票号等），可空 */
+    private String ticketNo;
 
     private Long voucherId;
 
@@ -48,6 +55,10 @@ public class FinFundTransfer extends BaseEntity {
     private String toAccountName;
     @TableField(exist = false)
     private String voucherNo;
+    @TableField(exist = false)
+    private VoucherStatus voucherStatus;
+    @TableField(exist = false)
+    private String handlerName;
     @TableField(exist = false)
     private String createByName;
 }

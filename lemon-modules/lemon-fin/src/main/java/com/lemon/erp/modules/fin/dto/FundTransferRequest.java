@@ -12,8 +12,10 @@ import java.time.LocalDate;
 /**
  * 账户调拨
  *
- * @param fee       手续费，计入财务费用
- * @param feeBearer 手续费承担方，不填为转出账户
+ * @param fee       手续费，计入财务费用，可以为 0
+ * @param feeBearer 手续费支付账户，不填为转出账户支付
+ * @param handlerId 经办人（用户），可空
+ * @param ticketNo  票据号码（转账回单、支票号等），可空
  */
 public record FundTransferRequest(
         @NotNull(message = "{fin.valid.selectTransferDate}") LocalDate transferDate,
@@ -23,5 +25,7 @@ public record FundTransferRequest(
         @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal amount,
         @DecimalMin(value = "0", message = "{fin.valid.feeCannotLess}") @Digits(integer = 16, fraction = 2, message = "{fin.valid.amountAllowsMostDecimalPlaces}") BigDecimal fee,
         FeeBearer feeBearer,
+        Long handlerId,
+        @Size(max = 64, message = "{fin.valid.ticketNoTooLong}") String ticketNo,
         @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}") String remark) {
 }

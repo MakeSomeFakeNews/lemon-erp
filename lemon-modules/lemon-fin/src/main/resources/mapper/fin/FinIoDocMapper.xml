@@ -79,19 +79,33 @@
         ORDER BY t.direction, g.sort, g.id
     </select>
 
+    <!-- 收支单明细行 + 账户调拨手续费（支出，账户为支付手续费的账户）；外层按别名排序，别名不加引号（MySQL 中引号是字符串） -->
     <select id="selectLines" resultType="com.lemon.erp.modules.fin.dto.IoRequests$LineRow">
-        SELECT i.id AS "id", t.id AS "docId", t.doc_no AS "docNo", t.doc_date AS "docDate", t.direction AS "direction", t.ticket_no AS "ticketNo",
-               <include refid="partnerLabel"/> AS "partnerLabel", t.settle_method AS "settleMethod",
-               CONCAT(a.code, ' ', a.name) AS "accountName", g.name AS "categoryName", i.amount AS "amount", i.remark AS "remark"
-        FROM fin_io_doc_item i
-        JOIN fin_io_doc t ON t.id = i.doc_id
-        JOIN fin_io_category g ON g.id = i.category_id
-        <include refid="partnerJoin"/>
-        LEFT JOIN fin_account a ON a.id = t.account_id
-        WHERE t.status = #{status} AND t.doc_date &gt;= #{begin} AND t.doc_date &lt;= #{end}
-        <if test="direction != null">AND t.direction = #{direction}</if>
-        <if test="categoryId != null">AND i.category_id = #{categoryId}</if>
-        ORDER BY t.doc_date DESC, t.id DESC, i.id
+        SELECT x.* FROM (
+        <if test="docs">
+            SELECT i.id AS id, t.id AS doc_id, NULL AS transfer_id, t.doc_no AS doc_no, t.doc_date AS doc_date, t.direction AS direction,
+                   t.ticket_no AS ticket_no, <include refid="partnerLabel"/> AS partner_label, t.settle_method AS settle_method,
+                   CONCAT(a.code, ' ', a.name) AS account_name, g.name AS category_name, i.amount AS amount, i.remark AS remark
+            FROM fin_io_doc_item i
+            JOIN fin_io_doc t ON t.id = i.doc_id
+            JOIN fin_io_category g ON g.id = i.category_id
+            <include refid="partnerJoin"/>
+            LEFT JOIN fin_account a ON a.id = t.account_id
+            WHERE t.status = #{status} AND t.doc_date &gt;= #{begin} AND t.doc_date &lt;= #{end}
+            <if test="direction != null">AND t.direction = #{direction}</if>
+            <if test="categoryId != null">AND i.category_id = #{categoryId}</if>
+        </if>
+        <if test="docs and transferFee">UNION ALL</if>
+        <if test="transferFee">
+            SELECT f.id AS id, NULL AS doc_id, f.id AS transfer_id, f.transfer_no AS doc_no, f.transfer_date AS doc_date, 'OUT' AS direction,
+                   f.ticket_no AS ticket_no, NULL AS partner_label, NULL AS settle_method,
+                   CONCAT(a.code, ' ', a.name) AS account_name, NULL AS category_name, f.fee AS amount, f.remark AS remark
+            FROM fin_fund_transfer f
+            LEFT JOIN fin_account a ON a.id = CASE WHEN f.fee_bearer = 'TO' THEN f.to_account_id ELSE f.from_account_id END
+            WHERE f.fee &gt; 0 AND f.transfer_date &gt;= #{begin} AND f.transfer_date &lt;= #{end}
+        </if>
+        ) x
+        ORDER BY x.doc_date DESC, x.doc_no DESC, x.id
     </select>
 
 </mapper>
