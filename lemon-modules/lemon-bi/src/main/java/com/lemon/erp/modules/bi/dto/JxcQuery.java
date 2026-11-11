@@ -35,6 +35,8 @@ public class JxcQuery {
     private Long warehouseId;
     /** 物料编码 / 名称 */
     private String keyword;
+    /** 只取某张出入库单（单据列表穿透到该单的明细，与其他条件同时生效） */
+    private Long docId;
 
     /** 穿透：汇总维度和汇总行的键 */
     private JxcDimension dim;

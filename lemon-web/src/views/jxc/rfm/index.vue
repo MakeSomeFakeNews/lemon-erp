@@ -40,7 +40,7 @@
         :data-source="filtered"
         :loading="loading"
         :pagination="{ pageSize: 50, showSizeChanger: false, showTotal: (n) => $t('common.table.total', { total: n }) }"
-        :scroll="{ x: 1080, y: '100%' }"
+        :scroll="{ x: canDrill ? 1180 : 1080, y: '100%' }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'customer'">
@@ -64,11 +64,15 @@
           <template v-else-if="column.key === 'segment'">
             <a-tag :color="SEGMENT_COLORS[record.segment]" :bordered="false">{{ $t(`jxc.rfm.seg.${record.segment}`) }}</a-tag>
           </template>
+          <template v-else-if="column.key === 'action'">
+            <TableActions :actions="drillActions(() => drill(record), () => drill(record, true))" />
+          </template>
         </template>
       </a-table>
     </a-card>
 
     <JxcDetail ref="detailRef" report="sales" />
+    <JxcDocs ref="docsRef" report="sales" />
   </div>
 </template>
 
@@ -76,9 +80,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { DownloadOutlined } from '@ant-design/icons-vue'
 import JxcDetail from '@/components/bi/jxc/JxcDetail.vue'
+import JxcDocs from '@/components/bi/jxc/JxcDocs.vue'
+import TableActions from '@/components/common/TableActions.vue'
 import RfmSettingsBar from '@/components/bi/RfmSettingsBar.vue'
 import { jxcRfm } from '@/api/bi/jxc'
-import { last12Months, rangePresets } from '@/components/bi/jxc/jxc'
+import { drillActions, drillColumn, last12Months, rangePresets } from '@/components/bi/jxc/jxc'
 import { useUserStore } from '@/store/user'
 import { useDict } from '@/composables/useDict'
 import { toOptions } from '@/utils/dict'
@@ -122,7 +128,8 @@ const columns = [
   { title: t('jxc.rfm.monetary'), key: 'monetary', width: 130, align: 'right', sorter: (a, b) => Number(a.monetary) - Number(b.monetary) },
   { title: t('jxc.rfm.avgAmount'), key: 'avgAmount', width: 120, align: 'right', sorter: (a, b) => Number(a.avgAmount) - Number(b.avgAmount) },
   { title: t('jxc.rfm.score'), key: 'score', width: 120 },
-  { title: t('jxc.rfm.segment'), key: 'segment', width: 120 }
+  { title: t('jxc.rfm.segment'), key: 'segment', width: 120 },
+  ...(canDrill ? [drillColumn()] : [])
 ]
 
 async function load() {
@@ -142,9 +149,13 @@ function applySettings(p) {
   load()
 }
 
+/** 点击客户到单据列表（F 即出库单数，再到单据明细），lines 为 true 时到商品明细 */
 const detailRef = ref()
-function drill(r) {
-  detailRef.value.open({ params: { begin: range.value[0], end: range.value[1] }, dim: JxcDimension.CUSTOMER, key: r.customerId, label: r.name })
+const docsRef = ref()
+function drill(r, lines = false) {
+  const opts = { params: { begin: range.value[0], end: range.value[1] }, dim: JxcDimension.CUSTOMER, key: r.customerId, label: r.name }
+  if (lines) detailRef.value.open(opts)
+  else docsRef.value.open(opts)
 }
 
 function exportRows() {

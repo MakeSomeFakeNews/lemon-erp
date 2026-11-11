@@ -7,6 +7,10 @@ export default {
     others: 'Other customers',
     groupBy: 'Group by',
     allDetail: 'All details',
+    allDocs: 'All documents',
+    drillDocs: 'Documents',
+    drillLines: 'Item details',
+    viewDoc: 'Open document',
     detail: 'Details',
     exportSummary: 'Export summary',
     exportDetail: 'Export details',
@@ -79,21 +83,31 @@ export default {
     category: 'Category',
     brand: 'Brand',
     remark: 'Remark',
-    kind: 'Document type'
+    kind: 'Document type',
+    lineCount: 'Lines',
+    discount: 'Order discount'
   },
   sales: {
     title: 'Sales report',
-    tip: 'Sales and net amounts exclude tax (amount incl. tax − tax); net = sales shipments − sales returns, in the base currency. Cost is the real-time inventory cost: shipments at the moving average cost at the time of issue, returns at the original issue cost (see stock transactions); older documents without real-time cost use the costing unit cost of the month or the reference cost. Finance "Gross Margin" uses the month-end costing unit cost (for bookkeeping), so the two may differ. Bad debts written off on the delivery receivables (converted to tax-exclusive by the ratio of the receivable and counted on the delivery date, not the write-off date) and freight borne by the company are allocated by line amount as reference profit figures; sales amounts are unchanged. Data is limited to your data scope. Click a row to see the details and a document number to open the document.'
+    tip: 'Sales and net amounts exclude tax (amount incl. tax − tax); net = sales shipments − sales returns, in the base currency. Cost is the real-time inventory cost: shipments at the moving average cost at the time of issue, returns at the original issue cost (see stock transactions); older documents without real-time cost use the costing unit cost of the month or the reference cost. Finance "Gross Margin" uses the month-end costing unit cost (for bookkeeping), so the two may differ. Bad debts written off on the delivery receivables (converted to tax-exclusive by the ratio of the receivable and counted on the delivery date, not the write-off date) and freight borne by the company are allocated by line amount as reference profit figures; sales amounts are unchanged. Data is limited to your data scope. Clicking a row opens the shipment lines when grouped by category, brand or item, and lists the documents otherwise (click a document for its lines); use "Documents" or "Item details" in the actions to choose. Click a document number to open the document.'
   },
   purchase: {
     title: 'Purchase report',
-    tip: 'Purchase and net amounts exclude tax (amount incl. tax − tax); net = purchase receipts − purchase returns, in the base currency. Data is limited to your data scope. Click a row to see the details and a document number to open the document.'
+    tip: 'Purchase and net amounts exclude tax (amount incl. tax − tax); net = purchase receipts − purchase returns, in the base currency. Data is limited to your data scope. Clicking a row opens the receipt lines when grouped by category, brand or item, and lists the documents otherwise (click a document for its lines); use "Documents" or "Item details" in the actions to choose. Click a document number to open the document.'
   },
   detail: {
     title: '{name} · Details',
     titleAll: 'Details',
     salesName: 'Sales details',
     purchaseName: 'Purchase details'
+  },
+  docs: {
+    title: '{name} · Documents',
+    titleAll: 'Documents',
+    lineLabel: '{name} / {docNo}',
+    salesName: 'Sales documents',
+    purchaseName: 'Purchase documents',
+    tip: 'One row per document; amounts are the lines of the document that belong to this summary item (only the matching items when grouped by category, brand or item), net of the order discount, with returns negative; the totals match the summary row. Click a document to see its lines.'
   },
   business: {
     tip: 'Sales are summarized live from sales shipments (excluding tax, net = shipments − returns) within your data scope; cost is calculated as in the sales report.',

@@ -100,6 +100,54 @@ public final class JxcViews {
     public record DetailExport(List<DetailRow> rows, boolean truncated) {
     }
 
+    /**
+     * 单据行：汇总项下的一张出入库单 / 退货单，金额为该单中属于汇总项的明细行合计（与汇总同一口径，按分类、品牌、商品等汇总时
+     * 只含匹配的明细），退货的数量、金额为负数
+     */
+    @Data
+    public static class DocRow {
+        private Long docId;
+        private String docNo;
+        private TradeKind kind;
+        private LocalDate bizDate;
+        private String partnerName;
+        private String salesmanName;
+        /** 表头仓库 */
+        private String warehouseName;
+        /** 属于汇总项的明细行数 */
+        private Long lineCount;
+        private BigDecimal qty;
+        /** 金额（不含税，已扣除整单优惠的分摊） */
+        private BigDecimal amount;
+        /** 价税合计 */
+        private BigDecimal taxedAmount;
+        /** 这些明细行分摊的整单优惠（含税，参考；金额中已扣除） */
+        private BigDecimal discount;
+        private BigDecimal cost;
+        private BigDecimal profit;
+        /** 毛利率（%），金额为 0 时为空 */
+        private BigDecimal margin;
+        private BigDecimal badDebt;
+        private BigDecimal freight;
+        private BigDecimal profitAfterBadDebt;
+        private BigDecimal profitAfterFreight;
+        /** 按参考成本价计算的明细行数 */
+        private Long missingCost;
+        private String remark;
+    }
+
+    /**
+     * 单据列表（分页）
+     *
+     * @param summary 全部单据的合计（与汇总行一致）
+     */
+    public record DocPage(List<DocRow> records, long total, SummaryRow summary) {
+    }
+
+    /** 导出用的单据列表（最多 {@code limit} 行） */
+    public record DocExport(List<DocRow> rows, boolean truncated) {
+    }
+
     // ---------------------------------------------------------------- 经营状况
 
     /** 资金流：收款（收款单 + 预收款 + 票据托收、贴现）、付款（付款单 + 预付款 + 应付票据兑付）；票据业务生成的收付款单不是现金收付，不计入 */

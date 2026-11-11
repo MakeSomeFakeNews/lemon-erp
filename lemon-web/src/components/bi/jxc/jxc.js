@@ -1,8 +1,10 @@
 import dayjs from 'dayjs'
+import { FileTextOutlined, UnorderedListOutlined } from '@ant-design/icons-vue'
 import { t } from '@/locales'
 import { JxcDimension, TradeKind } from '@/constants/enums'
 import { findDict } from '@/utils/dict'
 import { periodLabel } from '@/components/charts/charts'
+import { actionColumn } from '@/components/common/tableActions'
 
 const fmt = (d) => d.format('YYYY-MM-DD')
 
@@ -64,3 +66,20 @@ export const dictLabel = (list, value) => (value ? findDict(list, value)?.label 
 
 /** 毛利率文字 */
 export const marginText = (v) => (v === null || v === undefined ? '-' : `${Number(v).toFixed(2)}%`)
+
+/**
+ * 汇总行的两种穿透（TableActions 的 actions）：【单据】汇总 → 单据列表（JxcDocs）→ 单据明细；【商品明细】汇总 → 出入库明细（JxcDetail）
+ */
+export function drillActions(onDocs, onLines) {
+  return [
+    { key: 'docs', label: t('jxc.common.drillDocs'), icon: FileTextOutlined, onClick: onDocs },
+    { key: 'lines', label: t('jxc.common.drillLines'), icon: UnorderedListOutlined, onClick: onLines }
+  ]
+}
+
+/** 与商品直接相关的汇总维度：点击汇总行默认到商品明细；客户、供货商、区域、业务员、日、月等默认到单据列表 */
+const LINE_DIMS = [JxcDimension.CATEGORY, JxcDimension.BRAND, JxcDimension.MATERIAL]
+export const drillsToLines = (dim) => LINE_DIMS.includes(dim)
+
+/** 穿透操作列（两个图标） */
+export const drillColumn = (extra = {}) => actionColumn(2, [], extra)

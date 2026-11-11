@@ -65,6 +65,7 @@
           </div>
         </div>
         <a-space>
+          <a-button @click="openDocs()">{{ $t('jxc.common.allDocs') }}</a-button>
           <a-button @click="openDetail()">{{ $t('jxc.common.allDetail') }}</a-button>
           <a-button :disabled="!data.rows.length" @click="exportSummary">
             <template #icon><DownloadOutlined /></template>{{ $t('jxc.common.exportSummary') }}
@@ -80,8 +81,8 @@
         :data-source="data.rows"
         :loading="loading"
         :pagination="data.rows.length > 50 ? { pageSize: 50, showSizeChanger: false, showTotal: (n) => $t('common.table.total', { total: n }) } : false"
-        :scroll="{ x: sales ? 2030 : 1200, y: '100%' }"
-        :custom-row="(r) => ({ onClick: () => openDetail(r), class: 'click-row' })"
+        :scroll="{ x: scrollX, y: '100%' }"
+        :custom-row="(r) => ({ onClick: () => drill(r), class: 'click-row' })"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'group'">
@@ -100,6 +101,9 @@
           <template v-else-if="column.key === 'avgPrice'">{{ price(record.avgPrice) }}</template>
           <template v-else-if="column.key === 'margin'">
             <span :class="{ neg: Number(record.margin) < 0 }">{{ marginText(record.margin) }}</span>
+          </template>
+          <template v-else-if="column.key === 'action'">
+            <span @click.stop><TableActions :actions="drillActions(() => openDocs(record), () => openDetail(record))" /></span>
           </template>
         </template>
         <template v-if="data.rows.length" #summary>
@@ -120,6 +124,7 @@
     </a-card>
 
     <JxcDetail ref="detailRef" :report="report" />
+    <JxcDocs ref="docsRef" :report="report" />
   </div>
 </template>
 
@@ -131,17 +136,20 @@ import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import JxcDetail from './JxcDetail.vue'
+import JxcDocs from './JxcDocs.vue'
+import TableActions from '@/components/common/TableActions.vue'
 import { jxcSummary } from '@/api/bi/jxc'
 import { useDict } from '@/composables/useDict'
 import { toOptions } from '@/utils/dict'
 import { money, price, qty } from '@/utils/number'
 import { writeExcel } from '@/utils/excel'
 import { JxcDimension } from '@/constants/enums'
-import { DICT_TYPES, PURCHASE_DIMS, SALES_DIMS, groupLabel, marginText, rangePresets, thisMonth } from './jxc'
+import { DICT_TYPES, PURCHASE_DIMS, SALES_DIMS, drillActions, drillColumn, drillsToLines, groupLabel, marginText, rangePresets, thisMonth } from './jxc'
 import { t } from '@/locales'
 
 /**
- * 销售报表 / 进货报表：按维度汇总出入库单（净额 = 出库 − 退货），点击汇总行查看明细，明细中点击单据号查看单据
+ * 销售报表 / 进货报表：按维度汇总出入库单（净额 = 出库 − 退货）。汇总行的两种穿透（issue #88）：【单据】列出该汇总项下的单据（每张一行），
+ * 再点单据看该单的明细；【商品明细】列出出入库明细。点击行时，按类别、品牌、商品汇总到商品明细，其他维度到单据列表；明细中点击单据号查看单据
  * - report：sales | purchase
  */
 const props = defineProps({
@@ -184,9 +192,12 @@ const columns = computed(() => {
         ]
       : []),
     { title: t('jxc.field.avgPrice'), key: 'avgPrice', width: 100, align: 'right' },
-    { title: t('jxc.field.docCount'), key: 'docCount', dataIndex: 'docCount', width: 80, align: 'right' }
+    { title: t('jxc.field.docCount'), key: 'docCount', dataIndex: 'docCount', width: 80, align: 'right' },
+    drillColumn()
   ]
 })
+
+const scrollX = computed(() => columns.value.reduce((sum, c) => sum + c.width, 0))
 
 /** 查询条件（不含汇总维度），去掉空值 */
 function params() {
@@ -206,6 +217,15 @@ async function load() {
   }
 }
 
+const docsRef = ref()
+function openDocs(row) {
+  if (!row) {
+    docsRef.value.open({ params: params() })
+    return
+  }
+  docsRef.value.open({ params: params(), dim: groupBy.value, key: row.groupKey, label: groupLabel(groupBy.value, row, dict) })
+}
+
 const detailRef = ref()
 function openDetail(row) {
   if (!row) {
@@ -215,8 +235,14 @@ function openDetail(row) {
   detailRef.value.open({ params: params(), dim: groupBy.value, key: row.groupKey, label: groupLabel(groupBy.value, row, dict) })
 }
 
+/** 点击汇总行：按类别、品牌、商品汇总时到商品明细，按客户、区域、业务员、日期等汇总时到单据列表 */
+function drill(row) {
+  if (drillsToLines(groupBy.value)) openDetail(row)
+  else openDocs(row)
+}
+
 function exportSummary() {
-  const cols = columns.value
+  const cols = columns.value.filter((c) => c.key !== 'action')
   const cell = (c, r) => {
     if (c.key === 'group') return groupLabel(groupBy.value, r, dict)
     const v = r[c.key]
