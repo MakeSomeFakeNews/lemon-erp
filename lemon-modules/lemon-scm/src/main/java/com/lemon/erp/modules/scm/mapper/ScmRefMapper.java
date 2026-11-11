@@ -20,4 +20,7 @@ public interface ScmRefMapper {
     String findSupplier(@Param("id") Long id);
 
     String findDept(@Param("id") Long id);
+
+    /** 物料分类（分类 ID） */
+    String findMaterialCategory(@Param("id") Long id);
 }

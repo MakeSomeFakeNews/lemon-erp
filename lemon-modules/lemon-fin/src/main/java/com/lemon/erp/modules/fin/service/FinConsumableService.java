@@ -18,6 +18,8 @@ import com.lemon.erp.modules.wms.entity.WmsStockDoc;
 import com.lemon.erp.modules.wms.model.StockBizType;
 import com.lemon.erp.modules.wms.model.StockOutType;
 import com.lemon.erp.modules.wms.service.DocNoService;
+import com.lemon.erp.modules.wms.model.MaterialCategoryTree;
+import com.lemon.erp.modules.wms.service.WmsMaterialCategoryService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import com.lemon.erp.modules.wms.service.WmsStockDocService;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +45,7 @@ public class FinConsumableService {
     private final FinConsumableUseMapper useMapper;
     private final FinAccountService accountService;
     private final WmsMaterialService materialService;
+    private final WmsMaterialCategoryService categoryService;
     private final WmsStockDocService stockDocService;
     private final DocNoService docNoService;
 
@@ -112,8 +115,10 @@ public class FinConsumableService {
     private void validate(ConsumableRequest req) {
         accountService.requireLeaves(List.of(req.expenseAccountId()));
         Map<Long, WmsMaterial> materials = materialService.getEnabled(req.items().stream().map(ConsumableRequest.Item::materialId).toList());
+        MaterialCategoryTree categories = categoryService.tree();
         for (WmsMaterial m : materials.values()) {
-            if (!FinConstants.LOW_VALUE_CATEGORY.equals(m.getCategory())) {
+            // 低值易耗品及其下级分类
+            if (!categories.lineage(m.getCategory()).contains(FinConstants.LOW_VALUE_CATEGORY)) {
                 throw new BizException("fin.error.materialNotLowValueConsumable", m.getCode(), m.getName());
             }
             if (m.isSerialManaged()) {

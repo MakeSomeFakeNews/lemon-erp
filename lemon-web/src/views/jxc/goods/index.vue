@@ -6,8 +6,7 @@
       </a-tabs>
       <div class="filters">
         <a-range-picker v-if="tab !== 'shortage'" v-model:value="range" value-format="YYYY-MM-DD" :allow-clear="false" :presets="presets" @change="search" />
-        <a-select v-model:value="query.category" :options="toOptions(dict.wms_material_category)" allow-clear
-          :placeholder="$t('jxc.common.allCategories')" class="filter-s" />
+        <MaterialCategorySelect v-model="query.category" :placeholder="$t('jxc.common.allCategories')" class="filter-s" />
         <a-select v-model:value="query.brand" :options="toOptions(dict.wms_material_brand)" allow-clear
           :placeholder="$t('jxc.common.allBrands')" class="filter-s" />
         <WarehouseSelect v-model:value="query.warehouseId" :placeholder="$t('jxc.common.allWarehouses')" class="filter-s" />
@@ -71,6 +70,7 @@
 </template>
 
 <script setup>
+import MaterialCategorySelect from '@/components/wms/MaterialCategorySelect.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { DownloadOutlined } from '@ant-design/icons-vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'

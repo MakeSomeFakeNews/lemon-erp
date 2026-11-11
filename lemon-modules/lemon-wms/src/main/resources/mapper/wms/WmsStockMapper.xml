@@ -55,7 +55,7 @@
                 AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%'))
             </if>
             <if test="q.batchNo != null and q.batchNo != ''">AND s.batch_no LIKE CONCAT('%', #{q.batchNo}, '%')</if>
-            <if test="q.category != null and q.category != ''">AND m.category = #{q.category}</if>
+            <if test="q.category != null and q.category != ''">AND m.category IN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialCategoryMapper.subtreeCodes"><property name="code" value="q.category"/></include>)</if>
         </where>
     </sql>
 
@@ -84,7 +84,7 @@
             <if test="q.keyword != null and q.keyword != ''">
                 AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%'))
             </if>
-            <if test="q.category != null and q.category != ''">AND m.category = #{q.category}</if>
+            <if test="q.category != null and q.category != ''">AND m.category IN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialCategoryMapper.subtreeCodes"><property name="code" value="q.category"/></include>)</if>
         </where>
         GROUP BY m.id, m.code, m.name, m.spec, m.unit, m.category, m.safety_stock, m.ref_cost, mc.id, mc.unit_cost, mc.qty
         <choose>

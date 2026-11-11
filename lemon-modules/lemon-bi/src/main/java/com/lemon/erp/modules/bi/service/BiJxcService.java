@@ -230,7 +230,7 @@ public class BiJxcService {
         }
         try {
             switch (dim) {
-                case CATEGORY -> q.setCategory(key);
+                case CATEGORY -> q.drillCategory(key);
                 case BRAND -> q.setBrand(key);
                 case REGION -> q.setRegion(key);
                 case CUSTOMER, SUPPLIER -> q.setPartnerId(Long.valueOf(key));

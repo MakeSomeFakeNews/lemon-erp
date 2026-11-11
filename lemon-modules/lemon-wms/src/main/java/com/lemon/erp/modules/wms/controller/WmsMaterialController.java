@@ -92,12 +92,12 @@ public class WmsMaterialController {
     }
 
 
-    /** Excel 导入：逐行按新增校验，任何一行出错整批不导入 */
+    /** Excel 导入：逐行按新增校验，任何一行出错整批不导入；分类可填编码、完整路径或不重名的分类名称 */
     @PostMapping("/import")
     @PreAuthorize("@ss.hasPerm('wms:material:add')")
     @OperLog(title = "物料管理-导入", type = OperType.IMPORT) // i18n-ignore
     public R<ImportResult> importRows(@Valid @RequestBody ImportRequest<WmsMaterial> req) {
-        return R.ok(importExecutor.run(req, materialService::create, Create.class));
+        return R.ok(importExecutor.run(req, materialService::importRow, Create.class));
     }
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('wms:material:edit')")

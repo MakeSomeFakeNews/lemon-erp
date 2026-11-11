@@ -38,7 +38,7 @@ public class WmsMaterial extends BaseEntity {
     @Size(max = 64, message = "{wms.valid.barcodeCannotExceedCharacters}")
     private String barcode;
 
-    /** 分类，字典 wms_material_category */
+    /** 分类编码（物料分类 wms_material_category.code，多级，见 WmsMaterialCategoryService） */
     private String category;
 
     /** 品牌，业务字典 wms_material_brand */

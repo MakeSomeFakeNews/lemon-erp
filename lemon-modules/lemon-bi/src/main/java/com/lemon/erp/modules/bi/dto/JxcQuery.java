@@ -27,6 +27,7 @@ public class JxcQuery {
     /** 业务员（用户 ID） */
     private Long salesmanId;
     private Long materialId;
+    /** 物料分类：筛选时包含下级分类；按分类汇总后穿透时只取该分类（见 {@link #drillCategory}） */
     private String category;
     private String brand;
     private String region;
@@ -48,12 +49,21 @@ public class JxcQuery {
 
     @Setter(AccessLevel.NONE)
     private boolean noCategory;
+    /** 只取该分类本身（不含下级分类）：按分类汇总的行穿透时，与汇总口径一致 */
+    @Setter(AccessLevel.NONE)
+    private boolean categoryExact;
     @Setter(AccessLevel.NONE)
     private boolean noBrand;
     @Setter(AccessLevel.NONE)
     private boolean noRegion;
     @Setter(AccessLevel.NONE)
     private boolean noSalesman;
+
+    /** 按分类汇总的行穿透：只取该分类本身的物料（汇总按物料的分类编码分组，下级分类单独成行） */
+    public void drillCategory(String code) {
+        category = code;
+        categoryExact = true;
+    }
 
     /** 筛选「未设置」的取值：只能由穿透设置 */
     public void markNone(JxcDimension d) {

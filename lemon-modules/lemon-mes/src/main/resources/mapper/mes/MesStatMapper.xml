@@ -198,7 +198,7 @@
         LEFT JOIN sys_dept dp ON dp.id = o.dept_id
         WHERE x.kind IN ('FINISH', 'SCRAP') AND x.biz_date &gt;= #{q.begin} AND x.biz_date &lt;= #{q.end}
         <if test="q.productId != null">AND o.material_id = #{q.productId}</if>
-        <if test="q.category != null and q.category != ''">AND p.category = #{q.category}</if>
+        <if test="q.category != null and q.category != ''">AND p.category IN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialCategoryMapper.subtreeCodes"><property name="code" value="q.category"/></include>)</if>
         <if test="q.deptId != null">AND o.dept_id = #{q.deptId}</if>
         <if test="q.keyword != null and q.keyword != ''">
             AND (p.code LIKE CONCAT('%', #{q.keyword}, '%') OR p.name LIKE CONCAT('%', #{q.keyword}, '%'))

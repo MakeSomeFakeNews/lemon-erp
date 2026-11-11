@@ -11,8 +11,7 @@
           class="filter"
         />
         <IdentityUserSelect v-if="sales" v-model:value="query.salesmanId" :placeholder="$t('jxc.common.allSalesmen')" class="filter-s" />
-        <a-select v-model:value="query.category" :options="toOptions(dict.wms_material_category)" allow-clear
-          :placeholder="$t('jxc.common.allCategories')" class="filter-s" />
+        <MaterialCategorySelect v-model="query.category" :placeholder="$t('jxc.common.allCategories')" class="filter-s" />
         <a-select v-model:value="query.brand" :options="toOptions(dict.wms_material_brand)" allow-clear
           :placeholder="$t('jxc.common.allBrands')" class="filter-s" />
         <a-select v-if="sales" v-model:value="query.region" :options="toOptions(dict.scm_region)" allow-clear show-search option-filter-prop="label"
@@ -125,6 +124,7 @@
 </template>
 
 <script setup>
+import MaterialCategorySelect from '@/components/wms/MaterialCategorySelect.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { DownloadOutlined } from '@ant-design/icons-vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'

@@ -81,7 +81,7 @@
               <MaterialSelect v-model:value="form.materialId" :label="form.materialLabel" />
             </a-form-item>
             <a-form-item v-else :label="$t('qms.plan.category')" name="materialCategory">
-              <a-select v-model:value="form.materialCategory" :options="toOptions(dict.wms_material_category)" />
+              <MaterialCategorySelect v-model="form.materialCategory" usable-only />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="8">
@@ -192,6 +192,7 @@
 </template>
 
 <script setup>
+import MaterialCategorySelect from '@/components/wms/MaterialCategorySelect.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'

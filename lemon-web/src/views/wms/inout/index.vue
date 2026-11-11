@@ -12,7 +12,7 @@
           <a-input v-model:value="query.keyword" :placeholder="$t('wms.flow.codeOrName')" allow-clear />
         </a-form-item>
         <a-form-item :label="$t('wms.inout.category')" name="category">
-          <a-select v-model:value="query.category" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_material_category)" />
+          <MaterialCategorySelect v-model="query.category" :placeholder="$t('common.placeholder.all')" />
         </a-form-item>
       </SearchForm>
     </a-card>
@@ -60,6 +60,7 @@
 </template>
 
 <script setup>
+import MaterialCategorySelect from '@/components/wms/MaterialCategorySelect.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
@@ -83,7 +84,7 @@ const q = (title, key, extra = {}) => ({ title, key, dataIndex: key, width: 120,
 const COLUMNS = [
   { title: t('wms.common.material'), key: 'material', width: 200, fixed: 'left' },
   { title: t('wms.inout.spec'), dataIndex: 'spec', width: 130, ellipsis: true },
-  { title: t('wms.inout.category'), key: 'category', width: 100, dict: 'wms_material_category' },
+  { title: t('wms.inout.category'), key: 'category', width: 160, dict: 'wms_material_category' },
   { title: t('common.field.unit'), dataIndex: 'unit', width: 60 },
   q(t('wms.inout.openQty'), 'openQty', { bold: true }),
   q(t('wms.inout.purchaseIn'), 'purchaseIn'),

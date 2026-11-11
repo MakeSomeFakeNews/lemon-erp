@@ -18,6 +18,8 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiPredicate;
+import java.util.function.Function;
 
 import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
 
@@ -44,6 +46,19 @@ public final class PromotionCalculator {
      */
     public static Applied calculate(List<ScmPromotion> promos, Map<Long, WmsMaterial> materials, List<ScmOrderItem> items,
                                     BigDecimal rebate) {
+        return calculate(promos, materials, items, rebate, EXACT_CATEGORY);
+    }
+
+    /** 物料分类只匹配自身（不考虑上下级） */
+    public static final Function<String, List<String>> EXACT_CATEGORY = c -> c == null ? List.of() : List.of(c);
+
+    /**
+     * @param lineage 物料分类 → 自身及各级上级的编码：指定分类的促销对其下级分类的物料同样适用
+     * @see #calculate(List, Map, List, BigDecimal)
+     */
+    public static Applied calculate(List<ScmPromotion> promos, Map<Long, WmsMaterial> materials, List<ScmOrderItem> items,
+                                    BigDecimal rebate, Function<String, List<String>> lineage) {
+        BiPredicate<ScmPromotion, WmsMaterial> matches = (p, m) -> matches(p, m, lineage);
         Map<Long, Usage> usages = new LinkedHashMap<>();
         List<String> notes = new ArrayList<>();
         List<ScmOrderItem> result = new ArrayList<>(items);
@@ -54,7 +69,7 @@ public final class PromotionCalculator {
         // 折扣：每行取适用的最低折扣率
         for (ScmOrderItem item : items) {
             WmsMaterial m = materials.get(item.getMaterialId());
-            promos.stream().filter(p -> p.getPromoType() == PromoType.DISCOUNT && matches(p, m)
+            promos.stream().filter(p -> p.getPromoType() == PromoType.DISCOUNT && matches.test(p, m)
                             && (p.getMinQty() == null || item.getQty().compareTo(p.getMinQty()) >= 0))
                     .min(Comparator.comparing(ScmPromotion::getDiscountRate))
                     .ifPresent(p -> {
@@ -71,7 +86,7 @@ public final class PromotionCalculator {
             if (p.getPromoType() != PromoType.REDUCE) {
                 continue;
             }
-            List<ScmOrderItem> lines = items.stream().filter(i -> matches(p, materials.get(i.getMaterialId()))).toList();
+            List<ScmOrderItem> lines = items.stream().filter(i -> matches.test(p, materials.get(i.getMaterialId()))).toList();
             BigDecimal total = sum(lines);
             if (total.compareTo(p.getThresholdAmount()) >= 0 && (bestReduce == null || p.getReduceAmount().compareTo(bestReduce.getReduceAmount()) > 0)) {
                 bestReduce = p;
@@ -88,7 +103,7 @@ public final class PromotionCalculator {
             if (p.getPromoType() != PromoType.GIFT) {
                 continue;
             }
-            BigDecimal qty = items.stream().filter(i -> matches(p, materials.get(i.getMaterialId())))
+            BigDecimal qty = items.stream().filter(i -> matches.test(p, materials.get(i.getMaterialId())))
                     .map(ScmOrderItem::getQty).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal times = qty.divide(p.getBuyQty(), 0, RoundingMode.FLOOR);
             WmsMaterial gift = materials.get(p.getGiftMaterialId());
@@ -138,14 +153,14 @@ public final class PromotionCalculator {
         return Decimals.sum(lines, i -> amount(i.getQty(), i.getPrice()));
     }
 
-    private static boolean matches(ScmPromotion p, WmsMaterial m) {
+    private static boolean matches(ScmPromotion p, WmsMaterial m, Function<String, List<String>> lineage) {
         if (m == null) {
             return false;
         }
         if (p.getMaterialId() != null) {
             return p.getMaterialId().equals(m.getId());
         }
-        return p.getMaterialCategory() == null || p.getMaterialCategory().equals(m.getCategory());
+        return p.getMaterialCategory() == null || lineage.apply(m.getCategory()).contains(p.getMaterialCategory());
     }
 
     private static void usage(Map<Long, Usage> usages, ScmPromotion p, BigDecimal discount, BigDecimal giftQty) {

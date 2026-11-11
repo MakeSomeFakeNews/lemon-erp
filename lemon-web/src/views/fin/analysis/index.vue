@@ -151,7 +151,7 @@
             <span>{{ $t('fin.analysis.asOf') }}</span>
             <a-date-picker v-model:value="age.asOf" value-format="YYYY-MM-DD" :allow-clear="false" />
             <WarehouseSelect v-model:value="age.warehouseId" :placeholder="$t('fin.analysis.allWarehouses')" class="filter" />
-            <a-select v-model:value="age.category" :options="toOptions(dict.wms_material_category)" allow-clear :placeholder="$t('fin.analysis.allCategories')" class="filter-s" />
+            <MaterialCategorySelect v-model="age.category" :placeholder="$t('fin.analysis.allCategories')" class="filter-s" />
             <a-input v-model:value="age.keyword" :placeholder="$t('fin.analysis.materialKeyword')" allow-clear class="filter" />
             <a-tooltip :title="$t('fin.analysis.bucketsTip')">
               <a-input v-model:value="age.buckets" placeholder="30,60,90,180,365" class="filter-s" />
@@ -206,6 +206,7 @@
 </template>
 
 <script setup>
+import MaterialCategorySelect from '@/components/wms/MaterialCategorySelect.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import DictTag from '@/components/DictTag.vue'

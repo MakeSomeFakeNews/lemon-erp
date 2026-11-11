@@ -5,6 +5,7 @@ import { tt } from '@/locales'
 import { useAppStore } from './app'
 import { useDictStore } from './dict'
 import { clearBizRules } from '@/composables/useBizRules'
+import { clearMaterialCategories } from '@/composables/useMaterialCategories'
 
 const ALL_PERMISSION = '*:*:*'
 
@@ -52,6 +53,7 @@ export const useUserStore = defineStore('user', {
       removeToken()
       useDictStore().clear()
       clearBizRules()
+      clearMaterialCategories()
       this.$reset()
       this.token = null
     },

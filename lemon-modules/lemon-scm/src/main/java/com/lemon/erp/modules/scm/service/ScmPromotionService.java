@@ -13,6 +13,8 @@ import com.lemon.erp.modules.scm.entity.ScmPromotion;
 import com.lemon.erp.modules.scm.mapper.ScmPromotionMapper;
 import com.lemon.erp.modules.scm.model.PromoType;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
+import com.lemon.erp.modules.wms.model.MaterialCategoryTree;
+import com.lemon.erp.modules.wms.service.WmsMaterialCategoryService;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -37,6 +39,7 @@ public class ScmPromotionService {
 
     private final ScmPromotionMapper promotionMapper;
     private final WmsMaterialService materialService;
+    private final WmsMaterialCategoryService categoryService;
 
     /** 应用结果：明细（含赠品行，单价已调整、金额未重算）、促销优惠合计、各促销的应用记录、说明 */
     public record Applied(List<ScmOrderItem> items, BigDecimal discountAmount, List<Usage> usages, List<String> notes) {
@@ -151,7 +154,10 @@ public class ScmPromotionService {
         items.forEach(i -> ids.add(i.getMaterialId()));
         promos.stream().map(ScmPromotion::getGiftMaterialId).filter(Objects::nonNull).forEach(ids::add);
         Map<Long, WmsMaterial> materials = ids.isEmpty() ? Map.of() : materialService.mapByIds(ids);
-        return PromotionCalculator.calculate(promos, materials, items, rebate);
+        // 指定物料分类的促销对其下级分类的物料同样适用
+        MaterialCategoryTree categories = promos.stream().anyMatch(p -> p.getMaterialCategory() != null) ? categoryService.tree() : null;
+        return PromotionCalculator.calculate(promos, materials, items, rebate,
+                categories == null ? PromotionCalculator.EXACT_CATEGORY : categories::lineage);
     }
 
     private void fill(ScmPromotion p, PromotionRequests.Save req) {

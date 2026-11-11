@@ -7,8 +7,7 @@
         <WorkCenterSelect v-if="has('workCenter')" v-model:value="query.workCenterId" :placeholder="$t('mesStat.common.allWorkCenters')" class="filter-s" />
         <a-select v-if="has('status')" v-model:value="query.status" :options="statusOptions" allow-clear
           :placeholder="$t('mesStat.common.allStatus')" class="filter-s" />
-        <a-select v-if="has('category')" v-model:value="query.category" :options="toOptions(dict.wms_material_category)" allow-clear
-          :placeholder="$t('mesStat.common.allCategories')" class="filter-s" />
+        <MaterialCategorySelect v-if="has('category')" v-model="query.category" :placeholder="$t('mesStat.common.allCategories')" class="filter-s" />
         <a-input v-if="has('keyword')" v-model:value="query.keyword" allow-clear :placeholder="$t(`mesStat.${report}.keyword`)" class="filter" @press-enter="load" />
         <a-button type="primary" :loading="loading" @click="load">{{ $t('common.action.query') }}</a-button>
       </div>
@@ -90,6 +89,7 @@
 </template>
 
 <script setup>
+import MaterialCategorySelect from '@/components/wms/MaterialCategorySelect.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { DownloadOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'

@@ -126,7 +126,7 @@
           <IdentityUserSelect v-model:value="form.salesmanId" :label="form.salesmanName" :placeholder="$t('fin.commission.allSalesmen')" />
         </a-form-item>
         <a-form-item :label="$t('fin.commission.category')" name="materialCategory" :extra="form.basis === CommissionBasis.RECEIPT ? $t('fin.commission.receiptNoCategory') : $t('fin.commission.emptyAllCategories')">
-          <a-select v-model:value="form.materialCategory" :options="toOptions(dict.wms_material_category)" allow-clear :placeholder="$t('fin.commission.allCategories')" :disabled="form.basis === CommissionBasis.RECEIPT" />
+          <MaterialCategorySelect v-model="form.materialCategory" usable-only :placeholder="$t('fin.commission.allCategories')" :disabled="form.basis === CommissionBasis.RECEIPT" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
@@ -152,6 +152,7 @@
 </template>
 
 <script setup>
+import MaterialCategorySelect from '@/components/wms/MaterialCategorySelect.vue'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { CalculatorOutlined, PlusOutlined } from '@ant-design/icons-vue'
