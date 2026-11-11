@@ -42,7 +42,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
 import static com.lemon.erp.modules.scm.model.ScmConstants.tax;
 
@@ -66,6 +65,7 @@ public class ScmQuotationService {
     private final WmsMaterialService materialService;
     private final DocNoService docNoService;
     private final ApprovalSupport approvalSupport;
+    private final ScmTaxRates taxRates;
 
     @DataPermission(table = "scm_quotation", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmQuotation> page(long current, long size, String keyword, QuotationStatus status, Long customerId, Long opportunityId) {
@@ -98,7 +98,7 @@ public class ScmQuotationService {
         q.setQuoteNo(docNoService.next(ScmDocNos.QUOTATION));
         q.setStatus(QuotationStatus.DRAFT);
         q.setDeptId(user.deptId());
-        fill(q, req);
+        fill(q, req, null);
         quotationMapper.insert(q);
         saveItems(q.getId(), q, req);
         return q.getId();
@@ -106,9 +106,9 @@ public class ScmQuotationService {
 
     @Transactional
     public void update(Long id, QuotationRequest req) {
-        getDraft(id);
+        ScmQuotation old = getDraft(id);
         ScmQuotation q = new ScmQuotation();
-        fill(q, req);
+        fill(q, req, old.getInvoiceKind());
         itemMapper.delete(Wrappers.<ScmQuotationItem>lambdaQuery().eq(ScmQuotationItem::getQuotationId, id));
         saveItems(id, q, req);
         quotationMapper.update(Wrappers.<ScmQuotation>lambdaUpdate()
@@ -120,6 +120,7 @@ public class ScmQuotationService {
                 .set(ScmQuotation::getTotalAmount, q.getTotalAmount())
                 .set(ScmQuotation::getTaxAmount, q.getTaxAmount())
                 .set(ScmQuotation::getWholeDiscount, q.getWholeDiscount())
+                .set(ScmQuotation::getInvoiceKind, q.getInvoiceKind())
                 .set(ScmQuotation::getUpdateTime, LocalDateTime.now())
                 .eq(ScmQuotation::getId, id).eq(ScmQuotation::getStatus, QuotationStatus.DRAFT));
     }
@@ -177,7 +178,7 @@ public class ScmQuotationService {
                 .map(i -> new OrderItemRequest(i.getMaterialId(), i.getQty(), i.getPrice(), i.getTaxRate(), deliveryDate, i.getRemark()))
                 .toList();
         Long orderId = orderService.createDraft(OrderKind.SALES, new OrderRequest(q.getCustomerId(), LocalDate.now(), deliveryDate,
-                warehouseId, "报价单 " + q.getQuoteNo(), lines, null, null, null, null, q.getWholeDiscount()), OrderSource.QUOTATION); // i18n-ignore
+                warehouseId, "报价单 " + q.getQuoteNo(), lines, null, null, null, null, q.getWholeDiscount(), q.getInvoiceKind()), OrderSource.QUOTATION); // i18n-ignore
         if (!StatusTransitions.tryChange(quotationMapper, ScmQuotation::getId, id, ScmQuotation::getStatus,
                 QuotationStatus.APPROVED, QuotationStatus.ORDERED, w -> w.set(ScmQuotation::getOrderId, orderId))) {
             throw new BizException("scm.error.quotationStatusHasChangedRefresh");
@@ -206,8 +207,12 @@ public class ScmQuotationService {
                 .set(ScmQuotation::getOrderId, null).in(ScmQuotation::getOrderId, e.orderIds()));
     }
 
-    private void fill(ScmQuotation q, QuotationRequest req) {
+    /** @param oldInvoiceKind 修改前的发票类型（未修改时不校验，已停用的旧值可以保留），新建时为空 */
+    private void fill(ScmQuotation q, QuotationRequest req, String oldInvoiceKind) {
         customerService.get(req.customerId());
+        q.setInvoiceKind(taxRates.checkInvoiceKind(req.invoiceKind(), oldInvoiceKind));
+        // 明细未填写税率时：发票类型的税率 → 默认税率
+        BigDecimal fallbackRate = taxRates.fallback(q.getInvoiceKind());
         if (req.validTo() != null && req.validTo().isBefore(req.quoteDate())) {
             throw new BizException("scm.error.validUntilDateCannotEarlierQuotation");
         }
@@ -222,7 +227,7 @@ public class ScmQuotationService {
         BigDecimal taxTotal = BigDecimal.ZERO;
         for (int k = 0; k < amounts.size(); k++) {
             QuotationRequest.Item i = req.items().get(k);
-            taxTotal = taxTotal.add(tax(amounts.get(k), i.taxRate() == null ? DEFAULT_TAX_RATE : i.taxRate()));
+            taxTotal = taxTotal.add(tax(amounts.get(k), i.taxRate() == null ? fallbackRate : i.taxRate()));
         }
         q.setTotalAmount(Decimals.sum(amounts, a -> a));
         q.setTaxAmount(taxTotal);
@@ -232,6 +237,7 @@ public class ScmQuotationService {
     private void saveItems(Long id, ScmQuotation q, QuotationRequest req) {
         materialService.getEnabled(req.items().stream().map(QuotationRequest.Item::materialId).toList());
         ScmCustomer customer = customerService.get(q.getCustomerId());
+        BigDecimal fallbackRate = taxRates.fallback(q.getInvoiceKind());
         for (QuotationRequest.Item i : req.items()) {
             ScmPriceList list = priceListMapper.selectQuote(i.materialId(), customer.getId(), customer.getLevel(), i.qty(), q.getQuoteDate());
             ScmQuotationItem item = new ScmQuotationItem();
@@ -239,7 +245,7 @@ public class ScmQuotationService {
             item.setMaterialId(i.materialId());
             item.setQty(i.qty());
             item.setPrice(i.price());
-            item.setTaxRate(i.taxRate() == null ? DEFAULT_TAX_RATE : i.taxRate());
+            item.setTaxRate(i.taxRate() == null ? fallbackRate : i.taxRate());
             item.setListPrice(list == null ? null : list.getPrice());
             item.setAmount(amount(i.qty(), i.price()));
             item.setRemark(i.remark());

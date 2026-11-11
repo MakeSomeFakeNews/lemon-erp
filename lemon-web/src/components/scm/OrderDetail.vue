@@ -49,6 +49,9 @@
             </div>
           </a-descriptions-item>
           <a-descriptions-item v-if="detail.contractNo" :label="$t('scm.order.contract')">{{ detail.contractNo }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.invoiceKind" :label="$t('scm.taxRate.invoiceKind')">
+            <DictTag type="scm_invoice_kind" :value="detail.invoiceKind" />
+          </a-descriptions-item>
           <a-descriptions-item v-if="kind === 'purchase' && detail.approveTime" :label="$t('scm.order.supplierConfirm')">
             <template v-if="detail.supplierConfirm">
               <DictTag type="scm_supplier_confirm" :value="detail.supplierConfirm" />
@@ -197,6 +200,8 @@ import {
   UndoOutlined
 } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
+import { useDict } from '@/composables/useDict'
+import { findDict } from '@/utils/dict'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import OrderTrace from './OrderTrace.vue'
@@ -271,6 +276,7 @@ const deliveries = ref([])
 const voucherOpen = ref(false)
 const voucherId = ref()
 
+const invoiceKinds = useDict('scm_invoice_kind')
 function print() {
   const d = detail.value
   const c = conf.value
@@ -282,6 +288,7 @@ function print() {
       [t('scm.order.orderDate'), d.orderDate],
       [t('scm.order.deliveryDate'), d.deliveryDate],
       [c.warehouseLabel, d.warehouseName],
+      ...(d.invoiceKind ? [[t('print.name.invoiceKind'), findDict(invoiceKinds.scm_invoice_kind, d.invoiceKind)?.label || d.invoiceKind]] : []),
       ...(Number(d.wholeDiscount) ? [[t('print.name.grossTotal'), `${currencySymbol(d.currency)}${formatMoney(grossTotal.value)}`],
         [t('scm.wholeDiscount.label'), `${currencySymbol(d.currency)}${formatMoney(d.wholeDiscount)}`]] : []),
       [Number(d.wholeDiscount) ? t('print.name.discountedTotal') : t('scm.order.totalAmount'), `${currencySymbol(d.currency)}${formatMoney(d.totalAmount)}`],

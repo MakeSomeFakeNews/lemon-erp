@@ -23,7 +23,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
 import static com.lemon.erp.modules.scm.model.ScmConstants.tax;
 
@@ -39,6 +38,7 @@ public class ScmOrderAssembler {
     private final WmsMaterialService materialService;
     private final WmsWarehouseService warehouseService;
     private final ExchangeRateProvider rateProvider;
+    private final ScmTaxRates taxRates;
 
     /** 销售订单的业务员：客户的负责人，没有时为制单人 */
     public Long salesmanOf(Long customerId, Long userId) {
@@ -66,6 +66,8 @@ public class ScmOrderAssembler {
             }
         }
         Map<Long, WmsMaterial> materials = materialService.getEnabled(req.items().stream().map(OrderItemRequest::materialId).toList());
+        // 明细未填写税率时：发票类型的税率 → 默认税率
+        BigDecimal fallbackRate = taxRates.fallback(req.invoiceKind());
         return req.items().stream().map(r -> {
             WmsMaterial material = materials.get(r.materialId());
             if (material.isSerialManaged() && r.qty().stripTrailingZeros().scale() > 0) {
@@ -75,7 +77,7 @@ public class ScmOrderAssembler {
             item.setMaterialId(r.materialId());
             item.setQty(r.qty());
             item.setPrice(r.price());
-            item.setTaxRate(r.taxRate() == null ? DEFAULT_TAX_RATE : r.taxRate());
+            item.setTaxRate(r.taxRate() == null ? fallbackRate : r.taxRate());
             item.setAmount(amount(r.qty(), r.price()));
             item.setTaxAmount(tax(item.getAmount(), item.getTaxRate()));
             item.setDeliveryDate(r.deliveryDate() != null ? r.deliveryDate() : req.deliveryDate());
@@ -108,6 +110,7 @@ public class ScmOrderAssembler {
         order.setDeliveryDate(req.deliveryDate());
         order.setWarehouseId(req.warehouseId());
         order.setContractId(req.contractId());
+        order.setInvoiceKind(req.invoiceKind() == null || req.invoiceKind().isBlank() ? null : req.invoiceKind().trim());
         order.setRemark(req.remark());
         order.setTotalQty(Decimals.sum(items, ScmOrderItem::getQty));
         order.setTotalAmount(Decimals.sum(items, ScmOrderItem::getAmount));

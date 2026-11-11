@@ -36,6 +36,8 @@ import java.util.List;
  * @param sourceDocId 仅草稿：退货引用的原出入库单，只用于修改草稿时回显，出入库不使用
  * @param freightSettle 销售出库、采购退货：付给承运商的方式，CASH 现付（默认，生成费用支出单）/ MONTHLY 月结（生成承运商应付单）
  * @param freightAccountId 现付时的付款账户（现金 / 银行末级科目）
+ * @param invoiceKind 直接开单：发票类型（业务字典 scm_invoice_kind），记在隐式订单上，明细未填写税率时取它的税率（没有时取默认税率）；
+ *                    引用订单时忽略（沿用订单的发票类型和税率）
  */
 public record TradeDocRequest(
         Long orderId,
@@ -56,7 +58,17 @@ public record TradeDocRequest(
         @Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") BigDecimal orderDiscount,
         Long sourceDocId,
         FreightSettle freightSettle,
-        Long freightAccountId) {
+        Long freightAccountId,
+        @Size(max = 16) String invoiceKind) {
+
+    /** 没有发票类型 */
+    public TradeDocRequest(Long orderId, Long warehouseId, LocalDate bizDate, String remark, Boolean replenish,
+                           List<TradeDocItemRequest> items, Long partnerId, Long salesmanId, BigDecimal wholeDiscount,
+                           BigDecimal freight, FreightBearer freightBearer, Long carrierSupplierId, BigDecimal orderDiscount, Long sourceDocId,
+                           FreightSettle freightSettle, Long freightAccountId) {
+        this(orderId, warehouseId, bizDate, remark, replenish, items, partnerId, salesmanId, wholeDiscount, freight, freightBearer,
+                carrierSupplierId, orderDiscount, sourceDocId, freightSettle, freightAccountId, null);
+    }
 
     /** 运费没有结算方式、付款账户（采购入库） */
     public TradeDocRequest(Long orderId, Long warehouseId, LocalDate bizDate, String remark, Boolean replenish,

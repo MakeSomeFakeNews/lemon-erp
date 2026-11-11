@@ -44,7 +44,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.TENDER_RULE;
 import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
 
@@ -67,6 +66,7 @@ public class ScmTenderService {
     private final ScmOrderService orderService;
     private final ScmPortalNotifier portalNotifier;
     private final DocNoService docNoService;
+    private final ScmTaxRates taxRates;
 
     @DataPermission(table = "scm_tender", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmTender> page(long current, long size, TenderStatus status, String keyword) {
@@ -187,12 +187,13 @@ public class ScmTenderService {
             bidMapper.deleteItems(bid.getId());
         }
         Long bidId = bid.getId();
+        BigDecimal defaultRate = taxRates.defaultRate();
         bidMapper.insertItems(req.items().stream().map(r -> {
             ScmBidItem item = new ScmBidItem();
             item.setBidId(bidId);
             item.setTenderItemId(r.tenderItemId());
             item.setPrice(r.price());
-            item.setTaxRate(r.taxRate() == null ? DEFAULT_TAX_RATE : r.taxRate());
+            item.setTaxRate(r.taxRate() == null ? defaultRate : r.taxRate());
             item.setRemark(r.remark());
             return item;
         }).toList());
@@ -286,6 +287,8 @@ public class ScmTenderService {
         List<ScmBid> own = bidMapper.selectByTender(id).stream().filter(b -> b.getSupplierId().equals(supplierId)).toList();
         attachItems(own);
         view.setBids(own);
+        // 门户账号不能读取业务参数：投标表单新明细的税率取这里返回的默认税率
+        view.setDefaultTaxRate(taxRates.defaultRate());
         return view;
     }
 

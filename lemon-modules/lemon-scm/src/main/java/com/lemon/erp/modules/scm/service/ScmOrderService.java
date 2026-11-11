@@ -57,7 +57,7 @@ public class ScmOrderService {
 
     /** 记录变更历史的字段 */
     private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("partnerId", "往来单位ID", "orderDate", "订单日期", "deliveryDate", "交货日期", "warehouseId", "仓库ID", // i18n-ignore
-            "totalQty", "合计数量", "totalAmount", "价税合计", "wholeDiscount", "整单优惠", "remark", "备注"); // i18n-ignore
+            "totalQty", "合计数量", "totalAmount", "价税合计", "wholeDiscount", "整单优惠", "invoiceKind", "发票类型", "remark", "备注"); // i18n-ignore
 
     /** 审批流程的业务标识前缀，businessKey = scm_order:订单ID */
     private static final String BUSINESS_KEY_PREFIX = "scm_order:";
@@ -74,6 +74,7 @@ public class ScmOrderService {
     private final ScmOrderCreditChecker creditChecker;
     private final ScmOrderNotifier notifier;
     private final ScmOrderCloseAdjuster closeAdjuster;
+    private final ScmTaxRates taxRates;
 
     @DataPermission(table = "scm_order", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<ScmOrder> page(OrderKind kind, long current, long size, OrderQuery query) {
@@ -145,6 +146,10 @@ public class ScmOrderService {
 
     private ScmOrder insertDraft(OrderKind kind, OrderRequest req, OrderSource source, boolean promote, boolean checkPrice,
                                  Long salesmanId) {
+        if (source == OrderSource.MANUAL || source == OrderSource.DIRECT) {
+            // 手工录入、直接开单时校验发票类型；由报价单等生成时沿用来源单据保存时校验过的值
+            taxRates.checkInvoiceKind(req.invoiceKind(), null);
+        }
         List<ScmOrderItem> items = assembler.toItems(kind, req);
         pricing.applyContract(kind, req, items, null);
         ScmPromotionService.Applied applied = promote ? pricing.promote(req, items, null) : null;
@@ -190,7 +195,8 @@ public class ScmOrderService {
     @Transactional
     public void update(OrderKind kind, Long id, OrderRequest req) {
         Object before = orderMapper.selectById(id);
-        getDraft(kind, id);
+        ScmOrder old = getDraft(kind, id);
+        taxRates.checkInvoiceKind(req.invoiceKind(), old.getInvoiceKind());
         List<ScmOrderItem> items = assembler.toItems(kind, req);
         pricing.applyContract(kind, req, items, id);
         ScmPromotionService.Applied applied = kind == OrderKind.SALES ? pricing.promote(req, items, id) : null;
@@ -213,6 +219,7 @@ public class ScmOrderService {
                 .set(ScmOrder::getCurrency, order.getCurrency())
                 .set(ScmOrder::getExchangeRate, order.getExchangeRate())
                 .set(ScmOrder::getContractId, order.getContractId())
+                .set(ScmOrder::getInvoiceKind, order.getInvoiceKind())
                 .set(applied != null, ScmOrder::getDiscountAmount, applied == null ? null : applied.discountAmount())
                 .set(applied != null, ScmOrder::getRebateAmount, ScmOrderPricingService.rebateOf(req))
                 .set(ScmOrder::getWholeDiscount, wholeDiscount)

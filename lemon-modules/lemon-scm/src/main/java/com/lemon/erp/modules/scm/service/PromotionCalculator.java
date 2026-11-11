@@ -30,8 +30,6 @@ import static com.lemon.erp.modules.scm.model.ScmConstants.amount;
  */
 public final class PromotionCalculator {
 
-    private static final BigDecimal GIFT_TAX_RATE = BigDecimal.valueOf(13);
-
     private PromotionCalculator() {
     }
 
@@ -42,11 +40,12 @@ public final class PromotionCalculator {
      * @param materials 明细物料和赠品物料
      * @param items     订单明细，单价为原价
      * @param rebate    返利抵扣金额，为空或 0 不抵扣
+     * @param giftTaxRate 赠品行的税率（单价为 0，不影响金额）：订单明细未填写税率时的税率（发票类型 → 默认税率）
      * @return 明细（含赠品行，单价已调整、金额未重算）、促销优惠合计、各促销的应用记录、说明
      */
     public static Applied calculate(List<ScmPromotion> promos, Map<Long, WmsMaterial> materials, List<ScmOrderItem> items,
-                                    BigDecimal rebate) {
-        return calculate(promos, materials, items, rebate, EXACT_CATEGORY);
+                                    BigDecimal rebate, BigDecimal giftTaxRate) {
+        return calculate(promos, materials, items, rebate, EXACT_CATEGORY, giftTaxRate);
     }
 
     /** 物料分类只匹配自身（不考虑上下级） */
@@ -54,10 +53,10 @@ public final class PromotionCalculator {
 
     /**
      * @param lineage 物料分类 → 自身及各级上级的编码：指定分类的促销对其下级分类的物料同样适用
-     * @see #calculate(List, Map, List, BigDecimal)
+     * @see #calculate(List, Map, List, BigDecimal, BigDecimal)
      */
     public static Applied calculate(List<ScmPromotion> promos, Map<Long, WmsMaterial> materials, List<ScmOrderItem> items,
-                                    BigDecimal rebate, Function<String, List<String>> lineage) {
+                                    BigDecimal rebate, Function<String, List<String>> lineage, BigDecimal giftTaxRate) {
         BiPredicate<ScmPromotion, WmsMaterial> matches = (p, m) -> matches(p, m, lineage);
         Map<Long, Usage> usages = new LinkedHashMap<>();
         List<String> notes = new ArrayList<>();
@@ -114,7 +113,7 @@ public final class PromotionCalculator {
             g.setMaterialId(gift.getId());
             g.setQty(times.multiply(p.getGiftQty()));
             g.setPrice(BigDecimal.ZERO);
-            g.setTaxRate(GIFT_TAX_RATE);
+            g.setTaxRate(giftTaxRate);
             g.setGift(1);
             g.setPromotionId(p.getId());
             g.setDeliveryDate(items.get(0).getDeliveryDate());

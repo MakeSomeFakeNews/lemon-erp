@@ -4,6 +4,16 @@ export default {
     listPrice: '价目价 {price}',
     discount: '折扣 {n}%'
   },
+  taxRate: {
+    invoiceKind: '发票类型',
+    invoiceKindPlaceholder: '不指定',
+    invoiceKindExtra: '选择后明细税率统一调整为该发票类型的税率，之后仍可逐行修改',
+    invoiceKindApplied: '已将 {n} 行明细的税率调整为 {rate}%',
+    batch: '统一设置税率',
+    batchTip: '统一设置全部明细的税率',
+    applyAll: '应用到全部明细',
+    applied: '已将 {n} 行明细的税率设为 {rate}%'
+  },
   wholeDiscount: {
     label: '整单优惠',
     total: '合计',

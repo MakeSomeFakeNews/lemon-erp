@@ -65,8 +65,13 @@
       <text v-for="s in row.serials" :key="s" class="m-serial" @click.stop="$emit('remove-serial', s)">{{ s }}</text>
     </view>
     <view v-if="!row.gift" class="m-row sale-row__amount">
-      <!-- 税率为空时后端按默认税率 -->
-      <text class="l-muted">{{ row.taxRate != null ? t('wms.sale.taxRate', { rate: Number(row.taxRate) }) : t('wms.sale.taxRateDefault') }}</text>
+      <!-- 税率可逐行修改；为空时后端按发票类型 / 默认税率 -->
+      <view class="sale-row__tax" @click.stop>
+        <text class="l-muted">{{ t('wms.sale.taxRateLabel') }}</text>
+        <input class="sale-row__tax-input" :value="row.taxRate ?? ''" type="digit" :placeholder="t('wms.sale.taxRateDefault')"
+          placeholder-class="l-placeholder" @blur="(e) => changeTaxRate(e.detail.value)" />
+        <text class="l-muted">%</text>
+      </view>
       <text class="m-strong">{{ money(lineAmount(row)) }}</text>
     </view>
   </view>
@@ -132,6 +137,12 @@ function changePrice(v) {
   props.row.priceAuto = false
 }
 
+/** 税率 0 ~ 100，最多 2 位小数；清空为按默认 */
+function changeTaxRate(v) {
+  const n = v === '' ? null : Number(v)
+  props.row.taxRate = Number.isFinite(n) && n >= 0 && n <= 100 ? Math.round(n * 100) / 100 : null
+}
+
 const warehouseChoices = computed(() => [{ id: null, name: t('wms.sale.sameAsHeader') }, ...props.warehouses])
 const warehouseIndex = computed(() => Math.max(0, warehouseChoices.value.findIndex((w) => w.id === (props.row.warehouseId || null))))
 
@@ -181,5 +192,14 @@ function pickWarehouse(e) {
       font-weight: 600;
     }
   }
+}
+.sale-row__tax {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.sale-row__tax-input {
+  width: 120rpx;
+  text-align: right;
 }
 </style>

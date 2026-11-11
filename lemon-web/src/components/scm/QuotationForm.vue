@@ -25,7 +25,12 @@
             <span v-else class="sub-text opp-tag">{{ $t('scm.quotation.noOpportunity') }}</span>
           </a-form-item>
         </a-col>
-        <a-col :span="24">
+        <a-col :xs="24" :sm="12" :lg="6">
+          <a-form-item :label="$t('scm.taxRate.invoiceKind')" name="invoiceKind" :tooltip="$t('scm.taxRate.invoiceKindExtra')">
+            <InvoiceKindSelect v-model:value="form.invoiceKind" @change="onInvoiceKindChange" />
+          </a-form-item>
+        </a-col>
+        <a-col :xs="24" :lg="18">
           <a-form-item :label="$t('common.field.remark')" name="remark">
             <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('scm.quotation.remarkPh')" />
           </a-form-item>
@@ -42,6 +47,9 @@
       </div>
 
       <LineItemsTable class="items-table" :items="form.items" :columns="columns" :empty-text="$t('scm.quotation.emptyItems')">
+        <template #header="{ column }">
+          <TaxRateTitle v-if="column.key === 'taxRate'" :title="column.title" @apply="applyAllTaxRate" />
+        </template>
         <template #cell="{ column, record, index }">
           <template v-if="column.key === 'material'">
             <a-form-item :name="['items', index, 'materialId']" :rules="requiredRule($t('scm.quotation.selectMaterial'))" class="cell-item">
@@ -105,6 +113,7 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
 import { ref } from 'vue'
+import { message } from 'ant-design-vue'
 import { HistoryOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import LineItemsTable from '@/components/common/LineItemsTable.vue'
@@ -114,6 +123,9 @@ import AtpModal from './AtpModal.vue'
 import PriceHint from './PriceHint.vue'
 import PriceReference from './PriceReference.vue'
 import WholeDiscountBar from './WholeDiscountBar.vue'
+import InvoiceKindSelect from './InvoiceKindSelect.vue'
+import TaxRateTitle from './TaxRateTitle.vue'
+import { applyTaxRate, useTaxRates } from './taxRate'
 import { round2 } from '@/utils/number'
 import { addQuotation, getQuotation, updateQuotation } from '@/api/scm/sourcing'
 import { defaultPrices } from '@/api/scm/pricing'
@@ -157,6 +169,7 @@ const emptyForm = () => ({
   validTo: undefined,
   remark: '',
   wholeDiscount: undefined,
+  invoiceKind: undefined,
   items: []
 })
 
@@ -167,7 +180,7 @@ const toRow = (item) => ({
   materialLabel: item.materialCode ? `${item.materialCode} ${item.materialName}` : undefined,
   qty: num(item.qty),
   price: num(item.price),
-  taxRate: item.taxRate != null ? Number(item.taxRate) : 13,
+  taxRate: item.taxRate != null ? Number(item.taxRate) : undefined,
   listPrice: num(item.listPrice),
   priceAuto: false
 })
@@ -176,7 +189,7 @@ const drawer = useFormDrawer({
   emptyForm,
   fetch: async (record) => {
     const q = await getQuotation(record.id)
-    return { ...q, wholeDiscount: Number(q.wholeDiscount) || undefined, items: q.items.map(toRow) }
+    return { ...q, wholeDiscount: Number(q.wholeDiscount) || undefined, invoiceKind: q.invoiceKind || undefined, items: q.items.map(toRow) }
   },
   create: async (data) => emit('success', await addQuotation(data)),
   update: async (id, data) => {
@@ -190,6 +203,7 @@ const drawer = useFormDrawer({
     validTo: f.validTo || null,
     remark: f.remark || null,
     wholeDiscount: f.wholeDiscount || null,
+    invoiceKind: f.invoiceKind || null,
     items: f.items.map((i) => ({
       materialId: i.materialId,
       qty: i.qty,
@@ -201,9 +215,18 @@ const drawer = useFormDrawer({
 })
 const { form, formRef } = drawer
 
+// 税率：新明细为发票类型的税率，没有时为业务参数「默认税率」；选择发票类型、列头「统一设置税率」批量调整（issue #82）
+const tax = useTaxRates()
 const lines = useLineItems(() => form.value.items, {
-  newRow: () => ({ materialId: undefined, qty: undefined, price: undefined, taxRate: 13, priceAuto: true })
+  newRow: () => ({ materialId: undefined, qty: undefined, price: undefined, taxRate: tax.fallback(form.value.invoiceKind), priceAuto: true })
 })
+function onInvoiceKindChange(kind, rate) {
+  if (rate == null) return
+  message.success(t('scm.taxRate.invoiceKindApplied', { n: applyTaxRate(form.value.items, rate), rate }))
+}
+function applyAllTaxRate(rate) {
+  message.success(t('scm.taxRate.applied', { n: applyTaxRate(form.value.items, rate), rate }))
+}
 const totalAmount = lines.total((i) => lineAmount(i.qty, i.price), (n) => n)
 const addRow = () => lines.addRow()
 
@@ -229,7 +252,9 @@ async function fetchPrices(rows) {
     row.listPrice = found && p.source === PriceSource.PRICE_LIST ? Number(p.price) : undefined
     if (found && (row.priceAuto || row.price == null)) {
       row.price = Number(p.price)
-      if (p.taxRate != null) row.taxRate = Number(p.taxRate)
+      // 选了发票类型时税率按发票类型，否则按价格来源的税率（没有时保持原税率）
+      const rate = tax.sourceRate(form.value.invoiceKind, p.taxRate)
+      if (rate != null) row.taxRate = rate
       row.priceAuto = true
       row.priceSource = p.source
     }

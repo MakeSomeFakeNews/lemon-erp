@@ -32,10 +32,13 @@ export const TRADE_KINDS = {
   salesReturn: { label: t('scm.kinds.salesReturn'), orderKind: 'sales', fromStock: false, returns: true, action: t('scm.kinds.actionReturn') }
 }
 
-/** 出入库单直接开单的空明细行（不含 key，由 useLineItems 生成） */
-export const newTradeRow = () => ({
+/**
+ * 出入库单直接开单的空明细行（不含 key，由 useLineItems 生成）
+ * @param taxRate 税率：表头发票类型的税率，没有时为业务参数「默认税率」（见 taxRate.js 的 useTaxRates().fallback）
+ */
+export const newTradeRow = (taxRate) => ({
   materialId: undefined, materialLabel: undefined, unit: undefined, batchEnabled: 0, serialEnabled: 0,
-  qty: undefined, price: undefined, taxRate: 13, priceAuto: true, priceSource: undefined,
+  qty: undefined, price: undefined, taxRate, priceAuto: true, priceSource: undefined,
   warehouseId: null, locationId: null, batchNo: undefined, slot: undefined, slotLabel: undefined, available: undefined, serialNos: undefined
 })
 

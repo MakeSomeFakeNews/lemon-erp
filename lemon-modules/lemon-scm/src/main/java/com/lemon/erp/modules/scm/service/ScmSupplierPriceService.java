@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 
-import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 
 /**
  * 供货价格：供应商可供应的物料、含税单价、提前期；每个物料可以指定一个默认供应商
@@ -33,6 +32,7 @@ public class ScmSupplierPriceService {
     private final ScmSupplierService supplierService;
     private final WmsMaterialService materialService;
     private final ScmSupplierPriceTierMapper tierMapper;
+    private final ScmTaxRates taxRates;
 
     public PageResult<ScmSupplierPrice> page(long current, long size, Long supplierId, Long materialId, String keyword) {
         Page<ScmSupplierPrice> page = Page.of(current, size);
@@ -102,7 +102,7 @@ public class ScmSupplierPriceService {
             p.setSupplierId(supplierId);
             p.setMaterialId(materialId);
             p.setPrice(price);
-            p.setTaxRate(taxRate == null ? DEFAULT_TAX_RATE : taxRate);
+            p.setTaxRate(taxRate == null ? taxRates.defaultRate() : taxRate);
             p.setLeadDays(leadDays);
             boolean hasDefault = priceMapper.exists(Wrappers.<ScmSupplierPrice>lambdaQuery()
                     .eq(ScmSupplierPrice::getMaterialId, materialId).eq(ScmSupplierPrice::getIsDefault, 1));
@@ -166,12 +166,12 @@ public class ScmSupplierPriceService {
                 .eq(ScmSupplierPrice::getIsDefault, 1));
     }
 
-    private static ScmSupplierPrice toEntity(SupplierPriceRequest req) {
+    private ScmSupplierPrice toEntity(SupplierPriceRequest req) {
         ScmSupplierPrice price = new ScmSupplierPrice();
         price.setSupplierId(req.supplierId());
         price.setMaterialId(req.materialId());
         price.setPrice(req.price());
-        price.setTaxRate(req.taxRate() == null ? DEFAULT_TAX_RATE : req.taxRate());
+        price.setTaxRate(req.taxRate() == null ? taxRates.defaultRate() : req.taxRate());
         price.setLeadDays(req.leadDays() == null ? 0 : req.leadDays());
         price.setMinQty(req.minQty());
         price.setIsDefault(Integer.valueOf(1).equals(req.isDefault()) ? 1 : 0);

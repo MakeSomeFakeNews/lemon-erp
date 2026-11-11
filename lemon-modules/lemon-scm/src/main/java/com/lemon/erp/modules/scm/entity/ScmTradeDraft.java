@@ -47,6 +47,9 @@ public class ScmTradeDraft extends BaseEntity {
 
     private BigDecimal wholeDiscount;
 
+    /** 发票类型（业务字典 scm_invoice_kind）：只保存直接开单的；引用订单时查询返回订单的发票类型 */
+    private String invoiceKind;
+
     /** 引用订单的采购入库：本单的订单优惠（含税，订单币种），为空按订单的整单优惠分摊 */
     private BigDecimal orderDiscount;
 

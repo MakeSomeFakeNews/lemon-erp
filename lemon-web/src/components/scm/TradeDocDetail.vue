@@ -21,6 +21,9 @@
           <a-descriptions-item :label="$t('scm.trade.warehouse')">{{ detail.warehouseName }}</a-descriptions-item>
           <a-descriptions-item :label="$t('scm.trade.bizDate')">{{ detail.bizDate }}</a-descriptions-item>
           <a-descriptions-item :label="$t('scm.trade.wmsDocNo')">{{ detail.wmsDocNo }}</a-descriptions-item>
+          <a-descriptions-item v-if="detail.invoiceKind" :label="$t('scm.taxRate.invoiceKind')">
+            <DictTag type="scm_invoice_kind" :value="detail.invoiceKind" />
+          </a-descriptions-item>
           <a-descriptions-item v-if="conf.returns" :label="$t('scm.trade.returnMode')">
             {{ detail.replenish === 1 ? (conf.orderKind === 'sales' ? $t('scm.trade.returnReship') : $t('scm.trade.returnRereceive')) : $t('scm.trade.returnRefund') }}
           </a-descriptions-item>
@@ -100,6 +103,7 @@ import DictTag from '@/components/DictTag.vue'
 import { accountOptions } from '@/api/fin'
 import { cached } from '@/utils/cache'
 import { useDict } from '@/composables/useDict'
+import { findDict } from '@/utils/dict'
 import { useUserStore } from '@/store/user'
 import { round2 } from '@/utils/number'
 import { fcText, isForeign } from '@/components/fin/currency'
@@ -142,7 +146,7 @@ const discountLabel = computed(() =>
 const discountAdjust = computed(() => Number(detail.value?.discountAdjust) || 0)
 const grossTotal = computed(() => Math.round((Number(detail.value?.totalAmount || 0) + discount.value) * 100) / 100)
 
-useDict('scm_freight_settle')
+const dict = useDict('scm_freight_settle', 'scm_invoice_kind')
 const userStore = useUserStore()
 const router = useRouter()
 /** 运费承担的名称按单据种类（退货中往来单位一方表示往来单位代垫） */
@@ -184,6 +188,7 @@ function print() {
       [t('scm.trade.warehouse'), d.warehouseName],
       [t('scm.trade.bizDate'), d.bizDate],
       [t('scm.trade.wmsDocNo'), d.wmsDocNo],
+      ...(d.invoiceKind ? [[t('print.name.invoiceKind'), findDict(dict.scm_invoice_kind, d.invoiceKind)?.label || d.invoiceKind]] : []),
       ...(discount.value ? [[t('print.name.grossTotal'), `¥${formatMoney(grossTotal.value)}`],
         [c.returns ? t('print.name.discountShare') : t('scm.wholeDiscount.label'), `¥${formatMoney(discount.value)}`]] : []),
       [discount.value ? t('print.name.discountedTotal') : t('scm.trade.totalAmount'), `¥${formatMoney(d.totalAmount)}`],
@@ -198,6 +203,7 @@ function print() {
       { title: t('scm.trade.batch'), key: 'batchNo' },
       { title: t('common.field.quantity'), value: (r) => formatQty(r.qty), align: 'right' },
       { title: t('scm.trade.taxPrice'), value: (r) => formatMoney(grossPrice(r)), align: 'right' },
+      { title: t('print.name.taxRate'), value: (r) => `${Number(r.taxRate)}%`, align: 'right' },
       { title: t('scm.trade.totalAmount'), key: 'amount', value: (r) => formatMoney(grossAmount(r)), align: 'right' },
       { title: t('scm.trade.serialNo'), key: 'serialNos' }
     ],

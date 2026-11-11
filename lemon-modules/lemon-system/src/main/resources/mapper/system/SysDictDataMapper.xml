@@ -3,9 +3,9 @@
 <mapper namespace="com.lemon.erp.modules.system.mapper.SysDictDataMapper">
 
     <insert id="insertBatch">
-        INSERT INTO sys_dict_data (tenant_id, dict_type, dict_label, dict_value, tag_color, sort, status, builtin, remark, create_time, update_time) VALUES
+        INSERT INTO sys_dict_data (tenant_id, dict_type, dict_label, dict_value, tag_color, sort, status, builtin, remark, ext_value, create_time, update_time) VALUES
         <foreach collection="list" item="d" separator=",">
-            (#{d.tenantId}, #{d.dictType}, #{d.dictLabel}, #{d.dictValue}, #{d.tagColor}, #{d.sort}, #{d.status}, #{d.builtin}, #{d.remark}, NOW(), NOW())
+            (#{d.tenantId}, #{d.dictType}, #{d.dictLabel}, #{d.dictValue}, #{d.tagColor}, #{d.sort}, #{d.status}, #{d.builtin}, #{d.remark}, #{d.extValue}, NOW(), NOW())
         </foreach>
     </insert>
 

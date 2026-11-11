@@ -129,6 +129,9 @@
         </a-form-item>
       </a-form>
       <a-table row-key="itemId" size="small" :columns="quoteColumns" :data-source="quoteForm.lines" :pagination="false" :scroll="{ x: 760 }">
+        <template #headerCell="{ column }">
+          <TaxRateTitle v-if="column.key === 'taxRate'" :title="column.title" @apply="applyAllTaxRate" />
+        </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'material'">
             <div>{{ record.materialCode }} {{ record.materialName }}</div>
@@ -190,7 +193,15 @@ import { formatQty, today } from '@/components/wms/wms'
 import { price as formatPrice } from '@/utils/number'
 
 import { InquiryStatus } from '@/constants/enums'
+import TaxRateTitle from './TaxRateTitle.vue'
+import { applyTaxRate, useTaxRates } from './taxRate'
 const { t } = useI18n()
+/** 新明细 / 新价格的税率：业务参数「默认税率」（issue #82） */
+const tax = useTaxRates()
+/** 报价录入：列头「统一设置税率」 */
+function applyAllTaxRate(rate) {
+  message.success(t('scm.taxRate.applied', { n: applyTaxRate(quoteForm.lines, rate), rate }))
+}
 
 /** 询价单详情：按供应商比价、录入报价、定标（更新供货价格、生成采购订单）、关闭。触发 edit(record)、changed */
 const props = defineProps({
@@ -323,7 +334,7 @@ function fillLines(supplierId) {
       qty: item.qty,
       unit: item.unit,
       price: q ? Number(q.price) : undefined,
-      taxRate: q?.taxRate != null ? Number(q.taxRate) : 13,
+      taxRate: q?.taxRate != null ? Number(q.taxRate) : tax.defaultRate.value,
       leadDays: q?.leadDays ?? undefined,
       remark: q?.remark || ''
     }

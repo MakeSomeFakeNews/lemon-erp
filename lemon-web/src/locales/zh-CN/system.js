@@ -162,7 +162,8 @@ export default {
       mes_mold_type: '模具类型',
       mes_stop_reason: '停机原因',
       wms_in_category: '入库类别',
-      wms_out_category: '出库类别'
+      wms_out_category: '出库类别',
+      scm_invoice_kind: '发票类型'
     }
   },
   dict: {

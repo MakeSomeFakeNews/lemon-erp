@@ -186,7 +186,8 @@ public class ScmTradeDocService {
             lines.add(new OrderItemRequest(r.materialId(), r.qty(), r.price(), r.taxRate(), req.bizDate(), r.remark(), r.unitName()));
         }
         ScmOrder order = orderService.createDirect(kind.getOrderKind(), new OrderRequest(req.partnerId(), req.bizDate(), req.bizDate(),
-                req.warehouseId(), req.remark(), lines, null, null, null, null, req.wholeDiscount()), req.salesmanId(), kind.isReturns());
+                req.warehouseId(), req.remark(), lines, null, null, null, null, req.wholeDiscount(), req.invoiceKind()), req.salesmanId(),
+                kind.isReturns());
         // 订单明细按插入顺序与请求的普通明细一一对应，买赠促销生成的赠品行在其后
         List<ScmOrderItem> orderItems = orderItemMapper.selectByOrderId(order.getId());
         List<TradeDocItemRequest> items = new ArrayList<>(req.items().size());

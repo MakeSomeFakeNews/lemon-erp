@@ -34,7 +34,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.lemon.erp.modules.scm.model.ScmConstants.DEFAULT_TAX_RATE;
 
 /**
  * 外部订单导入（电商 / 门店）：统一格式按行提交（Excel 解析后或接口直接调用），同一外部单号的多行生成一张销售订单草稿（来源「外部导入」），
@@ -128,7 +127,8 @@ public class ScmOrderImportService {
                 throw new BizException("scm.error.materialCodeDoesNotExist", d.materialCode());
             }
             BigDecimal price = d.price();
-            BigDecimal taxRate = DEFAULT_TAX_RATE;
+            // 为空时按默认税率（订单明细未填写税率的兜底）
+            BigDecimal taxRate = null;
             if (price == null) {
                 // 与开单默认价一致：客户执行价 → 价目表 → 价格等级 → 零售价 → 最近售价
                 DefaultPrice p = pricingService.defaults(OrderKind.SALES, customer.getId(), List.of(m.getId()), List.of(d.qty()),

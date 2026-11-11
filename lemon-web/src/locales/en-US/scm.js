@@ -4,6 +4,16 @@ export default {
     listPrice: 'List price {price}',
     discount: 'Discount {n}%'
   },
+  taxRate: {
+    invoiceKind: 'Invoice type',
+    invoiceKindPlaceholder: 'Not specified',
+    invoiceKindExtra: 'Selecting a type sets all line tax rates to its rate; you can still change individual lines afterwards',
+    invoiceKindApplied: 'Tax rate of {n} line(s) set to {rate}%',
+    batch: 'Set tax rate for all lines',
+    batchTip: 'Set the tax rate of all lines',
+    applyAll: 'Apply to all lines',
+    applied: 'Tax rate of {n} line(s) set to {rate}%'
+  },
   wholeDiscount: {
     label: 'Order discount',
     total: 'Total',

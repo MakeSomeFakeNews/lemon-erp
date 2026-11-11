@@ -29,6 +29,7 @@ public class ScmOrderPricingService {
     private final ScmRebateService rebateService;
     private final ScmPriceControlService priceControl;
     private final ScmCustomerService customerService;
+    private final ScmTaxRates taxRates;
 
     /** 采购订单引用采购合同：按合同价下单并校验 */
     public void applyContract(OrderKind kind, OrderRequest req, List<ScmOrderItem> items, Long orderId) {
@@ -56,7 +57,7 @@ public class ScmOrderPricingService {
     public ScmPromotionService.Applied promote(OrderRequest req, List<ScmOrderItem> items, Long orderId) {
         rebateService.checkBalance(req.partnerId(), req.rebateAmount(), orderId);
         ScmPromotionService.Applied applied = promotionService.apply(customerService.get(req.partnerId()), req.orderDate(), items,
-                req.rebateAmount());
+                req.rebateAmount(), taxRates.fallback(req.invoiceKind()));
         for (ScmOrderItem item : applied.items()) {
             item.setAmount(amount(item.getQty(), item.getPrice()));
             item.setTaxAmount(tax(item.getAmount(), item.getTaxRate()));

@@ -16,6 +16,7 @@ import java.util.List;
  * @param contractId  引用的采购合同（只用于采购订单）：按合同价下单，校验合同期限和数量、金额上限
  * @param rebateAmount 使用返利抵扣的金额（只用于手工销售订单），不超过客户的返利余额
  * @param wholeDiscount 整单优惠（含税，抹零也用它）：在促销、返利抵扣之后按行金额比例分摊到各行，优惠后合计 = 原合计 − 优惠
+ * @param invoiceKind 发票类型（业务字典 scm_invoice_kind），选填：明细未填写税率时取它的税率，没有时取默认税率
  */
 public record OrderRequest(
         @NotNull(message = "{scm.valid.selectBusinessPartner}") Long partnerId,
@@ -29,7 +30,15 @@ public record OrderRequest(
         Long contractId,
         @jakarta.validation.constraints.DecimalMin(value = "0", message = "{scm.valid.rebateDeductionCannotNegative}") java.math.BigDecimal rebateAmount,
         @jakarta.validation.constraints.DecimalMin(value = "0", message = "{scm.valid.wholeDiscountCannotNegative}")
-        @jakarta.validation.constraints.Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") java.math.BigDecimal wholeDiscount) {
+        @jakarta.validation.constraints.Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") java.math.BigDecimal wholeDiscount,
+        @Size(max = 16) String invoiceKind) {
+
+    /** 没有发票类型 */
+    public OrderRequest(Long partnerId, LocalDate orderDate, LocalDate deliveryDate, Long warehouseId, String remark,
+                        List<OrderItemRequest> items, String currency, java.math.BigDecimal exchangeRate, Long contractId,
+                        java.math.BigDecimal rebateAmount, java.math.BigDecimal wholeDiscount) {
+        this(partnerId, orderDate, deliveryDate, warehouseId, remark, items, currency, exchangeRate, contractId, rebateAmount, wholeDiscount, null);
+    }
 
     /** 没有整单优惠 */
     public OrderRequest(Long partnerId, LocalDate orderDate, LocalDate deliveryDate, Long warehouseId, String remark,

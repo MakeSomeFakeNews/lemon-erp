@@ -11,7 +11,7 @@ export const lineKey = (item) => (item.id != null ? `item-${item.id}` : rowKey()
 /**
  * 单据明细行编辑的通用逻辑（增删行、行 key、合计），表格用 <LineItemsTable>：
  *
- *   const lines = useLineItems(() => form.value.items, { newRow: () => ({ materialId: undefined, qty: undefined, taxRate: 13 }) })
+ *   const lines = useLineItems(() => form.value.items, { newRow: () => ({ materialId: undefined, qty: undefined, taxRate: tax.fallback(form.value.invoiceKind) }) })
  *   lines.addRow()                       // 末尾加一行（{ first: true } 加在最前）
  *   const total = lines.total('amount')  // computed，合计按 round2 舍入
  *

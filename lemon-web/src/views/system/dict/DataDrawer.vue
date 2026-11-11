@@ -58,6 +58,7 @@
             <a-tag :bordered="false" class="builtin-tag">{{ $t('system.dict.builtin') }}</a-tag>
           </a-tooltip>
         </template>
+        <template v-else-if="column.key === 'ext'">{{ record.extValue ?? '-' }}</template>
         <template v-else-if="column.key === 'status'">
           <DictTag type="sys_common_status" :value="record.status" />
         </template>
@@ -116,6 +117,12 @@
                 {{ $t('system.dict.previewLabel') }}
                 <a-tag :color="tagColor(form.tagColor)" :bordered="false">{{ form.label || $t('system.dict.tag') }}</a-tag>
               </div>
+            </a-form-item>
+          </a-col>
+          <!-- 扩展值：业务模块为该字典声明的数字（如开票类型的税率） -->
+          <a-col v-if="ext" :xs="24" :sm="12">
+            <a-form-item :label="ext.label" name="extValue">
+              <a-input-number v-model:value="form.extValue" :min="Number(ext.min)" :max="Number(ext.max)" :precision="ext.scale" class="full" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
@@ -204,14 +211,18 @@ const kindTip = computed(() => {
   return props.biz ? t('system.dict.businessTip') : t('system.dict.platformBusinessTip')
 })
 
-const columns = [
+/** 扩展值定义（后端 DictExtension，如开票类型的税率），没有时为空 */
+const ext = computed(() => props.dictType?.ext || null)
+
+const columns = computed(() => [
   { title: t('system.dict.label'), key: 'label', width: 160 },
   { title: t('system.dict.value'), key: 'value', width: 180 },
+  ...(ext.value ? [{ title: ext.value.label, key: 'ext', width: 100, align: 'right', exportValue: (r) => r.extValue }] : []),
   { title: t('common.field.sort'), dataIndex: 'sort', width: 70 },
   { title: t('common.field.status'), key: 'status', width: 90, dict: 'sys_common_status' },
   { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true },
   actionColumn(2, [t('common.action.edit')])
-]
+])
 
 const query = reactive({ dictType: undefined, label: undefined })
 const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange, exportAll } = useTable(
@@ -242,20 +253,24 @@ const emptyForm = () => ({
   tagColor: 'default',
   sort: (pagination.total || 0) + 1,
   status: STATUS_ENABLED,
-  remark: ''
+  remark: '',
+  extValue: undefined
 })
 const form = ref(emptyForm())
-const rules = {
+const rules = computed(() => ({
+  extValue: ext.value ? [{ required: true, type: 'number', message: t('common.rule.required', { name: ext.value.label }) }] : [],
   label: [{ required: true, message: t('system.dict.inputLabel') }],
   value: [
     { required: true, message: t('system.dict.inputValue') },
     // 业务字典的键值存入各业务表的编码字段，与后端 SysDictService 的格式一致
     { validator: (_, v) => (isSystem.value || form.value.builtin === 1 || !v || /^[A-Z][A-Z0-9_]{0,15}$/.test(v) ? Promise.resolve() : Promise.reject(t('system.dict.bizValuePattern'))) }
   ]
-}
+}))
 
 function openForm(record) {
-  form.value = record ? { ...record, tagColor: record.tagColor || 'default' } : emptyForm()
+  form.value = record
+    ? { ...record, tagColor: record.tagColor || 'default', extValue: record.extValue != null && record.extValue !== '' ? Number(record.extValue) : undefined }
+    : emptyForm()
   formOpen.value = true
 }
 
@@ -264,7 +279,7 @@ async function submit() {
   saving.value = true
   try {
     const { id, createTime, updateTime, ...rest } = form.value
-    const data = { ...rest, dictType: props.dictType.type }
+    const data = { ...rest, dictType: props.dictType.type, extValue: ext.value && rest.extValue != null ? String(rest.extValue) : null }
     const { builtin, ...payload } = data
     id ? await api.value.update(id, payload) : await api.value.add(payload)
     dictStore.clear(props.dictType.type)
@@ -307,6 +322,9 @@ async function remove(ids) {
 }
 .kind-tip {
   margin-bottom: 12px;
+}
+.full {
+  width: 100%;
 }
 .builtin-tag {
   margin-left: 6px;

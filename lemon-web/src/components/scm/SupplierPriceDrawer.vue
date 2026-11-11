@@ -149,6 +149,7 @@ import { useTable } from '@/composables/useTable'
 import { formatQty, rowKey, today } from '@/components/wms/wms'
 import { price as formatPrice } from '@/utils/number'
 import { useAction } from '@/composables/useAction'
+import { useTaxRates } from './taxRate'
 
 /** 供应商的供货价格：可供应的物料、含税单价、提前期、默认供应商 */
 const props = defineProps({
@@ -157,6 +158,8 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:open'])
 const { t } = useI18n()
+/** 新明细 / 新价格的税率：业务参数「默认税率」（issue #82） */
+const tax = useTaxRates()
 
 const columns = [
   { title: t('scm.supplierPrice.material'), key: 'material', width: 260 },
@@ -210,7 +213,7 @@ async function openForm(record) {
         isDefault: record.isDefault === 1,
         tiers: []
       }
-    : { materialId: undefined, price: undefined, taxRate: 13, leadDays: 7, minQty: undefined, isDefault: false, remark: '', tiers: [] }
+    : { materialId: undefined, price: undefined, taxRate: tax.defaultRate.value, leadDays: 7, minQty: undefined, isDefault: false, remark: '', tiers: [] }
   formOpen.value = true
   if (record) {
     const tiers = await priceTiers(record.id)

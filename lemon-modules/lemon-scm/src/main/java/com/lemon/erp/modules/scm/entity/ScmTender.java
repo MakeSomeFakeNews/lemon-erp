@@ -9,6 +9,7 @@ import com.lemon.erp.modules.scm.model.TenderStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -67,4 +68,7 @@ public class ScmTender extends BaseEntity {
     /** 投标：开标前不返回价格 */
     @TableField(exist = false)
     private List<ScmBid> bids;
+    /** 供应商门户的招标详情：默认税率（业务参数），投标未填写税率的物料按此带出 */
+    @TableField(exist = false)
+    private BigDecimal defaultTaxRate;
 }

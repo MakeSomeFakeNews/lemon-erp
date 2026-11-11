@@ -31,6 +31,8 @@ public class ScmBizRules implements BizRuleProvider {
     public static final String PURCHASE_FREIGHT_COST = "scm.purchaseFreight.cost";
     /** 采购入库 / 退货、销售出库 / 退货先存草稿，审核后才出入库、生成应收应付（默认关闭：保存即审核，与原来一致） */
     public static final String TRADE_DRAFT = "scm.tradeDoc.draft";
+    /** 默认税率（%）：新建单据明细、价格资料没有其他税率来源（价格资料、发票类型）时使用 */
+    public static final String DEFAULT_TAX_RATE = "scm.defaultTaxRate";
 
     @Override
     public List<BizRule> rules() {
@@ -46,11 +48,12 @@ public class ScmBizRules implements BizRuleProvider {
                         "scm.label.salesOutLineWarehouseRemark"),
                 BizRule.select(PURCHASE_FREIGHT_COST, MODULE, "scm.label.purchaseFreightCost", PurchaseFreightCost.INVENTORY,
                         PurchaseFreightCost.class, "scm.label.purchaseFreightCostRemark"),
-                BizRule.bool(TRADE_DRAFT, MODULE, "scm.label.tradeDraft", false, "scm.label.tradeDraftRemark"));
+                BizRule.bool(TRADE_DRAFT, MODULE, "scm.label.tradeDraft", false, "scm.label.tradeDraftRemark"),
+                BizRule.decimal(DEFAULT_TAX_RATE, MODULE, "scm.label.defaultTaxRate", "13", 2, 0, 100, "scm.label.defaultTaxRateRemark"));
     }
 
     @Override
     public Set<String> publicKeys() {
-        return Set.of(DIRECT_DOC, SALES_OUT_LINE_WAREHOUSE, PURCHASE_FREIGHT_COST, TRADE_DRAFT);
+        return Set.of(DIRECT_DOC, SALES_OUT_LINE_WAREHOUSE, PURCHASE_FREIGHT_COST, TRADE_DRAFT, DEFAULT_TAX_RATE);
     }
 }

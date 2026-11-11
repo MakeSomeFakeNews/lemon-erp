@@ -257,8 +257,11 @@ import { useUserStore } from '@/store/user'
 import { ContractStatus, ContractType } from '@/constants/enums'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
+import { useTaxRates } from '@/components/scm/taxRate'
 /** 采购合同 / 框架协议：生效后采购订单可引用，按合同价下单并校验数量、金额上限 */
 const { t } = useI18n()
+/** 新明细 / 新价格的税率：业务参数「默认税率」（issue #82） */
+const tax = useTaxRates()
 const dict = useDict('scm_contract_type', 'scm_contract_status')
 const userStore = useUserStore()
 const TYPE_TIPS = {
@@ -284,7 +287,7 @@ const expired = (c) => dayjs(c.endDate).isBefore(dayjs(), 'day')
 const pct = (a, b) => (Number(b) ? Math.min(100, Math.round((Number(a) / Number(b)) * 100)) : 0)
 
 // ---------------------------------------------------------------- 表单
-const newItem = () => ({ key: rowKey(), materialId: undefined, price: undefined, taxRate: 13, qtyLimit: undefined, remark: '' })
+const newItem = () => ({ key: rowKey(), materialId: undefined, price: undefined, taxRate: tax.defaultRate.value, qtyLimit: undefined, remark: '' })
 const rules = {
   name: [{ required: true, whitespace: true, message: t('scm.contract.nameRequired') }],
   supplierId: [{ required: true, message: t('scm.contract.supplierRequired') }],
@@ -317,7 +320,7 @@ const drawer = useFormDrawer({
   toPayload: (f) => ({
     name: f.name, supplierId: f.supplierId, contractType: f.contractType, signDate: f.signDate, startDate: f.startDate, endDate: f.endDate,
     amountLimit: f.amountLimit ?? null, paymentDays: f.paymentDays ?? null, paymentTerms: f.paymentTerms || null, remark: f.remark || null,
-    items: f.items.map((i) => ({ materialId: i.materialId, price: i.price, taxRate: i.taxRate ?? 13, qtyLimit: i.qtyLimit ?? null, remark: i.remark || null }))
+    items: f.items.map((i) => ({ materialId: i.materialId, price: i.price, taxRate: i.taxRate ?? null, qtyLimit: i.qtyLimit ?? null, remark: i.remark || null }))
   }),
   onSuccess: () => {
     load()

@@ -63,6 +63,7 @@ public class ScmTradeDraftService {
     private final ScmCustomerService customerService;
     private final DocNoService docNoService;
     private final BizRules bizRules;
+    private final ScmTaxRates taxRates;
 
     /** 是否启用了「进销存单据先存草稿」（当前租户的业务参数） */
     public boolean enabled() {
@@ -157,6 +158,7 @@ public class ScmTradeDraftService {
                 .set(ScmTradeDraft::getSalesmanId, draft.getSalesmanId())
                 .set(ScmTradeDraft::getReplenish, draft.getReplenish())
                 .set(ScmTradeDraft::getWholeDiscount, draft.getWholeDiscount())
+                .set(ScmTradeDraft::getInvoiceKind, draft.getInvoiceKind())
                 .set(ScmTradeDraft::getOrderDiscount, draft.getOrderDiscount())
                 .set(ScmTradeDraft::getFreight, draft.getFreight())
                 .set(ScmTradeDraft::getFreightBearer, draft.getFreightBearer())
@@ -266,6 +268,8 @@ public class ScmTradeDraftService {
         draft.setReplenish(kind.isReturns() && !direct && Boolean.TRUE.equals(req.replenish()) ? 1 : 0);
         BigDecimal wholeDiscount = direct && req.wholeDiscount() != null && req.wholeDiscount().signum() > 0 ? Decimals.money(req.wholeDiscount()) : null;
         draft.setWholeDiscount(wholeDiscount);
+        // 发票类型只用于直接开单（记在审核时生成的隐式订单上），引用订单时沿用订单的；修改时未改动的旧值不再校验
+        draft.setInvoiceKind(direct ? taxRates.checkInvoiceKind(req.invoiceKind(), draft.getInvoiceKind()) : null);
         // 引用订单的采购入库修改过的订单优惠（为空按订单分摊），审核时校验不超过本单合计
         draft.setOrderDiscount(req.orderDiscount() == null ? null : Decimals.money(req.orderDiscount()));
         draft.setFreight(freight != null ? Decimals.money(req.freight()) : BigDecimal.ZERO);
@@ -311,6 +315,6 @@ public class ScmTradeDraftService {
         return new TradeDocRequest(d.getOrderId(), d.getWarehouseId(), d.getBizDate(), d.getRemark(),
                 kind.isReturns() ? Integer.valueOf(1).equals(d.getReplenish()) : null, items, direct ? d.getPartnerId() : null, salesmanId,
                 d.getWholeDiscount(), d.getFreight(), d.getFreightBearer(), d.getCarrierSupplierId(), d.getOrderDiscount(), null,
-                d.getFreightSettle(), d.getFreightAccountId());
+                d.getFreightSettle(), d.getFreightAccountId(), direct ? d.getInvoiceKind() : null);
     }
 }

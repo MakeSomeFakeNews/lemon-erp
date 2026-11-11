@@ -16,6 +16,7 @@ import java.util.List;
  * 新增 / 修改销售报价单（草稿）
  *
  * @param wholeDiscount 整单优惠（含税，抹零也用它）：报价合计 = 明细合计 − 优惠，明细单价不变；转销售订单时按行金额分摊到订单各行
+ * @param invoiceKind 发票类型（业务字典 scm_invoice_kind），选填：明细未填写税率时取它的税率，转销售订单时带到订单
  */
 public record QuotationRequest(
         @NotNull(message = "{scm.valid.selectCustomer}") Long customerId,
@@ -25,11 +26,12 @@ public record QuotationRequest(
         @Size(max = 255, message = "{scm.valid.remarkCannotExceedCharacters}") String remark,
         @NotEmpty(message = "{scm.valid.addLineItems}") @Size(max = 200, message = "{scm.valid.noMoreLines}") List<@Valid @NotNull Item> items,
         @DecimalMin(value = "0", message = "{scm.valid.wholeDiscountCannotNegative}")
-        @Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") BigDecimal wholeDiscount) {
+        @Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") BigDecimal wholeDiscount,
+        @Size(max = 16) String invoiceKind) {
 
     /** 没有整单优惠 */
     public QuotationRequest(Long customerId, Long opportunityId, LocalDate quoteDate, LocalDate validTo, String remark, List<Item> items) {
-        this(customerId, opportunityId, quoteDate, validTo, remark, items, null);
+        this(customerId, opportunityId, quoteDate, validTo, remark, items, null, null);
     }
 
 

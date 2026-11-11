@@ -13,7 +13,7 @@ import java.time.LocalDate;
  * 订单明细
  *
  * @param price        含税单价
- * @param taxRate      税率（%）
+ * @param taxRate      税率（%），为空时取订单发票类型的税率，没有时取业务参数「默认税率」
  * @param deliveryDate 交货日期，不填取订单的交货日期
  */
 public record OrderItemRequest(

@@ -5,7 +5,7 @@
 
     <sql id="viewColumns">
         d.id, d.doc_no, d.kind, d.order_id, d.source_doc_id, d.partner_id, d.warehouse_id, d.biz_date, d.salesman_id, d.replenish,
-        d.whole_discount, d.order_discount, d.freight, d.freight_bearer, d.carrier_supplier_id, d.freight_settle, d.freight_account_id, d.total_qty, d.total_amount, d.remark, d.dept_id,
+        d.whole_discount, CASE WHEN d.order_id IS NULL THEN d.invoice_kind ELSE o.invoice_kind END AS invoice_kind, d.order_discount, d.freight, d.freight_bearer, d.carrier_supplier_id, d.freight_settle, d.freight_account_id, d.total_qty, d.total_amount, d.remark, d.dept_id,
         d.create_by, d.create_time, d.update_time,
         o.order_no, o.source AS order_source, sd.doc_no AS source_doc_no,
         COALESCE(sp.code, cu.code) AS partner_code, COALESCE(sp.name, cu.name) AS partner_name,

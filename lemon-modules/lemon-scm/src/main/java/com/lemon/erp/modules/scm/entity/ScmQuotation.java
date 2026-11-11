@@ -44,6 +44,9 @@ public class ScmQuotation extends BaseEntity {
     /** 整单优惠（含税，含抹零），已从价税合计中扣除；转销售订单时按行金额分摊到订单各行 */
     private BigDecimal wholeDiscount;
 
+    /** 发票类型（业务字典 scm_invoice_kind，可空）：明细未填写税率时取它的税率，转销售订单时带到订单 */
+    private String invoiceKind;
+
     private String remark;
 
     private String lostReason;

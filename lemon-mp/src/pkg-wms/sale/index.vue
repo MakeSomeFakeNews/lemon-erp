@@ -18,6 +18,13 @@
           <text class="m-input__label">{{ t('wms.sale.salesman') }}</text>
           <text class="m-input__value" :class="{ 'l-placeholder': !salesman }">{{ salesman ? salesman.title : t('wms.sale.salesmanDefault') }}</text>
         </view>
+        <!-- 发票类型（业务字典 scm_invoice_kind）：选择后明细税率统一调整为该税率，可逐行再改；不选时新明细为默认税率 -->
+        <picker :range="invoiceKindChoices" range-key="label" :value="invoiceKindIndex" @change="changeInvoiceKind">
+          <view class="m-input">
+            <text class="m-input__label">{{ t('wms.sale.invoiceKind') }}</text>
+            <text class="m-input__value" :class="{ 'l-placeholder': !invoiceKind }">{{ invoiceKindChoices[invoiceKindIndex].label }}</text>
+          </view>
+        </picker>
         <picker mode="date" :value="bizDate" @change="changeDate">
           <view class="m-input">
             <text class="m-input__label">{{ t('wms.sale.bizDate') }}</text>
@@ -129,6 +136,7 @@ import { pageIdentityUsers } from '@/api/workflow'
 import { useTitle } from '@/composables/useTitle'
 import { runAction } from '@/composables/useAction'
 import { bizRule, loadBizRules } from '@/store/bizRules'
+import { useDict } from '@/store/dict'
 import { hasPerm } from '@/store/user'
 import { ensureLogin } from '@/utils/session'
 import { money, qty, today } from '@/utils/format'
@@ -171,10 +179,36 @@ const warehouseIndex = computed(() => Math.max(0, warehouses.value.findIndex((w)
 const warehouseName = computed(() => warehouses.value.find((w) => w.id === warehouseId.value)?.name)
 /** 业务参数：销售出库明细可选仓库（默认开启，与后端一致） */
 const lineWarehouse = computed(() => bizRule('scm.salesOut.lineWarehouse', true) === true)
+/** 业务参数：默认税率（%），新明细的税率；读取失败时为空，由后端按默认税率处理（issue #82） */
+const defaultTaxRate = computed(() => {
+  const v = bizRule('scm.defaultTaxRate', null)
+  return v == null || v === '' ? null : Number(v)
+})
+
+/** 发票类型（业务字典，扩展值为税率）：与 Web 端一致，选择后明细税率（赠品行除外）统一调整，之后可逐行修改 */
+const dict = useDict('scm_invoice_kind')
+const invoiceKind = ref(null)
+const kindRate = (d) => (d && d.extValue != null && d.extValue !== '' ? Number(d.extValue) : null)
+const invoiceKindChoices = computed(() => [
+  { value: null, label: t('wms.sale.invoiceKindNone') },
+  ...dict.scm_invoice_kind.map((d) => ({ value: d.value, label: kindRate(d) != null ? `${d.label}（${kindRate(d)}%）` : d.label }))
+])
+const invoiceKindIndex = computed(() => Math.max(0, invoiceKindChoices.value.findIndex((k) => k.value === invoiceKind.value)))
+/** 新明细的税率：发票类型的税率，没有时为默认税率 */
+const newRowTaxRate = () => kindRate(dict.scm_invoice_kind.find((d) => d.value === invoiceKind.value)) ?? defaultTaxRate.value
+function changeInvoiceKind(e) {
+  const k = invoiceKindChoices.value[Number(e.detail.value)]
+  invoiceKind.value = k.value
+  const rate = kindRate(dict.scm_invoice_kind.find((d) => d.value === k.value))
+  if (rate == null) return
+  const goods = rows.value.filter((r) => !r.gift)
+  goods.forEach((r) => (r.taxRate = rate))
+  if (goods.length) uni.showToast({ title: t('wms.sale.invoiceKindApplied', { n: goods.length, rate }), icon: 'none' })
+}
 
 onLoad(async () => {
   if (!(await ensureLogin())) return
-  await loadBizRules(['scm.directDoc.enabled', 'scm.salesOut.lineWarehouse', 'scm.tradeDoc.draft'])
+  await loadBizRules(['scm.directDoc.enabled', 'scm.salesOut.lineWarehouse', 'scm.tradeDoc.draft', 'scm.defaultTaxRate'])
   disabled.value = bizRule('scm.directDoc.enabled', true) === false
   if (disabled.value) return
   warehouses.value = (await warehouseOptions().catch(() => [])) || []
@@ -287,7 +321,7 @@ async function onScan(code) {
 function newRow(m, extra) {
   return {
     key: rowKey(), materialId: m.id, materialCode: m.code, materialName: m.name, spec: m.spec, unit: m.unit,
-    batchEnabled: m.batchEnabled, serialEnabled: m.serialEnabled, qty: 0, price: null, taxRate: null,
+    batchEnabled: m.batchEnabled, serialEnabled: m.serialEnabled, qty: 0, price: null, taxRate: newRowTaxRate(),
     unitName: null, unitRatio: 1, units: [], warehouseId: null,
     priceSource: null, priceAuto: true, slots: [], slotIndex: 0, slotsLoading: false, serials: [], gift: false,
     ...extra
@@ -358,7 +392,9 @@ async function fillPrices(list) {
     const p = res?.[i]?.materialId === r.materialId ? res[i] : (res || []).find((x) => x.materialId === r.materialId)
     if (!p || !r.priceAuto || p.price == null) return
     r.price = qty4(Number(p.price) * ratioOf(r))
-    if (p.taxRate != null) r.taxRate = Number(p.taxRate)
+    // 选了发票类型时税率按发票类型，否则按价格来源的税率
+    if (invoiceKind.value) r.taxRate = newRowTaxRate()
+    else if (p.taxRate != null) r.taxRate = Number(p.taxRate)
     r.priceSource = p.source
   })
 }
@@ -513,6 +549,7 @@ async function submit() {
           bizDate: bizDate.value,
           remark: remark.value || null,
           wholeDiscount: wholeDiscount.value || null,
+          invoiceKind: invoiceKind.value || null,
           ...(freightRef.value?.payload() || {}),
           items: [...rows.value.map((r) => toItem(r)), ...giftRows.value.filter((r) => Number(r.qty) > 0).flatMap(giftItems)]
         }),

@@ -65,6 +65,11 @@
             :message="$t(kind === 'purchase' ? 'scm.orderForm.foreignTipPurchase' : 'scm.orderForm.foreignTipSales', { currency: form.currency })"
           />
         </a-col>
+        <a-col :xs="12" :sm="6" :lg="4">
+          <a-form-item :label="$t('scm.taxRate.invoiceKind')" name="invoiceKind" :tooltip="$t('scm.taxRate.invoiceKindExtra')">
+            <InvoiceKindSelect v-model:value="form.invoiceKind" @change="onInvoiceKindChange" />
+          </a-form-item>
+        </a-col>
         <a-col v-if="kind === 'sales' && (rebateBalance > 0 || form.rebateAmount)" :xs="24" :sm="12" :lg="8">
           <a-form-item :label="$t('scm.orderForm.rebate')" name="rebateAmount" :extra="$t('scm.orderForm.rebateExtra', { amount: formatMoney(rebateBalance) })">
             <a-input-number v-model:value="form.rebateAmount" :min="0" :max="rebateBalance" :precision="2" prefix="¥" class="full" />
@@ -110,6 +115,9 @@
         :scroll="{ x: scrollX }"
         :locale="{ emptyText: $t('scm.orderForm.emptyItems') }"
       >
+        <template #headerCell="{ column }">
+          <TaxRateTitle v-if="column.key === 'taxRate'" :title="column.title" @apply="applyAllTaxRate" />
+        </template>
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
             <a-form-item :name="['items', index, 'materialId']" :rules="requiredRule($t('scm.orderForm.selectMaterial'))" class="cell-item" :class="ai?.cls(`items[${index}].materialId`)">
@@ -234,6 +242,9 @@ import AtpModal from './AtpModal.vue'
 import PriceHint from './PriceHint.vue'
 import PriceReference from './PriceReference.vue'
 import WholeDiscountBar from './WholeDiscountBar.vue'
+import InvoiceKindSelect from './InvoiceKindSelect.vue'
+import TaxRateTitle from './TaxRateTitle.vue'
+import { applyTaxRate, useTaxRates } from './taxRate'
 import { defaultPrices } from '@/api/scm/pricing'
 import { useUserStore } from '@/store/user'
 import { addOrder, getOrder, updateOrder } from '@/api/scm/order'
@@ -302,6 +313,7 @@ const emptyForm = () => ({
   contractId: undefined,
   rebateAmount: undefined,
   wholeDiscount: undefined,
+  invoiceKind: undefined,
   remark: '',
   items: []
 })
@@ -316,7 +328,7 @@ const toRow = (item) => {
     unitRatio,
     unitQty: item.qty != null ? qty4(Number(item.qty) / unitRatio) : undefined,
     unitPrice: item.price != null ? qty4(Number(item.price) * unitRatio) : undefined,
-    taxRate: item.taxRate != null ? Number(item.taxRate) : 13,
+    taxRate: item.taxRate != null ? Number(item.taxRate) : undefined,
     units: []
   }
 }
@@ -420,6 +432,7 @@ const drawer = useFormDrawer(
         exchangeRate: order.exchangeRate != null ? Number(order.exchangeRate) : 1,
         rebateAmount: Number(order.rebateAmount) || undefined,
         wholeDiscount: Number(order.wholeDiscount) || undefined,
+        invoiceKind: order.invoiceKind || undefined,
         items
       }
     },
@@ -452,6 +465,7 @@ const drawer = useFormDrawer(
       contractId: f.contractId || null,
       rebateAmount: props.kind === 'sales' && f.rebateAmount ? f.rebateAmount : null,
       wholeDiscount: f.wholeDiscount || null,
+      invoiceKind: f.invoiceKind || null,
       remark: f.remark,
       items: f.items.map((i) => ({
         materialId: i.materialId,
@@ -540,9 +554,22 @@ function addRow() {
     unitQty: undefined,
     unitPrice: undefined,
     units: [],
-    taxRate: 13,
+    taxRate: tax.fallback(form.value.invoiceKind),
     priceAuto: true
   })
+}
+
+// ---------------------------------------------------------------- 税率：发票类型、统一设置（issue #82）
+/** 默认税率（业务参数）与发票类型：新明细的税率为发票类型的税率，没有时为默认税率 */
+const tax = useTaxRates()
+/** 可以统一调整税率的行：引用合同的物料按合同税率（锁定） */
+const rateRows = () => form.value.items.filter((row) => !contractPrices.value.has(row.materialId))
+function onInvoiceKindChange(kind, rate) {
+  if (rate == null) return
+  message.success(t('scm.taxRate.invoiceKindApplied', { n: applyTaxRate(rateRows(), rate), rate }))
+}
+function applyAllTaxRate(rate) {
+  message.success(t('scm.taxRate.applied', { n: applyTaxRate(rateRows(), rate), rate }))
 }
 
 const partnerLevel = ref()
@@ -603,7 +630,9 @@ async function fetchSalesPrices(rows) {
     row.listPrice = found && p.source === PriceSource.PRICE_LIST ? Number(p.price) : undefined
     if (found && (row.priceAuto || row.unitPrice == null)) {
       row.unitPrice = qty4(fromBase(Number(p.price) * ratioOf(row)))
-      if (p.taxRate != null) row.taxRate = Number(p.taxRate)
+      // 选了发票类型时税率按发票类型，否则按价格来源的税率（没有时保持原税率）
+      const rate = tax.sourceRate(form.value.invoiceKind, p.taxRate)
+      if (rate != null) row.taxRate = rate
       row.priceAuto = true
       row.priceSource = p.source
     }
@@ -626,7 +655,7 @@ function fillPrice(row, overwrite) {
     row.unitPrice = qty4(fromBase(Number(p.price) * ratioOf(row)))
     row.priceAuto = true
   }
-  if (overwrite || row.taxRate == null) row.taxRate = Number(p.taxRate)
+  if (overwrite || row.taxRate == null) row.taxRate = tax.sourceRate(form.value.invoiceKind, p.taxRate) ?? row.taxRate
   row.minQty = p.minQty ? Number(p.minQty) : undefined
 }
 
@@ -642,7 +671,8 @@ async function loadLastPrice(row) {
   const sameCurrency = (list[0].currency || BASE_CURRENCY) === (form.value.currency || BASE_CURRENCY)
   if (row.unitPrice == null && sameCurrency) {
     row.unitPrice = qty4(Number(list[0].price) * ratioOf(row))
-    if (list[0].taxRate != null) row.taxRate = Number(list[0].taxRate)
+    const rate = tax.sourceRate(form.value.invoiceKind, list[0].taxRate)
+    if (rate != null) row.taxRate = rate
   }
 }
 /** 采购订单：单价与供应商供货价不一致时返回供货价（订单单位、订单币种），用于提示；引用合同时不提示 */
@@ -794,7 +824,7 @@ function openAtp(row) {
 
 /**
  * 传入的明细（基本单位）转为表单行。带了往来单位（如智能录入的预填）时与手工选择一样加载供货价格、合同、返利等，
- * 但保留传入的单价：只补全空的单价，税率为空时按供货价 / 价目表带出（都没有时默认 13%）
+ * 但保留传入的单价：只补全空的单价，税率为空时按供货价 / 价目表带出（都没有时按发票类型 / 默认税率）
  */
 async function openCreate(defaults = {}) {
   // 同步调用 drawer.openCreate，之前不能有 await（asPrefilled 依赖这一点）
@@ -814,7 +844,8 @@ async function openCreate(defaults = {}) {
       form.value.items.forEach((row) => row.materialId && loadLastPrice(row))
     }
   }
-  noTax.forEach((row) => row.taxRate == null && (row.taxRate = 13))
+  await tax.ready
+  noTax.forEach((row) => row.taxRate == null && (row.taxRate = tax.fallback(form.value.invoiceKind)))
 }
 
 defineExpose({ openCreate, openEdit: drawer.openEdit })

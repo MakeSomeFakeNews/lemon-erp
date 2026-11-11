@@ -304,7 +304,10 @@ import { useUserStore } from '@/store/user'
 import { AwardTarget, TenderStatus } from '@/constants/enums'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
+import { useTaxRates } from '@/components/scm/taxRate'
 const { t } = useI18n()
+/** 新明细 / 新价格的税率：业务参数「默认税率」（issue #82） */
+const tax = useTaxRates()
 
 /** 招标采购：邀请供应商投标（门户或代录），截止后开标比价，定标生成采购合同或订单 */
 const dict = useDict('scm_tender_status')
@@ -459,7 +462,7 @@ const bidColumns = [
 function openBid() {
   bid.value = {
     supplierId: undefined, deliveryDays: undefined, remark: '',
-    items: detail.value.items.map((i) => ({ tenderItemId: i.id, label: `${i.materialCode} ${i.materialName} × ${formatQty(i.qty)}`, price: undefined, taxRate: 13 }))
+    items: detail.value.items.map((i) => ({ tenderItemId: i.id, label: `${i.materialCode} ${i.materialName} × ${formatQty(i.qty)}`, price: undefined, taxRate: tax.defaultRate.value }))
   }
   bidOpen.value = true
 }
