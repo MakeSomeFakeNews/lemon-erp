@@ -21,6 +21,16 @@
   font-weight: 600;
   word-break: break-all;
 }
+/* 一行左右两端：左侧长文字换行，右侧（日期等）不换行、不被挤压 */
+.m-grow {
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+}
+.m-nowrap {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 .m-sub {
   margin-top: 8rpx;
   font-size: 24rpx;

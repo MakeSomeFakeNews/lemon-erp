@@ -25,7 +25,7 @@
             <text v-if="d.holidayName" class="att__holiday">{{ d.holidayName }}</text>
             <view class="att__dots">
               <view v-if="d.absent" class="att__dot att__dot--absent" />
-              <view v-else-if="d.attendance" class="att__dot" :class="d.attendance.status === AttendanceStatus.NORMAL ? 'att__dot--normal' : 'att__dot--abnormal'" />
+              <view v-else-if="d.attendance" class="att__dot" :class="abnormal(d.attendance) ? 'att__dot--abnormal' : 'att__dot--normal'" />
               <view v-if="d.leaves && d.leaves.length" class="att__dot att__dot--leave" />
             </view>
           </view>
@@ -47,7 +47,16 @@
           <l-cell :label="t('hr.clock.checkOut')" :value="timeText(selectedDay.attendance.checkOut)" />
           <l-cell :label="t('hr.attendance.workHours')" :value="t('hr.attendance.hoursUnit', { n: Number(selectedDay.attendance.workHours || 0) })" />
           <l-cell :label="t('common.status')">
+            <view v-if="awaitingCheckOut(selectedDay.attendance)" class="att__tags">
+              <l-tag
+                v-if="selectedDay.attendance.lateMinutes"
+                :text="dictText(dict.hr_attendance_status, AttendanceStatus.LATE)"
+                :color="dictColor(dict.hr_attendance_status, AttendanceStatus.LATE)"
+              />
+              <l-tag :text="t('hr.clock.awaitingCheckOut')" />
+            </view>
             <l-tag
+              v-else
               :text="dictText(dict.hr_attendance_status, selectedDay.attendance.status)"
               :color="dictColor(dict.hr_attendance_status, selectedDay.attendance.status)"
             />
@@ -118,7 +127,7 @@ import { useTitle } from '@/composables/useTitle'
 import { dictColor, dictText, useDict } from '@/store/dict'
 import { period, today } from '@/utils/format'
 import NoEmployee from '../components/NoEmployee.vue'
-import { periodText, shiftPeriod, timeText } from '../hr'
+import { awaitingCheckOut, periodText, shiftPeriod, timeText } from '../hr'
 
 const { t } = useI18n()
 useTitle('hr.title.attendance')
@@ -136,6 +145,9 @@ const leading = computed(() => (days.value.length ? new Date(days.value[0].date.
 const selectedDay = computed(() => days.value.find((d) => d.date === selected.value))
 const annualLeft = computed(() => Math.max(0, +(profile.value.annualDays - Number(profile.value.annualUsedDays)).toFixed(1)))
 const leaveTotal = computed(() => Object.values(summary.value?.leaveHours || {}).reduce((s, v) => s + Number(v || 0), 0))
+
+/** 日历上标为异常：今天还没打下班卡的只看是否迟到 */
+const abnormal = (a) => (awaitingCheckOut(a) ? !!a.lateMinutes : a.status !== AttendanceStatus.NORMAL)
 
 function leaveLabel(l) {
   if (l.kind === LeaveKind.OVERTIME) return l.type === OvertimeComp.TO_LEAVE ? t('hr.leave.overtimeToLeave') : t('hr.leave.overtime')
@@ -267,6 +279,11 @@ function shift(delta) {
     display: flex;
     align-items: center;
     gap: 8rpx;
+  }
+  &__tags {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12rpx;
   }
   &__none {
     padding: 16rpx 0;

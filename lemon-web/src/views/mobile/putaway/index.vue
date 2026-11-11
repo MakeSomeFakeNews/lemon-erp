@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="m-page">
     <div class="m-card">
       <WarehouseSelect v-model:value="warehouseId" :placeholder="$t('wms.common.warehouse')" class="full" @update:value="changeWarehouse" />
       <div v-if="source" class="m-row m-current">

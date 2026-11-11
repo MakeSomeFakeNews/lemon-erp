@@ -25,7 +25,11 @@
           </view>
         </view>
         <view v-if="record" class="clock__status">
-          <l-tag :text="dictText(dict.hr_attendance_status, record.status)" :color="dictColor(dict.hr_attendance_status, record.status)" />
+          <template v-if="awaitingCheckOut(record)">
+            <l-tag v-if="record.lateMinutes" :text="dictText(dict.hr_attendance_status, AttendanceStatus.LATE)" :color="dictColor(dict.hr_attendance_status, AttendanceStatus.LATE)" />
+            <l-tag :text="t('hr.clock.awaitingCheckOut')" />
+          </template>
+          <l-tag v-else :text="dictText(dict.hr_attendance_status, record.status)" :color="dictColor(dict.hr_attendance_status, record.status)" />
           <text v-if="record.workHours" class="l-muted">{{ t('hr.clock.workHours', { n: Number(record.workHours) }) }}</text>
         </view>
       </l-card>
@@ -41,13 +45,14 @@
 import { computed, ref } from 'vue'
 import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
 import { useI18n } from '@/locales'
+import { AttendanceStatus } from '@web/constants/enums'
 import { selfCalendar, selfClock, selfProfile } from '@/api/hr'
 import { useTitle } from '@/composables/useTitle'
 import { vibrate } from '@/composables/useAction'
 import { dictColor, dictText, useDict } from '@/store/dict'
 import { period, today } from '@/utils/format'
 import NoEmployee from '../components/NoEmployee.vue'
-import { timeText } from '../hr'
+import { awaitingCheckOut, timeText } from '../hr'
 
 const { t } = useI18n()
 useTitle('hr.title.clock')

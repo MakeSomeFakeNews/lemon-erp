@@ -6,7 +6,7 @@
       <view v-for="c in checks" :key="c.id" class="m-card" @click="selectCheck(c.id)">
         <view class="m-row">
           <text class="m-title">{{ c.docNo }}</text>
-          <text class="m-sub">{{ c.bizDate }}</text>
+          <text class="m-sub m-nowrap">{{ c.bizDate }}</text>
         </view>
         <view class="m-sub">{{ c.warehouseName }}{{ c.remark ? ` · ${c.remark}` : '' }}</view>
       </view>

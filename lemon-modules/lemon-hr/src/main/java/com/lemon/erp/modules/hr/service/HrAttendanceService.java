@@ -60,12 +60,13 @@ public class HrAttendanceService {
     private final HrPayrollLock payrollLock;
     private final HrRuleService ruleService;
 
+    /** 考勤记录；按缺卡筛选时不含今天已打上班卡、还没打下班卡的记录（与界面上的「未打下班卡」、月度汇总一致） */
     @DataPermission(table = "hr_employee", deptColumn = "dept_id", userColumn = "user_id")
-    public PageResult<HrAttendance> page(long current, long size, String keyword, Long deptId, String status,
+    public PageResult<HrAttendance> page(long current, long size, String keyword, Long deptId, AttendanceStatus status,
                                          LocalDate beginDate, LocalDate endDate) {
         Page<HrAttendance> page = Page.of(current, size);
         attendanceMapper.selectPageList(page, keyword, deptId == null ? null : deptService.selfAndDescendantIds(deptId),
-                status, beginDate, endDate);
+                status, status == AttendanceStatus.MISSING ? LocalDate.now() : null, beginDate, endDate);
         return PageResult.of(page);
     }
 

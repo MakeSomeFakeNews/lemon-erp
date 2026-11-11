@@ -60,6 +60,9 @@ const back = () => (window.history.state?.back ? router.back() : router.push(MOB
 }
 .m-body {
   flex: 1;
+  /* 页面根元素（m-page）占满剩余高度，底部操作栏在内容少时也贴底 */
+  display: flex;
+  flex-direction: column;
   padding: 12px;
   max-width: 640px;
   width: 100%;

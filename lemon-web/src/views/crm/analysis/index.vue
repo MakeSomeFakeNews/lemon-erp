@@ -40,7 +40,7 @@
         </a-col>
         <a-col :xs="24" :lg="12">
           <a-card :bordered="false" class="page-card" :title="$t('crm.analysis.card.rfm')">
-            <EChart :option="rfmOption" height="260px" />
+            <EChart :option="rfmOption" height="300px" />
             <div class="sub-text note">{{ $t('crm.analysis.rfmNote', { months: rfm.months ?? 12 }) }}</div>
           </a-card>
         </a-col>
@@ -259,11 +259,12 @@ const rfmOption = computed(() => {
   return {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     legend: { data: [t('crm.analysis.customers'), t('crm.analysis.sales')] },
-    // 坐标轴名称（客户数 / 销售额）在轴的右端，containLabel 不计入名称，右侧留出名称的宽度
-    grid: { left: 8, right: 64, top: 40, bottom: 20, containLabel: true },
+    // 坐标轴名称（客户数 / 销售额）居中放在轴标签外侧，英文较长也不会在右端被截断；containLabel 不计入名称，上下留出名称的高度
+    grid: { left: 8, right: 36, top: 64, bottom: 32, containLabel: true },
     xAxis: [
-      { type: 'value', name: t('crm.analysis.customers'), minInterval: 1 },
-      { type: 'value', name: t('crm.analysis.sales'), axisLabel: { formatter: (v) => shortMoney(v) }, splitLine: { show: false } }
+      { type: 'value', name: t('crm.analysis.customers'), nameLocation: 'middle', nameGap: 28, minInterval: 1 },
+      { type: 'value', name: t('crm.analysis.sales'), nameLocation: 'middle', nameGap: 28,
+        axisLabel: { formatter: (v) => shortMoney(v) }, splitLine: { show: false } }
     ],
     yAxis: { type: 'category', data: segs.map((s) => segmentText(s.segment)) },
     series: [

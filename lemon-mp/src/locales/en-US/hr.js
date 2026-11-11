@@ -23,6 +23,7 @@ export default {
   clock: {
     checkIn: 'In',
     checkOut: 'Out',
+    awaitingCheckOut: 'Not clocked out',
     notYet: 'Not yet',
     clockIn: 'Clock In',
     clockOut: 'Clock Out',

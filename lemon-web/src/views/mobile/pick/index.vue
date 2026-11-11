@@ -1,12 +1,12 @@
 <template>
-  <div>
+  <div class="m-page">
     <!-- 选择发货通知 -->
     <template v-if="!detail">
       <ScanBox ref="scanRef" :placeholder="$t('mobile.pick.scanDelivery')" @scan="searchDeliveries" />
       <a-spin :spinning="loading">
         <div v-for="d in deliveries" :key="d.id" class="m-card m-click" @click="selectDelivery(d.id)">
           <div class="m-row"><b>{{ d.deliveryNo }}</b><a-tag v-if="d.waveNo" color="blue">{{ d.waveNo }}</a-tag></div>
-          <div class="m-row sub-text"><span>{{ d.customerName }} · {{ d.warehouseName }}</span><span>{{ d.shipDate }}</span></div>
+          <div class="m-row sub-text"><span class="m-grow">{{ d.customerName }} · {{ d.warehouseName }}</span><span class="m-nowrap">{{ d.shipDate }}</span></div>
         </div>
         <a-empty v-if="!loading && !deliveries.length" :description="$t('mobile.pick.noDeliveries')" />
       </a-spin>

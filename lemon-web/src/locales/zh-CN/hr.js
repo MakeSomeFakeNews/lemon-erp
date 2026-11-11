@@ -1,6 +1,7 @@
 /** 人力资源模块（hr.*） */
 export default {
   common: {
+    awaitingCheckOut: '未打下班卡',
     male: '男',
     female: '女',
     change: {

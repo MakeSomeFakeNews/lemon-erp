@@ -23,8 +23,15 @@
         <span v-if="d.holidayName" class="holiday">{{ d.holidayName }}</span>
       </div>
       <template v-if="d.attendance">
-        <div class="cal-time">{{ timeText(d.attendance.checkIn) }} - {{ timeText(d.attendance.checkOut) }}</div>
-        <DictTag v-if="d.attendance.status !== AttendanceStatus.NORMAL" type="hr_attendance_status" :value="d.attendance.status" />
+        <template v-if="awaitingCheckOut(d.attendance)">
+          <div class="cal-time">{{ timeText(d.attendance.checkIn) }} -</div>
+          <DictTag v-if="d.attendance.lateMinutes" type="hr_attendance_status" :value="AttendanceStatus.LATE" />
+          <div class="cal-pending">{{ $t('hr.common.awaitingCheckOut') }}</div>
+        </template>
+        <template v-else>
+          <div class="cal-time">{{ timeText(d.attendance.checkIn) }} - {{ timeText(d.attendance.checkOut) }}</div>
+          <DictTag v-if="d.attendance.status !== AttendanceStatus.NORMAL" type="hr_attendance_status" :value="d.attendance.status" />
+        </template>
       </template>
       <div v-for="l in d.leaves" :key="l.id" class="cal-leave" :class="{ pending: l.status === LeaveStatus.APPROVING }">
         {{ l.kind === LeaveKind.OVERTIME ? (l.type === OvertimeComp.TO_LEAVE ? $t('hr.self.overtimeToLeave') : $t('hr.self.overtime')) : dictLabel(dict.hr_leave_type, l.type) }} {{ Number(l.hours) }}h
@@ -37,7 +44,7 @@
 <script setup>
 import DictTag from '@/components/DictTag.vue'
 import { LeftOutlined, RightOutlined } from '@ant-design/icons-vue'
-import { periodText, timeText } from '@/components/hr/hr'
+import { awaitingCheckOut, periodText, timeText } from '@/components/hr/hr'
 import { useDict } from '@/composables/useDict'
 import { findDict } from '@/utils/dict'
 import { t } from '@/locales'
@@ -116,6 +123,9 @@ const WEEK = [0, 1, 2, 3, 4, 5, 6].map((i) => t(`hr.self.week.${i}`))
 }
 .cal-time {
   color: var(--app-text-2);
+}
+.cal-pending {
+  color: var(--app-text-3);
 }
 .cal-leave {
   color: #1677ff;

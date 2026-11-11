@@ -23,7 +23,7 @@
         <div class="timeline" :style="{ width: `${days.length * DAY}px` }">
           <div class="head">
             <div class="months">
-              <span v-for="m in months" :key="m.key" class="month" :style="{ width: `${m.days * DAY}px` }">{{ m.label }}</span>
+              <span v-for="m in months" :key="m.key" class="month" :style="{ width: `${m.days * DAY}px` }"><span class="month-label">{{ m.label }}</span></span>
             </div>
             <div class="days">
               <span
@@ -235,13 +235,21 @@ watch(
 }
 .month {
   flex: none;
-  padding-left: 6px;
   line-height: 24px;
   font-size: 12px;
   color: var(--app-text-2);
   border-right: 1px solid var(--app-border);
   white-space: nowrap;
   overflow: hidden;
+  /* clip 不形成滚动容器，月份名称可以相对时间轴吸附在左侧 */
+  overflow: clip;
+}
+/* 时间轴横向滚动后（打开时滚动到今天），月份名称停在可见区域左端，不会只剩后半截 */
+.month-label {
+  position: sticky;
+  left: 0;
+  display: inline-block;
+  padding: 0 6px;
 }
 .day {
   flex: none;

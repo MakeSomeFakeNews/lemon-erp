@@ -9,6 +9,7 @@ import com.lemon.erp.modules.hr.dto.AttendanceSummary;
 import com.lemon.erp.modules.hr.entity.HrAttendance;
 import com.lemon.erp.modules.hr.entity.HrHoliday;
 import com.lemon.erp.modules.hr.entity.HrShift;
+import com.lemon.erp.modules.hr.model.AttendanceStatus;
 import com.lemon.erp.modules.hr.service.HrAttendanceService;
 import com.lemon.erp.modules.hr.service.HrCalendarService;
 import jakarta.validation.Valid;
@@ -44,7 +45,7 @@ public class HrAttendanceController {
                                             @RequestParam(defaultValue = "10") long size,
                                             @RequestParam(required = false) String keyword,
                                             @RequestParam(required = false) Long deptId,
-                                            @RequestParam(required = false) String status,
+                                            @RequestParam(required = false) AttendanceStatus status,
                                             @RequestParam(required = false) LocalDate beginDate,
                                             @RequestParam(required = false) LocalDate endDate) {
         return R.ok(attendanceService.page(current, size, keyword, deptId, status, beginDate, endDate));
