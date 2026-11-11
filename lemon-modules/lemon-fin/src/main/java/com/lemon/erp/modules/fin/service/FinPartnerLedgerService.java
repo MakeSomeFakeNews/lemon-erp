@@ -67,7 +67,7 @@ public class FinPartnerLedgerService {
     }
 
     /**
-     * 往来汇总：一个往来单位一行，期初余额、单据余额、预收预付未冲抵（负数）、坏账核销（单列）、净欠款（当前余额，本位币）。
+     * 往来汇总：一个往来单位一行，期初余额、单据余额、预收预付未冲抵（负数）、坏账核销和收付款折让（单列，已从单据余额中扣除）、净欠款（当前余额，本位币）。
      * 口径与往来对账单一致：对账单截至今天的期末余额 = 净欠款 + 坏账核销（对账单不扣坏账）
      */
     public PageResult<PartnerSummaryRow> summary(long current, long size, PartnerSummaryRow.Query query) {

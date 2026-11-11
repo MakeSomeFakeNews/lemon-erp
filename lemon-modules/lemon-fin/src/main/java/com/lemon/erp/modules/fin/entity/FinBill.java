@@ -7,6 +7,7 @@ import com.lemon.erp.modules.fin.model.BillKind;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
+import com.lemon.erp.common.util.Decimals;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -66,8 +67,16 @@ public class FinBill extends BaseEntity {
     /** 坏账核销金额（计入已核销） */
     private BigDecimal badDebtAmount;
 
-    /** 收付款时的折让 / 抹零金额（计入已核销） */
+    /** 收付款时的折让 / 抹零金额（计入已核销，与金额同号；同一单据多次收付款时累计，作废收付款时扣回） */
     private BigDecimal discountAmount;
+
+    /**
+     * 净额 = 金额 − 收付款折让（多次收付款累计），即实际应收 / 应付；没有折让时等于金额。
+     * 只用于显示（应收应付列表、往来汇总），不入库；未核销余额仍为 金额 − 已核销（已核销含折让）
+     */
+    public BigDecimal getNetAmount() {
+        return amount == null ? null : amount.subtract(Decimals.nz(discountAmount));
+    }
 
     /** 币种；金额、已核销等为本位币（按记账汇率折算） */
     private String currency;

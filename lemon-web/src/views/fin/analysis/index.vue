@@ -36,34 +36,32 @@
                 :suffix="margin.total?.margin == null ? '' : '%'" />
             </a-col>
           </a-row>
-          <!-- 参考口径：坏账核销、本公司承担的运费（财务报表中计入营业外支出、销售费用，不在营业成本里） -->
-          <a-row v-if="Number(margin.total?.badDebt) || Number(margin.total?.freight)" :gutter="12" class="cards">
-            <a-col :xs="12" :md="6">
-              <a-statistic :title="$t('fin.analysis.badDebt')" :value="Number(margin.total?.badDebt || 0)" :precision="2" prefix="¥" />
-            </a-col>
-            <a-col :xs="12" :md="6">
-              <a-statistic :title="$t('fin.analysis.profitAfterBadDebt')" :value="Number(margin.total?.profitAfterBadDebt || 0)" :precision="2" prefix="¥" />
-            </a-col>
-            <a-col :xs="12" :md="6">
-              <a-statistic :title="$t('fin.analysis.freight')" :value="Number(margin.total?.freight || 0)" :precision="2" prefix="¥" />
-            </a-col>
-            <a-col :xs="12" :md="6">
-              <a-statistic :title="$t('fin.analysis.profitAfterFreight')" :value="Number(margin.total?.profitAfterFreight || 0)" :precision="2" prefix="¥" />
+          <!-- 参考口径：收款折让、坏账核销、本公司承担的运费（财务报表中计入财务费用、营业外支出、销售费用，不在营业成本里），依次扣除 -->
+          <a-row v-if="Number(margin.total?.settleDiscount) || Number(margin.total?.badDebt) || Number(margin.total?.freight)" :gutter="12" class="cards">
+            <a-col v-for="k in REFERENCE_KEYS" :key="k" :xs="12" :md="4">
+              <a-statistic :title="$t(`fin.analysis.${k}`)" :value="Number(margin.total?.[k] || 0)" :precision="2" prefix="¥" />
             </a-col>
           </a-row>
           <a-alert v-if="margin.truncated" type="warning" show-icon class="tip" :message="$t('fin.analysis.truncated')" />
           <a-table
-            :row-key="(r) => (groupBy === DETAIL ? `${r.docId}-${r.materialCode}-${r.qty}-${r.revenue}` : r.groupKey ?? r.groupName)"
+            :row-key="(r) => (groupBy === DETAIL ? `${r.docId}-${r.discountLine ? 'discount' : `${r.materialCode}-${r.qty}-${r.revenue}`}` : r.groupKey ?? r.groupName)"
             size="middle"
             :columns="marginColumns"
             :data-source="margin.rows"
             :loading="marginLoading"
             :pagination="margin.rows?.length > 20 ? { pageSize: 20, showTotal: (n) => $t('common.table.total', { total: n }) } : false"
-            :scroll="{ x: 1500 }"
+            :scroll="{ x: 1800 }"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'docNo'">
+              <template v-if="record.discountLine && ['qty', 'revenue', 'cost', 'profit', 'margin'].includes(column.key)">
+                <span class="sub-text">-</span>
+              </template>
+              <template v-else-if="column.key === 'docNo'">
                 {{ record.docNo }} <DictTag type="scm_trade_kind" :value="record.kind" />
+              </template>
+              <!-- 单据的收款折让行（按整张单据列出时追加在单据最后） -->
+              <template v-else-if="column.key === 'material' && record.discountLine">
+                <span class="discount-line">{{ $t('fin.analysis.discountLine') }}</span>
               </template>
               <template v-else-if="column.key === 'material'">
                 {{ record.materialCode }} {{ record.materialName }}<span v-if="record.spec" class="sub-text"> {{ record.spec }}</span>
@@ -81,11 +79,11 @@
                   <a-tag color="orange" :bordered="false" class="hint">{{ $t('fin.analysis.hasRefCost') }}</a-tag>
                 </a-tooltip>
               </template>
-              <template v-else-if="['badDebt', 'freight'].includes(column.key)">
+              <template v-else-if="['settleDiscount', 'badDebt', 'freight'].includes(column.key)">
                 <span v-if="Number(record[column.key])">{{ formatMoney(record[column.key]) }}</span>
                 <span v-else class="sub-text">-</span>
               </template>
-              <template v-else-if="['revenue', 'profit', 'profitAfterBadDebt', 'profitAfterFreight'].includes(column.key)">
+              <template v-else-if="['revenue', 'profit', 'profitAfterDiscount', 'profitAfterBadDebt', 'profitAfterFreight'].includes(column.key)">
                 <span :class="{ neg: Number(record[column.key]) < 0 }">{{ formatMoney(record[column.key]) }}</span>
               </template>
               <template v-else-if="column.key === 'margin'">
@@ -235,14 +233,10 @@ const margin = ref({ rows: [], total: {} })
 const marginLoading = ref(false)
 const GROUP_TITLES = { MATERIAL: t('fin.analysis.material'), CUSTOMER: t('fin.analysis.customer'), MONTH: t('fin.analysis.month') }
 const keyword = ref('')
-/** 参考口径列：坏账核销、扣坏账后毛利、本公司运费、扣运费后毛利 */
+/** 参考口径（依次扣除）：收款折让、扣折让后毛利、坏账核销、扣折让和坏账后毛利、本公司运费、扣折让、坏账和运费后毛利 */
+const REFERENCE_KEYS = ['settleDiscount', 'profitAfterDiscount', 'badDebt', 'profitAfterBadDebt', 'freight', 'profitAfterFreight']
 function referenceColumns() {
-  return [
-    { title: t('fin.analysis.badDebt'), key: 'badDebt', width: 120, align: 'right' },
-    { title: t('fin.analysis.profitAfterBadDebt'), key: 'profitAfterBadDebt', width: 140, align: 'right' },
-    { title: t('fin.analysis.freight'), key: 'freight', width: 120, align: 'right' },
-    { title: t('fin.analysis.profitAfterFreight'), key: 'profitAfterFreight', width: 150, align: 'right' }
-  ]
+  return REFERENCE_KEYS.map((k) => ({ title: t(`fin.analysis.${k}`), key: k, width: k === 'profitAfterFreight' ? 170 : 140, align: 'right' }))
 }
 const DETAIL_COLUMNS = [
   { title: t('common.field.date'), dataIndex: 'bizDate', width: 110 },
@@ -340,6 +334,10 @@ async function loadAge() {
 </script>
 
 <style scoped>
+.discount-line {
+  color: var(--app-text-2);
+  font-style: italic;
+}
 .filters {
   display: flex;
   flex-wrap: wrap;

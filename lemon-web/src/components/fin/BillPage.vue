@@ -23,6 +23,7 @@
           <div class="stats">
             <span v-if="list.some((b) => isForeign(b.currency))" class="sub-text">{{ $t('fin.billPage.foreignTip') }}</span>
             <span>{{ $t('fin.billPage.pageTotal') }} <b>¥{{ formatMoney(pageTotal.amount) }}</b></span>
+            <span v-if="pageTotal.discount">{{ conf.netLabel }} ¥{{ formatMoney(pageTotal.amount - pageTotal.discount) }}</span>
             <span>{{ $t('fin.billPage.settled') }} ¥{{ formatMoney(pageTotal.settled) }}</span>
             <span>{{ $t('fin.billPage.unsettled') }} <b class="warn">¥{{ formatMoney(pageTotal.amount - pageTotal.settled) }}</b></span>
           </div>
@@ -34,7 +35,7 @@
             :loading="loading"
             :pagination="pagination"
             :row-selection="{ ...rowSelection, getCheckboxProps: (r) => ({ disabled: !!r.voucherId || r.sourceType === BillSource.MANUAL || zeroAmount(r) }) }"
-            :scroll="{ x: 1640 }"
+            :scroll="{ x: 1770 }"
             @change="onTableChange"
           >
             <template #bodyCell="{ column, record }">
@@ -54,6 +55,10 @@
                 <div class="sub-text">{{ $t('fin.billPage.taxN', { amount: formatMoney(record.taxAmount) }) }}</div>
                 <div v-if="isForeign(record.currency)" class="sub-text">{{ $t('fin.billPage.originalN', { amount: `${record.currency} ${formatMoney(record.amountFc)}` }) }}</div>
               </template>
+              <template v-else-if="column.key === 'netAmount'">
+                <span :class="{ neg: Number(record.netAmount) < 0 }">¥{{ formatMoney(record.netAmount) }}</span>
+                <div v-if="Number(record.discountAmount)" class="sub-text">{{ $t('fin.billPage.discountN', { amount: formatMoney(record.discountAmount) }) }}</div>
+              </template>
               <template v-else-if="column.key === 'currency'">
                 <template v-if="isForeign(record.currency)">
                   <div>{{ record.currency }}</div>
@@ -68,7 +73,6 @@
                   {{ $t('fin.billPage.originalSettled', { settled: formatMoney(record.settledFc), remaining: formatMoney(Number(record.amountFc || 0) - Number(record.settledFc || 0)) }) }}
                 </div>
                 <div v-if="Number(record.badDebtAmount)" class="sub-text neg">{{ $t('fin.billPage.badDebtN', { amount: formatMoney(record.badDebtAmount) }) }}</div>
-                <div v-if="Number(record.discountAmount)" class="sub-text">{{ $t('fin.billPage.discountN', { amount: formatMoney(record.discountAmount) }) }}</div>
               </template>
               <template v-else-if="column.key === 'invoiced'">
                 <div>¥{{ formatMoney(record.invoicedAmount ?? 0) }}</div>
@@ -233,6 +237,7 @@ const CONF = {
     invoicedAll: t('fin.billPage.ar.invoicedAll'),
     notInvoiced: (amount) => t('fin.billPage.ar.notInvoiced', { amount }),
     createTitle: t('fin.billPage.ar.createTitle'),
+    netLabel: t('fin.billPage.ar.net'),
     badDebt: t('fin.billPage.badDebt'),
     badDebtTitle: (no) => t('fin.billPage.badDebtTitle', { no }),
     badDebtTip: t('fin.billPage.badDebtTip'),
@@ -247,6 +252,7 @@ const CONF = {
     invoicedAll: t('fin.billPage.ap.invoicedAll'),
     notInvoiced: (amount) => t('fin.billPage.ap.notInvoiced', { amount }),
     createTitle: t('fin.billPage.ap.createTitle'),
+    netLabel: t('fin.billPage.ap.net'),
     badDebt: t('fin.billPage.ap.badDebt'),
     badDebtTitle: (no) => t('fin.billPage.ap.badDebtTitle', { no }),
     badDebtTip: t('fin.billPage.ap.badDebtTip'),
@@ -262,6 +268,8 @@ const columns = [
   { title: conf.partnerLabel, key: 'partner', width: 200 },
   { title: t('fin.billPage.source'), key: 'source', width: 160 },
   { title: t('common.field.amount'), key: 'amount', width: 150, align: 'right' },
+  // 净额 = 金额 − 收付款折让（多次收付款累计），即实际应收 / 应付（issue #89）
+  { title: conf.netLabel, key: 'netAmount', width: 130, align: 'right' },
   { title: t('fin.billPage.currency'), key: 'currency', width: 90 },
   { title: t('fin.billPage.settled'), key: 'settled', width: 170, align: 'right' },
   { title: conf.invoiceLabel, key: 'invoiced', width: 150, align: 'right' },
@@ -294,7 +302,10 @@ watch(() => query.partnerId, () => search())
 onMounted(load)
 
 const pageTotal = computed(() =>
-  list.value.reduce((t, b) => ({ amount: t.amount + Number(b.amount), settled: t.settled + Number(b.settledAmount) }), { amount: 0, settled: 0 })
+  list.value.reduce(
+    (t, b) => ({ amount: t.amount + Number(b.amount), settled: t.settled + Number(b.settledAmount), discount: t.discount + Number(b.discountAmount || 0) }),
+    { amount: 0, settled: 0, discount: 0 }
+  )
 )
 const remaining = (b) => Math.round((Number(b.amount) - Number(b.settledAmount)) * 100) / 100
 const overdue = (b) => (b.status === BillStatus.SETTLED ? 0 : Math.max(dayjs().startOf('day').diff(dayjs(b.dueDate), 'day'), 0))

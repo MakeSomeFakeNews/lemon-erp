@@ -38,25 +38,25 @@
         ORDER BY t.biz_date, t.seq, t.id
     </select>
 
-    <!-- 往来汇总：各往来单位当前的期初往来余额、业务单据余额、预收预付未冲抵余额、坏账核销累计（本位币）。
+    <!-- 往来汇总：各往来单位当前的期初往来余额、业务单据余额、预收预付未冲抵余额、坏账核销累计、收付款折让累计（本位币）。
          单据余额 = 金额 - 已核销（已核销含收付款、折让、预收预付冲抵、坏账）；预收预付余额 = 金额 - 已冲抵 -->
     <sql id="summaryRows">
         SELECT s.partner_id, COALESCE(c.code, sp.code) AS partner_code, COALESCE(c.name, sp.name) AS partner_name,
-               u.nickname AS owner_name, s.opening, s.bill_balance, 0 - s.advance AS advance_balance, s.bad_debt,
+               u.nickname AS owner_name, s.opening, s.bill_balance, 0 - s.advance AS advance_balance, s.bad_debt, s.discount,
                s.opening + s.bill_balance - s.advance AS net
         FROM (
             SELECT x.partner_id, SUM(x.opening) AS opening, SUM(x.bill_balance) AS bill_balance, SUM(x.advance) AS advance,
-                   SUM(x.bad_debt) AS bad_debt
+                   SUM(x.bad_debt) AS bad_debt, SUM(x.discount) AS discount
             FROM (
                 SELECT b.partner_id,
                        CASE WHEN b.source_type = 'MANUAL' THEN b.amount - b.settled_amount ELSE 0 END AS opening,
                        CASE WHEN b.source_type = 'MANUAL' THEN 0 ELSE b.amount - b.settled_amount END AS bill_balance,
-                       0 AS advance, b.bad_debt_amount AS bad_debt
+                       0 AS advance, b.bad_debt_amount AS bad_debt, b.discount_amount AS discount
                 FROM fin_bill b
                 WHERE b.kind = #{q.kind}
                 <if test="q.partnerId != null">AND b.partner_id = #{q.partnerId}</if>
                 UNION ALL
-                SELECT a.partner_id, 0, 0, a.amount - a.used_amount, 0
+                SELECT a.partner_id, 0, 0, a.amount - a.used_amount, 0, 0
                 FROM fin_advance a
                 WHERE a.kind = #{settleKind} AND a.used_amount &lt;&gt; a.amount
                 <if test="q.partnerId != null">AND a.partner_id = #{q.partnerId}</if>
@@ -83,6 +83,7 @@
     <select id="selectSummaryTotal" resultType="com.lemon.erp.modules.fin.dto.PartnerSummaryRow">
         SELECT COALESCE(SUM(r.opening), 0) AS opening, COALESCE(SUM(r.bill_balance), 0) AS bill_balance,
                COALESCE(SUM(r.advance_balance), 0) AS advance_balance, COALESCE(SUM(r.bad_debt), 0) AS bad_debt,
+               COALESCE(SUM(r.discount), 0) AS discount,
                COALESCE(SUM(r.net), 0) AS net
         FROM (<include refid="summaryRows"/>) r
     </select>

@@ -204,23 +204,42 @@ public class BiJxcService {
         r.setMissingCost(r.getMissingCost() == null ? 0L : r.getMissingCost());
         r.setAvgPrice(r.getNetQty().signum() == 0 ? null
                 : r.getNetAmount().divide(r.getNetQty(), Decimals.PRICE_SCALE, RoundingMode.HALF_UP));
+        r.setSettleDiscount(Decimals.money(r.getSettleDiscount()));
         if (sales) {
             r.setCost(Decimals.money(r.getCost()));
             r.setProfit(r.getNetAmount().subtract(r.getCost()));
             r.setMargin(Decimals.percent(r.getProfit(), r.getNetAmount(), 2));
             r.setBadDebt(Decimals.money(r.getBadDebt()));
             r.setFreight(Decimals.money(r.getFreight()));
-            r.setProfitAfterBadDebt(r.getProfit().subtract(r.getBadDebt()));
+            // 依次扣除收款折让、坏账核销、本公司运费（参考口径）
+            r.setProfitAfterDiscount(r.getProfit().subtract(r.getSettleDiscount()));
+            r.setProfitAfterBadDebt(r.getProfitAfterDiscount().subtract(r.getBadDebt()));
             r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(r.getFreight()));
         } else {
             r.setCost(null);
             r.setMissingCost(null);
             r.setBadDebt(null);
             r.setFreight(null);
+            r.setNetAfterDiscount(r.getNetAmount().subtract(r.getSettleDiscount()));
         }
     }
 
     private static void fillDetail(boolean sales, JxcViews.DetailRow r) {
+        r.setSettleDiscount(Decimals.money(r.getSettleDiscount()));
+        if (r.getDiscountLine() != null && r.getDiscountLine() == 1) {
+            // 单据的收付款折让行：没有金额和成本，扣除后的毛利 / 金额为 −折让
+            BigDecimal minus = r.getSettleDiscount().negate();
+            if (sales) {
+                r.setBadDebt(Decimals.money(null));
+                r.setFreight(Decimals.money(null));
+                r.setProfitAfterDiscount(minus);
+                r.setProfitAfterBadDebt(minus);
+                r.setProfitAfterFreight(minus);
+            } else {
+                r.setAmountAfterDiscount(minus);
+            }
+            return;
+        }
         r.setAmount(Decimals.money(r.getAmount()));
         r.setTaxedAmount(Decimals.money(r.getTaxedAmount()));
         if (sales) {
@@ -228,8 +247,11 @@ public class BiJxcService {
             r.setProfit(r.getAmount().subtract(r.getCost()));
             r.setBadDebt(Decimals.money(r.getBadDebt()));
             r.setFreight(Decimals.money(r.getFreight()));
-            r.setProfitAfterBadDebt(r.getProfit().subtract(r.getBadDebt()));
+            r.setProfitAfterDiscount(r.getProfit().subtract(r.getSettleDiscount()));
+            r.setProfitAfterBadDebt(r.getProfitAfterDiscount().subtract(r.getBadDebt()));
             r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(r.getFreight()));
+        } else {
+            r.setAmountAfterDiscount(r.getAmount().subtract(r.getSettleDiscount()));
         }
     }
 
@@ -238,17 +260,21 @@ public class BiJxcService {
         r.setAmount(Decimals.money(r.getAmount()));
         r.setTaxedAmount(Decimals.money(r.getTaxedAmount()));
         r.setDiscount(Decimals.money(r.getDiscount()));
+        r.setSettleDiscount(Decimals.money(r.getSettleDiscount()));
         if (sales) {
             r.setCost(Decimals.money(r.getCost()));
             r.setProfit(r.getAmount().subtract(r.getCost()));
             r.setMargin(Decimals.percent(r.getProfit(), r.getAmount(), 2));
             r.setBadDebt(Decimals.money(r.getBadDebt()));
             r.setFreight(Decimals.money(r.getFreight()));
-            r.setProfitAfterBadDebt(r.getProfit().subtract(r.getBadDebt()));
+            // 依次扣除收款折让、坏账核销、本公司运费（与汇总、明细同一口径）
+            r.setProfitAfterDiscount(r.getProfit().subtract(r.getSettleDiscount()));
+            r.setProfitAfterBadDebt(r.getProfitAfterDiscount().subtract(r.getBadDebt()));
             r.setProfitAfterFreight(r.getProfitAfterBadDebt().subtract(r.getFreight()));
             r.setMissingCost(r.getMissingCost() == null ? 0L : r.getMissingCost());
         } else {
             r.setMissingCost(null);
+            r.setAmountAfterDiscount(r.getAmount().subtract(r.getSettleDiscount()));
         }
     }
 

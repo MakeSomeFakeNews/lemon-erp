@@ -16,6 +16,7 @@
       <span>{{ tx.advance }} <b :class="{ neg: Number(total.advanceBalance) < 0 }">¥{{ formatMoney(total.advanceBalance) }}</b></span>
       <span>{{ tx.net }} <b class="warn">¥{{ formatMoney(total.net) }}</b></span>
       <span class="sub-text">{{ tx.badDebt }} ¥{{ formatMoney(total.badDebt) }}</span>
+      <span class="sub-text">{{ tx.discount }} ¥{{ formatMoney(total.discount) }}</span>
     </div>
     <a-table
       row-key="partnerId"
@@ -37,8 +38,8 @@
         <template v-else-if="column.key === 'net'">
           <b :class="{ neg: Number(record.net) < 0 }">{{ formatMoney(record.net) }}</b>
         </template>
-        <template v-else-if="column.key === 'badDebt'">
-          <span class="sub-text">{{ moneyOrBlank(record.badDebt) }}</span>
+        <template v-else-if="column.key === 'badDebt' || column.key === 'discount'">
+          <span class="sub-text">{{ moneyOrBlank(record[column.key]) }}</span>
         </template>
         <template v-else-if="column.key === 'action'">
           <TableActions :actions="rowActions(record)" />
@@ -74,7 +75,7 @@ import { t } from '@/locales'
 
 /**
  * 往来汇总：一个往来单位一行（当前余额，本位币）。净欠款 = 期初余额 + 单据余额 + 预收 / 预付（负数）；
- * 坏账核销已从单据余额中扣除，单列参考。与往来对账单一致：对账单截至今天的期末余额 = 净欠款 + 坏账核销。
+ * 坏账核销、收付款折让已从单据余额中扣除，单列参考。与往来对账单一致：对账单截至今天的期末余额 = 净欠款 + 坏账核销。
  * kind = ar | ap，conf 为 BillPage 按应收应付区分的文字
  */
 const props = defineProps({
@@ -90,6 +91,7 @@ const tx = {
   bills: t(ar ? 'fin.partnerSummary.ar.bills' : 'fin.partnerSummary.ap.bills'),
   advance: t(ar ? 'fin.partnerSummary.ar.advance' : 'fin.partnerSummary.ap.advance'),
   badDebt: t(ar ? 'fin.partnerSummary.ar.badDebt' : 'fin.partnerSummary.ap.badDebt'),
+  discount: t(ar ? 'fin.partnerSummary.ar.discount' : 'fin.partnerSummary.ap.discount'),
   net: t(ar ? 'fin.partnerSummary.ar.net' : 'fin.partnerSummary.ap.net'),
   settle: t(ar ? 'fin.partnerSummary.ar.settle' : 'fin.partnerSummary.ap.settle'),
   formula: t(ar ? 'fin.partnerSummary.ar.formula' : 'fin.partnerSummary.ap.formula')
@@ -101,6 +103,7 @@ const columns = [
   { title: tx.bills, key: 'billBalance', width: 150, align: 'right', money: true },
   { title: tx.advance, key: 'advanceBalance', width: 150, align: 'right', money: true },
   { title: tx.badDebt, key: 'badDebt', width: 120, align: 'right' },
+  { title: tx.discount, key: 'discount', width: 120, align: 'right' },
   { title: tx.net, key: 'net', width: 150, align: 'right' },
   actionColumn(2, [tx.settle, t('fin.partnerSummary.statement')])
 ]

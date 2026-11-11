@@ -13,13 +13,20 @@
       :data-source="rows"
       :loading="loading"
       :pagination="pagination"
-      :scroll="{ x: sales ? 2060 : 1300 }"
+      :scroll="{ x: sales ? 2340 : 1560 }"
       @change="onChange"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'docNo'">
           <a @click="openDoc(record)">{{ record.docNo }}</a>
           <DictTag type="scm_trade_kind" :value="record.kind" class="kind" />
+        </template>
+        <template v-else-if="record.discountLine && LINE_KEYS.includes(column.key)">
+          <span class="sub-text">-</span>
+        </template>
+        <!-- 单据的收付款折让行（按整张单据列出时追加在单据最后） -->
+        <template v-else-if="column.key === 'material' && record.discountLine">
+          <span class="discount-line">{{ discountLabel }}</span>
         </template>
         <template v-else-if="column.key === 'material'">
           <div>{{ record.materialCode }} {{ record.materialName }}</div>
@@ -31,7 +38,7 @@
           <span :class="{ neg: Number(record.qty) < 0 }">{{ qty(record.qty) }}</span> {{ record.unit }}
         </template>
         <template v-else-if="column.key === 'price'">{{ price(record.price) }}</template>
-        <template v-else-if="['amount', 'taxedAmount', 'profit', 'badDebt', 'freight', 'profitAfterBadDebt', 'profitAfterFreight'].includes(column.key)">
+        <template v-else-if="MONEY_KEYS.includes(column.key)">
           <span :class="{ neg: Number(record[column.key]) < 0 }">{{ money(record[column.key]) }}</span>
         </template>
         <template v-else-if="column.key === 'cost'">
@@ -79,6 +86,12 @@ const loading = ref(false)
 const exporting = ref(false)
 const pagination = reactive({ current: 1, pageSize: 20, total: 0, showSizeChanger: true, showTotal: (n) => t('common.table.total', { total: n }) })
 
+/** 折让行没有的列（数量、单价、金额、成本、毛利） */
+const LINE_KEYS = ['category', 'brand', 'qty', 'price', 'amount', 'taxedAmount', 'cost', 'profit']
+const MONEY_KEYS = ['amount', 'taxedAmount', 'profit', 'settleDiscount', 'profitAfterDiscount', 'amountAfterDiscount', 'badDebt', 'freight',
+  'profitAfterBadDebt', 'profitAfterFreight']
+const discountLabel = computed(() => t(sales.value ? 'jxc.detail.receiptDiscountLine' : 'jxc.detail.paymentDiscountLine'))
+
 const title = computed(() => (label.value ? t('jxc.detail.title', { name: label.value }) : t('jxc.detail.titleAll')))
 
 const columns = computed(() => [
@@ -98,12 +111,17 @@ const columns = computed(() => [
     ? [
         { title: t('jxc.field.cost'), key: 'cost', width: 160, align: 'right' },
         { title: t('jxc.field.profit'), key: 'profit', width: 110, align: 'right' },
+        { title: t('jxc.field.receiptDiscount'), key: 'settleDiscount', width: 110, align: 'right' },
+        { title: t('jxc.field.profitAfterDiscount'), key: 'profitAfterDiscount', width: 130, align: 'right' },
         { title: t('jxc.field.badDebt'), key: 'badDebt', width: 110, align: 'right' },
-        { title: t('jxc.field.profitAfterBadDebt'), key: 'profitAfterBadDebt', width: 130, align: 'right' },
+        { title: t('jxc.field.profitAfterBadDebt'), key: 'profitAfterBadDebt', width: 150, align: 'right' },
         { title: t('jxc.field.freight'), key: 'freight', width: 110, align: 'right' },
-        { title: t('jxc.field.profitAfterFreight'), key: 'profitAfterFreight', width: 150, align: 'right' }
+        { title: t('jxc.field.profitAfterFreight'), key: 'profitAfterFreight', width: 170, align: 'right' }
       ]
-    : []),
+    : [
+        { title: t('jxc.field.purchaseDiscount'), key: 'settleDiscount', width: 110, align: 'right' },
+        { title: t('jxc.field.amountAfterDiscount'), key: 'amountAfterDiscount', width: 140, align: 'right' }
+      ]),
   { title: t('jxc.field.remark'), dataIndex: 'remark', width: 140, ellipsis: true }
 ])
 
@@ -168,17 +186,23 @@ async function exportRows() {
       ...(sales.value ? [t('jxc.field.salesman')] : []),
       t('common.field.code'), t('jxc.field.material'), t('jxc.field.spec'), t('jxc.field.category'), t('jxc.field.brand'),
       t('jxc.field.warehouse'), t('jxc.field.qty'), t('jxc.field.unit'), t('jxc.field.price'), t('jxc.field.amount'), t('jxc.field.taxedAmount'),
-      ...(sales.value ? [t('jxc.field.cost'), t('jxc.field.profit'), t('jxc.field.badDebt'), t('jxc.field.profitAfterBadDebt'),
-        t('jxc.field.freight'), t('jxc.field.profitAfterFreight')] : []),
+      ...(sales.value
+        ? [t('jxc.field.cost'), t('jxc.field.profit'), t('jxc.field.receiptDiscount'), t('jxc.field.profitAfterDiscount'), t('jxc.field.badDebt'),
+            t('jxc.field.profitAfterBadDebt'), t('jxc.field.freight'), t('jxc.field.profitAfterFreight')]
+        : [t('jxc.field.purchaseDiscount'), t('jxc.field.amountAfterDiscount')]),
       t('jxc.field.remark')
     ].map((title) => ({ title }))
+    // 折让行没有物料、数量、金额和成本，导出为空
+    const num = (v) => (v === null || v === undefined ? '' : Number(v))
     const data = res.rows.map((r) => [
       r.bizDate, r.docNo, kindLabel(r.kind), r.partnerName,
       ...(sales.value ? [r.salesmanName] : []),
-      r.materialCode, r.materialName, r.spec, dictLabel(dict.wms_material_category, r.category), dictLabel(dict.wms_material_brand, r.brand),
-      r.warehouseName, Number(r.qty), r.unit, Number(r.price), Number(r.amount), Number(r.taxedAmount),
-      ...(sales.value ? [Number(r.cost), Number(r.profit), Number(r.badDebt), Number(r.profitAfterBadDebt), Number(r.freight),
-        Number(r.profitAfterFreight)] : []),
+      r.materialCode, r.discountLine ? discountLabel.value : r.materialName, r.spec, dictLabel(dict.wms_material_category, r.category),
+      dictLabel(dict.wms_material_brand, r.brand), r.warehouseName, num(r.qty), r.unit, num(r.price), num(r.amount), num(r.taxedAmount),
+      ...(sales.value
+        ? [num(r.cost), num(r.profit), num(r.settleDiscount), num(r.profitAfterDiscount), num(r.badDebt), num(r.profitAfterBadDebt), num(r.freight),
+            num(r.profitAfterFreight)]
+        : [num(r.settleDiscount), num(r.amountAfterDiscount)]),
       r.remark
     ])
     const name = t(sales.value ? 'jxc.detail.salesName' : 'jxc.detail.purchaseName') + (label.value ? `_${label.value}` : '')
@@ -193,6 +217,10 @@ defineExpose({ open: openDetail })
 </script>
 
 <style scoped>
+.discount-line {
+  color: var(--app-text-2);
+  font-style: italic;
+}
 .range {
   margin-bottom: 8px;
 }

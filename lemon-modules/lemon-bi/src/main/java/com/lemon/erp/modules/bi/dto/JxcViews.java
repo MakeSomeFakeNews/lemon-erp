@@ -40,13 +40,25 @@ public final class JxcViews {
         private BigDecimal profit;
         /** 毛利率（%），净额为 0 时为空 */
         private BigDecimal margin;
-        /** 坏账核销（销售出库单应收单上的核销金额，含税，按行金额分摊；只有销售报表） */
+        /**
+         * 收付款折让 / 抹零（issue #89）：销售报表为收款折让，进货报表为付款折让；这些单据的应收 / 应付单在收付款时的折让累计
+         * （多次收付款累计），按单据的不含税比例折算、按行金额分摊，退货为负数
+         */
+        private BigDecimal settleDiscount;
+        /** 扣折让后毛利 = 毛利 − 收款折让（只有销售报表） */
+        private BigDecimal profitAfterDiscount;
+        /** 扣折让后净进货额 = 净额 − 付款折让（只有进货报表，参考口径：付款折让计入财务费用，不冲减存货成本） */
+        private BigDecimal netAfterDiscount;
+        /** 坏账核销（销售出库单应收单上的核销金额，按该单的不含税比例折算，按行金额分摊；只有销售报表） */
         private BigDecimal badDebt;
         /** 本公司承担的发运运费（只有销售报表） */
         private BigDecimal freight;
-        /** 扣坏账后毛利 = 毛利 − 坏账核销 */
+        /** 扣折让、坏账后毛利 = 毛利 − 收款折让 − 坏账核销 */
         private BigDecimal profitAfterBadDebt;
-        /** 扣坏账、运费后毛利 = 毛利 − 坏账核销 − 本公司运费（参考口径，财务报表中这两项是营业外支出、销售费用） */
+        /**
+         * 扣折让、坏账、运费后毛利 = 毛利 − 收款折让 − 坏账核销 − 本公司运费
+         * （参考口径，财务报表中这三项分别是财务费用、营业外支出、销售费用）
+         */
         private BigDecimal profitAfterFreight;
         /** 平均单价（不含税）= 净额 / 净数量 */
         private BigDecimal avgPrice;
@@ -62,7 +74,10 @@ public final class JxcViews {
     public record Summary(List<SummaryRow> rows, SummaryRow total, boolean truncated) {
     }
 
-    /** 明细行：退货的数量、金额为负数 */
+    /**
+     * 明细行：退货的数量、金额为负数。discountLine 为 1 的是单据的「收付款折让 / 抹零」行（按整张单据列出时追加在单据最后，
+     * 没有物料、数量、金额和成本，只有折让及扣除后的毛利 / 进货额），此时商品行的折让为 0；否则折让按行金额分摊到各行
+     */
     @Data
     public static class DetailRow {
         private Long docId;
@@ -87,12 +102,19 @@ public final class JxcViews {
         private BigDecimal taxedAmount;
         private BigDecimal cost;
         private BigDecimal profit;
+        /** 收付款折让（折让行为该单据的全部折让，商品行在按整张单据列出时为 0，否则为分摊额） */
+        private BigDecimal settleDiscount;
+        private BigDecimal profitAfterDiscount;
+        /** 扣折让后金额（只有进货报表） */
+        private BigDecimal amountAfterDiscount;
         private BigDecimal badDebt;
         private BigDecimal freight;
         private BigDecimal profitAfterBadDebt;
         private BigDecimal profitAfterFreight;
         /** 1 已按当期核算成本，0 按参考成本价 */
         private Integer costed;
+        /** 1 为单据的收付款折让行 */
+        private Integer discountLine;
         private String remark;
     }
 
@@ -127,9 +149,17 @@ public final class JxcViews {
         private BigDecimal profit;
         /** 毛利率（%），金额为 0 时为空 */
         private BigDecimal margin;
+        /** 收付款折让（issue #89，这些明细行按行金额分摊的部分；整张单据时为该单的全部折让） */
+        private BigDecimal settleDiscount;
+        /** 扣折让后毛利（只有销售报表） */
+        private BigDecimal profitAfterDiscount;
+        /** 扣折让后金额（只有进货报表） */
+        private BigDecimal amountAfterDiscount;
         private BigDecimal badDebt;
         private BigDecimal freight;
+        /** 扣折让、坏账后毛利 */
         private BigDecimal profitAfterBadDebt;
+        /** 扣折让、坏账、运费后毛利 */
         private BigDecimal profitAfterFreight;
         /** 按参考成本价计算的明细行数 */
         private Long missingCost;

@@ -6,6 +6,7 @@ import lombok.AccessLevel;
 import lombok.Data;
 import lombok.Setter;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -60,6 +61,15 @@ public class JxcQuery {
     private boolean noRegion;
     @Setter(AccessLevel.NONE)
     private boolean noSalesman;
+
+    /**
+     * 明细是否按整张单据列出：没有按商品、分类、品牌、仓库、商品关键字筛选（只按日期、往来单位、业务员、区域等单据级条件）。
+     * 此时收付款折让作为单据的最后一行列出（issue #89），否则只列出单据的部分明细，折让按行金额比例分摊到各行
+     */
+    public boolean isWholeDocs() {
+        return materialId == null && !StringUtils.hasText(category) && !noCategory && !StringUtils.hasText(brand) && !noBrand
+                && warehouseId == null && !StringUtils.hasText(keyword);
+    }
 
     /** 按分类汇总的行穿透：只取该分类本身的物料（汇总按物料的分类编码分组，下级分类单独成行） */
     public void drillCategory(String code) {
