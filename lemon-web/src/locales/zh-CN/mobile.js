@@ -38,7 +38,8 @@ export default {
     overQty: '{name} 已超过待入库数量',
     added: '{name} +{qty}，共 {total}',
     selectWarehouse: '请选择收货仓库',
-    done: '已入库'
+    done: '已入库',
+    draftSaved: '已保存为采购入库草稿，审核后入库'
   },
   putaway: {
     source: '来源库位',

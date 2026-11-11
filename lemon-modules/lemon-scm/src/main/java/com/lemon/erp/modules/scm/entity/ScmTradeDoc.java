@@ -1,5 +1,6 @@
 package com.lemon.erp.modules.scm.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -13,6 +14,7 @@ import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -88,6 +90,18 @@ public class ScmTradeDoc extends BaseEntity {
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long createBy;
+
+    /** 审核人：保存即审核时为制单人，草稿由审核人审核（业务参数 scm.tradeDoc.draft） */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Long postBy;
+
+    /** 审核时间（出入库、生成应收应付的时间） */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime postTime;
+
+    @TableField(exist = false)
+    private String postByName;
 
     @TableField(exist = false)
     private String orderNo;

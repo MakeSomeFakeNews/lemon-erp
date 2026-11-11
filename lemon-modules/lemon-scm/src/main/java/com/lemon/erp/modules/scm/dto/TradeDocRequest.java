@@ -13,7 +13,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 新增采购入库 / 采购退货 / 销售出库 / 销售退货，保存即确认。
+ * 新增采购入库 / 采购退货 / 销售出库 / 销售退货，保存即确认；业务参数 scm.tradeDoc.draft 开启时也用于保存、修改草稿（见 ScmTradeDraftService）。
  * <p>
  * 引用订单时 {@code orderId} 必填、明细按订单明细（orderItemId）录入；业务参数 scm.directDoc.enabled 开启时可不选订单直接开单：
  * 填写 {@code partnerId}，明细填写物料、单价、税率，系统生成并直接审核隐式订单（来源 DIRECT）
@@ -30,6 +30,7 @@ import java.util.List;
  * @param carrierSupplierId 本公司承担时的承运商（供应商）
  * @param orderDiscount 仅引用订单的采购入库：本单的订单优惠（含税，订单币种），为空时按订单的整单优惠分摊；
  *                      明细单价不变，优惠在合计处整单扣减应付，并按各行金额比例冲减存货成本
+ * @param sourceDocId 仅草稿：退货引用的原出入库单，只用于修改草稿时回显，出入库不使用
  */
 public record TradeDocRequest(
         Long orderId,
@@ -47,7 +48,16 @@ public record TradeDocRequest(
         FreightBearer freightBearer,
         Long carrierSupplierId,
         @DecimalMin(value = "0", message = "{scm.valid.orderDiscountCannotNegative}")
-        @Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") BigDecimal orderDiscount) {
+        @Digits(integer = 16, fraction = 2, message = "{scm.valid.wholeDiscountDecimals}") BigDecimal orderDiscount,
+        Long sourceDocId) {
+
+    /** 不带草稿回显信息 */
+    public TradeDocRequest(Long orderId, Long warehouseId, LocalDate bizDate, String remark, Boolean replenish,
+                           List<TradeDocItemRequest> items, Long partnerId, Long salesmanId, BigDecimal wholeDiscount,
+                           BigDecimal freight, FreightBearer freightBearer, Long carrierSupplierId, BigDecimal orderDiscount) {
+        this(orderId, warehouseId, bizDate, remark, replenish, items, partnerId, salesmanId, wholeDiscount, freight, freightBearer,
+                carrierSupplierId, orderDiscount, null);
+    }
 
     /** 引用订单 */
     public TradeDocRequest(Long orderId, Long warehouseId, LocalDate bizDate, String remark, Boolean replenish,

@@ -84,7 +84,9 @@ import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useI18n } from '@/locales'
 import { OrderStatus } from '@web/constants/enums'
-import { addPurchaseIn, getPurchaseOrder, locationOptions, pagePurchaseOrder, warehouseOptions } from '@/api/wms'
+import { addPurchaseIn, addPurchaseInDraft, getPurchaseOrder, locationOptions, pagePurchaseOrder, warehouseOptions } from '@/api/wms'
+import { bizRule, loadBizRules } from '@/store/bizRules'
+import { hasPerm } from '@/store/user'
 import { useTitle } from '@/composables/useTitle'
 import { runAction } from '@/composables/useAction'
 import { dictColor, dictText, useDict } from '@/store/dict'
@@ -116,6 +118,7 @@ const locRange = computed(() => locationRange(locations.value, t('wms.receive.lo
 const totalQty = computed(() => qty4(rows.value.reduce((s, r) => s + (Number(r.qty) || 0), 0)))
 
 onLoad(() => {
+  loadBizRules(['scm.tradeDoc.draft'])
   warehouseOptions().then((list) => (warehouses.value = list || [])).catch(() => {})
   searchOrders()
 })
@@ -202,12 +205,14 @@ async function submit() {
   const list = rows.value.filter((r) => Number(r.qty) > 0)
   const noBatch = list.find((r) => r.batchEnabled === 1 && !r.batchNo)
   if (noBatch) return uni.showToast({ title: t('wms.common.inputBatch', { name: noBatch.materialName }), icon: 'none' })
+  // 业务参数「进销存单据先存草稿」开启且没有审核权限时保存为草稿
+  const asDraft = bizRule('scm.tradeDoc.draft', false) === true && !hasPerm('scm:purchaseIn:post')
   saving.value = true
   try {
     await runAction(
       async () => {
         await fillPutaway(warehouseId.value, list)
-        await addPurchaseIn({
+        await (asDraft ? addPurchaseInDraft : addPurchaseIn)({
           orderId: order.value.id,
           warehouseId: warehouseId.value,
           bizDate: today(),
@@ -217,7 +222,7 @@ async function submit() {
           }))
         })
       },
-      { success: t('wms.receive.done'), then: reset }
+      { success: asDraft ? t('wms.receive.draftSaved') : t('wms.receive.done'), then: reset }
     )
   } finally {
     saving.value = false

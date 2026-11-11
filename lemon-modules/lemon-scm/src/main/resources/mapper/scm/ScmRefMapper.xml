@@ -12,6 +12,7 @@
             WHEN EXISTS (SELECT 1 FROM scm_quotation_item WHERE material_id = #{id}) THEN 'scm.label.salesQuotation2'
             WHEN EXISTS (SELECT 1 FROM scm_price_list WHERE material_id = #{id}) THEN 'scm.label.salesPriceList'
             WHEN EXISTS (SELECT 1 FROM scm_customer_price WHERE material_id = #{id}) THEN 'scm.label.customerPrice'
+            WHEN EXISTS (SELECT 1 FROM scm_trade_draft_item WHERE material_id = #{id}) THEN 'scm.label.inboundOutboundDraft'
         END
     </select>
 
@@ -19,6 +20,8 @@
         SELECT CASE
             WHEN EXISTS (SELECT 1 FROM scm_order WHERE warehouse_id = #{id}) THEN 'scm.label.purchaseSalesOrder'
             WHEN EXISTS (SELECT 1 FROM scm_delivery WHERE warehouse_id = #{id}) THEN 'scm.label.deliveryNotice'
+            WHEN EXISTS (SELECT 1 FROM scm_trade_draft WHERE warehouse_id = #{id}) THEN 'scm.label.inboundOutboundDraft'
+            WHEN EXISTS (SELECT 1 FROM scm_trade_draft_item WHERE warehouse_id = #{id}) THEN 'scm.label.inboundOutboundDraft'
         END
     </select>
 
@@ -26,6 +29,7 @@
         SELECT CASE
             WHEN EXISTS (SELECT 1 FROM scm_order WHERE create_by = #{id}) THEN 'scm.label.purchaseSalesOrder'
             WHEN EXISTS (SELECT 1 FROM scm_trade_doc WHERE create_by = #{id}) THEN 'scm.label.inboundOutboundDocument'
+            WHEN EXISTS (SELECT 1 FROM scm_trade_draft WHERE create_by = #{id}) THEN 'scm.label.inboundOutboundDraft'
             WHEN EXISTS (SELECT 1 FROM scm_requisition WHERE create_by = #{id}) THEN 'scm.label.purchaseRequisition'
             WHEN EXISTS (SELECT 1 FROM scm_quotation WHERE create_by = #{id}) THEN 'scm.label.salesQuotation2'
         END
@@ -36,6 +40,7 @@
             WHEN EXISTS (SELECT 1 FROM scm_quotation WHERE customer_id = #{id}) THEN 'scm.label.salesQuotation2'
             WHEN EXISTS (SELECT 1 FROM scm_customer_price WHERE customer_id = #{id}) THEN 'scm.label.customerPrice'
             WHEN EXISTS (SELECT 1 FROM scm_rebate WHERE customer_id = #{id}) THEN 'scm.label.rebateAgreement'
+            WHEN EXISTS (SELECT 1 FROM scm_trade_draft WHERE kind IN ('SALES_OUT', 'SALES_RETURN') AND partner_id = #{id}) THEN 'scm.label.inboundOutboundDraft'
         END
     </select>
 
@@ -44,12 +49,15 @@
             WHEN EXISTS (SELECT 1 FROM scm_inquiry_quote WHERE supplier_id = #{id}) THEN 'scm.label.rfqQuotation'
             WHEN EXISTS (SELECT 1 FROM scm_requisition_item WHERE supplier_id = #{id}) THEN 'scm.label.purchaseRequisition'
             WHEN EXISTS (SELECT 1 FROM scm_rebate WHERE supplier_id = #{id}) THEN 'scm.label.rebateAgreement'
+            WHEN EXISTS (SELECT 1 FROM scm_trade_draft WHERE kind IN ('PURCHASE_IN', 'PURCHASE_RETURN') AND partner_id = #{id}) THEN 'scm.label.inboundOutboundDraft'
+            WHEN EXISTS (SELECT 1 FROM scm_trade_draft WHERE carrier_supplier_id = #{id}) THEN 'scm.label.inboundOutboundDraft'
         END
     </select>
 
     <select id="findDept" resultType="java.lang.String">
         SELECT CASE
             WHEN EXISTS (SELECT 1 FROM scm_order WHERE dept_id = #{id}) THEN 'scm.label.purchaseSalesOrder'
+            WHEN EXISTS (SELECT 1 FROM scm_trade_draft WHERE dept_id = #{id}) THEN 'scm.label.inboundOutboundDraft'
         END
     </select>
 

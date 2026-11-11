@@ -21,7 +21,12 @@ public class ScmTodoProvider implements TodoProvider {
     private static final List<Def> DEFS = List.of(
             new Def("purchaseOverdue", "scm:purchaseIn:add", "scm.label.purchaseOrdersOverdueNotReceived", "/scm/purchase-in", "danger"),
             new Def("salesOverdue", "scm:salesOut:add", "scm.label.salesOrdersOverdueNotShipped", "/scm/sales-out", "danger"),
-            new Def("shipmentException", "scm:shipment:list", "scm.label.shipmentException", "/scm/shipment", "danger")
+            new Def("shipmentException", "scm:shipment:list", "scm.label.shipmentException", "/scm/shipment", "danger"),
+            // 进销存单据草稿（业务参数 scm.tradeDoc.draft）：有审核权限的用户看到待审核的草稿
+            new Def("purchaseInDraft", "scm:purchaseIn:post", "scm.label.purchaseInDraftsToPost", "/scm/purchase-in?tab=draft", "warning"),
+            new Def("purchaseReturnDraft", "scm:purchaseReturn:post", "scm.label.purchaseReturnDraftsToPost", "/scm/purchase-return?tab=draft", "warning"),
+            new Def("salesOutDraft", "scm:salesOut:post", "scm.label.salesOutDraftsToPost", "/scm/sales-out?tab=draft", "warning"),
+            new Def("salesReturnDraft", "scm:salesReturn:post", "scm.label.salesReturnDraftsToPost", "/scm/sales-return?tab=draft", "warning")
     );
 
     private final ScmTodoMapper todoMapper;

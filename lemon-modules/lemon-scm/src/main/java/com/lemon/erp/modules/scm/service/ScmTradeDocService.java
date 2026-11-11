@@ -63,13 +63,14 @@ import static com.lemon.erp.modules.wms.model.WmsConstants.locationOrNone;
 import static com.lemon.erp.modules.wms.model.WmsConstants.splitSerials;
 
 /**
- * 采购入库 / 采购退货 / 销售出库 / 销售退货：按订单明细录入，或直接开单（生成隐式订单，见 {@link #create}），保存即确认。
+ * 采购入库 / 采购退货 / 销售出库 / 销售退货：按订单明细录入，或直接开单（生成隐式订单，见 {@link #create}），保存即确认（审核）；
+ * 业务参数 scm.tradeDoc.draft 开启时可以先存草稿（{@link ScmTradeDraftService}），草稿审核时按草稿内容走同样的流程。
  * <ol>
  *   <li>回写订单明细的已完成 / 已退货数量（条件更新，不超过可入库 / 可退数量）</li>
  *   <li>生成并确认仓库的出入库单，更新库存、批次、序列号（库存不足等错误整单回滚）</li>
  *   <li>重新计算订单状态，发布 {@link TradeDocConfirmedEvent}，财务据此生成应收 / 应付单</li>
  * </ol>
- * 单价、税率取订单明细，不能修改；销售出库的明细可另选仓库（业务参数 scm.salesOut.lineWarehouse）。单据确认后不能修改、删除，错误的入库 / 出库通过退货冲回。
+ * 单价、税率取订单明细，不能修改；销售出库的明细可另选仓库（业务参数 scm.salesOut.lineWarehouse）。单据审核后不能修改、删除，错误的入库 / 出库通过退货冲回。
  */
 @Service
 @RequiredArgsConstructor
@@ -121,10 +122,25 @@ public class ScmTradeDocService {
      */
     @Transactional
     public Long create(TradeKind kind, TradeDocRequest req) {
+        return post(kind, req, null);
+    }
+
+    /**
+     * 审核草稿时沿用草稿的单据号、制单人和制单部门（审核人为当前用户）
+     */
+    record Origin(String docNo, Long createBy, Long deptId) {
+    }
+
+    /**
+     * 出入库并生成单据（审核）：由 {@link #create} 和草稿审核调用，调用方负责事务
+     *
+     * @param origin 草稿审核时为草稿的单据号、制单人、部门，直接保存时为 null
+     */
+    Long post(TradeKind kind, TradeDocRequest req, Origin origin) {
         if (req.direct()) {
-            return createDirect(kind, req);
+            return createDirect(kind, req, origin);
         }
-        return create(kind, req, orderService.getAccessible(kind.getOrderKind(), req.orderId()));
+        return create(kind, req, orderService.getAccessible(kind.getOrderKind(), req.orderId()), origin);
     }
 
     /**
@@ -133,7 +149,7 @@ public class ScmTradeDocService {
      * 销售出库的买赠赠品随单出库（见 {@link DirectGifts}），单价为 0，不计应收，成本照常结转。
      * 退货不引用原单时隐式订单视为已全部出入库，库存按退货入库 / 出库，应收应付按退货金额冲减
      */
-    private Long createDirect(TradeKind kind, TradeDocRequest req) {
+    private Long createDirect(TradeKind kind, TradeDocRequest req, Origin origin) {
         if (!bizRules.bool(ScmBizRules.DIRECT_DOC)) {
             throw new BizException("scm.error.directDocDisabled", Messages.get(kind.getLabelKey()));
         }
@@ -181,10 +197,10 @@ public class ScmTradeDocService {
                 .filter(i -> Integer.valueOf(1).equals(i.getGift())).toList();
         items.addAll(directGifts.lines(giftItems, giftReqs, req.warehouseId()));
         return create(kind, new TradeDocRequest(order.getId(), req.warehouseId(), req.bizDate(), req.remark(), false, items,
-                null, null, null, req.freight(), req.freightBearer(), req.carrierSupplierId(), null), order);
+                null, null, null, req.freight(), req.freightBearer(), req.carrierSupplierId(), null), order, origin);
     }
 
-    private Long create(TradeKind kind, TradeDocRequest req, ScmOrder order) {
+    private Long create(TradeKind kind, TradeDocRequest req, ScmOrder order, Origin origin) {
         Set<OrderStatus> allowed = kind.isReturns() ? OrderStatus.RETURNABLE : OrderStatus.EXECUTABLE;
         // 锁定订单后按最新状态校验：与关闭串行，关闭计算尾差时不会有进行中的出入库
         OrderStatus status = orderService.lockStatus(order.getId());
@@ -215,7 +231,7 @@ public class ScmTradeDocService {
         boolean lineWarehouse = kind == TradeKind.SALES_OUT && bizRules.bool(ScmBizRules.SALES_OUT_LINE_WAREHOUSE);
         Map<Long, ScmOrderItem> orderItems = orderItemMapper.selectByOrderId(order.getId()).stream()
                 .collect(Collectors.toMap(ScmOrderItem::getId, Function.identity()));
-        String docNo = docNoService.next(kind.getPrefix());
+        String docNo = origin != null ? origin.docNo() : docNoService.next(kind.getPrefix());
 
         List<ScmTradeDocItem> items = new ArrayList<>(req.items().size());
         List<BigDecimal> amountsFc = new ArrayList<>(req.items().size());
@@ -296,6 +312,7 @@ public class ScmTradeDocService {
         }
 
         LoginUser user = SecurityUtils.getLoginUser();
+        Long deptId = origin != null ? origin.deptId() : user.deptId();
         ScmTradeDoc doc = new ScmTradeDoc();
         doc.setDocNo(docNo);
         doc.setKind(kind);
@@ -319,7 +336,11 @@ public class ScmTradeDocService {
         doc.setFreightBearer(freightBearer);
         doc.setFreightCost(freightCost);
         doc.setCarrierSupplierId(freightBearer == FreightBearer.COMPANY ? req.carrierSupplierId() : null);
-        doc.setDeptId(user.deptId());
+        doc.setDeptId(deptId);
+        // 制单人：草稿的制单人（为空时由插件填当前用户）；审核人为当前用户
+        doc.setCreateBy(origin != null ? origin.createBy() : null);
+        doc.setPostBy(user.userId());
+        doc.setPostTime(java.time.LocalDateTime.now());
         docMapper.insert(doc);
         items.forEach(i -> i.setDocId(doc.getId()));
         itemMapper.insertBatch(items);
@@ -335,7 +356,7 @@ public class ScmTradeDocService {
         if (freightBearer != null) {
             // 运费应付：供应商代垫计入该供应商，本公司承担付给承运商
             eventPublisher.publishEvent(new PurchaseFreightEvent(doc.getId(), docNo, freightBearer == FreightBearer.COMPANY
-                    ? req.carrierSupplierId() : order.getPartnerId(), req.bizDate(), doc.getFreight(), user.deptId(),
+                    ? req.carrierSupplierId() : order.getPartnerId(), req.bizDate(), doc.getFreight(), deptId,
                     freightCost == PurchaseFreightCost.EXPENSE));
         }
         return doc.getId();

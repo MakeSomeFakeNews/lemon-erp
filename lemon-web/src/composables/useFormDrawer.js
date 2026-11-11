@@ -35,6 +35,7 @@ export function asPrefilled(fn) {
  * @param {Function} options.update     (id, payload) => Promise
  * @param {Function} [options.toPayload] (form) => 提交数据，默认去掉 id 和只读字段
  * @param {Function} [options.onSuccess] 保存成功后回调，一般用于刷新列表
+ * @param {string|Function} [options.successMessage] 保存成功的提示，函数在保存成功后取值（同一表单有多种保存方式时用）
  */
 export function useFormDrawer(options) {
   const { emptyForm, beforeOpen, fetch, create, update, toPayload, onSuccess, successMessage = t('common.msg.saveSuccess') } = options
@@ -95,7 +96,7 @@ export function useFormDrawer(options) {
       const { id, ...rest } = form.value
       const payload = toPayload ? toPayload(form.value) : omit(rest, READONLY_FIELDS)
       id != null ? await update(id, payload) : await create(payload)
-      message.success(successMessage)
+      message.success(typeof successMessage === 'function' ? successMessage() : successMessage)
       open.value = false
       onSuccess?.()
     } finally {

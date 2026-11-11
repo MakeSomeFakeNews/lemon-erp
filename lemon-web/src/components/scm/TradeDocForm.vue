@@ -1,5 +1,11 @@
 <template>
-  <FormDrawer page :drawer="drawer" :create-title="$t('scm.trade.addKind', { kind: conf.label })" width="min(1320px, 100vw)">
+  <FormDrawer
+    page
+    :drawer="drawer"
+    :create-title="$t('scm.trade.addKind', { kind: conf.label })"
+    :edit-title="$t('scm.trade.editDraft', { kind: conf.label, no: form.docNo || '' })"
+    width="min(1320px, 100vw)"
+  >
     <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="24" :sm="12" :lg="6">
@@ -91,7 +97,17 @@
         </template>
       </a-row>
       <div class="tip sub-text">{{ tip }}</div>
+      <div v-if="showDraftActions" class="tip sub-text">{{ $t('scm.trade.draftHint') }}</div>
     </a-form>
+    <!-- 先存草稿（业务参数 scm.tradeDoc.draft）或修改草稿：「保存草稿」不出入库，「审核」出入库并生成应收应付 -->
+    <template v-if="showDraftActions" #actions="{ saving, loading }">
+      <a-button v-perm="`scm:${kind}:add`" :loading="saving && mode === 'draft'" :disabled="loading || saving" @click="submit('draft')">
+        {{ $t('scm.trade.saveDraft') }}
+      </a-button>
+      <a-button v-perm="`scm:${kind}:post`" type="primary" :loading="saving && mode === 'post'" :disabled="loading || saving" @click="submit('post')">
+        {{ $t('scm.trade.post') }}
+      </a-button>
+    </template>
   </FormDrawer>
 </template>
 
@@ -105,26 +121,29 @@ import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import PartnerSelect from './PartnerSelect.vue'
 import TradeDocItems from './TradeDocItems.vue'
 import { getOrder, pageOrder } from '@/api/scm/order'
-import { addTrade, getTrade, pageTrade } from '@/api/scm/trade'
+import { addTrade, addTradeDraft, getTrade, getTradeDraft, pageTrade, postTradeDraft, updateTradeDraft } from '@/api/scm/trade'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useBizRules } from '@/composables/useBizRules'
-import { rowKey, today } from '@/components/wms/wms'
+import { useUserStore } from '@/store/user'
+import { locationText, rowKey, today } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney, grossPrice, netQty, newTradeRow, remainingQty } from './scm'
 import { FreightBearer, OrderSource, OrderStatus, PurchaseFreightCost } from '@/constants/enums'
 import { useDict } from '@/composables/useDict'
 import { toOptions } from '@/utils/dict'
 
 /**
- * 采购入库 / 采购退货 / 销售出库 / 销售退货，保存即确认（更新库存）。
+ * 采购入库 / 采购退货 / 销售出库 / 销售退货，保存即审核（更新库存）。
  * 默认直接开单（业务参数 scm.directDoc.enabled）：选往来单位、仓库，明细直接选商品、数量、单价；
  * 也可引用订单（退货为引用原出入库单），按订单明细录入。参数关闭时必须引用。
- * 通过 ref 调用 openCreate(order?)：传入订单时订单不可更换；保存成功后触发 success
+ * 业务参数 scm.tradeDoc.draft 开启时底部为「保存草稿」「审核」：草稿不影响库存、订单、应收应付，可再修改（openDraft）、审核。
+ * 通过 ref 调用 openCreate(order?)：传入订单时订单不可更换；openDraft(draft) 修改草稿；保存成功后触发 success({ posted })
  */
 const props = defineProps({
   kind: { type: String, required: true }
 })
 const emit = defineEmits(['success'])
 const { t } = useI18n()
+const userStore = useUserStore()
 
 const conf = computed(() => TRADE_KINDS[props.kind])
 const orderConf = computed(() => ORDER_KINDS[conf.value.orderKind])
@@ -134,9 +153,12 @@ const isReturn = computed(() => conf.value.returns)
 const { rules: bizRules, ready: rulesReady } = useBizRules({
   'scm.directDoc.enabled': true,
   'scm.salesOut.lineWarehouse': true,
-  'scm.purchaseFreight.cost': PurchaseFreightCost.INVENTORY
+  'scm.purchaseFreight.cost': PurchaseFreightCost.INVENTORY,
+  'scm.tradeDoc.draft': false
 })
 const allowDirect = computed(() => bizRules['scm.directDoc.enabled'] === true)
+/** 先存草稿：底部按钮为「保存草稿」「审核」 */
+const draftMode = computed(() => bizRules['scm.tradeDoc.draft'] === true)
 const lineWarehouse = computed(() => props.kind === 'salesOut' && bizRules['scm.salesOut.lineWarehouse'] === true)
 
 const requiredRule = (msg) => [{ required: true, message: msg }]
@@ -157,16 +179,37 @@ const rules = computed(() => ({
 }))
 
 const emptyForm = () => ({
-  id: undefined, orderId: undefined, sourceDocId: undefined, partnerId: undefined, partnerLabel: undefined, salesmanId: undefined,
+  id: undefined, docNo: undefined, orderId: undefined, sourceDocId: undefined, partnerId: undefined, partnerLabel: undefined, salesmanId: undefined,
   warehouseId: undefined, bizDate: today(), remark: '', replenish: false, wholeDiscount: undefined, orderDiscount: undefined,
   freight: undefined, freightBearer: FreightBearer.SUPPLIER, carrierSupplierId: undefined, items: []
 })
 
+/**
+ * 保存方式：save 保存即审核（未开启草稿）；draft 保存草稿；post 审核（新单直接保存并审核，草稿先按表单修改再审核）。
+ * Ctrl / ⌘ + Enter 在先存草稿或修改草稿时保存草稿
+ */
+const mode = ref('save')
+const posted = () => mode.value !== 'draft'
+
+async function saveNew(data) {
+  if (mode.value === 'draft') await addTradeDraft(props.kind, data)
+  else await addTrade(props.kind, data)
+  emit('success', { posted: posted() })
+}
+
+async function saveDraft(id, data) {
+  // 只有审核权限（如会计）时按已保存的内容审核，修改草稿需要新增权限
+  if (mode.value === 'post') await postTradeDraft(props.kind, id, userStore.hasPerm(`scm:${props.kind}:add`) ? data : undefined)
+  else await updateTradeDraft(props.kind, id, data)
+  emit('success', { posted: posted() })
+}
+
 const drawer = useFormDrawer({
   emptyForm,
-  create: async (data) => emit('success', await addTrade(props.kind, data)),
-  update: () => Promise.reject(new Error(t('scm.trade.cannotModify'))),
-  successMessage: t('scm.trade.kindSuccess', { kind: TRADE_KINDS[props.kind].label }),
+  fetch: (record) => loadDraft(record.id),
+  create: saveNew,
+  update: saveDraft,
+  successMessage: () => (posted() ? t('scm.trade.kindSuccess', { kind: TRADE_KINDS[props.kind].label }) : t('scm.trade.draftSaved')),
   toPayload: (f) => {
     const byOrder = !!f.orderId
     return {
@@ -177,6 +220,7 @@ const drawer = useFormDrawer({
       bizDate: f.bizDate,
       remark: f.remark,
       replenish: isReturn.value && byOrder ? f.replenish : null,
+      sourceDocId: sourceByDoc.value && byOrder ? f.sourceDocId || null : null,
       wholeDiscount: byOrder ? null : f.wholeDiscount || null,
       // 引用订单的采购入库修改了订单优惠（为空按订单分摊）
       orderDiscount: byOrder && props.kind === 'purchaseIn' && f.orderDiscount != null ? f.orderDiscount : null,
@@ -195,13 +239,25 @@ const drawer = useFormDrawer({
         expiryDate: i.expiryDate || null,
         qty: i.qty,
         serialNos: i.serialNos || null,
+        unitName: !byOrder ? i.unitName || null : null,
         // 买赠赠品行（直接开单的销售出库）：数量须与促销一致，后端校验
         gift: !byOrder && i.gift ? true : null
       }))
     }
   }
 })
-const { form, formRef } = drawer
+const { form, formRef, isEdit } = drawer
+const showDraftActions = computed(() => draftMode.value || isEdit.value)
+
+/** 底部按钮：先确定保存方式再提交（校验、保存、提示、关闭由 useFormDrawer 处理） */
+async function submit(m) {
+  mode.value = m
+  try {
+    await drawer.submit()
+  } finally {
+    mode.value = showDraftActions.value ? 'draft' : 'save'
+  }
+}
 
 /** 直接开单：参数开启且没有引用订单 */
 const direct = computed(() => allowDirect.value && !form.value.orderId)
@@ -249,13 +305,15 @@ function searchSources(keyword) {
 }
 
 /** 订单明细 → 表单行：入库 / 出库默认数量为未完成数量；退货默认不填。doc 为原出入库单时按其明细（批次、库位、序列号）带出 */
+/** 订单明细 → 表单行的公共部分 */
+const base = (i) => ({
+  key: rowKey(), orderItemId: i.id, materialId: i.materialId, materialCode: i.materialCode, materialName: i.materialName,
+  spec: i.spec, unit: i.unit, batchEnabled: i.batchEnabled, serialEnabled: i.serialEnabled, price: Number(i.price), grossPrice: grossPrice(i),
+  warehouseId: null, locationId: null, batchNo: undefined, slot: undefined, slotLabel: undefined, available: undefined, serialNos: undefined
+})
+
 function orderRows(order, doc) {
   const items = new Map(order.items.map((i) => [i.id, i]))
-  const base = (i) => ({
-    key: rowKey(), orderItemId: i.id, materialId: i.materialId, materialCode: i.materialCode, materialName: i.materialName,
-    spec: i.spec, unit: i.unit, batchEnabled: i.batchEnabled, serialEnabled: i.serialEnabled, price: Number(i.price), grossPrice: grossPrice(i),
-    warehouseId: null, locationId: null, batchNo: undefined, slot: undefined, slotLabel: undefined, available: undefined, serialNos: undefined
-  })
   if (doc) {
     return doc.items
       .map((d) => ({ d, i: items.get(d.orderItemId) }))
@@ -305,6 +363,7 @@ async function openCreate(order) {
   currentOrder.value = undefined
   sources.value = []
   await rulesReady
+  mode.value = draftMode.value ? 'draft' : 'save'
   if (!order) return drawer.openCreate(allowDirect.value ? { items: [{ ...newTradeRow(), key: rowKey() }] } : {})
   const full = await getOrder(conf.value.orderKind, order.id)
   const items = orderRows(full)
@@ -320,7 +379,68 @@ async function openCreate(order) {
   })
 }
 
-defineExpose({ openCreate })
+// ---------------------------------------------------------------- 修改草稿
+/** 草稿明细中录入的库位、批次等（出库类单据的库位批次选择框按「库位|批次」回显） */
+const draftSlot = (d) => ({
+  warehouseId: d.warehouseId || null,
+  locationId: d.locationId || null,
+  batchNo: d.batchNo || undefined,
+  productionDate: d.productionDate || undefined,
+  expiryDate: d.expiryDate || undefined,
+  serialNos: d.serialNos || undefined,
+  remark: d.remark || undefined,
+  qty: Number(d.qty),
+  ...(conf.value.fromStock
+    ? { slot: `${d.locationId || 0}|${d.batchNo || ''}`, slotLabel: `${locationText(d.locationCode)}${d.batchNo ? ' · ' + d.batchNo : ''}` }
+    : {})
+})
+
+/** 草稿 → 表单：引用订单时按订单的最新明细带出可入库 / 可退数量，直接开单按草稿的物料、单价 */
+async function loadDraft(id) {
+  const d = await getTradeDraft(props.kind, id)
+  currentOrder.value = undefined
+  sources.value = []
+  // 退货草稿没有原单时是从订单进入的：订单不可更换
+  fixedOrder.value = isReturn.value && !!d.orderId && !d.sourceDocId
+  const head = {
+    id: d.id, docNo: d.docNo, orderId: d.orderId || undefined, sourceDocId: d.sourceDocId || undefined,
+    partnerId: d.partnerId, partnerLabel: [d.partnerCode, d.partnerName].filter(Boolean).join(' '), salesmanId: d.salesmanId || undefined,
+    warehouseId: d.warehouseId, bizDate: d.bizDate, remark: d.remark || '', replenish: d.replenish === 1,
+    wholeDiscount: d.wholeDiscount != null ? Number(d.wholeDiscount) : undefined,
+    orderDiscount: d.orderDiscount != null ? Number(d.orderDiscount) : undefined,
+    freight: Number(d.freight) > 0 ? Number(d.freight) : undefined, freightBearer: d.freightBearer || FreightBearer.SUPPLIER,
+    carrierSupplierId: d.carrierSupplierId || undefined
+  }
+  if (!d.orderId) {
+    const items = d.items.map((i) => ({
+      ...newTradeRow(), key: rowKey(), materialId: i.materialId, materialLabel: [i.materialCode, i.materialName].filter(Boolean).join(' '),
+      materialCode: i.materialCode, materialName: i.materialName, spec: i.spec, unit: i.unit, batchEnabled: i.batchEnabled,
+      serialEnabled: i.serialEnabled, price: i.price != null ? Number(i.price) : undefined, taxRate: i.taxRate != null ? Number(i.taxRate) : 13,
+      priceAuto: false, gift: i.gift === 1, unitName: i.unitName || undefined, ...draftSlot(i)
+    }))
+    return { ...head, items }
+  }
+  const order = await getOrder(conf.value.orderKind, d.orderId)
+  currentOrder.value = order
+  sources.value = sourceByDoc.value && d.sourceDocId ? [await getTrade(sourceKind.value, d.sourceDocId)] : [order]
+  const orderItems = new Map(order.items.map((i) => [i.id, i]))
+  const items = d.items
+    .filter((i) => orderItems.has(i.orderItemId))
+    .map((i) => {
+      const oi = orderItems.get(i.orderItemId)
+      return { ...base(oi), limit: isReturn.value ? netQty(oi) : remainingQty(oi), ...draftSlot(i) }
+    })
+  return { ...head, items }
+}
+
+/** 修改草稿（列表中的「编辑」或点击草稿单号） */
+async function openDraft(draft) {
+  await rulesReady
+  mode.value = 'draft'
+  return drawer.openEdit(draft)
+}
+
+defineExpose({ openCreate, openDraft })
 </script>
 
 <style scoped>

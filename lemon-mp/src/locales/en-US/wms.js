@@ -103,6 +103,7 @@ export default {
     noStockOf: '{name}: no available stock in the warehouse',
     discountTooLarge: 'The order discount cannot exceed the total',
     done: 'Shipped',
+    draftSaved: 'Saved as draft, pending posting',
     refTitle: 'Price reference: {name}',
     refTip: 'Tax inclusive, base unit; tap a price to use it',
     refCustomer: 'This customer',
@@ -155,7 +156,8 @@ export default {
     overQty: '{name} exceeds open qty',
     added: '{name} +{qty}, total {total}',
     selectWarehouse: 'Select a receiving warehouse',
-    done: 'Received'
+    done: 'Received',
+    draftSaved: 'Saved as draft, pending posting'
   },
   putaway: {
     source: 'From',
