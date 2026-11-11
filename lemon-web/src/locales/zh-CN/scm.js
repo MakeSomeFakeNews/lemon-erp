@@ -1237,7 +1237,7 @@ export default {
     bankAccount: '银行账号',
     logistics: '物流公司',
     logisticsLabel: '物流公司（承运商）',
-    logisticsExtra: '勾选后可在采购运费、发运单中被选为承运商；应付、付款与其他供应商相同',
+    logisticsExtra: '勾选后可在出入库单的运费（采购入库、采购退货、销售出库）和发运单中被选为承运商；应付、付款与其他供应商相同',
     routes: '营运路线',
     routesPlaceholder: '如：华东整车、广州—上海专线',
     type: '类型',

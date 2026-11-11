@@ -1237,7 +1237,7 @@ export default {
     bankAccount: 'Bank Account',
     logistics: 'Logistics',
     logisticsLabel: 'Logistics company (carrier)',
-    logisticsExtra: 'Can be selected as the carrier for purchase freight and shipments; payables and payments are the same as for other suppliers',
+    logisticsExtra: 'Can be selected as the carrier for freight on purchase receipts, purchase returns, sales deliveries and shipments; payables and payments are the same as for other suppliers',
     routes: 'Routes',
     routesPlaceholder: 'e.g. East China FTL, Guangzhou–Shanghai line',
     type: 'Type',
