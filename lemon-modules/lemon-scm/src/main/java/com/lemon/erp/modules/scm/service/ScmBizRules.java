@@ -3,6 +3,7 @@ package com.lemon.erp.modules.scm.service;
 import com.lemon.erp.framework.rule.BizRule;
 import com.lemon.erp.framework.rule.BizRuleProvider;
 import com.lemon.erp.modules.scm.model.CreditControl;
+import com.lemon.erp.modules.scm.model.PurchaseFreightCost;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -26,6 +27,8 @@ public class ScmBizRules implements BizRuleProvider {
     public static final String DIRECT_DOC = "scm.directDoc.enabled";
     /** 销售出库的明细行可以各自选择仓库 */
     public static final String SALES_OUT_LINE_WAREHOUSE = "scm.salesOut.lineWarehouse";
+    /** 本公司承担的采购运费计入存货成本或当期费用（供应商代垫的始终计入存货成本） */
+    public static final String PURCHASE_FREIGHT_COST = "scm.purchaseFreight.cost";
 
     @Override
     public List<BizRule> rules() {
@@ -38,11 +41,13 @@ public class ScmBizRules implements BizRuleProvider {
                         "scm.label.customersCreditLimitWhetherApprovingSales"),
                 BizRule.bool(DIRECT_DOC, MODULE, "scm.label.directDocEnabled", true, "scm.label.directDocEnabledRemark"),
                 BizRule.bool(SALES_OUT_LINE_WAREHOUSE, MODULE, "scm.label.salesOutLineWarehouse", true,
-                        "scm.label.salesOutLineWarehouseRemark"));
+                        "scm.label.salesOutLineWarehouseRemark"),
+                BizRule.select(PURCHASE_FREIGHT_COST, MODULE, "scm.label.purchaseFreightCost", PurchaseFreightCost.INVENTORY,
+                        PurchaseFreightCost.class, "scm.label.purchaseFreightCostRemark"));
     }
 
     @Override
     public Set<String> publicKeys() {
-        return Set.of(DIRECT_DOC, SALES_OUT_LINE_WAREHOUSE);
+        return Set.of(DIRECT_DOC, SALES_OUT_LINE_WAREHOUSE, PURCHASE_FREIGHT_COST);
     }
 }

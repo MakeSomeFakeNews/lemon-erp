@@ -67,10 +67,10 @@
 
       <TradeDocItems :kind="kind" :form="form" :direct="direct" :line-warehouse="lineWarehouse" />
 
-      <!-- 采购入库的运费：按各行不含税金额分摊计入存货成本，生成运费应付单 -->
+      <!-- 采购入库的运费：生成运费应付单；供应商代垫的计入存货成本，本公司承担的按业务参数计入存货成本或当期费用 -->
       <a-row v-if="kind === 'purchaseIn'" :gutter="16" class="freight-row">
         <a-col :xs="24" :sm="8" :lg="5">
-          <a-form-item :label="$t('scm.freight.label')" name="freight" :extra="$t('scm.freight.purchaseHint')">
+          <a-form-item :label="$t('scm.freight.label')" name="freight">
             <a-input-number v-model:value="form.freight" :min="0" :precision="2" prefix="¥" class="full" :placeholder="$t('scm.trade.optional')" />
           </a-form-item>
         </a-col>
@@ -82,8 +82,11 @@
           </a-col>
           <a-col v-if="form.freightBearer === FreightBearer.COMPANY" :xs="24" :sm="8" :lg="6">
             <a-form-item :label="$t('scm.freight.carrier')" name="carrierSupplierId" :rules="requiredRule($t('scm.freight.selectCarrier'))">
-              <PartnerSelect v-model:value="form.carrierSupplierId" type="supplier" :placeholder="$t('scm.freight.selectCarrier')" />
+              <PartnerSelect v-model:value="form.carrierSupplierId" type="supplier" carrier :placeholder="$t('scm.freight.selectCarrier')" />
             </a-form-item>
+          </a-col>
+          <a-col :span="24">
+            <div class="sub-text freight-hint">{{ freightHint }}</div>
           </a-col>
         </template>
       </a-row>
@@ -107,7 +110,7 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useBizRules } from '@/composables/useBizRules'
 import { rowKey, today } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney, grossPrice, netQty, newTradeRow, remainingQty } from './scm'
-import { FreightBearer, OrderSource, OrderStatus } from '@/constants/enums'
+import { FreightBearer, OrderSource, OrderStatus, PurchaseFreightCost } from '@/constants/enums'
 import { useDict } from '@/composables/useDict'
 import { toOptions } from '@/utils/dict'
 
@@ -128,7 +131,11 @@ const orderConf = computed(() => ORDER_KINDS[conf.value.orderKind])
 const tip = computed(() => t(`scm.trade.tip.${props.kind}`))
 const isReturn = computed(() => conf.value.returns)
 
-const { rules: bizRules, ready: rulesReady } = useBizRules({ 'scm.directDoc.enabled': true, 'scm.salesOut.lineWarehouse': true })
+const { rules: bizRules, ready: rulesReady } = useBizRules({
+  'scm.directDoc.enabled': true,
+  'scm.salesOut.lineWarehouse': true,
+  'scm.purchaseFreight.cost': PurchaseFreightCost.INVENTORY
+})
 const allowDirect = computed(() => bizRules['scm.directDoc.enabled'] === true)
 const lineWarehouse = computed(() => props.kind === 'salesOut' && bizRules['scm.salesOut.lineWarehouse'] === true)
 
@@ -138,6 +145,11 @@ const dict = useDict('scm_freight_bearer')
 const purchaseBearers = computed(() =>
   toOptions(dict.scm_freight_bearer).filter((d) => d.value === FreightBearer.SUPPLIER || d.value === FreightBearer.COMPANY)
 )
+/** 运费的实际入账方式：供应商代垫计入存货成本；本公司承担按业务参数「本公司承担的采购运费计入」 */
+const freightHint = computed(() => {
+  if (form.value.freightBearer !== FreightBearer.COMPANY) return t('scm.freight.supplierHint')
+  return bizRules['scm.purchaseFreight.cost'] === PurchaseFreightCost.EXPENSE ? t('scm.freight.expenseHint') : t('scm.freight.inventoryHint')
+})
 const rules = computed(() => ({
   partnerId: direct.value ? requiredRule(t('scm.trade.selectPartner', { partner: orderConf.value.partnerLabel })) : [],
   warehouseId: requiredRule(t('scm.trade.selectWarehouse')),
@@ -146,7 +158,7 @@ const rules = computed(() => ({
 
 const emptyForm = () => ({
   id: undefined, orderId: undefined, sourceDocId: undefined, partnerId: undefined, partnerLabel: undefined, salesmanId: undefined,
-  warehouseId: undefined, bizDate: today(), remark: '', replenish: false, wholeDiscount: undefined,
+  warehouseId: undefined, bizDate: today(), remark: '', replenish: false, wholeDiscount: undefined, orderDiscount: undefined,
   freight: undefined, freightBearer: FreightBearer.SUPPLIER, carrierSupplierId: undefined, items: []
 })
 
@@ -166,6 +178,8 @@ const drawer = useFormDrawer({
       remark: f.remark,
       replenish: isReturn.value && byOrder ? f.replenish : null,
       wholeDiscount: byOrder ? null : f.wholeDiscount || null,
+      // 引用订单的采购入库修改了订单优惠（为空按订单分摊）
+      orderDiscount: byOrder && props.kind === 'purchaseIn' && f.orderDiscount != null ? f.orderDiscount : null,
       ...(props.kind === 'purchaseIn' && Number(f.freight) > 0
         ? { freight: f.freight, freightBearer: f.freightBearer, carrierSupplierId: f.freightBearer === FreightBearer.COMPANY ? f.carrierSupplierId : null }
         : {}),
@@ -259,6 +273,7 @@ function useOrder(order, doc) {
   form.value.orderId = order.id
   form.value.partnerId = order.partnerId
   form.value.partnerLabel = `${order.partnerCode} ${order.partnerName}`
+  form.value.orderDiscount = undefined
   if (directOrder.value) form.value.replenish = false
   const warehouseId = doc?.warehouseId || order.warehouseId
   if (warehouseId && !form.value.warehouseId) form.value.warehouseId = warehouseId
@@ -281,7 +296,7 @@ async function selectSource(id) {
 /** 取消引用：回到直接开单 */
 function clearSource() {
   currentOrder.value = undefined
-  Object.assign(form.value, { orderId: undefined, sourceDocId: undefined, replenish: false, wholeDiscount: undefined })
+  Object.assign(form.value, { orderId: undefined, sourceDocId: undefined, replenish: false, wholeDiscount: undefined, orderDiscount: undefined })
   form.value.items = allowDirect.value ? [{ ...newTradeRow(), key: rowKey() }] : []
 }
 
@@ -335,6 +350,10 @@ defineExpose({ openCreate })
 }
 .freight-row {
   margin-top: 12px;
+}
+.freight-hint {
+  margin-top: -16px;
+  margin-bottom: 8px;
 }
 .sub-text {
   color: var(--app-text-3);

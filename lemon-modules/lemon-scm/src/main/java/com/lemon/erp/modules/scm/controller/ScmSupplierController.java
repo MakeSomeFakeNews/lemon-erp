@@ -11,6 +11,7 @@ import com.lemon.erp.framework.excel.ImportRequest;
 import com.lemon.erp.framework.excel.ImportResult;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.scm.dto.CarrierOptions;
 import com.lemon.erp.modules.scm.dto.PartnerOption;
 import com.lemon.erp.modules.scm.dto.SupplierKpi;
 import com.lemon.erp.modules.scm.entity.ScmSupplier;
@@ -48,14 +49,21 @@ public class ScmSupplierController {
                                        @RequestParam(defaultValue = "10") long size,
                                        @RequestParam(required = false) String keyword,
                                        @RequestParam(required = false) SupplierLevel level,
-                                       @RequestParam(required = false) EnableStatus status) {
-        return R.ok(supplierService.page(current, size, keyword, level, status));
+                                       @RequestParam(required = false) EnableStatus status,
+                                       @RequestParam(required = false) Integer logistics) {
+        return R.ok(supplierService.page(current, size, keyword, level, status, logistics));
     }
 
     /** 登录即可访问：订单等页面按编码或名称搜索 */
     @GetMapping("/options")
     public R<List<PartnerOption>> options(@RequestParam(required = false) String keyword) {
         return R.ok(supplierService.options(keyword));
+    }
+
+    /** 登录即可访问：承运商下拉（采购运费、发运单），只列出物流公司，没有标记时为全部供应商 */
+    @GetMapping("/carrier-options")
+    public R<CarrierOptions> carrierOptions(@RequestParam(required = false) String keyword) {
+        return R.ok(supplierService.carrierOptions(keyword));
     }
 
     /** 供应商绩效：订单数、入库金额、准时交货率、退货率、最近评估 */

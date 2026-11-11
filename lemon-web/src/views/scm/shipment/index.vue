@@ -152,6 +152,7 @@
               <PartnerSelect
                 v-model:value="form.carrierSupplierId"
                 type="supplier"
+                carrier
                 :label="form.carrierSupplierName ? `${form.carrierSupplierCode} ${form.carrierSupplierName}` : undefined"
                 allow-clear
                 :placeholder="$t('scm.shipment.noPayable')"

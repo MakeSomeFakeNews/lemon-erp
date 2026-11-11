@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.modules.scm.model.FreightBearer;
+import com.lemon.erp.modules.scm.model.PurchaseFreightCost;
 import com.lemon.erp.modules.scm.model.OrderSource;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import lombok.Data;
@@ -62,11 +63,20 @@ public class ScmTradeDoc extends BaseEntity {
     /** 本单分摊的整单优惠（本位币，含税）：优惠前合计 = 价税合计 + 本项；明细显示优惠前的单价、金额，优惠只在合计处体现 */
     private BigDecimal discountAmount;
 
-    /** 采购运费（仅采购入库，按行金额分摊计入存货成本），0 为没有 */
+    /**
+     * 引用订单的采购入库修改了订单优惠时，本单优惠与按订单分摊的优惠之差（本位币，含税，正数为多优惠），0 为与订单一致。
+     * 只影响本单的应付和存货成本，订单的已入库金额仍按订单计算
+     */
+    private BigDecimal discountAdjust;
+
+    /** 采购运费（仅采购入库，计入存货成本时按行不含税金额分摊，见 freightCost），0 为没有 */
     private BigDecimal freight;
 
     /** 采购运费付给：供应商代垫（计入该供应商应付）/ 本公司承担（付承运商） */
     private FreightBearer freightBearer;
+
+    /** 采购运费的入账方式：供应商代垫的始终计入存货成本，本公司承担的按业务参数 scm.purchaseFreight.cost（入库时确定）；没有运费为空 */
+    private PurchaseFreightCost freightCost;
 
     /** 采购运费的承运商（供应商） */
     private Long carrierSupplierId;
