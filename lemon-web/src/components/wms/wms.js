@@ -112,6 +112,17 @@ export function expiryStatus(date) {
 
 export const today = () => dayjs().format('YYYY-MM-DD')
 
+/**
+ * 单据明细的批次日期「生产日期 ~ 有效期」：入库行取填写的日期，出库等取批次登记的（batchProductionDate / batchExpiryDate）；
+ * 都没有时返回空串
+ */
+export function batchDates(r) {
+  const produced = r.productionDate || r.batchProductionDate
+  const expiry = r.expiryDate || r.batchExpiryDate
+  if (!produced && !expiry) return ''
+  return expiry ? `${produced || '?'} ~ ${expiry}` : t('wms.common.producedOn', { date: produced })
+}
+
 /** 明细行的唯一 key（新增行没有 id） */
 export { rowKey } from '@/composables/useLineItems'
 

@@ -5,7 +5,8 @@ const ids = (v) => [].concat(v).join(',')
 
 export const pageMaterial = (params) => request.get('/wms/material', { params })
 export const getMaterial = (id) => request.get(`/wms/material/${id}`)
-export const addMaterial = (data) => request.post('/wms/material', data)
+/** 新增；copyFrom 为复制的原物料 ID（同时复制其辅助单位（不含包装条码）和图片） */
+export const addMaterial = (data, copyFrom) => request.post('/wms/material', data, { params: copyFrom ? { copyFrom } : undefined })
 export const updateMaterial = (id, data) => request.put(`/wms/material/${id}`, data)
 export const changeMaterialStatus = (id, status) => request.put(`/wms/material/${id}/status`, { status })
 export const deleteMaterial = (id) => request.delete(`/wms/material/${ids(id)}`)
@@ -38,3 +39,20 @@ export const materialVariants = (id) => request.get(`/wms/material/${id}/variant
 export const variantStock = (id) => request.get(`/wms/material/${id}/variant-stock`)
 /** 生成 SKU：valueIds { 属性ID: [值ID] } → 新生成的数量 */
 export const generateVariants = (id, valueIds) => request.post(`/wms/material/${id}/variants`, { valueIds })
+
+/** 批次 / 序列号管理切换前检查：{ batchEnabled, serialEnabled, hasTransactions, stockQty, noBatchQty, batchCount, openDocs } */
+export const materialTracking = (id) => request.get(`/wms/material/${id}/tracking`)
+/** 切换批次 / 序列号管理：{ batchEnabled, serialEnabled, batchNo, productionDate, expiryDate } */
+export const changeMaterialTracking = (id, data) => request.put(`/wms/material/${id}/tracking`, data)
+
+/** 商品图片 [{ id, url, fileName, fileSize, sort }]，第一张为主图 */
+export const materialImages = (id) => request.get(`/wms/material/${id}/images`)
+export const uploadMaterialImage = (id, file) => {
+  const data = new FormData()
+  data.append('file', file)
+  return request.post(`/wms/material/${id}/images`, data, { timeout: 120000 })
+}
+/** 调整顺序：全部图片 ID，第一张为主图 */
+export const reorderMaterialImages = (id, imageIds) => request.put(`/wms/material/${id}/images/order`, imageIds)
+export const setMainMaterialImage = (id, imageId) => request.put(`/wms/material/${id}/images/${imageId}/main`)
+export const deleteMaterialImage = (id, imageId) => request.delete(`/wms/material/${id}/images/${imageId}`)

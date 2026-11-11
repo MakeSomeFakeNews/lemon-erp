@@ -42,6 +42,7 @@ export default {
     available: '可用',
     safety: '安全库存',
     expiry: '有效期至 {date}',
+    produced: '生产 {date}',
     frozen: '冻结 {n}',
     unitCost: '均价',
     amount: '金额'

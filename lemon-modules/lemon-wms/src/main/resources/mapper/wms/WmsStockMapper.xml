@@ -36,7 +36,7 @@
     <!-- 供应商寄售仓的库存属于供应商，不计价 -->
     <sql id="stockSelect">
         SELECT s.id, s.warehouse_id, w.name AS warehouse_name, s.location_id, l.code AS location_code, l.name AS location_name,
-               s.material_id, m.code AS material_code, m.name AS material_name, m.spec, m.unit,
+               s.material_id, m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.image_url,
                m.batch_enabled, m.serial_enabled, s.batch_no, b.production_date, b.expiry_date, s.qty, s.frozen_qty,
                CASE WHEN w.type &lt;&gt; 'CONSIGN_IN' THEN <include refid="avgCost"/> END AS unit_cost,
                CASE WHEN w.type &lt;&gt; 'CONSIGN_IN' THEN ROUND(s.qty * COALESCE(<include refid="avgCost"/>, 0), 2) END AS amount
@@ -70,7 +70,7 @@
     </select>
 
     <sql id="summarySelect">
-        SELECT m.id AS material_id, m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.category,
+        SELECT m.id AS material_id, m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.category, m.image_url,
                m.safety_stock, COALESCE(SUM(s.qty), 0) AS qty, COALESCE(SUM(s.frozen_qty), 0) AS frozen_qty,
                <include refid="avgCost"/> AS unit_cost,
                ROUND(COALESCE(SUM(CASE WHEN w.type &lt;&gt; 'CONSIGN_IN' THEN s.qty ELSE 0 END), 0) * COALESCE(<include refid="avgCost"/>, 0), 2) AS amount
@@ -86,7 +86,7 @@
             </if>
             <if test="q.category != null and q.category != ''">AND m.category IN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialCategoryMapper.subtreeCodes"><property name="code" value="q.category"/></include>)</if>
         </where>
-        GROUP BY m.id, m.code, m.name, m.spec, m.unit, m.category, m.safety_stock, m.ref_cost, mc.id, mc.unit_cost, mc.qty
+        GROUP BY m.id, m.code, m.name, m.spec, m.unit, m.category, m.image_url, m.safety_stock, m.ref_cost, mc.id, mc.unit_cost, mc.qty
         <choose>
             <when test="q.lowStock != null and q.lowStock">
                 HAVING m.safety_stock IS NOT NULL AND COALESCE(SUM(s.qty), 0) &lt; m.safety_stock

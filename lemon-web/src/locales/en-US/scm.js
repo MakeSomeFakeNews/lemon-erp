@@ -91,7 +91,8 @@ export default {
     available: 'Available {qty}',
     frozen: ' (Frozen {qty})',
     unspecified: 'Unspecified',
-    location: 'Location {loc}'
+    location: 'Location {loc}',
+    produced: 'Produced {date}'
   },
   consign: {
     noPerm: 'No consignment settlement permission (scm:consign:settle); you can only view consignment warehouse stock',

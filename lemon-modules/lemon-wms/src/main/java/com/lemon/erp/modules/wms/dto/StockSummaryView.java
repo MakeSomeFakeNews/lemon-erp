@@ -15,6 +15,8 @@ public class StockSummaryView {
     private String spec;
     private String unit;
     private String category;
+    /** 主图 URL */
+    private String imageUrl;
     private BigDecimal safetyStock;
     private BigDecimal qty;
 

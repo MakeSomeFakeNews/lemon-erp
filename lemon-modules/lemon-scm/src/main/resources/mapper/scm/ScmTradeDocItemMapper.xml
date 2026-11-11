@@ -4,11 +4,12 @@
 
     <select id="selectByDocId" resultType="com.lemon.erp.modules.scm.entity.ScmTradeDocItem">
         SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, l.code AS location_code,
-               w.name AS warehouse_name, oi.gift
+               w.name AS warehouse_name, oi.gift, b.production_date AS batch_production_date, b.expiry_date AS batch_expiry_date
         FROM scm_trade_doc_item i
         JOIN scm_trade_doc d ON d.id = i.doc_id
         LEFT JOIN scm_order_item oi ON oi.id = i.order_item_id
         JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN wms_batch b ON b.material_id = i.material_id AND b.batch_no = i.batch_no AND i.batch_no &lt;&gt; ''
         LEFT JOIN wms_warehouse w ON w.id = COALESCE(i.warehouse_id, d.warehouse_id)
         LEFT JOIN wms_location l ON l.id = i.location_id
         WHERE i.doc_id = #{docId}

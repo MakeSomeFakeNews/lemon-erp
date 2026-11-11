@@ -73,9 +73,8 @@
             <template v-else-if="column.key === 'toLocation'">{{ locationText(record.toLocationCode) }}</template>
             <template v-else-if="column.key === 'batchNo'">
               <span>{{ record.batchNo || '-' }}</span>
-              <div v-if="record.expiryDate" class="sub-text">
-                {{ record.productionDate || '?' }} ~ {{ record.expiryDate }}
-              </div>
+              <!-- 入库填写的日期，出库等随批次带出登记的生产日期、有效期 -->
+              <div v-if="batchDates(record)" class="sub-text">{{ batchDates(record) }}</div>
             </template>
             <template v-else-if="column.key === 'qty'">
               <span :class="negativeClass(record.qty)">{{ formatQty(record.qty) }}</span> {{ record.unit }}
@@ -131,7 +130,7 @@ import DictTag from '@/components/DictTag.vue'
 import ReceiveConfirm from './ReceiveConfirm.vue'
 import { confirmDoc, getDoc, receiveTransfer, reverseDoc } from '@/api/wms/doc'
 import { useUserStore } from '@/store/user'
-import { DOC_KINDS, canReverse, formatQty, locationText, negativeClass } from './wms'
+import { DOC_KINDS, batchDates, canReverse, formatQty, locationText, negativeClass } from './wms'
 import { materialColumns, printDocs } from '@/utils/print'
 import { printName } from '@/utils/printTemplates'
 import { useDict } from '@/composables/useDict'

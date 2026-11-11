@@ -5,10 +5,12 @@
     <select id="selectByDocId" resultType="com.lemon.erp.modules.wms.entity.WmsStockDocItem">
         SELECT i.id, i.doc_id, i.material_id, i.warehouse_id, w.name AS warehouse_name, i.location_id, i.to_location_id, i.batch_no, i.production_date, i.expiry_date,
                i.qty, i.cost_price, i.biz_price, i.serial_nos, i.remark, m.code AS material_code, m.name AS material_name, m.spec, m.unit,
-               m.batch_enabled, m.serial_enabled, l.code AS location_code, tl.code AS to_location_code
+               m.batch_enabled, m.serial_enabled, l.code AS location_code, tl.code AS to_location_code,
+               b.production_date AS batch_production_date, b.expiry_date AS batch_expiry_date
         FROM wms_stock_doc_item i
         JOIN wms_stock_doc d ON d.id = i.doc_id
         JOIN wms_material m ON m.id = i.material_id
+        LEFT JOIN wms_batch b ON b.material_id = i.material_id AND b.batch_no = i.batch_no AND i.batch_no &lt;&gt; ''
         LEFT JOIN wms_warehouse w ON w.id = COALESCE(i.warehouse_id, d.warehouse_id)
         LEFT JOIN wms_location l ON l.id = i.location_id
         LEFT JOIN wms_location tl ON tl.id = i.to_location_id

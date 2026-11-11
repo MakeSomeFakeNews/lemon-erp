@@ -20,6 +20,8 @@ public class StockView {
     private String materialCode;
     private String materialName;
     private String spec;
+    /** 物料主图 URL */
+    private String imageUrl;
     private String unit;
     private Integer batchEnabled;
     private Integer serialEnabled;

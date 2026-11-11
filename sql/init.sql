@@ -217,6 +217,7 @@ DROP TABLE IF EXISTS wms_variant_value;
 DROP TABLE IF EXISTS wms_attribute_value;
 DROP TABLE IF EXISTS wms_attribute;
 DROP TABLE IF EXISTS wms_material_unit;
+DROP TABLE IF EXISTS wms_material_image;
 DROP TABLE IF EXISTS wms_price_level;
 DROP TABLE IF EXISTS wms_material;
 DROP TABLE IF EXISTS wms_material_category;
@@ -846,6 +847,7 @@ CREATE TABLE wms_material (
     is_template    TINYINT       NOT NULL DEFAULT 0 COMMENT '是否多规格款式 1是：按规格属性生成 SKU，款式本身不能出入库',
     template_id    BIGINT                 DEFAULT NULL COMMENT 'SKU 所属的款式（物料）',
     variant_text   VARCHAR(255)           DEFAULT NULL COMMENT 'SKU 的规格属性值，如 红色 / XL',
+    image_url      VARCHAR(255)           DEFAULT NULL COMMENT '主图 URL（wms_material_image 排在第一张的图片），由图片维护自动更新',
     status         TINYINT       NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用',
     remark         VARCHAR(255)           DEFAULT NULL COMMENT '备注',
     search_key   VARCHAR(1000)          DEFAULT NULL COMMENT '检索列：编码、名称、规格、条码去掉分隔符的小写串、数字串、拼音首字母（空格分隔），由程序计算，下拉和列表关键字匹配',
@@ -942,6 +944,21 @@ CREATE TABLE wms_material_unit (
     UNIQUE KEY uk_material_unit (material_id, unit, tenant_id),
     KEY idx_material_unit_barcode (barcode)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '物料辅助计量单位：库存、成本都按基本单位，单据可按辅助单位录入后换算';
+
+CREATE TABLE wms_material_image (
+    id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT       NOT NULL DEFAULT 1 COMMENT '租户ID',
+    material_id BIGINT       NOT NULL COMMENT '物料',
+    url         VARCHAR(255) NOT NULL COMMENT '图片访问 URL（公开文件 /api/files/material/...）',
+    file_name   VARCHAR(255)          DEFAULT NULL COMMENT '原文件名',
+    file_size   BIGINT       NOT NULL DEFAULT 0 COMMENT '文件大小(字节)',
+    sort        INT          NOT NULL DEFAULT 0 COMMENT '排序，最小的为主图',
+    create_by   BIGINT                DEFAULT NULL COMMENT '上传人',
+    create_time DATETIME              DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME              DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_material_image (material_id, sort)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '物料（商品）图片：排在第一张的为主图，同步到 wms_material.image_url';
 
 CREATE TABLE wms_batch (
     id              BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',

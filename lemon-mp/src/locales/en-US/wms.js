@@ -41,6 +41,7 @@ export default {
     qty: 'On hand',
     available: 'Available',
     safety: 'Safety stock',
+    produced: 'Produced {date}',
     expiry: 'Expires {date}',
     frozen: 'Frozen {n}',
     unitCost: 'Avg cost',

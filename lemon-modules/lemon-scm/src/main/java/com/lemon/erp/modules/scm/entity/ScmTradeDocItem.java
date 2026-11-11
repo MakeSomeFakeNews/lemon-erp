@@ -61,6 +61,13 @@ public class ScmTradeDocItem extends BaseEntity {
     @TableField(exist = false)
     private Integer gift;
 
+    /** 批次登记的生产日期、有效期（销售出库等随批次带出显示） */
+    @TableField(exist = false)
+    private LocalDate batchProductionDate;
+
+    @TableField(exist = false)
+    private LocalDate batchExpiryDate;
+
     @TableField(exist = false)
     private String materialCode;
 

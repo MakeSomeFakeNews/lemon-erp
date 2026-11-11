@@ -19,8 +19,11 @@
           <text class="ss-name">{{ emptyOption }}</text>
         </view>
         <view v-for="it in items" :key="it.id" class="ss-row" @click="emit('select', it)">
-          <text class="ss-name">{{ it.title }}</text>
-          <text v-if="it.sub" class="ss-sub">{{ it.sub }}</text>
+          <image v-if="it.image" class="ss-img" :src="it.image" mode="aspectFill" />
+          <view class="ss-text">
+            <text class="ss-name">{{ it.title }}</text>
+            <text v-if="it.sub" class="ss-sub">{{ it.sub }}</text>
+          </view>
         </view>
         <view v-if="loading" class="ss-loading l-muted">{{ t('common.loading') }}</view>
         <l-empty v-else-if="!items.length && !emptyOption" />
@@ -36,7 +39,7 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from '@/locales'
 
 /**
- * 底部搜索选择弹层（客户、业务员、商品等）：输入关键字后由父组件查询并传入 items [{ id, title, sub? }]。
+ * 底部搜索选择弹层（客户、业务员、商品等）：输入关键字后由父组件查询并传入 items [{ id, title, sub?, image? }]（image 为缩略图的完整地址，如商品主图）。
  * 打开时自动触发一次 search('')（关键字为 initial 时用它），输入时防抖触发 search；emptyOption 为第一项的文字（选择后 select(null)，如「默认」）。
  * 分页：hasMore 为 true 时滚动到底部触发 more（父组件按当前关键字加载下一页并追加到 items）
  */
