@@ -21,6 +21,8 @@ export const SOURCE_DOCS = {
   [BillSource.SALES_FREIGHT]: { perm: 'scm:salesOut:list', trade: 'salesOut' },
   [BillSource.SALES_RETURN_FREIGHT]: { perm: 'scm:salesReturn:list', trade: 'salesReturn' },
   [BillSource.PURCHASE_RETURN_FREIGHT]: { perm: 'scm:purchaseReturn:list', trade: 'purchaseReturn' },
+  // 调拨费用：来源为调拨单（月结的承运商应付、现付的费用支出单）
+  [BillSource.TRANSFER_FEE]: { perm: 'wms:transfer:list', path: '/wms/transfer' },
   [BillSource.TICKET]: { perm: 'crm:ticket:list', ticket: true },
   [BillSource.PROJECT]: { perm: 'pm:project:list', project: true },
   [BillSource.SHIPMENT]: { perm: 'scm:shipment:list', path: '/scm/shipment' },

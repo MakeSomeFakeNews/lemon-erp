@@ -586,6 +586,7 @@ public class FinBillService {
                     : bill.getSourceType() == BillSource.PURCHASE_FREIGHT ? "采购运费 " + bill.getSourceNo() + " " + partner // i18n-ignore
                     : bill.getSourceType() == BillSource.SALES_FREIGHT ? "销售运费 " + bill.getSourceNo() + " " + partner // i18n-ignore
                     : bill.getSourceType() == BillSource.PURCHASE_RETURN_FREIGHT ? "退货运费 " + bill.getSourceNo() + " " + partner // i18n-ignore
+                    : bill.getSourceType() == BillSource.TRANSFER_FEE ? "调拨费用 " + bill.getSourceNo() + " " + partner // i18n-ignore
                     : bill.getSourceNo() + " " + partner;
             lines.add(VoucherLine.debit(summary, bill.getExpenseAccountId(), bill.getDeptId(), bill.getAmount().subtract(bill.getTaxAmount())));
             lines.add(VoucherLine.debit(summary, accountRules.accountId(AccountRole.INPUT_VAT), null, bill.getTaxAmount()));

@@ -73,8 +73,26 @@ const stock = (key, name, warehouse, transfer, type, category) => ({
   key,
   module: n.warehouse,
   name,
-  fields: [...(type ? [type, category] : []), warehouse, ...(transfer ? [n.inWarehouse] : []), n.bizDate, n.sourceNo, n.totalQty],
-  columns: [...MATERIAL_COLUMNS, ...(transfer ? [] : [n.warehouse]), transfer ? n.outLocation : n.location, ...(transfer ? [n.inLocation] : []), n.batch, num(n.quantity), n.serialNo],
+  // 调拨单：调拨价格、调出成本 / 调拨金额、调拨费用（issue #104），明细的调出成本价、调拨价、调拨金额（有「查看成本金额」权限时才有值）
+  fields: [
+    ...(type ? [type, category] : []),
+    warehouse,
+    ...(transfer ? [n.inWarehouse] : []),
+    n.bizDate,
+    n.sourceNo,
+    n.totalQty,
+    ...(transfer ? [n.transferPricing, n.transferCostAmount, n.transferAmount, n.transferDiff, n.transferFee, n.feeSettle, n.feeAccount, n.feeCarrier] : [])
+  ],
+  columns: [
+    ...MATERIAL_COLUMNS,
+    ...(transfer ? [] : [n.warehouse]),
+    transfer ? n.outLocation : n.location,
+    ...(transfer ? [n.inLocation] : []),
+    n.batch,
+    num(n.quantity),
+    ...(transfer ? [num(n.transferCostPrice), num(n.transferPrice), num(n.transferAmount)] : []),
+    n.serialNo
+  ],
   signs: [n.prepared, n.confirmed, n.handler],
   note: true
 })

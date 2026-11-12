@@ -126,6 +126,43 @@ export default {
       assembly: '由组装拆卸单自动生成'
     }
   },
+  transfer: {
+    pricing: '调拨价格',
+    pricingTip: '同价调拨：调拨价 = 调出成本价；差价调拨：调拨价 = 依据价 × 系数，修改时批量更新明细，可逐行修改。调拨价是内部结算价，不改变存货成本',
+    pricings: {
+      SAME: '同价调拨',
+      REF_COST: '参考成本价',
+      AVG_COST: '库存均价',
+      MIN_SALE: '最低售价'
+    },
+    differentialText: '差价调拨（{basis} × {factor}）',
+    factor: '价格系数',
+    noBasis: '{n} 行没有依据价，按调出成本价',
+    costPrice: '调出成本价',
+    costPriceTip: '确认时按调出成本生成',
+    transferPrice: '调拨价',
+    transferPricePh: '不填按调出成本价',
+    sameAsCost: '= 调出成本价',
+    transferAmount: '调拨金额',
+    costAmount: '调出成本金额',
+    diffAmount: '调拨差价',
+    costN: '成本 {amount}',
+    fee: '调拨费用',
+    feeSettle: '结算方式',
+    feeAccount: '结算账户',
+    selectAccount: '请选择结算账户',
+    carrier: '承运商',
+    carrierOptional: '承运商（可不选）',
+    selectCarrier: '请选择承运商（物流公司）',
+    feeHintCash: '本公司承担、现付：确认时生成费用支出单（类别「调拨费用」，来源为本调拨单，可互相联查），出纳确认后 借 调拨费用（默认销售费用）/ 贷 结算账户；计入当期费用，不计入存货成本，冲销时生成红字单据',
+    feeHintMonthly: '本公司承担、月结：确认时生成承运商的应付单（借 调拨费用 / 贷 应付账款-承运商），以后付款核销；计入当期费用，不计入存货成本，冲销时生成红字应付',
+    ioDoc: '费用支出单',
+    carrierBill: '已生成承运商应付单',
+    summary: '调拨汇总',
+    summaryTip: '已调出的调拨单（含在途、红字冲销）按调出 → 调入仓库汇总，按业务日期筛选。调拨差价 = 调拨金额 − 调出成本金额，是仓库 / 分店之间的内部结算差额，不影响存货成本和利润',
+    docCount: '单数',
+    total: '合计'
+  },
   checkDoc: {
     title: '盘点单',
     createTitle: '新增盘点单',

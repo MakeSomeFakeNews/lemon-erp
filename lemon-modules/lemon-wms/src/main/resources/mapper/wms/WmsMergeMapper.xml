@@ -30,6 +30,8 @@
         <if test="!customer">
             UNION ALL
             SELECT 'wms.merge.stockHold', COUNT(*), 0 FROM wms_stock_hold WHERE partner_id IN <include refid="ids"/>
+            UNION ALL
+            SELECT 'wms.merge.transferFeeCarrier', COUNT(*), 0 FROM wms_stock_doc WHERE fee_carrier_id IN <include refid="ids"/>
         </if>
     </select>
 
@@ -52,6 +54,11 @@
     <update id="mergeStockDoc">
         UPDATE wms_stock_doc SET partner_id = #{targetId}, partner_name = #{targetName}
         WHERE <include refid="docBizType"/> AND partner_id IN <include refid="ids"/>
+    </update>
+
+    <!-- 调拨费用的承运商（供应商） -->
+    <update id="mergeFeeCarrier">
+        UPDATE wms_stock_doc SET fee_carrier_id = #{targetId} WHERE fee_carrier_id IN <include refid="ids"/>
     </update>
 
     <update id="mergeStockHold">

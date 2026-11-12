@@ -14,6 +14,7 @@ import com.lemon.erp.modules.wms.model.StockBizType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,6 +36,7 @@ public class StockDocReverser {
     private final StockService stockService;
     private final BizPeriodGuard periodGuard;
     private final StockCostService costService;
+    private final TransferTermsService transferTerms;
 
     /**
      * @param doc 已按数据权限读取的原单
@@ -69,6 +71,16 @@ public class StockDocReverser {
         red.setRedOf(id);
         red.setReversed(0);
         red.setTotalQty(doc.getTotalQty().negate());
+        // 调拨价格、金额和调拨费用反向（费用由财务生成红字的费用支出单 / 承运商应付单）
+        red.setTransferPricing(doc.getTransferPricing());
+        red.setPriceLevel(doc.getPriceLevel());
+        red.setPriceFactor(doc.getPriceFactor());
+        red.setCostAmount(doc.getCostAmount() == null ? null : doc.getCostAmount().negate());
+        red.setTransferAmount(doc.getTransferAmount() == null ? null : doc.getTransferAmount().negate());
+        red.setFee(doc.getFee() == null ? BigDecimal.ZERO : doc.getFee().negate());
+        red.setFeeSettle(doc.getFeeSettle());
+        red.setFeeAccountId(doc.getFeeAccountId());
+        red.setFeeCarrierId(doc.getFeeCarrierId());
         red.setStatus(DocStatus.DONE);
         red.setDeptId(user.deptId());
         red.setConfirmBy(user.userId());
@@ -81,6 +93,10 @@ public class StockDocReverser {
         stockService.apply(kind, red.getId(), red.getDocNo(),
                 StockDocRules.reverseChanges(kind, doc, items,
                         kind == TRANSFER ? Map.of() : costService.docUnitCosts(kind, List.of(id))));
+        if (kind == TRANSFER) {
+            transferTerms.fillFlowPrices(red.getId());
+            transferTerms.publishFee(red, doc.getDocNo());
+        }
         return red.getId();
     }
 
@@ -97,6 +113,8 @@ public class StockDocReverser {
         r.setQty(i.getQty().negate());
         r.setCostPrice(i.getCostPrice());
         r.setBizPrice(i.getBizPrice());
+        r.setTransferPrice(i.getTransferPrice());
+        r.setTransferAmount(i.getTransferAmount() == null ? null : i.getTransferAmount().negate());
         r.setSerialNos(i.getSerialNos());
         r.setRemark(i.getRemark());
         return r;

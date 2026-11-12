@@ -2,8 +2,9 @@ import dayjs from 'dayjs'
 import { suggestPutaway } from '@/api/wms/location'
 import { currentLocale, t } from '@/locales'
 import { qty } from '@/utils/number'
+import { rowKey as newRowKey } from '@/composables/useLineItems'
 
-import { StockInType, StockOutType, WmsDocStatus } from '@/constants/enums'
+import { StockInType, StockOutType, TransferFeeSettle, TransferPricing, WmsDocStatus } from '@/constants/enums'
 /** 出入库单的种类（与后端 StockBizType 的路径一致） */
 export const DOC_KINDS = {
   in: {
@@ -144,3 +145,101 @@ export async function fillPutaway(warehouseId, rows, key = 'locationId') {
   })
   return filled
 }
+
+/** 出入库单表单的明细列；cost：入库填写成本价，transferPrice：调拨显示调出成本价、调拨价、调拨金额（有「查看成本金额」权限） */
+export function docFormColumns(kind, { cost = false, transferPrice = false } = {}) {
+  const columns = {
+    in: [
+      { title: t('wms.common.material'), key: 'material', width: 290 },
+      { title: t('wms.common.location'), key: 'location', width: 200 },
+      { title: t('wms.common.batchNo'), key: 'batchNo', width: 150 },
+      { title: t('wms.common.productionDate'), key: 'productionDate', width: 140 },
+      { title: t('wms.common.expiryDate'), key: 'expiryDate', width: 140 },
+      { title: t('common.field.quantity'), key: 'qty', width: 150 },
+      cost ? { title: t('wms.doc.costPrice'), key: 'costPrice', width: 140 } : null,
+      { title: t('wms.common.serialNo'), key: 'serialNos', width: 260 },
+      { title: t('common.field.remark'), key: 'remark', width: 150 }
+    ],
+    out: [
+      { title: t('wms.common.material'), key: 'material', width: 240 },
+      { title: t('wms.common.location'), key: 'location', width: 110 },
+      { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
+      { title: t('common.field.quantity'), key: 'qty', width: 160 },
+      { title: t('wms.common.serialNo'), key: 'serialNos', width: 300 },
+      { title: t('common.field.remark'), key: 'remark', width: 160 }
+    ],
+    transfer: [
+      { title: t('wms.common.material'), key: 'material', width: 240 },
+      { title: t('wms.doc.fromLocation'), key: 'location', width: 120 },
+      { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
+      { title: t('wms.doc.toLocation'), key: 'toLocation', width: 200 },
+      { title: t('common.field.quantity'), key: 'qty', width: 160 },
+      ...(transferPrice
+        ? [
+            { title: t('wms.transfer.costPrice'), key: 'outCost', width: 130, align: 'right' },
+            { title: t('wms.transfer.transferPrice'), key: 'transferPrice', width: 140 },
+            { title: t('wms.transfer.transferAmount'), key: 'transferAmount', width: 120, align: 'right' }
+          ]
+        : []),
+      { title: t('wms.common.serialNo'), key: 'serialNos', width: 280 },
+      { title: t('common.field.remark'), key: 'remark', width: 150 }
+    ]
+  }
+  return columns[kind].filter(Boolean)
+}
+
+/** 调拨表单明细中由 TransferPriceCell 显示的列 */
+export const TRANSFER_PRICE_KEYS = ['outCost', 'transferPrice', 'transferAmount']
+
+/** 调拨单表单的调拨价格、调拨费用字段（新增时为同价调拨、没有费用） */
+export const transferForm = (d = {}) => ({
+  transferPricing: d.transferPricing || TransferPricing.SAME,
+  priceLevel: d.priceLevel ?? null,
+  priceFactor: d.priceFactor != null ? Number(d.priceFactor) : 1,
+  fee: Number(d.fee) > 0 ? Number(d.fee) : undefined,
+  feeSettle: d.feeSettle || TransferFeeSettle.CASH,
+  feeAccountId: d.feeAccountId || undefined,
+  feeCarrierId: d.feeCarrierId || undefined,
+  feeCarrierName: d.feeCarrierName || undefined
+})
+
+/** 调拨单请求中的调拨价格、调拨费用（没有费用时不传结算方式、账户、承运商） */
+export function transferPayload(f) {
+  const differential = f.transferPricing !== TransferPricing.SAME
+  const fee = Number(f.fee) > 0
+  const cash = f.feeSettle !== TransferFeeSettle.MONTHLY
+  return {
+    transferPricing: f.transferPricing,
+    priceLevel: f.transferPricing === TransferPricing.PRICE_LEVEL ? f.priceLevel : null,
+    priceFactor: differential ? f.priceFactor : null,
+    fee: fee ? f.fee : 0,
+    feeSettle: fee ? f.feeSettle : null,
+    feeAccountId: fee && cash ? f.feeAccountId : null,
+    feeCarrierId: fee ? f.feeCarrierId || null : null
+  }
+}
+
+/** 单据明细转为表单行 */
+export const toRow = (item) => ({
+  ...item,
+  key: item.id ? `item-${item.id}` : newRowKey(),
+  materialLabel: item.materialCode ? `${item.materialCode} ${item.materialName}` : undefined,
+  locationId: item.locationId || null,
+  toLocationId: item.toLocationId || null,
+  batchNo: item.batchNo || undefined
+})
+
+/** 表单行转为请求明细；withCost：入库（寄售入库除外）带成本价 */
+export const pickItem = (i, withCost) => ({
+  materialId: i.materialId,
+  costPrice: withCost && i.costPrice != null && i.costPrice !== '' ? i.costPrice : null,
+  locationId: i.locationId || null,
+  toLocationId: i.toLocationId || null,
+  batchNo: i.batchNo || null,
+  productionDate: i.productionDate || null,
+  expiryDate: i.expiryDate || null,
+  qty: i.qty,
+  serialNos: i.serialNos || null,
+  remark: i.remark || null
+})
+

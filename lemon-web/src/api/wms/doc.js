@@ -14,3 +14,11 @@ export const deleteDoc = (kind, ids) => request.delete(`/wms/${kind}/${[].concat
 export const reverseDoc = (kind, id) => request.post(`/wms/${kind}/${id}/reverse`)
 /** 在途调拨单收货：调入仓库入库 */
 export const receiveTransfer = (id, receiveDate) => request.post(`/wms/transfer/${id}/receive`, { receiveDate })
+/**
+ * 调拨价格快速计算：{ pricing（TransferPricing）, priceLevel?, factor?, materialIds: [id] } → { 物料ID: 调拨价 }（没有依据价的不返回）。
+ * 需要「查看成本金额」权限；同价调拨按当前库存均价预览
+ */
+export const transferPrices = ({ materialIds, ...params }) =>
+  request.get('/wms/transfer/prices', { params: { ...params, materialIds: materialIds.join(',') } })
+/** 调拨汇总：{ warehouseId?, beginDate?, endDate? } → 按调出仓库 → 调入仓库汇总的行 */
+export const transferSummary = (params) => request.get('/wms/transfer/summary', { params })

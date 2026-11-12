@@ -6,6 +6,8 @@
         d.id, d.doc_no, d.kind, d.biz_type, d.io_category, d.warehouse_id, w.name AS warehouse_name, d.to_warehouse_id,
         tw.name AS to_warehouse_name, d.biz_date, d.status, d.total_qty, d.remark, d.source_no, d.in_transit,
         d.receive_by, ru.nickname AS receive_by_name, d.receive_date, d.receive_time, d.red_of, rd.doc_no AS red_of_no, d.reversed, d.partner_id, d.partner_name, d.flow_instance_id, d.dept_id,
+        d.transfer_pricing, d.price_level, d.price_factor, d.cost_amount, d.transfer_amount, d.fee, d.fee_settle, d.fee_account_id,
+        d.fee_carrier_id, d.fee_io_id, d.fee_bill_id,
         d.create_by, cu.nickname AS create_by_name, d.confirm_by, fu.nickname AS confirm_by_name, d.confirm_time,
         d.create_time, d.update_time
     </sql>
@@ -44,10 +46,30 @@
         GROUP BY wi.doc_id, wi.warehouse_id, w.name
     </select>
 
+    <!-- 详情：另带调拨费用的承运商、付款账户名称（只读关联供应链、财务的表） -->
     <select id="selectDetail" resultType="com.lemon.erp.modules.wms.entity.WmsStockDoc">
-        SELECT <include refid="viewColumns"/>
+        SELECT <include refid="viewColumns"/>, fc.name AS fee_carrier_name, fa.name AS fee_account_name
         <include refid="viewJoins"/>
+        LEFT JOIN scm_supplier fc ON fc.id = d.fee_carrier_id
+        LEFT JOIN fin_account fa ON fa.id = d.fee_account_id
         WHERE d.id = #{id}
+    </select>
+
+    <!-- 调拨汇总：已调出（在途、已完成，含红字）的调拨单按 调出仓库 → 调入仓库 汇总，按业务日期筛选 -->
+    <select id="selectTransferSummary" resultType="com.lemon.erp.modules.wms.dto.TransferSummaryRow">
+        SELECT d.warehouse_id, w.name AS warehouse_name, d.to_warehouse_id, tw.name AS to_warehouse_name,
+               SUM(CASE WHEN d.red_of IS NULL THEN 1 ELSE 0 END) AS doc_count, SUM(d.total_qty) AS total_qty,
+               SUM(COALESCE(d.cost_amount, 0)) AS cost_amount, SUM(COALESCE(d.transfer_amount, 0)) AS transfer_amount,
+               SUM(d.fee) AS fee
+        FROM wms_stock_doc d
+        LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id
+        LEFT JOIN wms_warehouse tw ON tw.id = d.to_warehouse_id
+        WHERE d.kind = 'TRANSFER' AND d.status IN ('TRANSIT', 'DONE')
+        <if test="q.warehouseId != null">AND (d.warehouse_id = #{q.warehouseId} OR d.to_warehouse_id = #{q.warehouseId})</if>
+        <if test="q.beginDate != null">AND d.biz_date &gt;= #{q.beginDate}</if>
+        <if test="q.endDate != null">AND d.biz_date &lt;= #{q.endDate}</if>
+        GROUP BY d.warehouse_id, w.name, d.to_warehouse_id, tw.name
+        ORDER BY w.name, tw.name
     </select>
 
 </mapper>

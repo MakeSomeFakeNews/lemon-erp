@@ -61,6 +61,12 @@
     </select>
 
     <!-- 单据某些物料已计价的流水（追加成本时按数量分摊） -->
+    <!-- 调拨流水的业务单价记为调拨价：没有填写调拨价（同价调拨、差价调拨未填）的按成本单价 -->
+    <update id="fillTransferBizPrice">
+        UPDATE wms_stock_flow SET biz_price = cost_price
+        WHERE biz_type = 'TRANSFER' AND doc_id = #{docId} AND biz_price IS NULL AND cost_price IS NOT NULL
+    </update>
+
     <select id="selectPricedFlows" resultType="com.lemon.erp.modules.wms.dto.StockFlowView">
         SELECT id, material_id, qty, cost_price, cost_amount
         FROM wms_stock_flow

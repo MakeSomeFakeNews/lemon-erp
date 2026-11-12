@@ -45,6 +45,9 @@ public interface WmsStockFlowMapper {
     List<Map<String, Object>> selectSourceCosts(@Param("kind") StockBizType kind, @Param("bizType") String bizType,
                                                 @Param("sourceNo") String sourceNo);
 
+    /** 调拨单流水没有业务单价的（同价调拨、未填调拨价）记为成本单价 */
+    void fillTransferBizPrice(@Param("docId") Long docId);
+
     /** 单据某些物料已计价的流水（id、materialId、qty、costPrice、costAmount），按 ID 排序 */
     List<StockFlowView> selectPricedFlows(@Param("kind") StockBizType kind, @Param("docId") Long docId,
                                           @Param("materialIds") Collection<Long> materialIds);

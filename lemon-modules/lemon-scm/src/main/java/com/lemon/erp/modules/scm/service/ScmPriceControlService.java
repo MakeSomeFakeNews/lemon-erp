@@ -12,6 +12,7 @@ import com.lemon.erp.modules.scm.mapper.ScmPriceControlMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.PriceControlMode;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
+import com.lemon.erp.modules.wms.service.MinSalePriceProvider;
 import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -30,11 +31,11 @@ import java.util.stream.Collectors;
 /**
  * 价格控制：物料的最低销售价、最高采购价。手工录入的销售 / 采购订单保存时校验（按含税、基本单位、折算本位币的单价，
  * 促销调价按原价校验，赠品不校验）：控制方式为「禁止保存」时不能保存，「提示」时由订单页面提示。
- * 另提供往来单位的历史成交价，订单录入时参考
+ * 另提供往来单位的历史成交价，订单录入时参考；最低销售价也作为调拨价格「最低售价」的依据（{@link MinSalePriceProvider}）
  */
 @Service
 @RequiredArgsConstructor
-public class ScmPriceControlService {
+public class ScmPriceControlService implements MinSalePriceProvider {
 
     private static final int MAX_HISTORY = 20;
 
@@ -53,6 +54,12 @@ public class ScmPriceControlService {
             return List.of();
         }
         return controlMapper.selectList(Wrappers.<ScmPriceControl>lambdaQuery().in(ScmPriceControl::getMaterialId, materialIds));
+    }
+
+    @Override
+    public Map<Long, BigDecimal> minSalePrices(Collection<Long> materialIds) {
+        return ofMaterials(materialIds).stream().filter(c -> c.getMinSalePrice() != null)
+                .collect(Collectors.toMap(ScmPriceControl::getMaterialId, ScmPriceControl::getMinSalePrice, (a, b) -> a));
     }
 
     public void create(ScmPriceControl c) {

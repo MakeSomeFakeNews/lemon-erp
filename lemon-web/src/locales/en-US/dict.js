@@ -381,6 +381,7 @@ export default {
     'SALES_FREIGHT': 'Sales Freight', // 销售运费
     'SALES_RETURN_FREIGHT': 'Sales Return Freight', // 销售退货运费
     'PURCHASE_RETURN_FREIGHT': 'Purchase Return Freight', // 采购退货运费
+    'TRANSFER_FEE': 'Transfer Fee', // 调拨费用
   },
   // 运费承担
   scm_freight_bearer: {

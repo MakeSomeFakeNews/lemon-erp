@@ -56,6 +56,7 @@ export const AccountRole = Object.freeze({
   SELLING_EXPENSE: 'SELLING_EXPENSE',
   SALES_FREIGHT: 'SALES_FREIGHT', // 销售运费
   PURCHASE_FREIGHT: 'PURCHASE_FREIGHT', // 采购运费
+  TRANSFER_FEE: 'TRANSFER_FEE', // 调拨费用
   TRAINING_EXPENSE: 'TRAINING_EXPENSE',
   FINANCE_EXPENSE: 'FINANCE_EXPENSE',
   NON_OPERATING_INCOME: 'NON_OPERATING_INCOME',
@@ -357,6 +358,7 @@ export const BillSource = Object.freeze({
   SALES_FREIGHT: 'SALES_FREIGHT', // 销售运费
   SALES_RETURN_FREIGHT: 'SALES_RETURN_FREIGHT', // 销售退货运费
   PURCHASE_RETURN_FREIGHT: 'PURCHASE_RETURN_FREIGHT', // 采购退货运费
+  TRANSFER_FEE: 'TRANSFER_FEE', // 调拨费用
 })
 
 /** com.lemon.erp.modules.fin.model.BillStatus（字典 fin_bill_status） */
@@ -876,6 +878,7 @@ export const InvoiceType = Object.freeze({
 export const IoCategoryCode = Object.freeze({
   SALES_FREIGHT: 'SALES_FREIGHT', // 销售运费
   FREIGHT_ADVANCE: 'FREIGHT_ADVANCE', // 代垫运费
+  TRANSFER_FEE: 'TRANSFER_FEE', // 调拨费用
 })
 
 /** com.lemon.erp.modules.fin.model.IoPartnerType（字典 fin_io_partner_type） */
@@ -1739,6 +1742,21 @@ export const TrainingStatus = Object.freeze({
   ONGOING: 'ONGOING', // 进行中
   FINISHED: 'FINISHED', // 已结束
   CANCELED: 'CANCELED', // 已取消
+})
+
+/** com.lemon.erp.modules.wms.model.TransferFeeSettle（字典 scm_freight_settle） */
+export const TransferFeeSettle = Object.freeze({
+  CASH: 'CASH', // 现付
+  MONTHLY: 'MONTHLY', // 月结
+})
+
+/** com.lemon.erp.modules.wms.model.TransferPricing */
+export const TransferPricing = Object.freeze({
+  SAME: 'SAME', // 同价调拨
+  REF_COST: 'REF_COST', // 参考成本价
+  AVG_COST: 'AVG_COST', // 库存均价
+  MIN_SALE: 'MIN_SALE', // 最低售价
+  PRICE_LEVEL: 'PRICE_LEVEL', // 价格列
 })
 
 /** com.lemon.erp.modules.fin.model.VoucherSource（字典 fin_voucher_source） */
