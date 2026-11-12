@@ -101,7 +101,7 @@ import { fileUrl } from '@/utils/request'
 import { requestSubscribe, subscribeAvailable } from '@/utils/subscribe'
 import { openEntry, visibleEntries } from '@/config/entries'
 
-const VERSION = '1.0.0'
+const VERSION = '1.1.0'
 const { t } = useI18n()
 useTitle('common.tab.mine')
 

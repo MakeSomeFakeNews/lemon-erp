@@ -2,8 +2,8 @@
 # 构建柠檬ERP 的后端、前端镜像，可选推送到镜像仓库
 #
 #   ./docker/build.sh                                  # 构建 lemon-erp-backend:latest、lemon-erp-web:latest
-#   ./docker/build.sh -t 1.0.0                         # 指定标签
-#   ./docker/build.sh -p registry.example.com/lemon/lemon-erp -t 1.0.0 --push
+#   ./docker/build.sh -t 1.1.0                         # 指定标签
+#   ./docker/build.sh -p registry.example.com/lemon/lemon-erp -t 1.1.0 --push
 #   ./docker/build.sh --npm-registry https://registry.npmmirror.com
 #   ./docker/build.sh --platform linux/amd64           # 在 Apple 芯片的电脑上构建给 x86 服务器使用的镜像
 set -euo pipefail
