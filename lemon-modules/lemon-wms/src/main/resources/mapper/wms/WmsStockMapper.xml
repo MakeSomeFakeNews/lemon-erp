@@ -93,7 +93,7 @@
         <choose>
             <when test="q.lowStock != null and q.lowStock and q.highStock != null and q.highStock">HAVING sa.alert IS NOT NULL</when>
             <when test="q.lowStock != null and q.lowStock">HAVING sa.alert = 'LOW'</when>
-            <when test="q.highStock != null and q.highStock">HAVING sa.alert = 'HIGH'</when>
+            <when test="q.highStock != null and q.highStock">HAVING sa.alert = 'HIGH' OR sa.high_count &gt; 0</when>
             <when test="q.hideZero()">
                 HAVING COALESCE(SUM(s.qty), 0) &lt;&gt; 0
             </when>
