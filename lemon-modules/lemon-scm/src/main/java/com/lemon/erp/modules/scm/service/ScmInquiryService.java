@@ -281,7 +281,7 @@ public class ScmInquiryService {
     }
 
     private void saveItems(Long id, InquiryRequest req) {
-        materialService.getEnabled(req.items().stream().map(InquiryRequest.Item::materialId).toList());
+        materialService.getStockable(req.items().stream().map(InquiryRequest.Item::materialId).toList());
         for (InquiryRequest.Item i : req.items()) {
             ScmInquiryItem item = new ScmInquiryItem();
             item.setInquiryId(id);

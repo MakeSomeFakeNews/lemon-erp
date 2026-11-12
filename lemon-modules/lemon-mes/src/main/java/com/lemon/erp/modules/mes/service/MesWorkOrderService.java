@@ -342,7 +342,7 @@ public class MesWorkOrderService {
 
     /** 校验产品、BOM、仓库；不指定 BOM 时用默认 BOM */
     private MesBom resolveBom(WorkOrderRequest req) {
-        WmsMaterial product = materialService.getEnabled(List.of(req.materialId())).get(req.materialId());
+        WmsMaterial product = materialService.getStockable(List.of(req.materialId())).get(req.materialId());
         if (product.isSerialManaged() && req.qty().stripTrailingZeros().scale() > 0) {
             throw new BizException("mes.error.productSerialNumberManagedQuantityMust");
         }

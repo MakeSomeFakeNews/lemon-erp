@@ -52,6 +52,9 @@ public class ScmReservationService {
             if (item == null) {
                 throw new BizException("scm.error.orderLineDoesNotBelongOrder", order.getOrderNo());
             }
+            if (item.isVirtualGoods()) {
+                throw new BizException("scm.error.virtualLineNoReserve", item.getMaterialCode(), item.getMaterialName());
+            }
             BigDecimal max = item.remainingQty().subtract(reserved.getOrDefault(item.getId(), BigDecimal.ZERO));
             if (l.qty().compareTo(max) > 0) {
                 throw new BizException("scm.error.reservedQuantityExceedsUndeliveredUnreservedQuantity", item.getMaterialCode(), item.getMaterialName(),

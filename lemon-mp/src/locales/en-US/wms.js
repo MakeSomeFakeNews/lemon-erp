@@ -118,6 +118,8 @@ export default {
     baseEquals: '= {qty} {unit}, unit price {price}',
     sameAsHeader: 'Same as header',
     gift: 'Gift',
+    virtualTag: 'Service',
+    virtualNoStock: 'Virtual item (service), no stock deduction',
     giftOf: 'Buy-and-get: {name}',
     giftSerialFull: '{name}: serial numbers already match the gift quantity',
     giftSerialCount: '{name}: scan {n} gift serial numbers',

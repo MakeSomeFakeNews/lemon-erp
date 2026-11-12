@@ -832,6 +832,7 @@ CREATE TABLE wms_material (
     barcode        VARCHAR(64)            DEFAULT NULL COMMENT '条码（基本单位），扫码录入物料',
     category       VARCHAR(64)            DEFAULT NULL COMMENT '分类编码(wms_material_category.code，多级分类)',
     brand          VARCHAR(64)            DEFAULT NULL COMMENT '品牌(业务字典 wms_material_brand)',
+    is_virtual     TINYINT       NOT NULL DEFAULT 0 COMMENT '是否虚拟商品（服务项目）1是：只用于销售开单和收入统计，不管库存，出库成本为 0，不能采购、入库和用于生产',
     batch_enabled  TINYINT       NOT NULL DEFAULT 0 COMMENT '是否启用批次管理 1是 0否',
     serial_enabled TINYINT       NOT NULL DEFAULT 0 COMMENT '是否启用序列号管理 1是 0否',
     iqc_required   TINYINT        NOT NULL DEFAULT 0 COMMENT '来料检验 1是：采购入库后冻结为待检，检验合格后放行',

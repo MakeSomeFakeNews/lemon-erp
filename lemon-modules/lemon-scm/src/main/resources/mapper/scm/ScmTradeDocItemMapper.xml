@@ -4,7 +4,7 @@
 
     <select id="selectByDocId" resultType="com.lemon.erp.modules.scm.entity.ScmTradeDocItem">
         SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, l.code AS location_code,
-               w.name AS warehouse_name, oi.gift, b.production_date AS batch_production_date, b.expiry_date AS batch_expiry_date
+               w.name AS warehouse_name, oi.gift, m.is_virtual, b.production_date AS batch_production_date, b.expiry_date AS batch_expiry_date
         FROM scm_trade_doc_item i
         JOIN scm_trade_doc d ON d.id = i.doc_id
         LEFT JOIN scm_order_item oi ON oi.id = i.order_item_id

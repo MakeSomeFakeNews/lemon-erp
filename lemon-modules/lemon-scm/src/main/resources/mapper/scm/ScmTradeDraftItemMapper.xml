@@ -4,7 +4,7 @@
 
     <select id="selectByDraftId" resultType="com.lemon.erp.modules.scm.entity.ScmTradeDraftItem">
         SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.batch_enabled, m.serial_enabled,
-               l.code AS location_code
+               m.is_virtual, l.code AS location_code
         FROM scm_trade_draft_item i
         LEFT JOIN wms_material m ON m.id = i.material_id
         LEFT JOIN wms_location l ON l.id = i.location_id

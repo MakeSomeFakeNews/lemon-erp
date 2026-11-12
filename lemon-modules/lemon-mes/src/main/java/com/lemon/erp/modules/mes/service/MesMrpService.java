@@ -174,6 +174,10 @@ public class MesMrpService {
         if (sources.isEmpty()) {
             throw new BizException("mes.error.selectProductionPlansIncludeSalesOrders");
         }
+        // 虚拟商品（服务项目）不采购、不生产，不参与 MRP
+        Set<Long> virtual = materialService.mapByIds(demands.stream().map(Demand::materialId).collect(Collectors.toSet())).values().stream()
+                .filter(WmsMaterial::isVirtualGoods).map(WmsMaterial::getId).collect(Collectors.toSet());
+        demands.removeIf(d -> virtual.contains(d.materialId()));
         if (demands.isEmpty()) {
             throw new BizException("mes.error.noDemandRunMrp");
         }

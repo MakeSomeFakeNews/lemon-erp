@@ -4,7 +4,7 @@
 
     <!-- 生效的物料属性：设置的，或有默认 BOM 为自制、否则为采购 -->
     <sql id="viewSelect">
-        SELECT m.id, m.code, m.name, m.spec, m.unit, m.category, m.batch_enabled, m.serial_enabled, m.safety_stock,
+        SELECT m.id, m.code, m.name, m.spec, m.unit, m.category, m.batch_enabled, m.serial_enabled, m.safety_stock, m.is_virtual,
                m.status, m.remark,
                p.supply_type, COALESCE(p.supply_type, CASE WHEN b.id IS NULL THEN 'BUY' ELSE 'MAKE' END) AS effective_supply_type,
                p.lead_days, p.min_lot, p.lot_multiple, COALESCE(p.over_issue_rate, 0) AS over_issue_rate, p.planner, COALESCE(p.fqc_required, 0) AS fqc_required,

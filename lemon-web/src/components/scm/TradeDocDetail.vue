@@ -20,7 +20,7 @@
           <a-descriptions-item :label="ORDER_KINDS[conf.orderKind].partnerLabel">{{ detail.partnerName }}</a-descriptions-item>
           <a-descriptions-item :label="$t('scm.trade.warehouse')">{{ detail.warehouseName }}</a-descriptions-item>
           <a-descriptions-item :label="$t('scm.trade.bizDate')">{{ detail.bizDate }}</a-descriptions-item>
-          <a-descriptions-item :label="$t('scm.trade.wmsDocNo')">{{ detail.wmsDocNo }}</a-descriptions-item>
+          <a-descriptions-item :label="$t('scm.trade.wmsDocNo')">{{ detail.wmsDocNo || '-' }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.invoiceKind" :label="$t('scm.taxRate.invoiceKind')">
             <DictTag type="scm_invoice_kind" :value="detail.invoiceKind" />
           </a-descriptions-item>
@@ -66,7 +66,7 @@
         <a-table row-key="id" size="small" :columns="columns" :data-source="detail.items" :pagination="false" :scroll="{ x: 900 }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'material'">
-              <div>{{ record.materialCode }} {{ record.materialName }}<a-tag v-if="record.gift === 1" color="green" :bordered="false" class="gift-tag">{{ $t('scm.trade.giftTag') }}</a-tag></div>
+              <div>{{ record.materialCode }} {{ record.materialName }}<a-tag v-if="record.gift === 1" color="green" :bordered="false" class="gift-tag">{{ $t('scm.trade.giftTag') }}</a-tag><a-tag v-if="record.isVirtual === 1" color="cyan" :bordered="false" class="gift-tag">{{ $t('wms.material.virtualTag') }}</a-tag></div>
               <div class="sub-text">{{ record.spec }}</div>
             </template>
             <template v-else-if="column.key === 'location'">{{ locationText(record.locationCode) }}</template>

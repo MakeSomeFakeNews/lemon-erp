@@ -73,10 +73,11 @@ public final class ScmPriceViews {
      * @param promotionId   买赠促销
      * @param batchEnabled  批次管理（1 是），直接开单出库时需要选批次
      * @param serialEnabled 序列号管理（1 是），直接开单出库时需要填写序列号
+     * @param isVirtual     虚拟商品（服务项目，1 是），出库不选库位批次
      */
     public record PreviewGift(Long materialId, BigDecimal price, BigDecimal origPrice, String promotionName, String materialName,
                               BigDecimal qty, Long promotionId, String materialCode, String spec, String unit, Integer batchEnabled,
-                              Integer serialEnabled) {
+                              Integer serialEnabled, Integer isVirtual) {
     }
 
     /** 经销商订货目录：物料、基础价格、税率、起订数量阶梯价 */

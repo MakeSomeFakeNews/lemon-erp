@@ -17,6 +17,19 @@
         END
     </select>
 
+    <!-- 物料改为虚拟商品前：BOM、替代料、生产计划、委外、工单中的引用（销售预测、质检不限制） -->
+    <select id="findStockUse" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM mes_bom WHERE material_id = #{id}) THEN 'mes.label.bom'
+            WHEN EXISTS (SELECT 1 FROM mes_bom_item WHERE material_id = #{id}) THEN 'mes.label.bomComponent'
+            WHEN EXISTS (SELECT 1 FROM mes_material_substitute WHERE substitute_id = #{id} OR material_id = #{id}) THEN 'mes.label.substituteSetting'
+            WHEN EXISTS (SELECT 1 FROM mes_plan WHERE material_id = #{id}) THEN 'mes.label.productionPlan'
+            WHEN EXISTS (SELECT 1 FROM mes_outsource_material WHERE material_id = #{id} OR product_id = #{id}) THEN 'mes.label.outsourcingMaterial'
+            WHEN EXISTS (SELECT 1 FROM mes_work_order WHERE material_id = #{id}) THEN 'mes.label.workOrder'
+            WHEN EXISTS (SELECT 1 FROM mes_wo_material WHERE material_id = #{id}) THEN 'mes.label.workOrderMaterial'
+        END
+    </select>
+
     <select id="findWarehouse" resultType="java.lang.String">
         SELECT CASE
             WHEN EXISTS (SELECT 1 FROM mes_work_order WHERE warehouse_id = #{id}) THEN 'mes.label.workOrder'

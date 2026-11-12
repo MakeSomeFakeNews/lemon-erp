@@ -28,7 +28,7 @@
             <div class="sub-text">{{ record.spec }}</div>
           </template>
           <a-form-item v-else-if="direct" :name="lines.itemName(record, 'materialId')" :rules="requiredRule($t('scm.trade.selectMaterial'))" class="cell-item">
-            <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
+            <MaterialSelect v-model:value="record.materialId" :virtual="conf.orderKind === 'sales'" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
           </a-form-item>
           <template v-else>
             <div>{{ record.materialCode }} {{ record.materialName }}</div>
@@ -36,6 +36,7 @@
           </template>
           <div class="row-tags">
             <a-tag v-if="record.gift" color="green" :bordered="false">{{ $t('scm.trade.giftTag') }}</a-tag>
+            <a-tag v-if="record.isVirtual === 1" color="cyan" :bordered="false">{{ $t('wms.material.virtualTag') }}</a-tag>
             <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">{{ $t('scm.trade.batch') }}</a-tag>
             <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">{{ $t('scm.trade.serialNo') }}</a-tag>
           </div>
@@ -44,6 +45,8 @@
           <div>{{ formatQty(record.limit) }} {{ record.unit }}</div>
           <div class="sub-text">¥{{ formatMoney(record.grossPrice ?? record.price) }} / {{ record.unit || $t('common.field.unit') }}</div>
         </template>
+        <!-- 虚拟商品（服务项目）不管库存：不选仓库、库位、批次 -->
+        <span v-else-if="record.isVirtual === 1 && STOCK_KEYS.includes(column.key)" class="sub-text">{{ $t('scm.trade.virtualNoStock') }}</span>
         <template v-else-if="column.key === 'warehouse'">
           <WarehouseSelect
             :value="record.warehouseId"
@@ -216,6 +219,7 @@ const priceKind = computed(() => (conf.value.orderKind === 'sales' ? 'SALES' : '
 /** 入库类单据（采购入库、销售退货）可按上架策略推荐库位 */
 const inbound = computed(() => props.kind === 'purchaseIn' || props.kind === 'salesReturn')
 const requiredRule = (msg) => [{ required: true, message: msg }]
+const STOCK_KEYS = ['warehouse', 'slot', 'location', 'batchNo']
 
 // 新明细的税率：表头发票类型的税率，没有时为业务参数「默认税率」（issue #82）
 const tax = useTaxRates()
@@ -326,6 +330,7 @@ function applyMaterial(row, m) {
     unit: m.unit,
     batchEnabled: m.batchEnabled,
     serialEnabled: m.serialEnabled,
+    isVirtual: m.isVirtual,
     priceAuto: true,
     batchNo: undefined
   })

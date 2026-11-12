@@ -23,6 +23,12 @@ export function rangePresets() {
   ]
 }
 
+/** 商品类型筛选（参数 virtual）：实物 / 虚拟商品（服务项目，issue #105） */
+export const goodsTypeOptions = () => [
+  { value: false, label: t('wms.material.physical') },
+  { value: true, label: t('wms.material.virtual') }
+]
+
 /** 汇总维度：销售报表、进货报表 */
 export const SALES_DIMS = [JxcDimension.CATEGORY, JxcDimension.BRAND, JxcDimension.REGION, JxcDimension.CUSTOMER,
   JxcDimension.SALESMAN, JxcDimension.MATERIAL, JxcDimension.DAY, JxcDimension.MONTH]

@@ -202,7 +202,8 @@ async function loadOrder(orderId) {
       const done = notified.get(i.id) || 0
       return { i, notified: done, limit: Math.max(qty4(openQty(i) - done), 0) }
     })
-    .filter(({ limit }) => limit > 0)
+    // 虚拟商品（服务项目）不需要发货通知，直接在销售出库中录入
+    .filter(({ i, limit }) => limit > 0 && i.isVirtual !== 1)
     .map(({ i, notified: n, limit }) => ({
       key: rowKey(),
       orderItemId: i.id,

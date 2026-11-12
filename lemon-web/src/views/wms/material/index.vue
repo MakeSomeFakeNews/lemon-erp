@@ -17,6 +17,9 @@
           <a-form-item :label="$t('common.field.status')" name="status">
             <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
           </a-form-item>
+          <a-form-item :label="$t('wms.material.goodsType')" name="virtual">
+            <a-select v-model:value="query.virtual" :placeholder="$t('common.placeholder.all')" allow-clear :options="goodsTypeOptions" />
+          </a-form-item>
         </SearchForm>
       </a-card>
 
@@ -80,6 +83,7 @@
                 <div>
                   <a @click="openDetail(record.id)">{{ record.name }}</a>
                   <a-tag v-if="record.isTemplate === 1" color="magenta" :bordered="false" class="ml">{{ $t('wms.material.style') }}</a-tag>
+                  <a-tag v-if="record.isVirtual === 1" color="cyan" :bordered="false" class="ml">{{ $t('wms.material.virtualTag') }}</a-tag>
                   <div class="sub-text">
                     {{ record.code }}
                     <template v-if="record.variantText"> · {{ record.variantText }}</template>
@@ -175,12 +179,21 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="colSpan">
+            <a-col :span="24">
+              <!-- 虚拟商品（服务项目）：只用于销售开单和收入统计，不管库存，库存、批次、计划等属性隐藏 -->
+              <a-form-item :label="$t('wms.material.goodsType')" name="isVirtual" :extra="isVirtual ? $t('wms.material.virtualTip') : undefined">
+                <a-radio-group v-model:value="form.isVirtual" :disabled="basicReadonly" @change="onVirtualChange">
+                  <a-radio :value="0">{{ $t('wms.material.physical') }}</a-radio>
+                  <a-radio :value="1">{{ $t('wms.material.virtual') }}</a-radio>
+                </a-radio-group>
+              </a-form-item>
+            </a-col>
+            <a-col v-if="!isVirtual" :xs="24" :sm="colSpan">
               <a-form-item :label="$t('wms.stock.safetyStock')" name="safetyStock" :extra="$t('wms.material.safetyTip')">
                 <a-input-number v-model:value="form.safetyStock" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.noAlert')" :disabled="basicReadonly" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="colSpan">
+            <a-col v-if="!isVirtual" :xs="24" :sm="colSpan">
               <a-form-item name="reorderPoint" :extra="$t('wms.material.reorderPointExtra')">
                 <template #label>
                   {{ $t('wms.material.reorderPoint') }}
@@ -191,7 +204,7 @@
                 <a-input-number v-model:value="form.reorderPoint" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.notInvolved')" :disabled="basicReadonly" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="colSpan">
+            <a-col v-if="!isVirtual" :xs="24" :sm="colSpan">
               <a-form-item :label="$t('wms.material.reorderQty')" name="reorderQty" :extra="$t('wms.material.reorderQtyTip')">
                 <a-input-number v-model:value="form.reorderQty" :min="0" :precision="4" class="full" :placeholder="$t('wms.common.optional')" :disabled="basicReadonly" />
               </a-form-item>
@@ -201,22 +214,22 @@
                 <a-input v-model:value="form.barcode" :maxlength="64" :placeholder="$t('wms.common.optional')" allow-clear :disabled="basicReadonly" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="colSpan">
+            <a-col v-if="!isVirtual" :xs="24" :sm="colSpan">
               <a-form-item :label="$t('wms.material.refCost')" name="refCost" :extra="$t('wms.material.refCostTip')">
                 <a-input-number v-model:value="form.refCost" :min="0" :precision="4" class="full" :placeholder="$t('wms.common.optional')" :disabled="basicReadonly" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="colSpan">
+            <a-col v-if="!isVirtual" :xs="24" :sm="colSpan">
               <a-form-item :label="$t('wms.material.costMethod')" name="costMethod" :extra="$t('wms.material.costMethodTip')">
                 <a-select v-model:value="form.costMethod" :options="toOptions(dict.wms_cost_method)" :disabled="basicReadonly" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="colSpan">
+            <a-col v-if="!isVirtual" :xs="24" :sm="colSpan">
               <a-form-item :label="$t('wms.material.defaultWarehouse')" name="defaultWarehouseId">
                 <WarehouseSelect v-model:value="form.defaultWarehouseId" :placeholder="$t('wms.common.optional')" :disabled="basicReadonly" @update:value="form.defaultLocationId = null" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="colSpan">
+            <a-col v-if="!isVirtual" :xs="24" :sm="colSpan">
               <a-form-item :label="$t('wms.material.defaultLocation')" name="defaultLocationId" :extra="$t('wms.material.defaultLocationTip')">
                 <LocationSelect v-model:value="form.defaultLocationId" :warehouse-id="form.defaultWarehouseId" :disabled="basicReadonly" />
               </a-form-item>
@@ -231,7 +244,7 @@
                 </a-col>
               </a-row>
             </a-col>
-            <a-col :span="24">
+            <a-col v-if="!isVirtual" :span="24">
               <a-form-item :label="$t('wms.material.tracking')" :extra="$t('wms.material.trackingTip')">
                 <a-space direction="vertical">
                   <a-checkbox :checked="form.batchEnabled === 1" :disabled="basicReadonly" @change="(e) => (form.batchEnabled = e.target.checked ? 1 : 0)">
@@ -253,7 +266,7 @@
             </a-col>
           </a-row>
 
-          <template v-if="canEditPlan">
+          <template v-if="canEditPlan && !isVirtual">
             <div class="section-title">{{ $t('wms.material.plan') }}</div>
             <a-row :gutter="16">
               <a-col :xs="24" :sm="8">
@@ -354,7 +367,10 @@
               <a-descriptions-item :label="$t('wms.material.specUnit')">{{ detail.spec || '-' }} / {{ detail.unit || '-' }}</a-descriptions-item>
               <a-descriptions-item :label="$t('wms.inout.category')"><DictTag type="wms_material_category" :value="detail.category" /></a-descriptions-item>
               <a-descriptions-item v-if="detail.barcode" :label="$t('wms.units.barcode')">{{ detail.barcode }}</a-descriptions-item>
-              <a-descriptions-item :label="$t('wms.material.stockSafety')">
+              <a-descriptions-item v-if="detail.isVirtual === 1" :label="$t('wms.material.goodsType')">
+                <a-tag color="cyan" :bordered="false">{{ $t('wms.material.virtual') }}</a-tag>
+              </a-descriptions-item>
+              <a-descriptions-item v-else :label="$t('wms.material.stockSafety')">
                 <span>
                   <span :class="{ danger: belowSafety(detail) }">{{ formatQty(detail.onHandQty) }}</span> /
                   {{ detail.safetyStock != null ? formatQty(detail.safetyStock) : '-' }} {{ detail.unit }}
@@ -581,6 +597,7 @@ const importColumns = computed(() => [
   { title: t('wms.material.batchManaged'), key: 'batchEnabled', type: 'bool' },
   { title: t('wms.material.serialManaged'), key: 'serialEnabled', type: 'bool' },
   { title: t('wms.material.iqc'), key: 'iqcRequired', type: 'bool' },
+  { title: t('wms.material.virtual'), key: 'isVirtual', type: 'bool' },
   { title: t('wms.stock.safetyStock'), key: 'safetyStock', type: 'number' },
   ...enabledLevels.value.map((l) => ({ title: l.name, key: l.field, type: 'number' })),
   { title: t('common.field.remark'), key: 'remark' }
@@ -624,7 +641,12 @@ async function fetchPage(params) {
   return page
 }
 
-const query = reactive({ keyword: undefined, category: undefined, brand: undefined, status: undefined })
+const query = reactive({ keyword: undefined, category: undefined, brand: undefined, status: undefined, virtual: undefined })
+/** 商品类型筛选：实物 / 虚拟商品（服务项目） */
+const goodsTypeOptions = computed(() => [
+  { value: false, label: t('wms.material.physical') },
+  { value: true, label: t('wms.material.virtual') }
+])
 const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange, exportAll } = useTable(fetchPage, query)
 // 自定义字段：表单中填写，勾选「列表显示」的作为列
 const cf = useCustomFields('wms_material')
@@ -637,7 +659,7 @@ const tableColumns = computed(() => {
 })
 
 function resetQuery() {
-  Object.assign(query, { keyword: undefined, category: undefined, brand: undefined, status: undefined })
+  Object.assign(query, { keyword: undefined, category: undefined, brand: undefined, status: undefined, virtual: undefined })
   search()
 }
 
@@ -668,6 +690,7 @@ const MATERIAL_FIELDS = [
   'unit',
   'category',
   'brand',
+  'isVirtual',
   ...PRICE_FIELDS,
   'batchEnabled',
   'serialEnabled',
@@ -693,6 +716,7 @@ const drawerOptions = cf.wrap({
     unit: undefined,
     category: undefined,
     brand: undefined,
+    isVirtual: 0,
     ...Object.fromEntries(PRICE_FIELDS.map((k) => [k, null])),
     batchEnabled: 0,
     serialEnabled: 0,
@@ -762,7 +786,8 @@ const drawerOptions = cf.wrap({
       barcode: f.barcode?.trim() || null,
       defaultLocationId: f.defaultWarehouseId ? f.defaultLocationId || null : null
     },
-    plan: canEditPlan.value
+    // 虚拟商品不采购、不生产，没有计划属性
+    plan: canEditPlan.value && !f.isVirtual
       ? {
           supplyType: f.supplyType || null,
           leadDays: f.leadDays ?? null,
@@ -786,6 +811,15 @@ const drawerOptions = cf.wrap({
 })
 const drawer = useFormDrawer(drawerOptions)
 const { formRef, form } = drawer
+const isVirtual = computed(() => form.value.isVirtual === 1)
+/** 设为虚拟商品：清除库存、批次、计划等无关属性（保存时后端同样不保存） */
+function onVirtualChange() {
+  if (!isVirtual.value) return
+  Object.assign(form.value, {
+    batchEnabled: 0, serialEnabled: 0, iqcRequired: 0, safetyStock: null, reorderPoint: null, reorderQty: null,
+    defaultWarehouseId: null, defaultLocationId: null, refCost: null
+  })
+}
 // 智能录入：规格书、商品标签等识别结果打开新增物料并预填
 const ai = useAiPrefill('material', (data) => drawer.openCreate(data), () => drawer.open.value)
 
@@ -798,11 +832,11 @@ const rowActions = (record) => [
   { type: 'delete', perm: 'wms:material:remove', confirm: t('wms.material.confirmDelete', { name: record.name }), onClick: () => remove([record.id]) },
   { key: 'copy', type: 'copy', perm: 'wms:material:add', more: true, onClick: () => copyMaterial(record) },
   { key: 'images', label: t('wms.materialImage.action'), icon: PictureOutlined, more: true, onClick: () => imagesRef.value.open(record) },
-  { key: 'tracking', label: t('wms.tracking.action'), icon: SafetyCertificateOutlined, perm: 'wms:material:edit', show: record.isTemplate !== 1, more: true, onClick: () => trackingRef.value.open(record) },
+  { key: 'tracking', label: t('wms.tracking.action'), icon: SafetyCertificateOutlined, perm: 'wms:material:edit', show: record.isTemplate !== 1 && record.isVirtual !== 1, more: true, onClick: () => trackingRef.value.open(record) },
   { key: 'extras', label: t('wms.material.extras'), icon: PaperClipOutlined, more: true, onClick: () => openExtras(record) },
   { key: 'units', label: t('common.field.unit'), icon: SwapOutlined, more: true, onClick: () => openUnits(record) },
-  { key: 'history', type: 'history', label: t('wms.history.action'), show: record.isTemplate !== 1, more: true, onClick: () => openHistory(record) },
-  { key: 'variants', label: t('wms.variant.title'), icon: AppstoreAddOutlined, show: !record.templateId, more: true, onClick: () => openVariants(record) }
+  { key: 'history', type: 'history', label: t('wms.history.action'), show: record.isTemplate !== 1 && record.isVirtual !== 1, more: true, onClick: () => openHistory(record) },
+  { key: 'variants', label: t('wms.variant.title'), icon: AppstoreAddOutlined, show: !record.templateId && record.isVirtual !== 1, more: true, onClick: () => openVariants(record) }
 ]
 
 // 复制：带出原物料的资料、计划属性、替代料和自定义字段，编码留空（按编码规则生成）、条码不带；保存时后端复制辅助单位（不含包装条码）和图片

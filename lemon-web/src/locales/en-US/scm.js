@@ -556,6 +556,7 @@ export default {
     promoPrice: 'Promotion price ¥{price}',
     promoTotal: 'Promotions will deduct ¥{amount} on save',
     giftTag: 'Gift',
+    virtualNoStock: 'Service, no stock',
     giftPrice: 'Gift ¥0',
     giftExpected: 'Promotion gives {qty}'
   },

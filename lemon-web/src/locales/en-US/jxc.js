@@ -23,6 +23,7 @@ export default {
     allCategories: 'All categories',
     allBrands: 'All brands',
     allWarehouses: 'All warehouses',
+    allGoodsTypes: 'Physical and virtual',
     allRegions: 'All regions',
     region: 'Region',
     materialKeyword: 'Product code / name',

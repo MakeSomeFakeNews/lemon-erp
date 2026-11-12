@@ -65,6 +65,8 @@ export const clearUnitCache = () => unitCache.clear()
 export async function loadSlots(row, warehouseId, keep) {
   row.slots = []
   row.slotIndex = 0
+  // 虚拟商品（服务项目）不管库存
+  if (row.isVirtual === 1) return
   if (!warehouseId) return
   row.slotsLoading = true
   try {

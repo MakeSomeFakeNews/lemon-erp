@@ -121,7 +121,7 @@
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
             <a-form-item :name="['items', index, 'materialId']" :rules="requiredRule($t('scm.orderForm.selectMaterial'))" class="cell-item" :class="ai?.cls(`items[${index}].materialId`)">
-              <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
+              <MaterialSelect v-model:value="record.materialId" :virtual="kind === 'sales'" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
             </a-form-item>
             <div v-if="!record.materialId && record.aiText" class="ai-warn-text">{{ $t('ai.extract.aiText', { text: record.aiText }) }}</div>
           </template>
@@ -150,7 +150,7 @@
             <div v-if="record.minQty && record.unitQty && baseQty(record) < record.minQty" class="warn-text">
               {{ $t('scm.orderForm.belowMoq', { qty: formatQty(record.minQty), unit: record.unit || '' }) }}
             </div>
-            <a v-if="kind === 'sales' && record.materialId" class="atp-link" @click="openAtp(record)">{{ $t('scm.orderForm.atp') }}</a>
+            <a v-if="kind === 'sales' && record.materialId && record.isVirtual !== 1" class="atp-link" @click="openAtp(record)">{{ $t('scm.orderForm.atp') }}</a>
           </template>
           <template v-else-if="column.key === 'price'">
             <a-form-item :name="['items', index, 'unitPrice']" :rules="requiredRule($t('scm.orderForm.inputPrice'))" class="cell-item" :class="ai?.cls(`items[${index}].price`)">
@@ -728,6 +728,7 @@ function applyMaterial(row, material) {
     materialName: material.name,
     unit: material.unit,
     serialEnabled: material.serialEnabled,
+    isVirtual: material.isVirtual,
     // 扫辅助单位条码时直接选该单位
     unitName: material.scanUnit || null,
     unitRatio: material.scanUnit ? Number(material.scanRatio) || 1 : 1,

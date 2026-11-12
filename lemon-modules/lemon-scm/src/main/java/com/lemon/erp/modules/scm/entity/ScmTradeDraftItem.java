@@ -71,6 +71,10 @@ public class ScmTradeDraftItem extends BaseEntity {
     @TableField(exist = false)
     private Integer serialEnabled;
 
+    /** 物料是否虚拟商品（服务项目，1 是）：不选库位批次 */
+    @TableField(exist = false)
+    private Integer isVirtual;
+
     @TableField(exist = false)
     private String locationCode;
 }

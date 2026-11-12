@@ -302,8 +302,8 @@ public class MesBomService {
     // ---------------------------------------------------------------- 内部
 
     private void validate(BomRequest req) {
-        WmsMaterial product = materialService.getEnabled(List.of(req.materialId())).get(req.materialId());
-        Map<Long, WmsMaterial> components = materialService.getEnabled(req.items().stream().map(BomItemRequest::materialId).toList());
+        WmsMaterial product = materialService.getStockable(List.of(req.materialId())).get(req.materialId());
+        Map<Long, WmsMaterial> components = materialService.getStockable(req.items().stream().map(BomItemRequest::materialId).toList());
         Set<Long> seen = new HashSet<>();
         for (BomItemRequest item : req.items()) {
             WmsMaterial m = components.get(item.materialId());

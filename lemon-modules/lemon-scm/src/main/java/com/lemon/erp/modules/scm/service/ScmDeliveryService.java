@@ -111,6 +111,10 @@ public class ScmDeliveryService {
             if (oi == null) {
                 throw new BizException("scm.error.orderLineDoesNotBelongOrder", order.getOrderNo());
             }
+            if (oi.isVirtualGoods()) {
+                // 服务项目不需要仓库拣货发货，直接在销售出库中录入
+                throw new BizException("scm.error.virtualLineNoDelivery", oi.getMaterialCode(), oi.getMaterialName());
+            }
             BigDecimal max = oi.remainingQty().subtract(noticed.getOrDefault(oi.getId(), BigDecimal.ZERO));
             if (r.qty().compareTo(max) > 0) {
                 throw new BizException("scm.error.noticeQuantityExceedsUndeliveredUnNoticed", oi.getMaterialCode(), oi.getMaterialName(),

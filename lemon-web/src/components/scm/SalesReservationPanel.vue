@@ -164,7 +164,8 @@ async function loadFree(rows) {
 
 async function openReserve() {
   await load()
-  reserveRows.value = props.order.items
+  // 虚拟商品（服务项目）不管库存，不预留
+  reserveRows.value = props.order.items.filter((i) => i.isVirtual !== 1)
     .map((i) => {
       const reserved = reservedOf(i.id)
       return {

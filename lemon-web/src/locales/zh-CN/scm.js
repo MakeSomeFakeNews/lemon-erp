@@ -556,6 +556,7 @@ export default {
     promoPrice: '促销价 ¥{price}',
     promoTotal: '保存时按促销规则优惠 ¥{amount}',
     giftTag: '赠品',
+    virtualNoStock: '服务项目，无需库存',
     giftPrice: '赠品 ¥0',
     giftExpected: '按促销应赠 {qty}'
   },

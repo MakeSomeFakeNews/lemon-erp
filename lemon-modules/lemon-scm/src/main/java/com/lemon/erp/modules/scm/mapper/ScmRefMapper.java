@@ -23,4 +23,10 @@ public interface ScmRefMapper {
 
     /** 物料分类（分类 ID） */
     String findMaterialCategory(@Param("id") Long id);
+
+    /** 物料改为虚拟商品前：采购类业务（采购订单、请购、询价、供货价格）或发货通知中的引用 */
+    String findStockUse(@Param("id") Long id);
+
+    /** 虚拟商品改为实物前：已有的出入库单、出入库草稿 */
+    String findVirtualUse(@Param("id") Long id);
 }

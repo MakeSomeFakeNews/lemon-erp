@@ -35,7 +35,7 @@
     <a-modal v-model:open="formOpen" :title="form.id ? $t('scm.priceControl.editTitle') : $t('scm.priceControl.addTitle')" :confirm-loading="saving" @ok="submit">
       <a-form ref="formRef" :model="form" layout="vertical">
         <a-form-item :label="$t('scm.priceControl.material')" name="materialId" :rules="[{ required: true, message: $t('scm.priceControl.selectMaterial') }]">
-          <MaterialSelect v-model:value="form.materialId" :label="form.materialLabel" :disabled="!!form.id" />
+          <MaterialSelect virtual v-model:value="form.materialId" :label="form.materialLabel" :disabled="!!form.id" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">

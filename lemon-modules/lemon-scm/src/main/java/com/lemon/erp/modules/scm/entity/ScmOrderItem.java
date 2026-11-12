@@ -102,6 +102,14 @@ public class ScmOrderItem extends BaseEntity {
     @TableField(exist = false)
     private Integer serialEnabled;
 
+    /** 物料是否虚拟商品（服务项目，1 是）：出库不扣库存、不预留、不能发货通知 */
+    @TableField(exist = false)
+    private Integer isVirtual;
+
+    public boolean isVirtualGoods() {
+        return Integer.valueOf(1).equals(isVirtual);
+    }
+
     /** 实际完成数量 = 已入库 / 已出库 - 已退货（可退货的上限） */
     public BigDecimal netQty() {
         return doneQty.subtract(returnQty);

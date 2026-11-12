@@ -114,7 +114,7 @@ public class FinConsumableService {
 
     private void validate(ConsumableRequest req) {
         accountService.requireLeaves(List.of(req.expenseAccountId()));
-        Map<Long, WmsMaterial> materials = materialService.getEnabled(req.items().stream().map(ConsumableRequest.Item::materialId).toList());
+        Map<Long, WmsMaterial> materials = materialService.getStockable(req.items().stream().map(ConsumableRequest.Item::materialId).toList());
         MaterialCategoryTree categories = categoryService.tree();
         for (WmsMaterial m : materials.values()) {
             // 低值易耗品及其下级分类

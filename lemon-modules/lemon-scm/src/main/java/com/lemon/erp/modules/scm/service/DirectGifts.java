@@ -104,6 +104,11 @@ public class DirectGifts {
         // 同一物料的多行赠品共用候选库存，逐行扣减
         Map<Long, List<Map<String, Object>>> candidates = new LinkedHashMap<>();
         for (ScmOrderItem g : giftItems) {
+            if (g.isVirtualGoods()) {
+                // 赠送的服务项目（虚拟商品）不管库存，直接整行出库
+                lines.add(line(g.getId(), null, null, g.getQty(), null, null, null));
+                continue;
+            }
             if (Integer.valueOf(1).equals(g.getSerialEnabled())) {
                 throw new BizException("scm.error.giftNeedsSerial", g.getMaterialCode(), g.getMaterialName());
             }

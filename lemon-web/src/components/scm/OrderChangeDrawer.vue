@@ -95,7 +95,7 @@
       >
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'material'">
-            <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
+            <MaterialSelect v-model:value="record.materialId" :virtual="kind === 'sales'" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
           </template>
           <template v-else-if="column.key === 'qty'">
             <a-input-number v-model:value="record.qty" :min="0" :precision="4" :addon-after="record.unit || undefined" class="full" />

@@ -94,7 +94,7 @@
           </a-col>
           <a-col :span="24">
             <a-form-item :label="$t('scm.promotion.material')" name="materialId">
-              <MaterialSelect v-model:value="form.materialId" :label="form.materialLabel" :placeholder="$t('scm.promotion.materialPlaceholder')" />
+              <MaterialSelect virtual v-model:value="form.materialId" :label="form.materialLabel" :placeholder="$t('scm.promotion.materialPlaceholder')" />
             </a-form-item>
           </a-col>
           <template v-if="form.promoType === PromoType.DISCOUNT">
@@ -129,7 +129,7 @@
             </a-col>
             <a-col :span="16">
               <a-form-item :label="$t('scm.promotion.gift')" required>
-                <MaterialSelect v-model:value="form.giftMaterialId" :label="form.giftLabel" />
+                <MaterialSelect virtual v-model:value="form.giftMaterialId" :label="form.giftLabel" />
               </a-form-item>
             </a-col>
             <a-col :span="8">

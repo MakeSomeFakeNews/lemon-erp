@@ -80,7 +80,9 @@
         LEFT JOIN wms_warehouse w ON w.id = s.warehouse_id
         LEFT JOIN wms_material_cost mc ON mc.material_id = m.id
         <where>
-            <if test="q.materialId != null">m.id = #{q.materialId}</if>
+            <!-- 虚拟商品（服务项目）不管库存，不在库存查询中显示 -->
+            m.is_virtual = 0
+            <if test="q.materialId != null">AND m.id = #{q.materialId}</if>
             <if test="q.keyword != null and q.keyword != ''">
                 AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%'))
             </if>

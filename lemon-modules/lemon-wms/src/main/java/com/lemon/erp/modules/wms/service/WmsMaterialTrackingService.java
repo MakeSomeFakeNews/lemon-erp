@@ -87,6 +87,9 @@ public class WmsMaterialTrackingService {
         if (before.isTemplateMaterial()) {
             throw new BizException("wms.error.trackingStyleNotAllowed");
         }
+        if (before.isVirtualGoods()) {
+            throw new BizException("wms.error.virtualMaterialNoTracking");
+        }
         int batch = Integer.valueOf(1).equals(req.batchEnabled()) ? 1 : 0;
         int serial = Integer.valueOf(1).equals(req.serialEnabled()) ? 1 : 0;
         boolean batchChanged = batch != (before.isBatchManaged() ? 1 : 0);

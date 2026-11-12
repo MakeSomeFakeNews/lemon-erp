@@ -3,6 +3,7 @@
     <view class="m-row">
       <text class="m-title">
         <text v-if="row.gift" class="sale-row__gift">{{ t('wms.sale.gift') }}</text>
+        <text v-if="row.isVirtual === 1" class="sale-row__gift">{{ t('wms.sale.virtualTag') }}</text>
         {{ row.materialCode }} {{ row.materialName }}
       </text>
       <text v-if="row.gift && lineWarehouse" class="m-link" @click.stop="$emit('split')">{{ t('wms.sale.giftSplit') }}</text>
@@ -39,27 +40,31 @@
       {{ t('wms.sale.promoPrice', { price: price(promoLine.price) }) }}{{ promoLine.promotionName ? ` (${promoLine.promotionName})` : '' }}
     </view>
 
-    <!-- 明细仓库（业务参数 scm.salesOut.lineWarehouse） -->
-    <picker v-if="lineWarehouse" :range="warehouseChoices" range-key="name" :value="warehouseIndex" @change="pickWarehouse">
-      <view class="m-input">
-        <text class="m-input__label">{{ t('wms.common.warehouse') }}</text>
-        <text class="m-input__value" :class="{ 'l-placeholder': !row.warehouseId }">{{ warehouseChoices[warehouseIndex].name }}</text>
-      </view>
-    </picker>
+    <!-- 虚拟商品（服务项目）不管库存：不选仓库、库位批次 -->
+    <view v-if="row.isVirtual === 1" class="m-sub">{{ t('wms.sale.virtualNoStock') }}</view>
+    <block v-else>
+      <!-- 明细仓库（业务参数 scm.salesOut.lineWarehouse） -->
+      <picker v-if="lineWarehouse" :range="warehouseChoices" range-key="name" :value="warehouseIndex" @change="pickWarehouse">
+        <view class="m-input">
+          <text class="m-input__label">{{ t('wms.common.warehouse') }}</text>
+          <text class="m-input__value" :class="{ 'l-placeholder': !row.warehouseId }">{{ warehouseChoices[warehouseIndex].name }}</text>
+        </view>
+      </picker>
 
-    <picker v-if="row.slots.length" :range="row.slots" range-key="label" :value="row.slotIndex" @change="(e) => (row.slotIndex = Number(e.detail.value))">
-      <view class="m-input">
-        <text class="m-input__label">{{ t('wms.sale.slot') }}</text>
-        <text class="m-input__value" :class="{ 'qty-short': overStock(row) }">{{ row.slots[row.slotIndex]?.label }}</text>
+      <picker v-if="row.slots.length" :range="row.slots" range-key="label" :value="row.slotIndex" @change="(e) => (row.slotIndex = Number(e.detail.value))">
+        <view class="m-input">
+          <text class="m-input__label">{{ t('wms.sale.slot') }}</text>
+          <text class="m-input__value" :class="{ 'qty-short': overStock(row) }">{{ row.slots[row.slotIndex]?.label }}</text>
+        </view>
+      </picker>
+      <view v-if="row.gift && Number(row.qty) > 0 && !row.slotsLoading && warehouseShort" class="m-sub qty-short">
+        {{ lineWarehouse ? t('wms.sale.giftSplitTip') : t('wms.sale.giftShortTip') }}
       </view>
-    </picker>
-    <view v-if="row.gift && Number(row.qty) > 0 && !row.slotsLoading && warehouseShort" class="m-sub qty-short">
-      {{ lineWarehouse ? t('wms.sale.giftSplitTip') : t('wms.sale.giftShortTip') }}
-    </view>
-    <view v-else-if="row.gift && row.serialEnabled !== 1 && row.slots.length && overStock(row)" class="m-sub">{{ t('wms.sale.giftAutoSplit') }}</view>
-    <view v-if="!row.slots.length" class="m-sub sale-row__nostock">
-      {{ row.slotsLoading ? t('common.loading') : warehouseId ? t('wms.sale.noStock') : t('wms.common.selectWarehouseFirst') }}
-    </view>
+      <view v-else-if="row.gift && row.serialEnabled !== 1 && row.slots.length && overStock(row)" class="m-sub">{{ t('wms.sale.giftAutoSplit') }}</view>
+      <view v-if="!row.slots.length" class="m-sub sale-row__nostock">
+        {{ row.slotsLoading ? t('common.loading') : warehouseId ? t('wms.sale.noStock') : t('wms.common.selectWarehouseFirst') }}
+      </view>
+    </block>
     <view v-if="row.serialEnabled === 1" class="m-serials">
       <text>{{ t('wms.common.selectThenScanSerial') }}</text>
       <text v-for="s in row.serials" :key="s" class="m-serial" @click.stop="$emit('remove-serial', s)">{{ s }}</text>

@@ -42,12 +42,14 @@ import { t } from '@/locales'
  * 扫码：输入（或扫码枪录入）条码后回车，按物料条码或辅助单位条码查找并选中；
  * 搜索结果中有条码完全一致的物料时也会直接选中。
  * 扫码选中时 select 事件额外带 scanUnit / scanRatio（辅助单位条码对应的单位和换算率，基本单位条码时为空）
+ * - virtual：包含虚拟商品（服务项目，issue #105），销售类单据传入；默认不包含（采购、库存、生产类单据）
  */
 const props = defineProps({
   value: Number,
   label: String,
   placeholder: { type: String, default: () => t('wms.select.materialPlaceholder') },
-  disabled: Boolean
+  disabled: Boolean,
+  virtual: Boolean
 })
 const emit = defineEmits(['update:value', 'select'])
 
@@ -57,7 +59,7 @@ let pending = false
 
 const remote = useRemoteOptions(
   async ({ keyword, current, size }) => {
-    const res = await materialOptions(keyword, { current, size })
+    const res = await materialOptions(keyword, { current, size, virtual: props.virtual || undefined })
     // 搜索文本与某个物料的条码完全一致：视为扫码
     const code = keyword?.trim()
     const hit = current === 1 && code && res.find((m) => m.barcode && m.barcode === code)
@@ -70,7 +72,8 @@ const remote = useRemoteOptions(
 const toLabel = (m) => `${m.code} ${m.name}${m.spec ? `（${m.spec}）` : ''}`
 
 const options = computed(() => {
-  const list = remote.list.value.map((m) => ({ value: m.id, label: toLabel(m) }))
+  // 下拉中给虚拟商品加上标记（选中后的显示名不带）
+  const list = remote.list.value.map((m) => ({ value: m.id, label: m.isVirtual === 1 ? `${toLabel(m)} · ${t('wms.material.virtualTag')}` : toLabel(m) }))
   if (props.value != null && !list.some((o) => o.value === props.value)) {
     const known = remote.known.value.get(props.value)
     list.unshift({ value: props.value, label: known ? toLabel(known) : props.label || String(props.value) })

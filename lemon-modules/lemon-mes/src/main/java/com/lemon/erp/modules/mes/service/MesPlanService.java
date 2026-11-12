@@ -223,7 +223,7 @@ public class MesPlanService {
 
     /** 计划的产品必须是自制件（有启用的默认 BOM） */
     private void checkProduct(Long materialId) {
-        WmsMaterial product = materialService.getEnabled(List.of(materialId)).get(materialId);
+        WmsMaterial product = materialService.getStockable(List.of(materialId)).get(materialId);
         if (!bomService.defaultBoms(List.of(materialId)).containsKey(materialId)) {
             throw new BizException("mes.error.productHasNoDefaultBomCannot", product.getCode(), product.getName());
         }

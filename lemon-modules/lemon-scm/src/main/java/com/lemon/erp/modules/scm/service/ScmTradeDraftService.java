@@ -26,6 +26,7 @@ import com.lemon.erp.modules.scm.mapper.ScmTradeDraftMapper;
 import com.lemon.erp.modules.scm.model.OrderKind;
 import com.lemon.erp.modules.scm.model.TradeKind;
 import com.lemon.erp.modules.wms.service.DocNoService;
+import com.lemon.erp.modules.wms.service.WmsMaterialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -64,6 +66,7 @@ public class ScmTradeDraftService {
     private final DocNoService docNoService;
     private final BizRules bizRules;
     private final ScmTaxRates taxRates;
+    private final WmsMaterialService materialService;
 
     /** 是否启用了「进销存单据先存草稿」（当前租户的业务参数） */
     public boolean enabled() {
@@ -204,6 +207,10 @@ public class ScmTradeDraftService {
             }
             if (kind != TradeKind.SALES_OUT && req.items().stream().anyMatch(TradeDocItemRequest::isGift)) {
                 throw new BizException("scm.error.giftOnlySalesOut");
+            }
+            if (kind.getOrderKind() == OrderKind.PURCHASE) {
+                // 虚拟商品（服务项目）不能采购入库、采购退货
+                materialService.getStockable(req.items().stream().map(TradeDocItemRequest::materialId).filter(Objects::nonNull).toList());
             }
         } else {
             order = orderService.getAccessible(kind.getOrderKind(), req.orderId());

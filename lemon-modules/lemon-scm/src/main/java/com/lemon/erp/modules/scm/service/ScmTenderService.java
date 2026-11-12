@@ -314,7 +314,7 @@ public class ScmTenderService {
         if (req.items().stream().map(SrmRequests.TenderItem::materialId).distinct().count() < req.items().size()) {
             throw new BizException("scm.error.duplicateTenderMaterial");
         }
-        materialService.getEnabled(req.items().stream().map(SrmRequests.TenderItem::materialId).toList());
+        materialService.getStockable(req.items().stream().map(SrmRequests.TenderItem::materialId).toList());
         if (req.supplierIds().stream().distinct().count() < req.supplierIds().size()) {
             throw new BizException("scm.error.duplicateInvitedSupplier");
         }

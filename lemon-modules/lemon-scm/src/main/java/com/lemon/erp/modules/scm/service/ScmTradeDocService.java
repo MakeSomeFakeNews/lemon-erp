@@ -276,7 +276,7 @@ public class ScmTradeDocService {
             BigDecimal shareFc = !kind.isReturns() ? share : OrderLineAmounts.returnShare(orderItem, r.qty(), amountFc);
             sharesFc.add(Decimals.nz(shareFc));
             ScmTradeDocItem item = toItem(kind, r, orderItem, rate(order), amountFc, shareFc);
-            if (lineWarehouse && r.warehouseId() != null && !r.warehouseId().equals(req.warehouseId())) {
+            if (lineWarehouse && !orderItem.isVirtualGoods() && r.warehouseId() != null && !r.warehouseId().equals(req.warehouseId())) {
                 item.setWarehouseId(r.warehouseId());
             }
             items.add(item);
@@ -298,23 +298,10 @@ public class ScmTradeDocService {
             }
         }
 
-        // 实时库存成本：带上成本单价、业务单价（不含税）和往来单位
-        StockDocRequest stockReq = stockCosts.enrich(kind, order, items, new StockDocRequest(kind.getStockBizType().name(),
-                req.warehouseId(), null, req.bizDate(), req.remark(),
-                items.stream().map(ScmTradeDocService::toStockItem).toList()));
-        if (kind == TradeKind.PURCHASE_RETURN) {
-            // 退货先解冻该订单的不合格、待检库存
-            holdService.releaseForReturn(order.getId(), holdLines(req.warehouseId(), items));
-        }
-        if (kind == TradeKind.SALES_OUT) {
-            // 先核销本订单的预留，出库不受自己的预留限制
-            items.forEach(i -> reservationService.consume(i.getOrderItemId(), warehouseOf(i, req.warehouseId()), i.getQty()));
-        }
-        WmsStockDoc stockDoc = stockDocService.createConfirmed(kind.getStockKind(), stockReq, docNo);
-        if (kind == TradeKind.PURCHASE_IN) {
-            // 需要来料检验的物料冻结为待检，检验合格后放行
-            holdService.holdForInspection(docNo, order.getId(), order.getPartnerId(), holdLines(req.warehouseId(), items));
-        }
+        // 虚拟商品（服务项目）不管库存：不进入仓库出入库单，不扣库存、不校验库存、不预留、不生成库存流水，出库成本为 0；
+        // 全部是虚拟商品时不生成仓库出入库单（wms_doc_id 为空）
+        List<ScmTradeDocItem> stockItems = items.stream().filter(i -> !orderItems.get(i.getOrderItemId()).isVirtualGoods()).toList();
+        WmsStockDoc stockDoc = stockItems.isEmpty() ? null : confirmStock(kind, req, order, stockItems, docNo);
 
         LoginUser user = SecurityUtils.getLoginUser();
         Long deptId = origin != null ? origin.deptId() : user.deptId();
@@ -331,8 +318,8 @@ public class ScmTradeDocService {
         doc.setCurrency(order.getCurrency() == null ? ExchangeRateProvider.BASE : order.getCurrency());
         doc.setExchangeRate(rate(order));
         doc.setAmountFc(Decimals.sum(amountsFc, a -> a));
-        doc.setWmsDocId(stockDoc.getId());
-        doc.setWmsDocNo(stockDoc.getDocNo());
+        doc.setWmsDocId(stockDoc == null ? null : stockDoc.getId());
+        doc.setWmsDocNo(stockDoc == null ? null : stockDoc.getDocNo());
         doc.setRemark(req.remark());
         doc.setReplenish(kind.isReturns() && Boolean.TRUE.equals(req.replenish()) ? 1 : 0);
         doc.setDiscountAmount(Decimals.sum(items, ScmTradeDocItem::getDiscountShare));
@@ -371,6 +358,31 @@ public class ScmTradeDocService {
                     doc.getFreight(), freightBearer, freight.settle(), freight.carrierId(), freight.accountId(), deptId));
         }
         return doc.getId();
+    }
+
+    /**
+     * 生成并确认仓库的出入库单（实物明细），带上实时库存成本：成本单价、业务单价（不含税）和往来单位
+     *
+     * @param stockItems 实物明细（不含虚拟商品）
+     */
+    private WmsStockDoc confirmStock(TradeKind kind, TradeDocRequest req, ScmOrder order, List<ScmTradeDocItem> stockItems, String docNo) {
+        StockDocRequest stockReq = stockCosts.enrich(kind, order, stockItems, new StockDocRequest(kind.getStockBizType().name(),
+                req.warehouseId(), null, req.bizDate(), req.remark(),
+                stockItems.stream().map(ScmTradeDocService::toStockItem).toList()));
+        if (kind == TradeKind.PURCHASE_RETURN) {
+            // 退货先解冻该订单的不合格、待检库存
+            holdService.releaseForReturn(order.getId(), holdLines(req.warehouseId(), stockItems));
+        }
+        if (kind == TradeKind.SALES_OUT) {
+            // 先核销本订单的预留，出库不受自己的预留限制
+            stockItems.forEach(i -> reservationService.consume(i.getOrderItemId(), warehouseOf(i, req.warehouseId()), i.getQty()));
+        }
+        WmsStockDoc stockDoc = stockDocService.createConfirmed(kind.getStockKind(), stockReq, docNo);
+        if (kind == TradeKind.PURCHASE_IN) {
+            // 需要来料检验的物料冻结为待检，检验合格后放行
+            holdService.holdForInspection(docNo, order.getId(), order.getPartnerId(), holdLines(req.warehouseId(), stockItems));
+        }
+        return stockDoc;
     }
 
     /**
@@ -522,9 +534,11 @@ public class ScmTradeDocService {
         ScmTradeDocItem item = new ScmTradeDocItem();
         item.setOrderItemId(orderItem.getId());
         item.setMaterialId(orderItem.getMaterialId());
-        item.setLocationId(locationOrNone(r.locationId()));
+        // 虚拟商品（服务项目）没有库位、批次、序列号
+        boolean virtual = orderItem.isVirtualGoods();
+        item.setLocationId(virtual ? locationOrNone(null) : locationOrNone(r.locationId()));
         // 按物料的管理方式规范批次、序列号（与仓库单据一致）
-        boolean batchManaged = Integer.valueOf(1).equals(orderItem.getBatchEnabled());
+        boolean batchManaged = !virtual && Integer.valueOf(1).equals(orderItem.getBatchEnabled());
         item.setBatchNo(batchManaged ? batchOrNone(r.batchNo()) : NO_BATCH);
         if (kind == TradeKind.PURCHASE_IN && batchManaged) {
             item.setProductionDate(r.productionDate());
@@ -542,7 +556,7 @@ public class ScmTradeDocService {
         item.setGrossPrice(rate.compareTo(BigDecimal.ONE) == 0 ? gross : gross.multiply(rate).setScale(4, java.math.RoundingMode.HALF_UP));
         BigDecimal share = Decimals.nz(shareFc);
         item.setDiscountShare(rate.compareTo(BigDecimal.ONE) == 0 ? share : share.multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP));
-        item.setSerialNos(Integer.valueOf(1).equals(orderItem.getSerialEnabled()) ? joinSerials(splitSerials(r.serialNos())) : null);
+        item.setSerialNos(!virtual && Integer.valueOf(1).equals(orderItem.getSerialEnabled()) ? joinSerials(splitSerials(r.serialNos())) : null);
         item.setRemark(r.remark());
         return item;
     }

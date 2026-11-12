@@ -187,7 +187,7 @@
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'material'">
               <a-form-item :name="['items', index, 'materialId']" :rules="[{ required: true, message: $t('crm.common.materialRequired') }]" class="cell">
-                <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" />
+                <MaterialSelect virtual v-model:value="record.materialId" :label="record.materialLabel" />
               </a-form-item>
             </template>
             <template v-else-if="column.key === 'qty'">

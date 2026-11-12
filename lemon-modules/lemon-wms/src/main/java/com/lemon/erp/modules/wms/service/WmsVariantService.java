@@ -188,6 +188,9 @@ public class WmsVariantService {
     @Transactional
     public int generate(Long templateId, Map<Long, List<Long>> valueIds) {
         WmsMaterial template = requireTemplate(templateId, true);
+        if (template.isVirtualGoods()) {
+            throw new BizException("wms.error.variantMaterialCannotBeVirtual");
+        }
         if (valueIds == null || valueIds.isEmpty() || valueIds.values().stream().anyMatch(l -> l == null || l.isEmpty())) {
             throw new BizException("wms.error.selectLeastOneValueEachAttribute");
         }

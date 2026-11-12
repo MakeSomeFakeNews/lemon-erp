@@ -46,8 +46,8 @@ export const OPTION_PAGE_SIZE = 20
  * current 页码，默认第 1 页
  */
 export const customerOptions = (keyword, current = 1) => get('/scm/customer/options', { keyword, current, size: OPTION_PAGE_SIZE })
-/** 物料选项（登录即可访问）：按编码、名称、规格、条码、拼音首字母、去掉分隔符的缩写分页搜索 */
-export const materialOptions = (keyword, current = 1) => get('/wms/material/options', { keyword, current, size: OPTION_PAGE_SIZE })
+/** 物料选项（登录即可访问）：按编码、名称、规格、条码、拼音首字母、去掉分隔符的缩写分页搜索；virtual 为 true 时包含虚拟商品（服务项目，快速开单用），默认不包含（入库等库存作业） */
+export const materialOptions = (keyword, current = 1, virtual = false) => get('/wms/material/options', { keyword, current, size: OPTION_PAGE_SIZE, virtual: virtual || undefined })
 /** 物料的辅助单位 [{ unit, ratio, barcode }]，1 辅助单位 = ratio 基本单位（登录即可访问） */
 export const materialUnits = (id) => get(`/wms/material/${id}/units`, undefined, { silent: true })
 /**

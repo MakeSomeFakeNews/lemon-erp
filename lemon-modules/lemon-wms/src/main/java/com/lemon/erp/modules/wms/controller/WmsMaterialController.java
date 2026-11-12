@@ -55,17 +55,22 @@ public class WmsMaterialController {
                                            @RequestParam(required = false) String category,
                                            @RequestParam(required = false) String brand,
                                            @RequestParam(required = false) EnableStatus status,
-                                           @RequestParam(required = false) Long templateId) {
-        return R.ok(materialService.page(current, size, keyword, category, brand, status, templateId));
+                                           @RequestParam(required = false) Long templateId,
+                                           @RequestParam(required = false) Boolean virtual) {
+        return R.ok(materialService.page(current, size, keyword, category, brand, status, templateId, virtual));
     }
 
-    /** 登录即可访问：各单据页面的物料下拉，按关键字分页搜索（每页最多 50 条，滚动加载下一页）；ids 按 ID 取已选物料的名称 */
+    /**
+     * 登录即可访问：各单据页面的物料下拉，按关键字分页搜索（每页最多 50 条，滚动加载下一页）；ids 按 ID 取已选物料的名称。
+     * virtual = true 时包含虚拟商品（服务项目，销售类单据），默认不包含（采购、库存、生产类单据）
+     */
     @GetMapping("/options")
     public R<List<WmsMaterial>> options(@RequestParam(required = false) String keyword,
                                         @RequestParam(required = false) List<Long> ids,
                                         @RequestParam(defaultValue = "1") long current,
-                                        @RequestParam(defaultValue = "20") long size) {
-        return R.ok(ids != null && !ids.isEmpty() ? materialService.optionsByIds(ids) : materialService.options(keyword, current, size));
+                                        @RequestParam(defaultValue = "20") long size,
+                                        @RequestParam(defaultValue = "false") boolean virtual) {
+        return R.ok(ids != null && !ids.isEmpty() ? materialService.optionsByIds(ids) : materialService.options(keyword, current, size, virtual));
     }
 
     /** 扫码：物料条码、包装条码或物料编码 → {material, unit, ratio}，找不到时为空 */

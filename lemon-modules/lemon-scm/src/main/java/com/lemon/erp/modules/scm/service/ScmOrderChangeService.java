@@ -104,7 +104,9 @@ public class ScmOrderChangeService {
                 if (l.materialId() == null || l.qty() == null || l.price() == null) {
                     throw new BizException("scm.error.newLinesRequireMaterialQuantityUnit");
                 }
-                WmsMaterial m = materialService.getEnabled(List.of(l.materialId())).get(l.materialId());
+                // 采购订单不能加入虚拟商品（服务项目）
+                WmsMaterial m = (kind == OrderKind.PURCHASE ? materialService.getStockable(List.of(l.materialId()))
+                        : materialService.getEnabled(List.of(l.materialId()))).get(l.materialId());
                 checkWhole(m, l.qty());
                 ci.setMaterialId(l.materialId());
                 ci.setNewQty(l.qty());

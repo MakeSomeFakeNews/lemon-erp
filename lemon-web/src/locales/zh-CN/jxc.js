@@ -23,6 +23,7 @@ export default {
     allCategories: '全部类别',
     allBrands: '全部品牌',
     allWarehouses: '全部仓库',
+    allGoodsTypes: '实物和虚拟商品',
     allRegions: '全部区域',
     region: '区域',
     materialKeyword: '商品编码 / 名称',

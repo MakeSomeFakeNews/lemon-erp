@@ -10,6 +10,7 @@
         <a-select v-model:value="query.brand" :options="toOptions(dict.wms_material_brand)" allow-clear
           :placeholder="$t('jxc.common.allBrands')" class="filter-s" />
         <WarehouseSelect v-model:value="query.warehouseId" :placeholder="$t('jxc.common.allWarehouses')" class="filter-s" />
+        <a-select v-if="tab === 'top'" v-model:value="query.virtual" :options="goodsTypeOptions()" allow-clear :placeholder="$t('jxc.common.allGoodsTypes')" class="filter-s" @change="search" />
         <a-input v-model:value="query.keyword" allow-clear :placeholder="$t('jxc.common.materialKeyword')" class="filter" @press-enter="search" />
         <a-radio-group v-if="tab === 'top'" v-model:value="query.rankBy" button-style="solid" @change="search">
           <a-radio-button :value="GoodsRankBy.AMOUNT">{{ $t('jxc.goods.rankAmount') }}</a-radio-button>
@@ -76,7 +77,7 @@ import { DownloadOutlined } from '@ant-design/icons-vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import JxcDetail from '@/components/bi/jxc/JxcDetail.vue'
 import { jxcGoods } from '@/api/bi/jxc'
-import { DICT_TYPES, dictLabel, marginText, rangePresets, thisMonth } from '@/components/bi/jxc/jxc'
+import { DICT_TYPES, dictLabel, goodsTypeOptions, marginText, rangePresets, thisMonth } from '@/components/bi/jxc/jxc'
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
@@ -95,7 +96,7 @@ const canDrill = useUserStore().hasPerm('bi:jxc:sales')
 const presets = rangePresets()
 const tab = ref('top')
 const range = ref(thisMonth())
-const query = reactive({ category: undefined, brand: undefined, warehouseId: undefined, keyword: '', rankBy: GoodsRankBy.AMOUNT, slowQty: 0, overstockDays: 90 })
+const query = reactive({ category: undefined, brand: undefined, warehouseId: undefined, keyword: '', virtual: undefined, rankBy: GoodsRankBy.AMOUNT, slowQty: 0, overstockDays: 90 })
 const rows = ref([])
 const loading = ref(false)
 const exporting = ref(false)
@@ -125,7 +126,8 @@ const COLUMNS = {
 const columns = computed(() => COLUMNS[tab.value])
 
 function params() {
-  const p = { begin: range.value[0], end: range.value[1], ...query, keyword: query.keyword?.trim() }
+  // 商品类型只用于畅销（其他页签只统计实物）
+  const p = { begin: range.value[0], end: range.value[1], ...query, keyword: query.keyword?.trim(), virtual: tab.value === 'top' ? query.virtual : undefined }
   return Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined && v !== null && v !== ''))
 }
 
