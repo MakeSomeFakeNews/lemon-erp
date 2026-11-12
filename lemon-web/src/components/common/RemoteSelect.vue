@@ -38,6 +38,9 @@ import { useRemoteOptions } from '@/composables/useRemoteOptions'
  * - toLabel(record)：选项文字
  * - v-model:value：ID（multiple 时为 ID 数组）；@select(record)：单选选中后返回记录（清空时不触发）
  * - pinned：没有输入关键字时排在最前面的记录（如工序所在工作中心的设备）
+ * - sourceKey：fetch 的数据来源标识（如客户 / 供应商），变化时丢弃已加载的选项、下次打开按新来源重新加载；
+ *   fetch 依赖的条件会变时必须传（模板里的箭头函数每次渲染都是新函数，不能据此判断来源变化）。
+ *   已选值不会自动清空，由页面在切换条件时清空（编辑回显时条件和值会同时变化）
  */
 const props = defineProps({
   value: [Number, Array],
@@ -52,7 +55,8 @@ const props = defineProps({
   disabled: Boolean,
   dropdownWidth: { type: [Number, Boolean], default: 300 },
   pageSize: { type: Number, default: 20 },
-  pinned: { type: Array, default: () => [] }
+  pinned: { type: Array, default: () => [] },
+  sourceKey: { type: null, default: undefined }
 })
 const emit = defineEmits(['update:value', 'select'])
 
@@ -85,13 +89,20 @@ watch(
 )
 
 // 没有 label 的已选值按 ID 取名称（编辑时回显，不需要把全部数据加载到前端）
+function resolveSelected(ids) {
+  const missing = ids.filter((id) => !(props.label && !props.multiple) && !remote.find(id))
+  if (missing.length) remote.resolve(missing)
+}
+watch(selectedIds, resolveSelected, { immediate: true })
+
+// 数据来源变化：重新加载选项，仍有已选值时按新来源回显
 watch(
-  selectedIds,
-  (ids) => {
-    const missing = ids.filter((id) => !(props.label && !props.multiple) && !remote.find(id))
-    if (missing.length) remote.resolve(missing)
-  },
-  { immediate: true }
+  () => props.sourceKey,
+  () => {
+    remote.reset()
+    remote.remember(...props.pinned)
+    resolveSelected(selectedIds.value)
+  }
 )
 
 function onSearch(keyword) {

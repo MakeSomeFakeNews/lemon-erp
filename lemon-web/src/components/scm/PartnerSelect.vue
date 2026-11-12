@@ -3,6 +3,7 @@
     :value="value"
     :label="label"
     :fetch="fetch"
+    :source-key="carrier ? 'carrier' : type"
     :fetch-by-ids="(ids) => partnersByIds(carrier ? 'supplier' : type, ids)"
     :to-label="(p) => `${p.code} ${p.name}`"
     :allow-clear="allowClear"
@@ -26,7 +27,7 @@ import { carrierOptions, partnerOptions, partnersByIds } from '@/api/scm/partner
 /**
  * 供应商 / 客户下拉：启用的往来单位远程分页搜索（编码、名称、联系人、电话、拼音首字母、去掉分隔符的缩写），
  * 打开时取前 20 条，滚动加载更多。
- * - type：supplier | customer
+ * - type：supplier | customer，变化时重新加载选项（已选值由页面清空）
  * - v-model:value：ID；label：当前值的显示名（编辑时回显，不传时按 ID 取名称）
  * - @select(partner)：选中后返回 { id, code, name, contact, phone, address }
  * - carrier：承运商（采购运费、发运单），只列出标记为物流公司的供应商；还没有标记时列出全部供应商并提示去标记

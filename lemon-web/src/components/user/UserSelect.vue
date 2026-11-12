@@ -3,6 +3,7 @@
     :value="value"
     :label="label"
     :fetch="({ keyword, current, size }) => fetcher({ current, size, username: keyword })"
+    :source-key="fetcher"
     :to-label="toLabel"
     :placeholder="placeholder"
     :not-found="$t('components.user.noMatch')"
